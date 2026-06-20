@@ -1,0 +1,85 @@
+/* 회원 레벨 아이콘 스타일 */
+.member_level_icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-left: 3px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+}
+
+/* 게시판 목록에서 */
+.bo_tit .member_level_icon,
+.td_name .member_level_icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* 게시글 보기에서 */
+.view_name .member_level_icon,
+#bo_v_info .member_level_icon {
+    width: 18px;
+    height: 18px;
+    margin-left: 5px;
+}
+
+/* 댓글에서 */
+.cmt_info .member_level_icon,
+#bo_vc .member_level_icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* 마이페이지에서 */
+.member_info .member_level_icon,
+.mb_info .member_level_icon {
+    width: 24px;
+    height: 24px;
+    margin-left: 8px;
+}
+
+/* 최신글에서 */
+.lt_name .member_level_icon {
+    width: 12px;
+    height: 12px;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .member_level_icon {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .member_info .member_level_icon {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* 레벨별 특별 효과 */
+.member_level_icon.level_10 {
+    filter: drop-shadow(0 0 3px #FFD700);
+    animation: shine 2s infinite;
+}
+
+.member_level_icon.level_9 {
+    filter: drop-shadow(0 0 2px #C0C0C0);
+}
+
+.member_level_icon.level_8 {
+    filter: drop-shadow(0 0 2px #CD7F32);
+}
+
+.member_level_icon.level_7,
+.member_level_icon.level_6,
+.member_level_icon.level_5 {
+    filter: drop-shadow(0 0 1px rgba(0,0,0,0.3));
+}
+
+/* 반짝임 애니메이션 (레벨 10) */
+@keyframes shine {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}

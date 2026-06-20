@@ -1,0 +1,6 @@
+[21-Jun-2025 00:42:11 UTC] PHP Warning:  Undefined variable $row_mod in /home/thedokka/public_html/rb/rb.widget/rb.point_rank/widget.php on line 234
+[21-Jun-2025 00:42:11 UTC] PHP Warning:  Trying to access array offset on value of type null in /home/thedokka/public_html/rb/rb.widget/rb.point_rank/widget.php on line 234
+[21-Jun-2025 00:42:11 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function sql_fetch() in /home/thedokka/public_html/rb/rb.widget/rb.point_rank/widget.php:235
+Stack trace:
+#0 {main}
+  thrown in /home/thedokka/public_html/rb/rb.widget/rb.point_rank/widget.php on line 235

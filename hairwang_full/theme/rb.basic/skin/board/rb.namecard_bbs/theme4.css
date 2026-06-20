@@ -1,0 +1,127 @@
+/* 테마 4: 다크 테마 */
+.theme4 .main {
+    background-color: #1a1a1a;
+}
+
+.theme4 .center {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+}
+
+.theme4 .top_bars {
+    background-color: #3a3a3a;
+}
+
+.theme4 .top_icon button svg circle {
+    fill: #3a3a3a;
+}
+
+.theme4 .top_icon button svg path {
+    stroke: #e0e0e0;
+}
+
+.theme4 .bs_card {
+    background-color: #3a3a3a;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.theme4 .bs_card_txt1 {
+    color: #e0e0e0;
+}
+
+.theme4 .bs_card_txt1 span {
+    color: #ffffff;
+}
+
+.theme4 .bs_card_txt2 a {
+    color: #b0b0b0;
+}
+
+.theme4 .bs_card_txt2 a:hover {
+    color: #ffffff;
+}
+
+.theme4 .bs_card_txt2 bb {
+    color: #64b5f6 !important;
+}
+
+.theme4 .greeting_bg {
+    background-color: #3a3a3a;
+    border: 1px solid #4a4a4a;
+}
+
+.theme4 .greeting_txt {
+    color: #b0b0b0;
+}
+
+.theme4 .bottom_button button {
+    background-color: #3a3a3a;
+    border: 1px solid #4a4a4a;
+}
+
+.theme4 .bottom_button button:hover {
+    background-color: #4a4a4a;
+    border-color: #5a5a5a;
+}
+
+.theme4 .bottom_button button span {
+    color: #e0e0e0;
+}
+
+.theme4 .ex_lay1 {
+    border: 1px solid #4a4a4a;
+    background-color: #3a3a3a;
+}
+
+.theme4 .ex_lay1:hover {
+    border-color: #64b5f6;
+    background-color: #424242;
+}
+
+.theme4 .lay_tit {
+    color: #e0e0e0;
+}
+
+.theme4 .lay_pri {
+    color: #64b5f6;
+}
+
+.theme4 .lay_sub {
+    color: #b0b0b0;
+}
+
+.theme4 #bo_v_con {
+    color: #e0e0e0;
+}
+
+.theme4 .copy {
+    color: #808080;
+}
+
+.theme4 .rb_inp_wrap_confirm .btn_submit {
+    background: #64b5f6;
+    color: #000;
+    border: none;
+}
+
+.theme4 .rb_inp_wrap_confirm .btn_cancel {
+    background: #4a4a4a;
+    color: #e0e0e0;
+    border: 1px solid #5a5a5a;
+}
+
+.theme4 .ex_lay2 {
+    background-color: #3a3a3a;
+    border-color: #4a4a4a;
+}
+
+.theme4 .ex_lay2_btm {
+    background-color: #2a2a2a;
+    border-color: #4a4a4a;
+}
+
+.theme4 .lay_date {
+    color: #808080;
+}

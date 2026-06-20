@@ -1,0 +1,34 @@
+
+@font-face {
+    font-family: 'font-R';
+    font-weight: normal;
+    src: url('./TheJamsil-Light.eot');
+    src: url('./TheJamsil-Light.eot?#iefix') format('embedded-opentype'),
+        url('./TheJamsil-Light.woff2') format('woff2'),
+        url('./TheJamsil-Light.woff') format('woff'),
+        url('./TheJamsil-Light.ttf') format("truetype");
+    font-display: swap;
+}
+@font-face {
+    font-family: 'font-B';
+    font-weight: bold;
+    src: url('./TheJamsil-Medium.eot');
+    src: url('./TheJamsil-Medium.eot?#iefix') format('embedded-opentype'),
+        url('./TheJamsil-Medium.woff2') format('woff2'),
+        url('./TheJamsil-Medium.woff') format('woff'),
+        url('./TheJamsil-Medium.ttf') format("truetype");
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'font-H';
+    font-weight: black;
+    src: url('./TheJamsil-ExtraBold.eot');
+    src: url('./TheJamsil-ExtraBold.eot?#iefix') format('embedded-opentype'),
+        url('./TheJamsil-ExtraBold.woff2') format('woff2'),
+        url('./TheJamsil-ExtraBold.woff') format('woff'),
+        url('./TheJamsil-ExtraBold.ttf') format("truetype");
+    font-display: swap;
+}
+
+h2 {font-weight: normal !important;}

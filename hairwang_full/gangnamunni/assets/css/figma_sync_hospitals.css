@@ -1,0 +1,44 @@
+/* ============================================================================
+ * [Figma Sync - 2026-06-06] hospitals.php 검색바 — FIGMA 매칭
+ * 원인 : "지역 선택" 버튼이 흰 배경+빨강 테두리 → Figma는 검정 알약
+ * 변경 : #hRegionToggle 색상/모양 + #hospitalKeyword 입력 스타일
+ * 영향 범위 : hospitals.php에만 적용
+ * 원복 방법 : 본 파일 삭제 또는 hospitals.php 로드 라인 제거
+ * ============================================================================ */
+
+/* 병원 페이지 검색 입력 — 깔끔하게 */
+#hospitalKeyword {
+    padding: 10px 16px !important;
+    border: 1px solid #1A0000 !important;
+    border-radius: 24px !important;
+    font-size: 14px !important;
+    background: #fff !important;
+}
+#hospitalKeyword::placeholder {
+    color: #cacaca !important;
+}
+
+/* 지역 선택 버튼 — 검정 알약 (Figma 매칭) */
+#hRegionToggle {
+    padding: 10px 18px !important;
+    border: none !important;
+    background: #222222 !important;
+    color: #fff !important;
+    border-radius: 20px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+}
+#hRegionToggle i {
+    color: #fff !important;
+    font-size: 14px !important;
+}
+
+/* 다크 모드 대응 */
+[data-bs-theme="dark"] #hospitalKeyword {
+    background: #2a2a3e !important;
+    border-color: #555 !important;
+    color: #eee !important;
+}
+[data-bs-theme="dark"] #hospitalKeyword::placeholder {
+    color: #777 !important;
+}

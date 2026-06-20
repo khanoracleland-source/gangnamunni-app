@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>백버튼 앱 종료 QA 리포트 - 2026-03-12</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#333;line-height:1.6}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+h1{font-size:28px;color:#1a1a2e;margin-bottom:8px}
+.subtitle{color:#666;font-size:14px;margin-bottom:24px}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+.summary-card{background:#fff;border-radius:12px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.summary-card .number{font-size:36px;font-weight:700}
+.summary-card .label{font-size:13px;color:#888;margin-top:4px}
+.pass .number{color:#27ae60}
+.total .number{color:#2c3e50}
+.devices .number{color:#3498db}
+.apps .number{color:#9b59b6}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:32px}
+thead{background:#1a1a2e;color:#fff}
+th{padding:14px 16px;text-align:left;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.5px}
+td{padding:12px 16px;border-bottom:1px solid #eee;font-size:14px}
+tr:last-child td{border-bottom:none}
+tr:hover{background:#f8f9fa}
+.badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.badge-pass{background:#d4edda;color:#155724}
+.badge-fail{background:#f8d7da;color:#721c24}
+.badge-na{background:#e2e3e5;color:#383d41}
+.section{background:#fff;border-radius:12px;padding:24px;margin-bottom:24px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.section h2{font-size:20px;color:#1a1a2e;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #eee}
+.section h3{font-size:16px;color:#333;margin:16px 0 8px}
+.code{background:#f4f4f4;border-radius:8px;padding:16px;font-family:'Fira Code',monospace;font-size:12px;overflow-x:auto;margin:8px 0 16px;white-space:pre;border:1px solid #e0e0e0}
+.file-list{list-style:none}
+.file-list li{padding:6px 0;font-size:14px}
+.file-list li::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.file-list li.modified::before{background:#f39c12}
+.file-list li.new::before{background:#27ae60}
+.timeline{border-left:3px solid #ddd;padding-left:24px;margin-left:12px}
+.timeline-item{position:relative;margin-bottom:20px}
+.timeline-item::before{content:'';position:absolute;left:-30px;top:4px;width:12px;height:12px;border-radius:50%;background:#3498db;border:3px solid #fff;box-shadow:0 0 0 2px #3498db}
+.timeline-item.failed::before{background:#e74c3c;box-shadow:0 0 0 2px #e74c3c}
+.timeline-item.success::before{background:#27ae60;box-shadow:0 0 0 2px #27ae60}
+.timeline-label{font-size:12px;color:#888;margin-bottom:2px}
+.timeline-content{font-size:14px;color:#333}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:768px){.summary-grid{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}}
+.logcat{background:#1e1e1e;color:#d4d4d4;border-radius:8px;padding:16px;font-family:monospace;font-size:11px;overflow-x:auto;margin:8px 0;white-space:pre;line-height:1.5}
+.logcat .tag{color:#569cd6}
+.logcat .ok{color:#6a9955}
+.logcat .warn{color:#ce9178}
+.footer{text-align:center;color:#999;font-size:12px;padding:24px;margin-top:32px;border-top:1px solid #eee}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Back Button Exit QA Report</h1>
+<p class="subtitle">2026-03-12 | Android 백버튼 더블프레스 종료 | 4개 앱 x 2대 기기</p>
+
+<div class="summary-grid">
+    <div class="summary-card pass"><div class="number">8/8</div><div class="label">PASS</div></div>
+    <div class="summary-card apps"><div class="number">4</div><div class="label">Apps Tested</div></div>
+    <div class="summary-card devices"><div class="number">2</div><div class="label">Devices</div></div>
+    <div class="summary-card total"><div class="number">6</div><div class="label">Files Modified</div></div>
+</div>
+
+<table>
+<thead>
+<tr><th>App</th><th>Bundle ID</th><th>SM-N950N (Android 9)</th><th>SM-A135N (Android 14)</th><th>Method</th></tr>
+</thead>
+<tbody>
+<tr>
+    <td><strong>서울미녀</strong></td>
+    <td>com.celebhospital.patient</td>
+    <td><span class="badge badge-pass">PASS</span></td>
+    <td><span class="badge badge-pass">PASS</span></td>
+    <td>dispatchKeyEvent + OnBackPressedCallback</td>
+</tr>
+<tr>
+    <td><strong>서울미녀 파트너</strong></td>
+    <td>com.celebhospital.admin</td>
+    <td><span class="badge badge-pass">PASS</span></td>
+    <td><span class="badge badge-pass">PASS</span></td>
+    <td>dispatchKeyEvent + OnBackPressedCallback</td>
+</tr>
+<tr>
+    <td><strong>서울뷰티병원</strong></td>
+    <td>com.celebhospital.hms</td>
+    <td><span class="badge badge-pass">PASS</span></td>
+    <td><span class="badge badge-pass">PASS</span></td>
+    <td>PopScope + MethodChannel finishAffinity</td>
+</tr>
+<tr>
+    <td><strong>서울미녀 관리자</strong></td>
+    <td>com.celebhospital.manager</td>
+    <td><span class="badge badge-pass">PASS</span></td>
+    <td><span class="badge badge-pass">PASS</span></td>
+    <td>PopScope + MethodChannel finishAffinity</td>
+</tr>
+</tbody>
+</table>
+
+<div class="section">
+<h2>Issue & Root Cause</h2>
+<table>
+<thead><tr><th>Exit Method</th><th>Android 9 (950)</th><th>Android 14 (135)</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td><code>SystemNavigator.pop()</code></td><td>Splash screen restart</td><td>Splash screen restart</td><td><span class="badge badge-fail">FAIL</span></td></tr>
+<tr><td><code>exit(0)</code></td><td>OS crash restart</td><td>OS crash restart</td><td><span class="badge badge-fail">FAIL</span></td></tr>
+<tr><td><code>finishAffinity()</code> (Native)</td><td>Clean exit</td><td>Clean exit</td><td><span class="badge badge-pass">PASS</span></td></tr>
+</tbody>
+</table>
+<p style="margin-top:12px;font-size:14px;color:#666">
+<strong>Root cause:</strong> Samsung Android OS auto-restarts the Activity after <code>Activity.finish()</code> or Dart VM crash (<code>exit(0)</code>).
+<code>finishAffinity()</code> closes ALL Activities in the task stack, telling the OS the entire task is complete — no restart.
+</p>
+</div>
+
+<div class="section">
+<h2>Android 14 Special Handling</h2>
+<p style="margin-bottom:12px;font-size:14px">Android 14 introduces the <strong>Predictive Back Gesture API</strong> which changes how back events are routed:</p>
+<table>
+<thead><tr><th>Manifest Flag</th><th>dispatchKeyEvent</th><th>OnBackPressedCallback</th><th>PopScope</th></tr></thead>
+<tbody>
+<tr><td><code>enableOnBackInvokedCallback="true"</code></td><td>Not called for BACK</td><td>Called once only</td><td>Unreliable</td></tr>
+<tr><td><code>enableOnBackInvokedCallback="false"</code></td><td><span class="badge badge-pass">Works</span></td><td><span class="badge badge-pass">Works</span></td><td><span class="badge badge-pass">Works</span></td></tr>
+</tbody>
+</table>
+<p style="margin-top:12px;font-size:14px;color:#666">
+<strong>Fix:</strong> Set <code>enableOnBackInvokedCallback="false"</code> in AndroidManifest.xml (patient/admin apps).
+This makes <code>dispatchKeyEvent</code> catch KEYCODE_BACK on Android 14, enabling reliable double-press detection.
+</p>
+</div>
+
+<div class="grid-2">
+<div class="section">
+<h2>Architecture: Patient/Admin</h2>
+<p style="font-size:14px;margin-bottom:12px">WebView wrapper apps — ALL back handling in Native Kotlin</p>
+<div class="code">MainActivity.kt
+├── dispatchKeyEvent(KEYCODE_BACK)     // Android 9
+├── OnBackPressedCallback              // Android 14 backup
+├── MethodChannel("app/back")          // Flutter PopScope backup
+└── handleDoubleBackPress()
+    ├── 1st press → Toast "한 번 더 누르면 종료"
+    └── 2nd press (&lt;2s) → finishAffinity()</div>
+<div class="code">startup_webview_screen.dart
+└── PopScope(canPop: false)
+    └── onPopInvokedWithResult
+        └── _backChannel.invokeMethod('handleBack')</div>
+</div>
+<div class="section">
+<h2>Architecture: HMS/Manager</h2>
+<p style="font-size:14px;margin-bottom:12px">Native Flutter apps — Dart-side back logic + Native exit</p>
+<div class="code">MainActivity.kt
+└── MethodChannel("app/back")
+    └── "finishAffinity" → finishAffinity()
+
+home_screen.dart (HMS)
+└── PopScope(canPop: false)
+    ├── Not home tab → switch to home tab
+    └── Home tab → double-press
+        └── _backChannel.invokeMethod('finishAffinity')
+
+webview_screen.dart (Manager)
+└── PopScope(canPop: false)
+    ├── canGoBack → WebView goBack
+    └── No history → double-press
+        └── _backChannel.invokeMethod('finishAffinity')</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Logcat Evidence (135 - Android 14)</h2>
+<div class="logcat"><span class="tag">BACK_DEBUG</span>: <span class="warn">BACK key UP via dispatchKeyEvent</span>
+<span class="tag">BACK_DEBUG</span>: handleDoubleBackPress: now=1773270474757, last=0, diff=1773270474757
+<span class="tag">BACK_DEBUG</span>: <span class="ok">SINGLE BACK → toast shown</span>
+<span class="tag">BACK_DEBUG</span>: <span class="warn">BACK key UP via dispatchKeyEvent</span>
+<span class="tag">BACK_DEBUG</span>: handleDoubleBackPress: now=1773270475999, last=1773270474757, diff=1242
+<span class="tag">BACK_DEBUG</span>: <span class="ok">DOUBLE BACK → finishAffinity!</span></div>
+</div>
+
+<div class="section">
+<h2>Modified Files</h2>
+<h3>서울미녀 (patient) + 서울미녀 파트너 (admin)</h3>
+<ul class="file-list">
+<li class="modified"><code>android/app/src/main/kotlin/.../MainActivity.kt</code> — dispatchKeyEvent + OnBackPressedCallback + MethodChannel</li>
+<li class="modified"><code>android/app/src/main/AndroidManifest.xml</code> — enableOnBackInvokedCallback="false"</li>
+<li class="modified"><code>lib/screens/webview/startup_webview_screen.dart</code> — PopScope + MethodChannel backup</li>
+</ul>
+<h3>서울뷰티병원 (hms)</h3>
+<ul class="file-list">
+<li class="modified"><code>android/app/src/main/kotlin/.../MainActivity.kt</code> — MethodChannel for finishAffinity</li>
+<li class="modified"><code>lib/screens/home_screen.dart</code> — SystemNavigator.pop() → finishAffinity</li>
+</ul>
+<h3>서울미녀 관리자 (manager)</h3>
+<ul class="file-list">
+<li class="modified"><code>android/app/src/main/kotlin/.../MainActivity.kt</code> — MethodChannel for finishAffinity/handleBack</li>
+<li class="modified"><code>lib/screens/webview_screen.dart</code> — Dialog exit → double-press + finishAffinity</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>Troubleshooting Timeline</h2>
+<div class="timeline">
+<div class="timeline-item failed">
+    <div class="timeline-label">Attempt 1</div>
+    <div class="timeline-content"><code>SystemNavigator.pop()</code> — Samsung OS restarts Activity after finish()</div>
+</div>
+<div class="timeline-item failed">
+    <div class="timeline-label">Attempt 2</div>
+    <div class="timeline-content"><code>exit(0)</code> — OS treats as crash, restarts Activity</div>
+</div>
+<div class="timeline-item failed">
+    <div class="timeline-label">Attempt 3</div>
+    <div class="timeline-content">Flutter MethodChannel bidirectional — Native→Flutter→Native silently fails</div>
+</div>
+<div class="timeline-item failed">
+    <div class="timeline-label">Attempt 4</div>
+    <div class="timeline-content"><code>enableOnBackInvokedCallback="true"</code> — Android 14 dispatchKeyEvent not called, OnBackPressedCallback fires once only</div>
+</div>
+<div class="timeline-item success">
+    <div class="timeline-label">Final Solution</div>
+    <div class="timeline-content"><code>enableOnBackInvokedCallback="false"</code> + <code>dispatchKeyEvent</code> + native <code>finishAffinity()</code> — works on all Android versions</div>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>iOS Status</h2>
+<p style="font-size:14px">iOS has no hardware back button. The swipe-to-go-back gesture is handled natively by Flutter's Navigator.
+The <code>finishAffinity()</code> fix is <strong>Android-only</strong>. iOS apps do not require changes for this issue.</p>
+<table>
+<thead><tr><th>App</th><th>iOS Build</th><th>Back Gesture</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>서울미녀</td><td><span class="badge badge-na">Mac Required</span></td><td>N/A (no hardware back)</td><td>iOS 15.6+ / Flutter Navigator handles swipe-back</td></tr>
+<tr><td>서울미녀 파트너</td><td><span class="badge badge-na">Mac Required</span></td><td>N/A</td><td>Same as above</td></tr>
+<tr><td>서울뷰티병원</td><td><span class="badge badge-na">Mac Required</span></td><td>N/A</td><td>Same as above</td></tr>
+<tr><td>서울미녀 관리자</td><td><span class="badge badge-na">Mac Required</span></td><td>N/A</td><td>Same as above</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="section">
+<h2>App Store Resubmission Checklist</h2>
+<table>
+<thead><tr><th>#</th><th>Task</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Back button double-press exit (Android)</td><td><span class="badge badge-pass">DONE</span></td></tr>
+<tr><td>2</td><td>ADB automated test — 8/8 PASS</td><td><span class="badge badge-pass">DONE</span></td></tr>
+<tr><td>3</td><td>Android debug APK build (4 apps)</td><td><span class="badge badge-pass">DONE</span></td></tr>
+<tr><td>4</td><td>Release AAB build (Google Play)</td><td><span class="badge badge-na">PENDING</span></td></tr>
+<tr><td>5</td><td>iOS build (App Store)</td><td><span class="badge badge-na">Mac Required</span></td></tr>
+<tr><td>6</td><td>Google Play Console upload</td><td><span class="badge badge-na">PENDING</span></td></tr>
+<tr><td>7</td><td>App Store Connect upload</td><td><span class="badge badge-na">Mac Required</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="footer">
+Generated: 2026-03-12 | Seoul Beauty (서울미녀) Back Button QA Report<br>
+ADB Test Devices: SM-N950N (ce0617163ca6ed3b017e) / SM-A135N (R59TA0135PF)
+</div>
+</div>
+</body>
+</html>

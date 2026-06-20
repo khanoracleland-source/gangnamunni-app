@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울미녀 전체 앱 화면 캡처 리포트</title>
+<style>
+  :root {
+    --primary: #FF6B9D;
+    --primary-dark: #E0527E;
+    --hms-color: #1976D2;
+    --admin-color: #7B1FA2;
+    --bg: #f8f9fa;
+    --card-bg: #fff;
+    --text: #333;
+    --text-muted: #666;
+    --border: #e0e0e0;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  [data-theme="dark"] {
+    --bg: #1a1a2e;
+    --card-bg: #16213e;
+    --text: #e0e0e0;
+    --text-muted: #aaa;
+    --border: #333;
+    --shadow: 0 2px 12px rgba(0,0,0,0.3);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Pretendard', 'Segoe UI', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--primary), #FF8E53);
+    color: #fff;
+    padding: 40px 20px;
+    text-align: center;
+  }
+  .header h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 8px; }
+  .header p { font-size: 1.1rem; opacity: 0.9; }
+  .header .meta {
+    margin-top: 16px;
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    opacity: 0.85;
+  }
+
+  /* Theme toggle */
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+    transition: all 0.3s;
+  }
+  .theme-toggle:hover { transform: scale(1.1); }
+
+  /* Navigation */
+  .nav-bar {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  .nav-bar a {
+    padding: 8px 16px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .nav-bar a:hover, .nav-bar a.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+  .nav-bar a.hms:hover, .nav-bar a.hms.active {
+    background: var(--hms-color);
+    border-color: var(--hms-color);
+  }
+  .nav-bar a.adm:hover, .nav-bar a.adm.active {
+    background: var(--admin-color);
+    border-color: var(--admin-color);
+  }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 20px; }
+
+  /* App divider */
+  .app-divider {
+    padding: 24px 20px;
+    margin: 48px 0 24px;
+    border-radius: 16px;
+    color: #fff;
+    text-align: center;
+  }
+  .app-divider.patient { background: linear-gradient(135deg, #FF6B9D, #FF8E53); }
+  .app-divider.admin { background: linear-gradient(135deg, #7B1FA2, #E040FB); }
+  .app-divider.hms { background: linear-gradient(135deg, #1565C0, #42A5F5); }
+  .app-divider h2 { font-size: 1.8rem; font-weight: 800; }
+  .app-divider p { opacity: 0.9; margin-top: 4px; }
+  .app-divider .pkg { font-size: 0.8rem; opacity: 0.7; margin-top: 8px; font-family: monospace; }
+
+  /* Section */
+  .section {
+    margin-bottom: 48px;
+    scroll-margin-top: 70px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--primary);
+  }
+  .section-header.hms-border { border-bottom-color: var(--hms-color); }
+  .section-header.adm-border { border-bottom-color: var(--admin-color); }
+  .section-header .icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary), #FF8E53);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .section-header .icon.hms-icon { background: linear-gradient(135deg, #1565C0, #42A5F5); }
+  .section-header .icon.adm-icon { background: linear-gradient(135deg, #7B1FA2, #E040FB); }
+  .section-header h2 { font-size: 1.5rem; font-weight: 700; }
+  .section-header .badge {
+    margin-left: auto;
+    background: var(--primary);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .section-header .badge.hms-badge { background: var(--hms-color); }
+  .section-header .badge.adm-badge { background: var(--admin-color); }
+  .section-desc {
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+  }
+
+  /* Phone grid */
+  .phone-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 24px;
+  }
+  .phone-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .phone-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(255,107,157,0.15);
+  }
+  .phone-frame {
+    position: relative;
+    background: #000;
+    padding: 8px;
+    display: flex;
+    justify-content: center;
+  }
+  .phone-frame img {
+    width: 100%;
+    max-width: 280px;
+    height: auto;
+    border-radius: 8px;
+    display: block;
+  }
+  /* Web screenshots - wider aspect */
+  .web-frame {
+    position: relative;
+    background: #1a1a2e;
+    padding: 8px;
+  }
+  .web-frame img {
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+    display: block;
+  }
+  .phone-label {
+    padding: 12px 16px;
+    text-align: center;
+  }
+  .phone-label h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+  .phone-label .desc { font-size: 0.8rem; color: var(--text-muted); }
+  .phone-label .tag {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+  .phone-label .tag.hms-tag { background: #e3f2fd; color: #1565c0; }
+  .phone-label .tag.adm-tag { background: #f3e5f5; color: #7b1fa2; }
+  [data-theme="dark"] .phone-label .tag { background: #1b3d2f; color: #81c784; }
+  [data-theme="dark"] .phone-label .tag.hms-tag { background: #0d2137; color: #64b5f6; }
+  [data-theme="dark"] .phone-label .tag.adm-tag { background: #2a1533; color: #ce93d8; }
+
+  /* Web grid - wider cards */
+  .web-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 24px;
+  }
+
+  /* App info cards */
+  .app-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .app-info-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .app-info-card img {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .app-info-card .icon-placeholder {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .app-info-card .info h3 { font-size: 1.1rem; font-weight: 700; }
+  .app-info-card .info p { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+  .app-info-card .info .specs {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .app-info-card .info .specs span {
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .stat-card .num { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+  .stat-card .num.hms-num { color: var(--hms-color); }
+  .stat-card .num.adm-num { color: var(--admin-color); }
+  .stat-card .label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+  /* Feature table */
+  .feature-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .feature-table th {
+    background: linear-gradient(135deg, var(--primary), #FF8E53);
+    color: #fff;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .feature-table th.hms-th { background: linear-gradient(135deg, #1565C0, #42A5F5); }
+  .feature-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .feature-table tr:last-child td { border-bottom: none; }
+  .feature-table tr:hover td { background: rgba(255,107,157,0.05); }
+  .status-ok { color: #2e7d32; font-weight: 600; }
+  .status-todo { color: #f57c00; font-weight: 600; }
+
+  /* Flow diagram */
+  .flow-diagram {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .flow-box {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .flow-box.screen { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+  .flow-box.action { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+  .flow-box.result { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+  [data-theme="dark"] .flow-box.screen { background: #0d2137; color: #64b5f6; border-color: #1565c0; }
+  [data-theme="dark"] .flow-box.action { background: #3e2723; color: #ffb74d; border-color: #e65100; }
+  [data-theme="dark"] .flow-box.result { background: #1b3d2f; color: #81c784; border-color: #2e7d32; }
+  .flow-arrow { font-size: 1.2rem; color: var(--text-muted); }
+
+  /* Lightbox */
+  .lightbox-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    cursor: zoom-out;
+  }
+  .lightbox-overlay.active { display: flex; }
+  .lightbox-overlay img {
+    max-width: 92vw;
+    max-height: 90vh;
+    border-radius: 12px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  }
+  .lightbox-close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    color: #fff;
+    font-size: 2rem;
+    cursor: pointer;
+    z-index: 10000;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lightbox-caption {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 1rem;
+    background: rgba(0,0,0,0.6);
+    padding: 8px 24px;
+    border-radius: 20px;
+    z-index: 10000;
+  }
+  .lightbox-nav {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #fff;
+    font-size: 2.5rem;
+    cursor: pointer;
+    z-index: 10000;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .lightbox-nav:hover { background: rgba(255,255,255,0.25); }
+  .lightbox-prev { left: 20px; }
+  .lightbox-next { right: 20px; }
+
+  .footer {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  @media (max-width: 768px) {
+    .header h1 { font-size: 1.5rem; }
+    .phone-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .web-grid { grid-template-columns: 1fr; }
+    .app-info-grid { grid-template-columns: 1fr; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" title="다크/라이트 모드">&#127769;</button>
+
+<!-- Header -->
+<div class="header">
+  <h1>서울미녀 전체 앱 화면 캡처 리포트</h1>
+  <p>Seoul Beauty — 3개 앱 통합 스크린샷 리포트</p>
+  <div class="meta">
+    <span>&#128197; 2026-03-08</span>
+    <span>&#128241; 4개 앱</span>
+    <span>&#127959; v1.9.0</span>
+    <span>&#128248; 총 69장</span>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav-bar">
+  <a href="#overview">개요</a>
+  <a href="#p-store">환자앱 스토어</a>
+  <a href="#p-device1">환자앱 디바이스#1</a>
+  <a href="#p-device2">환자앱 디바이스#2</a>
+  <a class="adm" href="#a-store">관리자앱 스토어</a>
+  <a class="adm" href="#a-device">관리자앱 디바이스</a>
+  <a class="adm" href="#aw-device">관리자 WebView</a>
+  <a class="hms" href="#h-web">HMS 웹</a>
+  <a class="hms" href="#h-admin">HMS 관리자 웹</a>
+  <a href="#flow">화면 플로우</a>
+  <a href="#features">기능 목록</a>
+  <a href="#tech">기술 스택</a>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox-overlay" id="lightbox">
+  <div class="lightbox-close" onclick="closeLightbox()">&#10005;</div>
+  <div class="lightbox-nav lightbox-prev" onclick="navLightbox(-1)">&#8249;</div>
+  <div class="lightbox-nav lightbox-next" onclick="navLightbox(1)">&#8250;</div>
+  <img id="lightbox-img" src="" alt="">
+  <div class="lightbox-caption" id="lightbox-caption"></div>
+</div>
+
+<div class="container">
+
+  <!-- ========== OVERVIEW ========== -->
+  <div class="section" id="overview">
+    <div class="section-header">
+      <div class="icon">&#128202;</div>
+      <h2>3개 앱 개요</h2>
+    </div>
+
+    <div class="app-info-grid">
+      <div class="app-info-card">
+        <img src="app_screenshots/icons/patient_icon.png" alt="Patient Icon">
+        <div class="info">
+          <h3>서울미녀</h3>
+          <p>환자용 모바일앱</p>
+          <div class="specs">
+            <span>com.celebhospital.patient</span>
+            <span>Flutter</span>
+            <span>FCM</span>
+          </div>
+        </div>
+      </div>
+      <div class="app-info-card">
+        <img src="app_screenshots/icons/admin_icon.png" alt="Admin Icon">
+        <div class="info">
+          <h3>서울미녀 관리자</h3>
+          <p>관리자 모바일앱</p>
+          <div class="specs">
+            <span>com.celebhospital.admin</span>
+            <span>Flutter</span>
+            <span>RBAC</span>
+          </div>
+        </div>
+      </div>
+      <div class="app-info-card">
+        <div class="icon-placeholder" style="background:linear-gradient(135deg,#7B1FA2,#E040FB);">&#127760;</div>
+        <div class="info">
+          <h3>서울미녀 관리자 WebView</h3>
+          <p>강남언니 관리자 WebView 래퍼</p>
+          <div class="specs">
+            <span>com.celebhospital.manager</span>
+            <span>Flutter WebView</span>
+            <span>Auto Login</span>
+          </div>
+        </div>
+      </div>
+      <div class="app-info-card">
+        <div class="icon-placeholder" style="background:linear-gradient(135deg,#1565C0,#42A5F5);">&#127973;</div>
+        <div class="info">
+          <h3>서울미녀 파트너</h3>
+          <p>HMS 병원관리시스템 (웹)</p>
+          <div class="specs">
+            <span>hms.seoulbeauty.app</span>
+            <span>Laravel 10</span>
+            <span>InfyHMS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="num">4</div>
+        <div class="label">앱 수</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">69</div>
+        <div class="label">캡처 이미지</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">10</div>
+        <div class="label">앱 화면 (Flutter)</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">15</div>
+        <div class="label">관리자 웹 페이지</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">2</div>
+        <div class="label">테스트 디바이스</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">10</div>
+        <div class="label">지원 언어</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================================
+       APP 1: 서울미녀 (환자앱)
+       ============================================= -->
+  <div class="app-divider patient" id="app-patient">
+    <h2>&#128242; 서울미녀 (환자앱)</h2>
+    <p>Flutter 모바일 앱 | Google Play + App Store</p>
+    <div class="pkg">com.celebhospital.patient</div>
+  </div>
+
+  <!-- Patient Store -->
+  <div class="section" id="p-store">
+    <div class="section-header">
+      <div class="icon">&#127991;</div>
+      <h2>스토어 스크린샷</h2>
+      <span class="badge">8장</span>
+    </div>
+    <p class="section-desc">Google Play / App Store 제출용. 주요 기능별 화면 캡처.</p>
+    <div class="phone-grid">
+      <div class="phone-card" onclick="openLightbox('ps',0)">
+        <div class="phone-frame"><img src="app_screenshots/patient_store/01_home.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>홈 화면</h4><div class="desc">메인 대시보드, 추천 병원</div><span class="tag">HomeScreen</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('ps',1)">
+        <div class="phone-frame"><img src="app_screenshots/patient_store/02_reviews.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>시술 후기</h4><div class="desc">사용자 리뷰, 별점, 사진</div><span class="tag">Reviews</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('ps',2)">
+        <div class="phone-frame"><img src="app_screenshots/patient_store/03_hospitals.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>병원 찾기</h4><div class="desc">검색, 필터, 즐겨찾기</div><span class="tag">HospitalsList</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('ps',3)">
+        <div class="phone-frame"><img src="app_screenshots/patient_store/04_events.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>이벤트</h4><div class="desc">할인, 프로모션, 응모</div><span class="tag">Events</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('ps',4)">
+        <div class="phone-frame"><img src="app_screenshots/patient_store/05_community.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>커뮤니티</h4><div class="desc">게시글, 좋아요, 댓글</div><span class="tag">Community</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('ps',5)">
+        <div class="phone-frame"><img src="app_screenshots/patient_store/06_columns.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>뷰티 칼럼</h4><div class="desc">전문 칼럼, 뷰티 정보</div><span class="tag">Columns</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('ps',6)">
+        <div class="phone-frame"><img src="app_screenshots/patient_store/07_hospital_detail.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>병원 상세</h4><div class="desc">병원 정보, 의사, 예약</div><span class="tag">HospitalDetail</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('ps',7)">
+        <div class="phone-frame"><img src="app_screenshots/patient_store/08_booking.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>예약하기</h4><div class="desc">날짜/시간, 시술, 결제</div><span class="tag">Booking</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Patient Device 1 -->
+  <div class="section" id="p-device1">
+    <div class="section-header">
+      <div class="icon">&#128241;</div>
+      <h2>디바이스 테스트 #1 — 로그인 플로우</h2>
+      <span class="badge">15장</span>
+    </div>
+    <p class="section-desc">실제 디바이스 로그인/인증 플로우 전체 캡처.</p>
+    <div class="phone-grid">
+      <div class="phone-card" onclick="openLightbox('p1',0)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_01_login.png" alt="" loading="lazy"></div><div class="phone-label"><h4>01. 로그인</h4><div class="desc">이메일/PW 입력 폼</div><span class="tag">Login</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',1)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_02_after_login.png" alt="" loading="lazy"></div><div class="phone-label"><h4>02. 로그인 후</h4><div class="desc">인증 처리 결과</div><span class="tag">Auth</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',2)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_02b_filled.png" alt="" loading="lazy"></div><div class="phone-label"><h4>02b. 폼 입력</h4><div class="desc">테스트 계정 입력</div><span class="tag">Filled</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',3)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_02c_check.png" alt="" loading="lazy"></div><div class="phone-label"><h4>02c. 유효성 검사</h4><div class="desc">입력값 검증</div><span class="tag">Validate</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',4)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_02d_check.png" alt="" loading="lazy"></div><div class="phone-label"><h4>02d. 검사 완료</h4><div class="desc">검증 통과</div><span class="tag">Pass</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',5)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_03_prefilled.png" alt="" loading="lazy"></div><div class="phone-label"><h4>03. 프리필</h4><div class="desc">테스트 계정 자동입력</div><span class="tag">Prefill</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',6)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_04_home.png" alt="" loading="lazy"></div><div class="phone-label"><h4>04. 홈</h4><div class="desc">로그인 성공 후</div><span class="tag">Home</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',7)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_05_result.png" alt="" loading="lazy"></div><div class="phone-label"><h4>05. API 결과</h4><div class="desc">서버 통신 결과</div><span class="tag">API</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',8)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_06_login_result.png" alt="" loading="lazy"></div><div class="phone-label"><h4>06. 로그인 결과</h4><div class="desc">토큰 수신 확인</div><span class="tag">Token</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',9)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_07_result.png" alt="" loading="lazy"></div><div class="phone-label"><h4>07. 결과</h4><div class="desc">전체 플로우 완료</div><span class="tag">Result</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',10)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_08_enter.png" alt="" loading="lazy"></div><div class="phone-label"><h4>08. 재진입</h4><div class="desc">세션 유지 확인</div><span class="tag">Session</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',11)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_09_home.png" alt="" loading="lazy"></div><div class="phone-label"><h4>09. 홈(재진입)</h4><div class="desc">자동 로그인</div><span class="tag">AutoLogin</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',12)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_10_retry.png" alt="" loading="lazy"></div><div class="phone-label"><h4>10. 재시도#1</h4><div class="desc">오류 복구</div><span class="tag">Retry</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',13)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_11_retry2.png" alt="" loading="lazy"></div><div class="phone-label"><h4>11. 재시도#2</h4><div class="desc">네트워크 복구</div><span class="tag">Retry</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p1',14)"><div class="phone-frame"><img src="app_screenshots/device_test/phone1_12_retry3.png" alt="" loading="lazy"></div><div class="phone-label"><h4>12. 재시도#3</h4><div class="desc">최종 결과</div><span class="tag">Retry</span></div></div>
+    </div>
+  </div>
+
+  <!-- Patient Device 2 -->
+  <div class="section" id="p-device2">
+    <div class="section-header">
+      <div class="icon">&#128241;</div>
+      <h2>디바이스 테스트 #2 — 전체 탭 순회</h2>
+      <span class="badge">8장</span>
+    </div>
+    <p class="section-desc">두 번째 디바이스에서 4탭(홈/병원/커뮤니티/마이) 순회 캡처.</p>
+    <div class="phone-grid">
+      <div class="phone-card" onclick="openLightbox('p2',0)"><div class="phone-frame"><img src="app_screenshots/device_test/phone2_01_login.png" alt="" loading="lazy"></div><div class="phone-label"><h4>01. 로그인</h4><span class="tag">Login</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p2',1)"><div class="phone-frame"><img src="app_screenshots/device_test/phone2_02_after_login.png" alt="" loading="lazy"></div><div class="phone-label"><h4>02. 로그인 후</h4><span class="tag">Auth</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p2',2)"><div class="phone-frame"><img src="app_screenshots/device_test/phone2_04_home.png" alt="" loading="lazy"></div><div class="phone-label"><h4>04. 홈</h4><span class="tag">Home</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p2',3)"><div class="phone-frame"><img src="app_screenshots/device_test/phone2_05_result.png" alt="" loading="lazy"></div><div class="phone-label"><h4>05. API 결과</h4><span class="tag">API</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p2',4)"><div class="phone-frame"><img src="app_screenshots/device_test/phone2_09_home.png" alt="" loading="lazy"></div><div class="phone-label"><h4>09. 홈(탭)</h4><span class="tag">Tab:Home</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p2',5)"><div class="phone-frame"><img src="app_screenshots/device_test/phone2_10_hospitals.png" alt="" loading="lazy"></div><div class="phone-label"><h4>10. 병원 목록</h4><span class="tag">Tab:Hospitals</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p2',6)"><div class="phone-frame"><img src="app_screenshots/device_test/phone2_11_community.png" alt="" loading="lazy"></div><div class="phone-label"><h4>11. 커뮤니티</h4><span class="tag">Tab:Community</span></div></div>
+      <div class="phone-card" onclick="openLightbox('p2',7)"><div class="phone-frame"><img src="app_screenshots/device_test/phone2_12_mypage.png" alt="" loading="lazy"></div><div class="phone-label"><h4>12. 마이페이지</h4><span class="tag">Tab:MyPage</span></div></div>
+    </div>
+  </div>
+
+  <!-- =============================================
+       APP 2: 서울미녀 관리자 (관리자 모바일앱)
+       ============================================= -->
+  <div class="app-divider admin" id="app-admin">
+    <h2>&#128736; 서울미녀 관리자 (관리자 모바일앱)</h2>
+    <p>Flutter 관리자앱 | 병원 관리자 전용</p>
+    <div class="pkg">com.celebhospital.admin</div>
+  </div>
+
+  <!-- Admin Store -->
+  <div class="section" id="a-store">
+    <div class="section-header adm-border">
+      <div class="icon adm-icon">&#127991;</div>
+      <h2>스토어 스크린샷</h2>
+      <span class="badge adm-badge">5장</span>
+    </div>
+    <p class="section-desc">관리자 모바일앱 스토어 제출용 스크린샷.</p>
+    <div class="phone-grid">
+      <div class="phone-card" onclick="openLightbox('as',0)"><div class="phone-frame"><img src="app_screenshots/admin_store/01_home.png" alt="" loading="lazy"></div><div class="phone-label"><h4>관리자 홈</h4><div class="desc">로그인, 병원 선택</div><span class="tag adm-tag">Admin Home</span></div></div>
+      <div class="phone-card" onclick="openLightbox('as',1)"><div class="phone-frame"><img src="app_screenshots/admin_store/02_dashboard.png" alt="" loading="lazy"></div><div class="phone-label"><h4>대시보드</h4><div class="desc">통계, 예약, 매출</div><span class="tag adm-tag">Dashboard</span></div></div>
+      <div class="phone-card" onclick="openLightbox('as',2)"><div class="phone-frame"><img src="app_screenshots/admin_store/03_menu_grid.png" alt="" loading="lazy"></div><div class="phone-label"><h4>메뉴 그리드</h4><div class="desc">전체 관리 메뉴</div><span class="tag adm-tag">Menu</span></div></div>
+      <div class="phone-card" onclick="openLightbox('as',3)"><div class="phone-frame"><img src="app_screenshots/admin_store/04_reviews.png" alt="" loading="lazy"></div><div class="phone-label"><h4>후기 관리</h4><div class="desc">승인/거절, 답변</div><span class="tag adm-tag">Reviews</span></div></div>
+      <div class="phone-card" onclick="openLightbox('as',4)"><div class="phone-frame"><img src="app_screenshots/admin_store/05_sidebar.png" alt="" loading="lazy"></div><div class="phone-label"><h4>사이드바</h4><div class="desc">전체 메뉴 네비</div><span class="tag adm-tag">Sidebar</span></div></div>
+    </div>
+  </div>
+
+  <!-- Admin Device Test -->
+  <div class="section" id="a-device">
+    <div class="section-header adm-border">
+      <div class="icon adm-icon">&#128241;</div>
+      <h2>디바이스 테스트 — 관리자앱 로그인 플로우</h2>
+      <span class="badge adm-badge">19장</span>
+    </div>
+    <p class="section-desc">실제 디바이스에서 관리자앱 스플래시~대시보드 전체 플로우 캡처.</p>
+    <div class="phone-grid">
+      <div class="phone-card" onclick="openLightbox('an',0)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_01_splash.png" alt="" loading="lazy"></div><div class="phone-label"><h4>01. 스플래시</h4><span class="tag adm-tag">Splash</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',1)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_02_login.png" alt="" loading="lazy"></div><div class="phone-label"><h4>02. 로그인</h4><span class="tag adm-tag">Login</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',2)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_03_autofill.png" alt="" loading="lazy"></div><div class="phone-label"><h4>03. 자동입력</h4><span class="tag adm-tag">Autofill</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',3)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_04_after_signin.png" alt="" loading="lazy"></div><div class="phone-label"><h4>04. 로그인 후</h4><span class="tag adm-tag">SignedIn</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',4)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_05_filled.png" alt="" loading="lazy"></div><div class="phone-label"><h4>05. 폼 입력</h4><span class="tag adm-tag">Filled</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',5)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_06_restart.png" alt="" loading="lazy"></div><div class="phone-label"><h4>06. 앱 재시작</h4><span class="tag adm-tag">Restart</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',6)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_07_login2.png" alt="" loading="lazy"></div><div class="phone-label"><h4>07. 로그인#2</h4><span class="tag adm-tag">Login2</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',7)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_08_clinicadmin.png" alt="" loading="lazy"></div><div class="phone-label"><h4>08. 병원관리자</h4><span class="tag adm-tag">ClinicAdmin</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',8)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_09_filled2.png" alt="" loading="lazy"></div><div class="phone-label"><h4>09. 폼#2</h4><span class="tag adm-tag">Filled</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',9)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_10_filled3.png" alt="" loading="lazy"></div><div class="phone-label"><h4>10. 폼#3</h4><span class="tag adm-tag">Filled</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',10)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_11_ready.png" alt="" loading="lazy"></div><div class="phone-label"><h4>11. 준비 완료</h4><span class="tag adm-tag">Ready</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',11)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_12_dashboard.png" alt="" loading="lazy"></div><div class="phone-label"><h4>12. 대시보드</h4><span class="tag adm-tag">Dashboard</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',12)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_13_filled4.png" alt="" loading="lazy"></div><div class="phone-label"><h4>13. 폼#4</h4><span class="tag adm-tag">Filled</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',13)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_14_signin.png" alt="" loading="lazy"></div><div class="phone-label"><h4>14. 로그인 시도</h4><span class="tag adm-tag">SignIn</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',14)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_15_both_filled.png" alt="" loading="lazy"></div><div class="phone-label"><h4>15. 양쪽 입력</h4><span class="tag adm-tag">BothFilled</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',15)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_16_pw.png" alt="" loading="lazy"></div><div class="phone-label"><h4>16. 비밀번호</h4><span class="tag adm-tag">Password</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',16)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_17_pwfilled.png" alt="" loading="lazy"></div><div class="phone-label"><h4>17. PW 입력</h4><span class="tag adm-tag">PWFilled</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',17)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_18_dashboard.png" alt="" loading="lazy"></div><div class="phone-label"><h4>18. 대시보드</h4><span class="tag adm-tag">Dashboard</span></div></div>
+      <div class="phone-card" onclick="openLightbox('an',18)"><div class="phone-frame"><img src="app_screenshots/admin_native/admin_native_19_dashboard_loaded.png" alt="" loading="lazy"></div><div class="phone-label"><h4>19. 대시보드 로딩</h4><span class="tag adm-tag">Loaded</span></div></div>
+    </div>
+  </div>
+
+  <!-- =============================================
+       APP 2.5: 서울미녀 관리자 WebView (강남언니 관리자)
+       ============================================= -->
+  <div class="app-divider admin" id="app-admin-webview">
+    <h2>&#127760; 서울미녀 관리자 WebView</h2>
+    <p>Flutter WebView 래퍼 | 강남언니 관리자 패널 모바일 접근</p>
+    <div class="pkg">com.celebhospital.manager</div>
+  </div>
+
+  <div class="section" id="aw-device">
+    <div class="section-header adm-border">
+      <div class="icon adm-icon">&#128241;</div>
+      <h2>디바이스 테스트 — 관리자 WebView</h2>
+      <span class="badge adm-badge">7장</span>
+    </div>
+    <p class="section-desc">Flutter WebView로 강남언니 관리자 대시보드를 래핑한 앱. 자동 로그인 + 주요 관리 페이지 캡처.</p>
+    <div class="phone-grid">
+      <div class="phone-card" onclick="openLightbox('awv',0)"><div class="phone-frame"><img src="app_screenshots/admin_webview/01_splash.png" alt="" loading="lazy"></div><div class="phone-label"><h4>01. 스플래시</h4><div class="desc">서울미녀 로고 + 로딩</div><span class="tag adm-tag">Splash</span></div></div>
+      <div class="phone-card" onclick="openLightbox('awv',1)"><div class="phone-frame"><img src="app_screenshots/admin_webview/02_dashboard.png" alt="" loading="lazy"></div><div class="phone-label"><h4>02. 대시보드</h4><div class="desc">자동 로그인 완료, HMS 진료 현황</div><span class="tag adm-tag">Dashboard</span></div></div>
+      <div class="phone-card" onclick="openLightbox('awv',2)"><div class="phone-frame"><img src="app_screenshots/admin_webview/04_dashboard_scroll.png" alt="" loading="lazy"></div><div class="phone-label"><h4>03. 대시보드 하단</h4><div class="desc">리뷰, 이벤트, 광고, 시스템 정보</div><span class="tag adm-tag">Dashboard Bottom</span></div></div>
+      <div class="phone-card" onclick="openLightbox('awv',3)"><div class="phone-frame"><img src="app_screenshots/admin_webview/05_popup.png" alt="" loading="lazy"></div><div class="phone-label"><h4>04. 네비게이션 메뉴</h4><div class="desc">대시보드/후기/회원/예약/설정</div><span class="tag adm-tag">Navigation</span></div></div>
+      <div class="phone-card" onclick="openLightbox('awv',4)"><div class="phone-frame"><img src="app_screenshots/admin_webview/06_reviews.png" alt="" loading="lazy"></div><div class="phone-label"><h4>05. 후기 관리</h4><div class="desc">전체 5건, 활성/비활성/신고</div><span class="tag adm-tag">Reviews</span></div></div>
+      <div class="phone-card" onclick="openLightbox('awv',5)"><div class="phone-frame"><img src="app_screenshots/admin_webview/07_members.png" alt="" loading="lazy"></div><div class="phone-label"><h4>06. 회원 관리</h4><div class="desc">전체 96명, 검색/등급/상태 필터</div><span class="tag adm-tag">Members</span></div></div>
+      <div class="phone-card" onclick="openLightbox('awv',6)"><div class="phone-frame"><img src="app_screenshots/admin_webview/08_bookings.png" alt="" loading="lazy"></div><div class="phone-label"><h4>07. 예약 관리</h4><div class="desc">전체 3, 대기 2, 확정 1</div><span class="tag adm-tag">Bookings</span></div></div>
+    </div>
+  </div>
+
+  <!-- =============================================
+       APP 3: 서울미녀 파트너 (HMS 웹)
+       ============================================= -->
+  <div class="app-divider hms" id="app-hms">
+    <h2>&#127973; 서울미녀 파트너 (HMS)</h2>
+    <p>병원관리시스템 웹 애플리케이션 | Laravel 10 + InfyHMS</p>
+    <div class="pkg">hms.seoulbeauty.app</div>
+  </div>
+
+  <!-- HMS Web -->
+  <div class="section" id="h-web">
+    <div class="section-header hms-border">
+      <div class="icon hms-icon">&#127973;</div>
+      <h2>HMS 주요 화면</h2>
+      <span class="badge hms-badge">6장</span>
+    </div>
+    <p class="section-desc">InfyHMS 기반 병원관리시스템. 로그인, 대시보드, 후기관리, 병원설정 등.</p>
+    <div class="web-grid">
+      <div class="phone-card" onclick="openLightbox('hw',0)">
+        <div class="web-frame"><img src="app_screenshots/hms_web/04_hms_login.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>HMS 로그인</h4><div class="desc">관리자 인증 화면</div><span class="tag hms-tag">Login</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('hw',1)">
+        <div class="web-frame"><img src="app_screenshots/hms_web/04_hms_dashboard.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>HMS 대시보드</h4><div class="desc">통계, 차트, 오늘의 예약</div><span class="tag hms-tag">Dashboard</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('hw',2)">
+        <div class="web-frame"><img src="app_screenshots/hms_web/04_hms_hospital-reviews.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>후기 관리</h4><div class="desc">병원 후기 승인/관리</div><span class="tag hms-tag">Reviews</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('hw',3)">
+        <div class="web-frame"><img src="app_screenshots/hms_web/04_hms_super-admin_hospital-type.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>병원 유형 관리</h4><div class="desc">Super Admin 병원 타입 설정</div><span class="tag hms-tag">Hospital Types</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('hw',4)">
+        <div class="web-frame"><img src="app_screenshots/hms_web/04_hms_super-admin_hospitals.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>병원 목록 관리</h4><div class="desc">등록 병원 전체 관리</div><span class="tag hms-tag">Hospitals</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('hw',5)">
+        <div class="web-frame"><img src="app_screenshots/hms_web/04_hms_super-admin_subscription-plans.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>구독 플랜</h4><div class="desc">SaaS 구독 플랜 관리</div><span class="tag hms-tag">Subscriptions</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HMS Admin Web -->
+  <div class="section" id="h-admin">
+    <div class="section-header hms-border">
+      <div class="icon hms-icon">&#128736;</div>
+      <h2>서울미녀 관리자 웹 (강남언니)</h2>
+      <span class="badge hms-badge">9장</span>
+    </div>
+    <p class="section-desc">서울미녀 전용 관리자 웹 패널. 대시보드, 회원, 후기, 테마, 메일 등.</p>
+    <div class="web-grid">
+      <div class="phone-card" onclick="openLightbox('aw',0)">
+        <div class="web-frame"><img src="app_screenshots/admin_web/03_admin_dashboard.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>관리자 대시보드</h4><div class="desc">통계 위젯, 최근 활동</div><span class="tag hms-tag">Dashboard</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('aw',1)">
+        <div class="web-frame"><img src="app_screenshots/admin_web/03_admin_admin_admins.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>관리자 계정</h4><div class="desc">RBAC 역할 관리</div><span class="tag hms-tag">Admins</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('aw',2)">
+        <div class="web-frame"><img src="app_screenshots/admin_web/03_admin_admin_members.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>회원 관리</h4><div class="desc">가입 회원 목록/상세</div><span class="tag hms-tag">Members</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('aw',3)">
+        <div class="web-frame"><img src="app_screenshots/admin_web/03_admin_admin_reviews.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>후기 관리</h4><div class="desc">시술 후기 승인/거절</div><span class="tag hms-tag">Reviews</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('aw',4)">
+        <div class="web-frame"><img src="app_screenshots/admin_web/03_admin_admin_categories.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>카테고리 관리</h4><div class="desc">시술 카테고리 설정</div><span class="tag hms-tag">Categories</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('aw',5)">
+        <div class="web-frame"><img src="app_screenshots/admin_web/03_admin_admin_hospital_images.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>병원 이미지</h4><div class="desc">병원 사진 관리</div><span class="tag hms-tag">Images</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('aw',6)">
+        <div class="web-frame"><img src="app_screenshots/admin_web/03_admin_admin_theme.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>테마 설정</h4><div class="desc">사이트 디자인 커스터마이징</div><span class="tag hms-tag">Theme</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('aw',7)">
+        <div class="web-frame"><img src="app_screenshots/admin_web/03_admin_admin_navigation.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>네비게이션 관리</h4><div class="desc">메뉴 구조 설정</div><span class="tag hms-tag">Navigation</span></div>
+      </div>
+      <div class="phone-card" onclick="openLightbox('aw',8)">
+        <div class="web-frame"><img src="app_screenshots/admin_web/03_admin_admin_mail.png" alt="" loading="lazy"></div>
+        <div class="phone-label"><h4>메일 시스템</h4><div class="desc">Gmail 스타일 메일 관리</div><span class="tag hms-tag">Mail</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== FLOW ========== -->
+  <div class="section" id="flow">
+    <div class="section-header">
+      <div class="icon">&#128260;</div>
+      <h2>화면 네비게이션 플로우</h2>
+    </div>
+
+    <div class="flow-diagram">
+      <h4 style="margin-bottom:16px; color:var(--primary);">서울미녀 (환자앱)</h4>
+      <div class="flow-row">
+        <div class="flow-box screen">LoginScreen</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box action">이메일/PW</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box result">JWT 인증</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box screen">HomeScreen</div>
+      </div>
+      <div class="flow-row" style="margin-left:40px;">
+        <span class="flow-arrow">&#8627;</span>
+        <div class="flow-box screen">RegisterScreen</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box result">자동 로그인</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box screen">HomeScreen</div>
+      </div>
+      <div class="flow-row" style="margin-top:8px;">
+        <div class="flow-box screen">HomeScreen</div>
+        <span class="flow-arrow">&#8596;</span>
+        <div class="flow-box screen">HospitalsList</div>
+        <span class="flow-arrow">&#8596;</span>
+        <div class="flow-box screen">Community</div>
+        <span class="flow-arrow">&#8596;</span>
+        <div class="flow-box screen">MyPage</div>
+      </div>
+      <div class="flow-row">
+        <div class="flow-box screen">HospitalsList</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box screen">HospitalDetail</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box screen">BookingScreen</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box result">결제 완료</div>
+      </div>
+    </div>
+
+    <div class="flow-diagram">
+      <h4 style="margin-bottom:16px; color:var(--admin-color);">서울미녀 관리자 (관리자 모바일앱)</h4>
+      <div class="flow-row">
+        <div class="flow-box screen">Splash</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box screen">Login</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box action">병원관리자 인증</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box screen">Dashboard</div>
+      </div>
+      <div class="flow-row" style="margin-left:40px;">
+        <span class="flow-arrow">&#8627;</span>
+        <div class="flow-box screen">Menu Grid</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box screen">후기관리 / 예약관리 / 통계</div>
+      </div>
+    </div>
+
+    <div class="flow-diagram">
+      <h4 style="margin-bottom:16px; color:var(--hms-color);">서울미녀 파트너 (HMS 웹)</h4>
+      <div class="flow-row">
+        <div class="flow-box screen">HMS Login</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box result">Laravel Auth</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box screen">Dashboard</div>
+      </div>
+      <div class="flow-row" style="margin-left:40px;">
+        <span class="flow-arrow">&#8627;</span>
+        <div class="flow-box screen">병원관리</div>
+        <span class="flow-arrow">&#8596;</span>
+        <div class="flow-box screen">후기관리</div>
+        <span class="flow-arrow">&#8596;</span>
+        <div class="flow-box screen">구독플랜</div>
+        <span class="flow-arrow">&#8596;</span>
+        <div class="flow-box screen">Super Admin</div>
+      </div>
+      <div class="flow-row">
+        <div class="flow-box action">서울미녀 관리자 웹</div>
+        <span class="flow-arrow">&#10132;</span>
+        <div class="flow-box screen">회원/후기/카테고리/테마/메일/네비게이션</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== FEATURES ========== -->
+  <div class="section" id="features">
+    <div class="section-header">
+      <div class="icon">&#9989;</div>
+      <h2>3개 앱 기능 현황</h2>
+    </div>
+
+    <table class="feature-table">
+      <thead>
+        <tr><th>앱</th><th>기능</th><th>상세</th><th>상태</th></tr>
+      </thead>
+      <tbody>
+        <tr><td rowspan="8"><strong>서울미녀<br>(환자앱)</strong></td><td>로그인/회원가입</td><td>JWT 인증, 자동 로그인</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>홈 대시보드</td><td>추천 병원, 검색, 4탭 네비</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>병원 검색/상세</td><td>검색, 필터, 즐겨찾기, 예약</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>예약 시스템</td><td>날짜/시간/시술 선택, 결제</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>FCM 푸시</td><td>포그라운드/백그라운드 알림</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>커뮤니티</td><td>게시글, 좋아요/댓글</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>마이페이지/설정</td><td>프로필, 알림, 회원탈퇴</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>다국어</td><td>한국어 기본, 10개 언어</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td rowspan="4"><strong>서울미녀<br>관리자</strong></td><td>관리자 로그인</td><td>병원관리자 인증</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>대시보드</td><td>통계, 오늘 예약, 매출</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>후기 관리</td><td>승인/거절, 답변</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>메뉴 그리드</td><td>전체 관리 기능 접근</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td rowspan="6"><strong>서울미녀<br>파트너(HMS)</strong></td><td>HMS 대시보드</td><td>병원 통계, 차트, 예약 현황</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>병원/유형 관리</td><td>병원 등록, 유형 설정</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>구독 플랜</td><td>SaaS 구독 관리</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>관리자 웹 패널</td><td>회원/후기/카테고리/테마</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>메일 시스템</td><td>Gmail 스타일 3컬럼</td><td class="status-ok">&#9989;</td></tr>
+        <tr><td>PG 결제</td><td>이니시스 연동, 상품 관리</td><td class="status-ok">&#9989;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ========== TECH ========== -->
+  <div class="section" id="tech">
+    <div class="section-header">
+      <div class="icon">&#9881;</div>
+      <h2>기술 스택</h2>
+    </div>
+
+    <table class="feature-table">
+      <thead>
+        <tr><th>앱</th><th>기술</th><th>상세</th></tr>
+      </thead>
+      <tbody>
+        <tr><td rowspan="4"><strong>서울미녀<br>+ 관리자</strong></td><td>Flutter 3.35.4</td><td>Dart, Material 3</td></tr>
+        <tr><td>Provider</td><td>상태관리 (User/Hospital/Notification)</td></tr>
+        <tr><td>Firebase</td><td>FCM 푸시, Analytics</td></tr>
+        <tr><td>Android + iOS</td><td>com.celebhospital.patient / admin</td></tr>
+        <tr><td rowspan="4"><strong>서울미녀<br>파트너(HMS)</strong></td><td>Laravel 10</td><td>PHP 8.2, InfyHMS SaaS</td></tr>
+        <tr><td>MySQL/MariaDB</td><td>hms_saas DB, 341+ 테이블</td></tr>
+        <tr><td>Bootstrap 5.3</td><td>관리자 웹 UI + 다크모드</td></tr>
+        <tr><td>REST API</td><td>모바일앱 ↔ HMS 연동</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p><strong>서울미녀 (Seoul Beauty)</strong> — 3개 앱 통합 화면 캡처 리포트</p>
+  <p>생성일: 2026-03-08 | 서울미녀 + 서울미녀 관리자 + 관리자 WebView + 서울미녀 파트너(HMS) | 총 69장</p>
+</div>
+
+<script>
+function toggleTheme() {
+  const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.body.setAttribute('data-theme', t);
+  localStorage.setItem('app_showcase_theme', t);
+  document.querySelector('.theme-toggle').textContent = t === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+}
+(function(){ if(localStorage.getItem('app_showcase_theme')==='dark'){document.body.setAttribute('data-theme','dark');document.querySelector('.theme-toggle').textContent='\u2600\uFE0F';}})();
+
+const G = {
+  ps: [
+    {src:'app_screenshots/patient_store/01_home.png',cap:'환자앱 — 홈'},
+    {src:'app_screenshots/patient_store/02_reviews.png',cap:'환자앱 — 후기'},
+    {src:'app_screenshots/patient_store/03_hospitals.png',cap:'환자앱 — 병원'},
+    {src:'app_screenshots/patient_store/04_events.png',cap:'환자앱 — 이벤트'},
+    {src:'app_screenshots/patient_store/05_community.png',cap:'환자앱 — 커뮤니티'},
+    {src:'app_screenshots/patient_store/06_columns.png',cap:'환자앱 — 칼럼'},
+    {src:'app_screenshots/patient_store/07_hospital_detail.png',cap:'환자앱 — 병원 상세'},
+    {src:'app_screenshots/patient_store/08_booking.png',cap:'환자앱 — 예약'},
+  ],
+  p1: [
+    {src:'app_screenshots/device_test/phone1_01_login.png',cap:'디바이스#1 — 로그인'},
+    {src:'app_screenshots/device_test/phone1_02_after_login.png',cap:'디바이스#1 — 로그인 후'},
+    {src:'app_screenshots/device_test/phone1_02b_filled.png',cap:'디바이스#1 — 폼 입력'},
+    {src:'app_screenshots/device_test/phone1_02c_check.png',cap:'디바이스#1 — 유효성 검사'},
+    {src:'app_screenshots/device_test/phone1_02d_check.png',cap:'디바이스#1 — 검사 완료'},
+    {src:'app_screenshots/device_test/phone1_03_prefilled.png',cap:'디바이스#1 — 프리필'},
+    {src:'app_screenshots/device_test/phone1_04_home.png',cap:'디바이스#1 — 홈'},
+    {src:'app_screenshots/device_test/phone1_05_result.png',cap:'디바이스#1 — API 결과'},
+    {src:'app_screenshots/device_test/phone1_06_login_result.png',cap:'디바이스#1 — 로그인 결과'},
+    {src:'app_screenshots/device_test/phone1_07_result.png',cap:'디바이스#1 — 결과'},
+    {src:'app_screenshots/device_test/phone1_08_enter.png',cap:'디바이스#1 — 재진입'},
+    {src:'app_screenshots/device_test/phone1_09_home.png',cap:'디바이스#1 — 홈(재)'},
+    {src:'app_screenshots/device_test/phone1_10_retry.png',cap:'디바이스#1 — 재시도#1'},
+    {src:'app_screenshots/device_test/phone1_11_retry2.png',cap:'디바이스#1 — 재시도#2'},
+    {src:'app_screenshots/device_test/phone1_12_retry3.png',cap:'디바이스#1 — 재시도#3'},
+  ],
+  p2: [
+    {src:'app_screenshots/device_test/phone2_01_login.png',cap:'디바이스#2 — 로그인'},
+    {src:'app_screenshots/device_test/phone2_02_after_login.png',cap:'디바이스#2 — 로그인 후'},
+    {src:'app_screenshots/device_test/phone2_04_home.png',cap:'디바이스#2 — 홈'},
+    {src:'app_screenshots/device_test/phone2_05_result.png',cap:'디바이스#2 — API'},
+    {src:'app_screenshots/device_test/phone2_09_home.png',cap:'디바이스#2 — 홈(탭)'},
+    {src:'app_screenshots/device_test/phone2_10_hospitals.png',cap:'디바이스#2 — 병원'},
+    {src:'app_screenshots/device_test/phone2_11_community.png',cap:'디바이스#2 — 커뮤니티'},
+    {src:'app_screenshots/device_test/phone2_12_mypage.png',cap:'디바이스#2 — 마이페이지'},
+  ],
+  as: [
+    {src:'app_screenshots/admin_store/01_home.png',cap:'관리자앱 — 홈'},
+    {src:'app_screenshots/admin_store/02_dashboard.png',cap:'관리자앱 — 대시보드'},
+    {src:'app_screenshots/admin_store/03_menu_grid.png',cap:'관리자앱 — 메뉴'},
+    {src:'app_screenshots/admin_store/04_reviews.png',cap:'관리자앱 — 후기관리'},
+    {src:'app_screenshots/admin_store/05_sidebar.png',cap:'관리자앱 — 사이드바'},
+  ],
+  an: [
+    {src:'app_screenshots/admin_native/admin_native_01_splash.png',cap:'관리자앱 — 스플래시'},
+    {src:'app_screenshots/admin_native/admin_native_02_login.png',cap:'관리자앱 — 로그인'},
+    {src:'app_screenshots/admin_native/admin_native_03_autofill.png',cap:'관리자앱 — 자동입력'},
+    {src:'app_screenshots/admin_native/admin_native_04_after_signin.png',cap:'관리자앱 — 로그인 후'},
+    {src:'app_screenshots/admin_native/admin_native_05_filled.png',cap:'관리자앱 — 폼 입력'},
+    {src:'app_screenshots/admin_native/admin_native_06_restart.png',cap:'관리자앱 — 재시작'},
+    {src:'app_screenshots/admin_native/admin_native_07_login2.png',cap:'관리자앱 — 로그인#2'},
+    {src:'app_screenshots/admin_native/admin_native_08_clinicadmin.png',cap:'관리자앱 — 병원관리자'},
+    {src:'app_screenshots/admin_native/admin_native_09_filled2.png',cap:'관리자앱 — 폼#2'},
+    {src:'app_screenshots/admin_native/admin_native_10_filled3.png',cap:'관리자앱 — 폼#3'},
+    {src:'app_screenshots/admin_native/admin_native_11_ready.png',cap:'관리자앱 — 준비완료'},
+    {src:'app_screenshots/admin_native/admin_native_12_dashboard.png',cap:'관리자앱 — 대시보드'},
+    {src:'app_screenshots/admin_native/admin_native_13_filled4.png',cap:'관리자앱 — 폼#4'},
+    {src:'app_screenshots/admin_native/admin_native_14_signin.png',cap:'관리자앱 — 로그인 시도'},
+    {src:'app_screenshots/admin_native/admin_native_15_both_filled.png',cap:'관리자앱 — 양쪽 입력'},
+    {src:'app_screenshots/admin_native/admin_native_16_pw.png',cap:'관리자앱 — 비밀번호'},
+    {src:'app_screenshots/admin_native/admin_native_17_pwfilled.png',cap:'관리자앱 — PW 입력'},
+    {src:'app_screenshots/admin_native/admin_native_18_dashboard.png',cap:'관리자앱 — 대시보드'},
+    {src:'app_screenshots/admin_native/admin_native_19_dashboard_loaded.png',cap:'관리자앱 — 대시보드 로딩'},
+  ],
+  hw: [
+    {src:'app_screenshots/hms_web/04_hms_login.png',cap:'HMS — 로그인'},
+    {src:'app_screenshots/hms_web/04_hms_dashboard.png',cap:'HMS — 대시보드'},
+    {src:'app_screenshots/hms_web/04_hms_hospital-reviews.png',cap:'HMS — 후기 관리'},
+    {src:'app_screenshots/hms_web/04_hms_super-admin_hospital-type.png',cap:'HMS — 병원 유형'},
+    {src:'app_screenshots/hms_web/04_hms_super-admin_hospitals.png',cap:'HMS — 병원 목록'},
+    {src:'app_screenshots/hms_web/04_hms_super-admin_subscription-plans.png',cap:'HMS — 구독 플랜'},
+  ],
+  awv: [
+    {src:'app_screenshots/admin_webview/01_splash.png',cap:'관리자WebView — 스플래시'},
+    {src:'app_screenshots/admin_webview/02_dashboard.png',cap:'관리자WebView — 대시보드'},
+    {src:'app_screenshots/admin_webview/04_dashboard_scroll.png',cap:'관리자WebView — 대시보드 하단'},
+    {src:'app_screenshots/admin_webview/05_popup.png',cap:'관리자WebView — 네비게이션 메뉴'},
+    {src:'app_screenshots/admin_webview/06_reviews.png',cap:'관리자WebView — 후기 관리'},
+    {src:'app_screenshots/admin_webview/07_members.png',cap:'관리자WebView — 회원 관리'},
+    {src:'app_screenshots/admin_webview/08_bookings.png',cap:'관리자WebView — 예약 관리'},
+  ],
+  aw: [
+    {src:'app_screenshots/admin_web/03_admin_dashboard.png',cap:'관리자웹 — 대시보드'},
+    {src:'app_screenshots/admin_web/03_admin_admin_admins.png',cap:'관리자웹 — 관리자 계정'},
+    {src:'app_screenshots/admin_web/03_admin_admin_members.png',cap:'관리자웹 — 회원 관리'},
+    {src:'app_screenshots/admin_web/03_admin_admin_reviews.png',cap:'관리자웹 — 후기 관리'},
+    {src:'app_screenshots/admin_web/03_admin_admin_categories.png',cap:'관리자웹 — 카테고리'},
+    {src:'app_screenshots/admin_web/03_admin_admin_hospital_images.png',cap:'관리자웹 — 병원 이미지'},
+    {src:'app_screenshots/admin_web/03_admin_admin_theme.png',cap:'관리자웹 — 테마 설정'},
+    {src:'app_screenshots/admin_web/03_admin_admin_navigation.png',cap:'관리자웹 — 네비게이션'},
+    {src:'app_screenshots/admin_web/03_admin_admin_mail.png',cap:'관리자웹 — 메일'},
+  ],
+};
+
+let cg=null, ci=0;
+function openLightbox(g,i){cg=g;ci=i;const it=G[g][i];document.getElementById('lightbox-img').src=it.src;document.getElementById('lightbox-caption').textContent=it.cap+' ('+(i+1)+'/'+G[g].length+')';document.getElementById('lightbox').classList.add('active');document.body.style.overflow='hidden';}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('active');document.body.style.overflow='';}
+function navLightbox(d){event.stopPropagation();const gl=G[cg];ci=(ci+d+gl.length)%gl.length;const it=gl[ci];document.getElementById('lightbox-img').src=it.src;document.getElementById('lightbox-caption').textContent=it.cap+' ('+(ci+1)+'/'+gl.length+')';}
+document.getElementById('lightbox').addEventListener('click',function(e){if(e.target===this)closeLightbox();});
+document.addEventListener('keydown',function(e){if(!document.getElementById('lightbox').classList.contains('active'))return;if(e.key==='Escape')closeLightbox();if(e.key==='ArrowLeft')navLightbox(-1);if(e.key==='ArrowRight')navLightbox(1);});
+
+const secs=document.querySelectorAll('.section'),navs=document.querySelectorAll('.nav-bar a');
+window.addEventListener('scroll',function(){let c='';secs.forEach(s=>{if(window.scrollY>=s.offsetTop-100)c=s.id;});navs.forEach(a=>{a.classList.remove('active');if(a.getAttribute('href')==='#'+c)a.classList.add('active');});});
+</script>
+</body>
+</html>

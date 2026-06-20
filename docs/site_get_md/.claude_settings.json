@@ -1,0 +1,34 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob(./**)",
+      "Grep(./**)",
+      "Read(/var/www/html/site_get/**)",
+      "Write(/var/www/html/site_get/**)",
+      "Edit(/var/www/html/site_get/**)",
+      "Glob(/var/www/html/site_get/**)",
+      "Grep(/var/www/html/site_get/**)",
+      "Read(/var/www/html/site_get/.auto-claude/specs/001-md-0/**)",
+      "Write(/var/www/html/site_get/.auto-claude/specs/001-md-0/**)",
+      "Edit(/var/www/html/site_get/.auto-claude/specs/001-md-0/**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__get-library-docs(*)",
+      "mcp__graphiti-memory__search_nodes(*)",
+      "mcp__graphiti-memory__search_facts(*)",
+      "mcp__graphiti-memory__add_episode(*)",
+      "mcp__graphiti-memory__get_episodes(*)",
+      "mcp__graphiti-memory__get_entity_edge(*)"
+    ]
+  }
+}

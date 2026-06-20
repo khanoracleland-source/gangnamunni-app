@@ -1,0 +1,233 @@
+{
+  "test_date": "2026-02-25 02:02:53",
+  "server": "5.104.82.35",
+  "php_version": "8.2.30",
+  "tests": [
+    {
+      "name": "DB Key Verification",
+      "status": "PASS",
+      "details": {
+        "total_keys": 4,
+        "anthropic": 2,
+        "openai": 2,
+        "keys": [
+          {
+            "id": "9",
+            "provider": "anthropic",
+            "model_name": "claude-haiku-4-5-20251001",
+            "is_active": "1",
+            "priority": "1"
+          },
+          {
+            "id": "10",
+            "provider": "openai",
+            "model_name": "gpt-4o-mini",
+            "is_active": "1",
+            "priority": "2"
+          },
+          {
+            "id": "11",
+            "provider": "openai",
+            "model_name": "dall-e-3",
+            "is_active": "1",
+            "priority": "3"
+          },
+          {
+            "id": "12",
+            "provider": "anthropic",
+            "model_name": "claude-sonnet-4-6",
+            "is_active": "1",
+            "priority": "4"
+          }
+        ]
+      },
+      "response_time_ms": 0.96
+    },
+    {
+      "name": "Key Decryption Verification",
+      "status": "PASS",
+      "details": [
+        {
+          "id": "9",
+          "provider": "anthropic",
+          "model": "claude-haiku-4-5-20251001",
+          "decrypted": true,
+          "pattern_ok": true,
+          "prefix": "sk-ant-api03..."
+        },
+        {
+          "id": "10",
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "decrypted": true,
+          "pattern_ok": true,
+          "prefix": "sk-proj-746L..."
+        },
+        {
+          "id": "11",
+          "provider": "openai",
+          "model": "dall-e-3",
+          "decrypted": true,
+          "pattern_ok": true,
+          "prefix": "sk-proj-746L..."
+        },
+        {
+          "id": "12",
+          "provider": "anthropic",
+          "model": "claude-sonnet-4-6",
+          "decrypted": true,
+          "pattern_ok": true,
+          "prefix": "sk-ant-api03..."
+        }
+      ],
+      "response_time_ms": 1.95
+    },
+    {
+      "name": "Anthropic Claude Haiku API",
+      "status": "PASS",
+      "details": {
+        "model": "claude-haiku-4-5-20251001",
+        "http_code": 200,
+        "response": "안녕하세요! (Annyeonghaseyo!)",
+        "usage": {
+          "input_tokens": 13,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 20,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      },
+      "response_time_ms": 624.63
+    },
+    {
+      "name": "OpenAI GPT-4o-mini API",
+      "status": "PASS",
+      "details": {
+        "model": "gpt-4o-mini",
+        "http_code": 200,
+        "response": "안녕하세요! (Annyeonghaseyo!)",
+        "usage": {
+          "prompt_tokens": 13,
+          "completion_tokens": 11,
+          "total_tokens": 24,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
+      },
+      "response_time_ms": 805.31
+    },
+    {
+      "name": "AI Review Check (performAICheck)",
+      "status": "PASS",
+      "details": {
+        "score": 35,
+        "passed": false,
+        "category": "low_quality",
+        "reason": "구체적인 시술 경험 부재, 매우 제한적인 내용으로 신뢰도 낮음",
+        "suggestions": [
+          "어떤 시술을 받았는지 구체적으로 명시",
+          "의료진의 어떤 부분이 좋았는지 구체적 사례 제시",
+          "결과의 어떤 점이 만족스러웠는지 상세 설명",
+          "회복 과정, 경과 등 구체적 경험 포함",
+          "비포/애프터 사진 첨부 권장"
+        ],
+        "method": "ai",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": {
+          "input": 378,
+          "output": 220
+        }
+      },
+      "response_time_ms": 1987.19
+    },
+    {
+      "name": "AI Ad Check (performAdAICheck)",
+      "status": "PASS",
+      "details": {
+        "score": 70,
+        "passed": true,
+        "violations": [],
+        "reason": "규칙 기반 검수 통과",
+        "method": "rule"
+      },
+      "response_time_ms": 1.41
+    },
+    {
+      "name": "AI Content Suggest (callAI)",
+      "status": "PASS",
+      "details": {
+        "success": true,
+        "content": "# Tips for Writing a Good Review\n\n## Before You Write\n- **Wait a day or two** after your experience to gain perspective\n- **Take notes** on specific details while they're fresh\n- Consider your overall impression honestly\n\n## Structure & Content\n- **Lead with a clear verdict** (rating, recommendation, or main takeaway)\n- **Be specific** – mention particular products, dishes, staff members, or scenes rather than generalities\n- **Balance pros and cons** – acknowledge what works and what doesn't\n- **Provide context** – explain who the product/service is best for\n\n## Tone & Style\n- **Be fair and honest** – avoid exaggeration in either direction\n- **Sound like yourself** – authentic voice is more compelling than formal language\n- **Stay respectful** – criticize the experience, not the people\n- **Keep it concise** – focus on what matters most to readers\n\n## What Makes Impact\n- **Use concrete examples** – \"The pasta was oversalted\" beats \"The food wasn't good\"\n- **Explain the \"why\"** – help readers understand your reasoning\n- **Focus on what readers care about** – relevance matters more than everything you noticed\n\n## What to Avoid\n- Spoilers (unless appropriate)\n- Venting about unrelated frustrations\n- Comparing unfairly to different contexts\n- Making it personal or attacking individuals\n\n**Remember:** Helpful reviews are those where readers trust your judgment because you're thoughtful and fair.",
+        "tokens": {
+          "input": 16,
+          "output": 328
+        },
+        "model": "claude-haiku-4-5-20251001",
+        "error": ""
+      },
+      "response_time_ms": 4097.25
+    },
+    {
+      "name": "OpenAI Models List (DALL-E 3 + GPT-4o-mini)",
+      "status": "PASS",
+      "details": {
+        "http_code": 200,
+        "total_models": 114,
+        "dall_e_3": true,
+        "gpt_4o_mini": true,
+        "relevant": [
+          "gpt-4o-search-preview-2025-03-11",
+          "gpt-4o-search-preview",
+          "dall-e-3",
+          "dall-e-2",
+          "gpt-4o",
+          "gpt-4o-2024-05-13",
+          "gpt-4o-mini-2024-07-18",
+          "gpt-4o-mini",
+          "gpt-4o-2024-08-06",
+          "gpt-4o-audio-preview",
+          "gpt-4o-realtime-preview",
+          "gpt-4o-realtime-preview-2024-12-17",
+          "gpt-4o-audio-preview-2024-12-17",
+          "gpt-4o-mini-realtime-preview-2024-12-17",
+          "gpt-4o-mini-audio-preview-2024-12-17",
+          "gpt-4o-mini-realtime-preview",
+          "gpt-4o-mini-audio-preview",
+          "gpt-4o-2024-11-20",
+          "gpt-4o-mini-search-preview-2025-03-11",
+          "gpt-4o-mini-search-preview",
+          "gpt-4o-transcribe",
+          "gpt-4o-mini-transcribe",
+          "gpt-4o-mini-tts",
+          "gpt-4o-realtime-preview-2025-06-03",
+          "gpt-4o-audio-preview-2025-06-03",
+          "gpt-4o-transcribe-diarize",
+          "gpt-4o-mini-transcribe-2025-12-15",
+          "gpt-4o-mini-transcribe-2025-03-20",
+          "gpt-4o-mini-tts-2025-03-20",
+          "gpt-4o-mini-tts-2025-12-15"
+        ]
+      },
+      "response_time_ms": 1051.07
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "pass_rate": "100%"
+  }
+}

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 대시보드 매뉴얼 — 서울미녀</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Pretendard','Noto Sans KR',-apple-system,sans-serif; max-width:1180px; margin:0 auto; padding:24px 20px 60px; background:#f3f7f9; color:#1a2330; line-height:1.7; }
+  .hero { background:linear-gradient(135deg,#0e7490,#0891b2); color:#fff; border-radius:14px; padding:26px; text-align:center; margin-bottom:18px; }
+  .hero h1 { margin:0 0 6px; font-size:24px; }
+  .card { background:#fff; border-radius:14px; padding:24px; margin-bottom:16px; box-shadow:0 2px 12px rgba(0,0,0,.05); }
+  h2 { color:#0e7490; font-size:18px; border-left:4px solid #0891b2; padding-left:10px; margin:0 0 12px; }
+  h3 { font-size:14.5px; color:#155e75; margin:16px 0 6px; }
+  table { width:100%; border-collapse:collapse; margin:8px 0; font-size:13px; }
+  th,td { border:1px solid #dde7ea; padding:7px 10px; text-align:left; vertical-align:top; }
+  th { background:#ecf6f9; font-weight:600; white-space:nowrap; }
+  code { background:#eef4f6; padding:1px 6px; border-radius:4px; font-family:Consolas,monospace; font-size:12px; color:#0e7490; }
+  .toc { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0; }
+  .toc a { background:#fff; border:1px solid #cfe3e9; border-radius:18px; padding:5px 13px; font-size:12.5px; color:#0e7490; text-decoration:none; font-weight:600; }
+  .toc a:hover { background:#0891b2; color:#fff; }
+  .note { padding:10px 14px; background:#e9f9f0; border-left:3px solid #1f9c4a; border-radius:6px; font-size:13px; margin:10px 0; }
+  .grp { font-size:13px; color:#888; }
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>📖 관리자 대시보드 매뉴얼</h1>
+  <p style="opacity:.9; font-size:14px;">서울미녀 관리자 — 사이드바 15+ 그룹 · 75+ 메뉴 사용 안내 (2026-06-12)</p>
+</div>
+
+<div class="card">
+  <h2>시작하기</h2>
+  <table>
+    <tr><th>접속</th><td><code>/hairwang/gangnamunni/dashboard.php</code> → 로그인</td></tr>
+    <tr><th>계정</th><td>슈퍼관리자 <code>admin / admin123</code> · 병원 <code>hospital_test / hospital123</code></td></tr>
+    <tr><th>권한(RBAC)</th><td>super_admin &gt; admin &gt; editor &gt; viewer &gt; staff · 병원측 hospital_admin/sub_admin — <b>그룹은 권한에 따라 자동 필터링</b></td></tr>
+    <tr><th>다크모드</th><td>우측 상단 토글 (localStorage 저장)</td></tr>
+    <tr><th>알림</th><td>상단 벨 아이콘 — 고객활동/승인대기/시스템</td></tr>
+  </table>
+  <div class="toc">
+    <a href="#g1">대시보드</a><a href="#g2">병원 등록</a><a href="#g3">콘텐츠</a><a href="#g4">광고</a>
+    <a href="#g5">신청/등록</a><a href="#g6">진료(HMS)</a><a href="#g7">시술</a><a href="#g8">엑셀</a>
+    <a href="#g9">회원/신고</a><a href="#g10">고객서비스</a><a href="#g11">메일</a><a href="#g12">AI/자동화</a>
+    <a href="#g13">사이트설정</a><a href="#g14">관리자/알림</a><a href="#g15">CPV/결제</a><a href="#g16">QA/리포트</a>
+  </div>
+</div>
+
+<div class="card" id="g1">
+  <h2>1. 대시보드 / 피그마</h2>
+  <table>
+    <thead><tr><th>메뉴</th><th>역할</th></tr></thead>
+    <tbody>
+      <tr><td>대시보드</td><td>전체 현황 요약 (방문/예약/매출/알림)</td></tr>
+      <tr><td>SNS/앱스토어 심사 관리</td><td>스토어 심사 상태 추적</td></tr>
+      <tr><td>메뉴 안내 / 메뉴 관리</td><td>사이드바 메뉴 가이드 및 편집</td></tr>
+      <tr><td>그누보드 관리자</td><td>Gnuboard 코어 설정(외부 링크)</td></tr>
+      <tr><td>피그마 vs 구현 비교 · 검수 메모</td><td>Figma 디자인 대조 + 검수 메모 DB</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" id="g2">
+  <h2>2. 병원 등록</h2>
+  <table>
+    <thead><tr><th>메뉴</th><th>역할</th></tr></thead>
+    <tbody>
+      <tr><td>병원 입점 안내 / 등록 신청</td><td>공개 입점 폼(서류 업로드) → <code>hospital_apply_public.php</code></td></tr>
+      <tr><td>내 신청 현황</td><td>신청자 본인 상태 조회</td></tr>
+      <tr><td>신청 목록(관리자)</td><td><code>admin_hospitals.php?tab=pending</code> — 승인/반려 처리</td></tr>
+      <tr><td>등록 프로세스 안내 / 가이드</td><td>입점 절차 안내 문서</td></tr>
+    </tbody>
+  </table>
+  <div class="note">✅ 입점 신청 공개 폼은 운영 중(설정 ON). 서류 2종 업로드 + 스팸방어 + pending 대기열 + 메일/FCM 알림.</div>
+</div>
+
+<div class="card" id="g3">
+  <h2>3. 콘텐츠 관리</h2>
+  <table><thead><tr><th>메뉴</th><th>역할</th></tr></thead><tbody>
+    <tr><td>병원/의사/인력 관리</td><td>사업체·인력 CRUD (병원 id 8093+)</td></tr>
+    <tr><td>후기 관리 / 후기 검수</td><td>후기 승인 워크플로 (Quill 에디터)</td></tr>
+    <tr><td>병원 이미지 관리</td><td>갤러리/비포애프터</td></tr>
+    <tr><td>광고 / 카테고리 / 꿀팁 / 이벤트 / 칼럼 / 응모</td><td>콘텐츠 CRUD</td></tr>
+  </tbody></table>
+</div>
+
+<div class="card" id="g4">
+  <h2>4. 광고 관리</h2>
+  <table><thead><tr><th>메뉴</th><th>역할</th></tr></thead><tbody>
+    <tr><td>광고 단가 / 통계 / 광고주</td><td>광고 상품·집행·통계</td></tr>
+    <tr><td>광고·디스플레이 설정</td><td>7탭 ON/OFF + 라이브 프리뷰 + AJAX 즉시저장</td></tr>
+    <tr><td>프로모션 관리</td><td>할인/프로모션</td></tr>
+  </tbody></table>
+</div>
+
+<div class="card" id="g5">
+  <h2>5. 신청/등록 관리 (마법사 15종)</h2>
+  <table><thead><tr><th>메뉴</th><th>역할</th></tr></thead><tbody>
+    <tr><td>병원/광고/의사/간호사/약사/환자/직원/의약품/예약 등록 마법사</td><td>단계별 입력 마법사</td></tr>
+    <tr><td>예약 관리 / 상담 관리</td><td>예약·상담 처리 (HMS 연동)</td></tr>
+  </tbody></table>
+</div>
+
+<div class="card" id="g6">
+  <h2>6. 진료 관리 (HMS · 의료 전용)</h2>
+  <table><thead><tr><th>메뉴</th><th>역할</th></tr></thead><tbody>
+    <tr><td>환자/외래/처방전/입원/병상/청구</td><td>HMS(Laravel) 병원관리 기능</td></tr>
+  </tbody></table>
+  <div class="note">ℹ️ 의료 외 업종 포팅 시 이 그룹은 메뉴 숨김으로 비활성 가능.</div>
+</div>
+
+<div class="card" id="g7"><h2>7. 시술 관리</h2><table><tbody>
+  <tr><td>시술 마스터 관리</td><td><code>gangnamunni_treatment_master</code> (신 체계)</td></tr>
+  <tr><td>병원별 시술 배정</td><td>병원-시술 매핑</td></tr>
+</tbody></table></div>
+
+<div class="card" id="g8"><h2>8. 엑셀 관리</h2><table><tbody>
+  <tr><td>대량 등록 마법사</td><td>엑셀 업로드 일괄 등록</td></tr>
+  <tr><td>데이터 검색/다운로드</td><td>조건 검색 후 엑셀 내보내기</td></tr>
+</tbody></table></div>
+
+<div class="card" id="g9"><h2>9. 회원 / 신고·차단</h2><table><tbody>
+  <tr><td>회원 관리</td><td>g5_member 회원 관리</td></tr>
+  <tr><td>신고 관리 / 차단 관리</td><td>UGC 안전(Apple 1.2) — 3건 자동숨김</td></tr>
+  <tr><td>이용약관 / 커뮤니티 가이드라인</td><td>정책 문서</td></tr>
+</tbody></table></div>
+
+<div class="card" id="g10"><h2>10. 고객 서비스</h2><table><tbody>
+  <tr><td>FAQ / Q&amp;A</td><td>고객 문의</td></tr>
+  <tr><td>쿠폰 / 포인트 / 회원등급</td><td>리워드 시스템</td></tr>
+  <tr><td>병원 랭킹 / 병원 소식</td><td>랭킹·소식</td></tr>
+</tbody></table></div>
+
+<div class="card" id="g11"><h2>11. 메일 관리</h2><table><tbody>
+  <tr><td>메일함 / 상용구 / 서명 / 계정 설정</td><td>Gmail 스타일 3컬럼 (Mailcow IMAP/SMTP)</td></tr>
+  <tr><td>메일서버(외부)</td><td>mail.seoulbeauty.app 콘솔</td></tr>
+</tbody></table></div>
+
+<div class="card" id="g12"><h2>12. AI / 자동화</h2><table><tbody>
+  <tr><td>AI 자동화 설정</td><td>멀티 프로바이더(11그룹), AES-256 키 암호화</td></tr>
+  <tr><td>자동 테스트 / v2 / E2E</td><td>Playwright 기반 자동 검증</td></tr>
+</tbody></table></div>
+
+<div class="card" id="g13"><h2>13. 사이트 설정</h2><table><tbody>
+  <tr><td>통합 설정</td><td>사이트명/로고/도메인</td></tr>
+  <tr><td>테마 / 고급 테마</td><td>CSS 변수 + Figma 디자인 토큰 (라이브 프리뷰)</td></tr>
+  <tr><td>네비게이션 / 에디터 / 점검 모드</td><td>네비·에디터·점검모드</td></tr>
+</tbody></table></div>
+
+<div class="card" id="g14"><h2>14. 관리자 / 알림</h2><table><tbody>
+  <tr><td>관리자 관리 / 등급별 기능</td><td>RBAC 9역할·권한 매트릭스</td></tr>
+  <tr><td>알림 센터 / 알림 보내기</td><td>인앱+이메일+FCM 푸시 발송</td></tr>
+</tbody></table></div>
+
+<div class="card" id="g15"><h2>15. CPV 과금 / 결제</h2><table><tbody>
+  <tr><td>CPV 단가/지갑/대시보드/정산</td><td>조회당 과금(CPV) 엔진 (phase1~7, AI과금 포함)</td></tr>
+  <tr><td>결제 관리(4탭)</td><td>주문/상품/매출/PG설정 (영카트 PG 6모듈)</td></tr>
+  <tr><td>결제하기</td><td>결제 브릿지 (테스트 MID)</td></tr>
+</tbody></table>
+<div class="note">✅ 파트너 지갑 충전(6/12 구현): 영카트 주문 연동 충전. 현재 PG 테스트 모드 — 실 PG 계약 시 결제창만 연결.</div>
+</div>
+
+<div class="card" id="g16"><h2>16. QA & 테스트 / 리포트</h2><table><tbody>
+  <tr><td>QA 통합 대시보드</td><td>기능별 검증 현황</td></tr>
+  <tr><td>📱 앱+웹 자동테스트 시나리오</td><td>3-레이어 캡처·자가검수 시스템 설계</td></tr>
+  <tr><td>🔎 자가검수 리포트(최신)</td><td>사이트+iOS앱+회원 통합 검수 결과</td></tr>
+  <tr><td>📦 인수인계 대시보드</td><td>인계 패키지/계정/ERD/체크리스트</td></tr>
+  <tr><td>자동 매뉴얼 / 스크린샷 매뉴얼</td><td>화면 캡처 매뉴얼 자동 생성(247p)</td></tr>
+</tbody></table></div>
+
+<div class="card">
+  <h2>⚠️ 중복/정리 제안 (검토용)</h2>
+  <p style="font-size:13.5px">정확한 중복 URL은 없으나, <b>날짜별 일회성 리포트 링크가 누적</b>되어 사이드바가 길어졌습니다. 아래는 정리 후보(삭제는 컨펌 후):</p>
+  <ul style="font-size:13px">
+    <li>피그마 그룹 / QA & 리포트 그룹의 <b>구버전 진행보고서</b>: progress_20260528, progress_20260605, reply_20260605, remaining_tasks_20260607, qa_round3, qa_v1.1_fix, qa_v1.1_round2, qa_back_button, qa_cpv_v1 — 최신 1~2개만 남기고 아카이브 권장</li>
+    <li>"QA & 리포트"(16링크)와 "QA & 테스트"(통합 대시보드) <b>2그룹 통합</b> 권장</li>
+  </ul>
+  <div class="note">삭제는 기능 접근 제거이므로 컨펌 후 진행합니다. 매뉴얼(본 문서)은 추가만 했습니다.</div>
+</div>
+
+</body>
+</html>

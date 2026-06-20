@@ -1,0 +1,163 @@
+{
+  "_comment": "HMS HMS 최고관리자 매뉴얼 - Auto Manual Config",
+  "_version": "1.0",
+  "_updated": "2026-03-05",
+  "configKey": "hms-super-admin-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/",
+  "browser": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "headless": true
+  },
+  "login": {
+    "required": true,
+    "url": "login",
+    "usernameField": "input[name='email']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[type='submit']",
+    "successIndicator": ".side-menus",
+    "username": "admin@hms.com",
+    "password": "123456"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "HMS 로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 성공 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "HMS 최고관리자 매뉴얼",
+    "outputDir": "../uploads/hms-super-admin-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_dashboard",
+      "title": "대시보드",
+      "icon": "bi-speedometer2",
+      "pages": [
+        {
+          "key": "sa_dashboard",
+          "label": "SaaS 대시보드",
+          "url": "super-admin/dashboard",
+          "description": "전체 SaaS 플랫폼 현황",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_management",
+      "title": "관리",
+      "icon": "bi-people",
+      "pages": [
+        {
+          "key": "sa_admins",
+          "label": "관리자 목록",
+          "url": "super-admin/admins",
+          "description": "병원 관리자 계정 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "sa_hospital_type",
+          "label": "병원 유형",
+          "url": "super-admin/hospital-type",
+          "description": "병원 카테고리 유형 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "sa_hospitals",
+          "label": "병원 목록",
+          "url": "super-admin/hospitals",
+          "description": "등록된 병원 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "sa_plans",
+          "label": "구독 플랜",
+          "url": "super-admin/subscription-plans",
+          "description": "SaaS 구독 플랜 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "sa_subscribers",
+          "label": "구독자 목록",
+          "url": "super-admin/subscribers",
+          "description": "현재 구독 중인 병원",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "sa_enquiries",
+          "label": "문의",
+          "url": "super-admin/enquiries",
+          "description": "병원 문의 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch03_cms",
+      "title": "CMS & 설정",
+      "icon": "bi-gear",
+      "pages": [
+        {
+          "key": "sa_front_cms",
+          "label": "프론트 CMS",
+          "url": "super-admin/section-one",
+          "description": "랜딩 페이지 콘텐츠 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "sa_settings",
+          "label": "일반 설정",
+          "url": "super-admin/general-settings",
+          "description": "플랫폼 전체 설정",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

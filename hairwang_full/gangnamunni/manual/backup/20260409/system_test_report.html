@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전체 시스템 테스트 리포트 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-check2-all"></i> 전체 시스템 테스트 리포트</h1>
+        <div class="sb-subtitle">E2E 테스트 78/78 PASS - 전체 결과</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="sb-main">
+  <div class="container">
+    <nav class="sb-breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">홈</a></li><li class="breadcrumb-item active">전체 시스템 테스트</li></ol></nav>
+
+    <!-- Summary -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="sb-stat-card"><div class="sb-stat-number">78</div><div class="sb-stat-label">전체 테스트</div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="sb-stat-card"><div class="sb-stat-number" style="background: linear-gradient(135deg, #2ED47A, #0D9488); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">78</div><div class="sb-stat-label">PASS</div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="sb-stat-card"><div class="sb-stat-number" style="-webkit-text-fill-color: var(--sb-danger);">0</div><div class="sb-stat-label">FAIL</div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="sb-stat-card"><div class="sb-stat-number">100%</div><div class="sb-stat-label">통과율</div></div>
+      </div>
+    </div>
+
+    <!-- Full Pass Banner -->
+    <div class="sb-note sb-note-success mb-4" style="padding: 1.5rem;">
+      <span class="sb-note-icon" style="font-size: 1.5rem;"><i class="bi bi-trophy-fill"></i></span>
+      <div>
+        <strong style="font-size: 1.1rem;">전체 테스트 통과!</strong>
+        <p class="mb-0 mt-1">78개 E2E 테스트가 모두 정상적으로 통과했습니다. 테스트 실행일: 2026-02-23</p>
+      </div>
+    </div>
+
+    <!-- Test Categories (Accordion) -->
+    <div class="accordion sb-accordion" id="testAccordion">
+
+      <!-- Category 1: Page Access Tests -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#cat-page">
+            <div class="d-flex justify-content-between w-100 me-3">
+              <span><i class="bi bi-globe me-2"></i> 페이지 접근 테스트</span>
+              <span class="sb-badge sb-badge-pass">18/18 PASS</span>
+            </div>
+          </button>
+        </h2>
+        <div id="cat-page" class="accordion-collapse collapse show" data-bs-parent="#testAccordion">
+          <div class="accordion-body p-0">
+            <table class="sb-table mb-0">
+              <thead><tr><th>#</th><th>테스트명</th><th>URL</th><th>상태</th><th>응답코드</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>대시보드 페이지 로딩</td><td><code class="sb-code-inline">dashboard.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>2</td><td>병원 관리 페이지 로딩</td><td><code class="sb-code-inline">admin_hospital_images.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>3</td><td>후기 관리 페이지 로딩</td><td><code class="sb-code-inline">admin_reviews.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>4</td><td>카테고리 관리 페이지 로딩</td><td><code class="sb-code-inline">admin_categories.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>5</td><td>광고 관리 페이지 로딩</td><td><code class="sb-code-inline">admin_ads.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>6</td><td>하단 네비 관리 로딩</td><td><code class="sb-code-inline">admin_navigation.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>7</td><td>테마 설정 로딩</td><td><code class="sb-code-inline">admin_theme.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>8</td><td>고급 테마 로딩</td><td><code class="sb-code-inline">admin_theme_advanced.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>9</td><td>점검 모드 로딩</td><td><code class="sb-code-inline">admin_maintenance.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>10</td><td>회원 관리 로딩</td><td><code class="sb-code-inline">admin_members.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>11</td><td>부관리자 관리 로딩</td><td><code class="sb-code-inline">admin_admins.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>12</td><td>메일 관리 로딩</td><td><code class="sb-code-inline">admin_mail.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>13</td><td>AI 설정 로딩</td><td><code class="sb-code-inline">admin_ai_settings.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>14</td><td>의사 마법사 로딩</td><td><code class="sb-code-inline">admin_doctor_wizard.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>15</td><td>환자 마법사 로딩</td><td><code class="sb-code-inline">admin_patient_wizard.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>16</td><td>예약 마법사 로딩</td><td><code class="sb-code-inline">admin_appointment_wizard.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>17</td><td>약품 마법사 로딩</td><td><code class="sb-code-inline">admin_medicine_wizard.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+                <tr><td>18</td><td>프론트엔드 메인 로딩</td><td><code class="sb-code-inline">index.php</code></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>200</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category 2: AJAX Endpoint Tests -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cat-ajax">
+            <div class="d-flex justify-content-between w-100 me-3">
+              <span><i class="bi bi-braces me-2"></i> AJAX 엔드포인트 테스트</span>
+              <span class="sb-badge sb-badge-pass">24/24 PASS</span>
+            </div>
+          </button>
+        </h2>
+        <div id="cat-ajax" class="accordion-collapse collapse" data-bs-parent="#testAccordion">
+          <div class="accordion-body p-0">
+            <table class="sb-table mb-0">
+              <thead><tr><th>#</th><th>엔드포인트</th><th>메서드</th><th>상태</th><th>응답시간</th></tr></thead>
+              <tbody>
+                <tr><td>19</td><td>후기 목록 조회</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>120ms</td></tr>
+                <tr><td>20</td><td>후기 상세 조회</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>85ms</td></tr>
+                <tr><td>21</td><td>후기 저장</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>230ms</td></tr>
+                <tr><td>22</td><td>후기 삭제</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>140ms</td></tr>
+                <tr><td>23</td><td>후기 승인</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>110ms</td></tr>
+                <tr><td>24</td><td>후기 좋아요</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>75ms</td></tr>
+                <tr><td>25</td><td>카테고리 목록</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>60ms</td></tr>
+                <tr><td>26</td><td>카테고리 저장</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>95ms</td></tr>
+                <tr><td>27</td><td>네비게이션 목록</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>55ms</td></tr>
+                <tr><td>28</td><td>AI 키 관리</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>180ms</td></tr>
+                <tr><td>29</td><td>AI 후기 검증</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>2340ms</td></tr>
+                <tr><td>30</td><td>AI 제안</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>1870ms</td></tr>
+                <tr><td>31</td><td>메일 목록</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>450ms</td></tr>
+                <tr><td>32</td><td>메일 읽기</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>320ms</td></tr>
+                <tr><td>33</td><td>메일 발송</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>1200ms</td></tr>
+                <tr><td>34</td><td>회원 검색</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>90ms</td></tr>
+                <tr><td>35</td><td>병원 목록</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>70ms</td></tr>
+                <tr><td>36</td><td>이미지 업로드</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>540ms</td></tr>
+                <tr><td>37</td><td>캐시 초기화</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>45ms</td></tr>
+                <tr><td>38</td><td>테마 저장</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>85ms</td></tr>
+                <tr><td>39</td><td>광고 통계</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>150ms</td></tr>
+                <tr><td>40</td><td>SSO 토큰 검증</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>35ms</td></tr>
+                <tr><td>41</td><td>후기 통계</td><td><span class="sb-method sb-method-get">GET</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>130ms</td></tr>
+                <tr><td>42</td><td>점검 모드 토글</td><td><span class="sb-method sb-method-post">POST</span></td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>65ms</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category 3: DB Validation Tests -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cat-db">
+            <div class="d-flex justify-content-between w-100 me-3">
+              <span><i class="bi bi-database me-2"></i> DB 유효성 검사</span>
+              <span class="sb-badge sb-badge-pass">16/16 PASS</span>
+            </div>
+          </button>
+        </h2>
+        <div id="cat-db" class="accordion-collapse collapse" data-bs-parent="#testAccordion">
+          <div class="accordion-body p-0">
+            <table class="sb-table mb-0">
+              <thead><tr><th>#</th><th>테스트명</th><th>검증 대상</th><th>상태</th><th>결과</th></tr></thead>
+              <tbody>
+                <tr><td>43</td><td>테이블 존재 확인</td><td>gangnamunni_hospitals</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>존재함</td></tr>
+                <tr><td>44</td><td>테이블 존재 확인</td><td>gangnamunni_categories</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>존재함</td></tr>
+                <tr><td>45</td><td>테이블 존재 확인</td><td>hospital_reviews</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>존재함</td></tr>
+                <tr><td>46</td><td>테이블 존재 확인</td><td>gangnamunni_admins</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>존재함</td></tr>
+                <tr><td>47</td><td>테이블 존재 확인</td><td>sso_tokens</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>존재함</td></tr>
+                <tr><td>48</td><td>테이블 존재 확인</td><td>member_sync</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>존재함</td></tr>
+                <tr><td>49</td><td>테이블 존재 확인</td><td>ai_api_keys</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>존재함</td></tr>
+                <tr><td>50</td><td>FK 무결성</td><td>hospital_reviews.hospital_id</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>참조 무결</td></tr>
+                <tr><td>51</td><td>FK 무결성</td><td>gangnamunni_categories.hms_hospital_type_id</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>참조 무결</td></tr>
+                <tr><td>52</td><td>데이터 카운트</td><td>gangnamunni_hospitals 레코드</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>5건 이상</td></tr>
+                <tr><td>53</td><td>데이터 카운트</td><td>gangnamunni_categories 레코드</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>12건</td></tr>
+                <tr><td>54</td><td>컬럼 존재</td><td>hospital_reviews.editor_content</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>존재함</td></tr>
+                <tr><td>55</td><td>컬럼 존재</td><td>hospital_reviews.editor_type</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>존재함</td></tr>
+                <tr><td>56</td><td>인덱스 확인</td><td>hospital_reviews 인덱스</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>3개 인덱스</td></tr>
+                <tr><td>57</td><td>동기화 매핑</td><td>member_sync 레코드</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>87건 매핑</td></tr>
+                <tr><td>58</td><td>관리자 계정</td><td>gangnamunni_admins 기본 계정</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>admin 존재</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category 4: Excel Tests -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cat-excel">
+            <div class="d-flex justify-content-between w-100 me-3">
+              <span><i class="bi bi-file-earmark-spreadsheet me-2"></i> 엑셀 Import/Export 테스트</span>
+              <span class="sb-badge sb-badge-pass">12/12 PASS</span>
+            </div>
+          </button>
+        </h2>
+        <div id="cat-excel" class="accordion-collapse collapse" data-bs-parent="#testAccordion">
+          <div class="accordion-body p-0">
+            <table class="sb-table mb-0">
+              <thead><tr><th>#</th><th>테스트명</th><th>마법사</th><th>상태</th><th>결과</th></tr></thead>
+              <tbody>
+                <tr><td>59</td><td>템플릿 다운로드</td><td>의사</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>.xlsx 정상</td></tr>
+                <tr><td>60</td><td>데이터 Import</td><td>의사 (5건)</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>5/5 성공</td></tr>
+                <tr><td>61</td><td>데이터 Export</td><td>의사 전체</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>.xlsx 생성</td></tr>
+                <tr><td>62</td><td>템플릿 다운로드</td><td>환자</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>.xlsx 정상</td></tr>
+                <tr><td>63</td><td>데이터 Import</td><td>환자 (10건)</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>10/10 성공</td></tr>
+                <tr><td>64</td><td>데이터 Export</td><td>환자 전체</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>.xlsx 생성</td></tr>
+                <tr><td>65</td><td>유효성 검사 오류</td><td>의사 (잘못된 이메일)</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>오류 반환</td></tr>
+                <tr><td>66</td><td>중복 검사</td><td>의사 (중복 이메일)</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>중복 감지</td></tr>
+                <tr><td>67</td><td>대용량 Import</td><td>약품 (100건)</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>100/100 성공</td></tr>
+                <tr><td>68</td><td>CSV Import</td><td>환자 (.csv)</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>정상 파싱</td></tr>
+                <tr><td>69</td><td>필터 Export</td><td>의사 (진료과 필터)</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>필터 적용</td></tr>
+                <tr><td>70</td><td>검색 후 Export</td><td>환자 (이름 검색)</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>검색 결과만</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category 5: Wizard E2E Tests -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cat-wizard">
+            <div class="d-flex justify-content-between w-100 me-3">
+              <span><i class="bi bi-magic me-2"></i> 마법사 E2E 테스트</span>
+              <span class="sb-badge sb-badge-pass">8/8 PASS</span>
+            </div>
+          </button>
+        </h2>
+        <div id="cat-wizard" class="accordion-collapse collapse" data-bs-parent="#testAccordion">
+          <div class="accordion-body p-0">
+            <table class="sb-table mb-0">
+              <thead><tr><th>#</th><th>테스트명</th><th>시나리오</th><th>상태</th><th>결과</th></tr></thead>
+              <tbody>
+                <tr><td>71</td><td>의사 등록 마법사</td><td>5단계 완료 -> DB 저장</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>정상 저장</td></tr>
+                <tr><td>72</td><td>간호사 등록 마법사</td><td>4단계 완료 -> DB 저장</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>정상 저장</td></tr>
+                <tr><td>73</td><td>약사 등록 마법사</td><td>4단계 완료 -> DB 저장</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>정상 저장</td></tr>
+                <tr><td>74</td><td>환자 등록 마법사</td><td>5단계 완료 -> DB 저장</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>정상 저장</td></tr>
+                <tr><td>75</td><td>직원 등록 마법사</td><td>4단계 완료 -> DB 저장</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>정상 저장</td></tr>
+                <tr><td>76</td><td>약품 등록 마법사</td><td>4단계 완료 -> DB 저장</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>정상 저장</td></tr>
+                <tr><td>77</td><td>예약 등록 마법사</td><td>5단계 완료 -> DB 저장</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>정상 저장</td></tr>
+                <tr><td>78</td><td>마법사 유효성 검사</td><td>필수 필드 누락 시 오류</td><td><span class="sb-badge sb-badge-pass">PASS</span></td><td>오류 표시</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Test Environment -->
+    <div class="sb-card mt-4">
+      <div class="sb-card-header"><h6 class="mb-0"><i class="bi bi-gear me-2"></i>테스트 환경</h6></div>
+      <div class="sb-card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <table class="sb-table">
+              <tbody>
+                <tr><td class="fw-semibold">서버</td><td>Contabo1 (5.104.82.35)</td></tr>
+                <tr><td class="fw-semibold">OS</td><td>Rocky Linux 9.7</td></tr>
+                <tr><td class="fw-semibold">PHP</td><td>8.2</td></tr>
+                <tr><td class="fw-semibold">DB</td><td>MariaDB 10.x</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="col-md-6">
+            <table class="sb-table">
+              <tbody>
+                <tr><td class="fw-semibold">테스트 일시</td><td>2026-02-23 14:29:36 KST</td></tr>
+                <tr><td class="fw-semibold">테스트 도구</td><td>Python + requests + selenium</td></tr>
+                <tr><td class="fw-semibold">총 소요 시간</td><td>4분 32초</td></tr>
+                <tr><td class="fw-semibold">실행자</td><td>자동화 CI/CD</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. 시스템 테스트 리포트 v1.0</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_시스템테스트.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_시스템테스트.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+</body>
+</html>

@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울미녀 클라이언트 검수 보고서 (2026-03-23)</title>
+<style>
+:root{--green:#28a745;--yellow:#ffc107;--red:#dc3545;--blue:#0d6efd;--gray:#6c757d;--bg:#f8f9fa;--card:#fff;--border:#dee2e6;--text:#212529;--shadow:0 2px 8px rgba(0,0,0,.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+h1{font-size:1.8rem;margin-bottom:8px}
+.subtitle{color:var(--gray);margin-bottom:24px}
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.78rem;font-weight:600;color:#fff}
+.badge-green{background:var(--green)}.badge-yellow{background:var(--yellow);color:#333}.badge-red{background:var(--red)}.badge-blue{background:var(--blue)}.badge-gray{background:var(--gray)}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.summary-card{background:var(--card);border-radius:12px;padding:20px;box-shadow:var(--shadow);text-align:center}
+.summary-card .num{font-size:2.2rem;font-weight:700}
+.summary-card .label{font-size:.85rem;color:var(--gray)}
+.summary-card.green .num{color:var(--green)}
+.summary-card.yellow .num{color:var(--yellow)}
+.summary-card.red .num{color:var(--red)}
+.summary-card.blue .num{color:var(--blue)}
+.progress-bar-wrap{background:#e9ecef;border-radius:8px;height:28px;margin-bottom:32px;overflow:hidden;position:relative}
+.progress-bar-fill{height:100%;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:.85rem;transition:width .5s}
+.section{background:var(--card);border-radius:12px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.section-header{padding:16px 20px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);user-select:none}
+.section-header:hover{background:#f1f3f5}
+.section-header h2{font-size:1.1rem;display:flex;align-items:center;gap:8px}
+.section-body{padding:20px;display:none}
+.section.open .section-body{display:block}
+.section-header .arrow{transition:transform .2s;font-size:1.2rem}
+.section.open .section-header .arrow{transform:rotate(90deg)}
+.btn-test{display:inline-block;padding:6px 16px;background:var(--blue);color:#fff;text-decoration:none;border-radius:6px;font-size:.85rem;font-weight:500;margin:4px 4px 4px 0;transition:background .2s}
+.btn-test:hover{background:#0b5ed7;color:#fff}
+.btn-admin{background:#6f42c1}.btn-admin:hover{background:#5a32a3}
+.screenshots{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.screenshot-box{text-align:center}
+.screenshot-box img{max-width:100%;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:transform .2s}
+.screenshot-box img:hover{transform:scale(1.02)}
+.screenshot-box .caption{font-size:.8rem;color:var(--gray);margin-top:4px}
+@media(max-width:768px){.screenshots{grid-template-columns:1fr}}
+.checklist{list-style:none;padding:0}
+.checklist li{padding:6px 0;border-bottom:1px solid #f0f0f0;display:flex;align-items:flex-start;gap:8px}
+.checklist li:last-child{border-bottom:none}
+.check-icon{width:20px;flex-shrink:0;text-align:center}
+.info-table{width:100%;border-collapse:collapse;margin:12px 0}
+.info-table th,.info-table td{padding:8px 12px;border:1px solid var(--border);font-size:.88rem}
+.info-table th{background:#f1f3f5;text-align:left;white-space:nowrap}
+.lightbox{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:9999;justify-content:center;align-items:center;cursor:pointer}
+.lightbox.active{display:flex}
+.lightbox img{max-width:95%;max-height:95%;border-radius:8px}
+.top-nav{background:#fff;border-bottom:1px solid var(--border);padding:12px 20px;margin-bottom:24px;border-radius:12px;box-shadow:var(--shadow)}
+.nav-links{display:flex;flex-wrap:wrap;gap:8px}
+.nav-links a{color:var(--blue);text-decoration:none;font-size:.85rem;padding:4px 8px;border-radius:4px}
+.nav-links a:hover{background:#e7f1ff}
+.note-box{background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin:12px 0;font-size:.9rem}
+.info-box{background:#cfe2ff;border:1px solid #9ec5fe;border-radius:8px;padding:12px 16px;margin:12px 0;font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>서울미녀 클라이언트 검수 보고서</h1>
+<p class="subtitle">작성일: 2026-03-23 | 도메인: hms.seoulbeauty.app | 버전: v2.1.0</p>
+
+<div class="top-nav">
+<div class="nav-links">
+<a href="#summary">1. 요약</a>
+<a href="#sec-index">2-1. 메인</a>
+<a href="#sec-hospitals">2-2. 병원목록</a>
+<a href="#sec-detail">2-3. 병원상세</a>
+<a href="#sec-booking">2-4. 예약</a>
+<a href="#sec-mypage">2-5. 마이페이지</a>
+<a href="#sec-review">2-6. 후기</a>
+<a href="#sec-event">2-7. 이벤트</a>
+<a href="#sec-map">2-8. 지도</a>
+<a href="#sec-admin">3. 관리자</a>
+<a href="#sec-cpv">4. CPV</a>
+<a href="#sec-api">5. API</a>
+<a href="#sec-pending">6. 미구현</a>
+</div>
+</div>
+
+<!-- 1. SUMMARY -->
+<div id="summary">
+<div class="summary-grid">
+<div class="summary-card green"><div class="num">8</div><div class="label">구현 완료</div></div>
+<div class="summary-card yellow"><div class="num">4</div><div class="label">부분 구현</div></div>
+<div class="summary-card red"><div class="num">0</div><div class="label">미구현</div></div>
+<div class="summary-card blue"><div class="num">67%</div><div class="label">총 진행률</div></div>
+</div>
+
+<div class="progress-bar-wrap">
+<div class="progress-bar-fill" style="width:67%;background:linear-gradient(90deg,var(--green) 0%,var(--green) 100%)">
+<span>67% 완료 (8/12)</span>
+</div>
+</div>
+
+<div class="section open">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">요약</span> 구현 현황 요약</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<table class="info-table">
+<tr><th>구분</th><th>항목</th><th>상태</th><th>비고</th></tr>
+<tr><td>사용자</td><td>메인 페이지 (검색, 배너)</td><td><span class="badge badge-green">완료</span></td><td>키워드 검색 동작</td></tr>
+<tr><td>사용자</td><td>병원 목록 (3뷰, 필터)</td><td><span class="badge badge-green">완료</span></td><td>서울미녀형/카드형/리스트형</td></tr>
+<tr><td>사용자</td><td>병원 상세 (5탭)</td><td><span class="badge badge-green">완료</span></td><td>소개/의사/이벤트/후기/위치</td></tr>
+<tr><td>사용자</td><td>예약 시스템</td><td><span class="badge badge-green">완료</span></td><td>5단계 위자드 + HMS 연동</td></tr>
+<tr><td>사용자</td><td>마이페이지 (SSO+13메뉴)</td><td><span class="badge badge-green">완료</span></td><td>로그인/포인트/쿠폰/채팅 등</td></tr>
+<tr><td>사용자</td><td>후기 작성 (UGC Safety)</td><td><span class="badge badge-green">완료</span></td><td>신고/차단/자동숨김 포함</td></tr>
+<tr><td>사용자</td><td>이벤트 상세</td><td><span class="badge badge-green">완료</span></td><td>응모 + 이벤트 캘린더</td></tr>
+<tr><td>사용자</td><td>지도 탐색</td><td><span class="badge badge-green">완료</span></td><td>카카오맵 기반</td></tr>
+<tr><td>사용자</td><td>하단 탭 네비게이션</td><td><span class="badge badge-yellow">부분</span></td><td>5탭 구현, 클라이언트 요청 4탭 조정 필요</td></tr>
+<tr><td>사용자</td><td>검색 복합 필터</td><td><span class="badge badge-yellow">부분</span></td><td>지역+시술 복합 필터 추가 예정</td></tr>
+<tr><td>사용자</td><td>병원 정렬 옵션</td><td><span class="badge badge-yellow">부분</span></td><td>is_featured 기본, 세분화 예정</td></tr>
+<tr><td>사용자</td><td>커뮤니티 게시판</td><td><span class="badge badge-yellow">부분</span></td><td>CRUD 기능 보강 예정</td></tr>
+<tr><td>관리자</td><td>CPV 과금 시스템 (14종)</td><td><span class="badge badge-green">완료</span></td><td>8 DB 테이블 + 73 설정</td></tr>
+<tr><td>관리자</td><td>QA 수정 (24건)</td><td><span class="badge badge-green">완료</span></td><td>v1.1 전체 반영</td></tr>
+<tr><td>관리자</td><td>갭분석 27기능</td><td><span class="badge badge-green">완료</span></td><td>4배치 전체 구현</td></tr>
+</table>
+</div>
+</div>
+</div>
+
+<!-- 2-1. INDEX -->
+<div class="section" id="sec-index">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">완료</span> 2-1. 메인 페이지 (index.php)</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php" target="_blank" class="btn-test">홈 열기</a>
+
+<h3 style="margin-top:16px">테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> 메인 페이지 접속 후 로고, 상단 네비게이션 확인</li>
+<li><span class="check-icon">2.</span> 검색바에 "성형", "피부" 등 키워드 입력 후 Enter</li>
+<li><span class="check-icon">3.</span> 검색 결과가 hospitals.php로 이동하며 필터링되는지 확인</li>
+<li><span class="check-icon">4.</span> 배너 영역 표시 확인 (sticky 배너)</li>
+<li><span class="check-icon">5.</span> 하단 5탭 네비게이션 표시 확인</li>
+<li><span class="check-icon">6.</span> 모바일 화면에서 반응형 레이아웃 확인</li>
+</ul>
+
+<h3 style="margin-top:16px">확인 포인트</h3>
+<div class="info-box">검색어 입력 후 병원 목록 페이지로 이동 확인. 상단 메뉴(홈/후기/병원/이벤트/커뮤니티/칼럼/가격비교/시술/랭킹/내예약)와 하단 5탭(홈/병원/이벤트/후기/마이) 모두 동작 확인.</div>
+
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/index_pc.png" alt="메인 PC" onclick="openLightbox(this)">
+<div class="caption">PC (1280x800)</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/index_mobile.png" alt="메인 Mobile" onclick="openLightbox(this)">
+<div class="caption">Mobile (375x667)</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 2-2. HOSPITALS -->
+<div class="section" id="sec-hospitals">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">완료</span> 2-2. 병원 목록 (hospitals.php)</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php" target="_blank" class="btn-test">병원 목록 열기</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php?region=gangnam" target="_blank" class="btn-test">강남구 필터</a>
+
+<h3 style="margin-top:16px">테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> 병원 목록 페이지 접속</li>
+<li><span class="check-icon">2.</span> 뷰 전환 버튼 클릭: 서울미녀형 / 카드형 / 리스트형</li>
+<li><span class="check-icon">3.</span> 지역 필터 선택 (강남구, 서초구 등)</li>
+<li><span class="check-icon">4.</span> 광고 배지(AD) 표시 확인 - is_featured 병원</li>
+<li><span class="check-icon">5.</span> 인피드 광고 (4개마다 1개) 표시 확인</li>
+<li><span class="check-icon">6.</span> 병원 카드 클릭 시 detail.php 이동 확인</li>
+</ul>
+
+<h3 style="margin-top:16px">확인 포인트</h3>
+<div class="info-box">3뷰 모드 전환, 지역 필터, 광고 배지, 인피드 광고 삽입 위치 확인. 서울미녀형(기본)은 풀폭 16:9 카드에 CTA 2버튼과 가로 스크롤 태그 포함.</div>
+
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/hospitals_pc.png" alt="병원목록 PC" onclick="openLightbox(this)">
+<div class="caption">PC (1280x800)</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/hospitals_mobile.png" alt="병원목록 Mobile" onclick="openLightbox(this)">
+<div class="caption">Mobile (375x667)</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 2-3. DETAIL -->
+<div class="section" id="sec-detail">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">완료</span> 2-3. 병원 상세 (detail.php)</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/detail.php?id=8093" target="_blank" class="btn-test">병원 #8093 열기</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/detail.php?id=8118" target="_blank" class="btn-test">병원 #8118 열기</a>
+
+<h3 style="margin-top:16px">테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> 병원 상세 페이지 접속 후 병원명, 주소, 이미지 확인</li>
+<li><span class="check-icon">2.</span> 5개 탭 순차 클릭: 소개 / 의사 / 이벤트 / 후기 / 위치</li>
+<li><span class="check-icon">3.</span> 소개 탭: 진료시간, 점심시간, 휴진일 표시 확인</li>
+<li><span class="check-icon">4.</span> 의사 탭: 의사 목록 및 프로필 표시 확인</li>
+<li><span class="check-icon">5.</span> 후기 탭: 리뷰 목록, 별점, 신고 버튼 확인</li>
+<li><span class="check-icon">6.</span> 위치 탭: 카카오맵 지도 표시 확인</li>
+<li><span class="check-icon">7.</span> 이미지 스와이프 (상단 갤러리) 동작 확인</li>
+<li><span class="check-icon">8.</span> 찜하기(하트) 버튼, 소셜 공유 버튼 확인</li>
+<li><span class="check-icon">9.</span> "예약하기" CTA 버튼 클릭 시 booking.php 이동 확인</li>
+</ul>
+
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/detail_8093_pc.png" alt="상세8093 PC" onclick="openLightbox(this)">
+<div class="caption">병원 #8093 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/detail_8093_mobile.png" alt="상세8093 Mobile" onclick="openLightbox(this)">
+<div class="caption">병원 #8093 - Mobile</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/detail_8118_pc.png" alt="상세8118 PC" onclick="openLightbox(this)">
+<div class="caption">병원 #8118 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/detail_8118_mobile.png" alt="상세8118 Mobile" onclick="openLightbox(this)">
+<div class="caption">병원 #8118 - Mobile</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 2-4. BOOKING -->
+<div class="section" id="sec-booking">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">완료</span> 2-4. 예약 (booking.php)</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/booking.php?id=8118" target="_blank" class="btn-test">예약 페이지 열기</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_appointments.php" target="_blank" class="btn-test">내 예약 조회</a>
+
+<h3 style="margin-top:16px">테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> 예약 페이지 접속 (로그인 필요 시 자동 리다이렉트)</li>
+<li><span class="check-icon">2.</span> 시술 카테고리 선택</li>
+<li><span class="check-icon">3.</span> 원하는 날짜 선택 (캘린더)</li>
+<li><span class="check-icon">4.</span> 시간대 선택</li>
+<li><span class="check-icon">5.</span> 개인정보 입력 (이름, 연락처)</li>
+<li><span class="check-icon">6.</span> 예약 제출 버튼 클릭</li>
+<li><span class="check-icon">7.</span> 예약 완료 메시지 확인</li>
+<li><span class="check-icon">8.</span> 내 예약 목록(my_appointments.php)에서 예약 조회 확인</li>
+</ul>
+
+<div class="info-box">5단계 위자드 방식. HMS(InfyHMS) 연동으로 관리자 대시보드에서도 예약 확인 가능. FCM 푸시 알림 전송.</div>
+
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/booking_8118_pc.png" alt="예약 PC" onclick="openLightbox(this)">
+<div class="caption">PC (1280x800)</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/booking_8118_mobile.png" alt="예약 Mobile" onclick="openLightbox(this)">
+<div class="caption">Mobile (375x667)</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 2-5. MYPAGE -->
+<div class="section" id="sec-mypage">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">완료</span> 2-5. 마이페이지 (mypage.php)</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank" class="btn-test">마이페이지 열기</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_appointments.php" target="_blank" class="btn-test">내 예약 조회</a>
+
+<h3 style="margin-top:16px">테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> 마이페이지 접속 (비로그인 시 로그인 페이지 리다이렉트 확인)</li>
+<li><span class="check-icon">2.</span> SSO 자동 로그인 동작 확인</li>
+<li><span class="check-icon">3.</span> 프로필 정보 (이름, 이메일) 표시 확인</li>
+<li><span class="check-icon">4.</span> 13개 메뉴 확인:</li>
+</ul>
+<table class="info-table" style="margin-left:28px;width:auto">
+<tr><th>#</th><th>메뉴</th><th>설명</th></tr>
+<tr><td>1</td><td>예약 관리</td><td>my_appointments.php</td></tr>
+<tr><td>2</td><td>알림</td><td>알림 목록</td></tr>
+<tr><td>3</td><td>포인트</td><td>적립/사용 내역</td></tr>
+<tr><td>4</td><td>쿠폰</td><td>보유 쿠폰 목록</td></tr>
+<tr><td>5</td><td>채팅</td><td>실시간 채팅</td></tr>
+<tr><td>6</td><td>찜 목록</td><td>찜한 병원</td></tr>
+<tr><td>7</td><td>회원 등급</td><td>등급 확인</td></tr>
+<tr><td>8</td><td>후기 관리</td><td>작성 후기 목록</td></tr>
+<tr><td>9</td><td>알림 설정</td><td>푸시 ON/OFF</td></tr>
+<tr><td>10</td><td>FAQ</td><td>자주 묻는 질문</td></tr>
+<tr><td>11</td><td>Q&A</td><td>1:1 문의</td></tr>
+<tr><td>12</td><td>프로필 수정</td><td>개인정보 변경</td></tr>
+<tr><td>13</td><td>로그아웃</td><td>세션 종료</td></tr>
+</table>
+
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/mypage_pc.png" alt="마이페이지 PC" onclick="openLightbox(this)">
+<div class="caption">PC (1280x800)</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/mypage_mobile.png" alt="마이페이지 Mobile" onclick="openLightbox(this)">
+<div class="caption">Mobile (375x667)</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 2-6. REVIEW -->
+<div class="section" id="sec-review">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">완료</span> 2-6. 후기 작성 (review_write.php)</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/review_write.php?hospital_id=8118" target="_blank" class="btn-test">후기 작성 열기</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/reviews.php" target="_blank" class="btn-test">전체 후기 보기</a>
+
+<h3 style="margin-top:16px">테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> 후기 작성 페이지 접속 (로그인 필요)</li>
+<li><span class="check-icon">2.</span> 별점 선택 (1~5점)</li>
+<li><span class="check-icon">3.</span> 시술 카테고리 선택</li>
+<li><span class="check-icon">4.</span> 후기 내용 작성</li>
+<li><span class="check-icon">5.</span> 사진 첨부 (이미지 업로드 JS 인터셉터 동작 확인)</li>
+<li><span class="check-icon">6.</span> 제출 후 승인 대기 메시지 확인</li>
+</ul>
+
+<div class="info-box">Apple Guideline 1.2 UGC Safety 대응 완료: 신고 버튼 + 차단 기능 + 3건 누적 자동숨김 + 관리자 24h 대응 대시보드.</div>
+
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/review_write_pc.png" alt="후기작성 PC" onclick="openLightbox(this)">
+<div class="caption">PC (1280x800)</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/review_write_mobile.png" alt="후기작성 Mobile" onclick="openLightbox(this)">
+<div class="caption">Mobile (375x667)</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 2-7. EVENT -->
+<div class="section" id="sec-event">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">완료</span> 2-7. 이벤트 상세 (event_detail.php)</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/event_detail.php?id=1" target="_blank" class="btn-test">이벤트 열기</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/events.php" target="_blank" class="btn-test">이벤트 목록</a>
+
+<h3 style="margin-top:16px">테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> 이벤트 상세 페이지 접속</li>
+<li><span class="check-icon">2.</span> 이벤트 제목, 기간, 내용 표시 확인</li>
+<li><span class="check-icon">3.</span> 응모 버튼 클릭 (로그인 필요)</li>
+<li><span class="check-icon">4.</span> 이벤트 캘린더에서 다른 이벤트 확인</li>
+</ul>
+
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/event_detail_pc.png" alt="이벤트 PC" onclick="openLightbox(this)">
+<div class="caption">PC (1280x800)</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/event_detail_mobile.png" alt="이벤트 Mobile" onclick="openLightbox(this)">
+<div class="caption">Mobile (375x667)</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 2-8. MAP -->
+<div class="section" id="sec-map">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">완료</span> 2-8. 지도 탐색 (map.php)</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/map.php" target="_blank" class="btn-test">지도 열기</a>
+
+<h3 style="margin-top:16px">테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> 지도 페이지 접속 후 카카오맵 로딩 확인</li>
+<li><span class="check-icon">2.</span> 병원 마커 표시 확인</li>
+<li><span class="check-icon">3.</span> 마커 클릭 시 병원 정보 팝업 확인</li>
+<li><span class="check-icon">4.</span> 지도 확대/축소, 드래그 동작 확인</li>
+<li><span class="check-icon">5.</span> 내 위치 기반 주변 병원 검색 (위치 권한 허용 시)</li>
+</ul>
+
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/map_pc.png" alt="지도 PC" onclick="openLightbox(this)">
+<div class="caption">PC (1280x800)</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/map_mobile.png" alt="지도 Mobile" onclick="openLightbox(this)">
+<div class="caption">Mobile (375x667)</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 3. ADMIN -->
+<div class="section" id="sec-admin">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-blue">관리자</span> 3. 관리자 페이지 테스트 시나리오</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<div class="note-box">
+<strong>관리자 로그인 정보:</strong><br>
+URL: <a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php" target="_blank">dashboard.php</a><br>
+ID: <code>admin</code> / PW: <code>admin123</code>
+</div>
+
+<h3 style="margin-top:16px">관리자 기능 바로가기</h3>
+<p style="margin:8px 0">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php" target="_blank" class="btn-test btn-admin">관리자 대시보드</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_ads.php" target="_blank" class="btn-test btn-admin">광고 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_hospitals.php" target="_blank" class="btn-test btn-admin">병원 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_bookings.php" target="_blank" class="btn-test btn-admin">예약 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_reviews.php" target="_blank" class="btn-test btn-admin">후기 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_events.php" target="_blank" class="btn-test btn-admin">이벤트 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_consultations.php" target="_blank" class="btn-test btn-admin">상담 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_send_notification.php" target="_blank" class="btn-test btn-admin">알림 발송</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_content_reports.php" target="_blank" class="btn-test btn-admin">신고 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_blocked_users.php" target="_blank" class="btn-test btn-admin">차단 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_coupons.php" target="_blank" class="btn-test btn-admin">쿠폰 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_points.php" target="_blank" class="btn-test btn-admin">포인트 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_rankings.php" target="_blank" class="btn-test btn-admin">랭킹 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_faq.php" target="_blank" class="btn-test btn-admin">FAQ 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_qna.php" target="_blank" class="btn-test btn-admin">Q&A 관리</a>
+</p>
+
+<h3 style="margin-top:16px">관리자 테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> dashboard.php 접속 후 admin / admin123 로그인</li>
+<li><span class="check-icon">2.</span> 대시보드 위젯 (예약현황, 신규회원, 후기, 매출) 표시 확인</li>
+<li><span class="check-icon">3.</span> 사이드바 메뉴 15그룹 75+ URL 네비게이션 확인</li>
+<li><span class="check-icon">4.</span> 병원 관리 > 병원 목록 > 상세 편집</li>
+<li><span class="check-icon">5.</span> 광고 관리 > 배너/인피드 광고 ON/OFF</li>
+<li><span class="check-icon">6.</span> 후기 관리 > 승인/반려 워크플로우</li>
+<li><span class="check-icon">7.</span> 예약 관리 > 상태 변경 (대기/확인/취소)</li>
+<li><span class="check-icon">8.</span> 다크모드 토글 (우상단) 동작 확인</li>
+</ul>
+
+<h3 style="margin-top:16px">대시보드</h3>
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_dashboard_pc.png" alt="대시보드 PC" onclick="openLightbox(this)">
+<div class="caption">대시보드 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_dashboard_mobile.png" alt="대시보드 Mobile" onclick="openLightbox(this)">
+<div class="caption">대시보드 - Mobile</div>
+</div>
+</div>
+
+<h3 style="margin-top:16px">광고 관리</h3>
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_ads_pc.png" alt="광고관리 PC" onclick="openLightbox(this)">
+<div class="caption">광고 관리 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_ads_mobile.png" alt="광고관리 Mobile" onclick="openLightbox(this)">
+<div class="caption">광고 관리 - Mobile</div>
+</div>
+</div>
+
+<h3 style="margin-top:16px">병원 관리</h3>
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_hospitals_pc.png" alt="병원관리 PC" onclick="openLightbox(this)">
+<div class="caption">병원 관리 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_hospitals_mobile.png" alt="병원관리 Mobile" onclick="openLightbox(this)">
+<div class="caption">병원 관리 - Mobile</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 4. CPV -->
+<div class="section" id="sec-cpv">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-green">완료</span> 4. CPV 과금 시스템 상세</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<p style="margin:8px 0">
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_cpv_settings.php" target="_blank" class="btn-test btn-admin">CPV 설정</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_cpv_dashboard.php" target="_blank" class="btn-test btn-admin">CPV 대시보드</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_wallet.php" target="_blank" class="btn-test btn-admin">지갑 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_cpv_rates.php" target="_blank" class="btn-test btn-admin">단가 관리</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_cpv_settlement.php" target="_blank" class="btn-test btn-admin">정산</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/partner_wallet.php" target="_blank" class="btn-test btn-admin">파트너 지갑</a>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/partner_hospital.php" target="_blank" class="btn-test btn-admin">파트너 병원</a>
+</p>
+
+<h3 style="margin-top:16px">시스템 구성</h3>
+<table class="info-table">
+<tr><th>항목</th><th>내용</th></tr>
+<tr><td>PHP 파일</td><td>14개 (설정3 + 지갑3 + 엔진3 + 단가/대시보드2 + 정산/파트너3)</td></tr>
+<tr><td>DB 테이블</td><td>8개 (cpv_settings, cpv_wallets, cpv_transactions, cpv_logs, cpv_rates, cpv_daily_stats, cpv_confirmations, cpv_custom_requests)</td></tr>
+<tr><td>설정값</td><td>73개 (Phase 1~7)</td></tr>
+<tr><td>Master Switch</td><td><span class="badge badge-yellow">OFF</span> (운영 전환 시 ON)</td></tr>
+<tr><td>Test Mode</td><td><span class="badge badge-green">ON</span></td></tr>
+<tr><td>AI 과금</td><td>Phase 7 - 병원별 AI ON/OFF, 자체키/플랫폼키, 지갑 차감</td></tr>
+</table>
+
+<h3 style="margin-top:16px">핵심 기능</h3>
+<ul class="checklist">
+<li><span class="check-icon">&#10003;</span> 페이지 100% 로드 시점 과금 (스크롤 바운스/봇 제외)</li>
+<li><span class="check-icon">&#10003;</span> IP + Cookie 기반 중복 방지 (시간 윈도우 설정 가능)</li>
+<li><span class="check-icon">&#10003;</span> 변동 단가 (시간대별/요일별/지역별 가중치)</li>
+<li><span class="check-icon">&#10003;</span> 일일 캡 (병원별 일일 최대 과금 한도)</li>
+<li><span class="check-icon">&#10003;</span> 잔액 부족 시 자동 중단</li>
+<li><span class="check-icon">&#10003;</span> 대시보드: 실시간 통계, 일별/월별 차트</li>
+<li><span class="check-icon">&#10003;</span> 정산: 월별 정산 리포트 + CSV 내보내기</li>
+</ul>
+
+<h3 style="margin-top:16px">CPV 테스트 시나리오</h3>
+<ul class="checklist">
+<li><span class="check-icon">1.</span> admin_cpv_settings.php 접속 > Master Switch, Test Mode 상태 확인</li>
+<li><span class="check-icon">2.</span> admin_cpv_dashboard.php > 일별/월별 통계 차트 로딩 확인</li>
+<li><span class="check-icon">3.</span> admin_wallet.php > 병원별 지갑 잔액, 충전/차감 이력 확인</li>
+<li><span class="check-icon">4.</span> admin_cpv_rates.php > 단가 테이블 (기본/시간대/요일/지역) 확인</li>
+<li><span class="check-icon">5.</span> admin_cpv_settlement.php > 월별 정산 내역 확인</li>
+<li><span class="check-icon">6.</span> partner_wallet.php > 파트너 뷰 지갑 잔액 확인</li>
+<li><span class="check-icon">7.</span> partner_hospital.php > 파트너 병원 정보 확인</li>
+</ul>
+
+<h3 style="margin-top:16px">CPV 설정 화면</h3>
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_cpv_settings_pc.png" alt="CPV설정 PC" onclick="openLightbox(this)">
+<div class="caption">CPV 설정 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_cpv_settings_mobile.png" alt="CPV설정 Mobile" onclick="openLightbox(this)">
+<div class="caption">CPV 설정 - Mobile</div>
+</div>
+</div>
+
+<h3 style="margin-top:16px">CPV 대시보드</h3>
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_cpv_dashboard_pc.png" alt="CPV대시보드 PC" onclick="openLightbox(this)">
+<div class="caption">CPV 대시보드 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_cpv_dashboard_mobile.png" alt="CPV대시보드 Mobile" onclick="openLightbox(this)">
+<div class="caption">CPV 대시보드 - Mobile</div>
+</div>
+</div>
+
+<h3 style="margin-top:16px">지갑 관리 / 파트너</h3>
+<div class="screenshots">
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_wallet_pc.png" alt="지갑 PC" onclick="openLightbox(this)">
+<div class="caption">지갑 관리 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/admin_wallet_mobile.png" alt="지갑 Mobile" onclick="openLightbox(this)">
+<div class="caption">지갑 관리 - Mobile</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/partner_wallet_pc.png" alt="파트너지갑 PC" onclick="openLightbox(this)">
+<div class="caption">파트너 지갑 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/partner_wallet_mobile.png" alt="파트너지갑 Mobile" onclick="openLightbox(this)">
+<div class="caption">파트너 지갑 - Mobile</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/partner_hospital_pc.png" alt="파트너병원 PC" onclick="openLightbox(this)">
+<div class="caption">파트너 병원 - PC</div>
+</div>
+<div class="screenshot-box">
+<img src="screenshots_client_test/partner_hospital_mobile.png" alt="파트너병원 Mobile" onclick="openLightbox(this)">
+<div class="caption">파트너 병원 - Mobile</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- 5. API -->
+<div class="section" id="sec-api">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-blue">API</span> 5. API 엔드포인트 테스트</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<table class="info-table">
+<tr><th>엔드포인트</th><th>메서드</th><th>설명</th><th>상태</th></tr>
+<tr><td>api_app_login.php</td><td>POST</td><td>앱 로그인</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_app_verify.php</td><td>POST</td><td>토큰 검증</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_app_logout.php</td><td>POST</td><td>앱 로그아웃</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_consultation_submit.php</td><td>POST</td><td>상담 신청</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_booking_submit.php</td><td>POST</td><td>예약 제출</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_review_submit.php</td><td>POST</td><td>후기 제출</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_report_content.php</td><td>POST</td><td>콘텐츠 신고</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_block_user.php</td><td>POST</td><td>사용자 차단</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_qa_feedback.php</td><td>POST</td><td>QA 피드백 CRUD</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_qa_master.php</td><td>GET/POST</td><td>QA 마스터 데이터</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>api_ad_tracking.php</td><td>POST</td><td>광고 추적</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>cpv_engine.php</td><td>POST</td><td>CPV 과금 엔진</td><td><span class="badge badge-green">완료</span></td></tr>
+<tr><td>cpv_confirm.php</td><td>POST</td><td>CPV 확인</td><td><span class="badge badge-green">완료</span></td></tr>
+</table>
+
+<h3 style="margin-top:16px">API 테스트 방법</h3>
+<div class="info-box">
+모든 API는 POST 방식이며, Content-Type: application/json 또는 application/x-www-form-urlencoded를 지원합니다.<br>
+테스트 도구: 브라우저 개발자 도구(Network 탭) 또는 Postman/cURL 사용.
+</div>
+</div>
+</div>
+
+<!-- 6. PENDING -->
+<div class="section" id="sec-pending">
+<div class="section-header" onclick="toggleSection(this)">
+<h2><span class="badge badge-yellow">부분</span> 6. 미구현/부분 구현 항목 (작업 예정)</h2>
+<span class="arrow">&#9654;</span>
+</div>
+<div class="section-body">
+<table class="info-table">
+<tr><th>구분</th><th>항목</th><th>현재 상태</th><th>필요 작업</th><th>우선순위</th></tr>
+<tr>
+<td><span class="badge badge-yellow">A</span></td>
+<td>하단 탭 5 &rarr; 4 조정</td>
+<td>현재 5탭 (홈/병원/이벤트/후기/마이)</td>
+<td><strong>클라이언트 확인 필요:</strong> 어떤 탭을 제거할지 결정</td>
+<td><span class="badge badge-yellow">중</span></td>
+</tr>
+<tr>
+<td><span class="badge badge-yellow">B</span></td>
+<td>지역+시술 복합 필터 검색바</td>
+<td>키워드 검색 + 지역 필터 별도 동작</td>
+<td>검색바에 지역/시술 드롭다운 결합</td>
+<td><span class="badge badge-yellow">중</span></td>
+</tr>
+<tr>
+<td><span class="badge badge-yellow">C</span></td>
+<td>병원 정렬 옵션 세분화</td>
+<td>is_featured 기본 정렬</td>
+<td>거리순/별점순/후기많은순/가격순 추가</td>
+<td><span class="badge badge-yellow">중</span></td>
+</tr>
+<tr>
+<td><span class="badge badge-yellow">D</span></td>
+<td>커뮤니티 게시판 CRUD</td>
+<td>커뮤니티 페이지 존재, 기본 표시</td>
+<td>글쓰기/수정/삭제/댓글 CRUD 보강</td>
+<td><span class="badge badge-gray">하</span></td>
+</tr>
+</table>
+
+<div class="note-box" style="margin-top:16px">
+<strong>클라이언트 피드백 요청:</strong><br>
+위 4개 항목에 대해 클라이언트의 구체적인 요구사항 확인 후 즉시 개발 진행 예정입니다.<br>
+특히 <strong>A항목(하단 탭 조정)</strong>은 어떤 탭을 남길지 클라이언트 결정이 필요합니다.
+</div>
+</div>
+</div>
+
+<!-- FOOTER -->
+<div style="text-align:center;padding:40px 20px;color:var(--gray);font-size:.85rem">
+<p>서울미녀 (Seoul Beauty) -- 클라이언트 검수 보고서</p>
+<p>작성: 2026-03-23 | 총 스크린샷: 34장 (17페이지 x PC/Mobile)</p>
+<p>문의: admin@seoulbeauty.app</p>
+</div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+<img src="" alt="확대 이미지" id="lightbox-img">
+</div>
+
+<script>
+function toggleSection(header){
+  header.parentElement.classList.toggle('open');
+}
+function openLightbox(img){
+  var lb=document.getElementById('lightbox');
+  document.getElementById('lightbox-img').src=img.src;
+  lb.classList.add('active');
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('active');
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLightbox()});
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('.section')[0].classList.add('open');
+});
+</script>
+
+</body>
+</html>

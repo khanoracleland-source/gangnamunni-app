@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 빠른 시작</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 60px;
+            max-width: 700px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .big-button {
+            display: block;
+            width: 100%;
+            padding: 30px;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            border: none;
+            cursor: pointer;
+        }
+
+        .big-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+        }
+
+        .big-button.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .icon {
+            font-size: 36px;
+            margin-right: 15px;
+        }
+
+        .status-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 30px 0;
+            border-left: 5px solid #667eea;
+        }
+
+        .status-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-checking {
+            background: #ffc107;
+        }
+
+        .status-online {
+            background: #28a745;
+        }
+
+        .status-offline {
+            background: #dc3545;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .info {
+            font-size: 14px;
+            color: #999;
+            margin-top: 30px;
+        }
+
+        .tabs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .tab {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Hairwang</h1>
+        <p class="subtitle">병원 정보 플랫폼 · 빠른 시작</p>
+
+        <div class="status-box">
+            <h3>
+                <span class="status-indicator status-checking" id="status-indicator"></span>
+                <span id="status-text">서버 상태 확인 중...</span>
+            </h3>
+            <p id="status-desc" style="font-size: 14px; color: #666; margin-top: 10px;">
+                웹서버 연결을 확인하고 있습니다...
+            </p>
+        </div>
+
+        <button class="big-button" onclick="openAllTabs()">
+            <span class="icon">🌐</span>
+            모든 페이지 한 번에 열기 (8개 탭)
+        </button>
+
+        <button class="big-button secondary" onclick="window.location.href='START_HERE.html'">
+            <span class="icon">📖</span>
+            상세 가이드 보기
+        </button>
+
+        <div class="tabs">
+            <a href="http://localhost:8080/" class="tab" target="_blank">메인</a>
+            <a href="http://localhost:8080/test_db_connection.php" class="tab" target="_blank">DB</a>
+            <a href="http://localhost:8080/new_http_v1_mars/login.php" class="tab" target="_blank">푸시</a>
+            <a href="http://localhost:8080/adm/" class="tab" target="_blank">관리</a>
+            <a href="http://localhost:8080/api/sns/test_login.php" class="tab" target="_blank">SNS</a>
+            <a href="http://localhost:8080/addon_app_admin/" class="tab" target="_blank">앱</a>
+            <a href="http://localhost:8080/new_http_v1_mars/api_docs.php" class="tab" target="_blank">API</a>
+            <a href="http://localhost:8080/new_http_v1_mars/settings.php" class="tab" target="_blank">설정</a>
+        </div>
+
+        <p class="info">
+            localhost:8080 | PHP 내장 서버
+        </p>
+    </div>
+
+    <script>
+        const urls = [
+            'http://localhost:8080/',
+            'http://localhost:8080/test_db_connection.php',
+            'http://localhost:8080/new_http_v1_mars/login.php',
+            'http://localhost:8080/adm/',
+            'http://localhost:8080/api/sns/test_login.php',
+            'http://localhost:8080/addon_app_admin/',
+            'http://localhost:8080/new_http_v1_mars/api_docs.php',
+            'http://localhost:8080/new_http_v1_mars/settings.php'
+        ];
+
+        function openAllTabs() {
+            const statusText = document.getElementById('status-text');
+            const indicator = document.getElementById('status-indicator');
+
+            if (indicator.classList.contains('status-offline')) {
+                alert('⚠️ 웹서버가 실행되지 않았습니다!\n\n먼저 "start_server.bat" 또는 "원클릭_시작.bat" 파일을 실행해주세요.');
+                return;
+            }
+
+            urls.forEach((url, index) => {
+                setTimeout(() => {
+                    window.open(url, '_blank');
+                }, index * 300); // 300ms 간격으로 열기
+            });
+
+            statusText.innerHTML = '✅ 8개 탭이 열렸습니다!';
+        }
+
+        // 서버 상태 확인
+        function checkServer() {
+            const statusText = document.getElementById('status-text');
+            const statusDesc = document.getElementById('status-desc');
+            const indicator = document.getElementById('status-indicator');
+
+            fetch('http://localhost:8080/')
+                .then(response => {
+                    if (response.ok) {
+                        statusText.textContent = '✅ 웹서버 실행 중';
+                        statusDesc.textContent = 'http://localhost:8080 에서 정상 작동 중입니다.';
+                        indicator.className = 'status-indicator status-online';
+                    } else {
+                        throw new Error('Server error');
+                    }
+                })
+                .catch(error => {
+                    statusText.textContent = '❌ 웹서버가 실행되지 않음';
+                    statusDesc.innerHTML = '아래 파일 중 하나를 실행하세요:<br><strong>원클릭_시작.bat</strong> 또는 <strong>start_server.bat</strong>';
+                    indicator.className = 'status-indicator status-offline';
+                });
+        }
+
+        // 페이지 로드 시 서버 확인
+        window.addEventListener('load', () => {
+            checkServer();
+            // 10초마다 재확인
+            setInterval(checkServer, 10000);
+        });
+
+        // 키보드 단축키: Ctrl+Enter로 모든 탭 열기
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                openAllTabs();
+            }
+        });
+    </script>
+</body>
+</html>

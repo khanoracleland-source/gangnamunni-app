@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이벤트 상세 - 서울미녀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic', sans-serif;
+            background: #F9F9F9;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF6B9D;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-button {
+            padding: 10px 24px;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        /* Event Header */
+        .event-hero {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .event-image {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 120px;
+            position: relative;
+        }
+
+        .event-badge {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: #FF4757;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .event-dday {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .event-header {
+            padding: 40px;
+        }
+
+        .event-category {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #FFE5ED;
+            color: #FF6B9D;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .event-title {
+            font-size: 36px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .event-hospital {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 30px;
+            cursor: pointer;
+            width: fit-content;
+        }
+
+        .event-hospital:hover {
+            color: #FF6B9D;
+        }
+
+        .event-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 25px;
+            background: #F9F9F9;
+            border-radius: 15px;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .meta-label {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .meta-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        /* Price Section */
+        .price-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        }
+
+        .price-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .price-info {
+            flex: 1;
+        }
+
+        .price-label {
+            font-size: 16px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .price-original {
+            font-size: 20px;
+            color: #999;
+            text-decoration: line-through;
+            margin-bottom: 8px;
+        }
+
+        .price-discounted {
+            font-size: 42px;
+            font-weight: 700;
+            color: #FF6B9D;
+        }
+
+        .price-save {
+            font-size: 16px;
+            color: #FF4757;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .btn-book {
+            padding: 18px 50px;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-book:hover {
+            background: #FF5088;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 107, 157, 0.4);
+        }
+
+        /* Event Details */
+        .event-details {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        }
+
+        .details-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #F0F0F0;
+        }
+
+        .details-content {
+            font-size: 16px;
+            line-height: 1.9;
+            color: #666;
+        }
+
+        .details-content h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin: 30px 0 15px 0;
+        }
+
+        .details-content ul {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+
+        .details-content li {
+            margin: 10px 0;
+            line-height: 1.7;
+        }
+
+        .highlight-box {
+            background: #FFF5F8;
+            border-left: 4px solid #FF6B9D;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .highlight-box h4 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #FF6B9D;
+            margin-bottom: 10px;
+        }
+
+        .highlight-box p {
+            color: #666;
+            line-height: 1.7;
+        }
+
+        /* Terms Section */
+        .terms-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        }
+
+        .terms-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .terms-list {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .terms-list li {
+            margin: 10px 0;
+            padding-left: 10px;
+        }
+
+        /* Sticky Booking Bar */
+        .sticky-booking {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            padding: 20px;
+            z-index: 999;
+            display: none;
+        }
+
+        .sticky-booking.visible {
+            display: block;
+        }
+
+        .sticky-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sticky-price {
+            display: flex;
+            align-items: baseline;
+            gap: 15px;
+        }
+
+        .sticky-price-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF6B9D;
+        }
+
+        .sticky-price-original {
+            font-size: 16px;
+            color: #999;
+            text-decoration: line-through;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 80px 20px;
+            font-size: 18px;
+            color: #999;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .event-image {
+                height: 250px;
+                font-size: 80px;
+            }
+
+            .event-header {
+                padding: 25px;
+            }
+
+            .event-title {
+                font-size: 26px;
+            }
+
+            .price-header {
+                flex-direction: column;
+                gap: 20px;
+                align-items: flex-start;
+            }
+
+            .btn-book {
+                width: 100%;
+            }
+
+            .sticky-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <span>💄</span>
+                <span>서울미녀</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="hospitals.html" class="nav-link">병원찾기</a>
+                <a href="events.html" class="nav-link">이벤트</a>
+                <a href="community.html" class="nav-link">커뮤니티</a>
+                <button class="nav-button" onclick="handleMyBooking()">내 예약</button>
+                <a href="settings.html" class="nav-link" style="font-size: 20px;" title="환경 설정">⚙️</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Container -->
+    <div class="container">
+        <div id="eventContent">
+            <div class="loading">이벤트 정보를 불러오는 중...</div>
+        </div>
+    </div>
+
+    <!-- Sticky Booking Bar -->
+    <div class="sticky-booking" id="stickyBooking">
+        <div class="sticky-content">
+            <div class="sticky-price">
+                <span class="sticky-price-value" id="stickyPrice">0원</span>
+                <span class="sticky-price-original" id="stickyOriginalPrice">0원</span>
+            </div>
+            <button class="btn-book" onclick="bookEvent()">지금 예약하기</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        const DEBUG = sessionStorage.getItem('debug') === 'true';
+        let currentEvent = null;
+
+        // Debug logging function
+        function debugLog(action, data) {
+            if (DEBUG) {
+                console.log(`[DEBUG ${new Date().toISOString()}] ${action}:`, data);
+            }
+        }
+
+        // Handle My Booking button
+        function handleMyBooking() {
+            debugLog('Button Click', { action: 'My Booking', page: 'event' });
+            alert('내 예약 페이지는 준비 중입니다.\n\n회원가입 후 이용 가능합니다.');
+        }
+
+        // Debug mode info
+        if (DEBUG) {
+            console.log('%c[DEBUG MODE ENABLED]', 'background: #FF6B9D; color: white; padding: 5px 10px; font-weight: bold;');
+            console.log('Set sessionStorage.setItem("debug", "false") to disable debug mode');
+        }
+
+        // Get URL parameter
+        function getUrlParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        const eventId = getUrlParameter('id');
+        debugLog('Page Initialized', { page: 'event', eventId, url: window.location.href });
+
+        // Mock event data (실제로는 API에서 가져올 데이터)
+        const mockEvents = {
+            1: {
+                id: 1,
+                title: '리프팅 특가 이벤트',
+                hospital: '강남피부과',
+                hospitalId: 1,
+                category: '리프팅',
+                icon: '⚡',
+                originalPrice: 500000,
+                discountedPrice: 250000,
+                discount: 50,
+                dday: 7,
+                deadline: '2026-02-05',
+                available: 15,
+                description: `
+                    <h3>🎯 이벤트 개요</h3>
+                    <p>20년 경력의 피부과 전문의가 직접 시술하는 울쎄라 리프팅을 특별 가격으로 만나보세요. FDA 승인 장비로 안전하고 효과적인 시술을 제공합니다.</p>
+
+                    <div class="highlight-box">
+                        <h4>✨ 이런 분들께 추천합니다</h4>
+                        <p>• 처짐이 고민이신 분<br>• 수술 없이 리프팅 효과를 원하시는 분<br>• 자연스러운 동안 피부를 원하시는 분</p>
+                    </div>
+
+                    <h3>📋 시술 정보</h3>
+                    <ul>
+                        <li><strong>시술 시간:</strong> 약 60-90분</li>
+                        <li><strong>마취 방법:</strong> 마취 크림 도포</li>
+                        <li><strong>회복 기간:</strong> 바로 일상생활 가능</li>
+                        <li><strong>효과 지속:</strong> 6-12개월</li>
+                    </ul>
+
+                    <h3>💎 포함 내용</h3>
+                    <ul>
+                        <li>울쎄라 리프팅 전체 얼굴 (300샷)</li>
+                        <li>전문의 1:1 맞춤 상담</li>
+                        <li>시술 후 진정 관리</li>
+                        <li>1개월 후 무료 사후관리 1회</li>
+                    </ul>
+
+                    <div class="highlight-box">
+                        <h4>🎁 특별 혜택</h4>
+                        <p>• 2인 이상 함께 예약 시 추가 5% 할인<br>• 당일 예약 시 비타민 앰플 1회 무료 제공<br>• 재방문 고객 10% 쿠폰 증정</p>
+                    </div>
+                `,
+                terms: [
+                    '본 이벤트는 신규 고객 및 6개월 이상 미방문 고객에게 적용됩니다.',
+                    '이벤트 기간은 사정에 따라 조기 종료될 수 있습니다.',
+                    '예약 취소는 시술 3일 전까지 가능하며, 그 이후에는 취소 수수료가 발생할 수 있습니다.',
+                    '임산부, 수유부, 피부 질환이 있는 경우 시술이 제한될 수 있습니다.',
+                    '시술 효과는 개인차가 있을 수 있습니다.',
+                    '다른 이벤트와 중복 적용되지 않습니다.'
+                ]
+            },
+            2: {
+                id: 2,
+                title: '보톡스 프리미엄 패키지',
+                hospital: '압구정클리닉',
+                hospitalId: 2,
+                category: '보톡스',
+                icon: '💉',
+                originalPrice: 300000,
+                discountedPrice: 180000,
+                discount: 40,
+                dday: 3,
+                deadline: '2026-02-01',
+                available: 8,
+                description: `
+                    <h3>🎯 이벤트 개요</h3>
+                    <p>미국 정품 보톡스 100유닛을 특별 가격으로 제공합니다. 자연스러운 주름 개선과 V라인 효과를 동시에 경험하세요.</p>
+
+                    <div class="highlight-box">
+                        <h4>✨ 이런 분들께 추천합니다</h4>
+                        <p>• 이마, 미간, 눈가 주름이 고민이신 분<br>• 사각턱이 발달하신 분<br>• 자연스러운 동안 효과를 원하시는 분</p>
+                    </div>
+
+                    <h3>📋 시술 정보</h3>
+                    <ul>
+                        <li><strong>시술 시간:</strong> 약 10-15분</li>
+                        <li><strong>마취 방법:</strong> 마취 크림 도포 (선택)</li>
+                        <li><strong>회복 기간:</strong> 바로 일상생활 가능</li>
+                        <li><strong>효과 지속:</strong> 3-6개월</li>
+                    </ul>
+
+                    <h3>💎 포함 내용</h3>
+                    <ul>
+                        <li>미국 정품 보톡스 100유닛</li>
+                        <li>전문의 1:1 맞춤 디자인</li>
+                        <li>시술 부위: 이마 + 미간 + 눈가 또는 사각턱</li>
+                        <li>2주 후 무료 터치업</li>
+                    </ul>
+                `,
+                terms: [
+                    '본 이벤트는 신규 고객에게 적용됩니다.',
+                    '정품 보톡스 사용을 보장하며, 로트 번호 확인이 가능합니다.',
+                    '임산부, 수유부, 신경근육 질환자는 시술이 제한됩니다.',
+                    '시술 후 당일 음주, 사우나는 피해주시기 바랍니다.',
+                    '효과는 개인차가 있으며, 2주 후 완전한 효과가 나타납니다.'
+                ]
+            }
+        };
+
+        function displayEvent() {
+            debugLog('Display Event', { eventId });
+            const event = mockEvents[eventId] || mockEvents[1];
+            currentEvent = event;
+
+            const savedAmount = event.originalPrice - event.discountedPrice;
+            debugLog('Event Data', { title: event.title, discount: event.discount, dday: event.dday });
+
+            const content = `
+                <!-- Event Hero -->
+                <div class="event-hero">
+                    <div class="event-image">
+                        <div class="event-dday">D-${event.dday}</div>
+                        <div class="event-badge">${event.discount}%</div>
+                        <span>${event.icon}</span>
+                    </div>
+                    <div class="event-header">
+                        <div class="event-category">${event.category}</div>
+                        <h1 class="event-title">${event.title}</h1>
+                        <div class="event-hospital" onclick="window.location.href='hospital.html?id=${event.hospitalId}'">
+                            🏥 ${event.hospital} <span style="font-size: 14px;">›</span>
+                        </div>
+
+                        <div class="event-meta">
+                            <div class="meta-item">
+                                <div class="meta-label">마감일</div>
+                                <div class="meta-value">${event.deadline}</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">남은 예약</div>
+                                <div class="meta-value">${event.available}개</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">할인율</div>
+                                <div class="meta-value">${event.discount}%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Section -->
+                <div class="price-section">
+                    <div class="price-header">
+                        <div class="price-info">
+                            <div class="price-label">정상가</div>
+                            <div class="price-original">${event.originalPrice.toLocaleString()}원</div>
+                            <div class="price-discounted">${event.discountedPrice.toLocaleString()}원</div>
+                            <div class="price-save">${savedAmount.toLocaleString()}원 할인!</div>
+                        </div>
+                        <button class="btn-book" onclick="bookEvent()">지금 예약하기</button>
+                    </div>
+                </div>
+
+                <!-- Event Details -->
+                <div class="event-details">
+                    <div class="details-title">📝 이벤트 상세 정보</div>
+                    <div class="details-content">
+                        ${event.description}
+                    </div>
+                </div>
+
+                <!-- Terms Section -->
+                <div class="terms-section">
+                    <div class="terms-title">⚠️ 유의사항</div>
+                    <ul class="terms-list">
+                        ${event.terms.map(term => `<li>${term}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+
+            document.getElementById('eventContent').innerHTML = content;
+            document.title = `${event.title} - 서울미녀`;
+
+            // Update sticky booking bar
+            document.getElementById('stickyPrice').textContent = event.discountedPrice.toLocaleString() + '원';
+            document.getElementById('stickyOriginalPrice').textContent = event.originalPrice.toLocaleString() + '원';
+        }
+
+        function bookEvent() {
+            debugLog('Button Click', { action: 'Book Event', eventId: currentEvent.id, hospital: currentEvent.hospital });
+            alert('예약 기능은 준비 중입니다.\n\n전화 예약: ' + (currentEvent.hospital === '강남피부과' ? '02-1234-5678' : '02-9876-5432'));
+        }
+
+        // Sticky booking bar show/hide on scroll
+        window.addEventListener('scroll', function() {
+            const stickyBar = document.getElementById('stickyBooking');
+            const priceSection = document.querySelector('.price-section');
+
+            if (priceSection) {
+                const priceSectionBottom = priceSection.offsetTop + priceSection.offsetHeight;
+
+                if (window.scrollY > priceSectionBottom) {
+                    stickyBar.classList.add('visible');
+                } else {
+                    stickyBar.classList.remove('visible');
+                }
+            }
+        });
+
+        // Initialize
+        if (eventId) {
+            debugLog('Initialize', { action: 'Display event', eventId });
+            displayEvent();
+        } else {
+            debugLog('Error', { message: 'No event ID provided' });
+            document.getElementById('eventContent').innerHTML = `
+                <div class="loading">
+                    <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                    <div>이벤트 정보를 찾을 수 없습니다</div>
+                    <button class="btn-book" style="margin-top: 20px;" onclick="window.location.href='events.html'">이벤트 목록으로</button>
+                </div>
+            `;
+        }
+    </script>
+
+    <!-- Settings Manager -->
+    <script src="js/settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "site_name": "Seoul Beauty",
+  "login": "Iniciar sesión",
+  "logout": "Cerrar sesión",
+  "signup": "Registrarse",
+  "home": "Inicio",
+  "hospitals": "Clínicas",
+  "reviews": "Reseñas",
+  "events": "Eventos",
+  "booking": "Reserva",
+  "search": "Buscar",
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "loading": "Cargando...",
+  "reservation": "Reservar ahora"
+}

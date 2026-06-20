@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>개발 진행 현황 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-speedometer2"></i> 개발 진행 현황</h1>
+        <div class="sb-subtitle">전체 기능 구현 진척도 및 마일스톤</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="sb-main">
+  <div class="container">
+    <nav class="sb-breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">홈</a></li><li class="breadcrumb-item active">개발 진행 현황</li></ol></nav>
+
+    <!-- Overall Progress -->
+    <div class="sb-card mb-4">
+      <div class="sb-card-body">
+        <div class="row align-items-center">
+          <div class="col-md-3 text-center mb-3 mb-md-0">
+            <div class="sb-stat-number" style="font-size: 3.5rem;">99%</div>
+            <div class="sb-stat-label">전체 진행률</div>
+          </div>
+          <div class="col-md-9">
+            <div class="progress mb-3" style="height: 24px; border-radius: 12px;">
+              <div class="progress-bar" role="progressbar" style="width: 99%; background: linear-gradient(90deg, var(--sb-primary), var(--sb-accent)); border-radius: 12px;" aria-valuenow="99" aria-valuemin="0" aria-valuemax="100">
+                <strong>99%</strong>
+              </div>
+            </div>
+            <div class="row g-2">
+              <div class="col-4"><small class="text-muted">완료: <strong class="text-success">46개</strong></small></div>
+              <div class="col-4"><small class="text-muted">진행 중: <strong style="color: var(--sb-warning);">0개</strong></small></div>
+              <div class="col-4"><small class="text-muted">예정: <strong class="text-muted">0개</strong></small></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase Stats -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-lg-3">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number">6</div>
+          <div class="sb-stat-label">완료 Phase</div>
+          <div class="sb-progress-bar mt-2"><div class="sb-progress-fill" style="width: 100%;"></div></div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number">16</div>
+          <div class="sb-stat-label">관리 메뉴</div>
+          <div class="sb-progress-bar mt-2"><div class="sb-progress-fill" style="width: 100%;"></div></div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number">7</div>
+          <div class="sb-stat-label">등록 마법사</div>
+          <div class="sb-progress-bar mt-2"><div class="sb-progress-fill" style="width: 100%;"></div></div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number">78</div>
+          <div class="sb-stat-label">E2E 테스트</div>
+          <div class="sb-progress-bar mt-2"><div class="sb-progress-fill" style="width: 100%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature Completion Table -->
+    <h2 class="sb-section-title"><i class="bi bi-list-check"></i> 기능 구현 현황</h2>
+
+    <div class="sb-card mb-4">
+      <div class="sb-card-body p-0">
+        <table class="sb-table mb-0">
+          <thead>
+            <tr>
+              <th style="width:5%">#</th>
+              <th style="width:25%">기능</th>
+              <th style="width:30%">상세</th>
+              <th style="width:10%">상태</th>
+              <th style="width:15%">완료일</th>
+              <th style="width:15%">담당</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Infra -->
+            <tr style="background: var(--sb-bg);"><td colspan="6" class="fw-bold"><i class="bi bi-hdd-rack me-1"></i> 인프라 및 서버</td></tr>
+            <tr><td>1</td><td>서버 구축 (Rocky Linux)</td><td>Contabo VPS, Apache, PHP 다중 버전</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.09</td><td>시스템</td></tr>
+            <tr><td>2</td><td>DB 통합 (hms_saas)</td><td>341+ 테이블, hairwang 이전</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>DB</td></tr>
+            <tr><td>3</td><td>Cloudflare 프록시</td><td>SSL, CDN, DDoS 방어</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.09</td><td>시스템</td></tr>
+            <tr><td>4</td><td>Mailcow 메일 서버</td><td>Docker 18 컨테이너, IMAP/SMTP</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>시스템</td></tr>
+
+            <!-- Admin System -->
+            <tr style="background: var(--sb-bg);"><td colspan="6" class="fw-bold"><i class="bi bi-gear me-1"></i> 관리자 시스템</td></tr>
+            <tr><td>5</td><td>공통 레이아웃 시스템</td><td>상단바, 사이드바, 다크모드, 캐시</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.09</td><td>프론트엔드</td></tr>
+            <tr><td>6</td><td>대시보드</td><td>통계 카드, 관리 그리드, 최근 활동</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.09</td><td>프론트엔드</td></tr>
+            <tr><td>7</td><td>병원/이미지 관리</td><td>아코디언 UI, 이미지 업로드</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.09</td><td>백엔드</td></tr>
+            <tr><td>8</td><td>후기 관리 시스템</td><td>CRUD, 승인 워크플로우, Quill 에디터</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>풀스택</td></tr>
+            <tr><td>9</td><td>카테고리 관리</td><td>SVG/이모지 피커, HMS 연동</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>프론트엔드</td></tr>
+            <tr><td>10</td><td>광고 관리</td><td>CRUD, 노출 관리, AI 검증</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>풀스택</td></tr>
+            <tr><td>11</td><td>하단 네비게이션</td><td>3종 아이콘, 순서/활성 관리</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.09</td><td>프론트엔드</td></tr>
+            <tr><td>12</td><td>테마 설정 (기본+고급)</td><td>CSS 변수, 커스텀 CSS/JS</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.09</td><td>프론트엔드</td></tr>
+            <tr><td>13</td><td>회원 관리</td><td>검색, 필터, 등급, 메모, 차단</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>백엔드</td></tr>
+            <tr><td>14</td><td>부관리자 RBAC</td><td>역할 기반 접근 제어 4등급</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>백엔드</td></tr>
+            <tr><td>15</td><td>메일 관리 v4</td><td>3컬럼 Gmail 스타일, IMAP/SMTP</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>풀스택</td></tr>
+
+            <!-- Integration -->
+            <tr style="background: var(--sb-bg);"><td colspan="6" class="fw-bold"><i class="bi bi-share me-1"></i> 시스템 연동</td></tr>
+            <tr><td>16</td><td>SSO 통합 로그인</td><td>3개 시스템 Cookie+DB 기반 SSO</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>백엔드</td></tr>
+            <tr><td>17</td><td>크론 4단계 동기화</td><td>HMS<->서울미녀<->Gnuboard 1분 동기화</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>백엔드</td></tr>
+            <tr><td>18</td><td>HMS 후기 연동</td><td>Laravel 모델/컨트롤러/뷰 구현</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>백엔드</td></tr>
+
+            <!-- Wizards -->
+            <tr style="background: var(--sb-bg);"><td colspan="6" class="fw-bold"><i class="bi bi-magic me-1"></i> 등록 마법사</td></tr>
+            <tr><td>19</td><td>의사 등록 마법사</td><td>5단계, 스케줄 설정</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.23</td><td>풀스택</td></tr>
+            <tr><td>20</td><td>간호사 등록 마법사</td><td>4단계, 교대 근무</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.23</td><td>풀스택</td></tr>
+            <tr><td>21</td><td>약사 등록 마법사</td><td>4단계, 약국 정보</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.23</td><td>풀스택</td></tr>
+            <tr><td>22</td><td>환자 등록 마법사</td><td>5단계, 의료/보험/보호자</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.23</td><td>풀스택</td></tr>
+            <tr><td>23</td><td>직원 등록 마법사</td><td>4단계, 직무/스케줄</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.23</td><td>풀스택</td></tr>
+            <tr><td>24</td><td>약품 등록 마법사</td><td>4단계, 재고/유통기한</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.23</td><td>풀스택</td></tr>
+            <tr><td>25</td><td>예약 등록 마법사</td><td>5단계, 달력/시간 선택</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.23</td><td>풀스택</td></tr>
+            <tr><td>26</td><td>엑셀 Import/Export</td><td>xlsx/xls/csv, 대량 등록</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.23</td><td>백엔드</td></tr>
+
+            <!-- AI -->
+            <tr style="background: var(--sb-bg);"><td colspan="6" class="fw-bold"><i class="bi bi-robot me-1"></i> AI 자동화</td></tr>
+            <tr><td>27</td><td>Phase A: AI 인프라</td><td>키 암호화, 멀티 프로바이더</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.25</td><td>백엔드</td></tr>
+            <tr><td>28</td><td>Phase B: 후기 AI 검증</td><td>품질검사, 스팸탐지, 감성분석</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.25</td><td>AI</td></tr>
+            <tr><td>29</td><td>Phase C: 광고 AI 검증</td><td>의료광고법 위반 탐지</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.25</td><td>AI</td></tr>
+            <tr><td>30</td><td>Phase D: AI 설정 관리</td><td>관리자 UI, 사용량 통계</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.25</td><td>프론트엔드</td></tr>
+            <tr><td>31</td><td>Phase E: 작성 도우미</td><td>실시간 제안, 자동완성</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.25</td><td>AI</td></tr>
+            <tr><td>32</td><td>DALL-E 이미지 생성</td><td>광고 이미지 자동 생성</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.25</td><td>AI</td></tr>
+
+            <!-- Automation -->
+            <tr style="background: var(--sb-bg);"><td colspan="6" class="fw-bold"><i class="bi bi-gear-wide me-1"></i> 자동화 및 테스트</td></tr>
+            <tr><td>33</td><td>자동 매뉴얼 캡처</td><td>Playwright + markerjs2 엔진</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.11</td><td>자동화</td></tr>
+            <tr><td>34</td><td>E2E 테스트 (78건)</td><td>페이지/AJAX/DB/엑셀/마법사 테스트</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.23</td><td>QA</td></tr>
+
+            <!-- Frontend -->
+            <tr style="background: var(--sb-bg);"><td colspan="6" class="fw-bold"><i class="bi bi-phone me-1"></i> 프론트엔드</td></tr>
+            <tr><td>35</td><td>프론트엔드 메인</td><td>서울미녀 스타일 모바일 UI</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.09</td><td>프론트엔드</td></tr>
+            <tr><td>36</td><td>커뮤니티/뷰티팁</td><td>카드형/리스트형 전환</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.09</td><td>프론트엔드</td></tr>
+            <tr><td>37</td><td>후기 에디터 v2</td><td>Quill.js 리치 에디터</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.24</td><td>프론트엔드</td></tr>
+
+            <!-- Docs -->
+            <tr style="background: var(--sb-bg);"><td colspan="6" class="fw-bold"><i class="bi bi-book me-1"></i> 문서화</td></tr>
+            <tr><td>38</td><td>시스템 매뉴얼</td><td>9개 문서, PDF/Word 내보내기</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>02.25</td><td>문서</td></tr>
+
+            <!-- In Progress -->
+            <tr style="background: var(--sb-bg);"><td colspan="6" class="fw-bold"><i class="bi bi-check-circle me-1"></i> 최근 완료 (04.06)</td></tr>
+            <tr><td>39</td><td>Flutter 모바일 앱</td><td>iOS 심사중 / Android 등록 완료</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>04.05</td><td>모바일</td></tr>
+            <tr><td>40</td><td>AI 맞춤법 검사 API</td><td>callAI() 기반 전용 맞춤법 검사 엔드포인트</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>04.06</td><td>AI</td></tr>
+            <tr><td>41</td><td>월별 사용량 통계</td><td>Chart.js 월별 추이 대시보드 + 6개월 통계</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>04.06</td><td>백엔드</td></tr>
+            <tr><td>42</td><td>다국어 지원 (10개 언어)</td><td>i18n.php + 10개 언어 JSON (ko/en/ja/zh/vi/th/id/es/ru)</td><td><span class="sb-badge sb-badge-pass">완료</span></td><td>04.06</td><td>프론트엔드</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <h2 class="sb-section-title"><i class="bi bi-clock-history"></i> 마일스톤 타임라인</h2>
+    <div class="sb-card mb-4">
+      <div class="sb-card-body">
+        <div class="row">
+          <div class="col-12">
+            <div style="position:relative; padding-left: 30px;">
+
+              <div style="position:absolute; left: 11px; top: 0; bottom: 0; width: 2px; background: var(--sb-border);"></div>
+
+              <div class="mb-4" style="position: relative;">
+                <div style="position:absolute; left: -25px; width: 14px; height: 14px; border-radius: 50%; background: var(--sb-success); border: 3px solid var(--sb-bg-card); box-shadow: 0 0 0 2px var(--sb-success);"></div>
+                <div class="sb-card" style="margin-left: 10px;">
+                  <div class="sb-card-body py-2 px-3">
+                    <div class="d-flex justify-content-between"><strong>서버 구축 + 관리자 기본 시스템</strong><span class="sb-badge sb-badge-pass">02.09</span></div>
+                    <small class="text-muted">Rocky Linux, Apache, DB, 공통 레이아웃, 대시보드, 기본 관리 메뉴 8개</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4" style="position: relative;">
+                <div style="position:absolute; left: -25px; width: 14px; height: 14px; border-radius: 50%; background: var(--sb-success); border: 3px solid var(--sb-bg-card); box-shadow: 0 0 0 2px var(--sb-success);"></div>
+                <div class="sb-card" style="margin-left: 10px;">
+                  <div class="sb-card-body py-2 px-3">
+                    <div class="d-flex justify-content-between"><strong>통합 시스템 + 관리자 완성</strong><span class="sb-badge sb-badge-pass">02.11</span></div>
+                    <small class="text-muted">DB 통합, SSO, 크론 동기화, 메일, RBAC, 카테고리, 후기 연동, 자동 매뉴얼</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4" style="position: relative;">
+                <div style="position:absolute; left: -25px; width: 14px; height: 14px; border-radius: 50%; background: var(--sb-success); border: 3px solid var(--sb-bg-card); box-shadow: 0 0 0 2px var(--sb-success);"></div>
+                <div class="sb-card" style="margin-left: 10px;">
+                  <div class="sb-card-body py-2 px-3">
+                    <div class="d-flex justify-content-between"><strong>등록 마법사 7종 + 엑셀</strong><span class="sb-badge sb-badge-pass">02.23</span></div>
+                    <small class="text-muted">의사/간호사/약사/환자/직원/약품/예약 마법사, 엑셀 Import/Export, E2E 78건 PASS</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4" style="position: relative;">
+                <div style="position:absolute; left: -25px; width: 14px; height: 14px; border-radius: 50%; background: var(--sb-success); border: 3px solid var(--sb-bg-card); box-shadow: 0 0 0 2px var(--sb-success);"></div>
+                <div class="sb-card" style="margin-left: 10px;">
+                  <div class="sb-card-body py-2 px-3">
+                    <div class="d-flex justify-content-between"><strong>후기 에디터 v2 + 승인 워크플로우</strong><span class="sb-badge sb-badge-pass">02.24</span></div>
+                    <small class="text-muted">Quill.js 리치 에디터, AI 연동 승인 워크플로우, 고도화 Phase 1~5</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4" style="position: relative;">
+                <div style="position:absolute; left: -25px; width: 14px; height: 14px; border-radius: 50%; background: var(--sb-success); border: 3px solid var(--sb-bg-card); box-shadow: 0 0 0 2px var(--sb-success);"></div>
+                <div class="sb-card" style="margin-left: 10px;">
+                  <div class="sb-card-body py-2 px-3">
+                    <div class="d-flex justify-content-between"><strong>AI 자동화 5단계 (Phase A~E)</strong><span class="sb-badge sb-badge-pass">02.25</span></div>
+                    <small class="text-muted">AI 인프라, 후기 검증, 광고 검증, 설정 관리, 작성 도우미, 이미지 생성</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4" style="position: relative;">
+                <div style="position:absolute; left: -25px; width: 14px; height: 14px; border-radius: 50%; background: var(--sb-primary); border: 3px solid var(--sb-bg-card); box-shadow: 0 0 0 2px var(--sb-primary);"></div>
+                <div class="sb-card" style="margin-left: 10px;">
+                  <div class="sb-card-body py-2 px-3">
+                    <div class="d-flex justify-content-between"><strong>시스템 매뉴얼 + 테스트 문서화</strong><span class="sb-badge sb-badge-purple">02.25</span></div>
+                    <small class="text-muted">9개 HTML 문서, PDF/Word 내보내기, 다크/라이트 모드</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-0" style="position: relative;">
+                <div style="position:absolute; left: -25px; width: 14px; height: 14px; border-radius: 50%; background: var(--sb-warning); border: 3px solid var(--sb-bg-card); box-shadow: 0 0 0 2px var(--sb-warning);"></div>
+                <div class="sb-card" style="margin-left: 10px; border-style: dashed;">
+                  <div class="sb-card-body py-2 px-3">
+                    <div class="d-flex justify-content-between"><strong>모바일 앱 + 다국어 고도화중</strong><span class="sb-badge sb-badge-warn">진행 중</span></div>
+                    <small class="text-muted">하이브리드 WebView 앱, 10개 언어 지원, 최적화</small>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category Summary -->
+    <h2 class="sb-section-title"><i class="bi bi-pie-chart"></i> 카테고리별 완료 현황</h2>
+    <div class="row g-3 mb-4">
+      <div class="col-md-6 col-lg-4">
+        <div class="sb-card">
+          <div class="sb-card-body">
+            <div class="d-flex justify-content-between mb-2"><span class="fw-semibold">인프라 및 서버</span><span class="sb-badge sb-badge-pass">4/4</span></div>
+            <div class="sb-progress-bar"><div class="sb-progress-fill" style="width: 100%;"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="sb-card">
+          <div class="sb-card-body">
+            <div class="d-flex justify-content-between mb-2"><span class="fw-semibold">관리자 시스템</span><span class="sb-badge sb-badge-pass">11/11</span></div>
+            <div class="sb-progress-bar"><div class="sb-progress-fill" style="width: 100%;"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="sb-card">
+          <div class="sb-card-body">
+            <div class="d-flex justify-content-between mb-2"><span class="fw-semibold">시스템 연동</span><span class="sb-badge sb-badge-pass">3/3</span></div>
+            <div class="sb-progress-bar"><div class="sb-progress-fill" style="width: 100%;"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="sb-card">
+          <div class="sb-card-body">
+            <div class="d-flex justify-content-between mb-2"><span class="fw-semibold">등록 마법사</span><span class="sb-badge sb-badge-pass">8/8</span></div>
+            <div class="sb-progress-bar"><div class="sb-progress-fill" style="width: 100%;"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="sb-card">
+          <div class="sb-card-body">
+            <div class="d-flex justify-content-between mb-2"><span class="fw-semibold">AI 자동화</span><span class="sb-badge sb-badge-pass">6/6</span></div>
+            <div class="sb-progress-bar"><div class="sb-progress-fill" style="width: 100%;"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="sb-card">
+          <div class="sb-card-body">
+            <div class="d-flex justify-content-between mb-2"><span class="fw-semibold">프론트엔드 / 모바일</span><span class="sb-badge sb-badge-warn">3/4</span></div>
+            <div class="sb-progress-bar"><div class="sb-progress-fill" style="width: 75%; background: linear-gradient(90deg, var(--sb-warning), var(--sb-danger));"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. 개발 진행 현황 v1.0</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_진행현황.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_진행현황.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+</body>
+</html>

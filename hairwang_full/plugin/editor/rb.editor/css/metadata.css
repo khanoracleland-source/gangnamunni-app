@@ -1,0 +1,109 @@
+/* 메타 정보 */
+.url-preview {
+    padding: 0px;
+    margin: 10px 0;
+    margin-bottom: 0px;
+    position: relative;
+    box-sizing: border-box;
+    border:1px solid rgba(0,0,0,0.0);
+    display: inline-block;
+    box-sizing: border-box;
+}
+
+.url-preview-video .url-preview {width: 450px; height:auto;}
+.url-preview-meta .url-preview {width: 450px; background-color: #F0F3F9; padding: 20px; border-radius: 10px; min-height: 125px;}
+.url-preview-img .url-preview {width: 450px; height:auto;}
+.url-preview-img .url-preview a {border:0px;}
+.url-preview .delete-preview img {object-fit: none !important; width: auto; height:auto; cursor: pointer;}
+
+.url-preview .proxyImg {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+}
+
+.url-preview .proxyImg img {
+    width: 150px;
+    height: 83px;
+    object-fit: cover;
+    border-radius: 10px;
+    border:0px !important;
+}
+
+.url-preview .metaData {
+    padding-left: 170px;
+    text-align: left;
+}
+
+.url-preview .delete-preview {
+    position: absolute;
+    top: -4px;
+    right: -33px;
+    background-color:transparent;
+    width: 24px; height:24px;
+    border: 0px;
+    cursor: pointer;
+    text-align: center !important;
+}
+
+
+.url-preview h3 {
+    margin: 0px 0;
+    font-size: 16px;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.url-preview p {
+    margin: 2px 0;
+    font-size: 12px;
+    color: #999;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.url-preview a {
+    color: #000;
+    font-size: 11px;
+    display: block;
+    text-decoration: none;
+    border:0px !important;
+    border-bottom: 0px !important;
+}
+
+.url-preview .rb-video-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 비율 */
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+    background: black;
+    width: 100%;
+    box-sizing: border-box;
+}
+.url-preview .rb-video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+@media all and (max-width:512px) {
+    .url-preview-video .url-preview {width: 100% !important;}
+    .url-preview-meta .url-preview {width: 100% !important;}
+    .url-preview .proxyImg {position: inherit; top:inherit; left: inherit; width: 100%;}
+    .url-preview .metaData {padding-left: 0px !important; margin-top: 15px;}
+    .url-preview .proxyImg img {width: 100%; height:150px;}
+    .url-preview .delete-preview {top:-1px; right:-1px; background-color: #fff;}
+    .url-preview a {margin-top: 10px;}
+    .url-preview .proxyImg img {height: auto !important; border:0px !important;}
+}

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hairwang 프로젝트 시작 페이지</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .alert {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .alert-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .alert-content {
+            color: #856404;
+            line-height: 1.6;
+        }
+
+        .alert-content code {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .btn-icon {
+            font-size: 24px;
+        }
+
+        .steps {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .step {
+            display: flex;
+            align-items: start;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .step:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .step-desc {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status-ready {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .info-box strong {
+            color: #0d47a1;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Hairwang 프로젝트</h1>
+        <p class="subtitle">SNS/PG 통합 병원 정보 플랫폼 · 로컬 테스트 환경</p>
+
+        <div class="alert">
+            <div class="alert-title">⚠️ 웹서버를 먼저 실행해주세요!</div>
+            <div class="alert-content">
+                이 페이지는 정적 HTML 파일입니다. PHP 기반 프로젝트를 테스트하려면 <strong>반드시 웹서버를 실행</strong>해야 합니다.
+                <br><br>
+                아래의 <code>start_server.bat</code> 파일을 더블클릭하여 웹서버를 시작하세요.
+            </div>
+        </div>
+
+        <!-- 시작 단계 -->
+        <div class="section">
+            <h2 class="section-title">📋 시작 단계</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">웹서버 실행</div>
+                        <div class="step-desc">
+                            프로젝트 루트 폴더의 <strong>start_server.bat</strong> 파일을 더블클릭하세요.
+                            <div class="code-block">H:\carebaby_project\server_backup_dev\hairwang_dev_sns_shop_2026_01_18\start_server.bat</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">PHP 내장 서버 시작 확인</div>
+                        <div class="step-desc">
+                            명령 프롬프트 창에 "서버가 시작되었습니다!" 메시지가 표시되는지 확인하세요.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">크롬 브라우저에서 접속</div>
+                        <div class="step-desc">
+                            아래의 "메인 사이트 열기" 버튼을 클릭하거나, 주소창에 <code>http://localhost:8080/</code>을 입력하세요.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 빠른 접속 -->
+        <div class="section">
+            <h2 class="section-title">🌐 빠른 접속 <span class="status status-pending">서버 실행 필요</span></h2>
+            <div class="btn-group">
+                <a href="http://localhost:8080/" class="btn" target="_blank">
+                    <span>메인 사이트 열기</span>
+                    <span class="btn-icon">→</span>
+                </a>
+                <a href="http://localhost:8080/test_db_connection.php" class="btn btn-success" target="_blank">
+                    <span>데이터베이스 테스트</span>
+                    <span class="btn-icon">🔌</span>
+                </a>
+                <a href="http://localhost:8080/new_http_v1_mars/login.php" class="btn btn-secondary" target="_blank">
+                    <span>푸시 알림 대시보드</span>
+                    <span class="btn-icon">🔔</span>
+                </a>
+                <a href="http://localhost:8080/adm/" class="btn" target="_blank">
+                    <span>관리자 페이지</span>
+                    <span class="btn-icon">⚙️</span>
+                </a>
+                <a href="http://localhost:8080/api/sns/test_login.php" class="btn" target="_blank">
+                    <span>SNS 로그인 테스트</span>
+                    <span class="btn-icon">👤</span>
+                </a>
+                <a href="http://localhost:8080/addon_app_admin/" class="btn" target="_blank">
+                    <span>앱 관리 프로그램</span>
+                    <span class="btn-icon">📱</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 주요 기능 -->
+        <div class="section">
+            <h2 class="section-title">✨ 주요 기능</h2>
+            <div class="info-box">
+                <strong>✅ SNS 로그인 (6개 플랫폼)</strong>
+                <ul style="margin: 10px 0 10px 20px;">
+                    <li>네이버, 카카오, 구글, 페이스북, 트위터, 페이코</li>
+                    <li>OAuth 2.0 인증</li>
+                </ul>
+            </div>
+
+            <div class="info-box">
+                <strong>✅ PG 결제 연동 (5개 업체)</strong>
+                <ul style="margin: 10px 0 10px 20px;">
+                    <li>이니시스, LG U+, KCP, 카카오페이, 나이스페이</li>
+                </ul>
+            </div>
+
+            <div class="info-box">
+                <strong>✅ FCM 푸시 알림</strong>
+                <ul style="margin: 10px 0 10px 20px;">
+                    <li>Firebase HTTP v1 API</li>
+                    <li>토픽 전송 및 개별 전송</li>
+                    <li>관리자 대시보드</li>
+                </ul>
+            </div>
+
+            <div class="info-box">
+                <strong>✅ 보안 강화</strong>
+                <ul style="margin: 10px 0 10px 20px;">
+                    <li>Bcrypt 비밀번호 해싱</li>
+                    <li>Brute Force 방어 (5회 시도, 30분 잠금)</li>
+                    <li>CSRF 토큰 보호</li>
+                    <li>세션 하이재킹 방지</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 문서 -->
+        <div class="section">
+            <h2 class="section-title">📚 문서</h2>
+            <div class="btn-group">
+                <a href="file:///H:/carebaby_project/server_backup_dev/hairwang_dev_sns_shop_2026_01_18/크롬_브라우저_테스트_가이드.md" class="btn btn-success" target="_blank">
+                    <span>테스트 가이드</span>
+                    <span class="btn-icon">📖</span>
+                </a>
+                <a href="file:///H:/carebaby_project/server_backup_dev/hairwang_dev_sns_shop_2026_01_18/남은_작업_완료_보고서_2026-01-29.md" class="btn btn-success" target="_blank">
+                    <span>개발 완료 보고서</span>
+                    <span class="btn-icon">📄</span>
+                </a>
+                <a href="file:///H:/carebaby_project/server_backup_dev/hairwang_dev_sns_shop_2026_01_18/api/sns/SNS_API_설정_가이드.md" class="btn btn-success" target="_blank">
+                    <span>SNS API 설정 가이드</span>
+                    <span class="btn-icon">🔑</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 시스템 정보 -->
+        <div class="section">
+            <h2 class="section-title">💻 시스템 정보</h2>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-size: 14px; line-height: 1.8;">
+                <div><strong>프로젝트 경로:</strong> H:\carebaby_project\server_backup_dev\hairwang_dev_sns_shop_2026_01_18\</div>
+                <div><strong>데이터베이스:</strong> 124.111.85.242:3306 (hairwang)</div>
+                <div><strong>웹서버:</strong> PHP 내장 서버 (localhost:8080)</div>
+                <div><strong>푸시 서버:</strong> PHP 내장 서버 (localhost:8081)</div>
+                <div><strong>기술 스택:</strong> PHP 7.4+, 그누보드5, MySQL, Firebase FCM</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #999; font-size: 13px;">
+            <p>Hairwang 병원 정보 플랫폼 v1.0</p>
+            <p>개발 완료: 2026-01-29</p>
+        </div>
+    </div>
+
+    <script>
+        // 링크 클릭 시 서버 실행 여부 확인
+        document.querySelectorAll('a[href^="http://localhost"]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                // 서버가 실행되지 않았을 경우 경고 (실제로는 연결 실패 시 브라우저에서 처리됨)
+                const originalHref = this.href;
+                console.log('접속 시도:', originalHref);
+            });
+        });
+
+        // 페이지 로드 시 서버 상태 확인
+        window.addEventListener('load', function() {
+            fetch('http://localhost:8080/')
+                .then(response => {
+                    if (response.ok) {
+                        // 서버가 실행 중
+                        document.querySelectorAll('.status-pending').forEach(el => {
+                            el.textContent = '서버 실행 중';
+                            el.classList.remove('status-pending');
+                            el.classList.add('status-ready');
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.log('서버가 아직 실행되지 않았습니다:', error);
+                });
+        });
+    </script>
+</body>
+</html>

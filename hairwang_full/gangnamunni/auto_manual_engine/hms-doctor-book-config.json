@@ -1,0 +1,203 @@
+{
+  "_comment": "HMS HMS 의사 매뉴얼 - Auto Manual Config",
+  "_version": "1.0",
+  "_updated": "2026-03-05",
+  "configKey": "hms-doctor-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/",
+  "browser": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "headless": true
+  },
+  "login": {
+    "required": true,
+    "url": "login",
+    "usernameField": "input[name='email']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[type='submit']",
+    "successIndicator": ".side-menus",
+    "username": "alvena57@example.net",
+    "password": "123456"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "HMS 로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 성공 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "HMS 의사 매뉴얼",
+    "outputDir": "../uploads/hms-doctor-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_dashboard",
+      "title": "대시보드",
+      "icon": "bi-speedometer2",
+      "pages": [
+        {
+          "key": "doc_dashboard",
+          "label": "의사 대시보드",
+          "url": "birth-reports",
+          "description": "의사 전용 대시보드",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_clinical",
+      "title": "진료 관리",
+      "icon": "bi-clipboard2-pulse",
+      "pages": [
+        {
+          "key": "doc_profile",
+          "label": "내 프로필",
+          "url": "employee/doctor",
+          "description": "의사 프로필 및 정보",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_prescriptions",
+          "label": "처방전",
+          "url": "prescriptions",
+          "description": "처방전 작성/관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_diagnosis",
+          "label": "진단 검사",
+          "url": "patient-diagnosis-test",
+          "description": "진단 검사 결과",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_opds",
+          "label": "입원/외래",
+          "url": "opds",
+          "description": "외래/입원 환자 기록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_admissions",
+          "label": "환자 입원",
+          "url": "patient-admissions",
+          "description": "입원 환자 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_operations",
+          "label": "수술 보고서",
+          "url": "operation-reports",
+          "description": "수술 보고서",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch03_facility",
+      "title": "시설 & 기타",
+      "icon": "bi-building",
+      "pages": [
+        {
+          "key": "doc_beds",
+          "label": "병상 배정",
+          "url": "bed-assigns",
+          "description": "환자 병상 현황",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_documents",
+          "label": "문서 관리",
+          "url": "documents",
+          "description": "문서 업로드/관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_notice",
+          "label": "게시판",
+          "url": "employee/notice-board",
+          "description": "공지사항",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_meeting",
+          "label": "실시간 미팅",
+          "url": "live-meeting",
+          "description": "화상 미팅",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_payroll",
+          "label": "급여",
+          "url": "employee/payroll",
+          "description": "급여 내역",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "doc_sms",
+          "label": "SMS",
+          "url": "sms",
+          "description": "SMS 발송",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

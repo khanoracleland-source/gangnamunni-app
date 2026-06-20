@@ -1,0 +1,80 @@
+# Laravel vendor
+/vendor/
+composer.phar
+
+# 환경설정 (직접 생성 필요)
+.env
+.env.backup
+.env.example
+.env.production.backup
+*.key
+
+# Laravel 생성 파일
+/public/hot
+/public/storage
+/public/mix-manifest.json
+/storage/logs/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+/storage/app/public/
+*.key
+Homestead.json
+Homestead.yaml
+.phpunit.result.cache
+
+# IDE
+.idea/
+.vscode/
+.stfolder/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# DB / 백업 파일
+/sql_dumps/
+*.sql
+*.sql.gz
+*.tar.gz
+*.zip
+
+# Gnuboard 데이터
+/hairwang_full/data/
+/hairwang_full/db/
+/hairwang_full/phpMyAdmin-5.2.2/
+/hairwang_full/hairwang_app_source.zip
+/hairwang_full/gangnamunni_backup_*/
+
+# gangnamunni 제외
+/hairwang_full/gangnamunni/uploads/
+/hairwang_full/gangnamunni/node_modules/
+/hairwang_full/gangnamunni/screenshots/
+/hairwang_full/gangnamunni/figma/
+/hairwang_full/gangnamunni/figma_after/
+/hairwang_full/gangnamunni/_pagetest/
+/hairwang_full/gangnamunni/auto_manual_engine/output/
+/hairwang_full/gangnamunni/docs/*.pdf
+/hairwang_full/gangnamunni/*.tar.gz
+
+# hospital-api
+/hospital-api/vendor/
+/hospital-api/public/
+/hospital-api/.vs/
+/hospital-api/storage/logs/
+/hospital-api/storage/framework/
+
+# 기타 작업 폴더
+/site_get/
+
+# 개발 환경 — 비밀번호 포함 파일 (GitHub 비공개)
+.dev/server_info.md
+
+# Windows 예약어 파일 (Windows clone 불가)
+**/nul
+**/NUL
+**/con
+**/aux
+**/prn

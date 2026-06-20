@@ -1,0 +1,262 @@
+{
+    "_comment": "서울미녀 플랫폼 자동 테스트 설정 파일",
+    "_version": "1.1.0",
+    "_updated": "2026-02-14",
+    "_description": "Playwright 기반 자동 테스트 - 3개 시스템, 32개 페이지 순회 + 스크린샷 + 에러 감지",
+
+    "baseUrl": "https://hms.seoulbeauty.app",
+
+    "browser": {
+        "headless": true,
+        "channel": "chrome",
+        "viewport": { "width": 1920, "height": 1080 },
+        "timeout": 30000,
+        "captureDelay": 2000,
+        "fullPage": true
+    },
+
+    "report": {
+        "title": "서울미녀 플랫폼 - 시스템 테스트 보고서",
+        "subtitle": "Seoul Beauty Platform - System Test Report",
+        "author": "Seoul Beauty Dev Team",
+        "version": "v1.0",
+        "outputDir": "../uploads/auto_test",
+        "formats": ["docx", "pdf"]
+    },
+
+    "systems": [
+        {
+            "id": "hms_admin",
+            "name": "HMS 슈퍼관리자 (Laravel)",
+            "description": "InfyHMS 기반 병원 관리 백엔드 - 슈퍼관리자 대시보드",
+            "loginUrl": "/login",
+            "credentials": {
+                "usernameField": "input[name='email']",
+                "passwordField": "input[name='password']",
+                "submitButton": "button[type='submit']",
+                "username": "admin@hms.com",
+                "password": "123456"
+            },
+            "loginSuccessIndicator": "/dashboard",
+            "pages": [
+                {
+                    "name": "슈퍼관리자 대시보드",
+                    "url": "/super-admin/dashboard",
+                    "checks": ["elementExists:[class*=\"card\"]", "elementExists:.navbar", "noPhpError", "noJsError"],
+                    "description": "전체 통계 카드, 최근 활동, 시스템 요약"
+                },
+                {
+                    "name": "병원 관리",
+                    "url": "/super-admin/hospitals",
+                    "checks": ["elementExists:table", "elementExists:th", "noPhpError", "noJsError"],
+                    "description": "등록 병원 목록 (101개 테넌트)"
+                },
+                {
+                    "name": "병원 유형 관리",
+                    "url": "/super-admin/hospital-type",
+                    "checks": ["elementExists:table", "elementExists:th", "noPhpError", "noJsError"],
+                    "description": "시술 카테고리 (12개 유형)"
+                },
+                {
+                    "name": "요금제 관리",
+                    "url": "/super-admin/subscription-plans",
+                    "checks": ["elementExists:[class*=\"card\"]", "noPhpError", "noJsError"],
+                    "description": "구독 요금제 설정"
+                },
+                {
+                    "name": "결제 내역",
+                    "url": "/super-admin/transactions",
+                    "checks": ["elementExists:table", "noPhpError", "noJsError"],
+                    "description": "결제/거래 내역"
+                },
+                {
+                    "name": "일반 설정",
+                    "url": "/super-admin/general-settings",
+                    "checks": ["elementExists:form", "noPhpError", "noJsError"],
+                    "description": "슈퍼관리자 시스템 일반 설정"
+                },
+                {
+                    "name": "후기 관리 (HMS)",
+                    "url": "/hospital-reviews",
+                    "checks": ["elementExists:table", "noPhpError", "noJsError"],
+                    "description": "HMS 연동 후기 관리 (5건)"
+                },
+                {
+                    "name": "HMS 랜딩페이지",
+                    "url": "/",
+                    "skipLogin": true,
+                    "checks": ["elementExists:.navbar", "elementExists:footer", "noPhpError", "noJsError"],
+                    "description": "SaaS 소개 + 병원 가입 페이지"
+                }
+            ]
+        },
+        {
+            "id": "gangnamunni_admin",
+            "name": "서울미녀 관리자 (PHP)",
+            "description": "서울미녀 프론트엔드 관리 패널 - 콘텐츠/회원/테마 관리",
+            "loginUrl": "/hairwang/gangnamunni/dashboard.php",
+            "credentials": {
+                "usernameField": "input[name='username']",
+                "passwordField": "input[name='password']",
+                "submitButton": "button[type='submit']",
+                "username": "admin",
+                "password": "admin123"
+            },
+            "loginSuccessIndicator": "dashboard",
+            "pages": [
+                {
+                    "name": "관리자 대시보드",
+                    "url": "/hairwang/gangnamunni/dashboard.php",
+                    "checks": ["elementExists:.stat-card", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "통계카드, 외부링크, 관리메뉴 그리드(12개), 최근활동"
+                },
+                {
+                    "name": "병원 이미지 관리",
+                    "url": "/hairwang/gangnamunni/admin_hospital_images.php",
+                    "checks": ["elementExists:[class*=\"accordion\"]", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "아코디언 기반 병원 CRUD, 이미지 관리, 일괄삭제"
+                },
+                {
+                    "name": "후기 관리",
+                    "url": "/hairwang/gangnamunni/admin_reviews.php",
+                    "checks": ["elementExists:table", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "후기 보기/편집/승인/거부/일괄처리"
+                },
+                {
+                    "name": "카테고리 관리",
+                    "url": "/hairwang/gangnamunni/admin_categories.php",
+                    "checks": ["elementExists:table", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "이모지/SVG 아이콘, 활성/비활성 토글"
+                },
+                {
+                    "name": "광고 관리",
+                    "url": "/hairwang/gangnamunni/admin_ads.php",
+                    "checks": ["elementExists:table", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "광고 CRUD 관리"
+                },
+                {
+                    "name": "네비게이션 관리",
+                    "url": "/hairwang/gangnamunni/admin_navigation.php",
+                    "checks": ["elementExists:table", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "이모지/이미지 아이콘 타입, 일괄 활성화/비활성화"
+                },
+                {
+                    "name": "테마 설정",
+                    "url": "/hairwang/gangnamunni/admin_theme.php",
+                    "checks": ["elementExists:form", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "테마 색상/레이아웃 설정"
+                },
+                {
+                    "name": "고급 테마",
+                    "url": "/hairwang/gangnamunni/admin_theme_advanced.php",
+                    "checks": ["elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "고급 테마 커스터마이징"
+                },
+                {
+                    "name": "점검 모드",
+                    "url": "/hairwang/gangnamunni/admin_maintenance.php",
+                    "checks": ["elementExists:form", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "사이트 점검 모드 설정"
+                },
+                {
+                    "name": "확장 계획",
+                    "url": "/hairwang/gangnamunni/admin_upgrade_plan.php",
+                    "checks": ["elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "업그레이드 로드맵"
+                },
+                {
+                    "name": "회원 관리",
+                    "url": "/hairwang/gangnamunni/admin_members.php",
+                    "checks": ["elementExists:table", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "검색/필터/등급/메모/차단"
+                },
+                {
+                    "name": "부관리자 관리",
+                    "url": "/hairwang/gangnamunni/admin_admins.php",
+                    "checks": ["elementExists:table", "elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "부관리자 RBAC 역할 관리"
+                },
+                {
+                    "name": "자동 매뉴얼",
+                    "url": "/hairwang/gangnamunni/admin_auto_manual.php",
+                    "checks": ["elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "Playwright 기반 자동 캡처 도구"
+                },
+                {
+                    "name": "메일 관리",
+                    "url": "/hairwang/gangnamunni/admin_mail.php",
+                    "checks": ["elementExists:[class*=\"sidebar\"]", "noPhpError", "noJsError"],
+                    "description": "IMAP 메일 관리 (3컬럼, AJAX)"
+                }
+            ]
+        },
+        {
+            "id": "gangnamunni_frontend",
+            "name": "서울미녀 프론트엔드 (고객용)",
+            "description": "고객이 사용하는 앱 화면 - 병원 검색/예약/상담/후기",
+            "loginUrl": null,
+            "pages": [
+                {
+                    "name": "메인 페이지",
+                    "url": "/hairwang/gangnamunni/index.php",
+                    "checks": ["elementExists:[class*=\"category\"]", "elementExists:.bottom-nav", "noPhpError", "noJsError"],
+                    "description": "카테고리 그리드 + 병원 카드 목록"
+                },
+                {
+                    "name": "병원 목록",
+                    "url": "/hairwang/gangnamunni/hospitals.php",
+                    "checks": ["elementExists:.hospital-card", "noPhpError", "noJsError"],
+                    "description": "전체 병원 검색/필터 목록"
+                },
+                {
+                    "name": "병원 상세",
+                    "url": "/hairwang/gangnamunni/detail.php?id=8093",
+                    "checks": ["noPhpError", "noJsError"],
+                    "description": "병원 상세 정보 + 의사 목록 + 후기"
+                },
+                {
+                    "name": "예약 페이지",
+                    "url": "/hairwang/gangnamunni/booking.php?hospital_id=8093",
+                    "checks": ["noPhpError", "noJsError"],
+                    "description": "실시간 예약 (HMS 연동) - 미로그인 시 메인 리다이렉트"
+                },
+                {
+                    "name": "상담 페이지",
+                    "url": "/hairwang/gangnamunni/consultation.php",
+                    "checks": ["noPhpError", "noJsError"],
+                    "description": "온라인 상담 신청 - 미로그인 시 메인 리다이렉트"
+                },
+                {
+                    "name": "뷰티팁/커뮤니티",
+                    "url": "/hairwang/gangnamunni/tips.php",
+                    "checks": ["noPhpError", "noJsError"],
+                    "description": "카드형/리스트형 전환, 커뮤니티 글"
+                },
+                {
+                    "name": "이벤트",
+                    "url": "/hairwang/gangnamunni/events.php",
+                    "checks": ["noPhpError", "noJsError"],
+                    "description": "진행중인 이벤트/프로모션"
+                },
+                {
+                    "name": "검색",
+                    "url": "/hairwang/gangnamunni/search.php",
+                    "checks": ["elementExists:input", "noPhpError", "noJsError"],
+                    "description": "병원/시술 통합 검색"
+                },
+                {
+                    "name": "로그인 페이지",
+                    "url": "/hairwang/bbs/login.php",
+                    "checks": ["elementExists:form", "elementExists:input[type=password]", "noPhpError", "noJsError"],
+                    "description": "Gnuboard 회원 로그인"
+                },
+                {
+                    "name": "회원가입 페이지",
+                    "url": "/hairwang/bbs/register.php",
+                    "checks": ["elementExists:form", "noPhpError", "noJsError"],
+                    "description": "Gnuboard 회원가입"
+                }
+            ]
+        }
+    ]
+}

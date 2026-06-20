@@ -1,0 +1,412 @@
+{
+  "_comment": "HMS HMS 병원관리자 매뉴얼 - Auto Manual Config",
+  "_version": "1.0",
+  "_updated": "2026-03-05",
+  "configKey": "hms-admin-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/",
+  "browser": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "headless": true
+  },
+  "login": {
+    "required": true,
+    "url": "login",
+    "usernameField": "input[name='email']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[type='submit']",
+    "successIndicator": ".side-menus",
+    "username": "srunolfsson@example.com",
+    "password": "123456"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "HMS 로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 성공 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "HMS 병원관리자 매뉴얼",
+    "outputDir": "../uploads/hms-admin-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_dashboard",
+      "title": "대시보드",
+      "icon": "bi-speedometer2",
+      "pages": [
+        {
+          "key": "admin_dashboard",
+          "label": "병원 대시보드",
+          "url": "dashboard",
+          "description": "병원 전체 현황 대시보드",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_users",
+      "title": "사용자 관리",
+      "icon": "bi-people",
+      "pages": [
+        {
+          "key": "admin_users",
+          "label": "사용자 목록",
+          "url": "users",
+          "description": "의사/간호사/약사/접수원 전체 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch03_appointments",
+      "title": "예약 & 청구",
+      "icon": "bi-calendar",
+      "pages": [
+        {
+          "key": "admin_appointments",
+          "label": "예약 관리",
+          "url": "appointments",
+          "description": "환자 예약 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_bills",
+          "label": "청구서",
+          "url": "bills",
+          "description": "의료비 청구서 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_opd_charges",
+          "label": "진료비",
+          "url": "doctor-opd-charges",
+          "description": "의사별 외래 진료비",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch04_beds",
+      "title": "병상 & 혈액",
+      "icon": "bi-hospital",
+      "pages": [
+        {
+          "key": "admin_bed_assigns",
+          "label": "병상 배정",
+          "url": "bed-assigns",
+          "description": "환자 병상 배정 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_blood",
+          "label": "혈액 관리",
+          "url": "blood-issues",
+          "description": "혈액 발급/재고 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch05_doctors",
+      "title": "의사 & 처방",
+      "icon": "bi-person-badge",
+      "pages": [
+        {
+          "key": "admin_schedules",
+          "label": "의사 스케줄",
+          "url": "schedules",
+          "description": "의사 근무/진료 스케줄",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_prescriptions",
+          "label": "처방전",
+          "url": "prescriptions",
+          "description": "환자 처방전 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch06_patients",
+      "title": "환자 관리",
+      "icon": "bi-person-heart",
+      "pages": [
+        {
+          "key": "admin_diagnosis",
+          "label": "진단 검사",
+          "url": "patient-diagnosis-test",
+          "description": "환자 진단 검사 결과",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_opds",
+          "label": "입원/외래",
+          "url": "opds",
+          "description": "외래/입원 기록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_admissions",
+          "label": "환자 입원",
+          "url": "patient-admissions",
+          "description": "입원 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_reviews",
+          "label": "후기 관리",
+          "url": "hospital-reviews",
+          "description": "환자 후기 및 평점",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch07_lab",
+      "title": "검사 & 수술",
+      "icon": "bi-microscope",
+      "pages": [
+        {
+          "key": "admin_pathology",
+          "label": "병리 검사",
+          "url": "pathology-tests",
+          "description": "병리 검사 결과",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_radiology",
+          "label": "영상 검사",
+          "url": "radiology-tests",
+          "description": "X-ray/CT/MRI 결과",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_operations",
+          "label": "수술 보고서",
+          "url": "operation-reports",
+          "description": "수술 보고서",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_vaccines",
+          "label": "백신접종",
+          "url": "vaccinations",
+          "description": "백신접종 기록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch08_pharmacy",
+      "title": "약품 & 재고",
+      "icon": "bi-capsule",
+      "pages": [
+        {
+          "key": "admin_brands",
+          "label": "의약품 브랜드",
+          "url": "brands",
+          "description": "약품 브랜드 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_items",
+          "label": "재고 관리",
+          "url": "issued-items",
+          "description": "의료 물품 재고",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch09_facility",
+      "title": "시설 관리",
+      "icon": "bi-building",
+      "pages": [
+        {
+          "key": "admin_documents",
+          "label": "문서 관리",
+          "url": "document-types",
+          "description": "문서 유형 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_visitors",
+          "label": "방문자 관리",
+          "url": "visitors",
+          "description": "방문자 기록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_enquiries",
+          "label": "문의",
+          "url": "enquiries",
+          "description": "환자 문의",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_expenses",
+          "label": "경비 관리",
+          "url": "expenses",
+          "description": "병원 경비 내역",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_ambulances",
+          "label": "구급차",
+          "url": "ambulances",
+          "description": "구급차 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_live_meeting",
+          "label": "실시간 미팅",
+          "url": "live-meeting",
+          "description": "화상 미팅",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch10_settings",
+      "title": "설정 & 통신",
+      "icon": "bi-gear",
+      "pages": [
+        {
+          "key": "admin_front_cms",
+          "label": "프론트 CMS",
+          "url": "front-settings",
+          "description": "병원 웹사이트 설정",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_mail",
+          "label": "SMS/메일",
+          "url": "mail",
+          "description": "SMS/이메일 발송",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_settings",
+          "label": "설정",
+          "url": "settings",
+          "description": "병원 시스템 설정",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "admin_transactions",
+          "label": "거래 내역",
+          "url": "my-transactions",
+          "description": "결제 거래 내역",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+# DB config (contains passwords)
+dbconfig.php
+../dbconfig.php
+
+# Logs
+*.log
+server.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Dependencies
+node_modules/
+vendor/
+
+# SQL data dumps
+*.sql
+sql_dumps/
+# Keep schema SQL files in sql/ folder
+!sql/
+!sql/*.sql
+
+# Uploads (user-generated content)
+uploads/reviews/*
+!uploads/reviews/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temp files
+nul
+*.tmp
+*.bak

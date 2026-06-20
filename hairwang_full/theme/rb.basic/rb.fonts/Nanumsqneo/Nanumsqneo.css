@@ -1,0 +1,31 @@
+
+
+@font-face {
+  font-family: 'font-R';
+  src: url('./Nanumsqneo-Bold.eot');
+  src: url('./Nanumsqneo-Bold.eot?#iefix') format('embedded-opentype'),
+      url('./Nanumsqneo-Bold.woff2') format('woff2'),
+      url('./Nanumsqneo-Bold.woff') format('woff'),
+      url('./Nanumsqneo-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: 'font-B';
+  src: url('./Nanumsqneo-ExtraBold.eot');
+  src: url('./Nanumsqneo-ExtraBold.eot?#iefix') format('embedded-opentype'),
+      url('./Nanumsqneo-ExtraBold.woff2') format('woff2'),
+      url('./Nanumsqneo-ExtraBold.woff') format('woff'),
+      url('./Nanumsqneo-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+}
+
+@font-face {
+  font-family: 'font-H';
+  src: url('./Nanumsqneo-Heavy.eot');
+  src: url('./Nanumsqneo-Heavy.eot?#iefix') format('embedded-opentype'),
+      url('./Nanumsqneo-Heavy.woff2') format('woff2'),
+      url('./Nanumsqneo-Heavy.woff') format('woff'),
+      url('./Nanumsqneo-Heavy.ttf') format('truetype');
+  font-weight: 900;
+}

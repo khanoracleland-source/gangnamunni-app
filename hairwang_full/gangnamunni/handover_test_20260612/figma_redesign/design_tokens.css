@@ -1,0 +1,30 @@
+:root {
+  /* Figma 실측 색상 토큰 (Seoul Beauty App) */
+  --sb-black: #000000;
+  --sb-white: #ffffff;
+  --sb-inactive: #aaaaaa;
+  --sb-primary: #ae1932;
+  --sb-c5: #f8f8f8;
+  --sb-c6: #d9d9d9;
+  --sb-strike: #a9a9a9;
+  --sb-c8: #ededed;
+  --sb-subtitle: #888888;
+  --sb-c10: #1b0000;
+  --sb-c11: #ffeeee;
+  --sb-c12: #e8e8e8;
+  --sb-c13: #d20003;
+  --sb-c14: #979797;
+  --sb-c15: #878787;
+  --sb-c16: rgba(255,255,255,0.56);
+  --sb-placeholder: #cacaca;
+  /* 타이포 */
+  --sb-font: 'Noto Sans KR', 'Noto Sans KR', sans-serif;
+  --sb-fs-15: 15px; /* Noto Sans KR w400 */
+  --sb-fs-14: 14px; /* Noto Sans KR w400 */
+  --sb-fs-16: 16px; /* Noto Sans KR w400 */
+  --sb-fs-18: 18px; /* Noto Sans KR w400 */
+  --sb-fs-15: 15px; /* Noto Sans KR w700 */
+  --sb-fs-18: 18px; /* Noto Sans KR w500 */
+  --sb-fs-13: 13px; /* Noto Sans KR w400 */
+  --sb-fs-12: 12px; /* Noto Sans KR w400 */
+}

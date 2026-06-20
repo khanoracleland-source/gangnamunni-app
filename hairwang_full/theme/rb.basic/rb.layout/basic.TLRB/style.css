@@ -1,0 +1,8 @@
+/* 레이아웃 CSS */
+.flex_box_l {float:left; width: 30%;}
+.flex_box_r {float:right; width: 70%;}
+
+@media all and (max-width:1024px) {
+    .flex_box_l {width: auto; float:none;}
+    .flex_box_r {width: auto; float:none;}
+}

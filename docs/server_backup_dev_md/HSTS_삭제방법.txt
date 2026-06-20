@@ -1,0 +1,27 @@
+# Chrome HSTS 캐시 삭제 방법
+
+## 1단계: Chrome HSTS 설정 페이지 열기
+주소창에 입력:
+chrome://net-internals/#hsts
+
+## 2단계: Query HSTS/PKP domain (도메인 확인)
+입력창에 입력: seoulbeauty.app
+Query 버튼 클릭
+→ "Found" 라고 나오면 HSTS가 저장되어 있는 것
+
+## 3단계: Delete domain security policies (삭제)
+아래쪽 Delete domain security policies 섹션에서:
+입력창에 입력: seoulbeauty.app
+Delete 버튼 클릭
+
+## 4단계: 확인
+다시 Query에서 seoulbeauty.app 검색
+→ "Not found" 라고 나와야 정상
+
+## 5단계: Chrome 완전 종료
+- 모든 Chrome 창 닫기
+- 작업 관리자에서 Chrome 프로세스가 모두 종료되었는지 확인
+- Ctrl + Shift + Esc → Chrome 프로세스 모두 종료
+
+## 6단계: Chrome 재시작 후 테스트
+http://paikpc.seoulbeauty.app (http:// 명시)

@@ -1,0 +1,68 @@
+{
+  "_comment": "서울미녀 직원 뷰 매뉴얼",
+  "_version": "1.0",
+  "configKey": "staff-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/hairwang/gangnamunni/",
+  "browser": {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "headless": true
+  },
+  "login": {
+    "required": true,
+    "url": "dashboard.php",
+    "usernameField": "input[name='username']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[name='login']",
+    "successIndicator": ".admin-sidebar",
+    "username": "admin",
+    "password": "admin123"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 성공 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "서울미녀 직원 매뉴얼",
+    "outputDir": "../uploads/staff-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_staff",
+      "title": "직원 관리",
+      "icon": "bi-people",
+      "pages": [
+        {
+          "key": "admin_staffs",
+          "label": "직원 목록",
+          "url": "admin_staffs.php",
+          "description": "직원 목록 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

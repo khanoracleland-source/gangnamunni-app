@@ -1,0 +1,216 @@
+/* AI 실시간 작성 도우미 - 부유 패널 스타일 */
+
+#ai-helper-panel {
+    position: sticky;
+    top: 60px;
+    margin-top: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    font-size: 13px;
+    z-index: 100;
+}
+
+[data-bs-theme="dark"] #ai-helper-panel {
+    background: #1e1e2e;
+    border-color: #333;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+
+/* 헤더 */
+.ai-helper-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.ai-helper-icon {
+    font-size: 16px;
+}
+
+.ai-helper-title {
+    font-weight: 600;
+    flex: 1;
+}
+
+.ai-helper-status {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.2);
+}
+.ai-helper-status.ai-mode {
+    background: rgba(255,215,0,0.3);
+}
+.ai-helper-status.rule-mode {
+    background: rgba(255,255,255,0.15);
+}
+
+.ai-helper-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 0 2px;
+}
+.ai-helper-close:hover {
+    opacity: 1;
+}
+
+/* 본문 */
+.ai-helper-body {
+    padding: 10px 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#ai-helper-panel.collapsed .ai-helper-body {
+    display: none;
+}
+
+/* 빈 상태 */
+.ai-helper-empty {
+    text-align: center;
+    color: #999;
+    padding: 16px 8px;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+/* 로딩 */
+.ai-helper-loading {
+    text-align: center;
+    color: #667eea;
+    padding: 16px 8px;
+}
+.ai-helper-loading .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #667eea;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: ai-spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+@keyframes ai-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 좋은 상태 */
+.ai-helper-good {
+    text-align: center;
+    color: #28a745;
+    padding: 16px 8px;
+    font-weight: 600;
+}
+
+/* 점수 */
+.ai-helper-score {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+[data-bs-theme="dark"] .ai-helper-score { background: #2a2a3a; }
+
+.ai-helper-score .score-value {
+    font-size: 28px;
+    font-weight: 700;
+}
+.ai-helper-score .score-label {
+    font-size: 12px;
+    color: #888;
+}
+.ai-helper-score.good .score-value { color: #28a745; }
+.ai-helper-score.mid .score-value { color: #ffc107; }
+.ai-helper-score.low .score-value { color: #dc3545; }
+
+/* 제안 항목 */
+.ai-suggestion {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    line-height: 1.5;
+}
+[data-bs-theme="dark"] .ai-suggestion { background: #2a2a3a; }
+
+.ai-suggestion:last-child {
+    margin-bottom: 0;
+}
+
+.suggestion-icon {
+    flex-shrink: 0;
+    font-size: 14px;
+}
+
+.suggestion-text {
+    flex: 1;
+    font-size: 12px;
+    color: #444;
+}
+[data-bs-theme="dark"] .suggestion-text { color: #ccc; }
+
+/* 경고 */
+.suggestion-warning {
+    background: #fff3cd;
+    border-left: 3px solid #ffc107;
+}
+[data-bs-theme="dark"] .suggestion-warning { background: #3a3520; }
+
+/* 팁 */
+.suggestion-tip {
+    background: #e8f4fd;
+    border-left: 3px solid #17a2b8;
+}
+[data-bs-theme="dark"] .suggestion-tip { background: #1a2a3a; }
+
+/* 정보 */
+.suggestion-info {
+    background: #f0f4ff;
+    border-left: 3px solid #667eea;
+}
+[data-bs-theme="dark"] .suggestion-info { background: #1e2040; }
+
+/* 제안이 있을 때 패널 하이라이트 */
+#ai-helper-panel.has-suggestions {
+    border-color: #667eea;
+    box-shadow: 0 2px 16px rgba(102,126,234,0.15);
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    #ai-helper-panel {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        border-radius: 12px 12px 0 0;
+        margin: 0;
+        z-index: 1050;
+    }
+    .ai-helper-body {
+        max-height: 200px;
+    }
+}

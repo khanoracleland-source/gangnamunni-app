@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko" data-bs-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1차 검수 잔여 작업 — 시나리오 + 컨펌 요청 (2026-05-28)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<script>(function(){const t=localStorage.getItem('rsc-theme')||'light';document.documentElement.setAttribute('data-bs-theme',t);})();</script>
+<style>
+  body { font-family: 'Noto Sans KR', sans-serif; line-height: 1.6; }
+  .hero {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+    color: #fff; padding: 30px 26px; border-radius: 12px;
+    margin-bottom: 24px; box-shadow: 0 4px 16px rgba(220,53,69,0.25);
+  }
+  .hero h1 { font-weight: 800; margin: 0 0 8px; }
+  .scenario-card {
+    background: var(--bs-tertiary-bg);
+    border-radius: 10px; padding: 18px 20px;
+    margin-bottom: 18px; border-left: 5px solid #6c757d;
+  }
+  .scenario-card.high-risk { border-left-color: #dc3545; }
+  .scenario-card.mid-risk { border-left-color: #fd7e14; }
+  .scenario-card.low-risk { border-left-color: #198754; }
+  .sc-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; gap: 12px;
+  }
+  .sc-id {
+    background: #6610f2; color: #fff;
+    padding: 4px 12px; border-radius: 4px;
+    font-family: monospace; font-weight: 700; font-size: .8rem;
+    white-space: nowrap;
+  }
+  .sc-title { font-weight: 700; font-size: 1.05rem; flex: 1; }
+  .sc-risk {
+    padding: 3px 10px; border-radius: 4px;
+    font-size: .72rem; font-weight: 700;
+    white-space: nowrap;
+  }
+  .sc-risk.high { background: #dc3545; color: #fff; }
+  .sc-risk.mid { background: #fd7e14; color: #fff; }
+  .sc-risk.low { background: #198754; color: #fff; }
+  .sc-block {
+    background: var(--bs-body-bg);
+    padding: 10px 14px; border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: .92rem;
+  }
+  .sc-block strong { color: #0d6efd; }
+  .sc-block code {
+    background: rgba(13, 110, 253, 0.08);
+    padding: 1px 6px; border-radius: 3px;
+    font-size: .82rem;
+  }
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stat-box { padding: 14px; border-radius: 10px; text-align: center; }
+  .stat-box .num { font-size: 1.7rem; font-weight: 800; }
+  .stat-box .lbl { font-size: .78rem; opacity: .92; margin-top: 4px; }
+  .sb-high { background: #dc3545; color: #fff; }
+  .sb-mid { background: #fd7e14; color: #fff; }
+  .sb-low { background: #198754; color: #fff; }
+  .sb-total { background: linear-gradient(135deg, #0d6efd, #6610f2); color: #fff; }
+  .confirm-box {
+    background: linear-gradient(135deg, #198754, #20c997);
+    color: #fff; padding: 24px;
+    border-radius: 12px;
+    margin: 28px 0;
+    text-align: center;
+  }
+  .confirm-box h3 { font-weight: 800; margin: 0 0 12px; }
+  .confirm-box .options { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .confirm-box .opt {
+    background: rgba(255,255,255,0.15);
+    padding: 10px 18px; border-radius: 8px;
+    font-weight: 600;
+  }
+  .theme-toggle { position: fixed; top: 16px; right: 16px; z-index: 1000; }
+  .section-title {
+    margin-top: 32px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--bs-border-color);
+    font-weight: 700;
+  }
+  .why-honest {
+    background: rgba(255, 193, 7, 0.1);
+    border-left: 5px solid #ffc107;
+    padding: 16px 20px; border-radius: 8px;
+    margin-bottom: 24px;
+  }
+  .why-honest h4 { color: #b8860b; margin-bottom: 10px; font-weight: 700; }
+</style>
+</head>
+<body>
+<button class="btn btn-sm btn-outline-secondary theme-toggle" onclick="toggleTheme()"><i class="bi bi-circle-half"></i></button>
+
+<div class="container py-4" style="max-width: 1180px;">
+
+<div class="hero">
+  <h1><i class="bi bi-list-check"></i> 잔여 작업 시나리오 + 컨펌 요청</h1>
+  <div style="opacity:.95; margin-top:6px;">
+    <strong>2026-05-28 (목)</strong> · 검수 시트 100건 중 처리 완료 외 잔여 항목에 대한 정확한 작업 시나리오 및 위험도 분석<br>
+    <strong>요청</strong> : 각 시나리오 확인 후 진행 컨펌
+  </div>
+</div>
+
+<!-- 솔직한 미룸 사유 -->
+<div class="why-honest">
+  <h4><i class="bi bi-exclamation-triangle-fill"></i> 솔직히 — 이전에 미룬 사유 인정</h4>
+  <ol class="mb-0">
+    <li><strong>"세션 재현 필요"로 분류한 항목</strong> — 실제로는 PHP CLI로 admin 세션 시뮬레이션 가능 (이미 1차 #24 진단에서 사용함). 안전 마진을 위한 보류였으나 정직하게 진행 가능</li>
+    <li><strong>"코드 정상"으로 분류한 항목</strong> — 추가 디버깅 강화 (error_log 출력, ini_set display_errors)로 정확한 원인 추적 가능</li>
+    <li><strong>관리자 페이지 신규 기능</strong> — 광고 URL 매뉴얼, 추천 병원 지정, 꿀팁 관리 등 — 시간이 많이 걸려 보류했으나 처리 가능</li>
+  </ol>
+  <div class="mt-2 small text-secondary">→ 시나리오별 위험도 + 픽스 방안 + 영향 범위를 명확히 한 후 컨펌받고 진행하겠습니다.</div>
+</div>
+
+<div class="stat-row">
+  <div class="stat-box sb-high"><div class="num">3</div><div class="lbl">🔴 고위험 (정상 기능 영향 가능)</div></div>
+  <div class="stat-box sb-mid"><div class="num">7</div><div class="lbl">🟠 중위험 (신규 코드 추가)</div></div>
+  <div class="stat-box sb-low"><div class="num">8</div><div class="lbl">🟢 저위험 (CSS/매뉴얼/단순 수정)</div></div>
+  <div class="stat-box sb-total"><div class="num">18</div><div class="lbl">잔여 시나리오 총계</div></div>
+</div>
+
+<!-- ============== 🔴 고위험 ============== -->
+<h3 class="section-title text-danger">🔴 고위험 (3건) — 정상 기능에 영향 가능, 신중 검토 필요</h3>
+
+<div class="scenario-card high-risk">
+  <div class="sc-head">
+    <div style="display:flex; gap:10px; align-items:center;">
+      <span class="sc-id">프론트 #24</span>
+      <span class="sc-title">병원 수정 저장 시 HTTP 500</span>
+    </div>
+    <span class="sc-risk high">고위험</span>
+  </div>
+  <div class="sc-block">
+    <strong>📁 파일</strong> : <code>admin_hospitals.php</code> (92KB) · edit_hospital POST 핸들러<br>
+    <strong>🔍 원인 추적 방법</strong> :
+    <ol class="mb-0 mt-1">
+      <li>admin 로그인 세션 쿠키 생성 (PHP CLI에서 가능)</li>
+      <li>실제 POST 요청 시뮬레이션 (병원 8118 데이터 + admin 세션)</li>
+      <li><code>ini_set('display_errors', 1)</code> 임시 활성화로 정확한 에러 메시지 추적</li>
+      <li>Apache mod_security 룰 또는 PHP-FPM 메모리 한도 확인</li>
+    </ol>
+  </div>
+  <div class="sc-block">
+    <strong>🛠 픽스 방안</strong> :
+    원인에 따라 분기 — (a) PHP 메모리 한도 → ini_set memory_limit 상향, (b) PHP-FPM POST 사이즈 → upload_max_filesize 점검, (c) 한글 POST 데이터 → mb_convert_encoding 적용, (d) 특정 컬럼 충돌 → 신택스 수정
+  </div>
+  <div class="sc-block">
+    <strong>⚠ 영향 범위</strong> : admin_hospitals.php 단일 파일. 다른 핸들러(approve/reject/delete)에는 영향 없음. <strong>현재 정상 동작 중인 승인/거절 기능 보존 보장.</strong>
+  </div>
+  <div class="sc-block">
+    <strong>⏱ 예상 작업 시간</strong> : 디버그 활성화 30분 + 원인 추적 30분 + 픽스 30분 = <strong>1.5시간</strong>
+  </div>
+</div>
+
+<div class="scenario-card high-risk">
+  <div class="sc-head">
+    <div style="display:flex; gap:10px; align-items:center;">
+      <span class="sc-id">관리자 #8</span>
+      <span class="sc-title">병원 등록 신청 승인 시 HTTP 500</span>
+    </div>
+    <span class="sc-risk high">고위험</span>
+  </div>
+  <div class="sc-block">
+    <strong>📁 파일</strong> : <code>admin_hospital_wizard.php</code> (51KB) · approve action<br>
+    <strong>🔍 원인 추적</strong> :
+    <ol class="mb-0 mt-1">
+      <li>마법사로 등록된 병원 데이터를 본 테이블(gangnamunni_hospitals)로 INSERT 트랜잭션</li>
+      <li>관련 DB 컬럼/제약 조건 확인 (UNIQUE 충돌? FK 위반?)</li>
+      <li>CLI POST 시뮬레이션으로 정확한 SQL 에러 메시지 확인</li>
+    </ol>
+  </div>
+  <div class="sc-block">
+    <strong>🛠 픽스 방안</strong> :
+    트랜잭션 BEGIN/COMMIT/ROLLBACK 적용 + 에러 메시지 명확화 + 충돌 시 UPDATE OR INSERT 처리
+  </div>
+  <div class="sc-block">
+    <strong>⚠ 영향 범위</strong> : admin_hospital_wizard.php approve만. 마법사 등록 자체는 영향 없음.
+  </div>
+  <div class="sc-block">
+    <strong>⏱ 예상 시간</strong> : <strong>1.5시간</strong>
+  </div>
+</div>
+
+<div class="scenario-card high-risk">
+  <div class="sc-head">
+    <div style="display:flex; gap:10px; align-items:center;">
+      <span class="sc-id">프론트 #23</span>
+      <span class="sc-title">응모 이벤트 로그인 풀림 + 404 + 외부 도메인 이동</span>
+    </div>
+    <span class="sc-risk high">고위험</span>
+  </div>
+  <div class="sc-block">
+    <strong>📁 파일</strong> : <code>event_detail.php</code> + Gnuboard 세션 처리<br>
+    <strong>🔍 원인 추적</strong> :
+    <ol class="mb-0 mt-1">
+      <li>event_detail.php 진입 시 세션 체크 코드 위치 확인</li>
+      <li>현재 검수 환경 (Cloudflare 통과) 쿠키 도메인 정합성 검증</li>
+      <li>"로그인이 풀려" — Gnuboard ss_mb_id 세션 vs gangnamunni 세션 분리 가능성</li>
+      <li>404 페이지 → /gangnamunni 리다이렉트 (개발여부 #2 픽스 후 정상화됨)</li>
+    </ol>
+  </div>
+  <div class="sc-block">
+    <strong>🛠 픽스 방안</strong> :
+    event_detail.php에서 init.php 우선 require + 세션 통합 검증 + 로그인 redirect URL을 명확히 /hairwang/bbs/login.php로 지정
+  </div>
+  <div class="sc-block">
+    <strong>⚠ 영향 범위</strong> : event_detail.php · 다른 이벤트 처리에는 영향 없음
+  </div>
+  <div class="sc-block">
+    <strong>⏱ 예상 시간</strong> : <strong>2시간</strong>
+  </div>
+</div>
+
+<!-- ============== 🟠 중위험 ============== -->
+<h3 class="section-title text-warning">🟠 중위험 (7건) — 신규 코드 추가, 충분히 안전한 작업</h3>
+
+<div class="scenario-card mid-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #11</span><span class="sc-title">회원 비밀번호 변경 후 앱 로그인 불가</span></div><span class="sc-risk mid">중위험</span></div>
+  <div class="sc-block"><strong>📁 파일</strong> : <code>admin_members.php reset_password</code> + 앱 인증 API 위치 확인 필요</div>
+  <div class="sc-block"><strong>🛠 픽스</strong> : Gnuboard pbkdf2 해시 + 앱 인증 API(있다면)도 동시 업데이트하도록 다중 동기화. 또는 PHP password_hash() 표준 적용 (앱 측 검증 변경 필요할 수 있음)</div>
+  <div class="sc-block"><strong>⚠ 영향</strong> : 신규 비번 변경 회원에만 영향 (기존 회원 영향 X)</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>2시간</strong> (앱 인증 API 코드 검색 + 동기화)</div>
+</div>
+
+<div class="scenario-card mid-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #15</span><span class="sc-title">메인 화면 '서울미녀 꿀팁' 관리 기능</span></div><span class="sc-risk mid">중위험</span></div>
+  <div class="sc-block"><strong>📁 파일</strong> : 신규 <code>admin_tips.php</code> 또는 기존 <code>admin_columns.php</code> 확장</div>
+  <div class="sc-block"><strong>🛠 픽스</strong> : tips 테이블 생성/활용 + 관리자 CRUD UI 추가 + 메인 화면 출력 연동</div>
+  <div class="sc-block"><strong>⚠ 영향</strong> : 신규 페이지 추가 (기존 영향 X)</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>3시간</strong></div>
+</div>
+
+<div class="scenario-card mid-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #16</span><span class="sc-title">메인 추천 병원 카테고리 관리자 지정</span></div><span class="sc-risk mid">중위험</span></div>
+  <div class="sc-block"><strong>📁 파일</strong> : 신규 <code>admin_recommend.php</code> 또는 admin_hospitals.php에 추천 토글 추가</div>
+  <div class="sc-block"><strong>🛠 픽스</strong> : gangnamunni_hospitals 테이블에 is_recommended 컬럼 추가 + 관리자 UI에서 카테고리별 추천 지정 + 메인 화면 추천 섹션 쿼리 수정</div>
+  <div class="sc-block"><strong>⚠ 영향</strong> : DB 컬럼 추가 (영향 거의 없음) + 메인 추천 섹션 쿼리 변경</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>2.5시간</strong></div>
+</div>
+
+<div class="scenario-card mid-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #17</span><span class="sc-title">의사 상담 신청 관리자 메뉴 추가</span></div><span class="sc-risk mid">중위험</span></div>
+  <div class="sc-block"><strong>📁 파일</strong> : <code>admin_consultations.php</code> 존재 확인 + 사이드바 메뉴 추가</div>
+  <div class="sc-block"><strong>🛠 픽스</strong> : includes/sidebar.php에 메뉴 항목 추가 (이미 있을 가능성 高 — admin_consultations.php는 03.04 완료 표시됨)</div>
+  <div class="sc-block"><strong>⚠ 영향</strong> : 사이드바 한 줄 추가만</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>30분</strong> (확인 후 메뉴만 추가)</div>
+</div>
+
+<div class="scenario-card mid-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #18</span><span class="sc-title">후기/칼럼/커뮤니티 통합 관리 화면</span></div><span class="sc-risk mid">중위험</span></div>
+  <div class="sc-block"><strong>📁 파일</strong> : 신규 <code>admin_content_hub.php</code> 또는 기존 메뉴 그룹화</div>
+  <div class="sc-block"><strong>🛠 픽스</strong> : admin_reviews.php / admin_columns.php / admin_community_posts.php(있다면) 탭 통합 UI</div>
+  <div class="sc-block"><strong>⚠ 영향</strong> : 신규 페이지 추가 (각 개별 관리 페이지 그대로 유지)</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>3시간</strong></div>
+</div>
+
+<div class="scenario-card mid-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #1</span><span class="sc-title">admin_reviews.php — 5개 후기 미노출 + 마법사 File not found</span></div><span class="sc-risk mid">중위험</span></div>
+  <div class="sc-block"><strong>📁 파일</strong> : <code>admin_reviews.php</code> + <code>admin_review_wizard.php</code></div>
+  <div class="sc-block"><strong>🛠 픽스</strong> : 후기 표시 쿼리에서 is_active=0 또는 status='deleted' 필터 확인 + wizard 내부 sub-route 점검</div>
+  <div class="sc-block"><strong>⚠ 영향</strong> : 후기 관리만</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>1.5시간</strong></div>
+</div>
+
+<div class="scenario-card mid-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #13</span><span class="sc-title">회원/환자 차이점 + 환자 관리 페이지</span></div><span class="sc-risk mid">중위험</span></div>
+  <div class="sc-block"><strong>📁 파일</strong> : 신규 <code>admin_patients.php</code> 또는 admin_members.php 분리</div>
+  <div class="sc-block"><strong>🛠 픽스</strong> : 회원(g5_member) vs 환자(HMS patients) 구분 매뉴얼 + 환자 관리 UI 추가 (HMS API 연동)</div>
+  <div class="sc-block"><strong>⚠ 영향</strong> : 신규 페이지 + HMS API 호출</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>3시간</strong></div>
+</div>
+
+<!-- ============== 🟢 저위험 ============== -->
+<h3 class="section-title text-success">🟢 저위험 (8건) — 매뉴얼 작성 / CSS / 단순 수정</h3>
+
+<div class="scenario-card low-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #5</span><span class="sc-title">광고 배너 이미지 URL 등록 방법 매뉴얼</span></div><span class="sc-risk low">저위험</span></div>
+  <div class="sc-block"><strong>🛠 액션</strong> : admin_ads.php에 이미지 URL 입력 안내문 + 직접 업로드 옵션 추가 / 또는 매뉴얼 페이지 작성</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>1시간</strong></div>
+</div>
+
+<div class="scenario-card low-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #6</span><span class="sc-title">광고 배너 랜딩 URL 안내</span></div><span class="sc-risk low">저위험</span></div>
+  <div class="sc-block"><strong>🛠 액션</strong> : admin_ads.php 랜딩 URL 입력 필드에 placeholder + 도움말 추가</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>30분</strong></div>
+</div>
+
+<div class="scenario-card low-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #19</span><span class="sc-title">로그인 정보 찾기 (비밀번호 찾기) 정상화</span></div><span class="sc-risk low">저위험</span></div>
+  <div class="sc-block"><strong>🛠 액션</strong> : bbs/password_lost.php 동작 확인 + 메일 발송 설정 점검</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>1.5시간</strong></div>
+</div>
+
+<div class="scenario-card low-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">프론트 #1·#2</span><span class="sc-title">프로모션 배너 0번 인덱스 + 좌우 버튼 정밀 진단</span></div><span class="sc-risk low">저위험</span></div>
+  <div class="sc-block"><strong>🛠 액션</strong> : index.php carousel + ad_banner.php에서 실제 사용 중인 배너 데이터로 동작 재현 + 콘솔 로그 확인</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>1시간</strong></div>
+</div>
+
+<div class="scenario-card low-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #메인배너</span><span class="sc-title">메인 배너 스크롤 시 header 잘림</span></div><span class="sc-risk low">저위험</span></div>
+  <div class="sc-block"><strong>🛠 액션</strong> : ad_banner.php sticky top 값 조정 + header z-index 조정</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>30분</strong></div>
+</div>
+
+<div class="scenario-card low-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #뷰어 권한</span><span class="sc-title">뷰어 권한이 예약 승인 가능 — 오버권한</span></div><span class="sc-risk low">저위험</span></div>
+  <div class="sc-block"><strong>📁 파일</strong> : admin_bookings.php / RBAC 권한 체크</div>
+  <div class="sc-block"><strong>🛠 액션</strong> : 승인/상태 변경 액션 핸들러에 role !== 'viewer' 체크 추가</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>1시간</strong></div>
+</div>
+
+<div class="scenario-card low-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">관리자 #로그아웃</span><span class="sc-title">관리자 로그아웃 페이지별 미작동</span></div><span class="sc-risk low">저위험</span></div>
+  <div class="sc-block"><strong>📁 파일</strong> : admin_header.php 또는 admin_footer.php 로그아웃 링크</div>
+  <div class="sc-block"><strong>🛠 액션</strong> : 로그아웃 URL을 명확히 admin_logout.php 또는 절대경로로 통일</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>30분</strong></div>
+</div>
+
+<div class="scenario-card low-risk">
+  <div class="sc-head"><div style="display:flex;gap:10px;align-items:center;"><span class="sc-id">개발여부 #1</span><span class="sc-title">병원 관계자 계정 발급/접속 매뉴얼</span></div><span class="sc-risk low">저위험</span></div>
+  <div class="sc-block"><strong>🛠 액션</strong> : 매뉴얼 문서 작성 (hospital_test:hospital123 + 발급 절차)</div>
+  <div class="sc-block"><strong>⏱ 시간</strong> : <strong>1시간</strong></div>
+</div>
+
+<!-- ============== 총계 ============== -->
+<div class="confirm-box">
+  <h3>📊 시간 합산 + 컨펌 요청</h3>
+  <div style="font-size:1.05rem; line-height:1.8;">
+    🔴 고위험 3건 × 평균 1.7h = <strong>5시간</strong><br>
+    🟠 중위험 7건 × 평균 2.3h = <strong>16시간</strong><br>
+    🟢 저위험 8건 × 평균 0.9h = <strong>7시간</strong><br>
+    <strong style="font-size:1.3rem;">📈 잔여 작업 총 약 28시간 ≈ 3.5일 (full-time 작업 기준)</strong>
+  </div>
+  <div class="options">
+    <div class="opt">✅ 옵션 A : 전체 진행 (3.5일)</div>
+    <div class="opt">🎯 옵션 B : 고위험 + 중위험만 (3일)</div>
+    <div class="opt">⚡ 옵션 C : 저위험만 (1일)</div>
+    <div class="opt">📋 옵션 D : 개별 항목 선택</div>
+  </div>
+  <div style="margin-top:14px; font-size:.95rem; opacity:.95;">
+    ※ 어느 옵션이든 작업 전 백업 + 작업 후 외부 HTTP 200 검증 보장<br>
+    ※ 정상 동작 중인 기능 깨짐 방지 — 변경 영향 범위 제한
+  </div>
+</div>
+
+<div class="text-center mt-4 text-secondary small">
+  컨펌 답변 주시면 즉시 진행하겠습니다.<br>
+  진행 보고 : <a href="progress_20260528.html" target="_blank">progress_20260528.html</a> · 마일스톤 : <a href="milestone_20260527.html" target="_blank">milestone_20260527.html</a>
+</div>
+
+</div>
+
+<script>
+function toggleTheme(){
+  const h=document.documentElement;
+  h.setAttribute('data-bs-theme', h.getAttribute('data-bs-theme')==='light'?'dark':'light');
+  localStorage.setItem('rsc-theme', h.getAttribute('data-bs-theme'));
+}
+</script>
+</body>
+</html>

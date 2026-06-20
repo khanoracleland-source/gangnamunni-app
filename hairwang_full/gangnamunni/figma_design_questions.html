@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울미녀 피그마 디자인 — 확인 필요 사항</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; line-height: 1.7; }
+
+.header { background: linear-gradient(135deg, #8B1A1A, #C62828); color: #fff; padding: 40px 20px; text-align: center; }
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header p { font-size: 14px; opacity: .85; }
+.header .date { display: inline-block; background: rgba(255,255,255,.2); padding: 4px 16px; border-radius: 20px; margin-top: 12px; font-size: 13px; }
+
+.toc { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 14px 20px; position: sticky; top: 0; z-index: 100; overflow-x: auto; white-space: nowrap; }
+.toc a { display: inline-block; padding: 6px 14px; margin-right: 6px; border-radius: 20px; background: #f0f0f0; color: #333; text-decoration: none; font-size: 13px; font-weight: 500; transition: all .2s; }
+.toc a:hover, .toc a.active { background: #C62828; color: #fff; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+.section { background: #fff; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,.06); margin-bottom: 24px; overflow: hidden; }
+.section-header { padding: 20px 24px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 10px; }
+.section-num { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #C62828; color: #fff; border-radius: 50%; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+.section-header h2 { font-size: 18px; }
+.section-body { padding: 20px 24px; }
+
+/* Image Gallery */
+.img-gallery { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; justify-content: center; }
+.img-gallery .img-item { text-align: center; flex-shrink: 0; }
+.img-gallery .img-item img { max-height: 420px; width: auto; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: transform .2s; }
+.img-gallery .img-item img:hover { transform: scale(1.02); box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+.img-gallery .img-item .cap { font-size: 11px; color: #888; margin-top: 6px; }
+
+/* Before/After Compare */
+.compare-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: start; margin: 20px 0; }
+.compare-row .arrow { display: flex; align-items: center; justify-content: center; font-size: 28px; color: #C62828; padding-top: 60px; }
+.compare-col { text-align: center; }
+.compare-col img { max-height: 500px; width: auto; max-width: 100%; border: 1px solid #e0e0e0; border-radius: 8px; object-fit: cover; object-position: top; }
+.compare-col .label { font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
+.label-before { background: #FFEBEE; color: #C62828; }
+.label-figma { background: #E3F2FD; color: #1565C0; }
+.label-after { background: #E8F5E9; color: #2E7D32; }
+
+/* Question Card */
+.q-card { border: 1px solid #e8e8e8; border-radius: 12px; margin-bottom: 16px; overflow: hidden; transition: border-color .2s; }
+.q-card:hover { border-color: #C62828; }
+.q-title { padding: 14px 18px; background: #fafafa; font-weight: 600; font-size: 15px; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.q-title .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.badge-critical { background: #FFEBEE; color: #C62828; }
+.badge-important { background: #FFF3E0; color: #E65100; }
+.badge-nice { background: #E8F5E9; color: #2E7D32; }
+.q-body { padding: 14px 18px; font-size: 14px; color: #555; }
+.q-body .options { margin: 10px 0; }
+.q-body .option { display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; margin-bottom: 6px; background: #f8f8f8; border-radius: 8px; font-size: 13px; }
+.q-body .option strong { color: #C62828; white-space: nowrap; }
+.q-body .option .competitor { color: #1565C0; font-weight: 500; }
+
+.comp-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0; }
+.comp-table th { background: #f5f5f5; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #ddd; }
+.comp-table td { padding: 10px 14px; border-bottom: 1px solid #eee; vertical-align: top; }
+.comp-table tr:hover td { background: #fafafa; }
+.comp-table .app-name { font-weight: 600; color: #C62828; }
+
+.highlight { background: #FFF9C4; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+.ref { background: #E3F2FD; padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 13px; }
+.ref strong { color: #1565C0; }
+
+.answer-area { margin-top: 12px; position: relative; }
+.answer-area textarea { width: 100%; min-height: 70px; padding: 12px; border: 2px dashed #C62828; border-radius: 8px; background: #FFF8F8; font-family: inherit; font-size: 14px; color: #333; resize: vertical; outline: none; transition: border-color .2s; }
+.answer-area textarea:focus { border-color: #8B1A1A; background: #fff; }
+.answer-area textarea::placeholder { color: #ccc; }
+.answer-area label { display: block; font-size: 12px; font-weight: 700; color: #C62828; margin-bottom: 4px; }
+.save-btn { display: inline-block; margin-top: 6px; padding: 6px 16px; background: #C62828; color: #fff; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; transition: background .2s; }
+.save-btn:hover { background: #8B1A1A; }
+.save-btn.saved { background: #2E7D32; }
+.save-all-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 2px solid #C62828; padding: 12px 20px; display: flex; justify-content: center; gap: 12px; z-index: 200; box-shadow: 0 -4px 12px rgba(0,0,0,.1); }
+.save-all-bar button { padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s; }
+.btn-save-all { background: #C62828; color: #fff; }
+.btn-save-all:hover { background: #8B1A1A; }
+.btn-export { background: #1565C0; color: #fff; }
+.btn-export:hover { background: #0D47A1; }
+.btn-clear { background: #757575; color: #fff; }
+.btn-clear:hover { background: #424242; }
+.toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 300; display: none; }
+
+.summary-box { background: linear-gradient(135deg, #FFF3E0, #FFECB3); padding: 20px 24px; border-radius: 12px; margin: 20px 0; }
+.summary-box h3 { color: #E65100; margin-bottom: 10px; }
+.summary-box ul { padding-left: 20px; }
+.summary-box li { margin-bottom: 6px; font-size: 14px; }
+
+.footer { text-align: center; padding: 30px 20px; color: #999; font-size: 12px; }
+
+/* Lightbox */
+.lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.85); z-index: 9999; justify-content: center; align-items: center; cursor: zoom-out; }
+.lightbox.active { display: flex; }
+.lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+
+@media (max-width: 768px) {
+    .compare-row { grid-template-columns: 1fr; }
+    .compare-row .arrow { padding-top: 0; transform: rotate(90deg); }
+    .img-gallery .img-item img { max-height: 280px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>서울미녀 피그마 디자인 — 확인 필요 사항</h1>
+    <p>피그마 원본 · 현재 구현(Before) · 적용 후(After) 비교 + 디자이너 확인 질문 23개</p>
+    <span class="date">2026-03-26 | 피그마 9장 · Before 5장 · After 10장 · 질문 23개</span>
+</div>
+
+<div class="toc" id="toc">
+    <a href="#overview">전체 이미지</a>
+    <a href="#competitor">경쟁사 비교</a>
+    <a href="#sec1">1. 홈 시술</a>
+    <a href="#sec2">2. 지역 선택</a>
+    <a href="#sec3">3. 병원 리스트</a>
+    <a href="#sec4">4. 이벤트</a>
+    <a href="#sec5">5. 커뮤니티</a>
+    <a href="#sec6">6. 마이페이지</a>
+    <a href="#sec7">7. 하단 네비</a>
+    <a href="#sec8">8. 공통 UI</a>
+</div>
+
+<div class="container">
+
+<!-- ============================================ -->
+<!-- 전체 이미지 갤러리 -->
+<!-- ============================================ -->
+<div class="section" id="overview">
+    <div class="section-header">
+        <span class="section-num">★</span>
+        <h2>피그마 전체 이미지 (9장) + 와이어프레임</h2>
+    </div>
+    <div class="section-body">
+        <h3 style="margin-bottom:12px; font-size:15px; color:#C62828;">피그마 디자인 원본</h3>
+        <div class="img-gallery">
+            <div class="img-item">
+                <img src="figma_designs/home_screen_1.png" alt="홈 화면 1" onclick="openLightbox(this)">
+                <div class="cap">홈 화면 (기본)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/home_screen_2.png" alt="홈 화면 2 - 지역선택" onclick="openLightbox(this)">
+                <div class="cap">홈 화면 (지역 선택)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/hospital_list_1.png" alt="병원 리스트 1" onclick="openLightbox(this)">
+                <div class="cap">병원 리스트 (기본)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/hospital_list_2.png" alt="병원 리스트 2" onclick="openLightbox(this)">
+                <div class="cap">병원 리스트 (지역 펼침)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/hospital_list_3.png" alt="병원 리스트 3" onclick="openLightbox(this)">
+                <div class="cap">병원 리스트 (필터 적용)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/community_1.png" alt="커뮤니티" onclick="openLightbox(this)">
+                <div class="cap">커뮤니티</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/mypage_1.png" alt="마이페이지" onclick="openLightbox(this)">
+                <div class="cap">마이페이지</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/app_icon.png" alt="앱 아이콘" onclick="openLightbox(this)" style="max-height:120px;">
+                <div class="cap">앱 아이콘</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/group_8.png" alt="와이어프레임" onclick="openLightbox(this)">
+                <div class="cap">와이어프레임</div>
+            </div>
+        </div>
+
+        <hr style="margin:30px 0; border:none; border-top:1px solid #eee;">
+
+        <h3 style="margin-bottom:12px; font-size:15px; color:#1565C0;">Before / After 비교 (5개 화면)</h3>
+
+        <!-- 홈 비교 -->
+        <h4 style="font-size:14px; color:#666; margin:20px 0 8px;">홈 화면</h4>
+        <div class="compare-row">
+            <div class="compare-col">
+                <span class="label label-figma">피그마 원본</span><br>
+                <img src="figma_designs/home_screen_1.png" alt="피그마 홈" onclick="openLightbox(this)">
+            </div>
+            <div class="arrow">→</div>
+            <div class="compare-col">
+                <span class="label label-after">적용 후 (모바일)</span><br>
+                <img src="figma_after/home_after_mobile.png" alt="적용 후 홈 모바일" onclick="openLightbox(this)">
+            </div>
+        </div>
+
+        <!-- 병원 비교 -->
+        <h4 style="font-size:14px; color:#666; margin:20px 0 8px;">병원 리스트</h4>
+        <div class="compare-row">
+            <div class="compare-col">
+                <span class="label label-figma">피그마 원본</span><br>
+                <img src="figma_designs/hospital_list_1.png" alt="피그마 병원" onclick="openLightbox(this)">
+            </div>
+            <div class="arrow">→</div>
+            <div class="compare-col">
+                <span class="label label-after">적용 후 (모바일)</span><br>
+                <img src="figma_after/hospitals_after_mobile.png" alt="적용 후 병원 모바일" onclick="openLightbox(this)">
+            </div>
+        </div>
+
+        <!-- 상세 비교 -->
+        <h4 style="font-size:14px; color:#666; margin:20px 0 8px;">병원 상세</h4>
+        <div class="compare-row">
+            <div class="compare-col">
+                <span class="label label-before">Before</span><br>
+                <img src="figma_before/detail_before.png" alt="Before 상세" onclick="openLightbox(this)">
+            </div>
+            <div class="arrow">→</div>
+            <div class="compare-col">
+                <span class="label label-after">After (모바일)</span><br>
+                <img src="figma_after/detail_after_mobile.png" alt="After 상세 모바일" onclick="openLightbox(this)">
+            </div>
+        </div>
+
+        <!-- 커뮤니티 비교 -->
+        <h4 style="font-size:14px; color:#666; margin:20px 0 8px;">커뮤니티</h4>
+        <div class="compare-row">
+            <div class="compare-col">
+                <span class="label label-figma">피그마 원본</span><br>
+                <img src="figma_designs/community_1.png" alt="피그마 커뮤니티" onclick="openLightbox(this)">
+            </div>
+            <div class="arrow">→</div>
+            <div class="compare-col">
+                <span class="label label-after">적용 후 (모바일)</span><br>
+                <img src="figma_after/community_after_mobile.png" alt="적용 후 커뮤니티 모바일" onclick="openLightbox(this)">
+            </div>
+        </div>
+
+        <!-- 마이페이지 비교 -->
+        <h4 style="font-size:14px; color:#666; margin:20px 0 8px;">마이페이지</h4>
+        <div class="compare-row">
+            <div class="compare-col">
+                <span class="label label-figma">피그마 원본</span><br>
+                <img src="figma_designs/mypage_1.png" alt="피그마 마이페이지" onclick="openLightbox(this)">
+            </div>
+            <div class="arrow">→</div>
+            <div class="compare-col">
+                <span class="label label-after">적용 후 (모바일)</span><br>
+                <img src="figma_after/mypage_after_mobile.png" alt="적용 후 마이페이지 모바일" onclick="openLightbox(this)">
+            </div>
+        </div>
+
+        <hr style="margin:30px 0; border:none; border-top:1px solid #eee;">
+
+        <h3 style="margin-bottom:12px; font-size:15px; color:#2E7D32;">PC 버전 (After)</h3>
+        <div class="img-gallery">
+            <div class="img-item">
+                <img src="figma_after/home_after_pc.png" alt="홈 PC" onclick="openLightbox(this)">
+                <div class="cap">홈 (PC)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_after/hospitals_after_pc.png" alt="병원 PC" onclick="openLightbox(this)">
+                <div class="cap">병원 (PC)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_after/detail_after_pc.png" alt="상세 PC" onclick="openLightbox(this)">
+                <div class="cap">상세 (PC)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_after/community_after_pc.png" alt="커뮤니티 PC" onclick="openLightbox(this)">
+                <div class="cap">커뮤니티 (PC)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_after/mypage_after_pc.png" alt="마이페이지 PC" onclick="openLightbox(this)">
+                <div class="cap">마이페이지 (PC)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 경쟁사 비교 -->
+<!-- ============================================ -->
+<div class="section" id="competitor">
+    <div class="section-header">
+        <span class="section-num">★</span>
+        <h2>경쟁사 홈화면 시술 카테고리 비교</h2>
+    </div>
+    <div class="section-body">
+        <table class="comp-table">
+            <thead>
+                <tr>
+                    <th>항목</th>
+                    <th class="app-name">강남언니 (55%)</th>
+                    <th class="app-name">바비톡 (30%)</th>
+                    <th class="app-name">여신티켓 (15%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>선택 방식</strong></td>
+                    <td>싱글 셀렉트 (1개만)</td>
+                    <td>싱글 셀렉트 (1개만)</td>
+                    <td>싱글 셀렉트 (1개만)</td>
+                </tr>
+                <tr>
+                    <td><strong>탭 시 동작</strong></td>
+                    <td>해당 시술 <strong>목록 페이지로 이동</strong><br>(navigate, 인라인 필터 아님)</td>
+                    <td>해당 카테고리 <strong>페이지로 이동</strong></td>
+                    <td>해당 시술 <strong>상품 목록으로 이동</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>홈 카테고리 형태</strong></td>
+                    <td>아이콘 그리드 (부위별)</td>
+                    <td>3탭 (ForYou/추천/카테고리)</td>
+                    <td>커머스형 카드 + 부위 필터</td>
+                </tr>
+                <tr>
+                    <td><strong>멀티 셀렉트</strong></td>
+                    <td style="color:#C62828">없음</td>
+                    <td style="color:#C62828">없음</td>
+                    <td style="color:#C62828">없음</td>
+                </tr>
+                <tr>
+                    <td><strong>2차 필터</strong></td>
+                    <td>이동 후 페이지에서<br>지역/가격대/정렬</td>
+                    <td>이동 후 페이지에서<br>AI 개인화/정렬</td>
+                    <td>이동 후 페이지에서<br>추천순/인기순/거리순</td>
+                </tr>
+                <tr>
+                    <td><strong>핵심 패턴</strong></td>
+                    <td colspan="3" style="background:#FFF9C4; text-align:center">
+                        <strong>3개 앱 모두: 카테고리 = 네비게이션 진입점 (필터가 아님)</strong><br>
+                        탭 → 새 페이지 이동 → 해당 페이지에서 상세 필터 제공
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="ref">
+            <strong>결론:</strong> 업계 표준은 <span class="highlight">싱글 셀렉트 + 페이지 이동</span>입니다.
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 1. 홈 시술 카테고리 -->
+<!-- ============================================ -->
+<div class="section" id="sec1">
+    <div class="section-header">
+        <span class="section-num">1</span>
+        <h2>홈 화면 — 시술 카테고리 그리드</h2>
+    </div>
+    <div class="section-body">
+        <div class="img-gallery">
+            <div class="img-item">
+                <img src="figma_designs/home_screen_1.png" alt="홈 화면" onclick="openLightbox(this)">
+                <div class="cap">피그마: 홈 화면 시술 카테고리</div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-critical">필수</span>
+                Q1-1. 시술 카테고리 선택 방식 — 싱글 vs 멀티?
+            </div>
+            <div class="q-body">
+                <p>홈 화면의 시술명(세미지FLX, 텐써마 등)을 탭할 때:</p>
+                <div class="options">
+                    <div class="option"><strong>A) 싱글 셀렉트</strong> <span>1개 탭 → 해당 시술 병원 목록으로 이동 <span class="competitor">★ 강남언니·바비톡·여신티켓 모두 이 방식</span></span></div>
+                    <div class="option"><strong>B) 멀티 셀렉트</strong> <span>여러 개 선택 → "검색" 버튼으로 결과 확인 (업계 미사용)</span></div>
+                    <div class="option"><strong>C) 대분류→소분류 확장</strong> <span>"리프팅" 탭 → 하위 펼침 → 소분류 탭 시 이동</span></div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-critical">필수</span>
+                Q1-2. 시술명 탭 시 이동 페이지는?
+            </div>
+            <div class="q-body">
+                <p>예: "텐써마"를 탭하면 어디로?</p>
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 병원 목록 (해당 시술 필터 적용)</div>
+                    <div class="option"><strong>B)</strong> 가격 비교 페이지</div>
+                    <div class="option"><strong>C)</strong> 시술 상세 정보 + 병원 목록</div>
+                    <div class="option"><strong>D)</strong> 이벤트 목록 (할인 이벤트)</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-important">중요</span>
+                Q1-3. 대분류(왼쪽)와 소분류(오른쪽)의 관계
+            </div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 대분류 탭 → 소분류 목록 변경 (탭 네비게이션)</div>
+                    <div class="option"><strong>B)</strong> 대분류도 탭 가능한 링크 (전체 카테고리 페이지 이동)</div>
+                    <div class="option"><strong>C)</strong> 대분류는 단순 레이블 (탭 불가), 소분류만 탭 가능</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-nice">선택</span>
+                Q1-4. 카테고리 "더보기" / "전체보기" 필요?
+            </div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 현재 6개만 고정</div>
+                    <div class="option"><strong>B)</strong> "전체 시술 보기" 버튼 추가</div>
+                    <div class="option"><strong>C)</strong> 좌우 스와이프로 더 많은 카테고리</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 2. 지역 선택 -->
+<!-- ============================================ -->
+<div class="section" id="sec2">
+    <div class="section-header">
+        <span class="section-num">2</span>
+        <h2>지역 선택 패널</h2>
+    </div>
+    <div class="section-body">
+        <div class="img-gallery">
+            <div class="img-item">
+                <img src="figma_designs/home_screen_2.png" alt="지역 선택" onclick="openLightbox(this)">
+                <div class="cap">피그마: 지역 선택 (멀티 셀렉트)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/hospital_list_2.png" alt="병원 지역 필터" onclick="openLightbox(this)">
+                <div class="cap">피그마: 병원 페이지 지역 필터</div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-critical">필수</span>
+                Q2-1. 지역 선택 — 멀티 셀렉트 확인
+            </div>
+            <div class="q-body">
+                <p>"강남 ✕", "천호 ✕" 칩이 보이므로 <strong>멀티 셀렉트</strong>로 보입니다.</p>
+                <div class="options">
+                    <div class="option"><strong>확인)</strong> 지역은 <span class="highlight">멀티 셀렉트</span>가 맞나요?</div>
+                    <div class="option"><strong>추가)</strong> 최대 선택 가능 개수 제한? (예: 최대 5개)</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-important">중요</span>
+                Q2-2. "필터 선택 완료" 버튼 동작
+            </div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 패널 닫힘 + 홈에서 선택 지역 기준 필터링</div>
+                    <div class="option"><strong>B)</strong> 병원 목록 페이지로 이동 (선택 지역 적용)</div>
+                    <div class="option"><strong>C)</strong> 패널 닫힘만 (시술 선택 시 지역 필터 함께 적용)</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-nice">선택</span>
+                Q2-3. 지역 선택 UI — 드롭다운 vs 전체화면
+            </div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 인라인 펼침 (피그마 방식)</div>
+                    <div class="option"><strong>B)</strong> 바텀시트 (하단 슬라이드업)</div>
+                    <div class="option"><strong>C)</strong> 전체 화면 모달</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 3. 병원 리스트 -->
+<!-- ============================================ -->
+<div class="section" id="sec3">
+    <div class="section-header">
+        <span class="section-num">3</span>
+        <h2>병원 리스트 (병원 탭)</h2>
+    </div>
+    <div class="section-body">
+        <div class="img-gallery">
+            <div class="img-item">
+                <img src="figma_designs/hospital_list_1.png" alt="병원 기본" onclick="openLightbox(this)">
+                <div class="cap">기본 (정렬 칩)</div>
+            </div>
+            <div class="img-item">
+                <img src="figma_designs/hospital_list_3.png" alt="병원 필터" onclick="openLightbox(this)">
+                <div class="cap">필터 적용 상태</div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-critical">필수</span>
+                Q3-1. 정렬 칩(낮은가격, 랭킹, 인기, 후기) — 동작
+            </div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A) 싱글 셀렉트</strong> <span>1개만 활성, 선택 시 재정렬 <span class="competitor">★ 업계 표준</span></span></div>
+                    <div class="option"><strong>B) 멀티 셀렉트</strong> <span>여러 조건 조합</span></div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-important">중요</span>
+                Q3-2. 병원 카드 가격 — 어떤 가격?
+            </div>
+            <div class="q-body">
+                <p>"텐써마 400샷 — <del>9,900,000원</del> <strong style="color:red">9,900,900원</strong>"</p>
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 병원 대표 시술 1개 가격</div>
+                    <div class="option"><strong>B)</strong> 사용자가 선택한 시술 가격</div>
+                    <div class="option"><strong>C)</strong> 병원 최저가 시술 자동 표시</div>
+                    <div class="option"><strong>D)</strong> 이벤트 할인 가격</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-important">중요</span>
+                Q3-3. 병원 카드 탭 시 이동 페이지
+            </div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 병원 상세 (detail.php)</div>
+                    <div class="option"><strong>B)</strong> 시술 가격 상세</div>
+                    <div class="option"><strong>C)</strong> 이미지 → 시술 상세, 텍스트 → 병원 상세 (영역별 분리)</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title">
+                <span class="badge badge-nice">선택</span>
+                Q3-4. 지역 칩 미선택 시 표시
+            </div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 지역 미선택 → 칩 숨김, 선택 시 → 칩 표시</div>
+                    <div class="option"><strong>B)</strong> 항상 지역 칩 영역 표시 ("전체 지역")</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 4. 이벤트 -->
+<!-- ============================================ -->
+<div class="section" id="sec4">
+    <div class="section-header">
+        <span class="section-num">4</span>
+        <h2>홈 화면 — 이벤트 섹션</h2>
+    </div>
+    <div class="section-body">
+        <div class="img-gallery">
+            <div class="img-item">
+                <img src="figma_designs/home_screen_1.png" alt="이벤트 섹션" onclick="openLightbox(this)">
+                <div class="cap">피그마: 이벤트 카드 (20% 배지)</div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-important">중요</span> Q4-1. "20%" 배지 — 데이터 출처</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 관리자가 직접 입력하는 할인율</div>
+                    <div class="option"><strong>B)</strong> 정가 대비 자동 계산</div>
+                    <div class="option"><strong>C)</strong> 고정 마케팅 배지</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-nice">선택</span> Q4-2. ">" 화살표 이동처</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 이벤트 전체 목록 페이지</div>
+                    <div class="option"><strong>B)</strong> 가로 스크롤</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-nice">선택</span> Q4-3. 이미지 없는 이벤트 카드</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 병원 로고/대표 이미지 자동</div>
+                    <div class="option"><strong>B)</strong> 시술 기기 이미지 매칭</div>
+                    <div class="option"><strong>C)</strong> 기본 플레이스홀더</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 5. 커뮤니티 -->
+<!-- ============================================ -->
+<div class="section" id="sec5">
+    <div class="section-header">
+        <span class="section-num">5</span>
+        <h2>커뮤니티 페이지</h2>
+    </div>
+    <div class="section-body">
+        <div class="compare-row">
+            <div class="compare-col">
+                <span class="label label-figma">피그마</span><br>
+                <img src="figma_designs/community_1.png" alt="피그마 커뮤니티" onclick="openLightbox(this)">
+            </div>
+            <div class="arrow">→</div>
+            <div class="compare-col">
+                <span class="label label-after">적용 후</span><br>
+                <img src="figma_after/community_after_mobile.png" alt="적용 후 커뮤니티" onclick="openLightbox(this)">
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-critical">필수</span> Q5-1. "최신순 | 인기순 | 시술 후기" 탭 동작</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 같은 페이지 탭 전환 (최신순/인기순 = 정렬, 시술 후기 = 필터)</div>
+                    <div class="option"><strong>B)</strong> 각각 다른 페이지</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-important">중요</span> Q5-2. "눈성형" 태그 — 시술 카테고리 연동?</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 글 작성 시 시술 카테고리 필수 선택</div>
+                    <div class="option"><strong>B)</strong> 자유 해시태그</div>
+                    <div class="option"><strong>C)</strong> 관리자 분류</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-nice">선택</span> Q5-3. 글쓰기 버튼 — 비로그인 시</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 로그인 페이지 이동</div>
+                    <div class="option"><strong>B)</strong> "로그인 필요" 팝업</div>
+                    <div class="option"><strong>C)</strong> 버튼 숨김</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 6. 마이페이지 -->
+<!-- ============================================ -->
+<div class="section" id="sec6">
+    <div class="section-header">
+        <span class="section-num">6</span>
+        <h2>마이페이지</h2>
+    </div>
+    <div class="section-body">
+        <div class="compare-row">
+            <div class="compare-col">
+                <span class="label label-figma">피그마</span><br>
+                <img src="figma_designs/mypage_1.png" alt="피그마 마이페이지" onclick="openLightbox(this)">
+            </div>
+            <div class="arrow">→</div>
+            <div class="compare-col">
+                <span class="label label-after">적용 후</span><br>
+                <img src="figma_after/mypage_after_mobile.png" alt="적용 후 마이페이지" onclick="openLightbox(this)">
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-important">중요</span> Q6-1. 피그마 7개 메뉴 vs 현재 12+개</div>
+            <div class="q-body">
+                <table class="comp-table">
+                    <thead><tr><th>피그마 (7개)</th><th>현재 구현 (12+개)</th></tr></thead>
+                    <tbody>
+                        <tr><td>내 예약 / 결제 내역</td><td>내 예약</td></tr>
+                        <tr><td>병원/시술 찜 목록</td><td>찜한 병원</td></tr>
+                        <tr><td>내가 작성한 후기</td><td>내 후기 관리</td></tr>
+                        <tr><td>MY 커뮤니티 글</td><td>—</td></tr>
+                        <tr><td>MY 좋아요 목록</td><td>—</td></tr>
+                        <tr><td>고객센터</td><td>FAQ / Q&A</td></tr>
+                        <tr><td>공지사항</td><td>—</td></tr>
+                        <tr><td style="color:#999">—</td><td>알림 설정 / 포인트 / 쿠폰 / 채팅 / 회원등급 / 프로필</td></tr>
+                    </tbody>
+                </table>
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 피그마 7개만 유지</div>
+                    <div class="option"><strong>B)</strong> 피그마 7개 + 현재 메뉴 합치기</div>
+                    <div class="option"><strong>C)</strong> 현재 구현 유지 (피그마 업데이트 필요)</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-nice">선택</span> Q6-2. 비로그인 시 마이페이지</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 로그인/회원가입 유도 (메뉴 숨김)</div>
+                    <div class="option"><strong>B)</strong> 메뉴 보이되, 탭 시 로그인 요구</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 7. 하단 네비 -->
+<!-- ============================================ -->
+<div class="section" id="sec7">
+    <div class="section-header">
+        <span class="section-num">7</span>
+        <h2>하단 네비게이션 바</h2>
+    </div>
+    <div class="section-body">
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-critical">필수</span> Q7-1. 피그마 4탭 vs 현재 5탭</div>
+            <div class="q-body">
+                <table class="comp-table">
+                    <thead><tr><th>피그마 (4탭)</th><th>현재 구현 (5탭)</th></tr></thead>
+                    <tbody>
+                        <tr><td>홈</td><td>홈</td></tr>
+                        <tr><td>병원</td><td>병원</td></tr>
+                        <tr><td>커뮤니티</td><td>이벤트</td></tr>
+                        <tr><td>마이페이지</td><td>후기</td></tr>
+                        <tr><td style="color:#999">—</td><td>마이</td></tr>
+                    </tbody>
+                </table>
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 피그마 4탭 (이벤트·후기는 홈/서브메뉴)</div>
+                    <div class="option"><strong>B)</strong> 현재 5탭 유지</div>
+                    <div class="option"><strong>C)</strong> 5탭인데 구성 변경</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 8. 공통 UI -->
+<!-- ============================================ -->
+<div class="section" id="sec8">
+    <div class="section-header">
+        <span class="section-num">8</span>
+        <h2>공통 UI / 기타</h2>
+    </div>
+    <div class="section-body">
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-important">중요</span> Q8-1. AD 배너 동작</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 자동 슬라이드 (1/5) — 몇 초 간격?</div>
+                    <div class="option"><strong>B)</strong> 수동 스와이프만</div>
+                    <div class="option"><strong>C)</strong> 탭 이동처: 병원 상세? 이벤트? 외부?</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-important">중요</span> Q8-2. 검색바 동작</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 검색 전용 페이지 이동 (자동완성, 최근/인기 검색어)</div>
+                    <div class="option"><strong>B)</strong> 인라인 실시간 자동완성</div>
+                    <div class="option"><strong>C)</strong> 바텀시트 검색 UI</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-nice">선택</span> Q8-3. 로그인 후 헤더 버튼 변경</div>
+            <div class="q-body">
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 사용자 이름/아바타</div>
+                    <div class="option"><strong>B)</strong> 알림 아이콘</div>
+                    <div class="option"><strong>C)</strong> 버튼 숨김</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+
+        <div class="q-card">
+            <div class="q-title"><span class="badge badge-nice">선택</span> Q8-4. 커뮤니티 첨부 이미지 최대 수</div>
+            <div class="q-body">
+                <p>와이어프레임에 1장/2장/3장 가이드가 있습니다.</p>
+                <div class="options">
+                    <div class="option"><strong>A)</strong> 최대 3장 고정</div>
+                    <div class="option"><strong>B)</strong> 최대 5장 (3장 미리보기)</div>
+                    <div class="option"><strong>C)</strong> 최대 10장 (가로 스크롤)</div>
+                </div>
+                <div class="answer-area"><label>답변:</label><textarea placeholder="여기에 답변을 입력하세요..."></textarea></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary -->
+<div class="summary-box">
+    <h3>핵심 질문 TOP 5</h3>
+    <ul>
+        <li><strong>1. 시술 카테고리:</strong> 싱글 셀렉트 + 페이지 이동? (경쟁 3사 모두 이 방식)</li>
+        <li><strong>2. 시술명 탭 시:</strong> 병원 목록? 가격 비교? 시술 상세?</li>
+        <li><strong>3. 하단 탭:</strong> 피그마 4탭 vs 현재 5탭 — 최종 결정</li>
+        <li><strong>4. 마이페이지:</strong> 피그마 7개 vs 현재 12개+ — 합칠지 줄일지</li>
+        <li><strong>5. 병원 카드 가격:</strong> 대표 시술? 선택 시술? 최저가?</li>
+    </ul>
+</div>
+
+</div>
+
+<!-- Save All Bar -->
+<div class="save-all-bar">
+    <span id="answer-count" style="font-size:13px; color:#666; align-self:center;">0/23개 답변 완료</span>
+    <button class="btn-save-all" onclick="saveAll()">DB 저장</button>
+    <button class="btn-export" onclick="exportAnswers()">답변 내보내기</button>
+    <button class="btn-clear" onclick="clearAll()">초기화</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="footer" style="padding-bottom:80px;">
+    서울미녀 피그마 디자인 확인 질문서 · 2026-03-26 · 피그마 9장 + Before 5장 + After 10장 = 24장
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="">
+</div>
+
+<script>
+function openLightbox(el) {
+    document.getElementById('lightbox-img').src = el.src;
+    document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// DB Answer save/load system
+const API_URL = 'api_figma_answers.php';
+
+function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? '#C62828' : '#333';
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// 질문 ID 매핑 (textarea index → 질문번호)
+function getQid(index) {
+    const map = ['Q1-1','Q1-2','Q1-3','Q1-4','Q2-1','Q2-2','Q2-3','Q3-1','Q3-2','Q3-3','Q3-4','Q4-1','Q4-2','Q4-3','Q5-1','Q5-2','Q5-3','Q6-1','Q6-2','Q7-1','Q8-1','Q8-2','Q8-3','Q8-4'];
+    return map[index] || ('Q' + index);
+}
+
+async function saveAll() {
+    const textareas = document.querySelectorAll('.answer-area textarea');
+    const answers = {};
+    textareas.forEach((ta, i) => {
+        answers[getQid(i)] = ta.value;
+    });
+    try {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ answers, answered_by: '' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('DB 저장 완료! (' + data.saved + '개)');
+            updateStatus();
+        } else {
+            showToast('저장 실패: ' + (data.error || ''), true);
+        }
+    } catch (e) {
+        showToast('서버 연결 실패', true);
+    }
+}
+
+async function loadAll() {
+    try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        if (data.success && data.answers) {
+            const textareas = document.querySelectorAll('.answer-area textarea');
+            textareas.forEach((ta, i) => {
+                const qid = getQid(i);
+                if (data.answers[qid]) {
+                    ta.value = data.answers[qid].text || '';
+                    // 답변 시간 표시
+                    if (data.answers[qid].updated) {
+                        const info = ta.closest('.answer-area').querySelector('.answer-info');
+                        if (info) info.textContent = '마지막 저장: ' + data.answers[qid].updated;
+                    }
+                }
+            });
+            updateStatus();
+        }
+    } catch (e) {
+        console.log('DB 로드 실패, 오프라인 모드');
+    }
+}
+
+function clearAll() {
+    if (!confirm('모든 답변을 초기화하시겠습니까? (DB에서도 삭제됩니다)')) return;
+    document.querySelectorAll('.answer-area textarea').forEach(ta => ta.value = '');
+    saveAll();
+    showToast('초기화 완료');
+}
+
+function exportAnswers() {
+    const textareas = document.querySelectorAll('.answer-area textarea');
+    const titles = document.querySelectorAll('.q-title');
+    let text = '서울미녀 피그마 디자인 — 답변 내보내기\n' + '='.repeat(50) + '\n날짜: ' + new Date().toLocaleDateString('ko-KR') + '\n\n';
+    let count = 0;
+    textareas.forEach((ta, i) => {
+        if (ta.value.trim()) {
+            const title = titles[i] ? titles[i].textContent.trim() : getQid(i);
+            text += '[' + getQid(i) + '] ' + title + '\n→ ' + ta.value.trim() + '\n\n';
+            count++;
+        }
+    });
+    if (count === 0) { showToast('입력된 답변이 없습니다'); return; }
+    text += '총 ' + count + '/' + textareas.length + '개 답변 완료\n';
+
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'figma_answers_' + new Date().toISOString().slice(0,10) + '.txt';
+    a.click();
+    showToast('답변 파일 다운로드 완료');
+}
+
+function updateStatus() {
+    const textareas = document.querySelectorAll('.answer-area textarea');
+    let answered = 0;
+    textareas.forEach(ta => { if (ta.value.trim()) answered++; });
+    const el = document.getElementById('answer-count');
+    if (el) el.textContent = answered + '/' + textareas.length + '개 답변 완료';
+}
+
+// Auto-save 3초 후 DB 저장
+document.addEventListener('input', e => {
+    if (e.target.matches('.answer-area textarea')) {
+        clearTimeout(window._autoSaveTimer);
+        window._autoSaveTimer = setTimeout(saveAll, 3000);
+        updateStatus();
+    }
+});
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadAll);
+
+const sections = document.querySelectorAll('.section[id]');
+const tocLinks = document.querySelectorAll('.toc a');
+window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(sec => {
+        if (window.scrollY >= sec.offsetTop - 100) current = sec.id;
+    });
+    tocLinks.forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+});
+</script>
+</body>
+</html>

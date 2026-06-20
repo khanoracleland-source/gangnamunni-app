@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 - 서울미녀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic', sans-serif;
+            background: linear-gradient(135deg, #FFE5ED 0%, #FFB6D9 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .register-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 50px 40px;
+            max-width: 500px;
+            width: 100%;
+            margin: 20px auto;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .logo-text {
+            font-size: 32px;
+            font-weight: 700;
+            color: #FF6B9D;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .form-required {
+            color: #FF6B9D;
+            font-size: 14px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #E0E0E0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #FF6B9D;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #E0E0E0;
+            border-radius: 10px;
+            font-size: 15px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #FF6B9D;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #FF6B9D;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            background: #FF5588;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #FF6B9D;
+            border: 2px solid #FF6B9D;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #FFF5F8;
+        }
+
+        .error-message {
+            background: #FFE5ED;
+            color: #D32F2F;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .links {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .link {
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 10px;
+        }
+
+        .link:hover {
+            color: #FF6B9D;
+            text-decoration: underline;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .register-container {
+                padding: 40px 30px;
+            }
+
+            .logo-text {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="logo-section">
+            <div class="logo">💄</div>
+            <div class="logo-text">서울미녀</div>
+            <div class="subtitle">회원가입</div>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <form id="registerForm" onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label class="form-label" for="name">
+                    이름 <span class="form-required">*</span>
+                </label>
+                <input type="text" id="name" class="form-input" placeholder="홍길동" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email">
+                    이메일 <span class="form-required">*</span>
+                </label>
+                <input type="email" id="email" class="form-input" placeholder="example@email.com" required>
+                <div class="form-hint">로그인 시 사용할 이메일을 입력하세요</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">
+                    비밀번호 <span class="form-required">*</span>
+                </label>
+                <input type="password" id="password" class="form-input" placeholder="8자 이상 입력" required minlength="8">
+                <div class="form-hint">8자 이상 입력해주세요</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="passwordConfirm">
+                    비밀번호 확인 <span class="form-required">*</span>
+                </label>
+                <input type="password" id="passwordConfirm" class="form-input" placeholder="비밀번호 재입력" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="phone">전화번호</label>
+                <input type="tel" id="phone" class="form-input" placeholder="010-1234-5678">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="birthDate">생년월일</label>
+                <input type="date" id="birthDate" class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="gender">성별</label>
+                <select id="gender" class="form-select">
+                    <option value="">선택 안함</option>
+                    <option value="female">여성</option>
+                    <option value="male">남성</option>
+                    <option value="other">기타</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">회원가입</button>
+            <button type="button" class="btn btn-secondary" onclick="window.location.href='login.html'">
+                이미 계정이 있으신가요? 로그인
+            </button>
+        </form>
+
+        <div class="links">
+            <a href="index.html" class="link">홈으로</a>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <script src="js/loading.js"></script>
+
+    <!-- Authentication Manager -->
+    <script src="js/auth.js"></script>
+
+    <script>
+        // Check if already logged in
+        if (AuthManager.isLoggedIn()) {
+            window.location.href = 'index.html';
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('passwordConfirm').value;
+            const phone = document.getElementById('phone').value;
+            const birthDate = document.getElementById('birthDate').value;
+            const gender = document.getElementById('gender').value;
+            const errorDiv = document.getElementById('errorMessage');
+
+            // Clear previous error
+            errorDiv.classList.remove('show');
+
+            // Validate password match
+            if (password !== passwordConfirm) {
+                errorDiv.textContent = '비밀번호가 일치하지 않습니다.';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            // Show loading
+            LoadingIndicator.show('register');
+
+            try {
+                const userData = {
+                    name,
+                    email,
+                    password,
+                    phone: phone || null,
+                    birth_date: birthDate || null,
+                    gender: gender || null
+                };
+
+                await AuthManager.register(userData);
+
+                // Success - redirect to home
+                alert('회원가입이 완료되었습니다!');
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                // Show error
+                errorDiv.textContent = error.message || '회원가입에 실패했습니다.';
+                errorDiv.classList.add('show');
+            } finally {
+                LoadingIndicator.hide('register');
+            }
+        }
+    </script>
+</body>
+</html>

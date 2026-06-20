@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>병원 관리자 가이드 — 서울미녀</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="common/style.css">
+<style>
+.hero { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color:#fff; padding:60px 0 48px; }
+.hero h1 { font-size:2.4rem; font-weight:800; }
+.hero .badge-role { background:#AE1932; font-size:14px; padding:6px 16px; border-radius:20px; }
+.role-table td:first-child { font-weight:600; white-space:nowrap; }
+.perm-badge { font-size:11px; padding:3px 8px; margin:2px; display:inline-block; border-radius:4px; }
+.perm-yes { background:#d4edda; color:#155724; }
+.perm-no { background:#f8d7da; color:#721c24; }
+.flow-step { display:flex; align-items:flex-start; gap:16px; margin-bottom:20px; }
+.flow-num { width:36px; height:36px; border-radius:50%; background:#AE1932; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; }
+.screen-card { border:2px solid var(--sb-border); border-radius:12px; overflow:hidden; transition:transform 0.2s; }
+.screen-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.1); }
+.screen-header { background:var(--sb-bg-alt); padding:12px 16px; border-bottom:1px solid var(--sb-border); font-weight:600; }
+.screen-body { padding:16px; }
+.topbar-demo { background:linear-gradient(135deg,#1a1a2e,#16213e); color:#fff; border-radius:8px; padding:8px 16px; font-size:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.topbar-demo a { color:#7ecfff; text-decoration:none; padding:2px 8px; border-radius:4px; font-size:11px; }
+.topbar-demo .sep { color:#444; }
+.compare-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; }
+.compare-box { border:2px solid var(--sb-border); border-radius:12px; padding:20px; }
+.compare-box h6 { font-weight:700; margin-bottom:12px; }
+.wallet-card { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-radius:16px; padding:24px; }
+.wallet-balance { font-size:2rem; font-weight:800; }
+
+/* 다크모드 보완 */
+body { background-color: var(--sb-bg, #F5F6FA) !important; color: var(--sb-text, #1A1D26) !important; }
+.card, .table, .accordion-item, .accordion-button, .modal-content {
+    background-color: var(--sb-bg-card, #fff) !important;
+    color: var(--sb-text, #1A1D26) !important;
+    border-color: var(--sb-border, #E5E7EB) !important;
+}
+.table th, .table td { border-color: var(--sb-border, #E5E7EB) !important; }
+.accordion-button:not(.collapsed) { background-color: var(--sb-bg-card, #fff) !important; color: var(--sb-text) !important; }
+.text-muted { color: var(--sb-text-secondary, #6B7280) !important; }
+code { background: var(--sb-bg-code, #F1F3F5); color: var(--sb-text, #1A1D26); padding: 2px 5px; border-radius: 3px; }
+pre { background: var(--sb-bg-code, #F1F3F5) !important; color: var(--sb-text) !important; border: 1px solid var(--sb-border) !important; }
+.perm-yes { background: rgba(40,167,69,0.15) !important; color: var(--sb-text) !important; }
+.perm-no { background: rgba(220,53,69,0.15) !important; color: var(--sb-text) !important; }
+.flow-box, .file-tree, .screen-header { background: var(--sb-bg-code, #F1F3F5) !important; }
+h1, h2, h3, h4, h5, h6 { color: var(--sb-text, #1A1D26) !important; }
+.hero h1, .hero h2, .hero p, .hero span { color: #fff !important; }
+a { color: var(--sb-primary, #6C63FF); }
+.list-group-item { background-color: var(--sb-bg-card, #fff) !important; color: var(--sb-text) !important; border-color: var(--sb-border) !important; }
+
+</style>
+<script>(function(){var t=localStorage.getItem("sb-manual-theme")||"light";document.documentElement.setAttribute("data-theme",t);document.documentElement.setAttribute("data-bs-theme",t);})();</script>
+</head>
+<body>
+<button class="btn btn-outline-light btn-sm" onclick="toggleTheme()" style="position:fixed;top:12px;right:12px;z-index:9999;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.3);"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <span class="badge-role"><i class="bi bi-building me-1"></i>Hospital Admin</span>
+      <span class="badge-role" style="background:#333;"><i class="bi bi-shield-check me-1"></i>RBAC 기반</span>
+    </div>
+    <h1>병원 관리자 가이드</h1>
+    <p class="mt-2 mb-0" style="font-size:1.1rem;opacity:0.85;">서울미녀 플랫폼에서 병원 관리자(hospital_admin)와 병원 부관리자(hospital_sub_admin)의 권한, 접근 메뉴, 기능을 안내합니다.</p>
+  </div>
+</div>
+
+<main class="container py-4">
+
+<!-- 1. 역할 체계 -->
+<section class="mb-5" id="roles">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">01</span> 역할 체계 (RBAC)</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <p>서울미녀 플랫폼은 <strong>6단계 역할 기반 접근 제어(RBAC)</strong>를 사용합니다.</p>
+      <table class="table table-bordered align-middle">
+        <thead class="table-dark">
+          <tr><th>역할</th><th>라벨</th><th>권한 수</th><th>병원 제한</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>super_admin</code></td><td>최고관리자</td><td>전체 (*)</td><td>없음</td><td>모든 기능 접근</td></tr>
+          <tr><td><code>admin</code></td><td>관리자</td><td>50+</td><td>없음</td><td>대부분 기능 접근 (시스템 설정 제외)</td></tr>
+          <tr><td><code>editor</code></td><td>에디터</td><td>23+</td><td>없음</td><td>콘텐츠 관리 중심</td></tr>
+          <tr class="table-warning"><td><code>hospital_admin</code></td><td><strong>병원관리자</strong></td><td><strong>18</strong></td><td><strong>자기 병원만</strong></td><td>병원 운영 + 시술 + 지출 관리</td></tr>
+          <tr class="table-warning"><td><code>hospital_sub_admin</code></td><td><strong>병원부관리자</strong></td><td><strong>6</strong></td><td><strong>자기 병원만</strong></td><td>기본 조회 + 예약 관리</td></tr>
+          <tr><td><code>viewer</code></td><td>뷰어</td><td>1</td><td>없음</td><td>대시보드만 조회</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 권한 비교 -->
+<section class="mb-5" id="permissions">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">02</span> 권한 비교: hospital_admin vs hospital_sub_admin</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <table class="table table-sm table-hover">
+        <thead class="table-light">
+          <tr><th>기능</th><th class="text-center">hospital_admin</th><th class="text-center">hospital_sub_admin</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><i class="bi bi-speedometer2 me-2"></i>대시보드</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-yes">O</span></td></tr>
+          <tr><td><i class="bi bi-building me-2"></i>병원 정보 관리</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-yes">O</span></td></tr>
+          <tr><td><i class="bi bi-person-badge me-2"></i>의사 관리</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-yes">O</span></td></tr>
+          <tr><td><i class="bi bi-chat-quote me-2"></i>후기 관리</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-yes">O</span></td></tr>
+          <tr><td><i class="bi bi-calendar-check me-2"></i>예약 관리</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-yes">O</span></td></tr>
+          <tr><td><i class="bi bi-scissors me-2"></i>시술 관리</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-yes">O</span></td></tr>
+          <tr><td><i class="bi bi-chat-dots me-2"></i>상담 관리</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+          <tr><td><i class="bi bi-image me-2"></i>병원 이미지</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+          <tr><td><i class="bi bi-calendar-event me-2"></i>이벤트 관리</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+          <tr><td><i class="bi bi-bell me-2"></i>알림 발송</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+          <tr><td><i class="bi bi-wallet2 me-2"></i>지출/월렛 관리</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+          <tr><td><i class="bi bi-gear me-2"></i>파트너 설정</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+          <tr><td><i class="bi bi-robot me-2"></i>AI 설정</td><td class="text-center"><span class="perm-badge perm-yes">O</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+          <tr><td><i class="bi bi-megaphone me-2"></i>광고 설정</td><td class="text-center"><span class="perm-badge perm-no">X</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+          <tr><td><i class="bi bi-palette me-2"></i>테마/디자인</td><td class="text-center"><span class="perm-badge perm-no">X</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+          <tr><td><i class="bi bi-shield me-2"></i>시스템 관리</td><td class="text-center"><span class="perm-badge perm-no">X</span></td><td class="text-center"><span class="perm-badge perm-no">X</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 3. 로그인 방법 -->
+<section class="mb-5" id="login">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">03</span> 로그인 방법</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div>
+          <strong>관리자 대시보드 접속</strong>
+          <div class="mt-1"><code>https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php</code></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div>
+          <strong>병원 관리자 계정으로 로그인</strong>
+          <div class="mt-1">
+            <table class="table table-sm table-bordered" style="max-width:400px;">
+              <tr><td>아이디</td><td><code>hospital_test</code></td></tr>
+              <tr><td>비밀번호</td><td><code>hospital123</code></td></tr>
+              <tr><td>소속 병원</td><td>서울미녀 강남점 (ID: 8093)</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div>
+          <strong>자동 필터링</strong>
+          <div class="mt-1 text-muted">로그인 시 역할(hospital_admin)에 맞는 메뉴만 사이드바에 표시됩니다. 다른 병원 데이터에는 접근할 수 없습니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 프론트엔드 관리자 바 -->
+<section class="mb-5" id="topbar">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">04</span> 프론트엔드 관리자 바 (이윰빌더 스타일)</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <p>관리자가 프론트엔드(사용자 페이지)를 볼 때 상단에 관리자 바가 표시됩니다.</p>
+
+      <h6 class="fw-bold mt-3">최고관리자 (super_admin):</h6>
+      <div class="topbar-demo mb-3">
+        <strong><i class="bi bi-gear-fill"></i> Admin</strong>
+        <span class="sep">|</span>
+        <a href="#"><i class="bi bi-speedometer2"></i> 대시보드</a>
+        <a href="#"><i class="bi bi-megaphone"></i> 광고설정</a>
+        <a href="#"><i class="bi bi-palette"></i> 테마</a>
+        <a href="#"><i class="bi bi-brush"></i> 디자인토큰</a>
+        <a href="#"><i class="bi bi-building"></i> 병원</a>
+        <a href="#"><i class="bi bi-scissors"></i> 시술</a>
+        <a href="#"><i class="bi bi-calendar-event"></i> 이벤트</a>
+        <span class="sep">|</span>
+        <a href="#"><i class="bi bi-toggles"></i> 디자인모드</a>
+        <a href="#"><i class="bi bi-sliders"></i> 디스플레이</a>
+      </div>
+
+      <h6 class="fw-bold">병원관리자 (hospital_admin):</h6>
+      <div class="topbar-demo mb-3">
+        <strong><i class="bi bi-gear-fill"></i> 병원 Admin</strong>
+        <span class="sep">|</span>
+        <a href="#"><i class="bi bi-speedometer2"></i> 대시보드</a>
+        <a href="#"><i class="bi bi-scissors"></i> 시술관리</a>
+        <a href="#"><i class="bi bi-wallet2"></i> 지출/월렛</a>
+        <a href="#"><i class="bi bi-gear"></i> 설정</a>
+        <a href="#"><i class="bi bi-robot"></i> AI설정</a>
+        <span style="margin-left:auto;color:#7ecfff;">(서울미녀 강남점)</span>
+      </div>
+
+      <p class="text-muted small">각 섹션에 마우스를 올리면 편집 버튼이 나타나며, 클릭하면 해당 관리 페이지가 새 탭으로 열립니다. 병원관리자는 자기 병원 관련 편집 버튼만 표시됩니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5. 파트너 전용 페이지 -->
+<section class="mb-5" id="partner">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">05</span> 파트너 전용 페이지</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <table class="table table-hover">
+        <thead class="table-light">
+          <tr><th>페이지</th><th>URL</th><th>기능</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><i class="bi bi-scissors me-2 text-primary"></i><strong>시술 관리</strong></td>
+            <td><code>partner_treatments.php</code></td>
+            <td>자기 병원 시술 목록, 가격, 할인가, 활성 상태 관리</td>
+          </tr>
+          <tr>
+            <td><i class="bi bi-wallet2 me-2 text-success"></i><strong>지출/월렛</strong></td>
+            <td><code>partner_wallet.php</code></td>
+            <td>CPV 월렛 잔액, 거래 내역, 충전/사용 이력 확인</td>
+          </tr>
+          <tr>
+            <td><i class="bi bi-gear me-2 text-warning"></i><strong>파트너 설정</strong></td>
+            <td><code>partner_settings.php</code></td>
+            <td>CPV 예산 한도, 일일 캡, 자동충전 설정</td>
+          </tr>
+          <tr>
+            <td><i class="bi bi-robot me-2 text-info"></i><strong>AI 설정</strong></td>
+            <td><code>partner_ai_settings.php</code></td>
+            <td>AI 활성화, 자체 API 키, 프로바이더 선택</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 6. 지출 대시보드 -->
+<section class="mb-5" id="wallet">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">06</span> 병원 지출 대시보드 (partner_wallet.php)</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <p>병원관리자가 자기 병원의 CPV(Cost Per View) 광고비, AI 사용료 등 지출 현황을 확인하는 페이지입니다.</p>
+
+      <div class="wallet-card mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div style="opacity:0.8;font-size:13px;">서울미녀 강남점 월렛</div>
+            <div class="wallet-balance">₩ 1,250,000</div>
+          </div>
+          <i class="bi bi-wallet2" style="font-size:3rem;opacity:0.3;"></i>
+        </div>
+        <div class="d-flex gap-3 mt-3" style="font-size:13px;opacity:0.8;">
+          <span><i class="bi bi-arrow-down-circle me-1"></i>충전: ₩2,000,000</span>
+          <span><i class="bi bi-arrow-up-circle me-1"></i>사용: ₩750,000</span>
+        </div>
+      </div>
+
+      <h6 class="fw-bold">주요 기능</h6>
+      <ul class="sb-feature-list">
+        <li><strong>잔액 확인:</strong> 현재 CPV 월렛 잔액 실시간 표시</li>
+        <li><strong>거래 내역:</strong> 충전/차감/환불 이력 (날짜, 금액, 사유)</li>
+        <li><strong>지출 통계:</strong> 일별/월별 광고비 + AI 사용료 차트</li>
+        <li><strong>예산 한도:</strong> 일일 캡 설정으로 과다 지출 방지</li>
+        <li><strong>AI 비용:</strong> AI 리뷰 분석, 이미지 생성 등 AI 사용 비용 확인</li>
+      </ul>
+
+      <div class="sb-note sb-note-warning mt-3">
+        <strong>CPV 과금 테이블:</strong>
+        <code>gangnamunni_cpv_wallets</code> (잔액),
+        <code>gangnamunni_cpv_transactions</code> (거래),
+        <code>gangnamunni_cpv_logs</code> (로그),
+        <code>gangnamunni_cpv_daily_stats</code> (일별 통계)
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. 보안 -->
+<section class="mb-5" id="security">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">07</span> 보안 정책</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <ul class="sb-feature-list">
+        <li><strong>데이터 격리:</strong> 병원관리자는 <code>hospital_id</code> 세션 값으로 자기 병원 데이터만 조회/수정 가능</li>
+        <li><strong>SQL 격리:</strong> 모든 쿼리에 <code>WHERE hospital_id = ?</code> 조건 적용</li>
+        <li><strong>세션 변수:</strong> <code>$_SESSION['ad_admin_hospital_id']</code>, <code>$_SESSION['partner_hospital_id']</code></li>
+        <li><strong>메뉴 필터링:</strong> <code>check_permission()</code>으로 허용된 메뉴만 사이드바에 표시</li>
+        <li><strong>프론트엔드:</strong> 인라인 편집 버튼도 역할별 필터링 (병원 관련 버튼만 표시)</li>
+        <li><strong>비밀번호:</strong> <code>password_hash()</code> / <code>password_verify()</code> (bcrypt)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 8. DB 구조 -->
+<section class="mb-5" id="db">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">08</span> DB 구조</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <h6 class="fw-bold">gangnamunni_admins 테이블</h6>
+      <table class="table table-sm table-bordered">
+        <thead class="table-light">
+          <tr><th>컬럼</th><th>타입</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>id</code></td><td>INT PK</td><td>관리자 ID</td></tr>
+          <tr><td><code>username</code></td><td>VARCHAR(50) UNI</td><td>로그인 아이디</td></tr>
+          <tr><td><code>password</code></td><td>VARCHAR(255)</td><td>bcrypt 해시</td></tr>
+          <tr><td><code>role</code></td><td>ENUM</td><td>super_admin / admin / editor / viewer / <strong>hospital_admin</strong> / <strong>hospital_sub_admin</strong></td></tr>
+          <tr class="table-warning"><td><code>hospital_id</code></td><td>INT NULL</td><td>소속 병원 ID (병원관리자 전용)</td></tr>
+          <tr class="table-warning"><td><code>hospital_name</code></td><td>VARCHAR(200)</td><td>소속 병원명</td></tr>
+          <tr><td><code>parent_admin_id</code></td><td>INT NULL</td><td>상위 관리자 (부관리자용)</td></tr>
+          <tr><td><code>permissions</code></td><td>LONGTEXT</td><td>커스텀 권한 JSON</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. 병원 관리자 가이드 v1.0 (2026-03-29)</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer me-1"></i>인쇄</button>
+        <a href="index.html" class="btn btn-outline-primary"><i class="bi bi-house me-1"></i>매뉴얼 홈</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="common/export.js"></script>
+<script src="common/export.js"></script><script>document.addEventListener("DOMContentLoaded",function(){updateThemeIcon();});</script>
+</body>
+</html>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ko" data-bs-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1차 검수 — 처리 상태 재점검 보고서 (2026-05-28)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<script>(function(){const t=localStorage.getItem('st-theme')||'light';document.documentElement.setAttribute('data-bs-theme',t);})();</script>
+<style>
+  body { font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; }
+  .hero {
+    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+    color: #fff; padding: 28px 26px; border-radius: 12px; margin-bottom: 24px;
+    box-shadow: 0 4px 16px rgba(25, 135, 84, 0.25);
+  }
+  .hero h1 { font-weight: 800; margin: 0 0 8px; }
+  .stat-card {
+    padding: 18px 20px; border-radius: 10px; text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+  .stat-card .num { font-size: 2.2rem; font-weight: 800; line-height: 1.2; }
+  .stat-card .label { font-size: .85rem; opacity: .9; }
+  .stat-done { background: #198754; color: #fff; }
+  .stat-doing { background: #fd7e14; color: #fff; }
+  .stat-todo { background: #dc3545; color: #fff; }
+  .stat-future { background: #6c757d; color: #fff; }
+  .stat-total { background: linear-gradient(135deg, #0d6efd, #6610f2); color: #fff; }
+  table.match-table { font-size: .9rem; }
+  table.match-table th { background: var(--bs-tertiary-bg); }
+  .status-badge {
+    display: inline-block; padding: 3px 10px;
+    border-radius: 12px; font-size: .75rem; font-weight: 700;
+    white-space: nowrap;
+  }
+  .s-done { background: #198754; color: #fff; }
+  .s-partial { background: #20c997; color: #fff; }
+  .s-doing { background: #fd7e14; color: #fff; }
+  .s-todo { background: #dc3545; color: #fff; }
+  .s-future { background: #6c757d; color: #fff; }
+  .insight {
+    background: var(--bs-tertiary-bg);
+    border-left: 5px solid #0d6efd;
+    padding: 16px 20px; border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  .insight h5 { color: #0d6efd; margin-bottom: 10px; font-weight: 700; }
+  .compare {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    gap: 14px; align-items: center;
+    margin: 20px 0;
+  }
+  .compare-box {
+    padding: 18px 20px; border-radius: 10px;
+    text-align: center;
+  }
+  .compare-old { background: rgba(220, 53, 69, 0.1); border: 2px solid #dc3545; }
+  .compare-new { background: rgba(25, 135, 84, 0.1); border: 2px solid #198754; }
+  .compare-arrow { font-size: 2rem; color: #0d6efd; }
+  .item-row td { vertical-align: middle; padding: 8px 10px !important; }
+  .theme-toggle { position: fixed; top: 16px; right: 16px; z-index: 1000; }
+  .source-badge {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-size: .7rem; font-weight: 600;
+    background: var(--bs-secondary-bg); color: var(--bs-secondary-color);
+    margin-right: 4px;
+  }
+</style>
+</head>
+<body>
+<button class="btn btn-sm btn-outline-secondary theme-toggle" onclick="toggleTheme()">
+  <i class="bi bi-circle-half"></i> <span id="theme-label">다크</span>
+</button>
+
+<div class="container py-4" style="max-width: 1280px;">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1><i class="bi bi-clipboard-check"></i> 1차 검수 — 처리 상태 재점검 보고서</h1>
+    <div style="opacity:.95; margin-top:6px;">
+      <div><strong>작성일</strong> : 2026-05-28 (목) — 1차 보고서 작성 후 클라이언트 피드백 반영 재점검</div>
+      <div><strong>점검 사유</strong> : "이전에 수정한 것도 있는 것 아닌가" — 정확한 잔여 작업량 재산정</div>
+      <div><strong>관련 문서</strong> : <a class="text-white" href="milestone_20260527.html" target="_blank">마일스톤</a> · <a class="text-white" href="scenario_20260528.html" target="_blank">수정 시나리오</a></div>
+    </div>
+  </div>
+
+  <!-- 핵심 결론 -->
+  <div class="insight">
+    <h5><i class="bi bi-lightbulb-fill"></i> 핵심 결론 (TL;DR)</h5>
+    <p class="mb-2">
+      ① 검수 시트 100건 중 <strong>이미 시트에 "완료" 표기된 항목이 12건</strong>,
+      ② <strong>코드/DB는 이미 존재하고 UI 연결/활성화만 필요한 항목이 약 25건</strong>,
+      ③ 나머지 약 <strong>63건이 실제 신규/수정 작업</strong>입니다.
+    </p>
+    <p class="mb-0">
+      따라서 <strong>실제 잔여 작업량은 100건이 아니라 약 63건</strong>이며,
+      <strong>개발 기간을 6주 → 약 5주로 단축 가능</strong>합니다.
+      이미 구축된 인프라(갭 분석 27기능, 시술 관리 8Phase, RBAC 9역할, 마이페이지 9메뉴, 광고 시스템 등)를 재활용하기 때문입니다.
+    </p>
+  </div>
+
+  <!-- 통계 카드 -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+      <div class="stat-card stat-done">
+        <div class="num">12</div>
+        <div class="label">✓ 시트에 "완료" 표기</div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6">
+      <div class="stat-card stat-doing">
+        <div class="num">25</div>
+        <div class="label">🔧 코드/DB 존재 — 연결만 필요</div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6">
+      <div class="stat-card stat-todo">
+        <div class="num">63</div>
+        <div class="label">⚒ 실제 신규/수정 필요</div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6">
+      <div class="stat-card stat-future">
+        <div class="num">~25</div>
+        <div class="label">📦 후속 (Figma/카카오로그인 등)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 비교 -->
+  <h3 class="mt-4"><i class="bi bi-arrow-left-right"></i> 일정 재산정 비교</h3>
+  <div class="compare">
+    <div class="compare-box compare-old">
+      <div class="text-secondary mb-1">기존 산정 (100건 기준)</div>
+      <div style="font-size:1.5rem; font-weight:800; color:#dc3545;">개발 6주</div>
+      <div class="small">전체 8주 (5/27 ~ 7/21)</div>
+    </div>
+    <div class="compare-arrow">→</div>
+    <div class="compare-box compare-new">
+      <div class="text-secondary mb-1">재점검 후 (63건 신규 + 25건 연결)</div>
+      <div style="font-size:1.5rem; font-weight:800; color:#198754;">개발 약 5주</div>
+      <div class="small">전체 약 7주 (5/27 ~ 7/14 예상)</div>
+    </div>
+  </div>
+
+  <!-- 1. 이미 완료된 항목 -->
+  <section class="mt-5">
+    <h3><span class="status-badge s-done">완료</span> 1. 시트에 이미 "완료" 표기된 항목 (12건)</h3>
+    <p class="text-secondary">검수자가 시트의 "처리 상태" 컬럼에 명시한 완료 항목. 추가 작업 불필요.</p>
+
+    <div class="table-responsive">
+      <table class="table table-striped match-table">
+        <thead>
+          <tr><th style="width:10%">시트</th><th style="width:30%">화면/기능</th><th>항목</th><th style="width:14%">상태</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="source-badge">관리자 #4</span></td><td>광고 관리</td><td>광고 유형/단가 매뉴얼 (배너/프리미엄/VIP)</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">관리자 #7</span></td><td>병원 등록 마법사</td><td>등록 병원 목록 확인/관리</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">관리자 #9</span></td><td>병원 등록</td><td>등록 완료 팝업 안내 문구 오류</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">관리자 #10</span></td><td>등록 관리</td><td>의사/간호사/약사/환자 등록 리스트 확인</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">관리자 #12</span></td><td>회원 관리</td><td>회원 등급별 기능 매뉴얼</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">개발여부 #6</span></td><td>병원 검색</td><td>병원 목록 썸네일 이미지 + 평점 표시</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">개발여부 #10</span></td><td>상세 페이지</td><td>"예약하기" 버튼 고정 노출</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">개발여부 #12</span></td><td>후기 기능</td><td>평점 계산 (평균 자동 산정)</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">개발여부 #13</span></td><td>후기 기능</td><td>후기 신고/숨김 처리 + 관리자 검수 승인</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">개발여부 #20</span></td><td>관리자(웹)</td><td>병원 입점 관리 + 입점 승인</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">개발여부 #21</span></td><td>관리자(웹)</td><td>시술 카테고리 + 검색 태그 추가/수정/삭제</td><td><span class="status-badge s-done">완료</span></td></tr>
+          <tr><td><span class="source-badge">개발여부 #22</span></td><td>관리자(웹)</td><td>전체 모더레이션 (사용자/후기 통합 검수)</td><td><span class="status-badge s-done">완료</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 2. 부분 완료 / 연결만 필요 -->
+  <section class="mt-5">
+    <h3><span class="status-badge s-partial">부분 완료</span> 2. 코드/DB는 이미 존재 — 연결·활성화·UI 노출만 필요한 항목 (~25건)</h3>
+    <p class="text-secondary">갭 분석 27기능, 시술 관리 8Phase, RBAC 9역할, 마이페이지 9메뉴 등 이미 구축된 인프라가 있어 <strong>새로 만드는 작업이 아니라 활성화/연결</strong>입니다.</p>
+
+    <div class="table-responsive">
+      <table class="table table-striped match-table">
+        <thead>
+          <tr><th style="width:10%">시트</th><th style="width:24%">항목</th><th>기존 구축 자산</th><th style="width:18%">실제 작업</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="source-badge">1차 #8</span></td><td>찜하기 정상 작동</td><td><strong>갭 분석 1차 찜하기 (2026-03-14 완료)</strong> · DB 테이블 + AJAX 코드 존재</td><td>비활성화 토글 해제 (0.5h)</td></tr>
+          <tr><td><span class="source-badge">1차 #9</span></td><td>상세 4탭 재정의 [홈/의료진/이벤트/시술후기]</td><td>detail.php 탭 구조 존재 · 의사/이벤트/후기 데이터 쿼리 존재</td><td>탭 명칭/순서 변경 + 의료진 탭 신규 (2h)</td></tr>
+          <tr><td><span class="source-badge">1차 #12</span></td><td>상담/예약 버튼 권한 분기</td><td><strong>RBAC 9역할 (2026-03-30~31 완료)</strong> · 권한 체크 함수 존재</td><td>버튼 가시성 분기만 추가 (1h)</td></tr>
+          <tr><td><span class="source-badge">1차 #14</span></td><td>예약 시술 선택 병원 데이터 연동</td><td><strong>시술 관리 8Phase (2026-03-25 완료)</strong> · gangnamunni_treatment_master 테이블 존재</td><td>booking.php 시술 select 쿼리만 수정 (1.5h)</td></tr>
+          <tr><td><span class="source-badge">1차 #17</span></td><td>좋아요 카운트 미반영</td><td>likes 테이블 + AJAX 존재</td><td>COUNT 쿼리 + ORDER BY 정합 (1h)</td></tr>
+          <tr><td><span class="source-badge">1차 #20</span></td><td>시술 후기 상세 데이터 6항목</td><td><strong>hospital_reviews + Quill.js 에디터 (2026-02-11 완료)</strong></td><td>화면 출력 필드 추가 (2h)</td></tr>
+          <tr><td><span class="source-badge">1차 #22</span></td><td>마이 '내가 작성한 후기' 연동</td><td>마이페이지 9메뉴 + 내후기관리 존재</td><td>JOIN 쿼리 / 캐시 정합만 (1.5h)</td></tr>
+          <tr><td><span class="source-badge">신규 #6</span></td><td>병원리스트 정렬 4종</td><td><strong>hospitals.php 3뷰 모드 (2026-03-04)</strong> · 가격/평점/찜 카운트 컬럼 존재</td><td>정렬 옵션 4개 추가만 (2h)</td></tr>
+          <tr><td><span class="source-badge">신규 #14</span></td><td>마이페이지 메뉴 9종</td><td><strong>마이페이지 9메뉴 모두 구현됨</strong> (예약/알림/포인트/쿠폰/채팅/찜/등급/후기관리/알림설정/FAQ/QA + 프로필)</td><td>구조 검증 + 라우팅 확인만 (1h)</td></tr>
+          <tr><td><span class="source-badge">신규 #13</span></td><td>마이페이지 로그인 오류 픽스</td><td>마이페이지 화면 정상 존재 — 세션 처리 문제만</td><td>세션 처리 디버깅 (2h)</td></tr>
+          <tr><td><span class="source-badge">개발여부 #11</span></td><td>후기 작성 (텍스트 + 사진 1~3장)</td><td><strong>hospital_reviews + 후기 작성 (2026-02-24)</strong> · 이미지 업로드 코드 존재</td><td>이미지 노출 + 작성 권한 조건만 (2h)</td></tr>
+          <tr><td><span class="source-badge">개발여부 #15</span></td><td>예약 내역 조회/취소</td><td>my_appointments.php 이미 존재 · 취소 API 존재</td><td>마이페이지 라우팅만 (1h)</td></tr>
+          <tr><td><span class="source-badge">개발여부 #16</span></td><td>예약 알림 발송</td><td><strong>FCM 알림 + 가입자 알림 (2026-02-26)</strong> · 발송 코드 존재</td><td>예약 완료 트리거 연결 (2h)</td></tr>
+          <tr><td><span class="source-badge">관리자 #14</span></td><td>응모 이벤트 관리</td><td>admin_event_entries.php (2026-03-04 완료)</td><td>등록 페이지만 추가 (2h)</td></tr>
+          <tr><td><span class="source-badge">관리자 #15</span></td><td>서울미녀 꿀팁 관리</td><td>detail_tip.php · 칼럼 관리 일부 존재</td><td>관리자 메뉴 연결만 (2h)</td></tr>
+          <tr><td><span class="source-badge">관리자 #16</span></td><td>추천 병원 섹션 관리자 지정</td><td>광고 우선순위 시스템 (2026-03-04) · 광고 ON/OFF (2026-03-29 리디자인)</td><td>추천 병원 카테고리 UI만 추가 (2h)</td></tr>
+          <tr><td><span class="source-badge">관리자 #18</span></td><td>후기/칼럼/커뮤니티 통합 관리</td><td>admin_reviews + admin_columns + 커뮤니티 관리 존재</td><td>탭 통합 UI만 (2h)</td></tr>
+          <tr><td><span class="source-badge">프론트 #1,2</span></td><td>프로모션 배너 0번 인덱스 + 좌우</td><td>Bootstrap carousel 사용 중</td><td>JS 패치만 (1h)</td></tr>
+          <tr><td><span class="source-badge">프론트 #14</span></td><td>평점 산정 로직 매뉴얼</td><td>평점 자동 산정 (개발여부 #12 완료)</td><td>로직 문서화만 (0.5h)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="insight">
+      <h5><i class="bi bi-arrow-right-circle"></i> 결과</h5>
+      <p class="mb-0">이 25건은 평균 <strong>1.5시간/건</strong>이면 처리 가능 → 총 ~37시간 = <strong>약 5일 (1주)</strong>. 기존 산정의 3주에서 <strong>2주 단축</strong>됩니다.</p>
+    </div>
+  </section>
+
+  <!-- 3. 실제 신규/수정 -->
+  <section class="mt-5">
+    <h3><span class="status-badge s-todo">신규/수정</span> 3. 실제 새 작업이 필요한 항목 (~63건)</h3>
+    <p class="text-secondary">코드/DB 자산 없거나, 구조 변경이 필요하거나, 새로 만들어야 하는 항목.</p>
+
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="card h-100" style="border-left:4px solid #dc3545;">
+          <div class="card-header bg-danger text-white">긴급/필수 (~15건)</div>
+          <div class="card-body">
+            <ul class="small mb-0">
+              <li>안드로이드 뒤로가기 종료 방지 (1차 #1)</li>
+              <li>홈 새로고침 최상단 튐 (1차 #2)</li>
+              <li>병원리스트 스크롤 자동이동 (1차 #4)</li>
+              <li>의사 5명 개별 선택 (1차 #13) — 로직 재작성</li>
+              <li>커뮤니티 댓글 비활성화 (1차 #21)</li>
+              <li>로그인 500에러 (프론트 #로그인)</li>
+              <li>응모 이벤트 로그인 풀림 (프론트 #23)</li>
+              <li>병원 수정 500 (프론트 #24)</li>
+              <li>상담신청 오류 (프론트 #9)</li>
+              <li>회원가입 완료/취소 오류</li>
+              <li>광고 배너 승인/거절 (관리자 #4-1)</li>
+              <li>병원 등록 승인 500 (관리자 #8)</li>
+              <li>회원 비번 변경 후 앱 로그인 (관리자 #11)</li>
+              <li>후기 마법사 File not found (관리자 #2)</li>
+              <li>병원 이미지 추가 불가 (관리자 #3)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100" style="border-left:4px solid #fd7e14;">
+          <div class="card-header bg-warning text-dark">높음 (~22건)</div>
+          <div class="card-body">
+            <ul class="small mb-0">
+              <li>리스트 시술명/가격 노출 (1차 #5)</li>
+              <li>인피드 AD 4개 간격 (1차 #6)</li>
+              <li>의사 탭 병원별 분리 (프론트 #19)</li>
+              <li>이벤트 탭 1343건 → 병원별 (프론트 #17)</li>
+              <li>후기 탭 동적 카운트 (프론트 #18)</li>
+              <li>병원 소개 vs 상세 (프론트 #16)</li>
+              <li>검색 결과 불일치 (프론트 #7)</li>
+              <li>병원 메인 이미지 등록 (프론트 #12)</li>
+              <li>광고 이미지 URL 매뉴얼 (관리자 #5)</li>
+              <li>광고 랜딩 URL (관리자 #6)</li>
+              <li>회원 vs 환자 분리 (관리자 #13)</li>
+              <li>의사 상담신청 저장/메뉴 (관리자 #17)</li>
+              <li>로그인 찾기 (관리자 #19)</li>
+              <li>카카오 지도 API (개발여부 #9)</li>
+              <li>병원 기본 정보 노출 (개발여부 #7)</li>
+              <li>병원 상세 탭 가격 노출 (개발여부 #8)</li>
+              <li>... 외 ~6건</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100" style="border-left:4px solid #198754;">
+          <div class="card-header bg-success text-white">중간/낮음 (~26건)</div>
+          <div class="card-body">
+            <ul class="small mb-0">
+              <li>홈 배너 스와이프 (1차 #3)</li>
+              <li>리스트 상담 버튼 삭제 (1차 #7)</li>
+              <li>상세 시술 가격 노출 강화 (1차 #10)</li>
+              <li>플로팅 채팅 숨김 (1차 #11)</li>
+              <li>30분 단위 예약 (1차 #15)</li>
+              <li>DEV MODE 삭제 (1차 #16)</li>
+              <li>커뮤니티 (수정됨) 버그 (1차 #18)</li>
+              <li>커뮤니티 디테일 레이아웃 (1차 #19)</li>
+              <li>center nav 숨김 (프론트 #4)</li>
+              <li>#ads-carousel 패딩 (프론트 #5)</li>
+              <li>페이지별 배너 개수 (프론트 #6)</li>
+              <li>상세 상단 빈공간 (프론트 #11)</li>
+              <li>"성형외과 전문의" 표기 (프론트 #13)</li>
+              <li>점심시간 노출 (프론트 #15)</li>
+              <li>유튜브 탭 제거 (프론트 #20)</li>
+              <li>하단 버튼 양분할 (프론트 #21)</li>
+              <li>메인 배너 잘림 (관리자 #메인배너)</li>
+              <li>뷰어 오버권한 (프론트 #27)</li>
+              <li>관리자 로그아웃 (프론트 #28)</li>
+              <li>대시보드 사용 불가 메뉴 (프론트 #26)</li>
+              <li>... 외 ~6건</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight mt-4">
+      <h5><i class="bi bi-calculator"></i> 시간 산정</h5>
+      <ul class="mb-0">
+        <li>긴급/필수 15건 × 평균 2.5h = 37.5h</li>
+        <li>높음 22건 × 평균 3h = 66h</li>
+        <li>중간/낮음 26건 × 평균 1h = 26h</li>
+        <li><strong>합계 약 130시간 = 16일 = 약 3.2주</strong></li>
+        <li>+ 회귀/동반 +20%, 양 OS 빌드 +1일 = <strong>약 4주</strong></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 4. 재산정 -->
+  <section class="mt-5">
+    <h3><i class="bi bi-arrow-clockwise"></i> 4. 재산정 결과</h3>
+
+    <div class="table-responsive">
+      <table class="table table-bordered">
+        <thead>
+          <tr><th>구분</th><th class="text-center">기존 산정</th><th class="text-center">재점검 후</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Phase 1 긴급</strong></td>
+            <td class="text-center">14일 (2주)</td>
+            <td class="text-center"><strong style="color:#198754;">~10일 (1.5주)</strong></td>
+            <td>이미 완료 항목 일부 제외 + 단순 픽스 비중 高</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 2 핵심</strong></td>
+            <td class="text-center">14일 (2주)</td>
+            <td class="text-center"><strong style="color:#198754;">~10일 (1.5주)</strong></td>
+            <td>코드/DB 존재 항목 다수 → 연결 작업 위주</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 3 UI/UX</strong></td>
+            <td class="text-center">14일 (2주)</td>
+            <td class="text-center"><strong style="color:#198754;">~10일 (1.5주)</strong></td>
+            <td>관리자 #4/#7/#9/#10/#12 완료 차감 + 단순 작업 비중</td>
+          </tr>
+          <tr style="background:rgba(25, 135, 84, 0.08); font-weight:700;">
+            <td>개발 합계</td>
+            <td class="text-center">42일 (6주)</td>
+            <td class="text-center" style="color:#198754;">~30일 (약 5주)</td>
+            <td>2주 단축 가능</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 4·5 검수+최종</strong></td>
+            <td class="text-center">14일 (2주)</td>
+            <td class="text-center">14일 (2주)</td>
+            <td>검수 일정은 유지 (안전 마진 확보)</td>
+          </tr>
+          <tr style="background:rgba(13, 110, 253, 0.1); font-weight:700; font-size:1.05rem;">
+            <td>전체 합계</td>
+            <td class="text-center">56일 (8주)</td>
+            <td class="text-center" style="color:#0d6efd;">~44일 (약 7주)</td>
+            <td><strong>5/27 ~ 7/14 (화) 완료 가능</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 5. 권고 -->
+  <section class="mt-5">
+    <h3><i class="bi bi-lightbulb"></i> 5. 클라이언트 보고 권고</h3>
+    <div class="insight">
+      <h5>옵션 A — 일정 단축 발표 (1주 앞당김)</h5>
+      <p class="mb-2"><strong>개발 완료 6/30 (화) · 최종 마감 7/14 (화)</strong>로 단축 발표. 이미 구축된 자산을 활용해 효율적으로 진행한다는 메시지.</p>
+      <p class="mb-0 text-secondary small">장점 : 신뢰도 ↑ · 단점 : 회귀 버그 발생 시 압축된 일정으로 회복 시간 부족</p>
+    </div>
+    <div class="insight" style="border-left-color:#fd7e14;">
+      <h5>옵션 B — 기존 8주 유지 + "조기 완료 가능성 강조" <span class="badge bg-warning text-dark">권장</span></h5>
+      <p class="mb-2"><strong>마일스톤 일정은 8주(7/21) 유지</strong>하되, "이미 완료된 항목 12건 + 연결만 필요한 항목 25건 확인됨 → 실제 5~6주에 완료될 가능성이 높음"으로 보고.</p>
+      <p class="mb-0 text-secondary small">장점 : 안전 마진 유지 + 신뢰도 ↑ · 단점 : 단축 인상 약함</p>
+    </div>
+  </section>
+
+  <!-- 사인오프 -->
+  <div class="text-center mt-5 p-4" style="background:var(--bs-tertiary-bg); border-radius:10px;">
+    <div><strong>작성</strong> : 시스템 개발 (sj) · 2026-05-28</div>
+    <div class="mt-2"><strong>다음 액션</strong> : 옵션 A 또는 B 선택 후 마일스톤 HTML 업데이트 + 클라이언트 카톡 전달</div>
+  </div>
+
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute('data-bs-theme') === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-bs-theme', next);
+  localStorage.setItem('st-theme', next);
+  document.getElementById('theme-label').textContent = next === 'light' ? '다크' : '라이트';
+}
+(function(){
+  const t = document.documentElement.getAttribute('data-bs-theme');
+  document.getElementById('theme-label').textContent = t === 'light' ? '다크' : '라이트';
+})();
+</script>
+</body>
+</html>

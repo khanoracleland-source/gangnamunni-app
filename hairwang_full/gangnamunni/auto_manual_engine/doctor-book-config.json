@@ -1,0 +1,102 @@
+{
+  "_comment": "서울미녀 의사용 매뉴얼 설정",
+  "_version": "1.0.0",
+  "_updated": "2026-03-05",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/hairwang/gangnamunni/",
+  "browser": {
+    "headless": true,
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "captureDelay": 2000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "timeout": 30000
+  },
+  "login": {
+    "required": true,
+    "url": "dashboard.php",
+    "usernameField": "input[name='username']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[name='login']",
+    "username": "admin",
+    "password": "admin123",
+    "successIndicator": ".admin-sidebar"
+  },
+  "loginCapture": {
+    "enabled": false
+  },
+  "book": {
+    "title": "서울미녀 의사용 매뉴얼",
+    "subtitle": "의사 전용 페이지 가이드",
+    "author": "Seoul Beauty Admin",
+    "outputDir": "../uploads/doctor-book",
+    "manualDir": "../manual/doctor_manual"
+  },
+  "chapters": [
+    {
+      "id": "ch01_dashboard",
+      "title": "의사 대시보드",
+      "icon": "bi-heart-pulse",
+      "pages": [
+        {
+          "key": "dashboard",
+          "label": "관리자 대시보드",
+          "url": "dashboard.php",
+          "description": "전체 현황 요약",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_appointments",
+      "title": "예약 관리",
+      "icon": "bi-calendar-check",
+      "pages": [
+        {
+          "key": "bookings",
+          "label": "예약 목록",
+          "url": "admin_bookings.php",
+          "description": "예약 목록 및 상태 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "consultations",
+          "label": "상담 관리",
+          "url": "admin_consultations.php",
+          "description": "상담 신청 목록 및 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch03_patients",
+      "title": "환자 관리",
+      "icon": "bi-people",
+      "pages": [
+        {
+          "key": "reviews",
+          "label": "후기 관리",
+          "url": "admin_reviews.php",
+          "description": "환자 후기 확인",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ],
+  "title": "서울미녀 의사용 매뉴얼"
+}

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 찜 목록 - 서울미녀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic', sans-serif;
+            background: #F9F9F9;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF6B9D;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-button {
+            padding: 10px 24px;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, #FFE5ED 0%, #FFB6D9 100%);
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 42px;
+            font-weight: 700;
+            color: #FF6B9D;
+            margin-bottom: 15px;
+        }
+
+        .page-subtitle {
+            font-size: 18px;
+            color: #666;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Hospital Cards */
+        .hospitals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .hospital-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .hospital-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+
+        .hospital-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #FFE5ED 0%, #FFB6D9 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+        }
+
+        .hospital-content {
+            padding: 20px;
+        }
+
+        .hospital-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .hospital-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .favorite-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            transition: transform 0.2s;
+        }
+
+        .favorite-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .hospital-rating {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .rating-stars {
+            color: #FFB800;
+            font-size: 16px;
+        }
+
+        .rating-score {
+            font-weight: 700;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .review-count {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .hospital-meta {
+            margin-bottom: 15px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .meta-icon {
+            font-size: 16px;
+        }
+
+        .hospital-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+
+        .tag {
+            padding: 4px 10px;
+            background: #FFE5ED;
+            color: #FF6B9D;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .hospital-actions {
+            display: flex;
+            gap: 10px;
+            padding-top: 15px;
+            border-top: 1px solid #F0F0F0;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #FF6B9D;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #FF5588;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #FF6B9D;
+            border: 2px solid #FF6B9D;
+        }
+
+        .btn-secondary:hover {
+            background: #FFE5ED;
+        }
+
+        .favorited-date {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+            text-align: right;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            background: white;
+            border-radius: 15px;
+        }
+
+        .empty-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .empty-text {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .btn-link {
+            background: #FF6B9D;
+            color: white;
+            padding: 14px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .btn-link:hover {
+            background: #FF5588;
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 32px;
+            }
+
+            .hospitals-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <span>💄</span>
+                <span>서울미녀</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="hospitals.html" class="nav-link">병원찾기</a>
+                <a href="events.html" class="nav-link">이벤트</a>
+                <a href="community.html" class="nav-link">커뮤니티</a>
+                <button class="nav-button" onclick="location.href='my-bookings.html'">내 예약</button>
+                <a href="settings.html" class="nav-link" style="font-size: 20px;" title="환경 설정">⚙️</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">❤️ 내 찜 목록</h1>
+        <p class="page-subtitle">관심 있는 병원을 모아보세요</p>
+    </div>
+
+    <!-- Container -->
+    <div class="container">
+        <div id="favoritesContainer" class="hospitals-grid">
+            <!-- Favorites will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <script src="js/loading.js"></script>
+
+    <!-- Settings Manager -->
+    <script src="js/settings.js"></script>
+
+    <!-- Authentication Manager -->
+    <script src="js/auth.js"></script>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        let favorites = [];
+
+        // Check authentication
+        if (!AuthManager.requireAuth()) {
+            // Will redirect to login page
+        }
+
+        // Load favorites on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadFavorites();
+        });
+
+        async function loadFavorites() {
+            const user = AuthManager.getCurrentUser();
+            if (!user) return;
+
+            LoadingIndicator.show('favorites');
+
+            try {
+                const response = await fetch(`${API_BASE}/favorites?user_id=${user.id}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    favorites = data.favorites;
+                    displayFavorites(favorites);
+                } else {
+                    showError('찜 목록을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Load favorites error:', error);
+                showError('찜 목록을 불러오는데 실패했습니다.');
+            } finally {
+                LoadingIndicator.hide('favorites');
+            }
+        }
+
+        function displayFavorites(favorites) {
+            const container = document.getElementById('favoritesContainer');
+
+            if (favorites.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">💔</div>
+                        <div class="empty-text">찜한 병원이 없습니다</div>
+                        <a href="hospitals.html" class="btn-link">병원 찾아보기</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = favorites.map(hospital => {
+                const categories = Array.isArray(hospital.categories)
+                    ? JSON.parse(hospital.categories).slice(0, 3)
+                    : [];
+
+                const address = hospital.address || hospital.new_address || '';
+                const shortAddress = address.split(' ').slice(0, 3).join(' ');
+
+                const favoritedDate = new Date(hospital.favorited_at).toLocaleDateString('ko-KR');
+
+                return `
+                    <div class="hospital-card">
+                        <div class="hospital-image" onclick="goToHospital(${hospital.id})">
+                            🏥
+                        </div>
+                        <div class="hospital-content">
+                            <div class="hospital-header">
+                                <div onclick="goToHospital(${hospital.id})" style="flex: 1;">
+                                    <div class="hospital-name">${hospital.name}</div>
+                                </div>
+                                <button class="favorite-btn" onclick="removeFavorite(${hospital.id})" title="찜 해제">
+                                    ❤️
+                                </button>
+                            </div>
+
+                            <div class="hospital-rating">
+                                <span class="rating-stars">⭐⭐⭐⭐⭐</span>
+                                <span class="rating-score">${hospital.rating || '9.0'}</span>
+                                <span class="review-count">(${(hospital.review_count || 0).toLocaleString()})</span>
+                            </div>
+
+                            <div class="hospital-meta">
+                                <div class="meta-item">
+                                    <span class="meta-icon">📍</span>
+                                    <span>${shortAddress}</span>
+                                </div>
+                            </div>
+
+                            ${categories.length > 0 ? `
+                                <div class="hospital-tags">
+                                    ${categories.map(cat => `<span class="tag">${cat}</span>`).join('')}
+                                </div>
+                            ` : ''}
+
+                            <div class="hospital-actions">
+                                <button class="btn btn-primary" onclick="goToHospital(${hospital.id})">상세보기</button>
+                                <button class="btn btn-secondary" onclick="bookHospital(${hospital.id})">예약하기</button>
+                            </div>
+
+                            <div class="favorited-date">찜한 날짜: ${favoritedDate}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function goToHospital(hospitalId) {
+            window.location.href = `hospital.html?id=${hospitalId}`;
+        }
+
+        function bookHospital(hospitalId) {
+            window.location.href = `hospital.html?id=${hospitalId}#book`;
+        }
+
+        async function removeFavorite(hospitalId) {
+            if (!confirm('찜 목록에서 제거하시겠습니까?')) {
+                return;
+            }
+
+            const user = AuthManager.getCurrentUser();
+            LoadingIndicator.show('remove-favorite');
+
+            try {
+                const response = await fetch(`${API_BASE}/favorites/${hospitalId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_id: user.id })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Reload favorites
+                    await loadFavorites();
+                } else {
+                    alert(data.message || '찜 해제에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Remove favorite error:', error);
+                alert('찜 해제에 실패했습니다.');
+            } finally {
+                LoadingIndicator.hide('remove-favorite');
+            }
+        }
+
+        function showError(message) {
+            const container = document.getElementById('favoritesContainer');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <div class="empty-text">${message}</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

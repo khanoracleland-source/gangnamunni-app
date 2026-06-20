@@ -1,0 +1,28 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈 1페이지 — Figma vs 현재 vs 새디자인 (동일크기)</title>
+<style>
+:root{--c:#0891b2;--red:#ae1932;--bg:#0f172a;--card:#1e293b;--line:#334155;--ok:#16a34a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#e2e8f0;font-family:'Noto Sans KR',sans-serif}
+header{text-align:center;padding:24px 16px;background:linear-gradient(135deg,#7c3aed,#ae1932)}
+header h1{margin:0;font-size:1.3rem;color:#fff}header p{margin:6px 0 0;color:#fde7ef;font-size:.85rem}
+.wrap{max-width:1320px;margin:0 auto;padding:20px 14px 80px}
+.cols{display:grid;grid-template-columns:repeat(3,412px);gap:18px;justify-content:center}
+@media(max-width:1320px){.cols{grid-template-columns:1fr;justify-items:center}}
+.col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;width:436px;max-width:100%}
+.col h3{margin:0 0 8px;font-size:.95rem;text-align:center;padding:7px;border-radius:8px;color:#fff}
+.h-fig{background:#7c3aed}.h-cur{background:#64748b}.h-new{background:var(--c)}
+.col img{width:412px;max-width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:zoom-in}
+.note{background:#0b1220;border-left:4px solid var(--c);padding:12px 15px;border-radius:0 8px 8px 0;font-size:.86rem;margin:18px 0}
+.ok{color:#4ade80;font-weight:700}
+</style></head><body>
+<header><h1>🏠 홈 1페이지 — Figma vs 현재 vs 새디자인</h1>
+<p>3개 완전 동일 크기(412×1075px) · 같은 배율 · 스테이징 index_figma.php · 2026-06-13</p></header>
+<div class="wrap">
+<div class="cols">
+  <div class="col"><h3 class="h-fig">① FIGMA 디자인</h3><a href="cmp_figma.png" target="_blank"><img src="cmp_figma.png"></a></div>
+  <div class="col"><h3 class="h-cur">② 현재 구현</h3><a href="cmp_cur.png" target="_blank"><img src="cmp_cur.png"></a></div>
+  <div class="col"><h3 class="h-new">③ 새 디자인(토큰적용)</h3><a href="cmp_new.png" target="_blank"><img src="cmp_new.png"></a></div>
+</div>
+<div class="note"><span class="ok">3개 모두 412×1075px 동일 크기·동일 배율.</span> ① Figma는 프레임이 짧아 하단 여백(흰색). ③ 새디자인은 <b>카테고리→이벤트</b> 흐름이 Figma와 일치합니다. 남은 차이는 AD 내용(데이터)·이벤트 카드 톤·추가섹션(토글) 뿐.</div>
+</div></body></html>

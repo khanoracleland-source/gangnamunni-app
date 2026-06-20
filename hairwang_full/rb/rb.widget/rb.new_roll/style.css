@@ -1,0 +1,17 @@
+.ovlay_wrap_roll {overflow: hidden; box-sizing: border-box; height: 110px;}
+.bbs_main_wrap_con_cont a {font-size: 18px;}
+.bbs_main_wrap_con_info1 {font-size: 12px; color:#999; margin-top: 5px;}
+.bbs_main_wrap_con_info2 {color:#888; margin-top: 10px; line-height: 140%;}
+.arr_sw_prev_roll {right:75px !important;}
+.arr_sw_next_roll {right:45px !important;}
+.cut3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+@media all and (max-width:1024px) {
+    .ovlay_wrap_roll {height:115px;}
+}

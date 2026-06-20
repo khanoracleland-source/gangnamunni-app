@@ -1,0 +1,23 @@
+{
+  "site_name": "首尔美女",
+  "login": "登录",
+  "logout": "退出",
+  "signup": "注册",
+  "home": "首页",
+  "hospitals": "医院",
+  "reviews": "评价",
+  "events": "活动",
+  "booking": "预约",
+  "search": "搜索",
+  "treatment": "项目",
+  "price": "价格",
+  "save": "保存",
+  "cancel": "取消",
+  "delete": "删除",
+  "loading": "加载中...",
+  "no_data": "暂无数据",
+  "success": "成功",
+  "reservation": "立即预约",
+  "write_review": "写评价",
+  "view_more": "查看更多"
+}

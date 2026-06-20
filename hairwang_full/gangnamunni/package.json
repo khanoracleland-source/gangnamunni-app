@@ -1,0 +1,19 @@
+{
+  "name": "gangnamunni",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss -i assets/css/tailwind-input.css -o assets/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i assets/css/tailwind-input.css -o assets/css/tailwind.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  },
+  "dependencies": {
+    "puppeteer": "^24.39.0"
+  }
+}

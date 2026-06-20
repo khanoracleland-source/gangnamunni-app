@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <rect fill="#fff" width="900" height="600"/>
+  <g transform="translate(450,300)">
+    <circle fill="#c60c30" r="150"/>
+    <clipPath id="c"><circle r="150"/></clipPath>
+    <path fill="#003478" d="M-150,0a75,75 0 0,1 150,0a75,75 0 0,0 150,0" clip-path="url(#c)"/>
+    <g fill="none" stroke="#000" stroke-width="25">
+      <g transform="rotate(-56.3)">
+        <line x1="-232" y1="-202" x2="-132" y2="-202"/>
+        <line x1="-232" y1="-175" x2="-132" y2="-175"/>
+        <line x1="-232" y1="-148" x2="-132" y2="-148"/>
+        <line x1="132" y1="148" x2="232" y2="148"/>
+        <line x1="132" y1="175" x2="232" y2="175"/>
+        <line x1="132" y1="202" x2="232" y2="202"/>
+      </g>
+      <g transform="rotate(56.3)">
+        <line x1="132" y1="-202" x2="232" y2="-202"/>
+        <line x1="132" y1="-175" x2="232" y2="-175"/>
+        <line x1="132" y1="-148" x2="232" y2="-148"/>
+        <line x1="-232" y1="148" x2="-132" y2="148"/>
+        <line x1="-232" y1="175" x2="-132" y2="175"/>
+        <line x1="-232" y1="202" x2="-132" y2="202"/>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ko" data-bs-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1차 검수 — 작업 진행 시나리오 + 자동 검증 시스템 (2026-05-28)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<script>(function(){const t=localStorage.getItem('wf-theme')||'light';document.documentElement.setAttribute('data-bs-theme',t);})();</script>
+<style>
+  body { font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; }
+  .hero {
+    background: linear-gradient(135deg, #6610f2 0%, #d63384 100%);
+    color: #fff; padding: 32px 28px; border-radius: 12px; margin-bottom: 24px;
+    box-shadow: 0 4px 16px rgba(102, 16, 242, 0.25);
+  }
+  .hero h1 { font-weight: 800; margin: 0 0 8px; }
+  .backup-card {
+    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+    color: #fff; padding: 20px; border-radius: 10px;
+    margin-bottom: 20px;
+  }
+  .backup-card .check { font-size: 1.6rem; }
+  .step-card {
+    background: var(--bs-tertiary-bg);
+    border-radius: 12px; padding: 22px; margin-bottom: 18px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    position: relative;
+  }
+  .step-card .step-num {
+    position: absolute; top: -14px; left: 22px;
+    background: linear-gradient(135deg, #6610f2, #d63384);
+    color: #fff; padding: 4px 14px; border-radius: 16px;
+    font-weight: 800; font-size: .85rem;
+    box-shadow: 0 2px 6px rgba(102, 16, 242, 0.3);
+  }
+  .step-card h4 { margin-top: 8px; color: #6610f2; font-weight: 700; }
+  .pipeline {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin: 16px 0;
+  }
+  .pipeline-step {
+    flex: 1; min-width: 140px;
+    background: var(--bs-body-bg);
+    padding: 12px 14px; border-radius: 8px;
+    text-align: center;
+    border: 2px solid var(--bs-border-color);
+    position: relative;
+  }
+  .pipeline-step.active {
+    border-color: #6610f2;
+    background: rgba(102, 16, 242, 0.08);
+  }
+  .pipeline-step .ps-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px;
+    background: #6610f2; color: #fff;
+    border-radius: 50%; font-weight: 700;
+    font-size: .85rem;
+  }
+  .pipeline-step .ps-label { display: block; margin-top: 6px; font-weight: 600; font-size: .85rem; }
+  .pipeline-step .ps-sub { display: block; font-size: .72rem; color: var(--bs-secondary-color); }
+  .arrow { display: flex; align-items: center; color: #6610f2; font-size: 1.4rem; }
+  .demo-frame {
+    background: var(--bs-body-bg);
+    border: 2px dashed var(--bs-border-color);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 14px 0;
+  }
+  .demo-frame .demo-label {
+    font-weight: 700; color: #6610f2;
+    margin-bottom: 8px;
+  }
+  .demo-row {
+    display: grid; grid-template-columns: auto 1fr auto auto auto;
+    gap: 12px; align-items: center;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    background: var(--bs-tertiary-bg);
+  }
+  .demo-row .demo-id { font-family: monospace; font-weight: 700; color: var(--bs-secondary-color); }
+  .demo-row .demo-result { font-size: 1.3rem; }
+  .demo-row .demo-thumb {
+    width: 80px; height: 50px;
+    background: linear-gradient(135deg, #ddd, #aaa);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #666; font-size: .7rem;
+  }
+  [data-bs-theme="dark"] .demo-row .demo-thumb {
+    background: linear-gradient(135deg, #444, #222);
+    color: #aaa;
+  }
+  .btn-mini {
+    padding: 4px 10px; font-size: .78rem;
+    border-radius: 4px;
+    text-decoration: none;
+  }
+  .timeline-card {
+    background: var(--bs-body-bg);
+    border-left: 4px solid #6610f2;
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .timeline-card .tl-date {
+    font-weight: 700; color: #6610f2;
+    font-size: .9rem;
+  }
+  .timeline-card .tl-label { font-weight: 600; margin-top: 4px; }
+  .timeline-card .tl-desc { font-size: .88rem; color: var(--bs-secondary-color); margin-top: 4px; }
+  .feature-badge {
+    display: inline-block; padding: 2px 10px;
+    border-radius: 12px; font-size: .75rem; font-weight: 600;
+    margin-right: 6px;
+  }
+  .b-auto { background: #0dcaf0; color: #003a4a; }
+  .b-capture { background: #fd7e14; color: #fff; }
+  .b-report { background: #198754; color: #fff; }
+  .b-verify { background: #6610f2; color: #fff; }
+  .theme-toggle { position: fixed; top: 16px; right: 16px; z-index: 1000; }
+  .insight {
+    background: rgba(13, 110, 253, 0.08);
+    border-left: 5px solid #0d6efd;
+    padding: 14px 18px; border-radius: 6px;
+    margin: 16px 0;
+  }
+  [data-bs-theme="dark"] .insight {
+    background: rgba(13, 110, 253, 0.15);
+  }
+  .toc {
+    background: var(--bs-tertiary-bg);
+    padding: 14px 20px; border-radius: 8px;
+    margin-bottom: 24px;
+  }
+  .toc a { text-decoration: none; }
+  .pseudo-report-card {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 8px;
+  }
+  .pseudo-report-card .pr-head {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 8px;
+  }
+  .pseudo-report-card .pr-title {
+    font-weight: 700;
+  }
+  .pseudo-report-card .pr-meta {
+    display: flex; gap: 16px; font-size: .82rem;
+    color: var(--bs-secondary-color);
+  }
+  .pseudo-report-card .pr-actions {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .pass { color: #198754; }
+  .fail { color: #dc3545; }
+  .skip { color: #6c757d; }
+</style>
+</head>
+<body>
+<button class="btn btn-sm btn-outline-secondary theme-toggle" onclick="toggleTheme()">
+  <i class="bi bi-circle-half"></i> <span id="theme-label">다크</span>
+</button>
+
+<div class="container py-4" style="max-width: 1300px;">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1><i class="bi bi-diagram-3-fill"></i> 1차 검수 — 작업 진행 시나리오 + 자동 검증 시스템</h1>
+    <div style="opacity:.95; margin-top:6px;">
+      <div><strong>작성일</strong> : 2026-05-28 (목)</div>
+      <div><strong>구성</strong> : ① 백업 현황 → ② 개발 시나리오 → ③ Playwright 자동 검증 → ④ 클라이언트 검수 리포트 → ⑤ 일정</div>
+      <div><strong>핵심</strong> : 100건 수정 후 <strong>Playwright로 자동 로그인 + 전 기능 시나리오 테스트 + 캡처/녹화 + HTML 리포트</strong>를 생성하여, 검수자가 버튼 한 번으로 실제 페이지에 들어가 확인 가능한 통합 검수 시스템 구축</div>
+    </div>
+  </div>
+
+  <!-- 백업 현황 -->
+  <div class="backup-card">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+      <div style="flex:1;">
+        <strong style="font-size:1.15rem;">백업 완료 (2026-05-28 작업 착수 직전)</strong>
+        <div style="font-size:.92rem; margin-top:6px; opacity:.95;">
+          ① <strong>Git push</strong> : <code style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:3px;">5e98c0e chore: 마지막 수정 작업전 백업 커밋</code> → feature/multi-industry<br>
+          ② <strong>서버 소스</strong> : <code style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:3px;">/var/backups/seoulbeauty_20260528/source_gangnamunni_20260528.tar.gz</code> (2.6G)<br>
+          ③ <strong>DB 백업</strong> : <code style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:3px;">/var/backups/seoulbeauty_20260528/hms_saas_20260528.sql.gz</code> (915K, 341+ 테이블)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <strong><i class="bi bi-list-ul"></i> 목차</strong>
+    <ul class="mb-0 mt-2">
+      <li><a href="#dev">1. 개발 진행 시나리오 (Phase 1~3)</a></li>
+      <li><a href="#auto">2. 자동 검증 시스템 구축 (Playwright)</a></li>
+      <li><a href="#report">3. 검수 리포트 HTML 구조 (버튼 한 번으로 실제 페이지 확인)</a></li>
+      <li><a href="#schedule">4. 통합 일정</a></li>
+      <li><a href="#tech">5. 기술 스택 / 활용 자산</a></li>
+    </ul>
+  </div>
+
+  <!-- 1. 개발 진행 시나리오 -->
+  <section id="dev" class="mt-4">
+    <h3><i class="bi bi-code-square"></i> 1. 개발 진행 시나리오 (Phase 1~3)</h3>
+
+    <div class="step-card">
+      <span class="step-num">Phase 1</span>
+      <h4>긴급 픽스 + 필수 항목 (5/27 ~ 6/09)</h4>
+      <div class="pipeline">
+        <div class="pipeline-step active">
+          <span class="ps-num">1</span>
+          <span class="ps-label">증상 재현</span>
+          <span class="ps-sub">Android + iOS</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="pipeline-step active">
+          <span class="ps-num">2</span>
+          <span class="ps-label">코드 수정</span>
+          <span class="ps-sub">PHP/JS/CSS/DB</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="pipeline-step active">
+          <span class="ps-num">3</span>
+          <span class="ps-label">php -l 검증</span>
+          <span class="ps-sub">신택스 체크</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="pipeline-step active">
+          <span class="ps-num">4</span>
+          <span class="ps-label">서버 배포</span>
+          <span class="ps-sub">paramiko + base64</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="pipeline-step active">
+          <span class="ps-num">5</span>
+          <span class="ps-label">수정 로그</span>
+          <span class="ps-sub">admin_fix_log DB</span>
+        </div>
+      </div>
+      <div class="insight" style="margin-top:14px;">
+        <strong>대상 항목</strong> : 안드로이드 뒤로가기 / 홈 새로고침 / 병원리스트 자동스크롤 / 의사 5명 선택 / 시술 미연동 / 댓글 비활성화 / 로그인 500 / 이벤트 404 / 병원 수정 500 외
+        <strong>총 ~22건</strong>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <span class="step-num">Phase 2</span>
+      <h4>핵심 기능 보강 (6/10 ~ 6/23)</h4>
+      <p>탭 재정의, 인피드 AD 4개 간격, 상세 4탭, 후기 데이터 6필드, 마이 내후기 연동 등 <strong>~25건</strong>. 기존 구축 자산(찜하기/RBAC/시술 8Phase)을 활용한 연결 작업 다수.</p>
+    </div>
+
+    <div class="step-card">
+      <span class="step-num">Phase 3</span>
+      <h4>UI/UX 마무리 + 양 OS 빌드 (6/24 ~ 7/07)</h4>
+      <p>스와이프, 30분 단위 예약, 플로팅 버튼 숨김, 레이아웃 정합 등 <strong>~28건</strong>. Phase 3 종료 시점에 <strong>iOS / Android 동시 빌드 재업로드</strong>.</p>
+    </div>
+  </section>
+
+  <!-- 2. Playwright 자동 검증 -->
+  <section id="auto" class="mt-5">
+    <h3><i class="bi bi-robot"></i> 2. 자동 검증 시스템 구축 (Playwright)</h3>
+    <p class="text-secondary">개발 완료(7/07) 직후, Phase 4 검수에 진입하기 전에 <strong>전 기능 자동 시나리오 테스트 + 캡처/녹화 + 통합 리포트</strong>를 자동 생성합니다.</p>
+
+    <div class="step-card">
+      <span class="step-num">자동 1</span>
+      <h4>① 자동 로그인 & 시나리오 실행</h4>
+      <div class="feature-badge b-auto">Playwright 1.58.2</div>
+      <div class="feature-badge b-auto">기존 E2E 82개 인프라 재활용</div>
+      <ul>
+        <li>일반 사용자 계정 / 병원 관리자(hospital_test:hospital123) / 총 관리자(admin/admin123) 3종 자동 로그인</li>
+        <li>1차 검수 시트 100건 항목별 자동 시나리오 작성 (각 항목 = 1개 테스트 케이스)</li>
+        <li>홈 → 검색 → 병원 리스트 → 병원 상세 → 예약 → 커뮤니티 → 마이 → 관리자 전체 흐름 자동 진행</li>
+        <li>각 단계에서 정상 동작 여부 자동 PASS/FAIL 판정</li>
+      </ul>
+    </div>
+
+    <div class="step-card">
+      <span class="step-num">자동 2</span>
+      <h4>② 스크린샷 + 화면 녹화 자동 캡처</h4>
+      <div class="feature-badge b-capture">PNG 캡처</div>
+      <div class="feature-badge b-capture">WebM 녹화</div>
+      <div class="feature-badge b-capture">900px 리사이즈</div>
+      <ul>
+        <li>각 시나리오 항목별 <strong>수정 전/후 비교 캡처</strong> (총 200~250장 예상)</li>
+        <li>핵심 인터랙션은 <strong>화면 녹화 동영상</strong> 자동 저장 (예: 의사 5명 선택, 30분 단위 예약, 인피드 AD 노출, 4탭 전환)</li>
+        <li>모든 이미지 자동 900px 이하 리사이즈 (PIL 적용)</li>
+        <li>저장 경로 : <code>/var/www/.../gangnamunni/qa_auto_20260707/</code></li>
+      </ul>
+    </div>
+
+    <div class="step-card">
+      <span class="step-num">자동 3</span>
+      <h4>③ 통합 HTML 리포트 자동 생성</h4>
+      <div class="feature-badge b-report">Bootstrap 5.3.3</div>
+      <div class="feature-badge b-report">다크모드</div>
+      <div class="feature-badge b-report">시트 ID 매핑</div>
+      <p>기존 자동 매뉴얼 15종 시스템의 리포트 생성 로직을 응용. <strong>항목별 카드 형식</strong>으로 다음 정보를 한 화면에 표시:</p>
+      <ul>
+        <li>시트 ID (1차 #N / 프론트 #N / 관리자 #N)</li>
+        <li>수정 전/후 캡처 (썸네일 → 클릭 시 lightbox 확대)</li>
+        <li>녹화 동영상 임베드 (해당 시)</li>
+        <li>자동 테스트 결과 : <span class="pass">✓ PASS</span> / <span class="fail">✗ FAIL</span> / <span class="skip">— SKIP</span></li>
+        <li>처리 소요 시간 (ms 단위)</li>
+        <li><strong>"직접 확인하기" 버튼</strong> → 해당 실제 페이지 URL로 새 탭 열기</li>
+        <li><strong>"이슈 보고" 버튼</strong> → 검수자가 즉시 피드백 입력 (API → admin_fix_log)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 3. 리포트 구조 -->
+  <section id="report" class="mt-5">
+    <h3><i class="bi bi-file-earmark-richtext"></i> 3. 검수 리포트 HTML 구조 (예시 데모)</h3>
+    <p class="text-secondary">아래는 7/07 개발 완료 후 자동 생성될 리포트의 UI 미리보기입니다. 클라이언트는 <strong>버튼 한 번으로 실제 페이지에 들어가 확인 가능</strong>합니다.</p>
+
+    <div class="demo-frame">
+      <div class="demo-label"><i class="bi bi-bar-chart-fill"></i> 리포트 상단 요약 (자동 집계)</div>
+      <div class="row text-center">
+        <div class="col-md-3"><div style="padding:14px; background:rgba(25, 135, 84, 0.15); border-radius:8px;"><div style="font-size:1.6rem; font-weight:800; color:#198754;">87</div><div class="small">✓ PASS</div></div></div>
+        <div class="col-md-3"><div style="padding:14px; background:rgba(220, 53, 69, 0.15); border-radius:8px;"><div style="font-size:1.6rem; font-weight:800; color:#dc3545;">8</div><div class="small">✗ FAIL (수정 필요)</div></div></div>
+        <div class="col-md-3"><div style="padding:14px; background:rgba(108, 117, 125, 0.15); border-radius:8px;"><div style="font-size:1.6rem; font-weight:800; color:#6c757d;">5</div><div class="small">— SKIP (수동 확인)</div></div></div>
+        <div class="col-md-3"><div style="padding:14px; background:rgba(13, 110, 253, 0.15); border-radius:8px;"><div style="font-size:1.6rem; font-weight:800; color:#0d6efd;">100</div><div class="small">전체 항목</div></div></div>
+      </div>
+    </div>
+
+    <div class="demo-frame">
+      <div class="demo-label"><i class="bi bi-card-list"></i> 항목별 카드 (예시 6개)</div>
+
+      <div class="pseudo-report-card">
+        <div class="pr-head">
+          <div class="pr-title">[1차 #13] 진료과/의사 5명 개별 선택 <span class="pass"><i class="bi bi-check-circle-fill"></i> PASS</span></div>
+          <div class="pr-meta"><span>처리 시간 : 1,240ms</span><span>녹화 : 12초</span></div>
+        </div>
+        <div class="d-flex gap-3 align-items-center">
+          <div class="demo-thumb">수정 전</div>
+          <div class="demo-thumb">수정 후</div>
+          <div class="demo-thumb">녹화</div>
+        </div>
+        <div class="pr-actions">
+          <a href="#" class="btn btn-sm btn-primary btn-mini"><i class="bi bi-box-arrow-up-right"></i> 직접 확인하기 (booking.php)</a>
+          <a href="#" class="btn btn-sm btn-outline-secondary btn-mini"><i class="bi bi-image"></i> 캡처 확대</a>
+          <a href="#" class="btn btn-sm btn-outline-secondary btn-mini"><i class="bi bi-play-circle"></i> 녹화 재생</a>
+          <a href="#" class="btn btn-sm btn-outline-warning btn-mini"><i class="bi bi-flag"></i> 이슈 보고</a>
+        </div>
+      </div>
+
+      <div class="pseudo-report-card">
+        <div class="pr-head">
+          <div class="pr-title">[1차 #8] 병원 찜하기 정상 작동 <span class="pass"><i class="bi bi-check-circle-fill"></i> PASS</span></div>
+          <div class="pr-meta"><span>처리 시간 : 480ms</span><span>마이페이지 연동 확인 OK</span></div>
+        </div>
+        <div class="d-flex gap-3 align-items-center">
+          <div class="demo-thumb">수정 전</div>
+          <div class="demo-thumb">수정 후</div>
+        </div>
+        <div class="pr-actions">
+          <a href="#" class="btn btn-sm btn-primary btn-mini"><i class="bi bi-box-arrow-up-right"></i> 직접 확인하기 (detail.php?id=8118)</a>
+          <a href="#" class="btn btn-sm btn-outline-warning btn-mini"><i class="bi bi-flag"></i> 이슈 보고</a>
+        </div>
+      </div>
+
+      <div class="pseudo-report-card">
+        <div class="pr-head">
+          <div class="pr-title">[1차 #9] 상세 4탭 재정의 [홈/의료진/이벤트/시술후기] <span class="pass"><i class="bi bi-check-circle-fill"></i> PASS</span></div>
+          <div class="pr-meta"><span>처리 시간 : 2,100ms</span><span>녹화 : 18초 (4탭 전환)</span></div>
+        </div>
+        <div class="d-flex gap-3 align-items-center">
+          <div class="demo-thumb">홈 탭</div>
+          <div class="demo-thumb">의료진 탭</div>
+          <div class="demo-thumb">이벤트 탭</div>
+          <div class="demo-thumb">시술후기 탭</div>
+          <div class="demo-thumb">녹화</div>
+        </div>
+        <div class="pr-actions">
+          <a href="#" class="btn btn-sm btn-primary btn-mini"><i class="bi bi-box-arrow-up-right"></i> 직접 확인하기</a>
+          <a href="#" class="btn btn-sm btn-outline-secondary btn-mini"><i class="bi bi-play-circle"></i> 녹화 재생</a>
+        </div>
+      </div>
+
+      <div class="pseudo-report-card">
+        <div class="pr-head">
+          <div class="pr-title">[프론트 #로그인] 로그인 500 에러 <span class="pass"><i class="bi bi-check-circle-fill"></i> PASS</span></div>
+          <div class="pr-meta"><span>처리 시간 : 920ms</span><span>3종 계정 모두 OK</span></div>
+        </div>
+        <div class="d-flex gap-3 align-items-center">
+          <div class="demo-thumb">일반사용자</div>
+          <div class="demo-thumb">병원관리자</div>
+          <div class="demo-thumb">총관리자</div>
+        </div>
+        <div class="pr-actions">
+          <a href="#" class="btn btn-sm btn-primary btn-mini"><i class="bi bi-box-arrow-up-right"></i> 직접 확인하기 (login.php)</a>
+        </div>
+      </div>
+
+      <div class="pseudo-report-card" style="border-color: #dc3545;">
+        <div class="pr-head">
+          <div class="pr-title">[프론트 #14] 평점 산정 로직 매뉴얼 <span class="fail"><i class="bi bi-x-circle-fill"></i> FAIL</span></div>
+          <div class="pr-meta"><span class="text-danger">매뉴얼 문서 누락</span></div>
+        </div>
+        <div class="d-flex gap-3 align-items-center">
+          <div class="demo-thumb">현재 화면</div>
+        </div>
+        <div class="pr-actions">
+          <a href="#" class="btn btn-sm btn-primary btn-mini"><i class="bi bi-box-arrow-up-right"></i> 직접 확인하기</a>
+          <a href="#" class="btn btn-sm btn-outline-warning btn-mini"><i class="bi bi-flag"></i> 이슈 보고</a>
+          <a href="#" class="btn btn-sm btn-outline-danger btn-mini"><i class="bi bi-arrow-clockwise"></i> 재작업 요청</a>
+        </div>
+      </div>
+
+      <div class="pseudo-report-card">
+        <div class="pr-head">
+          <div class="pr-title">[관리자 #4-1] 광고 배너 승인/거절 <span class="pass"><i class="bi bi-check-circle-fill"></i> PASS</span></div>
+          <div class="pr-meta"><span>총 관리자 로그인 후 자동 테스트</span></div>
+        </div>
+        <div class="d-flex gap-3 align-items-center">
+          <div class="demo-thumb">승인 전</div>
+          <div class="demo-thumb">승인 후</div>
+          <div class="demo-thumb">거절 처리</div>
+        </div>
+        <div class="pr-actions">
+          <a href="#" class="btn btn-sm btn-primary btn-mini"><i class="bi bi-box-arrow-up-right"></i> 직접 확인하기 (admin_ads.php)</a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="insight">
+      <strong><i class="bi bi-info-circle-fill"></i> 검수자 사용 흐름</strong><br>
+      ① 리포트 URL 접속 → ② 상단 요약으로 PASS/FAIL 통계 즉시 확인 → ③ 카드별 "직접 확인하기" 버튼 클릭 → ④ 실제 페이지에서 동작 검증 → ⑤ 문제 발견 시 "이슈 보고" 버튼으로 즉시 피드백 입력 (DB 저장)
+    </div>
+  </section>
+
+  <!-- 4. 통합 일정 -->
+  <section id="schedule" class="mt-5">
+    <h3><i class="bi bi-calendar3"></i> 4. 통합 일정 (자동 검증 시스템 포함)</h3>
+
+    <div class="timeline-card">
+      <div class="tl-date">2026-05-27 (수) ~ 06-09 (화) · 2주</div>
+      <div class="tl-label">Phase 1 — 긴급 픽스 + 필수 (~22건)</div>
+      <div class="tl-desc">개발 + 배포 + 양 OS 검증 (실기기 SM-A135N / iPhone XS)</div>
+    </div>
+
+    <div class="timeline-card">
+      <div class="tl-date">2026-06-10 (수) ~ 06-23 (화) · 2주</div>
+      <div class="tl-label">Phase 2 — 핵심 기능 보강 (~25건)</div>
+      <div class="tl-desc">탭 재정의, 인피드 AD, 후기 데이터, 마이 연동</div>
+    </div>
+
+    <div class="timeline-card">
+      <div class="tl-date">2026-06-24 (수) ~ 07-02 (목) · 약 1.5주</div>
+      <div class="tl-label">Phase 3 — UI/UX 마무리 (~28건)</div>
+      <div class="tl-desc">단순 픽스 다수 → 단축 가능</div>
+    </div>
+
+    <div class="timeline-card" style="border-left-color:#fd7e14;">
+      <div class="tl-date">2026-07-03 (금) ~ 07-07 (화) · 3일</div>
+      <div class="tl-label">Phase 3.5 — 자동 검증 시스템 구축 <span class="feature-badge b-auto">신규</span></div>
+      <div class="tl-desc">
+        Day 1 : Playwright 시나리오 작성 (100개 케이스 + 3종 로그인) +
+        Day 2 : 자동 실행 + 캡처/녹화 (200~250장 + 동영상) +
+        Day 3 : HTML 통합 리포트 생성 + 도메인 배포
+      </div>
+    </div>
+
+    <div class="timeline-card" style="border-left-color:#0dcaf0;">
+      <div class="tl-date">2026-07-07 (화) — 양 OS 빌드 + 자동 리포트 배포</div>
+      <div class="tl-label">🚩 개발 완료 · 검수 시작 트리거</div>
+      <div class="tl-desc">iOS / Android 동시 빌드 재업로드 + 자동 검증 리포트 URL 전달</div>
+    </div>
+
+    <div class="timeline-card" style="border-left-color:#6610f2;">
+      <div class="tl-date">2026-07-08 (수) ~ 07-14 (화) · 1주</div>
+      <div class="tl-label">Phase 4 — 검수자측 1차 검수 <span class="feature-badge b-verify">통합 리포트 활용</span></div>
+      <div class="tl-desc">자동 리포트 카드별 "직접 확인하기" 버튼으로 실제 페이지 검증 → "이슈 보고" 버튼으로 즉시 피드백 입력</div>
+    </div>
+
+    <div class="timeline-card" style="border-left-color:#d63384;">
+      <div class="tl-date">2026-07-15 (수) ~ 07-21 (화) · 1주</div>
+      <div class="tl-label">Phase 5 — 최종 반영 🏁</div>
+      <div class="tl-desc">검수 피드백 일괄 반영 + 양 OS 최종 빌드 + 최종 리포트 갱신</div>
+    </div>
+  </section>
+
+  <!-- 5. 기술 스택 -->
+  <section id="tech" class="mt-5">
+    <h3><i class="bi bi-tools"></i> 5. 기술 스택 / 활용 자산</h3>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="step-card">
+          <h5 style="color:#198754;">✓ 이미 구축된 자산 (재활용)</h5>
+          <ul class="mb-0">
+            <li><strong>Playwright 1.58.2</strong> — 자동 매뉴얼 15종 (247페이지) 생성에 이미 사용 중</li>
+            <li><strong>E2E 테스트 82개</strong> (2026-04-01) — 기존 시나리오 재활용</li>
+            <li><strong>QA Master v3</strong> (2026-03-12) — 118 캡처 / DB P/F/S 시스템</li>
+            <li><strong>HTML 리포트 템플릿</strong> — qa_v1.1_fix_report / qa_screenshot_report 구조</li>
+            <li><strong>admin_fix_log DB</strong> — 이슈 보고 저장 테이블 이미 존재</li>
+            <li><strong>3종 계정</strong> — admin/admin123, hospital_test/hospital123, 일반 사용자</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="step-card">
+          <h5 style="color:#0d6efd;">🔧 신규 구축 (Phase 3.5)</h5>
+          <ul class="mb-0">
+            <li>1차 검수 100건 항목 → Playwright 시나리오 1:1 매핑</li>
+            <li>수정 전/후 캡처 자동 비교 로직</li>
+            <li>핵심 인터랙션 화면 녹화 (~15개)</li>
+            <li>"직접 확인하기" + "이슈 보고" 버튼 UI</li>
+            <li>이슈 보고 API (POST → admin_fix_log)</li>
+            <li>상단 요약 통계 자동 집계 (PASS/FAIL/SKIP)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 사인오프 -->
+  <div class="text-center mt-5 p-4" style="background:var(--bs-tertiary-bg); border-radius:10px;">
+    <div><strong>작성</strong> : 시스템 개발 (sj) · 2026-05-28</div>
+    <div class="mt-2"><strong>관련 문서</strong> :
+      <a href="milestone_20260527.html" target="_blank">마일스톤</a> ·
+      <a href="scenario_20260528.html" target="_blank">수정 시나리오</a> ·
+      <a href="status_check_20260528.html" target="_blank">처리 상태 재점검</a>
+    </div>
+    <div class="mt-2"><strong>다음 보고</strong> : 2026-06-02 (화) — Phase 1 일부 진행 후 정확한 일정 재산정</div>
+  </div>
+
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute('data-bs-theme') === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-bs-theme', next);
+  localStorage.setItem('wf-theme', next);
+  document.getElementById('theme-label').textContent = next === 'light' ? '다크' : '라이트';
+}
+(function(){
+  const t = document.documentElement.getAttribute('data-bs-theme');
+  document.getElementById('theme-label').textContent = t === 'light' ? '다크' : '라이트';
+})();
+</script>
+</body>
+</html>

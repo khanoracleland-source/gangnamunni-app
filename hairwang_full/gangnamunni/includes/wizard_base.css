@@ -1,0 +1,91 @@
+/* ══════════════════════════════════════════════
+   공통 마법사 CSS - 모든 마법사 페이지 재사용
+   ══════════════════════════════════════════════ */
+
+/* ── 스텝 헤더 ── */
+.wz-steps{display:flex;justify-content:center;align-items:center;padding:20px 0 28px;gap:0;flex-wrap:wrap}
+.wz-step{display:flex;flex-direction:column;align-items:center;position:relative;z-index:1;cursor:pointer}
+.wz-step .wz-circle{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;border:3px solid var(--bs-border-color);background:var(--bs-body-bg);color:var(--bs-secondary-color);transition:all .3s}
+.wz-step.active .wz-circle{border-color:#ff6b35;background:#ff6b35;color:#fff}
+.wz-step.done .wz-circle{border-color:#28a745;background:#28a745;color:#fff}
+.wz-step .wz-label{font-size:11px;margin-top:5px;color:var(--bs-secondary-color);font-weight:500;white-space:nowrap}
+.wz-step.active .wz-label{color:#ff6b35;font-weight:700}
+.wz-step.done .wz-label{color:#28a745}
+.wz-line{width:60px;height:3px;background:var(--bs-border-color);margin:0 6px;margin-bottom:18px;transition:background .3s}
+.wz-line.done{background:#28a745}
+
+/* ── 콘텐츠 패널 ── */
+.wz-body{max-width:800px;margin:0 auto;padding:0 12px}
+.wz-panel{display:none;animation:wzFade .3s ease}
+.wz-panel.active{display:block}
+@keyframes wzFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── 카드 선택 그리드 ── */
+.wz-card{border:2px solid var(--bs-border-color);border-radius:14px;padding:20px;cursor:pointer;transition:all .25s;height:100%;position:relative;text-align:center}
+.wz-card:hover{border-color:#ff6b35;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.wz-card.selected{border-color:#ff6b35;background:rgba(255,107,53,.05);box-shadow:0 0 0 3px rgba(255,107,53,.15)}
+.wz-card .wz-card-icon{font-size:36px;margin-bottom:8px}
+.wz-card .wz-card-name{font-size:15px;font-weight:700}
+.wz-card .wz-card-desc{font-size:12px;color:var(--bs-secondary-color);margin-top:4px}
+.wz-card .wz-check{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;border:2px solid var(--bs-border-color);display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;transition:all .2s}
+.wz-card.selected .wz-check{border-color:#ff6b35;background:#ff6b35;color:#fff}
+
+/* ── 검색 드롭다운 ── */
+.wz-search-wrap{position:relative}
+.wz-dropdown{display:none;position:absolute;top:100%;left:0;right:0;z-index:1050;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:260px;overflow-y:auto;margin-top:4px}
+.wz-dropdown.show{display:block}
+.wz-dropdown-item{padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bs-border-color-translucent);font-size:13px}
+.wz-dropdown-item:last-child{border-bottom:none}
+.wz-dropdown-item:hover,.wz-dropdown-item.highlighted{background:rgba(255,107,53,.08)}
+.wz-dropdown-item mark{background:#ffe0b2;padding:0;border-radius:2px}
+
+/* ── 파일 업로드 ── */
+.wz-upload{border:2px dashed var(--bs-border-color);border-radius:12px;padding:30px;text-align:center;cursor:pointer;transition:all .2s;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.wz-upload:hover,.wz-upload.dragover{border-color:#ff6b35;background:rgba(255,107,53,.03)}
+.wz-upload img{max-height:150px;max-width:100%;border-radius:8px;margin-top:8px}
+
+/* ── 별점 ── */
+.wz-stars{display:inline-flex;gap:4px;font-size:28px;cursor:pointer}
+.wz-stars .star{color:var(--bs-border-color);transition:color .15s}
+.wz-stars .star.active{color:#ffc107}
+.wz-stars .star:hover{color:#ffb300}
+
+/* ── 요약 카드 ── */
+.wz-summary{background:var(--bs-tertiary-bg);border-radius:12px;padding:20px;margin-bottom:16px}
+.wz-summary h6{cursor:pointer;margin-bottom:10px}
+.wz-summary h6:hover{color:#ff6b35}
+.wz-summary .row{font-size:13px}
+
+/* ── 버튼 바 ── */
+.wz-actions{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--bs-border-color)}
+.wz-actions .btn-wz-next{background:#ff6b35;color:#fff;border:none;padding:10px 28px;border-radius:10px;font-weight:600}
+.wz-actions .btn-wz-next:hover{background:#e55a2b}
+.wz-actions .btn-wz-prev{background:transparent;border:1px solid var(--bs-border-color);padding:10px 20px;border-radius:10px}
+.wz-actions .btn-wz-submit{background:#28a745;color:#fff;border:none;padding:12px 32px;border-radius:10px;font-weight:700;font-size:16px}
+.wz-actions .btn-wz-submit:hover{background:#218838}
+
+/* ── 슬롯/타임 버튼 ── */
+.wz-slot{display:inline-block;padding:8px 16px;border:1px solid var(--bs-border-color);border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s;margin:3px}
+.wz-slot:hover{border-color:#ff6b35;color:#ff6b35}
+.wz-slot.selected{background:#ff6b35;color:#fff;border-color:#ff6b35}
+.wz-slot.disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+
+/* ── 태그 선택 ── */
+.wz-tag{display:inline-block;padding:6px 14px;border:1px solid var(--bs-border-color);border-radius:20px;cursor:pointer;font-size:12px;transition:all .15s;margin:3px}
+.wz-tag:hover{border-color:#ff6b35}
+.wz-tag.selected{background:#ff6b35;color:#fff;border-color:#ff6b35}
+
+/* ── 프로그레스 ── */
+.wz-progress-log{background:var(--bs-tertiary-bg);border-radius:10px;padding:14px;font-family:'Consolas',monospace;font-size:12px;max-height:300px;overflow-y:auto;line-height:1.6}
+
+/* ── 반응형 ── */
+@media(max-width:576px){
+  .wz-steps{gap:0;padding:12px 0 20px}
+  .wz-line{width:30px}
+  .wz-step .wz-circle{width:34px;height:34px;font-size:13px}
+  .wz-step .wz-label{font-size:10px}
+  .wz-body{padding:0 8px}
+  .wz-card{padding:14px}
+  .wz-card .wz-card-icon{font-size:28px}
+  .wz-actions{flex-wrap:wrap;gap:8px}
+}

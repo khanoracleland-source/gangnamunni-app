@@ -1,0 +1,147 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Figma 정확 변환 + Ralph 자율테스트 시나리오 — 서울미녀</title>
+<style>
+:root{--c:#0891b2;--c2:#0e7490;--red:#ae1932;--pur:#7c3aed;--ok:#16a34a;--warn:#d97706;--bg:#f6f8fa;--ink:#0f172a;--mut:#64748b;--line:#e2e8f0}
+*{box-sizing:border-box}body{margin:0;font-family:'Noto Sans KR',-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);line-height:1.65}
+header{background:linear-gradient(135deg,#7c3aed,#0891b2,#ae1932);color:#fff;padding:40px 16px 32px;text-align:center}
+header h1{margin:0 0 8px;font-size:1.55rem}header p{margin:0;opacity:.92;font-size:.92rem}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 90px}
+.goal{background:#fff7ed;border:1px solid #fed7aa;border-left:5px solid var(--warn);border-radius:12px;padding:16px 20px;margin:22px 0;font-size:.95rem}
+section{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;margin-top:22px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+h2{font-size:1.2rem;margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.ph{width:30px;height:30px;border-radius:9px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex:0 0 auto}
+.p0{background:var(--ok)}.p1{background:var(--c)}.p2{background:var(--pur)}.p3{background:var(--red)}
+.sub{color:var(--mut);font-size:.86rem;margin:0 0 14px}
+table{width:100%;border-collapse:collapse;font-size:.86rem;margin:8px 0}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f1f5f9;font-weight:700}
+code{background:#f1f5f9;padding:2px 7px;border-radius:5px;font-family:ui-monospace,Menlo,monospace;font-size:.82em;color:#be185d;word-break:break-all}
+pre{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:.8rem;line-height:1.5}
+pre code{background:none;color:#a5f3fc;padding:0}
+.step{display:flex;gap:12px;margin:10px 0;align-items:flex-start}
+.step .n{background:var(--c);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;flex:0 0 auto;margin-top:2px}
+.note{background:#f0f9ff;border-left:4px solid var(--c);padding:12px 15px;border-radius:0 8px 8px 0;font-size:.86rem;margin:12px 0}
+.danger{background:#fef2f2;border-left:4px solid var(--red);padding:12px 15px;border-radius:0 8px 8px 0;font-size:.86rem;margin:12px 0}
+.ok{background:#f0fdf4;border-left:4px solid var(--ok);padding:12px 15px;border-radius:0 8px 8px 0;font-size:.86rem;margin:12px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.sw{display:inline-flex;flex-direction:column;align-items:center;gap:3px;margin:5px;width:84px}
+.sw span{width:64px;height:40px;border-radius:8px;border:1px solid var(--line)}.sw code{font-size:.68rem}.sw small{color:var(--mut);font-size:.66rem}
+.tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.tool{border:1px solid var(--line);border-radius:12px;padding:14px}.tool h4{margin:0 0 6px;font-size:.95rem}.tool p{margin:0;font-size:.8rem;color:var(--mut)}
+.arch{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:18px;font-family:ui-monospace,monospace;font-size:.8rem;white-space:pre;overflow-x:auto;line-height:1.6}
+.badge{display:inline-block;background:#dcfce7;color:var(--ok);font-size:.7rem;padding:2px 9px;border-radius:999px;font-weight:700}
+footer{text-align:center;color:var(--mut);font-size:.8rem;margin-top:30px}
+</style></head><body>
+<header>
+  <h1>🎯 Figma 정확 변환 + Ralph 자율 E2E 테스트 시나리오</h1>
+  <p>서울미녀 · 현재 구현 안전보존 → 새 구조 → 디자인 정확 적용 → 끝까지 자율 테스트 · 2026-06-13</p>
+</header>
+<div class="wrap">
+
+<div class="goal">
+  🎯 <b>목표</b> — 클라이언트가 원하는 <b>Figma 디자인을 "비슷하게"가 아니라 픽셀 단위로 정확히</b> 반영한다.
+  핵심은 Claude가 <b>스크린샷을 보고 추측하지 않고, Figma의 실제 토큰/레이아웃 데이터를 읽게</b> 만드는 것.
+  단, <b>DB·백엔드 변수·API 구조는 그대로 유지</b>(디자인만 적용)하고, <b>현재 구현은 언제든 원복 가능하게</b> 안전 보존한다.
+</div>
+
+<section>
+  <h2><span class="ph p0">0</span>현재 상태 보존 &amp; 언제든 원복 (안전 최우선)</h2>
+  <p class="sub">새 작업은 전부 별도 브랜치/스테이징에서. 라이브와 현재 소스는 손대지 않는다.</p>
+  <div class="ok"><b>✅ 이미 구축된 3중 원복 안전망</b></div>
+  <table>
+    <thead><tr><th>안전망</th><th>위치</th><th>원복 방법</th></tr></thead>
+    <tbody>
+      <tr><td>① Git 태그(현재 구현 고정)</td><td><code>safe-baseline-20260613</code> (브랜치 <code>feature/multi-industry</code>)</td><td><code>git checkout safe-baseline-20260613</code></td></tr>
+      <tr><td>② 서버 전체 백업(소스+DB)</td><td><code>/var/backups/work_backup_20260613/</code> (소스 1.8G + DB 889K)</td><td>tar 해제 + <code>zcat db.sql.gz | mysql</code></td></tr>
+      <tr><td>③ /var/www/html 전체 스냅샷</td><td><code>/var/backups/www_html_full_20260612.tar.gz</code> (14G)</td><td>tar 해제 후 경로 복원</td></tr>
+    </tbody>
+  </table>
+  <div class="note">🔒 새 디자인 작업은 <code>feature/figma-redesign</code> 브랜치 + 스테이징 경로에서 진행. 검증 통과 전까지 <b>라이브는 현재 구현 그대로 서빙</b>. 문제 시 위 3가지 중 무엇으로든 즉시 원복.</div>
+</section>
+
+<section>
+  <h2><span class="ph p1">1</span>새 구조로 이전 (스테이징, 무중단)</h2>
+  <p class="sub">이전에 시도했던 클린 폴더 구조를, 이번엔 <b>스테이징에서 완성·검증 후 cutover</b> 방식으로.</p>
+  <div class="step"><span class="n">1</span><div>현재 소스를 클린 경로(<code>/var/www/html/seoulbeauty_staging/</code>)로 복제 — 라이브(<code>…/hms-saas/</code>)는 그대로.</div></div>
+  <div class="step"><span class="n">2</span><div>스테이징에 디자인 적용 + 테스트. 별도 호스트(<code>staging.seoulbeauty.app</code> 또는 포트)로 미리보기.</div></div>
+  <div class="step"><span class="n">3</span><div>전체 통과·승인 시에만 vhost를 스테이징으로 전환(cutover). 기존은 백업 보관.</div></div>
+  <div class="danger">⚠️ <b>DB·백엔드 불변</b>: 폴더/디자인만 이동. <code>hms_saas</code> DB, mysqli 쿼리, 변수, <code>/api</code> 엔드포인트는 동일하게 공유.</div>
+</section>
+
+<section>
+  <h2><span class="ph p2">2</span>Figma 디자인 정확 적용 (디자인 only, 백엔드 유지)</h2>
+  <p class="sub">Framelink Figma MCP로 <b>실측 토큰</b>을 읽어 적용. 추측 금지 · 토큰만 사용 · 컴포넌트 단위.</p>
+  <div class="grid2">
+    <div>
+      <h4 style="margin:6px 0">🎨 추출된 실측 색상 토큰 (Figma)</h4>
+      <div style="display:flex;flex-wrap:wrap"><div class="sw"><span style="background:#000000"></span><code>#000000</code><small>×192</small></div><div class="sw"><span style="background:#ffffff"></span><code>#ffffff</code><small>×189</small></div><div class="sw"><span style="background:#aaaaaa"></span><code>#aaaaaa</code><small>×60</small></div><div class="sw"><span style="background:#ae1932"></span><code>#ae1932</code><small>×36</small></div><div class="sw"><span style="background:#f8f8f8"></span><code>#f8f8f8</code><small>×17</small></div><div class="sw"><span style="background:#d9d9d9"></span><code>#d9d9d9</code><small>×16</small></div><div class="sw"><span style="background:#a9a9a9"></span><code>#a9a9a9</code><small>×15</small></div><div class="sw"><span style="background:#ededed"></span><code>#ededed</code><small>×6</small></div><div class="sw"><span style="background:#888888"></span><code>#888888</code><small>×6</small></div><div class="sw"><span style="background:#1b0000"></span><code>#1b0000</code><small>×5</small></div><div class="sw"><span style="background:#ffeeee"></span><code>#ffeeee</code><small>×3</small></div><div class="sw"><span style="background:#e8e8e8"></span><code>#e8e8e8</code><small>×2</small></div><div class="sw"><span style="background:#d20003"></span><code>#d20003</code><small>×2</small></div><div class="sw"><span style="background:#979797"></span><code>#979797</code><small>×2</small></div></div>
+    </div>
+    <div>
+      <h4 style="margin:6px 0">🔤 실측 타이포그래피</h4>
+      <table><thead><tr><th>Family</th><th>Weight</th><th>Size</th><th>빈도</th></tr></thead><tbody><tr><td>Noto Sans KR</td><td>400</td><td>15px</td><td>×69</td></tr><tr><td>Noto Sans KR</td><td>400</td><td>14px</td><td>×46</td></tr><tr><td>Noto Sans KR</td><td>400</td><td>16px</td><td>×37</td></tr><tr><td>Noto Sans KR</td><td>400</td><td>18px</td><td>×26</td></tr><tr><td>Noto Sans KR</td><td>700</td><td>15px</td><td>×18</td></tr><tr><td>Noto Sans KR</td><td>500</td><td>18px</td><td>×16</td></tr><tr><td>Noto Sans KR</td><td>400</td><td>13px</td><td>×15</td></tr><tr><td>Noto Sans KR</td><td>400</td><td>12px</td><td>×13</td></tr></tbody></table>
+    </div>
+  </div>
+  <div class="note">생성물: <code>design_tokens.css</code> (CSS 변수) — Primary <code>#ae1932</code>, Inactive <code>#aaaaaa</code>, Subtitle <code>#888888</code>, Strike <code>#a9a9a9</code>, Noto Sans KR 400/500/700. <b>하드코딩 금지, 이 토큰만 사용.</b></div>
+  <h4>적용 원칙 (figma-apply-prompt.md)</h4>
+  <div class="step"><span class="n">1</span><div>Figma MCP <code>get_figma_data</code>로 프레임(node-id) 실측 레이아웃/spacing 읽기</div></div>
+  <div class="step"><span class="n">2</span><div>구현 파일의 <b>마크업/스타일만</b> 조정 — <code>&lt;?php&gt;</code>·쿼리·변수·폼 name·JS 셀렉터 id/class 보존</div></div>
+  <div class="step"><span class="n">3</span><div>배포 후 Playwright로 <b>Figma ↔ 구현 나란히 비교</b> → 차이 5%+면 반복 보정</div></div>
+  <div class="danger">⚠️ <b>백엔드 변경 0건 증명</b>: 작업 후 <code>git diff</code>에 <code>&lt;?php</code>/SQL/변수 변경이 없어야 함(디자인 only).</div>
+  <table>
+    <thead><tr><th>Figma 프레임</th><th>node-id</th><th>구현 파일</th></tr></thead>
+    <tbody>
+      <tr><td>홈</td><td><code>91:3967</code></td><td><code>index.php</code></td></tr>
+      <tr><td>병원 리스트</td><td><code>91:3479</code></td><td><code>hospitals.php</code></td></tr>
+      <tr><td>병원 상세</td><td><code>91:3656</code></td><td><code>detail.php</code></td></tr>
+      <tr><td>커뮤니티</td><td><code>91:822</code></td><td><code>community.php</code></td></tr>
+      <tr><td>마이페이지</td><td><code>91:907</code></td><td><code>mypage.php</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2><span class="ph p3">3</span>Ralph 루프 — 끝까지 자율 E2E 테스트 (웹+Android+iOS)</h2>
+  <p class="sub">로그인부터 전체 기능을 자율 테스트 → 스크린샷·동영상 → HTML 리포트, <b>전부 통과까지 반복</b>.</p>
+  <div class="arch">Claude Code (오케스트레이터 = Ralph 루프)
+  ├── figma MCP        → 디자인 실측 적용
+  ├── playwright MCP   → 웹 로그인~전체 플로우 (video/screenshot/trace)
+  └── mobile-mcp       → Android/iOS 앱 (실기기, 캡처)
+          ↓
+   HTML 리포트 (동영상·스크린샷·trace 임베드)  →  전부 통과 시 success.flag</div>
+  <h4>도구 스택</h4>
+  <div class="tools">
+    <div class="tool"><h4>🎨 Framelink Figma MCP</h4><p>GLips/figma-context-mcp · API 키만으로 디자인 토큰/레이아웃 실측 추출. 공식 Dev Mode seat 불필요.</p></div>
+    <div class="tool"><h4>🌐 Playwright (MCP)</h4><p>웹 E2E · video/screenshot/trace 자동 캡처 + HTML 리포트 내장.</p></div>
+    <div class="tool"><h4>📱 mobile-mcp</h4><p>mobile-next · iOS/Android/시뮬레이터 단일 인터페이스, GitHub 5k+★. 실기기 캡처.</p></div>
+    <div class="tool"><h4>🔁 Ralph 루프</h4><p>동일 프롬프트를 통과까지 반복하는 쉘 패턴. <code>ralph-loop.ps1</code>.</p></div>
+  </div>
+  <h4 style="margin-top:16px">실행 (3줄)</h4>
+  <pre><code># 1) MCP 등록 (.mcp.json: figma + playwright + mobile-mcp)
+cp _redesign_kit/mcp.json .mcp.json
+# 2) Ralph 루프 — 전부 통과까지 자율 반복
+pwsh _redesign_kit/ralph-loop.ps1 -MaxLoops 30
+# 3) 리포트 확인 (동영상·스크린샷 임베드)
+npx playwright show-report</code></pre>
+  <div class="note">루프 로직: ① 직전 실패 분석 → ② 테스트 작성/디자인 보정 → ③ 웹+모바일 실행(캡처) → ④ 실패면 수정 후 재실행 → ⑤ <b>전부 통과 시 <code>report/success.flag</code></b> 생성하고 종료.</div>
+  <div class="danger">⚠️ Ralph 루프 내 <b>서버 PHP/DB 로직 임의 수정 금지</b>(테스트·디자인만). 명백한 구현 버그는 <b>보고만</b>.</div>
+</section>
+
+<section>
+  <h2>📦 산출물 / 키트</h2>
+  <table>
+    <thead><tr><th>파일</th><th>용도</th></tr></thead>
+    <tbody>
+      <tr><td><code>_redesign_kit/mcp.json</code></td><td>Figma+Playwright+mobile-mcp MCP 설정</td></tr>
+      <tr><td><code>_redesign_kit/ralph-loop.ps1</code></td><td>통과까지 자율 반복 루프</td></tr>
+      <tr><td><code>_redesign_kit/test-prompt.md</code></td><td>전체 E2E 테스트 지시 프롬프트</td></tr>
+      <tr><td><code>_redesign_kit/figma-apply-prompt.md</code></td><td>디자인 only 적용 지시(백엔드 불변)</td></tr>
+      <tr><td><code>_redesign_kit/playwright.config.ts</code> + <code>tests/</code></td><td>웹 E2E 설정 + 샘플 스펙(video/screenshot/trace)</td></tr>
+      <tr><td><code>figma_redesign/design_tokens.css</code></td><td>Figma 실측 색/타이포 토큰(CSS 변수)</td></tr>
+    </tbody>
+  </table>
+  <div class="ok"><b>현 상태</b>: 안전망 3중 <span class="badge">구축완료</span> · Figma 실측 토큰 <span class="badge">추출완료</span> · Ralph/E2E 키트 <span class="badge">생성완료</span> → 승인 시 Ralph 루프로 디자인 적용+전체 테스트 자율 실행.</div>
+</section>
+
+<footer>생성 2026-06-13 · 서울미녀 Figma 정확변환 + Ralph 자율테스트 시나리오</footer>
+</div></body></html>

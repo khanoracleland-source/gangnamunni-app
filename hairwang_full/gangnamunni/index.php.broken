@@ -1,0 +1,1154 @@
+<?php
+/**
+ * ========================================
+ * 강남언니 스타일 병원 리스팅 페이지
+ * ========================================
+ *
+ * @file    gangnamunni/index.php
+ * @created 2026-01-29
+ * @version 1.0.0
+ */
+
+// 데이터베이스 연결
+require_once __DIR__ . '/../dbconfig.php';
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/theme_helper.php';
+
+// MySQL 연결
+$connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
+
+if (!$connect) {
+    die("MySQL 연결 실패: " . mysqli_connect_error());
+}
+
+mysqli_set_charset($connect, 'utf8mb4');
+
+// 테마 설정 로드
+loadThemeSettings($connect);
+
+// 강남언니 병원 데이터 테이블 존재 확인
+$table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_hospitals'");
+$table_exists = mysqli_num_rows($table_check) > 0;
+
+// 꿀팁 테이블 존재 확인
+$tips_table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_tips'");
+$tips_table_exists = mysqli_num_rows($tips_table_check) > 0;
+
+// 병원 데이터 가져오기
+$hospitals = [];
+if ($table_exists) {
+    $query = "SELECT * FROM gangnamunni_hospitals ORDER BY rating DESC, review_count DESC LIMIT " . HOSPITALS_PER_PAGE;
+    $result = mysqli_query($connect, $query);
+
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $hospitals[] = $row;
+        }
+    }
+}
+
+// 꿀팁 데이터 가져오기
+$tips = [];
+if ($tips_table_exists && !USE_DEMO_DATA) {
+    $tips_query = "SELECT * FROM gangnamunni_tips ORDER BY created_at DESC LIMIT " . TIPS_PER_PAGE;
+    $tips_result = mysqli_query($connect, $tips_query);
+
+    if ($tips_result) {
+        while ($row = mysqli_fetch_assoc($tips_result)) {
+            $tips[] = $row;
+        }
+    }
+}
+
+// 광고 배너 데이터 가져오기
+$ads = [];
+$ads_query = "SELECT * FROM gangnamunni_ads WHERE is_active = 1 ORDER BY display_order ASC LIMIT 10";
+$ads_result = mysqli_query($connect, $ads_query);
+if ($ads_result) {
+    while ($row = mysqli_fetch_assoc($ads_result)) {
+        $ads[] = $row;
+    }
+}
+
+// 프로모션 배너 데이터 가져오기
+$promos = [];
+$promos_query = "SELECT * FROM gangnamunni_promos WHERE is_active = 1 ORDER BY display_order ASC LIMIT 10";
+$promos_result = mysqli_query($connect, $promos_query);
+if ($promos_result) {
+    while ($row = mysqli_fetch_assoc($promos_result)) {
+        $promos[] = $row;
+    }
+}
+
+// 자동 스크롤 설정 가져오기
+function getScrollSetting($connect, $key, $default) {
+    $key = mysqli_real_escape_string($connect, $key);
+    $result = mysqli_query($connect, "SELECT setting_value FROM gangnamunni_theme_settings WHERE setting_key = '{$key}'");
+    if ($result && $row = mysqli_fetch_assoc($result)) {
+        return $row['setting_value'];
+    }
+    return $default;
+}
+
+$ad_auto_scroll_enabled = getScrollSetting($connect, 'ad_auto_scroll_enabled', '1');
+$ad_auto_scroll_interval = getScrollSetting($connect, 'ad_auto_scroll_interval', '10000');
+$promo_auto_scroll_enabled = getScrollSetting($connect, 'promo_auto_scroll_enabled', '1');
+$promo_auto_scroll_interval = getScrollSetting($connect, 'promo_auto_scroll_interval', '10000');
+
+?>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>병원 찾기 | <?php echo getTheme('site_name'); ?></title>
+    <?php echo generateFaviconLinks(); ?>
+    <?php echo generateGoogleFontsLink(); ?>
+    <?php echo generateThemeCSS(); ?>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+            background: #FFFFFF;
+            color: #000000;
+        }
+
+        /* 검색바 섹션 (글로벌 네비 아래) */
+        .search-section {
+            position: sticky;
+            top: 56px;
+            background: #FFFFFF;
+            border-bottom: 1px solid #F5F5F5;
+            padding: 12px 20px;
+            z-index: 90;
+        }
+
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #F5F5F5;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #F5F5F5;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #FF540F;
+            background: #FFFFFF;
+        }
+
+        /* 컨테이너 */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 상태 박스 */
+        .status-box {
+            background: #FFF3E0;
+            border-left: 4px solid #FF9800;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+
+        .status-box h2 {
+            color: #E65100;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .status-box p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .status-box button {
+            margin-top: 15px;
+            padding: 12px 24px;
+            background: #FF540F;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .status-box button:hover {
+            background: #E64A07;
+        }
+
+        /* 필터 섹션 */
+        .filter-section {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            border: 1px solid #F5F5F5;
+            border-radius: 20px;
+            background: white;
+            font-size: 14px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: #FF540F;
+            color: white;
+            border-color: #FF540F;
+        }
+
+        /* 병원 카드 그리드 */
+        .hospital-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .hospital-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .hospital-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            border-color: rgba(255,107,157,0.2);
+        }
+
+        .hospital-image {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            background: #F5F5F5;
+        }
+
+        .hospital-info {
+            padding: 16px;
+        }
+
+        .hospital-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #000000;
+        }
+
+        .hospital-address {
+            font-size: 12px;
+            color: #999999;
+            margin-bottom: 12px;
+        }
+
+        .rating-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .rating-score {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FF540F;
+        }
+
+        .review-count {
+            font-size: 12px;
+            color: #666666;
+        }
+
+        .badge-group {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            background: #FFF3E0;
+            color: #FF540F;
+            font-size: 11px;
+            border-radius: 4px;
+        }
+
+
+        /* 데모 데이터 스타일 */
+        .demo-data {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .demo-data h2 {
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        .demo-data p {
+            line-height: 1.8;
+            opacity: 0.9;
+        }
+
+        /* 광고 배너 스크롤 영역 */
+        .ads-banner {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .ads-banner-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            scroll-snap-type: x mandatory;
+        }
+
+        .ads-banner-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+        .ads-scroll {
+            display: flex;
+            gap: 12px;
+            padding: 0 0 10px 0;
+        }
+
+        .scroll-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10;
+            transition: all 0.3s;
+            font-size: 20px;
+            color: #333;
+        }
+
+        .scroll-nav-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .scroll-nav-btn.left {
+            left: 10px;
+        }
+
+        .scroll-nav-btn.right {
+            right: 10px;
+        }
+
+        .ads-banner:hover .scroll-nav-btn,
+        .promo-section:hover .scroll-nav-btn {
+            display: flex;
+        }
+
+        .ad-item {
+            min-width: calc(100vw - 52px);
+            width: calc(100vw - 52px);
+            max-width: 540px;
+            flex-shrink: 0;
+            background: white;
+            border-radius: 12px;
+            scroll-snap-align: start;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .ad-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .ad-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #FF6B35, #FFA45B);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+
+        .ad-content {
+            padding: 12px;
+        }
+
+        .ad-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        .ad-subtitle {
+            font-size: 12px;
+            color: #FF540F;
+            font-weight: 600;
+        }
+
+        /* 리스트 뷰 전환 버튼 */
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            justify-content: flex-end;
+        }
+
+        .view-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .view-btn.active {
+            background: #FF540F;
+            color: white;
+            border-color: #FF540F;
+        }
+
+        /* 리스트 뷰 스타일 */
+        .hospital-grid.list-view {
+            grid-template-columns: 1fr;
+        }
+
+        .hospital-grid.list-view .hospital-card {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .hospital-grid.list-view .hospital-image {
+            width: 120px;
+            height: 120px;
+            flex-shrink: 0;
+        }
+
+        .hospital-grid.list-view .hospital-info {
+            flex: 1;
+        }
+
+        /* 프로모션 배너 */
+        .promo-section {
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .promo-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+            scroll-snap-type: x mandatory;
+        }
+
+        .promo-wrapper::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+
+        .promo-scroll {
+            display: flex;
+            gap: 12px;
+            padding-bottom: 5px;
+        }
+
+        .promo-banner {
+            background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 50%, #FFA45B 100%);
+            border-radius: 12px;
+            padding: 30px 24px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            min-width: calc(100vw - 52px);
+            width: calc(100vw - 52px);
+            max-width: 540px;
+            flex-shrink: 0;
+            margin-bottom: 0;
+            scroll-snap-align: start;
+        }
+
+        .promo-banner::after {
+            content: attr(data-icon);
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 60px;
+            opacity: 0.3;
+        }
+
+        .promo-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .promo-subtitle {
+            font-size: 14px;
+            opacity: 0.95;
+        }
+
+        /* 시술 카테고리 */
+        .category-section {
+            margin-bottom: 40px;
+        }
+
+        .category-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #000000;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .category-item {
+            text-align: center;
+            cursor: pointer;
+            padding: 16px 8px;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+
+        .category-item:hover {
+            background: #F8F9FA;
+        }
+
+        .category-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .category-name {
+            font-size: 13px;
+            color: #333333;
+        }
+
+        /* 서울미녀 꿀팁 */
+        .tips-section {
+            margin-bottom: 40px;
+        }
+
+        .tips-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .tips-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #000000;
+        }
+
+        .tips-more {
+            font-size: 14px;
+            color: #666666;
+            cursor: pointer;
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .tip-card {
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            background: #F5F5F5;
+        }
+
+        .tip-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .tip-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            color: white;
+            padding: 16px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* 병원 리스트 섹션 */
+        .hospital-section {
+            margin-top: 40px;
+        }
+
+        .hospital-section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #000000;
+        }
+
+        @media (max-width: 768px) {
+            .hospital-grid {
+                grid-template-columns: 1fr;
+            }
+            .category-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 글로벌 네비게이션 -->
+    <?php include __DIR__ . '/includes/global_nav.php'; ?>
+
+    <!-- 검색바 섹션 -->
+    <div class="search-section">
+        <div class="search-container">
+            <input type="text" class="search-input" placeholder="궁금한 시술, 병원 이름을 검색해보세요" onkeypress="if(event.keyCode==13){ location.href='search.php?q='+encodeURIComponent(this.value); }">
+        </div>
+    </div>
+
+    <!-- 컨테이너 -->
+    <div class="container">
+        <?php if (!$table_exists): ?>
+        <!-- 데이터 없음 상태 -->
+        <div class="status-box">
+            <h2>⚠️ 데이터베이스 설정 필요</h2>
+            <p>강남언니 병원 데이터를 불러오려면 먼저 SQL 파일을 import 해야 합니다.</p>
+            <p style="margin-top: 10px;">
+                <strong>파일 위치:</strong><br>
+                H:\carebaby_project\site_get\gangnamunni_hospitals_import.sql
+            </p>
+            <button onclick="showImportGuide()">Import 가이드 보기</button>
+        </div>
+
+        <!-- 데모 데이터 -->
+        <div class="demo-data">
+            <h2>✨ 강남언니 스타일 페이지</h2>
+            <p>
+                강남언니 웹사이트의 디자인을 참고하여 만든 병원 리스팅 페이지입니다.<br>
+                실제 크롤링된 데이터(99개 병원)를 표시하려면 SQL import가 필요합니다.
+            </p>
+        </div>
+
+        <?php else: ?>
+        <!-- 광고 배너 (관심있는 시술) -->
+        <?php if (!empty($ads)): ?>
+        <div class="ads-banner">
+            <h3 style="margin-bottom: 12px; font-size: 16px; font-weight: 600;">관심있는 시술을 선택해보세요</h3>
+            <button class="scroll-nav-btn left" onclick="scrollContainer('.ads-banner-wrapper', -300)">‹</button>
+            <button class="scroll-nav-btn right" onclick="scrollContainer('.ads-banner-wrapper', 300)">›</button>
+            <div class="ads-banner-wrapper">
+                <div class="ads-scroll">
+                    <?php foreach ($ads as $ad): ?>
+                    <a href="<?php echo htmlspecialchars($ad['link_url']); ?>" class="ad-item">
+                        <div class="ad-image">
+                            <?php if (!empty($ad['image_url']) && file_exists(__DIR__ . '/' . $ad['image_url'])): ?>
+                            <img src="<?php echo htmlspecialchars($ad['image_url']); ?>"
+                                 alt="<?php echo htmlspecialchars($ad['title']); ?>"
+                                 style="width: 100%; height: 100%; object-fit: cover;">
+                            <?php else: ?>
+                            🏥
+                            <?php endif; ?>
+                        </div>
+                        <div class="ad-content">
+                            <div class="ad-title"><?php echo htmlspecialchars($ad['title']); ?></div>
+                            <?php if (!empty($ad['subtitle'])): ?>
+                            <div class="ad-subtitle"><?php echo htmlspecialchars($ad['subtitle']); ?></div>
+                            <?php endif; ?>
+                        </div>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- 프로모션 배너 (스크롤) -->
+        <?php if (!empty($promos)): ?>
+        <div class="promo-section">
+            <button class="scroll-nav-btn left" onclick="scrollContainer('.promo-wrapper', -320)">‹</button>
+            <button class="scroll-nav-btn right" onclick="scrollContainer('.promo-wrapper', 320)">›</button>
+            <div class="promo-wrapper">
+                <div class="promo-scroll">
+                    <?php foreach ($promos as $promo): ?>
+                    <a href="<?php echo htmlspecialchars($promo['link_url']); ?>"
+                       class="promo-banner"
+                       style="background: <?php echo htmlspecialchars($promo['background_gradient']); ?>; text-decoration: none; color: white;"
+                       data-icon="<?php echo htmlspecialchars($promo['icon']); ?>">
+                        <div class="promo-title"><?php echo $promo['title']; ?></div>
+                        <div class="promo-subtitle"><?php echo htmlspecialchars($promo['subtitle']); ?></div>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- 시술 카테고리 -->
+        <div class="category-section">
+            <h2 class="category-title"><?php echo getTheme('section_categories_title'); ?></h2>
+            <div class="category-grid">
+                <div class="category-item" onclick="filterByCategory('코')">
+                    <div class="category-icon bg-gradient-to-br from-pink-400 to-pink-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div class="category-name">코</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('눈')">
+                    <div class="category-icon bg-gradient-to-br from-purple-400 to-purple-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </div>
+                    <div class="category-name">눈</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('지방흡입')">
+                    <div class="category-icon bg-gradient-to-br from-blue-400 to-blue-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <div class="category-name">지방흡입</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('가슴성형')">
+                    <div class="category-icon bg-gradient-to-br from-rose-400 to-rose-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                    </div>
+                    <div class="category-name">가슴성형</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('치아')">
+                    <div class="category-icon bg-gradient-to-br from-cyan-400 to-cyan-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div class="category-name">치아</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('리프팅')">
+                    <div class="category-icon bg-gradient-to-br from-indigo-400 to-indigo-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                    </div>
+                    <div class="category-name">리프팅</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('주름/미백')">
+                    <div class="category-icon bg-gradient-to-br from-amber-400 to-amber-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                    </div>
+                    <div class="category-name">주름/미백</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('쁘띠')">
+                    <div class="category-icon bg-gradient-to-br from-pink-500 to-pink-700">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                    </div>
+                    <div class="category-name">쁘띠</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('모발이식')">
+                    <div class="category-icon bg-gradient-to-br from-orange-400 to-orange-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </div>
+                    <div class="category-name">모발이식</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('제모')">
+                    <div class="category-icon bg-gradient-to-br from-teal-400 to-teal-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                    </div>
+                    <div class="category-name">제모</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('남성')">
+                    <div class="category-icon bg-gradient-to-br from-gray-400 to-gray-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    </div>
+                    <div class="category-name">남성</div>
+                </div>
+                <div class="category-item" onclick="filterByCategory('눈성형')">
+                    <div class="category-icon bg-gradient-to-br from-violet-400 to-violet-600">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </div>
+                    <div class="category-name">눈성형</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 서울미녀 꿀팁 -->
+        <div class="tips-section">
+            <div class="tips-header">
+                <h2 class="tips-title"><?php echo getTheme('section_tips_title'); ?></h2>
+                <div class="tips-more" onclick="location.href='tips.php'"><?php echo getTheme('button_more'); ?> →</div>
+            </div>
+            <div class="tips-grid">
+                <?php if (!empty($tips) && !USE_DEMO_DATA): ?>
+                    <?php
+                    $gradient_colors = [
+                        ['#FFE0B2', '#FFCC80', '📝'],
+                        ['#F8BBD0', '#F48FB1', '💄'],
+                        ['#C5E1A5', '#AED581', '🌟'],
+                        ['#B2EBF2', '#80DEEA', '💊']
+                    ];
+                    $color_index = 0;
+                    foreach ($tips as $tip):
+                        $colors = $gradient_colors[$color_index % 4];
+                        $color_index++;
+                        // placeholder URL인지 확인
+                        $is_placeholder = empty($tip['thumbnail_url']) ||
+                                         strpos($tip['thumbnail_url'], 'placeholder') !== false ||
+                                         strpos($tip['thumbnail_url'], 'via.placeholder') !== false;
+                    ?>
+                    <div class="tip-card" onclick="location.href='detail_tip.php?id=<?php echo $tip['id']; ?>'">
+                        <div class="tip-image" style="background: linear-gradient(135deg, <?php echo $colors[0]; ?>, <?php echo $colors[1]; ?>); display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                            <?php echo $colors[2]; ?>
+                        </div>
+                        <div class="tip-overlay"><?php echo htmlspecialchars($tip['title']); ?></div>
+                    </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <!-- 데모 데이터 -->
+                    <div class="tip-card" onclick="alert('실제 데이터가 로드되면 사용 가능합니다. config.php에서 USE_DEMO_DATA를 false로 설정하세요.')">
+                        <div class="tip-image" style="background: linear-gradient(135deg, #FFE0B2, #FFCC80); display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                            📝
+                        </div>
+                        <div class="tip-overlay">연휴를 활용한 맞춤 관리 5가지</div>
+                    </div>
+                    <div class="tip-card" onclick="alert('실제 데이터가 로드되면 사용 가능합니다. config.php에서 USE_DEMO_DATA를 false로 설정하세요.')">
+                        <div class="tip-image" style="background: linear-gradient(135deg, #F8BBD0, #F48FB1); display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                            💄
+                        </div>
+                        <div class="tip-overlay">볼살·턱살엔 인모드? 울쎄라?</div>
+                    </div>
+                    <div class="tip-card" onclick="alert('실제 데이터가 로드되면 사용 가능합니다. config.php에서 USE_DEMO_DATA를 false로 설정하세요.')">
+                        <div class="tip-image" style="background: linear-gradient(135deg, #C5E1A5, #AED581); display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                            🌟
+                        </div>
+                        <div class="tip-overlay">콜써마지 문제 해결? 리주란부다 리투?</div>
+                    </div>
+                    <div class="tip-card" onclick="alert('실제 데이터가 로드되면 사용 가능합니다. config.php에서 USE_DEMO_DATA를 false로 설정하세요.')">
+                        <div class="tip-image" style="background: linear-gradient(135deg, #B2EBF2, #80DEEA); display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                            💊
+                        </div>
+                        <div class="tip-overlay">스킨부스터 환절엽 리후란다 리투?</div>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- 병원 리스트 섹션 -->
+        <div class="hospital-section">
+            <h2 class="hospital-section-title"><?php echo getTheme('section_hospitals_title'); ?></h2>
+
+            <!-- 필터 섹션 -->
+            <div class="filter-section">
+                <button class="filter-btn active" onclick="filterByRegion('')">전체</button>
+                <button class="filter-btn" onclick="filterByRegion('강남')">강남</button>
+                <button class="filter-btn" onclick="filterByRegion('신촌')">신촌</button>
+                <button class="filter-btn" onclick="filterByRegion('홍대')">홍대</button>
+                <button class="filter-btn" onclick="filterByRegion('명동')">명동</button>
+            </div>
+
+            <!-- 뷰 전환 버튼 -->
+            <div class="view-toggle">
+                <button class="view-btn active" onclick="switchView('card')" id="view-card">
+                    <span>🔲</span> 카드형
+                </button>
+                <button class="view-btn" onclick="switchView('list')" id="view-list">
+                    <span>📋</span> 리스트형
+                </button>
+            </div>
+
+        <!-- 병원 카드 그리드 -->
+        <div class="hospital-grid" id="hospital-grid">
+            <?php foreach ($hospitals as $hospital): ?>
+            <div class="hospital-card" onclick="location.href='detail.php?id=<?php echo $hospital['id']; ?>'">
+                <img
+                    src="<?php echo htmlspecialchars($hospital['profile_image_url'] ?? ''); ?>"
+                    alt="<?php echo htmlspecialchars($hospital['name']); ?>"
+                    class="hospital-image"
+                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'200\'%3E%3Crect fill=\'%23f5f5f5\' width=\'300\' height=\'200\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' fill=\'%23999\' text-anchor=\'middle\' dominant-baseline=\'middle\' font-size=\'20\'%3E병원 이미지%3C/text%3E%3C/svg%3E'"
+                >
+                <div class="hospital-info">
+                    <div class="hospital-name"><?php echo htmlspecialchars($hospital['name']); ?></div>
+                    <div class="hospital-address"><?php echo htmlspecialchars(mb_substr($hospital['address'] ?? '', 0, 30)); ?></div>
+                    <div class="rating-section">
+                        <span class="rating-score"><?php echo number_format($hospital['rating'] ?? 0, 1); ?></span>
+                        <span class="review-count">(평가 <?php echo number_format($hospital['review_count'] ?? 0); ?>개)</span>
+                    </div>
+                    <?php if (!empty($hospital['treatment_tags'])): ?>
+                    <div class="badge-group">
+                        <?php
+                        $tags = json_decode($hospital['treatment_tags'], true);
+                        if (is_array($tags)) {
+                            foreach (array_slice($tags, 0, 3) as $tag) {
+                                // 태그가 배열이면 첫 번째 요소 사용, 아니면 그대로 사용
+                                $tag_text = is_array($tag) ? (isset($tag[0]) ? $tag[0] : '') : $tag;
+                                if (!empty($tag_text) && is_string($tag_text)) {
+                                    echo '<span class="badge">' . htmlspecialchars($tag_text) . '</span>';
+                                }
+                            }
+                        }
+                        ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <?php if (empty($hospitals)): ?>
+        <div style="text-align: center; padding: 60px 20px; color: #999;">
+            <div style="font-size: 48px; margin-bottom: 20px;">🏥</div>
+            <p>병원 데이터가 없습니다.</p>
+            <p style="margin-top: 10px; font-size: 14px;">SQL 파일을 import 해주세요.</p>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
+    </div>
+
+    <!-- 하단 네비게이션 -->
+    <?php include __DIR__ . '/includes/bottom_navigation.php'; ?>
+
+    <script>
+        // 뷰 전환 기능
+        function switchView(viewType) {
+            const grid = document.getElementById('hospital-grid');
+            const cardBtn = document.getElementById('view-card');
+            const listBtn = document.getElementById('view-list');
+
+            if (viewType === 'list') {
+                grid.classList.add('list-view');
+                cardBtn.classList.remove('active');
+                listBtn.classList.add('active');
+            } else {
+                grid.classList.remove('list-view');
+                cardBtn.classList.add('active');
+                listBtn.classList.remove('active');
+            }
+
+            // 로컬스토리지에 사용자 설정 저장
+            localStorage.setItem('hospital_view', viewType);
+        }
+
+        // 페이지 로드 시 저장된 뷰 적용
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedView = localStorage.getItem('hospital_view');
+            if (savedView === 'list') {
+                switchView('list');
+            }
+        });
+
+        // 스크롤 컨테이너 좌우 이동
+        function scrollContainer(selector, amount) {
+            const container = document.querySelector(selector);
+            if (!container) return;
+
+            const startPosition = container.scrollLeft;
+            const targetPosition = startPosition + amount;
+            const duration = 500;
+            let startTime = null;
+
+            function animation(currentTime) {
+                if (startTime === null) startTime = currentTime;
+                const timeElapsed = currentTime - startTime;
+                const progress = Math.min(timeElapsed / duration, 1);
+
+                // easeInOutQuad 애니메이션
+                const ease = progress < 0.5
+                    ? 2 * progress * progress
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                container.scrollLeft = startPosition + ((targetPosition - startPosition) * ease);
+
+                if (timeElapsed < duration) {
+                    requestAnimationFrame(animation);
+                }
+            }
+
+            requestAnimationFrame(animation);
+        }
+
+        function showImportGuide() {
+            alert(`
+데이터베이스 Import 가이드:
+
+1. MySQL 접속:
+   mysql -u root -p -h 124.111.85.242
+
+2. hairwang 데이터베이스 선택:
+   USE hairwang;
+
+3. SQL 파일 import:
+   SOURCE H:/carebaby_project/site_get/gangnamunni_hospitals_import.sql;
+
+4. 완료 후 이 페이지 새로고침 (F5)
+
+문제 발생 시: test_db_connection.php에서 DB 연결 확인
+            `);
+        }
+
+        // 시술 카테고리 필터
+        function filterByCategory(category) {
+            location.href = 'hospitals.php?category=' + encodeURIComponent(category);
+        }
+
+        // 지역 필터
+        function filterByRegion(region) {
+            if (region === '') {
+                location.href = 'index.php';
+            } else {
+                location.href = 'hospitals.php?q=' + encodeURIComponent(region);
+            }
+        }
+
+        // 검색 기능
+        document.querySelector('.search-input').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                const keyword = this.value.trim();
+                if (keyword) {
+                    location.href = 'hospitals.php?q=' + encodeURIComponent(keyword);
+                }
+            }
+        });
+
+        // 네비게이션 아이템 클릭
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const page = this.getAttribute('data-page');
+                if (page && page !== '#') {
+                    location.href = page;
+                }
+            });
+        });
+
+        // 수평 자동 스크롤 기능
+        function initAutoScroll(containerSelector, enabled, interval) {
+            if (!enabled || enabled === '0') return;
+
+            const container = document.querySelector(containerSelector);
+            if (!container) return;
+
+            const scrollInterval = parseInt(interval) || 10000;
+            let isScrolling = false;
+
+            function smoothScrollTo(targetPosition) {
+                if (isScrolling) return;
+                isScrolling = true;
+
+                const startPosition = container.scrollLeft;
+                const distance = targetPosition - startPosition;
+                const duration = 800; // 0.8초 동안 스크롤
+                let startTime = null;
+
+                function animation(currentTime) {
+                    if (startTime === null) startTime = currentTime;
+                    const timeElapsed = currentTime - startTime;
+                    const progress = Math.min(timeElapsed / duration, 1);
+
+                    // easeInOutQuad 애니메이션
+                    const ease = progress < 0.5
+                        ? 2 * progress * progress
+                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                    container.scrollLeft = startPosition + (distance * ease);
+
+                    if (timeElapsed < duration) {
+                        requestAnimationFrame(animation);
+                    } else {
+                        isScrolling = false;
+                    }
+                }
+
+                requestAnimationFrame(animation);
+            }
+
+            function autoScroll() {
+                const maxScroll = container.scrollWidth - container.clientWidth;
+
+                if (container.scrollLeft >= maxScroll - 10) {
+                    // 끝에 도달하면 처음으로
+                    smoothScrollTo(0);
+                } else {
+                    // 한 아이템 너비만큼 이동
+                    const itemWidth = container.querySelector('.ad-item, .promo-banner')?.offsetWidth || 300;
+                    const gap = 12; // CSS gap 값
+                    const scrollAmount = itemWidth + gap;
+                    smoothScrollTo(container.scrollLeft + scrollAmount);
+                }
+            }
+
+            // 자동 스크롤 시작
+            let scrollTimer = setInterval(autoScroll, scrollInterval);
+
+            // 사용자가 수동으로 스크롤하면 타이머 초기화
+            container.addEventListener('scroll', function() {
+                clearInterval(scrollTimer);
+                scrollTimer = setInterval(autoScroll, scrollInterval);
+            }, { passive: true });
+
+            // 마우스 호버시 자동 스크롤 일시정지
+            container.addEventListener('mouseenter', function() {
+                clearInterval(scrollTimer);
+            });
+
+            container.addEventListener('mouseleave', function() {
+                scrollTimer = setInterval(autoScroll, scrollInterval);
+            });
+        }
+
+        // 페이지 로드 후 자동 스크롤 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            // 광고 배너 자동 스크롤
+            initAutoScroll('.ads-banner-wrapper', '<?php echo $ad_auto_scroll_enabled; ?>', '<?php echo $ad_auto_scroll_interval; ?>');
+
+            // 프로모션 배너 자동 스크롤
+            initAutoScroll('.promo-wrapper', '<?php echo $promo_auto_scroll_enabled; ?>', '<?php echo $promo_auto_scroll_interval; ?>');
+        });
+    </script>
+</body>
+</html>

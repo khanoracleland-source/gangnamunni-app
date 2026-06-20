@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>결제 시스템 완전 가이드 - 서울미녀</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+:root { --sb: #6C63FF; --success: #00C851; --warn: #FF9800; --danger: #FF4444; --bg: #0f0f23; --card-bg: rgba(255,255,255,0.04); }
+body { background: var(--bg); color: #e0e0e0; font-family: 'Segoe UI', -apple-system, sans-serif; line-height: 1.7; }
+
+/* Hero */
+.hero { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%); padding: 50px 0 35px; border-bottom: 3px solid var(--sb); }
+.hero h1 { font-size: 2rem; font-weight: 700; }
+.hero .sub { color: #999; font-size: 0.95rem; }
+
+/* Nav */
+.top-nav { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid rgba(255,255,255,0.06); padding: 10px 0; }
+.top-nav .nav-pills .nav-link { color: #ccc; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; margin: 0 4px 4px; font-size: 0.85rem; padding: 6px 16px; }
+.top-nav .nav-pills .nav-link.active { background: var(--sb); border-color: var(--sb); color: #fff; }
+
+/* Step card */
+.step-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; margin-bottom: 32px; overflow: hidden; }
+.step-header { display: flex; align-items: center; gap: 14px; padding: 18px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.step-num { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; }
+.step-num.a { background: rgba(108,99,255,0.15); color: var(--sb); }
+.step-num.b { background: rgba(0,200,81,0.15); color: var(--success); }
+.step-num.c { background: rgba(255,152,0,0.15); color: var(--warn); }
+.step-title { font-weight: 600; font-size: 1.05rem; }
+.step-url { font-family: monospace; font-size: 0.8rem; color: #888; margin-top: 2px; }
+.step-body { padding: 24px; }
+.step-desc { font-size: 0.92rem; color: #ccc; margin-bottom: 16px; }
+.step-desc strong { color: #fff; }
+.step-tips { background: rgba(108,99,255,0.06); border: 1px solid rgba(108,99,255,0.15); border-radius: 10px; padding: 14px 18px; margin-top: 16px; }
+.step-tips h6 { font-size: 0.85rem; color: var(--sb); margin-bottom: 6px; }
+.step-tips ul { margin: 0; padding-left: 18px; font-size: 0.85rem; color: #aaa; }
+.step-tips li { margin-bottom: 4px; }
+
+/* Screenshot */
+.screenshot { width: 100%; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s; margin-top: 8px; }
+.screenshot:hover { box-shadow: 0 4px 24px rgba(108,99,255,0.25); transform: scale(1.005); }
+
+/* Flow diagram */
+.flow-section { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 30px; margin-bottom: 32px; }
+.flow-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.flow-box { border: 1px solid rgba(108,99,255,0.25); border-radius: 10px; padding: 10px 16px; font-size: 0.82rem; text-align: center; min-width: 100px; }
+.flow-box.user { background: rgba(108,99,255,0.1); }
+.flow-box.page { background: rgba(0,200,81,0.08); border-color: rgba(0,200,81,0.25); }
+.flow-box.api { background: rgba(255,152,0,0.08); border-color: rgba(255,152,0,0.25); }
+.flow-box.db { background: rgba(0,188,212,0.08); border-color: rgba(0,188,212,0.25); }
+.flow-box.pg { background: rgba(255,68,68,0.08); border-color: rgba(255,68,68,0.25); }
+.flow-arrow { color: #555; font-size: 1.3rem; }
+
+/* Glossary */
+.glossary-item { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.glossary-item:last-child { border-bottom: none; }
+.glossary-term { font-weight: 600; color: var(--sb); min-width: 140px; font-size: 0.9rem; }
+.glossary-def { font-size: 0.88rem; color: #bbb; }
+
+/* Lightbox */
+.lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; justify-content: center; align-items: center; cursor: pointer; }
+.lightbox.show { display: flex; }
+.lightbox img { max-width: 95%; max-height: 95vh; border-radius: 8px; }
+.lightbox .caption { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); color: #ccc; font-size: 0.85rem; background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px; }
+
+/* Number badge */
+.num-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sb); color: #fff; font-size: 0.7rem; font-weight: 700; margin-right: 6px; flex-shrink: 0; }
+
+/* Feedback */
+.fb-form { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px; margin-bottom: 24px; }
+.fb-form label { font-size: 0.85rem; color: #aaa; margin-bottom: 4px; }
+.fb-form .form-control, .fb-form .form-select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #e0e0e0; border-radius: 8px; }
+.fb-form .form-control:focus, .fb-form .form-select:focus { border-color: var(--sb); box-shadow: 0 0 0 2px rgba(108,99,255,0.2); background: rgba(255,255,255,0.08); color: #fff; }
+.fb-form .form-select option { background: #1a1a2e; color: #e0e0e0; }
+.fb-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; margin-bottom: 14px; transition: border-color 0.2s; }
+.fb-card:hover { border-color: rgba(108,99,255,0.3); }
+.fb-card .fb-meta { font-size: 0.78rem; color: #888; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.fb-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; }
+.fb-badge.bug { background: rgba(255,68,68,0.15); color: #FF4444; }
+.fb-badge.improve { background: rgba(108,99,255,0.15); color: var(--sb); }
+.fb-badge.feature { background: rgba(0,200,81,0.15); color: var(--success); }
+.fb-badge.question { background: rgba(255,152,0,0.15); color: var(--warn); }
+.fb-badge.other { background: rgba(255,255,255,0.08); color: #999; }
+.fb-badge.urgent { background: rgba(255,68,68,0.2); color: #FF4444; }
+.fb-badge.high { background: rgba(255,152,0,0.2); color: var(--warn); }
+.fb-badge.medium { background: rgba(108,99,255,0.15); color: var(--sb); }
+.fb-badge.low { background: rgba(255,255,255,0.08); color: #888; }
+.fb-status { font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; }
+.fb-status.open { background: rgba(0,200,81,0.1); color: var(--success); }
+.fb-status.in_progress { background: rgba(255,152,0,0.1); color: var(--warn); }
+.fb-status.done { background: rgba(108,99,255,0.1); color: var(--sb); }
+.fb-status.rejected { background: rgba(255,68,68,0.1); color: var(--danger); }
+.fb-actions { display: flex; gap: 6px; margin-top: 10px; }
+.fb-actions .btn { font-size: 0.78rem; padding: 3px 10px; border-radius: 8px; }
+.prompt-box { background: #0d1117; border: 1px solid rgba(108,99,255,0.2); border-radius: 12px; padding: 20px; position: relative; }
+.prompt-box pre { color: #c9d1d9; font-size: 0.82rem; white-space: pre-wrap; word-break: break-word; margin: 0; max-height: 500px; overflow-y: auto; }
+.prompt-copy { position: absolute; top: 10px; right: 10px; }
+.fb-tabs .nav-link { color: #999; font-size: 0.85rem; padding: 6px 14px; border: 1px solid transparent; border-radius: 8px; }
+.fb-tabs .nav-link.active { background: var(--sb); color: #fff; border-color: var(--sb); }
+.fb-count { background: rgba(255,255,255,0.1); padding: 1px 7px; border-radius: 10px; font-size: 0.7rem; margin-left: 4px; }
+.fb-empty { text-align: center; color: #666; padding: 40px 20px; font-size: 0.9rem; }
+
+@media (max-width: 768px) {
+    .hero h1 { font-size: 1.4rem; }
+    .flow-row { justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="container">
+        <div class="d-flex align-items-center gap-3 mb-2">
+            <img src="assets/images/seoul_beauty_logo.png" alt="Logo" height="36" style="filter: brightness(1.2);">
+            <div>
+                <h1 class="mb-0">결제 시스템 완전 가이드</h1>
+                <div class="sub">PG 결제 + CPV 지갑 + 정산 — 모든 화면과 프로세스를 단계별로 설명합니다</div>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-3 flex-wrap" style="font-size:0.85rem;">
+            <span style="background:rgba(108,99,255,0.15); padding:4px 12px; border-radius:12px;">15장 스크린샷</span>
+            <span style="background:rgba(0,200,81,0.15); padding:4px 12px; border-radius:12px; color:var(--success);">3개 파트</span>
+            <span style="background:rgba(255,152,0,0.15); padding:4px 12px; border-radius:12px; color:var(--warn);">2026-03-12</span>
+        </div>
+    </div>
+</section>
+
+<!-- Navigation -->
+<div class="top-nav">
+    <div class="container">
+        <ul class="nav nav-pills flex-wrap">
+            <li><a class="nav-link active" href="#partA"><i class="bi bi-credit-card me-1"></i>Part A: PG 결제</a></li>
+            <li><a class="nav-link" href="#partB"><i class="bi bi-wallet2 me-1"></i>Part B: CPV 지갑</a></li>
+            <li><a class="nav-link" href="#partC"><i class="bi bi-graph-up me-1"></i>Part C: 대시보드</a></li>
+            <li><a class="nav-link" href="#flow"><i class="bi bi-diagram-3 me-1"></i>결제 플로우</a></li>
+            <li><a class="nav-link" href="#glossary"><i class="bi bi-book me-1"></i>용어 사전</a></li>
+            <li><a class="nav-link" href="#feedback"><i class="bi bi-chat-left-text me-1"></i>피드백</a></li>
+        </ul>
+    </div>
+</div>
+
+<div class="container mt-4">
+
+<!-- ==================== Part A: PG Payment ==================== -->
+<h3 id="partA" class="mb-4" style="color: var(--sb);"><i class="bi bi-credit-card-2-front me-2"></i>Part A: PG 결제 시스템 (영카트 이니시스)</h3>
+
+<div class="mb-4 p-3" style="background: rgba(108,99,255,0.06); border-radius: 10px; border: 1px solid rgba(108,99,255,0.15);">
+    <strong>이 시스템은 무엇인가요?</strong><br>
+    서울미녀에서 광고 상품이나 병원 등록 상품을 <strong>실제 결제(카드/무통장)</strong>할 수 있는 시스템입니다.<br>
+    영카트(Gnuboard 쇼핑몰)와 이니시스 PG를 연동하여, 관리자가 상품을 등록하고 결제를 처리합니다.<br>
+    <small style="color: #888;">현재는 테스트 모드(INIpayTest)로 실제 결제가 발생하지 않습니다.</small>
+</div>
+
+<!-- A1 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num a">A1</div>
+        <div>
+            <div class="step-title">결제 현황 대시보드</div>
+            <div class="step-url">admin_payment.php</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>무엇을 보는 화면인가요?</strong><br>
+            이 페이지는 <strong>모든 결제 주문 목록</strong>을 한눈에 볼 수 있는 메인 화면입니다.
+            고객이 결제한 모든 주문이 여기에 나타나며, 주문번호, 결제일, 금액, 상태(완료/대기/취소)를 확인할 수 있습니다.
+        </div>
+        <div class="step-desc">
+            <strong>어떻게 접근하나요?</strong><br>
+            <span class="num-badge">1</span> 관리자로 로그인 (admin / admin123)<br>
+            <span class="num-badge">2</span> 왼쪽 사이드바 → <strong>"결제 관리"</strong> 그룹 클릭<br>
+            <span class="num-badge">3</span> <strong>"결제 현황"</strong> 메뉴 클릭
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/A1_payment_orders.png" alt="결제 현황" loading="lazy" onclick="openLightbox(this, '결제 현황 대시보드 - 모든 주문 목록')">
+        <div class="step-tips">
+            <h6><i class="bi bi-lightbulb me-1"></i>알아두세요</h6>
+            <ul>
+                <li>주문 상태: <strong>완료</strong>(녹색) = 결제 성공, <strong>대기</strong>(노란색) = 입금 대기, <strong>취소</strong>(빨간색) = 취소됨</li>
+                <li>검색 필터로 날짜, 상태, 상품별 필터링 가능</li>
+                <li>테스트 MID(INIpayTest)에서는 실제 돈이 빠지지 않습니다</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- A2 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num a">A2</div>
+        <div>
+            <div class="step-title">상품 관리</div>
+            <div class="step-url">admin_payment.php?tab=products</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>무엇을 보는 화면인가요?</strong><br>
+            결제할 수 있는 <strong>상품 6종</strong>을 관리하는 화면입니다.
+            각 상품의 이름, 가격, 카테고리를 확인하고 수정할 수 있습니다.
+        </div>
+        <div class="step-desc">
+            <strong>등록된 상품 목록:</strong><br>
+            <table class="table table-sm table-dark mt-2" style="font-size: 0.85rem; max-width: 500px;">
+                <thead><tr><th>상품명</th><th>가격</th><th>카테고리</th></tr></thead>
+                <tbody>
+                    <tr><td>배너 광고 1개월</td><td style="color:var(--success)">110,000원</td><td>광고</td></tr>
+                    <tr><td>프리미엄 광고 1개월</td><td style="color:var(--success)">330,000원</td><td>광고</td></tr>
+                    <tr><td>인피드 광고 1개월</td><td style="color:var(--success)">220,000원</td><td>광고</td></tr>
+                    <tr><td>병원 기본 등록</td><td style="color:var(--warn)">550,000원</td><td>병원</td></tr>
+                    <tr><td>병원 프리미엄 등록</td><td style="color:var(--warn)">1,100,000원</td><td>병원</td></tr>
+                    <tr><td>병원 월정액 구독</td><td style="color:#00BCD4">99,000원</td><td>구독</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/A2_payment_products.png" alt="상품 관리" loading="lazy" onclick="openLightbox(this, '상품 관리 - 6종 상품 목록')">
+    </div>
+</div>
+
+<!-- A3 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num a">A3</div>
+        <div>
+            <div class="step-title">매출 통계</div>
+            <div class="step-url">admin_payment.php?tab=stats</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>무엇을 보는 화면인가요?</strong><br>
+            <strong>월별 매출 현황</strong>을 차트와 표로 보여줍니다.
+            얼마나 결제가 이루어졌는지, 어떤 상품이 인기 있는지 한눈에 파악할 수 있습니다.
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/A3_payment_stats.png" alt="매출 통계" loading="lazy" onclick="openLightbox(this, '매출 통계 - 월별 매출 현황')">
+    </div>
+</div>
+
+<!-- A4 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num a">A4</div>
+        <div>
+            <div class="step-title">PG 설정</div>
+            <div class="step-url">admin_payment.php?tab=pg_settings</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>무엇을 보는 화면인가요?</strong><br>
+            <strong>PG(Payment Gateway) 설정</strong>을 관리하는 화면입니다.
+            어떤 결제사(이니시스, 카카오페이 등)를 사용할지, 테스트 모드인지 실결제 모드인지 설정합니다.
+        </div>
+        <div class="step-desc">
+            <strong>주요 설정 항목:</strong><br>
+            <span class="num-badge">1</span> <strong>PG사 선택</strong>: 현재 이니시스(inicis) 사용<br>
+            <span class="num-badge">2</span> <strong>MID (가맹점 ID)</strong>: INIpayTest (테스트용, 실결제 없음)<br>
+            <span class="num-badge">3</span> <strong>결제 수단</strong>: 카드 결제 ON, 무통장 입금 ON<br>
+            <span class="num-badge">4</span> <strong>테스트 모드</strong>: ON (실제 돈이 빠지지 않음)
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/A4_pg_settings.png" alt="PG 설정" loading="lazy" onclick="openLightbox(this, 'PG 설정 - 이니시스 테스트MID')">
+        <div class="step-tips">
+            <h6><i class="bi bi-exclamation-triangle me-1" style="color: var(--warn);"></i>중요!</h6>
+            <ul>
+                <li><strong>INIpayTest</strong>는 이니시스 공식 테스트 MID입니다. 실제 돈이 결제되지 않습니다.</li>
+                <li>실서비스 전환 시 실제 MID로 교체하고 테스트 모드를 OFF로 변경해야 합니다.</li>
+                <li>지원 PG: 이니시스, KCP, 카카오페이, NICEpay, LG U+, 네이버페이 (6개)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- A5 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num a">A5</div>
+        <div>
+            <div class="step-title">테스트 결제 페이지</div>
+            <div class="step-url">admin_pay_bridge.php</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>무엇을 하는 화면인가요?</strong><br>
+            실제로 <strong>테스트 결제를 진행</strong>할 수 있는 페이지입니다.
+            상품을 선택하고, 결제 방법(카드/무통장)을 선택하면 이니시스 결제창이 뜹니다.
+        </div>
+        <div class="step-desc">
+            <strong>결제 진행 순서:</strong><br>
+            <span class="num-badge">1</span> 카테고리 선택 (광고 상품 / 병원 등록 / 구독 상품)<br>
+            <span class="num-badge">2</span> 원하는 상품을 클릭하여 선택<br>
+            <span class="num-badge">3</span> 결제 방법 선택 (신용카드 또는 무통장 입금)<br>
+            <span class="num-badge">4</span> <strong>"결제하기"</strong> 버튼 클릭<br>
+            <span class="num-badge">5</span> 이니시스 결제창이 열리면 가상 카드번호로 승인<br>
+            <span class="num-badge">6</span> 결제 완료 → "결제 현황"에서 확인
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/A5_pay_bridge.png" alt="테스트 결제" loading="lazy" onclick="openLightbox(this, '테스트 결제 - 상품 선택 + 결제')">
+    </div>
+</div>
+
+<!-- ==================== Part B: CPV Wallet ==================== -->
+<h3 id="partB" class="mb-4 mt-5" style="color: var(--success);"><i class="bi bi-wallet2 me-2"></i>Part B: CPV 지갑 시스템</h3>
+
+<div class="mb-4 p-3" style="background: rgba(0,200,81,0.06); border-radius: 10px; border: 1px solid rgba(0,200,81,0.15);">
+    <strong>CPV 지갑이란?</strong><br>
+    병원이 <strong>선불 충전</strong>하면, 환자가 해당 병원 페이지를 볼 때마다 <strong>자동으로 조금씩 차감</strong>되는 시스템입니다.<br>
+    네이버 검색광고의 CPC(클릭당 과금)와 비슷하지만, 여기서는 CPV(<strong>조회당 과금</strong>)입니다.<br>
+    <small style="color: #888;">현재 Master Switch OFF 상태이므로 실제 과금은 발생하지 않습니다.</small>
+</div>
+
+<!-- B1 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num b">B1</div>
+        <div>
+            <div class="step-title">지갑 관리 (관리자 화면)</div>
+            <div class="step-url">admin_wallet.php</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>무엇을 보는 화면인가요?</strong><br>
+            <strong>모든 병원의 지갑(잔액)</strong>을 한눈에 관리하는 화면입니다.<br>
+            상단에 전체 잔액 합계, 오늘 충전액, 오늘 소진액 등의 요약 카드가 있고,<br>
+            아래에 병원별 잔액, 상태(활성/일시정지), 마지막 거래일이 표시됩니다.
+        </div>
+        <div class="step-desc">
+            <strong>관리자가 할 수 있는 작업:</strong><br>
+            <span class="num-badge">1</span> <strong>충전</strong>: 병원 지갑에 금액을 넣어줌 (PG 결제 확인 후)<br>
+            <span class="num-badge">2</span> <strong>조정</strong>: 잘못된 금액 수정 (+ 또는 - 가능, 사유 필수)<br>
+            <span class="num-badge">3</span> <strong>거래 내역 보기</strong>: 각 병원의 충전/차감/환불 이력 확인
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/B1_admin_wallet.png" alt="지갑 관리" loading="lazy" onclick="openLightbox(this, '관리자 지갑 관리 - 전체 병원 지갑 목록')">
+    </div>
+</div>
+
+<!-- B2 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num b">B2</div>
+        <div>
+            <div class="step-title">충전 모달 (팝업)</div>
+            <div class="step-url">admin_wallet.php → [충전] 버튼 클릭</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>어떤 화면인가요?</strong><br>
+            병원 지갑에 <strong>수동으로 금액을 충전</strong>하는 팝업 창입니다.<br>
+            PG 결제 확인 후 관리자가 직접 충전 처리할 때 사용합니다.
+        </div>
+        <div class="step-desc">
+            <strong>입력 항목:</strong><br>
+            <span class="num-badge">1</span> <strong>충전 금액</strong>: 실제 충전할 금액 (원 단위)<br>
+            <span class="num-badge">2</span> <strong>보너스 금액</strong>: 추가 서비스 금액 (선택)<br>
+            <span class="num-badge">3</span> <strong>설명</strong>: 충전 사유 (예: "3월 광고비 입금 확인")<br>
+            <span class="num-badge">4</span> <strong>PG 주문번호</strong>: 결제와 연결할 주문번호 (선택)
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/B2_charge_modal.png" alt="충전 모달" loading="lazy" onclick="openLightbox(this, '충전 모달 - 수동 충전 처리')">
+        <div class="step-tips">
+            <h6><i class="bi bi-shield-check me-1"></i>안전장치</h6>
+            <ul>
+                <li>모든 충전/조정은 <strong>거래 내역에 기록</strong>됩니다 (삭제 불가)</li>
+                <li>잔액 변경 시 <strong>트랜잭션(DB Lock)</strong>으로 동시 접근 보호</li>
+                <li>관리자 ID가 자동으로 기록됩니다</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- B3 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num b">B3</div>
+        <div>
+            <div class="step-title">CPV 통합 설정 (충전 상품 가격)</div>
+            <div class="step-url">admin_cpv_settings.php</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>무엇을 설정하는 화면인가요?</strong><br>
+            CPV 과금 시스템의 <strong>모든 설정값(55개)</strong>을 한 곳에서 관리합니다.<br>
+            마스터 스위치, 기본 단가, 충전 상품 가격, 가중치, 정산 설정 등이 6개 그룹으로 나뉘어 있습니다.
+        </div>
+        <div class="step-desc">
+            <strong>충전 상품 가격 예시:</strong><br>
+            <table class="table table-sm table-dark mt-2" style="font-size: 0.85rem; max-width: 500px;">
+                <thead><tr><th>상품</th><th>가격</th><th>보너스</th></tr></thead>
+                <tbody>
+                    <tr><td>라이트</td><td>50,000원</td><td>0원</td></tr>
+                    <tr><td>베이직</td><td>100,000원</td><td>5,000원</td></tr>
+                    <tr><td>스탠다드</td><td>300,000원</td><td>30,000원</td></tr>
+                    <tr><td>프리미엄</td><td>500,000원</td><td>75,000원</td></tr>
+                    <tr><td>비즈니스</td><td>1,000,000원</td><td>200,000원</td></tr>
+                    <tr><td>엔터프라이즈</td><td>3,000,000원</td><td>900,000원</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/B3_cpv_settings.png" alt="CPV 설정" loading="lazy" onclick="openLightbox(this, 'CPV 통합 설정 - 55개 설정 관리')">
+    </div>
+</div>
+
+<!-- B4 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num b">B4</div>
+        <div>
+            <div class="step-title">파트너 지갑 (병원용 화면)</div>
+            <div class="step-url">partner_wallet.php?hospital_id=8093</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>누가 보는 화면인가요?</strong><br>
+            <strong>병원 관리자(파트너)</strong>가 자기 병원의 지갑을 확인하는 화면입니다.<br>
+            관리자 페이지와 별도의 독립된 페이지로, 모바일에서도 잘 보입니다.
+        </div>
+        <div class="step-desc">
+            <strong>화면 구성:</strong><br>
+            <span class="num-badge">1</span> <strong>잔액 카드</strong>: 현재 잔액 + 총 충전액 + 총 소진액 + 일일 한도<br>
+            <span class="num-badge">2</span> <strong>충전 상품</strong>: 6가지 충전 상품 카드 (라이트~엔터프라이즈)<br>
+            <span class="num-badge">3</span> <strong>거래 내역</strong>: 최근 충전/차감/환불 이력
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/B4_partner_wallet.png" alt="파트너 지갑" loading="lazy" onclick="openLightbox(this, '파트너 지갑 - 병원용 잔액 확인 + 충전')">
+    </div>
+</div>
+
+<!-- B5 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num b">B5</div>
+        <div>
+            <div class="step-title">파트너 예산 설정</div>
+            <div class="step-url">partner_settings.php?hospital_id=8093</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>무엇을 설정하는 화면인가요?</strong><br>
+            병원이 <strong>하루에 최대 얼마까지 쓸 수 있는지</strong> 예산을 설정합니다.
+            잔액이 일정 금액 이하로 떨어지면 알림을 받을 수도 있습니다.
+        </div>
+        <div class="step-desc">
+            <strong>설정 항목:</strong><br>
+            <span class="num-badge">1</span> <strong>일일 예산 한도</strong>: 하루 최대 차감 금액 (슬라이더로 조절)<br>
+            <span class="num-badge">2</span> <strong>잔액 알림 임계값</strong>: 이 금액 이하가 되면 알림 발송<br>
+            <span class="num-badge">3</span> <strong>과금 일시정지</strong>: ON 시 조회당 차감 중단<br>
+            <span class="num-badge">4</span> <strong>자동정지</strong>: 잔액 0원 시 자동으로 과금 정지
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/B5_partner_settings.png" alt="파트너 설정" loading="lazy" onclick="openLightbox(this, '파트너 예산 설정 - 일일 한도 + 알림')">
+    </div>
+</div>
+
+<!-- ==================== Part C: Dashboards ==================== -->
+<h3 id="partC" class="mb-4 mt-5" style="color: var(--warn);"><i class="bi bi-graph-up me-2"></i>Part C: 대시보드 & 리포트</h3>
+
+<!-- C1 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num c">C1</div>
+        <div>
+            <div class="step-title">CPV 대시보드</div>
+            <div class="step-url">admin_cpv_dashboard.php</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>한눈에 보는 CPV 현황!</strong><br>
+            오늘/이번주/이번달 매출, 활성 병원 수, 전체 잔액을 카드로 보여주고,
+            일별 트렌드 차트(Chart.js), Top 10 병원 지출, 잔액 부족 알림 목록이 표시됩니다.
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/C1_cpv_dashboard.png" alt="CPV 대시보드" loading="lazy" onclick="openLightbox(this, 'CPV 대시보드 - 매출 + 차트 + Top10')">
+    </div>
+</div>
+
+<!-- C2 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num c">C2</div>
+        <div>
+            <div class="step-title">정산 리포트</div>
+            <div class="step-url">admin_settlement.php</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>매달 병원에 청구하는 정산서입니다.</strong><br>
+            월별로 각 병원의 조회수, 과금 조회수, 평균 단가, 공급가, VAT(10%), 합계를 자동 계산합니다.<br>
+            <strong>엑셀 내보내기</strong>와 <strong>인쇄</strong> 기능으로 실무에 바로 사용 가능합니다.
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/C2_settlement.png" alt="정산 리포트" loading="lazy" onclick="openLightbox(this, '정산 리포트 - 월별 병원 정산 + 엑셀')">
+    </div>
+</div>
+
+<!-- C3 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num c">C3</div>
+        <div>
+            <div class="step-title">단가 규칙 관리</div>
+            <div class="step-url">admin_cpv_rates.php</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            <strong>조회 1건당 얼마를 차감할지</strong> 세밀하게 설정합니다.<br>
+            4가지 탭으로 분류: <strong>키워드별</strong> (예: "쌍꺼풀" 검색 시 높은 단가),
+            <strong>시술별</strong>, <strong>병원별</strong>, <strong>이벤트별</strong> 가중치를 설정합니다.<br>
+            단가 계산기로 실시간 시뮬레이션도 가능합니다.
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/C3_cpv_rates.png" alt="단가 규칙" loading="lazy" onclick="openLightbox(this, '단가 규칙 - 4탭 가중치 + 계산기')">
+    </div>
+</div>
+
+<!-- C4 -->
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-num c">C4</div>
+        <div>
+            <div class="step-title">사이드바 메뉴 구조</div>
+            <div class="step-url">모든 관리자 페이지의 왼쪽 메뉴</div>
+        </div>
+    </div>
+    <div class="step-body">
+        <div class="step-desc">
+            결제 관련 메뉴는 사이드바에 <strong>2개 그룹</strong>으로 표시됩니다:<br><br>
+            <strong style="color:var(--sb);">CPV 과금 관리</strong> (5개 메뉴)<br>
+            &nbsp;&nbsp;├── CPV 통합 설정<br>
+            &nbsp;&nbsp;├── 지갑 관리<br>
+            &nbsp;&nbsp;├── 단가 규칙<br>
+            &nbsp;&nbsp;├── CPV 대시보드<br>
+            &nbsp;&nbsp;└── 정산 리포트<br><br>
+            <strong style="color:var(--warn);">결제 관리</strong> (5개 메뉴)<br>
+            &nbsp;&nbsp;├── 결제 현황<br>
+            &nbsp;&nbsp;├── 상품 관리<br>
+            &nbsp;&nbsp;├── 매출 통계<br>
+            &nbsp;&nbsp;├── PG 설정<br>
+            &nbsp;&nbsp;└── 테스트 결제
+        </div>
+        <img class="screenshot" src="qa_payment_screenshots/C4_sidebar_menu.png" alt="사이드바" loading="lazy" onclick="openLightbox(this, '사이드바 - 결제 관련 메뉴 그룹')">
+    </div>
+</div>
+
+<!-- ==================== Flow Diagram ==================== -->
+<h3 id="flow" class="mb-4 mt-5"><i class="bi bi-diagram-3 me-2"></i>결제 프로세스 플로우</h3>
+
+<div class="flow-section">
+    <h5 style="color: var(--sb); margin-bottom: 20px;">Flow 1: PG 결제 (광고/병원 등록 상품)</h5>
+    <div class="flow-row">
+        <div class="flow-box user"><i class="bi bi-person"></i><br><small>관리자</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box page"><i class="bi bi-cart3"></i><br><small>admin_pay_bridge<br>(상품 선택)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box pg"><i class="bi bi-credit-card"></i><br><small>이니시스 결제창<br>(INIpayTest)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box api"><i class="bi bi-arrow-return-right"></i><br><small>pay_callback<br>(결제 확인)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box db"><i class="bi bi-database"></i><br><small>g5_shop_order<br>상태 업데이트</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box page"><i class="bi bi-check-circle"></i><br><small>admin_payment<br>(결과 확인)</small></div>
+    </div>
+
+    <h5 style="color: var(--success); margin-top: 30px; margin-bottom: 20px;">Flow 2: CPV 지갑 충전 (관리자가 수동 충전)</h5>
+    <div class="flow-row">
+        <div class="flow-box user"><i class="bi bi-person-gear"></i><br><small>관리자</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box page"><i class="bi bi-wallet2"></i><br><small>admin_wallet<br>(병원 선택)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box page"><i class="bi bi-plus-circle"></i><br><small>[충전] 클릭<br>(금액 입력)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box api"><i class="bi bi-plug"></i><br><small>api_wallet<br>(action=charge)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box db"><i class="bi bi-database"></i><br><small>cpv_wallets<br>잔액 증가</small></div>
+        <span class="flow-arrow">+</span>
+        <div class="flow-box db"><i class="bi bi-journal"></i><br><small>cpv_transactions<br>이력 기록</small></div>
+    </div>
+
+    <h5 style="color: var(--warn); margin-top: 30px; margin-bottom: 20px;">Flow 3: CPV 자동 과금 (방문자가 병원 페이지 조회 시)</h5>
+    <div class="flow-row">
+        <div class="flow-box user"><i class="bi bi-person-walking"></i><br><small>방문자</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box page"><i class="bi bi-file-earmark"></i><br><small>detail.php<br>(병원 상세)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box page"><i class="bi bi-code-slash"></i><br><small>cpv_tracker.php<br>(JS Beacon)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box api"><i class="bi bi-plug"></i><br><small>api_cpv_track<br>(POST 전송)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box api"><i class="bi bi-cpu"></i><br><small>cpv_engine<br>(중복 검사)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box db"><i class="bi bi-database"></i><br><small>지갑 차감<br>+ 로그 기록</small></div>
+    </div>
+
+    <h5 style="color: #00BCD4; margin-top: 30px; margin-bottom: 20px;">Flow 4: 파트너(병원)가 직접 충전</h5>
+    <div class="flow-row">
+        <div class="flow-box user"><i class="bi bi-building"></i><br><small>병원 관리자</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box page"><i class="bi bi-wallet2"></i><br><small>partner_wallet<br>(잔액 확인)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box page"><i class="bi bi-grid"></i><br><small>충전 상품 선택<br>(6종)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box pg"><i class="bi bi-credit-card"></i><br><small>PG 결제<br>(추후 연동)</small></div>
+        <span class="flow-arrow">&rarr;</span>
+        <div class="flow-box db"><i class="bi bi-database"></i><br><small>지갑 충전<br>자동 반영</small></div>
+    </div>
+</div>
+
+<!-- ==================== Glossary ==================== -->
+<h3 id="glossary" class="mb-4 mt-5"><i class="bi bi-book me-2"></i>용어 사전</h3>
+
+<div class="step-card">
+    <div class="step-body">
+        <div class="glossary-item">
+            <div class="glossary-term">PG (Payment Gateway)</div>
+            <div class="glossary-def">결제 대행 서비스. 카드사/은행과 직접 연동하지 않고, PG사(이니시스, KCP 등)를 통해 결제를 처리합니다. 쇼핑몰에서 카드 결제할 때 뜨는 결제창이 바로 PG입니다.</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">MID (Merchant ID)</div>
+            <div class="glossary-def">PG사에서 발급받는 가맹점 고유 ID. INIpayTest는 이니시스 공식 테스트 MID로, 실제 결제가 이루어지지 않습니다.</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">CPV (Cost Per View)</div>
+            <div class="glossary-def">조회당 과금. 방문자가 병원 페이지를 한 번 볼 때마다 병원 지갑에서 일정 금액이 차감됩니다. 네이버 CPC(클릭당 과금)와 유사한 개념입니다.</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">지갑 (Wallet)</div>
+            <div class="glossary-def">병원별 선불 잔액. 충전 후 CPV 과금 시 자동 차감됩니다. 잔액이 0이 되면 과금이 자동 정지됩니다.</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">영카트 (Youngcart)</div>
+            <div class="glossary-def">Gnuboard(그누보드) 기반 한국형 오픈소스 쇼핑몰. g5_shop_* 테이블을 사용하며, 이니시스 등 국내 PG 모듈을 기본 제공합니다.</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">정산 (Settlement)</div>
+            <div class="glossary-def">월 단위로 병원별 CPV 사용량을 집계하여 청구하는 것. 공급가 + VAT(10%) = 합계 금액으로 계산됩니다.</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">가중치 (Weight)</div>
+            <div class="glossary-def">CPV 단가를 높이거나 낮추는 배율. 예: 인기 키워드("쌍꺼풀")는 가중치 1.5배 → 기본 단가 300원이면 450원으로 과금.</div>
+        </div>
+        <div class="glossary-item">
+            <div class="glossary-term">Beacon API</div>
+            <div class="glossary-def">브라우저가 서버에 비동기로 데이터를 보내는 기술. 페이지를 떠나는 순간에도 전송이 보장되어 CPV 추적에 사용됩니다.</div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== Feedback ==================== -->
+<h3 id="feedback" class="mb-4 mt-5"><i class="bi bi-chat-left-text me-2"></i>개발 피드백</h3>
+
+<div class="mb-3 p-3" style="background: rgba(108,99,255,0.06); border-radius: 10px; border: 1px solid rgba(108,99,255,0.15);">
+    <strong>이 시스템은 무엇인가요?</strong><br>
+    결제 시스템에 대한 <strong>의견, 버그 리포트, 개선 요청</strong>을 등록하면 DB에 저장됩니다.<br>
+    등록된 피드백은 자동으로 <strong>Claude 개발 프롬프트</strong>로 변환되어 즉시 개발/수정에 활용할 수 있습니다.
+</div>
+
+<!-- Feedback Form -->
+<div class="fb-form" id="fbFormWrap">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="mb-0" style="font-size:1rem;"><i class="bi bi-plus-circle me-2" style="color:var(--sb);"></i>피드백 등록</h5>
+        <button class="btn btn-sm btn-outline-secondary" onclick="toggleFbForm()" id="fbToggleBtn" style="font-size:0.78rem;">접기</button>
+    </div>
+    <div id="fbFormBody">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">대상 페이지 *</label>
+                <select class="form-select" id="fb_page_id">
+                    <option value="payment_process_guide">결제 프로세스 가이드</option>
+                    <option value="admin_payment">결제 현황 (admin_payment)</option>
+                    <option value="admin_wallet">지갑 관리 (admin_wallet)</option>
+                    <option value="admin_cpv_dashboard">CPV 대시보드</option>
+                    <option value="admin_settlement">정산 리포트</option>
+                    <option value="admin_cpv_rates">단가 규칙</option>
+                    <option value="admin_cpv_settings">CPV 통합 설정</option>
+                    <option value="admin_pay_bridge">테스트 결제</option>
+                    <option value="partner_wallet">파트너 지갑</option>
+                    <option value="partner_settings">파트너 설정</option>
+                    <option value="other">기타</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">관련 섹션 (선택)</label>
+                <input type="text" class="form-control" id="fb_section" placeholder="예: A1 결제 현황, Flow 2 충전">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">유형</label>
+                <select class="form-select" id="fb_type">
+                    <option value="improve">개선</option>
+                    <option value="bug">버그</option>
+                    <option value="feature">신규 기능</option>
+                    <option value="question">질문/확인</option>
+                    <option value="other">기타</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">우선순위</label>
+                <select class="form-select" id="fb_priority">
+                    <option value="medium">보통</option>
+                    <option value="urgent">긴급</option>
+                    <option value="high">높음</option>
+                    <option value="low">낮음</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn w-100" style="background:var(--sb); color:#fff; border-radius:8px;" onclick="submitFeedback()">
+                    <i class="bi bi-send me-1"></i>등록하기
+                </button>
+            </div>
+            <div class="col-12">
+                <label class="form-label">피드백 내용 *</label>
+                <textarea class="form-control" id="fb_content" rows="3" placeholder="의견, 버그 내용, 개선 제안 등을 자유롭게 작성하세요..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Feedback Tabs -->
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <ul class="nav fb-tabs" id="fbTabs">
+        <li><a class="nav-link active" href="#" data-filter="open" onclick="filterFeedback('open',this)">미처리 <span class="fb-count" id="cnt-open">0</span></a></li>
+        <li><a class="nav-link" href="#" data-filter="in_progress" onclick="filterFeedback('in_progress',this)">진행중 <span class="fb-count" id="cnt-in_progress">0</span></a></li>
+        <li><a class="nav-link" href="#" data-filter="done" onclick="filterFeedback('done',this)">완료 <span class="fb-count" id="cnt-done">0</span></a></li>
+        <li><a class="nav-link" href="#" data-filter="all" onclick="filterFeedback('all',this)">전체 <span class="fb-count" id="cnt-all">0</span></a></li>
+    </ul>
+    <button class="btn btn-sm" style="background:rgba(108,99,255,0.15); color:var(--sb); border-radius:8px; font-size:0.82rem;" onclick="generatePrompt()">
+        <i class="bi bi-robot me-1"></i>Claude 프롬프트 생성
+    </button>
+</div>
+
+<!-- Feedback List -->
+<div id="fbList"></div>
+
+<!-- Prompt Output -->
+<div id="promptWrap" style="display:none;" class="mt-4">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h5 style="font-size:1rem; margin:0;"><i class="bi bi-robot me-2" style="color:var(--sb);"></i>생성된 Claude 프롬프트</h5>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" style="font-size:0.78rem; border-radius:8px;" onclick="copyPrompt()"><i class="bi bi-clipboard me-1"></i>복사</button>
+            <button class="btn btn-sm btn-outline-secondary" style="font-size:0.78rem; border-radius:8px;" onclick="document.getElementById('promptWrap').style.display='none'"><i class="bi bi-x"></i></button>
+        </div>
+    </div>
+    <div class="prompt-box">
+        <pre id="promptContent"></pre>
+    </div>
+    <div class="mt-2 text-end" style="font-size:0.78rem; color:#888;">
+        <i class="bi bi-info-circle me-1"></i>위 프롬프트를 복사하여 Claude에게 전달하면 자동으로 개발/수정을 진행합니다
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="fbEditModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background:#1a1a2e; border:1px solid rgba(255,255,255,0.1); border-radius:14px;">
+            <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                <h5 class="modal-title" style="font-size:1rem;">피드백 수정</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit_id">
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:0.85rem; color:#aaa;">상태</label>
+                    <select class="form-select" id="edit_status" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e0e0e0; border-radius:8px;">
+                        <option value="open">미처리</option>
+                        <option value="in_progress">진행중</option>
+                        <option value="done">완료</option>
+                        <option value="rejected">거절</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:0.85rem; color:#aaa;">개발자 메모</label>
+                    <textarea class="form-control" id="edit_dev_note" rows="3" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e0e0e0; border-radius:8px;" placeholder="처리 결과를 기록하세요..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid rgba(255,255,255,0.06);">
+                <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:8px;">취소</button>
+                <button class="btn btn-sm" style="background:var(--sb); color:#fff; border-radius:8px;" onclick="updateFeedback()">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div><!-- container -->
+
+<!-- Footer -->
+<footer class="container py-5 text-center" style="border-top: 1px solid rgba(255,255,255,0.06);">
+    <div style="font-size: 0.8rem; color: #666;">
+        <p>Seoul Beauty (서울미녀) — 결제 시스템 완전 가이드</p>
+        <p>Generated by Claude Opus 4.6 | 2026-03-12</p>
+        <div class="mt-2 d-flex justify-content-center gap-3 flex-wrap">
+            <a href="admin_payment.php" style="color:var(--sb);">결제 현황</a>
+            <a href="admin_cpv_dashboard.php" style="color:var(--sb);">CPV 대시보드</a>
+            <a href="cpv_dev_reference.html" style="color:var(--sb);">CPV 개발참조</a>
+            <a href="qa_cpv_report_v2.html" style="color:var(--sb);">QA 리포트</a>
+            <a href="dashboard.php" style="color:var(--sb);">관리자 홈</a>
+        </div>
+    </div>
+</footer>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img id="lb-img" src="" alt="">
+    <div class="caption" id="lb-caption"></div>
+</div>
+
+<script>
+// Lightbox
+function openLightbox(img, caption) {
+    document.getElementById('lb-img').src = img.src;
+    document.getElementById('lb-caption').textContent = caption || '';
+    document.getElementById('lightbox').classList.add('show');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.remove('show'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// Smooth scroll nav
+document.querySelectorAll('.top-nav .nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.top-nav .nav-link').forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) window.scrollTo({ top: target.offsetTop - 60, behavior: 'smooth' });
+    });
+});
+
+// Scroll spy
+window.addEventListener('scroll', () => {
+    const sections = ['partA', 'partB', 'partC', 'flow', 'glossary', 'feedback'];
+    let current = sections[0];
+    for (const id of sections) {
+        const el = document.getElementById(id);
+        if (el && window.scrollY >= el.offsetTop - 100) current = id;
+    }
+    document.querySelectorAll('.top-nav .nav-link').forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    });
+});
+
+// ========== Feedback System ==========
+const FB_API = 'api_dev_feedback.php';
+let allFeedback = [];
+let currentFilter = 'open';
+
+function toggleFbForm() {
+    const body = document.getElementById('fbFormBody');
+    const btn = document.getElementById('fbToggleBtn');
+    if (body.style.display === 'none') { body.style.display = ''; btn.textContent = '접기'; }
+    else { body.style.display = 'none'; btn.textContent = '펼치기'; }
+}
+
+async function loadFeedback() {
+    try {
+        const res = await fetch(FB_API);
+        const json = await res.json();
+        if (json.success) {
+            allFeedback = json.data || [];
+            updateCounts();
+            renderFeedback();
+        }
+    } catch (e) { console.error('피드백 로드 실패:', e); }
+}
+
+function updateCounts() {
+    const counts = { open: 0, in_progress: 0, done: 0, all: allFeedback.length };
+    allFeedback.forEach(f => { if (counts[f.status] !== undefined) counts[f.status]++; });
+    for (const k in counts) {
+        const el = document.getElementById('cnt-' + k);
+        if (el) el.textContent = counts[k];
+    }
+}
+
+function filterFeedback(status, el) {
+    if (el) { el.preventDefault && el.preventDefault(); }
+    currentFilter = status;
+    document.querySelectorAll('#fbTabs .nav-link').forEach(l => l.classList.remove('active'));
+    if (el && el.tagName === 'A') el.classList.add('active');
+    else document.querySelector('#fbTabs [data-filter="' + status + '"]')?.classList.add('active');
+    renderFeedback();
+    return false;
+}
+
+function renderFeedback() {
+    const list = document.getElementById('fbList');
+    const filtered = currentFilter === 'all' ? allFeedback : allFeedback.filter(f => f.status === currentFilter);
+
+    if (filtered.length === 0) {
+        list.innerHTML = '<div class="fb-empty"><i class="bi bi-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i>' +
+            (currentFilter === 'open' ? '미처리 피드백이 없습니다' : '해당 상태의 피드백이 없습니다') + '</div>';
+        return;
+    }
+
+    const typeLabels = { bug: '버그', improve: '개선', feature: '신규기능', question: '질문', other: '기타' };
+    const priLabels = { urgent: '긴급', high: '높음', medium: '보통', low: '낮음' };
+    const statusLabels = { open: '미처리', in_progress: '진행중', done: '완료', rejected: '거절' };
+
+    list.innerHTML = filtered.map(f => {
+        const ago = timeAgo(f.created_at);
+        return '<div class="fb-card" id="fb-' + f.id + '">' +
+            '<div class="d-flex align-items-start justify-content-between">' +
+                '<div style="flex:1;">' +
+                    '<div class="d-flex align-items-center gap-2 flex-wrap mb-1">' +
+                        '<span class="fb-badge ' + f.feedback_type + '">' + (typeLabels[f.feedback_type] || f.feedback_type) + '</span>' +
+                        '<span class="fb-badge ' + f.priority + '">' + (priLabels[f.priority] || f.priority) + '</span>' +
+                        '<span class="fb-status ' + f.status + '">' + (statusLabels[f.status] || f.status) + '</span>' +
+                    '</div>' +
+                    '<div style="font-size:0.92rem; color:#ddd; margin-top:6px;">' + escHtml(f.content) + '</div>' +
+                    (f.dev_note ? '<div style="font-size:0.82rem; color:var(--sb); margin-top:6px; padding:6px 10px; background:rgba(108,99,255,0.06); border-radius:6px;"><i class="bi bi-chat-dots me-1"></i>' + escHtml(f.dev_note) + '</div>' : '') +
+                    '<div class="fb-meta">' +
+                        '<span><i class="bi bi-file-earmark me-1"></i>' + escHtml(f.page_id) + '</span>' +
+                        (f.section ? '<span><i class="bi bi-bookmark me-1"></i>' + escHtml(f.section) + '</span>' : '') +
+                        '<span><i class="bi bi-clock me-1"></i>' + ago + '</span>' +
+                        '<span>#' + f.id + '</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="fb-actions">' +
+                '<button class="btn btn-outline-primary" onclick="openEditModal(' + f.id + ')"><i class="bi bi-pencil me-1"></i>수정</button>' +
+                (f.status !== 'done' ? '<button class="btn btn-outline-success" onclick="markDone(' + f.id + ')"><i class="bi bi-check-lg me-1"></i>완료</button>' : '') +
+                '<button class="btn btn-outline-danger" onclick="deleteFeedback(' + f.id + ')"><i class="bi bi-trash me-1"></i>삭제</button>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+}
+
+function escHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
+function timeAgo(dateStr) {
+    const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+    if (diff < 60) return '방금 전';
+    if (diff < 3600) return Math.floor(diff / 60) + '분 전';
+    if (diff < 86400) return Math.floor(diff / 3600) + '시간 전';
+    return Math.floor(diff / 86400) + '일 전';
+}
+
+async function submitFeedback() {
+    const content = document.getElementById('fb_content').value.trim();
+    if (!content) { alert('피드백 내용을 입력하세요.'); return; }
+
+    const data = {
+        page_id: document.getElementById('fb_page_id').value,
+        section: document.getElementById('fb_section').value.trim() || null,
+        feedback_type: document.getElementById('fb_type').value,
+        priority: document.getElementById('fb_priority').value,
+        content: content
+    };
+
+    try {
+        const res = await fetch(FB_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const json = await res.json();
+        if (json.success) {
+            document.getElementById('fb_content').value = '';
+            document.getElementById('fb_section').value = '';
+            document.getElementById('fb_type').value = 'improve';
+            document.getElementById('fb_priority').value = 'medium';
+            currentFilter = 'open';
+            loadFeedback();
+            showToast('피드백이 등록되었습니다 (#' + json.id + ')');
+        } else { alert('저장 실패: ' + (json.message || '알 수 없는 오류')); }
+    } catch (e) { alert('서버 연결 실패: ' + e.message); }
+}
+
+function openEditModal(id) {
+    const item = allFeedback.find(f => f.id == id);
+    if (!item) return;
+    document.getElementById('edit_id').value = id;
+    document.getElementById('edit_status').value = item.status;
+    document.getElementById('edit_dev_note').value = item.dev_note || '';
+    new bootstrap.Modal(document.getElementById('fbEditModal')).show();
+}
+
+async function updateFeedback() {
+    const id = parseInt(document.getElementById('edit_id').value);
+    const data = { id: id, status: document.getElementById('edit_status').value, dev_note: document.getElementById('edit_dev_note').value.trim() || null };
+
+    try {
+        const res = await fetch(FB_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const json = await res.json();
+        if (json.success) {
+            bootstrap.Modal.getInstance(document.getElementById('fbEditModal')).hide();
+            loadFeedback();
+            showToast('피드백이 업데이트되었습니다');
+        } else { alert('업데이트 실패: ' + json.message); }
+    } catch (e) { alert('서버 연결 실패: ' + e.message); }
+}
+
+async function markDone(id) {
+    if (!confirm('이 피드백을 완료 처리하시겠습니까?')) return;
+    try {
+        const res = await fetch(FB_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id, status: 'done', dev_note: '완료 처리됨' }) });
+        const json = await res.json();
+        if (json.success) { loadFeedback(); showToast('완료 처리되었습니다'); }
+    } catch (e) { alert(e.message); }
+}
+
+async function deleteFeedback(id) {
+    if (!confirm('이 피드백을 삭제하시겠습니까? 복구할 수 없습니다.')) return;
+    try {
+        const res = await fetch(FB_API + '?id=' + id, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) { loadFeedback(); showToast('피드백이 삭제되었습니다'); }
+    } catch (e) { alert(e.message); }
+}
+
+async function generatePrompt() {
+    try {
+        const res = await fetch(FB_API + '?action=prompt');
+        const json = await res.json();
+        const wrap = document.getElementById('promptWrap');
+        const pre = document.getElementById('promptContent');
+
+        if (json.success && json.prompt) {
+            pre.textContent = json.prompt;
+            wrap.style.display = '';
+            wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            pre.textContent = '처리할 피드백이 없습니다. 피드백을 등록해 주세요.';
+            wrap.style.display = '';
+        }
+    } catch (e) { alert('프롬프트 생성 실패: ' + e.message); }
+}
+
+function copyPrompt() {
+    const text = document.getElementById('promptContent').textContent;
+    navigator.clipboard.writeText(text).then(() => showToast('프롬프트가 클립보드에 복사되었습니다!')).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        showToast('프롬프트가 복사되었습니다!');
+    });
+}
+
+function showToast(msg) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--sb);color:#fff;padding:12px 24px;border-radius:12px;font-size:0.88rem;z-index:10000;animation:fadeIn 0.3s;box-shadow:0 4px 20px rgba(108,99,255,0.4);';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 2500);
+}
+
+// Load on page init
+document.addEventListener('DOMContentLoaded', loadFeedback);
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

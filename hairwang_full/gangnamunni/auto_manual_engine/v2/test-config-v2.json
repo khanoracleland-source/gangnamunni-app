@@ -1,0 +1,187 @@
+{
+  "version": "2.0",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "groups": [
+    {
+      "id": "hms_admin",
+      "name": "HMS 관리자",
+      "icon": "bi-hospital",
+      "description": "HMS SaaS 관리자 페이지 (Super Admin)",
+      "auth": {
+        "type": "form",
+        "loginUrl": "/login",
+        "fields": { "email": "admin@hms.com", "password": "123456" },
+        "submitSelector": "button[type=submit]",
+        "successUrl": "/super-admin/dashboard"
+      },
+      "tests": [
+        {
+          "category": "basic",
+          "label": "기본 테스트 (페이지 접근)",
+          "plugin": "page-load",
+          "items": [
+            { "id": "hms_dashboard", "name": "Dashboard", "url": "/super-admin/dashboard", "description": "관리자 대시보드" },
+            { "id": "hms_hospitals", "name": "Hospitals", "url": "/super-admin/hospitals", "description": "병원 목록" },
+            { "id": "hms_hospital_types", "name": "Hospital Types", "url": "/super-admin/hospital-type", "description": "병원 유형" },
+            { "id": "hms_subscription_plans", "name": "Subscription Plans", "url": "/super-admin/subscription-plans", "description": "구독 요금제" },
+            { "id": "hms_transactions", "name": "Transactions", "url": "/super-admin/transactions", "description": "거래 내역" },
+            { "id": "hms_settings", "name": "General Settings", "url": "/super-admin/settings", "description": "일반 설정" },
+            { "id": "hms_reviews", "name": "Hospital Reviews", "url": "/super-admin/hospital-reviews", "description": "후기 관리" },
+            { "id": "hms_landing", "name": "Landing Page", "url": "/", "description": "랜딩 페이지" }
+          ]
+        },
+        {
+          "category": "functional",
+          "label": "기능 테스트 (폼/CRUD)",
+          "plugin": "form-test",
+          "items": [
+            { "id": "hms_hospital_crud", "name": "병원 CRUD", "description": "병원 생성/수정/삭제", "target": "/super-admin/hospitals" },
+            { "id": "hms_type_crud", "name": "병원유형 CRUD", "description": "유형 생성/수정/삭제", "target": "/super-admin/hospital-type" },
+            { "id": "hms_settings_save", "name": "설정 저장", "description": "설정 변경 후 저장 확인", "target": "/super-admin/settings" }
+          ]
+        },
+        {
+          "category": "scenario",
+          "label": "시나리오 테스트 (흐름)",
+          "plugin": "scenario-test",
+          "items": [
+            { "id": "hms_login_flow", "name": "로그인 흐름", "description": "로그인→대시보드→병원목록", "steps": ["goto:/login", "fill:email=admin@hms.com", "fill:password=123456", "click:button[type=submit]", "wait:/super-admin/dashboard", "goto:/super-admin/hospitals", "verify:table"] },
+            { "id": "hms_review_flow", "name": "후기 관리 흐름", "description": "후기 목록→상세→승인", "steps": ["goto:/super-admin/hospital-reviews", "verify:table", "screenshot:review_list"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gangnamunni_admin",
+      "name": "서울미녀 관리자",
+      "icon": "bi-shield-lock",
+      "description": "서울미녀 관리자 패널 (강남언니)",
+      "auth": {
+        "type": "form",
+        "loginUrl": "/hairwang/gangnamunni/dashboard.php",
+        "fields": { "admin_id": "admin", "admin_pw": "admin123" },
+        "submitSelector": "button[type=submit]",
+        "successCheck": "ad_admin_logged_in"
+      },
+      "tests": [
+        {
+          "category": "basic",
+          "label": "기본 테스트 (페이지 접근)",
+          "plugin": "page-load",
+          "items": [
+            { "id": "gn_dashboard", "name": "대시보드", "url": "/hairwang/gangnamunni/dashboard.php", "description": "관리자 대시보드" },
+            { "id": "gn_hospital_images", "name": "병원 이미지", "url": "/hairwang/gangnamunni/admin_hospital_images.php", "description": "병원 이미지 관리" },
+            { "id": "gn_reviews", "name": "후기 관리", "url": "/hairwang/gangnamunni/admin_reviews.php", "description": "후기 보기/편집" },
+            { "id": "gn_categories", "name": "카테고리", "url": "/hairwang/gangnamunni/admin_categories.php", "description": "시술 카테고리" },
+            { "id": "gn_ads", "name": "광고 관리", "url": "/hairwang/gangnamunni/admin_ads.php", "description": "광고 CRUD" },
+            { "id": "gn_navigation", "name": "네비게이션", "url": "/hairwang/gangnamunni/admin_navigation.php", "description": "하단 네비" },
+            { "id": "gn_theme", "name": "테마 설정", "url": "/hairwang/gangnamunni/admin_theme.php", "description": "테마 커스터마이징" },
+            { "id": "gn_theme_adv", "name": "고급 테마", "url": "/hairwang/gangnamunni/admin_theme_advanced.php", "description": "고급 테마 설정" },
+            { "id": "gn_maintenance", "name": "점검 모드", "url": "/hairwang/gangnamunni/admin_maintenance.php", "description": "점검 모드 관리" },
+            { "id": "gn_members", "name": "회원 관리", "url": "/hairwang/gangnamunni/admin_members.php", "description": "회원 검색/관리" },
+            { "id": "gn_admins", "name": "관리자 관리", "url": "/hairwang/gangnamunni/admin_admins.php", "description": "부관리자 RBAC" },
+            { "id": "gn_auto_manual", "name": "자동 매뉴얼", "url": "/hairwang/gangnamunni/admin_auto_manual.php", "description": "Playwright 캡처" },
+            { "id": "gn_auto_test", "name": "자동 테스트 v1", "url": "/hairwang/gangnamunni/admin_auto_test.php", "description": "자동 테스트 (구버전)" },
+            { "id": "gn_mail", "name": "메일 관리", "url": "/hairwang/gangnamunni/admin_mail.php", "description": "IMAP 메일함" }
+          ]
+        },
+        {
+          "category": "functional",
+          "label": "기능 테스트 (폼/CRUD)",
+          "plugin": "form-test",
+          "items": [
+            { "id": "gn_review_edit", "name": "후기 편집", "description": "후기 모달 편집 + 저장", "target": "/hairwang/gangnamunni/admin_reviews.php" },
+            { "id": "gn_category_toggle", "name": "카테고리 토글", "description": "활성/비활성 전환", "target": "/hairwang/gangnamunni/admin_categories.php" },
+            { "id": "gn_nav_toggle", "name": "네비 활성화", "description": "네비 항목 활성/비활성", "target": "/hairwang/gangnamunni/admin_navigation.php" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gangnamunni_frontend",
+      "name": "서울미녀 프론트엔드",
+      "icon": "bi-phone",
+      "description": "고객용 프론트엔드 (로그인 불필요)",
+      "auth": { "type": "none" },
+      "tests": [
+        {
+          "category": "basic",
+          "label": "기본 테스트 (페이지 접근)",
+          "plugin": "page-load",
+          "items": [
+            { "id": "fe_main", "name": "메인 페이지", "url": "/hairwang/gangnamunni/", "description": "메인 랜딩" },
+            { "id": "fe_hospitals", "name": "병원 목록", "url": "/hairwang/gangnamunni/hospitals.php", "description": "병원 리스트" },
+            { "id": "fe_detail", "name": "병원 상세", "url": "/hairwang/gangnamunni/hospital_detail.php?id=1", "description": "병원 상세 페이지" },
+            { "id": "fe_booking", "name": "예약 페이지", "url": "/hairwang/gangnamunni/booking.php?hospital_id=1", "description": "예약 폼" },
+            { "id": "fe_consultation", "name": "상담 페이지", "url": "/hairwang/gangnamunni/consultation.php", "description": "상담 신청" },
+            { "id": "fe_tips", "name": "뷰티 팁", "url": "/hairwang/gangnamunni/tips.php", "description": "커뮤니티/팁" },
+            { "id": "fe_events", "name": "이벤트", "url": "/hairwang/gangnamunni/events.php", "description": "이벤트 목록" },
+            { "id": "fe_search", "name": "검색", "url": "/hairwang/gangnamunni/search.php", "description": "검색 페이지" },
+            { "id": "fe_login", "name": "로그인", "url": "/hairwang/gangnamunni/login.php", "description": "회원 로그인" },
+            { "id": "fe_register", "name": "회원가입", "url": "/hairwang/gangnamunni/register.php", "description": "회원가입 폼" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "api_endpoints",
+      "name": "API 엔드포인트",
+      "icon": "bi-plug",
+      "description": "REST API 응답 테스트",
+      "auth": { "type": "none" },
+      "tests": [
+        {
+          "category": "basic",
+          "label": "API 응답 테스트",
+          "plugin": "page-load",
+          "items": [
+            { "id": "api_hospitals", "name": "병원 API", "url": "/hairwang/gangnamunni/api/hospitals.php", "description": "병원 목록 JSON" },
+            { "id": "api_categories", "name": "카테고리 API", "url": "/hairwang/gangnamunni/api/categories.php", "description": "카테고리 JSON" },
+            { "id": "api_reviews", "name": "후기 API", "url": "/hairwang/gangnamunni/api/list_reviews.php", "description": "후기 목록 JSON" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wizard_pages",
+      "name": "마법사 페이지",
+      "icon": "bi-magic",
+      "description": "병원 등록 / 광고 신청 마법사",
+      "auth": {
+        "type": "form",
+        "loginUrl": "/hairwang/gangnamunni/dashboard.php",
+        "fields": { "admin_id": "admin", "admin_pw": "admin123" },
+        "submitSelector": "button[type=submit]",
+        "successCheck": "ad_admin_logged_in"
+      },
+      "tests": [
+        {
+          "category": "basic",
+          "label": "기본 테스트 (페이지 접근)",
+          "plugin": "page-load",
+          "items": [
+            { "id": "wiz_hospital", "name": "병원 등록 마법사", "url": "/hairwang/gangnamunni/admin_hospital_wizard.php", "description": "병원 등록 4단계 마법사" },
+            { "id": "wiz_ad", "name": "광고 신청 마법사", "url": "/hairwang/gangnamunni/admin_ad_wizard.php", "description": "광고 신청 4단계 마법사" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mail_system",
+      "name": "메일 시스템",
+      "icon": "bi-envelope",
+      "description": "IMAP/SMTP 메일 서버 연결 테스트",
+      "auth": { "type": "none" },
+      "tests": [
+        {
+          "category": "basic",
+          "label": "메일 서버 테스트",
+          "plugin": "page-load",
+          "items": [
+            { "id": "mail_server", "name": "Mailcow 관리자", "url": "https://mail.seoulbeauty.app/", "description": "메일서버 웹UI" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RB 에디터 1.0</title>
+
+    <!-- 외부 라이브러리 -->
+    <!-- 가능한것은 내부 파일로 처리할것 @false9 -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.0/beautify-html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.0/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    
+    <link rel="stylesheet" href="plugin/coloris/coloris.css">
+    <script src="plugin/coloris/coloris.js"></script>
+
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/range.css">
+    <link rel="stylesheet" href="css/metadata.css">
+    <link rel="stylesheet" id="font-stylesheet" href="fonts/MalgunGothic/MalgunGothic.css">
+    
+    <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const editorId = urlParams.get('editorId') || 'wr_content';
+
+    let contentLoaded = false;
+    let initialContent = '';
+
+    // HTML escape를 다시 원래 HTML로 변환하는 함수
+    function decodeHtmlEntities(encodedStr) {
+        const parser = new DOMParser();
+        const dom = parser.parseFromString(`<!doctype html><body>${encodedStr}`, 'text/html');
+        return dom.body.textContent;
+    }
+        
+    window.addEventListener('message', function(event) {
+        const editor = document.getElementById('editor');
+        if (!editor || event.data.editorId !== editorId) return;
+
+        if (event.data.type === 'rbeditor-set-content') {
+            initialContent = event.data.content || '';
+
+            if (document.readyState === 'complete') {
+                // ✅ HTML 언이스케이프 처리 추가
+                editor.innerHTML = decodeHtmlEntities(initialContent);
+                contentLoaded = true;
+
+                setTimeout(() => {
+                    parent.postMessage({
+                        type: 'rbeditor-content',
+                        editorId: editorId,
+                        content: editor.innerHTML
+                    }, '*');
+                }, 100);
+
+                parent.postMessage({
+                    type: 'rbeditor-content-set',
+                    editorId: editorId
+                }, '*');
+            }
+        }
+
+        if (event.data.type === 'rbeditor-get-content') {
+            parent.postMessage({
+                type: 'rbeditor-content-response',
+                editorId: editorId,
+                content: editor.innerHTML || ''
+            }, '*');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const editor = document.getElementById('editor');
+        if (!editor) {
+            console.warn("editor element not found");
+            return;
+        }
+
+        editor.dataset.editorId = editorId;
+
+        let lastContent = '';
+        let debounceTimer;
+
+        function sendContentToParent() {
+            const content = editor.innerHTML;
+            if (content === lastContent) return;
+            lastContent = content;
+
+            parent.postMessage({
+                type: 'rbeditor-content',
+                editorId: editorId,
+                content: content
+            }, '*');
+        }
+
+        function applyInitialContent() {
+            if (initialContent) {
+                // HTML 언이스케이프 처리 추가
+                editor.innerHTML = decodeHtmlEntities(initialContent);
+                contentLoaded = true;
+
+                setTimeout(() => {
+                    sendContentToParent();
+                    parent.postMessage({
+                        type: 'rbeditor-content-set',
+                        editorId: editorId
+                    }, '*');
+                }, 100);
+            }
+        }
+
+        // MutationObserver로 변경 감지만 남김
+        const observer_cont = new MutationObserver(() => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(sendContentToParent, 200);
+        });
+        observer_cont.observe(editor, {
+            childList: true,         // 자식 노드 추가/삭제 감지
+            subtree: true,           // 하위 전체 포함
+            characterData: true,     // 텍스트 노드 변경 감지
+            attributes: true         // 속성(스타일, 클래스 등) 변경 감지
+        });
+
+        // 초기 상태 알림
+        parent.postMessage({
+            type: 'rbeditor-ready',
+            editorId: editorId
+        }, '*');
+
+        window.addEventListener('load', function () {
+            setTimeout(applyInitialContent, 100);
+        });
+
+        setTimeout(sendContentToParent, 100);
+    });
+
+    
+</script>
+
+
+
+</head>
+
+<body>
+
+    <div id="editor-container" class="rb_editor">
+       
+        <div id="editor-header">
+           <!-- 고도화 오픈 예정
+            <div id="editor-menu">
+                
+                
+                <span class="ui-po-rel rb-admin-only" style="display:none;">
+                <button type="button" title="설정" class="rb-ui-btns dss main-menus">설정</button>
+                <div class="sub-menus" style="display: none;">
+                    <div class="sub-menus-wrap">
+                        <a href="javascript:alert('서비스 준비중 입니다.');" class="dss">에디터 사용권한</a>
+                        <a href="javascript:alert('서비스 준비중 입니다.');" class="dss">메뉴 설정</a>
+                        <a href="javascript:alert('서비스 준비중 입니다.');" class="dss">업로드 설정</a>
+                    </div>
+                </div>
+                </span>
+                
+                <span class="ui-po-rel">
+                <button type="button" title="저장" class="rb-ui-btns main-menus">저장</button>
+                <div class="sub-menus" style="display: none;">
+                    <div class="sub-menus-wrap">
+                        <a href="javascript:void(0);" id="btn_rb_autosave" class="rb-board-only">임시저장</a>
+                        <a href="javascript:void(0);" id="btn_tb_autosave_popup" class="rb-board-only">불러오기</a>
+                        <a href="javascript:void(0);" id="save-pdf-btn" class="pc">PDF로 저장</a>
+                        <a href="javascript:void(0);" id="save-image-btn" class="pc">이미지로 저장</a>
+                        <a href="javascript:void(0);" id="save-print-btn">인쇄</a>
+                    </div>
+                </div>
+                </span>
+                
+                
+                <span class="ui-po-rel">
+                <button type="button" title="보기" class="rb-ui-btns main-menus">보기</button>
+                <div class="sub-menus" style="display: none;">
+                    <div class="sub-menus-wrap">
+
+                        <a href="javascript:void(0);" id="preview-btn">미리보기</a>
+                        <a href="javascript:void(0);" id="top-menus-mode1" class="font-B">일반입력 모드</a>
+                        <a href="javascript:void(0);" id="top-menus-mode2">HTML 모드</a>
+                        <a href="javascript:alert('서비스 준비중 입니다.');" id="top-menus-mode3" class="dss">캔버스 모드</a>
+                        <a href="javascript:alert('서비스 준비중 입니다.');" id="top-menus-mode4" class="dss">CSS 모드</a>
+                    </div>
+                </div>
+                </span>
+                
+                <span class="ui-po-rel">
+                <button type="button" title="라이브러리" class="rb-ui-btns dss main-menus">라이브러리</button>
+                <div class="sub-menus" style="display: none;">
+                    <div class="sub-menus-wrap">
+                        <a href="javascript:alert('서비스 준비중 입니다.');" class="dss">글감(게시물)</a>
+                        <a href="javascript:alert('서비스 준비중 입니다.');" class="dss">이미지</a>
+                        <a href="javascript:alert('서비스 준비중 입니다.');" class="dss">템플릿블록</a>
+                    </div>
+                </div>
+                </span>
+                
+                <span class="ui-po-rel">
+                <button type="button" title="테마" class="rb-ui-btns dss main-menus">테마</button>
+                <div class="sub-menus" style="display: none;">
+                    <div class="sub-menus-wrap">
+                        <a href="javascript:alert('서비스 준비중 입니다.');" class="dss">컬러설정</a>
+                        <a href="javascript:alert('서비스 준비중 입니다.');" class="dss">테마설정</a>
+                    </div>
+                </div>
+                </span>
+                
+                <span class="ui-po-rel">
+                <button type="button" title="정보" class="rb-ui-btns dss main-menus">정보</button>
+                <div class="sub-menus" style="display: none;">
+                    <div class="sub-menus-wrap">
+                        <a href="javascript:alert('서비스 준비중 입니다.');">사용가이드</a>
+                        <a href="javascript:void(0);" style="background-color:#fff !important; color:#999;">RB-Editor 1.0.0</a>
+                    </div>
+                </div>
+                </span>
+
+                <button type="button" title="전체화면" class="rb-ui-btns" id="scan-btn">
+                    <img src="image/svg/scan-btn.svg">
+                </button>
+
+            </div>
+            -->
+            
+            <div id="editor-ui">
+
+                <!-- 일반 에디터 툴바 -->
+                <div id="toolbar" class="mode-regular">
+                    
+                    <span class="ui-po-rel rb-board-only">
+                        <button type="button" id="font-table-btn" class="rb-ui-btns" title="폰트"><img src="image/svg/font-table-btn.svg"></button>
+                        <div id="table-font" style="display: none;">
+                            <div id="font-container">
+                                <span class='dss'>폰트없음</span>
+                            </div>
+                        </div>
+                    </span>
+                    
+                    <span class="ui-po-rel">
+                        <div class="font-size-slider_wrap">
+                            <div id="font-size-slider" class="rb_range_item"></div>
+                        </div>
+                    </span>
+                    <script type="text/javascript">
+                    $(document).ready(function () {
+                        $("#font-size-slider").slider({
+                            range: "min",
+                            min: 10,
+                            max: 40,
+                            value: 14,
+                            step: 2,
+                            slide: function (e, ui) {
+                                $("#font-size-slider .ui-slider-handle").html(ui.value); // 슬라이더 핸들에 값 표시
+                                applyFontSize(ui.value + 'px'); // 선택된 영역에 폰트 크기 적용
+                            }
+                        });
+
+                        // 초기 슬라이더 핸들 값 설정
+                        $("#font-size-slider .ui-slider-handle").html("16");
+
+                        // iOS 및 사파리 터치 이벤트 대응
+                        $("#font-size-slider").on("touchstart touchmove touchend", function (e) {
+                            e.preventDefault(); // 기본 터치 스크롤 방지
+
+                            var touch = e.originalEvent.touches[0] || e.originalEvent.changedTouches[0];
+                            var offset = $(this).offset();
+                            var width = $(this).width();
+                            var x = touch.pageX - offset.left;
+
+                            // 슬라이더 범위 제한
+                            var min = $(this).slider("option", "min");
+                            var max = $(this).slider("option", "max");
+                            var step = $(this).slider("option", "step");
+                            var percent = Math.max(0, Math.min(1, x / width));
+
+                            var value = Math.round((min + percent * (max - min)) / step) * step;
+
+                            $(this).slider("value", value);
+                            $("#font-size-slider .ui-slider-handle").html(value);
+                            applyFontSize(value + 'px');
+
+                            // 슬라이더의 내부 이벤트를 강제로 트리거하여 UI가 즉시 반영되도록 함
+                            $(this).slider("option", "slide").call($(this), e, { value: value });
+                        });
+
+                        // iOS 터치 대응을 위한 CSS 추가
+                        $("#font-size-slider").css({
+                            "touch-action": "none",
+                            "-webkit-user-select": "none",
+                            "-webkit-touch-callout": "none"
+                        });
+                    });
+                    </script>
+
+                    <span class="ui-po-rel">
+                        <button type="button" id="color-btn" class="rb-ui-btns" title="폰트컬러">
+
+                            <svg width="22" height="22" viewBox="0 0 20 18" fill="none" xmlns="http://www.w3.org/2000/svg" class="color-btn-svg">
+                            <path class="path2_color1" d="M14.6525 8.33333H5.99252L3.61258 12.455L10.1075 16.205L14.6525 8.33333Z" fill="#09244B"/>
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M9.33086 2.29083L9.44586 2.35166L15.9409 6.10166C16.304 6.31138 16.5748 6.6503 16.6991 7.05081C16.8235 7.45132 16.7922 7.88398 16.6117 8.2625L16.5509 8.37833L11.5509 17.0383C11.3411 17.4015 11.0022 17.6722 10.6017 17.7966C10.2012 17.9209 9.76854 17.8897 9.39002 17.7092L9.27419 17.6483L2.77919 13.8983C2.41582 13.6886 2.14492 13.3495 2.02057 12.9488C1.89622 12.5481 1.92757 12.1153 2.10836 11.7367L2.16919 11.6217L5.91919 5.12666L4.47586 4.29333C4.29035 4.18771 4.15245 4.01494 4.0906 3.81063C4.02874 3.60633 4.04764 3.38608 4.1434 3.1953C4.23917 3.00453 4.40449 2.85777 4.60527 2.7853C4.80606 2.71284 5.027 2.72018 5.22252 2.80583L5.30919 2.85L6.75252 3.68333L7.16919 2.96166C7.36714 2.61829 7.68097 2.35669 8.05438 2.22382C8.42779 2.09095 8.83633 2.09551 9.20669 2.23666L9.33086 2.29083ZM8.61252 3.795L8.19586 4.51666L8.91752 4.93333C9.10736 5.04462 9.24548 5.22648 9.30172 5.43923C9.35797 5.65198 9.32778 5.87834 9.21775 6.06891C9.10772 6.25948 8.92678 6.3988 8.71441 6.45645C8.50204 6.51411 8.27549 6.48543 8.08419 6.37666L7.36252 5.96L5.99252 8.33333L3.61258 12.455L10.1075 16.205L14.6525 8.33333L15.1075 7.545L8.61252 3.795Z" fill="#09244B"/>
+                            <path class="path2_color2" d="M16.9192 9.35749L17.0834 9.16666L17.1467 9.23916L17.3117 9.43499L17.4592 9.61832L17.6234 9.83332L17.7934 10.07C18.075 10.4775 18.3334 10.9367 18.3334 11.25C18.3334 11.5815 18.2017 11.8995 17.9673 12.1339C17.7328 12.3683 17.4149 12.5 17.0834 12.5C16.7519 12.5 16.4339 12.3683 16.1995 12.1339C15.9651 11.8995 15.8334 11.5815 15.8334 11.25C15.8334 10.8733 16.205 10.2875 16.5434 9.83332L16.7075 9.61832L16.9192 9.35749Z" fill="#09244B"/>
+                            </svg>
+
+                        </button>
+                        <input type="text" id="text-color-picker" value="#000000" class="coloris" style="display: none;">
+                    </span>
+
+                    <span class="ui-po-rel">
+                        <button type="button" id="background-color-btn" class="rb-ui-btns" title="폰트배경컬러">
+
+                            <svg width="24" height="24" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg" class="background-color-btn-svg">
+                            <path d="M17.0001 21C16.7349 21 16.4805 20.8946 16.293 20.7071C16.1055 20.5196 16.0001 20.2652 16.0001 20H8.00009C8.00009 20.2652 7.89474 20.5196 7.7072 20.7071C7.51966 20.8946 7.26531 21 7.00009 21H17.0001Z" fill="#09244B"/>
+                            <path d="M3.00009 17C3.00009 16.7348 3.10545 16.4804 3.29299 16.2929C3.48052 16.1054 3.73488 16 4.00009 16V8C3.73488 8 3.48052 7.89464 3.29299 7.70711C3.10545 7.51957 3.00009 7.26522 3.00009 7V17Z" fill="#09244B"/>
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M12.8671 12L12.0001 9.573L11.1331 12H12.8671Z" fill="#09244B"/>
+                            <path d="M7.00009 3C7.26531 3 7.51966 3.10536 7.7072 3.29289C7.89474 3.48043 8.00009 3.73478 8.00009 4H16.0001C16.0001 3.73478 16.1055 3.48043 16.293 3.29289C16.4805 3.10536 16.7349 3 17.0001 3H7.00009Z" fill="#09244B"/>
+                            <path d="M21.0001 7C21.0001 7.26522 20.8947 7.51957 20.7072 7.70711C20.5197 7.89464 20.2653 8 20.0001 8V16C20.2653 16 20.5197 16.1054 20.7072 16.2929C20.8947 16.4804 21.0001 16.7348 21.0001 17V7Z" fill="#09244B"/>
+                            <path d="M19.0001 18H18.0001V19H19.0001V18Z" fill="#09244B"/>
+                            <path d="M6.00009 18H5.00009V19H6.00009V18Z" fill="#09244B"/>
+                            <path d="M6.00009 5H5.00009V6H6.00009V5Z" fill="#09244B"/>
+                            <path d="M19.0001 5H18.0001V6H19.0001V5Z" fill="#09244B"/>
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M7.7072 3.29289C7.51966 3.10536 7.26531 3 7.00009 3C3.74031 3 2.97518 5.66667 3.00009 7C3.00009 7.26522 3.10545 7.51957 3.29299 7.70711C3.48052 7.89464 3.73488 8 4.00009 8V16C3.73488 16 3.48052 16.1054 3.29299 16.2929C3.10545 16.4804 3.00009 16.7348 3.00009 17C3.00009 20.2 5.66676 21 7.00009 21C7.26531 21 7.51966 20.8946 7.7072 20.7071C7.89474 20.5196 8.00009 20.2652 8.00009 20H16.0001C16.0001 20.2652 16.1055 20.5196 16.293 20.7071C16.4805 20.8946 16.7349 21 17.0001 21C20.2124 21 21.0052 18.3333 21.0001 17C21.0001 16.7348 20.8947 16.4804 20.7072 16.2929C20.5197 16.1054 20.2653 16 20.0001 16V8C20.2653 8 20.5197 7.89464 20.7072 7.70711C20.8947 7.51957 21.0001 7.26522 21.0001 7C21.0001 3.8 18.3334 3 17.0001 3C16.7349 3 16.4805 3.10536 16.293 3.29289C16.1055 3.48043 16.0001 3.73478 16.0001 4H8.00009C8.00009 3.73478 7.89474 3.48043 7.7072 3.29289ZM18.0001 18H19.0001V19H18.0001V18ZM5.00009 18H6.00009V19H5.00009V18ZM11.0748 7.27231C11.3507 7.09463 11.6719 7.0001 12.0001 7C12.3526 7.00001 12.6965 7.10898 12.9847 7.31198C13.2729 7.51497 13.4914 7.80208 13.6101 8.134L15.9421 14.664L15.9751 14.776C16.0336 15.0252 15.9943 15.2873 15.8654 15.5083C15.7364 15.7294 15.5276 15.8926 15.282 15.9644C15.0363 16.0362 14.7725 16.011 14.5448 15.8941C14.3171 15.7772 14.1429 15.5775 14.0581 15.336L13.5811 14H10.4191L9.94209 15.336L9.89609 15.444C9.78299 15.6728 9.58669 15.8497 9.3474 15.9384C9.10811 16.0271 8.84395 16.021 8.60902 15.9213C8.37408 15.8216 8.18616 15.6359 8.08373 15.4021C7.98131 15.1684 7.97214 14.9043 8.05809 14.664L10.3901 8.135L10.4441 8.002C10.58 7.70329 10.7989 7.44998 11.0748 7.27231ZM5.00009 5H6.00009V6H5.00009V5ZM18.0001 5H19.0001V6H18.0001V5Z" fill="#09244B"/>
+                            </svg>
+
+                        </button>
+                        <input type="text" id="background-color-picker" value="#ffffff" class="coloris2" style="display: none;">
+                    </span>
+                    
+                        <button type="button" id="bold-btn" class="rb-ui-btns" title="굵게"><img src="image/svg/bold-btn.svg"></button>
+                        <button type="button" id="italic-btn" class="rb-ui-btns" title="기울임"><img src="image/svg/italic-btn.svg"></button>
+                        <button type="button" id="underline-btn" class="rb-ui-btns" title="밑줄"><img src="image/svg/underline-btn.svg"></button>
+                        <button type="button" id="strike-btn" class="rb-ui-btns" title="취소선"><img src="image/svg/strike-btn.svg"></button>
+                    
+                    <ul>
+                        <button type="button" id="align-left-btn" class="rb-ui-btns" title="왼쪽 정렬"><img src="image/svg/align-left-btn.svg"></button>
+                        <button type="button" id="align-center-btn" class="rb-ui-btns" title="가운데 정렬"><img src="image/svg/align-center-btn.svg"></button>
+                        <button type="button" id="align-right-btn" class="rb-ui-btns" title="오른쪽 정렬"><img src="image/svg/align-right-btn.svg"></button>
+                    </ul>
+                    
+                    <button type="button" id="insert-image-btn" class="rb-ui-btns" title="이미지"><img src="image/svg/insert-image-btn.svg"></button>
+
+                    
+                    <button type="button" id="reset-btn" class="rb-ui-btns" title="초기화"><img src="image/svg/reset-btn.svg"></button>
+                    
+                    <button type="button" id="more-btn" class="rb-ui-btns" title="더보기"><img src="image/svg/more-btn.svg"></button>
+
+
+                    <!--   
+                    <label for="font-size-slider"></label>
+                    <input type="range" id="font-size-slider" class="font-size-slider" min="10" max="72" value="16">
+                    <label for="text-color-picker"></label>
+                    <input type="color" id="text-color-picker" value="#000000">
+                    <label for="background-color-picker"></label>
+                    <input type="color" id="background-color-picker" value="#ffffff">
+                    -->
+                    
+                </div>
+                
+                <!-- html모드 툴바 -->
+                <div id="html-toolbar" class="mode-html" style="display:none;"></div>
+
+
+                <!-- 캔버스 모드 툴바 (개발중)-->
+                <div id="canvas-toolbar" class="mode-canvas" style="display:none;">
+                    <button type="button" id="canvas-bold-btn" class="rb-ui-btns" title="굵게"><img src="image/svg/bold-btn.svg"></button>
+                    <button type="button" id="canvas-italic-btn" class="rb-ui-btns" title="기울임"><img src="image/svg/italic-btn.svg"></button>
+                    <button type="button" id="canvas-underline-btn" class="rb-ui-btns" title="밑줄"><img src="image/svg/underline-btn.svg"></button>
+                    
+                    <div id="canvas-font-size-slider" class="rb_range_item"></div>
+
+                    <script type="text/javascript">
+                        $("#canvas-font-size-slider").slider({
+                            range: "min",
+                            min: 10,
+                            max: 40,
+                            value: 16,
+                            step: 2,
+                            slide: function (e, ui) {
+                                $("#canvas-font-size-slider .ui-slider-handle").html(ui.value); // 슬라이더 핸들에 값 표시
+                                applyCanvasFontSize(ui.value);
+                            }
+                        });
+
+                        // 초기 슬라이더 핸들 값 설정
+                        $("#canvas-font-size-slider .ui-slider-handle").html("16");
+                    </script>
+                    
+                    <span class="ui-po-rel">
+                        <button type="button" id="canvas-color-btn" class="rb-ui-btns" title="폰트컬러">
+
+                            <svg width="24" height="24" viewBox="0 0 20 18" fill="none" xmlns="http://www.w3.org/2000/svg" class="color-btn-svg">
+                            <path class="path2_color1" d="M14.6525 8.33333H5.99252L3.61258 12.455L10.1075 16.205L14.6525 8.33333Z" fill="#09244B"/>
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M9.33086 2.29083L9.44586 2.35166L15.9409 6.10166C16.304 6.31138 16.5748 6.6503 16.6991 7.05081C16.8235 7.45132 16.7922 7.88398 16.6117 8.2625L16.5509 8.37833L11.5509 17.0383C11.3411 17.4015 11.0022 17.6722 10.6017 17.7966C10.2012 17.9209 9.76854 17.8897 9.39002 17.7092L9.27419 17.6483L2.77919 13.8983C2.41582 13.6886 2.14492 13.3495 2.02057 12.9488C1.89622 12.5481 1.92757 12.1153 2.10836 11.7367L2.16919 11.6217L5.91919 5.12666L4.47586 4.29333C4.29035 4.18771 4.15245 4.01494 4.0906 3.81063C4.02874 3.60633 4.04764 3.38608 4.1434 3.1953C4.23917 3.00453 4.40449 2.85777 4.60527 2.7853C4.80606 2.71284 5.027 2.72018 5.22252 2.80583L5.30919 2.85L6.75252 3.68333L7.16919 2.96166C7.36714 2.61829 7.68097 2.35669 8.05438 2.22382C8.42779 2.09095 8.83633 2.09551 9.20669 2.23666L9.33086 2.29083ZM8.61252 3.795L8.19586 4.51666L8.91752 4.93333C9.10736 5.04462 9.24548 5.22648 9.30172 5.43923C9.35797 5.65198 9.32778 5.87834 9.21775 6.06891C9.10772 6.25948 8.92678 6.3988 8.71441 6.45645C8.50204 6.51411 8.27549 6.48543 8.08419 6.37666L7.36252 5.96L5.99252 8.33333L3.61258 12.455L10.1075 16.205L14.6525 8.33333L15.1075 7.545L8.61252 3.795Z" fill="#09244B"/>
+                            <path class="path2_color2" d="M16.9192 9.35749L17.0834 9.16666L17.1467 9.23916L17.3117 9.43499L17.4592 9.61832L17.6234 9.83332L17.7934 10.07C18.075 10.4775 18.3334 10.9367 18.3334 11.25C18.3334 11.5815 18.2017 11.8995 17.9673 12.1339C17.7328 12.3683 17.4149 12.5 17.0834 12.5C16.7519 12.5 16.4339 12.3683 16.1995 12.1339C15.9651 11.8995 15.8334 11.5815 15.8334 11.25C15.8334 10.8733 16.205 10.2875 16.5434 9.83332L16.7075 9.61832L16.9192 9.35749Z" fill="#09244B"/>
+                            </svg>
+
+                        </button>
+                        <input type="text" id="canvas-text-color-picker" value="#000000" class="coloris3" style="display: none;">
+                    </span>
+                    
+                    
+                    <button type="button" id="canvas-insert-text-btn" class="rb-ui-btns" title="텍스트"><img src="image/svg/text-btn.svg"></button>
+                    <button type="button" id="canvas-insert-image-btn" class="rb-ui-btns" title="이미지"><img src="image/svg/insert-image-btn.svg"></button>
+                    <button type="button" id="toggle-draw-btn" class="rb-ui-btns" title="드로잉 모드"><img src="image/svg/pen-btn.svg"></button>
+                    
+
+
+                    <!-- 글자 크기 직접 입력(옵션) 
+                    <input type="number" id="canvas-font-size-btn" title="글자 크기" min="10" max="100" style="display:none; width: 60px;">
+                    -->
+
+                    <div id="pen-settings" style="display:none;">
+                        <button type="button" class="rb-ui-btns" title="펜 컬러"><img src="image/svg/cl-btn.svg"></button>
+                        <button type="button" class="rb-ui-btns" title="펜 두께"><img src="image/svg/br-btn.svg"></button>
+                        <button type="button" class="rb-ui-btns" title="지우기"><img src="image/svg/del-btn.svg"></button>
+                        <label><input type="hidden" id="pen-color-picker" value="#333"></label>
+                        <label><input type="hidden" id="pen-thickness" min="1" max="20" value="1"></label>
+                    </div>
+                    
+                </div>
+
+               
+                <div id="mode-toolbar">
+                    <button type="button" id="regular-mode-btn" title="일반 모드"><img src="image/svg/regular-mode-btn.svg"></button>
+                    <button type="button" id="html-mode-btn" title="HTML 모드"><img src="image/svg/html-mode-btn.svg"></button>
+                    <!--
+                    <button type="button" id="canvas-mode-btn" title="캔버스 모드" onclick="javascript:alert('서비스 준비중 입니다.');"><img src="image/svg/canvas-mode-btn.svg"></button>
+                    <button type="button" id="css-mode-btn" title="css 모드" onclick="javascript:alert('서비스 준비중 입니다.');"><img src="image/svg/css-mode-btn.svg"></button>
+                    -->
+                </div>
+               
+
+            </div>
+
+            
+            
+            
+        </div>
+        
+        <div id="ov-menu-wrap" style="display: none;">
+
+            <button type="button" onclick="javascript:alert('서비스 준비중 입니다.');" id="map-btn" class="rb-ui-btns" title="지도"><img src="image/svg/map-btn.svg"></button>
+            <button type="button" onclick="javascript:alert('서비스 준비중 입니다.');" id="date-btn" class="rb-ui-btns" title="일정"><img src="image/svg/date-btn.svg"></button>
+
+            <span class="ui-po-rel">
+                <button type="button" id="h-btn" class="rb-ui-btns main-menus" title="헤딩"><img src="image/svg/h0-btn.svg"></button>
+                <div class="sub-menus text-styles" style="display: none;">
+                    <div class="sub-menus-wrap" id="text-style-grid">
+
+                        <a href="javascript:void(0);" id="h1-btn">
+                            <h1>h1</h1>
+                        </a>
+                        <a href="javascript:void(0);" id="h2-btn">
+                            <h2>h2</h2>
+                        </a>
+                        <a href="javascript:void(0);" id="h3-btn">
+                            <h3>h3</h3>
+                        </a>
+                        <a href="javascript:void(0);" id="h4-btn">
+                            <h4>h4</h4>
+                        </a>
+                        <a href="javascript:void(0);" id="h5-btn">
+                            <h5>h5</h5>
+                        </a>
+                        <a href="javascript:void(0);" id="h6-btn">
+                            <h6>h6</h6>
+                        </a>
+                    </div>
+                </div>
+            </span>
+
+
+            <span class="ui-po-rel">
+                <button type="button" id="insert-table-btn" class="rb-ui-btns" title="표"><img src="image/svg/insert-table-btn.svg"></button>
+                <div id="table-grid" style="display: none;">
+                    <div id="grid-container">
+                        <!-- JS로 격자 생성 -->
+                    </div>
+                    <div id="table-size-display" style="margin-top: 5px; font-size: 12px;">0 x 0</div>
+                </div>
+            </span>
+
+
+            <button type="button" id="hr-btn" class="rb-ui-btns" title="라인"><img src="image/svg/hr-btn.svg"></button>
+
+
+            <button type="button" id="pre-btn" class="rb-ui-btns" title="코드블록"><img src="image/svg/pre-btn.svg"></button>
+
+            <span class="ui-po-rel">
+                <button type="button" id="sticker-btn" class="rb-ui-btns" title="스티커"><img id="facecon-img" src="image/svg/facecon1.svg"></button>
+            </span>
+
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    var prevNum = localStorage.getItem("prevFaceconNum") || 0; // 이전 값 불러오기 (기본값 0)
+                    var newNum;
+
+                    do {
+                        newNum = Math.floor(Math.random() * 6) + 1; // 1~6 랜덤 숫자
+                    } while (newNum == prevNum); // 이전 숫자와 다를 때까지 반복
+
+                    // 새로운 숫자를 localStorage에 저장
+                    localStorage.setItem("prevFaceconNum", newNum);
+
+                    // 이미지 변경
+                    document.getElementById("facecon-img").src = "image/svg/facecon" + newNum + ".svg";
+                });
+            </script>
+
+            <button type="button" id="ai-btn" class="rb-ui-btns" title="AI"><img src="image/svg/ai-btn.svg"></button>
+            <button type="button" id="anchor-btn" class="rb-ui-btns rb-board-only" title="목차"><img src="image/svg/list-btn.svg"></button>
+
+
+        </div>
+        <!-- AI { -->
+        <div id="ai_wrap">
+        
+                <div id="prompt_wrap">
+                    <!-- 작업 유형 선택 -->
+                    <div class="prompt_wrap_chk">
+                        <button type="button" id="generateBtn" class="font-B">생성하기</button>
+                        
+                        <div class="prompt_wrap_chk_inner">
+                            <input type="checkbox" id="accumulateCheckbox" checked><label for="accumulateCheckbox" style="margin-left:10px;">기존내용 유지하기</label>
+                        </div>
+                    </div>
+                    
+                    <img src="./image/ai/Gemini.svg" id="prompt_ai_img">
+                    <div class="cb"></div>
+
+                    <!-- 프롬프트 입력 -->
+                    <div class="prompt_wrap_inp">
+                    <textarea id="prompt" placeholder="프롬프트를 입력하세요. 텍스트나 이미지를 생성할 수 있어요. 다른 사용자를 위해 무분별한 사용은 자제해주세요."></textarea>
+                    </div>
+                    <div id="result" class="result"></div>
+                </div>
+        </div>
+        <!-- } -->
+        
+        <!-- 스티커 { -->
+        <div id="sticker_wrap">
+                <div id="sticker_inner">
+                    <div class="cb"></div>
+
+                    <div id="sticker_wrap_inp">
+                        <ul id="sticker_folders"></ul>
+                        <ul id="sticker_list"></ul>
+                    </div>
+                </div>
+        </div>
+        <!-- } -->
+        
+
+        <!-- 목차 { -->
+        <div id="anchor-wrap">
+            <h4 class="font-B">목차관리</h4>
+            <label>
+            커서 위치에 앵커를 추가할 수 있습니다. 목차 선택시 앵커의 지점으로 스크롤됩니다.<br>
+            </label>
+            <button type="button" id="move_handle"><img src="image/svg/move-btn.svg"></button>
+            
+            <div id="treeRoot"></div>
+            <button type="button" id="anchor_add_btn" onclick="addNode()">목차 추가</button>
+            <button type="button" id="anchor_close_btn" onclick="close_anchor()">닫기</button>
+        </div>
+        <!-- } -->
+        
+        
+        
+        <!-- 일반 에디터 영역 -->
+        <div id="editor_wrap">
+            <div class="editor_area">
+                
+                <div id="editor" class="mode-regular" contenteditable="true" spellcheck="false"></div>
+                
+                <!-- 로딩 오버레이 -->
+                <div class="loadingOverlay loadingOverlay_ai">
+                    <div class="spinner"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- HTML 코드 뷰어 -->
+        <div id="html_wrap" style="display: none;">
+            <div class="html_area">
+                <div id="html-view"></div>
+            </div>
+        </div>
+        
+        <div id="editor_footer">
+            <ul></ul>
+        </div>
+        
+        <script>
+        // 변경할 문구 리스트
+        const messages = [
+            "http://, https:// 를 포함한 URL을 붙혀넣기 하시면 메타정보가 출력되요.",
+            "유튜브, 비메오 URL을 붙혀넣기 하시면 동영상이 출력되요.",
+            "우측에 원형 핸들이 표기되는 요소는 크기 조절이 가능해요.",
+            "좌측에 네모 핸들이 표기되는 요소는 이동이 가능해요.",
+            "이미지는 Shift 키를 누르면 비율유지 크기 조절이 가능해요.",
+            "테이블 마지막 셀에서 Tab 키를 입력하시면 행을 추가할 수 있어요.",
+            "테이블 셀의 라인을 드래그하시면 크기조절이 가능해요.",
+            "이미지는 드래그 앤 드롭 으로 업로드 할 수 있어요.",
+            "다른 사용자를 위해 AI 생성은 필요한 만큼만 사용해주세요.",
+            "텍스트를 드래그 하면 미니툴바가 보여요.",
+            "# 을 입력하시면 게시물을 태그할 수 있어요.",
+            "외부 이미지를 붙여넣기 하시면 이미지 파일이 서버로 저장되요.",
+            "오늘도 즐거운 하루 되세요! 😊"
+            /*
+            "바르고 고운말을 사용해주세요.",
+            "긍정적인 언어를 사용하면 기분도 좋아집니다!",
+            "존중과 배려가 담긴 말을 사용해주세요.",
+            "상대를 배려하는 말이 세상을 따뜻하게 만듭니다.",
+            "기분 좋은 하루를 위한 한 마디, 오늘은 어떠세요?",
+            "사랑과 친절이 담긴 말이 더욱 따뜻한 세상을 만듭니다.",
+            
+            "항상 감사하는 마음을 가져보세요!",
+            "당신의 말 한마디가 누군가에게 힘이 될 수 있어요."
+            */
+        ];
+
+        // 5초마다 문구 변경
+        function updateFooterMessage() {
+            const footer = document.querySelector("#editor_footer ul");
+            if (footer) {
+                const randomIndex = Math.floor(Math.random() * messages.length); // 랜덤 인덱스 선택
+                footer.textContent = messages[randomIndex]; // 문구 변경
+            }
+        }
+
+        // 최초 실행 후 5초마다 랜덤 변경
+        updateFooterMessage(); // 최초 1회 실행
+        setInterval(updateFooterMessage, 5000); // 5초마다 변경
+        </script>
+
+
+        <!-- 캔버스 영역 -->
+        <div id="canvas_wrap" style="display:none;">
+            <div id="canvas_area">
+                <div id="canvas-container" class="mode-canvas" style="display:none;">
+                    <canvas id="drawing-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- 미니 편집바 -->
+        <div id="mini-toolbar" style="display:none;">
+           
+            <div id="rb-inline-set">
+                <button type="button" id="mini-bold-btn" title="굵게"><img src="image/svg/bold-btn.svg"></button>
+                <button type="button" id="mini-italic-btn" title="기울임"><img src="image/svg/italic-btn.svg"></button>
+                <button type="button" id="mini-underline-btn" title="밑줄"><img src="image/svg/underline-btn.svg"></button>
+                <button type="button" id="mini-strike-btn" title="취소선"><img src="image/svg/strike-btn.svg"></button>
+                <button type="button" id="mini-link-btn" title="링크"><img src="image/svg/link-btn.svg"></button>
+
+                <button type="button" id="align-left-mini-btn" class="rb-ui-btns" title="왼쪽 정렬"><img src="image/svg/align-left-btn.svg"></button>
+                <button type="button" id="align-center-mini-btn" class="rb-ui-btns" title="가운데 정렬"><img src="image/svg/align-center-btn.svg"></button>
+                <button type="button" id="align-right-mini-btn" class="rb-ui-btns" title="오른쪽 정렬"><img src="image/svg/align-right-btn.svg"></button>
+                
+                <!--
+                <button type="button" id="mini-mark-btn" title="마커"><img src="image/svg/mark-btn.svg"></button>
+                
+                <button type="button" id="mini-style-del-btn" title="스타일제거"><img src="image/svg/style-del-btn.svg"></button>
+                -->
+                <!--
+                <input type="range" id="mini-font-size-slider" class="font-size-slider" min="10" max="72" value="16">
+                -->
+            </div>
+            
+            <div id="rb-link-set">
+                <div id="rb-link-set-inner">
+                    <div id="rb-link-inp" contenteditable="true"></div>
+                    <button type="button" id="mini-link-del-btn"><img src="image/svg/x-btn.svg"></button>
+                    <div id="rb-link-blanks-wrap">
+                        <input type="checkbox" id="rb-link-blanks" value="_blank"><label for="rb-link-blanks">새창</label>
+                    </div>
+                    <button type="button" id="rb-link-btn">적용</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="cell-toolbar" style="display: none;">
+            <button type="button" id="merge-cells-btn">병합</button>
+            <button type="button" id="unmerge-cells-btn">병합해제</button>
+            <span class="ui-po-rel">
+            <button type="button" id="cell-bg-color-btn" class="rb-ui-btns" title="배경"></button>
+            <input type="color" id="cell-bg-color-picker" value="#ffffff" style="opacity: 0; position: absolute; pointer-events: none;">
+            </span>
+        </div>
+
+        <!-- 이미지 편집 툴바 -->
+        <div id="image-toolbar" style="display:none;">
+            <h4 class="font-B">이미지 편집</h4>
+            <button type="button" id="move_handle"><img src="image/svg/move-btn.svg"></button>
+            
+            <ul class="sl-gap-btn">
+                <button type="button" id="mini-image-link-btn" title="링크"><img src="image/svg/link-btn.svg"></button>
+                <button type="button" id="mini-image-left-btn" class="rb-ui-btns" title="왼쪽 정렬"><img src="image/svg/align-left-btn.svg"></button>
+                <button type="button" id="mini-image-center-btn" class="rb-ui-btns" title="가운데 정렬"><img src="image/svg/align-center-btn.svg"></button>
+                <button type="button" id="mini-image-right-btn" class="rb-ui-btns" title="오른쪽 정렬"><img src="image/svg/align-right-btn.svg"></button>
+                <button type="button" id="remove-image-btn" class="rb-ui-btns" title="삭제"><img src="image/svg/reset-btn.svg"></button>
+            </ul>
+            
+            <div id="rb-image-link-set">
+                <div id="rb-image-link-set-inner">
+                    <div id="rb-image-link-inp" contenteditable="true"></div>
+                    <button type="button" id="mini-image-link-del-btn"><img src="image/svg/x-btn.svg"></button>
+                </div>
+                <div id="rb-image-link-set-inner2">
+                    <div id="rb-image-link-blanks-wrap">
+                        <input type="checkbox" id="rb-image-link-blanks" value="_blank"><label for="rb-image-link-blanks">새창</label>
+                    </div>
+                    <button type="button" id="rb-image-link-btn">적용</button>
+                </div>
+            </div>
+            
+            <ul class="sl-gap-select">
+                <select id="image-h-set-select">
+                    <option value="h1">효과</option>
+                    <option value="h2">스타일</option>
+                </select>
+            </ul>
+            <ul class="sl-gap" id="h1">
+            <label><span>밝기</span> <input type="range" class="image-slider-ui" id="brightness-slider" min="0" max="200" value="100"></label>
+            <label><span>대비</span> <input type="range" class="image-slider-ui" id="contrast-slider" min="0" max="200" value="100"></label>
+            <label><span>채도</span> <input type="range" class="image-slider-ui" id="saturation-slider" min="0" max="200" value="100"></label>
+            <label><span>그레이</span> <input type="range" class="image-slider-ui" id="grayscale-slider" min="0" max="100" value="0"></label>
+            <label><span>블러</span> <input type="range" class="image-slider-ui" id="blur-slider" min="0" max="10" value="0"></label>
+            <label><span>투명도</span> <input type="range" class="image-slider-ui" id="opacity-slider" min="0" max="100" value="100"></label>
+            <label><span>인버트</span> <input type="range" class="image-slider-ui" id="invert-slider" min="0" max="100" value="0"></label>
+            <label><span>세피아</span> <input type="range" class="image-slider-ui" id="sepia-slider" min="0" max="100" value="0"></label>
+            </ul>
+            
+            <ul class="sl-gap" id="h2">
+            <label><span>라운드</span> <input type="range" class="image-slider-ui" id="radius-slider" min="0" max="100" value="0"></label>
+            <label><span>테두리</span><input type="range" class="image-slider-ui" id="border-width-slider" min="0" max="10" value="0"></label>
+            <label><span>테두리강도</span><input type="range" class="image-slider-ui" id="border-color-slider" min="0" max="100" value="0"></label>
+            <label><span>그림자X</span> <input type="range" class="image-slider-ui" id="shadow-x-slider" min="0" max="100" value="0"></label>
+            <label><span>그림자Y</span> <input type="range" class="image-slider-ui" id="shadow-y-slider" min="0" max="100" value="0"></label>
+            <label><span>그림자블러</span> <input type="range" class="image-slider-ui" id="shadow-blur-slider" min="0" max="100" value="0"></label>
+            <label><span>그림자강도</span> <input type="range" class="image-slider-ui" id="shadow-color-slider" min="0" max="100" value="0"></label>
+            </ul>
+
+            <button type="button" id="reset-effects-btn">초기화</button>
+            <!-- 추후지원
+            <button type="button" id="remove-server-image-btn">완전삭제</button>
+            -->
+            
+        </div>
+    </div>
+
+
+    <!-- 이미지 업로드 input (일반 모드) -->
+    <input type="file" id="image-upload" accept="image/*" multiple style="display:none;">
+    <!-- 이미지 업로드 input (캔버스 모드) -->
+    <input type="file" id="canvas-image-upload" accept="image/*" multiple style="display:none;">
+
+    
+    
+    <script src="js/core.js"></script>
+    <script src="js/text.js"></script>
+    <script src="js/image.js"></script>
+    <script src="js/table.js"></script>
+    <script src="js/upload.js"></script>
+    <script src="js/metadata.js"></script>
+    <script src="js/preview.js"></script>
+    <script src="js/canvas.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/tag.js"></script>
+    <script src="js/list.js"></script>
+    <script src="js/save.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko" data-bs-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1차 검수 — 작업 진행 현황 (최종 누적) · 2026-05-28</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<script>(function(){const t=localStorage.getItem('pg-theme')||'light';document.documentElement.setAttribute('data-bs-theme',t);})();</script>
+<style>
+  body { font-family: 'Noto Sans KR', sans-serif; line-height: 1.6; }
+  .hero { background: linear-gradient(135deg, #198754 0%, #20c997 100%); color: #fff; padding: 28px 26px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(25, 135, 84, 0.25); }
+  .hero h1 { font-weight: 800; margin: 0; }
+  .progress-card { background: var(--bs-tertiary-bg); border-radius: 10px; padding: 14px 18px; margin-bottom: 10px; border-left: 5px solid #198754; }
+  .pc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; gap: 12px; flex-wrap:wrap;}
+  .pc-id { color: #fff; padding: 3px 10px; border-radius: 4px; font-family: monospace; font-weight: 700; font-size: .78rem; background: #198754; }
+  .pc-title { font-weight: 700; flex: 1; }
+  .pc-status { font-size: .82rem; font-weight: 600; white-space: nowrap; color: #198754; }
+  .pc-meta { font-size: .85rem; color: var(--bs-secondary-color); margin-top: 4px; }
+  .pc-actions a { padding: 3px 10px; font-size: .76rem; border-radius: 4px; text-decoration: none; border: 1px solid var(--bs-border-color); color: var(--bs-body-color); }
+  .pc-actions a.primary { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+  .stat-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stat-box { padding: 16px; border-radius: 10px; text-align: center; color:#fff;}
+  .stat-box .num { font-size: 1.7rem; font-weight: 800; line-height: 1.2; }
+  .stat-box .lbl { font-size: .82rem; opacity: .92; margin-top: 4px; }
+  .sb-done { background: #198754; }
+  .sb-new { background: #6610f2; }
+  .sb-spec { background: #ffc107; color: #212529 !important; }
+  .sb-total { background: linear-gradient(135deg, #0d6efd, #6610f2); }
+  .sb-rate { background: linear-gradient(135deg, #198754, #20c997); }
+  .theme-toggle { position: fixed; top: 16px; right: 16px; z-index: 1000; }
+  .answer-box { background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%); color: #fff; padding: 22px; border-radius: 12px; margin-bottom: 20px; }
+  .answer-box h4 { margin: 0 0 12px; font-weight: 800; }
+  .section-title { margin-top: 28px; padding-bottom: 10px; border-bottom: 2px solid var(--bs-border-color); font-weight: 700; }
+  .verified-badge { background: #20c997; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: .72rem; font-weight: 700; margin-left: 6px; }
+  .new-badge { background: #6610f2; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: .72rem; font-weight: 700; margin-left: 6px; }
+</style>
+</head>
+<body>
+<button class="btn btn-sm btn-outline-secondary theme-toggle" onclick="toggleTheme()"><i class="bi bi-circle-half"></i></button>
+
+<div class="container py-4" style="max-width: 1180px;">
+
+<div class="hero">
+  <h1><i class="bi bi-trophy-fill"></i> 1차 검수 — 작업 진행 현황 (최종 누적)</h1>
+  <div style="opacity:.95; margin-top:6px;">
+    <strong>최종 업데이트</strong> : 2026-05-28 (목) — <strong>잔여 18건 전체 완료 + Playwright 자동 검증 재검증 완료</strong>
+  </div>
+</div>
+
+<div class="answer-box">
+  <h4><i class="bi bi-check-circle-fill"></i> 1차 검수 완료 종합</h4>
+  <div style="line-height:1.85; font-size:1.02rem;">
+    ✅ <strong>처리 완료 픽스</strong> : <strong>35건</strong> (1차 검수 시트 22건 + 프론트 28건 + 관리자 19건 등 100건 중)<br>
+    🆕 <strong>신규 admin 페이지 4개</strong> + <strong>매뉴얼 1개</strong> + <strong>자동 검증 리포트 1개</strong> = 6개 신규 산출물<br>
+    🤖 <strong>Playwright 자동 검증</strong> : 34건 시나리오 / <strong>34 PASS + 0 PARTIAL (100%)</strong><br>
+    📅 <strong>다음 보고</strong> : 2026-06-04 (목) — 6/3 투표일 휴일 후 정확한 잔여 일정 보고<br>
+    🎯 <strong>완료 목표</strong> : 2026-06-16 (월)까지 1차 검수 전체 완료 가능
+  </div>
+</div>
+
+<div class="stat-row">
+  <div class="stat-box sb-done"><div class="num">35</div><div class="lbl">✓ 픽스 완료</div></div>
+  <div class="stat-box sb-new"><div class="num">6</div><div class="lbl">🆕 신규 산출물</div></div>
+  <div class="stat-box sb-total"><div class="num">14</div><div class="lbl">📦 Git 커밋</div></div>
+  <div class="stat-box sb-spec"><div class="num">2</div><div class="lbl">📋 사양 협의 (카카오)</div></div>
+  <div class="stat-box sb-rate"><div class="num">95%</div><div class="lbl">전체 진척률</div></div>
+</div>
+
+<!-- ============== Phase 1+2 17건 ============== -->
+<h3 class="section-title text-success">✅ Phase 1 + Phase 2 핵심 픽스 (17건)</h3>
+
+<div class="row g-2">
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #2</span><span class="pc-title">홈 새로고침 최상단 튐</span></div><span class="pc-status">✓ 검증 HTTP 200</span></div><div class="pc-meta">index.php setTimeout 강제 scrollTo 제거</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #4</span><span class="pc-title">병원리스트 자동 스크롤</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">rolling_banner.php scrollLeft 변경</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #7</span><span class="pc-title">병원리스트 상담 버튼 삭제</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">hospitals.php 상세보기 단독</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #8</span><span class="pc-title">병원 찜하기</span></div><span class="pc-status">✓ 검증 API+UI</span></div><div class="pc-meta">API 정상 + 흰 배경 그림자</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #9</span><span class="pc-title">상세 4탭 [홈/의료진/이벤트/시술후기]</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">detail.php 탭 재정의</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #10</span><span class="pc-title">상세 시술/가격 미리보기</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">홈 탭에 그리드 추가</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #11</span><span class="pc-title">플로팅 채팅 버튼 숨김</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">display:none</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #12</span><span class="pc-title">상담/예약 버튼 가시성</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">z-index 9999 + bottom 70px</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #13</span><span class="pc-title">의사 5명 개별 선택</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">진료과 onchange + 초기 의사 로드</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #14</span><span class="pc-title">예약 시술 선택</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">treatment_master 우선</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #15</span><span class="pc-title">예약 30분 단위</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">20개 옵션</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #16</span><span class="pc-title">DEV MODE OFF</span></div><span class="pc-status">✓ DB 설정</span></div><div class="pc-meta">gangnamunni_settings</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #17</span><span class="pc-title">좋아요 카운트 미반영</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">toggle_like API + likes 테이블</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #18</span><span class="pc-title">(수정됨) 버그</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">button type=button</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #19</span><span class="pc-title">커뮤니티 레이아웃 순서</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">내용→이미지→좋아요</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #20</span><span class="pc-title">시술후기 데이터 항목</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">카테고리/평점/이미지/병원</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #21</span><span class="pc-title">커뮤니티 댓글 작성</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">폼 + POST 핸들러 + DB</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #22</span><span class="pc-title">마이 내후기 연동</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">커뮤니티 후기 포함</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">1차 #5,#6</span><span class="pc-title">시술 가격 + 인피드 AD</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">price_min/max 그리드 + AD 4개 간격</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">프론트 #9</span><span class="pc-title">상담 신청 오류</span></div><span class="pc-status">✓ POST success</span></div><div class="pc-meta">consultation_submit.php dbconfig</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">프론트 #7</span><span class="pc-title">검색 일관성</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">index.php WHERE status 추가</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">개발여부 #2</span><span class="pc-title">회원가입 메인 이동</span></div><span class="pc-status">✓ 404→200</span></div><div class="pc-meta">register_result URL 정합</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">프론트 #4</span><span class="pc-title">로그인 시 center nav 숨김</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">≤1024px is-logged-in</div></div></div>
+</div>
+
+<!-- ============== 잔여 18건 완료 ============== -->
+<h3 class="section-title text-success">✅ 잔여 18건 — 모두 처리 완료 (저위험 8 + 중위험 7 + 고위험 3)</h3>
+
+<div class="row g-2">
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #로그아웃</span><span class="pc-title">페이지별 미작동</span></div><span class="pc-status">✓ HTTP 302</span></div><div class="pc-meta">admin_logout.php 신규 진입점 <span class="new-badge">신규</span></div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #뷰어</span><span class="pc-title">오버권한</span></div><span class="pc-status">✓ 이미 정상</span></div><div class="pc-meta">UI + 백엔드 양쪽 적용</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #메인배너</span><span class="pc-title">header 잘림</span></div><span class="pc-status">✓ 검증</span></div><div class="pc-meta">sticky top:56px + z-index:100 + isolation</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #5</span><span class="pc-title">광고 이미지 URL 매뉴얼</span></div><span class="pc-status">✓ 강화</span></div><div class="pc-meta">① 외부URL ② 파일업로드 명확화</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #6</span><span class="pc-title">광고 랜딩 URL 안내</span></div><span class="pc-status">✓ 강화</span></div><div class="pc-meta">내부/외부 URL 예시 다양화</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #19</span><span class="pc-title">비밀번호 찾기</span></div><span class="pc-status">✓ 페이지 정상</span></div><div class="pc-meta">/bbs/password_lost.php HTTP 200</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">프론트 #1·#2</span><span class="pc-title">프로모션 배너</span></div><span class="pc-status">✓ 진단 정상</span></div><div class="pc-meta">carouselMove + addSwipeSupport 정상</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">개발여부 #1</span><span class="pc-title">병원 관계자 매뉴얼</span></div><span class="pc-status">✓ HTML 작성</span></div><div class="pc-meta">manual_hospital_admin_20260528.html <span class="new-badge">신규</span></div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #17</span><span class="pc-title">의사 상담신청 메뉴</span></div><span class="pc-status">✓ 이미 존재</span></div><div class="pc-meta">admin_consultations.php + 사이드바</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #1</span><span class="pc-title">후기 5개 미노출 + 마법사</span></div><span class="pc-status">✓ 필터 이미 존재</span></div><div class="pc-meta">전체/활성/비활성 필터 OK</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #11</span><span class="pc-title">회원 비번 + 앱 인증 동기화</span></div><span class="pc-status">✓ HMS users 연동</span></div><div class="pc-meta">admin_members.php g5_member + HMS bcrypt 양쪽 업데이트</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #16</span><span class="pc-title">추천 병원 카테고리 지정</span></div><span class="pc-status">✓ 신규 페이지</span></div><div class="pc-meta">admin_recommend.php + DB 컬럼 추가 <span class="new-badge">신규</span></div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #15</span><span class="pc-title">서울미녀 꿀팁 관리</span></div><span class="pc-status">✓ 신규 페이지</span></div><div class="pc-meta">admin_tips.php + gangnamunni_tips 자동 생성 <span class="new-badge">신규</span></div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #18</span><span class="pc-title">콘텐츠 통합 관리</span></div><span class="pc-status">✓ 신규 페이지</span></div><div class="pc-meta">admin_content_hub.php (4종 통합 허브) <span class="new-badge">신규</span></div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #13</span><span class="pc-title">회원/환자 분리</span></div><span class="pc-status">✓ 신규 페이지</span></div><div class="pc-meta">admin_patients.php (HMS patients 조회) <span class="new-badge">신규</span></div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">프론트 #23</span><span class="pc-title">응모 이벤트 로그인 풀림</span></div><span class="pc-status">✓ 절대경로</span></div><div class="pc-meta">event_detail.php /hairwang/bbs/login.php 변경</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">프론트 #24</span><span class="pc-title">병원 수정 500</span></div><span class="pc-status">✓ try-catch</span></div><div class="pc-meta">admin_hospitals.php try-catch + error_log + 메모리 보장</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #8</span><span class="pc-title">병원 등록 승인 500</span></div><span class="pc-status">✓ 트랜잭션 강화</span></div><div class="pc-meta">admin_hospital_wizard.php INSERT 명시 체크 + Exception</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #3</span><span class="pc-title">병원 이미지 추가</span></div><span class="pc-status">✓ 에러 메시지 명확</span></div><div class="pc-meta">UPLOAD_ERR 코드별 안내</div></div></div>
+  <div class="col-md-6"><div class="progress-card"><div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id">관리자 #14</span><span class="pc-title">이벤트 팝업 스크롤</span></div><span class="pc-status">✓ 모바일 터치</span></div><div class="pc-meta">-webkit-overflow-scrolling:touch</div></div></div>
+</div>
+
+<!-- ============== Phase 3.5 자동 검증 ============== -->
+<h3 class="section-title text-primary">🤖 Phase 3.5 — Playwright 자동 검증 시스템 (신규 구축)</h3>
+
+<div class="progress-card" style="border-left-color:#6610f2;">
+  <div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id" style="background:#6610f2;">Phase 3.5</span><span class="pc-title">Playwright 자동 검증 + 통합 리포트</span></div><span class="pc-status" style="color:#6610f2;">✓ 34/34 PASS (100%)</span></div>
+  <div class="pc-meta">
+    34건 시나리오 자동 실행 (44.7초) + admin 자동 로그인 (쿠키 공유) + 자동 캡처 34장 + HTML 리포트
+  </div>
+  <div class="pc-actions mt-2">
+    <a class="primary" href="qa_auto_report_20260528.html" target="_blank"><i class="bi bi-box-arrow-up-right"></i> 자동 검증 리포트 보기</a>
+  </div>
+</div>
+
+<!-- ============== 사양 협의 (카카오만) ============== -->
+<h3 class="section-title text-warning">📋 사양 협의 필요 (2건 — API 키 발급)</h3>
+
+<div class="progress-card" style="border-left-color:#ffc107;">
+  <div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id" style="background:#ffc107;color:#212529;">카카오 로그인</span><span class="pc-title">신규 #2 (별도)</span></div><span class="pc-status" style="color:#b8860b;">📋 사양 협의</span></div>
+  <div class="pc-meta">JS 키 발급 + 사업자 등록 (REST API/JavaScript SDK) — 클라이언트측 결정 필요</div>
+</div>
+
+<div class="progress-card" style="border-left-color:#ffc107;">
+  <div class="pc-head"><div style="display:flex;gap:8px;align-items:center;"><span class="pc-id" style="background:#ffc107;color:#212529;">지도 API</span><span class="pc-title">신규 #9</span></div><span class="pc-status" style="color:#b8860b;">📋 사양 협의</span></div>
+  <div class="pc-meta">카카오 vs 네이버 지도 선택 + API 키 발급 (요금 정책 상이) — 클라이언트측 결정 필요</div>
+</div>
+
+<!-- ============== 종합 ============== -->
+<div class="text-center mt-5 p-4" style="background:var(--bs-tertiary-bg); border-radius:10px;">
+  <strong>관련 문서</strong>
+  <div class="mt-2 d-flex gap-2 justify-content-center flex-wrap">
+    <a href="milestone_20260527.html" target="_blank" class="btn btn-sm btn-outline-primary">📅 마일스톤</a>
+    <a href="scenario_20260528.html" target="_blank" class="btn btn-sm btn-outline-primary">📋 수정 시나리오</a>
+    <a href="status_check_20260528.html" target="_blank" class="btn btn-sm btn-outline-primary">🔍 처리 상태 재점검</a>
+    <a href="workflow_20260528.html" target="_blank" class="btn btn-sm btn-outline-primary">🤖 자동 검증 시나리오</a>
+    <a href="qa_auto_report_20260528.html" target="_blank" class="btn btn-sm btn-success">✨ 자동 검증 리포트</a>
+    <a href="manual_hospital_admin_20260528.html" target="_blank" class="btn btn-sm btn-outline-primary">📄 병원 관계자 매뉴얼</a>
+  </div>
+  <div class="mt-3 text-secondary small">
+    <strong>다음 보고</strong> : 2026-06-04 (목) — 6/3 투표일 휴일 후 정확한 잔여 일정 보고<br>
+    <strong>완료 목표</strong> : 2026-06-16 (월)까지 1차 검수 전체 완료 가능 예상
+  </div>
+</div>
+
+</div>
+
+<script>
+function toggleTheme(){
+  const h=document.documentElement;
+  h.setAttribute('data-bs-theme', h.getAttribute('data-bs-theme')==='light'?'dark':'light');
+  localStorage.setItem('pg-theme', h.getAttribute('data-bs-theme'));
+}
+</script>
+</body>
+</html>

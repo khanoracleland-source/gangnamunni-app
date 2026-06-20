@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seoul Beauty QA Dashboard - Full Feature Test</title>
+<style>
+:root{--pri:#7C3AED;--ok:#22c55e;--fail:#ef4444;--skip:#f59e0b;--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text2:#64748b;--radius:10px;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;}
+.container{max-width:1400px;margin:0 auto;padding:16px;}
+h1{font-size:24px;font-weight:800;margin-bottom:4px;}
+.subtitle{color:var(--text2);font-size:13px;margin-bottom:16px;}
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:16px;overflow-x:auto;}
+.tab-btn{padding:10px 18px;border:none;background:none;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:.2s;}
+.tab-btn:hover{color:var(--pri);}
+.tab-btn.active{color:var(--pri);border-bottom-color:var(--pri);}
+.tab-btn .badge{display:inline-block;background:var(--pri);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+/* summary cards */
+.summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
+.s-card{background:var(--card);border-radius:var(--radius);padding:16px;border:1px solid var(--border);text-align:center;}
+.s-card .num{font-size:32px;font-weight:800;}
+.s-card .lbl{font-size:12px;color:var(--text2);margin-top:4px;}
+.s-card.ok .num{color:var(--ok);}
+.s-card.fail .num{color:var(--fail);}
+.s-card.skip .num{color:var(--skip);}
+.s-card.total .num{color:var(--pri);}
+/* progress bar */
+.prog-wrap{margin-bottom:20px;}
+.prog-label{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px;}
+.prog-bar{height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--pri),var(--ok));border-radius:5px;transition:width .4s;}
+/* category section */
+.cat-section{margin-bottom:24px;}
+.cat-title{font-size:16px;font-weight:700;padding:8px 0;border-bottom:2px solid var(--pri);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.cat-title .cat-prog{font-size:12px;color:var(--text2);margin-left:auto;}
+/* feature card */
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}
+.feat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;position:relative;}
+.feat-card.pass{border-left:4px solid var(--ok);}
+.feat-card.fail{border-left:4px solid var(--fail);}
+.feat-card.skip{border-left:4px solid var(--skip);}
+.feat-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.feat-id{font-size:11px;font-weight:700;color:var(--pri);background:#f0e6ff;padding:2px 6px;border-radius:4px;}
+.feat-name{font-weight:700;font-size:14px;flex:1;}
+.feat-file{font-size:11px;color:var(--text2);font-family:monospace;}
+.feat-link{font-size:11px;color:var(--pri);text-decoration:none;margin-left:4px;}
+.feat-link:hover{text-decoration:underline;}
+/* checklist */
+.check-list{margin:8px 0;}
+.check-item{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px;}
+.check-item label{flex:1;cursor:pointer;}
+.status-btns{display:flex;gap:4px;}
+.status-btn{width:22px;height:22px;border-radius:4px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;transition:.15s;}
+.status-btn:hover{transform:scale(1.1);}
+.status-btn.sel-pass{background:var(--ok);color:#fff;border-color:var(--ok);}
+.status-btn.sel-fail{background:var(--fail);color:#fff;border-color:var(--fail);}
+.status-btn.sel-skip{background:var(--skip);color:#fff;border-color:var(--skip);}
+/* memo */
+.feat-memo{width:100%;margin-top:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;resize:vertical;min-height:32px;}
+/* integration matrix */
+.matrix-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;}
+.matrix-table th,.matrix-table td{padding:8px;border:1px solid var(--border);text-align:center;}
+.matrix-table th{background:var(--pri);color:#fff;font-weight:600;}
+.matrix-table .yes{background:#dcfce7;color:#166534;}
+.matrix-table .no{background:#fee2e2;color:#991b1b;}
+.matrix-table .partial{background:#fef9c3;color:#854d0e;}
+/* request form */
+.req-form{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+.req-form h3{margin-bottom:12px;font-size:16px;}
+.form-row{margin-bottom:10px;}
+.form-row label{display:block;font-size:12px;font-weight:600;margin-bottom:3px;}
+.form-row input,.form-row textarea,.form-row select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;}
+.form-row textarea{min-height:60px;resize:vertical;}
+.btn-submit{background:var(--pri);color:#fff;border:none;padding:10px 24px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px;}
+.btn-submit:hover{opacity:.9;}
+.btn-reset{background:#ef4444;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:12px;margin-left:8px;}
+.req-list{margin-top:16px;}
+.req-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;}
+.req-card .req-title{font-weight:700;}
+.req-card .req-meta{font-size:11px;color:var(--text2);margin-top:4px;}
+/* export */
+.top-actions{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.btn-action{padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:12px;font-weight:600;}
+.btn-action:hover{background:#f1f5f9;}
+.btn-export{background:var(--ok);color:#fff;border-color:var(--ok);}
+/* timestamp */
+.timestamp{font-size:11px;color:var(--text2);margin-top:16px;text-align:right;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Seoul Beauty QA Dashboard</h1>
+<p class="subtitle">v1.0 | 2026-03-13 | 전체 기능 검수 대시보드 (100+ 기능, 13카테고리)</p>
+
+<div class="top-actions">
+<button class="btn-action btn-export" onclick="exportResults()">CSV 내보내기</button>
+<button class="btn-action" onclick="resetAll()">전체 초기화</button>
+<button class="btn-action" onclick="loadSaved()">저장 데이터 불러오기</button>
+<span id="lastSaved" style="font-size:11px;color:var(--text2);line-height:32px;margin-left:8px;"></span>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab('summary')">요약</button>
+<button class="tab-btn" onclick="switchTab('front')">프론트엔드 <span class="badge">18</span></button>
+<button class="tab-btn" onclick="switchTab('admin')">관리자 <span class="badge">64</span></button>
+<button class="tab-btn" onclick="switchTab('api')">API <span class="badge">18</span></button>
+<button class="tab-btn" onclick="switchTab('integration')">연동</button>
+<button class="tab-btn" onclick="switchTab('app')">앱 <span class="badge">4</span></button>
+<button class="tab-btn" onclick="switchTab('request')">수정요청</button>
+</div>
+
+<!-- ==================== TAB: SUMMARY ==================== -->
+<div id="tab-summary" class="tab-content active">
+<div class="summary-row">
+<div class="s-card total"><div class="num" id="totalCount">0</div><div class="lbl">전체 항목</div></div>
+<div class="s-card ok"><div class="num" id="passCount">0</div><div class="lbl">PASS</div></div>
+<div class="s-card fail"><div class="num" id="failCount">0</div><div class="lbl">FAIL</div></div>
+<div class="s-card skip"><div class="num" id="skipCount">0</div><div class="lbl">SKIP</div></div>
+<div class="s-card"><div class="num" id="untestedCount">0</div><div class="lbl">미검수</div></div>
+</div>
+<div class="prog-wrap">
+<div class="prog-label"><span>전체 진행률</span><span id="totalPct">0%</span></div>
+<div class="prog-bar"><div class="prog-fill" id="totalProgFill" style="width:0%"></div></div>
+</div>
+<div id="catSummaryList"></div>
+</div>
+
+<!-- ==================== TAB: FRONTEND ==================== -->
+<div id="tab-front" class="tab-content"></div>
+
+<!-- ==================== TAB: ADMIN ==================== -->
+<div id="tab-admin" class="tab-content"></div>
+
+<!-- ==================== TAB: API ==================== -->
+<div id="tab-api" class="tab-content"></div>
+
+<!-- ==================== TAB: INTEGRATION ==================== -->
+<div id="tab-integration" class="tab-content">
+<div class="cat-section">
+<div class="cat-title">CPV &#8596; 타 모듈 연동 매트릭스</div>
+<table class="matrix-table">
+<tr><th>모듈</th><th>CPV 추적</th><th>지갑 차감</th><th>통계</th><th>정산</th></tr>
+<tr><td>병원 상세 (detail.php)</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td></tr>
+<tr><td>병원 목록 (hospitals.php)</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td></tr>
+<tr><td>메인 홈 (index.php)</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td></tr>
+<tr><td>이벤트 (event_detail.php)</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td></tr>
+<tr><td>후기 (reviews.php)</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td></tr>
+<tr><td>광고 시스템</td><td class="partial">독립</td><td class="no">X</td><td class="partial">별도</td><td class="partial">별도</td></tr>
+<tr><td>HMS</td><td class="no">X</td><td class="no">X</td><td class="no">X</td><td class="no">X</td></tr>
+<tr><td>AI 시스템</td><td class="no">X</td><td class="no">X</td><td class="no">X</td><td class="no">X</td></tr>
+</table>
+</div>
+
+<div class="cat-section">
+<div class="cat-title">AI &#8596; 타 모듈 연동 매트릭스</div>
+<table class="matrix-table">
+<tr><th>모듈</th><th>AI 검수</th><th>AI 제안</th><th>AI 편집기</th><th>병원별 ON/OFF</th></tr>
+<tr><td>후기</td><td class="yes">OK</td><td class="yes">OK</td><td class="no">X</td><td class="no">미구현</td></tr>
+<tr><td>광고</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="no">미구현</td></tr>
+<tr><td>이벤트</td><td class="no">X</td><td class="partial">부분</td><td class="yes">OK</td><td class="no">미구현</td></tr>
+<tr><td>병원 등록</td><td class="partial">설정만</td><td class="no">X</td><td class="no">X</td><td class="no">미구현</td></tr>
+<tr><td>CPV</td><td class="no">X</td><td class="no">X</td><td class="no">X</td><td class="no">미구현</td></tr>
+<tr><td>예약</td><td class="no">X</td><td class="no">X</td><td class="no">X</td><td class="no">미구현</td></tr>
+</table>
+</div>
+
+<div class="cat-section">
+<div class="cat-title">HMS &#8596; 강남언니 연동 매트릭스</div>
+<table class="matrix-table">
+<tr><th>데이터</th><th>강남언니&#8594;HMS</th><th>HMS&#8594;강남언니</th><th>크론 동기화</th><th>실시간 API</th></tr>
+<tr><td>예약 (appointments)</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td></tr>
+<tr><td>병원 (hospitals)</td><td class="partial">수동</td><td class="yes">OK</td><td class="yes">OK</td><td class="no">X</td></tr>
+<tr><td>의사 (doctors)</td><td class="yes">OK</td><td class="partial">수동</td><td class="partial">부분</td><td class="no">X</td></tr>
+<tr><td>환자 (patients)</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="no">X</td></tr>
+<tr><td>회원 (members)</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="no">X</td></tr>
+<tr><td>카테고리</td><td class="yes">OK</td><td class="yes">OK</td><td class="yes">OK</td><td class="no">X</td></tr>
+</table>
+</div>
+
+<div class="cat-section">
+<div class="cat-title">앱 &#8596; 서버 연동 매트릭스</div>
+<table class="matrix-table">
+<tr><th>앱</th><th>HMS API</th><th>강남언니 API</th><th>CPV</th><th>AI</th><th>FCM</th></tr>
+<tr><td>서울미녀 (환자)</td><td class="yes">OK</td><td class="no">X</td><td class="no">X</td><td class="no">X</td><td class="yes">OK</td></tr>
+<tr><td>서울미녀 파트너</td><td class="yes">OK</td><td class="no">X</td><td class="no">X</td><td class="no">X</td><td class="yes">OK</td></tr>
+<tr><td>서울뷰티병원</td><td class="yes">OK</td><td class="partial">부분</td><td class="no">X</td><td class="no">X</td><td class="yes">OK</td></tr>
+<tr><td>서울미녀 관리자</td><td class="partial">WebView</td><td class="yes">WebView</td><td class="partial">WebView</td><td class="partial">WebView</td><td class="no">X</td></tr>
+</table>
+</div>
+</div>
+
+<!-- ==================== TAB: APP ==================== -->
+<div id="tab-app" class="tab-content"></div>
+
+<!-- ==================== TAB: REQUEST ==================== -->
+<div id="tab-request" class="tab-content">
+<div class="req-form">
+<h3>수정사항 등록</h3>
+<div class="form-row"><label>제목</label><input type="text" id="reqTitle" placeholder="수정할 내용 제목"></div>
+<div class="form-row"><label>내용</label><textarea id="reqContent" placeholder="상세 설명"></textarea></div>
+<div class="form-row"><label>카테고리</label>
+<select id="reqCategory"><option>프론트엔드</option><option>관리자</option><option>API</option><option>CPV</option><option>AI</option><option>HMS</option><option>앱</option><option>기타</option></select>
+</div>
+<div class="form-row"><label>우선순위</label>
+<select id="reqPriority"><option value="high">긴급</option><option value="medium" selected>보통</option><option value="low">낮음</option></select>
+</div>
+<div class="form-row"><label>URL (참고)</label><input type="text" id="reqUrl" placeholder="https://..."></div>
+<button class="btn-submit" onclick="submitRequest()">등록</button>
+</div>
+<div class="req-list" id="reqList"></div>
+</div>
+
+<div class="timestamp" id="timestampArea"></div>
+</div>
+
+<script>
+const BASE='https://hms.seoulbeauty.app/hairwang/gangnamunni';
+const API_BASE=BASE+'/api/client_requests.php';
+const STORAGE_KEY='qa_dashboard_v1';
+
+// ==================== DATA ====================
+const features={
+front:[
+{id:'A1',name:'메인 홈',file:'index.php',checks:['페이지 로드 200','배너 표시','병원 카드','CPV 추적','다크모드','모바일 반응형','글로벌 네비']},
+{id:'A2',name:'병원 목록 (3뷰)',file:'hospitals.php',checks:['3뷰 토글','검색/필터','인피드 광고','거리 계산','CPV 추적','다크모드']},
+{id:'A3',name:'병원 상세',file:'detail.php',checks:['기본 정보','의사 탭','후기 탭','지도 표시','예약 버튼','상담 버튼','CPV 추적','영업시간','평점 토글']},
+{id:'A4',name:'의사 상세',file:'doctor_detail.php',checks:['프로필 표시','스케줄 표시','병원 링크','지도','예약 연결']},
+{id:'A5',name:'예약하기',file:'booking.php',checks:['폼 표시','자동입력(로그인)','시술 선택','날짜/시간','HMS 연동','예약 성공','내 예약 보기 링크']},
+{id:'A6',name:'내 예약 관리',file:'my_bookings.php',checks:['전화번호 조회','진행중 탭','지난예약 탭','취소 모달','날짜변경 모달','자동입력(로그인)']},
+{id:'A7',name:'후기 목록',file:'reviews.php',checks:['목록 표시','필터','페이지네이션','AI 검수 뱃지']},
+{id:'A8',name:'후기 상세',file:'review_detail.php',checks:['내용 표시','좋아요','댓글','신고']},
+{id:'A9',name:'후기 작성',file:'review_write.php',checks:['폼 표시','사진 업로드','AI 검수','별점']},
+{id:'A10',name:'이벤트 목록',file:'events.php',checks:['카드 표시','필터','마감일 표시']},
+{id:'A11',name:'이벤트 상세',file:'event_detail.php',checks:['갤러리','가격','기간','응모 폼','CPV 추적']},
+{id:'A12',name:'꿀팁/커뮤니티',file:'tips.php',checks:['탭 전환','좋아요','목록 표시']},
+{id:'A13',name:'커뮤니티 상세',file:'detail_community.php',checks:['내용 표시','댓글','좋아요','공유']},
+{id:'A14',name:'꿀팁 상세',file:'detail_tip.php',checks:['내용 표시']},
+{id:'A15',name:'칼럼',file:'columns.php',checks:['목록 표시']},
+{id:'A16',name:'상담 신청',file:'consultation.php',checks:['폼 표시','제출 성공']},
+{id:'A17',name:'내 알림',file:'my_notifications.php',checks:['알림 목록','읽음 처리']},
+{id:'A18',name:'내 이벤트',file:'my_events.php',checks:['응모 내역']},
+],
+admin:[
+{id:'B1',name:'대시보드 로그인',file:'dashboard.php',checks:['로그인 폼','로그인 성공','대시보드 표시','다크모드']},
+{id:'B2',name:'병원 관리',file:'admin_hospitals.php',checks:['목록','추가','수정','삭제','영업시간 편집기','평점 토글','show_rating']},
+{id:'B3',name:'의사 관리',file:'admin_doctors.php',checks:['목록','추가','수정','삭제','스케줄 편집','상태 변경','HMS 연동']},
+{id:'B4',name:'후기 관리',file:'admin_reviews.php',checks:['목록','승인','거절','삭제']},
+{id:'B5',name:'이벤트 관리',file:'admin_events.php',checks:['목록','추가','수정','삭제']},
+{id:'B6',name:'응모 관리',file:'admin_event_entries.php',checks:['응모 목록','추첨','당첨 관리']},
+{id:'B7',name:'상담 관리',file:'admin_consultations.php',checks:['목록','승인','완료','거절']},
+{id:'B8',name:'꿀팁 관리',file:'admin_tips.php',checks:['CRUD']},
+{id:'B9',name:'칼럼 관리',file:'admin_columns.php',checks:['CRUD']},
+{id:'B10',name:'카테고리',file:'admin_categories.php',checks:['CRUD']},
+{id:'B11',name:'병원 이미지',file:'admin_hospital_images.php',checks:['업로드','정렬','삭제']},
+{id:'B12',name:'인력 관리',file:'admin_personnel.php',checks:['목록','필터']},
+{id:'C1',name:'예약 관리',file:'admin_bookings.php',checks:['목록','확인','완료','취소','HMS 동기화']},
+{id:'C2',name:'외래 OPD',file:'admin_opd.php',checks:['목록','상세']},
+{id:'C3',name:'입원 IPD',file:'admin_ipd.php',checks:['목록','상세']},
+{id:'C4',name:'검사 Lab',file:'admin_lab.php',checks:['목록']},
+{id:'C5',name:'병상 관리',file:'admin_beds.php',checks:['목록','배정']},
+{id:'C6',name:'일정 관리',file:'admin_schedules.php',checks:['달력','추가','수정']},
+{id:'D1',name:'환자 관리',file:'admin_patients.php',checks:['CRUD','HMS 연동']},
+{id:'D2',name:'간호사 관리',file:'admin_nurses.php',checks:['CRUD']},
+{id:'D3',name:'약사 관리',file:'admin_pharmacists.php',checks:['CRUD']},
+{id:'D4',name:'회원 관리',file:'admin_members.php',checks:['목록','검색','필터']},
+{id:'E1',name:'광고 관리',file:'admin_ads.php',checks:['목록','추가','수정','삭제','ON/OFF','미리보기']},
+{id:'E2',name:'광고주 관리',file:'admin_advertisers.php',checks:['CRUD']},
+{id:'E3',name:'광고 단가',file:'admin_ad_pricing.php',checks:['단가표','수정']},
+{id:'E4',name:'광고 통계',file:'admin_ad_stats.php',checks:['차트','필터']},
+{id:'E5',name:'광고 설정',file:'admin_ad_settings.php',checks:['12플래그 ON/OFF','저장']},
+{id:'E6',name:'프로모션',file:'admin_promos.php',checks:['CRUD']},
+{id:'E7',name:'A/B 테스트',file:'ab_test_dashboard.php',checks:['대시보드']},
+{id:'F1',name:'CPV 대시보드',file:'admin_cpv_dashboard.php',checks:['매출 차트','병원별 통계','날짜 필터']},
+{id:'F2',name:'CPV 설정',file:'admin_cpv_settings.php',checks:['55개 설정','마스터 스위치','테스트 모드','저장']},
+{id:'F3',name:'CPV 단가표',file:'admin_cpv_rates.php',checks:['가중치 설정','저장']},
+{id:'G1',name:'AI 설정',file:'admin_ai_settings.php',checks:['11그룹','ON/OFF 토글','키 암호화','저장']},
+{id:'G7',name:'AI 광고 편집기',file:'ai_ad_editor.php',checks:['AI 문구 생성','편집']},
+{id:'G8',name:'AI 이벤트 편집기',file:'ai_event_editor.php',checks:['AI 생성']},
+{id:'G9',name:'AI 이미지 편집기',file:'ai_image_editor.php',checks:['Fabric.js','이미지 편집']},
+{id:'H1',name:'결제 관리',file:'admin_payment.php',checks:['주문 목록','상품 관리','매출','PG 설정']},
+{id:'I1',name:'메일함',file:'admin_mail.php',checks:['수신함','발신','초안','휴지통']},
+{id:'I2',name:'메일 계정',file:'admin_mail_accounts.php',checks:['IMAP/SMTP 설정']},
+{id:'I3',name:'메일 서명',file:'admin_mail_signatures.php',checks:['CRUD']},
+{id:'I4',name:'메일 템플릿',file:'admin_mail_templates.php',checks:['CRUD']},
+{id:'J1',name:'알림 관리',file:'admin_notifications.php',checks:['4탭','읽음/미읽음']},
+{id:'J2',name:'알림 발송',file:'admin_send_notification.php',checks:['대상 선택','발송']},
+{id:'J4',name:'FCM API',file:'admin_fcm_api.php',checks:['토큰 관리']},
+{id:'K1',name:'테마 설정',file:'admin_theme.php',checks:['색상','폰트','저장']},
+{id:'K3',name:'네비 관리',file:'admin_navigation.php',checks:['메뉴 순서','ON/OFF']},
+{id:'K4',name:'관리자 계정',file:'admin_admins.php',checks:['CRUD','역할 배정']},
+{id:'K6',name:'점검 모드',file:'admin_maintenance.php',checks:['ON/OFF','메시지']},
+{id:'K7',name:'수정 이력',file:'admin_fix_log.php',checks:['이력 목록','스크린샷']},
+{id:'K8',name:'엑셀 Import',file:'admin_excel_import_wizard.php',checks:['파일 업로드','매핑','실행']},
+{id:'K9',name:'엑셀 Export',file:'admin_excel_export.php',checks:['엔티티 선택','다운로드']},
+{id:'K10',name:'자동 매뉴얼',file:'admin_auto_manual.php',checks:['생성','미리보기']},
+{id:'K12',name:'자동 테스트',file:'admin_auto_test_v2.php',checks:['실행','결과']},
+{id:'L1',name:'지갑 관리',file:'admin_wallet.php',checks:['잔액','충전','거래내역']},
+{id:'L2',name:'정산',file:'admin_settlement.php',checks:['월별 정산','병원별']},
+],
+api:[
+{id:'API1',name:'예약 취소',file:'api/cancel_booking.php',checks:['POST 전용','phone 검증','상태 변경','HMS 동기화']},
+{id:'API2',name:'예약 수정',file:'api/edit_booking.php',checks:['POST 전용','날짜 검증','phone 검증','HMS 동기화']},
+{id:'API3',name:'CPV 추적',file:'api_cpv_track.php',checks:['JSON 파싱','중복 체크','지갑 차감','로그 기록']},
+{id:'API4',name:'CPV 확인',file:'api_cpv_confirm.php',checks:['저장','조회','삭제']},
+{id:'API5',name:'CPV 설정',file:'api_cpv_settings.php',checks:['설정 조회','설정 저장']},
+{id:'API6',name:'지갑',file:'api_wallet.php',checks:['잔액 조회','충전']},
+{id:'API7',name:'후기 저장',file:'api/save_review_v2.php',checks:['AI 검증','저장','사진']},
+{id:'API8',name:'후기 AI 체크',file:'api/review_ai_check.php',checks:['스팸 감지','점수']},
+{id:'API9',name:'AI 제안',file:'api/ai_suggest.php',checks:['텍스트 생성']},
+{id:'API10',name:'AI 키 관리',file:'api/ai_key_manage.php',checks:['CRUD','AES 암호화']},
+{id:'API11',name:'승인 처리',file:'api/approve_item.php',checks:['승인','거절']},
+{id:'API12',name:'수정요청 CRUD',file:'api/client_requests.php',checks:['GET','POST','PUT','DELETE']},
+{id:'API13',name:'에디터 설정',file:'api/get_editor_settings.php',checks:['설정 조회']},
+{id:'API14',name:'리뷰어 통계',file:'api/get_reviewer_stats.php',checks:['통계 조회']},
+{id:'API15',name:'지오코딩',file:'api/geocode_batch.php',checks:['일괄 변환']},
+{id:'API16',name:'이벤트 API',file:'event_api.php',checks:['응모','중복체크','마감체크']},
+{id:'API17',name:'알림 API',file:'user_notification_api.php',checks:['목록','읽음']},
+{id:'API18',name:'크론 CPV',file:'cron_cpv_daily.php',checks:['집계','알림','정리']},
+],
+app:[
+{id:'M1',name:'서울미녀 (환자)',file:'com.celebhospital.patient',checks:['로그인','병원 목록','병원 상세','예약','마이페이지','알림','FCM','다크모드']},
+{id:'M2',name:'서울미녀 파트너',file:'com.celebhospital.admin',checks:['로그인','대시보드','예약 관리','환자 관리','FCM']},
+{id:'M3',name:'서울뷰티병원',file:'com.celebhospital.hms',checks:['4탭 네비','병원 검색','예약','커뮤니티','마이페이지','FCM','다크모드','다국어']},
+{id:'M4',name:'서울미녀 관리자',file:'com.celebhospital.manager',checks:['WebView 로드','관리자 로그인','사이드바','다크모드']},
+]
+};
+
+// ==================== RENDER ====================
+let results={};
+
+function init(){
+loadSaved();
+renderTab('front',features.front);
+renderTab('admin',features.admin);
+renderTab('api',features.api);
+renderTab('app',features.app);
+updateSummary();
+}
+
+function renderTab(tabId,items){
+const el=document.getElementById('tab-'+tabId);
+let html='';
+// group by category prefix
+const groups={};
+items.forEach(f=>{
+const prefix=f.id.replace(/\d+/,'');
+if(!groups[prefix])groups[prefix]=[];
+groups[prefix].push(f);
+});
+const catNames={A:'사용자 프론트엔드',B:'관리자 콘텐츠',C:'예약/진료 관리',D:'인력 관리',E:'광고 시스템',F:'CPV 과금',G:'AI 자동화',H:'결제 시스템',I:'메일 시스템',J:'알림/FCM',K:'시스템/설정',L:'지갑/정산',API:'API 엔드포인트',M:'모바일 앱'};
+for(const[prefix,group] of Object.entries(groups)){
+html+=`<div class="cat-section"><div class="cat-title">${catNames[prefix]||prefix} <span class="cat-prog" id="catProg-${prefix}"></span></div><div class="feat-grid">`;
+group.forEach(f=>{
+const fKey=f.id;
+const cls=getCardClass(fKey);
+const link=f.file.startsWith('com.')?'':`<a href="${BASE}/${f.file}" target="_blank" class="feat-link">열기</a>`;
+html+=`<div class="feat-card ${cls}" id="card-${fKey}"><div class="feat-head"><span class="feat-id">${f.id}</span><span class="feat-name">${f.name}</span></div><div><span class="feat-file">${f.file}</span>${link}</div><div class="check-list">`;
+f.checks.forEach((c,ci)=>{
+const cKey=fKey+'_'+ci;
+const st=results[cKey]||'';
+html+=`<div class="check-item"><label>${c}</label><div class="status-btns"><button class="status-btn ${st==='pass'?'sel-pass':''}" onclick="setStatus('${cKey}','pass',this)" title="PASS">P</button><button class="status-btn ${st==='fail'?'sel-fail':''}" onclick="setStatus('${cKey}','fail',this)" title="FAIL">F</button><button class="status-btn ${st==='skip'?'sel-skip':''}" onclick="setStatus('${cKey}','skip',this)" title="SKIP">S</button></div></div>`;
+});
+const memo=results[fKey+'_memo']||'';
+html+=`</div><textarea class="feat-memo" placeholder="메모/수정사항..." onchange="setMemo('${fKey}',this.value)">${memo}</textarea></div>`;
+});
+html+=`</div></div>`;
+}
+el.innerHTML=html;
+}
+
+function getCardClass(fKey){
+const checks=getAllCheckKeys(fKey);
+if(checks.length===0)return '';
+const states=checks.map(k=>results[k]||'');
+if(states.every(s=>s==='pass'))return 'pass';
+if(states.some(s=>s==='fail'))return 'fail';
+if(states.some(s=>s==='skip'))return 'skip';
+return '';
+}
+
+function getAllCheckKeys(fKey){
+const keys=[];
+for(const cat of Object.values(features)){
+const feat=cat.find(f=>f.id===fKey);
+if(feat){
+feat.checks.forEach((_,ci)=>keys.push(fKey+'_'+ci));
+break;
+}
+}
+return keys;
+}
+
+function setStatus(key,status,btn){
+if(results[key]===status){delete results[key];} else{results[key]=status;}
+saveResults();
+// update button styles
+const parent=btn.parentElement;
+parent.querySelectorAll('.status-btn').forEach(b=>{b.className='status-btn';});
+if(results[key]){
+btn.classList.add('sel-'+status);
+}
+// update card class
+const fKey=key.split('_')[0];
+const card=document.getElementById('card-'+fKey);
+if(card){card.className='feat-card '+getCardClass(fKey);}
+updateSummary();
+}
+
+function setMemo(fKey,val){
+if(val.trim())results[fKey+'_memo']=val; else delete results[fKey+'_memo'];
+saveResults();
+}
+
+function switchTab(name){
+document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+document.getElementById('tab-'+name).classList.add('active');
+event.target.classList.add('active');
+}
+
+// ==================== SUMMARY ====================
+function updateSummary(){
+let total=0,pass=0,fail=0,skip=0;
+const catStats={};
+for(const[catKey,items] of Object.entries(features)){
+items.forEach(f=>{
+const prefix=f.id.replace(/\d+/,'');
+if(!catStats[prefix])catStats[prefix]={total:0,pass:0,fail:0,skip:0,name:''};
+f.checks.forEach((_,ci)=>{
+const k=f.id+'_'+ci;
+total++;
+catStats[prefix].total++;
+const s=results[k];
+if(s==='pass'){pass++;catStats[prefix].pass++;}
+else if(s==='fail'){fail++;catStats[prefix].fail++;}
+else if(s==='skip'){skip++;catStats[prefix].skip++;}
+});
+});
+}
+const catNames={A:'사용자 프론트엔드',B:'관리자 콘텐츠',C:'예약/진료 관리',D:'인력 관리',E:'광고 시스템',F:'CPV 과금',G:'AI 자동화',H:'결제 시스템',I:'메일 시스템',J:'알림/FCM',K:'시스템/설정',L:'지갑/정산',API:'API 엔드포인트',M:'모바일 앱'};
+document.getElementById('totalCount').textContent=total;
+document.getElementById('passCount').textContent=pass;
+document.getElementById('failCount').textContent=fail;
+document.getElementById('skipCount').textContent=skip;
+document.getElementById('untestedCount').textContent=total-pass-fail-skip;
+const tested=pass+fail+skip;
+const pct=total?Math.round(tested/total*100):0;
+document.getElementById('totalPct').textContent=pct+'%';
+document.getElementById('totalProgFill').style.width=pct+'%';
+// category progress
+let catHtml='';
+for(const[prefix,st] of Object.entries(catStats)){
+const cpct=st.total?Math.round((st.pass+st.fail+st.skip)/st.total*100):0;
+const passRate=st.total?Math.round(st.pass/st.total*100):0;
+catHtml+=`<div class="prog-wrap"><div class="prog-label"><span>${catNames[prefix]||prefix} (${st.pass}/${st.total} PASS, ${st.fail} FAIL)</span><span>${cpct}%</span></div><div class="prog-bar"><div class="prog-fill" style="width:${cpct}%;background:${st.fail>0?'linear-gradient(90deg,var(--fail),var(--skip))':'linear-gradient(90deg,var(--pri),var(--ok))'}"></div></div></div>`;
+const progEl=document.getElementById('catProg-'+prefix);
+if(progEl)progEl.textContent=`${st.pass}/${st.total} PASS (${passRate}%)`;
+}
+document.getElementById('catSummaryList').innerHTML=catHtml;
+}
+
+// ==================== SAVE/LOAD ====================
+function saveResults(){
+localStorage.setItem(STORAGE_KEY,JSON.stringify(results));
+const now=new Date().toLocaleString('ko-KR');
+document.getElementById('lastSaved').textContent='자동 저장: '+now;
+}
+
+function loadSaved(){
+const d=localStorage.getItem(STORAGE_KEY);
+if(d){results=JSON.parse(d);}
+}
+
+function resetAll(){
+if(!confirm('모든 테스트 결과를 초기화하시겠습니까?'))return;
+results={};
+localStorage.removeItem(STORAGE_KEY);
+location.reload();
+}
+
+// ==================== EXPORT ====================
+function exportResults(){
+let csv='ID,Name,File,Check,Status,Memo\n';
+for(const[catKey,items] of Object.entries(features)){
+items.forEach(f=>{
+f.checks.forEach((c,ci)=>{
+const k=f.id+'_'+ci;
+const s=results[k]||'untested';
+const memo=(results[f.id+'_memo']||'').replace(/"/g,'""');
+csv+=`"${f.id}","${f.name}","${f.file}","${c}","${s}","${memo}"\n`;
+});
+});
+}
+const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+const url=URL.createObjectURL(blob);
+const a=document.createElement('a');
+a.href=url;a.download='qa_results_'+new Date().toISOString().slice(0,10)+'.csv';
+a.click();URL.revokeObjectURL(url);
+}
+
+// ==================== REQUESTS ====================
+function submitRequest(){
+const t=document.getElementById('reqTitle').value.trim();
+const c=document.getElementById('reqContent').value.trim();
+if(!t){alert('제목을 입력하세요');return;}
+// save locally
+if(!results._requests)results._requests=[];
+results._requests.push({
+title:t,content:c,
+category:document.getElementById('reqCategory').value,
+priority:document.getElementById('reqPriority').value,
+url:document.getElementById('reqUrl').value.trim(),
+created:new Date().toISOString()
+});
+saveResults();
+renderRequests();
+document.getElementById('reqTitle').value='';
+document.getElementById('reqContent').value='';
+document.getElementById('reqUrl').value='';
+// also try server
+fetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+body:`action=create&title=${encodeURIComponent(t)}&content=${encodeURIComponent(c)}`}).catch(()=>{});
+}
+
+function renderRequests(){
+const list=results._requests||[];
+const el=document.getElementById('reqList');
+if(!list.length){el.innerHTML='<p style="color:var(--text2);font-size:13px;">등록된 수정요청이 없습니다.</p>';return;}
+let html='';
+list.slice().reverse().forEach((r,i)=>{
+const priColors={high:'#ef4444',medium:'#f59e0b',low:'#22c55e'};
+html+=`<div class="req-card"><div class="req-title"><span style="color:${priColors[r.priority]||'#666'}">●</span> ${r.title} <small style="color:var(--text2)">[${r.category}]</small></div><p style="font-size:12px;margin-top:4px;">${r.content||'-'}</p><div class="req-meta">${r.created?.slice(0,16)||''} ${r.url?'<a href="'+r.url+'" target="_blank">링크</a>':''}</div></div>`;
+});
+el.innerHTML=html;
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded',()=>{init();renderRequests();
+document.getElementById('timestampArea').textContent='대시보드 생성: 2026-03-13 | 서버: hms.seoulbeauty.app';
+});
+</script>
+</body>
+</html>

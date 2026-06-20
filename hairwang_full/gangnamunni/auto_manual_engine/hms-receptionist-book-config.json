@@ -1,0 +1,243 @@
+{
+  "_comment": "HMS HMS 접수원 매뉴얼 - Auto Manual Config",
+  "_version": "1.0",
+  "_updated": "2026-03-05",
+  "configKey": "hms-receptionist-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/",
+  "browser": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "headless": true
+  },
+  "login": {
+    "required": true,
+    "url": "login",
+    "usernameField": "input[name='email']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[type='submit']",
+    "successIndicator": ".side-menus",
+    "username": "bertram79@example.com",
+    "password": "123456"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "HMS 로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 성공 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "HMS 접수원 매뉴얼",
+    "outputDir": "../uploads/hms-receptionist-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_reception",
+      "title": "접수 관리",
+      "icon": "bi-person-plus",
+      "pages": [
+        {
+          "key": "rcpt_patients",
+          "label": "환자 관리",
+          "url": "patients",
+          "description": "환자 등록/목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_doctors",
+          "label": "의사 목록",
+          "url": "doctors",
+          "description": "담당 의사 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_appointments",
+          "label": "예약 관리",
+          "url": "appointments",
+          "description": "예약 접수",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_bills",
+          "label": "청구서",
+          "url": "bills",
+          "description": "청구서 발행",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_opd_charges",
+          "label": "진료비",
+          "url": "doctor-opd-charges",
+          "description": "외래 진료비",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_services",
+      "title": "서비스 관리",
+      "icon": "bi-clipboard-check",
+      "pages": [
+        {
+          "key": "rcpt_diagnosis",
+          "label": "진단 검사",
+          "url": "patient-diagnosis-test",
+          "description": "검사 결과",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_enquiries",
+          "label": "문의",
+          "url": "enquiries",
+          "description": "환자 문의",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_visitors",
+          "label": "방문자 관리",
+          "url": "visitors",
+          "description": "방문자 기록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_notice",
+          "label": "게시판",
+          "url": "notice-boards",
+          "description": "공지사항",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_opds",
+          "label": "입원/외래",
+          "url": "opds",
+          "description": "입원/외래 기록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_meeting",
+          "label": "실시간 회의",
+          "url": "live-meeting",
+          "description": "화상 회의",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_payroll",
+          "label": "급여",
+          "url": "employee/payroll",
+          "description": "급여 내역",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch03_medical",
+      "title": "의료 기록",
+      "icon": "bi-file-medical",
+      "pages": [
+        {
+          "key": "rcpt_admissions",
+          "label": "환자 입원",
+          "url": "patient-admissions",
+          "description": "입원 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_pathology",
+          "label": "병리 검사",
+          "url": "pathology-tests",
+          "description": "병리 검사",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_radiology",
+          "label": "영상 검사",
+          "url": "radiology-tests",
+          "description": "영상 검사",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_ambulances",
+          "label": "구급차",
+          "url": "ambulances",
+          "description": "구급차 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "rcpt_mail",
+          "label": "SMS/메일",
+          "url": "mail",
+          "description": "SMS/이메일 발송",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="ko" data-bs-theme="light">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울미녀 1차 검수 — 전체 해결 방안 (사이트·앱·도메인) · 2026-06-01</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sol-theme')||'light';document.documentElement.setAttribute('data-bs-theme',t);})();</script>
+<style>
+ body{font-family:'Noto Sans KR',sans-serif;line-height:1.6;}
+ .container{max-width:1180px;}
+ .hero{background:linear-gradient(135deg,#AE1932 0%,#e0566f 100%);color:#fff;padding:26px;border-radius:14px;margin-bottom:20px;box-shadow:0 4px 18px rgba(174,25,50,.25);}
+ .hero h1{font-weight:800;margin:0;font-size:1.5rem;}
+ .answer{background:linear-gradient(135deg,#198754,#20c997);color:#fff;padding:18px 20px;border-radius:12px;margin-bottom:18px;}
+ .answer a{color:#fff;text-decoration:underline;font-weight:700;}
+ .stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
+ .stat{padding:14px;border-radius:10px;text-align:center;color:#fff;}
+ .stat .n{font-size:1.6rem;font-weight:800;} .stat .l{font-size:.8rem;opacity:.92;}
+ .s-total{background:linear-gradient(135deg,#0d6efd,#6610f2);} .s-done{background:#198754;}
+ .s-open{background:#dc3545;} .s-build{background:#0dcaf0;color:#053;} .s-spec{background:#ffc107;color:#212529;}
+ .filters{position:sticky;top:0;background:var(--bs-body-bg);padding:10px 0;z-index:10;border-bottom:1px solid var(--bs-border-color);margin-bottom:10px;}
+ .filters button{margin:2px;}
+ .sec-title{margin-top:26px;padding-bottom:8px;border-bottom:2px solid var(--bs-border-color);font-weight:700;font-size:1.15rem;}
+ .sec-cnt{font-size:.85rem;color:var(--bs-secondary-color);font-weight:500;}
+ .issue-card{background:var(--bs-tertiary-bg);border-radius:10px;padding:14px 16px;margin-bottom:12px;border-left:5px solid #AE1932;}
+ .ic-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+ .ic-id{background:#AE1932;color:#fff;padding:2px 9px;border-radius:5px;font-family:monospace;font-weight:700;font-size:.78rem;}
+ .ic-area{font-size:.78rem;color:var(--bs-secondary-color);} .ic-sheet{font-size:.74rem;color:#888;margin-left:auto;}
+ .ic-screen{font-weight:700;margin-bottom:6px;}
+ .ic-issue{font-size:.92rem;margin-bottom:8px;}
+ .ic-row{display:flex;gap:10px;font-size:.86rem;margin-top:5px;}
+ .ic-k{flex:0 0 64px;font-weight:700;color:#AE1932;} .ic-v{flex:1;color:var(--bs-body-color);}
+ .mono{font-family:monospace;font-size:.8rem;word-break:break-all;}
+ .theme-toggle{position:fixed;top:14px;right:14px;z-index:1000;}
+ .codex-box{background:var(--bs-tertiary-bg);border:2px solid #6610f2;border-radius:12px;padding:16px;margin:20px 0;}
+ @media(max-width:720px){.stat-row{grid-template-columns:repeat(2,1fr);}}
+</style></head>
+<body>
+<button class="btn btn-sm btn-outline-secondary theme-toggle" onclick="var h=document.documentElement,t=h.getAttribute('data-bs-theme')==='dark'?'light':'dark';h.setAttribute('data-bs-theme',t);localStorage.setItem('sol-theme',t);"><i class="bi bi-circle-half"></i></button>
+<div class="container py-4">
+ <div class="hero"><h1><i class="bi bi-clipboard2-check-fill"></i> 서울미녀 1차 검수 — 전체 해결 방안</h1>
+   <div style="margin-top:6px;opacity:.95;">사이트 · 모바일 앱 · 메인 도메인 | 최종 업데이트 <b>2026-06-01</b> | 검수 명세 약 100건 → 정규화 97건</div></div>
+
+ <div class="answer"><b><i class="bi bi-phone-fill"></i> 메인 도메인 정상화 완료</b><br>
+   폰 브라우저에서 <a href="https://seoulbeauty.app/">seoulbeauty.app</a> 입력 → 302 → <code style="color:#fff">/gangnamunni/</code> → <b>200 (서울미녀 앱 정상 로딩)</b>. 데스크톱·모바일 모두 검증. hms.seoulbeauty.app 회귀 없음.<br>
+   추가로 메인도메인 전용 버그(로그인 //bbs 더블슬래시) 5개 파일 수정 완료.</div>
+
+ <div class="stat-row">
+  <div class="stat s-total"><div class="n">97</div><div class="l">전체 항목</div></div>
+  <div class="stat s-done"><div class="n">84</div><div class="l">해결완료 (87%)</div></div>
+  <div class="stat s-open"><div class="n">3</div><div class="l">추가 조치(코어/iOS)</div></div>
+  <div class="stat s-build"><div class="n">5</div><div class="l">앱 빌드 필요</div></div>
+  <div class="stat s-spec"><div class="n">5</div><div class="l">사양/정책 협의</div></div>
+ </div>
+
+ <div class="filters">
+  <b style="font-size:.85rem;">필터:</b>
+  <button class="btn btn-sm btn-dark" onclick="flt('all')">전체</button>
+  <button class="btn btn-sm btn-success" onclick="flt('resolved')">해결완료</button>
+  <button class="btn btn-sm btn-danger" onclick="flt('open')">추가조치</button>
+  <button class="btn btn-sm btn-info" onclick="flt('needs-build')">앱빌드</button>
+  <button class="btn btn-sm btn-warning" onclick="flt('spec-pending')">사양협의</button>
+  &nbsp;|&nbsp;
+  <button class="btn btn-sm btn-outline-secondary" onclick="fa('domain')">도메인</button>
+  <button class="btn btn-sm btn-outline-secondary" onclick="fa('site')">사이트</button>
+  <button class="btn btn-sm btn-outline-secondary" onclick="fa('admin')">관리자</button>
+  <button class="btn btn-sm btn-outline-secondary" onclick="fa('app')">앱</button>
+ </div>
+
+ <h2 class="sec-title" id="sec-domain">도메인/인프라 <span class="sec-cnt">5건</span></h2>
+<div class="issue-card" data-status="resolved" data-area="domain">
+  <div class="ic-head">
+    <span class="ic-id">1-13</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">도메인/인프라</span>
+    <span class="ic-sheet">신규(폰 메인도메인 접속) / 인프라</span>
+  </div>
+  <div class="ic-screen">메인 도메인 접속 (모바일 브라우저)</div>
+  <div class="ic-issue"><b>지적</b> 폰 브라우저에서 메인 도메인 seoulbeauty.app 접속 시 사이트가 뜨지 않음 (HTTP 500). www 포함 루트 도메인으로는 정상 동작하지 않고, 실제 사이트는 hms.seoulbeauty.app/hairwang/gangnamunni/ 에서만 200으로 정상 표시됨.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">seoulbeauty.app(루트 도메인) → Cloudflare 302 → /gangnamunni/ 로 리다이렉트되지만, 루트 도메인 전용 Apache vhost에 /gangnamunni 라우팅(Alias 또는 ServerAlias)이 존재하지 않음. 그 결과 PHP-FPM(proxy_fcgi)이 실제 파일이 없는 잘못된 SCRIPT_FILENAME 경로를 받아 AH01071 'Primary script unknown' → HTTP 500 반환. 정상 동작하는 hms vhost는 /hairwang alias + /js /css /img /icons 루트 alias를 보유하고 있으나, 루트 도메인(seoulbeauty.app, www.seoulbeauty.app)에는 해당 매핑이 없음. (정상 경로: hms.seoulbeauty.app/hairwang/gangnamunni/ — HMS_GANGNAMUNNI_INTEGRATION_STATUS.md 16행에 명시)</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">[2026-06-01 해결] hms vhost(/etc/httpd/conf.d/hms.seoulbeauty.app.conf :80/:443)에 ServerAlias seoulbeauty.app www.seoulbeauty.app + Alias /gangnamunni→hairwang_full/gangnamunni + 호스트한정 루트 리다이렉트(RewriteRule ^/?$ /gangnamunni/) 추가. httpd.conf의 깨진 inline seoulbeauty:80 vhost(옛 스냅샷+php84) 비활성화. httpd -t Syntax OK 후 reload. Cloudflare=Flexible SSL(origin :80).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">신규/수정: Apache 루트 도메인 vhost (예: /etc/httpd/conf.d/seoulbeauty.app.conf 신설) 또는 기존 /etc/httpd/conf.d/hms.seoulbeauty.app.conf 에 ServerAlias+Alias 추가; hairwang_full/gangnamunni/.htaccess (참고: h:/carebaby_project/site_get/_server_files/.htaccess — HTTPS강제+CSP보안헤더)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">외부 검증: https://seoulbeauty.app/ → 302 → /gangnamunni/ → 200 (모바일·데스크톱, '병원 찾기 | 서울미녀'). hms.seoulbeauty.app 회귀 없음(200). 주요 22/23 페이지 메인도메인 200 확인.</span></div>
+</div>
+<div class="issue-card" data-status="open" data-area="domain">
+  <div class="ic-head">
+    <span class="ic-id">1-3</span>
+    <span class="badge text-bg-danger ic-status">추가조치</span>
+    <span class="ic-area">도메인/인프라</span>
+    <span class="ic-sheet">오류#-</span>
+  </div>
+  <div class="ic-screen">WebView base URL — Gnuboard \$connect 파라미터 충돌</div>
+  <div class="ic-issue"><b>지적</b> 앱이 메인 도메인에 쿼리 파라미터를 붙여 로딩할 때 connect=android가 들어가면 500 에러 발생 위험</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">서버 루트가 Gnuboard 위에 올라가 있어 'connect'라는 쿼리/세션 변수명이 Gnuboard 내부 DB 핸들 변수 \$connect와 충돌. 실측: https://...gangnamunni/?connect=android → HTTP 500, 반면 ?app_connect=android → HTTP 200. 네이티브 리패키징 시 메모리(native_app_repackage)대로 connect=android → app_connect=android로 이미 교체했고, 현재 앱 소스(MainActivity.java)는 connect=android를 직접 구성하지 않음(grep 0건). 단 서버측 500 버그는 잠재적으로 남아있어 외부 링크/푸시 딥링크가 connect= 를 달면 재발.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">앱 측: 추가 작업 불필요(app_connect 사용 확인됨). 서버 측(컨펌 필요 — 정상 동작 중 백엔드 변경): Gnuboard 루트 진입 스크립트(common.php/_common.php 인근)에서 외부 GET 파라미터 'connect'를 내부 \$connect로 덮어쓰지 않도록 가드 추가(예: 진입부에서 unset(\$_GET['connect']) 또는 변수 분리). 차선책: 앱/푸시 측에서 절대 connect= 파라미터를 URL에 붙이지 않는 규칙 고정(현재 준수 중).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono"></span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl ?connect=android → 500, ?app_connect=android → 200 실측. 앱 소스 grep 결과 connect=android 미사용(app_connect만 사용).</span></div>
+</div>
+<div class="issue-card" data-status="open" data-area="domain">
+  <div class="ic-head">
+    <span class="ic-id">1-6</span>
+    <span class="badge text-bg-danger ic-status">추가조치</span>
+    <span class="ic-area">도메인/인프라</span>
+    <span class="ic-sheet">오류#-</span>
+  </div>
+  <div class="ic-screen">메인 도메인 HTTPS 강제 / 리다이렉트</div>
+  <div class="ic-issue"><b>지적</b> 앱이 도메인 로딩 시 HTTP↔HTTPS 리다이렉트로 인한 로딩 지연/혼합콘텐츠 우려</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">슬래시 없는 루트(.../gangnamunni)는 301로 http://...gangnamunni/ 로 안내되지만, 최종적으로 HSTS/Cloudflare가 https로 재승격되어 200 도달. 앱·iOS 소스는 처음부터 슬래시 포함 https URL을 직접 로딩하므로 실사용 경로에서는 리다이렉트 미발생. iOS Info.plist에 NSAllowsArbitraryLoads(ATS 전면 허용) 설정이 존재 — 보안상 불필요하게 넓음.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">앱 측: 현재 URL이 슬래시 포함 https 직접 로딩이라 추가 작업 불필요(정상). 보안 강화 권장(앱 재빌드): iOS Info.plist의 NSAllowsArbitraryLoads=true 제거 — 모든 트래픽이 hms.seoulbeauty.app HTTPS 단일 도메인이므로 ATS 예외 불필요. 서버 측(선택): 무슬래시 루트 301 타겟을 http:// 대신 https:// 로 직접 지정해 1-hop 절감(Apache .htaccess DirectorySlash/Redirect). 다만 HSTS로 사실상 무영향이라 우선순위 낮음.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono"></span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl .../gangnamunni (무슬래시) → 301 → http://.../ → 최종 -L 추적 시 https 200 도달 확인. iOS Info.plist NSAllowsArbitraryLoads 키 존재 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="domain">
+  <div class="ic-head">
+    <span class="ic-id">1-8</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">도메인/인프라</span>
+    <span class="ic-sheet">오류#23 / 1차검수 1-8</span>
+  </div>
+  <div class="ic-screen">이벤트 상세 — 응모 이벤트 클릭 (event_detail.php)</div>
+  <div class="ic-issue"><b>지적</b> 응모 이벤트 클릭 시 로그인이 풀리고 404가 뜨며, 404 페이지에서 뒤로가기(Back) 클릭 시 외부/엉뚱한 루트 도메인(https://hms.seoulbeauty.app/)으로 이동하는 도메인 일관성 문제.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">응모 폼 제출 시 비로그인 사용자를 로그인 페이지로 보내는 JS 리다이렉트가 상대경로 '../bbs/login.php' 를 사용. Cloudflare/Apache 프록시 환경에서 /hairwang/gangnamunni/ 컨텍스트가 빠진 경로로 잘못 해석되어 404 발생. 404 페이지에서 Back 시 https://hms.seoulbeauty.app/ 루트(사실상 컨텍스트 이탈)로 빠짐. 이는 1-13 메인 도메인 라우팅 문제와 동일한 '루트 컨텍스트/경로 매핑 부재' 계열의 도메인 일관성 이슈. (근거: _server_files/event_detail_current.php 352-372행 주석에 원인·수정 명시)</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">JS 로그인 리다이렉트를 상대경로 '../bbs/login.php' → 절대경로 '/hairwang/bbs/login.php?url='+encodeURIComponent(location.href) 로 변경(event_detail_current.php 367-372행에 이미 반영됨, 기존 코드는 주석 보존). 추가로 도메인 일관성 차원에서: (1) 사이트 전반의 로그인/네비 링크가 상대경로 대신 /hairwang/... 절대경로 또는 site base URL 상수를 사용하도록 통일, (2) 1-13 해결 시 루트 도메인(seoulbeauty.app)에 /gangnamunni 및 /hairwang alias가 함께 매핑되어야 '/hairwang/bbs/login.php' 절대경로가 메인 도메인 접속 시에도 동일하게 동작함(루트 도메인에 /hairwang alias 부재 시 절대경로도 404 → 1-13과 묶어서 해결 필요), (3) 404/오류 페이지 Back 동작이 외부 루트로 튀지 않도록 events.php 등 내부 경로로 회귀하도록 보장.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/event_detail_current.php (라인 352-372 로그인 리다이렉트 절대경로 픽스), event_api.php (응모 처리). 루트 도메인 /hairwang alias는 1-13의 Apache vhost 수정과 연동 필요.</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">비로그인 상태에서 응모 이벤트 클릭 → /hairwang/bbs/login.php?url=... 로 정상 이동(404 미발생), 로그인 후 원래 이벤트로 복귀 확인. 메인 도메인(seoulbeauty.app) 접속 시에도 동일 경로 200 확인. 실기 캡처. [2026-06-01] event_detail.php 로그인 redirect 절대경로 /hairwang/bbs/login.php는 메인도메인(hms vhost /hairwang alias)에서도 200 동작. 메인도메인 라우팅(1-13) 해결로 외부도메인 이탈 현상 해소.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="domain">
+  <div class="ic-head">
+    <span class="ic-id">NEW-LOGINFIX</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">도메인/인프라</span>
+    <span class="ic-sheet">메인도메인 후속(2026-06-01 발견·해결)</span>
+  </div>
+  <div class="ic-screen">로그인 필요 페이지 (my_reviews / notification_settings / profile_edit / chat / community)</div>
+  <div class="ic-issue"><b>지적</b> 메인도메인(seoulbeauty.app/gangnamunni/)에서 비로그인 시 로그인 리다이렉트가 //bbs/login.php(더블슬래시) 로 생성되어 브라우저가 'bbs'를 호스트로 인식 → 로그인 페이지 진입 불가.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">dirname($_SERVER['SCRIPT_NAME'],2) 사용 — hms경로(/hairwang/gangnamunni/x.php)에선 '/hairwang' 반환되나 메인도메인(/gangnamunni/x.php)에선 '/'(루트) 반환 → '/'+'/bbs/login.php' = '//bbs/login.php'.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">[2026-06-01 해결] 5개 파일의 dirname(...,2) 호출을 rtrim(dirname(...,2),'/')로 래핑. → 루트('/')일 때 ''가 되어 '/bbs/login.php'(단일 슬래시) 생성, /hairwang일 때 '/hairwang/bbs/login.php' 유지. 각 파일 백업(.bak_20260601_loginfix) + php82 -l 문법검증 통과.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">gangnamunni/{my_reviews,notification_settings,profile_edit,chat,community}.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">외부: https://seoulbeauty.app/gangnamunni/my_reviews.php → 302 Location:/bbs/login.php?url=%2Fgangnamunni%2Fmy_reviews.php (단일 슬래시 정상). php82 -l 5/5 통과.</span></div>
+</div><h2 class="sec-title" id="sec-site">사이트(웹/모바일웹) <span class="sec-cnt">61건</span></h2>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-10</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#9</span>
+  </div>
+  <div class="ic-screen">병원상세 — 상담신청 (detail.php → consultation_submit.php)</div>
+  <div class="ic-issue"><b>지적</b> 상담신청 제출 시 '신청 중 오류가 발생했습니다' 메시지로 실패.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">consultation_submit.php가 dbconfig.php를 잘못된 경로로 require하여 DB 연결 실패→JSON success:false 반환, detail.php가 오류 alert 표시.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">consultation_submit.php가 require_once __DIR__.'/../dbconfig.php'로 정상 로드 + mysqli 연결 + utf8mb4. detail_current.php line 2323 submitConsultation()이 fetch('consultation_submit.php')로 POST(line 2345), 실패 시 line 2360 오류 메시지. consultation_submit.php 텍스트필드+사진 첨부(uploads/consultations/) 처리 정상. 라이브 200 응답으로 동작 확인.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/consultation_submit.php; detail_current.php (line 2323-2360)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 consultation_submit.php → HTTP 200. detail.php → 302(파라미터/로그인 정상). 상담 모달 제출 시 success 응답 실기 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-11</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#13 / 개발여부#3</span>
+  </div>
+  <div class="ic-screen">마이페이지 (mypage.php)</div>
+  <div class="ic-issue"><b>지적</b> 로그인 상태로 마이페이지 진입 시 정보 확인 불가(빈 화면/리다이렉트 루프).</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">앱 WebView에서 Gnuboard 세션이 없어 로그인 상태 인식 실패 → 정보 미표시 또는 로그인 페이지 무한 리다이렉트.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">mypage.php에 픽스 적용됨. line 9-14 Gnuboard common.php를 init.php 직접호출 대신 include(세션 충돌 방지), line 24-25 includes/sso_auto_login.php로 SSO 토큰 기반 자동 로그인(앱 WebView 세션 부재 보완), line 28 로그인 체크($is_member+mb_id), line 30-38 비로그인 시 앱모드는 JSON login_required 반환·웹은 리다이렉트 대신 로그인 안내 UI 표시(루프 방지). 로그인 시 line 40-46 회원정보 세팅 + line 49~ 알림/응모/찜/포인트 카운트 prepared statement 조회.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/mypage.php (line 9-46, 49~); includes/sso_auto_login.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 mypage.php → HTTP 200. SSO 자동 로그인 + 비로그인 안내 UI 코드 확인. 로그인 WebView 진입 시 회원정보/카운트 표시 실기 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-12</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">개발여부#2</span>
+  </div>
+  <div class="ic-screen">회원가입 완료 (register_result.php)</div>
+  <div class="ic-issue"><b>지적</b> 가입 완료 후 '메인으로' 버튼 또는 취소 버튼 클릭 시 오류 페이지(404).</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">회원가입 완료 스킨(register_result.skin.php)의 이동 링크 URL이 정합하지 않아 존재하지 않는 경로로 이동→404.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">register_result.php를 정합 URL로 재작성: includes/init.php 로드 후 가입 완료 안내 + a href='index.php' '메인으로' 버튼(절대 정합 경로). 3종 스킨 register_result.skin.php의 이동 URL도 index.php로 정정하여 404→200. 하단 bottom_nav include로 일관 네비 제공.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/register_result.php; bbs/register_result.php; (skin) register_result.skin.php × 3</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 register_result.php → HTTP 200. 소스 line 21 a href='index.php' 확인. 가입 완료 후 '메인으로' 클릭 시 index.php(200) 이동 실기 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-2</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#2</span>
+  </div>
+  <div class="ic-screen">홈 (index.php)</div>
+  <div class="ic-issue"><b>지적</b> 페이지 새로고침 시 화면이 강제로 최상단으로 튐 (스크롤 위치 유실).</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">index.php 하단 JS에서 페이지 로드 후 setTimeout 3초 뒤 무조건 scrollTo(0,0) 호출 — 사용자가 스크롤 중이어도 강제로 최상단 이동시킴.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">index_current.php(=배포본)에 픽스 적용됨. line 1403-1420 [1차 검수 #2 - 2026-05-28] 블록: history.scrollRestoration='auto' 설정으로 브라우저 기본 스크롤 복원 사용 + 기존 setTimeout 3초 강제 scrollTo(0) 코드 제거(주석 보존). 추가 픽스 불필요.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/index_current.php (line 1403-1420)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 GET https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php → HTTP 200. 소스에 scrollRestoration='auto' + 강제 scrollTo 제거 주석 확인. 실기 새로고침 시 스크롤 위치 유지.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-3</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#4</span>
+  </div>
+  <div class="ic-screen">병원리스트 (hospitals.php / includes/rolling_banner.php)</div>
+  <div class="ic-issue"><b>지적</b> 병원 리스트 스크롤 중 주기적으로 화면이 자동으로 최상단으로 이동하는 버그.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">롤링 배너 자동 슬라이드 시 scrollIntoView()를 사용 — 가로 슬라이드 의도였으나 세로 스크롤 위치까지 끌어올려 주기적으로 페이지가 최상단으로 튐.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">includes/rolling_banner.php에서 scrollIntoView() → element.scrollLeft 직접 제어로 변경하여 가로 이동만 수행, 세로 스크롤 영향 제거. (배포본 rolling_banner.php 반영, hospitals.php 라이브 200.)</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/includes/rolling_banner.php; hospitals.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 hospitals.php → HTTP 200. 메모리 기록 픽스 확인(scrollIntoView→scrollLeft). 실기 스크롤 중 최상단 튐 미발생.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-4</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#로그인</span>
+  </div>
+  <div class="ic-screen">메인/로그인 (/hairwang/bbs/login.php)</div>
+  <div class="ic-issue"><b>지적</b> 메인에서 로그인 버튼 클릭 시 HTTP 500 에러.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">Gnuboard 로그인 페이지(/bbs/login.php)의 일시적 세션/include 충돌 이슈. 현재 라이브는 정상.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">현재 /hairwang/bbs/login.php HTTP 200 정상 응답 확인됨. 로그인 진입 자체는 해소. (회귀 방지를 위해 init.php 직접 사용 금지·common.php 위임 원칙 유지.) 비밀번호/계정찾기 SMTP 발송은 별도 항목(Phase5 5-11/관리자#19).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/bbs/login.php; login_current.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl https://hms.seoulbeauty.app/hairwang/bbs/login.php → HTTP 200 확인. 메인 로그인 버튼 클릭 시 500 미발생.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-5</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#13</span>
+  </div>
+  <div class="ic-screen">예약 (booking.php)</div>
+  <div class="ic-issue"><b>지적</b> 진료과/의사 선택 로직 오류 — 의사 5명을 개별 선택할 수 없음.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">진료과 미선택 시 의사 목록이 로드되지 않고, 진료과 onchange와 초기 의사 로드 연동이 누락되어 개별 의사 선택 불가.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">booking_current.php(배포본)에 픽스 적용됨. 진료과 select onchange='loadDoctors(this.value)' + 페이지 로드 시 loadDepartments() 호출, line 740-743 [1차 검수 #13 - 2026-05-28] 진료과 미선택 시에도 loadDoctors('')로 전체 의사 목록 로딩. loadDoctors가 api_departments.php?action=doctors로 hms_doctor_id별 옵션 동적 생성. 의사 변경 시 loadSchedule()로 스케줄 재로딩.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/booking_current.php (line 629-650, 740-743); api_departments.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 api_departments.php?action=departments&amp;hospital_id=8093 → {"success":true,..."title":"Doctor","doctor_count":"5"} 정상 반환. action=doctors로 5명 개별 목록 확인. booking.php 라이브 302(로그인 리다이렉트=정상).</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-6</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#14 / 오류#10</span>
+  </div>
+  <div class="ic-screen">예약 (booking.php)</div>
+  <div class="ic-issue"><b>지적</b> 예약 시 시술 선택 항목이 병원에 등록된 시술 데이터와 미연동(하드코딩 기본 6종만 노출).</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">시술 선택 그리드가 병원별 등록 시술을 조회하지 않고 코성형/눈성형 등 하드코딩 fallback만 표시. 신규 시술 마스터 테이블 미참조.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">booking_current.php line 180-187 [1차 검수 #14 - 2026-05-28] 픽스: 1순위로 신 테이블 gangnamunni_treatment_master(SHOW TABLES LIKE로 존재확인 후 hospital_id 기준 is_active 시술 조회), 없으면 구 테이블/태그 fallback. 조회된 $treatment_tags를 array_slice(0,9)로 그리드 렌더, 선택 시 selectTreatment()로 hidden input 세팅. 시술 미등록 병원만 기본 6종 노출.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/booking_current.php (line 180-187, 941-967)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">booking.php 라이브 302(로그인 정상). gangnamunni_treatment_master 우선 조회 SQL 주석 확인. 시술 등록된 병원 예약 진입 시 등록 시술 노출 실기 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-7</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#21</span>
+  </div>
+  <div class="ic-screen">커뮤니티 상세 (detail_community.php)</div>
+  <div class="ic-issue"><b>지적</b> 로그인 상태에서도 댓글 작성이 비활성화되어 작성 불가.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">기존 detail_community.php는 .comment-form CSS만 있고 실제 댓글 입력 폼/POST 핸들러/댓글 테이블이 없어 작성 UI 자체가 미구현(비활성 상태).</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail_community_current.php(배포본, 612줄)에 완전 구현됨. line 84 POST action='comment_submit' 핸들러 + gangnamunni_community_comments 테이블 자동 생성(IF NOT EXISTS). line 549-552 로그인 시 댓글 작성 폼(name=content, maxlength 500), line 556-558 비로그인 시 '로그인하고 댓글 작성하기' 버튼, line 573 AJAX fetch(detail_community.php?id=..&amp;_ajax=1, method POST)로 즉시 등록.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/detail_community_current.php (line 84, 549-573); DB: gangnamunni_community_comments</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 detail_community.php?id=1 응답에 'comment-form' + '로그인하고 댓글 작성하기' 렌더링 확인. 로그인 후 댓글 입력→POST 등록 실기 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">1-8</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#23</span>
+  </div>
+  <div class="ic-screen">이벤트 응모 (event_detail.php)</div>
+  <div class="ic-issue"><b>지적</b> 응모 이벤트 클릭 시 로그인이 풀리고 404 페이지로 이동, 뒤로가기 시 외부 도메인(루트)으로 빠짐.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">응모 폼 로그인 redirect가 상대경로 '../bbs/login.php' 사용 → Cloudflare/Apache 환경에서 /hairwang 컨텍스트가 빠진 경로로 잘못 해석되어 404. 404에서 Back 시 https://hms.seoulbeauty.app/ 루트(외부도메인 느낌)로 이동.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">event_detail_current.php line 353-372 [프론트 #23 - 2026-05-28] 픽스: 로그인 redirect 절대경로 '/hairwang/bbs/login.php?url='+encodeURIComponent(현재URL)로 변경하여 정확한 경로 보장. 기존 상대경로 코드는 line 360-366 주석 블록으로 보존(삭제 금지 원칙). url 파라미터로 로그인 후 응모 페이지 복귀.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/event_detail_current.php (line 353-372)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 event_detail.php → HTTP 200. bbs/login.php → 200. 소스에 절대경로 /hairwang/bbs/login.php 픽스 + 기존 코드 보존 주석 확인. 비로그인 응모→로그인→복귀 실기 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-1</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#5</span>
+  </div>
+  <div class="ic-screen">병원리스트 (hospitals.php)</div>
+  <div class="ic-issue"><b>지적</b> 병원 목록에 시술명/대표 시술 가격이 노출되지 않음</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">기존 hospitals.php 카드는 병원명/주소/평점/태그만 출력하고 시술명·가격 정보가 없었음. 시술 마스터(gangnamunni_treatment_master)와 병원-시술 매핑(gangnamunni_hospital_treatments)을 카드 렌더링과 연동하지 않았음.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">hospitals.php에 ROW_NUMBER() OVER(PARTITION BY hospital_id ORDER BY is_promoted DESC, price_min ASC, popularity_score DESC) 서브쿼리로 병원별 대표 시술 1건(이름+설명)을 일괄 조회($hospital_treatment_descs)하여 카드에 'treatment-desc-preview' 2줄 클램프로 출력(L88-116, L451-456). 가격은 정렬용 min_price 기반 낮은가격순 정렬(L31)과 '부가세 포함·마취비 없음' price-annotation(L457)으로 노출. 가격 숫자를 더 강조하려면 ht.price_min/price_max를 서브쿼리에 추가해 카드에 '₩' 라벨로 렌더.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/hospitals.php (L88-116 대표시술 조회, L451-457 카드 출력)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">hospitals.php HTTP 200 확인. 소스에 treatment_descs 그리드 + price-annotation 존재 확인. inspection 메모리 '1차 #5 price_min/max 그리드' 완료 기록.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-10</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#17</span>
+  </div>
+  <div class="ic-screen">커뮤니티 (community.php) 인기순</div>
+  <div class="ic-issue"><b>지적</b> 인기순 필터가 '좋아요' 카운트를 미반영</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">좋아요 저장 테이블 미연동 + 인기순 정렬이 like_count를 사용하지 않음.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">community.php에서 gangnamunni_community_likes 테이블 자동 생성(L32-35), 게시글 목록에 COALESCE((SELECT COUNT(*) FROM gangnamunni_community_likes WHERE post_id=p.id),0) AS like_count 서브쿼리(L85-87), tab='popular'일 때 ORDER BY like_count DESC, created_at DESC(L56-57). 목록 카드에 하트+like_count 표시(L276). (참고: detail_community.php의 likePost() JS는 아직 alert 플레이스홀더(L425-427)이며 실제 토글 기록/카운트 정렬의 원천은 community.php의 likes 테이블 집계임 — 상세 페이지 즉시 토글까지 원하면 likePost를 fetch로 api 연동 필요.)</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/community.php (L32-57 likes 테이블/정렬, L85-90 집계, L276 표시), detail_community.php (L425 likePost 플레이스홀더 — 잔여)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">community.php?tab=popular HTTP 200. ORDER BY like_count DESC + likes 서브쿼리 확인. 메모리 '1차 #17 toggle_like API + likes 테이블' 완료.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-11</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#20</span>
+  </div>
+  <div class="ic-screen">커뮤니티 시술후기 상세 (detail_community.php)</div>
+  <div class="ic-issue"><b>지적</b> 시술 후기 상세에 카테고리/평점/이미지/병원정보 데이터 항목 부족</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">상세 페이지가 제목/내용/작성자만 표시하고 시술후기 메타데이터 미노출.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail_community.php에 카테고리 뱃지(post-category-badge, L321-322), 좋아요 카운트(L347-348), 사진 갤러리(L356~), 댓글 폼+목록(gangnamunni_community_comments L107~) 추가. 평점/병원정보는 gangnamunni_community_posts의 해당 컬럼(rating/hospital_id) 또는 데모 데이터 항목으로 출력. 레이아웃 순서 [내용→이미지→좋아요/공유](메모리 1차 #19).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/detail_community.php (L107 댓글, L321-348 카테고리/좋아요, L356 사진 갤러리)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail_community.php는 id 없이 302(community.php 리다이렉트, 정상). 소스에 카테고리 뱃지/좋아요/사진 갤러리/댓글 확인. 메모리 '1차 #20 카테고리/평점/이미지/병원' 완료.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-12</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#22</span>
+  </div>
+  <div class="ic-screen">마이 &gt; 내가 작성한 후기 (my_reviews.php)</div>
+  <div class="ic-issue"><b>지적</b> '내가 작성한 후기' 리스트 연동 오류</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">로그인 회원의 작성 후기를 user_id 기준으로 조회/표시하는 연동이 누락 또는 오류.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">my_reviews.php에서 로그인 member_id로 hospital_reviews r LEFT JOIN gangnamunni_hospitals h ON r.hospital_id=h.id WHERE r.user_id=? AND r.is_active=1 ORDER BY created_at DESC 조회(L18). 각 후기에 병원명/보기(review_detail.php)/삭제(is_active=0 soft delete, L8-13) 제공, 후기 없으면 review_write.php 작성 유도(L47). 카운트 헤더 표시(L45).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/my_reviews.php (L8-19 조회/삭제, L45-62 렌더)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">my_reviews.php HTTP 302(비로그인 → 로그인 리다이렉트, 정상). 소스 user_id 필터 + 병원 JOIN + 삭제 핸들러 확인. 메모리 '1차 #22 마이 내후기 연동' 완료.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-13</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#22 / 개발여부#11</span>
+  </div>
+  <div class="ic-screen">후기 작성 (review_write.php)</div>
+  <div class="ic-issue"><b>지적</b> 사용자 직접 후기 작성(텍스트+사진 1~3장) + 이미지 노출 기능 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">사용자가 직접 후기를 작성/사진 첨부하는 프론트 기능 미구현.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">review_write.php 구현: 로그인 필수(L19 비로그인 시 ../bbs/login.php 리다이렉트), 병원/카테고리/평점/시술 선택 폼, POST 시 hospital_reviews INSERT(hospital_id,user_id,title,content,rating,treatments, review_status='pending')(L60-66). 사진은 includes/photo_upload_helper.php의 handle_photo_upload(type='reviews', max_files=5)로 업로드(L76-81). 시술 감성 점수 분석(treatment_review_scorer) + 관리자 알림(notifyAdmins). 관리자 승인 후 공개. 노출은 detail.php 후기 탭/reviews.php에서.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/review_write.php (L49-91 INSERT+사진), h:/carebaby_project/site_get/_server_files/includes/photo_upload_helper.php, reviews.php(노출)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">review_write.php HTTP 302(비로그인 리다이렉트, 정상). reviews.php HTTP 200. 소스에 INSERT+handle_photo_upload(max 5장)+승인 워크플로우 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-14</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#7</span>
+  </div>
+  <div class="ic-screen">검색 (hospitals.php)</div>
+  <div class="ic-issue"><b>지적</b> 반려(rejected) 병원이 검색 결과에 노출됨</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">병원 조회 쿼리에 status(승인 상태) 필터가 없어 미승인/반려 병원도 표시.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">hospitals.php 메인 쿼리에 WHERE is_active=1 AND (status='approved' OR status IS NULL) 적용(L71). status='rejected'/'pending' 병원은 제외. 키워드/카테고리/지역 필터는 이 기본 조건에 AND로 누적되어 반려 병원이 어떤 검색에서도 노출되지 않음. index.php 메인 검색도 status='approved' 적용(메모리 프론트 #7).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/hospitals.php (L71 WHERE 조건), h:/carebaby_project/site_get/_server_files/index.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">hospitals.php HTTP 200. 소스 L71 status='approved' OR NULL 필터 확인. 메모리 '프론트 #7 WHERE is_active=1 AND status=approved' 완료.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-15</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#7</span>
+  </div>
+  <div class="ic-screen">검색 (index.php ↔ hospitals.php)</div>
+  <div class="ic-issue"><b>지적</b> 메인 검색 결과와 병원 탭 검색 결과가 불일치</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">메인과 병원 탭이 서로 다른 쿼리/필터를 사용해 결과 집합이 달랐음.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">index.php 메인 검색 입력을 hospitals.php?q=&lt;keyword&gt;로 리다이렉트(L498, L509)하여 검색 로직을 hospitals.php 단일 쿼리로 일원화. 양쪽 모두 WHERE is_active=1 AND (status='approved' OR status IS NULL) + name/address/treatment_tags LIKE 동일 조건(hospitals.php L71-83). 결과 집합·정렬·반려 제외가 항상 동일.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/index.php (L498, L509 검색 리다이렉트), h:/carebaby_project/site_get/_server_files/hospitals.php (L71-84 통합 쿼리)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">index.php·hospitals.php HTTP 200. index.php 검색이 hospitals.php?q=로 위임됨 확인 → 동일 쿼리 사용. 메모리 '신규 #5 메인↔병원 검색 동기화' 항목과 연계(별도 검증 표기 있었으나 q 위임으로 일치 보장).</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-2</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#6</span>
+  </div>
+  <div class="ic-screen">병원리스트 (hospitals.php) 인피드 광고</div>
+  <div class="ic-issue"><b>지적</b> 인피드 AD를 병원 4개마다 끼워넣는 로직 부재</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">병원 카드 루프에 광고 삽입 인터벌 로직이 없었고, admin ON/OFF 설정(ad_show_hospitals_infeed)·간격 설정(ad_infeed_interval)이 렌더링과 미연결.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">hospitals.php에 getSettingValue로 ad_show_hospitals_infeed(기본 '1') + ad_infeed_interval(기본 4) 로드(L361-362), gangnamunni_ads에서 ad_type='infeed' 활성 광고 10건 조회(L365). 카드 루프에서 $__hi % $_infeed_interval === 0 조건으로 4개마다 ad-card(AD 뱃지) 삽입(L374-391). admin_ad_settings.php에서 ON/OFF·간격 조정 가능.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/hospitals.php (L359-391), gangnamunni_settings(ad_show_hospitals_infeed=1, ad_infeed_interval=4), gangnamunni_ads</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 L374 modulo 인터벌 로직 확인. 메모리 '1차 #6 ad_show_hospitals_infeed=1, interval=4' 완료. hospitals.php HTTP 200.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-3</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#8</span>
+  </div>
+  <div class="ic-screen">상세 (detail.php) 찜하기</div>
+  <div class="ic-issue"><b>지적</b> 병원 찜하기 버튼이 비활성/미작동</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">찜 버튼 UI 가시성 부족(투명 배경) + API 연결 확인 필요. 실제 API(api_wishlist.php)는 정상이었으나 버튼이 눈에 띄지 않았음.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">includes/wishlist_button.php의 renderWishlistButton('hospital',$hospital_id,'lg')를 detail.php L2400에서 호출, renderWishlistScript()로 fetch 기반 toggleWishlist() JS 출력(L50-). API URL은 현재 경로 기준 자동 감지(api_wishlist.php). 비로그인 시 login_required 응답→로그인 유도. detail.php에서 흰 배경+그림자 추가로 가시성 개선(메모리 1차 #8).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/includes/wishlist_button.php, h:/carebaby_project/site_get/_server_files/detail.php (L14 require, L2400 render, L2474 script), api_wishlist.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">api_wishlist.php HTTP 200 확인. wishlist_button.php fetch POST 로직 + active 클래스(빨강 하트) CSS 확인. detail.php renderWishlistButton 호출 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-4</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#9</span>
+  </div>
+  <div class="ic-screen">상세 (detail.php) 탭</div>
+  <div class="ic-issue"><b>지적</b> 상세 페이지 탭을 [홈/의료진/이벤트/시술후기]로 재정의 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">기존 탭 구성이 클라이언트 요구와 불일치했고 유튜브 탭 등 불필요 탭 존재.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php tab-menu(L1690-1705)를 4탭으로 재구성: home(홈) / events(시술, term('service')) / reviews(후기, term('review')) / doctors(위치, term('business')별 의료진). 유튜브 탭 제거(L311-326, L1704 주석). 각 탭은 ?tab= 쿼리로 active 클래스 + 동적 카운트 표시. 멀티산업 대응으로 라벨은 term()으로 추상화(병원=의료진→위치, 시술=이벤트 등).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/detail.php (L1690-1705 탭메뉴, L1704 유튜브 제거)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail.php?tab=doctors/events/reviews 모두 HTTP 200. 소스에 4개 tab-item 확인. 메모리 '1차 #9 [홈/의료진/이벤트/시술후기]' 완료.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-5</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#12</span>
+  </div>
+  <div class="ic-screen">상세 (detail.php) 하단 버튼</div>
+  <div class="ic-issue"><b>지적</b> 상담신청/예약하기 버튼 위치 조정 + 권한 분리</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">버튼이 콘텐츠에 가려지거나 z-index 미설정으로 가시성 떨어짐. 상담(즉시 모달)과 예약(로그인/예약 플로우) 동작 분리 필요.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php 하단 고정 bottom-bar(L1180-1196 CSS position:fixed bottom:0 z-index:100, L2047-2054)에 [상담 신청](btn-outline, openDoctorConsult() 모달 호출) + [예약하기](btn-primary, booking.php?id= 링크) 양분할 배치. 상담은 모달에서 로그인 회원 정보 자동 채움(L2063-2069 get_gangnamunni_member). 예약은 booking.php로 이동(로그인/병원 데이터 연동). z-index 9999+bottom 70px로 가시성 확보(메모리 1차 #12).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/detail.php (L1180-1196 CSS, L2047-2054 버튼, L2056-2095 상담모달)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail.php HTTP 200. bottom-bar 2버튼(상담 모달 + 예약 링크) 분리 확인. 상담 모달에 회원정보 자동입력 로직 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-6</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#19</span>
+  </div>
+  <div class="ic-screen">상세 (detail.php) 의사 탭</div>
+  <div class="ic-issue"><b>지적</b> 의사 탭에 해당 병원이 아닌 신규/타 병원 의사가 노출됨</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">의사 조회 시 hospital_id 필터가 누락되었거나 전체 의사를 노출.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php 의사 조회를 hospital_id로 prepared statement 필터링: gangnamunni_doctors WHERE hospital_id=? AND status='active' 우선 조회(L253, L273), 결과 0건이면 crawled_doctors WHERE hospital_id=? 폴백(L262, L275). 카운트($doctors_count)도 동일 필터. ?를 bind_param('i',$hospital_id)로 바인딩하여 해당 병원 의사만 노출.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/detail.php (L248-286 의사 조회/카운트)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail.php?id=8093&amp;tab=doctors HTTP 200. 소스 SQL 모두 WHERE hospital_id=? 바인딩 확인. 메모리 '프론트 #17/#18/#19 모두 hospital_id 필터링' 진단 완료.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-7</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#17</span>
+  </div>
+  <div class="ic-screen">상세 (detail.php) 이벤트 탭</div>
+  <div class="ic-issue"><b>지적</b> 이벤트 탭에 해당 병원 이벤트가 아닌 전체 1,343건이 일괄 노출됨</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">crawled_events를 병원 구분 없이 전량 조회. hospital_id/hospital_name 매칭 필터 부재.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php 이벤트 조회를 2단계로: (1) gangnamunni_events WHERE hospital_id=? AND is_active=1 prepared 조회(L177, L209). (2) 결과 0건이면 crawled_events WHERE site_id=? AND hospital_name=? 로 병원명 정확 매칭 폴백(L193, L231-237). 카운트도 동일 필터(L177-201). 이로써 1,343건 일괄 노출 → 해당 병원 이벤트만 표시.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/detail.php (L172-246 이벤트 조회/카운트)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail.php?id=8093&amp;tab=events HTTP 200. 소스 모든 이벤트 SQL이 hospital_id=? 또는 hospital_name=? 매칭 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-8</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#18</span>
+  </div>
+  <div class="ic-screen">상세 (detail.php) 후기 탭</div>
+  <div class="ic-issue"><b>지적</b> 후기 탭 카운트가 부정확</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">hospital_reviews 실제 활성 후기 수와 병원 레코드의 review_count 컬럼 값이 불일치, 카운트 소스 일원화 안됨.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php에서 hospital_reviews WHERE hospital_id=? AND is_active=1 의 COUNT(*)를 1차 카운트로 사용(L291-298). 0건이면 hospital.review_count 컬럼값으로 폴백(L299-301). 후기 탭 진입 시 동일 조건으로 실제 후기 20건 조회(L303-309). 탭 라벨에 number_format($reviews_count)로 동적 표시(L1699).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/detail.php (L288-309 후기 카운트/조회, L1699 탭 표시)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail.php?id=8093&amp;tab=reviews HTTP 200. 카운트 fallback 로직 + 탭 number_format 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">2-9</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#16</span>
+  </div>
+  <div class="ic-screen">상세 (detail.php) 홈 탭 소개</div>
+  <div class="ic-issue"><b>지적</b> 병원 소개(description) vs 상세 소개(introduction) 노출 우선순위 오류</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">두 필드 노출 순서/중복 처리 미흡으로 동일 내용 중복 또는 우선순위 역전.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php 홈 탭(L1710-1733)에서 필수 description을 '병원 소개'로 먼저 출력(L1716-1721), 선택 introduction은 description과 다를 때만 '상세 소개'로 2순위 출력(L1722-1727, 중복 차단 조건 $hospital['introduction'] !== $hospital['description']). 둘 다 없으면 empty-state 안내(L1728-1733). nl2br+htmlspecialchars로 안전 출력.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/detail.php (L1710-1733 홈 탭 소개)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail.php?id=8093 HTTP 200. '#19 fix description first introduction second' 주석 + 중복 차단 조건 확인. 메모리 '프론트 #16 description 우선 처리' 진단 완료.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-1</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#3 / 오류#2</span>
+  </div>
+  <div class="ic-screen">홈 최상단 배너</div>
+  <div class="ic-issue"><b>지적</b> 최상단 배너를 터치 슬라이드(스와이프)로 넘길 수 없음</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">캐러셀에 좌우 버튼만 있고 touchstart/touchmove/touchend 핸들러가 없어 모바일 WebView에서 손가락 스와이프 미동작</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">index.php JS에 addSwipeSupport(carouselId) 구현 완료 (line 626-653). touchstart에서 startX/startY 기록, touchmove에서 가로&gt;세로(dx&gt;dy &amp;&amp; dx&gt;10)일 때만 moved=true + preventDefault, touchend에서 |diff|&gt;40px 이면 carouselMove(dir) 호출. DOMContentLoaded에서 addSwipeSupport('ads-carousel'), addSwipeSupport('promo-carousel') 등록 (line 674-675). 추가 캐러셀(ads-carousel-top/bottom)에도 동일 적용 가능.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/index.php (626-653, 674-675), includes/ad_banner.php (132-153 동일 스와이프 구현)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">index.php HTTP 200. JS addSwipeSupport 존재 확인. 실기 SM-A135N 스와이프 동작은 다음 빌드 회귀 테스트로 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-10</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#4</span>
+  </div>
+  <div class="ic-screen">홈 글로벌 네비</div>
+  <div class="ic-issue"><b>지적</b> 로그인 시 global-nav 메뉴가 좁아짐 — center nav 숨김 처리</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">로그인 시 우측 사용자 메뉴가 추가되어 가로폭이 부족, 중앙 메뉴(.global-nav-center)와 충돌하여 레이아웃 깨짐</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">global_nav.php CSS에 모바일(max-width:768px) 및 좁은 데스크탑(&lt;=1024px, is-logged-in)에서 .global-nav-center { display:none } 적용(line 199-219, 주석 '#7 모바일에서 로그인 시 중앙 메뉴 숨김'). 추가로 nav_top_mobile/nav_top_desktop 설정값으로 global-nav--hide-mobile-menu/--hide-desktop-menu 클래스 토글(line 290-293). $is_logged_in 판정은 line 25.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/global_nav.php (25, 199-219, 290-293)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 detail_community.php HTML에 '[프론트 #4] 로그인 시 좁은 데스크탑(&lt;=1024px) 중앙 메뉴 숨김' 주석 확인(line 432). global_nav 소스 미디어쿼리 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-11</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#5</span>
+  </div>
+  <div class="ic-screen">공통 광고 캐러셀</div>
+  <div class="ic-issue"><b>지적</b> #ads-carousel sticky 하단 패딩 부족 (margin/padding-bottom 12px 추가)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">sticky 고정된 광고 배너와 다음 콘텐츠 사이 여백 부족으로 겹쳐 보임</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">includes/ad_banner.php의 .ad-banner-section 에 'position:sticky; top:48px; z-index:50; margin-bottom:16px; padding-bottom:12px; scroll-margin-bottom:20px' 적용 완료(line 73). overflow:hidden + border-radius:12px 로 콘텐츠 클리핑. index.php 측 .carousel-section 도 margin-bottom:16px(line 400).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/ad_banner.php (73), _server_files/index.php (400)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">ad_banner.php line73 padding-bottom:12px + margin-bottom:16px sticky 확인. hospitals.php HTTP 200.</span></div>
+</div>
+<div class="issue-card" data-status="spec-pending" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-12</span>
+    <span class="badge text-bg-warning ic-status">사양/정책 협의</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#6</span>
+  </div>
+  <div class="ic-screen">공통 광고 캐러셀</div>
+  <div class="ic-issue"><b>지적</b> #ads-carousel 페이지별 노출 개수 불일치</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">index.php는 동일 $ads 배열(LIMIT 10, line 56)을 ads-carousel-top/middle/bottom 3곳에 재사용하고, 다른 페이지는 ad_banner.php 단일 캐러셀(LIMIT 10)을 ad_show_&lt;page&gt; 설정으로 ON/OFF → 페이지별 캐러셀 개수/위치 차이가 '불일치'로 보임</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">노출 정책 통일: (1) ad_banner.php와 index.php 모두 동일 쿼리(gangnamunni_ads WHERE is_active=1 ORDER BY display_order ASC LIMIT 10) 사용 중. (2) 페이지별 노출 여부는 admin_ad_settings.php의 ad_show_&lt;page_key&gt;(getSettingValue, 기본 '1')로 일원화되어 있음(ad_banner.php line 10-11). (3) 표시 위치/개수가 다른 것은 의도된 페이지별 슬롯 차이 → 관리자 설정 문서화로 정책 합의 권장. 코드상 데이터 소스는 일치하므로 매뉴얼/정책 항목.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/ad_banner.php (10-13), _server_files/index.php (56, 707/984/1088), admin_ad_settings.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">ad_banner.php/index.php 동일 LIMIT 10 쿼리 확인. 페이지별 슬롯 정책은 검수자와 노출 개수 기준 합의 필요.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-13</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#11</span>
+  </div>
+  <div class="ic-screen">병원 상세 진입</div>
+  <div class="ic-issue"><b>지적</b> 상세 진입 시 상단 빈 공간 발생 (.header fixed top 56px 보정 필요)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">상세 페이지 .header 가 고정 높이로 잡혀 글로벌 네비 아래 빈 공간이 남음</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php .header 를 position:sticky; top:48px (768px+에서 top:56px) 로 변경하고(line 395-411, 주석 '#14 수정: sticky로 변경, 빈 공간 제거'), .image-gallery-container margin-top:0 (line 441 '#14 fix')로 갤러리 상단 여백 제거. z-index:99 로 콘텐츠 위 고정.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/detail.php (395-411, 434-442)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail.php 소스 sticky top:48px/56px + margin-top:0 확인. 라이브 detail.php?id=8093 page-container HTTP 200.</span></div>
+</div>
+<div class="issue-card" data-status="spec-pending" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-14</span>
+    <span class="badge text-bg-warning ic-status">사양/정책 협의</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#12</span>
+  </div>
+  <div class="ic-screen">병원 상세 / 관리자 병원이미지</div>
+  <div class="ic-issue"><b>지적</b> 병원 메인 이미지 등록해도 미반영되는 케이스 — 등록 매뉴얼 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">detail.php는 우선 hospital.main_image_url, 없으면 image_type='main' 이미지를 메인으로 사용(line 63-71). 관리자가 이미지를 추가만 하고 '메인(main)' 타입 지정 또는 대표 이미지로 설정을 안 하면 메인에 미반영</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">(1) 코드: detail.php 폴백 로직 정상(main_image_url → image_type='main' → 기본 이미지). admin_hospital_images.php는 image_types에 'main'=&gt;'메인' 제공(line 294). (2) 매뉴얼 작성 필요: '관리자 → 병원이미지 → 이미지 업로드 시 유형을 메인으로 지정해야 상세 상단/카드 썸네일에 반영됨'을 _manual_hospital_admin_20260528.html에 추가. 현재 매뉴얼(167줄)은 계정/로그인/예약/후기만 다루고 이미지 등록 섹션 없음 → 보완 필요.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/detail.php (63-71), admin_hospital_images.php (294), _manual_hospital_admin_20260528.html (이미지 섹션 누락)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail.php 메인이미지 폴백 로직 확인. 매뉴얼에 이미지 등록(메인 지정) 섹션 부재 → 매뉴얼 추가 후 완료 처리.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-15</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#13</span>
+  </div>
+  <div class="ic-screen">병원 상세</div>
+  <div class="ic-issue"><b>지적</b> 병원명 하단 '성형외과 전문의' 표기가 모든 병원에 동일하게 적용되는 문제</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">기존엔 고정 문구 하드코딩</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php에서 병원별 동적 표기로 변경 완료(line 1478 주석 '#16 fix: dynamic specialty'). 우선순위: gangnamunni_doctors.specialty(active, 최대5) → crawled_doctors.specialty → 카테고리 → description 폴백으로 $spec_text 산출 후 '&lt;spec_text&gt; 전문' 출력(line 1480-1528). 병원별 의료진 진료과 기반으로 다르게 표기. 라이브 8093은 의료진 specialty가 성형외과여서 '성형외과 전문' 표시(정상 동작).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/detail.php (1478-1528, 273-275)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">detail.php 소스 '#16 fix dynamic specialty' + gangnamunni_doctors/crawled_doctors 동적 조회 확인. 라이브 line1417 'hospital-specialty 성형외과 전문' 노출.</span></div>
+</div>
+<div class="issue-card" data-status="spec-pending" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-16</span>
+    <span class="badge text-bg-warning ic-status">사양/정책 협의</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#14</span>
+  </div>
+  <div class="ic-screen">병원 상세 평점</div>
+  <div class="ic-issue"><b>지적</b> 평점 산정 로직 매뉴얼(정책) 공유 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">상세 노출 평점은 gangnamunni_hospitals.rating(저장된 단순 평균값, detail.php line 1534, show_rating=1 일 때만 노출)이며 산정 기준이 문서화되지 않음. 별도 시술별 감성점수는 treatment_review_scorer.php(긍/부정 키워드 → sentiment → AVG)로 집계</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">정책 문서화 항목: (1) 병원 카드/상세 평점 = 승인된 후기 별점의 단순 평균(hospital.rating), 후기 없으면 기본 4.8 표시(line 1534). (2) show_rating=0 이면 평점 미노출(line 1531). (3) 시술별 점수는 treatment_review_scorer.scoreReviewTreatments()가 본문 감성분석으로 avg_sentiment/score 집계(gangnamunni_treatment_scores). → '단순 평균 vs 가중치' 정책을 검수자와 합의 후 매뉴얼 작성(마일스톤 사전확인 #7). 가중치 적용을 원하면 rating 재계산 배치 추가 필요.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/detail.php (1531-1534), _server_files/includes/treatment_review_scorer.php (전체)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">평점 소스(hospital.rating 단순평균 + show_rating 토글) 확인. 산정 정책 매뉴얼 미작성 → 검수자 정책 확정 후 문서화.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-17</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#15</span>
+  </div>
+  <div class="ic-screen">병원 상세 진료시간</div>
+  <div class="ic-issue"><b>지적</b> 진료시간에 점심시간 노출 추가</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">영업시간 데이터에 점심시간이 별도 표시되지 않음</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php에서 점심시간 파싱+노출 구현 완료. business_hours 기본값에 lunch_start/lunch_end(line 107-109), officeHoursComment에서 정규식으로 '점심 13:00~14:00','1시-2시' 등 패턴 추출(line 124-148), '점심시간 없음/X' 패턴이면 no_lunch_break=true 로 미표시(line 145-148). 렌더링 시 no_lunch가 아니고 lunch_start/end 있으면 '🍽 점심시간 13:00 ~ 14:00' 노출(line 1579-1601).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/detail.php (107-148, 1579-1601)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 detail.php?id=8093 HTML에 '점심시간' 노출 확인. 소스 lunch 파싱/렌더 로직 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-18</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#20</span>
+  </div>
+  <div class="ic-screen">병원 상세 유튜브 탭</div>
+  <div class="ic-issue"><b>지적</b> 유튜브 탭 사용 여부 검토 / 제거</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">사용하지 않는 유튜브 탭이 탭 네비게이션에 노출됨</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php 탭 네비게이션에서 유튜브 탭 버튼 제거 완료(line 1704 주석 '유튜브 탭 제거 (클라이언트 요청 #23)'). 라이브 HTML 탭 nav에 data-tab=youtube 버튼 없음 확인. tab-youtube pane div(라이브 line 1931/소스 2012)는 빈 상태로 DOM에 남아있으나 UI 도달 불가(무해한 dead markup). 완전 정리 원하면 youtube_count 조회(line 313-317)와 pane div도 함께 제거 가능.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/detail.php (313-323, 1704, 2012)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 detail.php?id=8093 탭 nav에 youtube data-tab 버튼 0건 확인(grep 빈 결과). pane div만 잔존(미노출).</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-19</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#21</span>
+  </div>
+  <div class="ic-screen">병원 상세 하단 버튼</div>
+  <div class="ic-issue"><b>지적</b> 하단 [상담신청][예약하기] 버튼 양분할 + a태그 text-decoration 제거</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">하단 바 버튼 배치가 양분할이 아니고, 예약하기 a태그에 밑줄(text-decoration) 노출</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php .bottom-bar 를 display:flex; gap:8px 양분할(line 1180-1196, 주석 '#24 fix: bottom bar no overlap')로 구성. 상담신청 button(flex:1, openDoctorConsult) + 예약하기 a.btn(flex:1, booking.php 링크). a태그 밑줄 제거 '.bottom-bar a.btn { text-decoration: none; }'(line 1196) + 라이브 예약하기 a태그 인라인 text-decoration:none. 라이브 line1943-1949 양분할 확인.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/detail.php (1179-1196, 2390), 라이브 detail.php (1943-1949)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 detail.php?id=8093: bottom-bar 내 상담신청 button(flex:1) + 예약하기 a(flex:1, text-decoration:none) 양분할 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-2</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#7 / 오류#8</span>
+  </div>
+  <div class="ic-screen">병원 리스트 카드</div>
+  <div class="ic-issue"><b>지적</b> 병원 리스트 카드의 '상담 신청' 버튼 삭제(상담은 상세 페이지로 일원화)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">hospitals.php 카드 CTA 영역(.card-cta)에 상담신청 a태그(consultation.php 링크)와 상세보기 a태그가 함께 렌더링됨</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">hospitals.php line 461-463의 상담신청 a태그(&lt;a href=consultation.php ... class=btn btn-consult&gt;...상담 신청&lt;/a&gt;) 블록을 제거(주석 처리)하고, 남는 상세보기 버튼(line 464-466)을 .card-cta 풀폭으로 변경. 관련 CSS .btn-consult(line 154,176,188,200)는 다른 화면 미사용 시 정리. 메모리상 '제거 완료'로 기록됐으나 실제 PC 소스와 라이브 모두 상담신청 버튼이 100개 카드에 그대로 렌더링됨 → 미반영 상태로 재작업 필요.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/hospitals.php (460-467, CSS 154/176/188/200)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">[2026-06-01 재검증] 라이브 hospitals.php 렌더링: class="btn btn-consult"=0, consultation.php 링크=0, btn-detail(상세보기)=100. '상담 신청' 텍스트 100회는 전부 '[1차 검수 #7] 버튼 삭제' 안내 주석(병원당 1개)이며 실제 버튼 아님 → 이미 제거 완료.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-20</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">관리자#메인배너 / 오류 B-8</span>
+  </div>
+  <div class="ic-screen">홈 메인 배너</div>
+  <div class="ic-issue"><b>지적</b> 메인 배너 스크롤 시 header에 잘리는 현상</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">메인 배너(AD) sticky/스크롤 시 header(글로벌 네비) sticky 영역과 z-index 겹쳐 배너 이미지 상단이 잘림</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">광고 배너 .ad-banner-section 에 sticky top:48px + z-index:50 + overflow:hidden + border-radius:12px 적용(ad_banner.php line 73). 메모리상 저위험 8건 처리에서 '관리자 #메인배너 header 잘림 → sticky top:56px + z-index:100 + isolation' 적용 완료 기록. 헤더는 z-index 99~9999로 상향되어 겹침 해소. 배너 컨테이너 overflow:hidden 으로 잘림 영역 클리핑.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/ad_banner.php (73), _server_files/index.php (header z-index), docs/scenario_client_qa_fixes_20260307.md (B-8)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">ad_banner.php sticky+z-index+overflow 확인. 메모리 '관리자 #메인배너 잘림 sticky+z-index 정상' 진단 완료. index.php HTTP 200.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-3</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#10</span>
+  </div>
+  <div class="ic-screen">병원 상세</div>
+  <div class="ic-issue"><b>지적</b> 시술명/시술 가격 정보를 예약 버튼 누르지 않아도 보이도록 노출 강화</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">기존엔 가격 정보가 예약 플로우 안에서만 노출</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">detail.php에 시술/가격 탭(tab-treatments) + 홈 탭 그리드 구현 완료. gangnamunni_treatments 조회(line 22) 후 카테고리별 그룹핑하여 시술명/인기 뱃지/단위/소요시간/정가(취소선)+할인가 또는 '상담 후 결정', '부가세 포함·마취비 없음' 주석을 카드로 노출(line 2495-2552). 라이브에서 treatment-card 4건 + '시술/가격' 탭 확인.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/detail.php (19-31, 2494-2552)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 detail.php?id=8093 HTTP 200, treatment-card 4건 + '시술 가격' 텍스트 노출 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-4</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#11</span>
+  </div>
+  <div class="ic-screen">병원 상세</div>
+  <div class="ic-issue"><b>지적</b> 작동 안 하는 플로팅 채팅 버튼 숨김</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">chat.php 링크 플로팅 버튼(.chat-float-btn)이 display:flex 로 항상 노출되나 채팅 기능 미완성</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">라이브 detail.php에 '.chat-float-btn { display: none !important; }' 적용 완료(라이브 line 1067) + 원래 스타일은 .chat-float-btn-legacy 로 보존(line 1069). 버튼 마크업(&lt;a class=chat-float-btn&gt;)은 남아있으나 CSS로 완전 숨김. 주의: PC _server_files/detail.php 사본은 stale(line 1407 display:flex) — 라이브가 정답. PC 사본을 라이브와 동기화 권장.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">라이브 detail.php (1067 display:none !important), PC _server_files/detail.php (1406-1409 stale)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl detail.php?id=8093 결과 '.chat-float-btn { display: none !important; }' 2건 확인. chat.php는 302(로그인 리다이렉트)로 동작 존재.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-5</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#15</span>
+  </div>
+  <div class="ic-screen">예약</div>
+  <div class="ic-issue"><b>지적</b> 예약 시간 선택을 30분 단위로 세분화</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">시간 select가 1시간 단위 10개 옵션만 제공</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">라이브 booking.php의 #timeSelect 를 30분 단위(09:00,09:30,...,18:00, 09~18시 영업+점심 제외 약 20개 옵션)로 확장 완료. HMS 연동 병원은 스케줄 기반 동적 로딩으로 가능 시간만 노출. 주의: PC _server_files/booking.php 사본은 stale(1시간 단위 10개, line 983-992) — 라이브가 정답. PC 사본 동기화 필요.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">라이브 booking.php (#timeSelect), PC _server_files/booking.php (981-993 stale)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl -L booking.php?id=8093 결과 09:30,10:30,...,17:30 등 30분 단위 슬롯 31종 추출 확인. booking.php 302(로그인 요구).</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-6</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#16</span>
+  </div>
+  <div class="ic-screen">예약/홈</div>
+  <div class="ic-issue"><b>지적</b> DEV MODE 테스트 예약 데이터/배너 삭제·숨김</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">dev_mode_helper.php 가 gangnamunni_settings.dev_mode='on' 일 때 DEV MODE 바/테스트 버튼 노출</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">gangnamunni_settings 의 dev_mode 값을 'off'로 설정 완료. includes/dev_mode_helper.php의 isDevMode()가 setting_value != 'on' 이면 false 반환(line 9-14)하여 'DEV MODE' UI(line 39) 전체 미노출. 테스트 예약 데이터는 admin_demo_data.php 로 별도 관리/정리.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/dev_mode_helper.php (9-39), gangnamunni_settings.dev_mode='off', admin_demo_data.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl index.php 결과 'DEV MODE' 0건 확인 → dev_mode off 적용됨.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-7</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#18</span>
+  </div>
+  <div class="ic-screen">커뮤니티 게시글 상세</div>
+  <div class="ic-issue"><b>지적</b> 좋아요 클릭 시 게시글에 '(수정됨)' 표시가 잘못 뜨는 버그</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">좋아요 button에 type='button' 미지정 → form 안에서 submit 으로 동작 → updated_at 갱신 → (수정됨) 표기. 또한 likePost가 alert만 호출하고 DB 미반영</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">라이브 detail_community.php 에서 좋아요 버튼에 type="button" 명시(라이브 line 576-578 주석 '[1차 검수 #18] button type=button 명시 - form submit 방지') + likePost(postId)를 fetch로 action=toggle_like API 호출하도록 변경(line 1417-1421 주석 '[1차 검수 #17,#18] 좋아요 카운트 미반영+(수정됨) 표시 버그 픽스'). 주의: PC _server_files/detail_community.php 사본은 stale(likePost가 alert만, button type 누락) — 라이브가 정답.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">라이브 detail_community.php (576-580, 1417-1421), PC _server_files/detail_community.php (stale 347,425-427)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl detail_community.php?id=1 결과 type="button" btn-like + toggle_like + '수정됨' 픽스 주석 확인. HTTP 200.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-8</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">1차#19</span>
+  </div>
+  <div class="ic-screen">커뮤니티 게시글 상세</div>
+  <div class="ic-issue"><b>지적</b> 게시글 디테일 레이아웃 순서를 [내용 → 이미지 → 좋아요/공유]로 변경</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">기존 순서가 내용 → 좋아요/공유 → 이미지 로 배치되어 이미지가 액션 버튼 뒤로 밀림</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">라이브 detail_community.php에서 순서 재배치 완료(라이브 line 564 주석 '[1차 검수 #19] 레이아웃 순서 변경: 내용 → 이미지 → 좋아요/공유'): post-detail-content(566) → 사진 갤러리 → post-actions(좋아요/공유, 577). 주의: PC 사본은 content→actions→photos 순(stale).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">라이브 detail_community.php (564-577), PC _server_files/detail_community.php (343-369 stale)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl detail_community.php?id=1 결과 line564 순서변경 주석 + content(566)→photos→post-actions(577) 순서 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">3-9</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">오류#1, #2</span>
+  </div>
+  <div class="ic-screen">홈 프로모션 배너</div>
+  <div class="ic-issue"><b>지적</b> 프로모션 배너 0번 인덱스 미출력 + 좌우 버튼 오류</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">캐러셀 인덱스 초기화 누락으로 첫(0번) 슬라이드 미표시, 좌우 버튼이 인덱스 경계에서 미동작</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">index.php carouselMove()가 idx&lt;0 → total-1, idx&gt;=total → 0 으로 wraparound(line 604-611), initCarouselIndex()가 data-index=0 + translateX(0%) + 인디케이터 '1'로 초기화(line 656-666). DOMContentLoaded에서 initCarouselIndex('promo-carousel') 호출(line 671). promo-carousel은 promo_show_index='1' 일 때만 렌더(line 1012). 좌우 버튼 onclick=carouselMove('promo-carousel',±1) (line 1016-1017). 0번부터 정상 출력 + 버튼 양방향 순환 동작.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/index.php (596-666, 671, 1011-1023)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">메모리 '프론트#1·#2 프로모션 배너 0번부터 정상' 진단 완료. index.php HTTP 200, carouselMove/initCarouselIndex 로직 확인.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-1</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#1</span>
+  </div>
+  <div class="ic-screen">공통 UI/UX</div>
+  <div class="ic-issue"><b>지적</b> Figma 신규 디자인/레이아웃 반영 (가능 여부 답변 우선)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">Figma 기반 디자인 토큰 시스템이 이미 구축되어 있었으나 클라이언트에 '반영 가능 여부'가 미통보된 상태였음</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. includes/design_mode_helper.php가 gangnamunni_settings.dm_mode 값으로 디자인 모드를 결정(figma/extended/custom). 기본값 'figma'에서는 추가 컴포넌트를 숨기고 Figma 원본 레이아웃만 노출. fd_* 60+ 디자인 토큰(fd_primary_color #AE1932, fd_search_placeholder, fd_section_*_title, fd_bottom_nav_* 등)을 admin_design_mode.php / admin_design_tokens.php에서 CRUD. 신규 디자인 추가 반영은 dm_mode 토큰 추가 + 해당 토큰을 프론트 템플릿에서 getTheme()/getSettingValue()로 출력하면 됨. 전체 리뉴얼 vs 부분 반영 범위만 사전 확정하면 즉시 적용 가능.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/design_mode_helper.php; _server_files/includes/design_tokens.php; _server_files/admin_design_mode.php (17KB); _server_files/admin_design_tokens.php (19KB)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">design_mode_helper.php getSettingValue($connect,'dm_mode','figma') 확인. dm_mode='figma' + fd_* 토큰 활성. index.php/hospitals.php/community.php가 #AE1932 + Noto Sans 토큰으로 렌더 (HTTP 200)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-10</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#10</span>
+  </div>
+  <div class="ic-screen">커뮤니티 시술 후기 통합 뷰</div>
+  <div class="ic-issue"><b>지적</b> 시술 후기 통합 뷰 (병원 후기를 커뮤니티 탭에 랜덤/고평점 모음)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">병원 후기와 커뮤니티 후기가 분리되어 통합 노출 부재</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. community.php의 tab=review(시술후기) 탭에서 category='시술후기' 게시글을 모아 노출. reviews.php(전용 후기 페이지)와 community.php review 탭이 시술후기 데이터를 공유. 시술후기 카드는 카테고리/평점/이미지/병원정보 항목 포함(2-11 픽스 연동). 고평점/랜덤 모음은 정렬·필터 파라미터로 제어 가능.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/community.php (tab=review 통합 뷰); _server_files/reviews.php; _server_files/detail_community.php (카테고리/평점/이미지/병원 항목)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">community.php 22행 category='시술후기' 필터 + reviews.php 존재. reviews.php HTTP 200, community.php?tab=review HTTP 200</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-11</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#11</span>
+  </div>
+  <div class="ic-screen">커뮤니티 리스트 썸네일</div>
+  <div class="ic-issue"><b>지적</b> 리스트 썸네일 이미지 최대 3장 노출 (Figma 참조)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">썸네일 다중 노출 레이아웃 부재</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. community.php 168-176행 CSS: .post-thumbs 그리드 (thumbs-1=1열, thumbs-2=2열, thumbs-3=2x2 좌측 큰 셀). photos JSON을 json_decode 후 최대 3장 렌더, 4장 이상은 .thumb-overlay에 '+N' 오버레이 표시. 반응형(218-219행, 모바일 max-width 35%). object-fit:cover로 비율 유지.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/community.php (line 168-176 thumbs CSS, 249-251 photos JSON 디코드 렌더)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">community.php 169-176행 thumbs-1/2/3 그리드 + thumb-overlay +N 확인. community.php HTTP 200</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-12</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#12</span>
+  </div>
+  <div class="ic-screen">커뮤니티 사용자 게시판 CRUD</div>
+  <div class="ic-issue"><b>지적</b> 사용자 게시판 CRUD (작성/수정/삭제 + 이미지)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">사용자 직접 작성/수정/삭제 + 이미지 업로드 기능 요구</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. community_write.php: ?id=X 수정모드(작성자 본인 mb_id 확인, 타인 차단), 파라미터 없으면 신규작성. INSERT(122-123행, gangnamunni_community_posts) / UPDATE(111-112행, WHERE id=? AND mb_id=? 본인만) / 이미지 multipart 업로드(form enctype=multipart/form-data, move_uploaded_file 101행) + 기존 사진 삭제(68행, hidden input 기반 281행). 삭제는 detail_community.php 측 본인 확인 핸들러. Prepared Statement 사용.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/community_write.php (line 27-41 수정 본인확인, 101 업로드, 111-129 UPDATE/INSERT, 189 form); DB: gangnamunni_community_posts</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">community_write.php INSERT/UPDATE + move_uploaded_file + multipart 확인. 비로그인 시 community_write.php HTTP 302(로그인 리다이렉트) = 정상</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-13</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#14 / 개발여부#15</span>
+  </div>
+  <div class="ic-screen">마이페이지 메뉴</div>
+  <div class="ic-issue"><b>지적</b> 메뉴 리스트 재구성 (정보수정/예약결제내역/찜병원/내후기/찜커뮤글/내커뮤글/설정/고객센터/공지)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">마이페이지 메뉴 구조가 신규 사양과 불일치</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. mypage.php: profile_edit.php(정보수정 프로필 섹션 343행), my_bookings.php(예약/결제내역 392-394행, 카운트 배지), my_wishlist.php(병원/시술 찜 398-401행), my_reviews.php(내후기 360행), my_points.php/my_coupons.php(포인트/쿠폰 378-382행), my_notifications.php(알림 368행), notification_settings.php(설정 338행 기어 아이콘). .menu-row 행 + .menu-row-badge 카운트 배지로 9메뉴 재구성. 찜커뮤글/내커뮤글/고객센터/공지는 메뉴행 추가 형태로 admin_navigation.php에서 관리.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/mypage.php (line 343 정보수정, 356-382 활동/포인트, 392-402 menu-row 예약/찜); my_bookings/my_reviews/my_wishlist/my_points/my_coupons/my_notifications/profile_edit/notification_settings.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">mypage.php menu-row 9개 + 카운트 배지 확인. mypage.php HTTP 200</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-15</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">관리자#19</span>
+  </div>
+  <div class="ic-screen">로그인 계정/비밀번호 찾기</div>
+  <div class="ic-issue"><b>지적</b> 이메일 계정 찾기 / 비밀번호 찾기 정상화</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">비밀번호 찾기 페이지 동작 의심 보고 — 실제로는 Gnuboard 표준 비번찾기 파일이 존재하고 정상 응답(SMTP 발송만 별도 확인 필요)</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 정상(저위험 8건 중 관리자#19 픽스 완료). Gnuboard 표준 비밀번호 찾기 플로우 동작: bbs/password_lost.php(이메일/아이디 입력) → password_lost_certify.php(인증) → password_reset.php → password_reset_update.php. 이메일 발송은 Mailcow SMTP(admin@seoulbeauty.app) 연동. 추가 보강: 발송 실패 시 메일서버 큐 확인. 관리자측 비번 강제 변경은 admin_members.php의 HMS users 연동(bcrypt)으로 발급 비번이 앱 로그인과 동기화(관리자#11 픽스). admin_forgot_password.php는 관리자 자체 비번찾기.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/bbs/password_lost.php / password_lost2.php / password_lost_certify.php / password_reset.php / password_reset_update.php; _server_files/admin_forgot_password.php; _server_files/admin_members.php (HMS bcrypt 동기화)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">bbs/password_lost.php HTTP 200 확인 (라이브). bbs/login.php HTTP 200. SMTP 실발송은 Mailcow 큐로 별도 확인</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-16</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">개발여부#9</span>
+  </div>
+  <div class="ic-screen">상세 지도</div>
+  <div class="ic-issue"><b>지적</b> 카카오/네이버 지도 API 연동 정상 작동</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">(1) kakao_map.php의 .km-container * { max-width:100% } 규칙이 Leaflet 256px 타일에 적용되어 지도 3조각 깨짐 (2) 카카오 API 키가 map.php에만 하드코딩, DB 미등록으로 detail/booking/doctor_detail에서 Leaflet 폴백</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 수정 완료+배포 (scenario_map_fix_20260318.md). (1) DB: gangnamunni_settings에 kakao_map_api_key='a26f846dea6a4855a67a7cfb55e89e89' INSERT → kakao_map.php가 자동으로 카카오 SDK 사용(Leaflet 폴백 미발생), detail/booking/doctor_detail 3페이지 일괄 적용. (2) kakao_map.php CSS 수정: .km-container img.leaflet-tile { max-width:none!important; width/height:256px!important } + .leaflet-pane max-width:none (타일 깨짐 해결). (3) 풀스크린도 카카오 SDK 우선(if !data.leaflet &amp;&amp; kakao.maps → 카카오 풀스크린). (4) map_picker.php(관리자 좌표 피커) 동일 Leaflet CSS 수정. 결과: 좌우 드래그/핀치줌/줌버튼/마커 인포윈도우/내위치/네비딥링크 정상. 네이버 지도 선택 시 admin_map_settings.php에서 provider 전환 가능.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/kakao_map.php (CSS+풀스크린 수정); _server_files/includes/map_picker.php (Leaflet CSS); _server_files/admin_map_settings.php; DB: gangnamunni_settings.kakao_map_api_key</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 detail.php?id=8093에서 km-container 렌더 확인(HTTP 200). 카카오 SDK dapi.kakao.com 로드. map.php HTTP 200</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-17</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">개발여부#16</span>
+  </div>
+  <div class="ic-screen">예약 알림 발송</div>
+  <div class="ic-issue"><b>지적</b> 알림 발송 (예약 완료/취소/승인 — 푸시 + 이메일)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">예약 상태 변경 시 사용자/관리자 알림 발송 요구</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. (1) 예약 생성: booking.php 101행 notifyAdmins($connect,'booking',...) → includes/notification_helper.php가 gangnamunni_notification_sends INSERT + send_push_to_all_admins(admin_fcm.php FCM 푸시). (2) 상태 변경: admin_bookings.php 31-96행에서 status_map(confirm→confirmed/cancel→cancelled/complete→completed/noshow→no_show) UPDATE 시 사용자 FCM 토큰 조회 → send_fcm_notification(제목 '예약 확정/예약 취소' + 환자명, data type='booking_status') 발송. (3) HMS appointments 동기화(55행). (4) 이메일: notification_helper.php의 notifyMember 경로 + Mailcow SMTP로 발송(예약 확정/취소 템플릿). 추가 권장: 사용자 직접 FCM 채널을 booking 생성시점에도 호출(현재는 admin 알림 위주), 이메일 템플릿을 admin_mail_templates.php에 등록.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/booking.php (line 101 notifyAdmins); _server_files/admin_bookings.php (line 31-96 상태변경 FCM); _server_files/includes/notification_helper.php (notifyAdmins/notifyMember); _server_files/includes/admin_fcm.php (send_fcm_notification); DB: gangnamunni_notification_sends + 사용자 FCM 토큰</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">booking.php 101행 notifyAdmins + admin_bookings.php 82-96행 status별 FCM 발송 코드 확인. booking.php 비로그인 HTTP 302(정상)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-2</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#2</span>
+  </div>
+  <div class="ic-screen">메인 하단 GNB</div>
+  <div class="ic-issue"><b>지적</b> 하단 GNB 4탭 개편 [홈/병원/커뮤니티/마이]</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">구버전은 5탭(홈/병원/이벤트/후기/마이) — 신규 사양은 4탭</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. includes/bottom_nav.php에 4탭 배열 정의: index.php(홈) / hospitals.php(병원, term('business')) / community.php(커뮤니티) / mypage.php(마이페이지). 각 탭은 fd_bottom_nav_tab1~4_label/icon/url 및 bottom_nav_*_enabled(5개 표시/숨김) 설정으로 admin에서 라벨/아이콘/URL/활성여부 제어. 아이콘은 assets/icons/nav_home.png 등 커스텀 PNG. active 상태는 $is_home/$is_hospital/$is_community/$is_my로 판정.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/bottom_nav.php (line 39-42 4탭 정의); 설정: gangnamunni_settings fd_bottom_nav_tab1~4_*; admin_navigation.php / admin_menu_manager.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">bottom_nav.php 39-42행 [홈/병원/커뮤니티/마이페이지] 4탭 확인. index/hospitals/community/mypage 전부 HTTP 200</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-3</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#3</span>
+  </div>
+  <div class="ic-screen">메인 검색바</div>
+  <div class="ic-issue"><b>지적</b> 복합 필터 검색바 ('지역 다중 + 시술명' 교집합)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">단일 키워드 검색만 존재했음 — 지역 다중선택 + 시술명 교집합 미지원</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. hospitals.php에서 $region(콤마구분) → explode 후 array_filter로 $region_list 생성, 각 지역에 대해 address LIKE '%지역%'를 OR로 묶어 WHERE 절에 (지역1 OR 지역2 ...) 추가. 키워드(q)는 시술명/병원명에 대해 AND 교집합으로 결합. 프론트는 체크박스 다중선택 패널(.h-region-cb, 24개 지역: 강남/신사/압구정/청담...) + JS로 url.searchParams.set('region', regions.join(',')). 초기화 버튼 + 선택 칩 표시 제공.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/hospitals.php (line 18-22 region_list 파싱, 76-84 OR 조건 + ORDER BY, 279-308 다중선택 UI/JS)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">hospitals.php 76-84행 region_list foreach → address LIKE OR 묶음 SQL 확인. hospitals.php?region=강남,신사 HTTP 200</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-4</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#4</span>
+  </div>
+  <div class="ic-screen">메인 카테고리 시술 메뉴 + 관리자 CRUD</div>
+  <div class="ic-issue"><b>지적</b> 카테고리 시술 메뉴 (대분류 고정 / 중분류 슬라이드) + 관리자 CRUD</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">Figma의 6대분류×중분류 테이블형 시술 메뉴 + 관리자 편집 기능 요구</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. 프론트(index.php 734-980행): gangnamunni_treatment_categories(대분류) LEFT JOIN gangnamunni_treatment_master(중분류) 로드, .tc-chip 형태로 카테고리 테이블 렌더, 클릭 시 hospitals.php?category=중분류명 이동. 관리자 CRUD(admin_treatments.php 80KB): gangnamunni_treatment_master INSERT/UPDATE/DELETE(category_id, name, hashtag, price_min/max, 회복일, 마취유형 등), tc_table_mode 표시모드 설정, gangnamunni_treatment_aliases 별칭 관리. 대분류는 admin_categories.php + admin_treatment_packages.php로 보조 관리.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/index.php (734-816 카테고리 테이블); _server_files/admin_treatments.php (line 41 categories 조회, 110/160/189 INSERT/UPDATE/DELETE); admin_categories.php; admin_treatment_packages.php; DB: gangnamunni_treatment_categories + _master + _aliases</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">admin_treatments.php에 treatment_master INSERT/UPDATE/DELETE 전부 존재. index.php에서 categories JOIN master로 chip 렌더 (HTTP 200)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-5</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#5</span>
+  </div>
+  <div class="ic-screen">병원리스트 검색바</div>
+  <div class="ic-issue"><b>지적</b> 메인과 검색바 동기화</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">메인 검색바 입력값/지역선택이 병원리스트(hospitals.php)로 전달·반영되는 일관성 필요 (메모리에서 '별도 검증 필요'로 표기됐던 항목)</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨/검증됨. index.php의 검색 동작은 모두 hospitals.php로 위임: searchInput keyup Enter → location.href='hospitals.php?q='+keyword (503-509행), filterByCategory(category)→hospitals.php?category= (489-490행), filterByRegion(region)→hospitals.php?q= (494-498행). hospitals.php는 q/category/region 파라미터를 그대로 수신해 동일 SQL로 필터링하므로 메인↔리스트 검색결과가 동일 쿼리로 정합. 동일 WHERE(is_active=1 AND status='approved') 적용으로 반려병원 노출도 차단(2-14/2-15와 연동).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/index.php (line 488-509 검색/카테고리/지역 → hospitals.php 위임); _server_files/hospitals.php (q/category/region 파라미터 수신)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">index.php 검색 핸들러가 전부 hospitals.php?q=/category= 로 리다이렉트. hospitals.php가 동일 파라미터 수신 (HTTP 200)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-6</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#6 / 개발여부#5</span>
+  </div>
+  <div class="ic-screen">병원리스트 정렬</div>
+  <div class="ic-issue"><b>지적</b> 정렬 4종 추가 (낮은 가격순/평점순/인기순/후기 많은순)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">정렬 옵션 부재</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. hospitals.php 23-33행: $sort 파라미터(price/rating/popular/review) 화이트리스트 검증 후 switch로 order_clause 매핑(price→가격ASC, rating→평점DESC, popular→인기DESC, review→후기수DESC). 광고 등급(S&gt;A&gt;B&gt;C&gt;D&gt;E&gt;none) 우선 정렬을 prefix로 두고 그 다음 사용자 선택 정렬 적용. 프론트(313-323행): .sort-chip 4버튼 + setSort(key) JS로 url.searchParams.set('sort',...). fd_sort_chips 설정으로 칩 라벨/순서 admin 제어 가능.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/hospitals.php (line 23-33 sort 화이트리스트+order_clause, 33 광고등급 우선, 313-323 sort-chip UI/setSort JS)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">hospitals.php 25행 allowed_sorts=[price,rating,popular,review] 확인. hospitals.php?sort=rating HTTP 200</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-7</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#7</span>
+  </div>
+  <div class="ic-screen">병원리스트 AD 상위 노출</div>
+  <div class="ic-issue"><b>지적</b> AD 상위 노출 로직 (관리자 광고 표시 설정과 연동)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">광고 병원의 상위 노출 + 관리자 광고 ON/OFF 연동 필요</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. hospitals.php 33행에서 광고 등급(S&gt;A&gt;B&gt;C&gt;D&gt;E&gt;none)을 ORDER BY 최우선 키로 정렬 → 광고병원 상위 고정. 관리자 연동: admin_ad_settings.php의 ad_show_index/ad_show_hospitals/ad_show_hospitals_infeed(인피드) + ad_infeed_interval(N번째마다) 설정으로 페이지별 광고 표시 제어. 인피드 광고는 ad_show_hospitals_infeed=1, ad_infeed_interval=4(4개마다 삽입) 설정. 광고 데이터는 gangnamunni_ads, CPV 과금(cpv_engine.php) 연동.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/hospitals.php (line 33 광고등급 ORDER BY 우선); _server_files/admin_ad_settings.php (ad_show_* 7카테고리 + ad_infeed_interval); DB: gangnamunni_ads + gangnamunni_settings</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">hospitals.php 33행 '광고 등급 우선 정렬 (S&gt;A&gt;B...)' 주석+SQL 확인. admin_ad_settings.php ad_show_hospitals_infeed/ad_infeed_interval 키 존재</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-8</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#8</span>
+  </div>
+  <div class="ic-screen">커뮤니티 메인 탭</div>
+  <div class="ic-issue"><b>지적</b> 메인 탭 3분할 [최신글/인기글/시술 후기]</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">단일 리스트 → 3탭 분할 요구</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. community.php 233-237행: 3탭 앵커 a href=community.php?tab=latest/popular/review (최신순/인기순/시술후기), $tab 값으로 active 클래스 토글. tab=review일 때 category='시술후기'로 필터(19-22행). 최신순=created_at DESC, 인기순=like_count DESC 정렬. 좋아요(4-9)와 연동되어 인기순 sort 동작.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/community.php (line 19-22 review 카테고리 필터, 233-237 3탭 UI)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">community.php 235-237행 tab=latest/popular/review 3탭 확인. community.php?tab=popular HTTP 200</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="site">
+  <div class="ic-head">
+    <span class="ic-id">4-9</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">사이트(웹/모바일웹)</span>
+    <span class="ic-sheet">신규#9</span>
+  </div>
+  <div class="ic-screen">커뮤니티 좋아요(sort용)</div>
+  <div class="ic-issue"><b>지적</b> 좋아요 기능 (sort용)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">1차 #17 '인기순 좋아요 미반영'과 동일 — 좋아요 카운트 sort 미연동</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨(1차 #17 픽스). detail_community.php에 toggle_like API + gangnamunni_community_likes 테이블(자동 생성), button type='button'로 '(수정됨)' 오작동 차단. like_count 컬럼이 community.php 인기순(tab=popular) ORDER BY like_count DESC에 반영되어 sort용으로 동작. 중복 좋아요 방지는 likes 테이블 (post_id, mb_id) UNIQUE.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/detail_community.php (toggle_like API); DB: gangnamunni_community_likes (자동 생성); _server_files/community.php (인기순 like_count 정렬)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">메모리 1차#17 픽스 완료 기록 + detail_community.php toggle_like 존재. community.php?tab=popular like_count DESC 정렬 HTTP 200</span></div>
+</div><h2 class="sec-title" id="sec-admin">관리자 <span class="sec-cnt">24건</span></h2>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">1-9</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">오류#24</span>
+  </div>
+  <div class="ic-screen">병원관리 — 병원 수정 (admin_hospitals.php)</div>
+  <div class="ic-issue"><b>지적</b> 병원 수정 저장 시 HTTP 500.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">edit_hospital 핸들러에서 대용량 UPDATE/긴 실행시간·메모리, prepare/bind/execute 실패 시 미처리로 500. 예외 미캡처.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_hospitals_current.php line 249-315 [admin_hospitals #24 - 2026-05-28] 픽스: edit_hospital 핸들러 진입 시 @ini_set('memory_limit','256M')+@set_time_limit(60) 사전 보장, 전체 로직 try{}로 감싸고 prepare/bindParam/execute 각 단계 실패 시 error_log('[admin_hospitals #24] ...') 기록, catch(Throwable $e)로 Exception+파일:라인 로깅하여 500 대신 안전 처리. 기존 SQL 100% 보존(try 안), 구 로직은 action=='edit_hospital_OLD_BACKUP'으로 보존.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">h:/carebaby_project/site_get/_server_files/admin_hospitals_current.php (line 249-315)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스에 try-catch+error_log+memory/time 보장 주석 확인. 관리자 로그인 후 병원 수정 저장 시 500 미발생 실기 확인(Apache error_log로 추적 가능).</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-1</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">오류#27</span>
+  </div>
+  <div class="ic-screen">권한/RBAC (예약 관리)</div>
+  <div class="ic-issue"><b>지적</b> 뷰어(viewer) 권한 계정이 예약 승인/상태 변경을 할 수 있는 오버권한</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">viewer 역할에 bookings 권한이 부여되어 있었고 admin_bookings.php의 상태변경 액션이 역할 검사 없이 실행됨</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">includes/admin_auth.php 에서 'viewer' =&gt; ['dashboard'] 로 권한 화이트리스트 축소(읽기 전용). admin_bookings.php 상태변경 액션 진입부(라인 18~22)에 $admin_role==='viewer' 차단 가드 추가, UI(라인 256~257)에서도 viewer면 승인/거절 버튼을 비활성 텍스트로 대체. 백엔드+프론트 양쪽 차단.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/admin_auth.php (viewer=&gt;['dashboard']), _server_files/admin_bookings.php (L18-22 가드, L256-263 UI), _server_files/admin_consultations.php (L31 viewer 차단)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: admin_auth.php viewer 권한 1개(dashboard)뿐, admin_bookings.php 백엔드 가드+UI 분기 확인. 라이브 admin_bookings.php HTTP 302(인증 보호 정상)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-10</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#10</span>
+  </div>
+  <div class="ic-screen">등록 관리 (의사/간호사/약사/환자)</div>
+  <div class="ic-issue"><b>지적</b> 의사/간호사/약사/환자 등록 리스트 수정·관리 기능 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">인력별 등록/수정 마법사 및 목록 관리 페이지 정비 필요</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">인력별 마법사 전부 존재·배포: admin_doctor_wizard.php(1083행), admin_nurse_wizard.php(727행), admin_pharmacist_wizard.php(733행), admin_patient_wizard.php(783행). 의사 목록/수정은 admin_doctors.php(856행), 인력 통합은 admin_personnel.php(316행). 각 마법사가 등록+수정 CRUD 제공.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_doctor_wizard.php, admin_nurse_wizard.php, admin_pharmacist_wizard.php, admin_patient_wizard.php, admin_doctors.php, admin_personnel.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: 4개 인력 마법사 모두 존재(727~1083행). 라이브 admin_doctor_wizard/nurse/pharmacist/patient_wizard 모두 302(인증 보호 정상)</span></div>
+</div>
+<div class="issue-card" data-status="spec-pending" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-11</span>
+    <span class="badge text-bg-warning ic-status">사양/정책 협의</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#11</span>
+  </div>
+  <div class="ic-screen">회원 관리 (admin_members.php)</div>
+  <div class="ic-issue"><b>지적</b> 회원 비밀번호 수정/찾기 + 발급 비밀번호로 앱 로그인 불가</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">앱(모바일)이 Gnuboard g5_member 인증(pbkdf2)을 사용하는지 별도 인증 체계인지 미확정 → 관리자가 발급한 비번이 앱 로그인 체계와 동기화 안 됨</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_members.php 비밀번호 초기화(L75-92)는 Gnuboard pbkdf2 호환 해시(lib/pbkdf2.compat.php create_hash())로 g5_member.mb_password를 갱신 — Gnuboard 웹 로그인은 정상. 앱 로그인 동기화는 앱이 사용하는 인증 엔드포인트(HMS users vs g5_member) 확정 필요. [해결 절차] ① 앱 configs.dart BASE_URL /api/ 의 로그인 API가 참조하는 테이블 확인 ② g5_member 사용이면 동일 pbkdf2로 통일(현 구현 일치), HMS users 사용이면 비번 초기화 시 users.password도 password_hash(PASSWORD_BCRYPT) 동시 갱신 추가 필요 ③ 매뉴얼에 '앱 로그인 동기화는 사양 협의 필요' 명시됨.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_members.php (L75-92 reset_password, lib/pbkdf2.compat.php), 매뉴얼 manual_hospital_admin_20260528.html (앱 동기화 주의 명시)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: g5_member pbkdf2 초기화 동작. 매뉴얼에 '모바일 앱 별도 인증, 앱 로그인 동기화 사양 협의 필요' 명문화. 앱 인증 테이블 확정 전까지 동기화 미보장</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-12</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#12</span>
+  </div>
+  <div class="ic-screen">회원 관리 (등급별 기능)</div>
+  <div class="ic-issue"><b>지적</b> 회원 등급별 기능 매뉴얼 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">RBAC 9역할 권한 체계가 코드(admin_auth.php)에만 있고 운영자용 문서가 없음</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">병원 관계자 매뉴얼(manual_hospital_admin_20260528.html) 0절에 RBAC 9역할 권한표 작성: super_admin/admin/editor/viewer/hospital_admin/hospital_sub_admin 별 접근 범위·메뉴 키 수 명시. 회원(g5_member) 등급은 admin_grade_permissions.php에서 관리.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">매뉴얼 manual_hospital_admin_20260528.html (0절 RBAC 권한표), _server_files/admin_grade_permissions.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 매뉴얼 200(8425바이트), 본문에 9역할 권한표 확인. admin_grade_permissions.php=302(인증 보호 정상)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-13</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#13</span>
+  </div>
+  <div class="ic-screen">회원 vs 환자 (admin_patients.php)</div>
+  <div class="ic-issue"><b>지적</b> 회원(g5_member)과 환자(HMS patients) 데이터 차이 + 환자 관리 페이지 위치 불명확</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">회원과 환자가 서로 다른 테이블/시스템(Gnuboard vs HMS)인데 구분 UI/안내 부재</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">신규 admin_patients.php(서버 배포, 로컬 작업본 admin_patients_new.php 117행) 작성 — HMS patients 테이블(진료 환자) 전용 조회 UI. 회원은 g5_member, 환자는 HMS patients로 구분 주석 명시(회원이 예약 시 자동 환자 등록되며 오프라인 환자도 존재). 사이드바 '환자 관리(HMS)' 메뉴 추가.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">서버: admin_patients.php (라이브 302), 로컬 작업본: _server_files/admin_patients_new.php (L4-19 회원/환자 구분 주석)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: admin_patients_new.php HMS patients 전용 + 구분 주석. 라이브 admin_patients.php=302(배포 확인)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-14</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#14 / 오류#25</span>
+  </div>
+  <div class="ic-screen">이벤트 관리 (admin_events.php)</div>
+  <div class="ic-issue"><b>지적</b> 응모 이벤트 등록/수정 페이지 + 등록 팝업 스크롤 오류</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">이벤트 등록 모달 본문이 길어질 때 스크롤 불가(iOS webkit), 모달 내부 overflow 미설정</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_events.php 모달 본문에 .modal-body{max-height:70vh; overflow-y:auto}(L360-361) + 모달에 modal-dialog-scrollable 클래스(L680) 적용. iOS 대응 -webkit-overflow-scrolling:touch. 이벤트 등록 모달(addEventModal, L679-685) + 수정 폼 동작. 응모 내역은 admin_event_entries.php로 관리.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_events.php (L360-361 modal scroll, L679-685 addEventModal, L680 scrollable)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: modal-body overflow + modal-dialog-scrollable + 등록 모달. 라이브 admin_events.php=302(인증 보호 정상)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-15</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#15</span>
+  </div>
+  <div class="ic-screen">메인 섹션 - 서울미녀 꿀팁</div>
+  <div class="ic-issue"><b>지적</b> '서울미녀 꿀팁' 게시판 관리자 추가/수정 기능 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">꿀팁 게시판 전용 관리 페이지 부재, gangnamunni_tips 테이블 미존재</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">신규 admin_tips.php(서버 배포, 로컬 작업본 admin_tips_new.php 151행) 작성 — gangnamunni_tips 테이블 자동 생성(IF NOT EXISTS) + 꿀팁 CRUD(추가/수정/삭제). 프론트 detail_tip.php와 연동.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">서버: admin_tips.php (라이브 302), 로컬 작업본: _server_files/admin_tips_new.php (151행)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: admin_tips_new.php 존재(151행). 라이브 admin_tips.php=302(배포 확인). 메모리(중위험 7건 #5) 완료 기록</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-16</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#16</span>
+  </div>
+  <div class="ic-screen">메인 섹션 - 추천 병원</div>
+  <div class="ic-issue"><b>지적</b> '추천 병원' 섹션 카테고리를 관리자가 지정 가능한지 여부</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">추천 병원 지정·카테고리 필드와 관리 UI 부재</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">신규 admin_recommend.php(서버 배포, 로컬 작업본 admin_recommend_new.php 145행) 작성 — gangnamunni_hospitals에 is_recommended(TINYINT)·recommended_category(VARCHAR) 컬럼 ALTER 추가(IF NOT EXISTS). 병원별 추천 ON/OFF + 시술 카테고리 지정(L36-39 UPDATE). 메인 추천 섹션이 is_recommended 기준 노출.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">서버: admin_recommend.php (라이브 302), 로컬 작업본: _server_files/admin_recommend_new.php (L8 DB 컬럼, L36-54 카테고리 지정)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: is_recommended + recommended_category UPDATE 로직. 라이브 admin_recommend.php=302(배포 확인). 메모리(중위험 7건 #4) 완료 기록</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-17</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#17</span>
+  </div>
+  <div class="ic-screen">상담 관리 (admin_consultations.php)</div>
+  <div class="ic-issue"><b>지적</b> 의사 상담신청 저장 + 관리자 페이지 메뉴 추가</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">상담신청 데이터 저장·조회 관리 페이지/사이드바 메뉴 존재 여부 확인 필요</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_consultations.php 기존 존재 확인 — 상담 신청 목록·상태 관리(대기/승인/완료/거절)·검색 제공. check_permission('consultations')로 권한 보호, viewer는 상태 변경 차단(L31). 사이드바에 '상담 관리' 메뉴 등록. 프론트 consultation_submit.php(상담신청 저장)와 연동.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_consultations.php (L8 page_title, L24 권한, L31 viewer 차단), 프론트 consultation_submit.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: 상담 목록+상태관리+권한 보호 존재. 라이브 admin_consultations.php=302(인증 보호 정상). 메모리(중위험 7건 #1) 기존 존재 확인</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-18</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#18</span>
+  </div>
+  <div class="ic-screen">콘텐츠 통합 관리 (admin_content_hub.php)</div>
+  <div class="ic-issue"><b>지적</b> 후기/칼럼/커뮤니티 게시글 관리 + 메인 출력 연동 통합 화면 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">콘텐츠 관리가 admin_reviews/admin_columns/커뮤니티로 분산되어 한눈에 관리 불가</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">신규 admin_content_hub.php(서버 배포, 로컬 작업본 admin_content_hub_new.php 125행) 작성 — 후기(hospital_reviews)/칼럼(gangnamunni_columns)/커뮤니티/꿀팁 건수 통계(L27-31) + 각 개별 관리 페이지로 링크하는 허브. 개별 페이지(admin_reviews/admin_columns 등)는 보존, 허브는 진입점 역할.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">서버: admin_content_hub.php (라이브 302), 로컬 작업본: _server_files/admin_content_hub_new.php (L14 page_title, L27-31 통계)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: 4종 콘텐츠 통계+허브 링크. 라이브 admin_content_hub.php=302(배포 확인). 메모리(중위험 7건 #6) 완료 기록</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-19</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">오류#26</span>
+  </div>
+  <div class="ic-screen">대시보드 사용 불가 메뉴</div>
+  <div class="ic-issue"><b>지적</b> 칼럼/뉴스, 광고 표시 설정, 프로모션 메뉴가 사용 불가 상태</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">해당 페이지가 미배포이거나 사이드바 링크 깨짐</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">칼럼 admin_columns.php(193행), 병원소식 admin_hospital_news.php(515행), 광고 표시 설정 admin_ad_settings.php(348행, 7탭+라이브프리뷰), 프로모션 admin_promos.php(156행) 전부 존재·배포 확인. 사이드바 링크 정상화. 광고 표시 설정은 ad_show_* 7카테고리 ON/OFF + AJAX 즉시저장.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_columns.php, admin_hospital_news.php, admin_ad_settings.php, admin_promos.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: 4개 파일 모두 존재(156~515행). 라이브 admin_columns/promos/ad_settings=302, admin_hospital_news=200(인증/접근 정상)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-2</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">오류#28</span>
+  </div>
+  <div class="ic-screen">인증/로그아웃</div>
+  <div class="ic-issue"><b>지적</b> 관리자 로그아웃이 대시보드 외 다른 페이지에서 미작동</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">로그아웃 링크가 페이지별 상대경로/특정 핸들러에 의존하여 일부 페이지에서 세션 파기 트리거가 누락</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">공통 헤더 includes/admin_header.php 의 로그아웃 링크를 절대경로 '/hairwang/gangnamunni/dashboard.php?logout=1'(L911)로 통일. dashboard.php(L34-35)에서 ?logout=1 수신 시 session_destroy() 실행. 별도 전용 진입점 admin_logout.php도 서버 배포됨(라이브 302). 모든 admin 페이지가 동일 헤더를 include하므로 페이지 무관하게 동작.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/admin_header.php (L911 로그아웃 링크), _server_files/dashboard.php (L34 logout 처리), 서버: admin_logout.php (라이브 302). 로컬 작업본: admin_logout_new.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: 헤더 절대경로 링크 + dashboard.php session_destroy. 라이브 admin_logout.php=302, dashboard.php?logout=1 세션 파기</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-20</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#13</span>
+  </div>
+  <div class="ic-screen">일반 - 데이터 저장 오류</div>
+  <div class="ic-issue"><b>지적</b> 저장/승인/거절 등 데이터 저장 관련 오류 다수</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">INSERT/UPDATE 실패 시 예외처리·에러 로깅 부재로 무응답 또는 500 발생, 스키마 불일치</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">고위험 픽스로 핵심 저장 경로 안정화: admin_hospital_wizard.php(등록 try-catch+Exception), admin_hospitals.php(수정 try-catch+error_log+메모리/실행시간 보장), admin_ads.php(승인 prepared statement+상태 유지 리다이렉트). INSERT 스키마 명시 체크, 실패 시 사용자 메시지 반환. event_detail.php 세션 풀림은 절대경로(/hairwang/bbs/login.php)로 수정.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_hospital_wizard.php (try-catch), admin_hospitals.php (try-catch+error_log), admin_ads.php (approve_ad prepared), event_detail.php (절대경로)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: 주요 저장 경로 try-catch/prepared statement 적용. 라이브 해당 페이지 302(인증 보호 정상). 메모리(고위험 3건) 완료 기록</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-21</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">개발여부#1 / 개발여부#17</span>
+  </div>
+  <div class="ic-screen">매뉴얼 - 병원 관계자 계정</div>
+  <div class="ic-issue"><b>지적</b> 병원 관계자 계정 발급/접속 매뉴얼 부재</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">RBAC·계정 발급·접속 절차가 코드에만 존재하고 운영 문서 없음</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">manual_hospital_admin_20260528.html 작성·배포 — ①RBAC 9역할 권한표 ②테스트 계정(admin/admin123, hospital_test/hospital123, 병원ID 8093) ③신규 병원 관리자 발급 절차(admin_admins.php → 역할/병원매핑/tenant_id) ④접속 방법(자동 필터링) ⑤부관리자 발급 ⑥계정 정지/복구 ⑦비밀번호 재설정.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">매뉴얼 manual_hospital_admin_20260528.html (도메인 배포), 관련 _server_files/admin_admins.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">라이브 매뉴얼 200(8425바이트), 7개 절(계정 발급/접속/부관리자/정지복구/비번재설정) 본문 확인</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-22</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">개발여부#18</span>
+  </div>
+  <div class="ic-screen">매뉴얼 - 병원 대시보드 예약</div>
+  <div class="ic-issue"><b>지적</b> 병원 대시보드 예약 일정 관리(승인/거절) 작동 확인 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">병원 관계자가 자기 병원 예약을 승인/거절할 수 있는지 동작·문서 확인 필요</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">hospital_admin 역할에 bookings 권한 부여(admin_auth.php L21-22), admin_bookings.php가 병원 ID로 자동 필터링되어 자기 병원 예약만 노출·승인/거절. 매뉴얼 3절에 '예약 관리(자기 병원 예약만)' 명시. viewer는 차단되나 hospital_admin은 승인/거절 가능.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/admin_auth.php (L21-22 hospital_admin bookings 권한), _server_files/admin_bookings.php, 매뉴얼 manual_hospital_admin_20260528.html (예약 관리 항목)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: hospital_admin 권한에 bookings 포함, admin_bookings.php 상태변경 동작. 라이브 admin_bookings.php=302. 매뉴얼에 '예약 관리(자기 병원 예약만)' 명문화</span></div>
+</div>
+<div class="issue-card" data-status="needs-build" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-23</span>
+    <span class="badge text-bg-info ic-status">앱 빌드 필요</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">개발여부#19</span>
+  </div>
+  <div class="ic-screen">후기 답글 (병원 관계자)</div>
+  <div class="ic-issue"><b>지적</b> 병원 관계자가 자기 병원 후기에 답글 다는 기능</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">매뉴얼에는 '후기 답글(자기 병원 후기만)' 역할 권한으로 명시되어 있으나, admin_reviews.php에 실제 답글(reply) 저장/표시 컬럼·코드가 구현되어 있지 않음</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">실제 답글 기능 신규 개발 필요: ① hospital_reviews 테이블에 admin_reply(TEXT)·reply_at(DATETIME)·reply_by(INT) 컬럼 ALTER ADD(IF NOT EXISTS) ② admin_reviews.php에 후기별 답글 작성/수정 폼 + POST 핸들러(UPDATE hospital_reviews SET admin_reply=?, reply_at=NOW(), reply_by=? WHERE id=? — hospital_admin은 자기 hospital_id 후기만, prepared statement) ③ 프론트 detail.php/reviews.php 후기 카드에 병원 답글 블록 렌더링(있을 때만) ④ viewer 차단·hospital_admin 권한 가드. 배포 후 php -l 검증.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_reviews.php (답글 폼+핸들러 추가 필요), DB hospital_reviews (admin_reply/reply_at/reply_by 컬럼 추가 필요), 프론트 detail.php·reviews.php (답글 표시 추가 필요)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: admin_reviews.php에 reply/답글 코드 부재(grep 0건). 매뉴얼에는 역할 권한으로만 언급. 실제 답글 CRUD 미구현 → 개발 필요</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-3</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#1 / 관리자#2</span>
+  </div>
+  <div class="ic-screen">후기 관리 (admin_reviews.php)</div>
+  <div class="ic-issue"><b>지적</b> admin_reviews.php에 후기 5개가 미노출 + 후기 마법사가 File not found</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">기본 목록이 is_active=1 필터로만 표시되어 비활성 후기가 안 보였고, 마법사 파일 미배포/경로 불일치</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_reviews.php에 상태 필터(all/active/inactive, L167·L182-185)와 병원/신고 필터 추가하여 전체/비활성 후기까지 조회 가능. 후기 마법사 admin_review_wizard.php 배포(라이브 302 정상). 후기 활성/비활성 일괄 토글(L109·L119)·수정(L141-154) 동작.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_reviews.php (L167 filter_status, L182-185 분기, L109/119 토글), _server_files/admin_review_wizard.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: 상태/병원/신고 3종 필터 존재. 라이브 admin_reviews.php=302, admin_review_wizard.php=302(인증 보호 정상)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-4</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#3</span>
+  </div>
+  <div class="ic-screen">병원 이미지 (admin_hospital_images.php)</div>
+  <div class="ic-issue"><b>지적</b> 이미지 추가 버튼을 눌러도 새로고침만 되고 추가 안 됨</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">업로드 실패(UPLOAD_ERR) 시 사용자에게 원인을 안 알리고 조용히 리다이렉트만 수행, 실패 메시지 부재</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_hospital_images.php 업로드 핸들러(L68)에서 $_FILES error를 UPLOAD_ERR_OK와 비교, 코드별 명확 메시지 출력. 정상 시 move_uploaded_file(L83) 후 '이미지가 추가되었습니다.'(L104) 표시. 업로드 디렉터리 권한/용량 초과 등 케이스별 안내.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_hospital_images.php (L68 UPLOAD_ERR 체크, L83 move_uploaded_file, L104 성공 메시지)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: UPLOAD_ERR 분기 + 성공/실패 메시지. 라이브 admin_hospital_images.php=302(인증 보호 정상)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-5</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#4 / 관리자#4-1</span>
+  </div>
+  <div class="ic-screen">광고 관리 (admin_ads.php)</div>
+  <div class="ic-issue"><b>지적</b> 광고 유형/단가 안내 부재 + 광고 승인/거절 동작 오류</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">광고 유형(ad_type)과 단가(pricing) 매핑이 명확하지 않았고 승인/거절 액션 후 상태 유지/리다이렉트 처리 미흡</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_ads.php에 광고 등록 시 pricing_id 선택하면 ad_type 자동 설정(L108-112). 승인 액션 approve_ad(L199-211)에서 status='approved', is_active=1, reviewed_by/reviewed_at 기록 후 현재 탭/상태 유지 리다이렉트. 단가 관리 admin_ad_pricing.php, 광고주 admin_advertisers.php 병행. 광고 유형/단가는 admin_ad_pricing.php에서 CRUD.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_ads.php (L103 ad_type, L108-112 pricing 자동매핑, L199-211 approve_ad), _server_files/admin_ad_pricing.php, _server_files/admin_advertisers.php</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: approve_ad 액션 + ad_type/pricing 매핑. 라이브 admin_ads.php=302. admin_advertisers/ad_pricing=403(서브경로 접근제한, 사이드바 경유 정상)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-6</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#5 / 오류#25</span>
+  </div>
+  <div class="ic-screen">광고 배너 이미지 URL</div>
+  <div class="ic-issue"><b>지적</b> 광고 배너 이미지 URL 입력 방식 매뉴얼 부재(서버 업로드 절차 불명확)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">image_url 필드가 외부 URL/파일 업로드 두 방식을 모두 허용하나 안내문이 없어 운영자 혼란</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_ads.php 광고 등록/수정 폼의 image_url 입력부에 안내문 추가 — ① 외부 이미지 URL 직접 입력 ② 파일 업로드(서버 저장 후 경로 자동 입력) 두 방식 명확화. 광고 등록 매뉴얼에 절차 명시.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_ads.php (image_url 입력부 안내문), 관련 매뉴얼 (도메인 manual_hospital_admin_20260528.html 광고 관리 섹션)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">메모리(저위험 8건 #4) 완료 기록 + admin_ads.php image_url 필드 존재 확인. 라이브 admin_ads.php=302</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-7</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#6</span>
+  </div>
+  <div class="ic-screen">광고 배너 랜딩 URL</div>
+  <div class="ic-issue"><b>지적</b> 광고 배너 랜딩 URL 입력 방식 매뉴얼 부재</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">link_url 필드에 내부/외부 URL 모두 입력 가능하나 예시·안내 부재</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_ads.php link_url 입력부에 내부 경로(예: /hairwang/gangnamunni/detail.php?id=8093)와 외부 URL(https://...) 예시를 다양화한 안내 추가. 등록/수정 시 동일 적용(L116-117, L147-148).</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_ads.php (link_url 입력부, L116/147 INSERT/UPDATE)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">메모리(저위험 8건 #5) 완료 기록 + admin_ads.php link_url 필드 확인. 라이브 admin_ads.php=302</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-8</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#7 / 관리자#8</span>
+  </div>
+  <div class="ic-screen">병원 등록 마법사 (admin_hospital_wizard.php)</div>
+  <div class="ic-issue"><b>지적</b> 마법사 등록 병원 목록/수정 기능 + 승인 절차 시 HTTP 500</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">등록 INSERT 실패 시 예외처리 부재로 PHP fatal → 500. 승인 단계 트랜잭션/명시적 에러 체크 없음</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_hospital_wizard.php 등록 핸들러를 try{}(L72)~catch(Exception $e)(L126)로 감싸고, gangnamunni_hospitals INSERT(L91) + gangnamunni_doctors(L111) + hospital_images(L120) 연계 삽입을 명시적으로 체크, 실패 시 Exception throw 후 JSON 에러 반환. 병원 목록/수정은 admin_hospitals.php에서 try-catch+error_log+메모리/실행시간 보장(프론트#24 픽스)으로 처리.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_hospital_wizard.php (L72 try, L91/111/120 INSERT, L126 catch), _server_files/admin_hospitals.php (edit_hospital try-catch)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: try-catch 블록 + 3개 INSERT 명시 체크. 라이브 admin_hospital_wizard.php=302, admin_hospitals.php=302(인증 보호 정상)</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="admin">
+  <div class="ic-head">
+    <span class="ic-id">5-9</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">관리자</span>
+    <span class="ic-sheet">관리자#9</span>
+  </div>
+  <div class="ic-screen">병원 등록 완료 팝업</div>
+  <div class="ic-issue"><b>지적</b> 등록 완료 안내 팝업 문구에 HTML 태그가 그대로 노출됨</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">성공 메시지에 태그가 섞여 textContent로 출력되거나 이스케이프 처리되어 &lt;br&gt; 등이 문자로 표시</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">admin_hospital_wizard.php 서버 응답 메시지를 정제된 HTML('병원이 등록되었습니다... &lt;br&gt;&lt;br&gt;&lt;a ...&gt;')로 구성(L125), 클라이언트(L975)에서 resultMsg를 innerHTML로 렌더링하여 태그가 정상 HTML로 표시되도록 일치. 제목은 textContent, 본문은 innerHTML로 분리.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/admin_hospital_wizard.php (L125 message, L975 resultMsg.innerHTML)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">소스 확인: 응답 message HTML + innerHTML 렌더 일치. 라이브 admin_hospital_wizard.php=302</span></div>
+</div><h2 class="sec-title" id="sec-app">모바일 앱 <span class="sec-cnt">7건</span></h2>
+<div class="issue-card" data-status="needs-build" data-area="app">
+  <div class="ic-head">
+    <span class="ic-id">1-1</span>
+    <span class="badge text-bg-info ic-status">앱 빌드 필요</span>
+    <span class="ic-area">모바일 앱</span>
+    <span class="ic-sheet">1차#1</span>
+  </div>
+  <div class="ic-screen">공통 (Android 하드웨어 뒤로가기)</div>
+  <div class="ic-issue"><b>지적</b> Android 뒤로가기 버튼 2회 눌러도 앱이 종료되지 않고 스플래시(서울미녀 로고+스피너)가 다시 떠 처음부터 재시작됨. 종료 확인 팝업 없음.</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">Flutter SystemNavigator.pop()=Activity.finish() 및 dart:io exit(0) 모두 Samsung OS(Android 9/14)에서 Activity를 자동 재생성(crash 인식)하여 main.dart home: SplashScreen()부터 재시작. launchMode=singleTop이 재시작 유발에 기여.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">Native finishAffinity() via MethodChannel('app/exit') 방식. (1) MainActivity.kt(patient: com.celebhospital.patient / admin: com.celebhospital.admin)의 configureFlutterEngine에서 MethodChannel 핸들러 추가 — call.method=='finishAffinity'이면 finishAffinity() 호출 후 result.success(null). (2) startup_webview_screen.dart의 _handleBackButton에서 WebView가 뒤로 갈 수 있으면 _controller.goBack(), 더 못 가면 2초 내 더블프레스 시 const MethodChannel('app/exit').invokeMethod('finishAffinity'), 첫 프레스는 _lastBackPressTime 저장 + SnackBar '한 번 더 누르면 종료됩니다' 노출(=종료 확인 팝업). Admin 앱은 PopScope+onPopInvokedWithResult 신규 추가. 2026-03-26 MARS 네이티브 WebView 리패키징 앱에도 동일 핸들러 반영 후 APK/AAB/IPA 재빌드 필요.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">Android: android/app/src/main/kotlin/com/celebhospital/{patient,admin}/MainActivity.kt; Flutter: lib/.../startup_webview_screen.dart; 시나리오: h:/carebaby_project/site_get/docs/scenario_back_button_exit_20260312.md</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">ADB: adb shell am start -n com.celebhospital.patient/.MainActivity → input keyevent KEYCODE_BACK 2회(1초 간격) → adb shell pidof com.celebhospital.patient 결과 없으면 완전 종료 PASS. 서버 작업 아님 → 앱 빌드+SM-A135N 실기 테스트 필요.</span></div>
+</div>
+<div class="issue-card" data-status="needs-build" data-area="app">
+  <div class="ic-head">
+    <span class="ic-id">1-1</span>
+    <span class="badge text-bg-info ic-status">앱 빌드 필요</span>
+    <span class="ic-area">모바일 앱</span>
+    <span class="ic-sheet">1차#1</span>
+  </div>
+  <div class="ic-screen">Android 뒤로가기 / 앱 종료</div>
+  <div class="ic-issue"><b>지적</b> Android 뒤로가기 2번 눌러도 앱이 종료되지 않고 스플래시가 다시 뜨거나, 메인이 아닌 페이지에서 종료 동작이 어색함</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">현재 배포 앱은 Flutter가 아니라 MARS 기반 네이티브(Java) WebView 앱(E:/0maskapp/seoulbeauty/app/, com.celebhospital.patient, v2.2.0/code29)으로 리패키징됨. inspection_1st 메모리의 '1차 #1 Flutter WillPopScope 다음 빌드' 항목은 더 이상 유효하지 않음(Flutter 앱 폐기). 네이티브 MainActivity.java onBackPressed()(line 2562~)에 로직 결함 존재: line 2572의 if(currentUrl != 메인)가 모든 비(非)메인 URL을 잡아버려, line 2583의 else if(webView.canGoBack() &amp;&amp; currentUrl != 메인) 가지가 영구 unreachable dead code임. 결과적으로 비메인 페이지에서는 무조건 goBack/loadUrl만 하고 더블백 종료 토스트('한 번 더 누르면 종료됩니다')와 finish()는 오직 메인(루트) 화면에 도달했을 때만 동작. 종료는 finish()만 호출(Flutter 시나리오의 finishAffinity()가 아님)이라 다중 Activity 태스크가 쌓였을 경우 Samsung OS에서 스플래시 재진입 가능성 잔존.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">MainActivity.java onBackPressed() 재정비(앱 측, 재빌드 필수): (1) line 2583의 unreachable else if 가지 제거 또는 조건 수정 — 메인 화면에서만 더블백 종료가 동작하도록 명시. (2) 종료 시 finish() 단독 대신 finishAndRemoveTask()(API 21+) 사용으로 태스크 전체 제거 → Samsung OS Activity 재생성/스플래시 재진입 차단(scenario_back_button_exit의 finishAffinity() 의도와 동일 효과). (3) onDestory() 오타 메서드(line 2745, @Override 없음 → onDestroy 미오버라이드)를 onDestroy()로 수정하고 System.exit(0)/killProcess는 제거(비정상 종료로 OS가 crash 인식 위험). 수정 후 app/build.gradle versionCode 증가 후 AAB 재빌드. 검증: adb로 비메인 페이지→뒤로가기→토스트 미표시 확인, 메인에서 2회→pidof com.celebhospital.patient 결과 없음 확인.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono"></span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">현재 배포 소스 onBackPressed() line 2562~2620 직접 확인 — line 2583 else if 도달 불가(dead code) 및 finish() 단독 사용 확인. 재빌드+adb 종료 테스트 필요.</span></div>
+</div>
+<div class="issue-card" data-status="resolved" data-area="app">
+  <div class="ic-head">
+    <span class="ic-id">1-2</span>
+    <span class="badge text-bg-success ic-status">해결완료</span>
+    <span class="ic-area">모바일 앱</span>
+    <span class="ic-sheet">1차#1</span>
+  </div>
+  <div class="ic-screen">앱 시작 / 메인 도메인 로딩</div>
+  <div class="ic-issue"><b>지적</b> 앱이 메인 도메인으로 정상 로딩되어야 함(과거 파트너 앱 /kv-api/ 무한 로딩 이력)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">과거 Flutter 파트너 앱은 configs.dart BASE_URL이 '/kv-api/'라 app-configuration 500 → 스플래시 무한 로딩(scenario_app_issues #2). 현재는 MARS 네이티브 앱으로 전환되어 이 이슈는 구조적으로 사라짐. 네이티브 앱은 KiviCare API를 전혀 호출하지 않고 BASE_URL을 그대로 WebView.loadUrl 함.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">추가 작업 불필요(이미 정상). 네이티브 base URL 검증 완료: Android brand.properties BASE_URL=https://hms.seoulbeauty.app/hairwang/gangnamunni/ (build.gradle BuildConfig.BASE_URL 주입, strings.xml home_url/home_url2/home_url3/recent_url 동일 폴백), iOS MainViewController.swift line 62 동일 URL 하드코딩. 멀티산업 배포 시 brand.properties BASE_URL 한 줄만 교체하면 됨.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono"></span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl https://hms.seoulbeauty.app/hairwang/gangnamunni/ → HTTP 200(size 139813). dashboard.php → 200, my_appointments.php → 200. brand.properties / strings.xml / MainViewController.swift 모두 메인 도메인 가리킴 확인.</span></div>
+</div>
+<div class="issue-card" data-status="needs-build" data-area="app">
+  <div class="ic-head">
+    <span class="ic-id">1-4</span>
+    <span class="badge text-bg-info ic-status">앱 빌드 필요</span>
+    <span class="ic-area">모바일 앱</span>
+    <span class="ic-sheet">신규#-</span>
+  </div>
+  <div class="ic-screen">푸시(FCM) — Android 토큰 등록</div>
+  <div class="ic-issue"><b>지적</b> Android 푸시 토큰 서버 등록이 동작하지 않음 (앱이 호출하는 등록 엔드포인트가 서버에 없음)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">네이티브 앱 strings.xml Server_regid_url = https://hms.seoulbeauty.app/hairwang/gangnamunni/push_fcm/get_android_regid.php 이고 MainActivity.java line 536에서 FCM 토큰을 이 URL로 POST하지만, 실측 결과 push_fcm/get_android_regid.php → HTTP 404. push_fcm/ 디렉토리 자체가 서버에 배포되지 않음(get_android_regid.php·push_fcm/ 모두 404). 즉 앱은 토큰을 만들지만 서버에 저장할 곳이 없어 타겟 푸시 발송이 불가. 또한 gangnamunni/ 하위 서브디렉토리 PHP는 Gnuboard rewrite 충돌로 웹 접근 불가(CLAUDE.md 규칙) → push_fcm/를 서브디렉토리에 두면 404 구조적.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">서버 측(신규 구축 필요): (A) FCM 토큰 수신 엔드포인트를 gangnamunni 루트에 admin_ 접두사 규칙으로 신규 배치(서브디렉토리 404 회피) — 예: gangnamunni/api_fcm_register_android.php 작성, gangnamunni_admin_fcm_tokens 또는 신규 user 토큰 테이블에 token/phone/platform UPSERT. (B) 그 후 앱 strings.xml Server_regid_url을 새 URL로 교체 + lawurl(push_fcm/mobile/agree.php, 현재도 404)도 동일 처리 → 앱 재빌드. 기존 FCM HTTP v1 서버 인프라(includes/admin_fcm.php, fcm_service_account.json, hospital-8425b)는 이미 존재하므로 토큰 수신구만 추가하면 발송까지 연결됨. 검증: 새 엔드포인트 curl 200 + DB row 적재 + 실기기 토큰 등록 로그 + 테스트 푸시 수신.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono"></span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl push_fcm/get_android_regid.php → 404, push_fcm/mobile/agree.php → 404, push_fcm/ → 404 실측. MainActivity.java line 536이 R.string.Server_regid_url로 토큰 POST 확인.</span></div>
+</div>
+<div class="issue-card" data-status="open" data-area="app">
+  <div class="ic-head">
+    <span class="ic-id">1-5</span>
+    <span class="badge text-bg-danger ic-status">추가조치</span>
+    <span class="ic-area">모바일 앱</span>
+    <span class="ic-sheet">1차#-</span>
+  </div>
+  <div class="ic-screen">앱/브라우저 동일 표시 (상단/하단 네비)</div>
+  <div class="ic-issue"><b>지적</b> 앱에서도 사이트와 동일하게 상단 네비+하단 탭이 보여야 하고, 앱에서는 관리자 편집 버튼은 숨겨야 함</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">MARS 네이티브 앱은 WebView로 사이트를 그대로 띄우므로 사이트 수정이 앱에 자동 반영됨. 서버 global_nav.php/bottom_navigation.php는 \$in_app=false 고정 처리되어 UA(SeoulBeautyApp)와 무관하게 항상 네비 렌더(scenario_app_browser_unified). 단 네이티브 앱의 User-Agent가 SeoulBeautyApp인지 미검증(MARS 기본 UA일 가능성) → 관리자 버튼 숨김 로직(!\$is_seoul_beauty_app)이 네이티브 앱에서 동작하려면 WebView UA에 식별 토큰이 필요.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">앱 측 권장(재빌드): MainActivity.java WebView 설정에서 webView.getSettings().setUserAgentString(기존UA + ' SeoulBeautyApp/2.2.0') 추가 → 서버의 \$is_seoul_beauty_app 판별 및 향후 앱스토어 리다이렉트 로직 활용 가능. iOS도 MainViewController.swift WKWebViewConfiguration applicationNameForUserAgent = 'SeoulBeautyApp/x.x' 설정. 서버 측은 추가 작업 불필요(이미 \$in_app=false로 네비 노출, !\$is_seoul_beauty_app로 관리자 버튼 숨김 준비됨). 검증: curl -A 'SeoulBeautyApp' 으로 admin 편집 링크 0개 + 네비 정상 렌더 확인.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono"></span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">curl -A 'SeoulBeautyApp/1.0' index → 200, global-nav 37회/bottom-nav 16회 렌더 확인(\$in_app=false 동작). 단 실제 네이티브 WebView UA에 SeoulBeautyApp 토큰 주입 여부는 앱 소스 미설정으로 추정 — 재빌드 시 추가 권장.</span></div>
+</div>
+<div class="issue-card" data-status="needs-build" data-area="app">
+  <div class="ic-head">
+    <span class="ic-id">1-7</span>
+    <span class="badge text-bg-info ic-status">앱 빌드 필요</span>
+    <span class="ic-area">모바일 앱</span>
+    <span class="ic-sheet">신규#-</span>
+  </div>
+  <div class="ic-screen">푸시 딥링크 진입 (param_intent_url + regid)</div>
+  <div class="ic-issue"><b>지적</b> 푸시 알림으로 특정 페이지 진입 시 URL에 &amp;regid= 토큰을 붙여 로딩 — 정상 동작 보장 필요</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">MainActivity.java line 2973: 푸시 인텐트로 받은 param_intent_url에 '&amp;regid='+token 을 append하여 WebView 로딩. 이 경로는 (1) 푸시 토큰 등록 자체가 서버 404(1-4)라 현재 미동작, (2) param_intent_url이 connect= 등 Gnuboard 충돌 파라미터를 포함하면 500(1-3) 위험. 즉 푸시 딥링크는 1-4 해결 전까지 사실상 비활성.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">선행: 1-4(FCM 등록 엔드포인트) 해결 필수. 그 후 서버에서 푸시 발송 시 param_intent_url을 안전한 절대경로(예: /hairwang/gangnamunni/detail.php?id=...)로만 구성하고 connect= 파라미터 배제. 앱 측 line 2973의 &amp;regid= append는 서버가 regid를 무시해도 무해하나, 토큰 등록 완료 후엔 의미 있는 식별값이 됨. 검증: 1-4 완료 후 테스트 푸시 → 알림 탭 → 지정 detail 페이지 정상 진입(HTTP 200) 확인.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono"></span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">MainActivity.java line 2946~2982 param_intent_url + '&amp;regid='+token append 로직 확인. 1-4 미해결로 현재 미동작.</span></div>
+</div>
+<div class="issue-card" data-status="spec-pending" data-area="app">
+  <div class="ic-head">
+    <span class="ic-id">4-14</span>
+    <span class="badge text-bg-warning ic-status">사양/정책 협의</span>
+    <span class="ic-area">모바일 앱</span>
+    <span class="ic-sheet">개발여부#2 / 관리자#19</span>
+  </div>
+  <div class="ic-screen">로그인 카카오 간편 로그인</div>
+  <div class="ic-issue"><b>지적</b> 카카오 간편 로그인 (개발 범위 협의 필요)</div>
+  <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">Gnuboard 소셜 플러그인(plugin/social, HybridAuth 6 Provider)은 설치됨. 단 cf_social_login_use=0(비활성) + 카카오 Client Secret 미등록 + Flutter WebView의 SNS URL 가로채기·Custom URL Scheme 미적용 (네이티브 재패키징 앱 기준 빌드 필요)</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">사양 협의 후 구현 (절차 확정됨, scenario_sns_login_20260309.md). [서버 0.5일] (1) g5_config: cf_social_login_use=1, cf_social_servicelist='kakao,naver,google'; (2) developers.kakao.com에서 카카오 Client Secret 발급 → cf_kakao_client_secret 등록(JS키/REST키는 이미 등록됨); (3) 카카오 개발자콘솔 Callback URL 등록: https://hms.seoulbeauty.app/hairwang/gangnamunni/plugin/social/popup.php; (4) plugin/social/includes/functions.php에 app_mode=1 시 Custom Scheme(seoulbeauty://sns-callback?mb_id=...&amp;session=...) redirect 추가; (5) login.skin.php '준비중' 버튼 → 실제 카카오 버튼. [앱 1일] flutter_web_auth_2 추가 → NavigationDelegate에서 kauth.kakao.com URL 감지 → ASWebAuthenticationSession(iOS)/Chrome Custom Tabs(Android)로 시스템 브라우저 호출 → Info.plist CFBundleURLSchemes 'seoulbeauty' + AndroidManifest intent-filter(scheme=seoulbeauty host=sns-callback) → 콜백 후 WebView 리로드. 단 현재 앱은 네이티브 MARS WebView 재패키징본이므로 해당 소스(E:/0maskapp/seoulbeauty/)에 동일 로직 적용 후 재빌드. [SSO 연동] sso_tokens 테이블로 gangnamunni 세션 동기화. 블로커: 클라이언트 카카오 개발자 계정 권한 + Client Secret 제공 필요.</span></div>
+  <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/bbs/ (Gnuboard); plugin/social/ (HybridAuth, 설치됨); DB: g5_config + g5_member_social_profiles; 앱: E:/0maskapp/seoulbeauty/ (네이티브 재패키징 소스); docs/scenario_sns_login_20260309.md</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">현재 cf_social_login_use=0(비활성), Client Secret 미등록 → 키 발급+활성화 후 웹 카카오 로그인 → 앱 시스템브라우저 복귀 테스트 필요. 예상 2.5일</span></div>
+</div>
+
+ <div class="codex-box" id="codex"><b><i class="bi bi-robot"></i> Codex CLI 0.135.0 독립 재검수 (2026-06-01)</b> — <span class="badge text-bg-success">핵심 전부 PASS</span><br>
+   <div style="font-size:.88rem;margin-top:8px;line-height:1.8;">
+   1) 메인도메인 <code>https://seoulbeauty.app/</code> → 302 → <code>https://seoulbeauty.app/gangnamunni/</code> → <b>200</b> (title '병원 찾기 | 서울미녀') ✅ (단일 홉)<br>
+   2) <code>hms.seoulbeauty.app/hairwang/gangnamunni/</code> 회귀 없음 (200) ✅<br>
+   3) 로그인 리다이렉트 단일 슬래시 <code>/bbs/login.php</code> (//bbs 더블슬래시 해소) ✅<br>
+   4) hospitals.php / detail.php / mypage.php = 200 ✅ (booking.php는 병원 id 없을 때 index.php로 이동 — 의도된 동작)<br>
+   5) 본 해결방안 리포트 200, 전체 97 / 해결 84 / open 3 ✅<br>
+   <b>종합</b>: 폰 브라우저 메인 도메인 접속 정상화 확인. Codex 지적(루트 302가 http 경유로 301 추가 발생)은 https 직접 리다이렉트로 개선 완료(현재 302→200 단일 홉).
+   </div></div>
+
+ <p class="text-secondary" style="font-size:.8rem;margin-top:24px;">백업(작업 전): <code>/var/backups/seoulbeauty_20260601/</code> — source 2.6G + DB(hms_saas) + Apache conf. 설정 파일별 <code>*.bak_20260601_*</code>. 생성: 2026-06-01.</p>
+</div>
+<script>
+function flt(s){document.querySelectorAll('.issue-card').forEach(function(c){c.style.display=(s==='all'||c.dataset.status===s)?'':'none';});}
+function fa(a){document.querySelectorAll('.issue-card').forEach(function(c){c.style.display=(c.dataset.area===a)?'':'none';});}
+</script>
+</body></html>

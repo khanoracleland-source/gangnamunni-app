@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seoul Beauty (서울미녀) - 시스템 매뉴얼 & 테스트 리포트</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>
+  (function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();
+</script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-book"></i> Seoul Beauty (서울미녀)</h1>
+        <div class="sb-subtitle">시스템 매뉴얼 & 테스트 리포트 v2.0</div>
+      </div>
+      <div class="sb-header-actions d-flex align-items-center gap-2">
+        <!-- 수정요청 버튼 — 제일 상단 오른쪽 -->
+        <button class="btn btn-danger btn-sm fw-bold px-3" onclick="openMfSection({file:'index.html',tab:'매뉴얼 홈',section:'',sourceDesc:'매뉴얼 인덱스 페이지'})" style="letter-spacing:0.03em;">
+          <i class="bi bi-pencil-square me-1"></i>수정요청
+        </button>
+        <a href="mf_widget_guide.html" target="_blank"
+           class="btn btn-sm btn-outline-warning fw-bold px-3"
+           style="letter-spacing:0.03em;" title="수정요청 버튼 사용 방법 안내">
+          <i class="bi bi-question-circle me-1"></i>이용법
+        </a>
+        <span class="badge bg-light text-dark" style="font-size: 0.75rem;">2026.04.09 업데이트</span>
+        <button class="sb-theme-toggle" onclick="toggleTheme()" title="테마 전환">
+          <i class="bi bi-moon-fill sb-theme-icon"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="sb-main">
+  <div class="container">
+
+    <!-- Hero Stats -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3 sb-animate">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number">11</div>
+          <div class="sb-stat-label">전체 문서</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3 sb-animate">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number">42</div>
+          <div class="sb-stat-label">관리 메뉴</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3 sb-animate">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number">78</div>
+          <div class="sb-stat-label">E2E 테스트</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3 sb-animate">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number">5</div>
+          <div class="sb-stat-label">AI Phase</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Book Banner -->
+    <div class="sb-animate" style="margin-bottom: 2rem; display:none;">
+      <div style="background: linear-gradient(135deg, #6C63FF, #4F46E5, #7C3AED); border-radius: var(--sb-radius-lg); padding: 1.5rem 2rem; color: white; box-shadow: var(--sb-shadow-lg);">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+          <div>
+            <h5 class="mb-1" style="font-weight: 700; color: white;">
+              <i class="bi bi-book me-2"></i>전체 종합 보고서 (PDF / Word)
+            </h5>
+            <p class="mb-0" style="font-size: 0.85rem; opacity: 0.9;">
+              10개 챕터 종합 보고서를 책 형식으로 PDF 또는 Word로 내보내기할 수 있습니다.
+            </p>
+          </div>
+          <a href="" target="_blank" class="btn" style="background: rgba(255,255,255,0.2); color: white; font-weight: 600; padding: 0.6rem 1.5rem; border-radius: var(--sb-radius); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3);">
+            <i class="bi bi-download me-2"></i>보고서 내보내기
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: System Manuals -->
+    <h2 class="sb-section-title">
+      <i class="bi bi-journal-text"></i> 시스템 매뉴얼
+      <span class="sb-section-badge sb-badge-purple">10개 문서</span>
+    </h2>
+
+    <div class="row g-4 mb-5">
+      <!-- 1. System Overview -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon sb-icon-blue">
+            <i class="bi bi-diagram-3"></i>
+          </div>
+          <h5>시스템 개요</h5>
+          <p>전체 아키텍처, 기술 스택, 서버 구성, 데이터베이스 스키마, 시스템 토폴로지 및 크론 동기화 시스템 문서</p>
+          <a href="system_overview.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 2. Admin Manual -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon sb-icon-purple">
+            <i class="bi bi-gear-wide-connected"></i>
+          </div>
+          <h5>관리자 매뉴얼</h5>
+          <p>42개 관리 메뉴 상세 사용법 - 시술 관리, 기획서 대시보드, QA 등 신규 6개 메뉴 포함</p>
+          <a href="admin_manual.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 2-00. E2E Test Guide (NEW) -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon" style="background:linear-gradient(135deg,#22c55e,#16a34a);">
+            <i class="bi bi-play-circle"></i>
+          </div>
+          <h5>E2E 테스트 가이드 <span class="sb-badge sb-badge-pass" style="font-size:10px;">NEW</span></h5>
+          <p>Playwright 기반 34개 자동 테스트 — 사용자18 + 관리자13 + API3, 에러 시 DB 저장 + 수정 링크</p>
+          <a href="e2e_test_guide.php" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 2-0. Multi-Industry Guide (NEW) -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+            <i class="bi bi-buildings"></i>
+          </div>
+          <h5>멀티 산업 플랫폼 가이드 <span class="sb-badge sb-badge-pass" style="font-size:10px;">NEW</span></h5>
+          <p>10개 업종 프리셋, 용어 교체 시스템, 업종 전환 방법, 앱 브랜드 변경, 도메인 설정 가이드</p>
+          <a href="multi_industry_guide.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 2-1. Hospital Admin Guide (NEW) -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon" style="background:linear-gradient(135deg,#AE1932,#d4374b);">
+            <i class="bi bi-building"></i>
+          </div>
+          <h5>병원 관리자 가이드 <span class="sb-badge sb-badge-pass" style="font-size:10px;">NEW</span></h5>
+          <p>병원관리자(hospital_admin) 역할, 권한, 파트너 페이지, 지출 대시보드, 보안 정책</p>
+          <a href="hospital_admin_guide.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+
+      <!-- 3-0. Operation Manual -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);">
+            <i class="bi bi-book-half"></i>
+          </div>
+          <h5>운영 매뉴얼</h5>
+          <p>서울미녀 플랫폼 전체 운영 가이드 - 서비스 소개, 주요 기능, 병원 관리, 콘텐츠 운영, 광고 시스템 상세 매뉴얼</p>
+          <a href="operation_manual.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 3. Wizard Guide -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon sb-icon-green">
+            <i class="bi bi-magic"></i>
+          </div>
+          <h5>등록 마법사 가이드</h5>
+          <p>7종 등록 마법사 (의사, 간호사, 약사, 환자, 직원, 약품, 예약) 단계별 사용법 및 엑셀 Import/Export</p>
+          <a href="wizard_guide.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 4. AI Guide -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon sb-icon-pink">
+            <i class="bi bi-robot"></i>
+          </div>
+          <h5>AI 기능 가이드</h5>
+          <p>AI 인프라, 후기 검증, 광고 검증, 설정 관리, 작성 도우미, DALL-E 이미지 생성 등 5개 Phase 상세 문서</p>
+          <a href="ai_guide.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 5. AI Key Guide -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon" style="background: linear-gradient(135deg, #F59E0B, #EF4444);">
+            <i class="bi bi-key"></i>
+          </div>
+          <h5>AI 키 관리 가이드</h5>
+          <p>API 키 발급 방법, 비용/결제, 예상 월 비용, 보안 안내, FAQ - 외부 사이트 바로가기 버튼 포함</p>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="sb-badge sb-badge-pass">4개 키 활성</span>
+          </div>
+          <a href="ai_key_guide.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 6. Screenshot Book -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon" style="background: linear-gradient(135deg, #6C63FF, #FF6584);">
+            <i class="bi bi-camera"></i>
+          </div>
+          <h5>스크린샷 매뉴얼</h5>
+          <p>35개 관리 페이지 실행 화면 자동 캡처 - 챕터별 스크린샷 + 상태 배지 + 에러 감지 결과 포함</p>
+          <a href="screenshot_book/" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 7. API Docs -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon sb-icon-teal">
+            <i class="bi bi-braces"></i>
+          </div>
+          <h5>API 문서</h5>
+          <p>AJAX API 엔드포인트 전체 목록 - AI, 후기, 마법사, 엑셀, 통계 API의 요청/응답 상세 명세</p>
+          <a href="api_docs.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Test Reports -->
+    <h2 class="sb-section-title">
+      <i class="bi bi-clipboard-check"></i> 테스트 리포트
+      <span class="sb-section-badge sb-badge-pass">3개 리포트</span>
+    </h2>
+
+    <div class="row g-4 mb-5">
+      <!-- 6. AI Test -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon sb-icon-orange">
+            <i class="bi bi-cpu"></i>
+          </div>
+          <h5>AI 기능 테스트</h5>
+          <p>AI 라이브 테스트 결과 (실시간 업데이트) - Anthropic/OpenAI API 호출, 후기검증, 광고검증, 작성도우미 8개 테스트</p>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="sb-badge sb-badge-pass"><i class="bi bi-check-circle-fill"></i> 8/8 PASS</span>
+          </div>
+          <a href="ai_test_report.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 7. System Test -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon sb-icon-green">
+            <i class="bi bi-check2-all"></i>
+          </div>
+          <h5>전체 시스템 테스트</h5>
+          <p>E2E 테스트 전체 결과 - 페이지 접근, AJAX, DB 유효성, 엑셀 처리 등 78개 테스트 전체 PASS</p>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="sb-badge sb-badge-pass"><i class="bi bi-check-circle-fill"></i> 78/78 PASS</span>
+          </div>
+          <a href="system_test_report.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- 8. Wizard Test -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon sb-icon-indigo">
+            <i class="bi bi-list-check"></i>
+          </div>
+          <h5>마법사 테스트</h5>
+          <p>등록 마법사 7종 기능 테스트 결과 - 각 마법사별 입력 검증, 저장, 편집, 삭제 시나리오 테스트</p>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="sb-badge sb-badge-pass"><i class="bi bi-check-circle-fill"></i> ALL PASS</span>
+          </div>
+          <a href="wizard_test_report.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Status -->
+    <h2 class="sb-section-title">
+      <i class="bi bi-graph-up"></i> 현황
+      <span class="sb-section-badge sb-badge-info">실시간</span>
+    </h2>
+
+    <div class="row g-4 mb-4">
+      <!-- 9. Progress -->
+      <div class="col-12 col-md-6 col-lg-4 sb-animate">
+        <div class="sb-nav-card">
+          <div class="sb-icon sb-icon-cyan">
+            <i class="bi bi-speedometer2"></i>
+          </div>
+          <h5>개발 진행 현황</h5>
+          <p>전체 기능 구현 진척도, Phase별 완료 현황, 마일스톤 타임라인 및 향후 계획</p>
+          <div class="mb-2">
+            <div class="d-flex justify-content-between mb-1">
+              <small class="text-muted">전체 진행률</small>
+              <small class="fw-bold" style="color: var(--sb-primary);">99%</small>
+            </div>
+            <div class="sb-progress-bar">
+              <div class="sb-progress-fill" style="width: 99%;"></div>
+            </div>
+          </div>
+          <a href="progress.html" target="_blank" class="btn btn-go">바로가기 <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Info -->
+    <div class="sb-divider"></div>
+    <div class="row g-4">
+      <div class="col-12 col-md-6 sb-animate">
+        <div class="sb-card">
+          <div class="sb-card-header">
+            <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>시스템 정보</h6>
+          </div>
+          <div class="sb-card-body">
+            <table class="sb-table">
+              <tbody>
+                <tr><td class="fw-semibold" style="width:40%;">프로젝트명</td><td>Seoul Beauty (서울미녀)</td></tr>
+                <tr><td class="fw-semibold">도메인</td><td><code class="sb-code-inline">hms.seoulbeauty.app</code></td></tr>
+                <tr><td class="fw-semibold">백엔드</td><td>InfyHMS (Laravel 10) + PHP 8.2</td></tr>
+                <tr><td class="fw-semibold">프론트엔드</td><td>Bootstrap 5.3 + Vanilla JS</td></tr>
+                <tr><td class="fw-semibold">모바일</td><td>Flutter (Hybrid WebView)</td></tr>
+                <tr><td class="fw-semibold">DB</td><td>MariaDB (341+ 테이블)</td></tr>
+                <tr><td class="fw-semibold">서버</td><td>Contabo VPS (Rocky Linux 9.7)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 sb-animate">
+        <div class="sb-card">
+          <div class="sb-card-header">
+            <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>최근 업데이트</h6>
+          </div>
+          <div class="sb-card-body">
+            <table class="sb-table">
+              <tbody>
+                <tr>
+                  <td><span class="sb-badge sb-badge-pass">NEW</span></td>
+                  <td>광고설정 리디자인 (7탭+AJAX+기기프리뷰) + iOS앱 크래시해결</td>
+                  <td class="text-muted">03.29</td>
+                </tr>
+                <tr>
+                  <td><span class="sb-badge sb-badge-info">UPD</span></td>
+                  <td>디자인토큰/테마/디자인모드 — 라이브프리뷰+기기선택 추가</td>
+                  <td class="text-muted">03.29</td>
+                </tr>
+                <tr>
+                  <td><span class="sb-badge sb-badge-pass">NEW</span></td>
+                  <td>시술 마스터 관리 (대분류/중분류 CRUD, 드래그 정렬)</td>
+                  <td class="text-muted">03.27</td>
+                </tr>
+                <tr>
+                  <td><span class="sb-badge sb-badge-pass">NEW</span></td>
+                  <td>병원별 시술 배정 + 기획서/QA 대시보드 (42메뉴)</td>
+                  <td class="text-muted">03.27</td>
+                </tr>
+                <tr>
+                  <td><span class="sb-badge sb-badge-info">UPD</span></td>
+                  <td>시술 8Phase 완료 (DB 10 + PHP 15 + 크론)</td>
+                  <td class="text-muted">03.25</td>
+                </tr>
+                <tr>
+                  <td><span class="sb-badge sb-badge-pass">NEW</span></td>
+                  <td>AI 자동화 5단계 구현 완료 (Phase A~E)</td>
+                  <td class="text-muted">02.25</td>
+                </tr>
+                <tr>
+                  <td><span class="sb-badge sb-badge-info">UPD</span></td>
+                  <td>후기 에디터 v2 + 승인 워크플로우</td>
+                  <td class="text-muted">02.24</td>
+                </tr>
+                <tr>
+                  <td><span class="sb-badge sb-badge-pass">NEW</span></td>
+                  <td>등록 마법사 7종 + 엑셀 Import/Export</td>
+                  <td class="text-muted">02.23</td>
+                </tr>
+                <tr>
+                  <td><span class="sb-badge sb-badge-info">UPD</span></td>
+                  <td>SSO 통합 로그인 시스템</td>
+                  <td class="text-muted">02.11</td>
+                </tr>
+                <tr>
+                  <td><span class="sb-badge sb-badge-info">UPD</span></td>
+                  <td>메일 관리 시스템 v4 (Gmail 스타일)</td>
+                  <td class="text-muted">02.11</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- Footer -->
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">
+        &copy; 2026 Seoul Beauty (서울미녀). All rights reserved. | 문서 버전 3.0 | 최종 업데이트: 2026.04.09
+      </div>
+      <div class="sb-footer-actions" style="display:none;"></div>
+    </div>
+  </div>
+</footer>
+
+<!-- Back to Top -->
+<button class="sb-back-to-top" title="맨 위로">
+  <i class="bi bi-arrow-up"></i>
+</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+
+<script src="common/mf_widget.js?v=20260409c"></script>
+
+</body>
+</html>

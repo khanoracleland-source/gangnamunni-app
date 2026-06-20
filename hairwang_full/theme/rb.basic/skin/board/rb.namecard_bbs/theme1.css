@@ -1,0 +1,62 @@
+/* 테마 1: 기본 테마 */
+.theme1 .main {
+    background-color: #F5F5F5;
+}
+
+.theme1 .center {
+    background-color: white;
+}
+
+.theme1 .bs_card_txt1 {
+    color: #333;
+}
+
+.theme1 .bs_card_txt1 span {
+    color: #000;
+}
+
+.theme1 .bs_card_txt2 a {
+    color: #777;
+}
+
+.theme1 .bs_card_txt2 bb {
+    color: #1049fd !important;
+}
+
+.theme1 .greeting_bg {
+    background-color: #f9f9f9;
+}
+
+.theme1 .greeting_txt {
+    color: #999;
+}
+
+.theme1 .bottom_button button {
+    background-color: #f5f5f5;
+}
+
+.theme1 .bottom_button button span {
+    color: #777;
+}
+
+.theme1 .ex_lay1 {
+    border: 1px solid #ddd;
+    background-color: #fff;
+}
+
+.theme1 .ex_lay1:hover {
+    border-color: #1049fd;
+    box-shadow: 0 2px 10px rgba(16, 73, 253, 0.1);
+}
+
+.theme1 .lay_tit {
+    color: #333;
+}
+
+.theme1 .lay_sub {
+    color: #777;
+}
+
+.theme1 .copy {
+    color: #999;
+}

@@ -1,0 +1,177 @@
+<?php
+/**
+ * 폰트 스케일 설정 (전역 --fs-scale)
+ *   모바일 화면폭 비례 글자 축소. 슬라이더 -> 라이브 미리보기(iframe) -> 저장 버튼 -> DB(theme_settings) 반영.
+ *   기존 코드 무수정. 저장은 전용 API(api_save_font_scale.php) 사용.
+ * @created 2026-06-16
+ */
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+
+$admin_page_title = '폰트 스케일 설정';
+$admin_current = 'font_scale';
+
+require_once __DIR__ . '/dbconfig.php';
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/theme_helper.php';
+require_once __DIR__ . '/includes/admin_auth.php';
+
+$connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
+if (!$connect) die("MySQL 연결 실패");
+mysqli_set_charset($connect, 'utf8mb4');
+loadThemeSettings($connect);
+require_admin_login();
+
+$cfg = [];
+$res = mysqli_query($connect, "SELECT setting_key, setting_value FROM gangnamunni_theme_settings WHERE setting_key LIKE 'fs_%'");
+while ($row = mysqli_fetch_assoc($res)) { $cfg[$row['setting_key']] = $row['setting_value']; }
+function fv($k,$d){ global $cfg; return isset($cfg[$k]) ? $cfg[$k] : $d; }
+
+$DEF = ['fs_mobile_min'=>'0.82','fs_mobile_slope'=>'0.092','fs_mobile_base'=>'0.62','fs_os_scale'=>'1','fs_page_scale'=>'1'];
+
+$items = [
+  ['fs_mobile_min','모바일 최소 배율(하한)', '0.70','1.00','0.01', fv('fs_mobile_min','0.82'),
+   '폰에서 글자가 줄어드는 <b>하한선</b>입니다. 1.00=원본(축소 안 함), 0.82=최대 18% 축소. <b>작을수록 글자가 더 작아집니다.</b> 가장 자주 조정하는 값.'],
+  ['fs_os_scale','전체 글자 미세보정', '0.80','1.20','0.01', fv('fs_os_scale','1'),
+   '모든 페이지 글자에 곱하는 추가 배율. 1.0=기본. 전체적으로 조금 더 크게(>1)/작게(<1) 할 때.'],
+  ['fs_mobile_slope','화면폭 비례 기울기 (고급)', '0.05','0.15','0.001', fv('fs_mobile_slope','0.092'),
+   '화면폭에 따라 줄어드는 정도(vw 계수). <b>보통 건드리지 않습니다.</b> 기본 0.092.'],
+  ['fs_mobile_base','화면폭 비례 기준 (고급)', '0.40','0.80','0.01', fv('fs_mobile_base','0.62'),
+   '비례식의 기준 오프셋. <b>보통 건드리지 않습니다.</b> 기본 0.62.'],
+];
+$def_json = json_encode($DEF);
+$cur_json = json_encode(['fs_mobile_min'=>fv('fs_mobile_min','0.82'),'fs_os_scale'=>fv('fs_os_scale','1'),'fs_mobile_slope'=>fv('fs_mobile_slope','0.092'),'fs_mobile_base'=>fv('fs_mobile_base','0.62')]);
+?>
+<!doctype html><html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title><?php echo htmlspecialchars($admin_page_title); ?></title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<style>
+body{background:#f4f5f7;font-family:'Noto Sans KR',sans-serif}
+.wrap{max-width:1180px;margin:24px auto;padding:0 16px}
+.grid{display:grid;grid-template-columns:1fr 380px;gap:20px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card h2{font-size:16px;margin:0 0 4px}
+.item{padding:14px 0;border-bottom:1px solid #eef0f2}.item:last-child{border:0}
+.item .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.item label{font-weight:700;font-size:14px}
+.item .val{font-variant-numeric:tabular-nums;font-weight:800;color:#ae1932;min-width:48px;text-align:right}
+.item input[type=range]{width:100%;margin:8px 0 4px;accent-color:#ae1932}
+.item .desc{font-size:12px;color:#6b7280;line-height:1.6}
+.item .reset{font-size:11px;color:#2f6fed;background:none;border:0;cursor:pointer;padding:0}
+.preview-card{position:sticky;top:16px}
+.phone{width:340px;max-width:100%;height:600px;margin:0 auto;border:8px solid #222;border-radius:28px;overflow:hidden;background:#000}
+.phone iframe{width:100%;height:100%;border:0;background:#fff}
+.pv-tools{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+.pv-tools button{font-size:12px;padding:5px 10px;border:1px solid #d0d4d9;background:#fff;border-radius:7px;cursor:pointer}
+.pv-tools button.on{background:#ae1932;color:#fff;border-color:#ae1932}
+.savebar{display:flex;gap:10px;align-items:center;margin-top:8px}
+.note{font-size:12px;color:#6b7280;background:#f0f4ff;border:1px solid #d6e0ff;border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.7}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;border-radius:8px;opacity:0;transition:.3s;z-index:99}
+.toast.show{opacity:1}
+.dirty{color:#e67e22;font-size:12px;font-weight:700;display:none}
+</style></head><body>
+<div class="wrap">
+  <h1 style="font-size:20px;margin:0 0 4px">📐 폰트 스케일 설정</h1>
+  <p style="color:#6b7280;font-size:13px;margin:0 0 16px">폰 화면폭에 맞춰 글자를 비례 축소합니다. PC는 항상 원본(영향 없음). 슬라이더로 미리보기 후 <b>저장</b>하세요.</p>
+
+  <div class="note">
+    <b>동작 방식:</b> 슬라이더를 움직이면 <b>오른쪽 미리보기</b>(실제 병원목록 페이지)에 즉시 반영됩니다 (아직 저장 아님). 마음에 들면 <b>저장</b> 버튼을 눌러야 실제 사이트에 적용됩니다. <b>원복</b>은 권장 기본값으로 되돌립니다.
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>스케일 값 <span id="dirty" class="dirty">● 저장 안 된 변경 있음</span></h2>
+        <?php foreach ($items as $it): list($key,$lbl,$min,$max,$step,$cur,$desc)=$it; ?>
+        <div class="item" data-key="<?php echo $key; ?>">
+          <div class="top">
+            <label><?php echo $lbl; ?></label>
+            <span class="val" id="val_<?php echo $key; ?>"><?php echo htmlspecialchars($cur); ?></span>
+          </div>
+          <input type="range" min="<?php echo $min; ?>" max="<?php echo $max; ?>" step="<?php echo $step; ?>"
+                 value="<?php echo htmlspecialchars($cur); ?>" id="rng_<?php echo $key; ?>"
+                 oninput="onSlide('<?php echo $key; ?>', this.value)">
+          <div class="desc"><?php echo $desc; ?> <button class="reset" onclick="resetOne('<?php echo $key; ?>')">&#8635; 기본값(<?php echo $DEF[$key]; ?>)</button></div>
+        </div>
+        <?php endforeach; ?>
+        <div class="savebar">
+          <button class="btn btn-danger" onclick="saveAll()">&#128190; 저장 (사이트 적용)</button>
+          <button class="btn btn-outline-secondary" onclick="resetAll()">&#8635; 전체 기본값</button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#9aa3b2">접근: 관리자 &rarr; 사이트 설정 &rarr; 폰트 스케일 &middot; URL <code>admin_font_scale.php</code> &middot; 저장 테이블 <code>gangnamunni_theme_settings</code></p>
+    </div>
+
+    <div class="preview-card">
+      <div class="card">
+        <h2>📱 미리보기</h2>
+        <div class="pv-tools">
+          <button onclick="pvPage('hospitals.php',this)" class="on">병원목록</button>
+          <button onclick="pvPage('index.php',this)">메인</button>
+          <button onclick="pvPage('reviews.php',this)">후기</button>
+          <button onclick="pvReload()">&#8635; 새로고침</button>
+        </div>
+        <div class="phone"><iframe id="pv" src="hospitals.php"></iframe></div>
+        <p style="font-size:11px;color:#9aa3b2;margin-top:8px">미리보기는 슬라이더 값만 적용(저장 전). 폰 너비(340px) 기준.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var DEF = <?php echo $def_json; ?>;
+var cur = <?php echo $cur_json; ?>;
+var dirty = false;
+
+function applyPreview(){
+  var f=document.getElementById('pv'); if(!f||!f.contentDocument) return;
+  var doc=f.contentDocument;
+  var min=parseFloat(cur.fs_mobile_min), slope=parseFloat(cur.fs_mobile_slope), base=parseFloat(cur.fs_mobile_base), os=parseFloat(cur.fs_os_scale);
+  var vw = 340/100;
+  var calc = base + slope*vw*100;
+  var scale = Math.max(min, Math.min(calc, 1.0)) * os;
+  var sid='__fs_preview_style';
+  var s=doc.getElementById(sid);
+  if(!s){ s=doc.createElement('style'); s.id=sid; doc.head.appendChild(s); }
+  s.textContent=':root{ --fs-scale:'+scale.toFixed(3)+' !important; }';
+}
+function onSlide(key,v){
+  document.getElementById('val_'+key).textContent=v;
+  cur[key]=v; markDirty(); applyPreview();
+}
+function markDirty(){ dirty=true; document.getElementById('dirty').style.display='inline'; }
+function resetOne(key){
+  cur[key]=DEF[key];
+  document.getElementById('rng_'+key).value=DEF[key];
+  document.getElementById('val_'+key).textContent=DEF[key];
+  markDirty(); applyPreview();
+}
+function resetAll(){ for(var k in DEF){ if(document.getElementById('rng_'+k)) resetOne(k); } }
+function pvPage(p,btn){
+  document.querySelectorAll('.pv-tools button').forEach(function(b){b.classList.remove('on')});
+  if(btn)btn.classList.add('on');
+  var f=document.getElementById('pv'); f.src=p;
+}
+function pvReload(){ var f=document.getElementById('pv'); f.src=f.src; }
+document.getElementById('pv').addEventListener('load', applyPreview);
+
+function saveAll(){
+  var keys=Object.keys(cur); var done=0, fail=0;
+  keys.forEach(function(key){
+    var fd=new FormData(); fd.append('key',key); fd.append('value',cur[key]);
+    fetch('api_save_font_scale.php',{method:'POST',body:fd,credentials:'same-origin'})
+      .then(function(r){return r.json()}).then(function(j){
+        done++; if(!j.success) fail++;
+        if(done===keys.length){
+          if(fail===0){ dirty=false; document.getElementById('dirty').style.display='none'; toast('저장 완료 — 사이트에 적용됨'); pvReload(); }
+          else toast('일부 저장 실패('+fail+'건)');
+        }
+      }).catch(function(){done++;fail++; if(done===keys.length)toast('저장 오류');});
+  });
+}
+function toast(m){ var t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(function(){t.classList.remove('show')},2200); }
+</script>
+</body></html>

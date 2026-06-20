@@ -1,0 +1,14 @@
+id	model_id	model_type	collection_name	file_name	disk
+1	1	App\\Models\\Branch	feature_image	5RRKGtJaj28pCtzFVSRZeGyrWSSD27liwuRNW4ZW.png	media
+2	2	App\\Models\\Branch	feature_image	s2AdGdEU5R5bwFCL9ttHUbJ83rGPmbkKeTgoZesp.png	media
+3	3	App\\Models\\Branch	feature_image	6qItM4QhIIcobcH7fnbIByqcqE0xrl6MlTD7cRa0.png	media
+4	4	App\\Models\\Branch	feature_image	3nnlTIpnPprob9Ytv9phtj7N7Vjzx6NwWnuCIv7A.png	media
+5	5	App\\Models\\Branch	feature_image	FnJnH2vejHgqMYvM3ubAv3VCKGTq8LAYcD2tJhzh.png	media
+6	5	Modules\\Slider\\Models\\Slider	feature_image	Se9KliXcjQnC1eFjIeghB8eY2n2RAvOEDjGlFk5r.png	media
+7	6	Modules\\Slider\\Models\\Slider	feature_image	iRRaByfrCdNQ1LsehFHfy9FMXFiLf2x9hXDshRv2.png	media
+8	7	Modules\\Slider\\Models\\Slider	feature_image	y08qdpwR9f7Fp1Y3pmhLZNhzaxP7lpdGhmWDpR6m.png	media
+9	8	Modules\\Slider\\Models\\Slider	feature_image	DG0liJyE6QtGB9STnOkf3b6WURjKeQfOLtI13SuI.png	media
+10	1	Modules\\Slider\\Models\\Slider	feature_image	WY9aLoOZCQcwAiGtWeMO5gTkTBAl0bsEtQQxMj0c.png	media
+11	2	Modules\\Slider\\Models\\Slider	feature_image	BjHd8SH5DcnurlbON9MjJVLFpnEESrPgK3O23q5y.png	media
+12	3	Modules\\Slider\\Models\\Slider	feature_image	8plm3njjYpz81RHWMYfemUXx3hajDim33MCfOD7M.png	media
+13	4	Modules\\Slider\\Models\\Slider	feature_image	KajKOlykeaZyrMQpU3yQOHWjJatkbWjPX97qIFdp.png	media

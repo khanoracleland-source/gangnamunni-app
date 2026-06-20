@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>병원 목록 - 서울미녀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic', sans-serif;
+            background: #F9F9F9;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF6B9D;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-button {
+            padding: 10px 24px;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: white;
+            padding: 30px 20px;
+            border-bottom: 1px solid #F0F0F0;
+        }
+
+        .page-header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: #666;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 30px;
+        }
+
+        /* Sidebar Filters */
+        .sidebar {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .filter-section {
+            margin-bottom: 30px;
+        }
+
+        .filter-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .filter-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .filter-checkbox input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .filter-checkbox label {
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .filter-radio {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-radio-btn {
+            padding: 8px 16px;
+            background: #F5F5F5;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-radio-btn.active {
+            background: #FF6B9D;
+            color: white;
+        }
+
+        /* Content Area */
+        .content-area {
+            min-height: 600px;
+        }
+
+        .content-header {
+            background: white;
+            padding: 20px 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .result-info {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .result-count {
+            color: #FF6B9D;
+            font-size: 18px;
+        }
+
+        .sort-dropdown {
+            padding: 10px 20px;
+            border: 1px solid #E0E0E0;
+            border-radius: 25px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* Hospital Grid */
+        .hospital-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 25px;
+        }
+
+        .hospital-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .hospital-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .hospital-image {
+            width: 100%;
+            height: 220px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 72px;
+            position: relative;
+        }
+
+        .hospital-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 6px 14px;
+            background: white;
+            color: #FF6B9D;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .hospital-info {
+            padding: 20px;
+        }
+
+        .hospital-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .hospital-rating {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .rating-stars {
+            color: #FFD700;
+            font-size: 16px;
+        }
+
+        .rating-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .rating-count {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .hospital-location {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hospital-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .hospital-tag {
+            padding: 5px 12px;
+            background: #FFE5ED;
+            color: #FF6B9D;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .hospital-footer {
+            padding-top: 15px;
+            border-top: 1px solid #F0F0F0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hospital-event {
+            font-size: 13px;
+            color: #FF4757;
+            font-weight: 600;
+        }
+
+        .hospital-consult-btn {
+            padding: 8px 18px;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .hospital-consult-btn:hover {
+            background: #E85A88;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 40px;
+        }
+
+        .page-btn {
+            padding: 10px 16px;
+            background: white;
+            border: 1px solid #E0E0E0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .page-btn:hover {
+            background: #FF6B9D;
+            color: white;
+            border-color: #FF6B9D;
+        }
+
+        .page-btn.active {
+            background: #FF6B9D;
+            color: white;
+            border-color: #FF6B9D;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 16px;
+            color: #999;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .empty-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+        }
+
+        .empty-message {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .empty-submessage {
+            font-size: 14px;
+            color: #999;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+            }
+
+            .hospital-grid {
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hospital-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .content-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-title {
+                font-size: 24px;
+            }
+
+            .main-layout {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <span>💄</span>
+                <span>서울미녀</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="hospitals.html" class="nav-link">병원찾기</a>
+                <a href="events.html" class="nav-link">이벤트</a>
+                <a href="community.html" class="nav-link">커뮤니티</a>
+                <button class="nav-button" onclick="handleMyBooking()">내 예약</button>
+                <a href="settings.html" class="nav-link" style="font-size: 20px;" title="환경 설정">⚙️</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1 class="page-title" id="pageTitle">병원 목록</h1>
+            <p class="page-subtitle">신뢰할 수 있는 병원을 찾아보세요</p>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Sidebar Filters -->
+        <aside class="sidebar">
+            <div class="filter-section">
+                <h3 class="filter-title">카테고리</h3>
+                <div id="categoryFilterContainer" class="filter-options">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3 class="filter-title">지역</h3>
+                <div class="filter-radio">
+                    <button class="filter-radio-btn active" data-location="all">전체</button>
+                    <button class="filter-radio-btn" data-location="강남">강남</button>
+                    <button class="filter-radio-btn" data-location="신사">신사</button>
+                    <button class="filter-radio-btn" data-location="압구정">압구정</button>
+                    <button class="filter-radio-btn" data-location="청담">청담</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3 class="filter-title">평점</h3>
+                <div class="filter-radio">
+                    <button class="filter-radio-btn active" data-rating="all">전체</button>
+                    <button class="filter-radio-btn" data-rating="9">9.0 이상</button>
+                    <button class="filter-radio-btn" data-rating="8">8.0 이상</button>
+                    <button class="filter-radio-btn" data-rating="7">7.0 이상</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="content-area">
+            <div class="content-header">
+                <div class="result-info">
+                    총 <span class="result-count" id="totalCount">0</span>개 병원
+                </div>
+                <select class="sort-dropdown" id="sortSelect">
+                    <option value="rating">평점 높은 순</option>
+                    <option value="review">리뷰 많은 순</option>
+                    <option value="name">이름 순</option>
+                </select>
+            </div>
+
+            <div class="hospital-grid" id="hospitalGrid">
+                <div class="loading">병원 목록을 불러오는 중...</div>
+            </div>
+
+            <div class="pagination" id="pagination"></div>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        const DEBUG = sessionStorage.getItem('debug') === 'true';
+
+        let currentPage = 1;
+        let currentFilters = {
+            category: null,
+            location: 'all',
+            rating: 'all',
+            sort: 'rating'
+        };
+
+        // Debug logging function
+        function debugLog(action, data) {
+            if (DEBUG) {
+                console.log(`[DEBUG ${new Date().toISOString()}] ${action}:`, data);
+            }
+        }
+
+        // Handle My Booking button
+        function handleMyBooking() {
+            debugLog('Button Click', { action: 'My Booking' });
+            alert('내 예약 페이지는 준비 중입니다.\n\n회원가입 후 이용 가능합니다.');
+        }
+
+        // Get URL parameters
+        function getUrlParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // 카테고리 목록
+        const categories = [
+            { id: 'lifting', label: '리프팅', value: '리프팅' },
+            { id: 'botox', label: '보톡스', value: '보톡스' },
+            { id: 'filler', label: '필러', value: '필러' },
+            { id: 'skin', label: '피부', value: '피부' },
+            { id: 'lipo', label: '지방성형', value: '지방성형' }
+        ];
+
+        // 카테고리 필터 초기화
+        function initCategoryFilter() {
+            const categoryType = SettingsManager.get('filters.categoryType') || 'checkbox';
+            const container = document.getElementById('categoryFilterContainer');
+
+            debugLog('Init Category Filter', { type: categoryType });
+
+            if (categoryType === 'radio') {
+                // 라디오 버튼 형식 (평점 필터처럼)
+                container.className = 'filter-radio';
+                container.innerHTML = `
+                    <button class="filter-radio-btn active" data-category="">전체</button>
+                    ${categories.map(cat => `
+                        <button class="filter-radio-btn" data-category="${cat.value}">${cat.label}</button>
+                    `).join('')}
+                `;
+
+                // 라디오 버튼 이벤트 리스너
+                container.querySelectorAll('.filter-radio-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        // 모든 버튼 비활성화
+                        container.querySelectorAll('.filter-radio-btn').forEach(b => b.classList.remove('active'));
+                        // 현재 버튼 활성화
+                        this.classList.add('active');
+
+                        const category = this.dataset.category;
+                        currentFilters.category = category || null;
+                        currentPage = 1;
+
+                        debugLog('Category Radio Changed', { category: category || 'all' });
+                        loadHospitals();
+                    });
+                });
+            } else {
+                // 체크박스 형식 (기본)
+                container.className = 'filter-options';
+                container.innerHTML = categories.map(cat => `
+                    <div class="filter-checkbox">
+                        <input type="checkbox" id="cat-${cat.id}" value="${cat.value}" checked>
+                        <label for="cat-${cat.id}">${cat.label}</label>
+                    </div>
+                `).join('');
+
+                // 초기 상태: 모든 카테고리 선택됨 (전체 선택)
+                currentFilters.category = null;  // null = 전체
+
+                // 체크박스 이벤트 리스너
+                container.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        const selectedCategories = Array.from(
+                            container.querySelectorAll('input[type="checkbox"]:checked')
+                        ).map(cb => cb.value);
+
+                        // 모든 카테고리가 선택되면 null (전체)
+                        if (selectedCategories.length === categories.length || selectedCategories.length === 0) {
+                            currentFilters.category = null;
+                        } else {
+                            currentFilters.category = selectedCategories.join(',');
+                        }
+
+                        currentPage = 1;
+
+                        debugLog('Category Checkbox Changed', {
+                            selected: selectedCategories,
+                            filter: currentFilters.category || 'all'
+                        });
+
+                        loadHospitals();
+                    });
+                });
+            }
+        }
+
+        // Initialize from URL
+        const categoryParam = getUrlParameter('category');
+        if (categoryParam) {
+            currentFilters.category = categoryParam;
+            document.getElementById('pageTitle').textContent = `${categoryParam} 병원`;
+            debugLog('Initial Category', { category: categoryParam });
+        }
+
+        // Debug mode info
+        if (DEBUG) {
+            console.log('%c[DEBUG MODE ENABLED]', 'background: #FF6B9D; color: white; padding: 5px 10px; font-weight: bold;');
+            console.log('Set sessionStorage.setItem("debug", "false") to disable debug mode');
+        }
+
+        debugLog('Page Initialized', {
+            url: window.location.href,
+            filters: currentFilters,
+            debugMode: DEBUG
+        });
+
+        // 카테고리 필터 초기화 (설정 로드 후)
+        initCategoryFilter();
+
+        // URL에서 카테고리 파라미터가 있으면 해당 카테고리만 선택
+        if (categoryParam) {
+            const categoryType = SettingsManager.get('filters.categoryType') || 'checkbox';
+            const container = document.getElementById('categoryFilterContainer');
+
+            if (categoryType === 'radio') {
+                // 라디오: 해당 버튼 활성화
+                container.querySelectorAll('.filter-radio-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.category === categoryParam) {
+                        btn.classList.add('active');
+                    }
+                });
+            } else {
+                // 체크박스: 해당 항목만 체크
+                container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.checked = (cb.value === categoryParam);
+                });
+            }
+        }
+
+        // Load hospitals
+        async function loadHospitals() {
+            // 로딩 인디케이터 표시
+            LoadingIndicator.show('hospitals-list');
+
+            try {
+                debugLog('Load Hospitals Start', { page: currentPage, filters: currentFilters });
+
+                let url = `${API_BASE}/hospitals?page=${currentPage}&per_page=12`;
+
+                // Category filter
+                if (currentFilters.category) {
+                    url += `&category=${encodeURIComponent(currentFilters.category)}`;
+                    debugLog('Filter Applied', { type: 'category', value: currentFilters.category });
+                }
+
+                // Location search
+                if (currentFilters.location !== 'all') {
+                    url += `&search=${encodeURIComponent(currentFilters.location)}`;
+                    debugLog('Filter Applied', { type: 'location', value: currentFilters.location });
+                }
+
+                // Rating filter (min_rating)
+                if (currentFilters.rating !== 'all') {
+                    const minRating = parseInt(currentFilters.rating);
+                    url += `&min_rating=${minRating}`;
+                    debugLog('Filter Applied', { type: 'rating', value: minRating });
+                }
+
+                // Sort options
+                const sortMapping = {
+                    'rating': { sort_by: 'rating', sort_order: 'desc' },
+                    'review': { sort_by: 'review_count', sort_order: 'desc' },
+                    'name': { sort_by: 'name', sort_order: 'asc' }
+                };
+
+                const sortConfig = sortMapping[currentFilters.sort] || sortMapping['rating'];
+                url += `&sort_by=${sortConfig.sort_by}&sort_order=${sortConfig.sort_order}`;
+                debugLog('Sort Applied', sortConfig);
+
+                debugLog('API Request', { url });
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                debugLog('API Response', {
+                    total: result.pagination?.total,
+                    currentPage: result.pagination?.current_page,
+                    dataCount: result.data.length
+                });
+
+                displayHospitals(result.data);
+                displayPagination(result.pagination?.total || 0, result.pagination?.per_page || 12);
+
+                // Update total count
+                document.getElementById('totalCount').textContent = result.pagination?.total || 0;
+
+            } catch (error) {
+                debugLog('API Error', { error: error.message, stack: error.stack });
+                console.error('Error loading hospitals:', error);
+
+                document.getElementById('hospitalGrid').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🏥</div>
+                        <div class="empty-message">병원을 불러올 수 없습니다</div>
+                        <div class="empty-submessage">잠시 후 다시 시도해주세요</div>
+                    </div>
+                `;
+                document.getElementById('totalCount').textContent = '0';
+            } finally {
+                // 로딩 인디케이터 숨김
+                LoadingIndicator.hide('hospitals-list');
+            }
+        }
+
+        // Display hospitals
+        function displayHospitals(hospitals) {
+            debugLog('Display Hospitals', { count: hospitals.length });
+            const grid = document.getElementById('hospitalGrid');
+
+            if (hospitals.length === 0) {
+                debugLog('Display Result', { message: 'No hospitals found' });
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-message">검색 결과가 없습니다</div>
+                        <div class="empty-submessage">다른 조건으로 검색해보세요</div>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = hospitals.map(hospital => `
+                <div class="hospital-card" onclick="window.location.href='hospital.html?id=${hospital.id}'">
+                    <div class="hospital-image">
+                        🏥
+                        <div class="hospital-badge">인기</div>
+                    </div>
+                    <div class="hospital-info">
+                        <div class="hospital-name">${hospital.name}</div>
+                        <div class="hospital-rating">
+                            <span class="rating-stars">⭐⭐⭐⭐⭐</span>
+                            <span class="rating-value">${hospital.rating || '9.5'}</span>
+                            <span class="rating-count">(${hospital.review_count || 0})</span>
+                        </div>
+                        <div class="hospital-location">
+                            📍 ${hospital.address || '서울 강남구'}
+                        </div>
+                        <div class="hospital-tags">
+                            ${(hospital.categories || '리프팅,보톡스').split(',').slice(0, 4).map(cat =>
+                                `<span class="hospital-tag">${cat.trim()}</span>`
+                            ).join('')}
+                        </div>
+                        <div class="hospital-footer">
+                            <div class="hospital-event">🎁 진행중인 이벤트 ${Math.floor(Math.random() * 5) + 1}개</div>
+                            <button class="hospital-consult-btn" onclick="event.stopPropagation()">상담 예약</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Display pagination
+        function displayPagination(total, perPage) {
+            const totalPages = Math.ceil(total / perPage);
+            const pagination = document.getElementById('pagination');
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // Previous button
+            if (currentPage > 1) {
+                html += `<button class="page-btn" onclick="changePage(${currentPage - 1})">이전</button>`;
+            }
+
+            // Page numbers
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+
+            // Next button
+            if (currentPage < totalPages) {
+                html += `<button class="page-btn" onclick="changePage(${currentPage + 1})">다음</button>`;
+            }
+
+            pagination.innerHTML = html;
+        }
+
+        // Change page
+        function changePage(page) {
+            debugLog('Page Changed', { from: currentPage, to: page });
+            currentPage = page;
+            loadHospitals();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Filter buttons (location and rating)
+        document.querySelectorAll('.filter-radio-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const filterType = this.parentElement.previousElementSibling.textContent;
+                const buttons = this.parentElement.querySelectorAll('.filter-radio-btn');
+
+                buttons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                if (filterType === '지역') {
+                    currentFilters.location = this.dataset.location;
+                    debugLog('Filter Changed', { type: 'location', value: this.dataset.location });
+                } else if (filterType === '평점') {
+                    currentFilters.rating = this.dataset.rating;
+                    debugLog('Filter Changed', { type: 'rating', value: this.dataset.rating });
+                }
+
+                currentPage = 1;
+                loadHospitals();
+            });
+        });
+
+        // Sort select
+        document.getElementById('sortSelect').addEventListener('change', function() {
+            currentFilters.sort = this.value;
+            debugLog('Sort Changed', { value: this.value });
+            currentPage = 1;
+            loadHospitals();
+        });
+
+        // Initialize
+        loadHospitals();
+    </script>
+
+    <!-- Loading Indicator -->
+    <script src="js/loading.js"></script>
+
+    <!-- Settings Manager -->
+    <script src="js/settings.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

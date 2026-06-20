@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI API 키 관리 가이드 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+<style>
+  /* Provider Card Styles */
+  .provider-card {
+    background: var(--sb-bg-card);
+    border: 1px solid var(--sb-border);
+    border-radius: var(--sb-radius);
+    box-shadow: var(--sb-shadow);
+    transition: var(--sb-transition);
+    overflow: hidden;
+    height: 100%;
+    position: relative;
+  }
+  .provider-card:hover {
+    box-shadow: var(--sb-shadow-xl);
+    transform: translateY(-4px);
+  }
+  .provider-card .provider-top {
+    padding: 1.75rem 1.5rem 1.25rem;
+    text-align: center;
+    position: relative;
+  }
+  .provider-card .provider-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .provider-card .provider-body {
+    padding: 0 1.5rem 1.5rem;
+  }
+  .provider-card .provider-status {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+  }
+
+  /* Anthropic card */
+  .provider-anthropic { border-top: 4px solid #D97757; }
+  .provider-anthropic .provider-icon { background: linear-gradient(135deg, #D97757 0%, #C4613F 100%); color: #fff; }
+
+  /* OpenAI card */
+  .provider-openai { border-top: 4px solid #10A37F; }
+  .provider-openai .provider-icon { background: linear-gradient(135deg, #10A37F 0%, #0D8A6A 100%); color: #fff; }
+
+  /* Zhipu GLM card */
+  .provider-zhipu { border-top: 4px solid #3B82F6; }
+  .provider-zhipu .provider-icon { background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: #fff; }
+
+  /* DeepSeek card */
+  .provider-deepseek { border-top: 4px solid #06B6D4; }
+  .provider-deepseek .provider-icon { background: linear-gradient(135deg, #06B6D4 0%, #0891B2 100%); color: #fff; }
+
+  /* Step card enhanced */
+  .step-section {
+    position: relative;
+    padding-left: 3rem;
+    margin-bottom: 1.25rem;
+  }
+  .step-section::before {
+    content: attr(data-step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--sb-primary), #8B5CF6);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 8px rgba(108, 99, 255, 0.3);
+  }
+  .step-section .step-content {
+    background: var(--sb-bg-card);
+    border: 1px solid var(--sb-border);
+    border-radius: var(--sb-radius-sm);
+    padding: 1rem 1.25rem;
+  }
+
+  /* Gradient buttons for external links */
+  .btn-gradient-anthropic {
+    background: linear-gradient(135deg, #D97757, #C4613F);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    padding: 0.6rem 1.5rem;
+    border-radius: 10px;
+    transition: var(--sb-transition);
+  }
+  .btn-gradient-anthropic:hover {
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(217, 119, 87, 0.4);
+    transform: translateY(-2px);
+  }
+  .btn-gradient-openai {
+    background: linear-gradient(135deg, #10A37F, #0D8A6A);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    padding: 0.6rem 1.5rem;
+    border-radius: 10px;
+    transition: var(--sb-transition);
+  }
+  .btn-gradient-openai:hover {
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(16, 163, 127, 0.4);
+    transform: translateY(-2px);
+  }
+  .btn-gradient-zhipu {
+    background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    padding: 0.6rem 1.5rem;
+    border-radius: 10px;
+    transition: var(--sb-transition);
+  }
+  .btn-gradient-zhipu:hover {
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    transform: translateY(-2px);
+  }
+  .btn-gradient-deepseek {
+    background: linear-gradient(135deg, #06B6D4, #0891B2);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    padding: 0.6rem 1.5rem;
+    border-radius: 10px;
+    transition: var(--sb-transition);
+  }
+  .btn-gradient-deepseek:hover {
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+    transform: translateY(-2px);
+  }
+
+  /* Cost tier cards */
+  .tier-card {
+    background: var(--sb-bg-card);
+    border: 1px solid var(--sb-border);
+    border-radius: var(--sb-radius);
+    padding: 1.5rem;
+    text-align: center;
+    transition: var(--sb-transition);
+  }
+  .tier-card:hover {
+    box-shadow: var(--sb-shadow-lg);
+    transform: translateY(-3px);
+  }
+  .tier-card.recommended {
+    border-color: var(--sb-primary);
+    box-shadow: 0 0 0 1px var(--sb-primary), var(--sb-shadow);
+    position: relative;
+  }
+  .tier-card.recommended::after {
+    content: "추천";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--sb-primary), var(--sb-accent));
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.75rem;
+    border-radius: 10px;
+  }
+  .tier-price {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--sb-primary), var(--sb-accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .tier-unit {
+    font-size: 0.85rem;
+    color: var(--sb-text-muted);
+    font-weight: 400;
+    -webkit-text-fill-color: var(--sb-text-muted);
+  }
+
+  /* Registration card */
+  .register-card {
+    background: linear-gradient(135deg, rgba(108,99,255,0.05) 0%, rgba(255,101,132,0.05) 100%);
+    border: 2px solid var(--sb-primary);
+    border-radius: var(--sb-radius-lg);
+    padding: 2.5rem;
+    text-align: center;
+  }
+  [data-theme="dark"] .register-card {
+    background: linear-gradient(135deg, rgba(108,99,255,0.1) 0%, rgba(255,101,132,0.1) 100%);
+  }
+
+  /* Security grid */
+  .security-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--sb-bg-card);
+    border: 1px solid var(--sb-border);
+    border-radius: var(--sb-radius-sm);
+    transition: var(--sb-transition);
+  }
+  .security-item:hover {
+    box-shadow: var(--sb-shadow);
+  }
+  .security-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+
+  /* Key status table row highlight */
+  .key-row-active td {
+    background: rgba(46, 212, 122, 0.04);
+  }
+
+  /* Price highlight */
+  .price-total-row {
+    background: rgba(108, 99, 255, 0.06) !important;
+    font-weight: 700;
+  }
+  [data-theme="dark"] .price-total-row {
+    background: rgba(108, 99, 255, 0.12) !important;
+  }
+
+  /* Tab provider styling */
+  .provider-tab {
+    border: 2px solid var(--sb-border);
+    border-radius: var(--sb-radius) !important;
+    padding: 0.65rem 1.25rem !important;
+    font-weight: 600;
+    margin-right: 0.5rem;
+    color: var(--sb-text-secondary);
+    background: var(--sb-bg-card);
+  }
+  .provider-tab.active {
+    border-color: var(--sb-primary) !important;
+    color: var(--sb-primary) !important;
+    background: rgba(108, 99, 255, 0.06) !important;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .register-card { padding: 1.5rem; }
+    .step-section { padding-left: 2.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-key-fill"></i> AI API 키 관리 가이드</h1>
+        <div class="sb-subtitle">API 키 발급, 비용, 등록 안내 - Seoul Beauty 관리자용</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <a href="ai_guide.html" class="btn btn-sm btn-outline-light"><i class="bi bi-robot me-1"></i> AI 가이드</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()" title="테마 전환">
+          <i class="bi bi-moon-fill sb-theme-icon"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="sb-main">
+  <div class="container">
+    <!-- Breadcrumb -->
+    <nav class="sb-breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="index.html">홈</a></li>
+        <li class="breadcrumb-item"><a href="ai_guide.html">AI 기능 가이드</a></li>
+        <li class="breadcrumb-item active">AI 키 관리 가이드</li>
+      </ol>
+    </nav>
+
+    <div class="row">
+      <!-- Table of Contents (sidebar) -->
+      <div class="col-lg-3 order-lg-2 mb-4">
+        <div class="sb-toc">
+          <div class="sb-toc-title">목차</div>
+          <ul class="sb-toc-list">
+            <li><a href="#overview">AI 서비스 개요</a></li>
+            <li><a href="#get-keys">API 키 발급 방법</a></li>
+            <li><a href="#pricing">비용 및 결제</a></li>
+            <li><a href="#simulator">월 비용 시뮬레이터</a></li>
+            <li><a href="#register">키 등록 방법</a></li>
+            <li><a href="#security">보안 안내</a></li>
+            <li><a href="#faq">자주 묻는 질문</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div class="col-lg-9 order-lg-1">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 1: AI 서비스 개요 -->
+        <!-- ============================================================ -->
+        <section id="overview" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-grid-3x3-gap"></i> AI 서비스 개요</h2>
+          <p class="mb-4" style="color: var(--sb-text-secondary);">Seoul Beauty는 6개의 AI 프로바이더를 지원합니다. 각 프로바이더의 API 키를 발급받아 등록하면 AI 기능을 사용할 수 있습니다.</p>
+
+          <div class="row g-4">
+            <!-- Anthropic -->
+            <div class="col-md-4 sb-animate">
+              <div class="provider-card provider-anthropic">
+                <div class="provider-top">
+                  <div class="provider-status">
+                    <span class="sb-badge sb-badge-pass"><span class="sb-status-dot green me-1"></span> 활성</span>
+                  </div>
+                  <div class="provider-icon">
+                    <i class="bi bi-robot"></i>
+                  </div>
+                  <h5 class="fw-bold mb-1">Anthropic</h5>
+                  <small style="color: var(--sb-text-muted);">Claude AI</small>
+                </div>
+                <div class="provider-body">
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">사용 가능한 모델</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <span class="sb-badge sb-badge-purple">Claude Haiku 4.5</span>
+                      <span class="sb-badge sb-badge-purple">Claude Sonnet 4.6</span>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">요금 수준</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="progress flex-grow-1" style="height: 6px; background: var(--sb-border);">
+                        <div class="progress-bar" style="width: 40%; background: linear-gradient(90deg, #D97757, #C4613F);"></div>
+                      </div>
+                      <small class="fw-bold" style="color: #D97757;">저~중</small>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">주요 용도</div>
+                    <p class="small mb-0" style="color: var(--sb-text-muted);">후기 AI 검증, 광고 검증, 작성 도우미, 텍스트 분석</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- OpenAI -->
+            <div class="col-md-4 sb-animate">
+              <div class="provider-card provider-openai">
+                <div class="provider-top">
+                  <div class="provider-status">
+                    <span class="sb-badge sb-badge-pass"><span class="sb-status-dot green me-1"></span> 활성</span>
+                  </div>
+                  <div class="provider-icon">
+                    <i class="bi bi-stars"></i>
+                  </div>
+                  <h5 class="fw-bold mb-1">OpenAI</h5>
+                  <small style="color: var(--sb-text-muted);">GPT & DALL-E</small>
+                </div>
+                <div class="provider-body">
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">사용 가능한 모델</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <span class="sb-badge sb-badge-pass">GPT-4o-mini</span>
+                      <span class="sb-badge sb-badge-pass">DALL-E 3</span>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">요금 수준</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="progress flex-grow-1" style="height: 6px; background: var(--sb-border);">
+                        <div class="progress-bar" style="width: 25%; background: linear-gradient(90deg, #10A37F, #0D8A6A);"></div>
+                      </div>
+                      <small class="fw-bold" style="color: #10A37F;">저가</small>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">주요 용도</div>
+                    <p class="small mb-0" style="color: var(--sb-text-muted);">보조 텍스트 분석, 광고 이미지 생성 (DALL-E 3)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Zhipu GLM -->
+            <div class="col-md-4 sb-animate">
+              <div class="provider-card provider-zhipu">
+                <div class="provider-top">
+                  <div class="provider-status">
+                    <span class="sb-badge sb-badge-pass"><span class="sb-status-dot green me-1"></span> 활성</span>
+                  </div>
+                  <div class="provider-icon">
+                    <i class="bi bi-translate"></i>
+                  </div>
+                  <h5 class="fw-bold mb-1">Zhipu AI</h5>
+                  <small style="color: var(--sb-text-muted);">GLM (智谱清言)</small>
+                </div>
+                <div class="provider-body">
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">사용 가능한 모델</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <span class="sb-badge sb-badge-info">GLM-4.7-Flash</span>
+                      <span class="sb-badge" style="background:#e0f2fe; color:#0369a1;">무료</span>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">요금 수준</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="progress flex-grow-1" style="height: 6px; background: var(--sb-border);">
+                        <div class="progress-bar" style="width: 5%; background: linear-gradient(90deg, #3B82F6, #1D4ED8);"></div>
+                      </div>
+                      <small class="fw-bold" style="color: #3B82F6;">무료~저가</small>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">주요 용도</div>
+                    <p class="small mb-0" style="color: var(--sb-text-muted);">한국어/중국어 텍스트 분석, 후기 검증, 무료 대안</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Second Row: DeepSeek, OpenRouter, Ollama -->
+          <div class="row g-4 mt-1">
+            <!-- DeepSeek -->
+            <div class="col-md-4 sb-animate">
+              <div class="provider-card provider-deepseek">
+                <div class="provider-top">
+                  <div class="provider-status">
+                    <span class="sb-badge sb-badge-pass"><span class="sb-status-dot green me-1"></span> 활성</span>
+                  </div>
+                  <div class="provider-icon">
+                    <i class="bi bi-braces-asterisk"></i>
+                  </div>
+                  <h5 class="fw-bold mb-1">DeepSeek</h5>
+                  <small style="color: var(--sb-text-muted);">DeepSeek AI</small>
+                </div>
+                <div class="provider-body">
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">사용 가능한 모델</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <span class="sb-badge" style="background:#cffafe; color:#0e7490;">DeepSeek-V3</span>
+                      <span class="sb-badge" style="background:#cffafe; color:#0e7490;">DeepSeek-R1</span>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">요금 수준</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="progress flex-grow-1" style="height: 6px; background: var(--sb-border);">
+                        <div class="progress-bar" style="width: 10%; background: linear-gradient(90deg, #06B6D4, #0891B2);"></div>
+                      </div>
+                      <small class="fw-bold" style="color: #06B6D4;">최저가</small>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">주요 용도</div>
+                    <p class="small mb-0" style="color: var(--sb-text-muted);">범용 텍스트 분석, 코드 생성, 초저가 대안</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- OpenRouter -->
+            <div class="col-md-4 sb-animate">
+              <div class="provider-card" style="border-top: 4px solid #8B5CF6;">
+                <div class="provider-top">
+                  <div class="provider-status">
+                    <span class="sb-badge sb-badge-pass"><span class="sb-status-dot green me-1"></span> 활성</span>
+                  </div>
+                  <div class="provider-icon" style="background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: #fff;">
+                    <i class="bi bi-diagram-3"></i>
+                  </div>
+                  <h5 class="fw-bold mb-1">OpenRouter</h5>
+                  <small style="color: var(--sb-text-muted);">멀티 모델 게이트웨이</small>
+                </div>
+                <div class="provider-body">
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">사용 가능한 모델</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <span class="sb-badge sb-badge-purple">200+ 모델</span>
+                      <span class="sb-badge" style="background:#f5f3ff; color:#7c3aed;">통합 API</span>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">요금 수준</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="progress flex-grow-1" style="height: 6px; background: var(--sb-border);">
+                        <div class="progress-bar" style="width: 30%; background: linear-gradient(90deg, #8B5CF6, #7C3AED);"></div>
+                      </div>
+                      <small class="fw-bold" style="color: #8B5CF6;">모델별 상이</small>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">주요 용도</div>
+                    <p class="small mb-0" style="color: var(--sb-text-muted);">여러 AI 모델 비교, 백업 프로바이더, 유연한 선택</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ollama -->
+            <div class="col-md-4 sb-animate">
+              <div class="provider-card" style="border-top: 4px solid #22C55E;">
+                <div class="provider-top">
+                  <div class="provider-status">
+                    <span class="sb-badge sb-badge-info"><span class="sb-status-dot blue me-1"></span> 자체 서버</span>
+                  </div>
+                  <div class="provider-icon" style="background: linear-gradient(135deg, #22C55E, #16A34A); color: #fff;">
+                    <i class="bi bi-hdd-network"></i>
+                  </div>
+                  <h5 class="fw-bold mb-1">Ollama</h5>
+                  <small style="color: var(--sb-text-muted);">로컬/자체 서버 AI</small>
+                </div>
+                <div class="provider-body">
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">사용 가능한 모델</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <span class="sb-badge" style="background:#dcfce7; color:#166534;">Llama 3</span>
+                      <span class="sb-badge" style="background:#dcfce7; color:#166534;">Mistral</span>
+                      <span class="sb-badge" style="background:#dcfce7; color:#166534;">Gemma</span>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">요금 수준</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="progress flex-grow-1" style="height: 6px; background: var(--sb-border);">
+                        <div class="progress-bar" style="width: 0%; background: linear-gradient(90deg, #22C55E, #16A34A);"></div>
+                      </div>
+                      <small class="fw-bold" style="color: #22C55E;">완전 무료</small>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="small fw-bold mb-2" style="color: var(--sb-text-secondary);">주요 용도</div>
+                    <p class="small mb-0" style="color: var(--sb-text-muted);">오프라인 AI, 데이터 보안, API 비용 0원 운영</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 2: API 키 발급 방법 -->
+        <!-- ============================================================ -->
+        <section id="get-keys" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-key"></i> API 키 발급 방법</h2>
+
+          <!-- Provider Tabs -->
+          <ul class="nav nav-pills mb-4" id="providerTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="provider-tab active" id="tab-anthropic" data-bs-toggle="pill" data-bs-target="#pane-anthropic" type="button" role="tab">
+                <i class="bi bi-robot me-1"></i> Anthropic (Claude)
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="provider-tab" id="tab-openai" data-bs-toggle="pill" data-bs-target="#pane-openai" type="button" role="tab">
+                <i class="bi bi-stars me-1"></i> OpenAI
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="provider-tab" id="tab-zhipu" data-bs-toggle="pill" data-bs-target="#pane-zhipu" type="button" role="tab">
+                <i class="bi bi-translate me-1"></i> Zhipu GLM <span class="sb-badge" style="background:#e0f2fe; color:#0369a1; font-size:0.65rem; padding:1px 5px; margin-left:4px;">무료</span>
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="provider-tab" id="tab-deepseek" data-bs-toggle="pill" data-bs-target="#pane-deepseek" type="button" role="tab">
+                <i class="bi bi-braces-asterisk me-1"></i> DeepSeek
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="provider-tab" id="tab-openrouter" data-bs-toggle="pill" data-bs-target="#pane-openrouter" type="button" role="tab">
+                <i class="bi bi-diagram-3 me-1"></i> OpenRouter
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- Anthropic Tab -->
+            <div class="tab-pane fade show active" id="pane-anthropic" role="tabpanel">
+              <div class="sb-card">
+                <div class="sb-card-header d-flex align-items-center gap-2">
+                  <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#D97757,#C4613F); color:#fff; display:flex; align-items:center; justify-content:center;">
+                    <i class="bi bi-robot"></i>
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-0">Anthropic Claude API 키 발급</h6>
+                    <small style="color: var(--sb-text-muted);">키 형식: sk-ant-api03-...</small>
+                  </div>
+                </div>
+                <div class="sb-card-body">
+
+                  <div class="step-section" data-step="1">
+                    <div class="step-content">
+                      <strong>Anthropic Console 접속</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);">아래 버튼을 클릭하여 Anthropic 콘솔에 접속합니다.</p>
+                      <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-gradient-anthropic">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> console.anthropic.com 접속
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="2">
+                    <div class="step-content">
+                      <strong>회원가입 / 로그인</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">이메일 또는 Google 계정으로 회원가입 후 로그인합니다. 이미 계정이 있다면 바로 로그인하세요.</p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="3">
+                    <div class="step-content">
+                      <strong>API Keys 페이지 이동</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">상단 메뉴에서 <code class="sb-code-inline">Settings</code> &rarr; <code class="sb-code-inline">API Keys</code>를 클릭합니다. 또는 아래 버튼으로 바로 이동하세요.</p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="4">
+                    <div class="step-content">
+                      <strong>Create Key 클릭</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);"><code class="sb-code-inline">Create Key</code> 버튼을 클릭하고, 키 이름을 입력합니다.<br>예시: <strong>"Seoul Beauty Production"</strong> 또는 <strong>"서울미녀 운영키"</strong></p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="5">
+                    <div class="step-content">
+                      <strong>생성된 키 복사</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);">생성된 키를 즉시 복사하여 안전한 곳에 저장합니다.</p>
+                      <div class="sb-code" style="font-size: 0.85rem;">
+                        <span style="color: var(--sb-text-muted);">키 형식:</span> <strong>sk-ant-api03-xxxxxxxxxxxx...xxxx</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="sb-note sb-note-danger mt-3">
+                    <span class="sb-note-icon"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                    <div><strong>주의:</strong> API 키는 생성 시 <strong>한 번만</strong> 표시됩니다. 페이지를 닫으면 다시 확인할 수 없으므로 반드시 안전한 곳에 복사하여 저장하세요.</div>
+                  </div>
+
+                  <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" class="btn btn-gradient-anthropic">
+                      <i class="bi bi-box-arrow-up-right me-1"></i> Anthropic Console 바로가기
+                    </a>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- OpenAI Tab -->
+            <div class="tab-pane fade" id="pane-openai" role="tabpanel">
+              <div class="sb-card">
+                <div class="sb-card-header d-flex align-items-center gap-2">
+                  <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#10A37F,#0D8A6A); color:#fff; display:flex; align-items:center; justify-content:center;">
+                    <i class="bi bi-stars"></i>
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-0">OpenAI API 키 발급</h6>
+                    <small style="color: var(--sb-text-muted);">키 형식: sk-proj-... 또는 sk-...</small>
+                  </div>
+                </div>
+                <div class="sb-card-body">
+
+                  <div class="step-section" data-step="1">
+                    <div class="step-content">
+                      <strong>OpenAI Platform 접속</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);">아래 버튼을 클릭하여 OpenAI 플랫폼에 접속합니다.</p>
+                      <a href="https://platform.openai.com/" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-gradient-openai">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> platform.openai.com 접속
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="2">
+                    <div class="step-content">
+                      <strong>회원가입 / 로그인</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">이메일, Google, Microsoft 또는 Apple 계정으로 회원가입 후 로그인합니다.</p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="3">
+                    <div class="step-content">
+                      <strong>API Keys 페이지 이동</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">좌측 메뉴에서 <code class="sb-code-inline">API Keys</code>를 클릭하거나, 상단 프로필 메뉴에서 <code class="sb-code-inline">API Keys</code>를 선택합니다.</p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="4">
+                    <div class="step-content">
+                      <strong>Create new secret key</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);"><code class="sb-code-inline">Create new secret key</code> 버튼을 클릭하고, 키 이름을 입력합니다.<br>예시: <strong>"Seoul Beauty DALL-E"</strong> 또는 <strong>"서울미녀 이미지생성"</strong></p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="5">
+                    <div class="step-content">
+                      <strong>생성된 키 복사</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);">생성된 키를 즉시 복사하여 안전한 곳에 저장합니다.</p>
+                      <div class="sb-code" style="font-size: 0.85rem;">
+                        <span style="color: var(--sb-text-muted);">키 형식:</span> <strong>sk-proj-xxxxxxxxxxxx...xxxx</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="sb-note sb-note-danger mt-3">
+                    <span class="sb-note-icon"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                    <div><strong>주의:</strong> API 키는 생성 시 <strong>한 번만</strong> 표시됩니다. 페이지를 닫으면 다시 확인할 수 없으므로 반드시 복사하여 저장하세요.</div>
+                  </div>
+
+                  <div class="sb-note sb-note-info mt-2">
+                    <span class="sb-note-icon"><i class="bi bi-info-circle-fill"></i></span>
+                    <div><strong>Organization ID:</strong> 팀/조직으로 사용하는 경우, Settings &rarr; Organization에서 Organization ID를 확인할 수 있습니다. 단일 사용자는 별도 설정이 필요 없습니다.</div>
+                  </div>
+
+                  <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" class="btn btn-gradient-openai">
+                      <i class="bi bi-box-arrow-up-right me-1"></i> OpenAI Platform 바로가기
+                    </a>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- Zhipu GLM Tab -->
+            <div class="tab-pane fade" id="pane-zhipu" role="tabpanel">
+              <div class="sb-card">
+                <div class="sb-card-header d-flex align-items-center gap-2">
+                  <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#3B82F6,#1D4ED8); color:#fff; display:flex; align-items:center; justify-content:center;">
+                    <i class="bi bi-translate"></i>
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-0">Zhipu GLM API 키 발급 <span class="sb-badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem;">무료 모델 포함</span></h6>
+                    <small style="color: var(--sb-text-muted);">키 형식: xxxxxxxx.yyyyyyyy (마침표로 구분된 두 부분)</small>
+                  </div>
+                </div>
+                <div class="sb-card-body">
+
+                  <div class="sb-note sb-note-info mb-4">
+                    <span class="sb-note-icon"><i class="bi bi-gift-fill"></i></span>
+                    <div><strong>GLM-4.7-Flash 모델은 완전 무료입니다!</strong> 일일 사용량 제한 없이 무료로 사용할 수 있습니다. 신용카드 없이 가입만 하면 바로 사용 가능합니다. 한국어/중국어 텍스트 분석에 뛰어난 성능을 제공합니다.</div>
+                  </div>
+
+                  <div class="step-section" data-step="1">
+                    <div class="step-content">
+                      <strong>Zhipu AI 오픈 플랫폼 접속</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);">아래 버튼을 클릭하여 Zhipu AI 개발자 플랫폼에 접속합니다.</p>
+                      <a href="https://bigmodel.cn/" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-gradient-zhipu">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> bigmodel.cn 접속 (중국 플랫폼)
+                      </a>
+                      <a href="https://open.bigmodel.cn/" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary ms-2" style="border-radius:10px;">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> open.bigmodel.cn (영문)
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="2">
+                    <div class="step-content">
+                      <strong>회원가입 (注册)</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">이메일 또는 중국 휴대폰 번호로 회원가입합니다. <strong>국제 이메일도 지원됩니다.</strong><br>가입 후 로그인하면 바로 API 키를 생성할 수 있습니다.</p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="3">
+                    <div class="step-content">
+                      <strong>API Keys 페이지 이동</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">로그인 후 좌측 메뉴에서 <code class="sb-code-inline">API密钥</code> (API Keys)를 클릭합니다. 또는 상단 <code class="sb-code-inline">개인 센터</code> &rarr; <code class="sb-code-inline">API Keys</code>로 이동합니다.</p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="4">
+                    <div class="step-content">
+                      <strong>키 생성 (创建API密钥)</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);"><code class="sb-code-inline">创建API密钥</code> (Create API Key) 버튼을 클릭합니다.<br>키 이름 예시: <strong>"Seoul Beauty"</strong> 또는 <strong>"서울미녀"</strong></p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="5">
+                    <div class="step-content">
+                      <strong>생성된 키 복사</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);">생성된 키를 즉시 복사합니다. 키는 마침표(.)로 구분된 두 부분으로 구성됩니다.</p>
+                      <div class="sb-code" style="font-size: 0.85rem;">
+                        <span style="color: var(--sb-text-muted);">키 형식:</span> <strong>xxxxxxxxxxxxxxxx.yyyyyyyyyyyyyyyy</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="6">
+                    <div class="step-content">
+                      <strong>Seoul Beauty에 등록</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">관리자 설정 &rarr; AI 설정 페이지에서 <code class="sb-code-inline">Zhipu GLM</code> 섹션의 <code class="sb-code-inline">API Key</code> 필드에 복사한 키를 붙여넣습니다.</p>
+                    </div>
+                  </div>
+
+                  <div class="sb-note sb-note-danger mt-3">
+                    <span class="sb-note-icon"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                    <div><strong>주의:</strong> API 키는 생성 직후에만 전체가 표시됩니다. 반드시 즉시 복사하여 안전한 곳에 저장하세요.</div>
+                  </div>
+
+                  <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="https://bigmodel.cn/usercenter/apikeys" target="_blank" rel="noopener noreferrer" class="btn btn-gradient-zhipu">
+                      <i class="bi bi-box-arrow-up-right me-1"></i> Zhipu AI API Keys 바로가기
+                    </a>
+                    <a href="https://bigmodel.cn/pricing" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary" style="border-radius:10px;">
+                      <i class="bi bi-currency-dollar me-1"></i> 요금 확인
+                    </a>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- DeepSeek Tab -->
+            <div class="tab-pane fade" id="pane-deepseek" role="tabpanel">
+              <div class="sb-card">
+                <div class="sb-card-header d-flex align-items-center gap-2">
+                  <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#06B6D4,#0891B2); color:#fff; display:flex; align-items:center; justify-content:center;">
+                    <i class="bi bi-braces-asterisk"></i>
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-0">DeepSeek API 키 발급</h6>
+                    <small style="color: var(--sb-text-muted);">키 형식: sk-xxxxxxxxxxxxxxxx</small>
+                  </div>
+                </div>
+                <div class="sb-card-body">
+
+                  <div class="step-section" data-step="1">
+                    <div class="step-content">
+                      <strong>DeepSeek Platform 접속</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);">아래 버튼을 클릭하여 DeepSeek 개발자 플랫폼에 접속합니다.</p>
+                      <a href="https://platform.deepseek.com/" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-gradient-deepseek">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> platform.deepseek.com 접속
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="2">
+                    <div class="step-content">
+                      <strong>회원가입 / 로그인</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">이메일로 회원가입 후 로그인합니다. 국제 이메일 지원됩니다.</p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="3">
+                    <div class="step-content">
+                      <strong>API Keys 페이지</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">좌측 메뉴에서 <code class="sb-code-inline">API Keys</code>를 클릭합니다.</p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="4">
+                    <div class="step-content">
+                      <strong>키 생성 및 복사</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);"><code class="sb-code-inline">Create API Key</code> 클릭 후 즉시 복사합니다.</p>
+                      <div class="sb-code" style="font-size: 0.85rem;">
+                        <span style="color: var(--sb-text-muted);">키 형식:</span> <strong>sk-xxxxxxxxxxxxxxxxxxxx</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="sb-note sb-note-info mt-3">
+                    <span class="sb-note-icon"><i class="bi bi-info-circle-fill"></i></span>
+                    <div><strong>가격 대비 성능:</strong> DeepSeek-V3는 GPT-4o 수준의 성능을 <strong>1/10 가격</strong>으로 제공합니다. 비용 절감이 중요한 경우 최적의 선택입니다.</div>
+                  </div>
+
+                  <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer" class="btn btn-gradient-deepseek">
+                      <i class="bi bi-box-arrow-up-right me-1"></i> DeepSeek API Keys 바로가기
+                    </a>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- OpenRouter Tab -->
+            <div class="tab-pane fade" id="pane-openrouter" role="tabpanel">
+              <div class="sb-card">
+                <div class="sb-card-header d-flex align-items-center gap-2">
+                  <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#8B5CF6,#7C3AED); color:#fff; display:flex; align-items:center; justify-content:center;">
+                    <i class="bi bi-diagram-3"></i>
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-0">OpenRouter API 키 발급</h6>
+                    <small style="color: var(--sb-text-muted);">키 형식: sk-or-v1-xxxxxxxx</small>
+                  </div>
+                </div>
+                <div class="sb-card-body">
+
+                  <div class="sb-note sb-note-info mb-4">
+                    <span class="sb-note-icon"><i class="bi bi-lightbulb-fill"></i></span>
+                    <div><strong>OpenRouter란?</strong> 하나의 API 키로 Claude, GPT, Llama, Mistral 등 <strong>200개 이상의 AI 모델</strong>을 사용할 수 있는 통합 게이트웨이입니다. 특정 모델이 장애일 때 자동으로 다른 모델로 전환할 수 있어 안정성이 높습니다.</div>
+                  </div>
+
+                  <div class="step-section" data-step="1">
+                    <div class="step-content">
+                      <strong>OpenRouter 접속</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);">아래 버튼을 클릭하여 OpenRouter에 접속합니다.</p>
+                      <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background:linear-gradient(135deg,#8B5CF6,#7C3AED); color:#fff; border:none; font-weight:600; border-radius:10px;">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> openrouter.ai 접속
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="2">
+                    <div class="step-content">
+                      <strong>회원가입 / 로그인</strong>
+                      <p class="small mb-0" style="color: var(--sb-text-secondary);">Google, GitHub 또는 이메일 계정으로 간편하게 가입합니다.</p>
+                    </div>
+                  </div>
+
+                  <div class="step-section" data-step="3">
+                    <div class="step-content">
+                      <strong>API Keys 생성</strong>
+                      <p class="small mb-2" style="color: var(--sb-text-secondary);">대시보드에서 <code class="sb-code-inline">Keys</code> 메뉴 &rarr; <code class="sb-code-inline">Create Key</code>를 클릭합니다.</p>
+                      <div class="sb-code" style="font-size: 0.85rem;">
+                        <span style="color: var(--sb-text-muted);">키 형식:</span> <strong>sk-or-v1-xxxxxxxxxxxxxxxxxxxx</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" class="btn" style="background:linear-gradient(135deg,#8B5CF6,#7C3AED); color:#fff; border:none; font-weight:600; padding:0.6rem 1.5rem; border-radius:10px;">
+                      <i class="bi bi-box-arrow-up-right me-1"></i> OpenRouter Keys 바로가기
+                    </a>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 3: 비용 및 결제 방법 -->
+        <!-- ============================================================ -->
+        <section id="pricing" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-credit-card"></i> 비용 및 결제 방법</h2>
+
+          <!-- Anthropic Pricing -->
+          <div class="sb-card mb-4">
+            <div class="sb-card-header d-flex align-items-center gap-2">
+              <div style="width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg,#D97757,#C4613F); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.95rem;">
+                <i class="bi bi-robot"></i>
+              </div>
+              <h6 class="fw-bold mb-0">Anthropic 요금</h6>
+            </div>
+            <div class="sb-card-body">
+              <div class="table-responsive">
+                <table class="sb-table">
+                  <thead>
+                    <tr>
+                      <th>모델</th>
+                      <th>Input 요금</th>
+                      <th>Output 요금</th>
+                      <th>특징</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <strong>Claude Haiku 4.5</strong>
+                        <span class="sb-badge sb-badge-pass ms-1">추천</span>
+                      </td>
+                      <td><strong>$0.80</strong> / 1M tokens</td>
+                      <td><strong>$4.00</strong> / 1M tokens</td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">빠른 응답, 저비용, 일반 검증에 적합</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>Claude Sonnet 4.6</strong>
+                      </td>
+                      <td><strong>$3.00</strong> / 1M tokens</td>
+                      <td><strong>$15.00</strong> / 1M tokens</td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">고급 분석, 복잡한 판단에 적합</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="row g-3 mt-3">
+                <div class="col-md-6">
+                  <div class="sb-note sb-note-info mb-0">
+                    <span class="sb-note-icon"><i class="bi bi-credit-card"></i></span>
+                    <div>
+                      <strong>결제 방법</strong><br>
+                      <span class="small">신용카드 (Visa, Mastercard, Amex)<br>최소 <strong>$5</strong> 크레딧 선불 충전 방식</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="d-flex align-items-center justify-content-center h-100">
+                    <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener noreferrer" class="btn btn-gradient-anthropic">
+                      <i class="bi bi-box-arrow-up-right me-1"></i> Anthropic 결제 페이지
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- OpenAI Pricing -->
+          <div class="sb-card mb-4">
+            <div class="sb-card-header d-flex align-items-center gap-2">
+              <div style="width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg,#10A37F,#0D8A6A); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.95rem;">
+                <i class="bi bi-stars"></i>
+              </div>
+              <h6 class="fw-bold mb-0">OpenAI 요금</h6>
+            </div>
+            <div class="sb-card-body">
+              <div class="table-responsive">
+                <table class="sb-table">
+                  <thead>
+                    <tr>
+                      <th>모델</th>
+                      <th>Input / 크기</th>
+                      <th>Output / 가격</th>
+                      <th>특징</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <strong>GPT-4o-mini</strong>
+                        <span class="sb-badge sb-badge-pass ms-1">저가</span>
+                      </td>
+                      <td><strong>$0.15</strong> / 1M tokens</td>
+                      <td><strong>$0.60</strong> / 1M tokens</td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">경량 분석, 보조 텍스트 처리</span></td>
+                    </tr>
+                    <tr>
+                      <td><strong>DALL-E 3</strong> (1024x1024)</td>
+                      <td>표준 해상도</td>
+                      <td><strong>$0.040</strong> / 이미지</td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">정사각형 광고 이미지</span></td>
+                    </tr>
+                    <tr>
+                      <td><strong>DALL-E 3</strong> (1024x1792)</td>
+                      <td>세로 HD</td>
+                      <td><strong>$0.080</strong> / 이미지</td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">세로형 배너 / HD 이미지</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="row g-3 mt-3">
+                <div class="col-md-6">
+                  <div class="sb-note sb-note-info mb-0">
+                    <span class="sb-note-icon"><i class="bi bi-credit-card"></i></span>
+                    <div>
+                      <strong>결제 방법</strong><br>
+                      <span class="small">신용카드 자동 결제 (사용량 기반 후불)<br>일부 신규 계정: 처음 <strong>$5</strong> 무료 크레딧 제공</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="d-flex align-items-center justify-content-center h-100">
+                    <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noopener noreferrer" class="btn btn-gradient-openai">
+                      <i class="bi bi-box-arrow-up-right me-1"></i> OpenAI 결제 페이지
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Zhipu GLM Pricing -->
+          <div class="sb-card mb-4">
+            <div class="sb-card-header d-flex align-items-center gap-2">
+              <div style="width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg,#3B82F6,#1D4ED8); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.95rem;">
+                <i class="bi bi-translate"></i>
+              </div>
+              <h6 class="fw-bold mb-0">Zhipu GLM 요금 <span class="sb-badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem;">무료 모델 포함</span></h6>
+            </div>
+            <div class="sb-card-body">
+              <div class="table-responsive">
+                <table class="sb-table">
+                  <thead>
+                    <tr>
+                      <th>모델</th>
+                      <th>Input 요금</th>
+                      <th>Output 요금</th>
+                      <th>특징</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="background: rgba(59,130,246,0.05);">
+                      <td>
+                        <strong>GLM-4.7-Flash</strong>
+                        <span class="sb-badge" style="background:#dcfce7; color:#166534;">무료</span>
+                      </td>
+                      <td><strong style="color:#16a34a;">$0.00</strong></td>
+                      <td><strong style="color:#16a34a;">$0.00</strong></td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">빠른 응답, 완전 무료, 한국어 우수</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>GLM-4.7</strong>
+                      </td>
+                      <td><strong>$0.55</strong> / 1M tokens</td>
+                      <td><strong>$2.20</strong> / 1M tokens</td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">고급 분석, 복잡한 추론</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>GLM-5</strong>
+                        <span class="sb-badge sb-badge-purple ms-1">최신</span>
+                      </td>
+                      <td><strong>$1.00</strong> / 1M tokens</td>
+                      <td><strong>$3.20</strong> / 1M tokens</td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">최상급 추론, GPT-4o급 성능</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="row g-3 mt-3">
+                <div class="col-md-6">
+                  <div class="sb-note sb-note-info mb-0">
+                    <span class="sb-note-icon"><i class="bi bi-credit-card"></i></span>
+                    <div>
+                      <strong>결제 방법</strong><br>
+                      <span class="small">신용카드 없이 무료 사용 가능<br>유료 모델: 충전 방식 (Alipay/WeChat Pay/카드)</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="d-flex align-items-center justify-content-center h-100">
+                    <a href="https://bigmodel.cn/pricing" target="_blank" rel="noopener noreferrer" class="btn btn-gradient-zhipu">
+                      <i class="bi bi-box-arrow-up-right me-1"></i> Zhipu 요금 페이지
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DeepSeek Pricing -->
+          <div class="sb-card mb-4">
+            <div class="sb-card-header d-flex align-items-center gap-2">
+              <div style="width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg,#06B6D4,#0891B2); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.95rem;">
+                <i class="bi bi-braces-asterisk"></i>
+              </div>
+              <h6 class="fw-bold mb-0">DeepSeek 요금</h6>
+            </div>
+            <div class="sb-card-body">
+              <div class="table-responsive">
+                <table class="sb-table">
+                  <thead>
+                    <tr>
+                      <th>모델</th>
+                      <th>Input 요금</th>
+                      <th>Output 요금</th>
+                      <th>특징</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <strong>DeepSeek-V3</strong>
+                        <span class="sb-badge sb-badge-pass ms-1">추천</span>
+                      </td>
+                      <td><strong>$0.27</strong> / 1M tokens</td>
+                      <td><strong>$1.10</strong> / 1M tokens</td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">GPT-4o급 성능, 1/10 가격</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>DeepSeek-R1</strong>
+                      </td>
+                      <td><strong>$0.55</strong> / 1M tokens</td>
+                      <td><strong>$2.19</strong> / 1M tokens</td>
+                      <td><span class="small" style="color: var(--sb-text-secondary);">추론 특화, 복잡한 논리 분석</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="row g-3 mt-3">
+                <div class="col-md-6">
+                  <div class="sb-note sb-note-info mb-0">
+                    <span class="sb-note-icon"><i class="bi bi-credit-card"></i></span>
+                    <div>
+                      <strong>결제 방법</strong><br>
+                      <span class="small">신용카드/Alipay 충전 방식<br>신규 가입 시 무료 크레딧 제공</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="d-flex align-items-center justify-content-center h-100">
+                    <a href="https://platform.deepseek.com/usage" target="_blank" rel="noopener noreferrer" class="btn btn-gradient-deepseek">
+                      <i class="bi bi-box-arrow-up-right me-1"></i> DeepSeek 결제 페이지
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Provider Cost Comparison -->
+          <div class="sb-card">
+            <div class="sb-card-header">
+              <h6 class="fw-bold mb-0"><i class="bi bi-arrow-left-right me-1"></i> 프로바이더 비용 비교 (텍스트 분석 기준)</h6>
+            </div>
+            <div class="sb-card-body">
+              <div class="table-responsive">
+                <table class="sb-table">
+                  <thead>
+                    <tr>
+                      <th>프로바이더</th>
+                      <th>최저가 모델</th>
+                      <th>Input</th>
+                      <th>Output</th>
+                      <th class="text-end">후기 1건 비용</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="background: rgba(34,197,94,0.08);">
+                      <td><strong>Zhipu GLM</strong></td>
+                      <td>GLM-4.7-Flash</td>
+                      <td style="color:#16a34a; font-weight:700;">무료</td>
+                      <td style="color:#16a34a; font-weight:700;">무료</td>
+                      <td class="text-end"><strong style="color:#16a34a;">$0.000</strong></td>
+                    </tr>
+                    <tr>
+                      <td><strong>OpenAI</strong></td>
+                      <td>GPT-4o-mini</td>
+                      <td>$0.15/M</td>
+                      <td>$0.60/M</td>
+                      <td class="text-end"><strong>~$0.0003</strong></td>
+                    </tr>
+                    <tr>
+                      <td><strong>DeepSeek</strong></td>
+                      <td>DeepSeek-V3</td>
+                      <td>$0.27/M</td>
+                      <td>$1.10/M</td>
+                      <td class="text-end"><strong>~$0.0005</strong></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Anthropic</strong></td>
+                      <td>Claude Haiku 4.5</td>
+                      <td>$1.00/M</td>
+                      <td>$5.00/M</td>
+                      <td class="text-end"><strong>~$0.002</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="sb-note sb-note-info mt-3">
+                <span class="sb-note-icon"><i class="bi bi-lightbulb-fill"></i></span>
+                <div><strong>비용 절감 전략:</strong> 일반 검증은 <strong>GLM-4.7-Flash (무료)</strong>로, 중요한 분석은 <strong>Claude Haiku</strong>로 분배하면 비용을 <strong>90% 이상</strong> 절감할 수 있습니다. Seoul Beauty AI 설정에서 기능별로 프로바이더를 지정할 수 있습니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 4: 월 비용 시뮬레이터 -->
+        <!-- ============================================================ -->
+        <section id="simulator" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-calculator"></i> 예상 월 사용 비용</h2>
+
+          <div class="sb-card mb-4">
+            <div class="sb-card-header">
+              <h6 class="fw-bold mb-0"><i class="bi bi-bar-chart me-1"></i> 기능별 예상 비용 (소규모 1개 병원 기준)</h6>
+            </div>
+            <div class="sb-card-body">
+              <div class="table-responsive">
+                <table class="sb-table">
+                  <thead>
+                    <tr>
+                      <th>기능</th>
+                      <th>사용 모델</th>
+                      <th class="text-center">일 평균 호출</th>
+                      <th class="text-center">토큰/호출</th>
+                      <th class="text-end">월 예상 비용</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><i class="bi bi-check-circle text-success me-1"></i> 후기 AI 검증</td>
+                      <td><span class="sb-badge sb-badge-purple">Claude Haiku</span></td>
+                      <td class="text-center">30건</td>
+                      <td class="text-center">~800</td>
+                      <td class="text-end fw-bold">~$0.58</td>
+                    </tr>
+                    <tr>
+                      <td><i class="bi bi-shield-check text-warning me-1"></i> 광고 AI 검증</td>
+                      <td><span class="sb-badge sb-badge-purple">Claude Haiku</span></td>
+                      <td class="text-center">10건</td>
+                      <td class="text-center">~600</td>
+                      <td class="text-end fw-bold">~$0.14</td>
+                    </tr>
+                    <tr>
+                      <td><i class="bi bi-pencil-square text-primary me-1"></i> 작성 도우미</td>
+                      <td><span class="sb-badge sb-badge-purple">Claude Haiku</span></td>
+                      <td class="text-center">50건</td>
+                      <td class="text-center">~500</td>
+                      <td class="text-end fw-bold">~$0.48</td>
+                    </tr>
+                    <tr>
+                      <td><i class="bi bi-image text-info me-1"></i> 광고 이미지 생성</td>
+                      <td><span class="sb-badge sb-badge-pass">DALL-E 3</span></td>
+                      <td class="text-center">5건</td>
+                      <td class="text-center">-</td>
+                      <td class="text-end fw-bold">~$6.00</td>
+                    </tr>
+                    <tr class="price-total-row">
+                      <td colspan="4"><strong>월간 합계 (Claude Haiku 기준)</strong></td>
+                      <td class="text-end" style="font-size: 1.1rem;"><strong>~$7.20/월</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- GLM Free Alternative -->
+              <div class="sb-card mt-4" style="border: 2px solid #22c55e;">
+                <div class="sb-card-header" style="background: rgba(34,197,94,0.08);">
+                  <h6 class="fw-bold mb-0" style="color: #16a34a;"><i class="bi bi-gift me-1"></i> GLM-4.7-Flash (무료 모델) 사용 시</h6>
+                </div>
+                <div class="sb-card-body">
+                  <div class="table-responsive">
+                    <table class="sb-table">
+                      <thead>
+                        <tr>
+                          <th>기능</th>
+                          <th>사용 모델</th>
+                          <th class="text-center">일 평균 호출</th>
+                          <th class="text-end">월 예상 비용</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><i class="bi bi-check-circle text-success me-1"></i> 후기 AI 검증</td>
+                          <td><span class="sb-badge sb-badge-info">GLM-4.7-Flash</span></td>
+                          <td class="text-center">30건</td>
+                          <td class="text-end fw-bold" style="color:#16a34a;">$0.00</td>
+                        </tr>
+                        <tr>
+                          <td><i class="bi bi-shield-check text-warning me-1"></i> 광고 AI 검증</td>
+                          <td><span class="sb-badge sb-badge-info">GLM-4.7-Flash</span></td>
+                          <td class="text-center">10건</td>
+                          <td class="text-end fw-bold" style="color:#16a34a;">$0.00</td>
+                        </tr>
+                        <tr>
+                          <td><i class="bi bi-pencil-square text-primary me-1"></i> 작성 도우미</td>
+                          <td><span class="sb-badge sb-badge-info">GLM-4.7-Flash</span></td>
+                          <td class="text-center">50건</td>
+                          <td class="text-end fw-bold" style="color:#16a34a;">$0.00</td>
+                        </tr>
+                        <tr>
+                          <td><i class="bi bi-image text-info me-1"></i> 광고 이미지 생성</td>
+                          <td><span class="sb-badge sb-badge-pass">DALL-E 3</span></td>
+                          <td class="text-center">5건</td>
+                          <td class="text-end fw-bold">~$6.00</td>
+                        </tr>
+                        <tr class="price-total-row" style="background: rgba(34,197,94,0.08);">
+                          <td colspan="3"><strong>월간 합계 (GLM 무료 + DALL-E)</strong></td>
+                          <td class="text-end" style="font-size: 1.1rem;"><strong style="color:#16a34a;">~$6.00/월</strong></td>
+                        </tr>
+                        <tr class="price-total-row" style="background: rgba(34,197,94,0.15);">
+                          <td colspan="3"><strong>이미지 생성 미사용 시</strong></td>
+                          <td class="text-end" style="font-size: 1.2rem;"><strong style="color:#16a34a;">$0/월 (완전 무료)</strong></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-note sb-note-info mt-3">
+                <span class="sb-note-icon"><i class="bi bi-info-circle-fill"></i></span>
+                <div>실제 비용은 사용량에 따라 다를 수 있습니다. 관리자 설정 페이지에서 <strong>일일 사용량 제한</strong>을 설정하여 예산을 관리할 수 있습니다. 텍스트 분석만 GLM 무료 모델로 전환하면 <strong>이미지 생성 비용만</strong> 발생합니다.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tier Cards -->
+          <h6 class="fw-bold mb-3" style="color: var(--sb-text-secondary);"><i class="bi bi-building me-1"></i> 규모별 예상 비용</h6>
+          <div class="row g-4">
+            <div class="col-md-4 sb-animate">
+              <div class="tier-card">
+                <div class="mb-2">
+                  <span class="sb-badge sb-badge-info">소규모</span>
+                </div>
+                <h6 class="fw-bold mb-1">1개 병원</h6>
+                <div class="tier-price">~$7<span class="tier-unit">/월</span></div>
+                <hr style="border-color: var(--sb-border);">
+                <ul class="list-unstyled small text-start" style="color: var(--sb-text-secondary);">
+                  <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> 후기 검증 30건/일</li>
+                  <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> 광고 검증 10건/일</li>
+                  <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> 이미지 생성 5건/일</li>
+                  <li><i class="bi bi-check2 text-success me-1"></i> 작성 도우미 50건/일</li>
+                </ul>
+              </div>
+            </div>
+            <div class="col-md-4 sb-animate">
+              <div class="tier-card recommended">
+                <div class="mb-2">
+                  <span class="sb-badge sb-badge-purple">중규모</span>
+                </div>
+                <h6 class="fw-bold mb-1">5개 병원</h6>
+                <div class="tier-price">~$25<span class="tier-unit">/월</span></div>
+                <hr style="border-color: var(--sb-border);">
+                <ul class="list-unstyled small text-start" style="color: var(--sb-text-secondary);">
+                  <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> 후기 검증 150건/일</li>
+                  <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> 광고 검증 50건/일</li>
+                  <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> 이미지 생성 15건/일</li>
+                  <li><i class="bi bi-check2 text-success me-1"></i> 작성 도우미 200건/일</li>
+                </ul>
+              </div>
+            </div>
+            <div class="col-md-4 sb-animate">
+              <div class="tier-card">
+                <div class="mb-2">
+                  <span class="sb-badge sb-badge-warn">대규모</span>
+                </div>
+                <h6 class="fw-bold mb-1">20개 병원</h6>
+                <div class="tier-price">~$80<span class="tier-unit">/월</span></div>
+                <hr style="border-color: var(--sb-border);">
+                <ul class="list-unstyled small text-start" style="color: var(--sb-text-secondary);">
+                  <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> 후기 검증 600건/일</li>
+                  <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> 광고 검증 200건/일</li>
+                  <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i> 이미지 생성 50건/일</li>
+                  <li><i class="bi bi-check2 text-success me-1"></i> 작성 도우미 800건/일</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 5: 우리 사이트 AI 키 등록 -->
+        <!-- ============================================================ -->
+        <section id="register" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-gear"></i> Seoul Beauty AI 키 등록</h2>
+
+          <!-- Registration CTA Card -->
+          <div class="register-card mb-4">
+            <div style="width:80px; height:80px; border-radius:20px; background:linear-gradient(135deg, var(--sb-primary), #8B5CF6); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:2.25rem; margin-bottom:1.25rem; box-shadow: 0 8px 24px rgba(108,99,255,0.3);">
+              <i class="bi bi-key-fill"></i>
+            </div>
+            <h4 class="fw-bold mb-2">Seoul Beauty AI 키 등록</h4>
+            <p style="color: var(--sb-text-secondary); max-width: 600px; margin: 0 auto 1.5rem;">
+              발급받은 API 키를 아래에서 등록하세요.<br>
+              키는 <strong>AES-256-CBC</strong>로 암호화되어 안전하게 저장됩니다.
+            </p>
+            <div class="d-flex flex-wrap gap-3 justify-content-center">
+              <a href="/hairwang/gangnamunni/admin_ai_settings.php" class="btn btn-lg" style="background: linear-gradient(135deg, var(--sb-primary), #8B5CF6); color:#fff; border:none; border-radius:12px; padding: 0.75rem 2rem; font-weight:700; box-shadow: 0 4px 16px rgba(108,99,255,0.3);">
+                <i class="bi bi-gear-wide-connected me-2"></i> AI 설정 관리자 페이지
+              </a>
+              <a href="/hairwang/gangnamunni/admin_ai_settings.php" class="btn btn-lg btn-outline-primary" style="border-radius:12px; padding: 0.75rem 2rem; font-weight:700; border-width: 2px;">
+                <i class="bi bi-key me-2"></i> AI 키 관리
+              </a>
+            </div>
+          </div>
+
+          <!-- Current Registered Keys -->
+          <div class="sb-card">
+            <div class="sb-card-header d-flex justify-content-between align-items-center">
+              <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-1"></i> 현재 등록된 AI 키 현황</h6>
+              <span class="sb-badge sb-badge-pass">4개 키 활성</span>
+            </div>
+            <div class="sb-card-body">
+              <div class="table-responsive">
+                <table class="sb-table">
+                  <thead>
+                    <tr>
+                      <th>프로바이더</th>
+                      <th>모델</th>
+                      <th class="text-center">우선순위</th>
+                      <th class="text-center">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="key-row-active">
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <div style="width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg,#D97757,#C4613F); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.75rem;">
+                            <i class="bi bi-robot"></i>
+                          </div>
+                          <strong>Anthropic</strong>
+                        </div>
+                      </td>
+                      <td>Claude Haiku 4.5</td>
+                      <td class="text-center">
+                        <span class="badge rounded-pill" style="background: linear-gradient(135deg, var(--sb-primary), #8B5CF6); font-size: 0.75rem; padding: 0.3rem 0.7rem;">1</span>
+                      </td>
+                      <td class="text-center"><span class="sb-status"><span class="sb-status-dot green"></span> 활성</span></td>
+                    </tr>
+                    <tr class="key-row-active">
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <div style="width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg,#10A37F,#0D8A6A); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.75rem;">
+                            <i class="bi bi-stars"></i>
+                          </div>
+                          <strong>OpenAI</strong>
+                        </div>
+                      </td>
+                      <td>GPT-4o-mini</td>
+                      <td class="text-center">
+                        <span class="badge rounded-pill" style="background: linear-gradient(135deg, var(--sb-primary), #8B5CF6); font-size: 0.75rem; padding: 0.3rem 0.7rem;">2</span>
+                      </td>
+                      <td class="text-center"><span class="sb-status"><span class="sb-status-dot green"></span> 활성</span></td>
+                    </tr>
+                    <tr class="key-row-active">
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <div style="width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg,#10A37F,#0D8A6A); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.75rem;">
+                            <i class="bi bi-stars"></i>
+                          </div>
+                          <strong>OpenAI</strong>
+                        </div>
+                      </td>
+                      <td>DALL-E 3</td>
+                      <td class="text-center">
+                        <span class="badge rounded-pill" style="background: linear-gradient(135deg, var(--sb-primary), #8B5CF6); font-size: 0.75rem; padding: 0.3rem 0.7rem;">3</span>
+                      </td>
+                      <td class="text-center"><span class="sb-status"><span class="sb-status-dot green"></span> 활성</span></td>
+                    </tr>
+                    <tr class="key-row-active">
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <div style="width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg,#D97757,#C4613F); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.75rem;">
+                            <i class="bi bi-robot"></i>
+                          </div>
+                          <strong>Anthropic</strong>
+                        </div>
+                      </td>
+                      <td>Claude Sonnet 4.6</td>
+                      <td class="text-center">
+                        <span class="badge rounded-pill" style="background: linear-gradient(135deg, var(--sb-primary), #8B5CF6); font-size: 0.75rem; padding: 0.3rem 0.7rem;">4</span>
+                      </td>
+                      <td class="text-center"><span class="sb-status"><span class="sb-status-dot green"></span> 활성</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="sb-note sb-note-success mt-3">
+                <span class="sb-note-icon"><i class="bi bi-check-circle-fill"></i></span>
+                <div>모든 AI 키가 정상적으로 등록되어 있습니다. 우선순위 1번 키부터 사용되며, 장애 시 자동으로 다음 순위 키로 전환됩니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 6: 보안 안내 -->
+        <!-- ============================================================ -->
+        <section id="security" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-shield-lock"></i> 보안 안내</h2>
+
+          <div class="row g-3">
+            <div class="col-md-6 sb-animate">
+              <div class="security-item h-100">
+                <div class="security-icon sb-icon-purple">
+                  <i class="bi bi-lock-fill"></i>
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-1">AES-256-CBC 암호화 저장</h6>
+                  <p class="small mb-0" style="color: var(--sb-text-secondary);">모든 API 키는 AES-256-CBC 알고리즘으로 암호화되어 데이터베이스에 저장됩니다. 평문 키는 절대 DB에 저장되지 않습니다.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 sb-animate">
+              <div class="security-item h-100">
+                <div class="security-icon sb-icon-blue">
+                  <i class="bi bi-eye-slash-fill"></i>
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-1">마스킹 표시</h6>
+                  <p class="small mb-0" style="color: var(--sb-text-secondary);">관리자 UI에서 API 키는 마스킹 처리되어 표시됩니다.<br><code class="sb-code-inline">sk-ant-***...***GQA</code></p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 sb-animate">
+              <div class="security-item h-100">
+                <div class="security-icon sb-icon-orange">
+                  <i class="bi bi-person-lock"></i>
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-1">Super Admin 전용</h6>
+                  <p class="small mb-0" style="color: var(--sb-text-secondary);">API 키의 등록, 수정, 삭제는 Super Admin 권한을 가진 관리자만 수행할 수 있습니다. 일반 관리자는 키 관리에 접근할 수 없습니다.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 sb-animate">
+              <div class="security-item h-100">
+                <div class="security-icon sb-icon-red">
+                  <i class="bi bi-exclamation-diamond-fill"></i>
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-1">유출 시 즉시 대응</h6>
+                  <p class="small mb-0" style="color: var(--sb-text-secondary);">API 키가 유출된 경우, 각 프로바이더 콘솔에서 즉시 키를 삭제(Revoke)하고 새 키를 발급받아 등록하세요.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 sb-animate">
+              <div class="security-item h-100">
+                <div class="security-icon sb-icon-green">
+                  <i class="bi bi-database-lock"></i>
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-1">DB 평문 저장 금지</h6>
+                  <p class="small mb-0" style="color: var(--sb-text-secondary);">데이터베이스에는 암호화된 키 값만 저장됩니다. 서버 침해 시에도 키 원문을 알 수 없어 안전합니다.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 sb-animate">
+              <div class="security-item h-100">
+                <div class="security-icon sb-icon-teal">
+                  <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-1">사용량 모니터링</h6>
+                  <p class="small mb-0" style="color: var(--sb-text-secondary);">모든 API 호출은 로깅되며, 비정상적인 사용 패턴이 감지되면 자동으로 관리자에게 알림이 발송됩니다.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-note sb-note-warning mt-4">
+            <span class="sb-note-icon"><i class="bi bi-shield-exclamation"></i></span>
+            <div>
+              <strong>API 키 유출 시 긴급 조치 순서:</strong>
+              <ol class="small mb-0 mt-1">
+                <li>해당 프로바이더 콘솔에서 즉시 키 삭제 (Revoke)</li>
+                <li>새 API 키 발급</li>
+                <li>Seoul Beauty 관리자 페이지에서 기존 키 삭제 후 새 키 등록</li>
+                <li>사용량 로그를 확인하여 비정상 사용 여부 점검</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 7: FAQ -->
+        <!-- ============================================================ -->
+        <section id="faq" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-question-circle"></i> 자주 묻는 질문 (FAQ)</h2>
+
+          <div class="accordion sb-accordion" id="faqAccordion">
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                  <i class="bi bi-clock me-2" style="color: var(--sb-primary);"></i>
+                  API 키가 만료되나요?
+                </button>
+              </h2>
+              <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <p class="mb-2"><strong>Anthropic:</strong> API 키 자체에는 만료 기간이 없습니다. 다만 결제 잔액이 소진되면 API 호출이 거부됩니다. 크레딧 충전으로 해결할 수 있습니다.</p>
+                  <p class="mb-0"><strong>OpenAI:</strong> API 키 자체에는 만료 기간이 없습니다. 결제 수단이 유효하고 사용 한도 내에 있으면 계속 사용 가능합니다. 무료 크레딧은 일정 기간 후 만료될 수 있으니, 유료 결제로 전환하는 것을 권장합니다.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                  <i class="bi bi-speedometer2 me-2" style="color: var(--sb-warning);"></i>
+                  비용 한도를 설정할 수 있나요?
+                </button>
+              </h2>
+              <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <p class="mb-2"><strong>프로바이더 자체 한도:</strong> Anthropic과 OpenAI 모두 결제 페이지에서 월간 사용 한도를 설정할 수 있습니다. 한도에 도달하면 API 호출이 자동으로 차단됩니다.</p>
+                  <p class="mb-0"><strong>Seoul Beauty 내부 한도:</strong> 관리자 설정 페이지(<code class="sb-code-inline">admin_ai_settings.php</code>)에서 일일 API 호출 횟수 한도와 월간 비용 한도를 설정할 수 있습니다. 한도에 도달하면 AI 기능이 일시 중지되고 관리자에게 이메일 알림이 발송됩니다.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                  <i class="bi bi-power me-2" style="color: var(--sb-success);"></i>
+                  AI 기능을 끄면 비용이 발생하나요?
+                </button>
+              </h2>
+              <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <p class="mb-0"><strong>아니요, 비용이 발생하지 않습니다.</strong> AI 기능은 API 호출 시에만 과금됩니다. 관리자 설정에서 AI 검증을 비활성화하면 API 호출이 발생하지 않으므로 비용도 발생하지 않습니다. API 키를 등록해 두더라도 호출하지 않으면 과금되지 않습니다.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                  <i class="bi bi-shield-exclamation me-2" style="color: var(--sb-danger);"></i>
+                  키가 유출되면 어떻게 하나요?
+                </button>
+              </h2>
+              <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <p class="mb-2">즉시 다음 조치를 수행하세요:</p>
+                  <ol class="mb-0">
+                    <li class="mb-1">해당 프로바이더 콘솔에 로그인하여 <strong>즉시 키를 삭제(Revoke)</strong>합니다.</li>
+                    <li class="mb-1">새 API 키를 발급받습니다.</li>
+                    <li class="mb-1">Seoul Beauty <a href="/hairwang/gangnamunni/admin_ai_settings.php">AI 설정 페이지</a>에서 기존 키를 삭제하고 새 키를 등록합니다.</li>
+                    <li>프로바이더의 사용량 대시보드에서 비정상적인 사용이 없었는지 확인합니다.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                  <i class="bi bi-key me-2" style="color: var(--sb-info);"></i>
+                  여러 개의 키를 등록할 수 있나요?
+                </button>
+              </h2>
+              <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <p class="mb-2"><strong>네, 가능합니다.</strong> Seoul Beauty는 멀티 프로바이더 시스템을 지원하여 여러 개의 API 키를 등록할 수 있습니다.</p>
+                  <ul class="mb-0">
+                    <li class="mb-1"><strong>우선순위 설정:</strong> 각 키에 우선순위를 지정하면, 우선순위가 높은 키부터 사용됩니다.</li>
+                    <li class="mb-1"><strong>자동 폴백:</strong> 우선순위 1번 키에 장애가 발생하면 자동으로 2번 키로 전환됩니다.</li>
+                    <li><strong>용도별 분리:</strong> 텍스트 분석용(Anthropic)과 이미지 생성용(OpenAI DALL-E)을 별도로 관리할 수 있습니다.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
+                  <i class="bi bi-translate me-2" style="color: var(--sb-primary);"></i>
+                  토큰이란 무엇인가요?
+                </button>
+              </h2>
+              <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <p class="mb-2"><strong>토큰(Token)</strong>은 AI 모델이 텍스트를 처리하는 기본 단위입니다. 한국어의 경우 대략 1글자 = 2~3 토큰 정도입니다.</p>
+                  <div class="sb-code mt-2" style="font-size: 0.85rem;">
+                    <div><span style="color: var(--sb-text-muted);">예시:</span></div>
+                    <div>"안녕하세요" &rarr; 약 5~7 토큰</div>
+                    <div>"서울 강남 성형외과 후기입니다" &rarr; 약 15~20 토큰</div>
+                    <div>일반 후기 1건 (~200자) &rarr; 약 400~600 토큰</div>
+                  </div>
+                  <p class="small mt-2 mb-0" style="color: var(--sb-text-secondary);">1M(100만) 토큰 = 약 50만 자 한국어 텍스트. 일반적인 후기 검증은 건당 약 800 토큰으로, 1M 토큰이면 약 1,250건을 처리할 수 있습니다.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq7">
+                  <i class="bi bi-cash-coin me-2" style="color: var(--sb-success);"></i>
+                  무료로 사용할 수 있는 방법이 있나요?
+                </button>
+              </h2>
+              <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <p class="mb-2"><strong>Anthropic:</strong> 신규 가입 시 일부 무료 크레딧이 제공될 수 있습니다. 다만 금액이 적으므로 테스트 용도로만 사용하는 것을 권장합니다.</p>
+                  <p class="mb-2"><strong>OpenAI:</strong> 일부 신규 계정에 $5 무료 크레딧이 제공됩니다 (가입 시기에 따라 다름). 무료 크레딧은 일정 기간 후 만료됩니다.</p>
+                  <p class="mb-0"><strong>Google Gemini:</strong> 추후 지원 예정이며, Google Cloud의 무료 등급(free tier)을 활용할 수 있을 것으로 기대됩니다.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- col-lg-9 -->
+    </div><!-- row -->
+  </div><!-- container -->
+</main>
+
+<!-- Footer -->
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. AI API 키 관리 가이드 v1.0</div>
+      <div class="sb-footer-actions">
+        <a href="index.html" class="btn btn-outline-secondary"><i class="bi bi-house me-1"></i> 홈</a>
+        <a href="ai_guide.html" class="btn btn-outline-secondary"><i class="bi bi-robot me-1"></i> AI 가이드</a>
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_AI키관리가이드.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_AI키관리가이드.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Back to Top -->
+<button class="sb-back-to-top" aria-label="맨 위로 이동"><i class="bi bi-arrow-up"></i></button>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+</body>
+</html>

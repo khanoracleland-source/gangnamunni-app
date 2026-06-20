@@ -1,0 +1,29 @@
+.appointments-card {
+
+    .appointments-badge {
+
+        .appointments-detail {
+
+            &::before {
+                margin-right: 0;
+                margin-left: -1rem;
+                right: auto;
+                left: 0;
+            }
+
+        }
+
+    }
+
+}
+
+// datatables
+/* Force pagination controls to behave in RTL */
+.dataTables_wrapper .dataTables_paginate .pagination {
+  flex-direction: row-reverse;   /* flip order of Prev/Next */
+  justify-content: flex-start;   /* align to the right side naturally */
+}
+
+.dataTables_wrapper .dataTables_paginate .page-item .page-link {
+  text-align: center;
+}

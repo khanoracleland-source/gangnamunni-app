@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 - 서울미녀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic', sans-serif;
+            background: linear-gradient(135deg, #FFE5ED 0%, #FFB6D9 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 50px 40px;
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .logo-text {
+            font-size: 32px;
+            font-weight: 700;
+            color: #FF6B9D;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #E0E0E0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #FF6B9D;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #FF6B9D;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            background: #FF5588;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #FF6B9D;
+            border: 2px solid #FF6B9D;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #FFF5F8;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 30px 0;
+            color: #999;
+            position: relative;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: #E0E0E0;
+        }
+
+        .divider::before {
+            left: 0;
+        }
+
+        .divider::after {
+            right: 0;
+        }
+
+        .links {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .link {
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 10px;
+        }
+
+        .link:hover {
+            color: #FF6B9D;
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: #FFE5ED;
+            color: #D32F2F;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .login-container {
+                padding: 40px 30px;
+            }
+
+            .logo-text {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-section">
+            <div class="logo">💄</div>
+            <div class="logo-text">서울미녀</div>
+            <div class="subtitle">로그인</div>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label class="form-label" for="email">이메일</label>
+                <input type="email" id="email" class="form-input" placeholder="example@email.com" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">비밀번호</label>
+                <input type="password" id="password" class="form-input" placeholder="비밀번호를 입력하세요" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">로그인</button>
+        </form>
+
+        <div class="divider">또는</div>
+
+        <button class="btn btn-secondary" onclick="window.location.href='register.html'">
+            회원가입
+        </button>
+
+        <div class="links">
+            <a href="index.html" class="link">홈으로</a>
+            <span style="color: #E0E0E0;">|</span>
+            <a href="#" class="link">비밀번호 찾기</a>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <script src="js/loading.js"></script>
+
+    <!-- Authentication Manager -->
+    <script src="js/auth.js"></script>
+
+    <script>
+        // Check if already logged in
+        if (AuthManager.isLoggedIn()) {
+            window.location.href = 'index.html';
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMessage');
+
+            // Clear previous error
+            errorDiv.classList.remove('show');
+
+            // Show loading
+            LoadingIndicator.show('login');
+
+            try {
+                const data = await AuthManager.login({ email, password });
+
+                // Success - redirect to home or previous page
+                const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || 'index.html';
+                window.location.href = redirectUrl;
+
+            } catch (error) {
+                // Show error
+                errorDiv.textContent = error.message || '로그인에 실패했습니다.';
+                errorDiv.classList.add('show');
+            } finally {
+                LoadingIndicator.hide('login');
+            }
+        }
+    </script>
+</body>
+</html>

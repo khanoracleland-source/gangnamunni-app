@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 기능 테스트 리포트 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-cpu"></i> AI 기능 테스트 리포트</h1>
+        <div class="sb-subtitle">Phase A~E 전체 테스트 결과 (실시간 업데이트)</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <a href="ai_guide.html" class="btn btn-sm btn-outline-light"><i class="bi bi-book me-1"></i> AI 가이드</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="sb-main">
+  <div class="container">
+    <nav class="sb-breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">홈</a></li><li class="breadcrumb-item active">AI 기능 테스트</li></ol></nav>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4" id="summaryCards">
+      <div class="col-6 col-md-3">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number" id="totalCount">-</div>
+          <div class="sb-stat-label">전체 테스트</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number" id="passCount" style="background: linear-gradient(135deg, #2ED47A, #0D9488); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">-</div>
+          <div class="sb-stat-label">PASS</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number" id="failCount" style="background: linear-gradient(135deg, #F7685B, #DC2626); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">-</div>
+          <div class="sb-stat-label">FAIL</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="sb-stat-card">
+          <div class="sb-stat-number" id="durationTotal">-</div>
+          <div class="sb-stat-label">총 소요 시간</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="sb-card mb-4">
+      <div class="sb-card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>테스트 통과율</strong>
+          <span id="passRate" class="fw-bold" style="color: var(--sb-success);">-</span>
+        </div>
+        <div class="progress" style="height: 12px; border-radius: 6px;">
+          <div id="passBar" class="progress-bar bg-success" role="progressbar" style="width: 0%; border-radius: 6px 0 0 6px;"></div>
+          <div id="failBar" class="progress-bar bg-danger" role="progressbar" style="width: 0%;"></div>
+          <div id="skipBar" class="progress-bar bg-warning" role="progressbar" style="width: 0%; border-radius: 0 6px 6px 0;"></div>
+        </div>
+        <div class="d-flex gap-3 mt-2">
+          <small><span style="display:inline-block;width:12px;height:12px;background:#198754;border-radius:2px;"></span> PASS</small>
+          <small><span style="display:inline-block;width:12px;height:12px;background:#dc3545;border-radius:2px;"></span> FAIL</small>
+          <small><span style="display:inline-block;width:12px;height:12px;background:#ffc107;border-radius:2px;"></span> SKIP</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <span class="text-muted small">마지막 업데이트: <strong id="lastUpdate">-</strong></span>
+        <span id="autoRefreshBadge" class="sb-badge sb-badge-info ms-2" style="display:none;">자동 갱신 중</span>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-primary" onclick="loadTestResults()" id="refreshBtn">
+          <i class="bi bi-arrow-clockwise me-1"></i> 결과 새로고침
+        </button>
+        <button class="btn btn-sm btn-outline-success" onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+          <i class="bi bi-broadcast me-1"></i> 자동 갱신
+        </button>
+      </div>
+    </div>
+
+    <!-- Test Results by Category -->
+    <div id="testResults">
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+        <p class="mt-3 text-muted">테스트 결과를 불러오는 중...</p>
+      </div>
+    </div>
+
+    <!-- Response Time Chart -->
+    <div class="sb-card mt-4 mb-4">
+      <div class="sb-card-header"><h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>응답 시간 분포 (ms)</h6></div>
+      <div class="sb-card-body">
+        <div id="responseTimeChart" class="sb-bar-chart" style="height: 180px;"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. AI 테스트 리포트 v1.0</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_AI테스트리포트.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_AI테스트리포트.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+
+<script>
+let autoRefreshInterval = null;
+let testData = null;
+
+async function loadTestResults() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 로딩 중...';
+
+  try {
+    const response = await fetch('data/ai_test_results.json?t=' + Date.now());
+    testData = await response.json();
+    renderResults(testData);
+  } catch (err) {
+    document.getElementById('testResults').innerHTML = `
+      <div class="sb-note sb-note-danger">
+        <span class="sb-note-icon"><i class="bi bi-exclamation-circle"></i></span>
+        <div><strong>오류:</strong> 테스트 결과를 불러올 수 없습니다. (${err.message})</div>
+      </div>
+    `;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> 결과 새로고침';
+  }
+}
+
+function renderResults(data) {
+  // Summary - support both formats
+  const summary = data.summary || {};
+  const tests = data.tests || [];
+  const total = summary.total || tests.length;
+  const pass = summary.pass || tests.filter(t => t.status === 'PASS').length;
+  const fail = summary.fail || tests.filter(t => t.status === 'FAIL').length;
+  const totalMs = tests.reduce((s, t) => s + (t.response_time_ms || 0), 0);
+
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('passCount').textContent = pass;
+  document.getElementById('failCount').textContent = fail;
+  document.getElementById('durationTotal').textContent = (totalMs / 1000).toFixed(1) + 's';
+  document.getElementById('lastUpdate').textContent = data.test_date || new Date().toLocaleString('ko-KR');
+
+  const passRate = total > 0 ? ((pass / total) * 100).toFixed(1) : '0';
+  document.getElementById('passRate').textContent = passRate + '%';
+  document.getElementById('passBar').style.width = (pass / total * 100) + '%';
+  document.getElementById('failBar').style.width = (fail / total * 100) + '%';
+  const skipBar = document.getElementById('skipBar');
+  if (skipBar) skipBar.style.width = '0%';
+
+  // Group tests into categories by prefix
+  const categories = {};
+  tests.forEach(t => {
+    let cat = 'AI 테스트';
+    const name = t.name || '';
+    if (name.includes('DB') || name.includes('Key') || name.includes('Decryption')) cat = 'Phase A: 인프라';
+    else if (name.includes('Anthropic') || name.includes('OpenAI') || name.includes('GPT') || name.includes('Models')) cat = 'Phase A: API 연결';
+    else if (name.includes('Review')) cat = 'Phase B: 후기 검증';
+    else if (name.includes('Ad')) cat = 'Phase C: 광고 검증';
+    else if (name.includes('Suggest')) cat = 'Phase E: 작성 도우미';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(t);
+  });
+
+  // Render
+  let html = '';
+  Object.entries(categories).forEach(([catName, catTests], idx) => {
+    const catPass = catTests.filter(t => t.status === 'PASS').length;
+    const catFail = catTests.filter(t => t.status === 'FAIL').length;
+    const catTotal = catTests.length;
+
+    html += `
+      <div class="sb-card mb-3">
+        <div class="sb-card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">
+            <a class="text-decoration-none" data-bs-toggle="collapse" href="#cat-${idx}" style="color: var(--sb-text);">
+              <i class="bi bi-chevron-down me-2"></i>${catName}
+            </a>
+          </h6>
+          <div class="d-flex gap-2">
+            <span class="sb-badge sb-badge-pass">${catPass} Pass</span>
+            ${catFail > 0 ? `<span class="sb-badge sb-badge-fail">${catFail} Fail</span>` : ''}
+            <span class="sb-badge sb-badge-info">${catTotal} 총</span>
+          </div>
+        </div>
+        <div class="collapse show" id="cat-${idx}">
+          <div class="sb-card-body p-0">
+            <table class="sb-table mb-0">
+              <thead>
+                <tr>
+                  <th style="width:70px;">#</th>
+                  <th>테스트명</th>
+                  <th style="width:80px;">상태</th>
+                  <th style="width:100px;">소요시간</th>
+                  <th>상세</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+    catTests.forEach((test, ti) => {
+      const statusBadge = test.status === 'PASS'
+        ? '<span class="sb-badge sb-badge-pass"><i class="bi bi-check-circle-fill"></i> PASS</span>'
+        : '<span class="sb-badge sb-badge-fail"><i class="bi bi-x-circle-fill"></i> FAIL</span>';
+
+      const ms = test.response_time_ms || 0;
+      const durationText = ms > 0 ? (ms > 1000 ? (ms/1000).toFixed(1)+'s' : ms.toFixed(0)+'ms') : '-';
+      const durationClass = ms > 3000 ? 'color: var(--sb-warning);' : ms > 5000 ? 'color: var(--sb-danger);' : '';
+      const detail = (test.details || '').replace(/```json\n?/g, '').substring(0, 120);
+
+      html += `
+        <tr${test.status === 'FAIL' ? ' style="background: rgba(247,104,91,0.05);"' : ''}>
+          <td><code class="sb-code-inline">${ti+1}</code></td>
+          <td class="fw-semibold">${test.name}</td>
+          <td>${statusBadge}</td>
+          <td style="${durationClass}">${durationText}</td>
+          <td class="small text-muted">${detail}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table></div></div></div>`;
+  });
+
+  document.getElementById('testResults').innerHTML = html;
+
+  // Environment info
+  if (data.server || data.php_version) {
+    const envHtml = `
+      <div class="sb-card mb-3">
+        <div class="sb-card-header"><h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>테스트 환경</h6></div>
+        <div class="sb-card-body">
+          <div class="row g-3">
+            <div class="col-md-4"><strong>서버:</strong> ${data.server || '-'}</div>
+            <div class="col-md-4"><strong>PHP:</strong> ${data.php_version || '-'}</div>
+            <div class="col-md-4"><strong>실행일시:</strong> ${data.test_date || '-'}</div>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('testResults').insertAdjacentHTML('beforeend', envHtml);
+  }
+
+  renderResponseTimeChart(tests);
+}
+
+function renderResponseTimeChart(tests) {
+  const chart = document.getElementById('responseTimeChart');
+  if (!chart) return;
+  const filtered = tests.filter(t => (t.response_time_ms || 0) > 0);
+  if (filtered.length === 0) return;
+
+  const maxMs = Math.max(...filtered.map(t => t.response_time_ms));
+  let barsHtml = '';
+  filtered.forEach(t => {
+    const height = Math.max(4, (t.response_time_ms / maxMs) * 100);
+    const color = t.status === 'PASS' ? 'var(--sb-success)' : 'var(--sb-danger)';
+    const label = t.name.replace(/^Test \d+: /, '').substring(0, 12);
+    barsHtml += `
+      <div class="sb-bar" style="height: ${height}%; background: ${color};" title="${t.name}: ${t.response_time_ms.toFixed(0)}ms">
+        <span class="sb-bar-label">${label}</span>
+      </div>`;
+  });
+
+  chart.innerHTML = barsHtml;
+}
+
+function toggleAutoRefresh() {
+  const btn = document.getElementById('autoRefreshBtn');
+  const badge = document.getElementById('autoRefreshBadge');
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+    btn.classList.remove('btn-success');
+    btn.classList.add('btn-outline-success');
+    btn.innerHTML = '<i class="bi bi-broadcast me-1"></i> 자동 갱신';
+    badge.style.display = 'none';
+  } else {
+    autoRefreshInterval = setInterval(loadTestResults, 30000);
+    btn.classList.remove('btn-outline-success');
+    btn.classList.add('btn-success');
+    btn.innerHTML = '<i class="bi bi-broadcast me-1"></i> 자동 갱신 중지';
+    badge.style.display = 'inline-flex';
+  }
+}
+
+// Initial load
+document.addEventListener('DOMContentLoaded', loadTestResults);
+</script>
+</body>
+</html>

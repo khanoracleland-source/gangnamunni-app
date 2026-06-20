@@ -1,0 +1,55 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈 1페이지 — Figma vs 현재 vs 새디자인</title>
+<style>
+:root{--c:#0891b2;--red:#ae1932;--bg:#0f172a;--card:#1e293b;--line:#334155;--ok:#16a34a;--warn:#f59e0b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#e2e8f0;font-family:'Noto Sans KR',sans-serif}
+header{text-align:center;padding:26px 16px;background:linear-gradient(135deg,#7c3aed,#ae1932)}
+header h1{margin:0;font-size:1.35rem;color:#fff}header p{margin:6px 0 0;color:#fde7ef;font-size:.88rem}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 14px 80px}
+.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:10px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}}
+.col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.col h3{margin:0 0 8px;font-size:.95rem;text-align:center;padding:6px;border-radius:8px;color:#fff}
+.h-fig{background:#7c3aed}.h-cur{background:#64748b}.h-new{background:var(--c)}
+.col img{width:100%;max-width:412px;display:block;margin:0 auto;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:zoom-in;vertical-align:top}
+.note{background:#0b1220;border-left:4px solid var(--c);padding:12px 15px;border-radius:0 8px 8px 0;font-size:.86rem;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin:14px 0}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}th{background:#0b1220}
+.ok{color:#4ade80;font-weight:700}.warn{color:#fbbf24;font-weight:700}.bad{color:#f87171;font-weight:700}
+.deci{background:#2a1f08;border:1px solid #78581a;border-left:4px solid var(--warn);border-radius:10px;padding:14px 16px;margin:16px 0;font-size:.9rem}
+code{background:#0b1220;padding:2px 7px;border-radius:5px;font-size:.82em;color:#fca5a5}
+</style></head><body>
+<header><h1>🏠 홈 1페이지 — Figma vs 현재 vs 새디자인</h1>
+<p>3개 동일 폭(412px)·동일 배율 정규화 · 백엔드 0건 변경 · 스테이징(index_figma.php) · 2026-06-13</p></header>
+<div class="wrap">
+<div class="cols">
+  <div class="col"><h3 class="h-fig">① FIGMA 디자인</h3><a href="fg_home1.png?v=7" target="_blank"><img src="fg_home1.png?v=7"></a></div>
+  <div class="col"><h3 class="h-cur">② 현재 구현</h3><a href="cur_home_top.png?v=7" target="_blank"><img src="cur_home_top.png?v=7"></a></div>
+  <div class="col"><h3 class="h-new">③ 새 디자인(토큰적용)</h3><a href="new_home_top.png?v=7" target="_blank"><img src="new_home_top.png?v=7"></a></div>
+</div>
+
+<div class="note">🔒 <b>안전</b>: 라이브 <code>index.php</code>는 그대로. 새 디자인은 스테이징 <code>index_figma.php</code>에만 적용. 언제든 <code>safe-baseline-20260613</code> 태그로 원복.</div>
+
+<h2 style="font-size:1.1rem">요소별 일치도</h2>
+<table>
+<thead><tr><th>요소</th><th>Figma</th><th>현재</th><th>새디자인(토큰)</th><th>판정</th></tr></thead>
+<tbody>
+<tr><td>헤더·로고·로그인버튼</td><td>✓</td><td>✓</td><td>✓ primary #ae1932</td><td class="ok">일치</td></tr>
+<tr><td>검색바 + 지역선택</td><td>✓</td><td>✓</td><td>✓</td><td class="ok">일치</td></tr>
+<tr><td>AD 카드</td><td>흰 카드</td><td>흰 카드(내용=데이터)</td><td>#f8f8f8 카드 정제</td><td class="ok">구조 일치</td></tr>
+<tr><td>시술 카테고리 테이블</td><td>3열·얇은 선</td><td>2열·진한 선</td><td>얇은 선(#ededed)·15px</td><td class="warn">근접(3열 미세조정)</td></tr>
+<tr><td>폰트</td><td>Noto Sans KR</td><td>혼재</td><td>Noto Sans KR 통일</td><td class="ok">일치</td></tr>
+<tr><td>중간 섹션 위치</td><td>이벤트 카드</td><td>프로모+아이콘그리드</td><td>✓ 이벤트 카드(카테고리 직하)</td><td class="ok">Figma 위치 일치</td></tr>
+<tr><td>AD 박스 디자인</td><td>제목 18px·넉넉</td><td>15px·좁음</td><td>18px·여백↑(토큰)</td><td class="ok">정렬</td></tr>
+<tr><td>이벤트 표시</td><td>20% 카드</td><td>미표시(데모 날짜만료)</td><td>✓ 20% 카드 표시</td><td class="ok">표시됨</td></tr>
+<tr><td>하단탭</td><td>홈 active(red)</td><td>✓</td><td>✓ #ae1932</td><td class="ok">일치</td></tr>
+</tbody>
+</table>
+
+<div class="deci">✅ <b>"피그마 위치 동일 + 추가 섹션 관리자 토글" — 가능 & 시연 완료</b><br>
+스테이징에서 <code>프로모배너</code>·<code>관심있는 시술 아이콘그리드</code>·<code>꿀팁</code>을 숨겨 <b>이벤트가 카테고리 바로 아래(Figma 위치)</b>로 올라왔습니다.<br>
+→ 이 추가 섹션들은 <b>관리자 ON/OFF 가능</b>: <code>프로모배너</code>는 <b>이미</b> <code>promo_show_index</code> 설정으로 토글됨. 나머지(아이콘그리드·꿀팁)도 동일 패턴으로 <b>관리자 설정 키 추가</b>하면 됩니다(기능 제거 아님 = 안전).</div>
+
+<div class="note">✅ <b>검증</b>: 디자인 토큰·레이아웃 정렬은 <b>라이브 무손상</b>(스테이징 <code>index_figma.php</code>만, 200 정상). <b>이벤트 미표시는 데모 이벤트 날짜 만료 때문</b>(데이터)이며, 유효 날짜면 자동 노출됩니다. 픽셀 100%는 컴포넌트별 Figma MCP 반복(Ralph 루프)으로 마무리.</div>
+</div></body></html>

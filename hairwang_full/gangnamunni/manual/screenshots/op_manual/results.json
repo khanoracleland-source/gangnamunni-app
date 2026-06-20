@@ -1,0 +1,254 @@
+[
+  {
+    "name": "ch1_01_login_empty",
+    "desc": "로그인 화면 (빈 폼)",
+    "file": "ch1_01_login_empty.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch1_02_login_filled",
+    "desc": "아이디/비밀번호 입력 완료",
+    "file": "ch1_02_login_filled.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch1_03_login_button",
+    "desc": "로그인 버튼 클릭 직전",
+    "file": "ch1_03_login_button.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch1_04_dashboard",
+    "desc": "로그인 후 대시보드",
+    "file": "ch1_04_dashboard.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch1_05_sidebar_expanded",
+    "desc": "사이드바 (알림벨 포함)",
+    "file": "ch1_05_sidebar_expanded.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch2_01_hospitals_list",
+    "desc": "병원 목록",
+    "file": "ch2_01_hospitals_list.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch2_04_doctors_list",
+    "desc": "의사 관리",
+    "file": "ch2_04_doctors_list.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch2_05_apply_form_empty",
+    "desc": "병원 신청 폼",
+    "file": "ch2_05_apply_form_empty.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch2_07_apply_form_filled",
+    "desc": "자동 채우기 후 폼",
+    "file": "ch2_07_apply_form_filled.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch3_01_reviews_list",
+    "desc": "후기 관리",
+    "file": "ch3_01_reviews_list.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch3_02_events_list",
+    "desc": "이벤트 관리",
+    "file": "ch3_02_events_list.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch3_06_ad_wizard_step1",
+    "desc": "광고 마법사",
+    "file": "ch3_06_ad_wizard_step1.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch3_08_ad_settings",
+    "desc": "광고 디스플레이 설정",
+    "file": "ch3_08_ad_settings.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch4_01_bookings_list",
+    "desc": "예약 관리",
+    "file": "ch4_01_bookings_list.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch4_02_consultations_list",
+    "desc": "상담 관리",
+    "file": "ch4_02_consultations_list.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch4_03_booking_form",
+    "desc": "예약 폼 (프론트)",
+    "file": "ch4_03_booking_form.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch4_04_booking_filled",
+    "desc": "예약 자동 채우기 후",
+    "file": "ch4_04_booking_filled.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch5_01_members_list",
+    "desc": "회원 목록",
+    "file": "ch5_01_members_list.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch5_02_coupons",
+    "desc": "쿠폰 관리 (10건)",
+    "file": "ch5_02_coupons.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch5_03_points",
+    "desc": "포인트 관리 (55건)",
+    "file": "ch5_03_points.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch6_01_ai_settings",
+    "desc": "AI 설정",
+    "file": "ch6_01_ai_settings.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch6_02_navigation",
+    "desc": "네비게이션 설정",
+    "file": "ch6_02_navigation.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch7_01_fix_log",
+    "desc": "수정 이력",
+    "file": "ch7_01_fix_log.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch7_02_e2e_test",
+    "desc": "E2E 테스트",
+    "file": "ch7_02_e2e_test.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch7_03_demo_data",
+    "desc": "데모 데이터 관리",
+    "file": "ch7_03_demo_data.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch7_04_dev_feedback",
+    "desc": "개발 피드백",
+    "file": "ch7_04_dev_feedback.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "ch7_05_usage_stats",
+    "desc": "월별 사용량 통계",
+    "file": "ch7_05_usage_stats.png",
+    "status": "OK",
+    "viewport": "pc"
+  },
+  {
+    "name": "mob_ch1_01_login",
+    "desc": "모바일 로그인",
+    "file": "mob_ch1_01_login.png",
+    "status": "OK",
+    "viewport": "mobile"
+  },
+  {
+    "name": "mob_ch1_02_dashboard",
+    "desc": "모바일 대시보드",
+    "file": "mob_ch1_02_dashboard.png",
+    "status": "OK",
+    "viewport": "mobile"
+  },
+  {
+    "name": "mob_ch2_01_hospitals",
+    "desc": "모바일 병원 목록",
+    "file": "mob_ch2_01_hospitals.png",
+    "status": "OK",
+    "viewport": "mobile"
+  },
+  {
+    "name": "mob_ch3_01_reviews",
+    "desc": "모바일 후기 관리",
+    "file": "mob_ch3_01_reviews.png",
+    "status": "OK",
+    "viewport": "mobile"
+  },
+  {
+    "name": "mob_ch3_02_events",
+    "desc": "모바일 이벤트 관리",
+    "file": "mob_ch3_02_events.png",
+    "status": "OK",
+    "viewport": "mobile"
+  },
+  {
+    "name": "mob_ch4_01_bookings",
+    "desc": "모바일 예약 관리",
+    "file": "mob_ch4_01_bookings.png",
+    "status": "OK",
+    "viewport": "mobile"
+  },
+  {
+    "name": "mob_ch4_02_booking_form",
+    "desc": "모바일 예약 폼",
+    "file": "mob_ch4_02_booking_form.png",
+    "status": "OK",
+    "viewport": "mobile"
+  },
+  {
+    "name": "mob_ch5_01_members",
+    "desc": "모바일 회원 목록",
+    "file": "mob_ch5_01_members.png",
+    "status": "OK",
+    "viewport": "mobile"
+  },
+  {
+    "name": "mob_ch2_02_apply_public",
+    "desc": "모바일 병원 신청",
+    "file": "mob_ch2_02_apply_public.png",
+    "status": "OK",
+    "viewport": "mobile"
+  }
+]

@@ -1,0 +1,11 @@
+# 백업 파일 무시
+dbbackup/*.sql
+!dbbackup/.htaccess
+!dbbackup/README.txt
+
+# 시스템 파일
+.DS_Store
+Thumbs.db
+
+# 백업 폴더 전체 (선택사항)
+# dbbackup/

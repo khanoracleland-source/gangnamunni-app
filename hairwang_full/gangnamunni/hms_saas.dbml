@@ -1,0 +1,7647 @@
+// 서울미녀 hms_saas ERD — dbdiagram.io / DBML import용 (2026-06-12)
+// 생성: 스키마 덤프 파싱 + FK/명명규칙 관계 추론. https://dbdiagram.io 에 붙여넣기 하면 ERD 표시됨.
+
+Table accountants {
+  "id" int(10) [pk]
+  "user_id" bigint(20)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table accounts {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "type" tinyint(4)
+  "description" text
+  "status" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table addon_app_admin_app_images {
+  "image_id" int(11) [pk]
+  "app_key" varchar(50)
+  "image_type" varchar(50)
+  "image_path" varchar(500)
+  "file_name" varchar(255)
+  "file_size" int(11)
+  "width" int(11)
+  "height" int(11)
+  "original_path" varchar(500)
+  "is_modified" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table addon_app_admin_app_sources {
+  "app_id" int(11) [pk]
+  "app_key" varchar(50)
+  "app_name" varchar(100)
+  "platform" varchar(20)
+  "version" varchar(20)
+  "file_name" varchar(255)
+  "file_path" varchar(500)
+  "file_size" bigint(20)
+  "extract_path" varchar(500)
+  "is_extracted" tinyint(1)
+  "image_count" int(11)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table addon_app_admin_boards {
+  "id" int(11) [pk]
+  "bo_table" varchar(20)
+  "icon_class" varchar(50)
+  "is_visible_pc" tinyint(1)
+  "is_visible_mobile" tinyint(1)
+  "sort_order" int(11)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table addon_app_admin_footer {
+  "footer_id" int(11) [pk]
+  "company_name" varchar(100)
+  "ceo_name" varchar(50)
+  "business_number" varchar(20)
+  "address" varchar(255)
+  "tel" varchar(20)
+  "fax" varchar(20)
+  "email" varchar(100)
+  "privacy_officer" varchar(50)
+  "copyright" varchar(255)
+  "footer_links" text
+  "footer_color" varchar(7)
+  "text_color" varchar(7)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table addon_app_admin_header {
+  "header_id" int(11) [pk]
+  "logo_pc" varchar(255)
+  "logo_mobile" varchar(255)
+  "favicon" varchar(255)
+  "header_color" varchar(7)
+  "text_color" varchar(7)
+  "custom_css" text
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table addon_app_admin_logs {
+  "log_id" int(11) [pk]
+  "user_id" varchar(50)
+  "action_type" varchar(50)
+  "action_target" varchar(100)
+  "action_detail" text
+  "ip_address" varchar(45)
+  "user_agent" varchar(500)
+  "created_at" datetime
+}
+
+Table addon_app_admin_main_banners {
+  "banner_id" int(11) [pk]
+  "banner_title" varchar(100)
+  "banner_image" varchar(255)
+  "banner_link" varchar(255)
+  "banner_target" varchar(10)
+  "is_active" tinyint(1)
+  "sort_order" int(11)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table addon_app_admin_main_sections {
+  "section_id" int(11) [pk]
+  "section_title" varchar(100)
+  "section_content" text
+  "section_type" varchar(20)
+  "is_active" tinyint(1)
+  "sort_order" int(11)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table addon_app_admin_media {
+  "media_id" int(11) [pk]
+  "media_key" varchar(100)
+  "media_type" varchar(20)
+  "file_name" varchar(255)
+  "file_path" varchar(500)
+  "file_size" int(11)
+  "file_type" varchar(50)
+  "width" int(11)
+  "height" int(11)
+  "alt_text" varchar(255)
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table addon_app_admin_site_config {
+  "config_id" int(11) [pk]
+  "config_key" varchar(100)
+  "config_value" text
+  "config_type" varchar(20)
+  "config_group" varchar(50)
+  "description" varchar(255)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table addresses {
+  "id" bigint(20) [pk]
+  "owner_id" int(11)
+  "owner_type" varchar(191)
+  "address1" varchar(191)
+  "address2" varchar(191)
+  "city" varchar(191)
+  "zip" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table admin_testimonials {
+  "id" bigint(20) [pk]
+  "name" varchar(191)
+  "position" varchar(191)
+  "description" text
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table advanced_payments {
+  "id" int(10) [pk]
+  "patient_id" bigint(20)
+  "receipt_no" varchar(191)
+  "amount" double
+  "date" date
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ambulance_calls {
+  "id" int(10) [pk]
+  "patient_id" int(10)
+  "ambulance_id" int(10)
+  "driver_name" varchar(191)
+  "date" date
+  "amount" double(8,2)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ambulances {
+  "id" int(10) [pk]
+  "vehicle_number" varchar(160)
+  "vehicle_model" varchar(191)
+  "year_made" varchar(191)
+  "driver_name" varchar(191)
+  "driver_license" varchar(191)
+  "driver_contact" varchar(191)
+  "note" text
+  "is_available" tinyint(1)
+  "vehicle_type" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table api_field_values {
+  "fv_id" int(11) [pk]
+  "af_id" int(11)
+  "al_id" int(11)
+  "sl_id" int(11)
+  "po_id" bigint(20)
+  "fv_value" text
+  "fv_created_at" datetime
+}
+
+Table api_fields {
+  "af_id" int(11) [pk]
+  "af_name" varchar(50)
+  "af_code" varchar(50)
+  "af_type" enum('text','number','select','checkbox','textarea')
+  "af_category" enum('sns','pg','common')
+  "af_default_value" text
+  "af_options" text
+  "af_required" tinyint(4)
+  "af_status" tinyint(4)
+  "af_order" int(11)
+  "af_created_at" datetime
+}
+
+Table api_ips {
+  "ai_id" int(11) [pk]
+  "ak_id" int(11)
+  "ai_ip" varchar(45)
+  "ai_description" varchar(255)
+  "ai_status" tinyint(4)
+  "ai_created_at" datetime
+}
+
+Table api_keys {
+  "ak_id" int(11) [pk]
+  "ak_name" varchar(100)
+  "ak_key" varchar(64)
+  "ak_secret" varchar(64)
+  "ak_type" enum('sns','pg','all')
+  "ak_ip_whitelist" text
+  "ak_status" tinyint(4)
+  "ak_created_at" datetime
+  "ak_expired_at" datetime
+  "ak_last_used" datetime
+}
+
+Table api_logs {
+  "al_id" int(11) [pk]
+  "ak_id" int(11)
+  "al_endpoint" varchar(255)
+  "al_method" varchar(10)
+  "al_request_ip" varchar(45)
+  "al_request_data" text
+  "al_response_code" int(11)
+  "al_response_data" text
+  "al_error" text
+  "al_execution_time" float
+  "al_created_at" datetime
+}
+
+Table appointment_transactions {
+  "id" bigint(20) [pk]
+  "appointment_id" bigint(20)
+  "transaction_type" int(11)
+  "transaction_id" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table appointments {
+  "id" bigint(20) [pk]
+  "patient_id" int(10)
+  "doctor_id" bigint(20)
+  "department_id" bigint(20)
+  "opd_date" datetime
+  "problem" text
+  "is_completed" tinyint(1)
+  "payment_status" tinyint(1)
+  "payment_type" int(11)
+  "custom_field" longtext
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table auto_manual_captures {
+  "id" int(11) [pk]
+  "session_id" int(11)
+  "menu_name" varchar(200)
+  "menu_url" varchar(500)
+  "screenshot_path" varchar(500)
+  "annotated_path" varchar(500)
+  "annotation_data" longtext
+  "client_comment" text
+  "status" enum('success','failed','retry')
+  "error_message" text
+  "review_status" enum('pending','in_progress','done')
+  "sort_order" int(11)
+  "created_at" datetime
+}
+
+Table auto_manual_sessions {
+  "id" int(11) [pk]
+  "session_key" varchar(50)
+  "target_url" varchar(500)
+  "menu_selector" varchar(200)
+  "content_selector" varchar(200)
+  "status" enum('running','completed','stopped','error')
+  "total_menus" int(11)
+  "captured_count" int(11)
+  "error_count" int(11)
+  "created_by" varchar(50)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table bed_assigns {
+  "id" int(10) [pk]
+  "bed_id" int(10)
+  "ipd_patient_department_id" int(10)
+  "patient_id" int(10)
+  "case_id" varchar(191)
+  "assign_date" datetime
+  "discharge_date" datetime
+  "description" text
+  "status" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table bed_types {
+  "id" int(10) [pk]
+  "title" varchar(160)
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table beds {
+  "id" int(10) [pk]
+  "bed_type" int(10)
+  "bed_id" varchar(191)
+  "name" varchar(191)
+  "description" text
+  "charge" double
+  "is_available" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table bill_items {
+  "id" int(10) [pk]
+  "item_name" varchar(191)
+  "bill_id" int(10)
+  "qty" int(10)
+  "price" decimal(16,2)
+  "amount" decimal(16,2)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table bill_transactions {
+  "id" bigint(20) [pk]
+  "transaction_id" varchar(191)
+  "payment_type" int(11)
+  "amount" decimal(16,2)
+  "bill_id" int(10)
+  "status" varchar(191)
+  "meta" text
+  "tenant_id" varchar(191)
+  "is_manual_payment" int(11)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table bills {
+  "id" int(10) [pk]
+  "bill_id" varchar(191)
+  "patient_id" int(10)
+  "bill_date" datetime
+  "amount" decimal(16,2)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "patient_admission_id" varchar(191)
+  "status" tinyint(1)
+}
+
+Table birth_reports {
+  "id" int(10) [pk]
+  "patient_id" int(10)
+  "case_id" varchar(191)
+  "doctor_id" bigint(20)
+  "date" datetime
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table blood_banks {
+  "id" int(10) [pk]
+  "blood_group" varchar(191)
+  "remained_bags" bigint(20)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table blood_donations {
+  "id" int(10) [pk]
+  "blood_donor_id" int(10)
+  "bags" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table blood_donors {
+  "id" int(10) [pk]
+  "name" varchar(191)
+  "age" int(11)
+  "gender" int(11)
+  "blood_group" varchar(191)
+  "last_donate_date" datetime
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table blood_issues {
+  "id" bigint(20) [pk]
+  "issue_date" datetime
+  "doctor_id" bigint(20)
+  "donor_id" int(10)
+  "patient_id" int(10)
+  "amount" decimal(10,2)
+  "remarks" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table brands {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "email" varchar(191)
+  "phone" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table call_logs {
+  "id" bigint(20) [pk]
+  "name" varchar(191)
+  "phone" varchar(191)
+  "date" date
+  "follow_up_date" date
+  "note" text
+  "call_type" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table case_handlers {
+  "id" int(10) [pk]
+  "user_id" bigint(20)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table categories {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "is_active" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table charge_categories {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "description" text
+  "charge_type" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table charges {
+  "id" int(10) [pk]
+  "charge_type" int(11)
+  "charge_category_id" int(10)
+  "code" varchar(160)
+  "standard_charge" double
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table community_comments {
+  "id" int(11) [pk]
+  "post_id" int(11)
+  "user_id" int(11)
+  "content" text
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table community_posts {
+  "id" int(11) [pk]
+  "user_id" int(11)
+  "title" varchar(255)
+  "content" text
+  "category" varchar(50)
+  "views" int(11)
+  "likes" int(11)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table crawled_doctors {
+  "id" int(11) [pk]
+  "site_id" int(11)
+  "doctor_id" varchar(100)
+  "doctor_name" varchar(100)
+  "hospital_id" int(11)
+  "hospital_name" varchar(255)
+  "specialty" varchar(100)
+  "description" text
+  "file_path" text
+  "file_size_kb" int(11)
+  "created_at" timestamp
+}
+
+Table crawled_events {
+  "id" int(11) [pk]
+  "site_id" int(11)
+  "event_id" varchar(100)
+  "event_name" varchar(500)
+  "hospital_name" varchar(255)
+  "brand_name" varchar(255)
+  "category" varchar(100)
+  "description" text
+  "original_price" int(11)
+  "discount_price" int(11)
+  "review_count" int(11)
+  "rating" decimal(3,2)
+  "file_path" text
+  "file_size_kb" int(11)
+  "images" text
+  "created_at" timestamp
+}
+
+Table crawled_hospitals {
+  "id" int(11) [pk]
+  "site_id" int(11)
+  "hospital_id" varchar(100)
+  "hospital_name" varchar(255)
+  "address" text
+  "location" varchar(255)
+  "phone" varchar(50)
+  "description" text
+  "services" text
+  "review_count" int(11)
+  "rating" decimal(3,2)
+  "file_path" text
+  "file_size_kb" int(11)
+  "images" text
+  "created_at" timestamp
+}
+
+Table crawled_images {
+  "id" int(11) [pk]
+  "site_id" int(11)
+  "image_type" varchar(50)
+  "image_path" varchar(500)
+  "file_name" varchar(255)
+  "file_size_kb" int(11)
+  "format" varchar(10)
+  "related_id" int(11)
+  "related_type" enum('hospital','doctor','event','tip','other')
+  "created_at" timestamp
+}
+
+Table crawled_sites {
+  "id" int(11) [pk]
+  "site_name" varchar(100)
+  "site_url" varchar(255)
+  "site_type" varchar(50)
+  "total_files" int(11)
+  "total_size_mb" decimal(10,2)
+  "crawled_date" date
+  "status" enum('active','inactive')
+  "created_at" timestamp
+}
+
+Table crawled_tips {
+  "id" int(11) [pk]
+  "site_id" int(11)
+  "tip_id" varchar(100)
+  "title" varchar(500)
+  "content" text
+  "category" varchar(100)
+  "author" varchar(100)
+  "views" int(11)
+  "file_path" text
+  "file_size_kb" int(11)
+  "created_at" timestamp
+}
+
+Table currency_settings {
+  "id" bigint(20) [pk]
+  "currency_name" varchar(191)
+  "currency_code" varchar(191)
+  "currency_icon" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "deleted_at" timestamp
+}
+
+Table custom_fields {
+  "id" bigint(20) [pk]
+  "module_name" varchar(191)
+  "field_type" varchar(191)
+  "field_name" varchar(191)
+  "is_required" tinyint(1)
+  "values" text
+  "grid" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table db_config {
+  "id" int(11) [pk]
+  "db_host" varchar(100)
+  "db_user" varchar(100)
+  "db_password" varchar(255)
+  "db_name" varchar(100)
+  "table_devices" varchar(100)
+  "table_notifications" varchar(100)
+  "table_notification_acks" varchar(100)
+  "devices_id" varchar(50)
+  "devices_device_id" varchar(50)
+  "devices_fcm_token" varchar(50)
+  "devices_platform" varchar(50)
+  "devices_app_identifier" varchar(50)
+  "devices_device_model" varchar(50)
+  "devices_brand" varchar(50)
+  "devices_is_active" varchar(50)
+  "devices_created_at" varchar(50)
+  "notifications_id" varchar(50)
+  "notifications_message_id" varchar(50)
+  "notifications_device_id" varchar(50)
+  "notifications_title" varchar(50)
+  "notifications_body" varchar(50)
+  "notifications_data" varchar(50)
+  "notifications_status" varchar(50)
+  "notifications_created_at" varchar(50)
+  "notifications_pushed_at" varchar(50)
+  "acks_id" varchar(50)
+  "acks_message_id" varchar(50)
+  "acks_device_id" varchar(50)
+  "acks_received_at" varchar(50)
+  "acks_displayed_at" varchar(50)
+  "acks_clicked_at" varchar(50)
+  "acks_created_at" varchar(50)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table death_reports {
+  "id" int(10) [pk]
+  "patient_id" int(10)
+  "case_id" varchar(191)
+  "doctor_id" bigint(20)
+  "date" datetime
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table departments {
+  "id" bigint(20) [pk]
+  "name" varchar(191)
+  "is_active" tinyint(1)
+  "guard_name" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table dev_log {
+  "id" int(11) [pk]
+  "phase" varchar(50)
+  "task_id" varchar(100)
+  "task_name" varchar(500)
+  "status" enum('pending','in_progress','completed','blocked')
+  "priority" enum('critical','high','medium','low')
+  "git_commit" varchar(40)
+  "notes" text
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table device_topic_subscriptions {
+  "id" int(11) [pk]
+  "device_id" int(11)
+  "topic_name" varchar(100)
+  "subscribed_at" datetime
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table devices {
+  "id" int(11) [pk]
+  "device_id" varchar(255)
+  "fcm_token" text
+  "platform" enum('android','ios')
+  "app_type" varchar(50)
+  "app_identifier" varchar(100)
+  "device_model" varchar(100)
+  "brand" varchar(50)
+  "os_version" varchar(50)
+  "app_version" varchar(50)
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table diagnosis_categories {
+  "id" bigint(20) [pk]
+  "name" varchar(160)
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table doctor_departments {
+  "id" bigint(20) [pk]
+  "title" varchar(160)
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table doctor_holidays {
+  "id" bigint(20) [pk]
+  "name" varchar(191)
+  "doctor_id" bigint(20)
+  "date" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table doctor_opd_charges {
+  "id" bigint(20) [pk]
+  "doctor_id" bigint(20)
+  "standard_charge" double
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table doctors {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "doctor_department_id" bigint(20)
+  "specialist" varchar(191)
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "appointment_charge" double
+  "google_json_file_path" longtext
+}
+
+Table document_types {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table documents {
+  "id" int(10) [pk]
+  "title" varchar(191)
+  "document_type_id" int(11)
+  "patient_id" int(11)
+  "uploaded_by" bigint(20)
+  "notes" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table domains {
+  "id" int(10) [pk]
+  "domain" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table editor_settings {
+  "id" int(11) [pk]
+  "setting_key" varchar(100)
+  "setting_value" text
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table employee_payrolls {
+  "id" int(10) [pk]
+  "sr_no" bigint(20)
+  "payroll_id" varchar(191)
+  "type" int(11)
+  "owner_id" int(11)
+  "owner_type" varchar(191)
+  "month" varchar(191)
+  "year" int(11)
+  "net_salary" double
+  "status" int(11)
+  "basic_salary" double
+  "allowance" double
+  "deductions" double
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table enquiries {
+  "id" int(10) [pk]
+  "full_name" varchar(191)
+  "email" varchar(191)
+  "contact_no" varchar(191)
+  "type" tinyint(4)
+  "message" text
+  "viewed_by" bigint(20)
+  "status" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table event_google_calendars {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "google_calendar_list_id" bigint(20)
+  "google_calendar_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table expenses {
+  "id" bigint(20) [pk]
+  "expense_head" int(11)
+  "name" varchar(191)
+  "invoice_number" varchar(191)
+  "date" datetime
+  "amount" double
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table failed_jobs {
+  "id" bigint(20) [pk]
+  "uuid" varchar(191)
+  "connection" text
+  "queue" text
+  "payload" longtext
+  "exception" longtext
+  "failed_at" timestamp
+}
+
+Table faqs {
+  "id" bigint(20) [pk]
+  "question" varchar(191)
+  "answer" text
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table fcm_tokens {
+  "id" bigint(20) [pk]
+  "user_id" int(11)
+  "device_id" varchar(100)
+  "fcm_token" varchar(255)
+  "platform" varchar(20)
+  "app_version" varchar(20)
+  "os_version" varchar(50)
+  "device_model" varchar(100)
+  "is_active" tinyint(4)
+  "last_used_at" timestamp
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table feature_subscriptionplan {
+  "id" bigint(20) [pk]
+  "feature_id" bigint(20)
+  "subscription_plan_id" bigint(20)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table features {
+  "id" bigint(20) [pk]
+  "name" varchar(160)
+  "submenu" int(11)
+  "route" longtext
+  "has_parent" int(11)
+  "is_default" int(11)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table figma_review_notes {
+  "id" int(11) [pk]
+  "figma_filename" varchar(255)
+  "figma_group" varchar(100)
+  "figma_index" int(11)
+  "current_impl_url" varchar(500)
+  "is_wrong_match" tinyint(1)
+  "suggested_impl_url" varchar(500)
+  "fix_prompt" text
+  "priority" enum('high','medium','low')
+  "status" enum('pending','in_progress','done','rejected')
+  "claude_response" text
+  "assigned_to" varchar(100)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "completed_at" timestamp
+}
+
+Table front_services {
+  "id" bigint(20) [pk]
+  "name" varchar(191)
+  "short_description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table front_settings {
+  "id" bigint(20) [pk]
+  "key" varchar(191)
+  "value" text
+  "type" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table g5_api_field_values {
+  "fv_id" int(11) [pk]
+  "af_id" int(11)
+  "al_id" int(11)
+  "sl_id" int(11)
+  "po_id" bigint(20)
+  "fv_value" text
+  "fv_created_at" datetime
+}
+
+Table g5_api_fields {
+  "af_id" int(11) [pk]
+  "af_name" varchar(50)
+  "af_code" varchar(50)
+  "af_type" enum('text','number','select','checkbox','textarea')
+  "af_category" enum('sns','pg','common')
+  "af_default_value" text
+  "af_options" text
+  "af_required" tinyint(4)
+  "af_status" tinyint(4)
+  "af_order" int(11)
+  "af_created_at" datetime
+}
+
+Table g5_api_ips {
+  "ai_id" int(11) [pk]
+  "ak_id" int(11)
+  "ai_ip" varchar(45)
+  "ai_description" varchar(255)
+  "ai_status" tinyint(4)
+  "ai_created_at" datetime
+}
+
+Table g5_api_keys {
+  "ak_id" int(11) [pk]
+  "ak_name" varchar(100)
+  "ak_key" varchar(64)
+  "ak_secret" varchar(64)
+  "ak_type" enum('sns','pg','all')
+  "ak_ip_whitelist" text
+  "ak_status" tinyint(4)
+  "ak_created_at" datetime
+  "ak_expired_at" datetime
+  "ak_last_used" datetime
+}
+
+Table g5_api_logs {
+  "al_id" int(11) [pk]
+  "ak_id" int(11)
+  "al_endpoint" varchar(255)
+  "al_method" varchar(10)
+  "al_request_ip" varchar(45)
+  "al_request_data" text
+  "al_response_code" int(11)
+  "al_response_data" text
+  "al_error" text
+  "al_execution_time" float
+  "al_created_at" datetime
+}
+
+Table g5_attendance {
+  "id" bigint(20) [pk]
+  "mb_id" varchar(50)
+  "mood" varchar(16)
+  "message" varchar(255)
+  "att_date" date
+  "att_time" time
+  "reg_datetime" datetime
+  "ip" varbinary(16)
+}
+
+Table g5_attendance_reward_log {
+  "id" bigint(20) [pk]
+  "mb_id" varchar(50)
+  "rule" varchar(16)
+  "uniq_key" varchar(64)
+  "points" int(11)
+  "att_date" date
+  "content" varchar(255)
+  "reg_datetime" datetime
+}
+
+Table g5_attendance_settings {
+  "id" tinyint(3) [pk]
+  "every_days_n" int(11)
+  "every_days_points" int(11)
+  "daily_points" int(11)
+  "streak_days" int(11)
+  "streak_points" int(11)
+  "updated_by" varchar(50)
+  "updated_at" datetime
+}
+
+Table g5_auth {
+  "mb_id" varchar(20) [pk]
+  "au_menu" varchar(50)
+  "au_auth" set('r','w','d')
+}
+
+Table g5_autosave {
+  "as_id" int(11) [pk]
+  "mb_id" varchar(20)
+  "as_uid" bigint(20)
+  "as_subject" varchar(255)
+  "as_content" mediumtext
+  "as_datetime" datetime
+}
+
+Table g5_board {
+  "bo_table" varchar(20) [pk]
+  "gr_id" varchar(255)
+  "bo_subject" varchar(255)
+  "bo_mobile_subject" varchar(255)
+  "bo_device" enum('both','pc','mobile')
+  "bo_admin" varchar(255)
+  "bo_list_level" tinyint(4)
+  "bo_read_level" tinyint(4)
+  "bo_write_level" tinyint(4)
+  "bo_reply_level" tinyint(4)
+  "bo_comment_level" tinyint(4)
+  "bo_upload_level" tinyint(4)
+  "bo_download_level" tinyint(4)
+  "bo_html_level" tinyint(4)
+  "bo_link_level" tinyint(4)
+  "bo_count_delete" tinyint(4)
+  "bo_count_modify" tinyint(4)
+  "bo_read_point" int(11)
+  "bo_write_point" int(11)
+  "bo_comment_point" int(11)
+  "bo_download_point" int(11)
+  "bo_use_category" tinyint(4)
+  "bo_category_list" mediumtext
+  "bo_use_sideview" tinyint(4)
+  "bo_use_file_content" tinyint(4)
+  "bo_use_secret" tinyint(4)
+  "bo_use_dhtml_editor" tinyint(4)
+  "bo_select_editor" varchar(50)
+  "bo_use_rss_view" tinyint(4)
+  "bo_use_good" tinyint(4)
+  "bo_use_nogood" tinyint(4)
+  "bo_use_name" tinyint(4)
+  "bo_use_signature" tinyint(4)
+  "bo_use_ip_view" tinyint(4)
+  "bo_use_list_view" tinyint(4)
+  "bo_use_list_file" tinyint(4)
+  "bo_use_list_content" tinyint(4)
+  "bo_table_width" int(11)
+  "bo_subject_len" int(11)
+  "bo_mobile_subject_len" int(11)
+  "bo_page_rows" int(11)
+  "bo_mobile_page_rows" int(11)
+  "bo_new" int(11)
+  "bo_hot" int(11)
+  "bo_image_width" int(11)
+  "bo_skin" varchar(255)
+  "bo_mobile_skin" varchar(255)
+  "bo_include_head" varchar(255)
+  "bo_include_tail" varchar(255)
+  "bo_content_head" mediumtext
+  "bo_mobile_content_head" mediumtext
+  "bo_content_tail" mediumtext
+  "bo_mobile_content_tail" mediumtext
+  "bo_insert_content" mediumtext
+  "bo_gallery_cols" int(11)
+  "bo_gallery_width" int(11)
+  "bo_gallery_height" int(11)
+  "bo_mobile_gallery_width" int(11)
+  "bo_mobile_gallery_height" int(11)
+  "bo_upload_size" int(11)
+  "bo_reply_order" tinyint(4)
+  "bo_use_search" tinyint(4)
+  "bo_order" int(11)
+  "bo_count_write" int(11)
+  "bo_count_comment" int(11)
+  "bo_write_min" int(11)
+  "bo_write_max" int(11)
+  "bo_comment_min" int(11)
+  "bo_comment_max" int(11)
+  "bo_notice" mediumtext
+  "bo_upload_count" tinyint(4)
+  "bo_use_email" tinyint(4)
+  "bo_use_kakaotalk" varchar(50)
+  "bo_use_cert" enum('','cert','adult','hp-cert','hp-adult')
+  "bo_use_sns" tinyint(4)
+  "bo_use_captcha" tinyint(4)
+  "bo_sort_field" varchar(255)
+  "bo_1_subj" varchar(255)
+  "bo_2_subj" varchar(255)
+  "bo_3_subj" varchar(255)
+  "bo_4_subj" varchar(255)
+  "bo_5_subj" varchar(255)
+  "bo_6_subj" varchar(255)
+  "bo_7_subj" varchar(255)
+  "bo_8_subj" varchar(255)
+  "bo_9_subj" varchar(255)
+  "bo_10_subj" varchar(255)
+  "bo_1" varchar(255)
+  "bo_2" varchar(255)
+  "bo_3" varchar(255)
+  "bo_4" varchar(255)
+  "bo_5" varchar(255)
+  "bo_6" varchar(255)
+  "bo_7" varchar(255)
+  "bo_8" varchar(255)
+  "bo_9" varchar(255)
+  "bo_10" varchar(255)
+  "bo_rb_skin_top" varchar(255)
+  "bo_rb_skin_list" varchar(255)
+  "bo_rb_skin_view" varchar(255)
+  "bo_rb_skin_write" varchar(255)
+  "bo_rb_skin_cmt" varchar(255)
+  "bo_rb_skin_category" varchar(255)
+  "bo_rb_skin_search" varchar(255)
+  "bo_rb_skin_update" varchar(255)
+  "bo_mobile_gallery_cols" int(11)
+  "bo_gap_pc" int(11)
+  "bo_gap_mo" int(11)
+  "bo_border" int(11)
+  "bo_radius" int(11)
+  "bo_viewer" varchar(255)
+  "bo_lightbox" int(11)
+}
+
+Table g5_board_file {
+  "bo_table" varchar(20) [pk]
+  "wr_id" int(11)
+  "bf_no" int(11)
+  "bf_source" varchar(255)
+  "bf_file" varchar(255)
+  "bf_download" int(11)
+  "bf_content" text
+  "bf_fileurl" varchar(255)
+  "bf_thumburl" varchar(255)
+  "bf_storage" varchar(50)
+  "bf_filesize" int(11)
+  "bf_width" int(11)
+  "bf_height" smallint(6)
+  "bf_type" tinyint(4)
+  "bf_datetime" datetime
+}
+
+Table g5_board_good {
+  "bg_id" int(11) [pk]
+  "bo_table" varchar(20)
+  "wr_id" int(11)
+  "mb_id" varchar(20)
+  "bg_flag" varchar(255)
+  "bg_datetime" datetime
+}
+
+Table g5_board_new {
+  "bn_id" int(11) [pk]
+  "bo_table" varchar(20)
+  "wr_id" int(11)
+  "wr_parent" int(11)
+  "bn_datetime" datetime
+  "mb_id" varchar(20)
+}
+
+Table g5_board_report {
+  "rp_id" int(11) [pk]
+  "bo_table" varchar(50)
+  "wr_id" int(11)
+  "comment_id" int(11)
+  "mb_id" varchar(20)
+  "rp_reason" text
+  "rp_memo" text
+  "rp_datetime" datetime
+  "rp_ip" varchar(45)
+  "rp_status" tinyint(1)
+}
+
+Table g5_board_report_config {
+  "id" tinyint(3) [pk]
+  "enabled" tinyint(1)
+  "hide_limit_post" int(10)
+  "hide_limit_comment" int(10)
+  "lock_threshold" int(10)
+  "author_protect_level" tinyint(3)
+  "disallow_self" tinyint(1)
+  "icon_mode" varchar(10)
+  "reason_custom_enabled" tinyint(1)
+  "reason_custom_list" text
+  "note" text
+  "updated_at" datetime
+}
+
+Table g5_cert_history {
+  "cr_id" int(11) [pk]
+  "mb_id" varchar(20)
+  "cr_company" varchar(255)
+  "cr_method" varchar(255)
+  "cr_ip" varchar(255)
+  "cr_date" date
+  "cr_time" time
+}
+
+Table g5_comment_good {
+  "cg_id" int(11) [pk]
+  "bo_table" varchar(20)
+  "wr_id" int(11)
+  "mb_id" varchar(50)
+  "cg_type" varchar(20)
+  "cg_datetime" datetime
+}
+
+Table g5_comment_reaction {
+  "reaction_id" int(11) [pk]
+  "bo_table" varchar(20)
+  "wr_id" int(11)
+  "comment_id" int(11)
+  "mb_id" varchar(20)
+  "reaction_type" varchar(20)
+  "reaction_datetime" datetime
+  "reaction_ip" varchar(50)
+}
+
+Table g5_config {
+  "cf_id" int(11) [pk]
+  "cf_title" varchar(255)
+  "cf_theme" varchar(100)
+  "cf_admin" varchar(100)
+  "cf_admin_email" varchar(100)
+  "cf_admin_email_name" varchar(100)
+  "cf_add_script" text
+  "cf_use_point" tinyint(4)
+  "cf_point_term" int(11)
+  "cf_use_copy_log" tinyint(4)
+  "cf_use_email_certify" tinyint(4)
+  "cf_login_point" int(11)
+  "cf_cut_name" tinyint(4)
+  "cf_nick_modify" int(11)
+  "cf_new_skin" varchar(50)
+  "cf_new_rows" int(11)
+  "cf_search_skin" varchar(50)
+  "cf_connect_skin" varchar(50)
+  "cf_faq_skin" varchar(50)
+  "cf_read_point" int(11)
+  "cf_write_point" int(11)
+  "cf_comment_point" int(11)
+  "cf_download_point" int(11)
+  "cf_write_pages" int(11)
+  "cf_mobile_pages" int(11)
+  "cf_link_target" varchar(50)
+  "cf_bbs_rewrite" tinyint(4)
+  "cf_delay_sec" int(11)
+  "cf_filter" text
+  "cf_possible_ip" text
+  "cf_intercept_ip" text
+  "cf_analytics" text
+  "cf_add_meta" text
+  "cf_syndi_token" varchar(255)
+  "cf_syndi_except" text
+  "cf_member_skin" varchar(50)
+  "cf_use_homepage" tinyint(4)
+  "cf_req_homepage" tinyint(4)
+  "cf_use_tel" tinyint(4)
+  "cf_req_tel" tinyint(4)
+  "cf_use_hp" tinyint(4)
+  "cf_req_hp" tinyint(4)
+  "cf_use_addr" tinyint(4)
+  "cf_req_addr" tinyint(4)
+  "cf_use_signature" tinyint(4)
+  "cf_req_signature" tinyint(4)
+  "cf_use_profile" tinyint(4)
+  "cf_req_profile" tinyint(4)
+  "cf_register_level" tinyint(4)
+  "cf_register_point" int(11)
+  "cf_icon_level" tinyint(4)
+  "cf_use_recommend" tinyint(4)
+  "cf_recommend_point" int(11)
+  "cf_leave_day" int(11)
+  "cf_search_part" int(11)
+  "cf_email_use" tinyint(4)
+  "cf_email_wr_super_admin" tinyint(4)
+  "cf_email_wr_group_admin" tinyint(4)
+  "cf_email_wr_board_admin" tinyint(4)
+  "cf_email_wr_write" tinyint(4)
+  "cf_email_wr_comment_all" tinyint(4)
+  "cf_email_mb_super_admin" tinyint(4)
+  "cf_email_mb_member" tinyint(4)
+  "cf_email_po_super_admin" tinyint(4)
+  "cf_prohibit_id" text
+  "cf_prohibit_email" text
+  "cf_new_del" int(11)
+  "cf_memo_del" int(11)
+  "cf_visit_del" int(11)
+  "cf_popular_del" int(11)
+  "cf_optimize_date" date
+  "cf_use_member_icon" tinyint(4)
+  "cf_member_icon_size" int(11)
+  "cf_member_icon_width" int(11)
+  "cf_member_icon_height" int(11)
+  "cf_member_img_size" int(11)
+  "cf_member_img_width" int(11)
+  "cf_member_img_height" int(11)
+  "cf_login_minutes" int(11)
+  "cf_image_extension" varchar(255)
+  "cf_flash_extension" varchar(255)
+  "cf_movie_extension" varchar(255)
+  "cf_formmail_is_member" tinyint(4)
+  "cf_page_rows" int(11)
+  "cf_mobile_page_rows" int(11)
+  "cf_visit" varchar(255)
+  "cf_max_po_id" int(11)
+  "cf_stipulation" text
+  "cf_privacy" text
+  "cf_open_modify" int(11)
+  "cf_memo_send_point" int(11)
+  "cf_mobile_new_skin" varchar(50)
+  "cf_mobile_search_skin" varchar(50)
+  "cf_mobile_connect_skin" varchar(50)
+  "cf_mobile_faq_skin" varchar(50)
+  "cf_mobile_member_skin" varchar(50)
+  "cf_captcha_mp3" varchar(255)
+  "cf_editor" varchar(50)
+  "cf_cert_use" tinyint(4)
+  "cf_cert_find" tinyint(4)
+  "cf_cert_ipin" varchar(255)
+  "cf_cert_hp" varchar(255)
+  "cf_cert_simple" varchar(255)
+  "cf_cert_kg_cd" varchar(255)
+  "cf_cert_kg_mid" varchar(255)
+  "cf_cert_use_seed" tinyint(4)
+  "cf_cert_kcb_cd" varchar(255)
+  "cf_cert_kcp_cd" varchar(255)
+  "cf_cert_kcp_enckey" varchar(100)
+  "cf_lg_mid" varchar(100)
+  "cf_lg_mert_key" varchar(100)
+  "cf_cert_limit" int(11)
+  "cf_cert_req" tinyint(4)
+  "cf_sms_use" varchar(255)
+  "cf_sms_type" varchar(10)
+  "cf_icode_id" varchar(255)
+  "cf_icode_pw" varchar(255)
+  "cf_icode_server_ip" varchar(50)
+  "cf_icode_server_port" varchar(50)
+  "cf_icode_token_key" varchar(100)
+  "cf_googl_shorturl_apikey" varchar(50)
+  "cf_social_login_use" tinyint(4)
+  "cf_social_servicelist" varchar(255)
+  "cf_payco_clientid" varchar(100)
+  "cf_payco_secret" varchar(100)
+  "cf_apple_bundle_id" varchar(255)
+  "cf_apple_team_id" varchar(255)
+  "cf_apple_key_id" varchar(255)
+  "cf_apple_key_file" text
+  "cf_facebook_appid" varchar(100)
+  "cf_facebook_secret" varchar(100)
+  "cf_twitter_key" varchar(100)
+  "cf_twitter_secret" varchar(100)
+  "cf_google_clientid" varchar(100)
+  "cf_google_secret" varchar(100)
+  "cf_naver_clientid" varchar(100)
+  "cf_naver_secret" varchar(100)
+  "cf_kakao_rest_key" varchar(100)
+  "cf_kakao_client_secret" varchar(100)
+  "cf_kakao_js_apikey" varchar(100)
+  "cf_captcha" varchar(100)
+  "cf_recaptcha_site_key" varchar(100)
+  "cf_recaptcha_secret_key" varchar(100)
+  "cf_1_subj" varchar(255)
+  "cf_2_subj" varchar(255)
+  "cf_3_subj" varchar(255)
+  "cf_4_subj" varchar(255)
+  "cf_5_subj" varchar(255)
+  "cf_6_subj" varchar(255)
+  "cf_7_subj" varchar(255)
+  "cf_8_subj" varchar(255)
+  "cf_9_subj" varchar(255)
+  "cf_10_subj" varchar(255)
+  "cf_1" varchar(255)
+  "cf_2" varchar(255)
+  "cf_3" varchar(255)
+  "cf_4" varchar(255)
+  "cf_5" varchar(255)
+  "cf_6" varchar(255)
+  "cf_7" varchar(255)
+  "cf_8" varchar(255)
+  "cf_9" varchar(255)
+  "cf_10" varchar(255)
+}
+
+Table g5_content {
+  "co_id" varchar(20) [pk]
+  "co_html" tinyint(4)
+  "co_subject" varchar(255)
+  "co_content" longtext
+  "co_seo_title" varchar(255)
+  "co_mobile_content" longtext
+  "co_skin" varchar(255)
+  "co_mobile_skin" varchar(255)
+  "co_tag_filter_use" tinyint(4)
+  "co_hit" int(11)
+  "co_include_head" varchar(255)
+  "co_include_tail" varchar(255)
+  "co_level" tinyint(4)
+  "co_level_opt" tinyint(4)
+}
+
+Table g5_faq {
+  "fa_id" int(11) [pk]
+  "fm_id" int(11)
+  "fa_subject" text
+  "fa_content" text
+  "fa_order" int(11)
+}
+
+Table g5_faq_master {
+  "fm_id" int(11) [pk]
+  "fm_subject" varchar(255)
+  "fm_head_html" text
+  "fm_tail_html" text
+  "fm_mobile_head_html" text
+  "fm_mobile_tail_html" text
+  "fm_order" int(11)
+}
+
+Table g5_group {
+  "gr_id" varchar(10) [pk]
+  "gr_subject" varchar(255)
+  "gr_device" enum('both','pc','mobile')
+  "gr_admin" varchar(255)
+  "gr_use_access" tinyint(4)
+  "gr_order" int(11)
+  "gr_1_subj" varchar(255)
+  "gr_2_subj" varchar(255)
+  "gr_3_subj" varchar(255)
+  "gr_4_subj" varchar(255)
+  "gr_5_subj" varchar(255)
+  "gr_6_subj" varchar(255)
+  "gr_7_subj" varchar(255)
+  "gr_8_subj" varchar(255)
+  "gr_9_subj" varchar(255)
+  "gr_10_subj" varchar(255)
+  "gr_1" varchar(255)
+  "gr_2" varchar(255)
+  "gr_3" varchar(255)
+  "gr_4" varchar(255)
+  "gr_5" varchar(255)
+  "gr_6" varchar(255)
+  "gr_7" varchar(255)
+  "gr_8" varchar(255)
+  "gr_9" varchar(255)
+  "gr_10" varchar(255)
+}
+
+Table g5_group_member {
+  "gm_id" int(11) [pk]
+  "gr_id" varchar(255)
+  "mb_id" varchar(20)
+  "gm_datetime" datetime
+}
+
+Table g5_login {
+  "lo_id" int(11) [pk]
+  "lo_ip" varchar(100)
+  "mb_id" varchar(20)
+  "lo_datetime" datetime
+  "lo_location" text
+  "lo_url" text
+}
+
+Table g5_mail {
+  "ma_id" int(11) [pk]
+  "ma_subject" varchar(255)
+  "ma_content" mediumtext
+  "ma_time" datetime
+  "ma_ip" varchar(255)
+  "ma_last_option" text
+}
+
+Table g5_member {
+  "mb_no" int(11) [pk]
+  "mb_id" varchar(20)
+  "mb_password" varchar(255)
+  "mb_name" varchar(255)
+  "mb_nick" varchar(255)
+  "mb_nick_date" date
+  "mb_email" varchar(255)
+  "mb_homepage" varchar(255)
+  "mb_level" tinyint(4)
+  "mb_level_icon" varchar(255)
+  "mb_sex" char(1)
+  "mb_birth" varchar(255)
+  "mb_tel" varchar(255)
+  "mb_hp" varchar(255)
+  "mb_certify" varchar(20)
+  "mb_adult" tinyint(4)
+  "mb_dupinfo" varchar(255)
+  "mb_zip1" char(3)
+  "mb_zip2" char(3)
+  "mb_addr1" varchar(255)
+  "mb_addr2" varchar(255)
+  "mb_addr3" varchar(255)
+  "mb_addr_jibeon" varchar(255)
+  "mb_signature" text
+  "mb_recommend" varchar(255)
+  "mb_point" int(11)
+  "mb_today_login" datetime
+  "mb_login_ip" varchar(255)
+  "mb_datetime" datetime
+  "mb_ip" varchar(255)
+  "mb_leave_date" varchar(8)
+  "mb_intercept_date" varchar(8)
+  "mb_email_certify" datetime
+  "mb_email_certify2" varchar(255)
+  "mb_memo" text
+  "mb_lost_certify" varchar(255)
+  "mb_mailling" tinyint(4)
+  "mb_sms" tinyint(4)
+  "mb_open" tinyint(4)
+  "mb_open_date" date
+  "mb_profile" text
+  "mb_memo_call" varchar(255)
+  "mb_memo_cnt" int(11)
+  "mb_scrap_cnt" int(11)
+  "mb_1" varchar(255)
+  "mb_2" varchar(255)
+  "mb_3" varchar(255)
+  "mb_4" varchar(255)
+  "mb_5" varchar(255)
+  "mb_6" varchar(255)
+  "mb_7" varchar(255)
+  "mb_8" varchar(255)
+  "mb_9" varchar(255)
+  "mb_10" varchar(255)
+  "mb_partner" int(11)
+  "mb_partner_add_time" datetime
+  "mb_bank" varchar(255)
+  "mb_pa_point" int(11)
+  "rb_point" int(11)
+  "mb_ssr" int(11)
+}
+
+Table g5_member_cert_history {
+  "ch_id" int(11) [pk]
+  "mb_id" varchar(20)
+  "ch_name" varchar(255)
+  "ch_hp" varchar(255)
+  "ch_birth" varchar(255)
+  "ch_type" varchar(20)
+  "ch_datetime" datetime
+}
+
+Table g5_member_level_config {
+  "level_no" int(11) [pk]
+  "level_name" varchar(50)
+  "level_posts" int(11)
+  "level_comments" int(11)
+  "level_likes" int(11)
+  "level_desc" varchar(255)
+}
+
+Table g5_member_social_profiles {
+  "mp_no" int(11) [pk]
+  "mb_id" varchar(255)
+  "provider" varchar(50)
+  "object_sha" varchar(45)
+  "identifier" varchar(255)
+  "profileurl" varchar(255)
+  "photourl" varchar(255)
+  "displayname" varchar(150)
+  "description" varchar(255)
+  "mp_register_day" datetime
+  "mp_latest_day" datetime
+}
+
+Table g5_memo {
+  "me_id" int(11) [pk]
+  "me_recv_mb_id" varchar(20)
+  "me_send_mb_id" varchar(20)
+  "me_send_datetime" datetime
+  "me_read_datetime" datetime
+  "me_memo" text
+  "me_send_id" int(11)
+  "me_type" enum('send','recv')
+  "me_send_ip" varchar(100)
+}
+
+Table g5_menu {
+  "me_id" int(11) [pk]
+  "me_code" varchar(255)
+  "me_name" varchar(255)
+  "me_link" varchar(255)
+  "me_target" varchar(255)
+  "me_order" int(11)
+  "me_use" tinyint(4)
+  "me_mobile_use" tinyint(4)
+  "me_level" tinyint(4)
+  "me_level_opt" tinyint(4)
+}
+
+Table g5_new_win {
+  "nw_id" int(11) [pk]
+  "nw_division" varchar(10)
+  "nw_device" varchar(10)
+  "nw_begin_time" datetime
+  "nw_end_time" datetime
+  "nw_disable_hours" int(11)
+  "nw_left" int(11)
+  "nw_top" int(11)
+  "nw_height" int(11)
+  "nw_width" int(11)
+  "nw_subject" text
+  "nw_content" text
+  "nw_content_html" tinyint(4)
+}
+
+Table g5_notification_settings {
+  "ns_id" int(11) [pk]
+  "mb_id" varchar(20)
+  "ns_all_notification" tinyint(1)
+  "ns_comment" tinyint(1)
+  "ns_like" tinyint(1)
+  "ns_mention" tinyint(1)
+  "ns_follow" tinyint(1)
+  "ns_marketing" tinyint(1)
+  "ns_datetime" datetime
+  "ns_ip" varchar(25)
+}
+
+Table g5_point {
+  "po_id" int(11) [pk]
+  "mb_id" varchar(20)
+  "po_datetime" datetime
+  "po_content" varchar(255)
+  "po_point" int(11)
+  "po_use_point" int(11)
+  "po_expired" tinyint(4)
+  "po_expire_date" date
+  "po_mb_point" int(11)
+  "po_rel_table" varchar(20)
+  "po_rel_id" varchar(20)
+  "po_rel_action" varchar(100)
+}
+
+Table g5_poll {
+  "po_id" int(11) [pk]
+  "po_subject" varchar(255)
+  "po_poll1" varchar(255)
+  "po_poll2" varchar(255)
+  "po_poll3" varchar(255)
+  "po_poll4" varchar(255)
+  "po_poll5" varchar(255)
+  "po_poll6" varchar(255)
+  "po_poll7" varchar(255)
+  "po_poll8" varchar(255)
+  "po_poll9" varchar(255)
+  "po_cnt1" int(11)
+  "po_cnt2" int(11)
+  "po_cnt3" int(11)
+  "po_cnt4" int(11)
+  "po_cnt5" int(11)
+  "po_cnt6" int(11)
+  "po_cnt7" int(11)
+  "po_cnt8" int(11)
+  "po_cnt9" int(11)
+  "po_etc" varchar(255)
+  "po_level" tinyint(4)
+  "po_point" int(11)
+  "po_date" date
+  "po_ips" mediumtext
+  "mb_ids" text
+  "po_use" tinyint(4)
+}
+
+Table g5_poll_etc {
+  "pc_id" int(11) [pk]
+  "po_id" int(11)
+  "mb_id" varchar(20)
+  "pc_name" varchar(255)
+  "pc_idea" varchar(255)
+  "pc_datetime" datetime
+}
+
+Table g5_popular {
+  "pp_id" int(11) [pk]
+  "pp_word" varchar(50)
+  "pp_date" date
+  "pp_ip" varchar(50)
+}
+
+Table g5_push_tokens {
+  "pt_id" int(11) [pk]
+  "mb_id" varchar(20)
+  "pt_token" varchar(255)
+  "pt_platform" varchar(10)
+  "pt_device_info" text
+  "pt_datetime" datetime
+  "pt_use" tinyint(4)
+}
+
+Table g5_qa_config {
+  "qa_id" int(11) [pk]
+  "qa_title" varchar(255)
+  "qa_category" varchar(255)
+  "qa_skin" varchar(255)
+  "qa_mobile_skin" varchar(255)
+  "qa_use_email" tinyint(4)
+  "qa_req_email" tinyint(4)
+  "qa_use_hp" tinyint(4)
+  "qa_req_hp" tinyint(4)
+  "qa_use_sms" tinyint(4)
+  "qa_send_number" varchar(255)
+  "qa_admin_hp" varchar(255)
+  "qa_admin_email" varchar(255)
+  "qa_use_editor" tinyint(4)
+  "qa_subject_len" int(11)
+  "qa_mobile_subject_len" int(11)
+  "qa_page_rows" int(11)
+  "qa_mobile_page_rows" int(11)
+  "qa_image_width" int(11)
+  "qa_upload_size" int(11)
+  "qa_insert_content" text
+  "qa_include_head" varchar(255)
+  "qa_include_tail" varchar(255)
+  "qa_content_head" text
+  "qa_content_tail" text
+  "qa_mobile_content_head" text
+  "qa_mobile_content_tail" text
+  "qa_1_subj" varchar(255)
+  "qa_2_subj" varchar(255)
+  "qa_3_subj" varchar(255)
+  "qa_4_subj" varchar(255)
+  "qa_5_subj" varchar(255)
+  "qa_1" varchar(255)
+  "qa_2" varchar(255)
+  "qa_3" varchar(255)
+  "qa_4" varchar(255)
+  "qa_5" varchar(255)
+}
+
+Table g5_qa_content {
+  "qa_id" int(11) [pk]
+  "qa_num" int(11)
+  "qa_parent" int(11)
+  "qa_related" int(11)
+  "mb_id" varchar(20)
+  "qa_name" varchar(255)
+  "qa_email" varchar(255)
+  "qa_hp" varchar(255)
+  "qa_type" tinyint(4)
+  "qa_category" varchar(255)
+  "qa_email_recv" tinyint(4)
+  "qa_sms_recv" tinyint(4)
+  "qa_html" tinyint(4)
+  "qa_subject" varchar(255)
+  "qa_content" text
+  "qa_status" tinyint(4)
+  "qa_file1" varchar(255)
+  "qa_source1" varchar(255)
+  "qa_file2" varchar(255)
+  "qa_source2" varchar(255)
+  "qa_ip" varchar(255)
+  "qa_datetime" datetime
+  "qa_1" varchar(255)
+  "qa_2" varchar(255)
+  "qa_3" varchar(255)
+  "qa_4" varchar(255)
+  "qa_5" varchar(255)
+}
+
+Table g5_scrap {
+  "ms_id" int(11) [pk]
+  "mb_id" varchar(20)
+  "bo_table" varchar(20)
+  "wr_id" varchar(15)
+  "ms_datetime" datetime
+}
+
+Table g5_shop_banner {
+  "bn_id" int(11) [pk]
+  "bn_alt" varchar(255)
+  "bn_url" varchar(255)
+  "bn_device" varchar(10)
+  "bn_position" varchar(255)
+  "bn_border" tinyint(4)
+  "bn_new_win" tinyint(4)
+  "bn_begin_time" datetime
+  "bn_end_time" datetime
+  "bn_time" datetime
+  "bn_hit" int(11)
+  "bn_order" int(11)
+}
+
+Table g5_shop_cart {
+  "ct_id" int(11) [pk]
+  "od_id" bigint(20)
+  "mb_id" varchar(255)
+  "it_id" varchar(20)
+  "it_name" varchar(255)
+  "it_sc_type" tinyint(4)
+  "it_sc_method" tinyint(4)
+  "it_sc_price" int(11)
+  "it_sc_minimum" int(11)
+  "it_sc_qty" int(11)
+  "ct_status" varchar(255)
+  "ct_history" text
+  "ct_price" int(11)
+  "ct_point" int(11)
+  "cp_price" int(11)
+  "ct_point_use" tinyint(4)
+  "ct_stock_use" tinyint(4)
+  "ct_option" varchar(255)
+  "ct_qty" int(11)
+  "ct_notax" tinyint(4)
+  "io_id" varchar(255)
+  "io_type" tinyint(4)
+  "io_price" int(11)
+  "ct_time" datetime
+  "ct_ip" varchar(25)
+  "ct_send_cost" tinyint(4)
+  "ct_direct" tinyint(4)
+  "ct_select" tinyint(4)
+  "ct_select_time" datetime
+  "ct_partner" varchar(255)
+  "ct_invoice" varchar(255)
+  "ct_delivery_company" varchar(255)
+  "ct_invoice_time" datetime
+  "ct_js" int(11)
+  "ct_js_time" datetime
+  "ct_js_price" int(11)
+  "ct_js_price_old" int(11)
+  "ct_js_use" varchar(100)
+  "ct_js_ssr" int(11)
+  "ct_js_cost" int(11)
+  "ct_total_price" int(11)
+  "ct_js_type" varchar(100)
+}
+
+Table g5_shop_category {
+  "ca_id" varchar(10) [pk]
+  "ca_name" varchar(255)
+  "ca_order" int(11)
+  "ca_skin_dir" varchar(255)
+  "ca_mobile_skin_dir" varchar(255)
+  "ca_skin" varchar(255)
+  "ca_mobile_skin" varchar(255)
+  "ca_img_width" int(11)
+  "ca_img_height" int(11)
+  "ca_mobile_img_width" int(11)
+  "ca_mobile_img_height" int(11)
+  "ca_sell_email" varchar(255)
+  "ca_use" tinyint(4)
+  "ca_stock_qty" int(11)
+  "ca_explan_html" tinyint(4)
+  "ca_head_html" text
+  "ca_tail_html" text
+  "ca_mobile_head_html" text
+  "ca_mobile_tail_html" text
+  "ca_list_mod" int(11)
+  "ca_list_row" int(11)
+  "ca_mobile_list_mod" int(11)
+  "ca_mobile_list_row" int(11)
+  "ca_include_head" varchar(255)
+  "ca_include_tail" varchar(255)
+  "ca_mb_id" varchar(255)
+  "ca_cert_use" tinyint(4)
+  "ca_adult_use" tinyint(4)
+  "ca_nocoupon" tinyint(4)
+  "ca_1_subj" varchar(255)
+  "ca_2_subj" varchar(255)
+  "ca_3_subj" varchar(255)
+  "ca_4_subj" varchar(255)
+  "ca_5_subj" varchar(255)
+  "ca_6_subj" varchar(255)
+  "ca_7_subj" varchar(255)
+  "ca_8_subj" varchar(255)
+  "ca_9_subj" varchar(255)
+  "ca_10_subj" varchar(255)
+  "ca_1" varchar(255)
+  "ca_2" varchar(255)
+  "ca_3" varchar(255)
+  "ca_4" varchar(255)
+  "ca_5" varchar(255)
+  "ca_6" varchar(255)
+  "ca_7" varchar(255)
+  "ca_8" varchar(255)
+  "ca_9" varchar(255)
+  "ca_10" varchar(255)
+  "ca_level" tinyint(4)
+  "ca_level_opt" tinyint(4)
+}
+
+Table g5_shop_coupon {
+  "cp_no" int(11) [pk]
+  "cp_id" varchar(100)
+  "cp_subject" varchar(255)
+  "cp_method" tinyint(4)
+  "cp_target" varchar(255)
+  "mb_id" varchar(255)
+  "cz_id" int(11)
+  "cp_start" date
+  "cp_end" date
+  "cp_price" int(11)
+  "cp_type" tinyint(4)
+  "cp_trunc" int(11)
+  "cp_minimum" int(11)
+  "cp_maximum" int(11)
+  "od_id" bigint(20)
+  "cp_datetime" datetime
+}
+
+Table g5_shop_coupon_log {
+  "cl_id" int(11) [pk]
+  "cp_id" varchar(100)
+  "mb_id" varchar(100)
+  "od_id" bigint(20)
+  "cp_price" int(11)
+  "cl_datetime" datetime
+}
+
+Table g5_shop_coupon_zone {
+  "cz_id" int(11) [pk]
+  "cz_type" tinyint(4)
+  "cz_subject" varchar(255)
+  "cz_start" date
+  "cz_end" date
+  "cz_file" varchar(255)
+  "cz_period" int(11)
+  "cz_point" int(11)
+  "cp_method" tinyint(4)
+  "cp_target" varchar(255)
+  "cp_price" int(11)
+  "cp_type" tinyint(4)
+  "cp_trunc" int(11)
+  "cp_minimum" int(11)
+  "cp_maximum" int(11)
+  "cz_download" int(11)
+  "cz_datetime" datetime
+}
+
+Table g5_shop_default {
+  "de_id" int(11) [pk]
+  "de_admin_company_owner" varchar(255)
+  "de_admin_company_name" varchar(255)
+  "de_admin_company_saupja_no" varchar(255)
+  "de_admin_company_tel" varchar(255)
+  "de_admin_company_fax" varchar(255)
+  "de_admin_tongsin_no" varchar(255)
+  "de_admin_company_zip" varchar(255)
+  "de_admin_company_addr" varchar(255)
+  "de_admin_info_name" varchar(255)
+  "de_admin_info_email" varchar(255)
+  "de_shop_skin" varchar(255)
+  "de_shop_mobile_skin" varchar(255)
+  "de_type1_list_use" tinyint(4)
+  "de_type1_list_skin" varchar(255)
+  "de_type1_list_mod" int(11)
+  "de_type1_list_row" int(11)
+  "de_type1_img_width" int(11)
+  "de_type1_img_height" int(11)
+  "de_type2_list_use" tinyint(4)
+  "de_type2_list_skin" varchar(255)
+  "de_type2_list_mod" int(11)
+  "de_type2_list_row" int(11)
+  "de_type2_img_width" int(11)
+  "de_type2_img_height" int(11)
+  "de_type3_list_use" tinyint(4)
+  "de_type3_list_skin" varchar(255)
+  "de_type3_list_mod" int(11)
+  "de_type3_list_row" int(11)
+  "de_type3_img_width" int(11)
+  "de_type3_img_height" int(11)
+  "de_type4_list_use" tinyint(4)
+  "de_type4_list_skin" varchar(255)
+  "de_type4_list_mod" int(11)
+  "de_type4_list_row" int(11)
+  "de_type4_img_width" int(11)
+  "de_type4_img_height" int(11)
+  "de_type5_list_use" tinyint(4)
+  "de_type5_list_skin" varchar(255)
+  "de_type5_list_mod" int(11)
+  "de_type5_list_row" int(11)
+  "de_type5_img_width" int(11)
+  "de_type5_img_height" int(11)
+  "de_mobile_type1_list_use" tinyint(4)
+  "de_mobile_type1_list_skin" varchar(255)
+  "de_mobile_type1_list_mod" int(11)
+  "de_mobile_type1_list_row" int(11)
+  "de_mobile_type1_img_width" int(11)
+  "de_mobile_type1_img_height" int(11)
+  "de_mobile_type2_list_use" tinyint(4)
+  "de_mobile_type2_list_skin" varchar(255)
+  "de_mobile_type2_list_mod" int(11)
+  "de_mobile_type2_list_row" int(11)
+  "de_mobile_type2_img_width" int(11)
+  "de_mobile_type2_img_height" int(11)
+  "de_mobile_type3_list_use" tinyint(4)
+  "de_mobile_type3_list_skin" varchar(255)
+  "de_mobile_type3_list_mod" int(11)
+  "de_mobile_type3_list_row" int(11)
+  "de_mobile_type3_img_width" int(11)
+  "de_mobile_type3_img_height" int(11)
+  "de_mobile_type4_list_use" tinyint(4)
+  "de_mobile_type4_list_skin" varchar(255)
+  "de_mobile_type4_list_mod" int(11)
+  "de_mobile_type4_list_row" int(11)
+  "de_mobile_type4_img_width" int(11)
+  "de_mobile_type4_img_height" int(11)
+  "de_mobile_type5_list_use" tinyint(4)
+  "de_mobile_type5_list_skin" varchar(255)
+  "de_mobile_type5_list_mod" int(11)
+  "de_mobile_type5_list_row" int(11)
+  "de_mobile_type5_img_width" int(11)
+  "de_mobile_type5_img_height" int(11)
+  "de_rel_list_use" tinyint(4)
+  "de_rel_list_skin" varchar(255)
+  "de_rel_list_mod" int(11)
+  "de_rel_img_width" int(11)
+  "de_rel_img_height" int(11)
+  "de_mobile_rel_list_use" tinyint(4)
+  "de_mobile_rel_list_skin" varchar(255)
+  "de_mobile_rel_list_mod" int(11)
+  "de_mobile_rel_img_width" int(11)
+  "de_mobile_rel_img_height" int(11)
+  "de_search_list_skin" varchar(255)
+  "de_search_list_mod" int(11)
+  "de_search_list_row" int(11)
+  "de_search_img_width" int(11)
+  "de_search_img_height" int(11)
+  "de_mobile_search_list_skin" varchar(255)
+  "de_mobile_search_list_mod" int(11)
+  "de_mobile_search_list_row" int(11)
+  "de_mobile_search_img_width" int(11)
+  "de_mobile_search_img_height" int(11)
+  "de_listtype_list_skin" varchar(255)
+  "de_listtype_list_mod" int(11)
+  "de_listtype_list_row" int(11)
+  "de_listtype_img_width" int(11)
+  "de_listtype_img_height" int(11)
+  "de_mobile_listtype_list_skin" varchar(255)
+  "de_mobile_listtype_list_mod" int(11)
+  "de_mobile_listtype_list_row" int(11)
+  "de_mobile_listtype_img_width" int(11)
+  "de_mobile_listtype_img_height" int(11)
+  "de_bank_use" int(11)
+  "de_bank_account" text
+  "de_card_test" int(11)
+  "de_card_use" int(11)
+  "de_card_noint_use" tinyint(4)
+  "de_card_point" int(11)
+  "de_settle_min_point" int(11)
+  "de_settle_max_point" int(11)
+  "de_settle_point_unit" int(11)
+  "de_level_sell" int(11)
+  "de_delivery_company" varchar(255)
+  "de_send_cost_case" varchar(255)
+  "de_send_cost_limit" varchar(255)
+  "de_send_cost_list" varchar(255)
+  "de_hope_date_use" int(11)
+  "de_hope_date_after" int(11)
+  "de_baesong_content" text
+  "de_change_content" text
+  "de_point_days" int(11)
+  "de_simg_width" int(11)
+  "de_simg_height" int(11)
+  "de_mimg_width" int(11)
+  "de_mimg_height" int(11)
+  "de_sms_cont1" text
+  "de_sms_cont2" text
+  "de_sms_cont3" text
+  "de_sms_cont4" text
+  "de_sms_cont5" text
+  "de_sms_use1" tinyint(4)
+  "de_sms_use2" tinyint(4)
+  "de_sms_use3" tinyint(4)
+  "de_sms_use4" tinyint(4)
+  "de_sms_use5" tinyint(4)
+  "de_sms_hp" varchar(255)
+  "de_pg_service" varchar(255)
+  "de_kcp_mid" varchar(255)
+  "de_kcp_site_key" varchar(255)
+  "de_inicis_mid" varchar(255)
+  "de_inicis_iniapi_key" varchar(30)
+  "de_inicis_iniapi_iv" varchar(30)
+  "de_inicis_sign_key" varchar(255)
+  "de_iche_use" tinyint(4)
+  "de_easy_pay_use" tinyint(4)
+  "de_easy_pay_services" varchar(255)
+  "de_samsung_pay_use" tinyint(4)
+  "de_inicis_lpay_use" tinyint(4)
+  "de_inicis_kakaopay_use" tinyint(4)
+  "de_inicis_cartpoint_use" tinyint(4)
+  "de_nicepay_mid" varchar(30)
+  "de_nicepay_key" varchar(255)
+  "de_item_use_use" tinyint(4)
+  "de_item_use_write" tinyint(4)
+  "de_code_dup_use" tinyint(4)
+  "de_cart_keep_term" int(11)
+  "de_guest_cart_use" tinyint(4)
+  "de_admin_buga_no" varchar(255)
+  "de_vbank_use" varchar(255)
+  "de_taxsave_use" tinyint(4)
+  "de_taxsave_types" set('account','vbank','transfer')
+  "de_guest_privacy" text
+  "de_hp_use" tinyint(4)
+  "de_escrow_use" tinyint(4)
+  "de_tax_flag_use" tinyint(4)
+  "de_kakaopay_mid" varchar(255)
+  "de_kakaopay_key" varchar(255)
+  "de_kakaopay_enckey" varchar(255)
+  "de_kakaopay_hashkey" varchar(255)
+  "de_kakaopay_cancelpwd" varchar(255)
+  "de_naverpay_mid" varchar(255)
+  "de_naverpay_cert_key" varchar(255)
+  "de_naverpay_button_key" varchar(255)
+  "de_naverpay_test" tinyint(4)
+  "de_naverpay_mb_id" varchar(255)
+  "de_naverpay_sendcost" varchar(255)
+  "de_member_reg_coupon_use" tinyint(4)
+  "de_member_reg_coupon_term" int(11)
+  "de_member_reg_coupon_price" int(11)
+  "de_member_reg_coupon_minimum" int(11)
+}
+
+Table g5_shop_event {
+  "ev_id" int(11) [pk]
+  "ev_skin" varchar(255)
+  "ev_mobile_skin" varchar(255)
+  "ev_img_width" int(11)
+  "ev_img_height" int(11)
+  "ev_list_mod" int(11)
+  "ev_list_row" int(11)
+  "ev_mobile_img_width" int(11)
+  "ev_mobile_img_height" int(11)
+  "ev_mobile_list_mod" int(11)
+  "ev_mobile_list_row" int(11)
+  "ev_subject" varchar(255)
+  "ev_subject_strong" tinyint(4)
+  "ev_head_html" text
+  "ev_tail_html" text
+  "ev_use" tinyint(4)
+}
+
+Table g5_shop_event_item {
+  "ev_id" int(11) [pk]
+  "it_id" varchar(20)
+}
+
+Table g5_shop_inicis_log {
+  "oid" bigint(20) [pk]
+  "P_TID" varchar(255)
+  "P_MID" varchar(255)
+  "P_AUTH_DT" varchar(255)
+  "P_STATUS" varchar(255)
+  "P_TYPE" varchar(255)
+  "P_OID" varchar(255)
+  "P_FN_NM" varchar(255)
+  "P_AUTH_NO" varchar(255)
+  "P_AMT" int(11)
+  "P_RMESG1" varchar(255)
+  "post_data" text
+  "is_mail_send" tinyint(4)
+}
+
+Table g5_shop_item {
+  "it_id" varchar(20) [pk]
+  "ca_id" varchar(10)
+  "ca_id2" varchar(255)
+  "ca_id3" varchar(255)
+  "it_skin" varchar(255)
+  "it_mobile_skin" varchar(255)
+  "it_name" varchar(255)
+  "it_seo_title" varchar(200)
+  "it_maker" varchar(255)
+  "it_origin" varchar(255)
+  "it_brand" varchar(255)
+  "it_model" varchar(255)
+  "it_option_subject" varchar(255)
+  "it_supply_subject" varchar(255)
+  "it_type1" tinyint(4)
+  "it_type2" tinyint(4)
+  "it_type3" tinyint(4)
+  "it_type4" tinyint(4)
+  "it_type5" tinyint(4)
+  "it_basic" text
+  "it_explan" mediumtext
+  "it_explan2" mediumtext
+  "it_mobile_explan" mediumtext
+  "it_cust_price" int(11)
+  "it_price" int(11)
+  "it_point" int(11)
+  "it_point_type" tinyint(4)
+  "it_supply_point" int(11)
+  "it_notax" tinyint(4)
+  "it_sell_email" varchar(255)
+  "it_use" tinyint(4)
+  "it_nocoupon" tinyint(4)
+  "it_soldout" tinyint(4)
+  "it_stock_qty" int(11)
+  "it_stock_sms" tinyint(4)
+  "it_noti_qty" int(11)
+  "it_sc_type" tinyint(4)
+  "it_sc_method" tinyint(4)
+  "it_sc_price" int(11)
+  "it_sc_minimum" int(11)
+  "it_sc_qty" int(11)
+  "it_buy_min_qty" int(11)
+  "it_buy_max_qty" int(11)
+  "it_head_html" text
+  "it_tail_html" text
+  "it_mobile_head_html" text
+  "it_mobile_tail_html" text
+  "it_hit" int(11)
+  "it_time" datetime
+  "it_update_time" datetime
+  "it_ip" varchar(25)
+  "it_order" int(11)
+  "it_tel_inq" tinyint(4)
+  "it_info_gubun" varchar(50)
+  "it_info_value" text
+  "it_sum_qty" int(11)
+  "it_use_cnt" int(11)
+  "it_use_avg" decimal(2,1)
+  "it_shop_memo" text
+  "ec_mall_pid" varchar(255)
+  "it_img1" varchar(255)
+  "it_img2" varchar(255)
+  "it_img3" varchar(255)
+  "it_img4" varchar(255)
+  "it_img5" varchar(255)
+  "it_img6" varchar(255)
+  "it_img7" varchar(255)
+  "it_img8" varchar(255)
+  "it_img9" varchar(255)
+  "it_img10" varchar(255)
+  "it_1_subj" varchar(255)
+  "it_2_subj" varchar(255)
+  "it_3_subj" varchar(255)
+  "it_4_subj" varchar(255)
+  "it_5_subj" varchar(255)
+  "it_6_subj" varchar(255)
+  "it_7_subj" varchar(255)
+  "it_8_subj" varchar(255)
+  "it_9_subj" varchar(255)
+  "it_10_subj" varchar(255)
+  "it_1" varchar(255)
+  "it_2" varchar(255)
+  "it_3" varchar(255)
+  "it_4" varchar(255)
+  "it_5" varchar(255)
+  "it_6" varchar(255)
+  "it_7" varchar(255)
+  "it_8" varchar(255)
+  "it_9" varchar(255)
+  "it_10" varchar(255)
+  "it_partner" varchar(255)
+  "it_ssr" int(11)
+  "it_ssr_w" int(11)
+  "it_level" tinyint(4)
+  "it_level_opt" tinyint(4)
+}
+
+Table g5_shop_item_option {
+  "io_no" int(11) [pk]
+  "io_id" varchar(255)
+  "io_type" tinyint(4)
+  "it_id" varchar(20)
+  "io_price" int(11)
+  "io_stock_qty" int(11)
+  "io_noti_qty" int(11)
+  "io_use" tinyint(4)
+}
+
+Table g5_shop_item_qa {
+  "iq_id" int(11) [pk]
+  "it_id" varchar(20)
+  "mb_id" varchar(255)
+  "iq_secret" tinyint(4)
+  "iq_name" varchar(255)
+  "iq_email" varchar(255)
+  "iq_hp" varchar(255)
+  "iq_password" varchar(255)
+  "iq_subject" varchar(255)
+  "iq_question" text
+  "iq_answer" text
+  "iq_time" datetime
+  "iq_ip" varchar(25)
+}
+
+Table g5_shop_item_relation {
+  "it_id" varchar(20) [pk]
+  "it_id2" varchar(20)
+  "ir_no" int(11)
+}
+
+Table g5_shop_item_stocksms {
+  "ss_id" int(11) [pk]
+  "it_id" varchar(20)
+  "ss_hp" varchar(255)
+  "ss_send" tinyint(4)
+  "ss_send_time" datetime
+  "ss_datetime" datetime
+  "ss_ip" varchar(25)
+}
+
+Table g5_shop_item_use {
+  "is_id" int(11) [pk]
+  "it_id" varchar(20)
+  "mb_id" varchar(255)
+  "is_name" varchar(255)
+  "is_password" varchar(255)
+  "is_score" tinyint(4)
+  "is_subject" varchar(255)
+  "is_content" text
+  "is_time" datetime
+  "is_ip" varchar(25)
+  "is_confirm" tinyint(4)
+}
+
+Table g5_shop_order {
+  "od_id" bigint(20) [pk]
+  "mb_id" varchar(255)
+  "od_name" varchar(20)
+  "od_email" varchar(100)
+  "od_tel" varchar(20)
+  "od_hp" varchar(20)
+  "od_zip1" char(3)
+  "od_zip2" char(3)
+  "od_addr1" varchar(100)
+  "od_addr2" varchar(100)
+  "od_addr3" varchar(255)
+  "od_addr_jibeon" varchar(255)
+  "od_deposit_name" varchar(20)
+  "od_b_name" varchar(20)
+  "od_b_tel" varchar(20)
+  "od_b_hp" varchar(20)
+  "od_b_zip1" char(3)
+  "od_b_zip2" char(3)
+  "od_b_addr1" varchar(100)
+  "od_b_addr2" varchar(100)
+  "od_b_addr3" varchar(255)
+  "od_b_addr_jibeon" varchar(255)
+  "od_memo" text
+  "od_cart_count" int(11)
+  "od_cart_price" int(11)
+  "od_cart_coupon" int(11)
+  "od_send_cost" int(11)
+  "od_send_cost2" int(11)
+  "od_send_coupon" int(11)
+  "od_receipt_price" int(11)
+  "od_cancel_price" int(11)
+  "od_receipt_point" int(11)
+  "od_refund_price" int(11)
+  "od_bank_account" varchar(255)
+  "od_receipt_time" datetime
+  "od_coupon" int(11)
+  "od_misu" int(11)
+  "od_shop_memo" text
+  "od_mod_history" text
+  "od_status" varchar(255)
+  "od_hope_date" date
+  "od_settle_case" varchar(255)
+  "od_other_pay_type" varchar(100)
+  "od_test" tinyint(4)
+  "od_mobile" tinyint(4)
+  "od_pg" varchar(255)
+  "od_tno" varchar(255)
+  "od_app_no" varchar(20)
+  "od_escrow" tinyint(4)
+  "od_casseqno" varchar(255)
+  "od_tax_flag" tinyint(4)
+  "od_tax_mny" int(11)
+  "od_vat_mny" int(11)
+  "od_free_mny" int(11)
+  "od_delivery_company" varchar(255)
+  "od_invoice" varchar(255)
+  "od_invoice_time" datetime
+  "od_cash" tinyint(4)
+  "od_cash_no" varchar(255)
+  "od_cash_info" text
+  "od_time" datetime
+  "od_pwd" varchar(255)
+  "od_ip" varchar(25)
+}
+
+Table g5_shop_order_address {
+  "ad_id" int(11) [pk]
+  "mb_id" varchar(255)
+  "ad_subject" varchar(255)
+  "ad_default" tinyint(4)
+  "ad_name" varchar(255)
+  "ad_tel" varchar(255)
+  "ad_hp" varchar(255)
+  "ad_zip1" char(3)
+  "ad_zip2" char(3)
+  "ad_addr1" varchar(255)
+  "ad_addr2" varchar(255)
+  "ad_addr3" varchar(255)
+  "ad_jibeon" varchar(255)
+}
+
+Table g5_shop_order_data {
+  "od_id" bigint(20)
+  "cart_id" bigint(20)
+  "mb_id" varchar(20)
+  "dt_pg" varchar(255)
+  "dt_data" text
+  "dt_time" datetime
+}
+
+Table g5_shop_order_delete {
+  "de_id" int(11) [pk]
+  "de_key" varchar(255)
+  "de_data" longtext
+  "mb_id" varchar(20)
+  "de_ip" varchar(255)
+  "de_datetime" datetime
+}
+
+Table g5_shop_order_post_log {
+  "log_id" int(11) [pk]
+  "oid" bigint(20)
+  "mb_id" varchar(255)
+  "post_data" text
+  "ol_code" varchar(255)
+  "ol_msg" text
+  "ol_datetime" datetime
+  "ol_ip" varchar(25)
+}
+
+Table g5_shop_personalpay {
+  "pp_id" bigint(20) [pk]
+  "od_id" bigint(20)
+  "pp_name" varchar(255)
+  "pp_email" varchar(255)
+  "pp_hp" varchar(255)
+  "pp_content" text
+  "pp_use" tinyint(4)
+  "pp_price" int(11)
+  "pp_pg" varchar(255)
+  "pp_tno" varchar(255)
+  "pp_app_no" varchar(20)
+  "pp_casseqno" varchar(255)
+  "pp_receipt_price" int(11)
+  "pp_settle_case" varchar(255)
+  "pp_bank_account" varchar(255)
+  "pp_deposit_name" varchar(255)
+  "pp_receipt_time" datetime
+  "pp_receipt_ip" varchar(255)
+  "pp_shop_memo" text
+  "pp_cash" tinyint(4)
+  "pp_cash_no" varchar(255)
+  "pp_cash_info" text
+  "pp_ip" varchar(255)
+  "pp_time" datetime
+}
+
+Table g5_shop_sendcost {
+  "sc_id" int(11) [pk]
+  "sc_name" varchar(255)
+  "sc_zip1" varchar(10)
+  "sc_zip2" varchar(10)
+  "sc_price" int(11)
+}
+
+Table g5_shop_wish {
+  "wi_id" int(11) [pk]
+  "mb_id" varchar(255)
+  "it_id" varchar(20)
+  "wi_time" datetime
+  "wi_ip" varchar(25)
+}
+
+Table g5_splash_config {
+  "sp_id" int(11) [pk]
+  "sp_use" tinyint(1)
+  "sp_duration" int(11)
+  "sp_type" varchar(10)
+  "sp_image_pc" varchar(255)
+  "sp_image_mobile" varchar(255)
+  "sp_lottie_pc" varchar(255)
+  "sp_lottie_mobile" varchar(255)
+  "sp_link_url" varchar(255)
+  "sp_link_target" varchar(10)
+  "sp_start_date" date
+  "sp_end_date" date
+  "sp_skip_today" tinyint(1)
+  "sp_show_countdown" tinyint(1)
+  "sp_bgcolor" varchar(7)
+  "sp_position" varchar(20)
+  "sp_pc_width" varchar(10)
+  "sp_pc_height" varchar(10)
+  "sp_mobile_width" varchar(10)
+  "sp_mobile_height" varchar(10)
+  "sp_pc_top" varchar(10)
+  "sp_pc_left" varchar(10)
+  "sp_mobile_top" varchar(10)
+  "sp_mobile_left" varchar(10)
+  "sp_datetime" datetime
+}
+
+Table g5_uniqid {
+  "uq_id" bigint(20) [pk]
+  "uq_ip" varchar(255)
+}
+
+Table g5_visit {
+  "vi_id" int(11) [pk]
+  "vi_ip" varchar(100)
+  "vi_date" date
+  "vi_time" time
+  "vi_referer" text
+  "vi_agent" varchar(200)
+  "vi_browser" varchar(255)
+  "vi_os" varchar(255)
+  "vi_device" varchar(255)
+}
+
+Table g5_visit_sum {
+  "vs_date" date [pk]
+  "vs_count" int(11)
+}
+
+Table g5_write_activity {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table g5_write_anonymous {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table g5_write_card {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+  "wr_11" varchar(255)
+  "wr_12" varchar(255)
+  "wr_13" varchar(255)
+  "wr_14" varchar(255)
+  "wr_15" varchar(255)
+  "wr_16" varchar(255)
+  "wr_17" varchar(255)
+  "wr_18" varchar(255)
+  "wr_19" varchar(255)
+  "wr_20" varchar(255)
+  "wr_21" varchar(255)
+  "wr_22" varchar(255)
+  "wr_23" varchar(255)
+  "wr_24" varchar(255)
+  "wr_25" varchar(255)
+  "wr_26" varchar(255)
+  "wr_27" varchar(255)
+  "wr_28" varchar(255)
+  "wr_29" varchar(255)
+  "wr_30" varchar(255)
+}
+
+Table g5_write_free {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table g5_write_gallery {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table g5_write_groupbuy {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+}
+
+Table g5_write_notice {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table g5_write_qa {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table g5_write_recruit {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table g5_write_second_hand {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table g5_write_sns {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table g5_write_youtube {
+  "wr_id" int(11) [pk]
+  "wr_num" int(11)
+  "wr_reply" varchar(10)
+  "wr_parent" int(11)
+  "wr_is_comment" tinyint(4)
+  "wr_comment" int(11)
+  "wr_comment_reply" varchar(5)
+  "ca_name" varchar(255)
+  "wr_option" set('html1','html2','secret','mail')
+  "wr_subject" varchar(255)
+  "wr_content" text
+  "wr_seo_title" varchar(255)
+  "wr_link1" text
+  "wr_link2" text
+  "wr_link1_hit" int(11)
+  "wr_link2_hit" int(11)
+  "wr_hit" int(11)
+  "wr_good" int(11)
+  "wr_nogood" int(11)
+  "mb_id" varchar(20)
+  "wr_password" varchar(255)
+  "wr_name" varchar(255)
+  "wr_email" varchar(255)
+  "wr_homepage" varchar(255)
+  "wr_datetime" datetime
+  "wr_file" tinyint(4)
+  "wr_last" varchar(19)
+  "wr_ip" varchar(255)
+  "wr_facebook_user" varchar(255)
+  "wr_twitter_user" varchar(255)
+  "wr_1" varchar(255)
+  "wr_2" varchar(255)
+  "wr_3" varchar(255)
+  "wr_4" varchar(255)
+  "wr_5" varchar(255)
+  "wr_6" varchar(255)
+  "wr_7" varchar(255)
+  "wr_8" varchar(255)
+  "wr_9" varchar(255)
+  "wr_10" varchar(255)
+  "wr_report" varchar(10)
+}
+
+Table gangnamunni_ab_events {
+  "id" bigint(20) [pk]
+  "test_id" int(11)
+  "variant_id" int(11)
+  "event_type" varchar(20)
+  "user_id" int(11)
+  "session_id" varchar(100)
+  "ip_address" varchar(50)
+  "user_agent" text
+  "created_at" timestamp
+}
+
+Table gangnamunni_ab_tests {
+  "id" int(11) [pk]
+  "test_name" varchar(200)
+  "description" text
+  "start_date" datetime
+  "end_date" datetime
+  "status" varchar(20)
+  "winner_variant" varchar(10)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_ab_variants {
+  "id" int(11) [pk]
+  "test_id" int(11)
+  "variant_name" varchar(10)
+  "ad_id" int(11)
+  "title" varchar(200)
+  "subtitle" varchar(200)
+  "image_url" text
+  "impressions" int(11)
+  "clicks" int(11)
+  "conversions" int(11)
+  "ctr" decimal(5,2)
+  "conversion_rate" decimal(5,2)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_ad_clicks {
+  "id" bigint(20) [pk]
+  "ad_id" int(11)
+  "page_url" varchar(500)
+  "target_url" varchar(500)
+  "ip_address" varchar(45)
+  "user_agent" varchar(500)
+  "session_id" varchar(100)
+  "user_id" int(11)
+  "created_at" timestamp
+}
+
+Table gangnamunni_ad_impressions {
+  "id" bigint(20) [pk]
+  "ad_id" int(11)
+  "page_url" varchar(500)
+  "ip_address" varchar(45)
+  "user_agent" varchar(500)
+  "session_id" varchar(100)
+  "user_id" int(11)
+  "created_at" timestamp
+}
+
+Table gangnamunni_ad_payments {
+  "id" int(11) [pk]
+  "merchant_uid" varchar(100)
+  "imp_uid" varchar(100)
+  "ad_id" int(11)
+  "pricing_id" int(11)
+  "pricing_code" varchar(20)
+  "product_id" varchar(50)
+  "product_name" varchar(200)
+  "amount" int(11)
+  "supply_price" int(11)
+  "vat_amount" int(11)
+  "payment_method" varchar(50)
+  "paid_amount" int(11)
+  "buyer_name" varchar(100)
+  "buyer_email" varchar(200)
+  "buyer_tel" varchar(50)
+  "pg_provider" varchar(50)
+  "pg_tid" varchar(200)
+  "status" varchar(20)
+  "cancel_reason" text
+  "paid_at" datetime
+  "cancelled_at" datetime
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_ad_pricing {
+  "id" int(11) [pk]
+  "code" varchar(20)
+  "name" varchar(100)
+  "display_name" varchar(100)
+  "description" text
+  "ad_type" enum('banner','premium','vip')
+  "duration_days" int(11)
+  "supply_price" int(11)
+  "vat_rate" decimal(5,2)
+  "vat_amount" int(11)
+  "total_price" int(11)
+  "is_taxable" tinyint(1)
+  "tax_invoice_type" enum('none','electronic','paper')
+  "commission_rate" decimal(5,2)
+  "is_active" tinyint(1)
+  "display_order" int(11)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_admin_app_tokens {
+  "id" int(11) [pk]
+  "admin_id" int(11)
+  "token" varchar(500)
+  "device_info" varchar(200)
+  "created_at" datetime
+  "expires_at" datetime
+}
+
+Table gangnamunni_admin_fcm_tokens {
+  "id" int(11) [pk]
+  "admin_id" int(11)
+  "fcm_token" varchar(500)
+  "platform" varchar(20)
+  "device_info" varchar(200)
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_admin_menus {
+  "id" int(10) [pk]
+  "parent_id" int(10)
+  "sort_order" int(11)
+  "label" varchar(100)
+  "url" varchar(255)
+  "icon" varchar(50)
+  "visible" tinyint(1)
+  "target" enum('same','new','iframe')
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_admins {
+  "id" int(11) [pk]
+  "username" varchar(50)
+  "password" varchar(255)
+  "name" varchar(100)
+  "email" varchar(150)
+  "phone" varchar(20)
+  "role" enum('super_admin','admin','editor','viewer','staff','hospital_super_admin','hospital_admin','hospital_sub_admin','hospital_staff')
+  "permissions" longtext
+  "is_active" tinyint(1)
+  "last_login_at" datetime
+  "last_login_ip" varchar(45)
+  "created_at" datetime
+  "updated_at" datetime
+  "hospital_id" int(11)
+  "hospital_name" varchar(200)
+  "parent_admin_id" int(11)
+}
+
+Table gangnamunni_ads {
+  "id" int(11) [pk]
+  "advertiser_id" int(11)
+  "pricing_id" int(11)
+  "title" varchar(255)
+  "subtitle" varchar(255)
+  "description" text
+  "image_url" varchar(500)
+  "link_url" varchar(500)
+  "hospital_name" varchar(200)
+  "ad_type" varchar(20)
+  "target_page" varchar(50)
+  "display_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "paid_at" datetime
+  "start_date" datetime
+  "end_date" datetime
+  "impression_count" bigint(20)
+  "click_count" bigint(20)
+  "status" varchar(20)
+  "reviewed_by" varchar(100)
+  "reviewed_at" datetime
+  "reject_reason" text
+  "is_demo" tinyint(1)
+}
+
+Table gangnamunni_advertisers {
+  "id" int(11) [pk]
+  "hospital_name" varchar(200)
+  "contact_name" varchar(100)
+  "contact_email" varchar(200)
+  "contact_phone" varchar(50)
+  "business_number" varchar(30)
+  "address" varchar(500)
+  "memo" text
+  "hms_user_id" bigint(20)
+  "g5_member_id" varchar(20)
+  "status" enum('active','inactive','suspended')
+  "total_spent" int(11)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_ai_keys {
+  "id" int(11) [pk]
+  "provider" varchar(20)
+  "api_key_encrypted" text
+  "priority" int(11)
+  "is_active" tinyint(1)
+  "model_name" varchar(50)
+  "usage_count" int(11)
+  "daily_usage_count" int(11)
+  "daily_usage_reset_at" date
+  "rate_limited_until" datetime
+  "config_json" text
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_ai_review_cache {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "keywords" text
+  "summary" text
+  "positive_count" int(11)
+  "negative_count" int(11)
+  "total_reviews" int(11)
+  "avg_rating" decimal(3,1)
+  "created_at" datetime
+  "expires_at" datetime
+}
+
+Table gangnamunni_ai_settings {
+  "id" int(11) [pk]
+  "setting_group" varchar(50)
+  "setting_key" varchar(100)
+  "setting_value" text
+  "setting_type" enum('text','password','select','toggle','number','textarea')
+  "setting_label" varchar(200)
+  "setting_description" text
+  "display_order" int(11)
+  "is_encrypted" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_ai_usage_log {
+  "id" int(11) [pk]
+  "provider" varchar(20)
+  "model_name" varchar(50)
+  "action_type" varchar(30)
+  "input_tokens" int(11)
+  "output_tokens" int(11)
+  "target_id" int(11)
+  "target_type" varchar(20)
+  "score" int(11)
+  "passed" tinyint(1)
+  "result_summary" text
+  "created_at" datetime
+}
+
+Table gangnamunni_before_after {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "review_id" int(11)
+  "treatment_name" varchar(100)
+  "treatment_id" int(11)
+  "before_image_url" varchar(500)
+  "after_image_url" varchar(500)
+  "description" text
+  "author_name" varchar(50)
+  "duration_text" varchar(50)
+  "is_verified" tinyint(1)
+  "is_active" tinyint(1)
+  "view_count" int(11)
+  "created_at" datetime
+}
+
+Table gangnamunni_blocked_users {
+  "id" int(11) [pk]
+  "blocker_id" varchar(100)
+  "blocked_id" varchar(100)
+  "blocked_name" varchar(100)
+  "reason" varchar(500)
+  "created_at" datetime
+}
+
+Table gangnamunni_bookings {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "hospital_name" varchar(200)
+  "name" varchar(100)
+  "phone" varchar(20)
+  "mb_id" varchar(100)
+  "treatment" varchar(100)
+  "booking_date" date
+  "booking_time" time
+  "memo" text
+  "photo_urls" text
+  "photo_consent" tinyint(1)
+  "status" varchar(20)
+  "created_at" datetime
+  "updated_at" datetime
+  "hms_appointment_id" int(11)
+  "cancel_reason" text
+  "cancelled_at" datetime
+  "is_demo" tinyint(1)
+}
+
+Table gangnamunni_categories {
+  "id" int(11) [pk]
+  "name" varchar(100)
+  "slug" varchar(50)
+  "icon" varchar(50)
+  "icon_svg" varchar(200)
+  "hms_category_id" int(11)
+  "hms_hospital_type_id" bigint(20)
+  "display_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_categories_default {
+  "id" int(11) [pk]
+  "name" varchar(100)
+  "slug" varchar(50)
+  "icon" varchar(50)
+  "icon_svg" varchar(200)
+  "hms_category_id" int(11)
+  "hms_hospital_type_id" bigint(20)
+  "display_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_chat_messages {
+  "id" int(11) [pk]
+  "room_id" int(11)
+  "sender_type" enum('patient','hospital','system')
+  "sender_id" int(11)
+  "message" text
+  "is_read" tinyint(1)
+  "created_at" datetime
+}
+
+Table gangnamunni_chat_rooms {
+  "id" int(11) [pk]
+  "member_id" int(11)
+  "hospital_id" int(11)
+  "status" enum('active','closed')
+  "last_message_at" datetime
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_client_requests {
+  "id" int(11) [pk]
+  "title" varchar(200)
+  "content" text
+  "file_name" varchar(500)
+  "url" varchar(500)
+  "progress" int(11)
+  "status" enum('pending','in_progress','completed')
+  "dev_note" text
+  "created_at" datetime
+  "updated_at" datetime
+  "completed_at" datetime
+}
+
+Table gangnamunni_client_spec_notes {
+  "id" int(11) [pk]
+  "sheet_gid" varchar(20)
+  "row_index" int(11)
+  "col_index" int(11)
+  "cell_key" varchar(200)
+  "note_text" text
+  "dev_status" enum('pending','in_progress','done','skipped')
+  "created_by" varchar(50)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_client_spec_sheets {
+  "id" int(11) [pk]
+  "gid" varchar(20)
+  "tab_name" varchar(100)
+  "tab_order" int(11)
+  "tab_type" enum('category','pricing','planning','ui','analysis','estimate','matrix')
+  "csv_data" longtext
+  "is_active" tinyint(4)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_columns {
+  "id" int(11) [pk]
+  "title" varchar(300)
+  "subtitle" varchar(500)
+  "content" longtext
+  "author" varchar(100)
+  "source_name" varchar(100)
+  "source_url" varchar(500)
+  "image_url" varchar(500)
+  "category" varchar(50)
+  "view_count" int(11)
+  "is_active" tinyint(1)
+  "is_external" tinyint(1)
+  "published_at" datetime
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_community_comments {
+  "id" int(11) [pk]
+  "post_id" int(11)
+  "mb_id" varchar(50)
+  "author" varchar(100)
+  "content" text
+  "created_at" datetime
+}
+
+Table gangnamunni_community_likes {
+  "id" int(10) [pk]
+  "post_id" int(10)
+  "user_id" varchar(100)
+  "created_at" datetime
+}
+
+Table gangnamunni_community_posts {
+  "id" int(11) [pk]
+  "mb_id" varchar(50)
+  "author_name" varchar(100)
+  "category" varchar(30)
+  "title" varchar(200)
+  "content" text
+  "photos" longtext
+  "view_count" int(11)
+  "like_count" int(11)
+  "comment_count" int(11)
+  "status" enum('active','hidden','deleted')
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_consultations {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "hospital_name" varchar(200)
+  "name" varchar(100)
+  "phone" varchar(20)
+  "email" varchar(191)
+  "treatment_type" varchar(100)
+  "consultation_type" varchar(20)
+  "treatment" varchar(100)
+  "message" text
+  "photo_urls" text
+  "photo_consent" tinyint(1)
+  "preferred_date" date
+  "preferred_time" varchar(20)
+  "status" varchar(20)
+  "created_at" datetime
+  "updated_at" datetime
+  "synced_to_hms" tinyint(1)
+  "hms_appointment_id" int(11)
+  "synced_at" datetime
+  "cancel_reason" text
+  "cancelled_at" datetime
+  "is_demo" tinyint(1)
+}
+
+Table gangnamunni_content_reports {
+  "id" int(11) [pk]
+  "reporter_id" varchar(100)
+  "reporter_name" varchar(100)
+  "content_type" enum('review','qna','community','chat','comment','tip','event')
+  "content_id" int(11)
+  "content_url" varchar(500)
+  "content_snippet" text
+  "reported_user_id" varchar(100)
+  "reported_user_name" varchar(100)
+  "reason" enum('spam','harassment','hate_speech','sexual','violence','misinformation','copyright','other')
+  "reason_detail" text
+  "status" enum('pending','investigating','resolved','dismissed')
+  "action_taken" enum('none','warning','content_removed','user_suspended','user_banned')
+  "action_note" text
+  "admin_id" varchar(100)
+  "created_at" datetime
+  "resolved_at" datetime
+}
+
+Table gangnamunni_coupon_claims {
+  "id" int(11) [pk]
+  "coupon_id" int(11)
+  "member_id" int(11)
+  "status" enum('available','used','expired')
+  "used_at" datetime
+  "booking_id" int(11)
+  "claimed_at" datetime
+}
+
+Table gangnamunni_coupons {
+  "id" int(11) [pk]
+  "code" varchar(50)
+  "name" varchar(200)
+  "description" text
+  "discount_type" enum('percent','fixed')
+  "discount_value" decimal(10,2)
+  "min_order_amount" decimal(10,2)
+  "max_discount" decimal(10,2)
+  "total_quantity" int(11)
+  "claimed_count" int(11)
+  "hospital_id" int(11)
+  "category" varchar(100)
+  "starts_at" datetime
+  "expires_at" datetime
+  "is_active" tinyint(1)
+  "created_at" datetime
+}
+
+Table gangnamunni_cpv_confirmations {
+  "id" int(11) [pk]
+  "feature_id" varchar(10)
+  "status" enum('confirmed','modified','rejected')
+  "comment" text
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_cpv_custom_requests {
+  "id" int(11) [pk]
+  "title" varchar(200)
+  "description" text
+  "priority" enum('high','medium','low')
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_cpv_daily_stats {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "stat_date" date
+  "total_views" int(11)
+  "charged_views" int(11)
+  "total_amount" decimal(12,2)
+  "avg_rate" decimal(10,2)
+  "unique_visitors" int(11)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_cpv_logs {
+  "id" bigint(20) [pk]
+  "hospital_id" int(11)
+  "page_type" enum('hospital_detail','event_detail','doctor_detail','review_detail')
+  "target_id" int(11)
+  "visitor_ip" varchar(45)
+  "visitor_session" varchar(64)
+  "visitor_cookie" varchar(64)
+  "user_agent" varchar(300)
+  "keyword" varchar(50)
+  "procedure_type" varchar(50)
+  "cpv_rate" decimal(10,2)
+  "is_charged" tinyint(1)
+  "charge_skip_reason" varchar(50)
+  "page_url" varchar(500)
+  "created_at" datetime
+}
+
+Table gangnamunni_cpv_rates {
+  "id" int(11) [pk]
+  "rule_type" enum('keyword','procedure','hospital','event')
+  "rule_key" varchar(100)
+  "weight" decimal(5,2)
+  "fixed_rate" decimal(10,2)
+  "is_active" tinyint(1)
+  "description" varchar(200)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_cpv_settings {
+  "id" int(11) [pk]
+  "setting_key" varchar(80)
+  "setting_value" text
+  "setting_type" enum('toggle','number','text','select','percent','currency')
+  "category" varchar(30)
+  "sub_category" varchar(50)
+  "label" varchar(100)
+  "description" varchar(200)
+  "min_value" decimal(12,2)
+  "max_value" decimal(12,2)
+  "sort_order" int(11)
+  "updated_at" datetime
+}
+
+Table gangnamunni_cpv_transactions {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "type" enum('charge','deduct','refund','adjust','bonus')
+  "amount" decimal(12,2)
+  "balance_after" decimal(14,2)
+  "description" varchar(200)
+  "reference_type" varchar(30)
+  "reference_id" int(11)
+  "pg_order_id" varchar(100)
+  "admin_id" int(11)
+  "created_at" datetime
+}
+
+Table gangnamunni_cpv_wallets {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "balance" decimal(14,2)
+  "total_charged" decimal(14,2)
+  "total_spent" decimal(14,2)
+  "total_refunded" decimal(14,2)
+  "daily_cap" decimal(12,2)
+  "is_active" tinyint(1)
+  "is_paused" tinyint(1)
+  "pause_reason" varchar(50)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_departments {
+  "id" int(11) [pk]
+  "hms_department_id" int(11)
+  "hms_tenant_id" varchar(191)
+  "title" varchar(200)
+  "description" text
+  "doctor_count" int(11)
+  "synced_at" datetime
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_design_feedback {
+  "id" int(11) [pk]
+  "page_name" varchar(50)
+  "item_key" varchar(100)
+  "feedback" text
+  "status" enum('pending','done','skip')
+  "updated_at" timestamp
+}
+
+Table gangnamunni_dev_feedback {
+  "id" int(11) [pk]
+  "page_id" varchar(100)
+  "page_url" varchar(500)
+  "page_title" varchar(200)
+  "section" varchar(200)
+  "feedback_type" enum('bug','improve','feature','question','other')
+  "priority" enum('urgent','high','medium','low')
+  "content" text
+  "screenshot_url" varchar(500)
+  "attachments" text
+  "status" enum('open','in_progress','done','rejected')
+  "submitted_by" varchar(100)
+  "resolved_by" varchar(100)
+  "resolved_at" datetime
+  "dev_note" text
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_dev_timeline {
+  "id" int(11) [pk]
+  "event_date" date
+  "title" varchar(200)
+  "description" text
+  "category" enum('feature','fix','deploy','meeting','milestone')
+  "status" enum('planned','in_progress','completed','cancelled')
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_doctor_schedules {
+  "id" int(11) [pk]
+  "doctor_id" int(11)
+  "hospital_id" int(11)
+  "day_of_week" tinyint(4)
+  "start_time" time
+  "end_time" time
+  "slot_minutes" int(11)
+  "is_active" tinyint(1)
+}
+
+Table gangnamunni_doctor_treatments {
+  "id" int(11) [pk]
+  "doctor_id" int(11)
+  "hospital_id" int(11)
+  "treatment_id" int(11)
+  "case_count" int(11)
+  "speciality_level" enum('basic','advanced','expert')
+  "certification" varchar(500)
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_doctors {
+  "id" int(11) [pk]
+  "hms_doctor_id" int(11)
+  "hospital_id" int(11)
+  "department_id" int(11)
+  "hms_tenant_id" varchar(191)
+  "name" varchar(200)
+  "specialty" varchar(200)
+  "experience" int(11)
+  "phone" varchar(50)
+  "email" varchar(191)
+  "qualification" varchar(200)
+  "appointment_charge" decimal(10,2)
+  "photo_url" varchar(500)
+  "bio" text
+  "schedule" text
+  "status" enum('active','vacation','leave','resigned')
+  "synced_at" datetime
+  "created_at" timestamp
+  "updated_at" timestamp
+  "education" text
+  "certifications" text
+  "career_history" text
+  "consultation_available" tinyint(1)
+  "consultation_fee" decimal(10,2)
+  "specialties_detail" text
+  "awards" text
+  "media_appearances" text
+  "languages" varchar(200)
+  "greeting" text
+  "is_demo" tinyint(1)
+}
+
+Table gangnamunni_e2e_results {
+  "id" int(11) [pk]
+  "run_id" varchar(50)
+  "test_id" varchar(20)
+  "test_name" varchar(200)
+  "category" enum('user','admin','api')
+  "status" enum('pass','fail','warn','skip','running')
+  "error_msg" text
+  "error_stack" text
+  "screenshot_path" varchar(500)
+  "fix_suggestion" text
+  "fix_link" varchar(500)
+  "duration_ms" int(11)
+  "metadata" longtext
+  "created_at" datetime
+}
+
+Table gangnamunni_e2e_runs {
+  "id" int(11) [pk]
+  "run_id" varchar(50)
+  "tests_selected" longtext
+  "total_tests" int(11)
+  "passed" int(11)
+  "failed" int(11)
+  "warned" int(11)
+  "skipped" int(11)
+  "status" enum('running','completed','aborted')
+  "started_at" datetime
+  "finished_at" datetime
+  "duration_ms" int(11)
+  "options" longtext
+}
+
+Table gangnamunni_event_entries {
+  "id" int(11) [pk]
+  "event_id" int(11)
+  "member_id" varchar(50)
+  "user_name" varchar(100)
+  "user_phone" varchar(30)
+  "user_email" varchar(200)
+  "entry_data" longtext
+  "is_winner" tinyint(1)
+  "status" varchar(20)
+  "created_at" timestamp
+}
+
+Table gangnamunni_event_images {
+  "id" int(11) [pk]
+  "event_id" int(11)
+  "image_url" varchar(1000)
+  "caption" text
+  "display_order" int(11)
+  "created_at" timestamp
+}
+
+Table gangnamunni_events {
+  "id" int(11) [pk]
+  "title" varchar(500)
+  "subtitle" varchar(500)
+  "description" text
+  "layout_type" varchar(30)
+  "content_html" text
+  "image_url" varchar(1000)
+  "hospital_id" int(11)
+  "hospital_name" varchar(255)
+  "category" varchar(100)
+  "original_price" int(11)
+  "discount_price" int(11)
+  "discount_rate" int(11)
+  "start_date" date
+  "end_date" date
+  "view_count" int(11)
+  "is_active" tinyint(1)
+  "display_order" int(11)
+  "has_raffle" tinyint(1)
+  "raffle_type" varchar(50)
+  "max_entries" int(11)
+  "raffle_end_date" date
+  "raffle_prize" text
+  "raffle_winner_count" int(11)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "is_demo" tinyint(1)
+}
+
+Table gangnamunni_faq {
+  "id" int(11) [pk]
+  "category" varchar(50)
+  "question" varchar(500)
+  "answer" text
+  "sort_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" datetime
+}
+
+Table gangnamunni_figma_answers {
+  "id" int(11) [pk]
+  "question_id" varchar(20)
+  "answer_text" text
+  "answered_by" varchar(100)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_fix_log {
+  "id" int(11) [pk]
+  "fix_date" date
+  "issue_number" int(11)
+  "title" varchar(200)
+  "description" text
+  "target_page" varchar(200)
+  "target_url" varchar(500)
+  "category" varchar(50)
+  "status" varchar(20)
+  "screenshot_before" varchar(500)
+  "screenshot_after" varchar(500)
+  "admin_id" int(11)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_grade_permissions {
+  "id" int(11) [pk]
+  "ad_grade" enum('s','a','b','c','d','e','none')
+  "feature_key" varchar(50)
+  "is_allowed" tinyint(1)
+  "max_count" int(11)
+  "description" varchar(200)
+}
+
+Table gangnamunni_hospital_mapping {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "hms_tenant_id" varchar(191)
+  "hospital_name" varchar(200)
+  "created_at" datetime
+}
+
+Table gangnamunni_hospital_news {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "title" varchar(300)
+  "content" text
+  "image_url" varchar(500)
+  "news_type" enum('news','promo','notice')
+  "is_active" tinyint(1)
+  "created_at" datetime
+}
+
+Table gangnamunni_hospital_revisions {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "field_name" varchar(50)
+  "old_value" text
+  "new_value" text
+  "changed_by" varchar(50)
+  "changed_at" datetime
+  "reviewed" tinyint(1)
+}
+
+Table gangnamunni_hospital_suspension {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "hospital_name" varchar(200)
+  "status" enum('active','suspended','warning')
+  "suspension_reason" varchar(500)
+  "suspended_at" datetime
+  "suspended_by" int(11)
+  "warning_sent_at" datetime
+  "reactivated_at" datetime
+  "payment_due_date" date
+  "last_payment_date" date
+  "monthly_fee" decimal(10,2)
+  "notes" text
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_hospital_treatments {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "treatment_id" int(11)
+  "price_min" int(11)
+  "price_max" int(11)
+  "is_promoted" tinyint(1)
+  "note" varchar(500)
+  "status" enum('active','pending','rejected')
+  "reject_reason" varchar(500)
+  "registered_by" enum('admin','hospital','migration')
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+  "approved_at" datetime
+  "approved_by" varchar(100)
+  "rejected_at" datetime
+  "rejected_by" varchar(100)
+}
+
+Table gangnamunni_hospitals {
+  "id" int(11) [pk]
+  "name" varchar(255)
+  "description" text
+  "introduction" text
+  "address" varchar(500)
+  "phone" varchar(50)
+  "email" varchar(191)
+  "profile_image_url" varchar(500)
+  "main_image_url" varchar(500)
+  "rating" decimal(3,2)
+  "review_count" int(11)
+  "show_rating" tinyint(1)
+  "latitude" decimal(10,8)
+  "longitude" decimal(11,8)
+  "categories" longtext
+  "badges" longtext
+  "treatment_tags" longtext
+  "subway_names" longtext
+  "business_hours" longtext
+  "active_phone_consultation" tinyint(1)
+  "active_chat_consultation" tinyint(1)
+  "active_general_consultation" tinyint(1)
+  "raw_data" longtext
+  "created_at" timestamp
+  "updated_at" timestamp
+  "hms_hospital_id" varchar(191)
+  "synced_at" datetime
+  "status" varchar(20)
+  "is_active" tinyint(1)
+  "ad_grade" enum('s','a','b','c','d','e','none')
+  "rolling_banner_enabled" tinyint(1)
+  "rolling_banner_image" varchar(500)
+  "is_featured" tinyint(1)
+  "reviewed_by" varchar(100)
+  "reviewed_at" datetime
+  "reject_reason" text
+  "ai_enabled" tinyint(1)
+  "ai_use_own_key" tinyint(1)
+  "ai_own_api_key" text
+  "ai_own_provider" varchar(20)
+  "ai_cost_from_wallet" tinyint(1)
+  "min_price" int(11)
+  "wishlist_count" int(11)
+  "owner_name" varchar(100)
+  "business_number" varchar(20)
+  "contact_name" varchar(100)
+  "contact_phone" varchar(20)
+  "website" varchar(500)
+  "sns_url" varchar(500)
+  "applied_by" varchar(50)
+  "applied_at" datetime
+  "cert_business" varchar(500)
+  "cert_medical" varchar(500)
+  "rejection_reason" text
+  "promo_start" date
+  "promo_end" date
+  "promo_note" varchar(200)
+  "modified_at" datetime
+  "has_unreviewed_changes" tinyint(1)
+  "is_demo" tinyint(1)
+  "is_recommended" tinyint(1)
+  "recommended_category" varchar(50)
+}
+
+Table gangnamunni_members {
+  "id" int(11) [pk]
+  "mb_no" int(11)
+  "username" varchar(50)
+  "email" varchar(255)
+  "name" varchar(100)
+  "nickname" varchar(100)
+  "phone" varchar(20)
+  "gender" char(1)
+  "birth_date" varchar(20)
+  "avatar" varchar(500)
+  "level" tinyint(4)
+  "point" int(11)
+  "is_active" tinyint(1)
+  "last_login_at" datetime
+  "last_login_ip" varchar(50)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_membership_levels {
+  "id" int(11) [pk]
+  "name" varchar(50)
+  "min_points" int(11)
+  "icon" varchar(50)
+  "color" varchar(20)
+  "benefits" text
+  "discount_rate" decimal(4,1)
+  "sort_order" int(11)
+}
+
+Table gangnamunni_notification_sends {
+  "id" int(11) [pk]
+  "admin_id" int(11)
+  "admin_username" varchar(50)
+  "target_type" varchar(50)
+  "target_count" int(11)
+  "notification_type" varchar(50)
+  "title" varchar(255)
+  "message" text
+  "link" varchar(500)
+  "created_at" datetime
+}
+
+Table gangnamunni_notification_settings {
+  "id" int(11) [pk]
+  "member_id" varchar(100)
+  "noti_booking" tinyint(1)
+  "noti_chat" tinyint(1)
+  "noti_event" tinyint(1)
+  "noti_promo" tinyint(1)
+  "noti_review" tinyint(1)
+  "noti_push" tinyint(1)
+  "updated_at" datetime
+}
+
+Table gangnamunni_notifications {
+  "id" int(11) [pk]
+  "admin_id" int(11)
+  "type" varchar(50)
+  "title" varchar(200)
+  "message" text
+  "link" varchar(500)
+  "icon" varchar(50)
+  "is_read" tinyint(1)
+  "created_at" datetime
+}
+
+Table gangnamunni_points {
+  "id" int(11) [pk]
+  "member_id" int(11)
+  "type" enum('earn','use','expire','admin')
+  "amount" int(11)
+  "balance" int(11)
+  "reason" varchar(200)
+  "reference_type" varchar(50)
+  "reference_id" int(11)
+  "expires_at" date
+  "created_at" datetime
+}
+
+Table gangnamunni_progress_messages {
+  "id" int(11) [pk]
+  "message" text
+  "author" varchar(100)
+  "created_at" datetime
+}
+
+Table gangnamunni_promos {
+  "id" int(11) [pk]
+  "title" varchar(255)
+  "subtitle" varchar(255)
+  "background_gradient" varchar(500)
+  "icon" varchar(50)
+  "link_url" varchar(500)
+  "display_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_qa_captures {
+  "id" int(11) [pk]
+  "page_key" varchar(50)
+  "page_name" varchar(100)
+  "page_url" varchar(500)
+  "screenshot_pc" varchar(500)
+  "screenshot_mob" varchar(500)
+  "status" enum('pass','fail','need_fix','checking')
+  "memo" text
+  "memo_author" varchar(50)
+  "memo_role" enum('dev','client','qa')
+  "captured_at" datetime
+  "updated_at" timestamp
+}
+
+Table gangnamunni_qa_features {
+  "id" int(11) [pk]
+  "feature_id" varchar(20)
+  "category" varchar(20)
+  "name" varchar(100)
+  "file_name" varchar(200)
+  "checks" longtext
+  "platform" varchar(20)
+  "sort_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_qa_feedback {
+  "id" int(11) [pk]
+  "page_id" varchar(20)
+  "page_name" varchar(100)
+  "page_file" varchar(100)
+  "feedback_type" enum('bug','feature','improvement','question','other')
+  "content" text
+  "author" varchar(50)
+  "author_role" enum('client','dev','qa')
+  "priority" enum('low','medium','high','critical')
+  "status" enum('pending','in_progress','resolved','rejected','deferred')
+  "dev_note" text
+  "screenshot_url" varchar(500)
+  "created_at" datetime
+  "updated_at" datetime
+  "resolved_at" datetime
+}
+
+Table gangnamunni_qa_master {
+  "id" int(11) [pk]
+  "category" varchar(20)
+  "feature_id" varchar(20)
+  "feature_name" varchar(100)
+  "file_name" varchar(100)
+  "url" varchar(500)
+  "check_name" varchar(100)
+  "check_result" enum('pass','fail','skip','fixed','retest')
+  "severity" enum('critical','major','minor','cosmetic')
+  "notes" text
+  "screenshot_url" varchar(500)
+  "tester" varchar(50)
+  "fix_commit" varchar(100)
+  "fix_note" text
+  "created_at" datetime
+  "updated_at" datetime
+  "tested_at" datetime
+  "fixed_at" datetime
+}
+
+Table gangnamunni_qa_results {
+  "id" int(11) [pk]
+  "issue_no" varchar(10)
+  "result_text" text
+  "updated_at" datetime
+}
+
+Table gangnamunni_qna {
+  "id" int(11) [pk]
+  "member_id" varchar(100)
+  "user_name" varchar(100)
+  "hospital_id" int(11)
+  "title" varchar(300)
+  "content" text
+  "answer" text
+  "answered_by" varchar(100)
+  "answered_at" datetime
+  "is_public" tinyint(1)
+  "view_count" int(11)
+  "created_at" datetime
+}
+
+Table gangnamunni_rankings {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "category" varchar(50)
+  "rank_score" decimal(5,2)
+  "review_count" int(11)
+  "avg_rating" decimal(3,2)
+  "booking_count" int(11)
+  "is_featured" tinyint(1)
+  "period" varchar(20)
+  "rank_date" date
+  "created_at" datetime
+}
+
+Table gangnamunni_reviews {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "doctor_id" int(11)
+  "event_id" int(11)
+  "title" varchar(200)
+  "user_name" varchar(50)
+  "user_avatar" varchar(500)
+  "user_id" varchar(100)
+  "rating" tinyint(4)
+  "rating_result" tinyint(4)
+  "rating_consultation" tinyint(4)
+  "rating_facility" tinyint(4)
+  "rating_wait" tinyint(4)
+  "rating_cost" tinyint(4)
+  "rating_recovery" tinyint(4)
+  "content" text
+  "editor_content" longtext
+  "editor_type" enum('text','quill')
+  "treatments" varchar(255)
+  "images" text
+  "doctor_name" varchar(100)
+  "procedure_date" date
+  "procedure_cost" int(11)
+  "like_count" int(11)
+  "comment_count" int(11)
+  "is_verified" tinyint(1)
+  "is_active" tinyint(1)
+  "review_status" varchar(20)
+  "ai_score" int(11)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table gangnamunni_rolling_campaigns {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "daily_budget" int(11)
+  "total_budget" int(11)
+  "spent" int(11)
+  "impression_cost" int(11)
+  "impressions" int(11)
+  "status" enum('active','paused','exhausted','ended')
+  "start_date" date
+  "end_date" date
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_settings {
+  "id" int(11) [pk]
+  "setting_group" varchar(50)
+  "setting_key" varchar(100)
+  "setting_value" text
+  "setting_type" varchar(20)
+  "description" varchar(200)
+  "updated_at" timestamp
+}
+
+Table gangnamunni_settings_log {
+  "id" int(11) [pk]
+  "admin_id" int(11)
+  "admin_user" varchar(50)
+  "admin_name" varchar(100)
+  "setting_table" varchar(50)
+  "setting_key" varchar(100)
+  "old_value" text
+  "new_value" text
+  "source" varchar(30)
+  "ip_address" varchar(45)
+  "user_agent" varchar(500)
+  "created_at" datetime
+}
+
+Table gangnamunni_sns_reviews {
+  "id" int(11) [pk]
+  "platform" enum('google_play','app_store','instagram','facebook','youtube','tiktok','naver','kakao','other')
+  "app_type" enum('admin','patient')
+  "title" varchar(200)
+  "version" varchar(50)
+  "status" enum('draft','submitted','in_review','approved','rejected','live','suspended')
+  "submit_date" date
+  "review_date" date
+  "reject_reason" text
+  "notes" text
+  "store_url" varchar(500)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_store_submission {
+  "id" int(11) [pk]
+  "field_key" varchar(100)
+  "field_value" text
+  "updated_at" datetime
+}
+
+Table gangnamunni_sync_log {
+  "id" int(11) [pk]
+  "sync_type" varchar(50)
+  "direction" varchar(20)
+  "records_processed" int(11)
+  "records_created" int(11)
+  "records_updated" int(11)
+  "records_skipped" int(11)
+  "records_failed" int(11)
+  "dry_run" tinyint(4)
+  "log_detail" text
+  "started_at" datetime
+  "completed_at" datetime
+  "status" enum('running','completed','failed')
+}
+
+Table gangnamunni_theme_admins {
+  "id" int(11) [pk]
+  "username" varchar(50)
+  "password" varchar(255)
+  "email" varchar(100)
+  "role" varchar(20)
+  "last_login" datetime
+  "created_at" datetime
+}
+
+Table gangnamunni_theme_history {
+  "id" int(11) [pk]
+  "admin_user" varchar(100)
+  "action" varchar(50)
+  "changed_settings" text
+  "previous_values" text
+  "new_values" text
+  "ip_address" varchar(45)
+  "created_at" datetime
+}
+
+Table gangnamunni_theme_presets {
+  "id" int(11) [pk]
+  "name" varchar(100)
+  "description" text
+  "theme_data" text
+  "preview_image" varchar(255)
+  "is_default" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_theme_settings {
+  "id" int(11) [pk]
+  "setting_key" varchar(100)
+  "setting_value" text
+  "setting_type" varchar(50)
+  "description" varchar(255)
+  "updated_at" datetime
+}
+
+Table gangnamunni_tips {
+  "id" int(11) [pk]
+  "title" varchar(255)
+  "thumbnail_url" varchar(500)
+  "description" text
+  "content" text
+  "author" varchar(100)
+  "views" int(11)
+  "likes" int(11)
+  "category" varchar(50)
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_treatment_aliases {
+  "id" int(11) [pk]
+  "treatment_id" int(11)
+  "alias" varchar(200)
+  "lang" enum('ko','en','zh','ja')
+  "created_at" datetime
+}
+
+Table gangnamunni_treatment_approval_log {
+  "id" int(11) [pk]
+  "hospital_treatment_id" int(11)
+  "hospital_id" int(11)
+  "treatment_id" int(11)
+  "action" enum('submitted','approved','rejected','resubmitted','cancelled')
+  "old_status" varchar(20)
+  "new_status" varchar(20)
+  "reason" text
+  "admin_id" int(11)
+  "admin_name" varchar(100)
+  "hospital_user" varchar(100)
+  "created_at" datetime
+}
+
+Table gangnamunni_treatment_categories {
+  "id" int(11) [pk]
+  "name" varchar(100)
+  "slug" varchar(100)
+  "icon" varchar(200)
+  "sort_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_treatment_master {
+  "id" int(11) [pk]
+  "category_id" int(11)
+  "sort_order" int(11)
+  "name" varchar(200)
+  "hashtag" varchar(200)
+  "description" text
+  "duration_min" int(11)
+  "recovery_days" int(11)
+  "anesthesia_type" enum('none','local','sedation','general')
+  "repeat_cycle_months" int(11)
+  "precautions" text
+  "avg_price_min" int(11)
+  "avg_price_max" int(11)
+  "popularity_score" decimal(5,2)
+  "is_active" tinyint(1)
+  "created_by" enum('admin','system','hospital')
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_treatment_package_items {
+  "id" int(11) [pk]
+  "package_id" int(11)
+  "treatment_id" int(11)
+  "sort_order" int(11)
+}
+
+Table gangnamunni_treatment_packages {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "name" varchar(200)
+  "description" text
+  "package_price" int(11)
+  "original_price" int(11)
+  "is_active" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_treatment_price_history {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "treatment_id" int(11)
+  "price_min" int(11)
+  "price_max" int(11)
+  "changed_by" enum('admin','hospital','system')
+  "recorded_at" datetime
+}
+
+Table gangnamunni_treatment_reviews {
+  "id" int(11) [pk]
+  "review_id" int(10)
+  "hospital_id" int(10)
+  "treatment_id" int(10)
+  "sentiment_score" decimal(5,4)
+  "is_positive" tinyint(1)
+  "keyword_matched" varchar(500)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table gangnamunni_treatment_scores {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "treatment_id" int(11)
+  "total_reviews" int(11)
+  "positive_count" int(10)
+  "avg_sentiment" decimal(5,4)
+  "score" decimal(6,2)
+  "updated_at" datetime
+}
+
+Table gangnamunni_treatments {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "category" varchar(100)
+  "name" varchar(200)
+  "description" text
+  "price" int(11)
+  "discount_price" int(11)
+  "duration_minutes" int(11)
+  "unit_type" enum('unit','cc','ml','shot','session','time','etc')
+  "unit_value" varchar(50)
+  "unit_label" varchar(100)
+  "is_popular" tinyint(1)
+  "is_active" tinyint(1)
+  "sort_order" int(11)
+  "created_at" datetime
+  "is_demo" tinyint(1)
+}
+
+Table gangnamunni_user_actions {
+  "id" int(11) [pk]
+  "member_id" int(11)
+  "session_id" varchar(100)
+  "action_type" enum('view','search','wishlist','booking','review')
+  "target_type" varchar(50)
+  "target_id" int(11)
+  "metadata" text
+  "created_at" datetime
+}
+
+Table gangnamunni_user_agreements {
+  "id" int(11) [pk]
+  "user_id" varchar(100)
+  "agreement_type" enum('terms_of_service','privacy_policy','community_guidelines')
+  "agreement_version" varchar(20)
+  "agreed_at" datetime
+  "ip_address" varchar(45)
+  "user_agent" text
+}
+
+Table gangnamunni_user_notifications {
+  "id" int(11) [pk]
+  "member_id" varchar(50)
+  "type" varchar(50)
+  "title" varchar(255)
+  "message" text
+  "link" varchar(500)
+  "icon" varchar(50)
+  "is_read" tinyint(1)
+  "created_at" datetime
+}
+
+Table gangnamunni_wishlist {
+  "id" int(11) [pk]
+  "member_id" int(11)
+  "target_type" enum('hospital','doctor')
+  "target_id" int(11)
+  "created_at" datetime
+}
+
+Table gangnamunni_withdrawals {
+  "id" int(11) [pk]
+  "mb_id" varchar(100)
+  "mb_nick" varchar(100)
+  "mb_email" varchar(200)
+  "reason" text
+  "withdrawn_at" datetime
+}
+
+Table google_calendar_integrations {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "access_token" text
+  "meta" text
+  "last_used_at" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table google_calendar_lists {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "calendar_name" varchar(191)
+  "google_calendar_id" varchar(191)
+  "meta" text
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table hospital_consultations {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "doctor_id" int(11)
+  "event_id" int(11)
+  "consultation_type" enum('hospital','doctor','kakao')
+  "name" varchar(50)
+  "phone" varchar(20)
+  "message" text
+  "status" enum('pending','contacted','completed','cancelled')
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table hospital_features {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "feature_type" varchar(50)
+  "feature_label" varchar(100)
+  "feature_value" varchar(100)
+  "feature_icon" varchar(50)
+  "sort_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+}
+
+Table hospital_images {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "image_url" varchar(500)
+  "image_type" enum('main','interior','exterior','facility','etc')
+  "sort_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table hospital_reviews {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "doctor_id" int(11)
+  "event_id" int(11)
+  "title" varchar(200)
+  "user_name" varchar(50)
+  "user_avatar" varchar(500)
+  "rating" tinyint(4)
+  "content" text
+  "editor_content" longtext
+  "editor_type" enum('text','quill')
+  "treatments" varchar(255)
+  "images" text
+  "before_image" varchar(500)
+  "after_image" varchar(500)
+  "view_count" int(11)
+  "like_count" int(11)
+  "comment_count" int(11)
+  "is_verified" tinyint(1)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "rating_result" tinyint(4)
+  "rating_consultation" tinyint(4)
+  "rating_facility" tinyint(4)
+  "rating_wait" tinyint(4)
+  "rating_cost" tinyint(4)
+  "rating_recovery" tinyint(4)
+  "doctor_name" varchar(100)
+  "procedure_date" date
+  "procedure_cost" int(11)
+  "review_status" varchar(20)
+  "ai_score" int(11)
+  "user_id" varchar(100)
+  "photo_urls" text
+  "photo_consent" tinyint(1)
+  "is_demo" tinyint(1)
+}
+
+Table hospital_schedules {
+  "id" bigint(20) [pk]
+  "day_of_week" varchar(191)
+  "start_time" varchar(191)
+  "end_time" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table hospital_type {
+  "id" bigint(20) [pk]
+  "name" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table hospital_youtube {
+  "id" int(11) [pk]
+  "hospital_id" int(11)
+  "video_id" varchar(20)
+  "video_url" varchar(500)
+  "thumbnail_url" varchar(500)
+  "title" varchar(200)
+  "description" text
+  "duration" varchar(10)
+  "view_count" int(11)
+  "click_count" int(11)
+  "published_at" datetime
+  "sort_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+}
+
+Table hw_notifications {
+  "id" bigint(20) [pk]
+  "user_id" int(11)
+  "type" varchar(50)
+  "title" varchar(200)
+  "body" text
+  "data" longtext
+  "image_url" varchar(500)
+  "fcm_token" varchar(255)
+  "fcm_message_id" varchar(255)
+  "is_sent" tinyint(4)
+  "sent_at" timestamp
+  "is_read" tinyint(4)
+  "read_at" timestamp
+  "priority" varchar(20)
+  "error_message" text
+  "retry_count" int(11)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table hw_payments {
+  "id" bigint(20) [pk]
+  "user_id" int(11)
+  "booking_id" int(11)
+  "payment_method" varchar(50)
+  "pg_provider" varchar(50)
+  "merchant_uid" varchar(100)
+  "imp_uid" varchar(100)
+  "amount" decimal(10,2)
+  "vat" decimal(10,2)
+  "total_amount" decimal(10,2)
+  "status" varchar(20)
+  "paid_at" timestamp
+  "cancelled_at" timestamp
+  "card_name" varchar(50)
+  "card_number" varchar(20)
+  "card_quota" int(11)
+  "buyer_name" varchar(100)
+  "buyer_email" varchar(100)
+  "buyer_tel" varchar(20)
+  "buyer_addr" varchar(200)
+  "buyer_postcode" varchar(10)
+  "item_name" varchar(200)
+  "item_description" text
+  "receipt_url" varchar(500)
+  "fail_reason" text
+  "cancel_reason" text
+  "metadata" longtext
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table incomes {
+  "id" bigint(20) [pk]
+  "income_head" int(11)
+  "name" varchar(191)
+  "invoice_number" varchar(191)
+  "date" datetime
+  "amount" double
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table insurance_diseases {
+  "id" bigint(20) [pk]
+  "insurance_id" int(10)
+  "disease_name" varchar(191)
+  "disease_charge" double
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table insurances {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "service_tax" double
+  "discount" double
+  "remark" text
+  "insurance_no" varchar(191)
+  "insurance_code" varchar(191)
+  "hospital_rate" double
+  "total" double
+  "status" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table investigation_reports {
+  "id" int(10) [pk]
+  "patient_id" int(10)
+  "date" datetime
+  "title" varchar(191)
+  "description" text
+  "doctor_id" bigint(20)
+  "status" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table invoice_items {
+  "id" int(10) [pk]
+  "account_id" int(10)
+  "invoice_id" int(10)
+  "description" text
+  "quantity" int(11)
+  "price" double(8,2)
+  "total" double(8,2)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table invoices {
+  "id" int(10) [pk]
+  "invoice_id" varchar(191)
+  "patient_id" int(10)
+  "invoice_date" date
+  "amount" double(8,2)
+  "discount" double(8,2)
+  "status" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ipd_bills {
+  "id" bigint(20) [pk]
+  "ipd_patient_department_id" int(10)
+  "total_charges" double
+  "total_payments" double
+  "gross_total" double
+  "discount_in_percentage" int(11)
+  "tax_in_percentage" int(11)
+  "other_charges" double
+  "net_payable_amount" double
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ipd_charges {
+  "id" int(10) [pk]
+  "ipd_patient_department_id" int(10)
+  "date" date
+  "charge_type_id" int(11)
+  "charge_category_id" int(10)
+  "charge_id" int(10)
+  "standard_charge" double
+  "applied_charge" double
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ipd_consultant_registers {
+  "id" int(10) [pk]
+  "ipd_patient_department_id" int(10)
+  "applied_date" datetime
+  "doctor_id" bigint(20)
+  "instruction" text
+  "instruction_date" date
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ipd_diagnoses {
+  "id" int(10) [pk]
+  "ipd_patient_department_id" int(10)
+  "report_type" varchar(191)
+  "report_date" datetime
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ipd_patient_departments {
+  "id" int(10) [pk]
+  "patient_id" int(10)
+  "ipd_number" varchar(191)
+  "height" varchar(191)
+  "weight" varchar(191)
+  "bp" varchar(191)
+  "symptoms" text
+  "notes" text
+  "admission_date" datetime
+  "is_discharge" tinyint(1)
+  "case_id" int(10)
+  "is_old_patient" tinyint(1)
+  "doctor_id" bigint(20)
+  "bed_type_id" int(10)
+  "bed_id" int(10)
+  "custom_field" longtext
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "bill_status" tinyint(1)
+}
+
+Table ipd_payments {
+  "id" int(10) [pk]
+  "ipd_patient_department_id" int(10)
+  "amount" double
+  "date" date
+  "payment_mode" tinyint(4)
+  "notes" text
+  "transaction_id" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ipd_prescription_items {
+  "id" int(10) [pk]
+  "ipd_prescription_id" int(10)
+  "category_id" int(10)
+  "medicine_id" int(10)
+  "dosage" varchar(191)
+  "dose_interval" int(11)
+  "day" varchar(191)
+  "time" varchar(191)
+  "instruction" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ipd_prescriptions {
+  "id" int(10) [pk]
+  "ipd_patient_department_id" int(10)
+  "header_note" text
+  "footer_note" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table ipd_timelines {
+  "id" int(10) [pk]
+  "ipd_patient_department_id" int(10)
+  "title" varchar(191)
+  "date" date
+  "description" text
+  "visible_to_person" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table issued_items {
+  "id" int(10) [pk]
+  "department_id" bigint(20)
+  "user_id" bigint(20)
+  "issued_by" varchar(191)
+  "issued_date" date
+  "return_date" date
+  "item_category_id" int(10)
+  "item_id" int(10)
+  "quantity" int(11)
+  "description" text
+  "status" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table item_categories {
+  "id" int(10) [pk]
+  "name" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table item_stocks {
+  "id" int(10) [pk]
+  "item_category_id" int(10)
+  "item_id" int(10)
+  "supplier_name" varchar(191)
+  "store_name" varchar(191)
+  "quantity" int(11)
+  "purchase_price" double
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table items {
+  "id" int(10) [pk]
+  "name" varchar(191)
+  "item_category_id" int(10)
+  "unit" varchar(191)
+  "description" text
+  "available_quantity" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table lab_technicians {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table landing_about_us {
+  "id" bigint(20) [pk]
+  "text_main" varchar(20)
+  "card_img_one" varchar(191)
+  "card_img_two" varchar(191)
+  "card_img_three" varchar(191)
+  "main_img_one" varchar(191)
+  "main_img_two" varchar(191)
+  "card_one_text" varchar(20)
+  "card_two_text" varchar(20)
+  "card_three_text" varchar(20)
+  "card_one_text_secondary" varchar(135)
+  "card_two_text_secondary" varchar(135)
+  "card_three_text_secondary" varchar(135)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table live_consultations {
+  "id" bigint(20) [pk]
+  "doctor_id" bigint(20)
+  "patient_id" int(10)
+  "consultation_title" varchar(191)
+  "consultation_date" datetime
+  "host_video" tinyint(1)
+  "participant_video" tinyint(1)
+  "consultation_duration_minutes" varchar(191)
+  "type" varchar(191)
+  "type_number" varchar(191)
+  "created_by" varchar(191)
+  "status" int(11)
+  "description" text
+  "meeting_id" varchar(191)
+  "meta" text
+  "time_zone" varchar(191)
+  "password" varchar(191)
+  "tenant_id" varchar(191)
+  "platform_type" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table live_meetings {
+  "id" bigint(20) [pk]
+  "consultation_title" varchar(191)
+  "consultation_date" datetime
+  "consultation_duration_minutes" varchar(191)
+  "host_video" tinyint(1)
+  "participant_video" tinyint(1)
+  "description" text
+  "created_by" varchar(191)
+  "meta" text
+  "meeting_id" varchar(191)
+  "time_zone" varchar(191)
+  "password" varchar(191)
+  "status" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table live_meetings_candidates {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "live_meeting_id" bigint(20)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table lunch_breaks {
+  "id" bigint(20) [pk]
+  "doctor_id" bigint(20)
+  "break_from" time
+  "break_to" time
+  "every_day" tinyint(1)
+  "date" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table mails {
+  "id" bigint(20) [pk]
+  "to" varchar(191)
+  "subject" varchar(191)
+  "message" text
+  "attachments" varchar(191)
+  "user_id" bigint(20)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table manual_feedback_items {
+  "id" int(10) [pk]
+  "created_at" datetime
+  "updated_at" datetime
+  "created_by_name" varchar(100)
+  "created_by_role" enum('client','developer','manager','other')
+  "request_type" enum('bug_fix','feature_add','content_edit','update','other')
+  "priority" enum('low','normal','high','urgent')
+  "status" enum('requested','prompt_ready','in_progress','done','hold','rejected')
+  "request_title" varchar(500)
+  "request_text" text
+  "progress_note" text
+  "page_url" varchar(1000)
+  "page_title" varchar(500)
+  "page_path" varchar(500)
+  "section_title" varchar(500)
+  "menu_label" varchar(500)
+  "source_location_desc" text
+  "image_path" text
+  "prompt_text" longtext
+  "prompt_generated_at" datetime
+  "handled_by" varchar(100)
+  "handled_at" datetime
+}
+
+Table manual_feedback_logs {
+  "id" int(10) [pk]
+  "feedback_item_id" int(10)
+  "action_type" varchar(50)
+  "old_status" varchar(50)
+  "new_status" varchar(50)
+  "log_text" text
+  "created_at" datetime
+  "created_by" varchar(100)
+}
+
+Table media {
+  "id" bigint(20) [pk]
+  "model_type" varchar(191)
+  "model_id" bigint(20)
+  "collection_name" varchar(191)
+  "name" varchar(191)
+  "file_name" varchar(191)
+  "mime_type" varchar(191)
+  "disk" varchar(191)
+  "size" bigint(20)
+  "manipulations" text
+  "custom_properties" text
+  "responsive_images" text
+  "order_column" int(10)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "conversions_disk" varchar(191)
+  "uuid" char(36)
+  "generated_conversions" text
+}
+
+Table medicine_bills {
+  "id" bigint(20) [pk]
+  "tenant_id" varchar(191)
+  "bill_number" varchar(191)
+  "patient_id" int(10)
+  "doctor_id" int(10)
+  "model_type" varchar(191)
+  "model_id" varchar(191)
+  "discount" double(8,2)
+  "net_amount" double(8,2)
+  "total" double(8,2)
+  "tax_amount" double(8,2)
+  "payment_status" int(11)
+  "payment_type" int(11)
+  "note" varchar(191)
+  "bill_date" datetime
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table medicines {
+  "id" int(10) [pk]
+  "category_id" int(10)
+  "brand_id" int(10)
+  "name" varchar(160)
+  "selling_price" double
+  "buying_price" double
+  "quantity" int(11)
+  "available_quantity" int(11)
+  "salt_composition" varchar(191)
+  "description" text
+  "side_effects" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table member_level_config {
+  "level_no" int(11) [pk]
+  "level_name" varchar(50)
+  "level_posts" int(11)
+  "level_comments" int(11)
+  "level_likes" int(11)
+  "level_desc" varchar(255)
+}
+
+Table member_sync {
+  "id" int(11) [pk]
+  "mb_no" int(11)
+  "mb_id" varchar(20)
+  "hms_user_id" bigint(20)
+  "hms_patient_id" int(10)
+  "sync_status" enum('synced','pending','error','unlinked')
+  "last_synced_at" datetime
+  "error_message" text
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table migrations {
+  "id" int(10) [pk]
+  "migration" varchar(191)
+  "batch" int(11)
+}
+
+Table model_has_permissions {
+  "permission_id" bigint(20) [pk]
+  "model_type" varchar(160)
+  "model_id" bigint(20)
+}
+
+Table model_has_roles {
+  "role_id" bigint(20) [pk]
+  "model_type" varchar(191)
+  "model_id" bigint(20)
+}
+
+Table modules {
+  "id" bigint(20) [pk]
+  "name" varchar(191)
+  "is_active" tinyint(1)
+  "route" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table navigation_menu {
+  "id" int(11) [pk]
+  "icon" varchar(10)
+  "label" varchar(50)
+  "page_url" varchar(255)
+  "icon_type" enum('emoji','image','svg')
+  "icon_image" varchar(500)
+  "icon_image_active" varchar(500)
+  "display_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table navigation_menu_default {
+  "id" int(11) [pk]
+  "icon" varchar(10)
+  "label" varchar(50)
+  "page_url" varchar(255)
+  "icon_type" enum('emoji','image','svg')
+  "icon_image" varchar(500)
+  "icon_image_active" varchar(500)
+  "display_order" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table notice_boards {
+  "id" int(10) [pk]
+  "title" varchar(191)
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table notification_acks {
+  "id" int(11) [pk]
+  "message_id" varchar(100)
+  "device_id" varchar(255)
+  "received_at" datetime
+  "displayed_at" datetime
+  "clicked_at" datetime
+  "created_at" datetime
+}
+
+Table notification_templates {
+  "id" bigint(20) [pk]
+  "type" varchar(50)
+  "title_template" varchar(200)
+  "body_template" text
+  "variables" longtext
+  "is_active" tinyint(4)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table notifications {
+  "id" int(10) [pk]
+  "type" int(11)
+  "notification_for" int(11)
+  "user_id" bigint(20)
+  "title" varchar(191)
+  "text" text
+  "meta" text
+  "read_at" timestamp
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table notifications_backup {
+  "id" int(11)
+  "message_id" varchar(100)
+  "device_id" int(11)
+  "title" varchar(255)
+  "body" text
+  "data" text
+  "status" varchar(50)
+  "error_message" text
+  "created_at" datetime
+  "pushed_at" datetime
+  "sent_at" datetime
+}
+
+Table nurses {
+  "id" int(10) [pk]
+  "user_id" bigint(20)
+  "tenant_id" varchar(191)
+  "qualification" varchar(255)
+  "description" text
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table opd_diagnoses {
+  "id" int(10) [pk]
+  "opd_patient_department_id" int(10)
+  "report_type" varchar(191)
+  "report_date" datetime
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "report_generated" tinyint(1)
+}
+
+Table opd_patient_departments {
+  "id" int(10) [pk]
+  "patient_id" int(10)
+  "opd_number" varchar(191)
+  "height" varchar(191)
+  "weight" varchar(191)
+  "bp" varchar(191)
+  "symptoms" text
+  "notes" text
+  "appointment_date" datetime
+  "case_id" int(10)
+  "is_old_patient" tinyint(1)
+  "doctor_id" bigint(20)
+  "standard_charge" double
+  "payment_mode" tinyint(4)
+  "custom_field" longtext
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table opd_prescription_items {
+  "id" bigint(20) [pk]
+  "opd_prescription_id" bigint(20)
+  "category_id" int(10)
+  "medicine_id" int(10)
+  "dosage" varchar(191)
+  "dose_interval" int(11)
+  "day" varchar(191)
+  "time" varchar(191)
+  "instruction" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table opd_prescriptions {
+  "id" bigint(20) [pk]
+  "opd_patient_department_id" int(10)
+  "header_note" text
+  "footer_note" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table opd_timelines {
+  "id" int(10) [pk]
+  "opd_patient_department_id" int(10)
+  "title" varchar(191)
+  "date" date
+  "description" text
+  "visible_to_person" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table operation_reports {
+  "id" int(10) [pk]
+  "patient_id" int(10)
+  "case_id" varchar(191)
+  "doctor_id" bigint(20)
+  "date" datetime
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table package_services {
+  "id" bigint(20) [pk]
+  "package_id" int(10)
+  "service_id" int(10)
+  "quantity" double
+  "rate" double
+  "amount" double
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table packages {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "description" text
+  "discount" double
+  "total_amount" double
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table password_reset_tokens {
+  "email" varchar(160)
+  "token" longtext
+  "created_at" timestamp
+}
+
+Table pathology_categories {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table pathology_parameter_items {
+  "id" bigint(20) [pk]
+  "pathology_id" int(10)
+  "patient_result" text
+  "parameter_id" int(10)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table pathology_parameters {
+  "id" int(10) [pk]
+  "parameter_name" varchar(191)
+  "reference_range" varchar(191)
+  "unit_id" int(10)
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table pathology_tests {
+  "id" int(10) [pk]
+  "test_name" varchar(160)
+  "short_name" varchar(191)
+  "test_type" varchar(191)
+  "category_id" int(10)
+  "unit" int(11)
+  "subcategory" varchar(191)
+  "method" varchar(191)
+  "report_days" int(11)
+  "charge_category_id" int(10)
+  "standard_charge" double
+  "patient_id" int(10)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table pathology_units {
+  "id" int(10) [pk]
+  "name" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table patient_admissions {
+  "id" int(10) [pk]
+  "patient_admission_id" varchar(191)
+  "patient_id" int(10)
+  "doctor_id" bigint(20)
+  "admission_date" datetime
+  "discharge_date" datetime
+  "package_id" int(10)
+  "insurance_id" int(10)
+  "bed_id" int(10)
+  "policy_no" varchar(191)
+  "agent_name" varchar(191)
+  "guardian_name" varchar(191)
+  "guardian_relation" varchar(191)
+  "guardian_contact" varchar(191)
+  "guardian_address" varchar(191)
+  "status" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table patient_cases {
+  "id" int(10) [pk]
+  "case_id" varchar(191)
+  "patient_id" int(10)
+  "phone" varchar(191)
+  "doctor_id" bigint(20)
+  "date" datetime
+  "fee" double
+  "status" tinyint(1)
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table patient_diagnosis_properties {
+  "id" int(10) [pk]
+  "patient_diagnosis_id" bigint(20)
+  "property_name" varchar(191)
+  "property_value" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table patient_diagnosis_tests {
+  "id" bigint(20) [pk]
+  "patient_id" int(10)
+  "doctor_id" bigint(20)
+  "category_id" bigint(20)
+  "report_number" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table patients {
+  "id" int(10) [pk]
+  "user_id" bigint(20)
+  "tenant_id" varchar(191)
+  "insurance" varchar(255)
+  "allergies" text
+  "conditions_note" text
+  "emergency_contact" varchar(50)
+  "emergency_name" varchar(100)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "custom_field" longtext
+  "template_id" int(10)
+  "patient_unique_id" varchar(191)
+}
+
+Table payment_logs {
+  "id" bigint(20) [pk]
+  "payment_id" bigint(20)
+  "action" varchar(50)
+  "request_data" longtext
+  "response_data" longtext
+  "status" varchar(20)
+  "message" text
+  "ip_address" varchar(45)
+  "user_agent" text
+  "created_at" timestamp
+}
+
+Table payments {
+  "id" int(10) [pk]
+  "payment_date" date
+  "account_id" int(10)
+  "pay_to" varchar(191)
+  "amount" double
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table permissions {
+  "id" bigint(20) [pk]
+  "name" varchar(191)
+  "guard_name" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table personal_access_tokens {
+  "id" bigint(20) [pk]
+  "tokenable_type" varchar(191)
+  "tokenable_id" bigint(20)
+  "name" varchar(191)
+  "token" varchar(64)
+  "abilities" text
+  "last_used_at" timestamp
+  "expires_at" timestamp
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table pharmacists {
+  "id" int(10) [pk]
+  "user_id" bigint(20)
+  "tenant_id" varchar(191)
+  "license_no" varchar(191)
+  "qualification" varchar(255)
+  "description" text
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table postals {
+  "id" bigint(20) [pk]
+  "from_title" varchar(191)
+  "to_title" varchar(191)
+  "reference_no" varchar(191)
+  "date" date
+  "address" text
+  "type" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table prescriptions {
+  "id" int(10) [pk]
+  "patient_id" int(10)
+  "doctor_id" bigint(20)
+  "food_allergies" varchar(191)
+  "tendency_bleed" varchar(191)
+  "heart_disease" varchar(191)
+  "high_blood_pressure" varchar(191)
+  "diabetic" varchar(191)
+  "surgery" varchar(191)
+  "accident" varchar(191)
+  "others" varchar(191)
+  "medical_history" varchar(191)
+  "current_medication" varchar(191)
+  "female_pregnancy" varchar(191)
+  "breast_feeding" varchar(191)
+  "health_insurance" varchar(191)
+  "low_income" varchar(191)
+  "reference" varchar(191)
+  "status" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "plus_rate" varchar(100)
+  "temperature" varchar(100)
+  "problem_description" varchar(100)
+  "test" varchar(100)
+  "advice" varchar(100)
+  "next_visit_qty" varchar(100)
+  "next_visit_time" varchar(100)
+}
+
+Table prescriptions_medicines {
+  "id" bigint(20) [pk]
+  "prescription_id" int(10)
+  "medicine" int(10)
+  "dosage" varchar(191)
+  "day" varchar(191)
+  "time" varchar(191)
+  "dose_interval" int(11)
+  "comment" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table purchase_medicines {
+  "id" bigint(20) [pk]
+  "purchase_no" varchar(191)
+  "tax" double(8,2)
+  "total" double(8,2)
+  "net_amount" double(8,2)
+  "payment_type" int(11)
+  "payment_status" tinyint(1)
+  "discount" double(8,2)
+  "note" varchar(191)
+  "payment_note" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table purchased_medicines {
+  "id" bigint(20) [pk]
+  "purchase_medicines_id" bigint(20)
+  "medicine_id" int(10)
+  "expiry_date" datetime
+  "lot_no" varchar(191)
+  "tax" double(8,2)
+  "quantity" int(11)
+  "amount" double(8,2)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "tenant_id" varchar(191)
+}
+
+Table push_settings {
+  "id" int(11) [pk]
+  "project_name" varchar(100)
+  "android_topic" varchar(100)
+  "ios_topic" varchar(100)
+  "android_field_title" varchar(50)
+  "android_field_message" varchar(50)
+  "android_field_url" varchar(50)
+  "android_field_image" varchar(50)
+  "ios_field_title" varchar(50)
+  "ios_field_message" varchar(50)
+  "ios_field_url" varchar(50)
+  "ios_field_image" varchar(50)
+  "android_project_id" varchar(100)
+  "ios_project_id" varchar(100)
+  "android_bundle_id" varchar(100)
+  "ios_bundle_id" varchar(100)
+  "ios_team_id" varchar(50)
+  "created_at" datetime
+  "updated_at" datetime
+  "server_domain" varchar(255)
+}
+
+Table radiology_categories {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table radiology_tests {
+  "id" int(10) [pk]
+  "test_name" varchar(160)
+  "short_name" varchar(191)
+  "test_type" varchar(191)
+  "category_id" int(10)
+  "subcategory" varchar(191)
+  "report_days" int(11)
+  "charge_category_id" int(10)
+  "standard_charge" double
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "charge_id" int(10)
+}
+
+Table rb_app {
+  "ap_title" varchar(255)
+  "ap_pid" varchar(255)
+  "ap_key" varchar(255)
+  "ap_systems_msg" varchar(20)
+  "ap_btn_is" varchar(20)
+  "ap_btn_url" varchar(255)
+  "ap_datetime" datetime
+}
+
+Table rb_app_token {
+  "tk_id" int(11) [pk]
+  "tk_token" varchar(255)
+  "tk_and" varchar(255)
+  "mb_id" varchar(255)
+  "tk_datetime" datetime
+}
+
+Table rb_attend_config {
+  "cf_id" int(10) [pk]
+  "week_streak_point" int(11)
+  "month_streak_point" int(11)
+  "year_streak_point" int(11)
+  "bonus_rank1" int(11)
+  "bonus_rank2" int(11)
+  "bonus_rank3" int(11)
+  "week_streak_len" int(11)
+  "month_streak_len" int(11)
+  "year_streak_len" int(11)
+  "bonus_rank4" int(11)
+  "bonus_rank5" int(11)
+  "base_attend_point" int(11)
+}
+
+Table rb_attend_streak {
+  "mb_id" varchar(50) [pk]
+  "last_ymd" char(8)
+  "cont_days" int(11)
+}
+
+Table rb_attendance {
+  "at_id" bigint(20) [pk]
+  "mb_id" varchar(50)
+  "ymd" char(8)
+  "at_datetime" datetime
+  "at_ip" varchar(45)
+  "at_content" text
+  "at_rank" tinyint(4)
+}
+
+Table rb_banner {
+  "bn_id" int(11) [pk]
+  "bn_alt" varchar(255)
+  "bn_url" varchar(255)
+  "bn_device" varchar(10)
+  "bn_position" varchar(255)
+  "bn_border" tinyint(4)
+  "bn_radius" tinyint(4)
+  "bn_ad_ico" tinyint(4)
+  "bn_new_win" tinyint(4)
+  "bn_begin_time" datetime
+  "bn_end_time" datetime
+  "bn_time" datetime
+  "bn_hit" int(11)
+  "bn_order" int(11)
+}
+
+Table rb_builder {
+  "bu_logo_pc" varchar(255)
+  "bu_logo_pc_w" varchar(255)
+  "bu_logo_mo" varchar(255)
+  "bu_logo_mo_w" varchar(255)
+  "bu_load" int(11)
+  "bu_systemmsg_use" int(11)
+  "bu_1" varchar(255)
+  "bu_2" varchar(255)
+  "bu_3" varchar(255)
+  "bu_4" varchar(255)
+  "bu_5" varchar(255)
+  "bu_6" varchar(255)
+  "bu_7" varchar(255)
+  "bu_8" varchar(255)
+  "bu_9" varchar(255)
+  "bu_10" varchar(255)
+  "bu_11" varchar(255)
+  "bu_12" varchar(255)
+  "bu_13" varchar(255)
+  "bu_14" varchar(255)
+  "bu_15" varchar(255)
+  "bu_16" varchar(255)
+  "bu_17" varchar(255)
+  "bu_18" varchar(255)
+  "bu_19" varchar(255)
+  "bu_20" varchar(255)
+  "bu_sns1" varchar(255)
+  "bu_sns2" varchar(255)
+  "bu_sns3" varchar(255)
+  "bu_sns4" varchar(255)
+  "bu_sns5" varchar(255)
+  "bu_sns6" varchar(255)
+  "bu_sns7" varchar(255)
+  "bu_sns8" varchar(255)
+  "bu_sns9" varchar(255)
+  "bu_sns10" varchar(255)
+  "bu_viewport" varchar(10)
+  "bu_datetime" datetime
+}
+
+Table rb_chat {
+  "me_id" int(11) [pk]
+  "me_recv_mb_id" varchar(20)
+  "me_send_mb_id" varchar(20)
+  "me_send_datetime" datetime
+  "me_read_datetime" datetime
+  "me_memo" text
+  "me_send_id" int(11)
+  "me_type" enum('send','recv')
+  "me_send_ip" varchar(100)
+}
+
+Table rb_chat_set {
+  "ch_days_old" int(11)
+  "ch_max_file_size" int(11)
+  "ch_extension" varchar(255)
+  "ch_position" varchar(20)
+  "ch_position_x" varchar(20)
+  "ch_position_y" varchar(20)
+  "ch_ref_1" int(11)
+  "ch_ref_2" int(11)
+  "ch_ref_3" int(11)
+  "ch_ref_4" int(11)
+  "ch_push" int(11)
+  "ch_level" int(11)
+  "ch_use" int(11)
+  "ch_datetime" datetime
+}
+
+Table rb_config {
+  "co_id" int(11) [pk]
+  "co_color" varchar(20)
+  "co_dark" varchar(20)
+  "co_layout" varchar(20)
+  "co_layout_hd" varchar(20)
+  "co_layout_ft" varchar(20)
+  "co_sub_width" varchar(20)
+  "co_main_width" varchar(20)
+  "co_tb_width" varchar(20)
+  "co_header" varchar(20)
+  "co_footer" varchar(20)
+  "co_font" varchar(20)
+  "co_datetime" datetime
+  "co_ip" varchar(100)
+  "co_layout_shop" varchar(20)
+  "co_layout_hd_shop" varchar(20)
+  "co_layout_ft_shop" varchar(20)
+  "co_main_padding_top" varchar(20)
+  "co_main_padding_top_shop" varchar(20)
+  "co_gap_pc" varchar(20)
+  "co_inner_padding_pc" varchar(20)
+  "co_gap_mo" varchar(20)
+  "co_inner_padding_mo" varchar(20)
+  "co_side_skin" varchar(20)
+  "co_side_skin_gap" int(11)
+  "co_side_skin_shop" varchar(20)
+  "co_side_skin_shop_gap" int(11)
+  "co_sidemenu" varchar(20)
+  "co_sidemenu_shop" varchar(20)
+  "co_sidemenu_width" int(11)
+  "co_sidemenu_width_shop" int(11)
+  "co_sidemenu_padding" int(11)
+  "co_sidemenu_hide" int(11)
+  "co_sidemenu_padding_shop" int(11)
+  "co_sidemenu_hide_shop" int(11)
+  "co_menu_shop" int(11)
+  "co_padding_top" varchar(10)
+  "co_padding_top_sub" varchar(10)
+  "co_padding_top_shop" varchar(10)
+  "co_padding_top_sub_shop" varchar(10)
+  "co_padding_btm" varchar(10)
+  "co_padding_btm_sub" varchar(10)
+  "co_padding_btm_shop" varchar(10)
+  "co_padding_btm_sub_shop" varchar(10)
+  "co_main_bg" varchar(20)
+  "co_sub_bg" varchar(20)
+}
+
+Table rb_key {
+  "key_no" varchar(255)
+  "key_datetime" datetime
+}
+
+Table rb_module {
+  "md_id" int(11) [pk]
+  "md_layout" varchar(255)
+  "md_layout_name" varchar(255)
+  "md_theme" varchar(255)
+  "md_title" varchar(255)
+  "md_type" varchar(255)
+  "md_bo_table" varchar(255)
+  "md_sca" varchar(255)
+  "md_widget" varchar(255)
+  "md_poll" varchar(255)
+  "md_poll_id" varchar(20)
+  "md_banner" varchar(255)
+  "md_banner_id" varchar(20)
+  "md_banner_skin" varchar(255)
+  "md_module" varchar(255)
+  "md_skin" varchar(255)
+  "md_cnt" int(11)
+  "md_auto_time" int(11)
+  "md_gap" int(11)
+  "md_gap_mo" int(11)
+  "md_col" int(11)
+  "md_row" int(11)
+  "md_col_mo" int(11)
+  "md_row_mo" int(11)
+  "md_width" varchar(20)
+  "md_height" varchar(20)
+  "md_subject_is" int(11)
+  "md_thumb_is" int(11)
+  "md_nick_is" int(11)
+  "md_date_is" int(11)
+  "md_content_is" int(11)
+  "md_icon_is" int(11)
+  "md_comment_is" int(11)
+  "md_ca_is" int(11)
+  "md_swiper_is" int(11)
+  "md_auto_is" int(11)
+  "md_order" varchar(255)
+  "md_datetime" datetime
+  "md_ip" varchar(100)
+  "md_order_id" int(11)
+  "md_banner_bg" varchar(255)
+  "md_border" varchar(20)
+  "md_radius" varchar(20)
+  "md_padding" varchar(20)
+  "md_padding_mo" varchar(20)
+  "md_margin_top_mo" varchar(20)
+  "md_margin_top_pc" varchar(20)
+  "md_margin_btm_pc" varchar(20)
+  "md_margin_btm_mo" varchar(20)
+  "md_size" varchar(20)
+  "md_show" varchar(20)
+  "md_tab_list" text
+  "md_tab_skin" varchar(255)
+  "md_title_color" varchar(20)
+  "md_title_size" int(11)
+  "md_title_font" varchar(20)
+  "md_title_hide" int(11)
+  "md_order_latest" varchar(255)
+  "md_notice" int(11)
+  "md_level" varchar(20)
+  "md_level_is" varchar(10)
+  "md_item_tab_list" text
+  "md_item_tab_skin" varchar(255)
+  "md_order_banner" varchar(255)
+  "md_soldout_hidden" int(11)
+  "md_soldout_asc" int(11)
+  "md_arrow_type" int(11)
+  "md_wide_is" int(11)
+  "md_sec_key" varchar(40)
+  "md_sec_uid" varchar(80)
+  "md_border_width" int(11)
+  "md_border_color" varchar(20)
+  "md_box_shadow" varchar(20)
+  "md_box_shadow_w" int(11)
+  "md_box_shadow_c" varchar(20)
+  "md_padding_lr_pc" varchar(20)
+  "md_padding_lr_mo" varchar(20)
+  "md_padding_tb_pc" varchar(20)
+  "md_padding_tb_mo" varchar(20)
+  "md_1" varchar(255)
+  "md_2" varchar(255)
+  "md_3" varchar(255)
+  "md_4" varchar(255)
+  "md_5" varchar(255)
+  "md_6" varchar(255)
+  "md_7" varchar(255)
+  "md_8" varchar(255)
+  "md_9" varchar(255)
+  "md_10" varchar(255)
+}
+
+Table rb_module_lib {
+  "lib_id" int(11) [pk]
+  "md_theme" varchar(100)
+  "md_layout" varchar(255)
+  "title" varchar(255)
+  "md_type" varchar(50)
+  "md_show" varchar(20)
+  "width_text" varchar(50)
+  "payload_json" mediumtext
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table rb_module_shop {
+  "md_id" int(11) [pk]
+  "md_layout" varchar(255)
+  "md_layout_name" varchar(255)
+  "md_theme" varchar(255)
+  "md_title" varchar(255)
+  "md_type" varchar(255)
+  "md_bo_table" varchar(255)
+  "md_sca" varchar(255)
+  "md_widget" varchar(255)
+  "md_poll" varchar(255)
+  "md_poll_id" varchar(20)
+  "md_banner" varchar(255)
+  "md_module" varchar(255)
+  "md_skin" varchar(255)
+  "md_cnt" int(11)
+  "md_auto_time" int(11)
+  "md_gap" int(11)
+  "md_gap_mo" int(11)
+  "md_col" int(11)
+  "md_row" int(11)
+  "md_col_mo" int(11)
+  "md_row_mo" int(11)
+  "md_width" varchar(20)
+  "md_height" varchar(20)
+  "md_subject_is" int(11)
+  "md_thumb_is" int(11)
+  "md_nick_is" int(11)
+  "md_date_is" int(11)
+  "md_content_is" int(11)
+  "md_icon_is" int(11)
+  "md_comment_is" int(11)
+  "md_ca_is" int(11)
+  "md_swiper_is" int(11)
+  "md_auto_is" int(11)
+  "md_order" varchar(255)
+  "md_datetime" datetime
+  "md_ip" varchar(100)
+  "md_order_id" int(11)
+  "md_banner_id" varchar(20)
+  "md_banner_skin" varchar(255)
+  "md_banner_bg" varchar(255)
+  "md_border" varchar(20)
+  "md_radius" varchar(20)
+  "md_padding" varchar(20)
+  "md_title_color" varchar(20)
+  "md_title_size" int(11)
+  "md_title_font" varchar(20)
+  "md_title_hide" int(11)
+  "md_size" varchar(20)
+  "md_show" varchar(20)
+  "md_order_latest" varchar(255)
+  "md_padding_mo" varchar(20)
+  "md_margin_top_mo" varchar(20)
+  "md_margin_top_pc" varchar(20)
+  "md_margin_btm_pc" varchar(20)
+  "md_margin_btm_mo" varchar(20)
+  "md_tab_list" text
+  "md_tab_skin" varchar(255)
+  "md_notice" int(11)
+  "md_level" varchar(20)
+  "md_level_is" varchar(10)
+  "md_order_banner" varchar(255)
+  "md_item_tab_list" text
+  "md_item_tab_skin" varchar(255)
+  "md_soldout_hidden" int(11)
+  "md_soldout_asc" int(11)
+  "md_arrow_type" int(11)
+  "md_wide_is" int(11)
+  "md_sec_key" varchar(40)
+  "md_sec_uid" varchar(80)
+  "md_border_width" int(11)
+  "md_border_color" varchar(20)
+  "md_box_shadow" varchar(20)
+  "md_box_shadow_w" int(11)
+  "md_box_shadow_c" varchar(20)
+  "md_padding_lr_pc" varchar(20)
+  "md_padding_lr_mo" varchar(20)
+  "md_padding_tb_pc" varchar(20)
+  "md_padding_tb_mo" varchar(20)
+  "md_1" varchar(255)
+  "md_2" varchar(255)
+  "md_3" varchar(255)
+  "md_4" varchar(255)
+  "md_5" varchar(255)
+  "md_6" varchar(255)
+  "md_7" varchar(255)
+  "md_8" varchar(255)
+  "md_9" varchar(255)
+  "md_10" varchar(255)
+}
+
+Table rb_pa_point {
+  "po_id" int(11) [pk]
+  "mb_id" varchar(20)
+  "po_datetime" datetime
+  "po_content" varchar(255)
+  "po_point" int(11)
+  "po_use_point" int(11)
+  "po_expired" tinyint(4)
+  "po_expire_date" date
+  "po_mb_point" int(11)
+  "po_rel_table" varchar(20)
+  "po_rel_id" varchar(20)
+  "po_rel_action" varchar(100)
+}
+
+Table rb_partner {
+  "pa_is" int(11)
+  "pa_use" int(11)
+  "pa_ssr" int(11)
+  "pa_ssr2" int(11)
+  "pa_day" int(11)
+  "pa_add_use" int(11)
+  "pa_item_use" int(11)
+  "pa_level" int(11)
+  "pa_point_use" int(11)
+  "pa_datetime" datetime
+}
+
+Table rb_point_c {
+  "po_id" int(11) [pk]
+  "mb_id" varchar(20)
+  "po_datetime" datetime
+  "po_content" varchar(255)
+  "po_point" int(11)
+  "po_use_point" int(11)
+  "po_expired" tinyint(4)
+  "po_expire_date" date
+  "po_mb_point" int(11)
+  "po_rel_table" varchar(20)
+  "po_rel_id" varchar(20)
+  "po_rel_action" varchar(100)
+}
+
+Table rb_point_c_acc {
+  "p_id" int(11) [pk]
+  "p_mb_id" varchar(20)
+  "p_time" datetime
+  "p_y_time" datetime
+  "p_point" int(11)
+  "p_ssr" int(11)
+  "p_price" int(11)
+  "p_bank" varchar(100)
+  "p_agree" varchar(100)
+  "p_status" varchar(100)
+  "p_use" int(11)
+}
+
+Table rb_point_c_add {
+  "p_id" int(11) [pk]
+  "p_mb_id" varchar(20)
+  "p_time" datetime
+  "p_y_time" datetime
+  "p_point" int(11)
+  "p_pay" varchar(100)
+  "p_bk_name" varchar(100)
+  "p_agree" varchar(100)
+  "p_price" int(11)
+  "p_status" varchar(100)
+  "p_use" int(11)
+}
+
+Table rb_point_c_set {
+  "pnt_name" varchar(255)
+  "pnt_name_st" varchar(255)
+  "pnt_acc_use" int(11)
+  "pnt_add_use" int(11)
+  "pnt_point_acc_min" int(11)
+  "pnt_point_acc_max" int(11)
+  "pnt_point_add_min" int(11)
+  "pnt_point_add_max" int(11)
+  "pnt_vat" int(11)
+  "pnt_bk" varchar(255)
+  "pnt_pay" varchar(255)
+  "pnt_agree" longtext
+  "pnt_agree2" longtext
+  "pnt_point_acc_ssr_p" int(11)
+  "pnt_point_acc_ssr_w" int(11)
+}
+
+Table rb_popup {
+  "po_id" int(11) [pk]
+  "po_division" varchar(20)
+  "po_device" varchar(20)
+  "po_title" varchar(255)
+  "po_start" datetime
+  "po_end" datetime
+  "po_time" int(11)
+  "po_auto" int(11)
+  "po_p1_title" varchar(255)
+  "po_p1_content" text
+  "po_p1_content_html" tinyint(4)
+  "po_p2_title" varchar(255)
+  "po_p2_content" text
+  "po_p2_content_html" tinyint(4)
+  "po_p3_title" varchar(255)
+  "po_p3_content" text
+  "po_p3_content_html" tinyint(4)
+  "po_p4_title" varchar(255)
+  "po_p4_content" text
+  "po_p4_content_html" tinyint(4)
+  "po_p5_title" varchar(255)
+  "po_p5_content" text
+  "po_p5_content_html" tinyint(4)
+  "po_datetime" datetime
+  "mb_id" varchar(255)
+}
+
+Table rb_pwa_app_installs {
+  "id" bigint(20) [pk]
+  "device_uid" varchar(64)
+  "mb_id" varchar(50)
+  "platform" varchar(32)
+  "os" varchar(64)
+  "browser" varchar(64)
+  "last_seen_mode" enum('standalone','browser','twa','unknown')
+  "install_source" varchar(64)
+  "first_installed_at" datetime
+  "last_opened_at" datetime
+  "ip" varchar(45)
+  "ua" varchar(255)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table rb_pwa_config {
+  "id" tinyint(3) [pk]
+  "use_yn" tinyint(1)
+  "push_yn" tinyint(1)
+  "level_min" tinyint(3)
+  "name" varchar(80)
+  "short_name" varchar(40)
+  "description" text
+  "start_url" varchar(255)
+  "scope" varchar(255)
+  "theme_color" varchar(20)
+  "bg_color" varchar(20)
+  "icon_192" varchar(255)
+  "icon_512" varchar(255)
+  "install_img" varchar(255)
+  "install_img_m" varchar(255)
+  "updated_at" datetime
+  "words1" varchar(255)
+  "words2" varchar(255)
+  "words3" varchar(255)
+  "words4" varchar(255)
+  "pop1_use" tinyint(1)
+  "pop2_use" tinyint(1)
+}
+
+Table rb_pwa_push_log {
+  "id" bigint(20) [pk]
+  "kind" enum('test','manual','post')
+  "target" enum('all','member')
+  "target_memo" text
+  "title" varchar(120)
+  "body" varchar(500)
+  "url" varchar(255)
+  "image" varchar(255)
+  "total_cnt" int(10)
+  "succ_cnt" int(10)
+  "fail_cnt" int(10)
+  "reg_mb_id" varchar(50)
+  "reg_dt" datetime
+}
+
+Table rb_pwa_push_queue {
+  "id" bigint(20) [pk]
+  "log_id" bigint(20)
+  "endpoint" text
+  "p256dh" varchar(255)
+  "auth" varchar(255)
+  "status" enum('new','sent','fail')
+  "result" varchar(255)
+  "updated_at" datetime
+}
+
+Table rb_pwa_subscriptions {
+  "id" bigint(20) [pk]
+  "device_uid" varchar(64)
+  "endpoint" text
+  "p256dh" varchar(255)
+  "auth" varchar(255)
+  "mb_id" varchar(50)
+  "ip" varchar(45)
+  "ua" varchar(255)
+  "installed" tinyint(1)
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table rb_pwa_vapid {
+  "domain" varchar(191) [pk]
+  "pubkey" text
+  "prikey" text
+  "reg_dt" datetime
+}
+
+Table rb_report_config {
+  "id" int(11) [pk]
+  "use_report" tinyint(1)
+  "hide_limit_post" int(11)
+  "hide_limit_comment" int(11)
+  "report_reasons" text
+  "allow_guest" tinyint(1)
+  "send_admin_mail" tinyint(1)
+  "admin_email" varchar(100)
+}
+
+Table rb_section {
+  "sec_id" int(11) [pk]
+  "sec_layout" varchar(255)
+  "sec_layout_name" varchar(255)
+  "sec_theme" varchar(255)
+  "sec_title" varchar(255)
+  "sec_title_color" varchar(20)
+  "sec_title_size" int(11)
+  "sec_title_font" varchar(20)
+  "sec_title_hide" int(11)
+  "sec_title_align" varchar(20)
+  "sec_sub_title" text
+  "sec_sub_title_color" varchar(20)
+  "sec_sub_title_size" int(11)
+  "sec_sub_title_font" varchar(20)
+  "sec_sub_title_hide" int(11)
+  "sec_sub_title_align" varchar(20)
+  "sec_width" varchar(20)
+  "sec_con_width" varchar(20)
+  "sec_padding_pc" int(11)
+  "sec_padding_mo" int(11)
+  "sec_margin_top_pc" int(11)
+  "sec_margin_top_mo" int(11)
+  "sec_margin_btm_pc" int(11)
+  "sec_margin_btm_mo" int(11)
+  "sec_bg" varchar(20)
+  "sec_ip" varchar(100)
+  "sec_order_id" int(11)
+  "sec_datetime" datetime
+  "sec_key" varchar(40)
+  "sec_uid" varchar(80)
+  "sec_padding" varchar(20)
+  "sec_padding_lr_pc" varchar(20)
+  "sec_padding_lr_mo" varchar(20)
+  "sec_padding_tb_pc" varchar(20)
+  "sec_padding_tb_mo" varchar(20)
+  "sec_1" varchar(255)
+  "sec_2" varchar(255)
+  "sec_3" varchar(255)
+  "sec_4" varchar(255)
+  "sec_5" varchar(255)
+  "sec_6" varchar(255)
+  "sec_7" varchar(255)
+  "sec_8" varchar(255)
+  "sec_9" varchar(255)
+  "sec_10" varchar(255)
+}
+
+Table rb_section_shop {
+  "sec_id" int(11) [pk]
+  "sec_layout" varchar(255)
+  "sec_layout_name" varchar(255)
+  "sec_theme" varchar(255)
+  "sec_title" varchar(255)
+  "sec_title_color" varchar(20)
+  "sec_title_size" int(11)
+  "sec_title_font" varchar(20)
+  "sec_title_hide" int(11)
+  "sec_title_align" varchar(20)
+  "sec_sub_title" text
+  "sec_sub_title_color" varchar(20)
+  "sec_sub_title_size" int(11)
+  "sec_sub_title_font" varchar(20)
+  "sec_sub_title_hide" int(11)
+  "sec_sub_title_align" varchar(20)
+  "sec_width" varchar(20)
+  "sec_con_width" varchar(20)
+  "sec_padding_pc" int(11)
+  "sec_padding_mo" int(11)
+  "sec_margin_top_pc" int(11)
+  "sec_margin_top_mo" int(11)
+  "sec_margin_btm_pc" int(11)
+  "sec_margin_btm_mo" int(11)
+  "sec_bg" varchar(20)
+  "sec_ip" varchar(100)
+  "sec_order_id" int(11)
+  "sec_datetime" datetime
+  "sec_key" varchar(40)
+  "sec_uid" varchar(80)
+  "sec_padding" varchar(20)
+  "sec_padding_lr_pc" varchar(20)
+  "sec_padding_lr_mo" varchar(20)
+  "sec_padding_tb_pc" varchar(20)
+  "sec_padding_tb_mo" varchar(20)
+  "sec_1" varchar(255)
+  "sec_2" varchar(255)
+  "sec_3" varchar(255)
+  "sec_4" varchar(255)
+  "sec_5" varchar(255)
+  "sec_6" varchar(255)
+  "sec_7" varchar(255)
+  "sec_8" varchar(255)
+  "sec_9" varchar(255)
+  "sec_10" varchar(255)
+}
+
+Table rb_seo {
+  "se_title" varchar(255)
+  "se_description" mediumtext
+  "se_keywords" mediumtext
+  "se_favicon" varchar(255)
+  "se_google_meta" varchar(255)
+  "se_naver_meta" varchar(255)
+  "se_robots" mediumtext
+  "se_og_image" varchar(255)
+  "se_og_site_name" varchar(255)
+  "se_og_title" varchar(255)
+  "se_og_description" varchar(255)
+  "se_datetime" datetime
+}
+
+Table rb_sidebar_hide {
+  "s_id" int(10) [pk]
+  "s_code" varchar(255)
+}
+
+Table rb_subscribe {
+  "sb_id" int(11) [pk]
+  "sb_mb_id" varchar(20)
+  "sb_fw_id" varchar(20)
+  "sb_push" varchar(20)
+  "sb_datetime" datetime
+}
+
+Table rb_subscribe_set {
+  "sb_use" int(11)
+  "sb_datetime" datetime
+}
+
+Table rb_topvisual {
+  "v_id" int(11) [pk]
+  "v_code" varchar(255)
+  "v_name" varchar(255)
+  "v_url" varchar(255)
+  "v_device" varchar(10)
+  "v_level" tinyint(4)
+  "v_use" tinyint(4)
+  "v_time" datetime
+  "co_topvisual_height" int(11)
+  "co_topvisual_width" int(11)
+  "co_topvisual_bl" int(11)
+  "co_topvisual_m_color" varchar(20)
+  "co_topvisual_m_size" int(11)
+  "co_topvisual_m_font" varchar(20)
+  "co_topvisual_m_align" varchar(20)
+  "co_topvisual_s_color" varchar(20)
+  "co_topvisual_s_size" int(11)
+  "co_topvisual_s_font" varchar(20)
+  "co_topvisual_s_align" varchar(20)
+  "co_topvisual_bg_color" varchar(20)
+  "co_topvisual_main" int(11)
+  "co_topvisual_border" varchar(20)
+  "co_topvisual_radius" int(11)
+  "co_topvisual_all" int(11)
+  "co_topvisual_style_all" int(11)
+  "co_topvisual_mt" int(11)
+}
+
+Table receptionists {
+  "id" int(10) [pk]
+  "user_id" bigint(20)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table review_ai_logs {
+  "id" int(11) [pk]
+  "review_id" int(11)
+  "score" int(11)
+  "passed" tinyint(1)
+  "messages" text
+  "checked_at" datetime
+}
+
+Table review_comments {
+  "id" int(11) [pk]
+  "review_id" int(11)
+  "parent_id" int(11)
+  "user_id" varchar(100)
+  "user_name" varchar(50)
+  "content" text
+  "like_count" int(11)
+  "is_active" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table review_images {
+  "id" int(11) [pk]
+  "review_id" int(11)
+  "image_url" varchar(500)
+  "thumbnail_url" varchar(500)
+  "image_order" int(11)
+  "file_size" int(11)
+  "original_name" varchar(255)
+  "created_at" timestamp
+  "photo_category" varchar(20)
+}
+
+Table review_likes {
+  "id" int(11) [pk]
+  "review_id" int(11)
+  "user_id" varchar(100)
+  "created_at" timestamp
+}
+
+Table review_reports {
+  "id" int(11) [pk]
+  "review_id" int(11)
+  "reporter_id" varchar(100)
+  "reason" enum('spam','abuse','fake','inappropriate','other')
+  "description" text
+  "status" enum('pending','reviewed','dismissed')
+  "created_at" timestamp
+  "processed_at" timestamp
+}
+
+Table reviewer_stats {
+  "id" int(11) [pk]
+  "user_name" varchar(100)
+  "user_id" varchar(100)
+  "total_reviews" int(11)
+  "avg_rating" decimal(3,2)
+  "avg_content_length" int(11)
+  "avg_photo_count" decimal(3,1)
+  "avg_ai_score" decimal(5,2)
+  "trust_score" int(11)
+  "badge" varchar(20)
+  "last_review_at" datetime
+  "created_at" datetime
+  "updated_at" datetime
+}
+
+Table role_has_permissions {
+  "permission_id" bigint(20) [pk]
+  "role_id" bigint(20)
+}
+
+Table sale_medicines {
+  "id" bigint(20) [pk]
+  "medicine_bill_id" int(10)
+  "medicine_id" int(10)
+  "sale_quantity" int(11)
+  "sale_price" double(8,2)
+  "tax" double(8,2)
+  "expiry_date" date
+  "amount" double(8,2)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table schedule_days {
+  "id" bigint(20) [pk]
+  "doctor_id" bigint(20)
+  "schedule_id" int(10)
+  "available_on" varchar(191)
+  "available_from" time
+  "available_to" time
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table schedules {
+  "id" int(10) [pk]
+  "doctor_id" bigint(20)
+  "per_patient_time" time
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table section_fives {
+  "id" bigint(20) [pk]
+  "main_img_url" varchar(191)
+  "card_img_url_one" varchar(191)
+  "card_img_url_two" varchar(191)
+  "card_img_url_three" varchar(191)
+  "card_img_url_four" varchar(191)
+  "card_one_number" int(11)
+  "card_two_number" int(11)
+  "card_three_number" int(11)
+  "card_four_number" int(11)
+  "card_one_text" varchar(15)
+  "card_two_text" varchar(15)
+  "card_three_text" varchar(15)
+  "card_four_text" varchar(15)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table section_fours {
+  "id" bigint(20) [pk]
+  "text_main" varchar(30)
+  "text_secondary" varchar(160)
+  "img_url_one" varchar(191)
+  "img_url_two" varchar(191)
+  "img_url_three" varchar(191)
+  "img_url_four" varchar(191)
+  "img_url_five" varchar(191)
+  "img_url_six" varchar(191)
+  "card_text_one" varchar(20)
+  "card_text_two" varchar(20)
+  "card_text_three" varchar(20)
+  "card_text_four" varchar(20)
+  "card_text_five" varchar(20)
+  "card_text_six" varchar(20)
+  "card_text_one_secondary" varchar(100)
+  "card_text_two_secondary" varchar(100)
+  "card_text_three_secondary" varchar(100)
+  "card_text_four_secondary" varchar(100)
+  "card_text_five_secondary" varchar(100)
+  "card_text_six_secondary" varchar(100)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table section_ones {
+  "id" bigint(20) [pk]
+  "text_main" varchar(45)
+  "text_secondary" varchar(135)
+  "img_url" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table section_threes {
+  "id" bigint(20) [pk]
+  "text_main" varchar(30)
+  "text_secondary" varchar(160)
+  "img_url" varchar(191)
+  "text_one" varchar(50)
+  "text_two" varchar(50)
+  "text_three" varchar(50)
+  "text_four" varchar(50)
+  "text_five" varchar(50)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table section_twos {
+  "id" bigint(20) [pk]
+  "text_main" varchar(30)
+  "text_secondary" varchar(160)
+  "card_one_image" varchar(191)
+  "card_one_text" varchar(20)
+  "card_one_text_secondary" varchar(90)
+  "card_two_image" varchar(191)
+  "card_two_text" varchar(20)
+  "card_two_text_secondary" varchar(90)
+  "card_third_image" varchar(191)
+  "card_third_text" varchar(20)
+  "card_third_text_secondary" varchar(90)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table service_sliders {
+  "id" bigint(20) [pk]
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table services {
+  "id" int(10) [pk]
+  "name" varchar(160)
+  "description" text
+  "quantity" int(11)
+  "rate" double
+  "status" int(11)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table settings {
+  "id" int(10) [pk]
+  "key" varchar(191)
+  "value" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table smart_patient_cards {
+  "id" int(10) [pk]
+  "template_name" varchar(191)
+  "header_color" varchar(191)
+  "show_email" tinyint(1)
+  "show_phone" tinyint(1)
+  "show_dob" tinyint(1)
+  "show_blood_group" tinyint(1)
+  "show_address" tinyint(1)
+  "show_patient_unique_id" tinyint(1)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table sms {
+  "id" bigint(20) [pk]
+  "send_to" bigint(20)
+  "region_code" varchar(191)
+  "phone_number" varchar(191)
+  "message" text
+  "send_by" bigint(20)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table sms5_book {
+  "bk_no" int(11) [pk]
+  "bg_no" int(11)
+  "mb_no" int(11)
+  "mb_id" varchar(20)
+  "bk_name" varchar(255)
+  "bk_hp" varchar(255)
+  "bk_receipt" tinyint(4)
+  "bk_datetime" datetime
+  "bk_memo" text
+}
+
+Table sms5_book_group {
+  "bg_no" int(11) [pk]
+  "bg_name" varchar(255)
+  "bg_count" int(11)
+  "bg_member" int(11)
+  "bg_nomember" int(11)
+  "bg_receipt" int(11)
+  "bg_reject" int(11)
+}
+
+Table sms5_config {
+  "cf_phone" varchar(255)
+  "cf_datetime" datetime
+}
+
+Table sms5_form {
+  "fo_no" int(11) [pk]
+  "fg_no" tinyint(4)
+  "fg_member" char(1)
+  "fo_name" varchar(255)
+  "fo_content" text
+  "fo_datetime" datetime
+}
+
+Table sms5_form_group {
+  "fg_no" int(11) [pk]
+  "fg_name" varchar(255)
+  "fg_count" int(11)
+  "fg_member" tinyint(4)
+}
+
+Table sms5_history {
+  "hs_no" int(11) [pk]
+  "wr_no" int(11)
+  "wr_renum" int(11)
+  "bg_no" int(11)
+  "mb_no" int(11)
+  "mb_id" varchar(20)
+  "bk_no" int(11)
+  "hs_name" varchar(30)
+  "hs_hp" varchar(255)
+  "hs_datetime" datetime
+  "hs_flag" tinyint(4)
+  "hs_code" varchar(255)
+  "hs_memo" varchar(255)
+  "hs_log" varchar(255)
+}
+
+Table sms5_write {
+  "wr_no" int(11)
+  "wr_renum" int(11)
+  "wr_reply" varchar(255)
+  "wr_message" text
+  "wr_booking" datetime
+  "wr_total" int(11)
+  "wr_re_total" int(11)
+  "wr_success" int(11)
+  "wr_failure" int(11)
+  "wr_datetime" datetime
+  "wr_memo" text
+}
+
+Table sso_tokens {
+  "id" int(11) [pk]
+  "token" varchar(64)
+  "user_type" enum('gnuboard','hms','admin')
+  "g5_mb_id" varchar(20)
+  "hms_user_id" bigint(20)
+  "ip_address" varchar(45)
+  "user_agent" varchar(255)
+  "expires_at" datetime
+  "created_at" datetime
+}
+
+Table subscribes {
+  "id" bigint(20) [pk]
+  "email" varchar(191)
+  "subscribe" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table subscription_plans {
+  "id" bigint(20) [pk]
+  "currency" varchar(191)
+  "name" varchar(191)
+  "price" double
+  "frequency" int(11)
+  "is_default" int(11)
+  "trial_days" int(11)
+  "sms_limit" bigint(20)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table subscriptions {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "subscription_plan_id" bigint(20)
+  "transaction_id" bigint(20)
+  "plan_amount" double(8,2)
+  "plan_frequency" int(11)
+  "starts_at" datetime
+  "ends_at" datetime
+  "trial_ends_at" datetime
+  "sms_limit" bigint(20)
+  "status" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table super_admin_currency_settings {
+  "id" bigint(20) [pk]
+  "currency_name" varchar(191)
+  "currency_code" varchar(191)
+  "currency_icon" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "deleted_at" timestamp
+}
+
+Table super_admin_enquiries {
+  "id" bigint(20) [pk]
+  "first_name" varchar(191)
+  "last_name" varchar(191)
+  "email" varchar(191)
+  "phone" varchar(191)
+  "message" text
+  "status" tinyint(1)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table super_admin_settings {
+  "id" int(10) [pk]
+  "key" varchar(191)
+  "value" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table tenants {
+  "id" varchar(191) [pk]
+  "tenant_username" varchar(191)
+  "hospital_name" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "data" text
+}
+
+Table testimonials {
+  "id" bigint(20) [pk]
+  "name" varchar(191)
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table transactions {
+  "id" bigint(20) [pk]
+  "transaction_id" varchar(160)
+  "payment_type" int(11)
+  "amount" double(8,2)
+  "user_id" bigint(20)
+  "status" varchar(160)
+  "is_manual_payment" bigint(20)
+  "meta" longtext
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "notes" text
+}
+
+Table used_medicines {
+  "id" bigint(20) [pk]
+  "stock_used" int(11)
+  "medicine_id" int(10)
+  "model_id" int(11)
+  "model_type" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table user_google_event_schedules {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "google_live_consultation_id" varchar(191)
+  "google_calendar_id" varchar(191)
+  "google_event_id" varchar(191)
+  "google_meet_link" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table user_tenants {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "tenant_id" varchar(191)
+  "last_login_at" datetime
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table user_zoom_credential {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "zoom_api_key" varchar(191)
+  "zoom_api_secret" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table users {
+  "id" bigint(20) [pk]
+  "department_id" bigint(20)
+  "first_name" varchar(160)
+  "last_name" varchar(191)
+  "email" varchar(191)
+  "city" varchar(191)
+  "password" varchar(191)
+  "designation" varchar(191)
+  "phone" varchar(191)
+  "region_code" varchar(191)
+  "is_super_admin_default" tinyint(1)
+  "gender" int(11)
+  "is_admin_default" tinyint(1)
+  "qualification" varchar(191)
+  "blood_group" varchar(191)
+  "dob" date
+  "email_verified_at" timestamp
+  "owner_id" int(11)
+  "owner_type" varchar(191)
+  "status" tinyint(1)
+  "language" varchar(191)
+  "username" varchar(191)
+  "hospital_name" varchar(191)
+  "tenant_id" varchar(191)
+  "remember_token" varchar(100)
+  "facebook_url" varchar(191)
+  "twitter_url" varchar(191)
+  "instagram_url" varchar(191)
+  "linkedIn_url" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+  "theme_mode" varchar(191)
+  "hospital_type_id" bigint(20)
+}
+
+Table vaccinated_patients {
+  "id" int(10) [pk]
+  "patient_id" int(10)
+  "vaccination_id" int(10)
+  "vaccination_serial_number" varchar(191)
+  "dose_number" varchar(191)
+  "dose_given_date" datetime
+  "description" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table vaccinations {
+  "id" int(10) [pk]
+  "name" varchar(191)
+  "manufactured_by" varchar(191)
+  "brand" varchar(191)
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table visitors {
+  "id" bigint(20) [pk]
+  "purpose" int(11)
+  "name" varchar(191)
+  "phone" varchar(191)
+  "id_card" varchar(191)
+  "no_of_person" varchar(191)
+  "date" date
+  "in_time" time
+  "out_time" time
+  "note" text
+  "tenant_id" varchar(191)
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Table zoom_o_auth_credentials {
+  "id" bigint(20) [pk]
+  "user_id" bigint(20)
+  "access_token" text
+  "refresh_token" text
+  "created_at" timestamp
+  "updated_at" timestamp
+}
+
+Ref: accountants."tenant_id" > tenants."id"
+Ref: accountants."user_id" > users."id"
+Ref: accounts."tenant_id" > tenants."id"
+Ref: addon_app_admin_app_images."app_key" > addon_app_admin_app_sources."app_key"
+Ref: addresses."tenant_id" > tenants."id"
+Ref: advanced_payments."patient_id" > users."id"
+Ref: advanced_payments."tenant_id" > tenants."id"
+Ref: ambulance_calls."ambulance_id" > ambulances."id"
+Ref: ambulance_calls."patient_id" > patients."id"
+Ref: ambulance_calls."tenant_id" > tenants."id"
+Ref: ambulances."tenant_id" > tenants."id"
+Ref: appointment_transactions."appointment_id" > appointments."id"
+Ref: appointment_transactions."tenant_id" > tenants."id"
+Ref: appointments."department_id" > doctor_departments."id"
+Ref: appointments."doctor_id" > doctors."id"
+Ref: appointments."patient_id" > patients."id"
+Ref: appointments."tenant_id" > tenants."id"
+Ref: auto_manual_captures."session_id" > auto_manual_sessions."id"
+Ref: bed_assigns."bed_id" > beds."id"
+Ref: bed_assigns."ipd_patient_department_id" > ipd_patient_departments."id"
+Ref: bed_assigns."patient_id" > patients."id"
+Ref: bed_assigns."tenant_id" > tenants."id"
+Ref: bed_types."tenant_id" > tenants."id"
+Ref: beds."bed_type" > bed_types."id"
+Ref: beds."tenant_id" > tenants."id"
+Ref: bill_items."bill_id" > bills."id"
+Ref: bill_transactions."bill_id" > bills."id"
+Ref: bill_transactions."tenant_id" > tenants."id"
+Ref: bills."patient_id" > patients."id"
+Ref: bills."tenant_id" > tenants."id"
+Ref: birth_reports."doctor_id" > doctors."id"
+Ref: birth_reports."patient_id" > patients."id"
+Ref: birth_reports."tenant_id" > tenants."id"
+Ref: blood_banks."tenant_id" > tenants."id"
+Ref: blood_donations."blood_donor_id" > blood_donors."id"
+Ref: blood_donations."tenant_id" > tenants."id"
+Ref: blood_donors."tenant_id" > tenants."id"
+Ref: blood_issues."doctor_id" > doctors."id"
+Ref: blood_issues."donor_id" > blood_donors."id"
+Ref: blood_issues."patient_id" > patients."id"
+Ref: blood_issues."tenant_id" > tenants."id"
+Ref: brands."tenant_id" > tenants."id"
+Ref: call_logs."tenant_id" > tenants."id"
+Ref: case_handlers."tenant_id" > tenants."id"
+Ref: case_handlers."user_id" > users."id"
+Ref: categories."tenant_id" > tenants."id"
+Ref: charge_categories."tenant_id" > tenants."id"
+Ref: charges."charge_category_id" > charge_categories."id"
+Ref: charges."tenant_id" > tenants."id"
+Ref: community_comments."post_id" > community_posts."id"
+Ref: crawled_doctors."site_id" > crawled_sites."id"
+Ref: crawled_events."site_id" > crawled_sites."id"
+Ref: crawled_hospitals."site_id" > crawled_sites."id"
+Ref: crawled_images."site_id" > crawled_sites."id"
+Ref: crawled_tips."site_id" > crawled_sites."id"
+Ref: currency_settings."tenant_id" > tenants."id"
+Ref: custom_fields."tenant_id" > tenants."id"
+Ref: death_reports."doctor_id" > doctors."id"
+Ref: death_reports."patient_id" > patients."id"
+Ref: death_reports."tenant_id" > tenants."id"
+Ref: diagnosis_categories."tenant_id" > tenants."id"
+Ref: doctor_departments."tenant_id" > tenants."id"
+Ref: doctor_holidays."doctor_id" > doctors."id"
+Ref: doctor_holidays."tenant_id" > tenants."id"
+Ref: doctor_opd_charges."doctor_id" > doctors."id"
+Ref: doctor_opd_charges."tenant_id" > tenants."id"
+Ref: doctors."doctor_department_id" > doctor_departments."id"
+Ref: doctors."tenant_id" > tenants."id"
+Ref: doctors."user_id" > users."id"
+Ref: document_types."tenant_id" > tenants."id"
+Ref: documents."tenant_id" > tenants."id"
+Ref: documents."uploaded_by" > users."id"
+Ref: domains."tenant_id" > tenants."id"
+Ref: employee_payrolls."tenant_id" > tenants."id"
+Ref: enquiries."tenant_id" > tenants."id"
+Ref: enquiries."viewed_by" > users."id"
+Ref: event_google_calendars."google_calendar_list_id" > google_calendar_lists."id"
+Ref: event_google_calendars."user_id" > users."id"
+Ref: expenses."tenant_id" > tenants."id"
+Ref: feature_subscriptionplan."feature_id" > features."id"
+Ref: feature_subscriptionplan."subscription_plan_id" > subscription_plans."id"
+Ref: front_services."tenant_id" > tenants."id"
+Ref: front_settings."tenant_id" > tenants."id"
+Ref: gangnamunni_ab_variants."test_id" > gangnamunni_ab_tests."id"
+Ref: google_calendar_integrations."user_id" > users."id"
+Ref: google_calendar_lists."user_id" > users."id"
+Ref: hospital_schedules."tenant_id" > tenants."id"
+Ref: incomes."tenant_id" > tenants."id"
+Ref: insurance_diseases."insurance_id" > insurances."id"
+Ref: insurances."tenant_id" > tenants."id"
+Ref: investigation_reports."doctor_id" > doctors."id"
+Ref: investigation_reports."patient_id" > patients."id"
+Ref: investigation_reports."tenant_id" > tenants."id"
+Ref: invoice_items."account_id" > accounts."id"
+Ref: invoice_items."invoice_id" > invoices."id"
+Ref: invoices."patient_id" > patients."id"
+Ref: invoices."tenant_id" > tenants."id"
+Ref: ipd_bills."ipd_patient_department_id" > ipd_patient_departments."id"
+Ref: ipd_bills."tenant_id" > tenants."id"
+Ref: ipd_charges."charge_category_id" > charge_categories."id"
+Ref: ipd_charges."charge_id" > charges."id"
+Ref: ipd_charges."ipd_patient_department_id" > ipd_patient_departments."id"
+Ref: ipd_charges."tenant_id" > tenants."id"
+Ref: ipd_consultant_registers."doctor_id" > doctors."id"
+Ref: ipd_consultant_registers."ipd_patient_department_id" > ipd_patient_departments."id"
+Ref: ipd_consultant_registers."tenant_id" > tenants."id"
+Ref: ipd_diagnoses."ipd_patient_department_id" > ipd_patient_departments."id"
+Ref: ipd_diagnoses."tenant_id" > tenants."id"
+Ref: ipd_patient_departments."bed_id" > beds."id"
+Ref: ipd_patient_departments."bed_type_id" > bed_types."id"
+Ref: ipd_patient_departments."case_id" > patient_cases."id"
+Ref: ipd_patient_departments."doctor_id" > doctors."id"
+Ref: ipd_patient_departments."patient_id" > patients."id"
+Ref: ipd_patient_departments."tenant_id" > tenants."id"
+Ref: ipd_payments."ipd_patient_department_id" > ipd_patient_departments."id"
+Ref: ipd_payments."tenant_id" > tenants."id"
+Ref: ipd_prescription_items."category_id" > categories."id"
+Ref: ipd_prescription_items."ipd_prescription_id" > ipd_prescriptions."id"
+Ref: ipd_prescription_items."medicine_id" > medicines."id"
+Ref: ipd_prescription_items."tenant_id" > tenants."id"
+Ref: ipd_prescriptions."ipd_patient_department_id" > ipd_patient_departments."id"
+Ref: ipd_prescriptions."tenant_id" > tenants."id"
+Ref: ipd_timelines."ipd_patient_department_id" > ipd_patient_departments."id"
+Ref: ipd_timelines."tenant_id" > tenants."id"
+Ref: issued_items."department_id" > departments."id"
+Ref: issued_items."item_category_id" > item_categories."id"
+Ref: issued_items."item_id" > items."id"
+Ref: issued_items."tenant_id" > tenants."id"
+Ref: issued_items."user_id" > users."id"
+Ref: item_categories."tenant_id" > tenants."id"
+Ref: item_stocks."item_category_id" > item_categories."id"
+Ref: item_stocks."item_id" > items."id"
+Ref: item_stocks."tenant_id" > tenants."id"
+Ref: items."item_category_id" > item_categories."id"
+Ref: items."tenant_id" > tenants."id"
+Ref: lab_technicians."tenant_id" > tenants."id"
+Ref: lab_technicians."user_id" > users."id"
+Ref: live_consultations."doctor_id" > doctors."id"
+Ref: live_consultations."patient_id" > patients."id"
+Ref: live_consultations."tenant_id" > tenants."id"
+Ref: live_meetings."tenant_id" > tenants."id"
+Ref: lunch_breaks."doctor_id" > doctors."id"
+Ref: lunch_breaks."tenant_id" > tenants."id"
+Ref: mails."tenant_id" > tenants."id"
+Ref: mails."user_id" > users."id"
+Ref: medicine_bills."tenant_id" > tenants."id"
+Ref: medicines."brand_id" > brands."id"
+Ref: medicines."category_id" > categories."id"
+Ref: medicines."tenant_id" > tenants."id"
+Ref: model_has_permissions."permission_id" > permissions."id"
+Ref: model_has_roles."role_id" > departments."id"
+Ref: modules."tenant_id" > tenants."id"
+Ref: notice_boards."tenant_id" > tenants."id"
+Ref: notifications."tenant_id" > tenants."id"
+Ref: notifications."user_id" > users."id"
+Ref: nurses."tenant_id" > tenants."id"
+Ref: nurses."user_id" > users."id"
+Ref: opd_diagnoses."opd_patient_department_id" > opd_patient_departments."id"
+Ref: opd_diagnoses."tenant_id" > tenants."id"
+Ref: opd_patient_departments."case_id" > patient_cases."id"
+Ref: opd_patient_departments."doctor_id" > doctors."id"
+Ref: opd_patient_departments."patient_id" > patients."id"
+Ref: opd_patient_departments."tenant_id" > tenants."id"
+Ref: opd_prescription_items."category_id" > categories."id"
+Ref: opd_prescription_items."medicine_id" > medicines."id"
+Ref: opd_prescription_items."opd_prescription_id" > opd_prescriptions."id"
+Ref: opd_prescription_items."tenant_id" > tenants."id"
+Ref: opd_prescriptions."opd_patient_department_id" > opd_patient_departments."id"
+Ref: opd_prescriptions."tenant_id" > tenants."id"
+Ref: opd_timelines."opd_patient_department_id" > opd_patient_departments."id"
+Ref: opd_timelines."tenant_id" > tenants."id"
+Ref: operation_reports."doctor_id" > doctors."id"
+Ref: operation_reports."patient_id" > patients."id"
+Ref: operation_reports."tenant_id" > tenants."id"
+Ref: package_services."package_id" > packages."id"
+Ref: package_services."service_id" > services."id"
+Ref: packages."tenant_id" > tenants."id"
+Ref: pathology_categories."tenant_id" > tenants."id"
+Ref: pathology_parameter_items."parameter_id" > pathology_parameters."id"
+Ref: pathology_parameter_items."pathology_id" > pathology_tests."id"
+Ref: pathology_parameters."tenant_id" > tenants."id"
+Ref: pathology_parameters."unit_id" > pathology_units."id"
+Ref: pathology_tests."category_id" > pathology_categories."id"
+Ref: pathology_tests."charge_category_id" > charge_categories."id"
+Ref: pathology_tests."patient_id" > patients."id"
+Ref: pathology_tests."tenant_id" > tenants."id"
+Ref: pathology_units."tenant_id" > tenants."id"
+Ref: patient_admissions."bed_id" > beds."id"
+Ref: patient_admissions."doctor_id" > doctors."id"
+Ref: patient_admissions."insurance_id" > insurances."id"
+Ref: patient_admissions."package_id" > packages."id"
+Ref: patient_admissions."patient_id" > patients."id"
+Ref: patient_admissions."tenant_id" > tenants."id"
+Ref: patient_cases."doctor_id" > doctors."id"
+Ref: patient_cases."patient_id" > patients."id"
+Ref: patient_cases."tenant_id" > tenants."id"
+Ref: patient_diagnosis_properties."patient_diagnosis_id" > patient_diagnosis_tests."id"
+Ref: patient_diagnosis_tests."category_id" > diagnosis_categories."id"
+Ref: patient_diagnosis_tests."doctor_id" > doctors."id"
+Ref: patient_diagnosis_tests."patient_id" > patients."id"
+Ref: patient_diagnosis_tests."tenant_id" > tenants."id"
+Ref: patients."template_id" > smart_patient_cards."id"
+Ref: patients."tenant_id" > tenants."id"
+Ref: patients."user_id" > users."id"
+Ref: payment_logs."payment_id" > hw_payments."id"
+Ref: payments."account_id" > accounts."id"
+Ref: payments."tenant_id" > tenants."id"
+Ref: pharmacists."tenant_id" > tenants."id"
+Ref: pharmacists."user_id" > users."id"
+Ref: postals."tenant_id" > tenants."id"
+Ref: prescriptions."doctor_id" > doctors."id"
+Ref: prescriptions."patient_id" > patients."id"
+Ref: prescriptions."tenant_id" > tenants."id"
+Ref: prescriptions_medicines."medicine" > medicines."id"
+Ref: prescriptions_medicines."prescription_id" > prescriptions."id"
+Ref: purchase_medicines."tenant_id" > tenants."id"
+Ref: purchased_medicines."medicine_id" > medicines."id"
+Ref: purchased_medicines."purchase_medicines_id" > purchase_medicines."id"
+Ref: purchased_medicines."tenant_id" > tenants."id"
+Ref: radiology_categories."tenant_id" > tenants."id"
+Ref: radiology_tests."category_id" > radiology_categories."id"
+Ref: radiology_tests."charge_category_id" > charge_categories."id"
+Ref: radiology_tests."charge_id" > charges."id"
+Ref: radiology_tests."tenant_id" > tenants."id"
+Ref: receptionists."tenant_id" > tenants."id"
+Ref: receptionists."user_id" > users."id"
+Ref: role_has_permissions."permission_id" > permissions."id"
+Ref: role_has_permissions."role_id" > departments."id"
+Ref: schedule_days."doctor_id" > doctors."id"
+Ref: schedule_days."schedule_id" > schedules."id"
+Ref: schedules."doctor_id" > doctors."id"
+Ref: schedules."tenant_id" > tenants."id"
+Ref: services."tenant_id" > tenants."id"
+Ref: settings."tenant_id" > tenants."id"
+Ref: smart_patient_cards."tenant_id" > tenants."id"
+Ref: sms."send_by" > users."id"
+Ref: sms."send_to" > users."id"
+Ref: sms."tenant_id" > tenants."id"
+Ref: subscriptions."subscription_plan_id" > subscription_plans."id"
+Ref: subscriptions."transaction_id" > transactions."id"
+Ref: subscriptions."user_id" > users."id"
+Ref: testimonials."tenant_id" > tenants."id"
+Ref: transactions."tenant_id" > tenants."id"
+Ref: transactions."user_id" > users."id"
+Ref: used_medicines."medicine_id" > medicines."id"
+Ref: used_medicines."tenant_id" > tenants."id"
+Ref: user_google_event_schedules."user_id" > users."id"
+Ref: user_tenants."tenant_id" > tenants."id"
+Ref: user_tenants."user_id" > users."id"
+Ref: user_zoom_credential."tenant_id" > tenants."id"
+Ref: user_zoom_credential."user_id" > users."id"
+Ref: users."hospital_type_id" > hospital_type."id"
+Ref: users."tenant_id" > tenants."id"
+Ref: vaccinated_patients."patient_id" > patients."id"
+Ref: vaccinated_patients."tenant_id" > tenants."id"
+Ref: vaccinated_patients."vaccination_id" > vaccinations."id"
+Ref: vaccinations."tenant_id" > tenants."id"
+Ref: visitors."tenant_id" > tenants."id"
+Ref: zoom_o_auth_credentials."user_id" > users."id"
+Ref: addon_app_admin_logs."user_id" > users."id"
+Ref: community_comments."user_id" > users."id"
+Ref: community_posts."user_id" > users."id"
+Ref: crawled_doctors."doctor_id" > gangnamunni_doctors."id"
+Ref: crawled_doctors."hospital_id" > gangnamunni_hospitals."id"
+Ref: crawled_events."event_id" > gangnamunni_events."id"
+Ref: crawled_hospitals."hospital_id" > gangnamunni_hospitals."id"
+Ref: documents."patient_id" > patients."id"
+Ref: fcm_tokens."user_id" > users."id"
+Ref: g5_attendance."mb_id" > g5_member."mb_id"
+Ref: g5_attendance_reward_log."mb_id" > g5_member."mb_id"
+Ref: g5_auth."mb_id" > g5_member."mb_id"
+Ref: g5_autosave."mb_id" > g5_member."mb_id"
+Ref: g5_board_good."mb_id" > g5_member."mb_id"
+Ref: g5_board_new."mb_id" > g5_member."mb_id"
+Ref: g5_board_report."mb_id" > g5_member."mb_id"
+Ref: g5_cert_history."mb_id" > g5_member."mb_id"
+Ref: g5_comment_good."mb_id" > g5_member."mb_id"
+Ref: g5_comment_reaction."mb_id" > g5_member."mb_id"
+Ref: g5_group_member."mb_id" > g5_member."mb_id"
+Ref: g5_login."mb_id" > g5_member."mb_id"
+Ref: g5_member_cert_history."mb_id" > g5_member."mb_id"
+Ref: g5_member_social_profiles."mb_id" > g5_member."mb_id"
+Ref: g5_notification_settings."mb_id" > g5_member."mb_id"
+Ref: g5_point."mb_id" > g5_member."mb_id"
+Ref: g5_poll_etc."mb_id" > g5_member."mb_id"
+Ref: g5_push_tokens."mb_id" > g5_member."mb_id"
+Ref: g5_qa_content."mb_id" > g5_member."mb_id"
+Ref: g5_scrap."mb_id" > g5_member."mb_id"
+Ref: g5_shop_cart."mb_id" > g5_member."mb_id"
+Ref: g5_shop_coupon."mb_id" > g5_member."mb_id"
+Ref: g5_shop_coupon_log."mb_id" > g5_member."mb_id"
+Ref: g5_shop_item_qa."mb_id" > g5_member."mb_id"
+Ref: g5_shop_item_use."mb_id" > g5_member."mb_id"
+Ref: g5_shop_order."mb_id" > g5_member."mb_id"
+Ref: g5_shop_order_address."mb_id" > g5_member."mb_id"
+Ref: g5_shop_order_data."mb_id" > g5_member."mb_id"
+Ref: g5_shop_order_delete."mb_id" > g5_member."mb_id"
+Ref: g5_shop_order_post_log."mb_id" > g5_member."mb_id"
+Ref: g5_shop_wish."mb_id" > g5_member."mb_id"
+Ref: g5_write_activity."mb_id" > g5_member."mb_id"
+Ref: g5_write_anonymous."mb_id" > g5_member."mb_id"
+Ref: g5_write_card."mb_id" > g5_member."mb_id"
+Ref: g5_write_free."mb_id" > g5_member."mb_id"
+Ref: g5_write_gallery."mb_id" > g5_member."mb_id"
+Ref: g5_write_groupbuy."mb_id" > g5_member."mb_id"
+Ref: g5_write_notice."mb_id" > g5_member."mb_id"
+Ref: g5_write_qa."mb_id" > g5_member."mb_id"
+Ref: g5_write_recruit."mb_id" > g5_member."mb_id"
+Ref: g5_write_second_hand."mb_id" > g5_member."mb_id"
+Ref: g5_write_sns."mb_id" > g5_member."mb_id"
+Ref: g5_write_youtube."mb_id" > g5_member."mb_id"
+Ref: gangnamunni_ab_events."user_id" > users."id"
+Ref: gangnamunni_ad_clicks."user_id" > users."id"
+Ref: gangnamunni_ad_impressions."user_id" > users."id"
+Ref: gangnamunni_admins."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_ai_review_cache."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_before_after."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_before_after."review_id" > hospital_reviews."id"
+Ref: gangnamunni_before_after."treatment_id" > gangnamunni_treatment_master."id"
+Ref: gangnamunni_bookings."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_bookings."mb_id" > g5_member."mb_id"
+Ref: gangnamunni_chat_rooms."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_community_comments."post_id" > gangnamunni_community_posts."id"
+Ref: gangnamunni_community_comments."mb_id" > g5_member."mb_id"
+Ref: gangnamunni_community_likes."post_id" > gangnamunni_community_posts."id"
+Ref: gangnamunni_community_likes."user_id" > users."id"
+Ref: gangnamunni_community_posts."mb_id" > g5_member."mb_id"
+Ref: gangnamunni_consultations."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_coupon_claims."coupon_id" > gangnamunni_coupons."id"
+Ref: gangnamunni_coupon_claims."booking_id" > gangnamunni_bookings."id"
+Ref: gangnamunni_coupons."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_cpv_daily_stats."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_cpv_logs."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_cpv_transactions."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_cpv_wallets."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_doctor_schedules."doctor_id" > gangnamunni_doctors."id"
+Ref: gangnamunni_doctor_schedules."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_doctor_treatments."doctor_id" > gangnamunni_doctors."id"
+Ref: gangnamunni_doctor_treatments."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_doctor_treatments."treatment_id" > gangnamunni_treatment_master."id"
+Ref: gangnamunni_doctors."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_event_entries."event_id" > gangnamunni_events."id"
+Ref: gangnamunni_event_images."event_id" > gangnamunni_events."id"
+Ref: gangnamunni_events."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_hospital_mapping."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_hospital_news."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_hospital_revisions."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_hospital_suspension."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_hospital_treatments."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_hospital_treatments."treatment_id" > gangnamunni_treatment_master."id"
+Ref: gangnamunni_qna."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_rankings."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_reviews."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_reviews."doctor_id" > gangnamunni_doctors."id"
+Ref: gangnamunni_reviews."event_id" > gangnamunni_events."id"
+Ref: gangnamunni_reviews."user_id" > users."id"
+Ref: gangnamunni_rolling_campaigns."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_treatment_aliases."treatment_id" > gangnamunni_treatment_master."id"
+Ref: gangnamunni_treatment_approval_log."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_treatment_approval_log."treatment_id" > gangnamunni_treatment_master."id"
+Ref: gangnamunni_treatment_package_items."treatment_id" > gangnamunni_treatment_master."id"
+Ref: gangnamunni_treatment_packages."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_treatment_price_history."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_treatment_price_history."treatment_id" > gangnamunni_treatment_master."id"
+Ref: gangnamunni_treatment_reviews."review_id" > hospital_reviews."id"
+Ref: gangnamunni_treatment_reviews."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_treatment_reviews."treatment_id" > gangnamunni_treatment_master."id"
+Ref: gangnamunni_treatment_scores."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_treatment_scores."treatment_id" > gangnamunni_treatment_master."id"
+Ref: gangnamunni_treatments."hospital_id" > gangnamunni_hospitals."id"
+Ref: gangnamunni_user_agreements."user_id" > users."id"
+Ref: gangnamunni_withdrawals."mb_id" > g5_member."mb_id"
+Ref: hospital_consultations."hospital_id" > gangnamunni_hospitals."id"
+Ref: hospital_consultations."doctor_id" > gangnamunni_doctors."id"
+Ref: hospital_consultations."event_id" > gangnamunni_events."id"
+Ref: hospital_features."hospital_id" > gangnamunni_hospitals."id"
+Ref: hospital_images."hospital_id" > gangnamunni_hospitals."id"
+Ref: hospital_reviews."hospital_id" > gangnamunni_hospitals."id"
+Ref: hospital_reviews."doctor_id" > gangnamunni_doctors."id"
+Ref: hospital_reviews."event_id" > gangnamunni_events."id"
+Ref: hospital_reviews."user_id" > users."id"
+Ref: hospital_youtube."hospital_id" > gangnamunni_hospitals."id"
+Ref: hw_notifications."user_id" > users."id"
+Ref: hw_payments."user_id" > users."id"
+Ref: hw_payments."booking_id" > gangnamunni_bookings."id"
+Ref: live_meetings_candidates."user_id" > users."id"
+Ref: medicine_bills."patient_id" > patients."id"
+Ref: medicine_bills."doctor_id" > gangnamunni_doctors."id"
+Ref: member_sync."mb_id" > g5_member."mb_id"
+Ref: rb_app_token."mb_id" > g5_member."mb_id"
+Ref: rb_attend_streak."mb_id" > g5_member."mb_id"
+Ref: rb_attendance."mb_id" > g5_member."mb_id"
+Ref: rb_pa_point."mb_id" > g5_member."mb_id"
+Ref: rb_point_c."mb_id" > g5_member."mb_id"
+Ref: rb_popup."mb_id" > g5_member."mb_id"
+Ref: rb_pwa_app_installs."mb_id" > g5_member."mb_id"
+Ref: rb_pwa_subscriptions."mb_id" > g5_member."mb_id"
+Ref: review_ai_logs."review_id" > hospital_reviews."id"
+Ref: review_comments."review_id" > hospital_reviews."id"
+Ref: review_comments."user_id" > users."id"
+Ref: review_images."review_id" > hospital_reviews."id"
+Ref: review_likes."review_id" > hospital_reviews."id"
+Ref: review_likes."user_id" > users."id"
+Ref: review_reports."review_id" > hospital_reviews."id"
+Ref: reviewer_stats."user_id" > users."id"
+Ref: sms5_book."mb_id" > g5_member."mb_id"
+Ref: sms5_history."mb_id" > g5_member."mb_id"

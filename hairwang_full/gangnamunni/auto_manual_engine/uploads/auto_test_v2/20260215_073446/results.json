@@ -1,0 +1,88 @@
+{
+  "runId": "20260215_073446",
+  "startTime": "2026-02-14T22:34:47.342Z",
+  "options": {
+    "delay": 2,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "fullPage": true,
+    "generateReport": false,
+    "compare": false
+  },
+  "summary": {
+    "total": 2,
+    "pass": 2,
+    "warn": 0,
+    "fail": 0
+  },
+  "groups": [
+    {
+      "id": "gangnamunni_frontend",
+      "name": "서울미녀 프론트엔드",
+      "icon": "bi-phone",
+      "loginSuccess": true,
+      "results": [
+        {
+          "id": "fe_main",
+          "name": "메인 페이지",
+          "category": "basic",
+          "plugin": "page-load",
+          "url": "https://hms.seoulbeauty.app/hairwang/gangnamunni/",
+          "status": "PASS",
+          "duration": 4062,
+          "screenshot": "fe_main.png",
+          "analysis": {
+            "title": "병원 찾기 | 서울미녀",
+            "links": 27,
+            "images": 33,
+            "forms": 0,
+            "tables": 0,
+            "buttons": 11,
+            "headings": 4,
+            "domNodes": 416,
+            "brokenImages": 0,
+            "missingAlt": 0
+          },
+          "errors": {
+            "http": [],
+            "php": [],
+            "js": []
+          },
+          "notes": ""
+        },
+        {
+          "id": "fe_hospitals",
+          "name": "병원 목록",
+          "category": "basic",
+          "plugin": "page-load",
+          "url": "https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php",
+          "status": "PASS",
+          "duration": 5510,
+          "screenshot": "fe_hospitals.png",
+          "analysis": {
+            "title": "병원 | 서울미녀",
+            "links": 15,
+            "images": 101,
+            "forms": 1,
+            "tables": 0,
+            "buttons": 23,
+            "headings": 1,
+            "domNodes": 1000,
+            "brokenImages": 0,
+            "missingAlt": 0
+          },
+          "errors": {
+            "http": [],
+            "php": [],
+            "js": []
+          },
+          "notes": ""
+        }
+      ]
+    }
+  ],
+  "endTime": "2026-02-14T22:34:58.238Z",
+  "duration": 11
+}

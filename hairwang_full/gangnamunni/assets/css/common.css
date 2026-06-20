@@ -1,0 +1,196 @@
+/**
+ * 바비톡 스타일 공통 CSS
+ * 모든 페이지에서 공통으로 사용
+ *
+ * 사용법:
+ * <link rel="stylesheet" href="assets/css/common.css">
+ */
+
+/* 기본 리셋 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+    background: #FFFFFF;
+    color: #000000;
+}
+
+/* 컨테이너 기본 스타일 - 글로벌 네비게이션과 동일한 640px, 패딩 16px */
+.main-content {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 16px 20px 16px;
+}
+
+/* 검색 컨테이너 */
+.search-container {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* 검색 섹션 */
+.search-section {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 12px 0;
+}
+
+/* 검색 입력 필드 */
+.search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #F5F5F5;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #F5F5F5;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #FF540F;
+    background: #FFFFFF;
+}
+
+/* 모바일 반응형 - 글로벌 네비와 동일하게 12px 패딩 */
+@media (max-width: 640px) {
+    .main-content {
+        padding: 0 12px 20px 12px;
+    }
+
+    .search-container {
+        padding: 0 12px;
+    }
+}
+
+/* 섹션 폭 통일 - 모든 섹션이 container 내에서 동일한 폭 유지 */
+.ads-banner,
+.promo-section,
+.category-section,
+.tips-section,
+.hospital-section {
+    width: 100%;
+}
+
+/* 바비톡 아이콘 스타일 */
+.babitalk-icon {
+    transition: all 0.3s ease;
+}
+
+/* 스크롤 래퍼 (레거시 호환) */
+.ads-banner-wrapper,
+.promo-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.ads-banner-wrapper::-webkit-scrollbar,
+.promo-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+/* PC 스타일 (768px 이상) - 640px 중앙 정렬 */
+@media (min-width: 768px) {
+    body {
+        background: #F7F7F9;
+    }
+
+    /* 검색 섹션 PC 스타일 */
+    .search-section {
+        background: #FFFFFF;
+        padding: 16px 16px 12px 16px;
+    }
+
+    .search-container {
+        max-width: 640px;
+        margin: 0 auto;
+    }
+
+    /* 컨테이너 PC 스타일 */
+    .main-content {
+        max-width: 640px;
+        margin: 0 auto;
+        background: #FFFFFF;
+        min-height: calc(100vh - 56px);
+        padding-bottom: 80px;
+    }
+}
+
+/* 서브페이지 헤더 (sticky) - 모바일 48px, PC 56px nav 대응 */
+.page-header,
+.search-header {
+    position: sticky;
+    top: 48px;
+    z-index: 90;
+    background: #FFFFFF;
+    border-bottom: 1px solid #F5F5F5;
+}
+
+@media (min-width: 768px) {
+    .page-header,
+    .search-header {
+        top: 56px;
+    }
+}
+
+/* Tailwind 기본 설정 오버라이드 */
+* {
+    box-sizing: border-box;
+}
+
+/* 카드 기본 스타일 */
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* 버튼 기본 스타일 */
+.btn-primary {
+    background: #FF6B9D;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #FF4D7D;
+}
+
+/* 아이콘 컨테이너 */
+.icon-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: white;
+    border: 1px solid #E5E7EB;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.icon-container:hover {
+    border-color: #C4B5FD;
+}

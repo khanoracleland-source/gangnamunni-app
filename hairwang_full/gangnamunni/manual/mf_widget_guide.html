@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수정요청 버튼 이용법 — 서울미녀 매뉴얼</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  :root {
+    --primary: #7C3AED;
+    --accent: #F59E0B;
+    --danger: #EF4444;
+    --success: #10B981;
+    --bg: #F8F7FF;
+    --card-bg: #fff;
+    --text: #1e1b2e;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --step-size: 44px;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+
+  /* 헤더 */
+  .guide-header {
+    background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 50%, #4C1D95 100%);
+    color: #fff; padding: 56px 24px 48px; text-align: center; position: relative; overflow: hidden;
+  }
+  .guide-header::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .guide-header h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; margin: 0 0 12px; position: relative; }
+  .guide-header p  { font-size: 1.05rem; opacity: .85; margin: 0; position: relative; }
+  .guide-header .badge-new {
+    display: inline-block; background: var(--accent); color: #000;
+    font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 8px; vertical-align: middle;
+  }
+
+  /* 본문 레이아웃 */
+  .guide-body { max-width: 900px; margin: 0 auto; padding: 48px 16px 80px; }
+
+  /* 섹션 제목 */
+  .section-title {
+    font-size: 1.25rem; font-weight: 700; color: var(--primary);
+    border-left: 4px solid var(--primary); padding-left: 12px; margin: 48px 0 24px;
+  }
+
+  /* 스텝 카드 */
+  .step-card {
+    background: var(--card-bg); border-radius: 16px; padding: 28px 28px 28px 88px;
+    position: relative; margin-bottom: 20px;
+    box-shadow: 0 2px 16px rgba(124,58,237,.08);
+    border: 1px solid var(--border); transition: transform .2s, box-shadow .2s;
+  }
+  .step-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(124,58,237,.14); }
+  .step-num {
+    position: absolute; left: 24px; top: 24px;
+    width: var(--step-size); height: var(--step-size);
+    background: var(--primary); color: #fff; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; font-weight: 800;
+  }
+  .step-card h4 { font-size: 1.05rem; font-weight: 700; margin: 0 0 8px; }
+  .step-card p  { color: var(--muted); margin: 0; font-size: .93rem; line-height: 1.65; }
+
+  /* 팝업 목업 */
+  .modal-mock {
+    background: #fff; border-radius: 12px; box-shadow: 0 8px 48px rgba(0,0,0,.18);
+    max-width: 560px; margin: 24px auto; border: 1px solid var(--border); overflow: hidden;
+  }
+  .modal-mock-header {
+    background: linear-gradient(135deg, var(--primary), #5B21B6);
+    color: #fff; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+    cursor: grab; user-select: none;
+  }
+  .modal-mock-header .title { font-weight: 700; font-size: .95rem; display: flex; align-items: center; gap: 8px; }
+  .modal-mock-header .close-x { opacity: .7; font-size: 1.1rem; }
+  .modal-mock-body { padding: 20px; }
+  .mock-label { font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  .mock-input {
+    background: #f8f9fa; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 9px 12px; font-size: .88rem; width: 100%; margin-bottom: 12px; color: var(--text);
+  }
+  .mock-textarea { min-height: 90px; resize: vertical; }
+  .mock-img-zone {
+    border: 2px dashed #d1d5db; border-radius: 10px; padding: 18px;
+    text-align: center; color: var(--muted); font-size: .85rem; background: #fafafa; margin-bottom: 12px;
+  }
+  .mock-img-zone i { font-size: 1.8rem; display: block; margin-bottom: 6px; opacity: .5; }
+  .mock-img-thumb {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;
+  }
+  .mock-img-thumb .thumb {
+    width: 70px; height: 70px; border-radius: 8px; background: linear-gradient(135deg,#e0c3fc,#8ec5fc);
+    display: flex; align-items: center; justify-content: center; font-size: .65rem; color: #555; position: relative;
+    border: 1.5px solid var(--border); overflow: hidden;
+  }
+  .mock-img-thumb .thumb i { font-size: 1.6rem; color: #7C3AED; }
+  .mock-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+  .mock-btn { border-radius: 8px; padding: 8px 16px; font-size: .85rem; font-weight: 600; border: none; cursor: pointer; }
+  .mock-btn-primary { background: var(--primary); color: #fff; flex: 1; }
+  .mock-btn-secondary { background: #f3f4f6; color: var(--muted); }
+  .mock-btn-clip { background: #f0fdf4; color: #065f46; border: 1px solid #6ee7b7; }
+  .mock-drag-hint {
+    text-align: center; font-size: .72rem; color: var(--muted); padding: 4px 0 0;
+  }
+
+  /* 플로우 화살표 */
+  .flow-arrow { text-align: center; font-size: 2rem; color: var(--primary); opacity: .4; margin: 8px 0; }
+
+  /* 결과 화면 목업 */
+  .list-mock { border-radius: 12px; border: 1px solid var(--border); overflow: hidden; margin: 16px 0; }
+  .list-mock-header { background: #f3f4f6; padding: 10px 16px; font-size: .8rem; font-weight: 600; color: var(--muted); display: flex; gap: 16px; }
+  .list-mock-row {
+    padding: 12px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px;
+    font-size: .85rem;
+  }
+  .list-mock-row:hover { background: #faf5ff; }
+  .badge-status { border-radius: 20px; padding: 2px 10px; font-size: .72rem; font-weight: 700; }
+  .bg-requested { background: #dbeafe; color: #1d4ed8; }
+  .bg-done      { background: #d1fae5; color: #065f46; }
+  .bg-progress  { background: #fef3c7; color: #92400e; }
+
+  /* 팁 박스 */
+  .tip-box {
+    border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: .9rem; line-height: 1.65;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .tip-box.tip-info    { background: #eff6ff; border-left: 4px solid #3b82f6; }
+  .tip-box.tip-success { background: #f0fdf4; border-left: 4px solid var(--success); }
+  .tip-box.tip-warning { background: #fffbeb; border-left: 4px solid var(--accent); }
+  .tip-box i { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+  .tip-box.tip-info    i { color: #3b82f6; }
+  .tip-box.tip-success i { color: var(--success); }
+  .tip-box.tip-warning i { color: var(--accent); }
+
+  /* 버튼 시뮬레이터 */
+  .btn-demo {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--danger); color: #fff;
+    border: none; border-radius: 8px; padding: 8px 18px; font-size: .9rem; font-weight: 700;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(239,68,68,.35);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .btn-demo:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(239,68,68,.45); }
+  .btn-demo-sm {
+    background: #7C3AED; padding: 5px 12px; font-size: .78rem; border-radius: 6px;
+    color: #fff; border: none; cursor: pointer;
+  }
+
+  /* 이미지 업로드 방법 카드 */
+  .upload-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 16px 0; }
+  .upload-method-card {
+    border-radius: 12px; border: 1px solid var(--border); padding: 20px 16px; text-align: center;
+    background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.05);
+  }
+  .upload-method-card .icon-wrap {
+    width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+  }
+  .upload-method-card h6 { font-weight: 700; font-size: .9rem; margin: 0 0 6px; }
+  .upload-method-card p { font-size: .8rem; color: var(--muted); margin: 0; line-height: 1.5; }
+  .icon-bg-1 { background: #ede9fe; color: var(--primary); }
+  .icon-bg-2 { background: #d1fae5; color: var(--success); }
+  .icon-bg-3 { background: #fef3c7; color: #92400e; }
+
+  /* 관리자 화면 링크 */
+  .admin-link-card {
+    border-radius: 12px; background: linear-gradient(135deg, #4C1D95, #7C3AED);
+    color: #fff; padding: 24px 28px; display: flex; align-items: center; gap: 20px;
+    text-decoration: none; margin: 20px 0; box-shadow: 0 4px 20px rgba(124,58,237,.3);
+    transition: transform .2s;
+  }
+  .admin-link-card:hover { transform: translateY(-2px); }
+  .admin-link-card i { font-size: 2.5rem; opacity: .9; flex-shrink: 0; }
+  .admin-link-card h5 { font-weight: 700; margin: 0 0 4px; color: #fff; }
+  .admin-link-card p { font-size: .88rem; opacity: .8; margin: 0; }
+
+  /* 스크롤바 */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+  /* 반응형 */
+  @media (max-width: 600px) {
+    .step-card { padding: 20px 16px 20px 74px; }
+    .modal-mock { margin: 16px 0; }
+    .upload-methods { grid-template-columns: 1fr; }
+  }
+
+  /* 상단 네비 */
+  .top-nav {
+    background: #fff; border-bottom: 1px solid var(--border);
+    padding: 12px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100;
+  }
+  .top-nav a { color: var(--muted); text-decoration: none; font-size: .85rem; }
+  .top-nav a:hover { color: var(--primary); }
+  .top-nav .sep { color: var(--border); }
+
+  /* 목차 */
+  .toc { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 40px; }
+  .toc h6 { font-weight: 700; color: var(--primary); margin: 0 0 12px; font-size: .9rem; letter-spacing: .05em; text-transform: uppercase; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc li { margin-bottom: 6px; }
+  .toc a { color: var(--text); text-decoration: none; font-size: .9rem; }
+  .toc a:hover { color: var(--primary); text-decoration: underline; }
+
+  /* ── 다크모드 ─────────────────────────────── */
+  [data-theme="dark"] {
+    --bg: #0f0e1a;
+    --card-bg: #1a1828;
+    --text: #e2e0f0;
+    --muted: #9ca3af;
+    --border: #2d2b40;
+  }
+  [data-theme="dark"] body { background: var(--bg); color: var(--text); }
+  [data-theme="dark"] .top-nav { background: #141222; border-color: var(--border); }
+  [data-theme="dark"] .guide-header { background: linear-gradient(135deg, #4C1D95 0%, #2e1065 100%); }
+  [data-theme="dark"] .step-card,
+  [data-theme="dark"] .modal-mock,
+  [data-theme="dark"] .upload-method-card,
+  [data-theme="dark"] .toc { background: var(--card-bg); border-color: var(--border); }
+  [data-theme="dark"] .modal-mock-body { background: var(--card-bg); }
+  [data-theme="dark"] .mock-input { background: #0f0e1a; border-color: var(--border); color: var(--text); }
+  [data-theme="dark"] .mock-img-zone { background: #0f0e1a; border-color: #3d3a55; color: var(--muted); }
+  [data-theme="dark"] .mock-btn-secondary { background: #2a2840; color: var(--muted); }
+  [data-theme="dark"] .list-mock { border-color: var(--border); }
+  [data-theme="dark"] .list-mock-header { background: #1a1828; }
+  [data-theme="dark"] .list-mock-row { border-color: var(--border); }
+  [data-theme="dark"] .list-mock-row:hover { background: #1e1c30; }
+  [data-theme="dark"] .tip-box.tip-info    { background: #1e2a3d; border-color: #3b82f6; }
+  [data-theme="dark"] .tip-box.tip-success { background: #0f2a1e; border-color: #10b981; }
+  [data-theme="dark"] .tip-box.tip-warning { background: #2a1f0a; border-color: #f59e0b; }
+  [data-theme="dark"] .accordion-item { background: var(--card-bg); border-color: var(--border); }
+  [data-theme="dark"] .accordion-button { background: var(--card-bg); color: var(--text); }
+  [data-theme="dark"] .accordion-button:not(.collapsed) { background: #1e1c30; color: #a78bfa; box-shadow: none; }
+  [data-theme="dark"] .accordion-collapse { background: var(--card-bg); }
+  [data-theme="dark"] .accordion-body { background: var(--card-bg); color: var(--muted); }
+  [data-theme="dark"] kbd { background: #2d2b40; color: var(--text); border: 1px solid var(--border); }
+  [data-theme="dark"] code { background: #2d2b40; color: #a78bfa; padding: 1px 5px; border-radius: 4px; }
+  [data-theme="dark"] .mock-img-thumb .thumb { border-color: var(--border); }
+  [data-theme="dark"] .step-card h4 { color: var(--text); }
+
+  /* 주야간 토글 버튼 */
+  .theme-toggle-btn {
+    display: flex; align-items: center; gap: 4px;
+    background: transparent; border: 1.5px solid var(--border);
+    border-radius: 20px; padding: 4px 12px; font-size: .78rem;
+    cursor: pointer; color: var(--muted); transition: all .2s; white-space: nowrap;
+  }
+  .theme-toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
+  [data-theme="dark"] .theme-toggle-btn { color: #a78bfa; border-color: #4C1D95; }
+
+</style>
+</head>
+<body>
+
+<!-- 상단 네비 -->
+<nav class="top-nav">
+  <a href="index.html"><i class="bi bi-house me-1"></i>매뉴얼 홈</a>
+  <span class="sep">/</span>
+  <span style="color:var(--primary);font-weight:600;">수정요청 이용법</span>
+  <button class="theme-toggle-btn ms-auto" onclick="toggleTheme()" id="themeBtn" title="주간/야간 전환">
+    <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+    <span id="themeLabel">야간</span>
+  </button>
+</nav>
+
+<!-- 헤더 -->
+<div class="guide-header">
+  <h1><i class="bi bi-pencil-square me-2"></i>수정요청 버튼 이용법<span class="badge-new">GUIDE</span></h1>
+  <p>매뉴얼 페이지의 <strong>수정요청</strong> 버튼을 사용하여 피드백을 등록하는 방법을 안내합니다</p>
+</div>
+
+<div class="guide-body">
+
+  <!-- 목차 -->
+  <div class="toc">
+    <h6><i class="bi bi-list-ul me-1"></i>목차</h6>
+    <ol>
+      <li><a href="#sec1">수정요청 버튼 위치</a></li>
+      <li><a href="#sec2">팝업 사용법 (입력 항목 안내)</a></li>
+      <li><a href="#sec3">이미지 첨부 3가지 방법</a></li>
+      <li><a href="#sec4">제출 후 관리자 화면에서 확인</a></li>
+      <li><a href="#sec5">자주 묻는 질문 (FAQ)</a></li>
+    </ol>
+  </div>
+
+  <!-- ① 버튼 위치 -->
+  <div class="section-title" id="sec1"><i class="bi bi-cursor me-2"></i>1. 수정요청 버튼 위치</div>
+
+  <p style="color:var(--muted);font-size:.95rem;margin-bottom:20px;">
+    매뉴얼 페이지 내 2가지 위치에 수정요청 버튼이 있습니다.
+  </p>
+
+  <div class="step-card">
+    <div class="step-num">A</div>
+    <h4>페이지 상단 — 전체 수정요청</h4>
+    <p>페이지 오른쪽 상단에 있는 빨간 버튼입니다. 해당 페이지 전체에 대한 피드백을 남길 때 사용합니다.</p>
+    <div style="margin-top:14px;">
+      <button class="btn-demo"><i class="bi bi-pencil-square"></i>수정요청</button>
+      &nbsp;
+      <a href="mf_widget_guide.html" style="text-decoration:none;">
+        <button class="btn-demo" style="background:#F59E0B;color:#000;"><i class="bi bi-question-circle"></i>이용법</button>
+      </a>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">B</div>
+    <h4>섹션 제목 옆 — 해당 항목 수정요청</h4>
+    <p>각 소제목(h4) 오른쪽에 있는 작은 버튼입니다. 특정 항목만 수정을 요청할 때 더 정확하게 위치를 전달할 수 있습니다.</p>
+    <div style="margin-top:14px;background:#f8f7ff;border-radius:10px;padding:14px 18px;border:1px solid var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span style="font-size:1rem;font-weight:700;">1.4 사이드바 메뉴</span>
+        <button class="btn-demo-sm"><i class="bi bi-pencil-square"></i> 수정요청</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 팝업 사용법 -->
+  <div class="section-title" id="sec2"><i class="bi bi-window me-2"></i>2. 팝업 사용법</div>
+
+  <p style="color:var(--muted);font-size:.95rem;margin-bottom:20px;">
+    수정요청 버튼을 클릭하면 아래와 같은 팝업이 나타납니다.
+  </p>
+
+  <!-- 팝업 목업 -->
+  <div class="modal-mock">
+    <div class="modal-mock-header">
+      <div class="title">
+        <i class="bi bi-pencil-square"></i>
+        수정요청 등록
+        <span style="font-size:.7rem;opacity:.7;font-weight:400;">드래그로 이동 가능</span>
+      </div>
+      <span class="close-x"><i class="bi bi-x-lg"></i></span>
+    </div>
+    <div class="modal-mock-body">
+      <div class="mock-label">📌 위치 정보 (자동 입력)</div>
+      <div class="mock-input" style="color:var(--muted);font-size:.8rem;">admin_manual.html &nbsp;›&nbsp; 관리자 매뉴얼 &nbsp;›&nbsp; 1.4 사이드바 메뉴</div>
+
+      <div class="mock-label">① 요청 제목 <span style="color:var(--danger);">*</span></div>
+      <div class="mock-input">사이드바 메뉴 항목이 잘못 표시됨</div>
+
+      <div class="mock-label">② 요청 내용 <span style="color:var(--danger);">*</span></div>
+      <div class="mock-input mock-textarea" style="min-height:70px;">2. 예약관리 메뉴가 클릭해도 이동이 안 됩니다.
+화면 캡처를 첨부합니다.</div>
+
+      <div class="mock-label">③ 첨부 이미지 (선택)</div>
+      <div class="mock-img-zone">
+        <i class="bi bi-cloud-upload"></i>
+        이미지를 드래그하거나, 클릭해서 파일을 선택하세요<br>
+        <span style="font-size:.75rem;opacity:.6;">또는 Ctrl+V로 클립보드 이미지 붙여넣기</span>
+      </div>
+      <div class="mock-img-thumb">
+        <div class="thumb"><i class="bi bi-image"></i></div>
+        <div class="thumb" style="background:linear-gradient(135deg,#a1c4fd,#c2e9fb);">
+          <i class="bi bi-image" style="color:#1d4ed8;"></i>
+        </div>
+        <div class="thumb" style="background:linear-gradient(135deg,#ffecd2,#fcb69f);">
+          <i class="bi bi-image" style="color:#92400e;"></i>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="mock-btn mock-btn-clip"><i class="bi bi-clipboard me-1"></i>클립보드 붙여넣기</button>
+        <button class="mock-btn mock-btn-secondary"><i class="bi bi-x me-1"></i>이미지 초기화</button>
+      </div>
+      <div class="mock-btn-row" style="margin-top:14px;">
+        <button class="mock-btn mock-btn-primary"><i class="bi bi-send me-1"></i>수정요청 제출</button>
+        <button class="mock-btn mock-btn-secondary">닫기</button>
+      </div>
+    </div>
+    <div class="mock-drag-hint">
+      <i class="bi bi-arrows-move me-1"></i>헤더를 드래그하여 팝업 위치를 이동할 수 있습니다
+    </div>
+    <div style="height:8px;"></div>
+  </div>
+
+  <!-- 각 항목 설명 -->
+  <div class="step-card">
+    <div class="step-num">1</div>
+    <h4>위치 정보 — 자동 입력됨</h4>
+    <p>버튼을 클릭한 위치(파일명, 탭, 섹션)가 자동으로 채워집니다. 수정하지 않아도 됩니다.</p>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">2</div>
+    <h4>요청 제목 입력 <span style="color:var(--danger);font-size:.85rem;">(필수)</span></h4>
+    <p>무엇이 문제인지 한 줄로 요약해서 입력합니다.<br>예: <em>"병원 목록 이미지가 깨져서 보입니다"</em></p>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">3</div>
+    <h4>요청 내용 입력 <span style="color:var(--danger);font-size:.85rem;">(필수)</span></h4>
+    <p>어떤 상황인지, 어떻게 수정해야 하는지 상세히 적어주세요.<br>재현 방법, 발생 조건 등을 포함하면 더 빠르게 처리됩니다.</p>
+  </div>
+
+  <div class="step-card">
+    <div class="step-num">4</div>
+    <h4>이미지 첨부 <span style="color:var(--muted);font-size:.85rem;">(선택)</span></h4>
+    <p>문제 화면을 캡처하여 첨부하면 개발팀이 더 정확히 파악할 수 있습니다.<br>여러 장 첨부 가능합니다.</p>
+  </div>
+
+  <div class="tip-box tip-info">
+    <i class="bi bi-info-circle-fill"></i>
+    <div>팝업은 <strong>드래그</strong>로 화면 어디든 이동할 수 있습니다. 매뉴얼을 보면서 내용을 작성하고 싶을 때 편리합니다.</div>
+  </div>
+
+  <!-- ③ 이미지 첨부 방법 -->
+  <div class="section-title" id="sec3"><i class="bi bi-images me-2"></i>3. 이미지 첨부 3가지 방법</div>
+
+  <div class="upload-methods">
+    <div class="upload-method-card">
+      <div class="icon-wrap icon-bg-1"><i class="bi bi-folder2-open"></i></div>
+      <h6>파일 직접 선택</h6>
+      <p>이미지 업로드 영역을 <strong>클릭</strong>하면 파일 탐색기가 열립니다. PNG, JPG, GIF 지원.</p>
+    </div>
+    <div class="upload-method-card">
+      <div class="icon-wrap icon-bg-2"><i class="bi bi-clipboard-plus"></i></div>
+      <h6>클립보드 붙여넣기</h6>
+      <p>화면 캡처 후 <code>Ctrl+V</code> 또는 <strong>클립보드 붙여넣기</strong> 버튼을 클릭합니다.</p>
+    </div>
+    <div class="upload-method-card">
+      <div class="icon-wrap icon-bg-3"><i class="bi bi-arrows-move"></i></div>
+      <h6>드래그 앤 드롭</h6>
+      <p>이미지 파일을 업로드 영역으로 <strong>드래그</strong>해서 놓으면 자동으로 첨부됩니다.</p>
+    </div>
+  </div>
+
+  <div class="tip-box tip-success">
+    <i class="bi bi-lightbulb-fill"></i>
+    <div>
+      <strong>빠른 캡처 방법:</strong><br>
+      Windows: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> → 영역 선택 → 팝업에서 <code>Ctrl+V</code><br>
+      Mac: <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>4</kbd> → 영역 선택 → 팝업에서 <code>⌘V</code>
+    </div>
+  </div>
+
+  <div class="tip-box tip-warning">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <div>팝업이 열릴 때 <strong>현재 화면 아래에 있는 이미지가 자동으로 감지</strong>되어 첨부될 수 있습니다.<br>불필요하면 <em>이미지 초기화</em> 버튼으로 삭제하세요.</div>
+  </div>
+
+  <!-- ④ 제출 후 관리자 화면 -->
+  <div class="section-title" id="sec4"><i class="bi bi-check2-circle me-2"></i>4. 제출 후 관리자 화면에서 확인</div>
+
+  <p style="color:var(--muted);font-size:.95rem;margin-bottom:20px;">
+    수정요청 제출 버튼을 누르면 즉시 관리자 화면에 반영됩니다.
+  </p>
+
+  <div class="flow-arrow"><i class="bi bi-arrow-down"></i></div>
+
+  <!-- 관리자 목록 목업 -->
+  <div class="list-mock">
+    <div class="list-mock-header">
+      <span style="flex:0 0 40px;">#</span>
+      <span style="flex:1;">요청 제목</span>
+      <span style="flex:0 0 90px;">위치</span>
+      <span style="flex:0 0 70px;">상태</span>
+      <span style="flex:0 0 80px;">등록일</span>
+    </div>
+    <div class="list-mock-row">
+      <span style="flex:0 0 40px;color:var(--muted);">8</span>
+      <span style="flex:1;font-weight:600;">사이드바 메뉴 항목이 잘못 표시됨 &nbsp;<i class="bi bi-image text-muted" style="font-size:.8rem;"></i> 3</span>
+      <span style="flex:0 0 90px;color:var(--muted);font-size:.78rem;">admin_manual.html</span>
+      <span style="flex:0 0 70px;"><span class="badge-status bg-requested">접수</span></span>
+      <span style="flex:0 0 80px;color:var(--muted);font-size:.78rem;">2026-04-09</span>
+    </div>
+    <div class="list-mock-row" style="opacity:.55;">
+      <span style="flex:0 0 40px;color:var(--muted);">7</span>
+      <span style="flex:1;font-weight:600;">[1.4 사이드바 메뉴]</span>
+      <span style="flex:0 0 90px;color:var(--muted);font-size:.78rem;">admin_manual.html</span>
+      <span style="flex:0 0 70px;"><span class="badge-status bg-progress">진행중</span></span>
+      <span style="flex:0 0 80px;color:var(--muted);font-size:.78rem;">2026-04-09</span>
+    </div>
+    <div class="list-mock-row" style="opacity:.35;">
+      <span style="flex:0 0 40px;color:var(--muted);">6</span>
+      <span style="flex:1;">이전 요청 항목</span>
+      <span style="flex:0 0 90px;color:var(--muted);font-size:.78rem;">index.html</span>
+      <span style="flex:0 0 70px;"><span class="badge-status bg-done">완료</span></span>
+      <span style="flex:0 0 80px;color:var(--muted);font-size:.78rem;">2026-04-08</span>
+    </div>
+  </div>
+
+  <a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_manual_feedback_list.php"
+     target="_blank" class="admin-link-card" style="display:flex;">
+    <i class="bi bi-list-check"></i>
+    <div>
+      <h5>수정요청 관리자 목록 바로가기</h5>
+      <p>등록된 모든 수정요청을 확인하고 상태를 관리합니다. 이미지 첨부, 진행 메모, Claude 프롬프트 생성 가능.</p>
+    </div>
+    <i class="bi bi-arrow-right ms-auto align-self-center"></i>
+  </a>
+
+  <!-- 상태 흐름 -->
+  <div class="section-title"><i class="bi bi-arrow-right-circle me-2"></i>처리 상태 흐름</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:16px 0 24px;">
+    <span class="badge-status" style="background:#dbeafe;color:#1d4ed8;padding:6px 14px;font-size:.85rem;">📥 접수</span>
+    <i class="bi bi-arrow-right" style="color:var(--muted);"></i>
+    <span class="badge-status" style="background:#e0e7ff;color:#4338ca;padding:6px 14px;font-size:.85rem;">✏️ 프롬프트 준비</span>
+    <i class="bi bi-arrow-right" style="color:var(--muted);"></i>
+    <span class="badge-status" style="background:#fef3c7;color:#92400e;padding:6px 14px;font-size:.85rem;">⚙️ 진행중</span>
+    <i class="bi bi-arrow-right" style="color:var(--muted);"></i>
+    <span class="badge-status" style="background:#d1fae5;color:#065f46;padding:6px 14px;font-size:.85rem;">✅ 완료</span>
+  </div>
+
+  <!-- ⑤ FAQ -->
+  <div class="section-title" id="sec5"><i class="bi bi-question-circle me-2"></i>5. 자주 묻는 질문</div>
+
+  <div class="accordion" id="faqAccordion">
+    <div class="accordion-item" style="border-radius:10px;overflow:hidden;margin-bottom:8px;">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+          제출 후 바로 처리가 되나요?
+        </button>
+      </h2>
+      <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+        <div class="accordion-body" style="color:var(--muted);font-size:.9rem;">
+          제출 즉시 관리자 목록에 등록됩니다. 처리 시간은 내용에 따라 다르며, 완료 시 상태가 <strong>완료</strong>로 변경됩니다.
+        </div>
+      </div>
+    </div>
+    <div class="accordion-item" style="border-radius:10px;overflow:hidden;margin-bottom:8px;">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+          이미지를 여러 장 첨부할 수 있나요?
+        </button>
+      </h2>
+      <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+        <div class="accordion-body" style="color:var(--muted);font-size:.9rem;">
+          네, 여러 장 첨부 가능합니다. 파일 선택 시 다중 선택하거나, 클립보드 붙여넣기를 반복하면 됩니다.
+        </div>
+      </div>
+    </div>
+    <div class="accordion-item" style="border-radius:10px;overflow:hidden;margin-bottom:8px;">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+          팝업을 이동할 수 있나요?
+        </button>
+      </h2>
+      <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+        <div class="accordion-body" style="color:var(--muted);font-size:.9rem;">
+          네. 팝업 상단 헤더 부분을 마우스로 <strong>드래그</strong>하면 화면 어디든 이동할 수 있습니다. 매뉴얼을 보면서 내용을 동시에 입력할 때 유용합니다.
+        </div>
+      </div>
+    </div>
+    <div class="accordion-item" style="border-radius:10px;overflow:hidden;margin-bottom:8px;">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+          제출한 내용을 수정할 수 있나요?
+        </button>
+      </h2>
+      <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+        <div class="accordion-body" style="color:var(--muted);font-size:.9rem;">
+          관리자 상세 페이지에서 요청 제목, 내용, 위치 정보를 직접 수정하고 저장할 수 있습니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단 -->
+  <div style="text-align:center;margin-top:56px;padding-top:32px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem;">
+    <div style="font-size:1.5rem;margin-bottom:8px;">✏️</div>
+    <div>수정요청 시스템 — 서울미녀 플랫폼 v2.0</div>
+    <div style="margin-top:4px;font-size:.78rem;">문의: <a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_manual_feedback_list.php" target="_blank" style="color:var(--primary);">관리자 피드백 목록</a></div>
+  </div>
+
+</div><!-- /guide-body -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+(function(){
+  // 기본값: dark
+  var saved = localStorage.getItem('guide_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  updateBtn(saved);
+
+  function updateBtn(theme){
+    var icon  = document.getElementById('themeIcon');
+    var label = document.getElementById('themeLabel');
+    if(!icon || !label) return;
+    if(theme === 'dark'){
+      icon.className  = 'bi bi-moon-stars-fill';
+      label.textContent = '야간';
+    } else {
+      icon.className  = 'bi bi-sun-fill';
+      label.textContent = '주간';
+    }
+  }
+
+  window.toggleTheme = function(){
+    var cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    var next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('guide_theme', next);
+    updateBtn(next);
+  };
+
+  // DOM 준비 후 버튼 초기화
+  document.addEventListener('DOMContentLoaded', function(){ updateBtn(saved); });
+})();
+</script>
+
+</body>
+</html>

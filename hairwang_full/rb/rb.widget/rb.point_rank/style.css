@@ -1,0 +1,105 @@
+/* rb.hd_point_rank 위젯 스타일 */
+.rb_hd_point_rank {
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 15px;
+    position: relative;
+}
+
+.rb_hd_point_rank_container {
+    background: #f8f9fa;
+    border-radius: 20px;
+    padding: 0 15px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    min-width: 200px;
+}
+
+.rb_hd_point_rank_label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    margin-right: 8px;
+}
+
+.rb_hd_point_rank_viewport {
+    height: 35px;
+    overflow: hidden;
+    position: relative;
+    flex: 1;
+}
+
+.rb_hd_point_rank_list {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    width: 100%;
+}
+
+.rb_hd_point_rank_item {
+    height: 35px;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.rb_hd_point_rank_num {
+    font-weight: 700;
+    color: #667eea;
+    margin-right: 6px;
+}
+
+.rb_hd_point_rank_num.rank_1st {
+    color: #ffd700;
+}
+
+.rb_hd_point_rank_num.rank_2nd {
+    color: #c0c0c0;
+}
+
+.rb_hd_point_rank_num.rank_3rd {
+    color: #cd7f32;
+}
+
+.rb_hd_point_rank_name {
+    color: #333;
+    font-weight: 600;
+    margin-right: 6px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.rb_hd_point_rank_name:hover {
+    color: #667eea;
+}
+
+.rb_hd_point_rank_point {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* 반응형 */
+@media (max-width: 1024px) {
+    .rb_hd_point_rank {
+        display: none !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .rb_hd_point_rank_container {
+        min-width: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .rb_hd_point_rank {
+        margin-right: 10px;
+    }
+}

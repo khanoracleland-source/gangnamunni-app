@@ -1,0 +1,391 @@
+/**
+ * 앱 패키징 대시보드 스타일
+ * rebuilder.co.kr/content/app 스타일 참조
+ * @package AddonAppAdmin
+ * @version 1.0.0
+ */
+
+/* ================================================================
+   플랫폼 랩
+   ================================================================ */
+
+.plf_wrap {
+    margin: 0 auto;
+    max-width: 1024px;
+}
+
+.plf_sec1 {
+    padding: 70px 30px 50px;
+    text-align: center;
+}
+
+.plf_sec1_tit {
+    font-size: 30px;
+    line-height: 1.4;
+    margin-bottom: 30px;
+    font-weight: bold;
+    color: #25282b;
+}
+
+.plf_sec1_sub {
+    font-size: 16px;
+    color: #666;
+    line-height: 1.6;
+    margin-top: 20px;
+}
+
+.font-B {
+    font-weight: bold;
+}
+
+/* ================================================================
+   앱 업로드 영역
+   ================================================================ */
+
+.mbs_list {
+    background-color: #f9f9f9;
+    padding: 50px 20px;
+    border-radius: 20px;
+}
+
+.app_add_wrap {
+    max-width: 1024px;
+    margin: 0 auto;
+    padding: 40px 0;
+}
+
+.app_add_wrap_ul1 {
+    width: 100%;
+}
+
+.app_add_wrap_ul1 li {
+    list-style: none;
+}
+
+.app_inp_wrap {
+    margin-bottom: 10px;
+}
+
+.app_add_info_tit {
+    font-size: 18px;
+    color: #25282b;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.app_add_info_sub {
+    font-size: 14px;
+    color: #777;
+    line-height: 1.6;
+}
+
+.app_add_info_sub2 {
+    font-size: 14px;
+    color: #777;
+    line-height: 1.6;
+}
+
+.app_chk,
+.app_apk {
+    margin-right: 5px;
+}
+
+.app_inp {
+    width: 100%;
+    height: 55px;
+    display: block;
+    background-color: #fff;
+    border-radius: 10px;
+    border: 1px dashed rgba(0,0,0,0.2);
+    margin-top: 10px;
+    font-size: 16px;
+    padding: 0 15px;
+    transition: all 0.3s ease;
+}
+
+.app_inp:focus {
+    border-color: #aa20ff;
+    outline: none;
+}
+
+.app_inp::placeholder {
+    color: rgba(0,0,0,0.3);
+}
+
+.app_textarea {
+    width: 100%;
+    min-height: 120px;
+    display: block;
+    background-color: #fff;
+    border-radius: 10px;
+    border: 1px dashed rgba(0,0,0,0.2);
+    margin-top: 10px;
+    font-size: 16px;
+    padding: 15px;
+    resize: vertical;
+    transition: all 0.3s ease;
+}
+
+.app_textarea:focus {
+    border-color: #aa20ff;
+    outline: none;
+}
+
+/* ================================================================
+   업로드 영역
+   ================================================================ */
+
+.app-upload-zone {
+    width: 100%;
+    min-height: 300px;
+    background-color: #fff;
+    border: 2px dashed #aa20ff;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.app-upload-zone:hover {
+    background-color: #f9f9f9;
+    border-color: #8800cc;
+}
+
+.app-upload-zone.drag-over {
+    background-color: #f5f0ff;
+    border-color: #aa20ff;
+    border-width: 3px;
+}
+
+.app-upload-icon {
+    font-size: 64px;
+    color: #aa20ff;
+    margin-bottom: 20px;
+}
+
+.app-upload-text {
+    text-align: center;
+}
+
+.app-upload-text p {
+    margin: 5px 0;
+    font-size: 18px;
+    color: #25282b;
+}
+
+.app-upload-desc {
+    font-size: 14px !important;
+    color: #999 !important;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 30px;
+    background-color: #e9ecef;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #aa20ff 0%, #dd44ff 100%);
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+/* ================================================================
+   앱 목록
+   ================================================================ */
+
+.app-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 30px;
+}
+
+.app-list-item {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 20px 20px 80px rgba(0,0,0,0.05);
+    border: 2px solid #f3f3f3;
+    transition: all 0.3s ease;
+}
+
+.app-list-item:hover {
+    transform: translateY(-5px);
+    border-color: #aa20ff;
+}
+
+.app_list_mem {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.app-list-icon {
+    width: 80px;
+    height: 80px;
+    background-color: #f3f3f3;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    flex-shrink: 0;
+}
+
+.app-list-info {
+    flex: 1;
+}
+
+.app-version-badge {
+    font-size: 12px;
+    background-color: #aa20ff;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 15px;
+    margin-left: 10px;
+}
+
+.ap_status {
+    background-color: #25282b;
+    color: #fff;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 15px;
+    display: inline-block;
+}
+
+.ap_status_down {
+    background-color: #aa20ff;
+    color: #fff;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 15px;
+    display: inline-block;
+}
+
+.ap_status_del {
+    background-color: #ccc;
+    color: #fff;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 15px;
+    display: inline-block;
+}
+
+.rb_hub_btns {
+    text-align: center;
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.rb_hub_btns button {
+    flex: 1;
+}
+
+/* ================================================================
+   가이드 스텝
+   ================================================================ */
+
+.guide-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.guide-step {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.guide-step-number {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #aa20ff 0%, #dd44ff 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.guide-step-content h4 {
+    font-size: 18px;
+    font-weight: bold;
+    color: #25282b;
+    margin: 0 0 10px 0;
+}
+
+.guide-step-content p {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* ================================================================
+   반응형
+   ================================================================ */
+
+@media (max-width: 768px) {
+    .plf_sec1 {
+        padding: 40px 20px;
+    }
+
+    .plf_sec1_tit {
+        font-size: 24px;
+    }
+
+    .plf_sec1_sub {
+        font-size: 14px;
+    }
+
+    .app-upload-zone {
+        min-height: 200px;
+        padding: 30px 20px;
+    }
+
+    .app-upload-icon {
+        font-size: 48px;
+    }
+
+    .app-upload-text p {
+        font-size: 16px;
+    }
+
+    .app-list-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .guide-steps {
+        grid-template-columns: 1fr;
+    }
+
+    .app_list_mem {
+        flex-direction: column;
+    }
+
+    .app-list-icon {
+        margin: 0 auto;
+    }
+
+    .rb_hub_btns {
+        flex-direction: column;
+    }
+
+    .rb_hub_btns button {
+        width: 100%;
+    }
+}

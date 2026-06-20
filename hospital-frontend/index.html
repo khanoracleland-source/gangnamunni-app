@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울미녀 - 믿을 수 있는 병원 예약 플랫폼</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic', sans-serif;
+            background: #FFFFFF;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF6B9D;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            font-size: 32px;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            font-size: 15px;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover {
+            color: #FF6B9D;
+        }
+
+        .nav-button {
+            padding: 10px 24px;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-button:hover {
+            background: #E85A88;
+            transform: translateY(-2px);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #FFE5ED 0%, #FFB6D9 100%);
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 800;
+            color: #FF6B9D;
+            margin-bottom: 20px;
+            line-height: 1.3;
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 40px;
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #FF6B9D;
+            margin-bottom: 8px;
+        }
+
+        .hero-stat-label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 50px;
+        }
+
+        /* Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 25px;
+            margin-bottom: 80px;
+        }
+
+        .category-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .category-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(255, 107, 157, 0.25);
+        }
+
+        .category-icon {
+            font-size: 72px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .category-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .category-count {
+            font-size: 13px;
+            color: #999;
+            font-weight: 500;
+        }
+
+        /* Popular Hospitals */
+        .popular-section {
+            background: #F9F9F9;
+            padding: 80px 20px;
+            margin-bottom: 0;
+        }
+
+        .hospital-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .hospital-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .hospital-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+        }
+
+        .hospital-image {
+            width: 100%;
+            height: 220px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+        }
+
+        .hospital-info {
+            padding: 24px;
+        }
+
+        .hospital-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .hospital-rating {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .rating-stars {
+            color: #FFD700;
+            font-size: 18px;
+        }
+
+        .rating-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .rating-count {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .hospital-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .hospital-tag {
+            padding: 6px 14px;
+            background: #FFE5ED;
+            color: #FF6B9D;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Events Section */
+        .events-section {
+            padding: 80px 20px;
+        }
+
+        .event-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .event-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+        }
+
+        .event-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #FF4757;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            z-index: 10;
+        }
+
+        .event-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 56px;
+        }
+
+        .event-info {
+            padding: 20px;
+        }
+
+        .event-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .event-hospital {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .event-price {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .event-original-price {
+            font-size: 14px;
+            color: #999;
+            text-decoration: line-through;
+        }
+
+        .event-discounted-price {
+            font-size: 22px;
+            font-weight: 700;
+            color: #FF6B9D;
+        }
+
+        /* Footer */
+        .footer {
+            background: #333;
+            color: white;
+            padding: 60px 20px 30px;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #FF6B9D;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 12px;
+        }
+
+        .footer-links a {
+            color: #CCC;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: #FF6B9D;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid #555;
+            color: #999;
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero p {
+                font-size: 18px;
+            }
+
+            .hero-stats {
+                flex-direction: column;
+                gap: 30px;
+            }
+
+            .categories-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 15px;
+            }
+
+            .category-icon {
+                font-size: 56px;
+            }
+
+            .category-name {
+                font-size: 16px;
+            }
+
+            .hospital-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .event-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+
+            .section-title {
+                font-size: 28px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-content {
+                padding: 0 15px;
+            }
+
+            .hero {
+                padding: 60px 15px;
+            }
+
+            .hero h1 {
+                font-size: 28px;
+            }
+
+            .hero p {
+                font-size: 16px;
+            }
+
+            .container {
+                padding: 40px 15px;
+            }
+
+            .categories-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                gap: 12px;
+            }
+
+            .category-card {
+                padding: 20px 15px;
+            }
+
+            .category-icon {
+                font-size: 48px;
+            }
+
+            .category-name {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">💄</span>
+                <span>서울미녀</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="hospitals.html" class="nav-link">병원찾기</a>
+                <a href="events.html" class="nav-link">이벤트</a>
+                <a href="community.html" class="nav-link">커뮤니티</a>
+                <a href="my-favorites.html" class="nav-link" title="내 찜 목록">❤️</a>
+                <button class="nav-button" onclick="handleMyBooking()">내 예약</button>
+                <a href="settings.html" class="nav-link" style="font-size: 20px;" title="환경 설정">⚙️</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>💄 서울미녀와 함께하세요</h1>
+            <p>믿을 수 있는 병원, 간편한 예약<br>서울의 아름다움을 위한 최고의 선택</p>
+
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-value" id="hospitalCount">99</div>
+                    <div class="hero-stat-label">등록 병원</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">8.7⭐</div>
+                    <div class="hero-stat-label">평균 평점</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value" id="reviewCount">67만+</div>
+                    <div class="hero-stat-label">누적 리뷰</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <div class="container">
+        <h2 class="section-title">시술 카테고리</h2>
+        <p class="section-subtitle">원하시는 시술 카테고리를 선택해주세요</p>
+
+        <div class="categories-grid">
+            <a href="hospitals.html?category=리프팅" class="category-card">
+                <span class="category-icon">⚡</span>
+                <div class="category-name">리프팅</div>
+                <div class="category-count">74개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=보톡스" class="category-card">
+                <span class="category-icon">💉</span>
+                <div class="category-name">보톡스</div>
+                <div class="category-count">67개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=필러" class="category-card">
+                <span class="category-icon">💧</span>
+                <div class="category-name">필러</div>
+                <div class="category-count">65개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=피부" class="category-card">
+                <span class="category-icon">✨</span>
+                <div class="category-name">피부</div>
+                <div class="category-count">66개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=지방성형" class="category-card">
+                <span class="category-icon">🏃</span>
+                <div class="category-name">지방성형</div>
+                <div class="category-count">40개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=코성형" class="category-card">
+                <span class="category-icon">👃</span>
+                <div class="category-name">코성형</div>
+                <div class="category-count">45개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=눈성형" class="category-card">
+                <span class="category-icon">👁️</span>
+                <div class="category-name">눈성형</div>
+                <div class="category-count">52개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=가슴성형" class="category-card">
+                <span class="category-icon">💪</span>
+                <div class="category-name">가슴성형</div>
+                <div class="category-count">38개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=치아" class="category-card">
+                <span class="category-icon">🦷</span>
+                <div class="category-name">치아</div>
+                <div class="category-count">55개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=제모" class="category-card">
+                <span class="category-icon">🪒</span>
+                <div class="category-name">제모</div>
+                <div class="category-count">48개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=모발이식" class="category-card">
+                <span class="category-icon">💇</span>
+                <div class="category-name">모발이식</div>
+                <div class="category-count">32개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=기타" class="category-card">
+                <span class="category-icon">🎯</span>
+                <div class="category-name">기타</div>
+                <div class="category-count">20개 병원</div>
+            </a>
+
+            <a href="hospitals.html?category=한방" class="category-card">
+                <span class="category-icon">🌿</span>
+                <div class="category-name">한방</div>
+                <div class="category-count">28개 병원</div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Popular Hospitals -->
+    <section class="popular-section">
+        <div class="container">
+            <h2 class="section-title">인기 병원</h2>
+            <p class="section-subtitle">많은 분들이 선택한 인기 병원</p>
+
+            <div class="hospital-grid" id="hospitalGrid">
+                <!-- Hospitals will be loaded dynamically -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Events Section -->
+    <section class="events-section">
+        <div class="container">
+            <h2 class="section-title">특별 이벤트</h2>
+            <p class="section-subtitle">지금 진행중인 특가 이벤트</p>
+
+            <div class="event-grid" id="eventGrid">
+                <!-- Events will be loaded dynamically -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>💄 서울미녀</h3>
+                <p>서울의 아름다움을 위한<br>최고의 병원 예약 플랫폼</p>
+            </div>
+            <div class="footer-section">
+                <h3>서비스</h3>
+                <ul class="footer-links">
+                    <li><a href="hospitals.html">병원찾기</a></li>
+                    <li><a href="events.html">이벤트</a></li>
+                    <li><a href="community.html">커뮤니티</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>고객지원</h3>
+                <ul class="footer-links">
+                    <li><a href="#">공지사항</a></li>
+                    <li><a href="#">자주 묻는 질문</a></li>
+                    <li><a href="#">고객센터</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>회사소개</h3>
+                <ul class="footer-links">
+                    <li><a href="#">서울미녀 소개</a></li>
+                    <li><a href="#">이용약관</a></li>
+                    <li><a href="#">개인정보처리방침</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 서울미녀. All rights reserved. Powered by Claude Sonnet 4.5</p>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        const DEBUG = sessionStorage.getItem('debug') === 'true';
+
+        // Debug logging function
+        function debugLog(action, data) {
+            if (DEBUG) {
+                console.log(`[DEBUG ${new Date().toISOString()}] ${action}:`, data);
+            }
+        }
+
+        // Handle My Booking button
+        function handleMyBooking() {
+            debugLog('Button Click', { action: 'My Booking', page: 'index' });
+            alert('내 예약 페이지는 준비 중입니다.\n\n회원가입 후 이용 가능합니다.');
+        }
+
+        // Debug mode info
+        if (DEBUG) {
+            console.log('%c[DEBUG MODE ENABLED]', 'background: #FF6B9D; color: white; padding: 5px 10px; font-weight: bold;');
+            console.log('Set sessionStorage.setItem("debug", "false") to disable debug mode');
+        }
+
+        debugLog('Page Initialized', { page: 'index', url: window.location.href });
+
+        // Load popular hospitals
+        async function loadPopularHospitals() {
+            // 로딩 인디케이터 표시
+            LoadingIndicator.show('popular-hospitals');
+
+            try {
+                debugLog('Load Popular Hospitals', { count: 6 });
+                const url = `${API_BASE}/hospitals?per_page=6&sort_by=rating&sort_order=desc`;
+                debugLog('API Request', { url });
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                debugLog('API Response', { dataCount: result.data.length, total: result.total });
+
+                const grid = document.getElementById('hospitalGrid');
+                grid.innerHTML = result.data.map(hospital => `
+                    <div class="hospital-card" onclick="window.location.href='hospital.html?id=${hospital.id}'">
+                        <div class="hospital-image">🏥</div>
+                        <div class="hospital-info">
+                            <div class="hospital-name">${hospital.name}</div>
+                            <div class="hospital-rating">
+                                <span class="rating-stars">⭐⭐⭐⭐⭐</span>
+                                <span class="rating-value">${hospital.rating || '9.5'}</span>
+                                <span class="rating-count">(${hospital.review_count || 0})</span>
+                            </div>
+                            <div class="hospital-tags">
+                                ${(hospital.categories || '리프팅').split(',').slice(0, 3).map(cat =>
+                                    `<span class="hospital-tag">${cat.trim()}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                debugLog('Hospitals Displayed', { count: result.data.length });
+            } catch (error) {
+                debugLog('API Error', { error: error.message, stack: error.stack });
+                console.error('Error loading hospitals:', error);
+            } finally {
+                // 로딩 인디케이터 숨김
+                LoadingIndicator.hide('popular-hospitals');
+            }
+        }
+
+        // Load mock events (since we don't have events API yet)
+        function loadEvents() {
+            debugLog('Load Events', { source: 'mock data', count: 6 });
+            const events = [
+                { id: 1, title: '리프팅 특가 이벤트', hospital: '강남피부과', originalPrice: '500,000', discountedPrice: '250,000', discount: '50%', icon: '⚡' },
+                { id: 2, title: '보톡스 프리미엄', hospital: '압구정클리닉', originalPrice: '300,000', discountedPrice: '180,000', discount: '40%', icon: '💉' },
+                { id: 3, title: '필러 패키지', hospital: '청담미의원', originalPrice: '400,000', discountedPrice: '280,000', discount: '30%', icon: '💧' },
+                { id: 4, title: '피부관리 특가', hospital: '신사피부과', originalPrice: '200,000', discountedPrice: '120,000', discount: '40%', icon: '✨' },
+                { id: 5, title: '지방흡입 프로모션', hospital: '역삼성형외과', originalPrice: '1,500,000', discountedPrice: '900,000', discount: '40%', icon: '🏃' },
+                { id: 6, title: '코성형 할인', hospital: '논현성형외과', originalPrice: '3,000,000', discountedPrice: '2,100,000', discount: '30%', icon: '👃' }
+            ];
+
+            const grid = document.getElementById('eventGrid');
+            grid.innerHTML = events.map(event => `
+                <div class="event-card" onclick="window.location.href='event.html?id=${event.id}'">
+                    <div class="event-badge">${event.discount}</div>
+                    <div class="event-image">${event.icon}</div>
+                    <div class="event-info">
+                        <div class="event-title">${event.title}</div>
+                        <div class="event-hospital">${event.hospital}</div>
+                        <div class="event-price">
+                            <span class="event-original-price">${event.originalPrice}원</span>
+                            <span class="event-discounted-price">${event.discountedPrice}원</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            debugLog('Events Displayed', { count: events.length });
+        }
+
+        // Initialize
+        debugLog('Initialize', { action: 'Loading data' });
+        loadPopularHospitals();
+        loadEvents();
+    </script>
+
+    <!-- Loading Indicator -->
+    <script src="js/loading.js"></script>
+
+    <!-- Settings Manager -->
+    <script src="js/settings.js"></script>
+
+    <!-- Authentication Manager -->
+    <script src="js/auth.js"></script>
+</body>
+</html>

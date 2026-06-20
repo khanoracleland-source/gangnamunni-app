@@ -1,0 +1,109 @@
+{
+  "_comment": "HMS HMS 간호사 매뉴얼 - Auto Manual Config",
+  "_version": "1.0",
+  "_updated": "2026-03-05",
+  "configKey": "hms-nurse-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/",
+  "browser": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "headless": true
+  },
+  "login": {
+    "required": true,
+    "url": "login",
+    "usernameField": "input[name='email']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[type='submit']",
+    "successIndicator": ".side-menus",
+    "username": "keshawn.ortiz@example.com",
+    "password": "123456"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "HMS 로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 성공 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "HMS 간호사 매뉴얼",
+    "outputDir": "../uploads/hms-nurse-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_main",
+      "title": "간호사 메뉴",
+      "icon": "bi-hospital",
+      "pages": [
+        {
+          "key": "nurse_beds",
+          "label": "병상 관리",
+          "url": "bed-types",
+          "description": "병상 유형/현황",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "nurse_notice",
+          "label": "게시판",
+          "url": "employee/notice-board",
+          "description": "공지사항",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "nurse_meeting",
+          "label": "실시간 회의",
+          "url": "live-meeting",
+          "description": "화상 회의",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "nurse_payroll",
+          "label": "급여",
+          "url": "employee/payroll",
+          "description": "급여 내역",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "nurse_opds",
+          "label": "입원/외래",
+          "url": "opds",
+          "description": "환자 입원/외래 기록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

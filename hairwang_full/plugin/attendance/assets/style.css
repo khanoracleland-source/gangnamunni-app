@@ -1,0 +1,292 @@
+/* =========================================================
+   출석부 컴포넌트 CSS (Scoped: .attendance-body)
+   - 사이트 공통 변수에 안전하게 매핑한 로컬 변수 사용
+   - 주석은 한글 표기
+   - 관리자 FAB는 카드 우측 상단(absolute) 배치
+   ========================================================= */
+
+/* ===== 로컬 변수 매핑 (사이트 공통 토큰과 연결) ===== */
+:root{
+  /* 공통 토큰이 있으면 우선 사용, 없으면 우회 기본값 */
+  --att-text:   var(--text, #0F172A);
+  --att-muted:  var(--muted, #6B7280);
+  --att-panel:  var(--panel, #FFFFFF);
+  --att-border: var(--line, #E5E7EB);
+  --att-brand:  var(--brand, #635BFF);
+  --att-brand-100: #EEF2FF; /* 포커스 링/하이라이트용 연한 브랜드 컬러 */
+  --att-shadow: var(--shadow, 0 10px 30px rgba(17,24,39,.08));
+  --att-radius: var(--radius, 16px);
+}
+
+*{ box-sizing:border-box }
+
+/* ===== 바디/그리드 ===== */
+.attendance-body{ color:var(--att-text); line-height:1.5 }
+.att-container{ max-width:1200px; margin:0 auto }
+.att-grid{ display:grid; grid-template-columns:1fr; gap:24px }
+@media (min-width:1024px){ .att-grid{ grid-template-columns:1fr 1fr } }
+
+/* ===== 카드 ===== */
+.att-card{
+  background:var(--att-panel);
+  border:1px solid var(--att-border);
+  border-radius:var(--att-radius);
+  padding:20px;
+  box-shadow:var(--att-shadow);
+}
+/* 관리자 설정 카드 내부에 FAB를 고정하기 위해 relative 지정 */
+section.att-form .att-card{ position:relative; margin-bottom:30px; }
+
+.att-muted{ color:var(--att-muted); font-size:12px; margin-top:4px }
+
+/* ===== 버튼/액션 ===== */
+.att-actions{ display:flex; gap:8px; align-items:center; margin-top:12px }
+.att-btn{
+  border:1px solid var(--att-border);
+  background:var(--att-panel);
+  border-radius:12px;
+  padding:8px 12px;
+  font-size:14px;
+  cursor:pointer;
+  transition:.15s;
+}
+.att-btn:hover{ background:#F9FAFB }
+.att-btn:active{ transform:scale(.99) }
+
+/* ===== 요약 박스 ===== */
+.att-summary{
+  margin-top:16px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+}
+.att-sum{
+  background:#F9FAFB;
+  border:1px solid var(--att-border);
+  border-radius:12px;
+  padding:12px;
+  text-align:center;
+}
+.att-sum-title{ color:var(--att-muted); font-size:12px; margin:0 }
+.att-sum-value{ margin-top:4px; font-size:20px; font-weight:700 }
+
+/* ===== 캘린더 ===== */
+.att-weekhead{
+  margin-top:16px;
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  text-align:center;
+  color:var(--att-muted);
+  font-size:12px;
+}
+.att-cal{
+  margin-top:8px;
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:8px;
+}
+@media (min-width:640px){ .att-cal{ gap:12px } }
+
+.att-day{
+  position:relative;
+  aspect-ratio:1/1;
+  border:1px solid var(--att-border);
+  border-radius:12px;
+  background:var(--att-panel);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:.15s;
+  font-size:14px;
+}
+.att-day:hover{ background:#F9FAFB }
+
+.att-date{ position:absolute; top:6px; left:8px; font-size:12px; color:#374151 }
+.att-day.out{ background:#F3F4F6; color:#9CA3AF }
+.att-day.is-selected{ outline:2px solid var(--att-brand); outline-offset:0 }
+/* 오늘 날짜: 브랜드 톤 보더 표시 */
+.att-day.is-today{ border-color:var(--att-brand) }
+
+.att-dot{
+  position:absolute; right:6px; bottom:6px;
+  width:8px; height:8px; border-radius:50%; background:#10B981;
+}
+
+/* ===== 폼 ===== */
+.att-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+.att-label{ display:block; color:var(--att-muted); font-size:12px; margin:0 0 4px }
+
+.att-input,
+.att-select,
+.att-textarea{
+  width:100%;
+  border:1px solid var(--att-border);
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:14px;
+  background:var(--att-panel);
+  outline:none;
+  transition:.12s;
+}
+.att-input:focus,
+.att-select:focus,
+.att-textarea:focus{
+  box-shadow:0 0 0 2px var(--att-brand-100);
+  border-color:#BFDBFE; /* 가벼운 블루 톤으로 포커스 피드백 */
+}
+.att-textarea{ resize:none }
+.att-count{ margin-top:4px; text-align:right; color:var(--att-muted); font-size:12px }
+
+/* ===== 빠른 선택 Chip ===== */
+.att-quickwrap{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
+.att-chip{
+  border:1px solid var(--att-border);
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:12px;
+  background:var(--att-panel);
+  cursor:pointer;
+}
+.att-chip:hover{ background:#F3F4F6 }
+
+/* ===== 제출 버튼 ===== */
+.att-submit{
+  width:100%;
+  border:none;
+  background:var(--att-brand);
+  color:#fff;
+  border-radius:12px;
+  padding:12px;
+  font-weight:600;
+  cursor:pointer;
+  margin-top:12px;
+}
+.att-submit:hover{ filter:brightness(0.95) }
+.att-submit:active{ transform:scale(.99) }
+
+/* ===== 기분(무드) 버튼 그룹 ===== */
+.mood-wrap{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px }
+.mood-btn{
+  border:1px solid var(--att-border);
+  border-radius:12px;
+  padding:8px 12px;
+  background:var(--att-panel);
+  cursor:pointer;
+  user-select:none;
+}
+.mood-btn.active{
+  border-color:var(--att-brand);
+  box-shadow:0 0 0 2px var(--att-brand-100);
+}
+
+/* ===== 목록 ===== */
+.att-listhead{ display:flex; align-items:center; justify-content:space-between; gap:8px }
+.att-scope{
+  border:1px solid var(--att-border);
+  border-radius:12px;
+  padding:8px 10px;
+  font-size:14px;
+  background:var(--att-panel);
+}
+.att-search{ margin-top:12px; display:flex; gap:8px }
+.att-search input{ flex:1 }
+
+.att-list{
+  margin-top:16px;
+  max-height:420px;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.att-item{
+  border:1px solid var(--att-border);
+  border-radius:12px;
+  padding:12px;
+  transition:.15s;
+  background:var(--att-panel);
+  position:relative;
+}
+.att-item:hover{ background:#F9FAFB }
+.att-itemrow{ display:flex; gap:12px; align-items:flex-start }
+
+/* 아바타: 현재는 무드 이모지/아이콘을 넣는 자리 */
+.att-avatar{
+  flex:0 0 36px;
+  width:36px; height:36px;
+  border-radius:50%;
+  background:#EEF2FF;
+  color:#111;
+  display:grid; place-items:center;
+  font-size:18px;
+}
+
+.att-meta{ display:flex; align-items:center; justify-content:space-between; gap:12px }
+.att-name{
+  font-weight:600;
+  max-width:200px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.att-time{ color:var(--att-muted); font-size:12px }
+.att-msg{ margin-top:2px; font-size:14px }
+
+.att-del{
+  position:absolute; bottom:8px; right:8px;
+  border:1px solid var(--att-border);
+  background:var(--att-panel);
+  border-radius:10px;
+  padding:4px 8px; font-size:12px; cursor:pointer;
+}
+.att-del:hover{ background:#FEE2E2; border-color:#FECACA }
+
+/* ===== 스크롤바 ===== */
+.att-list::-webkit-scrollbar,
+.att-cal::-webkit-scrollbar{ height:8px; width:8px }
+.att-list::-webkit-scrollbar-thumb,
+.att-cal::-webkit-scrollbar-thumb{ background:#D1D5DB; border-radius:8px }
+
+/* ===== 비회원/잠금 상태 ===== */
+.att-textarea:disabled,
+.att-chip[disabled],
+.mood-btn.is-disabled{ opacity:.6 }
+.att-textarea:disabled,
+.att-chip[disabled]{ cursor:not-allowed }
+.mood-btn.is-disabled{ pointer-events:none }
+
+/* ===== 관리자 FAB (카드 우측 상단에 고정) =====
+   - fixed → absolute로 변경 (부모 .att-card가 relative여야 함)
+*/
+.att-fab{
+  position:absolute; right:20px; top:20px; z-index:80;
+  width:30px; height:30px; border-radius:50%;
+  border:0; background:var(--att-brand); color:#fff; cursor:pointer;
+  box-shadow:var(--att-shadow);
+  display:grid; place-items:center;
+}
+.att-fab:hover{ opacity:.9 }
+
+/* ===== 모달 ===== */
+.att-modal{
+  position:fixed; inset:0; background:rgba(17,24,39,.45);
+  display:none; align-items:center; justify-content:center; z-index:90;
+}
+.att-modal.show{ display:flex; }
+.att-modal-dlg{
+  width:min(560px, 92vw);
+  background:#fff; border-radius:16px; box-shadow:var(--att-shadow);
+  overflow:hidden; display:flex; flex-direction:column;
+}
+.att-modal-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px; border-bottom:1px solid var(--att-border);
+}
+.att-modal-body{ padding:16px; display:flex; flex-direction:column; gap:12px }
+.att-modal-foot{ padding:12px 16px; border-top:1px solid var(--att-border); text-align:right }
+.att-modal-close{
+  border:0; background:#F3F4F6; border-radius:10px; width:32px; height:32px; cursor:pointer;
+}
+
+/* ===== 반응형 여백 ===== */
+@media (max-width:1024px){
+  .attendance-body{ padding:0 20px }
+}

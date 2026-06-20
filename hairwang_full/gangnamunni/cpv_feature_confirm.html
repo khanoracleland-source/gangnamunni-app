@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPV 광고비 과금 시스템 - 기능 확인서 (2026-03-11)</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif; background:#f5f5f5; color:#333; line-height:1.6; }
+.header { background:linear-gradient(135deg,#0f172a,#1e3a5f); color:#fff; padding:40px 24px; text-align:center; }
+.header h1 { font-size:26px; margin-bottom:8px; }
+.header p { font-size:14px; opacity:0.8; }
+.header .badge-ver { display:inline-block; background:rgba(255,255,255,0.15); padding:4px 14px; border-radius:20px; font-size:12px; margin-top:8px; }
+.container { max-width:1200px; margin:0 auto; padding:24px; }
+.summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:32px; }
+.summary-card { background:#fff; border-radius:12px; padding:20px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.summary-card .num { font-size:32px; font-weight:800; }
+.summary-card .label { font-size:13px; color:#666; margin-top:4px; }
+.s-total .num { color:#1e3a5f; } .s-confirmed .num { color:#16a34a; } .s-modified .num { color:#ea580c; } .s-pending .num { color:#999; }
+.phase { margin-bottom:32px; }
+.phase-title { font-size:18px; font-weight:800; padding:12px 20px; border-radius:10px; margin-bottom:16px; color:#fff; display:flex; align-items:center; gap:10px; }
+.phase-title .phase-num { background:rgba(255,255,255,0.2); padding:2px 10px; border-radius:6px; font-size:13px; }
+.phase-1 { background:linear-gradient(135deg,#7c3aed,#6d28d9); }
+.phase-2 { background:linear-gradient(135deg,#dc2626,#b91c1c); }
+.phase-3 { background:linear-gradient(135deg,#ea580c,#c2410c); }
+.phase-4 { background:linear-gradient(135deg,#0284c7,#0369a1); }
+.phase-5 { background:linear-gradient(135deg,#16a34a,#15803d); }
+.feature-card { background:#fff; border-radius:12px; margin-bottom:16px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06); border-left:4px solid #ddd; transition:border-color 0.3s; }
+.feature-card.confirmed { border-left-color:#16a34a; } .feature-card.modified { border-left-color:#ea580c; } .feature-card.rejected { border-left-color:#dc2626; }
+.feature-header { padding:16px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #f0f0f0; cursor:pointer; }
+.feature-no { display:inline-flex; align-items:center; justify-content:center; min-width:36px; height:36px; border-radius:8px; font-weight:800; font-size:13px; color:#fff; background:#1e3a5f; padding:0 8px; flex-shrink:0; }
+.feature-title { font-size:15px; font-weight:700; flex:1; }
+.feature-status { font-size:12px; padding:4px 12px; border-radius:20px; font-weight:600; }
+.st-pending { background:#f5f5f5; color:#999; } .st-confirmed { background:#dcfce7; color:#16a34a; } .st-modified { background:#fff7ed; color:#ea580c; } .st-rejected { background:#fef2f2; color:#dc2626; }
+.feature-body { padding:16px 20px; }
+
+/* 용도/설명 박스 */
+.what-box { background:#f0f4ff; border:1px solid #c7d2fe; border-radius:10px; padding:16px 20px; margin-bottom:16px; }
+.what-box h4 { font-size:14px; font-weight:800; color:#4338ca; margin-bottom:8px; }
+.what-box p { font-size:13.5px; color:#333; margin-bottom:6px; line-height:1.8; }
+.analogy-box { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:14px 18px; margin-bottom:16px; }
+.analogy-box h4 { font-size:13px; font-weight:700; color:#92400e; margin-bottom:6px; }
+.analogy-box p { font-size:13px; color:#78350f; line-height:1.7; }
+.example-box { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px 18px; margin-bottom:16px; }
+.example-box h4 { font-size:13px; font-weight:700; color:#166534; margin-bottom:6px; }
+.example-box p, .example-box li { font-size:13px; color:#14532d; line-height:1.7; }
+.example-box ul { margin-left:18px; }
+.why-box { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:14px 18px; margin-bottom:16px; }
+.why-box h4 { font-size:13px; font-weight:700; color:#991b1b; margin-bottom:6px; }
+.why-box p { font-size:13px; color:#7f1d1d; line-height:1.7; }
+.feature-detail { font-size:13px; color:#666; background:#f8fafc; padding:12px 16px; border-radius:8px; margin-bottom:16px; }
+.feature-detail ul { margin-left:18px; } .feature-detail li { margin-bottom:4px; }
+.confirm-area { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+.confirm-btn { padding:8px 20px; border-radius:8px; border:2px solid #ddd; background:#fff; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+.confirm-btn:hover { transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.confirm-btn.btn-yes { border-color:#16a34a; color:#16a34a; } .confirm-btn.btn-yes.selected { background:#16a34a; color:#fff; }
+.confirm-btn.btn-modify { border-color:#ea580c; color:#ea580c; } .confirm-btn.btn-modify.selected { background:#ea580c; color:#fff; }
+.confirm-btn.btn-no { border-color:#dc2626; color:#dc2626; } .confirm-btn.btn-no.selected { background:#dc2626; color:#fff; }
+.confirm-label { font-size:13px; font-weight:600; color:#666; margin-right:8px; }
+.comment-area { margin-top:12px; }
+.comment-area textarea { width:100%; min-height:120px; border:2px solid #e5e7eb; border-radius:8px; padding:10px 14px; font-size:13px; font-family:inherit; resize:vertical; transition:border-color 0.2s; }
+.comment-area textarea:focus { outline:none; border-color:#7c3aed; }
+.comment-area label { font-size:12px; color:#888; margin-bottom:4px; display:block; }
+.submit-section { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-top:32px; text-align:center; }
+.submit-btn { background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; border:none; padding:14px 48px; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; transition:all 0.2s; }
+.submit-btn:hover { transform:translateY(-2px); box-shadow:0 4px 16px rgba(124,58,237,0.3); }
+.submit-btn:disabled { background:#ccc; cursor:not-allowed; transform:none; box-shadow:none; }
+.info-box { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:16px 20px; margin-bottom:24px; font-size:13px; color:#1e40af; }
+.info-box strong { color:#1e3a8a; }
+.tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; margin-left:6px; }
+.tag-new { background:#dcfce7; color:#16a34a; } .save-comment-btn { padding:6px 16px; border-radius:6px; border:none; background:#2563eb; color:#fff; font-size:12px; font-weight:700; cursor:pointer; margin-top:8px; transition:all 0.2s; } .save-comment-btn:hover { background:#1d4ed8; } .save-comment-btn.saved { background:#16a34a; }
+.tag-excel-down { background:#dcfce7; color:#16a34a; } .tag-excel-up { background:#dbeafe; color:#2563eb; }
+.tag-extend { background:#e0e7ff; color:#4338ca; } .tag-core { background:#fef2f2; color:#dc2626; }
+.toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(100px); background:#1e293b; color:#fff; padding:14px 28px; border-radius:10px; font-size:14px; font-weight:600; z-index:9999; transition:transform 0.3s; box-shadow:0 4px 20px rgba(0,0,0,0.3); }
+.toast.show { transform:translateX(-50%) translateY(0); }
+.legend { background:#fff; border-radius:12px; padding:16px 20px; margin-bottom:24px; display:flex; gap:20px; flex-wrap:wrap; box-shadow:0 2px 8px rgba(0,0,0,0.06); font-size:13px; }
+.legend-item { display:flex; align-items:center; gap:6px; } .legend-dot { width:12px; height:12px; border-radius:3px; }
+@media print { .confirm-area, .comment-area, .submit-section { display:none; } }
+@media (max-width:768px) { .summary { grid-template-columns:repeat(2,1fr); } .confirm-area { flex-direction:column; align-items:flex-start; } }
+</style>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="header">
+    <h1>CPV 광고비 과금 시스템 &mdash; 기능 확인서</h1>
+    <p>서울미녀 플랫폼 핵심 수익 모델 개발 범위 확인</p>
+    <div class="badge-ver">2026-03-11 | 옵션C (고도) 기준</div>
+</div>
+
+<div class="container">
+
+    <div style="background:linear-gradient(135deg,#1e3a5f,#0f172a);color:#fff;border-radius:14px;padding:24px 28px;margin-bottom:24px;box-shadow:0 4px 16px rgba(15,23,42,0.2);">
+        <div style="font-size:17px;font-weight:800;margin-bottom:10px;">아래 기능을 확인해 주세요</div>
+        <div style="font-size:14px;line-height:1.9;opacity:0.92;">
+            각 기능에 대해 <span style="background:#16a34a;padding:2px 10px;border-radius:4px;font-weight:700;font-size:12px;">맞습니다</span>
+            <span style="background:#ea580c;padding:2px 10px;border-radius:4px;font-weight:700;font-size:12px;">수정 필요</span>
+            <span style="background:#dc2626;padding:2px 10px;border-radius:4px;font-weight:700;font-size:12px;">불필요</span> 중 하나를 선택하고,
+            수정이 필요한 경우 <strong>의견란</strong>에 구체적인 내용을 기재해 주세요.
+        </div>
+        <div style="margin-top:14px;padding:14px 18px;background:rgba(255,255,255,0.1);border-radius:10px;border:1px solid rgba(255,255,255,0.15);">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;">선택 또는 추가 요청 사항에 따라 <span style="color:#fbbf24;">10일 이내</span> 전부 완료될 것으로 예상됩니다.</div>
+            <div style="font-size:13px;opacity:0.85;">전부 선택 및 기술 후 하단의 <strong>확인 완료 제출</strong> 버튼을 눌러 주시면, 검토 후 상세 일정을 드리겠습니다.</div>
+        </div>
+    </div>
+
+    <div class="summary" id="summaryCards">
+        <div class="summary-card s-total"><div class="num" id="cnt-total">23</div><div class="label">전체 기능</div></div>
+        <div class="summary-card s-confirmed"><div class="num" id="cnt-confirmed">0</div><div class="label">맞습니다</div></div>
+        <div class="summary-card s-modified"><div class="num" id="cnt-modified">0</div><div class="label">수정 필요</div></div>
+        <div class="summary-card s-pending"><div class="num" id="cnt-pending">23</div><div class="label">미확인</div></div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#16a34a;"></div> 맞습니다</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ea580c;"></div> 수정 필요</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#dc2626;"></div> 불필요</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ddd;"></div> 미확인</div>
+        <div class="legend-item"><span class="tag tag-core">핵심</span> 클라이언트 필수 요청</div>
+        <div class="legend-item"><span class="tag tag-new">신규</span> 새로 개발</div>
+        <div class="legend-item"><span class="tag tag-extend">확장</span> 기존 기능 확장</div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Phase 1 -->
+    <!-- ============================================ -->
+    <div class="phase">
+        <div class="phase-title phase-1"><span class="phase-num">Phase 1</span>포인트 지갑 시스템 (광고비 충전/관리)</div>
+
+        <!-- 1-1 -->
+        <div class="feature-card" data-id="1-1">
+            <div class="feature-header">
+                <div class="feature-no">1-1</div>
+                <div class="feature-title">광고주(병원) 포인트 지갑 생성 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>서울미녀에 입점한 각 병원마다 <strong>"광고비 전용 전자지갑"</strong>이 하나씩 자동으로 만들어집니다.</p>
+                    <p>병원이 광고를 하려면, 이 지갑에 먼저 돈(포인트)을 충전해 두어야 합니다. 사용자가 해당 병원의 상세 페이지를 볼 때마다, 지갑에서 광고비(CPV)가 자동으로 차감됩니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p><strong>교통카드</strong>와 같은 원리입니다. 버스를 타기 전에 교통카드에 돈을 충전해 두면, 버스를 탈 때마다 자동으로 요금이 빠져나갑니다. 잔액이 없으면 탈 수 없듯이, 지갑 잔액이 0원이면 광고가 자동으로 중단됩니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>실제 사용 예시</h4>
+                    <ul>
+                        <li><strong>A성형외과</strong>가 서울미녀에 입점 &rarr; 자동으로 "A성형외과 광고 지갑" 생성 (잔액 0원)</li>
+                        <li>A성형외과가 <strong>50만원 충전</strong> &rarr; 지갑 잔액 500,000원</li>
+                        <li>사용자가 A성형외과 상세 페이지 조회 &rarr; CPV 200원 차감 &rarr; 잔액 499,800원</li>
+                        <li>지갑 잔액 0원 도달 &rarr; A성형외과 광고 자동 중단</li>
+                        <li>재충전하면 광고 자동 재개</li>
+                    </ul>
+                </div>
+                <div class="why-box">
+                    <h4>왜 필요한가요?</h4>
+                    <p>이것이 서울미녀의 <strong>핵심 수익 모델</strong>입니다. 병원은 광고비를 선불 충전하고, 사용자가 볼 때마다 과금됩니다. 강남언니와 동일한 수익 구조이며, 이 지갑이 없으면 과금 자체가 불가능합니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <strong>상세 사양:</strong>
+                    <ul>
+                        <li>병원 1개 = 지갑 1개 (자동 생성, 1:1 매핑)</li>
+                        <li>잔액 단위: 원 (&#8361;)</li>
+                        <li>지갑에서 실시간으로 확인 가능: 현재 잔액 / 총 충전액 / 총 소진액</li>
+                        <li>잔액이 0원이 되면 해당 병원의 모든 유료 광고 노출이 자동 중단</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('1-1','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('1-1','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('1-1','rejected')">불필요</button>
+                </div>
+                <div class="comment-area">
+                    <label>의견 (수정 사항이나 추가 요구가 있으면 기재해 주세요)</label>
+                    <textarea placeholder="예: 포인트 단위를 '원' 대신 '코인'으로 변경 희망"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1-2 -->
+        <div class="feature-card" data-id="1-2">
+            <div class="feature-header">
+                <div class="feature-no">1-2</div>
+                <div class="feature-title">포인트 충전 (PG 결제 연동) <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>병원 관리자가 <strong>신용카드 또는 계좌이체</strong>로 광고 포인트를 직접 충전하는 기능입니다.</p>
+                    <p>결제가 완료되면 지갑에 포인트가 즉시 충전되고, 그때부터 광고가 노출됩니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p><strong>네이버 검색광고 충전</strong>과 같습니다. 네이버 광고도 광고비를 먼저 충전해 놓으면, 클릭이 발생할 때마다 차감되는 방식입니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>실제 사용 예시</h4>
+                    <ul>
+                        <li>병원 관리자가 "충전하기" 버튼 클릭</li>
+                        <li>충전 금액 선택: 10만원 / 30만원 / 50만원 / 100만원 또는 직접 입력</li>
+                        <li>결제 수단 선택 (신용카드 / 실시간 계좌이체 / 가상계좌)</li>
+                        <li>PG사(이니시스) 결제 창에서 결제 완료</li>
+                        <li>지갑에 포인트 즉시 반영 + 영수증 발급</li>
+                    </ul>
+                </div>
+                <div class="feature-detail">
+                    <strong>상세 사양:</strong>
+                    <ul>
+                        <li>결제 수단: 신용카드, 실시간 계좌이체, 가상계좌</li>
+                        <li>부가세 10% 별도 (공급가 + VAT 분리 표시)</li>
+                        <li>충전 내역 및 영수증 조회 가능</li>
+                        <li>기존 이니시스 PG 연동 활용</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('1-2','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('1-2','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('1-2','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder="예: 정액권 금액 변경, 결제 수단 추가 등"></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 1-3 -->
+        <div class="feature-card" data-id="1-3">
+            <div class="feature-header">
+                <div class="feature-no">1-3</div>
+                <div class="feature-title">최고 관리자 수동 충전/조정 <span class="tag tag-new">신규</span> <span class="tag tag-excel-up">엑셀↑</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>서울미녀 본사(최고 관리자)가 특정 병원의 포인트를 <strong>수동으로 충전, 차감, 환불</strong>할 수 있는 관리 기능입니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>은행 창구에서 직원이 직접 입금/출금/정정 처리를 해주는 것과 같습니다. 자동 시스템 외에 수동으로 조작이 필요한 상황에 대비합니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>이런 상황에서 사용합니다</h4>
+                    <ul>
+                        <li>병원이 <strong>무통장입금</strong>으로 충전한 경우 &rarr; 입금 확인 후 수동 충전</li>
+                        <li>신규 입점 병원에 <strong>프로모션 보너스</strong> 포인트 지급</li>
+                        <li>시스템 오류로 잘못 과금된 경우 &rarr; <strong>오과금 정정</strong></li>
+                        <li>병원 요청에 의한 <strong>환불</strong> 처리</li>
+                        <li>모든 수동 조작은 이력(로그)에 기록되어 추적 가능</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('1-3','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('1-3','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('1-3','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 1-4 -->
+        <div class="feature-card" data-id="1-4">
+            <div class="feature-header">
+                <div class="feature-no">1-4</div>
+                <div class="feature-title">거래 내역 (충전/차감/환불 이력) <span class="tag tag-new">신규</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>포인트 지갑에서 일어난 <strong>모든 거래(충전, 차감, 환불)</strong>가 한 건씩 기록되어 통장처럼 내역을 확인할 수 있습니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p><strong>은행 거래내역서(통장)</strong>와 같습니다. 언제, 얼마가, 왜 빠져나갔는지 모든 기록을 볼 수 있어 투명합니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>내역 예시</h4>
+                    <ul>
+                        <li>03/11 14:00 | 충전 +500,000원 | 잔액 500,000원 | 카드 결제</li>
+                        <li>03/11 14:23 | CPV 차감 -200원 | 잔액 499,800원 | A사용자 병원상세 조회</li>
+                        <li>03/11 14:25 | CPV 차감 -150원 | 잔액 499,650원 | B사용자 이벤트 조회</li>
+                        <li>03/12 09:00 | 환불 +10,000원 | 잔액 509,650원 | 오과금 정정</li>
+                    </ul>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>기간별, 유형별 필터링 가능</li>
+                        <li>Excel 다운로드 지원</li>
+                        <li>병원과 본사 모두 조회 가능</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('1-4','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('1-4','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('1-4','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Phase 2 -->
+    <!-- ============================================ -->
+    <div class="phase">
+        <div class="phase-title phase-2"><span class="phase-num">Phase 2</span>CPV 과금 엔진 (조회당 과금 핵심 로직)</div>
+
+        <!-- 2-1 -->
+        <div class="feature-card" data-id="2-1">
+            <div class="feature-header">
+                <div class="feature-no">2-1</div>
+                <div class="feature-title">페이지 100% 로딩 완료 시 과금 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>사용자가 병원/의사/이벤트 <strong>상세 페이지를 클릭</strong>하여 화면이 <strong>완전히 열렸을 때만</strong> 1회 과금됩니다. 페이지가 다 열리기 전에 뒤로가기를 누르면 과금되지 않습니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>카페에서 <strong>음료를 받았을 때만</strong> 결제되는 것과 같습니다. 주문 후 취소하면 돈이 안 빠지듯, 페이지를 다 보지 않으면 과금되지 않습니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>과금되는 경우 vs 안 되는 경우</h4>
+                    <ul>
+                        <li><strong>과금 O:</strong> 사용자가 "A성형외과" 클릭 &rarr; 상세 페이지 완전히 열림 &rarr; CPV 200원 차감</li>
+                        <li><strong>과금 X:</strong> 사용자가 "A성형외과" 클릭 &rarr; 로딩 중 뒤로가기 &rarr; 과금 안 됨</li>
+                        <li><strong>과금 X:</strong> 사용자가 목록에서 병원 이름만 봄 (클릭 안 함) &rarr; 과금 안 됨</li>
+                    </ul>
+                </div>
+                <div class="feature-detail">
+                    <strong>과금 대상 페이지 (3종):</strong>
+                    <ul>
+                        <li>병원 상세 페이지</li>
+                        <li>의사 프로필 페이지</li>
+                        <li>이벤트 상세 페이지</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('2-1','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('2-1','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('2-1','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder="예: 과금 대상 페이지 추가/제외 희망"></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 2-2 -->
+        <div class="feature-card" data-id="2-2">
+            <div class="feature-header">
+                <div class="feature-no">2-2</div>
+                <div class="feature-title">추가 액션 비과금 (상담/결제/내원) <span class="tag tag-core">핵심</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>병원 상세 페이지를 <strong>"보는 것"</strong>에만 과금되고, 그 이후 발생하는 모든 추가 행동(상담 신청, 전화, 결제, 방문)에는 <strong>추가 과금이 전혀 없습니다.</strong></p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>쇼핑몰에서 <strong>매장 입장료만 받고, 안에서 뭘 사든 추가 수수료가 없는</strong> 것과 같습니다. "봤으면 과금, 이후 행동은 무료"가 원칙입니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>비과금 액션 목록</h4>
+                    <ul>
+                        <li>상담 신청 버튼 클릭 &rarr; <strong>추가 과금 없음</strong></li>
+                        <li>앱 내 결제 &rarr; <strong>추가 과금 없음</strong></li>
+                        <li>전화 걸기 &rarr; <strong>추가 과금 없음</strong></li>
+                        <li>실제 내원(방문) &rarr; <strong>추가 과금 없음</strong></li>
+                        <li>후기 작성, 찜하기, 공유 등 &rarr; <strong>모두 추가 과금 없음</strong></li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('2-2','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('2-2','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('2-2','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder="예: 특정 액션에도 추가 과금이 필요한 경우 기재"></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 2-3 -->
+        <div class="feature-card" data-id="2-3">
+            <div class="feature-header">
+                <div class="feature-no">2-3</div>
+                <div class="feature-title">어뷰징 방지 &mdash; 동일 유저 중복 과금 차단 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>같은 사람이 같은 페이지를 여러 번 새로고침하거나 반복 방문해도 <strong>일정 시간 내에는 1회만 과금</strong>되어, 광고주(병원)의 광고비를 보호합니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>지하철 <strong>환승 시간(30분)</strong>과 같습니다. 30분 안에 다시 찍으면 요금이 빠지지 않듯, 30분 안에 같은 페이지를 다시 보면 과금되지 않습니다.</p>
+                </div>
+                <div class="why-box">
+                    <h4>왜 필요한가요?</h4>
+                    <p>이 기능이 없으면, 경쟁 병원이 악의적으로 상대 병원 페이지를 수백 번 클릭하여 광고비를 고갈시키는 <strong>"클릭 폭탄" 공격</strong>이 가능합니다. 광고주 보호를 위해 필수적인 기능입니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>어뷰징 방지 규칙 5가지</h4>
+                    <ul>
+                        <li><strong>시간 중복 차단 (30분):</strong> 같은 사람이 같은 페이지를 30분 내 재방문 &rarr; 1회만 과금</li>
+                        <li><strong>일일 한도 (10회):</strong> 같은 사람이 같은 병원을 하루 10번 이상 조회 &rarr; 초과분 과금 안 함</li>
+                        <li><strong>속도 제한:</strong> 같은 IP에서 1분 내 5페이지 이상 연속 조회 &rarr; 봇 의심, 과금 안 함</li>
+                        <li><strong>봇/크롤러 차단:</strong> 구글봇 등 자동 프로그램 접속 &rarr; 과금 안 함</li>
+                        <li><strong>자기 조회 제외:</strong> 병원 관리자가 자기 병원 페이지 확인 &rarr; 과금 안 함</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('2-3','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('2-3','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('2-3','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder="예: 30분 &rarr; 1시간으로 변경, 일일 한도 10회 &rarr; 5회 등"></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 2-4 -->
+        <div class="feature-card" data-id="2-4">
+            <div class="feature-header">
+                <div class="feature-no">2-4</div>
+                <div class="feature-title">과금 로그 상세 기록 <span class="tag tag-new">신규</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>모든 조회 이벤트가 <strong>상세 로그로 기록</strong>됩니다. 과금된 것뿐 아니라, 어뷰징으로 필터링되어 과금되지 않은 것까지 모두 기록하여 <strong>분쟁 시 증빙 자료</strong>로 활용합니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>건물 <strong>CCTV 녹화</strong>와 같습니다. 문제가 생겼을 때 녹화 영상을 돌려보듯, 과금 관련 민원이 생기면 로그를 조회하여 정확한 내역을 확인합니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>기록 항목: 일시, 병원명, 페이지 유형, 적용 CPV 단가, 과금 여부, 비과금 사유</li>
+                        <li>관리자 조회 + Excel 다운로드 가능</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('2-4','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('2-4','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('2-4','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Phase 3 -->
+    <!-- ============================================ -->
+    <div class="phase">
+        <div class="phase-title phase-3"><span class="phase-num">Phase 3</span>유동적 CPV 단가 정책 (키워드/시술별 가격 차등)</div>
+
+        <!-- 3-1 -->
+        <div class="feature-card" data-id="3-1">
+            <div class="feature-header">
+                <div class="feature-no">3-1</div>
+                <div class="feature-title">키워드 카테고리별 CPV 단가 차등 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span> <span class="tag tag-excel-up">엑셀↑</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>사용자가 <strong>어떤 검색어(키워드)</strong>를 통해 병원 페이지에 들어왔느냐에 따라 과금 단가가 달라집니다. 인기 키워드로 유입된 조회는 비싸고, 비인기 키워드는 저렴합니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p><strong>네이버 검색광고 키워드 입찰</strong>과 같습니다. "강남 성형외과"는 비싸고, "지방 피부과"는 저렴한 것처럼, 경쟁이 치열한 키워드일수록 CPV가 높습니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>단가 예시</h4>
+                    <ul>
+                        <li>"눈성형" 키워드로 유입: 기본 100원 &times; 가중치 2.0 = <strong>200원/View</strong></li>
+                        <li>"코성형" 키워드로 유입: 기본 100원 &times; 가중치 1.8 = <strong>180원/View</strong></li>
+                        <li>"일반 검색" 유입: 기본 100원 &times; 가중치 1.0 = <strong>100원/View</strong></li>
+                        <li>"기타/비인기" 키워드: 기본 100원 &times; 가중치 0.5 = <strong>50원/View</strong></li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('3-1','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('3-1','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('3-1','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder="예: 기본 단가를 100원이 아닌 200원으로 설정 희망 등"></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 3-2 -->
+        <div class="feature-card" data-id="3-2">
+            <div class="feature-header">
+                <div class="feature-no">3-2</div>
+                <div class="feature-title">시술 종류별 단가 차등 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span> <span class="tag tag-excel-up">엑셀↑</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>시술 카테고리(성형, 피부, 치과 등)에 따라 CPV 단가가 다르게 적용됩니다. <strong>고단가 시술일수록 CPV가 높고, 저단가 시술은 낮습니다.</strong></p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>부동산 중개 수수료와 비슷합니다. 비싼 집일수록 중개수수료가 높듯, 수술비가 높은 시술(안면윤곽 등)의 CPV가 보톡스보다 높습니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>최고 관리자가 시술 카테고리별 가중치를 자유롭게 조정</li>
+                        <li>예: 안면윤곽 &times;2.5, 눈성형 &times;2.0, 보톡스 &times;0.8 등</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('3-2','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('3-2','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('3-2','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 3-3 -->
+        <div class="feature-card" data-id="3-3">
+            <div class="feature-header">
+                <div class="feature-no">3-3</div>
+                <div class="feature-title">이벤트 운영 여부에 따른 가중치 <span class="tag tag-new">신규</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>할인 이벤트를 진행 중인 병원의 페이지 조회에 더 높은 CPV가 적용됩니다. 이벤트로 유입이 늘어나므로, 해당 기간에 프리미엄 단가를 적용합니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>백화점 <strong>세일 기간에 매장 임대료가 오르는</strong> 것과 같습니다. 사람이 몰리는 시즌에는 단가가 올라갑니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>이벤트 진행 중: 가중치 &times;1.5 (50% 할증)</li>
+                        <li>이벤트 미진행: 기본 가중치 &times;1.0</li>
+                        <li>최고 관리자가 할증 비율 조정 가능</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('3-3','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('3-3','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('3-3','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 3-4 -->
+        <div class="feature-card" data-id="3-4">
+            <div class="feature-header">
+                <div class="feature-no">3-4</div>
+                <div class="feature-title">평점 기반 가중치 <span class="tag tag-new">신규</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>병원의 리뷰 평점이 높을수록 사용자 전환률(실제 예약/방문)이 높으므로, <strong>평점이 높은 병원의 CPV를 높게</strong> 책정합니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>배달앱에서 <strong>평점 4.9 맛집은 광고 위치가 비싸고, 평점 3.0은 저렴한</strong> 것과 같습니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>평점 4.5 이상: 가중치 &times;1.3 / 평점 4.0~4.4: &times;1.1 / 4.0 미만: &times;1.0</li>
+                        <li>최고 관리자가 구간 및 배수 설정 가능</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('3-4','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('3-4','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('3-4','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 3-5 -->
+        <div class="feature-card" data-id="3-5">
+            <div class="feature-header">
+                <div class="feature-no">3-5</div>
+                <div class="feature-title">단가 규칙 관리 화면 (최고 관리자 전용) <span class="tag tag-new">신규</span> <span class="tag tag-excel-up">엑셀↑</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>위의 모든 단가 규칙(키워드, 시술, 이벤트, 평점)을 <strong>웹 화면에서 직접 추가/수정/삭제</strong>할 수 있는 관리 페이지입니다. 개발자 없이도 본사가 직접 단가를 조정합니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>쇼핑몰의 <strong>상품 가격표 관리</strong>와 같습니다. 관리자 화면에서 상품 가격을 바꾸듯, CPV 단가를 바꿀 수 있습니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>규칙 목록: 이름, 조건, 기본단가, 가중치, 최종단가 미리보기</li>
+                        <li>규칙 우선순위 설정 / ON&middot;OFF 토글</li>
+                        <li>변경 이력 로그</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('3-5','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('3-5','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('3-5','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Phase 4 -->
+    <!-- ============================================ -->
+    <div class="phase">
+        <div class="phase-title phase-4"><span class="phase-num">Phase 4</span>예산 관리 &amp; 자동 노출 제어</div>
+
+        <!-- 4-1 -->
+        <div class="feature-card" data-id="4-1">
+            <div class="feature-header">
+                <div class="feature-no">4-1</div>
+                <div class="feature-title">일일 예산 캡 (Daily Cap) 직접 설정 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>병원 관리자가 <strong>"오늘 하루 광고비를 최대 10만원까지만 쓰겠다"</strong>고 직접 상한선을 설정하는 기능입니다. 설정한 금액에 도달하면 당일 광고가 자동 중단되어 예산을 보호합니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>신용카드 <strong>일일 사용 한도</strong>와 같습니다. "오늘은 10만원까지만"이라고 설정하면, 그 이상 결제되지 않습니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>실제 사용 예시</h4>
+                    <ul>
+                        <li>A성형외과가 일일 캡을 <strong>100,000원</strong>으로 설정</li>
+                        <li>오전에 CPV가 누적되어 오후 3시에 99,800원 소진</li>
+                        <li>다음 조회 시 100,000원 초과 &rarr; 당일 광고 자동 중단</li>
+                        <li>다음 날 00:00에 자동 리셋 &rarr; 광고 재개</li>
+                    </ul>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>병원 관리자가 직접 금액 입력 (0원 = 무제한)</li>
+                        <li>소진률 실시간 프로그레스 바 표시</li>
+                        <li>언제든 변경 가능</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('4-1','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('4-1','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('4-1','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 4-2 -->
+        <div class="feature-card" data-id="4-2">
+            <div class="feature-header">
+                <div class="feature-no">4-2</div>
+                <div class="feature-title">잔액 소진 시 자동 노출 중단 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>충전된 포인트가 <strong>모두 소진(0원)</strong>되면, 사용자 앱/웹에서 해당 병원의 <strong>유료 광고 영역이 자동으로 사라집니다.</strong> 일반 검색 결과에는 그대로 노출됩니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>교통카드 잔액이 0원이면 버스를 탈 수 없는 것과 같습니다. 재충전하면 즉시 다시 탈 수 있습니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>중단 vs 유지 영역</h4>
+                    <ul>
+                        <li><strong>중단:</strong> 배너 광고, 인피드 광고, 추천 병원 영역 (유료)</li>
+                        <li><strong>유지:</strong> 일반 병원 검색 결과, 기본 병원 프로필 (무료)</li>
+                        <li>재충전 시 즉시 광고 재개</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('4-2','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('4-2','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('4-2','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 4-3 -->
+        <div class="feature-card" data-id="4-3">
+            <div class="feature-header">
+                <div class="feature-no">4-3</div>
+                <div class="feature-title">일일 캡 도달 시 당일 자동 중단 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>당일 소진액이 일일 캡에 도달하면 <strong>당일 자정까지만</strong> 노출이 중단되고, 다음 날 00:00에 자동으로 리셋되어 다시 광고가 노출됩니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>뷔페 점심 특선의 <strong>"1인 1접시 한정"</strong>과 같습니다. 오늘 분량을 다 먹었으면 내일 다시 오면 됩니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>매일 00:00 자동 리셋 (서버 크론잡)</li>
+                        <li>캡 도달 시각 기록</li>
+                        <li>병원 대시보드에 "오늘 예산 소진 완료" 표시</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('4-3','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('4-3','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('4-3','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 4-4 -->
+        <div class="feature-card" data-id="4-4">
+            <div class="feature-header">
+                <div class="feature-no">4-4</div>
+                <div class="feature-title">잔액 부족 사전 알림 <span class="tag tag-new">신규</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>잔액이 <strong>약 3일치 예산</strong> 이하로 떨어지면, 병원 관리자에게 "곧 잔액이 소진됩니다. 충전해 주세요"라는 <strong>알림을 자동 발송</strong>합니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>자동차 <strong>연료 경고등</strong>과 같습니다. 기름이 완전히 떨어지기 전에 미리 경고해서 주유소에 갈 시간을 줍니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>알림 기준: 잔액 &lt; 일일 캡 &times; 3일분 (기본값)</li>
+                        <li><strong style="color:#7c3aed;">병원이 직접 알림 기준 금액을 설정</strong> 가능 (예: "잔액 5만원 이하 시 알림", "잔액 10만원 이하 시 알림" 등 자유 지정)</li>
+                        <li>알림 방식: 관리자 대시보드 알림 + 이메일(선택)</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('4-4','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('4-4','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('4-4','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Phase 5 -->
+    <!-- ============================================ -->
+    <div class="phase">
+        <div class="phase-title phase-5"><span class="phase-num">Phase 5</span>투명한 통계 대시보드</div>
+
+        <!-- 5-1 -->
+        <div class="feature-card" data-id="5-1">
+            <div class="feature-header">
+                <div class="feature-no">5-1</div>
+                <div class="feature-title">병원(파트너) 대시보드 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>각 병원 관리자가 <strong>자기 병원의 광고 성과를 직접 확인</strong>할 수 있는 전용 대시보드입니다. "오늘 내 병원 페이지를 몇 명이 봤고, 광고비가 얼마 빠졌는지"를 실시간으로 봅니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>인터넷 뱅킹의 <strong>"내 계좌 조회"</strong>와 같습니다. 잔액, 입출금 내역, 사용 현황을 한눈에 확인합니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>화면에 표시되는 정보</h4>
+                    <ul>
+                        <li><strong>지갑 잔액</strong>: &#8361;1,250,000 + [충전하기] 버튼</li>
+                        <li><strong>오늘 소진</strong>: &#8361;45,200 / &#8361;100,000 (일일 캡 대비 45.2%)</li>
+                        <li><strong>일별 조회수</strong>: 과금된 조회 312회 / 전체 452회</li>
+                        <li><strong>평균 CPV</strong>: &#8361;145</li>
+                        <li><strong>페이지별 상세</strong>: 병원 280회, 의사 95회, 이벤트 77회</li>
+                        <li><strong>일별 추이 차트</strong> (최근 30일)</li>
+                        <li><strong>일일 예산 설정</strong> 메뉴</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('5-1','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('5-1','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('5-1','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder="예: 추가로 표시되어야 할 정보"></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 5-2 -->
+        <div class="feature-card" data-id="5-2">
+            <div class="feature-header">
+                <div class="feature-no">5-2</div>
+                <div class="feature-title">본사(최고 관리자) 대시보드 <span class="tag tag-core">핵심</span> <span class="tag tag-new">신규</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>서울미녀 본사(최고 관리자)가 <strong>모든 병원의 광고 매출, 충전 현황, 정산 내역</strong>을 한눈에 파악하는 종합 대시보드입니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>프랜차이즈 본사의 <strong>"가맹점 매출 관리 시스템"</strong>과 같습니다. 전체 가맹점의 매출을 본사에서 한눈에 봅니다.</p>
+                </div>
+                <div class="example-box">
+                    <h4>화면에 표시되는 정보</h4>
+                    <ul>
+                        <li><strong>오늘 전체 매출</strong>: &#8361;234,500</li>
+                        <li><strong>이번 달 매출</strong>: &#8361;5,200,000</li>
+                        <li><strong>활성 광고주</strong>: 12개 병원</li>
+                        <li><strong>병원별 소진 현황</strong>: 잔액, 오늘 소진, 일일 캡 목록</li>
+                        <li><strong>충전 현황</strong>: 최근 충전 이력</li>
+                        <li><strong>부가세 내역</strong>: 공급가/VAT 분리</li>
+                        <li><strong>정산 내역</strong>: 월별 정산 요약 + Excel 다운로드</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('5-2','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('5-2','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('5-2','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 5-3 -->
+        <div class="feature-card" data-id="5-3">
+            <div class="feature-header">
+                <div class="feature-no">5-3</div>
+                <div class="feature-title">정산 리포트 출력 (부가세/세금계산서) <span class="tag tag-new">신규</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>월별 정산 데이터를 기반으로 <strong>공급가와 부가세를 분리한 정산서</strong>를 출력합니다. 세금계산서 발행에 필요한 근거 자료입니다.</p>
+                </div>
+                <div class="analogy-box">
+                    <h4>쉬운 비유</h4>
+                    <p>월말에 받는 <strong>카드 사용 명세서</strong>와 같습니다. 이번 달 얼마를 썼고, 세금은 얼마인지 정리된 문서입니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>월별 병원별 공급가 + VAT 분리 계산</li>
+                        <li>PDF/Excel 다운로드</li>
+                        <li>전자세금계산서 연동 (추후 확장 가능)</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('5-3','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('5-3','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('5-3','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <!-- 5-4 -->
+        <div class="feature-card" data-id="5-4">
+            <div class="feature-header">
+                <div class="feature-no">5-4</div>
+                <div class="feature-title">기존 광고 통계 확장 (CPV 데이터 통합) <span class="tag tag-extend">확장</span> <span class="tag tag-excel-down">엑셀↓</span></div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>이 기능은 무엇인가요?</h4>
+                    <p>이미 구현된 광고 통계 화면(노출수/클릭수)에 <strong>CPV 과금 데이터를 통합</strong>하여, 한 화면에서 광고 노출 + 과금 현황을 모두 확인합니다.</p>
+                </div>
+                <div class="feature-detail">
+                    <ul>
+                        <li>기존 노출수/클릭수 + CPV 과금액 통합 표시</li>
+                        <li>광고별 CPV 수익 표시</li>
+                        <li>기간별 필터링</li>
+                    </ul>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 기능이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('5-4','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('5-4','modified')">수정 필요</button>
+                    <button class="confirm-btn btn-no" onclick="setConfirm('5-4','rejected')">불필요</button>
+                </div>
+                <div class="comment-area"><label>의견 및 추가 기능 등을 입력해 주세요</label><textarea placeholder=""></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 추가 질문 -->
+    <!-- ============================================ -->
+    <div class="phase">
+        <div class="phase-title" style="background:linear-gradient(135deg,#64748b,#475569);"><span class="phase-num">추가</span>추가 확인 사항</div>
+
+        <div class="feature-card" data-id="Q-1">
+            <div class="feature-header">
+                <div class="feature-no" style="background:#64748b;">Q1</div>
+                <div class="feature-title">기본 CPV 단가 범위</div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>확인 사항</h4>
+                    <p>강남언니 기준 CPV 단가는 약 200~500원 수준입니다.<br>서울미녀의 <strong>기본 CPV 단가(가중치 적용 전 기준가)</strong>를 얼마로 설정할까요?</p>
+                    <p>현재 개발 시나리오 기본값: <strong>100원/View</strong> (가중치 적용 시 50원~500원 범위)</p>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">기본 100원이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('Q-1','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('Q-1','modified')">수정 필요</button>
+                </div>
+                <div class="comment-area"><label>희망 기본 단가 (원)</label><textarea placeholder="예: 기본 200원으로 설정 희망"></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <div class="feature-card" data-id="Q-2">
+            <div class="feature-header">
+                <div class="feature-no" style="background:#64748b;">Q2</div>
+                <div class="feature-title">충전 정액권 금액 구성</div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>확인 사항</h4>
+                    <p>포인트 충전 시 제공할 <strong>정액권 패키지</strong> 구성을 확인합니다.</p>
+                    <p>현재 구성안: <strong>10만원 / 30만원 / 50만원 / 100만원</strong> + 자유 금액 입력</p>
+                    <p>대량 충전 시 보너스 포인트를 제공할지도 결정해 주세요.</p>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">이 구성이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('Q-2','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('Q-2','modified')">수정 필요</button>
+                </div>
+                <div class="comment-area"><label>희망 구성 또는 보너스 정책</label><textarea placeholder="예: 100만원 충전 시 10% 보너스 등"></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+
+        <div class="feature-card" data-id="Q-3">
+            <div class="feature-header">
+                <div class="feature-no" style="background:#64748b;">Q3</div>
+                <div class="feature-title">어뷰징 방지 시간 기준</div>
+                <div class="feature-status st-pending">미확인</div>
+            </div>
+            <div class="feature-body">
+                <div class="what-box">
+                    <h4>확인 사항</h4>
+                    <p>같은 사람이 같은 페이지를 다시 방문했을 때, <strong>몇 분 이내를 "중복"으로 처리</strong>하여 과금을 차단할지 결정합니다.</p>
+                    <p>현재 설정: <strong>30분</strong> (강남언니 추정: 30분~1시간)</p>
+                </div>
+                <div class="confirm-area">
+                    <span class="confirm-label">30분이 맞습니까?</span>
+                    <button class="confirm-btn btn-yes" onclick="setConfirm('Q-3','confirmed')">맞습니다</button>
+                    <button class="confirm-btn btn-modify" onclick="setConfirm('Q-3','modified')">수정 필요</button>
+                </div>
+                <div class="comment-area"><label>희망 시간</label><textarea placeholder="예: 1시간(60분)으로 변경 희망"></textarea><button class="save-comment-btn" onclick="saveComment(this)">저장</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 추가 개발 사항 -->
+    <div style="background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-top:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div>
+                <h3 style="font-size:18px;font-weight:800;margin:0;">추가 개발 요청사항</h3>
+                <p style="font-size:13px;color:#888;margin:4px 0 0;">위 목록에 없는 추가 기능이나 요청사항을 자유롭게 등록하세요.</p>
+            </div>
+            <button onclick="toggleCustomForm()" id="btnAddCustom" style="padding:8px 18px;border-radius:8px;border:none;background:#16a34a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">+ 추가 요청</button>
+        </div>
+        <div id="customForm" style="display:none;background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:16px;border:2px solid #e5e7eb;">
+            <div style="margin-bottom:12px;">
+                <label style="font-size:13px;font-weight:700;color:#333;display:block;margin-bottom:4px;">제목 *</label>
+                <input type="text" id="customTitle" placeholder="예: 다국어 지원 추가" style="width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:13px;font-weight:700;color:#333;display:block;margin-bottom:4px;">상세 설명</label>
+                <textarea id="customDesc" placeholder="구체적인 요구사항을 입력해 주세요" style="width:100%;min-height:100px;padding:10px 14px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-size:13px;font-weight:700;color:#333;display:block;margin-bottom:4px;">우선순위</label>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="priority-btn" data-priority="high" onclick="selectPriority(this)" style="padding:6px 16px;border-radius:20px;border:2px solid #dc2626;background:#fff;color:#dc2626;font-size:12px;font-weight:700;cursor:pointer;">높음</button>
+                    <button type="button" class="priority-btn selected" data-priority="medium" onclick="selectPriority(this)" style="padding:6px 16px;border-radius:20px;border:2px solid #ea580c;background:#ea580c;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">보통</button>
+                    <button type="button" class="priority-btn" data-priority="low" onclick="selectPriority(this)" style="padding:6px 16px;border-radius:20px;border:2px solid #6b7280;background:#fff;color:#6b7280;font-size:12px;font-weight:700;cursor:pointer;">낮음</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="toggleCustomForm()" style="padding:8px 20px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#666;">취소</button>
+                <button onclick="submitCustomRequest()" style="padding:8px 20px;border-radius:8px;border:none;background:#16a34a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">등록하기</button>
+            </div>
+        </div>
+        <div id="customList" style="min-height:40px;">
+            <p style="text-align:center;color:#bbb;padding:16px;font-size:14px;">등록된 추가 요청사항이 없습니다.</p>
+        </div>
+    </div>
+
+    <!-- 선택 결과 리스트 v3 -->
+    <div style="background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-top:32px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+            <div>
+                <h3 style="font-size:18px;font-weight:800;margin:0;">선택 결과 목록</h3>
+                <p style="font-size:13px;color:#888;margin:4px 0 0;">날짜별로 그룹화됩니다. 클릭하면 상세 내용을 새 탭으로 확인할 수 있습니다.</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button onclick="toggleAllGroups()" id="btnToggleAll" style="padding:8px 16px;border-radius:8px;border:2px solid #e5e7eb;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555;">전체 접기</button>
+                <button onclick="downloadExcel()" style="padding:8px 16px;border-radius:8px;border:2px solid #16a34a;background:#fff;color:#16a34a;font-size:13px;font-weight:700;cursor:pointer;">엑셀 다운로드</button>
+                <label style="padding:8px 16px;border-radius:8px;border:2px solid #2563eb;background:#fff;color:#2563eb;font-size:13px;font-weight:700;cursor:pointer;display:inline-block;">엑셀 입력<input type="file" accept=".xlsx,.xls,.csv" onchange="uploadExcel(this)" style="display:none;"></label>
+                <button onclick="generatePrompt()" style="padding:8px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">프롬프트 생성</button>
+            </div>
+        </div>
+        <div id="resultList" style="min-height:60px;">
+            <p style="text-align:center;color:#bbb;padding:20px;font-size:14px;">아직 선택된 항목이 없습니다.</p>
+        </div>
+    </div>
+
+    <!-- 제출 -->
+    <div class="submit-section">
+        <h3>기능 확인 완료</h3>
+        <p id="submitMsg">모든 항목을 확인해 주세요. 현재 <strong><span id="remainCount">23</span>개</strong> 항목이 미확인 상태입니다.</p>
+        <button class="submit-btn" id="submitBtn" onclick="submitAll()">확인 완료 제출</button>
+        <p style="margin-top:12px;font-size:12px;color:#999;">제출 시 확인 내용이 클립보드에 복사되고 TXT 파일로 다운로드됩니다. 해당 파일을 개발팀에 전달해 주세요.</p>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var API_URL = "api_cpv_confirm.php";
+var state = {};
+var dbDates = {};
+var customRequests = [];
+var TOTAL = document.querySelectorAll(".feature-card").length;
+var _savingTimers = {};
+var _groupsExpanded = {};
+
+function apiCall(method, body, params) {
+    var url = API_URL + (params ? "?" + params : "");
+    var opts = { method: method, headers: {"Content-Type": "application/json"} };
+    if (body) opts.body = JSON.stringify(body);
+    return fetch(url, opts).then(function(r) { return r.json(); });
+}
+
+function setConfirm(id, status, skipSave) {
+    state[id] = status;
+    if (!dbDates[id]) dbDates[id] = new Date().toISOString().slice(0,10);
+    var card = document.querySelector("[data-id=\"" + id + "\"]");
+    if (!card) return;
+    card.classList.remove("confirmed","modified","rejected");
+    card.classList.add(status);
+    var badge = card.querySelector(".feature-status");
+    badge.className = "feature-status";
+    if (status === "confirmed") { badge.classList.add("st-confirmed"); badge.textContent = "\ub9de\uc2b5\ub2c8\ub2e4"; }
+    else if (status === "modified") { badge.classList.add("st-modified"); badge.textContent = "\uc218\uc815 \ud544\uc694"; }
+    else if (status === "rejected") { badge.classList.add("st-rejected"); badge.textContent = "\ubd88\ud544\uc694"; }
+    card.querySelectorAll(".confirm-btn").forEach(function(b){ b.classList.remove("selected"); });
+    var cls = status === "confirmed" ? "btn-yes" : status === "modified" ? "btn-modify" : "btn-no";
+    var btn = card.querySelector("." + cls);
+    if (btn) btn.classList.add("selected");
+    updateSummary();
+    renderResultList();
+
+    if (!skipSave) {
+        var comment = "";
+        var ta = card.querySelector("textarea");
+        if (ta) comment = ta.value;
+        apiCall("POST", { feature_id: id, status: status, comment: comment });
+    }
+}
+
+function removeConfirm(id) {
+    delete state[id];
+    delete dbDates[id];
+    var card = document.querySelector("[data-id=\"" + id + "\"]");
+    if (!card) return;
+    card.classList.remove("confirmed","modified","rejected");
+    var badge = card.querySelector(".feature-status");
+    badge.className = "feature-status st-pending";
+    badge.textContent = "\ubbf8\ud655\uc778";
+    card.querySelectorAll(".confirm-btn").forEach(function(b){ b.classList.remove("selected"); });
+    updateSummary();
+    renderResultList();
+    apiCall("DELETE", { feature_id: id });
+}
+
+function updateSummary() {
+    var c = 0, m = 0, r = 0;
+    var vals = Object.values(state);
+    for (var i = 0; i < vals.length; i++) {
+        if (vals[i] === "confirmed") c++;
+        else if (vals[i] === "modified") m++;
+        else if (vals[i] === "rejected") r++;
+    }
+    var p = TOTAL - c - m - r;
+    var el1 = document.getElementById("cnt-total"); if (el1) el1.textContent = TOTAL;
+    var el2 = document.getElementById("cnt-confirmed"); if (el2) el2.textContent = c;
+    var el3 = document.getElementById("cnt-modified"); if (el3) el3.textContent = m;
+    var el4 = document.getElementById("cnt-pending"); if (el4) el4.textContent = p;
+    var rc = document.getElementById("remainCount");
+    if (rc) rc.textContent = p;
+    var sm = document.getElementById("submitMsg");
+    if (sm) {
+        if (p === 0) {
+            sm.innerHTML = "\ubaa8\ub4e0 \ud56d\ubaa9 \ud655\uc778 \uc644\ub8cc! <strong>\uc81c\ucd9c</strong> \ubc84\ud2bc\uc744 \ub20c\ub7ec\uc8fc\uc138\uc694.";
+        } else {
+            sm.innerHTML = "\ubaa8\ub4e0 \ud56d\ubaa9\uc744 \ud655\uc778\ud574 \uc8fc\uc138\uc694. \ud604\uc7ac <strong><span id=\"remainCount\">" + p + "</span>\uac1c</strong> \ud56d\ubaa9\uc774 \ubbf8\ud655\uc778 \uc0c1\ud0dc\uc785\ub2c8\ub2e4.";
+        }
+    }
+}
+
+function renderResultList() {
+    var list = document.getElementById("resultList");
+    var ids = Object.keys(state);
+    if (ids.length === 0) {
+        list.innerHTML = "<p style=\"text-align:center;color:#bbb;padding:20px;font-size:14px;\">\uc544\uc9c1 \uc120\ud0dd\ub41c \ud56d\ubaa9\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</p>";
+        return;
+    }
+
+    var groups = {};
+    ids.forEach(function(id) {
+        var date = dbDates[id] || new Date().toISOString().slice(0,10);
+        if (!groups[date]) groups[date] = [];
+        groups[date].push(id);
+    });
+
+    var sortedDates = Object.keys(groups).sort().reverse();
+    var colors = {confirmed: "#16a34a", modified: "#ea580c", rejected: "#dc2626"};
+    var labels = {confirmed: "\ub9de\uc2b5\ub2c8\ub2e4", modified: "\uc218\uc815 \ud544\uc694", rejected: "\ubd88\ud544\uc694"};
+    var h = "";
+
+    sortedDates.forEach(function(date) {
+        var dateIds = groups[date];
+        dateIds.sort(function(a, b) {
+            var na = a.replace("Q-", "99-"); var nb = b.replace("Q-", "99-");
+            return na.localeCompare(nb, undefined, {numeric: true});
+        });
+
+        var isExpanded = _groupsExpanded[date] !== false;
+        var cntC = 0, cntM = 0, cntR = 0;
+        dateIds.forEach(function(id) {
+            if (state[id] === "confirmed") cntC++;
+            else if (state[id] === "modified") cntM++;
+            else if (state[id] === "rejected") cntR++;
+        });
+
+        var dateLabel = date;
+        var today = new Date().toISOString().slice(0,10);
+        if (date === today) dateLabel = "\uc624\ub298 (" + date + ")";
+
+        h += "<div style=\"margin-bottom:16px;\">";
+        h += "<div onclick=\"toggleGroup('" + date + "')\" style=\"display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(135deg,#1e293b,#334155);color:#fff;border-radius:" + (isExpanded ? "10px 10px 0 0" : "10px") + ";cursor:pointer;user-select:none;\">";
+        h += "<div style=\"display:flex;align-items:center;gap:12px;\">";
+        h += "<span style=\"font-size:18px;transition:transform 0.3s;transform:rotate(" + (isExpanded ? "0" : "-90") + "deg);\">\u25bc</span>";
+        h += "<span style=\"font-weight:800;font-size:15px;\">" + dateLabel + "</span>";
+        h += "<span style=\"background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;\">" + dateIds.length + "\uac1c</span>";
+        h += "</div>";
+        h += "<div style=\"display:flex;gap:6px;\">";
+        if (cntC > 0) h += "<span style=\"background:#16a34a;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;\">" + cntC + "</span>";
+        if (cntM > 0) h += "<span style=\"background:#ea580c;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;\">" + cntM + "</span>";
+        if (cntR > 0) h += "<span style=\"background:#dc2626;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;\">" + cntR + "</span>";
+        h += "</div></div>";
+
+        if (isExpanded) {
+            h += "<div style=\"border:2px solid #e2e8f0;border-top:none;border-radius:0 0 10px 10px;overflow:hidden;\">";
+            dateIds.forEach(function(id, i) {
+                var card = document.querySelector("[data-id=\"" + id + "\"]");
+                var titleEl = card ? card.querySelector(".feature-title") : null;
+                var rawTitle = titleEl ? titleEl.textContent.trim() : id;
+                var cleanTitle = rawTitle.replace(/\ud575\uc2ec/g, "").replace(/\uc2e0\uaddc/g, "").replace(/\ud655\uc7a5/g, "").trim();
+                var comment = "";
+                if (card) { var ta = card.querySelector("textarea"); if (ta) comment = ta.value; }
+                var st = state[id];
+                var color = colors[st] || "#999";
+                var label = labels[st] || "?";
+                var bg = i % 2 === 0 ? "#f8fafc" : "#fff";
+
+                h += "<div style=\"display:flex;align-items:center;gap:10px;padding:12px 16px;background:" + bg + ";border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background 0.15s;\" ";
+                h += "onmouseover=\"this.style.background='#eef2ff'\" onmouseout=\"this.style.background='" + bg + "'\" ";
+                h += "onclick=\"openDetail('" + id + "')\">";
+                h += "<span style=\"font-weight:800;color:#666;min-width:40px;font-size:13px;\">" + id + "</span>";
+                h += "<span style=\"flex:1;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;\">" + cleanTitle + "</span>";
+                h += "<span style=\"padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#fff;background:" + color + ";flex-shrink:0;\">" + label + "</span>";
+                if (comment) {
+                    var sc = comment.length > 25 ? comment.substring(0, 25) + "..." : comment;
+                    h += "<span style=\"font-size:11px;color:#888;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;\">\ud83d\udcac " + sc + "</span>";
+                }
+                h += "<button onclick=\"event.stopPropagation();removeConfirm('" + id + "')\" style=\"border:2px solid #fecaca;background:#fff;color:#dc2626;font-size:14px;cursor:pointer;padding:4px 10px;border-radius:6px;line-height:1;font-weight:800;flex-shrink:0;transition:all 0.15s;\" onmouseover=\"this.style.background='#dc2626';this.style.color='#fff'\" onmouseout=\"this.style.background='#fff';this.style.color='#dc2626'\" title=\"\uc120\ud0dd \ucde8\uc18c\">&times;</button>";
+                h += "</div>";
+                if (comment) {
+                    h += "<div style=\"padding:6px 16px 10px 68px;background:" + bg + ";border-bottom:1px solid #f1f5f9;\">";
+                    h += "<div style=\"font-size:12px;color:#555;line-height:1.6;background:#fffbeb;padding:8px 12px;border-radius:6px;border-left:3px solid #f59e0b;\">";
+                    h += "\ud83d\udcac " + comment.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    h += "</div></div>";
+                }
+            });
+            h += "</div>";
+        }
+        h += "</div>";
+    });
+
+
+    // 추가 요청사항도 결과 리스트에 표시
+    if (customRequests && customRequests.length > 0) {
+        var prioColors2 = {high: "#dc2626", medium: "#ea580c", low: "#6b7280"};
+        var prioLabels2 = {high: "\ub192\uc74c", medium: "\ubcf4\ud1b5", low: "\ub0ae\uc74c"};
+        h += "<div style=\"margin-top:16px;\">";
+        h += "<div style=\"display:flex;align-items:center;gap:12px;padding:12px 16px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border-radius:10px 10px 0 0;\">";
+        h += "<span style=\"font-size:16px;\">\u2795</span>";
+        h += "<span style=\"font-weight:800;font-size:15px;\">\ucd94\uac00 \uac1c\ubc1c \uc694\uccad\uc0ac\ud56d</span>";
+        h += "<span style=\"background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;\">" + customRequests.length + "\uac1c</span>";
+        h += "</div>";
+        h += "<div style=\"border:2px solid #bbf7d0;border-top:none;border-radius:0 0 10px 10px;overflow:hidden;\">";
+        for (var ci = 0; ci < customRequests.length; ci++) {
+            var cr = customRequests[ci];
+            var cbg = ci % 2 === 0 ? "#f0fdf4" : "#fff";
+            var cpc = prioColors2[cr.priority] || "#888";
+            h += "<div style=\"display:flex;align-items:center;gap:10px;padding:12px 16px;background:" + cbg + ";border-bottom:1px solid #dcfce7;cursor:pointer;\" onclick=\"openCustomDetail(" + cr.id + ")\">";
+            h += "<span style=\"background:" + cpc + ";color:#fff;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0;\">" + (prioLabels2[cr.priority] || "?") + "</span>";
+            h += "<span style=\"flex:1;font-size:14px;font-weight:600;\">" + cr.title + "</span>";
+            if (cr.description) {
+                var csd = cr.description.length > 25 ? cr.description.substring(0,25) + "..." : cr.description;
+                h += "<span style=\"font-size:11px;color:#888;flex-shrink:0;\">\ud83d\udcac " + csd + "</span>";
+            }
+            h += "<button onclick=\"event.stopPropagation();deleteCustomRequest(" + cr.id + ")\" style=\"border:2px solid #fecaca;background:#fff;color:#dc2626;font-size:14px;cursor:pointer;padding:4px 10px;border-radius:6px;line-height:1;font-weight:800;flex-shrink:0;\" title=\"\uc0ad\uc81c\">&times;</button>";
+            h += "</div>";
+        }
+        h += "</div></div>";
+    }
+
+    list.innerHTML = h;
+}
+
+function toggleGroup(date) {
+    _groupsExpanded[date] = _groupsExpanded[date] === false ? true : false;
+    renderResultList();
+}
+
+function toggleAllGroups() {
+    var dates = Object.keys(_groupsExpanded);
+    var allCollapsed = dates.length > 0 && dates.every(function(d) { return _groupsExpanded[d] === false; });
+    var ids = Object.keys(state);
+    var allDates = {};
+    ids.forEach(function(id) { allDates[dbDates[id] || new Date().toISOString().slice(0,10)] = true; });
+    Object.keys(allDates).forEach(function(d) { _groupsExpanded[d] = allCollapsed; });
+    var btn = document.getElementById("btnToggleAll");
+    if (btn) btn.textContent = allCollapsed ? "\uc804\uccb4 \uc811\uae30" : "\uc804\uccb4 \ud3bc\uce58\uae30";
+    renderResultList();
+}
+
+function openDetail(id) {
+    var card = document.querySelector("[data-id=\"" + id + "\"]");
+    if (!card) return;
+    var titleEl = card.querySelector(".feature-title");
+    var title = titleEl ? titleEl.textContent.trim() : id;
+    var st = state[id] || "pending";
+    var comment = "";
+    var ta = card.querySelector("textarea");
+    if (ta) comment = ta.value;
+    var stLabels = {confirmed: "\ub9de\uc2b5\ub2c8\ub2e4", modified: "\uc218\uc815 \ud544\uc694", rejected: "\ubd88\ud544\uc694", pending: "\ubbf8\ud655\uc778"};
+    var stColors = {confirmed: "#16a34a", modified: "#ea580c", rejected: "#dc2626", pending: "#999"};
+
+    var whatBox = card.querySelector(".what-box");
+    var analogyBox = card.querySelector(".analogy-box");
+    var exampleBox = card.querySelector(".example-box");
+    var whyBox = card.querySelector(".why-box");
+    var detailBox = card.querySelector(".feature-detail");
+
+    var c = "<!DOCTYPE html><html lang=\"ko\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">";
+    c += "<title>" + id + ". " + title + "</title>";
+    c += "<style>body{font-family:Pretendard,-apple-system,BlinkMacSystemFont,Noto Sans KR,sans-serif;max-width:800px;margin:0 auto;padding:32px;background:#f5f5f5;color:#333;line-height:1.7;}";
+    c += ".card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-bottom:20px;}";
+    c += "h1{font-size:22px;margin-bottom:12px;} .badge{display:inline-block;padding:6px 16px;border-radius:20px;font-size:14px;font-weight:700;color:#fff;}";
+    c += ".sec{border-radius:10px;padding:16px 20px;margin:12px 0;} .sec h4{font-size:14px;font-weight:700;margin-bottom:8px;} .sec p,.sec li{font-size:13.5px;line-height:1.8;}";
+    c += "ul{margin-left:18px;} .cmnt{background:#fffbeb;border:2px solid #fde68a;border-radius:10px;padding:16px 20px;margin-top:16px;}</style></head><body>";
+    c += "<div class=\"card\"><h1>" + id + ". " + title + "</h1>";
+    c += "<span class=\"badge\" style=\"background:" + (stColors[st] || "#999") + ";\">" + (stLabels[st] || st) + "</span>";
+    if (dbDates[id]) c += "<span style=\"margin-left:12px;font-size:13px;color:#888;\">" + dbDates[id] + " \ud655\uc778</span>";
+    c += "</div>";
+    if (whatBox) c += "<div class=\"card\"><div class=\"sec\" style=\"background:#f0f4ff;border:1px solid #c7d2fe;\">" + whatBox.innerHTML + "</div></div>";
+    if (analogyBox) c += "<div class=\"card\"><div class=\"sec\" style=\"background:#fffbeb;border:1px solid #fde68a;\">" + analogyBox.innerHTML + "</div></div>";
+    if (exampleBox) c += "<div class=\"card\"><div class=\"sec\" style=\"background:#f0fdf4;border:1px solid #bbf7d0;\">" + exampleBox.innerHTML + "</div></div>";
+    if (whyBox) c += "<div class=\"card\"><div class=\"sec\" style=\"background:#fef2f2;border:1px solid #fecaca;\">" + whyBox.innerHTML + "</div></div>";
+    if (detailBox) c += "<div class=\"card\"><div class=\"sec\" style=\"background:#f8fafc;border:1px solid #e2e8f0;\">" + detailBox.innerHTML + "</div></div>";
+    if (comment) {
+        var safeComment = comment.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        c += "<div class=\"card\"><div class=\"cmnt\"><h4 style=\"font-size:15px;font-weight:700;color:#92400e;\">\uace0\uac1d \uc758\uacac</h4><p style=\"font-size:14px;\">" + safeComment + "</p></div></div>";
+    }
+    c += "</body></html>";
+    var w = window.open("", "_blank");
+    if (w) { w.document.write(c); w.document.close(); }
+}
+
+function generatePrompt() {
+    var ids = Object.keys(state);
+    if (ids.length === 0) { showToast("\uc120\ud0dd\ub41c \ud56d\ubaa9\uc774 \uc5c6\uc2b5\ub2c8\ub2e4."); return; }
+
+    ids.sort(function(a, b) {
+        var na = a.replace("Q-", "99-"); var nb = b.replace("Q-", "99-");
+        return na.localeCompare(nb, undefined, {numeric: true});
+    });
+
+    var labels = {confirmed: "\ub9de\uc2b5\ub2c8\ub2e4 (\uadf8\ub300\ub85c \uc9c4\ud589)", modified: "\uc218\uc815 \ud544\uc694", rejected: "\ubd88\ud544\uc694 (\uc81c\uc678)"};
+    var p = "# CPV \uad11\uace0\ube44 \uacfc\uae08 \uc2dc\uc2a4\ud15c \uac1c\ubc1c \ud504\ub86c\ud504\ud2b8\n\n";
+    p += "## \ud074\ub77c\uc774\uc5b8\ud2b8 \ud655\uc778 \uacb0\uacfc (" + new Date().toLocaleDateString("ko-KR") + ")\n\n";
+
+    var confirmed = [], modified = [], rejected = [];
+    ids.forEach(function(id) {
+        var card = document.querySelector("[data-id=\"" + id + "\"]");
+        var titleEl = card ? card.querySelector(".feature-title") : null;
+        var title = titleEl ? titleEl.textContent.trim() : id;
+        var comment = "";
+        if (card) { var ta = card.querySelector("textarea"); if (ta) comment = ta.value; }
+        var item = {id: id, title: title, comment: comment};
+        if (state[id] === "confirmed") confirmed.push(item);
+        else if (state[id] === "modified") modified.push(item);
+        else if (state[id] === "rejected") rejected.push(item);
+    });
+
+    if (confirmed.length > 0) {
+        p += "### \u2705 \uadf8\ub300\ub85c \uc9c4\ud589 (" + confirmed.length + "\uac1c)\n";
+        confirmed.forEach(function(item) {
+            p += "- " + item.id + ". " + item.title + "\n";
+            if (item.comment) p += "  - \uc758\uacac: " + item.comment + "\n";
+        });
+        p += "\n";
+    }
+    if (modified.length > 0) {
+        p += "### \ud83d\udfe0 \uc218\uc815 \ud6c4 \uc9c4\ud589 (" + modified.length + "\uac1c)\n";
+        modified.forEach(function(item) {
+            p += "- " + item.id + ". " + item.title + "\n";
+            if (item.comment) p += "  - **\uc218\uc815\uc0ac\ud56d**: " + item.comment + "\n";
+        });
+        p += "\n";
+    }
+    if (rejected.length > 0) {
+        p += "### \u274c \uc81c\uc678 (" + rejected.length + "\uac1c)\n";
+        rejected.forEach(function(item) {
+            p += "- ~~" + item.id + ". " + item.title + "~~\n";
+            if (item.comment) p += "  - \uc0ac\uc720: " + item.comment + "\n";
+        });
+        p += "\n";
+    }
+
+    if (customRequests.length > 0) {
+        var prioLabels = {high: "\ud83d\udd34 \ub192\uc74c", medium: "\ud83d\udfe1 \ubcf4\ud1b5", low: "\ud83d\udfe2 \ub0ae\uc74c"};
+        p += "### \u2795 \ucd94\uac00 \uac1c\ubc1c \uc694\uccad\uc0ac\ud56d (" + customRequests.length + "\uac1c)\n";
+        customRequests.forEach(function(cr) {
+            p += "- [" + (prioLabels[cr.priority] || "\ubcf4\ud1b5") + "] " + cr.title + "\n";
+            if (cr.description) p += "  - " + cr.description + "\n";
+        });
+        p += "\n";
+    }
+
+    p += "---\n\n\uc704 \ud655\uc778 \uacb0\uacfc\ub97c \ubc14\ud0d5\uc73c\ub85c \uac1c\ubc1c\uc744 \uc9c4\ud589\ud574 \uc8fc\uc138\uc694.\n";
+
+    navigator.clipboard.writeText(p).then(function() {
+        showToast("\ud504\ub86c\ud504\ud2b8\uac00 \ud074\ub9bd\ubcf4\ub4dc\uc5d0 \ubcf5\uc0ac\ub418\uc5c8\uc2b5\ub2c8\ub2e4!");
+    });
+
+    var blob = new Blob([p], {type: "text/markdown;charset=utf-8"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "CPV_\uac1c\ubc1c_\ud504\ub86c\ud504\ud2b8_" + new Date().toISOString().slice(0, 10) + ".md";
+    a.click();
+}
+
+// 추가 개발 요청사항
+function toggleCustomForm() {
+    var form = document.getElementById("customForm");
+    form.style.display = form.style.display === "none" ? "block" : "none";
+}
+
+function selectPriority(btn) {
+    document.querySelectorAll(".priority-btn").forEach(function(b) {
+        b.classList.remove("selected");
+        b.style.background = "#fff";
+        b.style.color = b.style.borderColor;
+    });
+    btn.classList.add("selected");
+    btn.style.background = btn.style.borderColor;
+    btn.style.color = "#fff";
+}
+
+function submitCustomRequest() {
+    var title = document.getElementById("customTitle").value.trim();
+    var desc = document.getElementById("customDesc").value.trim();
+    if (!title) { showToast("\uc81c\ubaa9\uc744 \uc785\ub825\ud574 \uc8fc\uc138\uc694."); return; }
+    var selBtn = document.querySelector(".priority-btn.selected");
+    var priority = selBtn ? selBtn.dataset.priority : "medium";
+
+    apiCall("POST", {title: title, description: desc, priority: priority}, "action=custom").then(function(res) {
+        if (res.success) {
+            showToast("\ub4f1\ub85d \uc644\ub8cc!");
+            document.getElementById("customTitle").value = "";
+            document.getElementById("customDesc").value = "";
+            toggleCustomForm();
+            loadCustomRequests();
+        } else {
+            showToast("\ub4f1\ub85d \uc2e4\ud328: " + res.message);
+        }
+    });
+}
+
+function deleteCustomRequest(id) {
+    apiCall("DELETE", {id: id}, "action=custom").then(function(res) {
+        if (res.success) loadCustomRequests();
+    });
+}
+
+function loadCustomRequests() {
+    apiCall("GET", null, "action=custom").then(function(res) {
+        if (!res.success) return;
+        customRequests = res.data || [];
+        renderCustomList();
+    });
+}
+
+function renderCustomList() {
+    var list = document.getElementById("customList");
+    if (!customRequests || customRequests.length === 0) {
+        list.innerHTML = "<p style=\"text-align:center;color:#bbb;padding:16px;font-size:14px;\">\ub4f1\ub85d\ub41c \ucd94\uac00 \uc694\uccad\uc0ac\ud56d\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.</p>";
+        return;
+    }
+    var prioColors = {high: "#dc2626", medium: "#ea580c", low: "#6b7280"};
+    var prioLabels = {high: "\ub192\uc74c", medium: "\ubcf4\ud1b5", low: "\ub0ae\uc74c"};
+    var h = "";
+    customRequests.forEach(function(cr, i) {
+        var bg = i % 2 === 0 ? "#f8fafc" : "#fff";
+        var pc = prioColors[cr.priority] || "#888";
+        h += "<div style=\"display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:" + bg + ";border-radius:8px;margin-bottom:6px;border-left:4px solid " + pc + ";cursor:pointer;\" onclick=\"openCustomDetail(" + cr.id + ")\">";
+        h += "<span style=\"background:" + pc + ";color:#fff;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;\">" + (prioLabels[cr.priority] || "?") + "</span>";
+        h += "<div style=\"flex:1;min-width:0;\">";
+        h += "<div style=\"font-weight:700;font-size:14px;\">" + cr.title + "</div>";
+        if (cr.description) {
+            var shortDesc = cr.description.length > 60 ? cr.description.substring(0, 60) + "..." : cr.description;
+            h += "<div style=\"font-size:12px;color:#888;margin-top:4px;\">" + shortDesc + "</div>";
+        }
+        h += "<div style=\"font-size:11px;color:#aaa;margin-top:4px;\">" + (cr.created_at || "") + "</div>";
+        h += "</div>";
+        h += "<button onclick=\"event.stopPropagation();deleteCustomRequest(" + cr.id + ")\" style=\"border:2px solid #fecaca;background:#fff;color:#dc2626;font-size:14px;cursor:pointer;padding:4px 10px;border-radius:6px;line-height:1;font-weight:800;flex-shrink:0;transition:all 0.15s;\" onmouseover=\"this.style.background='#dc2626';this.style.color='#fff'\" onmouseout=\"this.style.background='#fff';this.style.color='#dc2626'\" title=\"\uc0ad\uc81c\">&times;</button>";
+        h += "</div>";
+    });
+    list.innerHTML = h;
+}
+
+function openCustomDetail(id) {
+    var cr = customRequests.find(function(r) { return r.id == id; });
+    if (!cr) return;
+    var prioLabels = {high: "\ub192\uc74c", medium: "\ubcf4\ud1b5", low: "\ub0ae\uc74c"};
+    var prioColors = {high: "#dc2626", medium: "#ea580c", low: "#6b7280"};
+    var c = "<!DOCTYPE html><html lang=\"ko\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">";
+    c += "<title>\ucd94\uac00 \uc694\uccad: " + cr.title + "</title>";
+    c += "<style>body{font-family:Pretendard,-apple-system,BlinkMacSystemFont,Noto Sans KR,sans-serif;max-width:800px;margin:0 auto;padding:32px;background:#f5f5f5;color:#333;line-height:1.7;}";
+    c += ".card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-bottom:20px;}</style></head><body>";
+    c += "<div class=\"card\"><h1 style=\"font-size:22px;\">\ucd94\uac00 \uac1c\ubc1c \uc694\uccad</h1>";
+    c += "<h2 style=\"font-size:20px;margin-top:8px;\">" + cr.title + "</h2>";
+    c += "<span style=\"display:inline-block;padding:4px 12px;border-radius:12px;font-size:13px;font-weight:700;color:#fff;background:" + (prioColors[cr.priority] || "#888") + ";\">\uc6b0\uc120\uc21c\uc704: " + (prioLabels[cr.priority] || "?") + "</span>";
+    c += "<p style=\"font-size:13px;color:#888;margin-top:8px;\">\ub4f1\ub85d\uc77c: " + (cr.created_at || "") + "</p>";
+    c += "</div>";
+    if (cr.description) {
+        c += "<div class=\"card\"><h3 style=\"font-size:16px;font-weight:700;margin-bottom:12px;\">\uc0c1\uc138 \uc124\uba85</h3>";
+        c += "<p style=\"font-size:14px;line-height:1.8;white-space:pre-wrap;\">" + cr.description.replace(/</g,"&lt;").replace(/>/g,"&gt;") + "</p></div>";
+    }
+    c += "</body></html>";
+    var w = window.open("", "_blank");
+    if (w) { w.document.write(c); w.document.close(); }
+}
+
+function showToast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(function(){ t.classList.remove("show"); }, 3000);
+}
+
+function submitAll() {
+    var pending = TOTAL - Object.keys(state).length;
+    if (pending > 0 && !confirm("\uc544\uc9c1 " + pending + "\uac1c \ud56d\ubaa9\uc774 \ubbf8\ud655\uc778\uc785\ub2c8\ub2e4.\n\uadf8\ub798\ub3c4 \uc81c\ucd9c\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?")) return;
+
+    var results = [];
+    document.querySelectorAll(".feature-card").forEach(function(card) {
+        var id = card.dataset.id;
+        var titleEl = card.querySelector(".feature-title");
+        var title = titleEl ? titleEl.textContent.trim() : id;
+        var status = state[id] || "pending";
+        var ta = card.querySelector("textarea");
+        var comment = ta ? ta.value : "";
+        results.push({id: id, title: title, status: status, comment: comment});
+    });
+
+    var s = "=== CPV \uae30\ub2a5 \ud655\uc778 \uacb0\uacfc ===\n\n";
+    s += "\ud655\uc778\uc77c: " + new Date().toLocaleString("ko-KR") + "\n";
+    var cntC = 0, cntM = 0, cntR = 0, cntP = 0;
+    for (var i = 0; i < results.length; i++) {
+        if (results[i].status === "confirmed") cntC++;
+        else if (results[i].status === "modified") cntM++;
+        else if (results[i].status === "rejected") cntR++;
+        else cntP++;
+    }
+    s += "\uc804\uccb4: " + TOTAL + "\uac1c / \ub9de\uc2b5\ub2c8\ub2e4: " + cntC + "\uac1c / \uc218\uc815\ud544\uc694: " + cntM + "\uac1c / \ubd88\ud544\uc694: " + cntR + "\uac1c / \ubbf8\ud655\uc778: " + cntP + "\uac1c\n\n";
+
+    for (var j = 0; j < results.length; j++) {
+        var r = results[j];
+        var icon = r.status === "confirmed" ? "[O]" : r.status === "modified" ? "[~]" : r.status === "rejected" ? "[X]" : "[?]";
+        s += icon + " " + r.id + ". " + r.title + "\n";
+        if (r.comment) s += "   -> \uc758\uacac: " + r.comment + "\n";
+    }
+
+    if (customRequests.length > 0) {
+        s += "\n=== \ucd94\uac00 \uac1c\ubc1c \uc694\uccad\uc0ac\ud56d ===\n\n";
+        customRequests.forEach(function(cr) {
+            s += "[\ucd94\uac00] " + cr.title + "\n";
+            if (cr.description) s += "   -> " + cr.description + "\n";
+        });
+    }
+
+    navigator.clipboard.writeText(s).then(function() {
+        showToast("\ud074\ub9bd\ubcf4\ub4dc\uc5d0 \ubcf5\uc0ac\ub418\uc5c8\uc2b5\ub2c8\ub2e4!");
+    });
+
+    var blob = new Blob([s], {type: "text/plain;charset=utf-8"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "CPV_\uae30\ub2a5\ud655\uc778_" + new Date().toISOString().slice(0, 10) + ".txt";
+    a.click();
+
+    document.getElementById("submitBtn").textContent = "\uc81c\ucd9c \uc644\ub8cc";
+    document.getElementById("submitBtn").disabled = true;
+    document.getElementById("submitBtn").style.background = "#16a34a";
+}
+
+// 페이지 로드
+document.addEventListener("DOMContentLoaded", function() {
+    apiCall("GET").then(function(res) {
+        if (!res.success || !res.data) return;
+        var entries = Object.entries(res.data);
+        for (var i = 0; i < entries.length; i++) {
+            var fid = entries[i][0];
+            var row = entries[i][1];
+            dbDates[fid] = row.date || row.updated_at.slice(0,10);
+            setConfirm(fid, row.status, true);
+            if (row.comment) {
+                var card = document.querySelector("[data-id=\"" + fid + "\"]");
+                if (card) {
+                    var ta = card.querySelector("textarea");
+                    if (ta) ta.value = row.comment;
+                }
+            }
+        }
+        renderResultList();
+    }).catch(function() {});
+
+    loadCustomRequests();
+
+    document.querySelectorAll(".feature-card textarea").forEach(function(ta) {
+        var card = ta.closest(".feature-card");
+        var fid = card ? card.dataset.id : null;
+        if (!fid) return;
+        ta.addEventListener("input", function() {
+            if (!state[fid]) return;
+            clearTimeout(_savingTimers[fid]);
+            _savingTimers[fid] = setTimeout(function() {
+                apiCall("POST", { feature_id: fid, status: state[fid], comment: ta.value });
+            }, 800);
+        });
+    });
+});
+
+function downloadExcel() {
+    var ids = Object.keys(state);
+    if (ids.length === 0) { showToast("\uc120\ud0dd\ub41c \ud56d\ubaa9\uc774 \uc5c6\uc2b5\ub2c8\ub2e4."); return; }
+
+    ids.sort(function(a, b) {
+        var na = a.replace("Q-", "99-"); var nb = b.replace("Q-", "99-");
+        return na.localeCompare(nb, undefined, {numeric: true});
+    });
+
+    var labels = {confirmed: "\ub9de\uc2b5\ub2c8\ub2e4", modified: "\uc218\uc815 \ud544\uc694", rejected: "\ubd88\ud544\uc694"};
+    var rows = [["\ubc88\ud638", "\uae30\ub2a5\uba85", "\uc120\ud0dd", "\uc758\uacac", "\ub0a0\uc9dc"]];
+
+    ids.forEach(function(id) {
+        var card = document.querySelector("[data-id=\"" + id + "\"]");
+        var titleEl = card ? card.querySelector(".feature-title") : null;
+        var title = titleEl ? titleEl.textContent.trim() : id;
+        var comment = "";
+        if (card) { var ta = card.querySelector("textarea"); if (ta) comment = ta.value; }
+        rows.push([id, title, labels[state[id]] || "?", comment, dbDates[id] || ""]);
+    });
+
+    if (customRequests.length > 0) {
+        rows.push([]);
+        rows.push(["\ucd94\uac00 \uc694\uccad", "\uc81c\ubaa9", "\uc6b0\uc120\uc21c\uc704", "\uc0c1\uc138 \uc124\uba85", "\ub4f1\ub85d\uc77c"]);
+        var prioLabels = {high: "\ub192\uc74c", medium: "\ubcf4\ud1b5", low: "\ub0ae\uc74c"};
+        customRequests.forEach(function(cr, i) {
+            rows.push(["ADD-" + (i+1), cr.title, prioLabels[cr.priority] || "", cr.description || "", cr.created_at || ""]);
+        });
+    }
+
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{wch:8},{wch:40},{wch:12},{wch:50},{wch:12}];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "CPV \uae30\ub2a5\ud655\uc778");
+    XLSX.writeFile(wb, "CPV_\uae30\ub2a5\ud655\uc778_" + new Date().toISOString().slice(0,10) + ".xlsx");
+    showToast("\uc5d1\uc140 \ub2e4\uc6b4\ub85c\ub4dc \uc644\ub8cc!");
+}
+
+function uploadExcel(input) {
+    if (!input.files || !input.files[0]) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var wb = XLSX.read(e.target.result, {type: "array"});
+            var ws = wb.Sheets[wb.SheetNames[0]];
+            var data = XLSX.utils.sheet_to_json(ws, {header: 1});
+
+            var imported = 0;
+            var statusMap = {"\ub9de\uc2b5\ub2c8\ub2e4": "confirmed", "\uc218\uc815 \ud544\uc694": "modified", "\ubd88\ud544\uc694": "rejected"};
+
+            for (var i = 1; i < data.length; i++) {
+                var row = data[i];
+                if (!row || !row[0]) continue;
+                var fid = String(row[0]).trim();
+                var statusText = String(row[2] || "").trim();
+                var comment = String(row[3] || "").trim();
+
+                if (fid.startsWith("ADD-") || fid === "\ucd94\uac00 \uc694\uccad") continue;
+
+                var status = statusMap[statusText];
+                if (!status) continue;
+
+                var card = document.querySelector("[data-id=\"" + fid + "\"]");
+                if (!card) continue;
+
+                if (comment) {
+                    var ta = card.querySelector("textarea");
+                    if (ta) ta.value = comment;
+                }
+                setConfirm(fid, status);
+                imported++;
+            }
+
+            showToast(imported + "\uac1c \ud56d\ubaa9 \uac00\uc838\uc624\uae30 \uc644\ub8cc!");
+        } catch(err) {
+            showToast("\uc5d1\uc140 \uc77d\uae30 \uc2e4\ud328: " + err.message);
+        }
+        input.value = "";
+    };
+    reader.readAsArrayBuffer(input.files[0]);
+}
+
+function saveComment(btn) {
+    var card = btn.closest(".feature-card");
+    if (!card) return;
+    var fid = card.dataset.id;
+    if (!state[fid]) {
+        showToast("\uba3c\uc800 \ub9de\uc2b5\ub2c8\ub2e4/\uc218\uc815\ud544\uc694/\ubd88\ud544\uc694\ub97c \uc120\ud0dd\ud574 \uc8fc\uc138\uc694.");
+        return;
+    }
+    var ta = card.querySelector("textarea");
+    var comment = ta ? ta.value : "";
+    apiCall("POST", { feature_id: fid, status: state[fid], comment: comment }).then(function(res) {
+        if (res.success) {
+            btn.textContent = "\uc800\uc7a5 \uc644\ub8cc";
+            btn.classList.add("saved");
+            setTimeout(function() { btn.textContent = "\uc800\uc7a5"; btn.classList.remove("saved"); }, 2000);
+            renderResultList();
+        }
+    });
+}
+</script>
+</body>
+</html>

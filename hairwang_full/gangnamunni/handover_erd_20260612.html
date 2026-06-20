@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>hms_saas DB ERD 문서 (2026-06-12)</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--point:#ae1932;--point-soft:#fdf0f2;--ink:#1f2430;--muted:#6b7280;--line:#e6e8ee;--bg:#f4f5f8;--card:#ffffff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Pretendard','Noto Sans KR',-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+.wrap{max-width:1240px;margin:0 auto;padding:32px 20px 80px}
+header.hero{background:linear-gradient(135deg,#ae1932 0%,#7d1024 100%);color:#fff;border-radius:18px;padding:38px 40px;margin-bottom:28px;box-shadow:0 8px 24px rgba(174,25,50,.25)}
+header.hero h1{font-size:30px;font-weight:800;letter-spacing:-.5px}
+header.hero p{margin-top:8px;opacity:.92;font-size:14.5px}
+.badge{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:3px 12px;font-size:12.5px;margin-right:6px;margin-top:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:28px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 2px 8px rgba(15,23,42,.05)}
+.stat .num{font-size:24px;font-weight:800;color:var(--point)}
+.stat .lbl{font-size:12.5px;color:var(--muted);margin-top:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 28px;margin-bottom:24px;box-shadow:0 2px 10px rgba(15,23,42,.05)}
+h2.sec{font-size:21px;font-weight:800;margin-bottom:6px;padding-left:12px;border-left:5px solid var(--point);letter-spacing:-.3px}
+h2.sec+p.desc{color:var(--muted);font-size:13.5px;margin-bottom:18px;padding-left:17px}
+h3.diag{font-size:16.5px;font-weight:700;margin:6px 0 4px;color:var(--ink)}
+h3.diag .chip{display:inline-block;background:var(--point-soft);color:var(--point);font-size:11.5px;font-weight:700;border-radius:6px;padding:2px 8px;margin-left:8px;vertical-align:2px}
+p.dd{font-size:13px;color:var(--muted);margin-bottom:10px}
+.mermaid-box{background:#fbfbfd;border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto;margin-bottom:26px}
+pre.mermaid{font-size:13px;text-align:center}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.toc a{display:inline-block;background:var(--point-soft);color:var(--point);text-decoration:none;font-size:12.5px;font-weight:600;border-radius:999px;padding:5px 14px;border:1px solid #f3d3d9}
+.toc a:hover{background:var(--point);color:#fff}
+.gcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px}
+.gcard{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fcfcfd}
+.gcard b{color:var(--point);font-size:15px}
+.gcard .cnt{float:right;font-size:12.5px;color:var(--muted)}
+.gcard p{font-size:12.5px;color:var(--muted);margin-top:6px}
+table.cat{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+table.cat th{background:var(--point-soft);color:var(--point);text-align:left;padding:8px 12px;font-size:12.5px;border-bottom:2px solid #f0c8d0;white-space:nowrap}
+table.cat td{padding:6px 12px;border-bottom:1px solid var(--line)}
+table.cat td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.cat tr:hover td{background:#faf6f7}
+.tname{font-family:Consolas,'D2Coding',monospace;font-size:12.5px}
+.core{display:inline-block;background:var(--point);color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+.subhead{font-size:14px;font-weight:700;color:var(--ink);margin:20px 0 2px;padding-left:10px;border-left:3px solid #e3a4af}
+.searchbar{display:flex;align-items:center;gap:12px;margin:14px 0 4px}
+.searchbar input{flex:1;max-width:420px;border:1.5px solid var(--line);border-radius:10px;padding:10px 16px;font-size:14px;font-family:inherit;outline:none}
+.searchbar input:focus{border-color:var(--point)}
+.searchbar .hits{font-size:12.5px;color:var(--muted)}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:36px}
+@media (max-width:720px){header.hero{padding:26px 22px}.card{padding:18px 16px}}
+</style></head><body>
+<div class="wrap">
+<header class="hero">
+<h1>hms_saas 데이터베이스 ERD 문서</h1>
+<p>서울미녀(Seoul Beauty) 플랫폼 · HMS SaaS · Gnuboard 통합 DB — 인수인계용 스키마 문서 (mysqldump --no-data 기준)</p>
+<span class="badge">생성일 2026-06-12</span><span class="badge">MariaDB 10.5 · DB hms_saas</span>
+<span class="badge">전체 440 테이블</span><span class="badge">핵심 ERD 60 테이블 / 9 다이어그램</span>
+</header>
+<div class="stats">
+<div class="stat"><div class="num">440</div><div class="lbl">전체 테이블</div></div>
+<div class="stat"><div class="num">26,002</div><div class="lbl">전체 데이터 행수(추정)</div></div>
+<div class="stat"><div class="num">99</div><div class="lbl">서울미녀 서비스</div></div>
+<div class="stat"><div class="num">8</div><div class="lbl">CPV 과금</div></div>
+<div class="stat"><div class="num">83</div><div class="lbl">Gnuboard·영카트</div></div>
+<div class="stat"><div class="num">7</div><div class="lbl">병원 연동</div></div>
+<div class="stat"><div class="num">1</div><div class="lbl">SSO</div></div>
+<div class="stat"><div class="num">242</div><div class="lbl">HMS Laravel</div></div>
+</div>
+<div class="card"><h2 class="sec">목차</h2><div class="toc">
+<a href="#overview">1. 도메인 그룹 개요</a>
+<a href="#d1">2-1. 서울미녀 — 병원·의사</a>
+<a href="#d2">2-2. 서울미녀 — 시술 (treatment_master 신체계)</a>
+<a href="#d3">2-3. 서울미녀 — 후기·커뮤니티</a>
+<a href="#d4">2-4. 서울미녀 — 회원·예약·쿠폰·포인트</a>
+<a href="#d5">2-5. 서울미녀 — 광고·채팅·알림</a>
+<a href="#d6">2-6. CPV 과금</a>
+<a href="#d7">2-7. HMS Laravel — 진료 코어 (멀티테넌트)</a>
+<a href="#d8">2-8. Gnuboard·영카트</a>
+<a href="#d9">2-9. 병원 연동·SSO</a>
+<a href="#catalog">3. 전체 테이블 카탈로그</a>
+</div></div>
+<div class="card" id="overview"><h2 class="sec">1. 도메인 그룹 개요</h2>
+<p class="desc">테이블 접두사 기반 분류. 서울미녀 서비스는 기능 도메인별 세부 분류를 카탈로그에서 제공.</p>
+<div class="gcards">
+<div class="gcard"><b>서울미녀 서비스</b><span class="cnt">99 테이블 · 5,265 행</span><p>강남언니형 뷰티 플랫폼 코어. 병원/의사/시술/후기/커뮤니티/예약/광고 등 서비스 전반 (접두사 gangnamunni_)</p></div>
+<div class="gcard"><b>CPV 과금</b><span class="cnt">8 테이블 · 89 행</span><p>CPV(Cost Per View) 과금 시스템 — 지갑/거래/단가/일별 통계/확인 (접두사 gangnamunni_cpv_)</p></div>
+<div class="gcard"><b>Gnuboard·영카트</b><span class="cnt">83 테이블 · 14,313 행</span><p>그누보드5 회원·게시판 + 영카트 쇼핑몰(PG 결제) (접두사 g5_)</p></div>
+<div class="gcard"><b>병원 연동</b><span class="cnt">7 테이블 · 589 행</span><p>HMS ↔ 서울미녀 병원 콘텐츠 연동 — 후기/이미지/특징/스케줄 등 (접두사 hospital_)</p></div>
+<div class="gcard"><b>SSO</b><span class="cnt">1 테이블 · 1 행</span><p>통합 로그인 토큰 — Gnuboard·HMS·관리자 3개 세션 공유 (접두사 sso_)</p></div>
+<div class="gcard"><b>HMS Laravel</b><span class="cnt">242 테이블 · 5,745 행</span><p>InfyHMS 병원관리 SaaS (Laravel 10, 멀티테넌트) — 환자/예약/청구/처방 등 (접두사 없음)</p></div>
+</div></div>
+<div class="card"><h2 class="sec">2. 핵심 ERD (Mermaid)</h2>
+<p class="desc">핵심 테이블 60개를 도메인별 9개 다이어그램으로 분할. 관계선은 ① DDL 의 실제 FOREIGN KEY 제약(HMS Laravel)과 ② 컬럼 명명 규칙 추론(hospital_id→gangnamunni_hospitals.id, mb_id→g5_member.mb_id 등)을 병합한 것. 컬럼은 PK·FK 우선 최대 10개만 표시(점선 참조 테이블은 3개), 전체 컬럼 수는 캡션 참고.</p>
+<h3 class="diag" id="d1">2-1. 서울미녀 — 병원·의사<span class="chip">6 테이블</span></h3>
+<p class="dd">병원(gangnamunni_hospitals, Hospital ID 8093+)을 중심으로 의사·진료과·스케줄·소식과 HMS 테넌트 매핑.<br><span style="color:#9aa1ad">gangnamunni_hospitals(62컬럼, 68행) · gangnamunni_doctors(30컬럼, 76행) · gangnamunni_departments(9컬럼, 136행) · gangnamunni_doctor_schedules(8컬럼, 0행) · gangnamunni_hospital_news(8컬럼, 0행) · gangnamunni_hospital_mapping(5컬럼, 5행)</span></p>
+<div class="mermaid-box"><pre class="mermaid">erDiagram
+  gangnamunni_hospitals {
+    int id PK
+    varchar name
+    text description
+    varchar phone
+    varchar email
+    decimal rating
+    timestamp created_at
+    varchar hms_hospital_id FK
+    varchar status
+    tinyint is_active
+  }
+  gangnamunni_doctors {
+    int id PK
+    int hms_doctor_id FK
+    int hospital_id FK
+    int department_id FK
+    varchar hms_tenant_id FK
+    varchar name
+    varchar phone
+    varchar email
+    enum status
+    timestamp created_at
+  }
+  gangnamunni_departments {
+    int id PK
+    int hms_department_id FK
+    varchar hms_tenant_id FK
+    varchar title
+    text description
+    int doctor_count
+    datetime synced_at
+    timestamp created_at
+    timestamp updated_at
+  }
+  gangnamunni_doctor_schedules {
+    int id PK
+    int doctor_id FK
+    int hospital_id FK
+    tinyint day_of_week
+    time start_time
+    time end_time
+    int slot_minutes
+    tinyint is_active
+  }
+  gangnamunni_hospital_news {
+    int id PK
+    int hospital_id FK
+    varchar title
+    text content
+    varchar image_url
+    enum news_type
+    tinyint is_active
+    datetime created_at
+  }
+  gangnamunni_hospital_mapping {
+    int id PK
+    int hospital_id FK
+    varchar hms_tenant_id FK
+    varchar hospital_name
+    datetime created_at
+  }
+  gangnamunni_departments ||--o{ gangnamunni_doctors : "department_id"
+  gangnamunni_doctors ||--o{ gangnamunni_doctor_schedules : "doctor_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_doctor_schedules : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_doctors : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_hospital_mapping : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_hospital_news : "hospital_id"</pre></div>
+<h3 class="diag" id="d2">2-2. 서울미녀 — 시술 (treatment_master 신체계)<span class="chip">7 테이블</span></h3>
+<p class="dd">시술 마스터/카테고리와 병원별·의사별 시술 매핑, 패키지 구성. (구 gangnamunni_treatments 와 공존)<br><span style="color:#9aa1ad">gangnamunni_treatment_master(18컬럼, 74행) · gangnamunni_treatment_categories(8컬럼, 6행) · gangnamunni_hospital_treatments(17컬럼, 428행) · gangnamunni_doctor_treatments(10컬럼, 0행) · gangnamunni_treatment_packages(9컬럼, 0행) · gangnamunni_treatment_package_items(4컬럼, 0행) · gangnamunni_hospitals(62컬럼, 68행, 참조용)</span></p>
+<div class="mermaid-box"><pre class="mermaid">erDiagram
+  gangnamunni_treatment_master {
+    int id PK
+    int category_id FK
+    int sort_order
+    varchar name
+    varchar hashtag
+    text description
+    int duration_min
+    int recovery_days
+    tinyint is_active
+    datetime created_at
+  }
+  gangnamunni_treatment_categories {
+    int id PK
+    varchar name
+    varchar slug
+    varchar icon
+    int sort_order
+    tinyint is_active
+    datetime created_at
+    datetime updated_at
+  }
+  gangnamunni_hospital_treatments {
+    int id PK
+    int hospital_id FK
+    int treatment_id FK
+    int price_min
+    int price_max
+    tinyint is_promoted
+    varchar note
+    enum status
+    tinyint is_active
+    datetime created_at
+  }
+  gangnamunni_doctor_treatments {
+    int id PK
+    int doctor_id FK
+    int hospital_id FK
+    int treatment_id FK
+    int case_count
+    enum speciality_level
+    varchar certification
+    tinyint is_active
+    datetime created_at
+    datetime updated_at
+  }
+  gangnamunni_treatment_packages {
+    int id PK
+    int hospital_id FK
+    varchar name
+    text description
+    int package_price
+    int original_price
+    tinyint is_active
+    datetime created_at
+    datetime updated_at
+  }
+  gangnamunni_treatment_package_items {
+    int id PK
+    int package_id FK
+    int treatment_id FK
+    int sort_order
+  }
+  gangnamunni_hospitals {
+    int id PK
+    varchar name
+    varchar hms_hospital_id FK
+  }
+  gangnamunni_hospitals ||--o{ gangnamunni_doctor_treatments : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_hospital_treatments : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_treatment_packages : "hospital_id"
+  gangnamunni_treatment_categories ||--o{ gangnamunni_treatment_master : "category_id"
+  gangnamunni_treatment_master ||--o{ gangnamunni_doctor_treatments : "treatment_id"
+  gangnamunni_treatment_master ||--o{ gangnamunni_hospital_treatments : "treatment_id"
+  gangnamunni_treatment_master ||--o{ gangnamunni_treatment_package_items : "treatment_id"
+  gangnamunni_treatment_packages ||--o{ gangnamunni_treatment_package_items : "package_id"</pre></div>
+<h3 class="diag" id="d3">2-3. 서울미녀 — 후기·커뮤니티<span class="chip">7 테이블</span></h3>
+<p class="dd">병원 후기와 AI 감성분석(treatment_reviews), 비포/애프터, 커뮤니티 게시글·댓글·좋아요.<br><span style="color:#9aa1ad">gangnamunni_reviews(31컬럼, 5행) · gangnamunni_treatment_reviews(9컬럼, 33행) · gangnamunni_before_after(14컬럼, 0행) · gangnamunni_community_posts(13컬럼, 7행) · gangnamunni_community_comments(6컬럼, 0행) · gangnamunni_community_likes(4컬럼, 0행) · gangnamunni_hospitals(62컬럼, 68행, 참조용)</span></p>
+<div class="mermaid-box"><pre class="mermaid">erDiagram
+  gangnamunni_reviews {
+    int id PK
+    int hospital_id FK
+    int doctor_id FK
+    int event_id FK
+    varchar title
+    varchar user_id FK
+    tinyint rating
+    text content
+    tinyint is_active
+    timestamp created_at
+  }
+  gangnamunni_treatment_reviews {
+    int id PK
+    int review_id FK
+    int hospital_id FK
+    int treatment_id FK
+    decimal sentiment_score
+    tinyint is_positive
+    varchar keyword_matched
+    datetime created_at
+    datetime updated_at
+  }
+  gangnamunni_before_after {
+    int id PK
+    int hospital_id FK
+    int review_id FK
+    varchar treatment_name
+    int treatment_id FK
+    varchar before_image_url
+    varchar after_image_url
+    text description
+    tinyint is_active
+    datetime created_at
+  }
+  gangnamunni_community_posts {
+    int id PK
+    varchar mb_id FK
+    varchar author_name
+    varchar category
+    varchar title
+    text content
+    longtext photos
+    int view_count
+    enum status
+    timestamp created_at
+  }
+  gangnamunni_community_comments {
+    int id PK
+    int post_id FK
+    varchar mb_id FK
+    varchar author
+    text content
+    datetime created_at
+  }
+  gangnamunni_community_likes {
+    int id PK
+    int post_id FK
+    varchar user_id FK
+    datetime created_at
+  }
+  gangnamunni_hospitals {
+    int id PK
+    varchar name
+    varchar hms_hospital_id FK
+  }
+  gangnamunni_community_posts ||--o{ gangnamunni_community_comments : "post_id"
+  gangnamunni_community_posts ||--o{ gangnamunni_community_likes : "post_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_before_after : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_reviews : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_treatment_reviews : "hospital_id"
+  gangnamunni_reviews ||--o{ gangnamunni_before_after : "review_id"
+  gangnamunni_reviews ||--o{ gangnamunni_treatment_reviews : "review_id"</pre></div>
+<h3 class="diag" id="d4">2-4. 서울미녀 — 회원·예약·쿠폰·포인트<span class="chip">10 테이블</span></h3>
+<p class="dd">회원(gangnamunni_members, mb_id 는 g5_member 연동)과 예약/상담, 이벤트 응모, 쿠폰·포인트.<br><span style="color:#9aa1ad">gangnamunni_members(17컬럼, 92행) · gangnamunni_bookings(19컬럼, 65행) · gangnamunni_consultations(23컬럼, 12행) · gangnamunni_events(27컬럼, 142행) · gangnamunni_event_entries(10컬럼, 0행) · gangnamunni_points(10컬럼, 55행) · gangnamunni_coupons(16컬럼, 10행) · gangnamunni_coupon_claims(7컬럼, 0행) · g5_member(60컬럼, 153행, 참조용) · gangnamunni_hospitals(62컬럼, 68행, 참조용)</span></p>
+<div class="mermaid-box"><pre class="mermaid">erDiagram
+  gangnamunni_members {
+    int id PK
+    int mb_no
+    varchar username
+    varchar email
+    varchar name
+    varchar nickname
+    varchar phone
+    char gender
+    tinyint is_active
+    timestamp created_at
+  }
+  gangnamunni_bookings {
+    int id PK
+    int hospital_id FK
+    varchar hospital_name
+    varchar name
+    varchar phone
+    varchar mb_id FK
+    varchar treatment
+    varchar status
+    datetime created_at
+    int hms_appointment_id FK
+  }
+  gangnamunni_consultations {
+    int id PK
+    int hospital_id FK
+    varchar hospital_name
+    varchar name
+    varchar phone
+    varchar email
+    text message
+    varchar status
+    datetime created_at
+    int hms_appointment_id FK
+  }
+  gangnamunni_events {
+    int id PK
+    varchar title
+    varchar subtitle
+    text description
+    varchar layout_type
+    int hospital_id FK
+    date start_date
+    date end_date
+    tinyint is_active
+    timestamp created_at
+  }
+  gangnamunni_event_entries {
+    int id PK
+    int event_id FK
+    varchar member_id FK
+    varchar user_name
+    varchar user_phone
+    varchar user_email
+    longtext entry_data
+    tinyint is_winner
+    varchar status
+    timestamp created_at
+  }
+  gangnamunni_points {
+    int id PK
+    int member_id FK
+    enum type
+    int amount
+    int balance
+    varchar reason
+    varchar reference_type
+    int reference_id FK
+    date expires_at
+    datetime created_at
+  }
+  gangnamunni_coupons {
+    int id PK
+    varchar code
+    varchar name
+    text description
+    enum discount_type
+    decimal discount_value
+    decimal min_order_amount
+    int hospital_id FK
+    tinyint is_active
+    datetime created_at
+  }
+  gangnamunni_coupon_claims {
+    int id PK
+    int coupon_id FK
+    int member_id FK
+    enum status
+    datetime used_at
+    int booking_id FK
+    datetime claimed_at
+  }
+  g5_member {
+    int mb_no PK
+    varchar mb_id FK
+    varchar mb_password
+  }
+  gangnamunni_hospitals {
+    int id PK
+    varchar name
+    varchar hms_hospital_id FK
+  }
+  g5_member ||--o{ gangnamunni_bookings : "mb_id"
+  gangnamunni_bookings ||--o{ gangnamunni_coupon_claims : "booking_id"
+  gangnamunni_coupons ||--o{ gangnamunni_coupon_claims : "coupon_id"
+  gangnamunni_events ||--o{ gangnamunni_event_entries : "event_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_bookings : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_consultations : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_coupons : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_events : "hospital_id"
+  gangnamunni_members ||--o{ g5_member : "mb_id"
+  gangnamunni_members ||--o{ gangnamunni_coupon_claims : "member_id"
+  gangnamunni_members ||--o{ gangnamunni_event_entries : "member_id"
+  gangnamunni_members ||--o{ gangnamunni_points : "member_id"</pre></div>
+<h3 class="diag" id="d5">2-5. 서울미녀 — 광고·채팅·알림<span class="chip">10 테이블</span></h3>
+<p class="dd">광고주/광고/클릭·노출 추적과 회원-병원 1:1 채팅, 관리자·회원 알림.<br><span style="color:#9aa1ad">gangnamunni_advertisers(14컬럼, 11행) · gangnamunni_ads(25컬럼, 6행) · gangnamunni_ad_clicks(9컬럼, 29행) · gangnamunni_ad_impressions(8컬럼, 2,327행) · gangnamunni_chat_rooms(7컬럼, 0행) · gangnamunni_chat_messages(7컬럼, 0행) · gangnamunni_notifications(9컬럼, 12행) · gangnamunni_user_notifications(9컬럼, 99행) · gangnamunni_members(17컬럼, 92행, 참조용) · gangnamunni_hospitals(62컬럼, 68행, 참조용)</span></p>
+<div class="mermaid-box"><pre class="mermaid">erDiagram
+  gangnamunni_advertisers {
+    int id PK
+    varchar hospital_name
+    varchar contact_name
+    varchar contact_email
+    varchar contact_phone
+    varchar business_number
+    bigint hms_user_id FK
+    varchar g5_member_id FK
+    enum status
+    timestamp created_at
+  }
+  gangnamunni_ads {
+    int id PK
+    int advertiser_id FK
+    int pricing_id FK
+    varchar title
+    varchar subtitle
+    tinyint is_active
+    timestamp created_at
+    datetime start_date
+    datetime end_date
+    varchar status
+  }
+  gangnamunni_ad_clicks {
+    bigint id PK
+    int ad_id FK
+    varchar page_url
+    varchar target_url
+    varchar ip_address
+    varchar user_agent
+    varchar session_id FK
+    int user_id FK
+    timestamp created_at
+  }
+  gangnamunni_ad_impressions {
+    bigint id PK
+    int ad_id FK
+    varchar page_url
+    varchar ip_address
+    varchar user_agent
+    varchar session_id FK
+    int user_id FK
+    timestamp created_at
+  }
+  gangnamunni_chat_rooms {
+    int id PK
+    int member_id FK
+    int hospital_id FK
+    enum status
+    datetime last_message_at
+    datetime created_at
+    datetime updated_at
+  }
+  gangnamunni_chat_messages {
+    int id PK
+    int room_id FK
+    enum sender_type
+    int sender_id FK
+    text message
+    tinyint is_read
+    datetime created_at
+  }
+  gangnamunni_notifications {
+    int id PK
+    int admin_id FK
+    varchar type
+    varchar title
+    text message
+    varchar link
+    varchar icon
+    tinyint is_read
+    datetime created_at
+  }
+  gangnamunni_user_notifications {
+    int id PK
+    varchar member_id FK
+    varchar type
+    varchar title
+    text message
+    varchar link
+    varchar icon
+    tinyint is_read
+    datetime created_at
+  }
+  gangnamunni_members {
+    int id PK
+    varchar username
+    varchar name
+  }
+  gangnamunni_hospitals {
+    int id PK
+    varchar name
+    varchar hms_hospital_id FK
+  }
+  gangnamunni_ads ||--o{ gangnamunni_ad_clicks : "ad_id"
+  gangnamunni_ads ||--o{ gangnamunni_ad_impressions : "ad_id"
+  gangnamunni_advertisers ||--o{ gangnamunni_ads : "advertiser_id"
+  gangnamunni_chat_rooms ||--o{ gangnamunni_chat_messages : "room_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_chat_rooms : "hospital_id"
+  gangnamunni_members ||--o{ gangnamunni_chat_rooms : "member_id"
+  gangnamunni_members ||--o{ gangnamunni_user_notifications : "member_id"</pre></div>
+<h3 class="diag" id="d6">2-6. CPV 과금<span class="chip">7 테이블</span></h3>
+<p class="dd">병원별 선불 지갑(cpv_wallets)과 충전/차감 거래, 과금 로그, 단가표, 일별 통계, 본인확인.<br><span style="color:#9aa1ad">gangnamunni_cpv_wallets(12컬럼, 0행) · gangnamunni_cpv_transactions(11컬럼, 0행) · gangnamunni_cpv_logs(15컬럼, 0행) · gangnamunni_cpv_rates(9컬럼, 0행) · gangnamunni_cpv_daily_stats(10컬럼, 0행) · gangnamunni_cpv_confirmations(6컬럼, 24행) · gangnamunni_hospitals(62컬럼, 68행, 참조용)</span></p>
+<div class="mermaid-box"><pre class="mermaid">erDiagram
+  gangnamunni_cpv_wallets {
+    int id PK
+    int hospital_id FK
+    decimal balance
+    decimal total_charged
+    decimal total_spent
+    decimal total_refunded
+    decimal daily_cap
+    tinyint is_active
+    tinyint is_paused
+    datetime created_at
+  }
+  gangnamunni_cpv_transactions {
+    int id PK
+    int hospital_id FK
+    enum type
+    decimal amount
+    decimal balance_after
+    varchar description
+    int reference_id FK
+    varchar pg_order_id FK
+    int admin_id FK
+    datetime created_at
+  }
+  gangnamunni_cpv_logs {
+    bigint id PK
+    int hospital_id FK
+    enum page_type
+    int target_id FK
+    varchar visitor_ip
+    varchar visitor_session
+    varchar visitor_cookie
+    varchar user_agent
+    varchar keyword
+    datetime created_at
+  }
+  gangnamunni_cpv_rates {
+    int id PK
+    enum rule_type
+    varchar rule_key
+    decimal weight
+    decimal fixed_rate
+    tinyint is_active
+    varchar description
+    datetime created_at
+    datetime updated_at
+  }
+  gangnamunni_cpv_daily_stats {
+    int id PK
+    int hospital_id FK
+    date stat_date
+    int total_views
+    int charged_views
+    decimal total_amount
+    decimal avg_rate
+    int unique_visitors
+    datetime created_at
+    datetime updated_at
+  }
+  gangnamunni_cpv_confirmations {
+    int id PK
+    varchar feature_id FK
+    enum status
+    text comment
+    datetime created_at
+    datetime updated_at
+  }
+  gangnamunni_hospitals {
+    int id PK
+    varchar name
+    varchar hms_hospital_id FK
+  }
+  gangnamunni_hospitals ||--o{ gangnamunni_cpv_daily_stats : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_cpv_logs : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_cpv_transactions : "hospital_id"
+  gangnamunni_hospitals ||--o{ gangnamunni_cpv_wallets : "hospital_id"</pre></div>
+<h3 class="diag" id="d7">2-7. HMS Laravel — 진료 코어 (멀티테넌트)<span class="chip">9 테이블</span></h3>
+<p class="dd">InfyHMS 코어. 모든 테이블이 tenant_id 로 테넌트 분리. 외래키 제약조건이 실제 DDL 에 존재(실선 = 실제 FK).<br><span style="color:#9aa1ad">users(33컬럼, 396행) · tenants(6컬럼, 149행) · patients(13컬럼, 167행) · doctors(10컬럼, 10행) · doctor_departments(6컬럼, 151행) · appointments(13컬럼, 17행) · bills(10컬럼, 0행) · transactions(12컬럼, 0행) · prescriptions(29컬럼, 0행)</span></p>
+<div class="mermaid-box"><pre class="mermaid">erDiagram
+  users {
+    bigint id PK
+    bigint department_id FK
+    varchar email
+    varchar phone
+    int owner_id FK
+    tinyint status
+    varchar username
+    varchar tenant_id FK
+    timestamp created_at
+    bigint hospital_type_id FK
+  }
+  tenants {
+    varchar id PK
+    varchar tenant_username
+    varchar hospital_name
+    timestamp created_at
+    timestamp updated_at
+    text data
+  }
+  patients {
+    int id PK
+    bigint user_id FK
+    varchar tenant_id FK
+    varchar insurance
+    text allergies
+    text conditions_note
+    varchar emergency_contact
+    timestamp created_at
+    int template_id FK
+    varchar patient_unique_id FK
+  }
+  doctors {
+    bigint id PK
+    bigint user_id FK
+    bigint doctor_department_id FK
+    varchar specialist
+    text description
+    varchar tenant_id FK
+    timestamp created_at
+    timestamp updated_at
+    double appointment_charge
+    longtext google_json_file_path
+  }
+  doctor_departments {
+    bigint id PK
+    varchar title
+    text description
+    varchar tenant_id FK
+    timestamp created_at
+    timestamp updated_at
+  }
+  appointments {
+    bigint id PK
+    int patient_id FK
+    bigint doctor_id FK
+    bigint department_id FK
+    datetime opd_date
+    text problem
+    tinyint is_completed
+    tinyint payment_status
+    varchar tenant_id FK
+    timestamp created_at
+  }
+  bills {
+    int id PK
+    varchar bill_id FK
+    int patient_id FK
+    datetime bill_date
+    decimal amount
+    varchar tenant_id FK
+    timestamp created_at
+    timestamp updated_at
+    varchar patient_admission_id FK
+    tinyint status
+  }
+  transactions {
+    bigint id PK
+    varchar transaction_id FK
+    int payment_type
+    double amount
+    bigint user_id FK
+    varchar status
+    bigint is_manual_payment
+    longtext meta
+    varchar tenant_id FK
+    timestamp created_at
+  }
+  prescriptions {
+    int id PK
+    int patient_id FK
+    bigint doctor_id FK
+    varchar food_allergies
+    varchar tendency_bleed
+    varchar heart_disease
+    varchar high_blood_pressure
+    tinyint status
+    varchar tenant_id FK
+    timestamp created_at
+  }
+  doctor_departments ||--o{ appointments : "department_id"
+  doctor_departments ||--o{ doctors : "doctor_department_id"
+  doctors ||--o{ appointments : "doctor_id"
+  doctors ||--o{ prescriptions : "doctor_id"
+  patients ||--o{ appointments : "patient_id"
+  patients ||--o{ bills : "patient_id"
+  patients ||--o{ prescriptions : "patient_id"
+  tenants ||--o{ appointments : "tenant_id"
+  tenants ||--o{ bills : "tenant_id"
+  tenants ||--o{ doctor_departments : "tenant_id"
+  tenants ||--o{ doctors : "tenant_id"
+  tenants ||--o{ patients : "tenant_id"
+  tenants ||--o{ prescriptions : "tenant_id"
+  tenants ||--o{ transactions : "tenant_id"
+  tenants ||--o{ users : "tenant_id"
+  users ||--o{ doctors : "user_id"
+  users ||--o{ patients : "user_id"
+  users ||--o{ transactions : "user_id"</pre></div>
+<h3 class="diag" id="d8">2-8. Gnuboard·영카트<span class="chip">6 테이블</span></h3>
+<p class="dd">그누보드5 회원/게시판/포인트와 영카트 상품/주문(PG 결제: 광고 상품 6종). g5_write_* 는 게시판별 분리 테이블.<br><span style="color:#9aa1ad">g5_member(60컬럼, 153행) · g5_board(112컬럼, 12행) · g5_write_free(41컬럼, 9행) · g5_point(12컬럼, 202행) · g5_shop_item(95컬럼, 6행) · g5_shop_order(63컬럼, 2행)</span></p>
+<div class="mermaid-box"><pre class="mermaid">erDiagram
+  g5_member {
+    int mb_no PK
+    varchar mb_id FK
+    varchar mb_password
+    varchar mb_name
+    varchar mb_nick
+    date mb_nick_date
+    varchar mb_email
+    varchar mb_homepage
+    tinyint mb_level
+    varchar mb_level_icon
+  }
+  g5_board {
+    varchar bo_table PK
+    varchar gr_id FK
+    varchar bo_subject
+    varchar bo_mobile_subject
+    enum bo_device
+    varchar bo_admin
+    tinyint bo_list_level
+    tinyint bo_read_level
+    tinyint bo_write_level
+    tinyint bo_reply_level
+  }
+  g5_write_free {
+    int wr_id PK
+    int wr_num
+    varchar wr_reply
+    int wr_parent
+    tinyint wr_is_comment
+    int wr_comment
+    varchar wr_comment_reply
+    varchar ca_name
+    set wr_option
+    varchar mb_id FK
+  }
+  g5_point {
+    int po_id PK
+    varchar mb_id FK
+    datetime po_datetime
+    varchar po_content
+    int po_point
+    int po_use_point
+    tinyint po_expired
+    date po_expire_date
+    int po_mb_point
+    varchar po_rel_id FK
+  }
+  g5_shop_item {
+    varchar it_id PK
+    varchar ca_id FK
+    varchar ca_id2
+    varchar ca_id3
+    varchar it_skin
+    varchar it_mobile_skin
+    varchar it_name
+    varchar it_seo_title
+    varchar it_maker
+    varchar it_origin
+  }
+  g5_shop_order {
+    bigint od_id PK
+    varchar mb_id FK
+    varchar od_name
+    varchar od_email
+    varchar od_tel
+    varchar od_hp
+    char od_zip1
+    char od_zip2
+    varchar od_addr1
+    varchar od_addr2
+  }
+  g5_board ||--o{ g5_write_free : "bo_table=free"
+  g5_member ||--o{ g5_point : "mb_id"
+  g5_member ||--o{ g5_shop_order : "mb_id"
+  g5_member ||--o{ g5_write_free : "mb_id"</pre></div>
+<h3 class="diag" id="d9">2-9. 병원 연동·SSO<span class="chip">6 테이블</span></h3>
+<p class="dd">HMS↔서울미녀 병원 콘텐츠 연동(hospital_*)과 SSO 토큰. sso_tokens 는 g5_member.mb_id / users.id 를 외부 참조.<br><span style="color:#9aa1ad">hospital_reviews(37컬럼, 108행) · hospital_images(8컬럼, 413행) · hospital_features(9컬럼, 18행) · hospital_schedules(7컬럼, 14행) · sso_tokens(9컬럼, 1행) · gangnamunni_hospitals(62컬럼, 68행, 참조용)</span></p>
+<div class="mermaid-box"><pre class="mermaid">erDiagram
+  hospital_reviews {
+    int id PK
+    int hospital_id FK
+    int doctor_id FK
+    int event_id FK
+    varchar title
+    tinyint rating
+    text content
+    tinyint is_active
+    timestamp created_at
+    varchar user_id FK
+  }
+  hospital_images {
+    int id PK
+    int hospital_id FK
+    varchar image_url
+    enum image_type
+    int sort_order
+    tinyint is_active
+    timestamp created_at
+    timestamp updated_at
+  }
+  hospital_features {
+    int id PK
+    int hospital_id FK
+    varchar feature_type
+    varchar feature_label
+    varchar feature_value
+    varchar feature_icon
+    int sort_order
+    tinyint is_active
+    timestamp created_at
+  }
+  hospital_schedules {
+    bigint id PK
+    varchar day_of_week
+    varchar start_time
+    varchar end_time
+    varchar tenant_id FK
+    timestamp created_at
+    timestamp updated_at
+  }
+  sso_tokens {
+    int id PK
+    varchar token
+    enum user_type
+    varchar g5_mb_id FK
+    bigint hms_user_id FK
+    varchar ip_address
+    varchar user_agent
+    datetime expires_at
+    datetime created_at
+  }
+  gangnamunni_hospitals {
+    int id PK
+    varchar name
+    varchar hms_hospital_id FK
+  }
+  gangnamunni_hospitals ||--o{ hospital_features : "hospital_id"
+  gangnamunni_hospitals ||--o{ hospital_images : "hospital_id"
+  gangnamunni_hospitals ||--o{ hospital_reviews : "hospital_id"</pre></div>
+</div>
+<div class="card" id="catalog"><h2 class="sec">3. 전체 테이블 카탈로그 (440)</h2>
+<p class="desc">그룹별 전체 테이블 목록. 테이블명으로 즉시 필터링 가능. CORE 배지는 위 ERD 에 포함된 핵심 테이블.</p>
+<div class="searchbar"><input type="text" id="q" placeholder="테이블명 검색 (예: hospital, cpv, booking)..." autocomplete="off"><span class="hits" id="hits">440 / 440 표시</span></div>
+<div class="gsec" data-gsec="서울미녀_서비스">
+<h3 class="diag" style="margin-top:26px">서울미녀 서비스<span class="chip">99 테이블</span></h3>
+<div class="gsec" data-gsec="서울미녀_서비스_병원">
+<div class="subhead">병원 (9)</div>
+<table class="cat" data-g="서울미녀_서비스_병원"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_departments"><td><span class="tname">gangnamunni_departments</span><span class="core">CORE</span></td><td class="num">9</td><td class="num">136</td></tr><tr class="trow" data-n="gangnamunni_doctor_schedules"><td><span class="tname">gangnamunni_doctor_schedules</span><span class="core">CORE</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_doctors"><td><span class="tname">gangnamunni_doctors</span><span class="core">CORE</span></td><td class="num">30</td><td class="num">76</td></tr><tr class="trow" data-n="gangnamunni_hospital_mapping"><td><span class="tname">gangnamunni_hospital_mapping</span><span class="core">CORE</span></td><td class="num">5</td><td class="num">5</td></tr><tr class="trow" data-n="gangnamunni_hospital_news"><td><span class="tname">gangnamunni_hospital_news</span><span class="core">CORE</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_hospital_revisions"><td><span class="tname">gangnamunni_hospital_revisions</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_hospital_suspension"><td><span class="tname">gangnamunni_hospital_suspension</span></td><td class="num">15</td><td class="num">10</td></tr><tr class="trow" data-n="gangnamunni_hospitals"><td><span class="tname">gangnamunni_hospitals</span><span class="core">CORE</span></td><td class="num">62</td><td class="num">68</td></tr><tr class="trow" data-n="gangnamunni_rankings"><td><span class="tname">gangnamunni_rankings</span></td><td class="num">11</td><td class="num">0</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="서울미녀_서비스_시술">
+<div class="subhead">시술 (14)</div>
+<table class="cat" data-g="서울미녀_서비스_시술"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_categories"><td><span class="tname">gangnamunni_categories</span></td><td class="num">11</td><td class="num">12</td></tr><tr class="trow" data-n="gangnamunni_categories_default"><td><span class="tname">gangnamunni_categories_default</span></td><td class="num">11</td><td class="num">12</td></tr><tr class="trow" data-n="gangnamunni_doctor_treatments"><td><span class="tname">gangnamunni_doctor_treatments</span><span class="core">CORE</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_hospital_treatments"><td><span class="tname">gangnamunni_hospital_treatments</span><span class="core">CORE</span></td><td class="num">17</td><td class="num">428</td></tr><tr class="trow" data-n="gangnamunni_treatment_aliases"><td><span class="tname">gangnamunni_treatment_aliases</span></td><td class="num">5</td><td class="num">142</td></tr><tr class="trow" data-n="gangnamunni_treatment_approval_log"><td><span class="tname">gangnamunni_treatment_approval_log</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_treatment_categories"><td><span class="tname">gangnamunni_treatment_categories</span><span class="core">CORE</span></td><td class="num">8</td><td class="num">6</td></tr><tr class="trow" data-n="gangnamunni_treatment_master"><td><span class="tname">gangnamunni_treatment_master</span><span class="core">CORE</span></td><td class="num">18</td><td class="num">74</td></tr><tr class="trow" data-n="gangnamunni_treatment_package_items"><td><span class="tname">gangnamunni_treatment_package_items</span><span class="core">CORE</span></td><td class="num">4</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_treatment_packages"><td><span class="tname">gangnamunni_treatment_packages</span><span class="core">CORE</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_treatment_price_history"><td><span class="tname">gangnamunni_treatment_price_history</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_treatment_reviews"><td><span class="tname">gangnamunni_treatment_reviews</span><span class="core">CORE</span></td><td class="num">9</td><td class="num">33</td></tr><tr class="trow" data-n="gangnamunni_treatment_scores"><td><span class="tname">gangnamunni_treatment_scores</span></td><td class="num">8</td><td class="num">13</td></tr><tr class="trow" data-n="gangnamunni_treatments"><td><span class="tname">gangnamunni_treatments</span></td><td class="num">16</td><td class="num">8</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="서울미녀_서비스_후기">
+<div class="subhead">후기 (3)</div>
+<table class="cat" data-g="서울미녀_서비스_후기"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_before_after"><td><span class="tname">gangnamunni_before_after</span><span class="core">CORE</span></td><td class="num">14</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_reviews"><td><span class="tname">gangnamunni_reviews</span><span class="core">CORE</span></td><td class="num">31</td><td class="num">5</td></tr><tr class="trow" data-n="gangnamunni_sns_reviews"><td><span class="tname">gangnamunni_sns_reviews</span></td><td class="num">13</td><td class="num">6</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="서울미녀_서비스_커뮤니티">
+<div class="subhead">커뮤니티 (9)</div>
+<table class="cat" data-g="서울미녀_서비스_커뮤니티"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_blocked_users"><td><span class="tname">gangnamunni_blocked_users</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_columns"><td><span class="tname">gangnamunni_columns</span></td><td class="num">15</td><td class="num">15</td></tr><tr class="trow" data-n="gangnamunni_community_comments"><td><span class="tname">gangnamunni_community_comments</span><span class="core">CORE</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_community_likes"><td><span class="tname">gangnamunni_community_likes</span><span class="core">CORE</span></td><td class="num">4</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_community_posts"><td><span class="tname">gangnamunni_community_posts</span><span class="core">CORE</span></td><td class="num">13</td><td class="num">7</td></tr><tr class="trow" data-n="gangnamunni_content_reports"><td><span class="tname">gangnamunni_content_reports</span></td><td class="num">17</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_faq"><td><span class="tname">gangnamunni_faq</span></td><td class="num">7</td><td class="num">7</td></tr><tr class="trow" data-n="gangnamunni_qna"><td><span class="tname">gangnamunni_qna</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_tips"><td><span class="tname">gangnamunni_tips</span></td><td class="num">12</td><td class="num">20</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="서울미녀_서비스_예약">
+<div class="subhead">예약 (5)</div>
+<table class="cat" data-g="서울미녀_서비스_예약"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_bookings"><td><span class="tname">gangnamunni_bookings</span><span class="core">CORE</span></td><td class="num">19</td><td class="num">65</td></tr><tr class="trow" data-n="gangnamunni_consultations"><td><span class="tname">gangnamunni_consultations</span><span class="core">CORE</span></td><td class="num">23</td><td class="num">12</td></tr><tr class="trow" data-n="gangnamunni_event_entries"><td><span class="tname">gangnamunni_event_entries</span><span class="core">CORE</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_event_images"><td><span class="tname">gangnamunni_event_images</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_events"><td><span class="tname">gangnamunni_events</span><span class="core">CORE</span></td><td class="num">27</td><td class="num">142</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="서울미녀_서비스_광고">
+<div class="subhead">광고 (11)</div>
+<table class="cat" data-g="서울미녀_서비스_광고"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_ab_events"><td><span class="tname">gangnamunni_ab_events</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_ab_tests"><td><span class="tname">gangnamunni_ab_tests</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_ab_variants"><td><span class="tname">gangnamunni_ab_variants</span></td><td class="num">14</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_ad_clicks"><td><span class="tname">gangnamunni_ad_clicks</span><span class="core">CORE</span></td><td class="num">9</td><td class="num">29</td></tr><tr class="trow" data-n="gangnamunni_ad_impressions"><td><span class="tname">gangnamunni_ad_impressions</span><span class="core">CORE</span></td><td class="num">8</td><td class="num">2,327</td></tr><tr class="trow" data-n="gangnamunni_ad_payments"><td><span class="tname">gangnamunni_ad_payments</span></td><td class="num">24</td><td class="num">4</td></tr><tr class="trow" data-n="gangnamunni_ad_pricing"><td><span class="tname">gangnamunni_ad_pricing</span></td><td class="num">18</td><td class="num">8</td></tr><tr class="trow" data-n="gangnamunni_ads"><td><span class="tname">gangnamunni_ads</span><span class="core">CORE</span></td><td class="num">25</td><td class="num">6</td></tr><tr class="trow" data-n="gangnamunni_advertisers"><td><span class="tname">gangnamunni_advertisers</span><span class="core">CORE</span></td><td class="num">14</td><td class="num">11</td></tr><tr class="trow" data-n="gangnamunni_promos"><td><span class="tname">gangnamunni_promos</span></td><td class="num">10</td><td class="num">5</td></tr><tr class="trow" data-n="gangnamunni_rolling_campaigns"><td><span class="tname">gangnamunni_rolling_campaigns</span></td><td class="num">12</td><td class="num">0</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="서울미녀_서비스_쿠폰·포인트">
+<div class="subhead">쿠폰·포인트 (5)</div>
+<table class="cat" data-g="서울미녀_서비스_쿠폰·포인트"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_coupon_claims"><td><span class="tname">gangnamunni_coupon_claims</span><span class="core">CORE</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_coupons"><td><span class="tname">gangnamunni_coupons</span><span class="core">CORE</span></td><td class="num">16</td><td class="num">10</td></tr><tr class="trow" data-n="gangnamunni_grade_permissions"><td><span class="tname">gangnamunni_grade_permissions</span></td><td class="num">6</td><td class="num">56</td></tr><tr class="trow" data-n="gangnamunni_membership_levels"><td><span class="tname">gangnamunni_membership_levels</span></td><td class="num">8</td><td class="num">4</td></tr><tr class="trow" data-n="gangnamunni_points"><td><span class="tname">gangnamunni_points</span><span class="core">CORE</span></td><td class="num">10</td><td class="num">55</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="서울미녀_서비스_채팅">
+<div class="subhead">채팅 (2)</div>
+<table class="cat" data-g="서울미녀_서비스_채팅"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_chat_messages"><td><span class="tname">gangnamunni_chat_messages</span><span class="core">CORE</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_chat_rooms"><td><span class="tname">gangnamunni_chat_rooms</span><span class="core">CORE</span></td><td class="num">7</td><td class="num">0</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="서울미녀_서비스_알림">
+<div class="subhead">알림 (6)</div>
+<table class="cat" data-g="서울미녀_서비스_알림"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_admin_app_tokens"><td><span class="tname">gangnamunni_admin_app_tokens</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_admin_fcm_tokens"><td><span class="tname">gangnamunni_admin_fcm_tokens</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_notification_sends"><td><span class="tname">gangnamunni_notification_sends</span></td><td class="num">10</td><td class="num">2</td></tr><tr class="trow" data-n="gangnamunni_notification_settings"><td><span class="tname">gangnamunni_notification_settings</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_notifications"><td><span class="tname">gangnamunni_notifications</span><span class="core">CORE</span></td><td class="num">9</td><td class="num">12</td></tr><tr class="trow" data-n="gangnamunni_user_notifications"><td><span class="tname">gangnamunni_user_notifications</span><span class="core">CORE</span></td><td class="num">9</td><td class="num">99</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="서울미녀_서비스_기타">
+<div class="subhead">기타 (35)</div>
+<table class="cat" data-g="서울미녀_서비스_기타"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_admin_menus"><td><span class="tname">gangnamunni_admin_menus</span></td><td class="num">10</td><td class="num">143</td></tr><tr class="trow" data-n="gangnamunni_admins"><td><span class="tname">gangnamunni_admins</span></td><td class="num">16</td><td class="num">5</td></tr><tr class="trow" data-n="gangnamunni_ai_keys"><td><span class="tname">gangnamunni_ai_keys</span></td><td class="num">13</td><td class="num">4</td></tr><tr class="trow" data-n="gangnamunni_ai_review_cache"><td><span class="tname">gangnamunni_ai_review_cache</span></td><td class="num">10</td><td class="num">103</td></tr><tr class="trow" data-n="gangnamunni_ai_settings"><td><span class="tname">gangnamunni_ai_settings</span></td><td class="num">11</td><td class="num">16</td></tr><tr class="trow" data-n="gangnamunni_ai_usage_log"><td><span class="tname">gangnamunni_ai_usage_log</span></td><td class="num">12</td><td class="num">13</td></tr><tr class="trow" data-n="gangnamunni_client_requests"><td><span class="tname">gangnamunni_client_requests</span></td><td class="num">11</td><td class="num">1</td></tr><tr class="trow" data-n="gangnamunni_client_spec_notes"><td><span class="tname">gangnamunni_client_spec_notes</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_client_spec_sheets"><td><span class="tname">gangnamunni_client_spec_sheets</span></td><td class="num">9</td><td class="num">20</td></tr><tr class="trow" data-n="gangnamunni_design_feedback"><td><span class="tname">gangnamunni_design_feedback</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_dev_feedback"><td><span class="tname">gangnamunni_dev_feedback</span></td><td class="num">17</td><td class="num">1</td></tr><tr class="trow" data-n="gangnamunni_dev_timeline"><td><span class="tname">gangnamunni_dev_timeline</span></td><td class="num">8</td><td class="num">11</td></tr><tr class="trow" data-n="gangnamunni_e2e_results"><td><span class="tname">gangnamunni_e2e_results</span></td><td class="num">14</td><td class="num">435</td></tr><tr class="trow" data-n="gangnamunni_e2e_runs"><td><span class="tname">gangnamunni_e2e_runs</span></td><td class="num">13</td><td class="num">9</td></tr><tr class="trow" data-n="gangnamunni_figma_answers"><td><span class="tname">gangnamunni_figma_answers</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_fix_log"><td><span class="tname">gangnamunni_fix_log</span></td><td class="num">14</td><td class="num">22</td></tr><tr class="trow" data-n="gangnamunni_members"><td><span class="tname">gangnamunni_members</span><span class="core">CORE</span></td><td class="num">17</td><td class="num">92</td></tr><tr class="trow" data-n="gangnamunni_progress_messages"><td><span class="tname">gangnamunni_progress_messages</span></td><td class="num">4</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_qa_captures"><td><span class="tname">gangnamunni_qa_captures</span></td><td class="num">12</td><td class="num">27</td></tr><tr class="trow" data-n="gangnamunni_qa_features"><td><span class="tname">gangnamunni_qa_features</span></td><td class="num">11</td><td class="num">243</td></tr><tr class="trow" data-n="gangnamunni_qa_feedback"><td><span class="tname">gangnamunni_qa_feedback</span></td><td class="num">15</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_qa_master"><td><span class="tname">gangnamunni_qa_master</span></td><td class="num">18</td><td class="num">1</td></tr><tr class="trow" data-n="gangnamunni_qa_results"><td><span class="tname">gangnamunni_qa_results</span></td><td class="num">4</td><td class="num">30</td></tr><tr class="trow" data-n="gangnamunni_settings"><td><span class="tname">gangnamunni_settings</span></td><td class="num">7</td><td class="num">105</td></tr><tr class="trow" data-n="gangnamunni_settings_log"><td><span class="tname">gangnamunni_settings_log</span></td><td class="num">12</td><td class="num">7</td></tr><tr class="trow" data-n="gangnamunni_store_submission"><td><span class="tname">gangnamunni_store_submission</span></td><td class="num">4</td><td class="num">2</td></tr><tr class="trow" data-n="gangnamunni_sync_log"><td><span class="tname">gangnamunni_sync_log</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_theme_admins"><td><span class="tname">gangnamunni_theme_admins</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_theme_history"><td><span class="tname">gangnamunni_theme_history</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_theme_presets"><td><span class="tname">gangnamunni_theme_presets</span></td><td class="num">8</td><td class="num">5</td></tr><tr class="trow" data-n="gangnamunni_theme_settings"><td><span class="tname">gangnamunni_theme_settings</span></td><td class="num">6</td><td class="num">38</td></tr><tr class="trow" data-n="gangnamunni_user_actions"><td><span class="tname">gangnamunni_user_actions</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_user_agreements"><td><span class="tname">gangnamunni_user_agreements</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_wishlist"><td><span class="tname">gangnamunni_wishlist</span></td><td class="num">5</td><td class="num">2</td></tr><tr class="trow" data-n="gangnamunni_withdrawals"><td><span class="tname">gangnamunni_withdrawals</span></td><td class="num">6</td><td class="num">0</td></tr></tbody></table>
+</div>
+</div>
+<div class="gsec" data-gsec="CPV_과금">
+<h3 class="diag" style="margin-top:26px">CPV 과금<span class="chip">8 테이블</span></h3>
+<table class="cat" data-g="CPV_과금"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="gangnamunni_cpv_confirmations"><td><span class="tname">gangnamunni_cpv_confirmations</span><span class="core">CORE</span></td><td class="num">6</td><td class="num">24</td></tr><tr class="trow" data-n="gangnamunni_cpv_custom_requests"><td><span class="tname">gangnamunni_cpv_custom_requests</span></td><td class="num">6</td><td class="num">4</td></tr><tr class="trow" data-n="gangnamunni_cpv_daily_stats"><td><span class="tname">gangnamunni_cpv_daily_stats</span><span class="core">CORE</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_cpv_logs"><td><span class="tname">gangnamunni_cpv_logs</span><span class="core">CORE</span></td><td class="num">15</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_cpv_rates"><td><span class="tname">gangnamunni_cpv_rates</span><span class="core">CORE</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_cpv_settings"><td><span class="tname">gangnamunni_cpv_settings</span></td><td class="num">12</td><td class="num">61</td></tr><tr class="trow" data-n="gangnamunni_cpv_transactions"><td><span class="tname">gangnamunni_cpv_transactions</span><span class="core">CORE</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="gangnamunni_cpv_wallets"><td><span class="tname">gangnamunni_cpv_wallets</span><span class="core">CORE</span></td><td class="num">12</td><td class="num">0</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="Gnuboard_영카트">
+<h3 class="diag" style="margin-top:26px">Gnuboard·영카트<span class="chip">83 테이블</span></h3>
+<table class="cat" data-g="Gnuboard_영카트"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="g5_api_field_values"><td><span class="tname">g5_api_field_values</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="g5_api_fields"><td><span class="tname">g5_api_fields</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="g5_api_ips"><td><span class="tname">g5_api_ips</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="g5_api_keys"><td><span class="tname">g5_api_keys</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="g5_api_logs"><td><span class="tname">g5_api_logs</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="g5_attendance"><td><span class="tname">g5_attendance</span></td><td class="num">8</td><td class="num">2</td></tr><tr class="trow" data-n="g5_attendance_reward_log"><td><span class="tname">g5_attendance_reward_log</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="g5_attendance_settings"><td><span class="tname">g5_attendance_settings</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="g5_auth"><td><span class="tname">g5_auth</span></td><td class="num">3</td><td class="num">5</td></tr><tr class="trow" data-n="g5_autosave"><td><span class="tname">g5_autosave</span></td><td class="num">6</td><td class="num">29</td></tr><tr class="trow" data-n="g5_board"><td><span class="tname">g5_board</span><span class="core">CORE</span></td><td class="num">112</td><td class="num">12</td></tr><tr class="trow" data-n="g5_board_file"><td><span class="tname">g5_board_file</span></td><td class="num">15</td><td class="num">20</td></tr><tr class="trow" data-n="g5_board_good"><td><span class="tname">g5_board_good</span></td><td class="num">6</td><td class="num">899</td></tr><tr class="trow" data-n="g5_board_new"><td><span class="tname">g5_board_new</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="g5_board_report"><td><span class="tname">g5_board_report</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="g5_board_report_config"><td><span class="tname">g5_board_report_config</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="g5_cert_history"><td><span class="tname">g5_cert_history</span></td><td class="num">7</td><td class="num">9</td></tr><tr class="trow" data-n="g5_comment_good"><td><span class="tname">g5_comment_good</span></td><td class="num">6</td><td class="num">4</td></tr><tr class="trow" data-n="g5_comment_reaction"><td><span class="tname">g5_comment_reaction</span></td><td class="num">8</td><td class="num">883</td></tr><tr class="trow" data-n="g5_config"><td><span class="tname">g5_config</span></td><td class="num">163</td><td class="num">0</td></tr><tr class="trow" data-n="g5_content"><td><span class="tname">g5_content</span></td><td class="num">14</td><td class="num">3</td></tr><tr class="trow" data-n="g5_faq"><td><span class="tname">g5_faq</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="g5_faq_master"><td><span class="tname">g5_faq_master</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="g5_group"><td><span class="tname">g5_group</span></td><td class="num">26</td><td class="num">3</td></tr><tr class="trow" data-n="g5_group_member"><td><span class="tname">g5_group_member</span></td><td class="num">4</td><td class="num">0</td></tr><tr class="trow" data-n="g5_login"><td><span class="tname">g5_login</span></td><td class="num">6</td><td class="num">2</td></tr><tr class="trow" data-n="g5_mail"><td><span class="tname">g5_mail</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="g5_member"><td><span class="tname">g5_member</span><span class="core">CORE</span></td><td class="num">60</td><td class="num">153</td></tr><tr class="trow" data-n="g5_member_cert_history"><td><span class="tname">g5_member_cert_history</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="g5_member_level_config"><td><span class="tname">g5_member_level_config</span></td><td class="num">6</td><td class="num">10</td></tr><tr class="trow" data-n="g5_member_social_profiles"><td><span class="tname">g5_member_social_profiles</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="g5_memo"><td><span class="tname">g5_memo</span></td><td class="num">9</td><td class="num">2</td></tr><tr class="trow" data-n="g5_menu"><td><span class="tname">g5_menu</span></td><td class="num">10</td><td class="num">7</td></tr><tr class="trow" data-n="g5_new_win"><td><span class="tname">g5_new_win</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="g5_notification_settings"><td><span class="tname">g5_notification_settings</span></td><td class="num">10</td><td class="num">8</td></tr><tr class="trow" data-n="g5_point"><td><span class="tname">g5_point</span><span class="core">CORE</span></td><td class="num">12</td><td class="num">202</td></tr><tr class="trow" data-n="g5_poll"><td><span class="tname">g5_poll</span></td><td class="num">27</td><td class="num">0</td></tr><tr class="trow" data-n="g5_poll_etc"><td><span class="tname">g5_poll_etc</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="g5_popular"><td><span class="tname">g5_popular</span></td><td class="num">4</td><td class="num">100</td></tr><tr class="trow" data-n="g5_push_tokens"><td><span class="tname">g5_push_tokens</span></td><td class="num">7</td><td class="num">10</td></tr><tr class="trow" data-n="g5_qa_config"><td><span class="tname">g5_qa_config</span></td><td class="num">37</td><td class="num">0</td></tr><tr class="trow" data-n="g5_qa_content"><td><span class="tname">g5_qa_content</span></td><td class="num">27</td><td class="num">0</td></tr><tr class="trow" data-n="g5_scrap"><td><span class="tname">g5_scrap</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_banner"><td><span class="tname">g5_shop_banner</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_cart"><td><span class="tname">g5_shop_cart</span></td><td class="num">42</td><td class="num">2</td></tr><tr class="trow" data-n="g5_shop_category"><td><span class="tname">g5_shop_category</span></td><td class="num">51</td><td class="num">6</td></tr><tr class="trow" data-n="g5_shop_coupon"><td><span class="tname">g5_shop_coupon</span></td><td class="num">16</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_coupon_log"><td><span class="tname">g5_shop_coupon_log</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_coupon_zone"><td><span class="tname">g5_shop_coupon_zone</span></td><td class="num">17</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_default"><td><span class="tname">g5_shop_default</span></td><td class="num">181</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_event"><td><span class="tname">g5_shop_event</span></td><td class="num">16</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_event_item"><td><span class="tname">g5_shop_event_item</span></td><td class="num">2</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_inicis_log"><td><span class="tname">g5_shop_inicis_log</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_item"><td><span class="tname">g5_shop_item</span><span class="core">CORE</span></td><td class="num">95</td><td class="num">6</td></tr><tr class="trow" data-n="g5_shop_item_option"><td><span class="tname">g5_shop_item_option</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_item_qa"><td><span class="tname">g5_shop_item_qa</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_item_relation"><td><span class="tname">g5_shop_item_relation</span></td><td class="num">3</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_item_stocksms"><td><span class="tname">g5_shop_item_stocksms</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_item_use"><td><span class="tname">g5_shop_item_use</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_order"><td><span class="tname">g5_shop_order</span><span class="core">CORE</span></td><td class="num">63</td><td class="num">2</td></tr><tr class="trow" data-n="g5_shop_order_address"><td><span class="tname">g5_shop_order_address</span></td><td class="num">13</td><td class="num">2</td></tr><tr class="trow" data-n="g5_shop_order_data"><td><span class="tname">g5_shop_order_data</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_order_delete"><td><span class="tname">g5_shop_order_delete</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_order_post_log"><td><span class="tname">g5_shop_order_post_log</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_personalpay"><td><span class="tname">g5_shop_personalpay</span></td><td class="num">24</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_sendcost"><td><span class="tname">g5_shop_sendcost</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="g5_shop_wish"><td><span class="tname">g5_shop_wish</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="g5_splash_config"><td><span class="tname">g5_splash_config</span></td><td class="num">25</td><td class="num">0</td></tr><tr class="trow" data-n="g5_uniqid"><td><span class="tname">g5_uniqid</span></td><td class="num">2</td><td class="num">2,407</td></tr><tr class="trow" data-n="g5_visit"><td><span class="tname">g5_visit</span></td><td class="num">9</td><td class="num">8,328</td></tr><tr class="trow" data-n="g5_visit_sum"><td><span class="tname">g5_visit_sum</span></td><td class="num">2</td><td class="num">468</td></tr><tr class="trow" data-n="g5_write_activity"><td><span class="tname">g5_write_activity</span></td><td class="num">41</td><td class="num">42</td></tr><tr class="trow" data-n="g5_write_anonymous"><td><span class="tname">g5_write_anonymous</span></td><td class="num">41</td><td class="num">620</td></tr><tr class="trow" data-n="g5_write_card"><td><span class="tname">g5_write_card</span></td><td class="num">61</td><td class="num">2</td></tr><tr class="trow" data-n="g5_write_free"><td><span class="tname">g5_write_free</span><span class="core">CORE</span></td><td class="num">41</td><td class="num">9</td></tr><tr class="trow" data-n="g5_write_gallery"><td><span class="tname">g5_write_gallery</span></td><td class="num">41</td><td class="num">19</td></tr><tr class="trow" data-n="g5_write_groupbuy"><td><span class="tname">g5_write_groupbuy</span></td><td class="num">40</td><td class="num">0</td></tr><tr class="trow" data-n="g5_write_notice"><td><span class="tname">g5_write_notice</span></td><td class="num">41</td><td class="num">9</td></tr><tr class="trow" data-n="g5_write_qa"><td><span class="tname">g5_write_qa</span></td><td class="num">41</td><td class="num">21</td></tr><tr class="trow" data-n="g5_write_recruit"><td><span class="tname">g5_write_recruit</span></td><td class="num">41</td><td class="num">0</td></tr><tr class="trow" data-n="g5_write_second_hand"><td><span class="tname">g5_write_second_hand</span></td><td class="num">41</td><td class="num">5</td></tr><tr class="trow" data-n="g5_write_sns"><td><span class="tname">g5_write_sns</span></td><td class="num">41</td><td class="num">2</td></tr><tr class="trow" data-n="g5_write_youtube"><td><span class="tname">g5_write_youtube</span></td><td class="num">41</td><td class="num">0</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="병원_연동">
+<h3 class="diag" style="margin-top:26px">병원 연동<span class="chip">7 테이블</span></h3>
+<table class="cat" data-g="병원_연동"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="hospital_consultations"><td><span class="tname">hospital_consultations</span></td><td class="num">11</td><td class="num">2</td></tr><tr class="trow" data-n="hospital_features"><td><span class="tname">hospital_features</span><span class="core">CORE</span></td><td class="num">9</td><td class="num">18</td></tr><tr class="trow" data-n="hospital_images"><td><span class="tname">hospital_images</span><span class="core">CORE</span></td><td class="num">8</td><td class="num">413</td></tr><tr class="trow" data-n="hospital_reviews"><td><span class="tname">hospital_reviews</span><span class="core">CORE</span></td><td class="num">37</td><td class="num">108</td></tr><tr class="trow" data-n="hospital_schedules"><td><span class="tname">hospital_schedules</span><span class="core">CORE</span></td><td class="num">7</td><td class="num">14</td></tr><tr class="trow" data-n="hospital_type"><td><span class="tname">hospital_type</span></td><td class="num">4</td><td class="num">12</td></tr><tr class="trow" data-n="hospital_youtube"><td><span class="tname">hospital_youtube</span></td><td class="num">14</td><td class="num">22</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="SSO">
+<h3 class="diag" style="margin-top:26px">SSO<span class="chip">1 테이블</span></h3>
+<table class="cat" data-g="SSO"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="sso_tokens"><td><span class="tname">sso_tokens</span><span class="core">CORE</span></td><td class="num">9</td><td class="num">1</td></tr></tbody></table>
+</div>
+<div class="gsec" data-gsec="HMS_Laravel">
+<h3 class="diag" style="margin-top:26px">HMS Laravel<span class="chip">242 테이블</span></h3>
+<table class="cat" data-g="HMS_Laravel"><thead><tr><th style="width:46%">테이블명</th><th class="num" style="text-align:right">컬럼 수</th><th class="num" style="text-align:right">행수</th></tr></thead><tbody><tr class="trow" data-n="accountants"><td><span class="tname">accountants</span></td><td class="num">5</td><td class="num">10</td></tr><tr class="trow" data-n="accounts"><td><span class="tname">accounts</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="addon_app_admin_app_images"><td><span class="tname">addon_app_admin_app_images</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="addon_app_admin_app_sources"><td><span class="tname">addon_app_admin_app_sources</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="addon_app_admin_boards"><td><span class="tname">addon_app_admin_boards</span></td><td class="num">8</td><td class="num">12</td></tr><tr class="trow" data-n="addon_app_admin_footer"><td><span class="tname">addon_app_admin_footer</span></td><td class="num">15</td><td class="num">0</td></tr><tr class="trow" data-n="addon_app_admin_header"><td><span class="tname">addon_app_admin_header</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="addon_app_admin_logs"><td><span class="tname">addon_app_admin_logs</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="addon_app_admin_main_banners"><td><span class="tname">addon_app_admin_main_banners</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="addon_app_admin_main_sections"><td><span class="tname">addon_app_admin_main_sections</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="addon_app_admin_media"><td><span class="tname">addon_app_admin_media</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="addon_app_admin_site_config"><td><span class="tname">addon_app_admin_site_config</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="addresses"><td><span class="tname">addresses</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="admin_testimonials"><td><span class="tname">admin_testimonials</span></td><td class="num">6</td><td class="num">3</td></tr><tr class="trow" data-n="advanced_payments"><td><span class="tname">advanced_payments</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="ambulance_calls"><td><span class="tname">ambulance_calls</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="ambulances"><td><span class="tname">ambulances</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="api_field_values"><td><span class="tname">api_field_values</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="api_fields"><td><span class="tname">api_fields</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="api_ips"><td><span class="tname">api_ips</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="api_keys"><td><span class="tname">api_keys</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="api_logs"><td><span class="tname">api_logs</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="appointment_transactions"><td><span class="tname">appointment_transactions</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="appointments"><td><span class="tname">appointments</span><span class="core">CORE</span></td><td class="num">13</td><td class="num">17</td></tr><tr class="trow" data-n="auto_manual_captures"><td><span class="tname">auto_manual_captures</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="auto_manual_sessions"><td><span class="tname">auto_manual_sessions</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="bed_assigns"><td><span class="tname">bed_assigns</span></td><td class="num">12</td><td class="num">10</td></tr><tr class="trow" data-n="bed_types"><td><span class="tname">bed_types</span></td><td class="num">6</td><td class="num">10</td></tr><tr class="trow" data-n="beds"><td><span class="tname">beds</span></td><td class="num">10</td><td class="num">10</td></tr><tr class="trow" data-n="bill_items"><td><span class="tname">bill_items</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="bill_transactions"><td><span class="tname">bill_transactions</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="bills"><td><span class="tname">bills</span><span class="core">CORE</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="birth_reports"><td><span class="tname">birth_reports</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="blood_banks"><td><span class="tname">blood_banks</span></td><td class="num">6</td><td class="num">2</td></tr><tr class="trow" data-n="blood_donations"><td><span class="tname">blood_donations</span></td><td class="num">6</td><td class="num">10</td></tr><tr class="trow" data-n="blood_donors"><td><span class="tname">blood_donors</span></td><td class="num">9</td><td class="num">10</td></tr><tr class="trow" data-n="blood_issues"><td><span class="tname">blood_issues</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="brands"><td><span class="tname">brands</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="call_logs"><td><span class="tname">call_logs</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="case_handlers"><td><span class="tname">case_handlers</span></td><td class="num">5</td><td class="num">10</td></tr><tr class="trow" data-n="categories"><td><span class="tname">categories</span></td><td class="num">6</td><td class="num">12</td></tr><tr class="trow" data-n="charge_categories"><td><span class="tname">charge_categories</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="charges"><td><span class="tname">charges</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="community_comments"><td><span class="tname">community_comments</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="community_posts"><td><span class="tname">community_posts</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="crawled_doctors"><td><span class="tname">crawled_doctors</span></td><td class="num">11</td><td class="num">129</td></tr><tr class="trow" data-n="crawled_events"><td><span class="tname">crawled_events</span></td><td class="num">16</td><td class="num">2,273</td></tr><tr class="trow" data-n="crawled_hospitals"><td><span class="tname">crawled_hospitals</span></td><td class="num">15</td><td class="num">147</td></tr><tr class="trow" data-n="crawled_images"><td><span class="tname">crawled_images</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="crawled_sites"><td><span class="tname">crawled_sites</span></td><td class="num">9</td><td class="num">3</td></tr><tr class="trow" data-n="crawled_tips"><td><span class="tname">crawled_tips</span></td><td class="num">11</td><td class="num">40</td></tr><tr class="trow" data-n="currency_settings"><td><span class="tname">currency_settings</span></td><td class="num">8</td><td class="num">18</td></tr><tr class="trow" data-n="custom_fields"><td><span class="tname">custom_fields</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="db_config"><td><span class="tname">db_config</span></td><td class="num">35</td><td class="num">0</td></tr><tr class="trow" data-n="death_reports"><td><span class="tname">death_reports</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="departments"><td><span class="tname">departments</span></td><td class="num">6</td><td class="num">10</td></tr><tr class="trow" data-n="dev_log"><td><span class="tname">dev_log</span></td><td class="num">10</td><td class="num">38</td></tr><tr class="trow" data-n="device_topic_subscriptions"><td><span class="tname">device_topic_subscriptions</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="devices"><td><span class="tname">devices</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="diagnosis_categories"><td><span class="tname">diagnosis_categories</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="doctor_departments"><td><span class="tname">doctor_departments</span><span class="core">CORE</span></td><td class="num">6</td><td class="num">151</td></tr><tr class="trow" data-n="doctor_holidays"><td><span class="tname">doctor_holidays</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="doctor_opd_charges"><td><span class="tname">doctor_opd_charges</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="doctors"><td><span class="tname">doctors</span><span class="core">CORE</span></td><td class="num">10</td><td class="num">10</td></tr><tr class="trow" data-n="document_types"><td><span class="tname">document_types</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="documents"><td><span class="tname">documents</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="domains"><td><span class="tname">domains</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="editor_settings"><td><span class="tname">editor_settings</span></td><td class="num">6</td><td class="num">38</td></tr><tr class="trow" data-n="employee_payrolls"><td><span class="tname">employee_payrolls</span></td><td class="num">16</td><td class="num">0</td></tr><tr class="trow" data-n="enquiries"><td><span class="tname">enquiries</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="event_google_calendars"><td><span class="tname">event_google_calendars</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="expenses"><td><span class="tname">expenses</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="failed_jobs"><td><span class="tname">failed_jobs</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="faqs"><td><span class="tname">faqs</span></td><td class="num">5</td><td class="num">6</td></tr><tr class="trow" data-n="fcm_tokens"><td><span class="tname">fcm_tokens</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="feature_subscriptionplan"><td><span class="tname">feature_subscriptionplan</span></td><td class="num">5</td><td class="num">10</td></tr><tr class="trow" data-n="features"><td><span class="tname">features</span></td><td class="num">8</td><td class="num">26</td></tr><tr class="trow" data-n="figma_review_notes"><td><span class="tname">figma_review_notes</span></td><td class="num">15</td><td class="num">0</td></tr><tr class="trow" data-n="front_services"><td><span class="tname">front_services</span></td><td class="num">6</td><td class="num">24</td></tr><tr class="trow" data-n="front_settings"><td><span class="tname">front_settings</span></td><td class="num">7</td><td class="num">84</td></tr><tr class="trow" data-n="google_calendar_integrations"><td><span class="tname">google_calendar_integrations</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="google_calendar_lists"><td><span class="tname">google_calendar_lists</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="hw_notifications"><td><span class="tname">hw_notifications</span></td><td class="num">18</td><td class="num">7</td></tr><tr class="trow" data-n="hw_payments"><td><span class="tname">hw_payments</span></td><td class="num">29</td><td class="num">0</td></tr><tr class="trow" data-n="incomes"><td><span class="tname">incomes</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="insurance_diseases"><td><span class="tname">insurance_diseases</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="insurances"><td><span class="tname">insurances</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="investigation_reports"><td><span class="tname">investigation_reports</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="invoice_items"><td><span class="tname">invoice_items</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="invoices"><td><span class="tname">invoices</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="ipd_bills"><td><span class="tname">ipd_bills</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="ipd_charges"><td><span class="tname">ipd_charges</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="ipd_consultant_registers"><td><span class="tname">ipd_consultant_registers</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="ipd_diagnoses"><td><span class="tname">ipd_diagnoses</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="ipd_patient_departments"><td><span class="tname">ipd_patient_departments</span></td><td class="num">20</td><td class="num">10</td></tr><tr class="trow" data-n="ipd_payments"><td><span class="tname">ipd_payments</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="ipd_prescription_items"><td><span class="tname">ipd_prescription_items</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="ipd_prescriptions"><td><span class="tname">ipd_prescriptions</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="ipd_timelines"><td><span class="tname">ipd_timelines</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="issued_items"><td><span class="tname">issued_items</span></td><td class="num">14</td><td class="num">0</td></tr><tr class="trow" data-n="item_categories"><td><span class="tname">item_categories</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="item_stocks"><td><span class="tname">item_stocks</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="items"><td><span class="tname">items</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="lab_technicians"><td><span class="tname">lab_technicians</span></td><td class="num">5</td><td class="num">10</td></tr><tr class="trow" data-n="landing_about_us"><td><span class="tname">landing_about_us</span></td><td class="num">15</td><td class="num">0</td></tr><tr class="trow" data-n="live_consultations"><td><span class="tname">live_consultations</span></td><td class="num">21</td><td class="num">0</td></tr><tr class="trow" data-n="live_meetings"><td><span class="tname">live_meetings</span></td><td class="num">16</td><td class="num">0</td></tr><tr class="trow" data-n="live_meetings_candidates"><td><span class="tname">live_meetings_candidates</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="lunch_breaks"><td><span class="tname">lunch_breaks</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="mails"><td><span class="tname">mails</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="manual_feedback_items"><td><span class="tname">manual_feedback_items</span></td><td class="num">22</td><td class="num">6</td></tr><tr class="trow" data-n="manual_feedback_logs"><td><span class="tname">manual_feedback_logs</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="media"><td><span class="tname">media</span></td><td class="num">18</td><td class="num">0</td></tr><tr class="trow" data-n="medicine_bills"><td><span class="tname">medicine_bills</span></td><td class="num">17</td><td class="num">0</td></tr><tr class="trow" data-n="medicines"><td><span class="tname">medicines</span></td><td class="num">14</td><td class="num">0</td></tr><tr class="trow" data-n="member_level_config"><td><span class="tname">member_level_config</span></td><td class="num">6</td><td class="num">10</td></tr><tr class="trow" data-n="member_sync"><td><span class="tname">member_sync</span></td><td class="num">10</td><td class="num">153</td></tr><tr class="trow" data-n="migrations"><td><span class="tname">migrations</span></td><td class="num">3</td><td class="num">300</td></tr><tr class="trow" data-n="model_has_permissions"><td><span class="tname">model_has_permissions</span></td><td class="num">3</td><td class="num">0</td></tr><tr class="trow" data-n="model_has_roles"><td><span class="tname">model_has_roles</span></td><td class="num">3</td><td class="num">238</td></tr><tr class="trow" data-n="modules"><td><span class="tname">modules</span></td><td class="num">7</td><td class="num">233</td></tr><tr class="trow" data-n="navigation_menu"><td><span class="tname">navigation_menu</span></td><td class="num">11</td><td class="num">6</td></tr><tr class="trow" data-n="navigation_menu_default"><td><span class="tname">navigation_menu_default</span></td><td class="num">11</td><td class="num">6</td></tr><tr class="trow" data-n="notice_boards"><td><span class="tname">notice_boards</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="notification_acks"><td><span class="tname">notification_acks</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="notification_templates"><td><span class="tname">notification_templates</span></td><td class="num">8</td><td class="num">7</td></tr><tr class="trow" data-n="notifications"><td><span class="tname">notifications</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="notifications_backup"><td><span class="tname">notifications_backup</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="nurses"><td><span class="tname">nurses</span></td><td class="num">7</td><td class="num">10</td></tr><tr class="trow" data-n="opd_diagnoses"><td><span class="tname">opd_diagnoses</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="opd_patient_departments"><td><span class="tname">opd_patient_departments</span></td><td class="num">18</td><td class="num">10</td></tr><tr class="trow" data-n="opd_prescription_items"><td><span class="tname">opd_prescription_items</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="opd_prescriptions"><td><span class="tname">opd_prescriptions</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="opd_timelines"><td><span class="tname">opd_timelines</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="operation_reports"><td><span class="tname">operation_reports</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="package_services"><td><span class="tname">package_services</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="packages"><td><span class="tname">packages</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="password_reset_tokens"><td><span class="tname">password_reset_tokens</span></td><td class="num">3</td><td class="num">0</td></tr><tr class="trow" data-n="pathology_categories"><td><span class="tname">pathology_categories</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="pathology_parameter_items"><td><span class="tname">pathology_parameter_items</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="pathology_parameters"><td><span class="tname">pathology_parameters</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="pathology_tests"><td><span class="tname">pathology_tests</span></td><td class="num">15</td><td class="num">0</td></tr><tr class="trow" data-n="pathology_units"><td><span class="tname">pathology_units</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="patient_admissions"><td><span class="tname">patient_admissions</span></td><td class="num">19</td><td class="num">0</td></tr><tr class="trow" data-n="patient_cases"><td><span class="tname">patient_cases</span></td><td class="num">12</td><td class="num">10</td></tr><tr class="trow" data-n="patient_diagnosis_properties"><td><span class="tname">patient_diagnosis_properties</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="patient_diagnosis_tests"><td><span class="tname">patient_diagnosis_tests</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="patients"><td><span class="tname">patients</span><span class="core">CORE</span></td><td class="num">13</td><td class="num">167</td></tr><tr class="trow" data-n="payment_logs"><td><span class="tname">payment_logs</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="payments"><td><span class="tname">payments</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="permissions"><td><span class="tname">permissions</span></td><td class="num">5</td><td class="num">24</td></tr><tr class="trow" data-n="personal_access_tokens"><td><span class="tname">personal_access_tokens</span></td><td class="num">10</td><td class="num">8</td></tr><tr class="trow" data-n="pharmacists"><td><span class="tname">pharmacists</span></td><td class="num">8</td><td class="num">10</td></tr><tr class="trow" data-n="postals"><td><span class="tname">postals</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="prescriptions"><td><span class="tname">prescriptions</span><span class="core">CORE</span></td><td class="num">29</td><td class="num">0</td></tr><tr class="trow" data-n="prescriptions_medicines"><td><span class="tname">prescriptions_medicines</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="purchase_medicines"><td><span class="tname">purchase_medicines</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="purchased_medicines"><td><span class="tname">purchased_medicines</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="push_settings"><td><span class="tname">push_settings</span></td><td class="num">20</td><td class="num">0</td></tr><tr class="trow" data-n="radiology_categories"><td><span class="tname">radiology_categories</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="radiology_tests"><td><span class="tname">radiology_tests</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="rb_app"><td><span class="tname">rb_app</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="rb_app_token"><td><span class="tname">rb_app_token</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="rb_attend_config"><td><span class="tname">rb_attend_config</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="rb_attend_streak"><td><span class="tname">rb_attend_streak</span></td><td class="num">3</td><td class="num">3</td></tr><tr class="trow" data-n="rb_attendance"><td><span class="tname">rb_attendance</span></td><td class="num">7</td><td class="num">12</td></tr><tr class="trow" data-n="rb_banner"><td><span class="tname">rb_banner</span></td><td class="num">14</td><td class="num">19</td></tr><tr class="trow" data-n="rb_builder"><td><span class="tname">rb_builder</span></td><td class="num">38</td><td class="num">0</td></tr><tr class="trow" data-n="rb_chat"><td><span class="tname">rb_chat</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="rb_chat_set"><td><span class="tname">rb_chat_set</span></td><td class="num">14</td><td class="num">0</td></tr><tr class="trow" data-n="rb_config"><td><span class="tname">rb_config</span></td><td class="num">46</td><td class="num">0</td></tr><tr class="trow" data-n="rb_key"><td><span class="tname">rb_key</span></td><td class="num">2</td><td class="num">0</td></tr><tr class="trow" data-n="rb_module"><td><span class="tname">rb_module</span></td><td class="num">89</td><td class="num">16</td></tr><tr class="trow" data-n="rb_module_lib"><td><span class="tname">rb_module_lib</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="rb_module_shop"><td><span class="tname">rb_module_shop</span></td><td class="num">89</td><td class="num">3</td></tr><tr class="trow" data-n="rb_pa_point"><td><span class="tname">rb_pa_point</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="rb_partner"><td><span class="tname">rb_partner</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="rb_point_c"><td><span class="tname">rb_point_c</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="rb_point_c_acc"><td><span class="tname">rb_point_c_acc</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="rb_point_c_add"><td><span class="tname">rb_point_c_add</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="rb_point_c_set"><td><span class="tname">rb_point_c_set</span></td><td class="num">15</td><td class="num">0</td></tr><tr class="trow" data-n="rb_popup"><td><span class="tname">rb_popup</span></td><td class="num">25</td><td class="num">0</td></tr><tr class="trow" data-n="rb_pwa_app_installs"><td><span class="tname">rb_pwa_app_installs</span></td><td class="num">14</td><td class="num">4</td></tr><tr class="trow" data-n="rb_pwa_config"><td><span class="tname">rb_pwa_config</span></td><td class="num">22</td><td class="num">0</td></tr><tr class="trow" data-n="rb_pwa_push_log"><td><span class="tname">rb_pwa_push_log</span></td><td class="num">13</td><td class="num">106</td></tr><tr class="trow" data-n="rb_pwa_push_queue"><td><span class="tname">rb_pwa_push_queue</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="rb_pwa_subscriptions"><td><span class="tname">rb_pwa_subscriptions</span></td><td class="num">11</td><td class="num">24</td></tr><tr class="trow" data-n="rb_pwa_vapid"><td><span class="tname">rb_pwa_vapid</span></td><td class="num">4</td><td class="num">0</td></tr><tr class="trow" data-n="rb_report_config"><td><span class="tname">rb_report_config</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="rb_section"><td><span class="tname">rb_section</span></td><td class="num">45</td><td class="num">0</td></tr><tr class="trow" data-n="rb_section_shop"><td><span class="tname">rb_section_shop</span></td><td class="num">45</td><td class="num">0</td></tr><tr class="trow" data-n="rb_seo"><td><span class="tname">rb_seo</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="rb_sidebar_hide"><td><span class="tname">rb_sidebar_hide</span></td><td class="num">2</td><td class="num">0</td></tr><tr class="trow" data-n="rb_subscribe"><td><span class="tname">rb_subscribe</span></td><td class="num">5</td><td class="num">8</td></tr><tr class="trow" data-n="rb_subscribe_set"><td><span class="tname">rb_subscribe_set</span></td><td class="num">2</td><td class="num">0</td></tr><tr class="trow" data-n="rb_topvisual"><td><span class="tname">rb_topvisual</span></td><td class="num">26</td><td class="num">3</td></tr><tr class="trow" data-n="receptionists"><td><span class="tname">receptionists</span></td><td class="num">5</td><td class="num">10</td></tr><tr class="trow" data-n="review_ai_logs"><td><span class="tname">review_ai_logs</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="review_comments"><td><span class="tname">review_comments</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="review_images"><td><span class="tname">review_images</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="review_likes"><td><span class="tname">review_likes</span></td><td class="num">4</td><td class="num">0</td></tr><tr class="trow" data-n="review_reports"><td><span class="tname">review_reports</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="reviewer_stats"><td><span class="tname">reviewer_stats</span></td><td class="num">13</td><td class="num">5</td></tr><tr class="trow" data-n="role_has_permissions"><td><span class="tname">role_has_permissions</span></td><td class="num">2</td><td class="num">110</td></tr><tr class="trow" data-n="sale_medicines"><td><span class="tname">sale_medicines</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="schedule_days"><td><span class="tname">schedule_days</span></td><td class="num">8</td><td class="num">70</td></tr><tr class="trow" data-n="schedules"><td><span class="tname">schedules</span></td><td class="num">6</td><td class="num">10</td></tr><tr class="trow" data-n="section_fives"><td><span class="tname">section_fives</span></td><td class="num">16</td><td class="num">0</td></tr><tr class="trow" data-n="section_fours"><td><span class="tname">section_fours</span></td><td class="num">23</td><td class="num">0</td></tr><tr class="trow" data-n="section_ones"><td><span class="tname">section_ones</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="section_threes"><td><span class="tname">section_threes</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="section_twos"><td><span class="tname">section_twos</span></td><td class="num">14</td><td class="num">0</td></tr><tr class="trow" data-n="service_sliders"><td><span class="tname">service_sliders</span></td><td class="num">3</td><td class="num">7</td></tr><tr class="trow" data-n="services"><td><span class="tname">services</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="settings"><td><span class="tname">settings</span></td><td class="num">6</td><td class="num">68</td></tr><tr class="trow" data-n="smart_patient_cards"><td><span class="tname">smart_patient_cards</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="sms"><td><span class="tname">sms</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="sms5_book"><td><span class="tname">sms5_book</span></td><td class="num">9</td><td class="num">0</td></tr><tr class="trow" data-n="sms5_book_group"><td><span class="tname">sms5_book_group</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="sms5_config"><td><span class="tname">sms5_config</span></td><td class="num">2</td><td class="num">0</td></tr><tr class="trow" data-n="sms5_form"><td><span class="tname">sms5_form</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="sms5_form_group"><td><span class="tname">sms5_form_group</span></td><td class="num">4</td><td class="num">0</td></tr><tr class="trow" data-n="sms5_history"><td><span class="tname">sms5_history</span></td><td class="num">14</td><td class="num">0</td></tr><tr class="trow" data-n="sms5_write"><td><span class="tname">sms5_write</span></td><td class="num">11</td><td class="num">0</td></tr><tr class="trow" data-n="subscribes"><td><span class="tname">subscribes</span></td><td class="num">5</td><td class="num">0</td></tr><tr class="trow" data-n="subscription_plans"><td><span class="tname">subscription_plans</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="subscriptions"><td><span class="tname">subscriptions</span></td><td class="num">13</td><td class="num">151</td></tr><tr class="trow" data-n="super_admin_currency_settings"><td><span class="tname">super_admin_currency_settings</span></td><td class="num">7</td><td class="num">9</td></tr><tr class="trow" data-n="super_admin_enquiries"><td><span class="tname">super_admin_enquiries</span></td><td class="num">9</td><td class="num">21</td></tr><tr class="trow" data-n="super_admin_settings"><td><span class="tname">super_admin_settings</span></td><td class="num">5</td><td class="num">42</td></tr><tr class="trow" data-n="tenants"><td><span class="tname">tenants</span><span class="core">CORE</span></td><td class="num">6</td><td class="num">149</td></tr><tr class="trow" data-n="testimonials"><td><span class="tname">testimonials</span></td><td class="num">6</td><td class="num">0</td></tr><tr class="trow" data-n="transactions"><td><span class="tname">transactions</span><span class="core">CORE</span></td><td class="num">12</td><td class="num">0</td></tr><tr class="trow" data-n="used_medicines"><td><span class="tname">used_medicines</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="user_google_event_schedules"><td><span class="tname">user_google_event_schedules</span></td><td class="num">8</td><td class="num">0</td></tr><tr class="trow" data-n="user_tenants"><td><span class="tname">user_tenants</span></td><td class="num">6</td><td class="num">151</td></tr><tr class="trow" data-n="user_zoom_credential"><td><span class="tname">user_zoom_credential</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="users"><td><span class="tname">users</span><span class="core">CORE</span></td><td class="num">33</td><td class="num">396</td></tr><tr class="trow" data-n="vaccinated_patients"><td><span class="tname">vaccinated_patients</span></td><td class="num">10</td><td class="num">0</td></tr><tr class="trow" data-n="vaccinations"><td><span class="tname">vaccinations</span></td><td class="num">7</td><td class="num">0</td></tr><tr class="trow" data-n="visitors"><td><span class="tname">visitors</span></td><td class="num">13</td><td class="num">0</td></tr><tr class="trow" data-n="zoom_o_auth_credentials"><td><span class="tname">zoom_o_auth_credentials</span></td><td class="num">6</td><td class="num">0</td></tr></tbody></table>
+</div>
+</div>
+<footer>hms_saas_schema_20260612.sql.gz + _table_rows.tsv 기반 자동 생성 · _gen_erd_20260612.py · 2026-06-12</footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  securityLevel: 'loose',
+  er: { layoutDirection: 'TB', minEntityWidth: 110, entityPadding: 12 },
+  themeVariables: {
+    primaryColor: '#fdf0f2', primaryBorderColor: '#ae1932', primaryTextColor: '#1f2430',
+    lineColor: '#ae1932', fontFamily: "Pretendard, 'Noto Sans KR', sans-serif", fontSize: '13px'
+  }
+});
+// 카탈로그 검색 필터
+(function(){
+  var q = document.getElementById('q'), hits = document.getElementById('hits');
+  var rows = Array.prototype.slice.call(document.querySelectorAll('tr.trow'));
+  var total = rows.length;
+  function apply(){
+    var kw = q.value.trim().toLowerCase(), shown = 0;
+    rows.forEach(function(r){
+      var ok = !kw || r.getAttribute('data-n').toLowerCase().indexOf(kw) !== -1;
+      r.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+    document.querySelectorAll('div.gsec').forEach(function(sec){
+      var vis = sec.querySelectorAll('tr.trow:not([style*="none"])').length;
+      sec.style.display = vis ? '' : 'none';
+    });
+    hits.textContent = shown + ' / ' + total + ' 표시';
+  }
+  q.addEventListener('input', apply);
+})();
+</script>
+<!-- [2026-06-12] 다운로드 툴바: HTML 저장 / PDF 인쇄 / 다이어그램별 SVG 저장 -->
+<div id="erdToolbar" style="position:fixed;top:14px;right:16px;z-index:1000;display:flex;gap:8px;">
+  <button onclick="erdDownloadHtml()" style="background:#ae1932;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);">📥 HTML 다운로드</button>
+  <button onclick="window.print()" style="background:#444;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);">🖨 PDF 저장</button>
+</div>
+<style>
+@media print { #erdToolbar, .svg-dl-btn { display:none !important; } }
+.svg-dl-btn { background:#fff;border:1px solid #ae1932;color:#ae1932;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;margin:6px 0; }
+.svg-dl-btn:hover { background:#ae1932;color:#fff; }
+</style>
+<script>
+// 전체 HTML 파일 다운로드 (자기 자신을 blob으로 저장)
+function erdDownloadHtml() {
+  fetch(location.href).then(function(r){ return r.blob(); }).then(function(b){
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'ERD_20260612.html';
+    document.body.appendChild(a); a.click(); a.remove();
+  }).catch(function(){
+    var a = document.createElement('a');
+    a.href = location.href; a.download = 'ERD_20260612.html';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+}
+// 각 다이어그램에 SVG 저장 버튼 부착 (mermaid 렌더 완료 대기)
+(function attachSvgButtons(retry) {
+  retry = retry || 0;
+  var boxes = document.querySelectorAll('.mermaid-box');
+  var rendered = document.querySelectorAll('.mermaid svg, pre.mermaid[data-processed] svg').length;
+  if (rendered < boxes.length && retry < 30) {
+    return setTimeout(function(){ attachSvgButtons(retry + 1); }, 500);
+  }
+  boxes.forEach(function(box, i) {
+    var svg = box.querySelector('svg');
+    if (!svg || box.querySelector('.svg-dl-btn')) return;
+    var btn = document.createElement('button');
+    btn.className = 'svg-dl-btn';
+    btn.textContent = '⬇ 이 다이어그램 SVG 저장';
+    btn.onclick = function() {
+      var clone = svg.cloneNode(true);
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      var blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + clone.outerHTML], { type: 'image/svg+xml' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ERD_diagram_' + (i + 1) + '.svg';
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+    box.appendChild(btn);
+  });
+})(0);
+</script>
+</body></html>

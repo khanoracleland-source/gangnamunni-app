@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울미녀 운영 매뉴얼 v2</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="common/style.css">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+<style>
+.screenshot-figure{text-align:center}.screenshot-img{max-width:100%;border:1px solid var(--sb-border,#dee2e6);border-radius:8px;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.screenshot-img:hover{transform:scale(1.01);box-shadow:var(--sb-shadow-lg)}.screenshot-mobile{max-width:280px}
+.step-box{background:var(--sb-bg-card,#fff);border:1px solid var(--sb-border,#dee2e6);border-radius:8px;padding:1rem;margin-bottom:1rem}
+.step-num{display:inline-flex;width:28px;height:28px;border-radius:50%;background:#AE1932;color:#fff;align-items:center;justify-content:center;font-weight:bold;font-size:14px;margin-right:8px;flex-shrink:0}
+.section-title{color:#AE1932;border-bottom:2px solid rgba(174,25,50,.2);padding-bottom:.5rem}
+.tip-box{background:var(--sb-bg-card,#fff);border-left:4px solid #ffc107;padding:1rem;border-radius:4px}
+.warn-box{background:var(--sb-bg-card,#fff);border-left:4px solid #dc3545;padding:1rem;border-radius:4px}
+.info-box{background:var(--sb-bg-card,#fff);border-left:4px solid #0dcaf0;padding:1rem;border-radius:4px}
+.modal-img{max-width:100%;max-height:85vh}.toc-link{text-decoration:none;color:var(--sb-text,inherit)}.toc-link:hover{color:#AE1932}
+.collapsible-header{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-radius:6px;transition:background .15s}
+.collapsible-header:hover{background:rgba(174,25,50,.06)}
+.collapsible-header .collapse-icon{transition:transform .25s;font-size:14px;color:#AE1932;flex-shrink:0;margin-left:8px}
+.collapsible-header.collapsed .collapse-icon{transform:rotate(-90deg)}
+.collapsible-body{overflow:hidden;transition:max-height .3s ease;max-height:0}
+.collapsible-body.open{max-height:none}
+@media print{.no-print{display:none!important}.collapsible-body{max-height:none!important;display:block!important}}
+</style></head><body>
+<div class="sb-header"><div class="container d-flex justify-content-between align-items-center">
+<div><h1 class="mb-0">서울미녀 운영 매뉴얼</h1><div class="sb-subtitle">Seoul Beauty — 관리자용 v2.0 | 2026-04-06 | 스크린샷 42장</div></div>
+<div class="sb-header-actions"><button class="btn btn-outline-light btn-sm" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button><button class="btn btn-outline-light btn-sm" onclick="window.print()"><i class="bi bi-printer"></i></button></div>
+</div></div>
+<div class="container sb-main">
+<ul class="nav nav-tabs nav-fill mb-4 sticky-top" style="background:var(--sb-bg,#f5f5f5);z-index:100;padding-top:8px;" id="manualTabs" role="tablist">
+  <li class="nav-item" role="presentation"><button class="nav-link active px-2 py-2" id="tab-ch1" data-bs-toggle="tab" data-bs-target="#pane-ch1" type="button" role="tab" aria-selected="true" style="font-size:13px;"><i class="bi bi-speedometer2 me-1"></i><span class="d-none d-md-inline">시스템 개요</span><span class="d-md-none">1</span></button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link px-2 py-2" id="tab-ch2" data-bs-toggle="tab" data-bs-target="#pane-ch2" type="button" role="tab" aria-selected="false" style="font-size:13px;"><i class="bi bi-building me-1"></i><span class="d-none d-md-inline">병원 관리</span><span class="d-md-none">2</span></button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link px-2 py-2" id="tab-ch3" data-bs-toggle="tab" data-bs-target="#pane-ch3" type="button" role="tab" aria-selected="false" style="font-size:13px;"><i class="bi bi-file-richtext me-1"></i><span class="d-none d-md-inline">콘텐츠 관리</span><span class="d-md-none">3</span></button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link px-2 py-2" id="tab-ch4" data-bs-toggle="tab" data-bs-target="#pane-ch4" type="button" role="tab" aria-selected="false" style="font-size:13px;"><i class="bi bi-calendar-check me-1"></i><span class="d-none d-md-inline">예약/상담</span><span class="d-md-none">4</span></button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link px-2 py-2" id="tab-ch5" data-bs-toggle="tab" data-bs-target="#pane-ch5" type="button" role="tab" aria-selected="false" style="font-size:13px;"><i class="bi bi-people me-1"></i><span class="d-none d-md-inline">회원 관리</span><span class="d-md-none">5</span></button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link px-2 py-2" id="tab-ch6" data-bs-toggle="tab" data-bs-target="#pane-ch6" type="button" role="tab" aria-selected="false" style="font-size:13px;"><i class="bi bi-gear me-1"></i><span class="d-none d-md-inline">설정</span><span class="d-md-none">6</span></button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link px-2 py-2" id="tab-ch7" data-bs-toggle="tab" data-bs-target="#pane-ch7" type="button" role="tab" aria-selected="false" style="font-size:13px;"><i class="bi bi-graph-up me-1"></i><span class="d-none d-md-inline">모니터링</span><span class="d-md-none">7</span></button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link px-2 py-2" id="tab-faq" data-bs-toggle="tab" data-bs-target="#pane-faq" type="button" role="tab" aria-selected="false" style="font-size:13px;"><i class="bi bi-question-circle me-1"></i><span class="d-none d-md-inline">FAQ</span><span class="d-md-none">?</span></button></li>
+</ul>
+<div class="tab-content" id="manualTabContent">
+<div class="tab-pane fade show active" id="pane-ch1" role="tabpanel" aria-labelledby="tab-ch1">
+<h2 class="section-title"><span class="step-num">1</span> 시스템 개요</h2>
+<h4 class="mt-4"><span>1.1 로그인</span><button class="btn btn-sm btn-outline-secondary mf-req-btn" onclick="event.stopPropagation();openMfSection({file:'operation_manual.html',tab:'시스템 개요',section:'1.1 로그인',sourceDesc:'관리자 로그인 4단계 step-box + 스크린샷 4장'})"><i class="bi bi-pencil-square"></i> 수정요청</button></h4>
+<div class="step-box"><p><span class="step-num">1</span> 관리자 페이지에 접속합니다.</p><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>관리자 대시보드 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch1_01_login_empty.png" alt="로그인 화면 (빈 폼)" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>로그인 화면 (빈 폼)</figcaption></figure><details class="mb-3"><summary class="text-muted small"><i class="bi bi-phone me-1"></i>모바일 화면 보기</summary><figure class="screenshot-figure mt-2"><img src="screenshots/op_manual/mob_ch1_01_login.png" alt="로그인 화면 (빈 폼) (모바일)" class="screenshot-img screenshot-mobile" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-phone me-1"></i>로그인 화면 (빈 폼) (모바일)</figcaption></figure></details></div>
+<div class="step-box"><p><span class="step-num">2</span> 아이디와 비밀번호를 입력합니다.</p><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch1_02_login_filled.png" alt="아이디/비밀번호 입력 완료" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>아이디/비밀번호 입력 완료</figcaption></figure></div>
+<div class="step-box"><p><span class="step-num">3</span> <strong>로그인</strong> 버튼을 클릭합니다.</p><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch1_03_login_button.png" alt="로그인 버튼 클릭 직전" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>로그인 버튼 클릭 직전</figcaption></figure></div>
+<div class="step-box"><p><span class="step-num">4</span> 로그인 성공 시 대시보드가 표시됩니다.</p><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch1_04_dashboard.png" alt="로그인 후 대시보드" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>로그인 후 대시보드</figcaption></figure><details class="mb-3"><summary class="text-muted small"><i class="bi bi-phone me-1"></i>모바일 화면 보기</summary><figure class="screenshot-figure mt-2"><img src="screenshots/op_manual/mob_ch1_02_dashboard.png" alt="로그인 후 대시보드 (모바일)" class="screenshot-img screenshot-mobile" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-phone me-1"></i>로그인 후 대시보드 (모바일)</figcaption></figure></details></div>
+<h4 class="mt-4"><span>1.2 회원가입</span><button class="btn btn-sm btn-outline-secondary mf-req-btn" onclick="event.stopPropagation();openMfSection({file:'operation_manual.html',tab:'시스템 개요',section:'1.2 회원가입',sourceDesc:'회원가입 선택화면 + step-box 1개'})"><i class="bi bi-pencil-square"></i> 수정요청</button></h4>
+<p>회원가입은 <strong>일반 개인</strong>과 <strong>병원 관계자</strong> 2가지 유형이 있습니다.</p>
+<a href="https://hms.seoulbeauty.app/hairwang/bbs/register.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>회원가입 페이지</a>
+
+<div class="step-box"><p><span class="step-num">1</span> 회원가입 페이지에서 <strong>일반인</strong> 또는 <strong>병원관계자</strong>를 선택합니다.</p>
+<figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch1_06_register_select.png" alt="가입 유형 선택" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>회원가입 유형 선택 (register.php)</figcaption></figure>
+</div>
+
+<h4 class="mt-4"><span>1.3 병원 관리자 로그인</span><button class="btn btn-sm btn-outline-secondary mf-req-btn" onclick="event.stopPropagation();openMfSection({file:'operation_manual.html',tab:'시스템 개요',section:'1.3 병원 관리자 로그인',sourceDesc:'병원 관리자 계정 info-box + 2개 step-box'})"><i class="bi bi-pencil-square"></i> 수정요청</button></h4>
+<p>병원 관리자(hospital_admin)는 일반 관리자와 동일한 로그인 페이지를 사용하되, 병원 전용 계정으로 로그인합니다. 병원 등록 승인 시 자동 발급된 아이디/비밀번호를 사용합니다.</p>
+<div class="step-box"><p><span class="step-num">1</span> 관리자 로그인 페이지에서 병원 관리자 계정으로 로그인합니다.</p>
+<figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch1_08_hospital_login.png" alt="병원 관리자 로그인" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>병원 관리자 계정으로 로그인</figcaption></figure></div>
+<div class="step-box"><p><span class="step-num">2</span> 로그인 후 병원 관리자 전용 대시보드가 표시됩니다. (권한에 따라 보이는 메뉴가 제한됩니다)</p>
+<figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch1_09_hospital_dashboard.png" alt="병원 관리자 대시보드" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>병원 관리자 대시보드 (제한된 메뉴)</figcaption></figure></div>
+<div class="info-box"><strong>병원 관리자 계정 발급:</strong> 병원 등록이 승인되면 자동으로 계정이 생성되고, 아이디/임시 비밀번호가 이메일로 발송됩니다.</div>
+
+<h4 class="mt-4"><span>1.4 사이드바 메뉴</span><button class="btn btn-sm btn-outline-secondary mf-req-btn" onclick="event.stopPropagation();openMfSection({file:'operation_manual.html',tab:'시스템 개요',section:'1.4 사이드바 메뉴',sourceDesc:'사이드바 확장 스크린샷 + 팁박스'})"><i class="bi bi-pencil-square"></i> 수정요청</button></h4><p>좌측 사이드바에 15개 그룹, 75+ 메뉴가 있습니다.</p><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch1_05_sidebar_expanded.png" alt="사이드바 확장 상태" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>사이드바 확장 상태</figcaption></figure>
+<div class="tip-box"><strong>팁:</strong> 상단의 달/해 아이콘으로 다크/라이트 모드 전환 가능합니다.</div>
+</div>
+<div class="tab-pane fade" id="pane-ch2" role="tabpanel" aria-labelledby="tab-ch2">
+<h2 class="section-title"><span class="step-num">2</span> 병원 관리</h2>
+<h4 class="mt-4">2.1 병원 목록</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_hospitals.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>병원 관리 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch2_01_hospitals_list.png" alt="병원 목록 (전체 탭)" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>병원 목록 (전체 탭)</figcaption></figure><details class="mb-3"><summary class="text-muted small"><i class="bi bi-phone me-1"></i>모바일 화면 보기</summary><figure class="screenshot-figure mt-2"><img src="screenshots/op_manual/mob_ch2_01_hospitals.png" alt="병원 목록 (전체 탭) (모바일)" class="screenshot-img screenshot-mobile" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-phone me-1"></i>병원 목록 (전체 탭) (모바일)</figcaption></figure></details>
+<h4 class="mt-4">2.2 의사 관리</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_doctors.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>의사 관리 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch2_04_doctors_list.png" alt="의사 관리 목록" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>의사 관리 목록</figcaption></figure>
+<h4 class="mt-4">2.3 병원 등록 신청</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospital_apply.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>신청 폼 열기</a><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospital_apply_public.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>공개 신청 폼</a>
+<div class="step-box"><p><span class="step-num">1</span> 신청 폼에 접속합니다.</p><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch2_05_apply_form_empty.png" alt="병원 신청 폼 (빈 상태)" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>병원 신청 폼 (빈 상태)</figcaption></figure><details class="mb-3"><summary class="text-muted small"><i class="bi bi-phone me-1"></i>모바일 화면 보기</summary><figure class="screenshot-figure mt-2"><img src="screenshots/op_manual/mob_ch2_02_apply_public.png" alt="병원 신청 폼 (빈 상태) (모바일)" class="screenshot-img screenshot-mobile" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-phone me-1"></i>병원 신청 폼 (빈 상태) (모바일)</figcaption></figure></details></div>
+<div class="step-box"><p><span class="step-num">2</span> DEV MODE에서 자동 채우기를 클릭합니다.</p></div>
+<div class="step-box"><p><span class="step-num">3</span> 폼이 자동으로 채워집니다.</p><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch2_07_apply_form_filled.png" alt="자동 채우기 후 폼 상태" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>자동 채우기 후 폼 상태</figcaption></figure></div>
+<div class="step-box"><p><span class="step-num">4</span> <strong>신청서 제출</strong> 버튼을 클릭합니다.</p></div>
+<div class="warn-box"><strong>주의:</strong> 승인 시 병원 관리자 계정이 자동 생성됩니다.</div>
+</div>
+<div class="tab-pane fade" id="pane-ch3" role="tabpanel" aria-labelledby="tab-ch3">
+<h2 class="section-title"><span class="step-num">3</span> 콘텐츠 관리</h2>
+<h4 class="mt-4">3.1 후기 관리</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_reviews.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>후기 관리 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch3_01_reviews_list.png" alt="후기 관리 목록" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>후기 관리 목록</figcaption></figure><details class="mb-3"><summary class="text-muted small"><i class="bi bi-phone me-1"></i>모바일 화면 보기</summary><figure class="screenshot-figure mt-2"><img src="screenshots/op_manual/mob_ch3_01_reviews.png" alt="후기 관리 목록 (모바일)" class="screenshot-img screenshot-mobile" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-phone me-1"></i>후기 관리 목록 (모바일)</figcaption></figure></details>
+<h4 class="mt-4">3.2 이벤트 관리</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_events.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>이벤트 관리 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch3_02_events_list.png" alt="이벤트 관리 목록" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>이벤트 관리 목록</figcaption></figure><details class="mb-3"><summary class="text-muted small"><i class="bi bi-phone me-1"></i>모바일 화면 보기</summary><figure class="screenshot-figure mt-2"><img src="screenshots/op_manual/mob_ch3_02_events.png" alt="이벤트 관리 목록 (모바일)" class="screenshot-img screenshot-mobile" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-phone me-1"></i>이벤트 관리 목록 (모바일)</figcaption></figure></details>
+<h4 class="mt-4">3.3 광고 마법사</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_ad_wizard.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>광고 마법사 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch3_06_ad_wizard_step1.png" alt="광고 마법사 Step 1" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>광고 마법사 Step 1</figcaption></figure>
+<h4 class="mt-4">3.4 시술 관리</h4>
+<p>시술 카테고리(대분류/중분류)와 시술 항목을 관리합니다. 병원별 시술 배정도 가능합니다.</p>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_treatments.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>시술 관리 열기</a>
+<figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch3_09_treatments.png" alt="시술 관리" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>시술 관리 (카테고리 + 시술 CRUD)</figcaption></figure>
+
+<h4 class="mt-4">3.5 광고 디스플레이 설정</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_ad_settings.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>광고 설정 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch3_08_ad_settings.png" alt="광고 디스플레이 설정 (7탭)" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>광고 디스플레이 설정 (7탭)</figcaption></figure>
+</div>
+<div class="tab-pane fade" id="pane-ch4" role="tabpanel" aria-labelledby="tab-ch4">
+<h2 class="section-title"><span class="step-num">4</span> 예약 / 상담</h2>
+<h4 class="mt-4">4.1 예약 관리</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_bookings.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>예약 관리 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch4_01_bookings_list.png" alt="예약 관리 목록" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>예약 관리 목록</figcaption></figure><details class="mb-3"><summary class="text-muted small"><i class="bi bi-phone me-1"></i>모바일 화면 보기</summary><figure class="screenshot-figure mt-2"><img src="screenshots/op_manual/mob_ch4_01_bookings.png" alt="예약 관리 목록 (모바일)" class="screenshot-img screenshot-mobile" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-phone me-1"></i>예약 관리 목록 (모바일)</figcaption></figure></details>
+<h4 class="mt-4">4.2 상담 관리</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_consultations.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>상담 관리 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch4_02_consultations_list.png" alt="상담 관리 목록" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>상담 관리 목록</figcaption></figure>
+<h4 class="mt-4">4.3 예약 폼 (프론트)</h4>
+<div class="step-box"><p><span class="step-num">1</span> 예약 페이지에 접속합니다.</p><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch4_03_booking_form.png" alt="예약 페이지" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>예약 페이지</figcaption></figure><details class="mb-3"><summary class="text-muted small"><i class="bi bi-phone me-1"></i>모바일 화면 보기</summary><figure class="screenshot-figure mt-2"><img src="screenshots/op_manual/mob_ch4_02_booking_form.png" alt="예약 페이지 (모바일)" class="screenshot-img screenshot-mobile" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-phone me-1"></i>예약 페이지 (모바일)</figcaption></figure></details></div>
+<div class="step-box"><p><span class="step-num">2</span> DEV MODE 자동 채우기 후 확인합니다.</p><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch4_04_booking_filled.png" alt="예약 폼 (자동 채우기 후)" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>예약 폼 (자동 채우기 후)</figcaption></figure></div>
+</div>
+<div class="tab-pane fade" id="pane-ch5" role="tabpanel" aria-labelledby="tab-ch5">
+<h2 class="section-title"><span class="step-num">5</span> 회원 관리</h2>
+<h4 class="mt-4">5.1 회원 목록</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_members.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>회원 관리 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch5_01_members_list.png" alt="회원 목록" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>회원 목록</figcaption></figure><details class="mb-3"><summary class="text-muted small"><i class="bi bi-phone me-1"></i>모바일 화면 보기</summary><figure class="screenshot-figure mt-2"><img src="screenshots/op_manual/mob_ch5_01_members.png" alt="회원 목록 (모바일)" class="screenshot-img screenshot-mobile" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-phone me-1"></i>회원 목록 (모바일)</figcaption></figure></details>
+<h4 class="mt-4">5.2 쿠폰 관리</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_coupons.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>쿠폰 관리 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch5_02_coupons.png" alt="쿠폰 관리" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>쿠폰 관리</figcaption></figure>
+<h4 class="mt-4">5.3 회원 등급</h4>
+<p>회원 등급(브론즈~다이아몬드) 규칙과 등급별 혜택을 설정합니다.</p>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_membership.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>회원 등급 열기</a>
+<figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch5_04_membership.png" alt="회원 등급 관리" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>회원 등급 관리 (승급 조건 + 혜택)</figcaption></figure>
+
+<h4 class="mt-4">5.4 포인트 관리</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_points.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>포인트 관리 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch5_03_points.png" alt="포인트 관리" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>포인트 관리</figcaption></figure>
+</div>
+<div class="tab-pane fade" id="pane-ch6" role="tabpanel" aria-labelledby="tab-ch6">
+<h2 class="section-title"><span class="step-num">6</span> 설정</h2>
+<h4 class="mt-4">6.1 AI 설정</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_ai_settings.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>AI 설정 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch6_01_ai_settings.png" alt="AI 설정" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>AI 설정</figcaption></figure>
+<h4 class="mt-4">6.2 테마/디자인 설정</h4>
+<p>라이브 세팅 패널에서 57개 설정(색상/폰트/레이아웃/로고)을 실시간 미리보기하며 변경합니다.</p>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_theme.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>테마 설정 열기</a>
+<figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch6_03_theme.png" alt="테마/디자인 설정" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>테마/디자인 설정 (라이브 미리보기)</figcaption></figure>
+
+<h4 class="mt-4">6.3 관리자 계정 관리</h4>
+<p>관리자 계정을 추가/수정하고 역할(super_admin/admin/editor/viewer/hospital_admin 등)을 부여합니다.</p>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_admins.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>관리자 계정 열기</a>
+<figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch6_04_admins.png" alt="관리자 계정 관리" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>관리자 계정 관리 (RBAC 9역할)</figcaption></figure>
+
+<h4 class="mt-4">6.4 알림 발송</h4>
+<p>회원에게 FCM 푸시 알림 + 인앱 알림을 발송합니다. 전체/최근가입/이벤트응모자/특정회원 대상 선택 가능.</p>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_send_notification.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>알림 발송 열기</a>
+<figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch6_05_notification.png" alt="알림 발송" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>알림 발송 (FCM + 인앱)</figcaption></figure>
+
+<h4 class="mt-4">6.5 결제/PG 관리</h4>
+<p>PG 연동 설정(이니시스/KCP/카카오페이 등), 상품 관리, 주문 내역, 매출 통계를 관리합니다.</p>
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_payment.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>결제 관리 열기</a>
+<figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch6_06_payment.png" alt="결제/PG 관리" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>결제/PG 관리 (4탭: 주문/상품/매출/PG설정)</figcaption></figure>
+
+<h4 class="mt-4">6.6 네비게이션 설정</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_navigation.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>네비게이션 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch6_02_navigation.png" alt="네비게이션 설정" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>네비게이션 설정</figcaption></figure>
+</div>
+<div class="tab-pane fade" id="pane-ch7" role="tabpanel" aria-labelledby="tab-ch7">
+<h2 class="section-title"><span class="step-num">7</span> 모니터링</h2>
+<h4 class="mt-4">7.1 수정 이력</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_fix_log.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>수정 이력 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch7_01_fix_log.png" alt="수정 이력" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>수정 이력</figcaption></figure>
+<h4 class="mt-4">7.2 E2E 테스트</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_e2e_test.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>E2E 테스트 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch7_02_e2e_test.png" alt="E2E 테스트 대시보드" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>E2E 테스트 대시보드</figcaption></figure>
+<h4 class="mt-4">7.3 데모 데이터 관리</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_demo_data.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>데모 데이터 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch7_03_demo_data.png" alt="데모 데이터 관리" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>데모 데이터 관리</figcaption></figure>
+<h4 class="mt-4">7.4 개발 피드백</h4><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/admin_dev_feedback.php" target="_blank" class="btn btn-sm btn-outline-primary me-1 mb-1"><i class="bi bi-box-arrow-up-right me-1"></i>피드백 대시보드 열기</a><figure class="screenshot-figure mb-3"><img src="screenshots/op_manual/ch7_04_dev_feedback.png" alt="개발 피드백 대시보드" class="screenshot-img" onclick="showModal(this)" loading="lazy"><figcaption class="text-muted small mt-1"><i class="bi bi-camera me-1"></i>개발 피드백 대시보드</figcaption></figure>
+<h5 class="mt-3">피드백 패널 사용법</h5>
+<div class="step-box"><p><span class="step-num">1</span> 페이지 하단의 "피드백" 탭을 클릭합니다.</p></div>
+<div class="step-box"><p><span class="step-num">2</span> 입력 패널이 열립니다.</p></div>
+<div class="step-box"><p><span class="step-num">3</span> 유형/우선순위 선택 후 내용 입력 → <strong>저장</strong></p></div>
+</div>
+<div class="tab-pane fade" id="pane-faq" role="tabpanel" aria-labelledby="tab-faq">
+<h2 class="section-title"><span class="step-num">?</span> FAQ</h2>
+<div class="accordion" id="faqAcc">
+<div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#f1">비밀번호를 잊었습니다</button></h2><div id="f1" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">로그인 화면 "비밀번호 찾기" 클릭 → 이메일로 임시 비밀번호 발송</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#f2">병원 등록 신청 처리 방법</button></h2><div id="f2" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">병원 관리 → 대기 탭 → 서류 확인 → 승인/반려. 승인 시 계정 자동 생성.</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#f3">부적절한 후기 처리</button></h2><div id="f3" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">후기 관리 → 숨김 처리. 신고 3건 이상 시 자동 숨김.</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#f4">수정사항 요청 방법</button></h2><div id="f4" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">관리 페이지 하단 <strong>"피드백"</strong> 탭 → 내용 입력 → 저장. 개발팀에 자동 전달.</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#f5">다크모드 전환</button></h2><div id="f5" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">상단바 우측 달/해 아이콘 클릭. 브라우저에 자동 저장.</div></div></div>
+</div>
+</div>
+</div>
+<div class="text-center py-4 border-top" style="color:var(--sb-text-muted);">
+<p class="mb-1"><strong>서울미녀</strong> 운영 매뉴얼 v2.0</p>
+<small>admin@seoulbeauty.app | 2026-04-06 | 스크린샷 42장 (PC 33 + 모바일 9)</small></div></div>
+<div class="modal fade" id="imgModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content" style="background:transparent;border:none;"><div class="modal-body text-center p-0"><img id="modalImg" class="modal-img rounded shadow"></div></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="common/export.js"></script>
+<script src="common/mf_widget.js?v=20260409c"></script>
+<script>
+function showModal(el){document.getElementById('modalImg').src=el.src;new bootstrap.Modal(document.getElementById('imgModal')).show();}
+document.addEventListener('DOMContentLoaded',function(){
+  updateThemeIcon();
+  // h4 섹션 접기/펼치기
+  document.querySelectorAll('.tab-pane h4').forEach(function(h4, idx){
+    var body = document.createElement('div');
+    body.className = 'collapsible-body';
+    var sibling = h4.nextElementSibling;
+    while(sibling && sibling.tagName !== 'H4' && sibling.tagName !== 'H2'){
+      var next = sibling.nextElementSibling;
+      body.appendChild(sibling);
+      sibling = next;
+    }
+    h4.parentNode.insertBefore(body, h4.nextSibling);
+    h4.classList.add('collapsible-header','collapsed');
+    var icon = document.createElement('i');
+    icon.className = 'bi bi-chevron-down collapse-icon';
+    h4.appendChild(icon);
+    h4.addEventListener('click', function(){
+      var isCollapsed = h4.classList.toggle('collapsed');
+      if(isCollapsed){ body.style.maxHeight='0'; body.classList.remove('open'); }
+      else { body.classList.add('open'); body.style.maxHeight = body.scrollHeight + 'px'; setTimeout(function(){ body.style.maxHeight='none'; },300); }
+    });
+  });
+});
+</script>
+</body></html>

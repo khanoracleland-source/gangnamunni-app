@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'lbl_language' => '언어 옵션',
+    'lbl_file' => '번역할 파일 선택',
+    'lbl_key' => '키',
+    'lbl_value' => '값',
+    'lbl_timezone' => '시간대',
+    'lbl_data_table_limit' => '데이터 테이블 제한',
+    'lbl_currency' => '통화',
+    'soon' => '곧',
+    'lbl_body_chart'=>'신체 차트',
+    'lbl_theme_mode'=>'테마 모드',
+    'Menubar_position'=>'메뉴바 위치',
+    'lbl_image_handling'=>'이미지 유형 선택',
+    'lbl_menu_items'=>'메뉴',
+    'btn_add_new_images' => '이미지 템플릿 추가',
+    'tbl_header_name' => '이름',
+    'tbl_header_image' => '이미지',
+    'tbl_header_default' => '기본값',
+    'tbl_header_action' => '작업',
+    'image_template_section_title' => '이미지 템플릿',
+    'lbl_default' => '기본값',
+    'btn_remove' => '제거',
+    'lbl_date_formate' => '날짜 형식',
+    'lbl_time_formate' => '시간 형식',
+];

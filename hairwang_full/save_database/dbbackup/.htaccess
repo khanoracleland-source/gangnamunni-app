@@ -1,0 +1,42 @@
+# 디렉토리 목록 차단
+Options -Indexes
+
+# 직접 접근 차단
+<FilesMatch "\.sql$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# phpMyAdmin 접근 차단
+<FilesMatch "^(phpmyadmin|pma)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# 특정 IP만 접근 허용 (필요시 주석 제거)
+# Require ip 127.0.0.1
+# Require ip ::1
+# Require ip 192.168.1.100
+
+# 기본 인증 (필요시 주석 제거)
+# AuthType Basic
+# AuthName "Restricted Access"
+# AuthUserFile C:/xampp/security/.htpasswd
+# Require valid-user
+
+# MIME 타입 설정
+<FilesMatch "\.sql$">
+    ForceType application/octet-stream
+</FilesMatch>
+
+# 다운로드 대신 텍스트로 표시
+<FilesMatch "\.sql$">
+    Header set Content-Type text/plain
+</FilesMatch>
+
+# 캐시 비활성화
+<FilesMatch "\.sql$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+</FilesMatch>

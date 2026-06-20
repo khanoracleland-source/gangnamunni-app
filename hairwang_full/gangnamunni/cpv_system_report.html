@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="ko" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPV 과금 시스템 — 개발 현황 보고서</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap');
+
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --info: #06b6d4;
+            --surface: #ffffff;
+            --surface-hover: #f8fafc;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --gradient-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --gradient-5: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        [data-bs-theme="dark"] {
+            --surface: #1e1e2e;
+            --surface-hover: #2a2a3e;
+            --text: #cdd6f4;
+            --text-muted: #a6adc8;
+            --border: #313244;
+        }
+
+        * { font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+        body {
+            background: linear-gradient(180deg, #f0f2ff 0%, #fafbff 50%, #f8f9fa 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        [data-bs-theme="dark"] body {
+            background: linear-gradient(180deg, #11111b 0%, #181825 50%, #1e1e2e 100%);
+        }
+
+        /* Hero */
+        .hero {
+            background: var(--gradient-1);
+            padding: 3rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .hero h1 { font-weight: 900; letter-spacing: -1px; }
+        .hero .badge-version {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            font-weight: 500;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(99,102,241,0.15);
+        }
+        .stat-card .icon-wrap {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            color: white;
+        }
+        .stat-card .stat-number {
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+        .stat-card .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Tabs */
+        .nav-tabs-custom {
+            border: none;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .nav-tabs-custom .nav-link {
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            background: var(--surface);
+        }
+        .nav-tabs-custom .nav-link:hover {
+            border-color: var(--primary-light);
+            color: var(--primary);
+            background: rgba(99,102,241,0.05);
+        }
+        .nav-tabs-custom .nav-link.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        .nav-tabs-custom .nav-link .badge {
+            font-size: 0.7rem;
+            padding: 0.2em 0.5em;
+            margin-left: 0.3rem;
+        }
+
+        /* Tables */
+        .table-modern {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .table-modern thead th {
+            background: linear-gradient(135deg, #334155, #1e293b);
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 0.8rem 1rem;
+            border: none;
+            white-space: nowrap;
+        }
+        .table-modern thead th:first-child { border-radius: 12px 0 0 0; }
+        .table-modern thead th:last-child { border-radius: 0 12px 0 0; }
+        .table-modern tbody td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.88rem;
+            vertical-align: middle;
+        }
+        .table-modern tbody tr:hover { background: var(--surface-hover); }
+        .table-modern tbody tr:last-child td:first-child { border-radius: 0 0 0 12px; }
+        .table-modern tbody tr:last-child td:last-child { border-radius: 0 0 12px 0; }
+
+        [data-bs-theme="dark"] .table-modern thead th {
+            background: linear-gradient(135deg, #313244, #45475a);
+        }
+
+        /* Category Badges */
+        .badge-category {
+            padding: 0.35em 0.75em;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.78rem;
+            letter-spacing: -0.3px;
+        }
+        .badge-admin { background: rgba(99,102,241,0.12); color: #6366f1; }
+        .badge-api { background: rgba(6,182,212,0.12); color: #06b6d4; }
+        .badge-engine { background: rgba(245,158,11,0.12); color: #d97706; }
+        .badge-partner { background: rgba(16,185,129,0.12); color: #10b981; }
+        .badge-auto { background: rgba(139,92,246,0.12); color: #8b5cf6; }
+        .badge-qa { background: rgba(236,72,153,0.12); color: #ec4899; }
+        .badge-ref { background: rgba(100,116,139,0.12); color: #64748b; }
+
+        /* Status */
+        .status-ok {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: var(--success);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .status-ok::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .status-pending { color: var(--accent); font-weight: 600; }
+        .status-off { color: var(--text-muted); }
+
+        /* Phase badges */
+        .phase-badge {
+            display: inline-block;
+            padding: 0.2em 0.6em;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .phase-1 { background: #dbeafe; color: #1d4ed8; }
+        .phase-2 { background: #fce7f3; color: #be185d; }
+        .phase-3 { background: #fed7aa; color: #c2410c; }
+        .phase-4 { background: #d1fae5; color: #047857; }
+        .phase-5 { background: #e0e7ff; color: #4338ca; }
+        .phase-6 { background: #fef3c7; color: #92400e; }
+        .phase-7 { background: #ede9fe; color: #6d28d9; }
+        [data-bs-theme="dark"] .phase-1 { background: #1e3a5f; color: #93c5fd; }
+        [data-bs-theme="dark"] .phase-2 { background: #4a1942; color: #f9a8d4; }
+        [data-bs-theme="dark"] .phase-3 { background: #4a2c17; color: #fdba74; }
+        [data-bs-theme="dark"] .phase-4 { background: #14332a; color: #6ee7b7; }
+        [data-bs-theme="dark"] .phase-5 { background: #282558; color: #a5b4fc; }
+        [data-bs-theme="dark"] .phase-6 { background: #3d2e0f; color: #fcd34d; }
+        [data-bs-theme="dark"] .phase-7 { background: #2e1f5e; color: #c4b5fd; }
+
+        /* Confirm badge */
+        .confirm-yes {
+            background: #fef08a;
+            color: #854d0e;
+            padding: 0.25em 0.6em;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        [data-bs-theme="dark"] .confirm-yes {
+            background: #422006;
+            color: #fde047;
+        }
+
+        /* Cards */
+        .glass-card {
+            background: var(--surface);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .card-header-gradient {
+            padding: 1rem 1.5rem;
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Flow diagram */
+        .flow-step {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            padding: 1.2rem;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .flow-step:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 20px rgba(99,102,241,0.15);
+        }
+        .flow-step .step-num {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.5rem;
+        }
+        .flow-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        /* Dark mode toggle */
+        .theme-toggle {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+            z-index: 1000;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .theme-toggle:hover { transform: scale(1.1); }
+
+        /* Print */
+        .print-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 84px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            color: white;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .print-btn:hover { transform: scale(1.1); background: var(--text); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero { padding: 2rem 0; }
+            .hero h1 { font-size: 1.5rem; }
+            .stat-card .stat-number { font-size: 1.5rem; }
+            .table-responsive { font-size: 0.82rem; }
+        }
+
+        @media print {
+            .theme-toggle, .print-btn, .hero::before, .hero::after { display: none; }
+            .hero { padding: 1.5rem 0; }
+            body { background: white !important; }
+            .stat-card:hover { transform: none; box-shadow: none; }
+        }
+
+        /* Scroll animations */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero text-white">
+    <div class="container">
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <span class="badge badge-version fs-6 px-3 py-2">
+                <i class="bi bi-eye me-1"></i> CPV System
+            </span>
+            <span class="badge badge-version px-3 py-2">v1.0</span>
+            <span class="badge badge-version px-3 py-2">2026-03-16</span>
+        </div>
+        <h1 class="display-5 mb-2">CPV 과금 시스템 개발 현황 보고서</h1>
+        <p class="fs-5 opacity-75 mb-0">서울미녀 — Cost Per View 광고비 과금 시스템</p>
+    </div>
+</section>
+
+<!-- Summary Stats -->
+<section class="py-4" style="margin-top: -2rem; position: relative; z-index: 10;">
+    <div class="container">
+        <div class="row g-3">
+            <div class="col-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="icon-wrap" style="background: var(--gradient-1);">
+                            <i class="bi bi-file-earmark-code"></i>
+                        </div>
+                        <div>
+                            <div class="stat-number text-primary">14</div>
+                            <div class="stat-label">PHP 파일</div>
+                        </div>
+                    </div>
+                    <div class="mt-2"><span class="status-ok">전체 배포 완료</span></div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="icon-wrap" style="background: var(--gradient-3);">
+                            <i class="bi bi-database"></i>
+                        </div>
+                        <div>
+                            <div class="stat-number" style="color: var(--info);">8</div>
+                            <div class="stat-label">DB 테이블</div>
+                        </div>
+                    </div>
+                    <div class="mt-2"><span class="status-ok">전체 정상</span></div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="icon-wrap" style="background: var(--gradient-4);">
+                            <i class="bi bi-sliders"></i>
+                        </div>
+                        <div>
+                            <div class="stat-number" style="color: var(--success);">73</div>
+                            <div class="stat-label">설정값</div>
+                        </div>
+                    </div>
+                    <div class="mt-2"><span class="status-ok">7 Phase 설정</span></div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="icon-wrap" style="background: var(--gradient-5);">
+                            <i class="bi bi-chat-square-text"></i>
+                        </div>
+                        <div>
+                            <div class="stat-number" style="color: var(--danger);">27</div>
+                            <div class="stat-label">컨펌 항목</div>
+                        </div>
+                    </div>
+                    <div class="mt-2"><span class="status-pending"><i class="bi bi-clock"></i> 대기 중</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Current Status -->
+<section class="py-3">
+    <div class="container">
+        <div class="glass-card p-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary"></i>현재 시스템 상태</h5>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center gap-2 p-3 rounded-3" style="background: rgba(239,68,68,0.08);">
+                        <i class="bi bi-toggle-off fs-4 text-danger"></i>
+                        <div>
+                            <div class="fw-bold">Master Switch</div>
+                            <div class="text-muted small">OFF — 과금 비활성</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center gap-2 p-3 rounded-3" style="background: rgba(245,158,11,0.08);">
+                        <i class="bi bi-bug fs-4 text-warning"></i>
+                        <div>
+                            <div class="fw-bold">Test Mode</div>
+                            <div class="text-muted small">ON — 로그만 기록</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center gap-2 p-3 rounded-3" style="background: rgba(99,102,241,0.08);">
+                        <i class="bi bi-robot fs-4 text-primary"></i>
+                        <div>
+                            <div class="fw-bold">AI Billing</div>
+                            <div class="text-muted small">OFF + Test Mode ON</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Main Tabs -->
+<section class="py-4">
+    <div class="container">
+        <ul class="nav nav-tabs-custom mb-4" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-files"><i class="bi bi-folder2-open me-1"></i>기능 목록 <span class="badge bg-primary">19</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-db"><i class="bi bi-database me-1"></i>DB 테이블 <span class="badge bg-info">8</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-settings"><i class="bi bi-sliders me-1"></i>설정값 <span class="badge bg-success">73</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-confirm"><i class="bi bi-patch-question me-1"></i>컨펌 항목 <span class="badge bg-danger">27</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-screenshots"><i class="bi bi-camera me-1"></i>화면 캡처 <span class="badge bg-secondary">7</span></a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-flow"><i class="bi bi-diagram-3 me-1"></i>흐름도</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-message"><i class="bi bi-link-45deg me-1"></i>참고 링크</a></li>
+        </ul>
+
+        <div class="tab-content">
+
+            <!-- Tab 1: 기능 목록 -->
+            <div class="tab-pane fade show active" id="tab-files">
+                <div class="glass-card">
+                    <div class="card-header-gradient" style="background: var(--gradient-1);">
+                        <i class="bi bi-code-square"></i> CPV 시스템 파일 목록 (19개)
+                    </div>
+                    <div class="table-responsive p-0">
+                        <table class="table table-modern mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;">#</th>
+                                    <th>카테고리</th>
+                                    <th>파일명</th>
+                                    <th>기능명</th>
+                                    <th>기능 설명</th>
+                                    <th>Phase</th>
+                                    <th>크기</th>
+                                    <th>배포</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold text-muted">1</td>
+                                    <td><span class="badge-category badge-admin">관리자</span></td>
+                                    <td><code>admin_cpv_settings.php</code></td>
+                                    <td class="fw-semibold">CPV 통합 설정</td>
+                                    <td>73개 설정값 관리 (7 Phase별 UI), 마스터 스위치, 테스트 모드, 일괄 ON/OFF, 기본값 복원</td>
+                                    <td><span class="phase-badge phase-6">P1~7</span></td>
+                                    <td class="text-muted">24KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">2</td>
+                                    <td><span class="badge-category badge-admin">관리자</span></td>
+                                    <td><code>admin_wallet.php</code></td>
+                                    <td class="fw-semibold">지갑 관리</td>
+                                    <td>병원별 지갑 생성/충전/차감/환불/조정, 거래내역 조회, 잔액 부족 알림</td>
+                                    <td><span class="phase-badge phase-1">Phase 1</span></td>
+                                    <td class="text-muted">31KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">3</td>
+                                    <td><span class="badge-category badge-admin">관리자</span></td>
+                                    <td><code>admin_cpv_rates.php</code></td>
+                                    <td class="fw-semibold">단가 규칙 관리</td>
+                                    <td>키워드/시술/병원/이벤트별 가중치, 인라인 편집, 단가 계산기 시뮬레이션</td>
+                                    <td><span class="phase-badge phase-3">Phase 3</span></td>
+                                    <td class="text-muted">25KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">4</td>
+                                    <td><span class="badge-category badge-admin">관리자</span></td>
+                                    <td><code>admin_cpv_dashboard.php</code></td>
+                                    <td class="fw-semibold">CPV 대시보드</td>
+                                    <td>일별 매출/조회수 차트, Top10 병원, 잔액 부족 알림, 최근 거래 50건</td>
+                                    <td><span class="phase-badge phase-5">Phase 5</span></td>
+                                    <td class="text-muted">19KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">5</td>
+                                    <td><span class="badge-category badge-admin">관리자</span></td>
+                                    <td><code>admin_settlement.php</code></td>
+                                    <td class="fw-semibold">정산 리포트</td>
+                                    <td>병원별 월별 정산 내역, 기간별 필터, 엑셀 내보내기</td>
+                                    <td><span class="phase-badge phase-5">Phase 5</span></td>
+                                    <td class="text-muted">13KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">6</td>
+                                    <td><span class="badge-category badge-api">API</span></td>
+                                    <td><code>api_cpv_settings.php</code></td>
+                                    <td class="fw-semibold">설정 API</td>
+                                    <td>GET/POST/PUT — 설정 CRUD, 일괄 ON/OFF, 기본값 복원, JSON 내보내기/가져오기</td>
+                                    <td><span class="phase-badge phase-6">P1~7</span></td>
+                                    <td class="text-muted">18KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">7</td>
+                                    <td><span class="badge-category badge-api">API</span></td>
+                                    <td><code>api_cpv_track.php</code></td>
+                                    <td class="fw-semibold">조회 추적 API</td>
+                                    <td>페이지 로드 시 CPV 과금 (중복방지/일일한도/잔액검증/단가계산/트랜잭션)</td>
+                                    <td><span class="phase-badge phase-2">Phase 2</span></td>
+                                    <td class="text-muted">7KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">8</td>
+                                    <td><span class="badge-category badge-api">API</span></td>
+                                    <td><code>api_wallet.php</code></td>
+                                    <td class="fw-semibold">지갑 API</td>
+                                    <td>지갑 CRUD + 충전/차감/환불/조정 + 거래내역 조회</td>
+                                    <td><span class="phase-badge phase-1">Phase 1</span></td>
+                                    <td class="text-muted">18KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">9</td>
+                                    <td><span class="badge-category badge-api">API</span></td>
+                                    <td><code>api_cpv_confirm.php</code></td>
+                                    <td class="fw-semibold">기능 확인 API</td>
+                                    <td>클라이언트 기능 확인서 저장/조회 + 추가 개발사항 등록</td>
+                                    <td><span class="phase-badge phase-6">-</span></td>
+                                    <td class="text-muted">6KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">10</td>
+                                    <td><span class="badge-category badge-engine">엔진</span></td>
+                                    <td><code>includes/cpv_engine.php</code></td>
+                                    <td class="fw-semibold">과금 엔진</td>
+                                    <td>핵심 로직: 방문자 감지, 중복 필터, 지갑 차감, 거래 기록, 트랜잭션 안전</td>
+                                    <td><span class="phase-badge phase-2">Phase 2</span></td>
+                                    <td class="text-muted">18KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">11</td>
+                                    <td><span class="badge-category badge-engine">엔진</span></td>
+                                    <td><code>includes/cpv_helper.php</code></td>
+                                    <td class="fw-semibold">헬퍼 함수</td>
+                                    <td>설정 로드/캐시, 단가 계산(5가중치), AI 과금, 충전 상품, 통화 포맷</td>
+                                    <td><span class="phase-badge phase-7">P1~7</span></td>
+                                    <td class="text-muted">10KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">12</td>
+                                    <td><span class="badge-category badge-engine">엔진</span></td>
+                                    <td><code>includes/cpv_tracker.php</code></td>
+                                    <td class="fw-semibold">프론트 추적</td>
+                                    <td>JS 자동 삽입 — 페이지 100% 로드 시 Beacon API 과금 요청, 봇 감지</td>
+                                    <td><span class="phase-badge phase-2">Phase 2</span></td>
+                                    <td class="text-muted">2KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">13</td>
+                                    <td><span class="badge-category badge-partner">파트너</span></td>
+                                    <td><code>partner_wallet.php</code></td>
+                                    <td class="fw-semibold">병원 지갑</td>
+                                    <td>병원 관리자용 잔액 확인/충전 신청/거래 내역 조회</td>
+                                    <td><span class="phase-badge phase-1">Phase 1</span></td>
+                                    <td class="text-muted">19KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">14</td>
+                                    <td><span class="badge-category badge-partner">파트너</span></td>
+                                    <td><code>partner_settings.php</code></td>
+                                    <td class="fw-semibold">병원 설정</td>
+                                    <td>병원별 일일 캡/예산/과금 ON/OFF 설정</td>
+                                    <td><span class="phase-badge phase-4">Phase 4</span></td>
+                                    <td class="text-muted">16KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">15</td>
+                                    <td><span class="badge-category badge-auto">자동화</span></td>
+                                    <td><code>cron_cpv_daily.php</code></td>
+                                    <td class="fw-semibold">일일 크론</td>
+                                    <td>전일 통계 집계, 잔액 부족 알림, 로그 정리(90일), 거래 정리(365일)</td>
+                                    <td><span class="phase-badge phase-5">Phase 5</span></td>
+                                    <td class="text-muted">9KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">16</td>
+                                    <td><span class="badge-category badge-qa">QA</span></td>
+                                    <td><code>qa_cpv_report.html</code></td>
+                                    <td class="fw-semibold">QA 리포트 v1</td>
+                                    <td>CPV 시스템 QA 테스트 결과 리포트</td>
+                                    <td><span class="phase-badge phase-6">-</span></td>
+                                    <td class="text-muted">31KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">17</td>
+                                    <td><span class="badge-category badge-qa">QA</span></td>
+                                    <td><code>qa_cpv_report_v2.html</code></td>
+                                    <td class="fw-semibold">QA 리포트 v2</td>
+                                    <td>CPV 시스템 QA 테스트 결과 리포트 (업데이트)</td>
+                                    <td><span class="phase-badge phase-6">-</span></td>
+                                    <td class="text-muted">37KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">18</td>
+                                    <td><span class="badge-category badge-ref">참조</span></td>
+                                    <td><code>cpv_dev_reference.html</code></td>
+                                    <td class="fw-semibold">개발참조 문서</td>
+                                    <td>CPV 시스템 아키텍처/API/DB 기술 문서</td>
+                                    <td><span class="phase-badge phase-6">-</span></td>
+                                    <td class="text-muted">23KB</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-muted">19</td>
+                                    <td><span class="badge-category badge-ref">참조</span></td>
+                                    <td><code>cpv_feature_confirm.html</code></td>
+                                    <td class="fw-semibold">기능 확인서</td>
+                                    <td>클라이언트 기능 확인 UI (24개 항목 + 의견 입력)</td>
+                                    <td><span class="phase-badge phase-6">-</span></td>
+                                    <td class="text-muted">-</td>
+                                    <td><span class="status-ok">완료</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: DB 테이블 -->
+            <div class="tab-pane fade" id="tab-db">
+                <div class="glass-card">
+                    <div class="card-header-gradient" style="background: var(--gradient-3);">
+                        <i class="bi bi-database-fill-gear"></i> DB 테이블 구조 (8개)
+                    </div>
+                    <div class="table-responsive p-0">
+                        <table class="table table-modern mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>테이블명</th>
+                                    <th>용도</th>
+                                    <th>레코드</th>
+                                    <th>주요 컬럼</th>
+                                    <th>사용 파일</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">1</td>
+                                    <td><code class="text-primary">cpv_settings</code></td>
+                                    <td class="fw-semibold">시스템 설정</td>
+                                    <td><span class="badge bg-primary">73</span></td>
+                                    <td class="small">setting_key, setting_value, category, setting_type, sort_order</td>
+                                    <td class="small text-muted">admin_cpv_settings, api_cpv_settings, cpv_helper</td>
+                                    <td><span class="status-ok">정상</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">2</td>
+                                    <td><code class="text-primary">cpv_wallets</code></td>
+                                    <td class="fw-semibold">병원 지갑</td>
+                                    <td><span class="badge bg-secondary">0</span></td>
+                                    <td class="small">hospital_id, balance, total_charged, total_spent, daily_cap, is_paused</td>
+                                    <td class="small text-muted">admin_wallet, api_wallet, partner_wallet, cpv_engine</td>
+                                    <td><span class="status-ok">정상</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">3</td>
+                                    <td><code class="text-primary">cpv_transactions</code></td>
+                                    <td class="fw-semibold">거래 내역</td>
+                                    <td><span class="badge bg-secondary">0</span></td>
+                                    <td class="small">hospital_id, type(charge/deduct/refund/adjust/bonus), amount, balance_after</td>
+                                    <td class="small text-muted">api_wallet, cpv_engine, admin_settlement, cron</td>
+                                    <td><span class="status-ok">정상</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">4</td>
+                                    <td><code class="text-primary">cpv_logs</code></td>
+                                    <td class="fw-semibold">조회 로그</td>
+                                    <td><span class="badge bg-secondary">0</span></td>
+                                    <td class="small">hospital_id, page_type, target_id, visitor_ip, cpv_rate, is_charged, charge_skip_reason</td>
+                                    <td class="small text-muted">api_cpv_track, cpv_engine, cron</td>
+                                    <td><span class="status-ok">정상</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">5</td>
+                                    <td><code class="text-primary">cpv_rates</code></td>
+                                    <td class="fw-semibold">단가 규칙</td>
+                                    <td><span class="badge bg-secondary">0</span></td>
+                                    <td class="small">name, rule_type, rule_key, base_weight, priority, is_active</td>
+                                    <td class="small text-muted">admin_cpv_rates, cpv_helper</td>
+                                    <td><span class="status-ok">정상</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">6</td>
+                                    <td><code class="text-primary">cpv_daily_stats</code></td>
+                                    <td class="fw-semibold">일일 통계</td>
+                                    <td><span class="badge bg-secondary">0</span></td>
+                                    <td class="small">hospital_id, stat_date, total_views, charged_views, total_amount, avg_rate</td>
+                                    <td class="small text-muted">cron, admin_cpv_dashboard, cpv_engine</td>
+                                    <td><span class="status-ok">정상</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">7</td>
+                                    <td><code class="text-primary">cpv_confirmations</code></td>
+                                    <td class="fw-semibold">기능 확인</td>
+                                    <td><span class="badge bg-success">7</span></td>
+                                    <td class="small">feature_id, status(confirmed/modified/rejected), comment</td>
+                                    <td class="small text-muted">api_cpv_confirm</td>
+                                    <td><span class="status-ok">정상</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">8</td>
+                                    <td><code class="text-primary">cpv_custom_requests</code></td>
+                                    <td class="fw-semibold">추가 개발요청</td>
+                                    <td><span class="badge bg-secondary">0</span></td>
+                                    <td class="small">title, description, priority(high/medium/low)</td>
+                                    <td class="small text-muted">api_cpv_confirm</td>
+                                    <td><span class="status-ok">정상</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="mt-3 text-muted small">
+                    <i class="bi bi-info-circle me-1"></i>모든 테이블 접두사: <code>gangnamunni_</code> (예: gangnamunni_cpv_settings)
+                </div>
+            </div>
+
+            <!-- Tab 3: 설정값 -->
+            <div class="tab-pane fade" id="tab-settings">
+                <div class="glass-card">
+                    <div class="card-header-gradient" style="background: var(--gradient-4);">
+                        <i class="bi bi-gear-wide-connected"></i> CPV 설정값 (73개, 7 Phase)
+                    </div>
+                    <div class="table-responsive p-0">
+                        <table class="table table-modern mb-0" id="settingsTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Phase</th>
+                                    <th>설정 키</th>
+                                    <th>기본값</th>
+                                    <th>타입</th>
+                                    <th>설명</th>
+                                    <th>컨펌</th>
+                                </tr>
+                            </thead>
+                            <tbody id="settingsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: 컨펌 항목 -->
+            <div class="tab-pane fade" id="tab-confirm">
+                <div class="glass-card">
+                    <div class="card-header-gradient" style="background: var(--gradient-2);">
+                        <i class="bi bi-patch-question-fill"></i> 컨펌 필요 항목 (27개)
+                        <a href="cpv_feature_confirm.html" target="_blank" class="btn btn-sm btn-outline-light ms-auto"><i class="bi bi-box-arrow-up-right me-1"></i>기능 확인서 열기</a>
+                    </div>
+                    <div class="table-responsive p-0">
+                        <table class="table table-modern mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>항목</th>
+                                    <th>현재값</th>
+                                    <th>설명 / 예시</th>
+                                    <th style="width:220px;">결정 / 메모</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <tbody id="confirmBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Screenshots -->
+            <div class="tab-pane fade" id="tab-screenshots">
+                <div class="glass-card p-4">
+                    <h5 class="fw-bold mb-2"><i class="bi bi-camera me-2 text-primary"></i>CPV 관리자 페이지 화면 캡처</h5>
+                    <p class="text-muted small mb-4">2026-03-16 캡처 (PC 1400x900) — 클릭하면 원본 크기로 확대됩니다</p>
+
+                    <div class="row g-4" id="screenshotGallery"></div>
+                </div>
+            </div>
+
+            <!-- Tab 5: 흐름도 -->
+            <div class="tab-pane fade" id="tab-flow">
+                <div class="glass-card p-4">
+                    <h5 class="fw-bold mb-4"><i class="bi bi-diagram-3 me-2 text-primary"></i>CPV 과금 처리 흐름</h5>
+
+                    <!-- Flow 1: 페이지 조회 과금 -->
+                    <h6 class="fw-bold text-muted mb-3">1. 페이지 조회 시 과금 프로세스</h6>
+                    <div class="row g-2 align-items-center mb-5">
+                        <div class="col-md"><div class="flow-step"><div class="step-num">1</div><i class="bi bi-person d-block fs-4 text-primary mb-1"></i><strong>사용자 방문</strong><br><small class="text-muted">병원 페이지 로드</small></div></div>
+                        <div class="col-auto flow-arrow d-none d-md-flex"><i class="bi bi-arrow-right"></i></div>
+                        <div class="col-md"><div class="flow-step"><div class="step-num">2</div><i class="bi bi-code-slash d-block fs-4 text-info mb-1"></i><strong>cpv_tracker.php</strong><br><small class="text-muted">JS 추적 코드 실행</small></div></div>
+                        <div class="col-auto flow-arrow d-none d-md-flex"><i class="bi bi-arrow-right"></i></div>
+                        <div class="col-md"><div class="flow-step"><div class="step-num">3</div><i class="bi bi-cloud-arrow-up d-block fs-4 text-warning mb-1"></i><strong>api_cpv_track.php</strong><br><small class="text-muted">Beacon API 전송</small></div></div>
+                        <div class="col-auto flow-arrow d-none d-md-flex"><i class="bi bi-arrow-right"></i></div>
+                        <div class="col-md"><div class="flow-step"><div class="step-num">4</div><i class="bi bi-cpu d-block fs-4 text-danger mb-1"></i><strong>cpv_engine.php</strong><br><small class="text-muted">7단계 검증 + 과금</small></div></div>
+                        <div class="col-auto flow-arrow d-none d-md-flex"><i class="bi bi-arrow-right"></i></div>
+                        <div class="col-md"><div class="flow-step"><div class="step-num">5</div><i class="bi bi-database d-block fs-4 text-success mb-1"></i><strong>DB 기록</strong><br><small class="text-muted">지갑 차감 + 로그</small></div></div>
+                    </div>
+
+                    <!-- Flow 2: 검증 단계 -->
+                    <h6 class="fw-bold text-muted mb-3">2. cpv_engine.php 내부 검증 (7단계)</h6>
+                    <div class="row g-2 mb-5">
+                        <div class="col-6 col-md">
+                            <div class="p-3 rounded-3 text-center" style="background: rgba(99,102,241,0.06); border: 1px solid var(--border);">
+                                <i class="bi bi-toggle-on text-primary fs-5 d-block"></i>
+                                <small class="fw-bold">1. 마스터 스위치</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="p-3 rounded-3 text-center" style="background: rgba(6,182,212,0.06); border: 1px solid var(--border);">
+                                <i class="bi bi-shield-exclamation text-info fs-5 d-block"></i>
+                                <small class="fw-bold">2. 중복 조회 필터</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="p-3 rounded-3 text-center" style="background: rgba(245,158,11,0.06); border: 1px solid var(--border);">
+                                <i class="bi bi-speedometer2 text-warning fs-5 d-block"></i>
+                                <small class="fw-bold">3. 일일 한도</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="p-3 rounded-3 text-center" style="background: rgba(16,185,129,0.06); border: 1px solid var(--border);">
+                                <i class="bi bi-wallet2 text-success fs-5 d-block"></i>
+                                <small class="fw-bold">4. 지갑 확인</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="p-3 rounded-3 text-center" style="background: rgba(239,68,68,0.06); border: 1px solid var(--border);">
+                                <i class="bi bi-exclamation-triangle text-danger fs-5 d-block"></i>
+                                <small class="fw-bold">5. 잔액 0원 체크</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="p-3 rounded-3 text-center" style="background: rgba(139,92,246,0.06); border: 1px solid var(--border);">
+                                <i class="bi bi-graph-down text-purple fs-5 d-block" style="color:#8b5cf6!important;"></i>
+                                <small class="fw-bold">6. 일일 캡</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="p-3 rounded-3 text-center" style="background: rgba(236,72,153,0.06); border: 1px solid var(--border);">
+                                <i class="bi bi-bug text-pink fs-5 d-block" style="color:#ec4899!important;"></i>
+                                <small class="fw-bold">7. 테스트 모드</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flow 3: 단가 계산 -->
+                    <h6 class="fw-bold text-muted mb-3">3. 단가 계산 공식</h6>
+                    <div class="p-4 rounded-3 text-center" style="background: linear-gradient(135deg, rgba(99,102,241,0.05), rgba(139,92,246,0.05)); border: 2px dashed var(--border);">
+                        <div class="fs-5 fw-bold mb-2" style="font-family: 'Courier New', monospace;">
+                            최종단가 = <span class="text-primary">기본단가(200)</span>
+                            &times; <span class="text-info">키워드(1.5)</span>
+                            &times; <span class="text-warning">시술(2.0)</span>
+                            &times; <span class="text-success">이벤트(1.5)</span>
+                            &times; <span class="text-danger">평점(1.3)</span>
+                        </div>
+                        <div class="text-muted">예시: 눈성형 + 프리미엄 + 이벤트 + 고평점 = 200 &times; 1.5 &times; 2.0 &times; 1.5 &times; 1.3 = <b class="text-danger fs-5">1,170원</b></div>
+                        <div class="text-muted small mt-1">* min_cpv_rate(50원) ~ max_cpv_rate(5,000원) 범위 내 클램프</div>
+                    </div>
+
+                    <!-- Flow 4: 일일 크론 -->
+                    <h6 class="fw-bold text-muted mb-3 mt-5">4. 일일 자동 작업 (cron_cpv_daily.php)</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4"><div class="p-3 rounded-3 border"><i class="bi bi-bar-chart text-primary me-2"></i><strong>통계 집계</strong><br><small class="text-muted">cpv_logs → cpv_daily_stats</small></div></div>
+                        <div class="col-md-4"><div class="p-3 rounded-3 border"><i class="bi bi-bell text-warning me-2"></i><strong>잔액 부족 알림</strong><br><small class="text-muted">5만원 이하 병원 알림</small></div></div>
+                        <div class="col-md-4"><div class="p-3 rounded-3 border"><i class="bi bi-trash3 text-danger me-2"></i><strong>로그 정리</strong><br><small class="text-muted">90일/365일 자동 삭제</small></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 6: 참고 링크 -->
+            <div class="tab-pane fade" id="tab-message">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-link-45deg me-2 text-success"></i>관리자 페이지</h5>
+                        <div class="list-group">
+                            <a href="admin_cpv_settings.php" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                                <i class="bi bi-sliders text-primary"></i> CPV 통합 설정
+                            </a>
+                            <a href="admin_cpv_dashboard.php" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                                <i class="bi bi-speedometer2 text-info"></i> CPV 대시보드
+                            </a>
+                            <a href="admin_wallet.php" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                                <i class="bi bi-wallet2 text-success"></i> 지갑 관리
+                            </a>
+                            <a href="admin_cpv_rates.php" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                                <i class="bi bi-calculator text-warning"></i> 단가 규칙
+                            </a>
+                            <a href="admin_settlement.php" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                                <i class="bi bi-receipt text-danger"></i> 정산 리포트
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-file-earmark-text me-2 text-primary"></i>문서</h5>
+                        <div class="list-group mb-4">
+                            <a href="cpv_feature_confirm.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                                <i class="bi bi-check2-square text-purple" style="color:#8b5cf6!important;"></i> 기능 확인서
+                            </a>
+                            <a href="cpv_dev_reference.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                                <i class="bi bi-file-earmark-text text-secondary"></i> 개발참조 문서
+                            </a>
+                            <a href="qa_cpv_report_v2.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-2">
+                                <i class="bi bi-clipboard-check text-pink" style="color:#ec4899!important;"></i> QA 리포트 v2
+                            </a>
+                        </div>
+
+                        <h5 class="fw-bold mb-3"><i class="bi bi-calendar-check me-2 text-warning"></i>일정</h5>
+                        <div class="glass-card p-3">
+                            <div class="d-flex align-items-start gap-2 mb-3">
+                                <span class="badge bg-success rounded-pill mt-1">완료</span>
+                                <div><strong>03-11</strong><br><small class="text-muted">CPV Phase 1~6 개발</small></div>
+                            </div>
+                            <div class="d-flex align-items-start gap-2 mb-3">
+                                <span class="badge bg-success rounded-pill mt-1">완료</span>
+                                <div><strong>03-13</strong><br><small class="text-muted">AI 과금 Phase 7 연동</small></div>
+                            </div>
+                            <div class="d-flex align-items-start gap-2 mb-3">
+                                <span class="badge bg-primary rounded-pill mt-1">진행</span>
+                                <div><strong>03-16</strong><br><small class="text-muted">전체 테스트 + 보고서</small></div>
+                            </div>
+                            <div class="d-flex align-items-start gap-2 mb-3">
+                                <span class="badge bg-warning text-dark rounded-pill mt-1">대기</span>
+                                <div><strong>~03-22</strong><br><small class="text-muted">컨펌 반영 + 최종 완료</small></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /tab-content -->
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-4 mt-5 border-top" style="border-color: var(--border) !important;">
+    <div class="container text-center text-muted small">
+        <p class="mb-1">서울미녀 CPV 과금 시스템 보고서 &mdash; 2026-03-16</p>
+        <p class="mb-0">Seoul Beauty Development Team</p>
+    </div>
+</footer>
+
+<!-- Floating Buttons -->
+<button class="print-btn" onclick="window.print()" title="인쇄"><i class="bi bi-printer"></i></button>
+<button class="theme-toggle" onclick="toggleTheme()" title="다크모드"><i class="bi bi-moon-stars" id="themeIcon"></i></button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+console.log('%c[CPV Report] v1.1 loaded', 'color:#6366f1;font-weight:bold;font-size:14px;');
+console.log('[CPV Report] Initializing...');
+console.time('[CPV Report] Total init');
+
+// Settings data
+const settings = [
+    // Phase 6
+    {no:1, phase:'Phase 6', cls:'phase-6', key:'cpv_master_switch', val:'0 (OFF)', type:'toggle', desc:'CPV 시스템 전체 ON/OFF', confirm:true},
+    {no:2, phase:'Phase 6', cls:'phase-6', key:'cpv_test_mode', val:'1 (ON)', type:'toggle', desc:'테스트 모드 (로그만, 실 차감 없음)', confirm:true},
+    {no:3, phase:'Phase 6', cls:'phase-6', key:'currency_unit', val:'KRW', type:'select', desc:'통화 단위', confirm:false},
+    {no:4, phase:'Phase 6', cls:'phase-6', key:'decimal_rounding', val:'round', type:'select', desc:'소수점 처리 방식', confirm:false},
+    {no:5, phase:'Phase 6', cls:'phase-6', key:'cron_interval_minutes', val:'5', type:'number', desc:'크론 실행 간격(분)', confirm:false},
+    {no:6, phase:'Phase 6', cls:'phase-6', key:'daily_aggregate_time', val:'00:00', type:'text', desc:'일일 집계 시간', confirm:false},
+    // Phase 1
+    {no:7, phase:'Phase 1', cls:'phase-1', key:'wallet_enabled', val:'1 (ON)', type:'toggle', desc:'지갑 시스템 활성화', confirm:false},
+    {no:8, phase:'Phase 1', cls:'phase-1', key:'pg_charge_enabled', val:'1 (ON)', type:'toggle', desc:'PG 충전 활성화', confirm:false},
+    {no:9, phase:'Phase 1', cls:'phase-1', key:'pg_fee_rate', val:'3.3%', type:'percent', desc:'PG 수수료율', confirm:true},
+    {no:10, phase:'Phase 1', cls:'phase-1', key:'manual_charge_enabled', val:'1 (ON)', type:'toggle', desc:'수동 충전 허용', confirm:false},
+    {no:11, phase:'Phase 1', cls:'phase-1', key:'transaction_log_enabled', val:'1 (ON)', type:'toggle', desc:'거래 로그 기록', confirm:false},
+    {no:12, phase:'Phase 1', cls:'phase-1', key:'transaction_retention_days', val:'365', type:'number', desc:'거래 보관일수', confirm:false},
+    // Phase 2
+    {no:13, phase:'Phase 2', cls:'phase-2', key:'cpv_charge_enabled', val:'1 (ON)', type:'toggle', desc:'페이지 조회 과금', confirm:false},
+    {no:14, phase:'Phase 2', cls:'phase-2', key:'cpv_charge_delay_sec', val:'1', type:'number', desc:'연속 요청 방지(초)', confirm:false},
+    {no:15, phase:'Phase 2', cls:'phase-2', key:'no_extra_charge', val:'1 (ON)', type:'toggle', desc:'추가 과금 없음 표시', confirm:false},
+    {no:16, phase:'Phase 2', cls:'phase-2', key:'anti_abuse_enabled', val:'1 (ON)', type:'toggle', desc:'중복 방지 활성화', confirm:false},
+    {no:17, phase:'Phase 2', cls:'phase-2', key:'anti_abuse_minutes', val:'30', type:'number', desc:'중복 방지 시간(분)', confirm:true},
+    {no:18, phase:'Phase 2', cls:'phase-2', key:'daily_view_limit', val:'10', type:'number', desc:'일일 조회 한도(건)', confirm:true},
+    {no:19, phase:'Phase 2', cls:'phase-2', key:'cpv_log_enabled', val:'1 (ON)', type:'toggle', desc:'조회 로그 기록', confirm:false},
+    {no:20, phase:'Phase 2', cls:'phase-2', key:'cpv_log_retention_days', val:'90', type:'number', desc:'로그 보관일수', confirm:false},
+    // Phase 3
+    {no:21, phase:'Phase 3', cls:'phase-3', key:'base_cpv_rate', val:'200', type:'currency', desc:'기본 CPV 단가(원/뷰)', confirm:true},
+    {no:22, phase:'Phase 3', cls:'phase-3', key:'max_cpv_rate', val:'5,000', type:'currency', desc:'최대 단가 상한(원)', confirm:true},
+    {no:23, phase:'Phase 3', cls:'phase-3', key:'min_cpv_rate', val:'50', type:'currency', desc:'최소 단가 하한(원)', confirm:true},
+    {no:24, phase:'Phase 3', cls:'phase-3', key:'keyword_pricing_enabled', val:'1 (ON)', type:'toggle', desc:'키워드별 단가 활성화', confirm:false},
+    {no:25, phase:'Phase 3', cls:'phase-3', key:'weight_keyword_eye', val:'1.5', type:'number', desc:'눈성형 가중치', confirm:true},
+    {no:26, phase:'Phase 3', cls:'phase-3', key:'weight_keyword_nose', val:'1.3', type:'number', desc:'코성형 가중치', confirm:true},
+    {no:27, phase:'Phase 3', cls:'phase-3', key:'weight_keyword_skin', val:'1.0', type:'number', desc:'피부과 가중치', confirm:true},
+    {no:28, phase:'Phase 3', cls:'phase-3', key:'weight_keyword_dental', val:'0.8', type:'number', desc:'치과 가중치', confirm:true},
+    {no:29, phase:'Phase 3', cls:'phase-3', key:'procedure_pricing_enabled', val:'1 (ON)', type:'toggle', desc:'시술별 단가 활성화', confirm:false},
+    {no:30, phase:'Phase 3', cls:'phase-3', key:'weight_proc_premium', val:'2.0', type:'number', desc:'프리미엄 시술 가중치', confirm:true},
+    {no:31, phase:'Phase 3', cls:'phase-3', key:'weight_proc_standard', val:'1.0', type:'number', desc:'일반 시술 가중치', confirm:false},
+    {no:32, phase:'Phase 3', cls:'phase-3', key:'weight_proc_discount', val:'0.7', type:'number', desc:'할인 시술 가중치', confirm:true},
+    {no:33, phase:'Phase 3', cls:'phase-3', key:'event_weight_enabled', val:'1 (ON)', type:'toggle', desc:'이벤트 가중치 활성화', confirm:false},
+    {no:34, phase:'Phase 3', cls:'phase-3', key:'weight_event_active', val:'1.5', type:'number', desc:'진행중 이벤트 가중치', confirm:true},
+    {no:35, phase:'Phase 3', cls:'phase-3', key:'weight_event_ended', val:'0.5', type:'number', desc:'종료 이벤트 가중치', confirm:false},
+    {no:36, phase:'Phase 3', cls:'phase-3', key:'rating_weight_enabled', val:'1 (ON)', type:'toggle', desc:'평점 가중치 활성화', confirm:false},
+    {no:37, phase:'Phase 3', cls:'phase-3', key:'weight_rating_high', val:'1.3', type:'number', desc:'고평점(4.5+) 가중치', confirm:true},
+    // Phase 4
+    {no:38, phase:'Phase 4', cls:'phase-4', key:'daily_cap_enabled', val:'1 (ON)', type:'toggle', desc:'일일 예산 한도', confirm:false},
+    {no:39, phase:'Phase 4', cls:'phase-4', key:'default_daily_cap', val:'50,000', type:'currency', desc:'기본 일일 캡(원)', confirm:true},
+    {no:40, phase:'Phase 4', cls:'phase-4', key:'min_daily_cap', val:'10,000', type:'currency', desc:'최소 일일 캡', confirm:false},
+    {no:41, phase:'Phase 4', cls:'phase-4', key:'max_daily_cap', val:'1,000,000', type:'currency', desc:'최대 일일 캡', confirm:false},
+    {no:42, phase:'Phase 4', cls:'phase-4', key:'auto_pause_zero', val:'1 (ON)', type:'toggle', desc:'잔액 0원 자동 중단', confirm:false},
+    {no:43, phase:'Phase 4', cls:'phase-4', key:'zero_grace_hours', val:'0', type:'number', desc:'0원 유예 시간', confirm:false},
+    {no:44, phase:'Phase 4', cls:'phase-4', key:'auto_pause_cap', val:'1 (ON)', type:'toggle', desc:'캡 도달 자동 중단', confirm:false},
+    {no:45, phase:'Phase 4', cls:'phase-4', key:'cap_overflow_margin', val:'0%', type:'percent', desc:'캡 초과 마진', confirm:false},
+    {no:46, phase:'Phase 4', cls:'phase-4', key:'low_balance_alert', val:'1 (ON)', type:'toggle', desc:'잔액 부족 알림', confirm:false},
+    {no:47, phase:'Phase 4', cls:'phase-4', key:'alert_threshold_days', val:'3', type:'number', desc:'알림 기준일수', confirm:false},
+    {no:48, phase:'Phase 4', cls:'phase-4', key:'alert_threshold_amount', val:'100,000', type:'currency', desc:'알림 기준금액(원)', confirm:true},
+    // Phase 5
+    {no:49, phase:'Phase 5', cls:'phase-5', key:'charge_product_1_price', val:'50,000', type:'currency', desc:'충전 상품 1 금액', confirm:true},
+    {no:50, phase:'Phase 5', cls:'phase-5', key:'charge_product_1_bonus', val:'0%', type:'percent', desc:'충전 상품 1 보너스', confirm:true},
+    {no:51, phase:'Phase 5', cls:'phase-5', key:'charge_product_2_price', val:'100,000', type:'currency', desc:'충전 상품 2 금액', confirm:true},
+    {no:52, phase:'Phase 5', cls:'phase-5', key:'charge_product_2_bonus', val:'3%', type:'percent', desc:'충전 상품 2 보너스', confirm:true},
+    {no:53, phase:'Phase 5', cls:'phase-5', key:'charge_product_3_price', val:'300,000', type:'currency', desc:'충전 상품 3 금액', confirm:true},
+    {no:54, phase:'Phase 5', cls:'phase-5', key:'charge_product_3_bonus', val:'5%', type:'percent', desc:'충전 상품 3 보너스', confirm:true},
+    {no:55, phase:'Phase 5', cls:'phase-5', key:'charge_product_4_price', val:'500,000', type:'currency', desc:'충전 상품 4 금액', confirm:true},
+    {no:56, phase:'Phase 5', cls:'phase-5', key:'charge_product_4_bonus', val:'8%', type:'percent', desc:'충전 상품 4 보너스', confirm:true},
+    {no:57, phase:'Phase 5', cls:'phase-5', key:'charge_product_5_price', val:'1,000,000', type:'currency', desc:'충전 상품 5 금액', confirm:true},
+    {no:58, phase:'Phase 5', cls:'phase-5', key:'charge_product_5_bonus', val:'12%', type:'percent', desc:'충전 상품 5 보너스', confirm:true},
+    {no:59, phase:'Phase 5', cls:'phase-5', key:'vat_rate', val:'10%', type:'percent', desc:'VAT 세율', confirm:false},
+    // Phase 7
+    {no:60, phase:'Phase 7', cls:'phase-7', key:'ai_billing_enabled', val:'0 (OFF)', type:'toggle', desc:'AI 과금 ON/OFF', confirm:true},
+    {no:61, phase:'Phase 7', cls:'phase-7', key:'ai_base_cost', val:'50', type:'currency', desc:'AI 기본 과금(원)', confirm:true},
+    {no:62, phase:'Phase 7', cls:'phase-7', key:'ai_review_cost', val:'30', type:'currency', desc:'AI 후기분석(원)', confirm:true},
+    {no:63, phase:'Phase 7', cls:'phase-7', key:'ai_ad_cost', val:'50', type:'currency', desc:'AI 광고생성(원)', confirm:true},
+    {no:64, phase:'Phase 7', cls:'phase-7', key:'ai_suggest_cost', val:'100', type:'currency', desc:'AI 추천(원)', confirm:true},
+    {no:65, phase:'Phase 7', cls:'phase-7', key:'ai_image_cost', val:'200', type:'currency', desc:'AI 이미지(원)', confirm:true},
+    {no:66, phase:'Phase 7', cls:'phase-7', key:'ai_test_mode', val:'1 (ON)', type:'toggle', desc:'AI 테스트 모드', confirm:true},
+];
+
+// === localStorage helper ===
+const STORE_KEY = 'cpv_report_data';
+function loadStore() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
+}
+function saveStore(data) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(data));
+    console.log('[CPV Report] localStorage saved:', Object.keys(data).length, 'keys');
+}
+const store = loadStore();
+console.log('[CPV Report] Loaded store:', store);
+
+// === Screenshot gallery with buttons ===
+const screenshots = [
+    { file:'admin_cpv_settings.php', img:'cpv_settings.png', label:'CPV 통합 설정', icon:'bi-sliders', color:'text-primary' },
+    { file:'admin_wallet.php', img:'cpv_wallet.png', label:'지갑 관리', icon:'bi-wallet2', color:'text-success' },
+    { file:'admin_cpv_rates.php', img:'cpv_rates.png', label:'단가 규칙', icon:'bi-calculator', color:'text-warning' },
+    { file:'admin_cpv_dashboard.php', img:'cpv_dashboard.png', label:'CPV 대시보드', icon:'bi-speedometer2', color:'text-info' },
+    { file:'admin_settlement.php', img:'cpv_settlement.png', label:'정산 리포트', icon:'bi-receipt', color:'text-danger' },
+    { file:'partner_wallet.php?hospital_id=8093', img:'partner_wallet.png', label:'파트너 지갑', icon:'bi-building', color:'text-primary' },
+    { file:'partner_settings.php?hospital_id=8093', img:'partner_settings.png', label:'파트너 설정', icon:'bi-gear', color:'text-secondary' },
+];
+const gallery = document.getElementById('screenshotGallery');
+screenshots.forEach(s => {
+    const col = document.createElement('div');
+    col.className = 'col-lg-6';
+    col.innerHTML = `
+        <div class="border rounded-3 overflow-hidden">
+            <div class="px-3 py-2 bg-body-secondary fw-bold small d-flex align-items-center">
+                <i class="bi ${s.icon} me-1 ${s.color}"></i>${s.label} — ${s.file.split('?')[0]}
+                <a href="${s.file}" target="_blank" class="btn btn-sm btn-outline-primary ms-auto" title="실제 페이지 열기">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>페이지 이동
+                </a>
+            </div>
+            <a href="cpv_screenshots/${s.img}" target="_blank">
+                <img src="cpv_screenshots/${s.img}" class="w-100" alt="${s.label}" style="cursor:zoom-in;" loading="lazy">
+            </a>
+        </div>`;
+    gallery.appendChild(col);
+});
+console.log('[CPV Report] Screenshots gallery rendered:', screenshots.length);
+
+// === Settings table with confirm inputs ===
+const tbody = document.getElementById('settingsBody');
+const typeIcons = {toggle:'bi-toggle-on',number:'bi-123',currency:'bi-currency-exchange',percent:'bi-percent',select:'bi-list',text:'bi-fonts'};
+settings.forEach(s => {
+    const tr = document.createElement('tr');
+    const storeKey = 'setting_' + s.key;
+    const savedVal = store[storeKey] || '';
+    const confirmCell = s.confirm
+        ? `<input type="text" class="form-control form-control-sm confirm-input" data-key="${storeKey}" value="${savedVal}" placeholder="변경값/OK 입력" style="font-size:0.82rem;">`
+        : '<span class="text-muted">-</span>';
+    tr.innerHTML = `
+        <td class="fw-bold text-muted">${s.no}</td>
+        <td><span class="phase-badge ${s.cls}">${s.phase}</span></td>
+        <td><code>${s.key}</code></td>
+        <td class="fw-semibold">${s.val}</td>
+        <td><i class="bi ${typeIcons[s.type]||'bi-gear'} me-1 text-muted"></i>${s.type}</td>
+        <td>${s.desc}</td>
+        <td style="min-width:140px;">${confirmCell}</td>
+    `;
+    tbody.appendChild(tr);
+});
+console.log('[CPV Report] Settings table rendered:', settings.length, 'rows');
+
+// === Confirm items table ===
+const confirmItems = [
+    { group:'기본 단가', icon:'bi-cash-coin', items: [
+        {no:1, label:'기본 CPV 단가', val:'200원/뷰', badgeCls:'bg-primary', desc:'병원 페이지 1회 조회 시 기본 과금액'},
+        {no:2, label:'최대 단가', val:'5,000원', badgeCls:'bg-danger', desc:'가중치 전부 적용 시 상한선'},
+        {no:3, label:'최소 단가', val:'50원', badgeCls:'bg-success', desc:'가중치 전부 적용 시 하한선'},
+    ]},
+    { group:'키워드 가중치', icon:'bi-tag', items: [
+        {no:4, label:'눈성형', val:'x1.5', badgeCls:'bg-info', desc:'200원 x 1.5 = <b>300원</b>'},
+        {no:5, label:'코성형', val:'x1.3', badgeCls:'bg-info', desc:'200원 x 1.3 = <b>260원</b>'},
+        {no:6, label:'피부과', val:'x1.0', badgeCls:'bg-info', desc:'200원 x 1.0 = <b>200원</b>'},
+        {no:7, label:'치과', val:'x0.8', badgeCls:'bg-info', desc:'200원 x 0.8 = <b>160원</b>'},
+    ]},
+    { group:'시술 가중치', icon:'bi-bandaid', items: [
+        {no:8, label:'프리미엄 시술', val:'x2.0', badgeCls:'bg-warning text-dark', desc:'고가 시술 (눈+프리미엄 = 200x1.5x2.0 = <b>600원</b>)'},
+        {no:9, label:'할인 시술', val:'x0.7', badgeCls:'bg-secondary', desc:'저가 시술'},
+    ]},
+    { group:'이벤트 / 평점', icon:'bi-calendar-event', items: [
+        {no:10, label:'이벤트 진행중', val:'x1.5', badgeCls:'bg-success', desc:'이벤트 기간 중 가중치'},
+        {no:11, label:'고평점 병원', val:'x1.3', badgeCls:'bg-primary', desc:'평점 4.5점 이상'},
+    ]},
+    { group:'예산 / 보호', icon:'bi-shield-check', items: [
+        {no:12, label:'일일 예산 한도', val:'50,000원', badgeCls:'bg-dark', desc:'병원당 하루 최대 과금액'},
+        {no:13, label:'중복 방지 시간', val:'30분', badgeCls:'bg-secondary', desc:'같은 사용자 재방문 시 무과금'},
+        {no:14, label:'일일 조회 한도', val:'10건', badgeCls:'bg-secondary', desc:'같은 사용자 하루 최대 과금 횟수'},
+        {no:15, label:'잔액 부족 알림', val:'100,000원', badgeCls:'bg-secondary', desc:'이 금액 이하 시 관리자 알림'},
+    ]},
+    { group:'충전 상품', icon:'bi-credit-card', items: [
+        {no:16, label:'5만원 충전', val:'보너스 0%', badgeCls:'bg-secondary', desc:'50,000원 → 50,000원'},
+        {no:17, label:'10만원 충전', val:'보너스 3%', badgeCls:'bg-info', desc:'100,000원 → 103,000원'},
+        {no:18, label:'30만원 충전', val:'보너스 5%', badgeCls:'bg-info', desc:'300,000원 → 315,000원'},
+        {no:19, label:'50만원 충전', val:'보너스 8%', badgeCls:'bg-primary', desc:'500,000원 → 540,000원'},
+        {no:20, label:'100만원 충전', val:'보너스 12%', badgeCls:'bg-success', desc:'1,000,000원 → 1,120,000원'},
+        {no:21, label:'PG 수수료', val:'3.3%', badgeCls:'bg-dark', desc:'이니시스 수수료율'},
+    ]},
+    { group:'AI 과금', icon:'bi-robot', items: [
+        {no:22, label:'AI 기본 과금', val:'50원/건', badgeCls:'bg-secondary', desc:'AI 기본 기능 사용 시'},
+        {no:23, label:'AI 후기분석', val:'30원/건', badgeCls:'bg-secondary', desc:'AI 후기 분석/요약'},
+        {no:24, label:'AI 광고생성', val:'50원/건', badgeCls:'bg-secondary', desc:'AI 광고 카피 생성'},
+        {no:25, label:'AI 추천', val:'100원/건', badgeCls:'bg-secondary', desc:'AI 개인화 추천'},
+        {no:26, label:'AI 이미지', val:'200원/건', badgeCls:'bg-secondary', desc:'AI 이미지 생성/편집'},
+    ]},
+    { group:'활성화', icon:'bi-power', items: [
+        {no:27, label:'마스터 스위치 ON 시점', val:'미정', badgeCls:'bg-danger', desc:'언제 실제 과금 시작?'},
+    ]},
+];
+const confirmBody = document.getElementById('confirmBody');
+confirmItems.forEach(g => {
+    const hdr = document.createElement('tr');
+    hdr.innerHTML = `<td colspan="5" class="fw-bold bg-body-secondary"><i class="bi ${g.icon} me-1"></i>${g.group}</td>`;
+    confirmBody.appendChild(hdr);
+    g.items.forEach(item => {
+        const tr = document.createElement('tr');
+        const storeKey = 'confirm_' + item.no;
+        const savedVal = store[storeKey] || '';
+        tr.innerHTML = `
+            <td>${item.no}</td>
+            <td class="fw-semibold">${item.label}</td>
+            <td><span class="badge ${item.badgeCls}">${item.val}</span></td>
+            <td>${item.desc}</td>
+            <td><input type="text" class="form-control form-control-sm confirm-input" data-key="${storeKey}" value="${savedVal}" placeholder="OK / 변경값 입력" style="font-size:0.82rem;"></td>
+        `;
+        confirmBody.appendChild(tr);
+    });
+});
+console.log('[CPV Report] Confirm items rendered:', 27, 'items');
+
+// === Auto-save confirm inputs ===
+let saveTimer = null;
+document.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('confirm-input')) return;
+    const key = e.target.dataset.key;
+    const val = e.target.value.trim();
+    store[key] = val;
+    if (val === '') delete store[key];
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => saveStore(store), 300);
+    console.log('[CPV Report] Input changed:', key, '=', val);
+});
+
+// === Dark mode ===
+function toggleTheme() {
+    const html = document.documentElement;
+    const icon = document.getElementById('themeIcon');
+    const isDark = html.getAttribute('data-bs-theme') === 'dark';
+    html.setAttribute('data-bs-theme', isDark ? 'light' : 'dark');
+    icon.className = isDark ? 'bi bi-moon-stars' : 'bi bi-sun';
+    console.log('[CPV Report] Theme:', isDark ? 'light' : 'dark');
+}
+if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.setAttribute('data-bs-theme', 'dark');
+    document.getElementById('themeIcon').className = 'bi bi-sun';
+}
+
+
+
+// === Tab change logging ===
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', (e) => {
+        console.log('[CPV Report] Tab:', e.target.textContent.trim());
+    });
+});
+
+// === Scroll animations ===
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+console.timeEnd('[CPV Report] Total init');
+console.log('[CPV Report] Ready. Files:', 19, 'DB:', 8, 'Settings:', 73, 'Confirm:', 27);
+</script>
+</body>
+</html>

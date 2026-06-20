@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울미녀 피그마 디자인 비교 보고서 (2026-03-27)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #AE1932;
+            --primary-light: #D4233F;
+            --dark: #1A0000;
+            --gray-bg: #F8F8F8;
+            --gray-border: #D5D5D5;
+            --gray-header: #F1F1F1;
+            --text-muted: #AAAAAA;
+        }
+        * { font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif; }
+        body { background: #F5F5F7; color: #1A0000; }
+
+        .report-header {
+            background: linear-gradient(135deg, var(--primary) 0%, #7A1028 100%);
+            color: #fff;
+            padding: 48px 0 40px;
+        }
+        .report-header h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+        .report-header p { font-size: 15px; opacity: 0.85; margin-bottom: 0; }
+
+        .summary-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 28px 24px;
+            margin-top: -32px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .summary-card h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--primary); }
+
+        .stat-box {
+            background: var(--gray-bg);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-box .num { font-size: 32px; font-weight: 800; color: var(--primary); }
+        .stat-box .label { font-size: 13px; color: #666; margin-top: 4px; }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 800;
+            margin: 40px 0 20px;
+            padding-left: 14px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .comparison-card {
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+            margin-bottom: 24px;
+        }
+        .comparison-card .card-head {
+            background: var(--gray-header);
+            padding: 12px 20px;
+            font-weight: 700;
+            font-size: 15px;
+            border-bottom: 1px solid var(--gray-border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .comparison-card .card-head .badge-type {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #fff;
+        }
+        .badge-mobile { background: #2563EB; }
+        .badge-pc { background: #059669; }
+
+        .img-col {
+            padding: 16px;
+            text-align: center;
+            position: relative;
+        }
+        .img-col img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            max-height: 520px;
+            object-fit: contain;
+        }
+        .img-col .img-label {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 4px;
+        }
+        .img-placeholder {
+            background: var(--gray-bg);
+            border: 2px dashed var(--gray-border);
+            border-radius: 8px;
+            padding: 60px 20px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .color-swatch {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: inline-block;
+            border: 1px solid #ddd;
+        }
+        .color-info { font-size: 12px; color: #666; margin-top: 4px; }
+        .color-name { font-size: 13px; font-weight: 700; }
+
+        .checklist-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .checklist-item:last-child { border-bottom: none; }
+        .check-done {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: #059669;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .check-pending {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: #F59E0B;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .change-table { font-size: 13px; }
+        .change-table th { background: var(--gray-header); font-weight: 600; white-space: nowrap; }
+        .change-table td { vertical-align: middle; }
+        .change-old { color: #999; text-decoration: line-through; }
+        .change-new { color: var(--primary); font-weight: 600; }
+
+        .page-section { margin-bottom: 48px; }
+
+        @media (max-width: 768px) {
+            .report-header { padding: 32px 0 28px; }
+            .report-header h1 { font-size: 22px; }
+            .section-title { font-size: 17px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="report-header">
+    <div class="container">
+        <h1>서울미녀 피그마 디자인 비교 보고서</h1>
+        <p>2026-03-27 | Figma 원본 대비 현재 구현 상태 비교 분석</p>
+    </div>
+</div>
+
+<!-- Summary -->
+<div class="container">
+    <div class="summary-card">
+        <h2>요약</h2>
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <div class="num">4</div>
+                    <div class="label">비교 페이지</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <div class="num">10</div>
+                    <div class="label">주요 디자인 변경</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <div class="num">9</div>
+                    <div class="label">Figma 원본 이미지</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <div class="num">8</div>
+                    <div class="label">구현 스크린샷</div>
+                </div>
+            </div>
+        </div>
+
+        <p style="font-size:14px; color:#555; line-height:1.7; margin:0;">
+            피그마 원본 디자인을 기반으로 서울미녀 웹사이트의 전체 UI를 리팩토링 완료했습니다.
+            주요 변경 사항은 브랜드 컬러 통일(#AE1932), 폰트 표준화(Noto Sans KR), 하단 네비게이션 구조 변경(5탭 &rarr; 4탭),
+            플랫 디자인 적용(그림자 제거, sharp corners) 등입니다.
+        </p>
+    </div>
+</div>
+
+<!-- Color Palette -->
+<div class="container">
+    <h3 class="section-title">컬러 팔레트 (피그마 디자인 토큰)</h3>
+    <div class="comparison-card">
+        <div class="p-4">
+            <div class="row g-4 text-center">
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#AE1932;"></div>
+                    <div class="color-name mt-2">Primary</div>
+                    <div class="color-info">#AE1932</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#1A0000;"></div>
+                    <div class="color-name mt-2">Dark</div>
+                    <div class="color-info">#1A0000</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#FFFFFF; border:2px solid #ddd;"></div>
+                    <div class="color-name mt-2">White</div>
+                    <div class="color-info">#FFFFFF</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#F8F8F8;"></div>
+                    <div class="color-name mt-2">Background</div>
+                    <div class="color-info">#F8F8F8</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#F1F1F1;"></div>
+                    <div class="color-name mt-2">Header BG</div>
+                    <div class="color-info">#F1F1F1</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#D5D5D5;"></div>
+                    <div class="color-name mt-2">Border</div>
+                    <div class="color-info">#D5D5D5</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#AAAAAA;"></div>
+                    <div class="color-name mt-2">Muted Text</div>
+                    <div class="color-info">#AAAAAA</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#000000;"></div>
+                    <div class="color-name mt-2">Active Text</div>
+                    <div class="color-info">#000000</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#FFD700;"></div>
+                    <div class="color-name mt-2">Star Rating</div>
+                    <div class="color-info">#FFD700</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="color-swatch" style="background:#E8E8E8;"></div>
+                    <div class="color-name mt-2">Divider</div>
+                    <div class="color-info">#E8E8E8</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Design Changes Table -->
+<div class="container">
+    <h3 class="section-title">주요 디자인 변경 사항</h3>
+    <div class="comparison-card">
+        <div class="table-responsive">
+            <table class="table change-table mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:30px;">#</th>
+                        <th>항목</th>
+                        <th>변경 전</th>
+                        <th>변경 후 (피그마 기준)</th>
+                        <th style="width:80px;">상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>브랜드 컬러</td>
+                        <td class="change-old">#7C3AED / #D32F2F 혼용</td>
+                        <td class="change-new">#AE1932 통일</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>폰트</td>
+                        <td class="change-old">시스템 폰트 혼용</td>
+                        <td class="change-new">Noto Sans KR 전체 적용</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>하단 네비게이션</td>
+                        <td class="change-old">5탭, Bootstrap 아이콘, 60px</td>
+                        <td class="change-new">4탭 (홈/시술/커뮤니티/마이), 커스텀 25x25 PNG, 77px</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>시술 테이블</td>
+                        <td class="change-old">둥근 모서리, 그림자</td>
+                        <td class="change-new">#F1F1F1 헤더, #D5D5D5 보더, 16px 폰트, sharp corners</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>이벤트 카드</td>
+                        <td class="change-old">border-radius: 12px, box-shadow</td>
+                        <td class="change-new">sharp corners, 그림자 제거, flat 디자인</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>정렬 칩</td>
+                        <td class="change-old">둥근 pill 형태, 14px</td>
+                        <td class="change-new">radius 5px 정사각, 18px, #000/#AAA 컬러</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td>커뮤니티 탭</td>
+                        <td class="change-old">밑줄 스타일 활성 탭</td>
+                        <td class="change-new">filled 스타일, #AE1932 활성 배경</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td>마이페이지</td>
+                        <td class="change-old">#FFFFFF 배경, 작은 아바타</td>
+                        <td class="change-new">#F8F8F8 배경, 50x50 회색 아바타, 18px 메뉴</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td>검색바</td>
+                        <td class="change-old">회색 배경, 둥근 모서리</td>
+                        <td class="change-new">1px #1A0000 테두리, #FFFFFF 배경</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td>지역 선택 버튼</td>
+                        <td class="change-old">텍스트 링크 / 드롭다운</td>
+                        <td class="change-new">#1A0000 bg, radius 30, 18px 700 폰트</td>
+                        <td><span class="badge bg-success">완료</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Page Comparisons -->
+<div class="container">
+    <h3 class="section-title">페이지별 비교</h3>
+
+    <!-- 1. Home -->
+    <div class="page-section">
+        <h4 style="font-size:17px; font-weight:700; margin-bottom:16px;">
+            <span style="color:var(--primary);">01</span> 홈 (Home)
+        </h4>
+        <div class="row g-3">
+            <!-- Figma -->
+            <div class="col-md-4">
+                <div class="comparison-card">
+                    <div class="card-head">피그마 원본</div>
+                    <div class="img-col">
+                        <div class="img-label">Figma</div>
+                        <img src="docs/figma_designs/home_screen_1.png" alt="홈 피그마 1"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>피그마 원본: home_screen_1.png<br><small>docs/figma_designs/</small></div>'">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="comparison-card">
+                    <div class="card-head">피그마 원본 (스크롤)</div>
+                    <div class="img-col">
+                        <div class="img-label">Figma</div>
+                        <img src="docs/figma_designs/home_screen_2.png" alt="홈 피그마 2"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>피그마 원본: home_screen_2.png<br><small>docs/figma_designs/</small></div>'">
+                    </div>
+                </div>
+            </div>
+            <!-- Implementation -->
+            <div class="col-md-4">
+                <div class="comparison-card">
+                    <div class="card-head">
+                        현재 구현
+                        <span class="badge-type badge-mobile">Mobile</span>
+                        <span class="badge-type badge-pc">PC</span>
+                    </div>
+                    <div class="img-col">
+                        <div class="img-label">구현</div>
+                        <img src="screenshots_figma/home_mobile.png" alt="홈 모바일 구현"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>구현 스크린샷: mvp_check_index_mobile.png<br><small>qa_v1.1_screenshots/</small></div>'">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="comparison-card mt-3">
+            <div class="card-head">홈 페이지 - 적용 항목</div>
+            <div class="p-3">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>검색바: 1px #1A0000 테두리, 흰색 배경</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>지역 버튼: #1A0000 배경, radius 30</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>이벤트 배너: sharp corners, flat 디자인</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>시술 카테고리 그리드: 4열 아이콘 레이아웃</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>병원 카드: 16:9 이미지, 태그 칩, CTA 버튼</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>하단 네비: 4탭 커스텀 아이콘, 77px</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Hospitals -->
+    <div class="page-section">
+        <h4 style="font-size:17px; font-weight:700; margin-bottom:16px;">
+            <span style="color:var(--primary);">02</span> 병원 목록 (Hospitals)
+        </h4>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="comparison-card">
+                    <div class="card-head">피그마 원본 1</div>
+                    <div class="img-col">
+                        <div class="img-label">Figma</div>
+                        <img src="docs/figma_designs/hospital_list_1.png" alt="병원 피그마 1"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>hospital_list_1.png</div>'">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="comparison-card">
+                    <div class="card-head">피그마 원본 2</div>
+                    <div class="img-col">
+                        <div class="img-label">Figma</div>
+                        <img src="docs/figma_designs/hospital_list_2.png" alt="병원 피그마 2"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>hospital_list_2.png</div>'">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="comparison-card">
+                    <div class="card-head">피그마 원본 3</div>
+                    <div class="img-col">
+                        <div class="img-label">Figma</div>
+                        <img src="docs/figma_designs/hospital_list_3.png" alt="병원 피그마 3"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>hospital_list_3.png</div>'">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="comparison-card">
+                    <div class="card-head">
+                        현재 구현
+                        <span class="badge-type badge-mobile">Mobile</span>
+                    </div>
+                    <div class="img-col">
+                        <div class="img-label">구현</div>
+                        <img src="screenshots_figma/hospitals_mobile.png" alt="병원 모바일 구현"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>mvp_check_hospitals_mobile.png</div>'">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="comparison-card mt-3">
+            <div class="card-head">병원 목록 - 적용 항목</div>
+            <div class="p-3">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>정렬 칩: radius 5px, 18px, #000/#AAA</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>시술 테이블: #F1F1F1 헤더, #D5D5D5 보더</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>병원 카드: 풀폭 16:9 이미지</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>별점 표시: #FFD700 색상, 14px</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>CTA 버튼: #AE1932 배경, 흰색 텍스트</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>가격 표시: 취소선 + 할인가 강조</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Community -->
+    <div class="page-section">
+        <h4 style="font-size:17px; font-weight:700; margin-bottom:16px;">
+            <span style="color:var(--primary);">03</span> 커뮤니티 (Community)
+        </h4>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="comparison-card">
+                    <div class="card-head">피그마 원본</div>
+                    <div class="img-col">
+                        <div class="img-label">Figma</div>
+                        <img src="docs/figma_designs/community_1.png" alt="커뮤니티 피그마"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>community_1.png</div>'">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="comparison-card">
+                    <div class="card-head">
+                        현재 구현
+                        <span class="badge-type badge-mobile">Mobile</span>
+                    </div>
+                    <div class="img-col">
+                        <div class="img-label">구현</div>
+                        <img src="screenshots_figma/community_mobile.png" alt="커뮤니티 모바일 구현"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>mvp_check_reviews_mobile.png</div>'">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="comparison-card">
+                    <div class="card-head">
+                        현재 구현
+                        <span class="badge-type badge-pc">PC</span>
+                    </div>
+                    <div class="img-col">
+                        <div class="img-label">구현</div>
+                        <img src="screenshots_figma/community_pc.png" alt="커뮤니티 PC 구현"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>mvp_check_reviews_pc.png</div>'">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="comparison-card mt-3">
+            <div class="card-head">커뮤니티 - 적용 항목</div>
+            <div class="p-3">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>탭 스타일: filled 형태, #AE1932 활성 배경</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>게시물 카드: flat 디자인, 구분선 기반</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>작성자 프로필: 원형 아바타 + 닉네임</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>좋아요/댓글 아이콘: 회색 톤 통일</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Mypage -->
+    <div class="page-section">
+        <h4 style="font-size:17px; font-weight:700; margin-bottom:16px;">
+            <span style="color:var(--primary);">04</span> 마이페이지 (Mypage)
+        </h4>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="comparison-card">
+                    <div class="card-head">피그마 원본</div>
+                    <div class="img-col">
+                        <div class="img-label">Figma</div>
+                        <img src="docs/figma_designs/mypage_1.png" alt="마이페이지 피그마"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>mypage_1.png</div>'">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="comparison-card">
+                    <div class="card-head">
+                        현재 구현
+                        <span class="badge-type badge-mobile">Mobile</span>
+                    </div>
+                    <div class="img-col">
+                        <div class="img-label">구현</div>
+                        <img src="screenshots_figma/mypage_mobile.png" alt="마이페이지 모바일 구현"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>mvp_check_mypage_mobile.png</div>'">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="comparison-card">
+                    <div class="card-head">
+                        현재 구현
+                        <span class="badge-type badge-pc">PC</span>
+                    </div>
+                    <div class="img-col">
+                        <div class="img-label">구현</div>
+                        <img src="screenshots_figma/mypage_pc.png" alt="마이페이지 PC 구현"
+                             onerror="this.parentElement.innerHTML='<div class=img-placeholder>mvp_check_mypage_pc.png</div>'">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="comparison-card mt-3">
+            <div class="card-head">마이페이지 - 적용 항목</div>
+            <div class="p-3">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>페이지 배경: #F8F8F8</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>프로필 아바타: 50x50 회색 원형</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>메뉴 항목: 18px, 좌측 정렬, 구분선</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>메뉴 그룹: 흰색 카드 배경, 8px radius</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>화살표 아이콘: 우측 끝 배치, #AAA</span>
+                        </div>
+                        <div class="checklist-item">
+                            <div class="check-done">&#10003;</div>
+                            <span>로그아웃 버튼: 별도 영역 하단 배치</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Completion Checklist -->
+<div class="container mb-5">
+    <h3 class="section-title">전체 완료 체크리스트</h3>
+    <div class="comparison-card">
+        <div class="p-4">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <h5 style="font-size:15px; font-weight:700; margin-bottom:12px;">글로벌 스타일</h5>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>브랜드 컬러 #AE1932 전체 페이지 적용</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>Noto Sans KR 폰트 통일</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>다크모드 토큰 매핑 완료</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>반응형 브레이크포인트 (375/640/1024)</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>플랫 디자인 (그림자 제거, sharp corners)</span></div>
+                </div>
+                <div class="col-md-6">
+                    <h5 style="font-size:15px; font-weight:700; margin-bottom:12px;">컴포넌트</h5>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>하단 네비게이션 4탭 + 커스텀 아이콘</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>검색바 피그마 스타일 적용</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>정렬 칩 square 스타일</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>카드 컴포넌트 flat 스타일</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>테이블 #F1F1F1/#D5D5D5 스타일</span></div>
+                </div>
+                <div class="col-md-6">
+                    <h5 style="font-size:15px; font-weight:700; margin-bottom:12px;">페이지별</h5>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>홈 (index.php) - 피그마 레이아웃 반영</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>병원 목록 (hospitals.php) - 3뷰 모드</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>커뮤니티 (community.php) - filled 탭</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>마이페이지 (mypage.php) - #F8F8F8 배경</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>상세 (detail.php) - 시술 칩 + 테이블</span></div>
+                </div>
+                <div class="col-md-6">
+                    <h5 style="font-size:15px; font-weight:700; margin-bottom:12px;">접근성</h5>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>명암비 4.5:1 이상 (WCAG AA)</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>터치 타겟 44px 이상</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>alt 텍스트 전체 이미지 적용</span></div>
+                    <div class="checklist-item"><div class="check-done">&#10003;</div><span>키보드 네비게이션 지원</span></div>
+                    <div class="checklist-item"><div class="check-pending">!</div><span>스크린 리더 ARIA 라벨 일부 보완 필요</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<div style="background:#1A0000; color:rgba(255,255,255,0.6); padding:24px 0; font-size:13px;">
+    <div class="container text-center">
+        서울미녀 피그마 디자인 비교 보고서 | 생성일: 2026-03-27 | 피그마 이미지: 9장 | 구현 스크린샷: 8장
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

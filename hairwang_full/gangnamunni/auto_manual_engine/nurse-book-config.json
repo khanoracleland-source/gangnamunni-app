@@ -1,0 +1,68 @@
+{
+  "_comment": "서울미녀 간호사 뷰 매뉴얼",
+  "_version": "1.0",
+  "configKey": "nurse-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/hairwang/gangnamunni/",
+  "browser": {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "headless": true
+  },
+  "login": {
+    "required": true,
+    "url": "dashboard.php",
+    "usernameField": "input[name='username']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[name='login']",
+    "successIndicator": ".admin-sidebar",
+    "username": "admin",
+    "password": "admin123"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 성공 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "서울미녀 간호사 매뉴얼",
+    "outputDir": "../uploads/nurse-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_nurse",
+      "title": "간호사 관리",
+      "icon": "bi-person-badge",
+      "pages": [
+        {
+          "key": "admin_nurses",
+          "label": "간호사 목록",
+          "url": "admin_nurses.php",
+          "description": "간호사 목록 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

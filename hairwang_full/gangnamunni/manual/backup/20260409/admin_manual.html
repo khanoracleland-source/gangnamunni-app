@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 매뉴얼 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-gear-wide-connected"></i> 관리자 매뉴얼</h1>
+        <div class="sb-subtitle">42개 관리 메뉴 상세 사용법 (그룹별 정리)</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="sb-main">
+  <div class="container">
+    <nav class="sb-breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">홈</a></li><li class="breadcrumb-item active">관리자 매뉴얼</li></ol></nav>
+
+    <div class="row">
+      <!-- TOC Sidebar -->
+      <div class="col-lg-3 order-lg-2 mb-4">
+        <div class="sb-toc">
+          <div class="sb-toc-title">관리 메뉴 (42개)</div>
+          <ul class="sb-toc-list">
+            <li><a href="#visual-screenshots"><i class="bi bi-images"></i> PC+모바일 이미지 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li><a href="#video-pc"><i class="bi bi-display"></i> PC 동영상 (10편)</a></li>
+            <li><a href="#video-mobile"><i class="bi bi-phone"></i> 폰 동영상 (4편)</a></li>
+            <li><a href="#overview">개요</a></li>
+            <li><a href="#sidebar-new">사이드바 개편 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li><a href="#page-desc-banner">페이지 설명 배너 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li><a href="#login-fix">로그인 수정 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">홈</strong></li>
+            <li><a href="#menu-dashboard">1. 대시보드</a></li>
+            <li><a href="#menu-guide">2. 메뉴 안내 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">콘텐츠 관리</strong></li>
+            <li><a href="#menu-reviews">3. 후기 관리</a></li>
+            <li><a href="#menu-review-wizard">4. 후기 검수</a></li>
+            <li><a href="#menu-hospital">5. 병원이미지</a></li>
+            <li><a href="#menu-ads">6. 광고 관리</a></li>
+            <li><a href="#menu-ad-settings">6-1. 광고·디스플레이 설정 <span class="sb-badge sb-badge-success" style="font-size:9px;">NEW</span></a></li>
+            <li><a href="#menu-categories">7. 카테고리</a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">신청 관리</strong></li>
+            <li><a href="#menu-hospital-wizard">8. 병원등록신청</a></li>
+            <li><a href="#menu-ad-wizard">9. 광고등록신청</a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">등록 관리</strong></li>
+            <li><a href="#menu-doctor">10. 의사 등록</a></li>
+            <li><a href="#menu-nurse">11. 간호사 등록</a></li>
+            <li><a href="#menu-pharmacist">12. 약사 등록</a></li>
+            <li><a href="#menu-patient">13. 환자 등록</a></li>
+            <li><a href="#menu-staff">14. 직원 등록</a></li>
+            <li><a href="#menu-medicine">15. 의약품 등록</a></li>
+            <li><a href="#menu-appointment">16. 예약 등록</a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">엑셀 관리</strong></li>
+            <li><a href="#menu-excel-import">17. 엑셀 대량등록</a></li>
+            <li><a href="#menu-excel-export">18. 검색/다운로드</a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">사용자/소통</strong></li>
+            <li><a href="#menu-members">19. 회원 관리</a></li>
+            <li><a href="#menu-mail">20. 메일함</a></li>
+            <li><a href="#menu-mail-templates">21. 상용구 관리</a></li>
+            <li><a href="#menu-mail-signatures">22. 서명 관리</a></li>
+            <li><a href="#menu-mail-accounts">23. 계정 설정</a></li>
+            <li><a href="#menu-mailserver">24. 메일서버(외부)</a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">AI / 자동화</strong></li>
+            <li><a href="#menu-ai">25. AI 설정</a></li>
+            <li><a href="#menu-auto-test">26. 자동 테스트</a></li>
+            <li><a href="#menu-auto-test-v2">27. 자동 테스트 v2</a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">사이트 설정</strong></li>
+            <li><a href="#menu-theme">28. 테마 설정</a></li>
+            <li><a href="#menu-theme-adv">29. 고급 테마</a></li>
+            <li><a href="#menu-nav">30. 네비게이션</a></li>
+            <li><a href="#menu-editor-settings">31. 에디터 설정</a></li>
+            <li><a href="#menu-maint">32. 점검 모드</a></li>
+            <li><a href="#menu-upgrade">33. 확장 계획</a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">관리/도움말</strong></li>
+            <li><a href="#menu-admins">34. 관리자 관리</a></li>
+            <li><a href="#menu-wizard-guide">35. 마법사 가이드</a></li>
+            <li><a href="#menu-auto-manual">36. 자동 매뉴얼</a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">시술/과금 관리</strong></li>
+            <li><a href="#menu-treatments">37. 시술 마스터 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li><a href="#menu-hospital-treatments">38. 병원별 시술 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li><a href="#menu-treatment-ranking">39. 시술 랭킹 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li style="margin-top:0.5rem;"><strong style="font-size:0.7rem;color:var(--sb-text-muted);">프로젝트 관리</strong></li>
+            <li><a href="#menu-client-spec">40. 기획서 대시보드 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li><a href="#menu-project-status">41. 프로젝트 현황 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+            <li><a href="#menu-qa-dashboard">42. QA 대시보드 <span class="sb-badge sb-badge-pass" style="font-size:0.6rem;padding:1px 4px;">NEW</span></a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="col-lg-9 order-lg-1">
+
+        <!-- ============================================ -->
+        <!-- 시각 자료 4섹션: PC이미지+폰이미지 / PC동영상 / 폰동영상 -->
+        <!-- ============================================ -->
+
+        <!-- SECTION 1: PC 이미지 + 폰 이미지 나란히 -->
+        <div class="sb-card mb-4" id="visual-screenshots">
+          <div class="sb-card-header"><h6 class="mb-0"><i class="bi bi-images me-2"></i>화면 캡처 — PC + 모바일</h6></div>
+          <div class="sb-card-body">
+            <p>주요 페이지를 PC(1280px)와 모바일(412px) 뷰포트로 각각 캡처한 이미지입니다. 클릭하면 확대됩니다.</p>
+
+            <h6 class="fw-bold mt-3 mb-2"><i class="bi bi-layout-text-window me-1"></i> 프론트엔드 (사용자 화면)</h6>
+            <div class="sb-ss-grid">
+              <div class="sb-ss-row">
+                <div class="sb-ss-pc"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/dashboard.png" alt="PC 대시보드" loading="lazy"><div class="sb-screenshot-caption">PC — 대시보드</div></div></div>
+                <div class="sb-ss-mob"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_index.png" alt="모바일 메인" loading="lazy"><div class="sb-screenshot-caption">모바일 — 메인 홈</div></div></div>
+              </div>
+              <div class="sb-ss-row">
+                <div class="sb-ss-pc"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_reviews.png" alt="PC 후기" loading="lazy"><div class="sb-screenshot-caption">PC — 후기 관리</div></div></div>
+                <div class="sb-ss-mob"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_reviews.png" alt="모바일 후기" loading="lazy"><div class="sb-screenshot-caption">모바일 — 후기 목록</div></div></div>
+              </div>
+              <div class="sb-ss-row">
+                <div class="sb-ss-pc"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_hospitals.png" alt="PC 병원" loading="lazy"><div class="sb-screenshot-caption">PC — 병원 관리</div></div></div>
+                <div class="sb-ss-mob"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_hospitals.png" alt="모바일 병원" loading="lazy"><div class="sb-screenshot-caption">모바일 — 병원 목록</div></div></div>
+              </div>
+              <div class="sb-ss-row">
+                <div class="sb-ss-pc"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_bookings.png" alt="PC 예약" loading="lazy"><div class="sb-screenshot-caption">PC — 예약 관리</div></div></div>
+                <div class="sb-ss-mob"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_booking.png" alt="모바일 예약" loading="lazy"><div class="sb-screenshot-caption">모바일 — 예약하기</div></div></div>
+              </div>
+              <div class="sb-ss-row">
+                <div class="sb-ss-pc"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_ads.png" alt="PC 광고" loading="lazy"><div class="sb-screenshot-caption">PC — 광고 관리</div></div></div>
+                <div class="sb-ss-mob"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_events.png" alt="모바일 이벤트" loading="lazy"><div class="sb-screenshot-caption">모바일 — 이벤트</div></div></div>
+              </div>
+              <div class="sb-ss-row">
+                <div class="sb-ss-pc"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_treatments.png" alt="PC 시술" loading="lazy"><div class="sb-screenshot-caption">PC — 시술 관리</div></div></div>
+                <div class="sb-ss-mob"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_treatment_ranking.png" alt="모바일 시술랭킹" loading="lazy"><div class="sb-screenshot-caption">모바일 — 시술 랭킹</div></div></div>
+              </div>
+              <div class="sb-ss-row">
+                <div class="sb-ss-pc"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_members.png" alt="PC 회원" loading="lazy"><div class="sb-screenshot-caption">PC — 회원 관리</div></div></div>
+                <div class="sb-ss-mob"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_detail.png" alt="모바일 상세" loading="lazy"><div class="sb-screenshot-caption">모바일 — 병원 상세</div></div></div>
+              </div>
+              <div class="sb-ss-row">
+                <div class="sb-ss-pc"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_ai_settings.png" alt="PC AI" loading="lazy"><div class="sb-screenshot-caption">PC — AI 설정</div></div></div>
+                <div class="sb-ss-mob"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_price_compare.png" alt="모바일 가격비교" loading="lazy"><div class="sb-screenshot-caption">모바일 — 가격 비교</div></div></div>
+              </div>
+            </div>
+
+            <h6 class="fw-bold mt-4 mb-2"><i class="bi bi-gear me-1"></i> 관리자 모바일 뷰</h6>
+            <div class="row g-2">
+              <div class="col-6 col-md-3"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_admin_dashboard.png" alt="관리자 대시보드 모바일" loading="lazy"><div class="sb-screenshot-caption">대시보드</div></div></div>
+              <div class="col-6 col-md-3"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_admin_reviews.png" alt="관리자 후기 모바일" loading="lazy"><div class="sb-screenshot-caption">후기 관리</div></div></div>
+              <div class="col-6 col-md-3"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_admin_hospitals.png" alt="관리자 병원 모바일" loading="lazy"><div class="sb-screenshot-caption">병원 관리</div></div></div>
+              <div class="col-6 col-md-3"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/mobile/mob_admin_bookings.png" alt="관리자 예약 모바일" loading="lazy"><div class="sb-screenshot-caption">예약 관리</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: PC 동작 동영상 -->
+        <div class="sb-card mb-4" id="video-pc">
+          <div class="sb-card-header"><h6 class="mb-0"><i class="bi bi-display me-2"></i>PC 동작 동영상 (10편)</h6></div>
+          <div class="sb-card-body">
+            <div class="row g-3">
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/01_login_dashboard.webm" type="video/webm"></video><div class="sb-video-title">1. 로그인 → 대시보드</div></div></div>
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/02_sidebar_navigation.webm" type="video/webm"></video><div class="sb-video-title">2. 사이드바 탐색</div></div></div>
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/03_reviews_management.webm" type="video/webm"></video><div class="sb-video-title">3. 후기 관리</div></div></div>
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/04_hospital_management.webm" type="video/webm"></video><div class="sb-video-title">4. 병원 관리 + 신청</div></div></div>
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/05_ad_settings.webm" type="video/webm"></video><div class="sb-video-title">5. 광고 설정 (7탭)</div></div></div>
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/06_bookings.webm" type="video/webm"></video><div class="sb-video-title">6. 예약/상담</div></div></div>
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/07_members_mail.webm" type="video/webm"></video><div class="sb-video-title">7. 회원 + 메일</div></div></div>
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/08_ai_settings.webm" type="video/webm"></video><div class="sb-video-title">8. AI 설정</div></div></div>
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/09_treatments.webm" type="video/webm"></video><div class="sb-video-title">9. 시술 관리</div></div></div>
+              <div class="col-md-6 col-lg-4"><div class="sb-video-card"><video controls preload="metadata" width="100%"><source src="videos/10_dev_feedback.webm" type="video/webm"></video><div class="sb-video-title">10. 개발 피드백</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 3: 폰 동작 동영상 -->
+        <div class="sb-card mb-4" id="video-mobile">
+          <div class="sb-card-header"><h6 class="mb-0"><i class="bi bi-phone me-2"></i>모바일 동작 동영상 (4편)</h6></div>
+          <div class="sb-card-body">
+            <div class="row g-3">
+              <div class="col-6 col-md-3"><div class="sb-video-card sb-video-mobile"><video controls preload="metadata" width="100%"><source src="videos/mobile/mob_01_browse.webm" type="video/webm"></video><div class="sb-video-title">1. 모바일 브라우징</div></div></div>
+              <div class="col-6 col-md-3"><div class="sb-video-card sb-video-mobile"><video controls preload="metadata" width="100%"><source src="videos/mobile/mob_02_detail_booking.webm" type="video/webm"></video><div class="sb-video-title">2. 상세 + 예약</div></div></div>
+              <div class="col-6 col-md-3"><div class="sb-video-card sb-video-mobile"><video controls preload="metadata" width="100%"><source src="videos/mobile/mob_03_reviews_events.webm" type="video/webm"></video><div class="sb-video-title">3. 후기 + 이벤트</div></div></div>
+              <div class="col-6 col-md-3"><div class="sb-video-card sb-video-mobile"><video controls preload="metadata" width="100%"><source src="videos/mobile/mob_04_admin_mobile.webm" type="video/webm"></video><div class="sb-video-title">4. 관리자 모바일</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Intro -->
+        <div class="sb-card mb-4" id="overview">
+          <div class="sb-card-body">
+            <h5 class="fw-bold mb-3">관리자 시스템 개요</h5>
+            <p>서울미녀 관리자 패널은 서울미녀 프론트엔드의 모든 콘텐츠와 설정을 관리합니다. Bootstrap 5.3 기반 반응형 UI에 다크/라이트 모드를 지원하며, 역할 기반 접근 제어(RBAC)로 보안을 강화했습니다.</p>
+            <div class="sb-note sb-note-success mb-3">
+              <span class="sb-note-icon"><i class="bi bi-stars"></i></span>
+              <div><strong>2026-03-27 업데이트:</strong> 시술 마스터 관리(대분류/중분류 CRUD, 드래그 정렬), 병원별 시술 배정, 시술 랭킹, 기획서 대시보드, 프로젝트 현황, QA 대시보드가 추가되었습니다. 총 메뉴 수가 <strong>36개 &rarr; 42개</strong>로 확대되었습니다.</div>
+            </div>
+            <div class="row g-3">
+              <div class="col-sm-4">
+                <div class="sb-note sb-note-info mb-0">
+                  <span class="sb-note-icon"><i class="bi bi-person-badge"></i></span>
+                  <div><strong>접근 URL</strong><br><code class="sb-code-inline" style="font-size:0.75rem;">/gangnamunni/dashboard.php</code></div>
+                </div>
+              </div>
+              <div class="col-sm-4">
+                <div class="sb-note sb-note-success mb-0">
+                  <span class="sb-note-icon"><i class="bi bi-shield-check"></i></span>
+                  <div><strong>인증</strong><br>세션 기반 + RBAC 권한</div>
+                </div>
+              </div>
+              <div class="col-sm-4">
+                <div class="sb-note sb-note-warning mb-0">
+                  <span class="sb-note-icon"><i class="bi bi-palette"></i></span>
+                  <div><strong>레이아웃</strong><br>상단바(50px) + 사이드바(220px)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 공통 레이아웃 -->
+        <div class="sb-card mb-4">
+          <div class="sb-card-header"><h6 class="mb-0"><i class="bi bi-layout-sidebar me-2"></i>공통 레이아웃 시스템</h6></div>
+          <div class="sb-card-body">
+            <table class="sb-table">
+              <thead><tr><th>구성요소</th><th>파일</th><th>설명</th></tr></thead>
+              <tbody>
+                <tr><td>공통 헤더</td><td><code class="sb-code-inline">includes/admin_header.php</code></td><td>Bootstrap 5.3 CDN, 상단바, 사이드바 렌더링, 메뉴 설명 배너</td></tr>
+                <tr><td>공통 푸터</td><td><code class="sb-code-inline">includes/admin_footer.php</code></td><td>Bootstrap JS, 테마 토글, 공통 JS 함수</td></tr>
+                <tr><td>인증</td><td><code class="sb-code-inline">includes/admin_auth.php</code></td><td>check_permission(), require_permission() 함수</td></tr>
+                <tr><td>업종 추상화</td><td><code class="sb-code-inline">includes/industry_terms.php</code></td><td>term() 함수로 업종별 용어 변환</td></tr>
+                <tr><td>캐시 초기화</td><td><code class="sb-code-inline">clear_cache.php</code></td><td>상단바 버튼 AJAX 호출</td></tr>
+              </tbody>
+            </table>
+            <div class="sb-code mt-3">
+<pre style="margin:0; color: var(--sb-text);">// 새 관리 페이지 생성 방법
+$admin_page_title = '페이지 제목';
+$admin_current = 'menu_key';  // 사이드바 활성 메뉴
+$admin_extra_css = ['custom.css'];  // 페이지별 CSS
+$admin_extra_js = ['custom.js'];    // 페이지별 JS
+include 'includes/admin_header.php';
+// ... 페이지 내용 ...
+// $menu_descriptions 배열에 key가 있으면 페이지 설명 배너가 자동 표시됨
+include 'includes/admin_footer.php';</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- NEW: 사이드바 개편 섹션 -->
+        <!-- ============================================ -->
+        <section id="sidebar-new" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">NEW</span> 사이드바 메뉴 개편 (2026-02-26)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>기존 18개 항목의 단순 나열 방식에서, <strong>5개 구분선 + 그룹 접기/펼치기</strong> 구조로 전면 개편되었습니다. 관련 메뉴끼리 그룹화하여 탐색 효율이 크게 향상됩니다.</p>
+
+              <h6 class="fw-bold mt-3">새로운 사이드바 구조</h6>
+              <div class="sb-code" style="padding:20px;overflow:visible"><div style="font-family:inherit;font-size:13px">
+  <div style="background:rgba(102,126,234,.12);border:1.5px solid rgba(102,126,234,.4);border-radius:10px;padding:10px 14px;margin-bottom:6px;font-weight:700">📊 대시보드</div>
+  <div style="background:rgba(255,193,7,.1);border:1.5px solid rgba(255,193,7,.4);border-radius:10px;padding:10px 14px;margin-bottom:6px;font-weight:700">📋 메뉴 안내 <span style="background:#ffc107;color:#000;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px">NEW</span></div>
+  <div style="border-left:3px solid rgba(255,107,53,.4);margin:6px 0 6px 8px;padding-left:12px;display:flex;flex-direction:column;gap:5px">
+    <div style="background:rgba(255,107,53,.1);border:1.5px solid rgba(255,107,53,.35);border-radius:8px;padding:8px 12px"><span style="color:#ff6b35;font-weight:700">▶ 콘텐츠 관리 (5)</span> <span style="color:var(--sb-text-muted,#888);font-size:11px">후기관리 · 후기검수 · 병원이미지 · 광고관리 · 카테고리</span></div>
+    <div style="background:rgba(255,107,53,.1);border:1.5px solid rgba(255,107,53,.35);border-radius:8px;padding:8px 12px"><span style="color:#ff6b35;font-weight:700">▶ 신청 관리 (2)</span> <span style="color:var(--sb-text-muted,#888);font-size:11px">병원등록신청 · 광고등록신청</span></div>
+    <div style="background:rgba(255,107,53,.1);border:1.5px solid rgba(255,107,53,.35);border-radius:8px;padding:8px 12px"><span style="color:#ff6b35;font-weight:700">▶ 등록 관리 (7)</span> <span style="color:var(--sb-text-muted,#888);font-size:11px">의사 · 간호사 · 약사 · 환자 · 직원 · 의약품 · 예약</span></div>
+    <div style="background:rgba(255,107,53,.1);border:1.5px solid rgba(255,107,53,.35);border-radius:8px;padding:8px 12px"><span style="color:#ff6b35;font-weight:700">▶ 엑셀 관리 (2)</span> <span style="color:var(--sb-text-muted,#888);font-size:11px">대량등록 · 검색/다운로드</span></div>
+  </div>
+  <div style="background:rgba(102,126,234,.12);border:1.5px solid rgba(102,126,234,.4);border-radius:10px;padding:10px 14px;margin-bottom:6px;font-weight:700">👥 회원 관리</div>
+  <div style="border-left:3px solid rgba(108,99,255,.4);margin:6px 0 6px 8px;padding-left:12px;display:flex;flex-direction:column;gap:5px">
+    <div style="background:rgba(108,99,255,.1);border:1.5px solid rgba(108,99,255,.35);border-radius:8px;padding:8px 12px"><span style="color:#6C63FF;font-weight:700">▶ 메일 관리 (5)</span> <span style="color:var(--sb-text-muted,#888);font-size:11px">메일함 · 상용구 · 서명 · 계정설정 · 메일서버(외부)</span></div>
+    <div style="background:rgba(108,99,255,.1);border:1.5px solid rgba(108,99,255,.35);border-radius:8px;padding:8px 12px"><span style="color:#6C63FF;font-weight:700">▶ AI / 자동화 (3)</span> <span style="color:var(--sb-text-muted,#888);font-size:11px">AI설정 · 자동테스트 · 자동테스트 v2</span></div>
+    <div style="background:rgba(108,99,255,.1);border:1.5px solid rgba(108,99,255,.35);border-radius:8px;padding:8px 12px"><span style="color:#6C63FF;font-weight:700">▶ 사이트 설정 (6)</span> <span style="color:var(--sb-text-muted,#888);font-size:11px">테마 · 고급테마 · 네비게이션 · 에디터설정 · 점검모드 · 확장계획</span></div>
+  </div>
+  <div style="background:rgba(102,126,234,.12);border:1.5px solid rgba(102,126,234,.4);border-radius:10px;padding:10px 14px;margin-bottom:6px;font-weight:700">🔑 관리자 관리</div>
+  <div style="border-left:3px solid rgba(40,167,69,.4);margin:6px 0 6px 8px;padding-left:12px">
+    <div style="background:rgba(40,167,69,.1);border:1.5px solid rgba(40,167,69,.35);border-radius:8px;padding:8px 12px"><span style="color:#28a745;font-weight:700">▶ 도움말 (2)</span> <span style="color:var(--sb-text-muted,#888);font-size:11px">마법사가이드 · 자동매뉴얼</span></div>
+  </div>
+</div></div>
+
+              <h6 class="fw-bold mt-3">구현 방식</h6>
+              <ul class="sb-feature-list">
+                <li><strong>그룹 메뉴:</strong> <code class="sb-code-inline">['type' =&gt; 'group', 'children' =&gt; [...]]</code> 배열 구조</li>
+                <li><strong>접기/펼치기:</strong> Bootstrap <code class="sb-code-inline">data-bs-toggle="collapse"</code> 활용, 현재 활성 그룹만 자동 펼침</li>
+                <li><strong>구분선:</strong> <code class="sb-code-inline">['type' =&gt; 'divider']</code>로 영역 구분</li>
+                <li><strong>권한 필터:</strong> 그룹 단위 + 하위 메뉴 단위 이중 RBAC 체크</li>
+                <li><strong>활성 메뉴 표시:</strong> 하위 메뉴 key 매칭 시 부모 그룹 자동 펼침 + 해당 메뉴 <code class="sb-code-inline">.active</code> 클래스</li>
+              </ul>
+
+              <div class="sb-code mt-3">
+<pre style="margin:0; color: var(--sb-text);">// admin_header.php 사이드바 메뉴 정의 (발췌)
+$admin_menus = [
+    ['url' =&gt; 'dashboard.php', 'label' =&gt; '대시보드', 'icon' =&gt; 'bi-speedometer2', 'key' =&gt; 'dashboard'],
+    ['url' =&gt; 'admin_menu_guide.php', 'label' =&gt; '메뉴 안내', 'icon' =&gt; 'bi-signpost-split', 'key' =&gt; 'menu_guide'],
+    ['type' =&gt; 'divider'],
+    ['type' =&gt; 'group', 'label' =&gt; '콘텐츠 관리', 'icon' =&gt; 'bi-collection', 'key' =&gt; 'content', 'children' =&gt; [
+        ['url' =&gt; 'admin_reviews.php', 'label' =&gt; '후기 관리', ...],
+        ['url' =&gt; 'admin_review_wizard.php', 'label' =&gt; '후기 검수', ...],
+        // ...
+    ]],
+    // ... 총 36개 메뉴
+];</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- NEW: 페이지 설명 배너 섹션 -->
+        <!-- ============================================ -->
+        <section id="page-desc-banner" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">NEW</span> 페이지 설명 배너 시스템 (2026-02-26)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>모든 관리 페이지 상단에 해당 페이지의 기능을 설명하는 배너가 자동으로 표시됩니다. 개별 페이지 수정 없이 <code class="sb-code-inline">admin_header.php</code>의 <code class="sb-code-inline">$menu_descriptions</code> 배열만으로 관리됩니다.</p>
+
+              <h6 class="fw-bold mt-3">동작 원리</h6>
+              <ol class="sb-steps">
+                <li>각 페이지에서 <code class="sb-code-inline">$admin_current = 'menu_key'</code>를 설정합니다.</li>
+                <li><code class="sb-code-inline">admin_header.php</code>가 <code class="sb-code-inline">$menu_descriptions[$admin_current]</code>를 자동으로 조회합니다.</li>
+                <li>매칭되는 설명이 있으면 <code class="sb-code-inline">.page-desc-banner</code> 영역에 아이콘 + 제목 + 설명을 렌더링합니다.</li>
+              </ol>
+
+              <h6 class="fw-bold mt-3">CSS 스타일</h6>
+              <div class="sb-code">
+<pre style="margin:0; color: var(--sb-text);">/* 페이지 기능 설명 배너 */
+.page-desc-banner {
+    padding: 14px 24px;
+    margin: -24px -32px 20px -32px;
+    background: var(--bs-tertiary-bg);        /* 다크모드 자동 대응 */
+    border-bottom: 1px solid var(--bs-border-color);
+}
+.page-desc-banner h5 { font-size: 15px; font-weight: 700; }</pre>
+              </div>
+
+              <h6 class="fw-bold mt-3">등록된 설명 (36개)</h6>
+              <table class="sb-table">
+                <thead><tr><th>key</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">dashboard</code></td><td>전체 현황을 한눈에 확인하고, 주요 기능에 빠르게 접근합니다.</td></tr>
+                  <tr><td><code class="sb-code-inline">menu_guide</code></td><td>모든 메뉴의 기능을 한눈에 확인할 수 있습니다.</td></tr>
+                  <tr><td><code class="sb-code-inline">reviews</code></td><td>등록된 후기를 조회/수정/삭제하고, 노출 상태를 관리합니다.</td></tr>
+                  <tr><td><code class="sb-code-inline">review_wizard</code></td><td>AI가 후기를 분석/검수하고, 승인/반려 처리를 진행합니다.</td></tr>
+                  <tr><td><code class="sb-code-inline">hospital_images</code></td><td>병원별 이미지(시설사진, 의료장비 등)를 업로드/관리합니다.</td></tr>
+                  <tr><td><code class="sb-code-inline">ads</code></td><td>광고 배너를 등록/수정하고, 게재 상태를 관리합니다.</td></tr>
+                  <tr><td><code class="sb-code-inline">categories</code></td><td>진료과, 시술 카테고리를 추가/수정/정렬합니다.</td></tr>
+                  <tr><td><code class="sb-code-inline">hospital_wizard</code></td><td>새 병원을 단계별 마법사로 등록합니다.</td></tr>
+                  <tr><td><code class="sb-code-inline">ad_wizard</code></td><td>새 광고를 단계별 마법사로 신청합니다.</td></tr>
+                  <tr><td><code class="sb-code-inline">ai_settings</code></td><td>AI 프로바이더(OpenAI, Claude 등) API 키와 설정을 관리합니다.</td></tr>
+                  <tr><td colspan="2" style="text-align:center;color:var(--sb-text-muted);">... 외 26개 (총 36개 등록)</td></tr>
+                </tbody>
+              </table>
+
+              <div class="sb-note sb-note-info">
+                <span class="sb-note-icon"><i class="bi bi-lightbulb"></i></span>
+                <div><strong>팁:</strong> 새 관리 페이지를 추가할 때 <code class="sb-code-inline">$menu_descriptions</code> 배열에 key와 설명을 추가하면 배너가 자동으로 표시됩니다. 개별 페이지 수정이 필요 없습니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- NEW: 로그인 수정 섹션 -->
+        <!-- ============================================ -->
+        <section id="login-fix" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">NEW</span> 로그인 수정 (2026-02-26)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>로그인 페이지의 <code class="sb-code-inline">fillLogin()</code> 자동완성 함수 버그가 수정되었습니다.</p>
+
+              <h6 class="fw-bold mt-3">수정 내용</h6>
+              <table class="sb-table">
+                <thead><tr><th>항목</th><th>수정 전</th><th>수정 후</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td>자동 로그인 제출</td>
+                    <td><code class="sb-code-inline">form.submit()</code></td>
+                    <td><code class="sb-code-inline">button[name="login"].click()</code></td>
+                  </tr>
+                  <tr>
+                    <td>문제점</td>
+                    <td>name 속성 없이 제출되어 PHP에서 POST 판별 불가</td>
+                    <td>login 버튼 클릭으로 name=login 값 포함 전송</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h6 class="fw-bold mt-3">테스트 계정</h6>
+              <table class="sb-table">
+                <thead><tr><th>계정</th><th>ID</th><th>PW</th><th>역할</th></tr></thead>
+                <tbody>
+                  <tr><td>최고관리자</td><td><code class="sb-code-inline">admin</code></td><td><code class="sb-code-inline">admin123</code></td><td><span class="sb-badge sb-badge-fail">super_admin</span></td></tr>
+                  <tr><td>테스트용</td><td><code class="sb-code-inline">test</code></td><td><code class="sb-code-inline">test1234</code></td><td><span class="sb-badge sb-badge-info">editor</span></td></tr>
+                </tbody>
+              </table>
+
+              <div class="sb-note sb-note-info">
+                <span class="sb-note-icon"><i class="bi bi-info-circle"></i></span>
+                <div>로그인 버튼 아래에 역할별 차이점 설명이 추가되었습니다. super_admin은 모든 메뉴 접근 가능, editor는 콘텐츠 관리 메뉴만 접근 가능합니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  홈 영역                                     -->
+        <!-- ============================================ -->
+
+        <!-- Menu 1: Dashboard -->
+        <section id="menu-dashboard" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">01</span> 대시보드 (dashboard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>관리자 로그인 후 첫 화면입니다. 전체 시스템 현황을 한눈에 파악할 수 있습니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/dashboard.png" alt="대시보드 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>대시보드 — 전체 현황 통계 및 바로가기</div></div>
+              <h6 class="fw-bold mt-3">주요 구성 요소</h6>
+              <ul class="sb-feature-list">
+                <li><strong>통계 카드 (4개):</strong> 전체 병원 수, 등록 회원 수, 오늘 예약, 신규 후기</li>
+                <li><strong>외부 링크 영역:</strong> HMS 관리자, 메일 서버, 서버 관리 등 바로가기</li>
+                <li><strong>관리 메뉴 그리드 (12개):</strong> 주요 관리 기능 아이콘 그리드</li>
+                <li><strong>최근 활동:</strong> 최근 후기, 회원가입, 예약 등 활동 로그</li>
+              </ul>
+              <div class="sb-note sb-note-info">
+                <span class="sb-note-icon"><i class="bi bi-lightbulb"></i></span>
+                <div><strong>팁:</strong> 대시보드 통계 카드는 실시간으로 DB를 조회합니다. 캐시 초기화 버튼으로 최신 데이터를 강제 갱신할 수 있습니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 2: Menu Guide (NEW) -->
+        <section id="menu-guide" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">02</span> 메뉴 안내 <span class="sb-badge sb-badge-pass ms-2">NEW</span> (admin_menu_guide.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>모든 36개 메뉴를 카테고리별로 정리한 종합 안내 페이지입니다. 사이드바에서 대시보드 바로 아래에 위치합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>카드 그리드:</strong> 36개 메뉴를 그룹별로 카드 형태로 표시 (col-md-6 col-lg-4)</li>
+                <li><strong>아이콘 + 이름 + 설명:</strong> 각 카드에 Bootstrap 아이콘, 메뉴명, 기능 설명 표시</li>
+                <li><strong>클릭 네비게이션:</strong> 카드 클릭 시 해당 관리 페이지로 즉시 이동</li>
+                <li><strong>그룹 구분:</strong> <code class="sb-code-inline">$admin_menus</code>의 group/divider 구조를 그대로 반영</li>
+                <li><strong>설명 데이터:</strong> <code class="sb-code-inline">$menu_descriptions</code> 배열을 공유하여 페이지 배너와 동일 정보</li>
+                <li><strong>RBAC 연동:</strong> 현재 관리자 권한에 맞는 메뉴만 표시</li>
+              </ul>
+              <div class="sb-note sb-note-info">
+                <span class="sb-note-icon"><i class="bi bi-lightbulb"></i></span>
+                <div><strong>팁:</strong> 새 관리자나 편집자가 어떤 메뉴가 있는지 빠르게 파악할 수 있도록, 대시보드 바로 아래에 배치했습니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  콘텐츠 관리 그룹 (5개)                       -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <h4 class="text-gradient mb-4"><i class="bi bi-collection me-2"></i>콘텐츠 관리</h4>
+
+        <!-- Menu 3: Reviews -->
+        <section id="menu-reviews" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">03</span> 후기 관리 (admin_reviews.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>병원 후기 보기, 편집, 승인/거부 및 일괄 처리 기능을 제공합니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_reviews.png" alt="후기 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>후기 관리 — 목록, 상태 필터, 승인/반려 처리</div></div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>후기 목록:</strong> 검색, 필터(병원, 상태, 기간), 정렬 기능</li>
+                <li><strong>상태 관리:</strong> 대기(pending), 승인(approved), 거부(rejected) 상태 전환</li>
+                <li><strong>편집 모달:</strong> 인라인 편집 모달로 후기 내용 수정</li>
+                <li><strong>일괄 처리:</strong> 체크박스 선택 후 일괄 승인/거부/삭제</li>
+                <li><strong>AI 검증:</strong> AI 품질 점수 및 스팸 탐지 결과 표시</li>
+                <li><strong>Quill 에디터 연동:</strong> 리치 텍스트 후기 에디터 (이미지 포함)</li>
+              </ul>
+              <h6 class="fw-bold mt-3">승인 워크플로우</h6>
+              <div class="sb-code" style="padding:20px;overflow:visible"><div style="font-family:inherit">
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0">
+    <div style="background:rgba(102,126,234,.15);border:2px solid rgba(102,126,234,.5);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+      <div style="font-size:18px">✍️</div>
+      <div style="font-weight:600;font-size:12px;margin-top:4px">후기 작성</div>
+    </div>
+    <div style="color:#888;font-size:18px;padding:0 6px">→</div>
+    <div style="background:rgba(255,193,7,.15);border:2px solid rgba(255,193,7,.5);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+      <div style="font-size:18px">⏳</div>
+      <div style="font-weight:600;font-size:12px;margin-top:4px">대기 상태</div>
+    </div>
+    <div style="color:#888;font-size:18px;padding:0 6px">→</div>
+    <div style="background:rgba(108,99,255,.15);border:2px solid rgba(108,99,255,.5);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+      <div style="font-size:18px">🤖</div>
+      <div style="font-weight:600;font-size:12px;margin-top:4px">AI 자동 검증</div>
+    </div>
+    <div style="color:#888;font-size:18px;padding:0 6px">→</div>
+    <div style="background:rgba(255,107,53,.15);border:2px solid rgba(255,107,53,.5);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+      <div style="font-size:18px">👤</div>
+      <div style="font-weight:600;font-size:12px;margin-top:4px">관리자 확인</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:180px;background:rgba(40,167,69,.1);border:1.5px solid rgba(40,167,69,.4);border-radius:8px;padding:10px 14px;font-size:12px">
+      <div style="font-weight:600;color:#28a745;margin-bottom:4px">✅ 자동 승인 조건</div>
+      <div>AI 점수 <strong>80점 이상</strong> → 자동 승인 가능 → 공개</div>
+    </div>
+    <div style="flex:1;min-width:180px;background:rgba(255,193,7,.1);border:1.5px solid rgba(255,193,7,.4);border-radius:8px;padding:10px 14px;font-size:12px">
+      <div style="font-weight:600;color:#e6a817;margin-bottom:4px">⚠️ 수동 검토 조건</div>
+      <div>AI 점수 <strong>60점 미만</strong> → 관리자 수동 확인</div>
+    </div>
+    <div style="flex:1;min-width:180px;background:rgba(220,53,69,.1);border:1.5px solid rgba(220,53,69,.4);border-radius:8px;padding:10px 14px;font-size:12px">
+      <div style="font-weight:600;color:#dc3545;margin-bottom:4px">❌ 거부 처리</div>
+      <div>관리자 거부 → <strong>비공개</strong> 처리</div>
+    </div>
+  </div>
+</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 4: Review Wizard -->
+        <section id="menu-review-wizard" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">04</span> 후기 검수 (admin_review_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>AI 기반 후기 품질 검증 및 승인/반려 워크플로우를 처리하는 전용 검수 페이지입니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>AI 자동 분석:</strong> 후기 내용을 AI가 분석하여 품질 점수, 스팸 여부, 감정 분석 결과 제공</li>
+                <li><strong>의료광고법 검증:</strong> 금지어/과장 표현 자동 검출 및 하이라이트</li>
+                <li><strong>승인/반려 처리:</strong> 검수 결과를 바탕으로 원클릭 승인 또는 반려 사유 입력</li>
+                <li><strong>대기 목록:</strong> 아직 검수되지 않은 후기 목록 우선 표시</li>
+                <li><strong>검수 이력:</strong> 과거 검수 결과 및 처리 내역 조회</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 5: Hospital Images -->
+        <section id="menu-hospital" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">05</span> 병원이미지 (admin_hospital_images.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>병원 정보 CRUD 및 각 병원별 이미지(사진) 관리를 위한 아코디언 기반 인터페이스입니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_hospital_images.png" alt="병원/이미지 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>병원 이미지 관리 — 아코디언 UI, 이미지 업로드</div></div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>병원 CRUD:</strong> 병원 이름, 주소, 전화번호, 진료과 등 기본 정보 관리</li>
+                <li><strong>아코디언 UI:</strong> 각 병원을 클릭하면 상세 정보와 이미지 목록 표시</li>
+                <li><strong>이미지 업로드:</strong> 드래그&amp;드롭 + 파일 선택 다중 업로드 지원</li>
+                <li><strong>이미지 미리보기:</strong> 썸네일 그리드로 업로드된 이미지 확인</li>
+                <li><strong>일괄 삭제:</strong> 체크박스 선택 후 일괄 이미지 삭제</li>
+                <li><strong>HMS 연동:</strong> HMS hospital_type과 자동 동기화</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 6: Ads -->
+        <section id="menu-ads" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">06</span> 광고 관리 (admin_ads.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>병원 광고 등록, 검수, 노출 관리를 위한 페이지입니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_ads.png" alt="광고 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>광고 관리 — 배너 등록, AI 검증, 통계</div></div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>광고 CRUD:</strong> 제목, 내용, 이미지, 링크, 노출 기간 관리</li>
+                <li><strong>AI 의료광고법 검증:</strong> 등록 시 자동으로 의료광고법 위반 여부 검사</li>
+                <li><strong>금지어 검출:</strong> 법정 금지 문구 자동 하이라이트</li>
+                <li><strong>노출 순서:</strong> 우선순위 기반 광고 순서 설정</li>
+                <li><strong>통계:</strong> 노출수, 클릭수, CTR 통계 확인</li>
+                <li><strong>DALL-E 이미지 생성:</strong> AI로 광고 이미지 자동 생성</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 6-1: Ad Display Settings (NEW 2026-03-29) -->
+        <section id="menu-ad-settings" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-success me-2">NEW</span> 광고·디스플레이 설정 (admin_ad_settings.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>페이지별 광고 ON/OFF, 디자인 토큰, 레이아웃을 <strong>라이브 프리뷰</strong>와 함께 관리하는 통합 설정 페이지입니다. <span class="sb-badge sb-badge-info">v3.1 리디자인</span></p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_ad_settings.png" alt="광고 설정 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>광고 설정 — 7탭, AJAX 즉시저장, 라이브 프리뷰</div></div>
+              <h6 class="fw-bold mt-3">주요 기능</h6>
+              <ul class="sb-feature-list">
+                <li><strong>7개 탭 구성:</strong> 메인 페이지 / 병원 목록 / 후기 / 이벤트 / 커뮤니티·칼럼 / 상담 / 디자인</li>
+                <li><strong>AJAX 즉시 저장:</strong> 토글/입력 변경 시 자동 저장 (저장 버튼 없음), <code>api_save_setting.php</code> 엔드포인트</li>
+                <li><strong>라이브 프리뷰:</strong> 우측 iframe에 해당 페이지 실시간 표시, 탭 전환 시 자동 변경</li>
+                <li><strong>기기 선택:</strong> 8종 폰 (Galaxy S26/S25/S24, iPhone 16 Pro/Max/XS/SE, Galaxy A13) + 3종 PC (FHD/WXGA+/WXGA) 드롭다운</li>
+                <li><strong>너비×높이 직접 입력:</strong> 커스텀 뷰포트 크기 지정 가능</li>
+                <li><strong>컬러 피커:</strong> 디자인 탭에서 <code>&lt;input type="color"&gt;</code> + hex 텍스트 양방향 동기화</li>
+                <li><strong>광고 편집 바로가기:</strong> 각 광고 슬롯 옆 ✏️ 버튼 → <code>admin_ads.php</code> 새 탭</li>
+                <li><strong>새 탭 열기:</strong> ↗ 버튼으로 현재 프리뷰 페이지를 새 탭에서 확인</li>
+              </ul>
+              <div class="sb-note sb-note-info mt-3">
+                <strong>광고 구조:</strong> 메인 페이지에는 2종류의 광고가 있습니다.<br>
+                ① <strong>광고 배너</strong> (<code>gangnamunni_ads</code>) — <code>ad_show_index</code>로 ON/OFF, 위치는 <code>ad_home_after_search</code>로 선택<br>
+                ② <strong>프로모션 배너</strong> (<code>gangnamunni_promos</code>) — <code>promo_show_index</code>로 ON/OFF (별도 데이터)
+              </div>
+              <h6 class="fw-bold mt-3">이 프리뷰 패턴이 적용된 다른 페이지</h6>
+              <ul>
+                <li><code>admin_design_tokens.php</code> — 72+ 피그마 디자인 토큰 (기기 드롭다운 추가)</li>
+                <li><code>admin_theme.php</code> — 테마 색상/폰트/레이아웃 (미리보기 탭 iframe 교체)</li>
+                <li><code>admin_design_mode.php</code> — 피그마/확장/커스텀 모드 전환 (우측 프리뷰 패널)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 7: Categories -->
+        <section id="menu-categories" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">07</span> 카테고리 (admin_categories.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>시술 카테고리를 관리합니다. SVG 아이콘과 이모지를 지원하는 피커 UI를 제공합니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_categories.png" alt="카테고리 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>카테고리 — SVG 아이콘 피커, 드래그 정렬</div></div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>카테고리 CRUD:</strong> 이름, 설명, 아이콘, 활성 상태 관리</li>
+                <li><strong>SVG 아이콘 피커:</strong> 썸네일 그리드에서 SVG 아이콘 선택</li>
+                <li><strong>이모지 피커:</strong> 8탭 264종 대형 이모지 선택 UI</li>
+                <li><strong>활성/비활성 토글:</strong> 카테고리별 즉시 활성 상태 변경</li>
+                <li><strong>HMS 연동:</strong> hospital_type 테이블과 양방향 동기화 (12건)</li>
+                <li><strong>정렬:</strong> 드래그&amp;드롭으로 카테고리 순서 변경</li>
+              </ul>
+              <div class="sb-note sb-note-info">
+                <span class="sb-note-icon"><i class="bi bi-lightbulb"></i></span>
+                <div><strong>팁:</strong> category_icons.php에서 SVG 아이콘이 흰색 원형 배경 위에 렌더링됩니다. 새 아이콘 추가 시 이 파일도 함께 수정하세요.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  신청 관리 그룹 (2개)                         -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <h4 class="text-gradient mb-4"><i class="bi bi-clipboard2-pulse me-2"></i>신청 관리</h4>
+
+        <!-- Menu 8: Hospital Wizard -->
+        <section id="menu-hospital-wizard" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">08</span> 병원등록신청 (admin_hospital_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>새 병원을 단계별 마법사로 등록하는 신청 페이지입니다. 5단계 프로세스로 병원 정보를 수집합니다.</p>
+              <div class="row g-2 mb-2">
+                <div class="col-md-6"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_hospitals.png" alt="병원 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>병원 관리 목록</div></div></div>
+                <div class="col-md-6"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/hospital_apply_status.png" alt="병원 신청 현황 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>병원 신청 현황 대시보드</div></div></div>
+              </div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>5단계 마법사:</strong> 기본정보 &rarr; 진료과 &rarr; 위치/연락처 &rarr; 이미지 &rarr; 확인/제출</li>
+                <li><strong>유효성 검사:</strong> 각 단계별 필수 입력 항목 검증</li>
+                <li><strong>이미지 업로드:</strong> 병원 외관, 내부 시설 사진 다중 업로드</li>
+                <li><strong>HMS 연동:</strong> 등록 완료 시 HMS hospitals 테이블에 자동 동기화</li>
+              </ul>
+              <div class="sb-note sb-note-warning">
+                <span class="sb-note-icon"><i class="bi bi-exclamation-triangle"></i></span>
+                <div><strong>참고:</strong> 현재 <code class="sb-code-inline">gangnamunni_hospitals</code> 테이블에 status 컬럼이 없어 승인 워크플로우가 미구현 상태입니다. 향후 대시보드 대기 리스트 + 승인 UI가 추가될 예정입니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 9: Ad Wizard -->
+        <section id="menu-ad-wizard" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">09</span> 광고등록신청 (admin_ad_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>새 광고를 단계별 마법사로 신청하는 페이지입니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>5단계 마법사:</strong> 광고 유형 &rarr; 기본정보 &rarr; 미디어 &rarr; 노출설정 &rarr; 확인/제출</li>
+                <li><strong>AI 검증:</strong> 의료광고법 자동 검증 후 위반 시 경고 표시</li>
+                <li><strong>이미지 생성:</strong> DALL-E 기반 AI 광고 이미지 자동 생성 지원</li>
+                <li><strong>노출 기간:</strong> 시작일/종료일, 시간대별 노출 설정</li>
+              </ul>
+              <div class="sb-note sb-note-warning">
+                <span class="sb-note-icon"><i class="bi bi-exclamation-triangle"></i></span>
+                <div><strong>참고:</strong> 현재 <code class="sb-code-inline">gangnamunni_ads</code> 테이블에 status 컬럼이 없어 (is_active만 존재) 승인 워크플로우가 미구현 상태입니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  등록 관리 그룹 (7개)                         -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <h4 class="text-gradient mb-4"><i class="bi bi-person-plus me-2"></i>등록 관리 (마법사 7종)</h4>
+
+        <!-- Menu 10: Doctor -->
+        <section id="menu-doctor" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">10</span> 의사 등록 (admin_doctor_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>의사 정보를 단계별 마법사로 등록합니다.</p>
+              <h6 class="fw-bold mt-3">등록 단계</h6>
+              <ol class="sb-steps">
+                <li><strong>기본 정보</strong> - 이름, 면허번호, 소속 병원, 프로필 사진</li>
+                <li><strong>전문 분야</strong> - 진료과, 세부 전문분야, 경력 사항</li>
+                <li><strong>진료 스케줄</strong> - 요일별 진료 시간, 휴무일 설정</li>
+                <li><strong>추가 정보</strong> - 학력, 경력, 수상 이력</li>
+                <li><strong>확인/저장</strong> - 입력 내용 검토 후 최종 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 11: Nurse -->
+        <section id="menu-nurse" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">11</span> 간호사 등록 (admin_nurse_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>간호사 정보를 4단계 마법사로 등록합니다.</p>
+              <h6 class="fw-bold mt-3">등록 단계</h6>
+              <ol class="sb-steps">
+                <li><strong>기본 정보</strong> - 이름, 면허번호, 소속 병원</li>
+                <li><strong>자격/경력</strong> - 자격증, 전문 분야, 경력 사항</li>
+                <li><strong>근무 스케줄</strong> - 교대 근무 패턴, 담당 병동</li>
+                <li><strong>확인/저장</strong> - 입력 내용 검토 후 최종 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 12: Pharmacist -->
+        <section id="menu-pharmacist" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">12</span> 약사 등록 (admin_pharmacist_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>약사 정보를 4단계 마법사로 등록합니다.</p>
+              <h6 class="fw-bold mt-3">등록 단계</h6>
+              <ol class="sb-steps">
+                <li><strong>기본 정보</strong> - 이름, 면허번호, 소속 약국/병원</li>
+                <li><strong>자격/전문</strong> - 약학 전문 분야, 자격증</li>
+                <li><strong>근무 정보</strong> - 근무 시간, 담당 업무</li>
+                <li><strong>확인/저장</strong> - 입력 내용 검토 후 최종 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 13: Patient -->
+        <section id="menu-patient" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">13</span> 환자 등록 (admin_patient_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>환자 정보를 4단계 마법사로 등록합니다.</p>
+              <h6 class="fw-bold mt-3">등록 단계</h6>
+              <ol class="sb-steps">
+                <li><strong>기본 정보</strong> - 이름, 생년월일, 연락처, 주소</li>
+                <li><strong>의료 정보</strong> - 혈액형, 알레르기, 기저질환, 복용약물</li>
+                <li><strong>병원 배정</strong> - 담당 병원, 담당의, 진료과 배정</li>
+                <li><strong>확인/저장</strong> - 입력 내용 검토 후 최종 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 14: Staff -->
+        <section id="menu-staff" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">14</span> 직원 등록 (admin_staff_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>병원 직원(접수, 회계, 검사 등)을 4단계 마법사로 등록합니다.</p>
+              <h6 class="fw-bold mt-3">등록 단계</h6>
+              <ol class="sb-steps">
+                <li><strong>기본 정보</strong> - 이름, 직책, 소속 병원, 부서</li>
+                <li><strong>직무 정보</strong> - 담당 업무, 자격증, 경력</li>
+                <li><strong>근무 스케줄</strong> - 근무 시간, 교대 패턴</li>
+                <li><strong>확인/저장</strong> - 입력 내용 검토 후 최종 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 15: Medicine -->
+        <section id="menu-medicine" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">15</span> 의약품 등록 (admin_medicine_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>의약품 정보를 4단계 마법사로 등록합니다.</p>
+              <h6 class="fw-bold mt-3">등록 단계</h6>
+              <ol class="sb-steps">
+                <li><strong>기본 정보</strong> - 약품명, 제조사, 분류, 보험 코드</li>
+                <li><strong>상세 정보</strong> - 용량, 투여 경로, 보관 조건, 부작용</li>
+                <li><strong>재고 관리</strong> - 입고 수량, 유효기간, 재고 위치</li>
+                <li><strong>확인/저장</strong> - 입력 내용 검토 후 최종 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 16: Appointment -->
+        <section id="menu-appointment" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">16</span> 예약 등록 (admin_appointment_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>진료 예약을 4단계 마법사로 등록합니다.</p>
+              <div class="row g-2 mb-2">
+                <div class="col-md-6"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_bookings.png" alt="예약 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>예약 관리 목록</div></div></div>
+                <div class="col-md-6"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_consultations.png" alt="상담 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>상담 관리 목록</div></div></div>
+              </div>
+              <h6 class="fw-bold mt-3">등록 단계</h6>
+              <ol class="sb-steps">
+                <li><strong>환자 선택</strong> - 기존 환자 검색 또는 신규 등록</li>
+                <li><strong>병원/의사 선택</strong> - 병원, 진료과, 담당의 선택</li>
+                <li><strong>일시 선택</strong> - 날짜, 시간, 진료 유형 선택</li>
+                <li><strong>확인/저장</strong> - 예약 내용 검토 후 최종 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  엑셀 관리 그룹 (2개)                         -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <h4 class="text-gradient mb-4"><i class="bi bi-file-earmark-spreadsheet me-2"></i>엑셀 관리</h4>
+
+        <!-- Menu 17: Excel Import -->
+        <section id="menu-excel-import" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">17</span> 엑셀 대량 등록 (admin_excel_import_wizard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>엑셀 파일로 의사, 환자, 직원 등을 대량으로 한 번에 등록합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>지원 엔티티 (9종):</strong> 의사, 간호사, 약사, 환자, 직원, 의약품, 예약, 병원, 광고</li>
+                <li><strong>템플릿 다운로드:</strong> 각 엔티티별 입력 양식 엑셀 파일 제공</li>
+                <li><strong>유효성 검증:</strong> 업로드 시 데이터 형식, 필수 필드, 중복 여부 자동 검증</li>
+                <li><strong>미리보기:</strong> 등록 전 데이터 미리보기 및 오류 항목 하이라이트</li>
+                <li><strong>일괄 등록:</strong> 검증 통과 데이터 일괄 DB 저장</li>
+                <li><strong>결과 리포트:</strong> 성공/실패 건수 및 오류 상세 리포트</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 18: Excel Export -->
+        <section id="menu-excel-export" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">18</span> 데이터 검색/다운로드 (admin_excel_export.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>등록된 데이터를 검색하고 엑셀 파일로 다운로드합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>엔티티 선택:</strong> 다운로드할 데이터 유형 선택 (9종)</li>
+                <li><strong>필터:</strong> 날짜, 상태, 병원 등 조건별 필터링</li>
+                <li><strong>컬럼 선택:</strong> 내보낼 컬럼 체크박스로 선택</li>
+                <li><strong>엑셀 다운로드:</strong> 필터 적용된 데이터 .xlsx 파일로 다운로드</li>
+                <li><strong>미리보기:</strong> 다운로드 전 테이블 형태로 미리보기</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  사용자/소통 영역                              -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <h4 class="text-gradient mb-4"><i class="bi bi-people me-2"></i>사용자 / 소통</h4>
+
+        <!-- Menu 19: Members -->
+        <section id="menu-members" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">19</span> 회원 관리 (admin_members.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>전체 회원 검색, 필터, 등급 변경, 메모, 차단 등을 관리합니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_members.png" alt="회원 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>회원 관리 — 목록 검색, 상태 변경, 등급 관리</div></div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>회원 검색:</strong> 이름, 이메일, 전화번호로 실시간 검색</li>
+                <li><strong>필터:</strong> 등급, 가입일, 상태별 필터링</li>
+                <li><strong>등급 변경:</strong> VIP, 일반, 휴면 등 회원 등급 설정</li>
+                <li><strong>관리자 메모:</strong> 회원별 관리자 전용 메모 기능</li>
+                <li><strong>차단/해제:</strong> 문제 회원 접근 차단 및 해제</li>
+                <li><strong>HMS/Gnuboard 동기화 상태:</strong> 동기화 상태 확인</li>
+              </ul>
+              <div class="sb-note sb-note-info">
+                <span class="sb-note-icon"><i class="bi bi-info-circle"></i></span>
+                <div>현재 회원 수: g5_member=87, users=262, patients=90, member_sync=87</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 20: Mail -->
+        <section id="menu-mail" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">20</span> 메일함 (admin_mail.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>Gmail 스타일 3컬럼 레이아웃의 메일 관리 시스템 v4입니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_mail.png" alt="메일함 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>메일함 — Gmail 스타일 3컬럼 UI</div></div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>3컬럼 레이아웃:</strong> 폴더 목록 | 메일 목록 | 메일 내용</li>
+                <li><strong>작성 오버레이:</strong> 1050px 작성 오버레이 + 전체화면 모드</li>
+                <li><strong>IMAP 수신:</strong> SSL 993포트 IMAP 수신 (폴더: INBOX, Sent, Drafts, Junk, Trash, Archive)</li>
+                <li><strong>SMTP 발송:</strong> STARTTLS 587포트 SMTP 발송 + 첨부파일(multipart/mixed)</li>
+                <li><strong>인라인 이미지:</strong> 재귀 MIME 파싱, CID -&gt; data URI 자동 변환</li>
+                <li><strong>일괄 처리:</strong> 전체선택/선택삭제/읽음/안읽음 일괄 변경</li>
+              </ul>
+              <h6 class="fw-bold mt-3">AJAX 액션</h6>
+              <div class="sb-code">
+<pre style="margin:0; color: var(--sb-text);">unread_counts | list | read | delete | bulk_delete | bulk_seen
+toggle_seen | send | get_signature | save_signature
+get_templates | save_template | delete_template | set_per_page</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 21: Mail Templates -->
+        <section id="menu-mail-templates" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">21</span> 상용구 관리 (admin_mail_templates.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>자주 쓰는 메일 문구를 상용구(템플릿)로 저장하여 메일 작성 시 빠르게 삽입합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>상용구 CRUD:</strong> 제목, 본문 템플릿 등록/수정/삭제</li>
+                <li><strong>JSON 저장:</strong> 상용구 데이터 JSON 형식으로 DB 저장</li>
+                <li><strong>메일 삽입:</strong> 작성 화면에서 상용구 선택 시 본문에 자동 삽입</li>
+                <li><strong>카테고리 분류:</strong> 업무별 상용구 카테고리 관리</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 22: Mail Signatures -->
+        <section id="menu-mail-signatures" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">22</span> 서명 관리 (admin_mail_signatures.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>메일 하단에 자동으로 삽입되는 서명을 계정별로 관리합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>서명 편집:</strong> HTML 서명 에디터 (리치 텍스트)</li>
+                <li><strong>계정별 서명:</strong> 각 메일 계정마다 다른 서명 설정 가능</li>
+                <li><strong>포함/미포함 토글:</strong> 서명 자동 삽입 여부 토글</li>
+                <li><strong>미리보기:</strong> 작성 전 서명 미리보기</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 23: Mail Accounts -->
+        <section id="menu-mail-accounts" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">23</span> 계정 설정 (admin_mail_accounts.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>IMAP/SMTP 메일 계정을 등록하고 연결 설정을 관리합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>계정 등록:</strong> 이메일 주소, IMAP/SMTP 서버, 포트, 인증 정보 설정</li>
+                <li><strong>연결 테스트:</strong> 입력한 정보로 IMAP/SMTP 연결 테스트</li>
+                <li><strong>기본 계정:</strong> 발신 기본 계정 설정</li>
+                <li><strong>암호화:</strong> 비밀번호 암호화 저장</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 24: Mail Server -->
+        <section id="menu-mailserver" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">24</span> 메일서버 (mail.seoulbeauty.app)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>사이드바의 외부 링크로, Mailcow 메일 서버 관리 페이지를 새 탭에서 엽니다.</p>
+              <table class="sb-table">
+                <tbody>
+                  <tr><td class="fw-semibold">URL</td><td><code class="sb-code-inline">https://mail.seoulbeauty.app/</code></td></tr>
+                  <tr><td class="fw-semibold">열기 방식</td><td>target=_blank (새 탭)</td></tr>
+                  <tr><td class="fw-semibold">용도</td><td>Mailcow 관리자 패널 직접 접근 (Docker 19 컨테이너)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  AI / 자동화 영역                              -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <h4 class="text-gradient mb-4"><i class="bi bi-robot me-2"></i>AI / 자동화</h4>
+
+        <!-- Menu 25: AI Settings -->
+        <section id="menu-ai" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">25</span> AI 설정 (admin_ai_settings.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>AI 기능의 전체 설정을 관리합니다. 상세 내용은 <a href="ai_guide.html">AI 기능 가이드</a>를 참조하세요.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_ai_settings.png" alt="AI 설정 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>AI 설정 — 멀티 프로바이더 API 키 관리</div></div>
+              <h6 class="fw-bold mt-3">설정 그룹 (11개)</h6>
+              <ul class="sb-feature-list">
+                <li><strong>API 키 관리:</strong> OpenAI, Zhipu GLM, DeepSeek, OpenRouter, Ollama, Custom 프로바이더 키 암호화 저장</li>
+                <li><strong>프로바이더 선택:</strong> 기본 텍스트/이미지 AI 프로바이더 설정</li>
+                <li><strong>모델 설정:</strong> 각 프로바이더별 사용 모델 지정</li>
+                <li><strong>사용량 한도:</strong> 일일/월간 API 호출 한도 설정</li>
+                <li><strong>자동 검증 규칙:</strong> 후기/광고 자동 검증 임계값 설정</li>
+                <li><strong>사용량 통계:</strong> 일별/월별 API 호출 횟수 및 비용 확인</li>
+              </ul>
+              <div class="sb-note sb-note-warning">
+                <span class="sb-note-icon"><i class="bi bi-shield-lock"></i></span>
+                <div><strong>보안:</strong> API 키는 AES-256-CBC로 암호화 저장됩니다. 키 암호화는 반드시 <code class="sb-code-inline">includes/ai_proxy.php</code>의 함수를 사용해야 합니다 (경로 의존적 해시 키).</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 26: Auto Test -->
+        <section id="menu-auto-test" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">26</span> 자동 테스트 (admin_auto_test.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>등록 마법사 7종의 자동화 테스트를 실행하는 페이지입니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>자동 테스트 실행:</strong> 의사, 간호사, 약사, 환자, 직원, 의약품, 예약 마법사 자동 테스트</li>
+                <li><strong>결과 리포트:</strong> PASS/FAIL 상태, 소요 시간, 오류 메시지 표시</li>
+                <li><strong>히스토리:</strong> 과거 테스트 결과 이력 조회</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 27: Auto Test v2 -->
+        <section id="menu-auto-test-v2" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">27</span> 자동 테스트 v2 (admin_auto_test_v2.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>시나리오 기반 고급 자동화 테스트를 실행하는 페이지입니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>시나리오 기반:</strong> 복합 워크플로우 시나리오 테스트 (등록 &rarr; 수정 &rarr; 삭제)</li>
+                <li><strong>병렬 실행:</strong> 여러 테스트를 동시에 병렬 실행</li>
+                <li><strong>상세 리포트:</strong> 단계별 결과, 스크린샷, 성능 메트릭 포함</li>
+                <li><strong>엑셀 리포트:</strong> 테스트 결과를 엑셀로 내보내기</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  사이트 설정 영역                              -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <h4 class="text-gradient mb-4"><i class="bi bi-gear-wide-connected me-2"></i>사이트 설정</h4>
+
+        <!-- Menu 28: Theme -->
+        <section id="menu-theme" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">28</span> 테마 설정 (admin_theme.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>프론트엔드 테마의 기본 색상, 폰트, 레이아웃을 설정합니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_theme.png" alt="테마 설정 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>테마 설정 — 색상, 폰트, 라이브 미리보기</div></div>
+              <h6 class="fw-bold mt-3">설정 항목</h6>
+              <ul class="sb-feature-list">
+                <li><strong>주요 색상:</strong> Primary, Secondary, Accent 색상 선택</li>
+                <li><strong>폰트:</strong> 기본 글꼴, 크기, 굵기 설정</li>
+                <li><strong>헤더:</strong> 헤더 배경, 텍스트 색상, 높이</li>
+                <li><strong>카드:</strong> 카드 스타일, 둥근 모서리, 그림자</li>
+                <li><strong>다크 모드:</strong> 다크 모드 기본 활성화 여부</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 29: Theme Advanced -->
+        <section id="menu-theme-adv" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">29</span> 고급 테마 (admin_theme_advanced.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>CSS 변수 직접 편집, 커스텀 CSS/JS 주입 등 고급 테마 커스터마이징을 제공합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>CSS 변수 편집:</strong> :root 변수 직접 수정</li>
+                <li><strong>커스텀 CSS:</strong> 페이지별 추가 CSS 삽입</li>
+                <li><strong>커스텀 JS:</strong> 추가 JavaScript 삽입</li>
+                <li><strong>테마 프리셋:</strong> 미리 정의된 테마 세트 적용</li>
+                <li><strong>실시간 미리보기:</strong> 변경사항 즉시 미리보기</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 30: Navigation -->
+        <section id="menu-nav" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">30</span> 네비게이션 설정 (admin_navigation.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>모바일 하단 네비게이션 바의 메뉴 항목을 관리합니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_navigation.png" alt="네비게이션 설정 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>네비게이션 — 하단 탭 메뉴 설정</div></div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>3가지 아이콘 타입:</strong> 이모지, 이미지(URL), 내장 SVG 지원</li>
+                <li><strong>내장 SVG:</strong> home, star, hospital, gift, chat, news 6종</li>
+                <li><strong>활성 상태 변경:</strong> active 컬러 이미지 / inactive 흑백 이미지 자동 전환</li>
+                <li><strong>일괄 활성화/비활성화:</strong> 전체 메뉴 아이템 일괄 상태 변경</li>
+                <li><strong>링크 설정:</strong> 각 메뉴 아이템별 이동 URL 설정</li>
+                <li><strong>순서 변경:</strong> 드래그&amp;드롭 순서 변경</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 31: Editor Settings -->
+        <section id="menu-editor-settings" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">31</span> 에디터 설정 (admin_editor_settings.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>후기 에디터(Quill.js)의 툴바 구성, 옵션, 이미지 업로드 설정을 관리합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>툴바 구성:</strong> Quill.js 에디터 툴바 버튼 표시/숨김 설정</li>
+                <li><strong>이미지 업로드:</strong> 이미지 최대 크기, 허용 확장자, 업로드 경로 설정</li>
+                <li><strong>글자 수 제한:</strong> 최소/최대 글자 수 설정</li>
+                <li><strong>자동 저장:</strong> 임시 저장 간격 설정</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 32: Maintenance -->
+        <section id="menu-maint" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">32</span> 점검 모드 (admin_maintenance.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>시스템 점검 시 사용자에게 점검 안내 페이지를 표시합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>점검 모드 ON/OFF:</strong> 토글 스위치로 즉시 전환</li>
+                <li><strong>점검 메시지:</strong> 사용자에게 표시될 안내 메시지 편집</li>
+                <li><strong>예상 종료 시간:</strong> 점검 종료 예정 시간 설정</li>
+                <li><strong>관리자 우회:</strong> 관리자 IP는 점검 모드에서도 접근 허용</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 33: Upgrade -->
+        <section id="menu-upgrade" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">33</span> 확장 계획 (admin_upgrade_plan.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>시스템 확장 및 업그레이드 로드맵을 관리합니다.</p>
+              <h6 class="fw-bold mt-3">관리 항목</h6>
+              <ul class="sb-feature-list">
+                <li><strong>기능 로드맵:</strong> 예정된 기능 목록 및 우선순위</li>
+                <li><strong>버전 관리:</strong> 현재 버전 및 업데이트 이력</li>
+                <li><strong>의존성 확인:</strong> 패키지 버전 및 호환성 점검</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  관리 / 도움말 영역                            -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <h4 class="text-gradient mb-4"><i class="bi bi-shield-lock me-2"></i>관리 / 도움말</h4>
+
+        <!-- Menu 34: Admins -->
+        <section id="menu-admins" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">34</span> 관리자 관리 (admin_admins.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>관리자 계정 관리 및 역할 기반 접근 제어(RBAC) 시스템입니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_admins.png" alt="관리자 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>관리자 관리 — RBAC 9역할, 계정 목록</div></div>
+              <h6 class="fw-bold mt-3">역할 체계</h6>
+              <table class="sb-table">
+                <thead><tr><th>역할</th><th>코드</th><th>권한 범위</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="sb-badge sb-badge-fail">최고관리자</span></td><td>super_admin</td><td>모든 메뉴 접근 + 관리자 관리</td></tr>
+                  <tr><td><span class="sb-badge sb-badge-warn">관리자</span></td><td>admin</td><td>대부분 메뉴 접근 (관리자 관리 제외)</td></tr>
+                  <tr><td><span class="sb-badge sb-badge-info">편집자</span></td><td>editor</td><td>콘텐츠 관리 메뉴만 접근</td></tr>
+                  <tr><td><span class="sb-badge sb-badge-purple">뷰어</span></td><td>viewer</td><td>읽기 전용 (대시보드, 통계 조회)</td></tr>
+                </tbody>
+              </table>
+              <h6 class="fw-bold mt-3">기능</h6>
+              <ul class="sb-feature-list">
+                <li><strong>계정 생성:</strong> 아이디, 비밀번호(bcrypt), 역할, 이름 설정</li>
+                <li><strong>권한 설정:</strong> 메뉴별 접근 권한 체크박스 관리</li>
+                <li><strong>활동 로그:</strong> 관리자 행동 로깅</li>
+                <li><strong>기본 계정:</strong> admin / admin123 (최고관리자), test / test1234 (편집자)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 35: Wizard Guide -->
+        <section id="menu-wizard-guide" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">35</span> 마법사 가이드 (admin_wizard_guide.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>등록 마법사 7종의 사용법 가이드를 확인하는 페이지입니다.</p>
+              <h6 class="fw-bold mt-3">가이드 내용</h6>
+              <ul class="sb-feature-list">
+                <li><strong>마법사 사용법:</strong> 각 마법사(의사, 간호사, 약사, 환자, 직원, 의약품, 예약)별 단계 설명</li>
+                <li><strong>입력 필드 설명:</strong> 각 단계에서 필요한 입력 항목과 유효성 규칙</li>
+                <li><strong>FAQ:</strong> 자주 묻는 질문과 답변</li>
+                <li><strong>트러블슈팅:</strong> 일반적인 오류 해결 방법</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 36: Auto Manual -->
+        <section id="menu-auto-manual" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">36</span> 자동 매뉴얼 (admin_auto_manual.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>Playwright 기반 자동 스크린샷 캡처 시스템으로, 매뉴얼용 화면 캡처를 자동화합니다.</p>
+              <h6 class="fw-bold mt-3">아키텍처</h6>
+              <table class="sb-table">
+                <thead><tr><th>구성요소</th><th>기술</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td>엔진 서버</td><td>Node.js Express (port 3100)</td><td>Playwright 캡처 API 서버</td></tr>
+                  <tr><td>브라우저</td><td>Playwright Chromium</td><td>헤드리스 브라우저</td></tr>
+                  <tr><td>주석 도구</td><td>markerjs2 2.32.7</td><td>캡처 이미지에 주석 추가</td></tr>
+                  <tr><td>systemd</td><td>auto-manual-engine</td><td>서비스 자동 시작/관리</td></tr>
+                  <tr><td>Apache</td><td>ProxyPass</td><td>/auto-manual-api/ -&gt; localhost:3100</td></tr>
+                </tbody>
+              </table>
+              <h6 class="fw-bold mt-3">사용 방법</h6>
+              <ol class="sb-steps">
+                <li>캡처 세션 생성 - 대상 URL과 캡처 옵션 설정</li>
+                <li>자동 캡처 실행 - 페이지 로딩 후 자동 스크린샷</li>
+                <li>주석 추가 - markerjs2로 화살표, 텍스트, 하이라이트 추가</li>
+                <li>결과 저장 - 캡처 이미지 DB 저장 및 매뉴얼 생성</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  시술/과금 관리 (37~39)                        -->
+        <!-- ============================================ -->
+
+        <!-- Menu 37: Treatment Master -->
+        <section id="menu-treatments" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">37</span> 시술 마스터 관리 (admin_treatments.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>시술 대분류(카테고리)와 중분류(시술 마스터)를 통합 관리하는 페이지입니다. 2개 탭으로 구성됩니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_treatments.png" alt="시술 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>시술 마스터 — 74개 시술, 드래그 정렬, 별명 관리</div></div>
+
+              <h6 class="fw-bold mt-3">탭 1: 중분류 관리 (시술 마스터)</h6>
+              <table class="sb-table">
+                <thead><tr><th>기능</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td>시술 목록</td><td>74개 시술 마스터 테이블 (이름, 카테고리, 가격대, 별명, 병원수, 후기수)</td></tr>
+                  <tr><td>CRUD</td><td>시술 추가/수정/삭제 + 활성/비활성 토글</td></tr>
+                  <tr><td>별명 관리</td><td>시술별 동의어(alias) 등록 — 검색 시 매칭에 사용 (142개)</td></tr>
+                  <tr><td>가격대</td><td>최소~최대 가격 (만원 단위) 관리</td></tr>
+                  <tr><td>드래그 정렬</td><td>SortableJS로 행 순서 변경 → AJAX 저장</td></tr>
+                  <tr><td>컬럼 정렬</td><td>클릭 시 이름/카테고리/가격/병원수/후기수 기준 오름/내림차순 정렬</td></tr>
+                  <tr><td>병원수 클릭</td><td>해당 시술 배정 병원 목록 페이지로 이동</td></tr>
+                  <tr><td>후기수 클릭</td><td>해당 시술의 후기 모달(최근 10건) 표시</td></tr>
+                </tbody>
+              </table>
+
+              <h6 class="fw-bold mt-3">탭 2: 대분류 관리 (카테고리)</h6>
+              <table class="sb-table">
+                <thead><tr><th>기능</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td>카테고리 목록</td><td>6개 대분류: 리프팅, 보톡스·필러·실, 스킨부스터, 색소, 제모·스킨케어, 성형</td></tr>
+                  <tr><td>인라인 편집</td><td>이름, 아이콘, 정렬 순서 즉시 수정</td></tr>
+                  <tr><td>추가/삭제</td><td>새 카테고리 생성 및 삭제 (하위 시술이 있으면 삭제 불가)</td></tr>
+                  <tr><td>활성 토글</td><td>비활성 시 프론트엔드에서 숨김</td></tr>
+                  <tr><td>드래그 정렬</td><td>SortableJS로 순서 변경 → 메인페이지 그리드에 즉시 반영</td></tr>
+                  <tr><td>빠른 링크</td><td>각 카테고리별 관련 페이지 이동 버튼 (메인페이지, 시술마스터, 병원별시술, 랭킹)</td></tr>
+                </tbody>
+              </table>
+
+              <h6 class="fw-bold mt-3">DB 테이블</h6>
+              <ul class="sb-feature-list">
+                <li><strong>gangnamunni_treatment_categories:</strong> 대분류 6개 (id, name, slug, icon, sort_order, is_active)</li>
+                <li><strong>gangnamunni_treatment_master:</strong> 중분류 74개 (category_id, name, avg_price_min/max, sort_order 등)</li>
+                <li><strong>gangnamunni_treatment_aliases:</strong> 동의어 142개 (treatment_id → alias_name)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 38: Hospital Treatments -->
+        <section id="menu-hospital-treatments" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">38</span> 병원별 시술 배정 (admin_hospital_treatments.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>각 병원에 시술을 배정하고, 병원별 개별 가격을 관리합니다.</p>
+
+              <h6 class="fw-bold mt-3">주요 기능</h6>
+              <table class="sb-table">
+                <thead><tr><th>기능</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td>병원 선택</td><td>드롭다운으로 병원 선택 → 해당 병원의 시술 목록 표시</td></tr>
+                  <tr><td>시술 배정</td><td>미배정 시술 목록에서 체크박스로 한번에 다수 배정</td></tr>
+                  <tr><td>가격 관리</td><td>병원별 최소/최대 가격(만원) 개별 설정, 미설정 시 마스터 기본값 표시 "(기본값)"</td></tr>
+                  <tr><td>해제</td><td>배정된 시술 개별 해제</td></tr>
+                  <tr><td>광고 등급</td><td>병원별 S~E 광고 등급 표시</td></tr>
+                </tbody>
+              </table>
+
+              <h6 class="fw-bold mt-3">가격 로직</h6>
+              <div class="sb-note sb-note-info">
+                <strong>가격 우선순위:</strong> 병원 개별가격 &gt; 마스터 기본가격. 병원 가격이 0이면 마스터 기본값을 "(기본값)" 라벨과 함께 표시합니다. 모든 가격은 <strong>만원</strong> 단위입니다.
+              </div>
+
+              <h6 class="fw-bold mt-3">DB 테이블</h6>
+              <ul class="sb-feature-list">
+                <li><strong>gangnamunni_hospital_treatments:</strong> 병원-시술 매핑 435건 (hospital_id, treatment_id, price_min, price_max, is_active)</li>
+                <li><strong>gangnamunni_treatment_price_history:</strong> 가격 변경 이력</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 39: Treatment Ranking -->
+        <section id="menu-treatment-ranking" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">39</span> 시술 랭킹 (treatment_ranking.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>시술별 인기도, 후기 평점, 병원 수 기반 랭킹을 보여주는 프론트엔드 페이지입니다.</p>
+              <h6 class="fw-bold mt-3">기능</h6>
+              <ul class="sb-feature-list">
+                <li><strong>인기 랭킹:</strong> popularity_score 기반 순위 (크론 30분마다 갱신)</li>
+                <li><strong>점수 산출:</strong> 병원 수 × 3 + 후기 수 × 5 + 평균 평점 × 10 + 최근 7일 예약 × 2</li>
+                <li><strong>카테고리 필터:</strong> 대분류별 필터링</li>
+                <li><strong>크론잡:</strong> <code>cron_treatment_scores.php</code> — 30분마다 점수 재집계</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  프로젝트 관리 (40~42)                        -->
+        <!-- ============================================ -->
+
+        <!-- Menu 40: Client Spec -->
+        <section id="menu-client-spec" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">40</span> 기획서 대시보드 (admin_client_spec.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>클라이언트 기획서(Google Sheets CSV)를 탭 형식으로 관리하는 대시보드입니다. 각 탭은 기획서의 시트를 나타냅니다.</p>
+              <h6 class="fw-bold mt-3">주요 기능</h6>
+              <table class="sb-table">
+                <thead><tr><th>기능</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td>CSV 파싱</td><td>Google Sheets 연동 CSV를 파싱하여 테이블 표시</td></tr>
+                  <tr><td>탭 관리</td><td>20+ 탭 (시트별), 활성/비활성 토글로 불필요 탭 숨김</td></tr>
+                  <tr><td>개발 상태</td><td>각 항목별 구현 상태 표시 (✅ 완료 / 🔧 진행중 / ❌ 미구현)</td></tr>
+                  <tr><td>빠른 링크</td><td>관련 관리 페이지로 바로 이동 (시술 관리, 카테고리 관리 등)</td></tr>
+                  <tr><td>통계</td><td>전체 구현율 99% (177+/178 항목)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 41: Project Status -->
+        <section id="menu-project-status" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">41</span> 프로젝트 현황 (admin_project_status.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>프로젝트 전체 진행 상태, 클라이언트 요청사항, 개발 타임라인을 관리합니다.</p>
+              <h6 class="fw-bold mt-3">4개 탭 구성</h6>
+              <ul class="sb-feature-list">
+                <li><strong>진행 현황:</strong> 기능별 완료/진행중/미시작 상태 요약</li>
+                <li><strong>클라이언트 요청:</strong> gangnamunni_client_requests DB — 요청 등록/상태 관리</li>
+                <li><strong>개발 타임라인:</strong> gangnamunni_dev_timeline DB — 일자별 작업 이력</li>
+                <li><strong>배포 이력:</strong> 서버 배포 기록</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 42: QA Dashboard -->
+        <section id="menu-qa-dashboard" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">42</span> QA 대시보드 (admin_qa_dashboard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>QA 테스트 진행 현황 및 피드백을 관리하는 대시보드입니다.</p>
+              <h6 class="fw-bold mt-3">주요 기능</h6>
+              <ul class="sb-feature-list">
+                <li><strong>스크린샷 검수:</strong> PC/모바일 페이지별 자동 캡처 + Pass/Fail/Skip 판정</li>
+                <li><strong>QA 피드백:</strong> 페이지별 피드백 입력 및 DB 저장 (gangnamunni_qa_feedback)</li>
+                <li><strong>QA Master:</strong> 118개 URL 전체 스크린샷 캡처 + 상태 관리</li>
+                <li><strong>Health Check:</strong> 서버 상태 실시간 모니터링 API</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  개발 도구 추가 섹션                           -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <h4 class="text-gradient mb-4"><i class="bi bi-tools me-2"></i>개발 도구</h4>
+
+        <!-- Dev Feedback -->
+        <section id="menu-dev-feedback" class="mb-5">
+          <h3 class="sb-section-title"><i class="bi bi-chat-dots me-2"></i> 개발 피드백 (admin_dev_feedback.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>관리자 페이지 우하단 탭에서 피드백을 수집하고, 스크린샷과 함께 저장하는 PRO 피드백 시스템입니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_dev_feedback.png" alt="개발 피드백 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>개발 피드백 대시보드 — 스크린샷 썸네일, 상태 관리</div></div>
+              <h6 class="fw-bold mt-3">주요 기능</h6>
+              <ul class="sb-feature-list">
+                <li><strong>자동 스크린샷:</strong> 피드백 저장 시 html2canvas로 현재 화면 자동 캡처</li>
+                <li><strong>유형:</strong> 버그/개선/기능/질문/기타 + 우선순위(긴급/높음/보통/낮음)</li>
+                <li><strong>내보내기:</strong> 엑셀(CSV), PDF(인쇄), Word 다운로드</li>
+                <li><strong>상태 관리:</strong> open → in_progress → done/rejected</li>
+                <li><strong>Claude 프롬프트 생성:</strong> 미처리 피드백을 Claude에게 전달할 프롬프트 자동 생성</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- E2E Tests -->
+        <section id="menu-e2e" class="mb-5">
+          <h3 class="sb-section-title"><i class="bi bi-check2-all me-2"></i> E2E 테스트 (admin_e2e_tests.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>82개 Playwright 시나리오 기반 자동화 테스트 시스템입니다.</p>
+              <div class="row g-2 mb-2">
+                <div class="col-md-6"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_e2e_tests.png" alt="E2E 테스트 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>E2E 테스트 대시보드</div></div></div>
+                <div class="col-md-6"><div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_fix_log.png" alt="수정 이력 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>수정 이력 (admin_fix_log.php)</div></div></div>
+              </div>
+              <h6 class="fw-bold mt-3">테스트 범위</h6>
+              <ul class="sb-feature-list">
+                <li><strong>82개 시나리오:</strong> 로그인/인증, 콘텐츠 CRUD, 마법사 7종, 엑셀 I/O, AI 기능 등</li>
+                <li><strong>결과:</strong> PASS/FAIL/SKIP 상태 + 소요시간 + 스크린샷</li>
+                <li><strong>수정 이력:</strong> DB에 수정 사유/내용/파일명 기록</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Payment -->
+        <section id="menu-payment-extra" class="mb-5">
+          <h3 class="sb-section-title"><i class="bi bi-credit-card me-2"></i> 결제 관리 (admin_payment.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>PG 결제 주문 관리, 상품 설정, 매출 통계를 관리합니다.</p>
+              <div class="sb-screenshot-img" onclick="sbZoom(this)"><img src="screenshots/admin_payment.png" alt="결제 관리 스크린샷" loading="lazy"><div class="sb-screenshot-caption"><i class="bi bi-camera me-1"></i>결제 관리 — 4탭(주문/상품/매출/PG설정)</div></div>
+              <h6 class="fw-bold mt-3">PG 연동</h6>
+              <ul class="sb-feature-list">
+                <li><strong>6개 PG:</strong> 이니시스/KCP/카카오페이/NICE/LG/네이버페이</li>
+                <li><strong>테스트 MID:</strong> INIpayTest (실결제 없음)</li>
+                <li><strong>상품 6종:</strong> 배너광고 11만/프리미엄 33만/인피드 22만/병원기본 55만/프리미엄 110만/월정액 9.9만</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!--  변경 이력 요약                               -->
+        <!-- ============================================ -->
+        <div class="sb-divider"></div>
+        <section id="changelog" class="mb-5">
+          <h3 class="sb-section-title"><i class="bi bi-clock-history me-2"></i> 변경 이력</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <table class="sb-table">
+                <thead><tr><th>날짜</th><th>버전</th><th>변경 내용</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><code class="sb-code-inline">2026-03-27</code></td>
+                    <td><span class="sb-badge sb-badge-pass">v3.0</span></td>
+                    <td>
+                      시술 마스터 관리 (대분류/중분류 CRUD, 드래그 정렬),
+                      병원별 시술 배정 (가격 관리, 기본값 폴백),
+                      시술 랭킹 시스템,
+                      기획서 대시보드 (CSV 탭 관리),
+                      프로젝트 현황/QA 대시보드,
+                      메뉴 수 36개 &rarr; 42개 확대
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code class="sb-code-inline">2026-02-26</code></td>
+                    <td><span class="sb-badge sb-badge-info">v2.0</span></td>
+                    <td>
+                      사이드바 메뉴 그룹화 개편 (5개 구분선 + 접기/펼치기),
+                      메뉴 안내 페이지 신규,
+                      페이지 설명 배너 시스템 (36개),
+                      로그인 fillLogin() 버그 수정,
+                      test 계정 추가,
+                      메뉴 수 16개 &rarr; 36개 확대
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code class="sb-code-inline">2026-02-25</code></td>
+                    <td><span class="sb-badge sb-badge-info">v1.5</span></td>
+                    <td>AI 자동화 5단계 구현, 멀티 프로바이더, 이벤트/응모 마법사, 이미지 에디터</td>
+                  </tr>
+                  <tr>
+                    <td><code class="sb-code-inline">2026-02-24</code></td>
+                    <td><span class="sb-badge sb-badge-info">v1.4</span></td>
+                    <td>후기 에디터 v2 + 승인 워크플로우</td>
+                  </tr>
+                  <tr>
+                    <td><code class="sb-code-inline">2026-02-23</code></td>
+                    <td><span class="sb-badge sb-badge-info">v1.3</span></td>
+                    <td>등록 마법사 7종 + 엑셀 Import/Export (E2E 78/78 PASS)</td>
+                  </tr>
+                  <tr>
+                    <td><code class="sb-code-inline">2026-03-29</code></td>
+                    <td><span class="sb-badge sb-badge-success">v3.1</span></td>
+                    <td>광고설정 리디자인(7탭+AJAX+기기프리뷰) + 디자인토큰/테마/디자인모드 프리뷰 추가 + 광고 ON/OFF 버그 수정 + iOS 네이티브앱 크래시 해결</td>
+                  </tr>
+                  <tr>
+                    <td><code class="sb-code-inline">2026-02-11</code></td>
+                    <td><span class="sb-badge sb-badge-purple">v1.0</span></td>
+                    <td>초기 관리자 매뉴얼 16개 메뉴 작성</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. 관리자 매뉴얼 v3.1 (2026-03-29)</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_관리자매뉴얼_v2.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_관리자매뉴얼_v2.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Lightbox overlay for screenshot zoom -->
+<div id="sbLightbox" onclick="this.classList.remove('show')">
+  <img id="sbLightboxImg" src="" alt="스크린샷 확대">
+</div>
+
+<button class="sb-back-to-top"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+<script>
+// 스크린샷 이미지 클릭 시 확대 (lightbox)
+function sbZoom(el) {
+  const img = el.querySelector('img');
+  if (!img) return;
+  document.getElementById('sbLightboxImg').src = img.src;
+  document.getElementById('sbLightbox').classList.add('show');
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') document.getElementById('sbLightbox').classList.remove('show');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QA Full Check (2026-03-17) — 70 Pages</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:#0a0a0a;color:#ddd}
+.hdr{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:28px 20px;text-align:center}
+.hdr h1{font-size:22px;color:#fff}.hdr p{font-size:12px;color:rgba(255,255,255,.5);margin-top:4px}
+.sum{display:flex;justify-content:center;gap:32px;padding:16px;border-bottom:1px solid #222}
+.sum .n{font-size:36px;font-weight:800}.sum .l{font-size:11px;color:#666}
+.n.ok{color:#22c55e}.n.ng{color:#ef4444}.n.all{color:#8b5cf6}
+.sec{font-size:16px;font-weight:700;padding:14px 20px;color:#fff;background:#111;border-bottom:1px solid #222}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;padding:12px}
+.card{background:#161616;border-radius:10px;overflow:hidden;border:2px solid #2a2a2a;transition:.2s}
+.card:hover{transform:translateY(-2px);border-color:#444}
+.card.fail{border-color:#ef4444}
+.card-img{height:260px;overflow:hidden;background:#000}
+.card-img img{width:100%;height:100%;object-fit:cover;object-position:top;cursor:pointer;transition:.3s}
+.card-img img.expanded{height:auto;max-height:none;object-fit:contain}
+.card-info{padding:8px 10px}
+.badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700}
+.badge.pass{background:#16a34a33;color:#22c55e}
+.badge.fail{background:#ef444433;color:#ef4444}
+.label{font-size:13px;font-weight:600;margin-top:3px}
+.file{font-size:10px;color:#555;margin-top:1px}
+.err{font-size:9px;color:#ef4444;margin-top:3px;word-break:break-all}
+footer{text-align:center;padding:20px;color:#444;font-size:10px}
+</style></head><body>
+<div class="hdr"><h1>QA Full Check Report</h1><p>2026-03-17 | Front 44 + Admin 26 = 70 pages | php -l: 310/311 PASS</p></div>
+<div class="sum">
+<div><div class="n all">70</div><div class="l">Total</div></div>
+<div><div class="n ok">70</div><div class="l">Pass</div></div>
+<div><div class="n ng">0</div><div class="l">Fail</div></div>
+</div>
+<div class="sec">Frontend — 44 pages (Mobile 390x844)</div>
+<div class="grid">
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/index.png" alt="index" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">메인 홈</div>
+                <div class="file">/index.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/hospitals.png" alt="hospitals" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원 목록</div>
+                <div class="file">/hospitals.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/detail_8093.png" alt="detail_8093" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원 상세</div>
+                <div class="file">/detail.php?id=8093</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/detail_8093_doctors.png" alt="detail_8093_doctors" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원>의사탭</div>
+                <div class="file">/detail.php?id=8093&tab=doctors</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/detail_8093_reviews.png" alt="detail_8093_reviews" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원>후기탭</div>
+                <div class="file">/detail.php?id=8093&tab=reviews</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/detail_8093_events.png" alt="detail_8093_events" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원>이벤트탭</div>
+                <div class="file">/detail.php?id=8093&tab=events</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/detail_8093_intro.png" alt="detail_8093_intro" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원>소개탭</div>
+                <div class="file">/detail.php?id=8093&tab=info</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/reviews.png" alt="reviews" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">후기 목록</div>
+                <div class="file">/reviews.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/review_detail.png" alt="review_detail" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">후기 상세</div>
+                <div class="file">/review_detail.php?id=1</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/review_photos.png" alt="review_photos" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">후기 사진</div>
+                <div class="file">/review_photos.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/events.png" alt="events" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">이벤트</div>
+                <div class="file">/events.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/event_detail.png" alt="event_detail" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">이벤트 상세</div>
+                <div class="file">/event_detail.php?id=1</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/event_calendar.png" alt="event_calendar" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">이벤트 캘린더</div>
+                <div class="file">/event_calendar.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/tips.png" alt="tips" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">꿀팁</div>
+                <div class="file">/tips.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/detail_tip.png" alt="detail_tip" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">꿀팁 상세</div>
+                <div class="file">/detail_tip.php?id=1</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/detail_community.png" alt="detail_community" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">커뮤니티 상세</div>
+                <div class="file">/detail_community.php?id=1</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/columns.png" alt="columns" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">칼럼/뉴스</div>
+                <div class="file">/columns.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/treatments.png" alt="treatments" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">시술 카테고리</div>
+                <div class="file">/treatments.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/search.png" alt="search" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">검색</div>
+                <div class="file">/search.php?q=성형</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/consultation.png" alt="consultation" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">상담 신청</div>
+                <div class="file">/consultation.php?hospital_id=8093</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/booking.png" alt="booking" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">예약</div>
+                <div class="file">/booking.php?hospital_id=8093</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/price_compare.png" alt="price_compare" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">가격 비교</div>
+                <div class="file">/price_compare.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/hospital_ranking.png" alt="hospital_ranking" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원 랭킹</div>
+                <div class="file">/hospital_ranking.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/hospital_compare.png" alt="hospital_compare" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원 비교</div>
+                <div class="file">/hospital_compare.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/hospital_news.png" alt="hospital_news" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원 소식</div>
+                <div class="file">/hospital_news.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/faq.png" alt="faq" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">FAQ</div>
+                <div class="file">/faq.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/qna.png" alt="qna" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">Q&A</div>
+                <div class="file">/qna.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/map.png" alt="map" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">지도 탐색</div>
+                <div class="file">/map.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/doctor_detail.png" alt="doctor_detail" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">의사 프로필</div>
+                <div class="file">/doctor_detail.php?id=1</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/mypage.png" alt="mypage" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">마이페이지</div>
+                <div class="file">/mypage.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/my_bookings.png" alt="my_bookings" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">내 예약</div>
+                <div class="file">/my_bookings.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/my_appointments.png" alt="my_appointments" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">내 예약2</div>
+                <div class="file">/my_appointments.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/my_reviews.png" alt="my_reviews" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">내 후기</div>
+                <div class="file">/my_reviews.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/my_events.png" alt="my_events" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">내 이벤트</div>
+                <div class="file">/my_events.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/my_wishlist.png" alt="my_wishlist" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">찜 목록</div>
+                <div class="file">/my_wishlist.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/my_notifications.png" alt="my_notifications" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">알림</div>
+                <div class="file">/my_notifications.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/chat.png" alt="chat" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">채팅</div>
+                <div class="file">/chat.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/membership.png" alt="membership" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">회원등급</div>
+                <div class="file">/membership.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/notification_settings.png" alt="notification_settings" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">알림 설정</div>
+                <div class="file">/notification_settings.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/profile_edit.png" alt="profile_edit" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">프로필 수정</div>
+                <div class="file">/profile_edit.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/privacy_policy.png" alt="privacy_policy" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">개인정보처리방침</div>
+                <div class="file">/privacy_policy.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/forgot_password.png" alt="forgot_password" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">비밀번호 찾기</div>
+                <div class="file">/forgot_password.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/category_icons.png" alt="category_icons" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">카테고리 아이콘</div>
+                <div class="file">/category_icons.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/babitalk_icons.png" alt="babitalk_icons" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">바비톡 아이콘</div>
+                <div class="file">/babitalk_icons.php</div>
+                
+            </div>
+        </div></div>
+<div class="sec">Admin — 26 pages (Desktop 1400x900, logged in)</div>
+<div class="grid">
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_dashboard.png" alt="admin_dashboard" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">대시보드</div>
+                <div class="file">/dashboard.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_hospitals.png" alt="admin_hospitals" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원 관리</div>
+                <div class="file">/admin_hospitals.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_ads.png" alt="admin_ads" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">광고 관리</div>
+                <div class="file">/admin_ads.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_events.png" alt="admin_events" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">이벤트 관리</div>
+                <div class="file">/admin_events.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_bookings.png" alt="admin_bookings" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">예약 관리</div>
+                <div class="file">/admin_bookings.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_consultations.png" alt="admin_consultations" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">상담 관리</div>
+                <div class="file">/admin_consultations.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_reviews.png" alt="admin_reviews" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">후기 관리</div>
+                <div class="file">/admin_reviews.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_members.png" alt="admin_members" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">회원 관리</div>
+                <div class="file">/admin_members.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_columns.png" alt="admin_columns" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">칼럼 관리</div>
+                <div class="file">/admin_columns.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_promos.png" alt="admin_promos" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">프로모션 관리</div>
+                <div class="file">/admin_promos.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_ad_settings.png" alt="admin_ad_settings" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">광고 표시설정</div>
+                <div class="file">/admin_ad_settings.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_doctors.png" alt="admin_doctors" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">의사 관리</div>
+                <div class="file">/admin_doctors.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_treatments.png" alt="admin_treatments" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">시술 관리</div>
+                <div class="file">/admin_treatments.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_tips.png" alt="admin_tips" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">꿀팁 관리</div>
+                <div class="file">/admin_tips.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_faq.png" alt="admin_faq" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">FAQ 관리</div>
+                <div class="file">/admin_faq.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_qna.png" alt="admin_qna" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">Q&A 관리</div>
+                <div class="file">/admin_qna.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_rankings.png" alt="admin_rankings" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">랭킹 관리</div>
+                <div class="file">/admin_rankings.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_hospital_news.png" alt="admin_hospital_news" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">병원소식 관리</div>
+                <div class="file">/admin_hospital_news.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_coupons.png" alt="admin_coupons" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">쿠폰 관리</div>
+                <div class="file">/admin_coupons.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_points.png" alt="admin_points" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">포인트 관리</div>
+                <div class="file">/admin_points.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_cpv_dashboard.png" alt="admin_cpv_dashboard" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">CPV 대시보드</div>
+                <div class="file">/admin_cpv_dashboard.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_cpv_settings.png" alt="admin_cpv_settings" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">CPV 설정</div>
+                <div class="file">/admin_cpv_settings.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_payment.png" alt="admin_payment" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">결제 관리</div>
+                <div class="file">/admin_payment.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_ai_settings.png" alt="admin_ai_settings" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">AI 설정</div>
+                <div class="file">/admin_ai_settings.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_backup.png" alt="admin_backup" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">백업</div>
+                <div class="file">/admin_backup.php</div>
+                
+            </div>
+        </div>
+        <div class="card ">
+            <div class="card-img"><img src="qa_v1.1_screenshots/full_check/admin_project_status.png" alt="admin_project_status" loading="lazy" onclick="this.classList.toggle('expanded')"></div>
+            <div class="card-info">
+                <span class="badge pass">200</span>
+                <div class="label">프로젝트 현황</div>
+                <div class="file">/admin_project_status.php</div>
+                
+            </div>
+        </div></div>
+<footer>Puppeteer automated capture | Click image to expand | Generated 2026-03-17</footer>
+</body></html>

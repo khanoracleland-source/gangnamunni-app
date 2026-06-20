@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시스템 개요 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<!-- mfw 상단 수정요청 버튼 -->
+<div id="mfw-top-btn" style="position:fixed;top:12px;right:16px;z-index:9999;">
+  <button onclick="openMfSection({file:'system_overview.html',tab:'시스템 개요',section:'',sourceDesc:'시스템 개요 전체 페이지'})" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.8rem;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(239,68,68,.4);letter-spacing:.02em;"><span style="margin-right:5px;">✏️</span>수정요청</button>
+</div>
+
+
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-diagram-3"></i> 시스템 개요</h1>
+        <div class="sb-subtitle">Seoul Beauty 전체 아키텍처 및 기술 스택</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="sb-main">
+  <div class="container">
+    <!-- Breadcrumb -->
+    <nav class="sb-breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">홈</a></li><li class="breadcrumb-item active">시스템 개요</li></ol></nav>
+
+    <div class="row">
+      <!-- TOC -->
+      <div class="col-lg-3 order-lg-2 mb-4">
+        <div class="sb-toc">
+          <div class="sb-toc-title">목차</div>
+          <ul class="sb-toc-list">
+            <li><a href="#architecture">시스템 아키텍처</a></li>
+            <li><a href="#techstack">기술 스택</a></li>
+            <li><a href="#servers">서버 구성</a></li>
+            <li><a href="#database">데이터베이스</a></li>
+            <li><a href="#topology">시스템 토폴로지</a></li>
+            <li><a href="#sync">크론 동기화</a></li>
+            <li><a href="#sso">SSO 통합 로그인</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="col-lg-9 order-lg-1">
+
+        <!-- Architecture -->
+        <section id="architecture" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-diagram-3"></i> 시스템 아키텍처</h2>
+          <div class="sb-card mb-4">
+            <div class="sb-card-body">
+              <p>Seoul Beauty (서울미녀)는 의료 미용 플랫폼으로, HMS(Hospital Management System)를 기반으로 한국형 의료 미용 서비스에 최적화된 통합 시스템입니다.</p>
+              <div class="sb-code" style="padding:20px;overflow:visible"><div style="font-family:inherit">
+  <!-- Layer 1: Client -->
+  <div style="background:linear-gradient(135deg,rgba(102,126,234,.12),rgba(118,75,162,.12));border:2px solid rgba(102,126,234,.4);border-radius:14px;padding:16px 20px;margin-bottom:8px">
+    <div style="text-align:center;font-weight:700;font-size:13px;color:#667eea;margin-bottom:12px;letter-spacing:.5px">클라이언트 계층</div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:120px;background:rgba(102,126,234,.15);border:1.5px solid rgba(102,126,234,.5);border-radius:10px;padding:12px 16px;text-align:center">
+        <div style="font-size:24px;margin-bottom:4px">🌐</div>
+        <div style="font-weight:600;font-size:13px">웹브라우저</div>
+        <div style="font-size:11px;color:var(--sb-text-muted,#888);margin-top:2px">모바일</div>
+      </div>
+      <div style="flex:1;min-width:120px;background:rgba(102,126,234,.15);border:1.5px solid rgba(102,126,234,.5);border-radius:10px;padding:12px 16px;text-align:center">
+        <div style="font-size:24px;margin-bottom:4px">📱</div>
+        <div style="font-weight:600;font-size:13px">Hybrid WebView</div>
+        <div style="font-size:11px;color:var(--sb-text-muted,#888);margin-top:2px">앱</div>
+      </div>
+      <div style="flex:1;min-width:120px;background:rgba(102,126,234,.15);border:1.5px solid rgba(102,126,234,.5);border-radius:10px;padding:12px 16px;text-align:center">
+        <div style="font-size:24px;margin-bottom:4px">🖥️</div>
+        <div style="font-weight:600;font-size:13px">관리자 대시보드</div>
+        <div style="font-size:11px;color:var(--sb-text-muted,#888);margin-top:2px">Bootstrap 5.3</div>
+      </div>
+    </div>
+  </div>
+  <!-- Arrow -->
+  <div style="text-align:center;color:#667eea;font-size:20px;margin:4px 0;line-height:1">↓</div>
+  <!-- Layer 2: CDN -->
+  <div style="background:linear-gradient(135deg,rgba(255,154,0,.12),rgba(255,107,53,.12));border:2px solid rgba(255,154,0,.5);border-radius:14px;padding:14px 20px;margin-bottom:8px;text-align:center">
+    <div style="font-weight:700;font-size:13px;color:#ff9a00;margin-bottom:8px;letter-spacing:.5px">CDN / Proxy 계층</div>
+    <div style="display:inline-flex;align-items:center;gap:10px;background:rgba(255,154,0,.15);border:1.5px solid rgba(255,154,0,.4);border-radius:10px;padding:10px 24px">
+      <span style="font-size:22px">☁️</span>
+      <div>
+        <div style="font-weight:600;font-size:13px">Cloudflare CDN / Proxy</div>
+        <div style="font-size:11px;color:var(--sb-text-muted,#888)">hms.seoulbeauty.app</div>
+      </div>
+    </div>
+  </div>
+  <!-- Arrow -->
+  <div style="text-align:center;color:#ff9a00;font-size:20px;margin:4px 0;line-height:1">↓</div>
+  <!-- Layer 3: Application -->
+  <div style="background:linear-gradient(135deg,rgba(174,25,50,.1),rgba(108,99,255,.1));border:2px solid rgba(174,25,50,.4);border-radius:14px;padding:16px 20px;margin-bottom:8px">
+    <div style="text-align:center;font-weight:700;font-size:13px;color:#AE1932;margin-bottom:12px;letter-spacing:.5px">애플리케이션 계층</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div style="flex:1;min-width:160px;background:rgba(174,25,50,.1);border:1.5px solid rgba(174,25,50,.4);border-radius:10px;padding:12px 14px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px">🏥 InfyHMS</div>
+        <div style="font-size:11px;color:var(--sb-text-muted,#888);margin-bottom:4px">Laravel 10</div>
+        <div style="font-size:11px">• API 서버</div>
+        <div style="font-size:11px">• 관리자 패널</div>
+        <div style="font-size:11px">• 멀티테넌트</div>
+      </div>
+      <div style="flex:1;min-width:160px;background:rgba(108,99,255,.1);border:1.5px solid rgba(108,99,255,.4);border-radius:10px;padding:12px 14px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px">💄 서울미녀</div>
+        <div style="font-size:11px;color:var(--sb-text-muted,#888);margin-bottom:4px">PHP + Gnuboard 5</div>
+        <div style="font-size:11px">• 프론트엔드</div>
+        <div style="font-size:11px">• 커뮤니티</div>
+        <div style="font-size:11px">• 후기 에디터</div>
+      </div>
+    </div>
+    <div style="background:rgba(102,126,234,.15);border:1.5px solid rgba(102,126,234,.4);border-radius:10px;padding:10px 16px;text-align:center">
+      <div style="font-weight:600;font-size:13px">🔗 SSO Bridge Layer</div>
+      <div style="font-size:11px;color:var(--sb-text-muted,#888);margin-top:3px">sso_tokens DB + Cookie 기반 통합 로그인</div>
+    </div>
+  </div>
+  <!-- Arrow -->
+  <div style="text-align:center;color:#AE1932;font-size:20px;margin:4px 0;line-height:1">↓</div>
+  <!-- Layer 4: Data -->
+  <div style="background:linear-gradient(135deg,rgba(40,167,69,.1),rgba(20,100,40,.1));border:2px solid rgba(40,167,69,.4);border-radius:14px;padding:16px 20px">
+    <div style="text-align:center;font-weight:700;font-size:13px;color:#28a745;margin-bottom:12px;letter-spacing:.5px">데이터 계층</div>
+    <div style="background:rgba(40,167,69,.1);border:1.5px solid rgba(40,167,69,.35);border-radius:10px;padding:12px 16px">
+      <div style="text-align:center;font-weight:600;font-size:13px;margin-bottom:10px">🗄️ MariaDB (hms_saas) — 341+ 테이블 통합 DB</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+        <div style="background:rgba(40,167,69,.15);border:1px solid rgba(40,167,69,.4);border-radius:8px;padding:8px 14px;text-align:center">
+          <div style="font-weight:600;font-size:12px">HMS 테이블</div>
+          <div style="font-size:18px;font-weight:700;color:#28a745">151개</div>
+        </div>
+        <div style="background:rgba(40,167,69,.15);border:1px solid rgba(40,167,69,.4);border-radius:8px;padding:8px 14px;text-align:center">
+          <div style="font-weight:600;font-size:12px">GN 테이블</div>
+          <div style="font-size:18px;font-weight:700;color:#28a745">20개</div>
+        </div>
+        <div style="background:rgba(40,167,69,.15);border:1px solid rgba(40,167,69,.4);border-radius:8px;padding:8px 14px;text-align:center">
+          <div style="font-weight:600;font-size:12px">hairwang 테이블</div>
+          <div style="font-size:18px;font-weight:700;color:#28a745">190개</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tech Stack -->
+        <section id="techstack" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-stack"></i> 기술 스택</h2>
+          <div class="sb-card">
+            <div class="sb-card-body p-0">
+              <table class="sb-table">
+                <thead>
+                  <tr>
+                    <th style="width:20%">분류</th>
+                    <th style="width:30%">기술</th>
+                    <th style="width:15%">버전</th>
+                    <th>설명</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td rowspan="3" class="fw-semibold">백엔드</td>
+                    <td><span class="sb-badge sb-badge-info">Laravel</span> InfyHMS</td>
+                    <td>10.x</td>
+                    <td>HMS SaaS 멀티테넌트 기반 병원 관리 시스템</td>
+                  </tr>
+                  <tr>
+                    <td><span class="sb-badge sb-badge-purple">PHP</span></td>
+                    <td>8.2</td>
+                    <td>Remi 레포지터리, 다중 버전 공존 (7.4, 8.2, 8.3, 8.4)</td>
+                  </tr>
+                  <tr>
+                    <td><span class="sb-badge sb-badge-info">Gnuboard</span></td>
+                    <td>5.x</td>
+                    <td>서울미녀 프론트엔드 커뮤니티 프레임워크</td>
+                  </tr>
+                  <tr>
+                    <td rowspan="2" class="fw-semibold">프론트엔드</td>
+                    <td><span class="sb-badge sb-badge-purple">Bootstrap</span></td>
+                    <td>5.3</td>
+                    <td>반응형 UI 프레임워크 (CDN)</td>
+                  </tr>
+                  <tr>
+                    <td><span class="sb-badge sb-badge-info">Quill.js</span></td>
+                    <td>1.3.7</td>
+                    <td>후기 에디터 (리치 텍스트 + 이미지 업로드)</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-semibold">모바일</td>
+                    <td><span class="sb-badge sb-badge-info">Flutter</span></td>
+                    <td>3.x</td>
+                    <td>하이브리드 WebView + 네이티브 앱</td>
+                  </tr>
+                  <tr>
+                    <td rowspan="2" class="fw-semibold">데이터베이스</td>
+                    <td><span class="sb-badge sb-badge-warn">MariaDB</span></td>
+                    <td>10.x</td>
+                    <td>통합 DB (hms_saas) - 341+ 테이블</td>
+                  </tr>
+                  <tr>
+                    <td><span class="sb-badge sb-badge-info">Redis</span></td>
+                    <td>7.x</td>
+                    <td>세션 캐시, 큐 처리</td>
+                  </tr>
+                  <tr>
+                    <td rowspan="2" class="fw-semibold">서버</td>
+                    <td><span class="sb-badge sb-badge-fail">Rocky Linux</span></td>
+                    <td>9.7</td>
+                    <td>메인 서버 OS (RHEL 호환)</td>
+                  </tr>
+                  <tr>
+                    <td><span class="sb-badge sb-badge-warn">Apache</span></td>
+                    <td>2.4</td>
+                    <td>웹 서버, vhost 다중 도메인</td>
+                  </tr>
+                  <tr>
+                    <td rowspan="2" class="fw-semibold">자동화</td>
+                    <td><span class="sb-badge sb-badge-pass">Playwright</span></td>
+                    <td>1.58.2</td>
+                    <td>자동 매뉴얼 캡처 엔진</td>
+                  </tr>
+                  <tr>
+                    <td><span class="sb-badge sb-badge-info">Node.js</span></td>
+                    <td>20.x</td>
+                    <td>자동 매뉴얼 엔진 서버 (Express, port 3100)</td>
+                  </tr>
+                  <tr>
+                    <td rowspan="3" class="fw-semibold">AI</td>
+                    <td><span class="sb-badge sb-badge-pass">OpenAI</span></td>
+                    <td>GPT-4o</td>
+                    <td>후기/광고 검증, 작성 도우미</td>
+                  </tr>
+                  <tr>
+                    <td><span class="sb-badge sb-badge-purple">Claude</span></td>
+                    <td>Opus 4</td>
+                    <td>텍스트 분석, 번역 지원</td>
+                  </tr>
+                  <tr>
+                    <td><span class="sb-badge sb-badge-info">DALL-E</span></td>
+                    <td>3</td>
+                    <td>광고 이미지 자동 생성</td>
+                  </tr>
+                  <tr>
+                    <td class="fw-semibold">메일</td>
+                    <td><span class="sb-badge sb-badge-warn">Mailcow</span></td>
+                    <td>Docker</td>
+                    <td>IMAP/SMTP 메일 서버 (18 컨테이너)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Server Config -->
+        <section id="servers" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-hdd-rack"></i> 서버 구성</h2>
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="sb-card h-100">
+                <div class="sb-card-header">
+                  <h6 class="mb-0"><span class="sb-status"><span class="sb-status-dot green"></span></span> Contabo1 (메인 개발 서버)</h6>
+                </div>
+                <div class="sb-card-body">
+                  <table class="sb-table">
+                    <tbody>
+                      <tr><td class="fw-semibold">IP</td><td><code class="sb-code-inline">5.104.82.35</code></td></tr>
+                      <tr><td class="fw-semibold">OS</td><td>Rocky Linux 9.7</td></tr>
+                      <tr><td class="fw-semibold">CPU</td><td>8 cores</td></tr>
+                      <tr><td class="fw-semibold">RAM</td><td>23GB</td></tr>
+                      <tr><td class="fw-semibold">디스크</td><td>800GB (572GB 여유)</td></tr>
+                      <tr><td class="fw-semibold">PHP</td><td>7.4, 8.2, 8.3, 8.4 (Remi)</td></tr>
+                      <tr><td class="fw-semibold">HMS 경로</td><td><code class="sb-code-inline" style="font-size:0.75rem;">/var/www/html/.../hms-saas/</code></td></tr>
+                    </tbody>
+                  </table>
+                  <div class="sb-note sb-note-info mt-3">
+                    <span class="sb-note-icon"><i class="bi bi-info-circle"></i></span>
+                    <span>Cloudflare 프록시를 통해 hms.seoulbeauty.app 도메인으로 접근합니다.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="sb-card h-100">
+                <div class="sb-card-header">
+                </div>
+                <div class="sb-card-body">
+                  <table class="sb-table">
+                    <tbody>
+                      <tr><td class="fw-semibold">용도</td><td>기타 프로젝트 서버</td></tr>
+                      <tr><td class="fw-semibold">프로젝트</td><td>rocky_lms, stackposts, n8n 등</td></tr>
+                      <tr><td class="fw-semibold">Docker</td><td>activepieces, n8n 컨테이너</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-card mt-4">
+            <div class="sb-card-header"><h6 class="mb-0">Apache vhost 구성</h6></div>
+            <div class="sb-card-body">
+              <table class="sb-table">
+                <thead><tr><th>도메인</th><th>대상</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">hms.seoulbeauty.app</code></td><td>HMS Laravel</td><td>메인 병원 관리 시스템</td></tr>
+                  <tr><td><code class="sb-code-inline">hms_dev.seoulbeauty.app</code></td><td>HMS Dev</td><td>개발 환경</td></tr>
+                  <tr><td><code class="sb-code-inline">mail.seoulbeauty.app</code></td><td>Mailcow</td><td>메일 서버 관리</td></tr>
+                  <tr><td><code class="sb-code-inline">/hairwang/</code></td><td>Alias</td><td>서울미녀 프론트엔드</td></tr>
+                  <tr><td><code class="sb-code-inline">/hairwang/gangnamunni/</code></td><td>Gnuboard</td><td>서울미녀 커뮤니티</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Database -->
+        <section id="database" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-database"></i> 데이터베이스 스키마</h2>
+          <div class="sb-card mb-4">
+            <div class="sb-card-body">
+              <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3"><div class="sb-stat-card"><div class="sb-stat-number">341+</div><div class="sb-stat-label">전체 테이블</div></div></div>
+                <div class="col-6 col-md-3"><div class="sb-stat-card"><div class="sb-stat-number">151</div><div class="sb-stat-label">HMS 테이블</div></div></div>
+                <div class="col-6 col-md-3"><div class="sb-stat-card"><div class="sb-stat-number">190</div><div class="sb-stat-label">hairwang 테이블</div></div></div>
+                <div class="col-6 col-md-3"><div class="sb-stat-card"><div class="sb-stat-number">20</div><div class="sb-stat-label">gangnamunni 테이블</div></div></div>
+              </div>
+
+              <h6 class="fw-bold mb-3">주요 테이블 그룹</h6>
+              <table class="sb-table">
+                <thead><tr><th>그룹</th><th>접두어</th><th>테이블 수</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td>HMS Core</td><td>users, patients, appointments...</td><td>151</td><td>Laravel 기반 병원 관리</td></tr>
+                  <tr><td>서울미녀</td><td>gangnamunni_*</td><td>20</td><td>병원, 카테고리, 후기 등</td></tr>
+                  <tr><td>Gnuboard</td><td>g5_*</td><td>~30</td><td>커뮤니티, 회원, 게시판</td></tr>
+                  <tr><td>병원 연관</td><td>hospital_*</td><td>5</td><td>병원 후기, 이미지, 카테고리</td></tr>
+                  <tr><td>hairwang 이전</td><td>hw_*</td><td>190</td><td>이전 시스템 데이터</td></tr>
+                  <tr><td>AI 관련</td><td>ai_*</td><td>5</td><td>AI 키, 로그, 설정</td></tr>
+                  <tr><td>SSO</td><td>sso_tokens</td><td>1</td><td>통합 로그인 토큰</td></tr>
+                  <tr><td>동기화</td><td>member_sync</td><td>1</td><td>회원 동기화 매핑</td></tr>
+                </tbody>
+              </table>
+
+              <div class="sb-note sb-note-warning mt-3">
+                <span class="sb-note-icon"><i class="bi bi-exclamation-triangle"></i></span>
+                <div>
+                  <strong>충돌 테이블 처리:</strong> hairwang DB에서 이전 시 HMS 테이블과 이름이 충돌한 <code class="sb-code-inline">notifications</code>와 <code class="sb-code-inline">payments</code> 테이블은 각각 <code class="sb-code-inline">hw_notifications</code>, <code class="sb-code-inline">hw_payments</code>로 리네임하여 처리했습니다.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Topology -->
+        <section id="topology" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-share"></i> 시스템 토폴로지</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <div class="sb-code" style="padding:20px;overflow:visible"><div style="font-family:inherit">
+  <!-- Top row: InfyHMS <-> Gnuboard -->
+  <div style="display:flex;gap:0;align-items:stretch;margin-bottom:8px">
+    <div style="flex:1;background:rgba(174,25,50,.1);border:2px solid rgba(174,25,50,.4);border-radius:14px 0 0 14px;padding:16px 14px">
+      <div style="font-weight:700;font-size:13px;color:#AE1932;margin-bottom:8px">🏥 InfyHMS (Laravel 10)</div>
+      <div style="font-size:11px;line-height:1.8">
+        <div>• 병원 관리</div><div>• 의사/환자 관리</div><div>• 예약/진료</div><div>• 멀티테넌트</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 10px;gap:6px;min-width:90px">
+      <div style="font-size:10px;color:var(--sb-text-muted,#888);text-align:center;font-weight:600">SSO Token<br>(Cookie+DB)</div>
+      <div style="color:#667eea;font-size:18px">⇄</div>
+      <div style="font-size:10px;color:var(--sb-text-muted,#888);text-align:center">회원 동기화<br>(bcrypt)</div>
+      <div style="color:#667eea;font-size:18px">⇄</div>
+    </div>
+    <div style="flex:1;background:rgba(108,99,255,.1);border:2px solid rgba(108,99,255,.4);border-radius:0 14px 14px 0;padding:16px 14px">
+      <div style="font-weight:700;font-size:13px;color:#6C63FF;margin-bottom:8px">💬 Gnuboard 5</div>
+      <div style="font-size:11px;line-height:1.8">
+        <div>• 회원 가입/로그인</div><div>• 커뮤니티 게시판</div><div>• 뷰티 팁</div><div>• 하단 네비게이션</div>
+      </div>
+    </div>
+  </div>
+  <!-- Arrow down -->
+  <div style="text-align:center;font-size:18px;color:#667eea;margin:4px 0">↓</div>
+  <!-- Middle: GN Admin -->
+  <div style="background:linear-gradient(135deg,rgba(255,107,53,.1),rgba(174,25,50,.1));border:2px solid rgba(255,107,53,.4);border-radius:14px;padding:16px 20px;margin-bottom:8px">
+    <div style="text-align:center;font-weight:700;font-size:13px;color:#ff6b35;margin-bottom:12px">🛠️ 서울미녀 관리자</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.3);border-radius:8px;padding:8px 10px;text-align:center;font-size:11px"><div style="font-weight:600;margin-bottom:2px">📊 대시보드</div><div style="color:var(--sb-text-muted,#888)">16개 메뉴</div></div>
+      <div style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.3);border-radius:8px;padding:8px 10px;text-align:center;font-size:11px"><div style="font-weight:600;margin-bottom:2px">⭐ 후기 관리</div><div style="color:var(--sb-text-muted,#888)">Quill 에디터</div></div>
+      <div style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.3);border-radius:8px;padding:8px 10px;text-align:center;font-size:11px"><div style="font-weight:600;margin-bottom:2px">🤖 AI 설정</div><div style="color:var(--sb-text-muted,#888)">5 Phase</div></div>
+      <div style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.3);border-radius:8px;padding:8px 10px;text-align:center;font-size:11px"><div style="font-weight:600;margin-bottom:2px">🏥 병원관리</div><div style="color:var(--sb-text-muted,#888)">이미지 관리</div></div>
+      <div style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.3);border-radius:8px;padding:8px 10px;text-align:center;font-size:11px"><div style="font-weight:600;margin-bottom:2px">🏷️ 카테고리</div><div style="color:var(--sb-text-muted,#888)">카테고리 관리</div></div>
+      <div style="background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.3);border-radius:8px;padding:8px 10px;text-align:center;font-size:11px"><div style="font-weight:600;margin-bottom:2px">📧 메일 관리</div><div style="color:var(--sb-text-muted,#888)">IMAP/SMTP</div></div>
+    </div>
+  </div>
+  <!-- Arrow down -->
+  <div style="text-align:center;font-size:18px;color:#28a745;margin:4px 0">↓</div>
+  <!-- DB -->
+  <div style="background:linear-gradient(135deg,rgba(40,167,69,.1),rgba(20,100,40,.1));border:2px solid rgba(40,167,69,.4);border-radius:14px;padding:14px 20px;text-align:center">
+    <div style="font-weight:700;font-size:13px;color:#28a745;margin-bottom:4px">🗄️ MariaDB (hms_saas) — 통합 DB</div>
+    <div style="font-size:12px;color:var(--sb-text-muted,#888)">341+ 테이블</div>
+  </div>
+</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Cron Sync -->
+        <section id="sync" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-arrow-repeat"></i> 크론 동기화 시스템</h2>
+          <div class="sb-card mb-4">
+            <div class="sb-card-body">
+              <p>1분 간격으로 4단계 동기화가 자동 실행됩니다. <code class="sb-code-inline">*/1 * * * * cron_sync.sh</code></p>
+
+              <div class="row g-3 mt-3">
+                <div class="col-md-6">
+                  <div class="sb-card h-100" style="border-left: 4px solid var(--sb-info);">
+                    <div class="sb-card-body">
+                      <h6 class="fw-bold"><span class="sb-badge sb-badge-info">1단계</span> HMS -> 서울미녀</h6>
+                      <p class="mb-1 small">파일: <code class="sb-code-inline">sync_hms_to_gangnamunni.php</code></p>
+                      <ul class="sb-feature-list small">
+                        <li>병원 정보 동기화</li>
+                        <li>의사 정보 동기화</li>
+                        <li>진료과 목록 동기화</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="sb-card h-100" style="border-left: 4px solid var(--sb-success);">
+                    <div class="sb-card-body">
+                      <h6 class="fw-bold"><span class="sb-badge sb-badge-pass">2단계</span> 서울미녀 -> HMS</h6>
+                      <p class="mb-1 small">파일: <code class="sb-code-inline">sync_gangnamunni_to_hms.php</code></p>
+                      <ul class="sb-feature-list small">
+                        <li>상담 요청 동기화</li>
+                        <li>예약 정보 동기화</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="sb-card h-100" style="border-left: 4px solid var(--sb-warning);">
+                    <div class="sb-card-body">
+                      <h6 class="fw-bold"><span class="sb-badge sb-badge-warn">3단계</span> 회원 양방향 동기화</h6>
+                      <p class="mb-1 small">파일: <code class="sb-code-inline">sync_members.php</code></p>
+                      <ul class="sb-feature-list small">
+                        <li>Gnuboard <-> HMS 회원 동기화</li>
+                        <li>member_sync 매핑 테이블 관리</li>
+                        <li>bcrypt 해시 직접 복사</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="sb-card h-100" style="border-left: 4px solid var(--sb-accent);">
+                    <div class="sb-card-body">
+                      <h6 class="fw-bold"><span class="sb-badge sb-badge-purple">4단계</span> 카테고리 양방향 동기화</h6>
+                      <p class="mb-1 small">파일: <code class="sb-code-inline">sync_hospital_type.php</code></p>
+                      <ul class="sb-feature-list small">
+                        <li>hospital_type <-> gangnamunni_categories</li>
+                        <li>12건 시술 카테고리 매핑</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SSO -->
+        <section id="sso" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-key"></i> SSO 통합 로그인</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>3개 시스템(HMS, Gnuboard, 서울미녀) 간 단일 로그인(SSO)을 지원합니다.</p>
+
+              <h6 class="fw-bold mt-4 mb-3">SSO 흐름</h6>
+              <ol class="sb-steps">
+                <li><strong>로그인 발생:</strong> 사용자가 어느 시스템이든 로그인하면 SSO 토큰이 발급됩니다.</li>
+                <li><strong>토큰 저장:</strong> <code class="sb-code-inline">sso_tokens</code> DB 테이블에 토큰 저장, <code class="sb-code-inline">sb_sso_token</code> 쿠키로 공유 (24시간 유효)</li>
+                <li><strong>자동 로그인:</strong> 다른 시스템 방문 시 쿠키의 SSO 토큰으로 자동 인증 처리</li>
+                <li><strong>로그아웃:</strong> 어느 시스템에서든 로그아웃하면 SSO 토큰 삭제, 전체 로그아웃</li>
+              </ol>
+
+              <h6 class="fw-bold mt-4 mb-3">시스템별 구현</h6>
+              <table class="sb-table">
+                <thead><tr><th>시스템</th><th>세션명</th><th>구현 파일</th></tr></thead>
+                <tbody>
+                  <tr><td>HMS (Laravel)</td><td><code class="sb-code-inline">hms_saas_session</code></td><td>SsoBridge 미들웨어, SsoLoginListener, SsoLogoutListener</td></tr>
+                  <tr><td>Gnuboard</td><td><code class="sb-code-inline">G5PHPSESSID</code></td><td>extend/hms_sync.extend.php, extend/sso_auto_login.extend.php</td></tr>
+                  <tr><td>서울미녀</td><td><code class="sb-code-inline">PHPSESSID</code></td><td>dashboard.php (SSO 자동 로그인 + 토큰 발급)</td></tr>
+                </tbody>
+              </table>
+
+              <div class="sb-note sb-note-warning mt-3">
+                <span class="sb-note-icon"><i class="bi bi-exclamation-triangle"></i></span>
+                <div><strong>주의:</strong> Laravel의 EncryptCookies에서 <code class="sb-code-inline">sb_sso_token</code>을 암호화 제외 처리해야 PHP와 Laravel 간 쿠키 공유가 가능합니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. 시스템 개요 문서 v1.0</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_시스템개요.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_시스템개요.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+<script src="common/mf_widget.js?v=20260409d"></script>
+
+<div style="position:fixed;bottom:24px;right:24px;z-index:1050;"><button class="btn btn-danger btn-sm shadow-lg fw-bold px-3" onclick="openMfSection({file:'system_overview.html',tab:'시스템 개요',section:'',sourceDesc:'시스템 개요 전체'})"><i class="bi bi-pencil-square me-1"></i>수정요청</button></div>
+</body>
+</html>

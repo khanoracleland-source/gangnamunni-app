@@ -1,0 +1,11 @@
+{
+    "name": "Bed",
+    "alias": "bed",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Bed\\Providers\\BedServiceProvider"
+    ],
+    "files": []
+}

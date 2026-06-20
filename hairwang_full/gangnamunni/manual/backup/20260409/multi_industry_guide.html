@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>멀티 산업 플랫폼 가이드 — 서울미녀</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="common/style.css">
+<style>
+.hero { background: linear-gradient(135deg, #0f3460 0%, #16213e 50%, #1a1a2e 100%); color:#fff; padding:60px 0 48px; }
+.hero h1 { font-size:2.2rem; font-weight:800; }
+.hero .badge-pill { font-size:13px; padding:6px 14px; border-radius:20px; }
+.preset-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
+.preset-item { border:2px solid var(--sb-border); border-radius:12px; padding:16px; text-align:center; transition:all 0.2s; }
+.preset-item:hover { transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,0.1); }
+.preset-item .icon { font-size:2rem; margin-bottom:8px; }
+.preset-item h6 { font-weight:700; margin:0; }
+.preset-item small { color:var(--sb-text-muted); }
+.flow-box { background:var(--sb-bg-alt); border-radius:12px; padding:20px; margin:12px 0; }
+.flow-arrow { text-align:center; font-size:1.5rem; color:var(--sb-primary); margin:8px 0; }
+.term-table td:first-child { font-family:'Fira Code',monospace; font-size:13px; color:var(--sb-primary); }
+.file-tree { font-family:'Fira Code',monospace; font-size:13px; line-height:1.8; background:var(--sb-bg-alt); border-radius:8px; padding:16px; }
+.stat-card { border-radius:12px; padding:20px; text-align:center; color:#fff; }
+.stat-num { font-size:2rem; font-weight:800; }
+.stat-label { font-size:13px; opacity:0.85; }
+.check-item { padding:8px 0; border-bottom:1px solid var(--sb-border); display:flex; align-items:center; gap:8px; }
+.check-item:last-child { border:none; }
+.check-ok { color:#22c55e; font-weight:700; }
+.check-warn { color:#f59e0b; font-weight:700; }
+
+/* 다크모드 보완 */
+body { background-color: var(--sb-bg, #F5F6FA) !important; color: var(--sb-text, #1A1D26) !important; }
+.card, .table, .accordion-item, .accordion-button, .modal-content {
+    background-color: var(--sb-bg-card, #fff) !important;
+    color: var(--sb-text, #1A1D26) !important;
+    border-color: var(--sb-border, #E5E7EB) !important;
+}
+.table th, .table td { border-color: var(--sb-border, #E5E7EB) !important; }
+.accordion-button:not(.collapsed) { background-color: var(--sb-bg-card, #fff) !important; color: var(--sb-text) !important; }
+.text-muted { color: var(--sb-text-secondary, #6B7280) !important; }
+code { background: var(--sb-bg-code, #F1F3F5); color: var(--sb-text, #1A1D26); padding: 2px 5px; border-radius: 3px; }
+pre { background: var(--sb-bg-code, #F1F3F5) !important; color: var(--sb-text) !important; border: 1px solid var(--sb-border) !important; }
+.perm-yes { background: rgba(40,167,69,0.15) !important; color: var(--sb-text) !important; }
+.perm-no { background: rgba(220,53,69,0.15) !important; color: var(--sb-text) !important; }
+.flow-box, .file-tree, .screen-header { background: var(--sb-bg-code, #F1F3F5) !important; }
+h1, h2, h3, h4, h5, h6 { color: var(--sb-text, #1A1D26) !important; }
+.hero h1, .hero h2, .hero p, .hero span { color: #fff !important; }
+a { color: var(--sb-primary, #6C63FF); }
+.list-group-item { background-color: var(--sb-bg-card, #fff) !important; color: var(--sb-text) !important; border-color: var(--sb-border) !important; }
+
+</style>
+<script>(function(){var t=localStorage.getItem("sb-manual-theme")||"light";document.documentElement.setAttribute("data-theme",t);document.documentElement.setAttribute("data-bs-theme",t);})();</script>
+</head>
+<body>
+<button class="btn btn-outline-light btn-sm" onclick="toggleTheme()" style="position:fixed;top:12px;right:12px;z-index:9999;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.3);"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <span class="badge-pill" style="background:#667eea;">Phase 1~4 완료</span>
+      <span class="badge-pill" style="background:#22c55e;">10개 업종</span>
+      <span class="badge-pill" style="background:#f59e0b;color:#000;">~190건 용어 교체</span>
+    </div>
+    <h1><i class="bi bi-buildings me-2"></i>멀티 산업 플랫폼 가이드</h1>
+    <p class="mt-2 mb-0" style="font-size:1.05rem;opacity:0.85;">서울미녀 플랫폼을 법률사무소, 동물병원, 학원, 식당, 부동산 등 어떤 업종에도 적용하는 방법을 안내합니다.</p>
+  </div>
+</div>
+
+<main class="container py-4">
+
+<!-- 통계 카드 -->
+<div class="row g-3 mb-5">
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+      <div class="stat-num">10</div><div class="stat-label">업종 프리셋</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#f093fb,#f5576c);">
+      <div class="stat-num">27</div><div class="stat-label">용어 키</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#4facfe,#00f2fe);">
+      <div class="stat-num">~190</div><div class="stat-label">term() 교체</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#43e97b,#38f9d7);">
+      <div class="stat-num">35+</div><div class="stat-label">수정 파일</div>
+    </div>
+  </div>
+</div>
+
+<!-- 1. 개요 -->
+<section class="mb-5" id="overview">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">01</span> 개요</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <p>서울미녀 플랫폼은 <strong>멀티 산업 SaaS</strong>로 설계되어, 하나의 코드베이스로 다양한 업종의 서비스를 운영할 수 있습니다.</p>
+      <table class="table table-bordered">
+        <thead class="table-dark"><tr><th>항목</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td>핵심 모듈</td><td><code>includes/industry_terms.php</code> — IndustryPreset 싱글톤 클래스</td></tr>
+          <tr><td>프리셋 위치</td><td><code>includes/presets/*.json</code> (10개 파일)</td></tr>
+          <tr><td>관리자 UI</td><td><code>admin_industry.php</code> — 업종 선택 + 용어 미리보기 + 도메인 설정</td></tr>
+          <tr><td>용어 함수</td><td><code>term('business')</code> → "병원"(의료) / "사무소"(법률) / "학원"(교육)</td></tr>
+          <tr><td>사이트명</td><td><code>site_name()</code> → DB <code>theme_settings.site_name</code> 우선</td></tr>
+          <tr><td>도메인 상수</td><td><code>SITE_DOMAIN</code>, <code>SITE_BASE_PATH</code>, <code>SITE_FULL_URL</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 10개 업종 프리셋 -->
+<section class="mb-5" id="presets">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">02</span> 10개 업종 프리셋</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <div class="preset-grid">
+        <div class="preset-item"><div class="icon"><i class="bi bi-hospital"></i></div><h6>의료미용</h6><small>medical_beauty</small></div>
+        <div class="preset-item"><div class="icon"><i class="bi bi-scissors"></i></div><h6>미용실</h6><small>beauty_salon</small></div>
+        <div class="preset-item"><div class="icon"><i class="bi bi-emoji-smile"></i></div><h6>치과</h6><small>dental</small></div>
+        <div class="preset-item"><div class="icon"><i class="bi bi-droplet-half"></i></div><h6>스파</h6><small>spa</small></div>
+        <div class="preset-item"><div class="icon"><i class="bi bi-lightning"></i></div><h6>피트니스</h6><small>fitness</small></div>
+        <div class="preset-item" style="border-color:#22c55e;"><div class="icon"><i class="bi bi-briefcase"></i></div><h6>법률사무소</h6><small>law_firm</small></div>
+        <div class="preset-item" style="border-color:#22c55e;"><div class="icon"><i class="bi bi-heart-pulse"></i></div><h6>동물병원</h6><small>pet_hospital</small></div>
+        <div class="preset-item" style="border-color:#22c55e;"><div class="icon"><i class="bi bi-mortarboard"></i></div><h6>학원</h6><small>academy</small></div>
+        <div class="preset-item" style="border-color:#22c55e;"><div class="icon"><i class="bi bi-shop"></i></div><h6>식당</h6><small>restaurant</small></div>
+        <div class="preset-item" style="border-color:#22c55e;"><div class="icon"><i class="bi bi-house-door"></i></div><h6>부동산</h6><small>real_estate</small></div>
+      </div>
+      <div class="sb-note sb-note-info mt-3"><strong>초록 테두리</strong> = 2026-03-30 신규 추가된 프리셋</div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. 용어 매핑 -->
+<section class="mb-5" id="terminology">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">03</span> 용어 매핑 (27키)</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <div class="table-responsive">
+      <table class="table table-sm table-hover term-table">
+        <thead class="table-light">
+          <tr><th>키</th><th>의료미용</th><th>법률사무소</th><th>동물병원</th><th>학원</th><th>식당</th><th>부동산</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>business</td><td>병원</td><td>사무소</td><td>동물병원</td><td>학원</td><td>매장</td><td>부동산</td></tr>
+          <tr><td>staff</td><td>의사</td><td>변호사</td><td>수의사</td><td>강사</td><td>셰프</td><td>공인중개사</td></tr>
+          <tr><td>client</td><td>환자</td><td>의뢰인</td><td>보호자</td><td>학생</td><td>고객</td><td>고객</td></tr>
+          <tr><td>service</td><td>시술</td><td>법률상담</td><td>진료</td><td>수업</td><td>메뉴</td><td>매물</td></tr>
+          <tr><td>appointment</td><td>진료예약</td><td>법률상담 예약</td><td>진료예약</td><td>수업 예약</td><td>예약</td><td>방문 예약</td></tr>
+          <tr><td>department</td><td>진료과</td><td>전문 분야</td><td>진료과목</td><td>과목</td><td>메뉴 분류</td><td>매물 유형</td></tr>
+          <tr><td>review</td><td>후기</td><td>후기</td><td>후기</td><td>수강 후기</td><td>리뷰</td><td>거래 후기</td></tr>
+          <tr><td>booking</td><td>예약</td><td>상담 예약</td><td>예약</td><td>수업 예약</td><td>예약</td><td>방문 예약</td></tr>
+          <tr><td>consultation</td><td>상담</td><td>법률상담</td><td>상담</td><td>학습 상담</td><td>문의</td><td>매물 상담</td></tr>
+          <tr><td>tips</td><td>꿀팁</td><td>법률 정보</td><td>반려 정보</td><td>학습 팁</td><td>맛집 정보</td><td>부동산 정보</td></tr>
+          <tr><td>news</td><td>병원 소식</td><td>사무소 소식</td><td>병원 소식</td><td>학원 소식</td><td>매장 소식</td><td>중개사무소 소식</td></tr>
+          <tr><td>price</td><td>가격</td><td>상담료</td><td>진료비</td><td>수강료</td><td>가격</td><td>매매가/전세가</td></tr>
+          <tr><td>portfolio</td><td>비포/애프터</td><td>성공 사례</td><td>진료 사례</td><td>수강생 성과</td><td>음식 사진</td><td>매물 사진</td></tr>
+          <tr><td>location</td><td>주변 병원</td><td>주변 사무소</td><td>주변 동물병원</td><td>주변 학원</td><td>주변 맛집</td><td>주변 부동산</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 업종 전환 방법 -->
+<section class="mb-5" id="howto">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">04</span> 업종 전환 방법</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <h6 class="fw-bold mb-3">관리자 대시보드에서 전환</h6>
+      <div class="flow-box">
+        <strong>Step 1:</strong> <code>admin_industry.php</code> 접속
+        <div class="flow-arrow">↓</div>
+        <strong>Step 2:</strong> 업종 카드 클릭 → 용어/카테고리 미리보기 확인
+        <div class="flow-arrow">↓</div>
+        <strong>Step 3:</strong> 카드 더블클릭 → 확인 팝업 → 업종 변경 적용
+        <div class="flow-arrow">↓</div>
+        <strong>Step 4:</strong> 용어, 카테고리, 테마 색상 자동 변경 완료
+      </div>
+
+      <h6 class="fw-bold mt-4 mb-3">도메인/브랜딩 변경</h6>
+      <p>같은 페이지 하단의 "브랜딩·도메인 설정" 섹션에서:</p>
+      <table class="table table-sm table-bordered">
+        <tr><td><strong>도메인</strong></td><td><code>site_domain</code></td><td>hms.seoulbeauty.app → 새 도메인</td></tr>
+        <tr><td><strong>URL 경로</strong></td><td><code>site_base_path</code></td><td>/hairwang/gangnamunni/ → 새 경로</td></tr>
+        <tr><td><strong>앱 이름</strong></td><td><code>app_name</code></td><td>서울미녀 → 새 브랜드명</td></tr>
+        <tr><td><strong>패키지 ID</strong></td><td><code>app_package_id</code></td><td>com.celebhospital.patient → 새 ID</td></tr>
+      </table>
+      <div class="sb-note sb-note-warning">도메인 변경 후 Apache vhost + SSL(Cloudflare/Let's Encrypt) 설정이 필요합니다.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. 앱 브랜드 변경 -->
+<section class="mb-5" id="app">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">05</span> 앱 브랜드 변경</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <h6 class="fw-bold">Android — <code>brand.properties</code></h6>
+      <div class="file-tree mb-3">
+APP_NAME=서울미녀            ← 앱 표시 이름<br>
+APP_ID=com.celebhospital.patient  ← 패키지 ID<br>
+BASE_URL=https://...         ← 서버 URL<br>
+FCM_TOPIC=seoulbeauty_all    ← 알림 토픽<br>
+KEY_ALIAS=celebhospital...   ← 서명 키<br>
+      </div>
+      <p class="small text-muted">수정 후 <code>./gradlew assembleRelease</code> → APK/AAB 생성</p>
+
+      <h6 class="fw-bold mt-4">iOS — <code>brand_config.json</code></h6>
+      <div class="file-tree mb-3">
+{<br>
+&nbsp;&nbsp;"app_name": "서울미녀",<br>
+&nbsp;&nbsp;"bundle_id": "com.celebhospital.patient",<br>
+&nbsp;&nbsp;"base_url": "https://...",<br>
+&nbsp;&nbsp;"primary_color": "#AE1932"<br>
+}
+      </div>
+      <p class="small text-muted">수정 후 Xcode Archive → IPA 생성</p>
+
+      <h6 class="fw-bold mt-4">아이콘 자동 생성</h6>
+      <div class="file-tree">
+python generate_icons.py new_icon_1024.png<br><br>
+→ Android: mipmap-mdpi~xxxhdpi (5밀도 × 3파일 = 15개)<br>
+→ iOS: AppIcon.appiconset (12개 사이즈)<br>
+→ Splash: 480x480 자동 생성
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. 기술 아키텍처 -->
+<section class="mb-5" id="architecture">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">06</span> 기술 아키텍처</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <div class="file-tree">
+includes/<br>
+├── industry_terms.php          ← IndustryPreset 싱글톤 클래스 (309줄)<br>
+├── presets/<br>
+│   ├── medical_beauty.json     ← 의료미용 (기본)<br>
+│   ├── law_firm.json           ← 법률사무소<br>
+│   ├── pet_hospital.json       ← 동물병원<br>
+│   ├── academy.json            ← 학원<br>
+│   ├── restaurant.json         ← 식당<br>
+│   ├── real_estate.json        ← 부동산<br>
+│   ├── beauty_salon.json       ← 미용실<br>
+│   ├── dental.json             ← 치과<br>
+│   ├── spa.json                ← 스파<br>
+│   └── fitness.json            ← 피트니스<br>
+├── init.php                    ← industry_terms.php 자동 로드<br>
+└── admin_header.php            ← 사이드바 메뉴 term() 적용
+      </div>
+
+      <h6 class="fw-bold mt-4">프리셋 로딩 우선순위</h6>
+      <ol>
+        <li>직접 지정: <code>IndustryPreset::getInstance()->load('law_firm')</code></li>
+        <li>PHP 상수: <code>INDUSTRY_PRESET</code> (dbconfig.php)</li>
+        <li>DB 설정: <code>gangnamunni_settings.industry_preset</code></li>
+        <li>기본값: <code>medical_beauty</code></li>
+      </ol>
+
+      <h6 class="fw-bold mt-4">URL 상수 체계</h6>
+      <table class="table table-sm table-bordered">
+        <tr><td><code>SITE_DOMAIN</code></td><td>hms.seoulbeauty.app</td><td>config.php에서 정의</td></tr>
+        <tr><td><code>SITE_BASE_PATH</code></td><td>/hairwang/gangnamunni/</td><td>config.php에서 정의</td></tr>
+        <tr><td><code>SITE_FULL_URL</code></td><td>https://도메인+경로</td><td>자동 조합</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 7. 라이브 체크 결과 -->
+<section class="mb-5" id="check">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">07</span> 라이브 동작 체크 (2026-03-30)</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <h6 class="fw-bold mb-3">프론트엔드 페이지</h6>
+      <div class="check-item"><span class="check-ok">200</span> index.php (홈)</div>
+      <div class="check-item"><span class="check-ok">200</span> hospitals.php (병원 목록)</div>
+      <div class="check-item"><span class="check-ok">200</span> detail.php?id=8093 (병원 상세)</div>
+      <div class="check-item"><span class="check-ok">200</span> reviews.php (후기)</div>
+      <div class="check-item"><span class="check-ok">200</span> treatment_ranking.php (시술 랭킹)</div>
+      <div class="check-item"><span class="check-ok">200</span> price_compare.php (가격 비교)</div>
+      <div class="check-item"><span class="check-ok">200</span> hospital_compare.php (병원 비교)</div>
+      <div class="check-item"><span class="check-ok">200</span> mypage.php (마이페이지)</div>
+      <div class="check-item"><span class="check-ok">200</span> map.php (지도)</div>
+      <div class="check-item"><span class="check-ok">200</span> consultation.php (상담)</div>
+      <div class="check-item"><span class="check-ok">200</span> my_bookings.php (내 예약)</div>
+      <div class="check-item"><span class="check-ok">302</span> booking.php (예약 — 로그인 필요)</div>
+      <div class="check-item"><span class="check-ok">302</span> review_write.php (후기 작성 — 로그인 필요)</div>
+
+      <h6 class="fw-bold mt-4 mb-3">관리자 페이지</h6>
+      <div class="check-item"><span class="check-ok">302</span> admin_industry.php (업종 설정)</div>
+      <div class="check-item"><span class="check-ok">302</span> admin_ad_settings.php (광고 설정)</div>
+      <div class="check-item"><span class="check-ok">302</span> admin_design_tokens.php (디자인 토큰)</div>
+      <div class="check-item"><span class="check-ok">302</span> admin_design_mode.php (디자인 모드)</div>
+      <div class="check-item"><span class="check-ok">302</span> admin_theme.php (테마 설정)</div>
+      <div class="check-item"><span class="check-ok">200</span> dashboard.php (대시보드)</div>
+
+      <h6 class="fw-bold mt-4 mb-3">서버 상태</h6>
+      <div class="check-item"><span class="check-ok">PASS</span> PHP 문법 체크: 317파일 전체 PASS</div>
+      <div class="check-item"><span class="check-ok">PASS</span> 프리셋 JSON: 10개 배포 확인</div>
+      <div class="check-item"><span class="check-ok">PASS</span> DB 설정: industry_preset = medical_beauty</div>
+      <div class="check-item"><span class="check-ok">PASS</span> GitHub: 84015a1 push 완료</div>
+      <div class="check-item"><span class="check-ok">PASS</span> 백업: DB 220KB + 소스 2.2GB (03-30)</div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. 남은 작업 -->
+<section class="mb-5" id="remaining">
+  <h2 class="sb-section-title"><span class="sb-badge sb-badge-primary me-2">08</span> 남은 작업</h2>
+  <div class="sb-card">
+    <div class="sb-card-body">
+      <table class="table table-hover">
+        <thead class="table-light"><tr><th>Phase</th><th>내용</th><th>규모</th><th>상태</th></tr></thead>
+        <tbody>
+          <tr><td>4 나머지</td><td>DB 접두사 <code>gangnamunni_</code> → <code>{prefix}_</code></td><td>192파일, 1,438건</td><td><span class="badge bg-secondary">미착수</span></td></tr>
+          <tr><td>5</td><td>매뉴얼 HTML 28파일 동적화</td><td>28파일</td><td><span class="badge bg-secondary">미착수</span></td></tr>
+          <tr><td>추가</td><td>새 프리셋 JSON 추가 (카페, 네일, 필라테스 등)</td><td>JSON 파일 추가만</td><td><span class="badge bg-info text-dark">필요 시</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. 멀티 산업 플랫폼 가이드 v1.0 (2026-03-30)</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer me-1"></i>인쇄</button>
+        <a href="index.html" class="btn btn-outline-primary"><i class="bi bi-house me-1"></i>매뉴얼 홈</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="common/export.js"></script>
+<script src="common/export.js"></script><script>document.addEventListener("DOMContentLoaded",function(){updateThemeIcon();});</script>
+</body>
+</html>

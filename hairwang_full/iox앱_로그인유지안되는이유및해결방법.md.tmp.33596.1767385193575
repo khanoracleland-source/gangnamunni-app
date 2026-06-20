@@ -1,0 +1,344 @@
+# iOS 앱 로그인 유지 안되는 이유 및 해결 방법
+
+## 문제 상황
+- **iOS 앱**: 로그인 후 앱을 종료하고 다시 실행하면 로그인 상태가 유지되지 않음 (재로그인 필요)
+- **Android 앱**: 로그인 후 앱을 종료하고 다시 실행해도 로그인 상태가 정상적으로 유지됨
+
+## 원인 분석
+
+### 1. WKWebView Configuration 문제 (핵심 원인)
+
+#### iOS 앱 - SwiftWebVC.swift:1306-1324
+```swift
+let config = WKWebViewConfiguration();
+config.userContentController = userController;
+
+let configuration = WKWebViewConfiguration() // 새로운 configuration 생성
+configuration.userContentController.add(self, name: "openDocument")
+configuration.userContentController.add(self, name: "jsError")
+configuration.userContentController.add(self, name: bridgeName)
+
+SwiftWebVC.wkwebView = WKWebView(frame: UIScreen.main.bounds, configuration : configuration)
+```
+
+**문제점:**
+- **매번 새로운 WKWebViewConfiguration 객체를 생성**하고 있음
+- **WKWebsiteDataStore를 공유하지 않음** (기본값 사용)
+- **WKProcessPool을 공유하지 않음** (기본값 사용)
+- 앱이 재시작될 때마다 완전히 새로운 WebView 환경이 만들어짐
+- 이전 세션의 쿠키와 로컬 스토리지가 새 WebView와 공유되지 않음
+
+### 2. iOS와 Android의 Cookie 저장 방식 차이
+
+#### Android 앱 - MainActivity.java:736-748
+```java
+// use cookies to remember a logged in status
+CookieSyncManager.createInstance(this);
+CookieSyncManager.getInstance().startSync();
+
+CookieManager cookieManager = CookieManager.getInstance();
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+    webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+    cookieManager.setAcceptThirdPartyCookies(webView, true);
+    cookieManager.setAcceptCookie(true);
+} else {
+    cookieManager.setAcceptCookie(true);
+}
+
+webView.getSettings().setDatabaseEnabled(true);
+webView.getSettings().setDomStorageEnabled(true);
+```
+
+**Android가 잘 작동하는 이유:**
+- `CookieManager`는 **싱글톤 패턴**으로 앱 전체에서 공유됨
+- `CookieSyncManager`로 **쿠키를 영구 저장소에 명시적으로 동기화**
+- `setDatabaseEnabled(true)` - 로컬 스토리지 활성화
+- `setDomStorageEnabled(true)` - DOM 스토리지 활성화
+- 앱 재시작 시에도 이전 쿠키와 스토리지가 자동으로 복원됨
+
+#### iOS 앱 - 쿠키 저장 설정 없음
+- WKWebView는 **기본적으로 비영구적(non-persistent) WKWebsiteDataStore** 사용
+- 명시적인 쿠키 동기화 코드 없음
+- 앱 종료 시 쿠키가 디스크에 저장되지 않을 수 있음
+
+### 3. UserDefaults vs WebView Cookie 비교
+
+#### iOS - ViewController.swift:284-296 & AppDelegate.swift:103-115
+```swift
+// UserDefaults에서 로그인 정보 읽기 (앱 재시작 시 호출)
+if (UserDefaults.standard.object(forKey: "login_state") ) != nil{
+    let login_state = UserDefaults.standard.string(forKey : "login_state")!
+    let login_id = UserDefaults.standard.string(forKey : "login_id")!
+    let login_password = UserDefaults.standard.string(forKey : "login_password")!
+
+    if (login_state == "on"){
+        AppDelegate.homeUrl = AppDelegate.homeUrl
+    }
+}
+```
+
+**발견된 문제:**
+- UserDefaults에 `login_state`, `login_id`, `login_password`를 저장하고 있음
+- 하지만 **이 정보를 WebView 쿠키와 동기화하지 않음**
+- 앱 재시작 시 UserDefaults는 복원되지만 **WebView의 세션 쿠키는 소실됨**
+- 따라서 웹 서버는 사용자를 인식하지 못하고 로그아웃 상태로 처리
+
+### 4. 데이터 저장 위치 비교
+
+| 저장소 타입 | iOS 현재 상태 | Android 현재 상태 | 앱 재시작 시 유지 여부 |
+|------------|--------------|------------------|---------------------|
+| **HTTP 쿠키** | ❌ 비영구적 저장 | ✅ 영구적 저장 | iOS: ❌ / Android: ✅ |
+| **LocalStorage** | ❌ 기본 설정 | ✅ DomStorage 활성화 | iOS: ❌ / Android: ✅ |
+| **SessionStorage** | ❌ 세션 종료 시 삭제 | ❌ 세션 종료 시 삭제 | iOS: ❌ / Android: ❌ |
+| **UserDefaults** | ✅ 영구적 저장 | - | iOS: ✅ |
+| **SharedPreferences** | - | ✅ 영구적 저장 | Android: ✅ |
+
+---
+
+## 해결 방법
+
+### 방법 1: WKWebsiteDataStore 공유 설정 (권장)
+
+SwiftWebVC.swift의 WKWebView 초기화 부분을 다음과 같이 수정:
+
+```swift
+// viewDidLoad() 메서드 내부 (line 1306 근처)
+
+let userController = WKUserContentController();
+let script = WKUserScript(source: JavaScriptFunction, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+userController.addUserScript(script)
+userController.add(self,  name: "invokeAction")
+
+let configuration = WKWebViewConfiguration()
+
+// ✅ 핵심 수정: 영구적 데이터 저장소 사용
+configuration.websiteDataStore = WKWebsiteDataStore.default()  // 기본 영구 저장소 사용
+
+// ✅ 핵심 수정: 프로세스 풀 공유 (선택사항이지만 권장)
+// 앱 전체에서 단일 프로세스 풀 사용 (AppDelegate에 저장)
+if AppDelegate.sharedProcessPool == nil {
+    AppDelegate.sharedProcessPool = WKProcessPool()
+}
+configuration.processPool = AppDelegate.sharedProcessPool!
+
+configuration.userContentController = userController
+configuration.userContentController.add(self, name: "openDocument")
+configuration.userContentController.add(self, name: "jsError")
+configuration.userContentController.add(self, name: bridgeName)
+configuration.allowsInlineMediaPlayback = true
+configuration.mediaTypesRequiringUserActionForPlayback = .audio
+configuration.userContentController.add(self, name: "invokeAction")
+
+SwiftWebVC.wkwebView = WKWebView(frame: UIScreen.main.bounds, configuration: configuration)
+```
+
+**AppDelegate.swift에 추가할 코드:**
+
+```swift
+// AppDelegate 클래스 내부에 static 변수 추가 (line 66 근처)
+public static var sharedProcessPool: WKProcessPool?
+```
+
+### 방법 2: 쿠키 수동 저장/복원
+
+앱 종료 시 쿠키를 명시적으로 저장하고 재시작 시 복원:
+
+```swift
+// SwiftWebVC.swift 또는 AppDelegate.swift에 추가
+
+// 앱 종료 시 호출 (AppDelegate.applicationWillTerminate)
+func saveCookies() {
+    let dataStore = WKWebsiteDataStore.default()
+    dataStore.httpCookieStore.getAllCookies { cookies in
+        // UserDefaults에 쿠키 저장
+        let cookieData = cookies.map { cookie in
+            return [
+                "name": cookie.name,
+                "value": cookie.value,
+                "domain": cookie.domain,
+                "path": cookie.path,
+                "expiresDate": cookie.expiresDate?.timeIntervalSince1970 ?? 0
+            ]
+        }
+        UserDefaults.standard.set(cookieData, forKey: "saved_cookies")
+        UserDefaults.standard.synchronize()
+    }
+}
+
+// 앱 시작 시 호출 (SwiftWebVC.viewDidLoad)
+func restoreCookies() {
+    guard let cookieData = UserDefaults.standard.array(forKey: "saved_cookies") as? [[String: Any]] else {
+        return
+    }
+
+    let dataStore = WKWebsiteDataStore.default()
+    for cookieDict in cookieData {
+        guard let name = cookieDict["name"] as? String,
+              let value = cookieDict["value"] as? String,
+              let domain = cookieDict["domain"] as? String,
+              let path = cookieDict["path"] as? String else {
+            continue
+        }
+
+        var properties: [HTTPCookiePropertyKey: Any] = [
+            .name: name,
+            .value: value,
+            .domain: domain,
+            .path: path
+        ]
+
+        if let expiresTimestamp = cookieDict["expiresDate"] as? TimeInterval,
+           expiresTimestamp > 0 {
+            properties[.expires] = Date(timeIntervalSince1970: expiresTimestamp)
+        }
+
+        if let cookie = HTTPCookie(properties: properties) {
+            dataStore.httpCookieStore.setCookie(cookie)
+        }
+    }
+}
+```
+
+### 방법 3: WKWebView 인스턴스를 앱 전역에서 재사용
+
+현재는 매번 새로운 WKWebView를 생성하지만, 앱 전체에서 하나의 WKWebView 인스턴스를 재사용:
+
+```swift
+// AppDelegate.swift에 추가
+public static var sharedWebView: WKWebView?
+
+// SwiftWebVC.swift의 viewDidLoad 수정
+if SwiftWebVC.wkwebView == nil {
+    // 최초 1회만 WKWebView 생성
+    let configuration = WKWebViewConfiguration()
+    configuration.websiteDataStore = WKWebsiteDataStore.default()
+    // ... 나머지 설정
+    SwiftWebVC.wkwebView = WKWebView(frame: UIScreen.main.bounds, configuration: configuration)
+}
+// 이후에는 기존 인스턴스 재사용
+```
+
+---
+
+## 권장 해결 방법
+
+**방법 1 (WKWebsiteDataStore 공유)**을 적용하는 것을 강력히 권장합니다.
+
+**이유:**
+1. **가장 근본적인 해결책** - iOS의 표준 쿠키 관리 방식 사용
+2. **코드 수정이 간단함** - 단 2줄만 추가하면 됨
+3. **안정성** - Apple 공식 API 사용으로 부작용 없음
+4. **성능** - 추가적인 저장/복원 로직 불필요
+5. **유지보수** - 추후 iOS 버전 업데이트에도 안전함
+
+---
+
+## 적용 순서
+
+### Step 1: AppDelegate.swift 수정
+```swift
+// line 66 근처, public static var 선언부에 추가
+public static var sharedProcessPool: WKProcessPool?
+```
+
+### Step 2: SwiftWebVC.swift 수정
+```swift
+// viewDidLoad() 메서드 내부, line 1312 근처 수정
+let configuration = WKWebViewConfiguration()
+
+// 이 두 줄 추가 ✅
+configuration.websiteDataStore = WKWebsiteDataStore.default()
+if AppDelegate.sharedProcessPool == nil {
+    AppDelegate.sharedProcessPool = WKProcessPool()
+}
+configuration.processPool = AppDelegate.sharedProcessPool!
+
+// 나머지 기존 코드 유지
+configuration.userContentController = userController
+// ...
+```
+
+### Step 3: 테스트
+1. Xcode에서 앱 빌드 및 실행
+2. 웹사이트에서 로그인
+3. 앱을 완전히 종료 (스와이프로 종료)
+4. 앱을 다시 실행
+5. 로그인 상태가 유지되는지 확인
+
+---
+
+## 추가 고려사항
+
+### 1. 쿠키 도메인 확인
+웹 서버에서 세션 쿠키를 설정할 때 도메인이 올바른지 확인:
+```
+Set-Cookie: session_id=...; Domain=hairwang.com; Path=/; Secure; HttpOnly
+```
+
+### 2. HTTPS 사용 확인
+- Secure 플래그가 있는 쿠키는 HTTPS에서만 전송됨
+- 앱이 HTTP를 사용하면 쿠키가 전송되지 않을 수 있음
+
+### 3. 쿠키 만료 시간 확인
+```
+Set-Cookie: session_id=...; Max-Age=2592000; Expires=...
+```
+- 세션 쿠키(만료 시간 없음)는 브라우저 종료 시 삭제될 수 있음
+- 영구 쿠키(Max-Age 또는 Expires 있음)를 사용 권장
+
+### 4. UserDefaults 로그인 정보 제거 고려
+- 현재 `login_id`, `login_password`를 UserDefaults에 평문으로 저장 중
+- **보안 위험** - 디바이스 탈취 시 비밀번호 노출
+- 쿠키 기반 세션 유지가 정상 작동하면 이 정보는 불필요함
+- **권장**: 비밀번호는 저장하지 말고 세션 쿠키만 사용
+
+---
+
+## 디버깅 방법
+
+### 1. 쿠키 확인
+```swift
+// SwiftWebVC.swift의 didFinish navigation 메서드에 추가
+let dataStore = WKWebsiteDataStore.default()
+dataStore.httpCookieStore.getAllCookies { cookies in
+    print("=== 현재 저장된 쿠키 목록 ===")
+    for cookie in cookies {
+        print("Name: \(cookie.name), Value: \(cookie.value), Domain: \(cookie.domain)")
+    }
+}
+```
+
+### 2. WebView 데이터 확인
+```swift
+WKWebsiteDataStore.default().fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { records in
+    print("=== WebView 저장 데이터 ===")
+    for record in records {
+        print("Domain: \(record.displayName)")
+    }
+}
+```
+
+### 3. 로그 추가
+```swift
+// ViewController.swift의 viewDidAppear에 추가
+print("=== UserDefaults 로그인 상태 ===")
+if let loginState = UserDefaults.standard.string(forKey: "login_state") {
+    print("login_state: \(loginState)")
+}
+if let loginId = UserDefaults.standard.string(forKey: "login_id") {
+    print("login_id: \(loginId)")
+}
+```
+
+---
+
+## 요약
+
+| 항목 | iOS (현재) | iOS (수정 후) | Android |
+|------|-----------|--------------|---------|
+| WebView 설정 | 새로운 Configuration | 공유 DataStore | 싱글톤 CookieManager |
+| 쿠키 저장 | 비영구적 | ✅ 영구적 | ✅ 영구적 |
+| 로그인 유지 | ❌ 실패 | ✅ 성공 | ✅ 성공 |
+| 필요한 수정 | - | 2줄 코드 추가 | - |
+
+**결론**: iOS 앱의 로그인 유지 문제는 WKWebView가 비영구적 데이터 저장소를 사용하기 때문입니다. `WKWebsiteDataStore.default()`를 사용하도록 2줄만 수정하면 Android 앱처럼 정상적으로 로그인 상태가 유지됩니다.

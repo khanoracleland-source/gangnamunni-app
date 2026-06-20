@@ -1,0 +1,91 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>반응형 전환 분석 — 하드코딩 폰트/스타일</title>
+<style>
+:root{--c:#0891b2;--red:#ae1932;--ok:#16a34a;--warn:#d97706;--bg:#f6f8fa;--ink:#0f172a;--mut:#64748b;--line:#e2e8f0}
+*{box-sizing:border-box}body{margin:0;font-family:'Noto Sans KR',-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);line-height:1.65}
+header{background:linear-gradient(135deg,#0891b2,#ae1932);color:#fff;padding:34px 16px 28px;text-align:center}
+header h1{margin:0 0 6px;font-size:1.4rem}header p{margin:0;opacity:.92;font-size:.9rem}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px 80px}
+section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;margin-top:20px}
+h2{font-size:1.15rem;margin:0 0 12px;border-bottom:2px solid var(--c);padding-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f1f5f9}
+code{background:#f1f5f9;padding:2px 7px;border-radius:5px;font-family:ui-monospace,Menlo,monospace;font-size:.82em;color:#be185d}
+code.ok{color:#15803d;background:#dcfce7} .cnt{color:var(--warn);font-weight:700;font-size:.78em}
+.stat{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:6px 0 4px}
+.s{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 20px;text-align:center}
+.s .n{font-size:1.5rem;font-weight:800;color:var(--red)}.s .l{font-size:.76rem;color:var(--mut)}
+pre{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:.8rem;line-height:1.55}
+pre code{background:none;color:#a5f3fc;padding:0}
+.note{background:#fff7ed;border-left:4px solid var(--warn);padding:12px 15px;border-radius:0 8px 8px 0;font-size:.86rem;margin:12px 0}
+.ok-note{background:#f0fdf4;border-left:4px solid var(--ok);padding:12px 15px;border-radius:0 8px 8px 0;font-size:.86rem;margin:12px 0}
+.demo{border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0}
+.fixed{font-size:13px} .fluid{font-size:clamp(12px,3.4vw,15px)}
+</style></head><body>
+<header><h1>📐 반응형 전환 분석 — 하드코딩 폰트/스타일</h1>
+<p>폰·크롬·해상도마다 달라 보이는 원인 진단 + 반응형 전환 가이드 · 2026-06-13</p></header>
+<div class="wrap">
+
+<section>
+  <h2>🔍 진단 — 왜 Figma와 다르게 보이나</h2>
+  <div class="stat">
+    <div class="s"><span class="n">254+</span><span class="l">하드코딩 font-size:px</span></div>
+    <div class="s"><span class="n">0</span><span class="l">clamp() 사용</span></div>
+    <div class="s"><span class="n">0</span><span class="l">vw 사용</span></div>
+    <div class="s"><span class="n">43+</span><span class="l">고정 width:px</span></div>
+  </div>
+  <div class="note">⚠️ <b>원인</b>: 폰트 크기·폭을 <b>px로 고정</b>해서, 화면 폭/해상도/기기(폰 vs 크롬)가 달라도 <b>같은 px</b>로 그려집니다. Figma는 특정 기준폭(≈390px)에서 디자인됐는데, 실제 기기는 폭이 달라 <b>상대적으로 크거나 작게</b> 보입니다. 반응형 기법(<code>clamp()</code>·<code>vw</code>)이 <b>전혀 안 쓰임</b>.</div>
+  <div class="demo">
+    <div>고정(현재): <span class="fixed">시술 가격 비교 13px 고정</span></div>
+    <div style="margin-top:6px">반응형(제안): <span class="fluid">시술 가격 비교 clamp(12,3.4vw,15)</span> ← <b>창 폭을 줄였다 늘려보세요</b></div>
+  </div>
+</section>
+
+<section>
+  <h2>📊 하드코딩 현황 (페이지별 — 전환 우선순위)</h2>
+  <table><thead><tr><th>파일</th><th>font-size:px</th><th>고정 width:px</th><th>우선순위</th></tr></thead>
+  <tbody><tr><td><code>detail.php</code></td><td>96</td><td>9</td><td>🔴 최우선</td></tr><tr><td><code>index.php</code></td><td>60</td><td>13</td><td>🔴 최우선</td></tr><tr><td><code>hospitals.php</code></td><td>33</td><td>5</td><td>🟠 높음</td></tr><tr><td><code>mypage.php</code></td><td>22</td><td>1</td><td>🟠 높음</td></tr><tr><td><code>community.php</code></td><td>21</td><td>5</td><td>🟠 높음</td></tr><tr><td><code>global_nav.php</code></td><td>13</td><td>7</td><td>🟡 보통</td></tr><tr><td><code>header.php</code></td><td>7</td><td>2</td><td>🟡 보통</td></tr><tr><td><code>bottom_nav.php</code></td><td>2</td><td>1</td><td>🟡 보통</td></tr></tbody></table>
+  <div class="note">🔴 <b>detail.php(96)·index.php(60)·hospitals.php(33)</b>가 최우선 — 사용자 노출 핵심 + 하드코딩 최다.</div>
+</section>
+
+<section>
+  <h2>🔧 반응형 전환 전략 — Fluid Typography (clamp)</h2>
+  <p style="font-size:.9rem;color:var(--mut);margin-top:0"><b>clamp(최소, 기준vw, 최대)</b>: 화면 폭에 따라 폰트가 <b>부드럽게 스케일</b>되되 너무 작거나 크지 않게 상·하한을 둠. (390px 디자인 기준)</p>
+  <table><thead><tr><th>현재 (고정)</th><th></th><th>제안 (반응형)</th></tr></thead><tbody><tr><td><code>font-size:10px</code> <span class=cnt>×19</span></td><td>→</td><td><code class=ok>font-size:clamp(9px, 2.6vw, 11px)</code></td></tr><tr><td><code>font-size:11px</code> <span class=cnt>×45</span></td><td>→</td><td><code class=ok>font-size:clamp(10px, 2.9vw, 12px)</code></td></tr><tr><td><code>font-size:12px</code> <span class=cnt>×65</span></td><td>→</td><td><code class=ok>font-size:clamp(11px, 3.1vw, 13px)</code></td></tr><tr><td><code>font-size:13px</code> <span class=cnt>×68</span></td><td>→</td><td><code class=ok>font-size:clamp(12px, 3.4vw, 14px)</code></td></tr><tr><td><code>font-size:14px</code> <span class=cnt>×46</span></td><td>→</td><td><code class=ok>font-size:clamp(13px, 3.7vw, 15px)</code></td></tr><tr><td><code>font-size:15px</code> <span class=cnt>×28</span></td><td>→</td><td><code class=ok>font-size:clamp(14px, 4.0vw, 16px)</code></td></tr><tr><td><code>font-size:16px</code></td><td>→</td><td><code class=ok>font-size:clamp(15px, 4.3vw, 17px)</code></td></tr><tr><td><code>font-size:18px</code> <span class=cnt>×15</span></td><td>→</td><td><code class=ok>font-size:clamp(16px, 4.8vw, 19px)</code></td></tr><tr><td><code>font-size:20px</code></td><td>→</td><td><code class=ok>font-size:clamp(18px, 5.3vw, 21px)</code></td></tr><tr><td><code>font-size:24px</code></td><td>→</td><td><code class=ok>font-size:clamp(20px, 6.4vw, 25px)</code></td></tr></tbody></table>
+  <div class="ok-note">✅ 이렇게 하면 작은 폰에선 살짝 작게, 큰 화면/태블릿에선 살짝 크게 — <b>모든 기기에서 균형</b>있게 보이고 Figma 비율에 가깝게 유지됩니다.</div>
+</section>
+
+<section>
+  <h2>⚙️ 적용 방법 (2가지)</h2>
+  <h3>방법 A — 토큰 CSS 변수 (권장, 한 곳에서 관리)</h3>
+  <pre><code>:root{
+  --fs-10: clamp(9px, 2.6vw, 11px);
+  --fs-12: clamp(11px, 3.1vw, 13px);
+  --fs-13: clamp(12px, 3.4vw, 14px);
+  --fs-14: clamp(13px, 3.7vw, 15px);
+  --fs-15: clamp(14px, 4.0vw, 16px);
+  --fs-18: clamp(16px, 4.8vw, 19px);
+}
+/* 사용: font-size: var(--fs-13);  (기존 13px 자리) */</code></pre>
+  <h3>방법 B — 루트 폰트 스케일 + rem 전환</h3>
+  <pre><code>html{ font-size: clamp(14px, 4.1vw, 17px); }  /* 1rem 기준 */
+/* 12px → 0.857rem, 13px → 0.93rem, 14px → 1rem ... */</code></pre>
+  <div class="note">⚠️ <b>주의</b>: 기존 하드코딩 px를 일괄 치환 시 레이아웃이 흔들릴 수 있어 <b>핵심 텍스트(제목·가격·본문)부터 단계적</b>으로. 고정 width:px는 <code>max-width:100%</code> 또는 <code>%</code>로.</div>
+</section>
+
+<section>
+  <h2>📋 반응형 가능 항목 (요약)</h2>
+  <table><thead><tr><th>항목</th><th>현재</th><th>반응형 전환</th></tr></thead><tbody>
+  <tr><td>본문/라벨 폰트</td><td>10~15px 고정 (200+개)</td><td><code class=ok>clamp()</code> fluid + CSS변수</td></tr>
+  <tr><td>제목 폰트</td><td>18~24px 고정</td><td><code class=ok>clamp()</code> fluid</td></tr>
+  <tr><td>카드/배너 고정폭</td><td>width:NNNpx (40+개)</td><td><code class=ok>max-width:100%</code> / %</td></tr>
+  <tr><td>여백/패딩</td><td>px 고정</td><td>%·rem·<code class=ok>clamp()</code></td></tr>
+  <tr><td>이미지/썸네일</td><td>고정 px</td><td><code class=ok>aspect-ratio</code> + 100%</td></tr>
+  </tbody></table>
+  <div class="ok-note">✅ <b>제안</b>: ① 방법A 토큰 CSS를 <code>design_tokens.php</code>/공통 헤더에 추가 → ② detail·index·hospitals부터 핵심 텍스트를 토큰으로 교체 → ③ Figma 비율로 재확인. <b>백엔드 변경 0, CSS만</b>.</div>
+</section>
+
+<footer style="text-align:center;color:var(--mut);font-size:.8rem;margin-top:24px">생성 2026-06-13 · 반응형 전환 분석 (하드코딩 px → fluid)</footer>
+</div></body></html>

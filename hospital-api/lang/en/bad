@@ -1,0 +1,7 @@
+<?php
+
+return [
+    'bed_capacity'=> 'Bed Capacity',
+ 
+
+];

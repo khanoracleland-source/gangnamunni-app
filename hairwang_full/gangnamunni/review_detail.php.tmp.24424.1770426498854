@@ -1,0 +1,402 @@
+<?php
+/**
+ * 후기 상세 페이지
+ * URL: review_detail.php?id=1
+ */
+require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/db.php';
+
+$review_id = intval($_GET['id'] ?? 0);
+if ($review_id <= 0) {
+    header('Location: index.php');
+    exit;
+}
+
+$db = Database::getInstance();
+
+// 후기 조회
+$review = $db->fetchOne(
+    "SELECT r.*, h.name as hospital_name, h.profile_image_url as hospital_image
+     FROM hospital_reviews r
+     LEFT JOIN gangnamunni_hospitals h ON r.hospital_id = h.id
+     WHERE r.id = ? AND r.is_active = 1",
+    [$review_id]
+);
+
+if (!$review) {
+    echo '<p style="text-align:center;padding:60px 20px;color:#999;">후기를 찾을 수 없습니다.</p>';
+    exit;
+}
+
+// 이미지
+$images = $db->fetchAll(
+    "SELECT * FROM review_images WHERE review_id = ? ORDER BY image_order ASC",
+    [$review_id]
+);
+
+// 댓글
+$comments = $db->fetchAll(
+    "SELECT * FROM review_comments WHERE review_id = ? AND is_active = 1 ORDER BY created_at ASC",
+    [$review_id]
+);
+
+// 현재 사용자 좋아요 여부
+$current_user_id = '';
+if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
+    $member = get_gangnamunni_member();
+    $current_user_id = $member['mb_id'] ?? '';
+}
+
+$user_liked = false;
+if ($current_user_id) {
+    $user_liked = (bool)$db->fetchOne(
+        "SELECT id FROM review_likes WHERE review_id = ? AND user_id = ?",
+        [$review_id, $current_user_id]
+    );
+}
+
+$base_url = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
+$csrf_token = generateCsrfToken();
+?>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>후기 상세 | 서울미녀</title>
+    <?php if (function_exists('generateFaviconLinks')) echo generateFaviconLinks(); ?>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <style>
+        :root {
+            --primary: #7c3aed;
+            --primary-light: #f3e8ff;
+            --text: #333;
+            --text-sub: #666;
+            --text-muted: #999;
+            --bg: #f8f8f8;
+            --border: #eee;
+            --star: #fbbf24;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); }
+        .container { max-width: 640px; margin: 0 auto; background: #fff; min-height: 100vh; }
+
+        /* 헤더 */
+        .detail-header { position: sticky; top: 0; height: 56px; display: flex; align-items: center; padding: 0 16px; background: #fff; border-bottom: 1px solid var(--border); z-index: 100; }
+        .detail-header a { color: var(--text); text-decoration: none; font-size: 24px; margin-right: 12px; }
+        .detail-header h1 { font-size: 16px; font-weight: 600; }
+
+        /* 작성자 */
+        .author-section { padding: 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+        .author-avatar { width: 44px; height: 44px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #999; }
+        .author-info { flex: 1; }
+        .author-name { font-size: 15px; font-weight: 600; }
+        .author-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .verified-badge { display: inline-block; padding: 1px 6px; background: #dcfce7; color: #16a34a; border-radius: 3px; font-size: 11px; margin-left: 6px; }
+
+        /* 별점 */
+        .rating-section { padding: 16px 20px; display: flex; align-items: center; gap: 8px; }
+        .star { color: var(--border); font-size: 20px; }
+        .star.filled { color: var(--star); }
+        .rating-num { font-size: 18px; font-weight: 700; margin-left: 4px; }
+
+        /* 시술 태그 */
+        .treatment-section { padding: 0 20px 16px; display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag { padding: 4px 10px; background: #f0f4ff; color: #4a90e2; border-radius: 4px; font-size: 12px; }
+
+        /* 이미지 */
+        .images-section { padding: 0 20px 16px; }
+        .images-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+        .images-grid.single { grid-template-columns: 1fr; }
+        .images-grid.double { grid-template-columns: repeat(2, 1fr); }
+        .image-item { aspect-ratio: 1; border-radius: 6px; overflow: hidden; cursor: pointer; }
+        .images-grid.single .image-item { aspect-ratio: 16/9; }
+        .image-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* 콘텐츠 */
+        .content-section { padding: 0 20px 20px; }
+        .review-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+        .review-body { font-size: 15px; line-height: 1.8; color: var(--text); }
+        .review-body p { margin-bottom: 8px; }
+        .review-body img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
+
+        /* 병원 정보 */
+        .hospital-section { margin: 0 20px 20px; padding: 14px 16px; background: var(--primary-light); border-radius: 8px; display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+        .hospital-section:hover { opacity: 0.9; }
+        .hospital-icon { font-size: 24px; }
+        .hospital-name { font-size: 14px; font-weight: 600; color: var(--primary); }
+        .hospital-arrow { margin-left: auto; color: var(--primary); }
+
+        /* 액션 */
+        .action-bar { padding: 16px 20px; border-top: 1px solid var(--border); border-bottom: 8px solid var(--bg); display: flex; gap: 24px; }
+        .action-btn { background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-sub); }
+        .action-btn.liked { color: #ef4444; }
+        .action-btn svg { width: 20px; height: 20px; }
+
+        /* 댓글 */
+        .comments-section { padding: 20px; }
+        .comments-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+        .comment-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+        .comment-item:last-child { border-bottom: none; }
+        .comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .comment-name { font-size: 13px; font-weight: 600; }
+        .comment-time { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+        .comment-body { font-size: 14px; line-height: 1.6; color: var(--text); }
+        .reply-item { margin-left: 32px; padding-left: 12px; border-left: 2px solid var(--border); }
+
+        /* 댓글 입력 */
+        .comment-form { position: sticky; bottom: 0; background: #fff; border-top: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 8px; }
+        .comment-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 20px; font-size: 14px; outline: none; }
+        .comment-input:focus { border-color: var(--primary); }
+        .comment-submit { padding: 10px 18px; background: var(--primary); color: #fff; border: none; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .comment-submit:disabled { background: #ccc; }
+
+        /* 이미지 모달 */
+        .img-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+        .img-modal.show { display: flex; }
+        .img-modal img { max-width: 95vw; max-height: 95vh; object-fit: contain; }
+        .img-modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; }
+
+        /* 신고 모달 */
+        .report-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .report-modal.show { display: flex; }
+        .report-box { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 360px; }
+        .report-box h3 { font-size: 16px; margin-bottom: 16px; }
+        .report-option { display: block; width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; text-align: left; background: #fff; cursor: pointer; font-size: 14px; }
+        .report-option:hover { background: var(--bg); }
+        .report-cancel { display: block; width: 100%; padding: 12px; border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: 14px; margin-top: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 헤더 -->
+    <header class="detail-header">
+        <a href="javascript:history.back()">←</a>
+        <h1>후기 상세</h1>
+    </header>
+
+    <!-- 작성자 -->
+    <div class="author-section">
+        <div class="author-avatar">👤</div>
+        <div class="author-info">
+            <div class="author-name">
+                <?php echo htmlspecialchars($review['user_name']); ?>
+                <?php if (!empty($review['is_verified'])): ?>
+                <span class="verified-badge">인증됨</span>
+                <?php endif; ?>
+            </div>
+            <div class="author-meta"><?php echo formatRelativeTime($review['created_at']); ?></div>
+        </div>
+    </div>
+
+    <!-- 별점 -->
+    <div class="rating-section">
+        <?php for ($i = 1; $i <= 5; $i++): ?>
+        <span class="star <?php echo $i <= $review['rating'] ? 'filled' : ''; ?>">★</span>
+        <?php endfor; ?>
+        <span class="rating-num"><?php echo $review['rating']; ?>.0</span>
+    </div>
+
+    <!-- 시술 태그 -->
+    <?php if (!empty($review['treatments'])): ?>
+    <div class="treatment-section">
+        <?php foreach (explode(',', $review['treatments']) as $t): ?>
+        <span class="tag"><?php echo htmlspecialchars(trim($t)); ?></span>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- 이미지 갤러리 -->
+    <?php if (!empty($images)): ?>
+    <div class="images-section">
+        <div class="images-grid <?php echo count($images) == 1 ? 'single' : (count($images) == 2 ? 'double' : ''); ?>">
+            <?php foreach ($images as $img): ?>
+            <div class="image-item" onclick="showImage('<?php echo htmlspecialchars($img['image_url']); ?>')">
+                <img src="<?php echo htmlspecialchars($img['thumbnail_url'] ?: $img['image_url']); ?>"
+                     alt="후기 이미지" loading="lazy">
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- 본문 -->
+    <div class="content-section">
+        <?php if (!empty($review['title'])): ?>
+        <h2 class="review-title"><?php echo htmlspecialchars($review['title']); ?></h2>
+        <?php endif; ?>
+
+        <div class="review-body">
+            <?php if (!empty($review['editor_content']) && $review['editor_type'] === 'quill'): ?>
+            <?php echo $review['editor_content']; ?>
+            <?php else: ?>
+            <?php echo nl2br(htmlspecialchars($review['content'])); ?>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- 병원 링크 -->
+    <?php if ($review['hospital_id']): ?>
+    <a href="detail.php?id=<?php echo $review['hospital_id']; ?>" class="hospital-section">
+        <span class="hospital-icon">🏥</span>
+        <span class="hospital-name"><?php echo htmlspecialchars($review['hospital_name'] ?? ''); ?></span>
+        <span class="hospital-arrow">→</span>
+    </a>
+    <?php endif; ?>
+
+    <!-- 액션 바 -->
+    <div class="action-bar">
+        <button class="action-btn <?php echo $user_liked ? 'liked' : ''; ?>" id="likeBtn" onclick="toggleLike()">
+            <svg viewBox="0 0 24 24" fill="<?php echo $user_liked ? 'currentColor' : 'none'; ?>" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span id="likeCount"><?php echo intval($review['like_count']); ?></span>
+        </button>
+        <button class="action-btn" onclick="document.getElementById('commentInput').focus()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span><?php echo count($comments); ?></span>
+        </button>
+        <button class="action-btn" onclick="showReport()" style="margin-left:auto;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            신고
+        </button>
+    </div>
+
+    <!-- 댓글 -->
+    <div class="comments-section">
+        <div class="comments-title">댓글 <?php echo count($comments); ?>개</div>
+        <?php if (empty($comments)): ?>
+        <p style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 20px 0;">첫 댓글을 남겨보세요!</p>
+        <?php endif; ?>
+        <?php foreach ($comments as $c): ?>
+        <div class="comment-item <?php echo $c['parent_id'] ? 'reply-item' : ''; ?>">
+            <div class="comment-header">
+                <span class="comment-name"><?php echo htmlspecialchars($c['user_name']); ?></span>
+                <span class="comment-time"><?php echo formatRelativeTime($c['created_at']); ?></span>
+            </div>
+            <div class="comment-body"><?php echo htmlspecialchars($c['content']); ?></div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
+    <!-- 댓글 입력 -->
+    <div class="comment-form">
+        <input type="text" class="comment-input" id="commentInput" placeholder="댓글을 입력하세요..." maxlength="500">
+        <button class="comment-submit" id="commentSubmit" onclick="submitComment()">등록</button>
+    </div>
+</div>
+
+<!-- 이미지 모달 -->
+<div class="img-modal" id="imgModal" onclick="this.classList.remove('show')">
+    <button class="img-modal-close" onclick="event.stopPropagation();document.getElementById('imgModal').classList.remove('show')">×</button>
+    <img id="imgModalSrc" src="" alt="">
+</div>
+
+<!-- 신고 모달 -->
+<div class="report-modal" id="reportModal">
+    <div class="report-box">
+        <h3>신고 사유 선택</h3>
+        <button class="report-option" onclick="sendReport('spam')">스팸/광고</button>
+        <button class="report-option" onclick="sendReport('abuse')">욕설/비방</button>
+        <button class="report-option" onclick="sendReport('fake')">허위 후기</button>
+        <button class="report-option" onclick="sendReport('inappropriate')">부적절한 내용</button>
+        <button class="report-option" onclick="sendReport('other')">기타</button>
+        <button class="report-cancel" onclick="document.getElementById('reportModal').classList.remove('show')">취소</button>
+    </div>
+</div>
+
+<script>
+const REVIEW_ID = <?php echo $review_id; ?>;
+const USER_ID = '<?php echo addslashes($current_user_id); ?>';
+const BASE_URL = '<?php echo $base_url; ?>';
+
+function showImage(url) {
+    document.getElementById('imgModalSrc').src = url;
+    document.getElementById('imgModal').classList.add('show');
+}
+
+async function toggleLike() {
+    if (!USER_ID) { alert('로그인이 필요합니다.'); return; }
+    try {
+        const res = await fetch(BASE_URL + '/api/like_review.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ review_id: REVIEW_ID, user_id: USER_ID })
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('likeCount').textContent = data.like_count;
+            const btn = document.getElementById('likeBtn');
+            btn.classList.toggle('liked', data.liked);
+            btn.querySelector('svg').setAttribute('fill', data.liked ? 'currentColor' : 'none');
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function submitComment() {
+    const input = document.getElementById('commentInput');
+    const content = input.value.trim();
+    if (!content) return;
+
+    const userName = USER_ID || '익명';
+    try {
+        const res = await fetch(BASE_URL + '/api/save_comment.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                review_id: REVIEW_ID,
+                user_id: USER_ID,
+                user_name: userName,
+                content: content
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            input.value = '';
+            location.reload();
+        } else {
+            alert(data.message || '댓글 등록에 실패했습니다.');
+        }
+    } catch (e) { alert('댓글 등록 중 오류가 발생했습니다.'); }
+}
+
+// Enter 키로 댓글 등록
+document.getElementById('commentInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') submitComment();
+});
+
+function showReport() {
+    if (!USER_ID) { alert('로그인이 필요합니다.'); return; }
+    document.getElementById('reportModal').classList.add('show');
+}
+
+async function sendReport(reason) {
+    try {
+        const res = await fetch(BASE_URL + '/api/report_review.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                review_id: REVIEW_ID,
+                reporter_id: USER_ID,
+                reason: reason
+            })
+        });
+        const data = await res.json();
+        alert(data.message);
+        document.getElementById('reportModal').classList.remove('show');
+    } catch (e) { alert('신고 접수 중 오류가 발생했습니다.'); }
+}
+
+// 외부 클릭으로 모달 닫기
+document.getElementById('reportModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('show');
+});
+</script>
+</div>
+</body>
+</html>

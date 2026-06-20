@@ -1,0 +1,683 @@
+<?php
+/**
+ * ========================================
+ * 푸시 알림 대시보드 - 메인 페이지
+ * ========================================
+ *
+ * 개별 푸시 및 전체 푸시 알림을 전송할 수 있는 웹 UI를 제공합니다.
+ *
+ * @file    index.php
+ * @updated 2025-12-17
+ * @version 2.2.0
+ * @changes
+ *   - 에러 핸들링 및 디버깅 코드 추가
+ *   - Try-catch 구문으로 에러 캡처
+ *   - 콘솔 로그 출력 추가
+ */
+
+// ============================================
+// 에러 리포팅 설정 (디버깅용)
+// ============================================
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/logs/php_errors.log');
+
+// ============================================
+// 에러 핸들러 등록
+// ============================================
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    $error_msg = "[$errno] $errstr in $errfile on line $errline";
+    error_log($error_msg);
+    echo "<script>console.error('PHP Error: " . addslashes($error_msg) . "');</script>";
+    return false;
+});
+
+// ============================================
+// 예외 핸들러 등록
+// ============================================
+set_exception_handler(function($exception) {
+    $error_msg = "Uncaught Exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine();
+    error_log($error_msg);
+    echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Error</title></head><body>";
+    echo "<h1>500 Internal Server Error</h1>";
+    echo "<pre>" . htmlspecialchars($error_msg) . "</pre>";
+    echo "<script>console.error('Exception: " . addslashes($error_msg) . "');</script>";
+    echo "</body></html>";
+    exit;
+});
+
+// ============================================
+// Try-Catch로 전체 코드 감싸기
+// ============================================
+try {
+    // 로그 디렉토리 생성
+    $log_dir = __DIR__ . '/logs';
+    if (!is_dir($log_dir)) {
+        mkdir($log_dir, 0755, true);
+    }
+
+    echo "<script>console.log('Step 1: Starting index.php');</script>";
+
+    // 인증 시스템 로드 및 로그인 체크
+    if (!file_exists(__DIR__ . '/auth.php')) {
+        throw new Exception('auth.php file not found');
+    }
+
+    echo "<script>console.log('Step 2: Loading auth.php');</script>";
+    require_once __DIR__ . '/auth.php';
+
+    echo "<script>console.log('Step 3: Checking login status');</script>";
+    require_login();  // 로그인하지 않은 사용자는 login.php로 리다이렉트
+
+    echo "<script>console.log('Step 4: Getting current user');</script>";
+    // 현재 사용자 정보 가져오기
+    $current_user = get_auth_user();
+
+    if (!$current_user) {
+        throw new Exception('Failed to get current user info');
+    }
+
+    echo "<script>console.log('Step 5: User logged in - " . addslashes($current_user['username']) . "');</script>";
+
+    // config.php 로드 (테스트 알림 설정 사용)
+    echo "<script>console.log('Step 6: Loading config.php');</script>";
+    require_once __DIR__ . '/config.php';
+
+    // 테스트 알림 설정 로드
+    echo "<script>console.log('Step 7: Loading test notification config');</script>";
+    $test_notification_config = get_test_notification_config();
+
+    echo "<script>console.log('Step 8: All initialization complete');</script>";
+
+} catch (Exception $e) {
+    // 에러 발생 시 자세한 정보 출력
+    $error_details = [
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'trace' => $e->getTraceAsString()
+    ];
+
+    error_log("Fatal Error in index.php: " . print_r($error_details, true));
+
+    echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Error</title>";
+    echo "<style>body{font-family:Arial;padding:20px;}pre{background:#f4f4f4;padding:15px;border-radius:5px;overflow:auto;}</style>";
+    echo "</head><body>";
+    echo "<h1>🚨 500 Internal Server Error</h1>";
+    echo "<h2>Error Details:</h2>";
+    echo "<pre>" . htmlspecialchars(print_r($error_details, true)) . "</pre>";
+    echo "<h3>Debug Information:</h3>";
+    echo "<ul>";
+    echo "<li>PHP Version: " . PHP_VERSION . "</li>";
+    echo "<li>Current Directory: " . __DIR__ . "</li>";
+    echo "<li>auth.php exists: " . (file_exists(__DIR__ . '/auth.php') ? 'YES' : 'NO') . "</li>";
+    echo "<li>Session status: " . session_status() . "</li>";
+    echo "</ul>";
+    echo "<script>console.error('Fatal Error:', " . json_encode($error_details) . ");</script>";
+    echo "</body></html>";
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>푸시 알림 시스템</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            border: none;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #4e73df;
+            color: white;
+            font-weight: bold;
+            padding: 15px 20px;
+            border-bottom: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .test-settings-checkbox {
+            margin-left: 25px;
+            display: flex !important;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 8px;
+        }
+        .test-settings-checkbox .form-check-input {
+            width: 22px;
+            height: 22px;
+            margin-right: 10px;
+            cursor: pointer;
+            border: 2px solid white !important;
+            background-color: transparent;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .test-settings-checkbox .form-check-input:checked {
+            background-color: #1cc88a !important;
+            border-color: #1cc88a !important;
+        }
+        .test-settings-checkbox label {
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 0 !important;
+            white-space: nowrap;
+            color: white !important;
+        }
+        .test-settings-checkbox label i {
+            margin-right: 5px;
+        }
+        .card-body {
+            padding: 30px;
+        }
+        .btn-primary {
+            background-color: #4e73df;
+            border-color: #4e73df;
+            padding: 10px 20px;
+            font-weight: 600;
+            border-radius: 8px;
+        }
+        .btn-primary:hover {
+            background-color: #2e59d9;
+            border-color: #2e59d9;
+        }
+        .form-control {
+            border-radius: 8px;
+            padding: 12px 15px;
+            border: 1px solid #d1d3e2;
+        }
+        .form-control:focus {
+            border-color: #4e73df;
+            box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.25);
+        }
+        .nav-tabs {
+            border-bottom: none;
+            margin-bottom: 20px;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin-right: 10px;
+            font-weight: 600;
+            color: #6c757d;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: #4e73df;
+            color: white;
+        }
+        .tab-content {
+            padding: 20px 0;
+        }
+        .alert {
+            border-radius: 8px;
+            padding: 15px 20px;
+        }
+        .device-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        .preview-box {
+            border: 1px solid #d1d3e2;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            background-color: white;
+        }
+        .preview-title {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .preview-body {
+            color: #6c757d;
+        }
+        .preview-device {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 5px;
+        }
+        .preview-device.android {
+            background-color: #a4c639;
+            color: white;
+        }
+        .preview-device.ios {
+            background-color: #a2aaad;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex align-items-center">
+                            <h3 class="m-0">푸시 알림 시스템</h3>
+                            <!-- 테스트 설정 사용 체크박스 -->
+                            <div class="form-check test-settings-checkbox">
+                                <input class="form-check-input" type="checkbox" id="useTestSettings">
+                                <label class="form-check-label text-white" for="useTestSettings">
+                                    <i class="fas fa-flask"></i> 테스트 설정 사용
+                                </label>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <!-- 로그인 사용자 정보 표시 -->
+                            <span class="text-white me-2">
+                                <i class="fas fa-user-circle"></i>
+                                <?php echo htmlspecialchars($current_user['username']); ?>
+                            </span>
+                            <!-- API 호출방법 버튼 -->
+                            <a href="api_docs.php" target="_blank" class="btn btn-info btn-sm">
+                                <i class="fas fa-book"></i> API 호출방법
+                            </a>
+                            <!-- 알림설정 버튼 -->
+                            <a href="settings.php" class="btn btn-light btn-sm">
+                                <i class="fas fa-cog"></i> 알림설정
+                            </a>
+                            <!-- 로그아웃 버튼 -->
+                            <a href="logout.php" class="btn btn-outline-light btn-sm">
+                                <i class="fas fa-sign-out-alt"></i> 로그아웃
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="pushTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="individual-tab" data-bs-toggle="tab" data-bs-target="#individual" type="button" role="tab" aria-controls="individual" aria-selected="true">
+                                    <i class="fas fa-user"></i> 개별 푸시
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="group-tab" data-bs-toggle="tab" data-bs-target="#group" type="button" role="tab" aria-controls="group" aria-selected="false">
+                                    <i class="fas fa-users"></i> 전체 푸시
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="pushTabsContent">
+                            <!-- 개별 푸시 탭 -->
+                            <div class="tab-pane fade show active" id="individual" role="tabpanel" aria-labelledby="individual-tab">
+                                <form id="individualPushForm" action="push_api.php" method="post">
+                                    <input type="hidden" name="push_type" value="individual">
+                                    
+                                    <div class="mb-3">
+                                        <label for="device_type" class="form-label">기기 유형</label>
+                                        <div class="d-flex">
+                                            <div class="form-check me-4">
+                                                <input class="form-check-input" type="radio" name="app" id="android" value="android" checked>
+                                                <label class="form-check-label" for="android">
+                                                    <i class="fab fa-android device-icon text-success"></i>안드로이드
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="app" id="ios" value="ios">
+                                                <label class="form-check-label" for="ios">
+                                                    <i class="fab fa-apple device-icon text-dark"></i>iOS
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="token" class="form-label">사용자 토큰</label>
+                                        <textarea class="form-control" id="token" name="user_token" rows="2" required placeholder="FCM 토큰을 입력하세요"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="title" class="form-label">제목</label>
+                                        <input type="text" class="form-control" id="title" name="title" required placeholder="알림 제목을 입력하세요">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="message" class="form-label">내용</label>
+                                        <textarea class="form-control" id="message" name="memo" rows="3" required placeholder="알림 내용을 입력하세요"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="url" class="form-label">URL (선택사항)</label>
+                                        <input type="url" class="form-control" id="url" name="url" placeholder="https://example.com">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="image_url" class="form-label">이미지 URL (선택사항)</label>
+                                        <input type="url" class="form-control" id="image_url" name="file_url" placeholder="https://example.com/image.jpg">
+                                    </div>
+                                    
+                                    <div class="preview-box">
+                                        <h5>미리보기</h5>
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="preview-device android" id="preview-device">안드로이드</span>
+                                            <span class="preview-title" id="preview-title">알림 제목</span>
+                                        </div>
+                                        <div class="preview-body" id="preview-body">알림 내용이 여기에 표시됩니다.</div>
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2 mt-4">
+                                        <button type="button" id="sendIndividualPushBtn" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane me-2"></i>푸시 알림 보내기
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- 전체 푸시 탭 -->
+                            <div class="tab-pane fade" id="group" role="tabpanel" aria-labelledby="group-tab">
+                                <form id="groupPushForm" action="push_api.php" method="post">
+                                    <input type="hidden" name="push_type" value="group">
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">대상 기기</label>
+                                        <div class="d-flex">
+                                            <div class="form-check me-4">
+                                                <input class="form-check-input" type="checkbox" name="target_devices[]" id="target_android" value="android" checked>
+                                                <label class="form-check-label" for="target_android">
+                                                    <i class="fab fa-android device-icon text-success"></i>안드로이드
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="target_devices[]" id="target_ios" value="ios" checked>
+                                                <label class="form-check-label" for="target_ios">
+                                                    <i class="fab fa-apple device-icon text-dark"></i>iOS
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="group_title" class="form-label">제목</label>
+                                        <input type="text" class="form-control" id="group_title" name="title" required placeholder="알림 제목을 입력하세요">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="group_message" class="form-label">내용</label>
+                                        <textarea class="form-control" id="group_message" name="message" rows="3" required placeholder="알림 내용을 입력하세요"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="group_url" class="form-label">URL (선택사항)</label>
+                                        <input type="url" class="form-control" id="group_url" name="url" placeholder="https://example.com">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="group_file_url" class="form-label">이미지 URL (선택사항)</label>
+                                        <input type="url" class="form-control" id="group_file_url" name="file_url" placeholder="https://example.com/image.jpg">
+                                    </div>
+                                    
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <strong>주의:</strong> 전체 푸시는 모든 사용자에게 알림을 보냅니다. 신중하게 사용하세요.
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2 mt-4">
+                                        <button type="button" id="sendGroupPushBtn" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane me-2"></i>전체 푸시 알림 보내기
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 호출방법 모달 -->
+    <div class="modal fade" id="apiDocsModal" tabindex="-1" aria-labelledby="apiDocsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="apiDocsModalLabel">
+                        <i class="fas fa-book me-2"></i>푸시 알림 API 호출 방법
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <div class="api-docs-content">
+                        <!-- 로딩 중 표시 -->
+                        <div id="apiDocsLoading" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">로딩 중...</span>
+                            </div>
+                            <p class="mt-3">API 문서를 불러오는 중...</p>
+                        </div>
+                        <!-- 문서 내용 -->
+                        <div id="apiDocsContent" style="display: none;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="../알림_함수_호출방법.md" class="btn btn-outline-primary btn-sm" download>
+                        <i class="fas fa-download me-1"></i>문서 다운로드
+                    </a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // 테스트 알림 설정 데이터 (PHP에서 로드)
+        const testNotificationConfig = <?php echo json_encode($test_notification_config); ?>;
+
+        // 테스트 설정 사용 체크박스 이벤트
+        document.getElementById('useTestSettings').addEventListener('change', function() {
+            if (this.checked) {
+                // 테스트 설정 데이터로 폼 채우기
+                document.getElementById('title').value = testNotificationConfig.title;
+                document.getElementById('message').value = testNotificationConfig.message;
+                document.getElementById('url').value = testNotificationConfig.domain;
+
+                if (testNotificationConfig.image) {
+                    // 이미지 URL 구성 (현재 폴더의 이미지 파일)
+                    const imageUrl = window.location.origin + window.location.pathname.replace('index.php', '') + testNotificationConfig.image;
+                    document.getElementById('image_url').value = imageUrl;
+                }
+
+                // 전체 푸시 폼도 업데이트
+                document.getElementById('group_title').value = testNotificationConfig.title;
+                document.getElementById('group_message').value = testNotificationConfig.message;
+                document.getElementById('group_url').value = testNotificationConfig.domain;
+
+                if (testNotificationConfig.image) {
+                    const imageUrl = window.location.origin + window.location.pathname.replace('index.php', '') + testNotificationConfig.image;
+                    document.getElementById('group_file_url').value = imageUrl;
+                }
+
+                // 미리보기 업데이트
+                updatePreview();
+
+                console.log('테스트 설정 로드됨:', testNotificationConfig);
+            } else {
+                // 체크 해제 시 폼 초기화
+                document.getElementById('title').value = '';
+                document.getElementById('message').value = '';
+                document.getElementById('url').value = '';
+                document.getElementById('image_url').value = '';
+
+                document.getElementById('group_title').value = '';
+                document.getElementById('group_message').value = '';
+                document.getElementById('group_url').value = '';
+                document.getElementById('group_file_url').value = '';
+
+                updatePreview();
+            }
+        });
+
+        // 미리보기 업데이트 함수
+        function updatePreview() {
+            const title = document.getElementById('title').value || '알림 제목';
+            const message = document.getElementById('message').value || '알림 내용이 여기에 표시됩니다.';
+            const deviceType = document.querySelector('input[name="app"]:checked').value;
+            
+            document.getElementById('preview-title').textContent = title;
+            document.getElementById('preview-body').textContent = message;
+            
+            const previewDevice = document.getElementById('preview-device');
+            if (deviceType === 'android') {
+                previewDevice.textContent = '안드로이드';
+                previewDevice.className = 'preview-device android';
+            } else {
+                previewDevice.textContent = 'iOS';
+                previewDevice.className = 'preview-device ios';
+            }
+        }
+        
+        // 이벤트 리스너 등록
+        document.getElementById('title').addEventListener('input', updatePreview);
+        document.getElementById('message').addEventListener('input', updatePreview);
+        document.querySelectorAll('input[name="app"]').forEach(radio => {
+            radio.addEventListener('change', updatePreview);
+        });
+        
+        // 개별 푸시 전송 이벤트
+        document.getElementById('sendIndividualPushBtn').addEventListener('click', function() {
+            const formData = new FormData(document.getElementById('individualPushForm'));
+
+            console.log('전송 데이터:', Object.fromEntries(formData));
+
+            fetch('push_api.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('응답 데이터:', data);
+                if (data.success) {
+                    alert('푸시 알림이 성공적으로 전송되었습니다.');
+                } else {
+                    console.error('전송 실패:', data);
+                    console.error('실패 상세 정보:', JSON.stringify(data.data, null, 2));
+
+                    let errorMsg = '푸시 알림 전송에 실패했습니다: ' + data.message;
+                    if (data.data) {
+                        errorMsg += '\n\n상세 정보:';
+                        errorMsg += '\n- Firebase 설정: ' + (data.data.firebase_config || 'N/A');
+                        errorMsg += '\n- 프로젝트 ID: ' + (data.data.project_id || 'N/A');
+                        errorMsg += '\n- arg3: ' + (data.data.arg3 || 'N/A');
+                        errorMsg += '\n- 기본 URL: ' + (data.data.default_url || 'N/A');
+                        errorMsg += '\n- 에러: ' + (data.data.error || 'N/A');
+                    }
+                    errorMsg += '\n\n콘솔에서 전체 정보를 확인하세요.';
+
+                    alert(errorMsg);
+                }
+            })
+            .catch(error => {
+                console.error('오류:', error);
+                alert('오류가 발생했습니다: ' + error.message);
+            });
+        });
+        
+        // 전체 푸시 전송 이벤트
+        document.getElementById('sendGroupPushBtn').addEventListener('click', function() {
+            if (confirm('정말로 모든 사용자에게 푸시 알림을 보내시겠습니까?')) {
+                const formData = new FormData(document.getElementById('groupPushForm'));
+
+                console.log('전체 푸시 전송 데이터:', Object.fromEntries(formData));
+
+                fetch('push_api.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('전체 푸시 응답:', data);
+                    if (data.success) {
+                        alert('전체 푸시 알림이 성공적으로 전송되었습니다.');
+                    } else {
+                        console.error('전체 푸시 전송 실패:', data);
+                        alert('전체 푸시 알림 전송에 실패했습니다: ' + data.message + '\n\n자세한 내용은 콘솔을 확인하세요.');
+                    }
+                })
+                .catch(error => {
+                    console.error('전체 푸시 오류:', error);
+                    alert('오류가 발생했습니다: ' + error.message);
+                });
+            }
+        });
+
+        // API 문서 모달 로드
+        document.getElementById('apiDocsModal').addEventListener('shown.bs.modal', function() {
+            // 이미 로드되었으면 다시 로드하지 않음
+            if (document.getElementById('apiDocsContent').innerHTML !== '') {
+                return;
+            }
+
+            // Markdown 파일 로드
+            fetch('../알림_함수_호출방법.md')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('문서를 불러올 수 없습니다.');
+                    }
+                    return response.text();
+                })
+                .then(markdown => {
+                    // marked.js로 Markdown을 HTML로 변환
+                    const html = marked.parse(markdown);
+
+                    // 로딩 숨기고 내용 표시
+                    document.getElementById('apiDocsLoading').style.display = 'none';
+                    document.getElementById('apiDocsContent').innerHTML = html;
+                    document.getElementById('apiDocsContent').style.display = 'block';
+
+                    // 코드 블록 스타일 적용
+                    document.querySelectorAll('#apiDocsContent pre code').forEach(block => {
+                        block.parentElement.style.backgroundColor = '#f4f4f4';
+                        block.parentElement.style.padding = '15px';
+                        block.parentElement.style.borderRadius = '5px';
+                        block.parentElement.style.overflow = 'auto';
+                    });
+
+                    // 테이블 스타일 적용
+                    document.querySelectorAll('#apiDocsContent table').forEach(table => {
+                        table.classList.add('table', 'table-bordered', 'table-striped');
+                    });
+
+                    // 링크에 target="_blank" 추가
+                    document.querySelectorAll('#apiDocsContent a').forEach(link => {
+                        if (link.href.startsWith('http')) {
+                            link.setAttribute('target', '_blank');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                        }
+                    });
+                })
+                .catch(error => {
+                    document.getElementById('apiDocsLoading').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            문서를 불러오는 중 오류가 발생했습니다: ${error.message}
+                        </div>
+                    `;
+                });
+        });
+    </script>
+</body>
+</html> 

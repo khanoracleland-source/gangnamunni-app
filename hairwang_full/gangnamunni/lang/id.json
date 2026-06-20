@@ -1,0 +1,16 @@
+{
+  "site_name": "Seoul Beauty",
+  "login": "Masuk",
+  "logout": "Keluar",
+  "signup": "Daftar",
+  "home": "Beranda",
+  "hospitals": "Klinik",
+  "reviews": "Ulasan",
+  "events": "Acara",
+  "booking": "Reservasi",
+  "search": "Cari",
+  "save": "Simpan",
+  "cancel": "Batal",
+  "loading": "Memuat...",
+  "reservation": "Pesan Sekarang"
+}

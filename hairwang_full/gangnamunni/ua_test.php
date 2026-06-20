@@ -1,0 +1,1 @@
+<?php echo json_encode(["ua" => $_SERVER["HTTP_USER_AGENT"] ?? "none", "get" => $_GET, "session" => isset($_SESSION) ? $_SESSION : "no session"]); ?>

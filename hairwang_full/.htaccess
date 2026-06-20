@@ -1,0 +1,64 @@
+RedirectMatch 403 (?i)/\.(history|git|snapshots|stfolder)(/|$)
+
+#### 서울미녀(gangnamunni) 리다이렉트 #####
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+# 루트 접근 시 gangnamunni로 리다이렉트
+RewriteCond %{REQUEST_URI} ^/$
+RewriteRule ^$ /gangnamunni/ [R=302,L]
+</IfModule>
+
+#### 그누보드5 rewrite BEGIN #####
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+# gangnamunni 하위 경로 직접 접근 허용 (rewrite 제외)
+RewriteRule ^gangnamunni/ - [L]
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^shop/list-([0-9a-z]+)$  shop/list.php?ca_id=$1&rewrite=1  [QSA,L]
+RewriteRule ^shop/type-([0-9a-z]+)$  shop/listtype.php?type=$1&rewrite=1  [QSA,L]
+RewriteRule ^shop/([0-9a-zA-Z_\-]+)$  shop/item.php?it_id=$1&rewrite=1  [QSA,L]
+RewriteRule ^shop/([^/]+)/$  shop/item.php?it_seo_title=$1&rewrite=1  [QSA,L]
+RewriteRule ^content/([0-9a-zA-Z_]+)$ bbs/content.php?co_id=$1&rewrite=1 [QSA,L]
+RewriteRule ^content/([^/]+)/$ bbs/content.php?co_seo_title=$1&rewrite=1 [QSA,L]
+RewriteRule ^rss/([0-9a-zA-Z_]+)$ bbs/rss.php?bo_table=$1 [QSA,L]
+RewriteRule ^([0-9a-zA-Z_]+)$ bbs/board.php?bo_table=$1&rewrite=1 [QSA,L]
+RewriteRule ^([0-9a-zA-Z_]+)/([^/]+)/$ bbs/board.php?bo_table=$1&wr_seo_title=$2&rewrite=1 [QSA,L]
+RewriteRule ^([0-9a-zA-Z_]+)/write$ bbs/write.php?bo_table=$1&rewrite=1 [QSA,L]
+RewriteRule ^([0-9a-zA-Z_]+)/([0-9]+)$ bbs/board.php?bo_table=$1&wr_id=$2&rewrite=1 [QSA,L]
+</IfModule>
+#### 그누보드5 rewrite END #####
+
+# 브라우저 캐시 활성화 설정
+<IfModule mod_expires.c>
+    ExpiresActive On
+    # 이미지 파일 30일간 캐싱
+    ExpiresByType image/jpg "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+
+    # CSS, JS 15일간 캐싱
+    ExpiresByType text/css "access plus 15 days"
+    ExpiresByType application/javascript "access plus 15 days"
+    ExpiresByType application/x-javascript "access plus 15 days"
+
+    # HTML 캐싱 (권장하지 않음, 주의!)
+    ExpiresByType text/html "access plus 1 hour"
+</IfModule>
+
+<IfModule mod_headers.c>
+    # 캐시 컨트롤 헤더 설정
+    <filesMatch "\\.(ico|jpe?g|png|gif|svg|webp|css|js)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </filesMatch>
+    <filesMatch "\\.(html|htm)$">
+        Header set Cache-Control "private, max-age=3600"
+    </filesMatch>
+</IfModule>

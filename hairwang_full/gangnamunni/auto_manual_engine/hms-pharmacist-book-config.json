@@ -1,0 +1,156 @@
+{
+  "_comment": "HMS HMS 약사 매뉴얼 - Auto Manual Config",
+  "_version": "1.0",
+  "_updated": "2026-03-05",
+  "configKey": "hms-pharmacist-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/",
+  "browser": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "headless": true
+  },
+  "login": {
+    "required": true,
+    "url": "login",
+    "usernameField": "input[name='email']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[type='submit']",
+    "successIndicator": ".side-menus",
+    "username": "khessel@example.net",
+    "password": "123456"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "HMS 로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 성공 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "HMS 약사 매뉴얼",
+    "outputDir": "../uploads/hms-pharmacist-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_pharmacy",
+      "title": "약국 관리",
+      "icon": "bi-capsule",
+      "pages": [
+        {
+          "key": "pharm_medicines",
+          "label": "의약품 관리",
+          "url": "medicines",
+          "description": "의약품 목록/재고",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pharm_brands",
+          "label": "의약품 브랜드",
+          "url": "brands",
+          "description": "약품 브랜드",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pharm_prescriptions",
+          "label": "처방전",
+          "url": "employee/prescriptions",
+          "description": "처방전 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_lab",
+      "title": "검사 & 기타",
+      "icon": "bi-microscope",
+      "pages": [
+        {
+          "key": "pharm_pathology",
+          "label": "병리 검사",
+          "url": "pathology-tests",
+          "description": "병리 검사",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pharm_radiology",
+          "label": "영상 검사",
+          "url": "radiology-tests",
+          "description": "영상 검사",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pharm_notice",
+          "label": "게시판",
+          "url": "employee/notice-board",
+          "description": "공지사항",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pharm_meeting",
+          "label": "실시간 회의",
+          "url": "live-meeting",
+          "description": "화상 회의",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pharm_payroll",
+          "label": "급여",
+          "url": "employee/payroll",
+          "description": "급여 내역",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pharm_sms",
+          "label": "SMS",
+          "url": "sms",
+          "description": "SMS 발송",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+@font-face {
+  font-family: 'Nanumsqneo';
+  src: url('../fonts/Nanumsqneo/Nanumsqneo-Bold.eot');
+  src: url('../fonts/Nanumsqneo/Nanumsqneo-Bold.eot?#iefix') format('embedded-opentype'),
+      url('../fonts/Nanumsqneo/Nanumsqneo-Bold.woff2') format('woff2'),
+      url('../fonts/Nanumsqneo/Nanumsqneo-Bold.woff') format('woff'),
+      url('../fonts/Nanumsqneo/Nanumsqneo-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
+
+
+@font-face {
+    font-family: 'TheJamsil';
+    font-weight: 300;
+    font-style: normal;
+    src: url('../fonts/TheJamsil/TheJamsil-Light.eot');
+    src: url('../fonts/TheJamsil/TheJamsil-Light.eot?#iefix') format('embedded-opentype'),
+        url('../fonts/TheJamsil/TheJamsil-Light.woff2') format('woff2'),
+        url('../fonts/TheJamsil/TheJamsil-Light.woff') format('woff'),
+        url('../fonts/TheJamsil/TheJamsil-Light.ttf') format("truetype");
+    font-display: swap;
+}
+
+@font-face {
+	font-family: 'Pretendard';
+	font-weight: 400;
+	font-display: swap;
+	src: local('Pretendard Regular'), url(../fonts/Pretendard/woff2/Pretendard-Regular.woff2) format('woff2'), url(../fonts/Pretendard/woff/Pretendard-Regular.woff) format('woff');
+}

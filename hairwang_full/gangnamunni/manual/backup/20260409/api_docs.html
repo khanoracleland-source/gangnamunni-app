@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark" data-bs-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API 문서 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-braces"></i> API 문서</h1>
+        <div class="sb-subtitle">AJAX API 엔드포인트 전체 명세</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="sb-main">
+  <div class="container">
+    <nav class="sb-breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">홈</a></li><li class="breadcrumb-item active">API 문서</li></ol></nav>
+
+    <div class="row">
+      <div class="col-lg-3 order-lg-2 mb-4">
+        <div class="sb-toc">
+          <div class="sb-toc-title">API 카테고리</div>
+          <ul class="sb-toc-list">
+            <li><a href="#api-info">기본 정보</a></li>
+            <li><a href="#api-ai">AI API</a></li>
+            <li><a href="#api-review">후기 API</a></li>
+            <li><a href="#api-wizard">마법사 API</a></li>
+            <li><a href="#api-excel">엑셀 API</a></li>
+            <li><a href="#api-mail">메일 API</a></li>
+            <li><a href="#api-stats">통계 API</a></li>
+            <li><a href="#api-system">시스템 API</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="col-lg-9 order-lg-1">
+
+        <!-- Base Info -->
+        <section id="api-info" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-info-circle"></i> 기본 정보</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <table class="sb-table">
+                <tbody>
+                  <tr><td class="fw-semibold" style="width:30%">Base URL</td><td><code class="sb-code-inline">https://hms.seoulbeauty.app/hairwang/gangnamunni/</code></td></tr>
+                  <tr><td class="fw-semibold">인증 방식</td><td>세션 기반 (PHP Session) - 로그인 필요</td></tr>
+                  <tr><td class="fw-semibold">Content-Type</td><td><code class="sb-code-inline">application/x-www-form-urlencoded</code> 또는 <code class="sb-code-inline">multipart/form-data</code></td></tr>
+                  <tr><td class="fw-semibold">응답 형식</td><td>JSON (<code class="sb-code-inline">{"success": true/false, ...}</code>)</td></tr>
+                  <tr><td class="fw-semibold">오류 형식</td><td><code class="sb-code-inline">{"success": false, "error": "오류 메시지"}</code></td></tr>
+                </tbody>
+              </table>
+              <div class="sb-note sb-note-info mt-3">
+                <span class="sb-note-icon"><i class="bi bi-info-circle"></i></span>
+                <div>모든 API는 관리자 세션 인증이 필요합니다. 미인증 시 <code class="sb-code-inline">{"success": false, "error": "Unauthorized"}</code>를 반환합니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- AI API -->
+        <section id="api-ai" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">AI</span> AI 엔드포인트</h2>
+
+          <!-- ai_key_manage -->
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header">
+              <span class="sb-method sb-method-post">POST</span>
+              <span class="sb-endpoint-url">api/ai_key_manage.php</span>
+              <span class="sb-endpoint-desc">AI API 키 관리</span>
+            </div>
+            <div class="sb-endpoint-body">
+              <h6 class="fw-bold mb-2">매개변수</h6>
+              <table class="sb-table">
+                <thead><tr><th>이름</th><th>타입</th><th>필수</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">action</code></td><td>string</td><td>O</td><td><code class="sb-code-inline">list</code> | <code class="sb-code-inline">save</code> | <code class="sb-code-inline">delete</code> | <code class="sb-code-inline">validate</code> | <code class="sb-code-inline">toggle</code></td></tr>
+                  <tr><td><code class="sb-code-inline">provider</code></td><td>string</td><td>save시</td><td>openai | claude | gemini</td></tr>
+                  <tr><td><code class="sb-code-inline">api_key</code></td><td>string</td><td>save시</td><td>API 키 (평문, 서버에서 암호화)</td></tr>
+                  <tr><td><code class="sb-code-inline">key_id</code></td><td>int</td><td>delete/toggle</td><td>키 ID</td></tr>
+                </tbody>
+              </table>
+              <h6 class="fw-bold mt-3 mb-2">응답 예시</h6>
+              <div class="sb-code"><pre style="margin:0; color: var(--sb-text);">// action=list
+{
+  "success": true,
+  "keys": [
+    {
+      "id": 1,
+      "provider": "openai",
+      "key_name": "Main OpenAI Key",
+      "masked_key": "sk-****...a1b2",
+      "is_active": true,
+      "created_at": "2026-02-11 10:30:00"
+    }
+  ]
+}</pre></div>
+            </div>
+          </div>
+
+          <!-- ai_review_check -->
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header">
+              <span class="sb-method sb-method-post">POST</span>
+              <span class="sb-endpoint-url">api/ai_review_check.php</span>
+              <span class="sb-endpoint-desc">AI 후기 검증</span>
+            </div>
+            <div class="sb-endpoint-body">
+              <h6 class="fw-bold mb-2">매개변수</h6>
+              <table class="sb-table">
+                <thead><tr><th>이름</th><th>타입</th><th>필수</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">review_id</code></td><td>int</td><td>O</td><td>후기 ID</td></tr>
+                  <tr><td><code class="sb-code-inline">content</code></td><td>string</td><td>O</td><td>후기 본문 텍스트</td></tr>
+                  <tr><td><code class="sb-code-inline">action</code></td><td>string</td><td>X</td><td><code class="sb-code-inline">full_check</code> (기본) | <code class="sb-code-inline">spam_only</code> | <code class="sb-code-inline">sentiment_only</code></td></tr>
+                </tbody>
+              </table>
+              <h6 class="fw-bold mt-3 mb-2">응답 예시</h6>
+              <div class="sb-code"><pre style="margin:0; color: var(--sb-text);">{
+  "success": true,
+  "score": 87,
+  "spam": false,
+  "sentiment": "positive",
+  "language": "ko",
+  "details": {
+    "quality": 85,
+    "relevance": 92,
+    "specificity": 84
+  },
+  "recommendation": "auto_approve"
+}</pre></div>
+            </div>
+          </div>
+
+          <!-- ai_suggest -->
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header">
+              <span class="sb-method sb-method-post">POST</span>
+              <span class="sb-endpoint-url">api/ai_suggest.php</span>
+              <span class="sb-endpoint-desc">AI 작성 도우미</span>
+            </div>
+            <div class="sb-endpoint-body">
+              <table class="sb-table">
+                <thead><tr><th>이름</th><th>타입</th><th>필수</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">context</code></td><td>string</td><td>O</td><td>작성 컨텍스트 (예: "눈 수술 후기")</td></tr>
+                  <tr><td><code class="sb-code-inline">current_text</code></td><td>string</td><td>O</td><td>현재까지 작성된 텍스트</td></tr>
+                  <tr><td><code class="sb-code-inline">action</code></td><td>string</td><td>O</td><td><code class="sb-code-inline">suggest_next</code> | <code class="sb-code-inline">autocomplete</code> | <code class="sb-code-inline">improve</code></td></tr>
+                </tbody>
+              </table>
+              <div class="sb-code mt-3"><pre style="margin:0; color: var(--sb-text);">// Response
+{
+  "success": true,
+  "suggestions": [
+    "수술 전 상담에서 의사 선생님이 상세하게 설명해 주셨습니다.",
+    "수술 후 붓기는 약 1주일 정도 지속되었습니다.",
+    "전체적인 만족도는 매우 높습니다."
+  ]
+}</pre></div>
+            </div>
+          </div>
+
+          <!-- ai_ad_check -->
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header">
+              <span class="sb-method sb-method-post">POST</span>
+              <span class="sb-endpoint-url">api/ai_ad_check.php</span>
+              <span class="sb-endpoint-desc">AI 광고 검증 (의료광고법)</span>
+            </div>
+            <div class="sb-endpoint-body">
+              <table class="sb-table">
+                <thead><tr><th>이름</th><th>타입</th><th>필수</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">ad_content</code></td><td>string</td><td>O</td><td>광고 본문 텍스트</td></tr>
+                  <tr><td><code class="sb-code-inline">ad_title</code></td><td>string</td><td>X</td><td>광고 제목</td></tr>
+                </tbody>
+              </table>
+              <div class="sb-code mt-3"><pre style="margin:0; color: var(--sb-text);">// Response
+{
+  "success": true,
+  "grade": "warning",    // safe | warning | danger
+  "violations": [
+    {"text": "부작용 없는", "category": "허위/과장", "suggestion": "부작용을 최소화한"}
+  ],
+  "forbidden_words": ["100%", "최고"],
+  "safe_to_publish": false
+}</pre></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Review API -->
+        <section id="api-review" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">후기</span> 후기 엔드포인트</h2>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header">
+              <span class="sb-method sb-method-post">POST</span>
+              <span class="sb-endpoint-url">api/save_review.php</span>
+              <span class="sb-endpoint-desc">후기 저장 (신규/수정)</span>
+            </div>
+            <div class="sb-endpoint-body">
+              <table class="sb-table">
+                <thead><tr><th>이름</th><th>타입</th><th>필수</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">hospital_id</code></td><td>int</td><td>O</td><td>병원 ID</td></tr>
+                  <tr><td><code class="sb-code-inline">rating</code></td><td>int</td><td>O</td><td>별점 (1~5)</td></tr>
+                  <tr><td><code class="sb-code-inline">content</code></td><td>string</td><td>O</td><td>후기 본문</td></tr>
+                  <tr><td><code class="sb-code-inline">title</code></td><td>string</td><td>X</td><td>후기 제목</td></tr>
+                  <tr><td><code class="sb-code-inline">editor_content</code></td><td>string</td><td>X</td><td>Quill 에디터 HTML</td></tr>
+                  <tr><td><code class="sb-code-inline">review_id</code></td><td>int</td><td>수정시</td><td>수정할 후기 ID</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header">
+              <span class="sb-method sb-method-get">GET</span>
+              <span class="sb-endpoint-url">api/get_review.php?id={review_id}</span>
+              <span class="sb-endpoint-desc">후기 상세 조회</span>
+            </div>
+            <div class="sb-endpoint-body">
+              <div class="sb-code"><pre style="margin:0; color: var(--sb-text);">{
+  "success": true,
+  "review": {
+    "id": 1,
+    "hospital_id": 3,
+    "hospital_name": "강남 OO성형외과",
+    "user_id": 15,
+    "user_name": "김**",
+    "rating": 5,
+    "title": "눈 수술 후기",
+    "content": "아주 만족합니다...",
+    "editor_content": "&lt;p&gt;아주 만족합니다...&lt;/p&gt;",
+    "status": "approved",
+    "ai_score": 87,
+    "created_at": "2026-02-20 14:30:00"
+  }
+}</pre></div>
+            </div>
+          </div>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header">
+              <span class="sb-method sb-method-get">GET</span>
+              <span class="sb-endpoint-url">api/list_reviews.php</span>
+              <span class="sb-endpoint-desc">후기 목록 조회</span>
+            </div>
+            <div class="sb-endpoint-body">
+              <table class="sb-table">
+                <thead><tr><th>이름</th><th>타입</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">hospital_id</code></td><td>int</td><td>병원별 필터 (선택)</td></tr>
+                  <tr><td><code class="sb-code-inline">status</code></td><td>string</td><td>상태 필터: pending | approved | rejected</td></tr>
+                  <tr><td><code class="sb-code-inline">page</code></td><td>int</td><td>페이지 번호 (기본: 1)</td></tr>
+                  <tr><td><code class="sb-code-inline">per_page</code></td><td>int</td><td>페이지당 건수 (기본: 20)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header"><span class="sb-method sb-method-post">POST</span><span class="sb-endpoint-url">api/delete_review.php</span><span class="sb-endpoint-desc">후기 삭제</span></div>
+            <div class="sb-endpoint-body"><p>매개변수: <code class="sb-code-inline">review_id</code> (int, 필수)</p></div>
+          </div>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header"><span class="sb-method sb-method-post">POST</span><span class="sb-endpoint-url">api/approve_review.php</span><span class="sb-endpoint-desc">후기 승인/거부</span></div>
+            <div class="sb-endpoint-body"><p>매개변수: <code class="sb-code-inline">review_id</code> (int), <code class="sb-code-inline">action</code> (approve | reject)</p></div>
+          </div>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header"><span class="sb-method sb-method-post">POST</span><span class="sb-endpoint-url">api/like_review.php</span><span class="sb-endpoint-desc">후기 좋아요 토글</span></div>
+            <div class="sb-endpoint-body"><p>매개변수: <code class="sb-code-inline">review_id</code> (int)</p></div>
+          </div>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header"><span class="sb-method sb-method-post">POST</span><span class="sb-endpoint-url">api/report_review.php</span><span class="sb-endpoint-desc">후기 신고</span></div>
+            <div class="sb-endpoint-body"><p>매개변수: <code class="sb-code-inline">review_id</code> (int), <code class="sb-code-inline">reason</code> (string)</p></div>
+          </div>
+        </section>
+
+        <!-- Wizard API -->
+        <section id="api-wizard" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">마법사</span> 마법사 엔드포인트</h2>
+          <div class="sb-card mb-3">
+            <div class="sb-card-body">
+              <p>모든 마법사는 동일한 AJAX 패턴을 사용합니다. 각 마법사 PHP 파일 내에서 <code class="sb-code-inline">$_POST['ajax_action']</code> 파라미터로 분기합니다.</p>
+            </div>
+          </div>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header">
+              <span class="sb-method sb-method-post">POST</span>
+              <span class="sb-endpoint-url">admin_{type}_wizard.php</span>
+              <span class="sb-endpoint-desc">마법사 공통 AJAX (type: doctor|nurse|pharmacist|patient|staff|medicine|appointment)</span>
+            </div>
+            <div class="sb-endpoint-body">
+              <table class="sb-table">
+                <thead><tr><th>ajax_action</th><th>설명</th><th>추가 매개변수</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">validate_step</code></td><td>단계별 유효성 검증</td><td>step (int), form data</td></tr>
+                  <tr><td><code class="sb-code-inline">save</code></td><td>최종 저장</td><td>전체 form data</td></tr>
+                  <tr><td><code class="sb-code-inline">search</code></td><td>기존 데이터 검색</td><td>query (string)</td></tr>
+                  <tr><td><code class="sb-code-inline">get_detail</code></td><td>상세 데이터 조회</td><td>id (int)</td></tr>
+                  <tr><td><code class="sb-code-inline">delete</code></td><td>데이터 삭제</td><td>id (int)</td></tr>
+                  <tr><td><code class="sb-code-inline">check_duplicate</code></td><td>중복 확인 (이메일 등)</td><td>field, value</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Excel API -->
+        <section id="api-excel" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-warn me-2">엑셀</span> 엑셀 엔드포인트</h2>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header"><span class="sb-method sb-method-get">GET</span><span class="sb-endpoint-url">admin_excel_export.php?type={type}&format=xlsx</span><span class="sb-endpoint-desc">엑셀 템플릿/데이터 다운로드</span></div>
+            <div class="sb-endpoint-body">
+              <table class="sb-table">
+                <thead><tr><th>이름</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">type</code></td><td>doctor | nurse | pharmacist | patient | staff | medicine | appointment</td></tr>
+                  <tr><td><code class="sb-code-inline">format</code></td><td>xlsx | xls | csv</td></tr>
+                  <tr><td><code class="sb-code-inline">template</code></td><td>1이면 빈 템플릿, 0이면 데이터 포함</td></tr>
+                  <tr><td><code class="sb-code-inline">filter</code></td><td>JSON 형태 필터 조건 (선택)</td></tr>
+                  <tr><td><code class="sb-code-inline">ids</code></td><td>쉼표 구분 ID 목록 (선택 Export)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header"><span class="sb-method sb-method-post">POST</span><span class="sb-endpoint-url">admin_excel_import_wizard.php</span><span class="sb-endpoint-desc">엑셀 Import (파일 업로드)</span></div>
+            <div class="sb-endpoint-body">
+              <p>Content-Type: <code class="sb-code-inline">multipart/form-data</code></p>
+              <table class="sb-table">
+                <thead><tr><th>이름</th><th>타입</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="sb-code-inline">file</code></td><td>file</td><td>.xlsx / .xls / .csv 파일</td></tr>
+                  <tr><td><code class="sb-code-inline">type</code></td><td>string</td><td>데이터 유형</td></tr>
+                  <tr><td><code class="sb-code-inline">ajax_action</code></td><td>string</td><td><code class="sb-code-inline">upload</code> | <code class="sb-code-inline">validate</code> | <code class="sb-code-inline">confirm</code></td></tr>
+                </tbody>
+              </table>
+              <div class="sb-code mt-3"><pre style="margin:0; color: var(--sb-text);">// Response (validate)
+{
+  "success": true,
+  "total_rows": 50,
+  "valid_rows": 48,
+  "error_rows": 2,
+  "errors": [
+    {"row": 12, "field": "email", "message": "이메일 형식이 올바르지 않습니다"},
+    {"row": 25, "field": "phone", "message": "전화번호 중복"}
+  ],
+  "preview": [...첫 5행 미리보기...]
+}</pre></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Mail API -->
+        <section id="api-mail" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">메일</span> 메일 엔드포인트</h2>
+          <div class="sb-card mb-3">
+            <div class="sb-card-body">
+              <p>메일 관리의 모든 AJAX 액션은 <code class="sb-code-inline">admin_mail.php</code>에서 <code class="sb-code-inline">action</code> 파라미터로 분기합니다.</p>
+              <div class="sb-code"><pre style="margin:0; color: var(--sb-text);">POST admin_mail.php
+Content-Type: application/x-www-form-urlencoded
+Body: action={action_name}&param1=value1&...</pre></div>
+            </div>
+          </div>
+
+          <table class="sb-table">
+            <thead><tr><th>action</th><th>설명</th><th>추가 매개변수</th></tr></thead>
+            <tbody>
+              <tr><td><code class="sb-code-inline">unread_counts</code></td><td>폴더별 안 읽은 메일 수</td><td>-</td></tr>
+              <tr><td><code class="sb-code-inline">list</code></td><td>메일 목록 조회</td><td>folder, page, per_page</td></tr>
+              <tr><td><code class="sb-code-inline">read</code></td><td>메일 상세 읽기</td><td>uid, folder</td></tr>
+              <tr><td><code class="sb-code-inline">delete</code></td><td>메일 삭제</td><td>uid, folder</td></tr>
+              <tr><td><code class="sb-code-inline">bulk_delete</code></td><td>메일 일괄 삭제</td><td>uids (JSON array), folder</td></tr>
+              <tr><td><code class="sb-code-inline">bulk_seen</code></td><td>메일 일괄 읽음 표시</td><td>uids, folder</td></tr>
+              <tr><td><code class="sb-code-inline">toggle_seen</code></td><td>읽음/안읽음 토글</td><td>uid, folder</td></tr>
+              <tr><td><code class="sb-code-inline">send</code></td><td>메일 발송</td><td>to, subject, body, cc, bcc, attachments</td></tr>
+              <tr><td><code class="sb-code-inline">get_signature</code></td><td>서명 조회</td><td>account</td></tr>
+              <tr><td><code class="sb-code-inline">save_signature</code></td><td>서명 저장</td><td>account, signature</td></tr>
+              <tr><td><code class="sb-code-inline">get_templates</code></td><td>상용구 목록</td><td>-</td></tr>
+              <tr><td><code class="sb-code-inline">save_template</code></td><td>상용구 저장</td><td>name, content, id (수정시)</td></tr>
+              <tr><td><code class="sb-code-inline">delete_template</code></td><td>상용구 삭제</td><td>id</td></tr>
+              <tr><td><code class="sb-code-inline">set_per_page</code></td><td>페이지당 건수 설정</td><td>per_page (10|20|50|100)</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Stats API -->
+        <section id="api-stats" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">통계</span> 통계 엔드포인트</h2>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header"><span class="sb-method sb-method-get">GET</span><span class="sb-endpoint-url">api/reviewer_stats.php</span><span class="sb-endpoint-desc">후기 통계 조회</span></div>
+            <div class="sb-endpoint-body">
+              <div class="sb-code"><pre style="margin:0; color: var(--sb-text);">// Response
+{
+  "success": true,
+  "stats": {
+    "total_reviews": 156,
+    "approved": 120,
+    "pending": 28,
+    "rejected": 8,
+    "avg_rating": 4.3,
+    "avg_ai_score": 81.5,
+    "by_hospital": [
+      {"hospital_id": 1, "name": "강남 OO외과", "count": 45, "avg_rating": 4.5}
+    ],
+    "by_month": [
+      {"month": "2026-01", "count": 42},
+      {"month": "2026-02", "count": 38}
+    ]
+  }
+}</pre></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- System API -->
+        <section id="api-system" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-warn me-2">시스템</span> 시스템 엔드포인트</h2>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header"><span class="sb-method sb-method-post">POST</span><span class="sb-endpoint-url">clear_cache.php</span><span class="sb-endpoint-desc">캐시 초기화</span></div>
+            <div class="sb-endpoint-body"><p>매개변수 없음. 응답: <code class="sb-code-inline">{"success": true, "message": "캐시가 초기화되었습니다."}</code></p></div>
+          </div>
+
+          <div class="sb-endpoint">
+            <div class="sb-endpoint-header"><span class="sb-method sb-method-post">POST</span><span class="sb-endpoint-url">admin_maintenance.php</span><span class="sb-endpoint-desc">점검 모드 토글</span></div>
+            <div class="sb-endpoint-body"><p>매개변수: <code class="sb-code-inline">ajax_action=toggle_maintenance</code>, <code class="sb-code-inline">enabled</code> (0|1), <code class="sb-code-inline">message</code> (string)</p></div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. API 문서 v1.0</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_API문서.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_API문서.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+</body>
+</html>

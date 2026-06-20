@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이벤트 - 서울미녀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic', sans-serif;
+            background: #F9F9F9;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF6B9D;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-button {
+            padding: 10px 24px;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, #FFE5ED 0%, #FFB6D9 100%);
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 42px;
+            font-weight: 700;
+            color: #FF6B9D;
+            margin-bottom: 15px;
+        }
+
+        .page-subtitle {
+            font-size: 18px;
+            color: #666;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            background: #F5F5F5;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-btn.active {
+            background: #FF6B9D;
+            color: white;
+        }
+
+        .filter-btn:hover {
+            background: #FFE5ED;
+            color: #FF6B9D;
+        }
+
+        /* Content Header */
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .result-info {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .sort-dropdown {
+            padding: 10px 20px;
+            border: 1px solid #E0E0E0;
+            border-radius: 25px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Event Grid */
+        .event-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .event-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+        }
+
+        .event-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #FF4757;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            z-index: 10;
+        }
+
+        .event-image {
+            width: 100%;
+            height: 220px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 72px;
+        }
+
+        .event-info {
+            padding: 20px;
+        }
+
+        .event-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .event-hospital {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .event-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .event-category {
+            padding: 5px 12px;
+            background: #FFE5ED;
+            color: #FF6B9D;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .event-dday {
+            font-size: 12px;
+            color: #FF4757;
+            font-weight: 700;
+        }
+
+        .event-price {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding-top: 15px;
+            border-top: 1px solid #F0F0F0;
+        }
+
+        .event-original-price {
+            font-size: 14px;
+            color: #999;
+            text-decoration: line-through;
+        }
+
+        .event-discounted-price {
+            font-size: 22px;
+            font-weight: 700;
+            color: #FF6B9D;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 16px;
+            color: #999;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .empty-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+        }
+
+        .empty-message {
+            font-size: 18px;
+            color: #666;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 32px;
+            }
+
+            .event-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-bar {
+                justify-content: center;
+            }
+
+            .content-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <span>💄</span>
+                <span>서울미녀</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="hospitals.html" class="nav-link">병원찾기</a>
+                <a href="events.html" class="nav-link">이벤트</a>
+                <a href="community.html" class="nav-link">커뮤니티</a>
+                <button class="nav-button" onclick="handleMyBooking()">내 예약</button>
+                <a href="settings.html" class="nav-link" style="font-size: 20px;" title="환경 설정">⚙️</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">🎁 특별 이벤트</h1>
+        <p class="page-subtitle">놓치기 아까운 특가 이벤트를 확인하세요</p>
+    </div>
+
+    <!-- Container -->
+    <div class="container">
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <button class="filter-btn active" data-category="all">전체</button>
+            <button class="filter-btn" data-category="리프팅">⚡ 리프팅</button>
+            <button class="filter-btn" data-category="보톡스">💉 보톡스</button>
+            <button class="filter-btn" data-category="필러">💧 필러</button>
+            <button class="filter-btn" data-category="피부">✨ 피부</button>
+            <button class="filter-btn" data-category="지방성형">🏃 지방성형</button>
+            <button class="filter-btn" data-category="코성형">👃 코성형</button>
+            <button class="filter-btn" data-category="눈성형">👁️ 눈성형</button>
+        </div>
+
+        <!-- Content Header -->
+        <div class="content-header">
+            <div class="result-info">
+                총 <span style="color: #FF6B9D; font-size: 18px;" id="totalCount">0</span>개 이벤트
+            </div>
+            <select class="sort-dropdown" id="sortSelect">
+                <option value="discount">할인율 높은 순</option>
+                <option value="popular">인기 순</option>
+                <option value="deadline">마감 임박 순</option>
+                <option value="price_low">가격 낮은 순</option>
+                <option value="price_high">가격 높은 순</option>
+            </select>
+        </div>
+
+        <!-- Event Grid -->
+        <div class="event-grid" id="eventGrid">
+            <div class="loading">이벤트를 불러오는 중...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        const DEBUG = sessionStorage.getItem('debug') === 'true';
+        let currentCategory = 'all';
+        let currentSort = 'discount';
+
+        // Debug logging function
+        function debugLog(action, data) {
+            if (DEBUG) {
+                console.log(`[DEBUG ${new Date().toISOString()}] ${action}:`, data);
+            }
+        }
+
+        // Handle My Booking button
+        function handleMyBooking() {
+            debugLog('Button Click', { action: 'My Booking', page: 'events' });
+            alert('내 예약 페이지는 준비 중입니다.\n\n회원가입 후 이용 가능합니다.');
+        }
+
+        // Debug mode info
+        if (DEBUG) {
+            console.log('%c[DEBUG MODE ENABLED]', 'background: #FF6B9D; color: white; padding: 5px 10px; font-weight: bold;');
+            console.log('Set sessionStorage.setItem("debug", "false") to disable debug mode');
+        }
+
+        debugLog('Page Initialized', {
+            page: 'events',
+            url: window.location.href,
+            currentCategory,
+            currentSort
+        });
+
+        // Mock events data (실제로는 API에서 가져올 데이터)
+        const mockEvents = [
+            { id: 1, title: '리프팅 특가 이벤트', hospital: '강남피부과', category: '리프팅', originalPrice: 500000, discountedPrice: 250000, discount: 50, dday: 7, icon: '⚡' },
+            { id: 2, title: '보톡스 프리미엄 패키지', hospital: '압구정클리닉', category: '보톡스', originalPrice: 300000, discountedPrice: 180000, discount: 40, dday: 3, icon: '💉' },
+            { id: 3, title: '필러 할인 이벤트', hospital: '청담미의원', category: '필러', originalPrice: 400000, discountedPrice: 280000, discount: 30, dday: 14, icon: '💧' },
+            { id: 4, title: '피부관리 특가', hospital: '신사피부과', category: '피부', originalPrice: 200000, discountedPrice: 120000, discount: 40, dday: 5, icon: '✨' },
+            { id: 5, title: '지방흡입 프로모션', hospital: '역삼성형외과', category: '지방성형', originalPrice: 1500000, discountedPrice: 900000, discount: 40, dday: 10, icon: '🏃' },
+            { id: 6, title: '코성형 특별 할인', hospital: '논현성형외과', category: '코성형', originalPrice: 3000000, discountedPrice: 2100000, discount: 30, dday: 20, icon: '👃' },
+            { id: 7, title: '눈성형 봄맞이 이벤트', hospital: '강남성형외과', category: '눈성형', originalPrice: 2500000, discountedPrice: 1750000, discount: 30, dday: 15, icon: '👁️' },
+            { id: 8, title: '리프팅 + 보톡스 패키지', hospital: '서울피부과', category: '리프팅', originalPrice: 800000, discountedPrice: 480000, discount: 40, dday: 8, icon: '⚡' },
+            { id: 9, title: '보톡스 100유닛 특가', hospital: '강남의원', category: '보톡스', originalPrice: 350000, discountedPrice: 210000, discount: 40, dday: 12, icon: '💉' },
+            { id: 10, title: '필러 프리미엄 라인', hospital: '청담성형외과', category: '필러', originalPrice: 600000, discountedPrice: 420000, discount: 30, dday: 18, icon: '💧' },
+            { id: 11, title: '레이저 토닝 10회', hospital: '압구정피부과', category: '피부', originalPrice: 500000, discountedPrice: 300000, discount: 40, dday: 6, icon: '✨' },
+            { id: 12, title: '복부 지방흡입', hospital: '신사성형외과', category: '지방성형', originalPrice: 2000000, discountedPrice: 1400000, discount: 30, dday: 25, icon: '🏃' }
+        ];
+
+        function displayEvents() {
+            debugLog('Display Events', { category: currentCategory, sort: currentSort });
+            let filteredEvents = mockEvents;
+
+            // Category filter
+            if (currentCategory !== 'all') {
+                filteredEvents = filteredEvents.filter(e => e.category === currentCategory);
+                debugLog('Filter Applied', { type: 'category', value: currentCategory });
+            }
+
+            // Sort
+            switch(currentSort) {
+                case 'discount':
+                    filteredEvents.sort((a, b) => b.discount - a.discount);
+                    break;
+                case 'deadline':
+                    filteredEvents.sort((a, b) => a.dday - b.dday);
+                    break;
+                case 'price_low':
+                    filteredEvents.sort((a, b) => a.discountedPrice - b.discountedPrice);
+                    break;
+                case 'price_high':
+                    filteredEvents.sort((a, b) => b.discountedPrice - a.discountedPrice);
+                    break;
+            }
+
+            const grid = document.getElementById('eventGrid');
+            document.getElementById('totalCount').textContent = filteredEvents.length;
+
+            debugLog('Sort Applied', { sort: currentSort });
+            debugLog('Display Result', { totalEvents: filteredEvents.length });
+
+            if (filteredEvents.length === 0) {
+                debugLog('Display Result', { message: 'No events found' });
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-message">해당 카테고리의 이벤트가 없습니다</div>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filteredEvents.map(event => `
+                <div class="event-card" onclick="window.location.href='event.html?id=${event.id}'">
+                    <div class="event-badge">${event.discount}%</div>
+                    <div class="event-image">${event.icon}</div>
+                    <div class="event-info">
+                        <div class="event-title">${event.title}</div>
+                        <div class="event-hospital">🏥 ${event.hospital}</div>
+                        <div class="event-meta">
+                            <span class="event-category">${event.category}</span>
+                            <span class="event-dday">D-${event.dday}</span>
+                        </div>
+                        <div class="event-price">
+                            <span class="event-original-price">${event.originalPrice.toLocaleString()}원</span>
+                            <span class="event-discounted-price">${event.discountedPrice.toLocaleString()}원</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentCategory = this.dataset.category;
+                debugLog('Filter Changed', { category: currentCategory });
+                displayEvents();
+            });
+        });
+
+        // Sort dropdown
+        document.getElementById('sortSelect').addEventListener('change', function() {
+            currentSort = this.value;
+            debugLog('Sort Changed', { sort: currentSort });
+            displayEvents();
+        });
+
+        // Initialize
+        debugLog('Initialize', { action: 'Displaying events' });
+        displayEvents();
+    </script>
+
+    <!-- Loading Indicator -->
+    <script src="js/loading.js"></script>
+
+    <!-- Settings Manager -->
+    <script src="js/settings.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

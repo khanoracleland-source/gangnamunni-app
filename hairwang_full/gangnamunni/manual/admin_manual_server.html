@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 매뉴얼 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-gear-wide-connected"></i> 관리자 매뉴얼</h1>
+        <div class="sb-subtitle">16개 관리 메뉴 상세 사용법</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="sb-main">
+  <div class="container">
+    <nav class="sb-breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">홈</a></li><li class="breadcrumb-item active">관리자 매뉴얼</li></ol></nav>
+
+    <div class="row">
+      <!-- TOC Sidebar -->
+      <div class="col-lg-3 order-lg-2 mb-4">
+        <div class="sb-toc">
+          <div class="sb-toc-title">관리 메뉴 (16개)</div>
+          <ul class="sb-toc-list">
+            <li><a href="#menu-dashboard">1. 대시보드</a></li>
+            <li><a href="#menu-hospital">2. 병원/이미지 관리</a></li>
+            <li><a href="#menu-reviews">3. 후기 관리</a></li>
+            <li><a href="#menu-categories">4. 카테고리 관리</a></li>
+            <li><a href="#menu-ads">5. 광고 관리</a></li>
+            <li><a href="#menu-nav">6. 하단 네비게이션</a></li>
+            <li><a href="#menu-theme">7. 테마 설정</a></li>
+            <li><a href="#menu-theme-adv">8. 고급 테마</a></li>
+            <li><a href="#menu-maint">9. 점검 모드</a></li>
+            <li><a href="#menu-upgrade">10. 확장 계획</a></li>
+            <li><a href="#menu-members">11. 회원 관리</a></li>
+            <li><a href="#menu-admins">12. 부관리자 RBAC</a></li>
+            <li><a href="#menu-auto">13. 자동 매뉴얼</a></li>
+            <li><a href="#menu-mail">14. 메일 관리</a></li>
+            <li><a href="#menu-ai">15. AI 설정</a></li>
+            <li><a href="#menu-external">16. 외부 링크</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="col-lg-9 order-lg-1">
+
+        <!-- Intro -->
+        <div class="sb-card mb-4">
+          <div class="sb-card-body">
+            <h5 class="fw-bold mb-3">관리자 시스템 개요</h5>
+            <p>서울미녀 관리자 패널은 강남언니 프론트엔드의 모든 콘텐츠와 설정을 관리합니다. Bootstrap 5.3 기반 반응형 UI에 다크/라이트 모드를 지원하며, 역할 기반 접근 제어(RBAC)로 보안을 강화했습니다.</p>
+            <div class="row g-3">
+              <div class="col-sm-4">
+                <div class="sb-note sb-note-info mb-0">
+                  <span class="sb-note-icon"><i class="bi bi-person-badge"></i></span>
+                  <div><strong>접근 URL</strong><br><code class="sb-code-inline" style="font-size:0.75rem;">/gangnamunni/dashboard.php</code></div>
+                </div>
+              </div>
+              <div class="col-sm-4">
+                <div class="sb-note sb-note-success mb-0">
+                  <span class="sb-note-icon"><i class="bi bi-shield-check"></i></span>
+                  <div><strong>인증</strong><br>세션 기반 + RBAC 권한</div>
+                </div>
+              </div>
+              <div class="col-sm-4">
+                <div class="sb-note sb-note-warning mb-0">
+                  <span class="sb-note-icon"><i class="bi bi-palette"></i></span>
+                  <div><strong>레이아웃</strong><br>상단바(50px) + 사이드바(220px)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 공통 레이아웃 -->
+        <div class="sb-card mb-4">
+          <div class="sb-card-header"><h6 class="mb-0"><i class="bi bi-layout-sidebar me-2"></i>공통 레이아웃 시스템</h6></div>
+          <div class="sb-card-body">
+            <table class="sb-table">
+              <thead><tr><th>구성요소</th><th>파일</th><th>설명</th></tr></thead>
+              <tbody>
+                <tr><td>공통 헤더</td><td><code class="sb-code-inline">includes/admin_header.php</code></td><td>Bootstrap 5.3 CDN, 상단바, 사이드바 렌더링</td></tr>
+                <tr><td>공통 푸터</td><td><code class="sb-code-inline">includes/admin_footer.php</code></td><td>Bootstrap JS, 테마 토글, 공통 JS 함수</td></tr>
+                <tr><td>인증</td><td><code class="sb-code-inline">includes/admin_auth.php</code></td><td>check_permission(), require_permission() 함수</td></tr>
+                <tr><td>캐시 초기화</td><td><code class="sb-code-inline">clear_cache.php</code></td><td>상단바 버튼 AJAX 호출</td></tr>
+              </tbody>
+            </table>
+            <div class="sb-code mt-3">
+<pre style="margin:0; color: var(--sb-text);">// 새 관리 페이지 생성 방법
+$admin_page_title = '페이지 제목';
+$admin_current = 'menu_key';  // 사이드바 활성 메뉴
+$admin_extra_css = ['custom.css'];  // 페이지별 CSS
+$admin_extra_js = ['custom.js'];    // 페이지별 JS
+include 'includes/admin_header.php';
+// ... 페이지 내용 ...
+include 'includes/admin_footer.php';</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu 1: Dashboard -->
+        <section id="menu-dashboard" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">01</span> 대시보드 (dashboard.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>관리자 로그인 후 첫 화면입니다. 전체 시스템 현황을 한눈에 파악할 수 있습니다.</p>
+              <div class="sb-screenshot" style="padding:0;border:none;background:none;">
+                <img src="screenshots/dashboard.png" alt="대시보드 화면 (dashboard.php)" style="width:100%;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);">
+                <div style="text-align:center;font-size:12px;color:#888;margin-top:6px;">대시보드 화면 (dashboard.php)</div>
+              </div>
+              <h6 class="fw-bold mt-3">주요 구성 요소</h6>
+              <ul class="sb-feature-list">
+                <li><strong>통계 카드 (4개):</strong> 전체 병원 수, 등록 회원 수, 오늘 예약, 신규 후기</li>
+                <li><strong>외부 링크 영역:</strong> HMS 관리자, 메일 서버, 서버 관리 등 바로가기</li>
+                <li><strong>관리 메뉴 그리드 (12개):</strong> 주요 관리 기능 아이콘 그리드</li>
+                <li><strong>최근 활동:</strong> 최근 후기, 회원가입, 예약 등 활동 로그</li>
+              </ul>
+              <div class="sb-note sb-note-info">
+                <span class="sb-note-icon"><i class="bi bi-lightbulb"></i></span>
+                <div><strong>팁:</strong> 대시보드 통계 카드는 실시간으로 DB를 조회합니다. 캐시 초기화 버튼으로 최신 데이터를 강제 갱신할 수 있습니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 2: Hospital Images -->
+        <section id="menu-hospital" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">02</span> 병원/이미지 관리 (admin_hospital_images.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>병원 정보 CRUD 및 각 병원별 이미지(사진) 관리를 위한 아코디언 기반 인터페이스입니다.</p>
+              <div class="sb-screenshot" style="padding:0;border:none;background:none;">
+                <img src="screenshots/admin_hospital_images.png" alt="병원/이미지 관리 화면 (admin_hospital_images.php)" style="width:100%;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);">
+                <div style="text-align:center;font-size:12px;color:#888;margin-top:6px;">병원/이미지 관리 화면 (admin_hospital_images.php)</div>
+              </div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>병원 CRUD:</strong> 병원 이름, 주소, 전화번호, 진료과 등 기본 정보 관리</li>
+                <li><strong>아코디언 UI:</strong> 각 병원을 클릭하면 상세 정보와 이미지 목록 표시</li>
+                <li><strong>이미지 업로드:</strong> 드래그&드롭 + 파일 선택 다중 업로드 지원</li>
+                <li><strong>이미지 미리보기:</strong> 썸네일 그리드로 업로드된 이미지 확인</li>
+                <li><strong>일괄 삭제:</strong> 체크박스 선택 후 일괄 이미지 삭제</li>
+                <li><strong>HMS 연동:</strong> HMS hospital_type과 자동 동기화</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 3: Reviews -->
+        <section id="menu-reviews" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">03</span> 후기 관리 (admin_reviews.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>병원 후기 보기, 편집, 승인/거부 및 일괄 처리 기능을 제공합니다.</p>
+              <div class="sb-screenshot" style="padding:0;border:none;background:none;">
+                <img src="screenshots/admin_reviews.png" alt="후기 관리 화면 (admin_reviews.php)" style="width:100%;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);">
+                <div style="text-align:center;font-size:12px;color:#888;margin-top:6px;">후기 관리 화면 (admin_reviews.php)</div>
+              </div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>후기 목록:</strong> 검색, 필터(병원, 상태, 기간), 정렬 기능</li>
+                <li><strong>상태 관리:</strong> 대기(pending), 승인(approved), 거부(rejected) 상태 전환</li>
+                <li><strong>편집 모달:</strong> 인라인 편집 모달로 후기 내용 수정</li>
+                <li><strong>일괄 처리:</strong> 체크박스 선택 후 일괄 승인/거부/삭제</li>
+                <li><strong>AI 검증:</strong> AI 품질 점수 및 스팸 탐지 결과 표시</li>
+                <li><strong>Quill 에디터 연동:</strong> 리치 텍스트 후기 에디터 (이미지 포함)</li>
+              </ul>
+              <h6 class="fw-bold mt-3">승인 워크플로우</h6>
+              <div class="sb-code" style="padding:20px;overflow:visible"><div style="font-family:inherit">
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0">
+    <div style="background:rgba(102,126,234,.15);border:2px solid rgba(102,126,234,.5);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+      <div style="font-size:18px">✍️</div>
+      <div style="font-weight:600;font-size:12px;margin-top:4px">후기 작성</div>
+    </div>
+    <div style="color:#888;font-size:18px;padding:0 6px">→</div>
+    <div style="background:rgba(255,193,7,.15);border:2px solid rgba(255,193,7,.5);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+      <div style="font-size:18px">⏳</div>
+      <div style="font-weight:600;font-size:12px;margin-top:4px">대기 상태</div>
+    </div>
+    <div style="color:#888;font-size:18px;padding:0 6px">→</div>
+    <div style="background:rgba(108,99,255,.15);border:2px solid rgba(108,99,255,.5);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+      <div style="font-size:18px">🤖</div>
+      <div style="font-weight:600;font-size:12px;margin-top:4px">AI 자동 검증</div>
+    </div>
+    <div style="color:#888;font-size:18px;padding:0 6px">→</div>
+    <div style="background:rgba(255,107,53,.15);border:2px solid rgba(255,107,53,.5);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px">
+      <div style="font-size:18px">👤</div>
+      <div style="font-weight:600;font-size:12px;margin-top:4px">관리자 확인</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:180px;background:rgba(40,167,69,.1);border:1.5px solid rgba(40,167,69,.4);border-radius:8px;padding:10px 14px;font-size:12px">
+      <div style="font-weight:600;color:#28a745;margin-bottom:4px">✅ 자동 승인 조건</div>
+      <div>AI 점수 <strong>80점 이상</strong> → 자동 승인 가능 → 공개</div>
+    </div>
+    <div style="flex:1;min-width:180px;background:rgba(255,193,7,.1);border:1.5px solid rgba(255,193,7,.4);border-radius:8px;padding:10px 14px;font-size:12px">
+      <div style="font-weight:600;color:#e6a817;margin-bottom:4px">⚠️ 수동 검토 조건</div>
+      <div>AI 점수 <strong>60점 미만</strong> → 관리자 수동 확인</div>
+    </div>
+    <div style="flex:1;min-width:180px;background:rgba(220,53,69,.1);border:1.5px solid rgba(220,53,69,.4);border-radius:8px;padding:10px 14px;font-size:12px">
+      <div style="font-weight:600;color:#dc3545;margin-bottom:4px">❌ 거부 처리</div>
+      <div>관리자 거부 → <strong>비공개</strong> 처리</div>
+    </div>
+  </div>
+</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 4: Categories -->
+        <section id="menu-categories" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">04</span> 카테고리 관리 (admin_categories.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>시술 카테고리를 관리합니다. SVG 아이콘과 이모지를 지원하는 피커 UI를 제공합니다.</p>
+              <div class="sb-screenshot" style="padding:0;border:none;background:none;">
+                <img src="screenshots/admin_categories.png" alt="카테고리 관리 화면 (admin_categories.php)" style="width:100%;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);">
+                <div style="text-align:center;font-size:12px;color:#888;margin-top:6px;">카테고리 관리 화면 (admin_categories.php)</div>
+              </div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>카테고리 CRUD:</strong> 이름, 설명, 아이콘, 활성 상태 관리</li>
+                <li><strong>SVG 아이콘 피커:</strong> 썸네일 그리드에서 SVG 아이콘 선택</li>
+                <li><strong>이모지 피커:</strong> 8탭 264종 대형 이모지 선택 UI</li>
+                <li><strong>활성/비활성 토글:</strong> 카테고리별 즉시 활성 상태 변경</li>
+                <li><strong>HMS 연동:</strong> hospital_type 테이블과 양방향 동기화 (12건)</li>
+                <li><strong>정렬:</strong> 드래그&드롭으로 카테고리 순서 변경</li>
+              </ul>
+              <div class="sb-note sb-note-info">
+                <span class="sb-note-icon"><i class="bi bi-lightbulb"></i></span>
+                <div><strong>팁:</strong> category_icons.php에서 SVG 아이콘이 흰색 원형 배경 위에 렌더링됩니다. 새 아이콘 추가 시 이 파일도 함께 수정하세요.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 5: Ads -->
+        <section id="menu-ads" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">05</span> 광고 관리 (admin_ads.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>병원 광고 등록, 검수, 노출 관리를 위한 페이지입니다.</p>
+              <div class="sb-screenshot" style="padding:0;border:none;background:none;">
+                <img src="screenshots/admin_ads.png" alt="광고 관리 화면 (admin_ads.php)" style="width:100%;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);">
+                <div style="text-align:center;font-size:12px;color:#888;margin-top:6px;">광고 관리 화면 (admin_ads.php)</div>
+              </div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>광고 CRUD:</strong> 제목, 내용, 이미지, 링크, 노출 기간 관리</li>
+                <li><strong>AI 의료광고법 검증:</strong> 등록 시 자동으로 의료광고법 위반 여부 검사</li>
+                <li><strong>금지어 검출:</strong> 법정 금지 문구 자동 하이라이트</li>
+                <li><strong>노출 순서:</strong> 우선순위 기반 광고 순서 설정</li>
+                <li><strong>통계:</strong> 노출수, 클릭수, CTR 통계 확인</li>
+                <li><strong>DALL-E 이미지 생성:</strong> AI로 광고 이미지 자동 생성</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 6: Navigation -->
+        <section id="menu-nav" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">06</span> 하단 네비게이션 (admin_navigation.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>모바일 하단 네비게이션 바의 메뉴 항목을 관리합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>3가지 아이콘 타입:</strong> 이모지, 이미지(URL), 내장 SVG 지원</li>
+                <li><strong>내장 SVG:</strong> home, star, hospital, gift, chat, news 6종</li>
+                <li><strong>활성 상태 변경:</strong> active 컬러 이미지 / inactive 흑백 이미지 자동 전환</li>
+                <li><strong>일괄 활성화/비활성화:</strong> 전체 메뉴 아이템 일괄 상태 변경</li>
+                <li><strong>링크 설정:</strong> 각 메뉴 아이템별 이동 URL 설정</li>
+                <li><strong>순서 변경:</strong> 드래그&드롭 순서 변경</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 7: Theme -->
+        <section id="menu-theme" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">07</span> 테마 설정 (admin_theme.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>프론트엔드 테마의 기본 색상, 폰트, 레이아웃을 설정합니다.</p>
+              <h6 class="fw-bold mt-3">설정 항목</h6>
+              <ul class="sb-feature-list">
+                <li><strong>주요 색상:</strong> Primary, Secondary, Accent 색상 선택</li>
+                <li><strong>폰트:</strong> 기본 글꼴, 크기, 굵기 설정</li>
+                <li><strong>헤더:</strong> 헤더 배경, 텍스트 색상, 높이</li>
+                <li><strong>카드:</strong> 카드 스타일, 둥근 모서리, 그림자</li>
+                <li><strong>다크 모드:</strong> 다크 모드 기본 활성화 여부</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 8: Theme Advanced -->
+        <section id="menu-theme-adv" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">08</span> 고급 테마 (admin_theme_advanced.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>CSS 변수 직접 편집, 커스텀 CSS/JS 주입 등 고급 테마 커스터마이징을 제공합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>CSS 변수 편집:</strong> :root 변수 직접 수정</li>
+                <li><strong>커스텀 CSS:</strong> 페이지별 추가 CSS 삽입</li>
+                <li><strong>커스텀 JS:</strong> 추가 JavaScript 삽입</li>
+                <li><strong>테마 프리셋:</strong> 미리 정의된 테마 세트 적용</li>
+                <li><strong>실시간 미리보기:</strong> 변경사항 즉시 미리보기</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 9: Maintenance -->
+        <section id="menu-maint" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">09</span> 점검 모드 (admin_maintenance.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>시스템 점검 시 사용자에게 점검 안내 페이지를 표시합니다.</p>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>점검 모드 ON/OFF:</strong> 토글 스위치로 즉시 전환</li>
+                <li><strong>점검 메시지:</strong> 사용자에게 표시될 안내 메시지 편집</li>
+                <li><strong>예상 종료 시간:</strong> 점검 종료 예정 시간 설정</li>
+                <li><strong>관리자 우회:</strong> 관리자 IP는 점검 모드에서도 접근 허용</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 10: Upgrade -->
+        <section id="menu-upgrade" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">10</span> 확장 계획 (admin_upgrade_plan.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>시스템 확장 및 업그레이드 로드맵을 관리합니다.</p>
+              <h6 class="fw-bold mt-3">관리 항목</h6>
+              <ul class="sb-feature-list">
+                <li><strong>기능 로드맵:</strong> 예정된 기능 목록 및 우선순위</li>
+                <li><strong>버전 관리:</strong> 현재 버전 및 업데이트 이력</li>
+                <li><strong>의존성 확인:</strong> 패키지 버전 및 호환성 점검</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 11: Members -->
+        <section id="menu-members" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">11</span> 회원 관리 (admin_members.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>전체 회원 검색, 필터, 등급 변경, 메모, 차단 등을 관리합니다.</p>
+              <div class="sb-screenshot" style="padding:0;border:none;background:none;">
+                <img src="screenshots/admin_members.png" alt="회원 관리 화면 (admin_members.php)" style="width:100%;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);">
+                <div style="text-align:center;font-size:12px;color:#888;margin-top:6px;">회원 관리 화면 (admin_members.php)</div>
+              </div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>회원 검색:</strong> 이름, 이메일, 전화번호로 실시간 검색</li>
+                <li><strong>필터:</strong> 등급, 가입일, 상태별 필터링</li>
+                <li><strong>등급 변경:</strong> VIP, 일반, 휴면 등 회원 등급 설정</li>
+                <li><strong>관리자 메모:</strong> 회원별 관리자 전용 메모 기능</li>
+                <li><strong>차단/해제:</strong> 문제 회원 접근 차단 및 해제</li>
+                <li><strong>HMS/Gnuboard 동기화 상태:</strong> 동기화 상태 확인</li>
+              </ul>
+              <div class="sb-note sb-note-info">
+                <span class="sb-note-icon"><i class="bi bi-info-circle"></i></span>
+                <div>현재 회원 수: g5_member=87, users=262, patients=90, member_sync=87</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 12: Admins -->
+        <section id="menu-admins" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">12</span> 부관리자 RBAC (admin_admins.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>부관리자 계정 관리 및 역할 기반 접근 제어(RBAC) 시스템입니다.</p>
+              <h6 class="fw-bold mt-3">역할 체계</h6>
+              <table class="sb-table">
+                <thead><tr><th>역할</th><th>코드</th><th>권한 범위</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="sb-badge sb-badge-fail">최고관리자</span></td><td>super_admin</td><td>모든 메뉴 접근 + 부관리자 관리</td></tr>
+                  <tr><td><span class="sb-badge sb-badge-warn">관리자</span></td><td>admin</td><td>대부분 메뉴 접근 (부관리자 관리 제외)</td></tr>
+                  <tr><td><span class="sb-badge sb-badge-info">편집자</span></td><td>editor</td><td>콘텐츠 관리 메뉴만 접근</td></tr>
+                  <tr><td><span class="sb-badge sb-badge-purple">뷰어</span></td><td>viewer</td><td>읽기 전용 (대시보드, 통계 조회)</td></tr>
+                </tbody>
+              </table>
+              <h6 class="fw-bold mt-3">기능</h6>
+              <ul class="sb-feature-list">
+                <li><strong>계정 생성:</strong> 아이디, 비밀번호(bcrypt), 역할, 이름 설정</li>
+                <li><strong>권한 설정:</strong> 메뉴별 접근 권한 체크박스 관리</li>
+                <li><strong>활동 로그:</strong> 관리자 행동 로깅</li>
+                <li><strong>기본 계정:</strong> admin / admin123 (최고관리자)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 13: Auto Manual -->
+        <section id="menu-auto" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">13</span> 자동 매뉴얼 캡처 (admin_auto_manual.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>Playwright 기반 자동 스크린샷 캡처 시스템으로, 매뉴얼용 화면 캡처를 자동화합니다.</p>
+              <h6 class="fw-bold mt-3">아키텍처</h6>
+              <table class="sb-table">
+                <thead><tr><th>구성요소</th><th>기술</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td>엔진 서버</td><td>Node.js Express (port 3100)</td><td>Playwright 캡처 API 서버</td></tr>
+                  <tr><td>브라우저</td><td>Playwright Chromium</td><td>헤드리스 브라우저</td></tr>
+                  <tr><td>주석 도구</td><td>markerjs2 2.32.7</td><td>캡처 이미지에 주석 추가</td></tr>
+                  <tr><td>systemd</td><td>auto-manual-engine</td><td>서비스 자동 시작/관리</td></tr>
+                  <tr><td>Apache</td><td>ProxyPass</td><td>/auto-manual-api/ -> localhost:3100</td></tr>
+                </tbody>
+              </table>
+              <h6 class="fw-bold mt-3">사용 방법</h6>
+              <ol class="sb-steps">
+                <li>캡처 세션 생성 - 대상 URL과 캡처 옵션 설정</li>
+                <li>자동 캡처 실행 - 페이지 로딩 후 자동 스크린샷</li>
+                <li>주석 추가 - markerjs2로 화살표, 텍스트, 하이라이트 추가</li>
+                <li>결과 저장 - 캡처 이미지 DB 저장 및 매뉴얼 생성</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 14: Mail -->
+        <section id="menu-mail" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">14</span> 메일 관리 (admin_mail.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>Gmail 스타일 3컬럼 레이아웃의 메일 관리 시스템 v4입니다.</p>
+              <div class="sb-screenshot" style="padding:0;border:none;background:none;">
+                <img src="screenshots/admin_mail.png" alt="메일 관리 화면 (admin_mail_accounts.php)" style="width:100%;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);">
+                <div style="text-align:center;font-size:12px;color:#888;margin-top:6px;">메일 관리 화면 (admin_mail_accounts.php)</div>
+              </div>
+              <h6 class="fw-bold mt-3">기능 목록</h6>
+              <ul class="sb-feature-list">
+                <li><strong>3컬럼 레이아웃:</strong> 폴더 목록 | 메일 목록 | 메일 내용</li>
+                <li><strong>작성 오버레이:</strong> 1050px 작성 오버레이 + 전체화면 모드</li>
+                <li><strong>IMAP 수신:</strong> SSL 993포트 IMAP 수신 (폴더: INBOX, Sent, Drafts, Junk, Trash, Archive)</li>
+                <li><strong>SMTP 발송:</strong> STARTTLS 587포트 SMTP 발송 + 첨부파일(multipart/mixed)</li>
+                <li><strong>인라인 이미지:</strong> 재귀 MIME 파싱, CID -> data URI 자동 변환</li>
+                <li><strong>상용구 관리:</strong> JSON 기반 상용구 CRUD, 작성 시 삽입</li>
+                <li><strong>서명 관리:</strong> 계정별 서명, 포함/미포함 토글</li>
+                <li><strong>일괄 처리:</strong> 전체선택/선택삭제/읽음/안읽음 일괄 변경</li>
+              </ul>
+              <h6 class="fw-bold mt-3">AJAX 액션</h6>
+              <div class="sb-code">
+<pre style="margin:0; color: var(--sb-text);">unread_counts | list | read | delete | bulk_delete | bulk_seen
+toggle_seen | send | get_signature | save_signature
+get_templates | save_template | delete_template | set_per_page</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 15: AI Settings -->
+        <section id="menu-ai" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">15</span> AI 설정 (admin_ai_settings.php)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>AI 기능의 전체 설정을 관리합니다. 상세 내용은 <a href="ai_guide.html">AI 기능 가이드</a>를 참조하세요.</p>
+              <h6 class="fw-bold mt-3">설정 항목</h6>
+              <ul class="sb-feature-list">
+                <li><strong>API 키 관리:</strong> OpenAI, Claude, Gemini 키 암호화 저장</li>
+                <li><strong>프로바이더 선택:</strong> 기본 AI 프로바이더 설정</li>
+                <li><strong>사용량 한도:</strong> 일일/월간 API 호출 한도 설정</li>
+                <li><strong>자동 검증 규칙:</strong> 후기/광고 자동 검증 임계값 설정</li>
+                <li><strong>사용량 통계:</strong> 일별/월별 API 호출 횟수 및 비용 확인</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Menu 16: External -->
+        <section id="menu-external" class="mb-5">
+          <h3 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">16</span> 외부 링크 (mail.seoulbeauty.app)</h3>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>사이드바의 외부 링크 메뉴로, Mailcow 메일 서버 관리 페이지를 새 탭에서 엽니다.</p>
+              <table class="sb-table">
+                <tbody>
+                  <tr><td class="fw-semibold">URL</td><td><code class="sb-code-inline">https://mail.seoulbeauty.app/</code></td></tr>
+                  <tr><td class="fw-semibold">열기 방식</td><td>target=_blank (새 탭)</td></tr>
+                  <tr><td class="fw-semibold">용도</td><td>Mailcow 관리자 패널 직접 접근</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. 관리자 매뉴얼 v1.0</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_관리자매뉴얼.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_관리자매뉴얼.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+
+<!-- mf_widget 수정요청 버튼 -->
+<div id="mfw-page-btn" style="position:fixed;top:14px;right:18px;z-index:9999;">
+  <button onclick="openMfSection({file:'admin_manual_server.html',tab:'서버관리',section:'',sourceDesc:'서버 관리자 매뉴얼 전체 페이지'})"
+    style="background:#f59e0b;color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:0.8rem;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);">
+    <span style="margin-right:4px;">✏️</span>수정요청
+  </button>
+</div>
+<script src="common/mf_widget.js?v=20260409d"></script>
+
+</body>
+</html>

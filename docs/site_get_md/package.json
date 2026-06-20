@@ -1,0 +1,37 @@
+{
+  "name": "carebaby-tools",
+  "version": "1.0.0",
+  "description": "CareBaby Project - Web Crawler & MD Auto Debugger",
+  "main": "auto_debugger.js",
+  "bin": {
+    "md-debug": "./auto_debugger.js"
+  },
+  "scripts": {
+    "crawl": "node crawler.js",
+    "analyze": "node auto_debugger.js",
+    "analyze:ai": "node auto_debugger.js --ai",
+    "analyze:verbose": "node auto_debugger.js --verbose",
+    "analyze:all": "node auto_debugger.js --root=.. --verbose"
+  },
+  "keywords": [
+    "crawler",
+    "playwright",
+    "web-scraping",
+    "markdown",
+    "debug",
+    "ai",
+    "automation",
+    "pattern-analysis"
+  ],
+  "author": "CareBaby Project",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "cheerio": "^1.2.0",
+    "mysql2": "^3.16.2",
+    "playwright": "^1.41.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

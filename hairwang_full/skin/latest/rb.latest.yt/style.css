@@ -1,0 +1,36 @@
+@charset "utf-8";
+
+.bbs_main_wrap_yt {box-sizing: border-box; width: 100%}
+.bbs_main_wrap_yt dd {position: relative;}
+.bbs_main_wrap_yt dd:last-child {margin-bottom: 0px;}
+.bbs_main_wrap_yt .bbs_main_wrap_yt_ul1 {width: 100%; box-sizing: border-box; position: relative}
+.bbs_main_wrap_yt .bbs_main_wrap_yt_ul1 img {width: 100%; border-radius: 10px; object-fit: cover; height:180px;}
+.bbs_main_wrap_yt .bbs_main_wrap_yt_ul2 {width: 100%; margin-top: 20px;}
+.bbs_main_wrap_yt .bbs_main_wrap_yt_subj {font-size: 16px;}
+.bbs_main_wrap_yt .bbs_main_wrap_yt_cont {font-size: 14px; color:#666; word-break: keep-all; margin-top: 15px;}
+.bbs_main_wrap_yt .bbs_main_wrap_yt_cont a {color:#666;}
+.bbs_main_wrap_yt .bbs_main_wrap_yt_info {font-size: 12px; color:#999; margin-top: 10px;}
+.bbs_main_wrap_yt .bbs_main_wrap_yt_writer {margin-top: 20px;}
+.bbs_main_wrap_yt .bbs_main_wrap_yt_writer span {display: inline-block;}
+.bbs_main_wrap_yt .prof_tiny_image img {width: 30px; height:auto; border-radius: 50%; margin-right: 5px;}
+.bbs_main_wrap_yt .prof_tiny_name {font-size: 12px; color:#999; line-height: 30px; margin-right: 10px;}
+.bbs_main_wrap_yt .bbs_list_label {font-size: 11px; border-radius: 4px; padding-left: 5px; padding-right: 5px; padding-top: 3px; padding-bottom: 2px;}
+
+.bbs_main_wrap_yt .icon_abs {position: absolute; right:10px; top:10px;}
+.bbs_main_wrap_yt .bbs_list_label.label1 {background-color: #FFC700; color:#fff;}
+.bbs_main_wrap_yt .bbs_list_label.label2 {background-color: #00A3FF; color:#fff;}
+.bbs_main_wrap_yt .bbs_list_label.label3 {background-color: #8ED100; color:#fff;}
+.bbs_main_wrap_yt .bbs_list_label.label4 {background-color: #AA20FF; color:#fff;}
+.bbs_main_wrap_yt .bbs_list_label.label5 {background-color: #25282B; color:#fff;}
+.bbs_main_wrap_yt .bbs_list_label.label6 {background-color: #D6DCE0; color:#000;}
+
+/* 유튜브 { */
+.yt_ico {position: absolute; left: 10px; bottom:7px; height:30px !important; width: auto !important;}
+.yt_list {position: relative; margin-top: 20px; min-height: 37px;}
+.yt_list .gallery-item-info {margin-top: 0px;}
+.yt_list .gallery-item-tit {margin-top: 5px !important;}
+.yt_list_l {position: absolute; top:0px; left: 0px;}
+.yt_list_l img {border-radius: 10px; width: auto !important; height:37px !important;}
+.yt_list_r {padding-left: 50px; font-size: 12px; color:#999;}
+.yt_list .gallery-item-tit {font-size: 16px;}
+/* } */

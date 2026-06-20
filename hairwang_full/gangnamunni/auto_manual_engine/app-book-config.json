@@ -1,0 +1,262 @@
+{
+  "_comment": "앱(사용자) 페이지 스크린샷 매뉴얼 설정",
+  "_version": "1.0.0",
+  "_updated": "2026-03-04",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/hairwang/gangnamunni/",
+  "browser": {
+    "headless": true,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "desktopViewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85
+  },
+  "login": {
+    "required": false
+  },
+  "book": {
+    "title": "서울미녀 앱 사용자 매뉴얼",
+    "subtitle": "사용자 화면 스크린샷 가이드",
+    "author": "Seoul Beauty Admin",
+    "outputDir": "../uploads/app-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_main",
+      "title": "메인",
+      "icon": "bi-house",
+      "description": "홈페이지와 검색",
+      "pages": [
+        {
+          "key": "home",
+          "label": "홈페이지",
+          "url": "index.php",
+          "description": "메인 페이지 - 배너, 인기 시술, 이벤트, 후기 등",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "search",
+          "label": "검색 페이지",
+          "url": "search.php?q=%ED%94%BC%EB%B6%80",
+          "description": "키워드 \"피부\"로 검색한 결과 화면",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_hospital",
+      "title": "병원",
+      "icon": "bi-building",
+      "description": "병원 목록 및 상세 정보",
+      "pages": [
+        {
+          "key": "hospitals_card",
+          "label": "병원 목록 (카드뷰)",
+          "url": "hospitals.php",
+          "description": "병원을 카드 형태로 보여주는 기본 보기",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "hospitals_list",
+          "label": "병원 목록 (리스트뷰)",
+          "url": "hospitals.php?view=list",
+          "description": "병원을 리스트 형태로 보여주는 보기",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "hospitals_seoul",
+          "label": "병원 목록 (서울미녀맵)",
+          "url": "hospitals.php?view=seoul",
+          "description": "서울 지역별 병원 맵 보기",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ],
+          "afterLoadScript": "document.querySelector('#view-seoul')?.click(); await new Promise(r => setTimeout(r, 500));"
+        },
+        {
+          "key": "hospital_detail",
+          "label": "병원 상세",
+          "url": "detail.php?id=15",
+          "description": "병원 상세 정보 - 의사, 시술, 후기, 위치 등",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch03_review",
+      "title": "후기",
+      "icon": "bi-chat-dots",
+      "description": "사용자 후기 목록 및 상세",
+      "pages": [
+        {
+          "key": "reviews",
+          "label": "후기 목록",
+          "url": "reviews.php",
+          "description": "사용자 시술 후기 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "review_detail",
+          "label": "후기 상세",
+          "url": "review_detail.php?id=1",
+          "description": "후기 상세 내용 - 별점, 사진, 댓글",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch04_event",
+      "title": "이벤트/응모",
+      "icon": "bi-calendar-event",
+      "description": "이벤트 목록, 상세, 응모",
+      "pages": [
+        {
+          "key": "events",
+          "label": "이벤트 목록",
+          "url": "events.php",
+          "description": "진행 중인 이벤트 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "event_detail",
+          "label": "이벤트 상세",
+          "url": "event_detail.php?id=106",
+          "description": "이벤트 상세 - 가격, 기간, 응모 폼",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "my_events",
+          "label": "이벤트 응모",
+          "url": "event_detail.php?id=106#entry-form",
+          "description": "이벤트 응모 폼 화면",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch05_community",
+      "title": "커뮤니티",
+      "icon": "bi-people",
+      "description": "뷰티 꿀팁, 커뮤니티, 칼럼",
+      "pages": [
+        {
+          "key": "tips",
+          "label": "뷰티 꿀팁",
+          "url": "tips.php",
+          "description": "뷰티 관련 꿀팁 게시판",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "community",
+          "label": "커뮤니티",
+          "url": "tips.php?type=community",
+          "description": "사용자 커뮤니티 게시판",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "columns",
+          "label": "칼럼/뉴스",
+          "url": "columns.php",
+          "description": "의학 칼럼 및 뉴스",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch06_service",
+      "title": "서비스",
+      "icon": "bi-gear",
+      "description": "예약, 상담, 회원가입, 알림",
+      "pages": [
+        {
+          "key": "consultation",
+          "label": "상담 신청",
+          "url": "consultation.php",
+          "description": "병원 상담 신청 폼",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "my_appointments",
+          "label": "내 예약 조회",
+          "url": "my_appointments.php",
+          "description": "전화번호로 예약 조회",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "register",
+          "label": "회원가입",
+          "url": "register_wizard.php",
+          "description": "신규 회원 가입 폼",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "my_appointments_phone",
+          "label": "예약 조회 (전화번호)",
+          "url": "my_appointments.php",
+          "description": "전화번호로 예약 조회하는 화면",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

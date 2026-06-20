@@ -1,0 +1,15 @@
+{
+  "name": "auto-test-v2",
+  "version": "2.0.0",
+  "description": "Seoul Beauty Auto Test v2 - Plugin-based wizard test system",
+  "main": "server-v2.js",
+  "scripts": {
+    "start": "node server-v2.js",
+    "test": "node test-runner-v2.js --help"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "playwright": "^1.58.0"
+  }
+}

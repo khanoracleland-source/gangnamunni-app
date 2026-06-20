@@ -1,0 +1,56 @@
+# gangnamunni 루트 .htaccess
+RewriteEngine On
+
+# HTTPS 자동 리다이렉트
+# SSL 미설정 호스팅에서는 .htaccess에서 아래 4줄 삭제하면 HTTP로 동작
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{HTTP_HOST} !^localhost [NC]
+RewriteCond %{HTTP_HOST} !^127\.0\.0\.1 [NC]
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# dbconfig.php 직접 접근 차단
+<Files "dbconfig.php">
+    Deny from all
+</Files>
+
+# includes 디렉토리 직접 접근 차단
+<IfModule mod_rewrite.c>
+    RewriteRule ^includes/ - [F,L]
+</IfModule>
+
+# 보안 헤더
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.quilljs.com cdn.jsdelivr.net cdn.tailwindcss.com static.cloudflareinsights.com unpkg.com dapi.kakao.com t1.kakaocdn.net *.daumcdn.net maps.googleapis.com maps.gstatic.com; style-src 'self' 'unsafe-inline' cdn.quilljs.com cdn.jsdelivr.net fonts.googleapis.com cdn.tailwindcss.com; img-src 'self' data: blob: https:; font-src 'self' cdn.quilljs.com cdn.jsdelivr.net fonts.gstatic.com fonts.googleapis.com; connect-src 'self' cdn.jsdelivr.net cdn.tailwindcss.com dapi.kakao.com nominatim.openstreetmap.org maps.googleapis.com; frame-ancestors 'self'"
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
+</IfModule>
+
+# 세션 보안 (PHP)
+<IfModule mod_php.c>
+    php_value session.cookie_httponly 1
+    php_value session.cookie_samesite "Lax"
+    php_value session.use_strict_mode 1
+</IfModule>
+
+# 이미지 캐싱 (1개월)
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+</IfModule>
+
+# PHP 업로드 제한
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 50M
+    php_value max_file_uploads 10
+</IfModule>

@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>환경 설정 - 서울미녀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic', sans-serif;
+            background: #F9F9F9;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF6B9D;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-button {
+            padding: 10px 24px;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, #FFE5ED 0%, #FFB6D9 100%);
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 42px;
+            font-weight: 700;
+            color: #FF6B9D;
+            margin-bottom: 15px;
+        }
+
+        .page-subtitle {
+            font-size: 18px;
+            color: #666;
+        }
+
+        /* Container */
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        /* Settings Card */
+        .settings-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .settings-section {
+            margin-bottom: 40px;
+        }
+
+        .settings-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #FFE5ED;
+        }
+
+        .section-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        /* Setting Item */
+        .setting-item {
+            margin-bottom: 25px;
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .device-icon {
+            font-size: 20px;
+        }
+
+        .setting-options {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .option-btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px 20px;
+            background: #F5F5F5;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+
+        .option-btn:hover {
+            border-color: #FF6B9D;
+            background: #FFE5ED;
+        }
+
+        .option-btn.active {
+            background: #FF6B9D;
+            color: white;
+            border-color: #FF6B9D;
+        }
+
+        .option-title {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .option-desc {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: #FFF8E1;
+            border-left: 4px solid #FFC107;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #F57C00;
+            margin-bottom: 8px;
+        }
+
+        .info-box-text {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* Current Status */
+        .current-status {
+            background: #E3F2FD;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .status-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1976D2;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #FF6B9D;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #FF5088;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #666;
+            border: 2px solid #E0E0E0;
+        }
+
+        .btn-secondary:hover {
+            border-color: #FF6B9D;
+            color: #FF6B9D;
+        }
+
+        .btn-reset {
+            background: #F44336;
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background: #D32F2F;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #323232;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .settings-card {
+                padding: 25px;
+            }
+
+            .option-btn {
+                min-width: 100%;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <span>💄</span>
+                <span>서울미녀</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="hospitals.html" class="nav-link">병원찾기</a>
+                <a href="events.html" class="nav-link">이벤트</a>
+                <a href="community.html" class="nav-link">커뮤니티</a>
+                <button class="nav-button" onclick="handleMyBooking()">내 예약</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">⚙️ 환경 설정</h1>
+        <p class="page-subtitle">서울미녀를 내 스타일로 사용하세요</p>
+    </div>
+
+    <!-- Container -->
+    <div class="container">
+        <!-- Current Status -->
+        <div class="current-status">
+            <h3 style="font-size: 18px; font-weight: 700; color: #1976D2; margin-bottom: 15px;">📱 현재 상태</h3>
+            <div class="status-item">
+                <span class="status-label">디바이스 타입</span>
+                <span class="status-value" id="currentDevice">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">화면 크기</span>
+                <span class="status-value" id="screenSize">-</span>
+            </div>
+        </div>
+
+        <!-- Navigation Settings -->
+        <div class="settings-card">
+            <div class="settings-section">
+                <h2 class="section-title">🔗 네비게이션 설정</h2>
+                <p class="section-description">
+                    메뉴(병원찾기, 이벤트, 커뮤니티, 내 예약)를 클릭했을 때 페이지를 어떻게 열지 설정합니다.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-box-title">💡 설정 팁</div>
+                    <div class="info-box-text">
+                        • PC: 여러 페이지를 동시에 보려면 "새 탭"을 선택하세요<br>
+                        • 모바일: 팝업 모드는 작은 창으로 열어 빠르게 확인할 수 있습니다
+                    </div>
+                </div>
+
+                <!-- PC Settings -->
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <span class="device-icon">💻</span>
+                        <span>PC / 데스크톱</span>
+                    </div>
+                    <div class="setting-options">
+                        <button class="option-btn" data-device="pc" data-mode="same-tab">
+                            <div class="option-title">✓ 현재 탭에서 열기</div>
+                            <div class="option-desc">같은 창에서 페이지 이동 (기본)</div>
+                        </button>
+                        <button class="option-btn" data-device="pc" data-mode="new-tab">
+                            <div class="option-title">🆕 새 탭에서 열기</div>
+                            <div class="option-desc">새 탭으로 열어 여러 페이지 동시 확인</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mobile Settings -->
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <span class="device-icon">📱</span>
+                        <span>모바일 / 태블릿</span>
+                    </div>
+                    <div class="setting-options">
+                        <button class="option-btn" data-device="mobile" data-mode="same-page">
+                            <div class="option-title">✓ 현재 페이지에서 열기</div>
+                            <div class="option-desc">전체 화면으로 페이지 이동 (기본)</div>
+                        </button>
+                        <button class="option-btn" data-device="mobile" data-mode="popup">
+                            <div class="option-title">📦 팝업으로 열기</div>
+                            <div class="option-desc">작은 팝업 창으로 빠르게 확인</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Indicator Settings -->
+            <div class="settings-section">
+                <h2 class="section-title">⏳ 로딩 인디케이터 설정</h2>
+                <p class="section-description">
+                    데이터를 불러올 때 표시되는 로딩 인디케이터의 스타일을 선택합니다.
+                </p>
+
+                <div class="info-box">
+                    <div class="info-box-title">💡 설정 팁</div>
+                    <div class="info-box-text">
+                        • 검색, 필터, 페이지 이동 시 로딩 인디케이터가 표시됩니다<br>
+                        • 각 타입을 클릭하여 미리보기를 확인하세요
+                    </div>
+                </div>
+
+                <!-- Loading Type Settings -->
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <span class="device-icon">🎨</span>
+                        <span>로딩 스타일</span>
+                    </div>
+                    <div class="setting-options">
+                        <button class="option-btn" data-loading-type="spinner" onclick="previewLoading('spinner')">
+                            <div class="option-title">🔄 스피너 (기본)</div>
+                            <div class="option-desc">회전하는 원형 로딩</div>
+                        </button>
+                        <button class="option-btn" data-loading-type="dots" onclick="previewLoading('dots')">
+                            <div class="option-title">••• 점</div>
+                            <div class="option-desc">튀는 점 3개 애니메이션</div>
+                        </button>
+                        <button class="option-btn" data-loading-type="progress" onclick="previewLoading('progress')">
+                            <div class="option-title">▬ 진행바</div>
+                            <div class="option-desc">좌우로 움직이는 진행바</div>
+                        </button>
+                        <button class="option-btn" data-loading-type="skeleton" onclick="previewLoading('skeleton')">
+                            <div class="option-title">▭ 스켈레톤</div>
+                            <div class="option-desc">스켈레톤 UI 로딩</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 필터 설정 -->
+            <div class="settings-section">
+                <h2 class="section-title">🔍 필터 설정</h2>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h3>카테고리 필터 형식</h3>
+                        <p>병원 목록 페이지의 카테고리 필터 표시 방식을 선택하세요</p>
+                    </div>
+                    <div class="setting-options">
+                        <button class="option-btn" data-category-type="checkbox">
+                            <div class="option-title">☑️ 체크박스</div>
+                            <div class="option-desc">복수 선택 가능 (기본값)</div>
+                        </button>
+                        <button class="option-btn" data-category-type="radio">
+                            <div class="option-title">⭕ 라디오</div>
+                            <div class="option-desc">단일 선택 (전체 버튼 포함)</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 기능 설정 -->
+            <div class="settings-section">
+                <h2 class="section-title">⚙️ 기능 설정</h2>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h3>백엔드 시스템 선택</h3>
+                        <p>사용할 백엔드 기능을 선택하세요</p>
+                    </div>
+                    <div class="setting-options">
+                        <button class="option-btn" data-use-kivicare="false">
+                            <div class="option-title">🆕 새로운 기능</div>
+                            <div class="option-desc">새로 개발한 회원/예약/리뷰 시스템 (기본값, 권장)</div>
+                        </button>
+                        <button class="option-btn" data-use-kivicare="true">
+                            <div class="option-title">🏥 Kivicare 연동</div>
+                            <div class="option-desc">Kivicare 기존 병원 관리 시스템 사용</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 15px; padding: 15px; background: #FFF9E6; border-radius: 10px; border-left: 4px solid #FFC107;">
+                    <div style="font-weight: 600; color: #F57C00; margin-bottom: 5px;">ℹ️ 안내</div>
+                    <div style="font-size: 14px; color: #666; line-height: 1.6;">
+                        • <strong>새로운 기능</strong>: 서울미녀 전용으로 개발된 회원가입/로그인, 예약, 리뷰 시스템을 사용합니다.<br>
+                        • <strong>Kivicare 연동</strong>: 기존 Kivicare 병원 관리 시스템의 API를 연동하여 사용합니다.<br>
+                        • 설정 변경 후 페이지를 새로고침하면 적용됩니다.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="saveSettings()">💾 설정 저장</button>
+                <button class="btn btn-secondary" onclick="cancelSettings()">취소</button>
+                <button class="btn btn-reset" onclick="resetSettings()">🔄 초기화</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Loading Indicator -->
+    <script src="js/loading.js"></script>
+
+    <!-- Settings Manager -->
+    <script src="js/settings.js"></script>
+
+    <!-- Authentication Manager -->
+    <script src="js/auth.js"></script>
+
+    <script>
+        const DEBUG = sessionStorage.getItem('debug') === 'true';
+
+        function debugLog(action, data) {
+            if (DEBUG) {
+                console.log(`[DEBUG ${new Date().toISOString()}] ${action}:`, data);
+            }
+        }
+
+        function handleMyBooking() {
+            debugLog('Button Click', { action: 'My Booking', page: 'settings' });
+            alert('내 예약 페이지는 준비 중입니다.\n\n회원가입 후 이용 가능합니다.');
+        }
+
+        // 현재 디바이스 정보 표시
+        function updateDeviceInfo() {
+            const deviceType = SettingsManager.getDeviceType();
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            document.getElementById('currentDevice').textContent =
+                deviceType === 'pc' ? 'PC / 데스크톱' : '모바일 / 태블릿';
+            document.getElementById('screenSize').textContent = `${width} x ${height}px`;
+
+            debugLog('Device Info', { deviceType, width, height });
+        }
+
+        // 현재 설정 로드 및 UI 업데이트
+        async function loadCurrentSettings() {
+            const settings = await SettingsManager.load();
+
+            debugLog('Load Settings', settings);
+
+            // PC 설정
+            const pcMode = settings.navigation.pc.mode;
+            document.querySelectorAll('[data-device="pc"]').forEach(btn => {
+                if (btn.dataset.mode === pcMode) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Mobile 설정
+            const mobileMode = settings.navigation.mobile.mode;
+            document.querySelectorAll('[data-device="mobile"]').forEach(btn => {
+                if (btn.dataset.mode === mobileMode) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Loading 타입 설정
+            const loadingType = settings.display?.loadingType || 'spinner';
+            document.querySelectorAll('[data-loading-type]').forEach(btn => {
+                if (btn.dataset.loadingType === loadingType) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // 카테고리 필터 타입 설정
+            const categoryType = settings.filters?.categoryType || 'checkbox';
+            document.querySelectorAll('[data-category-type]').forEach(btn => {
+                if (btn.dataset.categoryType === categoryType) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Kivicare 사용 여부 설정
+            const useKivicare = settings.features?.useKivicare || false;
+            document.querySelectorAll('[data-use-kivicare]').forEach(btn => {
+                if (btn.dataset.useKivicare === String(useKivicare)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // 옵션 버튼 클릭 이벤트
+        document.querySelectorAll('.option-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const device = this.dataset.device;
+                const mode = this.dataset.mode;
+                const loadingType = this.dataset.loadingType;
+
+                // 네비게이션 설정
+                if (device) {
+                    // 같은 디바이스의 다른 버튼 비활성화
+                    document.querySelectorAll(`[data-device="${device}"]`).forEach(b => {
+                        b.classList.remove('active');
+                    });
+
+                    // 현재 버튼 활성화
+                    this.classList.add('active');
+
+                    debugLog('Option Selected', { device, mode });
+                }
+
+                // 로딩 타입 설정
+                if (loadingType) {
+                    // 다른 로딩 타입 버튼 비활성화
+                    document.querySelectorAll('[data-loading-type]').forEach(b => {
+                        b.classList.remove('active');
+                    });
+
+                    // 현재 버튼 활성화
+                    this.classList.add('active');
+
+                    debugLog('Loading Type Selected', { type: loadingType });
+                }
+
+                // 카테고리 필터 타입 설정
+                const categoryType = this.dataset.categoryType;
+                if (categoryType) {
+                    // 다른 카테고리 타입 버튼 비활성화
+                    document.querySelectorAll('[data-category-type]').forEach(b => {
+                        b.classList.remove('active');
+                    });
+
+                    // 현재 버튼 활성화
+                    this.classList.add('active');
+
+                    debugLog('Category Type Selected', { type: categoryType });
+                }
+
+                // Kivicare 사용 여부 설정
+                const useKivicare = this.dataset.useKivicare;
+                if (useKivicare !== undefined) {
+                    // 다른 버튼 비활성화
+                    document.querySelectorAll('[data-use-kivicare]').forEach(b => {
+                        b.classList.remove('active');
+                    });
+
+                    // 현재 버튼 활성화
+                    this.classList.add('active');
+
+                    debugLog('Kivicare Setting Selected', { useKivicare: useKivicare === 'true' });
+                }
+            });
+        });
+
+        // 로딩 인디케이터 미리보기
+        function previewLoading(type) {
+            LoadingIndicator.show('preview', type);
+            setTimeout(() => {
+                LoadingIndicator.hide('preview');
+            }, 2000);
+        }
+
+        // 설정 저장
+        async function saveSettings() {
+            const pcMode = document.querySelector('[data-device="pc"].active')?.dataset.mode;
+            const mobileMode = document.querySelector('[data-device="mobile"].active')?.dataset.mode;
+            const loadingType = document.querySelector('[data-loading-type].active')?.dataset.loadingType;
+            const categoryType = document.querySelector('[data-category-type].active')?.dataset.categoryType;
+            const useKivicareBtn = document.querySelector('[data-use-kivicare].active');
+            const useKivicare = useKivicareBtn ? useKivicareBtn.dataset.useKivicare === 'true' : false;
+
+            if (!pcMode || !mobileMode) {
+                showToast('⚠️ 모든 설정을 선택해주세요', 'warning');
+                return;
+            }
+
+            const settings = await SettingsManager.load();
+            settings.navigation.pc.mode = pcMode;
+            settings.navigation.mobile.mode = mobileMode;
+            settings.display.loadingType = loadingType || 'spinner';
+            settings.filters.categoryType = categoryType || 'checkbox';
+            settings.features.useKivicare = useKivicare;
+
+            const success = await SettingsManager.save(settings);
+
+            if (success) {
+                showToast('✅ 설정이 저장되었습니다', 'success');
+                debugLog('Settings Saved', settings);
+
+                // 설정 적용
+                setTimeout(() => {
+                    SettingsManager.applyNavigationSettings();
+                }, 500);
+            } else {
+                showToast('❌ 설정 저장에 실패했습니다', 'error');
+            }
+        }
+
+        // 취소
+        function cancelSettings() {
+            if (confirm('변경사항을 취소하고 이전 페이지로 돌아가시겠습니까?')) {
+                window.history.back();
+            }
+        }
+
+        // 초기화
+        async function resetSettings() {
+            if (confirm('모든 설정을 기본값으로 초기화하시겠습니까?')) {
+                await SettingsManager.reset();
+                await loadCurrentSettings();
+                showToast('🔄 설정이 초기화되었습니다', 'info');
+                debugLog('Settings Reset', SettingsManager.defaults);
+            }
+        }
+
+        // 토스트 메시지 표시
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 초기화
+        updateDeviceInfo();
+        loadCurrentSettings();
+
+        // 윈도우 리사이즈 시 디바이스 정보 업데이트
+        window.addEventListener('resize', updateDeviceInfo);
+
+        debugLog('Page Initialized', { page: 'settings', url: window.location.href });
+
+        // Debug mode info
+        if (DEBUG) {
+            console.log('%c[DEBUG MODE ENABLED]', 'background: #FF6B9D; color: white; padding: 5px 10px; font-weight: bold;');
+        }
+    </script>
+</body>
+</html>

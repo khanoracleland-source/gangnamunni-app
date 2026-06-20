@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ko" data-bs-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울미녀 앱 1차 검수 — 수정 진행 마일스톤</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<script>
+  // anti-flash dark mode
+  (function(){
+    const t = localStorage.getItem('ms-theme') || 'light';
+    document.documentElement.setAttribute('data-bs-theme', t);
+  })();
+</script>
+<style>
+  body { font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  .header-hero {
+    background: linear-gradient(135deg, #6f42c1 0%, #d63384 100%);
+    color: #fff;
+    padding: 36px 24px;
+    border-radius: 12px;
+    margin-bottom: 28px;
+  }
+  [data-bs-theme="dark"] .header-hero {
+    background: linear-gradient(135deg, #4a2d8a 0%, #8e2256 100%);
+  }
+  .header-hero h1 { font-weight: 800; margin: 0 0 8px; }
+  .header-hero .meta { opacity: .92; font-size: .95rem; }
+  .summary-card {
+    border-left: 4px solid #6f42c1;
+    padding: 16px 20px;
+    border-radius: 8px;
+    background: var(--bs-tertiary-bg);
+    margin-bottom: 8px;
+  }
+  .phase-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 32px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--bs-border-color);
+  }
+  .phase-badge {
+    background: #6f42c1; color: #fff;
+    padding: 4px 14px; border-radius: 20px;
+    font-size: .85rem; font-weight: 600;
+  }
+  .phase-1 .phase-badge { background: #dc3545; }
+  .phase-2 .phase-badge { background: #fd7e14; }
+  .phase-3 .phase-badge { background: #198754; }
+  .phase-date { color: var(--bs-secondary-color); font-size: .9rem; }
+  .priority-p0  { background: #dc3545; color:#fff; }
+  .priority-p1  { background: #fd7e14; color:#fff; }
+  .priority-p2  { background: #0d6efd; color:#fff; }
+  .priority-p3  { background: #6c757d; color:#fff; }
+  .priority-low { background: #adb5bd; color:#fff; }
+  .badge-pri {
+    display: inline-block;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: .75rem; font-weight: 600;
+    min-width: 50px; text-align: center;
+  }
+  .table thead th {
+    background: var(--bs-tertiary-bg);
+    border-bottom: 2px solid var(--bs-border-color);
+    font-size: .85rem;
+  }
+  .table td { font-size: .92rem; vertical-align: middle; }
+  .table td.id-col { font-family: 'Courier New', monospace; font-weight: 600; color: var(--bs-secondary-color); white-space: nowrap; }
+  .table td.area-col { white-space: nowrap; font-weight: 500; }
+  .sheet-ref {
+    color: var(--bs-secondary-color);
+    font-size: .8rem;
+    font-style: italic;
+  }
+  .summary-table th, .summary-table td { vertical-align: middle; }
+  .summary-table .ph-row td:first-child { font-weight: 700; }
+  .alert-followup {
+    border-left: 4px solid #fd7e14;
+    background: rgba(253, 126, 20, 0.08);
+  }
+  [data-bs-theme="dark"] .alert-followup {
+    background: rgba(253, 126, 20, 0.15);
+  }
+  .alert-confirm {
+    border-left: 4px solid #ffc107;
+    background: rgba(255, 193, 7, 0.08);
+  }
+  [data-bs-theme="dark"] .alert-confirm {
+    background: rgba(255, 193, 7, 0.15);
+  }
+  /* Gantt Chart */
+  .gantt-wrap {
+    background: var(--bs-tertiary-bg);
+    border-radius: 12px;
+    padding: 20px 16px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .gantt {
+    min-width: 800px;
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    row-gap: 6px;
+    column-gap: 12px;
+    align-items: center;
+  }
+  .gantt-header-empty {}
+  .gantt-scale {
+    position: relative;
+    height: 28px;
+    border-bottom: 2px solid var(--bs-border-color);
+  }
+  .gantt-tick {
+    position: absolute;
+    top: 0; bottom: 0;
+    border-left: 1px dashed var(--bs-border-color-translucent);
+    font-size: .72rem;
+    color: var(--bs-secondary-color);
+    padding-left: 4px;
+    line-height: 1;
+  }
+  .gantt-tick.major {
+    border-left-style: solid;
+    color: var(--bs-emphasis-color);
+    font-weight: 600;
+  }
+  .gantt-tick small { display: block; font-size: .65rem; opacity: .7; margin-top: 2px; }
+  .gantt-label {
+    font-size: .88rem;
+    font-weight: 600;
+    text-align: right;
+    padding-right: 4px;
+    line-height: 1.3;
+  }
+  .gantt-label .sub { font-size: .72rem; color: var(--bs-secondary-color); font-weight: 400; display: block; margin-top: 2px; }
+  .gantt-track {
+    position: relative;
+    height: 34px;
+    background: var(--bs-body-bg);
+    border-radius: 6px;
+  }
+  /* 개발/검수 그룹 분리 */
+  .gantt-group-bar {
+    position: relative;
+    height: 36px;
+    margin-bottom: 4px;
+  }
+  .gantt-group-dev,
+  .gantt-group-review {
+    position: absolute;
+    top: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 700;
+    font-size: .88rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  .gantt-group-dev {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 50%, #198754 100%);
+  }
+  .gantt-group-review {
+    background: linear-gradient(135deg, #0dcaf0 0%, #6610f2 100%);
+  }
+  /* 개발-검수 경계 세로선 — 모든 트랙에 표시 */
+  .gantt-divider-vertical {
+    position: absolute;
+    top: -28px;
+    bottom: 0;
+    width: 0;
+    border-left: 2px dashed #ffc107;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .gantt-divider-vertical::after {
+    content: '🚩 개발 → 검수';
+    position: absolute;
+    top: -22px;
+    left: 4px;
+    background: #ffc107;
+    color: #212529;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .gantt-bar {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: .78rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .gantt-bar.p1 { background: linear-gradient(135deg, #dc3545, #c82333); }
+  .gantt-bar.p2 { background: linear-gradient(135deg, #fd7e14, #e8650a); }
+  .gantt-bar.p3 { background: linear-gradient(135deg, #198754, #146c43); }
+  .gantt-bar.p4 { background: linear-gradient(135deg, #0dcaf0, #0aa3c4); color: #003a4a; }
+  .gantt-bar.p5 { background: linear-gradient(135deg, #6610f2, #520dc2); }
+  .gantt-milestone {
+    position: absolute;
+    top: -4px;
+    transform: translateX(-50%);
+    font-size: 1.4rem;
+    z-index: 2;
+  }
+  .gantt-milestone-label {
+    position: absolute;
+    top: -22px;
+    transform: translateX(-50%);
+    font-size: .68rem;
+    background: var(--bs-emphasis-color);
+    color: var(--bs-body-bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    z-index: 3;
+  }
+  .gantt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--bs-border-color);
+    font-size: .82rem;
+  }
+  .gantt-legend-item { display: flex; align-items: center; gap: 6px; }
+  .gantt-legend-swatch {
+    width: 14px; height: 14px; border-radius: 3px;
+  }
+  .badge-done {
+    background: #198754; color: #fff;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: .72rem; font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-doing {
+    background: #0dcaf0; color: #003a4a;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: .72rem; font-weight: 600;
+    white-space: nowrap;
+  }
+  tr.row-done td { background: rgba(25, 135, 84, 0.08); }
+  [data-bs-theme="dark"] tr.row-done td { background: rgba(25, 135, 84, 0.18); }
+  tr.row-doing td { background: rgba(13, 202, 240, 0.08); }
+  [data-bs-theme="dark"] tr.row-doing td { background: rgba(13, 202, 240, 0.18); }
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px;
+    z-index: 1000;
+  }
+  .toc {
+    background: var(--bs-tertiary-bg);
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 28px;
+  }
+  .toc a { text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  /* Sidebar */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+  .sidebar {
+    position: sticky;
+    top: 16px;
+    background: var(--bs-tertiary-bg);
+    border-radius: 12px;
+    padding: 18px 14px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+  .sidebar h6 {
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--bs-border-color);
+    font-weight: 700;
+    color: var(--bs-emphasis-color);
+    font-size: .9rem;
+  }
+  .sidebar-nav { list-style: none; padding: 0; margin: 0; }
+  .sidebar-nav li { margin: 0; }
+  .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: var(--bs-body-color);
+    text-decoration: none;
+    font-size: .88rem;
+    transition: all .15s;
+    border-left: 3px solid transparent;
+  }
+  .sidebar-nav a:hover {
+    background: var(--bs-body-bg);
+    color: var(--bs-link-color);
+  }
+  .sidebar-nav a.active {
+    background: var(--bs-body-bg);
+    border-left-color: #6f42c1;
+    color: var(--bs-emphasis-color);
+    font-weight: 600;
+  }
+  .sidebar-nav .nav-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--bs-body-bg);
+    font-size: .7rem;
+    font-weight: 700;
+    color: var(--bs-secondary-color);
+    flex-shrink: 0;
+  }
+  .sidebar-nav a.active .nav-num {
+    background: #6f42c1;
+    color: #fff;
+  }
+  .sidebar-divider {
+    margin: 12px 0;
+    border-top: 1px dashed var(--bs-border-color);
+  }
+  .sidebar-info {
+    font-size: .75rem;
+    color: var(--bs-secondary-color);
+    padding: 8px 12px;
+    line-height: 1.5;
+  }
+  .sidebar-info strong { color: var(--bs-emphasis-color); }
+  @media (max-width: 991px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: relative; top: 0; max-height: none; }
+  }
+  .signoff {
+    margin-top: 48px;
+    padding: 20px;
+    border-radius: 8px;
+    background: var(--bs-tertiary-bg);
+    text-align: center;
+    color: var(--bs-secondary-color);
+  }
+  @media print {
+    .theme-toggle { display: none; }
+    body { background: #fff !important; }
+  }
+</style>
+</head>
+<body>
+<button class="btn btn-sm btn-outline-secondary theme-toggle" onclick="toggleTheme()">
+  <i class="bi bi-circle-half"></i> <span id="theme-label">다크</span>
+</button>
+
+<div class="container py-4" style="max-width: 1400px;">
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <h6><i class="bi bi-list-ul"></i> 목차</h6>
+    <ul class="sidebar-nav">
+      <li><a href="#scope"><span class="nav-num">1</span> 작업 범위 / 우선순위</a></li>
+      <li><a href="#summary"><span class="nav-num">2</span> 마일스톤 요약 (간트)</a></li>
+      <li><a href="#phase1"><span class="nav-num">3</span> Phase 1 긴급 픽스</a></li>
+      <li><a href="#phase2"><span class="nav-num">4</span> Phase 2 핵심 기능</a></li>
+      <li><a href="#phase3"><span class="nav-num">5</span> Phase 3 UI/UX</a></li>
+      <li><a href="#phase45"><span class="nav-num">6</span> Phase 4·5 검수/최종</a></li>
+      <li><a href="#followup"><span class="nav-num">7</span> 후속 일정</a></li>
+      <li><a href="#confirm"><span class="nav-num">8</span> 사전 확인 사항</a></li>
+      <li><a href="#process"><span class="nav-num">9</span> 산출물 / 검수 방식</a></li>
+    </ul>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-info">
+      <div><strong>개발 완료</strong></div>
+      <div>2026-07-07 (화)</div>
+      <div class="mt-2"><strong>최종 마감</strong></div>
+      <div>2026-07-21 (화)</div>
+      <div class="mt-2"><strong>총 기간</strong></div>
+      <div>8주 (56일)</div>
+      <div class="mt-2"><strong>처리 대상</strong></div>
+      <div>약 100건</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-info">
+      <a href="https://docs.google.com/spreadsheets/d/1zIuvYNBr7zaTYpUdC_IH5lj57rnDgSLCpNJAmXqQVig/edit?usp=sharing" target="_blank" class="text-decoration-none">
+        <i class="bi bi-box-arrow-up-right"></i> 검수 명세서 시트
+      </a>
+    </div>
+  </aside>
+
+  <main>
+
+  <!-- Top Notice Banner (파란색 강조) -->
+  <div style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: #fff; padding: 22px 28px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25);">
+    <div style="font-size: 1.35rem; font-weight: 800; line-height: 1.5;">
+      <i class="bi bi-megaphone-fill"></i> 본 일정은 안전 마진을 포함한 <u>예정 일정</u>입니다.
+    </div>
+    <div style="font-size: 1.1rem; font-weight: 600; line-height: 1.6; margin-top: 8px; opacity: 0.97;">
+      실제 작업은 예정보다 <strong>조기 완료될 수 있으며</strong>, 개발 단계가 일찍 끝나면 <strong>검수 단계도 그만큼 앞당겨 시작</strong>합니다.
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="header-hero">
+    <h1><i class="bi bi-rocket-takeoff"></i> 서울미녀 앱 1차 검수 — 수정 진행 마일스톤</h1>
+    <div class="meta">
+      <div><strong>작성일</strong> : 2026-05-26 (화)</div>
+      <div><strong>검수 명세서 수령</strong> : 2026-05-21 (목) &nbsp;|&nbsp; <strong>정식 일정 착수</strong> : 2026-05-27 (수) &nbsp;|&nbsp; <strong>개발 완료</strong> : 2026-07-07 (화) &nbsp;|&nbsp; <strong>최종 반영</strong> : <span class="badge bg-light text-dark">2026-07-21 (화)</span></div>
+      <div>총 진행 기간 <strong>8주 (56일)</strong> · 개발 6주(2주×3) + 검수 1주 + 최종 수정 1주 &nbsp;|&nbsp; <em>※ 처리 대상 약 100건 — 진행에 따라 조기 완료 가능</em></div>
+      <div class="mt-2 small" style="background:rgba(255,255,255,0.15); padding:8px 12px; border-radius:6px;"><i class="bi bi-check2-circle"></i> <strong>사전 작업</strong> : 검수 명세서 수령 직후(5/21~5/26)부터 단순 픽스 항목 일부 선반영 진행 중. 5/22~5/26 휴일 기간에도 단순 수정/배포 가능 항목 우선 처리</div>
+      <div class="mt-2 small" style="background:rgba(40, 167, 69, 0.35); padding:8px 12px; border-radius:6px;"><i class="bi bi-lightning-charge-fill"></i> <strong>본 일정은 안전 마진을 포함한 예정 일정입니다.</strong> 실제 작업은 <strong>예정보다 조기 완료될 수 있으며</strong>, 개발 단계가 일찍 끝나면 검수 단계도 그만큼 앞당겨 시작합니다.</div>
+      <div><strong>기준 문서</strong> : <a class="text-white" href="https://docs.google.com/spreadsheets/d/1zIuvYNBr7zaTYpUdC_IH5lj57rnDgSLCpNJAmXqQVig/edit?usp=sharing" target="_blank">서울미녀 앱 최종 검수 명세서 <i class="bi bi-box-arrow-up-right"></i></a></div>
+    </div>
+  </div>
+
+  <!-- Scope -->
+  <section id="scope">
+    <h3><i class="bi bi-bullseye"></i> 1. 작업 범위 및 우선순위 분류</h3>
+    <p><strong>1차 검수 명세서의 핵심 항목 22건</strong>을 Phase 1~3 (5/28 ~ 6/16)에 정확히 매핑하여 처리합니다. 작업 진행 중 <strong>해당 화면/모듈과 직접 연관된 회귀 버그·UX 일관성 이슈는 동반 점검 및 함께 정비</strong>합니다 (예: 탭 재정의 시 의사/이벤트 데이터 분리, 찜 로직 수정 시 마이페이지 연동 등). 신규 기능(Figma 디자인/4탭 GNB/카테고리 시술)과 관리자 페이지 정비는 작업 범위 협의가 필요해 <strong>후속 일정으로 분리</strong>합니다.</p>
+    <div class="alert alert-confirm mb-3">
+      <strong><i class="bi bi-lightbulb"></i> 동반 개선 원칙</strong> &nbsp;: &nbsp;
+      각 Phase 종료 후 해당 영역의 회귀 테스트를 수행하며, <strong>같은 화면에서 발견된 사소한 UI 깨짐·잘못된 데이터·텍스트 오타 등은 별도 추가 인입 없이 함께 정리</strong>합니다. 단, 신규 기능이나 다른 화면의 새 작업이 필요한 사항은 즉시 공유하고 별도 합의 후 진행합니다.
+    </div>
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle">
+        <thead>
+          <tr><th style="width:14%">우선순위</th><th>정의</th><th style="width:18%">처리 시점</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="badge-pri priority-p0">P0 긴급</span></td><td>앱 사용 불가 / 500 에러 / 핵심 기능 차단</td><td>Phase 1 (즉시)</td></tr>
+          <tr><td><span class="badge-pri priority-p1">P1 필수</span></td><td>시트 "필수" 표기 / 치명적 UX 버그</td><td>Phase 1 ~ 2</td></tr>
+          <tr><td><span class="badge-pri priority-p2">P2 높음</span></td><td>시트 "높음" 표기 / 비즈니스 영향</td><td>Phase 2</td></tr>
+          <tr><td><span class="badge-pri priority-p3">P3 중간</span></td><td>UI/UX 개선, 가독성 향상</td><td>Phase 3</td></tr>
+          <tr><td><span class="badge-pri priority-low">낮음</span></td><td>플로팅 버튼 숨김, DEV 데이터 제거 등 단순 정리</td><td>Phase 3</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Summary -->
+  <section id="summary" class="mt-4">
+    <h3><i class="bi bi-calendar3"></i> 2. 마일스톤 요약</h3>
+
+    <!-- ⓪ 전체 일정 간트 -->
+    <div class="gantt-wrap" style="border-top:4px solid #6f42c1;">
+      <div class="mb-2" style="font-weight:700; color:#6f42c1; font-size:1.05rem;">
+        📊 전체 일정 간트 · 8주 (2026-05-27 ~ 07-21) · 개발 6주 + 검수 2주
+      </div>
+      <div class="gantt">
+        <div class="gantt-header-empty"></div>
+        <div class="gantt-scale">
+          <div class="gantt-tick major" style="left:0%;">5/27<small>수 · 착수</small></div>
+          <div class="gantt-tick" style="left:25%;">6/09<small>화</small></div>
+          <div class="gantt-tick" style="left:50%;">6/23<small>화</small></div>
+          <div class="gantt-tick major" style="left:75%;">7/07<small>화 · 개발 완료</small></div>
+          <div class="gantt-tick" style="left:87.5%;">7/14<small>화</small></div>
+          <div class="gantt-tick major" style="left:100%;">7/21<small>화 · 최종 마감</small></div>
+        </div>
+
+        <!-- 그룹 헤더 : 개발 / 검수 -->
+        <div class="gantt-label" style="font-size:.78rem; color:var(--bs-secondary-color);">단계 구분</div>
+        <div class="gantt-group-bar">
+          <div class="gantt-group-dev" style="left:0%; width:75%;">📐 개발 단계 · 6주</div>
+          <div class="gantt-group-review" style="left:75%; width:25%;">🔍 검수 단계 · 2주</div>
+        </div>
+
+        <div class="gantt-label">Phase 1<span class="sub">긴급 · ~22건</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p1" style="left:0%; width:25%;">5/27 ~ 6/09</div>
+          <span class="gantt-divider-vertical" style="left:75%;"></span>
+        </div>
+
+        <div class="gantt-label">Phase 2<span class="sub">핵심 · ~25건</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p2" style="left:25%; width:25%;">6/10 ~ 6/23</div>
+          <span class="gantt-divider-vertical" style="left:75%; top:0;"></span>
+        </div>
+
+        <div class="gantt-label">Phase 3<span class="sub">UI/UX · ~28건</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p3" style="left:50%; width:25%;">6/24 ~ 7/07</div>
+          <span class="gantt-milestone-label" style="left:75%;">🚩 개발 완료</span>
+          <span class="gantt-milestone" style="left:75%;" title="개발 완료">🚩</span>
+        </div>
+
+        <div class="gantt-label">Phase 4<span class="sub">검수 (1주)</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p4" style="left:75%; width:12.5%;">7/08 ~ 7/14</div>
+        </div>
+
+        <div class="gantt-label">Phase 5<span class="sub">최종 (1주)</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p5" style="left:87.5%; width:12.5%;">7/15 ~ 7/21</div>
+          <span class="gantt-milestone-label" style="left:100%;">🏁 최종 마감</span>
+          <span class="gantt-milestone" style="left:100%;" title="최종 마감">🏁</span>
+        </div>
+      </div>
+      <div class="gantt-legend">
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#dc3545;"></span> Phase 1</div>
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#fd7e14;"></span> Phase 2</div>
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#198754;"></span> Phase 3</div>
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#0dcaf0;"></span> Phase 4</div>
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#6610f2;"></span> Phase 5</div>
+        <div class="gantt-legend-item">🚩 개발 완료 · 🏁 최종 마감</div>
+      </div>
+    </div>
+
+    <!-- ① 개발 단계 간트 (확대 뷰) -->
+    <div class="gantt-wrap" style="border-top:4px solid #dc3545;">
+      <div class="mb-2" style="font-weight:700; color:#dc3545; font-size:1.05rem;">
+        📐 개발 단계 간트 (확대 뷰) · 6주 (2026-05-27 ~ 07-07) · ~75건
+      </div>
+      <div class="gantt">
+        <div class="gantt-header-empty"></div>
+        <div class="gantt-scale">
+          <div class="gantt-tick major" style="left:0%;">5/27<small>수 · 착수</small></div>
+          <div class="gantt-tick" style="left:33.3%;">6/09<small>화 · P1 종료</small></div>
+          <div class="gantt-tick" style="left:66.7%;">6/23<small>화 · P2 종료</small></div>
+          <div class="gantt-tick major" style="left:100%;">7/07<small>화 · 개발 완료</small></div>
+        </div>
+
+        <div class="gantt-label">Phase 1<span class="sub">긴급 픽스 · ~22건</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p1" style="left:0%; width:33.3%;">5/27 ~ 6/09 (2주)</div>
+        </div>
+
+        <div class="gantt-label">Phase 2<span class="sub">핵심 기능 · ~25건</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p2" style="left:33.3%; width:33.3%;">6/10 ~ 6/23 (2주)</div>
+        </div>
+
+        <div class="gantt-label">Phase 3<span class="sub">UI/UX + 관리자 · ~28건</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p3" style="left:66.7%; width:33.3%;">6/24 ~ 7/07 (2주)</div>
+          <span class="gantt-milestone-label" style="left:100%;">개발 완료 + 양 OS 재업로드</span>
+          <span class="gantt-milestone" style="left:100%;" title="개발 완료">🚩</span>
+        </div>
+      </div>
+      <div class="gantt-legend">
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#dc3545;"></span> Phase 1 긴급 픽스</div>
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#fd7e14;"></span> Phase 2 핵심 기능</div>
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#198754;"></span> Phase 3 UI/UX + 관리자</div>
+        <div class="gantt-legend-item">🚩 개발 완료 (양 OS 빌드 재업로드)</div>
+      </div>
+    </div>
+
+    <!-- ② 검수 단계 간트 (확대 뷰) -->
+    <div class="gantt-wrap" style="border-top:4px solid #6610f2;">
+      <div class="mb-2" style="font-weight:700; color:#6610f2; font-size:1.05rem;">
+        🔍 검수 단계 간트 (확대 뷰) · 2주 (2026-07-08 ~ 07-21) · 검수자측 + 최종 반영
+      </div>
+      <div class="gantt">
+        <div class="gantt-header-empty"></div>
+        <div class="gantt-scale">
+          <div class="gantt-tick major" style="left:0%;">7/08<small>수 · 검수 시작</small></div>
+          <div class="gantt-tick" style="left:50%;">7/14<small>화 · 검수 종료</small></div>
+          <div class="gantt-tick major" style="left:100%;">7/21<small>화 · 최종 마감</small></div>
+        </div>
+
+        <div class="gantt-label">Phase 4<span class="sub">검수자측 검수</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p4" style="left:0%; width:50%;">7/08 ~ 7/14 (1주)</div>
+        </div>
+
+        <div class="gantt-label">Phase 5<span class="sub">최종 반영</span></div>
+        <div class="gantt-track">
+          <div class="gantt-bar p5" style="left:50%; width:50%;">7/15 ~ 7/21 (1주)</div>
+          <span class="gantt-milestone-label" style="left:100%;">최종 마감 + 최종 빌드</span>
+          <span class="gantt-milestone" style="left:100%;" title="최종 마감">🏁</span>
+        </div>
+      </div>
+      <div class="gantt-legend">
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#0dcaf0;"></span> Phase 4 검수자측 검수 (양 OS 병행 테스트)</div>
+        <div class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:#6610f2;"></span> Phase 5 검수 피드백 최종 반영</div>
+        <div class="gantt-legend-item">🏁 최종 마감 (양 OS 최종 빌드 동시 재배포)</div>
+      </div>
+    </div>
+
+    <!-- 안내 메시지 -->
+    <div class="alert alert-success mb-4" style="border-left: 4px solid #198754;">
+      <i class="bi bi-info-circle-fill"></i> <strong>아래 일정은 안전 마진을 포함한 예정 일정입니다.</strong>
+      실제 작업 진행 상황에 따라 <strong>예정 일자보다 조기 완료될 수 있으며</strong>, 각 Phase 종료 시점마다 진행 상황을 공유드립니다.
+      Phase 1·2·3 (개발)은 본 일정보다 빠르게 종료될 경우, 검수 단계(Phase 4)를 앞당겨 시작합니다.
+    </div>
+
+    <!-- ① 개발 단계 -->
+    <div class="card mb-4 border-0 shadow-sm">
+      <div class="card-header text-white" style="background:linear-gradient(135deg, #dc3545 0%, #fd7e14 50%, #198754 100%); font-weight:700; font-size:1rem;">
+        📐 개발 단계 · 6주 (2026-05-27 ~ 07-07)
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover summary-table mb-0">
+          <thead>
+            <tr><th style="width:14%">Phase</th><th style="width:24%">기간</th><th style="width:12%" class="text-center">작업일</th><th>주요 내용</th><th style="width:12%" class="text-center">항목 수</th></tr>
+          </thead>
+          <tbody>
+            <tr class="ph-row table-danger">
+              <td>Phase 1</td>
+              <td>2026-05-27 (수) ~ 06-09 (화)</td>
+              <td class="text-center">14일 (2주)</td>
+              <td>1차 검수 필수 7건 + 프론트 긴급 오류 + 관리자 긴급</td>
+              <td class="text-center"><strong>~22건</strong></td>
+            </tr>
+            <tr class="ph-row table-warning">
+              <td>Phase 2</td>
+              <td>2026-06-10 (수) ~ 06-23 (화)</td>
+              <td class="text-center">14일 (2주)</td>
+              <td>1차 검수 높음 7건 + 프론트 높음 오류 + 관리자 높음</td>
+              <td class="text-center"><strong>~25건</strong></td>
+            </tr>
+            <tr class="ph-row table-success">
+              <td>Phase 3</td>
+              <td>2026-06-24 (수) ~ 07-07 (화)</td>
+              <td class="text-center">14일 (2주)</td>
+              <td>1차 검수 중간 8건 + 프론트 중간 + 관리자 중간 + 양 OS 빌드</td>
+              <td class="text-center"><strong>~28건</strong></td>
+            </tr>
+            <tr style="background:rgba(220, 53, 69, 0.06); font-weight:700;">
+              <td colspan="2" class="text-end">개발 소계</td>
+              <td class="text-center">42일 (6주)</td>
+              <td>1차 검수 22 + 프론트 오류 28 + 관리자 오류 19 + 동반 작업</td>
+              <td class="text-center">~75건</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ② 검수 단계 -->
+    <div class="card mb-4 border-0 shadow-sm">
+      <div class="card-header text-white" style="background:linear-gradient(135deg, #0dcaf0 0%, #6610f2 100%); font-weight:700; font-size:1rem;">
+        🔍 검수 단계 · 2주 (2026-07-08 ~ 07-21)
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover summary-table mb-0">
+          <thead>
+            <tr><th style="width:14%">Phase</th><th style="width:24%">기간</th><th style="width:12%" class="text-center">작업일</th><th>주요 내용</th><th style="width:12%" class="text-center">구분</th></tr>
+          </thead>
+          <tbody>
+            <tr class="ph-row table-info">
+              <td>Phase 4 <span class="badge bg-info">검수</span></td>
+              <td>2026-07-08 (수) ~ 07-14 (화)</td>
+              <td class="text-center">7일</td>
+              <td>검수자측 1차 검수 (양 OS 병행 테스트 + 피드백 수집)</td>
+              <td class="text-center"><strong>검수</strong></td>
+            </tr>
+            <tr class="ph-row table-primary">
+              <td>Phase 5 <span class="badge bg-primary">최종</span></td>
+              <td>2026-07-15 (수) ~ 07-21 (화)</td>
+              <td class="text-center">7일</td>
+              <td>검수 피드백 최종 반영 + 회귀 테스트 + 최종 빌드</td>
+              <td class="text-center"><strong>최종 마감</strong></td>
+            </tr>
+            <tr style="background:rgba(102, 16, 242, 0.06); font-weight:700;">
+              <td colspan="2" class="text-end">검수 소계</td>
+              <td class="text-center">14일 (2주)</td>
+              <td>검수자측 1차 검수 + 피드백 최종 반영</td>
+              <td class="text-center">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ③ 후속 + 전체 합계 -->
+    <div class="card mb-4 border-0 shadow-sm">
+      <div class="card-header text-white" style="background:#212529; font-weight:700; font-size:1rem;">
+        🎯 전체 합계 + 후속 일정
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover summary-table mb-0">
+          <thead>
+            <tr><th style="width:14%">구분</th><th style="width:24%">기간</th><th style="width:12%" class="text-center">작업일</th><th>주요 내용</th><th style="width:12%" class="text-center">항목 수</th></tr>
+          </thead>
+          <tbody>
+            <tr style="background:rgba(33, 37, 41, 0.08); font-weight:700;">
+              <td><span class="badge bg-dark">전체 합계</span></td>
+              <td>2026-05-27 ~ 07-21 (8주)</td>
+              <td class="text-center">56일</td>
+              <td>개발 6주 + 검수 1주 + 최종 수정 1주 · 양 OS 동시 빌드 재업로드 2회</td>
+              <td class="text-center"><strong>~75건</strong></td>
+            </tr>
+            <tr class="ph-row table-secondary">
+              <td><span class="badge bg-secondary">후속 (별건)</span></td>
+              <td>2026-07-22 이후 별도 협의</td>
+              <td class="text-center">TBD</td>
+              <td>신규 기능 (Figma 디자인 / 4탭 GNB / 카테고리 시술 등)</td>
+              <td class="text-center"><strong>~25건</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Phase 1 -->
+  <section id="phase1" class="phase-1">
+    <div class="phase-title">
+      <span class="phase-badge">PHASE 1</span>
+      <h4 class="mb-0">긴급 버그 & 필수 픽스</h4>
+      <span class="phase-date">2026-05-27 (수) ~ 06-09 (화) · 14일 (2주) · ~22건</span>
+    </div>
+    <p class="text-secondary">목표 : 앱 사용 불가 / 500 에러 / 핵심 기능 차단 버그 해소. 1차 검수 "필수" 7건 + 프론트 긴급 오류 + 관리자 긴급 동시 처리.</p>
+    <p class="small text-secondary mb-2"><i class="bi bi-plus-circle"></i> <strong>동반 처리</strong> : 시트 4(프론트 오류) 긴급 항목 + 시트 5(관리자 오류) 긴급 항목 — 메인 500에러 / 이벤트 404 / 회원가입 오류 / 병원 수정 500 등</p>
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th style="width:6%">ID</th>
+            <th style="width:14%">화면</th>
+            <th>항목</th>
+            <th style="width:9%" class="text-center">우선순위</th>
+            <th style="width:10%">시트 #</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="table-info"><td colspan="5"><strong>① 1차 검수 명세서 (필수 7건)</strong> &nbsp; <span class="small text-secondary">— 일부 항목 사전 처리 진행</span></td></tr>
+          <tr class="row-done"><td class="id-col">1-1 <span class="badge-done">✓ 사전 완료</span></td><td class="area-col">공통</td><td>[Android] 뒤로가기 버튼 클릭 시 앱 즉시 종료 방지 (종료 확인 팝업)</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">1차 #1</td></tr>
+          <tr class="row-done"><td class="id-col">1-2 <span class="badge-done">✓ 사전 완료</span></td><td class="area-col">홈 (index.php)</td><td>페이지 새로고침 시 화면이 최상단으로 한 번 튀는 현상 수정</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">1차 #2</td></tr>
+          <tr class="row-doing"><td class="id-col">1-3 <span class="badge-doing">🔄 진행 중</span></td><td class="area-col">병원리스트 (hospitals.php)</td><td>리스트 스크롤 중 주기적으로 페이지가 최상단으로 자동 이동하는 버그</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">1차 #4</td></tr>
+          <tr><td class="id-col">1-4</td><td class="area-col">병원 상세 (detail.php)</td><td>병원 '찜하기' 기능 비활성화 상태 → 정상 작동하도록 로직 수정</td><td class="text-center"><span class="badge-pri priority-p2">높음</span></td><td class="sheet-ref">1차 #8</td></tr>
+          <tr><td class="id-col">1-5</td><td class="area-col">예약 (booking.php)</td><td>진료과/의사 선택 로직 오류 — 의사(5명) 선택 시 개별 선택 불가</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">1차 #13</td></tr>
+          <tr><td class="id-col">1-6</td><td class="area-col">예약 (booking.php)</td><td>시술 선택 항목이 해당 병원 등록 데이터와 연동되지 않는 문제</td><td class="text-center"><span class="badge-pri priority-p2">높음</span></td><td class="sheet-ref">1차 #14</td></tr>
+          <tr><td class="id-col">1-7</td><td class="area-col">커뮤니티 상세 (detail_community.php)</td><td>로그인 상태에도 댓글 작성 기능이 비활성화되는 오류 픽스</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">1차 #21</td></tr>
+          <tr class="table-info"><td colspan="5"><strong>② 프론트 오류 시트 (긴급 ~9건)</strong></td></tr>
+          <tr class="row-doing"><td class="id-col">1-8 <span class="badge-doing">🔄 진행 중</span></td><td class="area-col">로그인</td><td>로그인 버튼 클릭 시 500 에러</td><td class="text-center"><span class="badge-pri priority-p0">긴급</span></td><td class="sheet-ref">프론트 #로그인</td></tr>
+          <tr><td class="id-col">1-9</td><td class="area-col">공통</td><td>뒤로가기 클릭 시 앱 종료 현상 (1차 #1과 통합 처리)</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">프론트 #3</td></tr>
+          <tr><td class="id-col">1-10</td><td class="area-col">홈</td><td>프로모션 배너 0번 인덱스 미출력 + 좌우 버튼 이동 오류</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">프론트 #1, #2</td></tr>
+          <tr><td class="id-col">1-11</td><td class="area-col">검색</td><td>반려 병원이 검색 결과에 노출 + 메인/병원탭 검색 결과 불일치</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">프론트 #7</td></tr>
+          <tr><td class="id-col">1-12</td><td class="area-col">상세</td><td>상담신청 시 "신청 중 오류가 발생했습니다" + 안내 팝업 디자인</td><td class="text-center"><span class="badge-pri priority-p0">긴급</span></td><td class="sheet-ref">프론트 #9</td></tr>
+          <tr><td class="id-col">1-13</td><td class="area-col">예약</td><td>예약하기 시술 선택 불가 (1차 #14와 통합 처리)</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">프론트 #10</td></tr>
+          <tr><td class="id-col">1-14</td><td class="area-col">이벤트</td><td>응모 이벤트 클릭 시 로그인 풀림 + 404 + 외부 도메인 이동</td><td class="text-center"><span class="badge-pri priority-p0">긴급</span></td><td class="sheet-ref">프론트 #23</td></tr>
+          <tr><td class="id-col">1-15</td><td class="area-col">관리자/병원</td><td>병원 수정 저장 시 HTTP 500</td><td class="text-center"><span class="badge-pri priority-p0">긴급</span></td><td class="sheet-ref">프론트 #24</td></tr>
+          <tr><td class="id-col">1-16</td><td class="area-col">회원가입</td><td>가입 완료/취소 버튼 클릭 시 오류 페이지</td><td class="text-center"><span class="badge-pri priority-p0">긴급</span></td><td class="sheet-ref">개발여부 #2</td></tr>
+          <tr class="table-info"><td colspan="5"><strong>③ 관리자 페이지 (긴급 ~6건)</strong></td></tr>
+          <tr class="row-done"><td class="id-col">1-17 <span class="badge-done">✓ 사전 완료</span></td><td class="area-col">관리자/광고</td><td>광고 배너 승인/거절 시 오류 발생</td><td class="text-center"><span class="badge-pri priority-p0">긴급</span></td><td class="sheet-ref">관리자 #4-1</td></tr>
+          <tr><td class="id-col">1-18</td><td class="area-col">관리자/병원등록</td><td>병원 등록 신청 승인 시 HTTP 500</td><td class="text-center"><span class="badge-pri priority-p0">긴급</span></td><td class="sheet-ref">관리자 #8</td></tr>
+          <tr><td class="id-col">1-19</td><td class="area-col">관리자/회원</td><td>회원 비밀번호 변경 후 앱 로그인 불가</td><td class="text-center"><span class="badge-pri priority-p0">긴급</span></td><td class="sheet-ref">관리자 #11</td></tr>
+          <tr><td class="id-col">1-20</td><td class="area-col">관리자/이벤트</td><td>이벤트 등록 팝업 스크롤 미작동</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">관리자 #14</td></tr>
+          <tr><td class="id-col">1-21</td><td class="area-col">관리자/후기</td><td>후기 마법사 작성 시 File not found 오류</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">관리자 #2</td></tr>
+          <tr><td class="id-col">1-22</td><td class="area-col">관리자/병원이미지</td><td>병원 이미지 추가 시 새로고침만 발생 (저장 불가)</td><td class="text-center"><span class="badge-pri priority-p1">필수</span></td><td class="sheet-ref">관리자 #3</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Phase 2 -->
+  <section id="phase2" class="phase-2">
+    <div class="phase-title">
+      <span class="phase-badge">PHASE 2</span>
+      <h4 class="mb-0">핵심 기능 보강</h4>
+      <span class="phase-date">2026-06-03 (수) ~ 06-09 (화) · 7일 · 7건</span>
+    </div>
+    <p class="text-secondary">목표 : "높음" 우선순위 기능 정상화 (탭 재정의, AD 로직, 좋아요/후기 데이터 연동).</p>
+    <p class="small text-secondary mb-2"><i class="bi bi-plus-circle"></i> <strong>동반 개선</strong> : 상세 4탭 재정의 시 해당 병원 데이터 분리 정합 / 좋아요 카운트 수정 시 마이페이지 연동까지 일관성 점검</p>
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th style="width:6%">ID</th>
+            <th style="width:14%">화면</th>
+            <th>항목</th>
+            <th style="width:9%" class="text-center">우선순위</th>
+            <th style="width:10%">시트 #</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="id-col">2-1</td><td class="area-col">병원리스트 (hospitals.php)</td><td>리스트 내 병원 정보에 검색한 시술명 또는 대표 시술 가격 추가 노출</td><td class="text-center"><span class="badge-pri priority-p2">높음</span></td><td class="sheet-ref">1차 #5</td></tr>
+          <tr><td class="id-col">2-2</td><td class="area-col">병원리스트 (hospitals.php)</td><td>[AD/제휴] 최상단 이후 4개 간격으로 인피드 AD 스티커 부착 및 삽입</td><td class="text-center"><span class="badge-pri priority-p2">높음</span></td><td class="sheet-ref">1차 #6</td></tr>
+          <tr><td class="id-col">2-3</td><td class="area-col">병원 상세 (detail.php)</td><td>상세 탭 재정의 : [홈 / 의료진 / 이벤트 / 시술후기] 4탭 구조 변경</td><td class="text-center"><span class="badge-pri priority-p2">높음</span></td><td class="sheet-ref">1차 #9</td></tr>
+          <tr><td class="id-col">2-4</td><td class="area-col">병원 상세 (detail.php)</td><td>상담신청·예약하기 버튼 위치 조정 (총관리자/병원관리자 전용 기능 확인)</td><td class="text-center"><span class="badge-pri priority-p2">높음</span></td><td class="sheet-ref">1차 #12</td></tr>
+          <tr><td class="id-col">2-5</td><td class="area-col">커뮤니티 (community.php)</td><td>인기순 필터 정상 작동 X — '좋아요' 카운트 미반영 오류 수정</td><td class="text-center"><span class="badge-pri priority-p2">높음</span></td><td class="sheet-ref">1차 #17</td></tr>
+          <tr><td class="id-col">2-6</td><td class="area-col">커뮤니티 상세 (detail_community.php)</td><td>시술 후기 게시물 데이터 항목 추가 (카테고리/평점/이미지/병원정보 등)</td><td class="text-center"><span class="badge-pri priority-p2">높음</span></td><td class="sheet-ref">1차 #20</td></tr>
+          <tr><td class="id-col">2-7</td><td class="area-col">마이페이지 (mypage.php)</td><td>'내가 작성한 후기' 리스트 연동 오류 — 작성 즉시 미반영 현상 수정</td><td class="text-center"><span class="badge-pri priority-p2">높음</span></td><td class="sheet-ref">1차 #22</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Phase 3 -->
+  <section id="phase3" class="phase-3">
+    <div class="phase-title">
+      <span class="phase-badge">PHASE 3</span>
+      <h4 class="mb-0">UI/UX 개선 & 마무리</h4>
+      <span class="phase-date">2026-06-10 (수) ~ 06-16 (화) · 7일 · 8건</span>
+    </div>
+    <p class="text-secondary">목표 : 중간/낮음 우선순위 UI/UX 개선 + 1차 검수 완료 보고 + iOS/Android 앱 빌드 재배포.</p>
+    <p class="small text-secondary mb-2"><i class="bi bi-plus-circle"></i> <strong>동반 개선</strong> : 화면 진입 시 발견되는 자잘한 정렬·여백·텍스트 오타 일괄 정비</p>
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th style="width:6%">ID</th>
+            <th style="width:14%">화면</th>
+            <th>항목</th>
+            <th style="width:9%" class="text-center">우선순위</th>
+            <th style="width:10%">시트 #</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="id-col">3-1</td><td class="area-col">홈 (index.php)</td><td>최상단 배너 스와이프(터치 슬라이드) 가능하도록 수정</td><td class="text-center"><span class="badge-pri priority-p3">중간</span></td><td class="sheet-ref">1차 #3</td></tr>
+          <tr><td class="id-col">3-2</td><td class="area-col">병원리스트 (hospitals.php)</td><td>리스트 내 '상담 신청' 버튼 삭제 (상세 페이지와 중복 및 관리 일원화)</td><td class="text-center"><span class="badge-pri priority-p3">중간</span></td><td class="sheet-ref">1차 #7</td></tr>
+          <tr><td class="id-col">3-3</td><td class="area-col">병원 상세 (detail.php)</td><td>상세 내용 내 시술명 및 시술 가격 정보 노출 강화</td><td class="text-center"><span class="badge-pri priority-p3">중간</span></td><td class="sheet-ref">1차 #10</td></tr>
+          <tr><td class="id-col">3-4</td><td class="area-col">병원 상세 (detail.php)</td><td>작동하지 않는 플로팅 채팅 버튼 숨김 처리</td><td class="text-center"><span class="badge-pri priority-low">낮음</span></td><td class="sheet-ref">1차 #11</td></tr>
+          <tr><td class="id-col">3-5</td><td class="area-col">예약 (booking.php)</td><td>예약 시간 선택 단위를 30분 단위로 세분화</td><td class="text-center"><span class="badge-pri priority-p3">중간</span></td><td class="sheet-ref">1차 #15</td></tr>
+          <tr><td class="id-col">3-6</td><td class="area-col">예약 (booking.php)</td><td>개발용 테스트 예약 데이터(DEV MODE) 삭제 및 숨김</td><td class="text-center"><span class="badge-pri priority-low">낮음</span></td><td class="sheet-ref">1차 #16</td></tr>
+          <tr><td class="id-col">3-7</td><td class="area-col">커뮤니티 (community.php)</td><td>좋아요 클릭 시 카운트 미증가 + 글 제목에 '(수정됨)' 표시 버그</td><td class="text-center"><span class="badge-pri priority-p3">중간</span></td><td class="sheet-ref">1차 #18</td></tr>
+          <tr><td class="id-col">3-8</td><td class="area-col">커뮤니티 상세 (detail_community.php)</td><td>레이아웃 순서 변경 [게시글 내용 → 첨부 이미지 → 좋아요/공유하기]</td><td class="text-center"><span class="badge-pri priority-p3">중간</span></td><td class="sheet-ref">1차 #19</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="alert alert-confirm mt-3 mb-0">
+      <strong><i class="bi bi-phone"></i> Phase 3 종료 시 (6/16)</strong> : 웹 + <strong>iOS 앱 / 안드로이드 앱 빌드 동시 재업로드</strong>. 검수자측에서 양 OS 동시 설치 후 Phase 4 검수 진행.
+    </div>
+  </section>
+
+  <!-- Phase 4 & 5 -->
+  <section id="phase45" class="mt-5">
+    <h3><i class="bi bi-shield-check"></i> 6. Phase 4·5 — 검수 & 최종 반영</h3>
+    <div class="alert alert-success mb-3">
+      <strong><i class="bi bi-phone-vibrate"></i> 양 OS 동시 빌드 재업로드 원칙</strong><br>
+      Phase 3 종료 시(6/16) <strong>iOS 앱 + 안드로이드 앱을 동시에 재빌드하여 업로드</strong>합니다.<br>
+      검수자측은 양 OS에 새 빌드를 설치한 뒤 <strong>iOS / Android 두 환경에서 동시에 동일 항목을 테스트</strong>하여 OS별 차이/회귀를 함께 확인합니다.<br>
+      Phase 5 최종 빌드(6/30)도 동일하게 양 OS 동시 재업로드합니다.
+    </div>
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="card mb-3 border-info">
+          <div class="card-header bg-info text-white"><strong>Phase 4 — 검수자측 1차 검수</strong></div>
+          <div class="card-body">
+            <div class="mb-2"><strong>기간</strong> : 2026-06-17 (수) ~ 06-23 (화) · 7일</div>
+            <ul class="mb-2">
+              <li><strong>전제</strong> : 6/16 양 OS(iOS / Android) 동시 빌드 재업로드 완료</li>
+              <li><strong>실기 테스트 환경</strong>
+                <ul class="mb-1">
+                  <li>Android : SM-A135N (재설치 후 양 OS 병행 검수)</li>
+                  <li>iOS : iPhone XS (재설치 후 양 OS 병행 검수)</li>
+                </ul>
+              </li>
+              <li>Phase 1~3 수정 항목 전체 재확인 (시트 ID 기준 체크리스트)</li>
+              <li>OS별 동작 차이/회귀 버그 시트 정리</li>
+              <li>중간 보고 : 6/19 (금) — 검수 진행 상황 공유</li>
+            </ul>
+            <div class="small text-secondary">개발측은 검수 기간 중 발견된 P0 긴급 이슈만 핫픽스 처리합니다.</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card mb-3 border-primary">
+          <div class="card-header bg-primary text-white"><strong>Phase 5 — 검수 피드백 최종 반영</strong></div>
+          <div class="card-body">
+            <div class="mb-2"><strong>기간</strong> : 2026-06-24 (수) ~ 06-30 (화) · 7일</div>
+            <ul class="mb-2">
+              <li>검수 피드백 항목별 수정 + 재배포</li>
+              <li>전체 회귀 테스트 (Phase 1~3 항목 + Phase 4 피드백 일괄 재검증)</li>
+              <li>최종 캡처 비교 리포트 + 변경 이력 산출</li>
+              <li><strong>최종 빌드 양 OS 동시 재업로드</strong> (iOS / Android APK 동시 전달)</li>
+              <li><strong>최종 마감 : 2026-06-30 (화)</strong></li>
+            </ul>
+            <div class="small text-secondary">Phase 5 종료 후 후속(신규 기능/관리자) 일정 협의 시작.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Follow-up -->
+  <section id="followup" class="mt-5">
+    <h3><i class="bi bi-arrow-right-circle"></i> 7. 후속 일정 (2026-07-01 이후)</h3>
+    <div class="alert alert-followup">
+      <strong>아래 두 영역은 1차 검수 완료(6/30) 후 별도 일정으로 협의합니다.</strong>
+      작업 범위 확정과 사양 합의가 선행되어야 하며, 2차 검수 결과와 통합하여 일정 산출 예정입니다.
+    </div>
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="card mb-3">
+          <div class="card-header bg-info-subtle"><strong>① 신규 기능 / Figma 디자인 반영 (약 17건)</strong></div>
+          <div class="card-body">
+            <ul class="mb-2">
+              <li>Figma 신규 디자인/레이아웃 반영 (가능 범위 답변 우선)</li>
+              <li>하단 GNB 4탭 개편 [홈 / 병원 / 커뮤니티 / 마이]</li>
+              <li>복합 필터 검색바 (지역 다중 + 시술명 교집합)</li>
+              <li>카테고리 시술 메뉴 (대분류 고정 / 중분류 슬라이드) + 관리자 CRUD</li>
+              <li>병원리스트 정렬 4종 (낮은 가격순 / 평점순 / 인기순 / 후기 많은순)</li>
+              <li>AD 상위 노출 로직 (광고 표시 설정 연동)</li>
+              <li>커뮤니티 3탭 [최신글 / 인기글 / 시술 후기] + 통합 뷰</li>
+              <li>커뮤니티 리스트 썸네일 최대 3장 노출</li>
+              <li>사용자 게시판 CRUD (이미지 첨부)</li>
+              <li>마이페이지 메뉴 리스트 재구성 (9개 메뉴)</li>
+              <li>카카오 간편 로그인</li>
+              <li>이메일 / 비밀번호 찾기 정상화</li>
+              <li>카카오/네이버 지도 API 연동</li>
+              <li>예약 알림 발송 (푸시 + 이메일)</li>
+            </ul>
+            <div class="small text-secondary">시트 신규 #1~14 / 개발여부 #5, #9, #16</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card mb-3">
+          <div class="card-header bg-warning-subtle"><strong>② 관리자 페이지 정비 (약 23건)</strong></div>
+          <div class="card-body">
+            <ul class="mb-2">
+              <li>권한 — 뷰어 권한이 예약 승인 가능한 오버권한 정리</li>
+              <li>관리자 로그아웃 페이지별 미작동 (대시보드 외)</li>
+              <li>admin_reviews.php 5개 후기 미노출 + 마법사 File not found</li>
+              <li>admin_hospital_images.php 이미지 추가 시 새로고침만 발생</li>
+              <li>광고 유형/단가 매뉴얼 + 승인/거절 오류</li>
+              <li>광고 배너 이미지 URL / 랜딩 URL 입력 방식 매뉴얼</li>
+              <li>병원 등록 마법사 — 목록·수정 + 승인 절차 500 에러</li>
+              <li>등록 완료 팝업 안내 문구에 태그 노출</li>
+              <li>의사/간호사/약사/환자 등록 리스트 수정·관리</li>
+              <li>회원 비밀번호 수정/찾기 + 발급 비밀번호로 앱 로그인</li>
+              <li>회원 등급별 기능 매뉴얼</li>
+              <li>회원 vs 환자 데이터 차이 + 환자 관리 페이지</li>
+              <li>응모 이벤트 등록/수정 페이지 + 팝업 스크롤 오류</li>
+              <li>서울미녀 꿀팁 / 추천 병원 섹션 관리자 지정</li>
+              <li>의사 상담신청 저장/관리자 메뉴 추가</li>
+              <li>후기/칼럼/커뮤니티 게시글 통합 관리</li>
+              <li>대시보드 사용 불가 메뉴(칼럼, 광고 표시, 프로모션) 정상화</li>
+              <li>병원 관계자 계정 발급/접속 매뉴얼</li>
+              <li>병원 대시보드 예약 승인/거절 + 후기 답글</li>
+            </ul>
+            <div class="small text-secondary">시트 관리자 #1~19 / 오류 #24~28 / 개발여부 #1, #17~19</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Confirm -->
+  <section id="confirm" class="mt-4">
+    <h3><i class="bi bi-question-circle"></i> 8. 사전 확인 요청 사항</h3>
+    <div class="alert alert-confirm">
+      <strong>다음 항목은 작업 착수 전 사양 확정이 필요합니다.</strong> 검수자측 답변에 따라 후속 일정이 결정됩니다.
+    </div>
+    <div class="table-responsive">
+      <table class="table table-bordered">
+        <thead>
+          <tr><th style="width:6%">#</th><th>확인 사항</th><th style="width:18%">영향 Phase</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td><strong>Figma 디자인 반영 범위 확정</strong> — 전체 리뉴얼 vs 부분 반영</td><td>후속 ①</td></tr>
+          <tr><td>2</td><td><strong>카카오 로그인 개발 범위 포함 여부</strong> — 사업자 등록/JS 키 발급 주체</td><td>후속 ①</td></tr>
+          <tr><td>3</td><td><strong>지도 API 선택</strong> — 카카오 vs 네이버 (각 인증/요금 정책 상이)</td><td>후속 ①</td></tr>
+          <tr><td>4</td><td><strong>시술 카테고리 분류표 최종 확정</strong> — 시트 분류표 기준 채택 여부</td><td>후속 ①</td></tr>
+          <tr><td>5</td><td><strong>병원 관계자(부관리자) 계정 발급/접속 절차</strong> — 매뉴얼 작성 범위</td><td>후속 ②</td></tr>
+          <tr><td>6</td><td><strong>이벤트 / 광고 이미지 등록 방식</strong> — URL 입력 유지 vs 직접 업로드 추가</td><td>Phase 3 / 후속 ②</td></tr>
+          <tr><td>7</td><td><strong>평점 산정 로직 정책</strong> — 단순 평균 vs 가중치 (최근/검증)</td><td>Phase 3</td></tr>
+          <tr><td>8</td><td><strong>'성형외과 전문의' 표기 기준</strong> — 병원 등록 항목 vs 의사 기반 자동</td><td>Phase 3</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Process -->
+  <section id="process" class="mt-4">
+    <h3><i class="bi bi-clipboard-check"></i> 9. Phase별 산출물 / 검수 방식</h3>
+    <p>각 Phase 종료 시 다음 자료를 제출합니다.</p>
+    <ol>
+      <li><strong>수정 항목 체크리스트</strong> (시트 ID 매핑 + 처리 상태)</li>
+      <li><strong>수정 전/후 캡처 비교 리포트</strong> (HTML 보고서로 제공)</li>
+      <li><strong>실기 테스트 결과</strong> (Android : SM-A135N / iOS : iPhone XS)</li>
+      <li><strong>재현 절차 + 회귀 테스트 노트</strong></li>
+      <li><strong>서버 배포 로그 + <code>php -l</code> 검증 결과</strong></li>
+    </ol>
+
+    <h5 class="mt-4">📞 일정 변동 사유 발생 시 처리 원칙</h5>
+    <ul>
+      <li><strong>블로커성 외부 의존 발생</strong> (Figma 미확정, API 키 미발급 등) → 즉시 공유</li>
+      <li><strong>새로운 치명적 버그 발견</strong> → 해당 Phase에 우선 인입, 후순위 1건 이연</li>
+      <li><strong>검수자측 추가 요청</strong> → 후속 일정으로 통합 검토</li>
+    </ul>
+  </section>
+
+  <!-- Sign off -->
+  <div class="signoff">
+    <div><strong>작성</strong> : 시스템 개발 (sj)</div>
+    <div><strong>1차 검수 명세서 수령</strong> : 2026-05-21 (목) — 수령 직후 단순 픽스 항목 사전 점검·선반영 착수</div>
+    <div><strong>정식 일정 착수</strong> : 2026-05-27 (수) — Phase 1 본격 개발 시작</div>
+    <div><strong>중간 보고</strong> : 2026-06-09 — Phase 1 (긴급) 결과 + Phase 2 진행 상황 공유</div>
+    <div><strong>2차 보고</strong> : 2026-06-23 — Phase 2 (핵심 기능) 결과 + Phase 3 진행 상황 공유</div>
+    <div><strong>개발 완료 보고</strong> : 2026-07-07 — 개발 완료 + <strong>iOS / 안드로이드 앱 양 OS 동시 빌드 재업로드</strong> + 검수 요청</div>
+    <div><strong>최종 마감 보고</strong> : 2026-07-21 — 검수 피드백 최종 반영 완료 + <strong>최종 빌드 양 OS 동시 재배포</strong> + 후속 일정 협의 요청</div>
+    <div class="mt-2 text-warning"><i class="bi bi-lightbulb-fill"></i> <strong>작업 진행에 따라 예상 일정보다 조기 완료될 수 있습니다.</strong> Phase별 종료 시점마다 진행 상황을 공유드립니다.</div>
+  </div>
+
+  </main>
+</div>
+</div>
+
+<script>
+// scrollspy for sidebar
+(function(){
+  const navLinks = document.querySelectorAll('.sidebar-nav a');
+  const sections = Array.from(navLinks).map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  function updateActive(){
+    const scrollPos = window.scrollY + 120;
+    let activeIdx = 0;
+    sections.forEach((s, i) => { if (s.offsetTop <= scrollPos) activeIdx = i; });
+    navLinks.forEach((a, i) => a.classList.toggle('active', i === activeIdx));
+  }
+  window.addEventListener('scroll', updateActive, { passive: true });
+  updateActive();
+})();
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const cur = html.getAttribute('data-bs-theme');
+  const next = cur === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-bs-theme', next);
+  localStorage.setItem('ms-theme', next);
+  document.getElementById('theme-label').textContent = next === 'light' ? '다크' : '라이트';
+}
+(function(){
+  const t = document.documentElement.getAttribute('data-bs-theme');
+  document.getElementById('theme-label').textContent = t === 'light' ? '다크' : '라이트';
+})();
+</script>
+</body>
+</html>

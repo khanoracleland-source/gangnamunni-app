@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seoul Beauty - 전체 기능 스크린샷 + 피드백 보고서</title>
+<style>
+:root{--pri:#7C3AED;--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text2:#64748b;--ok:#22c55e;--fail:#ef4444;--warn:#f59e0b;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+.container{max-width:1400px;margin:0 auto;padding:20px;}
+h1{font-size:28px;font-weight:800;color:var(--pri);margin-bottom:4px;}
+.sub{font-size:13px;color:var(--text2);margin-bottom:24px;}
+.summary-bar{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+.summary-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 20px;text-align:center;min-width:100px;}
+.summary-item .n{font-size:24px;font-weight:800;color:var(--pri);}
+.summary-item .l{font-size:11px;color:var(--text2);}
+.section{margin-bottom:32px;}
+.section-title{font-size:20px;font-weight:700;border-bottom:3px solid var(--pri);padding-bottom:8px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.card-head{padding:10px 16px;background:linear-gradient(135deg,#7C3AED10,#7C3AED05);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.card-id{background:var(--pri);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;}
+.card-name{font-weight:700;flex:1;font-size:13px;}
+.card-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;}
+.card-status.ok{background:#dcfce7;color:#166534;}
+.card-status.fail{background:#fee2e2;color:#991b1b;}
+.card-img{width:100%;max-height:300px;object-fit:cover;object-position:top;cursor:pointer;transition:max-height .3s;}
+.card-actions{padding:8px 12px;display:flex;gap:6px;border-top:1px solid var(--border);flex-wrap:wrap;align-items:center;}
+.card-actions a{font-size:11px;color:var(--pri);text-decoration:none;padding:4px 8px;border-radius:4px;border:1px solid var(--pri);}
+.card-actions a:hover{background:var(--pri);color:#fff;}
+/* 피드백 영역 */
+.feedback-area{padding:10px 12px;border-top:1px solid var(--border);background:#fafafa;}
+.feedback-list{max-height:200px;overflow-y:auto;margin-bottom:8px;}
+.fb-item{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:12px;}
+.fb-item:last-child{border-bottom:none;}
+.fb-badge{padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;flex-shrink:0;}
+.fb-badge.bug{background:#fee2e2;color:#991b1b;} .fb-badge.feature{background:#dbeafe;color:#1e40af;}
+.fb-badge.improvement{background:#fef3c7;color:#92400e;} .fb-badge.question{background:#e0e7ff;color:#3730a3;}
+.fb-status{font-size:9px;padding:1px 4px;border-radius:3px;font-weight:600;margin-left:auto;flex-shrink:0;}
+.fb-status.pending{background:#fef3c7;color:#92400e;} .fb-status.resolved{background:#dcfce7;color:#166534;}
+.fb-status.in_progress{background:#dbeafe;color:#1e40af;} .fb-status.rejected{background:#f1f5f9;color:#64748b;}
+.fb-form{display:flex;gap:6px;flex-wrap:wrap;}
+.fb-form select,.fb-form input,.fb-form textarea{font-size:11px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;}
+.fb-form textarea{width:100%;min-height:40px;resize:vertical;}
+.fb-form button{font-size:11px;padding:4px 12px;background:var(--pri);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;}
+.fb-form button:hover{opacity:.9;}
+.fb-count{font-size:10px;color:var(--text2);margin-left:auto;}
+/* overlay */
+.overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);z-index:9999;cursor:zoom-out;padding:20px;overflow:auto;}
+.overlay img{max-width:100%;display:block;margin:0 auto;}
+.overlay.show{display:flex;align-items:flex-start;justify-content:center;}
+/* tabs */
+.tab-bar{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;}
+.tab-btn{padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;background:#e2e8f0;color:#475569;}
+.tab-btn.active{background:var(--pri);color:#fff;}
+.legend{font-size:12px;color:var(--text2);margin-bottom:16px;}
+.timestamp{text-align:right;font-size:11px;color:var(--text2);margin-top:24px;padding-top:16px;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Seoul Beauty 전체 기능 스크린샷 + 피드백 보고서</h1>
+<p class="sub">캡처일: 2026-03-13 | 서버: hms.seoulbeauty.app | 30+ 페이지 | 피드백 DB 연동</p>
+
+<div class="summary-bar">
+<div class="summary-item"><div class="n" id="totalPages">30</div><div class="l">전체 페이지</div></div>
+<div class="summary-item"><div class="n" id="totalFeedback">0</div><div class="l">피드백</div></div>
+<div class="summary-item"><div class="n" id="pendingFeedback">0</div><div class="l">대기</div></div>
+<div class="summary-item"><div class="n" id="resolvedFeedback">0</div><div class="l">해결</div></div>
+<div class="summary-item"><div class="n" id="criticalFeedback">0</div><div class="l">긴급</div></div>
+</div>
+
+<div class="tab-bar">
+<button class="tab-btn active" onclick="showTab('all')">전체</button>
+<button class="tab-btn" onclick="showTab('front')">프론트엔드 (14)</button>
+<button class="tab-btn" onclick="showTab('admin')">관리자 (15)</button>
+<button class="tab-btn" onclick="showTab('qa')">QA/기타 (1)</button>
+<button class="tab-btn" onclick="showTab('feedback')">피드백 목록</button>
+</div>
+
+<p class="legend">각 카드 하단에서 피드백을 입력하면 DB에 저장됩니다. 클라이언트/개발팀 모두 입력 가능합니다.</p>
+
+<div id="allGrid" class="section"><div class="grid" id="mainGrid"></div></div>
+
+<!-- 피드백 전체 목록 (숨김) -->
+<div id="feedbackPanel" class="section" style="display:none;">
+<div class="section-title">전체 피드백 목록</div>
+<div id="feedbackListAll"></div>
+</div>
+
+<div class="timestamp">
+Seoul Beauty QA Screenshot Report v2.0 | 2026-03-13 | DB-Connected Feedback System<br>
+<a href="qa_full_dashboard.html" style="color:var(--pri);">QA 테스트 대시보드</a> |
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/" style="color:var(--pri);">서울미녀 메인</a> |
+<a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php" style="color:var(--pri);">관리자 로그인</a>
+</div>
+</div>
+
+<div class="overlay" id="overlay" onclick="this.classList.remove('show')">
+<img id="overlayImg" src="" alt="">
+</div>
+
+<script>
+const BASE='https://hms.seoulbeauty.app/hairwang/gangnamunni';
+const SS=BASE+'/qa_screenshots';
+const API=BASE+'/api_qa_feedback.php';
+
+const allPages=[
+// 프론트엔드 14
+{id:'A1',name:'메인 홈',file:'index.php',img:'01_index.png',cat:'front'},
+{id:'A2',name:'병원 목록 (3뷰)',file:'hospitals.php',img:'02_hospitals.png',cat:'front'},
+{id:'A3',name:'병원 상세',file:'detail.php?id=8093',img:'03_detail.png',cat:'front'},
+{id:'A4',name:'의사 상세',file:'doctor_detail.php?id=1',img:'04_doctor_detail.png',cat:'front'},
+{id:'A5',name:'예약하기',file:'booking.php?id=8093',img:'05_booking.png',cat:'front'},
+{id:'A6',name:'내 예약 관리',file:'my_bookings.php',img:'06_my_bookings.png',cat:'front'},
+{id:'A7',name:'후기 목록',file:'reviews.php',img:'07_reviews.png',cat:'front'},
+{id:'A8',name:'마이페이지',file:'mypage.php',img:'',cat:'front'},
+{id:'A10',name:'이벤트 목록',file:'events.php',img:'08_events.png',cat:'front'},
+{id:'A11',name:'이벤트 상세',file:'event_detail.php?id=1',img:'09_event_detail.png',cat:'front'},
+{id:'A12',name:'꿀팁/커뮤니티',file:'tips.php',img:'10_tips.png',cat:'front'},
+{id:'A15',name:'칼럼',file:'columns.php',img:'11_columns.png',cat:'front'},
+{id:'A17',name:'내 알림',file:'my_notifications.php',img:'12_my_notifications.png',cat:'front'},
+{id:'A18',name:'파트너 AI 설정',file:'partner_ai_settings.php?hospital_id=8093',img:'',cat:'front'},
+
+// 관리자 15
+{id:'B1',name:'대시보드',file:'dashboard.php',img:'20_dashboard_login.png',cat:'admin'},
+{id:'B2',name:'병원 관리 (+AI설정)',file:'admin_hospitals.php',img:'21_admin_hospitals.png',cat:'admin'},
+{id:'B3',name:'의사 관리',file:'admin_doctors.php',img:'22_admin_doctors.png',cat:'admin'},
+{id:'C1',name:'예약 관리',file:'admin_bookings.php',img:'23_admin_bookings.png',cat:'admin'},
+{id:'F1',name:'CPV 대시보드',file:'admin_cpv_dashboard.php',img:'24_admin_cpv_dashboard.png',cat:'admin'},
+{id:'F2',name:'CPV 설정 (+AI과금)',file:'admin_cpv_settings.php',img:'25_admin_cpv_settings.png',cat:'admin'},
+{id:'G1',name:'AI 설정',file:'admin_ai_settings.php',img:'26_admin_ai_settings.png',cat:'admin'},
+{id:'E1',name:'광고 관리',file:'admin_ads.php',img:'27_admin_ads.png',cat:'admin'},
+{id:'B4',name:'후기 관리',file:'admin_reviews.php',img:'28_admin_reviews.png',cat:'admin'},
+{id:'B5',name:'이벤트 관리',file:'admin_events.php',img:'29_admin_events.png',cat:'admin'},
+{id:'L1',name:'지갑 관리',file:'admin_wallet.php',img:'30_admin_wallet.png',cat:'admin'},
+{id:'L2',name:'정산',file:'admin_settlement.php',img:'31_admin_settlement.png',cat:'admin'},
+{id:'I1',name:'메일함',file:'admin_mail.php',img:'32_admin_mail.png',cat:'admin'},
+{id:'H1',name:'결제 관리',file:'admin_payment.php',img:'33_admin_payment.png',cat:'admin'},
+{id:'B6',name:'시술 관리',file:'admin_treatments.php',img:'',cat:'admin'},
+
+// QA
+{id:'QA',name:'QA 테스트 대시보드',file:'qa_full_dashboard.html',img:'40_qa_dashboard.png',cat:'qa'},
+];
+
+let allFeedback = {};
+let currentTab = 'all';
+
+function showOverlay(src) {
+  document.getElementById('overlayImg').src = src;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function showTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('feedbackPanel').style.display = (tab==='feedback') ? 'block' : 'none';
+  document.getElementById('allGrid').style.display = (tab==='feedback') ? 'none' : 'block';
+  if (tab === 'feedback') { renderFeedbackAll(); return; }
+  renderCards(tab);
+}
+
+function renderCards(filter) {
+  const el = document.getElementById('mainGrid');
+  let pages = filter === 'all' ? allPages : allPages.filter(p => p.cat === filter);
+  let html = '';
+  pages.forEach(p => {
+    const fb = allFeedback[p.id] || [];
+    const pendingCount = fb.filter(f => f.status==='pending'||f.status==='in_progress').length;
+    html += `<div class="card" id="card-${p.id}">
+      <div class="card-head">
+        <span class="card-id">${p.id}</span>
+        <span class="card-name">${p.name}</span>
+        ${pendingCount > 0 ? `<span style="background:#fef3c7;color:#92400e;font-size:10px;padding:1px 6px;border-radius:8px;font-weight:700;">${pendingCount} pending</span>` : ''}
+        <span class="card-status ok">OK</span>
+      </div>
+      ${p.img ? `<img class="card-img" src="${SS}/${p.img}" alt="${p.name}" onclick="showOverlay(this.src)" loading="lazy">` : `<div style="padding:40px;text-align:center;color:#999;background:#f9fafb;">스크린샷 미캡처</div>`}
+      <div class="card-actions">
+        <a href="${BASE}/${p.file}" target="_blank">페이지 열기</a>
+        <span style="font-size:10px;color:var(--text2);font-family:monospace;">${p.file.split('?')[0]}</span>
+        <span class="fb-count">${fb.length}건 피드백</span>
+      </div>
+      <div class="feedback-area" id="fb-area-${p.id}">
+        <div class="feedback-list" id="fb-list-${p.id}"></div>
+        <div class="fb-form">
+          <select id="fb-type-${p.id}">
+            <option value="bug">버그</option><option value="feature">기능요청</option>
+            <option value="improvement">개선</option><option value="question">질문</option>
+          </select>
+          <select id="fb-priority-${p.id}">
+            <option value="medium">보통</option><option value="high">높음</option>
+            <option value="critical">긴급</option><option value="low">낮음</option>
+          </select>
+          <select id="fb-role-${p.id}">
+            <option value="client">클라이언트</option><option value="dev">개발팀</option><option value="qa">QA</option>
+          </select>
+          <input type="text" id="fb-author-${p.id}" placeholder="작성자 이름" style="width:80px;">
+          <textarea id="fb-content-${p.id}" placeholder="피드백 내용을 입력하세요..." rows="2"></textarea>
+          <button onclick="submitFeedback('${p.id}','${p.name}','${p.file.split('?')[0]}')">등록</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+
+  // 기존 피드백 렌더링
+  pages.forEach(p => renderFeedbackList(p.id));
+}
+
+function renderFeedbackList(pageId) {
+  const el = document.getElementById('fb-list-' + pageId);
+  if (!el) return;
+  const fb = allFeedback[pageId] || [];
+  if (fb.length === 0) { el.innerHTML = '<div style="font-size:11px;color:#999;padding:4px;">피드백 없음</div>'; return; }
+  let html = '';
+  fb.forEach(f => {
+    html += `<div class="fb-item">
+      <span class="fb-badge ${f.feedback_type}">${f.feedback_type}</span>
+      <span style="flex:1;">${f.content}</span>
+      <span style="font-size:10px;color:#999;">${f.author||'익명'} (${f.author_role})</span>
+      <span class="fb-status ${f.status}">${f.status}</span>
+      ${f.dev_note ? `<span style="font-size:10px;color:#2563eb;" title="${f.dev_note}">[답변]</span>` : ''}
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderFeedbackAll() {
+  const el = document.getElementById('feedbackListAll');
+  let all = [];
+  for (let pid in allFeedback) {
+    allFeedback[pid].forEach(f => { f._pageId = pid; all.push(f); });
+  }
+  all.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<tr style="background:#f1f5f9;"><th style="padding:8px;">ID</th><th>페이지</th><th>유형</th><th>내용</th><th>작성자</th><th>우선순위</th><th>상태</th><th>일시</th><th>액션</th></tr>';
+  all.forEach(f => {
+    html += `<tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px;">${f.id}</td>
+      <td>${f.page_id} ${f.page_name||''}</td>
+      <td><span class="fb-badge ${f.feedback_type}">${f.feedback_type}</span></td>
+      <td style="max-width:300px;">${f.content}</td>
+      <td>${f.author||'익명'} (${f.author_role})</td>
+      <td>${f.priority}</td>
+      <td><span class="fb-status ${f.status}">${f.status}</span></td>
+      <td style="font-size:10px;">${(f.created_at||'').substring(0,16)}</td>
+      <td>
+        <select onchange="updateStatus(${f.id}, this.value)" style="font-size:10px;padding:2px;">
+          <option value="">--</option>
+          <option value="pending">대기</option>
+          <option value="in_progress">진행중</option>
+          <option value="resolved">해결</option>
+          <option value="rejected">거절</option>
+        </select>
+      </td>
+    </tr>`;
+  });
+  html += '</table>';
+  if (all.length === 0) html = '<div style="padding:20px;text-align:center;color:#999;">등록된 피드백이 없습니다.</div>';
+  el.innerHTML = html;
+}
+
+async function loadFeedback() {
+  try {
+    const resp = await fetch(API);
+    const json = await resp.json();
+    if (json.success) {
+      allFeedback = {};
+      json.data.forEach(f => {
+        if (!allFeedback[f.page_id]) allFeedback[f.page_id] = [];
+        allFeedback[f.page_id].push(f);
+      });
+      // 통계
+      if (json.stats) {
+        document.getElementById('totalFeedback').textContent = json.stats.total || 0;
+        document.getElementById('pendingFeedback').textContent = json.stats.pending || 0;
+        document.getElementById('resolvedFeedback').textContent = json.stats.resolved || 0;
+        document.getElementById('criticalFeedback').textContent = json.stats.critical || 0;
+      }
+    }
+  } catch(e) { console.error('Feedback load error:', e); }
+  renderCards(currentTab === 'feedback' ? 'all' : currentTab);
+}
+
+async function submitFeedback(pageId, pageName, pageFile) {
+  const content = document.getElementById('fb-content-' + pageId).value.trim();
+  if (!content) { alert('피드백 내용을 입력하세요'); return; }
+
+  const body = {
+    page_id: pageId,
+    page_name: pageName,
+    page_file: pageFile,
+    feedback_type: document.getElementById('fb-type-' + pageId).value,
+    priority: document.getElementById('fb-priority-' + pageId).value,
+    author_role: document.getElementById('fb-role-' + pageId).value,
+    author: document.getElementById('fb-author-' + pageId).value || '',
+    content: content
+  };
+
+  try {
+    const resp = await fetch(API, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const json = await resp.json();
+    if (json.success) {
+      document.getElementById('fb-content-' + pageId).value = '';
+      loadFeedback();
+    } else {
+      alert('등록 실패: ' + json.message);
+    }
+  } catch(e) { alert('네트워크 오류'); }
+}
+
+async function updateStatus(id, status) {
+  if (!status) return;
+  try {
+    await fetch(API, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:id, status:status})});
+    loadFeedback();
+  } catch(e) { alert('수정 실패'); }
+}
+
+// 초기 로드
+document.getElementById('totalPages').textContent = allPages.length;
+loadFeedback();
+</script>
+</body>
+</html>

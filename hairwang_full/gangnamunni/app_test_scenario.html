@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>앱+웹 자동 테스트 · 자가검수 시스템 시나리오 (2026-06-12)</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Pretendard','Noto Sans KR',-apple-system,sans-serif; max-width:1240px; margin:0 auto; padding:24px 20px 60px; color:#1a2330; background:#f3f7f9; line-height:1.7; }
+  .card { background:#fff; border-radius:14px; padding:26px; box-shadow:0 2px 12px rgba(0,0,0,0.06); margin-bottom:18px; }
+  h1 { color:#0891b2; font-size:24px; margin:0 0 6px; }
+  h2 { font-size:18px; margin:0 0 12px; padding-left:10px; border-left:4px solid #0891b2; color:#0e7490; }
+  h3 { font-size:15px; margin:18px 0 8px; color:#155e75; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; }
+  th, td { border:1px solid #dde7ea; padding:8px 11px; text-align:left; vertical-align:top; }
+  th { background:#ecf6f9; font-weight:600; white-space:nowrap; }
+  code { background:#eef4f6; padding:2px 7px; border-radius:4px; font-family:Consolas,monospace; font-size:12px; color:#0e7490; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600; color:#fff; white-space:nowrap; }
+  .b-ready{background:#1f9c4a;} .b-install{background:#f5a524;} .b-new{background:#0891b2;} .b-gray{background:#6c757d;}
+  .hero { background:linear-gradient(135deg,#0e7490 0%,#0891b2 55%,#22b8cf 100%); color:#fff; border-radius:14px; padding:28px; margin-bottom:20px; text-align:center; }
+  .hero h1 { color:#fff; font-size:26px; margin-bottom:8px; }
+  .hero p { font-size:15px; opacity:.95; margin:4px 0; }
+  .hero .stats { display:flex; justify-content:center; gap:26px; margin-top:16px; flex-wrap:wrap; }
+  .hero .stat .n { font-size:26px; font-weight:700; display:block; }
+  .hero .stat .l { font-size:12px; opacity:.85; }
+  .note { padding:10px 14px; background:#e9f9f0; border-left:3px solid #1f9c4a; border-radius:6px; font-size:13.5px; margin:10px 0; }
+  .warn { padding:10px 14px; background:#fff7e8; border-left:3px solid #f5a524; border-radius:6px; font-size:13.5px; margin:10px 0; }
+  .flow { padding:10px 14px; background:#eaf7fb; border-left:3px solid #0891b2; border-radius:6px; font-size:13.5px; margin:10px 0; }
+  ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; font-size:13.5px; }
+  .pipe { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0; }
+  .pipe .box { background:#0891b2; color:#fff; border-radius:10px; padding:10px 16px; font-size:13px; font-weight:600; text-align:center; }
+  .pipe .box.alt { background:#0e7490; }
+  .pipe .box.green { background:#1f9c4a; }
+  .pipe .arr { color:#0891b2; font-weight:700; font-size:18px; }
+  .step-list { counter-reset:s; }
+  .step-list .s { display:flex; gap:12px; padding:8px 0; border-bottom:1px solid #eef4f6; font-size:13.5px; }
+  .step-list .s .nm { flex-shrink:0; width:30px; height:30px; border-radius:50%; background:#0891b2; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; background:#ecf6f9; color:#0e7490; font-weight:600; margin-left:4px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>📱 앱 + 웹 자동 테스트 · 자가검수 시스템</h1>
+  <p>로그인/회원가입/주요동작 전 단계 스크린샷 + 동영상 캡처 → Claude 자가검수 → 통과 시 스토어 재제출</p>
+  <div class="stats">
+    <div class="stat"><span class="n">4</span><span class="l">대상 앱</span></div>
+    <div class="stat"><span class="n">2</span><span class="l">실기기 (안드+아이폰)</span></div>
+    <div class="stat"><span class="n">3</span><span class="l">캡처 레이어</span></div>
+    <div class="stat"><span class="n">자동</span><span class="l">자가검수 루프</span></div>
+  </div>
+</div>
+
+<!-- 결론 요약 -->
+<div class="card">
+  <h2>한눈에 — 어떻게 만드나</h2>
+  <div class="pipe">
+    <div class="box">① 시나리오 정의<br><small>로그인·가입·동작 단계</small></div>
+    <div class="arr">→</div>
+    <div class="box alt">② 자동 구동·캡처<br><small>각 단계 스크린샷+동영상</small></div>
+    <div class="arr">→</div>
+    <div class="box alt">③ 리사이즈≤900px<br><small>+ 매니페스트 생성</small></div>
+    <div class="arr">→</div>
+    <div class="box green">④ Claude 자가검수<br><small>단계별 PASS/FAIL+사유</small></div>
+    <div class="arr">→</div>
+    <div class="box green">⑤ 리포트+재실행 루프<br><small>전부 PASS까지</small></div>
+  </div>
+  <div class="note">✅ <strong>핵심</strong>: 캡처 결과(이미지·동영상·매니페스트)를 <strong>제가 직접 한 장씩 눈으로 검수</strong>하여 "정상/이상"을 판정하고, 이상 발견 시 수정→재실행을 전부 PASS까지 반복합니다. 통과한 빌드만 스토어 재제출 대상이 됩니다.</div>
+</div>
+
+<!-- 기존 자산 -->
+<div class="card">
+  <h2>① 이미 있는 자산 (재사용) — "원래 있었을 것 같은데" 맞습니다</h2>
+  <p style="color:#5a6b75; font-size:13.5px;">관리자 대시보드에 Playwright 기반 자동 테스트/매뉴얼 캡처 시스템이 이미 구축돼 있습니다. 이를 확장합니다.</p>
+  <table>
+    <thead><tr><th>자산</th><th>기능</th><th>캡처</th><th>동영상</th><th>로그인플로우</th></tr></thead>
+    <tbody>
+      <tr><td><code>auto_manual_engine/server.js</code></td><td>메뉴 자동 감지→순회 캡처 (SSE 실시간)</td><td>스크린샷</td><td>✗</td><td>✅ 자동 폼 감지·입력</td></tr>
+      <tr><td><code>auto_manual_engine/test-runner.js</code></td><td>3시스템 33페이지 (비로그인→로그인→관리자)</td><td>PNG</td><td>✗</td><td>✅ 자격증명 내장</td></tr>
+      <tr><td><code>e2e/e2e-runner.js</code></td><td>E2E 13테스트 + adminLogin 헬퍼</td><td>PNG</td><td>✗</td><td>✅</td></tr>
+      <tr><td><code>book-generator.js</code></td><td>마법사 단계별 폼 입력→캡처 (18마법사)</td><td>JPEG</td><td>✗</td><td>✅</td></tr>
+      <tr><td><code>_capture_manual_videos.js</code></td><td>6시나리오 동영상 녹화</td><td>—</td><td>✅ <code>recordVideo</code> .webm</td><td>✅ 로그인 녹화</td></tr>
+      <tr><td><code>_capture_mobile_screenshots.js</code></td><td>모바일 에뮬레이션(Galaxy S24) 캡처</td><td>PNG</td><td>✅</td><td>—</td></tr>
+      <tr><td>관리자 UI</td><td><code>admin_auto_test_v2.php</code>(마법사) · <code>admin_e2e_test.php</code> · <code>admin_qa_dashboard.php</code> · <code>admin_screenshot_book.php</code></td><td colspan="3">대시보드 + DB 이력(gangnamunni_e2e_*) + DOCX/PDF 리포트</td></tr>
+    </tbody>
+  </table>
+  <div class="warn">⚠️ <strong>없는 것</strong>: ① 동영상+스크린샷 <strong>한 세션 동시</strong> 수집 ② <strong>네이티브 Flutter 앱</strong>(환자/파트너) UI 자동화 ③ <strong>AI 자가검수</strong> — 이 3개를 신규 구축합니다.</div>
+</div>
+
+<!-- 도구 가용성 -->
+<div class="card">
+  <h2>② 도구 가용성 (실측)</h2>
+  <table>
+    <thead><tr><th>환경</th><th>보유</th><th>설치 필요</th></tr></thead>
+    <tbody>
+      <tr><td>PC (Windows)</td><td>✅ node/npm/npx · <strong>Playwright(설치됨)</strong> · adb · flutter 3.35.4 · scrcpy · ffmpeg</td><td>Maestro (네이티브 앱 구동용, 단일 바이너리)</td></tr>
+      <tr><td>안드로이드 실기기</td><td>✅ SM-N981N(R3CN813JMSF) 연결 · <code>com.wellness.customer</code> 설치됨</td><td>—</td></tr>
+      <tr><td>Mac Mini</td><td>✅ Xcode 26.3 · iPhone iOS 18.4.1 연결 · Distribution 인증서</td><td>Maestro (iOS 구동) 또는 Appium+XCUITest</td></tr>
+    </tbody>
+  </table>
+  <div class="note">💡 <strong>중요 단순화</strong>: 4개 앱 중 <strong>네이티브 통합앱·관리자앱은 WebView</strong>로 <code>hms.seoulbeauty.app</code> 페이지를 그대로 로드합니다 → <strong>Playwright(이미 설치)로 모바일 에뮬레이션 + 동영상 캡처가 바로 가능</strong>. 진짜 네이티브 자동화가 필요한 건 환자/파트너 Flutter 2개뿐입니다.</div>
+</div>
+
+<!-- 3 레이어 -->
+<div class="card">
+  <h2>③ 3-레이어 캡처 아키텍처</h2>
+
+  <h3>레이어 A — 웹 + WebView 앱 <span class="badge b-ready">즉시 가능 (Playwright)</span></h3>
+  <ul class="compact">
+    <li>대상: gangnamunni 웹 / 네이티브 통합앱(WebView) / 관리자앱(WebView)</li>
+    <li>도구: Playwright + 모바일 디바이스 에뮬레이션(iPhone 14 / Galaxy S24 뷰포트)</li>
+    <li>캡처: 각 단계 <code>page.screenshot()</code> + 세션 전체 <code>recordVideo</code>(.webm) <strong>동시 수집</strong></li>
+    <li>로그인/가입: 폼 자동 입력 (기존 엔진의 자동 감지 로직 재사용)</li>
+  </ul>
+
+  <h3>레이어 B — 네이티브 Flutter 앱 (환자/파트너) <span class="badge b-install">Maestro 설치 후</span></h3>
+  <ul class="compact">
+    <li>대상: <code>com.wellness.customer</code>(환자) · <code>com.wellness.vendor</code>(파트너) — 실기기 SM-N981N</li>
+    <li>도구: <strong>Maestro</strong>(YAML 플로우, Android+iOS 공용, 단계별 스크린샷 내장) + <code>adb screenrecord</code>(동영상) + <code>adb exec-out screencap</code></li>
+    <li>요소 식별: GetX 패턴 — 텍스트/AppBar 타이틀/필드 순서로 탭·입력 (survey에서 식별자 확보)</li>
+    <li>iOS: 동일 Maestro 플로우를 Mac에서 iPhone 대상 실행</li>
+  </ul>
+
+  <h3>레이어 C — 자가검수 (Claude) <span class="badge b-new">신규</span></h3>
+  <ul class="compact">
+    <li>캡처 후 <strong>모든 이미지 ≤900px 리사이즈</strong>(PIL, 세션 중단 방지 — 프로젝트 규칙)</li>
+    <li><code>run_manifest.json</code> 생성: <code>[{step, screen, action, expected, screenshot, video_ts}]</code></li>
+    <li>Claude가 각 스크린샷을 <strong>기대값과 대조해 한 장씩 판정</strong>: PASS / FAIL / 의심 + 사유</li>
+    <li>판정 결과를 HTML 리포트로(이미지+판정+동영상 플레이어 임베드)</li>
+    <li><strong>루프</strong>: FAIL 발견 → 원인 수정 → 재실행 → 전부 PASS까지 반복</li>
+  </ul>
+</div>
+
+<!-- 시나리오 -->
+<div class="card">
+  <h2>④ 테스트 시나리오 — 환자앱 풀 플로우 (대표)</h2>
+  <p style="color:#5a6b75; font-size:13.5px;">각 단계 = 스크린샷 1+장 + 동영상 구간. 식별자는 소스 조사 기반(<code>signin_screen.dart</code> 등).</p>
+  <div class="step-list">
+    <div class="s"><span class="nm">1</span><div><strong>스플래시</strong> <span class="pill">splash</span> — 로고·로딩 표시 캡처</div></div>
+    <div class="s"><span class="nm">2</span><div><strong>로그인 화면</strong> <span class="pill">SignInScreen</span> — 이메일/비번 필드, 소셜로그인, 회원가입 버튼</div></div>
+    <div class="s"><span class="nm">3</span><div><strong>회원가입 진입</strong> <span class="pill">SignUpScreen</span> — 이름/성/이메일/생년월일(DatePicker)/국가코드/전화</div></div>
+    <div class="s"><span class="nm">4</span><div><strong>약관 동의 + 제출</strong> — 약관 링크, 유효성 검증, 가입완료 메시지</div></div>
+    <div class="s"><span class="nm">5</span><div><strong>로그인(+OTP)</strong> — 이메일/비번 입력→OTP 필드 표시→6자리 입력→검증</div></div>
+    <div class="s"><span class="nm">6</span><div><strong>홈 대시보드</strong> <span class="pill">HomeScreen</span> — 인사말/카테고리/배너/예약버튼, 하단 3탭</div></div>
+    <div class="s"><span class="nm">7</span><div><strong>병원 목록→상세</strong> <span class="pill">Clinics</span> — 검색, 카드, 상세(주소/의사/예약버튼)</div></div>
+    <div class="s"><span class="nm">8</span><div><strong>예약/상담</strong> — 날짜·시간 선택 다이얼로그→확인</div></div>
+    <div class="s"><span class="nm">9</span><div><strong>커뮤니티</strong> — 목록→글쓰기→댓글→좋아요 (6/12 수정분 검증 포함)</div></div>
+    <div class="s"><span class="nm">10</span><div><strong>마이페이지</strong> <span class="pill">Profile</span> — 정보/포인트/쿠폰/예약내역</div></div>
+    <div class="s"><span class="nm">11</span><div><strong>로그아웃</strong> — 설정→로그아웃→로그인 화면 복귀</div></div>
+  </div>
+  <div class="flow">📌 파트너앱은 <strong>역할 선택→자동입력→예약/의사/서비스 관리</strong>, WebView 앱들은 동일 URL 플로우를 모바일 뷰포트로 수행. 관리자앱은 자동 로그인→사이드바 메뉴 순회.</div>
+</div>
+
+<!-- 산출물 + 자가검수 -->
+<div class="card">
+  <h2>⑤ 산출물 & 자가검수 판정 기준</h2>
+  <h3>산출물 (앱별·실행별)</h3>
+  <table>
+    <thead><tr><th>산출물</th><th>내용</th></tr></thead>
+    <tbody>
+      <tr><td><code>steps/NN_*.png</code></td><td>단계별 스크린샷 (≤900px)</td></tr>
+      <tr><td><code>run.webm / run.mp4</code></td><td>전체 플로우 연속 동영상 (ffmpeg로 mp4 변환)</td></tr>
+      <tr><td><code>run_manifest.json</code></td><td>단계·액션·기대값·이미지경로·동영상타임스탬프</td></tr>
+      <tr><td><code>review_report.html</code></td><td>Claude 검수 결과 (단계별 PASS/FAIL+사유, 동영상 임베드)</td></tr>
+    </tbody>
+  </table>
+  <h3>자가검수 판정 항목 (단계별)</h3>
+  <ul class="compact">
+    <li>화면이 의도한 단계와 일치하는가 (제목/주요 요소 존재)</li>
+    <li>PHP/JS 에러·빈 화면·깨진 레이아웃·잘림 없음</li>
+    <li>입력값이 정상 반영·검증 메시지 정상</li>
+    <li>전환(다음 화면 진입)이 성공했는가</li>
+    <li>(선택) Figma 시안 대비 시각적 일치도</li>
+  </ul>
+  <div class="note">✅ 전 단계 PASS → 해당 빌드는 <strong>스토어 재제출 적격</strong>. Android는 키스토어 보유로 AAB 즉시 빌드, iOS는 Mac에서 Archive→App Store Connect 업로드.</div>
+</div>
+
+<!-- 구축 단계 -->
+<div class="card">
+  <h2>⑥ 구축 실행 순서</h2>
+  <table>
+    <thead><tr><th>단계</th><th>작업</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td>P1</td><td>레이어 A — Playwright 통합 캡처 엔진(스크린샷+동영상 동시) + 매니페스트 출력. 웹·WebView 앱 풀플로우</td><td><span class="badge b-ready">즉시 착수</span></td></tr>
+      <tr><td>P2</td><td>레이어 C — 자가검수 파이프라인(리사이즈→Claude 판정→review_report.html) + 재실행 루프</td><td><span class="badge b-new">신규</span></td></tr>
+      <tr><td>P3</td><td>레이어 B — Maestro 설치 + 환자/파트너 Flutter 플로우(Android 실기기) 캡처</td><td><span class="badge b-install">도구 설치</span></td></tr>
+      <tr><td>P4</td><td>iOS — Mac에서 Maestro로 iPhone 플로우 캡처</td><td><span class="badge b-install">Mac</span></td></tr>
+      <tr><td>P5</td><td>관리자 대시보드에 "통합 테스트 센터" 메뉴(웹+앱 결과+동영상+검수) 추가</td><td><span class="badge b-new">신규</span></td></tr>
+      <tr><td>P6</td><td>전부 PASS 확인 → AAB/IPA 빌드 → 스토어 재제출</td><td><span class="badge b-gray">최종</span></td></tr>
+    </tbody>
+  </table>
+  <div class="warn">⚠️ <strong>외부 의존</strong>: iOS 스토어 제출은 App Store Connect 계정 권한, Android는 Play Console 권한이 필요합니다(콘솔 접근/2FA). 빌드·캡처·검수까지는 자동, 최종 업로드만 계정 확인 필요.</div>
+</div>
+
+</body>
+</html>

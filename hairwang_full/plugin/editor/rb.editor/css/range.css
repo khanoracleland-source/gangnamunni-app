@@ -1,0 +1,118 @@
+
+/* 커스텀 */
+.rb_range_item {
+  width: 100px;
+  height: 3px;
+  border: 0;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  outline: none;
+  border:0px !important;
+  margin-left: 0px; margin-right: 0px;
+  margin-top: -3px;
+}
+
+.rb_range_item .ui-slider-handle {
+  position: absolute;
+  margin: -7px 0 0 -15px;  border-radius: 100px;
+  color: #fff;
+  border: 0;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  width: 30px;
+  outline: none;
+  cursor: pointer;
+  font-size: 9px;
+  text-decoration: none;
+  transition: transform 0.1s ease;
+  color:#fff !important;
+ background-color: #09244B;
+}
+
+.rb_range_item .ui-slider-range {
+    border:0px !important; border-radius: 4px !important;
+}
+
+
+.rb_range_item .ui-slider-handle:hover,
+.rb_range_item .ui-slider-handle:focus {
+  transform: scale(1.1);
+}
+
+.rb_range_item .cntr {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* 기본 */
+#image-toolbar [type="range"] {
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+    width: 70px;
+    height: 2px; /* thumb의 height와 일치 */
+    margin: 0; /* reset margin */
+    padding: 0; /* reset padding */
+    background-color: transparent;
+}
+
+/* thumb */
+#image-toolbar [type="range"]::-webkit-slider-thumb { /* Webkit 기반 브라우저 */
+    appearance: none;
+    width: 1rem; /* height와 일치 */
+    height: 1rem;
+    border: none;
+    border-radius: 50%;
+    background-color: #09244B;
+    transition: all 0.15s ease-in-out;
+    margin-top: calc((0.1rem - 1rem) * 0.5); /* calc((track의 height - thumb의 height) * 0.5) */
+}
+#image-toolbar [type="range"]::-moz-range-thumb { /* 파이어폭스 */
+    appearance: none;
+    width: 1rem; /* height와 일치 */
+    height: 1rem;
+    border: none;
+    border-radius: 50%;
+    background-color: #09244B;
+    transition: all 0.15s ease-in-out;
+}
+#image-toolbar [type="range"]:focus::-webkit-slider-thumb { /* Webkit 기반 브라우저 */
+    box-shadow: 0 0 0 1px #fff, 0 0 0 .25rem rgba(0, 0, 0, .1);
+}
+#image-toolbar [type="range"]:focus::-moz-range-thumb { /* 파이어폭스 */
+    box-shadow: 0 0 0 1px #fff, 0 0 0 .25rem rgba(0, 0, 0, .1);
+}
+#image-toolbar [type="range"]::-webkit-slider-thumb:active { /* Webkit 기반 브라우저 */
+    opacity: 0.7
+}
+#image-toolbar [type="range"]::-moz-range-thumb:active { /* 파이어폭스 */
+    opacity: 0.7
+}
+
+/* track */
+#image-toolbar [type="range"]::-webkit-slider-runnable-track { /* Webkit 기반 브라우저 */
+    cursor: pointer;
+    width: 100%;
+    height: 2px;
+    background-color: #d3d9de;
+    border-radius: 0.25rem;
+}
+#image-toolbar [type="range"]::-moz-range-track { /* 파이어폭스 */
+    cursor: pointer;
+    width: 100%;
+    height: 2px;
+    background-color: #d3d9de;
+    border-radius: 0.25rem;
+}
+
+/* disabled 속성 적용 시 */
+#image-toolbar [type="range"]:disabled::-webkit-slider-thumb { /* Webkit 기반 브라우저 */
+    pointer-events: none;
+    opacity: .5
+}
+#image-toolbar [type="range"]:disabled::-moz-range-thumb { /* 파이어폭스 */
+    opacity: .5
+}

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>신규 기능 4종 테스트 리포트 | 서울미녀 2026-03-23</title>
+<style>
+:root { --primary: #6C5CE7; --success: #00b894; --danger: #d63031; --warning: #fdcb6e; --bg: #f8f9fa; --card: #fff; --text: #2d3436; --border: #dfe6e9; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; color: var(--primary); margin-bottom: 8px; font-size: 28px; }
+.subtitle { text-align: center; color: #636e72; margin-bottom: 30px; }
+.summary-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.summary-table th { background: var(--primary); color: #fff; padding: 14px 16px; text-align: left; font-size: 14px; }
+.summary-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+.summary-table tr:last-child td { border-bottom: none; }
+.badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.badge-pass { background: #e6fff7; color: #00b894; }
+.badge-fail { background: #ffe6e6; color: #d63031; }
+.badge-warn { background: #fff8e1; color: #e17055; }
+.feature-card { background: var(--card); border-radius: 12px; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+.feature-header { background: linear-gradient(135deg, var(--primary), #a29bfe); color: #fff; padding: 18px 24px; }
+.feature-header h2 { font-size: 20px; margin-bottom: 4px; }
+.feature-header .desc { opacity: 0.9; font-size: 13px; }
+.feature-body { padding: 24px; }
+.test-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px; }
+.test-item:last-child { margin-bottom: 0; }
+.test-icon { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #fff; }
+.test-icon.pass { background: var(--success); }
+.test-icon.fail { background: var(--danger); }
+.test-content { flex: 1; }
+.test-content .label { font-weight: 600; font-size: 14px; }
+.test-content .detail { font-size: 13px; color: #636e72; margin-top: 4px; }
+.screenshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 20px; }
+.screenshot-item { text-align: center; }
+.screenshot-item img { width: 100%; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
+.screenshot-item img:hover { transform: scale(1.02); }
+.screenshot-item .caption { font-size: 12px; color: #636e72; margin-top: 6px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
+.stat-card { background: var(--card); border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.stat-card .number { font-size: 36px; font-weight: 700; }
+.stat-card .label { font-size: 13px; color: #636e72; margin-top: 4px; }
+.stat-card.total .number { color: var(--primary); }
+.stat-card.pass .number { color: var(--success); }
+.stat-card.fail .number { color: var(--danger); }
+.stat-card.warn .number { color: #e17055; }
+footer { text-align: center; color: #b2bec3; font-size: 12px; padding: 30px 0; }
+/* Lightbox */
+.lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; cursor: pointer; }
+.lightbox.active { display: flex; }
+.lightbox img { max-width: 95%; max-height: 95%; border-radius: 8px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>신규 기능 4종 테스트 리포트</h1>
+    <p class="subtitle">서울미녀 (Seoul Beauty) | 테스트 일시: 2026-03-23 | 서버: 5.104.82.35</p>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-card total"><div class="number">24</div><div class="label">총 테스트 항목</div></div>
+        <div class="stat-card pass"><div class="number">24</div><div class="label">PASS</div></div>
+        <div class="stat-card fail"><div class="number">0</div><div class="label">FAIL</div></div>
+        <div class="stat-card warn"><div class="number">0</div><div class="label">WARNING</div></div>
+    </div>
+
+    <!-- Summary Table -->
+    <table class="summary-table">
+        <thead>
+            <tr><th>#</th><th>기능</th><th>테스트 수</th><th>결과</th><th>비고</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>하단 탭 ON/OFF 설정 (admin_nav_settings.php)</td>
+                <td>5</td>
+                <td><span class="badge badge-pass">ALL PASS</span></td>
+                <td>DB 5설정 확인, ON/OFF 토글 동작, 미리보기</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>지역+시술 복합 필터 검색바 (index.php)</td>
+                <td>5</td>
+                <td><span class="badge badge-pass">ALL PASS</span></td>
+                <td>지역/시술 드롭다운, 검색 연동 확인</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>병원 정렬 옵션 (hospitals.php)</td>
+                <td>7</td>
+                <td><span class="badge badge-pass">ALL PASS</span></td>
+                <td>5종 정렬 모두 200, selected 상태 반영</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>커뮤니티 게시판 CRUD (community.php)</td>
+                <td>7</td>
+                <td><span class="badge badge-pass">ALL PASS</span></td>
+                <td>목록/상세/카테고리/글쓰기/인증 체크</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Feature 1 -->
+    <div class="feature-card">
+        <div class="feature-header">
+            <h2>Feature 1: 하단 탭 ON/OFF 설정</h2>
+            <div class="desc">admin_nav_settings.php + includes/bottom_nav.php | DB: gangnamunni_settings (bottom_nav 그룹)</div>
+        </div>
+        <div class="feature-body">
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">admin_nav_settings.php 페이지 로드</div>
+                    <div class="detail">관리자 로그인 후 정상 접근 (200). 5개 탭 토글 스위치 표시됨.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">DB에 5개 bottom_nav 설정 존재</div>
+                    <div class="detail">bottom_nav_home_enabled=1, bottom_nav_hospital_enabled=1, bottom_nav_event_enabled=1, bottom_nav_review_enabled=1, bottom_nav_my_enabled=1</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">index.php 하단 네비 렌더링</div>
+                    <div class="detail">bottom-nav 관련 HTML 요소 24개 감지. 홈/병원/이벤트/후기/마이 5탭 정상 표시.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">탭 OFF 시 숨김 확인</div>
+                    <div class="detail">bottom_nav_event_enabled=0 설정 후 이벤트 탭 렌더링 0건 확인. 토글 동작 정상.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">탭 ON 복원 확인</div>
+                    <div class="detail">bottom_nav_event_enabled=1 복원 후 이벤트 탭 다시 표시됨.</div>
+                </div>
+            </div>
+
+            <div class="screenshots">
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_admin_nav_settings_pc.png" onclick="openLightbox(this)" alt="Admin Nav Settings PC">
+                    <div class="caption">관리자 하단 탭 설정 (PC 1280x800)</div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_admin_nav_settings_mobile.png" onclick="openLightbox(this)" alt="Admin Nav Settings Mobile">
+                    <div class="caption">관리자 하단 탭 설정 (Mobile 375x667)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 2 -->
+    <div class="feature-card">
+        <div class="feature-header">
+            <h2>Feature 2: 지역+시술 복합 필터 검색바</h2>
+            <div class="desc">index.php (combinedSearchForm) | 지역 드롭다운 + 시술 카테고리 + 키워드 검색</div>
+        </div>
+        <div class="feature-body">
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">검색바 HTML 요소 확인</div>
+                    <div class="detail">combinedSearchForm, csb-region, csb-category 셀렉트 박스 확인.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">지역 드롭다운 옵션</div>
+                    <div class="detail">"전체 지역", "강남/역삼", "서초/잠원" 등 지역 옵션 확인.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">시술 카테고리 드롭다운</div>
+                    <div class="detail">"전체 시술", 성형외과/피부과 등 카테고리 옵션 확인.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">hospitals.php 필터 파라미터 수신</div>
+                    <div class="detail">hospitals.php?region=강남&category=성형외과&q=test → HTTP 200 정상 응답.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">JavaScript 파라미터 전달 로직</div>
+                    <div class="detail">csb-region, csb-category 값을 URL params로 전달하는 JS 로직 확인.</div>
+                </div>
+            </div>
+
+            <div class="screenshots">
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_index_search_pc.png" onclick="openLightbox(this)" alt="Index Search PC">
+                    <div class="caption">메인 페이지 복합 검색바 (PC 1280x800)</div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_index_search_mobile.png" onclick="openLightbox(this)" alt="Index Search Mobile">
+                    <div class="caption">메인 페이지 복합 검색바 (Mobile 375x667)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 3 -->
+    <div class="feature-card">
+        <div class="feature-header">
+            <h2>Feature 3: 병원 정렬 옵션</h2>
+            <div class="desc">hospitals.php | 5종 정렬: 추천순/평점순/후기순/최신순/이름순</div>
+        </div>
+        <div class="feature-body">
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">정렬 드롭다운 렌더링</div>
+                    <div class="detail">sortOrder select 요소에 추천순/평점순/후기순/최신순/이름순 5개 옵션 확인.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">sort=recommend → HTTP 200</div>
+                    <div class="detail">추천순 정렬 정상 응답.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">sort=rating → HTTP 200</div>
+                    <div class="detail">평점순 정렬 정상 응답.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">sort=review → HTTP 200</div>
+                    <div class="detail">후기순 정렬 정상 응답.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">sort=newest → HTTP 200</div>
+                    <div class="detail">최신순 정렬 정상 응답.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">sort=name → HTTP 200</div>
+                    <div class="detail">이름순 정렬 정상 응답.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">selected 속성 반영 확인</div>
+                    <div class="detail">sort=rating 요청 시 value="rating" 옵션에 selected 속성 정상 적용.</div>
+                </div>
+            </div>
+
+            <div class="screenshots">
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_hospitals_sort_pc.png" onclick="openLightbox(this)" alt="Hospitals Sort PC">
+                    <div class="caption">병원 목록 정렬 (PC 1280x800)</div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_hospitals_sort_mobile.png" onclick="openLightbox(this)" alt="Hospitals Sort Mobile">
+                    <div class="caption">병원 목록 정렬 (Mobile 375x667)</div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_hospitals_sort_rating_pc.png" onclick="openLightbox(this)" alt="Hospitals Sort Rating PC">
+                    <div class="caption">평점순 정렬 선택 (PC 1280x800)</div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_hospitals_sort_rating_mobile.png" onclick="openLightbox(this)" alt="Hospitals Sort Rating Mobile">
+                    <div class="caption">평점순 정렬 선택 (Mobile 375x667)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 4 -->
+    <div class="feature-card">
+        <div class="feature-header">
+            <h2>Feature 4: 커뮤니티 게시판 CRUD</h2>
+            <div class="desc">community.php + community_write.php + detail_community.php | DB: gangnamunni_community_posts</div>
+        </div>
+        <div class="feature-body">
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">community.php 목록 페이지 로드</div>
+                    <div class="detail">HTTP 200. 카테고리 탭 (전체/시술후기/일상/질문/정보공유/기타) 표시. 게시글 5건 렌더링.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">DB 테이블 스키마 확인</div>
+                    <div class="detail">gangnamunni_community_posts: id, mb_id, author_name, category, title, content, photos, view_count, like_count, comment_count, status, created_at, updated_at (13컬럼)</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">community_write.php 인증 체크</div>
+                    <div class="detail">비로그인 상태에서 HTTP 302 리다이렉트. 로그인 필수 정상 동작.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">detail_community.php?id=1 상세 페이지</div>
+                    <div class="detail">HTTP 200. 제목/작성자/날짜/내용/좋아요/공유/댓글 영역 정상 렌더링.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">카테고리 필터 동작</div>
+                    <div class="detail">community.php?category=시술후기 → HTTP 200. 카테고리별 필터링 정상.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">글쓰기 버튼 확인</div>
+                    <div class="detail">community.php에 "글쓰기" 버튼 표시. 비로그인 시 alert + 로그인 페이지 이동.</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <div class="test-icon pass">P</div>
+                <div class="test-content">
+                    <div class="label">댓글 섹션 확인</div>
+                    <div class="detail">detail_community.php에 댓글 작성/표시 영역 (.comments-section, .comment-item 등) 정상 구현.</div>
+                </div>
+            </div>
+
+            <div class="screenshots">
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_community_list_pc.png" onclick="openLightbox(this)" alt="Community List PC">
+                    <div class="caption">커뮤니티 게시판 목록 (PC 1280x800)</div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_community_list_mobile.png" onclick="openLightbox(this)" alt="Community List Mobile">
+                    <div class="caption">커뮤니티 게시판 목록 (Mobile 375x667)</div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_community_detail_pc.png" onclick="openLightbox(this)" alt="Community Detail PC">
+                    <div class="caption">커뮤니티 게시글 상세 (PC 1280x800)</div>
+                </div>
+                <div class="screenshot-item">
+                    <img src="screenshots_new_features/test_features_community_detail_mobile.png" onclick="openLightbox(this)" alt="Community Detail Mobile">
+                    <div class="caption">커뮤니티 게시글 상세 (Mobile 375x667)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="Enlarged screenshot">
+</div>
+
+<footer>
+    <p>Seoul Beauty Test Report | Generated 2026-03-23 | Server 5.104.82.35</p>
+</footer>
+
+<script>
+function openLightbox(el) {
+    document.getElementById('lightbox-img').src = el.src;
+    document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
+</body>
+</html>

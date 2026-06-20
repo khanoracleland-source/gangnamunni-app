@@ -1,0 +1,75 @@
+{
+  "_comment": "서울미녀 환자용 앱 매뉴얼 설정",
+  "_version": "1.0.0",
+  "_updated": "2026-03-05",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/hairwang/gangnamunni/",
+  "browser": {
+    "headless": true,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "timeout": 30000
+  },
+  "login": {
+    "required": false
+  },
+  "book": {
+    "title": "서울미녀 환자용 앱 매뉴얼",
+    "subtitle": "환자 앱 화면 가이드",
+    "author": "Seoul Beauty Admin",
+    "outputDir": "../uploads/patient-book",
+    "manualDir": "../manual/patient_manual"
+  },
+  "chapters": [
+    {
+      "id": "ch01_main",
+      "title": "메인 화면",
+      "icon": "bi-phone",
+      "pages": [
+        {
+          "key": "home",
+          "label": "홈 화면",
+          "url": "index.php",
+          "description": "메인 페이지 - 배너, 인기 시술, 이벤트",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "hospitals",
+          "label": "병원 목록",
+          "url": "hospitals.php",
+          "description": "병원 검색 및 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_services",
+      "title": "서비스",
+      "icon": "bi-star",
+      "pages": [
+        {
+          "key": "reviews",
+          "label": "후기",
+          "url": "reviews.php",
+          "description": "사용자 후기 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ],
+  "title": "서울미녀 환자용 앱 매뉴얼"
+}

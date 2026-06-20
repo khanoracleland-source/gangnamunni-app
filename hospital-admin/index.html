@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울미녀 - 병원 관리자 페이지</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00B8A9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .login-section {
+            max-width: 400px;
+            margin: 100px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .login-section h2 {
+            margin-bottom: 30px;
+            text-align: center;
+            color: #00B8A9;
+        }
+
+        .dashboard {
+            display: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00B8A9;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #00B8A9;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #00B8A9;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #009688;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .bookings-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .table-header {
+            background: #00B8A9;
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        th {
+            background: #f9f9f9;
+            font-weight: 600;
+            color: #666;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #FFC107;
+            color: white;
+        }
+
+        .status-confirmed {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-cancelled {
+            background: #f44336;
+            color: white;
+        }
+
+        .status-completed {
+            background: #9E9E9E;
+            color: white;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .filter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #00B8A9;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">💄 서울미녀 Admin</div>
+            <div id="logoutBtn" style="display: none;">
+                <button class="btn btn-danger" onclick="logout()" style="width: auto; padding: 10px 20px;">로그아웃</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Section -->
+    <div class="login-section" id="loginSection">
+        <h2>🔐 병원 관리자 로그인</h2>
+        <form onsubmit="login(event)">
+            <div class="form-group">
+                <label class="form-label">병원 선택</label>
+                <select class="form-select" id="hospitalSelect" required>
+                    <option value="">선택해주세요</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">비밀번호</label>
+                <input type="password" class="form-input" placeholder="admin123" required>
+            </div>
+            <button type="submit" class="btn btn-primary">로그인</button>
+        </form>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div class="container dashboard" id="dashboard">
+        <h1 id="hospitalName" style="margin-bottom: 30px;"></h1>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalBookings">0</div>
+                <div class="stat-label">총 예약</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingBookings">0</div>
+                <div class="stat-label">대기중</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="confirmedBookings">0</div>
+                <div class="stat-label">확정</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="todayBookings">0</div>
+                <div class="stat-label">오늘 예약</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchDashboardTab(event, 'all')">전체 예약</button>
+            <button class="tab" onclick="switchDashboardTab(event, 'pending')">대기중</button>
+            <button class="tab" onclick="switchDashboardTab(event, 'confirmed')">확정</button>
+            <button class="tab" onclick="switchDashboardTab(event, 'today')">오늘</button>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-section">
+            <div class="form-group" style="flex: 1; margin: 0;">
+                <label class="form-label">날짜 필터</label>
+                <input type="date" class="form-input" id="dateFilter" onchange="loadBookings()">
+            </div>
+            <div style="display: flex; gap: 10px; align-items: end;">
+                <button class="btn btn-primary" style="width: auto; padding: 12px 24px;" onclick="loadBookings()">조회</button>
+                <button class="btn" style="width: auto; padding: 12px 24px; background: #f0f0f0;" onclick="clearFilters()">초기화</button>
+            </div>
+        </div>
+
+        <!-- Bookings Table -->
+        <div class="bookings-table">
+            <div class="table-header">예약 목록</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>예약번호</th>
+                        <th>환자명</th>
+                        <th>전화번호</th>
+                        <th>예약일시</th>
+                        <th>시술</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="bookingsTableBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #999;">로딩 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        let currentHospitalId = null;
+        let currentFilter = 'all';
+
+        // Load hospitals for login
+        async function loadHospitalsForLogin() {
+            try {
+                const response = await fetch(`${API_BASE}/hospitals?per_page=100`);
+                const result = await response.json();
+
+                const select = document.getElementById('hospitalSelect');
+                result.data.forEach(hospital => {
+                    const option = document.createElement('option');
+                    option.value = hospital.id;
+                    option.textContent = hospital.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading hospitals:', error);
+            }
+        }
+
+        // Login
+        function login(event) {
+            event.preventDefault();
+            const hospitalId = document.getElementById('hospitalSelect').value;
+
+            if (!hospitalId) {
+                alert('병원을 선택해주세요.');
+                return;
+            }
+
+            currentHospitalId = hospitalId;
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('logoutBtn').style.display = 'block';
+
+            // Load hospital info and bookings
+            loadHospitalInfo();
+            loadBookings();
+        }
+
+        // Logout
+        function logout() {
+            currentHospitalId = null;
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'none';
+        }
+
+        // Load hospital info
+        async function loadHospitalInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/hospitals/${currentHospitalId}`);
+                const hospital = await response.json();
+                document.getElementById('hospitalName').textContent = hospital.name + ' 관리자 페이지';
+            } catch (error) {
+                console.error('Error loading hospital info:', error);
+            }
+        }
+
+        // Load bookings
+        async function loadBookings() {
+            if (!currentHospitalId) return;
+
+            try {
+                let url = `${API_BASE}/bookings?hospital_id=${currentHospitalId}&per_page=100`;
+
+                const dateFilter = document.getElementById('dateFilter').value;
+                if (dateFilter) {
+                    url += `&date=${dateFilter}`;
+                }
+
+                if (currentFilter !== 'all' && currentFilter !== 'today') {
+                    url += `&status=${currentFilter}`;
+                }
+
+                const response = await fetch(url);
+                const result = await response.json();
+
+                let bookings = result.data;
+
+                // Filter for today if needed
+                if (currentFilter === 'today') {
+                    const today = new Date().toISOString().split('T')[0];
+                    bookings = bookings.filter(b => b.booking_date === today);
+                }
+
+                // Update stats
+                updateStats(bookings);
+
+                // Display bookings
+                displayBookings(bookings);
+
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                document.getElementById('bookingsTableBody').innerHTML = `
+                    <tr><td colspan="7" style="text-align: center; padding: 40px; color: #f44336;">
+                        데이터를 불러오는데 실패했습니다.
+                    </td></tr>
+                `;
+            }
+        }
+
+        // Update stats
+        function updateStats(bookings) {
+            const today = new Date().toISOString().split('T')[0];
+
+            document.getElementById('totalBookings').textContent = bookings.length;
+            document.getElementById('pendingBookings').textContent = bookings.filter(b => b.status === 'pending').length;
+            document.getElementById('confirmedBookings').textContent = bookings.filter(b => b.status === 'confirmed').length;
+            document.getElementById('todayBookings').textContent = bookings.filter(b => b.booking_date === today).length;
+        }
+
+        // Display bookings
+        function displayBookings(bookings) {
+            const tbody = document.getElementById('bookingsTableBody');
+
+            if (bookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #999;">예약 내역이 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = bookings.map(booking => `
+                <tr>
+                    <td>#${booking.id}</td>
+                    <td>${booking.patient_name}</td>
+                    <td>${booking.patient_phone}</td>
+                    <td>${booking.booking_date} ${booking.booking_time.substring(0, 5)}</td>
+                    <td>${booking.treatment_type || '-'}</td>
+                    <td><span class="status-badge status-${booking.status}">${getStatusText(booking.status)}</span></td>
+                    <td>
+                        ${booking.status === 'pending' ? `
+                            <button class="action-btn btn-success" onclick="updateBookingStatus(${booking.id}, 'confirmed')">확정</button>
+                            <button class="action-btn btn-danger" onclick="updateBookingStatus(${booking.id}, 'cancelled')">취소</button>
+                        ` : ''}
+                        ${booking.status === 'confirmed' ? `
+                            <button class="action-btn" style="background: #9E9E9E; color: white;" onclick="updateBookingStatus(${booking.id}, 'completed')">완료</button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update booking status
+        async function updateBookingStatus(bookingId, status) {
+            try {
+                const response = await fetch(`${API_BASE}/bookings/${bookingId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status })
+                });
+
+                if (response.ok) {
+                    alert('예약 상태가 업데이트되었습니다.');
+                    loadBookings();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || '업데이트에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Error updating booking:', error);
+                alert('업데이트 중 오류가 발생했습니다.');
+            }
+        }
+
+        // Get status text
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '대기중',
+                'confirmed': '확정',
+                'cancelled': '취소됨',
+                'completed': '완료'
+            };
+            return statusMap[status] || status;
+        }
+
+        // Switch dashboard tab
+        function switchDashboardTab(event, filter) {
+            currentFilter = filter;
+
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            loadBookings();
+        }
+
+        // Clear filters
+        function clearFilters() {
+            document.getElementById('dateFilter').value = '';
+            loadBookings();
+        }
+
+        // Initialize
+        loadHospitalsForLogin();
+    </script>
+</body>
+</html>

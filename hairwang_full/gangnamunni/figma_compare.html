@@ -1,0 +1,3504 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>피그마 원본 vs 구현 화면 1:1 비교 (개별 화면)</title>
+<script>window.API_BASE = "";</script>
+<style>
+* { box-sizing: border-box; }
+body {
+  font-family: 'Pretendard', 'Noto Sans KR', -apple-system, sans-serif;
+  margin: 0;
+  padding: 20px 16px 60px;
+  background: #1a1a2e;
+  color: #eaeaea;
+  line-height: 1.5;
+}
+.container { max-width: 1600px; margin: 0 auto; }
+
+header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding: 24px 20px;
+  background: linear-gradient(135deg, #2a2a3e 0%, #1a1a2e 100%);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  background: linear-gradient(135deg, #f24e1e 0%, #ae1932 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+header p { margin: 4px 0; color: #aaa; font-size: 14px; }
+
+.controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.ctrl-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.ctrl-btn:hover { background: rgba(255,255,255,0.2); }
+.ctrl-btn.active {
+  background: #f24e1e;
+  border-color: #f24e1e;
+  box-shadow: 0 2px 8px rgba(242,78,30,0.4);
+}
+
+.nav-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 280px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: #25253a;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 14px;
+  z-index: 100;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  display: none;
+}
+.nav-panel.show { display: block; }
+.nav-panel h3 { margin: 0 0 10px; font-size: 14px; color: #f24e1e; }
+.nav-panel ul { list-style: none; padding: 0; margin: 0; }
+.nav-panel li { margin: 4px 0; }
+.nav-panel a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ddd;
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.nav-panel a:hover { background: rgba(242,78,30,0.2); color: #fff; }
+.nav-panel .count {
+  background: rgba(242,78,30,0.4);
+  color: #fff;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.group-section {
+  background: #25253a;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 28px;
+  scroll-margin-top: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+}
+.group-header {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.group-header h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.group-icon {
+  background: linear-gradient(135deg, #f24e1e, #ae1932);
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.group-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  color: #aaa;
+}
+.group-count {
+  background: rgba(242,78,30,0.2);
+  color: #f24e1e;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.src-file code {
+  background: rgba(255,255,255,0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #ddd;
+}
+.impl-link {
+  margin-left: auto;
+  background: #1f9c4a;
+  color: #fff;
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.impl-link:hover { background: #2eb858; }
+.group-note {
+  margin-top: 10px;
+  background: rgba(255,165,0,0.1);
+  border-left: 3px solid #ffa500;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: #ffcc88;
+}
+
+/* 권장 사항 박스 (스플래시 등 특별 안내용) */
+.group-recommendation {
+  margin-top: 12px;
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.group-recommendation .rec-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.group-recommendation .rec-detail { color: #ddd; }
+.group-recommendation .rec-detail ul {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+.group-recommendation .rec-detail li { margin: 3px 0; }
+.group-recommendation .rec-detail code {
+  background: rgba(255,255,255,0.1);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #b0e0ff;
+}
+.group-recommendation .rec-detail b { color: #fff; }
+
+/* "유지 권장" 타입 - 녹색 */
+.group-recommendation.rec-keep {
+  background: linear-gradient(135deg, rgba(31,156,74,0.18), rgba(31,156,74,0.08));
+  border: 1px solid rgba(31,156,74,0.4);
+  border-left: 4px solid #1f9c4a;
+}
+.group-recommendation.rec-keep .rec-title { color: #4cd884; }
+
+/* "변경 권장" 타입 - 빨강 */
+.group-recommendation.rec-change {
+  background: linear-gradient(135deg, rgba(220,53,69,0.18), rgba(220,53,69,0.08));
+  border: 1px solid rgba(220,53,69,0.4);
+  border-left: 4px solid #dc3545;
+}
+.group-recommendation.rec-change .rec-title { color: #ff8087; }
+
+/* "주의" 타입 - 노랑 */
+.group-recommendation.rec-warn {
+  background: linear-gradient(135deg, rgba(245,165,36,0.18), rgba(245,165,36,0.08));
+  border: 1px solid rgba(245,165,36,0.4);
+  border-left: 4px solid #f5a524;
+}
+.group-recommendation.rec-warn .rec-title { color: #ffd175; }
+
+/* 1:1 좌우 비교 — 모바일 화면 비율(폭 절반)로 제한해 세로 전체가 보이게 */
+.row-compare {
+  display: grid;
+  grid-template-columns: minmax(0,420px) minmax(0,420px);
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px dashed rgba(255,255,255,0.08);
+}
+.row-compare:last-child { border-bottom: none; }
+/* 피그마만 표시 모드 (스플래시 등) */
+.row-compare.figma-only {
+  grid-template-columns: minmax(280px, 480px);
+  justify-content: start;
+}
+
+.pane {
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.pane-figma { border-top: 4px solid #f24e1e; }
+.pane-impl  { border-top: 4px solid #1f9c4a; }
+
+.pane-header {
+  background: #2a2a3e;
+  color: #fff;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.pane-badge {
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.figma-badge { background: rgba(242,78,30,0.85); color: #fff; }
+.impl-badge  { background: rgba(31,156,74,0.85); color: #fff; }
+.pane-fname {
+  background: rgba(255,255,255,0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #b0e0ff;
+  font-size: 11px;
+  font-family: Consolas, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.pane-size { color: #888; font-size: 11px; margin-left: auto; }
+
+.pane-img-wrap {
+  height: 460px;
+  overflow-y: auto;
+  background: #f5f5f5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  transition: height 0.2s ease;
+}
+.pane-img-wrap img {
+  max-width: 100%;
+  width: auto;
+  height: 100%;          /* 박스 높이에 맞춰 세로 전체가 보이게 */
+  object-fit: contain;
+  display: block;
+  cursor: zoom-in;
+}
+/* 화면 크기 토글 클래스 (body에 적용) */
+body.size-xs    .pane-img-wrap { height: 200px; }
+body.size-sm    .pane-img-wrap { height: 350px; }
+body.size-md    .pane-img-wrap { height: 500px; }
+body.size-lg    .pane-img-wrap { height: 700px; }
+body.size-xl    .pane-img-wrap { height: 900px; }
+body.size-xxl   .pane-img-wrap { height: 1100px; }
+body.size-xxxl  .pane-img-wrap { height: 1300px; }
+body.size-auto  .pane-img-wrap { height: auto; max-height: none; overflow: visible; }
+body.size-auto  .pane-img-wrap img { height: auto; width: 100%; }
+.pane-img-wrap.impl img { height: 100%; width: auto; max-width: 100%; }
+.pane-img-wrap::-webkit-scrollbar { width: 8px; }
+.pane-img-wrap::-webkit-scrollbar-track { background: #ddd; }
+.pane-img-wrap::-webkit-scrollbar-thumb { background: #999; border-radius: 4px; }
+
+.no-impl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #999;
+  font-size: 14px;
+}
+
+.pane-footer {
+  background: #2a2a3e;
+  padding: 8px 10px;
+  display: flex;
+  gap: 6px;
+}
+.pane-footer a {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  text-align: center;
+  transition: background 0.15s;
+}
+.pane-footer a:hover { background: rgba(255,255,255,0.2); }
+.pane-footer a.goto {
+  background: #1f9c4a;
+  font-weight: 600;
+}
+.pane-footer a.goto:hover { background: #2eb858; }
+
+.summary {
+  background: #25253a;
+  border-radius: 14px;
+  padding: 24px;
+  margin-top: 30px;
+}
+.summary h2 { color: #f24e1e; margin-top: 0; }
+.summary ul { padding-left: 22px; }
+.summary li { margin: 6px 0; }
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.95);
+  z-index: 9999;
+  overflow: auto;
+  cursor: zoom-out;
+}
+.modal.show { display: block; }
+.modal img { display: block; margin: 20px auto; max-width: 95%; }
+.modal-close {
+  position: fixed;
+  top: 20px;
+  right: 30px;
+  color: #fff;
+  font-size: 40px;
+  cursor: pointer;
+  z-index: 10000;
+  background: rgba(0,0,0,0.6);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 검수 메모 폼 */
+.note-form {
+  background: #2a2a3e;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.note-header {
+  background: linear-gradient(90deg, rgba(242,78,30,0.15), rgba(174,25,50,0.05));
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.note-title { font-size: 13px; color: #ddd; }
+.note-title code {
+  background: rgba(255,255,255,0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #b0e0ff;
+  font-size: 11px;
+}
+.note-status {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.note-status.pending     { background: rgba(255,193,7,0.2); color: #ffc107; }
+.note-status.in_progress { background: rgba(13,110,253,0.2); color: #6cb2ff; }
+.note-status.done        { background: rgba(25,135,84,0.2); color: #4cd884; }
+.note-status.rejected    { background: rgba(108,117,125,0.2); color: #adb5bd; }
+.note-status.new         { background: rgba(255,255,255,0.06); color: #aaa; }
+
+.note-body { padding: 12px 14px; }
+.note-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.note-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ddd;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+.note-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #f24e1e;
+}
+.note-priority {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  padding: 5px 10px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.note-input,
+.note-textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+.note-input:focus,
+.note-textarea:focus {
+  outline: none;
+  border-color: #f24e1e;
+  background: rgba(255,255,255,0.08);
+}
+.note-input::placeholder,
+.note-textarea::placeholder { color: rgba(255,255,255,0.35); }
+
+.note-actions { justify-content: flex-start; }
+.note-save-btn {
+  background: #1f9c4a;
+  color: #fff;
+  border: none;
+  padding: 8px 22px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.note-save-btn:hover { background: #2eb858; }
+.note-save-btn:disabled { background: #555; cursor: not-allowed; }
+.note-saved-msg {
+  margin-left: 14px;
+  font-size: 12px;
+  color: #4cd884;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.note-saved-msg.show { opacity: 1; }
+.note-saved-msg.error { color: #ff6b6b; }
+
+.claude-response-display {
+  margin-top: 10px;
+  background: rgba(25,135,84,0.08);
+  border-left: 3px solid #4cd884;
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #ddd;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.claude-response-display strong { color: #4cd884; }
+
+@media (max-width: 900px) {
+  .row-compare { grid-template-columns: minmax(0,420px); justify-content: center; }
+  .pane-img-wrap { height: 500px; }
+  .nav-panel { width: 240px; right: 10px; }
+  .note-row { flex-direction: column; align-items: stretch; }
+}
+
+/* ===== LIVE iframe 비교 ===== */
+.live-compare{background:#fff;border:2px solid #f24e1e;border-radius:12px;padding:14px;margin:0 0 18px;box-shadow:0 2px 10px rgba(242,78,30,.12)}
+[data-bs-theme="dark"] .live-compare{background:#222236;border-color:#f24e1e}
+.live-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.live-badge{background:#f24e1e;color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px}
+.live-note{font-size:12px;color:#777}
+.live-width-toggle{margin-left:auto;display:flex;align-items:center;gap:4px}
+.lw-label{font-size:11px;color:#999;margin-right:2px}
+.lw-btn{background:#f1f1f4;border:1px solid #e0e0e4;color:#333;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer}
+.lw-btn.active{background:#f24e1e;color:#fff;border-color:#f24e1e}
+[data-bs-theme="dark"] .lw-btn{background:rgba(255,255,255,.08);color:#eee;border-color:rgba(255,255,255,.15)}
+.live-row{display:grid;grid-template-columns:minmax(0,420px) 1fr;gap:18px;align-items:start}
+.live-cap{font-size:12px;font-weight:600;color:#888;margin-bottom:6px}
+.live-fig-wrap{background:#f5f5f5;border-radius:8px;overflow:hidden;display:flex;justify-content:center}
+.live-fig-wrap img{max-width:100%;height:auto;display:block;cursor:zoom-in}
+.live-right{min-width:0}
+.live-iframe-wrap{background:#f5f5f5;border-radius:8px;overflow:hidden;margin:0 auto;transition:width .2s}
+.live-iframe{width:100%;height:760px;border:0;display:block;background:#fff}
+.live-actions{margin-top:8px}
+.live-open-btn{display:inline-block;background:#ae1932;color:#fff;text-decoration:none;font-size:12px;font-weight:600;padding:7px 14px;border-radius:7px}
+.live-open-btn:hover{background:#8d1428;color:#fff}
+.live-noweb{padding:40px 20px;text-align:center;color:#999;background:#f5f5f5;border-radius:8px;font-size:13px}
+.optional-blocks{margin-top:12px;padding:12px;background:#fff7ed;border-radius:8px;border:1px solid #fed7aa}
+[data-bs-theme="dark"] .optional-blocks{background:#2d2416;border-color:#5a4a2a}
+.opt-head{font-size:12px;color:#9a3412;margin-bottom:8px}
+[data-bs-theme="dark"] .opt-head{color:#fbbf24}
+.opt-toggle{display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;border-bottom:1px dashed rgba(0,0,0,.06)}
+.opt-toggle:last-child{border-bottom:none}
+.opt-check{display:none}
+.opt-slider{width:38px;height:20px;background:#ccc;border-radius:20px;position:relative;flex:0 0 auto;transition:.2s}
+.opt-slider::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.2s}
+.opt-check:checked + .opt-slider{background:#16a34a}
+.opt-check:checked + .opt-slider::after{left:20px}
+.opt-label{font-size:13px;font-weight:600;color:#333}
+[data-bs-theme="dark"] .opt-label{color:#eee}
+.opt-desc{font-size:11px;color:#999;margin-left:auto;text-align:right}
+@media(max-width:900px){.live-row{grid-template-columns:1fr}}
+
+</style>
+</head><body>
+<div class="container">
+<header>
+<h1>🎨 피그마 원본 (개별 화면) vs 💻 구현 페이지 비교</h1>
+<p>Seoul Beauty App · 2026-06-05 · <strong>총 43개 개별 화면</strong> 자동 분리 완료</p>
+<p style="color:#888;font-size:12px;">📂 분리된 파일: <code>figma/split/{1x,2x}/</code> · <code>manifest.json</code></p>
+<div class="controls">
+<button class="ctrl-btn active" data-quality="1x" onclick="setQuality('1x')">📱 1x 화질 (빠름)</button>
+<button class="ctrl-btn" data-quality="2x" onclick="setQuality('2x')">🖥 2x 화질 (선명)</button>
+<button class="ctrl-btn" onclick="toggleNav()">📋 그룹 네비</button>
+</div>
+<div class="controls" style="margin-top:8px;">
+<span style="color:#aaa;font-size:12px;margin:6px 8px 0 0;">화면 크기:</span>
+<button class="ctrl-btn size-btn" data-size="xs"    onclick="setSize('xs')">📏 초소형 (200)</button>
+<button class="ctrl-btn size-btn active" data-size="sm"  onclick="setSize('sm')">📐 소형 (350)</button>
+<button class="ctrl-btn size-btn" data-size="md"    onclick="setSize('md')">🖼 중형 (500)</button>
+<button class="ctrl-btn size-btn" data-size="lg"    onclick="setSize('lg')">📺 대형 (700)</button>
+<button class="ctrl-btn size-btn" data-size="xl"    onclick="setSize('xl')">🔍 초대형 (900)</button>
+<button class="ctrl-btn size-btn" data-size="xxl"   onclick="setSize('xxl')">🖥 슈퍼 (1100)</button>
+<button class="ctrl-btn size-btn" data-size="xxxl"  onclick="setSize('xxxl')">🎬 맥스 (1300)</button>
+<button class="ctrl-btn size-btn" data-size="auto"  onclick="setSize('auto')">↕️ 전체 (스크롤)</button>
+</div>
+</header>
+<div class="nav-panel" id="navPanel">
+<h3>📋 그룹 바로가기</h3>
+<ul>
+<li><a href="#group-%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0">스플래쉬 스크린 <span class="count">2</span></a></li>
+<li><a href="#group-%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80">메인 페이지 <span class="count">2</span></a></li>
+<li><a href="#group-%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC">메인 카테고리 <span class="count">4</span></a></li>
+<li><a href="#group-%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80">병원 페이지 <span class="count">3</span></a></li>
+<li><a href="#group-%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D">마이페이지 — 찜 목록 <span class="count">10</span></a></li>
+<li><a href="#group-%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD">마이페이지 — 예약 / 결제 내역 <span class="count">12</span></a></li>
+<li><a href="#group-%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0">마이페이지 — 내가 작성한 후기 <span class="count">5</span></a></li>
+<li><a href="#group-%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95">마이페이지 — 정보수정 / 프로필 수정 <span class="count">4</span></a></li>
+<li><a href="#group-App_icon">앱 아이콘 <span class="count">1</span></a></li>
+</ul></div>
+<section class="group-section" id="group-%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0">
+<div class="group-header">
+<h2><span class="group-icon">📐</span>스플래쉬 스크린</h2>
+<div class="group-meta">
+<span class="group-count">2개 화면</span>
+<span class="src-file">원본: <code>스플레쉬 스크린.png</code></span>
+</div>
+<div class="group-note">📌 스플래시는 앱 빌드 시점 반영 항목 — 웹 비교 대상 없음. 좌측 #01과 우측 #02 비교용 페어로 표시.</div>
+<div class="group-recommendation rec-keep">
+<div class="rec-title">✅ 현재 #01 그대로 유지 권장 — 변경 작업 불필요</div>
+<div class="rec-detail"><strong>3개 앱 모두 이미 안전하게 적용되어 있습니다:</strong><ul><li>🤖 <b>Android 네이티브</b>: <code>splash.xml</code> + <code>splash.png</code> (256×256 로고)</li><li>🍎 <b>iOS 네이티브</b>: <code>LaunchScreen.storyboard</code> 코드 기반 Auto Layout</li><li>📱 <b>Flutter Patient</b>: flutter_native_splash 동적 생성</li></ul><b>이유:</b><br>• <b>#01 (현재)</b>: 흰 배경 + 중앙 로고 → 잘리거나 늘어나도 영향 없음, <b>모든 폰에서 일관됨</b><br>• <b>#02 (서울 풍경)</b>: 한강/남산타워 풀스크린 → 폰 비율(1:1.78 ~ 1:2.27)에 따라 <b>풍경 잘림/왜곡 발생</b><br>   - iPhone SE: 위아래 잘려 남산타워 안 보임<br>   - Galaxy S24/Note Ultra: 좌우 잘려 풍경 손실<br>   - Galaxy Fold (펼침): 심한 왜곡 또는 큰 흰 띠<br>   - iPad: 전체 레이아웃 깨짐<br><b>대안:</b> #02 풍경 이미지는 <b>온보딩 첫 화면</b> 또는 <b>로그인 화면 배경</b>으로 활용 권장 (잘려도 자연스러움)</div>
+</div>
+</div>
+<div class="live-compare" data-group="스플레쉬 스크린">
+<div class="live-head">
+<span class="live-badge">🔴 LIVE 비교</span>
+<span class="live-note">앱 빌드 시점 반영 화면 — 웹 페이지 없음. (Figma 원본만 표시)</span>
+
+</div>
+<div class="live-row">
+<div class="live-left">
+<div class="live-cap">🎨 Figma 원본</div>
+<div class="live-fig-wrap"><img src="figma/split/1x/%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0__01.png" alt="스플레쉬 스크린 Figma" onclick="zoom(this)"></div>
+</div>
+<div class="live-right">
+<div class="live-noweb">📱 앱 빌드 시점 반영 화면 — 웹 페이지 없음. (Figma 원본만 표시)</div>
+</div>
+</div>
+
+</div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #01</span>
+<code class="pane-fname">스플레쉬 스크린__01.png</code>
+<span class="pane-size">640×1280px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0__01.png" data-2x="figma/split/2x/%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0__01.png" src="figma/split/1x/%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0__01.png" alt="스플레쉬 스크린__01.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0__01.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #02</span>
+<code class="pane-fname">스플레쉬 스크린__02.png</code>
+<span class="pane-size">640×1280px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0__02.png" data-2x="figma/split/2x/%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0__02.png" src="figma/split/1x/%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0__02.png" alt="스플레쉬 스크린__02.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EC%8A%A4%ED%94%8C%EB%A0%88%EC%89%AC%20%EC%8A%A4%ED%81%AC%EB%A6%B0__02.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="스플레쉬 스크린__01.png" data-group="스플레쉬 스크린" data-index="1" data-current-url="">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>스플레쉬 스크린__01.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="note-form" data-filename="스플레쉬 스크린__02.png" data-group="스플레쉬 스크린" data-index="2" data-current-url="">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>스플레쉬 스크린__02.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+</section>
+<section class="group-section" id="group-%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80">
+<div class="group-header">
+<h2><span class="group-icon">📐</span>메인 페이지</h2>
+<div class="group-meta">
+<span class="group-count">2개 화면</span>
+<span class="src-file">원본: <code>메인페이지.png</code></span>
+<a class="impl-link" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php" target="_blank">🌐 메인 페이지 열기</a>
+</div>
+</div>
+<div class="live-compare" data-group="메인페이지">
+<div class="live-head">
+<span class="live-badge">🔴 LIVE 비교</span>
+<span class="live-note">메인 홈. Figma 원본 + 실제 index.php 라이브.</span>
+<div class="live-width-toggle">
+<span class="lw-label">반응형 폭:</span>
+<button class="lw-btn active" data-w="390" onclick="setLiveWidth(this,390)">📱 390</button>
+<button class="lw-btn" data-w="768" onclick="setLiveWidth(this,768)">📲 768</button>
+<button class="lw-btn" data-w="100%" onclick="setLiveWidth(this,'100%')">🖥 100%</button>
+</div>
+</div>
+<div class="live-row">
+<div class="live-left">
+<div class="live-cap">🎨 Figma 원본</div>
+<div class="live-fig-wrap"><img src="figma/split/1x/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" alt="메인페이지 Figma" onclick="zoom(this)"></div>
+</div>
+<div class="live-right">
+<div class="live-iframe-wrap" data-w="390">
+<iframe class="live-iframe" src="https://hms.seoulbeauty.app/gangnamunni/index.php?in_figma_review=1" loading="lazy" title="실제 index.php"></iframe>
+</div>
+<div class="live-actions">
+<a href="https://hms.seoulbeauty.app/gangnamunni/index.php" target="_blank" class="live-open-btn">🌐 실제 페이지 새 탭으로 열기</a>
+</div>
+</div>
+</div>
+<div class="optional-blocks">
+<div class="opt-head">🧩 <b>Figma 원본엔 없지만 구현된 부가요소</b> — 표시/숨김 (실제 페이지에 즉시 반영)</div>
+<label class="opt-toggle" title="Figma에 없는 6대분류 카테고리 표 — admin_categories 연결">
+<input type="checkbox" class="opt-check" data-block="home_categories" checked onchange="saveBlockToggle(this)">
+<span class="opt-slider"></span>
+<span class="opt-label">시술 카테고리 섹션</span>
+<span class="opt-desc">Figma에 없는 6대분류 카테고리 표 — admin_categories 연결</span>
+</label><label class="opt-toggle" title="Figma에 없는 프로모션 영역 — admin_promos 연결">
+<input type="checkbox" class="opt-check" data-block="home_promos" checked onchange="saveBlockToggle(this)">
+<span class="opt-slider"></span>
+<span class="opt-label">프로모션 배너</span>
+<span class="opt-desc">Figma에 없는 프로모션 영역 — admin_promos 연결</span>
+</label><label class="opt-toggle" title="Figma에 없는 이벤트 카드 — admin_events 연결">
+<input type="checkbox" class="opt-check" data-block="home_events" checked onchange="saveBlockToggle(this)">
+<span class="opt-slider"></span>
+<span class="opt-label">이벤트 섹션</span>
+<span class="opt-desc">Figma에 없는 이벤트 카드 — admin_events 연결</span>
+</label>
+</div>
+</div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #01</span>
+<code class="pane-fname">메인페이지__01.png</code>
+<span class="pane-size">640×1162px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" data-2x="figma/split/2x/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" src="figma/split/1x/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" alt="메인페이지__01.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">메인 페이지</code>
+<span class="pane-size">/index.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" alt="구현: 메인 페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="메인페이지__01.png" data-group="메인페이지" data-index="1" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>메인페이지__01.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #02</span>
+<code class="pane-fname">메인페이지__02.png</code>
+<span class="pane-size">640×1162px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80__02.png" data-2x="figma/split/2x/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80__02.png" src="figma/split/1x/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80__02.png" alt="메인페이지__02.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80__02.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">메인 페이지</code>
+<span class="pane-size">/index.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" alt="구현: 메인 페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="메인페이지__02.png" data-group="메인페이지" data-index="2" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>메인페이지__02.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+</section>
+<section class="group-section" id="group-%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC">
+<div class="group-header">
+<h2><span class="group-icon">📐</span>메인 카테고리</h2>
+<div class="group-meta">
+<span class="group-count">4개 화면</span>
+<span class="src-file">원본: <code>메인카테고리.png</code></span>
+<a class="impl-link" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php" target="_blank">🌐 메인 페이지 (카테고리 섹션) 열기</a>
+</div>
+<div class="group-note">📌 Figma "메인카테고리"는 메인페이지의 카테고리 섹션 캡처. treatments.php와 다른 화면이므로 메인페이지로 매핑.</div>
+</div>
+<div class="live-compare" data-group="메인카테고리">
+<div class="live-head">
+<span class="live-badge">🔴 LIVE 비교</span>
+<span class="live-note">카테고리 영역. 실제 index.php의 카테고리 섹션.</span>
+<div class="live-width-toggle">
+<span class="lw-label">반응형 폭:</span>
+<button class="lw-btn active" data-w="390" onclick="setLiveWidth(this,390)">📱 390</button>
+<button class="lw-btn" data-w="768" onclick="setLiveWidth(this,768)">📲 768</button>
+<button class="lw-btn" data-w="100%" onclick="setLiveWidth(this,'100%')">🖥 100%</button>
+</div>
+</div>
+<div class="live-row">
+<div class="live-left">
+<div class="live-cap">🎨 Figma 원본</div>
+<div class="live-fig-wrap"><img src="figma/split/1x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__01.png" alt="메인카테고리 Figma" onclick="zoom(this)"></div>
+</div>
+<div class="live-right">
+<div class="live-iframe-wrap" data-w="390">
+<iframe class="live-iframe" src="https://hms.seoulbeauty.app/gangnamunni/index.php?in_figma_review=1#category-section" loading="lazy" title="실제 index.php#category-section"></iframe>
+</div>
+<div class="live-actions">
+<a href="https://hms.seoulbeauty.app/gangnamunni/index.php#category-section" target="_blank" class="live-open-btn">🌐 실제 페이지 새 탭으로 열기</a>
+</div>
+</div>
+</div>
+<div class="optional-blocks">
+<div class="opt-head">🧩 <b>Figma 원본엔 없지만 구현된 부가요소</b> — 표시/숨김 (실제 페이지에 즉시 반영)</div>
+<label class="opt-toggle" title="Figma에 없는 6대분류 카테고리 표 — admin_categories 연결">
+<input type="checkbox" class="opt-check" data-block="home_categories" checked onchange="saveBlockToggle(this)">
+<span class="opt-slider"></span>
+<span class="opt-label">시술 카테고리 섹션</span>
+<span class="opt-desc">Figma에 없는 6대분류 카테고리 표 — admin_categories 연결</span>
+</label>
+</div>
+</div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #01</span>
+<code class="pane-fname">메인카테고리__01.png</code>
+<span class="pane-size">640×1162px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__01.png" data-2x="figma/split/2x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__01.png" src="figma/split/1x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__01.png" alt="메인카테고리__01.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__01.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">메인 페이지 (카테고리 섹션)</code>
+<span class="pane-size">/index.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" alt="구현: 메인 페이지 (카테고리 섹션)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="메인카테고리__01.png" data-group="메인카테고리" data-index="1" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>메인카테고리__01.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #02</span>
+<code class="pane-fname">메인카테고리__02.png</code>
+<span class="pane-size">640×1162px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__02.png" data-2x="figma/split/2x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__02.png" src="figma/split/1x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__02.png" alt="메인카테고리__02.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__02.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">메인 페이지 (카테고리 섹션)</code>
+<span class="pane-size">/index.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" alt="구현: 메인 페이지 (카테고리 섹션)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="메인카테고리__02.png" data-group="메인카테고리" data-index="2" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>메인카테고리__02.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #03</span>
+<code class="pane-fname">메인카테고리__03.png</code>
+<span class="pane-size">640×1162px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__03.png" data-2x="figma/split/2x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__03.png" src="figma/split/1x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__03.png" alt="메인카테고리__03.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__03.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">메인 페이지 (카테고리 섹션)</code>
+<span class="pane-size">/index.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" alt="구현: 메인 페이지 (카테고리 섹션)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="메인카테고리__03.png" data-group="메인카테고리" data-index="3" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>메인카테고리__03.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #04</span>
+<code class="pane-fname">메인카테고리__04.png</code>
+<span class="pane-size">640×1162px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__04.png" data-2x="figma/split/2x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__04.png" src="figma/split/1x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__04.png" alt="메인카테고리__04.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A9%94%EC%9D%B8%EC%B9%B4%ED%85%8C%EA%B3%A0%EB%A6%AC__04.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">메인 페이지 (카테고리 섹션)</code>
+<span class="pane-size">/index.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" alt="구현: 메인 페이지 (카테고리 섹션)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="메인카테고리__04.png" data-group="메인카테고리" data-index="4" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>메인카테고리__04.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+</section>
+<section class="group-section" id="group-%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80">
+<div class="group-header">
+<h2><span class="group-icon">📐</span>병원 페이지</h2>
+<div class="group-meta">
+<span class="group-count">3개 화면</span>
+<span class="src-file">원본: <code>병원페이지.png</code></span>
+<a class="impl-link" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php" target="_blank">🌐 병원 리스트 열기</a>
+</div>
+</div>
+<div class="live-compare" data-group="병원페이지">
+<div class="live-head">
+<span class="live-badge">🔴 LIVE 비교</span>
+<span class="live-note">병원 리스트. 실제 hospitals.php 라이브.</span>
+<div class="live-width-toggle">
+<span class="lw-label">반응형 폭:</span>
+<button class="lw-btn active" data-w="390" onclick="setLiveWidth(this,390)">📱 390</button>
+<button class="lw-btn" data-w="768" onclick="setLiveWidth(this,768)">📲 768</button>
+<button class="lw-btn" data-w="100%" onclick="setLiveWidth(this,'100%')">🖥 100%</button>
+</div>
+</div>
+<div class="live-row">
+<div class="live-left">
+<div class="live-cap">🎨 Figma 원본</div>
+<div class="live-fig-wrap"><img src="figma/split/1x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" alt="병원페이지 Figma" onclick="zoom(this)"></div>
+</div>
+<div class="live-right">
+<div class="live-iframe-wrap" data-w="390">
+<iframe class="live-iframe" src="https://hms.seoulbeauty.app/gangnamunni/hospitals.php?in_figma_review=1" loading="lazy" title="실제 hospitals.php"></iframe>
+</div>
+<div class="live-actions">
+<a href="https://hms.seoulbeauty.app/gangnamunni/hospitals.php" target="_blank" class="live-open-btn">🌐 실제 페이지 새 탭으로 열기</a>
+</div>
+</div>
+</div>
+<div class="optional-blocks">
+<div class="opt-head">🧩 <b>Figma 원본엔 없지만 구현된 부가요소</b> — 표시/숨김 (실제 페이지에 즉시 반영)</div>
+<label class="opt-toggle" title="Figma에 없는 리스트 중간 광고 — admin_ad_settings 연결">
+<input type="checkbox" class="opt-check" data-block="hospitals_infeed_ad" checked onchange="saveBlockToggle(this)">
+<span class="opt-slider"></span>
+<span class="opt-label">인피드 광고</span>
+<span class="opt-desc">Figma에 없는 리스트 중간 광고 — admin_ad_settings 연결</span>
+</label>
+</div>
+</div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #01</span>
+<code class="pane-fname">병원페이지__01.png</code>
+<span class="pane-size">640×1162px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" data-2x="figma/split/2x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" src="figma/split/1x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" alt="병원페이지__01.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__01.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">병원 리스트</code>
+<span class="pane-size">/hospitals.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80.png" alt="구현: 병원 리스트" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="병원페이지__01.png" data-group="병원페이지" data-index="1" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>병원페이지__01.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #02</span>
+<code class="pane-fname">병원페이지__02.png</code>
+<span class="pane-size">640×1162px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__02.png" data-2x="figma/split/2x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__02.png" src="figma/split/1x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__02.png" alt="병원페이지__02.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__02.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">병원 리스트</code>
+<span class="pane-size">/hospitals.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80.png" alt="구현: 병원 리스트" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="병원페이지__02.png" data-group="병원페이지" data-index="2" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>병원페이지__02.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #03</span>
+<code class="pane-fname">병원페이지__03.png</code>
+<span class="pane-size">640×1162px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__03.png" data-2x="figma/split/2x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__03.png" src="figma/split/1x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__03.png" alt="병원페이지__03.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80__03.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">병원 리스트</code>
+<span class="pane-size">/hospitals.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80.png" alt="구현: 병원 리스트" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%B3%91%EC%9B%90%ED%8E%98%EC%9D%B4%EC%A7%80.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="병원페이지__03.png" data-group="병원페이지" data-index="3" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>병원페이지__03.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+</section>
+<section class="group-section" id="group-%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D">
+<div class="group-header">
+<h2><span class="group-icon">📐</span>마이페이지 — 찜 목록</h2>
+<div class="group-meta">
+<span class="group-count">10개 화면</span>
+<span class="src-file">원본: <code>마이페이지_병원,시술 찜 목록.png</code></span>
+<a class="impl-link" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">🌐 마이페이지 열기</a>
+</div>
+<div class="group-note">📌 찜 목록은 마이페이지 내 메뉴로 진입 (별도 페이지 없음)</div>
+</div>
+<div class="live-compare" data-group="마이페이지_병원,시술 찜 목록">
+<div class="live-head">
+<span class="live-badge">🔴 LIVE 비교</span>
+<span class="live-note">찜 목록. 관리자 세션이면 라이브, 아니면 로그인 안내.</span>
+<div class="live-width-toggle">
+<span class="lw-label">반응형 폭:</span>
+<button class="lw-btn active" data-w="390" onclick="setLiveWidth(this,390)">📱 390</button>
+<button class="lw-btn" data-w="768" onclick="setLiveWidth(this,768)">📲 768</button>
+<button class="lw-btn" data-w="100%" onclick="setLiveWidth(this,'100%')">🖥 100%</button>
+</div>
+</div>
+<div class="live-row">
+<div class="live-left">
+<div class="live-cap">🎨 Figma 원본</div>
+<div class="live-fig-wrap"><img src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__01.png" alt="마이페이지_병원,시술 찜 목록 Figma" onclick="zoom(this)"></div>
+</div>
+<div class="live-right">
+<div class="live-iframe-wrap" data-w="390">
+<iframe class="live-iframe" src="https://hms.seoulbeauty.app/gangnamunni/my_wishlist.php?in_figma_review=1" loading="lazy" title="실제 my_wishlist.php"></iframe>
+</div>
+<div class="live-actions">
+<a href="https://hms.seoulbeauty.app/gangnamunni/my_wishlist.php" target="_blank" class="live-open-btn">🌐 실제 페이지 새 탭으로 열기</a>
+</div>
+</div>
+</div>
+
+</div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #01</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__01.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__01.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__01.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__01.png" alt="마이페이지_병원,시술 찜 목록__01.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__01.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__01.png" data-group="마이페이지_병원,시술 찜 목록" data-index="1" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__01.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #02</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__02.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__02.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__02.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__02.png" alt="마이페이지_병원,시술 찜 목록__02.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__02.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__02.png" data-group="마이페이지_병원,시술 찜 목록" data-index="2" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__02.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #03</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__03.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__03.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__03.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__03.png" alt="마이페이지_병원,시술 찜 목록__03.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__03.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__03.png" data-group="마이페이지_병원,시술 찜 목록" data-index="3" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__03.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #04</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__04.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__04.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__04.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__04.png" alt="마이페이지_병원,시술 찜 목록__04.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__04.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__04.png" data-group="마이페이지_병원,시술 찜 목록" data-index="4" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__04.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #05</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__05.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__05.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__05.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__05.png" alt="마이페이지_병원,시술 찜 목록__05.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__05.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__05.png" data-group="마이페이지_병원,시술 찜 목록" data-index="5" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__05.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #06</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__06.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__06.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__06.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__06.png" alt="마이페이지_병원,시술 찜 목록__06.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__06.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__06.png" data-group="마이페이지_병원,시술 찜 목록" data-index="6" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__06.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #07</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__07.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__07.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__07.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__07.png" alt="마이페이지_병원,시술 찜 목록__07.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__07.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__07.png" data-group="마이페이지_병원,시술 찜 목록" data-index="7" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__07.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #08</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__08.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__08.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__08.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__08.png" alt="마이페이지_병원,시술 찜 목록__08.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__08.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__08.png" data-group="마이페이지_병원,시술 찜 목록" data-index="8" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__08.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #09</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__09.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__09.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__09.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__09.png" alt="마이페이지_병원,시술 찜 목록__09.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__09.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__09.png" data-group="마이페이지_병원,시술 찜 목록" data-index="9" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__09.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #10</span>
+<code class="pane-fname">마이페이지_병원,시술 찜 목록__10.png</code>
+<span class="pane-size">640×2664px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__10.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__10.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__10.png" alt="마이페이지_병원,시술 찜 목록__10.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D__10.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_병원,시술 찜 목록__10.png" data-group="마이페이지_병원,시술 찜 목록" data-index="10" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_병원,시술 찜 목록__10.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+</section>
+<section class="group-section" id="group-%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD">
+<div class="group-header">
+<h2><span class="group-icon">📐</span>마이페이지 — 예약 / 결제 내역</h2>
+<div class="group-meta">
+<span class="group-count">12개 화면</span>
+<span class="src-file">원본: <code>마이페이지_내예약_결제내역.png</code></span>
+<a class="impl-link" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">🌐 예약/결제 내역 열기</a>
+</div>
+<div class="group-note">📌 로그인 필요. 3탭(시술예정/시술완료/예약취소)으로 분리 적용됨.</div>
+</div>
+<div class="live-compare" data-group="마이페이지_내예약_결제내역">
+<div class="live-head">
+<span class="live-badge">🔴 LIVE 비교</span>
+<span class="live-note">내 예약/결제 내역. 실제 my_appointments.php.</span>
+<div class="live-width-toggle">
+<span class="lw-label">반응형 폭:</span>
+<button class="lw-btn active" data-w="390" onclick="setLiveWidth(this,390)">📱 390</button>
+<button class="lw-btn" data-w="768" onclick="setLiveWidth(this,768)">📲 768</button>
+<button class="lw-btn" data-w="100%" onclick="setLiveWidth(this,'100%')">🖥 100%</button>
+</div>
+</div>
+<div class="live-row">
+<div class="live-left">
+<div class="live-cap">🎨 Figma 원본</div>
+<div class="live-fig-wrap"><img src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__01.png" alt="마이페이지_내예약_결제내역 Figma" onclick="zoom(this)"></div>
+</div>
+<div class="live-right">
+<div class="live-iframe-wrap" data-w="390">
+<iframe class="live-iframe" src="https://hms.seoulbeauty.app/gangnamunni/my_appointments.php?in_figma_review=1" loading="lazy" title="실제 my_appointments.php"></iframe>
+</div>
+<div class="live-actions">
+<a href="https://hms.seoulbeauty.app/gangnamunni/my_appointments.php" target="_blank" class="live-open-btn">🌐 실제 페이지 새 탭으로 열기</a>
+</div>
+</div>
+</div>
+
+</div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #01</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__01.png</code>
+<span class="pane-size">640×1341px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__01.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__01.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__01.png" alt="마이페이지_내예약_결제내역__01.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__01.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__01.png" data-group="마이페이지_내예약_결제내역" data-index="1" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__01.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #02</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__02.png</code>
+<span class="pane-size">640×1341px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__02.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__02.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__02.png" alt="마이페이지_내예약_결제내역__02.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__02.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__02.png" data-group="마이페이지_내예약_결제내역" data-index="2" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__02.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #03</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__03.png</code>
+<span class="pane-size">640×1068px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__03.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__03.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__03.png" alt="마이페이지_내예약_결제내역__03.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__03.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__03.png" data-group="마이페이지_내예약_결제내역" data-index="3" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__03.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #04</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__04.png</code>
+<span class="pane-size">640×1068px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__04.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__04.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__04.png" alt="마이페이지_내예약_결제내역__04.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__04.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__04.png" data-group="마이페이지_내예약_결제내역" data-index="4" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__04.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #05</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__05.png</code>
+<span class="pane-size">640×1068px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__05.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__05.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__05.png" alt="마이페이지_내예약_결제내역__05.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__05.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__05.png" data-group="마이페이지_내예약_결제내역" data-index="5" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__05.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #06</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__06.png</code>
+<span class="pane-size">640×1392px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__06.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__06.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__06.png" alt="마이페이지_내예약_결제내역__06.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__06.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__06.png" data-group="마이페이지_내예약_결제내역" data-index="6" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__06.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #07</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__07.png</code>
+<span class="pane-size">640×1392px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__07.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__07.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__07.png" alt="마이페이지_내예약_결제내역__07.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__07.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__07.png" data-group="마이페이지_내예약_결제내역" data-index="7" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__07.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #08</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__08.png</code>
+<span class="pane-size">640×1392px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__08.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__08.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__08.png" alt="마이페이지_내예약_결제내역__08.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__08.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__08.png" data-group="마이페이지_내예약_결제내역" data-index="8" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__08.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #09</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__09.png</code>
+<span class="pane-size">640×1392px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__09.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__09.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__09.png" alt="마이페이지_내예약_결제내역__09.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__09.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__09.png" data-group="마이페이지_내예약_결제내역" data-index="9" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__09.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #10</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__10.png</code>
+<span class="pane-size">640×1392px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__10.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__10.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__10.png" alt="마이페이지_내예약_결제내역__10.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__10.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__10.png" data-group="마이페이지_내예약_결제내역" data-index="10" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__10.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #11</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__11.png</code>
+<span class="pane-size">640×1392px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__11.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__11.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__11.png" alt="마이페이지_내예약_결제내역__11.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__11.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__11.png" data-group="마이페이지_내예약_결제내역" data-index="11" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__11.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #12</span>
+<code class="pane-fname">마이페이지_내예약_결제내역__12.png</code>
+<span class="pane-size">640×1392px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__12.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__12.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__12.png" alt="마이페이지_내예약_결제내역__12.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD__12.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">예약/결제 내역</code>
+<span class="pane-size">/my_bookings.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" alt="구현: 예약/결제 내역" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%98%88%EC%95%BD_%EA%B2%B0%EC%A0%9C%EB%82%B4%EC%97%AD.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내예약_결제내역__12.png" data-group="마이페이지_내예약_결제내역" data-index="12" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내예약_결제내역__12.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+</section>
+<section class="group-section" id="group-%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0">
+<div class="group-header">
+<h2><span class="group-icon">📐</span>마이페이지 — 내가 작성한 후기</h2>
+<div class="group-meta">
+<span class="group-count">5개 화면</span>
+<span class="src-file">원본: <code>마이페이지_내가 작성한 후기.png</code></span>
+<a class="impl-link" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">🌐 마이페이지 (내 후기 메뉴) 열기</a>
+</div>
+<div class="group-note">📌 Figma #01은 마이페이지 메인. 후기 리스트 페이지는 mypage 안 "내가 작성한 후기" 메뉴 클릭 시 my_reviews.php로 이동.</div>
+</div>
+<div class="live-compare" data-group="마이페이지_내가 작성한 후기">
+<div class="live-head">
+<span class="live-badge">🔴 LIVE 비교</span>
+<span class="live-note">내가 작성한 후기. 관리자 세션이면 라이브.</span>
+<div class="live-width-toggle">
+<span class="lw-label">반응형 폭:</span>
+<button class="lw-btn active" data-w="390" onclick="setLiveWidth(this,390)">📱 390</button>
+<button class="lw-btn" data-w="768" onclick="setLiveWidth(this,768)">📲 768</button>
+<button class="lw-btn" data-w="100%" onclick="setLiveWidth(this,'100%')">🖥 100%</button>
+</div>
+</div>
+<div class="live-row">
+<div class="live-left">
+<div class="live-cap">🎨 Figma 원본</div>
+<div class="live-fig-wrap"><img src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__01.png" alt="마이페이지_내가 작성한 후기 Figma" onclick="zoom(this)"></div>
+</div>
+<div class="live-right">
+<div class="live-iframe-wrap" data-w="390">
+<iframe class="live-iframe" src="https://hms.seoulbeauty.app/gangnamunni/my_reviews.php?in_figma_review=1" loading="lazy" title="실제 my_reviews.php"></iframe>
+</div>
+<div class="live-actions">
+<a href="https://hms.seoulbeauty.app/gangnamunni/my_reviews.php" target="_blank" class="live-open-btn">🌐 실제 페이지 새 탭으로 열기</a>
+</div>
+</div>
+</div>
+
+</div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #01</span>
+<code class="pane-fname">마이페이지_내가 작성한 후기__01.png</code>
+<span class="pane-size">640×1360px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__01.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__01.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__01.png" alt="마이페이지_내가 작성한 후기__01.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__01.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지 (내 후기 메뉴)</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지 (내 후기 메뉴)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내가 작성한 후기__01.png" data-group="마이페이지_내가 작성한 후기" data-index="1" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내가 작성한 후기__01.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #02</span>
+<code class="pane-fname">마이페이지_내가 작성한 후기__02.png</code>
+<span class="pane-size">640×1360px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__02.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__02.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__02.png" alt="마이페이지_내가 작성한 후기__02.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__02.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지 (내 후기 메뉴)</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지 (내 후기 메뉴)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내가 작성한 후기__02.png" data-group="마이페이지_내가 작성한 후기" data-index="2" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내가 작성한 후기__02.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #03</span>
+<code class="pane-fname">마이페이지_내가 작성한 후기__03.png</code>
+<span class="pane-size">640×1360px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__03.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__03.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__03.png" alt="마이페이지_내가 작성한 후기__03.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__03.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지 (내 후기 메뉴)</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지 (내 후기 메뉴)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내가 작성한 후기__03.png" data-group="마이페이지_내가 작성한 후기" data-index="3" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내가 작성한 후기__03.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #04</span>
+<code class="pane-fname">마이페이지_내가 작성한 후기__04.png</code>
+<span class="pane-size">640×1360px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__04.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__04.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__04.png" alt="마이페이지_내가 작성한 후기__04.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__04.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지 (내 후기 메뉴)</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지 (내 후기 메뉴)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내가 작성한 후기__04.png" data-group="마이페이지_내가 작성한 후기" data-index="4" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내가 작성한 후기__04.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #05</span>
+<code class="pane-fname">마이페이지_내가 작성한 후기__05.png</code>
+<span class="pane-size">640×1360px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__05.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__05.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__05.png" alt="마이페이지_내가 작성한 후기__05.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EA%B0%80%20%EC%9E%91%EC%84%B1%ED%95%9C%20%ED%9B%84%EA%B8%B0__05.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지 (내 후기 메뉴)</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지 (내 후기 메뉴)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이페이지_내가 작성한 후기__05.png" data-group="마이페이지_내가 작성한 후기" data-index="5" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이페이지_내가 작성한 후기__05.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+</section>
+<section class="group-section" id="group-%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95">
+<div class="group-header">
+<h2><span class="group-icon">📐</span>마이페이지 — 정보수정 / 프로필 수정</h2>
+<div class="group-meta">
+<span class="group-count">4개 화면</span>
+<span class="src-file">원본: <code>마이 페이지_내정보수정_프로필수정.png</code></span>
+<a class="impl-link" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">🌐 마이페이지 (프로필 설정) 열기</a>
+</div>
+<div class="group-note">📌 Figma #01은 마이페이지 메인. 프로필 수정 폼은 우측 톱니 아이콘 → profile_edit.php로 이동.</div>
+</div>
+<div class="live-compare" data-group="마이 페이지_내정보수정_프로필수정">
+<div class="live-head">
+<span class="live-badge">🔴 LIVE 비교</span>
+<span class="live-note">마이페이지/프로필. 실제 mypage.php.</span>
+<div class="live-width-toggle">
+<span class="lw-label">반응형 폭:</span>
+<button class="lw-btn active" data-w="390" onclick="setLiveWidth(this,390)">📱 390</button>
+<button class="lw-btn" data-w="768" onclick="setLiveWidth(this,768)">📲 768</button>
+<button class="lw-btn" data-w="100%" onclick="setLiveWidth(this,'100%')">🖥 100%</button>
+</div>
+</div>
+<div class="live-row">
+<div class="live-left">
+<div class="live-cap">🎨 Figma 원본</div>
+<div class="live-fig-wrap"><img src="figma/split/1x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__01.png" alt="마이 페이지_내정보수정_프로필수정 Figma" onclick="zoom(this)"></div>
+</div>
+<div class="live-right">
+<div class="live-iframe-wrap" data-w="390">
+<iframe class="live-iframe" src="https://hms.seoulbeauty.app/gangnamunni/mypage.php?in_figma_review=1" loading="lazy" title="실제 mypage.php"></iframe>
+</div>
+<div class="live-actions">
+<a href="https://hms.seoulbeauty.app/gangnamunni/mypage.php" target="_blank" class="live-open-btn">🌐 실제 페이지 새 탭으로 열기</a>
+</div>
+</div>
+</div>
+
+</div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #01</span>
+<code class="pane-fname">마이 페이지_내정보수정_프로필수정__01.png</code>
+<span class="pane-size">640×1844px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__01.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__01.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__01.png" alt="마이 페이지_내정보수정_프로필수정__01.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__01.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지 (프로필 설정)</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지 (프로필 설정)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이 페이지_내정보수정_프로필수정__01.png" data-group="마이 페이지_내정보수정_프로필수정" data-index="1" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이 페이지_내정보수정_프로필수정__01.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #02</span>
+<code class="pane-fname">마이 페이지_내정보수정_프로필수정__02.png</code>
+<span class="pane-size">640×1844px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__02.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__02.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__02.png" alt="마이 페이지_내정보수정_프로필수정__02.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__02.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지 (프로필 설정)</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지 (프로필 설정)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이 페이지_내정보수정_프로필수정__02.png" data-group="마이 페이지_내정보수정_프로필수정" data-index="2" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이 페이지_내정보수정_프로필수정__02.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #03</span>
+<code class="pane-fname">마이 페이지_내정보수정_프로필수정__03.png</code>
+<span class="pane-size">640×1844px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__03.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__03.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__03.png" alt="마이 페이지_내정보수정_프로필수정__03.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__03.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지 (프로필 설정)</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지 (프로필 설정)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이 페이지_내정보수정_프로필수정__03.png" data-group="마이 페이지_내정보수정_프로필수정" data-index="3" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이 페이지_내정보수정_프로필수정__03.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #04</span>
+<code class="pane-fname">마이 페이지_내정보수정_프로필수정__04.png</code>
+<span class="pane-size">640×1844px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__04.png" data-2x="figma/split/2x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__04.png" src="figma/split/1x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__04.png" alt="마이 페이지_내정보수정_프로필수정__04.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/%EB%A7%88%EC%9D%B4%20%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%82%B4%EC%A0%95%EB%B3%B4%EC%88%98%EC%A0%95_%ED%94%84%EB%A1%9C%ED%95%84%EC%88%98%EC%A0%95__04.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">마이페이지 (프로필 설정)</code>
+<span class="pane-size">/mypage.php</span>
+</div>
+<div class="pane-img-wrap impl">
+<img src="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" alt="구현: 마이페이지 (프로필 설정)" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a class="goto" href="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php" target="_blank">→ 실제 페이지 열기</a>
+<a href="figma/impl_capture/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80_%EB%B3%91%EC%9B%90%2C%EC%8B%9C%EC%88%A0%20%EC%B0%9C%20%EB%AA%A9%EB%A1%9D.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="마이 페이지_내정보수정_프로필수정__04.png" data-group="마이 페이지_내정보수정_프로필수정" data-index="4" data-current-url="https://hms.seoulbeauty.app/hairwang/gangnamunni/mypage.php">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>마이 페이지_내정보수정_프로필수정__04.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+</section>
+<section class="group-section" id="group-App_icon">
+<div class="group-header">
+<h2><span class="group-icon">📐</span>앱 아이콘</h2>
+<div class="group-meta">
+<span class="group-count">1개 화면</span>
+<span class="src-file">원본: <code>App_icon.png</code></span>
+</div>
+<div class="group-note">📌 앱 빌드 시점에 반영</div>
+</div>
+<div class="live-compare" data-group="App_icon">
+<div class="live-head">
+<span class="live-badge">🔴 LIVE 비교</span>
+<span class="live-note">앱 아이콘 — 빌드 리소스. 웹 페이지 없음.</span>
+
+</div>
+<div class="live-row">
+<div class="live-left">
+<div class="live-cap">🎨 Figma 원본</div>
+<div class="live-fig-wrap"><img src="figma/split/1x/App_icon.png" alt="App_icon Figma" onclick="zoom(this)"></div>
+</div>
+<div class="live-right">
+<div class="live-noweb">📱 앱 아이콘 — 빌드 리소스. 웹 페이지 없음.</div>
+</div>
+</div>
+
+</div>
+<div class="row-compare">
+<div class="pane pane-figma">
+<div class="pane-header">
+<span class="pane-badge figma-badge">🎨 FIGMA #01</span>
+<code class="pane-fname">App_icon.png</code>
+<span class="pane-size">1024×1024px</span>
+</div>
+<div class="pane-img-wrap">
+<img data-1x="figma/split/1x/App_icon.png" data-2x="figma/split/2x/App_icon.png" src="figma/split/1x/App_icon.png" alt="App_icon.png" onclick="zoom(this)">
+</div>
+<div class="pane-footer">
+<a href="figma/split/2x/App_icon.png" target="_blank">🔍 원본(2x) 새 탭</a>
+</div>
+</div>
+<div class="pane pane-impl">
+<div class="pane-header">
+<span class="pane-badge impl-badge">💻 IMPL</span>
+<code class="pane-fname">앱 아이콘</code>
+</div>
+<div class="pane-img-wrap impl">
+<img src="App_icon_512.png" alt="구현: 앱 아이콘" onclick="zoomDirect(this)">
+</div>
+<div class="pane-footer">
+<a href="App_icon_512.png" target="_blank">🔍 캡처 원본</a>
+</div>
+</div>
+</div>
+<div class="note-form" data-filename="App_icon.png" data-group="App_icon" data-index="1" data-current-url="">
+<div class="note-header">
+<span class="note-title">📝 검수 메모 — <code>App_icon.png</code></span>
+<span class="note-status" data-status-display>📋 로딩중...</span>
+</div>
+<div class="note-body">
+<div class="note-row">
+<label class="note-check"><input type="checkbox" data-field="is_wrong_match"> <span>매칭이 잘못됨</span></label>
+<select data-field="priority" class="note-priority">
+<option value="medium">🟡 중간</option>
+<option value="high">🔴 긴급</option>
+<option value="low">⚪ 낮음</option>
+</select>
+</div>
+<div class="note-row">
+<input type="text" data-field="suggested_impl_url" class="note-input" placeholder="올바른 구현 URL (선택)">
+</div>
+<div class="note-row">
+<textarea data-field="fix_prompt" class="note-textarea" rows="3" placeholder="수정 프롬프트 (예: 헤더 색상 #ae1932 적용 필요)"></textarea>
+</div>
+<div class="note-row note-actions">
+<button class="note-save-btn" onclick="saveNote(this)">💾 DB에 저장</button>
+<span class="note-saved-msg" data-saved-msg></span>
+</div>
+<div class="claude-response-display" data-claude-response style="display:none"></div>
+</div></div>
+</section>
+
+<section class="summary">
+  <h2>📋 다음 단계 — 차이 검수 및 우선순위 정리</h2>
+  <ul>
+    <li><strong>1단계 (오늘~6/9)</strong>: 위 화면들 훑어보면서 피그마 vs 구현 차이 발견 → 화면별 이슈 목록화</li>
+    <li><strong>2단계 (6/10~6/13)</strong>: 발견된 차이를 색상/간격/레이아웃/누락 컴포넌트로 분류 → 우선순위 부여</li>
+    <li><strong>3단계 (6/14~6/15)</strong>: 잔여 1차 검수 5% + 차이 보강 작업 → 6/16 인계 전 안정화 검증</li>
+  </ul>
+  <h3 style="color:#fff;font-size:15px;margin-top:18px;">🎯 디자인 토큰으로 조정 가능한 항목 (admin 패널에서 바로 변경)</h3>
+  <ul>
+    <li>Primary 색상, Bottom Nav 4탭(아이콘/라벨/URL), 검색 placeholder, 섹션 타이틀, 광고 배치, 정렬 칩 4종 — <code>admin_live_panel.php</code></li>
+    <li>병원 리스트 3뷰 모드(서울미녀/카드/리스트) — <code>admin_ad_settings.php</code></li>
+    <li>총 60+ 디자인 토큰 활성 (<code>dm_mode='figma'</code> + <code>fd_*</code>)</li>
+  </ul>
+  <h3 style="color:#fff;font-size:15px;margin-top:18px;">🛠 향후 업데이트 방법</h3>
+  <ul>
+    <li>피그마 새 export → <code>figma/Seoul Beauty App/</code> & <code>figma/Seoul Beauty App (1)/</code>에 덮어쓰기</li>
+    <li>스플리터 재실행: <code>python _split_figma_screens.py</code></li>
+    <li>이 HTML 재빌드: <code>python _build_compare_v2.py</code></li>
+    <li>구현 페이지 캡처 재실행: <code>node _capture_impl_for_figma_compare.js</code></li>
+  </ul>
+</section>
+
+</div>
+<div class="modal" id="zoomModal" onclick="closeZoom()">
+<div class="modal-close">×</div>
+<img id="zoomImg" src="" alt="">
+</div>
+<script>
+const QUALITY_KEY = 'figmaQuality';
+const SIZE_KEY    = 'figmaSize';
+
+function setSize(s) {
+  // 모든 크기 클래스 제거 후 새 클래스 적용
+  document.body.classList.remove('size-xs','size-sm','size-md','size-lg','size-xl','size-xxl','size-xxxl','size-auto');
+  document.body.classList.add('size-' + s);
+  document.querySelectorAll('.size-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.size === s);
+  });
+  try { localStorage.setItem(SIZE_KEY, s); } catch(e) {}
+}
+
+function setQuality(q) {
+  document.querySelectorAll('img[data-1x]').forEach(img => {
+    img.src = img.getAttribute('data-' + q);
+  });
+  document.querySelectorAll('.ctrl-btn[data-quality]').forEach(b => {
+    b.classList.toggle('active', b.dataset.quality === q);
+  });
+  try { localStorage.setItem(QUALITY_KEY, q); } catch(e) {}
+}
+function zoom(img) {
+  // Always zoom into 2x version for clarity
+  const src2x = img.getAttribute('data-2x') || img.src;
+  document.getElementById('zoomImg').src = src2x;
+  document.getElementById('zoomModal').classList.add('show');
+}
+function zoomDirect(img) {
+  document.getElementById('zoomImg').src = img.src;
+  document.getElementById('zoomModal').classList.add('show');
+}
+function closeZoom() {
+  document.getElementById('zoomModal').classList.remove('show');
+}
+function toggleNav() {
+  document.getElementById('navPanel').classList.toggle('show');
+}
+const savedQ = (() => { try { return localStorage.getItem(QUALITY_KEY); } catch(e) { return null; } })();
+if (savedQ === '2x') setQuality('2x');
+const savedSize = (() => { try { return localStorage.getItem(SIZE_KEY); } catch(e) { return null; } })();
+setSize(savedSize || 'sm');
+// Close nav when clicking link
+document.querySelectorAll('.nav-panel a').forEach(a => {
+  a.addEventListener('click', () => {
+    if (window.innerWidth < 1200) document.getElementById('navPanel').classList.remove('show');
+  });
+});
+
+// ====================================================================
+// 검수 메모 — DB 저장/로드
+// ====================================================================
+const API_BASE = (window.API_BASE || '').replace(/\/$/, '');
+const STATUS_LABEL = {
+  'pending':'⏳ 대기중','in_progress':'🔵 진행중','done':'✅ 완료','rejected':'❌ 반려','new':'➕ 새 메모'
+};
+
+// 페이지 로드 시 기존 메모 일괄 조회
+async function loadAllNotes() {
+  try {
+    const url = (API_BASE || '') + '/api_figma_note_load.php?all=1';
+    const r = await fetch(url);
+    const d = await r.json();
+    if (!d.ok) {
+      console.warn('Load failed:', d.error);
+      // 모든 메모를 "new" 상태로 초기화
+      document.querySelectorAll('.note-form').forEach(f => setStatusBadge(f, 'new'));
+      return;
+    }
+    const notes = d.notes || {};
+    document.querySelectorAll('.note-form').forEach(form => {
+      const fname = form.dataset.filename;
+      const note = notes[fname];
+      if (note) {
+        form.querySelector('[data-field="is_wrong_match"]').checked = note.is_wrong_match == 1;
+        form.querySelector('[data-field="suggested_impl_url"]').value = note.suggested_impl_url || '';
+        form.querySelector('[data-field="fix_prompt"]').value = note.fix_prompt || '';
+        form.querySelector('[data-field="priority"]').value = note.priority || 'medium';
+        setStatusBadge(form, note.status || 'pending');
+        if (note.claude_response) {
+          const div = form.querySelector('[data-claude-response]');
+          div.style.display = 'block';
+          div.innerHTML = '<strong>🤖 Claude:</strong>\n' + escapeHtml(note.claude_response);
+        }
+      } else {
+        setStatusBadge(form, 'new');
+      }
+    });
+  } catch (e) {
+    console.error('Load error:', e);
+    document.querySelectorAll('.note-form').forEach(f => setStatusBadge(f, 'new'));
+  }
+}
+
+function setStatusBadge(form, status) {
+  const el = form.querySelector('[data-status-display]');
+  if (!el) return;
+  el.className = 'note-status ' + status;
+  el.textContent = STATUS_LABEL[status] || status;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function saveNote(btn) {
+  const form = btn.closest('.note-form');
+  const msg = form.querySelector('[data-saved-msg]');
+  btn.disabled = true;
+  msg.classList.remove('show', 'error');
+
+  const data = {
+    figma_filename:     form.dataset.filename,
+    figma_group:        form.dataset.group,
+    figma_index:        parseInt(form.dataset.index, 10),
+    current_impl_url:   form.dataset.currentUrl,
+    is_wrong_match:     form.querySelector('[data-field="is_wrong_match"]').checked ? 1 : 0,
+    suggested_impl_url: form.querySelector('[data-field="suggested_impl_url"]').value.trim(),
+    fix_prompt:         form.querySelector('[data-field="fix_prompt"]').value.trim(),
+    priority:           form.querySelector('[data-field="priority"]').value,
+  };
+
+  try {
+    const url = (API_BASE || '') + '/api_figma_note_save.php';
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await r.json();
+    if (result.ok) {
+      msg.textContent = '✅ 저장됨 (ID: ' + result.id + ')';
+      msg.classList.add('show');
+      setStatusBadge(form, 'pending');
+      setTimeout(() => msg.classList.remove('show'), 3000);
+    } else {
+      msg.textContent = '❌ 실패: ' + (result.error || '알 수 없는 오류');
+      msg.classList.add('show', 'error');
+    }
+  } catch (e) {
+    msg.textContent = '❌ 네트워크 오류: ' + e.message;
+    msg.classList.add('show', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// 페이지 로드 시 메모 자동 로드
+document.addEventListener('DOMContentLoaded', loadAllNotes);
+</script>
+<script>
+
+// ===== LIVE 비교: 폭 토글 =====
+function setLiveWidth(btn, w){
+  var head = btn.closest('.live-compare');
+  head.querySelectorAll('.lw-btn').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  var wrap = head.querySelector('.live-iframe-wrap');
+  if(wrap){ wrap.style.width = (w==='100%') ? '100%' : (w+'px'); }
+}
+// ===== 부가요소 ON/OFF 저장 (DB figma_block_toggles) =====
+function saveBlockToggle(chk){
+  var key = chk.getAttribute('data-block');
+  var visible = chk.checked ? 1 : 0;
+  chk.disabled = true;
+  fetch('api_figma_block_toggle.php', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({block_key:key, is_visible:visible})
+  }).then(function(r){return r.json()})
+   .then(function(d){
+     chk.disabled = false;
+     if(!d.ok){ alert('저장 실패: '+(d.error||'')); chk.checked = !chk.checked; return; }
+     // 같은 key 토글 동기화
+     document.querySelectorAll('.opt-check[data-block="'+key+'"]').forEach(function(c){ c.checked = chk.checked; });
+     // 해당 그룹 iframe 새로고침 → 즉시 반영 확인
+     var lc = chk.closest('.live-compare');
+     var ifr = lc ? lc.querySelector('.live-iframe') : null;
+     if(ifr){ ifr.src = ifr.src; }
+   }).catch(function(e){ chk.disabled=false; alert('오류: '+e); chk.checked=!chk.checked; });
+}
+// 초기 로드: 저장된 토글 상태 반영
+(function(){
+  fetch('api_figma_block_toggle.php?action=list')
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if(!d.ok || !d.toggles) return;
+      Object.keys(d.toggles).forEach(function(k){
+        var vis = d.toggles[k] == 1;
+        document.querySelectorAll('.opt-check[data-block="'+k+'"]').forEach(function(c){ c.checked = vis; });
+      });
+    }).catch(function(){});
+})();
+
+</script>
+</body></html>

@@ -1,0 +1,355 @@
+{
+  "_comment": "서울미녀 에디터 전용 매뉴얼",
+  "_version": "2.0.0",
+  "_updated": "2026-03-05",
+  "title": "서울미녀 에디터 매뉴얼",
+  "configKey": "editor-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/hairwang/gangnamunni/",
+  "browser": {
+    "headless": true,
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "captureDelay": 2000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "timeout": 30000
+  },
+  "login": {
+    "required": true,
+    "url": "dashboard.php",
+    "usernameField": "input[name='username']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[name='login']",
+    "username": "test",
+    "password": "test1234",
+    "successIndicator": ".admin-sidebar"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "에디터 로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 결과 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "서울미녀 에디터 매뉴얼",
+    "subtitle": "에디터 권한 페이지 스크린샷 가이드",
+    "author": "Seoul Beauty Admin",
+    "outputDir": "../uploads/editor-book",
+    "manualDir": "../manual/editor_manual"
+  },
+  "chapters": [
+    {
+      "id": "ch01_dashboard",
+      "title": "대시보드",
+      "icon": "bi-speedometer2",
+      "pages": [
+        {
+          "key": "dashboard",
+          "label": "관리자 대시보드",
+          "url": "dashboard.php",
+          "description": "전체 현황 요약, 통계, 빠른 접근 메뉴",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "fix_log",
+          "label": "수정 이력",
+          "url": "admin_fix_log.php",
+          "description": "시스템 수정 이력 조회 및 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_content",
+      "title": "콘텐츠 관리",
+      "icon": "bi-file-earmark-text",
+      "pages": [
+        {
+          "key": "hospitals",
+          "label": "병원 목록",
+          "url": "admin_hospitals.php",
+          "description": "등록된 병원 목록 및 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "hospital_images",
+          "label": "병원 이미지",
+          "url": "admin_hospital_images.php",
+          "description": "병원별 이미지 업로드 및 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "reviews",
+          "label": "후기 관리",
+          "url": "admin_reviews.php",
+          "description": "후기 승인/거절 워크플로우",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "events",
+          "label": "이벤트 관리",
+          "url": "admin_events.php",
+          "description": "이벤트 목록 및 상세 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "tips",
+          "label": "꿀팁/커뮤니티",
+          "url": "admin_tips.php",
+          "description": "뷰티 꿀팁, 커뮤니티 글 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "columns",
+          "label": "칼럼/뉴스",
+          "url": "admin_columns.php",
+          "description": "의학 칼럼 및 뉴스 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "promos",
+          "label": "프로모션 관리",
+          "url": "admin_promos.php",
+          "description": "프로모션 캐러셀 및 배너 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "categories",
+          "label": "카테고리 관리",
+          "url": "admin_categories.php",
+          "description": "콘텐츠 카테고리 분류 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch03_members",
+      "title": "회원 관리",
+      "icon": "bi-people",
+      "pages": [
+        {
+          "key": "doctors",
+          "label": "의사 관리",
+          "url": "admin_doctors.php",
+          "description": "등록된 의사 목록 및 정보 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch05_ads",
+      "title": "광고 관리",
+      "icon": "bi-megaphone",
+      "pages": [
+        {
+          "key": "ads",
+          "label": "광고 목록",
+          "url": "admin_ads.php",
+          "description": "광고 등록/승인/거절 워크플로우",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "ad_settings",
+          "label": "광고 표시 설정",
+          "url": "admin_ad_settings.php",
+          "description": "ON/OFF 플래그, 3뷰 모드 설정",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch06_wizards",
+      "title": "등록 마법사",
+      "icon": "bi-magic",
+      "pages": [
+        {
+          "key": "hospital_wizard",
+          "label": "병원 등록",
+          "url": "admin_hospital_wizard.php",
+          "description": "5단계 병원 등록 마법사",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "review_wizard",
+          "label": "후기 등록",
+          "url": "admin_review_wizard.php",
+          "description": "후기 등록 마법사",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "ad_wizard",
+          "label": "광고 등록",
+          "url": "admin_ad_wizard.php",
+          "description": "5단계 광고 등록 마법사",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch10_system",
+      "title": "시스템 설정",
+      "icon": "bi-gear",
+      "pages": [
+        {
+          "key": "navigation",
+          "label": "네비게이션",
+          "url": "admin_navigation.php",
+          "description": "하단 네비게이션 메뉴 설정",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "notifications",
+          "label": "알림 관리",
+          "url": "admin_notifications.php",
+          "description": "알림 목록 및 관리 (4탭)",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch11_tools",
+      "title": "도구",
+      "icon": "bi-tools",
+      "pages": [
+        {
+          "key": "auto_manual",
+          "label": "자동 매뉴얼",
+          "url": "admin_auto_manual.php",
+          "description": "자동 스크린샷 매뉴얼 생성 도구",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "auto_test",
+          "label": "자동 테스트 v1",
+          "url": "admin_auto_test.php",
+          "description": "자동화 테스트 실행 v1",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "auto_test_v2",
+          "label": "자동 테스트 v2",
+          "url": "admin_auto_test_v2.php",
+          "description": "자동화 테스트 실행 v2",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "screenshot_app",
+          "label": "스크린샷 앱",
+          "url": "admin_screenshot_app.php",
+          "description": "페이지별 스크린샷 캡처 도구",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "screenshot_book",
+          "label": "스크린샷 북",
+          "url": "admin_screenshot_book.php",
+          "description": "스크린샷 북 생성 및 관리",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "wizard_guide",
+          "label": "마법사 가이드",
+          "url": "admin_wizard_guide.php",
+          "description": "등록 마법사 사용 가이드",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "menu_guide",
+          "label": "메뉴 가이드",
+          "url": "admin_menu_guide.php",
+          "description": "관리자 메뉴 구조 가이드",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

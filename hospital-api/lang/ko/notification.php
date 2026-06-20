@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'title' => '알림',
+    'lbl_text' => '텍스트',
+    'lbl_module' => '모듈',
+    'lbl_update' => '업데이트 일시',
+    'title_template' => '알림 템플릿',
+    'lbl_id' => 'ID',
+    'lbl_label' => '레이블',
+    'lbl_type' => '유형',
+    'lbl_status' => '상태',
+    'lbl_action' => '작업',
+    'lbl_to' => '받는 사람',
+    'lbl_bcc' => '숨은 참조',
+    'lbl_cc' => '참조',
+    'edit' => ' 수정',
+    'parameters' => '알림 매개변수',
+    'template' => '템플릿',
+    'lbl_customer' => '고객',
+    'list' => '목록',
+    'notification_deleted' => '알림이 삭제되었습니다',
+    'lbl_patient' => '환자',
+    'email_templates' => '이메일 템플릿',
+];

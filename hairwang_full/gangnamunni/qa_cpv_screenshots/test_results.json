@@ -1,0 +1,59 @@
+[
+  {
+    "name": "CPV 통합 설정",
+    "status": "PASS",
+    "code": 200,
+    "title": "CPV 과금 설정 | 서울미녀 관리자"
+  },
+  {
+    "name": "지갑 관리",
+    "status": "PASS",
+    "code": 200,
+    "title": "지갑 관리 | 서울미녀 관리자"
+  },
+  {
+    "name": "CPV 단가 규칙",
+    "status": "PASS",
+    "code": 200,
+    "title": "CPV 단가 규칙 관리 | 서울미녀 관리자"
+  },
+  {
+    "name": "CPV 대시보드",
+    "status": "PASS",
+    "code": 200,
+    "title": "CPV 대시보드 | 서울미녀 관리자"
+  },
+  {
+    "name": "정산 리포트",
+    "status": "PASS",
+    "code": 200,
+    "title": "CPV 정산 보고서 | 서울미녀 관리자"
+  },
+  {
+    "name": "파트너 지갑",
+    "status": "PASS",
+    "code": 200,
+    "title": "CPV 지갑 - 서울미녀 파트너"
+  },
+  {
+    "name": "파트너 설정",
+    "status": "PASS",
+    "code": 200,
+    "title": ""
+  },
+  {
+    "name": "Settings API",
+    "status": "PASS",
+    "note": "66 settings"
+  },
+  {
+    "name": "Wallet API",
+    "status": "PASS",
+    "note": "{\"success\":true,\"wallets\":0}"
+  },
+  {
+    "name": "CPV Track API",
+    "status": "PASS",
+    "note": "{\"success\":false,\"message\":\"유효하지 않은 page_type\"}"
+  }
+]

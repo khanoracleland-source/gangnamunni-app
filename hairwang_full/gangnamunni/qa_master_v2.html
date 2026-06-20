@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Master Dashboard v3 — Seoul Beauty</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+:root{--pri:#7C3AED;--ok:#22c55e;--fail:#ef4444;--warn:#f59e0b;--fix:#3b82f6;--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text2:#64748b;--radius:12px;--app:#06b6d4}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;padding-bottom:60px}
+.header{background:linear-gradient(135deg,#7C3AED 0%,#5B21B6 100%);color:#fff;padding:16px;text-align:center}
+.header h1{font-size:20px;font-weight:700}
+.header p{font-size:12px;opacity:.8}
+.tabs{display:flex;overflow-x:auto;background:#fff;border-bottom:2px solid var(--border);position:sticky;top:0;z-index:100;-webkit-overflow-scrolling:touch}
+.tab-btn{flex:0 0 auto;padding:10px 14px;font-size:13px;font-weight:600;color:var(--text2);border:none;background:none;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;transition:.2s}
+.tab-btn.active{color:var(--pri);border-bottom-color:var(--pri)}
+.tab-btn .badge{display:inline-block;background:var(--pri);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px}
+
+/* 요약 */
+.summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:16px;max-width:1200px;margin:0 auto}
+.stat-card{background:var(--card);border-radius:var(--radius);padding:12px;text-align:center;border:1px solid var(--border)}
+.stat-card .num{font-size:26px;font-weight:800}
+.stat-card .lbl{font-size:11px;color:var(--text2)}
+.stat-card.ok .num{color:var(--ok)}.stat-card.fail .num{color:var(--fail)}.stat-card.warn .num{color:var(--warn)}.stat-card.fix .num{color:var(--fix)}
+.progress-section{padding:0 16px 16px;max-width:1200px;margin:0 auto}
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.prog-label{width:100px;font-weight:600;flex-shrink:0}
+.prog-bar-bg{flex:1;height:20px;background:#e2e8f0;border-radius:10px;overflow:hidden;position:relative}
+.prog-bar-fill{height:100%;border-radius:10px;transition:width .5s;background:linear-gradient(90deg,var(--pri),#a78bfa)}
+.prog-pct{width:45px;text-align:right;font-weight:700;font-size:12px}
+.prog-detail{font-size:11px;color:var(--text2);width:80px;text-align:right}
+
+/* 컨트롤 바 */
+.controls{display:flex;gap:8px;padding:12px 16px;align-items:center;flex-wrap:wrap;background:#fff;border-bottom:1px solid var(--border)}
+.controls input{flex:1;min-width:120px;padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:14px}
+.controls input:focus{border-color:var(--pri);outline:none}
+.controls select{padding:8px 12px;border:2px solid var(--border);border-radius:8px;font-size:14px;background:#fff}
+.controls button{padding:8px 16px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600}
+.btn-pri{background:var(--pri);color:#fff}
+.btn-blue{background:#0ea5e9;color:#fff}
+.btn-green{background:var(--ok);color:#fff}
+
+/* 카드 리스트 — 풀폭 1열 */
+.card-list{padding:8px 16px;display:flex;flex-direction:column;gap:20px}
+
+/* 기능 카드 */
+.feature-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden}
+.feature-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-bottom:1px solid var(--border)}
+.feature-head.app-head{background:linear-gradient(135deg,#ecfeff,#cffafe)}
+.feature-head .fid{font-weight:800;font-size:16px;color:var(--pri)}
+.feature-head .fname{font-size:15px;font-weight:600;margin-left:8px}
+.feature-head .file{font-size:12px;color:var(--text2);margin-top:1px}
+.feature-head .platform-badge{font-size:10px;padding:2px 8px;border-radius:6px;font-weight:700;margin-left:6px}
+.platform-badge.ios{background:#000;color:#fff}
+.platform-badge.android{background:#3DDC84;color:#000}
+.open-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;background:var(--pri);color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;border:none;cursor:pointer}
+.open-btn:hover{opacity:.85}
+
+/* 체크 블록 */
+.check-block{border-bottom:2px solid var(--border);padding:16px}
+.check-block:last-of-type{border-bottom:none}
+.check-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.check-label{font-size:15px;font-weight:600;flex:1}
+.btn-group{display:flex;gap:4px}
+.btn-pfs{min-width:60px;height:36px;border:2px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:#fff;transition:.2s;display:flex;align-items:center;justify-content:center;gap:3px}
+.btn-pfs:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.btn-pfs.p-active{background:var(--ok);color:#fff;border-color:var(--ok)}
+.btn-pfs.f-active{background:var(--fail);color:#fff;border-color:var(--fail)}
+.btn-pfs.s-active{background:var(--warn);color:#fff;border-color:var(--warn)}
+
+/* PC/폰 스크린샷 */
+.screenshot-row{display:flex;gap:16px;margin:10px 0;align-items:flex-start}
+.screenshot-col{flex:0 0 720px;max-width:720px}
+.screenshot-col.mobile{flex:0 0 360px;max-width:360px}
+.screenshot-label{font-size:11px;font-weight:700;color:var(--pri);margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.screenshot-img{width:100%;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:.2s;background:#f8fafc;display:block}
+.screenshot-img:hover{border-color:var(--pri);box-shadow:0 2px 12px rgba(124,58,237,.2)}
+.screenshot-empty{width:100%;height:200px;border:2px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:13px;background:#fafbfc}
+.screenshot-loading{width:100%;height:200px;border:2px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--pri);font-size:13px;background:#f5f3ff}
+.screenshot-forbidden{width:100%;height:80px;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:12px;background:#f8fafc;flex-direction:column;gap:2px;opacity:.6}
+.img-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:10000;display:none;align-items:center;justify-content:center;cursor:pointer}
+.img-modal img{max-width:95%;max-height:95%;border-radius:8px;box-shadow:0 0 40px rgba(0,0,0,.5)}
+
+/* 체크별 메모 */
+.check-note{width:100%;border:2px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;resize:vertical;min-height:40px;font-family:inherit}
+.check-note:focus{border-color:var(--pri);outline:none}
+.check-note.has-fail{border-color:var(--fail);background:#fef2f2}
+
+/* 수정됨 배너 */
+.fix-banner{background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:6px 12px;margin-bottom:8px;font-size:12px;color:#1e40af}
+
+/* 탭 하단 전체 수정사항 */
+.tab-notes{margin:20px 16px;background:var(--card);border-radius:var(--radius);border:2px solid var(--pri);overflow:hidden}
+.tab-notes-head{background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;padding:12px 16px;font-size:15px;font-weight:700}
+.tab-notes textarea{width:100%;border:none;padding:14px 16px;font-size:14px;resize:vertical;min-height:120px;font-family:inherit}
+.tab-notes textarea:focus{outline:none}
+
+/* 상태 */
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot-pass{background:var(--ok)}.dot-fail{background:var(--fail)}.dot-skip{background:var(--warn)}.dot-none{background:#ccc}
+.toast{position:fixed;bottom:20px;right:20px;background:#1e293b;color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transition:.3s;pointer-events:none}
+.toast.show{opacity:1}
+.empty-msg{text-align:center;padding:40px 16px;color:var(--text2);font-size:15px}
+
+/* 헬스체크 상태 */
+.hc-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:6px}
+.hc-ok{background:#dcfce7;color:#15803d}
+.hc-err{background:#fee2e2;color:#dc2626}
+.hc-loading{background:#f0f9ff;color:#0369a1}
+.hc-cause{background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;margin:8px 0 4px;font-size:12px;color:#dc2626;line-height:1.4}
+.hc-cause i{margin-right:4px}
+.hc-cause .cause-text{font-weight:600}
+.hc-cause .cause-detail{color:#991b1b;margin-top:2px}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+@media(max-width:768px){
+    .screenshot-row{flex-direction:column;align-items:center}
+    .screenshot-col,.screenshot-col.mobile{flex:1 1 100%;max-width:100%}
+    .btn-pfs{min-width:52px;height:32px;font-size:12px}
+    .check-label{font-size:14px}
+    .feature-head{flex-direction:column;gap:8px;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1><i class="bi bi-clipboard2-check"></i> QA Master Dashboard v3</h1>
+    <p id="headerDesc">Seoul Beauty — QA 테스트 (DB 기반)</p>
+    <p style="font-size:11px;opacity:.6" id="lastSync"></p>
+</div>
+
+<div class="tabs" id="tabBar">
+    <button class="tab-btn" onclick="showTab('guide',this)"><i class="bi bi-question-circle"></i> 사용법</button>
+    <button class="tab-btn active" onclick="showTab('summary',this)">요약</button>
+    <button class="tab-btn" onclick="showTab('front',this)">사용자 <span class="badge" id="cnt-front">0</span></button>
+    <button class="tab-btn" onclick="showTab('admin',this)">관리자 <span class="badge" id="cnt-admin">0</span></button>
+    <button class="tab-btn" onclick="showTab('partner',this)">파트너 <span class="badge" id="cnt-partner">0</span></button>
+    <button class="tab-btn" onclick="showTab('api',this)">API <span class="badge" id="cnt-api">0</span></button>
+    <button class="tab-btn" onclick="showTab('component',this)">컴포넌트 <span class="badge" id="cnt-component">0</span></button>
+    <button class="tab-btn" onclick="showTab('etc',this)">기타 <span class="badge" id="cnt-etc">0</span></button>
+    <button class="tab-btn" onclick="showTab('app_patient',this)" style="color:var(--app)"><i class="bi bi-phone"></i> 환자앱 <span class="badge" style="background:var(--app)" id="cnt-app_patient">0</span></button>
+    <button class="tab-btn" onclick="showTab('app_admin',this)" style="color:var(--app)"><i class="bi bi-phone"></i> 관리앱 <span class="badge" style="background:var(--app)" id="cnt-app_admin">0</span></button>
+    <button class="tab-btn" onclick="showTab('failures',this)" style="color:var(--fail)">실패 <span class="badge" style="background:var(--fail)" id="cnt-failures">0</span></button>
+</div>
+
+<!-- 사용법 -->
+<div id="guidePanel" style="display:none;max-width:800px;margin:0 auto;padding:16px">
+    <div style="background:linear-gradient(135deg,#7C3AED,#a78bfa);border-radius:14px;padding:24px;color:#fff;font-size:16px;line-height:2.2">
+        <div style="text-align:center;margin-bottom:8px"><b style="font-size:20px"><i class="bi bi-hand-index-thumb"></i> 테스트 방법</b></div>
+        <div><b style="background:rgba(255,255,255,.25);padding:2px 10px;border-radius:6px;margin-right:6px">1</b> 위 탭에서 <b>"사용자"</b> 또는 <b>"환자앱"</b> 클릭</div>
+        <div><b style="background:rgba(255,255,255,.25);padding:2px 10px;border-radius:6px;margin-right:6px">2</b> <b>"페이지 열기"</b> 버튼으로 실제 페이지 확인</div>
+        <div><b style="background:rgba(255,255,255,.25);padding:2px 10px;border-radius:6px;margin-right:6px">3</b> 각 항목이 정상이면 <b style="background:#22c55e;padding:1px 8px;border-radius:4px">정상</b> 오류면 <b style="background:#ef4444;padding:1px 8px;border-radius:4px">오류</b></div>
+        <div><b style="background:rgba(255,255,255,.25);padding:2px 10px;border-radius:6px;margin-right:6px">4</b> <b style="background:#ef4444;padding:1px 8px;border-radius:4px">오류</b> 눌렀으면 해당 항목 메모에 뭐가 문제인지 적기</div>
+        <div><b style="background:rgba(255,255,255,.25);padding:2px 10px;border-radius:6px;margin-right:6px">5</b> <b>"다시 캡처"</b> 클릭하면 현재 화면 캡처 확인 가능</div>
+        <div><b style="background:rgba(255,255,255,.25);padding:2px 10px;border-radius:6px;margin-right:6px">6</b> 맨 아래 <b>"전체 수정사항"</b>에 종합 의견 적기</div>
+        <div style="text-align:center;margin-top:12px;font-size:13px;opacity:.7">클릭하면 자동 저장됩니다. 다음 항목으로 쭉 내려가세요!</div>
+    </div>
+</div>
+
+<div id="summaryPanel"></div>
+
+<!-- 컨트롤 바 -->
+<div class="controls" id="controlsBar" style="display:none">
+    <input type="text" id="searchInput" placeholder="검색..." oninput="renderCurrentTab()">
+    <select id="filterStatus" onchange="renderCurrentTab()">
+        <option value="">전체 보기</option>
+        <option value="untested">아직 안한 것</option>
+        <option value="done">테스트 완료</option>
+        <option value="fail">오류 있는 것</option>
+    </select>
+    <button class="btn-blue" onclick="captureAllInTab()"><i class="bi bi-camera"></i> 전체 다시 캡처</button>
+    <button class="btn-green" onclick="healthCheckTab()" id="btnHealthCheck"><i class="bi bi-heart-pulse"></i> 상태 체크</button>
+    <button class="btn-pri" onclick="exportCSV()"><i class="bi bi-download"></i> CSV</button>
+</div>
+
+<!-- 카드 리스트 -->
+<div class="card-list" id="cardList"></div>
+
+<!-- 탭 하단 전체 수정사항 -->
+<div class="tab-notes" id="tabNotesPanel" style="display:none">
+    <div class="tab-notes-head"><i class="bi bi-pencil-square"></i> <span id="tabNotesTitle">전체 수정사항</span></div>
+    <textarea id="tabNotesArea" placeholder="이 탭 전체에 대한 수정사항, 종합 의견을 적어주세요..." oninput="saveTabNotes()"></textarea>
+</div>
+
+<!-- 이미지 확대 모달 -->
+<div class="img-modal" id="imgModal" onclick="this.style.display='none'">
+    <img id="imgModalSrc" src="" alt="확대 이미지">
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = 'https://hms.seoulbeauty.app/hairwang/gangnamunni';
+const API = BASE + '/api_qa_master.php';
+const SCREENSHOT_API = BASE + '/api_qa_screenshot.php';
+const HEALTHCHECK_API = BASE + '/api_qa_healthcheck.php';
+
+// includes/ 및 cron 파일은 직접 접근 불가 (Forbidden)
+const FORBIDDEN_PATTERNS = ['includes/', 'cron_'];
+function isForbiddenFile(file) { return FORBIDDEN_PATTERNS.some(p => file.startsWith(p)); }
+
+// 앱 카테고리 판별
+function isAppCategory(cat) { return cat === 'app_patient' || cat === 'app_admin'; }
+
+// 카테고리 라벨
+const CAT_LABELS = {
+    front:'사용자', admin:'관리자', partner:'파트너', api:'API',
+    component:'컴포넌트', etc:'기타', app_patient:'환자앱', app_admin:'관리앱', failures:'실패'
+};
+
+// 전역 상태
+let features = {};
+let currentTab = 'summary';
+let dbResults = {};
+let tabNotes = {};
+let saveQueue = {};
+let saveTimer = null;
+let screenshotCache = {};
+let capturingSet = new Set();
+let healthResults = {};
+let healthChecking = false;
+
+// === 초기화 ===
+async function init() {
+    const fn = 'init';
+    try {
+        console.log(`[QA:${fn}] 시작...`);
+        await loadFeatures();
+        updateTabCounts();
+        await Promise.all([loadFromDB(), loadScreenshotList()]);
+        showTab('summary');
+        console.log(`[QA:${fn}] 완료`);
+    } catch(e) { console.error(`[QA:${fn}] 오류:`, e); }
+}
+
+// DB API에서 features 로드
+async function loadFeatures() {
+    const fn = 'loadFeatures';
+    try {
+        console.log(`[QA:${fn}] DB에서 features 로드...`);
+        const resp = await fetch(API + '?action=features&t=' + Date.now());
+        const json = await resp.json();
+        if (json.success && json.data) {
+            features = json.data;
+            const total = Object.values(features).reduce((s,v) => s + v.length, 0);
+            console.log(`[QA:${fn}] DB features 로드 완료: ${total}개`);
+            document.getElementById('headerDesc').textContent = `Seoul Beauty — ${total}개 기능 QA 테스트 (DB 기반)`;
+        } else {
+            console.warn(`[QA:${fn}] DB features 비어있음, JSON fallback 시도...`);
+            await loadFeaturesFromJSON();
+        }
+    } catch(e) {
+        console.error(`[QA:${fn}] DB 로드 실패:`, e, '→ JSON fallback');
+        await loadFeaturesFromJSON();
+    }
+}
+
+// JSON fallback (DB에 features가 없을 때)
+async function loadFeaturesFromJSON() {
+    const fn = 'loadFeaturesFromJSON';
+    try {
+        console.log(`[QA:${fn}] qa_features.json에서 로드...`);
+        const resp = await fetch(BASE + '/qa_features.json?t=' + Date.now());
+        const data = await resp.json();
+        features = data;
+        const total = Object.values(features).reduce((s,v) => s + v.length, 0);
+        console.log(`[QA:${fn}] JSON 로드 완료: ${total}개 → DB import 시작`);
+        // 자동으로 DB에 import
+        await importFeaturesToDB(data);
+    } catch(e2) {
+        console.error(`[QA:${fn}] JSON도 실패:`, e2);
+        features = {front:[], admin:[], partner:[], api:[], component:[], etc:[], app_patient:[], app_admin:[]};
+    }
+}
+
+// features를 DB에 import
+async function importFeaturesToDB(data) {
+    const fn = 'importFeaturesToDB';
+    try {
+        console.log(`[QA:${fn}] DB import...`);
+        const resp = await fetch(API + '?action=import_features', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({features: data})
+        });
+        const json = await resp.json();
+        console.log(`[QA:${fn}] import 결과:`, json.success ? `${json.imported}건 성공` : json.message);
+    } catch(e) { console.error(`[QA:${fn}] import 실패:`, e); }
+}
+
+async function loadFromDB() {
+    const fn = 'loadFromDB';
+    try {
+        console.log(`[QA:${fn}] 테스트 결과 로드...`);
+        const resp = await fetch(API);
+        const json = await resp.json();
+        console.log(`[QA:${fn}] DB: ${json.success ? (json.data?.length||0)+'건' : 'FAIL'}`);
+        if (json.success && json.data) {
+            dbResults = {};
+            json.data.forEach(r => {
+                const key = r.feature_id + '__' + r.check_name;
+                dbResults[key] = r;
+                if (r.feature_id.startsWith('TAB_')) {
+                    tabNotes[r.feature_id.replace('TAB_','')] = r.notes || '';
+                }
+            });
+            document.getElementById('lastSync').textContent = '동기화: ' + new Date().toLocaleString('ko-KR');
+        }
+    } catch(e) { console.error(`[QA:${fn}] 오류:`, e); }
+}
+
+function updateTabCounts() {
+    const fn = 'updateTabCounts';
+    try {
+        Object.keys(features).forEach(cat => {
+            const el = document.getElementById('cnt-' + cat);
+            if (el) el.textContent = features[cat].length;
+        });
+    } catch(e) { console.error(`[QA:${fn}] 오류:`, e); }
+}
+
+// === 탭 전환 ===
+function showTab(tab, el) {
+    const fn = 'showTab';
+    try {
+        console.log(`[QA:${fn}] → ${tab}`);
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        if (el) el.classList.add('active');
+        else {
+            const btns = document.querySelectorAll('.tab-btn');
+            const tabOrder = ['guide','summary','front','admin','partner','api','component','etc','app_patient','app_admin','failures'];
+            const idx = tabOrder.indexOf(tab);
+            if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
+        }
+
+        document.getElementById('summaryPanel').style.display = 'none';
+        document.getElementById('guidePanel').style.display = 'none';
+        document.getElementById('cardList').style.display = 'none';
+        document.getElementById('controlsBar').style.display = 'none';
+        document.getElementById('tabNotesPanel').style.display = 'none';
+
+        if (tab === 'guide') {
+            document.getElementById('guidePanel').style.display = 'block';
+        } else if (tab === 'summary') {
+            document.getElementById('summaryPanel').style.display = 'block';
+            renderSummary();
+        } else {
+            document.getElementById('cardList').style.display = 'flex';
+            document.getElementById('controlsBar').style.display = 'flex';
+            document.getElementById('tabNotesPanel').style.display = 'block';
+            renderCurrentTab();
+            document.getElementById('tabNotesTitle').textContent = (CAT_LABELS[tab]||tab) + ' 탭 — 전체 수정사항';
+            document.getElementById('tabNotesArea').value = tabNotes[tab] || '';
+        }
+    } catch(e) { console.error(`[QA:${fn}] 오류:`, e); }
+}
+
+// === 요약 ===
+function renderSummary() {
+    const fn = 'renderSummary';
+    try {
+        let total=0,pass=0,fail=0,skip=0,fixed=0,retest=0,untested=0,critFail=0;
+        const catStats = {};
+        Object.entries(features).forEach(([cat,items]) => {
+            catStats[cat]={total:0,pass:0,fail:0,tested:0};
+            items.forEach(f => f.checks.forEach(chk => {
+                total++; catStats[cat].total++;
+                const r = dbResults[f.id+'__'+chk];
+                if (r&&r.check_result) {
+                    const v=r.check_result;
+                    if(v==='pass'){pass++;catStats[cat].pass++;catStats[cat].tested++}
+                    else if(v==='fail'){fail++;catStats[cat].fail++;catStats[cat].tested++;if(r.severity==='critical')critFail++}
+                    else if(v==='skip'){skip++;catStats[cat].tested++}
+                    else if(v==='fixed'){fixed++;catStats[cat].tested++}
+                    else if(v==='retest'){retest++;catStats[cat].tested++}
+                } else untested++;
+            }));
+        });
+        const failEl = document.getElementById('cnt-failures');
+        if (failEl) failEl.textContent = fail+retest;
+
+        let prog='';
+        Object.entries(catStats).forEach(([c,s])=>{
+            if (s.total === 0) return;
+            const p=s.total>0?Math.round(s.pass/s.total*100):0;
+            const tested = s.tested;
+            prog+=`<div class="prog-row">
+                <div class="prog-label">${CAT_LABELS[c]||c}</div>
+                <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${p}%"></div></div>
+                <div class="prog-pct">${p}%</div>
+                <div class="prog-detail">${s.pass}/${s.total} (${tested} tested)</div>
+            </div>`;
+        });
+
+        document.getElementById('summaryPanel').innerHTML=`
+            <div class="summary">
+                <div class="stat-card"><div class="num">${total}</div><div class="lbl">전체 체크</div></div>
+                <div class="stat-card ok"><div class="num">${pass}</div><div class="lbl">정상</div></div>
+                <div class="stat-card fail"><div class="num">${fail+retest}</div><div class="lbl">오류</div></div>
+                <div class="stat-card warn"><div class="num">${skip}</div><div class="lbl">건너뜀</div></div>
+                <div class="stat-card fix"><div class="num">${fixed}</div><div class="lbl">수정됨</div></div>
+                <div class="stat-card"><div class="num">${untested}</div><div class="lbl">미테스트</div></div>
+                <div class="stat-card fail"><div class="num">${critFail}</div><div class="lbl">Critical</div></div>
+                <div class="stat-card ok"><div class="num">${total>0?Math.round(pass/total*100):0}%</div><div class="lbl">통과율</div></div>
+            </div>
+            <div class="progress-section">${prog}</div>
+            <div style="text-align:center;padding:16px">
+                <button onclick="healthCheckAll()" class="btn-green" id="btnHcAll" style="padding:12px 24px;font-size:15px;border-radius:10px;cursor:pointer;border:none;font-weight:700;background:var(--ok);color:#fff">
+                    <i class="bi bi-heart-pulse"></i> 전체 서버 상태 체크
+                </button>
+                <div id="hcAllResult" style="margin-top:12px"></div>
+            </div>`;
+        console.log(`[QA:${fn}] 전체:${total} PASS:${pass} FAIL:${fail+retest}`);
+    } catch(e){console.error(`[QA:${fn}] 오류:`,e)}
+}
+
+// === 카드 렌더링 ===
+function renderCurrentTab() {
+    const fn = 'renderCurrentTab';
+    try {
+        const list = document.getElementById('cardList');
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const sf = document.getElementById('filterStatus').value;
+
+        let items = [];
+        if (currentTab==='failures') {
+            Object.values(features).flat().forEach(f => {
+                if (f.checks.some(c=>{const r=dbResults[f.id+'__'+c];return r&&(r.check_result==='fail'||r.check_result==='retest')})) items.push(f);
+            });
+        } else if (features[currentTab]) items = features[currentTab];
+
+        if (search) items = items.filter(f => f.name.toLowerCase().includes(search)||(f.file||'').toLowerCase().includes(search)||f.id.toLowerCase().includes(search));
+        if (sf==='untested') items = items.filter(f => f.checks.some(c=>{const r=dbResults[f.id+'__'+c];return !r||!r.check_result}));
+        else if (sf==='done') items = items.filter(f => f.checks.every(c=>{const r=dbResults[f.id+'__'+c];return r&&r.check_result}));
+        else if (sf==='fail') items = items.filter(f => f.checks.some(c=>{const r=dbResults[f.id+'__'+c];return r&&(r.check_result==='fail'||r.check_result==='retest')}));
+
+        if (!items.length) { list.innerHTML='<div class="empty-msg"><i class="bi bi-inbox" style="font-size:48px;display:block;margin-bottom:8px"></i>항목이 없습니다</div>'; return; }
+
+        list.innerHTML = items.map(f => renderFeatureCard(f)).join('');
+        console.log(`[QA:${fn}] ${currentTab} → ${items.length}개`);
+    } catch(e){console.error(`[QA:${fn}] 오류:`,e)}
+}
+
+function renderFeatureCard(f) {
+    const fn = 'renderFeatureCard';
+    try {
+        const file = f.file || '';
+        const url = file ? (BASE + '/' + file) : '';
+        let passC=0, failC=0, totalC=f.checks.length;
+        const ss = screenshotCache[f.id] || {};
+        const isCapturing = capturingSet.has(f.id);
+        const t = Date.now();
+        const forbidden = isForbiddenFile(file);
+        const isApp = isAppCategory(getCat(f.id));
+        const platform = f.platform || 'web';
+
+        // 스크린샷 영역
+        let screenshotHtml = '';
+        if (isApp) {
+            // 앱은 스크린샷 영역 없음 (직접 기기에서 테스트)
+            screenshotHtml = '';
+        } else if (forbidden) {
+            screenshotHtml = `
+            <div class="screenshot-row" id="ss_${f.id}">
+                <div class="screenshot-col">
+                    <div class="screenshot-forbidden">
+                        <i class="bi bi-info-circle"></i>
+                        <span>include 전용 파일 (스크린샷 없음)</span>
+                    </div>
+                </div>
+            </div>`;
+        } else if (isCapturing) {
+            screenshotHtml = `
+            <div class="screenshot-row" id="ss_${f.id}">
+                <div class="screenshot-col">
+                    <div class="screenshot-label"><i class="bi bi-display"></i> PC 화면</div>
+                    <div class="screenshot-loading"><i class="bi bi-arrow-repeat" style="animation:spin 1s linear infinite"></i> 캡처 중...</div>
+                </div>
+                <div class="screenshot-col mobile">
+                    <div class="screenshot-label"><i class="bi bi-phone"></i> 모바일 화면</div>
+                    <div class="screenshot-loading"><i class="bi bi-arrow-repeat" style="animation:spin 1s linear infinite"></i> 캡처 중...</div>
+                </div>
+            </div>`;
+        } else if (ss.pc || ss.mob) {
+            const pcImg = ss.pc ? `<img class="screenshot-img" src="${BASE}/${ss.pc}?t=${t}" onclick="showImageModal(this.src)" alt="PC">` : `<div class="screenshot-empty">PC 캡처 없음</div>`;
+            const mobImg = ss.mob ? `<img class="screenshot-img" src="${BASE}/${ss.mob}?t=${t}" onclick="showImageModal(this.src)" alt="모바일">` : `<div class="screenshot-empty">모바일 캡처 없음</div>`;
+            screenshotHtml = `
+            <div class="screenshot-row" id="ss_${f.id}">
+                <div class="screenshot-col">
+                    <div class="screenshot-label"><i class="bi bi-display"></i> PC ${ss.captured_at?'<span style="font-weight:400;color:var(--text2)">('+ss.captured_at+')</span>':''}</div>
+                    ${pcImg}
+                </div>
+                <div class="screenshot-col mobile">
+                    <div class="screenshot-label"><i class="bi bi-phone"></i> 모바일</div>
+                    ${mobImg}
+                </div>
+            </div>`;
+        } else if (file) {
+            screenshotHtml = `
+            <div class="screenshot-row" id="ss_${f.id}">
+                <div class="screenshot-col">
+                    <div class="screenshot-label"><i class="bi bi-display"></i> PC</div>
+                    <div class="screenshot-empty"><i class="bi bi-camera" style="font-size:24px;margin-right:6px"></i> "다시 캡처" 버튼을 눌러주세요</div>
+                </div>
+                <div class="screenshot-col mobile">
+                    <div class="screenshot-label"><i class="bi bi-phone"></i> 모바일</div>
+                    <div class="screenshot-empty"><i class="bi bi-phone" style="font-size:24px;margin-right:6px"></i></div>
+                </div>
+            </div>`;
+        }
+
+        let blocksHtml = f.checks.map(chk => {
+            const key = f.id+'__'+chk;
+            const r = dbResults[key]||{};
+            const result = r.check_result||'';
+            const notes = r.notes||'';
+
+            if(result==='pass') passC++;
+            if(result==='fail'||result==='retest') failC++;
+
+            const pA = result==='pass'?'p-active':'';
+            const fA = (result==='fail'||result==='retest')?'f-active':'';
+            const sA = result==='skip'?'s-active':'';
+
+            let fix = '';
+            if(result==='fixed'&&r.fix_note) fix=`<div class="fix-banner"><i class="bi bi-wrench"></i> 수정됨: ${esc(r.fix_note)}</div>`;
+
+            const noteClass = result==='fail'?'check-note has-fail':'check-note';
+
+            return `
+            <div class="check-block">
+                ${fix}
+                <div class="check-top">
+                    <span class="check-label">${esc(chk)}</span>
+                    <div class="btn-group">
+                        <button class="btn-pfs ${pA}" onclick="setResult('${f.id}','${ea(chk)}','pass')"><i class="bi bi-check-lg"></i> 정상</button>
+                        <button class="btn-pfs ${fA}" onclick="setResult('${f.id}','${ea(chk)}','fail')"><i class="bi bi-x-lg"></i> 오류</button>
+                        <button class="btn-pfs ${sA}" onclick="setResult('${f.id}','${ea(chk)}','skip')">건너뜀</button>
+                    </div>
+                </div>
+                <textarea class="${noteClass}" placeholder="이 항목에 문제가 있으면 상세히 적어주세요" oninput="setCheckNote('${f.id}','${ea(chk)}',this.value)">${esc(notes)}</textarea>
+            </div>`;
+        }).join('');
+
+        const statusText = passC===totalC&&passC>0?'전체 정상!':failC>0?`오류 ${failC}개`:`${passC}/${totalC}`;
+        const dotCls = passC===totalC&&passC>0?'dot-pass':failC>0?'dot-fail':'dot-none';
+        const headCls = isApp ? 'feature-head app-head' : 'feature-head';
+
+        // 플랫폼 배지
+        let platformBadge = '';
+        if (platform === 'ios') platformBadge = '<span class="platform-badge ios"><i class="bi bi-apple"></i> iOS</span>';
+        else if (platform === 'android') platformBadge = '<span class="platform-badge android"><i class="bi bi-android2"></i> Android</span>';
+        else if (platform === 'both') platformBadge = '<span class="platform-badge ios"><i class="bi bi-apple"></i></span><span class="platform-badge android"><i class="bi bi-android2"></i></span>';
+
+        // 헬스체크 상태
+        const hc = healthResults[file] || null;
+        let hcBadge = '';
+        let hcCauseHtml = '';
+        if (hc) {
+            if (hc.ok) {
+                hcBadge = `<span class="hc-badge hc-ok"><i class="bi bi-check-circle-fill"></i> ${hc.status}</span>`;
+            } else {
+                hcBadge = `<span class="hc-badge hc-err"><i class="bi bi-exclamation-triangle-fill"></i> ${hc.status}</span>`;
+                if (hc.cause) {
+                    hcCauseHtml = `<div class="hc-cause"><i class="bi bi-bug-fill"></i><span class="cause-text">에러 원인:</span> <span class="cause-detail">${esc(hc.cause)}</span></div>`;
+                }
+            }
+        }
+
+        // 캡처/열기 버튼 (앱은 캡처 불필요)
+        let actionBtns = '';
+        if (!isApp && !forbidden && file) {
+            actionBtns = `
+                <button class="open-btn" style="background:#0ea5e9;font-size:12px;padding:6px 12px" onclick="captureFeature('${f.id}')" ${isCapturing?'disabled':''}><i class="bi bi-camera"></i> 다시 캡처</button>
+                <button class="open-btn" style="background:#059669;font-size:12px;padding:6px 12px" onclick="healthCheckOne('${ea(file)}','${f.id}')"><i class="bi bi-heart-pulse"></i></button>
+                <a href="${url}" target="_blank" class="open-btn"><i class="bi bi-box-arrow-up-right"></i> 페이지 열기</a>`;
+        } else if (file && !isApp) {
+            actionBtns = `<a href="${url}" target="_blank" class="open-btn"><i class="bi bi-box-arrow-up-right"></i> 페이지 열기</a>`;
+        }
+
+        return `
+        <div class="feature-card" id="card_${f.id}">
+            <div class="${headCls}">
+                <div>
+                    <span class="fid">[${f.id}]</span><span class="fname">${esc(f.name)}</span>${platformBadge}${hcBadge}
+                    <div class="file">${file || '(앱 테스트)'}</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    ${actionBtns}
+                    <span style="font-size:12px"><span class="dot ${dotCls}"></span>${statusText}</span>
+                </div>
+            </div>
+            ${hcCauseHtml}
+            ${screenshotHtml}
+            ${blocksHtml}
+        </div>`;
+    } catch(e) { console.error(`[QA:${fn}] 오류 (${f?.id}):`, e); return ''; }
+}
+
+// === 결과 설정 ===
+function setResult(fid, chk, result) {
+    const fn = 'setResult';
+    try {
+        console.log(`[QA:${fn}] ${fid} "${chk}" → ${result}`);
+        const key = fid+'__'+chk;
+        if(!dbResults[key]) dbResults[key]={};
+        dbResults[key].check_result = result;
+        if(result==='fail') dbResults[key].severity = dbResults[key].severity||'major';
+
+        const f = Object.values(features).flat().find(x=>x.id===fid);
+        if(!f) { console.warn(`[QA:${fn}] feature not found: ${fid}`); return; }
+
+        queueSave(fid, chk, {
+            category: getCat(fid), feature_id:fid, feature_name:f.name, file_name:f.file||'',
+            url: f.file ? BASE+'/'+f.file : '', check_name:chk, check_result:result,
+            severity: result==='fail'?(dbResults[key].severity||'major'):'minor',
+            notes: dbResults[key].notes||'', screenshot_url:'', tester:'client'
+        });
+        renderCurrentTab();
+        renderSummary();
+    } catch(e){console.error(`[QA:${fn}] 오류:`,e)}
+}
+
+function setCheckNote(fid, chk, val) {
+    const fn = 'setCheckNote';
+    try {
+        const key = fid+'__'+chk;
+        if(!dbResults[key]) dbResults[key]={};
+        dbResults[key].notes = val;
+
+        const f = Object.values(features).flat().find(x=>x.id===fid);
+        if(!f) return;
+
+        queueSave(fid, chk, {
+            category: getCat(fid), feature_id:fid, feature_name:f.name, file_name:f.file||'',
+            url: f.file ? BASE+'/'+f.file : '', check_name:chk,
+            check_result: dbResults[key].check_result||null,
+            severity: dbResults[key].severity||'minor',
+            notes: val, screenshot_url:'', tester:'client'
+        });
+    } catch(e){console.error(`[QA:${fn}] 오류:`,e)}
+}
+
+function saveTabNotes() {
+    const fn = 'saveTabNotes';
+    try {
+        const val = document.getElementById('tabNotesArea').value;
+        tabNotes[currentTab] = val;
+        queueSave('TAB_'+currentTab, 'tab_notes', {
+            category: currentTab, feature_id:'TAB_'+currentTab, feature_name:currentTab+' 탭 전체 수정사항',
+            file_name:'', url:'', check_name:'tab_notes', check_result:null,
+            severity:'minor', notes:val, screenshot_url:'', tester:'client'
+        });
+    } catch(e){console.error(`[QA:${fn}] 오류:`,e)}
+}
+
+function getCat(fid) {
+    for(const [c,items] of Object.entries(features)) { if(items.find(f=>f.id===fid)) return c; }
+    return '';
+}
+
+// === 스크린샷 캡처 ===
+async function captureFeature(fid) {
+    const fn = 'captureFeature';
+    try {
+        const f = Object.values(features).flat().find(x=>x.id===fid);
+        if(!f) { console.warn(`[QA:${fn}] feature not found: ${fid}`); return; }
+        if(isForbiddenFile(f.file||'')) { showToast('컴포넌트 파일은 직접 캡처 불가', true); return; }
+        const url = BASE + '/' + f.file;
+        console.log(`[QA:${fn}] ${fid} → ${url}`);
+        capturingSet.add(fid);
+        renderCurrentTab();
+        showToast(`[${fid}] 캡처 중... (10~20초)`);
+
+        const resp = await fetch(SCREENSHOT_API, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({action:'capture_one', url:url, prefix:fid})
+        });
+        const json = await resp.json();
+        console.log(`[QA:${fn}] ${fid} 결과:`, json.success ? 'OK' : 'FAIL');
+
+        capturingSet.delete(fid);
+        if(json.success) {
+            screenshotCache[fid] = {
+                pc: json.pc ? json.pc.split('?')[0] : null,
+                mob: json.mob ? json.mob.split('?')[0] : null,
+                captured_at: new Date().toLocaleString('ko-KR')
+            };
+            showToast(`[${fid}] 캡처 완료!`);
+        } else {
+            showToast(`[${fid}] 캡처 실패: ${json.message||''}`, true);
+        }
+        renderCurrentTab();
+    } catch(e){
+        capturingSet.delete(fid);
+        console.error(`[QA:${fn}] ${fid} 오류:`,e);
+        showToast('캡처 오류: '+e.message, true);
+        renderCurrentTab();
+    }
+}
+
+async function captureAllInTab() {
+    const fn = 'captureAllInTab';
+    try {
+        let items = [];
+        if(currentTab==='failures') {
+            Object.values(features).flat().forEach(f => {
+                if(f.checks.some(c=>{const r=dbResults[f.id+'__'+c];return r&&(r.check_result==='fail'||r.check_result==='retest')}))
+                    items.push(f);
+            });
+        } else if(features[currentTab]) items = features[currentTab];
+
+        // includes/ 파일과 앱 제외
+        items = items.filter(f => f.file && !isForbiddenFile(f.file) && !isAppCategory(getCat(f.id)));
+        if(!items.length) { showToast('캡처할 항목 없음 (컴포넌트/앱 제외)'); return; }
+
+        console.log(`[QA:${fn}] ${currentTab} → ${items.length}개 캡처 시작`);
+        showToast(`${items.length}개 순차 캡처 시작...`);
+
+        let done = 0, fail = 0;
+        for(const f of items) {
+            const url = BASE + '/' + f.file;
+            capturingSet.add(f.id);
+            renderCurrentTab();
+            showToast(`캡처 ${done+1}/${items.length} [${f.id}] ${f.name}`);
+
+            try {
+                const resp = await fetch(SCREENSHOT_API, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({action:'capture_one', url:url, prefix:f.id})
+                });
+                const json = await resp.json();
+                capturingSet.delete(f.id);
+
+                if(json.success) {
+                    screenshotCache[f.id] = {
+                        pc: json.pc ? json.pc.split('?')[0] : null,
+                        mob: json.mob ? json.mob.split('?')[0] : null,
+                        captured_at: new Date().toLocaleString('ko-KR')
+                    };
+                    done++;
+                } else { fail++; console.warn(`[QA:${fn}] ${f.id} 실패:`, json.message); }
+            } catch(e2) {
+                capturingSet.delete(f.id);
+                fail++;
+                console.error(`[QA:${fn}] ${f.id} 오류:`, e2);
+            }
+            renderCurrentTab();
+        }
+        showToast(`캡처 완료! 성공 ${done}개` + (fail ? `, 실패 ${fail}개` : ''));
+        console.log(`[QA:${fn}] 완료: ${done} 성공, ${fail} 실패`);
+    } catch(e){
+        capturingSet.clear();
+        console.error(`[QA:${fn}] 오류:`,e);
+        showToast('캡처 오류: '+e.message, true);
+        renderCurrentTab();
+    }
+}
+
+async function loadScreenshotList() {
+    const fn = 'loadScreenshotList';
+    try {
+        console.log(`[QA:${fn}] 로드...`);
+        const resp = await fetch(SCREENSHOT_API + '?action=list');
+        const json = await resp.json();
+        if(json.success && json.data) {
+            json.data.forEach(s => {
+                screenshotCache[s.prefix] = {pc:s.pc, mob:s.mob, captured_at:s.captured_at};
+            });
+            console.log(`[QA:${fn}] 캐시: ${json.count}개`);
+        }
+    } catch(e){ console.error(`[QA:${fn}] 오류:`,e); }
+}
+
+function showImageModal(src) {
+    const fn = 'showImageModal';
+    try {
+        const modal = document.getElementById('imgModal');
+        document.getElementById('imgModalSrc').src = src;
+        modal.style.display = 'flex';
+    } catch(e){ console.error(`[QA:${fn}] 오류:`,e); }
+}
+
+// === 디바운스 저장 ===
+function queueSave(fid, chk, data) {
+    saveQueue[fid+'__'+chk] = data;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flushSaves, 500);
+}
+
+async function flushSaves() {
+    const fn = 'flushSaves';
+    const items = Object.values(saveQueue);
+    saveQueue = {};
+    if(!items.length) return;
+    try {
+        console.log(`[QA:${fn}] ${items.length}건 저장...`);
+        const resp = await fetch(API, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({batch:items})});
+        const json = await resp.json();
+        if(json.success) { console.log(`[QA:${fn}] 저장 OK: ${json.saved}건`); showToast('저장 완료 ('+json.saved+'건)'); }
+        else { console.error(`[QA:${fn}] 저장 실패:`,json.message); showToast('저장 실패',true); }
+    } catch(e) { console.error(`[QA:${fn}] 오류:`,e); showToast('네트워크 오류',true); }
+}
+
+// === 헬스체크 ===
+async function healthCheckOne(file, fid) {
+    const fn = 'healthCheckOne';
+    try {
+        showToast(`[${fid}] 상태 체크 중...`);
+        const resp = await fetch(HEALTHCHECK_API + '?action=check_one&file=' + encodeURIComponent(file));
+        const json = await resp.json();
+        if (json.success && json.result) {
+            healthResults[file] = json.result;
+            if (json.result.ok) {
+                showToast(`[${fid}] 정상 (HTTP ${json.result.status})`);
+            } else {
+                showToast(`[${fid}] 에러! HTTP ${json.result.status}: ${json.result.cause || ''}`, true);
+            }
+            renderCurrentTab();
+        }
+    } catch(e) { console.error(`[QA:${fn}]`, e); showToast('상태 체크 실패', true); }
+}
+
+async function healthCheckTab() {
+    const fn = 'healthCheckTab';
+    try {
+        let items = [];
+        if (currentTab === 'failures') {
+            Object.values(features).flat().forEach(f => {
+                if (f.checks.some(c => { const r = dbResults[f.id+'__'+c]; return r && (r.check_result==='fail'||r.check_result==='retest'); }))
+                    items.push(f);
+            });
+        } else if (features[currentTab]) items = features[currentTab];
+
+        // 파일 있는 것만 (includes/cron/앱 제외)
+        items = items.filter(f => f.file && !isForbiddenFile(f.file) && !isAppCategory(getCat(f.id)));
+        if (!items.length) { showToast('체크할 항목 없음'); return; }
+
+        const files = items.map(f => f.file);
+        console.log(`[QA:${fn}] ${currentTab} → ${files.length}개 상태 체크`);
+        showToast(`${files.length}개 상태 체크 중... (잠시 대기)`);
+
+        const btn = document.getElementById('btnHealthCheck');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat" style="animation:spin 1s linear infinite"></i> 체크 중...'; }
+
+        const resp = await fetch(HEALTHCHECK_API + '?action=check_batch', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({files: files})
+        });
+        const json = await resp.json();
+
+        if (json.success) {
+            Object.entries(json.results).forEach(([f, r]) => { healthResults[f] = r; });
+            const errCount = json.errors || 0;
+            if (errCount > 0) {
+                showToast(`상태 체크 완료: ${json.ok}개 정상, ${errCount}개 에러!`, true);
+            } else {
+                showToast(`상태 체크 완료: ${json.total}개 모두 정상!`);
+            }
+            renderCurrentTab();
+        } else {
+            showToast('상태 체크 실패: ' + (json.message || ''), true);
+        }
+
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-heart-pulse"></i> 상태 체크'; }
+    } catch(e) {
+        console.error(`[QA:${fn}]`, e);
+        showToast('상태 체크 네트워크 오류', true);
+        const btn = document.getElementById('btnHealthCheck');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-heart-pulse"></i> 상태 체크'; }
+    }
+}
+
+async function healthCheckAll() {
+    const fn = 'healthCheckAll';
+    try {
+        const btn = document.getElementById('btnHcAll');
+        const div = document.getElementById('hcAllResult');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-arrow-repeat" style="animation:spin 1s linear infinite"></i> 전체 상태 체크 중...'; }
+        if (div) div.innerHTML = '<span style="color:var(--pri)">서버에서 전체 페이지 스캔 중... (20~60초 소요)</span>';
+
+        const resp = await fetch(HEALTHCHECK_API + '?action=check_all');
+        const json = await resp.json();
+
+        if (json.success) {
+            const errors = json.error_pages || {};
+            const errList = Object.entries(errors);
+            let html = `<div style="font-size:14px;font-weight:700;margin-bottom:8px">
+                <span style="color:var(--ok)">정상 ${json.ok}개</span> /
+                <span style="color:${json.errors>0?'var(--fail)':'var(--ok)'}">에러 ${json.errors}개</span> /
+                전체 ${json.total}개
+            </div>`;
+
+            if (errList.length > 0) {
+                html += '<div style="text-align:left;max-width:800px;margin:0 auto">';
+                errList.forEach(([file, r]) => {
+                    healthResults[file] = r;
+                    html += `<div class="hc-cause" style="margin:6px 0">
+                        <b>${esc(file)}</b> → HTTP ${r.status}
+                        ${r.cause ? `<br><i class="bi bi-bug-fill"></i> <span class="cause-detail">${esc(r.cause)}</span>` : ''}
+                    </div>`;
+                });
+                html += '</div>';
+            }
+            if (div) div.innerHTML = html;
+        } else {
+            if (div) div.innerHTML = '<span style="color:var(--fail)">체크 실패: ' + esc(json.message || '') + '</span>';
+        }
+
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-heart-pulse"></i> 전체 서버 상태 체크'; }
+    } catch(e) {
+        console.error(`[QA:${fn}]`, e);
+        const btn = document.getElementById('btnHcAll');
+        const div = document.getElementById('hcAllResult');
+        if (div) div.innerHTML = '<span style="color:var(--fail)">네트워크 오류</span>';
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-heart-pulse"></i> 전체 서버 상태 체크'; }
+    }
+}
+
+// === CSV ===
+function exportCSV() {
+    const fn = 'exportCSV';
+    try {
+        let csv='\uFEFF기능ID,기능명,파일,플랫폼,체크항목,결과,심각도,메모,테스터,테스트일시\n';
+        Object.entries(features).forEach(([c,items])=>items.forEach(f=>f.checks.forEach(chk=>{
+            const r=dbResults[f.id+'__'+chk]||{};
+            csv+=`"${f.id}","${f.name}","${f.file||''}","${f.platform||'web'}","${chk}","${r.check_result||''}","${r.severity||''}","${(r.notes||'').replace(/"/g,'""')}","${r.tester||''}","${r.tested_at||''}"\n`;
+        })));
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+        a.download='qa_master_'+new Date().toISOString().slice(0,10)+'.csv';
+        a.click();
+        console.log(`[QA:${fn}] CSV 다운로드`);
+    } catch(e){console.error(`[QA:${fn}] 오류:`,e)}
+}
+
+// === 유틸 ===
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function ea(s){return String(s||'').replace(/'/g,"\\'").replace(/"/g,'\\"')}
+function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.style.background=err?'var(--fail)':'#1e293b';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+/***
+ * Sign in with Apple
+ */
+
+ /*
+   아래 CSS의 내용을 admin.css의 아래 구역에 작업해주시거나 이 파일을 그대로 업로드해주세요.
+   ================================================
+   1. 편집기에서 컨트롤 + F키를 눌러서 아래의 단어를 검색합니다.
+   - "../img/social/sns_logo.png"
+
+   2. .sns-wrap-over .sns-payco .ico 의 다음 줄에 다음을 추가합니다.
+   .sns-wrap-over .sns-apple .ico {background-position:-174px 0}
+
+   3. 완료되었습니다.
+ */
+
+ .sns-wrap-over .sns-apple .ico {background-position:-174px 0}

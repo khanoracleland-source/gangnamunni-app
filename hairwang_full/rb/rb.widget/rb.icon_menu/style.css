@@ -1,0 +1,153 @@
+/* ====================================
+   아이콘 메뉴 위젯 스타일
+==================================== */
+
+.rb_icon_menu {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+    list-style: none;
+}
+
+.rb_icon_menu li {
+    text-align: center;
+}
+
+.rb_icon_menu li a {
+    display: block;
+    text-decoration: none;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.rb_icon_menu li a:hover {
+    color: #7A4EFE;
+}
+
+.rb_icon_menu dd {
+    margin: 0;
+    text-align: center;
+}
+
+.rb_icon_menu dd:first-child {
+    margin-bottom: 12px;
+}
+
+.rb_icon_menu dd:last-child {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.rb_icon_menu dd img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    transition: transform 0.3s;
+}
+
+.rb_icon_menu li a:hover dd img {
+    transform: scale(1.1);
+}
+
+/* 더보기 버튼 - PC에서는 숨김 */
+.rb_more_btn_wrap {
+    display: none;
+}
+
+/* ====================================
+   반응형: 태블릿 (1024px 이하)
+==================================== */
+@media (max-width: 1024px) {
+    .rb_icon_menu_wrap {
+        padding: 30px 20px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .rb_icon_menu {
+        gap: 25px;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        min-width: max-content;
+    }
+    
+    .rb_icon_menu li {
+        flex-shrink: 0;
+    }
+}
+
+/* ====================================
+   반응형: 모바일 (768px 이하)
+==================================== */
+@media (max-width: 768px) {
+    .rb_icon_menu_wrap {
+        padding: 20px;
+        border-top: 1px solid #eee;
+        overflow-x: visible;
+    }
+    
+    .rb_icon_menu {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        min-width: unset;
+    }
+    
+    /* 모바일에서 8개 이후 아이템 숨김 */
+    .rb_icon_menu li:nth-child(n+9) {
+        display: none;
+    }
+    
+    /* show_all 클래스가 있을 때 모든 아이템 표시 */
+    .rb_icon_menu_wrap.show_all .rb_icon_menu li {
+        display: block;
+    }
+    
+    .rb_icon_menu dd img {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .rb_icon_menu dd:last-child {
+        font-size: 12px;
+    }
+    
+    .rb_icon_menu dd:first-child {
+        margin-bottom: 8px;
+    }
+    
+    /* 모바일에서 더보기 버튼 표시 */
+    .rb_more_btn_wrap {
+        display: block;
+        text-align: center;
+        margin-top: 20px;
+    }
+    
+    .rb_more_btn {
+        background: none;
+        border: none;
+        padding: 10px 20px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #999;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .rb_more_btn:hover {
+        color: #7A4EFE;
+    }
+    
+    .more_icon {
+        font-size: 16px;
+        font-weight: 300;
+        line-height: 1;
+    }
+}

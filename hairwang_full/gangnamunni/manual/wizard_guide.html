@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>등록 마법사 가이드 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-magic"></i> 등록 마법사 가이드</h1>
+        <div class="sb-subtitle">7종 등록 마법사 + 엑셀 Import/Export</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="sb-main">
+  <div class="container">
+    <nav class="sb-breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">홈</a></li><li class="breadcrumb-item active">등록 마법사 가이드</li></ol></nav>
+
+    <div class="row">
+      <div class="col-lg-3 order-lg-2 mb-4">
+        <div class="sb-toc">
+          <div class="sb-toc-title">목차</div>
+          <ul class="sb-toc-list">
+            <li><a href="#overview">개요</a></li>
+            <li><a href="#wizard-doctor">의사 등록</a></li>
+            <li><a href="#wizard-nurse">간호사 등록</a></li>
+            <li><a href="#wizard-pharmacist">약사 등록</a></li>
+            <li><a href="#wizard-patient">환자 등록</a></li>
+            <li><a href="#wizard-staff">직원 등록</a></li>
+            <li><a href="#wizard-medicine">약품 등록</a></li>
+            <li><a href="#wizard-appointment">예약 등록</a></li>
+            <li><a href="#excel">엑셀 Import/Export</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="col-lg-9 order-lg-1">
+
+        <!-- Overview -->
+        <section id="overview" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-info-circle"></i> 개요</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>등록 마법사는 HMS(병원 관리 시스템)의 데이터 등록을 단계별로 안내하는 위저드 UI입니다. 모든 마법사는 동일한 구조로 구현되어 일관된 사용자 경험을 제공합니다.</p>
+              <div class="row g-3 mt-3">
+                <div class="col-6 col-md-3"><div class="sb-stat-card"><div class="sb-stat-number">7</div><div class="sb-stat-label">마법사 종류</div></div></div>
+                <div class="col-6 col-md-3"><div class="sb-stat-card"><div class="sb-stat-number">3~5</div><div class="sb-stat-label">단계/마법사</div></div></div>
+                <div class="col-6 col-md-3"><div class="sb-stat-card"><div class="sb-stat-number">78</div><div class="sb-stat-label">E2E 테스트</div></div></div>
+                <div class="col-6 col-md-3"><div class="sb-stat-card"><div class="sb-stat-number">100%</div><div class="sb-stat-label">PASS 비율</div></div></div>
+              </div>
+
+              <h6 class="fw-bold mt-4 mb-3">공통 특징</h6>
+              <ul class="sb-feature-list">
+                <li>단계별 진행 표시 (프로그레스 바 + 단계 인디케이터)</li>
+                <li>실시간 필드 유효성 검사 (입력 즉시 피드백)</li>
+                <li>이전/다음 단계 탐색 (데이터 유지)</li>
+                <li>최종 확인 화면에서 전체 입력 내용 검토</li>
+                <li>AJAX 기반 비동기 저장 (페이지 새로고침 없음)</li>
+                <li>엑셀 Import 대량 등록 지원</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Doctor Wizard -->
+        <section id="wizard-doctor" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">01</span> 의사 등록 마법사</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>파일: <code class="sb-code-inline">admin_doctor_wizard.php</code></p>
+              <div class="sb-screenshot" style="padding:0;border:none;background:none;">
+                <img src="screenshots/wizard_doctor.png" alt="의사 등록 마법사 화면" style="width:100%;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);">
+                <div style="text-align:center;font-size:12px;color:#888;margin-top:6px;">의사 등록 마법사 화면 (admin_doctor_wizard.php)</div>
+              </div>
+
+              <h6 class="fw-bold mt-4 mb-3">단계별 진행</h6>
+              <ol class="sb-steps">
+                <li>
+                  <strong>기본 정보</strong>
+                  <div class="small mt-1">
+                    <table class="sb-table mt-2" style="color:var(--sb-text,inherit)">
+                      <thead><tr><th>필드</th><th>타입</th><th>필수</th><th>검증 규칙</th></tr></thead>
+                      <tbody>
+                        <tr><td>이름 (한글)</td><td>text</td><td>O</td><td>2~20자, 한글만</td></tr>
+                        <tr><td>이름 (영문)</td><td>text</td><td>O</td><td>2~50자, 영문만</td></tr>
+                        <tr><td>성별</td><td>select</td><td>O</td><td>남/여</td></tr>
+                        <tr><td>생년월일</td><td>date</td><td>O</td><td>과거 날짜</td></tr>
+                        <tr><td>이메일</td><td>email</td><td>O</td><td>이메일 형식, 중복 확인</td></tr>
+                        <tr><td>전화번호</td><td>tel</td><td>O</td><td>010-XXXX-XXXX 형식</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </li>
+                <li>
+                  <strong>전문 정보</strong>
+                  <div class="small text-muted mt-1">진료과 선택 (다중), 전문의 자격증 번호, 면허 번호, 경력 (년), 소속 병원 선택</div>
+                </li>
+                <li>
+                  <strong>프로필</strong>
+                  <div class="small text-muted mt-1">프로필 사진 업로드 (JPG/PNG, 최대 5MB), 자기소개, 주요 시술 태그</div>
+                </li>
+                <li>
+                  <strong>스케줄 설정</strong>
+                  <div class="small text-muted mt-1">요일별 진료 시간, 점심 시간, 휴진일 설정</div>
+                </li>
+                <li>
+                  <strong>확인 및 저장</strong>
+                  <div class="small text-muted mt-1">전체 입력 내용 요약 표시, 수정 필요 시 해당 단계로 이동, 저장 버튼</div>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Nurse Wizard -->
+        <section id="wizard-nurse" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">02</span> 간호사 등록 마법사</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>파일: <code class="sb-code-inline">admin_nurse_wizard.php</code></p>
+              <ol class="sb-steps">
+                <li><strong>기본 정보:</strong> 이름, 성별, 생년월일, 연락처, 이메일</li>
+                <li><strong>자격 정보:</strong> 간호사 면허 번호, 면허 발급일, 전문 분야 (수술실/외래/병동/응급)</li>
+                <li><strong>소속 및 스케줄:</strong> 소속 병원, 담당 부서, 근무 스케줄 (3교대/주간/야간)</li>
+                <li><strong>확인 및 저장:</strong> 전체 내용 검토 후 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Pharmacist Wizard -->
+        <section id="wizard-pharmacist" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">03</span> 약사 등록 마법사</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>파일: <code class="sb-code-inline">admin_pharmacist_wizard.php</code></p>
+              <ol class="sb-steps">
+                <li><strong>기본 정보:</strong> 이름, 성별, 생년월일, 연락처, 이메일</li>
+                <li><strong>자격 정보:</strong> 약사 면허 번호, 전문 약사 여부, 전문 분야</li>
+                <li><strong>약국 정보:</strong> 소속 약국/병원, 약국 연락처, 운영 시간</li>
+                <li><strong>확인 및 저장:</strong> 전체 내용 검토 후 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Patient Wizard -->
+        <section id="wizard-patient" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">04</span> 환자 등록 마법사</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>파일: <code class="sb-code-inline">admin_patient_wizard.php</code></p>
+              <ol class="sb-steps">
+                <li><strong>기본 정보:</strong> 이름, 성별, 생년월일, 연락처, 이메일, 주소</li>
+                <li><strong>의료 정보:</strong> 혈액형, 알레르기, 기저 질환, 복용 중인 약물</li>
+                <li><strong>보험 정보:</strong> 보험 유형, 보험 번호, 보험사</li>
+                <li><strong>보호자 정보:</strong> 보호자 이름, 관계, 연락처 (선택사항)</li>
+                <li><strong>확인 및 저장:</strong> 전체 내용 검토 후 저장</li>
+              </ol>
+              <div class="sb-note sb-note-warning mt-3">
+                <span class="sb-note-icon"><i class="bi bi-exclamation-triangle"></i></span>
+                <div><strong>개인정보 주의:</strong> 환자 의료 정보는 민감 정보로 분류됩니다. 저장 시 암호화되며, 접근 로그가 자동으로 기록됩니다.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Staff Wizard -->
+        <section id="wizard-staff" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">05</span> 직원 등록 마법사</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>파일: <code class="sb-code-inline">admin_staff_wizard.php</code></p>
+              <ol class="sb-steps">
+                <li><strong>기본 정보:</strong> 이름, 성별, 생년월일, 연락처, 이메일</li>
+                <li><strong>직무 정보:</strong> 직책, 부서, 입사일, 급여 정보</li>
+                <li><strong>근무 스케줄:</strong> 근무 유형, 요일별 근무 시간</li>
+                <li><strong>확인 및 저장:</strong> 전체 내용 검토 후 저장</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Medicine Wizard -->
+        <section id="wizard-medicine" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">06</span> 약품 등록 마법사</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>파일: <code class="sb-code-inline">admin_medicine_wizard.php</code></p>
+              <ol class="sb-steps">
+                <li><strong>기본 정보:</strong> 약품명 (한글/영문), 분류 (전문의약품/일반의약품), 제조사</li>
+                <li><strong>상세 정보:</strong> 성분, 함량, 제형 (정제/캡슐/주사 등), 보관 조건</li>
+                <li><strong>가격/재고:</strong> 단가, 현재 재고량, 최소 재고 경고 수량, 유통기한</li>
+                <li><strong>확인 및 저장:</strong> 전체 내용 검토 후 저장</li>
+              </ol>
+              <div class="sb-note sb-note-info mt-3">
+                <span class="sb-note-icon"><i class="bi bi-lightbulb"></i></span>
+                <div><strong>팁:</strong> 약품 데이터는 엑셀 Import로 대량 등록하는 것이 효율적입니다. 템플릿 다운로드 후 데이터를 입력하세요.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Appointment Wizard -->
+        <section id="wizard-appointment" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">07</span> 예약 등록 마법사</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>파일: <code class="sb-code-inline">admin_appointment_wizard.php</code></p>
+              <ol class="sb-steps">
+                <li><strong>환자 선택:</strong> 기존 환자 검색/선택 또는 신규 환자 즉시 등록</li>
+                <li><strong>의사/진료과 선택:</strong> 진료과 -> 담당 의사 연동 선택</li>
+                <li><strong>일정 선택:</strong> 달력 UI로 날짜 선택 -> 가능한 시간대 표시 -> 시간 선택</li>
+                <li><strong>추가 정보:</strong> 예약 유형 (초진/재진), 증상 메모, 특이사항</li>
+                <li><strong>확인 및 저장:</strong> 예약 요약 표시, 문자/이메일 알림 발송 옵션</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <!-- Excel Import/Export -->
+        <section id="excel" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-file-earmark-spreadsheet"></i> 엑셀 Import/Export</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>모든 등록 마법사는 엑셀 기반 대량 데이터 Import 및 Export를 지원합니다.</p>
+
+              <h6 class="fw-bold mt-3 mb-3">Import 절차</h6>
+              <ol class="sb-steps">
+                <li><strong>템플릿 다운로드:</strong> 해당 마법사 페이지에서 "엑셀 템플릿 다운로드" 버튼 클릭</li>
+                <li><strong>데이터 입력:</strong> 템플릿의 각 컬럼에 맞게 데이터 입력 (헤더 행 유지)</li>
+                <li><strong>파일 업로드:</strong> "엑셀 Import" 버튼 -> 파일 선택 -> 업로드</li>
+                <li><strong>유효성 검사:</strong> 서버에서 각 행의 데이터 유효성 자동 검사</li>
+                <li><strong>결과 확인:</strong> 성공/실패 건수 표시, 실패 건은 오류 메시지와 함께 다운로드 가능</li>
+              </ol>
+
+              <h6 class="fw-bold mt-4 mb-3">Export 기능</h6>
+              <table class="sb-table">
+                <thead><tr><th>기능</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td>전체 Export</td><td>현재 데이터 전체를 엑셀 파일로 다운로드</td></tr>
+                  <tr><td>필터 Export</td><td>현재 검색/필터 조건에 맞는 데이터만 Export</td></tr>
+                  <tr><td>선택 Export</td><td>체크박스로 선택한 항목만 Export</td></tr>
+                  <tr><td>템플릿 Export</td><td>빈 템플릿 파일 다운로드 (Import용)</td></tr>
+                </tbody>
+              </table>
+
+              <h6 class="fw-bold mt-4 mb-3">지원 파일 형식</h6>
+              <div class="d-flex gap-2 flex-wrap">
+                <span class="sb-badge sb-badge-pass">.xlsx (Excel 2007+)</span>
+                <span class="sb-badge sb-badge-info">.xls (Excel 97-2003)</span>
+                <span class="sb-badge sb-badge-warn">.csv (쉼표 구분)</span>
+              </div>
+
+              <div class="sb-note sb-note-warning mt-3">
+                <span class="sb-note-icon"><i class="bi bi-exclamation-triangle"></i></span>
+                <div><strong>제한사항:</strong> 한 번에 최대 1,000건까지 Import 가능합니다. 대용량 데이터는 여러 번 나누어 Import하세요.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. 등록 마법사 가이드 v1.0</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_마법사가이드.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_마법사가이드.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+<script src="common/mf_widget.js?v=20260409d"></script>
+
+<div style="position:fixed;bottom:24px;right:24px;z-index:1050;"><button class="btn btn-danger btn-sm shadow-lg fw-bold px-3" onclick="openMfSection({file:'wizard_guide.html',tab:'마법사 가이드',section:'',sourceDesc:'마법사 가이드 전체'})"><i class="bi bi-pencil-square me-1"></i>수정요청</button></div>
+</body>
+</html>

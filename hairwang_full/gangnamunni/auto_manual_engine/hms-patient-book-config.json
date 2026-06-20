@@ -1,0 +1,213 @@
+{
+  "_comment": "HMS HMS 환자 매뉴얼 - Auto Manual Config",
+  "_version": "1.0",
+  "_updated": "2026-03-05",
+  "configKey": "hms-patient-book",
+  "baseUrl": "https://hms.seoulbeauty.app",
+  "basePath": "/",
+  "browser": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "captureDelay": 3000,
+    "imageFormat": "jpeg",
+    "imageQuality": 85,
+    "headless": true
+  },
+  "login": {
+    "required": true,
+    "url": "login",
+    "usernameField": "input[name='email']",
+    "passwordField": "input[name='password']",
+    "submitButton": "button[type='submit']",
+    "successIndicator": ".side-menus",
+    "username": "ruthie.carroll@example.com",
+    "password": "123456"
+  },
+  "loginCapture": {
+    "enabled": true,
+    "steps": [
+      {
+        "label": "HMS 로그인 화면",
+        "action": "navigate"
+      },
+      {
+        "label": "로그인 입력",
+        "action": "fill"
+      },
+      {
+        "label": "로그인 성공 (대시보드)",
+        "action": "submit"
+      }
+    ]
+  },
+  "book": {
+    "title": "HMS 환자 매뉴얼",
+    "outputDir": "../uploads/hms-patient-book",
+    "manualDir": "../manual/screenshot_app"
+  },
+  "chapters": [
+    {
+      "id": "ch01_dashboard",
+      "title": "대시보드",
+      "icon": "bi-speedometer2",
+      "pages": [
+        {
+          "key": "pt_dashboard",
+          "label": "환자 대시보드",
+          "url": "patient/dashboard",
+          "description": "환자 전용 대시보드",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch02_medical",
+      "title": "진료 기록",
+      "icon": "bi-heart-pulse",
+      "pages": [
+        {
+          "key": "pt_appointments",
+          "label": "예약 관리",
+          "url": "appointments",
+          "description": "내 예약 목록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_diagnosis",
+          "label": "진단 검사",
+          "url": "employee/patient-diagnosis-test",
+          "description": "검사 결과",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_prescriptions",
+          "label": "처방전",
+          "url": "patient/my-prescriptions",
+          "description": "내 처방전",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_admissions",
+          "label": "입원 기록",
+          "url": "employee/patient-admissions",
+          "description": "입원 이력",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_cases",
+          "label": "환자 케이스",
+          "url": "patient/my-cases",
+          "description": "진료 케이스",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_operations",
+          "label": "수술 보고서",
+          "url": "operation-reports",
+          "description": "수술 결과",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_vaccines",
+          "label": "백신접종",
+          "url": "patient/my-vaccinated",
+          "description": "백신접종 기록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch03_billing",
+      "title": "청구 & 기타",
+      "icon": "bi-receipt",
+      "pages": [
+        {
+          "key": "pt_bills",
+          "label": "청구서",
+          "url": "employee/bills",
+          "description": "의료비 청구서",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_invoices",
+          "label": "인보이스",
+          "url": "employee/invoices",
+          "description": "청구 인보이스",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_ipds",
+          "label": "입원/외래",
+          "url": "patient/my-ipds",
+          "description": "입원/외래 기록",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_documents",
+          "label": "문서 관리",
+          "url": "documents",
+          "description": "의료 문서",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_notice",
+          "label": "게시판",
+          "url": "employee/notice-board",
+          "description": "공지사항",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        },
+        {
+          "key": "pt_consultation",
+          "label": "실시간 상담",
+          "url": "live-consultation",
+          "description": "의사 상담",
+          "checks": [
+            "noPhpError",
+            "noJsError"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 예약 - 서울미녀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic', sans-serif;
+            background: #F9F9F9;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #FF6B9D;
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-button {
+            padding: 10px 24px;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, #FFE5ED 0%, #FFB6D9 100%);
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 42px;
+            font-weight: 700;
+            color: #FF6B9D;
+            margin-bottom: 15px;
+        }
+
+        .page-subtitle {
+            font-size: 18px;
+            color: #666;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #E0E0E0;
+        }
+
+        .tab-btn {
+            padding: 15px 30px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: #FF6B9D;
+            border-bottom-color: #FF6B9D;
+        }
+
+        /* Booking Cards */
+        .bookings-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .booking-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .booking-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .booking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #F5F5F5;
+        }
+
+        .hospital-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .booking-id {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #FFF3E0;
+            color: #F57C00;
+        }
+
+        .status-confirmed {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .status-completed {
+            background: #E3F2FD;
+            color: #1976D2;
+        }
+
+        .status-cancelled {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        .booking-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-icon {
+            font-size: 18px;
+        }
+
+        .info-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .booking-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-cancel {
+            background: white;
+            color: #D32F2F;
+            border: 2px solid #D32F2F;
+        }
+
+        .btn-cancel:hover {
+            background: #D32F2F;
+            color: white;
+        }
+
+        .btn-review {
+            background: #FF6B9D;
+            color: white;
+        }
+
+        .btn-review:hover {
+            background: #FF5588;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            background: white;
+            border-radius: 15px;
+        }
+
+        .empty-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .empty-text {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .btn-primary {
+            background: #FF6B9D;
+            color: white;
+            padding: 14px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .btn-primary:hover {
+            background: #FF5588;
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 32px;
+            }
+
+            .booking-info {
+                grid-template-columns: 1fr;
+            }
+
+            .tab-nav {
+                overflow-x: auto;
+            }
+
+            .tab-btn {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">
+                <span>💄</span>
+                <span>서울미녀</span>
+            </a>
+            <nav class="nav-menu">
+                <a href="hospitals.html" class="nav-link">병원찾기</a>
+                <a href="events.html" class="nav-link">이벤트</a>
+                <a href="community.html" class="nav-link">커뮤니티</a>
+                <button class="nav-button" onclick="handleMyBooking()">내 예약</button>
+                <a href="settings.html" class="nav-link" style="font-size: 20px;" title="환경 설정">⚙️</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">📅 내 예약</h1>
+        <p class="page-subtitle">예약 내역을 확인하고 관리하세요</p>
+    </div>
+
+    <!-- Container -->
+    <div class="container">
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-status="all" onclick="filterBookings('all')">전체</button>
+            <button class="tab-btn" data-status="pending" onclick="filterBookings('pending')">예약대기</button>
+            <button class="tab-btn" data-status="confirmed" onclick="filterBookings('confirmed')">예약확정</button>
+            <button class="tab-btn" data-status="completed" onclick="filterBookings('completed')">완료</button>
+            <button class="tab-btn" data-status="cancelled" onclick="filterBookings('cancelled')">취소</button>
+        </div>
+
+        <!-- Bookings List -->
+        <div id="bookingsContainer" class="bookings-grid">
+            <!-- Bookings will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <script src="js/loading.js"></script>
+
+    <!-- Settings Manager -->
+    <script src="js/settings.js"></script>
+
+    <!-- Authentication Manager -->
+    <script src="js/auth.js"></script>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let allBookings = [];
+        let currentFilter = 'all';
+
+        // Check authentication
+        if (!AuthManager.requireAuth()) {
+            // Will redirect to login page
+        }
+
+        // Load bookings on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadBookings();
+        });
+
+        async function loadBookings() {
+            const user = AuthManager.getCurrentUser();
+            if (!user) return;
+
+            LoadingIndicator.show('bookings');
+
+            try {
+                const response = await fetch(`${API_BASE}/bookings?user_id=${user.id}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    allBookings = data.bookings;
+                    displayBookings(allBookings);
+                } else {
+                    showError('예약 내역을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Load bookings error:', error);
+                showError('예약 내역을 불러오는데 실패했습니다.');
+            } finally {
+                LoadingIndicator.hide('bookings');
+            }
+        }
+
+        function filterBookings(status) {
+            currentFilter = status;
+
+            // Update active tab
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.status === status) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Filter and display
+            const filtered = status === 'all'
+                ? allBookings
+                : allBookings.filter(b => b.status === status);
+
+            displayBookings(filtered);
+        }
+
+        function displayBookings(bookings) {
+            const container = document.getElementById('bookingsContainer');
+
+            if (bookings.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <div class="empty-text">예약 내역이 없습니다</div>
+                        <a href="hospitals.html" class="btn-primary">병원 찾아보기</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = bookings.map(booking => `
+                <div class="booking-card">
+                    <div class="booking-header">
+                        <div>
+                            <div class="hospital-name">${booking.hospital_name}</div>
+                            <div class="booking-id">#${booking.id}</div>
+                        </div>
+                        <span class="status-badge status-${booking.status}">
+                            ${getStatusText(booking.status)}
+                        </span>
+                    </div>
+
+                    <div class="booking-info">
+                        <div class="info-item">
+                            <span class="info-icon">📅</span>
+                            <div>
+                                <div class="info-label">예약일시</div>
+                                <div class="info-value">${formatDate(booking.booking_date)} ${booking.booking_time}</div>
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <span class="info-icon">💉</span>
+                            <div>
+                                <div class="info-label">시술</div>
+                                <div class="info-value">${booking.category || '-'} ${booking.service_name || ''}</div>
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <span class="info-icon">👤</span>
+                            <div>
+                                <div class="info-label">예약자</div>
+                                <div class="info-value">${booking.patient_name}</div>
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <span class="info-icon">📱</span>
+                            <div>
+                                <div class="info-label">연락처</div>
+                                <div class="info-value">${booking.patient_phone}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${booking.notes ? `
+                        <div style="margin-bottom: 15px; padding: 12px; background: #F9F9F9; border-radius: 8px;">
+                            <div style="font-size: 13px; color: #666; margin-bottom: 5px;">메모</div>
+                            <div style="font-size: 14px; color: #333;">${booking.notes}</div>
+                        </div>
+                    ` : ''}
+
+                    <div class="booking-actions">
+                        ${booking.status === 'pending' || booking.status === 'confirmed' ? `
+                            <button class="btn btn-cancel" onclick="cancelBooking(${booking.id})">예약 취소</button>
+                        ` : ''}
+                        ${booking.status === 'completed' ? `
+                            <button class="btn btn-review" onclick="writeReview(${booking.hospital_id})">리뷰 작성</button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '예약대기',
+                'confirmed': '예약확정',
+                'completed': '완료',
+                'cancelled': '취소'
+            };
+            return statusMap[status] || status;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}.${month}.${day}`;
+        }
+
+        async function cancelBooking(bookingId) {
+            if (!confirm('예약을 취소하시겠습니까?')) {
+                return;
+            }
+
+            const user = AuthManager.getCurrentUser();
+            LoadingIndicator.show('cancel');
+
+            try {
+                const response = await fetch(`${API_BASE}/bookings/${bookingId}/cancel`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_id: user.id })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('예약이 취소되었습니다.');
+                    await loadBookings();
+                } else {
+                    alert(data.message || '예약 취소에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Cancel booking error:', error);
+                alert('예약 취소에 실패했습니다.');
+            } finally {
+                LoadingIndicator.hide('cancel');
+            }
+        }
+
+        function writeReview(hospitalId) {
+            window.location.href = `hospital.html?id=${hospitalId}#review`;
+        }
+
+        function showError(message) {
+            const container = document.getElementById('bookingsContainer');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <div class="empty-text">${message}</div>
+                </div>
+            `;
+        }
+
+        function handleMyBooking() {
+            // Already on this page
+            location.reload();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Environment variables (보안상 제외)
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build outputs
+dist/
+build/
+
+# 대용량 다운로드 파일 (필요시 별도 관리)
+site_get/output/
+*.html
+
+# MySQL 대용량 백업 (중요 파일만 포함)
+# server_backup_dev 디렉토리는 추적하되, 대용량 파일은 제외
+server_backup_dev/*.zip
+server_backup_dev/*_backup_2*.sql
+server_backup_dev/kivicare_laravel.sql
+server_backup_dev/frezka_backup_*.sql

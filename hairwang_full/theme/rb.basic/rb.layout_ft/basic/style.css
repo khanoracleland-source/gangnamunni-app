@@ -1,0 +1,336 @@
+/* 푸터 전체 래퍼 */
+footer {
+    background-color: #fff;
+    border-top: 1px solid #e5e5e5;
+    padding: 20px 0;
+    margin-top: 0px;
+}
+
+.footer_wrapper {
+    width: 100%;
+}
+
+/* PC 푸터 기본 표시, 모바일 푸터 숨김 */
+.footer_pc {
+    display: block;
+}
+
+.footer_mobile {
+    display: none;
+}
+
+/* PC 푸터 스타일 */
+.footer_top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.footer_logo {
+    flex: 0 0 auto;
+}
+
+.footer_logo img {
+    height: 40px;
+    width: auto;
+}
+
+.footer_links {
+    display: flex;
+    gap: 30px;
+}
+
+.footer_links a {
+    color: #666;
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.footer_links a:hover {
+    color: #333;
+}
+
+.footer_bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.footer_info {
+    flex: 1;
+}
+
+.company_info {
+    margin-bottom: 10px;
+}
+
+.company_info span {
+    color: #666;
+    font-size: 13px;
+    margin-right: 15px;
+    display: inline-block;
+    line-height: 1.8;
+}
+
+.copyright {
+    color: #999;
+    font-size: 12px;
+    margin-top: 10px;
+}
+
+.footer_menu {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.footer_menu a {
+    color: #666;
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.footer_menu a:hover {
+    color: #333;
+}
+
+/* 모바일 푸터 스타일 */
+.footer_mobile {
+    background-color: #fff;
+    padding: 30px 0 80px 0; /* 하단 탭 메뉴를 위한 여백 추가 */
+}
+
+.footer_mobile_content {
+    padding: 0 20px;
+    text-align: left; /* 왼쪽 정렬 */
+}
+
+/* 모바일 푸터 상단 정렬 개선 */
+.footer_mobile_top {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* 모바일 푸터 로고 스타일 수정 */
+.footer_mobile_logo {
+    flex: 0 0 auto;
+}
+
+.footer_mobile_logo img {
+    height: 24px; /* 적절한 높이 설정 */
+    width: auto; /* 비율 유지 */
+    display: block;
+}
+
+.footer_mobile_links {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+}
+
+.footer_mobile_links a {
+    color: #666;
+    text-decoration: none;
+}
+
+.footer_mobile_links .divider {
+    color: #ddd;
+    margin: 0 8px;
+}
+
+.footer_mobile_info {
+    color: #888;
+    font-size: 12px;
+    line-height: 1.8;
+    margin-bottom: 15px;
+}
+
+.footer_mobile_copyright {
+    color: #999;
+    font-size: 11px;
+    margin-bottom: 20px;
+}
+
+.footer_mobile_menu {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* 가운데 정렬 */
+    flex-wrap: wrap;
+    font-size: 13px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.footer_mobile_menu a {
+    color: #666;
+    text-decoration: none;
+}
+
+.footer_mobile_menu .divider {
+    color: #ddd;
+    margin: 0 10px;
+}
+
+/* 모바일 하단 탭 메뉴 - 기본적으로 숨김 */
+.mobile_bottom_tab {
+    display: none !important; /* 기본적으로 완전히 숨김 */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    border-top: 1px solid #e5e5e5;
+    height: 60px;
+    z-index: 999;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.mobile_bottom_tab .tab_item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 100%;
+    text-decoration: none;
+    color: #999;
+    transition: color 0.2s;
+    position: relative;
+}
+
+.mobile_bottom_tab .tab_item svg {
+    width: 26px;
+    height: 26px;
+    margin-bottom: 4px;
+}
+
+/* SVG stroke 굵기 증가 */
+.mobile_bottom_tab .tab_item svg path,
+.mobile_bottom_tab .tab_item svg circle,
+.mobile_bottom_tab .tab_item svg polyline,
+.mobile_bottom_tab .tab_item svg polygon {
+    stroke-width: 1.5 !important;
+}
+
+.mobile_bottom_tab .tab_item span {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.mobile_bottom_tab .tab_item.active {
+    color: #7c3aed;
+}
+
+.mobile_bottom_tab .tab_item.active svg path,
+.mobile_bottom_tab .tab_item.active svg circle,
+.mobile_bottom_tab .tab_item.active svg polyline,
+.mobile_bottom_tab .tab_item.active svg polygon {
+    stroke-width: 2 !important;
+}
+
+.mobile_bottom_tab .tab_item:not(.active):active {
+    background-color: #f5f5f5;
+}
+
+/* 반응형 디자인 - 태블릿 */
+@media all and (max-width: 1024px) {
+    footer {
+        padding: 30px 20px;
+    }
+    
+    .footer_wrapper .inner {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    
+    .footer_top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+    
+    .footer_bottom {
+        flex-direction: column;
+        gap: 30px;
+    }
+    
+    .company_info span {
+        display: block;
+        margin-right: 0;
+        margin-bottom: 5px;
+    }
+    
+    .footer_menu {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+}
+
+/* 반응형 디자인 - 모바일 (768px 이하에서만 모바일 탭 표시) */
+@media all and (max-width: 768px) {
+    /* 기존 인라인 스타일 제거하고 CSS로 관리 */
+    .footer_mobile_logo {
+        width: auto;
+        margin-top: 0;
+    }
+    
+    .footer_mobile_logo img {
+        height: 24px;
+        max-width: 100px;
+        width: auto;
+    }
+    
+    footer {
+        background-color: #fff;
+        padding: 0;
+        margin-top: 10px;
+        margin-bottom: 0;
+        border-top: 1px solid #eee;
+    }
+    
+    .footer_wrapper {
+        background-color: #fff;
+    }
+    
+    .footer_wrapper .inner {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        width: 100% !important;
+    }
+    
+    /* PC 푸터 숨기고 모바일 푸터 표시 */
+    .footer_pc {
+        display: none;
+    }
+    
+    .footer_mobile {
+        display: block;
+    }
+    
+    /* 모바일에서만 하단 탭 메뉴 표시 */
+    .mobile_bottom_tab {
+        display: flex !important;
+    }
+    
+    /* 전체 페이지에 하단 여백 추가 */
+    body {
+        padding-bottom: 60px;
+    }
+}
+
+/* PC 화면 크기에서 모바일 탭 메뉴 강제 숨김 */
+@media all and (min-width: 769px) {
+    .mobile_bottom_tab {
+        display: none !important;
+    }
+    
+    /* PC에서는 body padding-bottom 제거 */
+    body {
+        padding-bottom: 0;
+    }
+}

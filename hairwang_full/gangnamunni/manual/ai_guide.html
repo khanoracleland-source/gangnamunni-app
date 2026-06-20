@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 기능 가이드 - Seoul Beauty 매뉴얼</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="common/style.css" rel="stylesheet">
+<script>(function(){var t=localStorage.getItem('sb-manual-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<!-- mfw 상단 수정요청 버튼 -->
+<div id="mfw-top-btn" style="position:fixed;top:12px;right:16px;z-index:9999;">
+  <button onclick="openMfSection({file:'ai_guide.html',tab:'AI 가이드',section:'',sourceDesc:'AI 기능 가이드 전체 페이지'})" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.8rem;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(239,68,68,.4);letter-spacing:.02em;"><span style="margin-right:5px;">✏️</span>수정요청</button>
+</div>
+
+
+<header class="sb-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1><i class="bi bi-robot"></i> AI 기능 가이드</h1>
+        <div class="sb-subtitle">AI 자동화 5단계 (Phase A~E) 상세 문서</div>
+      </div>
+      <div class="sb-header-actions">
+        <a href="index.html" class="btn btn-sm btn-outline-light"><i class="bi bi-house me-1"></i> 홈</a>
+        <a href="ai_test_report.html" class="btn btn-sm btn-outline-light"><i class="bi bi-clipboard-check me-1"></i> 테스트 결과</a>
+        <button class="sb-theme-toggle" onclick="toggleTheme()"><i class="bi bi-moon-fill sb-theme-icon"></i></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="sb-main">
+  <div class="container">
+    <nav class="sb-breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="index.html">홈</a></li><li class="breadcrumb-item active">AI 기능 가이드</li></ol></nav>
+
+    <div class="row">
+      <div class="col-lg-3 order-lg-2 mb-4">
+        <div class="sb-toc">
+          <div class="sb-toc-title">목차</div>
+          <ul class="sb-toc-list">
+            <li><a href="#overview">AI 개요</a></li>
+            <li><a href="#phase-a">Phase A: AI 인프라</a></li>
+            <li><a href="#phase-b">Phase B: 후기 검증</a></li>
+            <li><a href="#phase-c">Phase C: 광고 검증</a></li>
+            <li><a href="#phase-d">Phase D: 설정 관리</a></li>
+            <li><a href="#phase-e">Phase E: 작성 도우미</a></li>
+            <li><a href="#image-gen">이미지 생성</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="col-lg-9 order-lg-1">
+
+        <!-- Overview -->
+        <section id="overview" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-cpu"></i> AI 기능 개요</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>Seoul Beauty의 AI 시스템은 5단계(Phase A~E)로 구성되어 있으며, 후기 품질 관리, 의료 광고 검증, 콘텐츠 작성 지원 등 핵심 비즈니스 프로세스를 자동화합니다.</p>
+
+              <div class="row g-3 mt-3">
+                <div class="col-6 col-md"><div class="sb-stat-card"><div class="sb-stat-number">5</div><div class="sb-stat-label">Phase</div></div></div>
+                <div class="col-6 col-md"><div class="sb-stat-card"><div class="sb-stat-number">3</div><div class="sb-stat-label">AI 프로바이더</div></div></div>
+                <div class="col-6 col-md"><div class="sb-stat-card"><div class="sb-stat-number">24</div><div class="sb-stat-label">테스트 케이스</div></div></div>
+                <div class="col-6 col-md"><div class="sb-stat-card"><div class="sb-stat-number">22</div><div class="sb-stat-label">PASS</div></div></div>
+              </div>
+
+              <h6 class="fw-bold mt-4 mb-3">지원 AI 프로바이더</h6>
+              <table class="sb-table">
+                <thead><tr><th>프로바이더</th><th>모델</th><th>주요 용도</th><th>상태</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="sb-badge sb-badge-pass">OpenAI</span></td><td>GPT-4o</td><td>후기/광고 검증, 작성 도우미</td><td><span class="sb-status"><span class="sb-status-dot green"></span> 활성</span></td></tr>
+                  <tr><td><span class="sb-badge sb-badge-purple">Anthropic</span></td><td>Claude Opus 4</td><td>텍스트 분석, 번역</td><td><span class="sb-status"><span class="sb-status-dot green"></span> 활성</span></td></tr>
+                  <tr><td><span class="sb-badge sb-badge-info">Google</span></td><td>Gemini Pro</td><td>보조 분석, 대체 프로바이더</td><td><span class="sb-status"><span class="sb-status-dot yellow"></span> 대기</span></td></tr>
+                  <tr><td><span class="sb-badge sb-badge-warn">OpenAI</span></td><td>DALL-E 3</td><td>광고 이미지 생성</td><td><span class="sb-status"><span class="sb-status-dot green"></span> 활성</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Phase A -->
+        <section id="phase-a" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-purple me-2">Phase A</span> AI 인프라</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>AI 기능의 기반이 되는 인프라 레이어입니다. API 키 관리, 암호화, 멀티 프로바이더 전환을 담당합니다.</p>
+
+              <h6 class="fw-bold mt-3 mb-3">핵심 구성요소</h6>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="sb-card h-100" style="border-left: 4px solid var(--sb-primary);">
+                    <div class="sb-card-body">
+                      <h6 class="fw-bold"><i class="bi bi-key me-1"></i> API 키 관리</h6>
+                      <ul class="sb-feature-list small">
+                        <li>AES-256-CBC 암호화 저장</li>
+                        <li>키 마스킹 표시 (sk-****...1234)</li>
+                        <li>키 유효성 실시간 검증</li>
+                        <li>복호화 조회 (관리자 전용)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="sb-card h-100" style="border-left: 4px solid var(--sb-accent);">
+                    <div class="sb-card-body">
+                      <h6 class="fw-bold"><i class="bi bi-arrow-left-right me-1"></i> 멀티 프로바이더</h6>
+                      <ul class="sb-feature-list small">
+                        <li>OpenAI / Claude / Gemini 동적 전환</li>
+                        <li>장애 시 자동 폴백 (fallback)</li>
+                        <li>프로바이더별 요금 추적</li>
+                        <li>응답 시간 모니터링</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h6 class="fw-bold mt-4 mb-3">DB 테이블</h6>
+              <div class="sb-code">
+<pre style="margin:0; color: var(--sb-text);">-- ai_api_keys: AI API 키 저장 (암호화)
+CREATE TABLE ai_api_keys (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  provider VARCHAR(50),        -- openai, claude, gemini
+  key_name VARCHAR(100),       -- 표시용 이름
+  encrypted_key TEXT,          -- AES-256-CBC 암호화된 키
+  is_active TINYINT DEFAULT 1,
+  created_at DATETIME,
+  updated_at DATETIME
+);
+
+-- ai_usage_logs: API 사용량 로깅
+CREATE TABLE ai_usage_logs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  provider VARCHAR(50),
+  action VARCHAR(100),         -- review_check, ad_check, suggest
+  tokens_used INT,
+  cost_usd DECIMAL(10,6),
+  response_ms INT,
+  created_at DATETIME
+);</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Phase B -->
+        <section id="phase-b" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">Phase B</span> 후기 AI 검증</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>사용자가 작성한 후기를 AI가 자동으로 품질 검사하고 신뢰도 점수를 산출합니다.</p>
+
+              <h6 class="fw-bold mt-3 mb-3">검증 프로세스</h6>
+              <div class="sb-code" style="padding:20px;overflow:visible"><div style="font-family:inherit">
+  <div style="text-align:center;margin-bottom:8px">
+    <div style="display:inline-block;background:rgba(102,126,234,.15);border:2px solid rgba(102,126,234,.5);border-radius:10px;padding:10px 24px">
+      <div style="font-size:18px">✍️</div>
+      <div style="font-weight:600;font-size:13px;margin-top:4px">후기 작성/수정</div>
+    </div>
+  </div>
+  <div style="text-align:center;color:#667eea;font-size:18px;margin:4px 0">↓</div>
+  <div style="background:rgba(108,99,255,.12);border:2px solid rgba(108,99,255,.5);border-radius:12px;padding:14px 20px;margin-bottom:8px">
+    <div style="text-align:center;font-weight:700;font-size:13px;color:#6C63FF;margin-bottom:10px">🤖 AI 검증 엔진 (GPT-4o)</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <div style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.4);border-radius:8px;padding:8px 14px;text-align:center;font-size:12px;flex:1;min-width:80px">
+        <div style="font-size:18px;margin-bottom:4px">🔍</div><div style="font-weight:600">품질검사</div>
+      </div>
+      <div style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.4);border-radius:8px;padding:8px 14px;text-align:center;font-size:12px;flex:1;min-width:80px">
+        <div style="font-size:18px;margin-bottom:4px">🚫</div><div style="font-weight:600">스팸탐지</div>
+      </div>
+      <div style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.4);border-radius:8px;padding:8px 14px;text-align:center;font-size:12px;flex:1;min-width:80px">
+        <div style="font-size:18px;margin-bottom:4px">💭</div><div style="font-weight:600">감성분석</div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;color:#6C63FF;font-size:18px;margin:4px 0">↓</div>
+  <div style="background:rgba(255,193,7,.1);border:2px solid rgba(255,193,7,.5);border-radius:12px;padding:12px 20px;margin-bottom:8px;text-align:center">
+    <div style="font-weight:700;font-size:13px;color:#e6a817;margin-bottom:4px">📊 신뢰도 점수 산출 (0 ~ 100점)</div>
+  </div>
+  <div style="text-align:center;color:#ffc107;font-size:18px;margin:4px 0">↓</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:140px;background:rgba(40,167,69,.1);border:2px solid rgba(40,167,69,.4);border-radius:10px;padding:10px 14px;text-align:center;font-size:12px">
+      <div style="font-size:22px;margin-bottom:4px">✅</div>
+      <div style="font-weight:700;color:#28a745;font-size:14px">80점 이상</div>
+      <div style="margin-top:4px">자동 승인 가능</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:rgba(255,193,7,.1);border:2px solid rgba(255,193,7,.4);border-radius:10px;padding:10px 14px;text-align:center;font-size:12px">
+      <div style="font-size:22px;margin-bottom:4px">⚠️</div>
+      <div style="font-weight:700;color:#e6a817;font-size:14px">60 ~ 79점</div>
+      <div style="margin-top:4px">관리자 검토 필요</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:rgba(220,53,69,.1);border:2px solid rgba(220,53,69,.4);border-radius:10px;padding:10px 14px;text-align:center;font-size:12px">
+      <div style="font-size:22px;margin-bottom:4px">❌</div>
+      <div style="font-weight:700;color:#dc3545;font-size:14px">60점 미만</div>
+      <div style="margin-top:4px">자동 보류/거부</div>
+    </div>
+  </div>
+</div></div>
+
+              <h6 class="fw-bold mt-4 mb-3">검증 항목</h6>
+              <table class="sb-table">
+                <thead><tr><th>항목</th><th>검증 내용</th><th>결과</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>품질 검사</strong></td><td>문법, 맞춤법, 문장 완성도, 구체성</td><td>0~100 점수</td></tr>
+                  <tr><td><strong>스팸 탐지</strong></td><td>광고성 문구, 반복 패턴, 무의미한 텍스트</td><td>스팸/정상</td></tr>
+                  <tr><td><strong>감성 분석</strong></td><td>긍정/부정/중립 감성 분류</td><td>감성 레이블</td></tr>
+                  <tr><td><strong>다국어 처리</strong></td><td>한국어/영어/일본어 자동 감지 및 분석</td><td>언어 코드</td></tr>
+                  <tr><td><strong>의료 관련성</strong></td><td>의료 시술과의 관련성 판단</td><td>관련/비관련</td></tr>
+                </tbody>
+              </table>
+
+              <h6 class="fw-bold mt-4 mb-3">API 호출 예시</h6>
+              <div class="sb-code">
+<pre style="margin:0; color: var(--sb-text);">// POST /gangnamunni/api/ai_review_check.php
+{
+  "review_id": 123,
+  "content": "강남 OO성형외과에서 눈 수술 받았어요. 의사 선생님이 친절하고...",
+  "action": "full_check"
+}
+
+// Response
+{
+  "success": true,
+  "score": 87,
+  "spam": false,
+  "sentiment": "positive",
+  "language": "ko",
+  "details": {
+    "quality": 85,
+    "relevance": 92,
+    "specificity": 84
+  },
+  "recommendation": "auto_approve"
+}</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Phase C -->
+        <section id="phase-c" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-warn me-2">Phase C</span> 광고 AI 검증</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>의료광고법 준수 여부를 AI가 자동으로 검증합니다. 위반 문구를 감지하고 대체 문구를 제안합니다.</p>
+
+              <h6 class="fw-bold mt-3 mb-3">검증 규칙</h6>
+              <table class="sb-table">
+                <thead><tr><th>카테고리</th><th>예시 금지 문구</th><th>위반 등급</th></tr></thead>
+                <tbody>
+                  <tr><td>허위/과장</td><td>"100% 성공률", "부작용 없는", "최고의"</td><td><span class="sb-badge sb-badge-fail">위험</span></td></tr>
+                  <tr><td>비교 광고</td><td>"OO병원보다 뛰어난", "업계 최저가"</td><td><span class="sb-badge sb-badge-fail">위험</span></td></tr>
+                  <tr><td>보장 표현</td><td>"반드시 효과", "확실한 결과"</td><td><span class="sb-badge sb-badge-warn">주의</span></td></tr>
+                  <tr><td>가격 유인</td><td>"무료 시술", "파격 할인"</td><td><span class="sb-badge sb-badge-warn">주의</span></td></tr>
+                  <tr><td>환자 유인</td><td>"선착순", "한정 이벤트"</td><td><span class="sb-badge sb-badge-info">경고</span></td></tr>
+                </tbody>
+              </table>
+
+              <h6 class="fw-bold mt-4 mb-3">등급 판정</h6>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <div class="sb-card text-center" style="border-top: 4px solid var(--sb-success);">
+                    <div class="sb-card-body">
+                      <div style="font-size: 2rem; color: var(--sb-success);">
+                        <i class="bi bi-shield-check"></i>
+                      </div>
+                      <h6 class="fw-bold mt-2">안전</h6>
+                      <small class="text-muted">위반 문구 없음, 게시 가능</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="sb-card text-center" style="border-top: 4px solid var(--sb-warning);">
+                    <div class="sb-card-body">
+                      <div style="font-size: 2rem; color: var(--sb-warning);">
+                        <i class="bi bi-exclamation-triangle"></i>
+                      </div>
+                      <h6 class="fw-bold mt-2">주의</h6>
+                      <small class="text-muted">경미한 위반, 수정 권고</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="sb-card text-center" style="border-top: 4px solid var(--sb-danger);">
+                    <div class="sb-card-body">
+                      <div style="font-size: 2rem; color: var(--sb-danger);">
+                        <i class="bi bi-x-octagon"></i>
+                      </div>
+                      <h6 class="fw-bold mt-2">위험</h6>
+                      <small class="text-muted">심각한 위반, 게시 차단</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h6 class="fw-bold mt-4 mb-3">수정 제안 예시</h6>
+              <div class="sb-code">
+<pre style="margin:0; color: var(--sb-text);">원문: "부작용 없는 최첨단 레이저 시술"
+  -> 위반: "부작용 없는" (허위/과장)
+  -> 제안: "부작용을 최소화한 레이저 시술"
+
+원문: "업계 최저가 보장"
+  -> 위반: "업계 최저가" (비교 광고)
+  -> 제안: "합리적인 가격의 시술"</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Phase D -->
+        <section id="phase-d" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-info me-2">Phase D</span> AI 설정 관리</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>관리자 UI에서 AI 기능의 전체 설정을 관리합니다. 파일: <code class="sb-code-inline">admin_ai_settings.php</code></p>
+
+              <div class="sb-screenshot" style="padding:0;border:none;background:none;">
+                <img src="screenshots/admin_ai_settings.png" alt="AI 설정 관리 화면" style="width:100%;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.12);">
+                <div style="text-align:center;font-size:12px;color:#888;margin-top:6px;">AI 설정 관리 화면 (admin_ai_settings.php)</div>
+              </div>
+
+              <h6 class="fw-bold mt-3 mb-3">설정 항목</h6>
+              <div class="accordion sb-accordion" id="settingsAccordion">
+                <div class="accordion-item">
+                  <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#setting1">API 키 관리</button></h2>
+                  <div id="setting1" class="accordion-collapse collapse show" data-bs-parent="#settingsAccordion">
+                    <div class="accordion-body">
+                      <ul class="sb-feature-list">
+                        <li>프로바이더별 API 키 등록 (AES-256-CBC 암호화 저장)</li>
+                        <li>키 유효성 실시간 검증 버튼</li>
+                        <li>마스킹된 키 표시 (sk-****...1234)</li>
+                        <li>활성/비활성 토글</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#setting2">자동 검증 규칙</button></h2>
+                  <div id="setting2" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+                    <div class="accordion-body">
+                      <ul class="sb-feature-list">
+                        <li>자동 승인 임계 점수 (기본: 80점)</li>
+                        <li>자동 보류 임계 점수 (기본: 60점)</li>
+                        <li>후기 검증 활성화/비활성화</li>
+                        <li>광고 검증 활성화/비활성화</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#setting3">사용량 한도</button></h2>
+                  <div id="setting3" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+                    <div class="accordion-body">
+                      <ul class="sb-feature-list">
+                        <li>일일 API 호출 한도 (기본: 1,000회)</li>
+                        <li>월간 비용 한도 (기본: $100)</li>
+                        <li>한도 도달 시 이메일 알림</li>
+                        <li>한도 초과 시 동작 설정 (중지/경고만)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#setting4">사용량 통계</button></h2>
+                  <div id="setting4" class="accordion-collapse collapse" data-bs-parent="#settingsAccordion">
+                    <div class="accordion-body">
+                      <ul class="sb-feature-list">
+                        <li>일별/주별/월별 API 호출 차트</li>
+                        <li>프로바이더별 사용 비율</li>
+                        <li>기능별 사용 분포 (검증/제안/이미지 생성)</li>
+                        <li>비용 추이 그래프</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Phase E -->
+        <section id="phase-e" class="mb-5">
+          <h2 class="sb-section-title"><span class="sb-badge sb-badge-pass me-2">Phase E</span> 작성 도우미</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>후기 작성 중 AI가 실시간으로 문장 제안, 자동완성, 표현 개선을 도와줍니다.</p>
+
+              <h6 class="fw-bold mt-3 mb-3">기능</h6>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <div class="sb-card h-100" style="border-left: 4px solid var(--sb-primary);">
+                    <div class="sb-card-body">
+                      <h6 class="fw-bold">실시간 제안 패널</h6>
+                      <p class="small text-muted mb-0">후기 에디터 옆에 AI 제안 패널이 표시됩니다. 입력한 내용을 분석하여 추가할 수 있는 문장을 제안합니다.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="sb-card h-100" style="border-left: 4px solid var(--sb-success);">
+                    <div class="sb-card-body">
+                      <h6 class="fw-bold">문장 자동완성</h6>
+                      <p class="small text-muted mb-0">입력 중 3개의 자동완성 후보를 생성합니다. Tab 키로 선택하여 삽입할 수 있습니다.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="sb-card h-100" style="border-left: 4px solid var(--sb-warning);">
+                    <div class="sb-card-body">
+                      <h6 class="fw-bold">표현 개선</h6>
+                      <p class="small text-muted mb-0">작성된 문장을 분석하여 더 자연스럽고 구체적인 표현으로 개선을 제안합니다.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h6 class="fw-bold mt-4 mb-3">API 호출</h6>
+              <div class="sb-code">
+<pre style="margin:0; color: var(--sb-text);">// POST /gangnamunni/api/ai_suggest.php
+{
+  "context": "눈 수술 후기를 작성하고 있음",
+  "current_text": "강남 OO성형외과에서 눈 수술을 받았습니다.",
+  "action": "suggest_next"  // suggest_next | autocomplete | improve
+}
+
+// Response
+{
+  "suggestions": [
+    "수술 전 상담에서 의사 선생님이 상세하게 설명해 주셨습니다.",
+    "수술 후 붓기는 약 1주일 정도 지속되었습니다.",
+    "전체적인 만족도는 매우 높습니다."
+  ]
+}</pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Image Generation -->
+        <section id="image-gen" class="mb-5">
+          <h2 class="sb-section-title"><i class="bi bi-palette"></i> 광고 이미지 생성</h2>
+          <div class="sb-card">
+            <div class="sb-card-body">
+              <p>DALL-E 3을 사용하여 광고용 이미지를 자동으로 생성합니다.</p>
+
+              <h6 class="fw-bold mt-3 mb-3">사용 방법</h6>
+              <ol class="sb-steps">
+                <li><strong>프롬프트 입력:</strong> 원하는 이미지 설명을 자연어로 입력 (한국어 지원)</li>
+                <li><strong>옵션 설정:</strong> 크기(1024x1024), 스타일(자연/생생), 품질(표준/HD) 선택</li>
+                <li><strong>생성 실행:</strong> "이미지 생성" 버튼 클릭 (약 8~15초 소요)</li>
+                <li><strong>결과 확인:</strong> 생성된 이미지 미리보기, 다운로드 또는 광고에 즉시 적용</li>
+              </ol>
+
+              <div class="sb-note sb-note-info mt-3">
+                <span class="sb-note-icon"><i class="bi bi-info-circle"></i></span>
+                <div><strong>비용:</strong> DALL-E 3 이미지 1장 생성 비용은 약 $0.04 (표준) ~ $0.08 (HD)입니다. 월간 비용 한도 설정으로 관리하세요.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="sb-footer">
+  <div class="container">
+    <div class="sb-footer-content">
+      <div class="sb-footer-text">&copy; 2026 Seoul Beauty. AI 기능 가이드 v1.0</div>
+      <div class="sb-footer-actions">
+        <button class="btn btn-outline-secondary" onclick="exportToPDF('서울미녀_AI가이드.pdf')"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+        <button class="btn btn-outline-secondary" onclick="exportToWord('서울미녀_AI가이드.doc')"><i class="bi bi-file-earmark-word me-1"></i> Word</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<button class="sb-back-to-top"><i class="bi bi-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="common/export.js"></script>
+<script src="common/mf_widget.js?v=20260409d"></script>
+
+<div style="position:fixed;bottom:24px;right:24px;z-index:1050;"><button class="btn btn-danger btn-sm shadow-lg fw-bold px-3" onclick="openMfSection({file:'ai_guide.html',tab:'AI 가이드',section:'',sourceDesc:'AI 가이드 전체'})"><i class="bi bi-pencil-square me-1"></i>수정요청</button></div>
+</body>
+</html>

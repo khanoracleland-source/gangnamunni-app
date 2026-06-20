@@ -1,0 +1,31 @@
+{
+    "name": "nwidart/bed",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Bed\\": "",
+            "Modules\\Bed\\App\\": "app/",
+            "Modules\\Bed\\Database\\Factories\\": "database/factories/",
+            "Modules\\Bed\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Bed\\Tests\\": "tests/"
+        }
+    }
+}

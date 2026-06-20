@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>서울미녀 플랫폼 동작 검증 리포트 (2026-06-12)</title>
+<style>
+:root{--c:#0891b2;--c2:#0e7490;--bg:#f6f8fa;--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--ok:#16a34a;--warn:#d97706}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Noto Sans KR',-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px 80px}
+header{background:linear-gradient(135deg,var(--c),var(--c2));color:#fff;padding:36px 16px 30px;text-align:center}
+header h1{margin:0 0 6px;font-size:1.45rem} header p{margin:0;opacity:.9;font-size:.9rem}
+.sumbar{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:18px}
+.pill{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:7px 16px;font-size:.85rem;font-weight:600}
+section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;margin-top:22px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+h2{font-size:1.15rem;margin:0 0 14px;padding-bottom:10px;border-bottom:2px solid var(--c);display:flex;align-items:center;gap:8px}
+h2 .n{background:var(--c);color:#fff;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.85rem}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#f1f5f9;font-weight:700;color:#334155}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:.82rem;color:var(--mut);word-break:break-all}
+.code{font-family:ui-monospace,Menlo,monospace;font-weight:700;padding:2px 9px;border-radius:6px}
+.code-ok{background:#dcfce7;color:var(--ok)} .code-warn{background:#fef3c7;color:var(--warn)}
+.ok{color:var(--ok);font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.shot{margin:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.shot a{display:block;background:#0f172a}
+.shot img{width:100%;height:300px;object-fit:cover;object-position:top;display:block}
+.shot img:hover{opacity:.88}
+.shot figcaption{padding:8px 10px;font-size:.82rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.badge{background:#dcfce7;color:var(--ok);font-size:.7rem;padding:1px 7px;border-radius:999px;font-weight:700}
+.vid{margin-top:14px} .vid video{width:100%;max-width:420px;border-radius:12px;border:1px solid var(--line);background:#000}
+.note{background:#f0f9ff;border-left:4px solid var(--c);padding:12px 14px;border-radius:0 8px 8px 0;font-size:.85rem;margin-top:12px}
+.devcard{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.kv{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.85rem;min-width:150px}
+.kv b{display:block;color:var(--mut);font-size:.72rem;font-weight:600;margin-bottom:2px}
+.passrow{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.9rem}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:0 0 auto}
+footer{text-align:center;color:var(--mut);font-size:.8rem;margin-top:30px}
+</style></head><body>
+<header>
+  <h1>✅ 서울미녀 플랫폼 동작 검증 리포트</h1>
+  <p>웹 · Android · iOS 실기기 검증 — 2026-06-12</p>
+  <div class="sumbar">
+    <span class="pill">🖥️ 웹 14/14 페이지 200</span>
+    <span class="pill">🤖 Android 5화면 + 영상</span>
+    <span class="pill">🍎 iOS 라이브 실행검증</span>
+    <span class="pill">🔌 서버 6/6 정상</span>
+  </div>
+</header>
+<div class="wrap">
+
+<section>
+  <h2><span class="n">1</span>서버 동작 검증</h2>
+  <table><thead><tr><th>대상</th><th>경로</th><th>응답</th><th>판정</th></tr></thead>
+  <tbody><tr><td>서울미녀 메인 사이트</td><td class='mono'>/gangnamunni/</td><td><span class='code code-ok'>200</span></td><td>정상 — 타이틀 &#x27;병원 찾기 | 서울미녀&#x27;</td></tr>
+<tr><td>앱 로드 경로 (/hairwang)</td><td class='mono'>/hairwang/gangnamunni/</td><td><span class='code code-ok'>200</span></td><td>정상 — 네이티브 앱 로드 경로</td></tr>
+<tr><td>Gnuboard 게시판</td><td class='mono'>/bbs/</td><td><span class='code code-ok'>200</span></td><td>정상</td></tr>
+<tr><td>HMS 관리자 대시보드</td><td class='mono'>/login</td><td><span class='code code-ok'>200</span></td><td>정상 — InfyHMS 로그인</td></tr>
+<tr><td>앱 API 로그인 (POST)</td><td class='mono'>/api/login</td><td><span class='code code-ok'>422</span></td><td>정상 — JSON 검증응답 &#x27;사용자명과 비밀번호는 필수입니다&#x27;</td></tr>
+<tr><td>Laravel 백엔드 (:8000)</td><td class='mono'>artisan serve</td><td><span class='code code-ok'>200</span></td><td>정상</td></tr></tbody></table>
+  <div class="note">🔒 전체 소스 안전 백업 보유 — <span class="mono">/var/backups/www_html_full_20260612.tar.gz</span> (22G→14G, 무결성 검증 OK) + GitHub <span class="mono">appdosa1004-cyber/site_get</span>.</div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>웹(Chrome) 테스트 — 14페이지</h2>
+  <p style="font-size:.9rem;color:var(--mut);margin-top:0">Playwright · 모바일 뷰(iPhone UA, 390×844) · 전 페이지 HTTP 200 렌더 확인. 이미지 클릭 시 원본.</p>
+  <div class="grid"><figure class="shot"><a href="chrome/_thumb/01_홈.png" target="_blank"><img loading="lazy" src="chrome/_thumb/01_홈.png" alt="홈 (서울미녀)"></a><figcaption>홈 (서울미녀) <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/02_병원_찾기.png" target="_blank"><img loading="lazy" src="chrome/_thumb/02_병원_찾기.png" alt="병원 찾기"></a><figcaption>병원 찾기 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/03_이벤트.png" target="_blank"><img loading="lazy" src="chrome/_thumb/03_이벤트.png" alt="이벤트"></a><figcaption>이벤트 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/04_커뮤니티.png" target="_blank"><img loading="lazy" src="chrome/_thumb/04_커뮤니티.png" alt="커뮤니티"></a><figcaption>커뮤니티 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/05_칼럼_꿀팁.png" target="_blank"><img loading="lazy" src="chrome/_thumb/05_칼럼_꿀팁.png" alt="칼럼/꿀팁"></a><figcaption>칼럼/꿀팁 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/06_가격_비교.png" target="_blank"><img loading="lazy" src="chrome/_thumb/06_가격_비교.png" alt="가격 비교"></a><figcaption>가격 비교 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/07_병원_랭킹.png" target="_blank"><img loading="lazy" src="chrome/_thumb/07_병원_랭킹.png" alt="병원 랭킹"></a><figcaption>병원 랭킹 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/08_지도_탐색.png" target="_blank"><img loading="lazy" src="chrome/_thumb/08_지도_탐색.png" alt="지도 탐색"></a><figcaption>지도 탐색 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/09_이벤트_캘린더.png" target="_blank"><img loading="lazy" src="chrome/_thumb/09_이벤트_캘린더.png" alt="이벤트 캘린더"></a><figcaption>이벤트 캘린더 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/10_FAQ.png" target="_blank"><img loading="lazy" src="chrome/_thumb/10_FAQ.png" alt="FAQ"></a><figcaption>FAQ <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/11_예약.png" target="_blank"><img loading="lazy" src="chrome/_thumb/11_예약.png" alt="예약"></a><figcaption>예약 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/12_마이페이지.png" target="_blank"><img loading="lazy" src="chrome/_thumb/12_마이페이지.png" alt="마이페이지"></a><figcaption>마이페이지 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/13_HMS_관리자_로그인.png" target="_blank"><img loading="lazy" src="chrome/_thumb/13_HMS_관리자_로그인.png" alt="HMS 관리자 로그인"></a><figcaption>HMS 관리자 로그인 <span class='badge'>HTTP 200</span></figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/14_인수인계_대시보드.png" target="_blank"><img loading="lazy" src="chrome/_thumb/14_인수인계_대시보드.png" alt="인수인계 대시보드(로그인 게이트)"></a><figcaption>인수인계 대시보드(로그인 게이트) <span class='badge'>HTTP 200</span></figcaption></figure></div>
+  <div class="vid"><b style="font-size:.85rem">▶ 세션 녹화 영상</b><br><video controls preload="metadata" src="chrome/session_chrome.webm"></video></div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>Android 앱 테스트</h2>
+  <div class="devcard">
+    <div class="kv"><b>기기</b>Galaxy Note20 (SM-N981N)</div>
+    <div class="kv"><b>앱</b>서울미녀 (com.celebhospital.patient)</div>
+    <div class="kv"><b>방식</b>네이티브 WebView</div>
+    <div class="kv"><b>결과</b><span class="ok">홈·병원·커뮤니티·마이 정상</span></div>
+  </div>
+  <div class="grid"><figure class="shot"><a href="android/_thumb/01_홈.png" target="_blank"><img loading="lazy" src="android/_thumb/01_홈.png" alt="홈"></a><figcaption>홈</figcaption></figure>
+<figure class="shot"><a href="android/_thumb/02_병원.png" target="_blank"><img loading="lazy" src="android/_thumb/02_병원.png" alt="병원"></a><figcaption>병원</figcaption></figure>
+<figure class="shot"><a href="android/_thumb/03_커뮤니티.png" target="_blank"><img loading="lazy" src="android/_thumb/03_커뮤니티.png" alt="커뮤니티"></a><figcaption>커뮤니티</figcaption></figure>
+<figure class="shot"><a href="android/_thumb/04_마이페이지.png" target="_blank"><img loading="lazy" src="android/_thumb/04_마이페이지.png" alt="마이페이지"></a><figcaption>마이페이지</figcaption></figure>
+<figure class="shot"><a href="android/_thumb/05_홈_스크롤.png" target="_blank"><img loading="lazy" src="android/_thumb/05_홈_스크롤.png" alt="홈_스크롤"></a><figcaption>홈_스크롤</figcaption></figure></div>
+  <div class="vid"><b style="font-size:.85rem">▶ 앱 화면 녹화 영상</b><br><video controls preload="metadata" src="android/session_android.mp4"></video></div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>iOS 앱 테스트</h2>
+  <div class="devcard">
+    <div class="kv"><b>기기</b>iPhone (cr1004iphone)</div>
+    <div class="kv"><b>iOS</b>18.4.1</div>
+    <div class="kv"><b>앱</b>서울미녀 v2.0.0 (build 27)</div>
+    <div class="kv"><b>번들ID</b>com.celebhospital.patient</div>
+  </div>
+  <div class="passrow"><span class="dot"></span><b>라이브 실행 검증 성공</b> — "Launched application with com.celebhospital.patient bundle identifier" (2026-06-12)</div>
+  <div class="passrow"><span class="dot"></span>동일 WebView로 서울미녀 사이트 로드 — Android/웹과 동일 백엔드</div>
+  <div class="note">🍎 iOS 앱은 Android와 동일한 WebView 구조로 표시 콘텐츠가 아래 페이지(=Chrome iPhone UA 캡처)와 동일합니다. 실기기 화면 캡처는 Mac 캡처툴 제약으로 라이브 실행검증으로 대체.</div>
+  <p style="font-size:.82rem;color:var(--mut);margin:14px 0 6px">iOS WebView 표시 콘텐츠 (동일 사이트 · iPhone UA)</p>
+  <div class="grid"><figure class="shot"><a href="chrome/_thumb/01_홈.png" target="_blank"><img loading="lazy" src="chrome/_thumb/01_홈.png" alt="홈 (서울미녀)"></a><figcaption>홈 (서울미녀)</figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/02_병원_찾기.png" target="_blank"><img loading="lazy" src="chrome/_thumb/02_병원_찾기.png" alt="병원 찾기"></a><figcaption>병원 찾기</figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/03_이벤트.png" target="_blank"><img loading="lazy" src="chrome/_thumb/03_이벤트.png" alt="이벤트"></a><figcaption>이벤트</figcaption></figure>
+<figure class="shot"><a href="chrome/_thumb/07_병원_랭킹.png" target="_blank"><img loading="lazy" src="chrome/_thumb/07_병원_랭킹.png" alt="병원 랭킹"></a><figcaption>병원 랭킹</figcaption></figure></div>
+</section>
+
+<footer>생성: 2026-06-12 · 서울미녀 인수인계 자동 검증 시스템 · 웹 14컷+영상 / Android 5컷+영상 / iOS 실행검증</footer>
+</div></body></html>

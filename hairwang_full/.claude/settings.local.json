@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"c:\\xampp\\htdocs\\hairwang_server_backup_and_dev\\2025_11_27\\www\\member\")",
+      "Bash(dir:*)",
+      "Bash(php -i:*)",
+      "Bash(cat:*)",
+      "Bash(findstr:*)",
+      "Bash(php -r:*)",
+      "Bash(ls \"C:\\\\xampp\\\\htdocs\\\\hairwang_server_backup_and_dev\\\\2025_11_27\\\\www\\\\theme\\\\rb.basic\\\\mobile\\\\shop\"\" | findstr \"head \")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

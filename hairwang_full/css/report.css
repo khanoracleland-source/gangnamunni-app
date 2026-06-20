@@ -1,0 +1,430 @@
+@charset "utf-8";
+
+/* ===== 환경설정 ===== */
+.report-config .desc{color:#6b7280;font-size:12.5px;margin-top:6px}
+.report-config .field{margin:14px 0}
+.report-config .grid{display:grid;grid-template-columns:220px 1fr;gap:10px;align-items:center}
+.report-config .inline{display:flex;gap:14px;align-items:center}
+.report-config textarea{width:100%;height:120px}
+.report-config .note{font-size:12.5px;color:#374151;background:#f9fafb;padding:10px;border-radius:6px}
+
+
+/* ===== 관리자 ===== */
+.report-admin .sch {margin:0 0 15px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+.report-admin table {width:100%; border-collapse:collapse;}
+.report-admin th, .report-admin td {border:1px solid #e5e7eb; padding:8px 10px; font-size:13px; vertical-align:top;}
+.report-admin th {background:#f9fafb;font-size:11px;}
+.report-admin .badge {display:inline-block; padding:2px 6px; border-radius:9999px; font-size:11px;}
+.badge.red{background:#ef4444;color:#fff}
+.badge.gray{background:#9ca3af;color:#fff}
+.badge.green{background:#10b981;color:#fff}
+	
+/* 검색 행 공통 */
+.report-admin .sch{margin:0 0 15px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.report-admin .sch .sch-item{display:flex;flex-direction:column;gap:4px}
+.report-admin .sch .grow{min-width:220px;flex:1}
+
+/* 기간 입력칸 묶음 */
+.report-admin .sch .period-range{
+  display:flex; align-items:center; gap:6px;
+}
+.report-admin .sch .dash{color:#9ca3af}
+
+/* 기간 묶음 */
+.report-admin .sch .period{flex-direction:row;align-items:center}
+.report-admin .sch .period .lab{margin-right:8px;color:#374151}
+.report-admin .sch .period .dash{margin:0 6px;color:#9ca3af}
+.report-admin .sch .sch-date{
+  height:32px; padding:0 8px; border:1px solid #d1d5db; border-radius:4px;
+  min-width:160px; /* 날짜 박스 너비 통일 */
+}
+
+/* 관리자일때 내용 보기 */
+.report-admin-lock-banner{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; margin:10px 0 16px; border-radius:8px;
+  background:#fff7ed; border:1px solid #fed7aa; color:#7c2d12; font-size:14px;
+}
+.report-admin-lock-banner .report-admin-badge{
+  display:inline-block; font-size:12px; line-height:1;
+  padding:4px 8px; border-radius:999px; background:#ef4444; color:#fff;
+}
+
+/* 검색 버튼 */
+.report-admin .btn.btn-search{
+  height:34px; padding:0 14px; border:1px solid #10b981;
+  background:#10b981; color:#fff; border-radius:6px; font-weight:600;
+  line-height:32px; cursor:pointer;
+}
+.report-admin .btn.btn-search:hover{filter:brightness(0.95)}
+
+/* ===== 상단 액션 바 ===== */
+.report-admin .report-admin-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:10px 0 8px;
+  flex-wrap:wrap;
+}
+.report-admin .report-admin-actions .report-admin-total{
+  font-size:13px;
+  color:#374151;
+}
+.report-admin .report-admin-actions-btns{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.report-admin .report-admin-actions-btns .btn{
+  height:30px;
+  padding:0 10px;
+  border:1px solid #d1d5db;
+  border-radius:6px;
+  background:#fff;
+  cursor:pointer;
+  font-size:12px;
+}
+.report-admin .report-admin-actions-btns .btn:hover{ background:#f3f4f6; }
+
+/* 테이블 기본 세로정렬 */
+.report-admin th, .report-admin td{vertical-align:middle}
+
+/* 잠금 셀: 배지+버튼 가로정렬, 줄바꿈 방지 */
+.report-admin td.actions{
+  white-space:nowrap;
+  text-align:center;
+}
+.report-admin td.actions .lock-wrap{
+  display:inline-flex; align-items:center; gap:8px;
+}
+.report-admin td.actions .badge{min-width:36px; text-align:center;}
+
+/* 버튼 크기 통일 */
+.report-admin td.actions button{
+  height:28px; padding:0 10px; border:1px solid #d1d5db; border-radius:6px;
+  background:#fff; cursor:pointer; font-size:12px;
+}
+.report-admin td.actions button:hover{background:#f3f4f6}
+
+.report-admin .sch .frm_input,
+.report-admin .sch select{
+  height:32px; line-height:32px;
+}
+
+.report-admin .btn.btn-search{
+  height:34px; line-height:34px;  /* 이미 있으나, 혹시 상쇄되는 스타일 방지용 */
+}
+
+/* ===== 하단 페이징 중앙 정렬 ===== */
+.report-admin .report-admin-footer{
+  display:flex;
+  justify-content:center;  /* 중앙 정렬 */
+  margin-top:8px;
+}
+
+.report-admin .report-admin-center{
+  text-align:center;
+}
+
+.report-admin .report-admin-center .pg_wrap{
+  margin:0 !important;
+}
+
+
+/* 버튼을 기준점으로 */
+.report-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 뱃지: 버튼 우상단 */
+.report-count-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px #fff;
+  z-index: 1;
+}
+
+/* 0이면 숨김 */
+.report-count-badge:empty,
+.report-count-badge[data-count="0"] { display: none; }
+
+/* 모바일에서 살짝 여유 */
+@media (max-width: 480px) {
+  .report-count-badge { top: -8px; right: -8px; }
+}
+
+/* 댓글 신고 버튼(부모) */
+.cmt-report-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;  /* ← 날짜랑 간격 */
+  padding-right: 1px; /* ← 배지 들어갈 공간 */
+  font-size: 13px;
+  color: #666;
+}
+
+/* 댓글 신고 배지 */
+.cmt-report-badge {
+  position: absolute;
+  top: -6px;
+  right: -15px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* 0이면 숨기기 */
+.cmt-report-badge:empty,
+.cmt-report-badge[data-count="0"] { display: none; }
+
+/* ===== 글 숨기기 ===== */
+.report-post-hidden-note{
+  padding:12px 14px;
+  background:#f9fafb;
+  border:1px solid #e5e7eb;
+  border-radius:6px;
+  color:#6b7280;
+  font-size:14px;
+}
+.cmt-report-hidden-note{
+  display:block;
+  padding:10px 12px;
+  background:#f9fafb;
+  border:1px solid #e5e7eb;
+  border-radius:6px;
+  color:#6b7280;
+  font-size:13px;
+}
+
+/* ===== 신고 모달 창 ===== */
+.report-modal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 9999;
+    display: none;
+}
+.report-modal.show {
+    display: block;
+}
+.report-modal-bg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+.report-modal-box {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    width: 90%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+.report-modal.show .report-modal-box {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+}
+.report-modal-close {
+    position: absolute;
+    top: 10px; right: 15px;
+    font-size: 24px;
+    background: none;
+    border: none;
+    color: #333;
+    cursor: pointer;
+}
+.report-notice{
+  margin-top:12px;
+  color:#6b7280;
+  font-size:13px;
+  line-height:1.5;
+}
+@media screen and (max-width: 640px) {
+  .report-modal-box {
+    width: 92%;       /* 작은 화면에서는 살짝 줄이기 */
+    padding: 16px;
+  }
+}
+
+/* ===== 폼 영역 ===== */
+#report_form_wrap {
+    font-size: 15px;
+}
+#report_form_wrap h2 {
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+.report-label {
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+/* ===== 신고 사유 아이콘 리스트 ===== */
+.report-reason-icons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+.report-reason-icons li {
+    flex: 0 0 auto;
+}
+.report-reason-icons label {
+    display: block;
+    cursor: pointer;
+}
+.report-reason-icons input[type="radio"] {
+    display: none;
+}
+/* 선택된 신고 사유: 라디오가 체크되면 바로 뒤 .icon-wrap 스타일 적용 */
+.report-reason-icons input[type="radio"]:checked + .icon-wrap {
+    background-color: #e74c3c;
+    border-color: #e74c3c;
+    color: #fff;
+}
+.report-reason-icons input[type="radio"]:checked + .icon-wrap i {
+    color: #fff;
+}
+/* ===== 기본 아이콘 스타일 ===== */
+.icon-wrap {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 16px 10px;
+    min-width: 70px;
+    text-align: center;
+    font-size: 14px;
+    background: #fff;
+    color: #444;
+    transition: all 0.2s ease;
+}
+.icon-wrap i {
+    font-size: 22px;
+    margin-bottom: 5px;
+    display: block;
+    color: #999;
+}
+.icon-wrap span {
+    display: block;
+    font-size: 13px;
+}
+
+/* ===== 키보드 접근성 ===== */
+.report-reason-icons input[type="radio"]:focus-visible + .icon-wrap {
+    outline: 2px solid #e74c3c;
+    outline-offset: 3px;
+}
+
+/* ===== 기타 설명 textarea ===== */
+.reason-etc-box {
+    margin-top: 16px;
+}
+.reason-etc-box textarea {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px;
+    resize: vertical;
+    font-size: 14px;
+}
+
+/* ===== 제출 버튼 ===== */
+.report-btns {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 0px;
+}
+.report_btn_submit {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.report_btn_submit:hover {
+    background: #c0392b;
+}
+
+.report_btn_cancel {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: #e5e7eb;
+    color: #111827;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.report_ta-c {
+    text-align: center;
+}
+
+/* ===== 모달 스크롤바 커스터마이징 ===== */
+.report-modal-box::-webkit-scrollbar {
+    width: 6px;
+}
+.report-modal-box::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+/* ===== 모바일 최적화 ===== */
+@media (max-width: 480px) {
+    .report-modal-box {
+        padding: 1rem;
+    }
+    .icon-wrap {
+        min-width: 60px;
+        padding: 12px 8px;
+    }
+}
+
+/* ===== 선택된 신고 사유 ===== */
+.icon-wrap.selected {
+    background-color: #e74c3c;
+    border-color: #e74c3c;
+    color: #fff;
+}
+.icon-wrap.selected i {
+    color: #fff;
+}
+.icon-wrap:hover {
+    background-color: #f9f9f9;
+}

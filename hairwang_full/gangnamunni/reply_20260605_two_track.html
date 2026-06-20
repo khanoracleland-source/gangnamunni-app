@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>투트랙 협업 진행 — 답변 (2026-06-05)</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+    color: #222;
+    background: #f7f7f9;
+    line-height: 1.7;
+  }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 32px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 18px;
+  }
+  h1 {
+    color: #ae1932;
+    font-size: 22px;
+    margin: 0 0 6px;
+    border-bottom: 3px solid #ae1932;
+    padding-bottom: 10px;
+  }
+  .meta {
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  h2 {
+    color: #ae1932;
+    font-size: 17px;
+    margin: 28px 0 12px;
+    padding-left: 10px;
+    border-left: 4px solid #ae1932;
+  }
+  h3 {
+    font-size: 15px;
+    margin: 18px 0 8px;
+    color: #333;
+  }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0 12px; padding-left: 22px; }
+  li { margin: 4px 0; }
+  .greet { font-size: 15px; margin-bottom: 18px; }
+  .highlight-box {
+    background: #fff5f6;
+    border: 1px solid #f0c8cc;
+    border-left: 4px solid #ae1932;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 14px 0;
+  }
+  .info-box {
+    background: #f0f7ff;
+    border: 1px solid #c8e0f7;
+    border-left: 4px solid #2a73d0;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 14px 0;
+  }
+  .ok-box {
+    background: #effdf3;
+    border: 1px solid #b8e8c8;
+    border-left: 4px solid #1f9c4a;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 14px 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid #e3e3e8;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  th {
+    background: #fafafa;
+    font-weight: 600;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    margin-right: 4px;
+  }
+  .badge-ok { background: #1f9c4a; }
+  .badge-warn { background: #f5a524; }
+  .badge-info { background: #2a73d0; }
+  .badge-red { background: #ae1932; }
+  .signature {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+    color: #555;
+  }
+  code {
+    background: #f3f3f5;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    color: #c7254e;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .stat-item {
+    background: #fafafa;
+    border: 1px solid #e8e8ec;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-num {
+    display: block;
+    font-size: 22px;
+    font-weight: 700;
+    color: #ae1932;
+  }
+  .stat-label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+  }
+  .figma-section {
+    background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
+    color: #fff;
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+  .figma-section h2 {
+    color: #fff;
+    border-left-color: #f24e1e;
+    margin-top: 0;
+  }
+  .figma-btn-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 16px 0 8px;
+  }
+  .figma-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f24e1e;
+    color: #fff !important;
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(242,78,30,0.3);
+  }
+  .figma-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(242,78,30,0.5);
+  }
+  .figma-btn.secondary {
+    background: rgba(255,255,255,0.12);
+    color: #fff !important;
+    box-shadow: none;
+  }
+  .figma-btn.secondary:hover {
+    background: rgba(255,255,255,0.22);
+  }
+  .figma-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  .figma-frames {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .figma-frame-link {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff !important;
+    text-decoration: none;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: background 0.15s;
+  }
+  .figma-frame-link:hover {
+    background: rgba(255,255,255,0.18);
+    border-color: #f24e1e;
+  }
+  .figma-frame-link .frame-id {
+    display: block;
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 3px;
+    font-family: Consolas, monospace;
+  }
+  .figma-note {
+    background: rgba(255,255,255,0.08);
+    border-left: 3px solid #f24e1e;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-top: 14px;
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>투트랙 병렬 진행 협업 답변</h1>
+  <div class="meta">2026-06-05 (목) · 서울미녀 SaaS 개발팀 → sj 시스템 담당자님</div>
+
+  <p class="greet">안녕하세요, 담당자님.<br>
+  말씀해주신 <strong>투트랙 병렬 진행 방향</strong>, 일정 단축을 위한 매우 합리적인 방안이라 생각합니다.
+  적극 협조하겠으며, 아래와 같이 준비 상황 및 협업 규칙(안)을 정리해 전달드립니다.</p>
+
+  <div class="highlight-box">
+    <strong>요지 한 줄</strong><br>
+    ✅ <strong>6/16 작업 시작 가능</strong> — GitHub 브랜치 분리 방식으로 충돌 없이 병행 가능합니다.<br>
+    ✅ <strong>디자인은 이미 약 90% 적용 완료</strong> — 담당자님 작업이 "처음부터"가 아니라 "정밀 보강" 수준이면 충분합니다.
+  </div>
+</div>
+
+<div class="card">
+  <h2>1. 현재 1차 검수 진행 현황 (2026-06-05 기준)</h2>
+
+  <div class="stat-grid">
+    <div class="stat-item"><span class="stat-num">95%</span><span class="stat-label">1차 검수 시트 100건</span></div>
+    <div class="stat-item"><span class="stat-num">92%</span><span class="stat-label">신규 25건 처리</span></div>
+    <div class="stat-item"><span class="stat-num">33/34</span><span class="stat-label">Playwright 자동검증 PASS</span></div>
+    <div class="stat-item"><span class="stat-num">35건</span><span class="stat-label">실 픽스 완료</span></div>
+    <div class="stat-item"><span class="stat-num">15회</span><span class="stat-label">Git 커밋</span></div>
+    <div class="stat-item"><span class="stat-num">7회</span><span class="stat-label">서버 백업</span></div>
+  </div>
+
+  <h3>완료된 주요 영역</h3>
+  <ul>
+    <li><strong>Phase 1 + 2 핵심 픽스 35건</strong> (저위험 8건 + 중위험 7건 + 고위험 3건 포함 전수 완료)</li>
+    <li><strong>신규 admin 페이지 5종 추가</strong>:
+      <code>admin_recommend.php</code> (추천 병원) ·
+      <code>admin_tips.php</code> (꿀팁) ·
+      <code>admin_content_hub.php</code> (콘텐츠 통합) ·
+      <code>admin_patients.php</code> (환자 관리) ·
+      <code>admin_logout.php</code>
+    </li>
+    <li><strong>Playwright 자동 검증 시스템 구축</strong> — admin 자동 로그인 + 34건 시나리오 + HTML 리포트 자동 생성</li>
+    <li><strong>메인 도메인 정상화</strong> (2026-06-01) — <code>seoulbeauty.app/</code> HTTP 500 → 200 + 단일홉 리다이렉트</li>
+  </ul>
+</div>
+
+<div class="figma-section">
+  <h2>🎨 피그마 원본 디자인 — 현재 적용 상태 검수용</h2>
+  <p style="margin:6px 0 12px;color:#ddd;">
+    아래 버튼으로 <strong>피그마 원본 디자인 파일</strong>에 바로 접속하실 수 있습니다.<br>
+    원본을 캡처해서 전달해 주시면, <strong>현재 적용된 화면과 차이가 있는 부분을 자동으로 비교/체크</strong>해드리겠습니다.
+  </p>
+
+  <div class="figma-btn-wrap">
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=0-1"
+       target="_blank" rel="noopener" class="figma-btn">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a4 4 0 0 0-4 4v4h4a4 4 0 0 0 0-8zm-4 8H4a4 4 0 0 0 0 8 4 4 0 0 0 4-4v-4zm0 8a4 4 0 0 0 8 0v-4h-4a4 4 0 0 0-4 4zm8-4h-4v-4a4 4 0 0 1 4 4zm0-4a4 4 0 0 0 0-8h-4v8h4z"/></svg>
+      🎨 피그마 원본 디자인 열기
+    </a>
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=5-915"
+       target="_blank" rel="noopener" class="figma-btn secondary">
+      🏠 홈 화면으로 바로가기
+    </a>
+    <a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/"
+       target="_blank" rel="noopener" class="figma-btn secondary">
+      💻 현재 적용된 사이트 열기
+    </a>
+  </div>
+
+  <h3 style="color:#fff;font-size:14px;margin:18px 0 6px;">📐 주요 프레임 바로가기</h3>
+  <div class="figma-frames">
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=5-915" target="_blank" rel="noopener" class="figma-frame-link">
+      Home Screen 1<span class="frame-id">node 5:915</span>
+    </a>
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=5-928" target="_blank" rel="noopener" class="figma-frame-link">
+      Home Screen 2<span class="frame-id">node 5:928</span>
+    </a>
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=5-620" target="_blank" rel="noopener" class="figma-frame-link">
+      병원 리스트 1<span class="frame-id">node 5:620</span>
+    </a>
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=5-672" target="_blank" rel="noopener" class="figma-frame-link">
+      병원 리스트 2<span class="frame-id">node 5:672</span>
+    </a>
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=5-793" target="_blank" rel="noopener" class="figma-frame-link">
+      병원 리스트 3<span class="frame-id">node 5:793</span>
+    </a>
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=41-703" target="_blank" rel="noopener" class="figma-frame-link">
+      커뮤니티<span class="frame-id">node 41:703</span>
+    </a>
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=42-834" target="_blank" rel="noopener" class="figma-frame-link">
+      마이 페이지<span class="frame-id">node 42:834</span>
+    </a>
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=43-1417" target="_blank" rel="noopener" class="figma-frame-link">
+      예약/결제 내역<span class="frame-id">node 43:1417</span>
+    </a>
+    <a href="https://www.figma.com/design/bbkglciviRdLh8FM0DT7bD/Seoul-Beauty-App?node-id=43-1418" target="_blank" rel="noopener" class="figma-frame-link">
+      마이페이지 설정<span class="frame-id">node 43:1418</span>
+    </a>
+  </div>
+
+  <div class="figma-note">
+    📌 <strong>차이 비교 검수 절차</strong><br>
+    ① 위 버튼으로 피그마 원본 열기 → ② 화면 캡처 (또는 프레임 URL 그대로 전달) → ③ 개발팀에 전달<br>
+    → ④ 현재 적용된 사이트와 자동 비교 (색상/간격/텍스트/레이아웃 diff 리포트 생성)<br>
+    → ⑤ 변경된 부분만 추려서 6/16 이전에 보강 작업 진행
+  </div>
+</div>
+
+<div class="card">
+  <h2>2. ⭐ 디자인 적용 상태 — 이미 상당 부분 완료</h2>
+
+  <div class="ok-box">
+    담당자님께서 "디자인 적용을 직접 진행하신다"고 하셨는데, 참고로 <strong>현재 시점에서 피그마 기반 디자인 토큰이 이미 약 90% 적용되어 있는 상태</strong>입니다.
+    완전히 새로 입히는 작업이 아니라, <strong>미세 조정 + 누락분 보강</strong> 수준으로 충분할 것으로 예상됩니다.
+  </div>
+
+  <h3>이미 적용 완료된 디자인 요소</h3>
+  <table>
+    <thead><tr><th>영역</th><th>적용 상태</th><th>제어 방식</th></tr></thead>
+    <tbody>
+      <tr><td>Figma 디자인 모드 활성화</td><td><span class="badge badge-ok">완료</span></td><td><code>dm_mode='figma'</code></td></tr>
+      <tr><td>색상 토큰 (Primary #ae1932 외 5색)</td><td><span class="badge badge-ok">완료</span></td><td><code>fd_primary_color</code> 등</td></tr>
+      <tr><td>하단 GNB 4탭 (홈/병원/커뮤니티/마이)</td><td><span class="badge badge-ok">완료</span></td><td><code>fd_bottom_nav_tab1~4</code></td></tr>
+      <tr><td>정렬 칩 4종 (최신/평점/인기/후기)</td><td><span class="badge badge-ok">완료</span></td><td><code>fd_sort_chips</code></td></tr>
+      <tr><td>검색바 placeholder</td><td><span class="badge badge-ok">완료</span></td><td><code>fd_search_placeholder</code></td></tr>
+      <tr><td>섹션 타이틀 텍스트</td><td><span class="badge badge-ok">완료</span></td><td><code>fd_section_*_title</code></td></tr>
+      <tr><td>광고 노출 위치/간격</td><td><span class="badge badge-ok">완료</span></td><td><code>ad_show_*</code> · <code>ad_infeed_interval</code></td></tr>
+      <tr><td>병원 리스트 3뷰 모드 (서울미녀/카드/리스트)</td><td><span class="badge badge-ok">완료</span></td><td><code>admin_ad_settings.php</code> 19키</td></tr>
+      <tr><td>전체 디자인 토큰 수</td><td colspan="2"><strong>60+ 토큰 활성</strong> · WordPress Customizer 스타일 라이브 프리뷰 패널 제공</td></tr>
+    </tbody>
+  </table>
+
+  <h3>관리자 디자인 패널 (라이브 미리보기 지원)</h3>
+  <ul>
+    <li><code>includes/admin_live_panel.php</code> — <strong>실시간 미리보기</strong>, 13그룹/57설정, AJAX 즉시 저장</li>
+    <li><code>admin_ad_settings.php</code> — 7탭 + 라이브 프리뷰 + 다크모드 대응</li>
+    <li>담당자님께서 코드 직접 수정 없이 <strong>관리자 화면에서 토글/색상/텍스트만 바꿔도</strong> 즉시 반영 가능합니다.</li>
+  </ul>
+
+  <h3>실제 "코드 수정"이 필요한 영역 (참고)</h3>
+  <ul>
+    <li>피그마 디자인 중 <strong>토큰화되지 않은 픽셀 단위 미세 조정</strong> (간격/그림자/모서리 등)</li>
+    <li>특정 페이지 레이아웃 구조 변경 (예: 카드 비율, 그리드 간격)</li>
+    <li>커스텀 아이콘 4종 적용 (Figma 기반)</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>3. 협업 규칙 제안 — GitHub 브랜치 분리 방식</h2>
+
+  <div class="info-box">
+    충돌 방지의 가장 안전한 방식은 <strong>"파일 경로 단위 작업 영역 분리"</strong>입니다.
+    FTP 폴더 분리는 동일 파일을 양쪽이 만지면 덮어쓰기 사고가 발생하므로 비추천드리며,
+    <strong>Git 브랜치 + 파일 영역 분리</strong>를 함께 적용하면 사실상 충돌 가능성이 0에 가깝습니다.
+  </div>
+
+  <h3>3-1. 브랜치 전략 (안)</h3>
+  <table>
+    <thead><tr><th>브랜치</th><th>담당</th><th>주요 작업 영역</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>master</code></td>
+        <td>공통 (배포용)</td>
+        <td>안정화된 코드만 머지</td>
+      </tr>
+      <tr>
+        <td><code>feature/backend-fix</code></td>
+        <td><strong>개발팀 (저)</strong></td>
+        <td>서버 PHP / DB / API / 백엔드 로직 수정</td>
+      </tr>
+      <tr>
+        <td><code>feature/ui-design</code></td>
+        <td><strong>담당자님</strong></td>
+        <td>피그마 기반 UI/UX 화면, CSS, 프론트엔드 마크업</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3-2. 작업 영역 분리 (파일 단위)</h3>
+  <table>
+    <thead><tr><th>구분</th><th>담당자님 (UI)</th><th>개발팀 (백엔드)</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>주요 디렉토리</td>
+        <td>
+          <code>/assets/css/</code><br>
+          <code>/includes/global_nav.php</code> (마크업만)<br>
+          <code>/includes/bottom_nav.php</code> (마크업만)
+        </td>
+        <td>
+          <code>/api/*.php</code><br>
+          <code>/admin_*.php</code><br>
+          <code>/includes/dbconfig.php</code><br>
+          <code>/sync/</code>
+        </td>
+      </tr>
+      <tr>
+        <td>관리자 화면</td>
+        <td>토글/설정 변경만 (DB값)</td>
+        <td>관리자 PHP 코드 자체</td>
+      </tr>
+      <tr>
+        <td>공통 페이지<br>(index.php / detail.php 등)</td>
+        <td colspan="2" style="text-align:center;"><strong>사전 협의 후 작업</strong> (Slack/카톡 알림)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3-3. 머지 및 충돌 시 처리 규칙</h3>
+  <ol>
+    <li><strong>매일 18:00 동기화</strong> — 각자 자기 브랜치를 <code>master</code>로 머지 (Pull Request 기반)</li>
+    <li><strong>충돌 발생 시</strong>: 발생 알림 → 30분 내 협의 → 해당 파일은 우선 작업자 기준 머지, 다른 쪽은 rebase</li>
+    <li><strong>긴급 수정(hotfix)</strong>: <code>hotfix/*</code> 브랜치로 즉시 분기 → master 머지 → 양쪽 브랜치에 rebase</li>
+    <li><strong>배포 권한</strong>: 서버 배포는 개발팀이 일괄 (담당자님 PR 머지 후 24시간 내 반영)</li>
+  </ol>
+
+  <h3>3-4. 6/16 작업 시작 전 준비 사항 (개발팀 측에서 진행)</h3>
+  <ul>
+    <li>✅ 담당자님 GitHub 계정 확인 → <code>appdosa1004-cyber/site_get</code> 저장소 Collaborator 권한 부여</li>
+    <li>✅ <code>feature/ui-design</code> 브랜치 사전 생성 + 초기 환경 세팅</li>
+    <li>✅ 개발 가이드 문서 전달 (디렉토리 구조 · 작업 영역 매핑 · 커밋 컨벤션 · PR 템플릿)</li>
+    <li>✅ 로컬 개발 환경 셋업 가이드 (XAMPP 또는 Docker 기반 1-Click 셋업 스크립트 제공)</li>
+    <li>✅ 현재 적용된 디자인 토큰 60+ 항목 매뉴얼 문서 전달 (수정 위치 안내)</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>4. 확인 요청 사항</h2>
+
+  <div class="highlight-box">
+    아래 3가지만 회신 주시면 6/16 이전에 모든 준비를 완료하겠습니다.
+  </div>
+
+  <ol>
+    <li><strong>담당자님 작업 범위</strong>를 명확히 알려주시면 그에 맞춰 브랜치/권한을 세팅하겠습니다.
+      <ul>
+        <li>① 웹사이트만 (반응형 HTML/CSS)</li>
+        <li>② 모바일 앱 Flutter 코드 포함</li>
+        <li>③ 둘 다</li>
+      </ul>
+    </li>
+    <li><strong>GitHub 계정</strong> (Collaborator 초대용 이메일 또는 GitHub ID)</li>
+    <li><strong>로컬 개발 환경</strong> 사용 가능 여부
+      <ul>
+        <li>① 로컬에서 작업 후 push (권장)</li>
+        <li>② GitHub Codespaces (브라우저 기반, 환경 셋업 불필요)</li>
+        <li>③ 서버 직접 SFTP 작업 (이 경우 별도 작업 폴더 분리 필요)</li>
+      </ul>
+    </li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>5. 일정 정리</h2>
+
+  <table>
+    <thead><tr><th>일자</th><th>이벤트</th><th>책임</th></tr></thead>
+    <tbody>
+      <tr><td>2026-06-05 (목)</td><td><span class="badge badge-info">금일</span> 본 답변 전달 + 회신 요청</td><td>개발팀</td></tr>
+      <tr><td>~ 2026-06-09 (월)</td><td>담당자님 회신 (작업 범위 + GitHub 계정 + 환경)</td><td>담당자님</td></tr>
+      <tr><td>2026-06-10 ~ 06-13</td><td>GitHub 권한 + 브랜치 세팅 + 가이드 문서 전달</td><td>개발팀</td></tr>
+      <tr><td>2026-06-14 (토)</td><td>담당자님 환경 셋업 + 테스트 커밋 1회 (사전 검증)</td><td>담당자님</td></tr>
+      <tr><td><strong>2026-06-16 (화)</strong></td><td><span class="badge badge-red">D-DAY</span> 1차 검수 완료본 인계 + 투트랙 작업 시작</td><td>양측 병행</td></tr>
+      <tr><td>2026-06-16 ~ 진행</td><td>매일 18:00 PR 머지 + 충돌 모니터링</td><td>양측</td></tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:14px;">
+    1차 검수 잔여 5% 및 Playwright 자동검증 PARTIAL 1건은 <strong>6/13(금)까지 100% 완료 예정</strong>이며,
+    6/16 인계 시점에는 안정화 검증까지 완료된 상태로 전달드리겠습니다.
+  </p>
+</div>
+
+<div class="card">
+  <h2>6. 마무리</h2>
+
+  <p>일정 단축을 위한 적극적인 협업 제안 감사드립니다.<br>
+  현재 진행 상태와 디자인 적용 수준을 고려할 때, <strong>6/16 이후 투트랙 진행이 충분히 가능</strong>한 상황입니다.</p>
+
+  <p>위 확인 요청 사항 3가지(작업 범위 / GitHub 계정 / 개발 환경)만 회신 주시면,
+  6/16 작업 시작 전까지 충돌 없는 협업 환경을 완벽히 준비하겠습니다.</p>
+
+  <p>추가로 궁금한 부분이나 다른 협업 방식 선호도 있으시면 편하게 말씀 주십시오.<br>
+  감사합니다.</p>
+
+  <div class="signature">
+    <strong>서울미녀 SaaS 개발팀</strong><br>
+    Repo: <code>github.com/appdosa1004-cyber/site_get</code><br>
+    개발 도메인: <code>https://hms.seoulbeauty.app/hairwang/gangnamunni/</code><br>
+    최근 진행 리포트: <code>https://seoulbeauty.app/gangnamunni/client_solutions_20260601.html</code>
+  </div>
+</div>
+
+</body>
+</html>

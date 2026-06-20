@@ -1,0 +1,110 @@
+========================================
+서버 업로드 파일 전체 경로 목록
+========================================
+
+📌 필수 업로드 파일 (전체 경로)
+========================================
+
+1. 빌드된 JavaScript/CSS 파일
+----------------------------------------
+h:\carebaby_project\server_backup_dev\public\js\app.js
+h:\carebaby_project\server_backup_dev\public\css\app.css
+h:\carebaby_project\server_backup_dev\public\mix-manifest.json
+
+2. 생성된 이미지 파일
+----------------------------------------
+h:\carebaby_project\server_backup_dev\public\img\frontend\ko.png
+h:\carebaby_project\server_backup_dev\public\img\frontend\why-choose-us.png
+h:\carebaby_project\server_backup_dev\public\img\frontend\video-image.png
+
+3. 설정 파일
+----------------------------------------
+h:\carebaby_project\server_backup_dev\.env
+h:\carebaby_project\server_backup_dev\app\Providers\AppServiceProvider.php
+
+4. 소스 파일 (선택사항)
+----------------------------------------
+h:\carebaby_project\server_backup_dev\Modules\Frontend\Resources\assets\js\app.js
+
+
+========================================
+서버 업로드 대상 경로
+========================================
+
+서버 루트: /path/to/your/server/project/
+
+업로드 시 유지할 경로:
+----------------------------------------
+public/js/app.js
+public/css/app.css
+public/mix-manifest.json
+public/img/frontend/ko.png
+public/img/frontend/why-choose-us.png
+public/img/frontend/video-image.png
+.env
+app/Providers/AppServiceProvider.php
+Modules/Frontend/Resources/assets/js/app.js
+
+
+========================================
+FTP/SFTP 업로드 예시
+========================================
+
+로컬 파일                                           → 서버 경로
+--------------------------------------------------------------------------------
+h:\carebaby_project\server_backup_dev\public\js\app.js
+→ /home/your_user/public_html/public/js/app.js
+
+h:\carebaby_project\server_backup_dev\public\css\app.css
+→ /home/your_user/public_html/public/css/app.css
+
+h:\carebaby_project\server_backup_dev\public\mix-manifest.json
+→ /home/your_user/public_html/public/mix-manifest.json
+
+h:\carebaby_project\server_backup_dev\public\img\frontend\ko.png
+→ /home/your_user/public_html/public/img/frontend/ko.png
+
+h:\carebaby_project\server_backup_dev\public\img\frontend\why-choose-us.png
+→ /home/your_user/public_html/public/img/frontend/why-choose-us.png
+
+h:\carebaby_project\server_backup_dev\public\img\frontend\video-image.png
+→ /home/your_user/public_html/public/img/frontend/video-image.png
+
+h:\carebaby_project\server_backup_dev\.env
+→ /home/your_user/public_html/.env
+
+h:\carebaby_project\server_backup_dev\app\Providers\AppServiceProvider.php
+→ /home/your_user/public_html/app/Providers/AppServiceProvider.php
+
+h:\carebaby_project\server_backup_dev\Modules\Frontend\Resources\assets\js\app.js
+→ /home/your_user/public_html/Modules/Frontend/Resources/assets/js/app.js
+
+
+========================================
+파일 크기 확인용
+========================================
+빌드된 app.js는 약 2-5MB 정도입니다.
+업로드 중 파일이 완전히 전송되었는지 확인하세요.
+
+
+========================================
+업로드 후 서버 명령어
+========================================
+
+ssh your_user@your_server
+cd /home/your_user/public_html
+
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+php artisan optimize:clear
+
+
+========================================
+주의사항
+========================================
+
+1. .env 파일은 민감한 정보가 포함되어 있으므로 주의하세요
+2. public/js/app.js 파일이 가장 중요합니다 (Modal 에러 수정됨)
+3. 이미지 파일 3개가 모두 업로드되었는지 확인하세요
+4. 업로드 후 반드시 캐시를 클리어하세요

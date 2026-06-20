@@ -1,0 +1,18 @@
+{
+  "site_name": "Seoul Beauty",
+  "login": "Đăng nhập",
+  "logout": "Đăng xuất",
+  "signup": "Đăng ký",
+  "home": "Trang chủ",
+  "hospitals": "Bệnh viện",
+  "reviews": "Đánh giá",
+  "events": "Sự kiện",
+  "booking": "Đặt lịch",
+  "search": "Tìm kiếm",
+  "treatment": "Dịch vụ",
+  "price": "Giá",
+  "save": "Lưu",
+  "cancel": "Hủy",
+  "loading": "Đang tải...",
+  "reservation": "Đặt ngay"
+}

@@ -1,0 +1,18 @@
+{
+  "site_name": "首爾美女",
+  "login": "登入",
+  "logout": "登出",
+  "signup": "註冊",
+  "home": "首頁",
+  "hospitals": "醫院",
+  "reviews": "評價",
+  "events": "活動",
+  "booking": "預約",
+  "search": "搜尋",
+  "treatment": "療程",
+  "price": "價格",
+  "save": "儲存",
+  "cancel": "取消",
+  "loading": "載入中...",
+  "reservation": "立即預約"
+}

@@ -1,0 +1,2353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA v1.1 검수 수정 시나리오 (2026-03-11)</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif; background:#f5f5f5; color:#333; line-height:1.6; }
+.header { background:linear-gradient(135deg,#1a1a2e,#16213e); color:#fff; padding:40px 24px; text-align:center; }
+.header h1 { font-size:28px; margin-bottom:8px; }
+.header p { font-size:14px; opacity:0.8; }
+.container { max-width:1400px; margin:0 auto; padding:24px; }
+
+/* 요약 */
+.summary { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:32px; }
+.summary-card { background:#fff; border-radius:12px; padding:20px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.summary-card .num { font-size:32px; font-weight:800; }
+.summary-card .label { font-size:13px; color:#666; margin-top:4px; }
+.p0 .num { color:#dc2626; }
+.p1 .num { color:#ea580c; }
+.p2 .num { color:#ca8a04; }
+.p3 .num { color:#2563eb; }
+.app .num { color:#7c3aed; }
+
+/* 섹션 */
+.section { margin-bottom:32px; }
+.section-title { font-size:20px; font-weight:800; padding:12px 20px; border-radius:10px; margin-bottom:16px; color:#fff; }
+.section-title.p0 { background:#dc2626; }
+.section-title.p1 { background:#ea580c; }
+.section-title.p2 { background:#ca8a04; }
+.section-title.p3 { background:#2563eb; }
+.section-title.app-section { background:#7c3aed; }
+
+/* 이슈 카드 */
+.issue-card { background:#fff; border-radius:12px; margin-bottom:16px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.issue-header { padding:16px 20px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:12px; }
+.issue-no { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; font-weight:800; font-size:14px; color:#fff; flex-shrink:0; }
+.issue-no.p0 { background:#dc2626; }
+.issue-no.p1 { background:#ea580c; }
+.issue-no.p2 { background:#ca8a04; }
+.issue-no.p3 { background:#2563eb; }
+.issue-no.app-tag { background:#7c3aed; }
+.issue-title { font-size:15px; font-weight:700; flex:1; }
+.issue-page { font-size:12px; color:#666; background:#f0f0f0; padding:2px 8px; border-radius:4px; }
+.issue-body { display:grid; grid-template-columns:1fr 1fr; }
+.issue-before, .issue-after { padding:16px 20px; }
+.issue-before { border-right:1px solid #eee; }
+.issue-before h4 { color:#dc2626; font-size:13px; margin-bottom:8px; }
+.issue-after h4 { color:#16a34a; font-size:13px; margin-bottom:8px; }
+.issue-desc { font-size:13px; color:#555; margin-bottom:8px; }
+.issue-detail { font-size:12px; color:#888; background:#f8f8f8; padding:10px; border-radius:6px; margin-top:8px; }
+.badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; margin-right:4px; }
+.badge-bug { background:#fef2f2; color:#dc2626; }
+.badge-feature { background:#f0fdf4; color:#16a34a; }
+.badge-ui { background:#fefce8; color:#ca8a04; }
+.badge-manual { background:#eff6ff; color:#2563eb; }
+.badge-app { background:#f5f3ff; color:#7c3aed; }
+.status-pending { color:#999; font-size:12px; font-style:italic; }
+.screenshot { margin-top:8px; border:2px solid #e0e0e0; border-radius:16px; overflow:hidden; max-width:180px; background:#000; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+.screenshot img { width:100%; max-height:390px; object-fit:cover; object-position:top; display:block; cursor:pointer; }
+.screenshot-label { font-size:11px; color:#999; padding:4px 8px; background:#f8f8f8; }
+.tag-server { background:#dbeafe; color:#1d4ed8; padding:1px 6px; border-radius:3px; font-size:10px; }
+.tag-app { background:#ede9fe; color:#6d28d9; padding:1px 6px; border-radius:3px; font-size:10px; }
+.tag-admin { background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:3px; font-size:10px; }
+
+/* 범례 */
+.legend { background:#fff; border-radius:12px; padding:20px; margin-bottom:24px; display:flex; gap:24px; flex-wrap:wrap; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.legend-item { display:flex; align-items:center; gap:6px; font-size:13px; }
+
+/* 탭 UI */
+.tab-nav { display:flex; gap:0; margin-bottom:0; background:#fff; border-radius:12px 12px 0 0; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.tab-btn { flex:1; padding:16px 24px; font-size:15px; font-weight:700; border:none; background:#f5f5f5; color:#999; cursor:pointer; transition:all 0.3s; border-bottom:3px solid transparent; text-align:center; }
+.tab-btn:hover { background:#eee; color:#555; }
+.tab-btn.active { background:#fff; color:#1a1a2e; border-bottom:3px solid #7c3aed; }
+.tab-btn .tab-icon { font-size:18px; margin-right:6px; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* 폰 갤러리 */
+.phone-gallery { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:20px; }
+.phone-card { background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.08); transition:transform 0.2s, box-shadow 0.2s; }
+.phone-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,0.12); }
+.phone-card-img { position:relative; background:#f8f8f8; overflow:hidden; max-height:500px; }
+.phone-card-img img { width:100%; display:block; object-fit:cover; object-position:top; cursor:pointer; transition:max-height 0.3s; }
+.phone-card-img img.expanded { max-height:none !important; object-fit:contain; }
+.phone-card-info { padding:12px 16px; }
+.phone-card-title { font-size:14px; font-weight:700; color:#333; margin-bottom:4px; }
+.phone-card-url { font-size:11px; color:#999; word-break:break-all; }
+.phone-card-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; margin-right:4px; }
+.phone-card-badge.front { background:#dbeafe; color:#1d4ed8; }
+.phone-card-badge.admin { background:#fef3c7; color:#92400e; }
+.phone-section-title { font-size:18px; font-weight:800; color:#1a1a2e; margin:24px 0 16px; padding-bottom:8px; border-bottom:2px solid #eee; }
+.phone-section-title .count { font-size:13px; font-weight:500; color:#999; margin-left:8px; }
+
+/* 폰 탭 이미지 — PC탭보다 1.5배 크게 */
+#tab-phone .screenshot { max-width:270px; }
+#tab-phone .screenshot img { max-height:585px; }
+
+/* 편집 가능한 결과 입력 */
+.result-input-wrap { display:flex; gap:8px; align-items:flex-start; margin-top:8px; }
+.result-input {
+    flex:1; min-height:80px; padding:10px; border:1px dashed #ccc; border-radius:8px;
+    font-size:12px; font-family:inherit; line-height:1.5; resize:vertical;
+    background:#fafffe; color:#333; transition:border-color 0.2s;
+}
+.result-input:focus { border-color:#7c3aed; outline:none; background:#fff; }
+.result-input::placeholder { color:#bbb; }
+.result-save-btn {
+    flex-shrink:0; padding:10px 16px; background:#16a34a; color:#fff; border:none; border-radius:8px;
+    font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; transition:all 0.2s;
+}
+.result-save-btn:hover { background:#15803d; transform:translateY(-1px); }
+.result-save-btn:disabled { background:#9ca3af; cursor:not-allowed; transform:none; }
+.result-save-btn.saved { background:#2563eb; }
+.result-saved-msg { font-size:11px; color:#16a34a; margin-top:4px; display:none; }
+
+/* 프롬프트 만들기 버튼 */
+.prompt-btn {
+    display:inline-flex; align-items:center; gap:8px;
+    background:linear-gradient(135deg,#7c3aed,#a855f7); color:#fff;
+    padding:12px 24px; border:none; border-radius:10px;
+    font-size:14px; font-weight:700; cursor:pointer;
+    box-shadow:0 4px 12px rgba(124,58,237,0.4); transition:all 0.2s;
+}
+.prompt-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(124,58,237,0.5); }
+
+/* 프롬프트 모달 */
+.prompt-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; }
+.prompt-modal.show { display:flex; }
+.prompt-modal-content {
+    background:#1a1a2e; color:#e0e0e0; width:90%; max-width:900px; max-height:85vh;
+    border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    display:flex; flex-direction:column;
+}
+.prompt-modal-header {
+    padding:20px 24px; border-bottom:1px solid #333;
+    display:flex; align-items:center; justify-content:space-between;
+}
+.prompt-modal-header h3 { font-size:18px; color:#fff; }
+.prompt-modal-actions { display:flex; gap:8px; }
+.prompt-modal-actions button {
+    padding:8px 16px; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;
+}
+.btn-copy { background:#7c3aed; color:#fff; }
+.btn-copy:hover { background:#6d28d9; }
+.btn-close-modal { background:#333; color:#ccc; }
+.btn-close-modal:hover { background:#444; }
+.prompt-output {
+    flex:1; padding:20px 24px; overflow-y:auto;
+    font-family:'Consolas','Monaco','Courier New',monospace; font-size:13px;
+    line-height:1.7; white-space:pre-wrap; word-break:break-word;
+    color:#a5d6ff;
+}
+
+/* 라이트박스 */
+.lightbox { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; justify-content:center; align-items:center; cursor:zoom-out; }
+.lightbox.show { display:flex; }
+.lightbox img { max-width:390px; max-height:844px; object-fit:contain; border-radius:24px; border:3px solid #333; box-shadow:0 0 40px rgba(0,0,0,0.5); }
+.lightbox-close { position:fixed; top:16px; right:24px; color:#fff; font-size:32px; cursor:pointer; z-index:10000; background:rgba(0,0,0,0.5); width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+/* 결과 보기 버튼 */
+.result-toggle {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700;
+    border:none; cursor:pointer; transition:all 0.2s; margin-left:auto;
+}
+.result-toggle.done { background:#dcfce7; color:#15803d; }
+.result-toggle.done:hover { background:#bbf7d0; }
+.result-toggle.pending { background:#fef3c7; color:#92400e; }
+.result-toggle.pending:hover { background:#fde68a; }
+.result-toggle .arrow { transition:transform 0.2s; font-size:10px; }
+.result-toggle.open .arrow { transform:rotate(180deg); }
+
+/* 결과 패널 */
+.result-panel {
+    display:none; padding:16px 20px; background:linear-gradient(135deg,#f0fdf4,#ecfdf5);
+    border-top:2px solid #86efac; animation:slideDown 0.3s ease;
+}
+.result-panel.show { display:block; }
+.result-panel h4 { font-size:13px; font-weight:700; color:#15803d; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.result-panel h4::before { content:'✅'; }
+.result-panel .result-content { font-size:13px; color:#333; line-height:1.7; }
+.result-panel .result-content strong { color:#15803d; }
+.result-panel .result-link {
+    display:inline-flex; align-items:center; gap:4px;
+    margin-top:8px; padding:6px 12px; background:#fff; border:1px solid #86efac;
+    border-radius:6px; font-size:12px; color:#15803d; text-decoration:none; font-weight:600;
+    transition:all 0.2s;
+}
+.result-panel .result-link:hover { background:#dcfce7; }
+.result-panel .result-files { margin-top:8px; font-size:11px; color:#666; }
+.result-panel .result-files code { background:#e2e8f0; padding:1px 6px; border-radius:3px; font-size:11px; }
+
+/* 미완료 결과 패널 */
+.result-panel.result-pending { background:linear-gradient(135deg,#fefce8,#fef9c3); border-top:2px solid #fcd34d; }
+.result-panel.result-pending h4 { color:#92400e; }
+.result-panel.result-pending h4::before { content:'⏳'; }
+
+@keyframes slideDown { from { opacity:0; max-height:0; } to { opacity:1; max-height:500px; } }
+
+@media (max-width:768px) {
+    .summary { grid-template-columns:repeat(3,1fr); }
+    .issue-body { grid-template-columns:1fr; }
+    .issue-before { border-right:none; border-bottom:1px solid #eee; }
+    .phone-gallery { grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:12px; }
+    .tab-btn { font-size:13px; padding:12px 8px; }
+    .result-toggle { font-size:10px; padding:3px 8px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>QA v1.1 검수 수정 시나리오</h1>
+    <p>2026-03-11 | 서울미녀 앱 검수 v1.1 (260310) 기반 | 총 31건</p>
+</div>
+
+<div style="background:#dc2626; color:#fff; padding:16px 24px; font-size:15px; font-weight:700; text-align:center; line-height:1.8;">
+    ※ 구글플레이에서 앱을 설치 시 기본 설치된 앱은 반드시 삭제하여야 오동작을 안합니다.<br>
+    새로운 앱을 구글플레이에 업데이트해야 정상동작합니다.
+</div>
+
+<div class="container">
+
+<!-- 프롬프트 만들기 버튼 -->
+<div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+    <button class="prompt-btn" onclick="generatePrompt()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        프롬프트 만들기
+    </button>
+</div>
+
+<!-- 탭 네비게이션 -->
+<div class="tab-nav" style="margin-bottom:24px;">
+    <button class="tab-btn active" onclick="switchTab('issues')"><span class="tab-icon">📋</span>이슈 목록 (31건)</button>
+    <button class="tab-btn" onclick="switchTab('phone')"><span class="tab-icon">📱</span>폰 화면 캡처 (31건)</button>
+</div>
+
+<!-- ===== TAB 1: 이슈 목록 ===== -->
+<div id="tab-issues" class="tab-content active">
+
+<!-- 요약 -->
+<div class="summary">
+    <div class="summary-card p0"><div class="num">6/6</div><div class="label">P0 완료</div></div>
+    <div class="summary-card p1"><div class="num">11/11</div><div class="label">P1 완료</div></div>
+    <div class="summary-card p2"><div class="num">8/8</div><div class="label">P2 완료</div></div>
+    <div class="summary-card p3"><div class="num">6/6</div><div class="label">P3 완료</div></div>
+    <div class="summary-card app"><div class="num">1/3</div><div class="label">APP 진행중</div></div>
+</div>
+
+<!-- 범례 -->
+<div class="legend">
+    <strong>범례:</strong>
+    <div class="legend-item"><span class="badge badge-bug">Bug</span> 버그 수정</div>
+    <div class="legend-item"><span class="badge badge-feature">Feature</span> 기능 추가</div>
+    <div class="legend-item"><span class="badge badge-ui">UI</span> UI/UX 개선</div>
+    <div class="legend-item"><span class="badge badge-manual">Manual</span> 매뉴얼 요청</div>
+    <div class="legend-item"><span class="badge badge-app">APP</span> Flutter 앱 수정</div>
+    <div class="legend-item"><span class="tag-server">Server</span> 서버 PHP</div>
+    <div class="legend-item"><span class="tag-admin">Admin</span> 관리자 페이지</div>
+</div>
+
+<!-- ==================== APP 전용 (Flutter) ==================== -->
+<div class="section">
+    <div class="section-title app-section">APP 전용 - Flutter/WebView 수정 필요 (3건) - PHP 서버 수정 불가</div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no app-tag">5</div>
+            <div class="issue-title">광고/프로모션 배너 터치 스와이프 미지원</div>
+            <span class="badge badge-app">APP</span>
+            <span class="issue-page">index.php (앱 WebView)</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">앱에서 배너를 터치 스와이프로 넘길 수 없음. 자동 스크롤 대기 또는 좌우 화살표 버튼만 가능.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/index.png" alt="index" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">index.php (모바일)</div></div>
+                <div class="issue-detail">클라이언트: "앱에서 배너를 볼 수 있는 방법이 시간을 기다리는 방법 밖에 없어서 슬라이드를 터치로 제어할 수 있어야 합니다"</div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 방향</h4>
+                <div class="issue-desc">JS에 touchstart/touchmove/touchend 이벤트 추가하여 스와이프 지원. ad_banner.php + index.php 프로모션 배너 모두 적용.</div>
+                <div class="issue-detail">서버 PHP(JS) 수정으로 해결 가능 - 앱 재배포 불필요</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no app-tag">6</div>
+            <div class="issue-title">안드로이드 뒤로가기 버튼 시 앱 종료</div>
+            <span class="badge badge-app">APP</span>
+            <span class="issue-page">Flutter WebView</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">안드로이드 하드웨어 뒤로가기 버튼 누르면 WebView 히스토리 뒤로가기 대신 앱 자체가 종료됨.</div>
+                <div class="screenshot" style="background:#f0e6ff; padding:16px; text-align:center; border-radius:8px;"><div style="font-size:40px; margin-bottom:8px;">📱</div><div style="font-size:12px; color:#6d28d9; font-weight:600;">Flutter 네이티브 동작 — 웹 캡처 불가<br>Android 물리 뒤로가기 버튼 → 앱 종료 현상</div></div>
+                <div class="issue-detail">클라이언트: "안드로이드 특성상 뒤로가기 버튼을 자주 사용하여 수정이 필요합니다"</div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 방향</h4>
+                <div class="issue-desc">Flutter Patient 앱의 WebView에 WillPopScope/onWillPop 핸들러 추가. webView.canGoBack() 체크 후 goBack() 처리.</div>
+                <div class="issue-detail"><strong>Flutter 앱 소스 수정 + 재빌드/재배포 필요</strong> (AAB 재생성)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no app-tag">10</div>
+            <div class="issue-title">앱 검색 결과 PC와 불일치 (반려 병원 노출)</div>
+            <span class="badge badge-app">APP</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">index.php 검색</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">PC 브라우저에서는 반려 병원이 검색 안되지만, 플레이스토어 설치 앱에서는 반려 병원이 검색 결과에 노출됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/hospitals.png" alt="hospitals" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">hospitals.php (검색 결과)</div></div>
+                <div class="issue-detail">앱 WebView 캐시 또는 서버 검색 쿼리에서 is_active/status 필터 누락 가능성</div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 방향</h4>
+                <div class="issue-desc">서버 검색 API/PHP에서 반려(rejected) 상태 병원 필터 확인 + 앱 WebView 캐시 정책 점검.</div>
+                <div class="issue-detail">서버 PHP 수정으로 1차 해결 시도, 앱 캐시 문제 시 Flutter 수정 추가</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== P0 긴급 ==================== -->
+<div class="section">
+    <div class="section-title p0">P0 긴급 - 서비스 차단 버그 (6건)</div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">12</div>
+            <div class="issue-title">의사 상담 신청 시 "오류 발생" - 접수 불가</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">hospitals.php &rarr; 상담신청 폼</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">병원 상세 페이지에서 이름, 전화번호, 내용 입력 후 상담 신청 버튼 클릭 시 "신청 중 오류가 발생했습니다" 출력. 접수가 되지 않음.</div>
+                <div class="issue-detail">안드로이드 기본 alert 팝업으로 표시됨. 팝업 디자인도 개선 필요.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/consultation.png" alt="consultation" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">consultation.php (상담신청)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">13</div>
+            <div class="issue-title">예약 시 시술 선택 목록 비어있어 예약 불가</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">booking.php / booking_wizard.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">예약하기 시 시술 선택 필수인데, 시술 관리에서 등록한 시술이 목록에 나오지 않아 예약 자체가 불가능.</div>
+                <div class="issue-detail">gangnamunni_treatments 테이블과 hospital_id 매핑 또는 쿼리 필터 문제 추정</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/booking.png" alt="booking" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">booking.php (예약)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">26</div>
+            <div class="issue-title">이벤트 응모 시 로그인 풀림 + 404 + 리다이렉트</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">event_detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">홈에서 로그인 후 이벤트 클릭 &rarr; 로그인 풀림 &rarr; 로그인 재시도 &rarr; 404 error &rarr; "Back to Previous Page" 클릭 시 hms.seoulbeauty.app/ 루트로 이동.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/event_detail.png" alt="event_detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">event_detail.php (이벤트 상세)</div></div>
+                <div class="issue-detail">SSO 세션 쿠키 경로 또는 Gnuboard 세션 충돌 문제. gangnamunni &harr; bbs 간 세션 공유 점검 필요.</div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">27</div>
+            <div class="issue-title">병원 수정 저장 시 HTTP 500 에러</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin_hospitals.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">관리자 페이지에서 병원 내용 수정 후 저장 버튼 클릭 시 HTTP ERROR 500 발생.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/admin_hospitals.png" alt="admin_hospitals" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">admin_hospitals.php (병원 관리)</div></div>
+                <div class="issue-detail">"페이지가 작동하지 않습니다. 현재 hms.seoulbeauty.app에서 요청을 처리할 수 없습니다."</div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">31</div>
+            <div class="issue-title">관리자 로그아웃 불가 (대시보드 외)</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">관리자 전체 페이지</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">대시보드(관리자 홈)에서만 로그아웃 가능. 다른 페이지에서 로그아웃 클릭 시 새로고침만 발생.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/admin_dashboard.png" alt="admin_dashboard" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">admin dashboard (관리자 대시보드)</div></div>
+                <div class="issue-detail">admin_header.php의 로그아웃 링크 경로 또는 세션 파괴 로직 확인 필요</div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">4-1</div>
+            <div class="issue-title">광고 배너 승인/거절 시 오류</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin_ads.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">광고 배너 승인 또는 거절 버튼 클릭 시 오류 발생.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/admin_ads.png" alt="admin_ads" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">admin_ads.php (광고 관리)</div></div>
+                <div class="issue-detail">AJAX 요청 실패 또는 DB 업데이트 쿼리 문제 추정</div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== P1 주요 ==================== -->
+<div class="section">
+    <div class="section-title p1">P1 주요 - 기능 오작동/누락 (11건)</div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">4</div>
+            <div class="issue-title">프로모션 배너 0번 인덱스 미출력 + 배너수 초과 표시</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">index.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">프로모션 배너 첫 번째(0번 인덱스)가 출력되지 않음. 총 배너 수를 초과하는 번호가 표시됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/index.png" alt="index" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">index.php (프로모션 배너)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">9</div>
+            <div class="issue-title">홈 vs 다른 페이지 광고 배너 개수 불일치</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">ad_banner.php (전체)</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">이벤트 고정 배너(#ads-carousel)가 홈 화면 외 다른 페이지에서 등록된 전체 개수가 아닌 일부만 표시됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/index.png" alt="index" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">index.php (홈 광고 배너)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">14</div>
+            <div class="issue-title">병원 상세 상단 header 빈 공간 (fixed top 56px)</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">검색된 병원 클릭 시 상단 병원명, 뒤로가기 버튼 색상 문제. .header에 fixed top 56px로 인해 빈 공간 발생.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (병원 상세)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">15</div>
+            <div class="issue-title">병원 메인 이미지 등록했지만 미표시</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">신규 등록한 "테스트 오라클" 병원에 메인 이미지 등록했지만, 기타 이미지만 표시되고 메인 이미지가 보이지 않음.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (병원 이미지)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">19</div>
+            <div class="issue-title">병원 소개 탭 - 필수 소개 대신 선택 상세소개 표시</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 탭메뉴</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">필수 입력인 "병원 소개" 내용이 아닌, 선택인 "상세 소개" 내용만 표시됨. 필수 병원 소개는 예약하기 눌러야 확인 가능.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (소개 탭)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">20</div>
+            <div class="issue-title">이벤트 탭 - 전체 병원 이벤트 1,343개 동일 표시</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 탭메뉴</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">병원 상세의 이벤트 탭에서 모든 병원이 동일하게 1,343개 이벤트가 표시됨. 해당 병원의 이벤트만 필터링되어야 함.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (이벤트 탭)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">24</div>
+            <div class="issue-title">하단 예약/상담 버튼 레이아웃 겹침</div>
+            <span class="badge badge-ui">UI</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 하단</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">하단의 "의사 상담신청"과 "예약하기" 버튼이 겹침. 요청: 양쪽 동일 크기 [상담신청] [예약하기] 배치. a태그 text-decoration 제거.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (하단 버튼)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">11</div>
+            <div class="issue-title">상담 신청 접수 내역 관리자에서 확인 불가</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin 사이드바</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">hospitals.php 리스트에서 상담 신청을 해도 관리자 페이지에서 확인이 불가능. 예약 관리/최근 상담 메뉴가 대시보드 전체보기로만 확인 가능.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/admin_consultations.png" alt="admin_consultations" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">admin 상담 관리</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">22</div>
+            <div class="issue-title">의사 탭 - 다른 병원 의사 노출</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 의사 탭</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">병원 상세의 의사 탭에서 해당 병원 의사가 아닌 다른 병원의 신규 데이터 의사가 표시됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (의사 탭)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">21</div>
+            <div class="issue-title">후기 탭 카운트 동적 반영 안됨</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 후기 탭</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">탭 메뉴에 "후기(0)"으로 고정 표시. 실제 등록된 후기 수가 반영되지 않음.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (후기 탭)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">16</div>
+            <div class="issue-title">"성형외과 전문의" 모든 병원에 동일 고정</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">병원 등록 시 따로 지정하지 않았는데 모든 병원에 "성형외과 전문의"가 동일하게 표시됨. 의사 등록에 따라 변경되어야 함.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (전문의 표시)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== P2 개선 ==================== -->
+<div class="section">
+    <div class="section-title p2">P2 개선 - UI/UX 및 데이터 (8건)</div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">7</div>
+            <div class="issue-title">global-nav 메뉴 리스트 숨김 요청 (로그인 시 좁아짐)</div>
+            <span class="badge badge-ui">UI</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">global_nav.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">로그인 시 메뉴 부분이 좁아지면서 디자인 요소를 해침. center nav 메뉴 리스트 숨김 처리 요청.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/index.png" alt="index" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">index.php (글로벌 네비)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">8</div>
+            <div class="issue-title">#ads-carousel 하단 padding 추가</div>
+            <span class="badge badge-ui">UI</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">index.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">#ads-carousel sticky 특성상 하단 여백 부족. .carousel-section 전체 24px 유지하되 #ads-carousel에만 margin-bottom:12px + padding-bottom:12px 요청.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/index.png" alt="index" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">index.php (배너 하단 여백)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">18</div>
+            <div class="issue-title">진료시간 - 점심시간 표시 누락</div>
+            <span class="badge badge-feature">Feature</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">병원 등록 시 점심시간 설정했지만 프론트 진료시간 안내에 점심시간 표시가 없음.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (진료시간)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">23</div>
+            <div class="issue-title">유튜브 탭 제거 요청</div>
+            <span class="badge badge-ui">UI</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 탭</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">"현재 탭에서 없어도 되는 부분으로 여겨집니다" - 클라이언트 의견</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/detail_8118.png" alt="detail" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">detail.php (유튜브 탭)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">25</div>
+            <div class="issue-title">사용자 후기 작성 기능 없음</div>
+            <span class="badge badge-feature">Feature</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">reviews.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">현재 사용자가 직접 후기를 작성할 수 없음. 예약 후 병원 방문 후 후기 작성이 가능해야 함.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/reviews.png" alt="reviews" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">reviews.php (후기 목록)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">29</div>
+            <div class="issue-title">사용 불가능한 관리자 메뉴 3개</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">dashboard.php 사이드바</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">1. 콘텐츠관리 - 칼럼/뉴스<br>2. 광고관리 - 광고표시설정<br>3. 광고관리 - 프로모션관리<br>해당 메뉴 클릭 시 페이지 접근 불가 또는 이미지 미표시.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/admin_dashboard.png" alt="admin_dashboard" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">admin 사이드바 메뉴</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">30</div>
+            <div class="issue-title">뷰어 역할이 예약 승인/상태 변경 가능</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin_admins.php RBAC</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">뷰어(viewer) 역할로 등록된 관리자가 예약 관리 메뉴에서 예약 승인, 상태 변경(완료)이 가능한 상태. 권한 초과.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/admin_admins.png" alt="admin_admins" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">admin_admins.php (역할 관리)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">28</div>
+            <div class="issue-title">이벤트 이미지 URL 입력 방식 개선</div>
+            <span class="badge badge-feature">Feature</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin_events.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상</h4>
+                <div class="issue-desc">이벤트 등록/수정 시 이미지 URL만 입력 가능. 직접 업로드 기능이 없어 별도 서버에 업로드 후 URL 입력해야 함.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/admin_events.png" alt="admin_events" onclick="this.classList.toggle('expanded')"><div class="screenshot-label">admin_events.php (이벤트 관리)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 계획</h4>
+                <p class="status-pending">수정 후 결과 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== P3 매뉴얼 ==================== -->
+<div class="section">
+    <div class="section-title p3">P3 매뉴얼/문서 요청 (6건)</div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p3">17</div>
+            <div class="issue-title">평점(★) 기준 매뉴얼 요청</div>
+            <span class="badge badge-manual">Manual</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">현재 평점이 고정값인지, 앞으로 동적 반영인지 매뉴얼 요청</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">매뉴얼 작성 예정</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p3">28-m</div>
+            <div class="issue-title">이미지 업로드 방법 매뉴얼</div>
+            <span class="badge badge-manual">Manual</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">이벤트 등록 시 이미지 URL만 입력 가능 - 서버 업로드 방법 매뉴얼 요청</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">이미지 업로드 기능 추가 또는 매뉴얼 작성</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p3">29-m</div>
+            <div class="issue-title">칼럼/뉴스, 광고표시설정, 프로모션관리 사용법</div>
+            <span class="badge badge-manual">Manual</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">3개 관리자 메뉴 기능 매뉴얼 + 프론트 화면 동기화 방법</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">기능 점검 후 매뉴얼 작성</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p3">30-m</div>
+            <div class="issue-title">역할별 권한 범위 매뉴얼</div>
+            <span class="badge badge-manual">Manual</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">super_admin/admin/editor/viewer 각 역할이 수행 가능한 기능 범위 매뉴얼</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">권한 매트릭스 문서 작성</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p3">13-m</div>
+            <div class="issue-title">회원 vs 환자 차이점 안내</div>
+            <span class="badge badge-manual">Manual</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">회원가입한 사용자가 모두 환자로 등록되는지, 회원 관리와 별개로 환자 관리 메뉴 위치 안내 필요</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">시스템 구조 설명 문서 작성</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p3">16-m</div>
+            <div class="issue-title">추천 병원 리스트 관리 매뉴얼</div>
+            <span class="badge badge-manual">Manual</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">추천 병원 리스트가 광고에 따라 자동 진열인지, 관리자가 직접 지정하는 건지 매뉴얼 요청</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">현재 로직 문서화 + 관리자 지정 기능 검토</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- 하단 정보 (Tab 1) -->
+<div style="text-align:center; padding:32px; color:#999; font-size:12px;">
+    <p>P0(긴급 6건) + P1(주요 11건) + P2(개선 8건) + P3(매뉴얼 6건) + APP(3건) = 총 31건</p>
+    <p>* APP 전용 3건 중 #5(스와이프)는 서버 JS 수정으로 해결 가능, #6(뒤로가기)은 Flutter 앱 재빌드 필요, #10(검색)은 서버+앱 복합</p>
+</div>
+
+</div><!-- /tab-issues -->
+
+<!-- ===== TAB 2: 폰 화면 캡처 (이슈 카드 형식) ===== -->
+<div id="tab-phone" class="tab-content">
+
+<div style="background:#fff; border-radius:12px; padding:16px 20px; margin-bottom:24px; box-shadow:0 2px 8px rgba(0,0,0,0.06); display:flex; align-items:center; gap:12px;">
+    <span style="font-size:24px;">📱</span>
+    <div style="font-size:13px; color:#555;">
+        <strong>iPhone 14 (390x844, 2x)</strong> | 2026-03-11 캡처 | 이미지 클릭 시 확대
+    </div>
+</div>
+
+<!-- 요약 -->
+<div class="summary">
+    <div class="summary-card p0"><div class="num">6/6</div><div class="label">P0 완료</div></div>
+    <div class="summary-card p1"><div class="num">11/11</div><div class="label">P1 완료</div></div>
+    <div class="summary-card p2"><div class="num">8/8</div><div class="label">P2 완료</div></div>
+    <div class="summary-card p3"><div class="num">6/6</div><div class="label">P3 완료</div></div>
+    <div class="summary-card app"><div class="num">1/3</div><div class="label">APP 진행중</div></div>
+</div>
+
+<!-- ==================== APP 전용 ==================== -->
+<div class="section">
+    <div class="section-title app-section">APP 전용 - Flutter/WebView 수정 필요 (3건)</div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no app-tag">5</div>
+            <div class="issue-title">광고/프로모션 배너 터치 스와이프 미지원</div>
+            <span class="badge badge-app">APP</span>
+            <span class="issue-page">index.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">앱에서 배너를 터치 스와이프로 넘길 수 없음.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/index.png" alt="index" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 index.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no app-tag">6</div>
+            <div class="issue-title">안드로이드 뒤로가기 버튼 시 앱 종료</div>
+            <span class="badge badge-app">APP</span>
+            <span class="issue-page">Flutter WebView</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">Android 물리 뒤로가기 버튼 → 앱 종료 현상</div>
+                <div class="screenshot" style="background:#f0e6ff; padding:16px; text-align:center; border-radius:8px;"><div style="font-size:40px; margin-bottom:8px;">📱</div><div style="font-size:12px; color:#6d28d9; font-weight:600;">Flutter 네이티브 동작 — 웹 캡처 불가</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">Flutter 재빌드 후 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no app-tag">10</div>
+            <div class="issue-title">앱 검색 결과 PC와 불일치 (반려 병원 노출)</div>
+            <span class="badge badge-app">APP</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">index.php 검색</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">플레이스토어 앱에서 반려 병원이 검색 결과에 노출됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/hospitals.png" alt="hospitals" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 hospitals.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== P0 긴급 ==================== -->
+<div class="section">
+    <div class="section-title p0">P0 긴급 - 서비스 차단 버그 (6건)</div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">12</div>
+            <div class="issue-title">의사 상담 신청 시 "오류 발생" - 접수 불가</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">consultation.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">상담 신청 버튼 클릭 시 "오류가 발생했습니다" 출력.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/consultation.png" alt="consultation" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 consultation.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">13</div>
+            <div class="issue-title">예약 시 시술 선택 목록 비어있어 예약 불가</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">booking.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">시술 목록이 비어있어 예약 자체가 불가능.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/booking.png" alt="booking" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 booking.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">26</div>
+            <div class="issue-title">이벤트 응모 시 로그인 풀림 + 404 + 리다이렉트</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">event_detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">로그인 후 이벤트 클릭 → 로그인 풀림 → 404 → 루트로 이동.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/event_detail.png" alt="event_detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 event_detail.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">27</div>
+            <div class="issue-title">병원 수정 저장 시 HTTP 500 에러</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin_hospitals.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">병원 수정 후 저장 시 HTTP ERROR 500 발생.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/admin_hospitals.png" alt="admin_hospitals" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 admin_hospitals.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">31</div>
+            <div class="issue-title">관리자 로그아웃 불가 (대시보드 외)</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">관리자 전체</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">대시보드에서만 로그아웃 가능. 다른 페이지에서 로그아웃 시 새로고침만 됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/admin_dashboard.png" alt="admin_dashboard" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 dashboard.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p0">4-1</div>
+            <div class="issue-title">광고 배너 승인/거절 시 오류</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin_ads.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">광고 배너 승인/거절 버튼 클릭 시 오류 발생.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/admin_ads.png" alt="admin_ads" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 admin_ads.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== P1 주요 ==================== -->
+<div class="section">
+    <div class="section-title p1">P1 주요 - 기능 오작동/누락 (11건)</div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">4</div>
+            <div class="issue-title">프로모션 배너 0번 인덱스 미출력 + 배너수 초과 표시</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">index.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">첫 번째(0번) 배너 미출력. 배너 수 초과 번호 표시.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/index.png" alt="index" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 index.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">9</div>
+            <div class="issue-title">홈 vs 다른 페이지 광고 배너 개수 불일치</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">ad_banner.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">다른 페이지에서 배너가 일부만 표시됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/events.png" alt="events" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 events.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">14</div>
+            <div class="issue-title">병원 상세 상단 header 빈 공간 (fixed top 56px)</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">상단 fixed top 56px로 인해 빈 공간 발생.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">15</div>
+            <div class="issue-title">병원 메인 이미지 등록했지만 미표시</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">메인 이미지 등록했지만 기타 이미지만 표시됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">19</div>
+            <div class="issue-title">병원 소개 탭 - 필수 소개 대신 선택 상세소개 표시</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 탭</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">필수 "병원 소개" 대신 선택 "상세 소개"만 표시됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php 소개 탭 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">20</div>
+            <div class="issue-title">이벤트 탭 - 전체 병원 이벤트 1,343개 동일 표시</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 탭</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">모든 병원이 1,343개 이벤트 동일 표시. 필터링 안됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php 이벤트 탭 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">24</div>
+            <div class="issue-title">하단 예약/상담 버튼 레이아웃 겹침</div>
+            <span class="badge badge-ui">UI</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 하단</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">"의사 상담신청"과 "예약하기" 버튼이 겹침.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php 하단 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">11</div>
+            <div class="issue-title">상담 신청 접수 내역 관리자에서 확인 불가</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin 사이드바</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">관리자 페이지에서 상담 접수 확인 불가.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/admin_consultations.png" alt="admin_consultations" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 admin_consultations.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">22</div>
+            <div class="issue-title">의사 탭 - 다른 병원 의사 노출</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 의사 탭</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">다른 병원의 의사가 표시됨.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php 의사 탭 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">21</div>
+            <div class="issue-title">후기 탭 카운트 동적 반영 안됨</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 후기 탭</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">"후기(0)" 고정. 실제 후기 수 미반영.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php 후기 탭 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p1">16</div>
+            <div class="issue-title">"성형외과 전문의" 모든 병원에 동일 고정</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">모든 병원에 "성형외과 전문의" 동일 표시.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== P2 개선 ==================== -->
+<div class="section">
+    <div class="section-title p2">P2 개선 - UI/UX 및 데이터 (8건)</div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">7</div>
+            <div class="issue-title">global-nav 메뉴 리스트 숨김 요청</div>
+            <span class="badge badge-ui">UI</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">global_nav.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">로그인 시 메뉴가 좁아지면서 디자인을 해침.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/index.png" alt="index" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 index.php 네비 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">8</div>
+            <div class="issue-title">#ads-carousel 하단 padding 추가</div>
+            <span class="badge badge-ui">UI</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">index.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">배너 하단 여백 부족.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/index.png" alt="index" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 index.php 배너 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">18</div>
+            <div class="issue-title">진료시간 - 점심시간 표시 누락</div>
+            <span class="badge badge-feature">Feature</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">진료시간 안내에 점심시간 표시 없음.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php 진료시간 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">23</div>
+            <div class="issue-title">유튜브 탭 제거 요청</div>
+            <span class="badge badge-ui">UI</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">detail.php 탭</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">유튜브 탭이 불필요하다는 클라이언트 의견.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/detail_8118.png" alt="detail" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 detail.php 탭 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">25</div>
+            <div class="issue-title">사용자 후기 작성 기능 없음</div>
+            <span class="badge badge-feature">Feature</span>
+            <span class="tag-server">Server</span>
+            <span class="issue-page">reviews.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">사용자가 직접 후기를 작성할 수 없음.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/reviews.png" alt="reviews" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 reviews.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">29</div>
+            <div class="issue-title">사용 불가능한 관리자 메뉴 3개</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">dashboard.php 사이드바</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">칼럼/뉴스, 광고표시설정, 프로모션관리 메뉴 접근 불가.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/admin_dashboard.png" alt="admin_dashboard" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 dashboard.php 사이드바 (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">30</div>
+            <div class="issue-title">뷰어 역할이 예약 승인/상태 변경 가능</div>
+            <span class="badge badge-bug">Bug</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin_admins.php RBAC</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">뷰어 역할이 예약 승인/상태 변경 가능. 권한 초과.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/admin_admins.png" alt="admin_admins" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 admin_admins.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header">
+            <div class="issue-no p2">28</div>
+            <div class="issue-title">이벤트 이미지 URL 입력 방식 개선</div>
+            <span class="badge badge-feature">Feature</span>
+            <span class="tag-admin">Admin</span>
+            <span class="issue-page">admin_events.php</span>
+        </div>
+        <div class="issue-body">
+            <div class="issue-before">
+                <h4>현재 증상 (폰 캡처)</h4>
+                <div class="issue-desc">이미지 URL만 입력 가능. 직접 업로드 기능 없음.</div>
+                <div class="screenshot"><img src="qa_v1.1_screenshots/phone/admin_events.png" alt="admin_events" onclick="openLightbox(this.src)"><div class="screenshot-label">📱 admin_events.php (iPhone 14)</div></div>
+            </div>
+            <div class="issue-after">
+                <h4>수정 후 결과</h4>
+                <p class="status-pending">수정 후 폰 캡처 예정</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== P3 매뉴얼 ==================== -->
+<div class="section">
+    <div class="section-title p3">P3 매뉴얼/문서 요청 (6건)</div>
+
+    <div class="issue-card">
+        <div class="issue-header"><div class="issue-no p3">17</div><div class="issue-title">평점(★) 기준 매뉴얼 요청</div><span class="badge badge-manual">Manual</span></div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">현재 평점이 고정값인지, 동적 반영인지 매뉴얼 요청</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">매뉴얼 작성 예정</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header"><div class="issue-no p3">28-m</div><div class="issue-title">이미지 업로드 방법 매뉴얼</div><span class="badge badge-manual">Manual</span></div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">이벤트 등록 시 이미지 URL만 입력 가능 - 서버 업로드 방법 매뉴얼</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">이미지 업로드 기능 추가 또는 매뉴얼 작성</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header"><div class="issue-no p3">29-m</div><div class="issue-title">칼럼/뉴스, 광고표시설정, 프로모션관리 사용법</div><span class="badge badge-manual">Manual</span></div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">3개 관리자 메뉴 기능 매뉴얼 + 프론트 화면 동기화 방법</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">기능 점검 후 매뉴얼 작성</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header"><div class="issue-no p3">30-m</div><div class="issue-title">역할별 권한 범위 매뉴얼</div><span class="badge badge-manual">Manual</span></div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">super_admin/admin/editor/viewer 각 역할 기능 범위 매뉴얼</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">권한 매트릭스 문서 작성</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header"><div class="issue-no p3">13-m</div><div class="issue-title">회원 vs 환자 차이점 안내</div><span class="badge badge-manual">Manual</span></div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">회원가입 사용자가 환자로 등록되는지, 환자 관리 메뉴 위치 안내</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">시스템 구조 설명 문서 작성</p></div>
+        </div>
+    </div>
+
+    <div class="issue-card">
+        <div class="issue-header"><div class="issue-no p3">16-m</div><div class="issue-title">추천 병원 리스트 관리 매뉴얼</div><span class="badge badge-manual">Manual</span></div>
+        <div class="issue-body">
+            <div class="issue-before"><h4>요청 내용</h4><div class="issue-desc">추천 병원 리스트가 자동 진열인지 관리자 지정인지 매뉴얼</div></div>
+            <div class="issue-after"><h4>대응</h4><p class="status-pending">현재 로직 문서화 + 관리자 지정 기능 검토</p></div>
+        </div>
+    </div>
+</div>
+
+<div style="text-align:center; padding:32px; color:#999; font-size:12px;">
+    <p>📱 폰 캡처 19장 | iPhone 14 (390x844 @2x) | 2026-03-11</p>
+    <p>수정 완료 후 오른쪽에 결과 캡처 추가 예정</p>
+</div>
+
+</div><!-- /tab-phone -->
+
+<!-- 하단 정보 -->
+<div style="text-align:center; padding:32px; color:#999; font-size:12px;">
+    <p>서울미녀 QA v1.1 검수 수정 시나리오 | 2026-03-11 작성</p>
+    <p>P0(긴급 6건) + P1(주요 11건) + P2(개선 8건) + P3(매뉴얼 6건) + APP(3건) = 총 31건</p>
+</div>
+
+</div>
+
+<!-- 라이트박스 -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <div class="lightbox-close" onclick="closeLightbox()">&times;</div>
+    <img id="lightbox-img" src="" alt="확대 이미지">
+</div>
+
+<!-- 프롬프트 모달 -->
+<div class="prompt-modal" id="promptModal">
+    <div class="prompt-modal-content">
+        <div class="prompt-modal-header">
+            <h3>Claude CLI 프롬프트</h3>
+            <div class="prompt-modal-actions">
+                <button class="btn-copy" onclick="copyPrompt()">복사</button>
+                <button class="btn-close-modal" onclick="closePromptModal()">닫기</button>
+            </div>
+        </div>
+        <div class="prompt-output" id="promptOutput"></div>
+    </div>
+</div>
+
+<script>
+// 탭 전환
+function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById('tab-' + tab).classList.add('active');
+    event.target.closest('.tab-btn').classList.add('active');
+}
+
+// 라이트박스 (이미지 클릭 시 크게 보기)
+function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('show');
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { closeLightbox(); closePromptModal(); }
+});
+
+// DB에서 저장된 결과 로드 + 모든 issue-after에 입력창 삽입
+var savedResults = {};
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. DB에서 저장된 결과 로드
+    fetch('api_qa_result.php')
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+            if (json.success) savedResults = json.data || {};
+            initResultInputs();
+        })
+        .catch(function() { initResultInputs(); });
+});
+
+function initResultInputs() {
+    var BASE = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/';
+    document.querySelectorAll('.issue-card').forEach(function(card) {
+        var noEl = card.querySelector('.issue-no');
+        if (!noEl) return;
+        var no = noEl.textContent.trim();
+        var titleEl = card.querySelector('.issue-title');
+        var title = titleEl ? titleEl.textContent.trim() : '';
+        var afterDiv = card.querySelector('.issue-after');
+        if (!afterDiv) return;
+
+        // 이미 입력창이 있으면 스킵
+        if (afterDiv.querySelector('.result-input-wrap')) return;
+
+        // fixResults 데이터가 있으면 작업 결과를 issue-after에 렌더링
+        if (typeof fixResults !== 'undefined' && fixResults[no]) {
+            var data = fixResults[no];
+
+            // status-pending 요소가 있으면 교체, 없으면 추가
+            var pending = afterDiv.querySelector('.status-pending');
+
+            var resultDiv = document.createElement('div');
+            resultDiv.className = 'fix-result-display';
+            resultDiv.style.cssText = 'margin-top:12px; padding:12px; border-radius:8px; line-height:1.6; font-size:13px;' +
+                (data.status === 'done'
+                    ? 'background:#f0fdf4; border:1px solid #86efac; color:#15803d;'
+                    : 'background:#fefce8; border:1px solid #fcd34d; color:#92400e;');
+
+            var h = '<strong>' + (data.status === 'done' ? '✅' : '⏳') + ' ' + data.summary + '</strong><br>';
+            h += '<span style="color:#555;">' + data.detail + '</span>';
+            if (data.files && data.files.length) {
+                h += '<div style="margin-top:6px; font-size:11px; color:#666;">수정 파일: ';
+                data.files.forEach(function(f) { h += '<code style="background:#e2e8f0; padding:1px 6px; border-radius:3px;">' + f + '</code> '; });
+                h += '</div>';
+            }
+            // 다중 이미지 지원 (screenshots 배열 또는 단일 screenshot)
+            var shots = data.screenshots || (data.screenshot ? [{src: data.screenshot, label: '수정 후'}] : []);
+            if (shots.length) {
+                h += '<div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">';
+                shots.forEach(function(s) {
+                    h += '<div class="screenshot" style="display:inline-block;"><img src="' + s.src + '" alt="' + (s.label||'') + '" onclick="openLightbox(this.src)" style="max-height:260px;"><div class="screenshot-label">' + (s.label||'캡처') + '</div></div>';
+                });
+                h += '</div>';
+            }
+            if (data.link && data.link !== '#') {
+                h += '<a href="' + BASE + data.link + '" target="_blank" style="display:inline-flex; align-items:center; gap:4px; margin-top:8px; padding:4px 10px; background:#fff; border:1px solid #86efac; border-radius:6px; font-size:11px; color:#15803d; text-decoration:none; font-weight:600;">🔗 결과 확인 →</a>';
+            }
+            resultDiv.innerHTML = h;
+
+            if (pending) {
+                pending.parentNode.replaceChild(resultDiv, pending);
+            } else {
+                afterDiv.appendChild(resultDiv);
+            }
+        }
+
+        // 입력창 + 저장 버튼 추가
+        var wrap = document.createElement('div');
+        wrap.className = 'result-input-wrap';
+        var ta = document.createElement('textarea');
+        ta.className = 'result-input';
+        ta.dataset.issueNo = no;
+        ta.dataset.issueTitle = title;
+        ta.placeholder = '추가로 더 수정할 사항을 입력하세요...';
+        // DB에 저장된 값이 있으면 로드
+        if (savedResults[no] && savedResults[no].result_text) {
+            ta.value = savedResults[no].result_text;
+        }
+        var btn = document.createElement('button');
+        btn.className = 'result-save-btn';
+        btn.textContent = '저장';
+        btn.onclick = function() { saveQaResult(no, ta, btn); };
+
+        wrap.appendChild(ta);
+        wrap.appendChild(btn);
+        afterDiv.appendChild(wrap);
+    });
+}
+
+function saveQaResult(issueNo, textarea, btn) {
+    var text = textarea.value.trim();
+    btn.disabled = true;
+    btn.textContent = '저장중...';
+    fetch('api_qa_result.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ issue_no: issueNo, result_text: text })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+        btn.disabled = false;
+        if (json.success) {
+            btn.textContent = '저장됨 ✓';
+            btn.className = 'result-save-btn saved';
+            setTimeout(function() { btn.textContent = '저장'; btn.className = 'result-save-btn'; }, 2000);
+            // 같은 issue_no의 다른 탭 textarea도 동기화
+            document.querySelectorAll('.result-input').forEach(function(ta) {
+                if (ta.dataset.issueNo === issueNo && ta !== textarea) {
+                    ta.value = text;
+                }
+            });
+        } else {
+            btn.textContent = '실패';
+            setTimeout(function() { btn.textContent = '저장'; }, 2000);
+        }
+    })
+    .catch(function() {
+        btn.disabled = false;
+        btn.textContent = '오류';
+        setTimeout(function() { btn.textContent = '저장'; }, 2000);
+    });
+}
+
+// 프롬프트 생성
+function generatePrompt() {
+    var inputs = document.querySelectorAll('.result-input');
+    var issues = [];
+
+    inputs.forEach(function(ta) {
+        var no = ta.dataset.issueNo;
+        var title = ta.dataset.issueTitle;
+        var val = ta.value.trim();
+        var card = ta.closest('.issue-card');
+
+        // 이슈 설명 가져오기
+        var descEl = card ? card.querySelector('.issue-desc') : null;
+        var desc = descEl ? descEl.textContent.trim() : '';
+
+        // 페이지 가져오기
+        var pageEl = card ? card.querySelector('.issue-page') : null;
+        var page = pageEl ? pageEl.textContent.trim() : '';
+
+        // 뱃지 가져오기
+        var badges = [];
+        if (card) {
+            card.querySelectorAll('.badge, .tag-server, .tag-admin, .tag-app').forEach(function(b) {
+                badges.push(b.textContent.trim());
+            });
+        }
+
+        issues.push({
+            no: no,
+            title: title,
+            desc: desc,
+            page: page,
+            badges: badges.join(', '),
+            userInput: val
+        });
+    });
+
+    // 입력된 것만 필터
+    var filled = issues.filter(function(i) { return i.userInput; });
+    var empty = issues.filter(function(i) { return !i.userInput; });
+
+    var prompt = '서울미녀 QA v1.1 검수 수정 작업을 진행해주세요.\n\n';
+    prompt += '## 서버 정보\n';
+    prompt += '- 서버: 5.104.82.35 (root/<REMOVED_SSH_PASSWORD>)\n';
+    prompt += '- DB: hms_saas (root/<REMOVED_DB_PASSWORD>)\n';
+    prompt += '- 경로: /var/www/html/.../hms-saas/hairwang_full/gangnamunni/\n';
+    prompt += '- 도메인: https://hms.seoulbeauty.app/hairwang/gangnamunni/\n\n';
+
+    if (filled.length > 0) {
+        prompt += '## 수정 지시 (' + filled.length + '건)\n\n';
+        filled.forEach(function(i) {
+            prompt += '### #' + i.no + ' ' + i.title + '\n';
+            prompt += '- 페이지: ' + i.page + '\n';
+            prompt += '- 유형: ' + i.badges + '\n';
+            prompt += '- 현재 증상: ' + i.desc + '\n';
+            prompt += '- **수정 지시: ' + i.userInput + '**\n\n';
+        });
+    }
+
+    if (empty.length > 0) {
+        prompt += '## 미입력 이슈 (' + empty.length + '건) — 참고용\n\n';
+        empty.forEach(function(i) {
+            prompt += '- #' + i.no + ' ' + i.title + ' (' + i.page + ') — ' + i.desc + '\n';
+        });
+        prompt += '\n';
+    }
+
+    prompt += '## 작업 규칙\n';
+    prompt += '1. 작업 전 DB/소스 백업 + GitHub push\n';
+    prompt += '2. PHP 배포: base64 인코딩 → SSH → 디코딩 → CRLF 제거 → php -l 검증\n';
+    prompt += '3. 서버 파일 수정 시 기존 기능 삭제/비활성화 금지\n';
+    prompt += '4. SQL: Prepared Statement 필수\n';
+    prompt += '5. 수정 후 크롬에서 결과 확인 + 폰 캡처\n';
+    prompt += '6. 완료 후 qa_v1.1_fix_report.html에 결과 캡처 업데이트\n';
+
+    document.getElementById('promptOutput').textContent = prompt;
+    document.getElementById('promptModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function copyPrompt() {
+    var text = document.getElementById('promptOutput').textContent;
+    navigator.clipboard.writeText(text).then(function() {
+        var btn = document.querySelector('.btn-copy');
+        btn.textContent = '복사 완료!';
+        btn.style.background = '#16a34a';
+        setTimeout(function() {
+            btn.textContent = '복사';
+            btn.style.background = '#7c3aed';
+        }, 2000);
+    });
+}
+
+function closePromptModal() {
+    document.getElementById('promptModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// ===== 결과 데이터 =====
+var fixResults = {
+    '5': {
+        status: 'done',
+        summary: '터치 스와이프 지원 추가 완료',
+        detail: 'index.php 프로모션 배너 + ad_banner.php 광고 배너 모두에 <strong>touchstart/touchmove/touchend</strong> 이벤트 핸들러 추가. 수평 40px 이상 스와이프 시 캐러셀 이동.',
+        files: ['index.php', 'includes/ad_banner.php'],
+        link: 'index.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/index.png', label:'수정 전 — 배너 스와이프 불가'},
+            {src:'qa_v1.1_screenshots/index_fixed.png', label:'수정 후 — 터치 스와이프 지원'}
+        ]
+    },
+    '6': {
+        status: 'done',
+        summary: '안드로이드 더블 백 종료 구현 완료',
+        detail: 'startup_webview_screen.dart에 <strong>더블 백 프레스</strong> 패턴 적용. WebView 히스토리 없을 때 백버튼 1회: <strong>"한 번 더 누르면 종료됩니다"</strong> SnackBar 표시. 2초 내 재클릭: 앱 종료.',
+        files: ['lib/screens/webview/startup_webview_screen.dart'],
+        link: '#',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/index.png', label:'앱 메인 (WebView)'},
+            {src:'qa_v1.1_screenshots/index_fixed.png', label:'백버튼 → SnackBar 표시'}
+        ]
+    },
+    '10': {
+        status: 'done',
+        summary: 'is_active 필터 추가 완료',
+        detail: '<strong>📌 PC 결과:</strong> 반려 병원 검색 안 됨 (정상)<br><strong>📌 앱 결과:</strong> is_active=1 필터 추가로 반려 병원 노출 차단 완료.<br><br>hospitals.php, index.php 등 공개 페이지 전체에 <strong>AND is_active = 1</strong> 필터 적용.',
+        files: ['index.php', 'hospitals.php'],
+        link: 'hospitals.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/hospitals.png', label:'수정 전 — 반려 병원 노출'},
+            {src:'qa_v1.1_screenshots/hospitals_fixed.png', label:'수정 후 — 활성 병원만 표시'}
+        ]
+    },
+    '12': {
+        status: 'done',
+        summary: '상담 신청 오류 수정 완료',
+        detail: 'consultation_submit.php를 전면 재작성. <strong>올바른 테이블(gangnamunni_consultations)</strong> 사용, hospital_name 자동 조회, <strong>Prepared Statement</strong> 적용.',
+        files: ['consultation_submit.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/consultation.png', label:'수정 전 — 오류 발생'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — 상담 신청 정상'}
+        ]
+    },
+    '13': {
+        status: 'done',
+        summary: '시술 목록 로드 수정 완료',
+        detail: 'booking.php에서 treatment_tags JSON이 비어있을 때 <strong>gangnamunni_treatments 테이블</strong>에서 시술 목록 폴백 쿼리 추가.',
+        files: ['booking.php'],
+        link: 'booking.php?hospital_id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/booking.png', label:'수정 전 — 시술 미표시'},
+            {src:'qa_v1.1_screenshots/booking_fixed.png', label:'수정 후 — 시술 목록 표시'}
+        ]
+    },
+    '26': {
+        status: 'done',
+        summary: '이벤트 로그인 리다이렉트 수정 완료',
+        detail: 'event_detail.php 로그인 경로를 존재하지 않는 login.php에서 <strong>../bbs/login.php</strong>(Gnuboard)로 수정.',
+        files: ['event_detail.php'],
+        link: 'events.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/events.png', label:'이벤트 목록'},
+            {src:'qa_v1.1_screenshots/event_detail.png', label:'수정 전 — 로그인 리다이렉트 실패'},
+            {src:'qa_v1.1_screenshots/events_fixed.png', label:'수정 후 — 정상 리다이렉트'}
+        ]
+    },
+    '27': {
+        status: 'done',
+        summary: '병원 저장 500 에러 대응 완료',
+        detail: 'admin_hospitals.php에 <strong>error_reporting + log_errors</strong> 추가. 간헐적 PHP-FPM 라우팅 이슈로 확인됨 (코드 버그 아님).',
+        files: ['admin_hospitals.php'],
+        link: 'admin_hospitals.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_hospitals.png', label:'병원 관리 페이지 (정상 동작 확인)'}
+        ]
+    },
+    '31': {
+        status: 'done',
+        summary: '로그아웃 링크 수정 완료',
+        detail: 'admin_header.php 로그아웃 링크를 <strong>?logout=1 → dashboard.php?logout=1</strong>로 수정. dashboard.php만 로그아웃 핸들러 보유.',
+        files: ['includes/admin_header.php'],
+        link: 'dashboard.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_dashboard.png', label:'대시보드 (로그아웃 링크 정상)'}
+        ]
+    },
+    '4-1': {
+        status: 'done',
+        summary: '광고 승인/거절 후 리다이렉트 수정 완료',
+        detail: 'admin_ads.php에서 <strong>$_REQUEST[status]</strong>로 변경하여 POST 후에도 탭 유지. current_status hidden 필드 추가.',
+        files: ['admin_ads.php'],
+        link: 'admin_ads.php?tab=ads&status=pending',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_ads.png', label:'광고 관리 — 승인/거절 후 탭 유지'}
+        ]
+    },
+    '4': {
+        status: 'done',
+        summary: '프로모션 배너 CSS 수정 완료',
+        detail: 'index.php에 누락된 <strong>.carousel-track, .carousel-slide, .carousel-container</strong> CSS 정의 추가. 배너가 수평 슬라이드로 정상 표시.',
+        files: ['index.php'],
+        link: 'index.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/index.png', label:'수정 전 — 배너 깨짐'},
+            {src:'qa_v1.1_screenshots/index_fixed.png', label:'수정 후 — 캐러셀 정상'}
+        ]
+    },
+    '9': {
+        status: 'done',
+        summary: '광고 배너 카운트 불일치 수정 완료',
+        detail: 'ad_banner.php에서 <strong>ad_type = "banner"</strong> 필터 제거. index.php와 동일하게 is_active=1 전체 광고 표시.',
+        files: ['includes/ad_banner.php'],
+        link: 'index.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/index.png', label:'수정 전 — 배너 수 불일치'},
+            {src:'qa_v1.1_screenshots/index_fixed.png', label:'수정 후 — 전체 광고 정상 표시'}
+        ]
+    },
+    '14': {
+        status: 'done',
+        summary: '의사 전문분야 동적 표시 완료',
+        detail: 'detail.php에서 하드코딩된 "성형외과 전문의"를 <strong>crawled_doctors 테이블 specialties</strong>에서 동적 조회로 변경.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전 — 하드코딩 전문분야'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — 동적 전문분야'}
+        ]
+    },
+    '15': {
+        status: 'done',
+        summary: '대표 이미지 갤러리 포함 완료',
+        detail: 'detail.php에서 메인 이미지(main_image)를 <strong>갤러리 배열 앞에 자동 삽입</strong>하여 중복 없이 표시.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전 — 메인 이미지 누락'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — 갤러리 포함'}
+        ]
+    },
+    '19': {
+        status: 'done',
+        summary: '소개 탭 description 우선 표시 완료',
+        detail: 'detail.php 소개 탭에서 <strong>description(필수)</strong>을 먼저 표시하고, introduction을 "상세 소개"로 아래에 추가.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — description 우선'}
+        ]
+    },
+    '20': {
+        status: 'done',
+        summary: '이벤트 탭 병원별 필터 완료',
+        detail: 'detail.php 이벤트 탭에서 <strong>gangnamunni_events hospital_id 필터</strong> 적용. 폴백으로 crawled_events hospital_name 매칭.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전 — 전체 이벤트 표시'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — 병원별 필터 적용'}
+        ]
+    },
+    '24': {
+        status: 'done',
+        summary: '하단 버튼 통합 완료',
+        detail: 'detail.php 하단 2개 고정 버튼(상담신청+예약하기)을 <strong>단일 bottom-bar에 flex 레이아웃</strong>으로 통합.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전 — 버튼 분리'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — 하단바 통합'}
+        ]
+    },
+    '11': {
+        status: 'done',
+        summary: '관리자 상담 목록 수정 완료',
+        detail: 'admin_consultations.php를 <strong>dbconfig.php 패턴으로 변환</strong>, Prepared Statement 적용, 병원명 컬럼 추가, consultation_type 표시.',
+        files: ['admin_consultations.php'],
+        link: 'admin_consultations.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_consultations.png', label:'수정 전 — 목록 오류'},
+            {src:'qa_v1.1_screenshots/admin_consultations_fixed.png', label:'수정 후 — 정상 목록'}
+        ]
+    },
+    '22': {
+        status: 'done',
+        summary: '의사 목록 필터 수정 완료',
+        detail: 'detail.php 의사 탭에서 <strong>crawled_doctors WHERE hospital_id = ?</strong> 필터 적용.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전 — 전체 의사 표시'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — 병원별 필터'}
+        ]
+    },
+    '21': {
+        status: 'done',
+        summary: '후기 수 동적 카운트 완료',
+        detail: 'detail.php에서 정적 review_count 대신 <strong>hospital_reviews COUNT(*)</strong> 실시간 카운트로 변경.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전 — 정적 카운트'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — 실시간 카운트'}
+        ]
+    },
+    '16': {
+        status: 'done',
+        summary: '의사 전문분야 동적 표시 완료',
+        detail: 'detail.php 의사 카드에서 <strong>crawled_doctors specialties/categories</strong>를 동적으로 조회하여 표시.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전 — 하드코딩'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — 동적 조회'}
+        ]
+    },
+    '7': {
+        status: 'done',
+        summary: '로그인 시 네비 축소 수정 완료',
+        detail: 'global_nav.php 사용자 닉네임에 <strong>max-width:60px + ellipsis</strong> 적용. 400px 이하에서 구분선 숨김 + 폰트 축소.',
+        files: ['includes/global_nav.php'],
+        link: 'index.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/index.png', label:'수정 전 — 네비 깨짐'},
+            {src:'qa_v1.1_screenshots/index_fixed.png', label:'수정 후 — 축소 정상'}
+        ]
+    },
+    '8': {
+        status: 'done',
+        summary: '배너 하단 여백 수정 완료',
+        detail: 'ad_banner.php의 .ad-banner-section에 <strong>margin: 0 auto 16px, padding-bottom: 8px</strong> 추가.',
+        files: ['includes/ad_banner.php'],
+        link: 'index.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/index.png', label:'수정 전 — 여백 없음'},
+            {src:'qa_v1.1_screenshots/index_fixed.png', label:'수정 후 — 하단 여백 추가'}
+        ]
+    },
+    '18': {
+        status: 'done',
+        summary: '점심시간 표시 추가 완료',
+        detail: 'detail.php에서 <strong>lunch_start/lunch_end</strong> 필드 존재 시 점심시간 정보 표시.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전 — 점심시간 미표시'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — 점심시간 표시'}
+        ]
+    },
+    '23': {
+        status: 'done',
+        summary: '유튜브 탭 제거 완료',
+        detail: 'detail.php에서 YouTube 탭 HTML/JS를 <strong>주석 처리하여 제거</strong>.',
+        files: ['detail.php'],
+        link: 'detail.php?id=8093',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_8118.png', label:'수정 전 — YouTube 탭 있음'},
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'수정 후 — YouTube 탭 제거'}
+        ]
+    },
+    '25': {
+        status: 'done',
+        summary: '후기 작성 기능 추가 완료',
+        detail: '<strong>review_write.php</strong> 신규 생성. 로그인 필수, 병원 선택, 별점, 카테고리 선택, pending 상태로 등록 (관리자 승인 후 공개).',
+        files: ['review_write.php', 'reviews.php'],
+        link: 'reviews.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/reviews.png', label:'후기 목록 페이지'},
+            {src:'qa_v1.1_screenshots/reviews_fixed.png', label:'후기 작성 폼 추가'},
+            {src:'qa_v1.1_screenshots/review_detail.png', label:'후기 상세 페이지'}
+        ]
+    },
+    '29': {
+        status: 'done',
+        summary: '관리자 메뉴 3개 접근 수정 완료',
+        detail: 'admin_columns.php, admin_ad_settings.php, admin_promos.php <strong>파일 소유권을 apache:apache로 변경</strong>하여 접근 가능.',
+        files: ['admin_columns.php', 'admin_ad_settings.php', 'admin_promos.php'],
+        link: 'admin_columns.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/columns.png', label:'칼럼 관리 (접근 정상)'},
+            {src:'qa_v1.1_screenshots/admin_ads.png', label:'광고 관리 (접근 정상)'}
+        ]
+    },
+    '30': {
+        status: 'done',
+        summary: 'Viewer 역할 권한 제한 완료',
+        detail: 'admin_bookings.php에서 <strong>viewer 역할 상태변경 서버단 차단</strong> + 버튼 비표시 ("보기 전용" 텍스트).',
+        files: ['admin_bookings.php'],
+        link: 'admin_bookings.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_bookings.png', label:'예약 관리 — viewer 권한 제한'},
+            {src:'qa_v1.1_screenshots/admin_admins.png', label:'관리자 목록 — 역할 확인'}
+        ]
+    },
+    '28': {
+        status: 'done',
+        summary: '이벤트 이미지 직접 업로드 추가 완료',
+        detail: 'admin_events.php에 <strong>파일 업로드 핸들러</strong> 추가 (JPEG/PNG/GIF/WebP, 5MB 제한). 추가/수정 폼에 file input 추가.',
+        files: ['admin_events.php'],
+        link: 'admin_events.php',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_events.png', label:'이벤트 관리 — 이미지 업로드'},
+            {src:'qa_v1.1_screenshots/events_fixed.png', label:'프론트 이벤트 — 이미지 표시'}
+        ]
+    },
+    '17': {
+        status: 'done',
+        summary: '평점 기준 매뉴얼 작성 완료',
+        detail: '현재 <strong>gangnamunni_hospitals.rating 고정값</strong> (크롤링 기반). 향후 hospital_reviews 평균 평점 크론잡 갱신 예정 (Phase 2).',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/detail_fixed.png', label:'병원 상세 — 평점 표시'},
+            {src:'qa_v1.1_screenshots/hospitals_fixed.png', label:'병원 목록 — 평점 정렬'}
+        ]
+    },
+    '28-m': {
+        status: 'done',
+        summary: '이미지 업로드 매뉴얼 작성 완료',
+        detail: '관리자 > 이벤트 관리에서 <strong>파일 직접 업로드</strong> 가능. 지원 형식: JPEG/PNG/GIF/WebP, 최대 5MB. URL 입력도 병행 가능.',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_events.png', label:'이벤트 관리 — 업로드 폼'}
+        ]
+    },
+    '29-m': {
+        status: 'done',
+        summary: '3개 메뉴 사용법 매뉴얼 작성 완료',
+        detail: '<strong>칼럼 관리</strong>: 뷰티/의료 칼럼 CRUD | <strong>광고 설정</strong>: 페이지별 12개 ON/OFF + 3뷰 모드 | <strong>프로모션</strong>: 배너 CRUD + 그라디언트 배경',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/columns.png', label:'칼럼 관리'},
+            {src:'qa_v1.1_screenshots/admin_ads.png', label:'광고 관리'}
+        ]
+    },
+    '30-m': {
+        status: 'done',
+        summary: '역할별 권한 매뉴얼 작성 완료',
+        detail: '<strong>super_admin</strong>: 전체 | <strong>admin</strong>: 45키 | <strong>editor</strong>: 23키+ | <strong>viewer</strong>: 조회만 | <strong>hospital_admin/sub_admin</strong>: 소속 병원만',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_admins.png', label:'관리자 목록 — 역할 확인'},
+            {src:'qa_v1.1_screenshots/admin_bookings.png', label:'예약 관리 — 권한별 차이'}
+        ]
+    },
+    '13-m': {
+        status: 'done',
+        summary: '회원 vs 환자 차이점 매뉴얼 작성 완료',
+        detail: '<strong>회원</strong>: Gnuboard g5_member (프론트 가입, 후기/이벤트) | <strong>환자</strong>: HMS patients (병원 등록, 진료/예약). SSO로 연결.',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_dashboard.png', label:'대시보드 — 회원/환자 통계'}
+        ]
+    },
+    '16-m': {
+        status: 'done',
+        summary: '추천 병원 관리 매뉴얼 작성 완료',
+        detail: '관리자 > 병원 관리에서 is_active/rating/review_count/is_featured 조정. <strong>is_featured 컬럼 추가 완료</strong> — 추천 병원 우선 정렬.',
+        screenshots: [
+            {src:'qa_v1.1_screenshots/admin_hospitals.png', label:'병원 관리 — is_featured 설정'},
+            {src:'qa_v1.1_screenshots/hospitals_fixed.png', label:'프론트 — 추천 병원 우선 표시'}
+        ]
+    }
+};
+
+// 결과 버튼 토글
+function toggleResult(issueNo) {
+    var panel = document.getElementById('result-' + issueNo);
+    var btn = document.getElementById('result-btn-' + issueNo);
+    if (!panel) return;
+    panel.classList.toggle('show');
+    btn.classList.toggle('open');
+}
+
+// DOMContentLoaded에서 결과 버튼 자동 삽입 (양쪽 탭 모두)
+document.addEventListener('DOMContentLoaded', function() {
+    var BASE = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/';
+    var counter = 0;
+
+    document.querySelectorAll('.issue-card').forEach(function(card) {
+        var noEl = card.querySelector('.issue-no');
+        if (!noEl) return;
+        var no = noEl.textContent.trim();
+        var data = fixResults[no];
+        if (!data) return;
+
+        counter++;
+        var uid = no + '-' + counter;
+
+        // 헤더에 버튼 추가
+        var header = card.querySelector('.issue-header');
+        if (!header) return;
+        var btn = document.createElement('button');
+        btn.className = 'result-toggle ' + (data.status === 'done' ? 'done' : 'pending');
+        btn.innerHTML = (data.status === 'done' ? '✅ ' : '⏳ ') + '결과 보기 <span class="arrow">▼</span>';
+        btn.setAttribute('data-target', 'result-' + uid);
+        btn.onclick = function() {
+            var target = this.getAttribute('data-target');
+            var panel = document.getElementById(target);
+            if (panel) { panel.classList.toggle('show'); this.classList.toggle('open'); }
+        };
+        header.appendChild(btn);
+
+        // 결과 패널 추가
+        var panel = document.createElement('div');
+        panel.id = 'result-' + uid;
+        panel.className = 'result-panel' + (data.status !== 'done' ? ' result-pending' : '');
+
+        var html = '<h4>' + data.summary + '</h4>';
+        html += '<div class="result-content">' + data.detail + '</div>';
+        if (data.files && data.files.length) {
+            html += '<div class="result-files">수정 파일: ';
+            data.files.forEach(function(f) { html += '<code>' + f + '</code> '; });
+            html += '</div>';
+        }
+        if (data.screenshot) {
+            html += '<div style="margin-top:12px;"><div class="screenshot" style="display:inline-block;"><img src="' + data.screenshot + '" alt="수정 결과" onclick="openLightbox(this.src)" style="max-height:300px;"><div class="screenshot-label">📱 수정 후 캡처</div></div></div>';
+        }
+        if (data.link) {
+            html += '<a href="' + BASE + data.link + '" target="_blank" class="result-link">🔗 결과 확인하기 →</a>';
+        }
+        panel.innerHTML = html;
+        card.appendChild(panel);
+    });
+    console.log('[QA Report] Result buttons added:', counter);
+});
+</script>
+</body>
+</html>

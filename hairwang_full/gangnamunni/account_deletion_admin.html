@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>계정 삭제 요청 - 서울미녀 파트너 (병원 관리자)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa; color: #333; line-height: 1.6;
+        }
+        .header {
+            background: #1a1a2e; padding: 16px 20px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .header .logo { color: #fff; font-size: 20px; font-weight: 800; font-family: serif; letter-spacing: 1px; }
+        .header .sub { color: #aaa; font-size: 10px; letter-spacing: 2px; }
+        .container { max-width: 600px; margin: 30px auto; padding: 0 20px; }
+        .card {
+            background: #fff; border-radius: 12px; padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        h1 { font-size: 22px; margin-bottom: 8px; color: #1a1a2e; }
+        .desc { color: #666; font-size: 14px; margin-bottom: 24px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #444; }
+        input, textarea, select {
+            width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;
+            font-size: 15px; transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #7C3AED; }
+        textarea { resize: vertical; min-height: 80px; }
+        .warning {
+            background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;
+            padding: 14px; margin-bottom: 20px; font-size: 13px; color: #856404;
+        }
+        .warning strong { display: block; margin-bottom: 4px; }
+        .info-box {
+            background: #e8f4fd; border-radius: 8px; padding: 14px;
+            margin-bottom: 20px; font-size: 13px; color: #0c5460;
+        }
+        .btn-submit {
+            width: 100%; padding: 14px; background: #7C3AED; color: #fff;
+            border: none; border-radius: 8px; font-size: 16px; font-weight: 700;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .btn-submit:hover { background: #6D28D9; }
+        .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+        .success { display: none; text-align: center; padding: 40px 20px; }
+        .success .check { font-size: 60px; color: #10b981; }
+        .success h2 { margin: 16px 0 8px; color: #1a1a2e; }
+        .success p { color: #666; font-size: 14px; }
+        .lang-toggle { text-align: right; margin-bottom: 16px; }
+        .lang-toggle button {
+            padding: 4px 12px; border: 1px solid #ddd; background: #fff;
+            border-radius: 4px; cursor: pointer; font-size: 13px;
+        }
+        .lang-toggle button.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="logo">서울미녀</span>
+        <span class="sub">SEOUL BEAUTY</span>
+    </div>
+    <div class="container">
+        <div class="lang-toggle">
+            <button id="btn-ko" class="active" onclick="switchLang('ko')">한국어</button>
+            <button id="btn-en" onclick="switchLang('en')">English</button>
+        </div>
+
+        <div class="card" id="form-card">
+            <div id="lang-ko">
+                <h1>계정 및 데이터 삭제 요청</h1>
+                <p class="desc">
+                    <strong>서울미녀 파트너 (병원 관리자)</strong> 앱(com.celebhospital.admin)에서 수집된 개인정보의 삭제를 요청할 수 있습니다.<br>
+                    요청 접수 후 영업일 기준 7일 이내에 처리됩니다.
+                </p>
+                <div class="warning">
+                    <strong>주의사항</strong>
+                    계정 삭제 시 모든 예약 내역, 상담 기록, 후기 등 관련 데이터가 영구적으로 삭제되며 복구할 수 없습니다.
+                </div>
+            </div>
+            <div id="lang-en" class="hidden">
+                <h1>Account & Data Deletion Request</h1>
+                <p class="desc">
+                    You can request deletion of personal data collected by the <strong>Seoul Beauty Partner (Hospital Admin)</strong> app (com.celebhospital.admin).<br>
+                    Requests will be processed within 7 business days.
+                </p>
+                <div class="warning">
+                    <strong>Warning</strong>
+                    Deleting your account will permanently remove all related data including appointments, consultations, and reviews. This action cannot be undone.
+                </div>
+            </div>
+
+            <form id="deleteForm" onsubmit="return submitForm(event)">
+                <div class="form-group">
+                    <label id="lbl-email">이메일 주소 *</label>
+                    <input type="email" id="email" required placeholder="example@email.com">
+                </div>
+                <div class="form-group">
+                    <label id="lbl-name">이름 (선택)</label>
+                    <input type="text" id="name" placeholder="">
+                </div>
+                <div class="form-group">
+                    <label id="lbl-reason">삭제 사유 (선택)</label>
+                    <textarea id="reason" placeholder=""></textarea>
+                </div>
+                <div class="info-box" id="info-text">
+                    요청이 접수되면 확인 이메일이 발송됩니다. 삭제 처리 완료 시 별도 안내드립니다.
+                </div>
+                <button type="submit" class="btn-submit" id="btn-send">삭제 요청 보내기</button>
+            </form>
+        </div>
+
+        <div class="success" id="success-card">
+            <div class="check">&#10003;</div>
+            <h2 id="suc-title">요청이 접수되었습니다</h2>
+            <p id="suc-desc">입력하신 이메일로 확인 메일이 발송됩니다.<br>영업일 기준 7일 이내에 처리됩니다.</p>
+        </div>
+    </div>
+
+    <script>
+    var lang = 'ko';
+    function switchLang(l) {
+        lang = l;
+        document.getElementById('lang-ko').classList.toggle('hidden', l !== 'ko');
+        document.getElementById('lang-en').classList.toggle('hidden', l !== 'en');
+        document.getElementById('btn-ko').classList.toggle('active', l === 'ko');
+        document.getElementById('btn-en').classList.toggle('active', l === 'en');
+        if (l === 'en') {
+            document.getElementById('lbl-email').textContent = 'Email Address *';
+            document.getElementById('lbl-name').textContent = 'Name (Optional)';
+            document.getElementById('lbl-reason').textContent = 'Reason for Deletion (Optional)';
+            document.getElementById('info-text').textContent = 'A confirmation email will be sent upon receipt. You will be notified when deletion is complete.';
+            document.getElementById('btn-send').textContent = 'Submit Deletion Request';
+        } else {
+            document.getElementById('lbl-email').textContent = '이메일 주소 *';
+            document.getElementById('lbl-name').textContent = '이름 (선택)';
+            document.getElementById('lbl-reason').textContent = '삭제 사유 (선택)';
+            document.getElementById('info-text').textContent = '요청이 접수되면 확인 이메일이 발송됩니다. 삭제 처리 완료 시 별도 안내드립니다.';
+            document.getElementById('btn-send').textContent = '삭제 요청 보내기';
+        }
+    }
+    function submitForm(e) {
+        e.preventDefault();
+        var btn = document.getElementById('btn-send');
+        btn.disabled = true;
+        btn.textContent = lang === 'ko' ? '처리 중...' : 'Processing...';
+        var email = document.getElementById('email').value;
+        var name = document.getElementById('name').value || '-';
+        var reason = document.getElementById('reason').value || '-';
+        var subject = encodeURIComponent('[Seoul Beauty] Account Deletion Request - ' + email);
+        var body = encodeURIComponent(
+            'Account Deletion Request\n\n' +
+            'App: Seoul Beauty Partner (Hospital Admin) (com.celebhospital.admin)\n' +
+            'Email: ' + email + '\n' +
+            'Name: ' + name + '\n' +
+            'Reason: ' + reason + '\n' +
+            'Date: ' + new Date().toISOString()
+        );
+        window.open('mailto:admin@seoulbeauty.app?subject=' + subject + '&body=' + body, '_blank');
+        setTimeout(function() {
+            document.getElementById('form-card').style.display = 'none';
+            var sc = document.getElementById('success-card');
+            sc.style.display = 'block';
+            if (lang === 'en') {
+                document.getElementById('suc-title').textContent = 'Request Submitted';
+                document.getElementById('suc-desc').innerHTML = 'A confirmation email will be sent to your address.<br>Processing will be completed within 7 business days.';
+            }
+        }, 500);
+        return false;
+    }
+    </script>
+</body>
+</html>
