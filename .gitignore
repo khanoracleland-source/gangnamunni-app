@@ -2,6 +2,13 @@
 /vendor/
 composer.phar
 
+# Google Service Account va boshqa credentials
+/storage/service-account-credentials.json
+*credentials*.json
+*service-account*.json
+*.pem
+*.p12
+
 # 환경설정 (직접 생성 필요)
 .env
 .env.backup
@@ -18,6 +25,8 @@ composer.phar
 /storage/framework/sessions/
 /storage/framework/views/
 /storage/app/public/
+/storage/debugbar/
+/storage/currencies/
 *.key
 Homestead.json
 Homestead.yaml
@@ -63,8 +72,13 @@ Thumbs.db
 /hospital-api/vendor/
 /hospital-api/public/
 /hospital-api/.vs/
+/hospital-api/.env
+/hospital-api/.env.*
 /hospital-api/storage/logs/
 /hospital-api/storage/framework/
+
+# Development test files
+/test_headers.php
 
 # 기타 작업 폴더
 /site_get/
