@@ -30,10 +30,11 @@ if (file_exists(dirname(__DIR__).'/gangnamunni/includes/sso_auto_login.php') || 
 $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
 
 // BBS URL 직접 지정 (gangnamunni는 /gangnamunni/ 에서 실행, bbs는 /bbs/ 에 있음)
-$login_url = '/hairwang/bbs/login.php';
-$register_url = '/hairwang/bbs/register.php';
-$mypage_url = '/hairwang/bbs/member_confirm.php';
-$logout_url = '/hairwang/bbs/logout.php';
+$bbs_base_url = (defined('SITE_BASE_PATH') && SITE_BASE_PATH === '/gangnamunni/') ? '/bbs/' : '/hairwang/bbs/';
+$login_url = $bbs_base_url . 'login.php';
+$register_url = $bbs_base_url . 'register.php';
+$mypage_url = $bbs_base_url . 'member_confirm.php';
+$logout_url = $bbs_base_url . 'logout.php';
 $member_nick = $is_logged_in ? (isset($member['mb_nick']) ? $member['mb_nick'] : $member['mb_id']) : '';
 
 // 테마 설정 로드 (아직 로드되지 않았다면)

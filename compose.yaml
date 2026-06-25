@@ -1,0 +1,80 @@
+x-hms-app-build: &hms-app-build
+    context: ./vendor/laravel/sail/runtimes/8.2
+    dockerfile: Dockerfile
+    args:
+        WWWGROUP: '${WWWGROUP:-1000}'
+
+services:
+    hms:
+        build: *hms-app-build
+        image: hms-saas-8.2/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${HMS_PORT:-8000}:80'
+            - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+        environment:
+            WWWUSER: '${WWWUSER:-1000}'
+            LARAVEL_SAIL: 1
+            APP_URL: 'http://127.0.0.1:${HMS_PORT:-8000}'
+            DB_HOST: '${DB_HOST}'
+            DB_PORT: '${DB_PORT:-3306}'
+            DB_DATABASE: '${DB_DATABASE}'
+            DB_USERNAME: '${DB_USERNAME}'
+            DB_PASSWORD: '${DB_PASSWORD}'
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+            IGNITION_LOCAL_SITES_PATH: '${PWD}'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+
+    hospital-api:
+        build: *hms-app-build
+        image: hms-saas-8.2/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${HOSPITAL_API_PORT:-8001}:80'
+        environment:
+            WWWUSER: '${WWWUSER:-1000}'
+            LARAVEL_SAIL: 1
+            APP_ENV: production
+            APP_DEBUG: true
+            APP_URL: 'http://127.0.0.1:${HOSPITAL_API_PORT:-8001}'
+            DB_HOST: '${DB_HOST}'
+            DB_PORT: '${DB_PORT:-3306}'
+            DB_DATABASE: '${DB_DATABASE}'
+            DB_USERNAME: '${DB_USERNAME}'
+            DB_PASSWORD: '${DB_PASSWORD}'
+            SUPERVISOR_PHP_COMMAND: '/usr/bin/php -d variables_order=EGPCS /var/www/html/hospital-api/artisan serve --host=0.0.0.0 --port=80'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+
+    gangnamunni:
+        build: *hms-app-build
+        image: hms-saas-8.2/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${GANGNAMUNNI_PORT:-8002}:80'
+        environment:
+            WWWUSER: '${WWWUSER:-1000}'
+            PHP_CLI_SERVER_WORKERS: '${GANGNAMUNNI_WORKERS:-8}'
+            G5_MYSQL_HOST: '${DB_HOST}'
+            G5_MYSQL_PORT: '${DB_PORT:-3306}'
+            G5_MYSQL_USER: '${DB_USERNAME}'
+            G5_MYSQL_PASSWORD: '${DB_PASSWORD}'
+            G5_MYSQL_DB: '${DB_DATABASE}'
+            SUPERVISOR_PHP_COMMAND: '/usr/bin/php -d variables_order=EGPCS -S 0.0.0.0:80 -t /var/www/html/hairwang_full /var/www/html/hairwang_full/local-router.php'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+
+networks:
+    sail:
+        driver: bridge

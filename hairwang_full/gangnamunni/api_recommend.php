@@ -52,6 +52,9 @@ if ($action === 'hospitals') {
              JOIN gangnamunni_hospitals h2 ON SUBSTRING_INDEX(h1.address, ' ', 2) = SUBSTRING_INDEX(h2.address, ' ', 2)
                 AND h2.id != h1.id
              WHERE w.member_id = ?
+             AND COALESCE(h2.is_demo, 0)=0
+             AND h2.is_active=1
+             AND (h2.status='approved' OR h2.status IS NULL)
              AND h2.id NOT IN (SELECT target_id FROM gangnamunni_wishlist WHERE member_id = ? AND target_type='hospital')
              ORDER BY h2.rating DESC
              LIMIT ?");
@@ -77,8 +80,13 @@ if ($action === 'hospitals') {
 
         $pop_sql = "SELECT h.id, h.name, h.address, h.rating, h.review_count, h.main_image_url, 'popular' as rec_reason
                     FROM gangnamunni_hospitals h
-                    WHERE h.rating > 0 {$exclude_clause}
-                    ORDER BY (h.rating * 0.7 + LEAST(h.review_count, 100) * 0.003) DESC
+                    WHERE COALESCE(h.is_demo, 0)=0
+                      AND h.is_active=1
+                      AND (h.status='approved' OR h.status IS NULL)
+                      {$exclude_clause}
+                    ORDER BY (h.main_image_url IS NOT NULL AND h.main_image_url != '') DESC,
+                             COALESCE(h.rating, 0) DESC,
+                             COALESCE(h.review_count, 0) DESC
                     LIMIT {$remaining}";
         $pop_res = mysqli_query($connect, $pop_sql);
         if ($pop_res) {

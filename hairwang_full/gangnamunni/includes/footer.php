@@ -37,7 +37,7 @@ if ($_lp_admin) {
 <!-- Ad tracking script -->
 <script>
 (function(){
-    var trackingUrl = '/hairwang/gangnamunni/api_ad_tracking.php';
+    var trackingUrl = <?php echo json_encode(SITE_BASE_PATH . 'api_ad_tracking.php'); ?>;
     var tracked = {};
 
     function trackImpression(adId) {

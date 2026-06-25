@@ -30,7 +30,12 @@ $hospitals = [];
 if ($table_exists) {
     // [프론트 #7 - 2026-05-28] 검색 결과 일관성 - 반려 병원 제외
     // hospitals.php와 동일한 status 필터 적용하여 메인/병원탭 결과 일치
-    $query = "SELECT * FROM gangnamunni_hospitals WHERE is_active=1 AND (status='approved' OR status IS NULL) ORDER BY rating DESC, review_count DESC LIMIT " . HOSPITALS_PER_PAGE;
+    $query = "SELECT * FROM gangnamunni_hospitals
+              WHERE is_active=1
+                AND COALESCE(is_demo, 0)=0
+                AND (status='approved' OR status IS NULL)
+              ORDER BY rating DESC, review_count DESC
+              LIMIT " . HOSPITALS_PER_PAGE;
     $result = mysqli_query($connect, $query);
 
     if ($result) {
@@ -1432,7 +1437,7 @@ foreach (['pc','android','ios'] as $_d) {
 </div>
 <script>
 (function(){
-    var API = window.location.pathname.replace(/\/[^\/]*$/, '') + '/api_recommend.php';
+    var API = <?php echo json_encode(SITE_BASE_PATH . 'api_recommend.php'); ?>;
     fetch(API + '?action=hospitals&limit=8')
     .then(function(r){ return r.json(); })
     .then(function(res){
@@ -1443,7 +1448,8 @@ foreach (['pc','android','ios'] as $_d) {
             var a=document.createElement('a');
             a.href='detail.php?id='+h.id;
             a.style.cssText='flex-shrink:0;width:140px;text-decoration:none;color:inherit;';
-            var img=h.main_image_url?'<img src="'+h.main_image_url+'" style="width:140px;height:100px;object-fit:cover;border-radius:10px;display:block;background:var(--bs-tertiary-bg,#eee);">':'<div style="width:140px;height:100px;border-radius:10px;background:var(--bs-tertiary-bg,#eee);display:flex;align-items:center;justify-content:center;font-size:24px;color:#ccc;"><i class="bi bi-building"></i></div>';
+            var imageUrl=h.image||h.main_image_url||'';
+            var img=imageUrl?'<img src="'+imageUrl+'" style="width:140px;height:100px;object-fit:cover;border-radius:10px;display:block;background:var(--bs-tertiary-bg,#eee);">':'<div style="width:140px;height:100px;border-radius:10px;background:var(--bs-tertiary-bg,#eee);display:flex;align-items:center;justify-content:center;font-size:24px;color:#ccc;"><i class="bi bi-building"></i></div>';
             var rating=h.rating>0?'<span style="color:#f59e0b;font-size:11px;">★ '+Number(h.rating).toFixed(1)+'</span>':'';
             a.innerHTML=img+'<div style="padding:6px 2px;"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escH(h.name)+'</div>'+rating+'</div>';
             el.appendChild(a);

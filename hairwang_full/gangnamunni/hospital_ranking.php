@@ -8,7 +8,13 @@ if ($sort === 'reviews') $order = 'h.review_count DESC, h.rating DESC';
 elseif ($sort === 'bookings') $order = 'booking_count DESC, h.rating DESC';
 
 $hospitals = [];
-$sql = "SELECT h.*, (SELECT COUNT(*) FROM gangnamunni_bookings WHERE hospital_id=h.id) as booking_count FROM gangnamunni_hospitals h WHERE h.is_active=1 ORDER BY $order LIMIT 50";
+$sql = "SELECT h.*, (SELECT COUNT(*) FROM gangnamunni_bookings WHERE hospital_id=h.id) as booking_count
+        FROM gangnamunni_hospitals h
+        WHERE h.is_active=1
+          AND COALESCE(h.is_demo, 0)=0
+          AND (h.status='approved' OR h.status IS NULL)
+        ORDER BY $order
+        LIMIT 50";
 $res = mysqli_query($connect, $sql);
 if ($res) while ($r = mysqli_fetch_assoc($res)) $hospitals[] = $r;
 // mysqli_close moved to end

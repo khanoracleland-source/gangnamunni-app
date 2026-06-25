@@ -92,3 +92,8 @@ Thumbs.db
 **/con
 **/aux
 **/prn
+
+# Lokal DB override (har dasturchi o'zinikini yaratadi)
+hairwang_full/dbconfig.override.php
+hairwang_full/gangnamunni/dbconfig.override.php
+hairwang_full/local-router.php

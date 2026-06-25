@@ -199,7 +199,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
     <section class="section active" id="sec-overview">
       <div class="card">
         <h1>인수인계 패키지 개요</h1>
-        <div class="meta">인계일: 2026-06-12 · 인계자: sj system · 인수자: 서울미녀 · <b>최종 갱신: 2026-06-18</b> (앱 크래시·검은화면 해결 반영) 내부 개발팀</div>
+        <div class="meta">인계일: 2026-06-12 · 인계자: sj system · 인수자: 서울미녀 · <b>최종 갱신: 2026-06-23</b> (앱 크래시·검은화면 해결 반영) 내부 개발팀</div>
         <div class="stat-row">
           <div class="stat"><span class="n">4GB+</span><span class="l">인계 패키지</span></div>
           <div class="stat"><span class="n">440</span><span class="l">DB 테이블</span></div>

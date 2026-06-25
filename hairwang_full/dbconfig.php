@@ -6,11 +6,11 @@
  */
 
 // 기본값 (운영 DB)
-$_DB_HOST = 'localhost';
-$_DB_PORT = '3306';
-$_DB_USER = 'root';
-$_DB_PASSWORD = '<REMOVED_DB_PASSWORD>';
-$_DB_NAME = 'hms_saas';
+$_DB_HOST = getenv('G5_MYSQL_HOST') ?: 'localhost';
+$_DB_PORT = getenv('G5_MYSQL_PORT') ?: '3306';
+$_DB_USER = getenv('G5_MYSQL_USER') ?: 'root';
+$_DB_PASSWORD = getenv('G5_MYSQL_PASSWORD') ?: '<REMOVED_DB_PASSWORD>';
+$_DB_NAME = getenv('G5_MYSQL_DB') ?: 'hms_saas';
 
 // Override 파일 확인
 $_override_file = __DIR__ . '/dbconfig.override.php';

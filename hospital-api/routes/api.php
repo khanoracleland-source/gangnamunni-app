@@ -61,7 +61,15 @@ Route::prefix('hospitals')->group(function () {
         $perPage = $request->input('per_page', 20);
         $hospitals = $query->paginate($perPage);
 
-        return response()->json($hospitals);
+        return response()->json([
+            'data' => $hospitals->items(),
+            'pagination' => [
+                'total' => $hospitals->total(),
+                'per_page' => $hospitals->perPage(),
+                'current_page' => $hospitals->currentPage(),
+                'last_page' => $hospitals->lastPage(),
+            ],
+        ]);
     });
 
     // Get hospital by ID

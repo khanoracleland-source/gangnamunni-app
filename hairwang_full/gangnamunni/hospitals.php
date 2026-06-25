@@ -69,7 +69,10 @@ $list_cta    = $sv('hv_list_cta_size', '12');
 
 // 병원 검색
 $hospitals = [];
-$query = "SELECT * FROM gangnamunni_hospitals WHERE is_active=1 AND (status='approved' OR status IS NULL)";
+$query = "SELECT * FROM gangnamunni_hospitals
+          WHERE is_active=1
+            AND COALESCE(is_demo, 0)=0
+            AND (status='approved' OR status IS NULL)";
 if (!empty($keyword)) {
     $query .= " AND (name LIKE '%{$escaped_keyword}%' OR address LIKE '%{$escaped_keyword}%' OR treatment_tags LIKE '%{$escaped_keyword}%')";
 }

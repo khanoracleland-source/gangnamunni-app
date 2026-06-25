@@ -29,7 +29,11 @@ if (!defined('CATEGORIES')) {
 
 // 사이트 도메인/경로 (멀티 산업 배포 시 변경)
 if (!defined('SITE_DOMAIN')) define('SITE_DOMAIN', 'hms.seoulbeauty.app');
-if (!defined('SITE_BASE_PATH')) define('SITE_BASE_PATH', '/hairwang/gangnamunni/');
+$request_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+$is_local_request = in_array($request_host, ['127.0.0.1', 'localhost', '::1'], true);
+if (!defined('SITE_BASE_PATH')) {
+    define('SITE_BASE_PATH', $is_local_request ? '/gangnamunni/' : '/hairwang/gangnamunni/');
+}
 if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://' . SITE_DOMAIN . SITE_BASE_PATH);
 
 // 이미지 업로드 설정
