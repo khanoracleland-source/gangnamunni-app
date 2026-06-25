@@ -131,7 +131,7 @@ function community_time_display($created_at, $updated_at = null) {
 
 $page_css = '
 /* === 커뮤니티 Figma 디자인 === */
-.community-wrap { max-width: 640px; margin: 0 auto; padding: 0; }
+.community-wrap { max-width: 640px; margin: 0 auto; padding: 0 0 70px; }
 
 /* 섹션 타이틀 */
 .community-section-title { font-size: 20px; font-weight: 700; color: #000000; padding: 16px 16px 8px; margin: 0; }
@@ -195,6 +195,13 @@ $page_css = '
 @media (min-width: 641px) {
     .fab-write { right: calc(50% - 300px); }
 }
+/* 검색바 */
+.community-search-wrap { padding: 8px 16px; display: flex; align-items: center; }
+.community-search-input { width: 439px; height: 60px; padding: 10px 14px; border-bottom: 2px solid #8f8d8d; font-size: 15px; outline: none; box-sizing: border-box; }
+.community-search-input::placeholder { font-size: 15px; }
+.community-search-btn { width: 190px; height: 60px; border: 2px solid #333; border-radius: 24px; background: #333; color: #ffffff; font-size: 18px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.community-search-btn i { color: #ffffff; }
+
 /* 신고/차단 버튼 */
 .post-report-row { display: flex; justify-content: flex-end; gap: 2px; margin-top: -4px; padding-right: 4px; }
 .rv-report-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px; opacity: 0.5; transition: opacity 0.2s; vertical-align: middle; }
@@ -208,21 +215,22 @@ $page_css = '
 }
 ';
 
-$page_js = '';
+$page_js = 'function applyCommunitySearch(){var q=document.getElementById("communityKeyword").value.trim();if(q)location.href="hospitals.php?q="+encodeURIComponent(q);}';
+
 include __DIR__ . '/includes/header.php';
 ?>
 
     <div class="community-wrap">
         <!-- 섹션 타이틀 -->
-        <h2 class="community-section-title">커뮤니티</h2>
-
         <!-- 검색바 + 검색 버튼 -->
-        <div style="padding:8px 16px;display:flex;gap:8px;align-items:center;">
-            <input type="text" id="communityKeyword" placeholder="게시글 검색..." style="flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:24px;font-size:14px;background:var(--bs-tertiary-bg, #f5f5f5);outline:none;" onkeypress="if(event.key==='Enter'){var q=this.value.trim();if(q)location.href='community.php?q='+encodeURIComponent(q);}">
-            <button onclick="var q=document.getElementById('communityKeyword').value.trim();if(q)location.href='community.php?q='+encodeURIComponent(q);" style="flex-shrink:0;padding:10px 16px;border:2px solid #AE1932;border-radius:24px;background:var(--bs-body-bg, #fff);color:var(--bs-body-color, #333);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
-                <i class="bi bi-search" style="color:#AE1932;"></i> 검색
+        <div class="community-search-wrap">
+            <input type="text" id="communityKeyword" class="community-search-input" value="" placeholder="<?php echo term('service', '시술'); ?>, <?php echo term('business', '병원'); ?> 이름을 검색해보세요" onkeypress="if(event.key==='Enter')applyCommunitySearch()">
+            <button id="communitySearchBtn" class="community-search-btn" onclick="applyCommunitySearch()">
+                <i class="bi bi-geo-alt"></i> 지역 선택
             </button>
         </div>
+
+        <h2 class="community-section-title">커뮤니티</h2>
 
         <!-- 3탭: 최신순 / 인기글 / 시술 후기 -->
         <div class="community-tabs">

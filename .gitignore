@@ -11,6 +11,7 @@ composer.phar
 
 # 환경설정 (직접 생성 필요)
 .env
+.env.server.backup
 .env.backup
 .env.example
 .env.production.backup
