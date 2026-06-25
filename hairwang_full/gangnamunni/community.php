@@ -357,7 +357,6 @@ include __DIR__ . '/includes/header.php';
 
 <?php
 include __DIR__ . '/includes/report_block_modal.php';
-echo '<div style="height:70px;"></div>';
 include_once __DIR__ . '/includes/bottom_nav.php';
 include __DIR__ . '/includes/footer.php';
 mysqli_close($connect);

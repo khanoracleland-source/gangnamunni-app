@@ -144,8 +144,9 @@ $page_css = '
     .card-link { cursor: pointer; flex: 1; }
     .hospital-image { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #D9D9D9; display: block; }
     .hospital-info { padding: 12px 16px 6px; }
-    .hospital-name { font-size: 18px; font-weight: 500; margin-bottom: 4px; color: var(--bs-body-color, #000000); }
-    .hospital-address { font-size: 12px; font-weight: 400; color: var(--bs-body-color, #000000); margin-bottom: 6px; }
+    .hospital-name { font-size: 16px; font-weight: 500; margin-bottom: 4px; color: var(--bs-body-color, #000000); }
+    .hospital-address { font-size: 14px; font-weight: 400; color: var(--bs-body-color, #000000); margin-bottom: 6px; }
+    .hospital-address * { font-size: 14px; }
     .rating-section { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
     .rating-score { font-weight: 700; color: #AE1932; }
     .review-count { font-size: 12px; color: var(--bs-secondary-color, #666); }
@@ -241,6 +242,12 @@ $page_css = '
 #hRegionPanel .region-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500; cursor: pointer; }
 #hRegionPanel .btn-reset { flex-shrink: 0; font-size: 15px; cursor: pointer; padding-left: 15px; }
 #hRegionPanel .btn-apply { flex-shrink: 0; padding: 8px; background: #AE1932; color: #fff; font-size: 15px; font-weight: 500; cursor: pointer; height: 40px; width: 190px;}
+.card-tag-price { display: flex; align-items: center; margin-top: 6px; }
+.card-tag-item { font-size: 16px; color: #000; padding: 2px 0; }
+.card-price { flex: 1; text-align: center; }
+.card-price-num { font-size: 16px; font-weight: 700; color: #AE1932; }
+.card-price-unit { font-size: 12px; font-weight: 400; color: #000000; }
+.card-price-max { font-size: 12px; color: #858484; text-decoration: line-through; margin-right: 2px; }
 .region-active-bar { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--bs-border-color, #eee); }
 .region-active-bar .btn-reset-bar { flex-shrink: 0; background: none; border: none; font-size: 15px; cursor: pointer; color: #000; padding: 0; }
 .region-active-bar .region-active-tags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -340,7 +347,7 @@ include __DIR__ . '/includes/header.php';
     <div style="padding: 0 16px; margin-bottom: 8px; display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
         <!-- <label style="font-size:13px; color:var(--bs-secondary-color,#888);">정렬:</label> -->
         <div id="sortChips" style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
-            <button onclick="setSort('price')" class="sort-chip<?php echo $sort==='price' ? ' active' : ''; ?>"><i class="bi bi-funnel"></i> 낮은가격</button>
+            <button onclick="setSort('price')" class="sort-chip<?php echo $sort==='price' ? ' active' : ''; ?>"><i class="bi "></i> 낮은가격</button>
             <button onclick="setSort('rating')" class="sort-chip<?php echo $sort==='rating' ? ' active' : ''; ?>"><i class="bi bi-star"></i> 평점</button>
             <button onclick="setSort('popular')" class="sort-chip<?php echo $sort==='popular' ? ' active' : ''; ?>"><i class="bi bi-heart"></i> 인기</button>
             <button onclick="setSort('review')" class="sort-chip<?php echo $sort==='review' ? ' active' : ''; ?>"><i class="bi bi-chat-dots"></i> <?php echo term('review', '후기'); ?></button>
@@ -401,18 +408,29 @@ foreach ($hospitals as $hospital):
     if ($__hi > 0 && $_infeed_enabled === '1' && $_infeed_interval > 0 && $__hi % $_infeed_interval === 0 && isset($_infeed_ads[$_ad_idx])):
         $_iad = $_infeed_ads[$_ad_idx];
 ?>
-        <a href="<?php echo htmlspecialchars($_iad['link_url'] ?? '#'); ?>" class="hospital-card ad-card" data-ad-id="<?php echo $_iad['id']; ?>">
-            <span class="ad-badge">AD</span>
-            <?php if (!empty($_iad['image_url'])): ?>
-            <img src="<?php echo htmlspecialchars($_iad['image_url']); ?>" class="hospital-image" alt="광고">
-            <?php else: ?>
-            <div class="hospital-image" style="background:linear-gradient(135deg,#AE1932,#EF5350);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:bold;"><?php echo htmlspecialchars($_iad['title']); ?></div>
-            <?php endif; ?>
-            <div class="hospital-info">
-                <div class="hospital-name"><?php echo htmlspecialchars($_iad['title']); ?></div>
-                <div class="hospital-address"><?php echo htmlspecialchars($_iad['subtitle'] ?? ''); ?></div>
+        <div class="hospital-card ad-card" data-ad-id="<?php echo $_iad['id']; ?>">
+            <div class="card-link" onclick="location.href='<?php echo htmlspecialchars($_iad['link_url'] ?? '#'); ?>'">
+                <?php if (!empty($_iad['image_url'])): ?>
+                <img src="<?php echo htmlspecialchars($_iad['image_url']); ?>" class="hospital-image" alt="광고">
+                <?php else: ?>
+                <div class="hospital-image" style="background:#D9D9D9;"></div>
+                <?php endif; ?>
+                <span class="grade-badge grade-badge-sa">AD</span>
+                <div class="hospital-info">
+                    <div class="hospital-name"><?php echo htmlspecialchars($_iad['title']); ?></div>
+                    <div class="hospital-address">
+                        <span class="addr-district">강남</span>
+                        <span class="addr-sep"> | </span>
+                        <span><?php echo htmlspecialchars($_iad['subtitle'] ?? ''); ?></span>
+                    </div>
+                </div>
             </div>
-        </a>
+            <div class="card-cta">
+                <a href="<?php echo htmlspecialchars($_iad['link_url'] ?? '#'); ?>" class="btn btn-detail" style="flex:1;">
+                    <i class="bi bi-info-circle"></i> 상세보기
+                </a>
+            </div>
+        </div>
 <?php
         $_ad_idx++;
     endif;
@@ -432,8 +450,8 @@ foreach ($hospitals as $hospital):
     $rating_val = number_format((float)($hospital['rating'] ?? 0), 1);
     $review_cnt = number_format((int)($hospital['review_count'] ?? 0));
 ?>
-        <div class="hospital-card">
-            <div class="card-link" onclick="location.href='detail.php?id=<?php echo $hospital['id']; ?>'">
+        <div class="hospital-card" onclick="location.href='detail.php?id=<?php echo $hospital['id']; ?>'" style="cursor:pointer;">
+            <div class="card-link">
                 <?php
                 $h_img = $hospital['main_image_url'] ?? $hospital['profile_image_url'] ?? '';
                 $placeholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360'%3E%3Crect fill='%23e9ecef' width='640' height='360'/%3E%3Ctext x='50%25' y='45%25' fill='%23adb5bd' text-anchor='middle' font-size='18' font-family='sans-serif'%3E" . urlencode(htmlspecialchars($hospital['name'])) . "%3C/text%3E%3Ctext x='50%25' y='58%25' fill='%23ced4da' text-anchor='middle' font-size='13' font-family='sans-serif'%3ENo Image%3C/text%3E%3C/svg%3E";
@@ -444,65 +462,40 @@ foreach ($hospitals as $hospital):
                      class="hospital-image"
                      onerror="this.src='<?php echo $placeholder; ?>'">
                 <?php
-                // 광고 등급 뱃지 (S/A: 빨간 AD, B/C: 파란 제휴, D/E: 작은 회색 제휴)
                 $ad_grade = $hospital['ad_grade'] ?? 'none';
-                if ($ad_grade !== 'none' && !empty($ad_grade)):
-                    if (in_array($ad_grade, ['S', 'A'])):
-                ?>
+                if (in_array($ad_grade, ['S', 'A'])): ?>
                 <span class="grade-badge grade-badge-sa">AD</span>
-                <?php elseif (in_array($ad_grade, ['B', 'C'])): ?>
-                <span class="grade-badge grade-badge-bc">제휴</span>
-                <?php elseif (in_array($ad_grade, ['D', 'E'])): ?>
-                <span class="grade-badge grade-badge-de">제휴</span>
-                <?php endif; endif; ?>
+                <?php endif; ?>
                 <div class="hospital-info">
                     <div class="hospital-name"><?php echo htmlspecialchars($hospital['name']); ?></div>
                     <div class="hospital-address">
-                        <i class="bi bi-geo-alt" style="font-size:11px;"></i>
+                        <span class="addr-district">강남</span>
+                        <span class="addr-sep"> | </span>
                         <span class="addr-full"><?php echo htmlspecialchars($hospital['address'] ?? ''); ?></span>
                         <span class="addr-short"><?php echo htmlspecialchars(mb_substr($hospital['address'] ?? '', 0, 30)); ?>...</span>
                     </div>
-                    <?php if ($has_rating): ?>
-                    <div class="rating-section">
-                        <span class="rating-score" style="font-size:14px;"><?php echo $rating_val; ?></span>
-                        <span class="review-count">(평가 <?php echo $review_cnt; ?>개)</span>
-                    </div>
-                    <?php endif; ?>
-                    <?php if (!empty($tags)): ?>
-                    <div class="badge-group">
-                        <?php foreach ($tags as $tname): ?>
-                        <span class="tag-badge"><?php echo htmlspecialchars($tname); ?></span>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php endif; ?>
                     <?php
-                    // 시술 설명 미리보기 (대표 시술 1건)
                     $_td = $hospital_treatment_descs[(int)$hospital['id']] ?? null;
-                    if ($_td): ?>
-                    <div class="treatment-desc-preview" style="font-size:0.75rem;color:var(--bs-secondary-color,#6c757d);margin-top:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"><?php echo htmlspecialchars($_td['name']); ?> &mdash; <?php echo htmlspecialchars($_td['desc']); ?></div>
-                    <?php
-                    // [1차 검수 #5 - 2026-05-28] 대표 시술 가격 명시 노출
-                    if (!empty($_td['price_min']) && (int)$_td['price_min'] > 0):
-                        $_pm = (int)$_td['price_min'];
-                        $_pM = !empty($_td['price_max']) ? (int)$_td['price_max'] : 0;
+                    $_tag_name = $_td['name'] ?? ($tags[0] ?? null);
+                    $_price = !empty($_td['price_min']) && (int)$_td['price_min'] > 0 ? (int)$_td['price_min'] : (int)($hospital['min_price'] ?? 0);
+                    $_price_max = !empty($_td['price_max']) && (int)$_td['price_max'] > 0 ? (int)$_td['price_max'] : 0;
+                    if ($_tag_name || $_price > 0):
                     ?>
-                    <div class="treatment-price-preview" style="margin-top:4px;font-size:0.85rem;font-weight:700;color:#AE1932;">
-                        💰 <?php echo htmlspecialchars($_td['name']); ?>
-                        <?php if ($_pM > 0 && $_pM !== $_pm): ?>
-                            <?php echo number_format($_pm); ?>원 ~ <?php echo number_format($_pM); ?>원
-                        <?php else: ?>
-                            <?php echo number_format($_pm); ?>원~
+                    <div class="card-tag-price">
+                        <?php if ($_tag_name): ?>
+                        <span class="card-tag-item"><?php echo htmlspecialchars($_tag_name); ?></span>
+                        <?php endif; ?>
+                        <?php if ($_price > 0): ?>
+                        <span class="card-price">
+                            <?php if ($_price_max > 0): ?>
+                            <span class="card-price-max"><?php echo number_format($_price_max * 10000); ?>원</span>
+                            <?php endif; ?>
+                            <span class="card-price-num"><?php echo number_format($_price * 10000); ?></span><span class="card-price-unit">원~</span>
+                        </span>
                         <?php endif; ?>
                     </div>
-                    <?php endif; endif; ?>
-                    <div class="price-annotation" style="font-size:0.7rem;color:var(--bs-secondary-color,#6c757d);margin-top:6px;line-height:1.3;">부가세 포함 · 마취비 없음 · 사후관리비 없음</div>
+                    <?php endif; ?>
                 </div>
-            </div>
-            <!-- [1차 검수 #7 - 2026-05-28] 리스트 내 '상담 신청' 버튼 삭제 (관리 일원화 — 상세 페이지의 상담 기능만 사용) -->
-            <div class="card-cta">
-                <a href="detail.php?id=<?php echo $hospital['id']; ?>" class="btn btn-detail" onclick="event.stopPropagation();" style="flex:1;">
-                    <i class="bi bi-info-circle"></i> 상세보기
-                </a>
             </div>
         </div>
 <?php endforeach; ?>
