@@ -148,41 +148,37 @@ $page_css = '
 .post-item { padding: 16px; border-bottom: 1px solid var(--bs-border-color, #e0e0e0); }
 .post-item a { text-decoration: none; color: inherit; display: flex; gap: 14px; }
 .post-content-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.post-cat-tag { display: inline-block; padding: 0; background: none; color: #000000; font-size: 13px; font-weight: 400; border-radius: 0; margin-bottom: 6px; align-self: flex-start; }
-[data-bs-theme="dark"] .post-cat-tag { background: none; color: var(--bs-body-color, #ccc); }
+.post-cat-tag { display: inline-block; padding: 2px 8px; background: #FFEEEE; color: #AE1932; font-size: 13px; font-weight: 500; border-radius: 4px; margin-bottom: 6px; align-self: flex-start; }
+[data-bs-theme="dark"] .post-cat-tag { background: #FFEEEE; color: #AE1932; }
 .post-title { font-size: 18px; font-weight: 500; color: #000000; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.4; }
 [data-bs-theme="dark"] .post-title { color: var(--bs-body-color, #eee); }
 .post-preview { font-size: 15px; font-weight: 400; color: #000000; line-height: 1.5; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 [data-bs-theme="dark"] .post-preview { color: var(--bs-body-color, #ddd); }
-.post-readmore { font-size: 13px; font-weight: 400; color: var(--color-inactive, #AAAAAA); margin-bottom: 10px; }
-/* 썸네일 그리드 (최대 3장) */
-.post-thumbs { width: 300px; max-width: 40%; flex-shrink: 0; align-self: center; display: grid; gap: 4px; border-radius: 8px; overflow: hidden; }
-.post-thumbs.thumbs-1 { grid-template-columns: 1fr; }
+.post-readmore-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.post-readmore { font-size: 13px; font-weight: 400; color: var(--color-inactive, #AAAAAA); }
+.post-readmore-time { font-size: 13px; font-weight: 400; color: var(--color-inactive, #AAAAAA); margin-left: auto; }
+/* 썸네일 그리드 (최대 2장, 본문 아래) */
+.post-thumbs { width: 100%; display: grid; gap: 4px; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+.post-thumbs.thumbs-1 { grid-template-columns: 1fr; max-width: 50%; }
 .post-thumbs.thumbs-2 { grid-template-columns: 1fr 1fr; }
-.post-thumbs.thumbs-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 .post-thumbs .thumb-item { position: relative; aspect-ratio: 1/1; overflow: hidden; background: var(--bs-tertiary-bg, #f5f5f5); }
-.post-thumbs.thumbs-3 .thumb-item:first-child { grid-row: 1 / 3; }
 .post-thumbs .thumb-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.post-thumbs .thumb-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: 600; }
 
 /* 작성자 + 통계 */
-.post-author-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.post-avatar { width: 35px; height: 35px; border-radius: 50%; background: #D9D9D9; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #999; overflow: hidden; flex-shrink: 0; }
-.post-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.post-author-row { display: flex; align-items: center; gap: 8px; }
+.post-avatar { width: 35px; height: 35px; border-radius: 50%; background: #AAAAAA; overflow: hidden; flex-shrink: 0; }
+.post-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.post-stat-group { display: inline-flex; align-items: center; gap: 30px; font-size: 13px; color: #000000; margin-left: auto; }
+[data-bs-theme="dark"] .post-stat-group { color: var(--bs-body-color, #ccc); }
+.post-stat-group .stat { display: inline-flex; align-items: center; gap: 3px; }
+.post-stat-group .stat i { font-size: 20px; }
+.post-stat-group .heart-icon { color: #AE1932; }
 .post-author-name { font-size: 15px; font-weight: 400; color: #000000; }
 [data-bs-theme="dark"] .post-author-name { color: var(--bs-body-color, #ddd); }
-.post-meta-row { display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 400; color: #000000; }
-[data-bs-theme="dark"] .post-meta-row { color: var(--bs-body-color, #ccc); }
-.post-meta-row .stat { display: inline-flex; align-items: center; gap: 3px; }
-.post-meta-row .stat i { font-size: 25px; width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; }
-.post-meta-row .heart-icon { color: #AE1932; }
-.post-meta-row .time-text { margin-left: auto; font-size: 13px; font-weight: 400; color: var(--color-inactive, #AAAAAA); }
 
 /* FAB — Figma: 100x60 pill, bg #AE1932, icon 40x40 */
-.fab-write { position: fixed; bottom: 80px; right: 20px; min-width: 100px; height: 60px; border-radius: 50px; background: #AE1932; color: #fff; border: none; box-shadow: 0 4px 12px rgba(174,25,50,0.4); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; z-index: 100; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; white-space: nowrap; }
-.fab-write i { font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-.fab-write:hover { transform: scale(1.08); box-shadow: 0 6px 16px rgba(174,25,50,0.5); color: #fff; }
-.fab-write:active { transform: scale(0.95); }
+.fab-write { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); max-width: 100px; height: 60px; border-radius: 50px; background: #d81233; color: #fff; border: none; box-shadow: 0 4px 12px rgba(174,25,50,0.4); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; z-index: 100; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; white-space: nowrap; }
+.fab-write i { font-size: 30px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
 
 /* 빈 상태 */
 .no-posts { text-align: center; padding: 80px 20px; color: var(--bs-secondary-color, #999); }
@@ -220,6 +216,14 @@ include __DIR__ . '/includes/header.php';
         <!-- 섹션 타이틀 -->
         <h2 class="community-section-title">커뮤니티</h2>
 
+        <!-- 검색바 + 검색 버튼 -->
+        <div style="padding:8px 16px;display:flex;gap:8px;align-items:center;">
+            <input type="text" id="communityKeyword" placeholder="게시글 검색..." style="flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:24px;font-size:14px;background:var(--bs-tertiary-bg, #f5f5f5);outline:none;" onkeypress="if(event.key==='Enter'){var q=this.value.trim();if(q)location.href='community.php?q='+encodeURIComponent(q);}">
+            <button onclick="var q=document.getElementById('communityKeyword').value.trim();if(q)location.href='community.php?q='+encodeURIComponent(q);" style="flex-shrink:0;padding:10px 16px;border:2px solid #AE1932;border-radius:24px;background:var(--bs-body-bg, #fff);color:var(--bs-body-color, #333);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
+                <i class="bi bi-search" style="color:#AE1932;"></i> 검색
+            </button>
+        </div>
+
         <!-- 3탭: 최신순 / 인기글 / 시술 후기 -->
         <div class="community-tabs">
             <a href="community.php?tab=latest" class="<?php echo $tab === 'latest' ? 'active' : ''; ?>">최신순</a>
@@ -255,43 +259,48 @@ include __DIR__ . '/includes/header.php';
                         <span class="post-cat-tag"><?php echo htmlspecialchars($post['category']); ?></span>
                         <div class="post-title"><?php echo htmlspecialchars($post['title']); ?></div>
                         <div class="post-preview"><?php echo htmlspecialchars($preview); ?></div>
-                        <?php if (mb_strlen(strip_tags($post['content'] ?? '')) > 100): ?>
-                        <div class="post-readmore">...더보기</div>
+                        <div class="post-readmore-row">
+                            <?php if (mb_strlen(strip_tags($post['content'] ?? '')) > 100): ?>
+                            <span class="post-readmore">...더보기</span>
+                            <?php else: ?>
+                            <span></span>
+                            <?php endif; ?>
+                            <span class="post-readmore-time"><?php echo $time_text; ?></span>
+                        </div>
+                        <?php if (!empty($photos)):
+                            $photo_count = count($photos);
+                            $show_count = min(2, $photo_count);
+                            $grid_class = 'thumbs-' . $show_count;
+                        ?>
+                        <div class="post-thumbs <?php echo $grid_class; ?>">
+                            <?php for ($pi = 0; $pi < $show_count; $pi++): ?>
+                            <div class="thumb-item">
+                                <img src="<?php echo htmlspecialchars($photos[$pi]); ?>" alt="" loading="lazy">
+                            </div>
+                            <?php endfor; ?>
+                        </div>
                         <?php endif; ?>
                         <div class="post-author-row">
-                            <div class="post-avatar"><?php echo $initial; ?></div>
+                            <div class="post-avatar">
+                                <?php if (!empty($post['author_avatar'])): ?>
+                                <img src="<?php echo htmlspecialchars($post['author_avatar']); ?>" alt="">
+                                <?php endif; ?>
+                            </div>
                             <span class="post-author-name"><?php echo $author; ?></span>
-                        </div>
-                        <div class="post-meta-row">
-                            <span class="stat"><i class="bi bi-heart-fill heart-icon"></i> <?php echo intval($post['like_count'] ?? 0); ?></span>
-                            <span class="stat"><i class="bi bi-chat"></i> <?php echo intval($post['comment_count'] ?? 0); ?></span>
-                            <span class="stat"><i class="bi bi-eye"></i> <?php echo intval($post['view_count'] ?? 0); ?></span>
-                            <span class="time-text"><?php echo $time_text; ?></span>
+                            <div class="post-stat-group">
+                                <span class="stat"><i class="bi bi-heart-fill heart-icon"></i> <?php echo intval($post['like_count'] ?? 0); ?></span>
+                                <span class="stat"><i class="bi bi-chat-square-text"></i> <?php echo intval($post['comment_count'] ?? 0); ?></span>
+                                <span class="stat"><i class="bi bi-eye"></i> <?php echo intval($post['view_count'] ?? 0); ?></span>
+                            </div>
                         </div>
                     </div>
-                    <?php if (!empty($photos)):
-                        $photo_count = count($photos);
-                        $show_count = min(3, $photo_count);
-                        $grid_class = 'thumbs-' . $show_count;
-                    ?>
-                    <div class="post-thumbs <?php echo $grid_class; ?>">
-                        <?php for ($pi = 0; $pi < $show_count; $pi++): ?>
-                        <div class="thumb-item">
-                            <img src="<?php echo htmlspecialchars($photos[$pi]); ?>" alt="" loading="lazy">
-                            <?php if ($pi === 2 && $photo_count > 3): ?>
-                            <div class="thumb-overlay">+<?php echo $photo_count - 3; ?></div>
-                            <?php endif; ?>
-                        </div>
-                        <?php endfor; ?>
-                    </div>
-                    <?php endif; ?>
                 </a>
-                <div class="post-report-row">
+                <!-- <div class="post-report-row">
                     <button class="rv-report-btn" onclick="openReportModal('community', <?php echo intval($post['id']); ?>, '<?php echo $post_mb_id; ?>', '<?php echo $raw_author; ?>')" title="신고">&#9873;</button>
                     <?php if (!empty($post['mb_id'])): ?>
                     <button class="rv-report-btn" onclick="openBlockModal('<?php echo $post_mb_id; ?>', '<?php echo $raw_author; ?>')" title="차단">&#128683;</button>
                     <?php endif; ?>
-                </div>
+                </div> -->
             </li>
             <?php endforeach; ?>
         </ul>
@@ -333,9 +342,9 @@ include __DIR__ . '/includes/header.php';
 
     <!-- FAB 글쓰기 버튼 (Figma: 100x60 pill) -->
     <?php if ($is_logged_in): ?>
-    <a href="community_write.php" class="fab-write" title="글쓰기"><i class="bi bi-pencil-fill"></i><span>글작성</span></a>
+    <a href="community_write.php" class="fab-write" title="글쓰기"><i class="bi bi-pencil-square"></i></a>
     <?php else: ?>
-    <button class="fab-write" title="글쓰기" onclick="alert('로그인이 필요합니다.'); location.href='<?php echo rtrim(dirname($_SERVER['SCRIPT_NAME'], 2),'/'); ?>/bbs/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/community.php'); ?>';"><i class="bi bi-pencil-fill"></i><span>글작성</span></button>
+    <button class="fab-write" title="글쓰기" onclick="alert('로그인이 필요합니다.'); location.href='<?php echo rtrim(dirname($_SERVER['SCRIPT_NAME'], 2),'/'); ?>/bbs/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/community.php'); ?>';"><i class="bi bi-pencil-square"></i></button>
     <?php endif; ?>
 
 <?php
