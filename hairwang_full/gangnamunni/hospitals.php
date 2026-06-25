@@ -234,42 +234,7 @@ if (file_exists($_fs_css_file)) { $page_css .= "
 include __DIR__ . '/includes/header.php';
 ?>
 
-    <?php $ad_page_key = 'hospitals'; include __DIR__ . '/includes/ad_banner.php'; ?>
-    <?php $rolling_page = "hospitals"; include __DIR__ . "/includes/rolling_banner.php"; ?>
-
-    <?php renderRecentlyViewedSection(); ?>
-
-    <div class="search-header">
-        <div class="search-header-content">
-            <a href="index.php" class="back-btn">&#8592;</a>
-            <a href="map.php" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--bs-tertiary-bg,#f0f0f0);color:var(--primary,#AE1932);font-size:18px;text-decoration:none;" title="지도"><i class="bi bi-map"></i></a>
-            <div class="search-bar">
-                <form method="GET" action="hospitals.php">
-                    <input type="text" name="q" class="search-input" placeholder="<?php echo term('business', '병원'); ?>명, 주소 검색..." value="<?php echo htmlspecialchars($keyword); ?>">
-                </form>
-            </div>
-        </div>
-
-    <!-- 빠른 메뉴 -->
-    <div style="max-width:640px;margin:8px auto;padding:0 16px;display:flex;gap:8px;">
-        <a href="price_compare.php" style="flex:1;padding:10px;text-align:center;background:var(--bs-tertiary-bg,#f5f5f5);border-radius:10px;text-decoration:none;color:inherit;font-size:13px;font-weight:600;">
-            <i class="bi bi-tags" style="color:#AE1932;"></i> 가격비교
-        </a>
-        <a href="hospital_compare.php" style="flex:1;padding:10px;text-align:center;background:var(--bs-tertiary-bg,#f5f5f5);border-radius:10px;text-decoration:none;color:inherit;font-size:13px;font-weight:600;">
-            <i class="bi bi-layout-split" style="color:#AE1932;"></i> <?php echo term('business', '병원'); ?>비교
-        </a>
-        <a href="map.php" style="flex:1;padding:10px;text-align:center;background:var(--bs-tertiary-bg,#f5f5f5);border-radius:10px;text-decoration:none;color:inherit;font-size:13px;font-weight:600;">
-            <i class="bi bi-map" style="color:#AE1932;"></i> 지도
-        </a>
-    </div>
-    </div>
-
-    <div class="filter-section">
-        <button class="filter-btn <?php echo empty($category) ? 'active' : ''; ?>" onclick="filterCategory('')">전체</button>
-        <?php if (!empty($db_categories)): foreach ($db_categories as $cat): ?>
-        <button class="filter-btn <?php echo $category == $cat['name'] ? 'active' : ''; ?>" onclick="filterCategory('<?php echo htmlspecialchars($cat['name']); ?>')"><?php echo htmlspecialchars($cat['name']); ?></button>
-        <?php endforeach; endif; ?>
-    </div>
+   
 
     <!-- 피그마: 검색바 + 지역 선택 버튼 -->
     <div style="padding:8px 16px;display:flex;gap:8px;align-items:center;">
@@ -326,7 +291,7 @@ include __DIR__ . '/includes/header.php';
 
     <!-- 정렬 옵션 -->
     <div style="padding: 0 16px; margin-bottom: 8px; display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
-        <label style="font-size:13px; color:var(--bs-secondary-color,#888);">정렬:</label>
+        <!-- <label style="font-size:13px; color:var(--bs-secondary-color,#888);">정렬:</label> -->
         <div id="sortChips" style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
             <button onclick="setSort('price')" class="sort-chip<?php echo $sort==='price' ? ' active' : ''; ?>"><i class="bi bi-funnel"></i> 낮은가격</button>
             <button onclick="setSort('rating')" class="sort-chip<?php echo $sort==='rating' ? ' active' : ''; ?>"><i class="bi bi-star"></i> 평점</button>
@@ -359,7 +324,6 @@ include __DIR__ . '/includes/header.php';
         <?php if (!empty($category)): ?>
         <span style="display:inline-block;background:#AE1932;color:#fff;font-size:12px;padding:4px 10px;border-radius:12px;"><?php echo htmlspecialchars($category); ?></span>
         <?php endif; ?>
-        <p class="search-count">총 <strong><?php echo count($hospitals); ?></strong>개 <?php echo term('business', '병원'); ?></p>
     </div>
 
     <?php if (!empty($hospitals)): ?>
