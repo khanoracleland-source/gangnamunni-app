@@ -365,9 +365,6 @@ include __DIR__ . '/includes/header.php';
     </div>
 
     <div class="results-header" style="padding: 0 16px;">
-        <?php if (!empty($keyword)): ?>
-        <h1><span class="search-keyword">'<?php echo htmlspecialchars($keyword); ?>'</span> 검색 결과</h1>
-        <?php endif; ?>
         <?php if (!empty($category)): ?>
         <span style="display:inline-block;background:#AE1932;color:#fff;font-size:12px;padding:4px 10px;border-radius:12px;"><?php echo htmlspecialchars($category); ?></span>
         <?php endif; ?>
