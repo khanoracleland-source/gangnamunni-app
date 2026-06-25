@@ -138,10 +138,10 @@ $page_css = '
 
 /* 3탭 — Figma: filled style, 200px equal thirds, 40px height */
 .community-tabs { display: flex; background: var(--bs-body-bg, #fff); position: sticky; top: 0; z-index: 10; }
-.community-tabs a { flex: 1; text-align: center; height: 40px; line-height: 40px; padding: 0; font-size: 18px; font-weight: 500; color: var(--color-inactive, #AAAAAA); background: var(--bs-tertiary-bg, #F1F1F1); text-decoration: none; transition: background 0.2s, color 0.2s; }
-.community-tabs a.active { color: #FFFFFF; background: #AE1932; font-weight: 500; }
-[data-bs-theme="dark"] .community-tabs a { background: #2a2a2a; color: #888; }
-[data-bs-theme="dark"] .community-tabs a.active { background: #AE1932; color: #FFFFFF; }
+.community-tabs a { flex: 1; text-align: center; height: 40px; line-height: 40px; padding: 0; font-size: 18px; font-weight: 500; color: #000000; background: transparent; text-decoration: none; border-bottom: 2px solid #AAAAAA; transition: color 0.2s, border-color 0.2s; }
+.community-tabs a.active { color: #AE1932; background: transparent; font-weight: 500; border-bottom: 2px solid #AE1932; }
+[data-bs-theme="dark"] .community-tabs a { background: transparent; color: #ccc; border-bottom: 2px solid #AAAAAA; }
+[data-bs-theme="dark"] .community-tabs a.active { background: transparent; color: #AE1932; border-bottom: 2px solid #AE1932; }
 
 /* 게시글 카드 */
 .post-list { list-style: none; padding: 0; margin: 0; }
