@@ -198,8 +198,8 @@ $page_css = '
 /* 검색바 */
 .community-search-wrap { padding: 8px 16px; display: flex; align-items: center; }
 .community-search-input { width: 439px; height: 60px; padding: 10px 14px; border-bottom: 2px solid #8f8d8d; font-size: 15px; outline: none; box-sizing: border-box; }
-.community-search-input::placeholder { font-size: 15px; }
-.community-search-btn { width: 190px; height: 60px; border: 2px solid #333; border-radius: 24px; background: #333; color: #ffffff; font-size: 18px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.community-search-input::placeholder { font-size: 13px; }
+.community-search-btn { width: 230px; height: 60px; border: 2px solid #333; border-radius: 24px; background: #333; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .community-search-btn i { color: #ffffff; }
 
 /* 신고/차단 버튼 */

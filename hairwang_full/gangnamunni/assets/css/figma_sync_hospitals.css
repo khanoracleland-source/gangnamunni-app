@@ -7,16 +7,16 @@
  * ============================================================================ */
 
 /* 병원 페이지 검색 입력 — 깔끔하게 */
-#hospitalKeyword {
+/* #hospitalKeyword {
     padding: 10px 16px !important;
     border: 1px solid #1A0000 !important;
     border-radius: 24px !important;
     font-size: 14px !important;
     background: #fff !important;
-}
-#hospitalKeyword::placeholder {
+} */
+/* #hospitalKeyword::placeholder {
     color: #cacaca !important;
-}
+} */
 
 /* 지역 선택 버튼 — 검정 알약 (Figma 매칭) */
 #hRegionToggle {
@@ -28,17 +28,17 @@
     font-size: 13px !important;
     font-weight: 600 !important;
 }
-#hRegionToggle i {
+/* #hRegionToggle i {
     color: #fff !important;
     font-size: 14px !important;
-}
+} */
 
 /* 다크 모드 대응 */
-[data-bs-theme="dark"] #hospitalKeyword {
+/* [data-bs-theme="dark"] #hospitalKeyword {
     background: #2a2a3e !important;
     border-color: #555 !important;
     color: #eee !important;
-}
-[data-bs-theme="dark"] #hospitalKeyword::placeholder {
+} */
+/* [data-bs-theme="dark"] #hospitalKeyword::placeholder {
     color: #777 !important;
-}
+} */

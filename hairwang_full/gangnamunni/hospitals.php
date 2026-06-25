@@ -222,6 +222,29 @@ $page_css = '
         .hospital-grid { grid-template-columns: 1fr; }
         .hospital-grid.seoul-view { max-width: 100%; }
     }
+
+/* 검색바 */
+.hospital-search-wrap { padding: 8px 16px; display: flex; align-items: center; }
+.hospital-search-input { width: 439px; height: 60px; padding: 10px 14px 10px 0; border-bottom: 2px solid #8f8d8d; font-size: 15px; outline: none; box-sizing: border-box; text-align: left; }
+.hospital-search-input::placeholder { font-size: 13px; text-align: left; }
+.hospital-search-btn { width: 230px; height: 60px; border: 2px solid #333; border-radius: 24px; background: #333; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.hospital-search-btn i { color: #ffffff; }
+
+/* 지역 선택 패널 */
+#hRegionPanel { padding: 12px 0; background: var(--bs-body-bg, #fff); border-bottom: 1px solid var(--bs-border-color, #eee); }
+#hRegionPanel .region-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px 8px; margin-bottom: 10px; padding: 0 16px; }
+#hRegionPanel label { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; color: var(--bs-body-color, #333); transition: color 0.15s; }
+#hRegionPanel label:has(.h-region-cb:checked) { color: #AE1932; font-weight: 600; }
+#hRegionPanel .h-region-cb { accent-color: #AE1932; width: 16px; height: 16px; }
+#hRegionPanel .region-btn-wrap { display: flex; align-items: center; justify-content: space-between;}
+#hRegionPanel .region-selected-tags { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+#hRegionPanel .region-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500; cursor: pointer; }
+#hRegionPanel .btn-reset { flex-shrink: 0; font-size: 15px; cursor: pointer; padding-left: 15px; }
+#hRegionPanel .btn-apply { flex-shrink: 0; padding: 8px; background: #AE1932; color: #fff; font-size: 15px; font-weight: 500; cursor: pointer; height: 40px; width: 190px;}
+.region-active-bar { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--bs-border-color, #eee); }
+.region-active-bar .btn-reset-bar { flex-shrink: 0; background: none; border: none; font-size: 15px; cursor: pointer; color: #000; padding: 0; }
+.region-active-bar .region-active-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.region-active-bar .region-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500; }
 ';
 
 $page_js = '';
@@ -233,39 +256,44 @@ if (file_exists($_fs_css_file)) { $page_css .= "
 
 include __DIR__ . '/includes/header.php';
 ?>
-
-   
-
     <!-- 피그마: 검색바 + 지역 선택 버튼 -->
-    <div style="padding:8px 16px;display:flex;gap:8px;align-items:center;">
-        <input type="text" id="hospitalKeyword" value="<?php echo htmlspecialchars($keyword); ?>" placeholder="<?php echo term('service', '시술'); ?>, <?php echo term('business', '병원'); ?> 이름을 검색해보세요" style="flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:24px;font-size:14px;background:var(--bs-tertiary-bg, #f5f5f5);outline:none;" onkeypress="if(event.key==='Enter')applyHospitalFilter()">
-        <button id="hRegionToggle" onclick="document.getElementById('hRegionPanel').style.display=document.getElementById('hRegionPanel').style.display==='none'?'block':'none'" style="flex-shrink:0;padding:10px 16px;border:2px solid #AE1932;border-radius:24px;background:var(--bs-body-bg, #fff);color:var(--bs-body-color, #333);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
-            <i class="bi bi-geo-alt" style="color:#AE1932;"></i> 지역 선택
+    <div class="hospital-search-wrap">
+        <input type="text" id="hospitalKeyword" class="hospital-search-input" value="<?php echo htmlspecialchars($keyword); ?>" placeholder="<?php echo term('service', '시술'); ?>, <?php echo term('business', '병원'); ?> 이름을 검색해보세요" onkeypress="if(event.key==='Enter')applyHospitalFilter()">
+        <button id="hRegionToggle" class="hospital-search-btn" onclick="var p=document.getElementById('hRegionPanel'),b=document.querySelector('.region-active-bar');var open=p.style.display==='none';p.style.display=open?'block':'none';if(b)b.style.display=open?'none':'flex';"">
+            <i class="bi bi-geo-alt"></i> 지역 선택
         </button>
     </div>
-    <!-- 선택된 지역 태그 -->
+    <!-- 선택된 지역 태그 (검색바 아래 고정) -->
     <?php if (!empty($region_list)): ?>
-    <div style="padding:0 16px 8px;display:flex;flex-wrap:wrap;gap:6px;">
-        <?php foreach ($region_list as $r): ?>
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#AE1932;color:#fff;border-radius:16px;font-size:12px;font-weight:500;"><?php echo htmlspecialchars($r); ?> <span onclick="removeRegion('<?php echo htmlspecialchars($r); ?>')" style="cursor:pointer;">&times;</span></span>
-        <?php endforeach; ?>
+    <div class="region-active-bar">
+        <button class="btn-reset-bar" onclick="document.querySelectorAll('.h-region-cb').forEach(c=>c.checked=false);applyHospitalFilter()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
+        <div class="region-active-tags">
+            <?php foreach ($region_list as $r): ?>
+            <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeRegion('<?php echo htmlspecialchars($r); ?>')" style="cursor:pointer;">&times;</span></span>
+            <?php endforeach; ?>
+        </div>
     </div>
     <?php endif; ?>
     <!-- 지역 선택 패널 -->
-    <div id="hRegionPanel" style="display:none;padding:12px 16px;background:var(--bs-body-bg, #fff);border-bottom:1px solid var(--bs-border-color, #eee);">
-        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px 8px;margin-bottom:10px;">
+    <div id="hRegionPanel" style="display:none;">
+        <div class="region-grid">
             <?php
             $all_regions = ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원','인천','성남','동탄','일산','의정부','부산','대구','대전','청주','광주','전주','춘천','제주'];
             foreach ($all_regions as $ar): ?>
-            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;">
-                <input type="checkbox" class="h-region-cb" value="<?php echo $ar; ?>"<?php echo in_array($ar, $region_list) ? ' checked' : ''; ?> style="accent-color:#AE1932;width:16px;height:16px;">
+            <label>
+                <input type="checkbox" class="h-region-cb" value="<?php echo $ar; ?>"<?php echo in_array($ar, $region_list) ? ' checked' : ''; ?>>
                 <?php echo $ar; ?>
             </label>
             <?php endforeach; ?>
         </div>
-        <div style="display:flex;gap:8px;">
-            <button onclick="document.querySelectorAll('.h-region-cb').forEach(c=>c.checked=false)" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;background:var(--bs-body-bg, #fff);font-size:13px;cursor:pointer;">초기화</button>
-            <button onclick="applyHospitalFilter()" style="flex:1;padding:8px;border:none;border-radius:8px;background:#AE1932;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">필터 선택 완료</button>
+        <div class="region-btn-wrap">
+            <button class="btn-reset" onclick="document.querySelectorAll('.h-region-cb').forEach(c=>c.checked=false);updateSelectedTags()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
+            <div class="region-selected-tags">
+                <?php foreach ($region_list as $r): ?>
+                <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeRegion('<?php echo htmlspecialchars($r); ?>')">&times;</span></span>
+                <?php endforeach; ?>
+            </div>
+            <button class="btn-apply" onclick="applyHospitalFilter()">필터 선택 완료</button>
         </div>
     </div>
     <script>
@@ -280,6 +308,25 @@ include __DIR__ . '/includes/header.php';
         else url.searchParams.delete('q');
         window.location = url;
     }
+    function updateSelectedTags() {
+        var wrap = document.querySelector('.region-selected-tags');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        document.querySelectorAll('.h-region-cb:checked').forEach(function(cb) {
+            var span = document.createElement('span');
+            span.className = 'region-tag';
+            span.innerHTML = cb.value + ' <span style="cursor:pointer;" onclick="uncheckedRegion(\''+cb.value+'\')\">&times;</span>';
+            wrap.appendChild(span);
+        });
+    }
+    function uncheckedRegion(val) {
+        var cb = document.querySelector('.h-region-cb[value="'+val+'"]');
+        if (cb) { cb.checked = false; updateSelectedTags(); }
+    }
+    document.querySelectorAll('.h-region-cb').forEach(function(cb) {
+        cb.addEventListener('change', updateSelectedTags);
+    });
+    updateSelectedTags();
     function removeRegion(val) {
         var url = new URL(window.location);
         var current = (url.searchParams.get('region') || '').split(',').filter(function(r) { return r && r !== val; });
