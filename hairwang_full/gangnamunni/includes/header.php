@@ -73,7 +73,7 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
     <link rel="stylesheet" href="<?php echo $css_base; ?>/assets/css/tailwind.css">
 
     <!-- 공통 CSS -->
-    <link rel="stylesheet" href="<?php echo $css_base; ?>/assets/css/common.css">
+    <link rel="stylesheet" href="<?php echo $css_base; ?>/assets/css/common.css?v=2">
 
     <?php if (!empty($page_css_file)): ?>
     <link rel="stylesheet" href="<?php echo htmlspecialchars($page_css_file); ?>">
