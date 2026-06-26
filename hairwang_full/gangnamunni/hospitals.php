@@ -232,7 +232,9 @@ $page_css = '
 .hospital-search-btn i { color: #ffffff; }
 
 /* 지역 선택 패널 */
-#hRegionPanel { padding: 12px 0; background: var(--bs-body-bg, #fff); border-bottom: 1px solid var(--bs-border-color, #eee); }
+.hospital-search-wrap { position: relative; z-index: 601; }
+#hRegionOverlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 599; background: rgba(0,0,0,0.35); }
+#hRegionPanel { display: none; position: fixed; left: 0; right: 0; z-index: 600; padding: 12px 0; background: var(--bs-body-bg, #fff); border-bottom: 1px solid var(--bs-border-color, #eee); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
 #hRegionPanel .region-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px 8px; margin-bottom: 10px; padding: 0 16px; }
 #hRegionPanel label { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; color: var(--bs-body-color, #333); transition: color 0.15s; }
 #hRegionPanel label:has(.h-region-cb:checked) { color: #AE1932; font-weight: 600; }
@@ -266,7 +268,7 @@ include __DIR__ . '/includes/header.php';
     <!-- 피그마: 검색바 + 지역 선택 버튼 -->
     <div class="hospital-search-wrap">
         <input type="text" id="hospitalKeyword" class="hospital-search-input" value="<?php echo htmlspecialchars($keyword); ?>" placeholder="<?php echo term('service', '시술'); ?>, <?php echo term('business', '병원'); ?> 이름을 검색해보세요" onkeypress="if(event.key==='Enter')applyHospitalFilter()">
-        <button id="hRegionToggle" class="hospital-search-btn" onclick="var p=document.getElementById('hRegionPanel'),b=document.querySelector('.region-active-bar');var open=p.style.display==='none';p.style.display=open?'block':'none';if(b)b.style.display=open?'none':'flex';"">
+        <button id="hRegionToggle" class="hospital-search-btn" onclick="toggleRegionPanel()">
             <i class="bi bi-geo-alt"></i> 지역 선택
         </button>
     </div>
@@ -281,8 +283,9 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
     <?php endif; ?>
-    <!-- 지역 선택 패널 -->
-    <div id="hRegionPanel" style="display:none;">
+    <!-- 지역 선택 오버레이 + 패널 -->
+    <div id="hRegionOverlay" onclick="closeRegionPanel()"></div>
+    <div id="hRegionPanel">
         <div class="region-grid">
             <?php
             $all_regions = ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원','인천','성남','동탄','일산','의정부','부산','대구','대전','청주','광주','전주','춘천','제주'];
@@ -304,6 +307,24 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
     <script>
+    function toggleRegionPanel() {
+        var panel = document.getElementById('hRegionPanel');
+        var overlay = document.getElementById('hRegionOverlay');
+        var wrap = document.querySelector('.hospital-search-wrap');
+        var isOpen = panel.style.display === 'block';
+        if (isOpen) {
+            closeRegionPanel();
+        } else {
+            var rect = wrap.getBoundingClientRect();
+            panel.style.top = rect.bottom + 'px';
+            panel.style.display = 'block';
+            overlay.style.display = 'block';
+        }
+    }
+    function closeRegionPanel() {
+        document.getElementById('hRegionPanel').style.display = 'none';
+        document.getElementById('hRegionOverlay').style.display = 'none';
+    }
     function applyHospitalFilter() {
         var regions = [];
         document.querySelectorAll('.h-region-cb:checked').forEach(function(cb) { regions.push(cb.value); });
@@ -344,17 +365,19 @@ include __DIR__ . '/includes/header.php';
     </script>
 
     <!-- 정렬 옵션 -->
-    <div style="padding: 0 16px; margin-bottom: 8px; display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
+    <div style="padding: 0 16px; margin-bottom: 8px; display: flex; justify-content: flex-start; align-items: center; gap: 8px;">
         <!-- <label style="font-size:13px; color:var(--bs-secondary-color,#888);">정렬:</label> -->
         <div id="sortChips" style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
-            <button onclick="setSort('price')" class="sort-chip<?php echo $sort==='price' ? ' active' : ''; ?>"><i class="bi "></i> 낮은가격</button>
-            <button onclick="setSort('rating')" class="sort-chip<?php echo $sort==='rating' ? ' active' : ''; ?>"><i class="bi bi-star"></i> 평점</button>
-            <button onclick="setSort('popular')" class="sort-chip<?php echo $sort==='popular' ? ' active' : ''; ?>"><i class="bi bi-heart"></i> 인기</button>
-            <button onclick="setSort('review')" class="sort-chip<?php echo $sort==='review' ? ' active' : ''; ?>"><i class="bi bi-chat-dots"></i> <?php echo term('review', '후기'); ?></button>
+            <button onclick="setSort('price')" class="sort-chip<?php echo $sort==='price' ? ' active' : ''; ?>"><img src="assets/icons/categories/<?php echo $sort==='price' ? '낮은가격아이콘_2.svg' : '낮은가격아이콘_1.png'; ?>" class="sort-chip-icon"> 낮은가격</button>
+            <button onclick="setSort('rating')" class="sort-chip<?php echo $sort==='rating' ? ' active' : ''; ?>"><img src="assets/icons/categories/<?php echo $sort==='rating' ? '평점아이콘_2.svg' : '평점아이콘_1.png'; ?>" class="sort-chip-icon"> 평점</button>
+            <button onclick="setSort('popular')" class="sort-chip<?php echo $sort==='popular' ? ' active' : ''; ?>"><i class="bi bi-trophy"></i> 인기</button>
+            <button onclick="setSort('review')" class="sort-chip<?php echo $sort==='review' ? ' active' : ''; ?>"><i class="bi bi-chat-square-text"></i> <?php echo term('review', '후기'); ?></button>
+
         </div>
         <style>
         .sort-chip { padding:5px 10px;border:1px solid #AAAAAA;border-radius:5px;background:var(--bs-body-bg, #fff);font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1));font-weight:400;cursor:pointer;color:#AAAAAA;transition:all 0.2s;white-space:nowrap; line-height:1.2; display:inline-flex;align-items:center;gap:7px; }
         .sort-chip i { font-size:calc(25px * var(--fs-scale,1) * var(--fs-page,1));width:25px;height:25px;display:inline-flex;align-items:center;justify-content:center; }
+        .sort-chip-icon { width:22px;height:22px;object-fit:contain;display:inline-block;vertical-align:middle; }
         .sort-chip.active { background:#FFFFFF;color:#000000;border:1px solid #000000;font-weight:600; }
         .sort-chip:hover:not(.active) { border-color:#000000;color:#000000; }
         #sortChips::-webkit-scrollbar { display:none; } /* sortChips 가로스크롤 바 숨김 */
@@ -396,7 +419,7 @@ $_infeed_enabled = getSettingValue($connect, 'ad_show_hospitals_infeed', '1');
 $_infeed_interval = (int)getSettingValue($connect, 'ad_infeed_interval', '4');
 $_infeed_ads = [];
 if ($_infeed_enabled === '1') {
-    $_iq = mysqli_query($connect, "SELECT * FROM gangnamunni_ads WHERE is_active = 1 AND ad_type = 'infeed' ORDER BY display_order ASC LIMIT 10");
+    $_iq = mysqli_query($connect, "SELECT a.*, h.id as hospital_id FROM gangnamunni_ads a LEFT JOIN gangnamunni_advertisers adv ON a.advertiser_id = adv.id LEFT JOIN gangnamunni_hospitals h ON h.name = adv.hospital_name WHERE a.is_active = 1 AND a.ad_type = 'infeed' ORDER BY a.display_order ASC LIMIT 10");
     if ($_iq) { while ($_ir = mysqli_fetch_assoc($_iq)) $_infeed_ads[] = $_ir; }
 }
 $_ad_idx = 0;
@@ -408,8 +431,7 @@ foreach ($hospitals as $hospital):
     if ($__hi > 0 && $_infeed_enabled === '1' && $_infeed_interval > 0 && $__hi % $_infeed_interval === 0 && isset($_infeed_ads[$_ad_idx])):
         $_iad = $_infeed_ads[$_ad_idx];
 ?>
-        <div class="hospital-card ad-card" data-ad-id="<?php echo $_iad['id']; ?>">
-            <div class="card-link" onclick="location.href='<?php echo htmlspecialchars($_iad['link_url'] ?? '#'); ?>'">
+        <a class="hospital-card ad-card" href="<?php echo !empty($_iad['hospital_id']) ? 'detail.php?id=' . (int)$_iad['hospital_id'] : htmlspecialchars($_iad['link_url'] ?? '#'); ?>" data-ad-id="<?php echo $_iad['id']; ?>">
                 <?php if (!empty($_iad['image_url'])): ?>
                 <img src="<?php echo htmlspecialchars($_iad['image_url']); ?>" class="hospital-image" alt="광고">
                 <?php else: ?>
@@ -424,13 +446,7 @@ foreach ($hospitals as $hospital):
                         <span><?php echo htmlspecialchars($_iad['subtitle'] ?? ''); ?></span>
                     </div>
                 </div>
-            </div>
-            <div class="card-cta">
-                <a href="<?php echo htmlspecialchars($_iad['link_url'] ?? '#'); ?>" class="btn btn-detail" style="flex:1;">
-                    <i class="bi bi-info-circle"></i> 상세보기
-                </a>
-            </div>
-        </div>
+        </a>
 <?php
         $_ad_idx++;
     endif;
