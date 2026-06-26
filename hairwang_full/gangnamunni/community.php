@@ -16,6 +16,10 @@ require_once __DIR__ . '/includes/init.php';
 $tab = isset($_GET['tab']) ? trim($_GET['tab']) : 'latest';
 if (!in_array($tab, ['latest', 'popular', 'review'])) $tab = 'latest';
 
+// 지역 필터
+$region = isset($_GET['region']) ? trim($_GET['region']) : '';
+$region_list = array_filter(array_map('trim', explode(',', $region)));
+
 // 카테고리 필터 (시술후기 탭 = category '시술후기')
 $category = '';
 if ($tab === 'review') {
@@ -66,6 +70,15 @@ if ($table_exists) {
         $where .= " AND p.category=?";
         $bind_types .= 's';
         $bind_values[] = $category;
+    }
+
+    if (!empty($region_list)) {
+        $region_conditions = [];
+        foreach ($region_list as $r) {
+            $r_esc = mysqli_real_escape_string($connect, $r);
+            $region_conditions[] = "(p.title LIKE '%{$r_esc}%' OR p.content LIKE '%{$r_esc}%')";
+        }
+        $where .= " AND (" . implode(' OR ', $region_conditions) . ")";
     }
 
     // 총 개수
@@ -146,15 +159,16 @@ $page_css = '
 /* 게시글 카드 */
 .post-list { list-style: none; padding: 0; margin: 0; }
 .post-item { padding: 16px; border-bottom: 1px solid var(--bs-border-color, #e0e0e0); }
-.post-item a { text-decoration: none; color: inherit; display: flex; gap: 14px; }
+.post-item > div { display: flex; gap: 14px; }
 .post-content-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .post-cat-tag { display: inline-block; padding: 2px 8px; background: #FFEEEE; color: #AE1932; font-size: 13px; font-weight: 500; border-radius: 4px; margin-bottom: 6px; align-self: flex-start; }
 [data-bs-theme="dark"] .post-cat-tag { background: #FFEEEE; color: #AE1932; }
 .post-title { font-size: 18px; font-weight: 500; color: #000000; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.4; }
 [data-bs-theme="dark"] .post-title { color: var(--bs-body-color, #eee); }
-.post-preview { font-size: 15px; font-weight: 400; color: #000000; line-height: 1.5; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.post-preview { font-size: 15px; font-weight: 400; color: #000000; line-height: 1.5; margin-bottom: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.post-preview.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
 [data-bs-theme="dark"] .post-preview { color: var(--bs-body-color, #ddd); }
-.post-readmore-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.post-readmore-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; margin-top: 0; }
 .post-readmore { font-size: 13px; font-weight: 400; color: var(--color-inactive, #AAAAAA); }
 .post-readmore-time { font-size: 13px; font-weight: 400; color: var(--color-inactive, #AAAAAA); margin-left: auto; }
 /* 썸네일 그리드 (최대 2장, 본문 아래) */
@@ -196,11 +210,28 @@ $page_css = '
     .fab-write { right: calc(50% - 300px); }
 }
 /* 검색바 */
-.community-search-wrap { padding: 8px 16px; display: flex; align-items: center; }
+.community-search-wrap { padding: 8px 16px; display: flex; align-items: center; position: relative; z-index: 601; }
 .community-search-input { width: 439px; height: 60px; padding: 10px 14px; border-bottom: 2px solid #8f8d8d; font-size: 15px; outline: none; box-sizing: border-box; }
 .community-search-input::placeholder { font-size: 13px; }
 .community-search-btn { width: 230px; height: 60px; border: 2px solid #333; border-radius: 24px; background: #333; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .community-search-btn i { color: #ffffff; }
+/* 지역 선택 패널 */
+#cRegionOverlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 599; background: rgba(0,0,0,0.35); }
+#cRegionPanel { display: none; position: fixed; left: 0; right: 0; z-index: 600; padding: 12px 0; background: var(--bs-body-bg, #fff); border-bottom: 1px solid var(--bs-border-color, #eee); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+#cRegionPanel .region-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px 8px; margin-bottom: 10px; padding: 0 16px; }
+#cRegionPanel label { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; color: var(--bs-body-color, #333); transition: color 0.15s; }
+#cRegionPanel label:has(.c-region-cb:checked) { color: #AE1932; font-weight: 600; }
+#cRegionPanel .c-region-cb { accent-color: #AE1932; width: 16px; height: 16px; }
+#cRegionPanel .region-btn-wrap { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+#cRegionPanel .region-selected-tags { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+#cRegionPanel .region-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500; }
+#cRegionPanel .btn-reset { flex-shrink: 0; font-size: 15px; cursor: pointer; padding-left: 0; background: none; border: none; }
+#cRegionPanel .btn-apply { flex-shrink: 0; padding: 8px; background: #AE1932; color: #fff; font-size: 15px; font-weight: 500; cursor: pointer; height: 40px; width: 190px; border: none; }
+/* 선택된 지역 바 */
+.region-active-bar { display: flex; align-items: center; gap: 6px; padding: 6px 16px; flex-wrap: wrap; }
+.btn-reset-bar { background: none; border: none; font-size: 13px; cursor: pointer; color: #666; white-space: nowrap; }
+.region-active-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.region-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500; }
 
 /* 신고/차단 버튼 */
 .post-report-row { display: flex; justify-content: flex-end; gap: 2px; margin-top: -4px; padding-right: 4px; }
@@ -215,19 +246,111 @@ $page_css = '
 }
 ';
 
-$page_js = 'function applyCommunitySearch(){var q=document.getElementById("communityKeyword").value.trim();if(q)location.href="hospitals.php?q="+encodeURIComponent(q);}';
+$page_js = '
+function toggleCommunityRegionPanel() {
+    var panel = document.getElementById("cRegionPanel");
+    var overlay = document.getElementById("cRegionOverlay");
+    var wrap = document.querySelector(".community-search-wrap");
+    if (panel.style.display === "block") {
+        closeCommunityRegionPanel();
+    } else {
+        var rect = wrap.getBoundingClientRect();
+        panel.style.top = rect.bottom + "px";
+        panel.style.display = "block";
+        overlay.style.display = "block";
+        updateCommunitySelectedTags();
+    }
+}
+function closeCommunityRegionPanel() {
+    document.getElementById("cRegionPanel").style.display = "none";
+    document.getElementById("cRegionOverlay").style.display = "none";
+}
+function updateCommunitySelectedTags() {
+    var wrap = document.querySelector("#cRegionPanel .region-selected-tags");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    document.querySelectorAll(".c-region-cb:checked").forEach(function(cb) {
+        var span = document.createElement("span");
+        span.className = "region-tag";
+        span.innerHTML = cb.value + " <span style=\"cursor:pointer;\" onclick=\"uncheckedCommunityRegion(\'"+cb.value+"\')\">×</span>";
+        wrap.appendChild(span);
+    });
+}
+function uncheckedCommunityRegion(val) {
+    var cb = document.querySelector(".c-region-cb[value=\""+val+"\"]");
+    if (cb) { cb.checked = false; updateCommunitySelectedTags(); }
+}
+function applyCommunityRegionFilter() {
+    var regions = [];
+    document.querySelectorAll(".c-region-cb:checked").forEach(function(cb) { regions.push(cb.value); });
+    var url = new URL(window.location);
+    if (regions.length > 0) url.searchParams.set("region", regions.join(","));
+    else url.searchParams.delete("region");
+    url.searchParams.delete("page");
+    window.location = url;
+}
+function removeCommunityRegion(val) {
+    var url = new URL(window.location);
+    var current = (url.searchParams.get("region") || "").split(",").filter(function(r) { return r && r !== val; });
+    if (current.length > 0) url.searchParams.set("region", current.join(","));
+    else url.searchParams.delete("region");
+    url.searchParams.delete("page");
+    window.location = url;
+}
+function applyCommunitySearch() {
+    var q = document.getElementById("communityKeyword").value.trim();
+    var url = new URL(window.location);
+    if (q) url.searchParams.set("q", q);
+    else url.searchParams.delete("q");
+    url.searchParams.delete("page");
+    window.location = url;
+}
+document.querySelectorAll(".c-region-cb").forEach(function(cb) {
+    cb.addEventListener("change", updateCommunitySelectedTags);
+});
+';
 
 include __DIR__ . '/includes/header.php';
 ?>
 
     <div class="community-wrap">
-        <!-- 섹션 타이틀 -->
-        <!-- 검색바 + 검색 버튼 -->
+        <!-- 검색바 + 지역 선택 버튼 -->
         <div class="community-search-wrap">
             <input type="text" id="communityKeyword" class="community-search-input" value="" placeholder="<?php echo term('service', '시술'); ?>, <?php echo term('business', '병원'); ?> 이름을 검색해보세요" onkeypress="if(event.key==='Enter')applyCommunitySearch()">
-            <button id="communitySearchBtn" class="community-search-btn" onclick="applyCommunitySearch()">
+            <button id="cRegionToggle" class="community-search-btn" onclick="toggleCommunityRegionPanel()">
                 <i class="bi bi-geo-alt"></i> 지역 선택
             </button>
+        </div>
+
+        <?php if (!empty($region_list)): ?>
+        <div class="region-active-bar">
+            <button class="btn-reset-bar" onclick="document.querySelectorAll('.c-region-cb').forEach(c=>c.checked=false);applyCommunityRegionFilter()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
+            <div class="region-active-tags">
+                <?php foreach ($region_list as $r): ?>
+                <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeCommunityRegion('<?php echo htmlspecialchars($r); ?>')" style="cursor:pointer;">&times;</span></span>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- 지역 선택 오버레이 + 패널 -->
+        <div id="cRegionOverlay" onclick="closeCommunityRegionPanel()"></div>
+        <div id="cRegionPanel">
+            <div class="region-grid">
+                <?php
+                $all_regions = ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원','인천','성남','동탄','일산','의정부','부산','대구','대전','청주','광주','전주','춘천','제주'];
+                foreach ($all_regions as $ar): ?>
+                <label>
+                    <input type="checkbox" class="c-region-cb" value="<?php echo $ar; ?>"<?php echo in_array($ar, $region_list) ? ' checked' : ''; ?>>
+                    <?php echo $ar; ?>
+                </label>
+                <?php endforeach; ?>
+            </div>
+            <div class="region-btn-wrap">
+                <button class="btn-reset" onclick="document.querySelectorAll('.c-region-cb').forEach(c=>c.checked=false);updateCommunitySelectedTags()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
+                <div class="region-selected-tags"></div>
+                <button class="btn-apply" onclick="applyCommunityRegionFilter()">필터 선택 완료</button>
+            </div>
         </div>
 
         <h2 class="community-section-title">커뮤니티</h2>
@@ -253,7 +376,8 @@ include __DIR__ . '/includes/header.php';
                     $decoded = json_decode($post['photos'], true);
                     if (is_array($decoded)) $photos = $decoded;
                 }
-                $preview = mb_substr(strip_tags($post['content'] ?? ''), 0, 100);
+                $content_plain = strip_tags($post['content'] ?? '');
+                $preview = mb_substr($content_plain, 0, 50);
                 $link = ($post['id'] > 0) ? 'detail_community.php?id=' . $post['id'] : '#';
                 $time_text = community_time_display($post['created_at'] ?? '', $post['updated_at'] ?? null);
                 $author = htmlspecialchars($post['author_name'] ?? '익명');
@@ -261,15 +385,15 @@ include __DIR__ . '/includes/header.php';
                 $post_mb_id = addslashes($post['mb_id'] ?? '');
                 $initial = mb_substr($author, 0, 1);
             ?>
-            <li class="post-item">
-                <a href="<?php echo $link; ?>">
+            <li class="post-item" onclick="location.href='<?php echo $link; ?>'" style="cursor:pointer;">
                     <div class="post-content-area">
                         <span class="post-cat-tag"><?php echo htmlspecialchars($post['category']); ?></span>
                         <div class="post-title"><?php echo htmlspecialchars($post['title']); ?></div>
+                        <?php $is_long = mb_strlen($content_plain) > 50; ?>
                         <div class="post-preview"><?php echo htmlspecialchars($preview); ?></div>
                         <div class="post-readmore-row">
-                            <?php if (mb_strlen(strip_tags($post['content'] ?? '')) > 100): ?>
-                            <span class="post-readmore">...더보기</span>
+                            <?php if ($is_long): ?>
+                            <span class="post-readmore" data-full="<?php echo htmlspecialchars($content_plain, ENT_QUOTES); ?>" data-short="<?php echo htmlspecialchars($preview, ENT_QUOTES); ?>" onclick="event.stopPropagation();var p=this.closest('.post-content-area').querySelector('.post-preview');var expanded=p.classList.toggle('expanded');p.textContent=expanded?this.dataset.full:this.dataset.short;this.textContent=expanded?'접기':'...더보기';">...더보기</span>
                             <?php else: ?>
                             <span></span>
                             <?php endif; ?>
@@ -302,7 +426,6 @@ include __DIR__ . '/includes/header.php';
                             </div>
                         </div>
                     </div>
-                </a>
                 <!-- <div class="post-report-row">
                     <button class="rv-report-btn" onclick="openReportModal('community', <?php echo intval($post['id']); ?>, '<?php echo $post_mb_id; ?>', '<?php echo $raw_author; ?>')" title="신고">&#9873;</button>
                     <?php if (!empty($post['mb_id'])): ?>
