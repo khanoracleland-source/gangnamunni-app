@@ -91,49 +91,41 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
 
 <?php if ($show_search && empty($is_app_mode)): ?>
     <!-- 피그마 디자인 검색바 + 지역 필터 (640px 컨테이너 내) -->
-    <div class="header-search-wrap" style="max-width:640px;margin:0 auto;position:relative;z-index:601;">
-        <div class="search-section" style="padding:8px 16px;">
-            <div class="search-container" style="display:flex;gap:8px;align-items:center;">
-                <input type="text" id="csb-keyword" class="search-input" placeholder="<?php echo function_exists('dt') ? htmlspecialchars(dt('fd_search_placeholder','시술, 병원 이름을 검색해보세요')) : '시술, 병원 이름을 검색해보세요'; ?>" style="flex:1;padding:18px 29px;border:1px solid var(--color-border, #1A0000);border-radius:0;font-size:16px;font-weight:400;background:var(--bs-body-bg, #fff);outline:none;color:var(--bs-body-color, #000);">
-                <button id="regionToggleBtn" onclick="toggleRegionPanel()" style="flex-shrink:0;padding:13px 50px 12px 16px;border:none;border-radius:30px;background:var(--primary-color, #AE1932);color:#fff;font-size:18px;font-weight:700;cursor:pointer;white-space:nowrap;">
-                    <i class="bi bi-geo-alt" style="color:#fff;margin-right:4px;"></i>지역 선택
-                </button>
-            </div>
-        </div>
+    <div class="header-search-wrap">
+        <input type="text" id="csb-keyword" class="hospital-search-input" placeholder="<?php echo function_exists('dt') ? htmlspecialchars(dt('fd_search_placeholder','시술, 병원 이름을 검색해보세요')) : '시술, 병원 이름을 검색해보세요'; ?>">
+        <button id="regionToggleBtn" class="hospital-search-btn" onclick="toggleRegionPanel()">
+            <i class="bi bi-geo-alt"></i> 지역 선택
+        </button>
     </div>
 
     <!-- 오버레이 -->
-    <div id="regionOverlay" onclick="closeRegionPanel()" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:599;background:rgba(0,0,0,0.35);"></div>
+    <div id="regionOverlay" onclick="closeRegionPanel()"></div>
 
     <!-- 지역 선택 패널 (fixed overlay) -->
-    <div id="regionPanel" style="display:none;position:fixed;left:0;right:0;z-index:600;padding:12px 16px;background:var(--bs-body-bg, #fff);border-bottom:1px solid var(--bs-border-color, #eee);box-shadow:0 4px 12px rgba(0,0,0,0.12);">
-        <div class="region-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px 8px;margin-bottom:10px;">
-            <?php
-            $regions = [
-                '강남','신사','압구정','청담','교대','삼성',
-                '송파','천호','목동','강북','노원',
-                '인천','성남','동탄','일산','의정부',
-                '부산','대구','대전','청주','광주','전주',
-                '춘천','제주'
-            ];
-            foreach ($regions as $r):
-                if ($r === '') continue;
-            ?>
-            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;">
-                <input type="checkbox" class="region-cb" value="<?php echo $r; ?>" style="accent-color:#AE1932;width:16px;height:16px;">
+    <div id="regionPanel">
+        <?php
+        $region_groups = [
+            ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원'],
+            ['인천','성남','동탄','일산','의정부'],
+            ['부산','대구','대전','청주','광주','전주','춘천','제주'],
+        ];
+        foreach ($region_groups as $gi => $group): ?>
+        <?php if ($gi > 0): ?><hr class="region-divider"><?php endif; ?>
+        <div class="region-grid">
+            <?php foreach ($group as $r): ?>
+            <label>
+                <input type="checkbox" class="region-cb" value="<?php echo $r; ?>">
                 <?php echo $r; ?>
             </label>
             <?php endforeach; ?>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-            <button onclick="clearRegions()" style="flex-shrink:0;font-size:15px;cursor:pointer;background:none;border:none;padding-left:0;"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
-            <div id="selectedRegionTags" style="display:flex;flex-wrap:wrap;gap:4px;flex:1;padding:0 8px;"></div>
-            <button onclick="applyRegionFilter()" style="flex-shrink:0;padding:8px;border:none;background:#AE1932;color:#fff;font-size:15px;font-weight:500;cursor:pointer;height:40px;width:190px;">필터 선택 완료</button>
+        <?php endforeach; ?>
+        <div class="region-btn-wrap">
+            <button onclick="clearRegions()" class="btn-reset"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
+            <div id="selectedRegionTags"></div>
+            <button onclick="applyRegionFilter()" class="btn-apply">필터 선택 완료</button>
         </div>
     </div>
-    <style>
-    @media (min-width:480px) { .region-grid { grid-template-columns:repeat(6,1fr) !important; } }
-    </style>
 
     <script>
     function toggleRegionPanel() {
@@ -192,8 +184,8 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
         container.innerHTML = '';
         document.querySelectorAll('.region-cb:checked').forEach(function(cb) {
             var tag = document.createElement('span');
-            tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid #AE1932;color:#000;border-radius:3px;font-size:12px;font-weight:500;cursor:pointer;';
-            tag.innerHTML = cb.value + ' <span onclick="uncheckRegion(\'' + cb.value + '\')" style="cursor:pointer;font-size:14px;">&times;</span>';
+            tag.className = 'region-tag';
+            tag.innerHTML = cb.value + ' <span onclick="uncheckRegion(\'' + cb.value + '\')" style="cursor:pointer;">&times;</span>';
             container.appendChild(tag);
         });
         var checked = document.querySelectorAll('.region-cb:checked');

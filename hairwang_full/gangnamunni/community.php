@@ -209,29 +209,7 @@ $page_css = '
 @media (min-width: 641px) {
     .fab-write { right: calc(50% - 300px); }
 }
-/* 검색바 */
-.community-search-wrap { padding: 8px 16px; display: flex; align-items: center; position: relative; z-index: 601; }
-.community-search-input { width: 439px; height: 60px; padding: 10px 14px; border-bottom: 2px solid #8f8d8d; font-size: 15px; outline: none; box-sizing: border-box; }
-.community-search-input::placeholder { font-size: 13px; }
-.community-search-btn { width: 230px; height: 60px; border: 2px solid #333; border-radius: 24px; background: #333; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.community-search-btn i { color: #ffffff; }
-/* 지역 선택 패널 */
-#cRegionOverlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 599; background: rgba(0,0,0,0.35); }
-#cRegionPanel { display: none; position: fixed; left: 0; right: 0; z-index: 600; padding: 12px 0; background: var(--bs-body-bg, #fff); border-bottom: 1px solid var(--bs-border-color, #eee); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
-#cRegionPanel .region-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px 8px; margin-bottom: 10px; padding: 0 16px; }
-#cRegionPanel label { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; color: var(--bs-body-color, #333); transition: color 0.15s; }
-#cRegionPanel label:has(.c-region-cb:checked) { color: #AE1932; font-weight: 600; }
-#cRegionPanel .c-region-cb { accent-color: #AE1932; width: 16px; height: 16px; }
-#cRegionPanel .region-btn-wrap { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
-#cRegionPanel .region-selected-tags { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
-#cRegionPanel .region-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500; }
-#cRegionPanel .btn-reset { flex-shrink: 0; font-size: 15px; cursor: pointer; padding-left: 0; background: none; border: none; }
-#cRegionPanel .btn-apply { flex-shrink: 0; padding: 8px; background: #AE1932; color: #fff; font-size: 15px; font-weight: 500; cursor: pointer; height: 40px; width: 190px; border: none; }
-/* 선택된 지역 바 */
-.region-active-bar { display: flex; align-items: center; gap: 6px; padding: 6px 16px; flex-wrap: wrap; }
-.btn-reset-bar { background: none; border: none; font-size: 13px; cursor: pointer; color: #666; white-space: nowrap; }
-.region-active-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.region-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500; }
+
 
 /* 신고/차단 버튼 */
 .post-report-row { display: flex; justify-content: flex-end; gap: 2px; margin-top: -4px; padding-right: 4px; }
@@ -314,38 +292,47 @@ include __DIR__ . '/includes/header.php';
 ?>
 
     <div class="community-wrap">
-        <!-- 검색바 + 지역 선택 버튼 -->
-        <div class="community-search-wrap">
-            <input type="text" id="communityKeyword" class="community-search-input" value="" placeholder="<?php echo term('service', '시술'); ?>, <?php echo term('business', '병원'); ?> 이름을 검색해보세요" onkeypress="if(event.key==='Enter')applyCommunitySearch()">
-            <button id="cRegionToggle" class="community-search-btn" onclick="toggleCommunityRegionPanel()">
-                <i class="bi bi-geo-alt"></i> 지역 선택
-            </button>
-        </div>
-
-        <?php if (!empty($region_list)): ?>
-        <div class="region-active-bar">
-            <button class="btn-reset-bar" onclick="document.querySelectorAll('.c-region-cb').forEach(c=>c.checked=false);applyCommunityRegionFilter()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
-            <div class="region-active-tags">
-                <?php foreach ($region_list as $r): ?>
-                <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeCommunityRegion('<?php echo htmlspecialchars($r); ?>')" style="cursor:pointer;">&times;</span></span>
-                <?php endforeach; ?>
+        <!-- 검색바 + 지역 선택 버튼 + 활성 지역 태그 -->
+        <div class="community-topbar">
+            <div class="community-search-wrap">
+                <input type="text" id="communityKeyword" class="community-search-input" value="" placeholder="<?php echo term('service', '시술'); ?>, <?php echo term('business', '병원'); ?> 이름을 검색해보세요" onkeypress="if(event.key==='Enter')applyCommunitySearch()">
+                <button id="cRegionToggle" class="community-search-btn" onclick="toggleCommunityRegionPanel()">
+                    <i class="bi bi-geo-alt"></i> 지역 선택
+                </button>
             </div>
+
+            <?php if (!empty($region_list)): ?>
+            <div class="region-active-bar">
+                <button class="btn-reset-bar" onclick="document.querySelectorAll('.c-region-cb').forEach(c=>c.checked=false);applyCommunityRegionFilter()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
+                <div class="region-active-tags">
+                    <?php foreach ($region_list as $r): ?>
+                    <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeCommunityRegion('<?php echo htmlspecialchars($r); ?>')" style="cursor:pointer;">&times;</span></span>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
 
         <!-- 지역 선택 오버레이 + 패널 -->
         <div id="cRegionOverlay" onclick="closeCommunityRegionPanel()"></div>
         <div id="cRegionPanel">
+            <?php
+            $region_groups = [
+                ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원'],
+                ['인천','성남','동탄','일산','의정부'],
+                ['부산','대구','대전','청주','광주','전주','춘천','제주'],
+            ];
+            foreach ($region_groups as $gi => $group): ?>
+            <?php if ($gi > 0): ?><hr class="region-divider"><?php endif; ?>
             <div class="region-grid">
-                <?php
-                $all_regions = ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원','인천','성남','동탄','일산','의정부','부산','대구','대전','청주','광주','전주','춘천','제주'];
-                foreach ($all_regions as $ar): ?>
+                <?php foreach ($group as $ar): ?>
                 <label>
                     <input type="checkbox" class="c-region-cb" value="<?php echo $ar; ?>"<?php echo in_array($ar, $region_list) ? ' checked' : ''; ?>>
                     <?php echo $ar; ?>
                 </label>
                 <?php endforeach; ?>
             </div>
+            <?php endforeach; ?>
             <div class="region-btn-wrap">
                 <button class="btn-reset" onclick="document.querySelectorAll('.c-region-cb').forEach(c=>c.checked=false);updateCommunitySelectedTags()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
                 <div class="region-selected-tags"></div>

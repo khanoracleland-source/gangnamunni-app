@@ -194,3 +194,152 @@ body {
 .icon-container:hover {
     border-color: #C4B5FD;
 }
+
+/* ===== 공통 검색바 (header / hospitals / community) ===== */
+.header-search-wrap,
+.hospital-search-wrap,
+.community-topbar {
+    display: flex;
+    align-items: center;
+    max-width: 640px;
+    margin-bottom: 15px;
+    padding: 0 16px;
+    gap: 8px;
+}
+.community-search-wrap {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 601;
+}
+
+.hospital-search-input,
+.community-search-input {
+    flex: 1;
+    height: 60px;
+    padding: 10px 14px 10px 0;
+    border: none;
+    border-bottom: 2px solid #8f8d8d;
+    font-size: 15px;
+    outline: none;
+    box-sizing: border-box;
+    text-align: left;
+    background: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #000);
+}
+
+.hospital-search-input::placeholder,
+.community-search-input::placeholder {
+    font-size: 13px;
+    text-align: left;
+}
+
+.hospital-search-btn,
+.community-search-btn {
+    width: 150px;
+    height: 60px;
+    border: 2px solid #333;
+    border-radius: 24px;
+    background: #333;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.hospital-search-btn i,
+.community-search-btn i {
+    color: #ffffff;
+}
+
+/* ===== 공통 지역 선택 패널 ===== */
+#regionOverlay, #hRegionOverlay, #cRegionOverlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 599; background: rgba(0,0,0,0.35);
+}
+
+#regionPanel, #hRegionPanel, #cRegionPanel {
+    display: none; position: fixed; left: 0; right: 0;
+    max-width: 640px; margin: 0 auto;
+    z-index: 600; padding: 12px 15px;
+    background: var(--bs-body-bg, #fff);
+    border-bottom: 1px solid var(--bs-border-color, #eee);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    overflow: hidden; box-sizing: border-box;
+}
+
+#regionPanel .region-grid, #hRegionPanel .region-grid, #cRegionPanel .region-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 8px; margin-bottom: 6px;
+}
+
+@media (min-width: 480px) {
+    #regionPanel .region-grid, #hRegionPanel .region-grid, #cRegionPanel .region-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+#regionPanel .region-divider, #hRegionPanel .region-divider, #cRegionPanel .region-divider {
+    border: none; border-top: 1px solid var(--bs-border-color, #e8e8e8); margin: 6px 0;
+}
+
+#regionPanel label, #hRegionPanel label, #cRegionPanel label {
+    display: flex; align-items: center; gap: 4px; font-size: 13px;
+    cursor: pointer; color: var(--bs-body-color, #333); transition: color 0.15s; white-space: nowrap;
+}
+
+#cRegionPanel {
+    max-width: 580px;
+    padding: 12px 32px;
+}
+
+#regionPanel label:has(.region-cb:checked),
+#hRegionPanel label:has(.h-region-cb:checked),
+#cRegionPanel label:has(.c-region-cb:checked) {
+    color: #AE1932; font-weight: 600;
+}
+
+#regionPanel .region-cb, #hRegionPanel .h-region-cb, #cRegionPanel .c-region-cb {
+    accent-color: #AE1932; width: 16px; height: 16px;
+}
+
+#regionPanel .region-btn-wrap, #hRegionPanel .region-btn-wrap, #cRegionPanel .region-btn-wrap {
+    display: flex; align-items: center; justify-content: space-between;
+}
+
+#regionPanel .region-selected-tags, #hRegionPanel .region-selected-tags, #cRegionPanel .region-selected-tags,
+#selectedRegionTags {
+    display: flex; flex-wrap: wrap; gap: 6px; flex: 1;
+}
+
+#regionPanel .region-tag, #hRegionPanel .region-tag, #cRegionPanel .region-tag,
+.region-active-bar .region-tag, .region-tag {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+    border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500;
+}
+
+#regionPanel .btn-reset, #hRegionPanel .btn-reset, #cRegionPanel .btn-reset {
+    flex-shrink: 0; font-size: 15px; cursor: pointer; padding-left: 0; background: none; border: none;
+}
+
+#regionPanel .btn-apply, #hRegionPanel .btn-apply, #cRegionPanel .btn-apply {
+    flex-shrink: 0; padding: 8px; background: #AE1932; color: #fff;
+    font-size: 15px; font-weight: 500; cursor: pointer; height: 40px; width: 120px; border: none;
+}
+
+/* 선택된 지역 바 */
+.region-active-bar {
+    display: flex; align-items: center; gap: 6px; padding: 6px 0;
+    flex-wrap: wrap; overflow: hidden; touch-action: none;
+    flex-shrink: 0;
+}
+.region-active-bar .btn-reset-bar, .btn-reset-bar {
+    flex-shrink: 0; background: none; border: none; font-size: 13px;
+    cursor: pointer; color: #666; padding: 0; white-space: nowrap;
+}
+.region-active-bar .region-active-tags, .region-active-tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+}

@@ -224,44 +224,15 @@ $page_css = '
         .hospital-grid.seoul-view { max-width: 100%; }
     }
 
-/* 검색바 */
-.hospital-search-wrap { padding: 8px 16px; display: flex; align-items: center; }
-.hospital-search-input { width: 439px; height: 60px; padding: 10px 14px 10px 0; border-bottom: 2px solid #8f8d8d; font-size: 15px; outline: none; box-sizing: border-box; text-align: left; }
-.hospital-search-input::placeholder { font-size: 13px; text-align: left; }
-.hospital-search-btn { width: 230px; height: 60px; border: 2px solid #333; border-radius: 24px; background: #333; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.hospital-search-btn i { color: #ffffff; }
-
-/* 지역 선택 패널 */
-.hospital-search-wrap { position: relative; z-index: 601; }
-#hRegionOverlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 599; background: rgba(0,0,0,0.35); }
-#hRegionPanel { display: none; position: fixed; left: 0; right: 0; z-index: 600; padding: 12px 0; background: var(--bs-body-bg, #fff); border-bottom: 1px solid var(--bs-border-color, #eee); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
-#hRegionPanel .region-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px 8px; margin-bottom: 10px; padding: 0 16px; }
-#hRegionPanel label { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; color: var(--bs-body-color, #333); transition: color 0.15s; }
-#hRegionPanel label:has(.h-region-cb:checked) { color: #AE1932; font-weight: 600; }
-#hRegionPanel .h-region-cb { accent-color: #AE1932; width: 16px; height: 16px; }
-#hRegionPanel .region-btn-wrap { display: flex; align-items: center; justify-content: space-between;}
-#hRegionPanel .region-selected-tags { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
-#hRegionPanel .region-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500; cursor: pointer; }
-#hRegionPanel .btn-reset { flex-shrink: 0; font-size: 15px; cursor: pointer; padding-left: 15px; }
-#hRegionPanel .btn-apply { flex-shrink: 0; padding: 8px; background: #AE1932; color: #fff; font-size: 15px; font-weight: 500; cursor: pointer; height: 40px; width: 190px;}
 .card-tag-price { display: flex; align-items: center; margin-top: 6px; }
 .card-tag-item { font-size: 16px; color: #000; padding: 2px 0; }
 .card-price { flex: 1; text-align: center; }
 .card-price-num { font-size: 16px; font-weight: 700; color: #AE1932; }
 .card-price-unit { font-size: 12px; font-weight: 400; color: #000000; }
 .card-price-max { font-size: 12px; color: #858484; text-decoration: line-through; margin-right: 2px; }
-.region-active-bar { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--bs-border-color, #eee); }
-.region-active-bar .btn-reset-bar { flex-shrink: 0; background: none; border: none; font-size: 15px; cursor: pointer; color: #000; padding: 0; }
-.region-active-bar .region-active-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.region-active-bar .region-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500; }
 ';
 
 $page_js = '';
-
-// [Figma Sync - 2026-06-06] hospitals 검색바 매칭 CSS
-$_fs_css_file = __DIR__ . '/assets/css/figma_sync_hospitals.css';
-if (file_exists($_fs_css_file)) { $page_css .= "
-" . file_get_contents($_fs_css_file); }
 
 include __DIR__ . '/includes/header.php';
 ?>
@@ -286,16 +257,23 @@ include __DIR__ . '/includes/header.php';
     <!-- 지역 선택 오버레이 + 패널 -->
     <div id="hRegionOverlay" onclick="closeRegionPanel()"></div>
     <div id="hRegionPanel">
+        <?php
+        $region_groups = [
+            ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원'],
+            ['인천','성남','동탄','일산','의정부'],
+            ['부산','대구','대전','청주','광주','전주','춘천','제주'],
+        ];
+        foreach ($region_groups as $gi => $group): ?>
+        <?php if ($gi > 0): ?><hr class="region-divider"><?php endif; ?>
         <div class="region-grid">
-            <?php
-            $all_regions = ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원','인천','성남','동탄','일산','의정부','부산','대구','대전','청주','광주','전주','춘천','제주'];
-            foreach ($all_regions as $ar): ?>
+            <?php foreach ($group as $ar): ?>
             <label>
                 <input type="checkbox" class="h-region-cb" value="<?php echo $ar; ?>"<?php echo in_array($ar, $region_list) ? ' checked' : ''; ?>>
                 <?php echo $ar; ?>
             </label>
             <?php endforeach; ?>
         </div>
+        <?php endforeach; ?>
         <div class="region-btn-wrap">
             <button class="btn-reset" onclick="document.querySelectorAll('.h-region-cb').forEach(c=>c.checked=false);updateSelectedTags()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
             <div class="region-selected-tags">
@@ -367,7 +345,7 @@ include __DIR__ . '/includes/header.php';
     <!-- 정렬 옵션 -->
     <div style="padding: 0 16px; margin-bottom: 8px; display: flex; justify-content: flex-start; align-items: center; gap: 8px;">
         <!-- <label style="font-size:13px; color:var(--bs-secondary-color,#888);">정렬:</label> -->
-        <div id="sortChips" style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+        <div id="sortChips" style="display:flex; gap:6px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
             <button onclick="setSort('price')" class="sort-chip<?php echo $sort==='price' ? ' active' : ''; ?>"><img src="assets/icons/categories/<?php echo $sort==='price' ? 'low_price_2.svg' : 'low_price_1.png'; ?>" class="sort-chip-icon"> 낮은가격</button>
             <button onclick="setSort('rating')" class="sort-chip<?php echo $sort==='rating' ? ' active' : ''; ?>"><img src="assets/icons/categories/<?php echo $sort==='rating' ? 'rating_2.svg' : 'rating_1.png'; ?>" class="sort-chip-icon"> 평점</button>
             <button onclick="setSort('popular')" class="sort-chip<?php echo $sort==='popular' ? ' active' : ''; ?>"><i class="bi bi-trophy"></i> 인기</button>
