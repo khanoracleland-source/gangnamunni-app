@@ -265,7 +265,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 .profile-arrow { color:#000; font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
 /* 메뉴 섹션 */
-.menu-section { background:var(--bs-body-bg, #fff); border-radius:0; margin-bottom:20px; padding:20px; }
+.menu-section { background:var(--bs-body-bg, #fff); border-radius:0; margin-bottom:20px; margin-left: 20px; padding:20px; }
 .menu-section:last-of-type { margin-bottom:0; }
 .menu-section-title {
     padding:0 0 8px; font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; color:var(--color-inactive, #979797); letter-spacing:0.02em;
@@ -281,7 +281,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     font-size:calc(24px * var(--fs-scale,1) * var(--fs-page,1)); color:#555; flex-shrink:0;
 }
 .menu-row-text { flex:1; font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; }
-.menu-row-arrow { color:#ccc; font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
+.menu-row-arrow { color:#000; font-weight:900; font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
 /* 로그아웃 */
 .logout-section { background:var(--bs-body-bg, #fff); margin-top:20px; }
@@ -317,6 +317,35 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 .pc-label i { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); }
 .pc-value { font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; color: var(--bs-body-color, #000); }
 
+/* 광고 배너 */
+.advertisement-section {
+    padding: 20px;
+    margin-bottom: 8px;
+    margin-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.ad-subtitle {
+    font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1));
+    color: #000;
+    font-weight: 400;
+}
+.ad-label {
+    font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1));
+    font-weight: 700;
+    color: #000;
+    display: inline-block;
+    padding: 5px 0;
+    align-self: flex-start;
+}
+.ad-title {
+    font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1));
+    font-weight: 700;
+    color: #000;
+    margin-top: 2px;
+}
+
 /* 메뉴 배지 */
 .menu-row-badge {
     font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; color: var(--pri, #AE1932); background: #fce4e8;
@@ -345,47 +374,9 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     <div class="profile-avatar"><?php echo mb_substr($mb_nick, 0, 1); ?></div>
     <div class="profile-info-wrap">
         <div class="profile-name"><?php echo htmlspecialchars($mb_nick); ?></div>
-        <div class="profile-sub">프로필 보기</div>
     </div>
-    <span class="profile-arrow"><i class="bi bi-chevron-right"></i></span>
+    <span class="profile-arrow"><i class="bi bi-chevron-right" style="color:#000;"></i> </span>
 </a>
-
-<!-- 섹션: 내 활동 요약 -->
-<div class="menu-section" style="border-bottom:8px solid #F8F8F8;">
-    <div class="menu-section-title">내 활동</div>
-    <div class="activity-summary">
-        <a href="my_bookings.php" class="activity-item">
-            <span class="activity-num"><?php echo $booking_count; ?></span>
-            <span class="activity-label"><?php echo term('booking', '예약'); ?></span>
-        </a>
-        <a href="my_reviews.php" class="activity-item">
-            <span class="activity-num"><?php echo $review_count; ?></span>
-            <span class="activity-label"><?php echo term('review', '후기'); ?></span>
-        </a>
-        <a href="my_wishlist.php" class="activity-item">
-            <span class="activity-num"><?php echo $wish_count; ?></span>
-            <span class="activity-label">찜</span>
-        </a>
-        <a href="my_notifications.php" class="activity-item">
-            <span class="activity-num"><?php echo $unread_count; ?></span>
-            <span class="activity-label">알림</span>
-        </a>
-    </div>
-</div>
-
-<!-- 섹션: 포인트 / 쿠폰 -->
-<div class="menu-section" style="border-bottom:8px solid #F8F8F8;">
-    <div style="display:flex;gap:0;">
-        <a href="my_points.php" class="point-coupon-box" style="border-right:1px solid var(--bs-border-color, #eee);">
-            <span class="pc-label"><i class="bi bi-coin"></i> 포인트</span>
-            <span class="pc-value"><?php echo number_format($point_balance); ?>P</span>
-        </a>
-        <a href="my_coupons.php" class="point-coupon-box">
-            <span class="pc-label"><i class="bi bi-ticket-perforated"></i> 쿠폰</span>
-            <span class="pc-value"><?php echo $coupon_count; ?>장</span>
-        </a>
-    </div>
-</div>
 
 <!-- 섹션: 병원 이용 -->
 <div class="menu-section" style="border-bottom:8px solid #F8F8F8;">
@@ -393,33 +384,24 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     <a href="my_bookings.php" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-calendar-check"></i></span>
         <span class="menu-row-text">내 <?php echo term('booking', '예약'); ?> / 결제 내역</span>
-        <?php if ($booking_count > 0): ?><span class="menu-row-badge"><?php echo $booking_count; ?></span><?php endif; ?>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_wishlist.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-heart"></i></span>
+        <span class="menu-row-icon"><i class="bi bi-star"></i></span>
         <span class="menu-row-text"><?php echo term('business', '병원'); ?>/<?php echo term('service', '시술'); ?> 찜 목록</span>
-        <?php if ($wish_count > 0): ?><span class="menu-row-badge"><?php echo $wish_count; ?></span><?php endif; ?>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_reviews.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-chat-quote"></i></span>
+        <span class="menu-row-icon"><i class="bi bi-chat-square-text"></i></span>
         <span class="menu-row-text">내가 작성한 <?php echo term('review', '후기'); ?></span>
-        <?php if ($review_count > 0): ?><span class="menu-row-badge"><?php echo $review_count; ?></span><?php endif; ?>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
-    <a href="my_notifications.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-bell"></i></span>
-        <span class="menu-row-text">알림</span>
-        <?php if ($unread_count > 0): ?><span class="menu-row-badge badge-red"><?php echo $unread_count; ?></span><?php endif; ?>
-        <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
-    </a>
-    <a href="my_events.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-gift"></i></span>
-        <span class="menu-row-text">이벤트 응모 내역</span>
-        <?php if ($event_count > 0): ?><span class="menu-row-badge"><?php echo $event_count; ?></span><?php endif; ?>
-        <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
-    </a>
+</div>
+
+<div class="advertisement-section">
+    <div class="ad-subtitle">상담부터 시술 결과까지, 오직 고객 후기로만</div>
+    <div class="ad-label">고객들이 선택!</div>
+    <div class="ad-title">3월 고객평가 우수병원</div>
 </div>
 
 <!-- 섹션: 커뮤니티 -->
@@ -428,7 +410,6 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     <a href="community.php?my=1" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-pencil-square"></i></span>
         <span class="menu-row-text">MY 커뮤니티 글</span>
-        <?php if ($community_count > 0): ?><span class="menu-row-badge"><?php echo $community_count; ?></span><?php endif; ?>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_wishlist.php?type=community" class="menu-row">
@@ -440,18 +421,11 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 
 <!-- 섹션: 고객센터/공지 -->
 <div class="menu-section">
-    <a href="notification_settings.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-gear"></i></span>
-        <span class="menu-row-text">알림 설정</span>
-        <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
-    </a>
     <a href="qna.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-headset"></i></span>
         <span class="menu-row-text">고객센터</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="faq.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-megaphone"></i></span>
         <span class="menu-row-text">공지사항</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
@@ -459,7 +433,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 
 <!-- 로그아웃 -->
 <div class="logout-section">
-    <a href="/hairwang/bbs/logout.php?url=<?php echo urlencode('/hairwang/gangnamunni/mypage.php'); ?>" class="logout-btn">로그아웃</a>
+    <a href="<?php echo G5_BBS_URL; ?>/logout.php?url=<?php echo urlencode(G5_URL . '/gangnamunni/mypage.php'); ?>" class="logout-btn">로그아웃</a>
 </div>
 
 <?php else: ?>
@@ -470,9 +444,9 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     </div>
     <p style="font-size:16px;font-weight:600;color:var(--bs-body-color, #333);margin-bottom:8px;">로그인이 필요합니다</p>
     <p style="font-size:14px;color:#999;margin-bottom:24px;">로그인 후 마이페이지를 이용하실 수 있습니다.</p>
-    <a href="/hairwang/bbs/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/mypage.php'); ?>" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
+    <a href="<?php echo G5_BBS_URL; ?>/login.php?url=<?php echo urlencode(G5_URL . '/gangnamunni/mypage.php'); ?>" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
     <div style="margin-top:12px;">
-        <a href="/hairwang/bbs/register.php" style="font-size:13px;color:#999;text-decoration:none;">아직 회원이 아니신가요? <span style="color:#AE1932;font-weight:600;">회원가입</span></a>
+        <a href="<?php echo G5_BBS_URL; ?>/register.php" style="font-size:13px;color:#999;text-decoration:none;">아직 회원이 아니신가요? <span style="color:#AE1932;font-weight:600;">회원가입</span></a>
     </div>
 </div>
 

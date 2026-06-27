@@ -29,8 +29,10 @@ if (file_exists(dirname(__DIR__).'/gangnamunni/includes/sso_auto_login.php') || 
 // 로그인 상태 확인 (그누보드 변수 사용)
 $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
 
-// BBS URL 직접 지정 (gangnamunni는 /gangnamunni/ 에서 실행, bbs는 /bbs/ 에 있음)
-$bbs_base_url = (defined('SITE_BASE_PATH') && SITE_BASE_PATH === '/gangnamunni/') ? '/bbs/' : '/hairwang/bbs/';
+// Gnuboard URL follows the current host: localhost in development, production domain on the server.
+$bbs_base_url = defined('G5_BBS_URL')
+    ? rtrim(G5_BBS_URL, '/') . '/'
+    : ((defined('SITE_BASE_PATH') && SITE_BASE_PATH === '/gangnamunni/') ? '/bbs/' : '/hairwang/bbs/');
 $login_url = $bbs_base_url . 'login.php';
 $register_url = $bbs_base_url . 'register.php';
 $mypage_url = $bbs_base_url . 'member_confirm.php';

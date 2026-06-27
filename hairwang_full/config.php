@@ -23,8 +23,16 @@ date_default_timezone_set("Asia/Seoul");
 보안서버주소가 없다면 공란으로 두시면 되며 보안서버주소 뒤에 / 는 붙이지 않습니다.
 입력 예) https://www.domain.com:443/gnuboard5
 */
-define('G5_DOMAIN', 'https://hms.seoulbeauty.app/hairwang');
-define('G5_HTTPS_DOMAIN', 'https://hms.seoulbeauty.app/hairwang');
+$g5_request_host = $_SERVER['HTTP_HOST'] ?? '';
+$g5_host_without_port = strtolower(preg_replace('/:\\d+$/', '', $g5_request_host));
+$g5_is_local_request = in_array($g5_host_without_port, ['127.0.0.1', 'localhost', '::1'], true);
+$g5_request_scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$g5_domain = $g5_is_local_request
+    ? $g5_request_scheme . '://' . $g5_request_host
+    : 'https://hms.seoulbeauty.app/hairwang';
+
+define('G5_DOMAIN', $g5_domain);
+define('G5_HTTPS_DOMAIN', $g5_domain);
 
 // 그누보드 디버그바 설정입니다, 실제 서버운영시 false 로 설정해 주세요.
 define('G5_DEBUG', false);
