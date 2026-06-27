@@ -98,6 +98,13 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
         </button>
     </div>
 
+    <!-- 선택된 지역 태그 바 (JS로 채워짐 — localStorage 기반) -->
+    <div id="headerActiveBar" class="region-active-bar" style="display:none;max-width:640px;margin:0 auto;padding-left:16px;padding-right:16px;">
+
+    <button class="btn-reset-bar" onclick="clearRegions()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
+        <div id="headerRegionTags" class="region-active-tags"></div>
+    </div>
+
     <!-- 오버레이 -->
     <div id="regionOverlay" onclick="closeRegionPanel()"></div>
 
@@ -180,15 +187,32 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
         cb.addEventListener('change', function() { updateRegionTags(); saveRegionsToStorage(); });
     });
     function updateRegionTags() {
+        var checked = document.querySelectorAll('.region-cb:checked');
+        // 패널 내부 태그
         var container = document.getElementById('selectedRegionTags');
         container.innerHTML = '';
-        document.querySelectorAll('.region-cb:checked').forEach(function(cb) {
+        checked.forEach(function(cb) {
             var tag = document.createElement('span');
             tag.className = 'region-tag';
             tag.innerHTML = cb.value + ' <span onclick="uncheckRegion(\'' + cb.value + '\')" style="cursor:pointer;">&times;</span>';
             container.appendChild(tag);
         });
-        var checked = document.querySelectorAll('.region-cb:checked');
+        // 검색바 아래 active bar
+        var bar = document.getElementById('headerActiveBar');
+        var barTags = document.getElementById('headerRegionTags');
+        barTags.innerHTML = '';
+        if (checked.length > 0) {
+            checked.forEach(function(cb) {
+                var tag = document.createElement('span');
+                tag.className = 'region-tag';
+                tag.innerHTML = cb.value + ' <span onclick="uncheckRegion(\'' + cb.value + '\')" style="cursor:pointer;">&times;</span>';
+                barTags.appendChild(tag);
+            });
+            bar.style.display = 'flex';
+        } else {
+            bar.style.display = 'none';
+        }
+        // 버튼 스타일
         var btn = document.getElementById('regionToggleBtn');
         if (checked.length > 0) {
             btn.innerHTML = '<i class="bi bi-geo-alt" style="color:#fff;margin-right:4px;"></i>지역 ' + checked.length + '개';

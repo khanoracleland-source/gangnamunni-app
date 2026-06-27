@@ -285,6 +285,26 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
     <script>
+    // localStorage 동기화: URL ↔ storage
+    (function() {
+        var urlParams = new URLSearchParams(window.location.search);
+        var regionParam = urlParams.get('region');
+        if (regionParam) {
+            // URL에 region 있으면 localStorage에 저장
+            localStorage.setItem('sb_selected_regions', JSON.stringify(regionParam.split(',').filter(Boolean)));
+        } else {
+            // URL에 region 없으면 localStorage에서 복원 후 리다이렉트
+            try {
+                var saved = JSON.parse(localStorage.getItem('sb_selected_regions') || '[]');
+                if (saved.length > 0) {
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('region', saved.join(','));
+                    window.location.replace(url.toString());
+                }
+            } catch(e) {}
+        }
+    })();
+
     function toggleRegionPanel() {
         var panel = document.getElementById('hRegionPanel');
         var overlay = document.getElementById('hRegionOverlay');
@@ -308,8 +328,13 @@ include __DIR__ . '/includes/header.php';
         document.querySelectorAll('.h-region-cb:checked').forEach(function(cb) { regions.push(cb.value); });
         var kw = document.getElementById('hospitalKeyword').value.trim();
         var url = new URL(window.location);
-        if (regions.length > 0) url.searchParams.set('region', regions.join(','));
-        else url.searchParams.delete('region');
+        if (regions.length > 0) {
+            url.searchParams.set('region', regions.join(','));
+            localStorage.setItem('sb_selected_regions', JSON.stringify(regions));
+        } else {
+            url.searchParams.delete('region');
+            localStorage.removeItem('sb_selected_regions');
+        }
         if (kw) url.searchParams.set('q', kw);
         else url.searchParams.delete('q');
         window.location = url;
@@ -336,8 +361,13 @@ include __DIR__ . '/includes/header.php';
     function removeRegion(val) {
         var url = new URL(window.location);
         var current = (url.searchParams.get('region') || '').split(',').filter(function(r) { return r && r !== val; });
-        if (current.length > 0) url.searchParams.set('region', current.join(','));
-        else url.searchParams.delete('region');
+        if (current.length > 0) {
+            url.searchParams.set('region', current.join(','));
+            localStorage.setItem('sb_selected_regions', JSON.stringify(current));
+        } else {
+            url.searchParams.delete('region');
+            localStorage.removeItem('sb_selected_regions');
+        }
         window.location = url;
     }
     </script>

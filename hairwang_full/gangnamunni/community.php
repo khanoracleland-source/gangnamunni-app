@@ -225,6 +225,23 @@ $page_css = '
 ';
 
 $page_js = '
+(function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var regionParam = urlParams.get("region");
+    if (regionParam) {
+        localStorage.setItem("sb_community_regions", JSON.stringify(regionParam.split(",").filter(Boolean)));
+    } else {
+        try {
+            var saved = JSON.parse(localStorage.getItem("sb_community_regions") || "[]");
+            if (saved.length > 0) {
+                var url = new URL(window.location.href);
+                url.searchParams.set("region", saved.join(","));
+                window.location.replace(url.toString());
+            }
+        } catch(e) {}
+    }
+})();
+
 function toggleCommunityRegionPanel() {
     var panel = document.getElementById("cRegionPanel");
     var overlay = document.getElementById("cRegionOverlay");
@@ -262,16 +279,26 @@ function applyCommunityRegionFilter() {
     var regions = [];
     document.querySelectorAll(".c-region-cb:checked").forEach(function(cb) { regions.push(cb.value); });
     var url = new URL(window.location);
-    if (regions.length > 0) url.searchParams.set("region", regions.join(","));
-    else url.searchParams.delete("region");
+    if (regions.length > 0) {
+        url.searchParams.set("region", regions.join(","));
+        localStorage.setItem("sb_community_regions", JSON.stringify(regions));
+    } else {
+        url.searchParams.delete("region");
+        localStorage.removeItem("sb_community_regions");
+    }
     url.searchParams.delete("page");
     window.location = url;
 }
 function removeCommunityRegion(val) {
     var url = new URL(window.location);
     var current = (url.searchParams.get("region") || "").split(",").filter(function(r) { return r && r !== val; });
-    if (current.length > 0) url.searchParams.set("region", current.join(","));
-    else url.searchParams.delete("region");
+    if (current.length > 0) {
+        url.searchParams.set("region", current.join(","));
+        localStorage.setItem("sb_community_regions", JSON.stringify(current));
+    } else {
+        url.searchParams.delete("region");
+        localStorage.removeItem("sb_community_regions");
+    }
     url.searchParams.delete("page");
     window.location = url;
 }
@@ -300,18 +327,18 @@ include __DIR__ . '/includes/header.php';
                     <i class="bi bi-geo-alt"></i> 지역 선택
                 </button>
             </div>
-
-            <?php if (!empty($region_list)): ?>
-            <div class="region-active-bar">
-                <button class="btn-reset-bar" onclick="document.querySelectorAll('.c-region-cb').forEach(c=>c.checked=false);applyCommunityRegionFilter()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
-                <div class="region-active-tags">
-                    <?php foreach ($region_list as $r): ?>
-                    <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeCommunityRegion('<?php echo htmlspecialchars($r); ?>')" style="cursor:pointer;">&times;</span></span>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            <?php endif; ?>
         </div>
+
+        <?php if (!empty($region_list)): ?>
+        <div class="region-active-bar">
+            <button class="btn-reset-bar" onclick="document.querySelectorAll('.c-region-cb').forEach(c=>c.checked=false);applyCommunityRegionFilter()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
+            <div class="region-active-tags">
+                <?php foreach ($region_list as $r): ?>
+                <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeCommunityRegion('<?php echo htmlspecialchars($r); ?>')" style="cursor:pointer;">&times;</span></span>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- 지역 선택 오버레이 + 패널 -->
         <div id="cRegionOverlay" onclick="closeCommunityRegionPanel()"></div>
