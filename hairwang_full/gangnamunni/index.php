@@ -778,7 +778,7 @@ body.ae-active { padding-top:0 !important; }
             }
         }
         ?>
-        <div class="tc-table-wrap" style="padding:14px 0 16px;">
+        <div class="tc-table-wrap" style="height:700px; overflow:hidden; width:100%; margin:0 auto; margin-bottom:15px;">
         <?php if ($tc_table_mode === 'row'): ?>
         <!-- 모드B: 행별 독립 스크롤 -->
         <div class="tc-table tc-mode-row" style="background:var(--bs-body-bg, #fff);border-radius:0;overflow:hidden;border:1px solid #D5D5D5;">
@@ -816,67 +816,34 @@ body.ae-active { padding-top:0 !important; }
             <?php endforeach; ?>
         </div>
         <?php else: ?>
-        <!-- 모드A (기본): 엑셀형 — 대분류 고정, 전체 가로 스크롤 -->
-        <div class="tc-table tc-mode-excel" style="border:1px solid #D5D5D5;border-radius:0;overflow:hidden;position:relative;">
-            <?php
-// [2026-06-16] cat-scale 반응형 — 기기별(PC/Android/iOS) × 요소별(전체/글자/높이/칩) 스케일
-if (!function_exists('getSettingValue') && file_exists(__DIR__.'/includes/settings_helper.php')) require_once __DIR__.'/includes/settings_helper.php';
-$_cs = function($k,$d) use($connect){ return function_exists('getSettingValue') ? getSettingValue($connect,$k,$d) : $d; };
-$_catscale_cfg = [];
-foreach (['pc','android','ios'] as $_d) {
-  $_catscale_cfg[$_d] = [
-    'en'     => $_cs("cat_scale_{$_d}_enabled",'1'),
-    'factor' => $_cs("cat_scale_{$_d}_factor",'0'),
-    'adjust' => $_cs("cat_scale_{$_d}_adjust",'1.0'),
-    'font'   => $_cs("cat_scale_{$_d}_font",'1.0'),
-    'pad'    => $_cs("cat_scale_{$_d}_pad",'1.0'),
-    'chip'   => $_cs("cat_scale_{$_d}_chip",'1.0'),
-  ];
-}
-?>
-<script>
-(function(){
-  var CFG = <?php echo json_encode($_catscale_cfg); ?>;
-  var ua = navigator.userAgent || '';
-  var dev = /iPhone|iPad|iPod/i.test(ua) ? 'ios' : (/Android/i.test(ua) ? 'android' : 'pc');
-  var c = CFG[dev] || CFG.pc;
-  var root = document.documentElement;
-  function num(v,d){ var n=parseFloat(v); return (n&&n>0)?n:d; }
-  if (String(c.en) !== '1') {  // 적용 안함 → 전부 1
-    root.style.setProperty('--cat-scale','1'); root.style.setProperty('--cat-font','1');
-    root.style.setProperty('--cat-pad','1'); root.style.setProperty('--cat-chip','1'); return;
-  }
-  function apply(){
-    var manual = parseFloat(c.factor);
-    var base = (manual && manual>0) ? manual : Math.min(1, window.innerWidth / 390);
-    var scale = base * num(c.adjust,1);
-    scale = Math.max(0.4, Math.min(1.5, scale));
-    root.style.setProperty('--cat-scale', scale.toFixed(3));
-    root.style.setProperty('--cat-font',  num(c.font,1).toFixed(3));
-    root.style.setProperty('--cat-pad',   num(c.pad,1).toFixed(3));
-    root.style.setProperty('--cat-chip',  num(c.chip,1).toFixed(3));
-  }
-  apply();
-  window.addEventListener('resize', apply);
-})();
-</script>
-<div class="tc-excel-viewport" id="tcExcelViewport">
-                <table class="tc-excel-table">
-                <?php foreach ($treatment_categories as $major => $subs): ?>
-                <tr>
-                    <th class="tc-major-cell"><?php echo htmlspecialchars($major); ?></th>
-                    <?php foreach ($subs as $sub): ?>
-                    <td class="tc-sub-cell">
-                        <a href="hospitals.php?category=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
-                    </td>
-                    <?php endforeach; ?>
-                </tr>
-                <?php endforeach; ?>
-                </table>
+        <!-- 패널형: 좌측 1/3 대분류 + 우측 2/3 시술 2열 -->
+        <div class="tc-panel-wrap">
+            <div class="tc-nav-only" id="tcNavOnly">
+                <?php $pi = 0; foreach ($treatment_categories as $major => $subs): ?>
+                <div class="tc-nav-item<?php echo $pi === 0 ? ' active' : ''; ?>"
+                     onclick="tcNavSelect(this, <?php echo $pi; ?>)"
+                ><?php echo htmlspecialchars($major); ?></div>
+                <?php $pi++; endforeach; ?>
             </div>
-            <button class="tc-excel-arrow tc-excel-arrow-l" id="tcExcelLeft" onclick="tcExcelScroll(-1)" aria-label="왼쪽 스크롤">‹</button>
-            <button class="tc-excel-arrow tc-excel-arrow-r" id="tcExcelRight" onclick="tcExcelScroll(1)" aria-label="오른쪽 스크롤">›</button>
-            <div class="tc-scroll-hint" id="tcScrollHint">← 스와이프하여 더 보기 →</div>
+            <div class="tc-panel-right" id="tcPanelRight">
+                <?php $pi = 0; foreach ($treatment_categories as $major => $subs): ?>
+                <div class="tc-panel-body" id="tcBody<?php echo $pi; ?>"<?php echo $pi > 0 ? ' style="display:none"' : ''; ?>>
+                    <?php foreach ($subs as $sub): ?>
+                    <a href="hospitals.php?category=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
+                    <?php endforeach; ?>
+                </div>
+                <?php $pi++; endforeach; ?>
+                <div class="tc-below-divider" id="tcBelowDivider"></div>
+                <div class="tc-below-wrap" id="tcBelowWrap">
+                    <?php $pi = 0; foreach ($treatment_categories as $major => $subs): ?>
+                    <div class="tc-below-group" id="tcBelow<?php echo $pi; ?>" style="display:none">
+                        <?php foreach ($subs as $sub): ?>
+                        <span class="tc-chip tc-chip-faded"><?php echo htmlspecialchars($sub); ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php $pi++; endforeach; ?>
+                </div>
+            </div>
         </div>
         <?php endif; ?>
         </div>
@@ -885,8 +852,8 @@ foreach (['pc','android','ios'] as $_d) {
         /* ===== 시술 카테고리 테이블 공통 ===== */
         .tc-chip {
             display: inline-block; padding: calc(6px * var(--cat-scale,1) * var(--cat-pad,1)) calc(14px * var(--cat-scale,1) * var(--cat-chip,1)); background: var(--bs-body-bg, #fff);
-            border-radius: 13px; color: var(--bs-body-color, #000); text-decoration: none;
-            font-size: calc(15px * var(--cat-scale,1) * var(--cat-font,1)); font-weight: 400; white-space: nowrap; transition: all 0.2s;
+            border-radius: 13px; color: #111; text-decoration: none;
+            font-size: calc(15px * var(--cat-scale,1) * var(--cat-font,1)); font-weight: 600; white-space: nowrap; transition: all 0.2s;
             border: 1px solid transparent;
         }
         .tc-chip:hover { background: #FFE0E0; color: #AE1932; border-color: #AE1932; }
@@ -1000,6 +967,104 @@ foreach (['pc','android','ios'] as $_d) {
         }
         @media (max-width: 767px) { .tc-scroll-hint { display: block; } }
         @keyframes tcHintFade { 0%,60% { opacity: 1; } 100% { opacity: 0; } }
+
+        /* ===== panel wrap ===== */
+        .tc-panel-wrap {
+            display: flex;
+            height: 100%;
+            gap: 0;
+            overflow: hidden;
+        }
+        .tc-panel-right {
+            flex: 2;
+            overflow: hidden;
+            padding: 10px;
+            border: 1px solid #D5D5D5;
+            border-left: none;
+        }
+        .tc-panel-right::-webkit-scrollbar { display: none; }
+        .tc-panel-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .tc-panel-body .tc-chip {
+            display: block;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px 6px;
+            font-size: calc(13px * var(--cat-scale,1) * var(--cat-font,1));
+            white-space: normal;
+            word-break: keep-all;
+        }
+        .tc-below-divider {
+            width: 100%;
+            border-top: 1px solid #E8E8E8;
+            margin: 12px 0 10px;
+            display: none;
+        }
+        .
+         {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            width: 100%;
+        }
+        .tc-below-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+        }
+        .tc-chip-faded {
+            display: block;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px 6px;
+            font-size: calc(13px * var(--cat-scale,1) * var(--cat-font,1));
+            font-weight: 600;
+            white-space: normal;
+            word-break: keep-all;
+            color: #ccc;
+            background: var(--bs-body-bg, #fff);
+            pointer-events: none;
+            cursor: default;
+            text-decoration: none;
+        }
+
+        /* ===== kulrang ustun (nav-only) ===== */
+        .tc-nav-only {
+            display: flex;
+            flex-direction: column;
+            width: 33.333%;
+            flex-shrink: 0;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            border: 1px solid #D5D5D5;
+            background: var(--bs-tertiary-bg, #F1F1F1);
+        }
+        .tc-nav-only::-webkit-scrollbar { display: none; }
+        .tc-nav-item {
+            padding: 14px 8px;
+            text-align: center;
+            font-size: calc(13px * var(--cat-scale,1) * var(--cat-font,1));
+            font-weight: 600;
+            line-height: 1.3;
+            cursor: pointer;
+            border-bottom: 1px solid #E5E5E5;
+            color: #666;
+            transition: background 0.15s, color 0.15s;
+        }
+        .tc-nav-item:last-child { border-bottom: none; }
+        .tc-nav-item.active {
+            background: var(--bs-body-bg, #fff);
+            color: #AE1932;
+            font-weight: 700;
+            border-left: 3px solid #AE1932;
+        }
         </style>
 
         <script>
@@ -1044,6 +1109,27 @@ foreach (['pc','android','ios'] as $_d) {
                     }
                 });
             });
+
+            window.tcNavSelect = function(el, idx) {
+                document.querySelectorAll('.tc-nav-item').forEach(function(x) { x.classList.remove('active'); });
+                el.classList.add('active');
+                document.querySelectorAll('.tc-panel-body').forEach(function(x) { x.style.display = 'none'; });
+                var body = document.getElementById('tcBody' + idx);
+                if (body) body.style.display = 'grid';
+                var total = document.querySelectorAll('.tc-panel-body').length;
+                document.querySelectorAll('.tc-below-group').forEach(function(x) { x.style.display = 'none'; });
+                var hasBellow = false;
+                for (var i = idx + 1; i < total; i++) {
+                    var bg = document.getElementById('tcBelow' + i);
+                    if (bg) { bg.style.display = 'grid'; hasBellow = true; }
+                }
+                var divider = document.getElementById('tcBelowDivider');
+                if (divider) divider.style.display = hasBellow ? 'block' : 'none';
+                var right = document.getElementById('tcPanelRight');
+                if (right) right.scrollTop = 0;
+            };
+            var _initNav = document.querySelector('.tc-nav-item.active');
+            if (_initNav) tcNavSelect(_initNav, 0);
         })();
         </script>
         </div><!-- /ae-wrap 시술 카테고리 -->
