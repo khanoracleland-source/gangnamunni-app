@@ -145,7 +145,7 @@ $page_css = '
     .hospital-image { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #D9D9D9; display: block; }
     .hospital-info { padding: 12px 16px 6px; }
     .hospital-name { font-size: 16px; font-weight: 500; margin-bottom: 4px; color: var(--bs-body-color, #000000); }
-    .hospital-address { font-size: 14px; font-weight: 400; color: var(--bs-body-color, #000000); margin-bottom: 6px; }
+    .hospital-address { font-size: 14px; font-weight: 400; color: var(--bs-body-color, #000000); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hospital-address * { font-size: 14px; }
     .rating-section { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
     .rating-score { font-weight: 700; color: #AE1932; }
@@ -451,7 +451,7 @@ foreach ($hospitals as $hospital):
                     <div class="hospital-address">
                         <span class="addr-district">강남</span>
                         <span class="addr-sep"> | </span>
-                        <span><?php echo htmlspecialchars($_iad['subtitle'] ?? ''); ?></span>
+                        <span><?php echo htmlspecialchars(mb_substr($_iad['subtitle'] ?? '', 0, 15, 'UTF-8')); ?></span>
                     </div>
                 </div>
         </a>
@@ -495,8 +495,8 @@ foreach ($hospitals as $hospital):
                     <div class="hospital-address">
                         <span class="addr-district">강남</span>
                         <span class="addr-sep"> | </span>
-                        <span class="addr-full"><?php echo htmlspecialchars($hospital['address'] ?? ''); ?></span>
-                        <span class="addr-short"><?php echo htmlspecialchars(mb_substr($hospital['address'] ?? '', 0, 30)); ?>...</span>
+                        <span class="addr-full"><?php $_a=($hospital['address']??''); echo htmlspecialchars(mb_substr($_a,0,20,'UTF-8')).(mb_strlen($_a,'UTF-8')>20?'...':''); ?></span>
+                        <span class="addr-short"><?php $_a=($hospital['address']??''); echo htmlspecialchars(mb_substr($_a,0,20,'UTF-8')).(mb_strlen($_a,'UTF-8')>20?'...':''); ?></span>
                     </div>
                     <?php
                     $_td = $hospital_treatment_descs[(int)$hospital['id']] ?? null;
