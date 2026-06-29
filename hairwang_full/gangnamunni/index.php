@@ -778,7 +778,7 @@ body.ae-active { padding-top:0 !important; }
             }
         }
         ?>
-        <div class="tc-table-wrap" style="height:700px; overflow:hidden; width:100%; margin:0 auto; margin-bottom:15px;">
+        <div class="tc-table-wrap" style="height:400px; overflow:hidden; width:100%; margin:0 auto; margin-bottom:15px;">
         <?php if ($tc_table_mode === 'row'): ?>
         <!-- 모드B: 행별 독립 스크롤 -->
         <div class="tc-table tc-mode-row" style="background:var(--bs-body-bg, #fff);border-radius:0;overflow:hidden;border:1px solid #D5D5D5;">
@@ -827,7 +827,7 @@ body.ae-active { padding-top:0 !important; }
             </div>
             <div class="tc-panel-right" id="tcPanelRight">
                 <?php $pi = 0; foreach ($treatment_categories as $major => $subs): ?>
-                <div class="tc-panel-body" id="tcBody<?php echo $pi; ?>"<?php echo $pi > 0 ? ' style="display:none"' : ''; ?>>
+                <div class="tc-panel-body<?php echo $pi === 0 ? ' tc-panel-body-active' : ''; ?>" id="tcBody<?php echo $pi; ?>">
                     <?php foreach ($subs as $sub): ?>
                     <a href="hospitals.php?category=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
                     <?php endforeach; ?>
@@ -977,16 +977,31 @@ body.ae-active { padding-top:0 !important; }
         }
         .tc-panel-right {
             flex: 2;
-            overflow: hidden;
+            height: 100%;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
             padding: 10px;
             border: 1px solid #D5D5D5;
             border-left: none;
+            scrollbar-width: none;
         }
         .tc-panel-right::-webkit-scrollbar { display: none; }
         .tc-panel-body {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
+            width: 100%;
+        }
+        .tc-panel-body + .tc-panel-body {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #EFEFEF;
+        }
+        .tc-panel-body:not(.tc-panel-body-active) .tc-chip {
+            color: #ccc;
+            pointer-events: none;
+            cursor: default;
         }
         .tc-panel-body .tc-chip {
             display: block;
@@ -1003,8 +1018,7 @@ body.ae-active { padding-top:0 !important; }
             margin: 12px 0 10px;
             display: none;
         }
-        .
-         {
+        .tc-below-wrap {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
@@ -1031,7 +1045,6 @@ body.ae-active { padding-top:0 !important; }
             cursor: default;
             text-decoration: none;
         }
-
         /* ===== kulrang ustun (nav-only) ===== */
         .tc-nav-only {
             display: flex;
@@ -1113,20 +1126,21 @@ body.ae-active { padding-top:0 !important; }
             window.tcNavSelect = function(el, idx) {
                 document.querySelectorAll('.tc-nav-item').forEach(function(x) { x.classList.remove('active'); });
                 el.classList.add('active');
-                document.querySelectorAll('.tc-panel-body').forEach(function(x) { x.style.display = 'none'; });
+                document.querySelectorAll('.tc-panel-body').forEach(function(x) {
+                    x.style.display = 'grid';
+                    x.classList.remove('tc-panel-body-active');
+                });
                 var body = document.getElementById('tcBody' + idx);
-                if (body) body.style.display = 'grid';
-                var total = document.querySelectorAll('.tc-panel-body').length;
+                if (body) body.classList.add('tc-panel-body-active');
                 document.querySelectorAll('.tc-below-group').forEach(function(x) { x.style.display = 'none'; });
-                var hasBellow = false;
-                for (var i = idx + 1; i < total; i++) {
-                    var bg = document.getElementById('tcBelow' + i);
-                    if (bg) { bg.style.display = 'grid'; hasBellow = true; }
-                }
                 var divider = document.getElementById('tcBelowDivider');
-                if (divider) divider.style.display = hasBellow ? 'block' : 'none';
+                if (divider) divider.style.display = 'none';
                 var right = document.getElementById('tcPanelRight');
-                if (right) right.scrollTop = 0;
+                if (right && body) {
+                    var rRect = right.getBoundingClientRect();
+                    var bRect = body.getBoundingClientRect();
+                    right.scrollTop += bRect.top - rRect.top - 10;
+                }
             };
             var _initNav = document.querySelector('.tc-nav-item.active');
             if (_initNav) tcNavSelect(_initNav, 0);
