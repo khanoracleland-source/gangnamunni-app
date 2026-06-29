@@ -47,7 +47,7 @@ if (!isset($THEME_SETTINGS) || empty($THEME_SETTINGS)) {
 }
 
 $site_name = getTheme('site_name', site_name());
-$site_logo_path = getTheme('site_logo_path', 'assets/images/logo_128.png');
+$site_logo_path = 'assets/images/logo_129.jpg';
 $login_btn_bg = getTheme('login_button_bg', '#AE1932');
 $login_btn_text = getTheme('login_button_text', '#FFFFFF');
 

@@ -46,6 +46,19 @@ if (!$is_logged_in) {
     $mb_level = $member['mb_level'] ?? 1;
 }
 
+// 프로필 사진 확인
+$profile_photo_url = null;
+if ($is_logged_in) {
+    $profile_photo_dir = __DIR__ . '/uploads/profile/';
+    foreach (['jpg', 'jpeg', 'png', 'webp'] as $_ext) {
+        $_path = $profile_photo_dir . $mb_id . '.' . $_ext;
+        if (file_exists($_path)) {
+            $profile_photo_url = 'uploads/profile/' . $mb_id . '.' . $_ext . '?v=' . filemtime($_path);
+            break;
+        }
+    }
+}
+
 // 로그인 상태에서만 DB 조회
 if ($is_logged_in):
 
@@ -371,7 +384,13 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 <?php if ($is_logged_in): ?>
 <!-- 프로필 섹션: 이름 + 화살표 (클릭 시 프로필 수정) -->
 <a href="profile_edit.php" class="profile-section">
-    <div class="profile-avatar"><?php echo mb_substr($mb_nick, 0, 1); ?></div>
+    <div class="profile-avatar" style="<?php echo $profile_photo_url ? 'background:#D9D9D9;overflow:hidden;padding:0;' : ''; ?>">
+        <?php if ($profile_photo_url): ?>
+            <img src="<?php echo htmlspecialchars($profile_photo_url); ?>" alt="프로필" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+        <?php else: ?>
+            <?php echo mb_substr($mb_nick, 0, 1); ?>
+        <?php endif; ?>
+    </div>
     <div class="profile-info-wrap">
         <div class="profile-name"><?php echo htmlspecialchars($mb_nick); ?></div>
     </div>
