@@ -265,10 +265,10 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 .profile-arrow { color:#000; font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
 /* 메뉴 섹션 */
-.menu-section { background:var(--bs-body-bg, #fff); border-radius:0; margin-bottom:20px; margin-left: 20px; padding:20px; }
+.menu-section { background:var(--bs-body-bg, #fff); border-radius:0; margin-bottom:20px; padding:20px; }
 .menu-section:last-of-type { margin-bottom:0; }
 .menu-section-title {
-    padding:0 0 8px; font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; color:var(--color-inactive, #979797); letter-spacing:0.02em;
+    width:100%; padding:0 0 8px; font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; color:var(--color-inactive, #979797); letter-spacing:0.02em;
 }
 .menu-row {
     display:flex; align-items:center; gap:14px;
@@ -321,7 +321,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 .advertisement-section {
     padding: 20px;
     margin-bottom: 8px;
-    margin-left: 20px;
+    background: #fff;
     display: flex;
     flex-direction: column;
     gap: 4px;
