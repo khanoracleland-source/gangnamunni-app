@@ -269,7 +269,7 @@ console.groupEnd();
                 </div>
                 <div class="detail-btns">
                     <button class="detail-btn">상세보기</button>
-                    <button class="detail-btn">다기예약</button>
+                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">다시예약</a>
                 </div>
             </div>
             <div class="booking-actions">
@@ -329,10 +329,10 @@ console.groupEnd();
                 </div>
                 <div class="detail-btns">
                     <?php if ($bk['status'] === 'completed'): ?>
-                    <button class="detail-btn">다시예약</button>
+                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">다시예약</a>
                     <?php else: ?>
                     <button class="detail-btn">상세보기</button>
-                    <button class="detail-btn">다시예약</button>
+                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">다시예약</a>
                     <?php endif; ?>
                 </div>
             </div>
