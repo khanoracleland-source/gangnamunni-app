@@ -130,14 +130,15 @@ $page_title = '내 예약';
             --color-border: #333;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--color-bg-light); color: var(--color-text); padding-bottom: 80px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--color-bg); color: var(--color-text); padding-bottom: 80px; }
         .container { max-width: 640px; margin: 0 auto; }
 
+        .header{position:relative;padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bs-border-color,#eee);background:var(--bs-body-bg,#fff);}
+        .header .back{width:36px;height:36px;border:none;background:none;font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1));cursor:pointer;color:inherit;}
+        .header h1{position:absolute;left:50%;transform:translateX(-50%);font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;}
+
+
         /* 검색 */
-        .search-section { background: var(--color-bg); padding: 16px 20px; border-bottom: 1px solid var(--color-border); }
-        .search-form { display: flex; gap: 8px; }
-        .search-input { flex: 1; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: 8px; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); background: var(--color-bg-light); color: inherit; }
-        .search-btn { padding: 10px 20px; border: none; border-radius: 8px; background: var(--color-primary); color: white; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); cursor: pointer; white-space: nowrap; }
 
         /* 탭 */
         .tabs { display: flex; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
@@ -147,20 +148,27 @@ $page_title = '내 예약';
         .tab-content.active { display: block; }
 
         /* 예약 카드 */
-        .booking-card { background: var(--color-bg); margin: 8px 12px; border-radius: 12px; padding: 16px; border: 1px solid var(--color-border); }
+        .booking-card { background: var(--color-bg); margin: 8px 12px; padding: 16px; }
         .booking-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         .booking-hospital-img { width: 40px; height: 40px; border-radius: 8px; background: var(--color-bg-light); display: flex; align-items: center; justify-content: center; font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1)); overflow: hidden; flex-shrink: 0; }
         .booking-hospital-img img { width: 100%; height: 100%; object-fit: cover; }
-        .booking-hospital-name { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; }
-        .booking-status { font-size: calc(11px * var(--fs-scale,1) * var(--fs-page,1)); padding: 2px 8px; border-radius: 10px; font-weight: 600; margin-left: auto; }
+        .booking-hospital-name, .booking-date { font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; }
+        .booking-status { display: inline-block; font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; margin-top: 10px; }
         .status-pending { background: #fef3c7; color: #92400e; }
         .status-confirmed { background: #dbeafe; color: #1e40af; }
         .status-completed { background: #d1fae5; color: #065f46; }
-        .status-cancelled { background: #fee2e2; color: #991b1b; }
+        .status-cancelled { color: #991b1b;}
         .status-no_show { background: #f3f4f6; color: #6b7280; }
 
-        .booking-detail { font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--color-text-secondary); line-height: 1.8; }
+        .booking-detail-row { display: flex; align-items: center; gap: 8px; }
+        .booking-detail { font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--color-text-secondary); line-height: 1.8; background: #F2F2F2; width: 60%; min-width: 0; }
         .booking-detail i { width: 18px; display: inline-block; }
+        .detail-1 { font-size: 15px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .detail-2 { font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .detail-btns { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+        .detail-btn { padding: 8px 4px; border-radius: 6px; font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; text-align: center; border: none; background: var(--color-bg); color: var(--color-text); flex: 1; }
+        @media (max-width: 399px) { .detail-btns { flex-direction: column; } }
+        @media (min-width: 400px) { .detail-btns { flex-direction: row; } }
 
         .booking-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); }
         .action-btn { flex: 1; padding: 8px; border-radius: 6px; font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; text-align: center; border: 1px solid var(--color-border); background: var(--color-bg-light); color: var(--color-text); }
@@ -195,7 +203,7 @@ $page_title = '내 예약';
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
 <body>
-<?php include __DIR__ . '/includes/global_nav.php'; ?>
+<div class="header"><button class="back" onclick="history.back()"><i class="bi bi-chevron-left"></i></button><h1>내 예약/결제 내역</h1></div>
 
 <script>
 console.group('[my_bookings] Debug Info');
@@ -214,25 +222,15 @@ console.groupEnd();
 <div class="container">
     <!-- 검색 (비로그인 시 또는 다른 번호 조회 시) -->
     <?php if (!$is_user_logged_in || isset($_GET['phone'])): ?>
-    <div class="search-section">
-        <form class="search-form" method="GET">
-            <input type="tel" name="phone" class="search-input" placeholder="전화번호를 입력하세요"
-                   value="<?php echo htmlspecialchars($search_phone); ?>">
-            <button type="submit" class="search-btn"><i class="bi bi-search"></i> 조회</button>
-        </form>
-    </div>
-    <?php elseif ($is_user_logged_in): ?>
-    <div class="search-section" style="text-align:center;padding:12px 20px;">
-        <span style="font-size:13px;color:var(--color-text-secondary);"><i class="bi bi-person-check"></i> <?php echo htmlspecialchars($logged_member['mb_name'] ?? ''); ?>님의 예약 내역</span>
-    </div>
+   
     <?php endif; ?>
 
     <?php if (!empty($bookings)): ?>
     <!-- 탭 -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('active')">시술예정 (<?php echo count($upcoming_bookings); ?>)</button>
-        <button class="tab-btn" onclick="switchTab('completed')">시술완료 (<?php echo count($completed_bookings); ?>)</button>
-        <button class="tab-btn" onclick="switchTab('cancelled')">예약취소 (<?php echo count($cancelled_bookings); ?>)</button>
+        <button class="tab-btn active" onclick="switchTab('active')">시술예정</button>
+        <button class="tab-btn" onclick="switchTab('completed')">시술완료</button>
+        <button class="tab-btn" onclick="switchTab('cancelled')">예약취소</button>
     </div>
 
     <!-- 진행중 -->
@@ -249,25 +247,30 @@ console.groupEnd();
         ?>
         <div class="booking-card" id="card-<?php echo $bk['id']; ?>" data-status="<?php echo $bk['status']; ?>">
             <div class="booking-header">
-                <div class="booking-hospital-img">
-                    <?php if (!empty($bk['hospital_image'])): ?>
-                    <img src="<?php echo htmlspecialchars($bk['hospital_image']); ?>" alt="">
-                    <?php else: ?>🏥<?php endif; ?>
-                </div>
                 <div>
-                    <div class="booking-hospital-name"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                    <div class="booking-date"><?php
+                        $_days_ko = ['일','월','화','수','목','금','토'];
+                        $_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
+                        $_dow = $_days_ko[(int)date('w', $_ts)];
+                        $_h = (int)date('G', $_ts);
+                        $_ampm = $_h < 12 ? '오전' : '오후';
+                        $_h12 = $_h % 12; if ($_h12 === 0) $_h12 = 12;
+                        echo date('Y.n.j', $_ts) . '(' . $_dow . ') ' . $_ampm . ' ' . $_h12 . ':' . date('i', $_ts);
+                    ?></div>
+                    <span class="booking-status <?php echo $status_class; ?>"><?php echo $status_label; ?></span>
                 </div>
-                <span class="booking-status <?php echo $status_class; ?>"><?php echo $status_label; ?></span>
             </div>
-            <div class="booking-detail">
-                <div><i class="bi bi-calendar3"></i> <?php echo date('Y년 m월 d일', strtotime($bk['booking_date'])); ?> <?php echo substr($bk['booking_time'], 0, 5); ?></div>
-                <?php if (!empty($bk['treatment'])): ?>
-                <div><i class="bi bi-clipboard2-pulse"></i> <?php echo htmlspecialchars($bk['treatment']); ?></div>
-                <?php endif; ?>
-                <?php if (!empty($bk['memo'])): ?>
-                <div><i class="bi bi-chat-left-text"></i> <?php echo htmlspecialchars(mb_substr($bk['memo'], 0, 50)); ?></div>
-                <?php endif; ?>
-                <div style="font-size:11px;color:#aaa;margin-top:4px;">예약번호: #<?php echo $bk['id']; ?> · <?php echo date('m/d H:i', strtotime($bk['created_at'])); ?> 접수</div>
+            <div class="booking-detail-row">
+                <div class="booking-detail">
+                    <?php if (!empty($bk['treatment'])): ?>
+                    <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
+                    <?php endif; ?>
+                    <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                </div>
+                <div class="detail-btns">
+                    <button class="detail-btn">상세보기</button>
+                    <button class="detail-btn">다기예약</button>
+                </div>
             </div>
             <div class="booking-actions">
                 <a href="detail.php?id=<?php echo $bk['hospital_id']; ?>" class="action-btn hospital">
@@ -299,31 +302,39 @@ console.groupEnd();
         <?php else: ?>
         <?php foreach ($past_bookings as $bk):
             $status_class = 'status-' . $bk['status'];
-            $status_labels = ['completed'=>'완료','cancelled'=>'취소됨','no_show'=>'노쇼'];
+            $status_labels = ['completed'=>'완료','cancelled'=>'취소완료','no_show'=>'노쇼'];
             $status_label = $status_labels[$bk['status']] ?? $bk['status'];
         ?>
         <div class="booking-card" data-status="<?php echo $bk['status']; ?>">
             <div class="booking-header">
-                <div class="booking-hospital-img">
-                    <?php if (!empty($bk['hospital_image'])): ?>
-                    <img src="<?php echo htmlspecialchars($bk['hospital_image']); ?>" alt="">
-                    <?php else: ?>🏥<?php endif; ?>
-                </div>
                 <div>
-                    <div class="booking-hospital-name"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                    <div class="booking-date"><?php
+                        $_days_ko = ['일','월','화','수','목','금','토'];
+                        $_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
+                        $_dow = $_days_ko[(int)date('w', $_ts)];
+                        $_h = (int)date('G', $_ts);
+                        $_ampm = $_h < 12 ? '오전' : '오후';
+                        $_h12 = $_h % 12; if ($_h12 === 0) $_h12 = 12;
+                        echo date('Y.n.j', $_ts) . '(' . $_dow . ') ' . $_ampm . ' ' . $_h12 . ':' . date('i', $_ts);
+                    ?></div>
+                    <span class="booking-status <?php echo $status_class; ?>"><?php echo $status_label; ?></span>
                 </div>
-                <span class="booking-status <?php echo $status_class; ?>"><?php echo $status_label; ?></span>
             </div>
-            <div class="booking-detail">
-                <div><i class="bi bi-calendar3"></i> <?php echo date('Y년 m월 d일', strtotime($bk['booking_date'])); ?> <?php echo substr($bk['booking_time'], 0, 5); ?></div>
-                <?php if (!empty($bk['treatment'])): ?>
-                <div><i class="bi bi-clipboard2-pulse"></i> <?php echo htmlspecialchars($bk['treatment']); ?></div>
-                <?php endif; ?>
-            </div>
-            <div class="booking-actions">
-                <a href="detail.php?id=<?php echo $bk['hospital_id']; ?>" class="action-btn hospital">
-                    <i class="bi bi-building"></i> <?php echo term('business', '병원'); ?>보기
-                </a>
+            <div class="booking-detail-row">
+                <div class="booking-detail">
+                    <?php if (!empty($bk['treatment'])): ?>
+                    <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
+                    <?php endif; ?>
+                    <div class="detail-1"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                </div>
+                <div class="detail-btns">
+                    <?php if ($bk['status'] === 'completed'): ?>
+                    <button class="detail-btn">다시예약</button>
+                    <?php else: ?>
+                    <button class="detail-btn">상세보기</button>
+                    <button class="detail-btn">다시예약</button>
+                    <?php endif; ?>
+                </div>
             </div>
             <?php if (!empty($bk['cancel_reason'])): ?>
             <div class="cancel-reason">취소 사유: <?php echo htmlspecialchars($bk['cancel_reason']); ?></div>
