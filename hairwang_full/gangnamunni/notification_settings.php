@@ -106,6 +106,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 
 </form>
 
+<div id="toast" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;z-index:9999;">저장되었습니다</div>
+
+<script>
+document.querySelectorAll('form input[type="checkbox"]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        var form = document.querySelector('form');
+        var data = new FormData(form);
+        // checkbox o'chirilganda FormData ga qo'shilmaydi — 0 qiymat bilan qo'shamiz
+        form.querySelectorAll('input[type="checkbox"]').forEach(function(c) {
+            if (!c.checked) data.set(c.name, '0');
+        });
+        fetch('', { method: 'POST', body: data })
+            .then(function() {
+                var toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                setTimeout(function() { toast.style.display = 'none'; }, 1500);
+            });
+    });
+});
+</script>
+
 <div class="service-section" style="margin-top:10px;margin-bottom:30px;">
     <div class="section-label">계정 관리</div>
     <a href="#" class="service-item" style="border-bottom:none;color:#e53935;" onclick="return confirm('정말 탈퇴하시겠습니까?')">
