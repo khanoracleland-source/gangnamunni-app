@@ -200,7 +200,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 }
 
 .user-menu-divider {
-    color: #ddd;
+    color: #999;
     font-size: 10px;
 }
 
@@ -251,7 +251,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     }
 
     .user-menu-divider {
-        display: none;
+        display: inline;
     }
 }
 
@@ -331,8 +331,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <?php if ($is_logged_in): ?>
         <div class="user-menu">
             <span class="user-nick"><?php echo htmlspecialchars($member_nick); ?>님</span>
-            <span class="user-menu-divider">|</span>
-            <a href="mypage.php" class="user-menu-link">마이</a>
             <span class="user-menu-divider">|</span>
             <a href="<?php echo htmlspecialchars($logout_url); ?>" class="user-menu-link">로그아웃</a>
         </div>
