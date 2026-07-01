@@ -96,6 +96,19 @@ $categories = json_decode($hospital['categories'] ?? '[]', true);
 if (!is_array($categories)) {
     $categories = array_filter(array_map('trim', explode(',', $hospital['categories'] ?? '')));
 }
+
+// gangnamunni_treatment_categories(19개 대분류) 이름 목록 — hospital-specialty 각 단계 매칭에 재사용
+$tc_names = [];
+$tc_r = mysqli_query($connect, "SELECT name FROM gangnamunni_treatment_categories WHERE is_active = 1");
+if ($tc_r) {
+    while ($tc_row = mysqli_fetch_assoc($tc_r)) {
+        $tc_names[] = $tc_row['name'];
+    }
+}
+
+// $categories 값을 treatment_categories와 매칭 — 정확히 일치하는 이름만 사용
+$matched_treatment_categories = !empty($categories) ? array_values(array_intersect($categories, $tc_names)) : [];
+
 $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true) ?: [];
 $subway_names = json_decode($hospital['subway_names'] ?? '[]', true) ?: [];
 $business_hours_raw = json_decode($hospital['business_hours'] ?? '{}', true) ?: [];
@@ -1506,7 +1519,7 @@ function extractImageFromHtml($file_path) {
                 $specs[] = $spec_map[strtolower($raw)] ?? $raw;
             }
             mysqli_stmt_close($spec_stmt1);
-            $specs = array_unique($specs);
+            $specs = array_values(array_intersect(array_unique($specs), $tc_names));
             $spec_text = implode(', ', array_slice($specs, 0, 3));
         }
         if (empty($spec_text)) {
@@ -1518,18 +1531,17 @@ function extractImageFromHtml($file_path) {
                 $specs2 = [];
                 while ($sp = mysqli_fetch_assoc($spec_result2)) { $specs2[] = $sp['specialty']; }
                 mysqli_stmt_close($spec_stmt2);
+                $specs2 = array_values(array_intersect($specs2, $tc_names));
                 $spec_text = implode(', ', $specs2);
             }
         }
-        if (empty($spec_text)) {
-            $cats = json_decode($hospital['categories'] ?? '[]', true);
-            if (!empty($cats) && is_array($cats)) {
-                $spec_text = implode(', ', array_slice($cats, 0, 3));
-            }
+        if (empty($spec_text) && !empty($matched_treatment_categories)) {
+            $spec_text = implode(', ', array_slice($matched_treatment_categories, 0, 3));
         }
         if (empty($spec_text) && !empty($hospital['description'])) {
             if (preg_match_all('/([가-힣]+과)/u', $hospital['description'], $m)) {
                 $filtered = array_filter(array_unique($m[1]), function($v) { return mb_strlen($v) >= 3 && mb_strlen($v) <= 8; });
+                $filtered = array_intersect(array_values($filtered), $tc_names);
                 if (!empty($filtered)) $spec_text = implode(', ', array_slice(array_values($filtered), 0, 3));
             }
         }
