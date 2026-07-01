@@ -91,8 +91,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bm = get_gangnamunni_member();
             $booking_mb_id = $bm['mb_id'] ?? '';
         }
+
+        // 선택된 시술의 가격 조회 (신 테이블 우선, 없으면 구 테이블)
+        $booking_price = null;
+        $price_stmt = mysqli_prepare($connect, "SELECT avg_price_min FROM gangnamunni_treatment_master WHERE hospital_id = ? AND name = ? LIMIT 1");
+        if ($price_stmt) {
+            mysqli_stmt_bind_param($price_stmt, 'is', $hospital_id, $treatment);
+            mysqli_stmt_execute($price_stmt);
+            $price_row = mysqli_stmt_get_result($price_stmt)->fetch_assoc();
+            if (!empty($price_row['avg_price_min'])) {
+                $booking_price = (int) $price_row['avg_price_min'];
+            }
+            mysqli_stmt_close($price_stmt);
+        }
+        if ($booking_price === null) {
+            $price_stmt2 = mysqli_prepare($connect, "SELECT price FROM gangnamunni_treatments WHERE hospital_id = ? AND name = ? LIMIT 1");
+            if ($price_stmt2) {
+                mysqli_stmt_bind_param($price_stmt2, 'is', $hospital_id, $treatment);
+                mysqli_stmt_execute($price_stmt2);
+                $price_row2 = mysqli_stmt_get_result($price_stmt2)->fetch_assoc();
+                if (!empty($price_row2['price'])) {
+                    $booking_price = (int) $price_row2['price'];
+                }
+                mysqli_stmt_close($price_stmt2);
+            }
+        }
+
         $insert_query = "INSERT INTO gangnamunni_bookings
-                        (hospital_id, hospital_name, name, phone, mb_id, treatment, booking_date, booking_time, memo, created_at)
+                        (hospital_id, hospital_name, name, phone, mb_id, treatment, booking_date, booking_time, memo, price, created_at)
                         VALUES (
                             {$hospital_id},
                             '" . mysqli_real_escape_string($connect, $hospital['name']) . "',
@@ -103,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             '" . mysqli_real_escape_string($connect, $date) . "',
                             '" . mysqli_real_escape_string($connect, $time) . "',
                             '" . mysqli_real_escape_string($connect, $memo) . "',
+                            " . ($booking_price !== null ? $booking_price : 'NULL') . ",
                             NOW()
                         )";
 

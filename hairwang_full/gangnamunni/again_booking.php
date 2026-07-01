@@ -27,39 +27,6 @@ if ($booking_id > 0) {
 }
 
 $page_title = '다시 예약';
-
-// Form submit
-$submit_error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_datetime'])) {
-    $new_dt    = $_POST['new_datetime'];
-    $new_date  = date('Y-m-d', strtotime($new_dt));
-    $new_time  = date('H:i:s', strtotime($new_dt));
-    $h_id      = intval($_POST['hospital_id'] ?? 0);
-    $h_name    = $_POST['hospital_name'] ?? '';
-    $p_name    = $_POST['booker_name'] ?? '';
-    $p_phone   = $_POST['booker_phone'] ?? '';
-    $p_mb_id   = $_POST['booker_mb_id'] ?? '';
-    $p_treat   = $_POST['treatment'] ?? '';
-    $p_memo    = $_POST['memo'] ?? '';
-
-    $new_hour = (int)date('H', strtotime($new_dt));
-    if (empty($new_dt) || !$h_id) {
-        $submit_error = '날짜/시간을 선택해 주세요.';
-    } elseif ($new_hour < 10 || $new_hour >= 17) {
-        $submit_error = '예약 가능 시간은 오전 10시 ~ 오후 5시입니다.';
-    } else {
-        $stmt_ins = $connect->prepare("INSERT INTO gangnamunni_bookings (hospital_id, hospital_name, name, phone, mb_id, treatment, booking_date, booking_time, memo, created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())");
-        $stmt_ins->bind_param('issssssss', $h_id, $h_name, $p_name, $p_phone, $p_mb_id, $p_treat, $new_date, $new_time, $p_memo);
-        if ($stmt_ins->execute()) {
-            $stmt_ins->close();
-            header('Location: my_bookings.php?rebooked=1');
-            exit;
-        } else {
-            $submit_error = '예약 처리 중 오류가 발생했습니다.';
-            $stmt_ins->close();
-        }
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="light">
@@ -117,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_datetime'])) {
         .cancel-reason-box { margin-top: 10px; padding: 10px 12px; background: #fef2f2; border-radius: 8px; font-size: 13px; color: #991b1b; }
         .refund-notice { margin: 20px auto; width: 90%; background: var(--color-bg-light); border-radius: 10px; padding: 16px; }
         .refund-notice p { font-size: 12px; color: var(--color-text-secondary); line-height: 1.8; }
-        .btn-rebook { display: block; width: 90%; margin: 24px auto; padding: 16px; background: #AE1932; color: #fff; font-size: 17px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; text-align: center; }
+        .btn-rebook { display: block; width: 90%; margin: 24px auto; padding: 16px; background: #AE1932; color: #fff; font-size: 17px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; text-align: center; text-decoration: none; }
     </style>
     <script>
         (function(){
@@ -135,18 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_datetime'])) {
         <h1>취소/환불 내역</h1>
     </div>
 
-    <?php if ($submit_error): ?>
-    <div style="margin: 12px 30px; padding: 12px; background: #fef2f2; border-radius: 8px; color: #991b1b; font-size: 14px;"><?php echo htmlspecialchars($submit_error); ?></div>
-    <?php endif; ?>
-
-    <form method="POST">
-    <input type="hidden" name="hospital_id"   value="<?php echo $prev_booking['hospital_id'] ?? ''; ?>">
-    <input type="hidden" name="hospital_name" value="<?php echo htmlspecialchars($prev_booking['hospital_name'] ?? ''); ?>">
-    <input type="hidden" name="booker_name"   value="<?php echo htmlspecialchars($prev_booking['name'] ?? ''); ?>">
-    <input type="hidden" name="booker_phone"  value="<?php echo htmlspecialchars($prev_booking['phone'] ?? ''); ?>">
-    <input type="hidden" name="booker_mb_id"  value="<?php echo htmlspecialchars($prev_booking['mb_id'] ?? ''); ?>">
-    <input type="hidden" name="treatment"     value="<?php echo htmlspecialchars($prev_booking['treatment'] ?? ''); ?>">
-    <input type="hidden" name="memo"          value="<?php echo htmlspecialchars($prev_booking['memo'] ?? ''); ?>">
+    <div>
 
     <!-- 취소완료 섹션 -->
     <div class="section">
@@ -157,8 +113,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_datetime'])) {
                 <div class="value"><?php echo $prev_booking ? '#' . $prev_booking['id'] : '-'; ?></div>
             </div>
             <div class="detail-row">
-                <label>날짜/시간</label>
-                <input type="datetime-local" id="new_datetime" name="new_datetime" min="<?php echo date('Y-m-d\TH:i'); ?>">
+                <label>환불일시</label>
+                <div class="value"><?php
+                    if (!empty($prev_booking['cancelled_at'])) {
+                        $_days_ko = ['일','월','화','수','목','금','토'];
+                        $_ts = strtotime($prev_booking['cancelled_at']);
+                        $_dow = $_days_ko[(int)date('w', $_ts)];
+                        $_h = (int)date('G', $_ts);
+                        $_ampm = $_h < 12 ? '오전' : '오후';
+                        $_h12 = $_h % 12; if ($_h12 === 0) $_h12 = 12;
+                        echo date('Y.n.j', $_ts) . '(' . $_dow . ') ' . $_ampm . ' ' . $_h12 . ':' . date('i', $_ts);
+                    } else { echo '-'; }
+                ?></div>
             </div>
             <div class="detail-row">
                 <label>선택시술</label>
@@ -245,17 +211,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_datetime'])) {
 
     </div>
 
-    <button type="submit" class="btn-rebook">다시예약</button>
+    <a href="booking.php?id=<?php echo (int)$hospital_id; ?>" class="btn-rebook">다시예약</a>
 
-    </form>
-    <script>
-        document.querySelector('form').addEventListener('submit', function(e) {
-            var dt = document.getElementById('new_datetime').value;
-            if (!dt) { e.preventDefault(); alert('날짜/시간을 선택해 주세요.'); return; }
-            var h = new Date(dt).getHours();
-            if (h < 10 || h >= 17) { e.preventDefault(); alert('예약 가능 시간은 오전 10시 ~ 오후 5시입니다.'); }
-        });
-    </script>
+    </div>
 
 </div>
 
