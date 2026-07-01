@@ -105,20 +105,34 @@ if (!empty($hospitals)) {
     $h_ids = array_column($hospitals, 'id');
     $h_ids_str = implode(',', array_map('intval', $h_ids));
     // [1차 검수 #5 - 2026-05-28] 대표 시술 가격(price_min) 함께 조회
-    $_td_sql = "
-        SELECT sub.hospital_id, sub.treatment_name, sub.description, sub.price_min, sub.price_max
-        FROM (
-            SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max,
-                   ROW_NUMBER() OVER (PARTITION BY ht.hospital_id ORDER BY ht.is_promoted DESC, ht.price_min ASC, tm.popularity_score DESC) AS rn
+    // ?treatment= 검색 중이면 해당 병원에서 "가장 저렴한 시술"이 아니라
+    // 검색한 그 시술의 가격을 정확히 보여줘야 함
+    if (!empty($treatment)) {
+        $_td_sql = "
+            SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max
             FROM gangnamunni_hospital_treatments ht
             INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
             WHERE ht.hospital_id IN ({$h_ids_str})
               AND ht.status = 'active'
               AND tm.is_active = 1
-              AND tm.description IS NOT NULL
-              AND tm.description != ''
-        ) sub WHERE sub.rn = 1
-    ";
+              AND tm.name = '{$escaped_treatment}'
+        ";
+    } else {
+        $_td_sql = "
+            SELECT sub.hospital_id, sub.treatment_name, sub.description, sub.price_min, sub.price_max
+            FROM (
+                SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max,
+                       ROW_NUMBER() OVER (PARTITION BY ht.hospital_id ORDER BY ht.is_promoted DESC, ht.price_min ASC, tm.popularity_score DESC) AS rn
+                FROM gangnamunni_hospital_treatments ht
+                INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
+                WHERE ht.hospital_id IN ({$h_ids_str})
+                  AND ht.status = 'active'
+                  AND tm.is_active = 1
+                  AND tm.description IS NOT NULL
+                  AND tm.description != ''
+            ) sub WHERE sub.rn = 1
+        ";
+    }
     $_td_result = mysqli_query($connect, $_td_sql);
     if ($_td_result) {
         while ($_td_row = mysqli_fetch_assoc($_td_result)) {

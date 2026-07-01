@@ -778,7 +778,7 @@ body.ae-active { padding-top:0 !important; }
             }
         }
         ?>
-        <div class="tc-table-wrap" style="height:400px; overflow:hidden; width:100%; margin:0 auto; margin-bottom:15px;">
+        <div class="tc-table-wrap" style="overflow:hidden; width:100%; margin:0 auto; margin-bottom:15px;">
         <?php if ($tc_table_mode === 'row'): ?>
         <!-- 모드B: 행별 독립 스크롤 -->
         <div class="tc-table tc-mode-row" style="background:var(--bs-body-bg, #fff);border-radius:0;overflow:hidden;border:1px solid #D5D5D5;">
@@ -850,6 +850,10 @@ body.ae-active { padding-top:0 !important; }
 
         <style>
         /* ===== 시술 카테고리 테이블 공통 ===== */
+        .tc-table-wrap { height: 340px; }
+        @media (min-width: 801px) {
+            .tc-table-wrap { height: 400px; }
+        }
         .tc-chip {
             display: inline-block; padding: calc(6px * var(--cat-scale,1) * var(--cat-pad,1)) calc(14px * var(--cat-scale,1) * var(--cat-chip,1)); background: var(--bs-body-bg, #fff);
             border-radius: 13px; color: #111; text-decoration: none;
