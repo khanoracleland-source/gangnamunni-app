@@ -52,7 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $categories = !empty($categories_raw) ? json_encode(explode(',', $categories_raw), JSON_UNESCAPED_UNICODE) : '[]';
     $treatment_tags_raw = trim($_POST['treatment_tags'] ?? '');
     $treatment_tags = !empty($treatment_tags_raw) ? json_encode(explode(',', $treatment_tags_raw), JSON_UNESCAPED_UNICODE) : '[]';
-    $business_hours = trim($_POST['business_hours'] ?? '');
+    $business_hours_text = trim($_POST['business_hours'] ?? '');
+    // gangnamunni_hospitals.business_hours 컬럼은 JSON 형식만 허용하는 DB 제약(CHECK)이 있음
+    $business_hours = !empty($business_hours_text) ? json_encode(['note' => $business_hours_text], JSON_UNESCAPED_UNICODE) : '{}';
     $description = trim($_POST['description'] ?? '');
     $website = trim($_POST['website'] ?? '');
     $sns_url = trim($_POST['sns_url'] ?? '');
@@ -199,8 +201,30 @@ if (!empty($applied_by_check)) {
     }
 }
 
-// 카테고리 목록
-$category_list = defined('CATEGORIES') ? CATEGORIES : ['코','눈','지방흡입','가슴성형','치아','리프팅','주름/미백','쁘띠','모발이식','제모','남성','눈성형'];
+// 진료과목 체크박스 목록 — gangnamunni_treatment_master에서 동적 로드 (전체 시술, category_id 포함)
+// 주요 시술(카테고리)에서 선택한 항목에 따라 관련 진료과목만 표시하기 위해 category_id를 함께 가져옴
+$category_list = [];
+$cat_r = mysqli_query($connect, "SELECT name, category_id FROM gangnamunni_treatment_master WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
+if ($cat_r) {
+    while ($cat_row = mysqli_fetch_assoc($cat_r)) {
+        $category_list[] = ['name' => $cat_row['name'], 'category_id' => (int)$cat_row['category_id']];
+    }
+}
+if (empty($category_list)) {
+    $fallback_cats = defined('CATEGORIES') ? CATEGORIES : ['코','눈','지방흡입','가슴성형','치아','리프팅','주름/미백','쁘띠','모발이식','제모','남성','눈성형'];
+    foreach ($fallback_cats as $fc) {
+        $category_list[] = ['name' => $fc, 'category_id' => 0];
+    }
+}
+
+// 주요 시술 체크박스 목록 — gangnamunni_treatment_categories에서 동적 로드 (id 포함)
+$treatment_tag_list = [];
+$tt_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_treatment_categories WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
+if ($tt_r) {
+    while ($tt_row = mysqli_fetch_assoc($tt_r)) {
+        $treatment_tag_list[] = ['id' => (int)$tt_row['id'], 'name' => $tt_row['name']];
+    }
+}
 
 require_once __DIR__ . '/includes/admin_header.php';
 ?>
@@ -290,22 +314,34 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <input type="text" name="address" class="form-control" required maxlength="500" placeholder="도로명 주소를 입력하세요" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
                     </div>
                     <div class="col-12">
+                        <label class="form-label fw-semibold">주요 시술 <span class="text-danger">*</span></label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <?php
+                            $sel_tags = isset($_POST['treatment_tags']) ? explode(',', $_POST['treatment_tags']) : [];
+                            foreach ($treatment_tag_list as $tag): ?>
+                            <div class="form-check">
+                                <input class="form-check-input tag-check" type="checkbox" value="<?= htmlspecialchars($tag['name']) ?>" data-cat-id="<?= $tag['id'] ?>" id="tag_<?= md5($tag['name']) ?>" <?= in_array($tag['name'], $sel_tags) ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="tag_<?= md5($tag['name']) ?>"><?= htmlspecialchars($tag['name']) ?></label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <input type="hidden" name="treatment_tags" id="treatmentTagsInput">
+                        <div class="form-text">주요 시술을 선택하면 아래 진료과목 목록이 갱신됩니다.</div>
+                    </div>
+                    <div class="col-12">
                         <label class="form-label fw-semibold">진료과목 <span class="text-danger">*</span></label>
+                        <div id="treatmentPlaceholder" class="text-body-secondary small mb-2">먼저 위에서 주요 시술을 선택하세요.</div>
                         <div class="d-flex flex-wrap gap-2">
                             <?php
                             $sel_cats = isset($_POST['categories']) ? explode(',', $_POST['categories']) : [];
                             foreach ($category_list as $cat): ?>
-                            <div class="form-check">
-                                <input class="form-check-input cat-check" type="checkbox" value="<?= htmlspecialchars($cat) ?>" id="cat_<?= md5($cat) ?>" <?= in_array($cat, $sel_cats) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="cat_<?= md5($cat) ?>"><?= htmlspecialchars($cat) ?></label>
+                            <div class="form-check" style="display:none;">
+                                <input class="form-check-input cat-check" type="checkbox" value="<?= htmlspecialchars($cat['name']) ?>" data-cat-id="<?= $cat['category_id'] ?>" id="cat_<?= md5($cat['name']) ?>" <?= in_array($cat['name'], $sel_cats) ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="cat_<?= md5($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></label>
                             </div>
                             <?php endforeach; ?>
                         </div>
                         <input type="hidden" name="categories" id="categoriesInput">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">주요 시술 (콤마로 구분)</label>
-                        <input type="text" name="treatment_tags" class="form-control" placeholder="예: 코성형, 눈성형, 지방흡입" value="<?= htmlspecialchars($_POST['treatment_tags'] ?? '') ?>">
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">영업시간</label>
@@ -381,13 +417,42 @@ require_once __DIR__ . '/includes/admin_header.php';
 </div>
 
 <script>
-// 카테고리 체크박스 → hidden input 동기화
+// 주요 시술에서 선택한 카테고리에 따라 관련 진료과목만 표시
+function updateTreatmentVisibility() {
+    var selectedCatIds = [];
+    document.querySelectorAll('.tag-check:checked').forEach(function(cb) {
+        selectedCatIds.push(cb.getAttribute('data-cat-id'));
+    });
+    var anySelected = selectedCatIds.length > 0;
+
+    document.querySelectorAll('.cat-check').forEach(function(cb) {
+        var wrap = cb.closest('.form-check');
+        var show = anySelected && selectedCatIds.indexOf(cb.getAttribute('data-cat-id')) !== -1;
+        wrap.style.display = show ? '' : 'none';
+        if (!show) cb.checked = false;
+    });
+
+    var placeholder = document.getElementById('treatmentPlaceholder');
+    if (placeholder) placeholder.style.display = anySelected ? 'none' : '';
+}
+document.querySelectorAll('.tag-check').forEach(function(cb) {
+    cb.addEventListener('change', updateTreatmentVisibility);
+});
+updateTreatmentVisibility();
+
+// 카테고리 / 주요 시술 체크박스 → hidden input 동기화
 document.getElementById('applyForm')?.addEventListener('submit', function() {
     var checked = [];
     document.querySelectorAll('.cat-check:checked').forEach(function(cb) {
         checked.push(cb.value);
     });
     document.getElementById('categoriesInput').value = checked.join(',');
+
+    var checkedTags = [];
+    document.querySelectorAll('.tag-check:checked').forEach(function(cb) {
+        checkedTags.push(cb.value);
+    });
+    document.getElementById('treatmentTagsInput').value = checkedTags.join(',');
 });
 
 // 사업자등록번호 자동 포맷

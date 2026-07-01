@@ -91,7 +91,11 @@ while ($feature = mysqli_fetch_assoc($features_result)) {
 }
 
 // JSON 데이터 파싱
-$categories = json_decode($hospital['categories'] ?? '[]', true) ?: [];
+// categories는 저장 경로에 따라 JSON 배열 또는 콤마구분 문자열로 저장될 수 있음 (admin_hospitals.php와 동일한 방어 로직)
+$categories = json_decode($hospital['categories'] ?? '[]', true);
+if (!is_array($categories)) {
+    $categories = array_filter(array_map('trim', explode(',', $hospital['categories'] ?? '')));
+}
 $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true) ?: [];
 $subway_names = json_decode($hospital['subway_names'] ?? '[]', true) ?: [];
 $business_hours_raw = json_decode($hospital['business_hours'] ?? '{}', true) ?: [];
