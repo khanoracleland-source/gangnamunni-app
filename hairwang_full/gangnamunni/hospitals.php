@@ -16,6 +16,9 @@ $keyword = isset($_GET['q']) ? trim($_GET['q']) : '';
 $escaped_keyword = mysqli_real_escape_string($connect, $keyword);
 $category = isset($_GET['category']) ? trim($_GET['category']) : '';
 $escaped_category = mysqli_real_escape_string($connect, $category);
+// 특정 시술(gangnamunni_treatment_master, 103개) 기준 검색 — gangnamunni_hospital_treatments로 실제 배정된 병원만 매칭
+$treatment = isset($_GET['treatment']) ? trim($_GET['treatment']) : '';
+$escaped_treatment = mysqli_real_escape_string($connect, $treatment);
 $region = isset($_GET['region']) ? trim($_GET['region']) : '';
 // 다중 지역 지원 (콤마 구분)
 $region_list = array_filter(array_map('trim', explode(',', $region)));
@@ -77,6 +80,13 @@ if (!empty($keyword)) {
     $query .= " AND (name LIKE '%{$escaped_keyword}%' OR address LIKE '%{$escaped_keyword}%' OR treatment_tags LIKE '%{$escaped_keyword}%')";
 }
 if (!empty($category)) { $query .= " AND treatment_tags LIKE '%{$escaped_category}%'"; }
+if (!empty($treatment)) {
+    $query .= " AND id IN (
+        SELECT ht.hospital_id FROM gangnamunni_hospital_treatments ht
+        INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
+        WHERE tm.name = '{$escaped_treatment}' AND ht.status = 'active' AND tm.is_active = 1
+    )";
+}
 if (!empty($region_list)) {
     $region_conditions = [];
     foreach ($region_list as $r) {
@@ -285,23 +295,40 @@ include __DIR__ . '/includes/header.php';
         </div>
     </div>
     <script>
-    // localStorage 동기화: URL ↔ storage
+    // localStorage 동기화: URL ↔ storage (지역, 정렬 — 뒤로가기로 돌아왔을 때 이전 선택 복원)
     (function() {
         var urlParams = new URLSearchParams(window.location.search);
+        var url = new URL(window.location.href);
+        var needsRedirect = false;
+
         var regionParam = urlParams.get('region');
         if (regionParam) {
             // URL에 region 있으면 localStorage에 저장
             localStorage.setItem('sb_selected_regions', JSON.stringify(regionParam.split(',').filter(Boolean)));
         } else {
-            // URL에 region 없으면 localStorage에서 복원 후 리다이렉트
+            // URL에 region 없으면 localStorage에서 복원
             try {
-                var saved = JSON.parse(localStorage.getItem('sb_selected_regions') || '[]');
-                if (saved.length > 0) {
-                    var url = new URL(window.location.href);
-                    url.searchParams.set('region', saved.join(','));
-                    window.location.replace(url.toString());
+                var savedRegions = JSON.parse(localStorage.getItem('sb_selected_regions') || '[]');
+                if (savedRegions.length > 0) {
+                    url.searchParams.set('region', savedRegions.join(','));
+                    needsRedirect = true;
                 }
             } catch(e) {}
+        }
+
+        var sortParam = urlParams.get('sort');
+        if (sortParam) {
+            localStorage.setItem('sb_selected_sort', sortParam);
+        } else {
+            var savedSort = localStorage.getItem('sb_selected_sort');
+            if (savedSort) {
+                url.searchParams.set('sort', savedSort);
+                needsRedirect = true;
+            }
+        }
+
+        if (needsRedirect) {
+            window.location.replace(url.toString());
         }
     })();
 
@@ -405,6 +432,9 @@ include __DIR__ . '/includes/header.php';
     <div class="results-header" style="padding: 0 16px;">
         <?php if (!empty($category)): ?>
         <span style="display:inline-block;background:#AE1932;color:#fff;font-size:12px;padding:4px 10px;border-radius:12px;"><?php echo htmlspecialchars($category); ?></span>
+        <?php endif; ?>
+        <?php if (!empty($treatment)): ?>
+        <span style="display:inline-block;background:#AE1932;color:#fff;font-size:12px;padding:4px 10px;border-radius:12px;"><?php echo htmlspecialchars($treatment); ?></span>
         <?php endif; ?>
     </div>
 

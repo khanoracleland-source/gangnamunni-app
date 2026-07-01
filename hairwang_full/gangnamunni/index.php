@@ -789,7 +789,7 @@ body.ae-active { padding-top:0 !important; }
                     <button class="tc-arrow tc-arrow-l" onclick="tcRowScroll(this,-1)" aria-label="왼쪽">‹</button>
                     <div class="tc-subs">
                         <?php foreach ($subs as $sub): ?>
-                        <a href="hospitals.php?category=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
+                        <a href="hospitals.php?treatment=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
                         <?php endforeach; ?>
                     </div>
                     <button class="tc-arrow tc-arrow-r" onclick="tcRowScroll(this,1)" aria-label="오른쪽">›</button>
@@ -807,7 +807,7 @@ body.ae-active { padding-top:0 !important; }
                     <button class="tc-arrow tc-arrow-l" onclick="tcRowScroll(this,-1)" aria-label="왼쪽">‹</button>
                     <div class="tc-subs">
                         <?php foreach ($subs as $sub): ?>
-                        <a href="hospitals.php?category=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
+                        <a href="hospitals.php?treatment=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
                         <?php endforeach; ?>
                     </div>
                     <button class="tc-arrow tc-arrow-r" onclick="tcRowScroll(this,1)" aria-label="오른쪽">›</button>
@@ -829,7 +829,7 @@ body.ae-active { padding-top:0 !important; }
                 <?php $pi = 0; foreach ($treatment_categories as $major => $subs): ?>
                 <div class="tc-panel-body<?php echo $pi === 0 ? ' tc-panel-body-active' : ''; ?>" id="tcBody<?php echo $pi; ?>">
                     <?php foreach ($subs as $sub): ?>
-                    <a href="hospitals.php?category=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
+                    <a href="hospitals.php?treatment=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
                     <?php endforeach; ?>
                 </div>
                 <?php $pi++; endforeach; ?>

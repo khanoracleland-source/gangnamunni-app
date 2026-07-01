@@ -22,9 +22,6 @@ if (!empty($_SESSION['ad_admin_logged_in'])) {
         $_lp_admin = true;
     }
 }
-if ($_lp_admin) {
-    include __DIR__ . '/admin_live_panel.php';
-}
 ?>
 
 <?php

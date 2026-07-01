@@ -1453,7 +1453,7 @@ function extractImageFromHtml($file_path) {
 
     <!-- 페이지 헤더 -->
     <div class="header">
-        <a href="hospitals.php" class="back-btn">←</a>
+        <a href="hospitals.php" onclick="if (document.referrer.indexOf('hospitals.php') !== -1) { history.back(); return false; }" class="back-btn">←</a>
         <div class="hospital-name-header"><?php echo htmlspecialchars($hospital['name']); ?></div>
     </div>
 
