@@ -11,10 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-require_once dirname(__DIR__) . '/../dbconfig.php';
+// common.php를 거쳐야 그누보드의 실제 세션명(session_name)과 동일하게 세션을 읽을 수 있음
+// (dbconfig.php만 사용하면 커스텀 세션명 환경에서 로그인 세션을 못 찾는 문제 발생)
+require_once dirname(__DIR__) . '/includes/init.php';
 if (!function_exists('getSettingValue') && file_exists(dirname(__DIR__).'/includes/settings_helper.php')) require_once dirname(__DIR__).'/includes/settings_helper.php';
-$connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
-if (!$connect) {
+if (!isset($connect) || !$connect) {
     echo json_encode(['success' => false, 'message' => 'DB 연결 실패']);
     exit;
 }
@@ -26,7 +27,7 @@ $new_date = trim($_POST['new_date'] ?? '');
 $new_time = trim($_POST['new_time'] ?? '');
 $edit_reason = trim($_POST['edit_reason'] ?? '');
 
-if ($booking_id <= 0 || empty($phone) || empty($new_date) || empty($new_time)) {
+if ($booking_id <= 0 || empty($new_date) || empty($new_time)) {
     echo json_encode(['success' => false, 'message' => '필수 항목을 입력해주세요.']);
     exit;
 }
@@ -57,7 +58,6 @@ if (!$booking) {
 
 // 전화번호 일치 확인
 // [2026-06-15] 본인확인: 로그인필수 모드면 회원ID, 아니면 전화번호 (booking_require_login 설정)
-@session_start();
 $_req_login = function_exists('getSettingValue') ? (getSettingValue($connect,'booking_require_login','1')==='1') : true;
 $_phone_auth = function_exists('getSettingValue') ? (getSettingValue($connect,'booking_phone_auth','0')==='1') : false;
 $_sess_mb_id = $_SESSION['ss_mb_id'] ?? '';
@@ -67,6 +67,10 @@ if ($_req_login && !$_phone_auth) {
         exit;
     }
 } else {
+    if (empty($phone)) {
+        echo json_encode(['success' => false, 'message' => '필수 항목을 입력해주세요.']);
+        exit;
+    }
     $clean_phone = preg_replace('/[^0-9]/', '', $phone);
     $clean_db_phone = preg_replace('/[^0-9]/', '', $booking['phone']);
     if ($clean_phone !== $clean_db_phone) {

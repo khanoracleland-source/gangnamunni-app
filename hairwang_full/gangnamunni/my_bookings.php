@@ -166,7 +166,7 @@ $page_title = '내 예약';
         .detail-1 { font-size: 15px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .detail-2 { font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .detail-btns { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-        .detail-btn { padding: 8px 4px; border-radius: 6px; font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; text-align: center; border: none; background: var(--color-bg); color: var(--color-text); flex: 1; }
+        .detail-btn { padding: 8px 4px; border-radius: 6px; font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; text-align: center; border: none; background: var(--color-bg); color: var(--color-text); flex: 1; text-decoration: none; display: block; }
         @media (max-width: 399px) { .detail-btns { flex-direction: column; } }
         @media (min-width: 400px) { .detail-btns { flex-direction: row; } }
 
@@ -268,8 +268,8 @@ console.groupEnd();
                     <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
                 </div>
                 <div class="detail-btns">
-                    <button class="detail-btn">상세보기</button>
-                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">다시예약</a>
+                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">상세보기</a>
+                    <a href="booking.php?id=<?php echo $bk['hospital_id']; ?>" class="detail-btn">다시예약</a>
                 </div>
             </div>
             <div class="booking-actions">
@@ -310,7 +310,9 @@ console.groupEnd();
                 <div>
                     <div class="booking-date"><?php
                         $_days_ko = ['일','월','화','수','목','금','토'];
-                        $_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
+                        $_is_cancelled = in_array($bk['status'], ['cancelled', 'no_show']);
+                        $_dt_source = $_is_cancelled ? $bk['created_at'] : ($bk['booking_date'] . ' ' . $bk['booking_time']);
+                        $_ts = strtotime($_dt_source);
                         $_dow = $_days_ko[(int)date('w', $_ts)];
                         $_h = (int)date('G', $_ts);
                         $_ampm = $_h < 12 ? '오전' : '오후';
@@ -329,16 +331,13 @@ console.groupEnd();
                 </div>
                 <div class="detail-btns">
                     <?php if ($bk['status'] === 'completed'): ?>
-                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">다시예약</a>
+                    <a href="booking.php?id=<?php echo $bk['hospital_id']; ?>" class="detail-btn">다시예약</a>
                     <?php else: ?>
-                    <button class="detail-btn">상세보기</button>
-                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">다시예약</a>
+                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">상세보기</a>
+                    <a href="booking.php?id=<?php echo $bk['hospital_id']; ?>" class="detail-btn">다시예약</a>
                     <?php endif; ?>
                 </div>
             </div>
-            <?php if (!empty($bk['cancel_reason'])): ?>
-            <div class="cancel-reason">취소 사유: <?php echo htmlspecialchars($bk['cancel_reason']); ?></div>
-            <?php endif; ?>
         </div>
         <?php endforeach; ?>
         <?php endif; ?>
