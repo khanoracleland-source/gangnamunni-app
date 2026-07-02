@@ -111,11 +111,7 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
     <!-- 지역 선택 패널 (fixed overlay) -->
     <div id="regionPanel">
         <?php
-        $region_groups = [
-            ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원'],
-            ['인천','성남','동탄','일산','의정부'],
-            ['부산','대구','대전','청주','광주','전주','춘천','제주'],
-        ];
+        require __DIR__ . '/site_regions.php';
         foreach ($region_groups as $gi => $group): ?>
         <?php if ($gi > 0): ?><hr class="region-divider"><?php endif; ?>
         <div class="region-grid">

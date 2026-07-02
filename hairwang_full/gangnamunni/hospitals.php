@@ -99,6 +99,61 @@ $query .= " ORDER BY " . $order_clause . " LIMIT 100";
 $result = mysqli_query($connect, $query);
 if ($result) { while ($row = mysqli_fetch_assoc($result)) $hospitals[] = $row; }
 
+// 시술 키워드 광고 슬롯: 이 시술에 대해 유료로 순위를 산 병원을 리스트 최상단에 고정
+if (!empty($treatment)) {
+    $treatment_id_for_slot = 0;
+    $_tid_r = mysqli_query($connect, "SELECT id FROM gangnamunni_treatment_master WHERE name = '{$escaped_treatment}' AND is_active = 1 LIMIT 1");
+    if ($_tid_r && $_tid_row = mysqli_fetch_assoc($_tid_r)) {
+        $treatment_id_for_slot = (int)$_tid_row['id'];
+    }
+
+    $slot_hospital_ranks = []; // hospital_id => rank_position
+    if ($treatment_id_for_slot > 0) {
+        $_slot_sql = "
+            SELECT b.hospital_id, p.rank_position
+            FROM gangnamunni_ad_slot_bookings b
+            INNER JOIN gangnamunni_ad_slot_products p ON b.product_id = p.id
+            WHERE p.keyword_type = 'treatment'
+              AND p.treatment_id = {$treatment_id_for_slot}
+              AND p.is_active = 1
+              AND b.status = 'active'
+              AND b.start_date <= CURDATE()
+              AND (b.end_date IS NULL OR b.end_date >= CURDATE())
+            ORDER BY p.rank_position ASC
+        ";
+        $_slot_r = mysqli_query($connect, $_slot_sql);
+        if ($_slot_r) {
+            while ($_slot_row = mysqli_fetch_assoc($_slot_r)) {
+                $slot_hospital_ranks[(int)$_slot_row['hospital_id']] = (int)$_slot_row['rank_position'];
+            }
+        }
+    }
+
+    if (!empty($slot_hospital_ranks)) {
+        $_slot_id_list = implode(',', array_keys($slot_hospital_ranks));
+        $_slot_h_r = mysqli_query($connect, "SELECT * FROM gangnamunni_hospitals WHERE id IN ({$_slot_id_list}) AND is_active=1 AND COALESCE(is_demo,0)=0 AND (status='approved' OR status IS NULL)");
+        $_slot_h_rows = [];
+        if ($_slot_h_r) { while ($_slot_h_row = mysqli_fetch_assoc($_slot_h_r)) { $_slot_h_rows[(int)$_slot_h_row['id']] = $_slot_h_row; } }
+
+        $ad_slot_hospitals = [];
+        foreach ($slot_hospital_ranks as $_hid => $_rank) {
+            if (isset($_slot_h_rows[$_hid])) {
+                $_row = $_slot_h_rows[$_hid];
+                $_row['_ad_slot_rank'] = $_rank;
+                $ad_slot_hospitals[] = $_row;
+            }
+        }
+
+        if (!empty($ad_slot_hospitals)) {
+            // 일반 목록에서 슬롯에 이미 있는 병원을 제외해 중복 카드 방지
+            $hospitals = array_values(array_filter($hospitals, function($h) use ($slot_hospital_ranks) {
+                return !isset($slot_hospital_ranks[(int)$h['id']]);
+            }));
+            $hospitals = array_merge($ad_slot_hospitals, $hospitals);
+        }
+    }
+}
+
 // 병원별 대표 시술 설명 조회 (가장 저렴한 활성 시술 1건)
 $hospital_treatment_descs = [];
 if (!empty($hospitals)) {
@@ -532,11 +587,13 @@ foreach ($hospitals as $hospital):
                      alt="<?php echo htmlspecialchars($hospital['name']); ?>"
                      class="hospital-image"
                      onerror="this.src='<?php echo $placeholder; ?>'">
-                <?php
+                <?php if (isset($hospital['_ad_slot_rank'])): ?>
+                <span class="grade-badge grade-badge-sa">AD <?php echo (int)$hospital['_ad_slot_rank']; ?>위</span>
+                <?php else:
                 $ad_grade = $hospital['ad_grade'] ?? 'none';
                 if (in_array($ad_grade, ['S', 'A'])): ?>
                 <span class="grade-badge grade-badge-sa">AD</span>
-                <?php endif; ?>
+                <?php endif; endif; ?>
                 <div class="hospital-info">
                     <div class="hospital-name"><?php echo htmlspecialchars($hospital['name']); ?></div>
                     <div class="hospital-address">

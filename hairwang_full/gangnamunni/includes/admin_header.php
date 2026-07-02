@@ -80,6 +80,7 @@ $admin_menus = [
     // 광고 관리 그룹
     ['type' => 'group', 'label' => '광고 관리', 'icon' => 'bi-megaphone', 'key' => 'ad_management', 'children' => [
         ['url' => 'admin_ad_pricing.php', 'label' => '광고 단가 관리', 'icon' => 'bi-currency-dollar', 'key' => 'ad_pricing'],
+        ['url' => 'admin_ad_slots.php', 'label' => '광고 슬롯 관리', 'icon' => 'bi-trophy', 'key' => 'ad_slots'],
         ['url' => 'admin_ad_stats.php', 'label' => '광고 통계', 'icon' => 'bi-graph-up', 'key' => 'ad_stats'],
         ['url' => 'admin_advertisers.php', 'label' => '광고주 관리', 'icon' => 'bi-building', 'key' => 'advertisers'],
         ['url' => 'admin_ad_settings.php', 'label' => '광고·디스플레이 설정', 'icon' => 'bi-toggles', 'key' => 'ad_settings'],
@@ -317,7 +318,7 @@ $admin_menus = [
             global $connect;
             $items = [];
             if (isset($connect) && $connect) {
-                $r = mysqli_query($connect, "SELECT event_date, title, COUNT(*) as cnt FROM gangnamunni_dev_timeline GROUP BY event_date ORDER BY event_date DESC LIMIT 30");
+                $r = mysqli_query($connect, "SELECT event_date, MAX(title) AS title, COUNT(*) as cnt FROM gangnamunni_dev_timeline GROUP BY event_date ORDER BY event_date DESC LIMIT 30");
                 if ($r) {
                     while ($row = mysqli_fetch_assoc($r)) {
                         $d = $row['event_date'];
@@ -375,6 +376,7 @@ $menu_descriptions = [
     'event_entries' => '이벤트 응모/당첨 관리',
     'medicines' => '의약품 목록 조회/수정',
     'ad_pricing' => '유형별 광고 단가 관리',
+    'ad_slots' => '시술/지역 키워드별 순위 슬롯 상품 및 병원 배정 관리',
     'ad_stats' => '광고 노출/클릭/CTR 통계',
     'advertisers' => '광고주 정보/계약 관리',
     'ad_settings' => '광고 ON/OFF 12개 플래그',
