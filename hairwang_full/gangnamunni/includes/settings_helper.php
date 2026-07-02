@@ -37,6 +37,10 @@ function getAllSettings($connect, $group = '') {
 function updateSetting($connect, $key, $value) {
     $escaped_key = mysqli_real_escape_string($connect, $key);
     $escaped_val = mysqli_real_escape_string($connect, $value);
-    return mysqli_query($connect, "UPDATE gangnamunni_settings SET setting_value = '{$escaped_val}' WHERE setting_key = '{$escaped_key}'");
+    return mysqli_query($connect, "
+        INSERT INTO gangnamunni_settings (setting_key, setting_value)
+        VALUES ('{$escaped_key}', '{$escaped_val}')
+        ON DUPLICATE KEY UPDATE setting_value = '{$escaped_val}'
+    ");
 }
 ?>

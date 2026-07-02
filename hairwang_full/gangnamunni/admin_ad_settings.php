@@ -20,6 +20,11 @@ require_admin_login();
 require_once __DIR__ . '/includes/settings_helper.php';
 $all = getAllSettings($connect);
 
+// 지역 목록 (site_regions.php - 헤더 필터/광고 슬롯과 단일 소스 공유)
+require_once __DIR__ . '/includes/site_regions.php';
+$region_flat_list = [];
+foreach ($region_groups as $_rg) { foreach ($_rg as $_r) { $region_flat_list[] = $_r; } }
+
 // 탭 정의: 페이지별로 설정 그룹핑
 $tabs = [
     'main' => [
@@ -45,6 +50,10 @@ $tabs = [
             ['key'=>'ad_show_hospitals',       'label'=>'병원 페이지 배너',   'type'=>'toggle', 'ad'=>true],
             ['key'=>'ad_show_hospitals_infeed', 'label'=>'인피드 광고',       'type'=>'toggle', 'ad'=>true, 'desc'=>'병원 카드 사이 삽입 광고'],
             ['key'=>'ad_infeed_interval',      'label'=>'인피드 간격',       'type'=>'number', 'suffix'=>'번째 마다'],
+            ['key'=>'region_mix_enabled',       'label'=>'지역 노출 비율 혼합',  'type'=>'toggle', 'desc'=>'지역을 직접 필터링하지 않은 검색/목록에서, 아래 비율대로 대상 지역과 그 외 지역 결과를 섞어서 노출'],
+            ['key'=>'region_mix_target_region', 'label'=>'  └ 대상 지역',     'type'=>'select', 'options'=>$region_flat_list],
+            ['key'=>'region_mix_target_count',  'label'=>'  └ 대상 지역 개수', 'type'=>'number', 'suffix'=>'개마다'],
+            ['key'=>'region_mix_other_count',   'label'=>'  └ 그 외 지역 개수', 'type'=>'number', 'suffix'=>'개'],
         ],
     ],
     'reviews' => [
@@ -179,6 +188,13 @@ include __DIR__ . '/includes/admin_header.php';
                         <input type="number" class="form-control form-control-sm js-setting" data-key="<?php echo $key; ?>"
                                value="<?php echo htmlspecialchars($val); ?>" style="width:90px;">
                         <?php if (!empty($item['suffix'])): ?><small class="text-muted"><?php echo $item['suffix']; ?></small><?php endif; ?>
+                    <?php elseif ($type === 'select'): ?>
+                        <select class="form-select form-select-sm js-setting" data-key="<?php echo $key; ?>" style="width:140px;">
+                            <option value="">-- 선택 --</option>
+                            <?php foreach ($item['options'] as $_opt): ?>
+                            <option value="<?php echo htmlspecialchars($_opt); ?>" <?php echo $val === $_opt ? 'selected' : ''; ?>><?php echo htmlspecialchars($_opt); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     <?php elseif ($type === 'color'): ?>
                         <div class="color-group">
                             <input type="color" value="<?php echo htmlspecialchars($val ?: '#000000'); ?>"

@@ -27,6 +27,7 @@ $allowed = [
     'ad_show_index','ad_home_after_search','ad_home_after_events','promo_show_index',
     'ad_auto_scroll','ad_auto_scroll_speed','ad_infeed_interval',
     'ad_show_hospitals','ad_show_hospitals_infeed',
+    'region_mix_enabled','region_mix_target_region','region_mix_target_count','region_mix_other_count',
     'ad_show_reviews','ad_show_events','ad_show_tips','ad_show_columns','ad_show_consultation',
     'fd_ad_banner_sticky','fd_ad_banner_title','fd_header_bg_color','fd_search_border_radius',
     'fd_region_btn_bg','fd_card_border_radius','fd_chip_border_radius',

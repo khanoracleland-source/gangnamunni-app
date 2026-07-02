@@ -72,32 +72,75 @@ $list_cta    = $sv('hv_list_cta_size', '12');
 
 // 병원 검색
 $hospitals = [];
-$query = "SELECT * FROM gangnamunni_hospitals
-          WHERE is_active=1
-            AND COALESCE(is_demo, 0)=0
-            AND (status='approved' OR status IS NULL)";
+$base_where = "
+    WHERE is_active=1
+      AND COALESCE(is_demo, 0)=0
+      AND (status='approved' OR status IS NULL)";
 if (!empty($keyword)) {
-    $query .= " AND (name LIKE '%{$escaped_keyword}%' OR address LIKE '%{$escaped_keyword}%' OR treatment_tags LIKE '%{$escaped_keyword}%')";
+    $base_where .= " AND (name LIKE '%{$escaped_keyword}%' OR address LIKE '%{$escaped_keyword}%' OR treatment_tags LIKE '%{$escaped_keyword}%')";
 }
-if (!empty($category)) { $query .= " AND treatment_tags LIKE '%{$escaped_category}%'"; }
+if (!empty($category)) { $base_where .= " AND treatment_tags LIKE '%{$escaped_category}%'"; }
 if (!empty($treatment)) {
-    $query .= " AND id IN (
+    $base_where .= " AND id IN (
         SELECT ht.hospital_id FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         WHERE tm.name = '{$escaped_treatment}' AND ht.status = 'active' AND tm.is_active = 1
     )";
 }
+
 if (!empty($region_list)) {
+    // 사용자가 직접 지역을 선택한 경우 — 해당 지역만, 지역 혼합 비율 미적용
     $region_conditions = [];
     foreach ($region_list as $r) {
         $r_esc = mysqli_real_escape_string($connect, $r);
         $region_conditions[] = "address LIKE '%{$r_esc}%'";
     }
-    $query .= " AND (" . implode(' OR ', $region_conditions) . ")";
+    $query = "SELECT * FROM gangnamunni_hospitals" . $base_where
+        . " AND (" . implode(' OR ', $region_conditions) . ")"
+        . " ORDER BY " . $order_clause . " LIMIT 100";
+    $result = mysqli_query($connect, $query);
+    if ($result) { while ($row = mysqli_fetch_assoc($result)) $hospitals[] = $row; }
+} else {
+    // 지역을 직접 선택하지 않은 경우 — 설정에 따라 대상 지역/그 외 지역 비율 혼합
+    $region_mix_enabled = getSettingValue($connect, 'region_mix_enabled', '0') === '1';
+    $region_mix_target = trim(getSettingValue($connect, 'region_mix_target_region', ''));
+    $region_mix_target_count = max(1, (int) getSettingValue($connect, 'region_mix_target_count', '10'));
+    $region_mix_other_count = max(0, (int) getSettingValue($connect, 'region_mix_other_count', '5'));
+
+    if ($region_mix_enabled && $region_mix_target !== '') {
+        $target_esc = mysqli_real_escape_string($connect, $region_mix_target);
+
+        $target_query = "SELECT * FROM gangnamunni_hospitals" . $base_where
+            . " AND address LIKE '%{$target_esc}%'"
+            . " ORDER BY " . $order_clause . " LIMIT 100";
+        $target_list = [];
+        $tr_result = mysqli_query($connect, $target_query);
+        if ($tr_result) { while ($row = mysqli_fetch_assoc($tr_result)) $target_list[] = $row; }
+
+        $other_query = "SELECT * FROM gangnamunni_hospitals" . $base_where
+            . " AND address NOT LIKE '%{$target_esc}%'"
+            . " ORDER BY " . $order_clause . " LIMIT 100";
+        $other_list = [];
+        $or_result = mysqli_query($connect, $other_query);
+        if ($or_result) { while ($row = mysqli_fetch_assoc($or_result)) $other_list[] = $row; }
+
+        // 대상 지역 N개 + 그 외 지역 M개 블록을 반복하며 인터리빙, 한쪽이 소진되면 남은 쪽으로 채움
+        $ti = 0; $oi = 0;
+        while (($ti < count($target_list) || $oi < count($other_list)) && count($hospitals) < 100) {
+            for ($i = 0; $i < $region_mix_target_count && $ti < count($target_list) && count($hospitals) < 100; $i++) {
+                $hospitals[] = $target_list[$ti++];
+            }
+            for ($i = 0; $i < $region_mix_other_count && $oi < count($other_list) && count($hospitals) < 100; $i++) {
+                $hospitals[] = $other_list[$oi++];
+            }
+            if ($ti >= count($target_list) && $oi >= count($other_list)) break;
+        }
+    } else {
+        $query = "SELECT * FROM gangnamunni_hospitals" . $base_where . " ORDER BY " . $order_clause . " LIMIT 100";
+        $result = mysqli_query($connect, $query);
+        if ($result) { while ($row = mysqli_fetch_assoc($result)) $hospitals[] = $row; }
+    }
 }
-$query .= " ORDER BY " . $order_clause . " LIMIT 100";
-$result = mysqli_query($connect, $query);
-if ($result) { while ($row = mysqli_fetch_assoc($result)) $hospitals[] = $row; }
 
 // 시술 키워드 광고 슬롯: 이 시술에 대해 유료로 순위를 산 병원을 리스트 최상단에 고정
 if (!empty($treatment)) {
