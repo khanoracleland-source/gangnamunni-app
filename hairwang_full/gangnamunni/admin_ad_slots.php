@@ -154,6 +154,19 @@ if (!empty($products)) {
     if ($bk_r) { while ($brow = mysqli_fetch_assoc($bk_r)) { $active_bookings[(int)$brow['product_id']] = $brow; } }
 }
 
+// 이번 달 booking별 누적 과금액 (cron_ad_slot_daily.php가 기록)
+$booking_spend = []; // booking_id => ['total' => .., 'last_date' => ..]
+if (!empty($active_bookings)) {
+    $bid_list = implode(',', array_column($active_bookings, 'id'));
+    $sp_r = mysqli_query($connect, "
+        SELECT booking_id, SUM(amount) AS total, MAX(charge_date) AS last_date
+        FROM gangnamunni_ad_slot_charges
+        WHERE booking_id IN ({$bid_list}) AND charge_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+        GROUP BY booking_id
+    ");
+    if ($sp_r) { while ($sprow = mysqli_fetch_assoc($sp_r)) { $booking_spend[(int)$sprow['booking_id']] = $sprow; } }
+}
+
 // 통계
 $total_count = count($products);
 $active_count = 0;
@@ -305,6 +318,15 @@ include __DIR__ . '/includes/admin_header.php';
                             <?= number_format((float)($booking['wallet_balance'] ?? 0)) ?>원
                         </span>
                         <a href="?end_booking=<?= $booking['id'] ?>" class="btn btn-outline-danger btn-sm ms-1" onclick="return confirm('배정을 종료하시겠습니까?')" title="배정 종료"><i class="bi bi-x-circle"></i></a>
+                        <?php $_spend = $booking_spend[$booking['id']] ?? null; ?>
+                        <br>
+                        <span class="text-muted">이번 달 과금: </span>
+                        <?php if ($_spend): ?>
+                        <span class="text-primary"><?= number_format((float)$_spend['total']) ?>원</span>
+                        <span class="text-muted">(마지막: <?= htmlspecialchars($_spend['last_date']) ?>)</span>
+                        <?php else: ?>
+                        <span class="text-muted">아직 과금 없음</span>
+                        <?php endif; ?>
                     </div>
                     <?php else: ?>
                     <span class="text-muted small">배정된 병원 없음</span>
