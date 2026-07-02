@@ -80,7 +80,7 @@ if ($promos_result) {
 
 // 이벤트 데이터 가져오기 (진행중인 이벤트)
 $events = [];
-$events_query = "SELECT e.*, h.name as hospital_name
+$events_query = "SELECT e.*, h.name as hospital_name, h.address as hospital_address
     FROM gangnamunni_events e
     LEFT JOIN gangnamunni_hospitals h ON e.hospital_id = h.id
     WHERE e.is_active = 1
@@ -165,8 +165,8 @@ $page_css = '
     color: #000000;
 }
 .events-section .section-more {
-    font-size: 13px;
-    color: #AE1932;
+    font-size: 26px;
+    color: #000;
     text-decoration: none;
     font-weight: 500;
 }
@@ -255,22 +255,25 @@ $page_css = '
     font-weight: 400;
     color: #888888;
     margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .event-card-mini .card-price {
     display: flex;
-    align-items: center;
-    gap: 6px;
+    flex-direction: column;
+    gap: 2px;
 }
 .event-card-mini .card-price .original {
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 400;
     color: #A9A9A9;
     text-decoration: line-through;
 }
 .event-card-mini .card-price .discount {
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 700;
-    color: #000000;
+    color: #AE1932;
 }
 .event-card-mini .card-date {
     font-size: 11px;
@@ -1235,8 +1238,8 @@ body.ae-active { padding-top:0 !important; }
                         <div class="card-cat"><?php echo htmlspecialchars($event['category']); ?></div>
                         <?php endif; ?>
                         <div class="card-title"><?php echo htmlspecialchars($event['title']); ?></div>
-                        <?php if (!empty($event['hospital_name'])): ?>
-                        <div class="card-hospital"><?php echo htmlspecialchars($event['hospital_name']); ?></div>
+                        <?php if (!empty($event['hospital_address'])): ?>
+                        <div class="card-hospital"><?php echo htmlspecialchars($event['hospital_address']); ?></div>
                         <?php endif; ?>
                         <?php if (!empty($event['discount_price'])): ?>
                         <div class="card-price">
@@ -1245,9 +1248,6 @@ body.ae-active { padding-top:0 !important; }
                             <?php endif; ?>
                             <span class="discount"><?php echo number_format($event['discount_price']); ?>원</span>
                         </div>
-                        <?php endif; ?>
-                        <?php if (!empty($event['end_date'])): ?>
-                        <div class="card-date">~<?php echo date('m.d', strtotime($event['end_date'])); ?></div>
                         <?php endif; ?>
                     </div>
                 </a>
@@ -1284,8 +1284,8 @@ body.ae-active { padding-top:0 !important; }
         </div>
         <?php endif; ?>
 
-        <!-- 응모 이벤트 섹션 -->
-        <?php if (!empty($raffles)): ?>
+        <!-- 응모 이벤트 섹션 (임시 비활성화 - 필요없어질 때까지 주석 처리) -->
+        <?php if (false && !empty($raffles)): ?>
         <div class="raffle-section">
             <div class="section-header">
                 <div class="section-title">🎰 응모 이벤트</div>
