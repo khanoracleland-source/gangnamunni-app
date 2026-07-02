@@ -192,6 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
             if ($new_min < 0) $new_min = 0;
             if ($new_max < 0) $new_max = 0;
             if ($new_max > 0 && $new_max < $new_min) $new_max = $new_min;
+            $new_dosage_value = trim($_POST['dosage_value'] ?? '') !== '' ? floatval($_POST['dosage_value']) : null;
+            $new_dosage_unit = trim($_POST['dosage_unit'] ?? '') !== '' ? trim($_POST['dosage_unit']) : null;
 
             // 해당 병원 소유 확인
             $own_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospital_treatments WHERE id = ? AND hospital_id = ?");
@@ -199,8 +201,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
             mysqli_stmt_execute($own_stmt);
             $own_r = mysqli_stmt_get_result($own_stmt);
             if (mysqli_fetch_assoc($own_r)) {
-                $upd = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET price_min = ?, price_max = ?, updated_at = NOW() WHERE id = ?");
-                mysqli_stmt_bind_param($upd, 'iii', $new_min, $new_max, $ht_id);
+                $upd = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET price_min = ?, price_max = ?, dosage_value = ?, dosage_unit = ?, updated_at = NOW() WHERE id = ?");
+                mysqli_stmt_bind_param($upd, 'iidsi', $new_min, $new_max, $new_dosage_value, $new_dosage_unit, $ht_id);
                 mysqli_stmt_execute($upd);
                 mysqli_stmt_close($upd);
                 $flash_msg = '가격이 수정되었습니다.';
@@ -587,6 +589,11 @@ include __DIR__ . '/includes/header.php';
                         echo '<span style="color:#bbb;">가격 미설정</span>';
                     }
                     ?>
+                    <?php if ($t['dosage_value'] !== null && $t['dosage_unit']): ?>
+                    <span style="margin-left:6px;padding:2px 8px;background:#f1f1f1;border-radius:10px;font-size:12px;color:#555;">
+                        <?php echo rtrim(rtrim(number_format((float)$t['dosage_value'], 2), '0'), '.') . htmlspecialchars($t['dosage_unit']); ?>
+                    </span>
+                    <?php endif; ?>
                 </div>
 
                 <?php if ($can_edit): ?>
@@ -612,6 +619,17 @@ include __DIR__ . '/includes/header.php';
                         <span style="color:#999;">~</span>
                         <input type="number" name="price_max" class="pt-price-input" value="<?php echo $pmax; ?>" placeholder="최대" min="0">
                         <span style="font-size:12px;color:#999;">원</span>
+                        <input type="number" name="dosage_value" class="pt-price-input" style="width:70px;" value="<?php echo $t['dosage_value'] !== null ? htmlspecialchars(rtrim(rtrim(number_format((float)$t['dosage_value'], 2), '0'), '.')) : ''; ?>" placeholder="샷수/용량" min="0" step="0.01">
+                        <select name="dosage_unit" class="pt-price-input" style="width:80px;">
+                            <option value="">단위없음</option>
+                            <option value="샷" <?php echo ($t['dosage_unit'] ?? '') === '샷' ? 'selected' : ''; ?>>샷</option>
+                            <option value="cc" <?php echo ($t['dosage_unit'] ?? '') === 'cc' ? 'selected' : ''; ?>>cc</option>
+                            <option value="ml" <?php echo ($t['dosage_unit'] ?? '') === 'ml' ? 'selected' : ''; ?>>ml</option>
+                            <option value="회" <?php echo ($t['dosage_unit'] ?? '') === '회' ? 'selected' : ''; ?>>회</option>
+                            <option value="병" <?php echo ($t['dosage_unit'] ?? '') === '병' ? 'selected' : ''; ?>>병</option>
+                            <option value="IU" <?php echo ($t['dosage_unit'] ?? '') === 'IU' ? 'selected' : ''; ?>>IU</option>
+                            <option value="기타" <?php echo ($t['dosage_unit'] ?? '') === '기타' ? 'selected' : ''; ?>>기타</option>
+                        </select>
                         <button type="submit" class="pt-btn pt-btn-primary" style="padding:6px 12px;">저장</button>
                     </div>
                 </form>

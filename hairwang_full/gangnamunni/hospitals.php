@@ -207,7 +207,7 @@ if (!empty($hospitals)) {
     // 검색한 그 시술의 가격을 정확히 보여줘야 함
     if (!empty($treatment)) {
         $_td_sql = "
-            SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max
+            SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max, ht.dosage_value, ht.dosage_unit
             FROM gangnamunni_hospital_treatments ht
             INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
             WHERE ht.hospital_id IN ({$h_ids_str})
@@ -217,9 +217,9 @@ if (!empty($hospitals)) {
         ";
     } else {
         $_td_sql = "
-            SELECT sub.hospital_id, sub.treatment_name, sub.description, sub.price_min, sub.price_max
+            SELECT sub.hospital_id, sub.treatment_name, sub.description, sub.price_min, sub.price_max, sub.dosage_value, sub.dosage_unit
             FROM (
-                SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max,
+                SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max, ht.dosage_value, ht.dosage_unit,
                        ROW_NUMBER() OVER (PARTITION BY ht.hospital_id ORDER BY ht.is_promoted DESC, ht.price_min ASC, tm.popularity_score DESC) AS rn
                 FROM gangnamunni_hospital_treatments ht
                 INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
@@ -239,6 +239,8 @@ if (!empty($hospitals)) {
                 'desc' => $_td_row['description'],
                 'price_min' => $_td_row['price_min'] ?? null,
                 'price_max' => $_td_row['price_max'] ?? null,
+                'dosage_value' => $_td_row['dosage_value'] ?? null,
+                'dosage_unit' => $_td_row['dosage_unit'] ?? null,
             ];
         }
     }
@@ -650,11 +652,15 @@ foreach ($hospitals as $hospital):
                     $_tag_name = $_td['name'] ?? ($tags[0] ?? null);
                     $_price = !empty($_td['price_min']) && (int)$_td['price_min'] > 0 ? (int)$_td['price_min'] : (int)($hospital['min_price'] ?? 0);
                     $_price_max = !empty($_td['price_max']) && (int)$_td['price_max'] > 0 ? (int)$_td['price_max'] : 0;
+                    $_dosage_label = '';
+                    if ($_td && $_td['dosage_value'] !== null && $_td['dosage_unit']) {
+                        $_dosage_label = ' · ' . rtrim(rtrim(number_format((float)$_td['dosage_value'], 2), '0'), '.') . $_td['dosage_unit'];
+                    }
                     if ($_tag_name || $_price > 0):
                     ?>
                     <div class="card-tag-price">
                         <?php if ($_tag_name): ?>
-                        <span class="card-tag-item"><?php echo htmlspecialchars($_tag_name); ?></span>
+                        <span class="card-tag-item"><?php echo htmlspecialchars($_tag_name . $_dosage_label); ?></span>
                         <?php endif; ?>
                         <?php if ($_price > 0): ?>
                         <span class="card-price">

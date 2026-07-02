@@ -41,7 +41,7 @@ $matched_treatment = null;
 $matched_treatment_query = isset($_GET['treatment']) ? trim($_GET['treatment']) : '';
 if (!empty($hospital_id) && $matched_treatment_query !== '') {
     $mt_stmt = mysqli_prepare($connect, "
-        SELECT tm.name, tm.description, ht.price_min, ht.price_max, c.name AS category_name
+        SELECT tm.name, tm.description, ht.price_min, ht.price_max, ht.dosage_value, ht.dosage_unit, c.name AS category_name
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         LEFT JOIN gangnamunni_treatment_categories c ON tm.category_id = c.id
@@ -1761,6 +1761,9 @@ function extractImageFromHtml($file_path) {
                     <span style="font-size:11px;color:var(--color-text-secondary);background:var(--color-bg-white);border:1px solid var(--color-border);border-radius:4px;padding:2px 8px;"><?php echo htmlspecialchars($matched_treatment['category_name']); ?></span>
                     <?php endif; ?>
                     <span style="font-size:16px;font-weight:700;color:var(--color-text-primary);"><?php echo htmlspecialchars($matched_treatment['name']); ?></span>
+                    <?php if ($matched_treatment['dosage_value'] !== null && $matched_treatment['dosage_unit']): ?>
+                    <span style="font-size:12px;color:var(--color-text-secondary);background:var(--color-bg-white);border:1px solid var(--color-border);border-radius:10px;padding:2px 8px;"><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$matched_treatment['dosage_value'], 2), '0'), '.') . $matched_treatment['dosage_unit']); ?></span>
+                    <?php endif; ?>
                 </div>
                 <?php if (!empty($matched_treatment['description'])): ?>
                 <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:10px;line-height:1.5;"><?php echo nl2br(htmlspecialchars($matched_treatment['description'])); ?></div>

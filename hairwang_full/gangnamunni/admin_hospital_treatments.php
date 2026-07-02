@@ -155,6 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $id = intval($_POST['id'] ?? 0);
             $new_price_min = intval($_POST['price_min'] ?? 0);
             $new_price_max = intval($_POST['price_max'] ?? 0);
+            $new_dosage_value = trim($_POST['dosage_value'] ?? '') !== '' ? floatval($_POST['dosage_value']) : null;
+            $new_dosage_unit = trim($_POST['dosage_unit'] ?? '') !== '' ? trim($_POST['dosage_unit']) : null;
             if ($id > 0) {
                 // 기존 데이터 조회 (이력 기록용)
                 $old_stmt = mysqli_prepare($connect, "SELECT hospital_id, treatment_id FROM gangnamunni_hospital_treatments WHERE id = ?");
@@ -165,8 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 mysqli_stmt_close($old_stmt);
 
                 $stmt = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_hospital_treatments SET price_min = ?, price_max = ?, updated_at = NOW() WHERE id = ?");
-                mysqli_stmt_bind_param($stmt, 'iii', $new_price_min, $new_price_max, $id);
+                    "UPDATE gangnamunni_hospital_treatments SET price_min = ?, price_max = ?, dosage_value = ?, dosage_unit = ?, updated_at = NOW() WHERE id = ?");
+                mysqli_stmt_bind_param($stmt, 'iidsi', $new_price_min, $new_price_max, $new_dosage_value, $new_dosage_unit, $id);
                 if (mysqli_stmt_execute($stmt)) {
                     // 가격 이력 기록
                     if ($old_row) {
@@ -676,6 +678,9 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php if ($is_default && ($disp_min > 0 || $disp_max > 0)): ?>
                             <br><small class="text-muted">(기본값)</small>
                             <?php endif; ?>
+                            <?php if ($at['dosage_value'] !== null && $at['dosage_unit']): ?>
+                            <br><span class="badge bg-light text-dark border"><?php echo rtrim(rtrim(number_format((float)$at['dosage_value'], 2), '0'), '.'); ?><?php echo htmlspecialchars($at['dosage_unit']); ?></span>
+                            <?php endif; ?>
                         </td>
                         <td class="text-center">
                             <form method="post" class="d-inline">
@@ -701,7 +706,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td class="text-center">
                             <!-- 가격 수정 -->
                             <button class="btn btn-outline-primary btn-sm" title="가격 수정"
-                                onclick="openPriceModal(<?php echo intval($at['id']); ?>, <?php echo intval($at['price_min']); ?>, <?php echo intval($at['price_max']); ?>, '<?php echo htmlspecialchars(addslashes($at['treatment_name'] ?? ''), ENT_QUOTES); ?>')">
+                                onclick="openPriceModal(<?php echo intval($at['id']); ?>, <?php echo intval($at['price_min']); ?>, <?php echo intval($at['price_max']); ?>, '<?php echo htmlspecialchars(addslashes($at['treatment_name'] ?? ''), ENT_QUOTES); ?>', <?php echo $at['dosage_value'] !== null ? (float)$at['dosage_value'] : 'null'; ?>, '<?php echo htmlspecialchars(addslashes($at['dosage_unit'] ?? ''), ENT_QUOTES); ?>')">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <!-- 배정 해제 -->
@@ -903,8 +908,25 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <label class="form-label fw-bold">최대 가격 (만원)</label>
                             <input type="number" name="price_max" id="price_max" class="form-control" min="0" step="1" required>
                         </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">샷수/용량 (선택)</label>
+                            <input type="number" name="dosage_value" id="dosage_value" class="form-control" min="0" step="0.01" placeholder="예: 600">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">단위</label>
+                            <select name="dosage_unit" id="dosage_unit" class="form-select">
+                                <option value="">-- 단위 없음 --</option>
+                                <option value="샷">샷</option>
+                                <option value="cc">cc</option>
+                                <option value="ml">ml</option>
+                                <option value="회">회</option>
+                                <option value="병">병</option>
+                                <option value="IU">IU</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-text mt-2">가격 변경은 이력에 자동 기록됩니다.</div>
+                    <div class="form-text mt-2">가격 변경은 이력에 자동 기록됩니다. 샷수/용량은 시술 종류와 별도로 관리됩니다.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
@@ -946,10 +968,12 @@ require_once __DIR__ . '/includes/admin_header.php';
 
 <script>
 // 가격 수정 모달
-function openPriceModal(id, priceMin, priceMax, name) {
+function openPriceModal(id, priceMin, priceMax, name, dosageValue, dosageUnit) {
     document.getElementById('price_id').value = id;
     document.getElementById('price_min').value = priceMin;
     document.getElementById('price_max').value = priceMax;
+    document.getElementById('dosage_value').value = dosageValue || '';
+    document.getElementById('dosage_unit').value = dosageUnit || '';
     document.getElementById('price_treatment_name').textContent = name;
     new bootstrap.Modal(document.getElementById('priceModal')).show();
 }
