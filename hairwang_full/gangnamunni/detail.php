@@ -35,6 +35,28 @@ if (!empty($hospital_id)) {
     }
 }
 
+// hospitals.php에서 특정 시술(gangnamunni_treatment_master) 검색 후 넘어온 경우
+// 해당 병원의 그 시술 정보를 정확히 찾아 홈 탭 상단에 강조 표시
+$matched_treatment = null;
+$matched_treatment_query = isset($_GET['treatment']) ? trim($_GET['treatment']) : '';
+if (!empty($hospital_id) && $matched_treatment_query !== '') {
+    $mt_stmt = mysqli_prepare($connect, "
+        SELECT tm.name, tm.description, ht.price_min, ht.price_max, c.name AS category_name
+        FROM gangnamunni_hospital_treatments ht
+        INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
+        LEFT JOIN gangnamunni_treatment_categories c ON tm.category_id = c.id
+        WHERE ht.hospital_id = ? AND ht.status = 'active' AND tm.is_active = 1 AND tm.name = ?
+        LIMIT 1
+    ");
+    if ($mt_stmt) {
+        mysqli_stmt_bind_param($mt_stmt, 'is', $hospital_id, $matched_treatment_query);
+        mysqli_stmt_execute($mt_stmt);
+        $mt_result = mysqli_stmt_get_result($mt_stmt);
+        $matched_treatment = mysqli_fetch_assoc($mt_result) ?: null;
+        mysqli_stmt_close($mt_stmt);
+    }
+}
+
 
 if ($hospital_id <= 0) {
     header('Location: index.php');
@@ -1731,6 +1753,29 @@ function extractImageFromHtml($file_path) {
         <!-- 홈 탭 -->
         <!-- #19 fix: description(required) first, introduction(optional) second -->
         <div class="tab-pane <?php echo $current_tab === 'home' ? 'active' : ''; ?>" id="tab-home">
+            <?php if ($matched_treatment): ?>
+            <div id="matched-treatment" style="scroll-margin-top:160px;border:2px solid var(--color-primary);border-radius:12px;padding:16px;margin-bottom:24px;background:var(--color-primary-light);">
+                <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:6px;">검색하신 <?= term('service', '시술') ?></div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <?php if (!empty($matched_treatment['category_name'])): ?>
+                    <span style="font-size:11px;color:var(--color-text-secondary);background:var(--color-bg-white);border:1px solid var(--color-border);border-radius:4px;padding:2px 8px;"><?php echo htmlspecialchars($matched_treatment['category_name']); ?></span>
+                    <?php endif; ?>
+                    <span style="font-size:16px;font-weight:700;color:var(--color-text-primary);"><?php echo htmlspecialchars($matched_treatment['name']); ?></span>
+                </div>
+                <?php if (!empty($matched_treatment['description'])): ?>
+                <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:10px;line-height:1.5;"><?php echo nl2br(htmlspecialchars($matched_treatment['description'])); ?></div>
+                <?php endif; ?>
+                <?php if (!empty($matched_treatment['price_min']) && (int)$matched_treatment['price_min'] > 0):
+                    $_mtp_min = (int)$matched_treatment['price_min'];
+                    $_mtp_max = !empty($matched_treatment['price_max']) ? (int)$matched_treatment['price_max'] : 0;
+                ?>
+                <div style="font-size:18px;font-weight:700;color:var(--color-primary);">
+                    <?php echo ($_mtp_max > 0 && $_mtp_max !== $_mtp_min) ? number_format($_mtp_min * 10000) . '~' . number_format($_mtp_max * 10000) . '원' : number_format($_mtp_min * 10000) . '원~'; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+            <script>document.addEventListener('DOMContentLoaded', function(){ var el = document.getElementById('matched-treatment'); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); });</script>
+            <?php endif; ?>
             <?php
             $has_desc = !empty(trim($hospital['description'] ?? ''));
             $has_intro = !empty(trim($hospital['introduction'] ?? ''));
@@ -2545,65 +2590,5 @@ if (!empty($hospital_id) && isset($hospital)) {
 }
 ?>
 <?php mysqli_close($connect); ?>
-
-<!-- 시술/가격 탭 -->
-<div class="tab-content" id="tab-treatments" style="display:none;">
-    <?php if (empty($treatments)): ?>
-    <div style="text-align:center;padding:40px 16px;color:#999;">
-        <div style="font-size:40px;margin-bottom:12px;">💊</div>
-        <p style="font-size:14px;">등록된 <?php echo term('service', '시술'); ?> 정보가 없습니다.</p>
-    </div>
-    <?php else: ?>
-    <div style="padding:16px;">
-        <?php
-        $current_cat = '';
-        foreach ($treatments as $treat):
-            $cat = $treat['category'] ?: '기타';
-            if ($cat !== $current_cat):
-                if ($current_cat !== '') echo '</div>'; // 이전 카테고리 그룹 닫기
-                $current_cat = $cat;
-        ?>
-        <div class="treatment-category-group" style="margin-bottom:20px;">
-            <h4 style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #AE1932;">
-                <?php echo htmlspecialchars($cat); ?>
-            </h4>
-        <?php endif; ?>
-
-            <div class="treatment-card" style="background:var(--bs-body-bg, #fff);border:1px solid var(--bs-border-color, #eee);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-                <div style="flex:1;">
-                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-                        <?php if ($treat['is_popular']): ?>
-                        <span style="display:inline-block;background:#ff6b6b;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;">인기</span>
-                        <?php endif; ?>
-                        <span style="font-size:15px;font-weight:600;color:#1a1a1a;"><?php echo htmlspecialchars($treat['name']); ?></span>
-                        <?php if (!empty($treat['unit_label'])): ?>
-                        <span style="display:inline-block;background:#e8f4fd;color:#1976d2;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;"><?php echo htmlspecialchars($treat['unit_label']); ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <?php if (!empty($treat['description'])): ?>
-                    <p style="font-size:12px;color:#888;margin:4px 0 0;line-height:1.4;"><?php echo htmlspecialchars($treat['description']); ?></p>
-                    <?php endif; ?>
-                    <?php if ($treat['duration_minutes'] > 0): ?>
-                    <span style="font-size:11px;color:#aaa;margin-top:4px;display:inline-block;">⏱ <?php echo (int)$treat['duration_minutes']; ?>분</span>
-                    <?php endif; ?>
-                </div>
-                <div style="text-align:right;min-width:90px;">
-                    <?php if ($treat['discount_price'] > 0 && $treat['discount_price'] < $treat['price']): ?>
-                    <div style="font-size:12px;color:#aaa;text-decoration:line-through;"><?php echo number_format($treat['price']); ?>원</div>
-                    <div style="font-size:16px;font-weight:700;color:#e53e3e;"><?php echo number_format($treat['discount_price']); ?>원</div>
-                    <?php elseif ($treat['price'] > 0): ?>
-                    <div style="font-size:16px;font-weight:700;color:#1a1a1a;"><?php echo number_format($treat['price']); ?>원</div>
-                    <?php else: ?>
-                    <div style="font-size:14px;color:#888;"><?php echo term('consultation', '상담'); ?> 후 결정</div>
-                    <?php endif; ?>
-                    <div style="font-size:0.65rem;color:var(--bs-secondary-color,#6c757d);margin-top:3px;line-height:1.3;">부가세 포함 · 마취비 없음</div>
-                </div>
-            </div>
-
-        <?php endforeach; ?>
-        <?php if ($current_cat !== '') echo '</div>'; // 마지막 카테고리 그룹 닫기 ?>
-    </div>
-    <?php endif; ?>
-</div>
 
 

@@ -517,8 +517,11 @@ foreach ($hospitals as $hospital):
     $has_rating = (int)($hospital['review_count'] ?? 0) > 0;
     $rating_val = number_format((float)($hospital['rating'] ?? 0), 1);
     $review_cnt = number_format((int)($hospital['review_count'] ?? 0));
+    // 특정 시술로 필터링해서 들어온 경우, 상세 페이지에서도 그 시술 정보로 바로 이동
+    $_detail_url = 'detail.php?id=' . (int)$hospital['id'];
+    if (!empty($treatment)) { $_detail_url .= '&treatment=' . urlencode($treatment); }
 ?>
-        <div class="hospital-card" onclick="location.href='detail.php?id=<?php echo $hospital['id']; ?>'" style="cursor:pointer;">
+        <div class="hospital-card" onclick="location.href='<?php echo htmlspecialchars($_detail_url); ?>'" style="cursor:pointer;">
             <div class="card-link">
                 <?php
                 $h_img = $hospital['main_image_url'] ?? $hospital['profile_image_url'] ?? '';
