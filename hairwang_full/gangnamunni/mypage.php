@@ -263,7 +263,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 /* 프로필 섹션 */
 .profile-section {
     display:flex; align-items:center; gap:14px;
-    padding:20px; background:var(--bs-body-bg, #fff); border-bottom:8px solid #F8F8F8; cursor:pointer;
+    padding:20px; background:var(--bs-body-bg, #fff); border-bottom:16px solid #F8F8F8; cursor:pointer;
     text-decoration:none; color:inherit;
 }
 .profile-section:hover { background:#fafafa; }
@@ -278,8 +278,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 .profile-arrow { color:#000; font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
 /* 메뉴 섹션 */
-.menu-section { background:var(--bs-body-bg, #fff); border-radius:0; margin-bottom:20px; padding:20px; }
-.menu-section:last-of-type { margin-bottom:0; }
+.menu-section { background:var(--bs-body-bg, #fff); border-radius:0; margin-bottom:0; padding:20px; }
 .menu-section-title {
     width:100%; padding:0 0 8px; font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; color:var(--color-inactive, #979797); letter-spacing:0.02em;
 }
@@ -297,7 +296,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 .menu-row-arrow { color:#000; font-weight:900; font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
 /* 로그아웃 */
-.logout-section { background:var(--bs-body-bg, #fff); margin-top:20px; }
+.logout-section { background:var(--bs-body-bg, #fff); margin-top:0; }
 .logout-btn {
     display:flex; align-items:center; justify-content:center;
     padding:16px 20px; text-decoration:none;
@@ -333,7 +332,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 /* 광고 배너 */
 .advertisement-section {
     padding: 20px;
-    margin-bottom: 8px;
+    margin-bottom: 16px;
     background: #fff;
     display: flex;
     flex-direction: column;
@@ -367,9 +366,6 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 .menu-row-badge.badge-red {
     color: #fff; background: var(--pri, #AE1932);
 }
-
-/* 하단 네비 여백 */
-.bottom-spacer { height: 70px; }
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
@@ -398,7 +394,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 </a>
 
 <!-- 섹션: 병원 이용 -->
-<div class="menu-section" style="border-bottom:8px solid #F8F8F8;">
+<div class="menu-section" style="border-bottom:16px solid #F8F8F8;">
     <div class="menu-section-title"><?php echo term('business', '병원'); ?> 이용</div>
     <a href="my_bookings.php" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-calendar-check"></i></span>
@@ -424,7 +420,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 </div>
 
 <!-- 섹션: 커뮤니티 -->
-<div class="menu-section" style="border-bottom:8px solid #F8F8F8;">
+<div class="menu-section" style="border-bottom:16px solid #F8F8F8;">
     <div class="menu-section-title">커뮤니티</div>
     <a href="community.php?my=1" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-pencil-square"></i></span>
@@ -439,7 +435,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 </div>
 
 <!-- 섹션: 고객센터/공지 -->
-<div class="menu-section">
+<div class="menu-section" style="border-bottom:16px solid #F8F8F8;">
     <a href="qna.php" class="menu-row">
         <span class="menu-row-text">고객센터</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
@@ -483,8 +479,6 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     </a>
 </div>
 <?php endif; ?>
-
-<div class="bottom-spacer"></div>
 
 <?php
 // 하단 네비게이션
