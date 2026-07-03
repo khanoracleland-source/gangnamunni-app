@@ -33,6 +33,23 @@ if ($is_logged_in) {
     $user_id = $_SESSION['ad_admin_user'] ?? 'admin';
 }
 
+// 수정 모드 확인 (review_detail.php "수정하기"에서 ?id= 로 진입, 본인 후기만 허용)
+$edit_id = intval($_GET['id'] ?? 0);
+$edit_review = null;
+if ($edit_id > 0) {
+    $er_stmt = mysqli_prepare($connect, "SELECT * FROM hospital_reviews WHERE id = ? AND user_id = ? AND is_active = 1");
+    if ($er_stmt) {
+        mysqli_stmt_bind_param($er_stmt, 'is', $edit_id, $user_id);
+        mysqli_stmt_execute($er_stmt);
+        $edit_review = mysqli_fetch_assoc(mysqli_stmt_get_result($er_stmt));
+        mysqli_stmt_close($er_stmt);
+    }
+    if (!$edit_review) {
+        header('Location: reviews.php');
+        exit;
+    }
+}
+
 // 병원 목록 로드
 $hospitals = [];
 $h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1 ORDER BY name ASC");
@@ -49,6 +66,7 @@ $msg_type = '';
 
 // POST 처리
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $post_edit_id = intval($_POST['edit_id'] ?? 0);
     $hospital_id = intval($_POST['hospital_id'] ?? 0);
     $title = trim($_POST['title'] ?? '');
     $content = trim($_POST['content'] ?? '');
@@ -58,6 +76,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($hospital_id <= 0 || empty($title) || empty($content)) {
         $msg = term('business', '병원') . ', 제목, 내용을 모두 입력해주세요.';
         $msg_type = 'danger';
+    } elseif ($post_edit_id > 0) {
+        // 수정 (본인 후기만, 재승인 대기 상태로 전환)
+        $stmt = mysqli_prepare($connect,
+            "UPDATE hospital_reviews SET hospital_id=?, title=?, content=?, rating=?, treatments=?, review_status='pending', updated_at=NOW()
+             WHERE id=? AND user_id=?"
+        );
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'issssis', $hospital_id, $title, $content, $rating, $treatments, $post_edit_id, $user_id);
+            if (mysqli_stmt_execute($stmt)) {
+                $review_id = $post_edit_id;
+
+                if (!empty($_POST['treatment_ids'])) {
+                    require_once __DIR__ . '/includes/treatment_review_scorer.php';
+                    scoreReviewTreatments($connect, $review_id, $hospital_id, $content, array_map('intval', $_POST['treatment_ids']));
+                }
+
+                handle_photo_upload($connect, [
+                    'type'      => 'reviews',
+                    'record_id' => $review_id,
+                    'table'     => 'hospital_reviews',
+                    'max_files' => 5,
+                ]);
+
+                $msg = term('review', '후기') . '가 수정되었습니다. 관리자 승인 후 다시 공개됩니다.';
+                $msg_type = 'success';
+            } else {
+                $msg = '수정 중 오류가 발생했습니다.';
+                $msg_type = 'danger';
+            }
+            mysqli_stmt_close($stmt);
+        }
     } else {
         $stmt = mysqli_prepare($connect,
             "INSERT INTO hospital_reviews (hospital_id, user_id, user_name, title, content, rating, treatments, review_status, created_at)
@@ -138,7 +187,7 @@ include __DIR__ . '/includes/header.php';
 
 <div class="rw-container">
     <a href="reviews.php" class="rw-back">&larr; <?php echo term('review', '후기'); ?> 목록으로</a>
-    <div class="rw-title"><?php echo term('review', '후기'); ?> 작성</div>
+    <div class="rw-title"><?php echo term('review', '후기'); ?> <?php echo $edit_review ? '수정' : '작성'; ?></div>
 
     <?php if ($msg): ?>
     <div class="rw-alert rw-alert-<?php echo $msg_type; ?>"><?php echo htmlspecialchars($msg); ?></div>
@@ -153,12 +202,15 @@ include __DIR__ . '/includes/header.php';
 
     <?php if ($msg_type !== 'success'): ?>
     <form method="post" action="" enctype="multipart/form-data">
+        <?php if ($edit_review): ?>
+        <input type="hidden" name="edit_id" value="<?php echo (int)$edit_review['id']; ?>">
+        <?php endif; ?>
         <div class="rw-form-group">
             <label class="rw-label"><?php echo term('business', '병원'); ?> 선택 *</label>
             <select name="hospital_id" class="rw-select" required>
                 <option value=""><?php echo term('business', '병원'); ?>을 선택하세요</option>
                 <?php foreach ($hospitals as $h): ?>
-                <option value="<?php echo $h['id']; ?>" <?php echo (intval($_POST['hospital_id'] ?? $prefill_hospital_id) === intval($h['id'])) ? 'selected' : ''; ?>>
+                <option value="<?php echo $h['id']; ?>" <?php echo (intval($_POST['hospital_id'] ?? ($edit_review['hospital_id'] ?? $prefill_hospital_id)) === intval($h['id'])) ? 'selected' : ''; ?>>
                     <?php echo htmlspecialchars($h['name']); ?>
                 </option>
                 <?php endforeach; ?>
@@ -167,14 +219,14 @@ include __DIR__ . '/includes/header.php';
 
         <div class="rw-form-group">
             <label class="rw-label">받은 <?php echo term('service', '시술'); ?> (선택)</label>
-            <?php $hospital_id = intval($_POST['hospital_id'] ?? $prefill_hospital_id); include __DIR__ . '/includes/treatment_select_ui.php'; ?>
+            <?php $hospital_id = intval($_POST['hospital_id'] ?? ($edit_review['hospital_id'] ?? $prefill_hospital_id)); include __DIR__ . '/includes/treatment_select_ui.php'; ?>
         </div>
 
         <div class="rw-form-group">
             <label class="rw-label">평점 *</label>
             <div class="rw-rating">
                 <?php for ($i = 5; $i >= 1; $i--): ?>
-                <input type="radio" name="rating" id="star<?php echo $i; ?>" value="<?php echo $i; ?>" <?php echo ($i == ($_POST['rating'] ?? 5)) ? 'checked' : ''; ?>>
+                <input type="radio" name="rating" id="star<?php echo $i; ?>" value="<?php echo $i; ?>" <?php echo ($i == ($_POST['rating'] ?? ($edit_review['rating'] ?? 5))) ? 'checked' : ''; ?>>
                 <label for="star<?php echo $i; ?>">&#9733;</label>
                 <?php endfor; ?>
             </div>
@@ -182,12 +234,12 @@ include __DIR__ . '/includes/header.php';
 
         <div class="rw-form-group">
             <label class="rw-label">제목 *</label>
-            <input type="text" name="title" class="rw-input" placeholder="<?php echo term('review', '후기'); ?> 제목을 입력하세요" value="<?php echo htmlspecialchars($_POST['title'] ?? ''); ?>" required maxlength="200">
+            <input type="text" name="title" class="rw-input" placeholder="<?php echo term('review', '후기'); ?> 제목을 입력하세요" value="<?php echo htmlspecialchars($_POST['title'] ?? ($edit_review['title'] ?? '')); ?>" required maxlength="200">
         </div>
 
         <div class="rw-form-group">
             <label class="rw-label">내용 *</label>
-            <textarea name="content" class="rw-textarea" placeholder="<?php echo term('service', '시술'); ?> 경험을 자세히 공유해주세요" required><?php echo htmlspecialchars($_POST['content'] ?? ''); ?></textarea>
+            <textarea name="content" class="rw-textarea" placeholder="<?php echo term('service', '시술'); ?> 경험을 자세히 공유해주세요" required><?php echo htmlspecialchars($_POST['content'] ?? ($edit_review['content'] ?? '')); ?></textarea>
         </div>
 
         <!-- 사진 첨부 (후기는 최대 5장) -->
@@ -212,8 +264,8 @@ include __DIR__ . '/includes/header.php';
             </label>
         </div>
 
-        <button type="submit" class="rw-submit" id="reviewSubmitBtn"><?php echo term('review', '후기'); ?> 등록하기</button>
-        <p style="text-align:center; font-size:12px; color:#999; margin-top:8px;">등록된 <?php echo term('review', '후기'); ?>는 관리자 승인 후 공개됩니다.</p>
+        <button type="submit" class="rw-submit" id="reviewSubmitBtn"><?php echo term('review', '후기'); ?> <?php echo $edit_review ? '수정하기' : '등록하기'; ?></button>
+        <p style="text-align:center; font-size:12px; color:#999; margin-top:8px;"><?php echo $edit_review ? '수정된' : '등록된'; ?> <?php echo term('review', '후기'); ?>는 관리자 승인 후 공개됩니다.</p>
     </form>
     <?php endif; ?>
 </div>
@@ -243,7 +295,7 @@ include __DIR__ . '/includes/header.php';
                 document.close();
             }).catch(function(err) {
                 alert('오류가 발생했습니다: ' + err.message);
-                if (btn) { btn.disabled = false; btn.textContent = '<?php echo term('review', '후기'); ?> 등록하기'; }
+                if (btn) { btn.disabled = false; btn.textContent = '<?php echo term('review', '후기'); ?> <?php echo $edit_review ? '수정하기' : '등록하기'; ?>'; }
             });
         }
         // 사진이 없으면 기본 폼 제출

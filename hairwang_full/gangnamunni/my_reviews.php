@@ -74,7 +74,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .empty{text-align:center;padding:60px 20px;color:var(--bs-secondary-color);}
 </style><?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head><body>
-<div class="header"><button class="back" onclick="history.back()"><i class="bi bi-chevron-left"></i></button><h1>내가 작성한 후기</h1></div>
+<div class="header"><button class="back" onclick="location.href='mypage.php'"><i class="bi bi-chevron-left"></i></button><h1>내가 작성한 후기</h1></div>
 
 <div class="filter-tabs">
     <a href="?tab=writable" class="filter-tab <?php echo $tab === 'writable' ? 'active' : ''; ?>">작성가능</a>

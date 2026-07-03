@@ -107,7 +107,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </head>
 <body>
 <div class="page-header">
-    <button class="back-btn" onclick="history.back()"><i class="bi bi-chevron-left"></i></button>
+    <button class="back-btn" onclick="location.href='mypage.php'"><i class="bi bi-chevron-left"></i></button>
     <h1>병원/시술 찜 목록</h1>
 </div>
 
