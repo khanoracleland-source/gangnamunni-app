@@ -12,7 +12,6 @@
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
-require_once __DIR__ . '/includes/recently_viewed.php';
 
 // 서울미녀 병원 데이터 테이블 존재 확인
 $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_hospitals'");
@@ -95,7 +94,7 @@ $page_css_file = 'assets/css/index-page.css';
 $page_css = '
 /* 이벤트 섹션 */
 .events-section {
-    margin-bottom: 24px;
+    margin-bottom: 45px;
 }
 .events-section .section-header {
     display: flex;
@@ -889,26 +888,7 @@ body.ae-active { padding-top:0 !important; }
         <?php endif; ?>
         <?php endif; ?>
 
-        
-<!-- 퀵 메뉴 -->
-<div style="max-width:640px;margin:16px auto;padding:0 16px;">
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-        <a href="hospital_ranking.php" style="text-align:center;padding:12px 4px;background:var(--bs-body-bg,#fff);border-radius:12px;border:1px solid var(--bs-border-color,#eee);text-decoration:none;color:inherit;">
-            <i class="bi bi-trophy" style="font-size:22px;color:#f59e0b;display:block;margin-bottom:4px;"></i><span style="font-size:11px;">랭킹</span>
-        </a>
-        <a href="treatments.php" style="text-align:center;padding:12px 4px;background:var(--bs-body-bg,#fff);border-radius:12px;border:1px solid var(--bs-border-color,#eee);text-decoration:none;color:inherit;">
-            <i class="bi bi-grid-3x3-gap" style="font-size:22px;color:#AE1932;display:block;margin-bottom:4px;"></i><span style="font-size:11px;">시술</span>
-        </a>
-        <a href="event_calendar.php" style="text-align:center;padding:12px 4px;background:var(--bs-body-bg,#fff);border-radius:12px;border:1px solid var(--bs-border-color,#eee);text-decoration:none;color:inherit;">
-            <i class="bi bi-calendar-event" style="font-size:22px;color:#22c55e;display:block;margin-bottom:4px;"></i><span style="font-size:11px;">캘린더</span>
-        </a>
-        <a href="review_photos.php" style="text-align:center;padding:12px 4px;background:var(--bs-body-bg,#fff);border-radius:12px;border:1px solid var(--bs-border-color,#eee);text-decoration:none;color:inherit;">
-            <i class="bi bi-images" style="font-size:22px;color:#ec4899;display:block;margin-bottom:4px;"></i><span style="font-size:11px;">포토</span>
-        </a>
-    </div>
-</div>
 
-<?php renderRecentlyViewedSection(); ?>
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
 <?php
 // 공통 푸터 include
