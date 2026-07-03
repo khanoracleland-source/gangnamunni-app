@@ -14,9 +14,6 @@ require_once __DIR__ . '/includes/init.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 require_once __DIR__ . '/includes/recently_viewed.php';
 
-// DB에서 활성 카테고리 로드 (category_icons.php의 loadCategoriesFromDB)
-$db_categories = loadCategoriesFromDB($connect);
-
 // 서울미녀 병원 데이터 테이블 존재 확인
 $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_hospitals'");
 $table_exists = mysqli_num_rows($table_check) > 0;
@@ -269,11 +266,6 @@ $page_css = '
 $page_js = '
 function showImportGuide() {
     alert("데이터베이스 Import 가이드:\n\n1. MySQL 접속:\n   mysql -u root -p -h localhost\n\n2. hairwang 데이터베이스 선택:\n   USE hairwang;\n\n3. SQL 파일 import:\n   SOURCE H:/carebaby_project/site_get/gangnamunni_hospitals_import.sql;\n\n4. 완료 후 이 페이지 새로고침 (F5)\n\n문제 발생 시: test_db_connection.php에서 DB 연결 확인");
-}
-
-// 시술 카테고리 필터
-function filterByCategory(category) {
-    location.href = "hospitals.php?category=" + encodeURIComponent(category);
 }
 
 // 검색 기능
@@ -895,35 +887,9 @@ body.ae-active { padding-top:0 !important; }
             </div>
         </div>
         <?php endif; ?>
-
-        <!-- 시술 카테고리 (figma_block: home_categories) -->
-        <?php if (figma_block_visible('home_categories')): ?>
-        <div class="category-section ae-wrap">
-            <?php if (function_exists('ae')) ae('categories', '카테고리 관리'); ?>
-            <h2 class="category-title"><?php echo getTheme('section_categories_title'); ?></h2>
-            <div class="grid grid-cols-4 gap-4">
-                <?php
-                // DB 활성 카테고리 표시 (admin_categories.php에서 관리)
-                if (!empty($db_categories)):
-                    foreach ($db_categories as $cat):
-                ?>
-                <div class="flex flex-col items-center gap-2 cursor-pointer hover:scale-105 transition-transform" onclick="filterByCategory('<?php echo htmlspecialchars($cat['name']); ?>')">
-                    <?php echo renderCategoryIcon($cat['name'], $category_icons); ?>
-                    <div class="text-xs font-medium text-gray-700 text-center"><?php echo htmlspecialchars($cat['name']); ?></div>
-                </div>
-                <?php
-                    endforeach;
-                else:
-                    // DB 카테고리 없을 때 폴백
-                    echo '<div class="text-center text-gray-500 col-span-4">카테고리가 없습니다.</div>';
-                endif;
-                ?>
-            </div>
-        </div>
-
-        <?php endif; /* home_categories */ ?>
         <?php endif; ?>
 
+        
 <!-- 퀵 메뉴 -->
 <div style="max-width:640px;margin:16px auto;padding:0 16px;">
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
@@ -941,7 +907,6 @@ body.ae-active { padding-top:0 !important; }
         </a>
     </div>
 </div>
-<?php $rolling_page = "index"; include __DIR__ . "/includes/rolling_banner.php"; ?>
 
 <?php renderRecentlyViewedSection(); ?>
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
@@ -963,8 +928,8 @@ if ('scrollRestoration' in history) {
 (function(){
     var _origScroll = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = function(opts) {
-        // rb-card 또는 출석체크 위젯의 scrollIntoView만 차단
-        if (this.classList && (this.classList.contains('rb-card') || this.closest('.rb-attend'))) {
+        // 출석체크 위젯의 scrollIntoView만 차단
+        if (this.classList && this.closest('.rb-attend')) {
             return; // 무시
         }
         return _origScroll.apply(this, arguments);
