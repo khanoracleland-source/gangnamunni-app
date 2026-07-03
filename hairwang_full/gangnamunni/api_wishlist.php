@@ -21,7 +21,7 @@ mysqli_set_charset($connect, 'utf8mb4');
 mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_wishlist (
     id INT AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL COMMENT '회원 ID (g5_member.mb_no)',
-    target_type ENUM('hospital','doctor') NOT NULL DEFAULT 'hospital',
+    target_type ENUM('hospital','doctor','treatment') NOT NULL DEFAULT 'hospital',
     target_id INT NOT NULL COMMENT '대상 ID (hospital.id 또는 doctor.id)',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_member_target (member_id, target_type, target_id),
@@ -30,16 +30,18 @@ mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_wishlist (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 // Gnuboard 회원 확인
-$member_id = 0;
-session_start();
-// Gnuboard 세션에서 회원 ID 가져오기
-if (!empty($_SESSION['ss_mb_id'])) {
-    $mb_id = mysqli_real_escape_string($connect, $_SESSION['ss_mb_id']);
-    $r = mysqli_query($connect, "SELECT mb_no FROM g5_member WHERE mb_id='{$mb_id}' LIMIT 1");
-    if ($r && $row = mysqli_fetch_assoc($r)) {
-        $member_id = (int)$row['mb_no'];
-    }
+// [버그수정] 기존에는 session_start()를 직접 호출해 기본 세션명(PHPSESSID)을 사용했으나,
+// common.php는 설치 경로에 따라 세션명을 G5_SESSION_NAME으로 커스터마이징한다(session_name()).
+// 이 차이로 인해 실제 로그인 세션 쿠키명과 여기서 찾는 세션명이 달라져
+// "로그인했는데도 로그인 필요" 오류가 발생했다 (경로 중첩이 없는 로컬 개발환경에서는
+// 두 이름이 우연히 PHPSESSID로 일치해 재현되지 않았음).
+// 다른 API(api_coupon.php 등)와 동일하게 common.php를 통해 세션을 공유한다.
+$g5_common = dirname(__DIR__) . '/common.php';
+if (file_exists($g5_common) && !defined('G5_PATH')) {
+    include_once $g5_common;
 }
+$is_logged = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
+$member_id = $is_logged ? (int)($member['mb_no'] ?? 0) : 0;
 
 $method = $_SERVER['REQUEST_METHOD'];
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -84,22 +86,27 @@ if ($method === 'GET') {
     $params = [$member_id];
     $types = 'i';
 
-    if ($type_filter && in_array($type_filter, ['hospital', 'doctor'])) {
+    if ($type_filter && in_array($type_filter, ['hospital', 'treatment'])) {
         $where .= ' AND w.target_type = ?';
         $params[] = $type_filter;
         $types .= 's';
     }
 
-    // 병원 찜 목록 (JOIN)
+    // 병원/의사/시술 찜 목록 (JOIN)
     $sql = "SELECT w.*, w.target_type,
-            CASE WHEN w.target_type='hospital' THEN h.name ELSE d.name END as target_name,
-            CASE WHEN w.target_type='hospital' THEN h.main_image_url ELSE d.profile_image_url END as target_image,
+            CASE WHEN w.target_type='hospital' THEN h.name WHEN w.target_type='doctor' THEN d.name ELSE t.name END as target_name,
+            CASE WHEN w.target_type='hospital' THEN h.main_image_url WHEN w.target_type='doctor' THEN d.profile_image_url ELSE NULL END as target_image,
             CASE WHEN w.target_type='hospital' THEN h.address ELSE NULL END as target_address,
             CASE WHEN w.target_type='hospital' THEN h.rating ELSE NULL END as target_rating,
-            CASE WHEN w.target_type='hospital' THEN h.review_count ELSE NULL END as target_review_count
+            CASE WHEN w.target_type='hospital' THEN h.review_count ELSE NULL END as target_review_count,
+            CASE WHEN w.target_type='treatment' THEN t.hospital_id ELSE NULL END as treatment_hospital_id,
+            CASE WHEN w.target_type='treatment' THEN th.name ELSE NULL END as treatment_hospital_name,
+            CASE WHEN w.target_type='treatment' THEN COALESCE(NULLIF(t.discount_price,0), t.price) ELSE NULL END as treatment_price
             FROM gangnamunni_wishlist w
             LEFT JOIN gangnamunni_hospitals h ON w.target_type='hospital' AND w.target_id=h.id
             LEFT JOIN gangnamunni_doctors d ON w.target_type='doctor' AND w.target_id=d.id
+            LEFT JOIN gangnamunni_treatments t ON w.target_type='treatment' AND w.target_id=t.id
+            LEFT JOIN gangnamunni_hospitals th ON w.target_type='treatment' AND t.hospital_id=th.id
             WHERE {$where}
             ORDER BY w.created_at DESC";
 
@@ -127,7 +134,7 @@ if ($method === 'POST') {
     $type = $input['type'] ?? 'hospital';
     $tid = intval($input['target_id'] ?? 0);
 
-    if (!in_array($type, ['hospital', 'doctor']) || $tid <= 0) {
+    if (!in_array($type, ['hospital', 'treatment']) || $tid <= 0) {
         echo json_encode(['success' => false, 'message' => '잘못된 요청']);
         exit;
     }

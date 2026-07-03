@@ -1808,8 +1808,9 @@ function extractImageFromHtml($file_path) {
                 <h3 style="font-size:18px;margin-bottom:12px;">💰 주요 <?= term('service', '시술') ?> 가격</h3>
                 <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:10px;">
                 <?php foreach (array_slice($treatments, 0, 6) as $_tp): ?>
-                    <div style="border:1px solid var(--bs-border-color);border-radius:8px;padding:12px;background:var(--bs-tertiary-bg);">
-                        <div style="font-weight:600;font-size:14px;margin-bottom:4px;"><?php echo htmlspecialchars($_tp['name'] ?? ''); ?></div>
+                    <div style="border:1px solid var(--bs-border-color);border-radius:8px;padding:12px;background:var(--bs-tertiary-bg);position:relative;">
+                        <div style="position:absolute;top:6px;right:6px;"><?php renderWishlistButton('treatment', (int)$_tp['id'], 'sm', false); ?></div>
+                        <div style="font-weight:600;font-size:14px;margin-bottom:4px;padding-right:24px;"><?php echo htmlspecialchars($_tp['name'] ?? ''); ?></div>
                         <?php if (!empty($_tp['category'])): ?>
                         <div style="font-size:11px;color:var(--bs-secondary-color);margin-bottom:6px;"><?php echo htmlspecialchars($_tp['category']); ?></div>
                         <?php endif; ?>
