@@ -9,6 +9,8 @@ require_once __DIR__ . '/includes/dev_mode_helper.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 // 앱 모드 감지 (?app=1 파라미터)
 $is_app_mode = isset($_GET['app']) && $_GET['app'] == '1';
+// my_reviews.php "작성가능" 목록에서 넘어온 경우 병원 미리 선택 (?hospital_id=)
+$prefill_hospital_id = intval($_GET['hospital_id'] ?? 0);
 require_once __DIR__ . '/includes/settings_helper.php';
 require_once __DIR__ . '/includes/photo_upload_helper.php';
 
@@ -156,7 +158,7 @@ include __DIR__ . '/includes/header.php';
             <select name="hospital_id" class="rw-select" required>
                 <option value=""><?php echo term('business', '병원'); ?>을 선택하세요</option>
                 <?php foreach ($hospitals as $h): ?>
-                <option value="<?php echo $h['id']; ?>" <?php echo (intval($_POST['hospital_id'] ?? 0) === intval($h['id'])) ? 'selected' : ''; ?>>
+                <option value="<?php echo $h['id']; ?>" <?php echo (intval($_POST['hospital_id'] ?? $prefill_hospital_id) === intval($h['id'])) ? 'selected' : ''; ?>>
                     <?php echo htmlspecialchars($h['name']); ?>
                 </option>
                 <?php endforeach; ?>
@@ -165,7 +167,7 @@ include __DIR__ . '/includes/header.php';
 
         <div class="rw-form-group">
             <label class="rw-label">받은 <?php echo term('service', '시술'); ?> (선택)</label>
-            <?php $hospital_id = intval($_POST['hospital_id'] ?? 0); include __DIR__ . '/includes/treatment_select_ui.php'; ?>
+            <?php $hospital_id = intval($_POST['hospital_id'] ?? $prefill_hospital_id); include __DIR__ . '/includes/treatment_select_ui.php'; ?>
         </div>
 
         <div class="rw-form-group">
