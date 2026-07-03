@@ -21,26 +21,6 @@ $db_categories = loadCategoriesFromDB($connect);
 $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_hospitals'");
 $table_exists = mysqli_num_rows($table_check) > 0;
 
-// 병원 데이터 가져오기
-$hospitals = [];
-if ($table_exists) {
-    // [프론트 #7 - 2026-05-28] 검색 결과 일관성 - 반려 병원 제외
-    // hospitals.php와 동일한 status 필터 적용하여 메인/병원탭 결과 일치
-    $query = "SELECT * FROM gangnamunni_hospitals
-              WHERE is_active=1
-                AND COALESCE(is_demo, 0)=0
-                AND (status='approved' OR status IS NULL)
-              ORDER BY rating DESC, review_count DESC
-              LIMIT " . HOSPITALS_PER_PAGE;
-    $result = mysqli_query($connect, $query);
-
-    if ($result) {
-        while ($row = mysqli_fetch_assoc($result)) {
-            $hospitals[] = $row;
-        }
-    }
-}
-
 // 광고 배너 데이터 가져오기
 $ads = [];
 $ads_query = "SELECT * FROM gangnamunni_ads WHERE is_active = 1 ORDER BY display_order ASC LIMIT 10";
@@ -419,33 +399,6 @@ $page_css = '
 
 // 페이지 전용 JS
 $page_js = '
-// 뷰 전환 기능
-function switchView(viewType) {
-    var grid = document.getElementById("hospital-grid");
-    var cardBtn = document.getElementById("view-card");
-    var listBtn = document.getElementById("view-list");
-
-    if (viewType === "list") {
-        grid.classList.add("list-view");
-        cardBtn.classList.remove("active");
-        listBtn.classList.add("active");
-    } else {
-        grid.classList.remove("list-view");
-        cardBtn.classList.add("active");
-        listBtn.classList.remove("active");
-    }
-
-    localStorage.setItem("hospital_view", viewType);
-}
-
-// 페이지 로드 시 저장된 뷰 적용
-document.addEventListener("DOMContentLoaded", function() {
-    var savedView = localStorage.getItem("hospital_view");
-    if (savedView === "list") {
-        switchView("list");
-    }
-});
-
 // 스크롤 컨테이너 좌우 이동
 function scrollContainer(selector, amount) {
     var container = document.querySelector(selector);
@@ -482,15 +435,6 @@ function showImportGuide() {
 // 시술 카테고리 필터
 function filterByCategory(category) {
     location.href = "hospitals.php?category=" + encodeURIComponent(category);
-}
-
-// 지역 필터
-function filterByRegion(region) {
-    if (region === "") {
-        location.href = "index.php";
-    } else {
-        location.href = "hospitals.php?q=" + encodeURIComponent(region);
-    }
 }
 
 // 검색 기능
@@ -1360,79 +1304,9 @@ body.ae-active { padding-top:0 !important; }
         </div>
 
         <?php endif; /* home_categories */ ?>
-
-        <!-- 병원 리스트 섹션 -->
-        <div class="hospital-section">
-            <h2 class="hospital-section-title"><?php echo getTheme('section_hospitals_title'); ?></h2>
-
-            <!-- 필터 섹션 -->
-            <div class="filter-section">
-                <button class="filter-btn active" onclick="filterByRegion('')">전체</button>
-                <button class="filter-btn" onclick="filterByRegion('강남')">강남</button>
-                <button class="filter-btn" onclick="filterByRegion('신촌')">신촌</button>
-                <button class="filter-btn" onclick="filterByRegion('홍대')">홍대</button>
-                <button class="filter-btn" onclick="filterByRegion('명동')">명동</button>
-            </div>
-
-            <!-- 뷰 전환 버튼 -->
-            <div class="view-toggle">
-                <button class="view-btn active" onclick="switchView('card')" id="view-card">
-                    <span>🔲</span> 카드형
-                </button>
-                <button class="view-btn" onclick="switchView('list')" id="view-list">
-                    <span>📋</span> 리스트형
-                </button>
-            </div>
-
-        <!-- 병원 카드 그리드 -->
-        <div class="hospital-grid" id="hospital-grid">
-            <?php foreach ($hospitals as $hospital): ?>
-            <div class="hospital-card" onclick="location.href='detail.php?id=<?php echo $hospital['id']; ?>'">
-                <img
-                    src="<?php echo htmlspecialchars($hospital['profile_image_url'] ?? ''); ?>"
-                    alt="<?php echo htmlspecialchars($hospital['name']); ?>"
-                    class="hospital-image"
-                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'200\'%3E%3Crect fill=\'%23f5f5f5\' width=\'300\' height=\'200\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' fill=\'%23999\' text-anchor=\'middle\' dominant-baseline=\'middle\' font-size=\'20\'%3E병원 이미지%3C/text%3E%3C/svg%3E'"
-                >
-                <div class="hospital-info">
-                    <div class="hospital-name"><?php echo htmlspecialchars($hospital['name']); ?></div>
-                    <div class="hospital-address"><?php echo htmlspecialchars(mb_substr($hospital['address'] ?? '', 0, 30)); ?></div>
-                    <div class="rating-section">
-                        <span class="rating-score"><?php echo number_format($hospital['rating'] ?? 0, 1); ?></span>
-                        <span class="review-count">(평가 <?php echo number_format($hospital['review_count'] ?? 0); ?>개)</span>
-                    </div>
-                    <?php if (!empty($hospital['treatment_tags'])): ?>
-                    <div class="badge-group">
-                        <?php
-                        $tags = json_decode($hospital['treatment_tags'], true);
-                        if (is_array($tags)) {
-                            foreach (array_slice($tags, 0, 3) as $tag) {
-                                // 태그가 배열이면 첫 번째 요소 사용, 아니면 그대로 사용
-                                $tag_text = is_array($tag) ? (isset($tag[0]) ? $tag[0] : '') : $tag;
-                                if (!empty($tag_text) && is_string($tag_text)) {
-                                    echo '<span class="badge">' . htmlspecialchars($tag_text) . '</span>';
-                                }
-                            }
-                        }
-                        ?>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-
-        <?php if (empty($hospitals)): ?>
-        <div style="text-align: center; padding: 60px 20px; color: #999;">
-            <div style="font-size: 48px; margin-bottom: 20px;">🏥</div>
-            <p>병원 데이터가 없습니다.</p>
-            <p style="margin-top: 10px; font-size: 14px;">SQL 파일을 import 해주세요.</p>
-        </div>
-        <?php endif; ?>
-        </div><!-- /.hospital-section -->
         <?php endif; ?>
 
-<div style="height:70px;"></div>
+
 
 
 <!-- 퀵 메뉴 -->
@@ -1453,38 +1327,6 @@ body.ae-active { padding-top:0 !important; }
     </div>
 </div>
 <?php $rolling_page = "index"; include __DIR__ . "/includes/rolling_banner.php"; ?>
-<!-- 맞춤 추천 병원 -->
-<div class="recommend-section ae-wrap" id="recommend-section" style="display:none;padding:0 16px;max-width:640px;margin:16px auto;">
-    <?php if (function_exists('ae')) ae('hospitals', '병원 관리'); ?>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h2 style="font-size:17px;font-weight:700;margin:0;"><i class="bi bi-stars" style="color:#AE1932;"></i> 맞춤 추천</h2>
-        <a href="hospitals.php" style="font-size:12px;color:var(--bs-secondary-color,#888);text-decoration:none;">더보기 &gt;</a>
-    </div>
-    <div id="recommend-list" style="display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;"></div>
-</div>
-<script>
-(function(){
-    var API = <?php echo json_encode(SITE_BASE_PATH . 'api_recommend.php'); ?>;
-    fetch(API + '?action=hospitals&limit=8')
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-        if(!res.success||!res.hospitals||!res.hospitals.length) return;
-        document.getElementById('recommend-section').style.display='';
-        var el=document.getElementById('recommend-list');
-        res.hospitals.forEach(function(h){
-            var a=document.createElement('a');
-            a.href='detail.php?id='+h.id;
-            a.style.cssText='flex-shrink:0;width:140px;text-decoration:none;color:inherit;';
-            var imageUrl=h.image||h.main_image_url||'';
-            var img=imageUrl?'<img src="'+imageUrl+'" style="width:140px;height:100px;object-fit:cover;border-radius:10px;display:block;background:var(--bs-tertiary-bg,#eee);">':'<div style="width:140px;height:100px;border-radius:10px;background:var(--bs-tertiary-bg,#eee);display:flex;align-items:center;justify-content:center;font-size:24px;color:#ccc;"><i class="bi bi-building"></i></div>';
-            var rating=h.rating>0?'<span style="color:#f59e0b;font-size:11px;">★ '+Number(h.rating).toFixed(1)+'</span>':'';
-            a.innerHTML=img+'<div style="padding:6px 2px;"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escH(h.name)+'</div>'+rating+'</div>';
-            el.appendChild(a);
-        });
-    }).catch(function(){});
-    function escH(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
-})();
-</script>
 
 <?php renderRecentlyViewedSection(); ?>
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
