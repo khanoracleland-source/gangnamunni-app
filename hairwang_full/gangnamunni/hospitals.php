@@ -197,40 +197,22 @@ if (!empty($treatment)) {
     }
 }
 
-// 병원별 대표 시술 설명 조회 (가장 저렴한 활성 시술 1건)
+// 병원별 대표 시술 설명 조회
+// [QA #2] ?treatment= 로 특정 시술 검색 중일 때만 그 시술의 가격을 보여준다.
+// 지역 검색이나 필터 없는 단순 목록에서는 어떤 시술을 대표로 보여줘야 할지 알 수 없으므로 표시하지 않는다.
 $hospital_treatment_descs = [];
-if (!empty($hospitals)) {
+if (!empty($hospitals) && !empty($treatment)) {
     $h_ids = array_column($hospitals, 'id');
     $h_ids_str = implode(',', array_map('intval', $h_ids));
-    // [1차 검수 #5 - 2026-05-28] 대표 시술 가격(price_min) 함께 조회
-    // ?treatment= 검색 중이면 해당 병원에서 "가장 저렴한 시술"이 아니라
-    // 검색한 그 시술의 가격을 정확히 보여줘야 함
-    if (!empty($treatment)) {
-        $_td_sql = "
-            SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max, ht.dosage_value, ht.dosage_unit
-            FROM gangnamunni_hospital_treatments ht
-            INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
-            WHERE ht.hospital_id IN ({$h_ids_str})
-              AND ht.status = 'active'
-              AND tm.is_active = 1
-              AND tm.name = '{$escaped_treatment}'
-        ";
-    } else {
-        $_td_sql = "
-            SELECT sub.hospital_id, sub.treatment_name, sub.description, sub.price_min, sub.price_max, sub.dosage_value, sub.dosage_unit
-            FROM (
-                SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max, ht.dosage_value, ht.dosage_unit,
-                       ROW_NUMBER() OVER (PARTITION BY ht.hospital_id ORDER BY ht.is_promoted DESC, ht.price_min ASC, tm.popularity_score DESC) AS rn
-                FROM gangnamunni_hospital_treatments ht
-                INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
-                WHERE ht.hospital_id IN ({$h_ids_str})
-                  AND ht.status = 'active'
-                  AND tm.is_active = 1
-                  AND tm.description IS NOT NULL
-                  AND tm.description != ''
-            ) sub WHERE sub.rn = 1
-        ";
-    }
+    $_td_sql = "
+        SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max, ht.dosage_value, ht.dosage_unit
+        FROM gangnamunni_hospital_treatments ht
+        INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
+        WHERE ht.hospital_id IN ({$h_ids_str})
+          AND ht.status = 'active'
+          AND tm.is_active = 1
+          AND tm.name = '{$escaped_treatment}'
+    ";
     $_td_result = mysqli_query($connect, $_td_sql);
     if ($_td_result) {
         while ($_td_row = mysqli_fetch_assoc($_td_result)) {
@@ -604,16 +586,6 @@ foreach ($hospitals as $hospital):
     endif;
     $__hi++;
 
-    $tags = [];
-    if (!empty($hospital['treatment_tags'])) {
-        $raw = json_decode($hospital['treatment_tags'], true);
-        if (is_array($raw)) {
-            foreach ($raw as $t) {
-                if (is_array($t) && isset($t['name'])) $tags[] = $t['name'];
-                elseif (is_string($t) && !empty($t)) $tags[] = $t;
-            }
-        }
-    }
     $has_rating = (int)($hospital['review_count'] ?? 0) > 0;
     $rating_val = number_format((float)($hospital['rating'] ?? 0), 1);
     $review_cnt = number_format((int)($hospital['review_count'] ?? 0));
@@ -649,8 +621,8 @@ foreach ($hospitals as $hospital):
                     </div>
                     <?php
                     $_td = $hospital_treatment_descs[(int)$hospital['id']] ?? null;
-                    $_tag_name = $_td['name'] ?? ($tags[0] ?? null);
-                    $_price = !empty($_td['price_min']) && (int)$_td['price_min'] > 0 ? (int)$_td['price_min'] : (int)($hospital['min_price'] ?? 0);
+                    $_tag_name = $_td['name'] ?? null;
+                    $_price = !empty($_td['price_min']) && (int)$_td['price_min'] > 0 ? (int)$_td['price_min'] : 0;
                     $_price_max = !empty($_td['price_max']) && (int)$_td['price_max'] > 0 ? (int)$_td['price_max'] : 0;
                     $_dosage_label = '';
                     if ($_td && $_td['dosage_value'] !== null && $_td['dosage_unit']) {
