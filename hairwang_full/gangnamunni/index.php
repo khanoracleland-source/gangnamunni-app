@@ -21,10 +21,6 @@ $db_categories = loadCategoriesFromDB($connect);
 $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_hospitals'");
 $table_exists = mysqli_num_rows($table_check) > 0;
 
-// 꿀팁 테이블 존재 확인
-$tips_table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_tips'");
-$tips_table_exists = mysqli_num_rows($tips_table_check) > 0;
-
 // 병원 데이터 가져오기
 $hospitals = [];
 if ($table_exists) {
@@ -41,19 +37,6 @@ if ($table_exists) {
     if ($result) {
         while ($row = mysqli_fetch_assoc($result)) {
             $hospitals[] = $row;
-        }
-    }
-}
-
-// 꿀팁 데이터 가져오기
-$tips = [];
-if ($tips_table_exists && !USE_DEMO_DATA) {
-    $tips_query = "SELECT * FROM gangnamunni_tips ORDER BY created_at DESC LIMIT " . TIPS_PER_PAGE;
-    $tips_result = mysqli_query($connect, $tips_query);
-
-    if ($tips_result) {
-        while ($row = mysqli_fetch_assoc($tips_result)) {
-            $tips[] = $row;
         }
     }
 }
@@ -1377,66 +1360,6 @@ body.ae-active { padding-top:0 !important; }
         </div>
 
         <?php endif; /* home_categories */ ?>
-        <!-- <?php echo site_name(); ?> 꿀팁 -->
-        <div class="tips-section">
-            <div class="tips-header">
-                <h2 class="tips-title"><?php echo getTheme('section_tips_title'); ?></h2>
-                <div class="tips-more" onclick="location.href='tips.php'"><?php echo getTheme('button_more'); ?> →</div>
-            </div>
-            <div class="tips-grid">
-                <?php if (!empty($tips) && !USE_DEMO_DATA): ?>
-                    <?php
-                    $gradient_colors = [
-                        ['#FFE0B2', '#FFCC80', '📝'],
-                        ['#F8BBD0', '#F48FB1', '💄'],
-                        ['#C5E1A5', '#AED581', '🌟'],
-                        ['#B2EBF2', '#80DEEA', '💊']
-                    ];
-                    $color_index = 0;
-                    foreach ($tips as $tip):
-                        $colors = $gradient_colors[$color_index % 4];
-                        $color_index++;
-                        // placeholder URL인지 확인
-                        $is_placeholder = empty($tip['thumbnail_url']) ||
-                                         strpos($tip['thumbnail_url'], 'placeholder') !== false ||
-                                         strpos($tip['thumbnail_url'], 'via.placeholder') !== false;
-                    ?>
-                    <div class="tip-card" onclick="location.href='detail_tip.php?id=<?php echo $tip['id']; ?>'">
-                        <div class="tip-image" style="background: linear-gradient(135deg, <?php echo $colors[0]; ?>, <?php echo $colors[1]; ?>); display: flex; align-items: center; justify-content: center; font-size: 48px;">
-                            <?php echo $colors[2]; ?>
-                        </div>
-                        <div class="tip-overlay"><?php echo htmlspecialchars($tip['title']); ?></div>
-                    </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <!-- 데모 데이터 -->
-                    <div class="tip-card" onclick="alert('실제 데이터가 로드되면 사용 가능합니다. config.php에서 USE_DEMO_DATA를 false로 설정하세요.')">
-                        <div class="tip-image" style="background: linear-gradient(135deg, #FFE0B2, #FFCC80); display: flex; align-items: center; justify-content: center; font-size: 48px;">
-                            📝
-                        </div>
-                        <div class="tip-overlay">연휴를 활용한 맞춤 관리 5가지</div>
-                    </div>
-                    <div class="tip-card" onclick="alert('실제 데이터가 로드되면 사용 가능합니다. config.php에서 USE_DEMO_DATA를 false로 설정하세요.')">
-                        <div class="tip-image" style="background: linear-gradient(135deg, #F8BBD0, #F48FB1); display: flex; align-items: center; justify-content: center; font-size: 48px;">
-                            💄
-                        </div>
-                        <div class="tip-overlay">볼살·턱살엔 인모드? 울쎄라?</div>
-                    </div>
-                    <div class="tip-card" onclick="alert('실제 데이터가 로드되면 사용 가능합니다. config.php에서 USE_DEMO_DATA를 false로 설정하세요.')">
-                        <div class="tip-image" style="background: linear-gradient(135deg, #C5E1A5, #AED581); display: flex; align-items: center; justify-content: center; font-size: 48px;">
-                            🌟
-                        </div>
-                        <div class="tip-overlay">콜써마지 문제 해결? 리주란부다 리투?</div>
-                    </div>
-                    <div class="tip-card" onclick="alert('실제 데이터가 로드되면 사용 가능합니다. config.php에서 USE_DEMO_DATA를 false로 설정하세요.')">
-                        <div class="tip-image" style="background: linear-gradient(135deg, #B2EBF2, #80DEEA); display: flex; align-items: center; justify-content: center; font-size: 48px;">
-                            💊
-                        </div>
-                        <div class="tip-overlay">스킨부스터 환절엽 리후란다 리투?</div>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
 
         <!-- 병원 리스트 섹션 -->
         <div class="hospital-section">
