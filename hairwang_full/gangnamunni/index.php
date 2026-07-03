@@ -56,22 +56,6 @@ if ($events_result) {
     }
 }
 
-// 응모 이벤트 (has_raffle = 1인 이벤트)
-$raffles = [];
-$raffles_query = "SELECT e.*, h.name as hospital_name,
-    (SELECT COUNT(*) FROM gangnamunni_event_entries en WHERE en.event_id = e.id) as entry_count
-    FROM gangnamunni_events e
-    LEFT JOIN gangnamunni_hospitals h ON e.hospital_id = h.id
-    WHERE e.is_active = 1 AND e.has_raffle = 1
-    AND (e.raffle_end_date IS NULL OR e.raffle_end_date >= CURDATE())
-    ORDER BY e.raffle_end_date ASC, e.created_at DESC LIMIT 6";
-$raffles_result = mysqli_query($connect, $raffles_query);
-if ($raffles_result) {
-    while ($row = mysqli_fetch_assoc($raffles_result)) {
-        $raffles[] = $row;
-    }
-}
-
 // 자동 스크롤 설정 가져오기
 function getScrollSetting($connect, $key, $default) {
     $key = mysqli_real_escape_string($connect, $key);
@@ -244,119 +228,6 @@ $page_css = '
     margin-top: 4px;
 }
 
-/* 응모 섹션 */
-.raffle-section {
-    margin-bottom: 24px;
-}
-.raffle-section .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-}
-.raffle-section .section-title {
-    font-size: 20px;
-    font-weight: 700;
-    color: #000000;
-}
-.raffle-section .section-more {
-    font-size: 13px;
-    color: #AE1932;
-    text-decoration: none;
-    font-weight: 500;
-}
-.raffle-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-}
-.raffle-card {
-    border-radius: 0px;
-    overflow: hidden;
-    background: var(--bs-body-bg, #fff);
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-    position: relative;
-}
-.raffle-card:hover {
-}
-.raffle-card .raffle-img {
-    width: 100%;
-    height: 120px;
-    background: linear-gradient(135deg, #AE1932, #D4354E);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 36px;
-    position: relative;
-    overflow: hidden;
-}
-.raffle-card .raffle-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.raffle-card .raffle-type-badge {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    color: white;
-    background: #AE1932;
-}
-.raffle-card .raffle-dday {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    color: white;
-    background: rgba(0,0,0,0.5);
-}
-.raffle-card .raffle-body {
-    padding: 12px;
-}
-.raffle-card .raffle-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #1a1a1a;
-    margin-bottom: 4px;
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-.raffle-card .raffle-prize {
-    font-size: 12px;
-    color: #AE1932;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-.raffle-card .raffle-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.raffle-card .raffle-entries {
-    font-size: 11px;
-    color: #888;
-}
-.raffle-card .raffle-btn {
-    font-size: 12px;
-    font-weight: 700;
-    color: white;
-    background: #AE1932;
-    padding: 4px 12px;
-    border-radius: 12px;
-}
-
 @media (max-width: 480px) {
     .event-card-mini {
         flex: 0 0 170px;
@@ -364,9 +235,6 @@ $page_css = '
     .event-card-mini .card-img {
         width: 170px;
         height: 120px;
-    }
-    .raffle-grid {
-        grid-template-columns: 1fr;
     }
 }
 
@@ -399,35 +267,6 @@ $page_css = '
 
 // 페이지 전용 JS
 $page_js = '
-// 스크롤 컨테이너 좌우 이동
-function scrollContainer(selector, amount) {
-    var container = document.querySelector(selector);
-    if (!container) return;
-
-    var startPosition = container.scrollLeft;
-    var targetPosition = startPosition + amount;
-    var duration = 500;
-    var startTime = null;
-
-    function animation(currentTime) {
-        if (startTime === null) startTime = currentTime;
-        var timeElapsed = currentTime - startTime;
-        var progress = Math.min(timeElapsed / duration, 1);
-
-        var ease = progress < 0.5
-            ? 2 * progress * progress
-            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-
-        container.scrollLeft = startPosition + ((targetPosition - startPosition) * ease);
-
-        if (timeElapsed < duration) {
-            requestAnimationFrame(animation);
-        }
-    }
-
-    requestAnimationFrame(animation);
-}
-
 function showImportGuide() {
     alert("데이터베이스 Import 가이드:\n\n1. MySQL 접속:\n   mysql -u root -p -h localhost\n\n2. hairwang 데이터베이스 선택:\n   USE hairwang;\n\n3. SQL 파일 import:\n   SOURCE H:/carebaby_project/site_get/gangnamunni_hospitals_import.sql;\n\n4. 완료 후 이 페이지 새로고침 (F5)\n\n문제 발생 시: test_db_connection.php에서 DB 연결 확인");
 }
@@ -459,76 +298,6 @@ document.querySelectorAll(".nav-item").forEach(function(item) {
         }
     });
 });
-
-// 수평 자동 스크롤 기능
-function initAutoScroll(containerSelector, enabled, interval) {
-    if (!enabled || enabled === "0") return;
-
-    var container = document.querySelector(containerSelector);
-    if (!container) return;
-
-    var scrollInterval = parseInt(interval) || 10000;
-    var isScrolling = false;
-
-    function smoothScrollTo(targetPosition) {
-        if (isScrolling) return;
-        isScrolling = true;
-
-        var startPosition = container.scrollLeft;
-        var distance = targetPosition - startPosition;
-        var duration = 800;
-        var startTime = null;
-
-        function animation(currentTime) {
-            if (startTime === null) startTime = currentTime;
-            var timeElapsed = currentTime - startTime;
-            var progress = Math.min(timeElapsed / duration, 1);
-
-            var ease = progress < 0.5
-                ? 2 * progress * progress
-                : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-
-            container.scrollLeft = startPosition + (distance * ease);
-
-            if (timeElapsed < duration) {
-                requestAnimationFrame(animation);
-            } else {
-                isScrolling = false;
-            }
-        }
-
-        requestAnimationFrame(animation);
-    }
-
-    function autoScroll() {
-        var maxScroll = container.scrollWidth - container.clientWidth;
-
-        if (container.scrollLeft >= maxScroll - 10) {
-            smoothScrollTo(0);
-        } else {
-            var item = container.querySelector(".ad-item, .promo-banner");
-            var itemWidth = item ? item.offsetWidth : 300;
-            var gap = 12;
-            var scrollAmount = itemWidth + gap;
-            smoothScrollTo(container.scrollLeft + scrollAmount);
-        }
-    }
-
-    var scrollTimer = setInterval(autoScroll, scrollInterval);
-
-    container.addEventListener("scroll", function() {
-        clearInterval(scrollTimer);
-        scrollTimer = setInterval(autoScroll, scrollInterval);
-    }, { passive: true });
-
-    container.addEventListener("mouseenter", function() {
-        clearInterval(scrollTimer);
-    });
-
-    container.addEventListener("mouseleave", function() {
-        scrollTimer = setInterval(autoScroll, scrollInterval);
-    });
-}
 
 // 캐러셀 이동
 function carouselMove(carouselId, dir) {
@@ -842,66 +611,6 @@ body.ae-active { padding-top:0 !important; }
             pointer-events: none;
         }
 
-        /* ===== 모드A: 엑셀형 ===== */
-        .tc-mode-excel { background: var(--bs-body-bg, #fff); }
-        .tc-excel-viewport {
-            overflow-x: auto; overflow-y: hidden;
-            -webkit-overflow-scrolling: touch; scrollbar-width: none;
-            mask-image: linear-gradient(to right, #000 85%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to right, #000 85%, transparent 100%);
-        }
-        .tc-excel-viewport::-webkit-scrollbar { display: none; }
-        .tc-excel-viewport.tc-scrolled-end { mask-image: none; -webkit-mask-image: none; }
-
-        .tc-excel-table {
-            border-collapse: collapse; font-size: calc(16px * var(--cat-scale,1) * var(--cat-font,1));
-            min-width: 100%; width: max-content;
-        }
-        .tc-excel-table tr { border-bottom: 1px solid #D5D5D5; }
-        .tc-excel-table tr:last-child { border-bottom: none; }
-
-        .tc-major-cell {
-            position: sticky; left: 0; z-index: 2;
-            padding: calc(14px * var(--cat-scale,1) * var(--cat-pad,1)) calc(14px * var(--cat-scale,1)); font-weight: 700; font-size: calc(15px * var(--cat-scale,1) * var(--cat-font,1));
-            background: var(--bs-tertiary-bg, #F1F1F1); color: var(--bs-body-color, #000);
-            white-space: nowrap; min-width: calc(110px * var(--cat-scale,1) * var(--cat-chip,1));
-            border-right: 1px solid #D5D5D5; text-align: left;
-        }
-        .tc-major-cell::after {
-            content: ''; position: absolute; top: 0; right: -6px;
-            width: 6px; height: 100%;
-            background: linear-gradient(to right, rgba(0,0,0,0.06), transparent);
-            pointer-events: none;
-        }
-        .tc-sub-cell { padding: calc(10px * var(--cat-scale,1) * var(--cat-pad,1)) calc(8px * var(--cat-scale,1)); white-space: nowrap; vertical-align: middle; }
-
-        .tc-excel-arrow {
-            display: none; position: absolute; top: 50%; transform: translateY(-50%);
-            width: 32px; height: 32px; border-radius: 50%;
-            background: rgba(0,0,0,0.6); color: #fff; border: none;
-            font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; cursor: pointer;
-            z-index: 5; transition: opacity 0.2s;
-            align-items: center; justify-content: center; line-height: 1;
-        }
-        .tc-excel-arrow-l { left: 116px; }
-        .tc-excel-arrow-r { right: 4px; }
-        .tc-excel-arrow:hover { background: rgba(0,0,0,0.8); }
-        .tc-excel-arrow:disabled { opacity: 0.3; cursor: default; }
-        @media (min-width: 768px) {
-            .tc-mode-excel:hover .tc-excel-arrow { display: flex; }
-        }
-
-        .tc-scroll-hint {
-            display: none; position: absolute; bottom: 6px; left: 50%;
-            transform: translateX(-50%); padding: 4px 14px;
-            background: rgba(0,0,0,0.55); color: #fff;
-            font-size: calc(11px * var(--fs-scale,1) * var(--fs-page,1)); border-radius: 12px; white-space: nowrap;
-            pointer-events: none; z-index: 5;
-            animation: tcHintFade 3s ease forwards;
-        }
-        @media (max-width: 767px) { .tc-scroll-hint { display: block; } }
-        @keyframes tcHintFade { 0%,60% { opacity: 1; } 100% { opacity: 0; } }
-
         /* ===== panel wrap ===== */
         .tc-panel-wrap {
             display: flex;
@@ -1017,30 +726,6 @@ body.ae-active { padding-top:0 !important; }
         <script>
         (function(){
             'use strict';
-            // ===== 모드A: 엑셀형 스크롤 =====
-            var vp = document.getElementById('tcExcelViewport');
-            if (vp) {
-                var btnL = document.getElementById('tcExcelLeft');
-                var btnR = document.getElementById('tcExcelRight');
-                function updateExcelArrows() {
-                    if (!btnL || !btnR) return;
-                    btnL.disabled = vp.scrollLeft <= 2;
-                    btnR.disabled = vp.scrollLeft + vp.clientWidth >= vp.scrollWidth - 2;
-                    if (vp.scrollLeft + vp.clientWidth >= vp.scrollWidth - 5) {
-                        vp.classList.add('tc-scrolled-end');
-                    } else {
-                        vp.classList.remove('tc-scrolled-end');
-                    }
-                }
-                vp.addEventListener('scroll', updateExcelArrows);
-                updateExcelArrows();
-                window.tcExcelScroll = function(dir) {
-                    vp.scrollBy({ left: dir * 200, behavior: 'smooth' });
-                };
-                var hint = document.getElementById('tcScrollHint');
-                if (hint) setTimeout(function(){ hint.style.display = 'none'; }, 3500);
-            }
-
             // ===== 모드B/C: 행별 스크롤 =====
             window.tcRowScroll = function(btn, dir) {
                 var wrap = btn.parentElement;
@@ -1211,73 +896,6 @@ body.ae-active { padding-top:0 !important; }
         </div>
         <?php endif; ?>
 
-        <!-- 응모 이벤트 섹션 (임시 비활성화 - 필요없어질 때까지 주석 처리) -->
-        <?php if (false && !empty($raffles)): ?>
-        <div class="raffle-section">
-            <div class="section-header">
-                <div class="section-title">🎰 응모 이벤트</div>
-                <a href="events.php?filter=raffle" class="section-more">전체보기 →</a>
-            </div>
-            <div class="raffle-grid">
-                <?php foreach ($raffles as $raffle):
-                    // D-day 계산
-                    $dday = '';
-                    if (!empty($raffle['raffle_end_date'])) {
-                        $diff = (strtotime($raffle['raffle_end_date']) - strtotime('today')) / 86400;
-                        if ($diff <= 0) $dday = 'D-Day';
-                        else $dday = 'D-' . intval($diff);
-                    }
-                    // 응모 타입 라벨
-                    $type_labels = [
-                        'lottery' => '추첨',
-                        'first_come' => '선착순',
-                        'quiz' => '퀴즈',
-                        'share' => '공유'
-                    ];
-                    $type_label = $type_labels[$raffle['raffle_type'] ?? ''] ?? '추첨';
-                    // 남은 자리
-                    $spots_left = '';
-                    if (!empty($raffle['max_entries']) && $raffle['max_entries'] > 0) {
-                        $left = $raffle['max_entries'] - ($raffle['entry_count'] ?? 0);
-                        $spots_left = max(0, $left) . '/' . $raffle['max_entries'];
-                    }
-                ?>
-                <a href="event_detail.php?id=<?php echo $raffle['id']; ?>" class="raffle-card">
-                    <div class="raffle-img">
-                        <?php if (!empty($raffle['image_url'])): ?>
-                        <img src="<?php echo htmlspecialchars($raffle['image_url']); ?>"
-                             alt="<?php echo htmlspecialchars($raffle['title']); ?>"
-                             onerror="this.style.display='none'; this.parentNode.textContent='🎰';">
-                        <?php else: ?>
-                        🎰
-                        <?php endif; ?>
-                        <div class="raffle-type-badge"><?php echo $type_label; ?></div>
-                        <?php if ($dday): ?>
-                        <div class="raffle-dday"><?php echo $dday; ?></div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="raffle-body">
-                        <div class="raffle-title"><?php echo htmlspecialchars($raffle['title']); ?></div>
-                        <?php if (!empty($raffle['raffle_prize'])): ?>
-                        <div class="raffle-prize">🎁 <?php echo htmlspecialchars(mb_substr($raffle['raffle_prize'], 0, 30)); ?></div>
-                        <?php endif; ?>
-                        <div class="raffle-meta">
-                            <span class="raffle-entries">
-                                <?php if ($spots_left): ?>
-                                <?php echo $spots_left; ?>명
-                                <?php else: ?>
-                                <?php echo number_format($raffle['entry_count'] ?? 0); ?>명 참여
-                                <?php endif; ?>
-                            </span>
-                            <span class="raffle-btn">응모하기</span>
-                        </div>
-                    </div>
-                </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
         <!-- 시술 카테고리 (figma_block: home_categories) -->
         <?php if (figma_block_visible('home_categories')): ?>
         <div class="category-section ae-wrap">
@@ -1305,9 +923,6 @@ body.ae-active { padding-top:0 !important; }
 
         <?php endif; /* home_categories */ ?>
         <?php endif; ?>
-
-
-
 
 <!-- 퀵 메뉴 -->
 <div style="max-width:640px;margin:16px auto;padding:0 16px;">
