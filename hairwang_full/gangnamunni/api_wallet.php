@@ -370,9 +370,11 @@ if ($method === 'POST') {
              (hospital_id, type, amount, balance_after, description, reference_type, reference_id, pg_order_id, admin_id, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         $ref_type = $input['reference_type'] ?? '';
-        $ref_id = $input['reference_id'] ?? '';
+        // reference_id는 int(11) 컬럼 — 빈 값이면 NULL, 아니면 정수로 (strict mode에서 '' 삽입 오류 방지)
+        $ref_id = (isset($input['reference_id']) && $input['reference_id'] !== '') ? intval($input['reference_id']) : null;
         $abs_amount = abs($amount);
-        mysqli_stmt_bind_param($stmt, 'isissssis',
+        // 타입 문자열을 컬럼 순서(hospital_id, type, amount, balance_after, description, reference_type, reference_id, pg_order_id, admin_id)에 정확히 정렬
+        mysqli_stmt_bind_param($stmt, 'isiissisi',
             $hospital_id, $tx_type, $abs_amount, $new_balance,
             $description, $ref_type, $ref_id, $pg_order_id, $admin_id
         );
@@ -398,10 +400,10 @@ if ($method === 'POST') {
                 "INSERT INTO gangnamunni_cpv_transactions
                  (hospital_id, type, amount, balance_after, description, reference_type, reference_id, pg_order_id, admin_id, created_at)
                  VALUES (?, 'bonus', ?, ?, ?, 'charge_bonus', ?, ?, ?, NOW())");
-            $tx_id_str = (string)$tx_id;
-            mysqli_stmt_bind_param($stmt, 'iissssi',
+            $ref_charge_id = (int)$tx_id;
+            mysqli_stmt_bind_param($stmt, 'iiisisi',
                 $hospital_id, $bonus, $new_balance,
-                $bonus_desc, $tx_id_str, $pg_order_id, $admin_id
+                $bonus_desc, $ref_charge_id, $pg_order_id, $admin_id
             );
             mysqli_stmt_execute($stmt);
             $bonus_tx_id = mysqli_insert_id($connect);
