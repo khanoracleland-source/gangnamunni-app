@@ -98,24 +98,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
     if ($product_id <= 0 || $hospital_id <= 0) {
         $error = '상품과 병원을 선택해주세요.';
     } else {
-        $prev_end = date('Y-m-d', strtotime($start_date_esc . ' -1 day'));
-        mysqli_query($connect, "UPDATE gangnamunni_ad_slot_bookings SET status='replaced', end_date='{$prev_end}' WHERE product_id={$product_id} AND status='active'");
+        // 3개월치 예산 확인: 지갑 잔액이 (월 단가 x 3) 이상이어야 배정/활성화 가능
+        $mp_r = mysqli_query($connect, "SELECT monthly_price FROM gangnamunni_ad_slot_products WHERE id={$product_id}");
+        $monthly_price = ($mp_r && ($mp_row = mysqli_fetch_assoc($mp_r))) ? (int)$mp_row['monthly_price'] : 0;
+        $required_3m = $monthly_price * 3;
+        $wb_r = mysqli_query($connect, "SELECT balance FROM gangnamunni_cpv_wallets WHERE hospital_id={$hospital_id}");
+        $wallet_balance = ($wb_r && ($wb_row = mysqli_fetch_assoc($wb_r))) ? (float)$wb_row['balance'] : 0.0;
 
-        // 병원명으로 광고주 매핑 (있으면 연결, 없으면 NULL)
-        $advertiser_id_sql = 'NULL';
-        $adv_r = mysqli_query($connect, "
-            SELECT a.id FROM gangnamunni_advertisers a
-            INNER JOIN gangnamunni_hospitals h ON h.name = a.hospital_name
-            WHERE h.id = {$hospital_id} LIMIT 1
-        ");
-        if ($adv_r && $adv_row = mysqli_fetch_assoc($adv_r)) { $advertiser_id_sql = (int)$adv_row['id']; }
+        if ($wallet_balance < $required_3m) {
+            $error = '해당 병원의 지갑 잔액이 3개월치 광고비에 미달하여 배정할 수 없습니다. '
+                   . '(필요: ' . number_format($required_3m) . '원 / 현재 잔액: ' . number_format($wallet_balance) . '원)';
+        } else {
+            $prev_end = date('Y-m-d', strtotime($start_date_esc . ' -1 day'));
+            mysqli_query($connect, "UPDATE gangnamunni_ad_slot_bookings SET status='replaced', end_date='{$prev_end}' WHERE product_id={$product_id} AND status='active'");
 
-        $admin_name_esc = mysqli_real_escape_string($connect, $admin_name);
-        mysqli_query($connect, "
-            INSERT INTO gangnamunni_ad_slot_bookings (product_id, hospital_id, advertiser_id, start_date, status, assigned_by)
-            VALUES ({$product_id}, {$hospital_id}, {$advertiser_id_sql}, '{$start_date_esc}', 'active', '{$admin_name_esc}')
-        ");
-        $message = '병원이 슬롯에 배정되었습니다.';
+            // 병원명으로 광고주 매핑 (있으면 연결, 없으면 NULL)
+            $advertiser_id_sql = 'NULL';
+            $adv_r = mysqli_query($connect, "
+                SELECT a.id FROM gangnamunni_advertisers a
+                INNER JOIN gangnamunni_hospitals h ON h.name = a.hospital_name
+                WHERE h.id = {$hospital_id} LIMIT 1
+            ");
+            if ($adv_r && $adv_row = mysqli_fetch_assoc($adv_r)) { $advertiser_id_sql = (int)$adv_row['id']; }
+
+            $admin_name_esc = mysqli_real_escape_string($connect, $admin_name);
+            mysqli_query($connect, "
+                INSERT INTO gangnamunni_ad_slot_bookings (product_id, hospital_id, advertiser_id, start_date, status, assigned_by)
+                VALUES ({$product_id}, {$hospital_id}, {$advertiser_id_sql}, '{$start_date_esc}', 'active', '{$admin_name_esc}')
+            ");
+            $message = '병원이 슬롯에 배정되었습니다.';
+        }
     }
 }
 
@@ -125,6 +137,47 @@ if (isset($_GET['end_booking'])) {
     mysqli_query($connect, "UPDATE gangnamunni_ad_slot_bookings SET status='ended', end_date=CURDATE() WHERE id={$bid} AND status='active'");
     header('Location: admin_ad_slots.php?msg=' . urlencode('배정이 종료되었습니다.'));
     exit;
+}
+
+// ======================================================================
+// 자동 정지: 지갑 잔액이 하루 과금액보다 적은 활성 배정을 즉시 종료
+// (cron_ad_slot_daily.php와 동일 기준 — 관리자 페이지 접속 시 실시간 반영)
+// ======================================================================
+$today = date('Y-m-d');
+$days_in_month_now = max(1, (int) date('t'));
+$autostop_r = mysqli_query($connect, "
+    SELECT b.id AS booking_id, b.hospital_id, p.monthly_price, h.name AS hospital_name,
+           COALESCE(w.balance, 0) AS balance
+    FROM gangnamunni_ad_slot_bookings b
+    INNER JOIN gangnamunni_ad_slot_products p ON b.product_id = p.id
+    INNER JOIN gangnamunni_hospitals h ON h.id = b.hospital_id
+    LEFT JOIN gangnamunni_cpv_wallets w ON w.hospital_id = b.hospital_id
+    WHERE b.status = 'active'
+      AND b.start_date <= '{$today}'
+      AND (b.end_date IS NULL OR b.end_date >= '{$today}')
+");
+$autostopped_count = 0;
+if ($autostop_r) {
+    while ($arow = mysqli_fetch_assoc($autostop_r)) {
+        $daily = round(((int)$arow['monthly_price']) / $days_in_month_now, 2);
+        if ((float)$arow['balance'] < $daily) {
+            $bid = (int)$arow['booking_id'];
+            mysqli_query($connect, "UPDATE gangnamunni_ad_slot_bookings SET status='ended', end_date='{$today}' WHERE id={$bid} AND status='active'");
+
+            // 관리자 알림 (cron과 동일 형식)
+            $hn = $arow['hospital_name'] ?: ('병원 #' . (int)$arow['hospital_id']);
+            $nt = mysqli_real_escape_string($connect, "[광고 슬롯] {$hn} 배정 자동 종료");
+            $nm = mysqli_real_escape_string($connect, "{$hn}의 광고 슬롯 배정이 지갑 잔액 부족(" . number_format((float)$arow['balance']) . "원)으로 자동 종료되었습니다. 필요 금액: " . number_format($daily) . "원/일.");
+            mysqli_query($connect, "
+                INSERT INTO gangnamunni_notifications (admin_id, type, title, message, link, icon, is_read, created_at)
+                VALUES (NULL, 'ad_slot', '{$nt}', '{$nm}', 'admin_ad_slots.php', 'bi-exclamation-triangle', 0, NOW())
+            ");
+            $autostopped_count++;
+        }
+    }
+}
+if ($autostopped_count > 0) {
+    $message = ($message ? $message . ' / ' : '') . $autostopped_count . '건의 배정이 지갑 잔액 부족으로 자동 종료되었습니다.';
 }
 
 // ======================================================================
@@ -188,10 +241,26 @@ $tr = mysqli_query($connect, "
 ");
 if ($tr) { while ($trow = mysqli_fetch_assoc($tr)) $treatment_options[] = $trow; }
 
-// 병원 선택용 데이터 (배정 모달에서 검색)
+// 병원 선택용 데이터 (배정 모달에서 검색) — 지갑 잔액 포함(3개월치 예산 판단용)
 $hospital_options = [];
-$hr = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active=1 AND COALESCE(is_demo,0)=0 ORDER BY name");
+$hr = mysqli_query($connect, "
+    SELECT h.id, h.name, h.address, COALESCE(w.balance, 0) AS wallet_balance
+    FROM gangnamunni_hospitals h
+    LEFT JOIN gangnamunni_cpv_wallets w ON w.hospital_id = h.id
+    WHERE h.is_active = 1 AND COALESCE(h.is_demo, 0) = 0
+    ORDER BY h.name
+");
 if ($hr) { while ($hrow = mysqli_fetch_assoc($hr)) $hospital_options[] = $hrow; }
+
+// 병원별 시술 매핑 (배정 모달 시술 슬롯 매칭용) — public hospitals.php와 동일 기준(gangnamunni_hospital_treatments)
+$hospital_treatment_map = []; // hospital_id => [treatment_id, ...]
+$htr = mysqli_query($connect, "
+    SELECT ht.hospital_id, ht.treatment_id
+    FROM gangnamunni_hospital_treatments ht
+    INNER JOIN gangnamunni_hospitals h ON h.id = ht.hospital_id
+    WHERE h.is_active = 1 AND COALESCE(h.is_demo, 0) = 0
+");
+if ($htr) { while ($htrow = mysqli_fetch_assoc($htr)) { $hospital_treatment_map[(int)$htrow['hospital_id']][] = (int)$htrow['treatment_id']; } }
 
 // 지역 선택용 데이터 (includes/site_regions.php - 사이트 헤더 지역 필터와 단일 소스 공유)
 require __DIR__ . '/includes/site_regions.php';
@@ -252,7 +321,7 @@ include __DIR__ . '/includes/admin_header.php';
 
 <div class="alert alert-info py-2 small mb-3">
     <i class="bi bi-info-circle me-1"></i>
-    시술명/지역명 검색 시 순위(1~5위)를 구매한 병원이 목록 최상단에 고정 노출됩니다. 실제 포인트 일할 차감(매일 자정)은 다음 단계에서 연동됩니다 — 지금은 배정만 관리합니다.
+    시술명/지역명 검색 시 순위(1~5위)를 구매한 병원이 목록 최상단에 고정 노출됩니다. 지갑에서 <strong>월 단가의 일할 금액이 매일 자정 자동 차감</strong>됩니다. 배정(활성화)하려면 병원 지갑에 <strong>3개월치 광고비 이상</strong>이 있어야 하며, 잔액이 하루 과금액 미만으로 떨어지면 배정이 <strong>자동 종료</strong>됩니다.
 </div>
 
 <!-- 도구 모음 -->
@@ -495,6 +564,7 @@ include __DIR__ . '/includes/admin_header.php';
                     <div class="alert alert-warning py-2 small">
                         <i class="bi bi-exclamation-triangle me-1"></i>이미 배정된 병원이 있으면 자동으로 종료되고 교체됩니다.
                     </div>
+                    <div id="assignReqInfo" class="small text-primary fw-bold mb-2"></div>
                     <label class="form-label fw-bold">병원 선택 <span class="text-danger">*</span></label>
                     <select name="hospital_id" id="assign_hospital_id" class="form-select">
                         <option value="">-- 병원을 선택하세요 --</option>
@@ -502,7 +572,7 @@ include __DIR__ . '/includes/admin_header.php';
                         <option value="<?= (int)$_ho['id'] ?>"><?= htmlspecialchars($_ho['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="form-text">병원명을 입력해 빠르게 찾을 수도 있습니다 (브라우저 드롭다운 검색).</div>
+                    <div class="form-text">이 슬롯 키워드(시술/지역)에 해당하는 병원이 목록 상단에 먼저 표시됩니다. 매칭되지 않는 병원도 아래에서 선택할 수 있습니다(강제 배정 가능).</div>
                     <div class="mt-3">
                         <label class="form-label fw-bold">시작일</label>
                         <input type="date" name="start_date" class="form-control" value="<?= date('Y-m-d') ?>">
@@ -518,16 +588,95 @@ include __DIR__ . '/includes/admin_header.php';
 </div>
 
 <?php
+// 배정 모달 매칭용 데이터 (클라이언트에서 그룹핑)
+$assign_hospitals_json = json_encode(array_map(function ($h) use ($hospital_treatment_map) {
+    return [
+        'id' => (int)$h['id'],
+        'name' => $h['name'],
+        'address' => $h['address'] ?? '',
+        'balance' => (float)($h['wallet_balance'] ?? 0),
+        'tids' => $hospital_treatment_map[(int)$h['id']] ?? [],
+    ];
+}, $hospital_options), JSON_UNESCAPED_UNICODE);
+
+$assign_products_map = [];
+foreach ($products as $p) {
+    $assign_products_map[(int)$p['id']] = [
+        'type' => $p['keyword_type'],
+        'tid' => (int)($p['treatment_id'] ?? 0),
+        'region' => $p['region_name'] ?? '',
+        'mp' => (int)($p['monthly_price'] ?? 0),
+    ];
+}
+$assign_products_json = json_encode($assign_products_map, JSON_UNESCAPED_UNICODE);
+
 $admin_extra_js = '
+var ASSIGN_HOSPITALS = ' . $assign_hospitals_json . ';
+var ASSIGN_PRODUCTS = ' . $assign_products_json . ';
+
 function toggleKeywordType() {
     var isRegion = document.getElementById("kt_region").checked;
     document.getElementById("treatmentPicker").style.display = isRegion ? "none" : "block";
     document.getElementById("regionPicker").style.display = isRegion ? "block" : "none";
 }
 
+function fmtWon(n) {
+    return Math.round(n).toLocaleString("ko-KR");
+}
+
+function buildHospitalOptions(product) {
+    var sel = document.getElementById("assign_hospital_id");
+    sel.innerHTML = "";
+    var ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = "-- 병원을 선택하세요 --";
+    sel.appendChild(ph);
+
+    // 3개월치 필요 예산 (월 단가 x 3)
+    var required = (product && product.mp > 0) ? product.mp * 3 : 0;
+    var reqInfo = document.getElementById("assignReqInfo");
+    if (reqInfo) {
+        reqInfo.textContent = required > 0
+            ? "이 슬롯 배정 필요 예산(3개월치): " + fmtWon(required) + "원 — 잔액이 부족한 병원은 선택할 수 없습니다."
+            : "";
+    }
+
+    var matched = [], others = [];
+    ASSIGN_HOSPITALS.forEach(function (h) {
+        var isMatch = false;
+        if (product) {
+            if (product.type === "treatment") {
+                isMatch = product.tid > 0 && h.tids.indexOf(product.tid) !== -1;
+            } else if (product.type === "region") {
+                isMatch = !!product.region && !!h.address && h.address.indexOf(product.region) !== -1;
+            }
+        }
+        (isMatch ? matched : others).push(h);
+    });
+
+    function addGroup(label, arr) {
+        if (!arr.length) return;
+        var g = document.createElement("optgroup");
+        g.label = label;
+        arr.forEach(function (h) {
+            var affordable = required <= 0 || h.balance >= required;
+            var o = document.createElement("option");
+            o.value = h.id;
+            o.textContent = h.name + " — 잔액 " + fmtWon(h.balance) + "원" + (affordable ? "" : " (3개월치 부족)");
+            if (!affordable) o.disabled = true;
+            g.appendChild(o);
+        });
+        sel.appendChild(g);
+    }
+
+    addGroup("✅ 이 키워드 해당 병원 (" + matched.length + ")", matched);
+    addGroup("기타 병원 (매칭 안 됨, " + others.length + ")", others);
+}
+
 function openAssignModal(productId, label) {
     document.getElementById("assign_product_id").value = productId;
     document.getElementById("assignProductLabel").textContent = label;
+    buildHospitalOptions(ASSIGN_PRODUCTS[productId] || null);
     document.getElementById("assign_hospital_id").value = "";
     new bootstrap.Modal(document.getElementById("assignModal")).show();
 }
