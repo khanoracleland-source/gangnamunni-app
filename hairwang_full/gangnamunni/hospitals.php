@@ -10,7 +10,7 @@ if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms
 require_once __DIR__ . '/includes/recently_viewed.php';
 require_once __DIR__ . '/includes/settings_helper.php';
 
-$db_categories = loadCategoriesFromDB($connect);
+loadCategoriesFromDB($connect); // 반환값 미사용 — $category_icons 전역 초기화 목적
 
 $keyword = isset($_GET['q']) ? trim($_GET['q']) : '';
 $escaped_keyword = mysqli_real_escape_string($connect, $keyword);
@@ -22,7 +22,6 @@ $escaped_treatment = mysqli_real_escape_string($connect, $treatment);
 $region = isset($_GET['region']) ? trim($_GET['region']) : '';
 // 다중 지역 지원 (콤마 구분)
 $region_list = array_filter(array_map('trim', explode(',', $region)));
-$escaped_region = mysqli_real_escape_string($connect, $region);
 
 // 정렬 옵션 (피그마: 낮은가격순/평점순/인기순/후기순)
 $sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'price';
@@ -178,12 +177,11 @@ if (!empty($treatment)) {
         $_slot_h_rows = [];
         if ($_slot_h_r) { while ($_slot_h_row = mysqli_fetch_assoc($_slot_h_r)) { $_slot_h_rows[(int)$_slot_h_row['id']] = $_slot_h_row; } }
 
+        // rank_position 순서(ORDER BY)대로 상단 고정 — 뱃지는 표시하지 않음
         $ad_slot_hospitals = [];
-        foreach ($slot_hospital_ranks as $_hid => $_rank) {
+        foreach (array_keys($slot_hospital_ranks) as $_hid) {
             if (isset($_slot_h_rows[$_hid])) {
-                $_row = $_slot_h_rows[$_hid];
-                $_row['_ad_slot_rank'] = $_rank;
-                $ad_slot_hospitals[] = $_row;
+                $ad_slot_hospitals[] = $_slot_h_rows[$_hid];
             }
         }
 
@@ -604,13 +602,12 @@ foreach ($hospitals as $hospital):
                      alt="<?php echo htmlspecialchars($hospital['name']); ?>"
                      class="hospital-image"
                      onerror="this.src='<?php echo $placeholder; ?>'">
-                <?php if (isset($hospital['_ad_slot_rank'])): ?>
-                <span class="grade-badge grade-badge-sa">AD <?php echo (int)$hospital['_ad_slot_rank']; ?>위</span>
-                <?php else:
+                <?php
+                // 광고 슬롯(시술/지역 검색 상단 고정) 병원도 일반 광고 등급 뱃지만 표시 — 'AD N위' 노출 안 함
                 $ad_grade = $hospital['ad_grade'] ?? 'none';
                 if (in_array($ad_grade, ['S', 'A'])): ?>
                 <span class="grade-badge grade-badge-sa">AD</span>
-                <?php endif; endif; ?>
+                <?php endif; ?>
                 <div class="hospital-info">
                     <div class="hospital-name"><?php echo htmlspecialchars($hospital['name']); ?></div>
                     <div class="hospital-address">
@@ -668,16 +665,6 @@ function switchView(vt) {
     var btn = document.getElementById("view-" + vt);
     if (btn) btn.classList.add("active");
     localStorage.setItem("hospital_view", vt);
-}
-function filterCategory(c) {
-    var p = new URLSearchParams(window.location.search);
-    if (c) p.set("category", c); else p.delete("category");
-    window.location.href = "hospitals.php?" + p.toString();
-}
-function filterRegion(r) {
-    var p = new URLSearchParams(window.location.search);
-    if (r) p.set("region", r); else p.delete("region");
-    window.location.href = "hospitals.php?" + p.toString();
 }
 function setSort(val) {
     document.getElementById('sortOrder').value = val;
