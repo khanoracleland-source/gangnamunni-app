@@ -21,13 +21,19 @@ mysqli_set_charset($connect, 'utf8mb4');
 mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_wishlist (
     id INT AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL COMMENT '회원 ID (g5_member.mb_no)',
-    target_type ENUM('hospital','doctor','treatment') NOT NULL DEFAULT 'hospital',
+    target_type ENUM('hospital','doctor','treatment','event') NOT NULL DEFAULT 'hospital',
     target_id INT NOT NULL COMMENT '대상 ID (hospital.id 또는 doctor.id)',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_member_target (member_id, target_type, target_id),
     INDEX idx_member (member_id),
     INDEX idx_target (target_type, target_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+// 기존 테이블에 'event' 타입 없으면 추가 (idempotent)
+$__wl_col = mysqli_fetch_assoc(mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_wishlist LIKE 'target_type'"));
+if ($__wl_col && strpos($__wl_col['Type'], "'event'") === false) {
+    mysqli_query($connect, "ALTER TABLE gangnamunni_wishlist MODIFY target_type ENUM('hospital','doctor','treatment','event') NOT NULL DEFAULT 'hospital'");
+}
 
 // Gnuboard 회원 확인
 // [버그수정] 기존에는 session_start()를 직접 호출해 기본 세션명(PHPSESSID)을 사용했으나,
@@ -134,7 +140,7 @@ if ($method === 'POST') {
     $type = $input['type'] ?? 'hospital';
     $tid = intval($input['target_id'] ?? 0);
 
-    if (!in_array($type, ['hospital', 'treatment']) || $tid <= 0) {
+    if (!in_array($type, ['hospital', 'doctor', 'treatment', 'event']) || $tid <= 0) {
         echo json_encode(['success' => false, 'message' => '잘못된 요청']);
         exit;
     }

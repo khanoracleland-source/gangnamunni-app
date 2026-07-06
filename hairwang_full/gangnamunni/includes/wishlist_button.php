@@ -11,14 +11,16 @@ if (!defined('WISHLIST_COMPONENT_LOADED')) {
     define('WISHLIST_COMPONENT_LOADED', true);
 }
 
-function renderWishlistButton($type, $targetId, $size = 'md', $showCount = true) {
-    $sizeMap = ['sm' => '20px', 'md' => '28px', 'lg' => '36px'];
+function renderWishlistButton($type, $targetId, $size = 'md', $showCount = true, $icon = 'heart') {
+    $sizeMap = ['sm' => '20px', 'md' => '28px', 'lg' => '28px'];
     $iconSize = $sizeMap[$size] ?? $sizeMap['md'];
     $uid = "wl_{$type}_{$targetId}";
-    echo "<button type=\"button\" class=\"wishlist-btn\" id=\"{$uid}\" data-type=\"{$type}\" data-id=\"{$targetId}\" onclick=\"toggleWishlist('{$type}', {$targetId}, this)\" style=\"background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px;\">";
-    echo "<svg class=\"wl-icon\" width=\"{$iconSize}\" height=\"{$iconSize}\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg>";
-    if ($showCount) {
-        echo "<span class=\"wl-count\" style=\"font-size:0.82rem;color:var(--bs-secondary,#888);\">0</span>";
+    echo "<button type=\"button\" class=\"wishlist-btn wl-style-{$icon}\" id=\"{$uid}\" data-type=\"{$type}\" data-id=\"{$targetId}\" onclick=\"toggleWishlist('{$type}', {$targetId}, this)\" style=\"background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px;\">";
+    if ($icon === 'star') {
+        echo "<i class=\"bi bi-star wl-icon wl-star-empty\" style=\"font-size:{$iconSize};line-height:1;\"></i>";
+        echo "<i class=\"bi bi-star-fill wl-icon wl-star-full\" style=\"font-size:{$iconSize};line-height:1;display:none;\"></i>";
+    } else {
+        echo "<svg class=\"wl-icon\" width=\"{$iconSize}\" height=\"{$iconSize}\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg>";
     }
     echo "</button>";
 }
@@ -34,9 +36,10 @@ function renderWishlistScript() {
 .wishlist-btn:hover { transform: scale(1.15); }
 .wishlist-btn.active .wl-icon { fill: #e53e3e; stroke: #e53e3e; color: #e53e3e; }
 .wishlist-btn:not(.active) .wl-icon { fill: none; stroke: var(--bs-secondary, #888); color: var(--bs-secondary, #888); }
-.wishlist-btn.active .wl-count { color: #e53e3e !important; }
-@keyframes wishlist-pop { 0%{transform:scale(1)} 50%{transform:scale(1.3)} 100%{transform:scale(1)} }
-.wishlist-btn.pop { animation: wishlist-pop 0.3s ease; }
+/* star 스타일 (icon='star') */
+.wl-style-star .wl-star-empty { color: var(--bs-secondary, #888); }
+.wl-style-star.active .wl-star-empty { display: none !important; }
+.wl-style-star.active .wl-star-full { display: inline-block !important; color: #e53e3e; }
 </style>
 <script>
 var WL_API = '<?php echo (isset($gnuboard_base) ? $gnuboard_base : '') . '/api_wishlist.php'; ?>';

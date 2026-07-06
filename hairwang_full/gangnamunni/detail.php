@@ -201,10 +201,12 @@ if (empty($business_hours) || !is_array($business_hours)) {
 $today = date('N'); // 1(월) ~ 7(일)
 $days = ['월', '화', '수', '목', '금', '토', '일'];
 $today_name = $days[$today - 1];
-$business_hours_text = $today_name . ' ' . ($business_hours[$today_name] ?? $default_hours[$today_name]);
+$business_hours_text = ($business_hours[$today_name] ?? $default_hours[$today_name]);
 
 // 현재 탭
 $current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'home';
+// 의료진/이벤트/후기 탭: 병원 정보를 영업시간까지만 노출 (주소/지도/언어/특징 숨김)
+$minimal_info_tab = in_array($current_tab, ['doctors', 'events', 'reviews'], true);
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $items_per_page = 20;
 
@@ -307,7 +309,7 @@ if ($doctors_count == 0) {
     }
 }
 
-if ($current_tab === 'doctors') {
+if ($current_tab === 'doctors' || $current_tab === 'home') {
     if ($doctors_source === 'gangnamunni') {
         $doc_stmt = mysqli_prepare($connect, "SELECT id, name as doctor_name, specialty, experience, bio as description, qualification, photo_url, status, schedule FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' ORDER BY id ASC LIMIT 20");
     } else {
@@ -391,6 +393,7 @@ function extractImageFromHtml($file_path) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($hospital['name']); ?> | <?= site_name() ?></title>
     <?php echo generateFaviconLinks(); ?>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
             --color-primary: #AE1932;
@@ -437,12 +440,12 @@ function extractImageFromHtml($file_path) {
             top: 48px;
             width: 100%;
             max-width: 640px;
-            height: 52px;
-            background: var(--color-bg-white, #fff);
-            border-bottom: 1px solid var(--color-border);
+            padding: 14px 16px;
+            background: var(--bs-body-bg, #fff);
+            border-bottom: 1px solid var(--bs-border-color, #eee);
             display: flex;
             align-items: center;
-            padding: 0 16px;
+            gap: 12px;
             z-index: 99;
         }
         @media (min-width: 768px) {
@@ -450,21 +453,27 @@ function extractImageFromHtml($file_path) {
         }
 
         .back-btn {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: calc(24px * var(--fs-scale,1) * var(--fs-page,1));
-            color: var(--color-text-primary);
+            border: none;
+            background: none;
+            font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1));
+            color: inherit;
+            cursor: pointer;
             text-decoration: none;
-            margin-right: 8px;
         }
 
         .hospital-name-header {
-            flex: 1;
-            font-size: calc(16px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: 600;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 60%;
+            text-align: center;
+            font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1));
+            font-weight: 700;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -563,12 +572,12 @@ function extractImageFromHtml($file_path) {
 
         /* 병원 정보 */
         .hospital-info-section {
-            padding: 20px;
+            padding: 10px 20px;
             background: var(--color-bg-white, #fff);
         }
 
         .hospital-name {
-            font-size: calc(22px * var(--fs-scale,1) * var(--fs-page,1));
+            font-size: calc(30px * var(--fs-scale,1) * var(--fs-page,1));
             font-weight: bold;
             margin-bottom: 8px;
             color: var(--color-text-primary);
@@ -737,14 +746,14 @@ function extractImageFromHtml($file_path) {
         /* #14 fix: tab-menu under global_nav + header */
         .tab-menu {
             position: sticky;
-            top: 100px;
+            top: 112px;
             background: var(--color-bg-white, #fff);
             border-bottom: 1px solid var(--color-border);
             display: flex;
             z-index: 90;
         }
         @media (min-width: 768px) {
-            .tab-menu { top: 108px; }
+            .tab-menu { top: 120px; }
         }
 
         .tab-item {
@@ -755,7 +764,7 @@ function extractImageFromHtml($file_path) {
             font-weight: 500;
             color: var(--color-text-muted);
             cursor: pointer;
-            border-bottom: 2px solid transparent;
+            border-bottom: 2px solid #AAAAAA;
             transition: all 0.2s;
             text-decoration: none;
             display: block;
@@ -778,7 +787,7 @@ function extractImageFromHtml($file_path) {
 
         /* 탭 컨텐츠 */
         .tab-content {
-            padding: 20px;
+            padding: 0 20px;
             background: var(--color-bg-white, #fff);
             min-height: 400px;
         }
@@ -859,27 +868,32 @@ function extractImageFromHtml($file_path) {
         }
 
         .event-card {
+            position: relative;
             background: var(--color-bg-white, #fff);
-            border: 1px solid var(--color-border);
-            border-radius: 12px;
+            border: 1px solid var(--color-border, #f0f0f0);
+            border-radius: 16px;
             overflow: hidden;
-            transition: box-shadow 0.2s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: box-shadow 0.2s ease;
         }
 
         .event-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
         }
 
         .event-card-link {
             text-decoration: none;
             color: inherit;
-            display: block;
+            display: flex;
+            align-items: stretch;
         }
 
         .event-thumbnail {
             position: relative;
-            width: 100%;
-            height: 200px;
+            width: 130px;
+            flex-shrink: 0;
+            align-self: stretch;
+            min-height: 130px;
             background: var(--color-bg-light);
             overflow: hidden;
         }
@@ -894,11 +908,15 @@ function extractImageFromHtml($file_path) {
             position: absolute;
             top: 12px;
             left: 12px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.55);
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1));
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: calc(11px * var(--fs-scale,1) * var(--fs-page,1));
+            font-weight: 500;
+            letter-spacing: 0.3px;
         }
 
         .discount-badge {
@@ -907,20 +925,23 @@ function extractImageFromHtml($file_path) {
             right: 12px;
             background: var(--color-primary, #AE1932);
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 5px 11px;
+            border-radius: 999px;
             font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: 600;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(174,25,50,0.35);
         }
 
         .event-info {
-            padding: 16px;
+            flex: 1;
+            min-width: 0;
+            padding: 14px;
         }
 
         .event-title {
             font-size: calc(16px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: 600;
-            margin-bottom: 8px;
+            font-weight: 700;
+            margin-bottom: 10px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -928,19 +949,20 @@ function extractImageFromHtml($file_path) {
 
         .event-price-row {
             display: flex;
-            align-items: center;
+            align-items: baseline;
+            justify-content: flex-end;
             gap: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .event-price {
-            font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: bold;
+            font-size: 14px ;
+            font-weight: 800;
             color: var(--color-primary);
         }
 
         .original-price {
-            font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1));
+            font-size: 12px;
             color: var(--color-text-muted);
             text-decoration: line-through;
         }
@@ -973,8 +995,7 @@ function extractImageFromHtml($file_path) {
 
         /* 후기 탭 */
         .review-list {
-            display: grid;
-            gap: 24px;
+            display: block;
         }
 
         .review-card {
@@ -1048,6 +1069,28 @@ function extractImageFromHtml($file_path) {
             font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1));
         }
 
+        /* 후기 카드 — review_detail.php .review-card-area 와 동일 구성 */
+        .review-card-area { padding: 16px 0; border-bottom: 1px solid var(--color-border, #e0e0e0); }
+        .review-card-area .tag { display: inline-block; margin: 5px 4px 5px 0; padding: 3px 8px; background: #FFEEEE; color: #AE1932; border-radius: 4px; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; }
+        .review-card-area .review-title { font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: var(--color-text-primary, #000); margin: 6px 0 4px; line-height: 1.4; }
+        .review-card-area .review-body { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); line-height: 1.8; color: var(--color-text-primary); }
+        .review-card-area .review-body p { margin-bottom: 8px; }
+        .review-card-area .review-body img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
+        .post-thumbs { width: 100%; display: grid; gap: 4px; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+        .post-thumbs.thumbs-1 { grid-template-columns: 1fr; max-width: 50%; }
+        .post-thumbs.thumbs-2 { grid-template-columns: 1fr 1fr; }
+        .post-thumbs.thumbs-3plus { grid-template-columns: repeat(3, 1fr); }
+        .post-thumbs .thumb-item { position: relative; aspect-ratio: 1/1; overflow: hidden; background: var(--color-bg-light, #f5f5f5); cursor: pointer; }
+        .post-thumbs .thumb-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .post-author-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+        .post-avatar { width: 35px; height: 35px; border-radius: 50%; background: #AAAAAA; overflow: hidden; flex-shrink: 0; }
+        .post-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .post-author-name { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 400; color: var(--color-text-primary, #000); }
+        .post-stat-group { display: inline-flex; align-items: center; gap: 20px; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--color-text-primary, #000); margin-left: auto; }
+        .post-stat-group .stat { display: inline-flex; align-items: center; gap: 3px; }
+        .post-stat-group .stat i { font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); }
+        .post-stat-group .heart-icon { color: #AE1932; }
+
         /* 의사 탭 */
         .doctor-list {
             display: grid;
@@ -1064,8 +1107,8 @@ function extractImageFromHtml($file_path) {
         }
 
         .doctor-photo {
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             overflow: hidden;
             flex-shrink: 0;
@@ -1088,7 +1131,7 @@ function extractImageFromHtml($file_path) {
         }
 
         .doctor-specialty {
-            font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1));
+            font-size: 15px ;
             color: var(--color-text-secondary);
             margin-bottom: 8px;
         }
@@ -1475,8 +1518,25 @@ function extractImageFromHtml($file_path) {
 
     <!-- 페이지 헤더 -->
     <div class="header">
-        <a href="hospitals.php" onclick="if (document.referrer.indexOf('hospitals.php') !== -1) { history.back(); return false; }" class="back-btn">←</a>
+        <a href="hospitals.php" onclick="if (document.referrer.indexOf('hospitals.php') !== -1) { history.back(); return false; }" class="back-btn"><i class="bi bi-chevron-left"></i></a>
         <div class="hospital-name-header"><?php echo htmlspecialchars($hospital['name']); ?></div>
+    </div>
+
+    <!-- 탭 메뉴 -->
+    <!-- [1차 검수 #9 - 2026-05-28] 상세 탭 재정의 [홈 / 의료진 / 이벤트 / 시술후기] -->
+    <div class="tab-menu">
+        <a href="?id=<?php echo $hospital_id; ?>&tab=home" class="tab-item <?php echo $current_tab === 'home' ? 'active' : ''; ?>">
+            홈
+        </a>
+        <a href="?id=<?php echo $hospital_id; ?>&tab=doctors" class="tab-item <?php echo $current_tab === 'doctors' ? 'active' : ''; ?>">
+            의료진
+        </a>
+        <a href="?id=<?php echo $hospital_id; ?>&tab=events" class="tab-item <?php echo $current_tab === 'events' ? 'active' : ''; ?>">
+            이벤트
+        </a>
+        <a href="?id=<?php echo $hospital_id; ?>&tab=reviews" class="tab-item <?php echo $current_tab === 'reviews' ? 'active' : ''; ?>">
+            시술후기
+        </a>
     </div>
 
     <!-- 이미지 갤러리 -->
@@ -1518,7 +1578,10 @@ function extractImageFromHtml($file_path) {
 
     <!-- 병원 정보 -->
     <div class="hospital-info-section">
-        <h1 class="hospital-name"><?php echo htmlspecialchars($hospital['name']); ?></h1>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <h1 class="hospital-name" style="flex:1; margin-bottom:0;"><?php echo htmlspecialchars($hospital['name']); ?></h1>
+            <div style="flex-shrink:0;"><?php renderWishlistButton('hospital', $hospital_id, 'lg', true, 'star'); ?></div>
+        </div>
         <?php
         // #16 fix: dynamic specialty (gangnamunni_doctors -> crawled -> categories -> desc)
         $spec_text = '';
@@ -1574,9 +1637,9 @@ function extractImageFromHtml($file_path) {
 
         <?php if (($hospital['show_rating'] ?? 1) == 1): ?>
         <div class="rating-row">
-            <span class="star-icon">★</span>
+            <span class="star-icon"><img src="assets/icons/categories/rating_2.svg" alt="평점" style="width:calc(18px * var(--fs-scale,1) * var(--fs-page,1));height:calc(18px * var(--fs-scale,1) * var(--fs-page,1));display:block;"></span>
             <span class="rating-score"><?php echo number_format($hospital['rating'] ?? 4.8, 1); ?></span>
-            <span class="review-count">(<?php echo number_format($reviews_count); ?>)</span>
+            <span class="review-count">/ 5.0</span>
         </div>
         <?php endif; ?>
 
@@ -1594,18 +1657,41 @@ function extractImageFromHtml($file_path) {
         </div>
         <?php endif; ?>
 
+        <!-- rating/태그 와 영업시간 사이 구분선 -->
+        <hr style="border:none; border-top:1px solid var(--color-border);">
+
         <!-- 영업시간 -->
-        <div class="info-row">
-            <span class="info-icon">🕐</span>
+        <?php
+        // 현재 진료중 여부 계산 (오늘 영업시간 범위 내 + 점심시간 제외)
+        $is_open_now = false;
+        $today_hours_str = $business_hours[$today_name] ?? $default_hours[$today_name] ?? '';
+        if (preg_match('/(\d{1,2}):(\d{2})\s*[~\-–]\s*(\d{1,2}):(\d{2})/', $today_hours_str, $oh)) {
+            $now_min = intval(date('H')) * 60 + intval(date('i'));
+            $open_min = intval($oh[1]) * 60 + intval($oh[2]);
+            $close_min = intval($oh[3]) * 60 + intval($oh[4]);
+            if ($now_min >= $open_min && $now_min < $close_min) {
+                $is_open_now = true;
+                if (!empty($business_hours['lunch_start']) && !empty($business_hours['lunch_end'])
+                    && preg_match('/(\d{1,2}):(\d{2})/', $business_hours['lunch_start'], $ls)
+                    && preg_match('/(\d{1,2}):(\d{2})/', $business_hours['lunch_end'], $le)) {
+                    $lunch_s = intval($ls[1]) * 60 + intval($ls[2]);
+                    $lunch_e = intval($le[1]) * 60 + intval($le[2]);
+                    if ($now_min >= $lunch_s && $now_min < $lunch_e) $is_open_now = false;
+                }
+            }
+        }
+        ?>
+        <div class="info-row" style="cursor: pointer; user-select: none;<?php if ($minimal_info_tab): ?> border-bottom:1px solid var(--color-border);<?php endif; ?>" onclick="toggleBusinessHours()">
+            <span class="info-icon" style="margin-right:0;"><i class="bi bi-calendar2-check"></i></span>
             <div class="info-content">
                 <div style="display: flex; align-items: center;">
-                    <strong style="flex: 1;"><?php echo htmlspecialchars($business_hours_text); ?></strong>
-                    <button class="hours-toggle-btn" onclick="toggleBusinessHours()">
-                        <span class="hours-toggle-icon" id="hoursToggleIcon">▼</span>
+                    <strong><?php if ($is_open_now): ?><span style="color:var(--color-primary,#AE1932);font-weight:700;">진료중</span> <?php endif; ?><?php echo htmlspecialchars($business_hours_text); ?> <span style="font-weight:400;color:var(--color-text-muted,#999);font-size:0.9em;">(공휴일/일요일 휴무)</span></strong>
+                    <button class="hours-toggle-btn" style="margin-left:4px;" type="button">
+                        <span class="hours-toggle-icon" id="hoursToggleIcon"><i class="bi bi-chevron-down"></i></span>
                     </button>
                 </div>
 
-                <div class="business-hours-expand" id="businessHoursExpand">
+                <div class="business-hours-expand" id="businessHoursExpand" onclick="event.stopPropagation();">
                     <?php foreach ($days as $day):
                         $day_time = $business_hours[$day] ?? $default_hours[$day];
                         $day_style = '';
@@ -1658,69 +1744,81 @@ function extractImageFromHtml($file_path) {
             </div>
         </div>
 
-        <!-- 주소 -->
-        <div class="info-row">
-            <span class="info-icon">📍</span>
-            <div class="info-content">
-                <?php echo htmlspecialchars($hospital['address'] ?? '주소 정보 없음'); ?>
-            </div>
-        </div>
-
-        <!-- 전화번호 -->
-        <?php if (!empty($hospital['phone'])): ?>
-        <div class="info-row">
-            <span class="info-icon">📞</span>
-            <div class="info-content">
-                <a href="tel:<?php echo htmlspecialchars($hospital['phone']); ?>" style="color:var(--color-primary, #4A90D9); text-decoration:none; font-weight:500;">
-                    <?php echo htmlspecialchars($hospital['phone']); ?>
-                </a>
+        <!-- 주소 (의료진/이벤트 탭에서는 숨김) -->
+        <?php if (!$minimal_info_tab): ?>
+        <div class="info-row" style="border-bottom:none;">
+            <span class="info-icon" style="margin-right:0;"><i class="bi bi-geo-alt"></i></span>
+            <div class="info-content" style="display:flex; align-items:center; gap:8px;">
+                <span style="flex:1;"><?php echo htmlspecialchars($hospital['address'] ?? '주소 정보 없음'); ?></span>
+                <?php if (!empty($hospital['address'])): ?>
+                <button type="button" onclick="copyAddress(this)" data-address="<?php echo htmlspecialchars($hospital['address'], ENT_QUOTES); ?>" style="flex-shrink:0; display:inline-flex; align-items:center; gap:4px; padding:5px 10px; font-size:12px; border:1px solid var(--color-border,#eee); background:var(--color-bg-white,#fff); border-radius:6px; color:var(--color-text-secondary,#666); cursor:pointer; white-space:nowrap;">
+                    <i class="bi bi-copy"></i> 주소복사
+                </button>
+                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
-    </div>
 
-    <!-- 카카오 지도 -->
-    <?php if (!empty($is_app_mode)): ?>
-    <!-- 앱 모드: 임베디드 지도 대신 주소 + 네비 버튼만 표시 (WebView 내 지도 충돌 방지) -->
-    <?php
-    $map_lat = floatval($hospital['latitude'] ?? 0);
-    $map_lng = floatval($hospital['longitude'] ?? 0);
-    $map_addr = $hospital['address'] ?? '';
-    $map_nm = $hospital['name'] ?? '';
-    $has_loc = ($map_lat != 0 && $map_lng != 0) || !empty($map_addr);
-    if ($has_loc):
-    ?>
-    <div class="km-section" style="margin:16px 0;">
-        <div style="font-size:15px;font-weight:700;margin-bottom:10px;">📍 오시는 길</div>
-        <?php if (!empty($map_addr)): ?>
-        <div style="font-size:13px;color:var(--color-text-secondary,#666);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-            <span><?php echo htmlspecialchars($map_addr); ?></span>
-        </div>
-        <?php endif; ?>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <!-- 카카오 지도 (의료진/이벤트 탭에서는 숨김) -->
+        <?php if (!$minimal_info_tab): ?>
+        <?php if (!empty($is_app_mode)): ?>
+        <!-- 앱 모드: 임베디드 지도 대신 네비 버튼만 표시 (WebView 내 지도 충돌 방지) -->
+        <?php
+        $map_lat = floatval($hospital['latitude'] ?? 0);
+        $map_lng = floatval($hospital['longitude'] ?? 0);
+        $map_addr = $hospital['address'] ?? '';
+        $map_nm = $hospital['name'] ?? '';
+        $has_loc = ($map_lat != 0 && $map_lng != 0) || !empty($map_addr);
+        if ($has_loc):
+        ?>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px;">
             <a style="flex:1;min-width:70px;padding:10px 4px;border-radius:8px;border:1px solid #ddd;background:#f8f9fa;font-size:12px;text-align:center;text-decoration:none;color:inherit;" href="https://map.kakao.com/link/to/<?php echo urlencode($map_nm); ?>,<?php echo $map_lat; ?>,<?php echo $map_lng; ?>" target="_blank">🗺 카카오맵</a>
             <a style="flex:1;min-width:70px;padding:10px 4px;border-radius:8px;border:1px solid #ddd;background:#f8f9fa;font-size:12px;text-align:center;text-decoration:none;color:inherit;" href="https://map.naver.com/v5/search/<?php echo urlencode($map_addr ?: $map_nm); ?>" target="_blank">🧭 네이버지도</a>
             <a style="flex:1;min-width:70px;padding:10px 4px;border-radius:8px;border:1px solid #ddd;background:#f8f9fa;font-size:12px;text-align:center;text-decoration:none;color:inherit;" href="https://www.google.com/maps/dir/?api=1&destination=<?php echo $map_lat; ?>,<?php echo $map_lng; ?>&travelmode=driving" target="_blank">🌐 구글맵</a>
         </div>
-    </div>
-    <?php endif; ?>
-    <?php else: ?>
-    <!-- 웹 모드: 임베디드 지도 표시 -->
-    <?php
-    $map_config = [
-        'container_id' => 'detailMap',
-        'latitude'     => $hospital['latitude'] ?? 0,
-        'longitude'    => $hospital['longitude'] ?? 0,
-        'address'      => $hospital['address'] ?? '',
-        'name'         => $hospital['name'] ?? '',
-        'height'       => '220px',
-    ];
-    include __DIR__ . '/includes/kakao_map.php';
-    ?>
-    <?php endif; ?>
+        <?php endif; ?>
+        <?php else: ?>
+        <!-- 웹 모드: 카카오 임베디드 지도 -->
+        <?php
+        $map_config = [
+            'container_id' => 'detailMap',
+            'latitude'     => $hospital['latitude'] ?? 0,
+            'longitude'    => $hospital['longitude'] ?? 0,
+            'address'      => $hospital['address'] ?? '',
+            'name'         => $hospital['name'] ?? '',
+            'height'       => '220px',
+            'show_title'   => false,
+        ];
+        include __DIR__ . '/includes/kakao_map.php';
+        ?>
+        <?php endif; ?>
+        <?php endif; ?>
 
-    <!-- 병원 특징 -->
-    <?php if (!empty($hospital_features)): ?>
+        <!-- 전화번호 -->
+    
+
+        <!-- 소통 가능 언어 (의료진/이벤트 탭에서는 숨김 · DB 컬럼 없어 임시 기본값) -->
+        <?php if (!$minimal_info_tab): ?>
+        <?php
+        $hospital_languages = !empty($hospital['languages']) ? $hospital['languages'] : 'English, 中文, 日本語, Español, Tiếng Việt, Монгол хэл, Bahasa Indonesia';
+        $lang_list = array_filter(array_map('trim', explode(',', $hospital_languages)));
+        ?>
+        <div class="info-row" style="border-top:1px solid var(--color-border); border-bottom:1px solid var(--color-border);">
+            <div class="info-content">
+                <div style="margin-bottom:8px;">소통 가능 언어</div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                    <?php foreach ($lang_list as $lang): ?>
+                    <span style="background:#d5cfcf; color:#000; padding:4px 10px; border-radius:4px; font-size:13px;"><?php echo htmlspecialchars($lang); ?></span>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+
+    <!-- 병원 특징 (의료진/이벤트 탭에서는 숨김) -->
+    <?php if (!empty($hospital_features) && !$minimal_info_tab): ?>
     <div class="features-section">
         <?php foreach ($hospital_features as $feature): ?>
         <div class="feature-item">
@@ -1730,23 +1828,6 @@ function extractImageFromHtml($file_path) {
         <?php endforeach; ?>
     </div>
     <?php endif; ?>
-
-    <!-- 탭 메뉴 -->
-    <!-- [1차 검수 #9 - 2026-05-28] 상세 탭 재정의 [홈 / 의료진 / 이벤트 / 시술후기] -->
-    <div class="tab-menu">
-        <a href="?id=<?php echo $hospital_id; ?>&tab=home" class="tab-item <?php echo $current_tab === 'home' ? 'active' : ''; ?>">
-            홈
-        </a>
-        <a href="?id=<?php echo $hospital_id; ?>&tab=doctors" class="tab-item <?php echo $current_tab === 'doctors' ? 'active' : ''; ?>">
-            의료진<span class="tab-count">(<?php echo $doctors_count; ?>)</span>
-        </a>
-        <a href="?id=<?php echo $hospital_id; ?>&tab=events" class="tab-item <?php echo $current_tab === 'events' ? 'active' : ''; ?>">
-            이벤트<span class="tab-count">(<?php echo number_format($events_count); ?>)</span>
-        </a>
-        <a href="?id=<?php echo $hospital_id; ?>&tab=reviews" class="tab-item <?php echo $current_tab === 'reviews' ? 'active' : ''; ?>">
-            시술후기<span class="tab-count">(<?php echo number_format($reviews_count); ?>)</span>
-        </a>
-    </div>
 
     <!-- 탭 컨텐츠 -->
     <div class="tab-content">
@@ -1781,96 +1862,118 @@ function extractImageFromHtml($file_path) {
             <?php endif; ?>
             <?php
             $has_desc = !empty(trim($hospital['description'] ?? ''));
-            $has_intro = !empty(trim($hospital['introduction'] ?? ''));
+            $has_intro = !empty(trim($hospital['introduction'] ?? '')) && ($hospital['introduction'] !== ($hospital['description'] ?? ''));
             ?>
-            <?php if ($has_desc): ?>
+            <?php if ($has_desc || $has_intro): ?>
             <h3 style="font-size: 18px; margin-bottom: 16px;"><?= term("business") ?> 소개</h3>
             <div style="line-height: 1.8; color: var(--color-text-secondary);">
-                <?php echo nl2br(htmlspecialchars($hospital['description'])); ?>
+                <?php if ($has_desc): ?><?php echo nl2br(htmlspecialchars($hospital['description'])); ?><?php endif; ?>
+                <?php if ($has_desc && $has_intro): ?><br><br><?php endif; ?>
+                <?php if ($has_intro): ?><?php echo nl2br(htmlspecialchars($hospital['introduction'])); ?><?php endif; ?>
             </div>
-            <?php endif; ?>
-            <?php if ($has_intro && ($hospital['introduction'] !== ($hospital['description'] ?? ''))): ?>
-            <h3 style="font-size: 18px; margin: <?php echo $has_desc ? '24px' : '0'; ?> 0 16px;">상세 소개</h3>
-            <div style="line-height: 1.8; color: var(--color-text-secondary);">
-                <?php echo nl2br(htmlspecialchars($hospital['introduction'])); ?>
-            </div>
-            <?php endif; ?>
-            <?php if (!$has_desc && !$has_intro): ?>
+            <?php else: ?>
             <div class="empty-state">
                 <div class="empty-state-icon">??</div>
                 <div class="empty-state-text">등록된 소개 정보가 없습니다.</div>
             </div>
             <?php endif; ?>
 
-            <!-- [1차 검수 #10 - 2026-05-28] 홈 탭에 주요 시술/가격 노출 강화 -->
-            <?php if (!empty($treatments)): ?>
-            <div style="margin-top:24px;">
-                <h3 style="font-size:18px;margin-bottom:12px;">💰 주요 <?= term('service', '시술') ?> 가격</h3>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:10px;">
-                <?php foreach (array_slice($treatments, 0, 6) as $_tp): ?>
-                    <div style="border:1px solid var(--bs-border-color);border-radius:8px;padding:12px;background:var(--bs-tertiary-bg);position:relative;">
-                        <div style="position:absolute;top:6px;right:6px;"><?php renderWishlistButton('treatment', (int)$_tp['id'], 'sm', false); ?></div>
-                        <div style="font-weight:600;font-size:14px;margin-bottom:4px;padding-right:24px;"><?php echo htmlspecialchars($_tp['name'] ?? ''); ?></div>
-                        <?php if (!empty($_tp['category'])): ?>
-                        <div style="font-size:11px;color:var(--bs-secondary-color);margin-bottom:6px;"><?php echo htmlspecialchars($_tp['category']); ?></div>
-                        <?php endif; ?>
-                        <?php if (!empty($_tp['price_min']) && (int)$_tp['price_min'] > 0): ?>
-                        <div style="font-size:15px;font-weight:700;color:#AE1932;">
-                            <?php
-                            $_pm = (int)$_tp['price_min'];
-                            $_pM = !empty($_tp['price_max']) ? (int)$_tp['price_max'] : 0;
-                            if ($_pM > 0 && $_pM !== $_pm) echo number_format($_pm) . '~' . number_format($_pM) . '원';
-                            else echo number_format($_pm) . '원~';
-                            ?>
-                        </div>
+            <!-- 의료진 소개 (홈 탭 · 최대 2명) -->
+            <?php if (!empty($doctors_data)): ?>
+            <hr style="border:none; border-top:1px solid var(--color-border); margin:24px 0;">
+            <h3 style="font-size: 18px; margin-bottom: 16px;">의료진 소개</h3>
+            <div class="doctor-list">
+                <?php foreach (array_slice($doctors_data, 0, 2) as $doctor):
+                    $doc_link = ($doctors_source === 'gangnamunni') ? "doctor_detail.php?id={$doctor['id']}" : '#';
+                    $doc_clickable = ($doctors_source === 'gangnamunni');
+                    $doc_status = $doctor['status'] ?? 'active';
+                    $doc_status_label = ['active'=>term('appointment', '진료') . ' 중','vacation'=>'휴가','leave'=>'휴직','resigned'=>'퇴직'][$doc_status] ?? '';
+                ?>
+                <article class="doctor-card" <?php if ($doc_clickable): ?>onclick="location.href='<?php echo $doc_link; ?>'" style="cursor:pointer;"<?php endif; ?>>
+                    <div class="doctor-photo">
+                        <?php if (!empty($doctor['photo_url'])): ?>
+                        <img src="<?php echo htmlspecialchars($doctor['photo_url']); ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                        <?php else: ?>
+                        👨‍⚕️
                         <?php endif; ?>
                     </div>
+                    <div class="doctor-info">
+                        <h3 class="doctor-name">
+                            <?php echo htmlspecialchars($doctor['doctor_name']); ?>
+                            <?php if ($doc_status !== 'active'): ?>
+                            <span style="font-size:11px;color:#ef4444;font-weight:400;margin-left:6px;"><?php echo $doc_status_label; ?></span>
+                            <?php endif; ?>
+                        </h3>
+                        <p class="doctor-specialty" style="display:flex;align-items:center;gap:6px;">
+                            <img src="assets/icons/categories/doctor.jpeg" alt="" style="width:auto;height:16px;object-fit:contain;">
+                            <span style="color:var(--color-primary,#AE1932);">피부과 전문의</span>
+                        </p>
+                        <?php
+                        // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
+                        $doc_treat_names = [];
+                        $dt_stmt = mysqli_prepare($connect, "SELECT tm.name FROM gangnamunni_doctor_treatments dt JOIN gangnamunni_treatment_master tm ON dt.treatment_id = tm.id WHERE dt.doctor_id = ? AND dt.is_active = 1 ORDER BY dt.case_count DESC LIMIT 6");
+                        if ($dt_stmt) {
+                            mysqli_stmt_bind_param($dt_stmt, 'i', $doctor['id']);
+                            mysqli_stmt_execute($dt_stmt);
+                            $dt_res = mysqli_stmt_get_result($dt_stmt);
+                            while ($dt_row = mysqli_fetch_assoc($dt_res)) $doc_treat_names[] = $dt_row['name'];
+                            mysqli_stmt_close($dt_stmt);
+                        }
+                        if (empty($doc_treat_names) && !empty($treatments)) {
+                            foreach (array_slice($treatments, 0, 5) as $_ht) {
+                                if (!empty($_ht['name'])) $doc_treat_names[] = $_ht['name'];
+                            }
+                        }
+                        if (empty($doc_treat_names)) {
+                            $doc_treat_names = ['보톡스', '필러', '리프팅', '스킨부스터'];
+                        }
+                        ?>
+                        <div class="doc-treat-row" style="display:flex;flex-wrap:nowrap;gap:5px;margin-top:8px;overflow:hidden;">
+                            <?php foreach ($doc_treat_names as $tn): ?>
+                            <span style="font-size:11px;color:#000;background:#d5cfcf;border-radius:4px;padding:3px 8px;white-space:nowrap;flex-shrink:0;"><?php echo htmlspecialchars($tn); ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </article>
                 <?php endforeach; ?>
-                </div>
-                <?php if (count($treatments) > 6): ?>
-                <div style="text-align:center;margin-top:12px;">
-                    <a href="?id=<?php echo $hospital_id; ?>&tab=events" style="font-size:13px;color:#AE1932;text-decoration:none;">+ <?php echo count($treatments) - 6; ?>개 더보기 →</a>
-                </div>
-                <?php endif; ?>
+            </div>
+            <?php if ($doctors_count > 2): ?>
+            <div style="text-align:center;margin-top:12px;">
+                <a href="?id=<?php echo $hospital_id; ?>&tab=doctors" style="font-size:13px;color:var(--color-primary,#AE1932);text-decoration:none;"><?= term("staff", "의료진") ?> 전체 보기 →</a>
             </div>
             <?php endif; ?>
+            <script>
+            // 시술 태그: 한 줄에 안 들어가는 태그는 숨김
+            (function(){
+                function trimTreatTags(){
+                    document.querySelectorAll('.doc-treat-row').forEach(function(row){
+                        var max = row.clientWidth;
+                        row.querySelectorAll('span').forEach(function(tag){
+                            tag.style.display = '';
+                            if (tag.offsetLeft + tag.offsetWidth > max) tag.style.display = 'none';
+                        });
+                    });
+                }
+                if (document.readyState !== 'loading') trimTreatTags();
+                else document.addEventListener('DOMContentLoaded', trimTreatTags);
+                window.addEventListener('resize', trimTreatTags);
+            })();
+            </script>
+            <?php endif; ?>
+
         </div>
 
         <!-- 이벤트 탭 -->
         <div class="tab-pane <?php echo $current_tab === 'events' ? 'active' : ''; ?>" id="tab-events">
+            <h3 id="eventsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;">이벤트</h3>
             <?php if (!empty($events_data)): ?>
-            <!-- 정렬 드롭다운 -->
-            <div class="sort-filter">
-                <div class="sort-dropdown">
-                    <button class="sort-btn" onclick="toggleSortDropdown()">
-                        <span class="sort-icon">↕</span>
-                        <span id="currentSort">
-                            <?php
-                            $sort = isset($_GET['sort']) ? $_GET['sort'] : 'popular';
-                            $sort_labels = [
-                                'popular' => '인기순',
-                                'review' => term('review', '후기') . ' 많은순',
-                                'latest' => '최신순',
-                                'low_price' => '저가순',
-                                'high_price' => '고가순',
-                                'rating' => '별점 높은순'
-                            ];
-                            echo $sort_labels[$sort] ?? '인기순';
-                            ?>
-                        </span>
-                    </button>
-                    <div class="sort-options" id="sortOptions">
-                        <?php foreach ($sort_labels as $key => $label): ?>
-                        <button class="sort-option <?php echo $sort === $key ? 'active' : ''; ?>"
-                                onclick="changeSort('<?php echo $key; ?>')">
-                            <?php echo $label; ?>
-                            <?php if ($sort === $key): ?><span class="check">✓</span><?php endif; ?>
-                        </button>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-
+            <?php
+            // 주소에서 '구'로 끝나는 토큰(자치구) 추출 — 예: "서울 강남구 …" → "강남구"
+            $hospital_gu = '';
+            foreach (preg_split('/\s+/', trim($hospital['address'] ?? '')) as $_ap) {
+                if ($_ap !== '' && mb_substr($_ap, -1) === '구') { $hospital_gu = $_ap; break; }
+            }
+            ?>
             <!-- 이벤트 리스트 -->
             <div class="event-list">
                 <?php foreach ($events_data as $event): ?>
@@ -1883,6 +1986,7 @@ function extractImageFromHtml($file_path) {
                 }
                 ?>
                 <article class="event-card">
+                    <span class="event-wishlist" style="position:absolute; top:8px; right:8px; z-index:2; background:rgba(255,255,255,0.9); border-radius:50%; display:inline-flex;"><?php renderWishlistButton('event', (int)$event['id'], 'sm', false, 'star'); ?></span>
                     <a href="event_detail.php?id=<?php echo $event['id']; ?>" class="event-card-link">
                         <div class="event-thumbnail">
                             <?php if ($event_image): ?>
@@ -1893,25 +1997,34 @@ function extractImageFromHtml($file_path) {
                             <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Crect fill='%23e0e0e0' width='400' height='200'/%3E%3Ctext x='50%25' y='50%25' fill='%23999' text-anchor='middle' dominant-baseline='middle' font-size='16'%3E이벤트 이미지%3C/text%3E%3C/svg%3E"
                                  alt="이미지 없음">
                             <?php endif; ?>
-                            <span class="event-badge">이벤트</span>
-                            <?php if ($event['discount_price'] && $event['original_price']): ?>
-                            <?php $discount_rate = round((1 - $event['discount_price'] / $event['original_price']) * 100); ?>
-                            <span class="discount-badge"><?php echo $discount_rate; ?>%</span>
-                            <?php endif; ?>
                         </div>
                         <div class="event-info">
-                            <h3 class="event-title"><?php echo htmlspecialchars($event['title'] ?? $event['event_name'] ?? ''); ?></h3>
+                            <h3 class="event-title" style="padding-right:28px;"><?php echo htmlspecialchars($event['title'] ?? $event['event_name'] ?? ''); ?></h3>
+
+                            <?php if (!empty($hospital['address'])): ?>
+                            <p style="font-size:12px; color:var(--color-text-muted,#999); margin:2px 0 8px; display:flex; align-items:center; gap:4px;">
+                                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php if (!empty($hospital_gu)): ?><strong style="color:var(--color-text-secondary,#666); font-weight:600;"><?php echo htmlspecialchars($hospital_gu); ?></strong> | <?php endif; ?><?php echo htmlspecialchars($hospital['address']); ?></span>
+                            </p>
+                            <?php endif; ?>
+
+                            <?php if (($hospital['show_rating'] ?? 1) == 1): ?>
+                            <div style="display:flex; align-items:center; gap:5px; font-size:12px; margin-bottom:8px;">
+                                <img src="assets/icons/categories/rating_2.svg" alt="" style="width:14px; height:14px; object-fit:contain; flex-shrink:0;">
+                                <span style="font-weight:700; color:var(--color-text-primary,#333);"><?php echo number_format(!empty($hospital['rating']) ? $hospital['rating'] : 4.8, 1); ?>/5.0</span>
+                                <span style="color:var(--color-text-muted,#999); display:inline-flex; align-items:center; gap:4px;"><i class="bi bi-chat-square-text"></i>병원후기 <?php echo number_format($reviews_count); ?></span>
+                            </div>
+                            <?php endif; ?>
 
                             <?php if ($event['discount_price'] || $event['original_price']): ?>
+                            <div style="text-align:right; font-size:11px; color:var(--color-text-muted,#999); margin-bottom:2px;">VAT 포함</div>
                             <div class="event-price-row">
-                                <?php if ($event['discount_price']): ?>
-                                <span class="event-price"><?php echo number_format($event['discount_price']); ?>원</span>
-                                <?php endif; ?>
                                 <?php if ($event['original_price'] && $event['discount_price'] < $event['original_price']): ?>
                                 <span class="original-price"><?php echo number_format($event['original_price']); ?>원</span>
                                 <?php endif; ?>
+                                <?php if ($event['discount_price']): ?>
+                                <span class="event-price"><?php echo number_format($event['discount_price']); ?>원</span>
+                                <?php endif; ?>
                             </div>
-                            <div style="font-size:0.65rem;color:var(--bs-secondary-color,#6c757d);margin-top:2px;line-height:1.3;">부가세 포함 · 마취비 없음 · 사후관리비 없음</div>
                             <?php endif; ?>
 
                             <?php if ($event['hospital_name'] || $event['brand_name']): ?>
@@ -1959,17 +2072,29 @@ function extractImageFromHtml($file_path) {
             </div>
             <?php endif; ?>
         </div>
+        <?php if ($current_tab === 'events'): ?>
+        <script>
+        // 이벤트 탭 진입 시 '이벤트' 제목 위치로 스크롤
+        document.addEventListener('DOMContentLoaded', function(){
+            var el = document.getElementById('eventsIntro');
+            if (!el) return;
+            setTimeout(function(){
+                var tabMenu = document.querySelector('.tab-menu');
+                var stickyBottom = 160;
+                if (tabMenu) {
+                    var topPx = parseInt(getComputedStyle(tabMenu).top, 10) || 112;
+                    stickyBottom = topPx + tabMenu.offsetHeight;
+                }
+                var y = el.getBoundingClientRect().top + window.pageYOffset - stickyBottom - 12;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }, 150);
+        });
+        </script>
+        <?php endif; ?>
 
         <!-- 후기 탭 -->
         <div class="tab-pane <?php echo $current_tab === 'reviews' ? 'active' : ''; ?>" id="tab-reviews">
-            <!-- 후기 작성 버튼 -->
-            <div style="margin-bottom: 20px;">
-                <a href="editor/review_editor.php?hospital_id=<?php echo $hospital_id; ?>"
-                   style="display: block; padding: 14px; background: var(--color-primary); color: white; text-align: center; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
-                    <?php echo term('review', '후기'); ?> 작성하기
-                </a>
-            </div>
-
+            <h3 id="reviewsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;"><?php echo term('review', '시술후기'); ?></h3>
             <?php if (!empty($reviews_data)): ?>
             <div class="review-list">
                 <?php foreach ($reviews_data as $review): ?>
@@ -1987,71 +2112,51 @@ function extractImageFromHtml($file_path) {
                     mysqli_stmt_close($img_query);
                 }
                 ?>
-                <article class="review-card">
-                    <div class="review-header">
-                        <div class="reviewer-avatar">👤</div>
-                        <div style="flex:1;">
-                            <span class="reviewer-name"><?php echo htmlspecialchars($review['user_name']); ?></span>
-                            <?php if (!empty($review['is_verified'])): ?>
-                            <span style="font-size:11px; color:#16a34a; margin-left:4px;">인증됨</span>
-                            <?php endif; ?>
-                        </div>
-                        <span class="review-time">
-                            <?php
-                            $diff = time() - strtotime($review['created_at']);
-                            if ($diff < 3600) echo floor($diff / 60) . '분 전';
-                            elseif ($diff < 86400) echo floor($diff / 3600) . '시간 전';
-                            else { $days = floor($diff / 86400); echo $days . '일 전'; }
-                            ?>
-                            <button class="rv-report-btn" onclick="openReportModal('review', <?php echo intval($review['id']); ?>, '<?php echo htmlspecialchars($review['mb_id'] ?? '', ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars($review['user_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>')" title="신고" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;opacity:0.5;">&#9873;</button>
-                        </span>
-                    </div>
-
+                <div class="review-card-area" onclick="location.href='review_detail.php?id=<?php echo intval($review['id']); ?>'" style="cursor:pointer;">
                     <?php if (!empty($review['treatments'])): ?>
-                    <div class="treatment-tags">
-                        <?php foreach (explode(',', $review['treatments']) as $treatment): ?>
-                        <span class="treatment-tag"><?php echo htmlspecialchars(trim($treatment)); ?></span>
-                        <?php endforeach; ?>
-                    </div>
+                    <?php foreach (explode(',', $review['treatments']) as $t): ?>
+                    <span class="tag"><?php echo htmlspecialchars(trim($t)); ?></span>
+                    <?php endforeach; ?>
                     <?php endif; ?>
-
-                    <div class="review-rating">
-                        <?php for ($j = 1; $j <= 5; $j++): ?>
-                        <span class="star <?php echo $j <= $review['rating'] ? 'filled' : ''; ?>">★</span>
-                        <?php endfor; ?>
-                    </div>
 
                     <?php if (!empty($review['title'])): ?>
-                    <div style="font-weight: 600; font-size: 15px; margin-bottom: 8px;">
-                        <?php echo htmlspecialchars($review['title']); ?>
-                    </div>
+                    <div class="review-title"><?php echo htmlspecialchars($review['title']); ?></div>
                     <?php endif; ?>
 
-                    <div class="review-content">
+                    <div class="review-body">
                         <?php if (!empty($review['editor_content']) && ($review['editor_type'] ?? '') === 'quill'): ?>
                         <?php echo $review['editor_content']; ?>
                         <?php else: ?>
-                        <p><?php echo nl2br(htmlspecialchars($review['content'])); ?></p>
+                        <?php echo nl2br(htmlspecialchars($review['content'])); ?>
                         <?php endif; ?>
                     </div>
 
-                    <?php if (!empty($review_imgs)): ?>
-                    <div style="display: flex; gap: 6px; margin-top: 12px; overflow-x: auto;">
+                    <?php if (!empty($review_imgs)):
+                        $img_count = count($review_imgs);
+                        $thumb_class = $img_count === 1 ? 'thumbs-1' : ($img_count === 2 ? 'thumbs-2' : 'thumbs-3plus');
+                    ?>
+                    <div class="post-thumbs <?php echo $thumb_class; ?>" onclick="event.stopPropagation();">
                         <?php foreach ($review_imgs as $ri): ?>
-                        <img src="<?php echo htmlspecialchars($ri['thumbnail_url'] ?: $ri['image_url']); ?>"
-                             alt="<?php echo term('review', '후기'); ?> 이미지"
-                             style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; flex-shrink: 0; cursor: pointer;"
-                             onclick="window.open('<?php echo htmlspecialchars($ri['image_url']); ?>', '_blank')">
+                        <div class="thumb-item" onclick="event.stopPropagation(); window.open('<?php echo htmlspecialchars($ri['image_url']); ?>', '_blank')">
+                            <img src="<?php echo htmlspecialchars($ri['thumbnail_url'] ?: $ri['image_url']); ?>" alt="<?php echo term('review', '후기'); ?> 이미지" loading="lazy">
+                        </div>
                         <?php endforeach; ?>
                     </div>
                     <?php endif; ?>
 
-                    <!-- 좋아요/댓글 카운트 -->
-                    <div style="display: flex; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); font-size: 13px; color: var(--color-text-muted);">
-                        <span>좋아요 <?php echo intval($review['like_count'] ?? 0); ?></span>
-                        <span>댓글 <?php echo intval($review['comment_count'] ?? 0); ?></span>
+                    <div class="post-author-row">
+                        <div class="post-avatar"><?php if (!empty($review['user_avatar'])): ?><img src="<?php echo htmlspecialchars($review['user_avatar']); ?>" alt=""><?php endif; ?></div>
+                        <span class="post-author-name"><?php echo htmlspecialchars($review['user_name']); ?></span>
+                        <?php if (!empty($review['is_verified'])): ?>
+                        <span style="font-size:11px; color:#16a34a;">인증됨</span>
+                        <?php endif; ?>
+                        <div class="post-stat-group">
+                            <span class="stat"><i class="bi bi-heart heart-icon"></i> <?php echo intval($review['like_count'] ?? 0); ?></span>
+                            <span class="stat"><i class="bi bi-chat-square-text"></i> <?php echo intval($review['comment_count'] ?? 0); ?></span>
+                            <span class="stat"><i class="bi bi-eye"></i> <?php echo intval($review['view_count'] ?? 0); ?></span>
+                        </div>
                     </div>
-                </article>
+                </div>
                 <?php endforeach; ?>
             </div>
             <?php else: ?>
@@ -2061,9 +2166,29 @@ function extractImageFromHtml($file_path) {
             </div>
             <?php endif; ?>
         </div>
+        <?php if ($current_tab === 'reviews'): ?>
+        <script>
+        // 시술후기 탭 진입 시 '시술후기' 제목 위치로 스크롤
+        document.addEventListener('DOMContentLoaded', function(){
+            var el = document.getElementById('reviewsIntro');
+            if (!el) return;
+            setTimeout(function(){
+                var tabMenu = document.querySelector('.tab-menu');
+                var stickyBottom = 160;
+                if (tabMenu) {
+                    var topPx = parseInt(getComputedStyle(tabMenu).top, 10) || 112;
+                    stickyBottom = topPx + tabMenu.offsetHeight;
+                }
+                var y = el.getBoundingClientRect().top + window.pageYOffset - stickyBottom - 12;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }, 150);
+        });
+        </script>
+        <?php endif; ?>
 
         <!-- 의사 탭 -->
         <div class="tab-pane <?php echo $current_tab === 'doctors' ? 'active' : ''; ?>" id="tab-doctors">
+            <h3 id="doctorsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;">의료진 소개</h3>
             <?php if (!empty($doctors_data)): ?>
             <div class="doctor-list">
                 <?php foreach ($doctors_data as $doctor):
@@ -2087,18 +2212,36 @@ function extractImageFromHtml($file_path) {
                             <span style="font-size:11px;color:#ef4444;font-weight:400;margin-left:6px;"><?php echo $doc_status_label; ?></span>
                             <?php endif; ?>
                         </h3>
-                        <?php if (!empty($doctor['specialty'])): ?>
-                        <p class="doctor-specialty"><?php echo htmlspecialchars($doctor['specialty']); ?></p>
-                        <?php endif; ?>
-                        <?php if (!empty($doctor['experience'])): ?>
-                        <p class="doctor-description" style="font-size:12px;color:var(--color-text-secondary,#888);">경력 <?php echo $doctor['experience']; ?>년<?php echo !empty($doctor['qualification']) ? ' · ' . htmlspecialchars($doctor['qualification']) : ''; ?></p>
-                        <?php elseif (!empty($doctor['description'])): ?>
-                        <p class="doctor-description"><?php echo htmlspecialchars(mb_substr($doctor['description'], 0, 50)); ?></p>
-                        <?php endif; ?>
+                        <p class="doctor-specialty" style="display:flex;align-items:center;gap:6px;">
+                            <img src="assets/icons/categories/doctor.jpeg" alt="" style="width:auto;height:16px;object-fit:contain;">
+                            <span style="color:var(--color-primary,#AE1932);">피부과 전문의</span>
+                        </p>
+                        <?php
+                        // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
+                        $doc_treat_names = [];
+                        $dt_stmt = mysqli_prepare($connect, "SELECT tm.name FROM gangnamunni_doctor_treatments dt JOIN gangnamunni_treatment_master tm ON dt.treatment_id = tm.id WHERE dt.doctor_id = ? AND dt.is_active = 1 ORDER BY dt.case_count DESC LIMIT 6");
+                        if ($dt_stmt) {
+                            mysqli_stmt_bind_param($dt_stmt, 'i', $doctor['id']);
+                            mysqli_stmt_execute($dt_stmt);
+                            $dt_res = mysqli_stmt_get_result($dt_stmt);
+                            while ($dt_row = mysqli_fetch_assoc($dt_res)) $doc_treat_names[] = $dt_row['name'];
+                            mysqli_stmt_close($dt_stmt);
+                        }
+                        if (empty($doc_treat_names) && !empty($treatments)) {
+                            foreach (array_slice($treatments, 0, 5) as $_ht) {
+                                if (!empty($_ht['name'])) $doc_treat_names[] = $_ht['name'];
+                            }
+                        }
+                        if (empty($doc_treat_names)) {
+                            $doc_treat_names = ['보톡스', '필러', '리프팅', '스킨부스터'];
+                        }
+                        ?>
+                        <div class="doc-treat-row" style="display:flex;flex-wrap:nowrap;gap:5px;margin-top:8px;overflow:hidden;">
+                            <?php foreach ($doc_treat_names as $tn): ?>
+                            <span style="font-size:11px;color:#000;background:#d5cfcf;border-radius:4px;padding:3px 8px;white-space:nowrap;flex-shrink:0;"><?php echo htmlspecialchars($tn); ?></span>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
-                    <?php if ($doc_clickable): ?>
-                    <div style="display:flex;align-items:center;color:var(--color-text-secondary,#999);font-size:18px;"><i class="bi bi-chevron-right"></i></div>
-                    <?php endif; ?>
                 </article>
                 <?php endforeach; ?>
             </div>
@@ -2109,6 +2252,26 @@ function extractImageFromHtml($file_path) {
             </div>
             <?php endif; ?>
         </div>
+        <?php if ($current_tab === 'doctors'): ?>
+        <script>
+        // 의료진 탭 진입 시 '의료진 소개' 제목 위치로 스크롤
+        // sticky 탭메뉴(가장 아래 고정요소)의 실제 하단을 측정해 그만큼 여백 확보
+        document.addEventListener('DOMContentLoaded', function(){
+            var el = document.getElementById('doctorsIntro');
+            if (!el) return;
+            setTimeout(function(){
+                var tabMenu = document.querySelector('.tab-menu');
+                var stickyBottom = 160;
+                if (tabMenu) {
+                    var topPx = parseInt(getComputedStyle(tabMenu).top, 10) || 112;
+                    stickyBottom = topPx + tabMenu.offsetHeight;
+                }
+                var y = el.getBoundingClientRect().top + window.pageYOffset - stickyBottom - 12;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }, 150);
+        });
+        </script>
+        <?php endif; ?>
 
         <!-- YouTube tab removed per client request 2026-03-16 (#23) -->
         <!--
@@ -2148,11 +2311,11 @@ function extractImageFromHtml($file_path) {
 
     <!-- #24 fix: bottom buttons no overlap -->
     <div class="bottom-bar">
-        <button class="btn btn-outline" onclick="openDoctorConsult()" style="flex:1;min-width:0;border:1px solid var(--color-primary);color:var(--color-primary);background:var(--bs-body-bg, #fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            <i class="bi bi-chat-dots me-1"></i><?php echo term('consultation', '상담'); ?> 신청
+        <button class="btn btn-primary" onclick="openDoctorConsult()" style="flex:1;min-width:0;border:none;border-radius:0;color:#fff;background:var(--color-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            <?php echo term('consultation', '상담'); ?> 신청
         </button>
-        <a href="booking.php?id=<?php echo $hospital['id']; ?>" class="btn btn-primary" style="flex:1;min-width:0;text-decoration:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;">
-            <i class="bi bi-calendar-plus me-1"></i><?php echo term('booking', '예약'); ?>하기
+        <a href="booking.php?id=<?php echo $hospital['id']; ?>" class="btn btn-outline" style="flex:1;min-width:0;border:1px solid var(--color-primary);border-radius:0;color:var(--color-primary);background:var(--bs-body-bg, #fff);text-decoration:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;">
+            <?php echo term('booking', '예약'); ?>하기
         </a>
     </div>
 
@@ -2452,6 +2615,32 @@ function extractImageFromHtml($file_path) {
         });
 
         // 영업시간 확장/축소
+        function copyAddress(btn) {
+            const addr = btn.getAttribute('data-address') || '';
+            if (!addr) return;
+            const done = function() {
+                const original = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check-lg"></i> 복사됨';
+                btn.style.color = 'var(--color-primary, #AE1932)';
+                setTimeout(function() { btn.innerHTML = original; btn.style.color = ''; }, 1500);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(addr).then(done).catch(function() { fallbackCopy(addr, done); });
+            } else {
+                fallbackCopy(addr, done);
+            }
+        }
+        function fallbackCopy(text, cb) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); cb(); } catch (e) {}
+            document.body.removeChild(ta);
+        }
+
         function toggleBusinessHours() {
             const expand = document.getElementById('businessHoursExpand');
             const icon = document.getElementById('hoursToggleIcon');
@@ -2499,87 +2688,14 @@ $cpv_target_id = $hospital_id;
 include __DIR__ . '/includes/cpv_tracker.php';
 ?>
 
-<!-- [1차 검수 #8 - 2026-05-28] 찜하기 UI 가시성 강화 — 흰 배경 + 그림자로 잘 보이게 -->
-<div style="position:fixed;top:70px;right:16px;z-index:1000;background:#fff;border-radius:50%;box-shadow:0 4px 12px rgba(0,0,0,0.18);padding:6px;">
-<?php renderWishlistButton('hospital', $hospital_id, 'lg'); ?>
-</div>
-<div style="padding:16px;">
-<?php renderShareButtons($hospital["name"] ?? "", $hospital["description"] ?? "", "", $hospital["main_image_url"] ?? ""); renderShareScript(); ?>
-</div>
 <div style="height:70px;"></div>
 
-
-<!-- 병원 소식 링크 -->
-<?php if (!empty($hospital_id)): ?>
-<a href="hospital_news.php?hospital_id=<?php echo $hospital_id; ?>" style="display:block;margin:12px 0;padding:12px 16px;background:var(--bs-tertiary-bg,#f5f5f5);border-radius:10px;text-decoration:none;color:inherit;font-size:14px;">
-    <i class="bi bi-megaphone" style="color:#AE1932;"></i> 병원 소식 <i class="bi bi-chevron-right" style="float:right;color:var(--bs-secondary-color);"></i>
-</a>
-<?php endif; ?>
-<!-- 플로팅 채팅 버튼 -->
-<?php if (!empty($hospital_id)): ?>
-<a href="chat.php?hospital_id=<?php echo $hospital_id; ?>" class="chat-float-btn" title="<?php echo term('consultation', '상담'); ?> 채팅">
-    <i class="bi bi-chat-dots-fill"></i>
-</a>
-<?php endif; ?>
-
-<!-- AI 리뷰 요약 -->
-<div class="ai-review-section" id="ai-review-box" style="display:none;">
-    <h3><i class="bi bi-robot" style="color:#AE1932;"></i> AI 리뷰 분석</h3>
-    <div class="ai-keywords" id="ai-keywords"></div>
-    <div class="ai-summary-text" id="ai-summary"></div>
-    <div class="ai-stats" id="ai-stats"></div>
-</div>
-
-<!-- 쿠폰 배너 -->
-<div class="coupon-banner" id="coupon-banner" style="display:none;" onclick="location.href='mypage.php'">
-    <div>
-        <div class="coupon-text" id="coupon-text">사용 가능한 쿠폰이 있어요!</div>
-        <div class="coupon-sub">탭하여 확인하기</div>
-    </div>
-    <div class="coupon-icon"><i class="bi bi-ticket-perforated"></i></div>
-</div>
-
-<script>
-// AI 리뷰 로드
-(function(){
-    var hid = <?php echo intval($hospital_id); ?>;
-    if (!hid) return;
-    var API = window.location.pathname.replace(/\/[^\/]*$/, '');
-
-    fetch(API + '/api_ai_review.php?hospital_id=' + hid)
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-        if (!res.success || res.total_reviews === 0) return;
-        document.getElementById('ai-review-box').style.display = '';
-        var kwEl = document.getElementById('ai-keywords');
-        (res.keywords || []).forEach(function(kw) {
-            kwEl.innerHTML += '<span class="ai-keyword">' + kw + '</span>';
-        });
-        document.getElementById('ai-summary').textContent = res.summary || '';
-        document.getElementById('ai-stats').innerHTML =
-            '<span style="color:#22c55e;"><i class="bi bi-emoji-smile"></i> 긍정 ' + (res.positive_count||0) + '</span>' +
-            '<span style="color:#ef4444;"><i class="bi bi-emoji-frown"></i> 부정 ' + (res.negative_count||0) + '</span>' +
-            '<span><i class="bi bi-chat-square-text"></i> 전체 ' + (res.total_reviews||0) + '개</span>';
-    }).catch(function(){});
-
-    // 쿠폰 체크
-    fetch(API + '/api_coupon.php?action=list')
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-        if (res.success && res.coupons && res.coupons.length > 0) {
-            document.getElementById('coupon-banner').style.display = '';
-            document.getElementById('coupon-text').textContent = res.coupons.length + '개의 쿠폰을 받을 수 있어요!';
-        }
-    }).catch(function(){});
-})();
-</script>
 
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
 <?php renderWishlistScript(); ?>
 <?php include __DIR__ . '/includes/report_block_modal.php'; ?>
 </body>
 </html>
-<?php renderBeforeAfterGallery($hospital_id, $connect); ?>
 <?php
 // 최근 본 병원 저장
 if (!empty($hospital_id) && isset($hospital)) {

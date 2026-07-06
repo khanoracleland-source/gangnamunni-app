@@ -28,6 +28,7 @@ $map_lng      = floatval($map_config['longitude'] ?? 0);
 $map_address  = $map_config['address'] ?? '';
 $map_name     = $map_config['name'] ?? '';
 $map_height   = $map_config['height'] ?? '250px';
+$map_show_title = $map_config['show_title'] ?? true;
 
 if (!function_exists('getSettingValue')) {
     require_once __DIR__ . '/settings_helper.php';
@@ -159,34 +160,16 @@ $display_lng = $has_coords ? $map_lng : 126.978;
 <?php endif; ?>
 
 <div class="km-section">
+    <?php if ($map_show_title): ?>
     <div class="km-title">
         📍 오시는 길
         <span class="km-distance" id="kmDist_<?php echo $map_id; ?>" style="display:none;"></span>
     </div>
+    <?php endif; ?>
     <div class="km-map-wrap">
         <div class="km-container" id="<?php echo $map_id; ?>" style="width:100%;height:<?php echo $map_height; ?>;"></div>
         <button type="button" class="km-fullscreen-btn" onclick="kmOpenFull('<?php echo $map_id; ?>')" title="전체보기">⛶</button>
         <button type="button" class="km-myloc-btn" onclick="kmShowMyLoc('<?php echo $map_id; ?>')" title="내 위치">📍</button>
-    </div>
-    <?php if (!empty($map_address)): ?>
-    <div class="km-address">
-        <span><?php echo htmlspecialchars($map_address); ?></span>
-        <button type="button" class="km-address-copy" onclick="kmCopyAddr(this,'<?php echo htmlspecialchars(addslashes($map_address)); ?>')">복사</button>
-    </div>
-    <?php endif; ?>
-    <div class="km-navi-btns">
-        <a class="km-navi-btn" href="#" onclick="kmNaviKakao(<?php echo $display_lat; ?>,<?php echo $display_lng; ?>,'<?php echo addslashes($map_name); ?>');return false;">
-            <i>🗺</i>카카오맵
-        </a>
-        <a class="km-navi-btn" href="#" onclick="kmNaviNaver(<?php echo $display_lat; ?>,<?php echo $display_lng; ?>,'<?php echo addslashes(urlencode($map_address ?: $map_name)); ?>');return false;">
-            <i>🧭</i>네이버지도
-        </a>
-        <a class="km-navi-btn" href="#" onclick="kmNaviTmap(<?php echo $display_lat; ?>,<?php echo $display_lng; ?>,'<?php echo addslashes($map_name); ?>');return false;">
-            <i>🚗</i>티맵
-        </a>
-        <a class="km-navi-btn" href="#" onclick="kmNaviGoogle(<?php echo $display_lat; ?>,<?php echo $display_lng; ?>);return false;">
-            <i>🌐</i>구글맵
-        </a>
     </div>
 </div>
 
