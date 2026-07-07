@@ -18,7 +18,7 @@ $db = Database::getInstance();
 
 // 후기 조회
 $review = $db->fetchOne(
-    "SELECT r.*, h.name as hospital_name, h.profile_image_url as hospital_image, h.address as hospital_address, h.rating as hospital_rating, h.review_count as hospital_review_count
+    "SELECT r.*, r.rating as review_rating, h.name as hospital_name, h.profile_image_url as hospital_image, h.address as hospital_address, h.rating as hospital_rating, h.review_count as hospital_review_count
      FROM hospital_reviews r
      LEFT JOIN gangnamunni_hospitals h ON r.hospital_id = h.id
      WHERE r.id = ? AND r.is_active = 1",
@@ -107,7 +107,8 @@ $csrf_token = generateCsrfToken();
         .post-thumbs .thumb-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
         /* 작성자/통계 행 — community.php .post-author-row 와 동일 */
-        .post-author-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .post-meta-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .post-author-row { display: flex; align-items: center; gap: 8px; }
         .post-avatar { width: 35px; height: 35px; border-radius: 50%; background: #AAAAAA; overflow: hidden; flex-shrink: 0; }
         .post-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .post-author-name { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 400; color: #000000; }
@@ -116,9 +117,13 @@ $csrf_token = generateCsrfToken();
         .post-stat-group .stat i { font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1)); }
         .post-stat-group .heart-icon { color: #AE1932; }
         /* 통계를 카드 하단에 배치 */
-        .review-stat-bottom { margin-left: 0; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--bs-border-color, #e0e0e0); display: flex; }
+        .review-stat-bottom { margin-left: auto; margin-top: 0; padding-top: 0; border-top: none; display: inline-flex; }
 
         /* 콘텐츠 */
+        .review-rating { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .review-rating-stars { display: inline-flex; gap: 2px; color: #f59e0b; font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); line-height: 1; }
+        .review-rating-stars .empty { color: var(--bs-border-color, #d9d9d9); }
+        .review-rating-score { font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; color: var(--text-sub); }
         .review-title { font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: #000; margin-bottom: 4px; line-height: 1.4; }
         .review-body { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); line-height: 1.8; color: var(--text); }
         .review-body p { margin-bottom: 8px; }
@@ -202,6 +207,18 @@ if ($has_global_nav) { include __DIR__ . '/includes/global_nav.php'; }
         <?php endforeach; ?>
         <?php endif; ?>
 
+        <?php $review_rating = max(0, min(5, (int)($review['review_rating'] ?? $review['rating'] ?? 0))); ?>
+        <?php if ($review_rating > 0): ?>
+        <div class="review-rating" aria-label="평점 <?php echo $review_rating; ?>점">
+            <span class="review-rating-stars" aria-hidden="true">
+                <?php for ($star = 1; $star <= 5; $star++): ?>
+                <span class="<?php echo $star > $review_rating ? 'empty' : ''; ?>">&#9733;</span>
+                <?php endfor; ?>
+            </span>
+            <span class="review-rating-score"><?php echo number_format($review_rating, 1); ?></span>
+        </div>
+        <?php endif; ?>
+
         <?php if (!empty($review['title'])): ?>
         <div class="review-title"><?php echo htmlspecialchars($review['title']); ?></div>
         <?php endif; ?>
@@ -228,6 +245,7 @@ if ($has_global_nav) { include __DIR__ . '/includes/global_nav.php'; }
         </div>
         <?php endif; ?>
 
+        <div class="post-meta-row">
         <div class="post-author-row">
             <div class="post-avatar">
                 <?php if (!empty($review['user_avatar'])): ?>
@@ -242,6 +260,7 @@ if ($has_global_nav) { include __DIR__ . '/includes/global_nav.php'; }
             <span class="stat" id="likeBtn" onclick="toggleLike()" style="cursor:pointer;<?php echo $user_liked ? 'color:#AE1932;font-weight:700;' : ''; ?>"><i class="bi <?php echo $user_liked ? 'bi-heart-fill' : 'bi-heart'; ?>"></i> <span id="likeCount"><?php echo intval($review['like_count']); ?></span></span>
             <span class="stat"><i class="bi bi-chat-square-text"></i> <?php echo count($comments); ?></span>
             <span class="stat"><i class="bi bi-eye"></i> <?php echo intval($review['view_count'] ?? 0); ?></span>
+        </div>
         </div>
     </div>
 
