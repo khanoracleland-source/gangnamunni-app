@@ -56,7 +56,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .filter-tab{flex:1;padding:12px;text-align:center;font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;cursor:pointer;color:var(--bs-secondary-color,#888);border-bottom:2px solid transparent;text-decoration:none;}
 .filter-tab.active{color:var(--pri);border-bottom-color:var(--pri);}
 .writable-card{background:var(--bs-body-bg,#fff);border-bottom:1px solid var(--bs-border-color,#eee);padding:16px;display:flex;gap:12px;}
-.writable-card .wc-img{width:130px;height:130px;object-fit:cover;flex-shrink:0;background:var(--bs-tertiary-bg,#eee);}
+.writable-card .wc-img{width:100px;height:130px;object-fit:cover;flex-shrink:0;background:var(--bs-tertiary-bg,#eee);}
 .writable-card .wc-noimg{width:72px;height:72px;border-radius:10px;background:var(--bs-tertiary-bg,#eee);display:flex;align-items:center;justify-content:center;color:var(--bs-secondary-color,#bbb);font-size:calc(26px * var(--fs-scale,1) * var(--fs-page,1));flex-shrink:0;}
 .writable-card .wc-info{flex:1;min-width:0;display:flex;flex-direction:column;}
 .writable-card .wc-hospital{font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));color:var(--bs-body-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
@@ -98,7 +98,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
             <div class="wc-address"> <?php echo htmlspecialchars($w['address']); ?></div>
             <?php endif; ?>
             <div class="wc-meta"><?php echo htmlspecialchars($w['doctor_name'] ?? ''); ?><?php echo !empty($w['doctor_name']) ? ' | ' : ''; ?><?php echo !empty($w['booking_date']) ? htmlspecialchars(str_replace('-', '.', $w['booking_date'])) : ''; ?></div>
-            <a href="review_write.php?hospital_id=<?php echo (int)$w['hospital_id']; ?>" class="wc-write">후기 작성</a>
+            <a href="review_write.php?hospital_id=<?php echo (int)$w['hospital_id']; ?>&booking_id=<?php echo (int)$w['id']; ?>" class="wc-write">후기 작성</a>
         </div>
     </div>
     <?php endforeach; endif; ?>

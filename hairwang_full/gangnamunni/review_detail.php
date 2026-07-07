@@ -115,6 +115,8 @@ $csrf_token = generateCsrfToken();
         .post-stat-group .stat { display: inline-flex; align-items: center; gap: 3px; }
         .post-stat-group .stat i { font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1)); }
         .post-stat-group .heart-icon { color: #AE1932; }
+        /* 통계를 카드 하단에 배치 */
+        .review-stat-bottom { margin-left: 0; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--bs-border-color, #e0e0e0); display: flex; }
 
         /* 콘텐츠 */
         .review-title { font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: #000; margin-bottom: 4px; line-height: 1.4; }
@@ -233,11 +235,13 @@ if ($has_global_nav) { include __DIR__ . '/includes/global_nav.php'; }
                 <?php endif; ?>
             </div>
             <span class="post-author-name"><?php echo htmlspecialchars($review['user_name']); ?></span>
-            <div class="post-stat-group">
-                <span class="stat" id="likeBtn" onclick="toggleLike()" style="cursor:pointer;<?php echo $user_liked ? 'font-weight:700;' : ''; ?>"><i class="bi bi-heart"></i> <span id="likeCount"><?php echo intval($review['like_count']); ?></span></span>
-                <span class="stat"><i class="bi bi-chat-square-text"></i> <?php echo count($comments); ?></span>
-                <span class="stat"><i class="bi bi-eye"></i> <?php echo intval($review['view_count'] ?? 0); ?></span>
-            </div>
+        </div>
+
+        <!-- 통계 (카드 하단) -->
+        <div class="post-stat-group review-stat-bottom">
+            <span class="stat" id="likeBtn" onclick="toggleLike()" style="cursor:pointer;<?php echo $user_liked ? 'color:#AE1932;font-weight:700;' : ''; ?>"><i class="bi <?php echo $user_liked ? 'bi-heart-fill' : 'bi-heart'; ?>"></i> <span id="likeCount"><?php echo intval($review['like_count']); ?></span></span>
+            <span class="stat"><i class="bi bi-chat-square-text"></i> <?php echo count($comments); ?></span>
+            <span class="stat"><i class="bi bi-eye"></i> <?php echo intval($review['view_count'] ?? 0); ?></span>
         </div>
     </div>
 
@@ -309,7 +313,10 @@ async function toggleLike() {
             document.getElementById('likeCount').textContent = data.like_count;
             const btn = document.getElementById('likeBtn');
             btn.classList.toggle('liked', data.liked);
-            btn.querySelector('svg').setAttribute('fill', data.liked ? 'currentColor' : 'none');
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = data.liked ? 'bi bi-heart-fill' : 'bi bi-heart';
+            btn.style.color = data.liked ? '#AE1932' : '';
+            btn.style.fontWeight = data.liked ? '700' : '';
         }
     } catch (e) { console.error(e); }
 }

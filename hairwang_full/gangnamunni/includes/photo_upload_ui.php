@@ -17,9 +17,10 @@
 // 기본값 설정
 $prefix = $photo_config['prefix'] ?? 'photo';
 $max_photos = intval($photo_config['max_photos'] ?? 3);
-$label = $photo_config['label'] ?? "📷 사진 첨부 (선택, 최대 {$max_photos}장)";
+$label = $photo_config['label'] ?? "📷 사진 첨부 (최대 {$max_photos}장, 각 5MB 이하)";
 $consent_text = $photo_config['consent_text'] ?? '상담 참고용 사진을 첨부합니다. 제공된 사진은 상담 목적으로만 사용되며, 상담 완료 후 30일 이내에 삭제됩니다.';
 $show_medical_notice = $photo_config['show_medical_notice'] ?? false;
+$show_consent = $photo_config['show_consent'] ?? true;
 ?>
 
 <!-- 사진 첨부 CSS (중복 include 방지) -->
@@ -76,10 +77,12 @@ $show_medical_notice = $photo_config['show_medical_notice'] ?? false;
 </div>
 
 <!-- 동의 체크박스 (사진 첨부 시 표시) -->
+<?php if ($show_consent): ?>
 <div class="pu-consent" id="<?php echo $prefix; ?>_consent" style="display:none;">
     <input type="checkbox" name="photo_consent" id="<?php echo $prefix; ?>_consent_cb" value="1">
     <label for="<?php echo $prefix; ?>_consent_cb"><?php echo htmlspecialchars($consent_text); ?></label>
 </div>
+<?php endif; ?>
 
 <!-- 사진 첨부 JS (중복 include 방지) -->
 <?php if (empty($GLOBALS['_photo_upload_js_loaded'])): $GLOBALS['_photo_upload_js_loaded'] = true; ?>
