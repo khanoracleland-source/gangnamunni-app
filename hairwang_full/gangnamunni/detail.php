@@ -464,7 +464,7 @@ function extractImageFromHtml($file_path) {
         .image-gallery-container {
             position: relative;
             width: 100%;
-            height: 420px;
+            height: 250px;
             background: var(--color-bg-light);
             overflow: hidden;
             margin-top: 0; /* #14 fix */
