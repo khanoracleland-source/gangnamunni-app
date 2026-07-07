@@ -350,21 +350,6 @@ if ($current_tab === 'reviews') {
 }
 
 // #23: YouTube tab removed per client request 2026-03-16
-/*
-$youtube_count = 0;
-$youtube_data = [];
-$youtube_count_query = "SELECT COUNT(*) as cnt FROM hospital_youtube WHERE hospital_id = {$hospital_id} AND is_active = 1";
-$youtube_count_result = mysqli_query($connect, $youtube_count_query);
-$youtube_count = $youtube_count_result ? mysqli_fetch_assoc($youtube_count_result)['cnt'] : 0;
-
-if ($current_tab === 'youtube') {
-    $youtube_query = "SELECT * FROM hospital_youtube WHERE hospital_id = {$hospital_id} AND is_active = 1 ORDER BY sort_order ASC, created_at DESC";
-    $youtube_result = mysqli_query($connect, $youtube_query);
-    while ($video = mysqli_fetch_assoc($youtube_result)) {
-        $youtube_data[] = $video;
-    }
-}
-*/
 
 // 이미지 추출 함수
 function extractImageFromHtml($file_path) {
@@ -437,19 +422,15 @@ function extractImageFromHtml($file_path) {
         /* 페이지 헤더 — #14 수정: sticky로 변경, 빈 공간 제거 */
         .header {
             position: sticky;
-            top: 48px;
+            top: 0;
             width: 100%;
             max-width: 640px;
             padding: 14px 16px;
             background: var(--bs-body-bg, #fff);
-            border-bottom: 1px solid var(--bs-border-color, #eee);
             display: flex;
             align-items: center;
             gap: 12px;
             z-index: 99;
-        }
-        @media (min-width: 768px) {
-            .header { top: 56px; }
         }
 
         .back-btn {
@@ -743,17 +724,14 @@ function extractImageFromHtml($file_path) {
         }
 
         /* 탭 메뉴 */
-        /* #14 fix: tab-menu under global_nav + header */
+        /* #14 fix: tab-menu under header (global_nav 제거됨) */
         .tab-menu {
             position: sticky;
-            top: 112px;
+            top: 64px;
             background: var(--color-bg-white, #fff);
             border-bottom: 1px solid var(--color-border);
             display: flex;
             z-index: 90;
-        }
-        @media (min-width: 768px) {
-            .tab-menu { top: 120px; }
         }
 
         .tab-item {
@@ -1147,83 +1125,6 @@ function extractImageFromHtml($file_path) {
             -webkit-box-orient: vertical;
         }
 
-        /* 유튜브 탭 */
-        .youtube-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
-        .youtube-card {
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .youtube-thumbnail {
-            position: relative;
-            width: 100%;
-            padding-top: 56.25%;
-            background: var(--color-bg-light);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 8px;
-        }
-
-        .youtube-thumbnail img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .play-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.3);
-        }
-
-        .play-icon {
-            width: 48px;
-            height: 48px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1));
-            padding-left: 4px;
-        }
-
-        .video-duration {
-            position: absolute;
-            bottom: 8px;
-            right: 8px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: calc(11px * var(--fs-scale,1) * var(--fs-page,1));
-        }
-
-        .youtube-title {
-            font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: 500;
-            line-height: 1.4;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-        }
-
         /* 페이지네이션 */
         .pagination {
             display: flex;
@@ -1330,13 +1231,6 @@ function extractImageFromHtml($file_path) {
 
         .empty-state-text {
             font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1));
-        }
-
-        /* 반응형 */
-        @media (max-width: 640px) {
-            .youtube-grid {
-                grid-template-columns: 1fr;
-            }
         }
 
         /* 상담 모달 */
@@ -1513,9 +1407,6 @@ function extractImageFromHtml($file_path) {
 </head>
 <body>
     <div class="page-container">
-    <!-- 글로벌 네비게이션 -->
-    <?php include __DIR__ . '/includes/global_nav.php'; ?>
-
     <!-- 페이지 헤더 -->
     <div class="header">
         <a href="hospitals.php" onclick="if (document.referrer.indexOf('hospitals.php') !== -1) { history.back(); return false; }" class="back-btn"><i class="bi bi-chevron-left"></i></a>
@@ -2273,38 +2164,6 @@ function extractImageFromHtml($file_path) {
         </script>
         <?php endif; ?>
 
-        <!-- YouTube tab removed per client request 2026-03-16 (#23) -->
-        <!--
-        <div class="tab-pane <?php echo $current_tab === 'youtube' ? 'active' : ''; ?>" id="tab-youtube">
-            <?php if (!empty($youtube_data)): ?>
-            <div class="youtube-grid">
-                <?php foreach ($youtube_data as $video): ?>
-                <article class="youtube-card">
-                    <a href="<?php echo htmlspecialchars($video['video_url']); ?>" target="_blank" class="youtube-link">
-                        <div class="youtube-thumbnail">
-                            <?php if ($video['thumbnail_url']): ?>
-                            <img src="<?php echo htmlspecialchars($video['thumbnail_url']); ?>" alt="<?php echo htmlspecialchars($video['title']); ?>">
-                            <?php endif; ?>
-                            <div class="play-overlay">
-                                <span class="play-icon">▶</span>
-                            </div>
-                            <?php if ($video['duration']): ?>
-                            <span class="video-duration"><?php echo htmlspecialchars($video['duration']); ?></span>
-                            <?php endif; ?>
-                        </div>
-                        <h3 class="youtube-title"><?php echo htmlspecialchars($video['title']); ?></h3>
-                    </a>
-                </article>
-                <?php endforeach; ?>
-            </div>
-            <?php else: ?>
-            <div class="empty-state">
-                <div class="empty-state-icon">📺</div>
-                <div class="empty-state-text">등록된 유튜브 영상이 없습니다.</div>
-            </div>
-            <?php endif; ?>
-        </div>
-        -->
     </div>
 
     <div class="content-spacer"></div>
