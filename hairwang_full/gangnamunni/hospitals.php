@@ -76,7 +76,17 @@ $base_where = "
       AND COALESCE(is_demo, 0)=0
       AND (status='approved' OR status IS NULL)";
 if (!empty($keyword)) {
-    $base_where .= " AND (name LIKE '%{$escaped_keyword}%' OR address LIKE '%{$escaped_keyword}%' OR treatment_tags LIKE '%{$escaped_keyword}%')";
+    // 병원명/주소/태그뿐 아니라, 실제 배정된 시술명(gangnamunni_treatment_master)으로도 검색
+    $base_where .= " AND (
+        name LIKE '%{$escaped_keyword}%'
+        OR address LIKE '%{$escaped_keyword}%'
+        OR treatment_tags LIKE '%{$escaped_keyword}%'
+        OR id IN (
+            SELECT ht.hospital_id FROM gangnamunni_hospital_treatments ht
+            INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
+            WHERE tm.name LIKE '%{$escaped_keyword}%' AND ht.status = 'active' AND tm.is_active = 1
+        )
+    )";
 }
 if (!empty($category)) { $base_where .= " AND treatment_tags LIKE '%{$escaped_category}%'"; }
 if (!empty($treatment)) {
@@ -240,6 +250,9 @@ $page_css = '
     .results-header h1 { font-size: 20px; margin-bottom: 8px; }
     .search-count { color: var(--bs-secondary-color, #666); font-size: 14px; }
     .search-keyword { color: #AE1932; font-weight: bold; }
+    .search-filter-chip { display: inline-flex; align-items: center; gap: 6px; background: #AE1932; color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 12px; }
+    .search-filter-chip .chip-remove { cursor: pointer; font-size: 15px; line-height: 1; font-weight: 700; opacity: 0.9; }
+    .search-filter-chip .chip-remove:hover { opacity: 1; }
 
     /* 그리드 */
     .hospital-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 40px; }
@@ -525,12 +538,19 @@ include __DIR__ . '/includes/header.php';
 
     <div class="results-header" style="padding: 0 16px;">
         <?php if (!empty($category)): ?>
-        <span style="display:inline-block;background:#AE1932;color:#fff;font-size:12px;padding:4px 10px;border-radius:12px;"><?php echo htmlspecialchars($category); ?></span>
+        <span class="search-filter-chip"><span class="chip-remove" onclick="removeSearchParam('category')" role="button" aria-label="필터 제거">&times;</span><?php echo htmlspecialchars($category); ?></span>
         <?php endif; ?>
         <?php if (!empty($treatment)): ?>
-        <span style="display:inline-block;background:#AE1932;color:#fff;font-size:12px;padding:4px 10px;border-radius:12px;"><?php echo htmlspecialchars($treatment); ?></span>
+        <span class="search-filter-chip"><span class="chip-remove" onclick="removeSearchParam('treatment')" role="button" aria-label="필터 제거">&times;</span><?php echo htmlspecialchars($treatment); ?></span>
         <?php endif; ?>
     </div>
+    <script>
+    function removeSearchParam(name) {
+        var u = new URL(window.location.href);
+        u.searchParams.delete(name);
+        window.location.href = u.pathname + u.search;
+    }
+    </script>
 
     <?php if (!empty($hospitals)): ?>
     <div class="view-toggle" style="padding: 0 16px;">
