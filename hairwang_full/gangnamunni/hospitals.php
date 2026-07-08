@@ -309,12 +309,7 @@ $page_css = '
     .view-btn:hover { border-color: #AE1932; color: #AE1932; }
     .view-btn.active { background: #AE1932; color: white; border-color: #AE1932; }
 
-    /* === 카드형 (DB 스타일) === */
-    .hospital-grid:not(.list-view):not(.seoul-view) .hospital-name { font-size: ' . $card_name . 'px; }
-    .hospital-grid:not(.list-view):not(.seoul-view) .tag-badge { font-size: ' . $card_tag_s . 'px; color: ' . $card_tag_c . '; border-color: ' . $card_tag_c . '; }
-    .hospital-grid:not(.list-view):not(.seoul-view) .btn-consult { background: ' . $card_btn . '; color: ' . $card_btxt . '; font-size: ' . $card_cta . 'px; padding: 8px 0; }
-
-    /* === 리스트형 === */
+    /* === 리스트형 (고정) === */
     .hospital-grid.list-view { grid-template-columns: 1fr; }
     .hospital-grid.list-view .hospital-card { flex-direction: row; }
     .hospital-grid.list-view .hospital-image { width: 120px; height: 120px; flex-shrink: 0; }
@@ -355,9 +350,9 @@ $page_css = '
         .hospital-grid.seoul-view { max-width: 100%; }
     }
 
-.card-tag-price { display: flex; align-items: center; margin-top: 6px; }
-.card-tag-item { font-size: 16px; color: #000; padding: 2px 0; }
-.card-price { flex: 1; text-align: center; }
+.card-tag-price { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.card-tag-item { font-size: 16px; color: #000; padding: 2px 0; text-align: left; }
+.card-price { width: 100%; text-align: right; }
 .card-price-num { font-size: 16px; font-weight: 700; color: #AE1932; }
 .card-price-unit { font-size: 12px; font-weight: 400; color: #000000; }
 .card-price-max { font-size: 12px; color: #858484; text-decoration: line-through; margin-right: 2px; }
@@ -567,19 +562,8 @@ include __DIR__ . '/includes/header.php';
     </script>
 
     <?php if (!empty($hospitals)): ?>
-    <div class="view-toggle" style="padding: 0 16px;">
-        <?php if ($view_card_enabled === '1'): ?>
-        <button class="view-btn" onclick="switchView('card')" id="view-card"><i class="bi bi-grid"></i> 카드형</button>
-        <?php endif; ?>
-        <?php if ($view_list_enabled === '1'): ?>
-        <button class="view-btn" onclick="switchView('list')" id="view-list"><i class="bi bi-list-ul"></i> 리스트형</button>
-        <?php endif; ?>
-        <?php if ($view_seoul_enabled === '1'): ?>
-        <button class="view-btn" onclick="switchView('seoul')" id="view-seoul"><i class="bi bi-star"></i> 서울미녀형</button>
-        <?php endif; ?>
-    </div>
-
 <?php
+// 리스트형 고정 — 뷰 전환 토글 제거 (카드형/리스트형 버튼 삭제)
 require_once __DIR__ . '/includes/settings_helper.php';
 $_infeed_enabled = getSettingValue($connect, 'ad_show_hospitals_infeed', '1');
 $_infeed_interval = (int)getSettingValue($connect, 'ad_infeed_interval', '4');
@@ -590,7 +574,7 @@ if ($_infeed_enabled === '1') {
 }
 $_ad_idx = 0;
 ?>
-    <div class="hospital-grid" id="hospital-grid" style="padding: 0 16px;">
+    <div class="hospital-grid list-view" id="hospital-grid" style="padding: 0 16px;">
 <?php
 $__hi = 0;
 foreach ($hospitals as $hospital):
@@ -710,13 +694,9 @@ function applySort() {
     window.location = url;
 }
 document.addEventListener("DOMContentLoaded", function() {
-    var dbDefault = "<?php echo $view_default; ?>";
+    // 카드형 제거: 리스트형 고정 (서울미녀형이 활성화되고 저장된 경우에만 예외)
     var saved = localStorage.getItem("hospital_view");
-    var vt = saved || dbDefault || "seoul";
-    if (!document.getElementById("view-" + vt)) {
-        var first = document.querySelector(".view-btn");
-        if (first) vt = first.id.replace("view-", "");
-    }
+    var vt = (saved === "seoul" && document.getElementById("view-seoul")) ? "seoul" : "list";
     switchView(vt);
     var params = new URLSearchParams(window.location.search);
     var cr = params.get("region") || "";
