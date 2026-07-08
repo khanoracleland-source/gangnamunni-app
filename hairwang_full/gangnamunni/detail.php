@@ -1635,6 +1635,35 @@ function extractImageFromHtml($file_path) {
             </div>
         </div>
 
+        <!-- 검색하신 시술 (hospitals.php 시술 검색에서 넘어온 경우) — 영업시간 아래 배치 -->
+        <?php if ($matched_treatment): ?>
+        <div id="matched-treatment" style="scroll-margin-top:160px; margin:16px 0 4px; overflow:hidden; background:var(--color-bg-white);">
+            <!-- 시술 설명 -->
+            <div style="padding:16px;">
+                <div style="font-size:18px; font-weight:700; color: #000000; margin-bottom:8px;">시술 설명</div>
+                <?php if (!empty($matched_treatment['description'])): ?>
+                <div style="font-size:13px; color:var(--color-text-secondary); line-height:1.6;"><?php echo nl2br(htmlspecialchars($matched_treatment['description'])); ?></div>
+                <?php else: ?>
+                <div style="font-size:13px; color:var(--color-text-muted);">등록된 시술 설명이 없습니다.</div>
+                <?php endif; ?>
+            </div>
+
+            <!-- 상세 정보 -->
+            <div style="padding:16px; border-top:1px solid var(--color-border);">
+                <div style="font-size:18px; font-weight:700; color: #000000; margin-bottom:10px;">상세 정보</div>
+                <div style="aspect-ratio:4/3; background:var(--color-bg-light); border:1px dashed var(--color-border); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--color-text-muted);">
+                    <i class="bi bi-image" style="font-size:34px;"></i>
+                    <span style="font-size:12px;">이미지 준비 중</span>
+                </div>
+                <button type="button" onclick="moreTreatmentImages(this)" style="width:100%; margin-top:12px; border:1px solid #000; background:var(--color-bg-white); color:var(--color-text-primary); padding:11px; font-size:14px; font-weight:700; cursor:pointer;">이미지 더보기</button>
+            </div>
+        </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function(){ var el = document.getElementById('matched-treatment'); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); });
+        function moreTreatmentImages(btn){ /* TODO: 시술 이미지 소스 연결 후 구현 */ }
+        </script>
+        <?php endif; ?>
+
         <!-- 주소 (의료진/이벤트 탭에서는 숨김) -->
         <?php if (!$minimal_info_tab): ?>
         <div class="info-row" style="border-bottom:none;">
@@ -1725,32 +1754,6 @@ function extractImageFromHtml($file_path) {
         <!-- 홈 탭 -->
         <!-- #19 fix: description(required) first, introduction(optional) second -->
         <div class="tab-pane <?php echo $current_tab === 'home' ? 'active' : ''; ?>" id="tab-home">
-            <?php if ($matched_treatment): ?>
-            <div id="matched-treatment" style="scroll-margin-top:160px;border:2px solid var(--color-primary);border-radius:12px;padding:16px;margin-bottom:24px;background:var(--color-primary-light);">
-                <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:6px;">검색하신 <?= term('service', '시술') ?></div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                    <?php if (!empty($matched_treatment['category_name'])): ?>
-                    <span style="font-size:11px;color:var(--color-text-secondary);background:var(--color-bg-white);border:1px solid var(--color-border);border-radius:4px;padding:2px 8px;"><?php echo htmlspecialchars($matched_treatment['category_name']); ?></span>
-                    <?php endif; ?>
-                    <span style="font-size:16px;font-weight:700;color:var(--color-text-primary);"><?php echo htmlspecialchars($matched_treatment['name']); ?></span>
-                    <?php if ($matched_treatment['dosage_value'] !== null && $matched_treatment['dosage_unit']): ?>
-                    <span style="font-size:12px;color:var(--color-text-secondary);background:var(--color-bg-white);border:1px solid var(--color-border);border-radius:10px;padding:2px 8px;"><?php echo htmlspecialchars(rtrim(rtrim(number_format((float)$matched_treatment['dosage_value'], 2), '0'), '.') . $matched_treatment['dosage_unit']); ?></span>
-                    <?php endif; ?>
-                </div>
-                <?php if (!empty($matched_treatment['description'])): ?>
-                <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:10px;line-height:1.5;"><?php echo nl2br(htmlspecialchars($matched_treatment['description'])); ?></div>
-                <?php endif; ?>
-                <?php if (!empty($matched_treatment['price_min']) && (int)$matched_treatment['price_min'] > 0):
-                    $_mtp_min = (int)$matched_treatment['price_min'];
-                    $_mtp_max = !empty($matched_treatment['price_max']) ? (int)$matched_treatment['price_max'] : 0;
-                ?>
-                <div style="font-size:18px;font-weight:700;color:var(--color-primary);">
-                    <?php echo ($_mtp_max > 0 && $_mtp_max !== $_mtp_min) ? number_format($_mtp_min * 10000) . '~' . number_format($_mtp_max * 10000) . '원' : number_format($_mtp_min * 10000) . '원~'; ?>
-                </div>
-                <?php endif; ?>
-            </div>
-            <script>document.addEventListener('DOMContentLoaded', function(){ var el = document.getElementById('matched-treatment'); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); });</script>
-            <?php endif; ?>
             <?php
             $has_desc = !empty(trim($hospital['description'] ?? ''));
             $has_intro = !empty(trim($hospital['introduction'] ?? '')) && ($hospital['introduction'] !== ($hospital['description'] ?? ''));

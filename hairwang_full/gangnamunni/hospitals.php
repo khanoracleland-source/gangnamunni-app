@@ -151,10 +151,24 @@ if (!empty($region_list)) {
     }
 }
 
+// ?q= 키워드 검색이 특정 시술명과 매칭되면, 그 시술을 기준으로 가격/상세링크/슬롯을
+// ?treatment= 검색과 동일하게 처리한다. (기존 목록 쿼리 $base_where 는 건드리지 않아 검색 폭 유지)
+$effective_treatment = $treatment;
+$escaped_effective_treatment = $escaped_treatment;
+if (empty($treatment) && !empty($keyword)) {
+    $_kw_tr = mysqli_query($connect, "SELECT name FROM gangnamunni_treatment_master
+        WHERE is_active = 1 AND name LIKE '%{$escaped_keyword}%'
+        ORDER BY (name = '{$escaped_keyword}') DESC, CHAR_LENGTH(name) ASC LIMIT 1");
+    if ($_kw_tr && $_kw_row = mysqli_fetch_assoc($_kw_tr)) {
+        $effective_treatment = $_kw_row['name'];
+        $escaped_effective_treatment = mysqli_real_escape_string($connect, $effective_treatment);
+    }
+}
+
 // 시술 키워드 광고 슬롯: 이 시술에 대해 유료로 순위를 산 병원을 리스트 최상단에 고정
-if (!empty($treatment)) {
+if (!empty($effective_treatment)) {
     $treatment_id_for_slot = 0;
-    $_tid_r = mysqli_query($connect, "SELECT id FROM gangnamunni_treatment_master WHERE name = '{$escaped_treatment}' AND is_active = 1 LIMIT 1");
+    $_tid_r = mysqli_query($connect, "SELECT id FROM gangnamunni_treatment_master WHERE name = '{$escaped_effective_treatment}' AND is_active = 1 LIMIT 1");
     if ($_tid_r && $_tid_row = mysqli_fetch_assoc($_tid_r)) {
         $treatment_id_for_slot = (int)$_tid_row['id'];
     }
@@ -209,7 +223,7 @@ if (!empty($treatment)) {
 // [QA #2] ?treatment= 로 특정 시술 검색 중일 때만 그 시술의 가격을 보여준다.
 // 지역 검색이나 필터 없는 단순 목록에서는 어떤 시술을 대표로 보여줘야 할지 알 수 없으므로 표시하지 않는다.
 $hospital_treatment_descs = [];
-if (!empty($hospitals) && !empty($treatment)) {
+if (!empty($hospitals) && !empty($effective_treatment)) {
     $h_ids = array_column($hospitals, 'id');
     $h_ids_str = implode(',', array_map('intval', $h_ids));
     $_td_sql = "
@@ -219,7 +233,7 @@ if (!empty($hospitals) && !empty($treatment)) {
         WHERE ht.hospital_id IN ({$h_ids_str})
           AND ht.status = 'active'
           AND tm.is_active = 1
-          AND tm.name = '{$escaped_treatment}'
+          AND tm.name = '{$escaped_effective_treatment}'
     ";
     $_td_result = mysqli_query($connect, $_td_sql);
     if ($_td_result) {
@@ -609,7 +623,7 @@ foreach ($hospitals as $hospital):
     $review_cnt = number_format((int)($hospital['review_count'] ?? 0));
     // 특정 시술로 필터링해서 들어온 경우, 상세 페이지에서도 그 시술 정보로 바로 이동
     $_detail_url = 'detail.php?id=' . (int)$hospital['id'];
-    if (!empty($treatment)) { $_detail_url .= '&treatment=' . urlencode($treatment); }
+    if (!empty($effective_treatment)) { $_detail_url .= '&treatment=' . urlencode($effective_treatment); }
 ?>
         <div class="hospital-card" onclick="location.href='<?php echo htmlspecialchars($_detail_url); ?>'" style="cursor:pointer;">
             <div class="card-link">
