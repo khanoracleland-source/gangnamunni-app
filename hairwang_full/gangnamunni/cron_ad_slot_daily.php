@@ -46,9 +46,7 @@ $charge_date = date('Y-m-d', strtotime('-1 day'));
 $days_in_month = (int) date('t', strtotime($charge_date));
 echo "[INFO] 처리 대상 날짜: {$charge_date} (해당 월 일수: {$days_in_month}일)\n\n";
 
-// ============================================================
-// 전일 활성 배정 조회
-// ============================================================
+
 echo "--- 전일 활성 슬롯 배정 조회 ---\n";
 
 $bookings = [];
@@ -59,6 +57,7 @@ $b_stmt = mysqli_prepare($connect, "
     INNER JOIN gangnamunni_ad_slot_products p ON b.product_id = p.id
     INNER JOIN gangnamunni_hospitals h ON h.id = b.hospital_id
     WHERE b.status = 'active'
+      AND p.billing_model = 'monthly'
       AND b.start_date <= ?
       AND (b.end_date IS NULL OR b.end_date >= ?)
 ");

@@ -85,5 +85,75 @@ if ($_lp_admin) {
     });
 })();
 </script>
+
+<!-- Keyword slot CPC/CPM tracking -->
+<script>
+(function(){
+    var trackingUrl = <?php echo json_encode(SITE_BASE_PATH . 'api_ad_slot_tracking.php'); ?>;
+    var impressionTimers = new WeakMap();
+    var impressed = {};
+
+    function sendSlotEvent(action, element, targetUrl) {
+        var bookingId = element.getAttribute('data-ad-slot-booking');
+        if (!bookingId) return;
+
+        var fd = new FormData();
+        fd.append('action', action);
+        fd.append('booking_id', bookingId);
+        fd.append('keyword', element.getAttribute('data-ad-slot-keyword') || '');
+        fd.append('page_url', location.href);
+        fd.append('target_url', targetUrl || '');
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(trackingUrl, fd);
+        } else {
+            fetch(trackingUrl, { method: 'POST', body: fd, keepalive: true }).catch(function(){});
+        }
+    }
+
+    function scheduleImpression(element) {
+        var bookingId = element.getAttribute('data-ad-slot-booking');
+        if (!bookingId || impressed[bookingId] || impressionTimers.has(element)) return;
+
+        var timer = setTimeout(function() {
+            impressionTimers.delete(element);
+            impressed[bookingId] = true;
+            sendSlotEvent('impression', element, '');
+        }, 1000);
+        impressionTimers.set(element, timer);
+    }
+
+    function cancelImpression(element) {
+        var timer = impressionTimers.get(element);
+        if (!timer) return;
+        clearTimeout(timer);
+        impressionTimers.delete(element);
+    }
+
+    var elements = document.querySelectorAll('[data-ad-slot-booking]');
+    if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+                    scheduleImpression(entry.target);
+                } else {
+                    cancelImpression(entry.target);
+                }
+            });
+        }, { threshold: [0, 0.5] });
+        elements.forEach(function(element) { observer.observe(element); });
+    } else {
+        elements.forEach(scheduleImpression);
+    }
+
+    document.addEventListener('click', function(event) {
+        var element = event.target.closest('[data-ad-slot-booking]');
+        if (!element) return;
+        var link = element.closest('a') || element.querySelector('a');
+        var targetUrl = link ? link.href : (element.getAttribute('data-target-url') || '');
+        sendSlotEvent('click', element, targetUrl);
+    }, true);
+})();
+</script>
 </body>
 </html>

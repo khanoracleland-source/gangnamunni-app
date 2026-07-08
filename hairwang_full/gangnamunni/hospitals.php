@@ -9,6 +9,7 @@ if (file_exists(__DIR__ . '/includes/design_tokens.php')) { include_once __DIR__
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 require_once __DIR__ . '/includes/recently_viewed.php';
 require_once __DIR__ . '/includes/settings_helper.php';
+require_once __DIR__ . '/includes/ad_slot_performance.php';
 
 loadCategoriesFromDB($connect); // 반환값 미사용 — $category_icons 전역 초기화 목적
 
@@ -19,6 +20,17 @@ $escaped_category = mysqli_real_escape_string($connect, $category);
 // 특정 시술(gangnamunni_treatment_master, 103개) 기준 검색 — gangnamunni_hospital_treatments로 실제 배정된 병원만 매칭
 $treatment = isset($_GET['treatment']) ? trim($_GET['treatment']) : '';
 $escaped_treatment = mysqli_real_escape_string($connect, $treatment);
+$resolved_keyword_treatment = null;
+if ($treatment === '' && $keyword !== '') {
+    $resolved_keyword_treatment = adSlotResolveTreatment($connect, $keyword);
+}
+$effective_treatment = $treatment !== ''
+    ? $treatment
+    : ($resolved_keyword_treatment['name'] ?? '');
+$effective_treatment_id = $resolved_keyword_treatment
+    ? (int) $resolved_keyword_treatment['id']
+    : 0;
+$escaped_effective_treatment = mysqli_real_escape_string($connect, $effective_treatment);
 $region = isset($_GET['region']) ? trim($_GET['region']) : '';
 // 다중 지역 지원 (콤마 구분)
 $region_list = array_filter(array_map('trim', explode(',', $region)));
@@ -36,12 +48,6 @@ switch($sort) {
 // 광고 등급 우선 정렬 (S>A>B>C>D>E>none)
 $order_clause = "FIELD(ad_grade,'S','A','B','C','D','E','none') ASC, " . $order_clause;
 
-// 뷰 설정
-$view_card_enabled = getSettingValue($connect, 'hospital_view_card_enabled', '1');
-$view_list_enabled = getSettingValue($connect, 'hospital_view_list_enabled', '1');
-$view_seoul_enabled = getSettingValue($connect, 'hospital_view_seoul_enabled', '1');
-$view_default = getSettingValue($connect, 'hospital_view_default', 'seoul');
-
 // 스타일 설정
 $s = [];
 $style_q = mysqli_query($connect, "SELECT setting_key, setting_value FROM gangnamunni_settings WHERE setting_group='hospital_view_style'");
@@ -49,19 +55,6 @@ if ($style_q) { while ($sr = mysqli_fetch_assoc($style_q)) $s[$sr['setting_key']
 $sv = function($key, $default) use ($s) { return $s[$key] ?? $default; };
 
 // 스타일 변수
-$seoul_btn   = $sv('hv_seoul_btn_color', '#AE1932');
-$seoul_btxt  = $sv('hv_seoul_btn_text', '#ffffff');
-$seoul_name  = $sv('hv_seoul_name_size', '18');
-$seoul_addr  = $sv('hv_seoul_addr_size', '13');
-$seoul_tag_s = $sv('hv_seoul_tag_size', '12');
-$seoul_tag_c = $sv('hv_seoul_tag_color', '#AE1932');
-$seoul_cta   = $sv('hv_seoul_cta_size', '14');
-$card_btn    = $sv('hv_card_btn_color', '#AE1932');
-$card_btxt   = $sv('hv_card_btn_text', '#ffffff');
-$card_name   = $sv('hv_card_name_size', '18');
-$card_tag_s  = $sv('hv_card_tag_size', '13');
-$card_tag_c  = $sv('hv_card_tag_color', '#AE1932');
-$card_cta    = $sv('hv_card_cta_size', '13');
 $list_btn    = $sv('hv_list_btn_color', '#AE1932');
 $list_btxt   = $sv('hv_list_btn_text', '#ffffff');
 $list_name   = $sv('hv_list_name_size', '15');
@@ -77,6 +70,14 @@ $base_where = "
       AND (status='approved' OR status IS NULL)";
 if (!empty($keyword)) {
     // 병원명/주소/태그뿐 아니라, 실제 배정된 시술명(gangnamunni_treatment_master)으로도 검색
+    $resolved_treatment_condition = '';
+    if ($effective_treatment_id > 0) {
+        $resolved_treatment_condition = " OR id IN (
+            SELECT ht.hospital_id
+            FROM gangnamunni_hospital_treatments ht
+            WHERE ht.treatment_id = {$effective_treatment_id} AND ht.status = 'active'
+        )";
+    }
     $base_where .= " AND (
         name LIKE '%{$escaped_keyword}%'
         OR address LIKE '%{$escaped_keyword}%'
@@ -86,6 +87,7 @@ if (!empty($keyword)) {
             INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
             WHERE tm.name LIKE '%{$escaped_keyword}%' AND ht.status = 'active' AND tm.is_active = 1
         )
+        {$resolved_treatment_condition}
     )";
 }
 if (!empty($category)) { $base_where .= " AND treatment_tags LIKE '%{$escaped_category}%'"; }
@@ -151,32 +153,22 @@ if (!empty($region_list)) {
     }
 }
 
-// ?q= 키워드 검색이 특정 시술명과 매칭되면, 그 시술을 기준으로 가격/상세링크/슬롯을
-// ?treatment= 검색과 동일하게 처리한다. (기존 목록 쿼리 $base_where 는 건드리지 않아 검색 폭 유지)
-$effective_treatment = $treatment;
-$escaped_effective_treatment = $escaped_treatment;
-if (empty($treatment) && !empty($keyword)) {
-    $_kw_tr = mysqli_query($connect, "SELECT name FROM gangnamunni_treatment_master
-        WHERE is_active = 1 AND name LIKE '%{$escaped_keyword}%'
-        ORDER BY (name = '{$escaped_keyword}') DESC, CHAR_LENGTH(name) ASC LIMIT 1");
-    if ($_kw_tr && $_kw_row = mysqli_fetch_assoc($_kw_tr)) {
-        $effective_treatment = $_kw_row['name'];
-        $escaped_effective_treatment = mysqli_real_escape_string($connect, $effective_treatment);
-    }
-}
-
 // 시술 키워드 광고 슬롯: 이 시술에 대해 유료로 순위를 산 병원을 리스트 최상단에 고정
+$slot_hospital_context = []; // hospital_id => tracking context
 if (!empty($effective_treatment)) {
-    $treatment_id_for_slot = 0;
-    $_tid_r = mysqli_query($connect, "SELECT id FROM gangnamunni_treatment_master WHERE name = '{$escaped_effective_treatment}' AND is_active = 1 LIMIT 1");
-    if ($_tid_r && $_tid_row = mysqli_fetch_assoc($_tid_r)) {
-        $treatment_id_for_slot = (int)$_tid_row['id'];
+    $treatment_id_for_slot = $effective_treatment_id;
+    if ($treatment_id_for_slot <= 0) {
+        $_tid_r = mysqli_query($connect, "SELECT id FROM gangnamunni_treatment_master WHERE name = '{$escaped_effective_treatment}' AND is_active = 1 LIMIT 1");
+        if ($_tid_r && $_tid_row = mysqli_fetch_assoc($_tid_r)) {
+            $treatment_id_for_slot = (int)$_tid_row['id'];
+        }
     }
 
     $slot_hospital_ranks = []; // hospital_id => rank_position
     if ($treatment_id_for_slot > 0) {
         $_slot_sql = "
-            SELECT b.hospital_id, p.rank_position
+            SELECT b.id AS booking_id, b.hospital_id, p.id AS product_id,
+                   p.rank_position, p.billing_model
             FROM gangnamunni_ad_slot_bookings b
             INNER JOIN gangnamunni_ad_slot_products p ON b.product_id = p.id
             WHERE p.keyword_type = 'treatment'
@@ -190,7 +182,14 @@ if (!empty($effective_treatment)) {
         $_slot_r = mysqli_query($connect, $_slot_sql);
         if ($_slot_r) {
             while ($_slot_row = mysqli_fetch_assoc($_slot_r)) {
-                $slot_hospital_ranks[(int)$_slot_row['hospital_id']] = (int)$_slot_row['rank_position'];
+                $_slot_hospital_id = (int) $_slot_row['hospital_id'];
+                $slot_hospital_ranks[$_slot_hospital_id] = (int) $_slot_row['rank_position'];
+                $slot_hospital_context[$_slot_hospital_id] = [
+                    'booking_id' => (int) $_slot_row['booking_id'],
+                    'product_id' => (int) $_slot_row['product_id'],
+                    'rank_position' => (int) $_slot_row['rank_position'],
+                    'billing_model' => $_slot_row['billing_model'] ?? 'monthly',
+                ];
             }
         }
     }
@@ -304,10 +303,6 @@ $page_css = '
     .region-btn { display: inline-block; padding: 6px 14px; border: 1px solid var(--bs-border-color, #e0e0e0); border-radius: 20px; background: var(--bs-body-bg, #fff); color: var(--bs-secondary-color, #666); font-size: 13px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
     .region-btn:hover { border-color: #AE1932; color: #AE1932; }
     .region-btn.active { background: #AE1932; color: #fff; border-color: #AE1932; }
-    .view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
-    .view-btn { flex: 1; padding: 10px; border: 1px solid var(--bs-border-color, #E0E0E0); border-radius: 8px; background: var(--bs-body-bg, #fff); color: var(--bs-secondary-color, #666); font-size: 13px; cursor: pointer; transition: all 0.3s; text-align: center; }
-    .view-btn:hover { border-color: #AE1932; color: #AE1932; }
-    .view-btn.active { background: #AE1932; color: white; border-color: #AE1932; }
 
     /* === 리스트형 (고정) === */
     .hospital-grid.list-view { grid-template-columns: 1fr; }
@@ -320,19 +315,6 @@ $page_css = '
     .hospital-grid.list-view .hospital-name { font-size: ' . $list_name . 'px; }
     .hospital-grid.list-view .tag-badge { font-size: ' . $list_tag_s . 'px; color: ' . $list_tag_c . '; border-color: ' . $list_tag_c . '; }
     .hospital-grid.list-view .btn-consult { background: ' . $list_btn . '; color: ' . $list_btxt . '; font-size: ' . $list_cta . 'px; padding: 8px 12px; }
-
-    /* === 서울미녀형 === */
-    .hospital-grid.seoul-view { grid-template-columns: 1fr; gap: 20px; max-width: 640px; margin: 0 auto; }
-    .hospital-grid.seoul-view .hospital-card { border-radius: 0px; }
-    .hospital-grid.seoul-view .hospital-image { width: 100%; height: unset; aspect-ratio: 16/9; object-fit: cover; border-radius: 0; }
-    .hospital-grid.seoul-view .hospital-info { padding: 14px 16px 6px; }
-    .hospital-grid.seoul-view .hospital-name { font-size: ' . $seoul_name . 'px; }
-    .hospital-grid.seoul-view .hospital-address { font-size: ' . $seoul_addr . 'px; }
-    .hospital-grid.seoul-view .addr-full { display: inline !important; }
-    .hospital-grid.seoul-view .addr-short { display: none !important; }
-    .hospital-grid.seoul-view .tag-badge { font-size: ' . $seoul_tag_s . 'px; color: ' . $seoul_tag_c . '; border-color: ' . $seoul_tag_c . '; }
-    .hospital-grid.seoul-view .btn-consult { background: ' . $seoul_btn . '; color: ' . $seoul_btxt . '; font-size: ' . $seoul_cta . 'px; padding: 10px 0; }
-    .hospital-grid.seoul-view .card-cta { padding: 10px 16px 16px; }
 
     .addr-full { display: none; }
     .addr-short { display: inline; }
@@ -347,7 +329,6 @@ $page_css = '
 
     @media (max-width: 768px) {
         .hospital-grid { grid-template-columns: 1fr; }
-        .hospital-grid.seoul-view { max-width: 100%; }
     }
 
 .card-tag-price { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
@@ -608,8 +589,17 @@ foreach ($hospitals as $hospital):
     // 특정 시술로 필터링해서 들어온 경우, 상세 페이지에서도 그 시술 정보로 바로 이동
     $_detail_url = 'detail.php?id=' . (int)$hospital['id'];
     if (!empty($effective_treatment)) { $_detail_url .= '&treatment=' . urlencode($effective_treatment); }
+    $_slot_context = $slot_hospital_context[(int)$hospital['id']] ?? null;
 ?>
-        <div class="hospital-card" onclick="location.href='<?php echo htmlspecialchars($_detail_url); ?>'" style="cursor:pointer;">
+        <div class="hospital-card"
+             onclick="location.href='<?php echo htmlspecialchars($_detail_url); ?>'"
+             style="cursor:pointer;"
+             <?php if ($_slot_context): ?>
+             data-ad-slot-booking="<?php echo (int) $_slot_context['booking_id']; ?>"
+             data-ad-slot-keyword="<?php echo htmlspecialchars($keyword !== '' ? $keyword : $effective_treatment, ENT_QUOTES, 'UTF-8'); ?>"
+             data-ad-slot-rank="<?php echo (int) $_slot_context['rank_position']; ?>"
+             data-target-url="<?php echo htmlspecialchars($_detail_url, ENT_QUOTES, 'UTF-8'); ?>"
+             <?php endif; ?>>
             <div class="card-link">
                 <?php
                 $h_img = $hospital['main_image_url'] ?? $hospital['profile_image_url'] ?? '';
@@ -673,17 +663,6 @@ foreach ($hospitals as $hospital):
     <?php endif; ?>
 
 <script>
-function switchView(vt) {
-    var g = document.getElementById("hospital-grid");
-    if (!g) return;
-    g.classList.remove("list-view", "seoul-view");
-    if (vt === "list") g.classList.add("list-view");
-    else if (vt === "seoul") g.classList.add("seoul-view");
-    document.querySelectorAll(".view-btn").forEach(function(b) { b.classList.remove("active"); });
-    var btn = document.getElementById("view-" + vt);
-    if (btn) btn.classList.add("active");
-    localStorage.setItem("hospital_view", vt);
-}
 function setSort(val) {
     document.getElementById('sortOrder').value = val;
     applySort();
@@ -694,10 +673,6 @@ function applySort() {
     window.location = url;
 }
 document.addEventListener("DOMContentLoaded", function() {
-    // 카드형 제거: 리스트형 고정 (서울미녀형이 활성화되고 저장된 경우에만 예외)
-    var saved = localStorage.getItem("hospital_view");
-    var vt = (saved === "seoul" && document.getElementById("view-seoul")) ? "seoul" : "list";
-    switchView(vt);
     var params = new URLSearchParams(window.location.search);
     var cr = params.get("region") || "";
     document.querySelectorAll(".region-btn").forEach(function(b) {

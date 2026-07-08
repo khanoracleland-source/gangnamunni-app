@@ -41,10 +41,9 @@ $matched_treatment = null;
 $matched_treatment_query = isset($_GET['treatment']) ? trim($_GET['treatment']) : '';
 if (!empty($hospital_id) && $matched_treatment_query !== '') {
     $mt_stmt = mysqli_prepare($connect, "
-        SELECT tm.name, tm.description, ht.price_min, ht.price_max, ht.dosage_value, ht.dosage_unit, c.name AS category_name
+        SELECT tm.name, tm.description
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
-        LEFT JOIN gangnamunni_treatment_categories c ON tm.category_id = c.id
         WHERE ht.hospital_id = ? AND ht.status = 'active' AND tm.is_active = 1 AND tm.name = ?
         LIMIT 1
     ");
@@ -132,7 +131,6 @@ if ($tc_r) {
 $matched_treatment_categories = !empty($categories) ? array_values(array_intersect($categories, $tc_names)) : [];
 
 $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true) ?: [];
-$subway_names = json_decode($hospital['subway_names'] ?? '[]', true) ?: [];
 $business_hours_raw = json_decode($hospital['business_hours'] ?? '{}', true) ?: [];
 
 // 기본 영업시간 설정
@@ -230,7 +228,6 @@ if ($events_count == 0 && !empty(trim($hospital['name'] ?? ''))) {
     $site_id_result = mysqli_query($connect, $site_id_query);
     if ($site_id_row = mysqli_fetch_assoc($site_id_result)) {
         $site_id = $site_id_row['id'];
-        $hospital_name_esc = mysqli_real_escape_string($connect, $hospital['name']);
         $evt_fb_stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM crawled_events WHERE site_id = ? AND hospital_name = ?");
         if ($evt_fb_stmt) {
             mysqli_stmt_bind_param($evt_fb_stmt, 'is', $site_id, $hospital['name']);
@@ -1409,23 +1406,56 @@ function extractImageFromHtml($file_path) {
     <div class="page-container">
     <!-- 페이지 헤더 -->
     <div class="header">
-        <a href="hospitals.php" onclick="if (document.referrer.indexOf('hospitals.php') !== -1) { history.back(); return false; }" class="back-btn"><i class="bi bi-chevron-left"></i></a>
+        <a href="hospitals.php" id="detailBackBtn" class="back-btn"><i class="bi bi-chevron-left"></i></a>
         <div class="hospital-name-header"><?php echo htmlspecialchars($hospital['name']); ?></div>
     </div>
+    <script>
+    (function () {
+        // 병원 목록에서 진입하면 그 전체 URL(정렬/시술/지역 포함)을 저장 —
+        // 상세 내 탭 이동으로 referrer가 detail.php로 바뀌어도 목록 복귀 상태를 유지한다.
+        try {
+            if (document.referrer.indexOf('hospitals.php') !== -1) {
+                sessionStorage.setItem('hospitalListReturnUrl', document.referrer);
+            }
+        } catch (e) {}
+        var backBtn = document.getElementById('detailBackBtn');
+        if (backBtn) {
+            backBtn.addEventListener('click', function (e) {
+                // 목록에서 바로 진입(탭 이동 없음) → history.back()으로 스크롤 위치까지 보존
+                if (document.referrer.indexOf('hospitals.php') !== -1) {
+                    e.preventDefault();
+                    history.back();
+                    return;
+                }
+                // 탭 이동으로 referrer가 detail.php로 바뀐 경우 → 저장해둔 목록 URL로 복귀
+                var listUrl = null;
+                try { listUrl = sessionStorage.getItem('hospitalListReturnUrl'); } catch (e2) {}
+                if (listUrl) {
+                    e.preventDefault();
+                    location.href = listUrl;
+                }
+            });
+        }
+    })();
+    </script>
 
     <!-- 탭 메뉴 -->
     <!-- [1차 검수 #9 - 2026-05-28] 상세 탭 재정의 [홈 / 의료진 / 이벤트 / 시술후기] -->
+    <?php
+    // 탭 전환 시에도 검색 시술(?treatment=) 컨텍스트 유지 — 목록 복귀 시 정렬/시술 보존
+    $tab_qs = $matched_treatment_query !== '' ? '&treatment=' . urlencode($matched_treatment_query) : '';
+    ?>
     <div class="tab-menu">
-        <a href="?id=<?php echo $hospital_id; ?>&tab=home" class="tab-item <?php echo $current_tab === 'home' ? 'active' : ''; ?>">
+        <a href="?id=<?php echo $hospital_id; ?>&tab=home<?php echo $tab_qs; ?>" class="tab-item <?php echo $current_tab === 'home' ? 'active' : ''; ?>">
             홈
         </a>
-        <a href="?id=<?php echo $hospital_id; ?>&tab=doctors" class="tab-item <?php echo $current_tab === 'doctors' ? 'active' : ''; ?>">
+        <a href="?id=<?php echo $hospital_id; ?>&tab=doctors<?php echo $tab_qs; ?>" class="tab-item <?php echo $current_tab === 'doctors' ? 'active' : ''; ?>">
             의료진
         </a>
-        <a href="?id=<?php echo $hospital_id; ?>&tab=events" class="tab-item <?php echo $current_tab === 'events' ? 'active' : ''; ?>">
+        <a href="?id=<?php echo $hospital_id; ?>&tab=events<?php echo $tab_qs; ?>" class="tab-item <?php echo $current_tab === 'events' ? 'active' : ''; ?>">
             이벤트
         </a>
-        <a href="?id=<?php echo $hospital_id; ?>&tab=reviews" class="tab-item <?php echo $current_tab === 'reviews' ? 'active' : ''; ?>">
+        <a href="?id=<?php echo $hospital_id; ?>&tab=reviews<?php echo $tab_qs; ?>" class="tab-item <?php echo $current_tab === 'reviews' ? 'active' : ''; ?>">
             시술후기
         </a>
     </div>
@@ -1635,8 +1665,8 @@ function extractImageFromHtml($file_path) {
             </div>
         </div>
 
-        <!-- 검색하신 시술 (hospitals.php 시술 검색에서 넘어온 경우) — 영업시간 아래 배치 -->
-        <?php if ($matched_treatment): ?>
+        <!-- 검색하신 시술 (hospitals.php 시술 검색에서 넘어온 경우) — 홈 탭에서만 영업시간 아래 배치 -->
+        <?php if ($matched_treatment && $current_tab === 'home'): ?>
         <div id="matched-treatment" style="scroll-margin-top:160px; margin:16px 0 4px; overflow:hidden; background:var(--color-bg-white);">
             <!-- 시술 설명 -->
             <div style="padding:16px;">
@@ -1940,9 +1970,9 @@ function extractImageFromHtml($file_path) {
                     <button class="kakao-chat-btn" onclick="openKakaoChat(<?php echo $event['id']; ?>)">
                         <span>💬</span> 카톡<?php echo term('consultation', '상담'); ?>
                     </button>
-                    <?php endif; ?>
+                    <?php endif;?>
                 </article>
-                <?php endforeach; ?>
+                <?php endforeach;?>
             </div>
 
             <!-- 페이지네이션 -->
