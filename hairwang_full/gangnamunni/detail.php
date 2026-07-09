@@ -461,7 +461,7 @@ function extractImageFromHtml($file_path) {
         .image-gallery-container {
             position: relative;
             width: 100%;
-            height: 250px;
+            height: 200px;
             background: var(--color-bg-light);
             overflow: hidden;
             margin-top: 0; /* #14 fix */
@@ -1702,7 +1702,7 @@ function extractImageFromHtml($file_path) {
                 <span style="flex:1;"><?php echo htmlspecialchars($hospital['address'] ?? '주소 정보 없음'); ?></span>
                 <?php if (!empty($hospital['address'])): ?>
                 <button type="button" onclick="copyAddress(this)" data-address="<?php echo htmlspecialchars($hospital['address'], ENT_QUOTES); ?>" style="flex-shrink:0; display:inline-flex; align-items:center; gap:4px; padding:5px 10px; font-size:12px; border:1px solid var(--color-border,#eee); background:var(--color-bg-white,#fff); border-radius:6px; color:var(--color-text-secondary,#666); cursor:pointer; white-space:nowrap;">
-                    <i class="bi bi-copy"></i> 주소복사
+                     주소복사
                 </button>
                 <?php endif; ?>
             </div>
@@ -1755,10 +1755,10 @@ function extractImageFromHtml($file_path) {
         ?>
         <div class="info-row" style="border-top:1px solid var(--color-border); border-bottom:1px solid var(--color-border);">
             <div class="info-content">
-                <div style="margin-bottom:8px;">소통 가능 언어</div>
+                <h3 style="font-size: 18px; margin-bottom: 16px; color: var(--color-text-primary);">소통 가능 언어</h3>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;">
                     <?php foreach ($lang_list as $lang): ?>
-                    <span style="background:#d5cfcf; color:#000; padding:4px 10px; border-radius:4px; font-size:13px;"><?php echo htmlspecialchars($lang); ?></span>
+                    <span style="background:#f2f2f2; color:#000; padding:4px 10px; border-radius:4px; font-size:13px;"><?php echo htmlspecialchars($lang); ?></span>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -1854,7 +1854,7 @@ function extractImageFromHtml($file_path) {
                         ?>
                         <div class="doc-treat-row" style="display:flex;flex-wrap:nowrap;gap:5px;margin-top:8px;overflow:hidden;">
                             <?php foreach ($doc_treat_names as $tn): ?>
-                            <span style="font-size:11px;color:#000;background:#d5cfcf;border-radius:4px;padding:3px 8px;white-space:nowrap;flex-shrink:0;"><?php echo htmlspecialchars($tn); ?></span>
+                            <span style="font-size:11px;color:#000;background:#f2f2f2;border-radius:4px;padding:3px 8px;white-space:nowrap;flex-shrink:0;"><?php echo htmlspecialchars($tn); ?></span>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -2162,7 +2162,7 @@ function extractImageFromHtml($file_path) {
                         ?>
                         <div class="doc-treat-row" style="display:flex;flex-wrap:nowrap;gap:5px;margin-top:8px;overflow:hidden;">
                             <?php foreach ($doc_treat_names as $tn): ?>
-                            <span style="font-size:11px;color:#000;background:#d5cfcf;border-radius:4px;padding:3px 8px;white-space:nowrap;flex-shrink:0;"><?php echo htmlspecialchars($tn); ?></span>
+                            <span style="font-size:11px;color:#000;background:#f2f2f2;border-radius:4px;padding:3px 8px;white-space:nowrap;flex-shrink:0;"><?php echo htmlspecialchars($tn); ?></span>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -2512,7 +2512,7 @@ function extractImageFromHtml($file_path) {
             if (!addr) return;
             const done = function() {
                 const original = btn.innerHTML;
-                btn.innerHTML = '<i class="bi bi-check-lg"></i> 복사됨';
+                btn.innerHTML = '복사됨';
                 btn.style.color = 'var(--color-primary, #AE1932)';
                 setTimeout(function() { btn.innerHTML = original; btn.style.color = ''; }, 1500);
             };
