@@ -13,6 +13,30 @@ require_once __DIR__ . '/includes/ad_slot_performance.php';
 
 loadCategoriesFromDB($connect); // 반환값 미사용 — $category_icons 전역 초기화 목적
 
+/**
+ * 주소에서 '구'(district)를 추출한다.
+ * 예) "서울특별시 강남구 테헤란로 123" → "강남"
+ * 한국 주소는 보통 "시/도 구/군 ..." 순서라 두 번째 토큰을 먼저 확인하고,
+ * 두 번째 토큰이 '구'로 끝나지 않으면 나머지 토큰을 검사한다.
+ */
+if (!function_exists('extract_addr_district')) {
+    function extract_addr_district($addr) {
+        $addr = trim((string)$addr);
+        if ($addr === '') return '';
+        $parts = preg_split('/\s+/u', $addr);
+        // 두 번째 토큰을 먼저 검사, 그 다음 전체 토큰
+        $order = [];
+        if (isset($parts[1])) $order[] = $parts[1];
+        foreach ($parts as $p) $order[] = $p;
+        foreach ($order as $p) {
+            if ($p !== '' && mb_substr($p, -1, 1, 'UTF-8') === '구') {
+                return mb_substr($p, 0, mb_strlen($p, 'UTF-8') - 1, 'UTF-8');
+            }
+        }
+        return '';
+    }
+}
+
 $keyword = isset($_GET['q']) ? trim($_GET['q']) : '';
 $escaped_keyword = mysqli_real_escape_string($connect, $keyword);
 $category = isset($_GET['category']) ? trim($_GET['category']) : '';
@@ -490,10 +514,13 @@ foreach ($hospitals as $hospital):
                 <span class="grade-badge grade-badge-sa">AD</span>
                 <div class="hospital-info">
                     <div class="hospital-name"><?php echo htmlspecialchars($_iad['title']); ?></div>
+                    <?php $_iad_addr = $_iad['subtitle'] ?? ''; $_iad_dist = extract_addr_district($_iad_addr); ?>
                     <div class="hospital-address">
-                        <span class="addr-district">강남</span>
+                        <?php if ($_iad_dist !== ''): ?>
+                        <span class="addr-district"><?php echo htmlspecialchars($_iad_dist); ?></span>
                         <span class="addr-sep"> | </span>
-                        <span><?php echo htmlspecialchars(mb_substr($_iad['subtitle'] ?? '', 0, 15, 'UTF-8')); ?></span>
+                        <?php endif; ?>
+                        <span><?php echo htmlspecialchars(mb_substr($_iad_addr, 0, 15, 'UTF-8')); ?></span>
                     </div>
                 </div>
         </a>
@@ -538,10 +565,13 @@ foreach ($hospitals as $hospital):
                 <?php endif; ?>
                 <div class="hospital-info">
                     <div class="hospital-name"><?php echo htmlspecialchars($hospital['name']); ?></div>
+                    <?php $_a=($hospital['address']??''); $_dist = extract_addr_district($_a); ?>
                     <div class="hospital-address">
-                        <span class="addr-district">강남</span>
+                        <?php if ($_dist !== ''): ?>
+                        <span class="addr-district"><?php echo htmlspecialchars($_dist); ?></span>
                         <span class="addr-sep"> | </span>
-                        <span class="addr-full"><?php $_a=($hospital['address']??''); echo htmlspecialchars(mb_substr($_a,0,20,'UTF-8')).(mb_strlen($_a,'UTF-8')>20?'...':''); ?></span>
+                        <?php endif; ?>
+                        <span class="addr-full"><?php echo htmlspecialchars(mb_substr($_a,0,20,'UTF-8')).(mb_strlen($_a,'UTF-8')>20?'...':''); ?></span>
                         <span class="addr-short"><?php $_a=($hospital['address']??''); echo htmlspecialchars(mb_substr($_a,0,20,'UTF-8')).(mb_strlen($_a,'UTF-8')>20?'...':''); ?></span>
                     </div>
                     <?php
