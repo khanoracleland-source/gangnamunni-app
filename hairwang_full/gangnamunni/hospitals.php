@@ -218,6 +218,34 @@ if (!empty($effective_treatment)) {
     }
 }
 
+// 병원별 대표 썸네일 조회 (hospital_images 의 '메인' 이미지 우선)
+// gangnamunni_hospitals.main_image_url 컬럼은 최초 등록 시점 값에 고정되어 있어
+// 관리자가 admin_hospital_images.php 에서 이미지를 바꿔도 반영되지 않는다.
+// hospital_images 에 image_type='main' 인 활성 이미지가 있으면 그것을 대표로 사용하고,
+// 없을 때만 기존 main_image_url/profile_image_url 로 폴백한다.
+$hospital_main_images = []; // hospital_id => image_url
+if (!empty($hospitals)) {
+    $thumb_ids = array_column($hospitals, 'id');
+    $thumb_ids_str = implode(',', array_map('intval', $thumb_ids));
+    if ($thumb_ids_str !== '') {
+        $_thumb_sql = "SELECT hospital_id, image_url
+                       FROM hospital_images
+                       WHERE hospital_id IN ({$thumb_ids_str})
+                         AND is_active = 1 AND image_type = 'main'
+                       ORDER BY hospital_id ASC, sort_order ASC, id ASC";
+        $_thumb_r = mysqli_query($connect, $_thumb_sql);
+        if ($_thumb_r) {
+            while ($_thumb_row = mysqli_fetch_assoc($_thumb_r)) {
+                $_thid = (int) $_thumb_row['hospital_id'];
+                // 병원당 첫(가장 낮은 sort_order) 메인 이미지만 사용
+                if (!isset($hospital_main_images[$_thid]) && !empty($_thumb_row['image_url'])) {
+                    $hospital_main_images[$_thid] = $_thumb_row['image_url'];
+                }
+            }
+        }
+    }
+}
+
 // 병원별 대표 시술 설명 조회
 // [QA #2] ?treatment= 로 특정 시술 검색 중일 때만 그 시술의 가격을 보여준다.
 // 지역 검색이나 필터 없는 단순 목록에서는 어떤 시술을 대표로 보여줘야 할지 알 수 없으므로 표시하지 않는다.
@@ -602,7 +630,8 @@ foreach ($hospitals as $hospital):
              <?php endif; ?>>
             <div class="card-link">
                 <?php
-                $h_img = $hospital['main_image_url'] ?? $hospital['profile_image_url'] ?? '';
+                $h_img = $hospital_main_images[(int)$hospital['id']]
+                         ?? $hospital['main_image_url'] ?? $hospital['profile_image_url'] ?? '';
                 $placeholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360'%3E%3Crect fill='%23e9ecef' width='640' height='360'/%3E%3Ctext x='50%25' y='45%25' fill='%23adb5bd' text-anchor='middle' font-size='18' font-family='sans-serif'%3E" . urlencode(htmlspecialchars($hospital['name'])) . "%3C/text%3E%3Ctext x='50%25' y='58%25' fill='%23ced4da' text-anchor='middle' font-size='13' font-family='sans-serif'%3ENo Image%3C/text%3E%3C/svg%3E";
                 $img_src = !empty($h_img) ? htmlspecialchars($h_img) : $placeholder;
                 ?>

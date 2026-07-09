@@ -355,11 +355,11 @@ $performance_report_query = mysqli_query($connect, "
     INNER JOIN gangnamunni_hospitals h ON h.id = b.hospital_id
     LEFT JOIN gangnamunni_treatment_master tm ON tm.id = p.treatment_id
     LEFT JOIN gangnamunni_ad_slot_events e
-      ON e.booking_id = b.id
-     AND e.created_at >= '{$report_from_esc} 00:00:00'
-     AND e.created_at < DATE_ADD('{$report_to_esc}', INTERVAL 1 DAY)
+    ON e.booking_id = b.id
+    AND e.created_at >= '{$report_from_esc} 00:00:00'
+    AND e.created_at < DATE_ADD('{$report_to_esc}', INTERVAL 1 DAY)
     GROUP BY b.id, b.status, b.start_date, b.end_date, h.name, p.keyword_type,
-             p.region_name, p.rank_position, p.billing_model, tm.name
+    p.region_name, p.rank_position, p.billing_model, tm.name
     ORDER BY clicks DESC, impressions DESC, b.id DESC
 ");
 if ($performance_report_query) {
