@@ -20,6 +20,9 @@ if (!in_array($tab, ['latest', 'popular', 'review'])) $tab = 'latest';
 $region = isset($_GET['region']) ? trim($_GET['region']) : '';
 $region_list = array_filter(array_map('trim', explode(',', $region)));
 
+// 키워드 검색 (게시글 제목/내용에서 검색)
+$keyword = isset($_GET['q']) ? trim($_GET['q']) : '';
+
 // 카테고리 필터 (시술후기 탭 = category '시술후기')
 $category = '';
 if ($tab === 'review') {
@@ -81,6 +84,15 @@ if ($table_exists) {
         $where .= " AND (" . implode(' OR ', $region_conditions) . ")";
     }
 
+    // 키워드 검색 — 게시글 제목/내용에서 검색
+    if ($keyword !== '') {
+        $where .= " AND (p.title LIKE ? OR p.content LIKE ?)";
+        $bind_types .= 'ss';
+        $kw_like = '%' . $keyword . '%';
+        $bind_values[] = $kw_like;
+        $bind_values[] = $kw_like;
+    }
+
     // 총 개수
     $count_sql = "SELECT COUNT(*) as cnt FROM gangnamunni_community_posts p WHERE {$where}";
     if (!empty($bind_values)) {
@@ -124,7 +136,9 @@ $total_pages = max(1, ceil($total_count / $per_page));
 $is_logged_in = is_gangnamunni_logged_in();
 
 $page_title = '커뮤니티';
-$show_search = false;
+$show_search = true; // 메인과 동일한 공용 헤더 검색바(includes/header.php) 사용
+$search_target_page = 'community.php';       // 검색/지역 필터는 커뮤니티 게시글 대상으로 동작
+$region_storage_key = 'sb_community_regions'; // 병원 목록과 지역 선택 저장소 분리 유지
 
 // --- 시간 표시 헬퍼 ---
 function community_time_display($created_at, $updated_at = null) {
@@ -241,131 +255,18 @@ $page_js = '
         } catch(e) {}
     }
 })();
-
-function toggleCommunityRegionPanel() {
-    var panel = document.getElementById("cRegionPanel");
-    var overlay = document.getElementById("cRegionOverlay");
-    var wrap = document.querySelector(".community-search-wrap");
-    if (panel.style.display === "block") {
-        closeCommunityRegionPanel();
-    } else {
-        var rect = wrap.getBoundingClientRect();
-        panel.style.top = rect.bottom + "px";
-        panel.style.display = "block";
-        overlay.style.display = "block";
-        updateCommunitySelectedTags();
-    }
-}
-function closeCommunityRegionPanel() {
-    document.getElementById("cRegionPanel").style.display = "none";
-    document.getElementById("cRegionOverlay").style.display = "none";
-}
-function updateCommunitySelectedTags() {
-    var wrap = document.querySelector("#cRegionPanel .region-selected-tags");
-    if (!wrap) return;
-    wrap.innerHTML = "";
-    document.querySelectorAll(".c-region-cb:checked").forEach(function(cb) {
-        var span = document.createElement("span");
-        span.className = "region-tag";
-        span.innerHTML = cb.value + " <span style=\"cursor:pointer;\" onclick=\"uncheckedCommunityRegion(\'"+cb.value+"\')\">×</span>";
-        wrap.appendChild(span);
-    });
-}
-function uncheckedCommunityRegion(val) {
-    var cb = document.querySelector(".c-region-cb[value=\""+val+"\"]");
-    if (cb) { cb.checked = false; updateCommunitySelectedTags(); }
-}
-function applyCommunityRegionFilter() {
-    var regions = [];
-    document.querySelectorAll(".c-region-cb:checked").forEach(function(cb) { regions.push(cb.value); });
-    var url = new URL(window.location);
-    if (regions.length > 0) {
-        url.searchParams.set("region", regions.join(","));
-        localStorage.setItem("sb_community_regions", JSON.stringify(regions));
-    } else {
-        url.searchParams.delete("region");
-        localStorage.removeItem("sb_community_regions");
-    }
-    url.searchParams.delete("page");
-    window.location = url;
-}
-function removeCommunityRegion(val) {
-    var url = new URL(window.location);
-    var current = (url.searchParams.get("region") || "").split(",").filter(function(r) { return r && r !== val; });
-    if (current.length > 0) {
-        url.searchParams.set("region", current.join(","));
-        localStorage.setItem("sb_community_regions", JSON.stringify(current));
-    } else {
-        url.searchParams.delete("region");
-        localStorage.removeItem("sb_community_regions");
-    }
-    url.searchParams.delete("page");
-    window.location = url;
-}
-function applyCommunitySearch() {
-    var q = document.getElementById("communityKeyword").value.trim();
-    var url = new URL(window.location);
-    if (q) url.searchParams.set("q", q);
-    else url.searchParams.delete("q");
-    url.searchParams.delete("page");
-    window.location = url;
-}
-document.querySelectorAll(".c-region-cb").forEach(function(cb) {
-    cb.addEventListener("change", updateCommunitySelectedTags);
-});
+// 검색바/지역 선택 UI + 로직은 includes/header.php 공용 컴포넌트가 담당
 ';
+
+// 메인과 동일한 헤더 검색바 스타일 적용 (지역 선택 버튼 pill + placeholder 정렬)
+$_fs_css_file = __DIR__ . '/assets/css/figma_sync_index.css';
+if (file_exists($_fs_css_file)) { $page_css .= "\n" . file_get_contents($_fs_css_file); }
 
 include __DIR__ . '/includes/header.php';
 ?>
 
     <div class="community-wrap">
-        <!-- 검색바 + 지역 선택 버튼 + 활성 지역 태그 -->
-        <div class="community-topbar">
-            <div class="community-search-wrap">
-                <input type="text" id="communityKeyword" class="community-search-input" value="" placeholder="<?php echo term('service', '시술'); ?>, <?php echo term('business', '병원'); ?> 이름을 검색해보세요" onkeypress="if(event.key==='Enter')applyCommunitySearch()">
-                <button id="cRegionToggle" class="community-search-btn" onclick="toggleCommunityRegionPanel()">
-                    <i class="bi bi-geo-alt"></i> 지역 선택
-                </button>
-            </div>
-        </div>
-
-        <?php if (!empty($region_list)): ?>
-        <div class="region-active-bar">
-            <button class="btn-reset-bar" onclick="document.querySelectorAll('.c-region-cb').forEach(c=>c.checked=false);applyCommunityRegionFilter()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
-            <div class="region-active-tags">
-                <?php foreach ($region_list as $r): ?>
-                <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeCommunityRegion('<?php echo htmlspecialchars($r); ?>')" style="cursor:pointer;">&times;</span></span>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- 지역 선택 오버레이 + 패널 -->
-        <div id="cRegionOverlay" onclick="closeCommunityRegionPanel()"></div>
-        <div id="cRegionPanel">
-            <?php
-            $region_groups = [
-                ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원'],
-                ['인천','성남','동탄','일산','의정부'],
-                ['부산','대구','대전','청주','광주','전주','춘천','제주'],
-            ];
-            foreach ($region_groups as $gi => $group): ?>
-            <?php if ($gi > 0): ?><hr class="region-divider"><?php endif; ?>
-            <div class="region-grid">
-                <?php foreach ($group as $ar): ?>
-                <label>
-                    <input type="checkbox" class="c-region-cb" value="<?php echo $ar; ?>"<?php echo in_array($ar, $region_list) ? ' checked' : ''; ?>>
-                    <?php echo $ar; ?>
-                </label>
-                <?php endforeach; ?>
-            </div>
-            <?php endforeach; ?>
-            <div class="region-btn-wrap">
-                <button class="btn-reset" onclick="document.querySelectorAll('.c-region-cb').forEach(c=>c.checked=false);updateCommunitySelectedTags()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
-                <div class="region-selected-tags"></div>
-                <button class="btn-apply" onclick="applyCommunityRegionFilter()">필터 선택 완료</button>
-            </div>
-        </div>
+        <!-- 검색바/지역 선택은 공용 헤더(includes/header.php)에서 렌더링 -->
 
         <h2 class="community-section-title">커뮤니티</h2>
 

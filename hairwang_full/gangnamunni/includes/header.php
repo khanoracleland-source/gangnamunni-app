@@ -89,10 +89,16 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
     <!-- 글로벌 네비게이션 (앱 모드에서는 숨김) -->
     <?php if (empty($is_app_mode)) { include __DIR__ . '/global_nav.php'; } ?>
 
-<?php if ($show_search && empty($is_app_mode)): ?>
+<?php if ($show_search && empty($is_app_mode)):
+    // 검색/지역필터 동작을 페이지별로 파라미터화 (기본: 병원 목록)
+    //  - $search_target_page : 검색/지역 필터 적용 시 이동/유지할 페이지
+    //  - $region_storage_key : 지역 선택 localStorage 키 (페이지 간 독립 유지)
+    $search_target_page = $search_target_page ?? 'hospitals.php';
+    $region_storage_key = $region_storage_key ?? 'sb_selected_regions';
+?>
     <!-- 피그마 디자인 검색바 + 지역 필터 (640px 컨테이너 내) -->
     <div class="header-search-wrap">
-        <input type="text" id="csb-keyword" class="hospital-search-input" placeholder="<?php echo function_exists('dt') ? htmlspecialchars(dt('fd_search_placeholder','시술, 병원 이름을 검색해보세요')) : '시술, 병원 이름을 검색해보세요'; ?>">
+        <input type="text" id="csb-keyword" class="hospital-search-input" value="<?php echo htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES); ?>" placeholder="<?php echo function_exists('dt') ? htmlspecialchars(dt('fd_search_placeholder','시술, 주소를 검색해보세요')) : '시술, 주소를 검색해보세요'; ?>">
         <button id="regionToggleBtn" class="hospital-search-btn" onclick="toggleRegionPanel()">
             <i class="bi bi-geo-alt"></i> 지역 선택
         </button>
@@ -153,11 +159,11 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
     function saveRegionsToStorage() {
         var checked = [];
         document.querySelectorAll('.region-cb:checked').forEach(function(cb) { checked.push(cb.value); });
-        localStorage.setItem('sb_selected_regions', JSON.stringify(checked));
+        localStorage.setItem('<?php echo $region_storage_key; ?>', JSON.stringify(checked));
     }
     function loadRegionsFromStorage() {
         try {
-            var saved = JSON.parse(localStorage.getItem('sb_selected_regions') || '[]');
+            var saved = JSON.parse(localStorage.getItem('<?php echo $region_storage_key; ?>') || '[]');
             if (saved.length > 0) {
                 saved.forEach(function(val) {
                     var cb = document.querySelector('.region-cb[value="' + val + '"]');
@@ -234,10 +240,14 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
         document.querySelectorAll('.region-cb:checked').forEach(function(cb) { regions.push(cb.value); });
         saveRegionsToStorage();
         var keyword = document.getElementById('csb-keyword').value.trim();
-        var params = [];
-        if (regions.length > 0) params.push('region=' + encodeURIComponent(regions.join(',')));
-        if (keyword) params.push('q=' + encodeURIComponent(keyword));
-        location.href = 'hospitals.php' + (params.length > 0 ? '?' + params.join('&') : '');
+        // 이미 대상 페이지면 기존 필터(category/treatment/sort/tab 등)를 유지, 아니면 새로 이동
+        var target = '<?php echo $search_target_page; ?>';
+        var onTarget = location.pathname.indexOf(target) !== -1;
+        var url = onTarget ? new URL(location.href) : new URL(target, location.href);
+        if (regions.length > 0) url.searchParams.set('region', regions.join(',')); else url.searchParams.delete('region');
+        if (keyword) url.searchParams.set('q', keyword); else url.searchParams.delete('q');
+        url.searchParams.delete('page'); // 검색/필터 변경 시 페이지네이션 초기화
+        location.href = url.pathname + url.search;
     }
     // 키워드 엔터 검색
     document.getElementById('csb-keyword').addEventListener('keypress', function(e) {

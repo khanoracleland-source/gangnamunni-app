@@ -278,7 +278,7 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
 }
 
 $page_title = term('business');
-$show_search = false;
+$show_search = true; // 메인과 동일한 공용 헤더 검색바(includes/header.php) 사용
 
 $page_css = '
     .search-header { padding: 12px 20px; }
@@ -369,56 +369,12 @@ $page_css = '
 
 $page_js = '';
 
+// 메인과 동일한 헤더 검색바 스타일 적용 (지역 선택 버튼 pill + placeholder 정렬)
+$_fs_css_file = __DIR__ . '/assets/css/figma_sync_index.css';
+if (file_exists($_fs_css_file)) { $page_css .= "\n" . file_get_contents($_fs_css_file); }
+
 include __DIR__ . '/includes/header.php';
 ?>
-    <!-- 피그마: 검색바 + 지역 선택 버튼 -->
-    <div class="hospital-search-wrap">
-        <input type="text" id="hospitalKeyword" class="hospital-search-input" value="<?php echo htmlspecialchars($keyword); ?>" placeholder="<?php echo term('service', '시술'); ?>, <?php echo term('business', '병원'); ?> 이름을 검색해보세요" onkeypress="if(event.key==='Enter')applyHospitalFilter()">
-        <button id="hRegionToggle" class="hospital-search-btn" onclick="toggleRegionPanel()">
-            <i class="bi bi-geo-alt"></i> 지역 선택
-        </button>
-    </div>
-    <!-- 선택된 지역 태그 (검색바 아래 고정) -->
-    <?php if (!empty($region_list)): ?>
-    <div class="region-active-bar">
-        <button class="btn-reset-bar" onclick="document.querySelectorAll('.h-region-cb').forEach(c=>c.checked=false);applyHospitalFilter()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
-        <div class="region-active-tags">
-            <?php foreach ($region_list as $r): ?>
-            <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeRegion('<?php echo htmlspecialchars($r); ?>')" style="cursor:pointer;">&times;</span></span>
-            <?php endforeach; ?>
-        </div>
-    </div>
-    <?php endif; ?>
-    <!-- 지역 선택 오버레이 + 패널 -->
-    <div id="hRegionOverlay" onclick="closeRegionPanel()"></div>
-    <div id="hRegionPanel">
-        <?php
-        $region_groups = [
-            ['강남','신사','압구정','청담','교대','삼성','송파','천호','목동','강북','노원'],
-            ['인천','성남','동탄','일산','의정부'],
-            ['부산','대구','대전','청주','광주','전주','춘천','제주'],
-        ];
-        foreach ($region_groups as $gi => $group): ?>
-        <?php if ($gi > 0): ?><hr class="region-divider"><?php endif; ?>
-        <div class="region-grid">
-            <?php foreach ($group as $ar): ?>
-            <label>
-                <input type="checkbox" class="h-region-cb" value="<?php echo $ar; ?>"<?php echo in_array($ar, $region_list) ? ' checked' : ''; ?>>
-                <?php echo $ar; ?>
-            </label>
-            <?php endforeach; ?>
-        </div>
-        <?php endforeach; ?>
-        <div class="region-btn-wrap">
-            <button class="btn-reset" onclick="document.querySelectorAll('.h-region-cb').forEach(c=>c.checked=false);updateSelectedTags()"><i class="bi bi-arrow-counterclockwise"></i> 초기화</button>
-            <div class="region-selected-tags">
-                <?php foreach ($region_list as $r): ?>
-                <span class="region-tag"><?php echo htmlspecialchars($r); ?> <span onclick="removeRegion('<?php echo htmlspecialchars($r); ?>')">&times;</span></span>
-                <?php endforeach; ?>
-            </div>
-            <button class="btn-apply" onclick="applyHospitalFilter()">필터 선택 완료</button>
-        </div>
-    </div>
     <script>
     // localStorage 동기화: URL ↔ storage (지역, 정렬 — 뒤로가기로 돌아왔을 때 이전 선택 복원)
     (function() {
@@ -456,72 +412,7 @@ include __DIR__ . '/includes/header.php';
             window.location.replace(url.toString());
         }
     })();
-
-    function toggleRegionPanel() {
-        var panel = document.getElementById('hRegionPanel');
-        var overlay = document.getElementById('hRegionOverlay');
-        var wrap = document.querySelector('.hospital-search-wrap');
-        var isOpen = panel.style.display === 'block';
-        if (isOpen) {
-            closeRegionPanel();
-        } else {
-            var rect = wrap.getBoundingClientRect();
-            panel.style.top = rect.bottom + 'px';
-            panel.style.display = 'block';
-            overlay.style.display = 'block';
-        }
-    }
-    function closeRegionPanel() {
-        document.getElementById('hRegionPanel').style.display = 'none';
-        document.getElementById('hRegionOverlay').style.display = 'none';
-    }
-    function applyHospitalFilter() {
-        var regions = [];
-        document.querySelectorAll('.h-region-cb:checked').forEach(function(cb) { regions.push(cb.value); });
-        var kw = document.getElementById('hospitalKeyword').value.trim();
-        var url = new URL(window.location);
-        if (regions.length > 0) {
-            url.searchParams.set('region', regions.join(','));
-            localStorage.setItem('sb_selected_regions', JSON.stringify(regions));
-        } else {
-            url.searchParams.delete('region');
-            localStorage.removeItem('sb_selected_regions');
-        }
-        if (kw) url.searchParams.set('q', kw);
-        else url.searchParams.delete('q');
-        window.location = url;
-    }
-    function updateSelectedTags() {
-        var wrap = document.querySelector('.region-selected-tags');
-        if (!wrap) return;
-        wrap.innerHTML = '';
-        document.querySelectorAll('.h-region-cb:checked').forEach(function(cb) {
-            var span = document.createElement('span');
-            span.className = 'region-tag';
-            span.innerHTML = cb.value + ' <span style="cursor:pointer;" onclick="uncheckedRegion(\''+cb.value+'\')\">&times;</span>';
-            wrap.appendChild(span);
-        });
-    }
-    function uncheckedRegion(val) {
-        var cb = document.querySelector('.h-region-cb[value="'+val+'"]');
-        if (cb) { cb.checked = false; updateSelectedTags(); }
-    }
-    document.querySelectorAll('.h-region-cb').forEach(function(cb) {
-        cb.addEventListener('change', updateSelectedTags);
-    });
-    updateSelectedTags();
-    function removeRegion(val) {
-        var url = new URL(window.location);
-        var current = (url.searchParams.get('region') || '').split(',').filter(function(r) { return r && r !== val; });
-        if (current.length > 0) {
-            url.searchParams.set('region', current.join(','));
-            localStorage.setItem('sb_selected_regions', JSON.stringify(current));
-        } else {
-            url.searchParams.delete('region');
-            localStorage.removeItem('sb_selected_regions');
-        }
-        window.location = url;
-    }
+    // 검색바/지역 선택 UI + 로직은 includes/header.php 공용 컴포넌트가 담당
     </script>
 
     <!-- 정렬 옵션 -->

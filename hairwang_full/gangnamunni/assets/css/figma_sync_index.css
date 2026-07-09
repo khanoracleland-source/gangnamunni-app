@@ -22,13 +22,20 @@
 /* 지역 선택 버튼 — 검정 알약, 작은 사이즈 (Figma: #222) */
 #regionToggleBtn {
     padding: 10px 20px !important;
-    background: #222222 !important;
-    border-radius: 20px !important;
+    background: #1B0000 !important;
+    border-radius: 40px !important;
     font-size: 13px !important;
     font-weight: 600 !important;
+    height: auto !important;
 }
 #regionToggleBtn i {
     font-size: 14px !important;
+}
+
+/* 검색 placeholder 텍스트를 지역 선택 버튼 텍스트와 같은 줄에 맞춤
+   (wrap 이 flex-end 라 input 텍스트를 아래로 내려 버튼 중앙과 정렬) */
+.header-search-wrap .hospital-search-input {
+    padding: 18px 14px 2px 0 !important;
 }
 
 /* 다크 모드 대응 (Figma는 라이트 기준이라 그대로 유지) */

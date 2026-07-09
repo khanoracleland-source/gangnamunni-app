@@ -460,14 +460,14 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
             <label class="rw-label">📷 <?php echo term('service', '시술'); ?> 사진 <span style="color:#999; font-weight:400;">(선택, 각 5MB 이하)</span></label>
             <div style="display:flex; flex-direction:column; gap:16px;">
                 <div>
-                    <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--bs-body-color,#333);"><?php echo term('service', '시술'); ?> 전 <span style="color:#999; font-weight:400;">(최대 2장)</span></div>
+                    <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--bs-body-color,#333);"><?php echo term('service', '시술'); ?> 전 <span style="color:#999; font-weight:400;"></span></div>
                     <?php
                     $photo_config = ['prefix' => 'review_before', 'max_photos' => 2, 'label' => '', 'show_consent' => false];
                     include __DIR__ . '/includes/photo_upload_ui.php';
                     ?>
                 </div>
                 <div>
-                    <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--bs-body-color,#333);"><?php echo term('service', '시술'); ?> 후 <span style="color:#999; font-weight:400;">(최대 2장)</span></div>
+                    <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--bs-body-color,#333);"><?php echo term('service', '시술'); ?> 후 <span style="color:#999; font-weight:400;"></span></div>
                     <?php
                     $photo_config = ['prefix' => 'review_after', 'max_photos' => 2, 'label' => '', 'show_consent' => false];
                     include __DIR__ . '/includes/photo_upload_ui.php';
