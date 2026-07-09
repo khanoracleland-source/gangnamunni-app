@@ -21,7 +21,7 @@ $table_sql = "CREATE TABLE IF NOT EXISTS hospital_images (
     id INT AUTO_INCREMENT PRIMARY KEY,
     hospital_id INT NOT NULL,
     image_url VARCHAR(500) NOT NULL,
-    image_type ENUM('main', 'interior', 'exterior', 'facility', 'etc') DEFAULT 'main',
+    image_type ENUM('main', 'interior', 'exterior', 'facility', 'etc', 'logo') DEFAULT 'main',
     sort_order INT DEFAULT 0,
     is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -35,6 +35,14 @@ if (mysqli_query($connect, $table_sql)) {
 } else {
     echo "❌ 테이블 생성 실패: " . mysqli_error($connect) . "\n";
     exit;
+}
+
+// 1-1. 기존 테이블 image_type ENUM에 'logo' 추가 (병원 로고 저장용) — 이미 있으면 무해
+$alter_sql = "ALTER TABLE hospital_images MODIFY image_type ENUM('main', 'interior', 'exterior', 'facility', 'etc', 'logo') DEFAULT 'main'";
+if (mysqli_query($connect, $alter_sql)) {
+    echo "✅ image_type ENUM에 'logo' 값이 반영되었습니다.\n\n";
+} else {
+    echo "⚠️ image_type ENUM 변경 실패(무시 가능): " . mysqli_error($connect) . "\n\n";
 }
 
 // 2. 기존 gangnamunni_hospitals 테이블의 이미지를 hospital_images로 마이그레이션

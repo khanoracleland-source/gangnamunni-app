@@ -73,7 +73,8 @@ if (!$result || mysqli_num_rows($result) == 0) {
 $hospital = mysqli_fetch_assoc($result);
 
 // 병원 이미지 갤러리 조회
-$images_query = "SELECT * FROM hospital_images WHERE hospital_id = {$hospital_id} AND is_active = 1 ORDER BY sort_order ASC, id ASC";
+// 로고(image_type='logo')는 목록(hospitals.php) 전용이므로 상세 갤러리에서는 제외한다.
+$images_query = "SELECT * FROM hospital_images WHERE hospital_id = {$hospital_id} AND is_active = 1 AND image_type <> 'logo' ORDER BY sort_order ASC, id ASC";
 $images_result = mysqli_query($connect, $images_query);
 $hospital_images = [];
 while ($img_row = mysqli_fetch_assoc($images_result)) {

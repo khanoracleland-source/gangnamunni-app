@@ -130,7 +130,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
 
-            // 3) 갤러리 이미지 저장 (hospital_images 테이블이 있으면)
+            // 3) 로고 이미지 저장 (hospital_images 테이블에 image_type='logo' 로 별도 저장)
+            //    - 목록(hospitals.php)에서 로고로 사용하고, 상세(detail.php) 갤러리에는 노출하지 않는다.
+            if ($logoImg !== '') {
+                mysqli_query($connect, "INSERT INTO hospital_images (hospital_id, image_url, image_type, sort_order, created_at)
+                    VALUES ({$hospitalId}, '{$logoImg}', 'logo', 0, NOW())");
+            }
+
+            // 4) 갤러리(내부 사진) 이미지 저장 — detail.php 갤러리에 노출
             $gallery = $data['gallery_images'] ?? [];
             foreach ($gallery as $i => $gimg) {
                 $gurl = $esc($gimg);

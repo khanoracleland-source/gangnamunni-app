@@ -248,22 +248,26 @@ if (!empty($effective_treatment)) {
 // hospital_images 에 image_type='main' 인 활성 이미지가 있으면 그것을 대표로 사용하고,
 // 없을 때만 기존 main_image_url/profile_image_url 로 폴백한다.
 $hospital_main_images = []; // hospital_id => image_url
+$hospital_logos = [];       // hospital_id => image_url (image_type='logo', 목록 전용)
 if (!empty($hospitals)) {
     $thumb_ids = array_column($hospitals, 'id');
     $thumb_ids_str = implode(',', array_map('intval', $thumb_ids));
     if ($thumb_ids_str !== '') {
-        $_thumb_sql = "SELECT hospital_id, image_url
+        $_thumb_sql = "SELECT hospital_id, image_url, image_type
                        FROM hospital_images
                        WHERE hospital_id IN ({$thumb_ids_str})
-                         AND is_active = 1 AND image_type = 'main'
+                         AND is_active = 1 AND image_type IN ('main', 'logo')
                        ORDER BY hospital_id ASC, sort_order ASC, id ASC";
         $_thumb_r = mysqli_query($connect, $_thumb_sql);
         if ($_thumb_r) {
             while ($_thumb_row = mysqli_fetch_assoc($_thumb_r)) {
                 $_thid = (int) $_thumb_row['hospital_id'];
-                // 병원당 첫(가장 낮은 sort_order) 메인 이미지만 사용
-                if (!isset($hospital_main_images[$_thid]) && !empty($_thumb_row['image_url'])) {
-                    $hospital_main_images[$_thid] = $_thumb_row['image_url'];
+                if (empty($_thumb_row['image_url'])) continue;
+                // 병원당 첫(가장 낮은 sort_order) 이미지만 사용
+                if (($_thumb_row['image_type'] ?? '') === 'logo') {
+                    if (!isset($hospital_logos[$_thid])) $hospital_logos[$_thid] = $_thumb_row['image_url'];
+                } else {
+                    if (!isset($hospital_main_images[$_thid])) $hospital_main_images[$_thid] = $_thumb_row['image_url'];
                 }
             }
         }
@@ -549,7 +553,9 @@ foreach ($hospitals as $hospital):
             <div class="card-link">
                 <?php
                 $h_img = $hospital_main_images[(int)$hospital['id']]
-                         ?? $hospital['main_image_url'] ?? $hospital['profile_image_url'] ?? '';
+                         ?? $hospital['main_image_url']
+                         ?? $hospital_logos[(int)$hospital['id']]
+                         ?? $hospital['profile_image_url'] ?? '';
                 $placeholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360'%3E%3Crect fill='%23e9ecef' width='640' height='360'/%3E%3Ctext x='50%25' y='45%25' fill='%23adb5bd' text-anchor='middle' font-size='18' font-family='sans-serif'%3E" . urlencode(htmlspecialchars($hospital['name'])) . "%3C/text%3E%3Ctext x='50%25' y='58%25' fill='%23ced4da' text-anchor='middle' font-size='13' font-family='sans-serif'%3ENo Image%3C/text%3E%3C/svg%3E";
                 $img_src = !empty($h_img) ? htmlspecialchars($h_img) : $placeholder;
                 ?>
