@@ -265,11 +265,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $address = trim($_POST['address'] ?? '');
             $phone = trim($_POST['phone'] ?? '');
             $email = trim($_POST['email'] ?? '');
-            $categories = trim($_POST['categories'] ?? '');
-            $badges = trim($_POST['badges'] ?? '');
-            $treatment_tags = trim($_POST['treatment_tags'] ?? '');
-            $subway_names = trim($_POST['subway_names'] ?? '');
-            $business_hours = trim($_POST['business_hours'] ?? '');
+            // JSON 컬럼 정규화 — gangnamunni_hospitals 에 json_valid() CHECK 제약이 걸려 있어
+            // (categories/badges/treatment_tags/subway_names/business_hours) 반드시 유효한 JSON 이어야 함.
+            // 이미 유효한 JSON(예: treatment_tags 객체 배열)은 그대로 보존, CSV 문자열이면 배열로 변환,
+            // 빈 값은 [] / {} 로 저장하여 CONSTRAINT 위반(저장 실패)을 방지한다.
+            $normalize_json_list = function($raw) {
+                $raw = trim($raw);
+                if ($raw === '') return '[]';
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded)) return $raw; // 이미 유효한 JSON 배열/객체
+                $items = array_values(array_filter(array_map('trim', explode(',', $raw)), function($v){ return $v !== ''; }));
+                return json_encode($items, JSON_UNESCAPED_UNICODE);
+            };
+            $normalize_json_obj = function($raw) {
+                $raw = trim($raw);
+                if ($raw === '') return '{}';
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded)) return $raw;
+                return '{}';
+            };
+            $categories = $normalize_json_list($_POST['categories'] ?? '');
+            $badges = $normalize_json_list($_POST['badges'] ?? '');
+            $treatment_tags = $normalize_json_list($_POST['treatment_tags'] ?? '');
+            $subway_names = $normalize_json_list($_POST['subway_names'] ?? '');
+            $business_hours = $normalize_json_obj($_POST['business_hours'] ?? '');
             $latitude = floatval($_POST['latitude'] ?? 0);
             $longitude = floatval($_POST['longitude'] ?? 0);
             $show_rating = isset($_POST['show_rating']) ? 1 : 0;
@@ -1168,8 +1187,11 @@ $field_labels_map = ['name'=>'병원명','owner_name'=>'대표자명','business_
                     $tags = json_decode($tags_raw, true);
                     if (!is_array($tags)) $tags = array_filter(array_map('trim', explode(',', $tags_raw)));
                     if (!empty($tags)):
-                        foreach ($tags as $tag): ?>
-                            <span class="badge bg-body-secondary text-body tag-badge me-1 mb-1"><?php echo htmlspecialchars($tag); ?></span>
+                        foreach ($tags as $tag):
+                            // treatment_tags 는 객체배열 [{"tagId":..,"name":".."}] 또는 문자열배열 둘 다 가능
+                            $tag_label = is_array($tag) ? ($tag['name'] ?? '') : $tag;
+                            if ($tag_label === '') continue; ?>
+                            <span class="badge bg-body-secondary text-body tag-badge me-1 mb-1"><?php echo htmlspecialchars($tag_label); ?></span>
                         <?php endforeach;
                     else: ?>
                         <span class="text-body-secondary">-</span>
