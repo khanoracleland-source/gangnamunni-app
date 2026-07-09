@@ -72,36 +72,70 @@ if (!$result || mysqli_num_rows($result) == 0) {
 
 $hospital = mysqli_fetch_assoc($result);
 
+$image_url_keys = function ($url) {
+    $url = trim((string) $url);
+    if ($url === '') {
+        return [];
+    }
+
+    $path = parse_url($url, PHP_URL_PATH);
+    $keys = [$url, ltrim($url, '/')];
+    if ($path) {
+        $keys[] = $path;
+        $keys[] = ltrim($path, '/');
+        $keys[] = basename($path);
+    } else {
+        $keys[] = basename($url);
+    }
+
+    return array_values(array_unique(array_filter($keys)));
+};
+
+$hospital_logo_keys = [];
+$add_logo_url = function ($url) use (&$hospital_logo_keys, $image_url_keys) {
+    $url = trim((string) $url);
+    if ($url === '') {
+        return;
+    }
+
+    foreach ($image_url_keys($url) as $key) {
+        $hospital_logo_keys[$key] = true;
+    }
+};
+
+// 이 프로젝트에서는 profile_image_url 이 병원 로고 저장값으로 쓰인 데이터가 있어 상세 갤러리에서 제외한다.
+$add_logo_url($hospital['profile_image_url'] ?? '');
+$logo_result = mysqli_query($connect, "SELECT image_url FROM hospital_images WHERE hospital_id = {$hospital_id} AND is_active = 1 AND image_type = 'logo'");
+while ($logo_row = mysqli_fetch_assoc($logo_result)) {
+    $add_logo_url($logo_row['image_url'] ?? '');
+}
+
+$is_logo_image_url = function ($url) use ($hospital_logo_keys, $image_url_keys) {
+    foreach ($image_url_keys($url) as $key) {
+        if (isset($hospital_logo_keys[$key])) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
 // 병원 이미지 갤러리 조회
-// 로고(image_type='logo')는 목록(hospitals.php) 전용이므로 상세 갤러리에서는 제외한다.
-$images_query = "SELECT * FROM hospital_images WHERE hospital_id = {$hospital_id} AND is_active = 1 AND image_type <> 'logo' ORDER BY sort_order ASC, id ASC";
+// 상세 갤러리에는 내부 사진(image_type='interior' 등)만 노출한다.
+// - 로고(image_type='logo' / profile_image_url)는 제외
+// - 대표 이미지(image_type='main' / main_image_url)도 제외 — 상세에서는 노출하지 않는다.
+$images_query = "SELECT * FROM hospital_images WHERE hospital_id = {$hospital_id} AND is_active = 1 AND image_type <> 'logo' AND image_type <> 'main' ORDER BY sort_order ASC, id ASC";
 $images_result = mysqli_query($connect, $images_query);
 $hospital_images = [];
 while ($img_row = mysqli_fetch_assoc($images_result)) {
+    // 로고 URL이거나 대표 이미지(main_image_url)와 같은 URL이면 제외
+    if ($is_logo_image_url($img_row['image_url'] ?? '')) {
+        continue;
+    }
+    if (!empty($hospital['main_image_url']) && ($img_row['image_url'] ?? '') === $hospital['main_image_url']) {
+        continue;
+    }
     $hospital_images[] = $img_row;
-}
-
-// #15 fix: main image relative path -> absolute path
-if (!empty($hospital['main_image_url'])) {
-    $main_img_url = $hospital['main_image_url'];
-    if (strpos($main_img_url, 'http') !== 0 && strpos($main_img_url, '//') !== 0) {
-        $main_img_url = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/' . ltrim($main_img_url, '/');
-    }
-    $has_main = false;
-    foreach ($hospital_images as $img) {
-        $img_url = $img['image_url'] ?? '';
-        if ($img_url === $hospital['main_image_url'] || $img_url === $main_img_url || ($img['image_type'] ?? '') === 'main') {
-            $has_main = true;
-            break;
-        }
-    }
-    if (!$has_main) {
-        array_unshift($hospital_images, ['image_url' => $main_img_url, 'image_type' => 'main']);
-    }
-}
-// 이미지가 여전히 없으면 프로필 이미지 사용
-if (empty($hospital_images) && !empty($hospital['profile_image_url'])) {
-    $hospital_images[] = ['image_url' => $hospital['profile_image_url'], 'image_type' => 'profile'];
 }
 
 // 병원 특징 조회
@@ -2603,5 +2637,3 @@ if (!empty($hospital_id) && isset($hospital)) {
 }
 ?>
 <?php mysqli_close($connect); ?>
-
-

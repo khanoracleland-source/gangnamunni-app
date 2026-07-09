@@ -291,7 +291,7 @@ if ($selected_hospital_id > 0) {
 }
 $total_pages = $total > 0 ? ceil($total / $per_page) : 0;
 
-$image_types = ['main' => '메인', 'exterior' => '외관', 'interior' => '내부', 'facility' => '시설', 'etc' => '기타'];
+$image_types = ['main' => '메인', 'logo' => '로고', 'exterior' => '외관', 'interior' => '내부', 'facility' => '시설', 'etc' => '기타'];
 
 // 공통 헤더 include
 $admin_page_title = '병원 이미지 관리';
@@ -420,7 +420,7 @@ include __DIR__ . '/includes/admin_header.php';
                                 </thead>
                                 <tbody>
                                     <?php foreach ($h['images'] as $img):
-                                        $type_colors = ['main'=>'primary','exterior'=>'success','interior'=>'info','facility'=>'warning','etc'=>'secondary'];
+                                        $type_colors = ['main'=>'primary','logo'=>'dark','exterior'=>'success','interior'=>'info','facility'=>'warning','etc'=>'secondary'];
                                         $tc = $type_colors[$img['image_type']] ?? 'secondary';
                                     ?>
                                     <tr class="<?php echo !$img['is_active'] ? 'opacity-50' : ''; ?>">
@@ -566,7 +566,7 @@ include __DIR__ . '/includes/admin_header.php';
 <?php else: ?>
 <div class="list-group list-group-flush" id="imageTable">
     <?php foreach ($images as $img):
-        $type_colors = ['main'=>'primary','exterior'=>'success','interior'=>'info','facility'=>'warning','etc'=>'secondary'];
+        $type_colors = ['main'=>'primary','logo'=>'dark','exterior'=>'success','interior'=>'info','facility'=>'warning','etc'=>'secondary'];
         $tc = $type_colors[$img['image_type']] ?? 'secondary';
     ?>
     <div class="list-group-item <?php echo !$img['is_active'] ? 'opacity-50' : ''; ?> px-3 py-2">

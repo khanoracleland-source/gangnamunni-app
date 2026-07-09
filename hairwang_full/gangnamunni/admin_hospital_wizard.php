@@ -133,16 +133,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             // 3) 로고 이미지 저장 (hospital_images 테이블에 image_type='logo' 로 별도 저장)
             //    - 목록(hospitals.php)에서 로고로 사용하고, 상세(detail.php) 갤러리에는 노출하지 않는다.
             if ($logoImg !== '') {
-                mysqli_query($connect, "INSERT INTO hospital_images (hospital_id, image_url, image_type, sort_order, created_at)
-                    VALUES ({$hospitalId}, '{$logoImg}', 'logo', 0, NOW())");
+                $logo_ok = mysqli_query($connect, "INSERT INTO hospital_images (hospital_id, image_url, image_type, sort_order, is_active, created_at)
+                    VALUES ({$hospitalId}, '{$logoImg}', 'logo', 0, 1, NOW())");
+                if (!$logo_ok) {
+                    throw new Exception("로고 이미지 저장 실패: " . mysqli_error($connect));
+                }
             }
 
             // 4) 갤러리(내부 사진) 이미지 저장 — detail.php 갤러리에 노출
             $gallery = $data['gallery_images'] ?? [];
             foreach ($gallery as $i => $gimg) {
                 $gurl = $esc($gimg);
-                mysqli_query($connect, "INSERT INTO hospital_images (hospital_id, image_url, image_type, sort_order, created_at)
-                    VALUES ({$hospitalId}, '{$gurl}', 'etc', {$i}, NOW())");
+                $gallery_ok = mysqli_query($connect, "INSERT INTO hospital_images (hospital_id, image_url, image_type, sort_order, is_active, created_at)
+                    VALUES ({$hospitalId}, '{$gurl}', 'interior', " . ($i + 1) . ", 1, NOW())");
+                if (!$gallery_ok) {
+                    throw new Exception("내부 사진 저장 실패: " . mysqli_error($connect));
+                }
             }
 
             mysqli_commit($connect);
