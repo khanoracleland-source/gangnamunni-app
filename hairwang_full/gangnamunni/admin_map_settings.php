@@ -247,7 +247,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <tr><td>지도 탐색</td><td><code>map.php</code></td><td>카카오/구글 (클러스터 + 다중 마커)</td><td><span class="badge bg-success">적용</span></td></tr>
                             <tr><td>예약 페이지</td><td><code>booking.php</code></td><td>kakao_map.php (제공자 자동 선택)</td><td><span class="badge bg-success">적용</span></td></tr>
                             <tr><td>의사 상세</td><td><code>doctor_detail.php</code></td><td>kakao_map.php (제공자 자동 선택)</td><td><span class="badge bg-success">적용</span></td></tr>
-                            <tr><td>지도 선택기</td><td><code>includes/map_picker.php</code></td><td>Leaflet.js (관리자 전용)</td><td><span class="badge bg-info">OSM 고정</span></td></tr>
+                            <tr><td>지도 선택기</td><td><code>includes/map_picker.php</code></td><td>카카오 지도 우선 (키 없으면 OSM 폴백)</td><td><span class="badge bg-success">적용</span></td></tr>
                         </tbody>
                     </table>
                 </div>
