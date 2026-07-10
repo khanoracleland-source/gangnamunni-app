@@ -48,57 +48,130 @@ if (isset($connect)) {
 $pk_use_kakao = !empty($pk_kakao_key);
 ?>
 
-<div class="card mb-3">
-    <div class="card-header"><i class="bi bi-geo-alt me-1"></i> 위치 정보
-        <span class="badge <?php echo $pk_use_kakao ? 'bg-warning text-dark' : 'bg-secondary'; ?> ms-2" style="font-size:11px;">
-            <?php echo $pk_use_kakao ? '카카오 지도' : 'OSM'; ?>
+<style>
+/* ===== 지도 피커 스타일 ===== */
+.mp-card {
+    border: 1px solid #e9ecef; border-radius: 14px; overflow: hidden;
+    background: #fff; box-shadow: 0 1px 3px rgba(16,24,40,.04);
+}
+.mp-card-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 16px; border-bottom: 1px solid #f1f3f5;
+    font-weight: 700; font-size: 15px; color: #1f2937;
+}
+.mp-card-head .bi { color: #AE1932; font-size: 17px; }
+.mp-provider-badge {
+    margin-left: auto; font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px; letter-spacing: .2px;
+}
+.mp-provider-badge.kakao { background: #fee500; color: #3c1e1e; }
+.mp-provider-badge.osm { background: #eef1f4; color: #667085; }
+.mp-card-body { padding: 16px; }
+
+/* 검색바 */
+.mp-search { display: flex; gap: 8px; margin-bottom: 10px; }
+.mp-search-box {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    background: #f7f8fa; border: 1px solid #e9ecef; border-radius: 10px;
+    padding: 0 12px; transition: border-color .15s, box-shadow .15s;
+}
+.mp-search-box:focus-within { border-color: #AE1932; box-shadow: 0 0 0 3px rgba(174,25,50,.08); background: #fff; }
+.mp-search-box .bi { color: #98a2b3; font-size: 15px; }
+.mp-search-box input { flex: 1; border: 0; background: transparent; padding: 11px 0; font-size: 14px; outline: none; }
+.mp-btn {
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+    border: 0; border-radius: 10px; padding: 0 16px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: filter .15s;
+}
+.mp-btn:hover { filter: brightness(.95); }
+.mp-btn-primary { background: #AE1932; color: #fff; }
+.mp-btn-ghost { background: #f2f4f7; color: #344054; }
+.mp-hint { font-size: 12.5px; color: #98a2b3; display: flex; align-items: center; gap: 5px; margin-bottom: 12px; }
+
+/* 검색 결과 */
+.mp-results { border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; margin-bottom: 12px; max-height: 200px; overflow-y: auto; }
+.mp-results .list-group-item-action { cursor: pointer; border: 0; border-bottom: 1px solid #f1f3f5; padding: 10px 14px; transition: background .12s; }
+.mp-results .list-group-item-action:last-child { border-bottom: 0; }
+.mp-results .list-group-item-action:hover { background: #faf6f7; }
+
+/* 지도 */
+.mp-map {
+    width: 100%; height: 340px; border-radius: 12px; overflow: hidden;
+    border: 1px solid #e9ecef; position: relative; margin-bottom: 14px;
+    background: #eef1f4;
+}
+.mp-map-overlay-hint {
+    position: absolute; left: 12px; top: 12px; z-index: 5;
+    background: rgba(31,41,55,.82); color: #fff; font-size: 12px; font-weight: 500;
+    padding: 6px 11px; border-radius: 8px; display: flex; align-items: center; gap: 6px;
+    pointer-events: none; backdrop-filter: blur(2px);
+}
+/* Leaflet 폴백 시 타일 깨짐 방지 (Bootstrap img{max-width:100%} 충돌) */
+#mpPickerMap img.leaflet-tile { max-width: none !important; width: 256px !important; height: 256px !important; }
+#mpPickerMap .leaflet-pane { max-width: none; }
+/* 카카오 지도 타일도 동일 보호 */
+#mpPickerMap img { max-width: none; }
+
+/* 좌표 입력 */
+.mp-coords { display: flex; gap: 12px; }
+.mp-coord-field { flex: 1; }
+.mp-coord-field label { font-size: 12px; font-weight: 600; color: #667085; margin-bottom: 5px; display: block; }
+.mp-coord-input-wrap { display: flex; align-items: center; gap: 6px; background: #f7f8fa; border: 1px solid #e9ecef; border-radius: 10px; padding: 0 12px; transition: border-color .15s, box-shadow .15s; }
+.mp-coord-input-wrap:focus-within { border-color: #AE1932; box-shadow: 0 0 0 3px rgba(174,25,50,.08); background: #fff; }
+.mp-coord-input-wrap .bi { color: #98a2b3; font-size: 13px; }
+.mp-coord-input-wrap input { flex: 1; border: 0; background: transparent; padding: 10px 0; font-size: 14px; outline: none; font-variant-numeric: tabular-nums; }
+@media (max-width: 575px) { .mp-search { flex-wrap: wrap; } .mp-btn { flex: 1; justify-content: center; padding: 10px; } }
+</style>
+
+<div class="mp-card mb-3">
+    <div class="mp-card-head">
+        <i class="bi bi-geo-alt-fill"></i> 위치 정보
+        <span class="mp-provider-badge <?php echo $pk_use_kakao ? 'kakao' : 'osm'; ?>">
+            <?php echo $pk_use_kakao ? '카카오 지도' : 'OpenStreetMap'; ?>
         </span>
     </div>
-    <div class="card-body">
+    <div class="mp-card-body">
         <!-- 주소 → 좌표 변환 -->
-        <div class="mb-3">
-            <div class="input-group input-group-sm">
-                <input type="text" class="form-control" id="mpSearchInput" placeholder="주소 또는 장소명으로 검색...">
-                <button type="button" class="btn btn-outline-primary" onclick="mpSearchAddress()">
-                    <i class="bi bi-search me-1"></i>검색
-                </button>
-                <button type="button" class="btn btn-outline-success" onclick="mpGeocodeFromAddress()">
-                    <i class="bi bi-pin-map me-1"></i>주소 필드에서 변환
-                </button>
+        <div class="mp-search">
+            <div class="mp-search-box">
+                <i class="bi bi-search"></i>
+                <input type="text" id="mpSearchInput" placeholder="주소 또는 장소명으로 검색...">
             </div>
-            <div class="form-text">지도를 클릭하거나 마커를 드래그하여 정확한 위치를 지정하세요</div>
+            <button type="button" class="mp-btn mp-btn-primary" onclick="mpSearchAddress()">검색</button>
+            <button type="button" class="mp-btn mp-btn-ghost" onclick="mpGeocodeFromAddress()">
+                <i class="bi bi-pin-map"></i>주소 변환
+            </button>
         </div>
+        <div class="mp-hint"><i class="bi bi-hand-index-thumb"></i> 지도를 클릭하거나 마커를 드래그하여 정확한 위치를 지정하세요</div>
 
         <!-- 검색 결과 -->
-        <div id="mpSearchResults" style="display:none;" class="mb-2">
-            <div class="list-group list-group-flush" id="mpResultList" style="max-height:180px;overflow-y:auto;"></div>
+        <div id="mpSearchResults" style="display:none;">
+            <div class="mp-results" id="mpResultList"></div>
         </div>
 
         <!-- 지도 -->
-        <style>
-        /* Leaflet 폴백 시 타일 깨짐 방지 (Bootstrap img{max-width:100%} 충돌) */
-        #mpPickerMap img.leaflet-tile { max-width: none !important; width: 256px !important; height: 256px !important; }
-        #mpPickerMap .leaflet-pane { max-width: none; }
-        /* 카카오 지도 타일도 동일 보호 */
-        #mpPickerMap img { max-width: none; }
-        </style>
-        <div id="mpPickerMap" style="width:100%;height:320px;border-radius:8px;border:1px solid #dee2e6;margin-bottom:12px;"></div>
+        <div class="mp-map">
+            <div class="mp-map-overlay-hint"><i class="bi bi-cursor-fill"></i> 클릭 또는 드래그로 위치 지정</div>
+            <div id="mpPickerMap" style="width:100%;height:100%;"></div>
+        </div>
 
         <!-- 좌표 입력 -->
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">위도 (Latitude)</label>
-                <input type="number" step="any" name="<?php echo $pk_lat_field; ?>" id="mpLatInput"
-                       class="form-control form-control-sm"
-                       value="<?php echo $pk_has_coords ? $pk_lat_val : ''; ?>"
-                       placeholder="37.498095">
+        <div class="mp-coords">
+            <div class="mp-coord-field">
+                <label>위도 (Latitude)</label>
+                <div class="mp-coord-input-wrap">
+                    <i class="bi bi-arrows-collapse"></i>
+                    <input type="number" step="any" name="<?php echo $pk_lat_field; ?>" id="mpLatInput"
+                           value="<?php echo $pk_has_coords ? $pk_lat_val : ''; ?>" placeholder="37.498095">
+                </div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">경도 (Longitude)</label>
-                <input type="number" step="any" name="<?php echo $pk_lng_field; ?>" id="mpLngInput"
-                       class="form-control form-control-sm"
-                       value="<?php echo $pk_has_coords ? $pk_lng_val : ''; ?>"
-                       placeholder="127.027610">
+            <div class="mp-coord-field">
+                <label>경도 (Longitude)</label>
+                <div class="mp-coord-input-wrap">
+                    <i class="bi bi-arrows-expand"></i>
+                    <input type="number" step="any" name="<?php echo $pk_lng_field; ?>" id="mpLngInput"
+                           value="<?php echo $pk_has_coords ? $pk_lng_val : ''; ?>" placeholder="127.027610">
+                </div>
             </div>
         </div>
     </div>
