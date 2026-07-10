@@ -27,6 +27,11 @@ loadThemeSettings($connect);
 check_admin_login();
 check_permission('hospital_treatments');
 
+// 병원 역할 격리: get_hospital_filter() 는 super_admin/admin/editor(hospital_id 없음)면 null(전체),
+// hospital_* 역할이면 자기 hospital_id 를 반환 → superadmin 은 전체, 병원 관리자는 자기 병원만.
+require_once __DIR__ . '/includes/hospital_filter.php';
+$my_hid = get_hospital_filter();
+
 // 승인 워크플로우 헬퍼
 require_once __DIR__ . '/includes/treatment_approval_helper.php';
 ensure_treatment_approval_schema($connect);
@@ -42,13 +47,18 @@ function verify_csrf_ht($token) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
 }
 
-// ===== 병원 목록 로드 =====
+// ===== 병원 목록 로드 (병원 역할은 자기 병원만) =====
 $hospitals = [];
-$h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1 ORDER BY name ASC");
+if ($my_hid) {
+    $h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1 AND id = " . intval($my_hid) . " ORDER BY name ASC");
+} else {
+    $h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1 ORDER BY name ASC");
+}
 if ($h_r) while ($h = mysqli_fetch_assoc($h_r)) $hospitals[] = $h;
 
-// 선택된 병원
+// 선택된 병원 (병원 역할은 자기 병원으로 고정 — GET/POST 로 다른 병원 선택 불가)
 $hospital_id = intval($_GET['hospital_id'] ?? $_POST['hospital_id'] ?? 0);
+if ($my_hid) $hospital_id = $my_hid;
 
 // 카테고리 목록
 $categories = [];
@@ -76,6 +86,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $msg = 'CSRF 토큰이 유효하지 않습니다. 페이지를 새로고침해주세요.';
         $msg_type = 'danger';
     } else {
+
+        // 병원 역할 격리: 자기 병원으로 강제 + id 기반 액션(해제/가격/승인/거절/프로모션)의
+        // 대상 행이 자기 병원 소속인지 검증하여 다른 병원 데이터 변경을 차단한다.
+        if ($my_hid) {
+            $post_hospital_id = $my_hid;
+            $row_id = intval($_POST['id'] ?? 0);
+            if ($row_id > 0) {
+                $own = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_hospital_treatments WHERE id = ?");
+                mysqli_stmt_bind_param($own, 'i', $row_id);
+                mysqli_stmt_execute($own);
+                $own_row = mysqli_fetch_assoc(mysqli_stmt_get_result($own));
+                mysqli_stmt_close($own);
+                if (!$own_row || intval($own_row['hospital_id']) !== $my_hid) {
+                    header('Location: admin_hospital_treatments.php?msg=' . urlencode('접근 권한이 없습니다.'));
+                    exit;
+                }
+            }
+        }
 
         // --- 시술 배정 (벌크) ---
         if ($action === 'assign' && $post_hospital_id > 0) {
@@ -119,14 +147,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     mysqli_stmt_bind_param($stmt, 'iiiiss', $post_hospital_id, $tid, $p_min, $p_max, $status, $registered_by);
                     if (mysqli_stmt_execute($stmt)) {
                         $added++;
-                        // 가격 이력 기록
-                        $admin_name = $_SESSION['ad_admin_name'] ?? 'admin';
-                        $hist = mysqli_prepare($connect,
-                            "INSERT INTO gangnamunni_treatment_price_history (hospital_id, treatment_id, price_min, price_max, changed_by, recorded_at)
-                             VALUES (?, ?, ?, ?, ?, NOW())");
-                        mysqli_stmt_bind_param($hist, 'iiiis', $post_hospital_id, $tid, $p_min, $p_max, $admin_name);
-                        mysqli_stmt_execute($hist);
-                        mysqli_stmt_close($hist);
+                        // 기본 가격 옵션 1건 생성 (샷수/용량 1회, 가격=마스터 기준) — 최소 1건 보장
+                        $new_ht_id = mysqli_insert_id($connect);
+                        $def_price = $p_max > 0 ? $p_max : $p_min;
+                        try {
+                            $op = mysqli_prepare($connect, "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, 1, '회', ?, 0)");
+                            mysqli_stmt_bind_param($op, 'ii', $new_ht_id, $def_price);
+                            mysqli_stmt_execute($op);
+                            mysqli_stmt_close($op);
+                        } catch (\mysqli_sql_exception $e) {
+                            error_log('[hospital_treatments] 기본 가격 옵션 insert 실패: ' . $e->getMessage());
+                        }
+                        // 가격 이력 기록 — changed_by 는 enum('admin','hospital','system') 이므로
+                        // 이름 문자열($admin_name)을 넣으면 "Data truncated" 예외로 루프가 중단돼
+                        // 선택한 시술 중 첫 1건만 배정되던 버그가 발생. 유효한 enum 값으로 저장하고,
+                        // 이력 기록 실패가 배정 전체를 막지 않도록 try/catch 로 격리한다.
+                        $changed_by = $my_hid ? 'hospital' : 'admin';
+                        try {
+                            $hist = mysqli_prepare($connect,
+                                "INSERT INTO gangnamunni_treatment_price_history (hospital_id, treatment_id, price_min, price_max, changed_by, recorded_at)
+                                 VALUES (?, ?, ?, ?, ?, NOW())");
+                            mysqli_stmt_bind_param($hist, 'iiiis', $post_hospital_id, $tid, $p_min, $p_max, $changed_by);
+                            mysqli_stmt_execute($hist);
+                            mysqli_stmt_close($hist);
+                        } catch (\mysqli_sql_exception $e) {
+                            error_log('[hospital_treatments] price_history(assign) insert 실패: ' . $e->getMessage());
+                        }
                     }
                     mysqli_stmt_close($stmt);
                 }
@@ -150,43 +196,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // --- 가격 수정 ---
+        // --- 가격 수정 (샷수/용량·단위·가격 여러 개) ---
         if ($action === 'update_price') {
             $id = intval($_POST['id'] ?? 0);
-            $new_price_min = intval($_POST['price_min'] ?? 0);
-            $new_price_max = intval($_POST['price_max'] ?? 0);
-            $new_dosage_value = trim($_POST['dosage_value'] ?? '') !== '' ? floatval($_POST['dosage_value']) : null;
-            $new_dosage_unit = trim($_POST['dosage_unit'] ?? '') !== '' ? trim($_POST['dosage_unit']) : null;
-            if ($id > 0) {
-                // 기존 데이터 조회 (이력 기록용)
+            // 배열로 전달된 가격 옵션들 (단일 값이 오면 배열로 감싼다)
+            $in_dv = $_POST['dosage_value'] ?? [];
+            $in_du = $_POST['dosage_unit'] ?? [];
+            $in_pr = $_POST['price'] ?? [];
+            if (!is_array($in_dv)) $in_dv = [$in_dv];
+            if (!is_array($in_du)) $in_du = [$in_du];
+            if (!is_array($in_pr)) $in_pr = [$in_pr];
+
+            // 유효한 옵션만 추출 (샷수/용량 > 0). 최소 1건 필요.
+            $options = [];
+            $cnt = max(count($in_dv), count($in_pr));
+            for ($i = 0; $i < $cnt; $i++) {
+                $dv = (isset($in_dv[$i]) && trim((string)$in_dv[$i]) !== '') ? floatval($in_dv[$i]) : 0;
+                $du = isset($in_du[$i]) ? trim((string)$in_du[$i]) : '';
+                $pr = (isset($in_pr[$i]) && trim((string)$in_pr[$i]) !== '') ? intval($in_pr[$i]) : 0;
+                if ($dv > 0) $options[] = ['dv' => $dv, 'du' => $du, 'pr' => max(0, $pr)];
+            }
+
+            if ($id <= 0) {
+                $msg = '잘못된 요청입니다.'; $msg_type = 'danger';
+            } elseif (empty($options)) {
+                $msg = '최소 1개의 샷수/용량과 가격을 입력해주세요.'; $msg_type = 'warning';
+            } else {
+                // 대상 행 조회 (이력 기록용)
                 $old_stmt = mysqli_prepare($connect, "SELECT hospital_id, treatment_id FROM gangnamunni_hospital_treatments WHERE id = ?");
                 mysqli_stmt_bind_param($old_stmt, 'i', $id);
                 mysqli_stmt_execute($old_stmt);
-                $old_r = mysqli_stmt_get_result($old_stmt);
-                $old_row = mysqli_fetch_assoc($old_r);
+                $old_row = mysqli_fetch_assoc(mysqli_stmt_get_result($old_stmt));
                 mysqli_stmt_close($old_stmt);
 
-                $stmt = mysqli_prepare($connect,
+                // 기존 옵션 전체 삭제 후 재삽입 (동기화)
+                $del = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_treatment_prices WHERE hospital_treatment_id = ?");
+                mysqli_stmt_bind_param($del, 'i', $id);
+                mysqli_stmt_execute($del);
+                mysqli_stmt_close($del);
+
+                $ins = mysqli_prepare($connect,
+                    "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?)");
+                $prices = [];
+                foreach ($options as $so => $opt) {
+                    mysqli_stmt_bind_param($ins, 'idsii', $id, $opt['dv'], $opt['du'], $opt['pr'], $so);
+                    mysqli_stmt_execute($ins);
+                    $prices[] = $opt['pr'];
+                }
+                mysqli_stmt_close($ins);
+
+                // 부모 price_min/max 재계산(옵션 MIN/MAX) + 대표 용량·단위(첫 옵션) 반영
+                $pmin = min($prices);
+                $pmax = max($prices);
+                $first_dv = $options[0]['dv'];
+                $first_du = $options[0]['du'];
+                $upd = mysqli_prepare($connect,
                     "UPDATE gangnamunni_hospital_treatments SET price_min = ?, price_max = ?, dosage_value = ?, dosage_unit = ?, updated_at = NOW() WHERE id = ?");
-                mysqli_stmt_bind_param($stmt, 'iidsi', $new_price_min, $new_price_max, $new_dosage_value, $new_dosage_unit, $id);
-                if (mysqli_stmt_execute($stmt)) {
-                    // 가격 이력 기록
-                    if ($old_row) {
-                        $admin_name = $_SESSION['ad_admin_name'] ?? 'admin';
+                mysqli_stmt_bind_param($upd, 'iidsi', $pmin, $pmax, $first_dv, $first_du, $id);
+                mysqli_stmt_execute($upd);
+                mysqli_stmt_close($upd);
+
+                // 가격 이력 기록 — changed_by 는 enum('admin','hospital','system'). 이름 문자열 금지.
+                if ($old_row) {
+                    $changed_by = $my_hid ? 'hospital' : 'admin';
+                    try {
                         $hist = mysqli_prepare($connect,
                             "INSERT INTO gangnamunni_treatment_price_history (hospital_id, treatment_id, price_min, price_max, changed_by, recorded_at)
                              VALUES (?, ?, ?, ?, ?, NOW())");
-                        mysqli_stmt_bind_param($hist, 'iiiis', $old_row['hospital_id'], $old_row['treatment_id'], $new_price_min, $new_price_max, $admin_name);
+                        mysqli_stmt_bind_param($hist, 'iiiis', $old_row['hospital_id'], $old_row['treatment_id'], $pmin, $pmax, $changed_by);
                         mysqli_stmt_execute($hist);
                         mysqli_stmt_close($hist);
+                    } catch (\mysqli_sql_exception $e) {
+                        error_log('[hospital_treatments] price_history(update_price) insert 실패: ' . $e->getMessage());
                     }
-                    header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('가격이 수정되었습니다.'));
-                    exit;
-                } else {
-                    $msg = '가격 수정 실패: ' . mysqli_error($connect);
-                    $msg_type = 'danger';
                 }
-                mysqli_stmt_close($stmt);
+                header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('가격이 수정되었습니다.'));
+                exit;
             }
         }
 
@@ -351,6 +436,30 @@ if ($hospital_id > 0) {
     $assign_r = mysqli_stmt_get_result($assign_stmt);
     while ($row = mysqli_fetch_assoc($assign_r)) $assigned_treatments[] = $row;
     mysqli_stmt_close($assign_stmt);
+}
+
+// 배정 시술별 가격 옵션(샷수/용량·단위·가격) 로드 → 수정 모달·목록 표시용
+$ht_prices = [];
+if (!empty($assigned_treatments)) {
+    $ht_ids = array_map(function ($r) { return intval($r['id']); }, $assigned_treatments);
+    $ht_in = implode(',', $ht_ids); // 정수만 담기므로 안전
+    // 마이그레이션 미적용(테이블 없음) 등으로 실패해도 목록 페이지가 500 나지 않도록 방어
+    try {
+        $pr_r = mysqli_query($connect,
+            "SELECT hospital_treatment_id, dosage_value, dosage_unit, price
+             FROM gangnamunni_hospital_treatment_prices
+             WHERE hospital_treatment_id IN ({$ht_in})
+             ORDER BY sort_order ASC, id ASC");
+        if ($pr_r) while ($pr = mysqli_fetch_assoc($pr_r)) {
+            $ht_prices[intval($pr['hospital_treatment_id'])][] = [
+                'dosage_value' => rtrim(rtrim(number_format((float)$pr['dosage_value'], 2, '.', ''), '0'), '.'),
+                'dosage_unit'  => $pr['dosage_unit'],
+                'price'        => intval($pr['price']),
+            ];
+        }
+    } catch (\mysqli_sql_exception $e) {
+        error_log('[hospital_treatments] 가격 옵션 로드 실패(마이그레이션 확인): ' . $e->getMessage());
+    }
 }
 
 // ===== 미배정 시술 목록 (추가용) =====
@@ -664,22 +773,31 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td class="text-center"><span class="badge bg-info text-dark"><?php echo htmlspecialchars($at['category_name'] ?? '-'); ?></span></td>
                         <td class="text-center">
                             <?php
+                            $opts = $ht_prices[intval($at['id'])] ?? [];
                             $disp_min = intval($at['price_min']);
                             $disp_max = intval($at['price_max']);
-                            $is_default = ($disp_min == 0 && $disp_max == 0);
+                            $is_default = ($disp_min == 0 && $disp_max == 0 && empty($opts));
                             if ($is_default) {
                                 $disp_min = intval($at['avg_price_min'] ?? 0);
                                 $disp_max = intval($at['avg_price_max'] ?? 0);
                             }
                             ?>
                             <span class="text-nowrap<?php echo $is_default ? ' text-muted fst-italic' : ''; ?>">
-                                <?php echo number_format($disp_min); ?>~<?php echo number_format($disp_max); ?>만원
+                                <?php if ($disp_min == $disp_max): ?>
+                                    <?php echo number_format($disp_min); ?>만원
+                                <?php else: ?>
+                                    <?php echo number_format($disp_min); ?>~<?php echo number_format($disp_max); ?>만원
+                                <?php endif; ?>
                             </span>
                             <?php if ($is_default && ($disp_min > 0 || $disp_max > 0)): ?>
                             <br><small class="text-muted">(기본값)</small>
                             <?php endif; ?>
-                            <?php if ($at['dosage_value'] !== null && $at['dosage_unit']): ?>
-                            <br><span class="badge bg-light text-dark border"><?php echo rtrim(rtrim(number_format((float)$at['dosage_value'], 2), '0'), '.'); ?><?php echo htmlspecialchars($at['dosage_unit']); ?></span>
+                            <?php if (!empty($opts)): ?>
+                            <div class="mt-1 d-flex flex-wrap gap-1 justify-content-center">
+                                <?php foreach ($opts as $op): ?>
+                                <span class="badge bg-light text-dark border"><?php echo htmlspecialchars($op['dosage_value'] . $op['dosage_unit']); ?> · <?php echo number_format($op['price']); ?>만</span>
+                                <?php endforeach; ?>
+                            </div>
                             <?php endif; ?>
                         </td>
                         <td class="text-center">
@@ -706,7 +824,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td class="text-center">
                             <!-- 가격 수정 -->
                             <button class="btn btn-outline-primary btn-sm" title="가격 수정"
-                                onclick="openPriceModal(<?php echo intval($at['id']); ?>, <?php echo intval($at['price_min']); ?>, <?php echo intval($at['price_max']); ?>, '<?php echo htmlspecialchars(addslashes($at['treatment_name'] ?? ''), ENT_QUOTES); ?>', <?php echo $at['dosage_value'] !== null ? (float)$at['dosage_value'] : 'null'; ?>, '<?php echo htmlspecialchars(addslashes($at['dosage_unit'] ?? ''), ENT_QUOTES); ?>')">
+                                onclick="openPriceModal(<?php echo intval($at['id']); ?>, '<?php echo htmlspecialchars(addslashes($at['treatment_name'] ?? ''), ENT_QUOTES); ?>')">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <!-- 배정 해제 -->
@@ -898,35 +1016,18 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-3">시술: <strong id="price_treatment_name"></strong></p>
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <label class="form-label fw-bold">최소 가격 (만원)</label>
-                            <input type="number" name="price_min" id="price_min" class="form-control" min="0" step="1" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-bold">최대 가격 (만원)</label>
-                            <input type="number" name="price_max" id="price_max" class="form-control" min="0" step="1" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-bold">샷수/용량 (선택)</label>
-                            <input type="number" name="dosage_value" id="dosage_value" class="form-control" min="0" step="0.01" placeholder="예: 600">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-bold">단위</label>
-                            <select name="dosage_unit" id="dosage_unit" class="form-select">
-                                <option value="">-- 단위 없음 --</option>
-                                <option value="샷">샷</option>
-                                <option value="cc">cc</option>
-                                <option value="ml">ml</option>
-                                <option value="회">회</option>
-                                <option value="병">병</option>
-                                <option value="IU">IU</option>
-                                <option value="기타">기타</option>
-                            </select>
-                        </div>
+                    <p class="mb-2">시술: <strong id="price_treatment_name"></strong></p>
+                    <div class="d-flex fw-bold text-muted small px-1 mb-1" style="gap:8px;">
+                        <div style="flex:1;">샷수/용량</div>
+                        <div style="width:96px;">단위</div>
+                        <div style="width:110px;">가격 (만원)</div>
+                        <div style="width:34px;"></div>
                     </div>
-                    <div class="form-text mt-2">가격 변경은 이력에 자동 기록됩니다. 샷수/용량은 시술 종류와 별도로 관리됩니다.</div>
+                    <div id="priceRows"></div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addPriceRow()">
+                        <i class="bi bi-plus-lg me-1"></i>샷수/용량 추가
+                    </button>
+                    <div class="form-text mt-2">최소 1개 이상 입력해야 합니다. 2개 이상이면 목록에 가격 범위(최소~최대)로 표시됩니다. 변경은 이력에 자동 기록됩니다.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
@@ -968,13 +1069,49 @@ require_once __DIR__ . '/includes/admin_header.php';
 
 <script>
 // 가격 수정 모달
-function openPriceModal(id, priceMin, priceMax, name, dosageValue, dosageUnit) {
+// 배정 시술별 가격 옵션 맵 (id → [{dosage_value, dosage_unit, price}, ...])
+var HT_PRICES = <?php echo json_encode($ht_prices, JSON_UNESCAPED_UNICODE); ?>;
+var PRICE_UNITS = ['샷','cc','ml','회','병','IU','기타'];
+
+function priceRowHtml(dv, du, pr) {
+    var opts = PRICE_UNITS.map(function(u){
+        return '<option value="'+u+'"'+(u===du?' selected':'')+'>'+u+'</option>';
+    }).join('');
+    return '<div class="d-flex align-items-center mb-2 price-row" style="gap:8px;">' +
+        '<input type="number" name="dosage_value[]" class="form-control form-control-sm" style="flex:1;" min="0" step="0.01" placeholder="예: 100" value="'+(dv==null?'':dv)+'">' +
+        '<select name="dosage_unit[]" class="form-select form-select-sm" style="width:96px;">'+opts+'</select>' +
+        '<input type="number" name="price[]" class="form-control form-control-sm" style="width:110px;" min="0" step="1" placeholder="가격" value="'+(pr==null?'':pr)+'">' +
+        '<button type="button" class="btn btn-outline-danger btn-sm price-del" style="width:34px;" onclick="removePriceRow(this)"><i class="bi bi-x-lg"></i></button>' +
+        '</div>';
+}
+
+function addPriceRow(dv, du, pr) {
+    document.getElementById('priceRows').insertAdjacentHTML('beforeend', priceRowHtml(dv, du || '회', pr));
+    refreshPriceDelButtons();
+}
+
+function removePriceRow(btn) {
+    var row = btn.closest('.price-row');
+    if (row) row.remove();
+    refreshPriceDelButtons();
+}
+
+// 최소 1개 유지 — 행이 1개뿐이면 삭제 버튼 비활성화
+function refreshPriceDelButtons() {
+    var rows = document.querySelectorAll('#priceRows .price-row');
+    rows.forEach(function(r){
+        var del = r.querySelector('.price-del');
+        if (del) del.disabled = (rows.length <= 1);
+    });
+}
+
+function openPriceModal(id, name) {
     document.getElementById('price_id').value = id;
-    document.getElementById('price_min').value = priceMin;
-    document.getElementById('price_max').value = priceMax;
-    document.getElementById('dosage_value').value = dosageValue || '';
-    document.getElementById('dosage_unit').value = dosageUnit || '';
     document.getElementById('price_treatment_name').textContent = name;
+    document.getElementById('priceRows').innerHTML = '';
+    var list = HT_PRICES[id] || [];
+    if (!list.length) list = [{dosage_value:'', dosage_unit:'회', price:''}];
+    list.forEach(function(o){ addPriceRow(o.dosage_value, o.dosage_unit, o.price); });
     new bootstrap.Modal(document.getElementById('priceModal')).show();
 }
 
