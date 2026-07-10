@@ -136,6 +136,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                 }
             }
 
+            // JSON 컬럼 정규화 — gangnamunni_hospitals 에 json_valid() CHECK 제약이 걸려 있어
+            // (categories/treatment_tags/business_hours) 반드시 유효한 JSON 이어야 함.
+            // CSV 문자열/빈 값을 그대로 넣으면 CHECK 위반으로 INSERT 가 실패(500)한다.
+            // admin_hospitals.php 의 승인 로직과 동일한 방식으로 정규화한다.
+            $normalize_json_list = function($raw) {
+                $raw = trim($raw);
+                if ($raw === '') return '[]';
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded)) return $raw; // 이미 유효한 JSON
+                $items = array_values(array_filter(array_map('trim', explode(',', $raw)), function($v){ return $v !== ''; }));
+                return json_encode($items, JSON_UNESCAPED_UNICODE);
+            };
+            $categories     = $normalize_json_list($categories);
+            $treatment_tags = $normalize_json_list($treatment_tags);
+            // 영업시간: 자유 텍스트이므로 JSON 객체로 저장(원문은 note 에 보존) — {} 로 버리지 않고 유지
+            $business_hours = ($business_hours === '')
+                ? '{}'
+                : (is_array(json_decode($business_hours, true)) ? $business_hours
+                   : json_encode(['note' => $business_hours], JSON_UNESCAPED_UNICODE));
+
             // DB INSERT
             if (empty($error)) {
                 $stmt = mysqli_prepare($connect,
@@ -151,7 +171,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                         $cert_business_path, $cert_medical_path, $applied_by,
                         $is_demo_val
                     );
-                    if (mysqli_stmt_execute($stmt)) {
+                    // mysqli 가 STRICT 모드(예외 발생)로 설정돼 있어 execute 실패 시 throw 되므로
+                    // try/catch 로 감싸 500 대신 사용자 친화적 오류 메시지를 보여준다.
+                    $insert_ok = false;
+                    try {
+                        $insert_ok = mysqli_stmt_execute($stmt);
+                    } catch (\mysqli_sql_exception $e) {
+                        $insert_ok = false;
+                        error_log('[hospital_apply] INSERT 실패: ' . $e->getMessage());
+                    }
+                    if ($insert_ok) {
                         $new_id = mysqli_insert_id($connect);
                         $success = true;
                         $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
@@ -187,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                             ['hospital_id' => $new_id]
                         );
                     } else {
-                        $error = '신청 저장 실패: ' . mysqli_error($connect);
+                        $error = '신청 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.';
                     }
                     mysqli_stmt_close($stmt);
                 } else {

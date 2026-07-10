@@ -11,6 +11,11 @@ if (!function_exists('create_user_notification')) {
 if (!function_exists('send_push_to_all_admins')) {
     require_once __DIR__ . '/admin_fcm.php';
 }
+// admin_notifications.php 를 전역 스코프에서 로드해 $DEFAULT_NOTIFICATIONS 를 전역에 설정한다.
+// (admin_fcm.php가 함수 내부에서 지연 require 하면 전역 미설정 → should_receive_notification 기본값 누락)
+if (!function_exists('should_receive_notification')) {
+    require_once __DIR__ . '/admin_notifications.php';
+}
 
 /**
  * 관리자 전체에게 알림 (인앱 + FCM)

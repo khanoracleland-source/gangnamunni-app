@@ -83,15 +83,19 @@ function create_notification($connect, $type, $title, $message = null, $link = n
  */
 function should_receive_notification($admin_row, $type) {
     global $DEFAULT_NOTIFICATIONS;
+    // admin_fcm.php가 이 파일을 함수 내부에서 지연 require 하면 $DEFAULT_NOTIFICATIONS가
+    // 전역에 설정되지 않아 null 이 될 수 있다 → in_array(null) TypeError(500) 방지용 방어 코드.
+    $defaults = is_array($DEFAULT_NOTIFICATIONS) ? $DEFAULT_NOTIFICATIONS : [];
     $perms = json_decode($admin_row['permissions'] ?? '{}', true);
     if (!is_array($perms)) $perms = [];
 
     // notifications 키가 없으면 기본값 사용
     if (!isset($perms['notifications'])) {
-        return in_array($type, $DEFAULT_NOTIFICATIONS);
+        return in_array($type, $defaults);
     }
 
-    return in_array($type, $perms['notifications']);
+    $subscribed = is_array($perms['notifications']) ? $perms['notifications'] : [];
+    return in_array($type, $subscribed);
 }
 
 /**
