@@ -28,6 +28,10 @@ if (!function_exists('term')) {
 
 $page_title = term('business', '병원') . ' 등록 신청 — ' . term('site_name', '서울미녀');
 
+// 앱 모드(?app=1): 모바일 앱 WebView 에서 회원가입 → '병원관계자' 선택 시 진입.
+// 앱은 자체 헤더가 있으므로 상단 히어로 헤더를 숨기고 여백을 줄여 임베드 친화적으로 렌더한다.
+$is_app_mode = isset($_GET['app']) && $_GET['app'] == '1';
+
 // 신청 기능 활성화 체크
 $apply_enabled = true;
 $res_set = mysqli_query($connect, "SELECT setting_value FROM gangnamunni_settings WHERE setting_key='show_hospital_apply' LIMIT 1");
@@ -247,17 +251,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
         .btn-submit { background: var(--sb-primary); border: none; padding: 14px 50px; font-size: 1.1rem; font-weight: 700; border-radius: 50px; }
         .btn-submit:hover { background: #5a4bd1; }
         .hp-field { position: absolute; left: -9999px; }
+        <?php if ($is_app_mode): ?>
+        /* 앱 모드: 히어로 헤더 숨김 + 여백 축소 (앱 자체 헤더 존재) */
+        body.app-mode { background: #fff; }
+        body.app-mode .form-card { margin-top: 16px; box-shadow: none; border: 1px solid #eee; }
+        body.app-mode .container { padding-left: 12px; padding-right: 12px; }
+        <?php endif; ?>
     </style>
 </head>
-<body>
+<body class="<?= $is_app_mode ? 'app-mode' : '' ?>">
 
-<!-- 상단 -->
+<?php if (!$is_app_mode): ?>
+<!-- 상단 (웹 전용 히어로 헤더) -->
 <div class="form-header">
     <div class="container">
         <h1><i class="bi bi-hospital me-2"></i><?= term('business', '병원') ?> 등록 신청</h1>
         <p class="mb-0 opacity-75"><?= term('site_name', '서울미녀') ?> 플랫폼 입점 신청서</p>
     </div>
 </div>
+<?php endif; ?>
 
 <div class="container">
 

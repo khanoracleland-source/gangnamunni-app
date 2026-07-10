@@ -286,7 +286,7 @@ if($mb_recommend) {
             
             <li>
             <div class="btn_confirm">
-                <button type="submit" class="btn_submit font-B">다음 단계로</button>
+                <button type="submit" class="btn_submit font-B" onclick="return regNextStep();">다음 단계로</button>
             </div>
             </li>
             
@@ -351,6 +351,21 @@ if($mb_recommend) {
         }
     });
 
+    // '다음 단계로' 버튼 클릭 시 가장 먼저 실행 — 병원관계자면 폼 제출(register_form.php) 대신
+    // 병원 등록 신청 페이지로 즉시 이동한다. onsubmit 체인·약관 검증에 의존하지 않아 가장 안정적이다.
+    function regNextStep() {
+        var checked = document.querySelector('input[name="mb_type"]:checked');
+        if (!checked) {
+            alert("회원 유형을 선택해주세요.");
+            return false;
+        }
+        if (checked.value === 'hospital') {
+            location.href = '<?php echo G5_URL; ?>/gangnamunni/hospital_apply_public.php?app=1';
+            return false; // 폼 제출 취소
+        }
+        return true; // 일반 회원 → 기존 제출 로직(fregister_submit) 진행
+    }
+
     function fregister_submit(f)
     {
         // 회원유형 선택 확인
@@ -358,7 +373,13 @@ if($mb_recommend) {
             alert("회원 유형을 선택해주세요.");
             return false;
         }
-        
+
+        // 병원관계자: 일반 회원가입 대신 병원 등록 신청(앱 친화) 페이지로 이동. (버튼 onclick 이 우선 처리)
+        if (f.mb_type.value === 'hospital') {
+            location.href = '<?php echo G5_URL; ?>/gangnamunni/hospital_apply_public.php?app=1';
+            return false;
+        }
+
         if (!f.agree11.checked) {
             alert("회원가입약관의 내용에 동의하셔야 회원가입 하실 수 있습니다.");
             f.agree11.focus();
