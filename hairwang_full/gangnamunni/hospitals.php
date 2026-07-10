@@ -281,8 +281,19 @@ $hospital_treatment_descs = [];
 if (!empty($hospitals) && !empty($effective_treatment)) {
     $h_ids = array_column($hospitals, 'id');
     $h_ids_str = implode(',', array_map('intval', $h_ids));
+    // 병원이 admin_hospital_treatments 에서 설정한 가격(옵션)을 우선 사용한다.
+    //  - 옵션에 가격(>0)이 있으면: 최저~최고 (옵션이 1개이거나 최저=최고면 최고 숨김 → 단일가)
+    //  - 설정된 가격이 없으면: 기본 시술(마스터) 가격(avg_price_min~avg_price_max) 로 폴백
     $_td_sql = "
-        SELECT ht.hospital_id, tm.name AS treatment_name, tm.description, ht.price_min, ht.price_max, ht.dosage_value, ht.dosage_unit
+        SELECT ht.hospital_id, tm.name AS treatment_name, tm.description,
+               ht.dosage_value, ht.dosage_unit,
+               tm.avg_price_min AS default_min, tm.avg_price_max AS default_max,
+               (SELECT COUNT(*) FROM gangnamunni_hospital_treatment_prices p
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_priced_count,
+               (SELECT MIN(p.price) FROM gangnamunni_hospital_treatment_prices p
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_min,
+               (SELECT MAX(p.price) FROM gangnamunni_hospital_treatment_prices p
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_max
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         WHERE ht.hospital_id IN ({$h_ids_str})
@@ -293,11 +304,27 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
     $_td_result = mysqli_query($connect, $_td_sql);
     if ($_td_result) {
         while ($_td_row = mysqli_fetch_assoc($_td_result)) {
+            $opt_priced = (int)($_td_row['opt_priced_count'] ?? 0);
+            $opt_min    = (int)($_td_row['opt_min'] ?? 0);
+            $opt_max    = (int)($_td_row['opt_max'] ?? 0);
+            $def_min    = (int)($_td_row['default_min'] ?? 0);
+            $def_max    = (int)($_td_row['default_max'] ?? 0);
+
+            if ($opt_priced >= 1 && $opt_max > 0) {
+                // 병원이 직접 설정한 가격
+                $final_min = $opt_min;
+                $final_max = ($opt_priced <= 1 || $opt_min >= $opt_max) ? 0 : $opt_max; // 단일이면 최고가 숨김
+            } else {
+                // 병원 미설정 → 기본 시술(마스터) 가격
+                $final_min = $def_min > 0 ? $def_min : $def_max;
+                $final_max = ($def_min > 0 && $def_max > $def_min) ? $def_max : 0;
+            }
+
             $hospital_treatment_descs[(int)$_td_row['hospital_id']] = [
                 'name' => $_td_row['treatment_name'],
                 'desc' => $_td_row['description'],
-                'price_min' => $_td_row['price_min'] ?? null,
-                'price_max' => $_td_row['price_max'] ?? null,
+                'price_min' => $final_min,
+                'price_max' => $final_max,
                 'dosage_value' => $_td_row['dosage_value'] ?? null,
                 'dosage_unit' => $_td_row['dosage_unit'] ?? null,
             ];
