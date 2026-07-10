@@ -34,7 +34,10 @@ if ($is_admin && isset($_GET['hospital_id']) && intval($_GET['hospital_id']) > 0
 }
 
 if (!$hospital_id) {
-    header('Location: dashboard.php');
+    $return_page = basename($_SERVER['PHP_SELF'] ?? 'partner_treatments.php');
+    $qs = $_SERVER['QUERY_STRING'] ?? '';
+    if ($qs !== '') $return_page .= '?' . $qs;
+    header('Location: dashboard.php?return=' . urlencode($return_page));
     exit;
 }
 

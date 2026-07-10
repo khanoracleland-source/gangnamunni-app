@@ -18,8 +18,8 @@ $ADMIN_ROLE_PERMISSIONS = [
     'staff' => ['dashboard', 'hospitals', 'reviews', 'bookings', 'notifications', 'members'],
 
     // === 병원 역할 (hospital_id 기반 격리) ===
-    'hospital_super_admin' => ['dashboard', 'hospitals', 'hospital_images', 'doctors', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'members', 'tips', 'categories', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_admins', 'hospital_stats'],
-    'hospital_admin' => ['dashboard', 'hospitals', 'hospital_images', 'doctors', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'members', 'tips', 'categories', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings'],
+    'hospital_super_admin' => ['dashboard', 'hospitals', 'hospital_images', 'doctors', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'members', 'tips', 'categories', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_admins', 'hospital_stats'],
+    'hospital_admin' => ['dashboard', 'hospitals', 'hospital_images', 'doctors', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'members', 'tips', 'categories', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings'],
     'hospital_sub_admin' => ['dashboard', 'hospitals', 'doctors', 'reviews', 'bookings', 'partner_treatments', 'notifications'],
     'hospital_staff' => ['dashboard', 'bookings', 'reviews', 'notifications'],
 ];
@@ -76,21 +76,10 @@ function is_hospital_role() {
 }
 
 /**
- * 관리자 로그인 처리
+ * 관리자 세션 저장
  */
-function admin_login($username, $password, $connect) {
-    $username = trim($username);
-    $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_admins WHERE username = ? AND is_active = 1");
-    if (!$stmt) return false;
-    mysqli_stmt_bind_param($stmt, 's', $username);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    $admin = mysqli_fetch_assoc($result);
-    mysqli_stmt_close($stmt);
-
-    if (!$admin || !password_verify($password, $admin['password'])) {
-        return false;
-    }
+function admin_set_session($admin, $connect = null) {
+    if (!$admin || empty($admin['id'])) return false;
 
     // 세션에 관리자 정보 저장
     $_SESSION['ad_admin_logged_in'] = true;
@@ -105,15 +94,145 @@ function admin_login($username, $password, $connect) {
     $_SESSION['partner_hospital_id'] = $admin['hospital_id'] ?? null;
 
     // 마지막 로그인 시간 업데이트
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    $update = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET last_login_at = NOW(), last_login_ip = ? WHERE id = ?");
-    if ($update) {
-        mysqli_stmt_bind_param($update, 'si', $ip, $admin['id']);
-        mysqli_stmt_execute($update);
-        mysqli_stmt_close($update);
+    if ($connect) {
+        try {
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+            $update = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET last_login_at = NOW(), last_login_ip = ? WHERE id = ?");
+            if ($update) {
+                mysqli_stmt_bind_param($update, 'si', $ip, $admin['id']);
+                mysqli_stmt_execute($update);
+                mysqli_stmt_close($update);
+            }
+        } catch (Throwable $e) {
+            error_log('[admin_set_session] last login update failed: ' . $e->getMessage());
+        }
     }
 
     return true;
+}
+
+/**
+ * 관리자 계정 조회
+ * username/email 및 연결된 Gnuboard mb_id 입력을 허용한다.
+ */
+function admin_find_by_login($login, $connect) {
+    $login = trim($login);
+    if ($login === '') return null;
+
+    try {
+        $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_admins WHERE username = ? AND is_active = 1 LIMIT 1");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 's', $login);
+            mysqli_stmt_execute($stmt);
+            $admin = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+            mysqli_stmt_close($stmt);
+            if ($admin) return $admin;
+        }
+
+        $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_admins WHERE email = ? AND is_active = 1 LIMIT 1");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 's', $login);
+            mysqli_stmt_execute($stmt);
+            $admin = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+            mysqli_stmt_close($stmt);
+            if ($admin) return $admin;
+        }
+
+        $stmt = mysqli_prepare($connect, "SELECT mb_email FROM g5_member WHERE mb_id = ? OR mb_email = ? LIMIT 1");
+        if (!$stmt) return null;
+
+        mysqli_stmt_bind_param($stmt, 'ss', $login, $login);
+        mysqli_stmt_execute($stmt);
+        $member = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        mysqli_stmt_close($stmt);
+
+        if (empty($member['mb_email'])) return null;
+
+        $email = $member['mb_email'];
+        $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_admins WHERE (username = ? OR email = ?) AND is_active = 1 LIMIT 1");
+        if (!$stmt) return null;
+
+        mysqli_stmt_bind_param($stmt, 'ss', $email, $email);
+        mysqli_stmt_execute($stmt);
+        $admin = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        mysqli_stmt_close($stmt);
+
+        return $admin ?: null;
+    } catch (Throwable $e) {
+        error_log('[admin_find_by_login] ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * 관리자 로그인 처리
+ */
+function admin_login($username, $password, $connect) {
+    try {
+        $admin = admin_find_by_login($username, $connect);
+
+        if (!$admin || !password_verify($password, $admin['password'])) {
+            return false;
+        }
+
+        return admin_set_session($admin, $connect);
+    } catch (Throwable $e) {
+        error_log('[admin_login] ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Gnuboard SSO 토큰으로 병원 관리자 세션 자동 생성
+ */
+function admin_login_from_sso($connect) {
+    if (check_admin_login()) return true;
+
+    try {
+        $token = $_COOKIE['sb_sso_token'] ?? '';
+        if (empty($token) || strlen($token) !== 64) return false;
+
+        $stmt = mysqli_prepare($connect,
+            "SELECT s.g5_mb_id, m.mb_email
+               FROM sso_tokens s
+          LEFT JOIN g5_member m ON m.mb_id = s.g5_mb_id
+              WHERE s.token = ? AND s.expires_at > NOW()
+              LIMIT 1"
+        );
+        if (!$stmt) return false;
+
+        mysqli_stmt_bind_param($stmt, 's', $token);
+        mysqli_stmt_execute($stmt);
+        $sso = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        mysqli_stmt_close($stmt);
+
+        if (!$sso || empty($sso['g5_mb_id'])) return false;
+
+        $g5_mb_id = $sso['g5_mb_id'];
+        $email = $sso['mb_email'] ?? '';
+
+        $stmt = mysqli_prepare($connect,
+            "SELECT *
+               FROM gangnamunni_admins
+              WHERE is_active = 1
+                AND role IN ('hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff')
+                AND (username = ? OR email = ? OR username = ?)
+              LIMIT 1"
+        );
+        if (!$stmt) return false;
+
+        mysqli_stmt_bind_param($stmt, 'sss', $g5_mb_id, $email, $email);
+        mysqli_stmt_execute($stmt);
+        $admin = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        mysqli_stmt_close($stmt);
+
+        if (!$admin) return false;
+
+        return admin_set_session($admin, $connect);
+    } catch (Throwable $e) {
+        error_log('[admin_login_from_sso] ' . $e->getMessage());
+        return false;
+    }
 }
 
 /**
@@ -151,6 +270,8 @@ function get_current_admin() {
         'username' => $_SESSION['ad_admin_user'] ?? '',
         'name' => $_SESSION['ad_admin_name'] ?? '',
         'role' => $_SESSION['ad_admin_role'] ?? 'viewer',
+        'hospital_id' => $_SESSION['ad_admin_hospital_id'] ?? null,
+        'hospital_name' => $_SESSION['ad_admin_hospital_name'] ?? '',
         'permissions' => $_SESSION['ad_admin_permissions'] ?? [],
     ];
 }

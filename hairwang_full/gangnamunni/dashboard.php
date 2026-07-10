@@ -15,28 +15,51 @@ if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
-// 로그인 체크
-$is_logged_in = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true;
-        // 병원 관리자 hospital_id 세션 저장
-        $_SESSION['ad_admin_hospital_id'] = $admin['hospital_id'] ?? null;
-        $_SESSION['ad_admin_hospital_name'] = $admin['hospital_name'] ?? '';
-
-// 로그인 처리 (DB 기반 admin_login)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
-    if (admin_login($username, $password, $connect)) {
-        header('Location: dashboard.php');
-        exit;
-    } else {
-        $login_error = '로그인 정보가 올바르지 않습니다.';
-    }
+function dashboard_safe_return_url($value) {
+    $value = trim((string)$value);
+    if ($value === '') return 'dashboard.php';
+    $value = str_replace('&amp;', '&', $value);
+    if (preg_match('/^[a-z][a-z0-9+.-]*:/i', $value)) return 'dashboard.php';
+    if (strpos($value, '//') === 0 || strpos($value, '..') !== false) return 'dashboard.php';
+    if (!preg_match('/^[a-zA-Z0-9_\\.\\/\\?=&%\\-]+$/', $value)) return 'dashboard.php';
+    return $value;
 }
 
 // 로그아웃
 if (isset($_GET['logout'])) {
     admin_logout();
     header('Location: dashboard.php');
+    exit;
+}
+
+$return_url = dashboard_safe_return_url($_POST['return'] ?? $_GET['return'] ?? 'dashboard.php');
+
+// 로그인 처리 (DB 기반 admin_login)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
+    if (admin_login($username, $password, $connect)) {
+        header('Location: ' . $return_url);
+        exit;
+    } else {
+        $login_error = '로그인 정보가 올바르지 않습니다.';
+    }
+}
+
+// Gnuboard 로그인 후 SSO 토큰이 있으면 병원 관리자 세션으로 자동 연결
+$sso_logged_in = false;
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !check_admin_login()) {
+    $sso_logged_in = admin_login_from_sso($connect);
+}
+
+// 로그인 체크
+$is_logged_in = check_admin_login();
+if ($is_logged_in && $return_url !== 'dashboard.php' && (!empty($_GET['return']) || $sso_logged_in)) {
+    header('Location: ' . $return_url);
+    exit;
+}
+if ($is_logged_in && $return_url === 'dashboard.php' && function_exists('is_hospital_role') && is_hospital_role()) {
+    header('Location: partner_hospital.php');
     exit;
 }
 
@@ -98,6 +121,7 @@ if (!$is_logged_in):
             <?php endif; ?>
 
             <form method="POST">
+                <input type="hidden" name="return" value="<?php echo htmlspecialchars($return_url, ENT_QUOTES); ?>">
                 <div class="mb-3">
                     <label class="form-label">아이디</label>
                     <input type="text" name="username" class="form-control" required autofocus>

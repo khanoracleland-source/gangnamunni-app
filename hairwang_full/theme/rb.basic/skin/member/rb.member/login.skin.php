@@ -13,7 +13,7 @@ $SHOW_DEMO_BUTTONS = false;
 // 로그인 후 이동할 URL (빈 문자열이면 기본 Gnuboard 동작)
 $AFTER_LOGIN_URL = '/hairwang/gangnamunni/';
 // ==========================================
-$redirect_url = $AFTER_LOGIN_URL ? urlencode($AFTER_LOGIN_URL) : $login_url;
+$redirect_url = !empty($url) ? $login_url : urlencode($AFTER_LOGIN_URL);
 ?>
 
 <style>
