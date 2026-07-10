@@ -145,8 +145,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
 
                     // 관리자에게 이메일 알림
-                    if (file_exists(__DIR__ . '/mail_helper.php')) {
-                        require_once __DIR__ . '/mail_helper.php';
+                    if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
+                        require_once __DIR__ . '/includes/mail_helper.php';
                         $admin_body = "<h2>새 병원 등록 신청</h2>
                             <p><strong>병원명:</strong> " . htmlspecialchars($name) . "</p>
                             <p><strong>대표자:</strong> " . htmlspecialchars($owner_name) . "</p>
@@ -158,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // 신청자에게 확인 이메일
-                    if (!empty($email) && file_exists(__DIR__ . '/mail_helper.php')) {
+                    if (!empty($email) && file_exists(__DIR__ . '/includes/mail_helper.php')) {
                         $user_body = "<h2>병원 등록 신청이 접수되었습니다</h2>
                             <p>안녕하세요, <strong>" . htmlspecialchars($contact_name) . "</strong>님.</p>
                             <p><strong>" . htmlspecialchars($name) . "</strong>의 입점 신청이 정상적으로 접수되었습니다.</p>

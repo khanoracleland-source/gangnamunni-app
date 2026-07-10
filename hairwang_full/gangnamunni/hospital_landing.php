@@ -136,8 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         $success = true;
                         $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
                         // 이메일 알림
-                        if (file_exists(__DIR__ . '/mail_helper.php')) {
-                            require_once __DIR__ . '/mail_helper.php';
+                        if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
+                            require_once __DIR__ . '/includes/mail_helper.php';
                             @mail_send(0, 'admin@seoulbeauty.app', '[서울미녀] 새 병원 등록 신청 - '.$name,
                                 "<h2>새 병원 등록 신청</h2><p>병원: ".htmlspecialchars($name)."</p><p>대표: ".htmlspecialchars($owner_name)."</p><p>이메일: ".htmlspecialchars($email)."</p><p><a href='".SITE_FULL_URL."admin_hospitals.php?tab=pending'>확인</a></p>");
                             if (!empty($email)) {
