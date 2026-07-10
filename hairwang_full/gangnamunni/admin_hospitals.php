@@ -25,6 +25,14 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('hospitals');
 
+// 병원 역할(hospital_*)은 전체 병원 관리 페이지(플랫폼 전용: 승인/반려/삭제/일괄처리)에
+// 접근 불가 — 다른 병원 데이터 조회·수정을 막는다. 자기 병원 정보는 partner_hospital.php 에서
+// hospital_id 로 격리되어 관리한다. (GET 뷰·POST 액션 모두 처리 이전에 차단)
+if (function_exists('is_hospital_role') && is_hospital_role()) {
+    header('Location: partner_hospital.php');
+    exit;
+}
+
 $message = '';
 $error = '';
 $current_admin = get_current_admin();
@@ -156,8 +164,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     mysqli_stmt_close($stmt_sso);
 
                     // ④ 승인 이메일 발송 (3개 계정 정보 포함)
-                    if (file_exists(__DIR__ . '/mail_helper.php')) {
-                        require_once __DIR__ . '/mail_helper.php';
+                    if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
+                        require_once __DIR__ . '/includes/mail_helper.php';
                         $approve_body = "<h2>병원 등록이 승인되었습니다!</h2>
                             <p>안녕하세요, <strong>" . htmlspecialchars($h_contact) . "</strong>님.</p>
                             <p><strong>" . htmlspecialchars($h_name) . "</strong>의 입점 신청이 승인되었습니다.</p>
@@ -218,8 +226,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = "병원 #{$hospital_id}이(가) 반려되었습니다.";
 
                 // 반려 이메일 발송
-                if ($reject_info && !empty($reject_info['email']) && file_exists(__DIR__ . '/mail_helper.php')) {
-                    require_once __DIR__ . '/mail_helper.php';
+                if ($reject_info && !empty($reject_info['email']) && file_exists(__DIR__ . '/includes/mail_helper.php')) {
+                    require_once __DIR__ . '/includes/mail_helper.php';
                     $reject_body = "<h2>병원 등록 신청 반려 안내</h2>
                         <p>안녕하세요, <strong>" . htmlspecialchars($reject_info['contact_name'] ?? $reject_info['name']) . "</strong>님.</p>
                         <p><strong>" . htmlspecialchars($reject_info['name']) . "</strong>의 입점 신청이 반려되었습니다.</p>
