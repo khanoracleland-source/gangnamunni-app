@@ -25,12 +25,21 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('hospitals');
 
-// 병원 역할(hospital_*)은 전체 병원 관리 페이지(플랫폼 전용: 승인/반려/삭제/일괄처리)에
-// 접근 불가 — 다른 병원 데이터 조회·수정을 막는다. 자기 병원 정보는 partner_hospital.php 에서
-// hospital_id 로 격리되어 관리한다. (GET 뷰·POST 액션 모두 처리 이전에 차단)
-if (function_exists('is_hospital_role') && is_hospital_role()) {
-    header('Location: partner_hospital.php');
-    exit;
+// 병원 역할 격리: get_hospital_filter() 는 super_admin/admin/editor(hospital_id 없음)면 null(전체),
+// hospital_* 역할이면 자기 hospital_id 반환 → superadmin 은 전체 병원, 병원 관리자는 자기 병원만 표시.
+require_once __DIR__ . '/includes/hospital_filter.php';
+$my_hid = get_hospital_filter();
+
+// 병원 역할은 플랫폼 전용 액션(승인/반려/삭제/일괄) 금지 + 나머지 액션은 자기 병원만 대상 허용.
+// (다른 병원 데이터 변경을 액션 처리 이전에 차단)
+if ($my_hid && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $_pa = $_POST['action'] ?? '';
+    $_platform_only = ['approve', 'reject', 'bulk_approve', 'bulk_reject', 'bulk_delete', 'delete_hospital'];
+    $_target_hid = intval($_POST['hospital_id'] ?? 0);
+    if (in_array($_pa, $_platform_only, true) || $_target_hid !== $my_hid) {
+        header('Location: admin_hospitals.php?msg=' . urlencode('접근 권한이 없습니다.'));
+        exit;
+    }
 }
 
 $message = '';
@@ -522,6 +531,13 @@ $where = '1=1';
 $where_params = [];
 $where_types = '';
 
+// 병원 역할이면 자기 병원만 조회 (목록·통계 모두 격리)
+$stat_scope = '';
+if ($my_hid) {
+    $where .= ' AND id = ' . intval($my_hid);
+    $stat_scope = ' AND id = ' . intval($my_hid);
+}
+
 if ($filter_status === 'pending') {
     $where .= " AND status = 'pending'";
 } elseif ($filter_status === 'approved') {
@@ -544,13 +560,13 @@ $stats = [
     'approved' => 0,
     'rejected' => 0,
 ];
-$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals");
+$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE 1=1{$stat_scope}");
 if ($stat_result) $stats['total'] = (int)mysqli_fetch_assoc($stat_result)['c'];
-$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE status='pending'");
+$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE status='pending'{$stat_scope}");
 if ($stat_result) $stats['pending'] = (int)mysqli_fetch_assoc($stat_result)['c'];
-$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE status='approved'");
+$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE status='approved'{$stat_scope}");
 if ($stat_result) $stats['approved'] = (int)mysqli_fetch_assoc($stat_result)['c'];
-$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE status='rejected'");
+$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE status='rejected'{$stat_scope}");
 if ($stat_result) $stats['rejected'] = (int)mysqli_fetch_assoc($stat_result)['c'];
 
 // 필터링된 전체 건수
