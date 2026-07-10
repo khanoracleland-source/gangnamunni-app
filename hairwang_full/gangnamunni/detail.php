@@ -1773,6 +1773,8 @@ function extractImageFromHtml($file_path) {
             'name'         => $hospital['name'] ?? '',
             'height'       => '220px',
             'show_title'   => false,
+            // 표시되는 주소와 지도 마커 위치를 일치시킨다(저장 좌표가 주소와 어긋난 경우 대응).
+            'prefer_address' => true,
         ];
         include __DIR__ . '/includes/kakao_map.php';
         ?>

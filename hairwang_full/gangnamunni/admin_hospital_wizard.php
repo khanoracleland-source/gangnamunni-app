@@ -85,8 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $tags = $esc(json_encode($data['treatment_tags'] ?? [], JSON_UNESCAPED_UNICODE));
             $hours = $esc(json_encode($data['business_hours'] ?? [], JSON_UNESCAPED_UNICODE));
             $subway = $esc(json_encode($data['subway'] ?? [], JSON_UNESCAPED_UNICODE));
-            $lat = floatval($data['latitude'] ?? 37.5665);
-            $lng = floatval($data['longitude'] ?? 126.978);
+            $lat = floatval($data['latitude'] ?? 0);
+            $lng = floatval($data['longitude'] ?? 0);
 
             // ============================================================
             // [관리자 #8 - 2026-05-28] 병원 등록 승인 시 HTTP 500 픽스
@@ -365,7 +365,19 @@ require_once __DIR__ . '/includes/admin_header.php';
                 </div>
                 <div class="col-md-12">
                     <label class="form-label fw-bold">주소 <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="w_address" required placeholder="서울특별시 강남구 ...">
+                    <input type="text" name="address" class="form-control" id="w_address" required placeholder="서울특별시 강남구 ...">
+                </div>
+                <div class="col-12">
+                    <?php
+                    $picker_config = [
+                        'lat_field'  => 'latitude',
+                        'lng_field'  => 'longitude',
+                        'addr_field' => 'address',
+                        'lat_value'  => '',
+                        'lng_value'  => '',
+                    ];
+                    include __DIR__ . '/includes/map_picker.php';
+                    ?>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-bold">비밀번호 <span class="text-danger">*</span></label>
@@ -681,12 +693,15 @@ function validateStep(step) {
         const email = document.getElementById('w_email').value.trim();
         const phone = document.getElementById('w_phone').value.trim();
         const addr = document.getElementById('w_address').value.trim();
+        const lat = parseFloat(document.getElementById('mpLatInput')?.value || '0');
+        const lng = parseFloat(document.getElementById('mpLngInput')?.value || '0');
         const pw = document.getElementById('w_password').value;
         const pw2 = document.getElementById('w_password2').value;
         if (!name) { alert('병원명을 입력해주세요.'); return false; }
         if (!email) { alert('이메일을 입력해주세요.'); return false; }
         if (!phone) { alert('전화번호를 입력해주세요.'); return false; }
         if (!addr) { alert('주소를 입력해주세요.'); return false; }
+        if (!lat || !lng) { alert('주소를 검색하거나 지도에서 정확한 위치를 선택해주세요.'); return false; }
         if (pw.length < 6) { alert('비밀번호는 6자 이상이어야 합니다.'); return false; }
         if (pw !== pw2) { alert('비밀번호가 일치하지 않습니다.'); return false; }
     }
@@ -905,6 +920,7 @@ function buildReview() {
                 <div class="col-6"><strong>이메일:</strong> ${esc(document.getElementById('w_email').value)}</div>
                 <div class="col-6"><strong>전화:</strong> ${esc(document.getElementById('w_phone').value)}</div>
                 <div class="col-12"><strong>주소:</strong> ${esc(document.getElementById('w_address').value)}</div>
+                <div class="col-12"><strong>좌표:</strong> ${esc(document.getElementById('mpLatInput')?.value || '-')} / ${esc(document.getElementById('mpLngInput')?.value || '-')}</div>
             </div>
         </div>
         <div class="review-section">
@@ -975,6 +991,8 @@ async function submitWizard() {
         email: document.getElementById('w_email').value.trim(),
         phone: document.getElementById('w_phone').value.trim(),
         address: document.getElementById('w_address').value.trim(),
+        latitude: parseFloat(document.getElementById('mpLatInput')?.value || '0') || 0,
+        longitude: parseFloat(document.getElementById('mpLngInput')?.value || '0') || 0,
         password: document.getElementById('w_password').value,
         categories: wizardData.selectedCategories,
         primary_category: wizardData.primaryCategory,

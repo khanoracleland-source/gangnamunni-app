@@ -118,6 +118,15 @@ $pk_use_kakao = !empty($pk_kakao_key);
     var lngInput = document.getElementById('mpLngInput');
     var map, marker, geocoder, places;
 
+    function getAddressInput() {
+        return document.querySelector('input[name="<?php echo $pk_addr_field; ?>"], textarea[name="<?php echo $pk_addr_field; ?>"]');
+    }
+
+    function setAddressValue(value) {
+        var addrInput = getAddressInput();
+        if (addrInput && value) addrInput.value = value;
+    }
+
     function updateCoords(y, x) {
         latInput.value = parseFloat(y).toFixed(6);
         lngInput.value = parseFloat(x).toFixed(6);
@@ -182,6 +191,7 @@ $pk_use_kakao = !empty($pk_kakao_key);
                 btn.innerHTML = '<div class="fw-semibold">' + (it.title || '') + '</div>' +
                                 '<div class="text-muted" style="font-size:12px;">' + (it.addr || '') + '</div>';
                 btn.onclick = function() {
+                    setAddressValue(it.addr || it.title || q);
                     moveMarker(it.y, it.x, true);
                     map.setLevel(3);
                     wrap.style.display = 'none';
@@ -217,31 +227,50 @@ $pk_use_kakao = !empty($pk_kakao_key);
     });
 
     // 주소 필드에서 좌표 변환
-    window.mpGeocodeFromAddress = function() {
-        var addrInput = document.querySelector('input[name="<?php echo $pk_addr_field; ?>"], textarea[name="<?php echo $pk_addr_field; ?>"]');
+    window.mpGeocodeFromAddress = function(silent) {
+        var addrInput = getAddressInput();
         if (!addrInput || !addrInput.value.trim()) {
-            alert('주소 필드에 값을 먼저 입력하세요.');
+            if (!silent) alert('주소 필드에 값을 먼저 입력하세요.');
             return;
         }
         var q = addrInput.value.trim();
         document.getElementById('mpSearchInput').value = q;
         geocoder.addressSearch(q, function(res, st) {
             if (st === kakao.maps.services.Status.OK && res.length) {
+                setAddressValue(res[0].road_address ? res[0].road_address.address_name : res[0].address_name);
                 moveMarker(res[0].y, res[0].x, true);
                 map.setLevel(3);
             } else {
                 // 주소가 도로명/지번으로 안 잡히면 키워드 검색으로 재시도
                 places.keywordSearch(q, function(data, s2) {
                     if (s2 === kakao.maps.services.Status.OK && data.length) {
+                        setAddressValue(data[0].road_address_name || data[0].address_name || q);
                         moveMarker(data[0].y, data[0].x, true);
                         map.setLevel(3);
                     } else {
-                        alert('주소를 좌표로 변환할 수 없습니다. 검색창에서 병원명으로 검색하거나 지도를 직접 클릭하세요.');
+                        if (!silent) alert('주소를 좌표로 변환할 수 없습니다. 검색창에서 병원명으로 검색하거나 지도를 직접 클릭하세요.');
                     }
                 });
             }
         });
     };
+
+    function bindAddressSync() {
+        var addrInput = getAddressInput();
+        var searchInput = document.getElementById('mpSearchInput');
+        if (!addrInput) return;
+        if (searchInput && addrInput.value.trim() && !searchInput.value.trim()) {
+            searchInput.value = addrInput.value.trim();
+        }
+        addrInput.addEventListener('change', function() {
+            if (!addrInput.value.trim()) return;
+            if (searchInput) searchInput.value = addrInput.value.trim();
+            window.mpGeocodeFromAddress(true);
+        });
+        if (!hasCoords && addrInput.value.trim()) {
+            setTimeout(function(){ window.mpGeocodeFromAddress(true); }, 300);
+        }
+    }
 
     // 카카오 SDK 로드 실패(도메인 미등록/네트워크) 시 Leaflet/OSM 로 폴백
     function mpLeafletFallback() {
@@ -258,6 +287,13 @@ $pk_use_kakao = !empty($pk_kakao_key);
             if (badge) { badge.textContent = 'OSM (카카오 로드 실패)'; badge.className = 'badge bg-secondary ms-2'; }
             setTimeout(function(){ lmap.invalidateSize(); }, 300);
         }
+        function getAddressInput() {
+            return document.querySelector('input[name="<?php echo $pk_addr_field; ?>"], textarea[name="<?php echo $pk_addr_field; ?>"]');
+        }
+        function setAddressValue(value) {
+            var addrInput = getAddressInput();
+            if (addrInput && value) addrInput.value = value;
+        }
         function moveMap(y, x) { var ll = L.latLng(y, x); lmarker.setLatLng(ll); lmap.setView(ll, 16); updateCoords(y, x); }
         window.mpSearchAddress = function() {
             var q = document.getElementById('mpSearchInput').value.trim(); if (!q) return;
@@ -270,30 +306,42 @@ $pk_use_kakao = !empty($pk_kakao_key);
                 data.forEach(function(item){
                     var btn = document.createElement('button'); btn.type = 'button';
                     btn.className = 'list-group-item list-group-item-action small py-1'; btn.textContent = item.display_name;
-                    btn.onclick = function(){ moveMap(parseFloat(item.lat), parseFloat(item.lon)); wrap.style.display = 'none'; };
+                    btn.onclick = function(){ setAddressValue(item.display_name); moveMap(parseFloat(item.lat), parseFloat(item.lon)); wrap.style.display = 'none'; };
                     list.appendChild(btn);
                 });
             });
         };
-        window.mpGeocodeFromAddress = function() {
-            var addrInput = document.querySelector('input[name="<?php echo $pk_addr_field; ?>"], textarea[name="<?php echo $pk_addr_field; ?>"]');
-            if (!addrInput || !addrInput.value.trim()) { alert('주소 필드에 값을 먼저 입력하세요.'); return; }
+        window.mpGeocodeFromAddress = function(silent) {
+            var addrInput = getAddressInput();
+            if (!addrInput || !addrInput.value.trim()) { if (!silent) alert('주소 필드에 값을 먼저 입력하세요.'); return; }
             var q = addrInput.value.trim(); document.getElementById('mpSearchInput').value = q;
             fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1&countrycodes=kr')
             .then(function(r){ return r.json(); }).then(function(data){
-                if (data.length > 0) moveMap(parseFloat(data[0].lat), parseFloat(data[0].lon));
-                else alert('주소를 좌표로 변환할 수 없습니다. 지도에서 직접 위치를 클릭하세요.');
+                if (data.length > 0) { setAddressValue(data[0].display_name); moveMap(parseFloat(data[0].lat), parseFloat(data[0].lon)); }
+                else if (!silent) alert('주소를 좌표로 변환할 수 없습니다. 지도에서 직접 위치를 클릭하세요.');
             });
         };
-        if (window.L) { ready(); return; }
+        function bindFallbackAddressSync() {
+            var addrInput = getAddressInput();
+            var searchInput = document.getElementById('mpSearchInput');
+            if (!addrInput) return;
+            if (searchInput && addrInput.value.trim() && !searchInput.value.trim()) searchInput.value = addrInput.value.trim();
+            addrInput.addEventListener('change', function() {
+                if (!addrInput.value.trim()) return;
+                if (searchInput) searchInput.value = addrInput.value.trim();
+                window.mpGeocodeFromAddress(true);
+            });
+            if (!hasCoords && addrInput.value.trim()) setTimeout(function(){ window.mpGeocodeFromAddress(true); }, 300);
+        }
+        if (window.L) { ready(); bindFallbackAddressSync(); return; }
         var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
-        var js = document.createElement('script'); js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; js.onload = ready; document.head.appendChild(js);
+        var js = document.createElement('script'); js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; js.onload = function(){ ready(); bindFallbackAddressSync(); }; document.head.appendChild(js);
     }
 
     // kakao 전역이 정의됐는지 확인 후 로드, 아니면 폴백
     var mpKakaoTries = 0;
     (function waitKakao() {
-        if (typeof kakao !== 'undefined' && kakao.maps) { kakao.maps.load(initKakaoPicker); return; }
+        if (typeof kakao !== 'undefined' && kakao.maps) { kakao.maps.load(function(){ initKakaoPicker(); bindAddressSync(); }); return; }
         if (++mpKakaoTries > 20) { mpLeafletFallback(); return; } // ~2초 대기 후 폴백
         setTimeout(waitKakao, 100);
     })();
@@ -336,6 +384,15 @@ $pk_use_kakao = !empty($pk_kakao_key);
         document.getElementById('mpLngInput').value = lng.toFixed(6);
     }
 
+    function getAddressInput() {
+        return document.querySelector('input[name="<?php echo $pk_addr_field; ?>"], textarea[name="<?php echo $pk_addr_field; ?>"]');
+    }
+
+    function setAddressValue(value) {
+        var addrInput = getAddressInput();
+        if (addrInput && value) addrInput.value = value;
+    }
+
     function moveMap(lat, lng) {
         var latlng = L.latLng(lat, lng);
         marker.setLatLng(latlng);
@@ -361,6 +418,7 @@ $pk_use_kakao = !empty($pk_kakao_key);
                     btn.className = 'list-group-item list-group-item-action small py-1';
                     btn.textContent = item.display_name;
                     btn.onclick = function() {
+                        setAddressValue(item.display_name);
                         moveMap(parseFloat(item.lat), parseFloat(item.lon));
                         wrap.style.display = 'none';
                     };
@@ -375,10 +433,10 @@ $pk_use_kakao = !empty($pk_kakao_key);
         if (e.key === 'Enter') { e.preventDefault(); mpSearchAddress(); }
     });
 
-    window.mpGeocodeFromAddress = function() {
-        var addrInput = document.querySelector('input[name="<?php echo $pk_addr_field; ?>"], textarea[name="<?php echo $pk_addr_field; ?>"]');
+    window.mpGeocodeFromAddress = function(silent) {
+        var addrInput = getAddressInput();
         if (!addrInput || !addrInput.value.trim()) {
-            alert('주소 필드에 값을 먼저 입력하세요.');
+            if (!silent) alert('주소 필드에 값을 먼저 입력하세요.');
             return;
         }
         var q = addrInput.value.trim();
@@ -387,14 +445,31 @@ $pk_use_kakao = !empty($pk_kakao_key);
         .then(function(r){ return r.json(); })
         .then(function(data){
             if (data.length > 0) {
+                setAddressValue(data[0].display_name);
                 moveMap(parseFloat(data[0].lat), parseFloat(data[0].lon));
                 marker.bindPopup('주소에서 변환됨').openPopup();
             } else {
-                alert('주소를 좌표로 변환할 수 없습니다. 지도에서 직접 위치를 클릭하세요.');
+                if (!silent) alert('주소를 좌표로 변환할 수 없습니다. 지도에서 직접 위치를 클릭하세요.');
             }
         });
     };
 
+    function bindAddressSync() {
+        var addrInput = getAddressInput();
+        var searchInput = document.getElementById('mpSearchInput');
+        if (!addrInput) return;
+        if (searchInput && addrInput.value.trim() && !searchInput.value.trim()) searchInput.value = addrInput.value.trim();
+        addrInput.addEventListener('change', function() {
+            if (!addrInput.value.trim()) return;
+            if (searchInput) searchInput.value = addrInput.value.trim();
+            window.mpGeocodeFromAddress(true);
+        });
+        if (!<?php echo $pk_has_coords ? 'true' : 'false'; ?> && addrInput.value.trim()) {
+            setTimeout(function(){ window.mpGeocodeFromAddress(true); }, 300);
+        }
+    }
+
+    bindAddressSync();
     setTimeout(function(){ map.invalidateSize(); }, 500);
 })();
 </script>

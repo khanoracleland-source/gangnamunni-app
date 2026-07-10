@@ -29,6 +29,9 @@ $map_address  = $map_config['address'] ?? '';
 $map_name     = $map_config['name'] ?? '';
 $map_height   = $map_config['height'] ?? '250px';
 $map_show_title = $map_config['show_title'] ?? true;
+// prefer_address=true 이면 저장된 좌표보다 주소 지오코딩 결과를 우선해 마커를 찍는다.
+// (표시되는 주소 텍스트와 지도 위치를 일치시키기 위함 — 좌표가 주소와 어긋난 데이터 대응)
+$map_prefer_address = !empty($map_config['prefer_address']);
 
 if (!function_exists('getSettingValue')) {
     require_once __DIR__ . '/settings_helper.php';
@@ -197,6 +200,7 @@ $display_lng = $has_coords ? $map_lng : 126.978;
     var addr = '<?php echo addslashes($map_address); ?>';
     var nm = '<?php echo addslashes($map_name); ?>';
     var hc = <?php echo $has_coords ? 'true' : 'false'; ?>;
+    var pa = <?php echo $map_prefer_address ? 'true' : 'false'; ?>;
 
     function init(y, x) {
         var el = document.getElementById(id); if (!el) return;
@@ -207,17 +211,21 @@ $display_lng = $has_coords ? $map_lng : 126.978;
         window['_kmMap_' + id] = { map: map, lat: y, lng: x };
         setTimeout(function(){ if (typeof kmCalcDistance === "function") kmCalcDistance(id, y, x); }, 0);
     }
-    if (hc) { kakao.maps.load(function(){ init(lat, lng); }); }
-    else if (addr) {
-        kakao.maps.load(function(){
-            new kakao.maps.services.Geocoder().addressSearch(addr, function(r, s){
-                if (s === kakao.maps.services.Status.OK) init(r[0].y, r[0].x);
-                else new kakao.maps.services.Places().keywordSearch(nm||addr, function(d, s2){
-                    if (s2 === kakao.maps.services.Status.OK) init(d[0].y, d[0].x);
-                });
+    // 주소 지오코딩 → 실패 시 키워드 검색 → 그래도 실패면 저장 좌표로 폴백
+    function geocodeThenInit() {
+        new kakao.maps.services.Geocoder().addressSearch(addr, function(r, s){
+            if (s === kakao.maps.services.Status.OK) { init(r[0].y, r[0].x); return; }
+            new kakao.maps.services.Places().keywordSearch(nm || addr, function(d, s2){
+                if (s2 === kakao.maps.services.Status.OK) { init(d[0].y, d[0].x); return; }
+                if (hc) init(lat, lng);
             });
         });
     }
+    kakao.maps.load(function(){
+        if (pa && addr) geocodeThenInit();   // 주소 우선
+        else if (hc) init(lat, lng);          // 저장 좌표
+        else if (addr) geocodeThenInit();     // 좌표 없으면 주소
+    });
 })();
 </script>
 
@@ -233,6 +241,7 @@ $display_lng = $has_coords ? $map_lng : 126.978;
     var addr = '<?php echo addslashes($map_address); ?>';
     var nm = '<?php echo addslashes($map_name); ?>';
     var hc = <?php echo $has_coords ? 'true' : 'false'; ?>;
+    var pa = <?php echo $map_prefer_address ? 'true' : 'false'; ?>;
 
     function initGMap(y, x) {
         var el = document.getElementById(id); if (!el) return;
@@ -252,18 +261,21 @@ $display_lng = $has_coords ? $map_lng : 126.978;
         setTimeout(function(){ waitGoogle(cb); }, 100);
     }
 
-    if (hc) {
+    function gGeocodeThenInit() {
+        new google.maps.Geocoder().geocode({ address: addr }, function(res, st) {
+            if (st === 'OK') {
+                initGMap(res[0].geometry.location.lat(), res[0].geometry.location.lng());
+            } else {
+                initGMap(lat, lng);
+            }
+        });
+    }
+    if (pa && addr) {
+        waitGoogle(function(){ gGeocodeThenInit(); });   // 주소 우선
+    } else if (hc) {
         waitGoogle(function(){ initGMap(lat, lng); });
     } else if (addr) {
-        waitGoogle(function(){
-            new google.maps.Geocoder().geocode({ address: addr }, function(res, st) {
-                if (st === 'OK') {
-                    initGMap(res[0].geometry.location.lat(), res[0].geometry.location.lng());
-                } else {
-                    initGMap(lat, lng);
-                }
-            });
-        });
+        waitGoogle(function(){ gGeocodeThenInit(); });
     }
 })();
 </script>
@@ -281,6 +293,7 @@ $display_lng = $has_coords ? $map_lng : 126.978;
     var addr = '<?php echo addslashes($map_address); ?>';
     var nm = '<?php echo addslashes($map_name); ?>';
     var hc = <?php echo $has_coords ? 'true' : 'false'; ?>;
+    var pa = <?php echo $map_prefer_address ? 'true' : 'false'; ?>;
 
     function initLeaflet(y, x) {
         var el = document.getElementById(id); if (!el) return;
@@ -295,9 +308,7 @@ $display_lng = $has_coords ? $map_lng : 126.978;
         setTimeout(function(){ if (typeof kmCalcDistance === "function") kmCalcDistance(id, y, x); }, 0);
     }
 
-    if (hc) {
-        initLeaflet(lat, lng);
-    } else if (addr || nm) {
+    function osmGeocodeThenInit() {
         var q = encodeURIComponent(addr || nm);
         fetch('https://nominatim.openstreetmap.org/search?q=' + q + '&format=json&limit=1&countrycodes=kr')
         .then(function(r){ return r.json(); })
@@ -309,6 +320,13 @@ $display_lng = $has_coords ? $map_lng : 126.978;
             }
         })
         .catch(function(){ initLeaflet(lat, lng); });
+    }
+    if (pa && addr) {
+        osmGeocodeThenInit();          // 주소 우선
+    } else if (hc) {
+        initLeaflet(lat, lng);
+    } else if (addr || nm) {
+        osmGeocodeThenInit();
     } else {
         initLeaflet(lat, lng);
     }
