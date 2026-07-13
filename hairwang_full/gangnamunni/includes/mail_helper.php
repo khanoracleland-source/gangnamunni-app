@@ -716,11 +716,20 @@ function mail_send($account_index, $to, $subject, $body_html, $cc = '', $in_repl
         return trim($addr);
     }, $recipients);
     $recipients = array_filter($recipients, function($addr) {
-        return filter_var($addr, FILTER_VALIDATE_EMAIL);
+        if (!filter_var($addr, FILTER_VALIDATE_EMAIL)) return false;
+        // RFC 2606 예약 도메인(메일 수신 불가) 및 테스트/로컬 도메인은 발송하지 않는다.
+        // 예: test@example.com 은 nullMX 라 반드시 반송(bounce) → 관리자에게 반송 메일이 쌓임.
+        $domain = strtolower(substr(strrchr($addr, '@'), 1));
+        $reserved = ['example.com', 'example.net', 'example.org', 'test.com', 'test.local'];
+        if (in_array($domain, $reserved, true)) return false;
+        foreach (['.test', '.example', '.invalid', '.localhost', '.local'] as $suffix) {
+            if (substr($domain, -strlen($suffix)) === $suffix) return false;
+        }
+        return true;
     });
 
     if (empty($recipients)) {
-        return ['error' => '유효한 수신자가 없습니다.'];
+        return ['error' => '유효한 수신자가 없습니다. (예약/테스트 도메인 제외)'];
     }
 
     // ---- SMTP 전송 ----
