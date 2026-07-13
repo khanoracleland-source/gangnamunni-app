@@ -20,6 +20,54 @@ if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
+/**
+ * 업로드 이미지를 지정 규격으로 중앙 크롭 후 리사이즈하여 같은 경로에 덮어쓴다. (GD 사용)
+ * 원본 비율이 목표와 다르면 넘치는 부분을 잘라 목표 비율에 맞춘 뒤 정확히 targetW×targetH 로 축소/확대.
+ * 실패 시 원본 그대로 두고 false 반환(업로드 자체는 유지 — 기존 동작 보존).
+ */
+function wizard_crop_resize($path, $ext, $targetW, $targetH) {
+    switch ($ext) {
+        case 'jpg': case 'jpeg': $src = @imagecreatefromjpeg($path); break;
+        case 'png':  $src = @imagecreatefrompng($path);  break;
+        case 'gif':  $src = @imagecreatefromgif($path);  break;
+        case 'webp': $src = @imagecreatefromwebp($path); break;
+        default: return false;
+    }
+    if (!$src) return false;
+    $sw = imagesx($src); $sh = imagesy($src);
+    if ($sw < 1 || $sh < 1) { imagedestroy($src); return false; }
+
+    // 중앙 크롭 영역 계산 (목표 비율에 맞게)
+    $targetRatio = $targetW / $targetH;
+    $srcRatio = $sw / $sh;
+    if ($srcRatio > $targetRatio) { // 원본이 더 가로로 김 → 좌우를 자른다
+        $cropH = $sh; $cropW = (int) round($sh * $targetRatio);
+        $cropX = (int) round(($sw - $cropW) / 2); $cropY = 0;
+    } else {                        // 원본이 더 세로로 김 → 상하를 자른다
+        $cropW = $sw; $cropH = (int) round($sw / $targetRatio);
+        $cropX = 0; $cropY = (int) round(($sh - $cropH) / 2);
+    }
+
+    $dst = imagecreatetruecolor($targetW, $targetH);
+    if (in_array($ext, ['png', 'gif', 'webp'])) { // 투명도 보존
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+        imagefilledrectangle($dst, 0, 0, $targetW, $targetH, $transparent);
+    }
+    imagecopyresampled($dst, $src, 0, 0, $cropX, $cropY, $targetW, $targetH, $cropW, $cropH);
+
+    switch ($ext) {
+        case 'jpg': case 'jpeg': imagejpeg($dst, $path, 90); break;
+        case 'png':  imagepng($dst, $path);  break;
+        case 'gif':  imagegif($dst, $path);  break;
+        case 'webp': imagewebp($dst, $path, 90); break;
+    }
+    imagedestroy($src);
+    imagedestroy($dst);
+    return true;
+}
+
 // ── AJAX 핸들러 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -55,6 +103,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         $fname = 'hospital_' . time() . '_' . mt_rand(1000,9999) . '.' . $ext;
         if (move_uploaded_file($file['tmp_name'], $uploadDir . $fname)) {
+            // 업로드 이미지를 지정 규격으로 중앙 크롭 + 리사이즈:
+            //  - 대표 이미지(target=main)     → 120x120 (1:1)
+            //  - 내부 사진 (target=interior) → 450x200
+            $targets = ['main' => [120, 120], 'interior' => [450, 200]];
+            $target = $_POST['target'] ?? '';
+            if (isset($targets[$target]) && function_exists('imagecreatetruecolor')) {
+                wizard_crop_resize($uploadDir . $fname, $ext, $targets[$target][0], $targets[$target][1]);
+            }
             echo json_encode(['success' => true, 'url' => 'uploads/hospitals/' . $fname, 'filename' => $fname]);
         } else {
             echo json_encode(['success' => false, 'error' => '저장 실패']);
@@ -81,6 +137,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $email = $esc($data['email'] ?? '');
             $mainImg = $esc($data['main_image'] ?? '');
             $logoImg = $esc($data['logo_image'] ?? '');
+            // 로고 입력 폼을 없애고 대표 이미지(1:1/120x120)를 로고로도 사용한다.
+            // logo 값이 비어있으면 대표 이미지로 대체 → profile_image_url·hospital_images('logo') 로직 그대로 유지.
+            if ($logoImg === '') $logoImg = $mainImg;
             $cats = $esc(json_encode($data['categories'] ?? [], JSON_UNESCAPED_UNICODE));
             $tags = $esc(json_encode($data['treatment_tags'] ?? [], JSON_UNESCAPED_UNICODE));
             $hours = $esc(json_encode($data['business_hours'] ?? [], JSON_UNESCAPED_UNICODE));
@@ -450,24 +509,18 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <label class="form-label fw-bold">대표 이미지 <span class="text-danger">*</span></label>
                     <div class="upload-zone" id="mainImageZone" onclick="document.getElementById('mainImageInput').click()">
                         <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                        <span class="text-muted small mt-2">클릭하여 업로드 (600x400 권장)</span>
+                        <span class="text-muted small mt-2">클릭하여 업로드</span>
                     </div>
+                    <div class="form-text">권장 크기: <strong>1:1 정사각형 (120×120 px)</strong></div>
                     <input type="file" id="mainImageInput" accept="image/*" class="d-none" onchange="uploadImage(this, 'mainImageZone', 'main_image')">
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">로고 <span class="text-danger">*</span></label>
-                    <div class="upload-zone" id="logoImageZone" onclick="document.getElementById('logoImageInput').click()">
-                        <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                        <span class="text-muted small mt-2">클릭하여 업로드 (1:1 비율)</span>
-                    </div>
-                    <input type="file" id="logoImageInput" accept="image/*" class="d-none" onchange="uploadImage(this, 'logoImageZone', 'logo_image')">
-                </div>
                 <div class="col-12">
-                    <label class="form-label fw-bold">내부 사진 (최대 10장)</label>
+                    <label class="form-label fw-bold">내부 사진 <span class="text-muted small">(최대 10장)</span></label>
                     <div class="upload-zone" id="galleryZone" onclick="document.getElementById('galleryInput').click()">
                         <i class="bi bi-cloud-arrow-up upload-icon"></i>
                         <span class="text-muted small mt-2">클릭하여 여러 장 업로드</span>
                     </div>
+                    <div class="form-text">권장 크기: <strong>450×200 px</strong> · 최대 10장</div>
                     <input type="file" id="galleryInput" accept="image/*" multiple class="d-none" onchange="uploadGallery(this)">
                     <div id="galleryPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
                 </div>
@@ -807,6 +860,8 @@ async function uploadImage(input, zoneId, field) {
     const fd = new FormData();
     fd.append('action', 'upload_image');
     fd.append('file', input.files[0]);
+    // 대표 이미지는 120x120(1:1) 규격으로 서버에서 크롭/리사이즈
+    fd.append('target', field === 'main_image' ? 'main' : '');
     const r = await fetch('', {method:'POST', body:fd});
     const d = await r.json();
 
@@ -825,6 +880,8 @@ async function uploadGallery(input) {
         const fd = new FormData();
         fd.append('action', 'upload_image');
         fd.append('file', file);
+        // 내부 사진은 450x200 규격으로 서버에서 크롭/리사이즈
+        fd.append('target', 'interior');
         const r = await fetch('', {method:'POST', body:fd});
         const d = await r.json();
         if (d.success) {
@@ -939,8 +996,7 @@ function buildReview() {
             <h6 onclick="goToStep(4)"><i class="bi bi-images"></i> 4. 이미지</h6>
             <div class="d-flex gap-2">
                 ${wizardData.main_image ? `<img src="${wizardData.main_image}" style="height:60px;border-radius:4px">` : '<span class="text-danger small">대표 이미지 미등록</span>'}
-                ${wizardData.logo_image ? `<img src="${wizardData.logo_image}" style="height:60px;border-radius:4px">` : '<span class="text-danger small">로고 미등록</span>'}
-                <span class="small text-muted">갤러리: ${wizardData.gallery_images.length}장</span>
+                <span class="small text-muted">내부 사진: ${wizardData.gallery_images.length}장</span>
             </div>
         </div>
         <div class="review-section">

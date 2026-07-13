@@ -334,7 +334,10 @@ if ($selected_hospital_id > 0) {
 }
 $total_pages = $total > 0 ? ceil($total / $per_page) : 0;
 
-$image_types = ['main' => '메인', 'logo' => '로고', 'exterior' => '외관', 'interior' => '내부', 'facility' => '시설', 'etc' => '기타'];
+// 전체 라벨(기존 이미지 배지 표시용) — interior/facility/etc/logo 이미지도 올바른 한글 라벨 유지
+$image_type_labels = ['main' => '메인', 'logo' => '로고', 'exterior' => '외관', 'interior' => '내부', 'facility' => '시설', 'etc' => '기타'];
+// 신규 등록/수정 드롭다운 옵션 — 메인/외관만 (나머지 타입은 프론트 갤러리에서 동일 취급이라 단순화)
+$image_types = ['main' => '메인', 'exterior' => '외관'];
 
 // 공통 헤더 include
 $admin_page_title = '병원 이미지 관리';
@@ -477,7 +480,7 @@ include __DIR__ . '/includes/admin_header.php';
                                         <td class="text-truncate" style="max-width:300px;" title="<?php echo htmlspecialchars($img['image_url']); ?>">
                                             <?php echo htmlspecialchars($img['image_url']); ?>
                                         </td>
-                                        <td><span class="badge bg-<?php echo $tc; ?>"><?php echo $image_types[$img['image_type']] ?? $img['image_type']; ?></span></td>
+                                        <td><span class="badge bg-<?php echo $tc; ?>"><?php echo $image_type_labels[$img['image_type']] ?? $img['image_type']; ?></span></td>
                                         <td><?php echo $img['sort_order']; ?></td>
                                         <td>
                                             <?php if ($img['is_active']): ?>
@@ -628,7 +631,7 @@ include __DIR__ . '/includes/admin_header.php';
                 <!-- 정보 -->
                 <div class="flex-grow-1" style="min-width:0;">
                     <div class="d-flex align-items-center gap-2 mb-1">
-                        <span class="badge bg-<?php echo $tc; ?> small"><?php echo $image_types[$img['image_type']] ?? $img['image_type']; ?></span>
+                        <span class="badge bg-<?php echo $tc; ?> small"><?php echo $image_type_labels[$img['image_type']] ?? $img['image_type']; ?></span>
                         <?php if ($img['is_active']): ?>
                         <span class="badge bg-success small">활성</span>
                         <?php else: ?>
