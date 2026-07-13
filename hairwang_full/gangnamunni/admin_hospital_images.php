@@ -24,6 +24,43 @@ if (!$is_logged_in) { header('Location: dashboard.php'); exit; }
 require_permission('hospital_images');
 if (isset($_GET['logout'])) { session_destroy(); header('Location: dashboard.php'); exit; }
 
+// 병원 역할 격리: get_hospital_filter() 는 super_admin/admin/editor(hospital_id 없음)면 null(전체),
+// hospital_* 역할이면 자기 hospital_id 반환 → superadmin 은 전체 병원, 병원 관리자는 자기 병원만.
+require_once __DIR__ . '/includes/hospital_filter.php';
+// 다병원 지원: 한 관리자가 여러 병원 소유 가능. null 이면 전체(플랫폼 관리자).
+$my_ids = get_hospital_filter_ids($connect);
+$my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
+
+// 병원 역할이면: 플랫폼 전용 액션(병원 추가/수정/삭제) 차단 + 이미지 액션은 자기 소유 병원만 허용.
+if ($my_ids !== null) {
+    $act = $_POST['action'] ?? '';
+    $first_hid = $my_ids[0] ?? 0;
+    // 플랫폼 전용 액션 차단
+    if (in_array($act, ['add_hospital', 'update_hospital'], true) || isset($_GET['delete_hospital'])) {
+        header('Location: admin_hospital_images.php?hospital_id=' . $first_hid . '&msg=' . urlencode('접근 권한이 없습니다.'));
+        exit;
+    }
+    // 이미지 추가: 대상 병원이 자기 소유가 아니면 첫 병원으로 강제
+    if ($act === 'add') {
+        $target = (int)($_POST['hospital_id'] ?? 0);
+        if (!in_array($target, $my_ids, true)) $_POST['hospital_id'] = $first_hid;
+    }
+    // 이미지 수정/삭제/일괄삭제: 대상 이미지가 자기 소유 병원 소속인지 검증
+    $img_ids_to_check = [];
+    if ($act === 'update' && isset($_POST['id'])) $img_ids_to_check[] = (int)$_POST['id'];
+    if (isset($_GET['delete'])) $img_ids_to_check[] = (int)$_GET['delete'];
+    if ($act === 'bulk_delete') $img_ids_to_check = array_map('intval', $_POST['ids'] ?? []);
+    foreach ($img_ids_to_check as $iid) {
+        if ($iid <= 0) continue;
+        $chk = mysqli_query($connect, "SELECT hospital_id FROM hospital_images WHERE id = " . (int)$iid);
+        $chk_row = $chk ? mysqli_fetch_assoc($chk) : null;
+        if (!$chk_row || !in_array((int)$chk_row['hospital_id'], $my_ids, true)) {
+            header('Location: admin_hospital_images.php?hospital_id=' . $first_hid . '&msg=' . urlencode('접근 권한이 없습니다.'));
+            exit;
+        }
+    }
+}
+
 $message = $_GET['msg'] ?? '';
 $error = '';
 
@@ -33,21 +70,23 @@ $hospital_per_page = isset($_GET['hospital_per_page']) ? (int)$_GET['hospital_pe
 if (!in_array($hospital_per_page, [10, 20, 50, 100, 9999])) $hospital_per_page = 20;
 $hospital_page = max(1, (int)($_GET['hospital_page'] ?? 1));
 
-// 병원 총 개수
-$hospital_count_sql = "SELECT COUNT(*) as cnt FROM gangnamunni_hospitals";
+// 병원 총 개수 (병원 역할은 자기 병원만)
+$hospital_count_sql = "SELECT COUNT(*) as cnt FROM gangnamunni_hospitals WHERE 1=1";
 if (!empty($hospital_search)) {
-    $hospital_count_sql .= " WHERE name LIKE '%" . mysqli_real_escape_string($connect, $hospital_search) . "%'";
+    $hospital_count_sql .= " AND name LIKE '%" . mysqli_real_escape_string($connect, $hospital_search) . "%'";
 }
+if ($my_in !== null) { $hospital_count_sql .= " AND id IN (" . $my_in . ")"; }
 $hospital_count_result = mysqli_query($connect, $hospital_count_sql);
 $hospital_total = mysqli_fetch_assoc($hospital_count_result)['cnt'];
 $hospital_total_pages = max(1, ceil($hospital_total / $hospital_per_page));
 $hospital_offset = ($hospital_page - 1) * $hospital_per_page;
 
-// 병원 목록 가져오기
-$hospitals_sql = "SELECT id, name FROM gangnamunni_hospitals";
+// 병원 목록 가져오기 (병원 역할은 자기 병원만)
+$hospitals_sql = "SELECT id, name FROM gangnamunni_hospitals WHERE 1=1";
 if (!empty($hospital_search)) {
-    $hospitals_sql .= " WHERE name LIKE '%" . mysqli_real_escape_string($connect, $hospital_search) . "%'";
+    $hospitals_sql .= " AND name LIKE '%" . mysqli_real_escape_string($connect, $hospital_search) . "%'";
 }
+if ($my_in !== null) { $hospitals_sql .= " AND id IN (" . $my_in . ")"; }
 $hospitals_sql .= " ORDER BY name ASC LIMIT $hospital_offset, $hospital_per_page";
 
 
@@ -57,6 +96,10 @@ while ($row = mysqli_fetch_assoc($hospitals_result)) $hospitals[] = $row;
 
 
 $selected_hospital_id = isset($_GET['hospital_id']) ? (int)$_GET['hospital_id'] : 0;
+// 병원 역할은 자기 소유 병원만 — 선택값이 자기 소유가 아니면 첫 병원으로 (다병원이면 URL 로 자기 병원 간 전환 가능)
+if ($my_ids !== null && !in_array($selected_hospital_id, $my_ids, true)) {
+    $selected_hospital_id = $my_ids[0] ?? 0;
+}
 
 // 검색어
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';

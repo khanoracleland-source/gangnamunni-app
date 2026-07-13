@@ -27,10 +27,11 @@ loadThemeSettings($connect);
 check_admin_login();
 check_permission('hospital_treatments');
 
-// 병원 역할 격리: get_hospital_filter() 는 super_admin/admin/editor(hospital_id 없음)면 null(전체),
-// hospital_* 역할이면 자기 hospital_id 를 반환 → superadmin 은 전체, 병원 관리자는 자기 병원만.
+// 병원 역할 격리 (다병원 지원): super_admin/플랫폼 관리자(소속 없음)면 null(전체),
+// 그 외에는 email 이 일치하는 자기 소유 병원 id 배열. → superadmin 은 전체, 병원 관리자는 자기 병원(들)만.
 require_once __DIR__ . '/includes/hospital_filter.php';
-$my_hid = get_hospital_filter();
+$my_ids = get_hospital_filter_ids($connect);
+$my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
 
 // 승인 워크플로우 헬퍼
 require_once __DIR__ . '/includes/treatment_approval_helper.php';
@@ -47,18 +48,20 @@ function verify_csrf_ht($token) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
 }
 
-// ===== 병원 목록 로드 (병원 역할은 자기 병원만) =====
+// ===== 병원 목록 로드 (병원 역할은 자기 소유 병원들만) =====
 $hospitals = [];
-if ($my_hid) {
-    $h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1 AND id = " . intval($my_hid) . " ORDER BY name ASC");
+if ($my_in !== null) {
+    $h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1 AND id IN (" . $my_in . ") ORDER BY name ASC");
 } else {
     $h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1 ORDER BY name ASC");
 }
 if ($h_r) while ($h = mysqli_fetch_assoc($h_r)) $hospitals[] = $h;
 
-// 선택된 병원 (병원 역할은 자기 병원으로 고정 — GET/POST 로 다른 병원 선택 불가)
+// 선택된 병원 (병원 역할: 선택값이 자기 소유가 아니면 첫 병원으로 — 다병원이면 소유 병원 간 전환 가능)
 $hospital_id = intval($_GET['hospital_id'] ?? $_POST['hospital_id'] ?? 0);
-if ($my_hid) $hospital_id = $my_hid;
+if ($my_ids !== null && !in_array($hospital_id, $my_ids, true)) {
+    $hospital_id = $my_ids[0] ?? 0;
+}
 
 // 카테고리 목록
 $categories = [];
@@ -87,10 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $msg_type = 'danger';
     } else {
 
-        // 병원 역할 격리: 자기 병원으로 강제 + id 기반 액션(해제/가격/승인/거절/프로모션)의
-        // 대상 행이 자기 병원 소속인지 검증하여 다른 병원 데이터 변경을 차단한다.
-        if ($my_hid) {
-            $post_hospital_id = $my_hid;
+        // 병원 역할 격리(다병원): 대상 병원이 자기 소유가 아니면 첫 병원으로 강제 +
+        // id 기반 액션(해제/가격/승인/거절/프로모션)의 대상 행이 자기 소유 병원 소속인지 검증.
+        if ($my_ids !== null) {
+            if (!in_array($post_hospital_id, $my_ids, true)) $post_hospital_id = $my_ids[0] ?? 0;
             $row_id = intval($_POST['id'] ?? 0);
             if ($row_id > 0) {
                 $own = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_hospital_treatments WHERE id = ?");
@@ -98,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 mysqli_stmt_execute($own);
                 $own_row = mysqli_fetch_assoc(mysqli_stmt_get_result($own));
                 mysqli_stmt_close($own);
-                if (!$own_row || intval($own_row['hospital_id']) !== $my_hid) {
+                if (!$own_row || !in_array((int)$own_row['hospital_id'], $my_ids, true)) {
                     header('Location: admin_hospital_treatments.php?msg=' . urlencode('접근 권한이 없습니다.'));
                     exit;
                 }
@@ -162,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         // 이름 문자열($admin_name)을 넣으면 "Data truncated" 예외로 루프가 중단돼
                         // 선택한 시술 중 첫 1건만 배정되던 버그가 발생. 유효한 enum 값으로 저장하고,
                         // 이력 기록 실패가 배정 전체를 막지 않도록 try/catch 로 격리한다.
-                        $changed_by = $my_hid ? 'hospital' : 'admin';
+                        $changed_by = ($my_ids !== null) ? 'hospital' : 'admin';
                         try {
                             $hist = mysqli_prepare($connect,
                                 "INSERT INTO gangnamunni_treatment_price_history (hospital_id, treatment_id, price_min, price_max, changed_by, recorded_at)
@@ -258,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 // 가격 이력 기록 — changed_by 는 enum('admin','hospital','system'). 이름 문자열 금지.
                 if ($old_row) {
-                    $changed_by = $my_hid ? 'hospital' : 'admin';
+                    $changed_by = ($my_ids !== null) ? 'hospital' : 'admin';
                     try {
                         $hist = mysqli_prepare($connect,
                             "INSERT INTO gangnamunni_treatment_price_history (hospital_id, treatment_id, price_min, price_max, changed_by, recorded_at)

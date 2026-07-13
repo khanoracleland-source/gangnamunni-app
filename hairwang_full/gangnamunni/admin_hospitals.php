@@ -28,15 +28,16 @@ require_permission('hospitals');
 // 병원 역할 격리: get_hospital_filter() 는 super_admin/admin/editor(hospital_id 없음)면 null(전체),
 // hospital_* 역할이면 자기 hospital_id 반환 → superadmin 은 전체 병원, 병원 관리자는 자기 병원만 표시.
 require_once __DIR__ . '/includes/hospital_filter.php';
-$my_hid = get_hospital_filter();
+// 다병원 지원: 한 관리자가 email 이 일치하는 여러 병원을 소유할 수 있다. null 이면 전체(플랫폼).
+$my_ids = get_hospital_filter_ids($connect);
+$my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
 
-// 병원 역할은 플랫폼 전용 액션(승인/반려/삭제/일괄) 금지 + 나머지 액션은 자기 병원만 대상 허용.
-// (다른 병원 데이터 변경을 액션 처리 이전에 차단)
-if ($my_hid && $_SERVER['REQUEST_METHOD'] === 'POST') {
+// 병원 역할은 플랫폼 전용 액션(승인/반려/삭제/일괄) 금지 + 나머지 액션은 자기 소유 병원만 대상 허용.
+if ($my_ids !== null && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $_pa = $_POST['action'] ?? '';
     $_platform_only = ['approve', 'reject', 'bulk_approve', 'bulk_reject', 'bulk_delete', 'delete_hospital'];
     $_target_hid = intval($_POST['hospital_id'] ?? 0);
-    if (in_array($_pa, $_platform_only, true) || $_target_hid !== $my_hid) {
+    if (in_array($_pa, $_platform_only, true) || !in_array($_target_hid, $my_ids, true)) {
         header('Location: admin_hospitals.php?msg=' . urlencode('접근 권한이 없습니다.'));
         exit;
     }
@@ -531,11 +532,11 @@ $where = '1=1';
 $where_params = [];
 $where_types = '';
 
-// 병원 역할이면 자기 병원만 조회 (목록·통계 모두 격리)
+// 병원 역할이면 자기 소유 병원만 조회 (목록·통계 모두 격리, 다병원 IN)
 $stat_scope = '';
-if ($my_hid) {
-    $where .= ' AND id = ' . intval($my_hid);
-    $stat_scope = ' AND id = ' . intval($my_hid);
+if ($my_in !== null) {
+    $where .= ' AND id IN (' . $my_in . ')';
+    $stat_scope = ' AND id IN (' . $my_in . ')';
 }
 
 if ($filter_status === 'pending') {
@@ -870,6 +871,32 @@ include __DIR__ . '/includes/admin_header.php';
         <a href="?view=<?php echo $hospital['id']; ?>" class="btn btn-secondary btn-sm">취소</a>
     </div>
 </form>
+
+<!-- ===== 이미지 관리 섹션 ===== -->
+<!-- 업로드/수정/삭제는 전용 페이지(admin_hospital_images.php)에서 처리 — 여기서는 현재 이미지 미리보기 + 관리 진입 -->
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-images me-1"></i> 병원 이미지 (<?php echo count($hospital_images); ?>장)</span>
+        <a href="admin_hospital_images.php?hospital_id=<?php echo $hospital['id']; ?>" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil-square me-1"></i>이미지 관리 (추가/수정/삭제)
+        </a>
+    </div>
+    <div class="card-body">
+        <?php if (!empty($hospital_images)): ?>
+        <div class="d-flex flex-wrap gap-2">
+            <?php foreach ($hospital_images as $img): ?>
+            <div class="text-center" style="width:100px;">
+                <img src="<?php echo htmlspecialchars($img['image_url']); ?>" alt=""
+                     style="width:100px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #eee;">
+                <div class="small text-muted mt-1"><?php echo htmlspecialchars($img['image_type']); ?></div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <p class="text-muted mb-0">등록된 이미지가 없습니다. <strong>"이미지 관리"</strong> 버튼으로 추가하세요.</p>
+        <?php endif; ?>
+    </div>
+</div>
 
 <!-- ===== AI 설정 섹션 ===== -->
 <div class="card mt-3 border-info">

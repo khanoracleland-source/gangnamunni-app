@@ -22,6 +22,49 @@ function get_hospital_filter() {
 }
 
 /**
+ * 현재 관리자가 관리하는 병원 ID 목록 (다병원 지원)
+ * 규칙: 병원.email == 관리자 로그인(username/email) 인 모든 병원.
+ *  - super_admin        → null (전체 접근)
+ *  - 이메일 매칭 병원 있음 → 해당 병원 id 배열 (한 관리자가 여러 병원 소유 가능)
+ *  - 매칭 없음 + 단일 hospital_id 세션값 있음 → [그 id]
+ *  - 매칭 없음 + 없음     → null (병원 소속 없는 플랫폼 관리자 = 전체)
+ * @return array|null  병원 id 배열 또는 null(전체)
+ */
+function get_hospital_filter_ids($connect) {
+    if (($_SESSION['ad_admin_role'] ?? '') === 'super_admin') return null;
+
+    $login = trim($_SESSION['ad_admin_user'] ?? '');
+    $mail  = trim($_SESSION['ad_admin_email'] ?? '');
+    $ids = [];
+    if ($connect && ($login !== '' || $mail !== '')) {
+        $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email = ? OR email = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ss', $login, $mail);
+            mysqli_stmt_execute($stmt);
+            $r = mysqli_stmt_get_result($stmt);
+            while ($row = mysqli_fetch_assoc($r)) $ids[] = (int)$row['id'];
+            mysqli_stmt_close($stmt);
+        }
+    }
+    if (!empty($ids)) return array_values(array_unique($ids));
+
+    // 이메일 매칭 병원 없음 → 세션 단일 hospital_id 있으면 그것, 없으면 전체(null)
+    $hid = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+    return $hid > 0 ? [$hid] : null;
+}
+
+/**
+ * get_hospital_filter_ids 를 SQL IN 절 문자열로 반환 (정수만 담기므로 안전).
+ * @return string|null  "1,2,3" 또는 null(전체)
+ */
+function get_hospital_filter_in($connect) {
+    $ids = get_hospital_filter_ids($connect);
+    if ($ids === null) return null;
+    if (empty($ids)) return '0'; // 소속은 있으나 병원이 없음 → 아무것도 안 보이게
+    return implode(',', array_map('intval', $ids));
+}
+
+/**
  * 현재 관리자가 병원 관리자인지 확인
  */
 function is_hospital_admin() {

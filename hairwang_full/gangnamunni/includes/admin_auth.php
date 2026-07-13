@@ -12,8 +12,8 @@
 $ADMIN_ROLE_PERMISSIONS = [
     // === 플랫폼 역할 ===
     'super_admin' => ['*'],
-    'admin' => ['dashboard', 'hospitals', 'hospital_images', 'reviews', 'categories', 'ads', 'navigation', 'theme', 'theme_advanced', 'maintenance', 'upgrade', 'members', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'admin_mail', 'mail_templates', 'mail_signatures', 'mail_accounts', 'editor_settings', 'review_wizard', 'approval_queue', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'admins', 'notifications', 'fix_log', 'doctors', 'tips', 'events', 'cpv_settings', 'cpv_wallet', 'cpv_rates', 'cpv_dashboard', 'cpv_settlement', 'dev_ref_cpv', 'dev_ref_confirm', 'dev_ref_qa', 'dev_ref_cpv_qa', 'dev_ref_payment', 'manage_reports', 'grade_permissions', 'admin_manage', 'hospital_landing', 'hospital_apply', 'hospital_apply_status', 'hospital_pending', 'hospital_process', 'hospital_guide', 'site_settings_main'],
-    'editor' => ['dashboard', 'hospitals', 'hospital_images', 'reviews', 'categories', 'ads', 'navigation', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'review_wizard', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events'],
+    'admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'reviews', 'categories', 'ads', 'navigation', 'theme', 'theme_advanced', 'maintenance', 'upgrade', 'members', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'admin_mail', 'mail_templates', 'mail_signatures', 'mail_accounts', 'editor_settings', 'review_wizard', 'approval_queue', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'admins', 'notifications', 'fix_log', 'doctors', 'tips', 'events', 'cpv_settings', 'cpv_wallet', 'cpv_rates', 'cpv_dashboard', 'cpv_settlement', 'dev_ref_cpv', 'dev_ref_confirm', 'dev_ref_qa', 'dev_ref_cpv_qa', 'dev_ref_payment', 'manage_reports', 'grade_permissions', 'admin_manage', 'hospital_landing', 'hospital_apply', 'hospital_apply_status', 'hospital_pending', 'hospital_process', 'hospital_guide', 'site_settings_main'],
+    'editor' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'reviews', 'categories', 'ads', 'navigation', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'review_wizard', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events'],
     'viewer' => ['dashboard'],
     'staff' => ['dashboard', 'hospitals', 'reviews', 'bookings', 'notifications', 'members'],
 
@@ -84,6 +84,7 @@ function admin_set_session($admin, $connect = null) {
     // 세션에 관리자 정보 저장
     $_SESSION['ad_admin_logged_in'] = true;
     $_SESSION['ad_admin_user'] = $admin['username'];
+    $_SESSION['ad_admin_email'] = $admin['email'] ?? ''; // 병원 email 매칭(다병원 소속 판별)용
     $_SESSION['ad_admin_id'] = $admin['id'];
     $_SESSION['ad_admin_name'] = $admin['name'];
     $_SESSION['ad_admin_role'] = $admin['role'];
@@ -92,6 +93,44 @@ function admin_set_session($admin, $connect = null) {
     $_SESSION['ad_admin_hospital_id'] = $admin['hospital_id'] ?? null;
     $_SESSION['ad_admin_hospital_name'] = $admin['hospital_name'] ?? '';
     $_SESSION['partner_hospital_id'] = $admin['hospital_id'] ?? null;
+
+    // 병원 ↔ 관리자 연결 규칙: 관리자 로그인(username/email)이 어떤 병원의 email 과 일치하면
+    // 그 병원의 관리자로 간주한다. (병원 관리자는 병원 명의로 가입하므로 email 이 곧 로그인 아이디)
+    // 이메일 매칭을 '권위 있는' 소속으로 사용 → 기존 hospital_id 가 다른(잘못된) 병원을 가리켜도 교정한다.
+    // (정상 계정은 username=병원.email 이라 같은 병원으로 해석되어 변화 없음)
+    // super_admin 은 전체 관리자이므로 제외.
+    if ($connect && ($admin['role'] ?? '') !== 'super_admin') {
+        $login = trim($admin['username'] ?? '');
+        $mail  = trim($admin['email'] ?? '');
+        if ($login !== '' || $mail !== '') {
+            $hstmt = mysqli_prepare($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE email = ? OR email = ? ORDER BY id LIMIT 1");
+            if ($hstmt) {
+                mysqli_stmt_bind_param($hstmt, 'ss', $login, $mail);
+                mysqli_stmt_execute($hstmt);
+                $hrow = mysqli_fetch_assoc(mysqli_stmt_get_result($hstmt));
+                mysqli_stmt_close($hstmt);
+                if ($hrow && !empty($hrow['id'])) {
+                    $matched_hid = (int)$hrow['id'];
+                    $_SESSION['ad_admin_hospital_id'] = $matched_hid;
+                    $_SESSION['ad_admin_hospital_name'] = $hrow['name'];
+                    $_SESSION['partner_hospital_id'] = $matched_hid;
+                    // 기존 hospital_id 가 다르면 DB 도 교정해 영속화 (다음부터 조회·리포트에 반영)
+                    if ((int)($admin['hospital_id'] ?? 0) !== $matched_hid) {
+                        try {
+                            $upd = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET hospital_id = ?, hospital_name = ? WHERE id = ?");
+                            if ($upd) {
+                                mysqli_stmt_bind_param($upd, 'isi', $matched_hid, $hrow['name'], $admin['id']);
+                                mysqli_stmt_execute($upd);
+                                mysqli_stmt_close($upd);
+                            }
+                        } catch (Throwable $e) {
+                            error_log('[admin_set_session] hospital_id 교정 실패: ' . $e->getMessage());
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // 마지막 로그인 시간 업데이트
     if ($connect) {
