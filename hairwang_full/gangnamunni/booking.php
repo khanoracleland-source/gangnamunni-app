@@ -151,6 +151,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // treatment 컬럼(varchar 100)엔 요약(쉼표 이름) 저장 — 초과 시 잘라냄
         $treatment = mb_substr($treatment, 0, 100);
 
+        // [예약 저장 안정화] 재설계(다중 시술/수량)로 추가된 컬럼이 없는 DB(운영 등)에서도
+        // INSERT 가 'Unknown column' 으로 실패하지 않도록, 없으면 즉시 추가 (idempotent).
+        $_ensure_cols = [
+            'treatments_json' => "ADD COLUMN treatments_json TEXT NULL AFTER treatment",
+            'quantity'        => "ADD COLUMN quantity INT NOT NULL DEFAULT 1 AFTER treatments_json",
+            'price'           => "ADD COLUMN price INT NULL AFTER memo",
+        ];
+        foreach ($_ensure_cols as $_col => $_ddl) {
+            $_chk = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE '{$_col}'");
+            if ($_chk && mysqli_num_rows($_chk) === 0) {
+                @mysqli_query($connect, "ALTER TABLE gangnamunni_bookings {$_ddl}");
+            }
+        }
+
         $insert_query = "INSERT INTO gangnamunni_bookings
                         (hospital_id, hospital_name, name, phone, mb_id, treatment, treatments_json, quantity, booking_date, booking_time, memo, price, created_at)
                         VALUES (
@@ -238,6 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } else {
+            error_log("[서울미녀] 예약 INSERT 실패: " . mysqli_error($connect) . " | query=" . $insert_query);
             $booking_error = term('booking', '예약') . ' 중 오류가 발생했습니다. 다시 시도해주세요.';
         }
     }

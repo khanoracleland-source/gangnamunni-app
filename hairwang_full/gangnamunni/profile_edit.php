@@ -125,6 +125,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($res) $member = mysqli_fetch_assoc($res);
     }
 
+    // ── 통합 저장 (하단 고정 '저장' 버튼) : 닉네임 + 이름 + 연락처 한 번에 ──
+    if ($action === 'save_all') {
+        $nick = trim($_POST['nick'] ?? '');
+        $name = trim($_POST['mb_name'] ?? '');
+        $hp   = trim($_POST['hp'] ?? '');
+        if ($name === '') {
+            $name_error = '이름을 입력해주세요.';
+        } elseif ($nick === '' || !preg_match('/^[a-zA-Z0-9_]+$/', $nick)) {
+            $nick_error = '닉네임은 영문, 숫자, 밑줄(_)만 사용할 수 있습니다.';
+        } else {
+            $dup = mysqli_prepare($connect, "SELECT mb_id FROM g5_member WHERE mb_nick=? AND mb_id!=?");
+            mysqli_stmt_bind_param($dup, 'ss', $nick, $member_id);
+            mysqli_stmt_execute($dup);
+            mysqli_stmt_store_result($dup);
+            $is_dup = mysqli_stmt_num_rows($dup) > 0;
+            mysqli_stmt_close($dup);
+            if ($is_dup) {
+                $nick_error = '이미 사용 중인 닉네임입니다.';
+            } else {
+                $stmt = mysqli_prepare($connect, "UPDATE g5_member SET mb_nick=?, mb_name=?, mb_hp=? WHERE mb_id=?");
+                mysqli_stmt_bind_param($stmt, 'ssss', $nick, $name, $hp, $member_id);
+                mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
+                $saved = true;
+                $res = mysqli_query($connect, "SELECT * FROM g5_member WHERE mb_id='".mysqli_real_escape_string($connect,$member_id)."'");
+                if ($res) $member = mysqli_fetch_assoc($res);
+            }
+        }
+    }
+
     // ── 4. 비밀번호 변경 ────────────────────────────────────
     if ($action === 'pw') {
         $current_pw     = $_POST['current_pw'] ?? '';
@@ -245,7 +275,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .header{position:relative;padding:14px 16px;display:flex;align-items:center;border-bottom:1px solid var(--bs-border-color,#eee);background:var(--bs-body-bg,#fff);}
 .header .back{width:36px;height:36px;border:none;background:none;font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1));cursor:pointer;color:inherit;flex-shrink:0;}
 .header h1{position:absolute;left:50%;transform:translateX(-50%);font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;white-space:nowrap;}
-.form-area{padding:20px 16px 80px;}
+.form-area{padding:20px 16px 150px;}
 .field{margin-bottom:12px;background:#fff;padding:18px 14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);display:flex;align-items:center;gap:10px;}
 .field-content{flex:1;min-width:0;}
 .field label{display:block;font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;color:#000;margin-bottom:7px;}
@@ -254,6 +284,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .field-change-btn{flex-shrink:0;padding:6px 12px;background:none;border:none;font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;color:#AE1932;cursor:pointer;white-space:nowrap;}
 .save-btn{width:100%;padding:14px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;cursor:pointer;margin-top:8px;}
 .saved-msg{text-align:center;padding:10px;color:#22c55e;font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));}
+/* 하단 고정 저장 바 — bottom_nav(77px, z-index:9999) 바로 위 */
+.save-bar{position:fixed;bottom:77px;left:50%;transform:translateX(-50%);width:100%;max-width:640px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--bs-body-bg,#fff);border-top:1px solid var(--bs-border-color,#eee);z-index:9998;}
+.save-bar-btn{width:100%;padding:14px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;cursor:pointer;}
+.save-bar-btn:active{filter:brightness(0.95);}
 .avatar-area{text-align:center;padding:24px;}
 .avatar-wrap{position:relative;width:80px;margin:0 auto 8px;cursor:pointer;}
 .avatar{width:80px;height:80px;border-radius:50%;background:#fff;border:2px solid #918f8f;display:flex;align-items:center;justify-content:center;font-size:calc(32px * var(--fs-scale,1) * var(--fs-page,1));color:var(--pri);overflow:hidden;}
@@ -389,6 +423,27 @@ function togglePwSection(){
     var open=s.style.display==='none';
     s.style.display=open?'block':'none';
     f.style.display=open?'none':'flex';
+}
+</script>
+<!-- 통합 저장 (닉네임/이름/연락처를 한 번에 저장) — 개별 '변경' 버튼도 그대로 동작 -->
+<form id="f-save-all" method="post" style="display:none;">
+    <input type="hidden" name="action" value="save_all">
+    <input type="hidden" name="nick" id="sa-nick">
+    <input type="hidden" name="mb_name" id="sa-name">
+    <input type="hidden" name="hp" id="sa-hp">
+</form>
+<div class="save-bar">
+    <button type="button" class="save-bar-btn" onclick="saveAll()">저장</button>
+</div>
+<script>
+function saveAll(){
+    var nick = document.querySelector('#f-nick [name="nick"]');
+    var name = document.querySelector('#f-name [name="mb_name"]');
+    var hp   = document.querySelector('#f-hp [name="hp"]');
+    document.getElementById('sa-nick').value = nick ? nick.value : '';
+    document.getElementById('sa-name').value = name ? name.value : '';
+    document.getElementById('sa-hp').value   = hp ? hp.value : '';
+    document.getElementById('f-save-all').submit();
 }
 </script>
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
