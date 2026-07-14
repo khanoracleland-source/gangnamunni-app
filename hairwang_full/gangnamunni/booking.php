@@ -88,6 +88,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $memo = isset($_POST['memo']) ? trim(stripslashes($_POST['memo'])) : '';
     $quantity = isset($_POST['quantity']) ? max(1, (int)$_POST['quantity']) : 1;
 
+    // 이름/연락처: 폼에 입력란이 없으므로(예약은 로그인 필수) 로그인 회원 정보에서 자동 사용.
+    if (($name === '' || $phone === '') && function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
+        $lm = get_gangnamunni_member();
+        if ($name === '')  $name  = trim($lm['mb_name'] ?? '');
+        if ($phone === '') $phone = trim($lm['mb_hp'] ?? ($_SESSION['user_phone'] ?? ''));
+    }
+
     if (empty($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
         $booking_error = '잘못된 요청입니다. 페이지를 새로고침 후 다시 시도해주세요.';
     } elseif (empty($name) || empty($phone) || empty($treatment) || empty($date) || empty($time)) {
