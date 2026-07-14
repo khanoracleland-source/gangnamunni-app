@@ -161,10 +161,17 @@ $page_title = '내 예약';
         .status-no_show { background: #f3f4f6; color: #6b7280; }
 
         .booking-detail-row { display: flex; align-items: center; gap: 8px; }
-        .booking-detail { font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--color-text-secondary); line-height: 1.8; background: #F2F2F2; width: 60%; min-width: 0; }
+        .booking-detail { display: flex; align-items: center; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: #fff; line-height: 1.8; background: #AE1932; width: 60%; min-width: 0; }
+        /* 시술완료/예약취소: detail-1(위)·detail-2(아래) 세로 배치 */
+        .booking-detail.bd-stacked { flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 12px; }
+        /* 시술완료: 회색 배경 + 어두운 글자 */
+        .booking-detail.bd-done { background: #f2f2f2; }
+        .booking-detail.bd-done .detail-1, .booking-detail.bd-done .detail-2 { color: #333; }
+        .bd-left { padding-left: 12px; flex: 1; min-width: 0; }
+        .bd-right { padding-right: 12px; font-size: 18px; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
         .booking-detail i { width: 18px; display: inline-block; }
-        .detail-1 { font-size: 15px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .detail-2 { font-size: 13px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .detail-1 { font-size: 15px !important; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .detail-2 { font-size: 13px !important; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .detail-btns { display: flex; flex-direction: column; gap: 6px; flex: 1; }
         .detail-btn { padding: 8px 4px; border-radius: 6px; font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; text-align: center; border: none; background: var(--color-bg); color: var(--color-text); flex: 1; text-decoration: none; display: block; }
         @media (max-width: 399px) { .detail-btns { flex-direction: column; } }
@@ -188,7 +195,7 @@ $page_title = '내 예약';
         .modal-title { font-size: calc(16px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; margin-bottom: 16px; }
         .modal-input { width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); margin-bottom: 10px; background: var(--color-bg-light); color: inherit; }
         .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
-        .modal-btn { flex: 1; padding: 10px; border-radius: 8px; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; border: none; }
+        .modal-btn { flex: 1; padding: 10px; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; border: none; }
         .modal-btn-cancel { background: var(--color-bg-light); color: var(--color-text); border: 1px solid var(--color-border); }
         .modal-btn-confirm { background: var(--color-primary); color: white; }
         .modal-btn-danger { background: var(--color-primary, #AE1932); color: white; }
@@ -241,10 +248,7 @@ console.groupEnd();
             <div>진행중인 예약이 없습니다.</div>
         </div>
         <?php else: ?>
-        <?php foreach ($active_bookings as $bk):
-            $status_class = 'status-' . $bk['status'];
-            $status_label = ['pending'=>'대기중','confirmed'=>'확정'][  $bk['status']] ?? $bk['status'];
-        ?>
+        <?php foreach ($active_bookings as $bk): ?>
         <div class="booking-card" id="card-<?php echo $bk['id']; ?>" data-status="<?php echo $bk['status']; ?>">
             <div class="booking-header">
                 <div>
@@ -257,31 +261,25 @@ console.groupEnd();
                         $_h12 = $_h % 12; if ($_h12 === 0) $_h12 = 12;
                         echo date('Y.n.j', $_ts) . '(' . $_dow . ') ' . $_ampm . ' ' . $_h12 . ':' . date('i', $_ts);
                     ?></div>
-                    <span class="booking-status <?php echo $status_class; ?>"><?php echo $status_label; ?></span>
                 </div>
             </div>
             <div class="booking-detail-row">
                 <div class="booking-detail">
-                    <?php if (!empty($bk['treatment'])): ?>
-                    <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
-                    <?php endif; ?>
-                    <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                    <div class="bd-left">
+                        <?php if (!empty($bk['treatment'])): ?>
+                        <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
+                        <?php endif; ?>
+                        <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                    </div>
+                    <div class="bd-right"><?php
+                        $_dd = (int)(new DateTime('today'))->diff(new DateTime($bk['booking_date']))->format('%r%a');
+                        echo $_dd > 0 ? 'D-' . $_dd : ($_dd === 0 ? 'D-DAY' : 'D+' . abs($_dd));
+                    ?></div>
                 </div>
                 <div class="detail-btns">
-                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">상세보기</a>
-                    <a href="booking.php?id=<?php echo $bk['hospital_id']; ?>" class="detail-btn">다시예약</a>
+                    <a href="booking_detail.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">예약변경</a>
+                    <button type="button" class="detail-btn" onclick="openCancelModal(<?php echo $bk['id']; ?>)">예약취소</button>
                 </div>
-            </div>
-            <div class="booking-actions">
-                <a href="detail.php?id=<?php echo $bk['hospital_id']; ?>" class="action-btn hospital">
-                    <i class="bi bi-building"></i> <?php echo term('business', '병원'); ?>보기
-                </a>
-                <button class="action-btn edit" onclick="openEditModal(<?php echo $bk['id']; ?>,'<?php echo $bk['booking_date']; ?>','<?php echo substr($bk['booking_time'],0,5); ?>')">
-                    <i class="bi bi-calendar-event"></i> 날짜변경
-                </button>
-                <button class="action-btn cancel" onclick="openCancelModal(<?php echo $bk['id']; ?>)">
-                    <i class="bi bi-x-circle"></i> 취소
-                </button>
             </div>
         </div>
         <?php endforeach; ?>
@@ -319,15 +317,17 @@ console.groupEnd();
                         $_h12 = $_h % 12; if ($_h12 === 0) $_h12 = 12;
                         echo date('Y.n.j', $_ts) . '(' . $_dow . ') ' . $_ampm . ' ' . $_h12 . ':' . date('i', $_ts);
                     ?></div>
+                    <?php if ($_is_cancelled): // 시술완료(completed)엔 상태뱃지 숨김, 예약취소/노쇼만 표시 ?>
                     <span class="booking-status <?php echo $status_class; ?>"><?php echo $status_label; ?></span>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="booking-detail-row">
-                <div class="booking-detail">
+                <div class="booking-detail bd-stacked<?php echo $bk['status'] === 'completed' ? ' bd-done' : ''; ?>">
                     <?php if (!empty($bk['treatment'])): ?>
                     <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
                     <?php endif; ?>
-                    <div class="detail-1"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                    <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
                 </div>
                 <div class="detail-btns">
                     <?php if ($bk['status'] === 'completed'): ?>
@@ -360,16 +360,18 @@ console.groupEnd();
     <?php endif; ?>
 </div>
 
-<!-- 취소 모달 -->
+<!-- 취소 확인 모달 -->
 <div class="modal-overlay" id="cancelModal">
     <div class="modal-box">
         <div class="modal-title">예약 취소</div>
-        <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:12px;">취소 사유를 입력해주세요.</p>
+        <p style="font-size:14px;color:var(--color-text);line-height:1.6;margin-bottom:18px;">예약 취소를 요청하시겠습니까?</p>
         <input type="hidden" id="cancelBookingId">
-        <textarea class="modal-input" id="cancelReason" rows="3" placeholder="취소 사유 (선택)"></textarea>
+        <!-- [추후] 취소 사유 → 관리자 전달용 자리. submitCancel() 이 cancel_reason 을 이미 전송하고
+             api/cancel_booking.php 가 cancel_reason 컬럼에 저장하므로, 아래 한 줄 주석만 풀면 바로 동작한다. -->
+        <!-- <textarea class="modal-input" id="cancelReason" rows="3" placeholder="취소 사유 (관리자 전달용)"></textarea> -->
         <div class="modal-btns">
-            <button class="modal-btn modal-btn-cancel" onclick="closeModal('cancelModal')">닫기</button>
-            <button class="modal-btn modal-btn-danger" onclick="submitCancel()">취소하기</button>
+            <button class="modal-btn modal-btn-cancel" onclick="closeModal('cancelModal')">아니오</button>
+            <button class="modal-btn modal-btn-danger" onclick="submitCancel()">네</button>
         </div>
     </div>
 </div>
@@ -438,7 +440,8 @@ function closeModal(id) {
 
 function submitCancel() {
     var id = document.getElementById('cancelBookingId').value;
-    var reason = document.getElementById('cancelReason').value;
+    var reasonEl = document.getElementById('cancelReason');
+    var reason = reasonEl ? reasonEl.value : '';
     var fd = new FormData();
     fd.append('booking_id', id);
     fd.append('phone', searchPhone);

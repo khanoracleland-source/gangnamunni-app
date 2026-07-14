@@ -25,6 +25,7 @@ $booking_id = intval($_POST['booking_id'] ?? 0);
 $phone = trim($_POST['phone'] ?? '');
 $new_date = trim($_POST['new_date'] ?? '');
 $new_time = trim($_POST['new_time'] ?? '');
+$new_treatment = trim(stripslashes($_POST['new_treatment'] ?? '')); // 시술 변경(선택)
 $edit_reason = trim($_POST['edit_reason'] ?? '');
 
 if ($booking_id <= 0 || empty($new_date) || empty($new_time)) {
@@ -44,8 +45,15 @@ if (!preg_match('/^\d{2}:\d{2}$/', $new_time)) {
     exit;
 }
 
+// [예약 변경 횟수 제한] edit_count 컬럼 보장 (운영 DB 자동 대응)
+$_ec_chk = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE 'edit_count'");
+if ($_ec_chk && mysqli_num_rows($_ec_chk) === 0) {
+    @mysqli_query($connect, "ALTER TABLE gangnamunni_bookings ADD COLUMN edit_count INT NOT NULL DEFAULT 0");
+}
+$MAX_EDITS = 3; // 예약 1건당 최대 변경 횟수
+
 // 예약 조회
-$stmt = mysqli_prepare($connect, "SELECT id, phone, mb_id, status, booking_date, booking_time, hms_appointment_id FROM gangnamunni_bookings WHERE id = ?");
+$stmt = mysqli_prepare($connect, "SELECT id, phone, mb_id, status, booking_date, booking_time, treatment, edit_count, hms_appointment_id FROM gangnamunni_bookings WHERE id = ?");
 mysqli_stmt_bind_param($stmt, 'i', $booking_id);
 mysqli_stmt_execute($stmt);
 $booking = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
@@ -85,16 +93,35 @@ if (!in_array($booking['status'], ['pending', 'confirmed'])) {
     exit;
 }
 
+// 변경 횟수 제한 (예약당 최대 3회)
+$cur_edit_count = (int)($booking['edit_count'] ?? 0);
+if ($cur_edit_count >= $MAX_EDITS) {
+    echo json_encode(['success' => false, 'message' => '예약 변경 가능 횟수(' . $MAX_EDITS . '회)를 모두 사용했습니다.']);
+    exit;
+}
+
 // 이전 일정 기록
 $old_schedule = $booking['booking_date'] . ' ' . $booking['booking_time'];
 $memo_addition = "변경: {$old_schedule} → {$new_date} {$new_time}";
+
+// 시술 변경 반영 (선택) — 값이 있고 기존과 다르면 treatment 도 함께 수정
+$treatment_changed = ($new_treatment !== '' && $new_treatment !== ($booking['treatment'] ?? ''));
+if ($treatment_changed) {
+    $new_treatment = mb_substr($new_treatment, 0, 100);
+    $memo_addition .= " / 시술: {$booking['treatment']} → {$new_treatment}";
+}
 if (!empty($edit_reason)) {
     $memo_addition .= " (사유: {$edit_reason})";
 }
 
-// 수정 처리
-$stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET booking_date=?, booking_time=?, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW() WHERE id=?");
-mysqli_stmt_bind_param($stmt2, 'sssi', $new_date, $new_time, $memo_addition, $booking_id);
+// 수정 처리 (변경 성공 시 edit_count +1)
+if ($treatment_changed) {
+    $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET booking_date=?, booking_time=?, treatment=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW() WHERE id=?");
+    mysqli_stmt_bind_param($stmt2, 'ssssi', $new_date, $new_time, $new_treatment, $memo_addition, $booking_id);
+} else {
+    $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET booking_date=?, booking_time=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW() WHERE id=?");
+    mysqli_stmt_bind_param($stmt2, 'sssi', $new_date, $new_time, $memo_addition, $booking_id);
+}
 $ok = mysqli_stmt_execute($stmt2);
 mysqli_stmt_close($stmt2);
 
@@ -115,4 +142,5 @@ if (!empty($booking['hms_appointment_id'])) {
 }
 
 mysqli_close($connect);
-echo json_encode(['success' => true, 'message' => '예약이 변경되었습니다.', 'new_date' => $new_date, 'new_time' => $new_time]);
+$edits_left = max(0, $MAX_EDITS - ($cur_edit_count + 1));
+echo json_encode(['success' => true, 'message' => '예약이 변경되었습니다. (변경 가능 ' . $edits_left . '회 남음)', 'new_date' => $new_date, 'new_time' => $new_time, 'edits_left' => $edits_left]);
