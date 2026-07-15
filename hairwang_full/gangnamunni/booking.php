@@ -251,6 +251,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         . $e->getMessage());
                 }
             }
+
+            // 예약 신청 완료 → 예약 상세(booking_detail.php)로 이동 : 신청 후 화면을 상세 뷰로 통일
+            // new=1 : 방금 신청 완료 상태 → booking_detail.php 에서 추가 요소 표시용
+            // (출력 전이므로 header 안전. 본인 예약이므로 booking_detail 소유자 검증 통과)
+            header('Location: booking_detail.php?booking_id=' . (int)$booking_id . '&new=1');
+            exit;
         } else {
             error_log("[서울미녀] 예약 INSERT 실패: " . mysqli_error($connect) . " | query=" . $insert_query);
             $booking_error = term('booking', '예약') . ' 중 오류가 발생했습니다. 다시 시도해주세요.';

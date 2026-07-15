@@ -292,12 +292,6 @@ console.groupEnd();
             <div class="empty-icon">📦</div>
             <div>해당 항목이 없습니다.</div>
         </div>
-        <?php if (empty($past_bookings)): ?>
-        <div class="empty-state">
-            <div class="empty-icon">📦</div>
-            <div>지난 예약이 없습니다.</div>
-        </div>
-        <?php else: ?>
         <?php foreach ($past_bookings as $bk):
             $status_class = 'status-' . $bk['status'];
             $status_labels = ['completed'=>'완료','cancelled'=>'취소완료','no_show'=>'노쇼'];
@@ -340,7 +334,6 @@ console.groupEnd();
             </div>
         </div>
         <?php endforeach; ?>
-        <?php endif; ?>
     </div>
 
     <?php elseif (!empty($search_phone)): ?>
@@ -422,7 +415,9 @@ function switchTab(tab) {
 
 function openCancelModal(id) {
     document.getElementById('cancelBookingId').value = id;
-    document.getElementById('cancelReason').value = '';
+    // cancelReason 은 확인 팝업(네/아니오)으로 바뀌며 주석 처리됨 → 있을 때만 초기화
+    var rEl = document.getElementById('cancelReason');
+    if (rEl) rEl.value = '';
     document.getElementById('cancelModal').classList.add('active');
 }
 

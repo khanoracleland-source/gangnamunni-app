@@ -17,6 +17,9 @@ $my_mb_id = $member['mb_id'] ?? ($_SESSION['ss_mb_id'] ?? '');
 $booking_id = isset($_GET['booking_id']) ? intval($_GET['booking_id']) : 0;
 if ($booking_id <= 0) { header('Location: my_bookings.php'); exit; }
 
+// 방금 예약 신청 완료 상태(booking.php → new=1) — 신청 직후에만 보여줄 추가 요소용
+$just_booked = isset($_GET['new']) && $_GET['new'] == '1';
+
 // 예약 조회
 $stmt = $connect->prepare("SELECT b.*, h.profile_image_url AS hospital_image
     FROM gangnamunni_bookings b
@@ -124,6 +127,7 @@ $page_title = term('booking', '예약') . ' 상세';
         .detail-row label { font-size:15px; font-weight:600; color:var(--color-text-secondary); width:34%; flex-shrink:0; }
         .detail-row .value { font-size:15px; font-weight:600; color:var(--color-text); }
 
+        .booked-notice { margin:22px 24px 0; font-size:14px; line-height:1.7; color:#000000; font-weight: 700px }
         .actions { margin:24px; display:flex; gap:10px; }
         .btn { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:15px; font-size:15px; font-weight:700; border:none; cursor:pointer; text-decoration:none; }
         .btn-primary { background:var(--color-primary); color:#fff; }
@@ -149,7 +153,7 @@ $page_title = term('booking', '예약') . ' 상세';
 <body>
 <div class="container">
     <div class="header">
-        <button class="back" onclick="location.href='my_bookings.php'"><i class="bi bi-chevron-left"></i></button>
+        <button class="back" onclick="goBack()"><i class="bi bi-chevron-left"></i></button>
         <h1><?php echo htmlspecialchars($page_title); ?></h1>
     </div>
 
@@ -197,9 +201,20 @@ $page_title = term('booking', '예약') . ' 상세';
         </div>
     </div>
 
+    <?php if ($just_booked): ?>
+    <!-- 예약 신청 직후 안내 문구 -->
+    <div class="booked-notice">
+        병원 예약 시스템에 자동 접수되었습니다. 병원에서 확인 후 연락드립니다.<br>
+        예약 변경 / 취소는 내 예약 / 결제내역 에서 직접 관리할 수 있습니다.
+    </div>
+    <?php endif; ?>
+
     <!-- 액션 버튼 -->
     <div class="actions">
-        <?php if ($is_active): ?>
+        <?php if ($just_booked): // 예약 신청 직후: 확인 / 내 예약 보기 ?>
+        <a class="btn btn-primary" href="#" onclick="goBack(); return false;">확인</a>
+        <a class="btn btn-outline" href="my_bookings.php">내 <?php echo term('booking', '예약'); ?> 보기</a>
+        <?php elseif ($is_active): ?>
         <button class="btn btn-primary" onclick="openEditModal()"> <?php echo term('booking', '예약'); ?>변경</button>
         <button class="btn btn-danger" onclick="openCancelModal()"> <?php echo term('booking', '예약'); ?> 취소</button>
         <?php endif; ?>
@@ -262,6 +277,14 @@ $page_title = term('booking', '예약') . ' 상세';
 var BOOKING_ID = <?php echo (int)$bk['id']; ?>;
 var MY_PHONE = '<?php echo addslashes($bk['phone'] ?? ''); ?>';
 var EDITS_LEFT = <?php echo (int)$edits_left; ?>;
+
+// 뒤로/확인 → 진입한 페이지로 복귀 (referrer → 브라우저 history → my_bookings 폴백)
+function goBack() {
+    var ref = document.referrer;
+    if (ref && ref.indexOf(location.host) !== -1 && ref !== location.href) { location.href = ref; }
+    else if (history.length > 1) { history.back(); }
+    else { location.href = 'my_bookings.php'; }
+}
 
 function openEditModal() { document.getElementById('editModal').classList.add('active'); }
 function openCancelModal() { document.getElementById('cancelModal').classList.add('active'); }
