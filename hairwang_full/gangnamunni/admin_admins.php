@@ -22,6 +22,18 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('admins');
 
+// [보안] 관리자 관리(admin_admins.php)는 super_admin(최고관리자) 전용 — 그 외 역할 전부 차단
+if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
+    http_response_code(403);
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>권한 없음</title>';
+    echo '<style>body{font-family:sans-serif;text-align:center;padding:80px 20px;background:#f5f7fa;}h2{color:#333;margin-bottom:12px;}p{color:#666;}a{color:#667eea;}</style></head><body>';
+    echo '<h2>접근 권한이 없습니다</h2>';
+    echo '<p>관리자 관리는 최고관리자(super_admin)만 접근할 수 있습니다.</p>';
+    echo '<a href="dashboard.php">대시보드로 돌아가기</a>';
+    echo '</body></html>';
+    exit;
+}
+
 $message = '';
 $error = '';
 $current_admin = get_current_admin();
