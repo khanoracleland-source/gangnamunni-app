@@ -203,7 +203,7 @@ $stats['hospitals'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COU
 $stats['reviews'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM hospital_reviews"))['c'];
 $stats['events'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_events"))['c'];
 $stats['ads'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads WHERE is_active = 1"))['c'];
-$stats['consultations_today'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_consultations WHERE DATE(created_at) = CURDATE()"))['c'];
+$stats['consultations_today'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_consultations WHERE created_at >= CURDATE() AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"))['c'];
 
 $recent_reviews = [];
 $result = mysqli_query($connect, "SELECT hr.*, gh.name as hospital_name FROM hospital_reviews hr LEFT JOIN gangnamunni_hospitals gh ON hr.hospital_id = gh.id ORDER BY hr.created_at DESC LIMIT 5");
@@ -231,12 +231,12 @@ include __DIR__ . '/includes/admin_header.php';
 
 <!-- HMS 진료 현황 위젯 -->
 <?php
-$hms_today_appt = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as cnt FROM appointments WHERE DATE(opd_date) = CURDATE()"))['cnt'] ?? 0;
+$hms_today_appt = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as cnt FROM appointments WHERE opd_date >= CURDATE() AND opd_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"))['cnt'] ?? 0;
 $hms_admitted = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as cnt FROM ipd_patient_departments WHERE is_discharge = 0"))['cnt'] ?? 0;
 $hms_total_patients = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as cnt FROM patients"))['cnt'] ?? 0;
 $hms_available_beds = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as cnt FROM beds WHERE is_available = 1"))['cnt'] ?? 0;
 $hms_total_beds = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as cnt FROM beds"))['cnt'] ?? 0;
-$hms_opd_today = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as cnt FROM opd_patient_departments WHERE DATE(appointment_date) = CURDATE()"))['cnt'] ?? 0;
+$hms_opd_today = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as cnt FROM opd_patient_departments WHERE appointment_date >= CURDATE() AND appointment_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"))['cnt'] ?? 0;
 ?>
 <div class="card mb-4">
     <div class="card-header bg-primary bg-opacity-10">

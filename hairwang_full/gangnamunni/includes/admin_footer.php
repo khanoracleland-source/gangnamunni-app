@@ -1,8 +1,14 @@
 </div><!-- /.admin-main -->
+<?php
+$admin_fast_local = getenv('GANGNAMUNNI_FAST_LOCAL') === '1'
+    || (getenv('GANGNAMUNNI_FAST_LOCAL') !== '0' && getenv('G5_MYSQL_HOST') === 'mysql');
+?>
 
 <!-- Bootstrap 5.3 JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+window.ADMIN_FAST_LOCAL = <?php echo $admin_fast_local ? 'true' : 'false'; ?>;
+
 // 주간/야간 모드 토글
 (function() {
     const html = document.documentElement;
@@ -709,6 +715,8 @@ function changePerPage(selectEl) {
 <script>
 // ===== 알림 벨 시스템 =====
 (function() {
+    if (window.ADMIN_FAST_LOCAL) return;
+
     var badge = document.getElementById('notifUnreadBadge');
     var bellBtn = document.getElementById('notifBellBtn');
     var listEl = document.getElementById('notifList');
@@ -795,6 +803,8 @@ function changePerPage(selectEl) {
 <script>
 // 안 읽은 메일 수 배지 업데이트 (모든 admin 페이지)
 (function() {
+    if (window.ADMIN_FAST_LOCAL) return;
+
     function updateMailBadge() {
         fetch('admin_mail.php?ajax=unread_counts')
             .then(function(r) { return r.json(); })
@@ -814,6 +824,8 @@ function changePerPage(selectEl) {
 
 // 알림 벨 배지 업데이트
 (function() {
+    if (window.ADMIN_FAST_LOCAL) return;
+
     function loadNotifications() {
         fetch('api_admin_notifications.php?limit=10')
         .then(r => r.json())
