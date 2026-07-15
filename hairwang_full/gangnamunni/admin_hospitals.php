@@ -28,6 +28,7 @@ require_permission('hospitals');
 // 병원 역할 격리: get_hospital_filter() 는 super_admin/admin/editor(hospital_id 없음)면 null(전체),
 // hospital_* 역할이면 자기 hospital_id 반환 → superadmin 은 전체 병원, 병원 관리자는 자기 병원만 표시.
 require_once __DIR__ . '/includes/hospital_filter.php';
+require_once __DIR__ . '/includes/hospital_provision_helper.php'; // 승인 시 계정 자동 생성(단일/일괄 공통)
 // 다병원 지원: 한 관리자가 email 이 일치하는 여러 병원을 소유할 수 있다. null 이면 전체(플랫폼).
 $my_ids = get_hospital_filter_ids($connect);
 $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
@@ -128,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                         $website = $hospital_info['website'] ?? '';
                         $client_ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-                        mysqli_stmt_bind_param($stmt_g5, 'ssssssisssss',
+                        mysqli_stmt_bind_param($stmt_g5, 'ssssssissssss',
                             $mb_id, $g5_pw, $h_contact, $mb_nick, $h_email,
                             $website, $mb_level, $h_contact_phone, $h_phone,
                             $h_address, $mb_1, $now, $client_ip
@@ -402,7 +403,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_ba = mysqli_prepare($connect, "UPDATE gangnamunni_hospitals SET status='approved', is_active=1, ad_grade='none', reviewed_by=?, reviewed_at=NOW() WHERE id=? AND status='pending'");
                 mysqli_stmt_bind_param($stmt_ba, 'si', $admin_name, $bid);
                 mysqli_stmt_execute($stmt_ba);
+                $ba_approved = mysqli_stmt_affected_rows($stmt_ba) > 0;
                 mysqli_stmt_close($stmt_ba);
+                // 실제로 대기→승인된 병원만 계정 자동 생성 (단일 승인과 동일하게 g5_member+관리자+SSO)
+                if ($ba_approved) {
+                    $ba_hi_r = mysqli_query($connect, "SELECT * FROM gangnamunni_hospitals WHERE id=" . (int)$bid);
+                    $ba_hi = $ba_hi_r ? mysqli_fetch_assoc($ba_hi_r) : null;
+                    if ($ba_hi) provision_hospital_accounts($connect, $ba_hi);
+                }
             }
             $message = count($ids) . '개 병원이 승인되었습니다.';
         }

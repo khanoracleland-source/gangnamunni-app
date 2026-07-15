@@ -11,6 +11,7 @@ $admin_current = 'bookings';
 // DB 연결
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/hospital_filter.php'; // 병원 격리(super_admin=전체, 그 외=소속 병원)
 require_once __DIR__ . '/includes/photo_upload_helper.php';
 require_admin_login();
 require_permission('bookings');
@@ -27,6 +28,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $id = intval($_POST['id'] ?? 0);
     $action = $_POST['action'];
     $allowed = ['confirm', 'cancel', 'complete', 'noshow'];
+    // 병원 격리: super_admin 이 아니면 소속 병원 예약만 상태 변경 가능
+    $_act_hin = get_hospital_filter_in($connect);
+    if ($id > 0 && $_act_hin !== null) {
+        $_own_r = mysqli_query($connect, "SELECT 1 FROM gangnamunni_bookings WHERE id={$id} AND hospital_id IN (" . $_act_hin . ") LIMIT 1");
+        if (!$_own_r || mysqli_num_rows($_own_r) === 0) {
+            $msg = '해당 예약에 대한 권한이 없습니다.';
+            $msg_type = 'danger';
+            goto skip_action;
+        }
+    }
     if ($id > 0 && in_array($action, $allowed)) {
         $status_map = ['confirm' => 'confirmed', 'cancel' => 'cancelled', 'complete' => 'completed', 'noshow' => 'no_show'];
         $new_status = $status_map[$action];
@@ -126,6 +137,12 @@ if ($search) {
     $where .= " AND (b.name LIKE '%" . $s . "%' OR b.phone LIKE '%" . $s . "%' OR b.hospital_name LIKE '%" . $s . "%')";
 }
 
+// ===== 병원 격리: super_admin 은 전체, 그 외 관리자는 소속 병원 예약만 =====
+//   get_hospital_filter_in(): null=전체, "1,2,3"=해당 병원, '0'=소속 병원 없음(아무것도 안 보임)
+$hosp_in = get_hospital_filter_in($connect);
+$hosp_and = ($hosp_in !== null) ? " AND hospital_id IN (" . $hosp_in . ")" : "";
+if ($hosp_and) $where .= $hosp_and;
+
 $count_sql = "SELECT COUNT(*) as cnt FROM gangnamunni_bookings b WHERE " . $where;
 $count_result = mysqli_query($connect, $count_sql);
 $total = $count_result ? mysqli_fetch_assoc($count_result)['cnt'] : 0;
@@ -138,9 +155,10 @@ if ($result) while ($row = mysqli_fetch_assoc($result)) $bookings[] = $row;
 
 // ===== Stats =====
 $stats = ['total' => 0, 'pending' => 0, 'confirmed' => 0, 'cancelled' => 0, 'completed' => 0, 'today' => 0];
-$stats_r = mysqli_query($connect, "SELECT status, COUNT(*) as cnt FROM gangnamunni_bookings GROUP BY status");
+$stats_where = ($hosp_in !== null) ? " WHERE hospital_id IN (" . $hosp_in . ")" : "";
+$stats_r = mysqli_query($connect, "SELECT status, COUNT(*) as cnt FROM gangnamunni_bookings" . $stats_where . " GROUP BY status");
 if ($stats_r) while ($r = mysqli_fetch_assoc($stats_r)) { $stats[$r['status']] = $r['cnt']; $stats['total'] += $r['cnt']; }
-$today_r = mysqli_query($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_bookings WHERE booking_date=CURDATE()");
+$today_r = mysqli_query($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_bookings WHERE booking_date=CURDATE()" . $hosp_and);
 if ($today_r) $stats['today'] = mysqli_fetch_assoc($today_r)['cnt'];
 
 require_once __DIR__ . '/../dbconfig.php';
