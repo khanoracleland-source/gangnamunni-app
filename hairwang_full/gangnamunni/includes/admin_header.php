@@ -527,6 +527,9 @@ if (!isset($admin_page_description) && isset($menu_descriptions[$admin_current])
         /* 사이드바 collapse 초기 로드 시 애니메이션 방지 */
         .admin-sidebar .collapse { transition: none !important; }
         .admin-sidebar .collapsing { transition: none !important; height: auto !important; }
+        /* 그룹 chevron: 열림/닫힘(aria-expanded)에 따라 회전 — 클릭으로 토글해도 항상 일치 */
+        .admin-sidebar .nav-link .bi-chevron-down { transition: transform .2s; }
+        .admin-sidebar .nav-link[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
         
         .admin-main {
             margin-left: var(--admin-sidebar-width);
@@ -1001,7 +1004,7 @@ if (!isset($admin_page_description) && isset($menu_descriptions[$admin_current])
                data-bs-toggle="collapse" href="#<?php echo $collapse_id; ?>" role="button"
                aria-expanded="<?php echo $is_group_active ? 'true' : 'false'; ?>">
                 <span><i class="bi <?php echo $menu['icon']; ?>"></i> <?php echo $menu['label']; ?></span>
-                <i class="bi bi-chevron-down" style="font-size:10px;<?php echo $is_group_active ? 'transform:rotate(180deg);' : ''; ?>"></i>
+                <i class="bi bi-chevron-down" style="font-size:10px;"></i>
             </a>
             <div class="collapse <?php echo $is_group_active ? 'show' : ''; ?>" id="<?php echo $collapse_id; ?>">
                 <ul class="nav flex-column ms-3">

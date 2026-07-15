@@ -15,12 +15,27 @@ if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/hospital_filter.php'; // 병원 격리(super_admin=전체, 그 외=소속 병원)
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 $esc = function($v) use ($connect) { return mysqli_real_escape_string($connect, $v); };
+
+// 병원 격리: 현재 관리자가 의사를 등록할 수 있는 tenants.id(=hms_hospital_id) 목록.
+//   반환: null=전체(super_admin 등), []=소속 병원 없음(선택 불가), [1,2..]=소속 병원의 tenant id
+function wizard_allowed_tenant_ids($connect) {
+    if (!function_exists('get_hospital_filter_in')) return null;
+    $hf_in = get_hospital_filter_in($connect);   // gangnamunni 병원 id CSV, null(전체), '0'(없음)
+    if ($hf_in === null) return null;
+    if ($hf_in === '0')  return [];
+    $ids = [];
+    // tenants.id(=hms_hospital_id) 는 UUID 문자열 → 문자열로 반환
+    $r = mysqli_query($connect, "SELECT hms_hospital_id FROM gangnamunni_hospitals WHERE id IN ({$hf_in}) AND hms_hospital_id IS NOT NULL AND hms_hospital_id <> ''");
+    while ($r && $row = mysqli_fetch_assoc($r)) { $ids[] = (string)$row['hms_hospital_id']; }
+    return array_values(array_unique($ids));
+}
 
 // ── AJAX 핸들러 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -72,9 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
-    // 병원(tenants) 목록 조회
+    // 병원(tenants) 목록 조회 — 소속 병원만 (super_admin 은 전체)
     if ($action === 'load_hospitals') {
-        $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants ORDER BY hospital_name ASC");
+        $allowed_t = wizard_allowed_tenant_ids($connect);
+        $tenant_where = '';
+        if (is_array($allowed_t)) {
+            if (empty($allowed_t)) { echo json_encode(['success' => true, 'hospitals' => []]); exit; }
+            $quoted_t = array_map(function($t) use ($connect) { return "'" . mysqli_real_escape_string($connect, $t) . "'"; }, $allowed_t);
+            $tenant_where = " WHERE id IN (" . implode(',', $quoted_t) . ")";
+        }
+        $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants{$tenant_where} ORDER BY hospital_name ASC");
         $hospitals = [];
         while ($row = mysqli_fetch_assoc($r)) {
             $hospitals[] = $row;
@@ -114,6 +136,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $bloodGroup = $esc($data['blood_group'] ?? '');
             $password   = password_hash($data['password'] ?? '', PASSWORD_BCRYPT);
             $tenantId   = $esc($data['hospital'] ?? '');
+            // 병원 격리: 소속 병원(tenant)만 등록 가능 (POST 로 임의 병원 지정 차단)
+            //   tenant id 는 UUID 문자열이므로 원본값으로 비교
+            $allowed_t = wizard_allowed_tenant_ids($connect);
+            if (is_array($allowed_t) && !in_array((string)($data['hospital'] ?? ''), $allowed_t, true)) {
+                throw new Exception('선택한 병원에 대한 권한이 없습니다.');
+            }
             $deptId     = intval($data['department_id'] ?? 0);
             $specialist = $esc($data['specialist'] ?? '');
             $qualification = $esc($data['qualification'] ?? '');

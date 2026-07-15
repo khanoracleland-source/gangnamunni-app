@@ -11,6 +11,7 @@ session_start();
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/hospital_filter.php'; // 병원 격리(super_admin=전체, 그 외=소속 병원 의사)
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
@@ -157,9 +158,16 @@ if ($view_mode > 0) {
     mysqli_stmt_close($stmt);
 }
 
-// ===== 병원 목록 (수정 폼 select용) =====
+// ===== 병원 격리 필터 (super_admin=전체, 그 외=소속 병원) — 목록·통계·드롭다운 공통 =====
+//   get_hospital_filter_in(): null=전체, "1,2,3"=해당 병원(정수 CSV), '0'=소속 병원 없음
+$hosp_in = get_hospital_filter_in($connect);
+$hosp_where_plain = ($hosp_in !== null) ? " WHERE hospital_id IN ({$hosp_in})" : ""; // 통계용(별칭 없음)
+$hosp_and_plain   = ($hosp_in !== null) ? " AND hospital_id IN ({$hosp_in})" : "";
+
+// ===== 병원 목록 (필터 드롭다운/수정 폼 select용) — 소속 병원만 =====
 $hospital_list = [];
-$h_result = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals ORDER BY name ASC");
+$h_where = ($hosp_in !== null) ? " WHERE id IN ({$hosp_in})" : "";
+$h_result = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals{$h_where} ORDER BY name ASC");
 if ($h_result) {
     while ($hr = mysqli_fetch_assoc($h_result)) {
         $hospital_list[] = $hr;
@@ -201,17 +209,22 @@ if (!empty($search)) {
     $where_types .= 'ssssss';
 }
 
+// ===== 병원 격리: 목록에도 소속 병원 의사만 (상단에서 계산한 $hosp_in 재사용) =====
+if ($hosp_in !== null) {
+    $where .= " AND d.hospital_id IN ({$hosp_in})";
+}
+
 // ===== 통계 =====
 $stats = ['total' => 0];
 $specialty_stats = [];
 
-$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_doctors");
+$stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_doctors" . $hosp_where_plain);
 if ($stat_result) $stats['total'] = (int)mysqli_fetch_assoc($stat_result)['c'];
 
 // 전문분야별 분포
 $spec_result = mysqli_query($connect,
     "SELECT COALESCE(NULLIF(TRIM(specialty),''), '미지정') AS spec, COUNT(*) AS cnt
-     FROM gangnamunni_doctors GROUP BY spec ORDER BY cnt DESC LIMIT 10"
+     FROM gangnamunni_doctors" . $hosp_where_plain . " GROUP BY spec ORDER BY cnt DESC LIMIT 10"
 );
 if ($spec_result) {
     while ($sr = mysqli_fetch_assoc($spec_result)) {
@@ -220,7 +233,7 @@ if ($spec_result) {
 }
 
 // 소속 병원 수
-$hospital_count_result = mysqli_query($connect, "SELECT COUNT(DISTINCT hospital_id) AS c FROM gangnamunni_doctors WHERE hospital_id > 0");
+$hospital_count_result = mysqli_query($connect, "SELECT COUNT(DISTINCT hospital_id) AS c FROM gangnamunni_doctors WHERE hospital_id > 0" . $hosp_and_plain);
 $stats['hospitals'] = $hospital_count_result ? (int)mysqli_fetch_assoc($hospital_count_result)['c'] : 0;
 
 // 필터링된 전체 건수
