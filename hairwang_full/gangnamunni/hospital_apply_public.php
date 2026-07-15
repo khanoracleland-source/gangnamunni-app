@@ -32,6 +32,11 @@ $page_title = term('business', '병원') . ' 등록 신청 — ' . term('site_na
 // 앱은 자체 헤더가 있으므로 상단 히어로 헤더를 숨기고 여백을 줄여 임베드 친화적으로 렌더한다.
 $is_app_mode = isset($_GET['app']) && $_GET['app'] == '1';
 
+// register.php(회원가입 '병원관계자' 선택) 를 거쳐 진입했는지 판단 → 상단에 '이전으로' 버튼 노출.
+// 앱/웹 모두 브라우저 히스토리로 회원가입 화면으로 되돌아갈 수 있게 한다.
+$referer = $_SERVER['HTTP_REFERER'] ?? '';
+$from_register = (stripos($referer, 'register') !== false) || isset($_GET['from']);
+
 // 신청 기능 활성화 체크
 $apply_enabled = true;
 $res_set = mysqli_query($connect, "SELECT setting_value FROM gangnamunni_settings WHERE setting_key='show_hospital_apply' LIMIT 1");
@@ -272,6 +277,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
 <?php endif; ?>
 
 <div class="container">
+
+<?php if ($from_register): ?>
+<!-- 회원가입(register.php) 을 거쳐 진입 → 이전으로 돌아가기 -->
+<div class="mx-auto pt-3" style="max-width: 800px;">
+    <a href="javascript:history.back()" class="btn btn-link text-decoration-none ps-0 text-muted">
+        <i class="bi bi-arrow-left me-1"></i>이전으로
+    </a>
+</div>
+<?php endif; ?>
 
 <?php if (!$apply_enabled): ?>
     <div class="card form-card">

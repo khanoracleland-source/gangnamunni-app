@@ -175,7 +175,23 @@ if($mb_recommend) {
 
 <div class="rb_member">
     <div class="rb_login rb_reg">
-       
+
+        <!-- 상단: 로그인(login.php)으로 돌아가는 chevron-left. 아이콘 폰트 미로드 대비 인라인 SVG 사용 -->
+        <!-- html{overflow-x:hidden} 때문에 sticky 가 깨져서, 스와이프/스크롤에도 항상 상단 고정되도록 fixed 사용 -->
+        <!-- fixed 바가 박스 상단을 가리지 않도록, 상단 여백을 바 높이(56px)만큼 확보한다 -->
+        <style>
+            .rb_member .rb_login.rb_reg { padding-top: 55px !important; }
+            .rb_reg_back { height: 56px; box-sizing: border-box; display: flex; align-items: center; }
+        </style>
+        <div class="rb_reg_back" style="position:fixed;top:0;left:0;right:0;z-index:1000;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.06);padding:0 20px;">
+            <a href="<?php echo G5_BBS_URL; ?>/login.php" style="display:inline-flex;align-items:center;gap:6px;color:#666;text-decoration:none;font-size:18px;font-weight:600;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+                </svg>
+                로그인
+            </a>
+        </div>
+
         <form name="fregister" id="fregister" action="<?php echo $register_action_url ?>" onsubmit="return fregister_submit(this);" method="POST" autocomplete="off">
         <input type="hidden" name="w" value="">
         <input type="hidden" name="url" value="<?php echo $urlencode ?>">
@@ -288,10 +304,6 @@ if($mb_recommend) {
             <div class="btn_confirm">
                 <button type="submit" class="btn_submit font-B" onclick="return regNextStep();">다음 단계로</button>
             </div>
-            </li>
-            
-            <li class="join_links">
-                나중에 가입할래요.　<a href="<?php echo G5_URL; ?>/gangnamunni/" class="font-B">회원가입 취소</a>
             </li>
             
         </ul>
