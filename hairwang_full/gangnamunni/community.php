@@ -212,6 +212,21 @@ if ($tab === 'review') {
 $total_pages = max(1, ceil($total_count / $per_page));
 $is_logged_in = is_gangnamunni_logged_in();
 
+// 현재 사용자가 좋아요한 항목 집합 (좋아요한 것만 하트를 빨강으로 표시)
+//  - 시술후기 탭 = review_likes / 그 외(커뮤니티 글) = gangnamunni_community_likes
+$liked_set = [];
+$cm_uid = function_exists('get_gangnamunni_member_id') ? get_gangnamunni_member_id() : null;
+if ($cm_uid && !empty($posts)) {
+    $liked_ids = implode(',', array_map(function ($p) { return (int)$p['id']; }, $posts));
+    $uid_esc = mysqli_real_escape_string($connect, $cm_uid);
+    if ($tab === 'review') {
+        $lq = @mysqli_query($connect, "SELECT review_id AS lid FROM review_likes WHERE user_id = '{$uid_esc}' AND review_id IN ({$liked_ids})");
+    } else {
+        $lq = @mysqli_query($connect, "SELECT post_id AS lid FROM gangnamunni_community_likes WHERE user_id = '{$uid_esc}' AND post_id IN ({$liked_ids})");
+    }
+    if ($lq) { while ($lr = mysqli_fetch_assoc($lq)) { $liked_set[(int)$lr['lid']] = true; } }
+}
+
 $page_title = '커뮤니티';
 $show_search = true; // 메인과 동일한 공용 헤더 검색바(includes/header.php) 사용
 $search_target_page = 'community.php';       // 검색/지역 필터는 커뮤니티 게시글 대상으로 동작
@@ -277,7 +292,8 @@ $page_css = '
 [data-bs-theme="dark"] .post-stat-group { color: var(--bs-body-color, #ccc); }
 .post-stat-group .stat { display: inline-flex; align-items: center; gap: 3px; }
 .post-stat-group .stat i { font-size: 20px; }
-.post-stat-group .heart-icon { color: #AE1932; }
+/* 기본(미좋아요) 하트는 중립색(빈 하트), 좋아요 시에만 빨강(.stat-like.liked) */
+.post-stat-group .heart-icon { color: inherit; }
 .post-author-name { font-size: 15px; font-weight: 400; color: #000000; }
 [data-bs-theme="dark"] .post-author-name { color: var(--bs-body-color, #ddd); }
 
@@ -300,16 +316,8 @@ $page_css = '
 @media (min-width: 641px) {
     .fab-write { right: calc(50% - 300px); }
 }
-
-
-/* 신고/차단 버튼 */
-.post-report-row { display: flex; justify-content: flex-end; gap: 2px; margin-top: -4px; padding-right: 4px; }
-.rv-report-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px; opacity: 0.5; transition: opacity 0.2s; vertical-align: middle; }
-.rv-report-btn:hover { opacity: 1; }
-
 @media (max-width: 480px) {
     .post-thumbs { max-width: 35%; }
-    .post-thumbs .thumb-overlay { font-size: 13px; }
     .post-title { font-size: 16px; }
     .community-tabs a { font-size: 16px; }
 }
@@ -373,9 +381,6 @@ include __DIR__ . '/includes/header.php';
                 $link = !empty($post['detail_link']) ? $post['detail_link'] : (($post['id'] > 0) ? 'detail_community.php?id=' . $post['id'] : '#');
                 $time_text = community_time_display($post['created_at'] ?? '', $post['updated_at'] ?? null);
                 $author = htmlspecialchars($post['author_name'] ?? '익명');
-                $raw_author = addslashes($post['author_name'] ?? '익명');
-                $post_mb_id = addslashes($post['mb_id'] ?? '');
-                $initial = mb_substr($author, 0, 1);
             ?>
             <li class="post-item" onclick="location.href='<?php echo $link; ?>'" style="cursor:pointer;">
                     <div class="post-content-area">
@@ -412,18 +417,13 @@ include __DIR__ . '/includes/header.php';
                             </div>
                             <span class="post-author-name"><?php echo $author; ?></span>
                             <div class="post-stat-group">
-                                <span class="stat"><i class="bi bi-heart-fill heart-icon"></i> <?php echo intval($post['like_count'] ?? 0); ?></span>
+                                <?php $__is_review = !empty($post['detail_link']); $__liked = isset($liked_set[(int)$post['id']]); ?>
+                                <span class="stat stat-like <?php echo $__liked ? 'liked' : ''; ?>" role="button" onclick="event.stopPropagation(); cmToggleLike(this, <?php echo intval($post['id']); ?>, <?php echo $__is_review ? 'true' : 'false'; ?>);"><i class="bi <?php echo $__liked ? 'bi-heart-fill' : 'bi-heart'; ?> heart-icon"></i> <span class="like-cnt"><?php echo intval($post['like_count'] ?? 0); ?></span></span>
                                 <span class="stat"><i class="bi bi-chat-square-text"></i> <?php echo intval($post['comment_count'] ?? 0); ?></span>
                                 <span class="stat"><i class="bi bi-eye"></i> <?php echo intval($post['view_count'] ?? 0); ?></span>
                             </div>
                         </div>
                     </div>
-                <!-- <div class="post-report-row">
-                    <button class="rv-report-btn" onclick="openReportModal('community', <?php echo intval($post['id']); ?>, '<?php echo $post_mb_id; ?>', '<?php echo $raw_author; ?>')" title="신고">&#9873;</button>
-                    <?php if (!empty($post['mb_id'])): ?>
-                    <button class="rv-report-btn" onclick="openBlockModal('<?php echo $post_mb_id; ?>', '<?php echo $raw_author; ?>')" title="차단">&#128683;</button>
-                    <?php endif; ?>
-                </div> -->
             </li>
             <?php endforeach; ?>
         </ul>
@@ -470,8 +470,50 @@ include __DIR__ . '/includes/header.php';
     <button class="fab-write" title="글쓰기" onclick="alert('로그인이 필요합니다.'); location.href='<?php echo rtrim(dirname($_SERVER['SCRIPT_NAME'], 2),'/'); ?>/bbs/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/community.php'); ?>';"><i class="bi bi-pencil-square"></i></button>
     <?php endif; ?>
 
+<style>
+.stat-like { cursor: pointer; user-select: none; }
+.stat-like:hover .heart-icon { opacity: 0.75; }
+.stat-like.liked, .stat-like.liked .heart-icon { color: #AE1932; font-weight: 700; }
+</style>
+<script>
+// 목록에서 바로 좋아요 토글 — 커뮤니티 글(detail_community.php) / 시술후기(api/like_review.php) 분기
+var CM_USER_ID = <?php echo json_encode(function_exists('get_gangnamunni_member_id') ? (get_gangnamunni_member_id() ?? '') : ''); ?>;
+function cmLoginPrompt() {
+    if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
+        location.href = '../bbs/login.php?url=' + encodeURIComponent(location.href);
+    }
+}
+// 좋아요 상태 반영: 카운트 + .liked 클래스 + 하트 채움(빨강)/빈하트 전환
+function cmApplyLikeState(el, liked, count) {
+    var cntEl = el.querySelector('.like-cnt');
+    if (cntEl && count !== undefined && count !== null) cntEl.textContent = count;
+    el.classList.toggle('liked', !!liked);
+    var icon = el.querySelector('i.heart-icon');
+    if (icon) icon.className = 'bi ' + (liked ? 'bi-heart-fill' : 'bi-heart') + ' heart-icon';
+}
+function cmToggleLike(el, id, isReview) {
+    if (!CM_USER_ID) { cmLoginPrompt(); return; }
+    if (isReview) {
+        fetch('api/like_review.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ review_id: id, user_id: CM_USER_ID })
+        }).then(function(r){ return r.json(); }).then(function(d){
+            if (d && d.success) cmApplyLikeState(el, d.liked, d.like_count);
+        }).catch(function(){ alert('좋아요 처리 중 오류가 발생했습니다.'); });
+    } else {
+        var fd = new FormData();
+        fd.append('action', 'toggle_like');
+        fd.append('post_id', id);
+        fetch('detail_community.php?id=' + id + '&_ajax=1', { method: 'POST', body: fd })
+            .then(function(r){ return r.json(); }).then(function(d){
+                if (d && d.login_required) { cmLoginPrompt(); return; }
+                if (d && d.success) cmApplyLikeState(el, d.liked, d.count);
+            }).catch(function(){ alert('좋아요 처리 중 오류가 발생했습니다.'); });
+    }
+}
+</script>
 <?php
-include __DIR__ . '/includes/report_block_modal.php';
 include_once __DIR__ . '/includes/bottom_nav.php';
 include __DIR__ . '/includes/footer.php';
 mysqli_close($connect);

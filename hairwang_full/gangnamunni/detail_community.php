@@ -446,7 +446,6 @@ include __DIR__ . '/includes/header.php';
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
-        <?php $_layout_photos_rendered = true; ?>
 
         <!-- [1차 검수 #20 - 2026-05-28] 시술 후기 데이터 항목 노출 -->
         <?php
@@ -492,10 +491,6 @@ include __DIR__ . '/includes/header.php';
                 🔗 공유하기
             </button>
         </div>
-
-        <?php if (false): // 기존 사진 갤러리 블록 - 위로 이동했으므로 비활성화 ?>
-        <div>
-        <?php endif; ?>
 
         <?php
         // 작성자 본인만 수정/삭제 버튼 표시
