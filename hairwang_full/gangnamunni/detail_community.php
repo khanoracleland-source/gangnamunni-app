@@ -189,26 +189,47 @@ $show_search = false;
 
 $page_css = '
 /* 커뮤니티 상세 페이지 스타일 */
+/* 헤더 — detail.php 헤더 디자인과 동일하게 통일 */
 .page-header {
-    background: var(--bs-body-bg, #FFFFFF);
-    border-bottom: 1px solid var(--bs-border-color, #F5F5F5);
-    padding: 12px 20px;
     position: sticky;
-    top: 56px;
-    z-index: 90;
+    top: 0;
+    /* main-content 좌우 패딩(16px, 모바일 12px)을 음수 마진으로 상쇄 →
+       헤더를 컨테이너 가장자리까지 확장해 뒤로가기 버튼이 끝에 붙게 함 (detail.php와 동일) */
+    margin: 0 -16px;
+    padding: 14px 16px;
+    background: var(--bs-body-bg, #fff);
     display: flex;
     align-items: center;
     gap: 12px;
+    z-index: 99;
+}
+@media (max-width: 640px) {
+    .page-header { margin: 0 -12px; }
 }
 .back-btn {
-    font-size: 24px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1));
+    color: inherit;
     cursor: pointer;
     text-decoration: none;
-    color: var(--bs-body-color, #000);
 }
 .page-title {
-    font-size: 18px;
-    font-weight: bold;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 60%;
+    text-align: center;
+    font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1));
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .post-detail-container {
     max-width: 640px;
@@ -373,12 +394,14 @@ $post_author_raw = addslashes($post_author_display);
 $post_mb_id = addslashes($post['mb_id'] ?? '');
 
 // 공통 헤더 include
+$hide_admin_inline_edit = true; // 이 페이지에선 관리자 인라인 편집 상단바(ae-topbar) 숨김
+$hide_global_nav = true;        // 이 페이지에선 글로벌 네비게이션(global_nav) 숨김
 include __DIR__ . '/includes/header.php';
 ?>
 
     <!-- 페이지 헤더 -->
     <div class="page-header">
-        <a href="community.php" class="back-btn">←</a>
+        <a href="community.php" class="back-btn"><i class="bi bi-chevron-left"></i></a>
         <div class="page-title">커뮤니티</div>
     </div>
 

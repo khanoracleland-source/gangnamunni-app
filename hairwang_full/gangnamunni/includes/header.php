@@ -62,7 +62,8 @@ if (isset($connect) && $connect && function_exists('loadThemeSettings')) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <?php
 // 관리자 인라인 편집 버튼 (이윰빌더 스타일)
-if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true) {
+// 페이지에서 $hide_admin_inline_edit = true 로 설정하면 해당 페이지에선 노출하지 않음
+if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true) {
     if (file_exists(__DIR__ . '/admin_inline_edit.php')) {
         include_once __DIR__ . '/admin_inline_edit.php';
     }
@@ -86,8 +87,8 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
     <?php endif; ?>
 </head>
 <body>
-    <!-- 글로벌 네비게이션 (앱 모드에서는 숨김) -->
-    <?php if (empty($is_app_mode)) { include __DIR__ . '/global_nav.php'; } ?>
+    <!-- 글로벌 네비게이션 (앱 모드 또는 $hide_global_nav 설정 시 숨김) -->
+    <?php if (empty($is_app_mode) && empty($hide_global_nav)) { include __DIR__ . '/global_nav.php'; } ?>
 
 <?php if ($show_search && empty($is_app_mode)):
     // 검색/지역필터 동작을 페이지별로 파라미터화 (기본: 병원 목록)

@@ -212,8 +212,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             mysqli_commit($connect);
             echo json_encode(['success' => true, 'hospital_id' => $hospitalId, 'message' => '병원이 등록되었습니다. 관리자 승인 후 활성화됩니다.<br><br><a href="https://hms.seoulbeauty.app/super-admin/hospitals" target="_blank" class="btn btn-sm btn-outline-primary">HMS 병원 관리</a>']);
-        } catch (Exception $e) {
-            mysqli_rollback($connect);
+        } catch (\Throwable $e) {
+            // Exception 뿐 아니라 Error/TypeError/mysqli_sql_exception 까지 잡아
+            // 항상 JSON 으로 응답 (프론트가 "<!DOCTYPE ... not valid JSON" 대신 메시지 표시)
+            @mysqli_rollback($connect);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
         exit;

@@ -958,9 +958,30 @@ if (!isset($admin_page_description) && isset($menu_descriptions[$admin_current])
 
 </nav>
 
+<?php
+// 예약 관리 배지: 접수된 예약 요청(대기중) 개수 — 병원 격리(super_admin=전체) 반영
+$sidebar_bookings_pending = 0;
+// 후기 관리 배지: 승인 대기(pending) 후기 개수 — admin_reviews.php 통계와 동일(전역)
+$sidebar_reviews_pending = 0;
+// 병원 등록 신청 배지: 승인 대기(pending) 병원 신청 개수
+$sidebar_hospitals_pending = 0;
+if (isset($connect) && $connect) {
+    if (function_exists('get_hospital_filter_in')) {
+        $__b_hin = get_hospital_filter_in($connect);
+        $__b_where = ($__b_hin !== null) ? " AND hospital_id IN ({$__b_hin})" : "";
+        $__b_res = mysqli_query($connect, "SELECT COUNT(*) AS c FROM gangnamunni_bookings WHERE status='pending'{$__b_where}");
+        if ($__b_res) { $sidebar_bookings_pending = (int)(mysqli_fetch_assoc($__b_res)['c'] ?? 0); }
+    }
+    $__r_res = mysqli_query($connect, "SELECT COUNT(*) AS c FROM hospital_reviews WHERE review_status='pending'");
+    if ($__r_res) { $sidebar_reviews_pending = (int)(mysqli_fetch_assoc($__r_res)['c'] ?? 0); }
+    // 병원 등록 신청(승인 대기) 개수 — 전역(신규 병원은 담당 관리자 미배정이라 격리 없음)
+    $__h_res = mysqli_query($connect, "SELECT COUNT(*) AS c FROM gangnamunni_hospitals WHERE status='pending'");
+    if ($__h_res) { $sidebar_hospitals_pending = (int)(mysqli_fetch_assoc($__h_res)['c'] ?? 0); }
+}
+?>
 <!-- 사이드바 -->
 <nav class="admin-sidebar bg-body-tertiary border-end pt-3" id="adminSidebar">
-    
+
 
     <ul class="nav flex-column">
         <?php foreach ($admin_menus as $menu):
@@ -1017,6 +1038,15 @@ if (!isset($admin_page_description) && isset($menu_descriptions[$admin_current])
                            style="font-size:12px;">
                             <i class="bi <?php echo $child['icon']; ?>"></i>
                             <?php echo $child['label']; ?>
+                            <?php if ($child['key'] === 'bookings' && $sidebar_bookings_pending > 0): ?>
+                            <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_bookings_pending > 99 ? '99+' : $sidebar_bookings_pending; ?></span>
+                            <?php endif; ?>
+                            <?php if ($child['key'] === 'reviews' && $sidebar_reviews_pending > 0): ?>
+                            <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_reviews_pending > 99 ? '99+' : $sidebar_reviews_pending; ?></span>
+                            <?php endif; ?>
+                            <?php if (($child['url'] === 'admin_hospitals.php' || $child['key'] === 'hospital_pending') && $sidebar_hospitals_pending > 0): ?>
+                            <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_hospitals_pending > 99 ? '99+' : $sidebar_hospitals_pending; ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
                     <?php endforeach; ?>
