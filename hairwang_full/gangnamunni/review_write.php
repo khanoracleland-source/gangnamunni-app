@@ -16,6 +16,7 @@ $is_app_mode = isset($_GET['app']) && $_GET['app'] == '1';
 $prefill_hospital_id = intval($_GET['hospital_id'] ?? 0);
 require_once __DIR__ . '/includes/settings_helper.php';
 require_once __DIR__ . '/includes/photo_upload_helper.php';
+require_once __DIR__ . '/includes/review_booking.php';
 
 // 로그인 확인 (Gnuboard 회원 또는 관리자 세션)
 $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
@@ -197,6 +198,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $content = trim($_POST['content'] ?? '');
     $rating = intval($_POST['rating'] ?? 0);
     $treatments = trim($_POST['treatments'] ?? '');
+    $booking_id = intval($_POST['booking_id'] ?? 0);
+
+    // 예약당 후기 1회 제한 (신규 작성 시) — 이미 작성했다면 중복 방지
+    if ($post_edit_id <= 0 && $booking_id > 0) {
+        $existing_bk_review = getBookingReview($connect, $booking_id);
+        if ($existing_bk_review) {
+            header('Location: my_reviews.php');
+            exit;
+        }
+    }
 
     // 필수: 평점 / 제목 / 내용 (사진은 선택)
     if ($hospital_id <= 0 || $rating < 1 || $rating > 5 || empty($title) || empty($content)) {
@@ -230,12 +241,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_close($stmt);
         }
     } else {
+        ensureReviewBookingColumn($connect);
+        $booking_id_val = $booking_id > 0 ? $booking_id : null;
         $stmt = mysqli_prepare($connect,
-            "INSERT INTO hospital_reviews (hospital_id, user_id, user_name, title, content, rating, treatments, review_status, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())"
+            "INSERT INTO hospital_reviews (hospital_id, user_id, user_name, title, content, rating, treatments, booking_id, review_status, is_active, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, NOW())"
         );
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'issssss', $hospital_id, $user_id, $user_name, $title, $content, $rating, $treatments);
+            mysqli_stmt_bind_param($stmt, 'issssssi', $hospital_id, $user_id, $user_name, $title, $content, $rating, $treatments, $booking_id_val);
             if (mysqli_stmt_execute($stmt)) {
                 $review_id = mysqli_insert_id($connect);
 
@@ -419,6 +432,9 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
         <input type="hidden" name="edit_id" value="<?php echo (int)$edit_review['id']; ?>">
         <?php endif; ?>
         <input type="hidden" name="hospital_id" value="<?php echo (int)$sel_hospital_id; ?>">
+        <?php if ($prefill_booking_id > 0): ?>
+        <input type="hidden" name="booking_id" value="<?php echo (int)$prefill_booking_id; ?>">
+        <?php endif; ?>
 
         <?php $sel_treatment = $_POST['treatments'] ?? ($edit_review['treatments'] ?? $card_treatment_category); ?>
         <?php if (!empty($review_categories)): ?>

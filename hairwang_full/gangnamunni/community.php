@@ -57,7 +57,84 @@ $table_exists = $table_check && mysqli_num_rows($table_check) > 0;
 $posts = [];
 $total_count = 0;
 
-if ($table_exists) {
+if ($tab === 'review') {
+    // 시술후기 탭 = 승인(published)된 병원 후기(hospital_reviews) 노출
+    //  → review_write.php 로 작성 후 관리자 승인된 후기가 여기에 표시된다.
+    $rev_where = "r.review_status = 'published'";
+    $rev_types = '';
+    $rev_vals = [];
+    if ($keyword !== '') {
+        $rev_where .= " AND (r.title LIKE ? OR r.content LIKE ?)";
+        $rev_types .= 'ss';
+        $kw_like = '%' . $keyword . '%';
+        $rev_vals[] = $kw_like;
+        $rev_vals[] = $kw_like;
+    }
+
+    // 총 개수
+    $count_sql = "SELECT COUNT(*) as cnt FROM hospital_reviews r WHERE {$rev_where}";
+    if (!empty($rev_vals)) {
+        $stmt = mysqli_prepare($connect, $count_sql);
+        mysqli_stmt_bind_param($stmt, $rev_types, ...$rev_vals);
+        mysqli_stmt_execute($stmt);
+        $total_count = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt))['cnt'] ?? 0;
+        mysqli_stmt_close($stmt);
+    } else {
+        $cr = mysqli_query($connect, $count_sql);
+        $total_count = ($cr ? mysqli_fetch_assoc($cr)['cnt'] : 0);
+    }
+
+    // 목록 (커뮤니티 게시글과 동일한 렌더 구조로 매핑)
+    $list_sql = "SELECT r.id, r.title, r.content, r.created_at, r.updated_at,
+            r.user_name AS author_name, r.user_avatar AS author_avatar, r.user_id AS mb_id,
+            r.like_count, r.comment_count, r.view_count, r.rating, r.photo_urls AS photos
+        FROM hospital_reviews r
+        WHERE {$rev_where}
+        ORDER BY r.created_at DESC
+        LIMIT ? OFFSET ?";
+    $rev_types_full = $rev_types . 'ii';
+    $rev_vals_full = array_merge($rev_vals, [$per_page, $offset]);
+    $stmt = mysqli_prepare($connect, $list_sql);
+    mysqli_stmt_bind_param($stmt, $rev_types_full, ...$rev_vals_full);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $rev_ids = [];
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $row['category'] = '⭐ ' . number_format((float)($row['rating'] ?? 0), 1) . ' 시술후기';
+            $row['detail_link'] = 'review_detail.php?id=' . (int)$row['id'];
+            $posts[] = $row;               // photos = photo_urls(있으면) 그대로 유지
+            $rev_ids[] = (int)$row['id'];
+        }
+    }
+    mysqli_stmt_close($stmt);
+
+    // 후기 사진은 review_images 테이블에 저장됨(시술 전/후) → 일괄 로드하여 photos(JSON) 로 매핑
+    if (!empty($rev_ids)) {
+        $img_ph = implode(',', array_fill(0, count($rev_ids), '?'));
+        $img_stmt = mysqli_prepare($connect,
+            "SELECT review_id, image_url FROM review_images
+             WHERE review_id IN ($img_ph)
+             ORDER BY review_id, FIELD(photo_category,'before','after'), image_order, id");
+        if ($img_stmt) {
+            mysqli_stmt_bind_param($img_stmt, str_repeat('i', count($rev_ids)), ...$rev_ids);
+            mysqli_stmt_execute($img_stmt);
+            $img_res = mysqli_stmt_get_result($img_stmt);
+            $img_map = [];
+            while ($ir = mysqli_fetch_assoc($img_res)) {
+                $img_map[(int)$ir['review_id']][] = $ir['image_url'];
+            }
+            mysqli_stmt_close($img_stmt);
+            // review_images 가 있으면 그 사진을, 없으면 기존 photo_urls 유지
+            foreach ($posts as &$p) {
+                if (!empty($img_map[(int)$p['id']])) {
+                    $p['photos'] = json_encode($img_map[(int)$p['id']]);
+                }
+            }
+            unset($p);
+        }
+    }
+} elseif ($table_exists) {
     // 정렬 기준
     $order_by = 'p.created_at DESC';
     if ($tab === 'popular') {
@@ -293,7 +370,7 @@ include __DIR__ . '/includes/header.php';
                 }
                 $content_plain = strip_tags($post['content'] ?? '');
                 $preview = mb_substr($content_plain, 0, 50);
-                $link = ($post['id'] > 0) ? 'detail_community.php?id=' . $post['id'] : '#';
+                $link = !empty($post['detail_link']) ? $post['detail_link'] : (($post['id'] > 0) ? 'detail_community.php?id=' . $post['id'] : '#');
                 $time_text = community_time_display($post['created_at'] ?? '', $post['updated_at'] ?? null);
                 $author = htmlspecialchars($post['author_name'] ?? '익명');
                 $raw_author = addslashes($post['author_name'] ?? '익명');

@@ -104,6 +104,13 @@ if (!empty($search_phone)) {
 if (!function_exists('getSettingValue')) {
     require_once __DIR__ . '/includes/settings_helper.php';
 }
+
+// 시술완료 예약별 후기 상태 (후기 작성/승인대기/공개 버튼 분기용)
+require_once __DIR__ . '/includes/review_booking.php';
+$completed_ids = [];
+foreach ($past_bookings as $_pb) { if (($_pb['status'] ?? '') === 'completed') $completed_ids[] = (int)$_pb['id']; }
+$review_map = getBookingReviewsMap($connect, $completed_ids);
+
 $page_title = '내 예약';
 ?>
 <!DOCTYPE html>
@@ -210,7 +217,7 @@ $page_title = '내 예약';
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
 <body>
-<div class="header"><button class="back" onclick="history.back()"><i class="bi bi-chevron-left"></i></button><h1>내 예약/결제 내역</h1></div>
+<div class="header"><button class="back" onclick="location.href='mypage.php'"><i class="bi bi-chevron-left"></i></button><h1>내 예약/결제 내역</h1></div>
 
 <script>
 console.group('[my_bookings] Debug Info');
@@ -325,6 +332,19 @@ console.groupEnd();
                 </div>
                 <div class="detail-btns">
                     <?php if ($bk['status'] === 'completed'): ?>
+                    <?php
+                        $_rv = $review_map[(int)$bk['id']] ?? null;
+                        $_rs = bookingReviewState($_rv);
+                    ?>
+                    <?php if ($_rs['state'] === 'none'): ?>
+                    <a href="review_write.php?booking_id=<?php echo (int)$bk['id']; ?>" class="detail-btn" style="background:var(--color-primary,#AE1932);color:#fff;">★ <?php echo term('review', '후기'); ?> 작성</a>
+                    <?php elseif ($_rs['state'] === 'published'): ?>
+                    <a href="review_detail.php?id=<?php echo (int)$_rv['id']; ?>" class="detail-btn"><?php echo htmlspecialchars($_rs['label']); ?></a>
+                    <?php elseif ($_rs['state'] === 'rejected'): ?>
+                    <a href="review_write.php?id=<?php echo (int)$_rv['id']; ?>" class="detail-btn" style="background:var(--color-primary,#AE1932);color:#fff;">★ <?php echo term('review', '후기'); ?> 다시 작성</a>
+                    <?php else: ?>
+                    <span class="detail-btn" style="opacity:.6;">⏳ <?php echo htmlspecialchars($_rs['label']); ?></span>
+                    <?php endif; ?>
                     <a href="booking.php?id=<?php echo $bk['hospital_id']; ?>" class="detail-btn">다시예약</a>
                     <?php else: ?>
                     <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">상세보기</a>

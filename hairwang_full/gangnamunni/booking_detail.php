@@ -9,6 +9,7 @@
 require_once __DIR__ . '/includes/init.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 if (!function_exists('getSettingValue') && file_exists(__DIR__ . '/includes/settings_helper.php')) { require_once __DIR__ . '/includes/settings_helper.php'; }
+require_once __DIR__ . '/includes/review_booking.php';
 
 global $is_member, $member;
 $is_user_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
@@ -69,6 +70,11 @@ $status_labels = ['pending' => '대기중', 'confirmed' => '확정', 'completed'
 $status_label = $status_labels[$bk['status']] ?? $bk['status'];
 $is_active = in_array($bk['status'], ['pending', 'confirmed']); // 변경/취소 가능 상태
 
+// 시술완료(completed) → 후기 작성/상태 (예약당 1회)
+$is_completed = ($bk['status'] === 'completed');
+$booking_review = $is_completed ? getBookingReview($connect, $bk['id']) : null;
+$review_state = bookingReviewState($booking_review);
+
 // 시술까지 남은 일수 (D-day) — 시술예정 상태에서 상태뱃지 대신 표시
 $dday_text = '';
 if ($is_active && !empty($bk['booking_date'])) {
@@ -127,7 +133,8 @@ $page_title = term('booking', '예약') . ' 상세';
         .detail-row label { font-size:15px; font-weight:600; color:var(--color-text-secondary); width:34%; flex-shrink:0; }
         .detail-row .value { font-size:15px; font-weight:600; color:var(--color-text); }
 
-        .booked-notice { margin:22px 24px 0; font-size:14px; line-height:1.7; color:#000000; font-weight: 700px }
+        .booked-notice { margin:22px 24px 0; font-size:14px; line-height:1.7; color:#000000; font-weight: 700px
+     }
         .actions { margin:24px; display:flex; gap:10px; }
         .btn { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:15px; font-size:15px; font-weight:700; border:none; cursor:pointer; text-decoration:none; }
         .btn-primary { background:var(--color-primary); color:#fff; }
@@ -217,6 +224,16 @@ $page_title = term('booking', '예약') . ' 상세';
         <?php elseif ($is_active): ?>
         <button class="btn btn-primary" onclick="openEditModal()"> <?php echo term('booking', '예약'); ?>변경</button>
         <button class="btn btn-danger" onclick="openCancelModal()"> <?php echo term('booking', '예약'); ?> 취소</button>
+        <?php elseif ($is_completed): // 시술완료 → 후기 작성/상태 ?>
+            <?php if ($review_state['state'] === 'none'): ?>
+            <a class="btn btn-primary" href="review_write.php?booking_id=<?php echo (int)$bk['id']; ?>">★ <?php echo term('review', '후기'); ?> 작성</a>
+            <?php elseif ($review_state['state'] === 'published'): ?>
+            <a class="btn btn-outline" href="review_detail.php?id=<?php echo (int)$booking_review['id']; ?>"><?php echo htmlspecialchars($review_state['label']); ?></a>
+            <?php elseif ($review_state['state'] === 'rejected'): ?>
+            <a class="btn btn-primary" href="review_write.php?id=<?php echo (int)$booking_review['id']; ?>">★ <?php echo term('review', '후기'); ?> 다시 작성</a>
+            <?php else: // pending ?>
+            <button class="btn btn-outline" disabled style="opacity:.6;cursor:default;">⏳ <?php echo htmlspecialchars($review_state['label']); ?></button>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>

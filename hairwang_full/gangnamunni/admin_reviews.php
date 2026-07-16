@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
     $ids = array_map('intval', $_POST['ids'] ?? []);
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $db->execute("UPDATE hospital_reviews SET is_active = 1 WHERE id IN ({$placeholders})", $ids);
+        $db->execute("UPDATE hospital_reviews SET review_status = 'published', is_active = 1 WHERE id IN ({$placeholders})", $ids);
         $message = count($ids) . "개 후기가 승인되었습니다.";
     }
 }
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
     $ids = array_map('intval', $_POST['ids'] ?? []);
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $db->execute("UPDATE hospital_reviews SET is_active = 0 WHERE id IN ({$placeholders})", $ids);
+        $db->execute("UPDATE hospital_reviews SET review_status = 'rejected', is_active = 0 WHERE id IN ({$placeholders})", $ids);
         $message = count($ids) . "개 후기가 거부되었습니다.";
     }
 }
@@ -128,6 +128,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $db->execute("DELETE FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
         $message = count($ids) . "개 후기가 삭제되었습니다.";
+    }
+}
+
+// 개별 승인/거부 (adminAction JS) — 페이지 세션 기반 관리자 인증(require_permission) 사용.
+// api/admin/approve_review.php 는 그누보드 회원세션(ss_mb_id/레벨10) 기준이라 강남언니 관리자 세션과 맞지 않아 여기서 처리.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), ['approve_one', 'reject_one'], true)) {
+    $rid = intval($_POST['review_id'] ?? 0);
+    $review = $rid > 0 ? $db->fetchOne("SELECT id, hospital_id FROM hospital_reviews WHERE id = ?", [$rid]) : null;
+    if ($review) {
+        if ($_POST['action'] === 'approve_one') {
+            $db->execute("UPDATE hospital_reviews SET review_status = 'published', is_active = 1, updated_at = NOW() WHERE id = ?", [$rid]);
+            $message = "후기 #{$rid}이(가) 승인되었습니다.";
+        } else {
+            $db->execute("UPDATE hospital_reviews SET review_status = 'rejected', is_active = 0, updated_at = NOW() WHERE id = ?", [$rid]);
+            $message = "후기 #{$rid}이(가) 거부되었습니다.";
+        }
+        $hid = (int)$review['hospital_id'];
+        if ($hid > 0) {
+            $db->execute(
+                "UPDATE gangnamunni_hospitals SET
+                    review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published'),
+                    rating = (SELECT COALESCE(AVG(rating), 0) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published')
+                 WHERE id = ?",
+                [$hid, $hid, $hid]
+            );
+        }
+        $db->execute("UPDATE review_reports SET status = 'reviewed', processed_at = NOW() WHERE review_id = ? AND status = 'pending'", [$rid]);
+    } else {
+        $error = "후기를 찾을 수 없습니다.";
     }
 }
 
@@ -150,8 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
         if ($edit_hospital_id > 0) {
             $db->execute(
                 "UPDATE gangnamunni_hospitals SET
-                    review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1),
-                    rating = (SELECT COALESCE(AVG(rating), 0) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1)
+                    review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published'),
+                    rating = (SELECT COALESCE(AVG(rating), 0) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published')
                  WHERE id = ?",
                 [$edit_hospital_id, $edit_hospital_id, $edit_hospital_id]
             );
@@ -183,6 +212,8 @@ if ($filter_status === 'active') {
     $where .= ' AND r.is_active = 1';
 } elseif ($filter_status === 'inactive') {
     $where .= ' AND r.is_active = 0';
+} elseif ($filter_status === 'pending') {
+    $where .= " AND r.review_status = 'pending'";
 }
 
 if ($filter_hospital > 0) {
@@ -205,6 +236,7 @@ if (!empty($search)) {
 // 통계
 $stats = [
     'total' => (int)$db->fetchValue("SELECT COUNT(*) FROM hospital_reviews"),
+    'pending' => (int)$db->fetchValue("SELECT COUNT(*) FROM hospital_reviews WHERE review_status = 'pending'"),
     'active' => (int)$db->fetchValue("SELECT COUNT(*) FROM hospital_reviews WHERE is_active = 1"),
     'inactive' => (int)$db->fetchValue("SELECT COUNT(*) FROM hospital_reviews WHERE is_active = 0"),
     'reported' => (int)$db->fetchValue("SELECT COUNT(DISTINCT review_id) FROM review_reports WHERE status = 'pending'"),
@@ -318,6 +350,13 @@ include __DIR__ . '/includes/admin_header.php';
             <span class="fw-semibold small text-body-secondary me-1">상태</span>
             <a href="<?php echo buildReviewUrl(['status' => 'all', 'reported' => 0]); ?>"
                class="btn btn-sm <?php echo ($filter_status === 'all' && !$filter_reported) ? 'btn-primary' : 'btn-outline-secondary'; ?>">전체</a>
+            <a href="<?php echo buildReviewUrl(['status' => 'pending', 'reported' => 0]); ?>"
+               class="btn btn-sm <?php echo $filter_status === 'pending' ? 'btn-warning' : 'btn-outline-warning'; ?>">
+                승인대기
+                <?php if ($stats['pending'] > 0): ?>
+                <span class="badge bg-warning text-dark ms-1"><?php echo $stats['pending']; ?></span>
+                <?php endif; ?>
+            </a>
             <a href="<?php echo buildReviewUrl(['status' => 'active', 'reported' => 0]); ?>"
                class="btn btn-sm <?php echo $filter_status === 'active' ? 'btn-success' : 'btn-outline-secondary'; ?>">활성</a>
             <a href="<?php echo buildReviewUrl(['status' => 'inactive', 'reported' => 0]); ?>"
@@ -748,29 +787,20 @@ function modalAction(action) {
 }
 
 // 후기 승인/거부 API 호출
-async function adminAction(reviewId, action) {
+// 개별 승인/거부 — 페이지로 POST 제출(강남언니 관리자 세션 인증 사용).
+// 기존 api/admin/approve_review.php 는 그누보드 회원세션 기준이라 관리자 세션과 불일치했음.
+function adminAction(reviewId, action) {
     var msg = action === 'approve' ? '이 후기를 승인하시겠습니까?' : '이 후기를 거부하시겠습니까?';
     if (!confirm(msg)) return;
 
-    try {
-        var res = await fetch('api/admin/approve_review.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ review_id: reviewId, action: action })
-        });
-        var data = await res.json();
-        if (data.success) {
-            // 모달 닫기
-            var modal = bootstrap.Modal.getInstance(document.getElementById('viewModal'));
-            if (modal) modal.hide();
-            alert(data.message);
-            location.reload();
-        } else {
-            alert(data.message || '처리 중 오류가 발생했습니다.');
-        }
-    } catch (e) {
-        alert('처리 중 오류가 발생했습니다.');
-    }
+    var f = document.createElement('form');
+    f.method = 'POST';
+    f.action = '';   // 현재 URL(필터 쿼리 유지)로 제출
+    f.innerHTML =
+        '<input type="hidden" name="action" value="' + (action === 'approve' ? 'approve_one' : 'reject_one') + '">' +
+        '<input type="hidden" name="review_id" value="' + parseInt(reviewId, 10) + '">';
+    document.body.appendChild(f);
+    f.submit();
 }
 
 // 일괄 작업 폼 제출 시 선택된 ID 추가
