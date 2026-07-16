@@ -40,5 +40,5 @@ add_stylesheet('<link rel="stylesheet" href="'.$member_skin_url.'/style.css">', 
 </div>
 <!-- } 회원가입결과 끝 -->
 <div class="btn_confirm_reg">
-	<a href="/hairwang/gangnamunni/" class="reg_btn_submit">메인으로</a>
+	<a href="<?php echo G5_URL; ?>/gangnamunni/index.php" class="reg_btn_submit">메인으로</a>
 </div>

@@ -11,7 +11,7 @@ $SHOW_DEMO_BUTTONS = false;
 
 // ========== 로그인 후 리다이렉트 ==========
 // 로그인 후 이동할 URL (빈 문자열이면 기본 Gnuboard 동작)
-$AFTER_LOGIN_URL = '/hairwang/gangnamunni/';
+$AFTER_LOGIN_URL = G5_URL . '/gangnamunni/index.php';
 // ==========================================
 $redirect_url = !empty($url) ? $login_url : urlencode($AFTER_LOGIN_URL);
 ?>
