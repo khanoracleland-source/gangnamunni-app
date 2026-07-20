@@ -440,9 +440,9 @@ include __DIR__ . '/includes/header.php';
         }
         if (!empty($post_photos)):
         ?>
-        <div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:24px;padding-bottom:4px;">
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;width:100vw;margin-left:calc(-50vw + 50%);margin-right:calc(-50vw + 50%);">
             <?php foreach ($post_photos as $photo_url): ?>
-            <img src="<?php echo htmlspecialchars($photo_url); ?>" alt="" style="max-height:200px;border-radius:10px;cursor:pointer;" onclick="window.open(this.src)">
+            <img src="<?php echo htmlspecialchars($photo_url); ?>" alt="" style="width:100%;height:auto;display:block;cursor:pointer;" onclick="window.open(this.src)">
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
