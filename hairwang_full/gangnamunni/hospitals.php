@@ -346,7 +346,7 @@ $page_css = '
     .results-header h1 { font-size: 20px; margin-bottom: 8px; }
     .search-count { color: var(--bs-secondary-color, #666); font-size: 14px; }
     .search-keyword { color: #AE1932; font-weight: bold; }
-    .search-filter-chip { display: inline-flex; align-items: center; gap: 6px; background: #AE1932; color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 12px; }
+    .search-filter-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; color: #000; font-size: 12px; padding: 4px 10px; border: 1px solid #AE1932 }
     .search-filter-chip .chip-remove { cursor: pointer; font-size: 15px; line-height: 1; font-weight: 700; opacity: 0.9; }
     .search-filter-chip .chip-remove:hover { opacity: 1; }
 
@@ -502,10 +502,10 @@ include __DIR__ . '/includes/header.php';
 
     <div class="results-header" style="padding: 0 16px;">
         <?php if (!empty($category)): ?>
-        <span class="search-filter-chip"><span class="chip-remove" onclick="removeSearchParam('category')" role="button" aria-label="필터 제거">&times;</span><?php echo htmlspecialchars($category); ?></span>
+        <span class="search-filter-chip"><?php echo htmlspecialchars($category); ?><span class="chip-remove" onclick="removeSearchParam('category')" role="button" aria-label="필터 제거">&times;</span></span>
         <?php endif; ?>
         <?php if (!empty($treatment)): ?>
-        <span class="search-filter-chip"><span class="chip-remove" onclick="removeSearchParam('treatment')" role="button" aria-label="필터 제거">&times;</span><?php echo htmlspecialchars($treatment); ?></span>
+        <span class="search-filter-chip"><?php echo htmlspecialchars($treatment); ?><span class="chip-remove" onclick="removeSearchParam('treatment')" role="button" aria-label="필터 제거">&times;</span></span>
         <?php endif; ?>
     </div>
     <script>
