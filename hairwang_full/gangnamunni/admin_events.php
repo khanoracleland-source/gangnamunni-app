@@ -26,18 +26,51 @@ require_permission('events');
 $message = '';
 $error = '';
 
+// ===== 접근 범위 제한: editor 는 본인 소속 병원 이벤트만 (읽기·쓰기 공통) =====
+$is_editor_scope   = (($_SESSION['ad_admin_role'] ?? '') === 'editor');
+$scope_hospital_id = $is_editor_scope ? (int)($_SESSION['ad_admin_hospital_id'] ?? 0) : 0;
+// SQL 조건(정수 기반이라 인젝션 안전). editor+소속병원 없음 => 1=0(아무것도 없음), 그 외 => 1=1(제한 없음)
+$scope_cond = $is_editor_scope
+    ? ($scope_hospital_id > 0 ? "hospital_id = {$scope_hospital_id}" : '1=0')
+    : '1=1';
+
+// 이벤트가 현재 관리자 접근 범위에 속하는지 확인 (editor 아니면 항상 허용)
+function event_in_scope($connect, $event_id, $is_editor_scope, $scope_hospital_id) {
+    if (!$is_editor_scope) return true;
+    if ($scope_hospital_id <= 0 || $event_id <= 0) return false;
+    $st = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_events WHERE id=?");
+    if (!$st) return false;
+    mysqli_stmt_bind_param($st, 'i', $event_id);
+    mysqli_stmt_execute($st);
+    $row = mysqli_fetch_assoc(mysqli_stmt_get_result($st));
+    mysqli_stmt_close($st);
+    return $row && (int)$row['hospital_id'] === $scope_hospital_id;
+}
+
 // ===== 병원 목록 (드롭다운용) =====
 $hospitals = [];
-$h_result = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active=1 ORDER BY name");
-if ($h_result) {
-    while ($h_row = mysqli_fetch_assoc($h_result)) {
-        $hospitals[] = $h_row;
+if ($is_editor_scope) {
+    // editor: 드롭다운에 본인 병원만 노출 (타 병원 이벤트 생성 차단)
+    if ($scope_hospital_id > 0) {
+        $hstmt = mysqli_prepare($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active=1 AND id=?");
+        mysqli_stmt_bind_param($hstmt, 'i', $scope_hospital_id);
+        mysqli_stmt_execute($hstmt);
+        $hr = mysqli_stmt_get_result($hstmt);
+        while ($h_row = mysqli_fetch_assoc($hr)) $hospitals[] = $h_row;
+        mysqli_stmt_close($hstmt);
+    }
+} else {
+    $h_result = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active=1 ORDER BY name");
+    if ($h_result) {
+        while ($h_row = mysqli_fetch_assoc($h_result)) {
+            $hospitals[] = $h_row;
+        }
     }
 }
 
 // ===== 카테고리 목록 (동적) =====
 $all_categories = [];
-$cat_result = mysqli_query($connect, "SELECT DISTINCT category FROM gangnamunni_events WHERE category IS NOT NULL AND category != '' ORDER BY category ASC");
+$cat_result = mysqli_query($connect, "SELECT DISTINCT category FROM gangnamunni_events WHERE category IS NOT NULL AND category != '' AND {$scope_cond} ORDER BY category ASC");
 if ($cat_result) {
     while ($cat_row = mysqli_fetch_assoc($cat_result)) {
         $all_categories[] = $cat_row['category'];
@@ -118,8 +151,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $end_date_val        = !empty($end_date) ? $end_date : null;
         $raffle_end_date_val = !empty($raffle_end_date) ? $raffle_end_date : null;
 
+        // editor: 소속 병원으로 강제 (id·명 모두 재설정, POST 로 넘어온 타 병원 값 무시)
+        if ($is_editor_scope) {
+            $hospital_id   = $scope_hospital_id;
+            $hospital_name = $hospitals[0]['name'] ?? $hospital_name;
+        }
+
         if (empty($title)) {
             $error = '이벤트 제목은 필수 입력 항목입니다.';
+        } elseif ($is_editor_scope && $scope_hospital_id <= 0) {
+            $error = '소속 병원이 지정되지 않아 이벤트를 등록할 수 없습니다.';
         } else {
             $stmt = mysqli_prepare($connect,
                 "INSERT INTO gangnamunni_events
@@ -185,8 +226,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $end_date_val        = !empty($end_date) ? $end_date : null;
         $raffle_end_date_val = !empty($raffle_end_date) ? $raffle_end_date : null;
 
+        // editor: 소속 병원으로 강제 + 대상 이벤트가 본인 병원 소유인지 확인
+        if ($is_editor_scope) {
+            $hospital_id   = $scope_hospital_id;
+            $hospital_name = $hospitals[0]['name'] ?? $hospital_name;
+        }
+
         if ($event_id <= 0 || empty($title)) {
             $error = '이벤트 제목은 필수 입력 항목입니다.';
+        } elseif (!event_in_scope($connect, $event_id, $is_editor_scope, $scope_hospital_id)) {
+            $error = '접근 권한이 없는 이벤트입니다.';
         } else {
             $stmt = mysqli_prepare($connect,
                 "UPDATE gangnamunni_events SET
@@ -216,7 +265,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- 이벤트 삭제 ---
     if ($action === 'delete') {
         $event_id = intval($_POST['event_id'] ?? 0);
-        if ($event_id > 0) {
+        if ($event_id > 0 && !event_in_scope($connect, $event_id, $is_editor_scope, $scope_hospital_id)) {
+            $error = '접근 권한이 없는 이벤트입니다.';
+        } elseif ($event_id > 0) {
             $stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_events WHERE id=?");
             mysqli_stmt_bind_param($stmt, 'i', $event_id);
             if (mysqli_stmt_execute($stmt)) {
@@ -231,7 +282,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- 활성/비활성 토글 ---
     if ($action === 'toggle_active') {
         $event_id = intval($_POST['event_id'] ?? 0);
-        if ($event_id > 0) {
+        if ($event_id > 0 && !event_in_scope($connect, $event_id, $is_editor_scope, $scope_hospital_id)) {
+            $error = '접근 권한이 없는 이벤트입니다.';
+        } elseif ($event_id > 0) {
             $stmt = mysqli_prepare($connect,
                 "UPDATE gangnamunni_events SET is_active = IF(is_active=1, 0, 1), updated_at=NOW() WHERE id=?"
             );
@@ -254,8 +307,8 @@ if (!in_array($per_page, [10, 20, 50])) $per_page = 20;
 $page   = max(1, intval($_GET['page'] ?? 1));
 $offset = ($page - 1) * $per_page;
 
-// WHERE 절 조립
-$where        = '1=1';
+// WHERE 절 조립 (editor 는 본인 병원으로 기본 제한)
+$where        = $scope_cond;
 $where_params = [];
 $where_types  = '';
 
@@ -286,17 +339,17 @@ if (!empty($search)) {
 
 // ===== 통계 =====
 $stats = ['total' => 0, 'active' => 0, 'inactive' => 0, 'raffle' => 0, 'total_views' => 0];
-$sr = mysqli_query($connect, "SELECT COUNT(*) as c, SUM(view_count) as v FROM gangnamunni_events");
+$sr = mysqli_query($connect, "SELECT COUNT(*) as c, SUM(view_count) as v FROM gangnamunni_events WHERE {$scope_cond}");
 if ($sr) { $r = mysqli_fetch_assoc($sr); $stats['total'] = (int)$r['c']; $stats['total_views'] = (int)($r['v'] ?? 0); }
-$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_events WHERE is_active=1");
+$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_events WHERE is_active=1 AND {$scope_cond}");
 if ($sr) $stats['active'] = (int)mysqli_fetch_assoc($sr)['c'];
 $stats['inactive'] = $stats['total'] - $stats['active'];
-$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_events WHERE has_raffle=1");
+$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_events WHERE has_raffle=1 AND {$scope_cond}");
 if ($sr) $stats['raffle'] = (int)mysqli_fetch_assoc($sr)['c'];
 
 // 카테고리별 통계
 $cat_stats = [];
-$csr = mysqli_query($connect, "SELECT category, COUNT(*) as cnt FROM gangnamunni_events WHERE category IS NOT NULL AND category != '' GROUP BY category ORDER BY cnt DESC");
+$csr = mysqli_query($connect, "SELECT category, COUNT(*) as cnt FROM gangnamunni_events WHERE category IS NOT NULL AND category != '' AND {$scope_cond} GROUP BY category ORDER BY cnt DESC");
 if ($csr) { while ($cs = mysqli_fetch_assoc($csr)) $cat_stats[$cs['category']] = (int)$cs['cnt']; }
 
 // ===== 필터링된 전체 건수 =====
