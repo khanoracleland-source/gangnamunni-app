@@ -21,6 +21,11 @@ if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
+// 승인/반려 메일 본문에서 SITE_FULL_URL 을 사용하는데, 이 상수는 admin_header.php(하단 include)에서
+// 정의되어 POST 처리 시점엔 미정의 → PHP 8 에서 "Undefined constant" 치명적 오류(백지화) 발생.
+// 다른 admin_* 페이지와 동일하게 여기서 미리 guard-define 한다.
+if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://hms.seoulbeauty.app/hairwang/gangnamunni/');
+
 // 로그인 + 권한 체크
 require_admin_login();
 require_permission('hospitals');
