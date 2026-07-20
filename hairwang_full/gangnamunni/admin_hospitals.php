@@ -36,6 +36,12 @@ require_once __DIR__ . '/includes/hospital_filter.php';
 require_once __DIR__ . '/includes/hospital_provision_helper.php'; // 승인 시 계정 자동 생성(단일/일괄 공통)
 // 다병원 지원: 한 관리자가 email 이 일치하는 여러 병원을 소유할 수 있다. null 이면 전체(플랫폼).
 $my_ids = get_hospital_filter_ids($connect);
+// editor 는 항상 본인 소속 병원으로 제한(공유 헬퍼는 건드리지 않고 이 페이지에서만 강제).
+// 소속 병원 없는 editor 는 빈 배열 → 목록 아무것도 없음 + 아래 POST 가드가 모든 액션 차단.
+if (($_SESSION['ad_admin_role'] ?? '') === 'editor' && $my_ids === null) {
+    $ed_hid = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+    $my_ids = $ed_hid > 0 ? [$ed_hid] : [];
+}
 $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
 
 // 병원 역할은 플랫폼 전용 액션(승인/반려/삭제/일괄) 금지 + 나머지 액션은 자기 소유 병원만 대상 허용.
@@ -512,6 +518,11 @@ $hospital = null;
 $hospital_images = [];
 
 if ($view_mode > 0) {
+    // 범위 제한 관리자(editor·병원역할)는 자기 소유 병원 상세만 열람 가능
+    if ($my_ids !== null && !in_array($view_mode, $my_ids, true)) {
+        header('Location: admin_hospitals.php?msg=' . urlencode('접근 권한이 없습니다.'));
+        exit;
+    }
     $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_hospitals WHERE id = ?");
     mysqli_stmt_bind_param($stmt, 'i', $view_mode);
     mysqli_stmt_execute($stmt);
