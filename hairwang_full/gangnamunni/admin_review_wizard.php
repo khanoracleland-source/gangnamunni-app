@@ -17,11 +17,24 @@ if (!$connect) die('DB 연결 실패');
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 require_admin_login();
+require_permission('reviews');
 
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/functions.php';
 
 $db = Database::getInstance();
+
+// editor 는 본인 소속 병원 후기만 조회·처리 (읽기·쓰기 공통)
+$is_editor_scope   = (($_SESSION['ad_admin_role'] ?? '') === 'editor');
+$scope_hospital_id = $is_editor_scope ? (int)($_SESSION['ad_admin_hospital_id'] ?? 0) : 0;
+
+// 후기가 현재 관리자 접근 범위에 속하는지 확인 (editor 아니면 항상 허용)
+function review_in_scope($db, $review_id, $is_editor_scope, $scope_hospital_id) {
+    if (!$is_editor_scope) return true;
+    if ($scope_hospital_id <= 0 || $review_id <= 0) return false;
+    $row = $db->fetchOne("SELECT hospital_id FROM hospital_reviews WHERE id = ?", [$review_id]);
+    return $row && (int)$row['hospital_id'] === $scope_hospital_id;
+}
 
 // AJAX 처리
 if (isset($_POST['ajax_action'])) {
@@ -38,6 +51,12 @@ if (isset($_POST['ajax_action'])) {
 
             $where = "1=1";
             $params = [];
+
+            // editor: 본인 병원 후기로 제한 (소속 없으면 아무것도 없음)
+            if ($is_editor_scope) {
+                if ($scope_hospital_id > 0) { $where .= " AND r.hospital_id = ?"; $params[] = $scope_hospital_id; }
+                else { $where .= " AND 1=0"; }
+            }
 
             if ($filter === 'pending') { $where .= " AND r.review_status = 'pending'"; }
             elseif ($filter === 'published') { $where .= " AND r.review_status = 'published' AND r.is_active = 1"; }
@@ -82,6 +101,7 @@ if (isset($_POST['ajax_action'])) {
             if ($id <= 0) throw new Exception('review_id 필요');
             $review = $db->fetchOne("SELECT hospital_id FROM hospital_reviews WHERE id = ?", [$id]);
             if (!$review) throw new Exception('후기 없음');
+            if ($is_editor_scope && (int)$review['hospital_id'] !== $scope_hospital_id) throw new Exception('접근 권한이 없는 후기입니다.');
             $db->execute("UPDATE hospital_reviews SET is_active = 1, review_status = 'published', updated_at = NOW() WHERE id = ?", [$id]);
             $hid = $review['hospital_id'];
             $db->execute("UPDATE gangnamunni_hospitals SET review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1), rating = (SELECT COALESCE(AVG(rating),0) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1) WHERE id = ?", [$hid, $hid, $hid]);
@@ -91,12 +111,14 @@ if (isset($_POST['ajax_action'])) {
             $id = intval($_POST['review_id'] ?? 0);
             $reason = trim($_POST['reason'] ?? '');
             if ($id <= 0) throw new Exception('review_id 필요');
+            if (!review_in_scope($db, $id, $is_editor_scope, $scope_hospital_id)) throw new Exception('접근 권한이 없는 후기입니다.');
             $db->execute("UPDATE hospital_reviews SET is_active = 0, review_status = 'rejected', updated_at = NOW() WHERE id = ?", [$id]);
             echo json_encode(['success' => true, 'message' => '거부 완료']);
 
         } elseif ($action === 'recheck') {
             $id = intval($_POST['review_id'] ?? 0);
             if ($id <= 0) throw new Exception('review_id 필요');
+            if (!review_in_scope($db, $id, $is_editor_scope, $scope_hospital_id)) throw new Exception('접근 권한이 없는 후기입니다.');
             $review = $db->fetchOne("SELECT content, title, rating FROM hospital_reviews WHERE id = ?", [$id]);
             if (!$review) throw new Exception('후기 없음');
             $ai = performAICheck($review['content'], $review['title'], $review['rating'], []);
@@ -111,6 +133,15 @@ if (isset($_POST['ajax_action'])) {
             $ids = json_decode($_POST['ids'] ?? '[]', true);
             $bulk = $_POST['bulk_type'] ?? '';
             if (empty($ids) || !is_array($ids)) throw new Exception('선택된 후기 없음');
+            $ids = array_values(array_map('intval', $ids));
+            // editor: 본인 병원 후기만 대상으로 필터 (타 병원 id 는 제거)
+            if ($is_editor_scope) {
+                if ($scope_hospital_id <= 0) throw new Exception('접근 권한이 없습니다.');
+                $ph_chk = implode(',', array_fill(0, count($ids), '?'));
+                $owned = $db->fetchAll("SELECT id FROM hospital_reviews WHERE id IN ({$ph_chk}) AND hospital_id = ?", array_merge($ids, [$scope_hospital_id]));
+                $ids = array_map(function ($r) { return (int)$r['id']; }, $owned);
+                if (empty($ids)) throw new Exception('접근 권한이 있는 후기가 없습니다.');
+            }
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             if ($bulk === 'approve') {
                 $db->execute("UPDATE hospital_reviews SET is_active = 1, review_status = 'published', updated_at = NOW() WHERE id IN ({$placeholders})", $ids);
@@ -136,6 +167,7 @@ if (isset($_POST['ajax_action'])) {
             $id = intval($_POST['review_id'] ?? 0);
             $review = $db->fetchOne("SELECT r.*, h.name as hospital_name FROM hospital_reviews r LEFT JOIN gangnamunni_hospitals h ON r.hospital_id = h.id WHERE r.id = ?", [$id]);
             if (!$review) throw new Exception('후기 없음');
+            if ($is_editor_scope && (int)$review['hospital_id'] !== $scope_hospital_id) throw new Exception('접근 권한이 없는 후기입니다.');
             $images = $db->fetchAll("SELECT * FROM review_images WHERE review_id = ? ORDER BY image_order", [$id]);
             $review['images'] = $images;
             try {
