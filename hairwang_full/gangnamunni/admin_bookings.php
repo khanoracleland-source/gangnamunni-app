@@ -372,6 +372,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php if ($b['memo']): ?>
                             <button class="btn btn-outline-secondary btn-sm" title="메모" data-bs-toggle="tooltip" data-bs-title="<?php echo htmlspecialchars($b['memo']); ?>"><i class="bi bi-chat-text"></i></button>
                             <?php endif; ?>
+                            <?php // 취소 사유: 사용자/관리자가 남긴 취소 사유 보기 (병원 격리로 소속 병원 예약만 노출됨) ?>
+                            <?php if (in_array($st, ['cancelled', 'no_show'], true) && trim($b['cancel_reason'] ?? '') !== ''): ?>
+                            <button type="button" class="btn btn-outline-danger btn-sm" title="취소 사유 보기"
+                                    onclick="showCancelReason(this)"
+                                    data-reason="<?php echo htmlspecialchars($b['cancel_reason'], ENT_QUOTES); ?>">
+                                <i class="bi bi-info-circle"></i>
+                            </button>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; endif; ?>
@@ -451,8 +459,31 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
+<!-- 취소 사유 보기 모달 -->
+<div class="modal fade" id="cancelReasonModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-x-circle text-danger me-2"></i>취소 사유</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="cancelReasonText" class="mb-0" style="white-space:pre-wrap;word-break:break-word;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const DOCTORS_BY_HOSPITAL = <?php echo json_encode($doctors_by_hospital, JSON_UNESCAPED_UNICODE); ?>;
+function showCancelReason(btn) {
+    // textContent 로 넣어 HTML 인젝션 방지
+    document.getElementById('cancelReasonText').textContent = btn.dataset.reason || '(사유 없음)';
+    new bootstrap.Modal(document.getElementById('cancelReasonModal')).show();
+}
 function cancelBooking(id) {
     document.getElementById('cancel_id').value = id;
     new bootstrap.Modal(document.getElementById('cancelModal')).show();

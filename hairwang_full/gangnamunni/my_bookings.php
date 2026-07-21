@@ -379,9 +379,8 @@ console.groupEnd();
         <div class="modal-title">예약 취소</div>
         <p style="font-size:14px;color:var(--color-text);line-height:1.6;margin-bottom:18px;">예약 취소를 요청하시겠습니까?</p>
         <input type="hidden" id="cancelBookingId">
-        <!-- [추후] 취소 사유 → 관리자 전달용 자리. submitCancel() 이 cancel_reason 을 이미 전송하고
-             api/cancel_booking.php 가 cancel_reason 컬럼에 저장하므로, 아래 한 줄 주석만 풀면 바로 동작한다. -->
-        <!-- <textarea class="modal-input" id="cancelReason" rows="3" placeholder="취소 사유 (관리자 전달용)"></textarea> -->
+        <!-- 취소 사유(선택) → cancel_reason 으로 전송되어 관리자에게 표시됨 -->
+        <textarea class="modal-input" id="cancelReason" rows="3" placeholder="취소 사유 (선택 · 관리자 전달용)"></textarea>
         <div class="modal-btns">
             <button class="modal-btn modal-btn-cancel" onclick="closeModal('cancelModal')">아니오</button>
             <button class="modal-btn modal-btn-danger" onclick="submitCancel()">네</button>
