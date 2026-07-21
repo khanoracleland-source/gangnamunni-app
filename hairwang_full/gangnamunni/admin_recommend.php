@@ -27,6 +27,20 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('hospitals');
 
+// 추천 병원 관리는 플랫폼(super_admin/admin) 전용 — editor 는 차단.
+//   editor 는 admin_hospitals.php 등에서 본인 병원만 관리하며, '추천' 노출 결정은 플랫폼 권한이다.
+if (($_SESSION['ad_admin_role'] ?? '') === 'editor') {
+    http_response_code(403);
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>권한 없음</title>';
+    echo '<style>body{font-family:sans-serif;text-align:center;padding:80px 20px;background:#f5f7fa;}';
+    echo 'h2{color:#333;margin-bottom:12px;}p{color:#666;}a{color:#667eea;}</style></head><body>';
+    echo '<h2>접근 권한이 없습니다</h2>';
+    echo '<p>추천 병원 관리는 플랫폼 관리자 전용 기능입니다.</p>';
+    echo '<a href="dashboard.php">대시보드로 돌아가기</a>';
+    echo '</body></html>';
+    exit;
+}
+
 $message = '';
 $error = '';
 
