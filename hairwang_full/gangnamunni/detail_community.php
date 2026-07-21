@@ -9,7 +9,6 @@
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
 
-// [1차 검수 #21 - 2026-05-28 - Codex] 원인: PHP CLI 직접 실행 시 REQUEST_METHOD 미정의 경고 발생.
 // 변경: 웹 요청은 기존 값 유지, CLI 검증에서는 GET 기본값 사용. 영향 범위: POST 분기 조건의 경고 제거만 수행.
 $request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
@@ -189,12 +188,9 @@ $show_search = false;
 
 $page_css = '
 /* 커뮤니티 상세 페이지 스타일 */
-/* 헤더 — detail.php 헤더 디자인과 동일하게 통일 */
 .page-header {
     position: sticky;
     top: 0;
-    /* main-content 좌우 패딩(16px, 모바일 12px)을 음수 마진으로 상쇄 →
-       헤더를 컨테이너 가장자리까지 확장해 뒤로가기 버튼이 끝에 붙게 함 (detail.php와 동일) */
     margin: 0 -16px;
     padding: 14px 16px;
     background: var(--bs-body-bg, #fff);
@@ -398,7 +394,6 @@ $hide_admin_inline_edit = true; // 이 페이지에선 관리자 인라인 편�
 $hide_global_nav = true;        // 이 페이지에선 글로벌 네비게이션(global_nav) 숨김
 include __DIR__ . '/includes/header.php';
 ?>
-
     <!-- 페이지 헤더 -->
     <div class="page-header">
         <a href="community.php" class="back-btn"><i class="bi bi-chevron-left"></i></a>
@@ -482,7 +477,6 @@ include __DIR__ . '/includes/header.php';
         <?php endif; ?>
 
         <!-- 액션 버튼 (사진 다음으로 이동) -->
-        <!-- [1차 검수 #18 - 2026-05-28] button type="button" 명시 - form submit 방지 -->
         <div class="post-actions">
             <button type="button" class="post-action-btn btn-like" onclick="likePost(<?php echo $post_id; ?>)">
                 ❤️ 좋아요 <?php echo intval($post['like_count'] ?? 0); ?>

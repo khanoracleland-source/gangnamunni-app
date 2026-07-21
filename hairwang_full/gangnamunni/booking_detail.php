@@ -44,8 +44,8 @@ if ($_req_login && !$_phone_auth) {
 }
 if (!$_owner) { header('Location: my_bookings.php'); exit; }
 
-// 담당의사 — admin_bookings.php 에서 관리자가 직접 배정 예정(추후 구현).
-// 배정된 값(예: bookings.doctor_name)이 있으면 표시, 없으면 '미배정'.
+// 담당의사 — admin_bookings.php 에서 관리자가 직접 배정(gangnamunni_bookings.doctor_name).
+// 배정된 값이 있으면 표시, 없으면 '미배정'.
 $doctor_display = trim($bk['doctor_name'] ?? '');
 
 // 예약변경 모달의 시술 선택용: 병원의 활성 시술 목록

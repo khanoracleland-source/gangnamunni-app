@@ -16,6 +16,19 @@ require_once __DIR__ . '/includes/photo_upload_helper.php';
 require_admin_login();
 require_permission('bookings');
 
+// 담당의사 배정 컬럼 보장 (없으면 추가) — idempotent
+//   운영 DB에 컬럼이 없어도 배정/조회가 'Unknown column' 으로 실패하지 않도록 한다.
+$_ensure_booking_cols = [
+    'doctor_id'   => "ADD COLUMN doctor_id INT NULL AFTER hms_appointment_id",
+    'doctor_name' => "ADD COLUMN doctor_name VARCHAR(100) NULL AFTER doctor_id",
+];
+foreach ($_ensure_booking_cols as $_col => $_ddl) {
+    $_chk = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE '{$_col}'");
+    if ($_chk && mysqli_num_rows($_chk) === 0) {
+        @mysqli_query($connect, "ALTER TABLE gangnamunni_bookings {$_ddl}");
+    }
+}
+
 // ===== Action: 상태 변경 (viewer 역할은 불가) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // viewer 역할은 상태 변경 불가
@@ -117,6 +130,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $msg = '예약 상태가 변경되었습니다.';
         $msg_type = 'success';
     }
+
+    // ===== Action: 담당의사 배정 / 해제 =====
+    if ($id > 0 && $action === 'assign_doctor') {
+        $doctor_id = intval($_POST['doctor_id'] ?? 0);
+        // 예약의 병원 확인 (배정 의사가 같은 병원 소속인지 검증용)
+        $bk_h = mysqli_query($connect, "SELECT hospital_id FROM gangnamunni_bookings WHERE id={$id} LIMIT 1");
+        $bk_hosp = $bk_h ? (int)(mysqli_fetch_assoc($bk_h)['hospital_id'] ?? 0) : 0;
+        if ($doctor_id > 0) {
+            $doc_r = mysqli_query($connect, "SELECT name, hospital_id FROM gangnamunni_doctors WHERE id={$doctor_id} LIMIT 1");
+            $doc = $doc_r ? mysqli_fetch_assoc($doc_r) : null;
+            if ($doc && (int)$doc['hospital_id'] === $bk_hosp) {
+                $dn = mysqli_real_escape_string($connect, $doc['name']);
+                mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id={$doctor_id}, doctor_name='{$dn}' WHERE id={$id}");
+                $msg = '담당의사가 배정되었습니다.';
+                $msg_type = 'success';
+            } else {
+                $msg = '선택한 의사가 해당 예약의 병원 소속이 아닙니다.';
+                $msg_type = 'danger';
+            }
+        } else {
+            // 미배정 선택 → 배정 해제
+            mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id=NULL, doctor_name=NULL WHERE id={$id}");
+            $msg = '담당의사 배정이 해제되었습니다.';
+            $msg_type = 'success';
+        }
+    }
 }
 skip_action:
 
@@ -152,6 +191,18 @@ $sql = "SELECT b.* FROM gangnamunni_bookings b WHERE " . $where . " ORDER BY b.c
 $result = mysqli_query($connect, $sql);
 $bookings = [];
 if ($result) while ($row = mysqli_fetch_assoc($result)) $bookings[] = $row;
+
+// ===== 담당의사 배정용: 현재 페이지 예약들의 병원 소속 활성 의사 목록 =====
+$doctors_by_hospital = [];
+$_doc_hids = [];
+foreach ($bookings as $_b) { $_hid = (int)($_b['hospital_id'] ?? 0); if ($_hid > 0) $_doc_hids[$_hid] = true; }
+if ($_doc_hids) {
+    $_hid_list = implode(',', array_keys($_doc_hids));
+    $doc_res = mysqli_query($connect, "SELECT id, name, hospital_id FROM gangnamunni_doctors WHERE hospital_id IN ({$_hid_list}) AND status='active' ORDER BY name ASC");
+    if ($doc_res) while ($d = mysqli_fetch_assoc($doc_res)) {
+        $doctors_by_hospital[(int)$d['hospital_id']][] = ['id' => (int)$d['id'], 'name' => $d['name']];
+    }
+}
 
 // ===== Stats =====
 $stats = ['total' => 0, 'pending' => 0, 'confirmed' => 0, 'cancelled' => 0, 'completed' => 0, 'today' => 0];
@@ -255,13 +306,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <th>예약시간</th>
                         <th>사진</th>
                         <th>상태</th>
+                        <th>담당의사</th>
                         <th style="width:150px">관리</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($bookings)): ?>
-                    <tr><td colspan="10" class="text-center py-5 text-muted"><i class="bi bi-inbox" style="font-size:2rem;"></i><br>예약 내역이 없습니다.</td></tr>
-                    <?php else: foreach ($bookings as $b): ?>
+                    <tr><td colspan="11" class="text-center py-5 text-muted"><i class="bi bi-inbox" style="font-size:2rem;"></i><br>예약 내역이 없습니다.</td></tr>
+                    <?php else: $is_viewer = (($_SESSION['ad_admin_role'] ?? '') === 'viewer'); foreach ($bookings as $b): ?>
                     <tr>
                         <td><?php echo $b['id']; ?></td>
                         <td><strong><?php echo htmlspecialchars($b['name']); ?></strong></td>
@@ -280,7 +332,20 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <span class="badge bg-<?php echo $badge_map[$st] ?? 'secondary'; ?>"><?php echo $label_map[$st] ?? $st; ?></span>
                         </td>
                         <td>
-                            <?php $is_viewer = (($_SESSION['ad_admin_role'] ?? '') === 'viewer'); ?>
+                            <?php $dn = trim($b['doctor_name'] ?? ''); ?>
+                            <?php if ($dn !== ''): ?>
+                            <span class="badge bg-light text-dark border"><i class="bi bi-person-badge me-1"></i><?php echo htmlspecialchars($dn); ?></span>
+                            <?php else: ?>
+                            <span class="text-muted small">미배정</span>
+                            <?php endif; ?>
+                            <?php if (!$is_viewer): ?>
+                            <button type="button" class="btn btn-outline-secondary btn-sm ms-1" title="담당의사 배정"
+                                    onclick="assignDoctor(<?php echo $b['id']; ?>, <?php echo (int)($b['hospital_id'] ?? 0); ?>, <?php echo (int)($b['doctor_id'] ?? 0); ?>)">
+                                <i class="bi bi-person-plus"></i>
+                            </button>
+                            <?php endif; ?>
+                        </td>
+                        <td>
                             <?php if ($is_viewer): ?>
                             <span class="text-muted small">보기 전용</span>
                             <?php elseif ($st === 'pending'): ?>
@@ -357,10 +422,60 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
+<!-- 담당의사 배정 모달 -->
+<div class="modal fade" id="assignDoctorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">담당의사 배정</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="assign_booking_id">
+                    <input type="hidden" name="action" value="assign_doctor">
+                    <div class="mb-2">
+                        <label class="form-label">담당의사</label>
+                        <select name="doctor_id" id="assign_doctor_select" class="form-select">
+                            <option value="0">— 미배정 —</option>
+                        </select>
+                        <small class="text-muted">해당 예약 병원 소속의 활성 의사만 표시됩니다.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                    <button type="submit" class="btn btn-primary">배정</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
+const DOCTORS_BY_HOSPITAL = <?php echo json_encode($doctors_by_hospital, JSON_UNESCAPED_UNICODE); ?>;
 function cancelBooking(id) {
     document.getElementById('cancel_id').value = id;
     new bootstrap.Modal(document.getElementById('cancelModal')).show();
+}
+function assignDoctor(bookingId, hospitalId, currentDoctorId) {
+    document.getElementById('assign_booking_id').value = bookingId;
+    const sel = document.getElementById('assign_doctor_select');
+    sel.innerHTML = '<option value="0">— 미배정 —</option>';
+    const list = DOCTORS_BY_HOSPITAL[hospitalId] || [];
+    list.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = d.name;
+        if (d.id === currentDoctorId) opt.selected = true;
+        sel.appendChild(opt);
+    });
+    if (list.length === 0) {
+        const opt = document.createElement('option');
+        opt.textContent = '등록된 활성 의사가 없습니다';
+        opt.disabled = true;
+        sel.appendChild(opt);
+    }
+    new bootstrap.Modal(document.getElementById('assignDoctorModal')).show();
 }
 // Tooltip init
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
