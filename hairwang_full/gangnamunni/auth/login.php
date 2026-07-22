@@ -19,6 +19,49 @@ global $is_member, $config, $connect;
 $bbs_url = defined('G5_BBS_URL') ? G5_BBS_URL : '/bbs';
 $g5_url  = defined('G5_URL') ? G5_URL : '';
 
+// ===== Google reCAPTCHA v3 — 키는 gangnamunni/.env 에서 로드 (git 에 커밋되지 않음) =====
+if (!function_exists('gnu_load_env')) {
+    // .env 파서 (# / ; 주석, KEY=VALUE 지원). parse_ini_file 은 # 주석을 못 읽어 직접 파싱.
+    function gnu_load_env($file) {
+        $out = [];
+        if (!is_readable($file)) return $out;
+        foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#' || $line[0] === ';') continue;
+            $pos = strpos($line, '=');
+            if ($pos === false) continue;
+            $out[trim(substr($line, 0, $pos))] = trim(trim(substr($line, $pos + 1)), "\"'");
+        }
+        return $out;
+    }
+}
+$_env = gnu_load_env(dirname(__DIR__) . '/.env');
+$recaptcha_site_key = $_env['RECAPTCHA_SITE_KEY'] ?? (getenv('RECAPTCHA_SITE_KEY') ?: '');
+$recaptcha_secret   = $_env['RECAPTCHA_SECRET']   ?? (getenv('RECAPTCHA_SECRET')   ?: '');
+if (!function_exists('gnu_verify_recaptcha')) {
+    // 토큰을 Google 서버에 검증. 성공 + (v3 점수 0.5 이상)이면 true.
+    function gnu_verify_recaptcha($secret, $token, $remote_ip = '') {
+        if ($token === '' || $secret === '') return false;
+        $post = http_build_query(['secret' => $secret, 'response' => $token, 'remoteip' => $remote_ip]);
+        $body = false;
+        if (function_exists('curl_init')) {
+            $ch = curl_init('https://www.google.com/recaptcha/api/siteverify');
+            curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $post, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5]);
+            $body = curl_exec($ch);
+            curl_close($ch);
+        }
+        if ($body === false) { // cURL 없거나 실패 시 폴백
+            $ctx = stream_context_create(['http' => ['method' => 'POST', 'header' => 'Content-Type: application/x-www-form-urlencoded', 'content' => $post, 'timeout' => 5]]);
+            $body = @file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, $ctx);
+        }
+        if (!$body) return false;
+        $r = json_decode($body, true);
+        if (empty($r['success'])) return false;
+        if (isset($r['score']) && $r['score'] < 0.5) return false; // v3 점수(0.0~1.0)
+        return true;
+    }
+}
+
 // 로그인 후 이동할 URL (url 파라미터 우선, 없으면 강남언니 홈)
 $after_url = $g5_url . '/gangnamunni/index.php';
 if (isset($_GET['url']) && $_GET['url'] !== '')  $after_url = $_GET['url'];
@@ -42,6 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
 
     if ($email === '' || $password === '') {
         $login_error = '이메일과 비밀번호를 입력해주세요.';
+    } elseif (!gnu_verify_recaptcha($recaptcha_secret, $_POST['recaptcha_token'] ?? '', $_SERVER['REMOTE_ADDR'] ?? '')) {
+        $login_error = '자동 방지 확인에 실패했습니다. 잠시 후 다시 시도해주세요.';
     } else {
         $mb_id_found = '';
         if ($stmt = mysqli_prepare($connect, "SELECT mb_id FROM g5_member WHERE mb_email = ? LIMIT 1")) {
@@ -105,6 +150,7 @@ $open_email = $login_error !== '';
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>로그인 | <?php echo htmlspecialchars($brand_name); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <script src="https://www.google.com/recaptcha/api.js?render=<?php echo htmlspecialchars($recaptcha_site_key, ENT_QUOTES); ?>"></script>
     <style>
         :root { --primary: <?php echo htmlspecialchars($primary, ENT_QUOTES); ?>; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -146,6 +192,8 @@ $open_email = $login_error !== '';
         .recaptcha-detail.open { max-height: 120px; }
         .recaptcha-detail p { margin: 8px 0 0; font-size: 11px; line-height: 1.7; color: #b6b6bc; }
         .recaptcha-detail a { color: #888; text-decoration: underline; }
+        /* v3 배지는 숨김(고지 문구로 대체 — 구글 정책 허용) */
+        .grecaptcha-badge { visibility: hidden; }
         .kakao-ico { width: 19px; height: 19px; }
     </style>
 </head>
@@ -185,9 +233,10 @@ $open_email = $login_error !== '';
                     <div class="err"><?php echo htmlspecialchars($login_error); ?></div>
                     <?php endif; ?>
 
-                    <form method="post" action="login.php" style="display:flex;flex-direction:column;gap:10px;">
+                    <form id="emailForm" method="post" action="login.php" style="display:flex;flex-direction:column;gap:10px;">
                         <input type="hidden" name="mode" value="email">
                         <input type="hidden" name="url" value="<?php echo htmlspecialchars($after_url, ENT_QUOTES); ?>">
+                        <input type="hidden" name="recaptcha_token" id="recaptchaToken">
 
                         <div class="field">
                             <input type="email" name="mb_email" id="mb_email" placeholder="이메일" required autocomplete="username"
@@ -248,6 +297,28 @@ $open_email = $login_error !== '';
         b.setAttribute('aria-expanded', open ? 'true' : 'false');
         b.textContent = open ? '접기' : '자세히 보기';
     }
+    // reCAPTCHA v3: 이메일 로그인 제출 시 토큰 발급 후 실제 전송
+    // 키/도메인 오류 등으로 토큰 발급이 실패해도 폼은 반드시 제출한다(서버가 검증·안내) → 버튼이 먹통되지 않음
+    (function () {
+        var emailForm = document.getElementById('emailForm');
+        if (!emailForm) return;
+        emailForm.addEventListener('submit', function (e) {
+            if (emailForm.dataset.rcDone === '1') return;      // 토큰 처리 완료 → 그대로 제출
+            if (typeof grecaptcha === 'undefined') return;     // reCAPTCHA 미로드 시 서버 검증에서 처리
+            e.preventDefault();
+            var submitted = false;
+            var go = function () { if (submitted) return; submitted = true; emailForm.dataset.rcDone = '1'; emailForm.submit(); };
+            try {
+                grecaptcha.ready(function () {
+                    grecaptcha.execute('<?php echo htmlspecialchars($recaptcha_site_key, ENT_QUOTES); ?>', { action: 'login' })
+                        .then(function (token) { document.getElementById('recaptchaToken').value = token; go(); })
+                        .catch(function () { go(); });   // 토큰 실패해도 제출 → 서버가 거부/안내
+                });
+            } catch (err) { go(); }
+            setTimeout(go, 6000);                            // 안전장치: 6초 내 무응답이면 그대로 제출
+        });
+    })();
+
     document.getElementById('auto_login').addEventListener('change', function () {
         if (this.checked) {
             this.checked = confirm('자동 로그인을 사용하면 다음부터 로그인 정보를 입력하지 않아도 됩니다.\n\n공용 기기에서는 개인정보가 유출될 수 있으니 주의해주세요.\n\n사용하시겠습니까?');
