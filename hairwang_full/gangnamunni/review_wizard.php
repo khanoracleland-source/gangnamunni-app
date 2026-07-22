@@ -10,7 +10,7 @@ $esc = function($v) use ($connect) { return mysqli_real_escape_string($connect, 
 
 // 로그인 확인
 $member = $_SESSION['member'] ?? null;
-if (!$member) { header('Location: login.php?redirect=' . urlencode($_SERVER['REQUEST_URI'])); exit; }
+if (!$member) { header('Location: auth/login.php?url=' . urlencode($_SERVER['REQUEST_URI'])); exit; }
 
 $hospital_id = intval($_GET['hospital_id'] ?? 0);
 

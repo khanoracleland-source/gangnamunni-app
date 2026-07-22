@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/init.php';
-if (!is_gangnamunni_logged_in()) { header('Location: '.rtrim(dirname($_SERVER['SCRIPT_NAME'],2),'/').'/bbs/login.php?url='.urlencode($_SERVER['REQUEST_URI'])); exit; }
+if (!is_gangnamunni_logged_in()) { header('Location: auth/login.php?url='.urlencode($_SERVER['REQUEST_URI'])); exit; }
 $member_id = get_gangnamunni_member_id();
 
 // 삭제 처리

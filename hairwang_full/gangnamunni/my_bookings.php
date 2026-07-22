@@ -25,7 +25,7 @@ if (function_exists('getSettingValue')) {
     $_require_login = getSettingValue($connect, 'booking_require_login', '1') === '1';
     $_phone_auth    = getSettingValue($connect, 'booking_phone_auth', '0') === '1';
     if ($_require_login && !$_phone_auth && !$is_user_logged_in) {
-        header('Location: /hairwang/bbs/login.php?url=' . urlencode('/hairwang/gangnamunni/my_bookings.php'));
+        header('Location: auth/login.php?url=' . urlencode('/hairwang/gangnamunni/my_bookings.php'));
         exit;
     }
 }
@@ -367,7 +367,7 @@ console.groupEnd();
         <?php if ($is_user_logged_in): ?>
         <div>예약 내역이 없습니다.<br><a href="hospitals.php" style="color:var(--color-primary);font-weight:600;"><?php echo term('business', '병원'); ?> 찾아보기</a></div>
         <?php else: ?>
-        <div>로그인하면 예약 내역을<br>자동으로 조회합니다.<br><br><a href="/bbs/login.php" style="color:var(--color-primary);font-weight:600;">로그인하기</a></div>
+        <div>로그인하면 예약 내역을<br>자동으로 조회합니다.<br><br><a href="auth/login.php" style="color:var(--color-primary);font-weight:600;">로그인하기</a></div>
         <?php endif; ?>
     </div>
     <?php endif; ?>

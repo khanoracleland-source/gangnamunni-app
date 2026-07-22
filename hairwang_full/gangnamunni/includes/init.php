@@ -70,7 +70,7 @@ function get_gangnamunni_member_id() {
 // 로그인 필요 페이지용 리다이렉트
 function require_login($redirect_url = null) {
     if (!is_gangnamunni_logged_in()) {
-        $login_url = dirname($_SERVER['SCRIPT_NAME'], 2) . '/bbs/login.php';
+        $login_url = 'auth/login.php';
         if ($redirect_url) {
             $login_url .= '?url=' . urlencode($redirect_url);
         }

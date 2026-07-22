@@ -10,7 +10,7 @@ $room_id = intval($_GET['room_id'] ?? 0);
 
 // 로그인 체크
 if (!is_gangnamunni_logged_in()) {
-    header('Location: ' . rtrim(dirname($_SERVER['SCRIPT_NAME'], 2),'/') . '/bbs/login.php?url=' . urlencode($_SERVER['REQUEST_URI']));
+    header('Location: auth/login.php?url=' . urlencode($_SERVER['REQUEST_URI']));
     exit;
 }
 

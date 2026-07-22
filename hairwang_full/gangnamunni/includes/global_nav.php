@@ -33,7 +33,8 @@ $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $m
 $bbs_base_url = defined('G5_BBS_URL')
     ? rtrim(G5_BBS_URL, '/') . '/'
     : ((defined('SITE_BASE_PATH') && SITE_BASE_PATH === '/gangnamunni/') ? '/bbs/' : '/hairwang/bbs/');
-$login_url = $bbs_base_url . 'login.php';
+// 로그인은 서울미녀 전용 커스텀 로그인(gangnamunni/auth/login.php)으로 — bbs 베이스에서 gangnamunni 로 치환(같은 호스트 규칙 유지)
+$login_url = str_replace('/bbs/', '/gangnamunni/', $bbs_base_url) . 'auth/login.php';
 $register_url = $bbs_base_url . 'register.php';
 $mypage_url = $bbs_base_url . 'member_confirm.php';
 $logout_url = $bbs_base_url . 'logout.php';

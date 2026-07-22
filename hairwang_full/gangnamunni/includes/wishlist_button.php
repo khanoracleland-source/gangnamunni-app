@@ -60,7 +60,7 @@ function toggleWishlist(type, targetId, btn) {
     .then(function(res) {
         if (res.login_required) {
             if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
-                window.location.href = '/bbs/login.php?url=' + encodeURIComponent(window.location.href);
+                window.location.href = 'auth/login.php?url=' + encodeURIComponent(window.location.href);
             }
             return;
         }

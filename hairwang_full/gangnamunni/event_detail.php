@@ -360,14 +360,14 @@ $page_js = <<<JSEOF
         /* 기존 코드 (보존)
         if (!PAGE_DATA.is_logged_in) {
             if (!confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) return;
-            window.location.href = '../bbs/login.php?url=' + encodeURIComponent(window.location.href);
+            window.location.href = 'auth/login.php?url=' + encodeURIComponent(window.location.href);
             return;
         }
         */
         // 로그인 확인 (절대경로 사용)
         if (!PAGE_DATA.is_logged_in) {
             if (!confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) return;
-            window.location.href = '/hairwang/bbs/login.php?url=' + encodeURIComponent(window.location.href);
+            window.location.href = 'auth/login.php?url=' + encodeURIComponent(window.location.href);
             return;
         }
 

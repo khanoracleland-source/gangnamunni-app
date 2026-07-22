@@ -25,7 +25,7 @@ if (file_exists($g5_common_path) && !defined('G5_PATH')) {
 $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
 
 // BBS URL 직접 지정 (gangnamunni는 /gangnamunni/ 에서 실행, bbs는 /bbs/ 에 있음)
-$login_url = '/bbs/login.php';
+$login_url = 'auth/login.php';
 $register_url = '/bbs/register.php';
 $mypage_url = '/bbs/member_confirm.php';
 $logout_url = '/bbs/logout.php';

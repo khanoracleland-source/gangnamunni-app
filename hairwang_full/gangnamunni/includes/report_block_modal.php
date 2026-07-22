@@ -512,7 +512,7 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
 
             if (data.login_required) {
                 if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
-                    window.location.href = '/bbs/login.php?url=' + encodeURIComponent(window.location.href);
+                    window.location.href = 'auth/login.php?url=' + encodeURIComponent(window.location.href);
                 }
                 btn.disabled = false;
                 btn.textContent = '신고하기';
@@ -580,7 +580,7 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
 
             if (data.login_required) {
                 if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
-                    window.location.href = '/bbs/login.php?url=' + encodeURIComponent(window.location.href);
+                    window.location.href = 'auth/login.php?url=' + encodeURIComponent(window.location.href);
                 }
                 btn.disabled = false;
                 btn.textContent = '차단하기';

@@ -467,7 +467,7 @@ include __DIR__ . '/includes/header.php';
     <?php if ($is_logged_in): ?>
     <a href="community_write.php" class="fab-write" title="글쓰기"><i class="bi bi-pencil-square"></i></a>
     <?php else: ?>
-    <button class="fab-write" title="글쓰기" onclick="alert('로그인이 필요합니다.'); location.href='<?php echo rtrim(dirname($_SERVER['SCRIPT_NAME'], 2),'/'); ?>/bbs/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/community.php'); ?>';"><i class="bi bi-pencil-square"></i></button>
+    <button class="fab-write" title="글쓰기" onclick="alert('로그인이 필요합니다.'); location.href='auth/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/community.php'); ?>';"><i class="bi bi-pencil-square"></i></button>
     <?php endif; ?>
 
 <style>
@@ -480,7 +480,7 @@ include __DIR__ . '/includes/header.php';
 var CM_USER_ID = <?php echo json_encode(function_exists('get_gangnamunni_member_id') ? (get_gangnamunni_member_id() ?? '') : ''); ?>;
 function cmLoginPrompt() {
     if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
-        location.href = '../bbs/login.php?url=' + encodeURIComponent(location.href);
+        location.href = 'auth/login.php?url=' + encodeURIComponent(location.href);
     }
 }
 // 좋아요 상태 반영: 카운트 + .liked 클래스 + 하트 채움(빨강)/빈하트 전환

@@ -546,7 +546,7 @@ include __DIR__ . '/includes/header.php';
             </form>
             <?php else: ?>
             <div class="comment-form" style="justify-content:center;">
-                <a href="/hairwang/bbs/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/detail_community.php?id=' . $post_id); ?>" style="color:#5B5FC7; font-weight:600; text-decoration:none;">
+                <a href="auth/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/detail_community.php?id=' . $post_id); ?>" style="color:#5B5FC7; font-weight:600; text-decoration:none;">
                     <i class="bi bi-box-arrow-in-right"></i> 로그인하고 댓글 작성하기
                 </a>
             </div>
@@ -567,7 +567,7 @@ function likePost(postId) {
         .then(function(res) {
             if (res && res.login_required) {
                 if (confirm("로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) {
-                    location.href = "/hairwang/bbs/login.php?url=" + encodeURIComponent(location.href);
+                    location.href = "auth/login.php?url=" + encodeURIComponent(location.href);
                 }
                 return;
             }

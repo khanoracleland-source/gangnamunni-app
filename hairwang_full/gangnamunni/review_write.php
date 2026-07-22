@@ -24,7 +24,7 @@ $is_admin_logged = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin
 
 if (!$is_logged_in && !$is_admin_logged) {
     $return_url = urlencode($_SERVER['REQUEST_URI'] ?? 'review_write.php');
-    header("Location: ../bbs/login.php?url=" . $return_url);
+    header("Location: auth/login.php?url=" . $return_url);
     exit;
 }
 

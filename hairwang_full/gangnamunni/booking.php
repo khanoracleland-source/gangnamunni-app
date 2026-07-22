@@ -25,7 +25,7 @@ if (function_exists('getSettingValue')) {
     $_phone_auth    = getSettingValue($connect, 'booking_phone_auth', '0') === '1';
     $_is_member = function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in();
     if ($_require_login && !$_phone_auth && !$_is_member && !$is_admin) {
-        header('Location: /hairwang/bbs/login.php?url=' . urlencode('/hairwang/gangnamunni/booking.php?id=' . (isset($_GET['id']) ? intval($_GET['id']) : 0)));
+        header('Location: auth/login.php?url=' . urlencode('/hairwang/gangnamunni/booking.php?id=' . (isset($_GET['id']) ? intval($_GET['id']) : 0)));
         exit;
     }
 }

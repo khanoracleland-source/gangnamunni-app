@@ -459,7 +459,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     </div>
     <p style="font-size:16px;font-weight:600;color:var(--bs-body-color, #333);margin-bottom:8px;">로그인이 필요합니다</p>
     <p style="font-size:14px;color:#999;margin-bottom:24px;">로그인 후 마이페이지를 이용하실 수 있습니다.</p>
-    <a href="<?php echo G5_BBS_URL; ?>/login.php?url=<?php echo urlencode(G5_URL . '/gangnamunni/mypage.php'); ?>" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
+    <a href="<?php echo G5_URL; ?>/gangnamunni/auth/login.php?url=<?php echo urlencode(G5_URL . '/gangnamunni/mypage.php'); ?>" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
     <div style="margin-top:12px;">
         <a href="<?php echo G5_BBS_URL; ?>/register.php" style="font-size:13px;color:#999;text-decoration:none;">아직 회원이 아니신가요? <span style="color:#AE1932;font-weight:600;">회원가입</span></a>
     </div>
