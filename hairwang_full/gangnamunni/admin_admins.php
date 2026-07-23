@@ -106,6 +106,20 @@ function build_permissions_json($post_data) {
     return json_encode($perms, JSON_UNESCAPED_UNICODE);
 }
 
+// 이메일이 다른 관리자와 중복되는지 확인한다.
+// 이메일은 로그인 식별자(username 또는 email)로 쓰이므로, 중복되면 이메일 로그인이
+// 어느 계정으로 매칭될지 모호해진다(admin_find_by_login 은 LIMIT 1). 그래서 유일해야 한다.
+function admin_email_taken($connect, $email, $exclude_id = 0) {
+    if ($email === '') return false; // 빈 이메일은 여러 계정이 가질 수 있고 로그인에도 안 쓰인다
+    $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_admins WHERE email = ? AND id <> ? LIMIT 1");
+    if (!$stmt) return false;
+    mysqli_stmt_bind_param($stmt, 'si', $email, $exclude_id);
+    mysqli_stmt_execute($stmt);
+    $taken = (bool) mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+    mysqli_stmt_close($stmt);
+    return $taken;
+}
+
 // === POST 처리 ===
 
 // 관리자 추가
@@ -123,6 +137,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
         $error = '비밀번호는 6자 이상이어야 합니다.';
     } elseif (!preg_match('/^[a-zA-Z0-9_]{3,30}$/', $username)) {
         $error = '아이디는 3~30자 영문/숫자/밑줄만 가능합니다.';
+    } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = '이메일 형식이 올바르지 않습니다.';
+    } elseif (admin_email_taken($connect, $email)) {
+        $error = '이미 다른 관리자가 사용 중인 이메일입니다. (이메일 로그인 식별자로 사용되어 중복 불가)';
     } else {
         $check = mysqli_prepare($connect, "SELECT id FROM gangnamunni_admins WHERE username = ?");
         mysqli_stmt_bind_param($check, 's', $username);
@@ -165,6 +183,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit'
 
     if ($edit_id <= 0 || empty($name)) {
         $error = '이름은 필수입니다.';
+    } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = '이메일 형식이 올바르지 않습니다.';
+    } elseif (admin_email_taken($connect, $email, $edit_id)) {
+        $error = '이미 다른 관리자가 사용 중인 이메일입니다. (이메일 로그인 식별자로 사용되어 중복 불가)';
     } else {
         $valid_roles = ['super_admin', 'admin', 'editor', 'viewer'];
         if (!in_array($role, $valid_roles)) $role = 'editor';

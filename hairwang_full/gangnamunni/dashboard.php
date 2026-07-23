@@ -123,8 +123,9 @@ if (!$is_logged_in):
             <form method="POST">
                 <input type="hidden" name="return" value="<?php echo htmlspecialchars($return_url, ENT_QUOTES); ?>">
                 <div class="mb-3">
-                    <label class="form-label">아이디</label>
-                    <input type="text" name="username" class="form-control" required autofocus>
+                    <label class="form-label">아이디 또는 이메일</label>
+                    <input type="text" name="username" class="form-control" required autofocus
+                           placeholder="아이디 또는 등록된 이메일" autocomplete="username">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">비밀번호</label>
