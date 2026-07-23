@@ -19,6 +19,10 @@ require_once __DIR__ . '/theme_helper.php';
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die('DB error');
 mysqli_set_charset($connect, 'utf8mb4');
+$g5_url = defined('G5_URL') ? G5_URL : '';
+// Optional statistics tables may not exist on a fresh installation; keep the
+// profile page usable while each prepared query falls back to zero.
+mysqli_report(MYSQLI_REPORT_OFF);
 loadThemeSettings($connect);
 
 // Phase5: SSO 토큰 자동 로그인 (앱 WebView에서 세션 없을 때)
@@ -45,6 +49,10 @@ if (!$is_logged_in) {
     $mb_datetime = $member['mb_datetime'] ?? '';
     $mb_level = $member['mb_level'] ?? 1;
 }
+
+// Withdraw page validates the current Gnuboard session and password again.
+// Keep the link absolute so app WebView and nested routes resolve correctly.
+$withdraw_url = $g5_url . '/gangnamunni/withdraw.php';
 
 // 프로필 사진 확인
 $profile_photo_url = null;
@@ -448,7 +456,10 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 
 <!-- 로그아웃 -->
 <div class="logout-section">
-    <a href="<?php echo G5_BBS_URL; ?>/logout.php?url=<?php echo urlencode(G5_URL . '/gangnamunni/mypage.php'); ?>" class="logout-btn">로그아웃</a>
+    <?php // logout.php 는 url 파라미터에 스킴/도메인이 있으면 "도메인 지정 불가" 로 거부한다.
+    //       따라서 도메인을 뺀 경로만 전달한다(베이스 경로 유지). 로그아웃 후 index.php 로 이동. ?>
+    <a href="<?php echo G5_BBS_URL; ?>/logout.php?url=<?php echo urlencode(rtrim((string) parse_url(G5_URL, PHP_URL_PATH), '/') . '/gangnamunni/index.php'); ?>" class="logout-btn">로그아웃</a>
+    <a href="<?php echo htmlspecialchars($withdraw_url, ENT_QUOTES); ?>" style="display:block;text-align:center;padding:14px 20px;color:#999;font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));text-decoration:underline;">회원 탈퇴</a>
 </div>
 
 <?php else: ?>

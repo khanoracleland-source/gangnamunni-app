@@ -73,7 +73,9 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
     function getUserProfile()
     {
         //$params = array('property_keys'=>'kaccount_email');	// v1 parameter
-        $params = array('property_keys'=>array('kakao_account.email'));		// v2 parameter
+        // Email consent is optional; request the complete profile without
+        // property_keys so Kakao does not reject an unauthorized email scope.
+        $params = array();
 
         $this->api->decode_json = false;
         $this->api->curl_header = array( 'Authorization: Bearer ' . $this->api->access_token );
@@ -81,12 +83,13 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
         $data = $this->api->api("user/me", "POST", $params);
 
         if ( ! isset( $data->id ) ) {
+            if (class_exists('Hybrid_Logger')) Hybrid_Logger::error('Kakao user/me invalid response: ' . json_encode($data, JSON_UNESCAPED_UNICODE));
             throw new Exception("User profile request failed! {$this->providerId} returned an invalid response.", 6);
         }
         # store the user profile.
         $this->user->profile->identifier  = @ $data->id;
-        $this->user->profile->displayName = @ $data->properties->nickname;
-        $this->user->profile->photoURL    = @ $data->properties->thumbnail_image;
+        $this->user->profile->displayName = @($data->kakao_account->profile->nickname ?: $data->properties->nickname);
+        $this->user->profile->photoURL    = @($data->kakao_account->profile->thumbnail_image_url ?: $data->properties->thumbnail_image);
         //$email = @ $data->properties->kaccount_email;	// v1 version
         
         $email = @ $data->kakao_account->email;   // v2 version

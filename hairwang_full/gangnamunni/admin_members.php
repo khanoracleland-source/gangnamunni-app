@@ -22,8 +22,44 @@ $is_logged_in = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_lo
 if (!$is_logged_in) { header('Location: dashboard.php'); exit; }
 require_permission('members');
 
+if (empty($_SESSION['admin_members_csrf'])) $_SESSION['admin_members_csrf'] = bin2hex(random_bytes(32));
+$admin_members_csrf = $_SESSION['admin_members_csrf'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (empty($_POST['admin_csrf']) || !hash_equals($admin_members_csrf, (string)$_POST['admin_csrf']))) {
+    http_response_code(403);
+    exit('잘못된 요청입니다. 페이지를 새로고침한 후 다시 시도해주세요.');
+}
+
 $message = '';
 $error = '';
+
+/**
+ * 회원 삭제 시 연관 데이터를 함께 정리한다.
+ * 회원 계정은 g5_member 외에도 member_sync(↔HMS users/patients), sso_tokens,
+ * 그리고 병원관계자면 gangnamunni_admins 에 흩어져 있어, g5_member 만 지우면
+ * 병원 관리자 계정이 남아 로그인되거나 HMS 재동기화로 회원이 되살아난다.
+ * HMS users 는 삭제(진료/예약 데이터 FK) 대신 비활성화(status=0)하고 매핑을 끊는다.
+ */
+function member_cleanup_relations($connect, $mb_no, $mb_id, $mb_email) {
+    $mb_no    = (int) $mb_no;
+    $mb_id_e  = mysqli_real_escape_string($connect, (string) $mb_id);
+    $email_e  = mysqli_real_escape_string($connect, (string) $mb_email);
+
+    // 1) HMS user 비활성화(재동기화로 되살아나지 않도록) 후 매핑 제거
+    $sync = mysqli_fetch_assoc(mysqli_query($connect, "SELECT hms_user_id FROM member_sync WHERE mb_no = {$mb_no} OR mb_id = '{$mb_id_e}' LIMIT 1"));
+    if ($sync && !empty($sync['hms_user_id'])) {
+        mysqli_query($connect, "UPDATE users SET status = 0 WHERE id = " . (int) $sync['hms_user_id']);
+    }
+    mysqli_query($connect, "DELETE FROM member_sync WHERE mb_no = {$mb_no} OR mb_id = '{$mb_id_e}'");
+
+    // 2) SSO 토큰 제거
+    mysqli_query($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = '{$mb_id_e}'");
+
+    // 3) 병원관계자 관리자 계정 제거(플랫폼 관리자는 건드리지 않음)
+    if ($email_e !== '') {
+        mysqli_query($connect, "DELETE FROM gangnamunni_admins WHERE (username = '{$email_e}' OR email = '{$email_e}') AND role IN ('hospital_super_admin','hospital_admin','hospital_sub_admin','hospital_staff')");
+    }
+}
 
 // === POST 처리 ===
 
@@ -135,26 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset
         }
     }
 }
-/* 기존 코드 (보존)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset_password') {
-    $mb_no = intval($_POST['mb_no'] ?? 0);
-    if ($mb_no > 0) {
-        $new_pw = substr(str_shuffle('abcdefghijkmnpqrstuvwxyz23456789'), 0, 8);
-        if (!defined('_GNUBOARD_')) define('_GNUBOARD_', true);
-        require_once __DIR__ . '/../lib/pbkdf2.compat.php';
-        $hashed = create_hash($new_pw);
-        $stmt = mysqli_prepare($connect, "UPDATE g5_member SET mb_password = ? WHERE mb_no = ?");
-        mysqli_stmt_bind_param($stmt, 'si', $hashed, $mb_no);
-        if (mysqli_stmt_execute($stmt)) {
-            $message = "비밀번호가 초기화되었습니다. 임시 비밀번호가 설정되었습니다. 회원에게 별도 전달하세요.";
-            $message_pw_hint = $new_pw;
-        } else {
-            $error = '비밀번호 초기화 실패: ' . mysqli_error($connect);
-        }
-        mysqli_stmt_close($stmt);
-    }
-}
-*/
 
 // 회원 정보 수정
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_member') {
@@ -169,6 +185,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
         $mb_addr1 = trim($_POST['mb_addr1'] ?? '');
         $mb_addr2 = trim($_POST['mb_addr2'] ?? '');
 
+        $dup_stmt = mysqli_prepare($connect, "SELECT mb_no FROM g5_member WHERE LOWER(mb_email)=LOWER(?) AND mb_no<>? LIMIT 1");
+        mysqli_stmt_bind_param($dup_stmt, 'si', $mb_email, $mb_no);
+        mysqli_stmt_execute($dup_stmt);
+        mysqli_stmt_store_result($dup_stmt);
+        $email_exists = mysqli_stmt_num_rows($dup_stmt) > 0;
+        mysqli_stmt_close($dup_stmt);
+        if ($email_exists) {
+            $error = '이미 다른 회원이 사용 중인 이메일입니다.';
+        } else {
         $stmt = mysqli_prepare($connect,
             "UPDATE g5_member SET mb_name=?, mb_nick=?, mb_email=?, mb_hp=?, mb_birth=?, mb_sex=?, mb_addr1=?, mb_addr2=? WHERE mb_no=?");
         mysqli_stmt_bind_param($stmt, 'ssssssssi', $mb_name, $mb_nick, $mb_email, $mb_hp, $mb_birth, $mb_sex, $mb_addr1, $mb_addr2, $mb_no);
@@ -178,6 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
             $error = '수정 실패: ' . mysqli_error($connect);
         }
         mysqli_stmt_close($stmt);
+        }
     }
 }
 
@@ -185,12 +211,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_member') {
     $mb_no = intval($_POST['mb_no'] ?? 0);
     if ($mb_no > 0) {
-        // member_sync 매핑도 삭제
-        mysqli_query($connect, "DELETE FROM member_sync WHERE g5_mb_no = {$mb_no}");
+        // 삭제 대상 식별자 조회 후 연관 데이터(병원관리자/SSO/HMS 매핑) 정리
+        $m = mysqli_fetch_assoc(mysqli_query($connect, "SELECT mb_id, mb_email FROM g5_member WHERE mb_no = {$mb_no}"));
+        if ($m) {
+            member_cleanup_relations($connect, $mb_no, $m['mb_id'], $m['mb_email']);
+        }
         $stmt = mysqli_prepare($connect, "DELETE FROM g5_member WHERE mb_no = ?");
         mysqli_stmt_bind_param($stmt, 'i', $mb_no);
         if (mysqli_stmt_execute($stmt)) {
-            $message = '회원이 삭제되었습니다.';
+            $message = '회원이 삭제되었습니다. (연관 계정·토큰·동기화 매핑 포함)';
             $detail_member = null;
         } else {
             $error = '삭제 실패: ' . mysqli_error($connect);
@@ -207,10 +236,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
         $ids = array_filter($ids, fn($v) => $v > 0);
         if (!empty($ids)) {
             $id_list = implode(',', $ids);
-            mysqli_query($connect, "DELETE FROM member_sync WHERE g5_mb_no IN ({$id_list})");
+            // 각 회원의 연관 데이터(병원관리자/SSO/HMS 매핑) 먼저 정리
+            $rows = mysqli_query($connect, "SELECT mb_no, mb_id, mb_email FROM g5_member WHERE mb_no IN ({$id_list})");
+            while ($rows && ($m = mysqli_fetch_assoc($rows))) {
+                member_cleanup_relations($connect, $m['mb_no'], $m['mb_id'], $m['mb_email']);
+            }
             $del_result = mysqli_query($connect, "DELETE FROM g5_member WHERE mb_no IN ({$id_list})");
             $deleted = mysqli_affected_rows($connect);
-            $message = "{$deleted}명의 회원이 삭제되었습니다.";
+            $message = "{$deleted}명의 회원이 삭제되었습니다. (연관 계정·토큰·동기화 매핑 포함)";
         }
     }
 }
@@ -791,6 +824,12 @@ include __DIR__ . '/includes/admin_header.php';
 
 <?php
 $admin_extra_js = <<<'JSEOF'
+document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(function(form) {
+    if (!form.querySelector('input[name="admin_csrf"]')) {
+        var csrf = document.createElement('input'); csrf.type = 'hidden'; csrf.name = 'admin_csrf';
+        csrf.value = 'CSRF_TOKEN_PLACEHOLDER'; form.appendChild(csrf);
+    }
+});
 // 전체 선택/해제
 function toggleSelectAll(checked) {
     document.querySelectorAll('.row-check').forEach(function(cb) { cb.checked = checked; });
@@ -818,6 +857,7 @@ function bulkDelete() {
     document.getElementById('bulkForm').submit();
 }
 JSEOF;
+$admin_extra_js = str_replace('CSRF_TOKEN_PLACEHOLDER', htmlspecialchars($admin_members_csrf, ENT_QUOTES), $admin_extra_js);
 
 include __DIR__ . '/includes/admin_footer.php';
 ?>

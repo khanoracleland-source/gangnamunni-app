@@ -663,7 +663,13 @@ function social_register_member_check($member){
 
         $member['mb_nick'] = social_relace_nick($user_profile->displayName);
         $member['mb_sex'] = $user_profile->gender;
-        $member['mb_email'] = ($user_profile->emailVerified) ? $user_profile->emailVerified : $user_profile->email;
+        $social_email = ($user_profile->emailVerified) ? $user_profile->emailVerified : ($user_profile->email ?? '');
+        // Kakao 가입은 이메일 동의 없이도 허용한다. 실제 식별자는 social_profile의 sid이며,
+        // Gnuboard의 필수 email 컬럼에는 내부용 고유 placeholder만 저장한다.
+        if (!$social_email && !empty($user_profile->sid)) {
+            $social_email = 'kakao_' . preg_replace('/[^0-9a-z_-]/i', '', $user_profile->sid) . '@social.local';
+        }
+        $member['mb_email'] = $social_email;
 
     }
 
