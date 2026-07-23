@@ -14,20 +14,31 @@ $mb_nonce = isset($_GET['mb_nonce']) ? trim($_GET['mb_nonce']) : '';
 // 회원아이디가 아닌 회원고유번호로 회원정보를 구한다.
 $sql = " select mb_id, mb_lost_certify from {$g5['member_table']} where mb_no = '$mb_no' ";
 $mb  = sql_fetch($sql);
-if (strlen($mb['mb_lost_certify']) < 33)
+$parts = explode(' ', trim($mb['mb_lost_certify'] ?? ''), 3);
+if (count($parts) !== 3 || strlen($parts[0]) !== 32 || !ctype_digit($parts[1]) || strlen($parts[2]) < 33)
     die("Error");
 
-// 인증 링크는 한번만 처리가 되게 한다.
-sql_query(" update {$g5['member_table']} set mb_lost_certify = '' where mb_no = '$mb_no' ");
-
-// 인증을 위한 난수가 제대로 넘어온 경우 임시비밀번호를 실제 비밀번호로 바꿔준다.
-if ($mb_nonce === substr($mb['mb_lost_certify'], 0, 32)) {
-    $new_password_hash = substr($mb['mb_lost_certify'], 33);
-    sql_query(" update {$g5['member_table']} set mb_password = '$new_password_hash' where mb_no = '$mb_no' ");
+[$stored_nonce, $expires_at, $new_password_hash] = $parts;
+// nonce 및 만료시각을 검증한 후에만 한번 사용처리한다. 틀린 요청이 정상 토큰을 삭제하지 않는다.
+if (hash_equals($stored_nonce, $mb_nonce) && time() <= (int)$expires_at) {
+    global $connect;
+    $consumed = false;
+    if ($clear = mysqli_prepare($connect, "UPDATE {$g5['member_table']} SET mb_lost_certify = '' WHERE mb_no = ? AND mb_lost_certify = ?")) {
+        mysqli_stmt_bind_param($clear, 'is', $mb_no, $mb['mb_lost_certify']);
+        mysqli_stmt_execute($clear);
+        $consumed = mysqli_stmt_affected_rows($clear) === 1;
+        mysqli_stmt_close($clear);
+    }
+    if (!$consumed) die("Error");
+    if ($pw = mysqli_prepare($connect, "UPDATE {$g5['member_table']} SET mb_password = ? WHERE mb_no = ?")) {
+        mysqli_stmt_bind_param($pw, 'si', $new_password_hash, $mb_no);
+        mysqli_stmt_execute($pw);
+        mysqli_stmt_close($pw);
+    } else die("Error");
 
     run_event('password_lost_certify_after', $mb, $mb_nonce);
 
-    alert('비밀번호가 변경됐습니다.\\n\\n회원아이디와 변경된 비밀번호로 로그인 하시기 바랍니다.', G5_BBS_URL.'/login.php');
+    alert('비밀번호가 변경됐습니다.\\n\\n회원아이디와 변경된 비밀번호로 로그인 하시기 바랍니다.', G5_URL.'/gangnamunni/auth/login.php');
 }
 else {
     die("Error");

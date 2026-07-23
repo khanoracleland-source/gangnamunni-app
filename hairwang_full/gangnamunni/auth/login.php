@@ -1,23 +1,67 @@
 <?php
 /**
  * ============================================================================
- * 서울미녀 커스텀 로그인 (카카오 우선 + 이메일)
+ * 서울미녀 커스텀 이메일 로그인
  * ============================================================================
  * 위치 : gangnamunni/auth/login.php
  * 목적 : 그누보드 기본 로그인 스킨 대신, 서울미녀 전용 로그인 화면 제공.
- *        - 카카오 간편 로그인 (그누보드 소셜 로그인 플로우 재사용 — 키 설정 후 동작)
- *        - 이메일 + 비밀번호 로그인 (이메일→mb_id 조회 후 bbs/login_check.php 로 릴레이)
- * 참고 : 소셜 로그인 키는 관리자 설정(g5_config)에 입력하고 cf_social_login_use=1 로
- *        활성화해야 카카오 버튼이 실제로 동작한다. (키 미설정 시 버튼은 노출되나 비동작)
+ *        - 이메일 + 비밀번호 로그인 (서버에서 검증 후 그누보드 세션 생성)
  * ============================================================================
  */
 
 require_once __DIR__ . '/../includes/init.php';
 
-global $is_member, $config, $connect;
+global $is_member, $config, $connect, $g5;
 
 $bbs_url = defined('G5_BBS_URL') ? G5_BBS_URL : '/bbs';
 $g5_url  = defined('G5_URL') ? G5_URL : '';
+$member_table = $g5['member_table'] ?? 'g5_member';
+
+// 이메일 로그인 POST CSRF 토큰 (세션 기반). reCAPTCHA 와 별개로 교차 사이트 위조 요청을 차단.
+if (empty($_SESSION['login_csrf_token'])) {
+    $_SESSION['login_csrf_token'] = bin2hex(random_bytes(32));
+}
+$login_csrf_token = $_SESSION['login_csrf_token'];
+
+// 로그인 브루트포스 방지: 세션과 무관하게 IP/이메일별 요청 횟수를 제한한다.
+function gnu_login_rate_hit($scope, $value, $limit, $window, $record = true) {
+    $base = defined('G5_DATA_PATH') ? G5_DATA_PATH : sys_get_temp_dir();
+    $dir = $base . '/cache/login_rate';
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        return ['allowed' => false, 'retry' => 60];
+    }
+    if (random_int(1, 100) === 1) {
+        foreach (glob($dir . '/*.json') ?: [] as $old_file) {
+            if (@filemtime($old_file) < time() - 86400 && ($old_fp = @fopen($old_file, 'c+'))) {
+                if (@flock($old_fp, LOCK_EX | LOCK_NB)) {
+                    if (@filemtime($old_file) < time() - 86400) @unlink($old_file);
+                    @flock($old_fp, LOCK_UN);
+                }
+                @fclose($old_fp);
+            }
+        }
+    }
+    $path = $dir . '/' . hash('sha256', $scope . '|' . strtolower((string)$value)) . '.json';
+    $fp = @fopen($path, 'c+');
+    if (!$fp || !flock($fp, LOCK_EX)) {
+        if ($fp) fclose($fp);
+        return ['allowed' => false, 'retry' => 60];
+    }
+    $raw = stream_get_contents($fp);
+    $data = json_decode($raw ?: '', true);
+    $now = time();
+    $hits = is_array($data['hits'] ?? null) ? $data['hits'] : [];
+    $hits = array_values(array_filter($hits, function ($ts) use ($now, $window) { return (int)$ts > $now - $window; }));
+    $retry = count($hits) >= $limit ? max(1, $window - ($now - (int)$hits[0])) : 0;
+    if (!$retry && $record) $hits[] = $now;
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, json_encode(['hits' => $hits]));
+    fflush($fp);
+    flock($fp, LOCK_UN);
+    fclose($fp);
+    return ['allowed' => $retry === 0, 'retry' => $retry];
+}
 
 // ===== Google reCAPTCHA v3 — 키는 gangnamunni/.env 에서 로드 (git 에 커밋되지 않음) =====
 if (!function_exists('gnu_load_env')) {
@@ -39,9 +83,14 @@ $_env = gnu_load_env(dirname(__DIR__) . '/.env');
 $recaptcha_site_key = $_env['RECAPTCHA_SITE_KEY'] ?? (getenv('RECAPTCHA_SITE_KEY') ?: '');
 $recaptcha_secret   = $_env['RECAPTCHA_SECRET']   ?? (getenv('RECAPTCHA_SECRET')   ?: '');
 if (!function_exists('gnu_verify_recaptcha')) {
-    // 토큰을 Google 서버에 검증. 성공 + (v3 점수 0.5 이상)이면 true.
-    function gnu_verify_recaptcha($secret, $token, $remote_ip = '') {
-        if ($token === '' || $secret === '') return false;
+    // reCAPTCHA v3 검증 결과를 상태 문자열로 반환한다.
+    //   'skip' : 비밀키 미설정 / 구글 서버 도달 불가 (로그인 rate-limit은 계속 적용)
+    //   'fail' : 구글이 토큰을 명시적으로 거부(success=false)하거나 점수가 낮음(봇 의심) → 차단.
+    //   'pass' : 사람으로 판단.
+    // v3는 비밀번호 인증을 보조하는 소프트 신호이므로, 하드 게이트로 두어 로그인을 막지 않는다.
+    function gnu_verify_recaptcha($secret, $token, $remote_ip = '', $expected_action = 'login', $expected_host = '') {
+        if ($secret === '') return 'skip';
+        if ($token === '') return 'fail'; // 키가 설정된 환경에서 토큰 생략 우회 차단
         $post = http_build_query(['secret' => $secret, 'response' => $token, 'remoteip' => $remote_ip]);
         $body = false;
         if (function_exists('curl_init')) {
@@ -54,18 +103,35 @@ if (!function_exists('gnu_verify_recaptcha')) {
             $ctx = stream_context_create(['http' => ['method' => 'POST', 'header' => 'Content-Type: application/x-www-form-urlencoded', 'content' => $post, 'timeout' => 5]]);
             $body = @file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, $ctx);
         }
-        if (!$body) return false;
+        if (!$body) return 'skip';                // 구글 서버 도달 불가 → 사용자 책임 아님 → 통과
         $r = json_decode($body, true);
-        if (empty($r['success'])) return false;
-        if (isset($r['score']) && $r['score'] < 0.5) return false; // v3 점수(0.0~1.0)
-        return true;
+        if (!is_array($r)) return 'skip';
+        if (empty($r['success'])) return 'fail';  // 토큰 위조/만료 등 명시적 거부
+        if (isset($r['score']) && $r['score'] < 0.5) return 'fail'; // v3 점수(0.0~1.0) 봇 의심
+        if (($r['action'] ?? '') !== $expected_action) return 'fail';
+        if ($expected_host !== '' && strtolower($r['hostname'] ?? '') !== strtolower($expected_host)) return 'fail';
+        return 'pass';
     }
+}
+
+// 로그인 후 이동할 URL. 외부 URL/프로토콜 상대 URL은 피싱용 open redirect를
+// 만들 수 있으므로 현재 호스트의 http(s) URL 또는 / 로 시작하는 로컬 경로만 허용한다.
+function gnu_safe_after_url($candidate, $fallback) {
+    $candidate = trim((string)$candidate);
+    if ($candidate === '' || strpos($candidate, '\\') !== false || preg_match('/[\x00-\x1F\x7F]/', $candidate)) return $fallback;
+    if ($candidate[0] === '/' && substr($candidate, 0, 2) !== '//') return $candidate;
+
+    $parts = @parse_url($candidate);
+    if (!$parts || !isset($parts['scheme'], $parts['host'])) return $fallback;
+    if (!in_array(strtolower($parts['scheme']), ['http', 'https'], true)) return $fallback;
+    $request_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+    return $request_host !== '' && strtolower($parts['host']) === $request_host ? $candidate : $fallback;
 }
 
 // 로그인 후 이동할 URL (url 파라미터 우선, 없으면 강남언니 홈)
 $after_url = $g5_url . '/gangnamunni/index.php';
-if (isset($_GET['url']) && $_GET['url'] !== '')  $after_url = $_GET['url'];
-if (isset($_POST['url']) && $_POST['url'] !== '') $after_url = $_POST['url'];
+if (isset($_GET['url']) && $_GET['url'] !== '')  $after_url = gnu_safe_after_url($_GET['url'], $after_url);
+if (isset($_POST['url']) && $_POST['url'] !== '') $after_url = gnu_safe_after_url($_POST['url'], $after_url);
 
 // 이미 로그인 상태면 바로 이동
 if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
@@ -74,61 +140,85 @@ if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
 }
 
 $login_error = '';
-$relay = null; // 이메일→mb_id 변환 성공 시, login_check.php 로 릴레이할 데이터
 
 // ===== 이메일 로그인 처리 =====
-// 이메일로 회원 mb_id 를 찾아 그누보드 login_check.php 로 릴레이 → 로그인 로직 전부 재사용.
+// 이메일로 회원을 찾고 그누보드의 비밀번호/세션 함수로 서버 내에서 로그인한다.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email') {
-    $email      = trim($_POST['mb_email'] ?? '');
+    $email      = strtolower(trim((string)($_POST['mb_email'] ?? '')));
     $password   = (string)($_POST['mb_password'] ?? '');
     $auto_login = isset($_POST['auto_login']) ? 1 : 0;
 
-    if ($email === '' || $password === '') {
+    $request_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ip_rate = ['allowed' => true, 'retry' => 0];
+    $email_rate = ['allowed' => true, 'retry' => 0];
+    $basic_request_valid = !empty($_POST['csrf_token'])
+        && hash_equals($login_csrf_token, (string)$_POST['csrf_token'])
+        && $email !== '' && $password !== '';
+    if ($basic_request_valid) {
+        // 먼저 기존 실패 횟수만 확인하고, 아래의 실제 실패 지점에서만 추가한다.
+        $ip_rate = gnu_login_rate_hit('ip', $request_ip, 10, 900, false);
+        $email_rate = gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, false);
+    }
+
+    if (empty($_POST['csrf_token']) || !hash_equals($login_csrf_token, (string)$_POST['csrf_token'])) {
+        $login_error = '요청이 만료되었습니다. 페이지를 새로고침해주세요.';
+    } elseif ($email === '' || $password === '') {
         $login_error = '이메일과 비밀번호를 입력해주세요.';
-    } elseif (!gnu_verify_recaptcha($recaptcha_secret, $_POST['recaptcha_token'] ?? '', $_SERVER['REMOTE_ADDR'] ?? '')) {
+    } elseif (!$ip_rate['allowed'] || !$email_rate['allowed']) {
+        $retry = max((int)$ip_rate['retry'], (int)$email_rate['retry']);
+        $login_error = '로그인 시도가 너무 많습니다. ' . $retry . '초 후 다시 시도해주세요.';
+    } elseif (gnu_verify_recaptcha($recaptcha_secret, $_POST['recaptcha_token'] ?? '', $request_ip, 'login', preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '')) === 'fail') {
+        gnu_login_rate_hit('ip', $request_ip, 10, 900, true);
+        gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, true);
         $login_error = '자동 방지 확인에 실패했습니다. 잠시 후 다시 시도해주세요.';
     } else {
         $mb_id_found = '';
-        if ($stmt = mysqli_prepare($connect, "SELECT mb_id FROM g5_member WHERE mb_email = ? LIMIT 1")) {
+        if ($stmt = mysqli_prepare($connect, "SELECT mb_id FROM {$member_table} WHERE LOWER(mb_email) = LOWER(?) LIMIT 1")) {
             mysqli_stmt_bind_param($stmt, 's', $email);
             mysqli_stmt_execute($stmt);
             $res = mysqli_stmt_get_result($stmt);
             if ($row = mysqli_fetch_assoc($res)) $mb_id_found = $row['mb_id'];
             mysqli_stmt_close($stmt);
         }
-        if ($mb_id_found === '') {
-            $login_error = '가입되지 않은 이메일입니다. 이메일을 확인해주세요.';
+        $login_mb = $mb_id_found !== '' ? get_member($mb_id_found) : [];
+        if (function_exists('run_event')) run_event('member_login_check_before', $mb_id_found);
+        if (!$mb_id_found || empty($login_mb['mb_id']) || !login_password_check($login_mb, $password, $login_mb['mb_password'])) {
+            // 이메일 존재 여부와 비밀번호 오류를 구분하지 않아 계정 수집을 막는다.
+            gnu_login_rate_hit('ip', $request_ip, 10, 900, true);
+            gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, true);
+            if (function_exists('run_event')) run_event('password_is_wrong', 'login', $login_mb);
+            $login_error = '이메일 또는 비밀번호가 올바르지 않습니다.';
+        } elseif (!empty($login_mb['mb_intercept_date']) && $login_mb['mb_intercept_date'] <= date('Ymd')) {
+            $login_error = '이메일 또는 비밀번호가 올바르지 않습니다.';
+        } elseif (!empty($login_mb['mb_leave_date']) && $login_mb['mb_leave_date'] <= date('Ymd')) {
+            $login_error = '이메일 또는 비밀번호가 올바르지 않습니다.';
+        } elseif (function_exists('is_use_email_certify') && is_use_email_certify() && !preg_match('/[1-9]/', $login_mb['mb_email_certify'] ?? '')) {
+            $login_error = '이메일 또는 비밀번호가 올바르지 않습니다.';
         } else {
-            $relay = [
-                'mb_id'      => $mb_id_found,
-                'mb_password'=> $password,
-                'auto_login' => $auto_login,
-                'url'        => $after_url,
-            ];
+            if (function_exists('run_event')) run_event('login_session_before', $login_mb, false);
+            if (!(defined('SKIP_SESSION_REGENERATE_ID') && SKIP_SESSION_REGENERATE_ID)) {
+                session_regenerate_id(false);
+                if (function_exists('session_start_samesite')) session_start_samesite();
+            }
+            set_session('ss_mb_id', $login_mb['mb_id']);
+            generate_mb_key($login_mb);
+            if (function_exists('update_auth_session_token')) update_auth_session_token($login_mb['mb_datetime']);
+
+            if ($auto_login) {
+                $key = md5(($_SERVER['SERVER_ADDR'] ?? '') . ($_SERVER['SERVER_SOFTWARE'] ?? '') . ($_SERVER['HTTP_USER_AGENT'] ?? '') . $login_mb['mb_password']);
+                set_cookie('ck_mb_id', $login_mb['mb_id'], 86400 * 31);
+                set_cookie('ck_auto', $key, 86400 * 31);
+            } else {
+                set_cookie('ck_mb_id', '', 0);
+                set_cookie('ck_auto', '', 0);
+            }
+            if (function_exists('run_event')) run_event('member_login_check', $login_mb, $after_url, false);
+            header('Location: ' . $after_url);
+            exit;
         }
     }
 }
 
-// ===== 릴레이: login_check.php 로 자동 전송 (실제 로그인 처리 위임) =====
-if ($relay) {
-    ?>
-    <!DOCTYPE html>
-    <html lang="ko"><head><meta charset="utf-8"><title>로그인 중…</title></head>
-    <body onload="document.forms[0].submit()">
-        <form method="post" action="<?php echo htmlspecialchars($bbs_url, ENT_QUOTES); ?>/login_check.php">
-            <input type="hidden" name="mb_id" value="<?php echo htmlspecialchars($relay['mb_id'], ENT_QUOTES); ?>">
-            <input type="hidden" name="mb_password" value="<?php echo htmlspecialchars($relay['mb_password'], ENT_QUOTES); ?>">
-            <?php if ($relay['auto_login']): ?><input type="hidden" name="auto_login" value="on"><?php endif; ?>
-            <input type="hidden" name="url" value="<?php echo htmlspecialchars($relay['url'], ENT_QUOTES); ?>">
-            <noscript><p>자동 이동이 되지 않으면 아래 버튼을 눌러주세요.</p><button type="submit">로그인 계속하기</button></noscript>
-        </form>
-    </body></html>
-    <?php
-    exit;
-}
-
-// 카카오 로그인 진입 URL (그누보드 소셜 플로우)
-$kakao_url = $bbs_url . '/login.php?provider=kakao&url=' . urlencode($after_url);
 // 로고 / 브랜드 — bbs/login.php(rb.member 스킨)와 동일한 로고 사용
 global $rb_builder;
 $_logo_ver = defined('G5_SERVER_TIME') ? G5_SERVER_TIME : time();
@@ -140,7 +230,8 @@ if (!empty($rb_builder['bu_logo_pc'])) {
 }
 $brand_name = function_exists('getTheme') ? getTheme('site_name', '서울미녀') : '서울미녀';
 $primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932') : '#AE1932';
-// 오류가 있으면 이메일 폼을 처음부터 펼친다
+$kakao_enabled = !empty($config['cf_social_login_use']) && function_exists('social_service_check') && social_service_check('kakao') && !empty($config['cf_kakao_rest_key']);
+$kakao_url  = $bbs_url . '/login.php?provider=kakao&url=' . urlencode($after_url);
 $open_email = $login_error !== '';
 ?>
 <!DOCTYPE html>
@@ -165,13 +256,11 @@ $open_email = $login_error !== '';
         .login-actions { flex: 0 0 auto; display: flex; flex-direction: column; margin-top: 130px; }
         .btn { width: 100%; height: 54px; border: none; font-size: 16px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
         .btn:active { transform: scale(.99); }
-        .btn-kakao { background: #FEE500; color: #191600; }
         .btn-primary { background: var(--primary); color: #fff; }
+        .btn-kakao { background: #FEE500; color: #191600; }
         .btn-email { background: #191919; color: #fff; margin-top: 10px; }
-        .btn-email .bi { font-size: 17px; }
-        /* 접히는 이메일 폼 */
         .email-panel { max-height: 0; overflow: hidden; transition: max-height .32s ease; }
-        .email-panel.open { max-height: 460px; }
+        .email-panel.open { max-height: 520px; }
         .email-inner { padding-top: 8px; display: flex; flex-direction: column; gap: 10px; }
         .field input { width: 100%; height: 52px; border: 1px solid #e9e9ee; border-radius: 12px; padding: 0 16px; font-size: 15px; background: #fafafb; }
         .field input:focus { outline: none; border-color: var(--primary); background: #fff; }
@@ -194,7 +283,6 @@ $open_email = $login_error !== '';
         .recaptcha-detail a { color: #888; text-decoration: underline; }
         /* v3 배지는 숨김(고지 문구로 대체 — 구글 정책 허용) */
         .grecaptcha-badge { visibility: hidden; }
-        .kakao-ico { width: 19px; height: 19px; }
     </style>
 </head>
 <body>
@@ -212,21 +300,12 @@ $open_email = $login_error !== '';
         </div>
 
         <div class="login-actions">
-            <!-- 카카오 (기본) -->
             <a href="<?php echo htmlspecialchars($kakao_url, ENT_QUOTES); ?>" class="btn btn-kakao">
-                <svg class="kakao-ico" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M9 1.5C4.86 1.5 1.5 4.14 1.5 7.39c0 2.1 1.4 3.94 3.5 4.98-.15.53-.56 1.97-.64 2.28-.1.38.14.38.29.28.12-.08 1.86-1.26 2.61-1.77.4.06.82.09 1.24.09 4.14 0 7.5-2.64 7.5-5.89S13.14 1.5 9 1.5Z" fill="#191600"/>
-                </svg>
-                카카오톡으로 시작하기
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.48 2 10.78c0 2.76 1.82 5.18 4.57 6.56l-.93 3.47c-.08.3.25.54.51.36l4.1-2.73c.57.08 1.16.12 1.75.12 5.52 0 10-3.48 10-7.78S17.52 3 12 3Z"/></svg> 카카오톡으로 시작하기
             </a>
-
-            <!-- 이메일 로그인 토글 -->
             <button type="button" class="btn btn-email" id="emailToggle" aria-expanded="<?php echo $open_email ? 'true' : 'false'; ?>" aria-controls="emailPanel" onclick="toggleEmail()">
-                <i class="bi bi-envelope-fill"></i>
-                이메일로 로그인
+                <i class="bi bi-envelope-fill"></i> 이메일로 시작하기
             </button>
-
-            <!-- 접히는 이메일 폼 -->
             <div class="email-panel <?php echo $open_email ? 'open' : ''; ?>" id="emailPanel">
                 <div class="email-inner">
                     <?php if ($login_error): ?>
@@ -236,6 +315,7 @@ $open_email = $login_error !== '';
                     <form id="emailForm" method="post" action="login.php" style="display:flex;flex-direction:column;gap:10px;">
                         <input type="hidden" name="mode" value="email">
                         <input type="hidden" name="url" value="<?php echo htmlspecialchars($after_url, ENT_QUOTES); ?>">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($login_csrf_token, ENT_QUOTES); ?>">
                         <input type="hidden" name="recaptcha_token" id="recaptchaToken">
 
                         <div class="field">
@@ -250,7 +330,7 @@ $open_email = $login_error !== '';
 
                         <div class="row-between">
                             <label><input type="checkbox" name="auto_login" id="auto_login"> 자동 로그인</label>
-                            <a href="<?php echo htmlspecialchars($bbs_url, ENT_QUOTES); ?>/password_lost.php">비밀번호 찾기</a>
+                            <a href="password_lost.php">비밀번호 찾기</a>
                         </div>
 
                         <button type="submit" class="btn btn-primary">로그인</button>
@@ -259,9 +339,11 @@ $open_email = $login_error !== '';
             </div>
 
             <div class="foot-links">
-                <a href="<?php echo htmlspecialchars($bbs_url, ENT_QUOTES); ?>/password_lost.php">계정 찾기</a>
+                <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/gangnamunni/auth/password_lost.php">계정 찾기</a>
                 <span class="sep">|</span>
                 <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/gangnamunni/qna.php">문의하기</a>
+                <span class="sep">|</span>
+                <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/bbs/register.php">회원가입</a>
             </div>
 
             <div class="recaptcha-notice">

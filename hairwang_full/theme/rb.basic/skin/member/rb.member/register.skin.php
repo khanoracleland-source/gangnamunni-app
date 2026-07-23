@@ -176,7 +176,7 @@ if($mb_recommend) {
 <div class="rb_member">
     <div class="rb_login rb_reg">
 
-        <!-- 상단: 로그인(login.php)으로 돌아가는 chevron-left. 아이콘 폰트 미로드 대비 인라인 SVG 사용 -->
+        <!-- 상단: 강남언니 커스텀 로그인(gangnamunni/auth/login.php)으로 돌아가는 chevron-left. 아이콘 폰트 미로드 대비 인라인 SVG 사용 -->
         <!-- html{overflow-x:hidden} 때문에 sticky 가 깨져서, 스와이프/스크롤에도 항상 상단 고정되도록 fixed 사용 -->
         <!-- fixed 바가 박스 상단을 가리지 않도록, 상단 여백을 바 높이(56px)만큼 확보한다 -->
         <style>
@@ -184,7 +184,7 @@ if($mb_recommend) {
             .rb_reg_back { height: 56px; box-sizing: border-box; display: flex; align-items: center; }
         </style>
         <div class="rb_reg_back" style="position:fixed;top:0;left:0;right:0;z-index:1000;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.06);padding:0 20px;">
-            <a href="<?php echo G5_BBS_URL; ?>/login.php" style="display:inline-flex;align-items:center;gap:6px;color:#666;text-decoration:none;font-size:18px;font-weight:600;">
+            <a href="<?php echo G5_URL; ?>/gangnamunni/auth/login.php" style="display:inline-flex;align-items:center;gap:6px;color:#666;text-decoration:none;font-size:18px;font-weight:600;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
                     <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
                 </svg>
@@ -222,7 +222,7 @@ if($mb_recommend) {
             
             <li class="rb_reg_sub_title">안녕하세요! <?php echo $config['cf_title'] ?> 에 오신것을 진심으로 환영해요!<br>회원 유형을 선택해주세요.</li>
            
-            <?php if($config['cf_social_login_use'] == 1) { ?>
+            <?php if(false) { ?>
             <li class="sns_reg_wrap">
                 <span class="sns_titles">SNS로 간편하게 가입하기</span>
                 <?php
@@ -233,7 +233,7 @@ if($mb_recommend) {
             <?php } ?>
            
             <li>
-                <span style="font-size: 18px; font-weight: bold; margin-bottom: 20px; display: block;">회원유형 선택</span>
+                <span style="font-size: 18px; font-weight: bold; margin-bottom: 20px; display: block;">일반 사용자 회원가입</span>
                 
                 <div class="member_type_box">
                     <label class="member_type_item">
@@ -260,7 +260,7 @@ if($mb_recommend) {
                         </div>
                     </label>
                     
-                    <?php if(isset($pa['pa_is']) && $pa['pa_is'] == 1 && isset($pa['pa_use']) && $pa['pa_use'] == 1) { ?>
+                    <?php if(false && isset($pa['pa_is']) && $pa['pa_is'] == 1 && isset($pa['pa_use']) && $pa['pa_use'] == 1) { ?>
                     <label class="member_type_item">
                         <input type="radio" name="mb_type" value="partner" id="mem_partner" required>
                         <div class="type_content">
@@ -375,7 +375,12 @@ if($mb_recommend) {
             location.href = '<?php echo G5_URL; ?>/gangnamunni/hospital_apply_public.php?app=1';
             return false; // 폼 제출 취소
         }
-        return true; // 일반 회원 → 기존 제출 로직(fregister_submit) 진행
+        if (checked.value === 'general') {
+            // 일반사용자 → 서울미녀 커스텀 이메일 회원가입 페이지
+            location.href = '<?php echo G5_URL; ?>/gangnamunni/auth/register.php';
+            return false; // 폼 제출 취소
+        }
+        return true; // 그 외(partner 등) → 기존 제출 로직(fregister_submit) 진행
     }
 
     function fregister_submit(f)

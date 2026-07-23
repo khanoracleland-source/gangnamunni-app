@@ -26,7 +26,7 @@ $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $m
 
 // BBS URL 직접 지정 (gangnamunni는 /gangnamunni/ 에서 실행, bbs는 /bbs/ 에 있음)
 $login_url = 'auth/login.php';
-$register_url = '/bbs/register.php';
+$register_url = '/gangnamunni/auth/register.php';
 $mypage_url = '/bbs/member_confirm.php';
 $logout_url = '/bbs/logout.php';
 $member_nick = $is_logged_in ? (isset($member['mb_nick']) ? $member['mb_nick'] : $member['mb_id']) : '';
@@ -289,7 +289,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <div class="user-menu">
         </div>
         <?php else: ?>
-        <a href="<?php echo htmlspecialchars($login_url); ?>" class="login-btn">로그인 및 <?= term('member') ?>가입</a>
+        <a href="<?php echo htmlspecialchars($login_url); ?>" class="login-btn">로그인</a>
         <?php endif; ?>
     </div>
 </div>

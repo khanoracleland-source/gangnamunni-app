@@ -36,6 +36,7 @@ $mb_password_re = isset($_POST['mb_password_re']) ? trim($_POST['mb_password_re'
 $mb_name        = isset($_POST['mb_name']) ? trim($_POST['mb_name']) : '';
 $mb_nick        = isset($_POST['mb_nick']) ? trim($_POST['mb_nick']) : '';
 $mb_email       = isset($_POST['mb_email']) ? trim($_POST['mb_email']) : '';
+$mb_type        = isset($_POST['mb_type']) ? trim($_POST['mb_type']) : (isset($_GET['mb_type']) ? trim($_GET['mb_type']) : '');
 $mb_sex         = isset($_POST['mb_sex'])           ? trim($_POST['mb_sex'])         : "";
 $mb_birth       = isset($_POST['mb_birth'])         ? trim($_POST['mb_birth'])       : "";
 $mb_homepage    = isset($_POST['mb_homepage'])      ? trim($_POST['mb_homepage'])    : "";
@@ -63,6 +64,12 @@ $mb_7           = isset($_POST['mb_7'])             ? trim($_POST['mb_7'])      
 $mb_8           = isset($_POST['mb_8'])             ? trim($_POST['mb_8'])           : "";
 $mb_9           = isset($_POST['mb_9'])             ? trim($_POST['mb_9'])           : "";
 $mb_10          = isset($_POST['mb_10'])            ? trim($_POST['mb_10'])          : "";
+
+// 신규 회원은 이메일 인증이 포함된 커스텀 가입 흐름만 사용한다.
+// mb_type 누락/위조를 포함해 레거시 회원가입 엔드포인트 우회를 모두 차단한다.
+if ($w === '' && !in_array($mb_type, ['hospital', 'partner'], true)) {
+    alert('일반 회원가입은 이메일로 시작하기를 이용해 주세요.', G5_URL . '/gangnamunni/auth/register.php');
+}
 
 $mb_name        = clean_xss_tags($mb_name);
 $mb_email       = get_email_address($mb_email);
