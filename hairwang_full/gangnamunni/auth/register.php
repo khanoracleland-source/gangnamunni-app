@@ -27,6 +27,12 @@ if (empty($_SESSION['reg_csrf_token'])) {
 }
 $reg_csrf_token = $_SESSION['reg_csrf_token'];
 
+// 휴대폰 SMS 인증: 문자 발송은 요금이 발생하므로 결제/공급사 준비 전까지 기본 비활성.
+// 준비가 끝나면 (1) 아래를 true 로 바꾸고 (2) gangnamunni/.env 에 SMS_* 키를 넣으면
+// 즉시 SMS OTP(인증문자 발송+코드확인)가 가입 흐름에 적용된다. (헬퍼: includes/sms_helper.php)
+// 비활성 상태에서도 휴대폰 번호는 필수로 입력·저장(mb_hp)되어 예약 알림 등에 사용할 수 있다.
+$enable_sms_verify = false;
+
 // 인증메일 남용 방지. 파일+flock을 사용해 세션/브라우저가 바뀌어도
 // 동일 IP/이메일의 발송 제한이 서버 전체에 적용되게 한다.
 function gnu_reg_rate_hit($scope, $value, $limit, $window, $cooldown = 0) {
@@ -135,6 +141,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_co
     exit;
 }
 
+// ===== AJAX: 휴대폰 SMS 인증코드 발송 (요금 발생 → $enable_sms_verify 로 게이트) =====
+// 결제/공급사 준비 전에는 비활성이며, 준비 후 $enable_sms_verify=true + .env SMS_* 설정만으로 동작.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_sms_code') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!$enable_sms_verify) { echo json_encode(['ok' => false, 'msg' => '휴대폰 인증은 현재 준비 중입니다.']); exit; }
+    $csrf = (string)($_POST['csrf_token'] ?? '');
+    if ($csrf === '' || !hash_equals($reg_csrf_token, $csrf)) {
+        echo json_encode(['ok' => false, 'msg' => '요청이 만료되었습니다. 페이지를 새로고침해주세요.']); exit;
+    }
+    $phone = preg_replace('/[^0-9]/', '', (string)($_POST['phone'] ?? ''));
+    if (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
+        echo json_encode(['ok' => false, 'msg' => '올바른 휴대폰 번호를 입력해주세요.']); exit;
+    }
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (!gnu_reg_rate_hit('sms_ip', $ip, 5, 600, 0)['allowed']) {
+        echo json_encode(['ok' => false, 'msg' => '인증 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.']); exit;
+    }
+    $ph_rate = gnu_reg_rate_hit('sms_phone', $phone, 3, 600, 60);
+    if (!$ph_rate['allowed']) {
+        echo json_encode(['ok' => false, 'msg' => '잠시 후 다시 요청해주세요. (' . $ph_rate['retry'] . '초)']); exit;
+    }
+    $sms_code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    require_once __DIR__ . '/../includes/sms_helper.php';
+    $sent = function_exists('sms_send')
+        ? sms_send($phone, '[서울미녀] 인증번호 [' . $sms_code . '] 를 3분 이내에 입력해주세요.')
+        : ['success' => false, 'error' => 'SMS helper 없음'];
+    if (!(is_array($sent) && !empty($sent['success']))) {
+        error_log('[register] SMS 발송 실패: ' . (is_array($sent) ? ($sent['error'] ?? 'unknown') : 'no result'));
+        echo json_encode(['ok' => false, 'msg' => '인증문자 발송에 실패했습니다. 잠시 후 다시 시도해주세요.']); exit;
+    }
+    $_SESSION['reg_sms_code']   = $sms_code;
+    $_SESSION['reg_sms_phone']  = $phone;
+    $_SESSION['reg_sms_expire'] = time() + 180;
+    echo json_encode(['ok' => true, 'msg' => '인증번호를 문자로 발송했습니다. (3분 내 입력)']); exit;
+}
+
 $reg_error = '';
 
 // ===== 회원가입 처리 =====
@@ -145,6 +187,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
     $password2 = (string)($_POST['password2'] ?? '');
     // 마케팅 수신 동의(선택): 체크했을 때만 1. 가입 시 미체크면 마이페이지에서도 수신 꺼진 상태로 저장한다.
     $agree_marketing = (($_POST['agree_marketing'] ?? '') === '1') ? 1 : 0;
+    // 휴대폰 번호(필수): 숫자만 남겨 저장. 예약 알림 등에 사용.
+    $phone = preg_replace('/[^0-9]/', '', (string)($_POST['phone'] ?? ''));
 
     if (empty($_POST['csrf_token']) || !hash_equals($reg_csrf_token, (string)$_POST['csrf_token'])) {
         $reg_error = '요청이 만료되었습니다. 페이지를 새로고침해주세요.';
@@ -170,6 +214,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
         $reg_error = '비밀번호는 영문, 숫자, 특수문자를 각각 포함한 9~20자로 입력해주세요.';
     } elseif ($password !== $password2) {
         $reg_error = '비밀번호가 일치하지 않습니다.';
+    } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
+        $reg_error = '휴대폰 번호를 정확히 입력해주세요. (예: 01012345678)';
+    } elseif ($enable_sms_verify && (
+            empty($_SESSION['reg_sms_code'])
+            || ($_SESSION['reg_sms_phone'] ?? '') !== $phone
+            || time() > (int)($_SESSION['reg_sms_expire'] ?? 0)
+            || !hash_equals((string)$_SESSION['reg_sms_code'], trim((string)($_POST['sms_code'] ?? '')))
+        )) {
+        $reg_error = '휴대폰 인증을 완료해주세요.';
     } else {
         // 중복 재확인
         $dup = false;
@@ -180,8 +233,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
             $dup = mysqli_stmt_num_rows($st) > 0;
             mysqli_stmt_close($st);
         }
+        // 하나의 이메일 = 하나의 유형: 같은 이메일이 병원관리자 신청(대기/승인)에 있으면 일반가입 차단.
+        $hosp_dup = false;
+        if (!$dup && ($hs = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE LOWER(email) = LOWER(?) AND status IN ('pending','approved') LIMIT 1"))) {
+            mysqli_stmt_bind_param($hs, 's', $email);
+            mysqli_stmt_execute($hs);
+            mysqli_stmt_store_result($hs);
+            $hosp_dup = mysqli_stmt_num_rows($hs) > 0;
+            mysqli_stmt_close($hs);
+        }
         if ($dup) {
             $reg_error = '가입을 진행할 수 없습니다. 이메일을 확인하거나 로그인해주세요.';
+        } elseif ($hosp_dup) {
+            $reg_error = '이미 병원관리자로 신청/가입된 이메일입니다. 하나의 이메일은 일반회원 또는 병원관리자 중 하나로만 가입할 수 있습니다.';
         } else {
             // g5_member 생성 (아이디 자동 생성, 이메일 인증 완료 처리)
             $mb_id    = 'sb_' . substr(md5($email . microtime()), 0, 10);
@@ -266,12 +330,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
             // 없애기 위해, 동일 이메일이 없을 때에만 삽입되는 단일 문으로 처리한다. 동시 요청이 먼저
             // 선점하면 삽입 행이 0 → 중복으로 안내한다. (추가로 DB에 mb_email UNIQUE 인덱스를 두면 더 견고)
             $ins = mysqli_prepare($connect,
-                "INSERT INTO {$member_table} (mb_id, mb_password, mb_name, mb_nick, mb_nick_date, mb_email, mb_level, mb_datetime, mb_today_login, mb_ip, mb_login_ip, mb_email_certify, mb_open_date, mb_1, mb_recommend, mb_mailling, mb_sms)
-                 SELECT ?, ?, ?, ?, ?, ?, {$register_level}, ?, ?, ?, ?, ?, ?, 'general', ?, ?, ?
+                "INSERT INTO {$member_table} (mb_id, mb_password, mb_name, mb_nick, mb_nick_date, mb_email, mb_level, mb_datetime, mb_today_login, mb_ip, mb_login_ip, mb_email_certify, mb_open_date, mb_1, mb_recommend, mb_mailling, mb_sms, mb_hp)
+                 SELECT ?, ?, ?, ?, ?, ?, {$register_level}, ?, ?, ?, ?, ?, ?, 'general', ?, ?, ?, ?
                  FROM DUAL
                  WHERE NOT EXISTS (SELECT 1 FROM {$member_table} WHERE LOWER(mb_email) = LOWER(?))");
             if ($ins) {
-                mysqli_stmt_bind_param($ins, 'sssssssssssssiis', $mb_id, $mb_hash, $mb_name, $mb_nick, $today, $email, $now, $now, $ip, $ip, $now, $today, $mb_recommend, $agree_marketing, $agree_marketing, $email);
+                mysqli_stmt_bind_param($ins, 'sssssssssssssiiss', $mb_id, $mb_hash, $mb_name, $mb_nick, $today, $email, $now, $now, $ip, $ip, $now, $today, $mb_recommend, $agree_marketing, $agree_marketing, $phone, $email);
                 $ok = mysqli_stmt_execute($ins);
                 $affected = mysqli_stmt_affected_rows($ins);
                 mysqli_stmt_close($ins);
@@ -468,6 +532,24 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
                 <div class="msg" id="pwMsg"></div>
             </div>
 
+            <div class="field">
+                <label for="phone">휴대폰 번호</label>
+                <?php if ($enable_sms_verify): ?>
+                <div class="row">
+                    <div class="field">
+                        <input type="tel" name="phone" id="phone" inputmode="numeric" maxlength="11" placeholder="- 없이 숫자만 입력" required autocomplete="tel" value="<?php echo htmlspecialchars($_POST['phone'] ?? '', ENT_QUOTES); ?>">
+                    </div>
+                    <button type="button" class="btn btn-side" id="sendSmsBtn" onclick="sendSms()">인증하기</button>
+                </div>
+                <div class="hint">예약 알림 수신을 위해 휴대폰 인증이 필요합니다.</div>
+                <div class="msg" id="phoneMsg"></div>
+                <input type="text" name="sms_code" id="sms_code" inputmode="numeric" maxlength="6" placeholder="문자로 전송된 인증번호" autocomplete="one-time-code" style="margin-top:14px;">
+                <?php else: ?>
+                <input type="tel" name="phone" id="phone" inputmode="numeric" maxlength="11" placeholder="- 없이 숫자만 입력 (예: 01012345678)" required autocomplete="tel" value="<?php echo htmlspecialchars($_POST['phone'] ?? '', ENT_QUOTES); ?>">
+                <div class="hint">예약 알림 등을 위해 휴대폰 번호가 필요합니다.</div>
+                <?php endif; ?>
+            </div>
+
             <div class="agreements">
                 <label><input type="checkbox" name="agree_terms" id="agreeTerms" value="1" required> <span>(필수) 회원가입 약관에 동의합니다. <a href="<?php echo htmlspecialchars($bbs_url, ENT_QUOTES); ?>/register.php?view=terms" target="_blank" rel="noopener">내용 보기</a></span></label>
                 <label><input type="checkbox" name="agree_privacy" id="agreePrivacy" value="1" required> <span>(필수) 개인정보 수집 및 이용에 동의합니다. <a href="<?php echo htmlspecialchars($bbs_url, ENT_QUOTES); ?>/register.php?view=terms" target="_blank" rel="noopener">내용 보기</a></span></label>
@@ -515,10 +597,38 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
             })
             .catch(function () { msg.className = 'msg bad'; msg.textContent = '네트워크 오류가 발생했습니다.'; btn.disabled = false; updateJoinState(); });
     }
+    // 휴대폰 SMS 인증코드 발송 (SMS 기능 활성화 시에만 버튼이 렌더됨)
+    var smsEnabled = <?php echo $enable_sms_verify ? 'true' : 'false'; ?>;
+    var smsTimer = null;
+    function sendSms() {
+        var phone = (document.getElementById('phone').value || '').replace(/[^0-9]/g, '');
+        var msg = document.getElementById('phoneMsg');
+        var btn = document.getElementById('sendSmsBtn');
+        if (!/^01[0-9]{8,9}$/.test(phone)) { msg.className = 'msg bad'; msg.textContent = '올바른 휴대폰 번호를 입력해주세요.'; return; }
+        btn.disabled = true; msg.className = 'msg'; msg.textContent = '발송 중…';
+        var fd = new URLSearchParams(); fd.append('mode', 'send_sms_code'); fd.append('phone', phone); fd.append('csrf_token', '<?php echo htmlspecialchars($reg_csrf_token, ENT_QUOTES); ?>');
+        fetch('register.php', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                msg.className = 'msg ' + (d.ok ? 'ok' : 'bad');
+                msg.textContent = d.msg || (d.ok ? '발송했습니다.' : '발송 실패');
+                if (d.ok) {
+                    document.getElementById('sms_code').focus();
+                    var left = 180; clearInterval(smsTimer);
+                    smsTimer = setInterval(function () {
+                        left--;
+                        if (left <= 0) { clearInterval(smsTimer); btn.disabled = false; btn.textContent = '재발송'; return; }
+                        btn.textContent = Math.floor(left/60) + ':' + ('0'+(left%60)).slice(-2);
+                    }, 1000);
+                } else { btn.disabled = false; }
+            })
+            .catch(function () { msg.className = 'msg bad'; msg.textContent = '네트워크 오류가 발생했습니다.'; btn.disabled = false; });
+    }
     // 비밀번호 일치 표시 + 제출 검증
     var p1 = document.getElementById('password'), p2 = document.getElementById('password2'), pm = document.getElementById('pwMsg');
     var emailInput = document.getElementById('email'), codeInput = document.getElementById('cert_code'), joinBtn = document.getElementById('joinBtn');
     var agreeTerms = document.getElementById('agreeTerms'), agreePrivacy = document.getElementById('agreePrivacy');
+    var phoneInput = document.getElementById('phone'), smsCodeInput = document.getElementById('sms_code');
     function checkMatch() {
         if (!p2.value) { pm.textContent = ''; return true; }
         var ok = p1.value === p2.value;
@@ -527,11 +637,15 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
         return ok;
     }
     function updateJoinState() {
-        var canJoin = emailInput.value.trim() && codeInput.value.trim() && p1.value && p2.value && p1.value === p2.value && agreeTerms.checked && agreePrivacy.checked;
+        var phoneOk = /^01[0-9]{8,9}$/.test((phoneInput.value || '').replace(/[^0-9]/g, ''));
+        var smsOk = !smsEnabled || (smsCodeInput && smsCodeInput.value.trim().length === 6);
+        var canJoin = emailInput.value.trim() && codeInput.value.trim() && p1.value && p2.value && p1.value === p2.value && agreeTerms.checked && agreePrivacy.checked && phoneOk && smsOk;
         joinBtn.disabled = !canJoin;
     }
     emailInput.addEventListener('input', updateJoinState);
     codeInput.addEventListener('input', updateJoinState);
+    phoneInput.addEventListener('input', updateJoinState);
+    if (smsCodeInput) smsCodeInput.addEventListener('input', updateJoinState);
     p1.addEventListener('input', function () { checkMatch(); updateJoinState(); });
     p2.addEventListener('input', function () { checkMatch(); updateJoinState(); });
     agreeTerms.addEventListener('change', updateJoinState);

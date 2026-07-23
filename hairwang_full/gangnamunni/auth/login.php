@@ -238,7 +238,7 @@ $kakao_enabled = !empty($config['cf_social_login_use'])
     && !empty($config['cf_kakao_rest_key']);
 $kakao_url  = $bbs_url . '/login.php?provider=kakao&url=' . urlencode($after_url);
 // 카카오 미설정 시엔 이메일 폼을 바로 펼쳐, 깨진 카카오 버튼 없이 로그인할 수 있게 한다.
-$open_email = $login_error !== '' || !$kakao_enabled;
+$open_email = $login_error !== '';
 ?>
 <!DOCTYPE html>
 <html lang="ko">
@@ -306,14 +306,12 @@ $open_email = $login_error !== '' || !$kakao_enabled;
         </div>
 
         <div class="login-actions">
-            <?php if ($kakao_enabled): ?>
-            <a href="<?php echo htmlspecialchars($kakao_url, ENT_QUOTES); ?>" class="btn btn-kakao">
+            <a href="<?php echo $kakao_enabled ? htmlspecialchars($kakao_url, ENT_QUOTES) : '#'; ?>" class="btn btn-kakao" <?php if (!$kakao_enabled) echo 'onclick="alert(\'카카오 로그인이 아직 설정되지 않았습니다. 이메일로 시작하기를 이용해 주세요.\'); return false;"'; ?>>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.48 2 10.78c0 2.76 1.82 5.18 4.57 6.56l-.93 3.47c-.08.3.25.54.51.36l4.1-2.73c.57.08 1.16.12 1.75.12 5.52 0 10-3.48 10-7.78S17.52 3 12 3Z"/></svg> 카카오톡으로 시작하기
             </a>
             <button type="button" class="btn btn-email" id="emailToggle" aria-expanded="<?php echo $open_email ? 'true' : 'false'; ?>" aria-controls="emailPanel" onclick="toggleEmail()">
                 <i class="bi bi-envelope-fill"></i> 이메일로 시작하기
             </button>
-            <?php endif; ?>
             <div class="email-panel <?php echo $open_email ? 'open' : ''; ?>" id="emailPanel">
                 <div class="email-inner">
                     <?php if ($login_error): ?>

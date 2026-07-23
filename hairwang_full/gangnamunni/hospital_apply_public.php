@@ -70,6 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_em
         echo json_encode(['ok'=>false, 'msg'=>'요청이 만료되었습니다.']); exit;
     }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { echo json_encode(['ok'=>false, 'msg'=>'올바른 이메일을 입력해 주세요.']); exit; }
+    // 하나의 이메일 = 하나의 유형: 이미 일반 회원으로 가입된 이메일이면 병원관리자 신청 불가.
+    if (mysqli_num_rows(mysqli_query($connect, "SELECT mb_id FROM g5_member WHERE LOWER(mb_email)=LOWER('" . mysqli_real_escape_string($connect, $email) . "') LIMIT 1"))) {
+        echo json_encode(['ok'=>false, 'msg'=>'이미 일반 회원으로 가입된 이메일입니다. 다른 이메일로 신청해 주세요.']); exit;
+    }
     $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     $body = '<h2>병원 등록 신청 이메일 인증</h2><p>인증번호: <strong style="font-size:24px;letter-spacing:4px">'.$code.'</strong></p><p>3분 이내에 입력해 주세요.</p>';
     try { $sent = mail_send(0, $email, '[서울미녀] 병원 등록 이메일 인증번호', $body); $ok = is_array($sent) ? !empty($sent['success']) : (bool)$sent; } catch (Throwable $e) { $ok = false; error_log('[hospital_apply] OTP 예외: '.$e->getMessage()); }
@@ -122,6 +126,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
             $_SESSION['hospital_apply_code_attempts'] = (int)($_SESSION['hospital_apply_code_attempts'] ?? 0) + 1;
             if ($_SESSION['hospital_apply_code_attempts'] >= 5) unset($_SESSION['hospital_apply_code'], $_SESSION['hospital_apply_email']);
             $error = '이메일 인증번호가 올바르지 않습니다.';
+        } elseif (mysqli_num_rows(mysqli_query($connect, "SELECT mb_id FROM g5_member WHERE LOWER(mb_email)=LOWER('" . mysqli_real_escape_string($connect, $email) . "') LIMIT 1"))) {
+            // 하나의 이메일 = 하나의 유형: 이미 일반 회원으로 가입된 이메일이면 병원관리자 신청 차단.
+            $error = '이미 일반 회원으로 가입된 이메일입니다. 하나의 이메일은 일반회원 또는 병원관리자 중 하나로만 가입할 수 있습니다.';
         } elseif (mysqli_num_rows(mysqli_query($connect, "SELECT id FROM gangnamunni_hospitals WHERE (LOWER(email)=LOWER('" . mysqli_real_escape_string($connect, $email) . "') OR business_number='" . mysqli_real_escape_string($connect, $business_number) . "') AND status IN ('pending','approved') LIMIT 1"))) {
             $error = '이미 등록 신청된 이메일 또는 사업자등록번호입니다.';
         } else {
