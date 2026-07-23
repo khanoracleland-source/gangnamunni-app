@@ -143,6 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
     $code      = trim($_POST['cert_code'] ?? '');
     $password  = (string)($_POST['password'] ?? '');
     $password2 = (string)($_POST['password2'] ?? '');
+    // 마케팅 수신 동의(선택): 체크했을 때만 1. 가입 시 미체크면 마이페이지에서도 수신 꺼진 상태로 저장한다.
+    $agree_marketing = (($_POST['agree_marketing'] ?? '') === '1') ? 1 : 0;
 
     if (empty($_POST['csrf_token']) || !hash_equals($reg_csrf_token, (string)$_POST['csrf_token'])) {
         $reg_error = '요청이 만료되었습니다. 페이지를 새로고침해주세요.';
@@ -264,12 +266,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
             // 없애기 위해, 동일 이메일이 없을 때에만 삽입되는 단일 문으로 처리한다. 동시 요청이 먼저
             // 선점하면 삽입 행이 0 → 중복으로 안내한다. (추가로 DB에 mb_email UNIQUE 인덱스를 두면 더 견고)
             $ins = mysqli_prepare($connect,
-                "INSERT INTO {$member_table} (mb_id, mb_password, mb_name, mb_nick, mb_nick_date, mb_email, mb_level, mb_datetime, mb_today_login, mb_ip, mb_login_ip, mb_email_certify, mb_open_date, mb_1, mb_recommend)
-                 SELECT ?, ?, ?, ?, ?, ?, {$register_level}, ?, ?, ?, ?, ?, ?, 'general', ?
+                "INSERT INTO {$member_table} (mb_id, mb_password, mb_name, mb_nick, mb_nick_date, mb_email, mb_level, mb_datetime, mb_today_login, mb_ip, mb_login_ip, mb_email_certify, mb_open_date, mb_1, mb_recommend, mb_mailling, mb_sms)
+                 SELECT ?, ?, ?, ?, ?, ?, {$register_level}, ?, ?, ?, ?, ?, ?, 'general', ?, ?, ?
                  FROM DUAL
                  WHERE NOT EXISTS (SELECT 1 FROM {$member_table} WHERE LOWER(mb_email) = LOWER(?))");
             if ($ins) {
-                mysqli_stmt_bind_param($ins, 'ssssssssssssss', $mb_id, $mb_hash, $mb_name, $mb_nick, $today, $email, $now, $now, $ip, $ip, $now, $today, $mb_recommend, $email);
+                mysqli_stmt_bind_param($ins, 'sssssssssssssiis', $mb_id, $mb_hash, $mb_name, $mb_nick, $today, $email, $now, $now, $ip, $ip, $now, $today, $mb_recommend, $agree_marketing, $agree_marketing, $email);
                 $ok = mysqli_stmt_execute($ins);
                 $affected = mysqli_stmt_affected_rows($ins);
                 mysqli_stmt_close($ins);
@@ -281,21 +283,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
                 if ($ok && $affected === 1) {
                     unset($_SESSION['reg_cert_code'], $_SESSION['reg_cert_email'], $_SESSION['reg_cert_expire'], $_SESSION['reg_cert_attempts']);
 
-                    // 가입 후처리(#9): 그누보드 표준 회원가입(register_form_update.php)과 동일하게
-                    // 가입 축하 포인트를 지급하고, 확장/플러그인 호환용 회원가입 완료 이벤트를 발생시킨다.
-                    if (function_exists('insert_point')) {
-                        $register_point = (int)($config['cf_register_point'] ?? 0);
-                        if ($register_point !== 0) {
-                            insert_point($mb_id, $register_point, '회원가입 축하', '@member', $mb_id, '회원가입');
-                        }
-                        // 추천인 포인트 지급(#2): 그누보드 표준과 동일
-                        if (!empty($config['cf_use_recommend']) && $mb_recommend !== '') {
-                            $recommend_point = (int)($config['cf_recommend_point'] ?? 0);
-                            if ($recommend_point !== 0) {
-                                insert_point($mb_recommend, $recommend_point, $mb_id . '의 추천인', '@member', $mb_recommend, $mb_id . ' 추천');
-                            }
-                        }
-                    }
+                    // 포인트 기능 미사용: 현재 포인트 기능을 쓰지 않으므로 가입/추천 포인트를 지급하지 않는다.
+                    // (지급 시 "1,000 포인트 적립" 등의 안내가 노출되므로 잠시 중단)
+                    // 포인트 기능을 다시 사용하려면 아래 $enable_register_point 를 true 로 바꾸면 된다.
                     // 그누보드 메일 설정을 존중해 회원/관리자 가입 알림을 발송한다.
                     if (!empty($config['cf_email_mb_member']) && function_exists('mail_send')) {
                         $welcome_subject = '[' . ($config['cf_title'] ?? '서울미녀') . '] 회원가입을 환영합니다.';
@@ -481,6 +471,7 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
             <div class="agreements">
                 <label><input type="checkbox" name="agree_terms" id="agreeTerms" value="1" required> <span>(필수) 회원가입 약관에 동의합니다. <a href="<?php echo htmlspecialchars($bbs_url, ENT_QUOTES); ?>/register.php?view=terms" target="_blank" rel="noopener">내용 보기</a></span></label>
                 <label><input type="checkbox" name="agree_privacy" id="agreePrivacy" value="1" required> <span>(필수) 개인정보 수집 및 이용에 동의합니다. <a href="<?php echo htmlspecialchars($bbs_url, ENT_QUOTES); ?>/register.php?view=terms" target="_blank" rel="noopener">내용 보기</a></span></label>
+                <label><input type="checkbox" name="agree_marketing" id="agreeMarketing" value="1"> <span>(선택) 마케팅 정보 수신에 동의합니다. (이벤트·혜택 알림)</span></label>
             </div>
 
             <div class="foot">

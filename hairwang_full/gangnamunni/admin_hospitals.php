@@ -30,6 +30,11 @@ if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://hms.seoulbeauty.
 require_admin_login();
 require_permission('hospitals');
 
+if (empty($_SESSION['admin_hospitals_csrf'])) {
+    $_SESSION['admin_hospitals_csrf'] = bin2hex(random_bytes(32));
+}
+$admin_hospitals_csrf = $_SESSION['admin_hospitals_csrf'];
+
 // 병원 역할 격리: get_hospital_filter() 는 super_admin/admin/editor(hospital_id 없음)면 null(전체),
 // hospital_* 역할이면 자기 hospital_id 반환 → superadmin 은 전체 병원, 병원 관리자는 자기 병원만 표시.
 require_once __DIR__ . '/includes/hospital_filter.php';
@@ -61,6 +66,10 @@ $current_admin = get_current_admin();
 
 // ===== POST 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (empty($_POST['admin_csrf']) || !hash_equals($admin_hospitals_csrf, (string)$_POST['admin_csrf'])) {
+        http_response_code(403);
+        exit('잘못된 요청입니다. 페이지를 새로고침한 후 다시 시도해주세요.');
+    }
     $action = $_POST['action'] ?? '';
 
     // 승인 — 자동 계정 3곳 생성 (gangnamunni_admins + g5_member + sso_tokens) + 이메일
@@ -83,7 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (mysqli_stmt_execute($stmt)) {
                 $message = "병원 #{$hospital_id}이(가) 승인되었습니다.";
 
-                if ($hospital_info && !empty($hospital_info['email'])) {
+                // 단일 승인도 bulk 승인과 동일한 공용 계정/메일 프로비저닝을 사용한다.
+                if ($hospital_info) provision_hospital_accounts($connect, $hospital_info);
+
+                /* 레거시 단일 승인 프로비저닝 코드는 공용 helper로 대체됨. */
+                if (false && $hospital_info && !empty($hospital_info['email'])) {
                     $h_email = $hospital_info['email'];
                     $h_name = $hospital_info['name'];
                     $h_contact = $hospital_info['contact_name'] ?? $h_name;
@@ -122,8 +135,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $mb_id = $g5_row['mb_id'];
                         $g5_exists = true;
                         // mb_1을 hospital로 업데이트
-                        $upd_g5 = mysqli_prepare($connect, "UPDATE g5_member SET mb_1='hospital' WHERE mb_id=?");
-                        mysqli_stmt_bind_param($upd_g5, 's', $mb_id);
+                        $g5_pw_existing = password_hash($temp_password, PASSWORD_DEFAULT);
+                        $upd_g5 = mysqli_prepare($connect, "UPDATE g5_member SET mb_1='hospital', mb_password=? WHERE mb_id=?");
+                        mysqli_stmt_bind_param($upd_g5, 'ss', $g5_pw_existing, $mb_id);
                         mysqli_stmt_execute($upd_g5);
                         mysqli_stmt_close($upd_g5);
                         $message .= " 기존 회원({$mb_id}) → 병원관계자로 전환.";
@@ -172,6 +186,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         // 다병원: 기존 계정이 있으면 hospital_id만 업데이트 (최신 병원)
                         $message .= " 기존 관리자 계정 사용 (다병원).";
+                        $upd_adm = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET password=?, email=?, phone=?, hospital_id=?, hospital_name=?, is_active=1 WHERE username=?");
+                        mysqli_stmt_bind_param($upd_adm, 'sssiss', $hashed_pw, $h_email, $h_contact_phone, $hospital_id, $h_name, $h_email);
+                        mysqli_stmt_execute($upd_adm);
+                        mysqli_stmt_close($upd_adm);
                     }
 
                     // ③ sso_tokens — SSO 토큰 생성 (로그인 준비)
@@ -203,7 +221,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <hr>
                             <p style='color:#e74c3c;'><strong>보안을 위해 로그인 후 반드시 비밀번호를 변경해 주세요.</strong></p>
                             <p>감사합니다.<br>서울미녀 팀</p>";
-                        @mail_send(0, $h_email, '[서울미녀] 병원 등록 승인 완료 - 계정 안내', $approve_body);
+                        // 발송 결과를 확인·기록한다. 실패를 조용히 삼키면(@) "승인 완료"만 뜨고
+                        // 실제 메일은 안 가는 상황이 생기므로, 결과를 관리자 화면과 로그에 반영한다.
+                        $approve_mail_ok = false;
+                        try {
+                            $mres = mail_send(0, $h_email, '[서울미녀] 병원 등록 승인 완료 - 계정 안내', $approve_body);
+                            $approve_mail_ok = is_array($mres) ? !empty($mres['success']) : (bool) $mres;
+                        } catch (\Throwable $e) {
+                            error_log('[Hospital Approve] 승인 이메일 예외: ' . $e->getMessage());
+                        }
+                        if ($approve_mail_ok) {
+                            $message .= ' 승인 안내 메일을 ' . htmlspecialchars($h_email) . ' 로 발송했습니다.';
+                        } else {
+                            error_log('[Hospital Approve] 승인 이메일 발송 실패 → ' . $h_email);
+                            $error = '병원은 승인됐지만 승인 안내 메일 발송에 실패했습니다. 메일 설정을 확인하거나 아래 계정 정보를 수동으로 전달해 주세요. (아이디: '
+                                   . htmlspecialchars($h_email) . ' / 임시 비밀번호: ' . htmlspecialchars($temp_password) . ')';
+                        }
 
                         // 병원 관리자에게 인앱 + FCM 알림
                         notifyMember($connect, $mb_id, 'hospital_approve',
@@ -259,7 +292,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <p>서류를 보완하신 후 재신청 가능합니다.</p>
                         <p><a href='" . SITE_FULL_URL . "hospital_apply.php'>재신청하기</a></p>
                         <p>감사합니다.<br>서울미녀 팀</p>";
-                    @mail_send(0, $reject_info['email'], '[서울미녀] 병원 등록 신청 반려 안내', $reject_body);
+                    try {
+                        $reject_mail = mail_send(0, $reject_info['email'], '[서울미녀] 병원 등록 신청 반려 안내', $reject_body);
+                        if (!(is_array($reject_mail) ? !empty($reject_mail['success']) : (bool)$reject_mail)) error_log('[Hospital Reject] 이메일 발송 실패 → ' . $reject_info['email']);
+                    } catch (Throwable $e) { error_log('[Hospital Reject] 이메일 예외: ' . $e->getMessage()); }
                 }
 
                 // 관리자 알림
@@ -1803,13 +1839,23 @@ function bulkSubmit(action, extraData) {
     if (ids.length === 0) return;
     var form = document.createElement('form');
     form.method = 'POST';
-    form.innerHTML = '<input name="action" value="' + action + '"><input name="ids" value="' + ids.join(',') + '">';
+    form.innerHTML = '<input name="action" value="' + action + '"><input name="ids" value="' + ids.join(',') + '"><input name="admin_csrf" value="<?php echo htmlspecialchars($admin_hospitals_csrf, ENT_QUOTES); ?>">';
     if (extraData) {
         for (var k in extraData) form.innerHTML += '<input name="' + k + '" value="' + extraData[k] + '">';
     }
     document.body.appendChild(form);
     form.submit();
 }
+
+// Server-side CSRF tekshiruviga barcha oddiy POST formalari uchun token qo‘shish.
+document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(function(form) {
+    if (!form.querySelector('input[name="admin_csrf"]')) {
+        var input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'admin_csrf';
+        input.value = '<?php echo htmlspecialchars($admin_hospitals_csrf, ENT_QUOTES); ?>';
+        form.appendChild(input);
+    }
+});
 
 function bulkDelete() {
     var ids = getCheckedIds();

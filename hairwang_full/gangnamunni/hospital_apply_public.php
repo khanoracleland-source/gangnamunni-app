@@ -1,7 +1,7 @@
 <?php
 /**
  * 병원 등록 신청 — 공개용 (비로그인)
- * 이메일/전화로 본인 확인, 파일 업로드 + DB INSERT
+ * 이메일 OTP 확인, 전화번호 형식 확인, 파일 업로드 + DB INSERT
  * Bootstrap 5.3 독립 레이아웃 (관리자 헤더 없음)
  * @created 2026-04-03
  */
@@ -16,6 +16,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/dev_mode_helper.php';
 require_once __DIR__ . '/includes/notification_helper.php';
+require_once __DIR__ . '/includes/mail_helper.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패");
@@ -58,6 +59,25 @@ $rate_row = mysqli_stmt_get_result($rate_check)->fetch_assoc();
 mysqli_stmt_close($rate_check);
 $rate_limited = ($rate_row['cnt'] >= 3);
 
+if (empty($_SESSION['hospital_apply_csrf'])) $_SESSION['hospital_apply_csrf'] = bin2hex(random_bytes(32));
+$hospital_apply_csrf = $_SESSION['hospital_apply_csrf'];
+
+// 신청 이메일 소유 확인용 OTP 발송
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_email_code') {
+    header('Content-Type: application/json; charset=utf-8');
+    $email = strtolower(trim((string)($_POST['email'] ?? '')));
+    if (empty($_POST['csrf_token']) || !hash_equals($hospital_apply_csrf, (string)$_POST['csrf_token'])) {
+        echo json_encode(['ok'=>false, 'msg'=>'요청이 만료되었습니다.']); exit;
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { echo json_encode(['ok'=>false, 'msg'=>'올바른 이메일을 입력해 주세요.']); exit; }
+    $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $body = '<h2>병원 등록 신청 이메일 인증</h2><p>인증번호: <strong style="font-size:24px;letter-spacing:4px">'.$code.'</strong></p><p>3분 이내에 입력해 주세요.</p>';
+    try { $sent = mail_send(0, $email, '[서울미녀] 병원 등록 이메일 인증번호', $body); $ok = is_array($sent) ? !empty($sent['success']) : (bool)$sent; } catch (Throwable $e) { $ok = false; error_log('[hospital_apply] OTP 예외: '.$e->getMessage()); }
+    if (!$ok) { echo json_encode(['ok'=>false, 'msg'=>'인증메일 발송에 실패했습니다.']); exit; }
+    $_SESSION['hospital_apply_email'] = $email; $_SESSION['hospital_apply_code'] = $code; $_SESSION['hospital_apply_code_expire'] = time()+180; $_SESSION['hospital_apply_code_attempts'] = 0;
+    echo json_encode(['ok'=>true, 'msg'=>'인증번호를 발송했습니다.']); exit;
+}
+
 // 카테고리 목록
 $category_list = defined('CATEGORIES') ? CATEGORIES : ['코','눈','지방흡입','가슴성형','치아','리프팅','주름/미백','쁘띠','모발이식','제모','남성','눈성형'];
 
@@ -73,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
         $owner_name = trim($_POST['owner_name'] ?? '');
         $business_number = trim($_POST['business_number'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+        $email = strtolower(trim((string)($_POST['email'] ?? '')));
         $contact_name = trim($_POST['contact_name'] ?? '');
         $contact_phone = trim($_POST['contact_phone'] ?? '');
         $address = trim($_POST['address'] ?? '');
@@ -94,6 +114,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
             $error = '필수 약관에 동의해 주세요.';
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = '올바른 이메일 주소를 입력해 주세요.';
+        } elseif (!preg_match('/^[0-9+() .-]{7,30}$/', $phone) || !preg_match('/^[0-9+() .-]{7,30}$/', $contact_phone)) {
+            $error = '전화번호 형식을 확인해 주세요.';
+        } elseif (empty($_SESSION['hospital_apply_code']) || strtolower((string)($_SESSION['hospital_apply_email'] ?? '')) !== $email || time() > (int)($_SESSION['hospital_apply_code_expire'] ?? 0)) {
+            $error = '이메일 인증을 먼저 완료해 주세요.';
+        } elseif (!hash_equals((string)$_SESSION['hospital_apply_code'], trim((string)($_POST['email_code'] ?? '')))) {
+            $_SESSION['hospital_apply_code_attempts'] = (int)($_SESSION['hospital_apply_code_attempts'] ?? 0) + 1;
+            if ($_SESSION['hospital_apply_code_attempts'] >= 5) unset($_SESSION['hospital_apply_code'], $_SESSION['hospital_apply_email']);
+            $error = '이메일 인증번호가 올바르지 않습니다.';
+        } elseif (mysqli_num_rows(mysqli_query($connect, "SELECT id FROM gangnamunni_hospitals WHERE (LOWER(email)=LOWER('" . mysqli_real_escape_string($connect, $email) . "') OR business_number='" . mysqli_real_escape_string($connect, $business_number) . "') AND status IN ('pending','approved') LIMIT 1"))) {
+            $error = '이미 등록 신청된 이메일 또는 사업자등록번호입니다.';
         } else {
             // 파일 업로드
             $applied_by = 'public_' . $client_ip . '_' . time();
@@ -192,6 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                     if ($insert_ok) {
                         $new_id = mysqli_insert_id($connect);
                         $success = true;
+                        unset($_SESSION['hospital_apply_code'], $_SESSION['hospital_apply_email'], $_SESSION['hospital_apply_code_expire'], $_SESSION['hospital_apply_code_attempts']);
                         $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
 
                         // 관리자 이메일
@@ -204,7 +235,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                                 <p><strong>이메일:</strong> " . htmlspecialchars($email) . "</p>
                                 <p><strong>담당자:</strong> " . htmlspecialchars($contact_name) . " / " . htmlspecialchars($contact_phone) . "</p>
                                 <p><a href='" . SITE_FULL_URL . "admin_hospitals.php?tab=pending'>신청 목록 확인</a></p>";
-                            @mail_send(0, 'admin@seoulbeauty.app', '[서울미녀] 새 병원 등록 신청 - ' . $name, $admin_body);
+                            try {
+                                $ares = mail_send(0, 'admin@seoulbeauty.app', '[서울미녀] 새 병원 등록 신청 - ' . $name, $admin_body);
+                                if (!(is_array($ares) ? !empty($ares['success']) : $ares)) error_log('[hospital_apply] 관리자 알림 메일 실패');
+                            } catch (\Throwable $e) { error_log('[hospital_apply] 관리자 알림 메일 예외: ' . $e->getMessage()); }
                         }
 
                         // 신청자 확인 이메일
@@ -214,7 +248,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                                 <p><strong>" . htmlspecialchars($name) . "</strong>의 입점 신청이 정상적으로 접수되었습니다.</p>
                                 <p>심사 결과는 1~3 영업일 내에 이메일로 안내드리겠습니다.</p>
                                 <p>감사합니다.<br>" . term('site_name', '서울미녀') . " 팀</p>";
-                            @mail_send(0, $email, '[서울미녀] 병원 등록 신청 접수 확인', $user_body);
+                            try {
+                                $ures = mail_send(0, $email, '[서울미녀] 병원 등록 신청 접수 확인', $user_body);
+                                if (!(is_array($ures) ? !empty($ures['success']) : $ures)) error_log('[hospital_apply] 신청자 확인 메일 실패 → ' . $email);
+                            } catch (\Throwable $e) { error_log('[hospital_apply] 신청자 확인 메일 예외: ' . $e->getMessage()); }
                         }
 
                         // 관리자 FCM + 인앱 알림
@@ -336,8 +373,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
     <div class="card form-card">
         <div class="card-body p-4 p-md-5">
             <form method="POST" enctype="multipart/form-data" id="publicApplyForm">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($hospital_apply_csrf, ENT_QUOTES) ?>">
                 <!-- 허니팟 (봇 방지) -->
                 <input type="text" name="website_url_hp" class="hp-field" tabindex="-1" autocomplete="off">
+
+                <!-- 필수/선택 안내 -->
+                <div class="alert alert-light border small mb-4 py-2">
+                    <span class="text-danger fw-bold">*</span> 표시는 <strong>필수</strong> 입력 항목입니다. 표시가 없는 항목은 <span class="text-muted">선택</span> 입력입니다.
+                </div>
 
                 <!-- 기본 정보 -->
                 <h5 class="section-title"><i class="bi bi-building me-2"></i>기본 정보</h5>
@@ -362,6 +405,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                         <label class="form-label fw-semibold">병원 이메일 <span class="text-danger">*</span></label>
                         <input type="email" name="email" class="form-control" required maxlength="191" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
                         <div class="form-text">심사 결과 및 관리자 계정이 이 이메일로 발송됩니다.</div>
+                        <div class="input-group mt-2"><input type="text" name="email_code" class="form-control" inputmode="numeric" maxlength="6" placeholder="이메일 인증번호"><button type="button" class="btn btn-outline-primary" id="emailVerifyBtn">인증번호 발송</button></div>
+                        <div id="emailVerifyMsg" class="form-text"></div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">담당자명 <span class="text-danger">*</span></label>
@@ -381,7 +426,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                         <input type="text" name="address" class="form-control" required maxlength="500" placeholder="도로명 주소" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
                     </div>
                     <div class="col-12">
-                        <label class="form-label fw-semibold">진료과목</label>
+                        <label class="form-label fw-semibold">진료과목 <span class="text-muted fw-normal">(선택)</span></label>
                         <div class="d-flex flex-wrap gap-2">
                             <?php foreach ($category_list as $cat): ?>
                             <div class="form-check">
@@ -393,23 +438,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                         <input type="hidden" name="categories" id="categoriesInput">
                     </div>
                     <div class="col-12">
-                        <label class="form-label fw-semibold">주요 시술 (콤마 구분)</label>
+                        <label class="form-label fw-semibold">주요 시술 (콤마 구분) <span class="text-muted fw-normal">(선택)</span></label>
                         <input type="text" name="treatment_tags" class="form-control" placeholder="예: 코성형, 눈성형, 지방흡입" value="<?= htmlspecialchars($_POST['treatment_tags'] ?? '') ?>">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">영업시간</label>
+                        <label class="form-label fw-semibold">영업시간 <span class="text-muted fw-normal">(선택)</span></label>
                         <input type="text" name="business_hours" class="form-control" placeholder="예: 평일 10:00~19:00" value="<?= htmlspecialchars($_POST['business_hours'] ?? '') ?>">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">홈페이지</label>
+                        <label class="form-label fw-semibold">홈페이지 <span class="text-muted fw-normal">(선택)</span></label>
                         <input type="url" name="website" class="form-control" placeholder="https://" value="<?= htmlspecialchars($_POST['website'] ?? '') ?>">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">SNS (인스타그램 등)</label>
+                        <label class="form-label fw-semibold">SNS (인스타그램 등) <span class="text-muted fw-normal">(선택)</span></label>
                         <input type="text" name="sns_url" class="form-control" placeholder="https://instagram.com/..." value="<?= htmlspecialchars($_POST['sns_url'] ?? '') ?>">
                     </div>
                     <div class="col-12">
-                        <label class="form-label fw-semibold">병원 소개</label>
+                        <label class="form-label fw-semibold">병원 소개 <span class="text-muted fw-normal">(선택)</span></label>
                         <textarea name="description" class="form-control" rows="4" maxlength="2000"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                     </div>
                 </div>
@@ -428,7 +473,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                         <div class="form-text">JPG/PNG/PDF, 5MB 이하</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">병원 대표 이미지</label>
+                        <label class="form-label fw-semibold">병원 대표 이미지 <span class="text-muted fw-normal">(선택)</span></label>
                         <input type="file" name="profile_image" class="form-control" accept=".jpg,.jpeg,.png">
                         <div class="form-text">JPG/PNG, 5MB 이하 (선택)</div>
                     </div>
@@ -463,7 +508,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                     </button>
                     <p class="text-muted small mt-3">제출 후 1~3 영업일 내에 심사 결과를 이메일로 안내드립니다.</p>
                 </div>
-            </form>
+</form>
         </div>
     </div>
 
@@ -494,6 +539,14 @@ document.querySelector('[name="business_number"]')?.addEventListener('input', fu
     if (v.length > 3 && v.length <= 5) v = v.slice(0,3) + '-' + v.slice(3);
     else if (v.length > 5) v = v.slice(0,3) + '-' + v.slice(3,5) + '-' + v.slice(5,10);
     e.target.value = v;
+});
+document.getElementById('emailVerifyBtn')?.addEventListener('click', function() {
+    var email = document.querySelector('[name="email"]').value.trim(), msg = document.getElementById('emailVerifyMsg'), btn = this;
+    if (!email) { msg.textContent = '이메일을 먼저 입력해 주세요.'; return; }
+    btn.disabled = true; msg.textContent = '발송 중...';
+    fetch('hospital_apply_public.php?app=1', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({mode:'send_email_code', email:email, csrf_token:'<?= htmlspecialchars($hospital_apply_csrf, ENT_QUOTES) ?>'})})
+      .then(function(r){return r.json();}).then(function(d){msg.textContent=d.msg||''; if(!d.ok) btn.disabled=false; else setTimeout(function(){btn.disabled=false;},180000);})
+      .catch(function(){msg.textContent='네트워크 오류가 발생했습니다.';btn.disabled=false;});
 });
 </script>
 <?php if (isDevMode($connect)): ?>

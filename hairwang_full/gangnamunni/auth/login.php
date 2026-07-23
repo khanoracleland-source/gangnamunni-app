@@ -230,9 +230,15 @@ if (!empty($rb_builder['bu_logo_pc'])) {
 }
 $brand_name = function_exists('getTheme') ? getTheme('site_name', '서울미녀') : '서울미녀';
 $primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932') : '#AE1932';
-$kakao_enabled = !empty($config['cf_social_login_use']) && function_exists('social_service_check') && social_service_check('kakao') && !empty($config['cf_kakao_rest_key']);
+// 카카오 버튼은 관리자 설정(소셜로그인 사용 + kakao 서비스 + REST 키)이 모두 갖춰졌을 때만 노출한다.
+// 소셜 플러그인 로드 여부와 무관하게 g5_config 값만으로 판단(플러그인 미로드 페이지에서도 정확).
+$kakao_services = array_map('trim', explode(',', (string)($config['cf_social_servicelist'] ?? '')));
+$kakao_enabled = !empty($config['cf_social_login_use'])
+    && in_array('kakao', $kakao_services, true)
+    && !empty($config['cf_kakao_rest_key']);
 $kakao_url  = $bbs_url . '/login.php?provider=kakao&url=' . urlencode($after_url);
-$open_email = $login_error !== '';
+// 카카오 미설정 시엔 이메일 폼을 바로 펼쳐, 깨진 카카오 버튼 없이 로그인할 수 있게 한다.
+$open_email = $login_error !== '' || !$kakao_enabled;
 ?>
 <!DOCTYPE html>
 <html lang="ko">
@@ -300,12 +306,14 @@ $open_email = $login_error !== '';
         </div>
 
         <div class="login-actions">
+            <?php if ($kakao_enabled): ?>
             <a href="<?php echo htmlspecialchars($kakao_url, ENT_QUOTES); ?>" class="btn btn-kakao">
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.48 2 10.78c0 2.76 1.82 5.18 4.57 6.56l-.93 3.47c-.08.3.25.54.51.36l4.1-2.73c.57.08 1.16.12 1.75.12 5.52 0 10-3.48 10-7.78S17.52 3 12 3Z"/></svg> 카카오톡으로 시작하기
             </a>
             <button type="button" class="btn btn-email" id="emailToggle" aria-expanded="<?php echo $open_email ? 'true' : 'false'; ?>" aria-controls="emailPanel" onclick="toggleEmail()">
                 <i class="bi bi-envelope-fill"></i> 이메일로 시작하기
             </button>
+            <?php endif; ?>
             <div class="email-panel <?php echo $open_email ? 'open' : ''; ?>" id="emailPanel">
                 <div class="email-inner">
                     <?php if ($login_error): ?>

@@ -47,8 +47,9 @@ function provision_hospital_accounts($connect, $hospital_info) {
     mysqli_stmt_close($chk_g5);
     if ($g5_row) {
         $mb_id = $g5_row['mb_id'];
-        $upd = mysqli_prepare($connect, "UPDATE g5_member SET mb_1='hospital' WHERE mb_id=?");
-        mysqli_stmt_bind_param($upd, 's', $mb_id);
+        $existing_g5_pw = password_hash($temp_password, PASSWORD_DEFAULT);
+        $upd = mysqli_prepare($connect, "UPDATE g5_member SET mb_1='hospital', mb_password=? WHERE mb_id=?");
+        mysqli_stmt_bind_param($upd, 'ss', $existing_g5_pw, $mb_id);
         mysqli_stmt_execute($upd);
         mysqli_stmt_close($upd);
     } else {
@@ -83,6 +84,11 @@ function provision_hospital_accounts($connect, $hospital_info) {
             error_log('[provision] gangnamunni_admins INSERT 실패: ' . mysqli_error($connect));
         }
         mysqli_stmt_close($stmt_adm);
+    } else {
+        $upd_a = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET password=?, email=?, phone=?, hospital_id=?, hospital_name=?, is_active=1 WHERE username=?");
+        mysqli_stmt_bind_param($upd_a, 'sssiss', $hashed_pw, $h_email, $h_contact_phone, $hospital_id, $h_name, $h_email);
+        mysqli_stmt_execute($upd_a);
+        mysqli_stmt_close($upd_a);
     }
 
     // ③ sso_tokens — SSO 토큰 생성 (로그인 준비)
@@ -113,7 +119,10 @@ function provision_hospital_accounts($connect, $hospital_info) {
             <hr>
             <p style='color:#e74c3c;'><strong>보안을 위해 로그인 후 반드시 비밀번호를 변경해 주세요.</strong></p>
             <p>감사합니다.<br>서울미녀 팀</p>";
-        @mail_send(0, $h_email, '[서울미녀] 병원 등록 승인 완료 - 계정 안내', $approve_body);
+        try {
+            $mail_result = mail_send(0, $h_email, '[서울미녀] 병원 등록 승인 완료 - 계정 안내', $approve_body);
+            if (!(is_array($mail_result) ? !empty($mail_result['success']) : (bool)$mail_result)) error_log('[provision] 승인 이메일 발송 실패: ' . $h_email);
+        } catch (Throwable $e) { error_log('[provision] 승인 이메일 예외: ' . $e->getMessage()); }
 
         if (function_exists('notifyMember')) {
             notifyMember($connect, $mb_id, 'hospital_approve',
