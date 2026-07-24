@@ -2,7 +2,7 @@
 -- 포인트 원장(#포인트제도) 스키마 — 배포 시 1회 실행(관리자 권한).
 -- ------------------------------------------------------------
 -- 목적: 애플리케이션(웹 요청 경로)에서 CREATE/ALTER TABLE 을 실행하지 않도록,
---       DDL 을 배포 단계에서 미리 적용한다. 이 스크립트가 schema_version=2 를 심어두면
+--       DDL 을 배포 단계에서 미리 적용한다. 이 스크립트가 schema_version=3 를 심어두면
 --       points_ensure_schema() 의 빠른 경로가 곧바로 종료되어 이후 DDL 이 일어나지 않는다.
 -- 특징: 멱등(재실행 안전). DDL 권한이 있는 사용자로 1회 실행.
 --   예)  mysql -u<admin> -p <db_name> < sql/points_ledger.sql
@@ -67,14 +67,18 @@ DELIMITER ;
 CALL gnu_points_upgrade();
 DROP PROCEDURE IF EXISTS gnu_points_upgrade;
 
--- 5) 기본 설정값(없을 때만) + schema_version=2 확정
+-- 5) 기본 설정값(없을 때만) + schema_version=3 확정
+--    signup/review/booking 유형별 on/off 스위치(v3). booking 은 초기 비활성(0).
 INSERT INTO gangnamunni_point_settings (skey, sval) VALUES
   ('enabled','1'),
+  ('signup_enabled','1'),
+  ('review_enabled','1'),
+  ('booking_enabled','0'),
   ('signup_point','1000'),
-  ('booking_percent','0'),
+  ('booking_percent','1'),
   ('review_default_point','1000'),
   ('expire_days','365'),
-  ('schema_version','2')
+  ('schema_version','3')
 ON DUPLICATE KEY UPDATE
   sval = IF(skey = 'schema_version', VALUES(sval), sval);
 

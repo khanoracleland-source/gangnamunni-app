@@ -53,6 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($act === 'save_settings') {
         points_save_settings($connect, [
             'enabled'              => isset($_POST['enabled']) ? '1' : '0',
+            'signup_enabled'       => isset($_POST['signup_enabled']) ? '1' : '0',
+            'review_enabled'       => isset($_POST['review_enabled']) ? '1' : '0',
+            'booking_enabled'      => isset($_POST['booking_enabled']) ? '1' : '0',
             'signup_point'         => max(0, (int)($_POST['signup_point'] ?? 0)),
             'booking_percent'      => max(0, (float)($_POST['booking_percent'] ?? 0)),
             'review_default_point' => max(0, (int)($_POST['review_default_point'] ?? 0)),
@@ -146,9 +149,33 @@ require_once __DIR__ . '/includes/admin_header.php';
                 <label class="form-check-label" for="pEnabled">활성화</label>
             </div>
         </div>
-        <div class="col-md-2"><label class="form-label">가입 지급(P)</label><input type="number" min="0" name="signup_point" class="form-control" value="<?php echo (int)($pset['signup_point'] ?? 0); ?>"></div>
-        <div class="col-md-2"><label class="form-label">후기 승인 기본(P)</label><input type="number" min="0" name="review_default_point" class="form-control" value="<?php echo (int)($pset['review_default_point'] ?? 0); ?>"></div>
-        <div class="col-md-2"><label class="form-label">예약 적립(%)</label><input type="number" min="0" step="0.1" name="booking_percent" class="form-control" value="<?php echo htmlspecialchars($pset['booking_percent'] ?? '0'); ?>"></div>
+        <div class="col-md-2">
+            <label class="form-label d-flex justify-content-between align-items-center mb-1">
+                <span>가입 지급(P)</span>
+                <span class="form-check form-switch m-0" title="가입 적립 사용">
+                    <input class="form-check-input" type="checkbox" name="signup_enabled" value="1" <?php echo ((int)($pset['signup_enabled'] ?? 1)===1)?'checked':''; ?>>
+                </span>
+            </label>
+            <input type="number" min="0" name="signup_point" class="form-control" value="<?php echo (int)($pset['signup_point'] ?? 0); ?>">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label d-flex justify-content-between align-items-center mb-1">
+                <span>후기 승인 기본(P)</span>
+                <span class="form-check form-switch m-0" title="후기 적립 사용">
+                    <input class="form-check-input" type="checkbox" name="review_enabled" value="1" <?php echo ((int)($pset['review_enabled'] ?? 1)===1)?'checked':''; ?>>
+                </span>
+            </label>
+            <input type="number" min="0" name="review_default_point" class="form-control" value="<?php echo (int)($pset['review_default_point'] ?? 0); ?>">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label d-flex justify-content-between align-items-center mb-1">
+                <span>예약 적립(%)</span>
+                <span class="form-check form-switch m-0" title="예약 적립 사용">
+                    <input class="form-check-input" type="checkbox" name="booking_enabled" value="1" <?php echo ((int)($pset['booking_enabled'] ?? 0)===1)?'checked':''; ?>>
+                </span>
+            </label>
+            <input type="number" min="0" step="0.1" name="booking_percent" class="form-control" value="<?php echo htmlspecialchars($pset['booking_percent'] ?? '0'); ?>">
+        </div>
         <div class="col-md-2"><label class="form-label">유효기간(일, 0=무기한)</label><input type="number" min="0" name="expire_days" class="form-control" value="<?php echo (int)($pset['expire_days'] ?? 0); ?>"></div>
         <div class="col-md-2"><button type="submit" class="btn btn-primary w-100"><i class="bi bi-save me-1"></i>저장</button></div>
     </form>

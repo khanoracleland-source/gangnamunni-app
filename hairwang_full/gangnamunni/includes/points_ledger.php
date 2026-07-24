@@ -16,7 +16,7 @@
 
 if (!defined('POINTS_LEDGER_LOADED')) {
     define('POINTS_LEDGER_LOADED', 1);
-    define('POINTS_SCHEMA_VERSION', 2); // 스키마 목표 버전
+    define('POINTS_SCHEMA_VERSION', 3); // 스키마 목표 버전(v3: 유형별 적립 on/off 키 추가)
 
     /** 잔액을 증가시키는 유형(+), 그 외는 감소(-). 'admin' 은 과거 스키마 적립 유형(하위호환). */
     function points_is_credit($type) {
@@ -66,6 +66,22 @@ if (!defined('POINTS_LEDGER_LOADED')) {
     /** 포인트 제도 전체 활성화 여부 */
     function points_enabled($connect) {
         return (int)points_setting($connect, 'enabled', '0') === 1;
+    }
+
+    /**
+     * 적립 유형별 활성화 여부. 전체 스위치(enabled) AND 유형별 스위치(<kind>_enabled).
+     * @param string $kind signup|booking|review
+     * 유형별 키가 없으면 기본 ON(1)으로 간주(하위호환). booking 은 시드에서 0으로 초기 비활성.
+     */
+    function points_kind_enabled($connect, $kind) {
+        if (!points_enabled($connect)) return false;
+        return (int)points_setting($connect, $kind . '_enabled', '1') === 1;
+    }
+
+    /** 유형별 활성화(실패 시 false). 공개/부가 경로 표시용. */
+    function points_kind_enabled_safe($connect, $kind) {
+        try { return points_kind_enabled($connect, $kind); }
+        catch (\Throwable $e) { return false; }
     }
 
     // ── 안전 조회(비핵심 표시용) ─────────────────────────────
@@ -246,7 +262,7 @@ if (!defined('POINTS_LEDGER_LOADED')) {
      * @param int $price 예약 금액(원)
      */
     function points_earn_booking($connect, $member_no, $booking_id, $price) {
-        if (!points_enabled($connect)) return ['ok' => false, 'skipped' => true, 'balance' => 0, 'error' => 'disabled'];
+        if (!points_kind_enabled($connect, 'booking')) return ['ok' => false, 'skipped' => true, 'balance' => 0, 'error' => 'disabled'];
         $percent = (float)points_setting($connect, 'booking_percent', '1');
         $amount = (int)floor(((int)$price) * $percent / 100);
         if ($amount <= 0) return ['ok' => false, 'skipped' => true, 'balance' => 0, 'error' => 'zero_amount'];

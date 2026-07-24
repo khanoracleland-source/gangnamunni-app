@@ -148,7 +148,7 @@ require_once __DIR__ . '/includes/points_ledger.php';
 
 /** 후기 승인 적립(멱등). 관리자 개별 입력액 우선, 없으면 기본 설정액. 반환: 실제 지급액(0=미지급). */
 function reviews_award_point($connect, $review, $rid, $override_amount = null) {
-    if (!points_enabled($connect)) return 0;
+    if (!points_kind_enabled($connect, 'review')) return 0;
     $pt = ($override_amount !== null && $override_amount !== '') ? (int)$override_amount : (int)points_setting($connect, 'review_default_point', '0');
     $mb_no = points_member_no($connect, $review['user_id'] ?? '');
     if ($pt <= 0 || $mb_no <= 0) return 0;

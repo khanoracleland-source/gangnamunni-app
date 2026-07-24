@@ -387,12 +387,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
                     );
 
                     // 포인트 원장(#포인트제도): 회원가입 완료 시 고정 포인트 지급.
-                    // 지급액/활성화는 admin_points.php 설정(signup_point, enabled)으로 제어.
+                    // 지급액/활성화는 admin_points.php 설정(signup_point, enabled, signup_enabled)으로 제어.
                     // 포인트 지급은 부가 기능이므로, 원장 미설치/오류가 있어도 절대 가입 자체를
                     // 실패시키지 않는다(계정은 이미 생성됨). 실패 시 로그만 남기고 진행한다.
                     try {
                         require_once dirname(__DIR__) . '/includes/points_ledger.php';
-                        if (points_enabled($connect)) {
+                        if (points_kind_enabled($connect, 'signup')) {
                             $signup_point = (int)points_setting($connect, 'signup_point', '0');
                             if ($signup_point > 0) {
                                 $new_mb_no = points_member_no($connect, $mb_id);

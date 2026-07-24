@@ -95,13 +95,16 @@ if (!index_exists($connect, 'gangnamunni_points', 'idx_member_id2')) {
 
 // 5) 기본 설정값 + schema_version=2
 echo "\n-- 기본 설정값 --\n";
-step($connect, '설정 시드 + schema_version=2', "INSERT INTO gangnamunni_point_settings (skey, sval) VALUES
+step($connect, '설정 시드 + schema_version=3', "INSERT INTO gangnamunni_point_settings (skey, sval) VALUES
   ('enabled','1'),
+  ('signup_enabled','1'),
+  ('review_enabled','1'),
+  ('booking_enabled','0'),
   ('signup_point','1000'),
-  ('booking_percent','0'),
+  ('booking_percent','1'),
   ('review_default_point','1000'),
   ('expire_days','365'),
-  ('schema_version','2')
+  ('schema_version','3')
 ON DUPLICATE KEY UPDATE
   sval = IF(skey = 'schema_version', VALUES(sval), sval)");
 
@@ -122,6 +125,6 @@ if ($cnt === 0) {
 echo "\n=== 검증 ===\n";
 $ver_r = mysqli_query($connect, "SELECT sval FROM gangnamunni_point_settings WHERE skey='schema_version' LIMIT 1");
 $ver = $ver_r ? (mysqli_fetch_assoc($ver_r)['sval'] ?? '?') : '?';
-echo "  schema_version = {$ver} (목표: 2)\n";
+echo "  schema_version = {$ver} (목표: 3)\n";
 echo "\n설치 완료. admin_points.php 로 이동해 확인하세요.\n";
 echo "보안을 위해 확인 후 이 파일(setup_points_schema.php)은 삭제하는 것을 권장합니다.\n";
