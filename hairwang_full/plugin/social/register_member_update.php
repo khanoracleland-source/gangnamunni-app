@@ -293,6 +293,10 @@ if($result) {
     // 사용자 코드 실행
     @include_once ($member_skin_path.'/register_form_update.tail.skin.php');
 
+    if (defined('G5_SOCIAL_AUTO_REGISTER') && G5_SOCIAL_AUTO_REGISTER) {
+        goto_url(G5_URL . '/gangnamunni/index.php');
+    }
+
     goto_url(G5_HTTP_BBS_URL.'/register_result.php');
 
 } else {

@@ -42,6 +42,25 @@ $user_nick = exist_mb_nick_recursive($user_nick, '');
 $is_exists_email = $user_email ? exist_mb_email($user_email, '') : false;
 $user_name = isset($user_profile->username) ? $user_profile->username : '';
 
+// Kakao consent is enough for this service: create the local account on the
+// first successful Kakao authentication instead of showing another form.
+if (strtolower($provider_name) === 'kakao') {
+    $_POST['mb_id'] = $user_id;
+    $_POST['mb_password'] = '';
+    $_POST['mb_password_re'] = '';
+    $_POST['mb_nick'] = $user_nick;
+    $_POST['mb_email'] = $user_email;
+    $_POST['mb_name'] = $user_name ?: $user_nick;
+    $_POST['mb_hp'] = '';
+    $_POST['mb_mailling'] = 0;
+    $_POST['mb_open'] = 0;
+    $w = '';
+
+    define('G5_SOCIAL_AUTO_REGISTER', true);
+    include G5_SOCIAL_LOGIN_PATH . '/register_member_update.php';
+    exit;
+}
+
 // 불법접근을 막도록 토큰생성
 $token = md5(uniqid(rand(), true));
 set_session("ss_token", $token);

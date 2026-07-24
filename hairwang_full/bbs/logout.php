@@ -78,39 +78,6 @@ if ($url) {
 
 run_event('member_logout', $link);
 
-// goto_url($link); // 이 줄을 주석처리하고 아래 코드로 대체
-
-// 뒤로가기 방지를 위한 자바스크립트 리다이렉트
-?>
-
-<head>
-<meta charset="utf-8">
-<title>로그아웃 중...</title>
-<script>
-// 히스토리 스택을 비우고 홈으로 이동
-window.onload = function() {
-    // 브라우저 히스토리 조작
-    if (window.history && window.history.replaceState) {
-        // 현재 페이지를 홈 URL로 대체
-        window.history.replaceState(null, null, '<?php echo $link; ?>');
-        
-        // 뒤로가기 방지
-        window.history.pushState(null, null, '<?php echo $link; ?>');
-        window.onpopstate = function() {
-            window.history.pushState(null, null, '<?php echo $link; ?>');
-        };
-    }
-    
-    // location.replace를 사용하여 현재 페이지 기록을 덮어씀
-    window.location.replace('<?php echo $link; ?>');
-};
-
-// 혹시 자바스크립트가 작동하지 않을 경우를 대비
-setTimeout(function() {
-    window.location.href = '<?php echo $link; ?>';
-}, 100);
-</script>
-</head>
-<body>
-<p>로그아웃 처리 중입니다...</p>
-</body>
+// Redirect immediately after the session and social-provider state are cleared.
+// A server-side redirect avoids flashing an intermediate logout message.
+goto_url($link);

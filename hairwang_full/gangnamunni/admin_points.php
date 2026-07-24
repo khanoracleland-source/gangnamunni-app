@@ -21,7 +21,25 @@ $admin_points_csrf = $_SESSION['admin_points_csrf'];
 
 // 포인트 원장(#포인트제도): 모든 증감은 ledger 를 단일 진입점으로 사용
 require_once __DIR__ . '/includes/points_ledger.php';
-points_ensure_schema($connect);
+try {
+    points_ensure_schema($connect);
+} catch (Throwable $e) {
+    error_log('[admin_points] point schema unavailable: ' . $e->getMessage());
+    http_response_code(503);
+    require_once __DIR__ . '/includes/admin_header.php';
+    ?>
+    <div class="alert alert-danger" role="alert">
+        <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-1"></i> 포인트 DB 설정이 필요합니다</h5>
+        <p class="mb-2">포인트 원장 스키마가 설치되지 않았거나 최신 버전이 아닙니다.</p>
+        <p class="mb-0">
+            배포 관리자에게 <code>sql/points_ledger.sql</code> 마이그레이션 실행을 요청한 뒤
+            이 페이지를 새로고침해 주세요.
+        </p>
+    </div>
+    <?php
+    require_once __DIR__ . '/includes/admin_footer.php';
+    exit;
+}
 
 // POST: 설정 저장 / 수동 지급·차감 / 데모
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

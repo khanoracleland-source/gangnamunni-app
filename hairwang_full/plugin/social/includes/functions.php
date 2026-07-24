@@ -486,7 +486,9 @@ function social_check_login_before($p_service=''){
     $provider_name = $p_service ? $p_service : social_get_request_provider();
     $url = isset($_REQUEST['url']) ? $_REQUEST['url'] : G5_URL;
     $mode = isset($_REQUEST['mode']) ? $_REQUEST['mode'] : 'login';
-    $use_popup = G5_SOCIAL_USE_POPUP ? 1 : 2;
+    $force_same_window = defined('G5_SOCIAL_FORCE_SAME_WINDOW')
+        && G5_SOCIAL_FORCE_SAME_WINDOW;
+    $use_popup = (G5_SOCIAL_USE_POPUP && !$force_same_window) ? 1 : 2;
     $ss_social_provider = get_session('ss_social_provider');
 
     if( $provider_name ){

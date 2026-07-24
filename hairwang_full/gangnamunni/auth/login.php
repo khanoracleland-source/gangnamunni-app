@@ -13,6 +13,49 @@ require_once __DIR__ . '/../includes/init.php';
 
 global $is_member, $config, $connect, $g5;
 
+// Handle the complete social-login flow on this custom login controller.
+// Pass the validated provider explicitly: the callback request must not fall
+// through to the ordinary email-login HTML when the request value is altered
+// by bootstrap/filter code.
+if (isset($_GET['provider']) || isset($_REQUEST['provider'])) {
+    $social_query = array();
+    parse_str(isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '', $social_query);
+    $raw_social_provider = isset($social_query['provider'])
+        ? $social_query['provider']
+        : (isset($_GET['provider']) ? $_GET['provider'] : $_REQUEST['provider']);
+    $social_provider = ucfirst(strtolower(preg_replace(
+        '/[^a-z0-9_-]/i',
+        '',
+        (string)$raw_social_provider
+    )));
+
+    if ($social_provider === 'Kakao' && function_exists('social_check_login_before')) {
+        $_GET['provider'] = $_REQUEST['provider'] = $social_provider;
+        if (array_key_exists('redirect_to_idp', $social_query)) {
+            $_GET['redirect_to_idp'] = $_REQUEST['redirect_to_idp'] = '1';
+        }
+
+        if (!defined('G5_SOCIAL_FORCE_SAME_WINDOW')) {
+            define('G5_SOCIAL_FORCE_SAME_WINDOW', true);
+        }
+
+        error_log(
+            '[Kakao flow] controller enter; callback='
+            . (isset($_REQUEST['redirect_to_idp']) ? 'yes' : 'no')
+            . '; session=' . session_id()
+        );
+        social_check_login_before($social_provider);
+
+        error_log('[Kakao flow] social_check_login_before() returned unexpectedly');
+        http_response_code(500);
+        exit('Kakao login handler returned unexpectedly.');
+    } elseif ($social_provider === 'Kakao') {
+        error_log('[Kakao flow] social_check_login_before() is not loaded');
+        http_response_code(500);
+        exit('Kakao login module is not loaded.');
+    }
+}
+
 $bbs_url = defined('G5_BBS_URL') ? G5_BBS_URL : '/bbs';
 $g5_url  = defined('G5_URL') ? G5_URL : '';
 $member_table = $g5['member_table'] ?? 'g5_member';
@@ -236,7 +279,7 @@ $kakao_services = array_map('trim', explode(',', (string)($config['cf_social_ser
 $kakao_enabled = !empty($config['cf_social_login_use'])
     && in_array('kakao', $kakao_services, true)
     && !empty($config['cf_kakao_rest_key']);
-$kakao_url  = $bbs_url . '/login.php?provider=kakao&url=' . urlencode($after_url);
+$kakao_url = $g5_url . '/gangnamunni/auth/login.php?provider=kakao&url=' . urlencode($after_url);
 // 카카오 미설정 시엔 이메일 폼을 바로 펼쳐, 깨진 카카오 버튼 없이 로그인할 수 있게 한다.
 $open_email = $login_error !== '';
 ?>
