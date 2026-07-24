@@ -98,7 +98,7 @@ echo "\n-- 기본 설정값 --\n";
 step($connect, '설정 시드 + schema_version=2', "INSERT INTO gangnamunni_point_settings (skey, sval) VALUES
   ('enabled','1'),
   ('signup_point','1000'),
-  ('booking_percent','1'),
+  ('booking_percent','0'),
   ('review_default_point','1000'),
   ('expire_days','365'),
   ('schema_version','2')
