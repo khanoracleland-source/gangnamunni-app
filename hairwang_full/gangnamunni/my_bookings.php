@@ -13,6 +13,26 @@ if (isset($connect) && $connect && file_exists(__DIR__ . '/includes/sso_auto_log
 }
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 
+// 포인트 적립 안내(#포인트제도): 예약금액의 booking_percent% 적립을 카드에 표시
+require_once __DIR__ . '/includes/points_ledger.php';
+$__pt_enabled = points_enabled_safe($connect);              // 원장 미설치 시 배지만 숨기고 페이지는 정상 렌더
+$__pt_percent = (float)points_setting_safe($connect, 'booking_percent', '0');
+/** 예약 상태에 따른 적립 배지 HTML. confirmed/completed=적립됨, pending=적립 예정, 그 외=미표시. */
+if (!function_exists('booking_point_badge')) {
+    function booking_point_badge($bk, $enabled, $percent) {
+        if (!$enabled || $percent <= 0) return '';
+        $pt = (int)floor((int)($bk['price'] ?? 0) * $percent / 100);
+        if ($pt <= 0) return '';
+        $status = $bk['status'] ?? '';
+        if (in_array($status, ['confirmed', 'completed'], true)) {
+            return '<span class="booking-point bp-earned"><i class="bi bi-coin"></i> ' . number_format($pt) . 'P 적립됨</span>';
+        } elseif ($status === 'pending') {
+            return '<span class="booking-point bp-pending"><i class="bi bi-coin"></i> ' . number_format($pt) . 'P 적립 예정</span>';
+        }
+        return '';
+    }
+}
+
 // [2026-06-15] mypage.php 와 100% 동일한 로그인 판정 — 그누보드 전역변수 직접 확인
 //   함수(is_gangnamunni_logged_in) 대신 $is_member/$member 를 직접 봐서 mypage 와 동일하게 동작
 global $is_member, $member;
@@ -21,6 +41,8 @@ $logged_member = $is_user_logged_in ? $member : [];
 
 // [2026-06-15] 예약조회 로그인 필수 (booking_require_login 설정, 기본 ON / booking_phone_auth=1이면 전화번호조회 허용)
 if (!function_exists('getSettingValue') && file_exists(__DIR__ . '/includes/settings_helper.php')) { require_once __DIR__ . '/includes/settings_helper.php'; }
+$_require_login = true;
+$_phone_auth = false;
 if (function_exists('getSettingValue')) {
     $_require_login = getSettingValue($connect, 'booking_require_login', '1') === '1';
     $_phone_auth    = getSettingValue($connect, 'booking_phone_auth', '0') === '1';
@@ -30,6 +52,10 @@ if (function_exists('getSettingValue')) {
     }
 }
 $logged_mb_id = $logged_member['mb_id'] ?? '';
+if (empty($_SESSION['my_bookings_csrf'])) {
+    $_SESSION['my_bookings_csrf'] = bin2hex(random_bytes(32));
+}
+$my_bookings_csrf = $_SESSION['my_bookings_csrf'];
 
 $auto_phone = '';
 if (!empty($logged_member['mb_hp'])) {
@@ -38,8 +64,10 @@ if (!empty($logged_member['mb_hp'])) {
     $auto_phone = $_SESSION['user_phone'];
 }
 
-// 예약 조회 (전화번호 또는 mb_id)
-$search_phone = trim($_GET['phone'] ?? $auto_phone);
+// URL의 ?phone 값은 본인확인 수단이 아니므로 조회 조건으로 사용하지 않는다.
+// 로그인 회원은 mb_id(+과거 mb_id 없는 예약의 본인 전화번호), 비회원은
+// 별도 인증 흐름에서 세션에 저장된 검증 완료 전화번호만 사용할 수 있다.
+$search_phone = $is_user_logged_in ? $auto_phone : (string)($_SESSION['user_phone'] ?? '');
 $bookings = [];
 $active_bookings = [];
 $past_bookings = [];
@@ -48,16 +76,19 @@ $upcoming_bookings = [];
 $completed_bookings = [];
 $cancelled_bookings = []; 
 
-if (!empty($search_phone)) {
-    // 전화번호 기반 조회
+if ($is_user_logged_in && !empty($logged_mb_id)) {
+    // 로그인 회원: mb_id가 일치하거나, 과거 데이터 중 mb_id가 비어 있고 본인 전화번호가 일치하는 예약만 조회
     $clean_phone = preg_replace('/[^0-9]/', '', $search_phone);
     $stmt = $connect->prepare("SELECT b.*, h.profile_image_url as hospital_image
         FROM gangnamunni_bookings b
         LEFT JOIN gangnamunni_hospitals h ON b.hospital_id = h.id
-        WHERE REPLACE(REPLACE(b.phone, '-', ''), ' ', '') = ?
+        WHERE b.mb_id = ?
+           OR ((b.mb_id IS NULL OR b.mb_id = '')
+               AND ? <> ''
+               AND REPLACE(REPLACE(b.phone, '-', ''), ' ', '') = ?)
         ORDER BY b.created_at DESC
         LIMIT 50");
-    $stmt->bind_param('s', $clean_phone);
+    $stmt->bind_param('sss', $logged_mb_id, $clean_phone, $clean_phone);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -74,15 +105,16 @@ if (!empty($search_phone)) {
         }
     }
     $stmt->close();
-} elseif ($is_user_logged_in && !empty($logged_mb_id)) {
-    // 전화번호 없지만 로그인됨 → mb_id로 조회
+} elseif ($_phone_auth && !empty($search_phone)) {
+    // 비회원 전화번호 조회는 faqat oldindan tasdiqlanib sessiyaga yozilgan raqam bilan.
+    $clean_phone = preg_replace('/[^0-9]/', '', $search_phone);
     $stmt = $connect->prepare("SELECT b.*, h.profile_image_url as hospital_image
         FROM gangnamunni_bookings b
         LEFT JOIN gangnamunni_hospitals h ON b.hospital_id = h.id
-        WHERE b.mb_id = ?
+        WHERE REPLACE(REPLACE(b.phone, '-', ''), ' ', '') = ?
         ORDER BY b.created_at DESC
         LIMIT 50");
-    $stmt->bind_param('s', $logged_mb_id);
+    $stmt->bind_param('s', $clean_phone);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -166,6 +198,9 @@ $page_title = '내 예약';
         .status-completed { background: #d1fae5; color: #065f46; }
         .status-cancelled { color: #991b1b;}
         .status-no_show { background: #f3f4f6; color: #6b7280; }
+        .booking-point { display:inline-flex; align-items:center; gap:4px; font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; padding:3px 8px; border-radius:8px; margin-top:6px; }
+        .booking-point.bp-earned { background:#e8f5ec; color:#16a34a; }
+        .booking-point.bp-pending { background:#fff4e5; color:#b45309; }
 
         .booking-detail-row { display: flex; align-items: center; gap: 8px; }
         .booking-detail { display: flex; align-items: center; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: #fff; line-height: 1.8; background: #AE1932; width: 60%; min-width: 0; }
@@ -219,20 +254,6 @@ $page_title = '내 예약';
 <body>
 <div class="header"><button class="back" onclick="location.href='mypage.php'"><i class="bi bi-chevron-left"></i></button><h1>내 예약/결제 내역</h1></div>
 
-<script>
-console.group('[my_bookings] Debug Info');
-console.log('logged_in:', <?php echo json_encode($is_user_logged_in); ?>, '<?php echo $is_user_logged_in ? "로그인" : "비로그인"; ?>');
-console.log('mb_id:', <?php echo json_encode($logged_mb_id); ?>);
-console.log('search_phone:', <?php echo json_encode($search_phone); ?>);
-console.log('auto_phone:', <?php echo json_encode($auto_phone); ?>);
-console.log('total_bookings:', <?php echo count($bookings); ?>);
-console.log('active:', <?php echo count($active_bookings); ?>, 'past:', <?php echo count($past_bookings); ?>);
-<?php foreach ($bookings as $i => $b): ?>
-console.log('booking[<?php echo $i; ?>]:', {id:<?php echo $b['id']; ?>, hospital_id:<?php echo (int)$b['hospital_id']; ?>, status:'<?php echo $b['status']; ?>', date:'<?php echo $b['booking_date']; ?>', hospital:'<?php echo addslashes($b['hospital_name']); ?>'});
-<?php endforeach; ?>
-console.groupEnd();
-</script>
-
 <div class="container">
     <!-- 검색 (비로그인 시 또는 다른 번호 조회 시) -->
     <?php if (!$is_user_logged_in || isset($_GET['phone'])): ?>
@@ -277,6 +298,7 @@ console.groupEnd();
                         <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
                         <?php endif; ?>
                         <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                        <?php echo booking_point_badge($bk, $__pt_enabled, $__pt_percent); ?>
                     </div>
                     <div class="bd-right"><?php
                         $_dd = (int)(new DateTime('today'))->diff(new DateTime($bk['booking_date']))->format('%r%a');
@@ -329,6 +351,7 @@ console.groupEnd();
                     <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
                     <?php endif; ?>
                     <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                    <?php echo booking_point_badge($bk, $__pt_enabled, $__pt_percent); ?>
                 </div>
                 <div class="detail-btns">
                     <?php if ($bk['status'] === 'completed'): ?>
@@ -407,7 +430,7 @@ console.groupEnd();
 </div>
 
 <script>
-var searchPhone = '<?php echo addslashes($search_phone); ?>';
+var searchPhone = <?php echo json_encode($search_phone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 
 function switchTab(tab) {
     // [Figma Sync 2026-06-06] 3탭: active(시술예정) / completed(시술완료) / cancelled(예약취소)
@@ -457,6 +480,7 @@ function submitCancel() {
     var reasonEl = document.getElementById('cancelReason');
     var reason = reasonEl ? reasonEl.value : '';
     var fd = new FormData();
+    fd.append('csrf_token', <?php echo json_encode($my_bookings_csrf); ?>);
     fd.append('booking_id', id);
     fd.append('phone', searchPhone);
     fd.append('cancel_reason', reason);
@@ -485,6 +509,7 @@ function submitEdit() {
     if (!newDate || !newTime) { alert('날짜와 시간을 선택해주세요.'); return; }
 
     var fd = new FormData();
+    fd.append('csrf_token', <?php echo json_encode($my_bookings_csrf); ?>);
     fd.append('booking_id', id);
     fd.append('phone', searchPhone);
     fd.append('new_date', newDate);

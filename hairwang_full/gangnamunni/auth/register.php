@@ -129,6 +129,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_co
     $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     // 메일 발송이 성공한 경우에만 세션에 코드를 저장한다.
     // (발송 실패 시 코드를 남기면 사용자가 받지도 못한 코드로 막혀버린다)
+    // 새 코드를 발급하므로 이전 verified 플래그는 무효화한다(새 코드로 재검증 요구).
+    unset($_SESSION['reg_cert_verified_email'], $_SESSION['reg_cert_verified_at']);
     if (!gnu_send_cert_mail($email, $code)) {
         unset($_SESSION['reg_cert_code'], $_SESSION['reg_cert_email'], $_SESSION['reg_cert_expire']);
         echo json_encode(['ok' => false, 'msg' => '인증코드 발송에 실패했습니다. 잠시 후 다시 시도해주세요.']); exit;
@@ -179,6 +181,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_sm
 
 $reg_error = '';
 
+if (!function_exists('reg_email_otp_gate')) {
+    /**
+     * 이메일 OTP 게이트 — verified/consumed 상태를 분리한다.
+     *
+     * 기존 문제: OTP 를 "DB insert 성공 후"에야 폐기 → insert/훅 실패 시 만료 전까지 재사용 가능.
+     * 개선: 코드가 정확히 일치하는 즉시 원본 코드를 소비(폐기)하고, 별도의 verified 플래그를
+     *       세팅한다. 이후 단계(비번/휴대폰 검증)에서 실패해 재제출하더라도 원본 OTP 는
+     *       다시 쓸 수 없고, 30분짜리 verified 플래그(같은 이메일·같은 세션)로만 진행된다.
+     *
+     * @return string '' = 통과, 그 외 = 오류 메시지
+     */
+    function reg_email_otp_gate($email) {
+        // 이미 검증됨(같은 이메일·30분 이내) → 코드 없이 통과
+        if (!empty($_SESSION['reg_cert_verified_email'])
+            && strtolower((string)$_SESSION['reg_cert_verified_email']) === $email
+            && time() <= (int)($_SESSION['reg_cert_verified_at'] ?? 0) + 1800) {
+            return '';
+        }
+        $code = trim((string)($_POST['cert_code'] ?? ''));
+        if (empty($_SESSION['reg_cert_code']) || strtolower((string)($_SESSION['reg_cert_email'] ?? '')) !== $email) {
+            return '이메일 인증을 먼저 진행해주세요.';
+        }
+        if (time() > (int)($_SESSION['reg_cert_expire'] ?? 0)) {
+            return '인증코드가 만료되었습니다. 다시 발송해주세요.';
+        }
+        if (!hash_equals((string)$_SESSION['reg_cert_code'], $code)) {
+            $_SESSION['reg_cert_attempts'] = (int)($_SESSION['reg_cert_attempts'] ?? 0) + 1;
+            if ($_SESSION['reg_cert_attempts'] >= 5) {
+                unset($_SESSION['reg_cert_code'], $_SESSION['reg_cert_email'], $_SESSION['reg_cert_expire'], $_SESSION['reg_cert_attempts']);
+                return '인증코드 입력 횟수를 초과했습니다. 새 코드를 발송해주세요.';
+            }
+            return '인증코드가 올바르지 않습니다.';
+        }
+        // 성공: 원본 코드 즉시 소비(재사용·재생 방지) + verified 플래그 설정
+        unset($_SESSION['reg_cert_code'], $_SESSION['reg_cert_expire'], $_SESSION['reg_cert_attempts']);
+        $_SESSION['reg_cert_verified_email'] = $email;
+        $_SESSION['reg_cert_verified_at'] = time();
+        return '';
+    }
+}
+
 // ===== 회원가입 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'register') {
     $email     = strtolower(trim((string)($_POST['email'] ?? '')));
@@ -198,18 +241,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
         $reg_error = '올바른 이메일 주소를 입력해주세요.';
     } elseif (function_exists('prohibit_mb_email') && ($email_policy_error = prohibit_mb_email($email))) {
         $reg_error = $email_policy_error;
-    } elseif (empty($_SESSION['reg_cert_code']) || strtolower((string)($_SESSION['reg_cert_email'] ?? '')) !== $email) {
-        $reg_error = '이메일 인증을 먼저 진행해주세요.';
-    } elseif (time() > ($_SESSION['reg_cert_expire'] ?? 0)) {
-        $reg_error = '인증코드가 만료되었습니다. 다시 발송해주세요.';
-    } elseif (!hash_equals((string)$_SESSION['reg_cert_code'], $code)) {
-        $_SESSION['reg_cert_attempts'] = (int)($_SESSION['reg_cert_attempts'] ?? 0) + 1;
-        if ($_SESSION['reg_cert_attempts'] >= 5) {
-            unset($_SESSION['reg_cert_code'], $_SESSION['reg_cert_email'], $_SESSION['reg_cert_expire'], $_SESSION['reg_cert_attempts']);
-            $reg_error = '인증코드 입력 횟수를 초과했습니다. 새 코드를 발송해주세요.';
-        } else {
-            $reg_error = '인증코드가 올바르지 않습니다.';
-        }
+    } elseif (($__otp_err = reg_email_otp_gate($email)) !== '') {
+        // 이메일 OTP: 정확히 일치하는 즉시 코드 소비 + verified 플래그(재사용 방지)
+        $reg_error = $__otp_err;
     } elseif (!preg_match('/^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])[\x21-\x7E]{9,20}$/', $password)) {
         $reg_error = '비밀번호는 영문, 숫자, 특수문자를 각각 포함한 9~20자로 입력해주세요.';
     } elseif ($password !== $password2) {
@@ -345,11 +379,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
                     mysqli_stmt_close($unlock);
                 }
                 if ($ok && $affected === 1) {
-                    unset($_SESSION['reg_cert_code'], $_SESSION['reg_cert_email'], $_SESSION['reg_cert_expire'], $_SESSION['reg_cert_attempts']);
+                    // 가입 완료: 이메일 OTP·verified 플래그·SMS 인증 세션을 모두 정리(재사용 방지)
+                    unset(
+                        $_SESSION['reg_cert_code'], $_SESSION['reg_cert_email'], $_SESSION['reg_cert_expire'], $_SESSION['reg_cert_attempts'],
+                        $_SESSION['reg_cert_verified_email'], $_SESSION['reg_cert_verified_at'],
+                        $_SESSION['reg_sms_code'], $_SESSION['reg_sms_phone'], $_SESSION['reg_sms_expire']
+                    );
 
-                    // 포인트 기능 미사용: 현재 포인트 기능을 쓰지 않으므로 가입/추천 포인트를 지급하지 않는다.
-                    // (지급 시 "1,000 포인트 적립" 등의 안내가 노출되므로 잠시 중단)
-                    // 포인트 기능을 다시 사용하려면 아래 $enable_register_point 를 true 로 바꾸면 된다.
+                    // 포인트 원장(#포인트제도): 회원가입 완료 시 고정 포인트 지급.
+                    // 지급액/활성화는 admin_points.php 설정(signup_point, enabled)으로 제어.
+                    // 포인트 지급은 부가 기능이므로, 원장 미설치/오류가 있어도 절대 가입 자체를
+                    // 실패시키지 않는다(계정은 이미 생성됨). 실패 시 로그만 남기고 진행한다.
+                    try {
+                        require_once dirname(__DIR__) . '/includes/points_ledger.php';
+                        if (points_enabled($connect)) {
+                            $signup_point = (int)points_setting($connect, 'signup_point', '0');
+                            if ($signup_point > 0) {
+                                $new_mb_no = points_member_no($connect, $mb_id);
+                                if ($new_mb_no > 0) {
+                                    $pr = points_earn($connect, $new_mb_no, $signup_point, '회원가입 축하 적립', 'signup', $new_mb_no);
+                                    // 첫 화면에서 "N P 적립" 안내(토스트)를 1회 노출하기 위한 플래시
+                                    if (!empty($pr['ok']) && empty($pr['skipped'])) {
+                                        $_SESSION['reg_welcome_point'] = $signup_point;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        error_log('[register] signup point award failed: ' . $e->getMessage());
+                    }
+
                     // 그누보드 메일 설정을 존중해 회원/관리자 가입 알림을 발송한다.
                     if (!empty($config['cf_email_mb_member']) && function_exists('mail_send')) {
                         $welcome_subject = '[' . ($config['cf_title'] ?? '서울미녀') . '] 회원가입을 환영합니다.';

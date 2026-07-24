@@ -13,14 +13,14 @@ $m = get_gangnamunni_member();
 $mb_no = (int)($m['mb_no'] ?? 0);
 $mb_nick = htmlspecialchars($m['mb_nick'] ?? $m['mb_id'] ?? '');
 
-// 포인트 잔액
-$balance = 0;
-$bq = mysqli_prepare($connect, "SELECT COALESCE(SUM(CASE WHEN type IN ('earn','admin') THEN amount WHEN type='use' THEN -amount ELSE 0 END),0) as bal FROM gangnamunni_points WHERE member_id=?");
-if ($bq) { mysqli_stmt_bind_param($bq,'i',$mb_no); mysqli_stmt_execute($bq); $r=mysqli_stmt_get_result($bq); $balance=(int)($r?mysqli_fetch_assoc($r)['bal']:0); mysqli_stmt_close($bq); }
+// 포인트 원장(#포인트제도): 잔액은 마지막 거래 행의 스냅샷을 사용(SUM 미사용).
+// 원장 미설치 등으로 조회 실패 시에도 페이지는 0P/빈 내역으로 정상 렌더.
+require_once __DIR__ . '/includes/points_ledger.php';
+$balance = points_balance_safe($connect, $mb_no);
 
 // 내역 목록
 $logs = [];
-$lq = mysqli_prepare($connect, "SELECT * FROM gangnamunni_points WHERE member_id=? ORDER BY created_at DESC LIMIT 50");
+$lq = mysqli_prepare($connect, "SELECT * FROM gangnamunni_points WHERE member_id=? ORDER BY created_at DESC, id DESC LIMIT 50");
 if ($lq) { mysqli_stmt_bind_param($lq,'i',$mb_no); mysqli_stmt_execute($lq); $r=mysqli_stmt_get_result($lq); while($row=mysqli_fetch_assoc($r)) $logs[]=$row; mysqli_stmt_close($lq); }
 
 if (!function_exists('term')) require_once __DIR__ . '/includes/industry_terms.php';
@@ -70,7 +70,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 <?php else: ?>
 <div class="log-list">
 <?php foreach ($logs as $log):
-    $is_earn = in_array($log['type'], ['earn','admin']);
+    $is_earn = points_is_credit($log['type']);   // earn/refund/admin_add(+구 'admin') = 적립
     $sign = $is_earn ? '+' : '-';
     $cls = $is_earn ? 'earn' : 'use';
 ?>
@@ -79,7 +79,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
         <div class="log-reason"><?php echo htmlspecialchars($log['reason'] ?? ($is_earn ? '적립' : '사용')); ?></div>
         <div class="log-date"><?php echo date('Y.m.d H:i', strtotime($log['created_at'])); ?></div>
     </div>
-    <div class="log-amount <?php echo $cls; ?>"><?php echo $sign . number_format($log['amount']); ?>P</div>
+    <div class="log-amount <?php echo $cls; ?>"><?php echo $sign . number_format(abs((int)$log['amount'])); ?>P</div>
 </div>
 <?php endforeach; ?>
 </div>

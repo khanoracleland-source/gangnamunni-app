@@ -3,7 +3,7 @@
  * 포인트 API
  * GET ?action=balance — 잔액 조회
  * GET ?action=history — 적립/사용 내역
- * POST {action: 'earn', amount, reason} — 적립 (시스템 호출)
+ * POST {action: 'earn', ...} — 일반 사용자에게 금지(적립은 server-side oqimlarda bajariladi)
  * POST {action: 'use', amount, reason, booking_id} — 사용
  */
 session_start();
@@ -14,21 +14,14 @@ $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MY
 if (!$connect) jsonError('DB 연결 실패', 500);
 mysqli_set_charset($connect, 'utf8mb4');
 
-// 테이블 생성
-mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_points (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    member_id INT NOT NULL,
-    type ENUM('earn','use','expire','admin') NOT NULL,
-    amount INT NOT NULL COMMENT '양수=적립, 음수=사용',
-    balance INT NOT NULL DEFAULT 0 COMMENT '거래 후 잔액',
-    reason VARCHAR(200),
-    reference_type VARCHAR(50) DEFAULT NULL COMMENT 'booking, review, event, admin',
-    reference_id INT DEFAULT NULL,
-    expires_at DATE DEFAULT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    KEY idx_member (member_id, created_at),
-    KEY idx_expires (expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+// 포인트 원장(#포인트제도): 스키마/증감은 모두 ledger 를 단일 진입점으로 사용
+require_once __DIR__ . '/includes/points_ledger.php';
+try {
+    points_ensure_schema($connect);
+} catch (\Throwable $e) {
+    error_log('[api_point] schema unavailable: ' . $e->getMessage());
+    jsonError('포인트 기능을 사용할 수 없습니다', 503);
+}
 
 // 로그인 체크
 $g5_common = dirname(__DIR__) . '/common.php';
@@ -48,23 +41,7 @@ if (!$is_logged) {
 $method = $_SERVER['REQUEST_METHOD'];
 
 function getBalance($connect, $member_id) {
-    $stmt = mysqli_prepare($connect, "SELECT COALESCE(SUM(amount), 0) as balance FROM gangnamunni_points WHERE member_id = ?");
-    mysqli_stmt_bind_param($stmt, 'i', $member_id);
-    mysqli_stmt_execute($stmt);
-    $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-    mysqli_stmt_close($stmt);
-    return (int)($row['balance'] ?? 0);
-}
-
-function addPointTransaction($connect, $member_id, $type, $amount, $reason, $ref_type = null, $ref_id = null, $expires_at = null) {
-    $balance = getBalance($connect, $member_id) + $amount;
-    $stmt = mysqli_prepare($connect,
-        "INSERT INTO gangnamunni_points (member_id, type, amount, balance, reason, reference_type, reference_id, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    mysqli_stmt_bind_param($stmt, 'isiissis', $member_id, $type, $amount, $balance, $reason, $ref_type, $ref_id, $expires_at);
-    $ok = mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
-    return $ok ? $balance : false;
+    return points_balance($connect, $member_id);
 }
 
 if ($method === 'GET') {
@@ -72,11 +49,11 @@ if ($method === 'GET') {
 
     if ($action === 'balance') {
         $balance = getBalance($connect, $member_id);
-        // 이번 달 적립/사용
+        // 이번 달 적립/사용 — 원장 유형으로 분류(적립계열=earned, 그 외=used), 금액은 절대값
         $month_stmt = mysqli_prepare($connect,
             "SELECT
-                COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) as earned,
-                COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as used
+                COALESCE(SUM(CASE WHEN type IN ('earn','refund','admin_add','admin') THEN ABS(amount) ELSE 0 END), 0) as earned,
+                COALESCE(SUM(CASE WHEN type NOT IN ('earn','refund','admin_add','admin') THEN ABS(amount) ELSE 0 END), 0) as used
              FROM gangnamunni_points
              WHERE member_id = ? AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')");
         mysqli_stmt_bind_param($month_stmt, 'i', $member_id);
@@ -97,7 +74,7 @@ if ($method === 'GET') {
         $offset = ($page - 1) * $limit;
 
         $stmt = mysqli_prepare($connect,
-            "SELECT * FROM gangnamunni_points WHERE member_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?");
+            "SELECT * FROM gangnamunni_points WHERE member_id = ? ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?");
         mysqli_stmt_bind_param($stmt, 'iii', $member_id, $limit, $offset);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
@@ -113,36 +90,15 @@ if ($method === 'GET') {
     $action = $input['action'] ?? '';
 
     if ($action === 'earn') {
-        $amount = abs((int)($input['amount'] ?? 0));
-        $reason = $input['reason'] ?? '포인트 적립';
-        $ref_type = $input['reference_type'] ?? null;
-        $ref_id = isset($input['reference_id']) ? (int)$input['reference_id'] : null;
-        $expires = $input['expires_at'] ?? date('Y-m-d', strtotime('+1 year'));
-
-        if ($amount <= 0) jsonError('적립 금액이 올바르지 않습니다');
-
-        $balance = addPointTransaction($connect, $member_id, 'earn', $amount, $reason, $ref_type, $ref_id, $expires);
-        if ($balance !== false) {
-            jsonSuccess(['balance' => $balance, 'earned' => $amount]);
-        }
-        jsonError('포인트 적립 실패');
+        // 적립은 가입/예약/후기 승인 kabi ishonchli server-side oqimlarda bajariladi.
+        // 로그인한 일반 사용자가 임의 amount/reference yuborib balansini oshira olmaydi.
+        jsonError('사용자 API를 통한 포인트 적립은 허용되지 않습니다', 403);
 
     } elseif ($action === 'use') {
-        $amount = abs((int)($input['amount'] ?? 0));
-        $reason = $input['reason'] ?? '포인트 사용';
-        $ref_type = $input['reference_type'] ?? null;
-        $ref_id = isset($input['reference_id']) ? (int)$input['reference_id'] : null;
-
-        if ($amount <= 0) jsonError('사용 금액이 올바르지 않습니다');
-
-        $current = getBalance($connect, $member_id);
-        if ($current < $amount) jsonError('포인트가 부족합니다 (보유: ' . number_format($current) . 'P)');
-
-        $balance = addPointTransaction($connect, $member_id, 'use', -$amount, $reason, $ref_type, $ref_id);
-        if ($balance !== false) {
-            jsonSuccess(['balance' => $balance, 'used' => $amount]);
-        }
-        jsonError('포인트 사용 실패');
+        // 포인트 사용(차감)은 반드시 실제 결제/예약 등 server-side 흐름에서만 수행한다.
+        // 클라이언트가 임의로 use 를 호출해 잔액을 소모(향후 결제 연동 시 이중사용 위험)하지
+        // 못하도록, earn 과 동일하게 사용자 API 경로에서는 금지한다.
+        jsonError('사용자 API를 통한 포인트 사용은 허용되지 않습니다', 403);
     }
 }
 

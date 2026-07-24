@@ -15,22 +15,33 @@ require_once __DIR__ . '/includes/hospital_filter.php'; // 병원 격리(super_a
 require_once __DIR__ . '/includes/photo_upload_helper.php';
 require_admin_login();
 require_permission('bookings');
+if (empty($_SESSION['admin_bookings_csrf'])) {
+    $_SESSION['admin_bookings_csrf'] = bin2hex(random_bytes(32));
+}
+$admin_bookings_csrf = $_SESSION['admin_bookings_csrf'];
 
-// 담당의사 배정 컬럼 보장 (없으면 추가) — idempotent
-//   운영 DB에 컬럼이 없어도 배정/조회가 'Unknown column' 으로 실패하지 않도록 한다.
-$_ensure_booking_cols = [
-    'doctor_id'   => "ADD COLUMN doctor_id INT NULL AFTER hms_appointment_id",
-    'doctor_name' => "ADD COLUMN doctor_name VARCHAR(100) NULL AFTER doctor_id",
-];
-foreach ($_ensure_booking_cols as $_col => $_ddl) {
-    $_chk = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE '{$_col}'");
-    if ($_chk && mysqli_num_rows($_chk) === 0) {
-        @mysqli_query($connect, "ALTER TABLE gangnamunni_bookings {$_ddl}");
+// Booking schema는 배포 시 sql/bookings_schema.sql 로만 변경한다.
+$_booking_schema_ok = true;
+foreach (['doctor_id', 'doctor_name'] as $_col) {
+    try {
+        $_chk = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE '{$_col}'");
+        if (!$_chk || mysqli_num_rows($_chk) === 0) $_booking_schema_ok = false;
+    } catch (Throwable $e) {
+        $_booking_schema_ok = false;
     }
+}
+if (!$_booking_schema_ok) {
+    error_log('[admin_bookings] booking schema is outdated; run gangnamunni/sql/bookings_schema.sql');
+    http_response_code(503);
+    exit('예약 스키마 업데이트가 필요합니다. 관리자에게 문의해주세요.');
 }
 
 // ===== Action: 상태 변경 (viewer 역할은 불가) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if (empty($_POST['admin_csrf']) || !hash_equals($admin_bookings_csrf, (string)$_POST['admin_csrf'])) {
+        http_response_code(403);
+        exit('요청이 만료되었습니다. 페이지를 새로고침해주세요.');
+    }
     // viewer 역할은 상태 변경 불가
     $admin_role = $_SESSION['ad_admin_role'] ?? 'viewer';
     if ($admin_role === 'viewer') {
@@ -60,21 +71,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $sql .= ", cancel_reason='" . $reason . "', cancelled_at=NOW()";
         }
         $sql .= " WHERE id=" . $id;
-        mysqli_query($connect, $sql);
+        require_once __DIR__ . '/includes/points_ledger.php';
 
-        // === HMS 동기화: 예약 상태 변경 시 HMS appointments도 업데이트 ===
+        // 핵심 DB 작업(예약 상태 + 로컬 HMS 상태)은 하나의 transaction 으로 원자 처리한다.
         $booking_row = null;
-        $bk_r = mysqli_query($connect, "SELECT b.*, h.hms_hospital_id FROM gangnamunni_bookings b LEFT JOIN gangnamunni_hospitals h ON b.hospital_id = h.id WHERE b.id = {$id}");
-        if ($bk_r) $booking_row = mysqli_fetch_assoc($bk_r);
+        mysqli_begin_transaction($connect);
+        try {
+            if (!mysqli_query($connect, $sql) || mysqli_affected_rows($connect) !== 1) {
+                throw new RuntimeException('booking_status_update_failed');
+            }
 
-        if ($booking_row && !empty($booking_row['hms_appointment_id'])) {
-            $hms_apt_id = intval($booking_row['hms_appointment_id']);
-            // HMS appointments.is_completed: 0=pending, 1=completed, 2=cancelled
-            $hms_status_map = ['confirmed' => 0, 'completed' => 1, 'cancelled' => 2, 'no_show' => 2];
-            $hms_is_completed = $hms_status_map[$new_status] ?? 0;
-            mysqli_query($connect, "UPDATE appointments SET is_completed = {$hms_is_completed}, updated_at = NOW() WHERE id = {$hms_apt_id}");
+            $bk_r = mysqli_query($connect, "SELECT b.*, h.hms_hospital_id FROM gangnamunni_bookings b LEFT JOIN gangnamunni_hospitals h ON b.hospital_id = h.id WHERE b.id = {$id}");
+            if ($bk_r) $booking_row = mysqli_fetch_assoc($bk_r);
+            if (!$booking_row) throw new RuntimeException('booking_reload_failed');
+
+            if (!empty($booking_row['hms_appointment_id'])) {
+                $hms_apt_id = intval($booking_row['hms_appointment_id']);
+                $hms_status_map = ['confirmed' => 0, 'completed' => 1, 'cancelled' => 2, 'no_show' => 2];
+                $hms_is_completed = $hms_status_map[$new_status] ?? 0;
+                if (!mysqli_query($connect, "UPDATE appointments SET is_completed = {$hms_is_completed}, updated_at = NOW() WHERE id = {$hms_apt_id}")) {
+                    throw new RuntimeException('local_hms_status_update_failed');
+                }
+            }
+
+            mysqli_commit($connect);
+        } catch (Throwable $e) {
+            mysqli_rollback($connect);
+            error_log('[admin_bookings] atomic status update failed: ' . $e->getMessage());
+            $msg = '예약 상태 변경에 실패했습니다. 다시 시도해주세요.';
+            $msg_type = 'danger';
+            goto skip_action;
         }
 
+        // 포인트 원장(#포인트제도): 예약 상태가 커밋된 뒤 best-effort 로 지급/회수한다.
+        //   - 부가 기능이므로 실패해도 예약 상태 변경(핵심 작업)은 유지한다(로그만 기록).
+        //   - autocommit 모드에서 실행되어 points_txn 의 회원별 GET_LOCK 이 잔액 스냅샷을
+        //     커밋 시점까지 정확히 직렬화한다(외부 트랜잭션의 조기 락 해제 문제 없음).
+        if (!empty($booking_row['mb_id'])) {
+            try {
+                $bk_mb_no = points_member_no($connect, $booking_row['mb_id']);
+                if ($bk_mb_no > 0) {
+                    if ($new_status === 'confirmed') {
+                        points_earn_booking($connect, $bk_mb_no, $id, (int)($booking_row['price'] ?? 0));
+                    } elseif ($new_status === 'cancelled') {
+                        points_cancel_booking($connect, $bk_mb_no, $id);
+                    }
+                }
+            } catch (\Throwable $e) {
+                error_log('[admin_bookings] point processing failed (booking already committed): ' . $e->getMessage());
+            }
+        }
+
+        $hms_sync_warning = false;
         // HMS에 hms_appointment_id가 없는데 hms_hospital_id가 있으면 실시간 API로 생성 시도
         if ($booking_row && empty($booking_row['hms_appointment_id']) && !empty($booking_row['hms_hospital_id']) && $new_status === 'confirmed') {
             // HMS 독립 모드면 HMS 전송 스킵
@@ -91,9 +139,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $hms_result = $hms_api->createAppointment($apt_data);
                 if (!empty($hms_result['success']) && !empty($hms_result['data']['id'])) {
                     $new_hms_id = intval($hms_result['data']['id']);
-                    mysqli_query($connect, "UPDATE gangnamunni_bookings SET hms_appointment_id = {$new_hms_id} WHERE id = {$id}");
+                    if (!mysqli_query($connect, "UPDATE gangnamunni_bookings SET hms_appointment_id = {$new_hms_id} WHERE id = {$id}")) {
+                        $hms_sync_warning = true;
+                        error_log("[admin_bookings] HMS appointment ID 저장 실패: booking_id={$id}, hms_id={$new_hms_id}");
+                    }
+                } else {
+                    $hms_sync_warning = true;
+                    error_log("[admin_bookings] HMS API 응답 실패: booking_id={$id}");
                 }
             } catch (Exception $e) {
+                $hms_sync_warning = true;
                 error_log("[admin_bookings] HMS API 전송 실패: " . $e->getMessage());
             }
             } // end standalone check
@@ -127,8 +182,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        $msg = '예약 상태가 변경되었습니다.';
-        $msg_type = 'success';
+        $msg = $hms_sync_warning
+            ? '예약 상태는 변경되었지만 HMS 동기화에 실패했습니다. 로그를 확인하고 재동기화해주세요.'
+            : '예약 상태가 변경되었습니다.';
+        $msg_type = $hms_sync_warning ? 'warning' : 'success';
     }
 
     // ===== Action: 담당의사 배정 / 해제 =====
@@ -350,6 +407,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <span class="text-muted small">보기 전용</span>
                             <?php elseif ($st === 'pending'): ?>
                             <form method="post" class="d-inline">
+                                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
                                 <input type="hidden" name="action" value="confirm">
                                 <button class="btn btn-success btn-sm" title="승인"><i class="bi bi-check-lg"></i></button>
@@ -357,11 +415,13 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <button class="btn btn-danger btn-sm" title="거절" onclick="cancelBooking(<?php echo $b['id']; ?>)"><i class="bi bi-x-lg"></i></button>
                             <?php elseif ($st === 'confirmed'): ?>
                             <form method="post" class="d-inline">
+                                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
                                 <input type="hidden" name="action" value="complete">
                                 <button class="btn btn-info btn-sm text-white" title="완료"><i class="bi bi-check2-all"></i></button>
                             </form>
                             <form method="post" class="d-inline">
+                                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
                                 <input type="hidden" name="action" value="noshow">
                                 <button class="btn btn-secondary btn-sm" title="노쇼"><i class="bi bi-person-x"></i></button>
@@ -409,6 +469,7 @@ require_once __DIR__ . '/includes/admin_header.php';
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="post">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                 <div class="modal-header">
                     <h5 class="modal-title">예약 취소</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -435,6 +496,7 @@ require_once __DIR__ . '/includes/admin_header.php';
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="post">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                 <div class="modal-header">
                     <h5 class="modal-title">담당의사 배정</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

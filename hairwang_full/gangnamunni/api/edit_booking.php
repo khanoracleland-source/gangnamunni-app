@@ -4,7 +4,6 @@
  * POST: { booking_id, phone, new_date, new_time, edit_reason }
  */
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'POST만 허용']);
@@ -20,6 +19,13 @@ if (!isset($connect) || !$connect) {
     exit;
 }
 mysqli_set_charset($connect, 'utf8mb4');
+
+$csrf = (string)($_POST['csrf_token'] ?? '');
+if ($csrf === '' || empty($_SESSION['my_bookings_csrf']) || !hash_equals($_SESSION['my_bookings_csrf'], $csrf)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => '요청이 만료되었습니다. 페이지를 새로고침해주세요.']);
+    exit;
+}
 
 $booking_id = intval($_POST['booking_id'] ?? 0);
 $phone = trim($_POST['phone'] ?? '');
@@ -45,10 +51,17 @@ if (!preg_match('/^\d{2}:\d{2}$/', $new_time)) {
     exit;
 }
 
-// [예약 변경 횟수 제한] edit_count 컬럼 보장 (운영 DB 자동 대응)
-$_ec_chk = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE 'edit_count'");
-if ($_ec_chk && mysqli_num_rows($_ec_chk) === 0) {
-    @mysqli_query($connect, "ALTER TABLE gangnamunni_bookings ADD COLUMN edit_count INT NOT NULL DEFAULT 0");
+// edit_count 컬럼은 배포 시 sql/bookings_schema.sql 로만 추가한다.
+try {
+    $_ec_chk = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE 'edit_count'");
+} catch (Throwable $e) {
+    $_ec_chk = false;
+}
+if (!$_ec_chk || mysqli_num_rows($_ec_chk) === 0) {
+    error_log('[edit_booking] booking schema is outdated; run gangnamunni/sql/bookings_schema.sql');
+    http_response_code(503);
+    echo json_encode(['success' => false, 'message' => '예약 기능 업데이트가 필요합니다. 관리자에게 문의해주세요.']);
+    exit;
 }
 $MAX_EDITS = 3; // 예약 1건당 최대 변경 횟수
 

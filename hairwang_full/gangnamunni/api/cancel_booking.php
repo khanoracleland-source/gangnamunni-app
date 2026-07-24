@@ -4,7 +4,6 @@
  * POST: { booking_id, phone, cancel_reason }
  */
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'POST만 허용']);
@@ -20,6 +19,13 @@ if (!isset($connect) || !$connect) {
     exit;
 }
 mysqli_set_charset($connect, 'utf8mb4');
+
+$csrf = (string)($_POST['csrf_token'] ?? '');
+if ($csrf === '' || empty($_SESSION['my_bookings_csrf']) || !hash_equals($_SESSION['my_bookings_csrf'], $csrf)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => '요청이 만료되었습니다. 페이지를 새로고침해주세요.']);
+    exit;
+}
 
 $booking_id = intval($_POST['booking_id'] ?? 0);
 $phone = trim($_POST['phone'] ?? '');
@@ -72,24 +78,46 @@ if (in_array($booking['status'], ['cancelled', 'completed', 'no_show'])) {
     exit;
 }
 
-// 취소 처리
-$stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET status='cancelled', cancel_reason=?, cancelled_at=NOW(), updated_at=NOW() WHERE id=?");
-mysqli_stmt_bind_param($stmt2, 'si', $cancel_reason, $booking_id);
-$ok = mysqli_stmt_execute($stmt2);
-mysqli_stmt_close($stmt2);
+// 예약 취소(핵심) + 로컬 HMS 상태를 하나의 DB transaction으로 원자 처리한다.
+require_once dirname(__DIR__) . '/includes/points_ledger.php';
+mysqli_begin_transaction($connect);
+try {
+    $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings
+        SET status='cancelled', cancel_reason=?, cancelled_at=NOW(), updated_at=NOW()
+        WHERE id=? AND status IN ('pending','confirmed')");
+    if (!$stmt2) throw new RuntimeException('booking_update_prepare_failed');
+    mysqli_stmt_bind_param($stmt2, 'si', $cancel_reason, $booking_id);
+    $ok = mysqli_stmt_execute($stmt2);
+    $affected = mysqli_stmt_affected_rows($stmt2);
+    mysqli_stmt_close($stmt2);
+    if (!$ok || $affected !== 1) throw new RuntimeException('booking_update_failed');
 
-if (!$ok) {
-    echo json_encode(['success' => false, 'message' => '취소 처리 중 오류가 발생했습니다.']);
+    if (!empty($booking['hms_appointment_id'])) {
+        $hms_stmt = mysqli_prepare($connect, "UPDATE appointments SET is_completed=2, updated_at=NOW() WHERE id=?");
+        if (!$hms_stmt) throw new RuntimeException('hms_update_prepare_failed');
+        mysqli_stmt_bind_param($hms_stmt, 'i', $booking['hms_appointment_id']);
+        $hms_ok = mysqli_stmt_execute($hms_stmt);
+        mysqli_stmt_close($hms_stmt);
+        if (!$hms_ok) throw new RuntimeException('hms_update_failed');
+    }
+
+    mysqli_commit($connect);
+} catch (Throwable $e) {
+    mysqli_rollback($connect);
+    error_log('[cancel_booking] atomic cancel failed: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => '취소 처리 중 오류가 발생했습니다. 다시 시도해주세요.']);
     exit;
 }
 
-// HMS 동기화 (hms_appointment_id가 있으면)
-if (!empty($booking['hms_appointment_id'])) {
-    $hms_stmt = mysqli_prepare($connect, "UPDATE appointments SET is_completed=2 WHERE id=?");
-    if ($hms_stmt) {
-        mysqli_stmt_bind_param($hms_stmt, 'i', $booking['hms_appointment_id']);
-        mysqli_stmt_execute($hms_stmt);
-        mysqli_stmt_close($hms_stmt);
+// 포인트 회수(#포인트제도): 취소가 커밋된 뒤 best-effort 로 처리한다.
+//   - 부가 기능이므로 실패해도 취소(핵심 작업)는 유지한다(로그만 기록).
+//   - autocommit 모드에서 실행되어 GET_LOCK 이 잔액 스냅샷을 정확히 직렬화한다.
+if (!empty($booking['mb_id'])) {
+    try {
+        $member_no = points_member_no($connect, $booking['mb_id']);
+        if ($member_no > 0) points_cancel_booking($connect, $member_no, $booking_id);
+    } catch (\Throwable $e) {
+        error_log('[cancel_booking] point clawback failed (cancel already committed): ' . $e->getMessage());
     }
 }
 

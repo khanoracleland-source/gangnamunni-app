@@ -143,16 +143,10 @@ if ($cq) {
     mysqli_stmt_close($cq);
 }
 
-// 포인트 잔액 (member_id는 INT = mb_no)
-$point_balance = 0;
-$pq = mysqli_prepare($connect, "SELECT COALESCE(SUM(CASE WHEN type='earn' OR type='admin' THEN amount WHEN type='use' THEN -amount ELSE 0 END), 0) as bal FROM gangnamunni_points WHERE member_id = ?");
-if ($pq) {
-    mysqli_stmt_bind_param($pq, 'i', $mb_no);
-    mysqli_stmt_execute($pq);
-    $r = mysqli_stmt_get_result($pq);
-    $point_balance = (int)($r ? mysqli_fetch_assoc($r)['bal'] : 0);
-    mysqli_stmt_close($pq);
-}
+// 포인트 잔액 — 원장(#포인트제도) 스냅샷 사용 (member_id는 INT = mb_no)
+// 스키마 미설치 등으로 원장을 못 써도 마이페이지가 죽지 않도록 안전 조회 사용.
+require_once __DIR__ . '/includes/points_ledger.php';
+$point_balance = points_balance_safe($connect, $mb_no);
 
 // 쿠폰 건수 (member_id는 INT = mb_no)
 $coupon_count = 0;
@@ -180,76 +174,6 @@ if (!$is_app_mode) { require_once __DIR__ . '/includes/global_nav.php'; }
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-<script>
-console.log('%c[MYPAGE DEBUG v2]%c Page loaded: ' + new Date().toISOString(), 'background:#AE1932;color:#fff;padding:2px 6px;border-radius:3px', '');
-console.log('[DEBUG] URL:', window.location.href);
-console.log('[DEBUG] Login: <?php echo $is_logged_in ? "YES" : "NO"; ?>');
-console.log('[DEBUG] Referrer:', document.referrer || 'none');
-
-// Intercept ALL network requests via PerformanceObserver
-if (window.PerformanceObserver) {
-    var po = new PerformanceObserver(function(list) {
-        list.getEntries().forEach(function(entry) {
-            if (entry.name.indexOf('gangnamunni') !== -1 && entry.name.indexOf('hairwang') === -1) {
-                console.error('[DEBUG] BAD REQUEST:', entry.name, 'type:', entry.initiatorType);
-            }
-        });
-    });
-    po.observe({entryTypes: ['resource']});
-}
-
-// Override fetch to catch bad URLs
-var origFetch = window.fetch;
-window.fetch = function() {
-    console.log('[DEBUG] fetch called:', arguments[0]);
-    return origFetch.apply(this, arguments);
-};
-
-// Override XMLHttpRequest
-var origOpen = XMLHttpRequest.prototype.open;
-XMLHttpRequest.prototype.open = function(method, url) {
-    console.log('[DEBUG] XHR:', method, url);
-    return origOpen.apply(this, arguments);
-};
-
-// Click interceptor
-document.addEventListener('click', function(e) {
-    var link = e.target.closest('a');
-    if (link) {
-        console.log('[DEBUG] CLICK -> href attr:', link.getAttribute('href'), '| resolved:', link.href);
-        if (link.href.indexOf('/gangnamunni') !== -1 && link.href.indexOf('/hairwang/') === -1) {
-            console.error('[DEBUG] BAD LINK CLICKED! Blocking navigation. href:', link.href);
-            e.preventDefault();
-            alert('DEBUG: Bad link detected!\n' + link.href + '\nattr: ' + link.getAttribute('href'));
-        }
-    }
-}, true);
-
-// DOMContentLoaded - list all links
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('[DEBUG] DOM ready. Links:');
-    document.querySelectorAll('a[href]').forEach(function(a, i) {
-        var raw = a.getAttribute('href');
-        var full = a.href;
-        var isBad = (full.indexOf('/gangnamunni') !== -1 && full.indexOf('/hairwang/') === -1) ||
-                    (full.indexOf('/bbs/') !== -1 && full.indexOf('/hairwang/bbs/') === -1);
-        if (isBad) {
-            console.error('[DEBUG] BAD LINK #' + i + ': raw="' + raw + '" full="' + full + '" text="' + a.textContent.trim().substring(0,30) + '"');
-        }
-    });
-
-    // Check all loaded resources
-    if (window.performance) {
-        var resources = performance.getEntriesByType('resource');
-        resources.forEach(function(r) {
-            if (r.name.indexOf('gangnamunni') !== -1 && r.name.indexOf('hairwang') === -1) {
-                console.error('[DEBUG] BAD RESOURCE loaded:', r.name, 'type:', r.initiatorType);
-            }
-        });
-    }
-    console.log('[DEBUG] Analysis complete.');
-});
-</script>
 <style>
 :root { --pri: <?php echo getTheme('primary_color', '#AE1932'); ?>; }
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -400,6 +324,18 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     </div>
     <span class="profile-arrow"><i class="bi bi-chevron-right" style="color:#000;"></i> </span>
 </a>
+
+<!-- 포인트/쿠폰 요약 (#포인트제도): my_points.php 진입점 -->
+<div class="menu-section" style="display:flex; padding:0; border-bottom:16px solid #F8F8F8;">
+    <a href="my_points.php" class="point-coupon-box" style="border-right:1px solid var(--bs-border-color,#eee);">
+        <span class="pc-label"><i class="bi bi-coin"></i> 포인트</span>
+        <span class="pc-value"><?php echo number_format($point_balance); ?><span style="font-size:0.7em;">P</span></span>
+    </a>
+    <a href="my_coupons.php" class="point-coupon-box">
+        <span class="pc-label"><i class="bi bi-ticket-perforated"></i> 쿠폰</span>
+        <span class="pc-value"><?php echo number_format($coupon_count); ?><span style="font-size:0.7em;">장</span></span>
+    </a>
+</div>
 
 <!-- 섹션: 병원 이용 -->
 <div class="menu-section" style="border-bottom:16px solid #F8F8F8;">

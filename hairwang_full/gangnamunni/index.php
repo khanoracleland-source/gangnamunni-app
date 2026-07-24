@@ -13,6 +13,22 @@
 require_once __DIR__ . '/includes/init.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 
+function home_safe_link($url, $fallback = '#') {
+    $url = trim((string)$url);
+    if ($url === '' || preg_match('/[\x00-\x1F\x7F]/', $url)) return $fallback;
+    if ($url[0] === '#' || $url[0] === '/') return strncmp($url, '//', 2) === 0 ? $fallback : $url;
+    $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+    if ($scheme === '') return preg_match('/^[a-z0-9._~!$&\'()*+,;=:@%\\/?#-]+$/i', $url) ? $url : $fallback;
+    return in_array($scheme, ['http', 'https'], true) ? $url : $fallback;
+}
+
+function home_safe_background($value) {
+    $value = trim((string)$value);
+    if (preg_match('/^#[0-9a-f]{3,8}$/i', $value)) return $value;
+    if (preg_match('/^(?:linear|radial)-gradient\([a-z0-9#%.,()\s-]+\)$/i', $value)) return $value;
+    return 'linear-gradient(135deg, #AE1932, #D4455A)';
+}
+
 // 서울미녀 병원 데이터 테이블 존재 확인
 $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_hospitals'");
 $table_exists = mysqli_num_rows($table_check) > 0;
@@ -428,7 +444,7 @@ body.ae-active { padding-top:0 !important; }
                 <button class="carousel-arrow carousel-next" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel-top', 1)">›</button>
                 <div class="carousel-track">
                     <?php foreach ($ads as $ad): ?>
-                    <a href="<?php echo htmlspecialchars($ad['link_url']); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo $ad['id']; ?>" style="text-decoration:none;">
+                    <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
                         <?php if (!empty($ad['image_url']) && file_exists(__DIR__ . '/' . $ad['image_url'])): ?>
                         <div style="border-radius:0px;overflow:hidden;border:1px solid var(--bs-border-color, #eee);">
                             <img src="<?php echo htmlspecialchars($ad['image_url']); ?>" alt="<?php echo htmlspecialchars($ad['title']); ?>" style="width:100%;height:auto;object-fit:cover;">
@@ -767,7 +783,7 @@ body.ae-active { padding-top:0 !important; }
                 <button class="carousel-arrow carousel-next" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel', 1)">›</button>
                 <div class="carousel-track">
                     <?php foreach ($ads as $ad): ?>
-                    <a href="<?php echo htmlspecialchars($ad['link_url']); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo $ad['id']; ?>" style="text-decoration:none;">
+                    <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
                         <?php if (!empty($ad['image_url']) && file_exists(__DIR__ . '/' . $ad['image_url'])): ?>
                         <div style="border-radius:0px;overflow:hidden;border:1px solid var(--bs-border-color, #eee);">
                             <img src="<?php echo htmlspecialchars($ad['image_url']); ?>" alt="<?php echo htmlspecialchars($ad['title']); ?>" style="width:100%;height:auto;object-fit:cover;">
@@ -796,11 +812,11 @@ body.ae-active { padding-top:0 !important; }
                 <button class="carousel-arrow carousel-next" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('promo-carousel', 1)">›</button>
                 <div class="carousel-track">
                     <?php foreach ($promos as $promo): ?>
-                    <a href="<?php echo htmlspecialchars($promo['link_url']); ?>"
+                    <a href="<?php echo htmlspecialchars(home_safe_link($promo['link_url']), ENT_QUOTES); ?>"
                        class="carousel-slide promo-banner"
-                       style="background: <?php echo htmlspecialchars($promo['background_gradient']); ?>; text-decoration: none; color: white;"
+                       style="background: <?php echo htmlspecialchars(home_safe_background($promo['background_gradient']), ENT_QUOTES); ?>; text-decoration: none; color: white;"
                        data-icon="<?php echo htmlspecialchars($promo['icon']); ?>">
-                        <div class="promo-title"><?php echo $promo['title']; ?></div>
+                        <div class="promo-title"><?php echo htmlspecialchars($promo['title'], ENT_QUOTES); ?></div>
                         <div class="promo-subtitle"><?php echo htmlspecialchars($promo['subtitle']); ?></div>
                     </a>
                     <?php endforeach; ?>
@@ -867,7 +883,7 @@ body.ae-active { padding-top:0 !important; }
                 <button class="carousel-arrow carousel-next" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel-bottom', 1)">›</button>
                 <div class="carousel-track">
                     <?php foreach ($ads as $ad): ?>
-                    <a href="<?php echo htmlspecialchars($ad['link_url']); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo $ad['id']; ?>" style="text-decoration:none;">
+                    <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
                         <?php if (!empty($ad['image_url']) && file_exists(__DIR__ . '/' . $ad['image_url'])): ?>
                         <div style="border-radius:0px;overflow:hidden;border:1px solid var(--bs-border-color, #eee);">
                             <img src="<?php echo htmlspecialchars($ad['image_url']); ?>" alt="<?php echo htmlspecialchars($ad['title']); ?>" style="width:100%;height:auto;object-fit:cover;">
@@ -889,6 +905,27 @@ body.ae-active { padding-top:0 !important; }
         <?php endif; ?>
 
 
+<?php
+// 회원가입 축하 포인트 안내(#포인트제도): 가입 직후 1회만 노출
+if (!empty($_SESSION['reg_welcome_point'])):
+    $__wp = (int)$_SESSION['reg_welcome_point'];
+    unset($_SESSION['reg_welcome_point']);
+?>
+<div id="welcomePointToast" style="position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:9999;
+     background:linear-gradient(135deg,#AE1932,#d4354a);color:#fff;padding:14px 22px;border-radius:14px;
+     box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:700;font-size:15px;white-space:nowrap;
+     display:flex;align-items:center;gap:8px;opacity:0;transition:opacity .3s;">
+    <i class="bi bi-coin" style="font-size:20px;"></i>
+    회원가입 축하 <?php echo number_format($__wp); ?>P가 적립되었어요!
+</div>
+<script>
+(function(){
+    var t=document.getElementById('welcomePointToast'); if(!t) return;
+    requestAnimationFrame(function(){ t.style.opacity='1'; });
+    setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); },300); }, 4000);
+})();
+</script>
+<?php endif; ?>
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
 <?php
 // 공통 푸터 include

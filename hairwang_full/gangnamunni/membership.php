@@ -2,16 +2,28 @@
 require_once __DIR__ . '/includes/init.php';
 $member_id = is_gangnamunni_logged_in() ? get_gangnamunni_member_id() : null;
 
-// 테이블
-mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_membership_levels (
-    id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) NOT NULL, min_points INT DEFAULT 0,
-    icon VARCHAR(50) DEFAULT '', color VARCHAR(20) DEFAULT '#888',
-    benefits TEXT, discount_rate DECIMAL(4,1) DEFAULT 0, sort_order INT DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+// DB에서 온 아이콘/색상 값은 클래스·style 속성에 그대로 들어가므로, CSS/속성 주입을 막기 위해
+// 화이트리스트(부트스트랩 아이콘 클래스 / 헥스 색상)로 검증한 뒤에만 출력한다.
+function ms_icon($v) { $v = (string)$v; return preg_match('/^bi-[a-z0-9-]+$/', $v) ? $v : 'bi-shield'; }
+function ms_color($v) { $v = (string)$v; return preg_match('/^#[0-9a-fA-F]{3,8}$/', $v) ? $v : '#888888'; }
 
-// 샘플 등급
-$cnt = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_membership_levels");
-if ($cnt && mysqli_fetch_assoc($cnt)['c'] == 0) {
+// 회원 등급 테이블은 배포 시 sql/points_ledger.sql 로만 생성한다.
+// Web request에서 DDL을 실행하지 않고, 누락 시 명시적인 배포 오류로 중단한다.
+try {
+    $__ml = mysqli_query($connect, "SELECT COUNT(*) AS c FROM gangnamunni_membership_levels");
+} catch (Throwable $e) {
+    $__ml = false;
+    error_log('[membership] membership schema check failed: ' . $e->getMessage());
+}
+if (!$__ml) {
+    error_log('[membership] gangnamunni_membership_levels is missing; run gangnamunni/sql/points_ledger.sql');
+    http_response_code(503);
+    exit('서비스 준비 중입니다. 관리자에게 문의해주세요.');
+}
+$__ml_cnt = (int)(mysqli_fetch_assoc($__ml)['c'] ?? 0);
+
+// 샘플 등급(비어 있을 때만 시드)
+if ($__ml_cnt === 0) {
     $levels = [
         ['브론즈', 0, 'bi-shield', '#cd7f32', '기본 혜택, 후기 작성 포인트 적립', 0],
         ['실버', 1000, 'bi-shield-fill', '#c0c0c0', '5% 할인 쿠폰 매월 지급, 우선 예약', 5],
@@ -30,12 +42,12 @@ $levels = [];
 $res = mysqli_query($connect, "SELECT * FROM gangnamunni_membership_levels ORDER BY sort_order");
 if ($res) while ($r = mysqli_fetch_assoc($res)) $levels[] = $r;
 
-// 현재 사용자 포인트
+// 현재 사용자 포인트 — 원장(#포인트제도) 잔액 사용
 $user_points = 0;
 $user_level = $levels[0] ?? null;
 if ($member_id) {
-    $pres = mysqli_query($connect, "SELECT COALESCE(SUM(CASE WHEN type='earn' THEN amount ELSE -amount END),0) as bal FROM gangnamunni_points WHERE member_id='".mysqli_real_escape_string($connect,$member_id)."'");
-    if ($pres) $user_points = (int)mysqli_fetch_assoc($pres)['bal'];
+    require_once __DIR__ . '/includes/points_ledger.php';
+    $user_points = points_balance_safe($connect, points_member_no($connect, $member_id)); // 원장 미설치 시 0
     foreach ($levels as $l) { if ($user_points >= $l['min_points']) $user_level = $l; }
 }
 // mysqli_close moved to end($connect);
@@ -68,7 +80,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 <div class="header"><button class="back" onclick="history.back()"><i class="bi bi-chevron-left"></i></button><h1>회원 등급</h1></div>
 <?php if ($member_id && $user_level): ?>
 <div class="my-level">
-    <div class="icon"><i class="bi <?php echo $user_level['icon']; ?>"></i></div>
+    <div class="icon"><i class="bi <?php echo ms_icon($user_level['icon']); ?>"></i></div>
     <div class="name"><?php echo htmlspecialchars($user_level['name']); ?></div>
     <div class="pts">누적 <?php echo number_format($user_points); ?>P</div>
 </div>
@@ -76,15 +88,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 <div style="padding:8px 16px;font-size:13px;font-weight:600;">등급 안내</div>
 <?php foreach ($levels as $l): ?>
 <div class="level-card <?php echo ($user_level && $user_level['id']==$l['id'])?'current':''; ?>">
-    <div class="level-icon" style="background:<?php echo $l['color']; ?>20;color:<?php echo $l['color']; ?>;"><i class="bi <?php echo $l['icon']; ?>"></i></div>
+    <?php $__c = ms_color($l['color']); ?>
+    <div class="level-icon" style="background:<?php echo $__c; ?>20;color:<?php echo $__c; ?>;"><i class="bi <?php echo ms_icon($l['icon']); ?>"></i></div>
     <div class="level-info">
-        <div class="level-name" style="color:<?php echo $l['color']; ?>;"><?php echo htmlspecialchars($l['name']); ?></div>
+        <div class="level-name" style="color:<?php echo $__c; ?>;"><?php echo htmlspecialchars($l['name']); ?></div>
         <div class="level-req"><?php echo number_format($l['min_points']); ?>P 이상</div>
         <div class="level-benefits"><?php echo htmlspecialchars($l['benefits'] ?? ''); ?></div>
     </div>
-    <?php if ($l['discount_rate'] > 0): ?><div class="level-discount"><?php echo $l['discount_rate']; ?>%</div><?php endif; ?>
+    <?php if ($l['discount_rate'] > 0): ?><div class="level-discount"><?php echo number_format((float)$l['discount_rate'], 1); ?>%</div><?php endif; ?>
 </div>
 <?php endforeach; ?>
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
 </body></html>
-mysqli_close($connect);
+<?php mysqli_close($connect); ?>

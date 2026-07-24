@@ -514,9 +514,23 @@ function social_check_login_before($p_service=''){
 
         catch( Exception $e )
         {
-            $get_error = social_get_error_msg( $e->getCode() );
+            $code = (int)$e->getCode();
+            $get_error = social_get_error_msg($code);
 
-            if( is_object( $adapter ) ){
+            // Do not hide the provider's useful OAuth error behind HybridAuth's
+            // generic Korean message. Exception messages are HTML-escaped.
+            $provider_error = trim($e->getMessage());
+            if ($provider_error !== '') {
+                $get_error .= '<br><small>Detail: '
+                    . htmlspecialchars($provider_error, ENT_QUOTES, 'UTF-8')
+                    . '</small>';
+            }
+            error_log(
+                '[Social login][' . preg_replace('/[^a-z0-9_-]/i', '', (string)$provider_name)
+                . '][' . $code . '] ' . $provider_error
+            );
+
+            if( isset($adapter) && is_object( $adapter ) ){
                 $adapter->logout();
             }
 

@@ -21,6 +21,23 @@ $is_logged_in = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_lo
 if (!$is_logged_in) { header('Location: dashboard.php'); exit; }
 require_permission('reviews');
 if (isset($_GET['logout'])) { session_destroy(); header('Location: dashboard.php'); exit; }
+if (empty($_SESSION['admin_reviews_csrf'])) {
+    $_SESSION['admin_reviews_csrf'] = bin2hex(random_bytes(32));
+}
+$admin_reviews_csrf = $_SESSION['admin_reviews_csrf'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $posted_csrf = (string)($_POST['admin_csrf'] ?? '');
+    if ($posted_csrf === '' || !hash_equals($admin_reviews_csrf, $posted_csrf)) {
+        http_response_code(403);
+        if (($_POST['action'] ?? '') === 'ai_verify') {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => '요청이 만료되었습니다. 페이지를 새로고침해주세요.']);
+            exit;
+        }
+        exit('요청이 만료되었습니다. 페이지를 새로고침해주세요.');
+    }
+}
 
 $message = '';
 $error = '';
@@ -126,14 +143,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ai_ve
     exit;
 }
 
+// ===== 후기 포인트/통계 헬퍼(#포인트제도) =====
+require_once __DIR__ . '/includes/points_ledger.php';
+
+/** 후기 승인 적립(멱등). 관리자 개별 입력액 우선, 없으면 기본 설정액. 반환: 실제 지급액(0=미지급). */
+function reviews_award_point($connect, $review, $rid, $override_amount = null) {
+    if (!points_enabled($connect)) return 0;
+    $pt = ($override_amount !== null && $override_amount !== '') ? (int)$override_amount : (int)points_setting($connect, 'review_default_point', '0');
+    $mb_no = points_member_no($connect, $review['user_id'] ?? '');
+    if ($pt <= 0 || $mb_no <= 0) return 0;
+    $r = points_earn($connect, $mb_no, $pt, '후기 승인 적립', 'review', (int)$rid);
+    return (!empty($r['ok']) && empty($r['skipped'])) ? $pt : 0;
+}
+
+/** 후기 거부/삭제 시 이전 승인 적립을 회수(멱등). */
+function reviews_revoke_point($connect, $rid) {
+    // 제도가 나중에 비활성화되어도 과거에 지급된 포인트는 반드시 회수한다.
+    points_revoke_earn($connect, 'review', (int)$rid, '후기 거부/삭제 회수');
+}
+
+/** 병원 리뷰 통계(review_count/rating) 재계산. $hids = 병원 id 배열. */
+function reviews_recalc_hospital($db, $hids) {
+    foreach (array_unique(array_map('intval', (array)$hids)) as $hid) {
+        if ($hid <= 0) continue;
+        $db->execute(
+            "UPDATE gangnamunni_hospitals SET
+                review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published'),
+                rating = (SELECT COALESCE(AVG(rating), 0) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published')
+             WHERE id = ?",
+            [$hid, $hid, $hid]
+        );
+    }
+}
+
 // 일괄 승인
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_approve') {
     $ids = array_map('intval', $_POST['ids'] ?? []);
     $ids = reviews_scope_filter_ids($db, $ids, $is_editor_scope, $scope_hospital_id);
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        // 적립/통계 처리를 위해 상태 변경 전 대상 후기 정보를 조회(이미 published 였는지 판별)
+        $rows = $db->fetchAll("SELECT id, hospital_id, user_id, review_status FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
         $db->execute("UPDATE hospital_reviews SET review_status = 'published', is_active = 1 WHERE id IN ({$placeholders})", $ids);
-        $message = count($ids) . "개 후기가 승인되었습니다.";
+        $awarded = 0; $hids = [];
+        foreach ($rows as $r) {
+            $hids[] = $r['hospital_id'];
+            if (($r['review_status'] ?? '') !== 'published' && reviews_award_point($connect, $r, (int)$r['id']) > 0) $awarded++;
+        }
+        reviews_recalc_hospital($db, $hids);
+        $message = count($ids) . "개 후기가 승인되었습니다." . ($awarded > 0 ? " ({$awarded}건 적립)" : "");
     }
 }
 
@@ -143,7 +201,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
     $ids = reviews_scope_filter_ids($db, $ids, $is_editor_scope, $scope_hospital_id);
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $db->fetchAll("SELECT id, hospital_id, review_status FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
         $db->execute("UPDATE hospital_reviews SET review_status = 'rejected', is_active = 0 WHERE id IN ({$placeholders})", $ids);
+        $hids = [];
+        foreach ($rows as $r) {
+            $hids[] = $r['hospital_id'];
+            if (($r['review_status'] ?? '') === 'published') reviews_revoke_point($connect, (int)$r['id']); // 지급했던 적립 회수
+        }
+        reviews_recalc_hospital($db, $hids);
         $message = count($ids) . "개 후기가 거부되었습니다.";
     }
 }
@@ -154,7 +219,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
     $ids = reviews_scope_filter_ids($db, $ids, $is_editor_scope, $scope_hospital_id);
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $db->fetchAll("SELECT id, hospital_id, review_status FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
+        foreach ($rows as $r) {
+            if (($r['review_status'] ?? '') === 'published') reviews_revoke_point($connect, (int)$r['id']); // 삭제 전 적립 회수
+        }
         $db->execute("DELETE FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
+        reviews_recalc_hospital($db, array_column($rows, 'hospital_id'));
         $message = count($ids) . "개 후기가 삭제되었습니다.";
     }
 }
@@ -163,18 +233,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
 // api/admin/approve_review.php 는 그누보드 회원세션(ss_mb_id/레벨10) 기준이라 강남언니 관리자 세션과 맞지 않아 여기서 처리.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), ['approve_one', 'reject_one'], true)) {
     $rid = intval($_POST['review_id'] ?? 0);
-    $review = $rid > 0 ? $db->fetchOne("SELECT id, hospital_id FROM hospital_reviews WHERE id = ?", [$rid]) : null;
+    $review = $rid > 0 ? $db->fetchOne("SELECT id, hospital_id, user_id, review_status FROM hospital_reviews WHERE id = ?", [$rid]) : null;
     if ($review && $is_editor_scope && (int)$review['hospital_id'] !== $scope_hospital_id) {
         $error = '접근 권한이 없는 후기입니다.';
         $review = null;
     }
     if ($review) {
+        $was_published = ($review['review_status'] === 'published');
         if ($_POST['action'] === 'approve_one') {
             $db->execute("UPDATE hospital_reviews SET review_status = 'published', is_active = 1, updated_at = NOW() WHERE id = ?", [$rid]);
             $message = "후기 #{$rid}이(가) 승인되었습니다.";
+            // 포인트 원장(#포인트제도): 승인 시 관리자 입력액(없으면 기본 설정액) 지급. reference 로 재지급 방지.
+            if (!$was_published) {
+                $pt = reviews_award_point($connect, $review, $rid, $_POST['point_amount'] ?? null);
+                if ($pt > 0) $message .= " ({$pt}P 지급)";
+            }
         } else {
             $db->execute("UPDATE hospital_reviews SET review_status = 'rejected', is_active = 0, updated_at = NOW() WHERE id = ?", [$rid]);
             $message = "후기 #{$rid}이(가) 거부되었습니다.";
+            // 이미 지급했던 적립이 있으면 회수(멱등)
+            if ($was_published) reviews_revoke_point($connect, $rid);
         }
         $hid = (int)$review['hospital_id'];
         if ($hid > 0) {
@@ -464,16 +542,19 @@ include __DIR__ . '/includes/admin_header.php';
     <span><strong id="selectedCount">0</strong>개 선택</span>
     <div class="d-inline-flex gap-1 ms-2">
         <form method="POST" class="d-inline" onsubmit="return bulkSubmit(this, '선택한 후기를 승인하시겠습니까?')">
+            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_reviews_csrf, ENT_QUOTES); ?>">
             <input type="hidden" name="action" value="bulk_approve">
             <span class="bulk-ids-container"></span>
             <button class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> 승인</button>
         </form>
         <form method="POST" class="d-inline" onsubmit="return bulkSubmit(this, '선택한 후기를 거부하시겠습니까?')">
+            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_reviews_csrf, ENT_QUOTES); ?>">
             <input type="hidden" name="action" value="bulk_reject">
             <span class="bulk-ids-container"></span>
             <button class="btn btn-warning btn-sm"><i class="bi bi-x-lg"></i> 거부</button>
         </form>
         <form method="POST" class="d-inline" onsubmit="return bulkSubmit(this, '선택한 후기를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')">
+            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_reviews_csrf, ENT_QUOTES); ?>">
             <input type="hidden" name="action" value="bulk_delete">
             <span class="bulk-ids-container"></span>
             <button class="btn btn-danger btn-sm"><i class="bi bi-trash"></i> 삭제</button>
@@ -661,6 +742,7 @@ include __DIR__ . '/includes/admin_header.php';
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST" id="editForm">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_reviews_csrf, ENT_QUOTES); ?>">
                 <input type="hidden" name="action" value="edit_review">
                 <input type="hidden" name="edit_id" id="edit_id">
                 <div class="modal-header py-2">
@@ -771,6 +853,7 @@ function aiVerifyReview() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>검수 중...';
 
     var fd = new FormData();
+    fd.append('admin_csrf', <?php echo json_encode($admin_reviews_csrf); ?>);
     fd.append('action', 'ai_verify');
     fd.append('review_id', reviewId);
 
@@ -852,6 +935,7 @@ function adminAction(reviewId, action) {
     f.method = 'POST';
     f.action = '';   // 현재 URL(필터 쿼리 유지)로 제출
     f.innerHTML =
+        '<input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_reviews_csrf, ENT_QUOTES); ?>">' +
         '<input type="hidden" name="action" value="' + (action === 'approve' ? 'approve_one' : 'reject_one') + '">' +
         '<input type="hidden" name="review_id" value="' + parseInt(reviewId, 10) + '">';
     document.body.appendChild(f);

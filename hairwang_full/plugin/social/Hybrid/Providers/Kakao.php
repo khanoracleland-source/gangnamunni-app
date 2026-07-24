@@ -52,7 +52,12 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
             $this->authenticate( $code );
         }
         catch( Exception $e ){
-            throw new Exception( "User profile request failed! {$this->providerId} returned an error: $e", 6 );
+            error_log('[Kakao token] ' . $e->getMessage());
+            throw new Exception(
+                "Kakao token request failed: " . $e->getMessage(),
+                5,
+                $e
+            );
         }
         // check if authenticated
         if ( ! $this->api->access_token ){
@@ -72,30 +77,50 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
     */
     function getUserProfile()
     {
-        //$params = array('property_keys'=>'kaccount_email');	// v1 parameter
-        // Email consent is optional; request the complete profile without
-        // property_keys so Kakao does not reject an unauthorized email scope.
-        $params = array();
+        // OAuth2Client::api() always adds access_token to the request parameters.
+        // Kakao's current API expects it in the Authorization header, so call the
+        // endpoint directly to avoid sending the token twice.
+        $this->api->curl_header = array(
+            'Authorization: Bearer ' . $this->api->access_token,
+            'Accept: application/json'
+        );
 
-        $this->api->decode_json = false;
-        $this->api->curl_header = array( 'Authorization: Bearer ' . $this->api->access_token );
+        $response = $this->request($this->api->api_base_url . 'user/me');
+        $data = is_string($response) ? json_decode($response) : null;
 
-        $data = $this->api->api("user/me", "POST", $params);
-
-        if ( ! isset( $data->id ) ) {
-            if (class_exists('Hybrid_Logger')) Hybrid_Logger::error('Kakao user/me invalid response: ' . json_encode($data, JSON_UNESCAPED_UNICODE));
-            throw new Exception("User profile request failed! {$this->providerId} returned an invalid response.", 6);
+        if ( ! is_object($data) || ! isset($data->id) ) {
+            $kakao_error = is_object($data) ? $data : new StdClass();
+            $error_code = isset($kakao_error->code) ? $kakao_error->code : 'invalid_json';
+            $error_message = isset($kakao_error->msg) ? $kakao_error->msg : 'Invalid response';
+            $kakao_debug = 'HTTP ' . (int)$this->http_code . ', code ' . $error_code . ': ' . $error_message;
+            error_log('[Kakao user/me] ' . $kakao_debug);
+            if (class_exists('Hybrid_Logger')) Hybrid_Logger::error('Kakao user/me ' . $kakao_debug);
+            throw new Exception("Kakao user profile request failed: " . $kakao_debug, 6);
         }
+
+        $account = (isset($data->kakao_account) && is_object($data->kakao_account))
+            ? $data->kakao_account : new StdClass();
+        $profile = (isset($account->profile) && is_object($account->profile))
+            ? $account->profile : new StdClass();
+        $properties = (isset($data->properties) && is_object($data->properties))
+            ? $data->properties : new StdClass();
+
         # store the user profile.
-        $this->user->profile->identifier  = @ $data->id;
-        $this->user->profile->displayName = @($data->kakao_account->profile->nickname ?: $data->properties->nickname);
-        $this->user->profile->photoURL    = @($data->kakao_account->profile->thumbnail_image_url ?: $data->properties->thumbnail_image);
-        //$email = @ $data->properties->kaccount_email;	// v1 version
-        
-        $email = @ $data->kakao_account->email;   // v2 version
+        $this->user->profile->identifier = (string)$data->id;
+        $this->user->profile->displayName = !empty($profile->nickname)
+            ? $profile->nickname
+            : (!empty($properties->nickname) ? $properties->nickname : 'Kakao User');
+        $this->user->profile->photoURL = !empty($profile->thumbnail_image_url)
+            ? $profile->thumbnail_image_url
+            : (!empty($properties->thumbnail_image) ? $properties->thumbnail_image : '');
+
+        $email = isset($account->email) ? $account->email : '';
 
         if( $email ){
             $this->user->profile->email = $email;
+            if ( !empty($account->is_email_verified) ) {
+                $this->user->profile->emailVerified = $email;
+            }
         }
 
         $this->user->profile->sid         = get_social_convert_id( $this->user->profile->identifier, $this->providerId );
@@ -119,7 +144,15 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
         $response = $this->request($this->api->token_url, $params, $this->api->curl_authenticate_method);
         $response = $this->parseRequestResult($response);
         if ( ! $response || ! isset($response->access_token) ) {
-            throw new Exception("The Authorization Service has return: " . $response->error);
+            // $response 가 객체가 아니거나 error 필드가 없을 수 있으므로 방어적으로 메시지를 구성한다.
+            $err = 'unknown_error';
+            if ( is_object($response) ) {
+                if ( isset($response->error_description) )      $err = $response->error_description;
+                elseif ( isset($response->error) )             $err = is_scalar($response->error) ? $response->error : json_encode($response->error);
+            } elseif ( is_string($response) && $response !== '' ) {
+                $err = $response;
+            }
+            throw new Exception("The Authorization Service has return: " . $err);
         }
         if ( isset($response->access_token) )  $this->api->access_token            = $response->access_token;
         if ( isset($response->refresh_token) ) $this->api->refresh_token           = $response->refresh_token;
@@ -137,7 +170,6 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
     {
         if(Class_exists('Hybrid_Logger')){
             Hybrid_Logger::info("Enter OAuth2Client::request( $url )");
-            Hybrid_Logger::debug("OAuth2Client::request(). dump request params: ", serialize( $params ));
         }
         $this->http_info = array();
         $ch = curl_init();
@@ -151,7 +183,7 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
         curl_setopt($ch, CURLOPT_HTTPHEADER    , $this->api->curl_header);
 
         if ( $this->api->curl_proxy ) {
-            curl_setopt( $ch, CURLOPT_PROXY, $this->curl_proxy);
+            curl_setopt( $ch, CURLOPT_PROXY, $this->api->curl_proxy);
         }
         if ( $type == "POST" ) {
             curl_setopt($ch, CURLOPT_POST, 1);
@@ -159,13 +191,20 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
         }
 
         $response = curl_exec($ch);
+        $curl_error = ($response === false) ? curl_error($ch) : '';
         if(Class_exists('Hybrid_Logger')){
             Hybrid_Logger::debug( "OAuth2Client::request(). dump request info: ", serialize(curl_getinfo($ch)) );
-            Hybrid_Logger::debug( "OAuth2Client::request(). dump request result: ", serialize($response ));
         }
         $this->http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $this->http_info = array_merge($this->http_info, curl_getinfo($ch));
         curl_close ($ch);
+
+        if ( $response === false ) {
+            error_log('[Kakao HTTP] cURL error: ' . $curl_error);
+            if (Class_exists('Hybrid_Logger')) {
+                Hybrid_Logger::error('Kakao HTTP cURL error: ' . $curl_error);
+            }
+        }
 
         return $response;
     }
