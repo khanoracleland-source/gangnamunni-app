@@ -17,6 +17,7 @@ require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/dev_mode_helper.php';
 require_once __DIR__ . '/includes/notification_helper.php';
 require_once __DIR__ . '/includes/mail_helper.php';
+require_once __DIR__ . '/includes/hospital_treatment_images.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패");
@@ -228,9 +229,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                     }
                     if ($insert_ok) {
                         $new_id = mysqli_insert_id($connect);
+                        $image_warnings = hti_save_application_treatments(
+                            $connect, $new_id, $_POST['application_treatment_ids'] ?? [], 'hospital'
+                        );
                         $success = true;
                         unset($_SESSION['hospital_apply_code'], $_SESSION['hospital_apply_email'], $_SESSION['hospital_apply_code_expire'], $_SESSION['hospital_apply_code_attempts']);
                         $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
+                        if ($image_warnings) $message .= ' 단, 일부 시술 이미지 업로드를 확인해 주세요: ' . implode(' / ', $image_warnings);
 
                         // 관리자 이메일
                         if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
@@ -279,6 +284,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
         }
     }
 }
+
+// 공개 신청에서도 실제 활성 시술을 선택하고 시술별 이미지를 등록할 수 있다.
+$application_treatments = [];
+$at_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_treatment_master WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
+if ($at_r) while ($at = mysqli_fetch_assoc($at_r)) $application_treatments[] = $at;
 
 // mysqli_close는 페이지 끝에서 (dev_mode 체크 위해)
 ?>
@@ -448,6 +458,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                         <label class="form-label fw-semibold">주요 시술 (콤마 구분) <span class="text-muted fw-normal">(선택)</span></label>
                         <input type="text" name="treatment_tags" class="form-control" placeholder="예: 코성형, 눈성형, 지방흡입" value="<?= htmlspecialchars($_POST['treatment_tags'] ?? '') ?>">
                     </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">시술별 상세페이지 이미지 <span class="text-muted fw-normal">(선택)</span></label>
+                        <div class="form-text mb-2">이미지를 등록할 시술을 선택한 뒤, 시술마다 파일을 첨부해 주세요.</div>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <?php foreach ($application_treatments as $at): ?>
+                            <div class="form-check">
+                                <input class="form-check-input public-treatment-check" type="checkbox"
+                                    value="<?= (int)$at['id'] ?>" data-name="<?= htmlspecialchars($at['name'], ENT_QUOTES) ?>"
+                                    id="public_treatment_<?= (int)$at['id'] ?>">
+                                <label class="form-check-label" for="public_treatment_<?= (int)$at['id'] ?>"><?= htmlspecialchars($at['name']) ?></label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div id="publicTreatmentImageFields"></div>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">영업시간 <span class="text-muted fw-normal">(선택)</span></label>
                         <input type="text" name="business_hours" class="form-control" placeholder="예: 평일 10:00~19:00" value="<?= htmlspecialchars($_POST['business_hours'] ?? '') ?>">
@@ -540,6 +565,30 @@ document.getElementById('publicApplyForm')?.addEventListener('submit', function(
     var checked = [];
     document.querySelectorAll('.cat-check:checked').forEach(function(cb) { checked.push(cb.value); });
     document.getElementById('categoriesInput').value = checked.join(',');
+});
+function updatePublicTreatmentImages() {
+    var box = document.getElementById('publicTreatmentImageFields');
+    if (!box) return;
+    var existing = {};
+    box.querySelectorAll('[data-image-treatment-id]').forEach(function(el) {
+        existing[el.getAttribute('data-image-treatment-id')] = el;
+    });
+    document.querySelectorAll('.public-treatment-check:checked').forEach(function(cb) {
+        var id = cb.value;
+        if (existing[id]) { delete existing[id]; return; }
+        var row = document.createElement('div');
+        row.className = 'border rounded p-3 mb-2';
+        row.setAttribute('data-image-treatment-id', id);
+        row.innerHTML = '<label class="form-label fw-semibold small">' + (cb.getAttribute('data-name') || '') + '</label>'
+            + '<input type="hidden" name="application_treatment_ids[]" value="' + id + '">'
+            + '<input type="file" name="treatment_images[' + id + '][]" class="form-control" accept=".jpg,.jpeg,.png,.gif,.webp" multiple>'
+            + '<div class="form-text">JPG/PNG/GIF/WebP, 파일당 10MB 이하</div>';
+        box.appendChild(row);
+    });
+    Object.keys(existing).forEach(function(id) { existing[id].remove(); });
+}
+document.querySelectorAll('.public-treatment-check').forEach(function(cb) {
+    cb.addEventListener('change', updatePublicTreatmentImages);
 });
 document.querySelector('[name="business_number"]')?.addEventListener('input', function(e) {
     var v = e.target.value.replace(/[^0-9]/g, '');

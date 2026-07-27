@@ -20,6 +20,7 @@ require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/dev_mode_helper.php';
 require_once __DIR__ . '/includes/notification_helper.php';
+require_once __DIR__ . '/includes/hospital_treatment_images.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패");
@@ -141,8 +142,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
                 if (mysqli_stmt_execute($stmt)) {
                     $new_id = mysqli_insert_id($connect);
+                    $image_warnings = hti_save_application_treatments(
+                        $connect, $new_id, $_POST['application_treatment_ids'] ?? [], 'hospital'
+                    );
                     $success = true;
                     $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
+                    if ($image_warnings) $message .= ' 단, 일부 시술 이미지 업로드를 확인해 주세요: ' . implode(' / ', $image_warnings);
 
                     // 관리자에게 이메일 알림
                     if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
@@ -204,16 +209,16 @@ if (!empty($applied_by_check)) {
 // 진료과목 체크박스 목록 — gangnamunni_treatment_master에서 동적 로드 (전체 시술, category_id 포함)
 // 주요 시술(카테고리)에서 선택한 항목에 따라 관련 진료과목만 표시하기 위해 category_id를 함께 가져옴
 $category_list = [];
-$cat_r = mysqli_query($connect, "SELECT name, category_id FROM gangnamunni_treatment_master WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
+$cat_r = mysqli_query($connect, "SELECT id, name, category_id FROM gangnamunni_treatment_master WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
 if ($cat_r) {
     while ($cat_row = mysqli_fetch_assoc($cat_r)) {
-        $category_list[] = ['name' => $cat_row['name'], 'category_id' => (int)$cat_row['category_id']];
+        $category_list[] = ['id' => (int)$cat_row['id'], 'name' => $cat_row['name'], 'category_id' => (int)$cat_row['category_id']];
     }
 }
 if (empty($category_list)) {
     $fallback_cats = defined('CATEGORIES') ? CATEGORIES : ['코','눈','지방흡입','가슴성형','치아','리프팅','주름/미백','쁘띠','모발이식','제모','남성','눈성형'];
     foreach ($fallback_cats as $fc) {
-        $category_list[] = ['name' => $fc, 'category_id' => 0];
+        $category_list[] = ['id' => 0, 'name' => $fc, 'category_id' => 0];
     }
 }
 
@@ -336,12 +341,17 @@ require_once __DIR__ . '/includes/admin_header.php';
                             $sel_cats = isset($_POST['categories']) ? explode(',', $_POST['categories']) : [];
                             foreach ($category_list as $cat): ?>
                             <div class="form-check" style="display:none;">
-                                <input class="form-check-input cat-check" type="checkbox" value="<?= htmlspecialchars($cat['name']) ?>" data-cat-id="<?= $cat['category_id'] ?>" id="cat_<?= md5($cat['name']) ?>" <?= in_array($cat['name'], $sel_cats) ? 'checked' : '' ?>>
+                                <input class="form-check-input cat-check" type="checkbox" value="<?= htmlspecialchars($cat['name']) ?>" data-treatment-id="<?= $cat['id'] ?>" data-cat-id="<?= $cat['category_id'] ?>" id="cat_<?= md5($cat['name']) ?>" <?= in_array($cat['name'], $sel_cats) ? 'checked' : '' ?>>
                                 <label class="form-check-label" for="cat_<?= md5($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></label>
                             </div>
                             <?php endforeach; ?>
                         </div>
                         <input type="hidden" name="categories" id="categoriesInput">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">시술별 상세페이지 이미지 <span class="text-muted fw-normal">(선택)</span></label>
+                        <div class="form-text mb-2">선택한 진료과목마다 상세페이지에 표시할 이미지를 여러 장 등록할 수 있습니다.</div>
+                        <div id="treatmentImageFields"></div>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">영업시간</label>
@@ -434,11 +444,39 @@ function updateTreatmentVisibility() {
 
     var placeholder = document.getElementById('treatmentPlaceholder');
     if (placeholder) placeholder.style.display = anySelected ? 'none' : '';
+    updateTreatmentImageFields();
+}
+function updateTreatmentImageFields() {
+    var box = document.getElementById('treatmentImageFields');
+    if (!box) return;
+    var selected = Array.from(document.querySelectorAll('.cat-check:checked')).filter(function(cb) {
+        return parseInt(cb.getAttribute('data-treatment-id') || '0', 10) > 0;
+    });
+    var existing = {};
+    box.querySelectorAll('[data-image-treatment-id]').forEach(function(el) {
+        existing[el.getAttribute('data-image-treatment-id')] = el;
+    });
+    selected.forEach(function(cb) {
+        var id = cb.getAttribute('data-treatment-id');
+        if (existing[id]) { delete existing[id]; return; }
+        var row = document.createElement('div');
+        row.className = 'border rounded p-3 mb-2';
+        row.setAttribute('data-image-treatment-id', id);
+        row.innerHTML = '<label class="form-label fw-semibold small">' + cb.value.replace(/[&<>"']/g, '') + '</label>'
+            + '<input type="hidden" name="application_treatment_ids[]" value="' + id + '">'
+            + '<input type="file" name="treatment_images[' + id + '][]" class="form-control" accept=".jpg,.jpeg,.png,.gif,.webp" multiple>'
+            + '<div class="form-text">JPG/PNG/GIF/WebP, 파일당 10MB 이하</div>';
+        box.appendChild(row);
+    });
+    Object.keys(existing).forEach(function(id) { existing[id].remove(); });
 }
 document.querySelectorAll('.tag-check').forEach(function(cb) {
     cb.addEventListener('change', updateTreatmentVisibility);
 });
 updateTreatmentVisibility();
+document.querySelectorAll('.cat-check').forEach(function(cb) {
+    cb.addEventListener('change', updateTreatmentImageFields);
+});
 
 // 카테고리 / 주요 시술 체크박스 → hidden input 동기화
 document.getElementById('applyForm')?.addEventListener('submit', function() {

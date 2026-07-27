@@ -55,6 +55,20 @@ $effective_treatment_id = $resolved_keyword_treatment
     ? (int) $resolved_keyword_treatment['id']
     : 0;
 $escaped_effective_treatment = mysqli_real_escape_string($connect, $effective_treatment);
+// index.php 의 ae-wrap 시술 필터로 들어온 경우에도 이름이 아니라 고유 ID를 함께 전달한다.
+// 목록의 가격과 상세페이지의 시술 이미지가 반드시 같은 시술을 가리키게 하기 위함이다.
+if ($effective_treatment_id <= 0 && $effective_treatment !== '') {
+    $_effective_tid_stmt = mysqli_prepare($connect,
+        "SELECT id FROM gangnamunni_treatment_master WHERE name = ? AND is_active = 1 LIMIT 1");
+    if ($_effective_tid_stmt) {
+        mysqli_stmt_bind_param($_effective_tid_stmt, 's', $effective_treatment);
+        mysqli_stmt_execute($_effective_tid_stmt);
+        mysqli_stmt_bind_result($_effective_tid_stmt, $effective_treatment_id);
+        mysqli_stmt_fetch($_effective_tid_stmt);
+        mysqli_stmt_close($_effective_tid_stmt);
+        $effective_treatment_id = intval($effective_treatment_id);
+    }
+}
 $region = isset($_GET['region']) ? trim($_GET['region']) : '';
 // 다중 지역 지원 (콤마 구분)
 $region_list = array_filter(array_map('trim', explode(',', $region)));
@@ -565,7 +579,9 @@ foreach ($hospitals as $hospital):
     $review_cnt = number_format((int)($hospital['review_count'] ?? 0));
     // 특정 시술로 필터링해서 들어온 경우, 상세 페이지에서도 그 시술 정보로 바로 이동
     $_detail_url = 'detail.php?id=' . (int)$hospital['id'];
-    if (!empty($effective_treatment)) { $_detail_url .= '&treatment=' . urlencode($effective_treatment); }
+    if (!empty($effective_treatment) && $effective_treatment_id > 0) {
+        $_detail_url .= '&treatment_id=' . $effective_treatment_id . '&treatment=' . urlencode($effective_treatment);
+    }
     $_slot_context = $slot_hospital_context[(int)$hospital['id']] ?? null;
 ?>
         <div class="hospital-card"

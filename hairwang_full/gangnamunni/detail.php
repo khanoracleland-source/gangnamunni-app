@@ -38,21 +38,35 @@ if (!empty($hospital_id)) {
 // hospitals.php에서 특정 시술(gangnamunni_treatment_master) 검색 후 넘어온 경우
 // 해당 병원의 그 시술 정보를 정확히 찾아 홈 탭 상단에 강조 표시
 $matched_treatment = null;
+$matched_treatment_images = []; // 이 병원 · 이 시술 전용 상세 이미지 (#시술이미지)
 $matched_treatment_query = isset($_GET['treatment']) ? trim($_GET['treatment']) : '';
-if (!empty($hospital_id) && $matched_treatment_query !== '') {
+$matched_treatment_id = isset($_GET['treatment_id']) ? intval($_GET['treatment_id']) : 0;
+// 목록의 시술 필터 컨텍스트가 있을 때만 해당 시술 설명/이미지를 노출한다.
+// ID를 우선 사용해 목록에 표시된 가격과 상세 이미지가 정확히 같은 시술에 연결되게 한다.
+if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_query !== '')) {
     $mt_stmt = mysqli_prepare($connect, "
-        SELECT tm.name, tm.description
+        SELECT tm.id AS treatment_id, tm.name, tm.description
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
-        WHERE ht.hospital_id = ? AND ht.status = 'active' AND tm.is_active = 1 AND tm.name = ?
+        WHERE ht.hospital_id = ?
+          AND ht.status = 'active'
+          AND tm.is_active = 1
+          AND ((? > 0 AND tm.id = ?) OR (? = 0 AND tm.name = ?))
         LIMIT 1
     ");
     if ($mt_stmt) {
-        mysqli_stmt_bind_param($mt_stmt, 'is', $hospital_id, $matched_treatment_query);
+        mysqli_stmt_bind_param($mt_stmt, 'iiiis',
+            $hospital_id, $matched_treatment_id, $matched_treatment_id,
+            $matched_treatment_id, $matched_treatment_query);
         mysqli_stmt_execute($mt_stmt);
         $mt_result = mysqli_stmt_get_result($mt_stmt);
         $matched_treatment = mysqli_fetch_assoc($mt_result) ?: null;
         mysqli_stmt_close($mt_stmt);
+    }
+    // 병원이 이 시술에 대해 올려둔 상세페이지 이미지 (없으면 빈 배열 → 기존 안내 문구 유지)
+    if ($matched_treatment) {
+        require_once __DIR__ . '/includes/hospital_treatment_images.php';
+        $matched_treatment_images = hti_images_for($connect, $hospital_id, $matched_treatment['treatment_id']);
     }
 }
 
@@ -1477,8 +1491,10 @@ function extractImageFromHtml($file_path) {
     <!-- 탭 메뉴 -->
     <!-- [1차 검수 #9 - 2026-05-28] 상세 탭 재정의 [홈 / 의료진 / 이벤트 / 시술후기] -->
     <?php
-    // 탭 전환 시에도 검색 시술(?treatment=) 컨텍스트 유지 — 목록 복귀 시 정렬/시술 보존
-    $tab_qs = $matched_treatment_query !== '' ? '&treatment=' . urlencode($matched_treatment_query) : '';
+    // 탭 전환 시에도 검색 시술 컨텍스트 유지 — 같은 시술의 설명/이미지를 계속 표시한다.
+    $tab_qs = '';
+    if ($matched_treatment_id > 0) $tab_qs .= '&treatment_id=' . $matched_treatment_id;
+    if ($matched_treatment_query !== '') $tab_qs .= '&treatment=' . urlencode($matched_treatment_query);
     ?>
     <div class="tab-menu">
         <a href="?id=<?php echo $hospital_id; ?>&tab=home<?php echo $tab_qs; ?>" class="tab-item <?php echo $current_tab === 'home' ? 'active' : ''; ?>">
@@ -1713,19 +1729,42 @@ function extractImageFromHtml($file_path) {
                 <?php endif; ?>
             </div>
 
-            <!-- 상세 정보 -->
+            <!-- 상세 정보 — 병원이 이 시술에 대해 등록한 상세페이지 이미지 (#시술이미지) -->
             <div style="padding:16px; border-top:1px solid var(--color-border);">
                 <div style="font-size:18px; font-weight:700; color: #000000; margin-bottom:10px;">상세 정보</div>
+                <?php if (!empty($matched_treatment_images)): ?>
+                <div id="treatment-images">
+                    <?php foreach ($matched_treatment_images as $ti_idx => $ti): ?>
+                    <figure class="treatment-image<?php echo $ti_idx > 0 ? ' treatment-image-more' : ''; ?>"
+                            style="margin:0 0 10px;<?php echo $ti_idx > 0 ? ' display:none;' : ''; ?>">
+                        <img src="<?php echo htmlspecialchars($ti['image_url'], ENT_QUOTES); ?>"
+                             alt="<?php echo htmlspecialchars($matched_treatment['name'] . ' 상세 이미지 ' . ($ti_idx + 1), ENT_QUOTES); ?>"
+                             loading="lazy"
+                             style="width:100%; display:block; background:var(--color-bg-light);">
+                        <?php if (!empty($ti['caption'])): ?>
+                        <figcaption style="padding:6px 2px 0; font-size:12px; color:var(--color-text-secondary);"><?php echo htmlspecialchars($ti['caption']); ?></figcaption>
+                        <?php endif; ?>
+                    </figure>
+                    <?php endforeach; ?>
+                </div>
+                <?php if (count($matched_treatment_images) > 1): ?>
+                <button type="button" id="treatment-images-more" onclick="moreTreatmentImages(this)" style="width:100%; margin-top:12px; border:1px solid #000; background:var(--color-bg-white); color:var(--color-text-primary); padding:11px; font-size:14px; font-weight:700; cursor:pointer;">이미지 더보기 (<?php echo count($matched_treatment_images) - 1; ?>)</button>
+                <?php endif; ?>
+                <?php else: ?>
                 <div style="aspect-ratio:4/3; background:var(--color-bg-light); border:1px dashed var(--color-border); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--color-text-muted);">
                     <i class="bi bi-image" style="font-size:34px;"></i>
                     <span style="font-size:12px;">이미지 준비 중</span>
                 </div>
-                <button type="button" onclick="moreTreatmentImages(this)" style="width:100%; margin-top:12px; border:1px solid #000; background:var(--color-bg-white); color:var(--color-text-primary); padding:11px; font-size:14px; font-weight:700; cursor:pointer;">이미지 더보기</button>
+                <?php endif; ?>
             </div>
         </div>
         <script>
         document.addEventListener('DOMContentLoaded', function(){ var el = document.getElementById('matched-treatment'); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); });
-        function moreTreatmentImages(btn){ /* TODO: 시술 이미지 소스 연결 후 구현 */ }
+        // 첫 장만 보여주고 나머지는 "이미지 더보기"로 펼친다. (한글 주석)
+        function moreTreatmentImages(btn){
+            document.querySelectorAll('.treatment-image-more').forEach(function(el){ el.style.display = ''; });
+            if (btn) btn.style.display = 'none';
+        }
         </script>
         <?php endif; ?>
 
