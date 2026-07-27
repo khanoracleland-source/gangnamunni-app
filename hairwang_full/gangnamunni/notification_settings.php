@@ -127,10 +127,24 @@ document.querySelectorAll('form input[type="checkbox"]').forEach(function(cb) {
 });
 </script>
 
+<?php
+// 마이페이지 하단에 있던 로그아웃 / 회원 탈퇴 를 이곳 "계정 관리" 로 옮겼다.
+// logout.php 는 url 파라미터에 스킴/도메인이 있으면 "도메인 지정 불가" 로 거부하므로
+// 도메인을 뺀 경로만 전달한다(베이스 경로 유지). 앱 WebView 는 app=1 을 유지해야 정상 복귀한다.
+$is_app_mode   = isset($_GET['app']) && $_GET['app'] == '1';
+$logout_return = rtrim((string) parse_url(G5_URL, PHP_URL_PATH), '/') . '/gangnamunni/index.php' . ($is_app_mode ? '?app=1' : '');
+$logout_url    = G5_BBS_URL . '/logout.php?url=' . urlencode($logout_return);
+$withdraw_url  = G5_URL . '/gangnamunni/withdraw.php';
+?>
 <div class="service-section" style="margin-top:10px;margin-bottom:30px;">
     <div class="section-label">계정 관리</div>
-    <a href="#" class="service-item" style="border-bottom:none;color:#e53935;" onclick="return confirm('정말 탈퇴하시겠습니까?')">
+    <a href="<?php echo htmlspecialchars($logout_url, ENT_QUOTES); ?>" class="service-item">
+        <span>로그아웃</span>
+        <i class="bi bi-chevron-right"></i>
+    </a>
+    <a href="<?php echo htmlspecialchars($withdraw_url, ENT_QUOTES); ?>" class="service-item red" style="border-bottom:none;">
         <span>회원 탈퇴</span>
+        <i class="bi bi-chevron-right"></i>
     </a>
 </div>
 </body></html>

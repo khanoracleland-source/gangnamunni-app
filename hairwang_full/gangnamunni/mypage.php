@@ -48,10 +48,6 @@ if (!$is_logged_in) {
     $mb_level = $member['mb_level'] ?? 1;
 }
 
-// Withdraw page validates the current Gnuboard session and password again.
-// Keep the link absolute so app WebView and nested routes resolve correctly.
-$withdraw_url = $g5_url . '/gangnamunni/withdraw.php';
-
 // 프로필 사진 확인
 $profile_photo_url = null;
 if ($is_logged_in) {
@@ -146,17 +142,6 @@ if ($cq) {
 require_once __DIR__ . '/includes/points_ledger.php';
 $point_balance = points_balance_safe($connect, $mb_no);
 
-// 쿠폰 건수 (member_id는 INT = mb_no)
-$coupon_count = 0;
-$cpq = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_coupon_claims WHERE member_id = ? AND status = 'available'");
-if ($cpq) {
-    mysqli_stmt_bind_param($cpq, 'i', $mb_no);
-    mysqli_stmt_execute($cpq);
-    $r = mysqli_stmt_get_result($cpq);
-    $coupon_count = (int)($r ? mysqli_fetch_assoc($r)['cnt'] : 0);
-    mysqli_stmt_close($cpq);
-}
-
 endif; // $is_logged_in
 
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
@@ -225,15 +210,6 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 .menu-row-text { flex:1; font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; }
 .menu-row-arrow { color:#000; font-weight:900; font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
-/* 로그아웃 */
-.logout-section { background:var(--bs-body-bg, #fff); margin-top:0; }
-.logout-btn {
-    display:flex; align-items:center; justify-content:center;
-    padding:16px 20px; text-decoration:none;
-    font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); color:#999; font-weight:500;
-}
-.logout-btn:hover { background:var(--bs-tertiary-bg, #fafafa); color:var(--color-primary, #AE1932); }
-
 /* 활동 요약 4칸 그리드 */
 .activity-summary {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
@@ -248,16 +224,6 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 .activity-item:hover { background: var(--bs-tertiary-bg, #fafafa); }
 .activity-num { font-size: calc(22px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; color: var(--pri, #AE1932); line-height: 1.2; }
 .activity-label { font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); color: #888; margin-top: 4px; }
-
-/* 포인트/쿠폰 박스 */
-.point-coupon-box {
-    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 18px 8px; text-decoration: none; color: inherit; transition: background 0.15s;
-}
-.point-coupon-box:hover { background: var(--bs-tertiary-bg, #fafafa); }
-.pc-label { font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: #888; margin-bottom: 4px; }
-.pc-label i { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); }
-.pc-value { font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; color: var(--bs-body-color, #000); }
 
 /* 광고 배너 */
 .advertisement-section {
@@ -323,24 +289,19 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     <span class="profile-arrow"><i class="bi bi-chevron-right" style="color:#000;"></i> </span>
 </a>
 
-<!-- 포인트/쿠폰 요약 (#포인트제도): my_points.php 진입점 -->
-<div class="menu-section" style="display:flex; padding:0; border-bottom:16px solid #F8F8F8;">
-    <a href="my_points.php" class="point-coupon-box" style="border-right:1px solid var(--bs-border-color,#eee);">
-        <span class="pc-label"><i class="bi bi-coin"></i> 포인트</span>
-        <span class="pc-value"><?php echo number_format($point_balance); ?><span style="font-size:0.7em;">P</span></span>
-    </a>
-    <a href="my_coupons.php" class="point-coupon-box">
-        <span class="pc-label"><i class="bi bi-ticket-perforated"></i> 쿠폰</span>
-        <span class="pc-value"><?php echo number_format($coupon_count); ?><span style="font-size:0.7em;">장</span></span>
-    </a>
-</div>
-
 <!-- 섹션: 병원 이용 -->
 <div class="menu-section" style="border-bottom:16px solid #F8F8F8;">
     <div class="menu-section-title"><?php echo term('business', '병원'); ?> 이용</div>
     <a href="my_bookings.php" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-calendar-check"></i></span>
         <span class="menu-row-text">내 <?php echo term('booking', '예약'); ?> / 결제 내역</span>
+        <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
+    </a>
+    <?php // 포인트(#포인트제도) — 상단 포인트/쿠폰 박스를 걷어내고 예약과 같은 메뉴 행으로 노출한다. ?>
+    <a href="my_points.php" class="menu-row">
+        <span class="menu-row-icon"><i class="bi bi-coin"></i></span>
+        <span class="menu-row-text">포인트</span>
+        <span class="menu-row-badge"><?php echo number_format($point_balance); ?>P</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_wishlist.php" class="menu-row">
@@ -388,15 +349,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     </a>
 </div>
 
-<!-- 로그아웃 -->
-<div class="logout-section">
-    <?php // logout.php 는 url 파라미터에 스킴/도메인이 있으면 "도메인 지정 불가" 로 거부한다.
-    //       따라서 도메인을 뺀 경로만 전달한다(베이스 경로 유지). 로그아웃 후 index.php 로 이동.
-    //       앱 WebView 에서는 app=1 을 유지해야 앱 전용 화면으로 정상 복귀한다. (한글 주석)
-    $logout_return = rtrim((string) parse_url(G5_URL, PHP_URL_PATH), '/') . '/gangnamunni/index.php' . ($is_app_mode ? '?app=1' : ''); ?>
-    <a href="<?php echo G5_BBS_URL; ?>/logout.php?url=<?php echo urlencode($logout_return); ?>" class="logout-btn">로그아웃</a>
-    <a href="<?php echo htmlspecialchars($withdraw_url, ENT_QUOTES); ?>" style="display:block;text-align:center;padding:14px 20px;color:#999;font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));text-decoration:underline;">회원 탈퇴</a>
-</div>
+<?php // 로그아웃 / 회원 탈퇴 는 알림·계정 설정(notification_settings.php) 의 "계정 관리" 로 이동했다. ?>
 
 <?php else: ?>
 <!-- 비로그인 상태: 로그인 안내 -->

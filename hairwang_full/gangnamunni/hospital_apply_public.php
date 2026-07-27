@@ -323,7 +323,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
 <!-- 회원가입(register.php) 을 거쳐 진입 → 이전으로 돌아가기 -->
 <div class="mx-auto pt-3" style="max-width: 800px;">
     <a href="javascript:history.back()" class="btn btn-link text-decoration-none ps-0 text-muted">
-        <i class="bi bi-arrow-left me-1"></i>이전으로
+        <i class="bi bi-chevron-left me-1"></i>이전으로
     </a>
 </div>
 <?php endif; ?>
