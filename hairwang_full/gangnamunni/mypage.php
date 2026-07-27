@@ -19,10 +19,6 @@ require_once __DIR__ . '/theme_helper.php';
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die('DB error');
 mysqli_set_charset($connect, 'utf8mb4');
-$g5_url = defined('G5_URL') ? G5_URL : '';
-// Optional statistics tables may not exist on a fresh installation; keep the
-// profile page usable while each prepared query falls back to zero.
-mysqli_report(MYSQLI_REPORT_OFF);
 loadThemeSettings($connect);
 
 // Phase5: SSO 토큰 자동 로그인 (앱 WebView에서 세션 없을 때)
@@ -37,106 +33,30 @@ if (!$is_logged_in) {
     // 로그아웃 직후 앱이 마이페이지를 다시 열면 그 JSON 을 오류로 해석해 팝업을 띄웠다.
     // → 앱 모드에서도 아래 "로그인 안내" HTML 을 그대로 보여준다(팝업 없음, 리다이렉트 루프 없음).
     // 비로그인: 리다이렉트 대신 로그인 안내 UI 표시 (리다이렉트 루프 방지)
-    $mb_id = ''; $mb_nick = ''; $mb_email = ''; $mb_hp = ''; $mb_datetime = ''; $mb_level = 0;
+    $mb_id = ''; $mb_nick = '';
 } else {
     $mb_id = $member['mb_id'];
     $mb_no = $member['mb_no'] ?? 0; // 숫자 ID (wishlist/points/coupon용)
     $mb_nick = $member['mb_nick'] ?? $mb_id;
-    $mb_email = $member['mb_email'] ?? '';
-    $mb_hp = $member['mb_hp'] ?? '';
-    $mb_datetime = $member['mb_datetime'] ?? '';
-    $mb_level = $member['mb_level'] ?? 1;
 }
 
 // 프로필 사진 확인
 $profile_photo_url = null;
 if ($is_logged_in) {
     $profile_photo_dir = __DIR__ . '/uploads/profile/';
-    foreach (['jpg', 'jpeg', 'png', 'webp'] as $_ext) {
-        $_path = $profile_photo_dir . $mb_id . '.' . $_ext;
+    // 파일 경로에는 영숫자/밑줄/하이픈만 허용해 경로 이탈을 방지한다.
+    $profile_file_id = preg_replace('/[^A-Za-z0-9_-]/', '', (string)$mb_id);
+    foreach ($profile_file_id !== '' ? ['jpg', 'jpeg', 'png', 'webp'] : [] as $_ext) {
+        $_path = $profile_photo_dir . $profile_file_id . '.' . $_ext;
         if (file_exists($_path)) {
-            $profile_photo_url = 'uploads/profile/' . $mb_id . '.' . $_ext . '?v=' . filemtime($_path);
+            $profile_photo_url = 'uploads/profile/' . rawurlencode($profile_file_id) . '.' . $_ext . '?v=' . filemtime($_path);
             break;
         }
     }
 }
 
-// 로그인 상태에서만 DB 조회
+// 로그인 상태에서 실제 화면에 표시하는 포인트만 조회한다.
 if ($is_logged_in):
-
-// 내 예약 건수 (mb_id 또는 전화번호)
-$booking_count = 0;
-$phone_clean = preg_replace('/[^0-9]/', '', $mb_hp);
-$bq = mysqli_prepare($connect,
-    "SELECT COUNT(*) as cnt FROM gangnamunni_bookings WHERE mb_id = ?" . (!empty($phone_clean) ? " OR REPLACE(REPLACE(phone,'-',''),' ','') = ?" : "")
-);
-if ($bq) {
-    if (!empty($phone_clean)) {
-        mysqli_stmt_bind_param($bq, 'ss', $mb_id, $phone_clean);
-    } else {
-        mysqli_stmt_bind_param($bq, 's', $mb_id);
-    }
-    mysqli_stmt_execute($bq);
-    $r = mysqli_stmt_get_result($bq);
-    $booking_count = (int)($r ? mysqli_fetch_assoc($r)['cnt'] : 0);
-    mysqli_stmt_close($bq);
-}
-
-// 내 후기 건수 (user_id 컬럼)
-$review_count = 0;
-$rq = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM hospital_reviews WHERE user_id = ?");
-if ($rq) {
-    mysqli_stmt_bind_param($rq, 's', $mb_id);
-    mysqli_stmt_execute($rq);
-    $r = mysqli_stmt_get_result($rq);
-    $review_count = (int)($r ? mysqli_fetch_assoc($r)['cnt'] : 0);
-    mysqli_stmt_close($rq);
-}
-
-// 내 알림 (미읽음 건수)
-$unread_count = 0;
-$nq = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0");
-if ($nq) {
-    mysqli_stmt_bind_param($nq, 's', $mb_id);
-    mysqli_stmt_execute($nq);
-    $r = mysqli_stmt_get_result($nq);
-    $unread_count = (int)($r ? mysqli_fetch_assoc($r)['cnt'] : 0);
-    mysqli_stmt_close($nq);
-}
-
-// 내 이벤트 응모 건수
-$event_count = 0;
-$eq = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_event_entries WHERE member_id = ?");
-if ($eq) {
-    mysqli_stmt_bind_param($eq, 's', $mb_id);
-    mysqli_stmt_execute($eq);
-    $r = mysqli_stmt_get_result($eq);
-    $event_count = (int)($r ? mysqli_fetch_assoc($r)['cnt'] : 0);
-    mysqli_stmt_close($eq);
-}
-
-// 찜 목록 건수 (member_id는 INT = mb_no)
-$wish_count = 0;
-$wq = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_wishlist WHERE member_id = ?");
-if ($wq) {
-    mysqli_stmt_bind_param($wq, 'i', $mb_no);
-    mysqli_stmt_execute($wq);
-    $r = mysqli_stmt_get_result($wq);
-    $wish_count = (int)($r ? mysqli_fetch_assoc($r)['cnt'] : 0);
-    mysqli_stmt_close($wq);
-}
-
-// 커뮤니티 글 건수
-$community_count = 0;
-$cq = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_community_posts WHERE mb_id = ? AND status = 'active'");
-if ($cq) {
-    mysqli_stmt_bind_param($cq, 's', $mb_id);
-    mysqli_stmt_execute($cq);
-    $r = mysqli_stmt_get_result($cq);
-    $community_count = (int)($r ? mysqli_fetch_assoc($r)['cnt'] : 0);
-    mysqli_stmt_close($cq);
-}
-
 // 포인트 잔액 — 원장(#포인트제도) 스냅샷 사용 (member_id는 INT = mb_no)
 // 스키마 미설치 등으로 원장을 못 써도 마이페이지가 죽지 않도록 안전 조회 사용.
 require_once __DIR__ . '/includes/points_ledger.php';
@@ -146,6 +66,8 @@ endif; // $is_logged_in
 
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 if (!$is_app_mode) { require_once __DIR__ . '/includes/global_nav.php'; }
+$primary_color = getTheme('primary_color', '#AE1932');
+if (!preg_match('/^#[0-9a-fA-F]{6}$/', $primary_color)) $primary_color = '#AE1932';
 ?>
 <!DOCTYPE html>
 <html lang="ko">
@@ -158,11 +80,17 @@ if (!$is_app_mode) { require_once __DIR__ . '/includes/global_nav.php'; }
 <meta http-equiv="Expires" content="0">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <style>
-:root { --pri: <?php echo getTheme('primary_color', '#AE1932'); ?>; }
+:root { --pri: <?php echo $primary_color; ?>; }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8F8F8; max-width:640px; margin:0 auto; min-height:100vh; padding-bottom:80px; }
 
 /* 페이지 헤더 */
+/* 마이페이지는 자체 "마이페이지" 헤더가 있어 상단 글로벌 네비의 로고를 숨긴다.
+   global_nav.php 는 공용이라 그쪽을 고치지 않고 이 페이지에서만 가린다.
+   로고가 빠지면 space-between 때문에 로그인 버튼이 왼쪽으로 붙으므로 오른쪽으로 밀어준다. (한글 주석) */
+.global-nav-logo { display: none; }
+.global-nav-login { margin-left: auto; }
+
 .page-header {
     display:flex; align-items:center; justify-content:space-between;
     padding:14px 20px; background:var(--bs-body-bg, #fff); border-bottom:1px solid var(--bs-border-color, #f0f0f0);
@@ -280,7 +208,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
         <?php if ($profile_photo_url): ?>
             <img src="<?php echo htmlspecialchars($profile_photo_url); ?>" alt="프로필" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
         <?php else: ?>
-            <?php echo mb_substr($mb_nick, 0, 1); ?>
+            <?php echo htmlspecialchars(mb_substr($mb_nick, 0, 1), ENT_QUOTES, 'UTF-8'); ?>
         <?php endif; ?>
     </div>
     <div class="profile-info-wrap">
@@ -319,7 +247,7 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 <div class="advertisement-section">
     <div class="ad-subtitle">상담부터 시술 결과까지, 오직 고객 후기로만</div>
     <div class="ad-label">고객들이 선택!</div>
-    <div class="ad-title">3월 고객평가 우수병원</div>
+    <div class="ad-title"><?php echo (int)date('n'); ?>월 고객평가 우수병원</div>
 </div>
 
 <!-- 섹션: 커뮤니티 -->

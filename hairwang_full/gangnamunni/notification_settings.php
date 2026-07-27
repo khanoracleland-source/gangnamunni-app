@@ -1,34 +1,48 @@
 <?php
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/functions.php';
 if (!is_gangnamunni_logged_in()) { header('Location: auth/login.php?url='.urlencode($_SERVER['REQUEST_URI'])); exit; }
 $member_id = get_gangnamunni_member_id();
 
-// 테이블 자동 생성
-mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_notification_settings (
-    id INT AUTO_INCREMENT PRIMARY KEY, member_id VARCHAR(100) NOT NULL UNIQUE,
-    noti_booking TINYINT(1) DEFAULT 1, noti_chat TINYINT(1) DEFAULT 1,
-    noti_event TINYINT(1) DEFAULT 1, noti_promo TINYINT(1) DEFAULT 1,
-    noti_review TINYINT(1) DEFAULT 1, noti_push TINYINT(1) DEFAULT 1,
-    noti_general TINYINT(1) DEFAULT 1, noti_message TINYINT(1) DEFAULT 1,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-mysqli_query($connect, "ALTER TABLE gangnamunni_notification_settings ADD COLUMN IF NOT EXISTS noti_general TINYINT(1) DEFAULT 1, ADD COLUMN IF NOT EXISTS noti_message TINYINT(1) DEFAULT 1");
-mysqli_query($connect, "ALTER TABLE gangnamunni_notification_settings ADD COLUMN IF NOT EXISTS mkt_push TINYINT(1) DEFAULT 1, ADD COLUMN IF NOT EXISTS mkt_sms TINYINT(1) DEFAULT 1, ADD COLUMN IF NOT EXISTS mkt_email TINYINT(1) DEFAULT 1, ADD COLUMN IF NOT EXISTS mkt_night_push TINYINT(1) DEFAULT 0");
+$csrf_token = generateCsrfToken();
+$editable_fields = ['noti_general','noti_message','mkt_push','mkt_sms','mkt_email','mkt_night_push'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $fields = ['noti_booking','noti_chat','noti_event','noti_promo','noti_review','noti_push','noti_general','noti_message','mkt_push','mkt_sms','mkt_email','mkt_night_push'];
-    $vals = [];
-    foreach ($fields as $f) $vals[$f] = isset($_POST[$f]) ? 1 : 0;
-    $stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_notification_settings (member_id,noti_booking,noti_chat,noti_event,noti_promo,noti_review,noti_push,noti_general,noti_message,mkt_push,mkt_sms,mkt_email,mkt_night_push) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE noti_booking=VALUES(noti_booking),noti_chat=VALUES(noti_chat),noti_event=VALUES(noti_event),noti_promo=VALUES(noti_promo),noti_review=VALUES(noti_review),noti_push=VALUES(noti_push),noti_general=VALUES(noti_general),noti_message=VALUES(noti_message),mkt_push=VALUES(mkt_push),mkt_sms=VALUES(mkt_sms),mkt_email=VALUES(mkt_email),mkt_night_push=VALUES(mkt_night_push)");
-    mysqli_stmt_bind_param($stmt, 'siiiiiiiiiiii', $member_id, $vals['noti_booking'], $vals['noti_chat'], $vals['noti_event'], $vals['noti_promo'], $vals['noti_review'], $vals['noti_push'], $vals['noti_general'], $vals['noti_message'], $vals['mkt_push'], $vals['mkt_sms'], $vals['mkt_email'], $vals['mkt_night_push']);
-    mysqli_stmt_execute($stmt);
+    header('Content-Type: application/json; charset=utf-8');
+    $field = (string)($_POST['field'] ?? '');
+    $value = (string)($_POST['value'] ?? '') === '1' ? 1 : 0;
+    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'message' => '요청이 만료되었습니다.']); exit;
+    }
+    if (!in_array($field, $editable_fields, true)) {
+        http_response_code(422);
+        echo json_encode(['ok' => false, 'message' => '허용되지 않은 설정입니다.']); exit;
+    }
+    // 컬럼명은 위 화이트리스트를 통과한 값만 사용한다.
+    $stmt = mysqli_prepare($connect,
+        "INSERT INTO gangnamunni_notification_settings (member_id, {$field}) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE {$field} = VALUES({$field})");
+    if (!$stmt) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'message' => '설정 저장 준비에 실패했습니다.']); exit;
+    }
+    mysqli_stmt_bind_param($stmt, 'si', $member_id, $value);
+    $ok = mysqli_stmt_execute($stmt);
     mysqli_stmt_close($stmt);
-    $saved = true;
+    if (!$ok) http_response_code(500);
+    echo json_encode(['ok' => (bool)$ok, 'field' => $field, 'value' => $value]); exit;
 }
 
-$settings = ['noti_booking'=>1,'noti_chat'=>1,'noti_event'=>1,'noti_promo'=>1,'noti_review'=>1,'noti_push'=>1,'noti_general'=>1,'noti_message'=>1,'mkt_push'=>1,'mkt_sms'=>1,'mkt_email'=>1,'mkt_night_push'=>0];
-$res = mysqli_query($connect, "SELECT * FROM gangnamunni_notification_settings WHERE member_id='".mysqli_real_escape_string($connect,$member_id)."'");
-if ($res && $row = mysqli_fetch_assoc($res)) $settings = $row;
+$settings = ['noti_general'=>1,'noti_message'=>1,'mkt_push'=>0,'mkt_sms'=>0,'mkt_email'=>0,'mkt_night_push'=>0];
+$stmt_get = mysqli_prepare($connect, "SELECT noti_general,noti_message,mkt_push,mkt_sms,mkt_email,mkt_night_push FROM gangnamunni_notification_settings WHERE member_id=?");
+if ($stmt_get) {
+    mysqli_stmt_bind_param($stmt_get, 's', $member_id);
+    mysqli_stmt_execute($stmt_get);
+    $res = mysqli_stmt_get_result($stmt_get);
+    if ($res && $row = mysqli_fetch_assoc($res)) $settings = array_merge($settings, $row);
+    mysqli_stmt_close($stmt_get);
+}
 ?>
 <!DOCTYPE html><html lang="ko" data-bs-theme="light"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
@@ -49,8 +63,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .toggle input:checked+.slider{background:var(--pri);}
 .toggle .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
 .toggle input:checked+.slider:before{transform:translateX(20px);}
-.save-btn{margin:20px;padding:14px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;width:calc(100% - 40px);cursor:pointer;}
-.saved{text-align:center;padding:10px;color:#22c55e;font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));}
 .section-label{padding:16px 20px 8px;font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;color:var(--bs-secondary-color,#888);}
 .service-item{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;background:var(--bs-body-bg,#fff);border-bottom:1px solid var(--bs-border-color,#eee);text-decoration:none;color:var(--bs-body-color);}
 .service-item span{font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1));font-weight:500;}
@@ -60,17 +72,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 </style><?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head><body>
 <div class="header"><button class="back" onclick="history.back()"><i class="bi bi-chevron-left"></i></button><h1>알림</h1></div>
-<?php if (!empty($saved)): ?><div class="saved"><i class="bi bi-check-circle"></i> 저장되었습니다</div><?php endif; ?>
-
 <div class="service-section">
     <div class="section-label">서비스 안내</div>
-    <a href="#" class="service-item red"><span>제휴 및 광고문의</span></a>
-    <a href="#" class="service-item"><span>이용약관</span></a>
-    <a href="#" class="service-item"><span>개인정보처리 방침</span></a>
-    <a href="#" class="service-item" style="border-bottom:none;"><span>위치기반 서비스 이용약관</span></a>
+    <a href="qna.php" class="service-item red"><span>제휴 및 광고문의</span></a>
+    <a href="<?php echo htmlspecialchars(G5_BBS_URL . '/register.php?view=terms', ENT_QUOTES); ?>" class="service-item"><span>이용약관 및 개인정보처리 방침</span></a>
 </div>
 
 <form method="post">
+<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token, ENT_QUOTES); ?>">
 
 <div class="service-section">
     <div class="section-label">알림 설정</div>
@@ -111,18 +120,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 <script>
 document.querySelectorAll('form input[type="checkbox"]').forEach(function(cb) {
     cb.addEventListener('change', function() {
-        var form = document.querySelector('form');
-        var data = new FormData(form);
-        // checkbox o'chirilganda FormData ga qo'shilmaydi — 0 qiymat bilan qo'shamiz
-        form.querySelectorAll('input[type="checkbox"]').forEach(function(c) {
-            if (!c.checked) data.set(c.name, '0');
-        });
-        fetch('', { method: 'POST', body: data })
-            .then(function() {
+        var changed = this;
+        var previous = !changed.checked;
+        var data = new FormData();
+        data.set('csrf_token', document.querySelector('[name="csrf_token"]').value);
+        data.set('field', changed.name);
+        data.set('value', changed.checked ? '1' : '0');
+        changed.disabled = true;
+        fetch(location.pathname + location.search, { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function(res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(function(result) {
+                if (!result.ok) throw new Error(result.message || 'save_failed');
                 var toast = document.getElementById('toast');
                 toast.style.display = 'block';
                 setTimeout(function() { toast.style.display = 'none'; }, 1500);
-            });
+            })
+            .catch(function() {
+                changed.checked = previous;
+                alert('설정 저장에 실패했습니다. 다시 시도해주세요.');
+            })
+            .finally(function() { changed.disabled = false; });
     });
 });
 </script>
@@ -135,16 +155,55 @@ $is_app_mode   = isset($_GET['app']) && $_GET['app'] == '1';
 $logout_return = rtrim((string) parse_url(G5_URL, PHP_URL_PATH), '/') . '/gangnamunni/index.php' . ($is_app_mode ? '?app=1' : '');
 $logout_url    = G5_BBS_URL . '/logout.php?url=' . urlencode($logout_return);
 $withdraw_url  = G5_URL . '/gangnamunni/withdraw.php';
+// 바텀시트 문구용 — 로그인한 본인의 이름. 닉네임 > 이름 > 아이디 순으로 사용한다.
+$sheet_member  = function_exists('get_gangnamunni_member') ? get_gangnamunni_member() : ($member ?? []);
+$sheet_nick    = '';
+foreach (['mb_nick', 'mb_name', 'mb_id'] as $_k) {
+    if (!empty($sheet_member[$_k])) { $sheet_nick = trim((string) $sheet_member[$_k]); break; }
+}
+if ($sheet_nick === '') $sheet_nick = '회원';
 ?>
 <div class="service-section" style="margin-top:10px;margin-bottom:30px;">
     <div class="section-label">계정 관리</div>
-    <a href="<?php echo htmlspecialchars($logout_url, ENT_QUOTES); ?>" class="service-item">
+    <?php // href 는 JS 미동작 시의 폴백 — 평소에는 바텀시트로 한 번 더 확인받는다. ?>
+    <a href="<?php echo htmlspecialchars($logout_url, ENT_QUOTES); ?>" class="service-item" id="btnLogout">
         <span>로그아웃</span>
         <i class="bi bi-chevron-right"></i>
     </a>
-    <a href="<?php echo htmlspecialchars($withdraw_url, ENT_QUOTES); ?>" class="service-item red" style="border-bottom:none;">
+    <a href="<?php echo htmlspecialchars($withdraw_url, ENT_QUOTES); ?>" class="service-item red" style="border-bottom:none;" id="btnWithdraw">
         <span>회원 탈퇴</span>
         <i class="bi bi-chevron-right"></i>
     </a>
 </div>
+
+<?php include __DIR__ . '/includes/bottom_sheet.php'; ?>
+<script>
+(function () {
+    var LOGOUT_URL   = <?php echo json_encode($logout_url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    var WITHDRAW_URL = <?php echo json_encode($withdraw_url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    var NICK         = <?php echo json_encode($sheet_nick, JSON_UNESCAPED_UNICODE); ?>;
+
+    document.getElementById('btnLogout').addEventListener('click', function (e) {
+        e.preventDefault();
+        SMSheet.open({
+            title:       '잠시 로그아웃하시겠어요?',
+            confirmText: '로그아웃',
+            cancelText:  '아니오',
+            onConfirm:   function () { location.href = LOGOUT_URL; }
+        });
+    });
+
+    document.getElementById('btnWithdraw').addEventListener('click', function (e) {
+        e.preventDefault();
+        SMSheet.open({
+            title:       NICK + '님 정말 떠나시겠어요?\n서울미녀를 떠나시게 되어 아쉬워요 ㅠㅠ',
+            desc:        '탈퇴 후에는 일부 정보가 복구되지 않을 수 있어요',
+            confirmText: '탈퇴하기',
+            cancelText:  '아니오',
+            // 실제 탈퇴는 withdraw.php 에서 비밀번호 확인 + CSRF 로 처리한다.
+            onConfirm:   function () { location.href = WITHDRAW_URL; }
+        });
+    });
+})();
+</script>
 </body></html>
