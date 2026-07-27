@@ -32,12 +32,10 @@ include_once __DIR__ . '/includes/sso_auto_login.php';
 $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
 
 if (!$is_logged_in) {
-    // 앱 모드면 JSON 에러
-    if ($is_app_mode) {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error' => 'login_required', 'message' => '로그인이 필요합니다.']);
-        exit;
-    }
+    // [로그아웃 오류 팝업 수정] 앱 WebView 는 이 페이지를 HTML 로 렌더링한다.
+    // 예전에는 앱 모드에서 JSON {"error":"login_required"} 를 내려보냈는데,
+    // 로그아웃 직후 앱이 마이페이지를 다시 열면 그 JSON 을 오류로 해석해 팝업을 띄웠다.
+    // → 앱 모드에서도 아래 "로그인 안내" HTML 을 그대로 보여준다(팝업 없음, 리다이렉트 루프 없음).
     // 비로그인: 리다이렉트 대신 로그인 안내 UI 표시 (리다이렉트 루프 방지)
     $mb_id = ''; $mb_nick = ''; $mb_email = ''; $mb_hp = ''; $mb_datetime = ''; $mb_level = 0;
 } else {
@@ -393,8 +391,10 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 <!-- 로그아웃 -->
 <div class="logout-section">
     <?php // logout.php 는 url 파라미터에 스킴/도메인이 있으면 "도메인 지정 불가" 로 거부한다.
-    //       따라서 도메인을 뺀 경로만 전달한다(베이스 경로 유지). 로그아웃 후 index.php 로 이동. ?>
-    <a href="<?php echo G5_BBS_URL; ?>/logout.php?url=<?php echo urlencode(rtrim((string) parse_url(G5_URL, PHP_URL_PATH), '/') . '/gangnamunni/index.php'); ?>" class="logout-btn">로그아웃</a>
+    //       따라서 도메인을 뺀 경로만 전달한다(베이스 경로 유지). 로그아웃 후 index.php 로 이동.
+    //       앱 WebView 에서는 app=1 을 유지해야 앱 전용 화면으로 정상 복귀한다. (한글 주석)
+    $logout_return = rtrim((string) parse_url(G5_URL, PHP_URL_PATH), '/') . '/gangnamunni/index.php' . ($is_app_mode ? '?app=1' : ''); ?>
+    <a href="<?php echo G5_BBS_URL; ?>/logout.php?url=<?php echo urlencode($logout_return); ?>" class="logout-btn">로그아웃</a>
     <a href="<?php echo htmlspecialchars($withdraw_url, ENT_QUOTES); ?>" style="display:block;text-align:center;padding:14px 20px;color:#999;font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));text-decoration:underline;">회원 탈퇴</a>
 </div>
 
@@ -406,7 +406,9 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     </div>
     <p style="font-size:16px;font-weight:600;color:var(--bs-body-color, #333);margin-bottom:8px;">로그인이 필요합니다</p>
     <p style="font-size:14px;color:#999;margin-bottom:24px;">로그인 후 마이페이지를 이용하실 수 있습니다.</p>
-    <a href="<?php echo G5_URL; ?>/gangnamunni/auth/login.php?url=<?php echo urlencode(G5_URL . '/gangnamunni/mypage.php'); ?>" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
+    <?php // 앱 WebView 에서는 로그인 후에도 app=1 로 돌아와야 앱 전용 레이아웃이 유지된다. (한글 주석)
+    $login_return = G5_URL . '/gangnamunni/mypage.php' . ($is_app_mode ? '?app=1' : ''); ?>
+    <a href="<?php echo G5_URL; ?>/gangnamunni/auth/login.php?url=<?php echo urlencode($login_return); ?>" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
     <div style="margin-top:12px;">
         <a href="<?php echo G5_BBS_URL; ?>/register.php" style="font-size:13px;color:#999;text-decoration:none;">아직 회원이 아니신가요? <span style="color:#AE1932;font-weight:600;">회원가입</span></a>
     </div>
