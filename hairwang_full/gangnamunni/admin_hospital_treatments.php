@@ -37,7 +37,6 @@ $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_m
 require_once __DIR__ . '/includes/treatment_approval_helper.php';
 ensure_treatment_approval_schema($connect);
 
-// 시술별 상세페이지 이미지 헬퍼 (#시술이미지)
 require_once __DIR__ . '/includes/hospital_treatment_images.php';
 hti_ensure_schema($connect);
 
@@ -376,12 +375,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // --- 시술 상세페이지 이미지 추가 (#시술이미지) ---
-        // 병원이 배정받은 시술 각각에 대해 상세페이지용 이미지를 여러 장 등록한다.
+        // 시술 상세페이지 이미지 추가
         if ($action === 'image_add') {
             $id = intval($_POST['id'] ?? 0);
             if ($id > 0) {
-                // 배정 행에서 hospital_id / treatment_id 를 서버에서 다시 읽는다(폼 값 신뢰 금지).
                 $own = mysqli_prepare($connect, "SELECT hospital_id, treatment_id FROM gangnamunni_hospital_treatments WHERE id = ?");
                 mysqli_stmt_bind_param($own, 'i', $id);
                 mysqli_stmt_execute($own);
@@ -400,7 +397,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     } elseif ($up && isset($up['url'])) {
                         $image_url = $up['url'];
                     } else {
-                        // 파일 대신 URL 직접 입력도 허용
                         $image_url = trim($_POST['image_url'] ?? '');
                     }
 
@@ -411,7 +407,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         }
                     } else {
                         $caption = trim($_POST['caption'] ?? '');
-                        // 새 이미지는 맨 뒤로
                         $next_order = 0;
                         $ord_stmt = mysqli_prepare($connect,
                             "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM gangnamunni_hospital_treatment_images WHERE hospital_treatment_id = ?");
@@ -443,12 +438,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // --- 시술 상세페이지 이미지 삭제 (#시술이미지) ---
+        // 시술 상세페이지 이미지 삭제
         if ($action === 'image_delete') {
-            $id = intval($_POST['id'] ?? 0);          // hospital_treatment_id (소유 검증 대상)
+            $id = intval($_POST['id'] ?? 0);
             $image_id = intval($_POST['image_id'] ?? 0);
             if ($id > 0 && $image_id > 0) {
-                // 파일도 함께 정리 — 업로드된 상대경로일 때만 삭제한다.
                 $sel = mysqli_prepare($connect,
                     "SELECT image_url FROM gangnamunni_hospital_treatment_images WHERE id = ? AND hospital_treatment_id = ?");
                 $old_url = '';
@@ -472,11 +466,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $path = __DIR__ . '/' . $old_url;
                     if (is_file($path)) @unlink($path);
                 }
-
                 header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('시술 이미지가 삭제되었습니다.'));
                 exit;
             }
         }
+
     }
 }
 
@@ -571,10 +565,11 @@ if (!empty($assigned_treatments)) {
     }
 }
 
-// 배정 시술별 상세페이지 이미지 로드 → 이미지 관리 모달용 (#시술이미지)
 $ht_images = [];
 if (!empty($assigned_treatments)) {
-    $ht_images = hti_images_by_ht_ids($connect, array_map(function ($r) { return intval($r['id']); }, $assigned_treatments));
+    $ht_images = hti_images_by_ht_ids($connect, array_map(function ($r) {
+        return intval($r['id']);
+    }, $assigned_treatments));
 }
 
 // ===== 미배정 시술 목록 (추가용) =====
@@ -938,9 +933,9 @@ require_once __DIR__ . '/includes/admin_header.php';
                             </span>
                         </td>
                         <td class="text-center">
-                            <?php // 시술 상세페이지 이미지 — 시술마다 따로 관리한다 (#시술이미지)
-                            $img_cnt = count($ht_images[intval($at['id'])] ?? []); ?>
-                            <button class="btn btn-sm <?php echo $img_cnt ? 'btn-outline-success' : 'btn-outline-secondary'; ?>"
+                            <?php $img_cnt = count($ht_images[intval($at['id'])] ?? []); ?>
+                            <button type="button"
+                                class="btn btn-sm <?php echo $img_cnt ? 'btn-outline-success' : 'btn-outline-secondary'; ?>"
                                 title="시술 상세페이지 이미지 관리"
                                 onclick="openTreatmentImageModal(<?php echo intval($at['id']); ?>, <?php echo htmlspecialchars(json_encode($at['treatment_name'] ?? '', JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>)">
                                 <i class="bi bi-images"></i>
@@ -1193,7 +1188,7 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
-<!-- 시술 상세페이지 이미지 관리 모달 (#시술이미지) -->
+<!-- 시술 상세페이지 이미지 추가/삭제 모달 -->
 <div class="modal fade" id="treatmentImageModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -1202,15 +1197,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted small">
-                    여기에 올린 이미지는 해당 병원의 <strong>이 시술</strong> 상세페이지(‘상세 정보’ 영역)에만 노출됩니다.
-                    시술마다 따로 등록하세요.
-                </p>
-
-                <!-- 등록된 이미지 -->
+                <p class="text-muted small">등록한 이미지는 해당 병원의 이 시술 상세페이지에만 노출됩니다.</p>
                 <div id="ti_gallery" class="row g-2 mb-3"></div>
-
-                <!-- 새 이미지 추가 -->
                 <form method="post" enctype="multipart/form-data" class="border-top pt-3">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                     <input type="hidden" name="action" value="image_add">
@@ -1219,7 +1207,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <div class="row g-2 align-items-end">
                         <div class="col-md-5">
                             <label class="form-label fw-bold small mb-1">이미지 파일</label>
-                            <input type="file" name="image_file" accept="image/*" class="form-control form-control-sm">
+                            <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.gif,.webp" class="form-control form-control-sm">
                             <div class="form-text">JPG · PNG · GIF · WebP / 10MB 이하</div>
                         </div>
                         <div class="col-md-4">
@@ -1240,7 +1228,6 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
-<!-- 이미지 삭제 전용 폼 (갤러리에서 제출) -->
 <form method="post" id="ti_delete_form" class="d-none">
     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
     <input type="hidden" name="action" value="image_delete">
@@ -1250,20 +1237,17 @@ require_once __DIR__ . '/includes/admin_header.php';
 </form>
 
 <script>
-// ===== 시술 상세페이지 이미지 관리 (#시술이미지) =====
-// 배정 시술 id → [{id, image_url, caption}, ...]
 var HT_IMAGES = <?php echo json_encode($ht_images, JSON_UNESCAPED_UNICODE); ?>;
 
 function tiEscape(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
-        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
     });
 }
 
 function openTreatmentImageModal(htId, name) {
     document.getElementById('ti_ht_id').value = htId;
     document.getElementById('ti_treatment_name').textContent = name || '';
-
     var list = HT_IMAGES[htId] || [];
     var gallery = document.getElementById('ti_gallery');
     if (!list.length) {
@@ -1271,15 +1255,13 @@ function openTreatmentImageModal(htId, name) {
             + '<i class="bi bi-image" style="font-size:1.8rem;"></i><br>등록된 이미지가 없습니다.</div>';
     } else {
         gallery.innerHTML = list.map(function(img, i) {
-            return '<div class="col-6 col-md-3">'
-                + '<div class="border rounded overflow-hidden h-100 d-flex flex-column">'
-                + '<img src="' + tiEscape(img.image_url) + '" alt="" style="width:100%; aspect-ratio:4/3; object-fit:cover;">'
+            return '<div class="col-6 col-md-3"><div class="border rounded overflow-hidden h-100 d-flex flex-column">'
+                + '<img src="' + tiEscape(img.image_url) + '" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;">'
                 + '<div class="p-2 d-flex align-items-center justify-content-between gap-1">'
                 + '<small class="text-muted text-truncate">' + (i + 1) + '. ' + tiEscape(img.caption || '') + '</small>'
-                + '<button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"'
-                + ' onclick="deleteTreatmentImage(' + htId + ',' + img.id + ')" title="삭제">'
-                + '<i class="bi bi-trash"></i></button>'
-                + '</div></div></div>';
+                + '<button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" '
+                + 'onclick="deleteTreatmentImage(' + htId + ',' + img.id + ')" title="삭제">'
+                + '<i class="bi bi-trash"></i></button></div></div></div>';
         }).join('');
     }
     new bootstrap.Modal(document.getElementById('treatmentImageModal')).show();
