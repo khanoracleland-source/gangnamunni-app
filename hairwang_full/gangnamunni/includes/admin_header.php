@@ -258,6 +258,7 @@ $admin_menus = [
     // 결제 관리 그룹
     ['type' => 'group', 'label' => '결제 관리', 'icon' => 'bi-credit-card-2-front', 'key' => 'payment_group', 'children' => [
         ['url' => 'admin_payment.php', 'label' => '결제 관리', 'icon' => 'bi-receipt', 'key' => 'payment_status'],
+        ['url' => 'admin_booking_revenue.php', 'label' => '예약 결제 매출', 'icon' => 'bi-cash-coin', 'key' => 'booking_revenue'],
         ['url' => 'admin_payment.php?tab=products', 'label' => '상품 관리', 'icon' => 'bi-box-seam', 'key' => 'payment_products'],
         ['url' => 'admin_payment.php?tab=stats', 'label' => '매출 통계', 'icon' => 'bi-graph-up', 'key' => 'payment_stats'],
         ['url' => 'admin_payment.php?tab=pg_settings', 'label' => 'PG 설정', 'icon' => 'bi-gear', 'key' => 'pg_settings'],
@@ -368,6 +369,7 @@ $menu_descriptions = [
     'hospital_wizard' => '새 ' . term('business', '병원') . '을 단계별 마법사로 등록합니다.',
     'ad_wizard' => '새 광고를 단계별 마법사로 신청합니다.',
     'bookings' => '예약 목록 조회, 승인/거절, HMS 연동',
+    'booking_revenue' => '환자 예약 결제 금액을 병원별로 집계하고, 병원별 환자·' . term('service', '시술') . '별 결제 상세를 조회합니다. (super_admin=전체 병원, 그 외=소속 병원만)',
     'consultations' => '상담 신청 조회, 승인/완료/거절',
     'treatments' => term('service', '시술') . ' CRUD, 카테고리/인기/할인가 관리',
     'treatment_master' => term('service', '시술') . ' 마스터 데이터 관리 (카테고리/인기/할인가)',
