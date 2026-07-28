@@ -18,6 +18,7 @@ class AppointmentTransaction extends Model
         'appointment_id',
         'transaction_type',
         'transaction_id',
+        'amount',
         'tenant_id',
     ];
 

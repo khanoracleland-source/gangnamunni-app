@@ -34,9 +34,13 @@ class AppointmentTransactionController extends AppBaseController
     public function createStripeSession(Request $request): JsonResponse
     {
         $tenantId = User::findOrFail(getLoggedInUserId())->tenant_id;
-        $amount = $request->get('amount');
         $appointmentId = $request->get('appointment_id');
-        $appointment = Appointment::find($appointmentId);
+        $appointment = Appointment::with('doctor')->findOrFail($appointmentId);
+        $amount = (float) $appointment->doctor->appointment_charge;
+
+        if ($amount <= 0) {
+            return $this->sendError('A valid server-side appointment charge is required.');
+        }
 
         $data = [
             'appointment_id' => $appointmentId,
@@ -223,9 +227,13 @@ class AppointmentTransactionController extends AppBaseController
     public function webCreateStripeSession(Request $request): JsonResponse
     {
         $tenantId = User::findOrFail(getLoggedInUserId())->tenant_id;
-        $amount = $request->get('amount');
         $appointmentId = $request->get('appointment_id');
-        $appointment = Appointment::with('patient.user')->find($appointmentId);
+        $appointment = Appointment::with(['patient.user', 'doctor'])->findOrFail($appointmentId);
+        $amount = (float) $appointment->doctor->appointment_charge;
+
+        if ($amount <= 0) {
+            return $this->sendError('A valid server-side appointment charge is required.');
+        }
         $data = [
             'appointment_id' => $appointmentId,
             'amount' => $amount,

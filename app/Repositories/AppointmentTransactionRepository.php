@@ -102,17 +102,31 @@ class AppointmentTransactionRepository extends BaseRepository
         try {
             DB::beginTransaction();
 
-            $appointmentTransaction = AppointmentTransaction::create([
+            $appointment = Appointment::with('doctor')
+                ->lockForUpdate()
+                ->findOrFail($sessionData->metadata->appointment_id);
+            $expectedAmount = (int) round($appointment->doctor->appointment_charge * 100);
+
+            if ($sessionData->payment_status !== 'paid'
+                || (int) $sessionData->amount_total !== $expectedAmount
+                || strtolower((string) $sessionData->currency) !== strtolower(getCurrentCurrency())) {
+                throw new UnprocessableEntityHttpException('Stripe payment verification failed.');
+            }
+
+            AppointmentTransaction::firstOrCreate([
                 'transaction_id' => $sessionData->id,
-                'appointment_id' => $sessionData->metadata->appointment_id,
-                'transaction_type' =>$sessionData->metadata->payment_mode,
-                'amount' =>$sessionData->metadata->amount,
-                'tenant_id' => getLoggedInUser()->tenant_id
+            ], [
+                'transaction_id' => $sessionData->id,
+                'appointment_id' => $appointment->id,
+                'transaction_type' => \App\Models\Appointment::TYPE_STRIPE,
+                'amount' => $expectedAmount / 100,
+                'tenant_id' => getLoggedInUser()->tenant_id,
             ]);
 
-            // update appoitment payment Status
-            $appointment = Appointment::find($sessionData->metadata->appointment_id);
-            $appointment->update(['is_completed' => 1,'payment_status' => 1,'payment_type' => \App\Models\Appointment::TYPE_STRIPE]);
+            $appointment->update([
+                'payment_status' => 1,
+                'payment_type' => \App\Models\Appointment::TYPE_STRIPE,
+            ]);
 
             DB::commit();
             return true;
