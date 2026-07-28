@@ -429,8 +429,8 @@ $page_css = '
     }
 
 .card-tag-price { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
-.card-tag-item { font-size: 16px; color: #000; padding: 2px 0; text-align: left; }
-.card-price { width: 100%; text-align: right; }
+.card-tag-item { font-size: 18px; font-weight: 700; color: #000; padding: 2px 0; text-align: left; }
+.card-price { width: 100%; text-align: left; }
 .card-price-num { font-size: 16px; font-weight: 700; color: #AE1932; }
 .card-price-unit { font-size: 12px; font-weight: 400; color: #000000; }
 .card-price-max { font-size: 12px; color: #858484; text-decoration: line-through; margin-right: 2px; }
