@@ -257,12 +257,7 @@ $admin_menus = [
 
     // 결제 관리 그룹
     ['type' => 'group', 'label' => '결제 관리', 'icon' => 'bi-credit-card-2-front', 'key' => 'payment_group', 'children' => [
-        ['url' => 'admin_payment.php', 'label' => '결제 관리', 'icon' => 'bi-receipt', 'key' => 'payment_status'],
         ['url' => 'admin_booking_revenue.php', 'label' => '예약 결제 매출', 'icon' => 'bi-cash-coin', 'key' => 'booking_revenue'],
-        ['url' => 'admin_payment.php?tab=products', 'label' => '상품 관리', 'icon' => 'bi-box-seam', 'key' => 'payment_products'],
-        ['url' => 'admin_payment.php?tab=stats', 'label' => '매출 통계', 'icon' => 'bi-graph-up', 'key' => 'payment_stats'],
-        ['url' => 'admin_payment.php?tab=pg_settings', 'label' => 'PG 설정', 'icon' => 'bi-gear', 'key' => 'pg_settings'],
-        ['url' => 'admin_pay_bridge.php', 'label' => '결제하기', 'icon' => 'bi-cart-check', 'key' => 'test_payment'],
     ]],
 
     ['type' => 'divider'],
