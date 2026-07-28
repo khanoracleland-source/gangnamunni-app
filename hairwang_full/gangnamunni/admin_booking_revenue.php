@@ -102,7 +102,7 @@ $period_end = date('Y-m-t', strtotime($to));
 
 if ($table_exists && ($is_super || !empty($scope_ids))) {
     $base_where = "p.payment_type='booking' AND p.funds_recipient='hospital'
-                   AND p.status IN ('paid','partially_refunded')
+                   AND p.status IN ('paid','partially_refunded','refunded')
                    AND p.paid_at >= ? AND p.paid_at < DATE_ADD(?, INTERVAL 1 DAY)";
     $base_types = 'ss';
     $base_params = [$from, $to];
@@ -184,7 +184,7 @@ if ($is_super && $selected_hospital === 0) {
                        SUM(amount-refunded_amount) AS net,MAX(paid_at) AS last_paid_at
                 FROM gangnamunni_platform_payments
                 WHERE payment_type='booking' AND funds_recipient='hospital'
-                  AND status IN ('paid','partially_refunded')
+                  AND status IN ('paid','partially_refunded','refunded')
                   AND paid_at>=? AND paid_at<DATE_ADD(?,INTERVAL 1 DAY)
                 GROUP BY hospital_id
              ) p ON p.hospital_id=h.id

@@ -124,13 +124,8 @@ case 'run_ad_test':
         $tests[] = ['test'=>'Ad INSERT','status'=>'FAIL','err'=>mysqli_error($connect)];
     }
 
-    // gangnamunni_ad_payments: 복잡한 구조 - merchant_uid, product_id 등 필수
-    $muid = 'TC_'.time().'_'.rand(1000,9999);
-    if (mysqli_query($connect, "INSERT INTO gangnamunni_ad_payments (merchant_uid,ad_id,product_id,product_name,amount,buyer_name,status,created_at,updated_at) VALUES ('".$esc($muid)."',{$adid},'test_product','Test Ad','100000','TestBuyer','completed','{$now}','{$now}')")) {
-        $tests[] = ['test'=>'Payment INSERT','status'=>'PASS'];
-    } else {
-        $tests[] = ['test'=>'Payment INSERT','status'=>'FAIL','err'=>mysqli_error($connect)];
-    }
+    // Financial states are never fabricated by this CRUD test runner.
+    $tests[] = ['test'=>'Payment INSERT','status'=>'SKIP','reason'=>'Provider verification required'];
 
     // Verify
     $av = mysqli_fetch_assoc(mysqli_query($connect,"SELECT id,status FROM gangnamunni_advertisers WHERE id={$aid}"));
