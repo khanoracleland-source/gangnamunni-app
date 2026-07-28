@@ -46,7 +46,7 @@ if (!isset($g5['api_key_table'])) {
           `ak_id` int(11) NOT NULL AUTO_INCREMENT,
           `ak_name` varchar(100) NOT NULL,
           `ak_key` varchar(64) NOT NULL,
-          `ak_secret` varchar(64) NOT NULL,
+          `ak_secret` varchar(255) NOT NULL,
           `ak_type` enum('sns','pg','all') NOT NULL DEFAULT 'all',
           `ak_ip_whitelist` text,
           `ak_status` tinyint(4) NOT NULL DEFAULT '1',
@@ -100,6 +100,15 @@ if (!isset($g5['api_log_table'])) {
 }
 
 // API 로거 클래스
+class ApiException extends Exception {
+    public $apiCode;
+
+    public function __construct($message, $apiCode = 'UNKNOWN_ERROR', Throwable $previous = null) {
+        $this->apiCode = $apiCode;
+        parent::__construct($message, 0, $previous);
+    }
+}
+
 class ApiLogger {
     
     /**
@@ -182,14 +191,36 @@ class ApiAuth {
         $sql = "
             SELECT * FROM {$g5['api_key_table']}
             WHERE ak_key = '" . sql_real_escape_string($api_key) . "'
-              AND ak_secret = '" . sql_real_escape_string($api_secret) . "'
               AND ak_status = 1
               AND (ak_expired_at IS NULL OR ak_expired_at > NOW())
+            LIMIT 1
         ";
         
         $result = sql_fetch($sql);
-        
-        return $result ? $result : false;
+        if (!$result) {
+            return false;
+        }
+
+        $stored = (string)$result['ak_secret'];
+        $valid = password_get_info($stored)['algo']
+            ? password_verify($api_secret, $stored)
+            : hash_equals($stored, $api_secret);
+
+        if (!$valid) {
+            return false;
+        }
+
+        // Transparently migrate legacy plaintext secrets after successful auth.
+        if (!password_get_info($stored)['algo']) {
+            $hash = password_hash($api_secret, PASSWORD_DEFAULT);
+            sql_query("ALTER TABLE {$g5['api_key_table']} MODIFY ak_secret varchar(255) NOT NULL", true);
+            sql_query("UPDATE {$g5['api_key_table']} SET ak_secret = '" .
+                sql_real_escape_string($hash) . "' WHERE ak_id = '" .
+                sql_real_escape_string($result['ak_id']) . "'", true);
+            $result['ak_secret'] = $hash;
+        }
+
+        return $result;
     }
     
     /**
@@ -267,21 +298,67 @@ class ApiAuth {
      * @return string 요청 IP
      */
     public static function getRequestIp() {
-        $ip = $_SERVER['REMOTE_ADDR'];
-        
-        // 프록시 서버를 통한 요청인 경우 실제 IP 확인
-        if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-            $ip = trim($ips[0]);
-        } elseif (isset($_SERVER['HTTP_CLIENT_IP'])) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
+        // Forwarded headers are attacker-controlled unless the application has
+        // an explicit trusted-proxy configuration.
+        return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+    }
+
+    public static function enforceRateLimit($ak_id, $scope, $limit = 60) {
+        global $g5;
+        $table = G5_TABLE_PREFIX . 'api_rate_limits';
+        sql_query("CREATE TABLE IF NOT EXISTS `{$table}` (
+            `rate_key` char(64) NOT NULL,
+            `hits` int unsigned NOT NULL DEFAULT 1,
+            `expires_at` datetime NOT NULL,
+            PRIMARY KEY (`rate_key`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", true);
+
+        $bucket = (int) floor(time() / 60);
+        $rate_key = hash('sha256', $ak_id . '|' . $scope . '|' . self::getRequestIp() . '|' . $bucket);
+        sql_query("INSERT INTO {$table} (rate_key, hits, expires_at)
+            VALUES ('" . sql_real_escape_string($rate_key) . "', 1, DATE_ADD(NOW(), INTERVAL 2 MINUTE))
+            ON DUPLICATE KEY UPDATE hits = hits + 1", true);
+        $row = sql_fetch("SELECT hits FROM {$table} WHERE rate_key = '" .
+            sql_real_escape_string($rate_key) . "' LIMIT 1");
+
+        if (mt_rand(1, 100) === 1) {
+            sql_query("DELETE FROM {$table} WHERE expires_at < NOW()", true);
         }
-        
-        return $ip;
+
+        return (int)($row['hits'] ?? 0) <= (int)$limit;
     }
 }
 
+function pg_api_callback_url_is_allowed($url) {
+    if ($url === '') {
+        return true;
+    }
+
+    $parts = parse_url($url);
+    if (!$parts || strtolower($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])) {
+        return false;
+    }
+
+    $allowed = defined('G5_PG_CALLBACK_HOSTS')
+        ? array_filter(array_map('trim', explode(',', strtolower(G5_PG_CALLBACK_HOSTS))))
+        : array();
+
+    return in_array(strtolower($parts['host']), $allowed, true);
+}
+
 // API 응답 클래스
+function api_apply_cors_headers() {
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $allowed = defined('G5_API_ALLOWED_ORIGINS')
+        ? array_filter(array_map('trim', explode(',', G5_API_ALLOWED_ORIGINS)))
+        : array();
+
+    if ($origin !== '' && in_array($origin, $allowed, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Vary: Origin');
+    }
+}
+
 class ApiResponse {
     
     /**
@@ -293,7 +370,7 @@ class ApiResponse {
     public static function success($data = array(), $code = 200) {
         http_response_code($code);
         header('Content-Type: application/json; charset=utf-8');
-        header('Access-Control-Allow-Origin: *');
+        api_apply_cors_headers();
         
         $response = array(
             'success' => true,
@@ -315,7 +392,7 @@ class ApiResponse {
     public static function error($message = 'Error', $code = 400, $error_code = null) {
         http_response_code($code);
         header('Content-Type: application/json; charset=utf-8');
-        header('Access-Control-Allow-Origin: *');
+        api_apply_cors_headers();
         
         $response = array(
             'success' => false,
@@ -337,7 +414,7 @@ class ApiResponse {
     public static function validationError($errors) {
         http_response_code(422);
         header('Content-Type: application/json; charset=utf-8');
-        header('Access-Control-Allow-Origin: *');
+        api_apply_cors_headers();
         
         $response = array(
             'success' => false,
@@ -354,7 +431,7 @@ class ApiResponse {
 }
 
 // CORS 헤더 설정
-header('Access-Control-Allow-Origin: *');
+api_apply_cors_headers();
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, X-API-Secret');
 

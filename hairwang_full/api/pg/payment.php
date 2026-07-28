@@ -40,6 +40,13 @@ $request_ip = ApiAuth::getRequestIp();
 if (!ApiAuth::verifyIpWhitelist($api_key_info['ak_id'], $request_ip)) {
     ApiResponse::error('Your IP address is not authorized', 403, 'IP_NOT_ALLOWED');
 }
+if (!ApiAuth::enforceRateLimit($api_key_info['ak_id'], 'pg-payment', 30)) {
+    ApiResponse::error('Too many requests', 429, 'RATE_LIMITED');
+}
+
+if (!defined('G5_PG_PAYMENTS_ENABLED') || G5_PG_PAYMENTS_ENABLED !== true) {
+    ApiResponse::error('Payment providers are not configured. No payment state was changed.', 503, 'PAYMENT_PROVIDER_NOT_CONFIGURED');
+}
 
 // 요청 파라미터 가져오기
 $order_id = isset($_POST['order_id']) ? trim($_POST['order_id']) : '';
@@ -83,20 +90,21 @@ try {
         FROM {$g5['g5_pg_api_orders_table']} po
         LEFT JOIN {$g5['g5_shop_order_table']} od ON po.po_g5_order_id = od.od_id
         WHERE po.po_g5_order_id = '" . sql_real_escape_string($order_id) . "'
+          AND po.ak_id = '" . sql_real_escape_string($api_key_info['ak_id']) . "'
     ";
     
     $order = sql_fetch($sql);
     
     if (!$order) {
-        throw new Exception('Order not found', 'ORDER_NOT_FOUND');
+        throw new ApiException('Order not found', 'ORDER_NOT_FOUND');
     }
     
     if ($order['po_status'] === 'paid') {
-        throw new Exception('Order is already paid', 'ALREADY_PAID');
+        throw new ApiException('Order is already paid', 'ALREADY_PAID');
     }
     
     if ($order['po_status'] === 'cancelled') {
-        throw new Exception('Order is cancelled', 'ORDER_CANCELLED');
+        throw new ApiException('Order is cancelled', 'ORDER_CANCELLED');
     }
     
     // PG 사별 결제 처리
@@ -120,7 +128,7 @@ try {
             $payment_result = process_nicepay_payment($order);
             break;
         default:
-            throw new Exception('Unsupported payment method', 'UNSUPPORTED_PAYMENT_METHOD');
+            throw new ApiException('Unsupported payment method', 'UNSUPPORTED_PAYMENT_METHOD');
     }
     
     // 결제 결과 처리
@@ -193,7 +201,7 @@ try {
         
         sql_query($update_pg_order_sql);
         
-        throw new Exception($error_message, 'PAYMENT_FAILED');
+        throw new ApiException($error_message, 'PAYMENT_FAILED');
     }
     
     // API 요청 로그 기록
@@ -216,7 +224,7 @@ try {
 } catch (Exception $e) {
     // 에러 로그 기록
     $error_message = $e->getMessage();
-    $error_code = $e->getCode() ?: 'UNKNOWN_ERROR';
+    $error_code = $e instanceof ApiException ? $e->apiCode : 'UNKNOWN_ERROR';
     
     // API 요청 로그 기록
     $execution_time = microtime(true) - $log_start_time;
@@ -249,18 +257,13 @@ function process_inicis_payment($order) {
         // 이니시스 API 호출 로직
         // API 모드에서 동작하도록 수정 필요
         
-        // 여기서는 간단히 성공으로 처리 (실제 구현 필요)
         return array(
-            'success' => true,
-            'tid' => 'INI_' . time() . '_' . mt_rand(1000, 9999),
-            'response' => array(
-                'pg' => 'inicis',
-                'amount' => $order['po_amount'],
-                'order_id' => $order['po_g5_order_id']
-            )
+            'success' => false,
+            'error' => 'Inicis adapter is not configured',
+            'response' => array('code' => 'PAYMENT_PROVIDER_NOT_CONFIGURED')
         );
     } else {
-        throw new Exception('Inicis payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
+        throw new ApiException('Inicis payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
     }
 }
 
@@ -276,16 +279,12 @@ function process_lg_payment($order) {
         // LG U+ API 호출 로직
         
         return array(
-            'success' => true,
-            'tid' => 'LG_' . time() . '_' . mt_rand(1000, 9999),
-            'response' => array(
-                'pg' => 'lg',
-                'amount' => $order['po_amount'],
-                'order_id' => $order['po_g5_order_id']
-            )
+            'success' => false,
+            'error' => 'LG U+ adapter is not configured',
+            'response' => array('code' => 'PAYMENT_PROVIDER_NOT_CONFIGURED')
         );
     } else {
-        throw new Exception('LG payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
+        throw new ApiException('LG payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
     }
 }
 
@@ -301,16 +300,12 @@ function process_kcp_payment($order) {
         // KCP API 호출 로직
         
         return array(
-            'success' => true,
-            'tid' => 'KCP_' . time() . '_' . mt_rand(1000, 9999),
-            'response' => array(
-                'pg' => 'kcp',
-                'amount' => $order['po_amount'],
-                'order_id' => $order['po_g5_order_id']
-            )
+            'success' => false,
+            'error' => 'KCP adapter is not configured',
+            'response' => array('code' => 'PAYMENT_PROVIDER_NOT_CONFIGURED')
         );
     } else {
-        throw new Exception('KCP payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
+        throw new ApiException('KCP payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
     }
 }
 
@@ -326,16 +321,12 @@ function process_kakaopay_payment($order) {
         // 카카오페이 API 호출 로직
         
         return array(
-            'success' => true,
-            'tid' => 'KAKAO_' . time() . '_' . mt_rand(1000, 9999),
-            'response' => array(
-                'pg' => 'kakaopay',
-                'amount' => $order['po_amount'],
-                'order_id' => $order['po_g5_order_id']
-            )
+            'success' => false,
+            'error' => 'KakaoPay adapter is not configured',
+            'response' => array('code' => 'PAYMENT_PROVIDER_NOT_CONFIGURED')
         );
     } else {
-        throw new Exception('Kakaopay payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
+        throw new ApiException('Kakaopay payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
     }
 }
 
@@ -351,16 +342,12 @@ function process_nicepay_payment($order) {
         // 나이스페이 API 호출 로직
         
         return array(
-            'success' => true,
-            'tid' => 'NICE_' . time() . '_' . mt_rand(1000, 9999),
-            'response' => array(
-                'pg' => 'nicepay',
-                'amount' => $order['po_amount'],
-                'order_id' => $order['po_g5_order_id']
-            )
+            'success' => false,
+            'error' => 'NicePay adapter is not configured',
+            'response' => array('code' => 'PAYMENT_PROVIDER_NOT_CONFIGURED')
         );
     } else {
-        throw new Exception('Nicepay payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
+        throw new ApiException('Nicepay payment module not found', 'PAYMENT_MODULE_NOT_FOUND');
     }
 }
 
@@ -368,13 +355,29 @@ function process_nicepay_payment($order) {
  * 콜백 URL로 결과 전송
  */
 function send_callback($callback_url, $data) {
+    if (!pg_api_callback_url_is_allowed($callback_url)) {
+        ApiLogger::logError('Blocked payment callback to a non-allowlisted URL', 'WARNING');
+        return false;
+    }
+
+    $timestamp = (string)time();
+    $payload = http_build_query($data);
+    $secret = defined('G5_WEBHOOK_SECRET') ? G5_WEBHOOK_SECRET : '';
+    $signature = hash_hmac('sha256', $timestamp . '.' . $payload, $secret);
     $ch = curl_init();
     
     curl_setopt($ch, CURLOPT_URL, $callback_url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        'X-Webhook-Timestamp: ' . $timestamp,
+        'X-Webhook-Signature: ' . $signature,
+    ));
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+    curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
     
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);

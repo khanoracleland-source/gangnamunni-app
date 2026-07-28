@@ -98,7 +98,7 @@ try {
 } catch (Exception $e) {
     // 에러 로그 기록
     $error_message = $e->getMessage();
-    $error_code = $e->getCode() ?: 'UNKNOWN_ERROR';
+    $error_code = $e instanceof ApiException ? $e->apiCode : 'UNKNOWN_ERROR';
     
     // API 요청 로그 기록
     $execution_time = microtime(true) - $log_start_time;
@@ -128,7 +128,7 @@ function get_cart() {
     $cart_id = isset($_GET['cart_id']) ? trim($_GET['cart_id']) : '';
     
     if (empty($cart_id)) {
-        throw new Exception('Cart ID is required', 'CART_ID_REQUIRED');
+        throw new ApiException('Cart ID is required', 'CART_ID_REQUIRED');
     }
     
     // 장바구니 목록 조회
@@ -207,32 +207,32 @@ function add_to_cart() {
     
     // 유효성 검사
     if (empty($item_id)) {
-        throw new Exception('Item ID is required', 'ITEM_ID_REQUIRED');
+        throw new ApiException('Item ID is required', 'ITEM_ID_REQUIRED');
     }
     
     if ($quantity < 1) {
-        throw new Exception('Quantity must be greater than 0', 'INVALID_QUANTITY');
+        throw new ApiException('Quantity must be greater than 0', 'INVALID_QUANTITY');
     }
     
     // 상품 정보 조회
     $item = sql_fetch("SELECT * FROM {$g5['prefix']}shop_item WHERE it_id = '" . sql_real_escape_string($item_id) . "'");
     
     if (!$item) {
-        throw new Exception('Item not found', 'ITEM_NOT_FOUND');
+        throw new ApiException('Item not found', 'ITEM_NOT_FOUND');
     }
     
     if (!$item['it_use']) {
-        throw new Exception('Item is not available', 'ITEM_NOT_AVAILABLE');
+        throw new ApiException('Item is not available', 'ITEM_NOT_AVAILABLE');
     }
     
     // 재고 확인
     if ($item['it_stock_qty'] < $quantity) {
-        throw new Exception('Insufficient stock', 'INSUFFICIENT_STOCK');
+        throw new ApiException('Insufficient stock', 'INSUFFICIENT_STOCK');
     }
     
     // 옵션 확인
     if (($item['it_option1'] && empty($option1)) || ($item['it_option2'] && empty($option2)) || ($item['it_option3'] && empty($option3))) {
-        throw new Exception('Options are required', 'OPTIONS_REQUIRED');
+        throw new ApiException('Options are required', 'OPTIONS_REQUIRED');
     }
     
     // 장바구니에 이미 있는지 확인
@@ -254,7 +254,7 @@ function add_to_cart() {
         $new_qty = $existing['ct_qty'] + $quantity;
         
         if ($item['it_stock_qty'] < $new_qty) {
-            throw new Exception('Insufficient stock', 'INSUFFICIENT_STOCK');
+            throw new ApiException('Insufficient stock', 'INSUFFICIENT_STOCK');
         }
         
         $update_sql = "
@@ -314,15 +314,15 @@ function update_cart() {
     
     // 유효성 검사
     if (empty($cart_id)) {
-        throw new Exception('Cart ID is required', 'CART_ID_REQUIRED');
+        throw new ApiException('Cart ID is required', 'CART_ID_REQUIRED');
     }
     
     if (empty($cart_item_id)) {
-        throw new Exception('Cart item ID is required', 'CART_ITEM_ID_REQUIRED');
+        throw new ApiException('Cart item ID is required', 'CART_ITEM_ID_REQUIRED');
     }
     
     if ($quantity < 1) {
-        throw new Exception('Quantity must be greater than 0', 'INVALID_QUANTITY');
+        throw new ApiException('Quantity must be greater than 0', 'INVALID_QUANTITY');
     }
     
     // 장바구니 아이템 조회
@@ -337,12 +337,12 @@ function update_cart() {
     $cart_item = sql_fetch($sql);
     
     if (!$cart_item) {
-        throw new Exception('Cart item not found', 'CART_ITEM_NOT_FOUND');
+        throw new ApiException('Cart item not found', 'CART_ITEM_NOT_FOUND');
     }
     
     // 재고 확인
     if ($cart_item['it_stock_qty'] < $quantity) {
-        throw new Exception('Insufficient stock', 'INSUFFICIENT_STOCK');
+        throw new ApiException('Insufficient stock', 'INSUFFICIENT_STOCK');
     }
     
     // 수량 수정
@@ -375,11 +375,11 @@ function delete_from_cart() {
     
     // 유효성 검사
     if (empty($cart_id)) {
-        throw new Exception('Cart ID is required', 'CART_ID_REQUIRED');
+        throw new ApiException('Cart ID is required', 'CART_ID_REQUIRED');
     }
     
     if (empty($cart_item_id)) {
-        throw new Exception('Cart item ID is required', 'CART_ITEM_ID_REQUIRED');
+        throw new ApiException('Cart item ID is required', 'CART_ITEM_ID_REQUIRED');
     }
     
     // 장바구니 아이템 조회
@@ -393,7 +393,7 @@ function delete_from_cart() {
     $cart_item = sql_fetch($sql);
     
     if (!$cart_item) {
-        throw new Exception('Cart item not found', 'CART_ITEM_NOT_FOUND');
+        throw new ApiException('Cart item not found', 'CART_ITEM_NOT_FOUND');
     }
     
     // 삭제

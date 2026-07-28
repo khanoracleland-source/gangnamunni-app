@@ -123,7 +123,7 @@ try {
 } catch (Exception $e) {
     // 에러 로그 기록
     $error_message = $e->getMessage();
-    $error_code = $e->getCode() ?: 'UNKNOWN_ERROR';
+    $error_code = $e instanceof ApiException ? $e->apiCode : 'UNKNOWN_ERROR';
     
     // API 요청 로그 기록
     $execution_time = microtime(true) - $log_start_time;
@@ -279,7 +279,7 @@ function get_item_detail($item_id) {
     $row = sql_fetch($sql);
     
     if (!$row) {
-        throw new Exception('Item not found', 'ITEM_NOT_FOUND');
+        throw new ApiException('Item not found', 'ITEM_NOT_FOUND');
     }
     
     // 이미지 URL 생성
@@ -346,7 +346,7 @@ function check_item_stock($item_id) {
     $row = sql_fetch($sql);
     
     if (!$row) {
-        throw new Exception('Item not found', 'ITEM_NOT_FOUND');
+        throw new ApiException('Item not found', 'ITEM_NOT_FOUND');
     }
     
     $in_stock = $row['it_stock_qty'] > 0;

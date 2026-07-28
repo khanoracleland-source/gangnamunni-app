@@ -29,13 +29,15 @@ if ($action === 'create') {
     // API 키 및 시크릿 생성
     $api_key = generate_api_key();
     $api_secret = generate_api_secret();
+    $api_secret_hash = password_hash($api_secret, PASSWORD_DEFAULT);
+    sql_query("ALTER TABLE {$g5['api_key_table']} MODIFY ak_secret varchar(255) NOT NULL", true);
     
     // 데이터베이스에 저장
     $sql = "
         INSERT INTO {$g5['api_key_table']}
         SET ak_name = '" . sql_real_escape_string($name) . "',
             ak_key = '" . sql_real_escape_string($api_key) . "',
-            ak_secret = '" . sql_real_escape_string($api_secret) . "',
+            ak_secret = '" . sql_real_escape_string($api_secret_hash) . "',
             ak_type = '" . sql_real_escape_string($type) . "',
             ak_status = 1,
             ak_created_at = NOW(),
@@ -44,7 +46,7 @@ if ($action === 'create') {
     
     sql_query($sql);
     
-    alert('API 키가 생성되었습니다.', './keylist.php');
+    alert('API 키가 생성되었습니다. 시크릿은 지금 한 번만 표시됩니다: ' . $api_secret, './keylist.php');
     
 } elseif ($action === 'update') {
     // API 키 수정
@@ -100,11 +102,13 @@ if ($action === 'create') {
     
     // 새로운 API 시크릿 생성
     $api_secret = generate_api_secret();
+    $api_secret_hash = password_hash($api_secret, PASSWORD_DEFAULT);
+    sql_query("ALTER TABLE {$g5['api_key_table']} MODIFY ak_secret varchar(255) NOT NULL", true);
     
     // 데이터베이스 업데이트
     $sql = "
         UPDATE {$g5['api_key_table']}
-        SET ak_secret = '" . sql_real_escape_string($api_secret) . "'
+        SET ak_secret = '" . sql_real_escape_string($api_secret_hash) . "'
         WHERE ak_id = '" . sql_real_escape_string($ak_id) . "'
     ";
     

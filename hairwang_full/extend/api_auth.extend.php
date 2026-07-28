@@ -19,6 +19,24 @@ if (!defined('G5_WEBHOOK_SECRET')) {
     define('G5_WEBHOOK_SECRET', 'default_webhook_secret_change_me_please');
 }
 
+// Payment API is fail-closed until a real PG adapter is installed.
+if (!defined('G5_PG_PAYMENTS_ENABLED')) {
+    define('G5_PG_PAYMENTS_ENABLED', false);
+}
+
+// Comma-separated callback hosts. Empty means callbacks are disabled.
+if (!defined('G5_PG_CALLBACK_HOSTS')) {
+    define('G5_PG_CALLBACK_HOSTS', '');
+}
+
+if (!defined('G5_PG_WEBHOOK_TOLERANCE')) {
+    define('G5_PG_WEBHOOK_TOLERANCE', 300);
+}
+
+if (!defined('G5_API_ALLOWED_ORIGINS')) {
+    define('G5_API_ALLOWED_ORIGINS', '');
+}
+
 // API 헤더 관련 상수
 if (!defined('G5_API_KEY_HEADER')) {
     define('G5_API_KEY_HEADER', 'X-API-Key');
@@ -91,12 +109,14 @@ function create_api_key($name, $type = 'all', $expired_at = null, $ip_whitelist 
     
     $api_key = generate_api_key();
     $api_secret = generate_api_secret();
+    $api_secret_hash = password_hash($api_secret, PASSWORD_DEFAULT);
+    sql_query("ALTER TABLE " . get_api_key_table() . " MODIFY ak_secret varchar(255) NOT NULL", true);
     
     $sql = "
         INSERT INTO " . get_api_key_table() . "
         SET ak_name = '" . sql_real_escape_string($name) . "',
             ak_key = '" . sql_real_escape_string($api_key) . "',
-            ak_secret = '" . sql_real_escape_string($api_secret) . "',
+            ak_secret = '" . sql_real_escape_string($api_secret_hash) . "',
             ak_type = '" . sql_real_escape_string($type) . "',
             ak_ip_whitelist = " . (!empty($ip_whitelist) ? "'" . sql_real_escape_string(json_encode($ip_whitelist, JSON_UNESCAPED_UNICODE)) . "'" : "NULL") . ",
             ak_status = 1,

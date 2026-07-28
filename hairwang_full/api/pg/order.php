@@ -40,6 +40,9 @@ $request_ip = ApiAuth::getRequestIp();
 if (!ApiAuth::verifyIpWhitelist($api_key_info['ak_id'], $request_ip)) {
     ApiResponse::error('Your IP address is not authorized', 403, 'IP_NOT_ALLOWED');
 }
+if (!ApiAuth::enforceRateLimit($api_key_info['ak_id'], 'pg-order', 30)) {
+    ApiResponse::error('Too many requests', 429, 'RATE_LIMITED');
+}
 
 // 요청 파라미터 가져오기
 $external_order_id = isset($_POST['external_order_id']) ? trim($_POST['external_order_id']) : '';
@@ -85,6 +88,10 @@ if (empty($payment_method)) {
     $errors['payment_method'] = 'Payment Method is required';
 }
 
+if (!pg_api_callback_url_is_allowed($callback_url)) {
+    $errors['callback_url'] = 'Callback URL must use HTTPS and an explicitly allowed host';
+}
+
 // 지원하는 결제 방법
 $supported_payment_methods = array('inicis', 'lg', 'kcp', 'kakaopay', 'nicepay');
 if (!in_array($payment_method, $supported_payment_methods)) {
@@ -100,6 +107,7 @@ $log_start_time = microtime(true);
 
 try {
     global $g5;
+    sql_query('START TRANSACTION');
     
     // PG 주문 테이블 확인
     if (!isset($g5['g5_pg_api_orders_table'])) {
@@ -120,7 +128,7 @@ try {
     $result = sql_fetch($sql);
     
     if ($result['cnt'] > 0) {
-        throw new Exception('Duplicate external order ID', 'DUPLICATE_ORDER');
+        throw new ApiException('Duplicate external order ID', 'DUPLICATE_ORDER');
     }
     
     // 장바구니 아이템 조회
@@ -162,7 +170,7 @@ try {
     }
     
     if (empty($cart_items)) {
-        throw new Exception('Cart is empty', 'EMPTY_CART');
+        throw new ApiException('Cart is empty', 'EMPTY_CART');
     }
     
     // 주문 번호 생성
@@ -207,7 +215,9 @@ try {
             od_shop_memo = 'External Order ID: ' . sql_real_escape_string($external_order_id)
     ";
     
-    sql_query($order_insert);
+    if (!sql_query($order_insert)) {
+        throw new ApiException('Unable to create shop order', 'ORDER_CREATE_FAILED');
+    }
     
     // 주문 상세 정보 생성
     foreach ($cart_items as $cart_item) {
@@ -223,7 +233,9 @@ try {
                 io_price = '" . sql_real_escape_string($cart_item['it_price']) . "'
         ";
         
-        sql_query($order_detail_insert);
+        if (!sql_query($order_detail_insert)) {
+            throw new ApiException('Unable to create order detail', 'ORDER_DETAIL_CREATE_FAILED');
+        }
     }
     
     // PG API 주문 정보 저장
@@ -242,7 +254,9 @@ try {
             po_updated_at = NOW()
     ";
     
-    sql_query($pg_order_insert);
+    if (!sql_query($pg_order_insert)) {
+        throw new ApiException('Unable to create payment order', 'PAYMENT_ORDER_CREATE_FAILED');
+    }
     
     $pg_order_id = sql_insert_id();
     
@@ -260,6 +274,8 @@ try {
         'callback_url' => $callback_url
     );
     
+    sql_query('COMMIT');
+
     // API 요청 로그 기록
     $execution_time = microtime(true) - $log_start_time;
     ApiLogger::logRequest(
@@ -295,9 +311,10 @@ try {
     ), 200);
     
 } catch (Exception $e) {
+    sql_query('ROLLBACK', true);
     // 에러 로그 기록
     $error_message = $e->getMessage();
-    $error_code = $e->getCode() ?: 'UNKNOWN_ERROR';
+    $error_code = $e instanceof ApiException ? $e->apiCode : 'UNKNOWN_ERROR';
     
     // API 요청 로그 기록
     $execution_time = microtime(true) - $log_start_time;

@@ -24,6 +24,26 @@ $webhook_secret = defined('G5_WEBHOOK_SECRET') ? G5_WEBHOOK_SECRET : 'default_we
 
 // 웹훅 데이터 가져오기
 $input = file_get_contents('php://input');
+$headers = function_exists('getallheaders') ? getallheaders() : array();
+$headers = array_change_key_case($headers, CASE_LOWER);
+$signature = trim($headers['x-webhook-signature'] ?? '');
+$signed_at = (int)($headers['x-webhook-timestamp'] ?? 0);
+$event_id = trim($headers['x-webhook-id'] ?? hash('sha256', $input));
+$tolerance = defined('G5_PG_WEBHOOK_TOLERANCE') ? (int)G5_PG_WEBHOOK_TOLERANCE : 300;
+
+if ($webhook_secret === '' || strpos($webhook_secret, 'default_') === 0) {
+    ApiResponse::error('Webhook secret is not configured', 503, 'WEBHOOK_NOT_CONFIGURED');
+}
+
+if ($signed_at <= 0 || abs(time() - $signed_at) > $tolerance) {
+    ApiResponse::error('Webhook timestamp is invalid or expired', 401, 'INVALID_WEBHOOK_TIMESTAMP');
+}
+
+$expected_signature = hash_hmac('sha256', $signed_at . '.' . $input, $webhook_secret);
+if ($signature === '' || !hash_equals($expected_signature, $signature)) {
+    ApiResponse::error('Invalid webhook signature', 401, 'INVALID_WEBHOOK_SIGNATURE');
+}
+
 $webhook_data = json_decode($input, true);
 
 if (!$webhook_data) {
@@ -40,6 +60,28 @@ if (empty($webhook_type)) {
 // 웹훅 처리
 try {
     global $g5;
+    $event_table = G5_TABLE_PREFIX . 'pg_webhook_events';
+    sql_query("CREATE TABLE IF NOT EXISTS `{$event_table}` (
+        `event_id` varchar(128) NOT NULL,
+        `event_type` varchar(50) NOT NULL,
+        `payload_hash` char(64) NOT NULL,
+        `created_at` datetime NOT NULL,
+        PRIMARY KEY (`event_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", true);
+
+    $event_exists = sql_fetch("SELECT event_id FROM {$event_table} WHERE event_id = '" .
+        sql_real_escape_string($event_id) . "' LIMIT 1");
+    if ($event_exists) {
+        ApiResponse::error('Webhook event was already processed', 409, 'WEBHOOK_REPLAY');
+    }
+
+    sql_query('START TRANSACTION');
+    if (!sql_query("INSERT INTO {$event_table} SET event_id = '" .
+        sql_real_escape_string($event_id) . "', event_type = '" .
+        sql_real_escape_string($webhook_type) . "', payload_hash = '" .
+        hash('sha256', $input) . "', created_at = NOW()")) {
+        throw new ApiException('Unable to register webhook event');
+    }
     
     switch ($webhook_type) {
         case 'payment_completed':
@@ -57,6 +99,8 @@ try {
         default:
             ApiResponse::error('Unknown webhook type', 400, 'UNKNOWN_WEBHOOK_TYPE');
     }
+
+    sql_query('COMMIT');
     
     // 성공 응답
     http_response_code(200);
@@ -67,6 +111,7 @@ try {
     ), JSON_UNESCAPED_UNICODE);
     
 } catch (Exception $e) {
+    sql_query('ROLLBACK', true);
     // 에러 로그
     ApiLogger::logError("Webhook processing error: " . $e->getMessage(), 'ERROR');
     
@@ -89,15 +134,15 @@ function process_payment_completed_webhook($webhook_data) {
     
     // 유효성 검사
     if (empty($order_id)) {
-        throw new Exception('Order ID is required', 'ORDER_ID_REQUIRED');
+        throw new ApiException('Order ID is required', 'ORDER_ID_REQUIRED');
     }
     
     if (empty($external_order_id)) {
-        throw new Exception('External Order ID is required', 'EXTERNAL_ORDER_ID_REQUIRED');
+        throw new ApiException('External Order ID is required', 'EXTERNAL_ORDER_ID_REQUIRED');
     }
     
     if (empty($tid)) {
-        throw new Exception('Transaction ID is required', 'TID_REQUIRED');
+        throw new ApiException('Transaction ID is required', 'TID_REQUIRED');
     }
     
     // PG 주문 테이블 업데이트
@@ -107,19 +152,29 @@ function process_payment_completed_webhook($webhook_data) {
     
     // 이미 처리된 주문인지 확인
     $sql = "
-        SELECT po_id, po_status
+        SELECT po_id, po_status, po_external_order_id, po_amount, po_pg_code
         FROM {$g5['g5_pg_api_orders_table']}
         WHERE po_g5_order_id = '" . sql_real_escape_string($order_id) . "'
     ";
     $pg_order = sql_fetch($sql);
     
     if (!$pg_order) {
-        throw new Exception('Order not found', 'ORDER_NOT_FOUND');
+        throw new ApiException('Order not found', 'ORDER_NOT_FOUND');
     }
     
     // 이미 결제 완료된 주문이면 무시
     if ($pg_order['po_status'] === 'paid') {
         return;
+    }
+
+    if (!in_array($pg_order['po_status'], array('pending', 'failed'), true)) {
+        throw new ApiException('Invalid payment state transition', 'INVALID_STATE_TRANSITION');
+    }
+
+    if (!hash_equals((string)$pg_order['po_external_order_id'], $external_order_id)
+        || (int)$pg_order['po_amount'] !== $amount
+        || !hash_equals((string)$pg_order['po_pg_code'], $pg_code)) {
+        throw new ApiException('Webhook payment data does not match the order', 'PAYMENT_DATA_MISMATCH');
     }
     
     // 주문 상태 업데이트
@@ -130,6 +185,7 @@ function process_payment_completed_webhook($webhook_data) {
             po_pg_response = '" . sql_real_escape_string(json_encode($webhook_data, JSON_UNESCAPED_UNICODE)) . "',
             po_updated_at = FROM_UNIXTIME($timestamp)
         WHERE po_g5_order_id = '" . sql_real_escape_string($order_id) . "'
+          AND po_status IN ('pending', 'failed')
     ";
     
     sql_query($update_sql);
@@ -169,7 +225,7 @@ function process_payment_failed_webhook($webhook_data) {
     
     // 유효성 검사
     if (empty($order_id)) {
-        throw new Exception('Order ID is required', 'ORDER_ID_REQUIRED');
+        throw new ApiException('Order ID is required', 'ORDER_ID_REQUIRED');
     }
     
     // PG 주문 테이블 업데이트
@@ -183,6 +239,7 @@ function process_payment_failed_webhook($webhook_data) {
             po_pg_response = '" . sql_real_escape_string(json_encode($webhook_data, JSON_UNESCAPED_UNICODE)) . "',
             po_updated_at = FROM_UNIXTIME($timestamp)
         WHERE po_g5_order_id = '" . sql_real_escape_string($order_id) . "'
+          AND po_status IN ('pending')
     ";
     
     sql_query($update_sql);
@@ -204,11 +261,11 @@ function process_order_status_changed_webhook($webhook_data) {
     
     // 유효성 검사
     if (empty($order_id)) {
-        throw new Exception('Order ID is required', 'ORDER_ID_REQUIRED');
+        throw new ApiException('Order ID is required', 'ORDER_ID_REQUIRED');
     }
     
     if (empty($status)) {
-        throw new Exception('Status is required', 'STATUS_REQUIRED');
+        throw new ApiException('Status is required', 'STATUS_REQUIRED');
     }
     
     // 쇼핑몰 주문 테이블 업데이트

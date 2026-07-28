@@ -27,7 +27,7 @@ if (!isset($g5['api_key_table'])) {
           `ak_id` int(11) NOT NULL AUTO_INCREMENT,
           `ak_name` varchar(100) NOT NULL,
           `ak_key` varchar(64) NOT NULL,
-          `ak_secret` varchar(64) NOT NULL,
+          `ak_secret` varchar(255) NOT NULL,
           `ak_type` enum('sns','pg','all') NOT NULL DEFAULT 'all',
           `ak_ip_whitelist` text,
           `ak_status` tinyint(4) NOT NULL DEFAULT '1',
