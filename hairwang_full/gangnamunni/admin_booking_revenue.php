@@ -18,10 +18,11 @@ require_permission('booking_revenue');
 $is_super = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
 $scope_ids = null;
 if (!$is_super) {
-    $resolved = get_hospital_filter_ids($connect);
-    $scope_ids = is_array($resolved)
-        ? array_values(array_filter(array_unique(array_map('intval', $resolved))))
-        : [];
+    // Financial data uses the explicit admin-to-hospital assignment only.
+    // Unlike general content pages, email matching/multi-hospital discovery must
+    // never broaden payment visibility.
+    $assigned_hospital_id = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+    $scope_ids = $assigned_hospital_id > 0 ? [$assigned_hospital_id] : [];
 }
 
 function revenue_valid_date($value) {
@@ -55,10 +56,19 @@ function revenue_mask_phone($phone) {
 }
 
 $from = $_GET['from'] ?? date('Y-m-01');
-$to = $_GET['to'] ?? date('Y-m-d');
+$to = $_GET['to'] ?? date('Y-m-t');
 if (!revenue_valid_date($from)) $from = date('Y-m-01');
-if (!revenue_valid_date($to)) $to = date('Y-m-d');
+if (!revenue_valid_date($to)) $to = date('Y-m-t');
 if ($from > $to) [$from, $to] = [$to, $from];
+$sort = $_GET['sort'] ?? 'payment_desc';
+$sort_options = [
+    'payment_desc' => ['순 결제액 높은 순', 'net DESC, bookings DESC, hospital_name ASC'],
+    'booking_desc' => ['예약 많은 순', 'bookings DESC, net DESC, hospital_name ASC'],
+    'name_asc' => ['병원명 가나다순', 'hospital_name ASC'],
+    'latest_payment' => ['최근 결제 순', 'last_paid_at DESC, hospital_name ASC'],
+];
+if (!isset($sort_options[$sort])) $sort = 'payment_desc';
+$order_sql = $sort_options[$sort][1];
 
 $requested_hospital = max(0, (int)($_GET['hospital_id'] ?? 0));
 $forbidden = false;
@@ -85,7 +95,8 @@ $table_exists = !empty(revenue_query(
 $hospitals = [];
 $details = [];
 $treatments = [];
-$totals = ['payments' => 0, 'patients' => 0, 'gross' => 0, 'refunded' => 0, 'net' => 0];
+$totals = ['bookings' => 0, 'payments' => 0, 'patients' => 0, 'gross' => 0, 'refunded' => 0, 'net' => 0];
+$booking_statuses = [];
 $hospital_name = '';
 $period_end = date('Y-m-t', strtotime($to));
 
@@ -132,25 +143,71 @@ if ($table_exists && ($is_super || !empty($scope_ids))) {
 
         $name = revenue_query($connect, 'SELECT name FROM gangnamunni_hospitals WHERE id=? LIMIT 1', 'i', [$selected_hospital]);
         $hospital_name = $name[0]['name'] ?? ('#' . $selected_hospital);
-    } elseif ($is_super) {
+    }
+}
+
+// Reservation statistics exist independently from payment integration.
+if ($selected_hospital > 0 && ($is_super || in_array($selected_hospital, $scope_ids ?: [], true))) {
+    $booking_statuses = revenue_query($connect,
+        "SELECT status,COUNT(*) AS cnt FROM gangnamunni_bookings
+         WHERE hospital_id=? AND booking_date>=? AND booking_date<DATE_ADD(?,INTERVAL 1 DAY)
+         GROUP BY status ORDER BY cnt DESC",
+        'iss', [$selected_hospital, $from, $to]);
+    foreach ($booking_statuses as $row) $totals['bookings'] += (int)$row['cnt'];
+    if ($hospital_name === '') {
+        $name = revenue_query($connect, 'SELECT name FROM gangnamunni_hospitals WHERE id=? LIMIT 1', 'i', [$selected_hospital]);
+        $hospital_name = $name[0]['name'] ?? ('#' . $selected_hospital);
+    }
+}
+
+// Superadmin list always starts from hospitals, so hospitals with zero bookings or
+// zero payments are still visible. Separate aggregates prevent join multiplication.
+if ($is_super && $selected_hospital === 0) {
+    if ($table_exists) {
         $hospitals = revenue_query($connect,
-            "SELECT p.hospital_id, COALESCE(MAX(h.name),MAX(p.hospital_name)) AS hospital_name,
-                    COUNT(*) AS payments,
-                    COUNT(DISTINCT COALESCE(NULLIF(p.patient_mb_id,''), CONCAT('phone:',p.patient_phone))) AS patients,
-                    SUM(p.amount) AS gross, SUM(p.refunded_amount) AS refunded,
-                    SUM(p.amount-p.refunded_amount) AS net, MAX(p.paid_at) AS last_paid_at
-             FROM gangnamunni_platform_payments p
-             LEFT JOIN gangnamunni_hospitals h ON h.id=p.hospital_id
-             WHERE {$base_where}
-             GROUP BY p.hospital_id ORDER BY net DESC",
-            $base_types, $base_params);
-        foreach ($hospitals as $row) {
-            $totals['payments'] += (int)$row['payments'];
-            $totals['patients'] += (int)$row['patients'];
-            $totals['gross'] += (int)$row['gross'];
-            $totals['refunded'] += (int)$row['refunded'];
-            $totals['net'] += (int)$row['net'];
-        }
+            "SELECT h.id AS hospital_id,h.name AS hospital_name,
+                    COALESCE(b.bookings,0) AS bookings,
+                    COALESCE(p.payments,0) AS payments,COALESCE(p.patients,0) AS patients,
+                    COALESCE(p.gross,0) AS gross,COALESCE(p.refunded,0) AS refunded,
+                    COALESCE(p.net,0) AS net,p.last_paid_at
+             FROM gangnamunni_hospitals h
+             LEFT JOIN (
+                SELECT hospital_id,COUNT(*) AS bookings
+                FROM gangnamunni_bookings
+                WHERE booking_date>=? AND booking_date<DATE_ADD(?,INTERVAL 1 DAY)
+                GROUP BY hospital_id
+             ) b ON b.hospital_id=h.id
+             LEFT JOIN (
+                SELECT hospital_id,COUNT(*) AS payments,
+                       COUNT(DISTINCT COALESCE(NULLIF(patient_mb_id,''),CONCAT('phone:',patient_phone))) AS patients,
+                       SUM(amount) AS gross,SUM(refunded_amount) AS refunded,
+                       SUM(amount-refunded_amount) AS net,MAX(paid_at) AS last_paid_at
+                FROM gangnamunni_platform_payments
+                WHERE payment_type='booking' AND funds_recipient='hospital'
+                  AND status IN ('paid','partially_refunded')
+                  AND paid_at>=? AND paid_at<DATE_ADD(?,INTERVAL 1 DAY)
+                GROUP BY hospital_id
+             ) p ON p.hospital_id=h.id
+             ORDER BY {$order_sql}",
+            'ssss', [$from, $to, $from, $to]);
+    } else {
+        $hospitals = revenue_query($connect,
+            "SELECT h.id AS hospital_id,h.name AS hospital_name,
+                    COALESCE(b.bookings,0) AS bookings,0 AS payments,0 AS patients,
+                    0 AS gross,0 AS refunded,0 AS net,NULL AS last_paid_at
+             FROM gangnamunni_hospitals h
+             LEFT JOIN (
+                SELECT hospital_id,COUNT(*) AS bookings
+                FROM gangnamunni_bookings
+                WHERE booking_date>=? AND booking_date<DATE_ADD(?,INTERVAL 1 DAY)
+                GROUP BY hospital_id
+             ) b ON b.hospital_id=h.id
+             ORDER BY {$order_sql}",
+            'ss', [$from, $to]);
+    }
+    $totals = ['bookings' => 0, 'payments' => 0, 'patients' => 0, 'gross' => 0, 'refunded' => 0, 'net' => 0];
+    foreach ($hospitals as $row) {
+        foreach (array_keys($totals) as $key) $totals[$key] += (int)$row[$key];
     }
 }
 
@@ -169,7 +226,7 @@ require_once __DIR__ . '/includes/admin_header.php';
       </small>
     </div>
     <?php if ($is_super && $selected_hospital): ?>
-      <a class="btn btn-sm btn-outline-secondary" href="?from=<?=urlencode($from)?>&to=<?=urlencode($to)?>"><i class="bi bi-arrow-left"></i> 병원 목록</a>
+      <a class="btn btn-sm btn-outline-secondary" href="?<?=htmlspecialchars(http_build_query(['from'=>$from,'to'=>$to,'sort'=>$sort]))?>"><i class="bi bi-arrow-left"></i> 병원 목록</a>
     <?php endif; ?>
   </div>
 
@@ -190,17 +247,22 @@ require_once __DIR__ . '/includes/admin_header.php';
   <form class="card card-body mb-3" method="get">
     <?php if ($selected_hospital): ?><input type="hidden" name="hospital_id" value="<?=$selected_hospital?>"><?php endif; ?>
     <div class="row g-2 align-items-end">
-      <div class="col-sm-4"><label class="form-label">결제 시작일</label><input class="form-control" type="date" name="from" value="<?=htmlspecialchars($from)?>"></div>
-      <div class="col-sm-4"><label class="form-label">결제 종료일</label><input class="form-control" type="date" name="to" value="<?=htmlspecialchars($to)?>"></div>
-      <div class="col-sm-4"><button class="btn btn-primary w-100"><i class="bi bi-funnel"></i> 조회</button></div>
+      <div class="col-sm-3"><label class="form-label">시작일</label><input class="form-control" type="date" name="from" value="<?=htmlspecialchars($from)?>"></div>
+      <div class="col-sm-3"><label class="form-label">종료일</label><input class="form-control" type="date" name="to" value="<?=htmlspecialchars($to)?>"></div>
+      <?php if ($is_super && !$selected_hospital): ?>
+      <div class="col-sm-3"><label class="form-label">병원 정렬</label><select class="form-select" name="sort">
+        <?php foreach ($sort_options as $key=>$option): ?><option value="<?=htmlspecialchars($key)?>" <?=$sort===$key?'selected':''?>><?=htmlspecialchars($option[0])?></option><?php endforeach; ?>
+      </select></div>
+      <?php endif; ?>
+      <div class="col-sm-3"><button class="btn btn-primary w-100"><i class="bi bi-funnel"></i> 조회</button></div>
     </div>
   </form>
 
   <div class="row g-3 mb-3">
     <?php foreach ([
+      ['예약 건수', number_format($totals['bookings'] ?? 0).'건', ''],
       ['결제 건수', number_format($totals['payments']).'건', 'text-primary'],
       ['환자 수', number_format($totals['patients']).'명', ''],
-      ['총 승인액', number_format($totals['gross']).'원', ''],
       ['순 결제액', number_format($totals['net']).'원', 'text-success']
     ] as $card): ?>
     <div class="col-6 col-md-3"><div class="card h-100"><div class="card-body text-center">
@@ -211,19 +273,23 @@ require_once __DIR__ . '/includes/admin_header.php';
   <?php if ($totals['refunded'] > 0): ?><div class="alert alert-light py-2">환불액: <strong><?=number_format($totals['refunded'])?>원</strong> (순 결제액에서 차감됨)</div><?php endif; ?>
 
   <?php if ($is_super && !$selected_hospital): ?>
-  <div class="card"><div class="card-header"><strong>병원별 결제 합계</strong></div><div class="table-responsive">
-    <table class="table table-hover mb-0"><thead><tr><th>병원</th><th class="revenue-num">결제</th><th class="revenue-num">환자</th><th class="revenue-num">승인액</th><th class="revenue-num">환불</th><th class="revenue-num">순 결제액</th><th>최근 결제</th></tr></thead><tbody>
-    <?php if (!$hospitals): ?><tr><td colspan="7" class="text-center text-body-secondary py-4">해당 기간의 결제가 없습니다.</td></tr><?php endif; ?>
-    <?php foreach ($hospitals as $row): $url='?'.http_build_query(['hospital_id'=>(int)$row['hospital_id'],'from'=>$from,'to'=>$to]); ?>
+  <div class="card"><div class="card-header d-flex justify-content-between"><strong>전체 병원 월간 현황</strong><small class="text-body-secondary"><?=count($hospitals)?>개 병원</small></div><div class="table-responsive">
+    <table class="table table-hover mb-0"><thead><tr><th>병원</th><th class="revenue-num">예약</th><th class="revenue-num">결제</th><th class="revenue-num">결제 환자</th><th class="revenue-num">승인액</th><th class="revenue-num">환불</th><th class="revenue-num">순 결제액</th><th>최근 결제</th></tr></thead><tbody>
+    <?php if (!$hospitals): ?><tr><td colspan="8" class="text-center text-body-secondary py-4">등록된 병원이 없습니다.</td></tr><?php endif; ?>
+    <?php foreach ($hospitals as $row): $url='?'.http_build_query(['hospital_id'=>(int)$row['hospital_id'],'from'=>$from,'to'=>$to,'sort'=>$sort]); ?>
       <tr class="revenue-link" onclick="location.href='<?=htmlspecialchars($url,ENT_QUOTES)?>'">
         <td><a href="<?=htmlspecialchars($url)?>"><?=htmlspecialchars($row['hospital_name'] ?: '#'.$row['hospital_id'])?></a></td>
-        <td class="revenue-num"><?=number_format($row['payments'])?></td><td class="revenue-num"><?=number_format($row['patients'])?></td>
+        <td class="revenue-num fw-semibold"><?=number_format($row['bookings'])?></td><td class="revenue-num"><?=number_format($row['payments'])?></td><td class="revenue-num"><?=number_format($row['patients'])?></td>
         <td class="revenue-num"><?=number_format($row['gross'])?></td><td class="revenue-num"><?=number_format($row['refunded'])?></td>
-        <td class="revenue-num fw-bold text-success"><?=number_format($row['net'])?></td><td><?=htmlspecialchars($row['last_paid_at'])?></td>
+        <td class="revenue-num fw-bold text-success"><?=number_format($row['net'])?></td><td><?=htmlspecialchars($row['last_paid_at'] ?: '-')?></td>
       </tr>
     <?php endforeach; ?></tbody></table>
   </div></div>
   <?php elseif ($selected_hospital): ?>
+  <div class="card mb-3"><div class="card-header"><strong>예약 상태 상세</strong></div><div class="card-body d-flex flex-wrap gap-2">
+    <?php if (!$booking_statuses): ?><span class="text-body-secondary">해당 기간의 예약이 없습니다.</span><?php endif; ?>
+    <?php foreach ($booking_statuses as $row): ?><span class="badge text-bg-light border"><?=htmlspecialchars($row['status'])?> <?=number_format($row['cnt'])?>건</span><?php endforeach; ?>
+  </div></div>
   <div class="card mb-3"><div class="card-header"><strong>시술별 합계</strong></div><div class="table-responsive">
     <table class="table mb-0"><thead><tr><th>시술</th><th class="revenue-num">결제 건수</th><th class="revenue-num">순 결제액</th></tr></thead><tbody>
     <?php if (!$treatments): ?><tr><td colspan="3" class="text-center text-body-secondary py-4">결제가 없습니다.</td></tr><?php endif; ?>
