@@ -334,6 +334,13 @@ $page_css = '
     /* 페이지 헤더 (글로벌 네비 아래) */
     .page-header {
         padding: 12px 20px;
+        /* common.css 는 sticky 헤더를 global_nav 높이(모바일 48px / PC 56px)만큼
+           내려놓는다. 이 페이지는 global_nav 를 숨기므로 오프셋을 0 으로 되돌린다.
+           (그대로 두면 헤더가 아래로 떠서 옵션 변경 버튼을 덮는다) */
+        top: 0;
+    }
+    @media (min-width: 768px) {
+        .page-header { top: 0; }
     }
 
     /* 뒤로가기 버튼 — 좌측 고정 (bi-chevron-left) */
@@ -360,22 +367,6 @@ $page_css = '
         font-weight: bold;
         text-align: center;
         width: 100%;
-    }
-
-    .admin-gear {
-        position: absolute;
-        right: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 22px;
-        cursor: pointer;
-        text-decoration: none;
-        color: var(--bs-secondary-color, #666);
-        transition: color 0.3s;
-    }
-
-    .admin-gear:hover {
-        color: #AE1932;
     }
 
     /* 병원 이미지 슬라이더 */
@@ -744,7 +735,7 @@ $page_css = '
     }
     .st-remove:hover { color: #AE1932; }
     .selected-treatment .st-name { font-weight: 700; color: #1f2937; }
-    .selected-treatment .st-price { font-size: 13px; font-weight: 600; color: #AE1932; }
+    .selected-treatment .st-price { font-size: 13px; font-weight: 600; color: #1A1A1A; }
     /* 수량 스테퍼 */
     .st-qty-row {
         display: flex;
@@ -767,13 +758,17 @@ $page_css = '
         cursor: pointer;
     }
     .qty-btn:hover { background: #faf0f2; }
+    .qty-btn--plus { color: #1A1A1A; }
+    /* 수량이 1이면 더 줄일 수 없으므로 − 를 비활성 색으로 표시 */
+    .qty-btn--minus.is-off { color: #BBBBBB; }
+    .qty-btn--minus.is-off:hover { background: var(--bs-body-bg, #fff); }
     .qty-num { min-width: 40px; text-align: center; font-weight: 700; font-size: 15px; }
 
     /* 시술 선택 바텀시트 */
     .treatment-sheet-overlay {
         display: none;
         position: fixed; inset: 0;
-        background: rgba(0,0,0,0.4);
+        background: rgba(0,0,0,0.45);
         /* 하단 고정 네비(.bottom-nav)의 z-index:9999 보다 위여야 시트 하단
            "시술 선택 완료" 버튼이 네비에 가리지 않는다. */
         z-index: 10000;
@@ -786,50 +781,101 @@ $page_css = '
         margin: 0 auto;
         background: var(--bs-body-bg, #fff);
         border-radius: 16px 16px 0 0;
-        max-height: 75vh;
+        max-height: 88%;
         overflow: hidden;
+        padding: 10px 20px calc(20px + env(safe-area-inset-bottom, 0px));
         display: flex;
         flex-direction: column;
-        animation: sheetUp 0.25s ease;
+        animation: sheetUp 0.34s cubic-bezier(.32,.72,0,1);
     }
     @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
+    /* 상단 손잡이 + 제목 */
+    .sheet-handle {
+        width: 52px; height: 4px; border-radius: 2px;
+        background: #AE1932;
+        margin: 6px auto 18px;
+        flex-shrink: 0;
+    }
+    .sheet-title {
+        font-size: 15px; font-weight: 600; letter-spacing: -.02em;
+        margin: 0 0 12px;
+        flex-shrink: 0;
+    }
+
     .sheet-close { border: none; background: none; font-size: 18px; cursor: pointer; color: #666; }
     /* flex:1 + min-height:0 → 목록이 남은 공간만 차지하고 스크롤되어 하단 완료 버튼이 항상 보임 */
-    .sheet-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px; }
+    .sheet-list {
+        flex: 1 1 auto; min-height: 0; overflow-y: auto;
+        display: flex; flex-direction: column; gap: 10px;
+        margin: 0 -4px 18px; padding: 2px 4px;
+    }
+    /* 옵션 카드 — 다중 선택(토글)이므로 라디오가 아니라 버튼을 쓴다 */
     .sheet-item {
         width: 100%;
-        display: flex; align-items: center; justify-content: space-between; gap: 8px;
-        padding: 15px 14px;
-        border: none; border-bottom: 1px solid #f1f3f5;
-        background: none; cursor: pointer; text-align: left;
-        font-size: 15px;
+        display: block;
+        text-align: left;
+        padding: 16px;
+        border: 1px solid #E4E4E4;
+        border-radius: 12px;
+        background: none;
+        cursor: pointer;
+        font: inherit;
+        transition: border-color .15s ease, box-shadow .15s ease;
     }
-    .sheet-item:last-child { border-bottom: none; }
-    .sheet-item:hover { background: #faf6f7; }
-    .sheet-item.selected { background: #AE1932; color: #fff; border-radius: 8px; }
-    .sheet-item.selected .sheet-item-price { color: #fff; }
-    .sheet-item-name { font-weight: 600; }
-    .sheet-item-price { font-size: 13px; font-weight: 600; color: #AE1932; white-space: nowrap; }
+    .sheet-item:hover { border-color: #BDBDBD; }
+    .sheet-item.selected {
+        border-color: #AE1932;
+        box-shadow: inset 0 0 0 1px #AE1932;
+    }
+    .sheet-item-name {
+        display: block;
+        font-size: 15px; font-weight: 600; line-height: 1.45;
+        letter-spacing: -.02em;
+        margin: 0 0 10px;
+    }
+    .sheet-item-foot {
+        display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+    }
+    .sheet-item-desc {
+        font-size: 13px; color: #5A5A5A; line-height: 1.5; margin: 0;
+    }
+    .sheet-item-price {
+        display: flex; align-items: baseline; gap: 7px;
+        margin-left: auto;
+        white-space: nowrap;
+    }
+    /* 정가/할인율은 할인 데이터가 있을 때만 출력된다 */
+    .price-was { font-size: 12px; color: #9A9A9A; text-decoration: line-through; }
+    .price-off { font-size: 14px; font-weight: 700; color: #1A1A1A; }
+    .price-now { font-size: 17px; font-weight: 700; color: #AE1932; }
+    .price-now .price-unit { font-size: 14px; }
+
     /* 시트 하단 선택 완료 버튼 */
     .sheet-footer {
         flex-shrink: 0;
-        padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-        border-top: 1px solid #eee;
         background: var(--bs-body-bg, #fff);
     }
     .sheet-confirm {
         width: 100%;
-        padding: 14px;
+        padding: 16px;
         border: none;
         border-radius: 10px;
         background: #AE1932;
         color: #fff;
-        font-size: 15px;
-        font-weight: 700;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: -.02em;
         cursor: pointer;
+        transition: background .15s ease, transform .1s ease;
     }
-    .sheet-confirm:hover { filter: brightness(0.95); }
+    .sheet-confirm:hover { background: #822327; }
+    .sheet-confirm:active { transform: scale(.985); }
+
+    @media (prefers-reduced-motion: reduce) {
+        .treatment-sheet { animation-duration: .01ms; }
+        .sheet-item, .sheet-confirm { transition-duration: .01ms; }
+    }
 
     /* 제출 버튼 */
     .submit-section {
@@ -856,6 +902,14 @@ $page_css = '
     .btn-submit:disabled {
         background: #CCCCCC;
         cursor: not-allowed;
+    }
+
+    /* 날짜/시간/시술 중 하나라도 미선택 → 비활성 색상.
+       클릭은 막지 않는다(기존 submit 검증이 무엇이 빠졌는지 알려주기 위함). */
+    .btn-submit.is-incomplete,
+    .btn-submit.is-incomplete:hover {
+        background: #F2F2F2;
+        color: #BBBBBB;
     }
 
     /* 안내 사항 */
@@ -1023,6 +1077,7 @@ $page_js = '
                     chip.classList.add("active");
                     // 날짜가 바뀌면 시간 그리드 재생성(오늘 지난 시간 재평가).
                     if (window.buildTimeGrid) window.buildTimeGrid();
+                    if (window.updateSubmitState) window.updateSubmitState();
                 };
                 dateSel.appendChild(chip);
             });
@@ -1078,6 +1133,7 @@ $page_js = '
                         sel.value = v;
                         grid.querySelectorAll(".time-slot").forEach(function(c) { c.classList.remove("active"); });
                         cell.classList.add("active");
+                        if (window.updateSubmitState) window.updateSubmitState();
                     };
                 }
                 grid.appendChild(cell);
@@ -1093,8 +1149,7 @@ $page_js = '
         if (!s) return;
         // 이미 선택된 항목을 시트에 표시 동기화
         s.querySelectorAll(".sheet-item").forEach(function(el) {
-            if (findTreatment(el.getAttribute("data-name"))) el.classList.add("selected");
-            else el.classList.remove("selected");
+            markSheetItem(el, !!findTreatment(el.getAttribute("data-name")));
         });
         s.classList.add("open"); document.body.style.overflow = "hidden";
     }
@@ -1102,6 +1157,13 @@ $page_js = '
         var s = document.getElementById("treatmentSheet");
         if (s) { s.classList.remove("open"); document.body.style.overflow = ""; }
     }
+    // 시트 카드의 선택 표시(테두리 강조)와 스크린리더 상태를 함께 갱신한다.
+    function markSheetItem(el, on) {
+        if (!el) return;
+        el.classList.toggle("selected", !!on);
+        el.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+
     // 여러 시술 선택 지원: 각 항목 {name, price, qty}
     var selectedTreatments = [];
 
@@ -1115,8 +1177,8 @@ $page_js = '
         var price = btn.getAttribute("data-price") || "";
         var idx = -1;
         for (var i = 0; i < selectedTreatments.length; i++) { if (selectedTreatments[i].name === name) { idx = i; break; } }
-        if (idx >= 0) { selectedTreatments.splice(idx, 1); btn.classList.remove("selected"); }
-        else { selectedTreatments.push({ name: name, price: price, qty: 1 }); btn.classList.add("selected"); }
+        if (idx >= 0) { selectedTreatments.splice(idx, 1); markSheetItem(btn, false); }
+        else { selectedTreatments.push({ name: name, price: price, qty: 1 }); markSheetItem(btn, true); }
         renderSelectedTreatments();
     }
     function changeItemQty(name, delta) {
@@ -1128,7 +1190,7 @@ $page_js = '
     function removeTreatment(name) {
         for (var i = 0; i < selectedTreatments.length; i++) { if (selectedTreatments[i].name === name) { selectedTreatments.splice(i, 1); break; } }
         document.querySelectorAll("#treatmentSheet .sheet-item").forEach(function(el) {
-            if (el.getAttribute("data-name") === name) el.classList.remove("selected");
+            if (el.getAttribute("data-name") === name) markSheetItem(el, false);
         });
         renderSelectedTreatments();
     }
@@ -1138,6 +1200,8 @@ $page_js = '
         document.getElementById("treatmentInput").value = selectedTreatments.map(function(t) { return t.name; }).join(", ");
         var totalQty = 0; selectedTreatments.forEach(function(t) { totalQty += t.qty; });
         document.getElementById("quantityInput").value = totalQty || 1;
+
+        if (window.updateSubmitState) window.updateSubmitState();
 
         var disp = document.getElementById("selectedTreatmentDisplay");
         var ph = document.getElementById("treatmentPlaceholder");
@@ -1163,9 +1227,11 @@ $page_js = '
             // 아랫줄: 수량 스테퍼(왼쪽) + 가격(오른쪽 끝)
             var qrow = document.createElement("div"); qrow.className = "st-qty-row";
             var stepper = document.createElement("div"); stepper.className = "qty-stepper";
-            var minus = document.createElement("button"); minus.type = "button"; minus.className = "qty-btn"; minus.textContent = "−"; minus.onclick = function() { changeItemQty(t.name, -1); };
+            var minus = document.createElement("button"); minus.type = "button";
+            minus.className = "qty-btn qty-btn--minus" + (t.qty <= 1 ? " is-off" : "");
+            minus.textContent = "−"; minus.onclick = function() { changeItemQty(t.name, -1); };
             var num = document.createElement("span"); num.className = "qty-num"; num.textContent = t.qty;
-            var plus = document.createElement("button"); plus.type = "button"; plus.className = "qty-btn"; plus.textContent = "+"; plus.onclick = function() { changeItemQty(t.name, 1); };
+            var plus = document.createElement("button"); plus.type = "button"; plus.className = "qty-btn qty-btn--plus"; plus.textContent = "+"; plus.onclick = function() { changeItemQty(t.name, 1); };
             stepper.appendChild(minus); stepper.appendChild(num); stepper.appendChild(plus);
             qrow.appendChild(stepper);
             if (t.price) { var pEl = document.createElement("span"); pEl.className = "st-price"; pEl.textContent = t.price; qrow.appendChild(pEl); }
@@ -1173,6 +1239,21 @@ $page_js = '
             disp.appendChild(item);
         });
     }
+
+    // 날짜/시간/시술이 모두 선택돼야 제출 버튼이 활성 색상이 된다.
+    function updateSubmitState() {
+        var btn = document.querySelector(".btn-submit[type=submit]");
+        if (!btn) return;
+        var dateEl = document.getElementById("bookingDate");
+        var timeEl = document.getElementById("timeSelect");
+        var treatEl = document.getElementById("treatmentInput");
+        var ready = !!(dateEl && dateEl.value)
+                 && !!(timeEl && timeEl.value)
+                 && !!(treatEl && treatEl.value);
+        btn.classList.toggle("is-incomplete", !ready);
+    }
+    window.updateSubmitState = updateSubmitState;
+    updateSubmitState();
 
     // 폼 유효성 검사
     var bookingForm = document.getElementById("bookingForm");
@@ -1264,8 +1345,13 @@ $page_js = '
 ';
 
 // ========================================
-// 공유 헤더 포함 (HTML 시작, Tailwind, global_nav, main-content 열기)
+// 공유 헤더 포함 (HTML 시작, Tailwind, main-content 열기)
 // ========================================
+$hide_global_nav = true;         // 예약 화면에선 글로벌 네비게이션(로고 포함) 숨김
+// global_nav 가 사라지면 fixed 인 관리자 인라인 편집 상단바(.ae-topbar, z-index 9999)가
+// 페이지 헤더(예약하기 / 옵션 변경)를 덮어 클릭할 수 없게 된다.
+// detail_community.php 와 동일하게 두 상단바를 함께 숨긴다.
+$hide_admin_inline_edit = true;  // 관리자 인라인 편집 상단바(ae-topbar) 숨김
 include __DIR__ . '/includes/header.php';
 ?>
 
@@ -1273,9 +1359,6 @@ include __DIR__ . '/includes/header.php';
     <div class="page-header">
             <a href="detail.php?id=<?php echo $hospital_id; ?>" class="back-btn" aria-label="뒤로"><i class="bi bi-chevron-left"></i></a>
             <div class="page-title"><?php echo term('booking', '예약'); ?>하기</div>
-            <?php if ($is_admin): ?>
-            <a href="admin_ads.php" class="admin-gear" title="관리자 페이지">⚙️</a>
-            <?php endif; ?>
     </div>
 
     <!-- 병원 이미지 슬라이더 -->
@@ -1409,11 +1492,13 @@ include __DIR__ . '/includes/header.php';
     $sheet_items = [];
     if (!empty($booking_treatments)) {
         foreach ($booking_treatments as $bt) {
+            // price_min/max 는 '만원' 단위로 저장돼 있다. 시트에는 축약 없이
+            // 원 단위 전체 금액으로 표시한다(예: 90만원 → 900,000원).
             $pl = '';
             if (!empty($bt['price_min']) && $bt['price_min'] > 0) {
                 $pl = ($bt['price_max'] > $bt['price_min'])
-                    ? number_format($bt['price_min']) . '~' . number_format($bt['price_max']) . '만원'
-                    : number_format($bt['price_min']) . '만원';
+                    ? number_format($bt['price_min'] * 10000) . '~' . number_format($bt['price_max'] * 10000) . '원'
+                    : number_format($bt['price_min'] * 10000) . '원';
             }
             $sheet_items[] = ['name' => $bt['name'], 'price' => $pl];
         }
@@ -1428,20 +1513,45 @@ include __DIR__ . '/includes/header.php';
     }
     ?>
     <div class="treatment-sheet-overlay" id="treatmentSheet" onclick="if(event.target===this)closeTreatmentSheet()">
-        <div class="treatment-sheet">
-            <div class="sheet-list">
+        <div class="treatment-sheet" role="dialog" aria-modal="true" aria-labelledby="treatmentSheetTitle">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2 class="sheet-title" id="treatmentSheetTitle">원하는 옵션으로 변경해주세요</h2>
+            <div class="sheet-list" role="group" aria-labelledby="treatmentSheetTitle">
                 <?php foreach ($sheet_items as $it): ?>
                 <button type="button" class="sheet-item"
                         data-name="<?php echo htmlspecialchars($it['name'], ENT_QUOTES); ?>"
                         data-price="<?php echo htmlspecialchars($it['price'], ENT_QUOTES); ?>"
+                        aria-pressed="false"
                         onclick="pickTreatment(this)">
                     <span class="sheet-item-name"><?php echo htmlspecialchars($it['name']); ?></span>
-                    <?php if ($it['price']): ?><span class="sheet-item-price"><?php echo htmlspecialchars($it['price']); ?></span><?php endif; ?>
+                    <span class="sheet-item-foot">
+                        <?php if (!empty($it['desc'])): ?>
+                        <span class="sheet-item-desc"><?php echo htmlspecialchars($it['desc']); ?></span>
+                        <?php endif; ?>
+                        <?php if ($it['price']): ?>
+                        <span class="sheet-item-price">
+                            <?php if (!empty($it['price_was'])): ?>
+                            <span class="price-was"><?php echo htmlspecialchars($it['price_was']); ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($it['price_off'])): ?>
+                            <span class="price-off"><?php echo htmlspecialchars($it['price_off']); ?></span>
+                            <?php endif; ?>
+                            <?php
+                            // 숫자와 단위(만원/원)를 나눠 단위만 작게 표시한다.
+                            $_pnum = $it['price']; $_punit = '';
+                            if (preg_match('/^(.*?)(만원|원)$/u', $it['price'], $_pm)) {
+                                $_pnum = $_pm[1]; $_punit = $_pm[2];
+                            }
+                            ?>
+                            <span class="price-now"><?php echo htmlspecialchars($_pnum); ?><?php if ($_punit !== ''): ?><span class="price-unit"><?php echo htmlspecialchars($_punit); ?></span><?php endif; ?></span>
+                        </span>
+                        <?php endif; ?>
+                    </span>
                 </button>
                 <?php endforeach; ?>
             </div>
             <div class="sheet-footer">
-                <button type="button" class="sheet-confirm" onclick="closeTreatmentSheet()"><?php echo term('service', '시술'); ?> 선택 완료</button>
+                <button type="button" class="sheet-confirm" onclick="closeTreatmentSheet()">선택 완료</button>
             </div>
         </div>
     </div>
