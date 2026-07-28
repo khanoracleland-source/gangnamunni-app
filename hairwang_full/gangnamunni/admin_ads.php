@@ -387,15 +387,30 @@ if ($cnt_result) $total_ads = (int)mysqli_fetch_assoc($cnt_result)['cnt'];
 $total_ads_pages = $total_ads > 0 ? ceil($total_ads / $per_page) : 0;
 
 $ads_order = ($sort_mode === 'name') ? 'adv.hospital_name ASC, a.display_order ASC' : 'a.id DESC';
+$payment_table_check = mysqli_query($connect,
+    "SELECT 1 FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gangnamunni_platform_payments' LIMIT 1");
+$has_platform_payments = $payment_table_check && mysqli_num_rows($payment_table_check) > 0;
+$payment_select = $has_platform_payments
+    ? "p.status AS payment_status,p.paid_at AS payment_date,p.amount AS paid_amount,"
+    : "NULL AS payment_status,NULL AS payment_date,0 AS paid_amount,";
+$payment_join = $has_platform_payments ? "
+    LEFT JOIN gangnamunni_platform_payments p
+      ON p.id = (
+         SELECT p2.id FROM gangnamunni_platform_payments p2
+         WHERE p2.ad_id=a.id
+           AND p2.payment_type='ad_package'
+           AND p2.funds_recipient='platform'
+           AND p2.status IN ('paid','partially_refunded')
+         ORDER BY p2.paid_at DESC,p2.id DESC LIMIT 1
+      )" : '';
 
 $ads_query = "
     SELECT a.*,
-           p.status as payment_status,
-           p.paid_at as payment_date,
-           p.amount as paid_amount,
+           {$payment_select}
            adv.hospital_name as advertiser_name
     FROM gangnamunni_ads a
-    LEFT JOIN gangnamunni_ad_payments p ON a.id = p.ad_id AND p.status = 'paid'
+    {$payment_join}
     LEFT JOIN gangnamunni_advertisers adv ON a.advertiser_id = adv.id
     WHERE {$where_ads}
     ORDER BY {$ads_order}

@@ -18,11 +18,11 @@ $error = '';
 $ad = null;
 if ($ad_id > 0) {
     $r = mysqli_query($connect, "
-        SELECT a.*, adv.hospital_name as advertiser_name, h.id AS hospital_id,
+        SELECT a.*, adv.hospital_name as advertiser_name,
+               COALESCE(a.hospital_id,adv.hospital_id) AS hospital_id,
                p.code as current_pricing_code, p.name as current_pricing_name
         FROM gangnamunni_ads a
         LEFT JOIN gangnamunni_advertisers adv ON a.advertiser_id = adv.id
-        LEFT JOIN gangnamunni_hospitals h ON h.name = adv.hospital_name
         LEFT JOIN gangnamunni_ad_pricing p ON a.pricing_id = p.id
         WHERE a.id = {$ad_id}
     ");
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
         $error = "선택한 단가를 찾을 수 없습니다.";
     } else {
         // 결제 기록
-        $amount = $pricing['total_price'];
+        $amount = (int)$pricing['total_price'];
         $supply = $pricing['supply_price'];
         $vat = $pricing['vat_amount'];
         $pricing_code = mysqli_real_escape_string($connect, $pricing['code']);
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
         // 브라우저 POST만으로 paid/광고 활성화 상태를 만들면 안 된다.
         $merchant_uid = 'AD_' . date('YmdHis') . '_' . $ad_id . '_' . bin2hex(random_bytes(4));
         $product_id_val = $pricing['code'];
-        $product_name_val = mysqli_real_escape_string($connect, $pricing['display_name'] ?: $pricing['name']);
+        $product_name_val = (string)($pricing['display_name'] ?: $pricing['name']);
         $buyer_name_val = mysqli_real_escape_string($connect, $ad['advertiser_name'] ?: '관리자');
         $hospital_id = (int)$ad['hospital_id'];
         $hospital_name = (string)($ad['advertiser_name'] ?? '');

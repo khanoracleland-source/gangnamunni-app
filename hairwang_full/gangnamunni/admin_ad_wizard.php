@@ -20,10 +20,18 @@ $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MY
 if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
+require_admin_login();
+require_permission('ads');
+if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
 // ── AJAX 핸들러 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json; charset=utf-8');
+    if (!hash_equals($_SESSION['csrf_token'], (string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'CSRF 검증 실패']);
+        exit;
+    }
     $action = $_POST['action'];
 
     if ($action === 'upload_banner') {
@@ -64,14 +72,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $advEmail = $esc($data['contact_email'] ?? '');
             $advPhone = $esc($data['contact_phone'] ?? '');
             $advBiz = $esc($data['business_number'] ?? '');
+            $hospitalResult = mysqli_query($connect, "SELECT id,name FROM gangnamunni_hospitals WHERE name='{$advName}' ORDER BY id LIMIT 2");
+            if (!$hospitalResult || mysqli_num_rows($hospitalResult) !== 1) {
+                throw new RuntimeException('광고주 병원을 고유하게 확인할 수 없습니다.');
+            }
+            $hospitalRow = mysqli_fetch_assoc($hospitalResult);
+            $hospitalId = (int)$hospitalRow['id'];
+            $isSuper = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
+            $ownHospitalId = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+            if (!$isSuper && ($ownHospitalId <= 0 || $ownHospitalId !== $hospitalId)) {
+                throw new RuntimeException('다른 병원의 광고를 생성할 권한이 없습니다.');
+            }
 
             // 기존 광고주 검색
-            $r = mysqli_query($connect, "SELECT id FROM gangnamunni_advertisers WHERE contact_email = '{$advEmail}' LIMIT 1");
+            $r = mysqli_query($connect, "SELECT id,hospital_id FROM gangnamunni_advertisers WHERE contact_email = '{$advEmail}' LIMIT 1");
             if ($row = mysqli_fetch_assoc($r)) {
+                if (!empty($row['hospital_id']) && (int)$row['hospital_id'] !== $hospitalId) {
+                    throw new RuntimeException('광고주 이메일이 다른 병원에 연결되어 있습니다.');
+                }
                 $advertiserId = $row['id'];
+                mysqli_query($connect, "UPDATE gangnamunni_advertisers SET hospital_id={$hospitalId} WHERE id={$advertiserId} AND hospital_id IS NULL");
             } else {
-                mysqli_query($connect, "INSERT INTO gangnamunni_advertisers (hospital_name, contact_name, contact_email, contact_phone, business_number, status, created_at)
-                    VALUES ('{$advName}', '{$advContact}', '{$advEmail}', '{$advPhone}', '{$advBiz}', 'active', NOW())");
+                mysqli_query($connect, "INSERT INTO gangnamunni_advertisers (hospital_id, hospital_name, contact_name, contact_email, contact_phone, business_number, status, created_at)
+                    VALUES ({$hospitalId}, '{$advName}', '{$advContact}', '{$advEmail}', '{$advPhone}', '{$advBiz}', 'active', NOW())");
                 $advertiserId = mysqli_insert_id($connect);
             }
 
@@ -85,28 +108,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $startDate = $esc($data['start_date'] ?? date('Y-m-d'));
             $endDate = $esc($data['end_date'] ?? '');
 
-            mysqli_query($connect, "INSERT INTO gangnamunni_ads (advertiser_id, pricing_id, title, subtitle, image_url, link_url, ad_type, start_date, end_date, is_active, display_order, created_at, updated_at)
-                VALUES ({$advertiserId}, {$pricingId}, '{$title}', '{$subtitle}', '{$imageUrl}', '{$linkUrl}', '{$adType}', '{$startDate}', '{$endDate}', 0, 999, NOW(), NOW())");
+            mysqli_query($connect, "INSERT INTO gangnamunni_ads (hospital_id, advertiser_id, pricing_id, title, subtitle, image_url, link_url, ad_type, start_date, end_date, is_active, display_order, created_at, updated_at)
+                VALUES ({$hospitalId}, {$advertiserId}, {$pricingId}, '{$title}', '{$subtitle}', '{$imageUrl}', '{$linkUrl}', '{$adType}', '{$startDate}', '{$endDate}', 0, 999, NOW(), NOW())");
             $adId = mysqli_insert_id($connect);
 
-            // 3) 결제 기록
-            $amount = intval($data['amount'] ?? 0);
-            $payMethod = $esc($data['pay_method'] ?? 'card');
-            $pricingCode = $esc($data['pricing_code'] ?? '');
-            $supply = intval($data['supply_price'] ?? 0);
-            $vat = intval($data['vat_amount'] ?? 0);
-
-            $merchantUid = 'ad_' . $adId . '_' . time();
-            $productId = 'AD_' . strtoupper($adType) . '_' . $pricingId;
-            $productName = $esc($data['pricing_name'] ?? $title);
-            $buyerName = $advContact ?: $advName;
-            $buyerEmail = $advEmail;
-            $buyerTel = $advPhone;
-            mysqli_query($connect, "INSERT INTO gangnamunni_ad_payments (ad_id, pricing_id, pricing_code, merchant_uid, product_id, product_name, amount, supply_price, vat_amount, payment_method, buyer_name, buyer_email, buyer_tel, status, created_at)
-                VALUES ({$adId}, {$pricingId}, '{$pricingCode}', '{$merchantUid}', '{$productId}', '{$productName}', {$amount}, {$supply}, {$vat}, '{$payMethod}', '{$buyerName}', '{$buyerEmail}', '{$buyerTel}', 'ready', NOW())");
+            // Payment is intentionally not created by the wizard. The secured
+            // ad_payment.php endpoint loads the price server-side and creates the
+            // canonical pending order after hospital ownership + CSRF checks.
 
             mysqli_commit($connect);
-            echo json_encode(['success' => true, 'ad_id' => $adId, 'message' => '광고가 신청되었습니다. 관리자 승인 후 노출됩니다.']);
+            echo json_encode(['success' => true, 'ad_id' => $adId, 'message' => '광고가 신청되었습니다. 결제 주문을 생성한 뒤 PG 승인을 완료해주세요.']);
         } catch (Exception $e) {
             mysqli_rollback($connect);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -764,6 +775,7 @@ async function uploadBanner(input) {
     zone.innerHTML = '<div class="spinner-border text-warning"></div>';
     const fd = new FormData();
     fd.append('action', 'upload_banner');
+    fd.append('csrf_token', <?=json_encode($_SESSION['csrf_token'])?>);
     fd.append('file', input.files[0]);
     const r = await fetch('', {method:'POST', body:fd});
     const d = await r.json();
@@ -891,6 +903,7 @@ async function submitAd() {
 
     const fd = new FormData();
     fd.append('action', 'submit');
+    fd.append('csrf_token', <?=json_encode($_SESSION['csrf_token'])?>);
     fd.append('data', JSON.stringify(data));
 
     try {
