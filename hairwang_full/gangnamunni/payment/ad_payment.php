@@ -1,10 +1,14 @@
 <?php
 session_start();
 require_once __DIR__ . '/../../dbconfig.php';
+require_once __DIR__ . '/../includes/admin_auth.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die('MySQL');
 mysqli_set_charset($connect, 'utf8mb4');
+require_admin_login();
+require_permission('ads');
+if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 $ad_id = intval($_GET['ad_id'] ?? 0);
 $pricing_id = intval($_GET['pricing_id'] ?? $_GET['product_id'] ?? 0);
 $message = '';
@@ -14,10 +18,11 @@ $error = '';
 $ad = null;
 if ($ad_id > 0) {
     $r = mysqli_query($connect, "
-        SELECT a.*, adv.hospital_name as advertiser_name,
+        SELECT a.*, adv.hospital_name as advertiser_name, h.id AS hospital_id,
                p.code as current_pricing_code, p.name as current_pricing_name
         FROM gangnamunni_ads a
         LEFT JOIN gangnamunni_advertisers adv ON a.advertiser_id = adv.id
+        LEFT JOIN gangnamunni_hospitals h ON h.name = adv.hospital_name
         LEFT JOIN gangnamunni_ad_pricing p ON a.pricing_id = p.id
         WHERE a.id = {$ad_id}
     ");
@@ -27,6 +32,12 @@ if ($ad_id > 0) {
 if (!$ad) {
     echo '<script>alert("광고를 찾을 수 없습니다."); history.back();</script>';
     exit;
+}
+$is_super = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
+$own_hospital_id = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+if (!$is_super && ($own_hospital_id <= 0 || $own_hospital_id !== (int)$ad['hospital_id'])) {
+    http_response_code(403);
+    exit('Forbidden');
 }
 
 // 활성 단가 목록
@@ -38,6 +49,10 @@ while ($row = mysqli_fetch_assoc($pr)) {
 
 // 결제 처리
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
+    if (!hash_equals($_SESSION['csrf_token'], (string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(403);
+        exit('Invalid CSRF token');
+    }
     $selected_pricing = intval($_POST['pricing_id']);
     $payment_method = mysqli_real_escape_string($connect, $_POST['payment_method'] ?? 'card');
 
@@ -58,50 +73,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
         $start_date = date('Y-m-d');
         $end_date = date('Y-m-d', strtotime("+{$duration} days"));
 
-        // 결제 레코드 삽입
-        $merchant_uid = 'AD_' . date('YmdHis') . '_' . $ad_id . '_' . rand(1000,9999);
+        // PG가 아직 연결되지 않았으므로 플랫폼 원장에 pending 주문만 만든다.
+        // 브라우저 POST만으로 paid/광고 활성화 상태를 만들면 안 된다.
+        $merchant_uid = 'AD_' . date('YmdHis') . '_' . $ad_id . '_' . bin2hex(random_bytes(4));
         $product_id_val = $pricing['code'];
         $product_name_val = mysqli_real_escape_string($connect, $pricing['display_name'] ?: $pricing['name']);
         $buyer_name_val = mysqli_real_escape_string($connect, $ad['advertiser_name'] ?: '관리자');
-
-        $pay_sql = "INSERT INTO gangnamunni_ad_payments
-                    (merchant_uid, ad_id, pricing_id, pricing_code, product_id, product_name,
-                     amount, supply_price, vat_amount, paid_amount,
-                     buyer_name, payment_method, status, paid_at)
-                    VALUES ('{$merchant_uid}', {$ad_id}, {$selected_pricing}, '{$pricing_code}',
-                            '{$product_id_val}', '{$product_name_val}',
-                            {$amount}, {$supply}, {$vat}, {$amount},
-                            '{$buyer_name_val}', '{$payment_method}', 'paid', NOW())";
-        if (!mysqli_query($connect, $pay_sql)) {
-            $error = '결제 기록 실패: ' . mysqli_error($connect);
+        $hospital_id = (int)$ad['hospital_id'];
+        $hospital_name = (string)($ad['advertiser_name'] ?? '');
+        $stmt = mysqli_prepare($connect,
+            "INSERT INTO gangnamunni_platform_payments
+                (payment_type,funds_recipient,ad_id,hospital_id,hospital_name,product_name,
+                 amount,currency,merchant_uid,status)
+             VALUES ('ad_package','platform',?,?,?,?,?,'KRW',?,'pending')");
+        if (!$stmt) {
+            $error = '통합 결제 원장이 없습니다. platform_payments_schema.sql을 먼저 적용해주세요.';
+        } else {
+            mysqli_stmt_bind_param($stmt, 'iissis', $ad_id, $hospital_id, $hospital_name, $product_name_val, $amount, $merchant_uid);
+            if (!mysqli_stmt_execute($stmt)) {
+                $error = '결제 주문 생성에 실패했습니다.';
+                error_log('[ad_payment] ' . mysqli_stmt_error($stmt));
+            } else {
+                $message = '결제 주문이 생성되었습니다. PG 연동 후 승인된 결제만 광고를 활성화합니다.';
+            }
+            mysqli_stmt_close($stmt);
         }
-
-        // 광고 업데이트: 단가 연결 + 기간 설정 + 활성화
-        $upd_sql = "UPDATE gangnamunni_ads SET
-                    pricing_id = {$selected_pricing},
-                    ad_type = '{$pricing['ad_type']}',
-                    start_date = '{$start_date}',
-                    end_date = '{$end_date}',
-                    is_active = 1
-                    WHERE id = {$ad_id}";
-        mysqli_query($connect, $upd_sql);
-
-        // 광고주 매출 업데이트
-        if ($ad['advertiser_id']) {
-            mysqli_query($connect, "UPDATE gangnamunni_advertisers SET total_spent = total_spent + {$amount} WHERE id = {$ad['advertiser_id']}");
-        }
-
-        $message = "결제 완료! {$pricing['display_name']} ({$pricing['code']}) - " . number_format($amount) . "원";
     }
 }
-
-// gangnamunni_ad_payments에 필요한 컬럼 추가 (없으면)
-mysqli_query($connect, "ALTER TABLE gangnamunni_ad_payments ADD COLUMN IF NOT EXISTS pricing_id INT DEFAULT NULL AFTER ad_id");
-mysqli_query($connect, "ALTER TABLE gangnamunni_ad_payments ADD COLUMN IF NOT EXISTS pricing_code VARCHAR(20) DEFAULT NULL AFTER pricing_id");
-mysqli_query($connect, "ALTER TABLE gangnamunni_ad_payments ADD COLUMN IF NOT EXISTS supply_price INT DEFAULT 0 AFTER amount");
-mysqli_query($connect, "ALTER TABLE gangnamunni_ad_payments ADD COLUMN IF NOT EXISTS vat_amount INT DEFAULT 0 AFTER supply_price");
-mysqli_query($connect, "ALTER TABLE gangnamunni_ad_payments ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'card' AFTER vat_amount");
-
 
 // 관리자 공통 레이아웃 사용
 $admin_page_title = '광고 결제';
@@ -290,6 +288,7 @@ include $_admin_base . '/includes/admin_header.php';
 </div>
 
 <form method="POST" id="paymentForm">
+    <input type="hidden" name="csrf_token" value="<?=htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES)?>">
     <input type="hidden" name="pricing_id" id="selectedPricingId" value="<?= $pricing_id ?>">
 
     <?php if (empty($pricing_list)): ?>
