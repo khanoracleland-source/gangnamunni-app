@@ -13,26 +13,6 @@ if (isset($connect) && $connect && file_exists(__DIR__ . '/includes/sso_auto_log
 }
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 
-// 포인트 적립 안내(#포인트제도): 예약금액의 booking_percent% 적립을 카드에 표시
-require_once __DIR__ . '/includes/points_ledger.php';
-$__pt_enabled = points_enabled_safe($connect);              // 원장 미설치 시 배지만 숨기고 페이지는 정상 렌더
-$__pt_percent = (float)points_setting_safe($connect, 'booking_percent', '0');
-/** 예약 상태에 따른 적립 배지 HTML. confirmed/completed=적립됨, pending=적립 예정, 그 외=미표시. */
-if (!function_exists('booking_point_badge')) {
-    function booking_point_badge($bk, $enabled, $percent) {
-        if (!$enabled || $percent <= 0) return '';
-        $pt = (int)floor((int)($bk['price'] ?? 0) * $percent / 100);
-        if ($pt <= 0) return '';
-        $status = $bk['status'] ?? '';
-        if (in_array($status, ['confirmed', 'completed'], true)) {
-            return '<span class="booking-point bp-earned"><i class="bi bi-coin"></i> ' . number_format($pt) . 'P 적립됨</span>';
-        } elseif ($status === 'pending') {
-            return '<span class="booking-point bp-pending"><i class="bi bi-coin"></i> ' . number_format($pt) . 'P 적립 예정</span>';
-        }
-        return '';
-    }
-}
-
 // [2026-06-15] mypage.php 와 100% 동일한 로그인 판정 — 그누보드 전역변수 직접 확인
 //   함수(is_gangnamunni_logged_in) 대신 $is_member/$member 를 직접 봐서 mypage 와 동일하게 동작
 global $is_member, $member;
@@ -214,6 +194,8 @@ $page_title = '내 예약';
         .tabs { display: flex; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
         .tab-btn { flex: 1; padding: 12px; text-align: center; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; border: none; background: none; cursor: pointer; color: var(--color-text-secondary); border-bottom: 2px solid transparent; }
         .tab-btn.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+        /* 탭 건수 — 배경 없이 숫자만. 색은 탭 상태(활성/비활성)를 그대로 상속한다. */
+        .tab-count { margin-left: 4px; font-weight: 700; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
@@ -229,9 +211,6 @@ $page_title = '내 예약';
         .status-completed { background: #d1fae5; color: #065f46; }
         .status-cancelled { color: #991b1b;}
         .status-no_show { background: #f3f4f6; color: #6b7280; }
-        .booking-point { display:inline-flex; align-items:center; gap:4px; font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; padding:3px 8px; border-radius:8px; margin-top:6px; }
-        .booking-point.bp-earned { background:#e8f5ec; color:#16a34a; }
-        .booking-point.bp-pending { background:#fff4e5; color:#b45309; }
 
         .booking-detail-row { display: flex; align-items: center; gap: 8px; }
         .booking-detail { display: flex; align-items: center; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: #fff; line-height: 1.8; background: #AE1932; width: 60%; min-width: 0; }
@@ -298,7 +277,10 @@ $page_title = '내 예약';
     <?php if (!empty($bookings)): ?>
     <!-- 탭 -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('active')">시술예정</button>
+        <button class="tab-btn active" onclick="switchTab('active')">시술예정<?php
+            // 신청해둔(진행중) 예약 건수 — 이 탭이 보여주는 $active_bookings 와 같은 기준.
+            if (!empty($active_bookings)): ?><span class="tab-count"><?php echo count($active_bookings); ?></span><?php endif;
+        ?></button>
         <button class="tab-btn" onclick="switchTab('completed')">시술완료</button>
         <button class="tab-btn" onclick="switchTab('cancelled')">예약취소</button>
     </div>
@@ -333,7 +315,6 @@ $page_title = '내 예약';
                         <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
                         <?php endif; ?>
                         <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
-                        <?php echo booking_point_badge($bk, $__pt_enabled, $__pt_percent); ?>
                     </div>
                     <div class="bd-right"><?php
                         $_dd = (int)(new DateTime('today'))->diff(new DateTime($bk['booking_date']))->format('%r%a');
@@ -392,7 +373,6 @@ $page_title = '내 예약';
                     <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
                     <?php endif; ?>
                     <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
-                    <?php echo booking_point_badge($bk, $__pt_enabled, $__pt_percent); ?>
                 </div>
                 <div class="detail-btns">
                     <?php if ($bk['status'] === 'completed'): ?>

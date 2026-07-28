@@ -56,16 +56,34 @@ if ($is_logged_in) {
 }
 
 // 로그인 상태에서 실제 화면에 표시하는 포인트만 조회한다.
+$booking_count = 0;
 if ($is_logged_in):
 // 포인트 잔액 — 원장(#포인트제도) 스냅샷 사용 (member_id는 INT = mb_no)
 // 스키마 미설치 등으로 원장을 못 써도 마이페이지가 죽지 않도록 안전 조회 사용.
 require_once __DIR__ . '/includes/points_ledger.php';
 $point_balance = points_balance_safe($connect, $mb_no);
 
+// 예약 건수 — 메뉴 행 배지에 표시한다.
+// 조회 범위는 my_bookings.php 와 동일하게 맞춘다(숫자와 목록이 어긋나면 안 된다):
+//   회원 mb_id 일치 + mb_id 가 비어있는 과거 예약 중 본인 전화번호 일치.
+$_bk_phone = preg_replace('/[^0-9]/', '', (string)($member['mb_hp'] ?? ''));
+if ($_bk_stmt = mysqli_prepare($connect,
+    "SELECT COUNT(*) AS c FROM gangnamunni_bookings
+     WHERE mb_id = ?
+        OR ((mb_id IS NULL OR mb_id = '') AND ? <> ''
+            AND REPLACE(REPLACE(phone, '-', ''), ' ', '') = ?)")) {
+    mysqli_stmt_bind_param($_bk_stmt, 'sss', $mb_id, $_bk_phone, $_bk_phone);
+    mysqli_stmt_execute($_bk_stmt);
+    $_bk_row = mysqli_fetch_assoc(mysqli_stmt_get_result($_bk_stmt));
+    $booking_count = (int)($_bk_row['c'] ?? 0);
+    mysqli_stmt_close($_bk_stmt);
+}
+
 endif; // $is_logged_in
 
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
-if (!$is_app_mode) { require_once __DIR__ . '/includes/global_nav.php'; }
+// 글로벌 네비게이션은 넣지 않는다 — 이 페이지는 자체 "마이페이지" 헤더를 쓴다.
+// (global_nav.php 가 정의하는 변수에 의존하는 코드는 없다: $is_logged_in 은 위에서 직접 판정)
 $primary_color = getTheme('primary_color', '#AE1932');
 if (!preg_match('/^#[0-9a-fA-F]{6}$/', $primary_color)) $primary_color = '#AE1932';
 ?>
@@ -85,12 +103,7 @@ if (!preg_match('/^#[0-9a-fA-F]{6}$/', $primary_color)) $primary_color = '#AE193
 body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8F8F8; max-width:640px; margin:0 auto; min-height:100vh; padding-bottom:80px; }
 
 /* 페이지 헤더 */
-/* 마이페이지는 자체 "마이페이지" 헤더가 있어 상단 글로벌 네비의 로고를 숨긴다.
-   global_nav.php 는 공용이라 그쪽을 고치지 않고 이 페이지에서만 가린다.
-   로고가 빠지면 space-between 때문에 로그인 버튼이 왼쪽으로 붙으므로 오른쪽으로 밀어준다. (한글 주석) */
-.global-nav-logo { display: none; }
-.global-nav-login { margin-left: auto; }
-
+/* 글로벌 네비를 아예 렌더하지 않으므로 .global-nav-* 를 가리는 규칙은 필요 없다. */
 .page-header {
     display:flex; align-items:center; justify-content:space-between;
     padding:14px 20px; background:var(--bs-body-bg, #fff); border-bottom:1px solid var(--bs-border-color, #f0f0f0);
@@ -183,12 +196,11 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
 }
 
 /* 메뉴 배지 */
+/* 배지는 알약 배경 없이 텍스트만 — padding/border-radius 는 배경이 없으면 의미가 없어
+   함께 제거하고, 화살표와의 간격만 margin 으로 유지한다. */
 .menu-row-badge {
-    font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; color: var(--pri, #AE1932); background: #fce4e8;
-    padding: 2px 8px; border-radius: 10px; margin-right: 4px;
-}
-.menu-row-badge.badge-red {
-    color: #fff; background: var(--pri, #AE1932);
+    font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; color: var(--pri, #AE1932);
+    margin-right: 8px;
 }
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
@@ -223,6 +235,9 @@ body { font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; background:#F8
     <a href="my_bookings.php" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-calendar-check"></i></span>
         <span class="menu-row-text">내 <?php echo term('booking', '예약'); ?> / 결제 내역</span>
+        <?php if ($booking_count > 0): ?>
+        <span class="menu-row-badge"><?php echo number_format($booking_count); ?>건</span>
+        <?php endif; ?>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <?php // 포인트(#포인트제도) — 상단 포인트/쿠폰 박스를 걷어내고 예약과 같은 메뉴 행으로 노출한다. ?>
