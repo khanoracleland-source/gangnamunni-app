@@ -38,7 +38,7 @@ function platform_payment_create_booking(mysqli $db, int $booking_id): array {
                 (payment_type,funds_recipient,booking_id,hospital_id,hospital_name,
                  patient_mb_id,patient_name,patient_phone,treatment_name,amount,currency,
                  merchant_uid,status)
-             VALUES ('booking','hospital',?,?,?,?,?,?,?,?,?,'KRW',?,'pending')");
+             VALUES ('booking','hospital',?,?,?,?,?,?,?,?,'KRW',?,'pending')");
         mysqli_stmt_bind_param($stmt, 'iisssssis',
             $booking_id, $hospital_id, $booking['hospital_name'], $booking['mb_id'],
             $booking['name'], $booking['phone'], $booking['treatment'], $amount, $merchant_uid);

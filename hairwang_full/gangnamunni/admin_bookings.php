@@ -122,6 +122,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
+        // 결제 주문(#예약결제): 병원이 예약을 확정하면 환자가 결제할 pending 주문을 만든다.
+        //   - 금액은 서버가 DB 단가로 계산한 bookings.price 만 사용한다.
+        //   - 포인트와 동일하게 best-effort — 원장 미설치/가격 미산정이어도 예약 확정은 유지한다.
+        //   - 실제 paid 전이는 PG 검증을 거친 payment_core 만 수행한다.
+        if ($new_status === 'confirmed' && file_exists(__DIR__ . '/includes/payment_core.php')) {
+            try {
+                require_once __DIR__ . '/includes/payment_core.php';
+                platform_payment_create_booking($connect, $id);
+            } catch (\Throwable $e) {
+                error_log('[admin_bookings] booking payment order not created (booking already committed): ' . $e->getMessage());
+            }
+        }
+
         $hms_sync_warning = false;
         // HMS에 hms_appointment_id가 없는데 hms_hospital_id가 있으면 실시간 API로 생성 시도
         if ($booking_row && empty($booking_row['hms_appointment_id']) && !empty($booking_row['hms_hospital_id']) && $new_status === 'confirmed') {

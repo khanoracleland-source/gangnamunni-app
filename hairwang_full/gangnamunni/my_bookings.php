@@ -137,6 +137,37 @@ if (!function_exists('getSettingValue')) {
     require_once __DIR__ . '/includes/settings_helper.php';
 }
 
+// 결제 상태(#예약결제): 확정된 예약에 대해 결제 버튼/완료 배지를 분기하기 위한 맵.
+//   원장 미설치 환경에서도 페이지가 깨지지 않도록 테이블 존재를 먼저 확인한다.
+$payment_map = [];
+$_pay_ids = [];
+foreach ($active_bookings as $_ab) { if (($_ab['status'] ?? '') === 'confirmed') $_pay_ids[] = (int)$_ab['id']; }
+if ($_pay_ids) {
+    $_chk = mysqli_query($connect,
+        "SELECT 1 FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gangnamunni_platform_payments' LIMIT 1");
+    if ($_chk && mysqli_num_rows($_chk) > 0) {
+        $_in = implode(',', array_map('intval', $_pay_ids));
+        $_pr = mysqli_query($connect,
+            "SELECT booking_id, status, amount FROM gangnamunni_platform_payments
+             WHERE payment_type = 'booking' AND booking_id IN ({$_in})");
+        if ($_pr) while ($_row = mysqli_fetch_assoc($_pr)) {
+            $payment_map[(int)$_row['booking_id']] = $_row;
+        }
+    }
+}
+/** 확정 예약의 결제 상태: 'paid' | 'payable' | '' (표시 안 함) */
+if (!function_exists('booking_payment_state')) {
+    function booking_payment_state($bk, $map) {
+        if (($bk['status'] ?? '') !== 'confirmed') return '';
+        $p = $map[(int)$bk['id']] ?? null;
+        if (!$p) return '';
+        if (in_array($p['status'], ['paid', 'partially_refunded'], true)) return 'paid';
+        if ($p['status'] === 'pending' && (int)$p['amount'] > 0) return 'payable';
+        return '';
+    }
+}
+
 // 시술완료 예약별 후기 상태 (후기 작성/승인대기/공개 버튼 분기용)
 require_once __DIR__ . '/includes/review_booking.php';
 $completed_ids = [];
@@ -216,6 +247,10 @@ $page_title = '내 예약';
         .detail-2 { font-size: 13px !important; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .detail-btns { display: flex; flex-direction: column; gap: 6px; flex: 1; }
         .detail-btn { padding: 8px 4px; border-radius: 6px; font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; text-align: center; border: none; background: var(--color-bg); color: var(--color-text); flex: 1; text-decoration: none; display: block; }
+        /* 결제(#예약결제): 확정 후 결제 대기 = 강조, 결제 완료 = 비활성 표기 */
+        .detail-btn-pay { background: #AE1932; color: #fff; }
+        .detail-btn-pay:hover { background: #822327; color: #fff; }
+        .detail-btn-paid { background: #F2F2F2; color: #BBBBBB; cursor: default; }
         @media (max-width: 399px) { .detail-btns { flex-direction: column; } }
         @media (min-width: 400px) { .detail-btns { flex-direction: row; } }
 
@@ -306,6 +341,12 @@ $page_title = '내 예약';
                     ?></div>
                 </div>
                 <div class="detail-btns">
+                    <?php $_pay_state = booking_payment_state($bk, $payment_map); ?>
+                    <?php if ($_pay_state === 'payable'): ?>
+                    <a href="booking_payment.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn detail-btn-pay">결제하기</a>
+                    <?php elseif ($_pay_state === 'paid'): ?>
+                    <span class="detail-btn detail-btn-paid">결제완료</span>
+                    <?php endif; ?>
                     <a href="booking_detail.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">예약변경</a>
                     <button type="button" class="detail-btn" onclick="openCancelModal(<?php echo $bk['id']; ?>)">예약취소</button>
                 </div>
