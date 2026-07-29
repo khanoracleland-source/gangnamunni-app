@@ -71,7 +71,7 @@ function platform_payment_mark_verified(
     mysqli_begin_transaction($db);
     try {
         $stmt = mysqli_prepare($db,
-            "SELECT id,amount,status,provider,provider_transaction_id,payment_type,ad_id,pricing_id
+            "SELECT id,amount,status,provider,provider_transaction_id,payment_type
              FROM gangnamunni_platform_payments
              WHERE merchant_uid=? FOR UPDATE");
         mysqli_stmt_bind_param($stmt, 's', $merchant_uid);
@@ -80,6 +80,9 @@ function platform_payment_mark_verified(
         mysqli_stmt_close($stmt);
         if (!$payment || (int)$payment['amount'] !== $verified_amount) {
             throw new RuntimeException('Verified amount does not match the order.');
+        }
+        if ($payment['payment_type'] === 'ad_package') {
+            throw new RuntimeException('Legacy ad-package billing has been retired.');
         }
         if ($payment['status'] === 'paid') {
             if ($payment['provider'] !== $provider
@@ -118,21 +121,6 @@ function platform_payment_mark_verified(
         mysqli_stmt_bind_param($history, 'is', $payment_id, $provider);
         if (!mysqli_stmt_execute($history)) throw new RuntimeException(mysqli_stmt_error($history));
         mysqli_stmt_close($history);
-        if ($payment['payment_type'] === 'ad_package' && (int)$payment['ad_id'] > 0) {
-            $ad_id = (int)$payment['ad_id'];
-            $activate = mysqli_prepare($db,
-                "UPDATE gangnamunni_ads a
-                 JOIN gangnamunni_platform_payments p ON p.id=? AND p.ad_id=a.id
-                 JOIN gangnamunni_ad_pricing pr ON pr.id=p.pricing_id
-                 SET a.pricing_id=p.pricing_id,a.is_active=1,a.paid_at=NOW(),a.start_date=NOW(),
-                     a.end_date=DATE_ADD(NOW(),INTERVAL pr.duration_days DAY),a.updated_at=NOW()
-                 WHERE a.id=? AND pr.is_active=1");
-            mysqli_stmt_bind_param($activate, 'ii', $payment_id, $ad_id);
-            if (!mysqli_stmt_execute($activate) || mysqli_stmt_affected_rows($activate) !== 1) {
-                throw new RuntimeException('Verified ad could not be activated.');
-            }
-            mysqli_stmt_close($activate);
-        }
         mysqli_commit($db);
         return true;
     } catch (Throwable $error) {
@@ -156,7 +144,7 @@ function platform_payment_record_refund(
     mysqli_begin_transaction($db);
     try {
         $stmt = mysqli_prepare($db,
-            "SELECT amount,refunded_amount,status,provider,payment_type,ad_id
+            "SELECT amount,refunded_amount,status,provider,payment_type
              FROM gangnamunni_platform_payments WHERE id=? FOR UPDATE");
         mysqli_stmt_bind_param($stmt, 'i', $payment_id);
         mysqli_stmt_execute($stmt);
@@ -193,15 +181,6 @@ function platform_payment_record_refund(
         mysqli_stmt_bind_param($history, 'isss', $payment_id, $old_status, $new_status, $provider);
         if (!mysqli_stmt_execute($history)) throw new RuntimeException(mysqli_stmt_error($history));
         mysqli_stmt_close($history);
-        if ($payment['payment_type'] === 'ad_package'
-            && $new_status === 'refunded' && (int)$payment['ad_id'] > 0) {
-            $ad_id = (int)$payment['ad_id'];
-            $disable = mysqli_prepare($db,
-                "UPDATE gangnamunni_ads SET is_active=0,updated_at=NOW() WHERE id=?");
-            mysqli_stmt_bind_param($disable, 'i', $ad_id);
-            if (!mysqli_stmt_execute($disable)) throw new RuntimeException(mysqli_stmt_error($disable));
-            mysqli_stmt_close($disable);
-        }
         mysqli_commit($db);
         return true;
     } catch (Throwable $error) {

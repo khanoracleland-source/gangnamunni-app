@@ -93,8 +93,8 @@ gangnamunni/
 │   └── openai_config.php
 ├── payment/                   # 결제 시스템
 │   ├── portone_config.php
-│   ├── ad_payment.php
-│   └── payment_callback.php
+│   ├── ad_payment.php       # 폐기된 패키지 결제 (HTTP 410)
+│   └── payment_callback.php # PG 미연동 시 fail-closed
 ├── sync/                      # DB 동기화
 │   ├── sync_hms_to_gangnamunni.php
 │   └── sync_gangnamunni_to_hms.php

@@ -75,4 +75,4 @@ CREATE TABLE IF NOT EXISTS gangnamunni_hospital_settlement_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Only `payment_type=booking AND funds_recipient=hospital` is eligible.
--- `ad_package/platform` is intentionally excluded from hospital settlements.
+-- Advertising uses its separate hospital wallet and is intentionally excluded.

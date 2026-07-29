@@ -10,7 +10,17 @@ require_once __DIR__ . '/settings_helper.php';
 $_ad_flag = getSettingValue($connect, 'ad_show_' . $ad_page_key, '1');
 if ($_ad_flag !== '1') return;
 
-$_ad_query = "SELECT * FROM gangnamunni_ads WHERE is_active = 1 AND (target_page = 'all' OR target_page = '" . mysqli_real_escape_string($connect, $ad_page_key) . "') ORDER BY display_order ASC LIMIT 10";
+$_ad_query = "SELECT a.* FROM gangnamunni_ads a
+    WHERE a.status = 'approved'
+      AND (a.target_page = 'all' OR a.target_page = '" . mysqli_real_escape_string($connect, $ad_page_key) . "')
+      AND EXISTS (
+          SELECT 1 FROM gangnamunni_ad_slot_bookings b
+          WHERE b.advertiser_id = a.advertiser_id
+            AND b.status = 'active'
+            AND b.start_date <= CURDATE()
+            AND (b.end_date IS NULL OR b.end_date >= CURDATE())
+      )
+    ORDER BY a.display_order ASC LIMIT 10";
 $_ad_result = mysqli_query($connect, $_ad_query);
 $_ads = [];
 if ($_ad_result) {

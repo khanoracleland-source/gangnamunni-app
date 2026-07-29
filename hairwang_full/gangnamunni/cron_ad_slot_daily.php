@@ -51,7 +51,7 @@ echo "--- 전일 활성 슬롯 배정 조회 ---\n";
 
 $bookings = [];
 $b_stmt = mysqli_prepare($connect, "
-    SELECT b.id AS booking_id, b.hospital_id, p.monthly_price,
+    SELECT b.id AS booking_id, b.hospital_id, b.advertiser_id, p.monthly_price,
            h.name AS hospital_name
     FROM gangnamunni_ad_slot_bookings b
     INNER JOIN gangnamunni_ad_slot_products p ON b.product_id = p.id
@@ -108,6 +108,22 @@ foreach ($bookings as $bk) {
         mysqli_stmt_bind_param($end_stmt, 'si', $charge_date, $booking_id);
         mysqli_stmt_execute($end_stmt);
         mysqli_stmt_close($end_stmt);
+        $advertiser_id = (int)($bk['advertiser_id'] ?? 0);
+        if ($advertiser_id > 0) {
+            $deactivate = mysqli_prepare($connect,
+                "UPDATE gangnamunni_ads a SET is_active=0
+                 WHERE a.advertiser_id=?
+                   AND NOT EXISTS (
+                       SELECT 1 FROM gangnamunni_ad_slot_bookings active_b
+                       WHERE active_b.advertiser_id=a.advertiser_id
+                         AND active_b.status='active'
+                         AND active_b.start_date<=CURDATE()
+                         AND (active_b.end_date IS NULL OR active_b.end_date>=CURDATE())
+                   )");
+            mysqli_stmt_bind_param($deactivate, 'i', $advertiser_id);
+            mysqli_stmt_execute($deactivate);
+            mysqli_stmt_close($deactivate);
+        }
 
         $noti_title = "[광고 슬롯] {$hospital_name} 배정 자동 종료";
         $noti_message = "{$hospital_name}의 광고 슬롯 배정이 지갑 잔액 부족(" . number_format($balance) . "원)으로 자동 종료되었습니다. 필요 금액: " . number_format($daily_amount) . "원/일.";

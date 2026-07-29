@@ -35,7 +35,16 @@ $table_exists = mysqli_num_rows($table_check) > 0;
 
 // 광고 배너 데이터 가져오기
 $ads = [];
-$ads_query = "SELECT * FROM gangnamunni_ads WHERE is_active = 1 ORDER BY display_order ASC LIMIT 10";
+$ads_query = "SELECT a.* FROM gangnamunni_ads a
+    WHERE a.status = 'approved'
+      AND EXISTS (
+          SELECT 1 FROM gangnamunni_ad_slot_bookings b
+          WHERE b.advertiser_id = a.advertiser_id
+            AND b.status = 'active'
+            AND b.start_date <= CURDATE()
+            AND (b.end_date IS NULL OR b.end_date >= CURDATE())
+      )
+    ORDER BY a.display_order ASC LIMIT 10";
 $ads_result = mysqli_query($connect, $ads_query);
 if ($ads_result) {
     while ($row = mysqli_fetch_assoc($ads_result)) {

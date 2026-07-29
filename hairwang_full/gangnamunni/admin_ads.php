@@ -117,12 +117,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_ad'])) {
                            VALUES ('{$title}', '{$subtitle}', '{$image_url}', '{$link_url}', {$display_order}, '{$ad_type}', {$advertiser_id}, {$pricing_id}, 0)");
 
     $ad_id = mysqli_insert_id($connect);
-    $message = '광고가 추가되었습니다. 결제를 완료하면 광고가 활성화됩니다.';
+    $message = '광고 소재가 추가되었습니다. 광고 지갑 충전 및 슬롯 배정 후 노출됩니다.';
 
-    // 결제 페이지로 리다이렉트
+    // Legacy package checkout was retired; advertising uses the wallet.
     if (isset($_POST['proceed_to_payment']) && $_POST['proceed_to_payment'] === '1') {
-        $sel_pricing = intval($_POST['pricing_id'] ?? 0);
-        header("Location: payment/ad_payment.php?ad_id={$ad_id}&pricing_id={$sel_pricing}");
+        header('Location: partner_wallet.php');
         exit;
     }
 }
@@ -141,11 +140,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $link_url = mysqli_real_escape_string($connect, $_POST['link_url']);
     $display_order = intval($_POST['display_order']);
     $ad_type = mysqli_real_escape_string($connect, $_POST['ad_type'] ?? 'banner');
-    $is_active = isset($_POST['is_active']) ? 1 : 0;
-
     $sql = sprintf(
-        "UPDATE gangnamunni_ads SET title='%s', subtitle='%s', image_url='%s', link_url='%s', display_order=%d, ad_type='%s', is_active=%d WHERE id=%d",
-        $title, $subtitle, $image_url, $link_url, $display_order, $ad_type, $is_active, $id
+        "UPDATE gangnamunni_ads SET title='%s', subtitle='%s', image_url='%s', link_url='%s', display_order=%d, ad_type='%s' WHERE id=%d",
+        $title, $subtitle, $image_url, $link_url, $display_order, $ad_type, $id
     );
     if (mysqli_query($connect, $sql)) {
         $message = '광고가 수정되었습니다.';
@@ -164,11 +161,9 @@ if (isset($_GET['delete'])) {
     }
 }
 
-// 광고 활성화/비활성화
+// Legacy banner activation is retired. Slot assignment controls paid exposure.
 if (isset($_GET['toggle'])) {
-    $id = intval($_GET['toggle']);
-    mysqli_query($connect, "UPDATE gangnamunni_ads SET is_active = 1 - is_active WHERE id = {$id}");
-    header('Location: admin_ads.php?tab=ads');
+    header('Location: admin_ads.php?tab=ads&msg=' . urlencode('광고 노출은 광고 지갑과 슬롯 배정에서 관리해주세요.'));
     exit;
 }
 
@@ -183,14 +178,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
     }
 }
 
-// 광고 일괄 활성화/비활성화
+// Only deactivation is retained as a safety action. Activation requires a slot.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_toggle_ads') {
     $ids = array_map('intval', $_POST['ids'] ?? []);
     $toggle_to = intval($_POST['toggle_to'] ?? 1);
-    if (!empty($ids)) {
+    if ($toggle_to === 1) {
+        $error = '광고 활성화는 광고 지갑 충전 후 슬롯 관리에서 배정해주세요.';
+    } elseif (!empty($ids)) {
         $id_list = implode(',', $ids);
-        if (mysqli_query($connect, "UPDATE gangnamunni_ads SET is_active = {$toggle_to} WHERE id IN ({$id_list})")) {
-            $message = count($ids) . '개 광고가 ' . ($toggle_to ? '활성화' : '비활성화') . '되었습니다.';
+        if (mysqli_query($connect, "UPDATE gangnamunni_ads SET is_active = 0 WHERE id IN ({$id_list})")) {
+            $message = count($ids) . '개 광고 소재가 비활성화되었습니다.';
         }
     }
 }
@@ -200,7 +197,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'appro
     $ad_id = intval($_POST['ad_id'] ?? 0);
     $admin_name = $_SESSION['ad_admin_name'] ?? 'admin';
     if ($ad_id > 0) {
-        $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_ads SET status='approved', is_active=1, reviewed_by=?, reviewed_at=NOW() WHERE id=?");
+        $stmt = mysqli_prepare($connect,
+            "UPDATE gangnamunni_ads a
+             SET status='approved',
+                 is_active=EXISTS(
+                     SELECT 1 FROM gangnamunni_ad_slot_bookings b
+                     WHERE b.advertiser_id=a.advertiser_id
+                       AND b.status='active'
+                       AND b.start_date<=CURDATE()
+                       AND (b.end_date IS NULL OR b.end_date>=CURDATE())
+                 ),
+                 reviewed_by=?,reviewed_at=NOW()
+             WHERE a.id=?");
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, 'si', $admin_name, $ad_id);
             mysqli_stmt_execute($stmt);
@@ -208,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'appro
         }
     }
     $redirect_status = $_REQUEST['status'] ?? $_POST['current_status'] ?? '';
-    header('Location: admin_ads.php?tab=ads&status=' . urlencode($redirect_status) . '&msg=' . urlencode('광고가 승인되었습니다.'));
+    header('Location: admin_ads.php?tab=ads&status=' . urlencode($redirect_status) . '&msg=' . urlencode('광고 소재가 승인되었습니다. 노출은 슬롯 배정 후 시작됩니다.'));
     exit;
 }
 
@@ -387,27 +395,20 @@ if ($cnt_result) $total_ads = (int)mysqli_fetch_assoc($cnt_result)['cnt'];
 $total_ads_pages = $total_ads > 0 ? ceil($total_ads / $per_page) : 0;
 
 $ads_order = ($sort_mode === 'name') ? 'adv.hospital_name ASC, a.display_order ASC' : 'a.id DESC';
-$payment_table_check = mysqli_query($connect,
-    "SELECT 1 FROM information_schema.TABLES
-     WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gangnamunni_platform_payments' LIMIT 1");
-$has_platform_payments = $payment_table_check && mysqli_num_rows($payment_table_check) > 0;
-$payment_select = $has_platform_payments
-    ? "p.status AS payment_status,p.paid_at AS payment_date,p.amount AS paid_amount,"
-    : "NULL AS payment_status,NULL AS payment_date,0 AS paid_amount,";
-$payment_join = $has_platform_payments ? "
-    LEFT JOIN gangnamunni_platform_payments p
-      ON p.id = (
-         SELECT p2.id FROM gangnamunni_platform_payments p2
-         WHERE p2.ad_id=a.id
-           AND p2.payment_type='ad_package'
-           AND p2.funds_recipient='platform'
-           AND p2.status IN ('paid','partially_refunded')
-         ORDER BY p2.paid_at DESC,p2.id DESC LIMIT 1
-      )" : '';
+$payment_select = "NULL AS payment_status,NULL AS payment_date,0 AS paid_amount,";
+$payment_join = '';
+$slot_exposure_select = "EXISTS(
+    SELECT 1 FROM gangnamunni_ad_slot_bookings active_b
+    WHERE active_b.advertiser_id=a.advertiser_id
+      AND active_b.status='active'
+      AND active_b.start_date<=CURDATE()
+      AND (active_b.end_date IS NULL OR active_b.end_date>=CURDATE())
+) AS exposure_active,";
 
 $ads_query = "
     SELECT a.*,
            {$payment_select}
+           {$slot_exposure_select}
            adv.hospital_name as advertiser_name
     FROM gangnamunni_ads a
     {$payment_join}
@@ -562,9 +563,6 @@ include __DIR__ . '/includes/admin_header.php';
         <button type="submit" class="btn btn-danger btn-sm ms-2" onclick="return confirmBulk('선택한 광고를 삭제하시겠습니까?', 'bulk_delete_ads')">
             <i class="bi bi-trash"></i> 선택 삭제
         </button>
-        <button type="submit" class="btn btn-success btn-sm ms-1" onclick="return confirmBulk('선택한 광고를 활성화하시겠습니까?', 'bulk_toggle_ads', 1)">
-            <i class="bi bi-check-circle"></i> 활성화
-        </button>
         <button type="submit" class="btn btn-warning btn-sm ms-1" onclick="return confirmBulk('선택한 광고를 비활성화하시겠습니까?', 'bulk_toggle_ads', 0)">
             <i class="bi bi-x-circle"></i> 비활성화
         </button>
@@ -618,7 +616,7 @@ include __DIR__ . '/includes/admin_header.php';
                 <th style="min-width:180px;">제목</th>
                 <th style="width:130px;">병원(광고주)</th>
                 <th style="width:80px;">유형</th>
-                <th style="width:90px;">결제</th>
+                <th style="width:90px;">과금 방식</th>
                 <th style="width:130px;">광고 기간</th>
                 <th style="width:70px;">순서</th>
                 <th style="width:70px;">상태</th>
@@ -643,7 +641,7 @@ include __DIR__ . '/includes/admin_header.php';
                 $grp_impressions = 0;
                 $grp_clicks = 0;
                 foreach ($group_ads as $ga) {
-                    if ($ga['is_active']) $grp_active++;
+                    if ($ga['exposure_active']) $grp_active++;
                     $grp_impressions += ($ga['impression_count'] ?? 0);
                     $grp_clicks += ($ga['click_count'] ?? 0);
                 }
@@ -700,12 +698,7 @@ include __DIR__ . '/includes/admin_header.php';
                     <?php endif; ?>
                 </td>
                 <td>
-                    <?php if ($ad['payment_status'] === 'paid'): ?>
-                    <span class="badge bg-success">결제완료</span>
-                    <br><small class="text-body-secondary"><?php echo number_format($ad['paid_amount']); ?>원</small>
-                    <?php else: ?>
-                    <span class="badge bg-danger">미결제</span>
-                    <?php endif; ?>
+                    <span class="badge bg-info">지갑 일할차감</span>
                 </td>
                 <td class="small">
                     <?php if (!empty($ad['start_date']) && !empty($ad['end_date'])): ?>
@@ -724,7 +717,7 @@ include __DIR__ . '/includes/admin_header.php';
                 </td>
                 <td class="text-center"><?php echo $ad['display_order']; ?></td>
                 <td>
-                    <?php if ($ad['is_active']): ?>
+                    <?php if ($ad['exposure_active']): ?>
                     <span class="badge bg-success">활성</span>
                     <?php else: ?>
                     <span class="badge bg-danger">비활성</span>
@@ -754,20 +747,11 @@ include __DIR__ . '/includes/admin_header.php';
                     </div>
                     <?php endif; ?>
                     <div class="btn-group btn-group-sm">
-                        <?php if ($ad['payment_status'] !== 'paid'): ?>
-                        <a href="payment/ad_payment.php?ad_id=<?php echo $ad['id']; ?>&pricing_id=<?php echo ($ad['pricing_id'] ?? 0); ?>&product_id=<?php echo ($ad['ad_type'] ?? 'banner') === 'premium' ? 'premium_1month' : 'banner_1month'; ?>"
-                           class="btn btn-outline-success" title="결제하기">
-                            <i class="bi bi-credit-card"></i>
+                        <a href="partner_wallet.php" class="btn btn-outline-success" title="광고 지갑">
+                            <i class="bi bi-wallet2"></i>
                         </a>
-                        <?php else: ?>
-                        <a href="payment/ad_refund.php?ad_id=<?php echo $ad['id']; ?>"
-                           class="btn btn-outline-warning" title="환불"
-                           onclick="return confirm('환불 처리하시겠습니까?')">
-                            <i class="bi bi-arrow-counterclockwise"></i>
-                        </a>
-                        <?php endif; ?>
-                        <a href="?tab=ads&toggle=<?php echo $ad['id']; ?>" class="btn btn-outline-secondary" title="<?php echo $ad['is_active'] ? '비활성화' : '활성화'; ?>">
-                            <i class="bi <?php echo $ad['is_active'] ? 'bi-toggle-on' : 'bi-toggle-off'; ?>"></i>
+                        <a href="admin_ad_slots.php" class="btn btn-outline-secondary" title="광고 슬롯 관리">
+                            <i class="bi bi-grid-3x3-gap"></i>
                         </a>
                         <button class="btn btn-outline-primary" onclick='editAd(<?php echo json_encode($ad, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' title="수정">
                             <i class="bi bi-pencil"></i>
@@ -816,12 +800,7 @@ include __DIR__ . '/includes/admin_header.php';
                     <?php endif; ?>
                 </td>
                 <td>
-                    <?php if ($ad['payment_status'] === 'paid'): ?>
-                    <span class="badge bg-success">결제완료</span>
-                    <br><small class="text-body-secondary"><?php echo number_format($ad['paid_amount']); ?>원</small>
-                    <?php else: ?>
-                    <span class="badge bg-danger">미결제</span>
-                    <?php endif; ?>
+                    <span class="badge bg-info">지갑 일할차감</span>
                 </td>
                 <td class="small">
                     <?php if (!empty($ad['start_date']) && !empty($ad['end_date'])): ?>
@@ -840,7 +819,7 @@ include __DIR__ . '/includes/admin_header.php';
                 </td>
                 <td class="text-center"><?php echo $ad['display_order']; ?></td>
                 <td>
-                    <?php if ($ad['is_active']): ?>
+                    <?php if ($ad['exposure_active']): ?>
                     <span class="badge bg-success">활성</span>
                     <?php else: ?>
                     <span class="badge bg-danger">비활성</span>
@@ -870,20 +849,11 @@ include __DIR__ . '/includes/admin_header.php';
                     </div>
                     <?php endif; ?>
                     <div class="btn-group btn-group-sm">
-                        <?php if ($ad['payment_status'] !== 'paid'): ?>
-                        <a href="payment/ad_payment.php?ad_id=<?php echo $ad['id']; ?>&pricing_id=<?php echo ($ad['pricing_id'] ?? 0); ?>&product_id=<?php echo ($ad['ad_type'] ?? 'banner') === 'premium' ? 'premium_1month' : 'banner_1month'; ?>"
-                           class="btn btn-outline-success" title="결제하기">
-                            <i class="bi bi-credit-card"></i>
+                        <a href="partner_wallet.php" class="btn btn-outline-success" title="광고 지갑">
+                            <i class="bi bi-wallet2"></i>
                         </a>
-                        <?php else: ?>
-                        <a href="payment/ad_refund.php?ad_id=<?php echo $ad['id']; ?>"
-                           class="btn btn-outline-warning" title="환불"
-                           onclick="return confirm('환불 처리하시겠습니까?')">
-                            <i class="bi bi-arrow-counterclockwise"></i>
-                        </a>
-                        <?php endif; ?>
-                        <a href="?tab=ads&toggle=<?php echo $ad['id']; ?>" class="btn btn-outline-secondary" title="<?php echo $ad['is_active'] ? '비활성화' : '활성화'; ?>">
-                            <i class="bi <?php echo $ad['is_active'] ? 'bi-toggle-on' : 'bi-toggle-off'; ?>"></i>
+                        <a href="admin_ad_slots.php" class="btn btn-outline-secondary" title="광고 슬롯 관리">
+                            <i class="bi bi-grid-3x3-gap"></i>
                         </a>
                         <button class="btn btn-outline-primary" onclick='editAd(<?php echo json_encode($ad, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' title="수정">
                             <i class="bi bi-pencil"></i>
@@ -1260,10 +1230,7 @@ include __DIR__ . '/includes/admin_header.php';
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label d-block">&nbsp;</label>
-                            <div class="form-check form-switch">
-                                <input type="checkbox" name="is_active" id="editAd_is_active" value="1" class="form-check-input">
-                                <label class="form-check-label" for="editAd_is_active">활성화</label>
-                            </div>
+                            <div class="form-text">노출 상태는 광고 지갑 및 슬롯 배정에서 관리됩니다.</div>
                         </div>
                     </div>
                 </div>
@@ -1418,7 +1385,6 @@ function editAd(ad) {
     document.getElementById("editAd_link_url").value = ad.link_url || "";
     document.getElementById("editAd_display_order").value = ad.display_order || 0;
     document.getElementById("editAd_ad_type").value = ad.ad_type || "banner";
-    document.getElementById("editAd_is_active").checked = ad.is_active == 1;
     new bootstrap.Modal(document.getElementById("editAdModal")).show();
 }
 

@@ -34,7 +34,7 @@
 ### STAGE 1: 기반 구축 (DB + 에러 수정)
 
 **완료 항목:**
-- [x] `payment/ad_payment.php` HTTP 500 에러 수정
+- [x] 레거시 `payment/ad_payment.php` 패키지 결제 폐기 (광고 지갑 방식으로 통합)
   - 원인: `require_once __DIR__ . '/../dbconfig.php'` 경로 불일치
   - 수정: `'/../dbconfig.php'` → `'/../../dbconfig.php'`
   - 추가: `gangnamunni/dbconfig.php` → `hairwang_full/dbconfig.php` 심볼릭 링크
@@ -190,7 +190,7 @@
 | admin_ad_stats.php | 광고 통계 대시보드 (신규) |
 | ai_ad_editor.php | AI 광고 에디터 (기존) |
 | api_ad_tracking.php | 노출/클릭 트래킹 API (신규) |
-| payment/ad_payment.php | 광고 결제 (기존, 경로 수정) |
+| payment/ad_payment.php | 폐기된 패키지 결제 엔드포인트 (HTTP 410) |
 | payment/portone_config.php | PortOne 설정 (기존, 테스트 키) |
 | includes/admin_header.php | 사이드바 메뉴 (수정) |
 

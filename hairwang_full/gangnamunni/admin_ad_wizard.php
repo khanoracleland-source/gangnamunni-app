@@ -112,9 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 VALUES ({$hospitalId}, {$advertiserId}, {$pricingId}, '{$title}', '{$subtitle}', '{$imageUrl}', '{$linkUrl}', '{$adType}', '{$startDate}', '{$endDate}', 0, 999, NOW(), NOW())");
             $adId = mysqli_insert_id($connect);
 
-            // Payment is intentionally not created by the wizard. The secured
-            // ad_payment.php endpoint loads the price server-side and creates the
-            // canonical pending order after hospital ownership + CSRF checks.
+            // Advertising uses the hospital ad wallet. Exposure starts only
+            // after a slot assignment passes the three-month balance check.
 
             mysqli_commit($connect);
             echo json_encode(['success' => true, 'ad_id' => $adId, 'message' => '광고가 신청되었습니다. 결제 주문을 생성한 뒤 PG 승인을 완료해주세요.']);

@@ -224,7 +224,16 @@ $_infeed_enabled = getSettingValue($connect, 'ad_show_hospitals_infeed', '1');
 $_infeed_interval = (int)getSettingValue($connect, 'ad_infeed_interval', '4');
 $_infeed_ads = [];
 if ($_infeed_enabled === '1') {
-    $_iq = mysqli_query($connect, "SELECT * FROM gangnamunni_ads WHERE is_active = 1 AND ad_type = 'infeed' ORDER BY display_order ASC LIMIT 10");
+    $_iq = mysqli_query($connect, "SELECT a.* FROM gangnamunni_ads a
+        WHERE a.status = 'approved' AND a.ad_type = 'infeed'
+          AND EXISTS (
+              SELECT 1 FROM gangnamunni_ad_slot_bookings b
+              WHERE b.advertiser_id = a.advertiser_id
+                AND b.status = 'active'
+                AND b.start_date <= CURDATE()
+                AND (b.end_date IS NULL OR b.end_date >= CURDATE())
+          )
+        ORDER BY a.display_order ASC LIMIT 10");
     if ($_iq) { while ($_ir = mysqli_fetch_assoc($_iq)) $_infeed_ads[] = $_ir; }
 }
 $_ad_idx = 0;

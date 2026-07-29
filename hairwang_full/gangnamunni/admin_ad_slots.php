@@ -189,6 +189,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
                 INSERT INTO gangnamunni_ad_slot_bookings (product_id, hospital_id, advertiser_id, start_date, status, assigned_by)
                 VALUES ({$product_id}, {$hospital_id}, {$advertiser_id_sql}, '{$start_date_esc}', 'active', '{$admin_name_esc}')
             ");
+            if ($advertiser_id_sql !== 'NULL') {
+                mysqli_query($connect, "UPDATE gangnamunni_ads
+                    SET is_active=1
+                    WHERE advertiser_id={$advertiser_id_sql} AND status='approved'");
+            }
+            mysqli_query($connect, "UPDATE gangnamunni_ads a
+                SET is_active=0
+                WHERE a.is_active=1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM gangnamunni_ad_slot_bookings b
+                      WHERE b.advertiser_id=a.advertiser_id
+                        AND b.status='active'
+                        AND b.start_date<=CURDATE()
+                        AND (b.end_date IS NULL OR b.end_date>=CURDATE())
+                  )");
             $message = '병원이 슬롯에 배정되었습니다.';
         }
     }
@@ -198,6 +213,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
 if (isset($_GET['end_booking'])) {
     $bid = intval($_GET['end_booking']);
     mysqli_query($connect, "UPDATE gangnamunni_ad_slot_bookings SET status='ended', end_date=CURDATE() WHERE id={$bid} AND status='active'");
+    mysqli_query($connect, "UPDATE gangnamunni_ads a
+        SET is_active=0
+        WHERE a.advertiser_id=(
+            SELECT b.advertiser_id FROM gangnamunni_ad_slot_bookings b WHERE b.id={$bid}
+        )
+          AND NOT EXISTS (
+              SELECT 1 FROM gangnamunni_ad_slot_bookings active_b
+              WHERE active_b.advertiser_id=a.advertiser_id
+                AND active_b.status='active'
+                AND active_b.start_date<=CURDATE()
+                AND (active_b.end_date IS NULL OR active_b.end_date>=CURDATE())
+          )");
     header('Location: admin_ad_slots.php?msg=' . urlencode('배정이 종료되었습니다.'));
     exit;
 }
