@@ -2,19 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\FirebaseCloudMessaging;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
+    public function __construct(private readonly FirebaseCloudMessaging $fcm)
+    {
+    }
+
     /**
      * Get notifications list for a user
      */
     public function index(Request $request)
     {
+        $request->merge(['user_id' => $request->user()->id]);
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
             'type' => 'nullable|string',
@@ -29,7 +35,7 @@ class NotificationController extends Controller
             ], 400);
         }
 
-        $query = DB::table('notifications')
+        $query = DB::table('mobile_notifications')
             ->where('user_id', $request->user_id);
 
         if ($request->has('type')) {
@@ -45,7 +51,7 @@ class NotificationController extends Controller
             ->get();
 
         // Get unread count
-        $unreadCount = DB::table('notifications')
+        $unreadCount = DB::table('mobile_notifications')
             ->where('user_id', $request->user_id)
             ->where('is_read', 0)
             ->count();
@@ -63,10 +69,11 @@ class NotificationController extends Controller
     /**
      * Get notification detail
      */
-    public function show($id)
+    public function show($id, Request $request)
     {
-        $notification = DB::table('notifications')
+        $notification = DB::table('mobile_notifications')
             ->where('id', $id)
+            ->where('user_id', $request->user()->id)
             ->first();
 
         if (!$notification) {
@@ -77,8 +84,9 @@ class NotificationController extends Controller
         }
 
         // Mark as read
-        DB::table('notifications')
+        DB::table('mobile_notifications')
             ->where('id', $id)
+            ->where('user_id', $request->user()->id)
             ->update([
                 'is_read' => 1,
                 'read_at' => now()
@@ -95,6 +103,8 @@ class NotificationController extends Controller
      */
     public function send(Request $request)
     {
+        abort_unless($request->user()->hasAnyRole(['admin', 'demo_admin']), 403);
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
             'type' => 'required|string|max:50',
@@ -113,14 +123,14 @@ class NotificationController extends Controller
         }
 
         // Get user's FCM tokens
-        $fcmTokens = DB::table('fcm_tokens')
+        $fcmTokens = DB::table('fcm_devices')
             ->where('user_id', $request->user_id)
             ->where('is_active', 1)
             ->pluck('fcm_token')
             ->toArray();
 
         // Create notification record
-        $notificationId = DB::table('notifications')->insertGetId([
+        $notificationId = DB::table('mobile_notifications')->insertGetId([
             'user_id' => $request->user_id,
             'type' => $request->type,
             'title' => $request->title,
@@ -132,14 +142,14 @@ class NotificationController extends Controller
             'updated_at' => now()
         ]);
 
-        $notification = DB::table('notifications')->where('id', $notificationId)->first();
-
         // Send FCM if tokens exist
         if (!empty($fcmTokens)) {
             foreach ($fcmTokens as $token) {
                 $this->sendFCM($notificationId, $token, $request->all());
             }
         }
+
+        $notification = DB::table('mobile_notifications')->where('id', $notificationId)->first();
 
         return response()->json([
             'status' => true,
@@ -153,6 +163,8 @@ class NotificationController extends Controller
      */
     public function sendWithTemplate(Request $request)
     {
+        abort_unless($request->user()->hasAnyRole(['admin', 'demo_admin']), 403);
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
             'template_type' => 'required|string',
@@ -168,7 +180,7 @@ class NotificationController extends Controller
         }
 
         // Get template
-        $template = DB::table('notification_templates')
+        $template = DB::table('mobile_notification_templates')
             ->where('type', $request->template_type)
             ->where('is_active', 1)
             ->first();
@@ -191,14 +203,14 @@ class NotificationController extends Controller
         }
 
         // Get user's FCM tokens
-        $fcmTokens = DB::table('fcm_tokens')
+        $fcmTokens = DB::table('fcm_devices')
             ->where('user_id', $request->user_id)
             ->where('is_active', 1)
             ->pluck('fcm_token')
             ->toArray();
 
         // Create notification record
-        $notificationId = DB::table('notifications')->insertGetId([
+        $notificationId = DB::table('mobile_notifications')->insertGetId([
             'user_id' => $request->user_id,
             'type' => $request->template_type,
             'title' => $title,
@@ -208,8 +220,6 @@ class NotificationController extends Controller
             'created_at' => now(),
             'updated_at' => now()
         ]);
-
-        $notification = DB::table('notifications')->where('id', $notificationId)->first();
 
         // Send FCM if tokens exist
         if (!empty($fcmTokens)) {
@@ -223,6 +233,8 @@ class NotificationController extends Controller
             }
         }
 
+        $notification = DB::table('mobile_notifications')->where('id', $notificationId)->first();
+
         return response()->json([
             'status' => true,
             'message' => 'Notification sent',
@@ -235,6 +247,8 @@ class NotificationController extends Controller
      */
     public function markAsRead($id, Request $request)
     {
+        $request->merge(['user_id' => $request->user()->id]);
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
         ]);
@@ -246,7 +260,7 @@ class NotificationController extends Controller
             ], 400);
         }
 
-        $updated = DB::table('notifications')
+        $updated = DB::table('mobile_notifications')
             ->where('id', $id)
             ->where('user_id', $request->user_id)
             ->update([
@@ -272,6 +286,8 @@ class NotificationController extends Controller
      */
     public function markAllAsRead(Request $request)
     {
+        $request->merge(['user_id' => $request->user()->id]);
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
         ]);
@@ -283,7 +299,7 @@ class NotificationController extends Controller
             ], 400);
         }
 
-        DB::table('notifications')
+        DB::table('mobile_notifications')
             ->where('user_id', $request->user_id)
             ->where('is_read', 0)
             ->update([
@@ -302,6 +318,8 @@ class NotificationController extends Controller
      */
     public function destroy($id, Request $request)
     {
+        $request->merge(['user_id' => $request->user()->id]);
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
         ]);
@@ -313,7 +331,7 @@ class NotificationController extends Controller
             ], 400);
         }
 
-        $deleted = DB::table('notifications')
+        $deleted = DB::table('mobile_notifications')
             ->where('id', $id)
             ->where('user_id', $request->user_id)
             ->delete();
@@ -336,11 +354,16 @@ class NotificationController extends Controller
      */
     public function registerToken(Request $request)
     {
+        $request->merge([
+            'user_id' => $request->user()->id,
+            'platform' => 'android',
+        ]);
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
             'device_id' => 'required|string|max:100',
-            'fcm_token' => 'required|string|max:255',
-            'platform' => 'required|in:android,ios,web',
+            'fcm_token' => 'required|string|max:4096',
+            'platform' => 'required|in:android',
             'app_version' => 'nullable|string|max:20',
             'os_version' => 'nullable|string|max:50',
             'device_model' => 'nullable|string|max:100',
@@ -353,8 +376,19 @@ class NotificationController extends Controller
             ], 400);
         }
 
+        DB::table('fcm_devices')
+            ->where('fcm_token', $request->fcm_token)
+            ->where(function ($query) use ($request) {
+                $query->where('user_id', '!=', $request->user_id)
+                    ->orWhere('device_id', '!=', $request->device_id);
+            })
+            ->update([
+                'is_active' => 0,
+                'updated_at' => now(),
+            ]);
+
         // Upsert FCM token
-        DB::table('fcm_tokens')->updateOrInsert(
+        DB::table('fcm_devices')->updateOrInsert(
             [
                 'user_id' => $request->user_id,
                 'device_id' => $request->device_id
@@ -367,6 +401,7 @@ class NotificationController extends Controller
                 'device_model' => $request->get('device_model'),
                 'is_active' => 1,
                 'last_used_at' => now(),
+                'created_at' => now(),
                 'updated_at' => now()
             ]
         );
@@ -382,6 +417,8 @@ class NotificationController extends Controller
      */
     public function unregisterToken(Request $request)
     {
+        $request->merge(['user_id' => $request->user()->id]);
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
             'device_id' => 'required|string',
@@ -394,7 +431,7 @@ class NotificationController extends Controller
             ], 400);
         }
 
-        DB::table('fcm_tokens')
+        DB::table('fcm_devices')
             ->where('user_id', $request->user_id)
             ->where('device_id', $request->device_id)
             ->update(['is_active' => 0]);
@@ -414,66 +451,21 @@ class NotificationController extends Controller
      */
     private function sendFCM($notificationId, $token, $data)
     {
-        $fcmServerKey = env('FCM_SERVER_KEY');
-
-        if (!$fcmServerKey) {
-            Log::warning('FCM_SERVER_KEY not configured');
-            return;
-        }
-
-        $notification = [
-            'title' => $data['title'],
-            'body' => $data['body'],
-        ];
-
-        if (isset($data['image_url'])) {
-            $notification['image'] = $data['image_url'];
-        }
-
-        $message = [
-            'to' => $token,
-            'notification' => $notification,
-            'data' => $data['data'] ?? [],
-            'priority' => $data['priority'] === 'high' ? 'high' : 'normal',
-        ];
-
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'key=' . $fcmServerKey,
-                'Content-Type' => 'application/json',
-            ])->post('https://fcm.googleapis.com/fcm/send', $message);
+            $messageId = $this->fcm->sendToAndroid($token, $data);
 
-            $result = $response->json();
-
-            if ($response->successful() && isset($result['success']) && $result['success'] > 0) {
-                // Update notification as sent
-                DB::table('notifications')
-                    ->where('id', $notificationId)
-                    ->update([
-                        'is_sent' => 1,
-                        'sent_at' => now(),
-                        'fcm_token' => $token,
-                        'fcm_message_id' => $result['results'][0]['message_id'] ?? null,
-                    ]);
-
-                Log::info('FCM sent successfully', ['notification_id' => $notificationId]);
-            } else {
-                // Log error
-                $error = $result['results'][0]['error'] ?? 'Unknown error';
-                DB::table('notifications')
-                    ->where('id', $notificationId)
-                    ->update([
-                        'error_message' => $error,
-                        'retry_count' => DB::raw('retry_count + 1')
-                    ]);
-
-                Log::error('FCM send failed', [
-                    'notification_id' => $notificationId,
-                    'error' => $error
+            DB::table('mobile_notifications')
+                ->where('id', $notificationId)
+                ->update([
+                    'is_sent' => 1,
+                    'sent_at' => now(),
+                    'fcm_message_id' => $messageId,
+                    'error_message' => null,
                 ]);
-            }
+
+            Log::info('FCM sent successfully', ['notification_id' => $notificationId]);
         } catch (\Exception $e) {
-            DB::table('notifications')
+            DB::table('mobile_notifications')
                 ->where('id', $notificationId)
                 ->update([
                     'error_message' => $e->getMessage(),
@@ -492,6 +484,8 @@ class NotificationController extends Controller
      */
     public function stats(Request $request)
     {
+        $request->merge(['user_id' => $request->user()->id]);
+
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
         ]);
@@ -504,10 +498,10 @@ class NotificationController extends Controller
         }
 
         $stats = [
-            'total' => DB::table('notifications')->where('user_id', $request->user_id)->count(),
-            'unread' => DB::table('notifications')->where('user_id', $request->user_id)->where('is_read', 0)->count(),
-            'sent' => DB::table('notifications')->where('user_id', $request->user_id)->where('is_sent', 1)->count(),
-            'by_type' => DB::table('notifications')
+            'total' => DB::table('mobile_notifications')->where('user_id', $request->user_id)->count(),
+            'unread' => DB::table('mobile_notifications')->where('user_id', $request->user_id)->where('is_read', 0)->count(),
+            'sent' => DB::table('mobile_notifications')->where('user_id', $request->user_id)->where('is_sent', 1)->count(),
+            'by_type' => DB::table('mobile_notifications')
                 ->select('type', DB::raw('count(*) as count'))
                 ->where('user_id', $request->user_id)
                 ->groupBy('type')

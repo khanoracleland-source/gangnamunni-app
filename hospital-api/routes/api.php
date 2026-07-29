@@ -1068,7 +1068,7 @@ Route::prefix('payments')->group(function () {
 });
 
 // Notification APIs
-Route::prefix('notifications')->group(function () {
+Route::prefix('notifications')->middleware('auth:sanctum')->group(function () {
     // Statistics (must be before /{id} route)
     Route::get('/stats', [App\Http\Controllers\NotificationController::class, 'stats']);
 
