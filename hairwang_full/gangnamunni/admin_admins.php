@@ -20,7 +20,7 @@ loadThemeSettings($connect);
 
 // 로그인 + 권한 체크
 require_admin_login();
-require_permission('admins');
+require_permission('admin_manage');
 
 // [보안] 관리자 관리(admin_admins.php)는 super_admin(최고관리자) 전용 — 그 외 역할 전부 차단
 if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {

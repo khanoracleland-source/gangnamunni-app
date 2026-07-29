@@ -21,8 +21,8 @@ if (!isset($connect) || !$connect) {
 if (!$connect) die('DB 연결 실패');
 
 loadThemeSettings($connect);
-check_admin_login();
-check_permission('faq');
+require_admin_login();
+require_permission('faq');
 
 // 카테고리 목록
 $faq_categories = ['일반', '예약', '결제', '회원', '이벤트', '후기', '시술', '기타'];

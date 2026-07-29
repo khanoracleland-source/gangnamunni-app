@@ -28,7 +28,7 @@ if (!$connect) die('DB 연결 실패');
 
 loadThemeSettings($connect);
 require_admin_login();
-check_permission('treatment_packages');
+require_permission('treatment_packages');
 
 // ===== 테이블 자동 생성 =====
 mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_treatment_packages (

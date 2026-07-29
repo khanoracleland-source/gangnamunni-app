@@ -9,7 +9,12 @@ $admin_current = 'event_entries';
 
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/admin_auth.php';
-check_admin_login();
+require_once __DIR__ . '/includes/hospital_filter.php';
+require_admin_login();
+require_permission('event_entries');
+$event_hospital_ids = get_hospital_filter_ids($connect);
+$event_hospital_in = $event_hospital_ids === null ? null : (empty($event_hospital_ids) ? '0' : implode(',', array_map('intval', $event_hospital_ids)));
+$event_scope = $event_hospital_in === null ? '' : " AND ev.hospital_id IN ({$event_hospital_in})";
 
 // ===== Action: 당첨 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -18,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $event_id = intval($_POST['event_id'] ?? 0);
         $count = intval($_POST['winner_count'] ?? 1);
         // 미당첨 응모자 중 랜덤 추첨
-        $r = mysqli_query($connect, "SELECT id FROM gangnamunni_event_entries WHERE event_id=" . $event_id . " AND (is_winner IS NULL OR is_winner=0) ORDER BY RAND() LIMIT " . $count);
+        $r = mysqli_query($connect, "SELECT e.id FROM gangnamunni_event_entries e INNER JOIN gangnamunni_events ev ON ev.id=e.event_id WHERE e.event_id=" . $event_id . " AND (e.is_winner IS NULL OR e.is_winner=0){$event_scope} ORDER BY RAND() LIMIT " . $count);
         $drawn = 0;
         if ($r) while ($row = mysqli_fetch_assoc($r)) {
             mysqli_query($connect, "UPDATE gangnamunni_event_entries SET is_winner=1, status='won' WHERE id=" . $row['id']);
@@ -30,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = intval($_POST['id'] ?? 0);
         $status = mysqli_real_escape_string($connect, $_POST['status'] ?? '');
         if ($id > 0 && in_array($status, ['pending','won','claimed','rejected'])) {
-            mysqli_query($connect, "UPDATE gangnamunni_event_entries SET status='" . $status . "', is_winner=" . ($status === 'won' ? 1 : 0) . " WHERE id=" . $id);
+            mysqli_query($connect, "UPDATE gangnamunni_event_entries e INNER JOIN gangnamunni_events ev ON ev.id=e.event_id SET e.status='" . $status . "', e.is_winner=" . ($status === 'won' ? 1 : 0) . " WHERE e.id=" . $id . $event_scope);
             $msg = '상태가 변경되었습니다.';
             $msg_type = 'success';
         }
@@ -43,6 +48,7 @@ $filter_winner = $_GET['winner'] ?? '';
 $search = $_GET['q'] ?? '';
 
 $where = "1=1";
+$where .= $event_scope;
 if ($event_id) $where .= " AND e.event_id=" . $event_id;
 if ($filter_winner === '1') $where .= " AND e.is_winner=1";
 if ($filter_winner === '0') $where .= " AND (e.is_winner IS NULL OR e.is_winner=0)";
@@ -54,12 +60,14 @@ if ($r) while ($row = mysqli_fetch_assoc($r)) $entries[] = $row;
 
 // Events list for filter
 $events = [];
-$er = mysqli_query($connect, "SELECT id, title FROM gangnamunni_events WHERE raffle_end_date IS NOT NULL ORDER BY created_at DESC LIMIT 50");
+$er_scope = $event_hospital_in === null ? '' : " AND hospital_id IN ({$event_hospital_in})";
+$er = mysqli_query($connect, "SELECT id, title FROM gangnamunni_events WHERE raffle_end_date IS NOT NULL{$er_scope} ORDER BY created_at DESC LIMIT 50");
 if ($er) while ($ev = mysqli_fetch_assoc($er)) $events[] = $ev;
 
 $total_entries = 0;
 $total_winners = 0;
-$tc = mysqli_query($connect, "SELECT COUNT(*) as cnt, SUM(CASE WHEN is_winner=1 THEN 1 ELSE 0 END) as winners FROM gangnamunni_event_entries" . ($event_id ? " WHERE event_id=" . $event_id : ""));
+$tc_where = $event_id ? "e.event_id={$event_id}" : '1=1';
+$tc = mysqli_query($connect, "SELECT COUNT(*) as cnt, SUM(CASE WHEN e.is_winner=1 THEN 1 ELSE 0 END) as winners FROM gangnamunni_event_entries e INNER JOIN gangnamunni_events ev ON ev.id=e.event_id WHERE {$tc_where}{$event_scope}");
 if ($tc) { $t = mysqli_fetch_assoc($tc); $total_entries = $t['cnt']; $total_winners = $t['winners']; }
 
 require_once __DIR__ . '/../dbconfig.php';

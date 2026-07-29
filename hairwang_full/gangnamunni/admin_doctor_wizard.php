@@ -15,6 +15,7 @@ if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_permission('doctors');
 require_once __DIR__ . '/includes/hospital_filter.php'; // 병원 격리(super_admin=전체, 그 외=소속 병원)
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);

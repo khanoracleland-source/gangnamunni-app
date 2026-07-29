@@ -23,8 +23,8 @@ $my_hospital_id = get_hospital_filter();
 $my_role = $_SESSION['ad_admin_role'] ?? '';
 $my_id = $_SESSION['ad_admin_id'] ?? 0;
 
-// Only hospital_admin and super_admin can access
-if (!in_array($my_role, ['super_admin', 'admin', 'hospital_admin'])) {
+// Only platform admins and hospital account owners can access
+if (!in_array($my_role, ['super_admin', 'admin', 'hospital_super_admin', 'hospital_admin'], true)) {
     echo '<div class="alert alert-danger m-5">Access denied.</div>';
     exit;
 }
@@ -72,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'toggle') {
         $toggle_id = (int)$_POST['admin_id'];
         $check = mysqli_fetch_assoc(mysqli_query($connect, "SELECT hospital_id, role, is_active FROM gangnamunni_admins WHERE id = {$toggle_id}"));
-        if ($check && $check['role'] === 'hospital_sub_admin') {
+        if ($check && $check['role'] === 'hospital_sub_admin'
+            && (in_array($my_role, ['super_admin', 'admin'], true) || (int)$check['hospital_id'] === (int)$my_hospital_id)) {
             $new_status = $check['is_active'] ? 0 : 1;
             $connect->query("UPDATE gangnamunni_admins SET is_active = {$new_status} WHERE id = {$toggle_id}");
             $msg = $new_status ? "Sub-admin activated." : "Sub-admin deactivated.";

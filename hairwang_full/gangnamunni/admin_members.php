@@ -21,6 +21,10 @@ loadThemeSettings($connect);
 $is_logged_in = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true;
 if (!$is_logged_in) { header('Location: dashboard.php'); exit; }
 require_permission('members');
+if (is_hospital_role()) {
+    http_response_code(403);
+    exit('Hospital administrators cannot manage the global member directory.');
+}
 
 if (empty($_SESSION['admin_members_csrf'])) $_SESSION['admin_members_csrf'] = bin2hex(random_bytes(32));
 $admin_members_csrf = $_SESSION['admin_members_csrf'];

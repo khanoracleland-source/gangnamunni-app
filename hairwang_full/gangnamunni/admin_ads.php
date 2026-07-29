@@ -18,6 +18,9 @@ if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
+require_admin_login();
+require_permission('ads');
+
 // AJAX: 병원 -> 광고주 자동 등록
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'auto_register_advertiser') {
     header('Content-Type: application/json');
@@ -43,11 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'auto_
     exit;
 }
 
-
-// admin_auth.php 기반 인증 (gangnamunni_admins 테이블)
-// login + permission check
-require_admin_login();
-require_permission('ads');
 
 // 하위 호환: 기존 세션 변수 설정
 

@@ -11,8 +11,8 @@ if (!isset($connect) || !$connect) {
 }
 if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
-check_admin_login();
-check_permission('membership');
+require_admin_login();
+require_permission('membership');
 
 // POST: 등급 수정
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

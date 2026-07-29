@@ -24,8 +24,8 @@ if (!isset($connect) || !$connect) {
 if (!$connect) die('DB 연결 실패');
 
 loadThemeSettings($connect);
-check_admin_login();
-check_permission('hospital_treatments');
+require_admin_login();
+require_permission('hospital_treatments');
 
 // 병원 역할 격리 (다병원 지원): super_admin/플랫폼 관리자(소속 없음)면 null(전체),
 // 그 외에는 email 이 일치하는 자기 소유 병원 id 배열. → superadmin 은 전체, 병원 관리자는 자기 병원(들)만.

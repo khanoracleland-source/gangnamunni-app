@@ -18,6 +18,9 @@ function get_hospital_filter() {
     if (isset($_SESSION['ad_admin_hospital_id']) && $_SESSION['ad_admin_hospital_id']) {
         return (int)$_SESSION['ad_admin_hospital_id'];
     }
+    if (in_array($_SESSION['ad_admin_role'] ?? '', ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'], true)) {
+        return -1; // hospital account without a valid tenant must never fall back to global access
+    }
     return null;
 }
 
@@ -31,7 +34,8 @@ function get_hospital_filter() {
  * @return array|null  병원 id 배열 또는 null(전체)
  */
 function get_hospital_filter_ids($connect) {
-    if (($_SESSION['ad_admin_role'] ?? '') === 'super_admin') return null;
+    $role = $_SESSION['ad_admin_role'] ?? '';
+    if (in_array($role, ['super_admin', 'admin', 'editor', 'viewer', 'staff'], true)) return null;
 
     $login = trim($_SESSION['ad_admin_user'] ?? '');
     $mail  = trim($_SESSION['ad_admin_email'] ?? '');
@@ -48,9 +52,10 @@ function get_hospital_filter_ids($connect) {
     }
     if (!empty($ids)) return array_values(array_unique($ids));
 
-    // 이메일 매칭 병원 없음 → 세션 단일 hospital_id 있으면 그것, 없으면 전체(null)
+    // 이메일 매칭 병원 없음 → 세션 단일 hospital_id 있으면 그것.
+    // 병원 역할인데 유효한 소속이 없으면 빈 배열(접근 0건)로 fail closed.
     $hid = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
-    return $hid > 0 ? [$hid] : null;
+    return $hid > 0 ? [$hid] : [];
 }
 
 /**

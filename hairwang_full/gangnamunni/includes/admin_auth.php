@@ -12,14 +12,14 @@
 $ADMIN_ROLE_PERMISSIONS = [
     // === 플랫폼 역할 ===
     'super_admin' => ['*'],
-    'admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'reviews', 'categories', 'ads', 'navigation', 'theme', 'theme_advanced', 'maintenance', 'upgrade', 'members', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'admin_mail', 'mail_templates', 'mail_signatures', 'mail_accounts', 'editor_settings', 'review_wizard', 'approval_queue', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events', 'cpv_settings', 'cpv_wallet', 'cpv_rates', 'cpv_dashboard', 'cpv_settlement', 'dev_ref_cpv', 'dev_ref_confirm', 'dev_ref_qa', 'dev_ref_cpv_qa', 'dev_ref_payment', 'manage_reports', 'grade_permissions', 'admin_manage', 'hospital_landing', 'hospital_apply', 'hospital_apply_status', 'hospital_pending', 'hospital_process', 'hospital_guide', 'site_settings_main', 'booking_revenue'],
+    'admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'reviews', 'categories', 'ads', 'ad_slot_manage', 'navigation', 'theme', 'theme_advanced', 'design_mode', 'settings', 'maintenance', 'upgrade', 'members', 'membership', 'faq', 'qna', 'rankings', 'doctor_treatments', 'treatment_packages', 'excel_import', 'excel_export', 'medicines', 'nurses', 'patients', 'pharmacists', 'staffs', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'admin_mail', 'mail_templates', 'mail_signatures', 'mail_accounts', 'editor_settings', 'review_wizard', 'approval_queue', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events', 'event_entries', 'cpv_settings', 'cpv_wallet', 'cpv_rates', 'cpv_dashboard', 'cpv_settlement', 'dev_ref_cpv', 'dev_ref_confirm', 'dev_ref_qa', 'dev_ref_cpv_qa', 'dev_ref_payment', 'manage_reports', 'grade_permissions', 'admin_manage', 'admin_accounts', 'hospital_landing', 'hospital_apply', 'hospital_apply_status', 'hospital_pending', 'hospital_process', 'hospital_guide', 'site_settings_main', 'booking_revenue'],
     'editor' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'reviews', 'bookings', 'categories', 'ads', 'navigation', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'review_wizard', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events'],
     'viewer' => ['dashboard'],
     'staff' => ['dashboard', 'hospitals', 'reviews', 'bookings', 'notifications', 'members'],
 
     // === 병원 역할 (hospital_id 기반 격리) ===
-    'hospital_super_admin' => ['dashboard', 'hospitals', 'hospital_images', 'doctors', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'members', 'tips', 'categories', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_admins', 'hospital_stats', 'booking_revenue'],
-    'hospital_admin' => ['dashboard', 'hospitals', 'hospital_images', 'doctors', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'members', 'tips', 'categories', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'booking_revenue'],
+    'hospital_super_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_admins', 'hospital_stats', 'booking_revenue'],
+    'hospital_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_admins', 'booking_revenue'],
     'hospital_sub_admin' => ['dashboard', 'hospitals', 'doctors', 'reviews', 'bookings', 'partner_treatments', 'notifications'],
     'hospital_staff' => ['dashboard', 'bookings', 'reviews', 'notifications'],
 ];
@@ -99,7 +99,7 @@ function admin_set_session($admin, $connect = null) {
     // 이메일 매칭을 '권위 있는' 소속으로 사용 → 기존 hospital_id 가 다른(잘못된) 병원을 가리켜도 교정한다.
     // (정상 계정은 username=병원.email 이라 같은 병원으로 해석되어 변화 없음)
     // super_admin 은 전체 관리자이므로 제외.
-    if ($connect && ($admin['role'] ?? '') !== 'super_admin') {
+    if ($connect && in_array(($admin['role'] ?? ''), ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'], true)) {
         $login = trim($admin['username'] ?? '');
         $mail  = trim($admin['email'] ?? '');
         if ($login !== '' || $mail !== '') {

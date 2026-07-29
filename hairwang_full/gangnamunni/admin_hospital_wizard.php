@@ -14,6 +14,7 @@ if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_permission('hospital_wizard');
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("DB 연결 실패");

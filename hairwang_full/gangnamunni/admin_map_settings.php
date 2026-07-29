@@ -17,7 +17,7 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_admin_login();
-check_permission('settings');
+require_permission('settings');
 
 if (!function_exists('getSettingValue')) {
     require_once __DIR__ . '/includes/settings_helper.php';

@@ -14,6 +14,7 @@ $admin_current = 'auto_test_v2';
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_permission('auto_test_v2');
 if (!isset($connect) || !$connect) {
     $connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
     if ($connect) mysqli_set_charset($connect, 'utf8mb4');

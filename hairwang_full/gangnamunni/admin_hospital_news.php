@@ -20,8 +20,15 @@ if (!isset($connect) || !$connect) {
 if (!$connect) die('DB 연결 실패');
 
 loadThemeSettings($connect);
-check_admin_login();
-check_permission('hospital_news');
+require_admin_login();
+require_permission('hospital_news');
+require_once __DIR__ . '/includes/hospital_filter.php';
+$news_hospital_ids = get_hospital_filter_ids($connect);
+$news_hospital_in = $news_hospital_ids === null ? null : (empty($news_hospital_ids) ? '0' : implode(',', array_map('intval', $news_hospital_ids)));
+
+function can_manage_news_hospital($hospital_id, $allowed_ids) {
+    return $allowed_ids === null || in_array((int)$hospital_id, $allowed_ids, true);
+}
 
 // ===== POST Actions =====
 $msg = '';
@@ -37,6 +44,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $content = trim($_POST['content'] ?? '');
         $image_url = trim($_POST['image_url'] ?? '');
         $news_type = $_POST['news_type'] ?? 'news';
+
+        if (!can_manage_news_hospital($hospital_id, $news_hospital_ids)) {
+            http_response_code(403);
+            exit('Access denied');
+        }
 
         if ($hospital_id <= 0 || $title === '') {
             $msg = '병원과 제목은 필수 입력입니다.';
@@ -72,6 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $image_url = trim($_POST['image_url'] ?? '');
         $news_type = $_POST['news_type'] ?? 'news';
 
+        if (!can_manage_news_hospital($hospital_id, $news_hospital_ids)) {
+            http_response_code(403);
+            exit('Access denied');
+        }
+
         if ($id <= 0 || $hospital_id <= 0 || $title === '') {
             $msg = '필수 항목이 누락되었습니다.';
             $msg_type = 'danger';
@@ -79,7 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (!in_array($news_type, ['news', 'promo', 'notice'])) {
                 $news_type = 'news';
             }
-            $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_news SET hospital_id = ?, title = ?, content = ?, image_url = ?, news_type = ? WHERE id = ?");
+            $scope_sql = $news_hospital_in === null ? '' : " AND hospital_id IN ({$news_hospital_in})";
+            $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_news SET hospital_id = ?, title = ?, content = ?, image_url = ?, news_type = ? WHERE id = ?{$scope_sql}");
             if ($stmt) {
                 mysqli_stmt_bind_param($stmt, 'issssi', $hospital_id, $title, $content, $image_url, $news_type, $id);
                 if (mysqli_stmt_execute($stmt)) {
@@ -100,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'delete') {
         $id = intval($_POST['id'] ?? 0);
         if ($id > 0) {
-            $stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_news WHERE id = ?");
+            $scope_sql = $news_hospital_in === null ? '' : " AND hospital_id IN ({$news_hospital_in})";
+            $stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_news WHERE id = ?{$scope_sql}");
             if ($stmt) {
                 mysqli_stmt_bind_param($stmt, 'i', $id);
                 mysqli_stmt_execute($stmt);
@@ -117,7 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'toggle') {
         $id = intval($_POST['id'] ?? 0);
         if ($id > 0) {
-            $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_news SET is_active = IF(is_active = 1, 0, 1) WHERE id = ?");
+            $scope_sql = $news_hospital_in === null ? '' : " AND hospital_id IN ({$news_hospital_in})";
+            $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_news SET is_active = IF(is_active = 1, 0, 1) WHERE id = ?{$scope_sql}");
             if ($stmt) {
                 mysqli_stmt_bind_param($stmt, 'i', $id);
                 mysqli_stmt_execute($stmt);
@@ -139,7 +159,8 @@ if (isset($_GET['msg']) && $_GET['msg'] !== '') {
 
 // ===== 병원 목록 (드롭다운용) =====
 $hospitals = [];
-$hr = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals ORDER BY name ASC");
+$hospital_scope_sql = $news_hospital_in === null ? '' : " WHERE id IN ({$news_hospital_in})";
+$hr = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals{$hospital_scope_sql} ORDER BY name ASC");
 if ($hr) {
     while ($h = mysqli_fetch_assoc($hr)) {
         $hospitals[] = $h;
@@ -157,6 +178,9 @@ $offset = ($page - 1) * $per_page;
 $where_clauses = ["1=1"];
 $bind_types = '';
 $bind_values = [];
+if ($news_hospital_in !== null) {
+    $where_clauses[] = "n.hospital_id IN ({$news_hospital_in})";
+}
 
 if ($filter_type !== '' && in_array($filter_type, ['news', 'promo', 'notice'])) {
     $where_clauses[] = "n.news_type = ?";
@@ -207,14 +231,15 @@ if ($stmt_d) {
 
 // 통계
 $stats = ['total' => 0, 'news' => 0, 'promo' => 0, 'notice' => 0, 'active' => 0, 'inactive' => 0];
-$sr = mysqli_query($connect, "SELECT news_type, COUNT(*) as cnt FROM gangnamunni_hospital_news GROUP BY news_type");
+$stats_scope = $news_hospital_in === null ? '' : " WHERE hospital_id IN ({$news_hospital_in})";
+$sr = mysqli_query($connect, "SELECT news_type, COUNT(*) as cnt FROM gangnamunni_hospital_news{$stats_scope} GROUP BY news_type");
 if ($sr) {
     while ($s = mysqli_fetch_assoc($sr)) {
         $stats[$s['news_type']] = (int)$s['cnt'];
         $stats['total'] += (int)$s['cnt'];
     }
 }
-$ar = mysqli_query($connect, "SELECT is_active, COUNT(*) as cnt FROM gangnamunni_hospital_news GROUP BY is_active");
+$ar = mysqli_query($connect, "SELECT is_active, COUNT(*) as cnt FROM gangnamunni_hospital_news{$stats_scope} GROUP BY is_active");
 if ($ar) {
     while ($a = mysqli_fetch_assoc($ar)) {
         if ((int)$a['is_active'] === 1) $stats['active'] = (int)$a['cnt'];
@@ -226,7 +251,8 @@ if ($ar) {
 $edit_data = null;
 if (isset($_GET['edit'])) {
     $edit_id = intval($_GET['edit']);
-    $stmt_e = mysqli_prepare($connect, "SELECT * FROM gangnamunni_hospital_news WHERE id = ?");
+    $edit_scope = $news_hospital_in === null ? '' : " AND hospital_id IN ({$news_hospital_in})";
+    $stmt_e = mysqli_prepare($connect, "SELECT * FROM gangnamunni_hospital_news WHERE id = ?{$edit_scope}");
     if ($stmt_e) {
         mysqli_stmt_bind_param($stmt_e, 'i', $edit_id);
         mysqli_stmt_execute($stmt_e);

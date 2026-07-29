@@ -26,8 +26,8 @@ if (!isset($connect) || !$connect) {
 if (!$connect) die('DB 연결 실패');
 
 loadThemeSettings($connect);
-check_admin_login();
-check_permission('rankings');
+require_admin_login();
+require_permission('rankings');
 
 // ===== 테이블 자동 생성 =====
 mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_rankings (

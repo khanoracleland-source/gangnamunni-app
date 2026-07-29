@@ -20,8 +20,8 @@ if (!isset($connect) || !$connect) {
 if (!$connect) die('DB 연결 실패');
 
 loadThemeSettings($connect);
-check_admin_login();
-check_permission('qna');
+require_admin_login();
+require_permission('qna');
 
 // ===== POST 액션 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {

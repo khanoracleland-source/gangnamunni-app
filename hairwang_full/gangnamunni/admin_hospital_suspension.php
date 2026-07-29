@@ -16,7 +16,10 @@ if (!$connect) die("DB Error");
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 require_admin_login();
-require_permission('admin_accounts');
+if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
+    http_response_code(403);
+    exit('Access denied');
+}
 
 // Process actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {

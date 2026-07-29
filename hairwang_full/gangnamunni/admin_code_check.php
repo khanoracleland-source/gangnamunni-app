@@ -24,7 +24,10 @@ $db->set_charset('utf8mb4');
 
 require_once __DIR__ . '/includes/admin_header.php';
 require_admin_login();
-require_permission('super_admin,admin');
+if (!in_array($_SESSION['ad_admin_role'] ?? '', ['super_admin', 'admin'], true)) {
+    http_response_code(403);
+    exit('Access denied');
+}
 
 // ── AJAX 핸들러 ──────────────────────────────────────────────────
 $action = $_POST['action'] ?? $_GET['action'] ?? '';

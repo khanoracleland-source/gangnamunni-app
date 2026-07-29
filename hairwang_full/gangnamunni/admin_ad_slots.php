@@ -14,7 +14,7 @@ mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
 require_admin_login();
-require_permission('ads');
+require_permission('ad_slot_manage');
 
 $admin_name = $_SESSION['ad_admin_name'] ?? 'admin';
 $message = isset($_GET['msg']) ? trim($_GET['msg']) : '';

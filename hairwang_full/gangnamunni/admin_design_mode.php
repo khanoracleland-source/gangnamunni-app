@@ -21,7 +21,7 @@ if (!$connect) die('DB 연결 실패');
 
 loadThemeSettings($connect);
 require_admin_login();
-check_permission('design_mode');
+require_permission('design_mode');
 
 require_once __DIR__ . '/includes/settings_helper.php';
 

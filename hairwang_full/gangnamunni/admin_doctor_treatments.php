@@ -25,7 +25,7 @@ if (!$connect) die('DB 연결 실패');
 
 loadThemeSettings($connect);
 require_admin_login();
-check_permission('doctor_treatments');
+require_permission('doctor_treatments');
 
 // CSRF 토큰 생성
 if (empty($_SESSION['csrf_token'])) {

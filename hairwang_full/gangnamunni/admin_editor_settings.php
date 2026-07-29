@@ -10,6 +10,8 @@ if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !
 }
 
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/admin_auth.php';
+require_permission('editor_settings');
 
 $db = Database::getInstance();
 
