@@ -14,7 +14,7 @@ if ($doctor_id <= 0) {
 }
 
 // 의사 정보 조회
-$stmt = $connect->prepare("SELECT d.*, h.name as hospital_name, h.address as hospital_address, h.phone as hospital_phone, h.profile_image_url as hospital_image, h.rating as hospital_rating, h.review_count as hospital_review_count
+$stmt = $connect->prepare("SELECT d.*, h.name as hospital_name, h.address as hospital_address, h.phone as hospital_phone, COALESCE(NULLIF(h.main_image_url, ''), NULLIF(h.profile_image_url, '')) as hospital_image, h.rating as hospital_rating, h.review_count as hospital_review_count
     FROM gangnamunni_doctors d
     LEFT JOIN gangnamunni_hospitals h ON d.hospital_id = h.id
     WHERE d.id = ?");
@@ -284,9 +284,8 @@ $page_title = htmlspecialchars($doctor['name']) . ' - ' . term("staff") . ' 상�
             <span class="hospital-wishlist"><?php renderWishlistButton('hospital', (int)$doctor['hospital_id'], 'sm', false, 'star'); ?></span>
             <a href="detail.php?id=<?php echo $doctor['hospital_id']; ?>" class="hospital-card-link">
                 <div class="hospital-card-img">
-                    <?php if (!empty($doctor['hospital_image'])): ?>
-                    <img src="<?php echo htmlspecialchars($doctor['hospital_image']); ?>" alt="">
-                    <?php endif; ?>
+                    <img src="<?php echo htmlspecialchars($doctor['hospital_image'] ?? ''); ?>" alt=""
+                        onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'130\'%3E%3Crect fill=\'%23f5f5f5\' width=\'120\' height=\'130\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' fill=\'%23999\' text-anchor=\'middle\' dominant-baseline=\'middle\' font-size=\'14\'%3E병원%3C/text%3E%3C/svg%3E'">
                 </div>
                 <div class="hospital-card-info">
                     <div class="hospital-card-name"><?php echo htmlspecialchars($doctor['hospital_name']); ?></div>

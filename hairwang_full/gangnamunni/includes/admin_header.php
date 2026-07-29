@@ -906,12 +906,12 @@ if (!isset($admin_page_description) && isset($menu_descriptions[$admin_current])
                 <i class="bi bi-bell"></i>
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display:none;font-size:10px;">0</span>
             </button>
-            <div class="dropdown-menu dropdown-menu-end shadow" style="width:360px;max-height:400px;overflow-y:auto;" id="notifDropdown">
+            <div class="dropdown-menu dropdown-menu-end shadow" style="width:360px;max-height:400px;overflow-y:auto;" id="notifBadgeDropdown">
                 <h6 class="dropdown-header d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-bell me-1"></i>알림</span>
                     <a href="admin_dev_feedback.php" class="text-muted" style="font-size:11px;">전체보기</a>
                 </h6>
-                <div id="notifList"><div class="text-center text-muted py-3" style="font-size:13px;">알림이 없습니다</div></div>
+                <div id="notifBadgeList"><div class="text-center text-muted py-3" style="font-size:13px;">알림이 없습니다</div></div>
             </div>
         </div>
         <button class="btn btn-sm btn-outline-warning" id="clearCacheBtn" title="캐시 초기화">

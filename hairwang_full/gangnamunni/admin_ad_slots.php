@@ -20,11 +20,6 @@ $admin_name = $_SESSION['ad_admin_name'] ?? 'admin';
 $message = isset($_GET['msg']) ? trim($_GET['msg']) : '';
 $error = '';
 
-// ======================================================================
-// POST/GET 처리
-// ======================================================================
-
-// 슬롯 상품 추가
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
     $keyword_type = ($_POST['keyword_type'] ?? '') === 'region' ? 'region' : 'treatment';
     $rank_position = max(1, min(5, intval($_POST['rank_position'] ?? 1)));
@@ -108,7 +103,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     }
 }
 
-// 슬롯 상품 삭제 (관련 배정 내역은 FK CASCADE로 함께 삭제됨)
 if (isset($_GET['delete_product'])) {
     $id = intval($_GET['delete_product']);
     mysqli_query($connect, "DELETE FROM gangnamunni_ad_slot_products WHERE id={$id}");
@@ -116,7 +110,6 @@ if (isset($_GET['delete_product'])) {
     exit;
 }
 
-// 슬롯 상품 활성/비활성 토글
 if (isset($_GET['toggle_product'])) {
     $id = intval($_GET['toggle_product']);
     mysqli_query($connect, "UPDATE gangnamunni_ad_slot_products SET is_active = 1 - is_active WHERE id={$id}");
@@ -124,7 +117,7 @@ if (isset($_GET['toggle_product'])) {
     exit;
 }
 
-// CPC/CPM 테스트/실과금 모드 전환
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggle_performance_mode') {
     $test_mode_value = ($_POST['test_mode'] ?? '1') === '0' ? '0' : '1';
     $test_mode_esc = mysqli_real_escape_string($connect, $test_mode_value);
@@ -141,7 +134,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggl
         : 'CPC/CPM 실과금 모드가 활성화되었습니다.';
 }
 
-// 병원을 슬롯에 배정 (기존 배정이 있으면 자동 종료 후 교체)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assign_booking') {
     $product_id = intval($_POST['product_id'] ?? 0);
     $hospital_id = intval($_POST['hospital_id'] ?? 0);
@@ -229,10 +221,6 @@ if (isset($_GET['end_booking'])) {
     exit;
 }
 
-// ======================================================================
-// 월정액 자동 정지: 지갑 잔액이 하루 과금액보다 적은 활성 배정을 즉시 종료
-// (cron_ad_slot_daily.php와 동일 기준 — 관리자 페이지 접속 시 실시간 반영)
-// ======================================================================
 $today = date('Y-m-d');
 $days_in_month_now = max(1, (int) date('t'));
 $autostop_r = mysqli_query($connect, "
@@ -270,10 +258,6 @@ if ($autostop_r) {
 if ($autostopped_count > 0) {
     $message = ($message ? $message . ' / ' : '') . $autostopped_count . '건의 배정이 지갑 잔액 부족으로 자동 종료되었습니다.';
 }
-
-// ======================================================================
-// 데이터 조회
-// ======================================================================
 
 $products = [];
 $pr = mysqli_query($connect, "

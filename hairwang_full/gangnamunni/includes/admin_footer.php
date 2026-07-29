@@ -832,7 +832,7 @@ function changePerPage(selectEl) {
         .then(data => {
             if (!data.success) return;
             const badge = document.getElementById('notifBadge');
-            const list = document.getElementById('notifList');
+            const list = document.getElementById('notifBadgeList');
             if (!badge || !list) return;
 
             const unread = data.unread || 0;

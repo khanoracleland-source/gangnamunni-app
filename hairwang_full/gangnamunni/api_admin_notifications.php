@@ -26,10 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // 최근 알림
     $stmt = mysqli_prepare($connect,
-        "SELECT * FROM gangnamunni_user_notifications WHERE member_id=? ORDER BY created_at DESC LIMIT ?"
+        "SELECT * FROM gangnamunni_notifications WHERE admin_id=? ORDER BY created_at DESC LIMIT ?"
     );
-    $admin_id_str = strval($admin_id);
-    mysqli_stmt_bind_param($stmt, 'si', $admin_id_str, $limit);
+    mysqli_stmt_bind_param($stmt, 'ii', $admin_id, $limit);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
     $items = [];
@@ -38,9 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // 미읽은 건수
     $stmt2 = mysqli_prepare($connect,
-        "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id=? AND is_read=0"
+        "SELECT COUNT(*) as cnt FROM gangnamunni_notifications WHERE admin_id=? AND is_read=0"
     );
-    mysqli_stmt_bind_param($stmt2, 's', $admin_id_str);
+    mysqli_stmt_bind_param($stmt2, 'i', $admin_id);
     mysqli_stmt_execute($stmt2);
     $unread = intval(mysqli_stmt_get_result($stmt2)->fetch_assoc()['cnt']);
     mysqli_stmt_close($stmt2);
@@ -51,16 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     $id = intval($input['id'] ?? 0);
-    $admin_id_str = strval($admin_id);
 
     if ($id > 0) {
-        $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_user_notifications SET is_read=1 WHERE id=? AND member_id=?");
-        mysqli_stmt_bind_param($stmt, 'is', $id, $admin_id_str);
+        $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_notifications SET is_read=1 WHERE id=? AND admin_id=?");
+        mysqli_stmt_bind_param($stmt, 'ii', $id, $admin_id);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
     } elseif (($input['action'] ?? '') === 'read_all') {
-        $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_user_notifications SET is_read=1 WHERE member_id=? AND is_read=0");
-        mysqli_stmt_bind_param($stmt, 's', $admin_id_str);
+        $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_notifications SET is_read=1 WHERE admin_id=? AND is_read=0");
+        mysqli_stmt_bind_param($stmt, 'i', $admin_id);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
     }
