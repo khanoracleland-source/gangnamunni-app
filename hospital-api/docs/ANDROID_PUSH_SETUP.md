@@ -13,7 +13,7 @@ configuration is not used.
    ```dotenv
    FIREBASE_PROJECT_ID=your-firebase-project-id
    FIREBASE_CREDENTIALS=storage/app/firebase/service-account.json
-   FIREBASE_ANDROID_CHANNEL_ID=general
+   FIREBASE_ANDROID_CHANNEL_ID=notification
    ```
 
 4. Run:
