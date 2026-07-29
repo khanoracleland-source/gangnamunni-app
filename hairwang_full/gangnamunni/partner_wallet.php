@@ -9,11 +9,31 @@ session_start();
 
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/includes/cpv_helper.php';
+require_once __DIR__ . '/includes/admin_auth.php';
 
 // DB 연결
 $connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
 if (!$connect) die('DB 연결 실패');
 mysqli_set_charset($connect, 'utf8mb4');
+
+require_admin_login();
+require_permission('partner_wallet');
+
+$wallet_role = $_SESSION['ad_admin_role'] ?? '';
+$is_platform_wallet_admin = in_array($wallet_role, ['super_admin', 'admin'], true);
+$session_hospital_id = (int)($_SESSION['partner_hospital_id'] ?? $_SESSION['ad_admin_hospital_id'] ?? 0);
+$requested_hospital_id = (int)($_GET['hospital_id'] ?? $_POST['hospital_id'] ?? 0);
+$hospital_id = $is_platform_wallet_admin ? $requested_hospital_id : $session_hospital_id;
+
+if (!$is_platform_wallet_admin && $hospital_id <= 0) {
+    http_response_code(403);
+    exit('Hospital account is not linked to a hospital.');
+}
+
+if (empty($_SESSION['partner_wallet_csrf'])) {
+    $_SESSION['partner_wallet_csrf'] = bin2hex(random_bytes(32));
+}
+$partner_wallet_csrf = $_SESSION['partner_wallet_csrf'];
 
 // ============================================================================
 // [Track A3 - 2026-06-12] 지갑 충전 결제 처리 (AJAX POST)
@@ -23,7 +43,13 @@ mysqli_set_charset($connect, 'utf8mb4');
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'charge_pay') {
     header('Content-Type: application/json; charset=utf-8');
 
-    $pay_hospital_id = intval($_SESSION['partner_hospital_id'] ?? $_POST['hospital_id'] ?? 0);
+    if (empty($_POST['csrf_token']) || !hash_equals($partner_wallet_csrf, (string)$_POST['csrf_token'])) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Invalid request token.']);
+        exit;
+    }
+
+    $pay_hospital_id = $hospital_id;
     $product_id = intval($_POST['product_id'] ?? 0);
     $pay_method = in_array($_POST['pay_method'] ?? '', ['card', 'bank', 'vbank']) ? $_POST['pay_method'] : 'card';
 
@@ -40,107 +66,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'charg
         echo json_encode(['success' => false, 'message' => '충전 상품을 찾을 수 없습니다.']); exit;
     }
 
-    // PG 모드 확인 — 실결제 모드에서는 PG 모듈 연동 전까지 차단 (무결제 적립 방지)
-    $pg_test = 1;
-    $rp = mysqli_query($connect, "SELECT de_card_test FROM g5_shop_default LIMIT 1");
-    if ($rp && $rrow = mysqli_fetch_assoc($rp)) $pg_test = (int)$rrow['de_card_test'];
-    if ($pg_test !== 1) {
-        echo json_encode(['success' => false, 'message' => '실결제 모드입니다. PG 결제창 연동 적용 후 이용 가능합니다. 관리자에게 문의하세요.']); exit;
-    }
-
-    $price = (int)$pay_product['price'];
-    $bonus = (int)$pay_product['bonus_amount'];
-    $total = (int)$pay_product['total'];
-
-    // 병원명
-    $stmt = mysqli_prepare($connect, "SELECT name FROM gangnamunni_hospitals WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, 'i', $pay_hospital_id);
-    mysqli_stmt_execute($stmt);
-    $hrow = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-    mysqli_stmt_close($stmt);
-    if (!$hrow) {
-        echo json_encode(['success' => false, 'message' => '병원을 찾을 수 없습니다.']); exit;
-    }
-    $h_name = $hrow['name'];
-
-    mysqli_begin_transaction($connect);
-    try {
-        // 1) 영카트 주문 기록 (od_id는 bigint — 숫자형 생성, Gnuboard 표준 방식)
-        $od_id = date('YmdHis') . sprintf('%02d', mt_rand(0, 99));
-        $od_memo = '파트너 지갑 충전(테스트) - ' . $h_name . ' / ' . $pay_product['name'];
-        $stmt = mysqli_prepare($connect,
-            "INSERT INTO g5_shop_order (od_id, mb_id, od_name, od_email, od_tel, od_hp,
-             od_zip1, od_zip2, od_addr1, od_addr2, od_addr3, od_addr_jibeon,
-             od_b_zip1, od_b_zip2, od_b_addr1, od_b_addr2, od_b_addr3, od_b_addr_jibeon, od_b_name, od_b_tel, od_b_hp,
-             od_deposit_name, od_receipt_price, od_send_cost, od_receipt_point,
-             od_cart_count, od_status, od_settle_case, od_test, od_memo,
-             od_shop_memo, od_mod_history, od_cash, od_cash_no, od_cash_info, od_time)
-             VALUES (?, ?, ?, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
-             ?, ?, 0, 0, 1, '완료', ?, 1, ?, '', '', 0, '', '', NOW())");
-        $od_mb = 'partner_' . $pay_hospital_id;
-        mysqli_stmt_bind_param($stmt, 'ssssiss', $od_id, $od_mb, $h_name, $h_name, $price, $pay_method, $od_memo);
-        if (!mysqli_stmt_execute($stmt)) throw new Exception('주문 기록 실패: ' . mysqli_error($connect));
-        mysqli_stmt_close($stmt);
-
-        $it_id = 'wallet_charge_' . $product_id;
-        $stmt = mysqli_prepare($connect,
-            "INSERT INTO g5_shop_cart (od_id, mb_id, it_id, it_name, ct_qty, ct_price, ct_point, ct_status, ct_stock_use,
-             ct_history, ct_invoice_time, ct_js_time, ct_time)
-             VALUES (?, ?, ?, ?, 1, ?, 0, '완료', 1, '', NOW(), NOW(), NOW())");
-        $it_name = '지갑 충전 - ' . $pay_product['name'];
-        mysqli_stmt_bind_param($stmt, 'ssssi', $od_id, $od_mb, $it_id, $it_name, $price);
-        if (!mysqli_stmt_execute($stmt)) throw new Exception('주문 상세 기록 실패: ' . mysqli_error($connect));
-        mysqli_stmt_close($stmt);
-
-        // 2) 지갑 적립 (행 보장 + 잔액/누적 증가)
-        $stmt = mysqli_prepare($connect,
-            "INSERT INTO gangnamunni_cpv_wallets (hospital_id, balance, total_charged)
-             VALUES (?, 0, 0) ON DUPLICATE KEY UPDATE hospital_id = hospital_id");
-        mysqli_stmt_bind_param($stmt, 'i', $pay_hospital_id);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-
-        $stmt = mysqli_prepare($connect,
-            "UPDATE gangnamunni_cpv_wallets SET balance = balance + ?, total_charged = total_charged + ? WHERE hospital_id = ?");
-        mysqli_stmt_bind_param($stmt, 'iii', $total, $total, $pay_hospital_id);
-        if (!mysqli_stmt_execute($stmt)) throw new Exception('지갑 적립 실패: ' . mysqli_error($connect));
-        mysqli_stmt_close($stmt);
-
-        $stmt = mysqli_prepare($connect, "SELECT balance FROM gangnamunni_cpv_wallets WHERE hospital_id = ?");
-        mysqli_stmt_bind_param($stmt, 'i', $pay_hospital_id);
-        mysqli_stmt_execute($stmt);
-        $new_balance = (float)(mysqli_fetch_assoc(mysqli_stmt_get_result($stmt))['balance'] ?? 0);
-        mysqli_stmt_close($stmt);
-
-        // 3) 거래내역 기록
-        $tx_desc = '지갑 충전(테스트결제) ' . $pay_product['name'] . ' — 결제 ' . number_format($price) . '원'
-                 . ($bonus > 0 ? ' + 보너스 ' . number_format($bonus) . '원' : '') . ' / 주문 ' . $od_id;
-        $tx_type = 'charge';
-        $stmt = mysqli_prepare($connect,
-            "INSERT INTO gangnamunni_cpv_transactions (hospital_id, type, amount, balance_after, description, created_at)
-             VALUES (?, ?, ?, ?, ?, NOW())");
-        mysqli_stmt_bind_param($stmt, 'isdds', $pay_hospital_id, $tx_type, $total, $new_balance, $tx_desc);
-        if (!mysqli_stmt_execute($stmt)) throw new Exception('거래내역 기록 실패: ' . mysqli_error($connect));
-        mysqli_stmt_close($stmt);
-
-        mysqli_commit($connect);
-        echo json_encode([
-            'success' => true,
-            'od_id' => $od_id,
-            'charged' => $total,
-            'new_balance' => $new_balance,
-            'message' => number_format($total) . '원이 충전되었습니다. (주문 ' . $od_id . ')'
-        ], JSON_UNESCAPED_UNICODE);
-    } catch (Exception $e) {
-        mysqli_rollback($connect);
-        echo json_encode(['success' => false, 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
-    }
+    // Wallet credit must only be granted after a server-verified PG payment.
+    // KakaoPay/TossPay verification is not implemented yet, so fail closed.
+    http_response_code(503);
+    echo json_encode(['success' => false, 'message' => 'PG verification is not configured. Wallet charging is temporarily unavailable.']);
     exit;
 }
 
-// 병원 파트너 인증 (세션 or GET 파라미터)
-// 실제 운영에서는 파트너 로그인 세션 사용, 현재는 hospital_id 기반
-$hospital_id = intval($_SESSION['partner_hospital_id'] ?? $_GET['hospital_id'] ?? 0);
+// Hospital users are always scoped by their authenticated session.
+// Only platform administrators may select a hospital explicitly.
 if ($hospital_id <= 0) {
     // 세션/파라미터 둘 다 없으면 로그인 안내
     $show_login_form = true;
@@ -593,6 +527,7 @@ function requestCharge() {
 
     var fd = new FormData();
     fd.append('action', 'charge_pay');
+    fd.append('csrf_token', '<?php echo htmlspecialchars($partner_wallet_csrf, ENT_QUOTES); ?>');
     fd.append('product_id', selectedProduct.id);
     fd.append('pay_method', 'card');
     fd.append('hospital_id', '<?php echo (int)$hospital_id; ?>');

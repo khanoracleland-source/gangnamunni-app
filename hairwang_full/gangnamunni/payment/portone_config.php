@@ -5,10 +5,10 @@
  * 공식 문서: https://developers.portone.io/
  */
 
-// PortOne API 설정
-define('PORTONE_API_KEY', 'imp_apikey_xxxxxxxxxxxxxxxx'); // 실제 키로 변경 필요
-define('PORTONE_API_SECRET', 'ekKoeW8RyKuT0zgaZsUtXXRxxUzzUFaUyRxz3afZ'); // 실제 시크릿으로 변경
-define('PORTONE_IMP_CODE', 'imp00000000'); // 가맹점 식별코드
+// PortOne credentials must be injected by the runtime, never committed.
+define('PORTONE_API_KEY', (string)(getenv('PORTONE_API_KEY') ?: ''));
+define('PORTONE_API_SECRET', (string)(getenv('PORTONE_API_SECRET') ?: ''));
+define('PORTONE_IMP_CODE', (string)(getenv('PORTONE_IMP_CODE') ?: ''));
 
 // API 엔드포인트
 define('PORTONE_API_URL', 'https://api.iamport.kr');
@@ -52,6 +52,9 @@ $AD_PRODUCTS = [
  * PortOne API 토큰 발급
  */
 function getPortOneAccessToken() {
+    if (PORTONE_API_KEY === '' || PORTONE_API_SECRET === '') {
+        throw new RuntimeException('PortOne credentials are not configured');
+    }
     $url = PORTONE_API_URL . '/users/getToken';
     $data = [
         'imp_key' => PORTONE_API_KEY,
