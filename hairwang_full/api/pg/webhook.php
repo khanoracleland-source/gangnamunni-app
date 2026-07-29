@@ -31,6 +31,16 @@ $signed_at = (int)($headers['x-webhook-timestamp'] ?? 0);
 $event_id = trim($headers['x-webhook-id'] ?? hash('sha256', $input));
 $tolerance = defined('G5_PG_WEBHOOK_TOLERANCE') ? (int)G5_PG_WEBHOOK_TOLERANCE : 300;
 
+function webhook_idempotent_success() {
+    http_response_code(200);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(array(
+        'success' => true,
+        'message' => 'Webhook event was already processed'
+    ), JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if ($webhook_secret === '' || strpos($webhook_secret, 'default_') === 0) {
     ApiResponse::error('Webhook secret is not configured', 503, 'WEBHOOK_NOT_CONFIGURED');
 }
@@ -69,10 +79,13 @@ try {
         PRIMARY KEY (`event_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", true);
 
-    $event_exists = sql_fetch("SELECT event_id FROM {$event_table} WHERE event_id = '" .
+    $event_exists = sql_fetch("SELECT event_id, payload_hash FROM {$event_table} WHERE event_id = '" .
         sql_real_escape_string($event_id) . "' LIMIT 1");
     if ($event_exists) {
-        ApiResponse::error('Webhook event was already processed', 409, 'WEBHOOK_REPLAY');
+        if (hash_equals((string)$event_exists['payload_hash'], hash('sha256', $input))) {
+            webhook_idempotent_success();
+        }
+        ApiResponse::error('Webhook ID was reused with a different payload', 409, 'WEBHOOK_ID_CONFLICT');
     }
 
     sql_query('START TRANSACTION');
@@ -80,6 +93,13 @@ try {
         sql_real_escape_string($event_id) . "', event_type = '" .
         sql_real_escape_string($webhook_type) . "', payload_hash = '" .
         hash('sha256', $input) . "', created_at = NOW()")) {
+        sql_query('ROLLBACK', true);
+        $concurrent_event = sql_fetch("SELECT payload_hash FROM {$event_table} WHERE event_id = '" .
+            sql_real_escape_string($event_id) . "' LIMIT 1");
+        if ($concurrent_event
+            && hash_equals((string)$concurrent_event['payload_hash'], hash('sha256', $input))) {
+            webhook_idempotent_success();
+        }
         throw new ApiException('Unable to register webhook event');
     }
     
@@ -267,10 +287,50 @@ function process_order_status_changed_webhook($webhook_data) {
     if (empty($status)) {
         throw new ApiException('Status is required', 'STATUS_REQUIRED');
     }
+
+    $allowed_transitions = array(
+        '주문' => array('입금', '취소'),
+        '입금' => array('준비', '취소'),
+        '준비' => array('배송', '취소'),
+        '배송' => array('완료'),
+        '완료' => array(),
+        '취소' => array(),
+    );
+    if (!array_key_exists($status, $allowed_transitions)) {
+        throw new ApiException('Unsupported order status', 'INVALID_ORDER_STATUS');
+    }
+
+    if (!isset($g5['g5_pg_api_orders_table'])) {
+        $g5['g5_pg_api_orders_table'] = G5_TABLE_PREFIX.'pg_api_orders';
+    }
+    $pg_order = sql_fetch(
+        "SELECT po_external_order_id FROM {$g5['g5_pg_api_orders_table']}
+         WHERE po_g5_order_id = '" . sql_real_escape_string($order_id) . "' LIMIT 1"
+    );
+    if (!$pg_order || $external_order_id === ''
+        || !hash_equals((string)$pg_order['po_external_order_id'], $external_order_id)) {
+        throw new ApiException('Order identifiers do not match', 'ORDER_ID_MISMATCH');
+    }
     
     // 쇼핑몰 주문 테이블 업데이트
     if (!isset($g5['g5_shop_order_table'])) {
         $g5['g5_shop_order_table'] = G5_TABLE_PREFIX.'shop_order';
+    }
+
+    $shop_order = sql_fetch(
+        "SELECT od_status FROM {$g5['g5_shop_order_table']}
+         WHERE od_id = '" . sql_real_escape_string($order_id) . "' LIMIT 1"
+    );
+    if (!$shop_order) {
+        throw new ApiException('Order not found', 'ORDER_NOT_FOUND');
+    }
+    $old_status = (string)$shop_order['od_status'];
+    if ($old_status === $status) {
+        return;
+    }
+    if (!isset($allowed_transitions[$old_status])
+        || !in_array($status, $allowed_transitions[$old_status], true)) {
+        throw new ApiException('Invalid order status transition', 'INVALID_STATE_TRANSITION');
     }
     
     $update_sql = "
@@ -278,9 +338,12 @@ function process_order_status_changed_webhook($webhook_data) {
         SET od_status = '" . sql_real_escape_string($status) . "',
             od_shop_memo = CONCAT(COALESCE(od_shop_memo, ''), '\\nStatus changed via Webhook. Status: " . sql_real_escape_string($status) . "')
         WHERE od_id = '" . sql_real_escape_string($order_id) . "'
+          AND od_status = '" . sql_real_escape_string($old_status) . "'
     ";
     
-    sql_query($update_sql);
+    if (!sql_query($update_sql)) {
+        throw new ApiException('Order status update failed', 'ORDER_UPDATE_FAILED');
+    }
     
     // 로그 기록
     ApiLogger::logError("Order status changed webhook processed. Order ID: $order_id, New Status: $status", 'INFO');

@@ -71,7 +71,7 @@ function platform_payment_mark_verified(
     mysqli_begin_transaction($db);
     try {
         $stmt = mysqli_prepare($db,
-            "SELECT id,amount,status,provider,provider_transaction_id,payment_type,ad_id
+            "SELECT id,amount,status,provider,provider_transaction_id,payment_type,ad_id,pricing_id
              FROM gangnamunni_platform_payments
              WHERE merchant_uid=? FOR UPDATE");
         mysqli_stmt_bind_param($stmt, 's', $merchant_uid);
@@ -122,11 +122,12 @@ function platform_payment_mark_verified(
             $ad_id = (int)$payment['ad_id'];
             $activate = mysqli_prepare($db,
                 "UPDATE gangnamunni_ads a
-                 JOIN gangnamunni_ad_pricing pr ON pr.id=a.pricing_id
-                 SET a.is_active=1,a.paid_at=NOW(),a.start_date=NOW(),
+                 JOIN gangnamunni_platform_payments p ON p.id=? AND p.ad_id=a.id
+                 JOIN gangnamunni_ad_pricing pr ON pr.id=p.pricing_id
+                 SET a.pricing_id=p.pricing_id,a.is_active=1,a.paid_at=NOW(),a.start_date=NOW(),
                      a.end_date=DATE_ADD(NOW(),INTERVAL pr.duration_days DAY),a.updated_at=NOW()
                  WHERE a.id=? AND pr.is_active=1");
-            mysqli_stmt_bind_param($activate, 'i', $ad_id);
+            mysqli_stmt_bind_param($activate, 'ii', $payment_id, $ad_id);
             if (!mysqli_stmt_execute($activate) || mysqli_stmt_affected_rows($activate) !== 1) {
                 throw new RuntimeException('Verified ad could not be activated.');
             }

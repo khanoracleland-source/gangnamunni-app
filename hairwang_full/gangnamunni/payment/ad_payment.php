@@ -83,13 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_payment'])) {
         $hospital_name = (string)($ad['advertiser_name'] ?? '');
         $stmt = mysqli_prepare($connect,
             "INSERT INTO gangnamunni_platform_payments
-                (payment_type,funds_recipient,ad_id,hospital_id,hospital_name,product_name,
+                (payment_type,funds_recipient,ad_id,pricing_id,hospital_id,hospital_name,product_name,
                  amount,currency,merchant_uid,status)
-             VALUES ('ad_package','platform',?,?,?,?,?,'KRW',?,'pending')");
+             VALUES ('ad_package','platform',?,?,?,?,?,?,'KRW',?,'pending')");
         if (!$stmt) {
             $error = '통합 결제 원장이 없습니다. platform_payments_schema.sql을 먼저 적용해주세요.';
         } else {
-            mysqli_stmt_bind_param($stmt, 'iissis', $ad_id, $hospital_id, $hospital_name, $product_name_val, $amount, $merchant_uid);
+            mysqli_stmt_bind_param($stmt, 'iiissis', $ad_id, $selected_pricing, $hospital_id, $hospital_name, $product_name_val, $amount, $merchant_uid);
             if (!mysqli_stmt_execute($stmt)) {
                 $error = '결제 주문 생성에 실패했습니다.';
                 error_log('[ad_payment] ' . mysqli_stmt_error($stmt));

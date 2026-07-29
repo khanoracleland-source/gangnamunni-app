@@ -103,11 +103,14 @@ class AppointmentTransactionRepository extends BaseRepository
             DB::beginTransaction();
 
             $appointment = Appointment::with('doctor')
+                ->whereTenantId($tenantId)
                 ->lockForUpdate()
                 ->findOrFail($sessionData->metadata->appointment_id);
             $expectedAmount = (int) round($appointment->doctor->appointment_charge * 100);
 
-            if ($sessionData->payment_status !== 'paid'
+            if (! isset($sessionData->metadata->tenant_id)
+                || ! hash_equals((string) $tenantId, (string) $sessionData->metadata->tenant_id)
+                || $sessionData->payment_status !== 'paid'
                 || (int) $sessionData->amount_total !== $expectedAmount
                 || strtolower((string) $sessionData->currency) !== strtolower(getCurrentCurrency())) {
                 throw new UnprocessableEntityHttpException('Stripe payment verification failed.');
@@ -120,7 +123,7 @@ class AppointmentTransactionRepository extends BaseRepository
                 'appointment_id' => $appointment->id,
                 'transaction_type' => \App\Models\Appointment::TYPE_STRIPE,
                 'amount' => $expectedAmount / 100,
-                'tenant_id' => getLoggedInUser()->tenant_id,
+                'tenant_id' => $tenantId,
             ]);
 
             $appointment->update([

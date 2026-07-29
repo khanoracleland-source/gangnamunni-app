@@ -35,7 +35,9 @@ class AppointmentTransactionController extends AppBaseController
     {
         $tenantId = User::findOrFail(getLoggedInUserId())->tenant_id;
         $appointmentId = $request->get('appointment_id');
-        $appointment = Appointment::with('doctor')->findOrFail($appointmentId);
+        $appointment = Appointment::with(['doctor', 'patient.patientUser'])
+            ->whereTenantId($tenantId)
+            ->findOrFail($appointmentId);
         $amount = (float) $appointment->doctor->appointment_charge;
 
         if ($amount <= 0) {
@@ -44,6 +46,7 @@ class AppointmentTransactionController extends AppBaseController
 
         $data = [
             'appointment_id' => $appointmentId,
+            'tenant_id' => $tenantId,
             'amount' => $amount,
             'payment_mode' => $request->get('payment_type'),
         ];
@@ -228,7 +231,9 @@ class AppointmentTransactionController extends AppBaseController
     {
         $tenantId = User::findOrFail(getLoggedInUserId())->tenant_id;
         $appointmentId = $request->get('appointment_id');
-        $appointment = Appointment::with(['patient.user', 'doctor'])->findOrFail($appointmentId);
+        $appointment = Appointment::with(['patient.user', 'doctor'])
+            ->whereTenantId($tenantId)
+            ->findOrFail($appointmentId);
         $amount = (float) $appointment->doctor->appointment_charge;
 
         if ($amount <= 0) {
@@ -236,6 +241,7 @@ class AppointmentTransactionController extends AppBaseController
         }
         $data = [
             'appointment_id' => $appointmentId,
+            'tenant_id' => $tenantId,
             'amount' => $amount,
             'payment_mode' => $request->get('payment_type'),
         ];

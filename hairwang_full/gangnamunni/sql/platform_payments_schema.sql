@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS gangnamunni_platform_payments (
     funds_recipient ENUM('hospital','platform') NOT NULL,
     booking_id BIGINT UNSIGNED DEFAULT NULL,
     ad_id BIGINT UNSIGNED DEFAULT NULL,
+    pricing_id BIGINT UNSIGNED DEFAULT NULL,
     hospital_id BIGINT UNSIGNED NOT NULL,
     hospital_name VARCHAR(255) NOT NULL DEFAULT '',
     patient_mb_id VARCHAR(100) NOT NULL DEFAULT '',
@@ -56,6 +57,7 @@ CREATE TABLE IF NOT EXISTS gangnamunni_platform_payments (
     UNIQUE KEY uq_platform_payment_ad (payment_type,ad_id),
     KEY idx_platform_payment_booking (booking_id),
     KEY idx_platform_payment_ad (ad_id),
+    KEY idx_platform_payment_pricing (pricing_id),
     KEY idx_platform_payment_hospital_paid (hospital_id,payment_type,status,paid_at),
     CONSTRAINT chk_platform_payment_owner CHECK (
         (payment_type='booking' AND funds_recipient='hospital' AND booking_id IS NOT NULL)

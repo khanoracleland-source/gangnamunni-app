@@ -13,9 +13,13 @@
 -- gangnamunni_platform_payments: verification evidence
 -- ─────────────────────────────────────────────────────────────
 ALTER TABLE gangnamunni_platform_payments
+    ADD COLUMN IF NOT EXISTS pricing_id BIGINT UNSIGNED DEFAULT NULL AFTER ad_id,
     ADD COLUMN IF NOT EXISTS verified_amount BIGINT UNSIGNED DEFAULT NULL AFTER provider_transaction_id,
     ADD COLUMN IF NOT EXISTS verified_at DATETIME DEFAULT NULL AFTER verified_amount,
     ADD COLUMN IF NOT EXISTS verification_source ENUM('webhook','server_query') DEFAULT NULL AFTER verified_at;
+
+ALTER TABLE gangnamunni_platform_payments
+    ADD KEY IF NOT EXISTS idx_platform_payment_pricing (pricing_id);
 
 -- One payment per booking / per ad.
 ALTER TABLE gangnamunni_platform_payments
