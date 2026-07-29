@@ -565,7 +565,10 @@ body.ae-active { padding-top:0 !important; }
 
         <style>
         /* ===== 시술 카테고리 테이블 공통 ===== */
-        /* 높이를 강제하지 않는다 — 선택된 대분류의 시술 개수만큼만 자연스럽게 늘어난다. (한글 주석) */
+        .tc-table-wrap { height: 340px; }
+        @media (min-width: 801px) {
+            .tc-table-wrap { height: 400px; }
+        }
         .tc-chip {
             display: inline-block; padding: calc(6px * var(--cat-scale,1) * var(--cat-pad,1)) calc(14px * var(--cat-scale,1) * var(--cat-chip,1)); background: var(--bs-body-bg, #fff);
             border-radius: 13px; color: #111; text-decoration: none;
@@ -627,13 +630,15 @@ body.ae-active { padding-top:0 !important; }
         /* ===== panel wrap ===== */
         .tc-panel-wrap {
             display: flex;
-            align-items: stretch;
+            height: 100%;
             gap: 0;
             overflow: hidden;
         }
         .tc-panel-right {
             flex: 2;
+            height: 100%;
             min-height: 0;
+            overflow-y: auto;
             overflow-x: hidden;
             padding: 10px;
             border: 1px solid #D5D5D5;
@@ -641,13 +646,21 @@ body.ae-active { padding-top:0 !important; }
             scrollbar-width: none;
         }
         .tc-panel-right::-webkit-scrollbar { display: none; }
-        /* 선택된 대분류 1개만 노출 — 나머지 카테고리 내용은 모두 숨긴다. (한글 주석) */
-        .tc-panel-body { display: none; }
-        .tc-panel-body.tc-panel-body-active {
+        .tc-panel-body {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
             width: 100%;
+        }
+        .tc-panel-body + .tc-panel-body {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #EFEFEF;
+        }
+        .tc-panel-body:not(.tc-panel-body-active) .tc-chip {
+            color: #ccc;
+            pointer-events: none;
+            cursor: default;
         }
         .tc-panel-body .tc-chip {
             display: block;
@@ -697,6 +710,8 @@ body.ae-active { padding-top:0 !important; }
             flex-direction: column;
             width: 33.333%;
             flex-shrink: 0;
+            height: 100%;
+            overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
@@ -743,12 +758,11 @@ body.ae-active { padding-top:0 !important; }
                 });
             });
 
-            // 선택한 대분류의 시술만 노출하고 나머지 카테고리 내용은 전부 숨긴다.
-            // 높이를 고정하지 않으므로 표시되는 시술 개수만큼만 영역이 늘어난다. (한글 주석)
             window.tcNavSelect = function(el, idx) {
                 document.querySelectorAll('.tc-nav-item').forEach(function(x) { x.classList.remove('active'); });
                 el.classList.add('active');
                 document.querySelectorAll('.tc-panel-body').forEach(function(x) {
+                    x.style.display = 'grid';
                     x.classList.remove('tc-panel-body-active');
                 });
                 var body = document.getElementById('tcBody' + idx);
@@ -756,6 +770,12 @@ body.ae-active { padding-top:0 !important; }
                 document.querySelectorAll('.tc-below-group').forEach(function(x) { x.style.display = 'none'; });
                 var divider = document.getElementById('tcBelowDivider');
                 if (divider) divider.style.display = 'none';
+                var right = document.getElementById('tcPanelRight');
+                if (right && body) {
+                    var rRect = right.getBoundingClientRect();
+                    var bRect = body.getBoundingClientRect();
+                    right.scrollTop += bRect.top - rRect.top - 10;
+                }
             };
             var _initNav = document.querySelector('.tc-nav-item.active');
             if (_initNav) tcNavSelect(_initNav, 0);
