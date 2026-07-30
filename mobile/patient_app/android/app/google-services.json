@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "397157172970",
+    "project_id": "hospital-8425b",
+    "storage_bucket": "hospital-8425b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:397157172970:android:94796558f1e9a9bedf3993",
+        "android_client_info": {
+          "package_name": "com.celebhospital"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDA9QnuEK1ynGHJizAjSAbg3PC23u8MCCc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:397157172970:android:d661163033584afbdf3993",
+        "android_client_info": {
+          "package_name": "com.celebhospital.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDA9QnuEK1ynGHJizAjSAbg3PC23u8MCCc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:397157172970:android:93be62907d5dfc07df3993",
+        "android_client_info": {
+          "package_name": "com.celebhospital.patient"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDA9QnuEK1ynGHJizAjSAbg3PC23u8MCCc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

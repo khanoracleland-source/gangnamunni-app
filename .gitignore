@@ -98,3 +98,5 @@ Thumbs.db
 hairwang_full/dbconfig.override.php
 hairwang_full/gangnamunni/dbconfig.override.php
 hairwang_full/local-router.php
+# Downloaded mobile handover archives are local reference material only.
+/seoulbeauty-app-download/

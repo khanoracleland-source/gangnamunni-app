@@ -1,0 +1,160 @@
+name: kivicare_patient
+description: A new Flutter project.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+version: 1.9.1+30
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  #Commons
+  nb_utils: ^7.1.8
+  google_fonts: ^6.3.2
+  html: ^0.15.6
+  http: ^1.6.0
+  intl: ^0.20.2
+  cached_network_image: ^3.4.1
+  url_launcher: ^6.3.2
+  flutter_custom_tabs: ^2.4.0
+  uni_links: ^0.5.1
+  flutter_vector_icons: ^2.0.0
+  lottie: ^3.3.2
+  flutter_svg: ^2.2.3
+  flutter_svg_provider: ^1.0.7
+  stream_transform: ^2.1.1
+  flutter_local_notifications: ^19.5.0
+  carousel_slider: ^5.1.1
+  flutter_spinkit: ^5.2.2
+  responsive_navigation_bar: ^6.1.0
+  date_picker_timeline: ^1.2.7
+  playx_version_update: ^1.0.1
+
+  #firebase
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  firebase_crashlytics: ^5.0.5
+  firebase_messaging: ^16.0.4
+
+  # SOCIAL LOGIN
+  the_apple_sign_in: ^1.1.1
+  google_sign_in: ^6.3.0
+  googleapis: ^14.0.0
+  googleapis_auth: ^2.0.0
+  extension_google_sign_in_as_googleapis_auth: ^2.0.13
+  permission_handler: ^12.0.0+1
+
+  # State Management
+  get: ^4.7.2
+
+  #Storage
+  get_storage: ^2.1.1
+  path: ^1.9.1
+
+  #PhotoViewGallery
+  photo_view: ^0.15.0
+
+  #Pickers
+  file_picker: ^10.3.7
+  image_picker: ^1.2.1
+  country_picker: ^2.0.27
+
+  # Google Map
+  google_maps_flutter: ^2.14.0
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+
+  # Payment
+  flutter_stripe: ^12.1.1
+  # razorpay_flutter: ^1.4.0  # 인도 전용 결제 제거 (dSYM 에러 원인)
+  # phonepe_payment_sdk: ^2.0.3  # 인도 UPI 결제 제거 (dSYM 에러 원인)
+  webview_flutter: ^4.10.0  # For INICIS WebView integration
+
+  # Korean Market
+  # kpostal: ^0.5.1  # Korean address search (version conflict)
+  # Using WebView for Daum Postcode API instead
+
+  flutterwave_standard:
+    git:
+      url: https://github.com/iqonic-design/flutterwave_standard.git
+      ref: main
+
+  flutter_paypal_checkout:
+    git:
+      url: https://github.com/iqonic-design/flutter_paypal_checkout.git
+      ref: main
+
+  cinetpay:
+    git:
+      url: https://github.com/iqonic-design/cinetpay.git
+      ref: main
+
+  flutter_paystack:
+    git:
+      url: https://github.com/iqonic-design/flutter_paystack.git
+      ref: 1.5.0
+ 
+  midpay:
+    git:
+      url: https://github.com/iqonic-design/midpay.git
+      ref: main
+  flutter_localizations:
+    sdk: flutter
+  percent_indicator: ^4.2.5
+
+  uuid: any
+  crypto: any
+  path_provider: any
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png"
+  remove_alpha_ios: true
+  adaptive_icon_foreground: "assets/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/splash_screen.png
+  android: true
+  ios: true
+  web: false
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
+
+dependency_overrides:
+  flutter_native_splash:
+    path: patched_plugins/flutter_native_splash-2.4.4
+  flutter_secure_storage:
+    path: patched_plugins/flutter_secure_storage-9.2.4
+  geocoding_android:
+    path: patched_plugins/geocoding_android-4.0.1
+  geolocator_android:
+    path: patched_plugins/geolocator_android-5.0.2
+  uni_links:
+    path: patched_plugins/uni_links-0.5.1
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  assets:
+    - assets/
+    - assets/flags/
+    - assets/images/
+    - assets/icons/
+    - assets/lottie/
+    - assets/icons/navigation/
+    - assets/icons/social_media/
+    - assets/images/walkthrough_images/
+    - assets/icons/upi_payment/
