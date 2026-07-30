@@ -167,31 +167,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } // end standalone check
         }
 
-        // === FCM 알림: 예약 상태 변경 시 관리자 앱으로 푸시 ===
-        if (file_exists(__DIR__ . '/includes/admin_fcm.php')) {
-            require_once __DIR__ . '/includes/admin_fcm.php';
-            if (is_fcm_enabled($connect) && $booking_row) {
-                $fcm_title_map = [
-                    'confirmed' => '예약 확정',
-                    'cancelled' => '예약 취소',
-                    'completed' => '예약 완료',
-                    'no_show'   => '노쇼 처리'
-                ];
-                $fcm_title = ($fcm_title_map[$new_status] ?? '예약 상태 변경') . ' - ' . ($booking_row['name'] ?? '');
-                $fcm_body = ($booking_row['hospital_name'] ?? '') . ' | ' . ($booking_row['booking_date'] ?? '') . ' ' . substr($booking_row['booking_time'] ?? '', 0, 5);
+        // 예약 확정 알림: 환자의 사이트 알림함 + Android FCM push.
+        // Push is best-effort; a missing/expired token must not roll back approval.
+        if ($new_status === 'confirmed' && $booking_row && !empty($booking_row['mb_id'])) {
+            try {
+                require_once __DIR__ . '/includes/user_notifications.php';
+                require_once __DIR__ . '/includes/admin_fcm.php';
 
-                // 관리자 토큰 가져오기 (병원 관련 관리자)
-                $tokens_r = mysqli_query($connect, "SELECT token FROM gangnamunni_admin_fcm_tokens WHERE is_active = 1");
-                if ($tokens_r) {
-                    while ($tk = mysqli_fetch_assoc($tokens_r)) {
-                        @send_fcm_notification($connect, $tk['token'], $fcm_title, $fcm_body, [
-                            'type' => 'booking_status',
-                            'booking_id' => (string)$id,
-                            'status' => $new_status,
-                            'click_action' => 'admin_bookings.php'
-                        ]);
-                    }
-                }
+                $patient_member_id = (string)$booking_row['mb_id'];
+                $notification_title = '예약이 확정되었습니다';
+                $notification_body = trim(
+                    ($booking_row['hospital_name'] ?? '') . ' · '
+                    . ($booking_row['booking_date'] ?? '') . ' '
+                    . substr((string)($booking_row['booking_time'] ?? ''), 0, 5)
+                );
+                $notification_link = SITE_FULL_URL . 'my_appointments.php';
+
+                create_user_notification(
+                    $connect,
+                    $patient_member_id,
+                    'general',
+                    $notification_title,
+                    $notification_body,
+                    $notification_link
+                );
+
+                $patient_push_result = send_push_to_members(
+                    $connect,
+                    [$patient_member_id],
+                    $notification_title,
+                    $notification_body,
+                    $notification_link
+                );
+
+                error_log(
+                    '[admin_bookings] patient approval push: booking_id=' . $id
+                    . ', member_id=' . $patient_member_id
+                    . ', sent=' . (int)($patient_push_result['sent'] ?? 0)
+                    . ', failed=' . (int)($patient_push_result['failed'] ?? 0)
+                );
+            } catch (Throwable $e) {
+                error_log(
+                    '[admin_bookings] patient notification failed (booking already confirmed): '
+                    . $e->getMessage()
+                );
             }
         }
 

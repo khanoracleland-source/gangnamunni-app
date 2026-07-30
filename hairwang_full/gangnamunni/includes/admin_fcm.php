@@ -476,7 +476,7 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
         $response = $result['response'] ?? [];
         $errorCode = $response['error']['details'][0]['errorCode'] ?? '';
 
-        if ($httpCode === 404 || in_array($errorCode, ['UNREGISTERED', 'INVALID_ARGUMENT'], true)) {
+        if ($httpCode === 404 || $errorCode === 'UNREGISTERED') {
             $stmt = mysqli_prepare($connect, 'UPDATE g5_push_tokens SET pt_use = 0 WHERE pt_token = ?');
             if ($stmt) {
                 mysqli_stmt_bind_param($stmt, 's', $row['pt_token']);

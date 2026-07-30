@@ -17,21 +17,33 @@ if ($is_ajax) {
         echo json_encode(['success' => false, 'error' => '로그인이 필요합니다.']);
         exit;
     }
-    // DB 연결
-    $db_config_path = dirname(__DIR__) . '/config/database.php';
-    if (file_exists($db_config_path)) {
-        require_once $db_config_path;
+    if (!in_array($_SESSION['ad_admin_role'] ?? 'viewer', ['super_admin', 'admin'], true)) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => '권한이 없습니다.']);
+        exit;
     }
-    // 직접 DB 연결 (admin_header 없이)
-    if (!isset($connect) || !$connect) {
-        $connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, 'hms_saas');
-        if ($connect) mysqli_set_charset($connect, 'utf8mb4');
-require_once __DIR__ . '/theme_helper.php';
-if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
-loadThemeSettings($connect);
-
+    // DB 연결 (일반 페이지와 동일한 운영 설정 사용)
+    require_once __DIR__ . '/../dbconfig.php';
+    $connect = @mysqli_connect(
+        G5_MYSQL_HOST,
+        G5_MYSQL_USER,
+        G5_MYSQL_PASSWORD,
+        G5_MYSQL_DB,
+        defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306
+    );
+    if (!$connect) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'DB 연결에 실패했습니다.']);
+        exit;
     }
+    mysqli_set_charset($connect, 'utf8mb4');
+    require_once __DIR__ . '/theme_helper.php';
+    if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
+    loadThemeSettings($connect);
     require_once __DIR__ . '/includes/user_notifications.php';
+    require_once __DIR__ . '/includes/admin_fcm.php';
 
     // 발송 이력 테이블 자동 생성
     mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_notification_sends (
@@ -51,7 +63,7 @@ loadThemeSettings($connect);
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     // --- 대상 회원 목록 조회 함수 ---
-    function get_target_members($connect, $target, $event_id = 0, $member_id = '') {
+    function get_target_members($connect, $target, $event_id = 0, $member_id = '', $member_ids = []) {
         $members = [];
 
         switch ($target) {
@@ -124,6 +136,26 @@ loadThemeSettings($connect);
                     mysqli_stmt_close($stmt);
                 }
                 break;
+
+            case 'selected':
+                if (!is_array($member_ids)) {
+                    $member_ids = [$member_ids];
+                }
+                $member_ids = array_values(array_unique(array_filter(array_map('trim', $member_ids))));
+                if (!empty($member_ids)) {
+                    $escaped = array_map(
+                        static fn ($id) => "'" . mysqli_real_escape_string($connect, $id) . "'",
+                        $member_ids
+                    );
+                    $result = mysqli_query(
+                        $connect,
+                        "SELECT mb_id FROM g5_member WHERE mb_level > 1 AND mb_id IN (" . implode(',', $escaped) . ")"
+                    );
+                    while ($result && $row = mysqli_fetch_assoc($result)) {
+                        $members[] = $row['mb_id'];
+                    }
+                }
+                break;
         }
 
         return array_unique($members);
@@ -134,8 +166,9 @@ loadThemeSettings($connect);
         $target = $_POST['target'] ?? 'all';
         $event_id = intval($_POST['event_id'] ?? 0);
         $member_id = trim($_POST['member_id'] ?? '');
+        $member_ids = $_POST['member_ids'] ?? [];
 
-        $members = get_target_members($connect, $target, $event_id, $member_id);
+        $members = get_target_members($connect, $target, $event_id, $member_id, $member_ids);
         echo json_encode(['success' => true, 'count' => count($members)]);
         exit;
     }
@@ -145,6 +178,7 @@ loadThemeSettings($connect);
         $target = $_POST['target'] ?? 'all';
         $event_id = intval($_POST['event_id'] ?? 0);
         $member_id_input = trim($_POST['member_id'] ?? '');
+        $member_ids_input = $_POST['member_ids'] ?? [];
         $type = $_POST['type'] ?? 'general';
         $title = trim($_POST['title'] ?? '');
         $message = trim($_POST['message'] ?? '');
@@ -155,6 +189,17 @@ loadThemeSettings($connect);
             echo json_encode(['success' => false, 'error' => '제목을 입력해 주세요.']);
             exit;
         }
+        if (mb_strlen($title) > 200 || mb_strlen($message) > 1000) {
+            echo json_encode(['success' => false, 'error' => '제목 또는 내용이 너무 깁니다.']);
+            exit;
+        }
+        if ($link !== '') {
+            $scheme = strtolower((string)parse_url($link, PHP_URL_SCHEME));
+            if (!in_array($scheme, ['http', 'https'], true)) {
+                echo json_encode(['success' => false, 'error' => '링크는 http/https 주소만 사용할 수 있습니다.']);
+                exit;
+            }
+        }
 
         // 허용된 알림 유형만
         $allowed_types = ['general', 'event', 'promotion', 'system'];
@@ -162,7 +207,15 @@ loadThemeSettings($connect);
             $type = 'general';
         }
 
-        $members = get_target_members($connect, $target, $event_id, $member_id_input);
+        $csrf = (string)($_POST['admin_csrf'] ?? '');
+        $session_csrf = (string)($_SESSION['admin_send_notification_csrf'] ?? '');
+        if ($session_csrf === '' || !hash_equals($session_csrf, $csrf)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => '요청이 만료되었습니다. 페이지를 새로고침해주세요.']);
+            exit;
+        }
+
+        $members = get_target_members($connect, $target, $event_id, $member_id_input, $member_ids_input);
 
         if (empty($members)) {
             echo json_encode(['success' => false, 'error' => '발송 대상이 없습니다.']);
@@ -179,6 +232,16 @@ loadThemeSettings($connect);
             !empty($link) ? $link : null
         );
 
+        // Native Android push: members without an active token still receive
+        // the in-site notification created above.
+        $push_result = send_push_to_members(
+            $connect,
+            $target === 'all' ? null : $members,
+            $title,
+            !empty($message) ? $message : $title,
+            !empty($link) ? $link : null
+        );
+
         // 발송 이력 기록
         $admin_id = intval($_SESSION['ad_admin_id'] ?? 0);
         $admin_username = $_SESSION['ad_admin_user'] ?? '';
@@ -188,6 +251,7 @@ loadThemeSettings($connect);
             'event_entrants' => '이벤트 응모자(전체)',
             'specific_event' => '특정 이벤트(#' . $event_id . ')',
             'individual' => '개별(' . $member_id_input . ')',
+            'selected' => '선택 회원(' . count($members) . '명)',
         ];
         $target_label = $target_label_map[$target] ?? $target;
 
@@ -199,7 +263,11 @@ loadThemeSettings($connect);
         echo json_encode([
             'success' => true,
             'sent' => $sent_count,
-            'message' => $sent_count . '명에게 알림을 발송했습니다.'
+            'push_sent' => (int)($push_result['sent'] ?? 0),
+            'push_failed' => (int)($push_result['failed'] ?? 0),
+            'message' => $sent_count . '명에게 알림 저장, 푸시 '
+                . (int)($push_result['sent'] ?? 0) . '건 성공, '
+                . (int)($push_result['failed'] ?? 0) . '건 실패'
         ]);
         exit;
     }
@@ -228,6 +296,10 @@ loadThemeSettings($connect);
 
 // ===== 일반 페이지 렌더링 =====
 session_start();
+if (empty($_SESSION['admin_send_notification_csrf'])) {
+    $_SESSION['admin_send_notification_csrf'] = bin2hex(random_bytes(32));
+}
+$admin_send_notification_csrf = $_SESSION['admin_send_notification_csrf'];
 $admin_page_title = '알림 보내기';
 $admin_current = 'send_notification';
 $admin_page_description = '회원에게 알림을 발송합니다. 전체/그룹/개별 대상을 선택하여 알림을 보낼 수 있습니다.';
@@ -259,6 +331,24 @@ if ($ev_result) {
     while ($row = mysqli_fetch_assoc($ev_result)) {
         $events[] = $row;
     }
+}
+
+// Push-enabled members for explicit multi-selection.
+$push_members = [];
+$push_member_result = mysqli_query(
+    $connect,
+    "SELECT m.mb_id,
+            COALESCE(NULLIF(m.mb_nick, ''), NULLIF(m.mb_name, ''), m.mb_id) AS display_name,
+            COUNT(DISTINCT t.pt_id) AS token_count
+     FROM g5_member m
+     INNER JOIN g5_push_tokens t ON t.mb_id = m.mb_id AND t.pt_use = 1
+     WHERE m.mb_level > 1
+     GROUP BY m.mb_id, m.mb_nick, m.mb_name
+     ORDER BY MAX(t.pt_datetime) DESC
+     LIMIT 500"
+);
+while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
+    $push_members[] = $row;
 }
 ?>
 
@@ -322,6 +412,25 @@ if ($ev_result) {
                             <!-- 개별 회원 ID 입력 (숨김 기본) -->
                             <div id="memberIdWrap" class="ms-4" style="display:none;">
                                 <input type="text" class="form-control form-control-sm" id="memberIdInput" name="member_id" placeholder="회원 ID (mb_id)">
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="target" id="target_selected" value="selected">
+                                <label class="form-check-label" for="target_selected">
+                                    <i class="bi bi-person-check me-1 text-success"></i>푸시 회원 여러 명 선택
+                                </label>
+                            </div>
+                            <div id="memberSelectWrap" class="ms-4" style="display:none;">
+                                <input type="search" class="form-control form-control-sm mb-2" id="memberSearchInput" placeholder="이름 또는 회원 ID 검색">
+                                <select class="form-select form-select-sm" id="memberSelect" name="member_ids[]" multiple size="8">
+                                    <?php foreach ($push_members as $push_member): ?>
+                                    <option value="<?php echo htmlspecialchars($push_member['mb_id'], ENT_QUOTES); ?>">
+                                        <?php echo htmlspecialchars($push_member['display_name']); ?>
+                                        (<?php echo htmlspecialchars($push_member['mb_id']); ?>)
+                                        · <?php echo intval($push_member['token_count']); ?> device
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="text-body-secondary">Ctrl/Cmd 또는 Shift bilan bir nechta user tanlang.</small>
                             </div>
                         </div>
                     </div>
@@ -449,7 +558,13 @@ if ($ev_result) {
     var refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
     var eventSelectWrap = document.getElementById('eventSelectWrap');
     var memberIdWrap = document.getElementById('memberIdWrap');
+    var memberSelectWrap = document.getElementById('memberSelectWrap');
+    var memberSelect = document.getElementById('memberSelect');
+    var memberSearchInput = document.getElementById('memberSearchInput');
     var msgCharCount = document.getElementById('msgCharCount');
+    // Some Android WebView/Safari versions reject location.pathname directly
+    // in fetch() with "The string did not match the expected pattern".
+    var endpointUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
 
     // 알림 유형 정보
     var typeInfo = {
@@ -465,6 +580,14 @@ if ($ev_result) {
         radio.addEventListener('change', function() {
             eventSelectWrap.style.display = this.value === 'specific_event' ? 'block' : 'none';
             memberIdWrap.style.display = this.value === 'individual' ? 'block' : 'none';
+            memberSelectWrap.style.display = this.value === 'selected' ? 'block' : 'none';
+        });
+    });
+
+    memberSearchInput.addEventListener('input', function() {
+        var query = this.value.trim().toLowerCase();
+        Array.prototype.forEach.call(memberSelect.options, function(option) {
+            option.hidden = query !== '' && option.text.toLowerCase().indexOf(query) === -1;
         });
     });
 
@@ -483,6 +606,10 @@ if ($ev_result) {
             target: target,
             event_id: document.getElementById('eventSelect').value || '0',
             member_id: document.getElementById('memberIdInput').value || '',
+            member_ids: Array.prototype.map.call(memberSelect.selectedOptions, function(option) {
+                return option.value;
+            }),
+            admin_csrf: <?php echo json_encode($admin_send_notification_csrf); ?>,
             type: document.getElementById('notifType').value,
             title: document.getElementById('notifTitle').value.trim(),
             message: document.getElementById('notifMessage').value.trim(),
@@ -496,7 +623,13 @@ if ($ev_result) {
         var params = new URLSearchParams();
         params.append('action', action);
         for (var key in data) {
-            params.append(key, data[key]);
+            if (Array.isArray(data[key])) {
+                data[key].forEach(function(value) {
+                    params.append(key + '[]', value);
+                });
+            } else {
+                params.append(key, data[key]);
+            }
         }
         return params;
     }
@@ -509,6 +642,21 @@ if ($ev_result) {
         toastBody.textContent = msg;
         var toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4000 });
         toast.show();
+    }
+
+    function parseJsonResponse(response) {
+        return response.text().then(function(text) {
+            var payload;
+            try {
+                payload = JSON.parse(text);
+            } catch (e) {
+                throw new Error('HTTP ' + response.status + ': server returned a non-JSON response');
+            }
+            if (!response.ok && !payload.error) {
+                throw new Error('HTTP ' + response.status);
+            }
+            return payload;
+        });
     }
 
     // 미리보기 렌더링
@@ -560,16 +708,20 @@ if ($ev_result) {
             showToast('회원 ID를 입력해 주세요.', false);
             return;
         }
+        if (data.target === 'selected' && data.member_ids.length === 0) {
+            showToast('회원을 한 명 이상 선택해 주세요.', false);
+            return;
+        }
 
         previewBtn.disabled = true;
         previewBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>조회 중...';
 
-        fetch(location.pathname, {
+        fetch(endpointUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: buildParams(data, 'preview').toString()
         })
-        .then(function(r) { return r.json(); })
+        .then(parseJsonResponse)
         .then(function(res) {
             previewBtn.disabled = false;
             previewBtn.innerHTML = '<i class="bi bi-eye me-1"></i>미리보기';
@@ -605,17 +757,21 @@ if ($ev_result) {
             showToast('회원 ID를 입력해 주세요.', false);
             return;
         }
+        if (data.target === 'selected' && data.member_ids.length === 0) {
+            showToast('회원을 한 명 이상 선택해 주세요.', false);
+            return;
+        }
 
         // 먼저 대상 인원수 확인 후 confirm
         sendBtn.disabled = true;
         sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>확인 중...';
 
-        fetch(location.pathname, {
+        fetch(endpointUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: buildParams(data, 'preview').toString()
         })
-        .then(function(r) { return r.json(); })
+        .then(parseJsonResponse)
         .then(function(previewRes) {
             if (!previewRes.success || previewRes.count === 0) {
                 sendBtn.disabled = false;
@@ -633,7 +789,7 @@ if ($ev_result) {
 
             sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>발송 중...';
 
-            return fetch(location.pathname, {
+            return fetch(endpointUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: buildParams(data, 'send').toString()
@@ -641,7 +797,7 @@ if ($ev_result) {
         })
         .then(function(r) {
             if (!r) return; // confirm 취소
-            return r.json();
+            return parseJsonResponse(r);
         })
         .then(function(res) {
             sendBtn.disabled = false;
@@ -669,8 +825,8 @@ if ($ev_result) {
 
     // 발송 이력 로드
     function loadHistory() {
-        fetch(location.pathname + '?action=history')
-        .then(function(r) { return r.json(); })
+        fetch(endpointUrl + '?action=history')
+        .then(parseJsonResponse)
         .then(function(res) {
             if (!res.success || !res.data || res.data.length === 0) {
                 historyBody.innerHTML = '<tr><td colspan="4" class="text-center text-body-secondary py-3"><i class="bi bi-inbox"></i> 발송 이력이 없습니다</td></tr>';
