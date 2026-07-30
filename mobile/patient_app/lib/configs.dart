@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 // ═══════════════════════════════════════════════════
 
 const APP_NAME = '서울미녀';
+
 /// Every Android installation subscribes to this topic, including guests.
 /// Keep this value in sync with SEOULBEAUTY_ANDROID_BROADCAST_TOPIC on PHP.
 const ANDROID_BROADCAST_TOPIC = 'seoulbeauty_android_all';
@@ -46,7 +47,8 @@ const HELP_LINE_NUMBER = '+82-2-1234-5678'; // Update with actual number
 const SHOW_WEBVIEW_ON_STARTUP = true;
 
 /// WebView URL to load on startup
-const STARTUP_WEBVIEW_URL = 'https://seoulbeauty.app';
+const STARTUP_WEBVIEW_URL =
+    'https://hms.seoulbeauty.app/hairwang/gangnamunni/?app=patient';
 
 /// WebView Type: 'general' or 'sns'
 const STARTUP_WEBVIEW_TYPE = 'general'; // 'general' | 'sns'

@@ -165,7 +165,7 @@ class WebViewBridge {
         break;
 
       case 'requestFcmToken':
-        _handleRequestFcmToken();
+        requestFcmTokenForWebsite();
         break;
 
       case 'closeWebView':
@@ -305,7 +305,7 @@ class WebViewBridge {
   /// Returns the device FCM token to the website. The website posts it using
   /// its own authenticated Kakao/Gnuboard session, so the backend can safely
   /// associate the token with the current mb_id.
-  Future<void> _handleRequestFcmToken() async {
+  Future<void> requestFcmTokenForWebsite() async {
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null || token.isEmpty) {

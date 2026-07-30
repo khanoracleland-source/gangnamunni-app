@@ -104,6 +104,11 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
             _updateCanGoBack();
             // pull-to-refresh JS 주입
             _controller.runJavaScript(_pullToRefreshJs);
+            // Register the current FCM token using the website's authenticated
+            // Kakao/Gnuboard session. The page also requests it through the
+            // bridge, but this direct call makes registration resilient to
+            // cached HTML and delayed JavaScript execution.
+            bridge.requestFcmTokenForWebsite();
             // 하단 네비게이션 바 숨김 CSS 주입
             if (HIDE_WEBVIEW_BOTTOM_NAV) {
               _controller.runJavaScript('''
