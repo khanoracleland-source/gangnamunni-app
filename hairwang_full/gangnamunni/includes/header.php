@@ -85,6 +85,59 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
         <?php echo $page_css; ?>
     </style>
     <?php endif; ?>
+
+    <script>
+    (function () {
+        'use strict';
+
+        var tokenStorageKey = 'seoulbeauty_fcm_token';
+        var registerUrl = <?php echo json_encode(SITE_BASE_PATH . 'push_fcm/get_android_regid.php', JSON_UNESCAPED_SLASHES); ?>;
+
+        function registerFcmToken(token) {
+            if (typeof token !== 'string' || token.length < 32) return;
+
+            try {
+                localStorage.setItem(tokenStorageKey, token);
+            } catch (e) {
+                // Token registration must still continue when storage is unavailable.
+            }
+
+            fetch(registerUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    token: token,
+                    platform: 'android'
+                })
+            }).catch(function () {
+                // A later page load retries the token saved in localStorage.
+            });
+        }
+
+        // Callback name used by the native Android/iOS WebView bridge.
+        window.onTokenReceived = registerFcmToken;
+        window.receiveFCMToken = registerFcmToken;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                var savedToken = localStorage.getItem(tokenStorageKey)
+                    || localStorage.getItem('fcm_token');
+                if (savedToken) registerFcmToken(savedToken);
+            } catch (e) {
+                // Ignore storage access failures.
+            }
+
+            if (window.Android && typeof window.Android.requestToken === 'function') {
+                try {
+                    window.Android.requestToken();
+                } catch (e) {
+                    // The published app may register directly through the legacy URL.
+                }
+            }
+        });
+    }());
+    </script>
 </head>
 <body>
     <!-- 글로벌 네비게이션 (앱 모드 또는 $hide_global_nav 설정 시 숨김) -->

@@ -1,6 +1,7 @@
 <?php
 $sub_menu = "300910";
 include_once('./_common.php');
+include_once(G5_PATH . '/gangnamunni/includes/admin_fcm.php');
 
 auth_check($auth[$sub_menu], 'w');
 
@@ -35,36 +36,19 @@ if($_POST['act_button'] == '선택발송') {
     $title = strip_tags($_POST['push_title']);
     $message = strip_tags($_POST['push_message']);
     $send_type = $_POST['send_type'];
-    
-    $success_count = 0;
-    $fail_count = 0;
-    
-    if($send_type == 'all') {
-        // 전체 발송
-        $sql = "SELECT DISTINCT pt_token, mb_id FROM g5_push_tokens WHERE pt_use = 1";
-        $result = sql_query($sql);
-        
-        while($row = sql_fetch_array($result)) {
-            // 여기에 실제 FCM 발송 코드 추가
-            // $fcm_result = send_fcm_push($row['pt_token'], $title, $message);
-            // if($fcm_result) $success_count++; else $fail_count++;
-            
-            // 테스트용 - 실제로는 FCM 발송 함수 호출
-            $success_count++;
-        }
-    } else if($send_type == 'selected' && isset($_POST['mb_ids'])) {
-        // 선택 발송
-        $mb_ids = $_POST['mb_ids'];
-        foreach($mb_ids as $mb_id) {
-            $mb_id = sql_real_escape_string($mb_id);
-            $sql = "SELECT pt_token FROM g5_push_tokens 
-                    WHERE mb_id = '{$mb_id}' AND pt_use = 1";
-            $result = sql_query($sql);
-            
-            while($row = sql_fetch_array($result)) {
-                // 여기에 실제 FCM 발송 코드 추가
-                $success_count++;
-            }
+
+    $test_mode = !empty($_POST['test_mode']);
+    if ($test_mode) {
+        $success_count = 0;
+        $fail_count = 0;
+    } else {
+        $member_ids = $send_type === 'selected' ? ($_POST['mb_ids'] ?? []) : null;
+        $push_result = send_push_to_members($connect, $member_ids, $title, $message);
+        $success_count = (int)($push_result['sent'] ?? 0);
+        $fail_count = (int)($push_result['failed'] ?? 0);
+
+        if (!empty($push_result['error'])) {
+            alert('푸시 발송 실패: ' . $push_result['error'], './push_send.php');
         }
     }
     
@@ -77,7 +61,8 @@ if($_POST['act_button'] == '선택발송') {
                     send_datetime = NOW()";
     @sql_query($log_sql);
     
-    alert("푸시 발송 완료\\n성공: {$success_count}건\\n실패: {$fail_count}건", './push_send.php');
+    $mode_label = $test_mode ? '[테스트 모드] ' : '';
+    alert("{$mode_label}푸시 발송 완료\\n성공: {$success_count}건\\n실패: {$fail_count}건", './push_send.php');
 }
 
 $g5['title'] = '푸시 알림 발송';

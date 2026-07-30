@@ -15,7 +15,11 @@
 
 // 서비스 계정 JSON 파일 경로 (HTTP v1 API)
 if (!defined('FCM_SERVICE_ACCOUNT_PATH')) {
-    define('FCM_SERVICE_ACCOUNT_PATH', __DIR__ . '/../../fcm_service_account.json');
+    $configuredPath = getenv('FCM_SERVICE_ACCOUNT_PATH');
+    define(
+        'FCM_SERVICE_ACCOUNT_PATH',
+        $configuredPath ?: dirname(__DIR__, 3) . '/hospital-api/storage/app/firebase/service-account.json'
+    );
 }
 
 // FCM 설정 키 (gangnamunni_theme_settings 테이블)
@@ -400,6 +404,93 @@ function send_push_notification($connect, $admin_id, $title, $body, $link = null
         'failed_tokens' => $failed_tokens,
         'api' => $use_v1 ? 'v1' : 'legacy',
         'admin_id' => $admin_id,
+    ];
+}
+
+/**
+ * Send a push notification to Gnuboard members registered in g5_push_tokens.
+ *
+ * Passing null as $memberIds sends to every active token.
+ */
+function send_push_to_members($connect, $memberIds, $title, $body, $link = null) {
+    if (!is_fcm_enabled($connect)) {
+        return ['sent' => 0, 'failed' => 0, 'skipped' => true, 'reason' => 'FCM disabled'];
+    }
+
+    $sql = "SELECT DISTINCT pt_token, mb_id
+            FROM g5_push_tokens
+            WHERE pt_use = 1 AND pt_token <> ''";
+
+    $memberIds = is_array($memberIds)
+        ? array_values(array_filter(array_map('strval', $memberIds), 'strlen'))
+        : null;
+
+    if (is_array($memberIds)) {
+        if (empty($memberIds)) {
+            return ['sent' => 0, 'failed' => 0, 'reason' => 'No recipients'];
+        }
+
+        $escapedIds = array_map(
+            static fn ($memberId) => "'" . mysqli_real_escape_string($connect, $memberId) . "'",
+            $memberIds
+        );
+        $sql .= ' AND mb_id IN (' . implode(',', $escapedIds) . ')';
+    }
+
+    $tokenResult = mysqli_query($connect, $sql);
+    if (!$tokenResult) {
+        return ['sent' => 0, 'failed' => 0, 'error' => 'Token query failed'];
+    }
+
+    $accessToken = get_google_access_token();
+    $projectId = get_fcm_project_id($connect);
+    if (!$accessToken || !$projectId) {
+        return ['sent' => 0, 'failed' => 0, 'error' => 'Firebase credentials unavailable'];
+    }
+
+    $sent = 0;
+    $failed = 0;
+    $data = ['type' => 'member_notification'];
+    if ($link) {
+        $data['url'] = $link;
+        $data['webview_url'] = $link;
+    }
+
+    while ($row = mysqli_fetch_assoc($tokenResult)) {
+        $result = send_fcm_v1(
+            $projectId,
+            $accessToken,
+            $row['pt_token'],
+            $title,
+            $body,
+            $data
+        );
+
+        if ($result['success']) {
+            $sent++;
+            continue;
+        }
+
+        $failed++;
+        $httpCode = $result['http_code'] ?? 0;
+        $response = $result['response'] ?? [];
+        $errorCode = $response['error']['details'][0]['errorCode'] ?? '';
+
+        if ($httpCode === 404 || in_array($errorCode, ['UNREGISTERED', 'INVALID_ARGUMENT'], true)) {
+            $stmt = mysqli_prepare($connect, 'UPDATE g5_push_tokens SET pt_use = 0 WHERE pt_token = ?');
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, 's', $row['pt_token']);
+                mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
+            }
+        }
+    }
+
+    return [
+        'sent' => $sent,
+        'failed' => $failed,
+        'api' => 'v1',
+        'recipient_filter' => $memberIds,
     ];
 }
 
