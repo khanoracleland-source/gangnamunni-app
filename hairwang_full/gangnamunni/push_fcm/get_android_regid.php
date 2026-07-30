@@ -69,7 +69,7 @@ $stmt = mysqli_prepare(
         (mb_id, pt_token, pt_platform, pt_device_info, pt_datetime, pt_use)
      VALUES (?, ?, ?, ?, NOW(), 1)
      ON DUPLICATE KEY UPDATE
-        mb_id = IF(VALUES(mb_id) <> '', VALUES(mb_id), mb_id),
+        mb_id = VALUES(mb_id),
         pt_platform = VALUES(pt_platform),
         pt_device_info = VALUES(pt_device_info),
         pt_datetime = NOW(),

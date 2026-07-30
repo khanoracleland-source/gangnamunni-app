@@ -135,6 +135,17 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
                     // The published app may register directly through the legacy URL.
                 }
             }
+
+            if (window.FlutterBridge
+                && typeof window.FlutterBridge.postMessage === 'function') {
+                try {
+                    window.FlutterBridge.postMessage(JSON.stringify({
+                        action: 'requestFcmToken'
+                    }));
+                } catch (e) {
+                    // A later page load retries the bridge request.
+                }
+            }
         });
     }());
     </script>

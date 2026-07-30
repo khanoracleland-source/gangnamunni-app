@@ -234,13 +234,22 @@ if ($is_ajax) {
 
         // Native Android push: members without an active token still receive
         // the in-site notification created above.
-        $push_result = send_push_to_members(
-            $connect,
-            $target === 'all' ? null : $members,
-            $title,
-            !empty($message) ? $message : $title,
-            !empty($link) ? $link : null
-        );
+        if ($target === 'all') {
+            $push_result = send_push_to_android_broadcast(
+                $connect,
+                $title,
+                !empty($message) ? $message : $title,
+                !empty($link) ? $link : null
+            );
+        } else {
+            $push_result = send_push_to_members(
+                $connect,
+                $members,
+                $title,
+                !empty($message) ? $message : $title,
+                !empty($link) ? $link : null
+            );
+        }
 
         // 발송 이력 기록
         $admin_id = intval($_SESSION['ad_admin_id'] ?? 0);

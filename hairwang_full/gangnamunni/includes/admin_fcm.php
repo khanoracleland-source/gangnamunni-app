@@ -32,6 +32,9 @@ if (!defined('FCM_PROJECT_ID_SETTING')) {
 if (!defined('FCM_ENABLED_SETTING')) {
     define('FCM_ENABLED_SETTING', 'fcm_enabled');
 }
+if (!defined('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC')) {
+    define('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC', 'seoulbeauty_android_all');
+}
 
 /**
  * FCM 활성화 여부 확인
@@ -173,11 +176,53 @@ function base64url_encode($data) {
  * FCM HTTP v1 API로 전송
  */
 function send_fcm_v1($project_id, $access_token, $token, $title, $body, $data = []) {
+    return send_fcm_v1_target(
+        $project_id,
+        $access_token,
+        'token',
+        $token,
+        $title,
+        $body,
+        $data
+    );
+}
+
+/**
+ * FCM HTTP v1 API로 topic에 전송
+ */
+function send_fcm_v1_topic($project_id, $access_token, $topic, $title, $body, $data = []) {
+    return send_fcm_v1_target(
+        $project_id,
+        $access_token,
+        'topic',
+        $topic,
+        $title,
+        $body,
+        $data
+    );
+}
+
+/**
+ * FCM HTTP v1 API common token/topic sender.
+ */
+function send_fcm_v1_target(
+    $project_id,
+    $access_token,
+    $target_type,
+    $target,
+    $title,
+    $body,
+    $data = []
+) {
+    if (!in_array($target_type, ['token', 'topic'], true) || trim((string)$target) === '') {
+        return ['success' => false, 'http_code' => 0, 'response' => ['error' => 'Invalid FCM target']];
+    }
+
     $url = 'https://fcm.googleapis.com/v1/projects/' . $project_id . '/messages:send';
 
     $message = [
         'message' => [
-            'token' => $token,
+            $target_type => $target,
             'notification' => [
                 'title' => $title,
                 'body' => $body,
@@ -230,6 +275,45 @@ function send_fcm_v1($project_id, $access_token, $token, $title, $body, $data = 
         'success' => $httpCode === 200,
         'http_code' => $httpCode,
         'response' => json_decode($response, true),
+    ];
+}
+
+/**
+ * Send one broadcast request to all Android installations subscribed to topic.
+ */
+function send_push_to_android_broadcast($connect, $title, $body, $link = null) {
+    if (!is_fcm_enabled($connect)) {
+        return ['sent' => 0, 'failed' => 0, 'skipped' => true, 'reason' => 'FCM disabled'];
+    }
+
+    $accessToken = get_google_access_token();
+    $projectId = get_fcm_project_id($connect);
+    if (!$accessToken || !$projectId) {
+        return ['sent' => 0, 'failed' => 1, 'error' => 'Firebase credentials unavailable'];
+    }
+
+    $data = ['type' => 'broadcast_notification'];
+    if ($link) {
+        $data['url'] = $link;
+        $data['webview_url'] = $link;
+    }
+
+    $result = send_fcm_v1_topic(
+        $projectId,
+        $accessToken,
+        SEOULBEAUTY_ANDROID_BROADCAST_TOPIC,
+        $title,
+        $body,
+        $data
+    );
+
+    return [
+        'sent' => $result['success'] ? 1 : 0,
+        'failed' => $result['success'] ? 0 : 1,
+        'api' => 'v1',
+        'mode' => 'topic',
+        'topic' => SEOULBEAUTY_ANDROID_BROADCAST_TOPIC,
+        'response' => $result['response'] ?? null,
     ];
 }
 
