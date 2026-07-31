@@ -53,14 +53,6 @@ if ($dt_stmt) {
     }
     $dt_stmt->close();
 }
-// 의사별 배정 시술이 없으면 기본 시술 목록 표시 (추후 의사별 시술 배정 예정)
-if (empty($doctor_treatments)) {
-    $default_treatments = ['보톡스', '필러', '리프팅', '스킨부스터', '레이저 토닝', '울쎄라', '쌍꺼풀', '코 성형'];
-    foreach ($default_treatments as $t) {
-        $doctor_treatments[] = ['treatment_name' => $t, 'category_name' => '', 'speciality_level' => '', 'case_count' => 0];
-    }
-}
-
 $page_title = htmlspecialchars($doctor['name']) . ' - ' . term("staff") . ' 상세';
 ?>
 <!DOCTYPE html>
@@ -72,139 +64,241 @@ $page_title = htmlspecialchars($doctor['name']) . ' - ' . term("staff") . ' 상�
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            --color-primary: #AE1932;
+            --color-primary: #c81935;
             --color-bg: #ffffff;
-            --color-bg-light: #f8f9fa;
-            --color-text: #222;
-            --color-text-secondary: #666;
-            --color-border: #eee;
+            --color-page: #f1f3f5;
+            --color-bg-light: #f4f4f4;
+            --color-text: #111111;
+            --color-text-secondary: #6f6f6f;
+            --color-border: #dedede;
         }
         [data-bs-theme="dark"] {
-            --color-bg: #1a1a2e;
-            --color-bg-light: #16213e;
-            --color-text: #e0e0e0;
-            --color-text-secondary: #aaa;
-            --color-border: #333;
+            --color-bg: #202124;
+            --color-page: #121212;
+            --color-bg-light: #303134;
+            --color-text: #f2f2f2;
+            --color-text-secondary: #b7b7b7;
+            --color-border: #464646;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--color-bg); color: var(--color-text); }
-        .container { max-width: 640px; margin: 0 auto; }
-
-        /* 프로필 헤더 — 좌: 사진 / 우: 정보 */
+        body {
+            min-height: 100vh;
+            padding: 28px 20px;
+            font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--color-page);
+            color: var(--color-text);
+        }
+        .container {
+            width: 100%;
+            max-width: 1180px;
+            min-height: calc(100vh - 56px);
+            margin: 0 auto;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            box-shadow: 0 12px 40px rgba(0,0,0,.08);
+        }
+        .detail-header {
+            position: relative;
+            height: 108px;
+            padding: 0 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-bg);
+        }
+        .back-btn {
+            position: absolute;
+            left: 34px;
+            width: 52px;
+            height: 52px;
+            border: 0;
+            background: transparent;
+            color: var(--color-text);
+            font-size: 42px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .doctor-name-header {
+            max-width: 75%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-align: center;
+            font-size: clamp(25px, 2.4vw, 36px);
+            font-weight: 700;
+            letter-spacing: -.03em;
+        }
         .profile-header {
             display: flex;
             align-items: center;
-            gap: 16px;
-            padding: 24px 20px;
-            border-bottom: 1px solid var(--color-border);
+            gap: 50px;
+            min-height: 260px;
+            margin: 0 40px;
+            padding: 34px 0 42px;
+            border-bottom: 2px solid var(--color-border);
         }
         .profile-photo {
-            width: 100px; height: 100px; border-radius: 50%;
+            width: 190px;
+            height: 190px;
+            border-radius: 50%;
             background: var(--color-bg-light);
-            display: flex; align-items: center; justify-content: center;
-            font-size: calc(48px * var(--fs-scale,1) * var(--fs-page,1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 76px;
             flex-shrink: 0;
-            border: 2px solid var(--color-border);
+            border: 1px solid var(--color-border);
             overflow: hidden;
         }
         .profile-photo img { width: 100%; height: 100%; object-fit: cover; }
         .profile-info { flex: 1; min-width: 0; }
-        .profile-name { font-size: calc(22px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; margin-bottom: 4px; color: var(--color-text); }
-        .profile-specialty { font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--color-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-        .profile-specialty img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-
-        /* 섹션 */
-        .section { padding: 16px 20px; border-bottom: 1px solid var(--color-border); }
-        .section:last-child { border-bottom: none; }
-        /* 80% 폭 구분선 */
-        .divider-80 { border-bottom: none !important; position: relative; }
-        .divider-80::after {
-            content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-            width: 95%; height: 1px; background: var(--color-border);
+        .profile-name {
+            margin-bottom: 30px;
+            color: var(--color-text);
+            font-size: clamp(28px, 3vw, 42px);
+            font-weight: 800;
+            letter-spacing: -.04em;
         }
-        .section-title { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-
-        /* 스케줄 테이블 */
-        .schedule-table { width: 100%; border-collapse: collapse; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); }
-        .schedule-table td { padding: 8px 10px; border-bottom: 1px solid var(--color-border); }
-        .schedule-table .day { font-weight: 600; width: 70px; }
-        .schedule-table .today { background: rgba(255, 84, 15, 0.08); }
-        .schedule-table .off { color: var(--color-primary, #AE1932); }
-
-        /* 주요 진료분야 */
-        .treatment-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .profile-specialty {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            color: var(--color-primary);
+            font-size: clamp(20px, 2vw, 28px);
+            font-weight: 600;
+        }
+        .profile-specialty i { font-size: 39px; font-weight: 400; }
+        .section {
+            margin: 0 40px;
+            padding: 42px 0;
+            border-bottom: 2px solid var(--color-border);
+        }
+        .section:last-child { border-bottom: 0; }
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 28px;
+            font-size: clamp(25px, 2.5vw, 38px);
+            font-weight: 800;
+            letter-spacing: -.04em;
+        }
+        .treatment-chips { display: flex; flex-wrap: wrap; gap: 14px 20px; }
         .treatment-chip {
-            padding: 7px 7px;
-            font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1));
-            background: var(--color-bg-light); color: var(--color-text);
-            display: inline-flex; align-items: center; gap: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 13px;
+            background: var(--color-bg-light);
+            color: var(--color-text);
+            font-size: clamp(17px, 1.7vw, 25px);
+            font-weight: 650;
         }
         .treatment-chip.expert { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
-        .treatment-chip .chip-count { font-size: calc(11px * var(--fs-scale,1) * var(--fs-page,1)); opacity: 0.75; }
-
-        /* 약력 */
-        .bio-list { list-style: none; }
+        .treatment-chip .chip-count { font-size: .72em; opacity: .75; }
+        .bio-list { list-style: none; padding: 0 10px; }
         .bio-list li {
-            position: relative; padding-left: 16px; margin-bottom: 12px;
-            font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1));
-            line-height: 1.6; color: #000000;
+            position: relative;
+            padding-left: 27px;
+            margin-bottom: 22px;
+            color: var(--color-text);
+            font-size: clamp(18px, 1.8vw, 27px);
+            line-height: 1.55;
         }
         .bio-list li:last-child { margin-bottom: 0; }
         .bio-list li::before {
-            content: ''; position: absolute; left: 0; top: 0.6em;
-            width: 5px; height: 5px; border-radius: 50%;
-            background: #000000;
+            content: "•";
+            position: absolute;
+            left: 0;
+            top: -.05em;
+            color: var(--color-text);
+            font-size: 1.25em;
         }
-
-        /* 병원 카드 — detail.php event-card 스타일 */
-        .hospital-card {
-            position: relative;
-            overflow: hidden;
+        .hospital-card { position: relative; overflow: hidden; }
+        .hospital-card-link {
+            display: flex;
+            align-items: center;
+            min-height: 190px;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
         }
-        .hospital-card-link { display: flex; align-items: stretch; text-decoration: none; color: inherit; cursor: pointer; }
-        .hospital-wishlist { position: absolute; top: 8px; right: 8px; z-index: 2; background: rgba(255,255,255,0.9); border-radius: 50%; display: inline-flex; }
-        .hospital-rating { display: flex; align-items: center; gap: 5px; font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); }
-        .hospital-rating img { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+        .hospital-wishlist {
+            position: absolute;
+            right: 20px;
+            bottom: 26px;
+            z-index: 2;
+            display: inline-flex;
+            background: var(--color-bg);
+            border-radius: 50%;
+        }
+        .hospital-rating {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: clamp(16px, 1.55vw, 23px);
+        }
+        .hospital-rating img { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; }
         .hospital-rating .rating-score { font-weight: 700; color: var(--color-text); }
         .hospital-rating .review-count { color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 4px; }
         .hospital-card-img {
-            position: relative; width: 120px; flex-shrink: 0;
-            align-self: stretch; min-height: 130px;
+            position: relative;
+            width: 190px;
+            height: 190px;
+            flex-shrink: 0;
             background: var(--color-bg-light);
-            display: flex; align-items: center; justify-content: center;
-            font-size: calc(28px * var(--fs-scale,1) * var(--fs-page,1)); overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid var(--color-border);
         }
         .hospital-card-img img { width: 100%; height: 100%; object-fit: cover; }
-        .hospital-card-info { flex: 1; min-width: 0; padding: 14px; }
+        .hospital-card-info { flex: 1; min-width: 0; padding: 18px 30px; }
         .hospital-card-name {
-            font-size: calc(16px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; margin-bottom: 10px;
+            margin-bottom: 14px;
+            font-size: clamp(24px, 2.4vw, 36px);
+            font-weight: 800;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        .hospital-card-addr { font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--color-text-secondary); margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .hospital-card-addr {
+            margin-bottom: 18px;
+            color: var(--color-text-secondary);
+            font-size: clamp(16px, 1.55vw, 23px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         .hospital-card-addr:last-child { margin-bottom: 0; }
-
-        /* 상단 헤더 (detail.php 스타일) */
-        .detail-header {
-            position: sticky; top: 0;
-            width: 100%; max-width: 640px;
-            padding: 14px 16px;
-            background: var(--color-bg, #fff);
-            display: flex; align-items: center; gap: 12px;
-            z-index: 99;
-        }
-        .back-btn {
-            width: 36px; height: 36px;
-            display: flex; align-items: center; justify-content: center;
-            border: none; background: none;
-            font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1));
-            color: inherit; cursor: pointer; text-decoration: none;
-        }
-        .doctor-name-header {
-            position: absolute; left: 50%; transform: translateX(-50%);
-            max-width: 60%; text-align: center;
-            font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: 700;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        @media (max-width: 700px) {
+            body { padding: 0; }
+            .container { min-height: 100vh; border: 0; box-shadow: none; }
+            .detail-header { height: 68px; padding: 0 16px; }
+            .back-btn { left: 8px; width: 44px; height: 44px; font-size: 30px; }
+            .doctor-name-header { max-width: 72%; font-size: 20px; }
+            .profile-header {
+                gap: 20px;
+                min-height: 0;
+                margin: 0 20px;
+                padding: 28px 0 32px;
+            }
+            .profile-photo { width: 112px; height: 112px; font-size: 48px; }
+            .profile-name { margin-bottom: 14px; font-size: 25px; }
+            .profile-specialty { gap: 8px; font-size: 17px; }
+            .profile-specialty i { font-size: 26px; }
+            .section { margin: 0 20px; padding: 28px 0; border-bottom-width: 1px; }
+            .section-title { margin-bottom: 18px; font-size: 24px; }
+            .treatment-chip { padding: 8px 10px; font-size: 16px; }
+            .bio-list { padding: 0; }
+            .bio-list li { padding-left: 20px; margin-bottom: 14px; font-size: 16px; }
+            .hospital-card-link { min-height: 110px; align-items: stretch; }
+            .hospital-card-img { width: 112px; height: 112px; }
+            .hospital-card-info { padding: 8px 14px; }
+            .hospital-card-name { margin-bottom: 8px; font-size: 20px; }
+            .hospital-card-addr { margin-bottom: 9px; font-size: 13px; white-space: normal; line-height: 1.35; }
+            .hospital-rating { gap: 6px; font-size: 14px; }
+            .hospital-rating img { width: 25px; height: 25px; }
+            .hospital-wishlist { right: 4px; bottom: 4px; }
         }
     </style>
     <script>
@@ -221,7 +315,7 @@ $page_title = htmlspecialchars($doctor['name']) . ' - ' . term("staff") . ' 상�
     <!-- 상단 헤더 (detail.php 스타일) -->
     <div class="detail-header">
         <button class="back-btn" onclick="history.back()"><i class="bi bi-chevron-left"></i></button>
-        <div class="doctor-name-header"><?php echo htmlspecialchars($doctor['name']); ?><?php if (!empty($doctor['specialty'])): ?> <?php echo htmlspecialchars($doctor['specialty']); ?><?php endif; ?></div>
+        <div class="doctor-name-header"><?php echo htmlspecialchars($doctor['name']); ?></div>
     </div>
 
     <!-- 프로필 헤더 -->
@@ -235,7 +329,7 @@ $page_title = htmlspecialchars($doctor['name']) . ' - ' . term("staff") . ' 상�
         </div>
         <div class="profile-info">
             <div class="profile-name"><?php echo htmlspecialchars($doctor['name']); ?></div>
-            <div class="profile-specialty"><img src="assets/icons/categories/doctor.jpeg" alt=""><?php echo htmlspecialchars($doctor['specialty'] ?: '전문의'); ?></div>
+            <div class="profile-specialty"><i class="bi bi-hospital"></i><?php echo htmlspecialchars($doctor['specialty'] ?: '전문의'); ?></div>
         </div>
     </div>
 
@@ -294,7 +388,10 @@ $page_title = htmlspecialchars($doctor['name']) . ' - ' . term("staff") . ' 상�
                     <?php endif; ?>
                     <div class="hospital-rating">
                         <img src="assets/icons/categories/rating_2.svg" alt="평점">
-                        <span class="rating-score"><?php echo number_format(!empty($doctor['hospital_rating']) ? $doctor['hospital_rating'] : 4.8, 1); ?>/5.0</span>
+                        <span class="rating-score"><?php echo number_format(!empty($doctor['hospital_rating']) ? $doctor['hospital_rating'] : 4.8, 1); ?></span>
+                        <?php if (!empty($doctor['hospital_review_count'])): ?>
+                        <span class="review-count">(<?php echo number_format((int)$doctor['hospital_review_count']); ?>)</span>
+                        <?php endif; ?>
                     </div>
                 </div>
             </a>

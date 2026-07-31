@@ -25,10 +25,177 @@ require_permission('doctors');
 $message = '';
 $error = '';
 $current_admin = get_current_admin();
+$allowed_hospital_ids = get_strict_admin_hospital_ids($connect);
+$hosp_in = $allowed_hospital_ids === null
+    ? null
+    : (empty($allowed_hospital_ids) ? '0' : implode(',', array_map('intval', $allowed_hospital_ids)));
+$hosp_where_plain = ($hosp_in !== null) ? " WHERE hospital_id IN ({$hosp_in})" : "";
+$hosp_and_plain   = ($hosp_in !== null) ? " AND hospital_id IN ({$hosp_in})" : "";
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['csrf_token'];
+
+function doctor_hospital_allowed($hospital_id, $allowed_hospital_ids) {
+    return $hospital_id > 0
+        && ($allowed_hospital_ids === null || in_array((int)$hospital_id, $allowed_hospital_ids, true));
+}
+
+function upload_doctor_photo($file_key, $doctor_id) {
+    if (!isset($_FILES[$file_key]) || $_FILES[$file_key]['error'] === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+    if ($_FILES[$file_key]['error'] !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('프로필 사진 업로드에 실패했습니다.');
+    }
+    if ($_FILES[$file_key]['size'] > 5 * 1024 * 1024) {
+        throw new RuntimeException('프로필 사진은 5MB 이하여야 합니다.');
+    }
+
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES[$file_key]['tmp_name']);
+    $extensions = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+    if (!isset($extensions[$mime])) {
+        throw new RuntimeException('JPG, PNG, WebP 또는 GIF 이미지만 업로드할 수 있습니다.');
+    }
+
+    $upload_dir = __DIR__ . '/uploads/doctors/';
+    if (!is_dir($upload_dir) && !mkdir($upload_dir, 0755, true) && !is_dir($upload_dir)) {
+        throw new RuntimeException('프로필 사진 저장 폴더를 만들 수 없습니다.');
+    }
+    $filename = 'doctor_' . (int)$doctor_id . '_' . bin2hex(random_bytes(6)) . '.' . $extensions[$mime];
+    if (!move_uploaded_file($_FILES[$file_key]['tmp_name'], $upload_dir . $filename)) {
+        throw new RuntimeException('프로필 사진을 저장하지 못했습니다.');
+    }
+    return 'uploads/doctors/' . $filename;
+}
+
+function sync_doctor_treatments($connect, $doctor_id, $hospital_id, $treatment_ids) {
+    $doctor_id = (int)$doctor_id;
+    $hospital_id = (int)$hospital_id;
+    $selected = array_values(array_unique(array_filter(array_map('intval', (array)$treatment_ids))));
+
+    // 선택값을 해당 병원에 실제 배정된 시술로 다시 제한한다.
+    $valid = [];
+    if (!empty($selected)) {
+        $id_csv = implode(',', $selected);
+        $result = mysqli_query($connect,
+            "SELECT DISTINCT treatment_id
+               FROM gangnamunni_hospital_treatments
+              WHERE hospital_id = {$hospital_id}
+                AND treatment_id IN ({$id_csv})
+                AND is_active = 1
+                AND status = 'active'");
+        while ($result && $row = mysqli_fetch_assoc($result)) {
+            $valid[] = (int)$row['treatment_id'];
+        }
+    }
+
+    if (empty($valid)) {
+        $stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_doctor_treatments WHERE doctor_id = ? AND hospital_id = ?");
+        mysqli_stmt_bind_param($stmt, 'ii', $doctor_id, $hospital_id);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        return;
+    }
+
+    $valid_csv = implode(',', $valid);
+    mysqli_query($connect,
+        "DELETE FROM gangnamunni_doctor_treatments
+          WHERE doctor_id = {$doctor_id}
+            AND hospital_id = {$hospital_id}
+            AND treatment_id NOT IN ({$valid_csv})");
+
+    $stmt = mysqli_prepare($connect,
+        "INSERT IGNORE INTO gangnamunni_doctor_treatments
+            (doctor_id, hospital_id, treatment_id, case_count, speciality_level, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, 0, 'basic', 1, NOW(), NOW())");
+    foreach ($valid as $treatment_id) {
+        mysqli_stmt_bind_param($stmt, 'iii', $doctor_id, $hospital_id, $treatment_id);
+        mysqli_stmt_execute($stmt);
+    }
+    mysqli_stmt_close($stmt);
+}
+
+mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_doctor_treatments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    doctor_id INT NOT NULL,
+    hospital_id INT NOT NULL,
+    treatment_id INT NOT NULL,
+    case_count INT DEFAULT 0,
+    speciality_level ENUM('basic','advanced','expert') DEFAULT 'basic',
+    certification VARCHAR(500) DEFAULT NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_doctor_treatment (doctor_id, treatment_id),
+    INDEX idx_hospital (hospital_id),
+    INDEX idx_treatment (treatment_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 // ===== POST 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string)$_POST['csrf_token'])) {
+        $error = 'CSRF 토큰이 유효하지 않습니다. 페이지를 새로고침해주세요.';
+        $action = '';
+    }
+
+    // 신규 등록
+    if ($action === 'create_doctor') {
+        $name = trim($_POST['name'] ?? '');
+        $specialty = trim($_POST['specialty'] ?? '');
+        $hospital_id = intval($_POST['hospital_id'] ?? 0);
+        $experience = max(0, intval($_POST['experience'] ?? 0));
+        $phone = trim($_POST['phone'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $qualification = trim($_POST['qualification'] ?? '');
+        $bio = trim($_POST['bio'] ?? '');
+        $photo_url = trim($_POST['photo_url'] ?? '');
+
+        if ($name === '') {
+            $error = '의사 이름은 필수입니다.';
+        } elseif (!doctor_hospital_allowed($hospital_id, $allowed_hospital_ids)) {
+            $error = '선택한 병원에 의사를 등록할 권한이 없습니다.';
+        } else {
+            mysqli_begin_transaction($connect);
+            try {
+                $stmt = mysqli_prepare($connect,
+                    "INSERT INTO gangnamunni_doctors
+                        (hospital_id, name, specialty, experience, phone, email, qualification, bio, photo_url, status, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())");
+                mysqli_stmt_bind_param($stmt, 'ississsss',
+                    $hospital_id, $name, $specialty, $experience, $phone, $email,
+                    $qualification, $bio, $photo_url);
+                if (!mysqli_stmt_execute($stmt)) {
+                    throw new Exception(mysqli_stmt_error($stmt));
+                }
+                $doctor_id = mysqli_insert_id($connect);
+                mysqli_stmt_close($stmt);
+
+                $uploaded_photo = upload_doctor_photo('photo_file', $doctor_id);
+                if ($uploaded_photo !== null) {
+                    $photo_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_doctors SET photo_url = ? WHERE id = ?");
+                    mysqli_stmt_bind_param($photo_stmt, 'si', $uploaded_photo, $doctor_id);
+                    mysqli_stmt_execute($photo_stmt);
+                    mysqli_stmt_close($photo_stmt);
+                }
+                sync_doctor_treatments($connect, $doctor_id, $hospital_id, $_POST['treatment_ids'] ?? []);
+                mysqli_commit($connect);
+                header('Location: admin_doctors.php?view=' . $doctor_id . '&msg=' . urlencode("의사 '{$name}'이(가) 등록되었습니다."));
+                exit;
+            } catch (Throwable $e) {
+                mysqli_rollback($connect);
+                $error = '등록 실패: ' . $e->getMessage();
+            }
+        }
+    }
 
     // 수정
     if ($action === 'edit_doctor') {
@@ -43,24 +210,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $qualification = trim($_POST['qualification'] ?? '');
         $appointment_charge = floatval($_POST['appointment_charge'] ?? 0);
         $photo_url = trim($_POST['photo_url'] ?? '');
+        $own_stmt = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_doctors WHERE id = ?");
+        mysqli_stmt_bind_param($own_stmt, 'i', $doctor_id);
+        mysqli_stmt_execute($own_stmt);
+        $own_row = mysqli_fetch_assoc(mysqli_stmt_get_result($own_stmt));
+        mysqli_stmt_close($own_stmt);
+        $edit_allowed = $own_row
+            && doctor_hospital_allowed((int)$own_row['hospital_id'], $allowed_hospital_ids)
+            && doctor_hospital_allowed($hospital_id, $allowed_hospital_ids);
+
         // 파일 업로드 처리 (URL보다 우선)
-        if (!empty($_FILES['photo_file']['name']) && $_FILES['photo_file']['error'] === UPLOAD_ERR_OK) {
-            $allowed_types = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-            $max_size = 5 * 1024 * 1024; // 5MB
-            $file_type = $_FILES['photo_file']['type'];
-            $file_size = $_FILES['photo_file']['size'];
-            if (in_array($file_type, $allowed_types) && $file_size <= $max_size) {
-                $ext = pathinfo($_FILES['photo_file']['name'], PATHINFO_EXTENSION);
-                $upload_dir = __DIR__ . '/uploads/doctors/';
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
-                }
-                $filename = 'doctor_' . $doctor_id . '_' . time() . '.' . $ext;
-                $upload_path = $upload_dir . $filename;
-                if (move_uploaded_file($_FILES['photo_file']['tmp_name'], $upload_path)) {
-                    // 웹 접근 가능한 URL 생성
-                    $photo_url = 'uploads/doctors/' . $filename;
-                }
+        if ($edit_allowed) {
+            try {
+                $uploaded_photo = upload_doctor_photo('photo_file', $doctor_id);
+                if ($uploaded_photo !== null) $photo_url = $uploaded_photo;
+            } catch (Throwable $e) {
+                $error = $e->getMessage();
+                $edit_allowed = false;
             }
         }
         $bio = trim($_POST['bio'] ?? '');
@@ -80,7 +246,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $schedule_json = json_encode($schedule_arr, JSON_UNESCAPED_UNICODE);
 
-        if ($doctor_id > 0 && !empty($name)) {
+        if (!$edit_allowed) {
+            $error = '이 의사를 수정할 권한이 없습니다.';
+        } elseif ($doctor_id > 0 && !empty($name)) {
             $stmt = mysqli_prepare($connect,
                 "UPDATE gangnamunni_doctors SET name=?, specialty=?, hospital_id=?, department_id=?, experience=?, phone=?, email=?, qualification=?, appointment_charge=?, photo_url=?, bio=?, status=?, schedule=?, updated_at=NOW() WHERE id=?"
             );
@@ -91,6 +259,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $photo_url, $bio, $status, $schedule_json, $doctor_id
                 );
                 if (mysqli_stmt_execute($stmt)) {
+                    if ((int)$own_row['hospital_id'] !== $hospital_id) {
+                        $clear_old = mysqli_prepare($connect,
+                            "DELETE FROM gangnamunni_doctor_treatments WHERE doctor_id = ? AND hospital_id = ?");
+                        mysqli_stmt_bind_param($clear_old, 'ii', $doctor_id, $own_row['hospital_id']);
+                        mysqli_stmt_execute($clear_old);
+                        mysqli_stmt_close($clear_old);
+                    }
+                    sync_doctor_treatments($connect, $doctor_id, $hospital_id, $_POST['treatment_ids'] ?? []);
                     $message = "의사 '{$name}' 정보가 수정되었습니다.";
                 } else {
                     $error = '수정 실패: ' . mysqli_error($connect);
@@ -108,12 +284,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_doctor') {
         $doctor_id = intval($_POST['doctor_id'] ?? 0);
         if ($doctor_id > 0) {
-            $stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_doctors WHERE id=?");
+            $stmt = mysqli_prepare($connect,
+                "DELETE FROM gangnamunni_doctors
+                  WHERE id=?
+                    AND hospital_id IN (" . ($hosp_in === null ? "SELECT id FROM gangnamunni_hospitals" : $hosp_in) . ")");
             mysqli_stmt_bind_param($stmt, 'i', $doctor_id);
             if (mysqli_stmt_execute($stmt)) {
-                $message = "의사 #{$doctor_id}이(가) 삭제되었습니다.";
+                if (mysqli_stmt_affected_rows($stmt) < 1) {
+                    $error = '이 의사를 삭제할 권한이 없습니다.';
+                } else {
+                    $cleanup = mysqli_prepare($connect, "DELETE FROM gangnamunni_doctor_treatments WHERE doctor_id = ?");
+                    mysqli_stmt_bind_param($cleanup, 'i', $doctor_id);
+                    mysqli_stmt_execute($cleanup);
+                    mysqli_stmt_close($cleanup);
+                    $message = "의사 #{$doctor_id}이(가) 삭제되었습니다.";
+                }
                 // 삭제 후 목록으로 리다이렉트
-                if (isset($_GET['view'])) {
+                if (!empty($message) && isset($_GET['view'])) {
                     header('Location: admin_doctors.php?msg=' . urlencode($message));
                     exit;
                 }
@@ -144,12 +331,13 @@ $edit_mode = isset($_GET['edit']) && $_GET['edit'] == '1';
 $doctor = null;
 
 if ($view_mode > 0) {
+    $view_scope_sql = $hosp_in === null ? '' : " AND d.hospital_id IN ({$hosp_in})";
     $stmt = mysqli_prepare($connect,
         "SELECT d.*, h.name AS hospital_name, dep.title AS department_name
          FROM gangnamunni_doctors d
          LEFT JOIN gangnamunni_hospitals h ON d.hospital_id = h.id
          LEFT JOIN gangnamunni_departments dep ON d.department_id = dep.id
-         WHERE d.id = ?"
+         WHERE d.id = ?{$view_scope_sql}"
     );
     mysqli_stmt_bind_param($stmt, 'i', $view_mode);
     mysqli_stmt_execute($stmt);
@@ -157,12 +345,6 @@ if ($view_mode > 0) {
     $doctor = mysqli_fetch_assoc($result);
     mysqli_stmt_close($stmt);
 }
-
-// ===== 병원 격리 필터 (super_admin=전체, 그 외=소속 병원) — 목록·통계·드롭다운 공통 =====
-//   get_hospital_filter_in(): null=전체, "1,2,3"=해당 병원(정수 CSV), '0'=소속 병원 없음
-$hosp_in = get_hospital_filter_in($connect);
-$hosp_where_plain = ($hosp_in !== null) ? " WHERE hospital_id IN ({$hosp_in})" : ""; // 통계용(별칭 없음)
-$hosp_and_plain   = ($hosp_in !== null) ? " AND hospital_id IN ({$hosp_in})" : "";
 
 // ===== 병원 목록 (필터 드롭다운/수정 폼 select용) — 소속 병원만 =====
 $hospital_list = [];
@@ -172,6 +354,35 @@ if ($h_result) {
     while ($hr = mysqli_fetch_assoc($h_result)) {
         $hospital_list[] = $hr;
     }
+}
+
+// ===== 소속 병원에 실제 배정된 시술 목록 =====
+$hospital_treatments = [];
+$treatment_scope_sql = $hosp_in === null ? '' : " AND ht.hospital_id IN ({$hosp_in})";
+$treatment_result = mysqli_query($connect,
+    "SELECT DISTINCT ht.hospital_id, ht.treatment_id, tm.name, tc.name AS category_name
+       FROM gangnamunni_hospital_treatments ht
+       JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
+  LEFT JOIN gangnamunni_treatment_categories tc ON tc.id = tm.category_id
+      WHERE ht.is_active = 1
+        AND ht.status = 'active'
+        {$treatment_scope_sql}
+   ORDER BY ht.hospital_id, tc.sort_order, tm.name");
+while ($treatment_result && $tr = mysqli_fetch_assoc($treatment_result)) {
+    $hospital_treatments[(int)$tr['hospital_id']][] = $tr;
+}
+
+$doctor_treatment_ids = [];
+if ($doctor) {
+    $assigned_stmt = mysqli_prepare($connect,
+        "SELECT treatment_id FROM gangnamunni_doctor_treatments WHERE doctor_id = ? AND hospital_id = ? AND is_active = 1");
+    mysqli_stmt_bind_param($assigned_stmt, 'ii', $doctor['id'], $doctor['hospital_id']);
+    mysqli_stmt_execute($assigned_stmt);
+    $assigned_result = mysqli_stmt_get_result($assigned_stmt);
+    while ($assigned = mysqli_fetch_assoc($assigned_result)) {
+        $doctor_treatment_ids[] = (int)$assigned['treatment_id'];
+    }
+    mysqli_stmt_close($assigned_stmt);
 }
 
 // ===== 부서 목록 (수정 폼 select용) =====
@@ -303,6 +514,7 @@ $admin_extra_css = '
 .specialty-badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
 .spec-bar { height: 8px; border-radius: 4px; background: var(--bs-tertiary-bg); overflow: hidden; }
 .spec-bar-fill { height: 100%; border-radius: 4px; }
+.doctor-treatment-group { display: none; }
 ';
 
 include __DIR__ . '/includes/admin_header.php';
@@ -355,6 +567,7 @@ include __DIR__ . '/includes/admin_header.php';
 <form method="POST" id="editDoctorForm" enctype="multipart/form-data">
     <input type="hidden" name="action" value="edit_doctor">
     <input type="hidden" name="doctor_id" value="<?php echo $doctor['id']; ?>">
+    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
 
     <div class="card mb-3">
         <div class="card-header"><i class="bi bi-person-badge me-1"></i> 기본 정보 수정</div>
@@ -373,7 +586,7 @@ include __DIR__ . '/includes/admin_header.php';
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">소속 병원</label>
-                    <select name="hospital_id" class="form-select form-select-sm">
+                    <select name="hospital_id" class="form-select form-select-sm doctor-hospital-select" data-treatment-target="editTreatmentGroups">
                         <option value="0">-- 선택 --</option>
                         <?php foreach ($hospital_list as $hl): ?>
                         <option value="<?php echo $hl['id']; ?>" <?php echo ($doctor['hospital_id'] ?? 0) == $hl['id'] ? 'selected' : ''; ?>>
@@ -453,6 +666,36 @@ include __DIR__ . '/includes/admin_header.php';
                     </select>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-heart-pulse me-1"></i> 시술 배정</div>
+        <div class="card-body" id="editTreatmentGroups">
+            <?php foreach ($hospital_list as $hl): ?>
+            <div class="doctor-treatment-group" data-hospital-id="<?php echo (int)$hl['id']; ?>">
+                <?php $edit_treatments = $hospital_treatments[(int)$hl['id']] ?? []; ?>
+                <?php if (empty($edit_treatments)): ?>
+                <div class="text-body-secondary small">이 병원에 등록된 활성 시술이 없습니다.</div>
+                <?php else: ?>
+                <div class="row g-2">
+                    <?php foreach ($edit_treatments as $tr): ?>
+                    <div class="col-md-4">
+                        <label class="form-check border rounded p-2 h-100">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" name="treatment_ids[]"
+                                   value="<?php echo (int)$tr['treatment_id']; ?>"
+                                   <?php echo in_array((int)$tr['treatment_id'], $doctor_treatment_ids, true) ? 'checked' : ''; ?>>
+                            <span class="small"><?php echo htmlspecialchars($tr['name']); ?></span>
+                            <?php if (!empty($tr['category_name'])): ?>
+                            <span class="d-block text-body-secondary" style="font-size:11px;"><?php echo htmlspecialchars($tr['category_name']); ?></span>
+                            <?php endif; ?>
+                        </label>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
         </div>
     </div>
 
@@ -606,6 +849,31 @@ include __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
+<?php
+$doctor_treatment_names = [];
+foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr) {
+    if (in_array((int)$tr['treatment_id'], $doctor_treatment_ids, true)) {
+        $doctor_treatment_names[] = $tr;
+    }
+}
+?>
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-heart-pulse me-1"></i> 배정된 시술</div>
+    <div class="card-body">
+        <?php if (empty($doctor_treatment_names)): ?>
+        <span class="text-body-secondary small">배정된 시술이 없습니다.</span>
+        <?php else: ?>
+        <div class="d-flex flex-wrap gap-2">
+            <?php foreach ($doctor_treatment_names as $tr): ?>
+            <span class="badge bg-primary-subtle text-primary-emphasis border">
+                <?php echo htmlspecialchars($tr['name']); ?>
+            </span>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <!-- 하단 관리 버튼 -->
 <div class="card mb-3">
     <div class="card-body">
@@ -618,6 +886,7 @@ include __DIR__ . '/includes/admin_header.php';
             <form method="POST" class="d-inline" onsubmit="return confirm('정말 이 의사를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')">
                 <input type="hidden" name="action" value="delete_doctor">
                 <input type="hidden" name="doctor_id" value="<?php echo $doctor['id']; ?>">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 <button type="submit" class="btn btn-outline-danger btn-sm">
                     <i class="bi bi-trash me-1"></i>삭제
                 </button>
@@ -642,6 +911,11 @@ include __DIR__ . '/includes/admin_header.php';
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="bi bi-person-badge"></i> 의사 관리</h5>
+    <?php if (!empty($hospital_list)): ?>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createDoctorModal">
+        <i class="bi bi-plus-lg me-1"></i>의사 추가
+    </button>
+    <?php endif; ?>
 </div>
 <!-- [추가 2026-06-19] 이중 스키마 안내 -->
 <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
@@ -650,6 +924,101 @@ include __DIR__ . '/includes/admin_header.php';
         <strong>안내:</strong> 이 목록은 강남언니 <code>gangnamunni_doctors</code> 테이블 기준입니다.
         신규 등록은 <a href="admin_doctor_wizard.php">의사 등록 마법사</a>를 사용하세요(HMS <code>doctors</code>와 동시 저장).
         여기서의 수정/삭제는 강남언니 측에 적용되며, HMS 본 데이터에는 별도 반영되지 않을 수 있습니다.
+    </div>
+</div>
+
+<div class="modal fade" id="createDoctorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <form method="POST" enctype="multipart/form-data" class="modal-content">
+                <input type="hidden" name="action" value="create_doctor">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>의사 추가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">의사명 및 직책 <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" required placeholder="홍길동 대표원장">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">전문 분야</label>
+                            <input type="text" name="specialty" class="form-control" placeholder="피부과 전문의">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">소속 병원 <span class="text-danger">*</span></label>
+                            <select name="hospital_id" class="form-select doctor-hospital-select"
+                                    data-treatment-target="createTreatmentGroups" required>
+                                <option value="">-- 병원 선택 --</option>
+                                <?php foreach ($hospital_list as $hl): ?>
+                                <option value="<?php echo (int)$hl['id']; ?>"><?php echo htmlspecialchars($hl['name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">경력 (년)</label>
+                            <input type="number" name="experience" class="form-control" min="0" value="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">전화번호</label>
+                            <input type="text" name="phone" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">주요 자격</label>
+                            <input type="text" name="qualification" class="form-control" placeholder="피부과 전문의">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">프로필 사진</label>
+                            <input type="file" name="photo_file" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif">
+                            <div class="form-text">JPG, PNG, WebP 또는 GIF 파일, 최대 5MB.</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">자격 및 학회 활동</label>
+                            <textarea name="bio" class="form-control" rows="5"
+                                      placeholder="피부과 전문의&#10;대한피부과학회 정회원&#10;대한피부과의사회 정회원"></textarea>
+                            <div class="form-text">항목마다 줄을 바꿔 입력하면 의사 상세 화면에 목록으로 표시됩니다.</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">시술 배정</label>
+                            <div id="createTreatmentGroups" class="border rounded p-3">
+                                <div class="doctor-treatment-placeholder text-body-secondary small">먼저 소속 병원을 선택해주세요.</div>
+                                <?php foreach ($hospital_list as $hl): ?>
+                                <div class="doctor-treatment-group" data-hospital-id="<?php echo (int)$hl['id']; ?>">
+                                    <?php $create_treatments = $hospital_treatments[(int)$hl['id']] ?? []; ?>
+                                    <?php if (empty($create_treatments)): ?>
+                                    <div class="text-body-secondary small">이 병원에 등록된 활성 시술이 없습니다.</div>
+                                    <?php else: ?>
+                                    <div class="row g-2">
+                                        <?php foreach ($create_treatments as $tr): ?>
+                                        <div class="col-md-4">
+                                            <label class="form-check border rounded p-2 h-100">
+                                                <input class="form-check-input ms-0 me-2" type="checkbox"
+                                                       name="treatment_ids[]" value="<?php echo (int)$tr['treatment_id']; ?>">
+                                                <span class="small"><?php echo htmlspecialchars($tr['name']); ?></span>
+                                                <?php if (!empty($tr['category_name'])): ?>
+                                                <span class="d-block text-body-secondary" style="font-size:11px;"><?php echo htmlspecialchars($tr['category_name']); ?></span>
+                                                <?php endif; ?>
+                                            </label>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+        </form>
     </div>
 </div>
 
@@ -898,7 +1267,25 @@ include __DIR__ . '/includes/admin_header.php';
 
 <?php
 $admin_extra_js = '
-// 의사 관리 JS (확장용)
+function updateDoctorTreatmentGroups(select) {
+    var target = document.getElementById(select.dataset.treatmentTarget || "");
+    if (!target) return;
+    var selectedHospital = String(select.value || "");
+    var placeholder = target.querySelector(".doctor-treatment-placeholder");
+    if (placeholder) placeholder.style.display = selectedHospital ? "none" : "block";
+    target.querySelectorAll(".doctor-treatment-group").forEach(function(group) {
+        var active = selectedHospital !== "" && group.dataset.hospitalId === selectedHospital;
+        group.style.display = active ? "block" : "none";
+        group.querySelectorAll("input[type=checkbox]").forEach(function(input) {
+            input.disabled = !active;
+            if (!active && select.closest("#createDoctorModal")) input.checked = false;
+        });
+    });
+}
+document.querySelectorAll(".doctor-hospital-select").forEach(function(select) {
+    updateDoctorTreatmentGroups(select);
+    select.addEventListener("change", function() { updateDoctorTreatmentGroups(select); });
+});
 ';
 
 include __DIR__ . '/includes/admin_footer.php';
