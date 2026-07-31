@@ -1,7 +1,7 @@
 <?php
 /**
- * 의사 관리 페이지
- * 의사 목록, 상세 보기, 수정, 삭제
+ * 병원 공개용 의사 프로필 관리
+ * 이름, 소속 병원, 사진, 병원별 시술 분야, 자격·소속 학회만 관리
  * Bootstrap 5.3 + 주간/야간 모드
  * @created 2026-03-04
  */
@@ -42,22 +42,11 @@ function doctor_hospital_allowed($hospital_id, $allowed_hospital_ids) {
         && ($allowed_hospital_ids === null || in_array((int)$hospital_id, $allowed_hospital_ids, true));
 }
 
-function validate_doctor_profile($name, $specialty, $experience, $phone, $qualification, $bio, $photo_url, $status = 'active') {
-    $allowed_statuses = ['active', 'vacation', 'leave', 'resigned'];
+function validate_doctor_profile($name, $hospital_id, $memberships) {
     if ($name === '') return '의사 이름은 필수입니다.';
     if (mb_strlen($name, 'UTF-8') > 100) return '의사 이름은 100자 이하여야 합니다.';
-    if (mb_strlen($specialty, 'UTF-8') > 255) return '전문 분야는 255자 이하여야 합니다.';
-    if ($experience < 0 || $experience > 100) return '경력은 0~100년 사이로 입력해주세요.';
-    if ($phone !== '' && !preg_match('/^[0-9+() .-]{7,30}$/', $phone)) return '전화번호 형식을 확인해주세요.';
-    if (mb_strlen($qualification, 'UTF-8') > 500) return '자격·학회·수상/성과는 500자 이하여야 합니다.';
-    if (mb_strlen($bio, 'UTF-8') > 3000) return '소개는 3000자 이하여야 합니다.';
-    $safe_local_photo = $photo_url !== ''
-        && strpos($photo_url, '..') === false
-        && preg_match('#^/?[A-Za-z0-9_./-]+$#', $photo_url);
-    if ($photo_url !== '' && !filter_var($photo_url, FILTER_VALIDATE_URL) && !$safe_local_photo) {
-        return '프로필 사진 URL 형식을 확인해주세요.';
-    }
-    if (!in_array($status, $allowed_statuses, true)) return '올바르지 않은 상태값입니다.';
+    if ($hospital_id <= 0) return '소속 병원을 선택해주세요.';
+    if (mb_strlen($memberships, 'UTF-8') > 2000) return '자격 및 학회 정보는 2000자 이하여야 합니다.';
     return '';
 }
 
@@ -172,15 +161,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 신규 등록
     if ($action === 'create_doctor') {
         $name = trim($_POST['name'] ?? '');
-        $specialty = trim($_POST['specialty'] ?? '');
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
-        $experience = max(0, intval($_POST['experience'] ?? 0));
-        $phone = trim($_POST['phone'] ?? '');
-        $qualification = trim($_POST['qualification'] ?? '');
-        $bio = trim($_POST['bio'] ?? '');
-        $photo_url = trim($_POST['photo_url'] ?? '');
+        $memberships = trim($_POST['memberships'] ?? '');
 
-        $error = validate_doctor_profile($name, $specialty, $experience, $phone, $qualification, $bio, $photo_url);
+        $error = validate_doctor_profile($name, $hospital_id, $memberships);
         if ($error !== '') {
         } elseif (!doctor_hospital_allowed($hospital_id, $allowed_hospital_ids)) {
             $error = '선택한 병원에 의사를 등록할 권한이 없습니다.';
@@ -190,11 +174,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $stmt = mysqli_prepare($connect,
                     "INSERT INTO gangnamunni_doctors
-                        (hospital_id, name, specialty, experience, phone, qualification, bio, photo_url, status, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())");
-                mysqli_stmt_bind_param($stmt, 'ississss',
-                    $hospital_id, $name, $specialty, $experience, $phone,
-                    $qualification, $bio, $photo_url);
+                        (hospital_id, name, qualification, photo_url, status, created_at, updated_at)
+                     VALUES (?, ?, ?, '', 'active', NOW(), NOW())");
+                mysqli_stmt_bind_param($stmt, 'iss', $hospital_id, $name, $memberships);
                 if (!mysqli_stmt_execute($stmt)) {
                     throw new Exception(mysqli_stmt_error($stmt));
                 }
@@ -227,14 +209,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'edit_doctor') {
         $doctor_id = intval($_POST['doctor_id'] ?? 0);
         $name = trim($_POST['name'] ?? '');
-        $specialty = trim($_POST['specialty'] ?? '');
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
-        $experience = max(0, intval($_POST['experience'] ?? 0));
-        $phone = trim($_POST['phone'] ?? '');
-        $qualification = trim($_POST['qualification'] ?? '');
-        $photo_url = trim($_POST['photo_url'] ?? '');
+        $memberships = trim($_POST['memberships'] ?? '');
         $uploaded_photo = null;
-        $own_stmt = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_doctors WHERE id = ?");
+        $own_stmt = mysqli_prepare($connect, "SELECT hospital_id, photo_url FROM gangnamunni_doctors WHERE id = ?");
         mysqli_stmt_bind_param($own_stmt, 'i', $doctor_id);
         mysqli_stmt_execute($own_stmt);
         $own_row = mysqli_fetch_assoc(mysqli_stmt_get_result($own_stmt));
@@ -242,12 +220,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $edit_allowed = $own_row
             && doctor_hospital_allowed((int)$own_row['hospital_id'], $allowed_hospital_ids)
             && doctor_hospital_allowed($hospital_id, $allowed_hospital_ids);
-        $bio = trim($_POST['bio'] ?? '');
-        $status = trim($_POST['status'] ?? 'active');
-        // URL 입력값은 업로드 처리 전에 검증한다. 업로드 성공 후에는 내부 상대경로가 사용된다.
-        $validation_error = validate_doctor_profile(
-            $name, $specialty, $experience, $phone, $qualification, $bio, $photo_url, $status
-        );
+        $photo_url = (string)($own_row['photo_url'] ?? '');
+        $validation_error = validate_doctor_profile($name, $hospital_id, $memberships);
 
         // 파일 업로드 처리 (URL보다 우선)
         if ($edit_allowed && $validation_error === '') {
@@ -269,35 +243,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $stmt = mysqli_prepare($connect,
                     "UPDATE gangnamunni_doctors
-                        SET name=?, specialty=?, hospital_id=?, experience=?, phone=?,
-                            qualification=?, photo_url=?, bio=?, status=?, updated_at=NOW()
+                        SET name=?, hospital_id=?, qualification=?, photo_url=?, updated_at=NOW()
                       WHERE id=?"
                 );
                 if (!$stmt) throw new RuntimeException(mysqli_error($connect));
-                mysqli_stmt_bind_param($stmt, 'ssiisssssi',
-                    $name, $specialty, $hospital_id, $experience, $phone,
-                    $qualification, $photo_url, $bio, $status, $doctor_id
-                );
+                mysqli_stmt_bind_param($stmt, 'sissi', $name, $hospital_id, $memberships, $photo_url, $doctor_id);
                 if (!mysqli_stmt_execute($stmt)) throw new RuntimeException(mysqli_stmt_error($stmt));
                 mysqli_stmt_close($stmt);
 
-                if ($status === 'resigned') {
-                    $disable = mysqli_prepare($connect,
-                        "UPDATE gangnamunni_doctor_treatments SET is_active = 0, updated_at = NOW() WHERE doctor_id = ?");
-                    mysqli_stmt_bind_param($disable, 'i', $doctor_id);
-                    mysqli_stmt_execute($disable);
-                    mysqli_stmt_close($disable);
-                } else {
-                    if ((int)$own_row['hospital_id'] !== $hospital_id) {
-                        $clear_old = mysqli_prepare($connect,
-                            "UPDATE gangnamunni_doctor_treatments SET is_active=0, updated_at=NOW()
-                              WHERE doctor_id = ? AND hospital_id = ?");
-                        mysqli_stmt_bind_param($clear_old, 'ii', $doctor_id, $own_row['hospital_id']);
-                        mysqli_stmt_execute($clear_old);
-                        mysqli_stmt_close($clear_old);
-                    }
-                    sync_doctor_treatments($connect, $doctor_id, $hospital_id, $_POST['treatment_ids'] ?? []);
+                if ((int)$own_row['hospital_id'] !== $hospital_id) {
+                    $clear_old = mysqli_prepare($connect,
+                        "UPDATE gangnamunni_doctor_treatments SET is_active=0, updated_at=NOW()
+                          WHERE doctor_id = ? AND hospital_id = ?");
+                    mysqli_stmt_bind_param($clear_old, 'ii', $doctor_id, $own_row['hospital_id']);
+                    mysqli_stmt_execute($clear_old);
+                    mysqli_stmt_close($clear_old);
                 }
+                sync_doctor_treatments($connect, $doctor_id, $hospital_id, $_POST['treatment_ids'] ?? []);
                 mysqli_commit($connect);
                 $message = "의사 '{$name}' 정보가 수정되었습니다.";
             } catch (Throwable $e) {
@@ -440,10 +402,18 @@ if ($filter_hospital > 0) {
 }
 
 if (!empty($search)) {
-    $where .= ' AND (d.name LIKE ? OR d.specialty LIKE ? OR d.phone LIKE ? OR d.qualification LIKE ? OR h.name LIKE ?)';
+    $where .= ' AND (d.name LIKE ? OR d.qualification LIKE ? OR h.name LIKE ?
+        OR EXISTS (
+            SELECT 1
+              FROM gangnamunni_doctor_treatments dt_search
+              JOIN gangnamunni_treatment_master tm_search ON tm_search.id = dt_search.treatment_id
+             WHERE dt_search.doctor_id = d.id
+               AND dt_search.is_active = 1
+               AND tm_search.name LIKE ?
+        ))';
     $search_param = "%{$search}%";
-    $where_params = array_merge($where_params, [$search_param, $search_param, $search_param, $search_param, $search_param]);
-    $where_types .= 'sssss';
+    $where_params = array_merge($where_params, [$search_param, $search_param, $search_param, $search_param]);
+    $where_types .= 'ssss';
 }
 
 // ===== 병원 격리: 목록에도 소속 병원 의사만 (상단에서 계산한 $hosp_in 재사용) =====
@@ -453,21 +423,9 @@ if ($hosp_in !== null) {
 
 // ===== 통계 =====
 $stats = ['total' => 0];
-$specialty_stats = [];
 
 $stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_doctors" . $hosp_where_plain);
 if ($stat_result) $stats['total'] = (int)mysqli_fetch_assoc($stat_result)['c'];
-
-// 전문분야별 분포
-$spec_result = mysqli_query($connect,
-    "SELECT COALESCE(NULLIF(TRIM(specialty),''), '미지정') AS spec, COUNT(*) AS cnt
-     FROM gangnamunni_doctors" . $hosp_where_plain . " GROUP BY spec ORDER BY cnt DESC LIMIT 10"
-);
-if ($spec_result) {
-    while ($sr = mysqli_fetch_assoc($spec_result)) {
-        $specialty_stats[] = $sr;
-    }
-}
 
 // 소속 병원 수
 $hospital_count_result = mysqli_query($connect, "SELECT COUNT(DISTINCT hospital_id) AS c FROM gangnamunni_doctors WHERE hospital_id > 0" . $hosp_and_plain);
@@ -506,9 +464,29 @@ if (!$view_mode) {
     mysqli_stmt_execute($list_stmt);
     $list_result = mysqli_stmt_get_result($list_stmt);
     while ($row = mysqli_fetch_assoc($list_result)) {
+        $row['treatment_names'] = [];
         $doctors[] = $row;
     }
     mysqli_stmt_close($list_stmt);
+
+    if (!empty($doctors)) {
+        $doctor_indexes = [];
+        foreach ($doctors as $index => $row) {
+            $doctor_indexes[(int)$row['id']] = $index;
+        }
+        $doctor_ids = implode(',', array_keys($doctor_indexes));
+        $names_result = mysqli_query($connect,
+            "SELECT dt.doctor_id, tm.name
+               FROM gangnamunni_doctor_treatments dt
+               JOIN gangnamunni_treatment_master tm ON tm.id = dt.treatment_id
+              WHERE dt.is_active = 1
+                AND dt.doctor_id IN ({$doctor_ids})
+              ORDER BY tm.name");
+        while ($names_result && $name_row = mysqli_fetch_assoc($names_result)) {
+            $index = $doctor_indexes[(int)$name_row['doctor_id']];
+            $doctors[$index]['treatment_names'][] = $name_row['name'];
+        }
+    }
 }
 
 // URL 빌더 헬퍼 (현재 필터 유지)
@@ -570,9 +548,6 @@ include __DIR__ . '/includes/admin_header.php';
             <i class="bi bi-arrow-left"></i> 목록으로
         </a>
         <span class="fw-bold fs-5"><?php echo htmlspecialchars($doctor['name']); ?></span>
-        <?php if (!empty($doctor['specialty'])): ?>
-        <span class="badge bg-primary specialty-badge ms-1"><?php echo htmlspecialchars($doctor['specialty']); ?></span>
-        <?php endif; ?>
     </div>
     <div class="d-flex gap-1">
         <?php if (!$edit_mode): ?>
@@ -604,15 +579,9 @@ include __DIR__ . '/includes/admin_header.php';
                            value="<?php echo htmlspecialchars($doctor['name'] ?? ''); ?>">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold small">전문분야</label>
-                    <input type="text" name="specialty" class="form-control form-control-sm"
-                           value="<?php echo htmlspecialchars($doctor['specialty'] ?? ''); ?>"
-                           placeholder="성형외과, 피부과 등">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold small">소속 병원</label>
-                    <select name="hospital_id" class="form-select form-select-sm doctor-hospital-select" data-treatment-target="editTreatmentGroups">
-                        <option value="0">-- 선택 --</option>
+                    <label class="form-label fw-semibold small">소속 병원 <span class="text-danger">*</span></label>
+                    <select name="hospital_id" class="form-select form-select-sm doctor-hospital-select" data-treatment-target="editTreatmentGroups" required>
+                        <option value="">-- 선택 --</option>
                         <?php foreach ($hospital_list as $hl): ?>
                         <option value="<?php echo $hl['id']; ?>" <?php echo ($doctor['hospital_id'] ?? 0) == $hl['id'] ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($hl['name']); ?>
@@ -620,21 +589,12 @@ include __DIR__ . '/includes/admin_header.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-semibold small">경력 (년)</label>
-                    <input type="number" name="experience" class="form-control form-control-sm" min="0"
-                           value="<?php echo intval($doctor['experience'] ?? 0); ?>">
-                </div>
-                <div class="col-md-8">
-                    <label class="form-label fw-semibold small">전화번호</label>
-                    <input type="text" name="phone" class="form-control form-control-sm"
-                           value="<?php echo htmlspecialchars($doctor['phone'] ?? ''); ?>">
-                </div>
                 <div class="col-12">
-                    <label class="form-label fw-semibold small">자격·학회·수상/성과</label>
-                    <textarea name="qualification" class="form-control form-control-sm" rows="4"
-                              maxlength="500"
-                              placeholder="전문의 자격, 학회 활동, 수상 및 주요 성과를 줄바꿈으로 구분해주세요."><?php echo htmlspecialchars($doctor['qualification'] ?? ''); ?></textarea>
+                    <label class="form-label fw-semibold small">자격 및 소속 학회</label>
+                    <textarea name="memberships" class="form-control form-control-sm" rows="5"
+                              maxlength="2000"
+                              placeholder="피부과 전문의&#10;대한피부과학회 정회원"><?php echo htmlspecialchars($doctor['qualification'] ?? ''); ?></textarea>
+                    <div class="form-text">항목마다 줄을 바꿔 입력해주세요. 의사마다 자유롭게 다르게 입력할 수 있습니다.</div>
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-semibold small">프로필 사진</label>
@@ -643,28 +603,6 @@ include __DIR__ . '/includes/admin_header.php';
                         <input type="file" name="photo_file" class="form-control form-control-sm" accept="image/*">
                         <div class="form-text">JPG, PNG, WebP (최대 5MB). 파일 업로드 시 URL보다 우선 적용됩니다.</div>
                     </div>
-                    <div>
-                        <label class="form-label small text-muted mb-1">또는 URL 직접 입력</label>
-                        <input type="url" name="photo_url" class="form-control form-control-sm"
-                               value="<?php echo htmlspecialchars($doctor['photo_url'] ?? ''); ?>"
-                               placeholder="https://...">
-                    </div>
-                </div>
-                <div class="col-12">
-                    <label class="form-label fw-semibold small">소개 / 약력</label>
-                    <textarea name="bio" class="form-control form-control-sm" rows="4"><?php echo htmlspecialchars($doctor['bio'] ?? ''); ?></textarea>
-                </div>
-                <!-- 상태 -->
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold small">상태</label>
-                    <select name="status" class="form-select form-select-sm">
-                        <?php
-                        $status_opts = ['active'=>'진료 중','vacation'=>'휴가','leave'=>'휴직','resigned'=>'퇴직'];
-                        $cur_status = $doctor['status'] ?? 'active';
-                        foreach ($status_opts as $sv => $sl): ?>
-                        <option value="<?php echo $sv; ?>" <?php echo $cur_status === $sv ? 'selected' : ''; ?>><?php echo $sl; ?></option>
-                        <?php endforeach; ?>
-                    </select>
                 </div>
             </div>
         </div>
@@ -721,34 +659,12 @@ include __DIR__ . '/includes/admin_header.php';
                         <div class="doctor-detail-value fw-bold"><?php echo htmlspecialchars($doctor['name'] ?? '-'); ?></div>
                     </div>
                     <div class="col-md-6">
-                        <div class="doctor-detail-label">전문분야</div>
-                        <div class="doctor-detail-value">
-                            <?php if (!empty($doctor['specialty'])): ?>
-                            <span class="badge bg-primary specialty-badge"><?php echo htmlspecialchars($doctor['specialty']); ?></span>
-                            <?php else: ?>
-                            <span class="text-body-secondary">-</span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
                         <div class="doctor-detail-label">소속 병원</div>
                         <div class="doctor-detail-value"><?php echo htmlspecialchars($doctor['hospital_name'] ?? '-'); ?></div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="doctor-detail-label">경력</div>
-                        <div class="doctor-detail-value"><?php echo intval($doctor['experience'] ?? 0); ?>년</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="doctor-detail-label">전화번호</div>
-                        <div class="doctor-detail-value"><?php echo htmlspecialchars($doctor['phone'] ?? '-'); ?></div>
-                    </div>
                     <div class="col-12">
-                        <div class="doctor-detail-label">자격·학회·수상/성과</div>
+                        <div class="doctor-detail-label">자격 및 소속 학회</div>
                         <div class="doctor-detail-value"><?php echo nl2br(htmlspecialchars($doctor['qualification'] ?? '-')); ?></div>
-                    </div>
-                    <div class="col-12">
-                        <div class="doctor-detail-label">소개 / 약력</div>
-                        <div class="doctor-detail-value"><?php echo nl2br(htmlspecialchars($doctor['bio'] ?? '-')); ?></div>
                     </div>
                 </div>
             </div>
@@ -756,7 +672,7 @@ include __DIR__ . '/includes/admin_header.php';
     </div>
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header"><i class="bi bi-info-circle me-1"></i> 프로필 / 메타</div>
+            <div class="card-header"><i class="bi bi-image me-1"></i> 프로필 사진</div>
             <div class="card-body text-center">
                 <?php if (!empty($doctor['photo_url'])): ?>
                 <img src="<?php echo htmlspecialchars($doctor['photo_url']); ?>" alt="프로필" class="doctor-photo mb-3">
@@ -766,22 +682,6 @@ include __DIR__ . '/includes/admin_header.php';
                 </div>
                 <?php endif; ?>
 
-                <div class="text-start">
-                    <div class="doctor-detail-label">HMS Doctor ID</div>
-                    <div class="doctor-detail-value small"><?php echo htmlspecialchars($doctor['hms_doctor_id'] ?? '-'); ?></div>
-
-                    <div class="doctor-detail-label">HMS Tenant ID</div>
-                    <div class="doctor-detail-value small"><?php echo htmlspecialchars($doctor['hms_tenant_id'] ?? '-'); ?></div>
-
-                    <div class="doctor-detail-label">동기화 시각</div>
-                    <div class="doctor-detail-value small"><?php echo $doctor['synced_at'] ? date('Y-m-d H:i', strtotime($doctor['synced_at'])) : '-'; ?></div>
-
-                    <div class="doctor-detail-label">등록일</div>
-                    <div class="doctor-detail-value small"><?php echo $doctor['created_at'] ? date('Y-m-d H:i', strtotime($doctor['created_at'])) : '-'; ?></div>
-
-                    <div class="doctor-detail-label">수정일</div>
-                    <div class="doctor-detail-value small"><?php echo $doctor['updated_at'] ? date('Y-m-d H:i', strtotime($doctor['updated_at'])) : '-'; ?></div>
-                </div>
             </div>
         </div>
     </div>
@@ -858,8 +758,8 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
 <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
     <i class="bi bi-info-circle-fill mt-1"></i>
     <div class="small">
-        <strong>안내:</strong> 의사는 병원 공개 프로필로 등록됩니다. 별도 HMS 계정, 이메일, 진료과,
-        개인 진료시간 및 진료비는 사용하지 않습니다. 시술 가격은 병원별 시술 관리에서 설정합니다.
+        <strong>안내:</strong> 의사는 병원 공개 프로필로만 등록됩니다. 이름, 소속 병원, 사진,
+        해당 병원의 시술 분야와 자격·소속 학회만 관리합니다.
     </div>
 </div>
 
@@ -875,12 +775,8 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">의사명 및 직책 <span class="text-danger">*</span></label>
-                            <input type="text" name="name" class="form-control" required placeholder="홍길동 대표원장">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">전문 분야</label>
-                            <input type="text" name="specialty" class="form-control" placeholder="피부과 전문의">
+                            <label class="form-label">의사 이름 <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" required maxlength="100" placeholder="홍길동">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">소속 병원 <span class="text-danger">*</span></label>
@@ -893,37 +789,23 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">경력 (년)</label>
-                            <input type="number" name="experience" class="form-control" min="0" value="0">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">전화번호</label>
-                            <input type="text" name="phone" class="form-control">
-                        </div>
-                        <div class="col-md-6">
                             <label class="form-label">프로필 사진</label>
                             <input type="file" name="photo_file" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif">
                             <div class="form-text">JPG, PNG, WebP 또는 GIF 파일, 최대 5MB.</div>
                         </div>
                         <div class="col-12">
                             <hr>
-                            <h6 class="fw-bold"><i class="bi bi-award me-1"></i>전문 경력 및 성과</h6>
+                            <h6 class="fw-bold"><i class="bi bi-award me-1"></i>자격 및 소속 학회</h6>
                         </div>
                         <div class="col-12">
-                            <label class="form-label">자격·학회·수상/성과</label>
-                            <textarea name="qualification" class="form-control" rows="5" maxlength="500"
-                                      placeholder="피부과 전문의&#10;대한피부과학회 정회원&#10;우수 의료진 수상"></textarea>
-                            <div class="form-text">자격, 전문 학회 활동, 수상 및 주요 성과를 줄바꿈으로 구분해주세요.</div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">소개</label>
-                            <textarea name="bio" class="form-control" rows="4" maxlength="3000"
-                                      placeholder="의사의 진료 철학과 주요 경력을 소개해주세요."></textarea>
+                            <textarea name="memberships" class="form-control" rows="5" maxlength="2000"
+                                      placeholder="피부과 전문의&#10;대한피부과학회 정회원"></textarea>
+                            <div class="form-text">항목마다 줄을 바꿔 입력해주세요. 의사마다 자유롭게 다르게 입력할 수 있습니다.</div>
                         </div>
                         <div class="col-12">
                             <hr>
-                            <h6 class="fw-bold"><i class="bi bi-heart-pulse me-1"></i>시술 정보</h6>
-                            <label class="form-label fw-semibold">시술 배정</label>
+                            <h6 class="fw-bold"><i class="bi bi-heart-pulse me-1"></i>전문 시술 분야</h6>
+                            <label class="form-label fw-semibold">해당 병원에서 제공하는 시술 선택</label>
                             <div id="createTreatmentGroups" class="border rounded p-3">
                                 <div class="doctor-treatment-placeholder text-body-secondary small">먼저 소속 병원을 선택해주세요.</div>
                                 <?php foreach ($hospital_list as $hl): ?>
@@ -963,7 +845,7 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
 
 <!-- 통계 카드 -->
 <div class="row g-2 mb-3">
-    <div class="col-6 col-md-3">
+    <div class="col-6">
         <div class="card text-center doctor-stat-card">
             <div class="card-body py-3">
                 <div class="fs-4 fw-bold text-primary"><?php echo number_format($stats['total']); ?></div>
@@ -971,7 +853,7 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6">
         <div class="card text-center doctor-stat-card">
             <div class="card-body py-3">
                 <div class="fs-4 fw-bold text-success"><?php echo number_format($stats['hospitals']); ?></div>
@@ -979,59 +861,7 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
             </div>
         </div>
     </div>
-    <?php
-    // 상위 2개 전문분야 통계 카드
-    $top_specs = array_slice($specialty_stats, 0, 2);
-    $spec_colors = ['info', 'warning'];
-    foreach ($top_specs as $idx => $sp): ?>
-    <div class="col-6 col-md-3">
-        <div class="card text-center doctor-stat-card">
-            <div class="card-body py-3">
-                <div class="fs-4 fw-bold text-<?php echo $spec_colors[$idx]; ?>"><?php echo number_format($sp['cnt']); ?></div>
-                <div class="small text-body-secondary"><?php echo htmlspecialchars($sp['spec']); ?></div>
-            </div>
-        </div>
-    </div>
-    <?php endforeach; ?>
-    <?php if (count($top_specs) < 2): ?>
-    <?php for ($fill = count($top_specs); $fill < 2; $fill++): ?>
-    <div class="col-6 col-md-3">
-        <div class="card text-center doctor-stat-card">
-            <div class="card-body py-3">
-                <div class="fs-4 fw-bold text-secondary">-</div>
-                <div class="small text-body-secondary">-</div>
-            </div>
-        </div>
-    </div>
-    <?php endfor; ?>
-    <?php endif; ?>
 </div>
-
-<!-- 전문분야 분포 -->
-<?php if (!empty($specialty_stats)): ?>
-<div class="card mb-3">
-    <div class="card-header py-2"><i class="bi bi-bar-chart me-1"></i> 전문분야 분포</div>
-    <div class="card-body py-2">
-        <div class="row g-2">
-            <?php
-            $max_cnt = max(array_column($specialty_stats, 'cnt'));
-            foreach ($specialty_stats as $sp):
-                $pct = $max_cnt > 0 ? round(($sp['cnt'] / $max_cnt) * 100) : 0;
-            ?>
-            <div class="col-md-6">
-                <div class="d-flex align-items-center gap-2" style="font-size:13px;">
-                    <span class="text-nowrap" style="min-width:80px;"><?php echo htmlspecialchars($sp['spec']); ?></span>
-                    <div class="spec-bar flex-grow-1">
-                        <div class="spec-bar-fill bg-primary" style="width:<?php echo $pct; ?>%;"></div>
-                    </div>
-                    <span class="badge bg-body-secondary text-body"><?php echo $sp['cnt']; ?></span>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
 
 <!-- 필터 바: 병원 필터 -->
 <div class="card mb-3">
@@ -1061,7 +891,7 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
         <input type="hidden" name="hospital" value="<?php echo $filter_hospital; ?>">
         <?php endif; ?>
         <input type="hidden" name="per_page" value="<?php echo $per_page; ?>">
-        <input type="search" name="search" class="form-control form-control-sm" placeholder="이름, 전문분야, 전화, 자격, 병원명 검색..."
+        <input type="search" name="search" class="form-control form-control-sm" placeholder="이름, 병원, 시술, 자격·학회 검색..."
                value="<?php echo htmlspecialchars($search); ?>">
         <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
     </form>
@@ -1083,17 +913,15 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
             <tr>
                 <th style="width:50px;">#</th>
                 <th>이름</th>
-                <th>전문분야</th>
                 <th>소속 병원</th>
-                <th style="width:70px;">경력(년)</th>
-                <th style="width:120px;">전화</th>
-                <th style="width:90px;">등록일</th>
+                <th>전문 시술 분야</th>
+                <th>자격 및 소속 학회</th>
                 <th style="width:90px;">관리</th>
             </tr>
         </thead>
         <tbody>
             <?php if (empty($doctors)): ?>
-            <tr><td colspan="8" class="empty-state"><i class="bi bi-person-badge"></i>등록된 의사가 없습니다.</td></tr>
+            <tr><td colspan="6" class="empty-state"><i class="bi bi-person-badge"></i>등록된 의사가 없습니다.</td></tr>
             <?php else: ?>
             <?php foreach ($doctors as $d): ?>
             <tr>
@@ -1112,13 +940,6 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
                         </a>
                     </div>
                 </td>
-                <td>
-                    <?php if (!empty($d['specialty'])): ?>
-                    <span class="badge bg-primary specialty-badge"><?php echo htmlspecialchars($d['specialty']); ?></span>
-                    <?php else: ?>
-                    <span class="text-body-tertiary">-</span>
-                    <?php endif; ?>
-                </td>
                 <td class="small">
                     <?php if (!empty($d['hospital_name'])): ?>
                     <span class="text-truncate d-inline-block" style="max-width:160px;" title="<?php echo htmlspecialchars($d['hospital_name']); ?>">
@@ -1128,15 +949,18 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
                     <span class="text-body-tertiary">-</span>
                     <?php endif; ?>
                 </td>
-                <td class="text-center">
-                    <?php if (($d['experience'] ?? 0) > 0): ?>
-                    <?php echo intval($d['experience']); ?>년
+                <td>
+                    <?php if (!empty($d['treatment_names'])): ?>
+                    <div class="d-flex flex-wrap gap-1">
+                        <?php foreach ($d['treatment_names'] as $treatment_name): ?>
+                        <span class="badge bg-primary-subtle text-primary-emphasis border"><?php echo htmlspecialchars($treatment_name); ?></span>
+                        <?php endforeach; ?>
+                    </div>
                     <?php else: ?>
                     <span class="text-body-tertiary">-</span>
                     <?php endif; ?>
                 </td>
-                <td class="small"><?php echo htmlspecialchars($d['phone'] ?? '-'); ?></td>
-                <td class="small"><?php echo $d['created_at'] ? date('Y.m.d', strtotime($d['created_at'])) : '-'; ?></td>
+                <td class="small"><?php echo nl2br(htmlspecialchars($d['qualification'] ?? '-')); ?></td>
                 <td>
                     <div class="btn-group btn-group-sm">
                         <a href="?view=<?php echo $d['id']; ?>" class="btn btn-outline-info" title="상세보기">
