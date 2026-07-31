@@ -148,6 +148,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ai_ve
         $ai_result['method'] = 'ai';
     }
 
+    // 검수 결과를 저장하여 목록 점수와 최근 검수 이력에서 다시 확인할 수 있게 한다.
+    try {
+        $db_score = max(0, min(100, (int)($ai_result['score'] ?? 0)));
+        $db_passed = (($ai_result['recommendation'] ?? '') === 'approve' || $db_score >= 70) ? 1 : 0;
+        $db_messages = $ai_result['issues'] ?? [];
+        if (!empty($ai_result['reason'])) $db_messages[] = (string)$ai_result['reason'];
+        $db->execute("UPDATE hospital_reviews SET ai_score = ?, updated_at = NOW() WHERE id = ?", [$db_score, $review_id]);
+        $db->execute(
+            "INSERT INTO review_ai_logs (review_id, score, passed, messages, checked_at) VALUES (?, ?, ?, ?, NOW())",
+            [$review_id, $db_score, $db_passed, json_encode(array_values(array_unique($db_messages)), JSON_UNESCAPED_UNICODE)]
+        );
+    } catch (Exception $e) {
+        // 구형 DB에서도 AI 검수 결과 자체는 정상 반환한다.
+    }
+
     echo json_encode($ai_result, JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -232,6 +247,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
         foreach ($rows as $r) {
             if (($r['review_status'] ?? '') === 'published') reviews_revoke_point($connect, (int)$r['id']); // 삭제 전 적립 회수
         }
+        try { $db->execute("DELETE FROM review_images WHERE review_id IN ({$placeholders})", $ids); } catch (Exception $e) {}
+        try { $db->execute("DELETE FROM review_ai_logs WHERE review_id IN ({$placeholders})", $ids); } catch (Exception $e) {}
+        try { $db->execute("DELETE FROM review_reports WHERE review_id IN ({$placeholders})", $ids); } catch (Exception $e) {}
         $db->execute("DELETE FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
         reviews_recalc_hospital($db, array_column($rows, 'hospital_id'));
         $message = count($ids) . "개 후기가 삭제되었습니다.";
@@ -301,20 +319,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
     }
 
     if ($edit_id > 0 && !empty($edit_content)) {
+        $old_review = $db->fetchOne("SELECT hospital_id FROM hospital_reviews WHERE id = ?", [$edit_id]);
         $db->execute(
             "UPDATE hospital_reviews SET title = ?, content = ?, rating = ?, user_name = ?, is_active = ?, hospital_id = ?, updated_at = NOW() WHERE id = ?",
             [$edit_title, $edit_content, $edit_rating, $edit_user_name, $edit_is_active, $edit_hospital_id, $edit_id]
         );
-        // 병원 통계 업데이트
-        if ($edit_hospital_id > 0) {
-            $db->execute(
-                "UPDATE gangnamunni_hospitals SET
-                    review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published'),
-                    rating = (SELECT COALESCE(AVG(rating), 0) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published')
-                 WHERE id = ?",
-                [$edit_hospital_id, $edit_hospital_id, $edit_hospital_id]
-            );
-        }
+        reviews_recalc_hospital($db, [$old_review['hospital_id'] ?? 0, $edit_hospital_id]);
         $message = "후기 #{$edit_id}이(가) 수정되었습니다.";
     } elseif (empty($error)) {
         $error = "후기 내용을 입력해주세요.";
@@ -349,6 +359,8 @@ if ($filter_status === 'active') {
     $where .= ' AND r.is_active = 0';
 } elseif ($filter_status === 'pending') {
     $where .= " AND r.review_status = 'pending'";
+} elseif ($filter_status === 'ai_attention') {
+    $where .= ' AND r.ai_score IS NOT NULL AND r.ai_score < 70';
 }
 
 if ($filter_hospital > 0) {
@@ -376,6 +388,7 @@ $stats = [
     'active' => (int)$db->fetchValue("SELECT COUNT(*) FROM hospital_reviews WHERE is_active = 1 AND {$stat_scope}"),
     'inactive' => (int)$db->fetchValue("SELECT COUNT(*) FROM hospital_reviews WHERE is_active = 0 AND {$stat_scope}"),
     'reported' => (int)$db->fetchValue("SELECT COUNT(DISTINCT review_id) FROM review_reports WHERE status = 'pending' AND review_id IN (SELECT id FROM hospital_reviews WHERE {$stat_scope})"),
+    'ai_attention' => (int)$db->fetchValue("SELECT COUNT(*) FROM hospital_reviews WHERE ai_score IS NOT NULL AND ai_score < 70 AND {$stat_scope}"),
 ];
 
 // 목록
@@ -390,6 +403,31 @@ $reviews = $db->fetchAll(
      LIMIT {$offset}, {$per_page}",
     $params
 );
+
+// 상세 모달용 사진과 최근 AI 검수 이력
+foreach ($reviews as &$review_row) {
+    try {
+        $review_row['images'] = $db->fetchAll(
+            "SELECT image_url, photo_category, image_order FROM review_images WHERE review_id = ? ORDER BY image_order",
+            [(int)$review_row['id']]
+        );
+    } catch (Exception $e) {
+        $review_row['images'] = [];
+    }
+    try {
+        $review_row['ai_logs'] = $db->fetchAll(
+            "SELECT score, passed, messages, checked_at FROM review_ai_logs WHERE review_id = ? ORDER BY checked_at DESC LIMIT 5",
+            [(int)$review_row['id']]
+        );
+        foreach ($review_row['ai_logs'] as &$ai_log) {
+            $ai_log['messages'] = json_decode($ai_log['messages'] ?? '[]', true) ?: [];
+        }
+        unset($ai_log);
+    } catch (Exception $e) {
+        $review_row['ai_logs'] = [];
+    }
+}
+unset($review_row);
 
 $total_pages = $total > 0 ? ceil($total / $per_page) : 0;
 
@@ -431,8 +469,6 @@ include __DIR__ . '/includes/admin_header.php';
 <!-- 페이지 헤더 -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="bi bi-chat-dots"></i> 후기 관리</h5>
-
-    <a href="admin_review_wizard.php" class="btn btn-outline-primary btn-sm"><i class="bi bi-magic"></i> 마법사로 작성</a>
 </div>
 
 <!-- 알림 메시지 -->
@@ -503,6 +539,13 @@ include __DIR__ . '/includes/admin_header.php';
                class="btn btn-sm <?php echo $filter_status === 'active' ? 'btn-success' : 'btn-outline-secondary'; ?>">활성</a>
             <a href="<?php echo buildReviewUrl(['status' => 'inactive', 'reported' => 0]); ?>"
                class="btn btn-sm <?php echo $filter_status === 'inactive' ? 'btn-secondary' : 'btn-outline-secondary'; ?>">비활성</a>
+            <a href="<?php echo buildReviewUrl(['status' => 'ai_attention', 'reported' => 0]); ?>"
+               class="btn btn-sm <?php echo $filter_status === 'ai_attention' ? 'btn-info' : 'btn-outline-info'; ?>">
+                AI 주의
+                <?php if ($stats['ai_attention'] > 0): ?>
+                <span class="badge bg-white text-info ms-1"><?php echo $stats['ai_attention']; ?></span>
+                <?php endif; ?>
+            </a>
             <a href="<?php echo buildReviewUrl(['status' => 'all', 'reported' => 1]); ?>"
                class="btn btn-sm <?php echo $filter_reported ? 'btn-danger' : 'btn-outline-secondary'; ?>">
                 신고있음
@@ -581,6 +624,7 @@ include __DIR__ . '/includes/admin_header.php';
                 <th>병원</th>
                 <th style="width:100px;">작성자</th>
                 <th style="width:100px;">별점</th>
+                <th style="width:75px;">AI</th>
                 <th>내용</th>
                 <th style="width:70px;">상태</th>
                 <th style="width:70px;">신고</th>
@@ -590,7 +634,7 @@ include __DIR__ . '/includes/admin_header.php';
         </thead>
         <tbody>
             <?php if (empty($reviews)): ?>
-            <tr><td colspan="10" class="empty-state"><i class="bi bi-chat-dots"></i>후기가 없습니다.</td></tr>
+            <tr><td colspan="11" class="empty-state"><i class="bi bi-chat-dots"></i>후기가 없습니다.</td></tr>
             <?php else: ?>
             <?php foreach ($reviews as $r): ?>
             <tr>
@@ -600,6 +644,15 @@ include __DIR__ . '/includes/admin_header.php';
                 <td><?php echo htmlspecialchars($r['user_name']); ?></td>
                 <td>
                     <span class="text-warning"><?php echo str_repeat('&#9733;', $r['rating']); ?></span><span class="text-body-tertiary"><?php echo str_repeat('&#9733;', 5 - $r['rating']); ?></span>
+                </td>
+                <td class="text-center">
+                    <?php if ($r['ai_score'] !== null): ?>
+                    <span class="badge <?php echo (int)$r['ai_score'] >= 70 ? 'bg-success' : ((int)$r['ai_score'] >= 40 ? 'bg-warning text-dark' : 'bg-danger'); ?>">
+                        <?php echo (int)$r['ai_score']; ?>
+                    </span>
+                    <?php else: ?>
+                    <span class="text-body-tertiary">-</span>
+                    <?php endif; ?>
                 </td>
                 <td>
                     <span class="text-truncate d-inline-block" style="max-width:250px; cursor:pointer;" title="클릭하여 전체 내용 보기" onclick="viewReview(<?php echo $r['id']; ?>)">
@@ -704,10 +757,23 @@ include __DIR__ . '/includes/admin_header.php';
                 <div class="mb-2">
                     <span class="fw-semibold small text-body-secondary">별점</span>
                     <div id="view_rating" class="text-warning"></div>
+                    <div id="view_rating_axes" class="small text-body-secondary mt-1"></div>
+                </div>
+                <div id="view_procedure_wrap" class="mb-2" style="display:none;">
+                    <span class="fw-semibold small text-body-secondary">시술 정보</span>
+                    <div id="view_procedure" class="small"></div>
                 </div>
                 <div class="mb-2">
                     <span class="fw-semibold small text-body-secondary">내용</span>
                     <div id="view_content" class="border rounded p-2 bg-body-tertiary" style="white-space:pre-wrap;"></div>
+                </div>
+                <div id="view_images_wrap" class="mb-2" style="display:none;">
+                    <span class="fw-semibold small text-body-secondary">사진</span>
+                    <div id="view_images" class="d-flex flex-wrap gap-2 mt-1"></div>
+                </div>
+                <div id="view_ai_history_wrap" class="mb-2" style="display:none;">
+                    <span class="fw-semibold small text-body-secondary">최근 AI 검수 이력</span>
+                    <div id="view_ai_history" class="small mt-1"></div>
                 </div>
                 <div class="row">
                     <div class="col-6">
@@ -811,6 +877,8 @@ include __DIR__ . '/includes/admin_header.php';
 <?php
 // 후기 데이터를 JS에서 사용할 수 있도록 JSON으로 전달
 $reviewsJson = json_encode($reviews, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+$reviewsCsrfJson = json_encode($admin_reviews_csrf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+$reviewsCsrfHtml = htmlspecialchars($admin_reviews_csrf, ENT_QUOTES, 'UTF-8');
 
 $admin_extra_js = <<<JSBLOCK
 // 후기 데이터 캐시
@@ -830,6 +898,57 @@ function viewReview(reviewId) {
     }
     document.getElementById('view_rating').textContent = stars;
     document.getElementById('view_content').textContent = review.content || '';
+
+    var ratingAxes = [
+        ['rating_result', '시술결과'],
+        ['rating_consultation', '상담'],
+        ['rating_facility', '시설'],
+        ['rating_wait', '대기'],
+        ['rating_cost', '가격'],
+        ['rating_recovery', '회복']
+    ];
+    document.getElementById('view_rating_axes').textContent = ratingAxes
+        .filter(function(axis) { return review[axis[0]] !== null && review[axis[0]] !== undefined; })
+        .map(function(axis) { return axis[1] + ' ' + review[axis[0]] + '/5'; })
+        .join(' · ');
+
+    var procedureParts = [];
+    if (review.doctor_name) procedureParts.push('의사: ' + review.doctor_name);
+    if (review.procedure_date) procedureParts.push('시술일: ' + review.procedure_date);
+    if (review.procedure_cost) procedureParts.push('비용: ' + Number(review.procedure_cost).toLocaleString() + '원');
+    var procedureWrap = document.getElementById('view_procedure_wrap');
+    document.getElementById('view_procedure').textContent = procedureParts.join(' · ');
+    procedureWrap.style.display = procedureParts.length ? '' : 'none';
+
+    var imagesWrap = document.getElementById('view_images_wrap');
+    var imagesEl = document.getElementById('view_images');
+    imagesEl.innerHTML = '';
+    (review.images || []).forEach(function(img) {
+        var link = document.createElement('a');
+        link.href = img.image_url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        var image = document.createElement('img');
+        image.src = img.image_url;
+        image.alt = img.photo_category || 'review image';
+        image.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;';
+        link.appendChild(image);
+        imagesEl.appendChild(link);
+    });
+    imagesWrap.style.display = (review.images || []).length ? '' : 'none';
+
+    var historyWrap = document.getElementById('view_ai_history_wrap');
+    var historyEl = document.getElementById('view_ai_history');
+    historyEl.innerHTML = '';
+    (review.ai_logs || []).forEach(function(log) {
+        var row = document.createElement('div');
+        row.className = 'border rounded p-2 mb-1';
+        var messages = Array.isArray(log.messages) ? log.messages.join(', ') : '';
+        row.textContent = 'AI ' + log.score + '점 · ' + (log.passed == 1 ? '통과' : '주의') +
+            (messages ? ' · ' + messages : '') + (log.checked_at ? ' · ' + log.checked_at : '');
+        historyEl.appendChild(row);
+    });
+    historyWrap.style.display = (review.ai_logs || []).length ? '' : 'none';
 
     if (review.is_active == 1) {
         document.getElementById('view_status').innerHTML = '<span class="badge bg-success">활성</span>';
@@ -862,7 +981,7 @@ function aiVerifyReview() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>검수 중...';
 
     var fd = new FormData();
-    fd.append('admin_csrf', <?php echo json_encode($admin_reviews_csrf); ?>);
+    fd.append('admin_csrf', {$reviewsCsrfJson});
     fd.append('action', 'ai_verify');
     fd.append('review_id', reviewId);
 
@@ -944,7 +1063,7 @@ function adminAction(reviewId, action) {
     f.method = 'POST';
     f.action = '';   // 현재 URL(필터 쿼리 유지)로 제출
     f.innerHTML =
-        '<input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_reviews_csrf, ENT_QUOTES); ?>">' +
+        '<input type="hidden" name="admin_csrf" value="{$reviewsCsrfHtml}">' +
         '<input type="hidden" name="action" value="' + (action === 'approve' ? 'approve_one' : 'reject_one') + '">' +
         '<input type="hidden" name="review_id" value="' + parseInt(reviewId, 10) + '">';
     document.body.appendChild(f);

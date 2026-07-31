@@ -68,7 +68,6 @@ $admin_menus = [
         ['url' => 'admin_doctors.php', 'label' => term('doctor') . ' 관리', 'icon' => 'bi-person-badge', 'key' => 'doctors'],
         ['url' => 'admin_personnel.php', 'label' => '인력 관리', 'icon' => 'bi-people', 'key' => 'personnel'],
         ['url' => 'admin_reviews.php', 'label' => term('review') . ' 관리', 'icon' => 'bi-chat-dots', 'key' => 'reviews'],
-        ['url' => 'admin_review_wizard.php', 'label' => term('review') . ' 검수', 'icon' => 'bi-shield-check', 'key' => 'review_wizard'],
         ['url' => 'admin_hospital_images.php', 'label' => '병원 이미지 관리', 'icon' => 'bi-images', 'key' => 'hospital_images'],
         ['url' => 'admin_ads.php', 'label' => '광고 관리', 'icon' => 'bi-megaphone', 'key' => 'ads'],
         ['url' => 'admin_categories.php', 'label' => '카테고리 관리', 'icon' => 'bi-tags', 'key' => 'categories'],

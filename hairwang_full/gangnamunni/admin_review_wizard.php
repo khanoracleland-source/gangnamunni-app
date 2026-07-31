@@ -4,6 +4,11 @@
  * AI 검수 큐 + 승인/거부 + 일괄처리 + 통계
  */
 session_start();
+
+// 후기 검수 기능은 admin_reviews.php로 통합되어 이 페이지는 임시 비활성화한다.
+header('Location: admin_reviews.php');
+exit;
+
 $admin_page_title = '후기 검수';
 $admin_current = 'review_wizard';
 

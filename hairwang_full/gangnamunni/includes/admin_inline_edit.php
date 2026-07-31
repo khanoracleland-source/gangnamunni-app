@@ -39,7 +39,7 @@ $_admin_edit_urls = [
     'promos'           => ['url' => 'admin_promos.php',             'label' => '프로모션 관리',   'icon' => 'bi-gift'],
     'hospitals'        => ['url' => 'admin_hospitals.php',          'label' => '병원 관리',       'icon' => 'bi-building'],
     'treatments'       => ['url' => 'admin_treatments.php',         'label' => '시술 관리',       'icon' => 'bi-scissors'],
-    'reviews'          => ['url' => 'admin_review_wizard.php',      'label' => '후기 관리',       'icon' => 'bi-chat-quote'],
+    'reviews'          => ['url' => 'admin_reviews.php',             'label' => '후기 관리',       'icon' => 'bi-chat-quote'],
     'events'           => ['url' => 'admin_events.php',             'label' => '이벤트 관리',     'icon' => 'bi-calendar-event'],
     'theme'            => ['url' => 'admin_theme.php',              'label' => '테마 설정',       'icon' => 'bi-palette'],
     'design_tokens'    => ['url' => 'admin_design_tokens.php',      'label' => '디자인 토큰',     'icon' => 'bi-brush'],
