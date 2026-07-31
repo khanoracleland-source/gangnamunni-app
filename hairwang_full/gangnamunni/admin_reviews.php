@@ -9,6 +9,7 @@ session_start();
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/hospital_filter.php';
 require_once __DIR__ . '/includes/db.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
@@ -44,24 +45,32 @@ $error = '';
 
 $db = Database::getInstance();
 
-// editor 는 본인 소속 병원 후기만 조회·처리 (읽기·쓰기 공통)
-$is_editor_scope   = (($_SESSION['ad_admin_role'] ?? '') === 'editor');
-$scope_hospital_id = $is_editor_scope ? (int)($_SESSION['ad_admin_hospital_id'] ?? 0) : 0;
+// 후기 데이터 범위: super_admin만 전체, 그 외 관리자는 연결된 병원만.
+// 소속 병원이 없는 계정은 fail-closed로 어떤 후기도 조회/처리할 수 없다.
+$review_hospital_ids = get_strict_admin_hospital_ids($connect);
+$review_scope_enabled = $review_hospital_ids !== null;
+$review_hosp_in = $review_hospital_ids === null
+    ? null
+    : (empty($review_hospital_ids) ? '0' : implode(',', array_map('intval', $review_hospital_ids)));
 
-// 후기가 현재 관리자 접근 범위에 속하는지 확인 (editor 아니면 항상 허용)
-function review_in_scope($db, $review_id, $is_editor_scope, $scope_hospital_id) {
-    if (!$is_editor_scope) return true;
-    if ($scope_hospital_id <= 0 || $review_id <= 0) return false;
+// 후기가 현재 관리자 접근 범위에 속하는지 확인
+function review_in_scope($db, $review_id, $review_hospital_ids) {
+    if ($review_hospital_ids === null) return true;
+    if (empty($review_hospital_ids) || $review_id <= 0) return false;
     $row = $db->fetchOne("SELECT hospital_id FROM hospital_reviews WHERE id = ?", [$review_id]);
-    return $row && (int)$row['hospital_id'] === $scope_hospital_id;
+    return $row && in_array((int)$row['hospital_id'], $review_hospital_ids, true);
 }
 
-// 일괄 대상 id 목록을 본인 병원 후기로만 필터 (editor 아니면 그대로)
-function reviews_scope_filter_ids($db, $ids, $is_editor_scope, $scope_hospital_id) {
-    if (!$is_editor_scope) return $ids;
-    if ($scope_hospital_id <= 0 || empty($ids)) return [];
+// 일괄 대상 id 목록을 접근 가능한 병원 후기로만 필터
+function reviews_scope_filter_ids($db, $ids, $review_hospital_ids) {
+    if ($review_hospital_ids === null) return $ids;
+    if (empty($review_hospital_ids) || empty($ids)) return [];
     $ph = implode(',', array_fill(0, count($ids), '?'));
-    $rows = $db->fetchAll("SELECT id FROM hospital_reviews WHERE id IN ({$ph}) AND hospital_id = ?", array_merge($ids, [$scope_hospital_id]));
+    $hospital_ph = implode(',', array_fill(0, count($review_hospital_ids), '?'));
+    $rows = $db->fetchAll(
+        "SELECT id FROM hospital_reviews WHERE id IN ({$ph}) AND hospital_id IN ({$hospital_ph})",
+        array_merge($ids, $review_hospital_ids)
+    );
     return array_map(function ($r) { return (int)$r['id']; }, $rows);
 }
 
@@ -74,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ai_ve
         echo json_encode(['error' => '후기를 찾을 수 없습니다']);
         exit;
     }
-    if ($is_editor_scope && (int)$review['hospital_id'] !== $scope_hospital_id) {
+    if (!review_in_scope($db, $review_id, $review_hospital_ids)) {
         echo json_encode(['error' => '접근 권한이 없는 후기입니다']);
         exit;
     }
@@ -179,7 +188,7 @@ function reviews_recalc_hospital($db, $hids) {
 // 일괄 승인
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_approve') {
     $ids = array_map('intval', $_POST['ids'] ?? []);
-    $ids = reviews_scope_filter_ids($db, $ids, $is_editor_scope, $scope_hospital_id);
+    $ids = reviews_scope_filter_ids($db, $ids, $review_hospital_ids);
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         // 적립/통계 처리를 위해 상태 변경 전 대상 후기 정보를 조회(이미 published 였는지 판별)
@@ -198,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
 // 일괄 거부
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_reject') {
     $ids = array_map('intval', $_POST['ids'] ?? []);
-    $ids = reviews_scope_filter_ids($db, $ids, $is_editor_scope, $scope_hospital_id);
+    $ids = reviews_scope_filter_ids($db, $ids, $review_hospital_ids);
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $rows = $db->fetchAll("SELECT id, hospital_id, review_status FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
@@ -216,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
 // 일괄 삭제
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_delete') {
     $ids = array_map('intval', $_POST['ids'] ?? []);
-    $ids = reviews_scope_filter_ids($db, $ids, $is_editor_scope, $scope_hospital_id);
+    $ids = reviews_scope_filter_ids($db, $ids, $review_hospital_ids);
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $rows = $db->fetchAll("SELECT id, hospital_id, review_status FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
@@ -234,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), ['approve_one', 'reject_one'], true)) {
     $rid = intval($_POST['review_id'] ?? 0);
     $review = $rid > 0 ? $db->fetchOne("SELECT id, hospital_id, user_id, review_status FROM hospital_reviews WHERE id = ?", [$rid]) : null;
-    if ($review && $is_editor_scope && (int)$review['hospital_id'] !== $scope_hospital_id) {
+    if ($review && !review_in_scope($db, $rid, $review_hospital_ids)) {
         $error = '접근 권한이 없는 후기입니다.';
         $review = null;
     }
@@ -280,13 +289,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
     $edit_is_active = intval($_POST['edit_is_active'] ?? 1);
     $edit_hospital_id = intval($_POST['edit_hospital_id'] ?? 0);
 
-    // editor: 대상 후기 소유권 확인 + hospital_id 를 본인 병원으로 강제(타 병원 이동 차단)
-    if ($is_editor_scope) {
-        if (!review_in_scope($db, $edit_id, $is_editor_scope, $scope_hospital_id)) {
+    // 소속 병원 관리자: 대상 후기 소유권과 이동 대상 병원을 모두 제한한다.
+    if ($review_scope_enabled) {
+        if (!review_in_scope($db, $edit_id, $review_hospital_ids)) {
             $error = '접근 권한이 없는 후기입니다.';
             $edit_id = 0;
-        } else {
-            $edit_hospital_id = $scope_hospital_id;
+        } elseif (!in_array($edit_hospital_id, $review_hospital_ids, true)) {
+            $error = '접근 권한이 없는 병원입니다.';
+            $edit_id = 0;
         }
     }
 
@@ -328,10 +338,9 @@ $offset = ($page - 1) * $per_page;
 $where = '1=1';
 $params = [];
 
-// editor: 본인 병원 후기로 강제 제한 (소속 없으면 아무것도 없음)
-if ($is_editor_scope) {
-    if ($scope_hospital_id > 0) { $where .= ' AND r.hospital_id = ?'; $params[] = $scope_hospital_id; }
-    else { $where .= ' AND 1=0'; }
+// super_admin 외에는 본인 소속 병원 후기로 강제 제한
+if ($review_scope_enabled) {
+    $where .= " AND r.hospital_id IN ({$review_hosp_in})";
 }
 
 if ($filter_status === 'active') {
@@ -359,8 +368,8 @@ if (!empty($search)) {
     $params[] = $searchParam;
 }
 
-// 통계 (editor 는 본인 병원 후기만 집계; 정수 기반 조건이라 인젝션 안전)
-$stat_scope = $is_editor_scope ? ($scope_hospital_id > 0 ? 'hospital_id = ' . (int)$scope_hospital_id : '1=0') : '1=1';
+// 통계도 목록과 동일한 병원 범위로 집계한다.
+$stat_scope = $review_scope_enabled ? "hospital_id IN ({$review_hosp_in})" : '1=1';
 $stats = [
     'total' => (int)$db->fetchValue("SELECT COUNT(*) FROM hospital_reviews WHERE {$stat_scope}"),
     'pending' => (int)$db->fetchValue("SELECT COUNT(*) FROM hospital_reviews WHERE review_status = 'pending' AND {$stat_scope}"),
@@ -384,10 +393,10 @@ $reviews = $db->fetchAll(
 
 $total_pages = $total > 0 ? ceil($total / $per_page) : 0;
 
-// 병원 목록 (필터용) — editor 는 본인 병원만
-if ($is_editor_scope) {
-    $hospitals = $scope_hospital_id > 0
-        ? $db->fetchAll("SELECT id, name FROM gangnamunni_hospitals WHERE id = ?", [$scope_hospital_id])
+// 병원 목록(필터/편집용)도 접근 가능한 병원만 제공한다.
+if ($review_scope_enabled) {
+    $hospitals = $review_hosp_in !== '0'
+        ? $db->fetchAll("SELECT id, name FROM gangnamunni_hospitals WHERE id IN ({$review_hosp_in}) ORDER BY name")
         : [];
 } else {
     $hospitals = $db->fetchAll("SELECT id, name FROM gangnamunni_hospitals ORDER BY name");

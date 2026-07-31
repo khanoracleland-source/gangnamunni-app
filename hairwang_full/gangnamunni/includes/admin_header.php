@@ -961,14 +961,22 @@ $sidebar_reviews_pending = 0;
 // 병원 등록 신청 배지: 승인 대기(pending) 병원 신청 개수
 $sidebar_hospitals_pending = 0;
 if (isset($connect) && $connect) {
-    if (function_exists('get_hospital_filter_in')) {
-        $__b_hin = get_hospital_filter_in($connect);
+    if (function_exists('get_strict_admin_hospital_ids')) {
+        $__sidebar_hids = get_strict_admin_hospital_ids($connect);
+        $__b_hin = $__sidebar_hids === null
+            ? null
+            : (empty($__sidebar_hids) ? '0' : implode(',', array_map('intval', $__sidebar_hids)));
         $__b_where = ($__b_hin !== null) ? " AND hospital_id IN ({$__b_hin})" : "";
         $__b_res = mysqli_query($connect, "SELECT COUNT(*) AS c FROM gangnamunni_bookings WHERE status='pending'{$__b_where}");
         if ($__b_res) { $sidebar_bookings_pending = (int)(mysqli_fetch_assoc($__b_res)['c'] ?? 0); }
+
+        $__r_where = ($__b_hin !== null) ? " AND hospital_id IN ({$__b_hin})" : "";
+        $__r_res = mysqli_query($connect, "SELECT COUNT(*) AS c FROM hospital_reviews WHERE review_status='pending'{$__r_where}");
+        if ($__r_res) { $sidebar_reviews_pending = (int)(mysqli_fetch_assoc($__r_res)['c'] ?? 0); }
+    } else {
+        $__r_res = mysqli_query($connect, "SELECT COUNT(*) AS c FROM hospital_reviews WHERE review_status='pending'");
+        if ($__r_res) { $sidebar_reviews_pending = (int)(mysqli_fetch_assoc($__r_res)['c'] ?? 0); }
     }
-    $__r_res = mysqli_query($connect, "SELECT COUNT(*) AS c FROM hospital_reviews WHERE review_status='pending'");
-    if ($__r_res) { $sidebar_reviews_pending = (int)(mysqli_fetch_assoc($__r_res)['c'] ?? 0); }
     // 병원 등록 신청(승인 대기) 개수 — 전역(신규 병원은 담당 관리자 미배정이라 격리 없음)
     $__h_res = mysqli_query($connect, "SELECT COUNT(*) AS c FROM gangnamunni_hospitals WHERE status='pending'");
     if ($__h_res) { $sidebar_hospitals_pending = (int)(mysqli_fetch_assoc($__h_res)['c'] ?? 0); }
