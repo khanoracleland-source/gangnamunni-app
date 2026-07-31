@@ -12,6 +12,7 @@ $admin_current = 'ads';
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/hospital_filter.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
@@ -21,15 +22,83 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('ads');
 
+$is_super_admin = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
+$ad_hospital_ids = get_strict_admin_hospital_ids($connect);
+$ad_hospital_in = $ad_hospital_ids === null
+    ? null
+    : (empty($ad_hospital_ids) ? '0' : implode(',', array_map('intval', $ad_hospital_ids)));
+
+if (empty($_SESSION['admin_ads_csrf'])) {
+    $_SESSION['admin_ads_csrf'] = bin2hex(random_bytes(32));
+}
+$admin_ads_csrf = (string)$_SESSION['admin_ads_csrf'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $posted_csrf = (string)($_POST['admin_csrf'] ?? '');
+    if ($posted_csrf === '' || !hash_equals($admin_ads_csrf, $posted_csrf)) {
+        http_response_code(403);
+        if (($_POST['action'] ?? '') === 'auto_register_advertiser') {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => '요청이 만료되었습니다. 페이지를 새로고침해주세요.']);
+            exit;
+        }
+        exit('요청이 만료되었습니다. 페이지를 새로고침해주세요.');
+    }
+}
+
+function admin_ads_forbidden($message = '접근 권한이 없습니다.') {
+    http_response_code(403);
+    exit($message);
+}
+
+function admin_ads_is_global_action($action) {
+    return in_array($action, [
+        'approve_ad', 'reject_ad', 'add_promo', 'update_promo',
+        'delete_promo', 'toggle_promo', 'bulk_delete_promos', 'update_scroll_settings'
+    ], true);
+}
+
+function admin_ads_valid_url($url, $allow_empty = false) {
+    $url = trim((string)$url);
+    if ($url === '') return $allow_empty;
+    if (preg_match('/[\x00-\x1F\x7F]/', $url)) return false;
+    $scheme = parse_url($url, PHP_URL_SCHEME);
+    return $scheme === null || $scheme === false || in_array(strtolower($scheme), ['http', 'https'], true);
+}
+
+$posted_action = (string)($_POST['action'] ?? '');
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && admin_ads_is_global_action($posted_action) && !$is_super_admin) {
+    admin_ads_forbidden();
+}
+
+$ad_id_in_scope = static function (int $ad_id) use ($connect, $ad_hospital_ids, $ad_hospital_in): bool {
+    if ($ad_id <= 0) return false;
+    if ($ad_hospital_ids === null) return true;
+    if ($ad_hospital_in === '0') return false;
+    $sql = "SELECT a.id
+            FROM gangnamunni_ads a
+            LEFT JOIN gangnamunni_advertisers adv ON adv.id = a.advertiser_id
+            WHERE a.id = {$ad_id}
+              AND COALESCE(a.hospital_id, adv.hospital_id) IN ({$ad_hospital_in})
+            LIMIT 1";
+    $result = mysqli_query($connect, $sql);
+    return $result && mysqli_num_rows($result) === 1;
+};
+
 // AJAX: 병원 -> 광고주 자동 등록
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'auto_register_advertiser') {
     header('Content-Type: application/json');
     $hospital_id = intval($_POST['hospital_id'] ?? 0);
+    if ($ad_hospital_ids !== null && !in_array($hospital_id, $ad_hospital_ids, true)) {
+        http_response_code(403);
+        echo json_encode(['error' => '접근 권한이 없는 병원입니다.']);
+        exit;
+    }
     $hr = mysqli_query($connect, "SELECT * FROM gangnamunni_hospitals WHERE id = {$hospital_id}");
     $hospital = mysqli_fetch_assoc($hr);
     if ($hospital) {
         // 이미 등록된 광고주인지 확인
-        $existing = mysqli_query($connect, "SELECT id FROM gangnamunni_advertisers WHERE hospital_name = '" . mysqli_real_escape_string($connect, $hospital['name']) . "'");
+        $existing = mysqli_query($connect, "SELECT id FROM gangnamunni_advertisers WHERE hospital_id = {$hospital_id} LIMIT 1");
         if ($existing && mysqli_num_rows($existing) > 0) {
             echo json_encode(['id' => (int)mysqli_fetch_assoc($existing)['id']]);
         } else {
@@ -37,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'auto_
             $addr = mysqli_real_escape_string($connect, $hospital['address'] ?? '');
             $phone = mysqli_real_escape_string($connect, $hospital['phone'] ?? '');
             $email = mysqli_real_escape_string($connect, $hospital['email'] ?? '');
-            mysqli_query($connect, "INSERT INTO gangnamunni_advertisers (hospital_name, address, contact_phone, contact_email, status) VALUES ('{$name}', '{$addr}', '{$phone}', '{$email}', 'active')");
+            mysqli_query($connect, "INSERT INTO gangnamunni_advertisers (hospital_id, hospital_name, address, contact_phone, contact_email, status) VALUES ({$hospital_id}, '{$name}', '{$addr}', '{$phone}', '{$email}', 'active')");
             echo json_encode(['id' => (int)mysqli_insert_id($connect)]);
         }
     } else {
@@ -68,17 +137,29 @@ function handleAdImageUpload($file_key = 'image_file') {
         return null;
     }
     $file = $_FILES[$file_key];
-    $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!in_array($file['type'], $allowed)) {
-        return ['error' => '이미지 파일만 업로드 가능합니다 (JPG, PNG, GIF, WebP)'];
-    }
     if ($file['size'] > 5 * 1024 * 1024) {
         return ['error' => '파일 크기는 5MB 이하여야 합니다'];
     }
+    if (!is_uploaded_file($file['tmp_name'])) {
+        return ['error' => '올바르지 않은 업로드입니다'];
+    }
+
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($file['tmp_name']);
+    $allowed = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+    ];
+    if (!isset($allowed[$mime]) || @getimagesize($file['tmp_name']) === false) {
+        return ['error' => '이미지 파일만 업로드 가능합니다 (JPG, PNG, GIF, WebP)'];
+    }
     $upload_dir = __DIR__ . '/uploads/ads/';
-    if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $fname = 'ad_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
+    if (!is_dir($upload_dir) && !mkdir($upload_dir, 0755, true) && !is_dir($upload_dir)) {
+        return ['error' => '업로드 폴더를 만들 수 없습니다'];
+    }
+    $fname = 'ad_' . bin2hex(random_bytes(16)) . '.' . $allowed[$mime];
     if (move_uploaded_file($file['tmp_name'], $upload_dir . $fname)) {
         return ['url' => 'uploads/ads/' . $fname];
     }
@@ -87,71 +168,107 @@ function handleAdImageUpload($file_key = 'image_file') {
 
 // 광고 추가
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_ad'])) {
-    $title = mysqli_real_escape_string($connect, $_POST['title']);
-    $subtitle = mysqli_real_escape_string($connect, $_POST['subtitle']);
+    $raw_title = trim((string)($_POST['title'] ?? ''));
+    $raw_subtitle = trim((string)($_POST['subtitle'] ?? ''));
+    $title = mysqli_real_escape_string($connect, $raw_title);
+    $subtitle = mysqli_real_escape_string($connect, $raw_subtitle);
     // 파일 업로드 우선, 없으면 URL 사용
     $upload_result = handleAdImageUpload('image_file');
     if ($upload_result && isset($upload_result['error'])) {
         $error = $upload_result['error'];
     }
-    $image_url = ($upload_result && isset($upload_result['url'])) ? $upload_result['url'] : $_POST['image_url'];
+    $image_url = ($upload_result && isset($upload_result['url'])) ? $upload_result['url'] : trim((string)($_POST['image_url'] ?? ''));
+    $raw_link_url = trim((string)($_POST['link_url'] ?? ''));
+    if ($raw_title === '') $error = '광고 제목을 입력해주세요.';
+    if (!admin_ads_valid_url($image_url)) $error = '올바른 이미지 URL을 입력해주세요.';
+    if (!admin_ads_valid_url($raw_link_url)) $error = '올바른 링크 URL을 입력해주세요.';
     $image_url = mysqli_real_escape_string($connect, $image_url);
-    $link_url = mysqli_real_escape_string($connect, $_POST['link_url']);
+    $link_url = mysqli_real_escape_string($connect, $raw_link_url);
     $display_order = intval($_POST['display_order']);
-    $ad_type = mysqli_real_escape_string($connect, $_POST['ad_type'] ?? 'banner');
+    $ad_type = (string)($_POST['ad_type'] ?? 'banner');
+    if (!in_array($ad_type, ['banner', 'premium', 'vip'], true)) $ad_type = 'banner';
+    $ad_type = mysqli_real_escape_string($connect, $ad_type);
 
     $advertiser_id = intval($_POST['advertiser_id'] ?? 0);
     $pricing_id = intval($_POST['pricing_id'] ?? 0);
+    $ad_hospital_id = 0;
+
+    if ($advertiser_id > 0) {
+        $adv_result = mysqli_query($connect, "SELECT hospital_id FROM gangnamunni_advertisers WHERE id = {$advertiser_id} LIMIT 1");
+        if ($adv_result && $adv_row = mysqli_fetch_assoc($adv_result)) {
+            $ad_hospital_id = (int)($adv_row['hospital_id'] ?? 0);
+        }
+    }
+    if ($ad_hospital_id <= 0) {
+        $error = '병원과 연결된 광고주를 선택해주세요.';
+    } elseif ($ad_hospital_ids !== null && !in_array($ad_hospital_id, $ad_hospital_ids, true)) {
+        admin_ads_forbidden('다른 병원의 광고를 생성할 수 없습니다.');
+    }
 
     // pricing에서 ad_type 자동 설정
     if ($pricing_id > 0) {
         $pr = mysqli_query($connect, "SELECT ad_type FROM gangnamunni_ad_pricing WHERE id = {$pricing_id}");
         if ($pr && $prow = mysqli_fetch_assoc($pr)) {
-            $ad_type = $prow['ad_type'];
+            $pricing_ad_type = (string)($prow['ad_type'] ?? '');
+            if (in_array($pricing_ad_type, ['banner', 'premium', 'vip'], true)) {
+                $ad_type = $pricing_ad_type;
+            }
         }
     }
 
-    mysqli_query($connect, "INSERT INTO gangnamunni_ads (title, subtitle, image_url, link_url, display_order, ad_type, advertiser_id, pricing_id, is_active)
-                           VALUES ('{$title}', '{$subtitle}', '{$image_url}', '{$link_url}', {$display_order}, '{$ad_type}', {$advertiser_id}, {$pricing_id}, 0)");
+    if ($error === '') {
+        mysqli_query($connect, "INSERT INTO gangnamunni_ads (hospital_id, title, subtitle, image_url, link_url, display_order, ad_type, advertiser_id, pricing_id, is_active, status)
+                               VALUES ({$ad_hospital_id}, '{$title}', '{$subtitle}', '{$image_url}', '{$link_url}', {$display_order}, '{$ad_type}', {$advertiser_id}, {$pricing_id}, 0, 'pending')");
 
-    $ad_id = mysqli_insert_id($connect);
-    $message = '광고 소재가 추가되었습니다. 광고 지갑 충전 및 슬롯 배정 후 노출됩니다.';
+        $ad_id = mysqli_insert_id($connect);
+        $message = '광고 소재가 추가되었습니다. 승인 및 슬롯 배정 후 노출됩니다.';
 
-    // Legacy package checkout was retired; advertising uses the wallet.
-    if (isset($_POST['proceed_to_payment']) && $_POST['proceed_to_payment'] === '1') {
-        header('Location: partner_wallet.php');
-        exit;
+        if (isset($_POST['proceed_to_payment']) && $_POST['proceed_to_payment'] === '1') {
+            header('Location: partner_wallet.php');
+            exit;
+        }
     }
 }
 
 // 광고 수정
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_ad') {
     $id = intval($_POST['id']);
-    $title = mysqli_real_escape_string($connect, $_POST['title']);
-    $subtitle = mysqli_real_escape_string($connect, $_POST['subtitle']);
+    if (!$ad_id_in_scope($id)) admin_ads_forbidden('이 광고를 수정할 권한이 없습니다.');
+    $raw_title = trim((string)($_POST['title'] ?? ''));
+    $raw_subtitle = trim((string)($_POST['subtitle'] ?? ''));
+    $title = mysqli_real_escape_string($connect, $raw_title);
+    $subtitle = mysqli_real_escape_string($connect, $raw_subtitle);
     $upload_result = handleAdImageUpload('edit_image_file');
     if ($upload_result && isset($upload_result['error'])) {
         $error = $upload_result['error'];
     }
-    $image_url = ($upload_result && isset($upload_result['url'])) ? $upload_result['url'] : $_POST['image_url'];
+    $image_url = ($upload_result && isset($upload_result['url'])) ? $upload_result['url'] : trim((string)($_POST['image_url'] ?? ''));
+    $raw_link_url = trim((string)($_POST['link_url'] ?? ''));
+    if ($raw_title === '') $error = '광고 제목을 입력해주세요.';
+    if (!admin_ads_valid_url($image_url)) $error = '올바른 이미지 URL을 입력해주세요.';
+    if (!admin_ads_valid_url($raw_link_url)) $error = '올바른 링크 URL을 입력해주세요.';
     $image_url = mysqli_real_escape_string($connect, $image_url);
-    $link_url = mysqli_real_escape_string($connect, $_POST['link_url']);
+    $link_url = mysqli_real_escape_string($connect, $raw_link_url);
     $display_order = intval($_POST['display_order']);
-    $ad_type = mysqli_real_escape_string($connect, $_POST['ad_type'] ?? 'banner');
+    $ad_type = (string)($_POST['ad_type'] ?? 'banner');
+    if (!in_array($ad_type, ['banner', 'premium', 'vip'], true)) $ad_type = 'banner';
+    $ad_type = mysqli_real_escape_string($connect, $ad_type);
+    $review_reset = $is_super_admin ? '' : ", status='pending', is_active=0, reviewed_by=NULL, reviewed_at=NULL, reject_reason=NULL";
     $sql = sprintf(
-        "UPDATE gangnamunni_ads SET title='%s', subtitle='%s', image_url='%s', link_url='%s', display_order=%d, ad_type='%s' WHERE id=%d",
-        $title, $subtitle, $image_url, $link_url, $display_order, $ad_type, $id
+        "UPDATE gangnamunni_ads SET title='%s', subtitle='%s', image_url='%s', link_url='%s', display_order=%d, ad_type='%s'%s WHERE id=%d",
+        $title, $subtitle, $image_url, $link_url, $display_order, $ad_type, $review_reset, $id
     );
-    if (mysqli_query($connect, $sql)) {
+    if ($error === '' && mysqli_query($connect, $sql)) {
         $message = '광고가 수정되었습니다.';
-    } else {
+    } elseif ($error === '') {
         $error = '수정 실패: ' . mysqli_error($connect);
     }
 }
 
 // 광고 삭제
-if (isset($_GET['delete'])) {
-    $id = intval($_GET['delete']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_ad') {
+    $id = intval($_POST['ad_id'] ?? 0);
+    if (!$ad_id_in_scope($id)) admin_ads_forbidden('이 광고를 삭제할 권한이 없습니다.');
     if (mysqli_query($connect, "DELETE FROM gangnamunni_ads WHERE id = {$id}")) {
         $message = '광고가 삭제되었습니다.';
     } else {
@@ -168,6 +285,7 @@ if (isset($_GET['toggle'])) {
 // 광고 일괄 삭제
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_delete_ads') {
     $ids = array_map('intval', $_POST['ids'] ?? []);
+    $ids = array_values(array_filter($ids, $ad_id_in_scope));
     if (!empty($ids)) {
         $id_list = implode(',', $ids);
         if (mysqli_query($connect, "DELETE FROM gangnamunni_ads WHERE id IN ({$id_list})")) {
@@ -179,6 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
 // Only deactivation is retained as a safety action. Activation requires a slot.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_toggle_ads') {
     $ids = array_map('intval', $_POST['ids'] ?? []);
+    $ids = array_values(array_filter($ids, $ad_id_in_scope));
     $toggle_to = intval($_POST['toggle_to'] ?? 1);
     if ($toggle_to === 1) {
         $error = '광고 활성화는 광고 지갑 충전 후 슬롯 관리에서 배정해주세요.';
@@ -192,6 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
 
 // 광고 승인
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'approve_ad') {
+    if (!$is_super_admin) admin_ads_forbidden();
     $ad_id = intval($_POST['ad_id'] ?? 0);
     $admin_name = $_SESSION['ad_admin_name'] ?? 'admin';
     if ($ad_id > 0) {
@@ -220,6 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'appro
 
 // 광고 거절
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reject_ad') {
+    if (!$is_super_admin) admin_ads_forbidden();
     $ad_id = intval($_POST['ad_id'] ?? 0);
     $admin_name = $_SESSION['ad_admin_name'] ?? 'admin';
     $reject_reason = trim($_POST['reject_reason'] ?? '');
@@ -239,6 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rejec
 
 // 프로모션 배너 추가
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_promo'])) {
+    if (!$is_super_admin) admin_ads_forbidden();
     $title = mysqli_real_escape_string($connect, $_POST['promo_title']);
     $subtitle = mysqli_real_escape_string($connect, $_POST['promo_subtitle']);
     $gradient = mysqli_real_escape_string($connect, $_POST['promo_gradient']);
@@ -254,6 +376,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_promo'])) {
 
 // 프로모션 수정
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_promo') {
+    if (!$is_super_admin) admin_ads_forbidden();
     $id = intval($_POST['id']);
     $title = mysqli_real_escape_string($connect, $_POST['promo_title']);
     $subtitle = mysqli_real_escape_string($connect, $_POST['promo_subtitle']);
@@ -275,8 +398,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
 }
 
 // 프로모션 배너 삭제
-if (isset($_GET['delete_promo'])) {
-    $id = intval($_GET['delete_promo']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_promo') {
+    if (!$is_super_admin) admin_ads_forbidden();
+    $id = intval($_POST['promo_id'] ?? 0);
     if (mysqli_query($connect, "DELETE FROM gangnamunni_promos WHERE id = {$id}")) {
         $message = '프로모션 배너가 삭제되었습니다.';
     } else {
@@ -285,8 +409,9 @@ if (isset($_GET['delete_promo'])) {
 }
 
 // 프로모션 배너 활성화/비활성화
-if (isset($_GET['toggle_promo'])) {
-    $id = intval($_GET['toggle_promo']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggle_promo') {
+    if (!$is_super_admin) admin_ads_forbidden();
+    $id = intval($_POST['promo_id'] ?? 0);
     mysqli_query($connect, "UPDATE gangnamunni_promos SET is_active = 1 - is_active WHERE id = {$id}");
     header('Location: admin_ads.php?tab=promos');
     exit;
@@ -294,6 +419,7 @@ if (isset($_GET['toggle_promo'])) {
 
 // 프로모션 일괄 삭제
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_delete_promos') {
+    if (!$is_super_admin) admin_ads_forbidden();
     $ids = array_map('intval', $_POST['ids'] ?? []);
     if (!empty($ids)) {
         $id_list = implode(',', $ids);
@@ -305,10 +431,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
 
 // 스크롤 설정 업데이트
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_scroll_settings'])) {
+    if (!$is_super_admin) admin_ads_forbidden();
     $ad_auto_scroll_enabled = isset($_POST['ad_auto_scroll_enabled']) ? '1' : '0';
-    $ad_auto_scroll_interval = intval($_POST['ad_auto_scroll_interval']);
+    $ad_auto_scroll_interval = max(1000, min(60000, intval($_POST['ad_auto_scroll_interval'])));
     $promo_auto_scroll_enabled = isset($_POST['promo_auto_scroll_enabled']) ? '1' : '0';
-    $promo_auto_scroll_interval = intval($_POST['promo_auto_scroll_interval']);
+    $promo_auto_scroll_interval = max(1000, min(60000, intval($_POST['promo_auto_scroll_interval'])));
 
     mysqli_query($connect, "INSERT INTO gangnamunni_theme_settings (setting_key, setting_value) VALUES ('ad_auto_scroll_enabled', '{$ad_auto_scroll_enabled}') ON DUPLICATE KEY UPDATE setting_value = '{$ad_auto_scroll_enabled}'");
     mysqli_query($connect, "INSERT INTO gangnamunni_theme_settings (setting_key, setting_value) VALUES ('ad_auto_scroll_interval', '{$ad_auto_scroll_interval}') ON DUPLICATE KEY UPDATE setting_value = '{$ad_auto_scroll_interval}'");
@@ -344,6 +471,7 @@ $promo_auto_scroll_interval = getScrollSetting($connect, 'promo_auto_scroll_inte
 // 탭 결정
 $active_tab = $_GET['tab'] ?? 'ads';
 if (!in_array($active_tab, ['ads', 'promos', 'scroll'])) $active_tab = 'ads';
+if (!$is_super_admin && $active_tab !== 'ads') $active_tab = 'ads';
 
 // 검색어
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -364,7 +492,9 @@ $view_mode = $_GET['view'] ?? 'group';
 $sort_mode = $_GET['sort'] ?? 'newest';
 
 // 광고 목록 가져오기 (결제 정보 포함, 페이지네이션)
-$where_ads = '1=1';
+$where_ads = $ad_hospital_ids === null
+    ? '1=1'
+    : "COALESCE(a.hospital_id, adv.hospital_id) IN ({$ad_hospital_in})";
 if (!empty($search)) {
     $s = mysqli_real_escape_string($connect, $search);
     $where_ads .= " AND (a.title LIKE '%{$s}%' OR a.subtitle LIKE '%{$s}%' OR a.link_url LIKE '%{$s}%')";
@@ -378,17 +508,19 @@ if (!empty($status_filter) && in_array($status_filter, ['pending', 'approved', '
 
 // 상태별 통계
 $ad_stats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0];
-$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads");
+$stats_join = " LEFT JOIN gangnamunni_advertisers adv ON adv.id = a.advertiser_id ";
+$stats_scope = $ad_hospital_ids === null ? '1=1' : "COALESCE(a.hospital_id, adv.hospital_id) IN ({$ad_hospital_in})";
+$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads a {$stats_join} WHERE {$stats_scope}");
 if ($sr) $ad_stats['total'] = (int)mysqli_fetch_assoc($sr)['c'];
-$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads WHERE status='pending'");
+$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads a {$stats_join} WHERE a.status='pending' AND {$stats_scope}");
 if ($sr) $ad_stats['pending'] = (int)mysqli_fetch_assoc($sr)['c'];
-$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads WHERE status='approved'");
+$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads a {$stats_join} WHERE a.status='approved' AND {$stats_scope}");
 if ($sr) $ad_stats['approved'] = (int)mysqli_fetch_assoc($sr)['c'];
-$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads WHERE status='rejected'");
+$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads a {$stats_join} WHERE a.status='rejected' AND {$stats_scope}");
 if ($sr) $ad_stats['rejected'] = (int)mysqli_fetch_assoc($sr)['c'];
 
 $total_ads = 0;
-$cnt_result = mysqli_query($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_ads a WHERE {$where_ads}");
+$cnt_result = mysqli_query($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_ads a LEFT JOIN gangnamunni_advertisers adv ON adv.id = a.advertiser_id WHERE {$where_ads}");
 if ($cnt_result) $total_ads = (int)mysqli_fetch_assoc($cnt_result)['cnt'];
 $total_ads_pages = $total_ads > 0 ? ceil($total_ads / $per_page) : 0;
 
@@ -453,6 +585,7 @@ include __DIR__ . '/includes/admin_header.php';
     <h5 class="mb-0"><i class="bi bi-megaphone"></i> 광고 관리</h5>
     <button class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#adTypeGuideModal" title="광고 유형 안내"><i class="bi bi-question-circle"></i> 유형 안내</button>
     <div class="d-flex gap-2">
+        <?php if ($is_super_admin): ?>
         <a href="admin_ad_wizard.php" class="btn btn-sm btn-outline-info" title="광고 등록 마법사"><i class="bi bi-magic"></i> 마법사</a>
         <a href="ai_ad_editor.php" class="btn btn-sm btn-outline-primary" title="AI 광고 에디터">
             <i class="bi bi-robot"></i> AI
@@ -460,6 +593,7 @@ include __DIR__ . '/includes/admin_header.php';
         <a href="ab_test_dashboard.php" class="btn btn-sm btn-outline-success" title="A/B 테스트 대시보드">
             <i class="bi bi-clipboard-data"></i> A/B
         </a>
+        <?php endif; ?>
         <?php if ($active_tab === 'ads'): ?>
         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAdModal">
             <i class="bi bi-plus-lg"></i> 광고 추가
@@ -493,6 +627,7 @@ include __DIR__ . '/includes/admin_header.php';
             <i class="bi bi-image"></i> 광고 배너 <span class="badge bg-secondary"><?php echo $total_ads; ?></span>
         </a>
     </li>
+    <?php if ($is_super_admin): ?>
     <li class="nav-item">
         <a class="nav-link <?php echo $active_tab === 'promos' ? 'active' : ''; ?>" href="?tab=promos">
             <i class="bi bi-gift"></i> 프로모션 <span class="badge bg-secondary"><?php echo $total_promos; ?></span>
@@ -503,6 +638,7 @@ include __DIR__ . '/includes/admin_header.php';
             <i class="bi bi-arrow-repeat"></i> 스크롤 설정
         </a>
     </li>
+    <?php endif; ?>
 </ul>
 
 <?php if ($active_tab === 'ads'): ?>
@@ -556,6 +692,7 @@ include __DIR__ . '/includes/admin_header.php';
 <div id="bulkActionsAds" class="alert alert-info py-2 align-items-center gap-2 mb-2" style="display:none;">
     <span><strong id="selectedCountAds">0</strong>개 선택</span>
     <form method="POST" class="d-inline" id="bulkFormAds">
+        <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
         <input type="hidden" name="action" value="bulk_delete_ads" id="bulkActionTypeAds">
         <span id="bulkIdsContainerAds"></span>
         <button type="submit" class="btn btn-danger btn-sm ms-2" onclick="return confirmBulk('선택한 광고를 삭제하시겠습니까?', 'bulk_delete_ads')">
@@ -663,7 +800,6 @@ include __DIR__ . '/includes/admin_header.php';
             </tr>
             <?php foreach ($group_ads as $ad): ?>
             <tr class="ad-group-row <?= $collapse_id ?>" style="display:none;">
-            <tr>
                 <td><input type="checkbox" class="form-check-input row-check-ads" value="<?php echo $ad['id']; ?>" onchange="updateBulkActionsFor('ads')"></td>
                 <td class="text-center"><?php echo $ad['id']; ?></td>
                 <td>
@@ -738,9 +874,9 @@ include __DIR__ . '/includes/admin_header.php';
                     <?php endif; ?>
                 </td>
                 <td>
-                    <?php if (($ad['status'] ?? 'pending') === 'pending'): ?>
+                    <?php if ($is_super_admin && ($ad['status'] ?? 'pending') === 'pending'): ?>
                     <div class="d-flex gap-1 mb-1">
-                        <form method="POST" action="admin_ads.php" class="d-inline"><input type="hidden" name="action" value="approve_ad"><input type="hidden" name="ad_id" value="<?php echo $ad['id']; ?>"><input type="hidden" name="current_status" value="<?php echo htmlspecialchars($status_filter); ?>"><button type="submit" class="btn btn-success btn-sm" title="승인" onclick="return confirm('승인하시겠습니까?')"><i class="bi bi-check-lg"></i></button></form>
+                        <form method="POST" action="admin_ads.php" class="d-inline"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="action" value="approve_ad"><input type="hidden" name="ad_id" value="<?php echo $ad['id']; ?>"><input type="hidden" name="current_status" value="<?php echo htmlspecialchars($status_filter); ?>"><button type="submit" class="btn btn-success btn-sm" title="승인" onclick="return confirm('승인하시겠습니까?')"><i class="bi bi-check-lg"></i></button></form>
                         <button type="button" class="btn btn-danger btn-sm" title="거절" onclick="openRejectModal(<?php echo $ad['id']; ?>, '<?php echo htmlspecialchars($status_filter); ?>')"><i class="bi bi-x-lg"></i></button>
                     </div>
                     <?php endif; ?>
@@ -748,16 +884,18 @@ include __DIR__ . '/includes/admin_header.php';
                         <a href="partner_wallet.php" class="btn btn-outline-success" title="광고 지갑">
                             <i class="bi bi-wallet2"></i>
                         </a>
-                        <a href="admin_ad_slots.php" class="btn btn-outline-secondary" title="광고 슬롯 관리">
+                        <?php if ($is_super_admin): ?><a href="admin_ad_slots.php" class="btn btn-outline-secondary" title="광고 슬롯 관리">
                             <i class="bi bi-grid-3x3-gap"></i>
-                        </a>
+                        </a><?php endif; ?>
                         <button class="btn btn-outline-primary" onclick='editAd(<?php echo json_encode($ad, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' title="수정">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <a href="?tab=ads&delete=<?php echo $ad['id']; ?>"
-                           class="btn btn-outline-danger" onclick="return confirm('정말 삭제하시겠습니까?')" title="삭제">
-                            <i class="bi bi-trash"></i>
-                        </a>
+                        <form method="POST" class="d-inline" onsubmit="return confirm('정말 삭제하시겠습니까?')">
+                            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+                            <input type="hidden" name="action" value="delete_ad">
+                            <input type="hidden" name="ad_id" value="<?php echo $ad['id']; ?>">
+                            <button class="btn btn-outline-danger" title="삭제"><i class="bi bi-trash"></i></button>
+                        </form>
                     </div>
                 </td>
             </tr>
@@ -840,9 +978,9 @@ include __DIR__ . '/includes/admin_header.php';
                     <?php endif; ?>
                 </td>
                 <td>
-                    <?php if (($ad['status'] ?? 'pending') === 'pending'): ?>
+                    <?php if ($is_super_admin && ($ad['status'] ?? 'pending') === 'pending'): ?>
                     <div class="d-flex gap-1 mb-1">
-                        <form method="POST" action="admin_ads.php" class="d-inline"><input type="hidden" name="action" value="approve_ad"><input type="hidden" name="ad_id" value="<?php echo $ad['id']; ?>"><input type="hidden" name="current_status" value="<?php echo htmlspecialchars($status_filter); ?>"><button type="submit" class="btn btn-success btn-sm" title="승인" onclick="return confirm('승인하시겠습니까?')"><i class="bi bi-check-lg"></i></button></form>
+                        <form method="POST" action="admin_ads.php" class="d-inline"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="action" value="approve_ad"><input type="hidden" name="ad_id" value="<?php echo $ad['id']; ?>"><input type="hidden" name="current_status" value="<?php echo htmlspecialchars($status_filter); ?>"><button type="submit" class="btn btn-success btn-sm" title="승인" onclick="return confirm('승인하시겠습니까?')"><i class="bi bi-check-lg"></i></button></form>
                         <button type="button" class="btn btn-danger btn-sm" title="거절" onclick="openRejectModal(<?php echo $ad['id']; ?>, '<?php echo htmlspecialchars($status_filter); ?>')"><i class="bi bi-x-lg"></i></button>
                     </div>
                     <?php endif; ?>
@@ -850,16 +988,18 @@ include __DIR__ . '/includes/admin_header.php';
                         <a href="partner_wallet.php" class="btn btn-outline-success" title="광고 지갑">
                             <i class="bi bi-wallet2"></i>
                         </a>
-                        <a href="admin_ad_slots.php" class="btn btn-outline-secondary" title="광고 슬롯 관리">
+                        <?php if ($is_super_admin): ?><a href="admin_ad_slots.php" class="btn btn-outline-secondary" title="광고 슬롯 관리">
                             <i class="bi bi-grid-3x3-gap"></i>
-                        </a>
+                        </a><?php endif; ?>
                         <button class="btn btn-outline-primary" onclick='editAd(<?php echo json_encode($ad, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' title="수정">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <a href="?tab=ads&delete=<?php echo $ad['id']; ?>"
-                           class="btn btn-outline-danger" onclick="return confirm('정말 삭제하시겠습니까?')" title="삭제">
-                            <i class="bi bi-trash"></i>
-                        </a>
+                        <form method="POST" class="d-inline" onsubmit="return confirm('정말 삭제하시겠습니까?')">
+                            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+                            <input type="hidden" name="action" value="delete_ad">
+                            <input type="hidden" name="ad_id" value="<?php echo $ad['id']; ?>">
+                            <button class="btn btn-outline-danger" title="삭제"><i class="bi bi-trash"></i></button>
+                        </form>
                     </div>
                 </td>
             </tr>
@@ -920,6 +1060,7 @@ include __DIR__ . '/includes/admin_header.php';
 <div id="bulkActionsPromos" class="alert alert-info py-2 align-items-center gap-2 mb-2" style="display:none;">
     <span><strong id="selectedCountPromos">0</strong>개 선택</span>
     <form method="POST" class="d-inline" id="bulkFormPromos">
+        <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
         <input type="hidden" name="action" value="bulk_delete_promos">
         <span id="bulkIdsContainerPromos"></span>
         <button type="submit" class="btn btn-danger btn-sm ms-2" onclick="return confirmBulkPromos('선택한 프로모션을 삭제하시겠습니까?')">
@@ -970,16 +1111,23 @@ include __DIR__ . '/includes/admin_header.php';
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <a href="?tab=promos&toggle_promo=<?php echo $promo['id']; ?>" class="btn btn-outline-secondary" title="<?php echo $promo['is_active'] ? '비활성화' : '활성화'; ?>">
-                            <i class="bi <?php echo $promo['is_active'] ? 'bi-toggle-on' : 'bi-toggle-off'; ?>"></i>
-                        </a>
+                        <form method="POST" class="d-inline">
+                            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+                            <input type="hidden" name="action" value="toggle_promo">
+                            <input type="hidden" name="promo_id" value="<?php echo $promo['id']; ?>">
+                            <button class="btn btn-outline-secondary" title="<?php echo $promo['is_active'] ? '비활성화' : '활성화'; ?>">
+                                <i class="bi <?php echo $promo['is_active'] ? 'bi-toggle-on' : 'bi-toggle-off'; ?>"></i>
+                            </button>
+                        </form>
                         <button class="btn btn-outline-primary" onclick='editPromo(<?php echo json_encode($promo, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' title="수정">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <a href="?tab=promos&delete_promo=<?php echo $promo['id']; ?>"
-                           class="btn btn-outline-danger" onclick="return confirm('정말 삭제하시겠습니까?')" title="삭제">
-                            <i class="bi bi-trash"></i>
-                        </a>
+                        <form method="POST" class="d-inline" onsubmit="return confirm('정말 삭제하시겠습니까?')">
+                            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+                            <input type="hidden" name="action" value="delete_promo">
+                            <input type="hidden" name="promo_id" value="<?php echo $promo['id']; ?>">
+                            <button class="btn btn-outline-danger" title="삭제"><i class="bi bi-trash"></i></button>
+                        </form>
                     </div>
                 </td>
             </tr>
@@ -1022,6 +1170,7 @@ include __DIR__ . '/includes/admin_header.php';
     </div>
     <div class="card-body">
         <form method="POST">
+            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
             <div class="row mb-4">
                 <div class="col-md-6">
                     <h6 class="fw-semibold mb-3">광고 배너 스크롤</h6>
@@ -1068,6 +1217,7 @@ include __DIR__ . '/includes/admin_header.php';
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
                 <div class="modal-header py-2">
                     <h6 class="modal-title"><i class="bi bi-plus-circle"></i> 새 광고 추가</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -1182,6 +1332,7 @@ include __DIR__ . '/includes/admin_header.php';
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST" id="editAdForm" enctype="multipart/form-data">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="action" value="update_ad">
                 <input type="hidden" name="id" id="editAd_id">
                 <div class="modal-header py-2">
@@ -1248,6 +1399,7 @@ include __DIR__ . '/includes/admin_header.php';
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
                 <div class="modal-header py-2">
                     <h6 class="modal-title"><i class="bi bi-plus-circle"></i> 새 프로모션 배너 추가</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -1300,6 +1452,7 @@ include __DIR__ . '/includes/admin_header.php';
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST" id="editPromoForm">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="action" value="update_promo">
                 <input type="hidden" name="id" id="editPromo_id">
                 <div class="modal-header py-2">
@@ -1495,18 +1648,26 @@ function toggleGroupCheck(cb, grpClass) {
 // 병원(광고주) 검색 데이터
 var adAdvertisers = <?php
     $adv_json = [];
-    $adv_r = mysqli_query($connect, "SELECT a.id, a.hospital_name, a.address, a.contact_phone, a.status FROM gangnamunni_advertisers a WHERE a.status='active' ORDER BY a.hospital_name");
+    $adv_scope_sql = $ad_hospital_ids === null ? '1=1' : "a.hospital_id IN ({$ad_hospital_in})";
+    $adv_r = mysqli_query($connect, "SELECT a.id, a.hospital_id, a.hospital_name, a.address, a.contact_phone, a.status FROM gangnamunni_advertisers a WHERE a.status='active' AND {$adv_scope_sql} ORDER BY a.hospital_name");
     if ($adv_r) { while ($ar = mysqli_fetch_assoc($adv_r)) { $adv_json[] = $ar; } }
-    echo json_encode($adv_json, JSON_UNESCAPED_UNICODE);
+    echo json_encode($adv_json, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 ?>;
 
 // 광고주가 없으면 병원 테이블에서도 검색
 var adHospitals = <?php
     $h_json = [];
-    $h_r = mysqli_query($connect, "SELECT id, name, address, phone FROM gangnamunni_hospitals ORDER BY name");
+    $hospital_scope_sql = $ad_hospital_ids === null ? '1=1' : "id IN ({$ad_hospital_in})";
+    $h_r = mysqli_query($connect, "SELECT id, name, address, phone FROM gangnamunni_hospitals WHERE {$hospital_scope_sql} ORDER BY name");
     if ($h_r) { while ($hr = mysqli_fetch_assoc($h_r)) { $h_json[] = $hr; } }
-    echo json_encode($h_json, JSON_UNESCAPED_UNICODE);
+    echo json_encode($h_json, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 ?>;
+
+function escapeAdHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function(ch) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch];
+    });
+}
 
 function searchAdHospitals() {
     var q = document.getElementById("adHospitalSearch").value.trim().toLowerCase();
@@ -1523,9 +1684,9 @@ function searchAdHospitals() {
         html += "<div class=\"small text-muted px-2 py-1 bg-light\"><i class=\"bi bi-building\"></i> 등록된 광고주</div>";
         html += "<div class=\"list-group list-group-flush\">";
         matches.slice(0,10).forEach(function(a) {
-            html += "<a href=\"#\" class=\"list-group-item list-group-item-action py-2 px-3\" onclick=\"selectAdAdvertiser(" + a.id + ",'" + a.hospital_name.replace(/'/g,"") + "');return false;\">"
-                + "<strong class=\"small\">" + a.hospital_name + "</strong>"
-                + (a.address ? " <span class=\"text-muted\" style=\"font-size:11px;\">" + a.address + "</span>" : "")
+            html += "<a href=\"#\" class=\"list-group-item list-group-item-action py-2 px-3\" onclick=\"selectAdAdvertiser(" + a.id + ",decodeURIComponent('" + encodeURIComponent(a.hospital_name).replace(/'/g,'%27') + "'));return false;\">"
+                + "<strong class=\"small\">" + escapeAdHtml(a.hospital_name) + "</strong>"
+                + (a.address ? " <span class=\"text-muted\" style=\"font-size:11px;\">" + escapeAdHtml(a.address) + "</span>" : "")
                 + " <span class=\"badge bg-success float-end\">선택</span></a>";
         });
         html += "</div>";
@@ -1539,8 +1700,8 @@ function searchAdHospitals() {
         html += "<div class=\"small text-muted px-2 py-1 bg-light mt-1\"><i class=\"bi bi-hospital\"></i> 미등록 병원 (광고주 자동 등록)</div>";
         html += "<div class=\"list-group list-group-flush\">";
         hosp_matches.slice(0,10).forEach(function(h) {
-            html += "<a href=\"#\" class=\"list-group-item list-group-item-action py-2 px-3\" onclick=\"selectAdHospitalNew(" + h.id + ",'" + h.name.replace(/'/g,"") + "');return false;\">"
-                + "<strong class=\"small\">" + h.name + "</strong>"
+            html += "<a href=\"#\" class=\"list-group-item list-group-item-action py-2 px-3\" onclick=\"selectAdHospitalNew(" + h.id + ",decodeURIComponent('" + encodeURIComponent(h.name).replace(/'/g,'%27') + "'));return false;\">"
+                + "<strong class=\"small\">" + escapeAdHtml(h.name) + "</strong>"
                 + " <span class=\"badge bg-outline-primary border text-primary float-end\">선택+등록</span></a>";
         });
         html += "</div>";
@@ -1561,6 +1722,7 @@ function selectAdAdvertiser(id, name) {
 function selectAdHospitalNew(hospitalId, name) {
     // 병원을 광고주로 자동 등록 (AJAX)
     var fd = new FormData();
+    fd.append("admin_csrf", <?php echo json_encode($admin_ads_csrf); ?>);
     fd.append("action", "auto_register_advertiser");
     fd.append("hospital_id", hospitalId);
     fetch("admin_ads.php", {method:"POST", body:fd}).then(function(r){return r.json();}).then(function(data){
@@ -1643,6 +1805,7 @@ function openRejectModal(adId, currentStatus) {
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="admin_ads.php">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="action" value="reject_ad">
                 <input type="hidden" name="ad_id" id="rejectAdId">
                 <input type="hidden" name="current_status" id="rejectCurrentStatus" value="">
