@@ -27,31 +27,7 @@ if (isset($_GET['logout'])) { session_destroy(); header('Location: dashboard.php
 // - 그 외 모든 관리자: 이메일 또는 세션 hospital_id 로 연결된 자기 병원만
 require_once __DIR__ . '/includes/hospital_filter.php';
 $is_super_admin = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
-$my_ids = null;
-if (!$is_super_admin) {
-    $my_ids = [];
-    $login = trim((string)($_SESSION['ad_admin_user'] ?? ''));
-    $email = trim((string)($_SESSION['ad_admin_email'] ?? ''));
-
-    if ($login !== '' || $email !== '') {
-        $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email = ? OR email = ?");
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'ss', $login, $email);
-            mysqli_stmt_execute($stmt);
-            $result = mysqli_stmt_get_result($stmt);
-            while ($row = mysqli_fetch_assoc($result)) {
-                $my_ids[] = (int)$row['id'];
-            }
-            mysqli_stmt_close($stmt);
-        }
-    }
-
-    $session_hospital_id = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
-    if ($session_hospital_id > 0) {
-        $my_ids[] = $session_hospital_id;
-    }
-    $my_ids = array_values(array_unique(array_filter($my_ids)));
-}
+$my_ids = get_strict_admin_hospital_ids($connect);
 $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
 
 // super_admin 이 아닌 관리자는 자기 병원 이미지와 병원명만 수정할 수 있다.

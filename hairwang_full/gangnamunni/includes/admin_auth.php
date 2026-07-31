@@ -322,9 +322,13 @@ function get_current_admin() {
 function check_permission($permission) {
     global $ADMIN_ROLE_PERMISSIONS;
 
-    // 병원 이미지 페이지는 모든 로그인 관리자에게 허용한다.
-    // 실제 병원 데이터 범위는 admin_hospital_images.php 에서 fail-closed 방식으로 제한한다.
-    if ($permission === 'hospital_images' && check_admin_login()) {
+    // 병원 이미지/병원별 시술 배정 메뉴는 모든 로그인 관리자에게 허용한다.
+    // 실제 병원 데이터 범위는 각 페이지에서 fail-closed 방식으로 제한한다.
+    $all_admin_pages = [
+        'hospital_images',
+        'hospital_treatments',
+    ];
+    if (in_array($permission, $all_admin_pages, true) && check_admin_login()) {
         return true;
     }
 

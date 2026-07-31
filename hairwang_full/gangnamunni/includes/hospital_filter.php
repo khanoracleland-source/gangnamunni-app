@@ -59,6 +59,41 @@ function get_hospital_filter_ids($connect) {
 }
 
 /**
+ * 엄격한 병원 범위: super_admin 만 전체, 그 외 모든 관리자는 소속 병원만.
+ * 병원별 관리 페이지에서 플랫폼 역할이 전체 데이터로 승격되는 것을 막을 때 사용한다.
+ *
+ * @return array|null 병원 id 배열, super_admin 은 null
+ */
+function get_strict_admin_hospital_ids($connect) {
+    if (($_SESSION['ad_admin_role'] ?? '') === 'super_admin') {
+        return null;
+    }
+
+    $ids = [];
+    $login = trim((string)($_SESSION['ad_admin_user'] ?? ''));
+    $mail = trim((string)($_SESSION['ad_admin_email'] ?? ''));
+    if ($connect && ($login !== '' || $mail !== '')) {
+        $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email = ? OR email = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ss', $login, $mail);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            while ($row = mysqli_fetch_assoc($result)) {
+                $ids[] = (int)$row['id'];
+            }
+            mysqli_stmt_close($stmt);
+        }
+    }
+
+    $hospital_id = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+    if ($hospital_id > 0) {
+        $ids[] = $hospital_id;
+    }
+
+    return array_values(array_unique(array_filter($ids)));
+}
+
+/**
  * get_hospital_filter_ids 를 SQL IN 절 문자열로 반환 (정수만 담기므로 안전).
  * @return string|null  "1,2,3" 또는 null(전체)
  */

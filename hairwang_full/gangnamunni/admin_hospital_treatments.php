@@ -27,10 +27,9 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('hospital_treatments');
 
-// 병원 역할 격리 (다병원 지원): super_admin/플랫폼 관리자(소속 없음)면 null(전체),
-// 그 외에는 email 이 일치하는 자기 소유 병원 id 배열. → superadmin 은 전체, 병원 관리자는 자기 병원(들)만.
+// super_admin 만 전체, 그 외 모든 관리자는 자기 소속 병원만.
 require_once __DIR__ . '/includes/hospital_filter.php';
-$my_ids = get_hospital_filter_ids($connect);
+$my_ids = get_strict_admin_hospital_ids($connect);
 $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
 
 // 승인 워크플로우 헬퍼
@@ -593,7 +592,7 @@ if ($hospital_id > 0) {
 $global_stats = [];
 $top_hospitals = [];
 $global_pending_count = 0;
-if ($hospital_id <= 0) {
+if ($hospital_id <= 0 && $my_ids === null) {
     // 전체 통계
     $gs_r = mysqli_query($connect, "SELECT
         COUNT(DISTINCT hospital_id) AS hospital_count,
