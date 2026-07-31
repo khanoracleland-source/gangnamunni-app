@@ -14,6 +14,7 @@ $admin_current = 'personnel';
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/hospital_filter.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
@@ -21,6 +22,69 @@ mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
 require_admin_login();
+
+// CSRF 보호
+if (empty($_SESSION['admin_personnel_csrf'])) {
+    $_SESSION['admin_personnel_csrf'] = bin2hex(random_bytes(32));
+}
+$admin_personnel_csrf = (string)$_SESSION['admin_personnel_csrf'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $posted_csrf = (string)($_POST['admin_csrf'] ?? '');
+    if ($posted_csrf === '' || !hash_equals($admin_personnel_csrf, $posted_csrf)) {
+        http_response_code(403);
+        exit('잘못된 요청입니다. 페이지를 새로고침한 후 다시 시도해주세요.');
+    }
+}
+
+// super_admin 외에는 자신의 병원과 연결된 HMS tenant 인력만 접근 가능
+$allowed_hospital_ids = get_strict_admin_hospital_ids($connect);
+$allowed_tenant_ids = [];
+if ($allowed_hospital_ids !== null && !empty($allowed_hospital_ids)) {
+    $hospital_id_list = implode(',', array_map('intval', $allowed_hospital_ids));
+
+    $tenant_result = mysqli_query(
+        $connect,
+        "SELECT hms_hospital_id AS tenant_id
+         FROM gangnamunni_hospitals
+         WHERE id IN ({$hospital_id_list})
+           AND hms_hospital_id IS NOT NULL
+           AND hms_hospital_id <> ''"
+    );
+    while ($tenant_result && $tenant_row = mysqli_fetch_assoc($tenant_result)) {
+        $allowed_tenant_ids[] = (string)$tenant_row['tenant_id'];
+    }
+
+    // 구형 매핑 테이블도 함께 지원
+    $mapping_result = mysqli_query(
+        $connect,
+        "SELECT hms_tenant_id AS tenant_id
+         FROM gangnamunni_hospital_mapping
+         WHERE hospital_id IN ({$hospital_id_list})
+           AND hms_tenant_id IS NOT NULL
+           AND hms_tenant_id <> ''"
+    );
+    while ($mapping_result && $mapping_row = mysqli_fetch_assoc($mapping_result)) {
+        $allowed_tenant_ids[] = (string)$mapping_row['tenant_id'];
+    }
+}
+$allowed_tenant_ids = array_values(array_unique($allowed_tenant_ids));
+
+$tenant_scope = static function (string $alias = '') use ($connect, $allowed_hospital_ids, $allowed_tenant_ids): string {
+    if ($allowed_hospital_ids === null) {
+        return '1=1';
+    }
+    if (empty($allowed_tenant_ids)) {
+        return '1=0';
+    }
+
+    $column = $alias !== '' ? "{$alias}.tenant_id" : 'tenant_id';
+    $quoted_ids = array_map(
+        static fn(string $tenant_id): string => "'" . mysqli_real_escape_string($connect, $tenant_id) . "'",
+        $allowed_tenant_ids
+    );
+    return "{$column} IN (" . implode(',', $quoted_ids) . ')';
+};
 
 // 인력 유형 정의
 $personnel_types = [
@@ -38,13 +102,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $del_type = $_POST['person_type'] ?? '';
     if ($del_id > 0 && isset($personnel_types[$del_type])) {
         $tbl = $personnel_types[$del_type]['table'];
-        // 인력 테이블에서 user_id 가져오기
-        $r = mysqli_query($connect, "SELECT user_id FROM {$tbl} WHERE id = {$del_id}");
-        if ($row = mysqli_fetch_assoc($r)) {
+        // 서버에서도 병원 소유권을 다시 확인
+        $r = mysqli_query($connect, "SELECT user_id, tenant_id FROM {$tbl} WHERE id = {$del_id} AND " . $tenant_scope());
+        if ($r && $row = mysqli_fetch_assoc($r)) {
             $uid = intval($row['user_id']);
-            mysqli_query($connect, "DELETE FROM {$tbl} WHERE id = {$del_id}");
+            mysqli_query($connect, "DELETE FROM {$tbl} WHERE id = {$del_id} AND " . $tenant_scope());
             mysqli_query($connect, "DELETE FROM addresses WHERE owner_id = {$del_id} AND owner_type LIKE '%{$del_type}%'");
             // user는 삭제하지 않음 (다른 역할이 있을 수 있음)
+        } else {
+            http_response_code(403);
+            exit('이 인력을 수정하거나 삭제할 권한이 없습니다.');
         }
         header("Location: admin_personnel.php?type={$del_type}&msg=deleted");
         exit;
@@ -57,18 +124,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $upd_type = $_POST['person_type'] ?? '';
     if ($upd_id > 0 && isset($personnel_types[$upd_type])) {
         $tbl = $personnel_types[$upd_type]['table'];
-        $r = mysqli_query($connect, "SELECT user_id FROM {$tbl} WHERE id = {$upd_id}");
-        if ($row = mysqli_fetch_assoc($r)) {
+        $r = mysqli_query($connect, "SELECT user_id, tenant_id FROM {$tbl} WHERE id = {$upd_id} AND " . $tenant_scope());
+        if ($r && $row = mysqli_fetch_assoc($r)) {
             $uid = intval($row['user_id']);
+            $user_tenant = mysqli_real_escape_string($connect, (string)$row['tenant_id']);
             $first = mysqli_real_escape_string($connect, $_POST['first_name'] ?? '');
             $last = mysqli_real_escape_string($connect, $_POST['last_name'] ?? '');
             $email = mysqli_real_escape_string($connect, $_POST['email'] ?? '');
             $phone = mysqli_real_escape_string($connect, $_POST['phone'] ?? '');
             $qual = mysqli_real_escape_string($connect, $_POST['qualification'] ?? '');
-            $status = intval($_POST['status'] ?? 1);
+            $status = intval($_POST['status'] ?? 1) === 1 ? 1 : 0;
 
-            mysqli_query($connect, "UPDATE users SET first_name='{$first}', last_name='{$last}', email='{$email}', phone='{$phone}', status={$status} WHERE id={$uid}");
-            mysqli_query($connect, "UPDATE {$tbl} SET qualification='{$qual}', updated_at=NOW() WHERE id={$upd_id}");
+            mysqli_query($connect, "UPDATE users SET first_name='{$first}', last_name='{$last}', email='{$email}', phone='{$phone}', status={$status} WHERE id={$uid} AND tenant_id='{$user_tenant}'");
+            mysqli_query($connect, "UPDATE {$tbl} SET qualification='{$qual}', updated_at=NOW() WHERE id={$upd_id} AND " . $tenant_scope());
+        } else {
+            http_response_code(403);
+            exit('이 인력을 수정하거나 삭제할 권한이 없습니다.');
         }
         header("Location: admin_personnel.php?type={$upd_type}&msg=updated");
         exit;
@@ -82,7 +153,7 @@ $type_info = $personnel_types[$current_type];
 
 // 검색
 $search = trim($_GET['search'] ?? '');
-$where = '1=1';
+$where = $tenant_scope('p');
 if ($search) {
     $s = mysqli_real_escape_string($connect, $search);
     $where .= " AND (u.first_name LIKE '%{$s}%' OR u.last_name LIKE '%{$s}%' OR u.email LIKE '%{$s}%' OR u.phone LIKE '%{$s}%')";
@@ -91,7 +162,7 @@ if ($search) {
 // 통계
 $stats = [];
 foreach ($personnel_types as $key => $info) {
-    $r = mysqli_query($connect, "SELECT COUNT(*) as c FROM {$info['table']}");
+    $r = mysqli_query($connect, "SELECT COUNT(*) as c FROM {$info['table']} WHERE " . $tenant_scope());
     $stats[$key] = ($r && $row = mysqli_fetch_assoc($r)) ? intval($row['c']) : 0;
 }
 $total_all = array_sum($stats);
@@ -208,6 +279,7 @@ include __DIR__ . '/includes/admin_header.php';
             <td>
                 <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick='editPerson(<?= json_encode($row, JSON_UNESCAPED_UNICODE) ?>)' title="수정"><i class="bi bi-pencil"></i></button>
                 <form method="post" style="display:inline;" onsubmit="return confirm('정말 삭제하시겠습니까?')">
+                    <input type="hidden" name="admin_csrf" value="<?= htmlspecialchars($admin_personnel_csrf, ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="person_id" value="<?= $row['id'] ?>">
                     <input type="hidden" name="person_type" value="<?= $current_type ?>">
@@ -250,6 +322,7 @@ include __DIR__ . '/includes/admin_header.php';
   <div class="modal-dialog">
     <div class="modal-content">
       <form method="post">
+        <input type="hidden" name="admin_csrf" value="<?= htmlspecialchars($admin_personnel_csrf, ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="person_id" id="ep_id">
         <input type="hidden" name="person_type" value="<?= $current_type ?>">
