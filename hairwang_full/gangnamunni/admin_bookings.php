@@ -36,6 +36,13 @@ if (!$_booking_schema_ok) {
     exit('예약 스키마 업데이트가 필요합니다. 관리자에게 문의해주세요.');
 }
 
+// 예약 데이터 범위: super_admin만 전체, 그 외 관리자는 연결된 병원만.
+// 소속 병원이 없는 계정은 fail-closed로 어떤 예약도 조회/수정할 수 없다.
+$booking_hospital_ids = get_strict_admin_hospital_ids($connect);
+$booking_hosp_in = $booking_hospital_ids === null
+    ? null
+    : (empty($booking_hospital_ids) ? '0' : implode(',', array_map('intval', $booking_hospital_ids)));
+
 // ===== Action: 상태 변경 (viewer 역할은 불가) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if (empty($_POST['admin_csrf']) || !hash_equals($admin_bookings_csrf, (string)$_POST['admin_csrf'])) {
@@ -53,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     $allowed = ['confirm', 'cancel', 'complete', 'noshow'];
     // 병원 격리: super_admin 이 아니면 소속 병원 예약만 상태 변경 가능
-    $_act_hin = get_hospital_filter_in($connect);
+    $_act_hin = $booking_hosp_in;
     if ($id > 0 && $_act_hin !== null) {
         $_own_r = mysqli_query($connect, "SELECT 1 FROM gangnamunni_bookings WHERE id={$id} AND hospital_id IN (" . $_act_hin . ") LIMIT 1");
         if (!$_own_r || mysqli_num_rows($_own_r) === 0) {
@@ -71,6 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $sql .= ", cancel_reason='" . $reason . "', cancelled_at=NOW()";
         }
         $sql .= " WHERE id=" . $id;
+        if ($_act_hin !== null) {
+            $sql .= " AND hospital_id IN (" . $_act_hin . ")";
+        }
         require_once __DIR__ . '/includes/points_ledger.php';
 
         // 핵심 DB 작업(예약 상태 + 로컬 HMS 상태)은 하나의 transaction 으로 원자 처리한다.
@@ -231,7 +241,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $doc = $doc_r ? mysqli_fetch_assoc($doc_r) : null;
             if ($doc && (int)$doc['hospital_id'] === $bk_hosp) {
                 $dn = mysqli_real_escape_string($connect, $doc['name']);
-                mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id={$doctor_id}, doctor_name='{$dn}' WHERE id={$id}");
+                $assign_scope = $_act_hin !== null ? " AND hospital_id IN ({$_act_hin})" : '';
+                mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id={$doctor_id}, doctor_name='{$dn}' WHERE id={$id}{$assign_scope}");
                 $msg = '담당의사가 배정되었습니다.';
                 $msg_type = 'success';
             } else {
@@ -240,7 +251,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         } else {
             // 미배정 선택 → 배정 해제
-            mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id=NULL, doctor_name=NULL WHERE id={$id}");
+            $assign_scope = $_act_hin !== null ? " AND hospital_id IN ({$_act_hin})" : '';
+            mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id=NULL, doctor_name=NULL WHERE id={$id}{$assign_scope}");
             $msg = '담당의사 배정이 해제되었습니다.';
             $msg_type = 'success';
         }
@@ -266,8 +278,8 @@ if ($search) {
 }
 
 // ===== 병원 격리: super_admin 은 전체, 그 외 관리자는 소속 병원 예약만 =====
-//   get_hospital_filter_in(): null=전체, "1,2,3"=해당 병원, '0'=소속 병원 없음(아무것도 안 보임)
-$hosp_in = get_hospital_filter_in($connect);
+//   null=전체, "1,2,3"=해당 병원, '0'=소속 병원 없음(아무것도 안 보임)
+$hosp_in = $booking_hosp_in;
 $hosp_and = ($hosp_in !== null) ? " AND hospital_id IN (" . $hosp_in . ")" : "";
 if ($hosp_and) $where .= $hosp_and;
 
