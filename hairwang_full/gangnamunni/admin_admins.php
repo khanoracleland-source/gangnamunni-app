@@ -50,7 +50,6 @@ $ALL_PAGE_PERMISSIONS = [
     'categories' => '카테고리',
     'hospital_wizard' => '병원 등록',
     'ad_wizard' => '광고 신청',
-    'doctor_wizard' => '의사 등록',
     'nurse_wizard' => '간호사 등록',
     'pharmacist_wizard' => '약사 등록',
     'patient_wizard' => '환자 등록',

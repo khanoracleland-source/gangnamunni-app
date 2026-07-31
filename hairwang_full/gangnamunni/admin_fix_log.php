@@ -673,7 +673,6 @@ include __DIR__ . '/includes/admin_header.php';
                             <option value="admin_categories.php">admin_categories.php - 카테고리</option>
                             <option value="admin_hospital_wizard.php">admin_hospital_wizard.php - 병원 등록</option>
                             <option value="admin_ad_wizard.php">admin_ad_wizard.php - 광고 신청</option>
-                            <option value="admin_doctor_wizard.php">admin_doctor_wizard.php - 의사 등록</option>
                             <option value="admin_members.php">admin_members.php - 회원 관리</option>
                             <option value="admin_navigation.php">admin_navigation.php - 네비게이션</option>
                             <option value="admin_theme.php">admin_theme.php - 테마 설정</option>
@@ -834,7 +833,6 @@ var PAGE_URL_MAP = {
     'admin_categories.php': BASE_URL + 'admin_categories.php',
     'admin_hospital_wizard.php': BASE_URL + 'admin_hospital_wizard.php',
     'admin_ad_wizard.php': BASE_URL + 'admin_ad_wizard.php',
-    'admin_doctor_wizard.php': BASE_URL + 'admin_doctor_wizard.php',
     'admin_members.php': BASE_URL + 'admin_members.php',
     'admin_navigation.php': BASE_URL + 'admin_navigation.php',
     'admin_theme.php': BASE_URL + 'admin_theme.php',

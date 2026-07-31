@@ -15,7 +15,6 @@ const PAGES = [
   'admin_categories.php',
   'admin_hospital_wizard.php',
   'admin_ad_wizard.php',
-  'admin_doctor_wizard.php',
   'admin_nurse_wizard.php',
   'admin_patient_wizard.php',
   'admin_staff_wizard.php',

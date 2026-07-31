@@ -157,11 +157,6 @@ const tests = {
         if (r.status() >= 500) throw new Error('hospital_wizard HTTP ' + r.status());
         return {};
     },
-    async W2(page) {
-        const r = await page.goto(BASE + '/admin_doctor_wizard.php', { waitUntil: 'networkidle', timeout: 15000 });
-        if (r.status() >= 500) throw new Error('doctor_wizard HTTP ' + r.status());
-        return {};
-    },
     async W3(page) {
         const r = await page.goto(BASE + '/admin_patient_wizard.php', { waitUntil: 'networkidle', timeout: 15000 });
         if (r.status() >= 500) throw new Error('patient_wizard HTTP ' + r.status());

@@ -373,16 +373,6 @@
           ]
         },
         {
-          "key": "doctor_wizard",
-          "label": "의사 등록",
-          "url": "admin_doctor_wizard.php",
-          "description": "5단계 의사 등록 마법사",
-          "checks": [
-            "noPhpError",
-            "noJsError"
-          ]
-        },
-        {
           "key": "nurse_wizard",
           "label": "간호사 등록",
           "url": "admin_nurse_wizard.php",

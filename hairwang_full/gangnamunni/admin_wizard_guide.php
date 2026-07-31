@@ -47,34 +47,6 @@ $sections = [
         'tips'=>['기본 계정: admin / admin123', '로그아웃: URL에 ?logout=1 추가'],
     ],
 
-    // ── 1. 의사 ──
-    [
-        'id'=>'doctor', 'icon'=>'👨‍⚕️', 'color'=>'#28a745', 'title'=>'의사 등록 마법사',
-        'file'=>'admin_doctor_wizard.php',
-        'desc'=>'새로운 의사를 단계별로 등록합니다. 기본정보, 전문분야, 소속병원, 주소를 입력합니다.',
-        'tables'=>['users','doctors','addresses','model_has_roles'],
-        'screenshots'=>[
-            ['file'=>'doctor_step1.png', 'label'=>'Step 1: 기본 정보', 'desc'=>'김민수 의사의 이름, 이메일(dr.kim@seoulbeauty.app), 전화, 성별, 생년월일, 혈액형을 입력한 예시입니다.'],
-            ['file'=>'doctor_step2.png', 'label'=>'Step 2: 전문 분야', 'desc'=>'진료과 선택, 전문분야(피부과 전문의), 자격증, 진료비(50,000원)를 설정한 예시입니다.'],
-            ['file'=>'doctor_step3.png', 'label'=>'Step 3: 소속 병원', 'desc'=>'병원을 검색하여 선택하고, 요일별 근무 스케줄(월~금 09:00~18:00)을 설정한 예시입니다.'],
-            ['file'=>'doctor_step4.png', 'label'=>'Step 4: 주소/계정', 'desc'=>'서울 강남구 주소와 비밀번호를 입력한 예시입니다.'],
-            ['file'=>'doctor_step5.png', 'label'=>'Step 5: 검토 완료', 'desc'=>'입력한 모든 정보를 확인합니다. 각 섹션 헤더를 클릭하면 해당 단계로 돌아가 수정할 수 있습니다.'],
-        ],
-        'fields'=>[
-            ['name'=>'이름 (First Name)', 'required'=>true, 'desc'=>'의사 이름', 'example'=>'길동'],
-            ['name'=>'성 (Last Name)', 'required'=>true, 'desc'=>'의사 성', 'example'=>'홍'],
-            ['name'=>'이메일', 'required'=>true, 'desc'=>'로그인 계정 이메일 (중복 불가)', 'example'=>'doctor@example.com'],
-            ['name'=>'전화번호', 'required'=>true, 'desc'=>'연락처', 'example'=>'010-1234-5678'],
-            ['name'=>'성별', 'required'=>true, 'desc'=>'남성/여성', 'example'=>'남성'],
-            ['name'=>'진료과', 'required'=>true, 'desc'=>'HMS departments 테이블에서 선택', 'example'=>'내과'],
-            ['name'=>'전문분야', 'required'=>false, 'desc'=>'세부 전문 분야', 'example'=>'피부과전문의'],
-            ['name'=>'진료비', 'required'=>false, 'desc'=>'1회 진료비 (숫자)', 'example'=>'50000'],
-            ['name'=>'병원', 'required'=>true, 'desc'=>'소속 병원 (검색 선택)', 'example'=>'Ahmed Lang'],
-            ['name'=>'비밀번호', 'required'=>true, 'desc'=>'6자 이상', 'example'=>'******'],
-        ],
-        'tips'=>['이메일 중복 시 실시간 경고 표시','진료과 선택 시 AJAX로 목록 로드','근무 스케줄은 요일별 시작/종료 시간 설정','owner_type: App\\Models\\Doctor, role_id: 2'],
-    ],
-
     // ── 2. 간호사 ──
     [
         'id'=>'nurse', 'icon'=>'👩‍⚕️', 'color'=>'#17a2b8', 'title'=>'간호사 등록 마법사',

@@ -95,7 +95,6 @@ $admin_menus = [
     ]],
     // 등록 관리 그룹
     ['type' => 'group', 'label' => '등록 관리', 'icon' => 'bi-person-plus', 'key' => 'register', 'children' => [
-        ['url' => 'admin_doctor_wizard.php', 'label' => '의사 등록 마법사', 'icon' => 'bi-person-badge', 'key' => 'doctor_wizard'],
         ['url' => 'admin_nurse_wizard.php', 'label' => '간호사 등록 마법사', 'icon' => 'bi-heart-pulse', 'key' => 'nurse_wizard'],
         ['url' => 'admin_pharmacist_wizard.php', 'label' => '약사 등록 마법사', 'icon' => 'bi-capsule', 'key' => 'pharmacist_wizard'],
         ['url' => 'admin_patient_wizard.php', 'label' => '환자 등록 마법사', 'icon' => 'bi-person-heart', 'key' => 'patient_wizard'],
@@ -378,7 +377,6 @@ $menu_descriptions = [
     'advertisers' => '광고주 정보/계약 관리',
     'ad_settings' => '광고 ON/OFF 12개 플래그',
     'promos' => '프로모션 관리',
-    'doctor_wizard' => term('staff', '의사') . '를 단계별 마법사로 등록합니다 (기본정보→전문분야→스케줄).',
     'nurse_wizard' => '간호사를 단계별 마법사로 등록합니다.',
     'pharmacist_wizard' => '약사를 단계별 마법사로 등록합니다.',
     'patient_wizard' => term('client', '환자') . '를 단계별 마법사로 등록합니다.',

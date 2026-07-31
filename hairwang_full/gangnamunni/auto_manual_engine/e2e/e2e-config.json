@@ -93,7 +93,6 @@
     {"id":"M10","name":"[관리] 병원 랭킹 관리","category":"admin","page":"admin_rankings.php"},
 
     {"id":"W1","name":"[마법사] 병원 등록","category":"admin","page":"admin_hospital_wizard.php"},
-    {"id":"W2","name":"[마법사] 의사 등록","category":"admin","page":"admin_doctor_wizard.php"},
     {"id":"W3","name":"[마법사] 환자 등록","category":"admin","page":"admin_patient_wizard.php"},
     {"id":"W4","name":"[마법사] 예약 마법사","category":"user","page":"booking_wizard.php"},
     {"id":"W5","name":"[마법사] 상담 마법사","category":"user","page":"consultation_wizard.php"},

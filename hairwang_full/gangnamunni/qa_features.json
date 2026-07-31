@@ -871,16 +871,6 @@
       ]
     },
     {
-      "id": "A34",
-      "name": "의사 마법사",
-      "file": "admin_doctor_wizard.php",
-      "priority": "medium",
-      "checks": [
-        "단계 진행",
-        "저장"
-      ]
-    },
-    {
       "id": "A35",
       "name": "후기 마법사",
       "file": "admin_review_wizard.php",
