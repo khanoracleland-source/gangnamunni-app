@@ -322,6 +322,11 @@ function get_current_admin() {
 function check_permission($permission) {
     global $ADMIN_ROLE_PERMISSIONS;
 
+    // 카테고리 관리는 플랫폼 전체에 영향을 주므로 최고관리자만 허용한다.
+    if ($permission === 'categories') {
+        return (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
+    }
+
     // 병원 이미지/병원별 시술 배정 메뉴는 모든 로그인 관리자에게 허용한다.
     // 실제 병원 데이터 범위는 각 페이지에서 fail-closed 방식으로 제한한다.
     $all_admin_pages = [

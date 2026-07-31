@@ -16,6 +16,10 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_admin_login();
+if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
+    http_response_code(403);
+    exit('최고관리자만 접근할 수 있습니다.');
+}
 if (!function_exists("term")) { require_once __DIR__ . "/includes/industry_terms.php"; }
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
