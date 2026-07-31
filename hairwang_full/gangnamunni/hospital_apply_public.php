@@ -49,6 +49,10 @@ $message = '';
 $error = '';
 $success = false;
 
+// 의료기관 개설허가증 제출 기능.
+// 현재 임시 중단 상태. 다시 필요할 때 true로 바꾸면 폼과 서버 검증이 함께 활성화된다.
+$require_medical_license = false;
+
 // 간단 스팸 방지: 같은 IP에서 10분 내 3회 이상 제출 차단
 $client_ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 $rate_check = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_hospitals WHERE applied_by LIKE ? AND applied_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)");
@@ -154,8 +158,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                 $error = '사업자등록증은 필수 서류입니다.';
             }
 
-            // 의료기관 허가증 (필수)
-            if (empty($error) && !empty($_FILES['cert_medical']['name']) && $_FILES['cert_medical']['error'] === UPLOAD_ERR_OK) {
+            // 의료기관 허가증 (기능 활성화 시 필수)
+            if ($require_medical_license && empty($error) && !empty($_FILES['cert_medical']['name']) && $_FILES['cert_medical']['error'] === UPLOAD_ERR_OK) {
                 $ext = strtolower(pathinfo($_FILES['cert_medical']['name'], PATHINFO_EXTENSION));
                 if (in_array($ext, ['jpg','jpeg','png','pdf']) && $_FILES['cert_medical']['size'] <= 5*1024*1024) {
                     $fname = 'cert_medical_' . time() . '.' . $ext;
@@ -165,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                 } else {
                     $error = '의료기관 허가증: JPG/PNG/PDF, 5MB 이하만 가능합니다.';
                 }
-            } elseif (empty($error)) {
+            } elseif ($require_medical_license && empty($error)) {
                 $error = '의료기관 개설허가증은 필수 서류입니다.';
             }
 
@@ -459,11 +463,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                         <input type="file" name="cert_business" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
                         <div class="form-text">JPG/PNG/PDF, 5MB 이하</div>
                     </div>
+                    <?php if ($require_medical_license): ?>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">의료기관 개설허가증 <span class="text-danger">*</span></label>
                         <input type="file" name="cert_medical" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
                         <div class="form-text">JPG/PNG/PDF, 5MB 이하</div>
                     </div>
+                    <?php endif; ?>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">병원 대표 이미지 <span class="text-muted fw-normal">(선택)</span></label>
                         <input type="file" name="profile_image" class="form-control" accept=".jpg,.jpeg,.png">
