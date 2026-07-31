@@ -14,14 +14,14 @@ $ADMIN_ROLE_PERMISSIONS = [
     'super_admin' => ['*'],
     'admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'reviews', 'categories', 'ads', 'ad_slot_manage', 'navigation', 'theme', 'theme_advanced', 'design_mode', 'settings', 'maintenance', 'upgrade', 'members', 'membership', 'faq', 'qna', 'rankings', 'doctor_treatments', 'treatment_packages', 'excel_import', 'excel_export', 'medicines', 'nurses', 'patients', 'pharmacists', 'staffs', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'admin_mail', 'mail_templates', 'mail_signatures', 'mail_accounts', 'editor_settings', 'review_wizard', 'approval_queue', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events', 'event_entries', 'cpv_settings', 'cpv_wallet', 'cpv_rates', 'cpv_dashboard', 'cpv_settlement', 'dev_ref_cpv', 'dev_ref_confirm', 'dev_ref_qa', 'dev_ref_cpv_qa', 'dev_ref_payment', 'manage_reports', 'grade_permissions', 'admin_manage', 'admin_accounts', 'hospital_landing', 'hospital_apply', 'hospital_apply_status', 'hospital_pending', 'hospital_process', 'hospital_guide', 'site_settings_main', 'booking_revenue'],
     'editor' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'reviews', 'bookings', 'categories', 'ads', 'navigation', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'review_wizard', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events'],
-    'viewer' => ['dashboard'],
-    'staff' => ['dashboard', 'hospitals', 'reviews', 'bookings', 'notifications', 'members'],
+    'viewer' => ['dashboard', 'hospital_images'],
+    'staff' => ['dashboard', 'hospitals', 'hospital_images', 'reviews', 'bookings', 'notifications', 'members'],
 
     // === 병원 역할 (hospital_id 기반 격리) ===
     'hospital_super_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_admins', 'hospital_stats', 'booking_revenue'],
     'hospital_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_admins', 'booking_revenue'],
-    'hospital_sub_admin' => ['dashboard', 'hospitals', 'doctors', 'reviews', 'bookings', 'partner_treatments', 'notifications'],
-    'hospital_staff' => ['dashboard', 'bookings', 'reviews', 'notifications'],
+    'hospital_sub_admin' => ['dashboard', 'hospitals', 'hospital_images', 'doctors', 'reviews', 'bookings', 'partner_treatments', 'notifications'],
+    'hospital_staff' => ['dashboard', 'hospital_images', 'bookings', 'reviews', 'notifications'],
 ];
 
 $ADMIN_ROLE_LABELS = [
@@ -321,6 +321,13 @@ function get_current_admin() {
  */
 function check_permission($permission) {
     global $ADMIN_ROLE_PERMISSIONS;
+
+    // 병원 이미지 페이지는 모든 로그인 관리자에게 허용한다.
+    // 실제 병원 데이터 범위는 admin_hospital_images.php 에서 fail-closed 방식으로 제한한다.
+    if ($permission === 'hospital_images' && check_admin_login()) {
+        return true;
+    }
+
     $role = $_SESSION['ad_admin_role'] ?? 'viewer';
     $role_perms = $ADMIN_ROLE_PERMISSIONS[$role] ?? [];
 

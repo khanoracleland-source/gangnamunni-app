@@ -18,32 +18,66 @@ if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms
 loadThemeSettings($connect);
 
 
-// 로그인 체크
-$is_logged_in = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true;
-if (!$is_logged_in) { header('Location: dashboard.php'); exit; }
-require_permission('hospital_images');
+// 모든 로그인 관리자는 접근 가능하다. 데이터 범위는 아래에서 역할/소속 병원으로 제한한다.
+require_admin_login();
 if (isset($_GET['logout'])) { session_destroy(); header('Location: dashboard.php'); exit; }
 
-// 병원 역할 격리: get_hospital_filter() 는 super_admin/admin/editor(hospital_id 없음)면 null(전체),
-// hospital_* 역할이면 자기 hospital_id 반환 → superadmin 은 전체 병원, 병원 관리자는 자기 병원만.
+// 이 페이지의 격리 규칙:
+// - super_admin: 전체 병원
+// - 그 외 모든 관리자: 이메일 또는 세션 hospital_id 로 연결된 자기 병원만
 require_once __DIR__ . '/includes/hospital_filter.php';
-// 다병원 지원: 한 관리자가 여러 병원 소유 가능. null 이면 전체(플랫폼 관리자).
-$my_ids = get_hospital_filter_ids($connect);
+$is_super_admin = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
+$my_ids = null;
+if (!$is_super_admin) {
+    $my_ids = [];
+    $login = trim((string)($_SESSION['ad_admin_user'] ?? ''));
+    $email = trim((string)($_SESSION['ad_admin_email'] ?? ''));
+
+    if ($login !== '' || $email !== '') {
+        $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email = ? OR email = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ss', $login, $email);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            while ($row = mysqli_fetch_assoc($result)) {
+                $my_ids[] = (int)$row['id'];
+            }
+            mysqli_stmt_close($stmt);
+        }
+    }
+
+    $session_hospital_id = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+    if ($session_hospital_id > 0) {
+        $my_ids[] = $session_hospital_id;
+    }
+    $my_ids = array_values(array_unique(array_filter($my_ids)));
+}
 $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
 
-// 병원 역할이면: 플랫폼 전용 액션(병원 추가/수정/삭제) 차단 + 이미지 액션은 자기 소유 병원만 허용.
+// super_admin 이 아닌 관리자는 자기 병원 이미지와 병원명만 수정할 수 있다.
 if ($my_ids !== null) {
     $act = $_POST['action'] ?? '';
     $first_hid = $my_ids[0] ?? 0;
-    // 플랫폼 전용 액션 차단
-    if (in_array($act, ['add_hospital', 'update_hospital'], true) || isset($_GET['delete_hospital'])) {
+    // 병원 추가/삭제는 전체 범위 작업이므로 super_admin 전용이다.
+    if ($act === 'add_hospital' || isset($_GET['delete_hospital'])) {
         header('Location: admin_hospital_images.php?hospital_id=' . $first_hid . '&msg=' . urlencode('접근 권한이 없습니다.'));
         exit;
     }
-    // 이미지 추가: 대상 병원이 자기 소유가 아니면 첫 병원으로 강제
+    // 병원명 수정도 반드시 자기 병원이어야 한다.
+    if ($act === 'update_hospital') {
+        $target = (int)($_POST['hospital_edit_id'] ?? 0);
+        if (!in_array($target, $my_ids, true)) {
+            header('Location: admin_hospital_images.php?hospital_id=' . $first_hid . '&msg=' . urlencode('접근 권한이 없습니다.'));
+            exit;
+        }
+    }
+    // 이미지 추가 대상은 반드시 자기 병원이어야 한다.
     if ($act === 'add') {
         $target = (int)($_POST['hospital_id'] ?? 0);
-        if (!in_array($target, $my_ids, true)) $_POST['hospital_id'] = $first_hid;
+        if (!in_array($target, $my_ids, true)) {
+            header('Location: admin_hospital_images.php?hospital_id=' . $first_hid . '&msg=' . urlencode('접근 권한이 없습니다.'));
+            exit;
+        }
     }
     // 이미지 수정/삭제/일괄삭제: 대상 이미지가 자기 소유 병원 소속인지 검증
     $img_ids_to_check = [];
@@ -187,8 +221,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $sort_order = (int)$_POST['sort_order'];
     $is_active = isset($_POST['is_active']) ? 1 : 0;
 
-    $sql = sprintf("UPDATE hospital_images SET image_url='%s', image_type='%s', sort_order=%d, is_active=%d WHERE id=%d",
-        mysqli_real_escape_string($connect, $image_url), mysqli_real_escape_string($connect, $image_type), $sort_order, $is_active, $id);
+    $scope_sql = $my_in === null ? '' : " AND hospital_id IN ({$my_in})";
+    $sql = sprintf("UPDATE hospital_images SET image_url='%s', image_type='%s', sort_order=%d, is_active=%d WHERE id=%d%s",
+        mysqli_real_escape_string($connect, $image_url), mysqli_real_escape_string($connect, $image_type), $sort_order, $is_active, $id, $scope_sql);
     if (mysqli_query($connect, $sql)) {
         header('Location: admin_hospital_images.php?hospital_id=' . $hospital_id . '&msg=' . urlencode('이미지가 수정되었습니다.'));
         exit;
@@ -201,7 +236,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     $hospital_id = (int)($_GET['hospital_id'] ?? 0);
-    if (mysqli_query($connect, "DELETE FROM hospital_images WHERE id = {$id}")) {
+    $scope_sql = $my_in === null ? '' : " AND hospital_id IN ({$my_in})";
+    if (mysqli_query($connect, "DELETE FROM hospital_images WHERE id = {$id}{$scope_sql}")) {
         header('Location: admin_hospital_images.php?hospital_id=' . $hospital_id . '&msg=' . urlencode('이미지가 삭제되었습니다.'));
         exit;
     } else {
@@ -230,8 +266,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $hospital_id = (int)$_POST['hospital_edit_id'];
     $hospital_name = trim($_POST['hospital_name']);
     if ($hospital_id > 0 && !empty($hospital_name)) {
-        $sql = sprintf("UPDATE gangnamunni_hospitals SET name='%s' WHERE id=%d",
-            mysqli_real_escape_string($connect, $hospital_name), $hospital_id);
+        $scope_sql = $my_in === null ? '' : " AND id IN ({$my_in})";
+        $sql = sprintf("UPDATE gangnamunni_hospitals SET name='%s' WHERE id=%d%s",
+            mysqli_real_escape_string($connect, $hospital_name), $hospital_id, $scope_sql);
         if (mysqli_query($connect, $sql)) {
             $message = "병원이 수정되었습니다.";
         } else {
@@ -264,7 +301,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
     $ids = array_map('intval', $_POST['ids'] ?? []);
     if (!empty($ids)) {
         $id_list = implode(',', $ids);
-        if (mysqli_query($connect, "DELETE FROM hospital_images WHERE id IN ({$id_list})")) {
+        $scope_sql = $my_in === null ? '' : " AND hospital_id IN ({$my_in})";
+        if (mysqli_query($connect, "DELETE FROM hospital_images WHERE id IN ({$id_list}){$scope_sql}")) {
             $message = count($ids) . "개 이미지가 삭제되었습니다.";
         }
     }
@@ -403,7 +441,9 @@ include __DIR__ . '/includes/admin_header.php';
                     <button class="btn btn-outline-secondary" onclick="expandAll()" title="전체 확장"><i class="bi bi-arrows-angle-expand"></i></button>
                     <button class="btn btn-outline-secondary" onclick="collapseAll()" title="전체 축소"><i class="bi bi-arrows-angle-contract"></i></button>
                 </div>
+                <?php if ($is_super_admin): ?>
                 <button class="btn btn-primary btn-sm" onclick="showAddHospitalForm()"><i class="bi bi-plus-circle"></i> 병원 추가</button>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -436,9 +476,11 @@ include __DIR__ . '/includes/admin_header.php';
                         <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary" data-hospital='<?php echo json_encode(['id'=>$h['id'],'name'=>$h['name']]); ?>' onclick="editHospital(JSON.parse(this.dataset.hospital))" title="편집">
                             <i class="bi bi-pencil"></i>
                         </a>
+                        <?php if ($is_super_admin): ?>
                         <a href="javascript:void(0)" class="btn btn-sm btn-outline-danger" onclick="deleteHospital(<?php echo $h['id']; ?>)" title="삭제">
                             <i class="bi bi-trash"></i>
                         </a>
+                        <?php endif; ?>
                     </div>
                 </h2>
                 <div id="collapse-<?php echo $h['id']; ?>" class="accordion-collapse collapse" aria-labelledby="heading-<?php echo $h['id']; ?>" data-bs-parent="#hospitalAccordion">
