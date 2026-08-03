@@ -7,6 +7,14 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateServiceRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'name' => is_string($this->name) ? trim($this->name) : $this->name,
+            'rate' => removeCommaFromNumbers($this->rate),
+        ]);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -21,7 +29,7 @@ class UpdateServiceRequest extends FormRequest
     public function rules(): array
     {
         $rules = Service::$rules;
-        $rules['name'] = 'required|is_unique:services,name,'.$this->route('service')->id;
+        $rules['name'] = 'required|string|max:160|is_unique:services,name,'.$this->route('service')->id;
 
         return $rules;
     }

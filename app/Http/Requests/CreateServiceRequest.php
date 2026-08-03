@@ -7,6 +7,14 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class CreateServiceRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'name' => is_string($this->name) ? trim($this->name) : $this->name,
+            'rate' => removeCommaFromNumbers($this->rate),
+        ]);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */

@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Redirector;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -61,11 +62,12 @@ class ServiceController extends AppBaseController
      */
     public function store(CreateServiceRequest $request): RedirectResponse
     {
-        $input = $request->all();
+        $input = $request->validated();
         $input['status'] = isset($input['status']) ? 1 : 0;
-        $input['rate'] = removeCommaFromNumbers($input['rate']);
-        $this->serviceRepository->create($input);
-        $this->serviceRepository->createNotification();
+        DB::transaction(function () use ($input) {
+            $this->serviceRepository->create($input);
+            $this->serviceRepository->createNotification();
+        });
         Flash::success(__('messages.flash.service_saved'));
 
         return redirect(route('services.index'));
@@ -116,9 +118,8 @@ class ServiceController extends AppBaseController
 
             return redirect(route('services.index'));
         }
-        $input = $request->all();
+        $input = $request->validated();
         $input['status'] = isset($input['status']) ? 1 : 0;
-        $input['rate'] = removeCommaFromNumbers($input['rate']);
         $this->serviceRepository->update($input, $service->id);
         Flash::success(__('messages.flash.service_updated'));
 

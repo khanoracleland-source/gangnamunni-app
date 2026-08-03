@@ -50,7 +50,7 @@ class ServiceRepository extends BaseRepository
             $ownerType = [Receptionist::class, Accountant::class];
             $userIds = User::whereIn('owner_type', $ownerType)->pluck('owner_type', 'id')->toArray();
             $adminUser = User::role('Admin')->first();
-            $allUsers = $userIds + [$adminUser->id => ''];
+            $allUsers = $adminUser ? $userIds + [$adminUser->id => null] : $userIds;
             $users = getAllNotificationUser($allUsers);
 
             foreach ($users as $id => $ownerType) {

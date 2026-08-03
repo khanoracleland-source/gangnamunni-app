@@ -55,7 +55,6 @@ class UniqueRecordRule implements Rule
      */
     public function message(): string
     {
-        return [
-        ];
+        return __('validation.unique');
     }
 }

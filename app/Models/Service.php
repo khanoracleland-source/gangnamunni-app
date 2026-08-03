@@ -70,9 +70,11 @@ class Service extends Model
      * @var array
      */
     public static $rules = [
-        'name' => 'required|is_unique:services,name',
-        'quantity' => 'required|numeric',
-        'rate' => 'required',
+        'name' => 'required|string|max:160|is_unique:services,name',
+        'description' => 'nullable|string|max:5000',
+        'quantity' => 'required|integer|min:1|max:99999',
+        'rate' => 'required|numeric|decimal:0,2|min:0|max:9999999999999.99',
+        'status' => 'sometimes|boolean',
     ];
 
     public $table = 'services';
