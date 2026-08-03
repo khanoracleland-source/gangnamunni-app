@@ -408,7 +408,7 @@ $page_title = '내 예약';
             <div class="booking-card-top">
                 <div class="booking-card-date"><?php echo htmlspecialchars($_date_text); ?></div>
                 <div class="booking-dday"><?php echo htmlspecialchars($_dd_text); ?></div>
-                <a href="booking_detail.php?booking_id=<?php echo (int)$bk['id']; ?>" class="booking-detail-link">예약상세</a>
+                <a href="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>" class="booking-detail-link">예약상세</a>
             </div>
             <div class="booking-summary">
                 <div class="booking-thumb">
