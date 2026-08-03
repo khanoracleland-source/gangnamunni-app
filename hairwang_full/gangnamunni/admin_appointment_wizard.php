@@ -39,8 +39,8 @@ if (!$is_super_admin) {
         mysqli_stmt_execute($scope_stmt);
         $scope_row = mysqli_fetch_assoc(mysqli_stmt_get_result($scope_stmt));
         mysqli_stmt_close($scope_stmt);
-        $tenant_id = (int)($scope_row['hms_hospital_id'] ?? 0);
-        if ($tenant_id <= 0) {
+        $tenant_id = trim((string)($scope_row['hms_hospital_id'] ?? ''));
+        if ($tenant_id === '') {
             // 예전 연동 데이터는 별도 mapping 테이블에 저장되어 있을 수 있다.
             try {
                 $mapping_stmt = mysqli_prepare($connect, "SELECT hms_tenant_id FROM gangnamunni_hospital_mapping WHERE hospital_id = ? LIMIT 1");
@@ -49,13 +49,13 @@ if (!$is_super_admin) {
                     mysqli_stmt_execute($mapping_stmt);
                     $mapping_row = mysqli_fetch_assoc(mysqli_stmt_get_result($mapping_stmt));
                     mysqli_stmt_close($mapping_stmt);
-                    $tenant_id = (int)($mapping_row['hms_tenant_id'] ?? 0);
+                    $tenant_id = trim((string)($mapping_row['hms_tenant_id'] ?? ''));
                 }
             } catch (Throwable $e) {
                 error_log('[admin_appointment_wizard] HMS tenant mapping lookup failed: ' . $e->getMessage());
             }
         }
-        if ($tenant_id > 0) {
+        if ($tenant_id !== '' && preg_match('/^[a-zA-Z0-9-]{1,64}$/', $tenant_id)) {
             $allowed_tenant_ids[] = $tenant_id;
         }
     }
@@ -63,8 +63,10 @@ if (!$is_super_admin) {
 }
 
 function appointment_tenant_allowed($tenant_id, $allowed_tenant_ids) {
-    return $tenant_id > 0
-        && ($allowed_tenant_ids === null || in_array((int)$tenant_id, $allowed_tenant_ids, true));
+    $tenant_id = trim((string)$tenant_id);
+    return $tenant_id !== ''
+        && preg_match('/^[a-zA-Z0-9-]{1,64}$/', $tenant_id)
+        && ($allowed_tenant_ids === null || in_array($tenant_id, $allowed_tenant_ids, true));
 }
 
 // ── AJAX 핸들러 ──
@@ -75,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // 환자 검색
     if ($action === 'search_patients') {
         $q = $esc(trim($_POST['query'] ?? ''));
-        $tenantId = intval($_POST['tenant_id'] ?? 0);
+        $tenantId = trim((string)($_POST['tenant_id'] ?? ''));
         if (!appointment_tenant_allowed($tenantId, $allowed_tenant_ids)) {
             echo json_encode(['success' => false, 'error' => '해당 병원에 대한 권한이 없습니다.']); exit;
         }
@@ -84,7 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
         $where = "WHERE (u.first_name LIKE '%{$q}%' OR u.last_name LIKE '%{$q}%' OR u.email LIKE '%{$q}%' OR u.phone LIKE '%{$q}%')";
-        if ($tenantId) $where .= " AND p.tenant_id = {$tenantId}";
+        $tenantIdEsc = $esc($tenantId);
+        $where .= " AND p.tenant_id = '{$tenantIdEsc}'";
         $sql = "SELECT p.id AS patient_id, u.id AS user_id, u.first_name, u.last_name, u.email, u.phone
                 FROM patients p
                 JOIN users u ON u.id = p.user_id
@@ -100,11 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     // 진료과 목록
     if ($action === 'load_departments') {
-        $tenantId = intval($_POST['tenant_id'] ?? 0);
+        $tenantId = trim((string)($_POST['tenant_id'] ?? ''));
         if (!appointment_tenant_allowed($tenantId, $allowed_tenant_ids)) {
             echo json_encode(['success' => false, 'error' => '해당 병원에 대한 권한이 없습니다.']); exit;
         }
-        $where = $tenantId ? "WHERE tenant_id = {$tenantId}" : "";
+        $tenantIdEsc = $esc($tenantId);
+        $where = "WHERE tenant_id = '{$tenantIdEsc}'";
         $r = mysqli_query($connect, "SELECT id, title FROM doctor_departments {$where} ORDER BY title");
         $depts = [];
         while ($row = mysqli_fetch_assoc($r)) $depts[] = $row;
@@ -115,12 +119,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // 의사 목록 (진료과별)
     if ($action === 'load_doctors') {
         $deptId = intval($_POST['department_id'] ?? 0);
-        $tenantId = intval($_POST['tenant_id'] ?? 0);
+        $tenantId = trim((string)($_POST['tenant_id'] ?? ''));
         if (!appointment_tenant_allowed($tenantId, $allowed_tenant_ids)) {
             echo json_encode(['success' => false, 'error' => '해당 병원에 대한 권한이 없습니다.']); exit;
         }
-        $where = "WHERE d.doctor_department_id = {$deptId}";
-        if ($tenantId) $where .= " AND d.tenant_id = {$tenantId}";
+        $tenantIdEsc = $esc($tenantId);
+        $where = "WHERE d.doctor_department_id = {$deptId} AND d.tenant_id = '{$tenantIdEsc}'";
         $sql = "SELECT d.id AS doctor_id, u.first_name, u.last_name, u.email,
                        d.specialist, d.appointment_charge
                 FROM doctors d
@@ -138,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'load_schedule_slots') {
         $doctorId = intval($_POST['doctor_id'] ?? 0);
         $date = $esc(trim($_POST['date'] ?? ''));
-        $tenantId = intval($_POST['tenant_id'] ?? 0);
+        $tenantId = trim((string)($_POST['tenant_id'] ?? ''));
 
         if (!appointment_tenant_allowed($tenantId, $allowed_tenant_ids)) {
             echo json_encode(['success' => false, 'error' => '해당 병원에 대한 권한이 없습니다.']); exit;
@@ -155,12 +159,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $dayName = $dayNames[$dayOfWeek];
 
         // 의사 스케줄 조회
+        $tenantIdEsc = $esc($tenantId);
         $sql = "SELECT s.per_patient_time, sd.available_from, sd.available_to
                 FROM schedules s
                 JOIN schedule_days sd ON sd.schedule_id = s.id
                 JOIN doctors d ON d.id = s.doctor_id
                 WHERE s.doctor_id = {$doctorId}
-                AND d.tenant_id = {$tenantId}
+                AND d.tenant_id = '{$tenantIdEsc}'
                 AND sd.available_on = '{$dayName}'
                 LIMIT 1";
         $r = mysqli_query($connect, $sql);
@@ -209,7 +214,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $hospitals = [];
         $tenant_scope = $allowed_tenant_ids === null
             ? ''
-            : ' WHERE id IN (' . (empty($allowed_tenant_ids) ? '0' : implode(',', array_map('intval', $allowed_tenant_ids))) . ')';
+            : " WHERE id IN ('" . (empty($allowed_tenant_ids)
+                ? '__none__'
+                : implode("','", array_map(function($id) use ($connect) {
+                    return mysqli_real_escape_string($connect, $id);
+                }, $allowed_tenant_ids))) . "')";
         $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants{$tenant_scope} ORDER BY hospital_name");
         while ($row = mysqli_fetch_assoc($r)) $hospitals[] = $row;
         echo json_encode(['success' => true, 'data' => $hospitals]);
@@ -229,10 +238,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $patientId    = intval($data['patient_id'] ?? 0);
             $doctorId     = intval($data['doctor_id'] ?? 0);
             $departmentId = intval($data['department_id'] ?? 0);
-            $tenantId     = intval($data['tenant_id'] ?? 0);
+            $tenantId     = trim((string)($data['tenant_id'] ?? ''));
             if (!appointment_tenant_allowed($tenantId, $allowed_tenant_ids)) {
                 throw new Exception('해당 병원에 대한 예약 등록 권한이 없습니다.');
             }
+            $tenantIdEsc = $esc($tenantId);
             $opdDate      = $esc($data['opd_date'] ?? ''); // 날짜+시간 yyyy-mm-dd HH:ii:ss
             $problem      = $esc($data['problem'] ?? '');
             $paymentType  = $esc($data['payment_type'] ?? '');
@@ -240,9 +250,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $now          = date('Y-m-d H:i:s');
 
             // 보낸 ID들도 모두 선택한/배정된 tenant 소속인지 서버에서 재검증한다.
-            $patient_ok = mysqli_query($connect, "SELECT 1 FROM patients WHERE id = {$patientId} AND tenant_id = {$tenantId} LIMIT 1");
-            $doctor_ok = mysqli_query($connect, "SELECT 1 FROM doctors WHERE id = {$doctorId} AND tenant_id = {$tenantId} LIMIT 1");
-            $department_ok = mysqli_query($connect, "SELECT 1 FROM doctor_departments WHERE id = {$departmentId} AND tenant_id = {$tenantId} LIMIT 1");
+            $patient_ok = mysqli_query($connect, "SELECT 1 FROM patients WHERE id = {$patientId} AND tenant_id = '{$tenantIdEsc}' LIMIT 1");
+            $doctor_ok = mysqli_query($connect, "SELECT 1 FROM doctors WHERE id = {$doctorId} AND tenant_id = '{$tenantIdEsc}' LIMIT 1");
+            $department_ok = mysqli_query($connect, "SELECT 1 FROM doctor_departments WHERE id = {$departmentId} AND tenant_id = '{$tenantIdEsc}' LIMIT 1");
             if (!$patient_ok || mysqli_num_rows($patient_ok) !== 1
                 || !$doctor_ok || mysqli_num_rows($doctor_ok) !== 1
                 || !$department_ok || mysqli_num_rows($department_ok) !== 1) {
@@ -253,7 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $sql = "INSERT INTO appointments (patient_id, doctor_id, department_id, opd_date, problem,
                     is_completed, payment_type, tenant_id, created_at, updated_at)
                     VALUES ({$patientId}, {$doctorId}, {$departmentId}, '{$opdDate}',
-                    '{$problem}', 0, '{$paymentType}', {$tenantId}, '{$now}', '{$now}')";
+                    '{$problem}', 0, '{$paymentType}', '{$tenantIdEsc}', '{$now}', '{$now}')";
             mysqli_query($connect, $sql);
             if (mysqli_error($connect)) throw new Exception('appointments INSERT 실패: ' . mysqli_error($connect));
             $appointmentId = mysqli_insert_id($connect);
@@ -293,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // gangnamunni_hospitals에서 hms_hospital_id로 hospital_id 조회
             $hospitalId = 0;
-            $hr = mysqli_query($connect, "SELECT id FROM gangnamunni_hospitals WHERE hms_hospital_id = {$tenantId} LIMIT 1");
+            $hr = mysqli_query($connect, "SELECT id FROM gangnamunni_hospitals WHERE hms_hospital_id = '{$tenantIdEsc}' LIMIT 1");
             if ($hrow = mysqli_fetch_assoc($hr)) $hospitalId = $hrow['id'];
 
             if ($hospitalId > 0) {
