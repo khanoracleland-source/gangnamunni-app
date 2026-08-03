@@ -339,6 +339,38 @@ $page_title = '내 예약';
         .change-confirm-btn { height: 52px; border: 1px solid var(--color-primary); background: #fff; color: var(--color-primary); font-size: 16px; font-weight: 700; cursor: pointer; }
         .change-confirm-btn.primary { background: var(--color-primary); color: #fff; }
 
+        /* 예약 취소 사유 바텀시트 */
+        .modal-overlay.cancel-sheet-modal { align-items:flex-end; z-index:12000; }
+        .cancel-sheet {
+            width:100%; max-width:640px; padding:14px 28px calc(28px + env(safe-area-inset-bottom,0px));
+            background:#fff; text-align:center; animation:bookingModalUp .32s cubic-bezier(.32,.72,0,1);
+        }
+        .cancel-sheet-handle { width:48px; height:5px; border-radius:3px; background:var(--color-primary); margin:0 auto 48px; }
+        .cancel-sheet-title { font-size:23px; font-weight:750; line-height:1.4; letter-spacing:-.04em; }
+        .cancel-sheet-sub { margin-top:14px; font-size:15px; font-weight:600; }
+        .cancel-reason-grid {
+            max-width:430px; margin:30px auto 18px; display:grid; grid-template-columns:1fr 1fr;
+            gap:20px 36px; text-align:left;
+        }
+        .cancel-reason-option { display:flex; align-items:center; gap:10px; font-size:16px; cursor:pointer; }
+        .cancel-reason-option input {
+            appearance:none; -webkit-appearance:none; width:16px; height:16px; margin:0;
+            border:1px solid #d2d2d2; background:#fff; display:grid; place-content:center;
+        }
+        .cancel-reason-option input::before { content:""; width:8px; height:8px; transform:scale(0); background:#fff; }
+        .cancel-reason-option input:checked { border-color:#d6001c; background:#d6001c; }
+        .cancel-reason-option input:checked::before { transform:scale(1); clip-path:polygon(14% 44%,0 65%,41% 100%,100% 20%,80% 0,38% 62%); }
+        .cancel-custom-reason {
+            width:100%; max-width:430px; height:52px; margin:0 auto; padding:0 16px;
+            border:1px solid #d8d8d8; background:#fff; font-size:14px;
+        }
+        .cancel-custom-reason::placeholder { color:#bbb; }
+        .cancel-request-btn {
+            width:220px; height:54px; margin-top:26px; border:0; background:var(--color-primary);
+            color:#fff; font-size:16px; font-weight:700; cursor:pointer;
+        }
+        .cancel-request-btn:disabled { opacity:.55; cursor:wait; }
+
         @media (max-width: 420px) {
             .tab-content { padding-left: 12px; padding-right: 12px; }
             .booking-card { padding-left: 16px; padding-right: 16px; }
@@ -349,6 +381,9 @@ $page_title = '내 예약';
             .booking-summary { gap: 12px; }
             .booking-thumb { width: 64px; height: 64px; flex-basis: 64px; }
             .booking-card-actions, .change-confirm-actions { gap: 10px; }
+            .cancel-sheet { padding-left:20px; padding-right:20px; }
+            .cancel-reason-grid { gap:18px 14px; }
+            .cancel-reason-option { font-size:14px; }
         }
     </style>
     <script>
@@ -525,19 +560,23 @@ $page_title = '내 예약';
     <?php endif; ?>
 </div>
 
-<!-- 취소 확인 모달 -->
-<div class="modal-overlay" id="cancelModal">
-    <div class="modal-box">
-        <div class="modal-title">예약 취소</div>
-        <p style="font-size:14px;color:var(--color-text);line-height:1.6;margin-bottom:18px;">예약 취소를 요청하시겠습니까?</p>
+<!-- 예약 취소 사유 바텀시트 -->
+<div class="modal-overlay cancel-sheet-modal" id="cancelModal" aria-hidden="true" onclick="if (event.target === this) closeModal('cancelModal')">
+    <section class="cancel-sheet" role="dialog" aria-modal="true" aria-labelledby="cancelSheetTitle">
+        <div class="cancel-sheet-handle" aria-hidden="true"></div>
+        <h2 class="cancel-sheet-title" id="cancelSheetTitle">예약을 취소하시는 이유가 있으신가요?</h2>
+        <p class="cancel-sheet-sub">보다 나은 서비스를 위해 의견을 들려주세요</p>
         <input type="hidden" id="cancelBookingId">
-        <!-- 취소 사유(선택) → cancel_reason 으로 전송되어 관리자에게 표시됨 -->
-        <textarea class="modal-input" id="cancelReason" rows="3" placeholder="취소 사유 (선택 · 관리자 전달용)"></textarea>
-        <div class="modal-btns">
-            <button class="modal-btn modal-btn-cancel" onclick="closeModal('cancelModal')">아니오</button>
-            <button class="modal-btn modal-btn-danger" onclick="submitCancel()">네</button>
+        <div class="cancel-reason-grid">
+            <label class="cancel-reason-option"><input type="radio" name="cancel_reason_choice" value="일정 변경" checked><span>일정 변경</span></label>
+            <label class="cancel-reason-option"><input type="radio" name="cancel_reason_choice" value="개인 사정"><span>개인 사정</span></label>
+            <label class="cancel-reason-option"><input type="radio" name="cancel_reason_choice" value="다른 병원 예약"><span>다른 병원 예약</span></label>
+            <label class="cancel-reason-option"><input type="radio" name="cancel_reason_choice" value="금액 / 시술 변경"><span>금액 / 시술 변경</span></label>
+            <label class="cancel-reason-option"><input type="radio" name="cancel_reason_choice" value="기타"><span>기타</span></label>
         </div>
-    </div>
+        <input class="cancel-custom-reason" id="cancelReasonCustom" type="text" maxlength="255" placeholder="직접 입력할게요 (선택)">
+        <button type="button" class="cancel-request-btn" id="cancelRequestButton" onclick="submitCancel()">예약 취소 요청</button>
+    </section>
 </div>
 
 <!-- 예약 변경 횟수 안내 바텀시트 -->
@@ -599,12 +638,23 @@ function switchTab(tab) {
     }
 }
 
+var requestedTab = new URLSearchParams(window.location.search).get('tab');
+if (requestedTab === 'completed' || requestedTab === 'cancelled') {
+    switchTab(requestedTab);
+}
+
 function openCancelModal(id) {
     document.getElementById('cancelBookingId').value = id;
-    // cancelReason 은 확인 팝업(네/아니오)으로 바뀌며 주석 처리됨 → 있을 때만 초기화
-    var rEl = document.getElementById('cancelReason');
-    if (rEl) rEl.value = '';
-    document.getElementById('cancelModal').classList.add('active');
+    var reasons = document.querySelectorAll('input[name="cancel_reason_choice"]');
+    if (reasons.length) reasons[0].checked = true;
+    document.getElementById('cancelReasonCustom').value = '';
+    var requestButton = document.getElementById('cancelRequestButton');
+    requestButton.disabled = false;
+    requestButton.textContent = '예약 취소 요청';
+    var modal = document.getElementById('cancelModal');
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
 }
 
 function openEditModal(id, date, time) {
@@ -643,27 +693,25 @@ function closeModal(id) {
 
 function submitCancel() {
     var id = document.getElementById('cancelBookingId').value;
-    var reasonEl = document.getElementById('cancelReason');
-    var reason = reasonEl ? reasonEl.value : '';
-    var fd = new FormData();
-    fd.append('csrf_token', <?php echo json_encode($my_bookings_csrf); ?>);
-    fd.append('booking_id', id);
-    fd.append('phone', searchPhone);
-    fd.append('cancel_reason', reason);
-
-    fetch('api/cancel_booking.php', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert(data.message);
-        }
-    })
-    .catch(function() { alert('네트워크 오류가 발생했습니다.'); });
-
-    closeModal('cancelModal');
+    var selectedReason = document.querySelector('input[name="cancel_reason_choice"]:checked');
+    var customReason = document.getElementById('cancelReasonCustom').value.trim();
+    var reason = selectedReason ? selectedReason.value : '';
+    if (customReason) reason += (reason ? ': ' : '') + customReason;
+    var requestButton = document.getElementById('cancelRequestButton');
+    requestButton.disabled = true;
+    requestButton.textContent = '요청 중...';
+    var form = document.createElement('form');
+    form.method = 'post';
+    form.action = 'booking_cancel_request.php';
+    [['csrf_token', <?php echo json_encode($my_bookings_csrf); ?>], ['booking_id', id], ['cancel_reason', reason]].forEach(function(item) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = item[0];
+        input.value = item[1];
+        form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
 }
 
 function submitEdit() {

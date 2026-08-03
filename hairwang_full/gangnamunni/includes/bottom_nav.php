@@ -14,7 +14,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 $is_home = ($current_page === 'index.php');
 $is_hospital = in_array($current_page, ['hospitals.php', 'detail.php', 'doctor_detail.php', 'booking.php']);
 $is_community = in_array($current_page, ['community.php', 'community_write.php', 'detail_community.php', 'reviews.php', 'review_write.php']);
-$is_my = in_array($current_page, ['mypage.php', 'my_bookings.php', 'my_notifications.php', 'my_events.php', 'my_wishlist.php', 'my_reviews.php', 'my_points.php', 'my_coupons.php', 'profile_edit.php', 'notification_settings.php', 'qna.php', 'faq.php', 'chat.php']);
+$is_my = in_array($current_page, ['mypage.php', 'my_bookings.php', 'booking_request_detail.php', 'booking_cancel_request.php', 'booking_cancel_complete.php', 'my_notifications.php', 'my_events.php', 'my_wishlist.php', 'my_reviews.php', 'my_points.php', 'my_coupons.php', 'profile_edit.php', 'notification_settings.php', 'qna.php', 'faq.php', 'chat.php']);
 
 // 관리자 설정에서 탭 ON/OFF 로드
 $bottom_nav_settings = [];
