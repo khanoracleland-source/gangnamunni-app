@@ -121,7 +121,7 @@ if (!function_exists('getSettingValue')) {
 //   원장 미설치 환경에서도 페이지가 깨지지 않도록 테이블 존재를 먼저 확인한다.
 $payment_map = [];
 $_pay_ids = [];
-foreach ($active_bookings as $_ab) { if (($_ab['status'] ?? '') === 'confirmed') $_pay_ids[] = (int)$_ab['id']; }
+foreach ($bookings as $_booking_row) { $_pay_ids[] = (int)$_booking_row['id']; }
 if ($_pay_ids) {
     $_chk = mysqli_query($connect,
         "SELECT 1 FROM information_schema.TABLES
@@ -315,6 +315,13 @@ $page_title = '내 예약';
         }
         .booking-card-action.primary { background: var(--color-primary); color: #fff; }
         .booking-card-action:disabled { opacity: .45; cursor: not-allowed; }
+        .cancelled-card .booking-card-top { margin-bottom: 16px; }
+        .cancelled-card .cancel-state { color: var(--color-primary); font-size: 15px; font-weight: 700; white-space: nowrap; }
+        .cancelled-card .booking-card-actions { grid-template-columns: minmax(180px, 240px); justify-content: center; }
+        .cancelled-card .booking-progress { margin-bottom: 24px; }
+        .cancelled-card .progress-step.done { color: #aaa; }
+        .cancelled-card .progress-step.done::before,
+        .cancelled-card .progress-step.done::after { background: var(--color-primary); }
         .push-tip {
             position: relative; margin: 2px 18px 22px; padding: 16px 46px 16px 20px;
             border: 1px solid var(--color-primary); border-radius: 18px; background: #fff;
@@ -381,6 +388,9 @@ $page_title = '내 예약';
             .booking-summary { gap: 12px; }
             .booking-thumb { width: 64px; height: 64px; flex-basis: 64px; }
             .booking-card-actions, .change-confirm-actions { gap: 10px; }
+            .cancelled-card .booking-card-date { font-size: 14px; }
+            .cancelled-card .cancel-state { font-size: 12px; }
+            .cancelled-card .booking-detail-link { padding-left: 6px; padding-right: 6px; font-size: 12px; }
             .cancel-sheet { padding-left:20px; padding-right:20px; }
             .cancel-reason-grid { gap:18px 14px; }
             .cancel-reason-option { font-size:14px; }
@@ -491,6 +501,32 @@ $page_title = '내 예약';
             $status_labels = ['completed'=>'완료','cancelled'=>'취소완료','no_show'=>'노쇼'];
             $status_label = $status_labels[$bk['status']] ?? $bk['status'];
         ?>
+        <?php if ($_is_cancelled = in_array($bk['status'], ['cancelled', 'no_show'], true)):
+            $_cancel_payment = $payment_map[(int)$bk['id']] ?? null;
+            $_refund_complete = !$_cancel_payment || in_array($_cancel_payment['status'] ?? '', ['refunded', 'cancelled'], true);
+            $_cancel_steps = ['예약 취소 접수','병원 확인 중','취소·환불 대기','취소·환불 확정'];
+            $_cancel_active = $_refund_complete ? 4 : 1;
+            $_cancel_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
+            $_cancel_days = ['일','월','화','수','목','금','토'];
+            $_cancel_hour = (int)date('G', $_cancel_ts);
+            $_cancel_hour12 = $_cancel_hour % 12 ?: 12;
+        ?>
+        <div class="booking-card cancelled-card" data-status="<?php echo htmlspecialchars($bk['status']); ?>">
+            <div class="booking-card-top">
+                <span class="booking-card-date"><?php echo date('Y.n.j', $_cancel_ts) . '(' . $_cancel_days[(int)date('w', $_cancel_ts)] . ') ' . ($_cancel_hour < 12 ? '오전 ' : '오후 ') . $_cancel_hour12 . ':' . date('i', $_cancel_ts); ?></span>
+                <?php if ($_refund_complete): ?><span class="cancel-state">취소·환불완료</span><?php endif; ?>
+                <a class="booking-detail-link" href="booking_cancel_detail.php?booking_id=<?php echo (int)$bk['id']; ?>">예약상세</a>
+            </div>
+            <div class="booking-summary">
+                <div class="booking-thumb"><?php if (!empty($bk['hospital_image'])): ?><img src="<?php echo htmlspecialchars($bk['hospital_image']); ?>" alt=""><?php else: ?>SEOUL<br>BEAUTY<?php endif; ?></div>
+                <div class="booking-summary-copy"><div class="booking-treatment"><?php echo htmlspecialchars($bk['treatment'] ?: '-'); ?></div><div class="booking-hospital"><?php echo htmlspecialchars($bk['hospital_name'] ?: '-'); ?></div><div class="booking-price"><?php echo number_format((int)($bk['price'] ?? 0)); ?>원</div></div>
+            </div>
+            <div class="booking-progress" aria-label="예약 취소 진행 상태">
+                <?php foreach ($_cancel_steps as $_cancel_i => $_cancel_label): ?><div class="progress-step<?php echo ($_cancel_i + 1) === $_cancel_active ? ' active' : (($_cancel_i + 1) < $_cancel_active ? ' done' : ''); ?>"><?php echo $_cancel_label; ?></div><?php endforeach; ?>
+            </div>
+            <div class="booking-card-actions"><a class="booking-card-action primary" href="booking.php?id=<?php echo (int)$bk['hospital_id']; ?>">다시예약</a></div>
+        </div>
+        <?php else: ?>
         <div class="booking-card" data-status="<?php echo $bk['status']; ?>">
             <div class="booking-header">
                 <div>
@@ -540,6 +576,7 @@ $page_title = '내 예약';
                 </div>
             </div>
         </div>
+        <?php endif; ?>
         <?php endforeach; ?>
     </div>
 
