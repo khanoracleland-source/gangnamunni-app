@@ -76,6 +76,7 @@ $booking_submitted = false;
 $booking_error = '';
 $hms_appointment_id = null;  // HMS 예약 번호 (실시간 연동 시)
 $hms_api_success = false;    // HMS API 전송 성공 여부
+$is_ajax_booking = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['response_mode'] ?? '') === 'ajax';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // init.php(그누보드)가 $_POST 에 슬래시를 추가하므로 stripslashes 후 사용해야
@@ -252,6 +253,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            if ($is_ajax_booking) {
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode([
+                    'success' => true,
+                    'booking_id' => (int)$booking_id,
+                    'hms_appointment_id' => $hms_appointment_id ? (int)$hms_appointment_id : null,
+                    'detail_url' => 'booking_detail.php?booking_id=' . (int)$booking_id . '&new=1',
+                    'bookings_url' => 'my_bookings.php',
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+
             // 예약 신청 완료 → 예약 상세(booking_detail.php)로 이동 : 신청 후 화면을 상세 뷰로 통일
             // new=1 : 방금 신청 완료 상태 → booking_detail.php 에서 추가 요소 표시용
             // (출력 전이므로 header 안전. 본인 예약이므로 booking_detail 소유자 검증 통과)
@@ -263,6 +276,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+if ($is_ajax_booking && !$booking_submitted) {
+    header('Content-Type: application/json; charset=UTF-8');
+    http_response_code(422);
+    echo json_encode([
+        'success' => false,
+        'message' => $booking_error !== '' ? $booking_error : term('booking', '예약') . ' 요청을 처리하지 못했습니다.',
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+$booking_member = (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in())
+    ? get_gangnamunni_member()
+    : [];
+$booking_member_name = trim((string)($booking_member['mb_name'] ?? ''));
+$booking_member_phone = trim((string)($booking_member['mb_hp'] ?? ($_SESSION['user_phone'] ?? '')));
 
 $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true);
 
@@ -912,6 +941,91 @@ $page_css = '
         color: #BBBBBB;
     }
 
+    /* 예약 최종 확인 화면 */
+    .booking-confirm-overlay,
+    .booking-success-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 12000;
+        justify-content: center;
+    }
+    .booking-confirm-overlay.open { display: flex; background: rgba(0,0,0,.72); }
+    .booking-confirm-page {
+        width: 100%; max-width: 640px; min-height: 100%; overflow-y: auto;
+        background: #fff; padding: 0 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    }
+    .confirm-page-head {
+        height: 64px; display: grid; grid-template-columns: 1fr;
+        align-items: center; text-align: center;
+    }
+    .confirm-page-title { font-size: 19px; font-weight: 600; letter-spacing: -.04em; }
+    .booking-state-badge {
+        display: inline-flex; align-items: center; gap: 24px; margin: 18px 0 24px;
+        padding: 10px 16px; background: #BE1935; color: #fff; font-size: 18px; font-weight: 700;
+    }
+    .confirm-info-list { border-bottom: 1px solid #ddd; }
+    .confirm-info-row {
+        min-height: 58px; display: grid; grid-template-columns: 102px minmax(0,1fr);
+        align-items: center; border-top: 1px solid #ddd; font-size: 16px;
+    }
+    .confirm-info-row:first-child { border-top: 0; }
+    .confirm-label { color: #aaa; font-weight: 600; }
+    .confirm-value { min-width: 0; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .confirm-person {
+        margin: 18px 0; padding: 17px 20px; background: #f4f4f4;
+        display: grid; grid-template-columns: 88px 1fr; row-gap: 8px; font-size: 16px;
+    }
+    .confirm-person-label { color: #aaa; font-weight: 600; }
+    .confirm-person-value { font-weight: 700; }
+    .confirm-notice { background: #fff1f3; padding: 24px 24px 20px; margin-bottom: 20px; }
+    .confirm-notice-title { color: #BE1935; font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .confirm-notice ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.85; }
+    .confirm-notice em { color: #BE1935; font-style: normal; }
+    .confirm-submit {
+        width: 100%; height: 54px; border: 0; background: #BE1935; color: #fff;
+        font-size: 17px; font-weight: 700; cursor: pointer;
+    }
+    .confirm-submit:disabled { opacity: .55; cursor: wait; }
+
+    /* 접수 완료 바텀시트 */
+    .booking-success-overlay { align-items: flex-end; background: rgba(0,0,0,.58); }
+    .booking-success-overlay.open { display: flex; }
+    .booking-success-sheet {
+        width: 100%; max-width: 640px; max-height: 88vh; overflow-y: auto; background: #fff;
+        padding: 12px 28px calc(28px + env(safe-area-inset-bottom, 0px));
+        animation: bookingSheetUp .36s cubic-bezier(.32,.72,0,1);
+    }
+    @keyframes bookingSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .success-sheet-handle { width: 48px; height: 5px; border-radius: 3px; background: #BE1935; margin: 0 auto 46px; }
+    .success-check {
+        width: 54px; height: 54px; border-radius: 50%; margin: 0 auto 22px;
+        background: #BE1935; color: #fff; display: flex; align-items: center; justify-content: center;
+        font-size: 32px;
+    }
+    .success-sheet-title { text-align: center; font-size: 24px; font-weight: 800; letter-spacing: -.04em; }
+    .success-sheet-desc { text-align: center; font-size: 16px; line-height: 1.7; margin: 14px 0 30px; }
+    .success-wait-box { background: #fff1f3; padding: 20px; text-align: center; }
+    .success-wait-title { font-size: 17px; font-weight: 700; color: #23405b; }
+    .success-wait-time { margin: 4px 0 18px; font-size: 14px; line-height: 1.55; }
+    .success-alert-box { background: #fff; padding: 20px 14px; }
+    .success-alert-title { color: #BE1935; font-weight: 700; margin-bottom: 9px; }
+    .success-alert-copy { font-size: 14px; line-height: 1.75; }
+    .success-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 28px; }
+    .success-action {
+        height: 52px; border: 1px solid #BE1935; background: #fff; color: #BE1935;
+        display: flex; align-items: center; justify-content: center; text-decoration: none;
+        font-size: 16px; font-weight: 700;
+    }
+    .success-action.primary { background: #BE1935; color: #fff; }
+
+    @media (max-width: 380px) {
+        .booking-confirm-page { padding-left: 16px; padding-right: 16px; }
+        .confirm-info-row { grid-template-columns: 86px minmax(0,1fr); font-size: 15px; }
+        .booking-success-sheet { padding-left: 20px; padding-right: 20px; }
+        .success-sheet-title { font-size: 22px; }
+    }
+
     /* 안내 사항 */
     .notice-box {
         background: #FFF3E0;
@@ -1255,22 +1369,121 @@ $page_js = '
     window.updateSubmitState = updateSubmitState;
     updateSubmitState();
 
-    // 폼 유효성 검사
+    function formatBookingDateTime(dateValue, timeValue) {
+        var d = new Date(dateValue + "T00:00:00");
+        var weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+        var hour = parseInt(timeValue.split(":")[0], 10);
+        var minute = timeValue.split(":")[1] || "00";
+        var ap = hour < 12 ? "오전" : "오후";
+        var displayHour = hour % 12 || 12;
+        return (d.getMonth() + 1) + "월 " + d.getDate() + "일 (" + weekdays[d.getDay()] + ") " + ap + " " + displayHour + ":" + minute;
+    }
+
+    function openBookingConfirm() {
+        var overlay = document.getElementById("bookingConfirmOverlay");
+        var dateValue = document.getElementById("bookingDate").value;
+        var timeValue = document.getElementById("timeSelect").value;
+        var treatment = document.getElementById("treatmentInput").value;
+        document.getElementById("confirmDateTime").textContent = formatBookingDateTime(dateValue, timeValue);
+        document.getElementById("confirmTreatment").textContent = treatment;
+
+        var target = new Date(dateValue + "T00:00:00");
+        var today = new Date(SERVER_TODAY + "T00:00:00");
+        var days = Math.max(0, Math.round((target - today) / 86400000));
+        document.getElementById("confirmDday").textContent = "D-" + days;
+        overlay.classList.add("open");
+        overlay.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+    }
+    function closeBookingConfirm() {
+        var overlay = document.getElementById("bookingConfirmOverlay");
+        overlay.classList.remove("open");
+        overlay.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    }
+    async function submitConfirmedBooking() {
+        var form = document.getElementById("bookingForm");
+        var button = document.getElementById("confirmBookingButton");
+        if (!form || button.disabled) return;
+        button.disabled = true;
+        button.textContent = "접수 중...";
+        try {
+            var response = await fetch(form.getAttribute("action") || window.location.href, {
+                method: "POST",
+                body: new FormData(form),
+                credentials: "same-origin",
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            var data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || "예약 요청을 처리하지 못했습니다.");
+
+            closeBookingConfirm();
+            var bookingsLink = document.getElementById("successBookingsLink");
+            if (bookingsLink && data.bookings_url) bookingsLink.href = data.bookings_url;
+            var successOverlay = document.getElementById("bookingSuccessOverlay");
+            successOverlay.classList.add("open");
+            successOverlay.setAttribute("aria-hidden", "false");
+            document.body.style.overflow = "hidden";
+            lockSuccessScreen();
+        } catch (error) {
+            alert(error.message || "예약 중 오류가 발생했습니다. 다시 시도해주세요.");
+            button.disabled = false;
+            button.textContent = "확인했어요";
+        }
+    }
+    window.closeBookingConfirm = closeBookingConfirm;
+    window.submitConfirmedBooking = submitConfirmedBooking;
+
+    var successExitAllowed = false;
+    var successLockedElements = [];
+    function lockSuccessScreen() {
+        var overlay = document.getElementById("bookingSuccessOverlay");
+        if (!overlay) return;
+
+        // 바텀시트 밖의 모든 포커스 가능한 요소를 잠가 키보드/보조기기에서도
+        // 아래 두 링크 외에는 조작할 수 없게 한다.
+        successLockedElements = [];
+        document.querySelectorAll("a,button,input,select,textarea,[tabindex]").forEach(function(el) {
+            if (overlay.contains(el)) return;
+            successLockedElements.push({ el: el, tabindex: el.getAttribute("tabindex") });
+            el.setAttribute("tabindex", "-1");
+        });
+
+        overlay.querySelectorAll("a").forEach(function(link) {
+            link.addEventListener("click", function() { successExitAllowed = true; }, { once: true });
+        });
+
+        // 모바일 하드웨어 Back/브라우저 Back도 완료 화면을 닫지 못하게 한다.
+        history.pushState({ bookingSuccessLocked: true }, "", window.location.href);
+        window.addEventListener("popstate", keepBookingSuccessOpen);
+        var firstAction = overlay.querySelector(".success-action.primary");
+        if (firstAction) firstAction.focus();
+    }
+    function keepBookingSuccessOpen() {
+        if (successExitAllowed) return;
+        var overlay = document.getElementById("bookingSuccessOverlay");
+        if (overlay && overlay.classList.contains("open")) {
+            history.pushState({ bookingSuccessLocked: true }, "", window.location.href);
+        }
+    }
+
+    // 폼 유효성 검사 후 서버 제출 대신 최종 확인 화면을 먼저 연다.
     var bookingForm = document.getElementById("bookingForm");
     if (bookingForm) {
         bookingForm.addEventListener("submit", function(e) {
+            e.preventDefault();
             var treatment = document.getElementById("treatmentInput").value;
             if (!treatment) {
-                e.preventDefault();
                 alert("' . term('service', '시술') . '을 선택해주세요.");
                 return false;
             }
             var timeSel = document.getElementById("timeSelect");
             if (timeSel && !timeSel.value) {
-                e.preventDefault();
                 alert("시간을 선택해주세요.");
                 return false;
             }
+            openBookingConfirm();
+            return false;
         });
     }
 
@@ -1423,6 +1636,7 @@ include __DIR__ . '/includes/header.php';
     <!-- 예약 폼 -->
     <form method="POST" class="booking-form" id="bookingForm">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+        <input type="hidden" name="response_mode" value="ajax">
         <!-- 예약하기 헤더 + 옵션 변경(시술 선택 시트) -->
         <div class="form-group head-group">
             <div class="section-head-row">
@@ -1485,6 +1699,57 @@ include __DIR__ . '/includes/header.php';
             <button type="submit" class="btn-submit"><?php echo term('booking', '예약'); ?> 신청하기</button>
         </div>
     </form>
+
+    <!-- 1단계: 예약 내용 최종 확인 -->
+    <div class="booking-confirm-overlay" id="bookingConfirmOverlay" aria-hidden="true">
+        <section class="booking-confirm-page" role="dialog" aria-modal="true" aria-labelledby="bookingConfirmTitle">
+            <header class="confirm-page-head">
+                <h2 class="confirm-page-title" id="bookingConfirmTitle">이대로 예약을 진행할까요?</h2>
+            </header>
+            <div class="booking-state-badge"><span>시술예정</span><span id="confirmDday">D-0</span></div>
+            <div class="confirm-info-list">
+                <div class="confirm-info-row"><span class="confirm-label">예약번호</span><span class="confirm-value">접수 후 발급</span></div>
+                <div class="confirm-info-row"><span class="confirm-label">날짜/시간</span><span class="confirm-value" id="confirmDateTime"></span></div>
+                <div class="confirm-info-row"><span class="confirm-label">선택시술</span><span class="confirm-value" id="confirmTreatment"></span></div>
+                <div class="confirm-info-row"><span class="confirm-label">병원</span><span class="confirm-value"><?php echo htmlspecialchars($hospital['name']); ?></span></div>
+            </div>
+            <div class="confirm-person">
+                <span class="confirm-person-label">예약자</span><span class="confirm-person-value"><?php echo htmlspecialchars($booking_member_name); ?></span>
+                <span class="confirm-person-label">연락처</span><span class="confirm-person-value"><?php echo htmlspecialchars($booking_member_phone); ?></span>
+            </div>
+            <div class="confirm-notice">
+                <div class="confirm-notice-title">고객님 꼭 알아두세요!</div>
+                <ul>
+                    <li>예약 가능 여부는 병원 상황에 따라 달라질 수 있어요</li>
+                    <li>예약이 불가능한 경우, 상담원이 다른 일정으로 안내해드려요</li>
+                    <li>예약 현황 / 예약 변경 / 취소는 <em>내 예약 결제내역</em>에서 직접 관리할 수 있어요</li>
+                </ul>
+            </div>
+            <button type="button" class="confirm-submit" id="confirmBookingButton" onclick="submitConfirmedBooking()">확인했어요</button>
+        </section>
+    </div>
+
+    <!-- 2단계: 예약 요청 접수 완료 (아래에서 올라오는 바텀시트) -->
+    <div class="booking-success-overlay" id="bookingSuccessOverlay" aria-hidden="true">
+        <section class="booking-success-sheet" role="dialog" aria-modal="true" aria-labelledby="bookingSuccessTitle">
+            <div class="success-sheet-handle" aria-hidden="true"></div>
+            <div class="success-check"><i class="bi bi-check-lg"></i></div>
+            <h2 class="success-sheet-title" id="bookingSuccessTitle">예약 요청이 접수되었어요!</h2>
+            <p class="success-sheet-desc">원하시는 일정으로<br>병원에 예약 가능 여부를 확인하고 있어요</p>
+            <div class="success-wait-box">
+                <div class="success-wait-title">예상 확인 시간</div>
+                <div class="success-wait-time">평균 1~3시간 이내<br>(병원 상황에 따라 달라질 수 있어요)</div>
+                <div class="success-alert-box">
+                    <div class="success-alert-title">알림을 꼭 확인해주세요!</div>
+                    <div class="success-alert-copy">예약 진행 상황은 알림(푸시)으로 안내해드려요<br>알림을 허용해두시면 빠르게 확인하실 수 있어요</div>
+                </div>
+            </div>
+            <div class="success-actions">
+                <a href="detail.php?id=<?php echo (int)$hospital_id; ?>" class="success-action primary">확인했어요</a>
+                <a href="my_bookings.php" class="success-action" id="successBookingsLink">내 예약 현황</a>
+            </div>
+        </section>
+    </div>
 
     <!-- 시술 선택 시트 (옵션 변경) -->
     <?php
