@@ -8,7 +8,6 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 SERVER   = "5.104.82.35"
 USER     = "root"
-PASSWORD = "<REMOVED_SSH_PASSWORD>"
 SRC_PATH = "/var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5.8.0/hms-saas"
 GH_TOKEN_FILE = "/root/.gh_token"
 
@@ -25,7 +24,7 @@ def main():
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(SERVER, username=USER, password=PASSWORD, timeout=30)
+    ssh.connect(SERVER, username=USER, allow_agent=True, look_for_keys=True, timeout=30)
     print(f"✅ SSH 접속: {SERVER}")
 
     # git pull

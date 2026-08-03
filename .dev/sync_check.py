@@ -8,7 +8,6 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 SERVER   = "5.104.82.35"
 USER     = "root"
-PASSWORD = "<REMOVED_SSH_PASSWORD>"
 SRC_PATH = "/var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5.8.0/hms-saas"
 PC_PATH  = r"H:\seoul_beauty_project\hms-saas"
 
@@ -41,7 +40,7 @@ def main():
     # 서버 커밋
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(SERVER, username=USER, password=PASSWORD, timeout=30)
+    ssh.connect(SERVER, username=USER, allow_agent=True, look_for_keys=True, timeout=30)
     srv_commit = run_ssh(ssh, f"cd {SRC_PATH} && git fetch origin master 2>/dev/null; git log --oneline -1")
     srv_status = run_ssh(ssh, f"cd {SRC_PATH} && git status --short | grep -v '^?' | head -5")
     print(f"\n🖥️  서버 최신 커밋: {srv_commit}")

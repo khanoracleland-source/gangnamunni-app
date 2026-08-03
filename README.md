@@ -21,10 +21,10 @@
 |------|------|
 | 서버 IP | `5.104.82.35` (Contabo) |
 | OS | Rocky Linux 9.7 |
-| SSH 접속 | `ssh root@5.104.82.35` (비밀번호: <REMOVED_SSH_PASSWORD>) |
+| SSH 접속 | `ssh root@5.104.82.35` (SSH key 사용) |
 | 도메인 | https://hms.seoulbeauty.app |
 | 서버 경로 | `/var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5.8.0/hms-saas/` |
-| DB | MariaDB `hms_saas` (root / <REMOVED_DB_PASSWORD>) |
+| DB | MariaDB `hms_saas` (접속 정보는 `.env`에서 관리) |
 | Apache 재시작 | `systemctl restart httpd` |
 | HMS artisan 재시작 | `systemctl restart hms-artisan` |
 

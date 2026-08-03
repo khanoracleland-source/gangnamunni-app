@@ -11,7 +11,7 @@
 아래 3단계를 순서대로 실행하고 각 결과를 보고해라.
 
 서버 정보:
-- IP: 5.104.82.35 / root / <REMOVED_SSH_PASSWORD>
+- SSH: `root@5.104.82.35` (SSH key 사용)
 - 서버 소스 경로: /var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5.8.0/hms-saas/
 - PC 경로: H:\seoul_beauty_project\hms-saas\
 
@@ -125,13 +125,13 @@ git pull origin master
 
 **서버-PC 동기화 확인:**
 ```
-서버(root@5.104.82.35 / <REMOVED_SSH_PASSWORD>)와 PC(H:\seoul_beauty_project\hms-saas\)의
+서버(root@5.104.82.35, SSH key 사용)와 PC(H:\seoul_beauty_project\hms-saas\)의
 git log --oneline -1 을 각각 출력해서 커밋 해시가 동일한지 확인하고 보고해라.
 ```
 
 **서버에 즉시 반영:**
 ```
-서버(root@5.104.82.35 / <REMOVED_SSH_PASSWORD>)에 SSH 접속 후
+서버(root@5.104.82.35, SSH key 사용)에 SSH 접속 후
 cd /var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5.8.0/hms-saas
 git pull origin master
 실행하고 결과 보고해라.
@@ -139,7 +139,7 @@ git pull origin master
 
 **서버 백업 생성:**
 ```
-서버(root@5.104.82.35 / <REMOVED_SSH_PASSWORD>)에 SSH 접속 후
+서버(root@5.104.82.35, SSH key 사용)에 SSH 접속 후
 /var/www/html/backups/ 에 아래 명령으로 백업 생성하고 파일명과 크기 보고해라.
 FNAME="hms-saas-v5.8.0_$(date +%Y%m%d_%H%M%S).tar.gz"
 tar -czf /var/www/html/backups/$FNAME /var/www/html/multi-hospital-management-system-saas-hospital/
