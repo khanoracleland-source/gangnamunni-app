@@ -256,6 +256,100 @@ $page_title = '내 예약';
         .modal-btn-confirm { background: var(--color-primary); color: white; }
         .modal-btn-danger { background: var(--color-primary, #AE1932); color: white; }
         .action-btn.hospital { color: #2563eb; border-color: #bfdbfe; text-decoration: none; }
+
+        /* Screenshot reference: 예약/결제 내역 */
+        html { background: #3f3f3f; }
+        body { max-width: 640px; margin: 0 auto; background: #f3f3f3; color: #111; }
+        .container { max-width: 640px; min-height: calc(100vh - 64px); background: #f3f3f3; }
+        .header { height: 64px; padding: 0 16px; border-bottom: 0; background: #fff; }
+        .header .back { font-size: 26px; }
+        .header h1 { font-size: 18px; font-weight: 650; white-space: nowrap; }
+        .tabs { padding-top: 34px; background: #fff; border-bottom-color: #ccc; }
+        .tab-btn { padding: 15px 8px 13px; font-size: 16px; font-weight: 500; color: #111; }
+        .tab-btn.active { font-weight: 650; }
+        .tab-count { margin-left: 3px; }
+        .tab-content { padding: 20px 18px 4px; }
+
+        .booking-card {
+            margin: 0 0 18px; padding: 20px 22px 18px; background: #fff;
+            border: 0; border-radius: 0; box-shadow: none;
+        }
+        .booking-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+        .booking-card-date { font-size: 17px; font-weight: 650; letter-spacing: -.35px; }
+        .booking-dday { color: var(--color-primary); font-size: 16px; font-weight: 650; }
+        .booking-detail-link {
+            margin-left: auto; padding: 6px 10px; border: 1px solid #df9aa6; border-radius: 6px;
+            color: #111; text-decoration: none; font-size: 13px; white-space: nowrap;
+        }
+        .booking-summary { display: flex; align-items: flex-start; gap: 18px; }
+        .booking-thumb {
+            width: 74px; height: 74px; flex: 0 0 74px; overflow: hidden; background: #ce3033;
+            color: #fff; display: flex; align-items: center; justify-content: center;
+            font-size: 12px; letter-spacing: 2px;
+        }
+        .booking-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .booking-summary-copy { min-width: 0; flex: 1; }
+        .booking-treatment { font-size: 14px; font-weight: 700; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .booking-hospital { font-size: 12px; line-height: 1.45; }
+        .booking-price { margin-top: 13px; font-size: 18px; font-weight: 700; }
+
+        .booking-progress { display: grid; grid-template-columns: repeat(4,1fr); margin: 32px 0 28px; }
+        .progress-step { position: relative; min-width: 0; padding-top: 25px; text-align: center; color: #d0d0d0; font-size: 11px; }
+        .progress-step::before {
+            content: ""; position: absolute; top: 0; left: 50%; width: 10px; height: 10px;
+            transform: translateX(-50%); background: #d8d8d8;
+        }
+        .progress-step::after {
+            content: ""; position: absolute; top: 4px; left: calc(50% + 12px); width: calc(100% - 24px); height: 1px; background: #ddd;
+        }
+        .progress-step:last-child::after { display: none; }
+        .progress-step.active { color: #111; font-weight: 650; }
+        .progress-step.active::before { background: var(--color-primary); }
+        .progress-step.active::after { background: var(--color-primary); }
+
+        .booking-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding-top: 20px; border-top: 1px solid #ddd; }
+        .booking-card-action {
+            min-height: 50px; border: 1px solid var(--color-primary); background: #fff; color: var(--color-primary);
+            display: flex; align-items: center; justify-content: center; text-decoration: none;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+        }
+        .booking-card-action.primary { background: var(--color-primary); color: #fff; }
+        .booking-card-action:disabled { opacity: .45; cursor: not-allowed; }
+        .push-tip {
+            position: relative; margin: 2px 18px 22px; padding: 16px 46px 16px 20px;
+            border: 1px solid var(--color-primary); border-radius: 18px; background: #fff;
+            font-size: 13px; font-weight: 600; line-height: 1.55;
+        }
+        .push-tip-close { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 22px; cursor: pointer; }
+
+        .modal-overlay.bottom-sheet-modal { align-items: flex-end; z-index: 12000; }
+        .change-confirm-box {
+            width: 100%; max-width: 640px; padding: 14px 28px calc(30px + env(safe-area-inset-bottom,0px));
+            background: #fff; text-align: center; animation: bookingModalUp .32s cubic-bezier(.32,.72,0,1);
+        }
+        @keyframes bookingModalUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .change-sheet-handle { width: 48px; height: 5px; border-radius: 3px; background: var(--color-primary); margin: 0 auto 48px; }
+        .change-alert-icon {
+            width: 54px; height: 54px; margin: 0 auto 28px; border-radius: 50%; background: var(--color-primary);
+            color: #fff; display: flex; align-items: center; justify-content: center; font-size: 31px; font-weight: 300;
+        }
+        .change-confirm-title { font-size: 23px; font-weight: 750; line-height: 1.4; letter-spacing: -.04em; }
+        .change-confirm-sub { margin-top: 16px; font-size: 16px; }
+        .change-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 48px; }
+        .change-confirm-btn { height: 52px; border: 1px solid var(--color-primary); background: #fff; color: var(--color-primary); font-size: 16px; font-weight: 700; cursor: pointer; }
+        .change-confirm-btn.primary { background: var(--color-primary); color: #fff; }
+
+        @media (max-width: 420px) {
+            .tab-content { padding-left: 12px; padding-right: 12px; }
+            .booking-card { padding-left: 16px; padding-right: 16px; }
+            .booking-card-top { gap: 8px; }
+            .booking-card-date { font-size: 14px; white-space: nowrap; }
+            .booking-dday { font-size: 14px; white-space: nowrap; }
+            .booking-detail-link { padding-left: 7px; padding-right: 7px; }
+            .booking-summary { gap: 12px; }
+            .booking-thumb { width: 64px; height: 64px; flex-basis: 64px; }
+            .booking-card-actions, .change-confirm-actions { gap: 10px; }
+        }
     </style>
     <script>
         (function(){
@@ -295,45 +389,59 @@ $page_title = '내 예약';
         <?php else: ?>
         <?php foreach ($active_bookings as $bk): ?>
         <div class="booking-card" id="card-<?php echo $bk['id']; ?>" data-status="<?php echo $bk['status']; ?>">
-            <div class="booking-header">
-                <div>
-                    <div class="booking-date"><?php
-                        $_days_ko = ['일','월','화','수','목','금','토'];
-                        $_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
-                        $_dow = $_days_ko[(int)date('w', $_ts)];
-                        $_h = (int)date('G', $_ts);
-                        $_ampm = $_h < 12 ? '오전' : '오후';
-                        $_h12 = $_h % 12; if ($_h12 === 0) $_h12 = 12;
-                        echo date('Y.n.j', $_ts) . '(' . $_dow . ') ' . $_ampm . ' ' . $_h12 . ':' . date('i', $_ts);
-                    ?></div>
+            <?php
+                $_days_ko = ['일','월','화','수','목','금','토'];
+                $_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
+                $_dow = $_days_ko[(int)date('w', $_ts)];
+                $_h = (int)date('G', $_ts);
+                $_ampm = $_h < 12 ? '오전' : '오후';
+                $_h12 = $_h % 12; if ($_h12 === 0) $_h12 = 12;
+                $_date_text = date('Y.n.j', $_ts) . '(' . $_dow . ') ' . $_ampm . ' ' . $_h12 . ':' . date('i', $_ts);
+                $_dd = (int)(new DateTime('today'))->diff(new DateTime($bk['booking_date']))->format('%r%a');
+                $_dd_text = $_dd > 0 ? 'D-' . $_dd : ($_dd === 0 ? 'D-0' : 'D+' . abs($_dd));
+                $_edits_left = max(0, 3 - (int)($bk['edit_count'] ?? 0));
+                $_pay_state = booking_payment_state($bk, $payment_map);
+                $_progress_active = ($bk['status'] ?? '') === 'confirmed' ? 2 : 1;
+                if ($_pay_state === 'paid') $_progress_active = 4;
+                elseif ($_pay_state === 'payable') $_progress_active = 3;
+            ?>
+            <div class="booking-card-top">
+                <div class="booking-card-date"><?php echo htmlspecialchars($_date_text); ?></div>
+                <div class="booking-dday"><?php echo htmlspecialchars($_dd_text); ?></div>
+                <a href="booking_detail.php?booking_id=<?php echo (int)$bk['id']; ?>" class="booking-detail-link">예약상세</a>
+            </div>
+            <div class="booking-summary">
+                <div class="booking-thumb">
+                    <?php if (!empty($bk['hospital_image'])): ?>
+                    <img src="<?php echo htmlspecialchars($bk['hospital_image']); ?>" alt="<?php echo htmlspecialchars($bk['hospital_name']); ?>">
+                    <?php else: ?>
+                    <span>SEOUL<br>BEAUTY</span>
+                    <?php endif; ?>
+                </div>
+                <div class="booking-summary-copy">
+                    <div class="booking-treatment"><?php echo htmlspecialchars($bk['treatment'] ?: '선택 시술'); ?></div>
+                    <div class="booking-hospital"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
+                    <?php if (isset($bk['price']) && $bk['price'] !== null): ?>
+                    <div class="booking-price"><?php echo number_format((int)$bk['price']); ?>원</div>
+                    <?php endif; ?>
                 </div>
             </div>
-            <div class="booking-detail-row">
-                <div class="booking-detail">
-                    <div class="bd-left">
-                        <?php if (!empty($bk['treatment'])): ?>
-                        <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
-                        <?php endif; ?>
-                        <div class="detail-2"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
-                    </div>
-                    <div class="bd-right"><?php
-                        $_dd = (int)(new DateTime('today'))->diff(new DateTime($bk['booking_date']))->format('%r%a');
-                        echo $_dd > 0 ? 'D-' . $_dd : ($_dd === 0 ? 'D-DAY' : 'D+' . abs($_dd));
-                    ?></div>
-                </div>
-                <div class="detail-btns">
-                    <?php $_pay_state = booking_payment_state($bk, $payment_map); ?>
-                    <?php if ($_pay_state === 'payable'): ?>
-                    <a href="booking_payment.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn detail-btn-pay">결제하기</a>
-                    <?php elseif ($_pay_state === 'paid'): ?>
-                    <span class="detail-btn detail-btn-paid">결제완료</span>
-                    <?php endif; ?>
-                    <a href="booking_detail.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">예약변경</a>
-                    <button type="button" class="detail-btn" onclick="openCancelModal(<?php echo $bk['id']; ?>)">예약취소</button>
-                </div>
+            <div class="booking-progress" aria-label="예약 진행 상태">
+                <?php foreach (['예약 요청 접수','병원 확인 중','결제 대기','예약 확정'] as $_step_i => $_step_label): ?>
+                <div class="progress-step<?php echo ($_step_i + 1) <= $_progress_active ? ' active' : ''; ?>"><?php echo $_step_label; ?></div>
+                <?php endforeach; ?>
+            </div>
+            <div class="booking-card-actions">
+                <button type="button" class="booking-card-action primary" onclick="openChangeConfirm(<?php echo (int)$bk['id']; ?>, '<?php echo htmlspecialchars($bk['booking_date'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars(substr($bk['booking_time'], 0, 5), ENT_QUOTES); ?>', <?php echo $_edits_left; ?>)" <?php echo $_edits_left <= 0 ? 'disabled' : ''; ?>>예약변경</button>
+                <button type="button" class="booking-card-action" onclick="openCancelModal(<?php echo (int)$bk['id']; ?>)">예약취소</button>
             </div>
         </div>
         <?php endforeach; ?>
+        <div class="push-tip" id="pushTip">
+            기기 알림을 켜면 예약현황을 푸시로도 알려드려요<br>
+            (마이페이지 &gt; 설정 &gt; 일반알림 켜기)
+            <button type="button" class="push-tip-close" onclick="document.getElementById('pushTip').remove()" aria-label="닫기">×</button>
+        </div>
         <?php endif; ?>
     </div>
 
@@ -432,6 +540,20 @@ $page_title = '내 예약';
     </div>
 </div>
 
+<!-- 예약 변경 횟수 안내 바텀시트 -->
+<div class="modal-overlay bottom-sheet-modal" id="changeConfirmModal" aria-hidden="true">
+    <section class="change-confirm-box" role="dialog" aria-modal="true" aria-labelledby="changeConfirmTitle">
+        <div class="change-sheet-handle" aria-hidden="true"></div>
+        <div class="change-alert-icon">!</div>
+        <h2 class="change-confirm-title" id="changeConfirmTitle">예약 변경 가능 횟수가 <span id="changeRemainingCount">3</span>회 남아있어요</h2>
+        <p class="change-confirm-sub">변경하시겠어요?</p>
+        <div class="change-confirm-actions">
+            <button type="button" class="change-confirm-btn primary" onclick="closeModal('changeConfirmModal')">취소</button>
+            <button type="button" class="change-confirm-btn" onclick="continueBookingChange()">변경</button>
+        </div>
+    </section>
+</div>
+
 <!-- 날짜변경 모달 -->
 <div class="modal-overlay" id="editModal">
     <div class="modal-box">
@@ -452,6 +574,7 @@ $page_title = '내 예약';
 
 <script>
 var searchPhone = <?php echo json_encode($search_phone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+var pendingBookingChange = null;
 
 function switchTab(tab) {
     // [Figma Sync 2026-06-06] 3탭: active(시술예정) / completed(시술완료) / cancelled(예약취소)
@@ -492,8 +615,30 @@ function openEditModal(id, date, time) {
     document.getElementById('editModal').classList.add('active');
 }
 
+function openChangeConfirm(id, date, time, remaining) {
+    if (remaining <= 0) {
+        alert('예약 변경 가능 횟수(3회)를 모두 사용했습니다.');
+        return;
+    }
+    pendingBookingChange = { id: id, date: date, time: time };
+    document.getElementById('changeRemainingCount').textContent = remaining;
+    var modal = document.getElementById('changeConfirmModal');
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function continueBookingChange() {
+    if (!pendingBookingChange) return;
+    var change = pendingBookingChange;
+    closeModal('changeConfirmModal');
+    openEditModal(change.id, change.date, change.time);
+}
+
 function closeModal(id) {
     document.getElementById(id).classList.remove('active');
+    document.getElementById(id).setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
 }
 
 function submitCancel() {

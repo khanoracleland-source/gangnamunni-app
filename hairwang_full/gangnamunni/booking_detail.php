@@ -80,7 +80,7 @@ $dday_text = '';
 if ($is_active && !empty($bk['booking_date'])) {
     $_diff = (int)(new DateTime('today'))->diff(new DateTime($bk['booking_date']))->format('%r%a');
     if     ($_diff > 0)  $dday_text = 'D-' . $_diff;
-    elseif ($_diff === 0) $dday_text = 'D-DAY';
+    elseif ($_diff === 0) $dday_text = 'D-0';
     else                  $dday_text = 'D+' . abs($_diff);
 }
 
