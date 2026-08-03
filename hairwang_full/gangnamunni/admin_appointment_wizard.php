@@ -18,6 +18,18 @@ require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/hospital_filter.php';
 require_permission('bookings');
 
+// 수동 예약 등록은 최고관리자만 허용한다.
+// 일반 관리자/편집자는 예약 목록 조회·관리만 가능하다.
+if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
+    http_response_code(403);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>권한 없음</title>';
+    echo '<style>body{font-family:sans-serif;text-align:center;padding:80px 20px;background:#f5f7fa}h2{color:#333}p{color:#666}a{color:#667eea}</style></head><body>';
+    echo '<h2>접근 권한이 없습니다</h2><p>수동 예약 등록은 최고관리자만 사용할 수 있습니다.</p>';
+    echo '<a href="admin_bookings.php">예약 관리로 돌아가기</a></body></html>';
+    exit;
+}
+
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
@@ -212,15 +224,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // 병원(tenants) 목록
     if ($action === 'load_hospitals') {
         $hospitals = [];
-        $tenant_scope = $allowed_tenant_ids === null
-            ? ''
-            : " WHERE id IN ('" . (empty($allowed_tenant_ids)
-                ? '__none__'
-                : implode("','", array_map(function($id) use ($connect) {
-                    return mysqli_real_escape_string($connect, $id);
-                }, $allowed_tenant_ids))) . "')";
-        $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants{$tenant_scope} ORDER BY hospital_name");
-        while ($row = mysqli_fetch_assoc($r)) $hospitals[] = $row;
+        if ($assigned_hospital_ids === null) {
+            $r = mysqli_query($connect, "SELECT id, hospital_name, 1 AS linked FROM tenants ORDER BY hospital_name");
+            while ($r && $row = mysqli_fetch_assoc($r)) $hospitals[] = $row;
+        } elseif (!empty($assigned_hospital_ids)) {
+            $hospital_id_list = implode(',', array_map('intval', $assigned_hospital_ids));
+            $mapping_available = false;
+            try {
+                $mapping_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_hospital_mapping'");
+                $mapping_available = $mapping_check && mysqli_num_rows($mapping_check) > 0;
+            } catch (Throwable $e) {
+                $mapping_available = false;
+            }
+            $mapping_select = $mapping_available
+                ? "COALESCE(NULLIF(h.hms_hospital_id,''), (SELECT m.hms_tenant_id FROM gangnamunni_hospital_mapping m WHERE m.hospital_id=h.id LIMIT 1))"
+                : "NULLIF(h.hms_hospital_id,'')";
+            $r = mysqli_query($connect,
+                "SELECT {$mapping_select} AS id, h.name AS hospital_name
+                   FROM gangnamunni_hospitals h
+                  WHERE h.id IN ({$hospital_id_list})
+                  ORDER BY h.name"
+            );
+            while ($r && $row = mysqli_fetch_assoc($r)) {
+                $tenant_id = trim((string)($row['id'] ?? ''));
+                $hospitals[] = [
+                    'id' => $tenant_id,
+                    'hospital_name' => $row['hospital_name'],
+                    'linked' => $tenant_id !== '',
+                ];
+            }
+        }
         echo json_encode(['success' => true, 'data' => $hospitals]);
         exit;
     }
@@ -756,7 +789,8 @@ async function loadHospitals() {
             d.data.forEach(h => {
                 const opt = document.createElement('option');
                 opt.value = h.id;
-                opt.textContent = h.hospital_name;
+                opt.textContent = h.hospital_name + (h.linked === false ? ' (HMS 연결 필요)' : '');
+                opt.disabled = h.linked === false;
                 sel.appendChild(opt);
             });
         }
