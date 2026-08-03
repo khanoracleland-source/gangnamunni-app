@@ -335,7 +335,9 @@ require_once __DIR__ . '/includes/admin_header.php';
     <!-- 헤더 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="mb-0"><i class="bi bi-calendar-check me-2"></i>예약 관리</h4>
+        <?php if ($booking_hospital_ids === null || !empty($booking_hospital_ids)): ?>
         <a href="admin_appointment_wizard.php" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>새 예약 등록</a>
+        <?php endif; ?>
     </div>
 
     <!-- 통계 카드 -->

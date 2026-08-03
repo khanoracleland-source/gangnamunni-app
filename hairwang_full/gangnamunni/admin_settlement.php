@@ -22,6 +22,9 @@ require_permission('cpv_settlement');
 
 require_once __DIR__ . '/includes/cpv_helper.php';
 
+$is_super = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
+$assigned_hospital_id = $is_super ? 0 : (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+
 // ── 필터 (연/월) ──────────────────────────────────────────
 $sel_year  = intval($_GET['year'] ?? date('Y'));
 $sel_month = intval($_GET['month'] ?? date('n'));
@@ -35,6 +38,7 @@ $period_end   = date('Y-m-t', strtotime($period_start)); // 해당 월 마지막
 
 // ── 정산 데이터 조회 ──────────────────────────────────────────
 $settlements = [];
+$hospital_scope_sql = $is_super ? '' : ' AND s.hospital_id = ?';
 $stmt = mysqli_prepare($connect,
     "SELECT s.hospital_id,
             h.name AS hospital_name,
@@ -46,11 +50,15 @@ $stmt = mysqli_prepare($connect,
             COUNT(DISTINCT s.stat_date) AS active_days
      FROM gangnamunni_cpv_daily_stats s
      LEFT JOIN gangnamunni_hospitals h ON h.id = s.hospital_id
-     WHERE s.stat_date BETWEEN ? AND ?
+     WHERE s.stat_date BETWEEN ? AND ?{$hospital_scope_sql}
      GROUP BY s.hospital_id
      ORDER BY total_charged DESC");
 if ($stmt) {
-    mysqli_stmt_bind_param($stmt, 'ss', $period_start, $period_end);
+    if ($is_super) {
+        mysqli_stmt_bind_param($stmt, 'ss', $period_start, $period_end);
+    } else {
+        mysqli_stmt_bind_param($stmt, 'ssi', $period_start, $period_end, $assigned_hospital_id);
+    }
     mysqli_stmt_execute($stmt);
     $r = mysqli_stmt_get_result($stmt);
     while ($row = mysqli_fetch_assoc($r)) {
@@ -104,7 +112,9 @@ require_once __DIR__ . '/includes/admin_header.php';
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2 no-print">
         <div>
             <h4 class="mb-1"><i class="bi bi-receipt"></i> CPV 정산 보고서</h4>
-            <small class="text-body-secondary">월별 병원 CPV 과금 정산 내역</small>
+            <small class="text-body-secondary">월별 병원 CPV 과금 정산 내역
+                <span class="badge <?= $is_super ? 'bg-danger' : 'bg-info' ?>"><?= $is_super ? '전체 병원' : '소속 병원만' ?></span>
+            </small>
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
             <!-- 연/월 필터 -->
@@ -150,6 +160,10 @@ require_once __DIR__ . '/includes/admin_header.php';
             </button>
         </div>
     </div>
+
+    <?php if (!$is_super && $assigned_hospital_id <= 0): ?>
+    <div class="alert alert-warning">계정에 연결된 병원이 없어 정산 정보를 조회할 수 없습니다.</div>
+    <?php endif; ?>
 
     <!-- 기간 요약 -->
     <div class="row g-3 mb-4">

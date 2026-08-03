@@ -12,7 +12,7 @@
 $ADMIN_ROLE_PERMISSIONS = [
     // === 플랫폼 역할 ===
     'super_admin' => ['*'],
-    'admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'reviews', 'categories', 'ads', 'ad_slot_manage', 'navigation', 'theme', 'theme_advanced', 'design_mode', 'settings', 'maintenance', 'upgrade', 'members', 'membership', 'faq', 'qna', 'rankings', 'doctor_treatments', 'treatment_packages', 'excel_import', 'excel_export', 'medicines', 'nurses', 'patients', 'pharmacists', 'staffs', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'admin_mail', 'mail_templates', 'mail_signatures', 'mail_accounts', 'editor_settings', 'review_wizard', 'approval_queue', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events', 'event_entries', 'cpv_settings', 'cpv_wallet', 'cpv_rates', 'cpv_dashboard', 'cpv_settlement', 'dev_ref_cpv', 'dev_ref_confirm', 'dev_ref_qa', 'dev_ref_cpv_qa', 'dev_ref_payment', 'manage_reports', 'grade_permissions', 'admin_manage', 'admin_accounts', 'hospital_landing', 'hospital_apply', 'hospital_apply_status', 'hospital_pending', 'hospital_process', 'hospital_guide', 'site_settings_main', 'booking_revenue'],
+    'admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'reviews', 'bookings', 'categories', 'ads', 'ad_slot_manage', 'navigation', 'theme', 'theme_advanced', 'design_mode', 'settings', 'maintenance', 'upgrade', 'members', 'membership', 'faq', 'qna', 'rankings', 'doctor_treatments', 'treatment_packages', 'excel_import', 'excel_export', 'medicines', 'nurses', 'patients', 'pharmacists', 'staffs', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'admin_mail', 'mail_templates', 'mail_signatures', 'mail_accounts', 'editor_settings', 'review_wizard', 'approval_queue', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events', 'event_entries', 'cpv_settings', 'cpv_wallet', 'cpv_rates', 'cpv_dashboard', 'cpv_settlement', 'dev_ref_cpv', 'dev_ref_confirm', 'dev_ref_qa', 'dev_ref_cpv_qa', 'dev_ref_payment', 'manage_reports', 'grade_permissions', 'admin_manage', 'admin_accounts', 'hospital_landing', 'hospital_apply', 'hospital_apply_status', 'hospital_pending', 'hospital_process', 'hospital_guide', 'site_settings_main', 'booking_revenue'],
     'editor' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'reviews', 'bookings', 'categories', 'ads', 'navigation', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'review_wizard', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events'],
     'viewer' => ['dashboard', 'hospital_images'],
     'staff' => ['dashboard', 'hospitals', 'hospital_images', 'reviews', 'bookings', 'notifications', 'members'],
@@ -321,6 +321,23 @@ function get_current_admin() {
  */
 function check_permission($permission) {
     global $ADMIN_ROLE_PERMISSIONS;
+
+    // 관리자/편집자의 예약 페이지 접근은 허용하되, 실제 조회/생성 범위는
+    // admin_bookings.php와 admin_appointment_wizard.php에서 소유 병원으로 fail-closed 제한한다.
+    if ($permission === 'bookings' && check_admin_login()
+        && in_array($_SESSION['ad_admin_role'] ?? '', ['super_admin', 'admin', 'editor'], true)) {
+        return true;
+    }
+
+    // 관리자/편집자가 병원에 명시적으로 배정된 경우 해당 병원의
+    // 매출과 정산 보고서만 조회할 수 있다. 실제 데이터 scope는 각 페이지에서
+    // session hospital_id로 fail-closed 적용한다.
+    if (in_array($permission, ['booking_revenue', 'cpv_settlement'], true) && check_admin_login()) {
+        $role = $_SESSION['ad_admin_role'] ?? '';
+        if ($role === 'super_admin') return true;
+        return in_array($role, ['admin', 'editor', 'hospital_super_admin', 'hospital_admin'], true)
+            && (int)($_SESSION['ad_admin_hospital_id'] ?? 0) > 0;
+    }
 
     // 일반 관리자도 관리자 계정 페이지에서 본인 프로필을 수정할 수 있다.
     // 다른 계정에 대한 CRUD 권한은 admin_admins.php에서 super_admin으로 별도 검증한다.
