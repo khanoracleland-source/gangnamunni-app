@@ -1,9 +1,9 @@
 <?php
 /**
- * 비밀번호 찾기 (공개 페이지 - 세션 불필요)
+ * 비밀번호 찾기 (공개 페이지 - CSRF 보호용 세션만 사용)
  * - 이메일 입력 -> gangnamunni_admins 조회
- * - 매치 시: 임시 비밀번호 생성 -> password_hash 저장 -> 표시
- * - 미매치: 에러 메시지
+ * - 매치 시: 임시 비밀번호를 이메일로만 발송
+ * - 계정 존재 여부는 브라우저에 노출하지 않음
  *
  * QA #19 - 비밀번호 찾기
  * @created 2026-03-04
@@ -11,6 +11,18 @@
 
 // DB 연결
 require_once __DIR__ . '/../dbconfig.php';
+require_once __DIR__ . '/includes/functions.php';
+
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Referrer-Policy: no-referrer');
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'httponly' => true,
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'samesite' => 'Strict',
+    ]);
+}
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) {
     http_response_code(500);
@@ -25,17 +37,26 @@ $site_name = '서울미녀';
 // ===== POST 처리 =====
 $result_msg = '';
 $result_type = ''; // 'success' or 'error'
-$temp_password = '';
-$found_username = '';
+$csrf_token = generateCsrfToken();
+$generic_success_msg = '가입된 관리자 계정이 확인되면 임시 비밀번호를 이메일로 발송합니다.';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
     $input_email = trim($_POST['email'] ?? '');
+    $normalized_email = strtolower($input_email);
+    $client_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
-    if (empty($input_email)) {
+    if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
+        $result_msg = '요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.';
+        $result_type = 'error';
+    } elseif (empty($input_email)) {
         $result_msg = '이메일을 입력해주세요.';
         $result_type = 'error';
     } elseif (!filter_var($input_email, FILTER_VALIDATE_EMAIL)) {
         $result_msg = '유효한 이메일 형식을 입력해주세요.';
+        $result_type = 'error';
+    } elseif (!checkRateLimit('admin_pw_reset_ip_' . $client_ip, 5, 900)
+        || !checkRateLimit('admin_pw_reset_email_' . $normalized_email, 3, 3600)) {
+        $result_msg = '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
         $result_type = 'error';
     } else {
         // gangnamunni_admins 테이블에서 이메일 검색
@@ -55,14 +76,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
                     $temp_password .= $chars[random_int(0, strlen($chars) - 1)];
                 }
 
-                // password_hash로 해시 후 DB 업데이트
+                // 메일 발송 실패 시 기존 비밀번호가 유지되도록 트랜잭션 사용
                 $hashed = password_hash($temp_password, PASSWORD_DEFAULT);
+                mysqli_begin_transaction($connect);
                 $update_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET password = ?, updated_at = NOW() WHERE id = ?");
                 if ($update_stmt) {
                     mysqli_stmt_bind_param($update_stmt, 'si', $hashed, $admin['id']);
                     if (mysqli_stmt_execute($update_stmt)) {
-                        $found_username = $admin['username'];
-
                         // SMTP email sending
                         $email_sent = false;
                         $email_error = '';
@@ -91,24 +111,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
                             $email_error = $e->getMessage();
                         }
 
-                        if ($email_sent) {
-                            $result_msg = '임시 비밀번호가 이메일로 전송되었습니다. 로그인 후 반드시 비밀번호를 변경해주세요.';
+                        if ($email_sent && mysqli_commit($connect)) {
+                            $result_msg = $generic_success_msg;
+                            $result_type = 'success';
                         } else {
-                            $result_msg = '임시 비밀번호가 발급되었습니다. (이메일 발송 실패: ' . htmlspecialchars($email_error) . ')';
+                            mysqli_rollback($connect);
+                            error_log('Admin password reset mail failed: ' . $email_error);
+                            $result_msg = '일시적인 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+                            $result_type = 'error';
                         }
-                        $result_type = 'success';
                     } else {
-                        $result_msg = '비밀번호 업데이트 중 오류가 발생했습니다.';
+                        mysqli_rollback($connect);
+                        $result_msg = '일시적인 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
                         $result_type = 'error';
                     }
                     mysqli_stmt_close($update_stmt);
                 } else {
+                    mysqli_rollback($connect);
                     $result_msg = '서버 오류가 발생했습니다.';
                     $result_type = 'error';
                 }
             } else {
-                $result_msg = '해당 이메일로 등록된 관리자 계정을 찾을 수 없습니다.';
-                $result_type = 'error';
+                // 계정 유무를 추측할 수 없도록 동일한 응답 반환
+                $result_msg = $generic_success_msg;
+                $result_type = 'success';
             }
         } else {
             $result_msg = '서버 오류가 발생했습니다.';
@@ -151,26 +177,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
         .login-brand { display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:1.2rem; }
         .login-brand-name { font-size:1.4rem; font-weight:700; color:var(--bs-body-color); }
         .login-brand-sub { font-size:0.8rem; color:var(--bs-secondary-color); }
-        .temp-pw-box {
-            background: var(--bs-tertiary-bg);
-            border: 2px dashed var(--bs-primary);
-            border-radius: 10px;
-            padding: 16px;
-            text-align: center;
-        }
-        .temp-pw-box .pw-value {
-            font-size: 24px;
-            font-weight: 800;
-            font-family: 'Courier New', monospace;
-            color: var(--bs-primary);
-            letter-spacing: 2px;
-            user-select: all;
-        }
-        .temp-pw-box .pw-label {
-            font-size: 12px;
-            color: var(--bs-secondary-color);
-            margin-top: 6px;
-        }
     </style>
 </head>
 <body class="bg-body-tertiary d-flex align-items-center justify-content-center" style="min-height:100vh;">
@@ -187,31 +193,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
                 <div class="login-brand-sub">비밀번호 찾기</div>
             </div>
 
-            <?php if ($result_type === 'success' && !empty($temp_password)): ?>
-            <!-- 성공: 임시 비밀번호 표시 -->
+            <?php if ($result_type === 'success'): ?>
             <div class="alert alert-success py-2 mb-3">
                 <i class="bi bi-check-circle-fill"></i> <?php echo htmlspecialchars($result_msg); ?>
-            </div>
-
-            <div class="temp-pw-box mb-3">
-                <div class="mb-2">
-                    <span class="badge bg-secondary">아이디</span>
-                    <strong class="ms-1"><?php echo htmlspecialchars($found_username); ?></strong>
-                </div>
-                <div class="pw-label">임시 비밀번호</div>
-                <div class="pw-value" id="tempPwValue"><?php echo htmlspecialchars($temp_password); ?></div>
-                <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="copyTempPw()">
-                    <i class="bi bi-clipboard"></i> 복사
-                </button>
-            </div>
-
-            <div class="p-2 rounded mb-3" style="background:var(--bs-tertiary-bg);font-size:12px;line-height:1.7;">
-                <div class="text-danger fw-bold mb-1"><i class="bi bi-exclamation-triangle"></i> 보안 안내</div>
-                <ul class="mb-0 ps-3">
-                    <li>이 임시 비밀번호는 <strong>1회 표시</strong>됩니다. 반드시 메모해두세요.</li>
-                    <li>로그인 후 즉시 <strong>비밀번호를 변경</strong>해주세요.</li>
-                    <li>타인에게 공유하지 마세요.</li>
-                </ul>
             </div>
 
             <a href="dashboard.php" class="btn btn-primary w-100">
@@ -225,6 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
             </div>
 
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 <div class="mb-3">
                     <label class="form-label">등록된 이메일</label>
                     <input type="email" name="email" class="form-control" required autofocus
@@ -250,6 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
             </p>
 
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 <div class="mb-3">
                     <label class="form-label">등록된 이메일</label>
                     <input type="email" name="email" class="form-control" required autofocus
@@ -272,27 +258,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    // 임시 비밀번호 복사
-    function copyTempPw() {
-        var pwEl = document.getElementById('tempPwValue');
-        if (!pwEl) return;
-        var pw = pwEl.textContent;
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(pw).then(function() {
-                alert('임시 비밀번호가 클립보드에 복사되었습니다.');
-            });
-        } else {
-            // 폴백
-            var range = document.createRange();
-            range.selectNodeContents(pwEl);
-            var sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(range);
-            document.execCommand('copy');
-            alert('임시 비밀번호가 클립보드에 복사되었습니다.');
-        }
-    }
-
     // 주간/야간 토글
     (function(){
         var html = document.documentElement;

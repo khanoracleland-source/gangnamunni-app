@@ -322,6 +322,12 @@ function get_current_admin() {
 function check_permission($permission) {
     global $ADMIN_ROLE_PERMISSIONS;
 
+    // 일반 관리자도 관리자 계정 페이지에서 본인 프로필을 수정할 수 있다.
+    // 다른 계정에 대한 CRUD 권한은 admin_admins.php에서 super_admin으로 별도 검증한다.
+    if ($permission === 'admin_accounts' && check_admin_login()) {
+        return true;
+    }
+
     // 카테고리 관리는 플랫폼 전체에 영향을 주므로 최고관리자만 허용한다.
     if ($permission === 'categories') {
         return (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');

@@ -12,6 +12,7 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/admin_notifications.php';
+require_once __DIR__ . '/includes/functions.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
@@ -20,15 +21,17 @@ loadThemeSettings($connect);
 
 // 로그인 + 권한 체크
 require_admin_login();
-require_permission('admin_manage');
+$current_admin = get_current_admin();
+$is_super_admin = ($current_admin['role'] === 'super_admin');
+$can_edit_own_profile = check_admin_login();
 
-// [보안] 관리자 관리(admin_admins.php)는 super_admin(최고관리자) 전용 — 그 외 역할 전부 차단
-if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
+// 최고관리자는 전체 관리, 일반 관리자는 본인 프로필만 관리할 수 있다.
+if (!$can_edit_own_profile) {
     http_response_code(403);
     echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>권한 없음</title>';
     echo '<style>body{font-family:sans-serif;text-align:center;padding:80px 20px;background:#f5f7fa;}h2{color:#333;margin-bottom:12px;}p{color:#666;}a{color:#667eea;}</style></head><body>';
     echo '<h2>접근 권한이 없습니다</h2>';
-    echo '<p>관리자 관리는 최고관리자(super_admin)만 접근할 수 있습니다.</p>';
+    echo '<p>로그인한 관리자만 접근할 수 있습니다.</p>';
     echo '<a href="dashboard.php">대시보드로 돌아가기</a>';
     echo '</body></html>';
     exit;
@@ -36,7 +39,11 @@ if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
 
 $message = '';
 $error = '';
-$current_admin = get_current_admin();
+$csrf_token = generateCsrfToken();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCsrfToken($_POST['csrf_token'] ?? '')) {
+    $error = '요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.';
+}
 
 // === 전체 페이지 권한 키 목록 ===
 $ALL_PAGE_PERMISSIONS = [
@@ -122,7 +129,10 @@ function admin_email_taken($connect, $email, $exclude_id = 0) {
 // === POST 처리 ===
 
 // 관리자 추가
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] ?? '') === 'add') {
+    if (!$is_super_admin) {
+        $error = '관리자를 추가할 권한이 없습니다.';
+    }
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $name = trim($_POST['name'] ?? '');
@@ -130,7 +140,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
     $phone = trim($_POST['phone'] ?? '');
     $role = $_POST['role'] ?? 'editor';
 
-    if (empty($username) || empty($password) || empty($name)) {
+    if (!empty($error)) {
+        // 상단에서 확인한 권한/CSRF 오류를 유지한다.
+    } elseif (empty($username) || empty($password) || empty($name)) {
         $error = '아이디, 비밀번호, 이름은 필수입니다.';
     } elseif (strlen($password) < 6) {
         $error = '비밀번호는 6자 이상이어야 합니다.';
@@ -172,29 +184,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
 }
 
 // 관리자 수정
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] ?? '') === 'edit') {
     $edit_id = intval($_POST['edit_id'] ?? 0);
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
-    $role = $_POST['role'] ?? 'editor';
+    $role = $_POST['role'] ?? '';
     $new_password = $_POST['new_password'] ?? '';
+    $current_password = $_POST['current_password'] ?? '';
 
-    if ($edit_id <= 0 || empty($name)) {
+    $target_stmt = mysqli_prepare($connect, "SELECT role, permissions, password, email FROM gangnamunni_admins WHERE id = ? LIMIT 1");
+    mysqli_stmt_bind_param($target_stmt, 'i', $edit_id);
+    mysqli_stmt_execute($target_stmt);
+    $target_admin = mysqli_fetch_assoc(mysqli_stmt_get_result($target_stmt));
+    mysqli_stmt_close($target_stmt);
+
+    if (!$is_super_admin && $edit_id !== (int)$current_admin['id']) {
+        $error = '다른 관리자의 정보를 수정할 권한이 없습니다.';
+    } elseif (!$target_admin) {
+        $error = '관리자 계정을 찾을 수 없습니다.';
+    } elseif (!$is_super_admin
+        && ($new_password !== '' || strcasecmp($email, $target_admin['email'] ?? '') !== 0)
+        && !password_verify($current_password, $target_admin['password'])) {
+        $error = '현재 비밀번호가 일치하지 않습니다.';
+    }
+
+    if (!empty($error)) {
+        // 대상 계정 및 소유권 검증 오류를 유지한다.
+    } elseif ($edit_id <= 0 || empty($name)) {
         $error = '이름은 필수입니다.';
     } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = '이메일 형식이 올바르지 않습니다.';
     } elseif (admin_email_taken($connect, $email, $edit_id)) {
         $error = '이미 다른 관리자가 사용 중인 이메일입니다. (이메일 로그인 식별자로 사용되어 중복 불가)';
     } else {
-        $valid_roles = ['super_admin', 'admin', 'editor', 'viewer'];
-        if (!in_array($role, $valid_roles)) $role = 'editor';
+        if ($is_super_admin) {
+            $valid_roles = ['super_admin', 'admin', 'editor', 'viewer'];
+            if (!in_array($role, $valid_roles, true)) $role = $target_admin['role'];
+            $perms_json = build_permissions_json($_POST);
+        } else {
+            // 일반 관리자의 임의 role/permissions POST 변조를 무시한다.
+            $role = $target_admin['role'];
+            $own_perms = parse_permissions($target_admin['permissions']);
+            $posted_notifs = $_POST['notifications'] ?? [];
+            $own_perms['notifications'] = array_values(array_intersect(
+                is_array($posted_notifs) ? $posted_notifs : [],
+                array_keys($NOTIFICATION_TYPES)
+            ));
+            $perms_json = json_encode($own_perms, JSON_UNESCAPED_UNICODE);
+        }
 
         if ($edit_id == $current_admin['id'] && $role !== $current_admin['role']) {
             $error = '자신의 역할은 변경할 수 없습니다.';
         } else {
-            $perms_json = build_permissions_json($_POST);
-
             if (!empty($new_password)) {
                 if (strlen($new_password) < 6) {
                     $error = '비밀번호는 6자 이상이어야 합니다.';
@@ -213,6 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit'
                     $message = "관리자 정보가 수정되었습니다.";
                     if ($edit_id == $current_admin['id']) {
                         $_SESSION['ad_admin_name'] = $name;
+                        $_SESSION['ad_admin_email'] = $email;
                         $_SESSION['ad_admin_permissions'] = json_decode($perms_json, true) ?: [];
                     }
                 } else {
@@ -225,10 +268,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit'
 }
 
 // 관리자 삭제
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] ?? '') === 'delete') {
     $delete_id = intval($_POST['delete_id'] ?? 0);
 
-    if ($delete_id == $current_admin['id']) {
+    if (!$is_super_admin) {
+        $error = '관리자를 삭제할 권한이 없습니다.';
+    } elseif ($delete_id == $current_admin['id']) {
         $error = '자기 자신은 삭제할 수 없습니다.';
     } else {
         $target = mysqli_fetch_assoc(mysqli_query($connect, "SELECT role FROM gangnamunni_admins WHERE id = {$delete_id}"));
@@ -253,9 +298,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 // 활성/비활성 토글
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggle_active') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] ?? '') === 'toggle_active') {
     $toggle_id = intval($_POST['toggle_id'] ?? 0);
-    if ($toggle_id == $current_admin['id']) {
+    if (!$is_super_admin) {
+        $error = '관리자 상태를 변경할 권한이 없습니다.';
+    } elseif ($toggle_id == $current_admin['id']) {
         $error = '자기 자신은 비활성화할 수 없습니다.';
     } else {
         $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET is_active = IF(is_active=1, 0, 1) WHERE id = ?");
@@ -269,15 +316,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggl
 
 // === 관리자 목록 조회 ===
 $admins = [];
-$result = mysqli_query($connect, "SELECT * FROM gangnamunni_admins ORDER BY role ASC, id ASC");
+$admin_scope_sql = $is_super_admin
+    ? "SELECT * FROM gangnamunni_admins ORDER BY role ASC, id ASC"
+    : "SELECT * FROM gangnamunni_admins WHERE id = " . (int)$current_admin['id'] . " LIMIT 1";
+$result = mysqli_query($connect, $admin_scope_sql);
 while ($row = mysqli_fetch_assoc($result)) {
     $admins[] = $row;
 }
 
 // 수정 모드 데이터
 $edit_admin = null;
-if (isset($_GET['edit'])) {
+if (!$is_super_admin) {
+    $edit_id = (int)$current_admin['id'];
+} elseif (isset($_GET['edit'])) {
     $edit_id = intval($_GET['edit']);
+}
+if (isset($edit_id)) {
     foreach ($admins as $a) {
         if ($a['id'] == $edit_id) {
             $edit_admin = $a;
@@ -289,7 +343,7 @@ $edit_perms = $edit_admin ? parse_permissions($edit_admin['permissions']) : [];
 
 // 관리자 헤더
 $admin_page_title = '관리자 관리';
-$admin_current = 'admins';
+$admin_current = 'admin_accounts';
 
 $admin_extra_css = '
 .role-badge { font-size: 12px; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
@@ -331,12 +385,15 @@ include __DIR__ . '/includes/admin_header.php';
 <?php endif; ?>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0"><i class="bi bi-people me-2"></i>관리자 관리</h4>
+    <h4 class="mb-0"><i class="bi bi-<?= $is_super_admin ? 'people' : 'person-gear' ?> me-2"></i><?= $is_super_admin ? '관리자 관리' : '내 정보 수정' ?></h4>
+    <?php if ($is_super_admin): ?>
     <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#addForm">
         <i class="bi bi-plus-lg me-1"></i>관리자 추가
     </button>
+    <?php endif; ?>
 </div>
 
+<?php if ($is_super_admin): ?>
 <!-- 추가 폼 -->
 <div class="collapse <?= (!empty($error) && ($_POST['action'] ?? '') === 'add') ? 'show' : '' ?>" id="addForm">
 <div class="card mb-3">
@@ -344,6 +401,7 @@ include __DIR__ . '/includes/admin_header.php';
     <div class="card-body admin-form">
         <form method="POST" id="addAdminForm">
             <input type="hidden" name="action" value="add">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">아이디 <span class="text-danger">*</span></label>
@@ -408,6 +466,7 @@ include __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 </div>
+<?php endif; ?>
 
 <?php if ($edit_admin):
     $ea_role = $edit_admin['role'];
@@ -428,7 +487,15 @@ include __DIR__ . '/includes/admin_header.php';
         <form method="POST" id="editAdminForm">
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="edit_id" value="<?= $edit_admin['id'] ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
             <div class="row g-3">
+                <?php if (!$is_super_admin): ?>
+                <div class="col-12">
+                    <label class="form-label">현재 비밀번호</label>
+                    <input type="password" name="current_password" class="form-control form-control-sm"
+                           autocomplete="current-password" placeholder="이메일 또는 비밀번호 변경 시 필수">
+                </div>
+                <?php endif; ?>
                 <div class="col-md-4">
                     <label class="form-label">아이디</label>
                     <input type="text" class="form-control form-control-sm" value="<?= htmlspecialchars($edit_admin['username']) ?>" disabled>
@@ -436,7 +503,7 @@ include __DIR__ . '/includes/admin_header.php';
                 <div class="col-md-4">
                     <label class="form-label">새 비밀번호</label>
                     <input type="password" name="new_password" class="form-control form-control-sm"
-                           minlength="6" placeholder="변경 시에만 입력">
+                           minlength="6" autocomplete="new-password" placeholder="변경 시에만 입력">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">이름 <span class="text-danger">*</span></label>
@@ -470,6 +537,7 @@ include __DIR__ . '/includes/admin_header.php';
                 </div>
             </div>
 
+            <?php if ($is_super_admin): ?>
             <!-- 페이지 접근 권한 -->
             <div class="perm-section">
                 <div class="perm-section-title"><i class="bi bi-shield-check me-1"></i> 페이지 접근 권한</div>
@@ -503,6 +571,7 @@ include __DIR__ . '/includes/admin_header.php';
                     <?php endforeach; ?>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- 알림 수신 설정 -->
             <div class="perm-section">
@@ -533,6 +602,7 @@ include __DIR__ . '/includes/admin_header.php';
 </div>
 <?php endif; ?>
 
+<?php if ($is_super_admin): ?>
 <!-- 역할별 기본 권한 안내 -->
 <div class="card mb-3">
     <div class="card-header"><i class="bi bi-shield-check me-1"></i> 역할별 기본 권한</div>
@@ -657,6 +727,7 @@ include __DIR__ . '/includes/admin_header.php';
                             <form method="POST" class="d-inline" onsubmit="return confirm('상태를 변경하시겠습니까?')">
                                 <input type="hidden" name="action" value="toggle_active">
                                 <input type="hidden" name="toggle_id" value="<?= $admin['id'] ?>">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                                 <button type="submit" class="btn btn-outline-warning" title="<?= $admin['is_active'] ? '비활성화' : '활성화' ?>">
                                     <i class="bi bi-<?= $admin['is_active'] ? 'pause' : 'play' ?>"></i>
                                 </button>
@@ -664,6 +735,7 @@ include __DIR__ . '/includes/admin_header.php';
                             <form method="POST" class="d-inline" onsubmit="return confirm('정말 삭제하시겠습니까?')">
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="delete_id" value="<?= $admin['id'] ?>">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token) ?>">
                                 <button type="submit" class="btn btn-outline-danger" title="삭제">
                                     <i class="bi bi-trash"></i>
                                 </button>
@@ -678,6 +750,7 @@ include __DIR__ . '/includes/admin_header.php';
         </table>
     </div>
 </div>
+<?php endif; ?>
 
 <script>
 // 페이지 권한 그리드 토글
