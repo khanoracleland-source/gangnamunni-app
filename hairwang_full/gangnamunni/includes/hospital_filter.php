@@ -94,6 +94,29 @@ function get_strict_admin_hospital_ids($connect) {
 }
 
 /**
+ * 역할 예외 없이 현재 관리자에게 실제 배정된 병원만 반환한다.
+ * super_admin 포함: 배정이 없으면 빈 배열(fail closed).
+ */
+function get_assigned_admin_hospital_ids($connect) {
+    $ids = [];
+    $login = trim((string)($_SESSION['ad_admin_user'] ?? ''));
+    $mail = trim((string)($_SESSION['ad_admin_email'] ?? ''));
+    if ($connect && ($login !== '' || $mail !== '')) {
+        $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email=? OR email=?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'ss', $login, $mail);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            while ($row = mysqli_fetch_assoc($result)) $ids[] = (int)$row['id'];
+            mysqli_stmt_close($stmt);
+        }
+    }
+    $hospital_id = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+    if ($hospital_id > 0) $ids[] = $hospital_id;
+    return array_values(array_unique(array_filter($ids)));
+}
+
+/**
  * get_hospital_filter_ids 를 SQL IN 절 문자열로 반환 (정수만 담기므로 안전).
  * @return string|null  "1,2,3" 또는 null(전체)
  */

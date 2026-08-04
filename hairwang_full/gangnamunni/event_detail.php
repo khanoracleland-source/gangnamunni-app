@@ -8,6 +8,7 @@
  * URL: event_detail.php?id=123
  */
 require_once __DIR__ . '/includes/init.php';
+if (empty($_SESSION['event_entry_csrf'])) $_SESSION['event_entry_csrf'] = bin2hex(random_bytes(32));
 
 // --- DB 연결 ---
 require_once __DIR__ . '/../dbconfig.php';
@@ -274,6 +275,7 @@ $page_js_data = json_encode([
     'already_entered' => $already_entered,
     'raffle_closed' => $raffle_closed,
     'has_raffle' => (bool)$event['has_raffle'],
+    'csrf_token' => (string)$_SESSION['event_entry_csrf'],
 ], JSON_UNESCAPED_UNICODE);
 
 $page_js = <<<JSEOF
@@ -388,6 +390,7 @@ $page_js = <<<JSEOF
         formData.append('user_name', name);
         formData.append('user_phone', phone.replace(/[^0-9]/g, ''));
         formData.append('user_email', email);
+        formData.append('csrf_token', PAGE_DATA.csrf_token);
 
         fetch('event_api.php?action=enter', {
             method: 'POST',

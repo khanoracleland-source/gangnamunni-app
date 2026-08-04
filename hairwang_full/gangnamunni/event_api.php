@@ -99,6 +99,13 @@ function handle_enter($connect, $member, $has_member_id_col) {
         $input = $_POST;
     }
 
+    $csrf = (string)($input['csrf_token'] ?? '');
+    if ($csrf === '' || empty($_SESSION['event_entry_csrf']) || !hash_equals((string)$_SESSION['event_entry_csrf'], $csrf)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => '요청이 만료되었습니다. 페이지를 새로고침해주세요.']);
+        return;
+    }
+
     $event_id   = intval($input['event_id'] ?? 0);
     $user_name  = trim($input['user_name'] ?? '');
     $user_phone = trim($input['user_phone'] ?? '');
@@ -122,11 +129,15 @@ function handle_enter($connect, $member, $has_member_id_col) {
         return;
     }
 
+    // 이벤트 행을 잠궈 정원 확인과 INSERT를 직렬화한다.
+    // 동시 응모 시 max_entries 초과 및 중복 INSERT를 방지한다.
+    mysqli_begin_transaction($connect);
+
     // --- 이벤트 존재 / 활성 / 응모 가능 확인 ---
     $stmt = mysqli_prepare($connect,
         "SELECT id, title, has_raffle, raffle_type, max_entries, raffle_end_date,
                 raffle_prize, raffle_winner_count, is_active
-         FROM gangnamunni_events WHERE id = ?");
+         FROM gangnamunni_events WHERE id = ? FOR UPDATE");
     mysqli_stmt_bind_param($stmt, 'i', $event_id);
     mysqli_stmt_execute($stmt);
     $event = mysqli_stmt_get_result($stmt)->fetch_assoc();
@@ -213,12 +224,14 @@ function handle_enter($connect, $member, $has_member_id_col) {
 
     if (!mysqli_stmt_execute($stmt)) {
         mysqli_stmt_close($stmt);
+        mysqli_rollback($connect);
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => '응모 처리 중 오류가 발생했습니다.']);
         return;
     }
     $entry_id = mysqli_insert_id($connect);
     mysqli_stmt_close($stmt);
+    mysqli_commit($connect);
 
     // --- 사용자 알림 ---
     $notif_file = __DIR__ . '/includes/user_notifications.php';

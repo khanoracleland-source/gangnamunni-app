@@ -20,6 +20,33 @@ if (!$connect) die('DB 연결 실패');
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 require_admin_login();
+
+// TEMPORARY FEATURE GATE:
+// 꿀팁 관리 페이지 개발을 재개할 때 true로 변경한다.
+// CRUD 처리보다 먼저 실행되어 최고관리자를 포함한 모든 관리자의 GET/POST 요청을 차단한다.
+$admin_tips_enabled = false;
+if (!$admin_tips_enabled) {
+    http_response_code(503);
+    $admin_extra_css = '
+    .tips-disabled-card { max-width: 720px; margin: 8vh auto; border: 1px solid var(--bs-border-color); }
+    .tips-disabled-icon { font-size: 3rem; color: var(--bs-warning); }
+    ';
+    include __DIR__ . '/includes/admin_header.php';
+    ?>
+    <div class="card tips-disabled-card shadow-sm">
+        <div class="card-body text-center p-5">
+            <div class="tips-disabled-icon mb-3"><i class="bi bi-pause-circle"></i></div>
+            <h4 class="mb-3">꿀팁 관리 기능 일시 중지</h4>
+            <p class="text-body-secondary mb-4">현재 꿀팁 관리 페이지는 향후 개발을 위해 모든 관리자에게 일시적으로 비활성화되어 있습니다.</p>
+            <a href="dashboard.php" class="btn btn-primary"><i class="bi bi-speedometer2 me-1"></i>대시보드로 이동</a>
+        </div>
+    </div>
+    <?php
+    include __DIR__ . '/includes/admin_footer.php';
+    mysqli_close($connect);
+    exit;
+}
+
 require_permission('content');
 
 // 테이블 자동 생성

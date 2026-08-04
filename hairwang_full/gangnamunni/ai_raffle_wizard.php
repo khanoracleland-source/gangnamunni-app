@@ -8,6 +8,8 @@ if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !
     header('Location: dashboard.php');
     exit;
 }
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { http_response_code(403); header('Content-Type: application/json; charset=utf-8'); echo json_encode(['success'=>false,'message'=>'AI 응모 기능은 일시 중지되었습니다.']); exit; }
+header('Location: admin_events.php'); exit;
 
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';

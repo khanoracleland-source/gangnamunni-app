@@ -10,6 +10,9 @@ if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !
     header('Location: dashboard.php');
     exit;
 }
+// admin_events.php의 병원 배정/검증을 우회하는 기존 AI CRUD는 보안 개편 전까지 차단한다.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { http_response_code(403); header('Content-Type: application/json; charset=utf-8'); echo json_encode(['success'=>false,'message'=>'AI 이벤트 기능은 일시 중지되었습니다.']); exit; }
+header('Location: admin_events.php'); exit;
 
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';

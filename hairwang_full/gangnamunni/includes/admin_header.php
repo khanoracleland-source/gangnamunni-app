@@ -72,7 +72,8 @@ $admin_menus = [
         // TEMPORARILY DISABLED: admin_ads.php (재활성화 시 아래 항목의 주석을 해제)
         // ['url' => 'admin_ads.php', 'label' => '광고 관리', 'icon' => 'bi-megaphone', 'key' => 'ads'],
         ['url' => 'admin_categories.php', 'label' => '카테고리 관리', 'icon' => 'bi-tags', 'key' => 'categories'],
-        ['url' => 'admin_tips.php', 'label' => '꿀팁 관리', 'icon' => 'bi-lightbulb', 'key' => 'tips'],
+        // TEMPORARILY DISABLED: admin_tips.php (재활성화 시 아래 항목의 주석을 해제)
+        // ['url' => 'admin_tips.php', 'label' => '꿀팁 관리', 'icon' => 'bi-lightbulb', 'key' => 'tips'],
         ['url' => 'admin_events.php', 'label' => '이벤트 관리', 'icon' => 'bi-calendar-event', 'key' => 'events'],
         ['url' => 'admin_columns.php', 'label' => '칼럼/뉴스 관리', 'icon' => 'bi-newspaper', 'key' => 'columns'],
         ['url' => 'admin_event_entries.php', 'label' => '응모 관리', 'icon' => 'bi-gift', 'key' => 'event_entries'],

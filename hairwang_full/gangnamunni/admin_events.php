@@ -19,6 +19,7 @@ mysqli_set_charset($connect, 'utf8mb4');
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/dev_mode_helper.php';
+require_once __DIR__ . '/includes/hospital_filter.php';
 loadThemeSettings($connect);
 require_admin_login();
 require_permission('events');
@@ -26,47 +27,140 @@ require_permission('events');
 $message = '';
 $error = '';
 
-// ===== 접근 범위 제한: editor 는 본인 소속 병원 이벤트만 (읽기·쓰기 공통) =====
-$is_editor_scope   = (($_SESSION['ad_admin_role'] ?? '') === 'editor');
-$scope_hospital_id = $is_editor_scope ? (int)($_SESSION['ad_admin_hospital_id'] ?? 0) : 0;
-// SQL 조건(정수 기반이라 인젝션 안전). editor+소속병원 없음 => 1=0(아무것도 없음), 그 외 => 1=1(제한 없음)
-$scope_cond = $is_editor_scope
-    ? ($scope_hospital_id > 0 ? "hospital_id = {$scope_hospital_id}" : '1=0')
-    : '1=1';
+// 보안/운영 컬럼 + 감사 로그 (기존 데이터 보존)
+$deleted_col = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_events LIKE 'deleted_at'");
+if (!$deleted_col || mysqli_num_rows($deleted_col) === 0) {
+    mysqli_query($connect, "ALTER TABLE gangnamunni_events ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL");
+}
+mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_event_audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    hospital_id INT NOT NULL DEFAULT 0,
+    admin_user VARCHAR(190) NOT NULL,
+    action VARCHAR(30) NOT NULL,
+    old_data LONGTEXT NULL,
+    new_data LONGTEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_event_created (event_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-// 이벤트가 현재 관리자 접근 범위에 속하는지 확인 (editor 아니면 항상 허용)
-function event_in_scope($connect, $event_id, $is_editor_scope, $scope_hospital_id) {
-    if (!$is_editor_scope) return true;
-    if ($scope_hospital_id <= 0 || $event_id <= 0) return false;
-    $st = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_events WHERE id=?");
+if (empty($_SESSION['admin_events_csrf'])) $_SESSION['admin_events_csrf'] = bin2hex(random_bytes(32));
+$admin_events_csrf = (string)$_SESSION['admin_events_csrf'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $posted_csrf = (string)($_POST['admin_csrf'] ?? '');
+    if ($posted_csrf === '' || !hash_equals($admin_events_csrf, $posted_csrf)) {
+        http_response_code(403);
+        exit('요청이 만료되었습니다. 페이지를 새로고침해주세요.');
+    }
+}
+
+// 최고관리자를 포함한 모든 관리자: 자신에게 배정된 병원만 허용
+function event_assigned_hospital_ids($connect) {
+    $ids = [];
+    $login = trim((string)($_SESSION['ad_admin_user'] ?? ''));
+    $mail = trim((string)($_SESSION['ad_admin_email'] ?? ''));
+    if ($login !== '' || $mail !== '') {
+        $st = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email=? OR email=?");
+        if ($st) {
+            mysqli_stmt_bind_param($st, 'ss', $login, $mail);
+            mysqli_stmt_execute($st);
+            $rs = mysqli_stmt_get_result($st);
+            while ($row = mysqli_fetch_assoc($rs)) $ids[] = (int)$row['id'];
+            mysqli_stmt_close($st);
+        }
+    }
+    $session_hid = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+    if ($session_hid > 0) $ids[] = $session_hid;
+    return array_values(array_unique(array_filter($ids)));
+}
+$event_hospital_ids = event_assigned_hospital_ids($connect);
+$event_hospital_in = empty($event_hospital_ids) ? '0' : implode(',', $event_hospital_ids);
+$scope_cond = "deleted_at IS NULL AND hospital_id IN ({$event_hospital_in})";
+// 종료일이 지난 이벤트는 더 이상 노출되지 않도록 자동 비활성화
+mysqli_query($connect, "UPDATE gangnamunni_events SET is_active=0, updated_at=NOW() WHERE deleted_at IS NULL AND hospital_id IN ({$event_hospital_in}) AND is_active=1 AND end_date IS NOT NULL AND end_date < CURDATE()");
+
+function event_in_scope($connect, $event_id, $event_hospital_ids) {
+    if ($event_id <= 0 || empty($event_hospital_ids)) return false;
+    $st = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_events WHERE id=? AND deleted_at IS NULL");
     if (!$st) return false;
     mysqli_stmt_bind_param($st, 'i', $event_id);
     mysqli_stmt_execute($st);
     $row = mysqli_fetch_assoc(mysqli_stmt_get_result($st));
     mysqli_stmt_close($st);
-    return $row && (int)$row['hospital_id'] === $scope_hospital_id;
+    return $row && in_array((int)$row['hospital_id'], $event_hospital_ids, true);
+}
+
+function event_audit($connect, $event_id, $hospital_id, $action, $old_data = null, $new_data = null) {
+    $user = (string)($_SESSION['ad_admin_user'] ?? $_SESSION['ad_admin_email'] ?? 'unknown');
+    $old_json = $old_data === null ? null : json_encode($old_data, JSON_UNESCAPED_UNICODE);
+    $new_json = $new_data === null ? null : json_encode($new_data, JSON_UNESCAPED_UNICODE);
+    $st = mysqli_prepare($connect, "INSERT INTO gangnamunni_event_audit_logs(event_id,hospital_id,admin_user,action,old_data,new_data) VALUES(?,?,?,?,?,?)");
+    if ($st) { mysqli_stmt_bind_param($st, 'iissss', $event_id, $hospital_id, $user, $action, $old_json, $new_json); mysqli_stmt_execute($st); mysqli_stmt_close($st); }
+}
+
+function sanitize_event_html($html) {
+    $html = trim((string)$html);
+    if ($html === '') return '';
+    $doc = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $doc->loadHTML('<?xml encoding="utf-8" ?><div id="event-content-root">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+    $blocked = ['script','style','iframe','object','embed','form','input','button','textarea','select','option','link','meta','base'];
+    foreach ($blocked as $tag) {
+        while (($nodes = $doc->getElementsByTagName($tag))->length) $nodes->item(0)->parentNode->removeChild($nodes->item(0));
+    }
+    foreach ($doc->getElementsByTagName('*') as $node) {
+        if (!$node->hasAttributes()) continue;
+        $remove = [];
+        foreach ($node->attributes as $attr) {
+            $name = strtolower($attr->name); $value = trim($attr->value);
+            if (str_starts_with($name, 'on') || $name === 'srcdoc' ||
+                (in_array($name, ['href','src','xlink:href'], true) && preg_match('/^(?:javascript|data\s*:\s*text\/html)/i', $value))) $remove[] = $attr->name;
+        }
+        foreach ($remove as $name) $node->removeAttribute($name);
+    }
+    $root = $doc->getElementById('event-content-root');
+    if (!$root) return '';
+    $safe = ''; foreach ($root->childNodes as $child) $safe .= $doc->saveHTML($child);
+    return $safe;
+}
+
+function validate_event_values($title, $hospital_id, $allowed_ids, $original_price, $discount_price, $discount_rate, $start_date, $end_date, $has_raffle, $raffle_type, $max_entries, $raffle_end_date, $raffle_prize, $winner_count) {
+    if ($title === '') return '이벤트 제목은 필수 입력 항목입니다.';
+    if ($hospital_id <= 0 || !in_array($hospital_id, $allowed_ids, true)) return '본인에게 배정된 병원만 선택할 수 있습니다.';
+    foreach ([$start_date, $end_date, $raffle_end_date] as $date) if ($date !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) return '날짜 형식이 올바르지 않습니다.';
+    if ($start_date && $end_date && $start_date > $end_date) return '종료일은 시작일보다 빠를 수 없습니다.';
+    if ($original_price < 0 || $discount_price < 0) return '금액은 0 이상이어야 합니다.';
+    if ($discount_rate < 0 || $discount_rate > 100) return '할인율은 0~100 사이여야 합니다.';
+    if ($discount_price > 0 && ($original_price <= 0 || $discount_price > $original_price)) return '할인가는 정상가보다 클 수 없습니다.';
+    if ($has_raffle) {
+        if (!in_array($raffle_type, ['random','first_come','manual'], true)) return '응모 유형을 올바르게 선택해주세요.';
+        if ($raffle_end_date === '' || trim($raffle_prize) === '') return '응모 마감일과 경품은 필수입니다.';
+        if ($end_date && $raffle_end_date > $end_date) return '응모 마감일은 이벤트 종료일을 넘을 수 없습니다.';
+        if ($max_entries < 0 || $winner_count < 1 || ($max_entries > 0 && $winner_count > $max_entries)) return '응모 정원과 당첨자 수를 확인해주세요.';
+    }
+    return '';
+}
+
+function valid_event_asset_url($url) {
+    $url = trim((string)$url);
+    if ($url === '') return true;
+    if (preg_match('/[\x00-\x1F\x7F]/', $url)) return false;
+    $scheme = parse_url($url, PHP_URL_SCHEME);
+    return $scheme === null || $scheme === false || in_array(strtolower($scheme), ['http','https'], true);
+}
+
+function delete_local_event_image($url) {
+    $url = trim((string)$url);
+    if (!preg_match('#^uploads/events/[A-Za-z0-9._-]+$#', $url)) return;
+    $path = __DIR__ . '/' . $url;
+    if (is_file($path)) @unlink($path);
 }
 
 // ===== 병원 목록 (드롭다운용) =====
 $hospitals = [];
-if ($is_editor_scope) {
-    // editor: 드롭다운에 본인 병원만 노출 (타 병원 이벤트 생성 차단)
-    if ($scope_hospital_id > 0) {
-        $hstmt = mysqli_prepare($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active=1 AND id=?");
-        mysqli_stmt_bind_param($hstmt, 'i', $scope_hospital_id);
-        mysqli_stmt_execute($hstmt);
-        $hr = mysqli_stmt_get_result($hstmt);
-        while ($h_row = mysqli_fetch_assoc($hr)) $hospitals[] = $h_row;
-        mysqli_stmt_close($hstmt);
-    }
-} else {
-    $h_result = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active=1 ORDER BY name");
-    if ($h_result) {
-        while ($h_row = mysqli_fetch_assoc($h_result)) {
-            $hospitals[] = $h_row;
-        }
-    }
-}
+$h_result = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active=1 AND id IN ({$event_hospital_in}) ORDER BY name");
+if ($h_result) while ($h_row = mysqli_fetch_assoc($h_result)) $hospitals[] = $h_row;
 
 // ===== 카테고리 목록 (동적) =====
 $all_categories = [];
@@ -99,11 +193,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     function handleEventImageUpload($field_name, $upload_dir) {
         if (empty($_FILES[$field_name]) || $_FILES[$field_name]['error'] !== UPLOAD_ERR_OK) return '';
         $file = $_FILES[$field_name];
-        $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!in_array($file['type'], $allowed)) return '';
+        $allowed = ['image/jpeg'=>'jpg', 'image/png'=>'png', 'image/gif'=>'gif', 'image/webp'=>'webp'];
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if (!isset($allowed[$mime]) || @getimagesize($file['tmp_name']) === false) return '';
         if ($file['size'] > 5 * 1024 * 1024) return ''; // 5MB 제한
-        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = 'event_' . date('Ymd_His') . '_' . mt_rand(1000, 9999) . '.' . $ext;
+        $filename = 'event_' . bin2hex(random_bytes(16)) . '.' . $allowed[$mime];
         $dest = $upload_dir . $filename;
         if (move_uploaded_file($file['tmp_name'], $dest)) {
             return 'uploads/events/' . $filename;
@@ -117,9 +211,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $subtitle        = trim($_POST['subtitle'] ?? '');
         $description     = trim($_POST['description'] ?? '');
         $layout_type     = trim($_POST['layout_type'] ?? 'mixed');
-        $content_html    = trim($_POST['content_html'] ?? '');
+        $content_html    = sanitize_event_html($_POST['content_html'] ?? '');
         $image_url       = trim($_POST['image_url'] ?? '');
         // 파일 업로드 시 URL보다 우선
+        $upload_attempted = isset($_FILES['image_file']) && ($_FILES['image_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
         $uploaded = handleEventImageUpload('image_file', $upload_dir);
         if ($uploaded) $image_url = $uploaded;
         $hospital_id     = intval($_POST['hospital_id'] ?? 0);
@@ -138,6 +233,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $raffle_end_date = trim($_POST['raffle_end_date'] ?? '');
         $raffle_prize    = trim($_POST['raffle_prize'] ?? '');
         $raffle_winner_count = intval($_POST['raffle_winner_count'] ?? 1);
+        if ($original_price > 0 && $discount_price > 0 && $discount_price <= $original_price) {
+            $discount_rate = (int)round((($original_price - $discount_price) / $original_price) * 100);
+        }
 
         // 병원 선택 시 병원명 자동 설정
         if ($hospital_id > 0 && empty($hospital_name)) {
@@ -151,17 +249,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $end_date_val        = !empty($end_date) ? $end_date : null;
         $raffle_end_date_val = !empty($raffle_end_date) ? $raffle_end_date : null;
 
-        // editor: 소속 병원으로 강제 (id·명 모두 재설정, POST 로 넘어온 타 병원 값 무시)
-        if ($is_editor_scope) {
-            $hospital_id   = $scope_hospital_id;
-            $hospital_name = $hospitals[0]['name'] ?? $hospital_name;
-        }
-
-        if (empty($title)) {
-            $error = '이벤트 제목은 필수 입력 항목입니다.';
-        } elseif ($is_editor_scope && $scope_hospital_id <= 0) {
-            $error = '소속 병원이 지정되지 않아 이벤트를 등록할 수 없습니다.';
-        } else {
+        if ($upload_attempted && !$uploaded) $error = '이미지는 JPG, PNG, GIF, WebP 형식의 5MB 이하 실제 이미지만 업로드할 수 있습니다.';
+        if ($error === '' && !valid_event_asset_url($image_url)) $error = '이미지 URL이 올바르지 않습니다.';
+        if ($error === '') $error = validate_event_values($title, $hospital_id, $event_hospital_ids, $original_price, $discount_price, $discount_rate, $start_date, $end_date, $has_raffle, $raffle_type, $max_entries, $raffle_end_date, $raffle_prize, $raffle_winner_count);
+        if ($error === '') {
             $stmt = mysqli_prepare($connect,
                 "INSERT INTO gangnamunni_events
                     (title, subtitle, description, layout_type, content_html, image_url,
@@ -179,6 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             if (mysqli_stmt_execute($stmt)) {
                 $new_id = mysqli_insert_id($connect);
+                event_audit($connect, $new_id, $hospital_id, 'create', null, $_POST);
                 $message = "이벤트 '{$title}'이(가) 등록되었습니다. (ID: {$new_id})";
             } else {
                 $error = '등록 실패: ' . mysqli_error($connect);
@@ -194,9 +286,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $subtitle        = trim($_POST['subtitle'] ?? '');
         $description     = trim($_POST['description'] ?? '');
         $layout_type     = trim($_POST['layout_type'] ?? 'mixed');
-        $content_html    = trim($_POST['content_html'] ?? '');
+        $content_html    = sanitize_event_html($_POST['content_html'] ?? '');
         $image_url       = trim($_POST['image_url'] ?? '');
         // 파일 업로드 시 URL보다 우선
+        $upload_attempted = isset($_FILES['image_file']) && ($_FILES['image_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
         $uploaded = handleEventImageUpload('image_file', $upload_dir);
         if ($uploaded) $image_url = $uploaded;
         $hospital_id     = intval($_POST['hospital_id'] ?? 0);
@@ -215,6 +308,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $raffle_end_date = trim($_POST['raffle_end_date'] ?? '');
         $raffle_prize    = trim($_POST['raffle_prize'] ?? '');
         $raffle_winner_count = intval($_POST['raffle_winner_count'] ?? 1);
+        if ($original_price > 0 && $discount_price > 0 && $discount_price <= $original_price) {
+            $discount_rate = (int)round((($original_price - $discount_price) / $original_price) * 100);
+        }
 
         if ($hospital_id > 0 && empty($hospital_name)) {
             foreach ($hospitals as $h) {
@@ -226,17 +322,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $end_date_val        = !empty($end_date) ? $end_date : null;
         $raffle_end_date_val = !empty($raffle_end_date) ? $raffle_end_date : null;
 
-        // editor: 소속 병원으로 강제 + 대상 이벤트가 본인 병원 소유인지 확인
-        if ($is_editor_scope) {
-            $hospital_id   = $scope_hospital_id;
-            $hospital_name = $hospitals[0]['name'] ?? $hospital_name;
-        }
-
+        $old_event = null;
+        if ($event_id > 0) { $old_r = mysqli_query($connect, "SELECT * FROM gangnamunni_events WHERE id={$event_id} LIMIT 1"); $old_event = $old_r ? mysqli_fetch_assoc($old_r) : null; }
         if ($event_id <= 0 || empty($title)) {
             $error = '이벤트 제목은 필수 입력 항목입니다.';
-        } elseif (!event_in_scope($connect, $event_id, $is_editor_scope, $scope_hospital_id)) {
+        } elseif (!event_in_scope($connect, $event_id, $event_hospital_ids)) {
             $error = '접근 권한이 없는 이벤트입니다.';
         } else {
+            if ($upload_attempted && !$uploaded) $error = '이미지는 JPG, PNG, GIF, WebP 형식의 5MB 이하 실제 이미지만 업로드할 수 있습니다.';
+            elseif (!valid_event_asset_url($image_url)) $error = '이미지 URL이 올바르지 않습니다.';
+            else $error = validate_event_values($title, $hospital_id, $event_hospital_ids, $original_price, $discount_price, $discount_rate, $start_date, $end_date, $has_raffle, $raffle_type, $max_entries, $raffle_end_date, $raffle_prize, $raffle_winner_count);
+        }
+        if ($error === '') {
             $stmt = mysqli_prepare($connect,
                 "UPDATE gangnamunni_events SET
                     title=?, subtitle=?, description=?, layout_type=?, content_html=?, image_url=?,
@@ -254,6 +351,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $event_id
             );
             if (mysqli_stmt_execute($stmt)) {
+                if ($uploaded && !empty($old_event['image_url']) && $old_event['image_url'] !== $image_url) delete_local_event_image($old_event['image_url']);
+                event_audit($connect, $event_id, $hospital_id, 'update', $old_event, $_POST);
                 $message = "이벤트 '{$title}' 정보가 수정되었습니다.";
             } else {
                 $error = '수정 실패: ' . mysqli_error($connect);
@@ -265,13 +364,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- 이벤트 삭제 ---
     if ($action === 'delete') {
         $event_id = intval($_POST['event_id'] ?? 0);
-        if ($event_id > 0 && !event_in_scope($connect, $event_id, $is_editor_scope, $scope_hospital_id)) {
+        if ($event_id > 0 && !event_in_scope($connect, $event_id, $event_hospital_ids)) {
             $error = '접근 권한이 없는 이벤트입니다.';
         } elseif ($event_id > 0) {
-            $stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_events WHERE id=?");
+            $old_r = mysqli_query($connect, "SELECT * FROM gangnamunni_events WHERE id={$event_id} LIMIT 1"); $old_event = $old_r ? mysqli_fetch_assoc($old_r) : null;
+            $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_events SET is_active=0, deleted_at=NOW(), updated_at=NOW() WHERE id=?");
             mysqli_stmt_bind_param($stmt, 'i', $event_id);
             if (mysqli_stmt_execute($stmt)) {
-                $message = "이벤트 #{$event_id}이(가) 삭제되었습니다.";
+                event_audit($connect, $event_id, (int)($old_event['hospital_id'] ?? 0), 'soft_delete', $old_event, null);
+                $message = "이벤트 #{$event_id}이(가) 보관 처리되었습니다.";
             } else {
                 $error = '삭제 실패: ' . mysqli_error($connect);
             }
@@ -282,14 +383,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- 활성/비활성 토글 ---
     if ($action === 'toggle_active') {
         $event_id = intval($_POST['event_id'] ?? 0);
-        if ($event_id > 0 && !event_in_scope($connect, $event_id, $is_editor_scope, $scope_hospital_id)) {
+        if ($event_id > 0 && !event_in_scope($connect, $event_id, $event_hospital_ids)) {
             $error = '접근 권한이 없는 이벤트입니다.';
         } elseif ($event_id > 0) {
+            $old_r = mysqli_query($connect, "SELECT * FROM gangnamunni_events WHERE id={$event_id} LIMIT 1"); $old_event = $old_r ? mysqli_fetch_assoc($old_r) : null;
             $stmt = mysqli_prepare($connect,
                 "UPDATE gangnamunni_events SET is_active = IF(is_active=1, 0, 1), updated_at=NOW() WHERE id=?"
             );
             mysqli_stmt_bind_param($stmt, 'i', $event_id);
             if (mysqli_stmt_execute($stmt)) {
+                event_audit($connect, $event_id, (int)($old_event['hospital_id'] ?? 0), 'toggle_active', $old_event, null);
                 $message = '활성 상태가 변경되었습니다.';
             }
             mysqli_stmt_close($stmt);
@@ -399,7 +502,11 @@ function buildEventUrl($overrides = []) {
 
 // JS용 이벤트 데이터
 $events_json = [];
-foreach ($events as $ev) $events_json[$ev['id']] = $ev;
+foreach ($events as $ev) {
+    // 기존 데이터에 위험한 HTML이 남아 있어도 관리자 미리보기에서 실행되지 않게 한다.
+    $ev['content_html'] = sanitize_event_html($ev['content_html'] ?? '');
+    $events_json[$ev['id']] = $ev;
+}
 
 // 공통 헤더 CSS
 $admin_extra_css = '
@@ -446,11 +553,15 @@ include __DIR__ . '/includes/admin_header.php';
 <!-- 페이지 헤더 -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="bi bi-calendar-event"></i> 이벤트 관리</h5>
-    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEventModal">
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEventModal" <?php echo empty($event_hospital_ids) ? 'disabled' : ''; ?>>
         <i class="bi bi-plus-circle me-1"></i>새 이벤트 등록
     </button>
 
-    <a href="ai_event_editor.php" class="btn btn-outline-primary btn-sm"><i class="bi bi-robot"></i> AI 이벤트</a></div>
+    </div>
+
+<?php if (empty($event_hospital_ids)): ?>
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>현재 관리자 계정에 배정된 병원이 없어 이벤트를 조회하거나 생성할 수 없습니다.</div>
+<?php endif; ?>
 
 <!-- 통계 카드 -->
 <div class="row g-2 mb-3">
@@ -670,6 +781,7 @@ include __DIR__ . '/includes/admin_header.php';
                         </button>
                         <form method="POST" class="d-inline"
                               onsubmit="return confirm('활성 상태를 변경하시겠습니까?')">
+                            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_events_csrf, ENT_QUOTES); ?>">
                             <input type="hidden" name="action" value="toggle_active">
                             <input type="hidden" name="event_id" value="<?php echo $ev['id']; ?>">
                             <button type="submit" class="btn btn-outline-warning"
@@ -679,6 +791,7 @@ include __DIR__ . '/includes/admin_header.php';
                         </form>
                         <form method="POST" class="d-inline"
                               onsubmit="return confirm('정말 이 이벤트를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')">
+                            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_events_csrf, ENT_QUOTES); ?>">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="event_id" value="<?php echo $ev['id']; ?>">
                             <button type="submit" class="btn btn-outline-danger" title="삭제">
@@ -736,6 +849,7 @@ include __DIR__ . '/includes/admin_header.php';
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <form method="POST" id="addEventForm" enctype="multipart/form-data">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_events_csrf, ENT_QUOTES); ?>">
                 <input type="hidden" name="action" value="add">
                 <div class="modal-header py-2">
                     <h6 class="modal-title"><i class="bi bi-plus-circle me-1"></i> 새 이벤트 등록</h6>
@@ -915,6 +1029,7 @@ include __DIR__ . '/includes/admin_header.php';
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <form method="POST" id="editEventForm" enctype="multipart/form-data">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_events_csrf, ENT_QUOTES); ?>">
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="event_id" id="editEventId" value="">
                 <div class="modal-header py-2">

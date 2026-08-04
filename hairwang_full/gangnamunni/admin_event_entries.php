@@ -12,9 +12,15 @@ require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/hospital_filter.php';
 require_admin_login();
 require_permission('event_entries');
-$event_hospital_ids = get_hospital_filter_ids($connect);
-$event_hospital_in = $event_hospital_ids === null ? null : (empty($event_hospital_ids) ? '0' : implode(',', array_map('intval', $event_hospital_ids)));
-$event_scope = $event_hospital_in === null ? '' : " AND ev.hospital_id IN ({$event_hospital_in})";
+$event_hospital_ids = get_assigned_admin_hospital_ids($connect);
+$event_hospital_in = empty($event_hospital_ids) ? '0' : implode(',', array_map('intval', $event_hospital_ids));
+$event_scope = " AND ev.hospital_id IN ({$event_hospital_in})";
+
+if (empty($_SESSION['admin_event_entries_csrf'])) $_SESSION['admin_event_entries_csrf'] = bin2hex(random_bytes(32));
+$entries_csrf = (string)$_SESSION['admin_event_entries_csrf'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (empty($_POST['admin_csrf']) || !hash_equals($entries_csrf, (string)$_POST['admin_csrf']))) {
+    http_response_code(403); exit('요청이 만료되었습니다.');
+}
 
 // ===== Action: 당첨 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -60,7 +66,7 @@ if ($r) while ($row = mysqli_fetch_assoc($r)) $entries[] = $row;
 
 // Events list for filter
 $events = [];
-$er_scope = $event_hospital_in === null ? '' : " AND hospital_id IN ({$event_hospital_in})";
+$er_scope = " AND hospital_id IN ({$event_hospital_in})";
 $er = mysqli_query($connect, "SELECT id, title FROM gangnamunni_events WHERE raffle_end_date IS NOT NULL{$er_scope} ORDER BY created_at DESC LIMIT 50");
 if ($er) while ($ev = mysqli_fetch_assoc($er)) $events[] = $ev;
 
@@ -96,6 +102,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         <div class="card-body">
             <h6 class="card-title"><i class="bi bi-dice-5 me-1 text-warning"></i>랜덤 당첨 추첨</h6>
             <form method="post" class="row g-2 align-items-end">
+                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($entries_csrf, ENT_QUOTES); ?>">
                 <input type="hidden" name="action" value="draw_winner">
                 <input type="hidden" name="event_id" value="<?php echo $event_id; ?>">
                 <div class="col-auto">
@@ -162,6 +169,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td><small><?php echo substr($e['created_at'] ?? '', 0, 16); ?></small></td>
                         <td>
                             <form method="post" class="d-inline">
+                                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($entries_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="action" value="update_status">
                                 <input type="hidden" name="id" value="<?php echo $e['id']; ?>">
                                 <select name="status" onchange="this.form.submit()" class="form-select form-select-sm" style="width:80px;">
