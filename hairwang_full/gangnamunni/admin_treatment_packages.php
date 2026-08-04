@@ -42,6 +42,7 @@ mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_treatment_package
     package_price INT NOT NULL DEFAULT 0,
     original_price INT NOT NULL DEFAULT 0,
     is_active TINYINT(1) DEFAULT 1,
+    deleted_at DATETIME DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_hospital (hospital_id)
@@ -53,8 +54,29 @@ mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_treatment_package
     treatment_id INT NOT NULL,
     sort_order INT DEFAULT 0,
     INDEX idx_package (package_id),
-    INDEX idx_treatment (treatment_id)
+    INDEX idx_treatment (treatment_id),
+    UNIQUE KEY uk_package_treatment (package_id, treatment_id),
+    CONSTRAINT fk_package_item_package FOREIGN KEY (package_id) REFERENCES gangnamunni_treatment_packages(id) ON DELETE CASCADE,
+    CONSTRAINT fk_package_item_treatment FOREIGN KEY (treatment_id) REFERENCES gangnamunni_treatment_master(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// 기존 설치에도 soft-delete 컬럼을 멱등 적용한다.
+$deleted_col = mysqli_query($connect, "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gangnamunni_treatment_packages' AND COLUMN_NAME = 'deleted_at' LIMIT 1");
+if ($deleted_col && mysqli_num_rows($deleted_col) === 0) {
+    mysqli_query($connect, "ALTER TABLE gangnamunni_treatment_packages ADD COLUMN deleted_at DATETIME DEFAULT NULL AFTER is_active");
+}
+
+// 기존 설치에도 중복 방지 제약을 적용한다. 기존 중복 데이터가 있으면 데이터를 임의 삭제하지 않고 로그로 남긴다.
+$unique_idx = mysqli_query($connect, "SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gangnamunni_treatment_package_items' AND INDEX_NAME = 'uk_package_treatment' LIMIT 1");
+if ($unique_idx && mysqli_num_rows($unique_idx) === 0) {
+    try {
+        if (!mysqli_query($connect, "ALTER TABLE gangnamunni_treatment_package_items ADD UNIQUE KEY uk_package_treatment (package_id, treatment_id)")) {
+            error_log('[treatment_packages] 중복 방지 인덱스 생성 실패: ' . mysqli_error($connect));
+        }
+    } catch (Throwable $e) {
+        error_log('[treatment_packages] 중복 방지 인덱스 생성 실패: ' . $e->getMessage());
+    }
+}
 
 // CSRF 토큰
 if (empty($_SESSION['csrf_token'])) {
@@ -72,12 +94,46 @@ function package_treatment_ids_for_hospital($connect, $hospital_id, $raw_ids) {
     $in = implode(',', $ids);
     $allowed = [];
     $stmt = mysqli_prepare($connect, "SELECT DISTINCT treatment_id FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND status = 'active' AND is_active = 1 AND treatment_id IN ({$in})");
+    if (!$stmt) throw new RuntimeException('패키지 시술 권한 확인 실패');
     mysqli_stmt_bind_param($stmt, 'i', $hospital_id);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
     while ($row = mysqli_fetch_assoc($result)) $allowed[] = (int)$row['treatment_id'];
     mysqli_stmt_close($stmt);
     return $allowed;
+}
+
+function package_execute_or_throw($stmt, $message) {
+    if (!$stmt || !mysqli_stmt_execute($stmt)) {
+        throw new RuntimeException($message . ($stmt ? ': ' . mysqli_stmt_error($stmt) : ''));
+    }
+}
+
+function package_redirect($hospital_id, $message, $type = 'success') {
+    header('Location: admin_treatment_packages.php?hospital_id=' . intval($hospital_id)
+        . '&msg=' . urlencode($message) . '&msg_type=' . urlencode($type));
+    exit;
+}
+
+function package_actual_prices($connect, $hospital_id, array $treatment_ids) {
+    $ids = array_values(array_unique(array_filter(array_map('intval', $treatment_ids))));
+    if ($hospital_id <= 0 || empty($ids)) return [];
+    $in = implode(',', $ids);
+    $prices = [];
+    $stmt = mysqli_prepare($connect,
+        "SELECT ht.treatment_id,
+                MIN(COALESCE((SELECT MIN(hp.price) FROM gangnamunni_hospital_treatment_prices hp WHERE hp.hospital_treatment_id = ht.id AND hp.price > 0),
+                             NULLIF(ht.price_min, 0), NULLIF(ht.price_max, 0), 0)) AS actual_price
+         FROM gangnamunni_hospital_treatments ht
+         WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1 AND ht.treatment_id IN ({$in})
+         GROUP BY ht.treatment_id");
+    if (!$stmt) throw new RuntimeException('시술 가격 조회 준비 실패');
+    mysqli_stmt_bind_param($stmt, 'i', $hospital_id);
+    package_execute_or_throw($stmt, '시술 가격 조회 실패');
+    $result = mysqli_stmt_get_result($stmt);
+    while ($row = mysqli_fetch_assoc($result)) $prices[(int)$row['treatment_id']] = (int)$row['actual_price'];
+    mysqli_stmt_close($stmt);
+    return $prices;
 }
 
 // 병원 목록 조회
@@ -107,11 +163,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $msg_type = 'danger';
     } else {
 
+        $known_actions = ['create_package', 'update_package', 'delete_package', 'toggle_active'];
+        if (!in_array($action, $known_actions, true)) {
+            http_response_code(400);
+            die('지원하지 않는 요청입니다.');
+        }
+
         $posted_hospital_id = intval($_POST['hospital_id'] ?? 0);
         $package_id = intval($_POST['id'] ?? 0);
         $action_hospital_id = $posted_hospital_id;
         if ($package_id > 0) {
-            $owner_stmt = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_treatment_packages WHERE id = ?");
+            $owner_stmt = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_treatment_packages WHERE id = ? AND deleted_at IS NULL");
+            if (!$owner_stmt) { http_response_code(500); die('패키지 조회에 실패했습니다.'); }
             mysqli_stmt_bind_param($owner_stmt, 'i', $package_id);
             mysqli_stmt_execute($owner_stmt);
             $owner_row = mysqli_fetch_assoc(mysqli_stmt_get_result($owner_stmt));
@@ -133,61 +196,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $package_price = intval($_POST['package_price'] ?? 0);
             $treatment_ids = $_POST['treatment_ids'] ?? [];
 
-            if ($name === '') {
+            if ($name === '' || mb_strlen($name, 'UTF-8') > 200) {
                 $msg = '패키지명을 입력해주세요.';
+                $msg_type = 'danger';
+            } elseif (mb_strlen($description, 'UTF-8') > 5000) {
+                $msg = '패키지 설명은 5000자 이하로 입력해주세요.';
                 $msg_type = 'danger';
             } elseif ($hospital_id <= 0) {
                 $msg = '병원을 선택해주세요.';
                 $msg_type = 'danger';
-            } elseif ($package_price <= 0) {
+            } elseif ($package_price <= 0 || $package_price > 2147483647) {
                 $msg = '패키지 가격을 입력해주세요.';
                 $msg_type = 'danger';
             } elseif (empty($treatment_ids)) {
                 $msg = '최소 1개 이상의 시술을 선택해주세요.';
                 $msg_type = 'danger';
             } else {
-                // 원가 계산: 선택된 시술들의 avg_price_min 합산
-                $original_price = 0;
+                // 원가 계산: 마스터 평균가가 아닌 이 병원의 실제 활성 시술가 합산
                 $ids_safe = package_treatment_ids_for_hospital($connect, $hospital_id, $treatment_ids);
                 if (count($ids_safe) !== count(array_unique(array_filter(array_map('intval', $treatment_ids))))) {
                     http_response_code(400);
                     die('해당 병원에 활성 배정된 시술만 패키지에 추가할 수 있습니다.');
                 }
-                $ids_str = implode(',', $ids_safe);
-                $pr = mysqli_query($connect, "SELECT SUM(avg_price_min) AS total FROM gangnamunni_treatment_master WHERE id IN ($ids_str)");
-                if ($pr && $row = mysqli_fetch_assoc($pr)) {
-                    $original_price = intval($row['total']);
+                $actual_prices = package_actual_prices($connect, $hospital_id, $ids_safe);
+                $original_price = array_sum($actual_prices);
+                if ($original_price <= 0) package_redirect($hospital_id, '선택한 시술의 병원 가격을 먼저 설정해주세요.', 'warning');
+                if ($package_price > $original_price) {
+                    package_redirect($hospital_id, '패키지 가격은 선택 시술 합계(' . number_format($original_price) . '만원)보다 높게 설정할 수 없습니다.', 'warning');
                 }
 
+                mysqli_begin_transaction($connect);
+                try {
                 $stmt = mysqli_prepare($connect,
                     "INSERT INTO gangnamunni_treatment_packages (hospital_id, name, description, package_price, original_price, is_active)
                      VALUES (?, ?, ?, ?, ?, 1)"
                 );
-                if ($stmt) {
+                if (!$stmt) throw new RuntimeException('패키지 등록 준비 실패');
                     mysqli_stmt_bind_param($stmt, 'issii', $hospital_id, $name, $description, $package_price, $original_price);
-                    if (mysqli_stmt_execute($stmt)) {
+                    package_execute_or_throw($stmt, '패키지 등록 실패');
                         $pkg_id = mysqli_insert_id($connect);
                         // 패키지 항목 추가
                         $sort = 0;
                         $item_stmt = mysqli_prepare($connect,
                             "INSERT INTO gangnamunni_treatment_package_items (package_id, treatment_id, sort_order) VALUES (?, ?, ?)"
                         );
-                        if ($item_stmt) {
+                        if (!$item_stmt) throw new RuntimeException('패키지 시술 저장 준비 실패');
                             foreach ($ids_safe as $tid) {
                                 $sort++;
                                 mysqli_stmt_bind_param($item_stmt, 'iii', $pkg_id, $tid, $sort);
-                                mysqli_stmt_execute($item_stmt);
+                                package_execute_or_throw($item_stmt, '패키지 시술 저장 실패');
                             }
                             mysqli_stmt_close($item_stmt);
-                        }
                         $selected_hospital = $hospital_id;
-                        header("Location: admin_treatment_packages.php?hospital_id={$hospital_id}&msg=" . urlencode('패키지가 등록되었습니다.'));
-                        exit;
-                    } else {
-                        $msg = '패키지 등록 실패: ' . mysqli_error($connect);
-                        $msg_type = 'danger';
-                    }
-                    mysqli_stmt_close($stmt);
+                        mysqli_commit($connect);
+                        package_redirect($hospital_id, '패키지가 등록되었습니다.');
+                } catch (Throwable $e) {
+                    mysqli_rollback($connect);
+                    error_log('[treatment_packages] create 실패: ' . $e->getMessage());
+                    package_redirect($hospital_id, '패키지 등록에 실패했습니다. 변경사항은 저장되지 않았습니다.', 'danger');
                 }
             }
         }
@@ -200,60 +266,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $package_price = intval($_POST['package_price'] ?? 0);
             $treatment_ids = $_POST['treatment_ids'] ?? [];
 
-            if ($id <= 0 || $name === '' || $package_price <= 0 || empty($treatment_ids)) {
+            if ($id <= 0 || $name === '' || mb_strlen($name, 'UTF-8') > 200
+                || mb_strlen($description, 'UTF-8') > 5000 || $package_price <= 0
+                || $package_price > 2147483647 || empty($treatment_ids)) {
                 $msg = '필수 항목을 모두 입력해주세요.';
                 $msg_type = 'danger';
             } else {
-                // 원가 재계산
-                $original_price = 0;
+                // 병원의 실제 활성 시술가로 원가 재계산
                 $ids_safe = package_treatment_ids_for_hospital($connect, $action_hospital_id, $treatment_ids);
                 if (count($ids_safe) !== count(array_unique(array_filter(array_map('intval', $treatment_ids))))) {
                     http_response_code(400);
                     die('해당 병원에 활성 배정된 시술만 패키지에 추가할 수 있습니다.');
                 }
-                $ids_str = implode(',', $ids_safe);
-                $pr = mysqli_query($connect, "SELECT SUM(avg_price_min) AS total FROM gangnamunni_treatment_master WHERE id IN ($ids_str)");
-                if ($pr && $row = mysqli_fetch_assoc($pr)) {
-                    $original_price = intval($row['total']);
+                $actual_prices = package_actual_prices($connect, $action_hospital_id, $ids_safe);
+                $original_price = array_sum($actual_prices);
+                if ($original_price <= 0) package_redirect($action_hospital_id, '선택한 시술의 병원 가격을 먼저 설정해주세요.', 'warning');
+                if ($package_price > $original_price) {
+                    package_redirect($action_hospital_id, '패키지 가격은 선택 시술 합계(' . number_format($original_price) . '만원)보다 높게 설정할 수 없습니다.', 'warning');
                 }
 
+                mysqli_begin_transaction($connect);
+                try {
                 $stmt = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_treatment_packages SET name = ?, description = ?, package_price = ?, original_price = ?, updated_at = NOW() WHERE id = ? AND hospital_id = ?"
+                    "UPDATE gangnamunni_treatment_packages SET name = ?, description = ?, package_price = ?, original_price = ?, updated_at = NOW() WHERE id = ? AND hospital_id = ? AND deleted_at IS NULL"
                 );
-                if ($stmt) {
+                if (!$stmt) throw new RuntimeException('패키지 수정 준비 실패');
                     mysqli_stmt_bind_param($stmt, 'ssiiii', $name, $description, $package_price, $original_price, $id, $action_hospital_id);
-                    if (mysqli_stmt_execute($stmt)) {
+                    package_execute_or_throw($stmt, '패키지 수정 실패');
                         // 기존 항목 삭제 후 재삽입
                         $del_stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_treatment_package_items WHERE package_id = ?");
-                        if ($del_stmt) {
+                        if (!$del_stmt) throw new RuntimeException('기존 패키지 시술 삭제 준비 실패');
                             mysqli_stmt_bind_param($del_stmt, 'i', $id);
-                            mysqli_stmt_execute($del_stmt);
+                            package_execute_or_throw($del_stmt, '기존 패키지 시술 삭제 실패');
                             mysqli_stmt_close($del_stmt);
-                        }
                         $sort = 0;
                         $item_stmt = mysqli_prepare($connect,
                             "INSERT INTO gangnamunni_treatment_package_items (package_id, treatment_id, sort_order) VALUES (?, ?, ?)"
                         );
-                        if ($item_stmt) {
+                        if (!$item_stmt) throw new RuntimeException('패키지 시술 저장 준비 실패');
                             foreach ($ids_safe as $tid) {
                                 $sort++;
                                 mysqli_stmt_bind_param($item_stmt, 'iii', $id, $tid, $sort);
-                                mysqli_stmt_execute($item_stmt);
+                                package_execute_or_throw($item_stmt, '패키지 시술 저장 실패');
                             }
                             mysqli_stmt_close($item_stmt);
-                        }
 
                         // 병원 ID 가져오기 (리다이렉트용)
                         $pkg_r = mysqli_query($connect, "SELECT hospital_id FROM gangnamunni_treatment_packages WHERE id = $id");
                         $h_id = ($pkg_r && $r = mysqli_fetch_assoc($pkg_r)) ? intval($r['hospital_id']) : $selected_hospital;
 
-                        header("Location: admin_treatment_packages.php?hospital_id={$h_id}&msg=" . urlencode('패키지가 수정되었습니다.'));
-                        exit;
-                    } else {
-                        $msg = '패키지 수정 실패: ' . mysqli_error($connect);
-                        $msg_type = 'danger';
-                    }
-                    mysqli_stmt_close($stmt);
+                        mysqli_commit($connect);
+                        package_redirect($h_id, '패키지가 수정되었습니다.');
+                } catch (Throwable $e) {
+                    mysqli_rollback($connect);
+                    error_log('[treatment_packages] update 실패: ' . $e->getMessage());
+                    package_redirect($action_hospital_id, '패키지 수정에 실패했습니다. 기존 내용은 유지됩니다.', 'danger');
                 }
             }
         }
@@ -262,22 +329,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($action === 'delete_package') {
             $id = intval($_POST['id'] ?? 0);
             if ($id > 0) {
-                // 항목 먼저 삭제
-                $del_items = mysqli_prepare($connect, "DELETE FROM gangnamunni_treatment_package_items WHERE package_id = ?");
-                if ($del_items) {
-                    mysqli_stmt_bind_param($del_items, 'i', $id);
-                    mysqli_stmt_execute($del_items);
-                    mysqli_stmt_close($del_items);
-                }
-                $del_pkg = mysqli_prepare($connect, "DELETE FROM gangnamunni_treatment_packages WHERE id = ? AND hospital_id = ?");
-                if ($del_pkg) {
-                    mysqli_stmt_bind_param($del_pkg, 'ii', $id, $action_hospital_id);
-                    if (mysqli_stmt_execute($del_pkg)) {
-                        header("Location: admin_treatment_packages.php?hospital_id={$selected_hospital}&msg=" . urlencode('패키지가 삭제되었습니다.'));
-                        exit;
-                    }
-                    mysqli_stmt_close($del_pkg);
-                }
+                $del_pkg = mysqli_prepare($connect, "UPDATE gangnamunni_treatment_packages SET is_active = 0, deleted_at = NOW(), updated_at = NOW() WHERE id = ? AND hospital_id = ? AND deleted_at IS NULL");
+                if (!$del_pkg) package_redirect($action_hospital_id, '패키지 삭제 준비에 실패했습니다.', 'danger');
+                mysqli_stmt_bind_param($del_pkg, 'ii', $id, $action_hospital_id);
+                if (!mysqli_stmt_execute($del_pkg)) package_redirect($action_hospital_id, '패키지 삭제에 실패했습니다.', 'danger');
+                mysqli_stmt_close($del_pkg);
+                package_redirect($selected_hospital, '패키지가 삭제되었습니다.');
             }
         }
 
@@ -285,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($action === 'toggle_active') {
             $id = intval($_POST['id'] ?? 0);
             if ($id > 0) {
-                $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_treatment_packages SET is_active = IF(is_active=1,0,1), updated_at = NOW() WHERE id = ? AND hospital_id = ?");
+                $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_treatment_packages SET is_active = IF(is_active=1,0,1), updated_at = NOW() WHERE id = ? AND hospital_id = ? AND deleted_at IS NULL");
                 if ($stmt) {
                     mysqli_stmt_bind_param($stmt, 'ii', $id, $action_hospital_id);
                     if (mysqli_stmt_execute($stmt)) {
@@ -303,7 +360,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // GET 메시지 처리
 if (isset($_GET['msg']) && $_GET['msg'] !== '') {
     $msg = $_GET['msg'];
-    $msg_type = 'success';
+    $allowed_msg_types = ['success', 'danger', 'warning', 'info'];
+    $msg_type = in_array($_GET['msg_type'] ?? '', $allowed_msg_types, true) ? $_GET['msg_type'] : 'success';
 }
 
 // ===== 통계 조회 =====
@@ -312,13 +370,31 @@ $stat_active = 0;
 $stat_avg_discount = 0;
 
 if ($selected_hospital > 0) {
+    // 구성 시술이 더 이상 해당 병원에 활성 배정되지 않은 패키지는 자동 비활성화한다.
+    $disable_stmt = mysqli_prepare($connect,
+        "UPDATE gangnamunni_treatment_packages p
+         SET p.is_active = 0, p.updated_at = NOW()
+         WHERE p.hospital_id = ? AND p.deleted_at IS NULL AND p.is_active = 1
+           AND EXISTS (
+               SELECT 1 FROM gangnamunni_treatment_package_items pi
+               LEFT JOIN gangnamunni_hospital_treatments ht
+                 ON ht.hospital_id = p.hospital_id AND ht.treatment_id = pi.treatment_id
+                AND ht.status = 'active' AND ht.is_active = 1
+               WHERE pi.package_id = p.id AND ht.id IS NULL
+           )"
+    );
+    if ($disable_stmt) {
+        mysqli_stmt_bind_param($disable_stmt, 'i', $selected_hospital);
+        mysqli_stmt_execute($disable_stmt);
+        mysqli_stmt_close($disable_stmt);
+    }
     $stat_r = mysqli_query($connect,
         "SELECT
             COUNT(*) AS total,
             SUM(is_active) AS active_count,
             AVG(CASE WHEN original_price > 0 THEN ROUND((original_price - package_price) / original_price * 100, 1) ELSE 0 END) AS avg_discount
          FROM gangnamunni_treatment_packages
-         WHERE hospital_id = " . intval($selected_hospital)
+         WHERE hospital_id = " . intval($selected_hospital) . " AND deleted_at IS NULL"
     );
     if ($stat_r && $s = mysqli_fetch_assoc($stat_r)) {
         $stat_total = intval($s['total']);
@@ -334,7 +410,7 @@ if ($selected_hospital > 0) {
         "SELECT p.*, h.name AS hospital_name
          FROM gangnamunni_treatment_packages p
          LEFT JOIN gangnamunni_hospitals h ON h.id = p.hospital_id
-         WHERE p.hospital_id = " . intval($selected_hospital) . "
+         WHERE p.hospital_id = " . intval($selected_hospital) . " AND p.deleted_at IS NULL
          ORDER BY p.is_active DESC, p.created_at DESC"
     );
     if ($pkg_r) {
@@ -342,7 +418,17 @@ if ($selected_hospital > 0) {
             // 패키지 항목 조회
             $p['items'] = [];
             $item_r = mysqli_query($connect,
-                "SELECT pi.*, tm.name AS treatment_name, tm.avg_price_min, tc.name AS category_name
+                "SELECT pi.*, tm.name AS treatment_name, tc.name AS category_name,
+                        COALESCE((
+                            SELECT MIN(COALESCE(
+                                (SELECT MIN(hp.price) FROM gangnamunni_hospital_treatment_prices hp WHERE hp.hospital_treatment_id = ht2.id AND hp.price > 0),
+                                NULLIF(ht2.price_min, 0), NULLIF(ht2.price_max, 0)
+                            ))
+                            FROM gangnamunni_hospital_treatments ht2
+                            WHERE ht2.hospital_id = " . intval($p['hospital_id']) . "
+                              AND ht2.treatment_id = pi.treatment_id
+                              AND ht2.status = 'active' AND ht2.is_active = 1
+                        ), 0) AS actual_price
                  FROM gangnamunni_treatment_package_items pi
                  LEFT JOIN gangnamunni_treatment_master tm ON tm.id = pi.treatment_id
                  LEFT JOIN gangnamunni_treatment_categories tc ON tc.id = tm.category_id
@@ -359,11 +445,14 @@ if ($selected_hospital > 0) {
 $treatments = [];
 $cat_groups = []; // 카테고리별 그룹핑
 $tm_stmt = mysqli_prepare($connect,
-    "SELECT DISTINCT tm.id, tm.name, tm.avg_price_min, tm.category_id, tc.name AS category_name
+    "SELECT tm.id, tm.name, tm.category_id, tc.name AS category_name,
+            MIN(COALESCE((SELECT MIN(hp.price) FROM gangnamunni_hospital_treatment_prices hp WHERE hp.hospital_treatment_id = ht.id AND hp.price > 0),
+                         NULLIF(ht.price_min, 0), NULLIF(ht.price_max, 0), 0)) AS actual_price
      FROM gangnamunni_hospital_treatments ht
      JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
      LEFT JOIN gangnamunni_treatment_categories tc ON tc.id = tm.category_id
      WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1 AND tm.is_active = 1
+     GROUP BY tm.id, tm.name, tm.category_id, tc.name, tc.sort_order
      ORDER BY tc.sort_order ASC, tc.name ASC, tm.name ASC"
 );
 $tm_r = false;
@@ -487,8 +576,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                                 <?php foreach ($pkg['items'] as $item): ?>
                                 <span class="badge bg-light text-dark border me-1 mb-1">
                                     <?= htmlspecialchars($item['treatment_name'] ?? '삭제된 시술') ?>
-                                    <?php if ($item['avg_price_min'] > 0): ?>
-                                    <small class="text-muted">(<?= number_format($item['avg_price_min']) ?>원)</small>
+                                    <?php if ($item['actual_price'] > 0): ?>
+                                    <small class="text-muted">(<?= number_format($item['actual_price']) ?>만원)</small>
                                     <?php endif; ?>
                                 </span>
                                 <?php endforeach; ?>
@@ -499,10 +588,10 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <span class="badge bg-secondary"><?= count($pkg['items']) ?>개</span>
                     </td>
                     <td class="text-end text-muted">
-                        <?= $pkg['original_price'] > 0 ? number_format($pkg['original_price']) . '원' : '-' ?>
+                        <?= $pkg['original_price'] > 0 ? number_format($pkg['original_price']) . '만원' : '-' ?>
                     </td>
                     <td class="text-end fw-bold">
-                        <?= number_format($pkg['package_price']) ?>원
+                        <?= number_format($pkg['package_price']) ?>만원
                     </td>
                     <td class="text-center">
                         <?php if ($discount > 0): ?>
@@ -566,21 +655,25 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <!-- 패키지 기본 정보 -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">패키지명 <span class="text-danger">*</span></label>
-                        <input type="text" name="name" id="pkgName" class="form-control" required placeholder="예: 윤곽 리프팅 풀패키지">
+                        <input type="text" name="name" id="pkgName" class="form-control" required maxlength="200" placeholder="예: 윤곽 리프팅 풀패키지">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">설명</label>
-                        <textarea name="description" id="pkgDesc" class="form-control" rows="2" placeholder="패키지 설명 (선택사항)"></textarea>
+                        <textarea name="description" id="pkgDesc" class="form-control" rows="2" maxlength="5000" placeholder="패키지 설명 (선택사항)"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">패키지 가격 (원) <span class="text-danger">*</span></label>
-                        <input type="number" name="package_price" id="pkgPrice" class="form-control" required min="0" step="10000" placeholder="0">
+                        <label class="form-label fw-semibold">패키지 가격 (만원) <span class="text-danger">*</span></label>
+                        <input type="number" name="package_price" id="pkgPrice" class="form-control" required min="1" max="2147483647" step="1" placeholder="예: 110">
                     </div>
 
                     <!-- 원가/할인율 표시 -->
                     <div class="alert alert-light border mb-3 d-flex justify-content-between align-items-center" id="discountInfo">
-                        <span>선택 시술 합계: <strong id="totalOriginal">0</strong>원</span>
+                        <span>선택 시술 합계: <strong id="totalOriginal">0</strong>만원</span>
                         <span>할인율: <strong id="discountRate" class="text-danger">0%</strong></span>
+                    </div>
+                    <div class="alert alert-warning d-none mb-3" id="priceWarning" role="alert">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        패키지 가격은 선택한 시술의 합계보다 높게 설정할 수 없습니다.
                     </div>
 
                     <!-- 시술 선택 (카테고리별 그룹) -->
@@ -599,12 +692,12 @@ require_once __DIR__ . '/includes/admin_header.php';
                                     <input type="checkbox" class="form-check-input treatment-checkbox"
                                            name="treatment_ids[]" value="<?= $t['id'] ?>"
                                            id="treat_<?= $t['id'] ?>"
-                                           data-price="<?= intval($t['avg_price_min']) ?>"
+                                           data-price="<?= intval($t['actual_price']) ?>"
                                            onchange="calcDiscount()">
                                     <label class="form-check-label" for="treat_<?= $t['id'] ?>">
                                         <?= htmlspecialchars($t['name']) ?>
-                                        <?php if ($t['avg_price_min'] > 0): ?>
-                                        <small class="text-muted">(<?= number_format($t['avg_price_min']) ?>원)</small>
+                                        <?php if ($t['actual_price'] > 0): ?>
+                                        <small class="text-muted">(<?= number_format($t['actual_price']) ?>만원)</small>
                                         <?php endif; ?>
                                     </label>
                                 </div>
@@ -635,10 +728,31 @@ function calcDiscount() {
     var price = parseInt(document.getElementById('pkgPrice').value) || 0;
     var rate = total > 0 ? Math.round((total - price) / total * 1000) / 10 : 0;
     document.getElementById('discountRate').textContent = (rate > 0 ? rate : 0) + '%';
+    var invalidPrice = total > 0 && price > total;
+    document.getElementById('priceWarning').classList.toggle('d-none', !invalidPrice);
+    document.getElementById('pkgPrice').setCustomValidity(invalidPrice
+        ? '패키지 가격은 선택 시술 합계보다 높을 수 없습니다.'
+        : '');
 }
 
 // 패키지가 입력 시 할인율 재계산
 document.getElementById('pkgPrice').addEventListener('input', calcDiscount);
+document.getElementById('packageForm').addEventListener('submit', function(event) {
+    var checked = document.querySelectorAll('.treatment-checkbox:checked');
+    var total = 0;
+    checked.forEach(function(c) { total += parseInt(c.dataset.price) || 0; });
+    var price = parseInt(document.getElementById('pkgPrice').value) || 0;
+    if (checked.length === 0) {
+        event.preventDefault();
+        alert('최소 1개 이상의 시술을 선택해주세요.');
+    } else if (total <= 0) {
+        event.preventDefault();
+        alert('선택한 시술의 병원 가격을 먼저 설정해주세요.');
+    } else if (price > total) {
+        event.preventDefault();
+        document.getElementById('pkgPrice').reportValidity();
+    }
+});
 
 // 새 패키지 모달
 function openCreateModal() {
