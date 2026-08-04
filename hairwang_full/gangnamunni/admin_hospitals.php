@@ -552,6 +552,7 @@ $view_mode = isset($_GET['view']) ? intval($_GET['view']) : 0;
 $edit_mode = isset($_GET['edit']) && $_GET['edit'] == '1';
 $hospital = null;
 $hospital_images = [];
+$application_treatments = [];
 
 if ($view_mode > 0) {
     // 범위 제한 관리자(editor·병원역할)는 자기 소유 병원 상세만 열람 가능
@@ -576,6 +577,43 @@ if ($view_mode > 0) {
             $hospital_images[] = $img_row;
         }
         mysqli_stmt_close($img_stmt);
+
+        // 신청서에서 선택한 시술과 함께 제출한 시술 이미지 조회
+        try {
+            $treatment_stmt = mysqli_prepare($connect,
+                "SELECT ht.id AS hospital_treatment_id, ht.treatment_id, ht.status,
+                        COALESCE(tm.name, CONCAT('시술 #', ht.treatment_id)) AS treatment_name,
+                        ti.id AS image_id, ti.image_url, ti.caption
+                 FROM gangnamunni_hospital_treatments ht
+                 LEFT JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
+                 LEFT JOIN gangnamunni_hospital_treatment_images ti ON ti.hospital_treatment_id = ht.id
+                 WHERE ht.hospital_id = ?
+                 ORDER BY tm.name ASC, ti.sort_order ASC, ti.id ASC");
+            if ($treatment_stmt) {
+                mysqli_stmt_bind_param($treatment_stmt, 'i', $view_mode);
+                mysqli_stmt_execute($treatment_stmt);
+                $treatment_result = mysqli_stmt_get_result($treatment_stmt);
+                while ($row = mysqli_fetch_assoc($treatment_result)) {
+                    $ht_id = (int)$row['hospital_treatment_id'];
+                    if (!isset($application_treatments[$ht_id])) {
+                        $application_treatments[$ht_id] = [
+                            'name' => $row['treatment_name'],
+                            'status' => $row['status'],
+                            'images' => [],
+                        ];
+                    }
+                    if (!empty($row['image_url'])) {
+                        $application_treatments[$ht_id]['images'][] = [
+                            'url' => $row['image_url'],
+                            'caption' => $row['caption'] ?? '',
+                        ];
+                    }
+                }
+                mysqli_stmt_close($treatment_stmt);
+            }
+        } catch (\mysqli_sql_exception $e) {
+            error_log('[admin_hospitals] 신청 시술 이미지 조회 실패: ' . $e->getMessage());
+        }
     }
 }
 
@@ -701,6 +739,11 @@ $admin_extra_css = '
 .hospital-detail-value { font-size: 14px; margin-bottom: 12px; }
 .hospital-img-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--bs-border-color); }
 .hospital-img-large { max-width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; }
+.application-asset { height: 100%; border: 1px solid var(--bs-border-color); border-radius: 10px; overflow: hidden; background: var(--bs-body-bg); }
+.application-asset-preview { height: 210px; display: flex; align-items: center; justify-content: center; background: var(--bs-tertiary-bg); overflow: hidden; }
+.application-asset-preview img { width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
+.application-asset-missing { color: var(--bs-secondary-color); text-align: center; }
+.application-treatment-image { width: 100%; height: 150px; object-fit: cover; cursor: pointer; border-radius: 8px; border: 1px solid var(--bs-border-color); }
 .category-badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
 .tag-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
 ';
@@ -1110,6 +1153,106 @@ $field_labels_map = ['name'=>'병원명','owner_name'=>'대표자명','business_
 </div>
 <?php endif; ?>
 
+<!-- 신청 제출 자료: 승인/반려 판단에 필요한 서류와 이미지를 한곳에 표시 -->
+<?php if (!empty($hospital['applied_by'])): ?>
+<?php
+$application_assets = [
+    ['label' => '사업자등록증', '상세' => '필수 서류', 'path' => (string)($hospital['cert_business'] ?? ''), 'required' => true, 'icon' => 'bi-file-earmark-text'],
+    ['label' => '의료기관개설허가증', '상세' => '필수 서류', 'path' => (string)($hospital['cert_medical'] ?? ''), 'required' => true, 'icon' => 'bi-file-earmark-medical'],
+    ['label' => '프로필 이미지', '상세' => '선택 자료', 'path' => (string)($hospital['profile_image_url'] ?? ''), 'required' => false, 'icon' => 'bi-image'],
+];
+?>
+<div class="card mb-3 border-primary">
+    <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-folder-check me-1"></i><strong>신청 제출 자료</strong></span>
+        <span class="small text-body-secondary">서류를 확인한 후 승인 또는 반려해 주세요.</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <?php foreach ($application_assets as $asset):
+                $asset_path = trim($asset['path']);
+                $asset_ext = strtolower(pathinfo((string)(parse_url($asset_path, PHP_URL_PATH) ?? ''), PATHINFO_EXTENSION));
+                $is_pdf = $asset_ext === 'pdf';
+            ?>
+            <div class="col-md-4">
+                <div class="application-asset">
+                    <div class="p-3 d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <div class="fw-semibold"><i class="bi <?= $asset['icon'] ?> me-1"></i><?= htmlspecialchars($asset['label']) ?></div>
+                            <div class="small text-body-secondary"><?= htmlspecialchars($asset['상세']) ?></div>
+                        </div>
+                        <?php if ($asset_path !== ''): ?>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> 제출</span>
+                        <?php elseif ($asset['required']): ?>
+                        <span class="badge bg-danger"><i class="bi bi-exclamation-lg"></i> 미제출</span>
+                        <?php else: ?>
+                        <span class="badge bg-secondary">미제출</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="application-asset-preview">
+                        <?php if ($asset_path !== '' && $is_pdf): ?>
+                            <div class="text-center p-3">
+                                <i class="bi bi-file-earmark-pdf text-danger" style="font-size:3.5rem"></i>
+                                <div class="mt-2 fw-semibold">PDF 문서</div>
+                            </div>
+                        <?php elseif ($asset_path !== ''): ?>
+                            <img src="<?= htmlspecialchars($asset_path) ?>" alt="<?= htmlspecialchars($asset['label']) ?>"
+                                 onclick='showImageModal(<?= json_encode($asset_path, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                        <?php else: ?>
+                            <div class="application-asset-missing p-3">
+                                <i class="bi bi-image-alt" style="font-size:2.5rem"></i>
+                                <div class="mt-2"><?= $asset['required'] ? '필수 서류가 저장되지 않았습니다.' : '제출된 이미지가 없습니다.' ?></div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($asset_path !== ''): ?>
+                    <div class="p-3 border-top d-flex gap-2">
+                        <a href="<?= htmlspecialchars($asset_path) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm flex-fill">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>원본 열기
+                        </a>
+                        <a href="<?= htmlspecialchars($asset_path) ?>" download class="btn btn-outline-secondary btn-sm" title="다운로드"><i class="bi bi-download"></i></a>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <hr class="my-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0"><i class="bi bi-card-image me-1"></i>신청 시술 / 시술 이미지</h6>
+            <span class="badge bg-body-secondary text-body"><?= count($application_treatments) ?>개 시술</span>
+        </div>
+        <?php if (!empty($application_treatments)): ?>
+            <?php foreach ($application_treatments as $treatment): ?>
+            <div class="border rounded-3 p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong><?= htmlspecialchars($treatment['name']) ?></strong>
+                    <span class="badge bg-body-secondary text-body"><?= count($treatment['images']) ?>장</span>
+                </div>
+                <?php if (!empty($treatment['images'])): ?>
+                <div class="row g-2">
+                    <?php foreach ($treatment['images'] as $treatment_image): ?>
+                    <div class="col-6 col-md-3">
+                        <img class="application-treatment-image" src="<?= htmlspecialchars($treatment_image['url']) ?>"
+                             alt="<?= htmlspecialchars($treatment['name']) ?>"
+                             onclick='showImageModal(<?= json_encode($treatment_image['url'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                        <?php if ($treatment_image['caption'] !== ''): ?><div class="small text-body-secondary mt-1"><?= htmlspecialchars($treatment_image['caption']) ?></div><?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php else: ?>
+                <div class="alert alert-warning py-2 mb-0 small"><i class="bi bi-exclamation-triangle me-1"></i>이 시술에 제출된 이미지가 없습니다.</div>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+        <div class="alert alert-secondary py-2 mb-0 small"><i class="bi bi-info-circle me-1"></i>신청서에 선택된 시술이 없습니다.</div>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- 기본 정보 카드 -->
 <div class="row g-3 mb-3">
     <div class="col-lg-8">
@@ -1173,16 +1316,6 @@ $field_labels_map = ['name'=>'병원명','owner_name'=>'대표자명','business_
                     <div class="col-md-6">
                         <div class="hospital-detail-label">신청일</div>
                         <div class="hospital-detail-value"><?= $hospital['applied_at'] ? date('Y-m-d H:i', strtotime($hospital['applied_at'])) : '-' ?></div>
-                    </div>
-                    <?php endif; ?>
-                    <?php if (!empty($hospital['cert_business']) || !empty($hospital['cert_medical'])): ?>
-                    <div class="col-md-6">
-                        <div class="hospital-detail-label">사업자등록증</div>
-                        <div class="hospital-detail-value"><?= !empty($hospital['cert_business']) ? '<i class="bi bi-file-check text-success"></i> 제출' : '-' ?></div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="hospital-detail-label">의료기관허가증</div>
-                        <div class="hospital-detail-value"><?= !empty($hospital['cert_medical']) ? '<i class="bi bi-file-check text-success"></i> 제출' : '-' ?></div>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -1330,7 +1463,7 @@ $field_labels_map = ['name'=>'병원명','owner_name'=>'대표자명','business_
 </div>
 
 <!-- 프로필/메인 이미지 -->
-<?php if (!empty($hospital['profile_image_url']) || !empty($hospital['main_image_url'])): ?>
+<?php if (empty($hospital['applied_by']) && (!empty($hospital['profile_image_url']) || !empty($hospital['main_image_url']))): ?>
 <div class="card mb-3">
     <div class="card-header"><i class="bi bi-image me-1"></i> 대표 이미지</div>
     <div class="card-body">

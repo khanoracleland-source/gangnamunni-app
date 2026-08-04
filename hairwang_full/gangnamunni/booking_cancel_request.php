@@ -42,6 +42,9 @@ if ($require_login && !$phone_auth) {
 if (!$is_owner) { header('Location: my_bookings.php'); exit; }
 
 $cancel_reason = (string)$_SESSION['booking_cancel_reason'][$booking_id];
+$cancel_reason_parts = explode(': ', $cancel_reason, 2);
+$cancel_reason_choice = $cancel_reason_parts[0];
+$cancel_reason_custom = $cancel_reason_parts[1] ?? '';
 $amount = max(0, (int)($booking['price'] ?? 0));
 $payment_status = '';
 $table_check = mysqli_query($connect, "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gangnamunni_platform_payments' LIMIT 1");
@@ -91,7 +94,7 @@ function cancel_page_now() {
   <label class="reason"><input type="radio" name="reason_display" <?php echo str_starts_with($cancel_reason, $reason) ? 'checked' : ''; ?> disabled><span><?php echo htmlspecialchars($reason); ?></span></label>
  <?php endforeach; ?>
  </div>
- <input class="reason-custom" value="<?php echo htmlspecialchars(str_contains($cancel_reason, ': ') ? explode(': ', $cancel_reason, 2)[1] : ''); ?>" placeholder="직접 입력할게요 (선택)" readonly>
+ <input class="reason-custom" id="cancelReasonCustom" type="text" maxlength="255" value="<?php echo htmlspecialchars($cancel_reason_custom); ?>" placeholder="직접 입력할게요 (선택)">
 </section>
 <main class="content">
  <div class="rows">
@@ -138,7 +141,10 @@ function finalizeCancel(){
  var agree=document.getElementById('cancelAgree'), error=document.getElementById('cancelError'), button=document.getElementById('finalCancelButton');
  if(!agree.checked){error.textContent='취소 및 환불 규정에 동의해주세요.';error.style.display='block';return}
  error.style.display='none';button.disabled=true;button.textContent='요청 중...';
- var fd=new FormData();fd.append('csrf_token',<?php echo json_encode($csrf); ?>);fd.append('booking_id',<?php echo $booking_id; ?>);fd.append('phone',<?php echo json_encode((string)($booking['phone'] ?? '')); ?>);fd.append('cancel_reason',<?php echo json_encode($cancel_reason); ?>);
+ var customReason=document.getElementById('cancelReasonCustom').value.trim();
+ var cancelReason=<?php echo json_encode($cancel_reason_choice); ?>;
+ if(customReason) cancelReason+=(cancelReason ? ': ' : '')+customReason;
+ var fd=new FormData();fd.append('csrf_token',<?php echo json_encode($csrf); ?>);fd.append('booking_id',<?php echo $booking_id; ?>);fd.append('phone',<?php echo json_encode((string)($booking['phone'] ?? '')); ?>);fd.append('cancel_reason',cancelReason.slice(0,255));
  fetch('api/cancel_booking.php',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(data){if(data.success){location.replace('booking_cancel_complete.php?booking_id=<?php echo $booking_id; ?>')}else{error.textContent=data.message||'취소 처리 중 오류가 발생했습니다.';error.style.display='block';button.disabled=false;button.textContent='예약 취소 요청'}}).catch(function(){error.textContent='네트워크 오류가 발생했습니다.';error.style.display='block';button.disabled=false;button.textContent='예약 취소 요청'});
 }
 </script>

@@ -20,6 +20,33 @@ mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
 require_admin_login();
+
+// TEMPORARY FEATURE GATE:
+// 광고 관리 페이지를 다시 열 때 true로 변경한다.
+// 이 가드는 POST/AJAX 처리보다 먼저 실행되므로 최고관리자를 포함한 모든 관리자의 변경 요청도 차단한다.
+$admin_ads_enabled = false;
+if (!$admin_ads_enabled) {
+    http_response_code(503);
+    $admin_extra_css = '
+    .ads-disabled-card { max-width: 720px; margin: 8vh auto; border: 1px solid var(--bs-border-color); }
+    .ads-disabled-icon { font-size: 3rem; color: var(--bs-warning); }
+    ';
+    include __DIR__ . '/includes/admin_header.php';
+    ?>
+    <div class="card ads-disabled-card shadow-sm">
+        <div class="card-body text-center p-5">
+            <div class="ads-disabled-icon mb-3"><i class="bi bi-pause-circle"></i></div>
+            <h4 class="mb-3">광고 관리 기능 일시 중지</h4>
+            <p class="text-body-secondary mb-4">현재 광고 관리 페이지는 모든 관리자에게 일시적으로 비활성화되어 있습니다.</p>
+            <a href="dashboard.php" class="btn btn-primary"><i class="bi bi-speedometer2 me-1"></i>대시보드로 이동</a>
+        </div>
+    </div>
+    <?php
+    include __DIR__ . '/includes/admin_footer.php';
+    mysqli_close($connect);
+    exit;
+}
+
 require_permission('ads');
 
 $is_super_admin = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
