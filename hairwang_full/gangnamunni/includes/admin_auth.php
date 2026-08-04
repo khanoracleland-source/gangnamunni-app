@@ -350,11 +350,12 @@ function check_permission($permission) {
         return (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
     }
 
-    // 병원 이미지/병원별 시술 배정 메뉴는 모든 로그인 관리자에게 허용한다.
+    // 병원 이미지/병원별·의사별 시술 배정 메뉴는 모든 로그인 관리자에게 허용한다.
     // 실제 병원 데이터 범위는 각 페이지에서 fail-closed 방식으로 제한한다.
     $all_admin_pages = [
         'hospital_images',
         'hospital_treatments',
+        'doctor_treatments',
     ];
     if (in_array($permission, $all_admin_pages, true) && check_admin_login()) {
         return true;

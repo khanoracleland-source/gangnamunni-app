@@ -26,6 +26,9 @@ if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
 require_admin_login();
 require_permission('doctor_treatments');
+require_once __DIR__ . '/includes/hospital_filter.php';
+$my_ids = get_strict_admin_hospital_ids($connect);
+$my_in = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
 
 // CSRF 토큰 생성
 if (empty($_SESSION['csrf_token'])) {
@@ -57,11 +60,13 @@ mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_doctor_treatments
 
 // ===== 병원 목록 로드 =====
 $hospitals = [];
-$h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1 ORDER BY name ASC");
+$hospital_scope_sql = $my_in === null ? '' : " AND id IN ({$my_in})";
+$h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1{$hospital_scope_sql} ORDER BY name ASC");
 if ($h_r) while ($h = mysqli_fetch_assoc($h_r)) $hospitals[] = $h;
 
 // 선택된 병원
 $hospital_id = intval($_GET['hospital_id'] ?? $_POST['hospital_id'] ?? 0);
+if ($my_ids !== null && !in_array($hospital_id, $my_ids, true)) $hospital_id = $my_ids[0] ?? 0;
 
 // 선택된 의사
 $doctor_id = intval($_GET['doctor_id'] ?? $_POST['doctor_id'] ?? 0);
@@ -71,9 +76,7 @@ $categories = [];
 $cat_r = mysqli_query($connect, "SELECT * FROM gangnamunni_treatment_categories WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
 if ($cat_r) while ($c = mysqli_fetch_assoc($cat_r)) $categories[$c['id']] = $c;
 
-// ===== doctors 테이블 구조 =====
-// HMS doctors: id, user_id, doctor_department_id, specialist, tenant_id (hospital_id 없음)
-// 이름은 users 테이블에서 JOIN (users.first_name, users.last_name)
+// 의사 데이터는 공개 상세페이지와 동일한 gangnamunni_doctors를 기준으로 한다.
 
 $msg = '';
 $msg_type = 'success';
@@ -88,6 +91,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $msg = 'CSRF 토큰이 유효하지 않습니다. 페이지를 새로고침해주세요.';
         $msg_type = 'danger';
     } else {
+
+        if ($my_ids !== null && !in_array($post_hospital_id, $my_ids, true)) {
+            http_response_code(403);
+            die('접근 권한이 없습니다.');
+        }
+        if ($post_doctor_id > 0) {
+            $doctor_scope = mysqli_prepare($connect, "SELECT id FROM gangnamunni_doctors WHERE id = ? AND hospital_id = ? AND status = 'active'");
+            mysqli_stmt_bind_param($doctor_scope, 'ii', $post_doctor_id, $post_hospital_id);
+            mysqli_stmt_execute($doctor_scope);
+            $doctor_scope_row = mysqli_fetch_assoc(mysqli_stmt_get_result($doctor_scope));
+            mysqli_stmt_close($doctor_scope);
+            if (!$doctor_scope_row) {
+                http_response_code(403);
+                die('해당 병원 소속 의사만 관리할 수 있습니다.');
+            }
+        }
+        $row_id = intval($_POST['id'] ?? 0);
+        if ($my_ids !== null && $row_id > 0) {
+            $scope_stmt = mysqli_prepare($connect, "SELECT hospital_id FROM gangnamunni_doctor_treatments WHERE id = ?");
+            mysqli_stmt_bind_param($scope_stmt, 'i', $row_id);
+            mysqli_stmt_execute($scope_stmt);
+            $scope_row = mysqli_fetch_assoc(mysqli_stmt_get_result($scope_stmt));
+            mysqli_stmt_close($scope_stmt);
+            if (!$scope_row || !in_array((int)$scope_row['hospital_id'], $my_ids, true)) {
+                http_response_code(403);
+                die('접근 권한이 없습니다.');
+            }
+        }
 
         // --- 시술 배정 (벌크) ---
         if ($action === 'assign' && $post_doctor_id > 0 && $post_hospital_id > 0) {
@@ -104,6 +135,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 foreach ($treatment_ids as $tid) {
                     $tid = intval($tid);
                     if ($tid <= 0) continue;
+                    $hospital_treatment = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND treatment_id = ? AND status = 'active' AND is_active = 1 LIMIT 1");
+                    mysqli_stmt_bind_param($hospital_treatment, 'ii', $post_hospital_id, $tid);
+                    mysqli_stmt_execute($hospital_treatment);
+                    $hospital_treatment_row = mysqli_fetch_assoc(mysqli_stmt_get_result($hospital_treatment));
+                    mysqli_stmt_close($hospital_treatment);
+                    if (!$hospital_treatment_row) { $skipped++; continue; }
                     // 중복 체크
                     $chk = mysqli_prepare($connect, "SELECT id FROM gangnamunni_doctor_treatments WHERE doctor_id = ? AND treatment_id = ?");
                     mysqli_stmt_bind_param($chk, 'ii', $post_doctor_id, $tid);
@@ -204,8 +241,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $cnt = max(0, intval($counts[$idx] ?? 0));
                 $cert = trim(mb_substr($certs[$idx] ?? '', 0, 500, 'UTF-8'));
                 $stmt = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_doctor_treatments SET speciality_level = ?, case_count = ?, certification = ?, updated_at = NOW() WHERE id = ? AND doctor_id = ?");
-                mysqli_stmt_bind_param($stmt, 'sisii', $lv, $cnt, $cert, $rid, $post_doctor_id);
+                    "UPDATE gangnamunni_doctor_treatments SET speciality_level = ?, case_count = ?, certification = ?, updated_at = NOW() WHERE id = ? AND doctor_id = ? AND hospital_id = ?");
+                mysqli_stmt_bind_param($stmt, 'sisiii', $lv, $cnt, $cert, $rid, $post_doctor_id, $post_hospital_id);
                 if (mysqli_stmt_execute($stmt)) $updated++;
                 mysqli_stmt_close($stmt);
             }
@@ -222,16 +259,17 @@ if (!empty($_GET['msg'])) {
 }
 
 // ===== 의사 목록 (병원 선택 시) =====
-// HMS doctors 테이블: id, user_id, doctor_department_id (이름은 users 테이블)
-// hospital_id가 없으므로 전체 의사를 로드하거나, doctor_treatments에서 이 병원에 이미 배정된 의사 + 전체 의사
+// 선택 병원에 실제 소속된 활성 의사만 로드한다.
 $doctors = [];
 if ($hospital_id > 0) {
-    $doc_sql = "SELECT d.id, u.first_name, u.last_name, d.doctor_department_id, d.specialist
-        FROM doctors d
-        LEFT JOIN users u ON d.user_id = u.id
-        ORDER BY u.first_name ASC, u.last_name ASC";
-    $doc_r = mysqli_query($connect, $doc_sql);
+    $doc_stmt = mysqli_prepare($connect, "SELECT id, name AS first_name, '' AS last_name, specialty AS specialist FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' ORDER BY name ASC");
+    mysqli_stmt_bind_param($doc_stmt, 'i', $hospital_id);
+    mysqli_stmt_execute($doc_stmt);
+    $doc_r = mysqli_stmt_get_result($doc_stmt);
     if ($doc_r) while ($d = mysqli_fetch_assoc($doc_r)) $doctors[] = $d;
+    mysqli_stmt_close($doc_stmt);
+    $doctor_ids = array_map(function ($doctor) { return (int)$doctor['id']; }, $doctors);
+    if ($doctor_id > 0 && !in_array($doctor_id, $doctor_ids, true)) $doctor_id = 0;
 }
 
 // ===== 선택 의사의 배정 시술 =====
@@ -263,14 +301,15 @@ if ($doctor_id > 0) {
 // ===== 미배정 시술 목록 (추가 모달용) =====
 $available_treatments = [];
 if ($doctor_id > 0 && $hospital_id > 0) {
-    $avail_sql = "SELECT tm.*, tc.name AS category_name, tc.id AS cat_id
-        FROM gangnamunni_treatment_master tm
+    $avail_sql = "SELECT DISTINCT tm.*, tc.name AS category_name, tc.id AS cat_id
+        FROM gangnamunni_hospital_treatments ht
+        JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         LEFT JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
-        WHERE tm.is_active = 1
+        WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1 AND tm.is_active = 1
           AND tm.id NOT IN (SELECT treatment_id FROM gangnamunni_doctor_treatments WHERE doctor_id = ? AND is_active = 1)
         ORDER BY tc.sort_order ASC, tm.name ASC";
     $avail_stmt = mysqli_prepare($connect, $avail_sql);
-    mysqli_stmt_bind_param($avail_stmt, 'i', $doctor_id);
+    mysqli_stmt_bind_param($avail_stmt, 'ii', $hospital_id, $doctor_id);
     mysqli_stmt_execute($avail_stmt);
     $avail_r = mysqli_stmt_get_result($avail_stmt);
     while ($row = mysqli_fetch_assoc($avail_r)) $available_treatments[] = $row;
@@ -303,7 +342,7 @@ if ($hospital_id > 0) {
 // ===== 전체 요약 (병원 미선택 시) =====
 $global_stats = [];
 $top_doctors = [];
-if ($hospital_id <= 0) {
+if ($hospital_id <= 0 && $my_ids === null) {
     $gs_r = mysqli_query($connect, "SELECT
         COUNT(DISTINCT doctor_id) AS doctor_count,
         COUNT(DISTINCT hospital_id) AS hospital_count,
@@ -314,15 +353,14 @@ if ($hospital_id <= 0) {
     if ($gs_r) $global_stats = mysqli_fetch_assoc($gs_r);
 
     // Top 10 의사 (시술 수 기준)
-    $top_sql = "SELECT dt.doctor_id, u.first_name, u.last_name,
+    $top_sql = "SELECT dt.doctor_id, d.name AS first_name, '' AS last_name,
         COUNT(dt.id) AS treatment_count,
         SUM(CASE WHEN dt.speciality_level = 'expert' THEN 1 ELSE 0 END) AS expert_count,
         SUM(dt.case_count) AS total_cases
         FROM gangnamunni_doctor_treatments dt
-        LEFT JOIN doctors d ON dt.doctor_id = d.id
-        LEFT JOIN users u ON d.user_id = u.id
+        LEFT JOIN gangnamunni_doctors d ON dt.doctor_id = d.id
         WHERE dt.is_active = 1
-        GROUP BY dt.doctor_id, u.first_name, u.last_name
+        GROUP BY dt.doctor_id, d.name
         ORDER BY treatment_count DESC
         LIMIT 10";
     $top_r = mysqli_query($connect, $top_sql);
@@ -771,9 +809,6 @@ $level_colors = ['basic' => 'secondary', 'advanced' => 'primary', 'expert' => 'd
         <div class="card-body text-center py-5 text-muted">
             <i class="bi bi-clipboard-x fs-1 d-block mb-2"></i>
             <p>이 의사에게 배정된 시술이 없습니다.</p>
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTreatmentModal">
-                <i class="bi bi-plus-lg me-1"></i>시술 추가하기
-            </button>
         </div>
     </div>
     <?php endif; ?>
