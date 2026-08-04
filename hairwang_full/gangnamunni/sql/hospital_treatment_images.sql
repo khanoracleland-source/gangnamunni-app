@@ -16,7 +16,13 @@ CREATE TABLE IF NOT EXISTS gangnamunni_hospital_treatment_images (
   image_url VARCHAR(500) NOT NULL COMMENT 'gangnamunni/ 기준 상대경로 또는 외부 URL',
   caption VARCHAR(200) DEFAULT NULL,
   sort_order INT DEFAULT 0,
+  approval_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved',
+  uploaded_by ENUM('admin','hospital') NOT NULL DEFAULT 'admin',
+  reject_reason VARCHAR(1000) DEFAULT NULL,
+  reviewed_at DATETIME DEFAULT NULL,
+  reviewed_by VARCHAR(100) DEFAULT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_ht (hospital_treatment_id, sort_order, id),
+  KEY idx_approval (approval_status, created_at),
   KEY idx_hospital_treatment (hospital_id, treatment_id, sort_order, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

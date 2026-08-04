@@ -2,7 +2,6 @@
 /**
  * 병원별 시술 배정 관리 페이지 (admin_hospital_treatments.php)
  * - 병원 선택 후 시술 배정/해제/가격 수정/프로모션 토글
- * - 승인 대기 시술 관리 (승인/거절)
  * - 가격 변경 이력 기록
  * Bootstrap 5.3 + 다크모드 지원
  * @created 2026-03-25
@@ -32,12 +31,11 @@ require_once __DIR__ . '/includes/hospital_filter.php';
 $my_ids = get_strict_admin_hospital_ids($connect);
 $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
 
-// 승인 워크플로우 헬퍼
-require_once __DIR__ . '/includes/treatment_approval_helper.php';
-ensure_treatment_approval_schema($connect);
-
 require_once __DIR__ . '/includes/hospital_treatment_images.php';
 hti_ensure_schema($connect);
+
+// 승인 절차 폐기에 따라 과거 승인 대기 건을 모두 활성화한다.
+mysqli_query($connect, "UPDATE gangnamunni_hospital_treatments SET status = 'active', is_active = 1, reject_reason = NULL, updated_at = NOW() WHERE status = 'pending'");
 
 // CSRF 토큰 생성
 if (empty($_SESSION['csrf_token'])) {
@@ -70,13 +68,29 @@ $categories = [];
 $cat_r = mysqli_query($connect, "SELECT * FROM gangnamunni_treatment_categories WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
 if ($cat_r) while ($c = mysqli_fetch_assoc($cat_r)) $categories[$c['id']] = $c;
 
-// 설정 조회 (관리 모드, 승인 필요 여부)
+// 설정 조회 (관리 모드)
 $treatment_mgmt_mode = 'both';
-$treatment_require_approval = '0';
-$set_r = mysqli_query($connect, "SELECT `key`, `value` FROM settings WHERE `key` IN ('treatment_mgmt_mode', 'treatment_require_admin_approval')");
+$set_r = mysqli_query($connect, "SELECT `key`, `value` FROM settings WHERE `key` = 'treatment_mgmt_mode'");
 if ($set_r) while ($s = mysqli_fetch_assoc($set_r)) {
     if ($s['key'] === 'treatment_mgmt_mode') $treatment_mgmt_mode = $s['value'];
-    if ($s['key'] === 'treatment_require_admin_approval') $treatment_require_approval = $s['value'];
+}
+$admin_role = (string)($_SESSION['ad_admin_role'] ?? '');
+$is_super_admin = ($admin_role === 'super_admin');
+$is_hospital_account = in_array($admin_role, ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'], true);
+$can_manage_treatments = $is_super_admin
+    || ($is_hospital_account && in_array($treatment_mgmt_mode, ['hospital_only', 'both'], true))
+    || (!$is_hospital_account && in_array($treatment_mgmt_mode, ['admin_only', 'both'], true));
+
+function ht_redirect($hospital_id, $message, $type = 'success') {
+    header('Location: admin_hospital_treatments.php?hospital_id=' . intval($hospital_id)
+        . '&msg=' . urlencode($message) . '&msg_type=' . urlencode($type));
+    exit;
+}
+
+function ht_execute_or_throw($stmt, $message) {
+    if (!$stmt || !mysqli_stmt_execute($stmt)) {
+        throw new RuntimeException($message . ($stmt ? ': ' . mysqli_stmt_error($stmt) : ''));
+    }
 }
 
 $msg = '';
@@ -91,6 +105,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $msg = 'CSRF 토큰이 유효하지 않습니다. 페이지를 새로고침해주세요.';
         $msg_type = 'danger';
     } else {
+
+        $known_actions = ['assign', 'remove', 'update_price', 'toggle_promoted', 'image_add', 'image_delete', 'image_move', 'image_approve', 'image_reject'];
+        if (!in_array($action, $known_actions, true)) ht_redirect($post_hospital_id, '지원하지 않는 요청입니다.', 'danger');
+        if (in_array($action, ['image_approve', 'image_reject'], true) && !$is_super_admin) {
+            ht_redirect($post_hospital_id, '시술 이미지 검수는 최고관리자만 처리할 수 있습니다.', 'danger');
+        }
+        if (in_array($action, ['assign', 'remove', 'update_price', 'toggle_promoted', 'image_add', 'image_delete', 'image_move'], true) && !$can_manage_treatments) {
+            ht_redirect($post_hospital_id, '현재 시술 관리 설정에서는 이 작업을 수행할 수 없습니다.', 'danger');
+        }
 
         // 병원 역할 격리(다병원): 대상 병원이 자기 소유가 아니면 첫 병원으로 강제 +
         // id 기반 액션(해제/가격/승인/거절/프로모션)의 대상 행이 자기 소유 병원 소속인지 검증.
@@ -119,33 +142,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } else {
                 $added = 0;
                 $skipped = 0;
+                mysqli_begin_transaction($connect);
+                try {
                 foreach ($treatment_ids as $tid) {
                     $tid = intval($tid);
                     if ($tid <= 0) continue;
                     // 중복 체크
-                    $chk = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND treatment_id = ?");
+                    $chk = mysqli_prepare($connect, "SELECT id, status, is_active FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND treatment_id = ?");
                     mysqli_stmt_bind_param($chk, 'ii', $post_hospital_id, $tid);
                     mysqli_stmt_execute($chk);
                     $chk_r = mysqli_stmt_get_result($chk);
-                    if (mysqli_fetch_assoc($chk_r)) {
-                        $skipped++;
+                    if ($existing = mysqli_fetch_assoc($chk_r)) {
                         mysqli_stmt_close($chk);
+                        if (intval($existing['is_active']) === 0 || in_array($existing['status'], ['inactive', 'rejected'], true)) {
+                            $new_status = 'active';
+                            $existing_id = intval($existing['id']);
+                            $reactivate = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET status = ?, is_active = 1, reject_reason = NULL, is_promoted = 0, updated_at = NOW() WHERE id = ?");
+                            mysqli_stmt_bind_param($reactivate, 'si', $new_status, $existing_id);
+                            ht_execute_or_throw($reactivate, '시술 재배정 실패');
+                            mysqli_stmt_close($reactivate);
+                            $added++;
+                        } else {
+                            $skipped++;
+                        }
                         continue;
                     }
                     mysqli_stmt_close($chk);
 
                     // 마스터에서 기본 가격 조회
-                    $price_stmt = mysqli_prepare($connect, "SELECT avg_price_min, avg_price_max FROM gangnamunni_treatment_master WHERE id = ?");
+                    $price_stmt = mysqli_prepare($connect, "SELECT avg_price_min, avg_price_max FROM gangnamunni_treatment_master WHERE id = ? AND is_active = 1");
                     mysqli_stmt_bind_param($price_stmt, 'i', $tid);
                     mysqli_stmt_execute($price_stmt);
                     $price_r = mysqli_stmt_get_result($price_stmt);
                     $price_row = mysqli_fetch_assoc($price_r);
+                    if (!$price_row) {
+                        mysqli_stmt_close($price_stmt);
+                        $skipped++;
+                        continue;
+                    }
                     $p_min = intval($price_row['avg_price_min'] ?? 0);
                     $p_max = intval($price_row['avg_price_max'] ?? 0);
                     mysqli_stmt_close($price_stmt);
+                    if (max($p_min, $p_max) <= 0) { $skipped++; continue; }
 
                     $status = 'active';
-                    $registered_by = 'admin';
+                    $registered_by = $is_hospital_account ? 'hospital' : 'admin';
                     $stmt = mysqli_prepare($connect,
                         "INSERT INTO gangnamunni_hospital_treatments (hospital_id, treatment_id, price_min, price_max, is_promoted, note, status, registered_by, is_active, created_at, updated_at)
                          VALUES (?, ?, ?, ?, 0, '', ?, ?, 1, NOW(), NOW())");
@@ -155,31 +196,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         // 기본 가격 옵션 1건 생성 (샷수/용량 1회, 가격=마스터 기준) — 최소 1건 보장
                         $new_ht_id = mysqli_insert_id($connect);
                         $def_price = $p_max > 0 ? $p_max : $p_min;
-                        try {
-                            $op = mysqli_prepare($connect, "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, 1, '회', ?, 0)");
-                            mysqli_stmt_bind_param($op, 'ii', $new_ht_id, $def_price);
-                            mysqli_stmt_execute($op);
-                            mysqli_stmt_close($op);
-                        } catch (\mysqli_sql_exception $e) {
-                            error_log('[hospital_treatments] 기본 가격 옵션 insert 실패: ' . $e->getMessage());
-                        }
+                        $op = mysqli_prepare($connect, "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, 1, '회', ?, 0)");
+                        mysqli_stmt_bind_param($op, 'ii', $new_ht_id, $def_price);
+                        ht_execute_or_throw($op, '기본 가격 옵션 저장 실패');
+                        mysqli_stmt_close($op);
                         // 가격 이력 기록 — changed_by 는 enum('admin','hospital','system') 이므로
                         // 이름 문자열($admin_name)을 넣으면 "Data truncated" 예외로 루프가 중단돼
                         // 선택한 시술 중 첫 1건만 배정되던 버그가 발생. 유효한 enum 값으로 저장하고,
                         // 이력 기록 실패가 배정 전체를 막지 않도록 try/catch 로 격리한다.
-                        $changed_by = ($my_ids !== null) ? 'hospital' : 'admin';
-                        try {
-                            $hist = mysqli_prepare($connect,
+                        $changed_by = $is_hospital_account ? 'hospital' : 'admin';
+                        $hist = mysqli_prepare($connect,
                                 "INSERT INTO gangnamunni_treatment_price_history (hospital_id, treatment_id, price_min, price_max, changed_by, recorded_at)
                                  VALUES (?, ?, ?, ?, ?, NOW())");
-                            mysqli_stmt_bind_param($hist, 'iiiis', $post_hospital_id, $tid, $p_min, $p_max, $changed_by);
-                            mysqli_stmt_execute($hist);
-                            mysqli_stmt_close($hist);
-                        } catch (\mysqli_sql_exception $e) {
-                            error_log('[hospital_treatments] price_history(assign) insert 실패: ' . $e->getMessage());
-                        }
+                        mysqli_stmt_bind_param($hist, 'iiiis', $post_hospital_id, $tid, $p_min, $p_max, $changed_by);
+                        ht_execute_or_throw($hist, '가격 이력 저장 실패');
+                        mysqli_stmt_close($hist);
+                    } else {
+                        throw new RuntimeException('시술 배정 저장 실패: ' . mysqli_stmt_error($stmt));
                     }
                     mysqli_stmt_close($stmt);
+                }
+                mysqli_commit($connect);
+                } catch (Throwable $e) {
+                    mysqli_rollback($connect);
+                    error_log('[hospital_treatments] assign 실패: ' . $e->getMessage());
+                    ht_redirect($post_hospital_id, '시술 배정에 실패했습니다. 변경사항은 저장되지 않았습니다.', 'danger');
                 }
                 $msg = "{$added}개 시술이 배정되었습니다.";
                 if ($skipped > 0) $msg .= " (이미 배정된 {$skipped}개 건너뜀)";
@@ -192,12 +233,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($action === 'remove') {
             $id = intval($_POST['id'] ?? 0);
             if ($id > 0) {
-                $stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_treatments WHERE id = ?");
+                $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET is_active = 0, is_promoted = 0, updated_at = NOW() WHERE id = ? AND is_active = 1");
                 mysqli_stmt_bind_param($stmt, 'i', $id);
-                mysqli_stmt_execute($stmt);
+                ht_execute_or_throw($stmt, '시술 배정 해제 실패');
+                $affected = mysqli_stmt_affected_rows($stmt);
                 mysqli_stmt_close($stmt);
-                header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('시술 배정이 해제되었습니다.'));
-                exit;
+                ht_redirect($post_hospital_id, $affected ? '시술 배정이 안전하게 비활성화되었습니다.' : '이미 해제되었거나 존재하지 않는 시술입니다.', $affected ? 'success' : 'warning');
             }
         }
 
@@ -219,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $dv = (isset($in_dv[$i]) && trim((string)$in_dv[$i]) !== '') ? floatval($in_dv[$i]) : 0;
                 $du = isset($in_du[$i]) ? trim((string)$in_du[$i]) : '';
                 $pr = (isset($in_pr[$i]) && trim((string)$in_pr[$i]) !== '') ? intval($in_pr[$i]) : 0;
-                if ($dv > 0) $options[] = ['dv' => $dv, 'du' => $du, 'pr' => max(0, $pr)];
+                if ($dv > 0 && $du !== '' && $pr > 0) $options[] = ['dv' => $dv, 'du' => mb_substr($du, 0, 20, 'UTF-8'), 'pr' => $pr];
             }
 
             if ($id <= 0) {
@@ -227,13 +268,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } elseif (empty($options)) {
                 $msg = '최소 1개의 샷수/용량과 가격을 입력해주세요.'; $msg_type = 'warning';
             } else {
+                $option_keys = [];
+                foreach ($options as $opt) {
+                    $key = $opt['dv'] . '|' . mb_strtolower($opt['du'], 'UTF-8');
+                    if (isset($option_keys[$key])) ht_redirect($post_hospital_id, '동일한 용량과 단위의 가격 옵션을 중복 등록할 수 없습니다.', 'warning');
+                    $option_keys[$key] = true;
+                }
                 // 대상 행 조회 (이력 기록용)
                 $old_stmt = mysqli_prepare($connect, "SELECT hospital_id, treatment_id FROM gangnamunni_hospital_treatments WHERE id = ?");
                 mysqli_stmt_bind_param($old_stmt, 'i', $id);
                 mysqli_stmt_execute($old_stmt);
                 $old_row = mysqli_fetch_assoc(mysqli_stmt_get_result($old_stmt));
                 mysqli_stmt_close($old_stmt);
+                if (!$old_row) ht_redirect($post_hospital_id, '대상 시술을 찾을 수 없습니다.', 'danger');
 
+                mysqli_begin_transaction($connect);
+                try {
                 // 기존 옵션 전체 삭제 후 재삽입 (동기화)
                 $del = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_treatment_prices WHERE hospital_treatment_id = ?");
                 mysqli_stmt_bind_param($del, 'i', $id);
@@ -245,7 +295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $prices = [];
                 foreach ($options as $so => $opt) {
                     mysqli_stmt_bind_param($ins, 'idsii', $id, $opt['dv'], $opt['du'], $opt['pr'], $so);
-                    mysqli_stmt_execute($ins);
+                    ht_execute_or_throw($ins, '가격 옵션 저장 실패');
                     $prices[] = $opt['pr'];
                 }
                 mysqli_stmt_close($ins);
@@ -258,104 +308,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $upd = mysqli_prepare($connect,
                     "UPDATE gangnamunni_hospital_treatments SET price_min = ?, price_max = ?, dosage_value = ?, dosage_unit = ?, updated_at = NOW() WHERE id = ?");
                 mysqli_stmt_bind_param($upd, 'iidsi', $pmin, $pmax, $first_dv, $first_du, $id);
-                mysqli_stmt_execute($upd);
+                ht_execute_or_throw($upd, '대표 가격 저장 실패');
                 mysqli_stmt_close($upd);
 
                 // 가격 이력 기록 — changed_by 는 enum('admin','hospital','system'). 이름 문자열 금지.
                 if ($old_row) {
-                    $changed_by = ($my_ids !== null) ? 'hospital' : 'admin';
+                    $changed_by = $is_hospital_account ? 'hospital' : 'admin';
                     try {
                         $hist = mysqli_prepare($connect,
                             "INSERT INTO gangnamunni_treatment_price_history (hospital_id, treatment_id, price_min, price_max, changed_by, recorded_at)
                              VALUES (?, ?, ?, ?, ?, NOW())");
                         mysqli_stmt_bind_param($hist, 'iiiis', $old_row['hospital_id'], $old_row['treatment_id'], $pmin, $pmax, $changed_by);
-                        mysqli_stmt_execute($hist);
+                        ht_execute_or_throw($hist, '가격 이력 저장 실패');
                         mysqli_stmt_close($hist);
-                    } catch (\mysqli_sql_exception $e) {
-                        error_log('[hospital_treatments] price_history(update_price) insert 실패: ' . $e->getMessage());
-                    }
+                    } catch (\mysqli_sql_exception $e) { throw $e; }
+                }
+                mysqli_commit($connect);
+                } catch (Throwable $e) {
+                    mysqli_rollback($connect);
+                    error_log('[hospital_treatments] update_price 실패: ' . $e->getMessage());
+                    ht_redirect($post_hospital_id, '가격 저장에 실패했습니다. 기존 가격은 유지됩니다.', 'danger');
                 }
                 header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('가격이 수정되었습니다.'));
-                exit;
-            }
-        }
-
-        // --- 승인 ---
-        if ($action === 'approve') {
-            $id = intval($_POST['id'] ?? 0);
-            if ($id > 0) {
-                // 기존 상태 조회 (로그용)
-                $old_stmt = mysqli_prepare($connect, "SELECT hospital_id, treatment_id, status FROM gangnamunni_hospital_treatments WHERE id = ?");
-                mysqli_stmt_bind_param($old_stmt, 'i', $id);
-                mysqli_stmt_execute($old_stmt);
-                $old_r = mysqli_stmt_get_result($old_stmt);
-                $old_row = mysqli_fetch_assoc($old_r);
-                mysqli_stmt_close($old_stmt);
-
-                $stmt = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_hospital_treatments SET status = 'active', reject_reason = NULL, updated_at = NOW() WHERE id = ?");
-                mysqli_stmt_bind_param($stmt, 'i', $id);
-                mysqli_stmt_execute($stmt);
-                mysqli_stmt_close($stmt);
-
-                // 승인 타임스탬프 + 로그 + 알림
-                $admin_name = $_SESSION['ad_admin_name'] ?? 'admin';
-                $admin_id = intval($_SESSION['ad_admin_id'] ?? 0);
-                update_treatment_approval_timestamp($connect, $id, 'approved', $admin_name);
-                log_treatment_approval($connect, [
-                    'hospital_treatment_id' => $id,
-                    'hospital_id' => intval($old_row['hospital_id'] ?? $post_hospital_id),
-                    'treatment_id' => intval($old_row['treatment_id'] ?? 0),
-                    'action' => 'approved',
-                    'old_status' => $old_row['status'] ?? 'pending',
-                    'new_status' => 'active',
-                    'admin_id' => $admin_id,
-                    'admin_name' => $admin_name,
-                ]);
-                notify_treatment_approval($connect, $id, 'approved', $admin_name);
-
-                header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('시술이 승인되었습니다.'));
-                exit;
-            }
-        }
-
-        // --- 거절 ---
-        if ($action === 'reject') {
-            $id = intval($_POST['id'] ?? 0);
-            $reason = trim($_POST['reject_reason'] ?? '');
-            if ($id > 0) {
-                // 기존 상태 조회 (로그용)
-                $old_stmt = mysqli_prepare($connect, "SELECT hospital_id, treatment_id, status FROM gangnamunni_hospital_treatments WHERE id = ?");
-                mysqli_stmt_bind_param($old_stmt, 'i', $id);
-                mysqli_stmt_execute($old_stmt);
-                $old_r = mysqli_stmt_get_result($old_stmt);
-                $old_row = mysqli_fetch_assoc($old_r);
-                mysqli_stmt_close($old_stmt);
-
-                $stmt = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_hospital_treatments SET status = 'rejected', reject_reason = ?, updated_at = NOW() WHERE id = ?");
-                mysqli_stmt_bind_param($stmt, 'si', $reason, $id);
-                mysqli_stmt_execute($stmt);
-                mysqli_stmt_close($stmt);
-
-                // 거절 타임스탬프 + 로그 + 알림
-                $admin_name = $_SESSION['ad_admin_name'] ?? 'admin';
-                $admin_id = intval($_SESSION['ad_admin_id'] ?? 0);
-                update_treatment_approval_timestamp($connect, $id, 'rejected', $admin_name);
-                log_treatment_approval($connect, [
-                    'hospital_treatment_id' => $id,
-                    'hospital_id' => intval($old_row['hospital_id'] ?? $post_hospital_id),
-                    'treatment_id' => intval($old_row['treatment_id'] ?? 0),
-                    'action' => 'rejected',
-                    'old_status' => $old_row['status'] ?? 'pending',
-                    'new_status' => 'rejected',
-                    'reason' => $reason,
-                    'admin_id' => $admin_id,
-                    'admin_name' => $admin_name,
-                ]);
-                notify_treatment_approval($connect, $id, 'rejected', $admin_name, $reason);
-
-                header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('시술이 거절되었습니다.'));
                 exit;
             }
         }
@@ -397,6 +371,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $image_url = $up['url'];
                     } else {
                         $image_url = trim($_POST['image_url'] ?? '');
+                        if ($image_url !== '' && (strlen($image_url) > 2048 || !filter_var($image_url, FILTER_VALIDATE_URL)
+                            || !in_array(strtolower((string)parse_url($image_url, PHP_URL_SCHEME)), ['http', 'https'], true))) {
+                            $image_url = '';
+                            $msg = '이미지 URL은 유효한 http 또는 https 주소여야 합니다.';
+                            $msg_type = 'warning';
+                        }
                     }
 
                     if ($image_url === '') {
@@ -418,16 +398,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         }
                         $ins = mysqli_prepare($connect,
                             "INSERT INTO gangnamunni_hospital_treatment_images
-                                (hospital_treatment_id, hospital_id, treatment_id, image_url, caption, sort_order)
-                             VALUES (?, ?, ?, ?, ?, ?)");
+                                (hospital_treatment_id, hospital_id, treatment_id, image_url, caption, sort_order, approval_status, uploaded_by)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
                         if ($ins) {
                             $h_id = intval($ht_row['hospital_id']);
                             $t_id = intval($ht_row['treatment_id']);
                             $next_order = intval($next_order);
-                            mysqli_stmt_bind_param($ins, 'iiissi', $id, $h_id, $t_id, $image_url, $caption, $next_order);
+                            $image_status = $is_hospital_account ? 'pending' : 'approved';
+                            $uploaded_by = $is_hospital_account ? 'hospital' : 'admin';
+                            mysqli_stmt_bind_param($ins, 'iiississ', $id, $h_id, $t_id, $image_url, $caption, $next_order, $image_status, $uploaded_by);
                             mysqli_stmt_execute($ins);
                             mysqli_stmt_close($ins);
-                            header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('시술 이미지가 등록되었습니다.'));
+                            $image_message = $image_status === 'pending' ? '시술 이미지가 등록되었으며 최고관리자 검수 후 공개됩니다.' : '시술 이미지가 등록되었습니다.';
+                            header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode($image_message));
                             exit;
                         }
                         $msg = '이미지 등록에 실패했습니다.';
@@ -470,13 +453,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
+        if ($action === 'image_approve' || $action === 'image_reject') {
+            $id = intval($_POST['id'] ?? 0);
+            $image_id = intval($_POST['image_id'] ?? 0);
+            $reason = trim((string)($_POST['reject_reason'] ?? ''));
+            if ($action === 'image_reject' && $reason === '') ht_redirect($post_hospital_id, '이미지 반려 사유를 입력해주세요.', 'warning');
+            if (mb_strlen($reason, 'UTF-8') > 1000) ht_redirect($post_hospital_id, '반려 사유는 1000자 이하로 입력해주세요.', 'warning');
+            $new_status = $action === 'image_approve' ? 'approved' : 'rejected';
+            $reviewer = mb_substr((string)($_SESSION['ad_admin_name'] ?? $_SESSION['ad_admin_user'] ?? 'super_admin'), 0, 100, 'UTF-8');
+            $review = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatment_images SET approval_status = ?, reject_reason = ?, reviewed_at = NOW(), reviewed_by = ? WHERE id = ? AND hospital_treatment_id = ? AND approval_status = 'pending'");
+            mysqli_stmt_bind_param($review, 'sssii', $new_status, $reason, $reviewer, $image_id, $id);
+            ht_execute_or_throw($review, '이미지 검수 저장 실패');
+            $affected = mysqli_stmt_affected_rows($review);
+            mysqli_stmt_close($review);
+            if (!$affected) ht_redirect($post_hospital_id, '이미 처리되었거나 존재하지 않는 이미지입니다.', 'warning');
+            ht_redirect($post_hospital_id, $new_status === 'approved' ? '시술 이미지가 승인되어 공개되었습니다.' : '시술 이미지가 반려되었습니다.');
+        }
+
+        if ($action === 'image_move') {
+            $id = intval($_POST['id'] ?? 0);
+            $image_id = intval($_POST['image_id'] ?? 0);
+            $direction = (string)($_POST['direction'] ?? '');
+            if ($id <= 0 || $image_id <= 0 || !in_array($direction, ['up', 'down'], true)) {
+                ht_redirect($post_hospital_id, '잘못된 이미지 순서 요청입니다.', 'danger');
+            }
+            $ids = [];
+            $list = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospital_treatment_images WHERE hospital_treatment_id = ? ORDER BY sort_order ASC, id ASC");
+            mysqli_stmt_bind_param($list, 'i', $id);
+            ht_execute_or_throw($list, '이미지 목록 조회 실패');
+            $list_result = mysqli_stmt_get_result($list);
+            while ($image_row = mysqli_fetch_assoc($list_result)) $ids[] = intval($image_row['id']);
+            mysqli_stmt_close($list);
+            $position = array_search($image_id, $ids, true);
+            $target = $position === false ? false : ($direction === 'up' ? $position - 1 : $position + 1);
+            if ($position === false || $target < 0 || $target >= count($ids)) ht_redirect($post_hospital_id, '더 이상 이동할 수 없습니다.', 'warning');
+            [$ids[$position], $ids[$target]] = [$ids[$target], $ids[$position]];
+            mysqli_begin_transaction($connect);
+            try {
+                $order_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatment_images SET sort_order = ? WHERE id = ? AND hospital_treatment_id = ?");
+                foreach ($ids as $sort_order => $ordered_id) {
+                    mysqli_stmt_bind_param($order_stmt, 'iii', $sort_order, $ordered_id, $id);
+                    ht_execute_or_throw($order_stmt, '이미지 순서 저장 실패');
+                }
+                mysqli_stmt_close($order_stmt);
+                mysqli_commit($connect);
+                ht_redirect($post_hospital_id, '이미지 순서가 변경되었습니다.');
+            } catch (Throwable $e) {
+                mysqli_rollback($connect);
+                error_log('[hospital_treatments] image_move 실패: ' . $e->getMessage());
+                ht_redirect($post_hospital_id, '이미지 순서를 변경하지 못했습니다.', 'danger');
+            }
+        }
+
     }
 }
 
 // GET ?msg= 파라미터 처리
 if (!empty($_GET['msg'])) {
     $msg = $_GET['msg'];
-    $msg_type = 'success';
+    $msg_type = in_array($_GET['msg_type'] ?? '', ['success', 'danger', 'warning', 'info'], true) ? $_GET['msg_type'] : 'success';
 }
 
 // ===== 데이터 로드 (병원 선택 시) =====
@@ -499,7 +534,7 @@ if ($hospital_id > 0) {
         COUNT(CASE WHEN status = 'active' THEN 1 END) AS total_assigned,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending,
         COUNT(CASE WHEN is_promoted = 1 AND status = 'active' THEN 1 END) AS promoted
-        FROM gangnamunni_hospital_treatments WHERE hospital_id = ?";
+        FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND is_active = 1";
     $stat_stmt = mysqli_prepare($connect, $stat_sql);
     mysqli_stmt_bind_param($stat_stmt, 'i', $hospital_id);
     mysqli_stmt_execute($stat_stmt);
@@ -516,7 +551,7 @@ if ($hospital_id > 0) {
         FROM gangnamunni_hospital_treatments ht
         LEFT JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         LEFT JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
-        WHERE ht.hospital_id = ? AND ht.status = 'pending'
+        WHERE ht.hospital_id = ? AND ht.status = 'pending' AND ht.is_active = 1
         ORDER BY ht.created_at DESC";
     $pend_stmt = mysqli_prepare($connect, $pend_sql);
     mysqli_stmt_bind_param($pend_stmt, 'i', $hospital_id);
@@ -530,7 +565,7 @@ if ($hospital_id > 0) {
         FROM gangnamunni_hospital_treatments ht
         LEFT JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         LEFT JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
-        WHERE ht.hospital_id = ? AND ht.status = 'active'
+        WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1
         ORDER BY tc.sort_order ASC, tm.sort_order ASC, tm.name ASC";
     $assign_stmt = mysqli_prepare($connect, $assign_sql);
     mysqli_stmt_bind_param($assign_stmt, 'i', $hospital_id);
@@ -578,7 +613,7 @@ if ($hospital_id > 0) {
         FROM gangnamunni_treatment_master tm
         LEFT JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
         WHERE tm.is_active = 1
-          AND tm.id NOT IN (SELECT treatment_id FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND status IN ('active','pending'))
+          AND tm.id NOT IN (SELECT treatment_id FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND is_active = 1 AND status IN ('active','pending'))
         ORDER BY tc.sort_order ASC, tm.name ASC";
     $avail_stmt = mysqli_prepare($connect, $avail_sql);
     mysqli_stmt_bind_param($avail_stmt, 'i', $hospital_id);
@@ -638,7 +673,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                     $mode_labels = ['both' => '관리자+병원', 'admin_only' => '관리자 전용', 'hospital_only' => '병원 자체'];
                     echo $mode_labels[$treatment_mgmt_mode] ?? $treatment_mgmt_mode;
                 ?></span>
-                | 승인 필요: <span class="badge bg-<?php echo $treatment_require_approval ? 'warning' : 'success'; ?>"><?php echo $treatment_require_approval ? 'ON' : 'OFF'; ?></span>
             </small>
         </div>
     </div>
@@ -697,14 +731,6 @@ require_once __DIR__ . '/includes/admin_header.php';
         <div class="col-6 col-md-3">
             <div class="card text-center border-0 shadow-sm">
                 <div class="card-body py-3">
-                    <h4 class="mb-0 text-warning"><?php echo number_format($global_pending_count); ?></h4>
-                    <small class="text-muted">승인 대기</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card text-center border-0 shadow-sm">
-                <div class="card-body py-3">
                     <h4 class="mb-0 text-danger"><?php echo number_format(intval($global_stats['promoted_count'] ?? 0)); ?></h4>
                     <small class="text-muted">프로모션</small>
                 </div>
@@ -726,7 +752,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <th>병원명</th>
                         <th class="text-center" style="width:100px;">배정 시술</th>
                         <th class="text-center" style="width:100px;">프로모션</th>
-                        <th class="text-center" style="width:100px;">승인 대기</th>
                         <th style="width:100px;">관리</th>
                     </tr>
                 </thead>
@@ -740,13 +765,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                         </td>
                         <td class="text-center"><span class="badge bg-primary"><?php echo number_format(intval($th['treatment_count'])); ?></span></td>
                         <td class="text-center"><span class="badge bg-danger"><?php echo number_format(intval($th['promoted_count'])); ?></span></td>
-                        <td class="text-center">
-                            <?php if (intval($th['pending_count']) > 0): ?>
-                            <span class="badge bg-warning text-dark"><?php echo intval($th['pending_count']); ?></span>
-                            <?php else: ?>
-                            <span class="text-muted">-</span>
-                            <?php endif; ?>
-                        </td>
                         <td>
                             <a href="admin_hospital_treatments.php?hospital_id=<?php echo intval($th['id']); ?>" class="btn btn-outline-primary btn-sm">
                                 <i class="bi bi-arrow-right"></i> 관리
@@ -776,14 +794,6 @@ require_once __DIR__ . '/includes/admin_header.php';
         <div class="col-4 col-md">
             <div class="card text-center border-0 shadow-sm">
                 <div class="card-body py-2">
-                    <h5 class="mb-0 text-warning"><?php echo number_format($stats['pending']); ?></h5>
-                    <small class="text-muted">승인 대기</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-4 col-md">
-            <div class="card text-center border-0 shadow-sm">
-                <div class="card-body py-2">
                     <h5 class="mb-0 text-danger"><?php echo number_format($stats['promoted']); ?></h5>
                     <small class="text-muted">프로모션</small>
                 </div>
@@ -792,7 +802,7 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 
     <!-- ===== 승인 대기 섹션 ===== -->
-    <?php if (!empty($pending_treatments)): ?>
+    <?php if (false): // 승인 워크플로우 폐기 ?>
     <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
         <div class="card-header bg-warning bg-opacity-10">
             <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>승인 대기 시술 (<?php echo count($pending_treatments); ?>건)</h6>
@@ -820,6 +830,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td class="text-center"><span class="badge bg-<?php echo $pt['registered_by'] === 'admin' ? 'primary' : 'success'; ?>"><?php echo $pt['registered_by'] === 'admin' ? '관리자' : '병원'; ?></span></td>
                         <td class="text-center"><small><?php echo substr($pt['created_at'] ?? '', 0, 16); ?></small></td>
                         <td class="text-center">
+                            <?php if ($is_platform_approver): ?>
                             <!-- 승인 -->
                             <form method="post" class="d-inline">
                                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
@@ -833,6 +844,9 @@ require_once __DIR__ . '/includes/admin_header.php';
                                 onclick="openRejectModal(<?php echo intval($pt['id']); ?>, '<?php echo htmlspecialchars(addslashes($pt['treatment_name'] ?? ''), ENT_QUOTES); ?>')">
                                 <i class="bi bi-x-lg"></i> 거절
                             </button>
+                            <?php else: ?>
+                            <span class="text-muted small">최고관리자 검토 대기</span>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -846,9 +860,9 @@ require_once __DIR__ . '/includes/admin_header.php';
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
             <h6 class="mb-0"><i class="bi bi-list-check me-2"></i>배정 시술 목록 (<?php echo count($assigned_treatments); ?>건)</h6>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#addTreatmentSection">
+            <?php if ($can_manage_treatments): ?><button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#addTreatmentSection">
                 <i class="bi bi-plus-lg me-1"></i>시술 추가
-            </button>
+            </button><?php endif; ?>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -932,7 +946,13 @@ require_once __DIR__ . '/includes/admin_header.php';
                             </span>
                         </td>
                         <td class="text-center">
-                            <?php $img_cnt = count($ht_images[intval($at['id'])] ?? []); ?>
+                            <?php
+                            $treatment_images = $ht_images[intval($at['id'])] ?? [];
+                            $img_cnt = count($treatment_images);
+                            $pending_img_cnt = count(array_filter($treatment_images, function ($image) {
+                                return ($image['approval_status'] ?? 'approved') === 'pending';
+                            }));
+                            ?>
                             <button type="button"
                                 class="btn btn-sm <?php echo $img_cnt ? 'btn-outline-success' : 'btn-outline-secondary'; ?>"
                                 title="시술 상세페이지 이미지 관리"
@@ -940,6 +960,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                                 <i class="bi bi-images"></i>
                                 <span class="ms-1"><?php echo $img_cnt; ?></span>
                             </button>
+                            <?php if ($pending_img_cnt > 0): ?><span class="badge bg-warning text-dark ms-1"><?php echo $pending_img_cnt; ?> 검수</span><?php endif; ?>
                         </td>
                         <td class="text-center">
                             <!-- 가격 수정 -->
@@ -1064,7 +1085,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             mysqli_stmt_close($log_stmt);
         }
     }
-    if (!empty($approval_logs)):
+    if (false): // 승인 워크플로우 폐기
     ?>
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-transparent">
@@ -1158,35 +1179,6 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
-<!-- ===== 거절 모달 ===== -->
-<div class="modal fade" id="rejectModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form method="post">
-            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-            <input type="hidden" name="action" value="reject">
-            <input type="hidden" name="id" id="reject_id">
-            <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>시술 거절</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>시술 <strong id="reject_treatment_name"></strong>을(를) 거절합니다.</p>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">거절 사유</label>
-                        <textarea name="reject_reason" class="form-control" rows="3" placeholder="거절 사유를 입력하세요 (선택)"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-danger"><i class="bi bi-x-lg me-1"></i>거절</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
 <!-- 시술 상세페이지 이미지 추가/삭제 모달 -->
 <div class="modal fade" id="treatmentImageModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -1234,9 +1226,26 @@ require_once __DIR__ . '/includes/admin_header.php';
     <input type="hidden" name="image_id" id="ti_del_image_id">
     <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
 </form>
+<form method="post" id="ti_move_form" class="d-none">
+    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+    <input type="hidden" name="action" value="image_move">
+    <input type="hidden" name="id" id="ti_move_ht_id">
+    <input type="hidden" name="image_id" id="ti_move_image_id">
+    <input type="hidden" name="direction" id="ti_move_direction">
+    <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
+</form>
+<form method="post" id="ti_review_form" class="d-none">
+    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+    <input type="hidden" name="action" id="ti_review_action">
+    <input type="hidden" name="id" id="ti_review_ht_id">
+    <input type="hidden" name="image_id" id="ti_review_image_id">
+    <input type="hidden" name="reject_reason" id="ti_review_reason">
+    <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
+</form>
 
 <script>
 var HT_IMAGES = <?php echo json_encode($ht_images, JSON_UNESCAPED_UNICODE); ?>;
+var IS_SUPER_ADMIN = <?php echo $is_super_admin ? 'true' : 'false'; ?>;
 
 function tiEscape(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
@@ -1254,16 +1263,49 @@ function openTreatmentImageModal(htId, name) {
             + '<i class="bi bi-image" style="font-size:1.8rem;"></i><br>등록된 이미지가 없습니다.</div>';
     } else {
         gallery.innerHTML = list.map(function(img, i) {
+            var status = img.approval_status || 'approved';
+            var badge = status === 'pending' ? '<span class="badge bg-warning text-dark">검수 대기</span>'
+                : (status === 'rejected' ? '<span class="badge bg-danger">반려</span>' : '<span class="badge bg-success">승인</span>');
+            var review = (IS_SUPER_ADMIN && status === 'pending')
+                ? '<div class="d-flex gap-1 mt-1"><button type="button" class="btn btn-success btn-sm flex-fill" onclick="reviewTreatmentImage(' + htId + ',' + img.id + ',\'approve\')">승인</button><button type="button" class="btn btn-danger btn-sm flex-fill" onclick="reviewTreatmentImage(' + htId + ',' + img.id + ',\'reject\')">반려</button></div>' : '';
+            var reason = status === 'rejected' && img.reject_reason ? '<small class="text-danger d-block mt-1">' + tiEscape(img.reject_reason) + '</small>' : '';
             return '<div class="col-6 col-md-3"><div class="border rounded overflow-hidden h-100 d-flex flex-column">'
                 + '<img src="' + tiEscape(img.image_url) + '" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;">'
+                + '<div class="px-2 pt-2">' + badge + reason + review + '</div>'
                 + '<div class="p-2 d-flex align-items-center justify-content-between gap-1">'
                 + '<small class="text-muted text-truncate">' + (i + 1) + '. ' + tiEscape(img.caption || '') + '</small>'
+                + '<span class="btn-group btn-group-sm"><button type="button" class="btn btn-outline-secondary py-0 px-1" onclick="moveTreatmentImage(' + htId + ',' + img.id + ',\'up\')" title="앞으로"><i class="bi bi-arrow-left"></i></button>'
+                + '<button type="button" class="btn btn-outline-secondary py-0 px-1" onclick="moveTreatmentImage(' + htId + ',' + img.id + ',\'down\')" title="뒤로"><i class="bi bi-arrow-right"></i></button></span>'
                 + '<button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" '
                 + 'onclick="deleteTreatmentImage(' + htId + ',' + img.id + ')" title="삭제">'
                 + '<i class="bi bi-trash"></i></button></div></div></div>';
         }).join('');
     }
     new bootstrap.Modal(document.getElementById('treatmentImageModal')).show();
+}
+
+function reviewTreatmentImage(htId, imageId, decision) {
+    var reason = '';
+    if (decision === 'reject') {
+        reason = window.prompt('이미지 반려 사유를 입력해주세요.');
+        if (reason === null) return;
+        reason = reason.trim();
+        if (!reason) { alert('반려 사유는 필수입니다.'); return; }
+    } else if (!confirm('이 이미지를 승인하고 공개하시겠습니까?')) {
+        return;
+    }
+    document.getElementById('ti_review_action').value = decision === 'approve' ? 'image_approve' : 'image_reject';
+    document.getElementById('ti_review_ht_id').value = htId;
+    document.getElementById('ti_review_image_id').value = imageId;
+    document.getElementById('ti_review_reason').value = reason;
+    document.getElementById('ti_review_form').submit();
+}
+
+function moveTreatmentImage(htId, imageId, direction) {
+    document.getElementById('ti_move_ht_id').value = htId;
+    document.getElementById('ti_move_image_id').value = imageId;
+    document.getElementById('ti_move_direction').value = direction;
+    document.getElementById('ti_move_form').submit();
 }
 
 function deleteTreatmentImage(htId, imageId) {
@@ -1283,9 +1325,9 @@ function priceRowHtml(dv, du, pr) {
         return '<option value="'+u+'"'+(u===du?' selected':'')+'>'+u+'</option>';
     }).join('');
     return '<div class="d-flex align-items-center mb-2 price-row" style="gap:8px;">' +
-        '<input type="number" name="dosage_value[]" class="form-control form-control-sm" style="flex:1;" min="0" step="0.01" placeholder="예: 100" value="'+(dv==null?'':dv)+'">' +
+        '<input type="number" name="dosage_value[]" class="form-control form-control-sm" style="flex:1;" min="0.01" step="0.01" required placeholder="예: 100" value="'+(dv==null?'':dv)+'">' +
         '<select name="dosage_unit[]" class="form-select form-select-sm" style="width:96px;">'+opts+'</select>' +
-        '<input type="number" name="price[]" class="form-control form-control-sm" style="width:110px;" min="0" step="1" placeholder="가격" value="'+(pr==null?'':pr)+'">' +
+        '<input type="number" name="price[]" class="form-control form-control-sm" style="width:110px;" min="1" step="1" required placeholder="가격" value="'+(pr==null?'':pr)+'">' +
         '<button type="button" class="btn btn-outline-danger btn-sm price-del" style="width:34px;" onclick="removePriceRow(this)"><i class="bi bi-x-lg"></i></button>' +
         '</div>';
 }

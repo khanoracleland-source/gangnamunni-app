@@ -113,7 +113,7 @@ if (!empty($keyword)) {
         $resolved_treatment_condition = " OR id IN (
             SELECT ht.hospital_id
             FROM gangnamunni_hospital_treatments ht
-            WHERE ht.treatment_id = {$effective_treatment_id} AND ht.status = 'active'
+            WHERE ht.treatment_id = {$effective_treatment_id} AND ht.status = 'active' AND ht.is_active = 1
         )";
     }
     $base_where .= " AND (
@@ -123,7 +123,7 @@ if (!empty($keyword)) {
         OR id IN (
             SELECT ht.hospital_id FROM gangnamunni_hospital_treatments ht
             INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
-            WHERE tm.name LIKE '%{$escaped_keyword}%' AND ht.status = 'active' AND tm.is_active = 1
+            WHERE tm.name LIKE '%{$escaped_keyword}%' AND ht.status = 'active' AND ht.is_active = 1 AND tm.is_active = 1
         )
         {$resolved_treatment_condition}
     )";
@@ -133,7 +133,7 @@ if (!empty($treatment)) {
     $base_where .= " AND id IN (
         SELECT ht.hospital_id FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
-        WHERE tm.name = '{$escaped_treatment}' AND ht.status = 'active' AND tm.is_active = 1
+        WHERE tm.name = '{$escaped_treatment}' AND ht.status = 'active' AND ht.is_active = 1 AND tm.is_active = 1
     )";
 }
 
@@ -311,7 +311,7 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         WHERE ht.hospital_id IN ({$h_ids_str})
-          AND ht.status = 'active'
+          AND ht.status = 'active' AND ht.is_active = 1
           AND tm.is_active = 1
           AND tm.name = '{$escaped_effective_treatment}'
     ";

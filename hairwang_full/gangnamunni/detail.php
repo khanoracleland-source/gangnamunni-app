@@ -49,7 +49,7 @@ if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_que
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         WHERE ht.hospital_id = ?
-          AND ht.status = 'active'
+          AND ht.status = 'active' AND ht.is_active = 1
           AND tm.is_active = 1
           AND ((? > 0 AND tm.id = ?) OR (? = 0 AND tm.name = ?))
         LIMIT 1

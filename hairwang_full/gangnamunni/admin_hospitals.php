@@ -15,11 +15,13 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/notification_helper.php';
+require_once __DIR__ . '/includes/hospital_treatment_images.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
+hti_ensure_schema($connect);
 
 // 승인/반려 메일 본문에서 SITE_FULL_URL 을 사용하는데, 이 상수는 admin_header.php(하단 include)에서
 // 정의되어 POST 처리 시점엔 미정의 → PHP 8 에서 "Undefined constant" 치명적 오류(백지화) 발생.
@@ -583,7 +585,7 @@ if ($view_mode > 0) {
             $treatment_stmt = mysqli_prepare($connect,
                 "SELECT ht.id AS hospital_treatment_id, ht.treatment_id, ht.status,
                         COALESCE(tm.name, CONCAT('시술 #', ht.treatment_id)) AS treatment_name,
-                        ti.id AS image_id, ti.image_url, ti.caption
+                        ti.id AS image_id, ti.image_url, ti.caption, ti.approval_status, ti.reject_reason
                  FROM gangnamunni_hospital_treatments ht
                  LEFT JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
                  LEFT JOIN gangnamunni_hospital_treatment_images ti ON ti.hospital_treatment_id = ht.id
@@ -606,6 +608,8 @@ if ($view_mode > 0) {
                         $application_treatments[$ht_id]['images'][] = [
                             'url' => $row['image_url'],
                             'caption' => $row['caption'] ?? '',
+                            'approval_status' => $row['approval_status'] ?? 'approved',
+                            'reject_reason' => $row['reject_reason'] ?? '',
                         ];
                     }
                 }
@@ -1238,12 +1242,20 @@ $application_assets = [
                              alt="<?= htmlspecialchars($treatment['name']) ?>"
                              onclick='showImageModal(<?= json_encode($treatment_image['url'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                         <?php if ($treatment_image['caption'] !== ''): ?><div class="small text-body-secondary mt-1"><?= htmlspecialchars($treatment_image['caption']) ?></div><?php endif; ?>
+                        <?php if ($treatment_image['approval_status'] === 'pending'): ?>
+                        <span class="badge bg-warning text-dark mt-1">이미지 검수 대기</span>
+                        <?php elseif ($treatment_image['approval_status'] === 'rejected'): ?>
+                        <span class="badge bg-danger mt-1">이미지 반려</span>
+                        <?php else: ?>
+                        <span class="badge bg-success mt-1">이미지 승인</span>
+                        <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>
                 <?php else: ?>
                 <div class="alert alert-warning py-2 mb-0 small"><i class="bi bi-exclamation-triangle me-1"></i>이 시술에 제출된 이미지가 없습니다.</div>
                 <?php endif; ?>
+                <div class="mt-2"><a class="btn btn-outline-primary btn-sm" href="admin_hospital_treatments.php?hospital_id=<?= (int)$view_mode ?>"><i class="bi bi-images me-1"></i>시술 이미지 검수</a></div>
             </div>
             <?php endforeach; ?>
         <?php else: ?>

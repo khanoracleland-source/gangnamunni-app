@@ -62,19 +62,14 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf_token = $_SESSION['csrf_token'];
 
-// 승인 워크플로우 헬퍼
-require_once __DIR__ . '/includes/treatment_approval_helper.php';
-
 // 설정 조회
 $treatment_mgmt_mode = 'both';
-$treatment_require_approval = '0';
 $treatment_max = 50;
 
-$set_r = mysqli_query($connect, "SELECT `key`, `value` FROM settings WHERE `key` IN ('treatment_mgmt_mode','treatment_require_admin_approval','treatment_max_per_hospital')");
+$set_r = mysqli_query($connect, "SELECT `key`, `value` FROM settings WHERE `key` IN ('treatment_mgmt_mode','treatment_max_per_hospital')");
 if ($set_r) {
     while ($s = mysqli_fetch_assoc($set_r)) {
         if ($s['key'] === 'treatment_mgmt_mode') $treatment_mgmt_mode = $s['value'];
-        if ($s['key'] === 'treatment_require_admin_approval') $treatment_require_approval = $s['value'];
         if ($s['key'] === 'treatment_max_per_hospital') $treatment_max = intval($s['value']);
     }
 }
@@ -84,6 +79,14 @@ if ($treatment_max <= 0) $treatment_max = 50;
 $can_edit = ($treatment_mgmt_mode === 'hospital_only' || $treatment_mgmt_mode === 'both');
 // 관리자는 항상 편집 가능
 if ($is_admin) $can_edit = true;
+
+// 기존 승인 대기 데이터도 새 정책에 맞춰 즉시 활성화한다.
+$legacy_pending = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET status = 'active', is_active = 1, reject_reason = NULL, updated_at = NOW() WHERE hospital_id = ? AND status = 'pending'");
+if ($legacy_pending) {
+    mysqli_stmt_bind_param($legacy_pending, 'i', $hospital_id);
+    mysqli_stmt_execute($legacy_pending);
+    mysqli_stmt_close($legacy_pending);
+}
 
 // 현재 병원 시술 수
 $count_stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND is_active = 1");
@@ -147,8 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
                     $p_max = intval($price_row['avg_price_max'] ?? 0);
                     mysqli_stmt_close($price_stmt);
 
-                    // 승인 필요 여부에 따라 상태 결정
-                    $status = ($treatment_require_approval === '1' && !$is_admin) ? 'pending' : 'active';
+                    $status = 'active';
                     $registered_by = $is_admin ? 'admin' : 'hospital';
 
                     $ins = mysqli_prepare($connect,
@@ -157,29 +159,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
                     mysqli_stmt_bind_param($ins, 'iiiiss', $hospital_id, $tid, $p_min, $p_max, $status, $registered_by);
                     if (mysqli_stmt_execute($ins)) {
                         $added++;
-                        // 승인 요청 로그 기록
-                        if ($status === 'pending') {
-                            $new_id = mysqli_insert_id($connect);
-                            log_treatment_approval($connect, [
-                                'hospital_treatment_id' => $new_id,
-                                'hospital_id' => $hospital_id,
-                                'treatment_id' => $tid,
-                                'action' => 'submitted',
-                                'old_status' => null,
-                                'new_status' => 'pending',
-                                'hospital_user' => $_SESSION['ad_admin_name'] ?? 'hospital',
-                            ]);
-                        }
                     }
                     mysqli_stmt_close($ins);
                 }
 
                 if (empty($flash_msg)) {
-                    if ($status === 'pending') {
-                        $flash_msg = "{$added}개 시술이 승인 요청되었습니다. 관리자 승인 후 표시됩니다.";
-                    } else {
-                        $flash_msg = "{$added}개 시술이 추가되었습니다.";
-                    }
+                    $flash_msg = "{$added}개 시술이 추가되었습니다.";
                     if ($skipped > 0) $flash_msg .= " (중복 {$skipped}개 건너뜀)";
                 }
                 // 카운트 갱신
@@ -312,7 +297,7 @@ foreach ($available_treatments as $at) {
 
 // 탭 선택
 $tab = $_GET['tab'] ?? 'my';
-if (!in_array($tab, ['my', 'pending', 'add'])) $tab = 'my';
+if (!in_array($tab, ['my', 'add'], true)) $tab = 'my';
 
 // 페이지 설정
 $page_title = '내 병원 시술 관리';
@@ -539,10 +524,6 @@ include __DIR__ . '/includes/header.php';
             내 시술
             <span class="badge-count"><?php echo count($my_treatments); ?></span>
         </a>
-        <a href="?hospital_id=<?php echo $hospital_id; ?>&tab=pending" class="pt-tab <?php echo $tab === 'pending' ? 'active' : ''; ?>">
-            승인 대기
-            <span class="badge-count"><?php echo count($pending_treatments); ?></span>
-        </a>
         <?php if ($can_edit): ?>
         <a href="?hospital_id=<?php echo $hospital_id; ?>&tab=add" class="pt-tab <?php echo $tab === 'add' ? 'active' : ''; ?>">
             시술 추가
@@ -711,12 +692,6 @@ include __DIR__ . '/includes/header.php';
                 </button>
                 <?php endforeach; ?>
             </div>
-
-            <?php if ($treatment_require_approval === '1' && !$is_admin): ?>
-            <div style="padding:8px 12px;background:#E3F2FD;border-radius:8px;font-size:12px;color:#1565C0;margin-bottom:12px;">
-                <i class="bi bi-info-circle"></i> 시술 추가 시 관리자 승인이 필요합니다. 승인 후 표시됩니다.
-            </div>
-            <?php endif; ?>
 
             <form method="post" id="addForm">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">

@@ -33,7 +33,7 @@ $_tc_sql = "
     INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
     LEFT JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
     WHERE ht.hospital_id = ?
-      AND ht.status = 'active'
+      AND ht.status = 'active' AND ht.is_active = 1
       AND tm.is_active = 1
     ORDER BY ht.is_promoted DESC, tc.sort_order ASC, tm.popularity_score DESC, tm.name ASC
 ";

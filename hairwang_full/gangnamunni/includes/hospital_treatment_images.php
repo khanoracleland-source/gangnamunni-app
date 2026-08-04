@@ -31,10 +31,29 @@ if (!function_exists('hti_ensure_schema')) {
                 image_url VARCHAR(500) NOT NULL,
                 caption VARCHAR(200) DEFAULT NULL,
                 sort_order INT DEFAULT 0,
+                approval_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved',
+                uploaded_by ENUM('admin','hospital') NOT NULL DEFAULT 'admin',
+                reject_reason VARCHAR(1000) DEFAULT NULL,
+                reviewed_at DATETIME DEFAULT NULL,
+                reviewed_by VARCHAR(100) DEFAULT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 KEY idx_ht (hospital_treatment_id, sort_order, id),
+                KEY idx_approval (approval_status, created_at),
                 KEY idx_hospital_treatment (hospital_id, treatment_id, sort_order, id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            $columns = [
+                'approval_status' => "ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved'",
+                'uploaded_by' => "ENUM('admin','hospital') NOT NULL DEFAULT 'admin'",
+                'reject_reason' => "VARCHAR(1000) DEFAULT NULL",
+                'reviewed_at' => "DATETIME DEFAULT NULL",
+                'reviewed_by' => "VARCHAR(100) DEFAULT NULL",
+            ];
+            foreach ($columns as $column => $definition) {
+                $check = mysqli_query($connect, "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gangnamunni_hospital_treatment_images' AND COLUMN_NAME = '{$column}' LIMIT 1");
+                if ($check && mysqli_num_rows($check) === 0) {
+                    mysqli_query($connect, "ALTER TABLE gangnamunni_hospital_treatment_images ADD COLUMN `{$column}` {$definition}");
+                }
+            }
         } catch (\mysqli_sql_exception $e) {
             error_log('[hospital_treatment_images] 스키마 생성 실패: ' . $e->getMessage());
             return false;
@@ -50,7 +69,7 @@ if (!function_exists('hti_images_by_ht_ids')) {
      * @param  array $ht_ids  gangnamunni_hospital_treatments.id 배열
      * @return array          [ht_id => [ ['id'=>..,'image_url'=>..,'caption'=>..], ... ], ...]
      */
-    function hti_images_by_ht_ids($connect, array $ht_ids)
+    function hti_images_by_ht_ids($connect, array $ht_ids, $approved_only = false)
     {
         $out = [];
         $ids = array_values(array_unique(array_filter(array_map('intval', $ht_ids))));
@@ -58,15 +77,21 @@ if (!function_exists('hti_images_by_ht_ids')) {
         $in = implode(',', $ids); // 정수만 담기므로 안전
         try {
             $r = mysqli_query($connect,
-                "SELECT id, hospital_treatment_id, image_url, caption
+                "SELECT id, hospital_treatment_id, image_url, caption, approval_status, uploaded_by, reject_reason, reviewed_at, reviewed_by
                  FROM gangnamunni_hospital_treatment_images
                  WHERE hospital_treatment_id IN ({$in})
+                 " . ($approved_only ? "AND approval_status = 'approved'" : "") . "
                  ORDER BY sort_order ASC, id ASC");
             if ($r) while ($row = mysqli_fetch_assoc($r)) {
                 $out[intval($row['hospital_treatment_id'])][] = [
                     'id'        => intval($row['id']),
                     'image_url' => $row['image_url'],
                     'caption'   => $row['caption'],
+                    'approval_status' => $row['approval_status'] ?? 'approved',
+                    'uploaded_by' => $row['uploaded_by'] ?? 'admin',
+                    'reject_reason' => $row['reject_reason'] ?? null,
+                    'reviewed_at' => $row['reviewed_at'] ?? null,
+                    'reviewed_by' => $row['reviewed_by'] ?? null,
                 ];
             }
         } catch (\mysqli_sql_exception $e) {
@@ -94,7 +119,7 @@ if (!function_exists('hti_images_for')) {
             $stmt = mysqli_prepare($connect,
                 "SELECT id, image_url, caption
                  FROM gangnamunni_hospital_treatment_images
-                 WHERE hospital_id = ? AND treatment_id = ?
+                 WHERE hospital_id = ? AND treatment_id = ? AND approval_status = 'approved'
                  ORDER BY sort_order ASC, id ASC");
             if (!$stmt) return [];
             mysqli_stmt_bind_param($stmt, 'ii', $hospital_id, $treatment_id);
@@ -207,8 +232,7 @@ if (!function_exists('hti_application_files_for')) {
 
 if (!function_exists('hti_save_application_treatments')) {
     /**
-     * 병원 신청 시 선택한 시술을 pending 으로 배정하고 시술별 상세 이미지를 저장한다.
-     * 이미지가 없는 시술도 배정은 유지되며, 승인 후 관리자 화면에서 이미지를 추가할 수 있다.
+     * 병원 신청 시 선택한 시술은 즉시 활성 배정하고 이미지만 승인 대기로 저장한다.
      *
      * @return array 저장 중 발생한 사용자 표시용 경고 목록
      */
@@ -230,7 +254,7 @@ if (!function_exists('hti_save_application_treatments')) {
             mysqli_stmt_close($find);
 
             if (!$ht_id) {
-                $status = 'pending';
+                $status = 'active';
                 $price_min = 0;
                 $price_max = 0;
                 $ins_ht = mysqli_prepare($connect,
@@ -262,8 +286,8 @@ if (!function_exists('hti_save_application_treatments')) {
                 $url = $uploaded['url'];
                 $ins_img = mysqli_prepare($connect,
                     "INSERT INTO gangnamunni_hospital_treatment_images
-                        (hospital_treatment_id, hospital_id, treatment_id, image_url, sort_order)
-                     VALUES (?, ?, ?, ?, ?)");
+                        (hospital_treatment_id, hospital_id, treatment_id, image_url, sort_order, approval_status, uploaded_by)
+                     VALUES (?, ?, ?, ?, ?, 'pending', 'hospital')");
                 mysqli_stmt_bind_param($ins_img, 'iiisi', $ht_id, $hospital_id, $treatment_id, $url, $sort_order);
                 mysqli_stmt_execute($ins_img);
                 mysqli_stmt_close($ins_img);
