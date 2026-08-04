@@ -356,6 +356,7 @@ function check_permission($permission) {
         'hospital_images',
         'hospital_treatments',
         'doctor_treatments',
+        'treatment_packages',
     ];
     if (in_array($permission, $all_admin_pages, true) && check_admin_login()) {
         return true;
