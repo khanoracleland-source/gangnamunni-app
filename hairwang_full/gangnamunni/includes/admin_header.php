@@ -90,7 +90,8 @@ $admin_menus = [
     // 신청 관리 그룹
     ['type' => 'group', 'label' => '신청 관리', 'icon' => 'bi-clipboard2-pulse', 'key' => 'wizard', 'children' => [
         ['url' => 'admin_hospital_wizard.php', 'label' => '병원 등록 마법사', 'icon' => 'bi-building-add', 'key' => 'hospital_wizard'],
-        ['url' => 'admin_ad_wizard.php', 'label' => '광고 등록 마법사', 'icon' => 'bi-megaphone-fill', 'key' => 'ad_wizard'],
+        // TEMPORARILY DISABLED: admin_ad_wizard.php (재활성화 시 아래 항목의 주석을 해제)
+        // ['url' => 'admin_ad_wizard.php', 'label' => '광고 등록 마법사', 'icon' => 'bi-megaphone-fill', 'key' => 'ad_wizard'],
         ['url' => 'admin_bookings.php', 'label' => '예약 관리', 'icon' => 'bi-calendar-check', 'key' => 'bookings'],
         ['url' => 'admin_consultations.php', 'label' => '상담 관리', 'icon' => 'bi-chat-dots-fill', 'key' => 'consultations'],
     ]],

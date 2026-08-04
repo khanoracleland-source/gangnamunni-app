@@ -15,41 +15,79 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/dev_mode_helper.php';
+require_once __DIR__ . '/includes/hospital_filter.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 require_admin_login();
+
+// TEMPORARY FEATURE GATE:
+// 광고 신청 마법사 개발을 재개할 때 true로 변경한다.
+// AJAX/POST 처리보다 먼저 실행되어 최고관리자를 포함한 모든 관리자를 차단한다.
+$admin_ad_wizard_enabled = false;
+if (!$admin_ad_wizard_enabled) {
+    http_response_code(503);
+    $admin_extra_css = '
+    .ad-wizard-disabled-card { max-width:720px; margin:8vh auto; border:1px solid var(--bs-border-color); }
+    .ad-wizard-disabled-icon { font-size:3rem; color:var(--bs-warning); }
+    ';
+    include __DIR__ . '/includes/admin_header.php';
+    ?>
+    <div class="card ad-wizard-disabled-card shadow-sm">
+        <div class="card-body text-center p-5">
+            <div class="ad-wizard-disabled-icon mb-3"><i class="bi bi-pause-circle"></i></div>
+            <h4 class="mb-3">광고 신청 마법사 일시 중지</h4>
+            <p class="text-body-secondary mb-4">해당 기능은 향후 개발을 위해 모든 관리자에게 일시적으로 비활성화되어 있습니다.</p>
+            <a href="dashboard.php" class="btn btn-primary"><i class="bi bi-speedometer2 me-1"></i>대시보드로 이동</a>
+        </div>
+    </div>
+    <?php
+    include __DIR__ . '/includes/admin_footer.php';
+    mysqli_close($connect);
+    exit;
+}
+
 require_permission('ads');
-if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+if (empty($_SESSION['admin_ad_wizard_csrf'])) $_SESSION['admin_ad_wizard_csrf'] = bin2hex(random_bytes(32));
+$ad_wizard_csrf = (string)$_SESSION['admin_ad_wizard_csrf'];
+$ad_wizard_hospital_ids = get_assigned_admin_hospital_ids($connect);
+$ad_wizard_hospital_in = empty($ad_wizard_hospital_ids) ? '0' : implode(',', array_map('intval', $ad_wizard_hospital_ids));
+
+function ad_wizard_json_error($message, $status = 400) {
+    http_response_code($status);
+    echo json_encode(['success' => false, 'error' => $message], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+function ad_wizard_valid_url($url) {
+    $url = trim((string)$url);
+    if ($url === '' || preg_match('/[\x00-\x1F\x7F]/', $url)) return false;
+    $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+    return in_array($scheme, ['http', 'https'], true);
+}
 
 // ── AJAX 핸들러 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json; charset=utf-8');
-    if (!hash_equals($_SESSION['csrf_token'], (string)($_POST['csrf_token'] ?? ''))) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'CSRF 검증 실패']);
-        exit;
-    }
+    if (!hash_equals($ad_wizard_csrf, (string)($_POST['csrf_token'] ?? ''))) ad_wizard_json_error('요청이 만료되었습니다. 페이지를 새로고침해주세요.', 403);
     $action = $_POST['action'];
 
     if ($action === 'upload_banner') {
         $uploadDir = __DIR__ . '/uploads/ads/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0775, true);
+        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) ad_wizard_json_error('업로드 폴더를 만들 수 없습니다.', 500);
         $file = $_FILES['file'] ?? null;
-        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
-            echo json_encode(['success' => false, 'error' => '업로드 실패']);
-            exit;
-        }
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
-            echo json_encode(['success' => false, 'error' => '이미지만 가능']);
-            exit;
-        }
-        $fname = 'ad_' . time() . '_' . mt_rand(1000,9999) . '.' . $ext;
+        if (!$file || $file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) ad_wizard_json_error('업로드에 실패했습니다.');
+        if ((int)$file['size'] > 5 * 1024 * 1024) ad_wizard_json_error('이미지는 5MB 이하만 가능합니다.');
+        $allowed = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp'];
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if (!isset($allowed[$mime]) || @getimagesize($file['tmp_name']) === false) ad_wizard_json_error('실제 JPG, PNG, GIF, WebP 이미지만 가능합니다.');
+        $fname = 'ad_' . bin2hex(random_bytes(16)) . '.' . $allowed[$mime];
         if (move_uploaded_file($file['tmp_name'], $uploadDir . $fname)) {
-            echo json_encode(['success' => true, 'url' => 'uploads/ads/' . $fname]);
+            $url = 'uploads/ads/' . $fname;
+            $_SESSION['ad_wizard_uploads'][$url] = time();
+            echo json_encode(['success' => true, 'url' => $url]);
         } else {
             echo json_encode(['success' => false, 'error' => '저장 실패']);
         }
@@ -58,59 +96,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($action === 'submit') {
         $data = json_decode($_POST['data'] ?? '{}', true);
-        if (!$data) {
-            echo json_encode(['success' => false, 'error' => '데이터 없음']);
-            exit;
-        }
+        if (!is_array($data)) ad_wizard_json_error('신청 데이터가 올바르지 않습니다.');
         mysqli_begin_transaction($connect);
         try {
-            $esc = function($v) use ($connect) { return mysqli_real_escape_string($connect, $v); };
+            $hospitalId = (int)($data['hospital_id'] ?? 0);
+            if ($hospitalId <= 0 || !in_array($hospitalId, $ad_wizard_hospital_ids, true)) throw new RuntimeException('본인에게 배정된 병원만 광고를 신청할 수 있습니다.');
+            $hst = mysqli_prepare($connect, "SELECT name FROM gangnamunni_hospitals WHERE id=? AND is_active=1 LIMIT 1");
+            mysqli_stmt_bind_param($hst, 'i', $hospitalId); mysqli_stmt_execute($hst); $hospitalRow = mysqli_fetch_assoc(mysqli_stmt_get_result($hst)); mysqli_stmt_close($hst);
+            if (!$hospitalRow) throw new RuntimeException('병원 정보를 확인할 수 없습니다.');
+            $advName = (string)$hospitalRow['name'];
+            $advContact = trim((string)($data['contact_name'] ?? ''));
+            $advEmail = trim((string)($data['contact_email'] ?? ''));
+            $advPhone = trim((string)($data['contact_phone'] ?? ''));
+            $advBiz = trim((string)($data['business_number'] ?? ''));
+            if ($advContact === '' || !filter_var($advEmail, FILTER_VALIDATE_EMAIL)) throw new RuntimeException('담당자와 올바른 이메일을 입력해주세요.');
 
-            // 1) 광고주 확인/생성
-            $advName = $esc($data['advertiser_name'] ?? '');
-            $advContact = $esc($data['contact_name'] ?? '');
-            $advEmail = $esc($data['contact_email'] ?? '');
-            $advPhone = $esc($data['contact_phone'] ?? '');
-            $advBiz = $esc($data['business_number'] ?? '');
-            $hospitalResult = mysqli_query($connect, "SELECT id,name FROM gangnamunni_hospitals WHERE name='{$advName}' ORDER BY id LIMIT 2");
-            if (!$hospitalResult || mysqli_num_rows($hospitalResult) !== 1) {
-                throw new RuntimeException('광고주 병원을 고유하게 확인할 수 없습니다.');
-            }
-            $hospitalRow = mysqli_fetch_assoc($hospitalResult);
-            $hospitalId = (int)$hospitalRow['id'];
-            $isSuper = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
-            $ownHospitalId = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
-            if (!$isSuper && ($ownHospitalId <= 0 || $ownHospitalId !== $hospitalId)) {
-                throw new RuntimeException('다른 병원의 광고를 생성할 권한이 없습니다.');
-            }
-
-            // 기존 광고주 검색
-            $r = mysqli_query($connect, "SELECT id,hospital_id FROM gangnamunni_advertisers WHERE contact_email = '{$advEmail}' LIMIT 1");
-            if ($row = mysqli_fetch_assoc($r)) {
-                if (!empty($row['hospital_id']) && (int)$row['hospital_id'] !== $hospitalId) {
-                    throw new RuntimeException('광고주 이메일이 다른 병원에 연결되어 있습니다.');
-                }
-                $advertiserId = $row['id'];
-                mysqli_query($connect, "UPDATE gangnamunni_advertisers SET hospital_id={$hospitalId} WHERE id={$advertiserId} AND hospital_id IS NULL");
+            $ast = mysqli_prepare($connect, "SELECT id FROM gangnamunni_advertisers WHERE hospital_id=? LIMIT 1");
+            mysqli_stmt_bind_param($ast, 'i', $hospitalId); mysqli_stmt_execute($ast); $advertiserRow = mysqli_fetch_assoc(mysqli_stmt_get_result($ast)); mysqli_stmt_close($ast);
+            if ($advertiserRow) {
+                $advertiserId = (int)$advertiserRow['id'];
+                $ust = mysqli_prepare($connect, "UPDATE gangnamunni_advertisers SET hospital_name=?,contact_name=?,contact_email=?,contact_phone=?,business_number=? WHERE id=? AND hospital_id=?");
+                mysqli_stmt_bind_param($ust, 'sssssii', $advName,$advContact,$advEmail,$advPhone,$advBiz,$advertiserId,$hospitalId); mysqli_stmt_execute($ust); mysqli_stmt_close($ust);
             } else {
-                mysqli_query($connect, "INSERT INTO gangnamunni_advertisers (hospital_id, hospital_name, contact_name, contact_email, contact_phone, business_number, status, created_at)
-                    VALUES ({$hospitalId}, '{$advName}', '{$advContact}', '{$advEmail}', '{$advPhone}', '{$advBiz}', 'active', NOW())");
-                $advertiserId = mysqli_insert_id($connect);
+                $ist = mysqli_prepare($connect, "INSERT INTO gangnamunni_advertisers(hospital_id,hospital_name,contact_name,contact_email,contact_phone,business_number,status,created_at) VALUES(?,?,?,?,?,?,'active',NOW())");
+                mysqli_stmt_bind_param($ist, 'isssss', $hospitalId,$advName,$advContact,$advEmail,$advPhone,$advBiz); mysqli_stmt_execute($ist); $advertiserId=mysqli_insert_id($connect); mysqli_stmt_close($ist);
             }
 
-            // 2) 광고 생성
             $pricingId = intval($data['pricing_id'] ?? 0);
-            $title = $esc($data['title'] ?? '');
-            $subtitle = $esc($data['subtitle'] ?? '');
-            $imageUrl = $esc($data['image_url'] ?? '');
-            $linkUrl = $esc($data['link_url'] ?? '');
-            $adType = $esc($data['ad_type'] ?? 'banner');
-            $startDate = $esc($data['start_date'] ?? date('Y-m-d'));
-            $endDate = $esc($data['end_date'] ?? '');
+            $pst = mysqli_prepare($connect, "SELECT ad_type,duration_days FROM gangnamunni_ad_pricing WHERE id=? LIMIT 1");
+            mysqli_stmt_bind_param($pst, 'i', $pricingId); mysqli_stmt_execute($pst); $plan=mysqli_fetch_assoc(mysqli_stmt_get_result($pst)); mysqli_stmt_close($pst);
+            if (!$plan || !in_array($plan['ad_type'], ['banner','premium','vip'], true)) throw new RuntimeException('올바른 광고 요금제를 선택해주세요.');
+            $title = mb_substr(trim((string)($data['title'] ?? '')), 0, 200);
+            $subtitle = mb_substr(trim((string)($data['subtitle'] ?? '')), 0, 500);
+            $imageUrl = trim((string)($data['image_url'] ?? ''));
+            $linkUrl = trim((string)($data['link_url'] ?? ''));
+            $startDate = trim((string)($data['start_date'] ?? ''));
+            $uploadTime = (int)($_SESSION['ad_wizard_uploads'][$imageUrl] ?? 0);
+            if ($title === '' || $uploadTime <= 0 || time() - $uploadTime > 3600 || !preg_match('#^uploads/ads/ad_[a-f0-9]{32}\.(jpg|png|gif|webp)$#', $imageUrl) || !is_file(__DIR__ . '/' . $imageUrl)) throw new RuntimeException('광고 제목과 최근 1시간 내 업로드한 배너 이미지는 필수입니다.');
+            if (!ad_wizard_valid_url($linkUrl)) throw new RuntimeException('올바른 HTTP(S) 랜딩 URL을 입력해주세요.');
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) || $startDate < date('Y-m-d')) throw new RuntimeException('시작일은 오늘 이후여야 합니다.');
+            $duration = max(1, (int)$plan['duration_days']);
+            $endDate = date('Y-m-d', strtotime($startDate . ' +' . ($duration - 1) . ' days'));
+            $adType = $plan['ad_type'];
 
-            mysqli_query($connect, "INSERT INTO gangnamunni_ads (hospital_id, advertiser_id, pricing_id, title, subtitle, image_url, link_url, ad_type, start_date, end_date, is_active, display_order, created_at, updated_at)
-                VALUES ({$hospitalId}, {$advertiserId}, {$pricingId}, '{$title}', '{$subtitle}', '{$imageUrl}', '{$linkUrl}', '{$adType}', '{$startDate}', '{$endDate}', 0, 999, NOW(), NOW())");
+            $adst = mysqli_prepare($connect, "INSERT INTO gangnamunni_ads(hospital_id,advertiser_id,pricing_id,title,subtitle,image_url,link_url,ad_type,start_date,end_date,is_active,status,display_order,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,0,'pending',999,NOW(),NOW())");
+            mysqli_stmt_bind_param($adst, 'iiisssssss', $hospitalId,$advertiserId,$pricingId,$title,$subtitle,$imageUrl,$linkUrl,$adType,$startDate,$endDate);
+            if (!mysqli_stmt_execute($adst)) throw new RuntimeException('광고 신청 저장에 실패했습니다.');
             $adId = mysqli_insert_id($connect);
+            mysqli_stmt_close($adst);
+            unset($_SESSION['ad_wizard_uploads'][$imageUrl]);
 
             // Advertising uses the hospital ad wallet. Exposure starts only
             // after a slot assignment passes the three-month balance check.
@@ -135,12 +169,12 @@ while ($row = mysqli_fetch_assoc($r)) $pricing[] = $row;
 
 // ── 병원 목록 (광고주 선택용, 상세 정보 포함) ──
 $hospitals = [];
-$r = mysqli_query($connect, "SELECT id, name, phone, email, address FROM gangnamunni_hospitals ORDER BY name LIMIT 200");
+$r = mysqli_query($connect, "SELECT id, name, phone, email, address FROM gangnamunni_hospitals WHERE is_active=1 AND id IN ({$ad_wizard_hospital_in}) ORDER BY name LIMIT 200");
 while ($row = mysqli_fetch_assoc($r)) $hospitals[] = $row;
 
 // ── 기존 광고주 목록 (병원별 매칭) ──
 $advertisers = [];
-$r = mysqli_query($connect, "SELECT id, hospital_name, contact_name, contact_email, contact_phone, business_number FROM gangnamunni_advertisers ORDER BY hospital_name");
+$r = mysqli_query($connect, "SELECT id, hospital_id, hospital_name, contact_name, contact_email, contact_phone, business_number FROM gangnamunni_advertisers WHERE hospital_id IN ({$ad_wizard_hospital_in}) ORDER BY hospital_name");
 while ($row = mysqli_fetch_assoc($r)) $advertisers[] = $row;
 
 $admin_page_title = '광고 신청 마법사';
@@ -257,6 +291,9 @@ require_once __DIR__ . '/includes/admin_header.php';
         <small class="text-muted">단계별로 광고를 신청합니다 (5단계)</small>
     </div>
 </div>
+<?php if (empty($ad_wizard_hospital_ids)): ?>
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>현재 관리자 계정에 배정된 병원이 없어 광고를 신청할 수 없습니다.</div>
+<?php endif; ?>
 
 <?php if (isDevMode($connect)): ?>
     <?php renderDevModeButton('ad_wizard'); ?>
@@ -323,7 +360,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             <div class="row g-2" id="pricingGrid">
                 <?php foreach ($pricing as $p): ?>
                 <div class="col-md-3 col-6 pricing-item" data-ad-type="<?= htmlspecialchars($p['ad_type'] ?? '') ?>">
-                    <div class="pricing-card" data-pricing='<?= json_encode($p, JSON_UNESCAPED_UNICODE) ?>' onclick="selectPricing(this)">
+                    <div class="pricing-card" data-pricing="<?= htmlspecialchars(json_encode($p, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>" onclick="selectPricing(this)">
                         <span class="badge <?= ($p['ad_type']??'') === 'vip' ? 'bg-dark' : (($p['ad_type']??'') === 'premium' ? 'bg-warning text-dark' : 'bg-secondary') ?>" style="font-size:10px"><?= strtoupper($p['ad_type'] ?? '') ?></span>
                         <div class="price-badge mt-1">₩<?= number_format($p['total_price'] ?? 0) ?></div>
                         <div class="small fw-bold mt-1"><?= htmlspecialchars($p['display_name'] ?? $p['name'] ?? $p['code']) ?></div>
@@ -345,9 +382,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                                oninput="filterHospitals(this.value)" onfocus="showHospitalDropdown()">
                         <input type="hidden" id="ad_hospital" value="">
                         <div class="hospital-dropdown" id="hospitalDropdown">
-                            <div class="hospital-dropdown-item" data-id="" onclick="selectHospital(null)">
-                                <i class="bi bi-pencil-square text-muted"></i> <span>직접 입력 (신규 광고주)</span>
-                            </div>
                             <?php foreach ($hospitals as $h): ?>
                             <div class="hospital-dropdown-item" data-id="<?= $h['id'] ?>"
                                  data-name="<?= htmlspecialchars($h['name']) ?>"
@@ -362,7 +396,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php endforeach; ?>
                         </div>
                     </div>
-                    <input type="text" class="form-control mt-2" id="ad_advertiser_name" placeholder="광고주 병원명 직접 입력">
+                    <input type="text" class="form-control mt-2 d-none" id="ad_advertiser_name" readonly>
                     <div class="form-text text-muted" id="hospitalAutoFillMsg" style="display:none">
                         <i class="bi bi-info-circle"></i> 선택된 병원 정보가 아래에 자동 입력됩니다
                     </div>
@@ -596,10 +630,11 @@ function validateStep(step) {
         if (!adData.pricing) { alert('요금제를 선택해주세요.'); return false; }
     }
     if (step === 2) {
-        const advName = document.getElementById('ad_advertiser_name').value.trim() || document.getElementById('ad_hospital_search').value.trim();
-        if (!advName) { alert('광고주(병원명)를 선택하거나 입력해주세요.'); return false; }
+        if (!selectedHospitalId) { alert('본인에게 배정된 병원을 목록에서 선택해주세요.'); return false; }
         if (!document.getElementById('ad_title').value.trim()) { alert('광고 제목을 입력해주세요.'); return false; }
         if (!document.getElementById('ad_contact_email').value.trim()) { alert('담당자 이메일을 입력해주세요.'); return false; }
+        if (!adData.bannerUrl) { alert('배너 이미지를 업로드해주세요.'); return false; }
+        try { const u = new URL(document.getElementById('ad_link_url').value); if (!['http:','https:'].includes(u.protocol)) throw new Error(); } catch(e) { alert('올바른 랜딩 URL을 입력해주세요.'); return false; }
     }
     if (step === 3) {
         if (!document.getElementById('ad_start_date').value) { alert('시작일을 선택해주세요.'); return false; }
@@ -641,7 +676,7 @@ function selectPayMethod(method) {
 const hospitalItems = document.querySelectorAll('.hospital-dropdown-item');
 const hospitalDropdown = document.getElementById('hospitalDropdown');
 const hospitalSearch = document.getElementById('ad_hospital_search');
-const advertisersData = <?= json_encode($advertisers, JSON_UNESCAPED_UNICODE) ?>;
+const advertisersData = <?= json_encode($advertisers, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 let selectedHospitalId = null;
 
 function showHospitalDropdown() {
@@ -774,7 +809,7 @@ async function uploadBanner(input) {
     zone.innerHTML = '<div class="spinner-border text-warning"></div>';
     const fd = new FormData();
     fd.append('action', 'upload_banner');
-    fd.append('csrf_token', <?=json_encode($_SESSION['csrf_token'])?>);
+    fd.append('csrf_token', <?=json_encode($ad_wizard_csrf)?>);
     fd.append('file', input.files[0]);
     const r = await fetch('', {method:'POST', body:fd});
     const d = await r.json();
@@ -880,6 +915,7 @@ async function submitAd() {
     const advName = document.getElementById('ad_advertiser_name').value.trim() || document.getElementById('ad_hospital_search').value.trim();
 
     const data = {
+        hospital_id: Number(selectedHospitalId || 0),
         advertiser_name: advName,
         contact_name: document.getElementById('ad_contact_name').value.trim(),
         contact_email: document.getElementById('ad_contact_email').value.trim(),
@@ -902,7 +938,7 @@ async function submitAd() {
 
     const fd = new FormData();
     fd.append('action', 'submit');
-    fd.append('csrf_token', <?=json_encode($_SESSION['csrf_token'])?>);
+    fd.append('csrf_token', <?=json_encode($ad_wizard_csrf)?>);
     fd.append('data', JSON.stringify(data));
 
     try {
