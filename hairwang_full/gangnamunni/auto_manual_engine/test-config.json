@@ -35,7 +35,7 @@
                 "passwordField": "input[name='password']",
                 "submitButton": "button[type='submit']",
                 "username": "admin@hms.com",
-                "password": "123456"
+                "password": "${AUTO_TEST_HMS_ADMIN_PASSWORD}"
             },
             "loginSuccessIndicator": "/dashboard",
             "pages": [
@@ -100,7 +100,7 @@
                 "passwordField": "input[name='password']",
                 "submitButton": "button[type='submit']",
                 "username": "admin",
-                "password": "admin123"
+                "password": "${AUTO_TEST_GANGNAMUNNI_ADMIN_PASSWORD}"
             },
             "loginSuccessIndicator": "dashboard",
             "pages": [

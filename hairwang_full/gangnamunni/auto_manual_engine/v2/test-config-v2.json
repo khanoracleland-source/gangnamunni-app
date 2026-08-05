@@ -10,7 +10,7 @@
       "auth": {
         "type": "form",
         "loginUrl": "/login",
-        "fields": { "email": "admin@hms.com", "password": "123456" },
+        "fields": { "email": "admin@hms.com", "password": "${AUTO_TEST_HMS_ADMIN_PASSWORD}" },
         "submitSelector": "button[type=submit]",
         "successUrl": "/super-admin/dashboard"
       },
@@ -32,21 +32,20 @@
         },
         {
           "category": "functional",
-          "label": "기능 테스트 (폼/CRUD)",
+          "label": "폼 페이지 접근 (CRUD 미수행)",
           "plugin": "form-test",
           "items": [
-            { "id": "hms_hospital_crud", "name": "병원 CRUD", "description": "병원 생성/수정/삭제", "target": "/super-admin/hospitals" },
-            { "id": "hms_type_crud", "name": "병원유형 CRUD", "description": "유형 생성/수정/삭제", "target": "/super-admin/hospital-type" },
-            { "id": "hms_settings_save", "name": "설정 저장", "description": "설정 변경 후 저장 확인", "target": "/super-admin/settings" }
+            { "id": "hms_hospital_crud", "name": "병원 관리 폼", "description": "병원 관리 페이지 로드 (저장/삭제 미수행)", "target": "/super-admin/hospitals" },
+            { "id": "hms_type_crud", "name": "병원유형 관리 폼", "description": "유형 관리 페이지 로드 (저장/삭제 미수행)", "target": "/super-admin/hospital-type" },
+            { "id": "hms_settings_save", "name": "설정 폼", "description": "설정 페이지 로드 (저장 미수행)", "target": "/super-admin/settings" }
           ]
         },
         {
           "category": "scenario",
-          "label": "시나리오 테스트 (흐름)",
+          "label": "시나리오 시작 페이지 접근 (흐름 미수행)",
           "plugin": "scenario-test",
           "items": [
-            { "id": "hms_login_flow", "name": "로그인 흐름", "description": "로그인→대시보드→병원목록", "steps": ["goto:/login", "fill:email=admin@hms.com", "fill:password=123456", "click:button[type=submit]", "wait:/super-admin/dashboard", "goto:/super-admin/hospitals", "verify:table"] },
-            { "id": "hms_review_flow", "name": "후기 관리 흐름", "description": "후기 목록→상세→승인", "steps": ["goto:/super-admin/hospital-reviews", "verify:table", "screenshot:review_list"] }
+            { "id": "hms_review_flow", "name": "후기 목록 페이지 접근", "description": "후기 목록 페이지 로드 확인 (상세/승인 미수행)", "steps": ["goto:/super-admin/hospital-reviews"] }
           ]
         }
       ]
@@ -59,9 +58,9 @@
       "auth": {
         "type": "form",
         "loginUrl": "/hairwang/gangnamunni/dashboard.php",
-        "fields": { "admin_id": "admin", "admin_pw": "admin123" },
+        "fields": { "admin_id": "admin", "admin_pw": "${AUTO_TEST_GANGNAMUNNI_ADMIN_PASSWORD}" },
         "submitSelector": "button[type=submit]",
-        "successCheck": "ad_admin_logged_in"
+        "successUrl": "/hairwang/gangnamunni/dashboard.php"
       },
       "tests": [
         {
@@ -81,18 +80,18 @@
             { "id": "gn_members", "name": "회원 관리", "url": "/hairwang/gangnamunni/admin_members.php", "description": "회원 검색/관리" },
             { "id": "gn_admins", "name": "관리자 관리", "url": "/hairwang/gangnamunni/admin_admins.php", "description": "부관리자 RBAC" },
             { "id": "gn_auto_manual", "name": "자동 매뉴얼", "url": "/hairwang/gangnamunni/admin_auto_manual.php", "description": "Playwright 캡처" },
-            { "id": "gn_auto_test", "name": "자동 테스트 v1", "url": "/hairwang/gangnamunni/admin_auto_test.php", "description": "자동 테스트 (구버전)" },
+            { "id": "gn_auto_test", "name": "자동 테스트 v2", "url": "/hairwang/gangnamunni/admin_auto_test_v2.php", "description": "현행 자동 테스트" },
             { "id": "gn_mail", "name": "메일 관리", "url": "/hairwang/gangnamunni/admin_mail.php", "description": "IMAP 메일함" }
           ]
         },
         {
           "category": "functional",
-          "label": "기능 테스트 (폼/CRUD)",
+          "label": "폼 페이지 접근 (CRUD 미수행)",
           "plugin": "form-test",
           "items": [
-            { "id": "gn_review_edit", "name": "후기 편집", "description": "후기 모달 편집 + 저장", "target": "/hairwang/gangnamunni/admin_reviews.php" },
-            { "id": "gn_category_toggle", "name": "카테고리 토글", "description": "활성/비활성 전환", "target": "/hairwang/gangnamunni/admin_categories.php" },
-            { "id": "gn_nav_toggle", "name": "네비 활성화", "description": "네비 항목 활성/비활성", "target": "/hairwang/gangnamunni/admin_navigation.php" }
+            { "id": "gn_review_edit", "name": "후기 관리 폼", "description": "후기 관리 페이지 로드 (편집/저장 미수행)", "target": "/hairwang/gangnamunni/admin_reviews.php" },
+            { "id": "gn_category_toggle", "name": "카테고리 관리 폼", "description": "카테고리 관리 페이지 로드 (상태 변경 미수행)", "target": "/hairwang/gangnamunni/admin_categories.php" },
+            { "id": "gn_nav_toggle", "name": "네비게이션 관리 폼", "description": "네비게이션 관리 페이지 로드 (상태 변경 미수행)", "target": "/hairwang/gangnamunni/admin_navigation.php" }
           ]
         }
       ]
@@ -150,9 +149,9 @@
       "auth": {
         "type": "form",
         "loginUrl": "/hairwang/gangnamunni/dashboard.php",
-        "fields": { "admin_id": "admin", "admin_pw": "admin123" },
+        "fields": { "admin_id": "admin", "admin_pw": "${AUTO_TEST_GANGNAMUNNI_ADMIN_PASSWORD}" },
         "submitSelector": "button[type=submit]",
-        "successCheck": "ad_admin_logged_in"
+        "successUrl": "/hairwang/gangnamunni/dashboard.php"
       },
       "tests": [
         {

@@ -24,12 +24,25 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 const { ErrorDetector } = require('./error-detector');
+const AUTO_TEST_ENABLED = String(process.env.AUTO_TEST_ENABLED || '').trim().toLowerCase() === 'true';
+
+if (require.main === module && !AUTO_TEST_ENABLED) {
+    console.error('자동 테스트 기능이 일시 중지되었습니다.');
+    process.exit(3);
+}
 
 // =========================================================
 // 설정 로드
 // =========================================================
 const CONFIG_PATH = path.join(__dirname, 'test-config.json');
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+if (process.env.AUTO_TEST_BASE_URL) config.baseUrl = process.env.AUTO_TEST_BASE_URL;
+const parsedBaseUrl = new URL(config.baseUrl);
+if (!['http:', 'https:'].includes(parsedBaseUrl.protocol)) throw new Error('Invalid AUTO_TEST_BASE_URL');
+if (parsedBaseUrl.hostname === 'hms.seoulbeauty.app' && process.env.AUTO_TEST_ALLOW_PRODUCTION !== 'true') {
+    throw new Error('Production tests require AUTO_TEST_ALLOW_PRODUCTION=true');
+}
+config.baseUrl = parsedBaseUrl.origin;
 
 // =========================================================
 // CLI 인자 파싱
@@ -87,6 +100,14 @@ function sanitize(name) {
         .substring(0, 60);
 }
 
+function resolveSecret(value, label) {
+    const match = typeof value === 'string' ? value.match(/^\$\{([A-Z0-9_]+)\}$/) : null;
+    if (!match) throw new Error(`${label}: password must reference an environment variable`);
+    const resolved = process.env[match[1]];
+    if (!resolved) throw new Error(`${label}: ${match[1]} environment variable is required`);
+    return resolved;
+}
+
 /**
  * 로그 출력 (타임스탬프 포함)
  * @param {string} level - INFO|WARN|ERROR|OK|FAIL
@@ -115,6 +136,10 @@ function log(level, message) {
  * @returns {Promise<{outputDir: string, results: Array, summary: object}>}
  */
 async function runTests() {
+    if (!AUTO_TEST_ENABLED) {
+        throw new Error('자동 테스트 기능이 일시 중지되었습니다.');
+    }
+
     const startTime = Date.now();
     const outputDir = createOutputDir();
     const screenshotsDir = path.join(outputDir, 'screenshots');
@@ -280,10 +305,10 @@ async function runTests() {
 // =========================================================
 
 /**
- * 시스템 로그인 수행 + 로그인 전/후 스크린샷 캡처
+ * 시스템 로그인 수행 + 로그인 후 스크린샷 캡처
  * - credentials 정보를 사용해 폼 자동 입력
  * - loginSuccessIndicator로 성공 여부 판단
- * - 스크린샷: 아이디 입력 후 (버튼 클릭 전) + 로그인 후 화면
+ * - 인증정보가 입력된 로그인 폼은 캡처하지 않음
  *
  * @param {import('playwright').Page} page
  * @param {object} system - test-config.json의 system 항목
@@ -291,7 +316,11 @@ async function runTests() {
  * @returns {Promise<{success: boolean, loginResults: Array}>} 로그인 성공 + 캡처 결과
  */
 async function performLogin(page, system, screenshotsDir) {
-    const { credentials, loginUrl } = system;
+    const { loginUrl } = system;
+    const credentials = {
+        ...system.credentials,
+        password: resolveSecret(system.credentials?.password, `${system.id} login`),
+    };
     const fullUrl = config.baseUrl + loginUrl;
     const loginResults = []; // 로그인 관련 캡처 결과 모음
 
@@ -323,37 +352,7 @@ async function performLogin(page, system, screenshotsDir) {
 
         await page.waitForTimeout(500); // 입력 후 약간 대기
 
-        // ── 로그인 전 스크린샷 (아이디/비밀번호 입력된 상태) ──
         const sysPrefix = sanitize(system.id);
-        const beforeScreenshot = path.join(screenshotsDir, `00_${sysPrefix}_로그인_입력_완료.png`);
-        try {
-            await page.screenshot({
-                path: beforeScreenshot,
-                fullPage: config.browser.fullPage,
-            });
-            log('OK', `  로그인 폼 캡처: 아이디/비밀번호 입력됨`);
-
-            // 페이지 분석
-            let pageAnalysis = null;
-            try { pageAnalysis = await analyzePage(page); } catch (e) {}
-
-            loginResults.push({
-                system: system.name,
-                systemId: system.id,
-                page: `${system.name} - 로그인 폼 (입력 완료)`,
-                url: fullUrl,
-                description: `로그인 아이디(${credentials.username}) 입력 완료 상태 - 버튼 클릭 전`,
-                httpStatus: response.status(),
-                loadTimeMs: Date.now() - loginStartTime,
-                screenshotPath: beforeScreenshot,
-                status: 'PASS',
-                errors: { hasErrors: false, overallStatus: 'PASS', summary: '에러 없음', httpErrors: [], phpErrors: [], jsErrors: [], jsWarnings: [], pageErrors: [], failedResources: [], counts: { httpErrors: 0, phpErrors: 0, jsErrors: 0, jsWarnings: 0, pageErrors: 0, failedResources: 0 } },
-                elementChecks: [],
-                pageAnalysis,
-            });
-        } catch (e) {
-            log('WARN', `  로그인 전 캡처 실패: ${e.message}`);
-        }
 
         // ── 로그인 버튼 클릭 ──
         const afterLoginStart = Date.now();
@@ -367,82 +366,67 @@ async function performLogin(page, system, screenshotsDir) {
 
         let loginSuccess = false;
 
-        // URL에 성공 지표가 포함되어있는지 확인
-        if (indicator && currentUrl.includes(indicator)) {
+        const stillOnLogin = await page.$(credentials.usernameField);
+        // URL 성공 지표와 로그인 폼 소실을 모두 확인한다.
+        if (indicator && currentUrl.includes(indicator) && !stillOnLogin) {
             log('OK', `  로그인 성공: ${currentUrl}`);
             loginSuccess = true;
         } else {
-            // 로그인 폼이 여전히 보이면 실패 판단
-            const stillOnLogin = await page.$(credentials.usernameField);
-            if (stillOnLogin) {
-                const bodyText = await page.evaluate(() => document.body?.innerText || '');
-                if (bodyText.includes('대시보드') || bodyText.includes('Dashboard') || bodyText.includes('통계')) {
-                    log('OK', `  로그인 성공 (대시보드 표시됨)`);
-                    loginSuccess = true;
-                } else {
-                    log('WARN', `  로그인 결과 불확실 - 계속 진행`);
-                    loginSuccess = true;
-                }
-            } else {
-                log('OK', `  로그인 성공 (페이지 전환됨)`);
-                loginSuccess = true;
-            }
+            log('ERROR', `  로그인 실패: 성공 URL/폼 상태 검증 실패`);
         }
 
-        // ── 로그인 후 스크린샷 ──
+        // 로그인에 성공한 뒤의 화면만 저장한다. 실패한 폼에는 비밀번호 값이
+        // 남아 있을 수 있으므로 스크린샷을 생성하지 않는다.
         await page.waitForTimeout(1000); // 로딩 대기
-        const afterScreenshot = path.join(screenshotsDir, `00_${sysPrefix}_로그인_성공_후.png`);
-        try {
+        let afterScreenshot = null;
+        if (loginSuccess) try {
+            afterScreenshot = path.join(screenshotsDir, `00_${sysPrefix}_로그인_성공_후.png`);
             await page.screenshot({
                 path: afterScreenshot,
                 fullPage: config.browser.fullPage,
             });
-            log('OK', `  로그인 후 캡처: ${loginSuccess ? '성공' : '실패'}`);
-
-            let pageAnalysis = null;
-            try { pageAnalysis = await analyzePage(page); } catch (e) {}
-
-            loginResults.push({
-                system: system.name,
-                systemId: system.id,
-                page: `${system.name} - 로그인 ${loginSuccess ? '성공' : '실패'} 후`,
-                url: currentUrl,
-                description: `로그인 버튼 클릭 후 화면 - ${loginSuccess ? '대시보드 이동됨' : '로그인 실패 의심'}`,
-                httpStatus: 200,
-                loadTimeMs: Date.now() - afterLoginStart,
-                screenshotPath: afterScreenshot,
-                status: loginSuccess ? 'PASS' : 'FAIL',
-                errors: { hasErrors: false, overallStatus: loginSuccess ? 'PASS' : 'FAIL', summary: loginSuccess ? '에러 없음' : '로그인 실패', httpErrors: [], phpErrors: [], jsErrors: [], jsWarnings: [], pageErrors: [], failedResources: [], counts: { httpErrors: 0, phpErrors: 0, jsErrors: 0, jsWarnings: 0, pageErrors: 0, failedResources: 0 } },
-                elementChecks: [],
-                pageAnalysis,
-            });
+            log('OK', '  로그인 후 캡처: 성공');
         } catch (e) {
             log('WARN', `  로그인 후 캡처 실패: ${e.message}`);
+            afterScreenshot = null;
         }
+
+        let pageAnalysis = null;
+        try { pageAnalysis = await analyzePage(page); } catch (e) {}
+
+        loginResults.push({
+            system: system.name,
+            systemId: system.id,
+            page: `${system.name} - 로그인 ${loginSuccess ? '성공' : '실패'} 후`,
+            url: currentUrl,
+            description: `로그인 버튼 클릭 후 화면 - ${loginSuccess ? '대시보드 이동됨' : '로그인 실패'}`,
+            httpStatus: 200,
+            loadTimeMs: Date.now() - afterLoginStart,
+            screenshotPath: afterScreenshot,
+            status: loginSuccess ? 'PASS' : 'FAIL',
+            errors: { hasErrors: !loginSuccess, overallStatus: loginSuccess ? 'PASS' : 'FAIL', summary: loginSuccess ? '에러 없음' : '로그인 실패', httpErrors: [], phpErrors: [], jsErrors: [], jsWarnings: [], pageErrors: [], failedResources: [], counts: { httpErrors: 0, phpErrors: 0, jsErrors: 0, jsWarnings: 0, pageErrors: 0, failedResources: 0 } },
+            elementChecks: [],
+            pageAnalysis,
+        });
 
         return { success: loginSuccess, loginResults };
 
     } catch (err) {
         log('ERROR', `  로그인 에러: ${err.message}`);
-        // 로그인 실패 스크린샷
-        try {
-            const errorScreenshot = path.join(screenshotsDir || __dirname, `00_${sanitize(system.id)}_로그인_에러.png`);
-            await page.screenshot({ path: errorScreenshot, fullPage: false });
-            loginResults.push({
-                system: system.name,
-                systemId: system.id,
-                page: `${system.name} - 로그인 에러`,
-                url: fullUrl,
-                description: `로그인 에러: ${err.message}`,
-                httpStatus: 0,
-                loadTimeMs: 0,
-                screenshotPath: errorScreenshot,
-                status: 'FAIL',
-                errors: { hasErrors: true, overallStatus: 'FAIL', summary: `로그인 에러: ${err.message}`, httpErrors: [], phpErrors: [], jsErrors: [], jsWarnings: [], pageErrors: [], failedResources: [], counts: {} },
-                elementChecks: [],
-                pageAnalysis: null,
-            });
-        } catch (e) { /* 무시 */ }
+        loginResults.push({
+            system: system.name,
+            systemId: system.id,
+            page: `${system.name} - 로그인 에러`,
+            url: fullUrl,
+            description: `로그인 에러: ${err.message}`,
+            httpStatus: 0,
+            loadTimeMs: 0,
+            screenshotPath: null,
+            status: 'FAIL',
+            errors: { hasErrors: true, overallStatus: 'FAIL', summary: `로그인 에러: ${err.message}`, httpErrors: [], phpErrors: [], jsErrors: [], jsWarnings: [], pageErrors: [], failedResources: [], counts: {} },
+            elementChecks: [],
+            pageAnalysis: null,
+        });
         return { success: false, loginResults };
     }
 }

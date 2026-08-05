@@ -407,6 +407,15 @@ function get_role_label($role) {
  * 로그아웃
  */
 function admin_logout() {
+    $auto_test_cookie_options = [
+        'expires' => time() - 42000,
+        'secure' => (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
+            || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https',
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ];
+    setcookie('hms_auto_test_v1', '', $auto_test_cookie_options + ['path' => '/auto-manual-api/api/auto-test']);
+    setcookie('hms_auto_test_v2', '', $auto_test_cookie_options + ['path' => '/auto-test-v2-api/api/v2']);
     $_SESSION = [];
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();

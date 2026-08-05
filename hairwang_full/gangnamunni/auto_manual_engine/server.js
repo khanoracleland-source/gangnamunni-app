@@ -10,15 +10,21 @@ const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
 const { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, PageBreak } = require('docx');
+const { createAutoTestSecurity, safeSegment, safePath } = require('./auto-test-security');
 
 const app = express();
 const PORT = 3100;
+const BIND_HOST = process.env.AUTO_TEST_BIND_HOST || '127.0.0.1';
+const autoTestSecurity = createAutoTestSecurity({ scope: 'v1', cookieName: 'hms_auto_test_v1' });
 
 // 업로드 디렉토리
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'auto_manual');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-app.use(cors());
+const legacyCors = cors();
+app.use((req, res, next) => req.path.startsWith('/api/auto-test') ? next() : legacyCors(req, res, next));
+app.use('/api/auto-test', cors(autoTestSecurity.corsOptions), autoTestSecurity.middleware, express.json({ limit: '512kb' }));
+// 자동 매뉴얼의 base64 이미지 업로드는 기존 한도를 유지한다.
 app.use(express.json({ limit: '50mb' }));
 app.use('/screenshots', express.static(UPLOAD_DIR));
 
@@ -80,7 +86,7 @@ app.get('/api/progress/:sessionId', (req, res) => {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
+        'X-Accel-Buffering': 'no'
     });
 
     const clientId = Date.now().toString();
@@ -750,6 +756,56 @@ const activeTestRuns = new Map();
 const testSseClients = new Map();
 /** 테스트 결과 디렉토리 */
 const AUTO_TEST_DIR = path.join(__dirname, '..', 'uploads', 'auto_test');
+const AUTO_TEST_CONFIG_PATH = path.join(__dirname, 'test-config.json');
+const MAX_TEST_RUNTIME_MS = Math.min(
+    Math.max(parseInt(process.env.AUTO_TEST_MAX_RUNTIME_MS || '900000', 10) || 900000, 60000),
+    3600000
+);
+
+function loadAutoTestConfig() {
+    return JSON.parse(fs.readFileSync(AUTO_TEST_CONFIG_PATH, 'utf-8'));
+}
+
+function publicAutoTestConfig() {
+    const config = loadAutoTestConfig();
+    return {
+        ...config,
+        systems: (config.systems || []).map(system => ({
+            ...system,
+            credentials: system.credentials ? { username: system.credentials.username } : undefined,
+        })),
+    };
+}
+
+function validResultDir(dir) {
+    return safeSegment(dir, /^\d{8}_\d{6}$/);
+}
+
+function validatedNotes(notes) {
+    if (notes === undefined || notes === null) return {};
+    if (typeof notes !== 'object' || Array.isArray(notes)) throw new Error('Invalid notes');
+    const entries = Object.entries(notes);
+    if (entries.length > 100) throw new Error('Too many notes');
+    let totalLength = 0;
+    const result = {};
+    for (const [url, note] of entries) {
+        if (typeof url !== 'string' || url.length > 2048 || typeof note !== 'string' || note.length > 5000) {
+            throw new Error('Invalid note');
+        }
+        totalLength += url.length + note.length;
+        if (totalLength > 200000) throw new Error('Notes are too large');
+        result[url] = note;
+    }
+    return result;
+}
+
+function resultDirIsActive(dir) {
+    const expected = safePath(AUTO_TEST_DIR, dir);
+    return [...activeTestRuns.values()].some(run =>
+        (run.status === 'running' || run.status === 'stopping')
+        && (!run.resultDir || run.resultDir === expected)
+    );
+}
 
 /**
  * 테스트 SSE 전송 헬퍼
@@ -766,6 +822,11 @@ function sendTestSSE(runId, event, data) {
     });
 }
 
+function appendRunOutput(run, line) {
+    run.output.push(line);
+    if (run.output.length > 5000) run.output.splice(0, run.output.length - 5000);
+}
+
 /**
  * POST /api/auto-test/run
  * 테스트 실행 시작
@@ -775,9 +836,38 @@ function sendTestSSE(runId, event, data) {
 app.post('/api/auto-test/run', (req, res) => {
     const { system, page: pageName, pages, delay } = req.body || {};
 
+    let config;
+    try { config = loadAutoTestConfig(); }
+    catch (error) { return res.status(500).json({ error: 'Test config load failed' }); }
+    const systems = config.systems || [];
+    const selectedSystem = system ? systems.find(item => item.id === system) : null;
+    if (system && !selectedSystem) return res.status(400).json({ error: 'Invalid system' });
+    if (pageName && (typeof pageName !== 'string' || pageName.length > 100)) {
+        return res.status(400).json({ error: 'Invalid page' });
+    }
+    if (pageName) {
+        const candidateSystems = selectedSystem ? [selectedSystem] : systems;
+        const pageExists = candidateSystems.some(item => (item.pages || []).some(page => page.name.includes(pageName)));
+        if (!pageExists) return res.status(400).json({ error: 'Unknown page' });
+    }
+    if (pages !== undefined) {
+        if (!Array.isArray(pages) || pages.length > 100 || pages.some(value => typeof value !== 'string')) {
+            return res.status(400).json({ error: 'Invalid pages' });
+        }
+        const allowedPages = new Set((selectedSystem ? [selectedSystem] : systems)
+            .flatMap(item => item.pages || []).map(item => item.url));
+        if (pages.some(url => !allowedPages.has(url))) {
+            return res.status(400).json({ error: 'Unknown page URL' });
+        }
+    }
+    const parsedDelay = delay === undefined ? 0 : Number(delay);
+    if (!Number.isFinite(parsedDelay) || parsedDelay < 0 || parsedDelay > 15000) {
+        return res.status(400).json({ error: 'Delay must be between 0 and 15000 ms' });
+    }
+
     // 중복 실행 방지
     for (const [id, run] of activeTestRuns) {
-        if (run.status === 'running') {
+        if (run.status === 'running' || run.status === 'stopping') {
             return res.status(409).json({
                 error: '테스트가 이미 실행 중입니다',
                 runId: id,
@@ -791,7 +881,7 @@ app.post('/api/auto-test/run', (req, res) => {
     if (system) args.push('--system', system);
     if (pageName) args.push('--page', pageName);
     if (pages && Array.isArray(pages) && pages.length > 0) args.push('--pages', JSON.stringify(pages));
-    if (delay && parseInt(delay) > 0) args.push('--delay', String(parseInt(delay)));
+    if (parsedDelay > 0) args.push('--delay', String(Math.trunc(parsedDelay)));
 
     // child_process로 test-runner.js 실행
     const child = spawn('node', args, {
@@ -809,9 +899,22 @@ app.post('/api/auto-test/run', (req, res) => {
         page: pageName || null,
         output: [],
         resultDir: null,
-        exitCode: null
+        exitCode: null,
+        finalized: false
     };
+    Object.defineProperty(run, 'process', { value: child, enumerable: false });
     activeTestRuns.set(runId, run);
+    const runtimeTimer = setTimeout(() => {
+        if (run.status === 'running') {
+            run.status = 'stopping';
+            appendRunOutput(run, '[ERROR] Maximum test runtime exceeded');
+            sendTestSSE(runId, 'error', { message: 'Maximum test runtime exceeded' });
+            child.kill('SIGTERM');
+            setTimeout(() => {
+                if (run.status === 'stopping') child.kill('SIGKILL');
+            }, 5000).unref();
+        }
+    }, MAX_TEST_RUNTIME_MS);
 
     // stdout 수집 + SSE 전송
     child.stdout.on('data', (data) => {
@@ -821,23 +924,32 @@ app.post('/api/auto-test/run', (req, res) => {
             // 이모지 등 특수문자 제거 (로그용)
             const cleanLine = line.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1FFFF}]/gu, '').trim();
             if (cleanLine) {
-                run.output.push(cleanLine);
+                appendRunOutput(run, cleanLine);
                 sendTestSSE(runId, 'log', { message: cleanLine, raw: line });
             }
         });
 
         // 출력 디렉토리 감지
         const dirMatch = text.match(/출력 디렉토리: (.+)/);
-        if (dirMatch) run.resultDir = dirMatch[1].trim();
+        if (dirMatch) {
+            const candidate = path.resolve(dirMatch[1].trim());
+            const dirName = path.basename(candidate);
+            if (validResultDir(dirName) && candidate === safePath(AUTO_TEST_DIR, dirName)) {
+                run.resultDir = candidate;
+            }
+        }
     });
 
     child.stderr.on('data', (data) => {
-        const text = data.toString('utf-8');
-        run.output.push('[STDERR] ' + text);
+        const text = data.toString('utf-8').slice(0, 10000);
+        appendRunOutput(run, '[STDERR] ' + text.slice(0, 10000));
         sendTestSSE(runId, 'error', { message: text });
     });
 
     child.on('close', (code) => {
+        if (run.finalized) return;
+        run.finalized = true;
+        clearTimeout(runtimeTimer);
         run.status = code === 0 ? 'completed' : 'failed';
         run.endTime = new Date().toISOString();
         run.exitCode = code;
@@ -861,16 +973,47 @@ app.post('/api/auto-test/run', (req, res) => {
         });
 
         console.log(`[Auto Test] 완료: runId=${runId}, code=${code}, dir=${run.resultDir}`);
+
+        setTimeout(() => {
+            const clients = testSseClients.get(runId);
+            if (clients) clients.forEach(client => { try { client.end(); } catch (error) {} });
+            testSseClients.delete(runId);
+            activeTestRuns.delete(runId);
+        }, 300000);
     });
 
     child.on('error', (err) => {
+        if (run.finalized) return;
+        run.finalized = true;
+        clearTimeout(runtimeTimer);
         run.status = 'failed';
         run.endTime = new Date().toISOString();
+        run.exitCode = -1;
         sendTestSSE(runId, 'error', { message: 'Process error: ' + err.message });
+        sendTestSSE(runId, 'complete', { status: run.status, exitCode: -1, resultDir: null });
+        setTimeout(() => {
+            const clients = testSseClients.get(runId);
+            if (clients) clients.forEach(client => { try { client.end(); } catch (error) {} });
+            testSseClients.delete(runId);
+            activeTestRuns.delete(runId);
+        }, 5000);
     });
 
     console.log(`[Auto Test] 시작: runId=${runId}, system=${system || 'all'}, pid=${child.pid}`);
     res.json({ runId, status: 'started', pid: child.pid });
+});
+
+app.post('/api/auto-test/stop/:runId', (req, res) => {
+    const { runId } = req.params;
+    if (!safeSegment(runId)) return res.status(400).json({ error: 'Invalid run ID' });
+    const run = activeTestRuns.get(runId);
+    if (!run || run.status !== 'running') return res.status(404).json({ error: 'Run not found' });
+    run.status = 'stopping';
+    appendRunOutput(run, '[INFO] Stop requested by administrator');
+    try { run.process.kill('SIGTERM'); } catch (error) {
+        return res.status(500).json({ error: 'Unable to stop test' });
+    }
+    res.json({ success: true });
 });
 
 /**
@@ -879,14 +1022,17 @@ app.post('/api/auto-test/run', (req, res) => {
  */
 app.get('/api/auto-test/progress/:runId', (req, res) => {
     const { runId } = req.params;
+    if (!safeSegment(runId)) return res.status(400).json({ error: 'Invalid run ID' });
     const run = activeTestRuns.get(runId);
     if (!run) return res.status(404).json({ error: 'Run not found' });
+    if (!testSseClients.has(runId)) testSseClients.set(runId, new Map());
+    if (testSseClients.get(runId).size >= 5) return res.status(429).json({ error: 'Too many progress streams' });
 
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
+        'X-Accel-Buffering': 'no'
     });
 
     // 기존 출력 전송
@@ -895,15 +1041,19 @@ app.get('/api/auto-test/progress/:runId', (req, res) => {
     });
 
     // 이미 완료된 경우
-    if (run.status !== 'running') {
+    if (run.status !== 'running' && run.status !== 'stopping') {
         res.write(`event: complete\ndata: ${JSON.stringify({ status: run.status, exitCode: run.exitCode })}\n\n`);
     }
 
-    const clientId = Date.now().toString();
-    if (!testSseClients.has(runId)) testSseClients.set(runId, new Map());
+    const clientId = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     testSseClients.get(runId).set(clientId, res);
 
+    const ping = setInterval(() => {
+        try { res.write(':ping\n\n'); } catch (error) {}
+    }, 15000);
+
     req.on('close', () => {
+        clearInterval(ping);
         const clients = testSseClients.get(runId);
         if (clients) clients.delete(clientId);
     });
@@ -916,7 +1066,7 @@ app.get('/api/auto-test/progress/:runId', (req, res) => {
 app.get('/api/auto-test/status', (req, res) => {
     let running = null;
     for (const [id, run] of activeTestRuns) {
-        if (run.status === 'running') {
+        if (run.status === 'running' || run.status === 'stopping') {
             running = { runId: id, ...run, output: run.output.slice(-20) };
             break;
         }
@@ -930,9 +1080,7 @@ app.get('/api/auto-test/status', (req, res) => {
  */
 app.get('/api/auto-test/config', (req, res) => {
     try {
-        const configPath = path.join(__dirname, 'test-config.json');
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-        res.json(config);
+        res.json(publicAutoTestConfig());
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -948,7 +1096,8 @@ app.get('/api/auto-test/history', (req, res) => {
     try {
         const dirs = fs.readdirSync(AUTO_TEST_DIR)
             .filter(d => {
-                try { return fs.statSync(path.join(AUTO_TEST_DIR, d)).isDirectory(); }
+                if (!validResultDir(d)) return false;
+                try { return fs.statSync(safePath(AUTO_TEST_DIR, d)).isDirectory(); }
                 catch (e) { return false; }
             })
             .sort()
@@ -1000,9 +1149,9 @@ app.get('/api/auto-test/history', (req, res) => {
  */
 app.get('/api/auto-test/results/:dir', (req, res) => {
     const { dir } = req.params;
-    if (dir.includes('..')) return res.status(400).json({ error: 'Invalid path' });
+    if (!validResultDir(dir)) return res.status(400).json({ error: 'Invalid path' });
 
-    const resultsPath = path.join(AUTO_TEST_DIR, dir, 'results.json');
+    const resultsPath = safePath(AUTO_TEST_DIR, dir, 'results.json');
     if (!fs.existsSync(resultsPath)) return res.status(404).json({ error: 'Results not found' });
 
     try {
@@ -1020,13 +1169,13 @@ app.get('/api/auto-test/results/:dir', (req, res) => {
  */
 app.get('/api/auto-test/download/:dir/:file', (req, res) => {
     const { dir, file } = req.params;
-    if (dir.includes('..') || file.includes('..')) return res.status(400).json({ error: 'Invalid path' });
+    if (!validResultDir(dir)) return res.status(400).json({ error: 'Invalid path' });
 
     // 허용 파일만 다운로드
     const allowed = ['report.docx', 'report.pdf', 'results.json'];
     if (!allowed.includes(file)) return res.status(403).json({ error: 'File not allowed' });
 
-    const filePath = path.join(AUTO_TEST_DIR, dir, file);
+    const filePath = safePath(AUTO_TEST_DIR, dir, file);
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
 
     // 파일명 생성: 서울미녀_자동테스트_20260213_190345_프론트엔드10P_10PASS0WARN0FAIL.pdf
@@ -1056,10 +1205,12 @@ app.get('/api/auto-test/download/:dir/:file', (req, res) => {
  */
 app.get('/api/auto-test/screenshot/:dir/:file', (req, res) => {
     const { dir, file } = req.params;
-    if (dir.includes('..') || file.includes('..')) return res.status(400).json({ error: 'Invalid path' });
+    if (!validResultDir(dir) || !safeSegment(file, /^[\p{L}\p{N}_.-]+$/u)) {
+        return res.status(400).json({ error: 'Invalid path' });
+    }
     if (!file.endsWith('.png')) return res.status(400).json({ error: 'PNG only' });
 
-    const filePath = path.join(AUTO_TEST_DIR, dir, 'screenshots', file);
+    const filePath = safePath(AUTO_TEST_DIR, dir, 'screenshots', file);
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Screenshot not found' });
 
     res.setHeader('Content-Type', 'image/png');
@@ -1072,9 +1223,10 @@ app.get('/api/auto-test/screenshot/:dir/:file', (req, res) => {
  */
 app.delete('/api/auto-test/history/:dir', (req, res) => {
     const { dir } = req.params;
-    if (dir.includes('..')) return res.status(400).json({ error: 'Invalid path' });
+    if (!validResultDir(dir)) return res.status(400).json({ error: 'Invalid path' });
+    if (resultDirIsActive(dir)) return res.status(409).json({ error: 'Cannot delete an active run' });
 
-    const dirPath = path.join(AUTO_TEST_DIR, dir);
+    const dirPath = safePath(AUTO_TEST_DIR, dir);
     if (!fs.existsSync(dirPath)) return res.status(404).json({ error: 'Directory not found' });
 
     try {
@@ -1092,17 +1244,21 @@ app.delete('/api/auto-test/history/:dir', (req, res) => {
  */
 app.post('/api/auto-test/history/bulk-delete', (req, res) => {
     const { dirs } = req.body || {};
-    if (!Array.isArray(dirs) || dirs.length === 0) {
+    if (!Array.isArray(dirs) || dirs.length === 0 || dirs.length > 20) {
         return res.status(400).json({ error: '삭제할 디렉토리 목록이 필요합니다' });
     }
 
     const results = [];
     for (const dir of dirs) {
-        if (typeof dir !== 'string' || dir.includes('..')) {
+        if (!validResultDir(dir)) {
             results.push({ dir, success: false, error: 'Invalid path' });
             continue;
         }
-        const dirPath = path.join(AUTO_TEST_DIR, dir);
+        if (resultDirIsActive(dir)) {
+            results.push({ dir, success: false, error: 'Active run' });
+            continue;
+        }
+        const dirPath = safePath(AUTO_TEST_DIR, dir);
         if (!fs.existsSync(dirPath)) {
             results.push({ dir, success: false, error: 'Not found' });
             continue;
@@ -1125,9 +1281,9 @@ app.post('/api/auto-test/history/bulk-delete', (req, res) => {
  */
 app.get('/api/auto-test/notes/:dir', (req, res) => {
     const { dir } = req.params;
-    if (dir.includes('..')) return res.status(400).json({ error: 'Invalid path' });
+    if (!validResultDir(dir)) return res.status(400).json({ error: 'Invalid path' });
 
-    const notesPath = path.join(AUTO_TEST_DIR, dir, 'notes.json');
+    const notesPath = safePath(AUTO_TEST_DIR, dir, 'notes.json');
     if (!fs.existsSync(notesPath)) return res.json({ notes: {} });
 
     try {
@@ -1145,12 +1301,14 @@ app.get('/api/auto-test/notes/:dir', (req, res) => {
  */
 app.post('/api/auto-test/notes/:dir', (req, res) => {
     const { dir } = req.params;
-    if (dir.includes('..')) return res.status(400).json({ error: 'Invalid path' });
+    if (!validResultDir(dir)) return res.status(400).json({ error: 'Invalid path' });
 
-    const dirPath = path.join(AUTO_TEST_DIR, dir);
+    const dirPath = safePath(AUTO_TEST_DIR, dir);
     if (!fs.existsSync(dirPath)) return res.status(404).json({ error: 'Not found' });
 
-    const { notes } = req.body || {};
+    let notes;
+    try { notes = validatedNotes((req.body || {}).notes); }
+    catch (error) { return res.status(400).json({ error: error.message }); }
     const notesPath = path.join(dirPath, 'notes.json');
 
     try {
@@ -1171,9 +1329,9 @@ app.post('/api/auto-test/notes/:dir', (req, res) => {
  */
 app.post('/api/auto-test/export-report/:dir', async (req, res) => {
     const { dir } = req.params;
-    if (dir.includes('..')) return res.status(400).json({ error: 'Invalid path' });
+    if (!validResultDir(dir)) return res.status(400).json({ error: 'Invalid path' });
 
-    const dirPath = path.join(AUTO_TEST_DIR, dir);
+    const dirPath = safePath(AUTO_TEST_DIR, dir);
     const resultsPath = path.join(dirPath, 'results.json');
     if (!fs.existsSync(resultsPath)) return res.status(404).json({ error: 'Results not found' });
 
@@ -1183,7 +1341,7 @@ app.post('/api/auto-test/export-report/:dir', async (req, res) => {
         // 노트: 요청 body 우선, 없으면 저장된 파일
         let notes = {};
         if (req.body?.notes && Object.keys(req.body.notes).length > 0) {
-            notes = req.body.notes;
+            notes = validatedNotes(req.body.notes);
         } else {
             const notesPath = path.join(dirPath, 'notes.json');
             if (fs.existsSync(notesPath)) {
@@ -2186,8 +2344,8 @@ app.delete('/api/app-book/history/:dir', (req, res) => {
 
 
 // === 서버 시작 ===
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Auto Manual Engine] http://localhost:${PORT}`);
+app.listen(PORT, BIND_HOST, () => {
+    console.log(`[Auto Manual Engine] http://${BIND_HOST}:${PORT}`);
     console.log(`[Auto Test API] /api/auto-test/*`);
     console.log(`[Book API] /api/book/*`);
     console.log(`[App Book API] /api/app-book/*`);

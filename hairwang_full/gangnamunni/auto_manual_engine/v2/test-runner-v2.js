@@ -9,6 +9,11 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
+if (String(process.env.AUTO_TEST_ENABLED || '').trim().toLowerCase() !== 'true') {
+    console.error('자동 테스트 기능이 일시 중지되었습니다.');
+    process.exit(3);
+}
+
 // ── CLI 인자 파싱 ──
 function getArg(name) {
     const idx = process.argv.indexOf(`--${name}`);
@@ -26,6 +31,13 @@ if (!CONFIG_PATH || !OUTPUT_DIR || !TESTS_JSON) {
 }
 
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+if (process.env.AUTO_TEST_BASE_URL) config.baseUrl = process.env.AUTO_TEST_BASE_URL;
+const parsedBaseUrl = new URL(config.baseUrl);
+if (!['http:', 'https:'].includes(parsedBaseUrl.protocol)) throw new Error('Invalid AUTO_TEST_BASE_URL');
+if (parsedBaseUrl.hostname === 'hms.seoulbeauty.app' && process.env.AUTO_TEST_ALLOW_PRODUCTION !== 'true') {
+    throw new Error('Production tests require AUTO_TEST_ALLOW_PRODUCTION=true');
+}
+config.baseUrl = parsedBaseUrl.origin;
 const selectedTests = JSON.parse(TESTS_JSON);
 const options = OPTIONS_JSON ? JSON.parse(OPTIONS_JSON) : {};
 
@@ -35,6 +47,17 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) fs.mkdirSync(SCREENSHOTS_DIR, { recursive: 
 // ── 진행상황 출력 (JSON 라인) ──
 function emit(data) {
     process.stdout.write(JSON.stringify(data) + '\n');
+}
+
+function resolveSecret(value, label, requireEnvironment = false) {
+    const match = typeof value === 'string' ? value.match(/^\$\{([A-Z0-9_]+)\}$/) : null;
+    if (!match) {
+        if (requireEnvironment) throw new Error(`${label}: password must reference an environment variable`);
+        return value;
+    }
+    const resolved = process.env[match[1]];
+    if (!resolved) throw new Error(`${label}: ${match[1]} environment variable is required`);
+    return resolved;
 }
 
 // ── 에러 감지 (v1의 error-detector.js 간소화 통합) ──
@@ -90,6 +113,9 @@ async function analyzePage(page) {
 
 // ── 플러그인 로더 ──
 function loadPlugin(pluginName) {
+    if (typeof pluginName !== 'string' || !/^[a-z0-9-]+$/i.test(pluginName)) {
+        return require(path.join(__dirname, 'plugins', 'page-load.js'));
+    }
     const pluginPath = path.join(__dirname, 'plugins', `${pluginName}.js`);
     if (fs.existsSync(pluginPath)) {
         return require(pluginPath);
@@ -167,7 +193,8 @@ function loadPlugin(pluginName) {
                 await page.goto(loginUrl, { waitUntil: 'networkidle', timeout: 30000 });
 
                 // 폼 필드 입력
-                for (const [field, value] of Object.entries(auth.fields || {})) {
+                for (const [field, configuredValue] of Object.entries(auth.fields || {})) {
+                    const value = resolveSecret(configuredValue, `${groupId} login`, /pass|pw/i.test(field));
                     const selectors = [
                         `input[name="${field}"]`,
                         `input[id="${field}"]`,
@@ -192,14 +219,16 @@ function loadPlugin(pluginName) {
 
                 // 로그인 성공 확인
                 const currentUrl = page.url();
-                if (auth.successUrl && currentUrl.includes(auth.successUrl)) {
-                    groupResult.loginSuccess = true;
-                } else if (auth.successCheck) {
-                    // PHP 세션 기반 확인 (쿠키 존재 체크)
-                    groupResult.loginSuccess = true;
-                } else {
-                    groupResult.loginSuccess = true;
+                let loginFormVisible = false;
+                for (const field of Object.keys(auth.fields || {})) {
+                    if (await page.$(`input[name="${field}"], input[id="${field}"]`)) {
+                        loginFormVisible = true;
+                        break;
+                    }
                 }
+                groupResult.loginSuccess = Boolean(auth.successUrl)
+                    && currentUrl.includes(auth.successUrl)
+                    && !loginFormVisible;
 
                 emit({ message: `[${groupConfig.name}] 로그인 ${groupResult.loginSuccess ? '성공' : '실패'}`, group: groupConfig.name });
             } catch (e) {
@@ -207,6 +236,27 @@ function loadPlugin(pluginName) {
             }
         } else {
             groupResult.loginSuccess = true;
+        }
+
+        if (!groupResult.loginSuccess) {
+            for (const testItem of testItems) {
+                currentTest++;
+                groupResult.results.push({
+                    id: testItem.id,
+                    name: testItem.id,
+                    category: testItem.category,
+                    status: 'FAIL',
+                    duration: 0,
+                    errors: { login: '로그인 검증 실패' },
+                    url: '',
+                });
+                results.summary.total++;
+                results.summary.fail++;
+                emit({ total: totalTests, current: currentTest, name: testItem.id, group: groupConfig.name, status: 'FAIL', duration: 0 });
+            }
+            results.groups.push(groupResult);
+            await context.close();
+            continue;
         }
 
         // 테스트 항목 실행
@@ -245,6 +295,8 @@ function loadPlugin(pluginName) {
                     screenshotsDir: SCREENSHOTS_DIR,
                     baseUrl: config.baseUrl,
                     options,
+                    authenticated: groupConfig.auth?.type === 'form',
+                    authFieldNames: Object.keys(groupConfig.auth?.fields || {}),
                     detectErrors,
                     analyzePage
                 });
@@ -310,11 +362,6 @@ function loadPlugin(pluginName) {
                 });
             }
 
-            // 딜레이
-            const delay = (options.delay || 3) * 1000;
-            if (currentTest < totalTests) {
-                await new Promise(r => setTimeout(r, Math.min(delay, 1000)));
-            }
         }
 
         results.groups.push(groupResult);
@@ -337,7 +384,9 @@ function loadPlugin(pluginName) {
         try {
             const uploadsDir = path.dirname(OUTPUT_DIR);
             const dirs = fs.readdirSync(uploadsDir)
-                .filter(d => d !== path.basename(OUTPUT_DIR) && fs.statSync(path.join(uploadsDir, d)).isDirectory())
+                .filter(d => /^\d{8}_\d{6}$/.test(d)
+                    && d !== path.basename(OUTPUT_DIR)
+                    && fs.statSync(path.join(uploadsDir, d)).isDirectory())
                 .sort()
                 .reverse();
 
@@ -369,8 +418,8 @@ function loadPlugin(pluginName) {
         try {
             const reportGen = path.join(__dirname, '..', 'report-generator.js');
             if (fs.existsSync(reportGen)) {
-                const { execSync } = require('child_process');
-                execSync(`node "${reportGen}" "${OUTPUT_DIR}"`, { timeout: 30000 });
+                const { execFileSync } = require('child_process');
+                execFileSync(process.execPath, [reportGen, OUTPUT_DIR], { timeout: 30000 });
                 emit({ message: 'DOCX 리포트 생성 완료' });
             }
         } catch (e) {

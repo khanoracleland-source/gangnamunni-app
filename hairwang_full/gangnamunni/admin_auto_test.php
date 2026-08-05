@@ -24,16 +24,21 @@ if (!isset($connect) || !$connect) {
 }
 if (isset($connect) && $connect) loadThemeSettings($connect);
 require_admin_login();
+require_permission('auto_test');
+require_once __DIR__ . '/includes/auto_test_security.php';
+require_auto_test_enabled();
+if (empty($_SESSION['admin_auto_test_csrf'])) {
+    $_SESSION['admin_auto_test_csrf'] = bin2hex(random_bytes(32));
+}
+$admin_auto_test_csrf = $_SESSION['admin_auto_test_csrf'];
+issue_auto_test_api_session('v1', $admin_auto_test_csrf);
 require_once __DIR__ . '/includes/admin_header.php';
 
 ?>
-<!-- [추가 2026-06-19] 중복 안내 (인수인계) -->
 <div class="alert alert-warning d-flex align-items-start gap-2 mb-3">
     <i class="bi bi-exclamation-triangle-fill mt-1"></i>
-    <div class="small"><strong>중복 안내:</strong> 이 페이지는 <strong>자동 테스트 v2(admin_auto_test_v2.php)</strong>의 구버전입니다. 신규 테스트는 <strong>v2 사용을 권장</strong>합니다. (중복 — v1/v2 정리 대상)</div>
+    <div class="small"><strong>레거시 페이지:</strong> 이 화면은 기존 링크 호환용으로만 유지됩니다. 신규 테스트는 <a href="admin_auto_test_v2.php" class="alert-link">자동 테스트 v2</a>를 사용하세요.</div>
 </div>
-<?php
-?>
 
 <!-- 페이지 헤더 -->
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -155,6 +160,9 @@ require_once __DIR__ . '/includes/admin_header.php';
                 <div class="col-auto">
                     <button class="btn btn-primary btn-sm" id="btnRun" onclick="startTest()">
                         <i class="bi bi-play-fill"></i> <span id="btnRunLabel">전체 테스트 실행</span>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm d-none" id="btnStop" onclick="stopTest()">
+                        <i class="bi bi-stop-fill"></i> 중지
                     </button>
                 </div>
                 <div class="col-auto">
@@ -406,6 +414,13 @@ require_once __DIR__ . '/includes/admin_header.php';
  */
 
 const API_BASE = '/auto-manual-api/api/auto-test';
+const AUTO_TEST_CSRF = <?= json_encode($admin_auto_test_csrf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
+function apiFetch(url, options = {}) {
+    const headers = new Headers(options.headers || {});
+    headers.set('X-CSRF-Token', AUTO_TEST_CSRF);
+    return window.fetch(url, { ...options, headers, credentials: 'same-origin' });
+}
 
 let currentRunId = null;
 let eventSource = null;
@@ -437,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadConfig() {
     try {
-        const res = await fetch(`${API_BASE}/config`);
+        const res = await apiFetch(`${API_BASE}/config`);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         testConfig = await res.json();
         populateTabs(testConfig);
@@ -621,7 +636,7 @@ function updateRunButtonLabel() {
 
 async function checkRunningTest() {
     try {
-        const res = await fetch(`${API_BASE}/status`);
+        const res = await apiFetch(`${API_BASE}/status`);
         const data = await res.json();
         if (data.running) {
             currentRunId = data.running.runId;
@@ -666,7 +681,7 @@ async function startTest() {
         }
         if (delay) body.delay = delay;
 
-        const res = await fetch(`${API_BASE}/run`, {
+        const res = await apiFetch(`${API_BASE}/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -700,6 +715,21 @@ async function startTest() {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-play-fill"></i> <span id="btnRunLabel">테스트 실행</span>';
         updateRunButtonLabel();
+    }
+}
+
+async function stopTest() {
+    if (!currentRunId || !confirm('실행 중인 테스트를 중지하시겠습니까?')) return;
+    const button = document.getElementById('btnStop');
+    button.disabled = true;
+    try {
+        const res = await apiFetch(`${API_BASE}/stop/${currentRunId}`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '중지 요청 실패');
+        button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 중지 중...';
+    } catch (error) {
+        alert('중지 실패: ' + error.message);
+        button.disabled = false;
     }
 }
 
@@ -782,6 +812,7 @@ function setRunningState(running) {
     const status = document.getElementById('runStatus');
     const progressBar = document.getElementById('progressBar');
     const logArea = document.getElementById('logArea');
+    const stopButton = document.getElementById('btnStop');
 
     if (running) {
         btn.disabled = true;
@@ -790,6 +821,9 @@ function setRunningState(running) {
         status.textContent = '실행 중';
         progressBar.style.display = '';
         logArea.style.display = '';
+        stopButton.classList.remove('d-none');
+        stopButton.disabled = false;
+        stopButton.innerHTML = '<i class="bi bi-stop-fill"></i> 중지';
 
         if (runTimer) clearInterval(runTimer);
         runTimer = setInterval(() => {
@@ -806,6 +840,7 @@ function setRunningState(running) {
         updateRunButtonLabel();
         status.className = 'badge bg-success';
         status.textContent = '완료';
+        stopButton.classList.add('d-none');
         if (runTimer) { clearInterval(runTimer); runTimer = null; }
     }
 }
@@ -853,8 +888,8 @@ async function showDetail(dir) {
 
     try {
         const [resResults, resNotes] = await Promise.all([
-            fetch(`${API_BASE}/results/${dir}`),
-            fetch(`${API_BASE}/notes/${dir}`)
+            apiFetch(`${API_BASE}/results/${dir}`),
+            apiFetch(`${API_BASE}/notes/${dir}`)
         ]);
 
         if (!resResults.ok) throw new Error('HTTP ' + resResults.status);
@@ -1089,7 +1124,7 @@ async function saveNotes() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
     try {
-        const res = await fetch(`${API_BASE}/notes/${currentDetailDir}`, {
+        const res = await apiFetch(`${API_BASE}/notes/${currentDetailDir}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ notes })
@@ -1123,7 +1158,7 @@ async function exportDocx() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 생성 중...';
 
     try {
-        const res = await fetch(`${API_BASE}/export-report/${currentDetailDir}`, {
+        const res = await apiFetch(`${API_BASE}/export-report/${currentDetailDir}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ notes })
@@ -1163,7 +1198,7 @@ async function exportDocx() {
 async function loadHistory() {
     const tbody = document.getElementById('historyBody');
     try {
-        const res = await fetch(`${API_BASE}/history`);
+        const res = await apiFetch(`${API_BASE}/history`);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const history = await res.json();
 
@@ -1227,7 +1262,7 @@ async function loadHistory() {
 async function deleteHistory(dir) {
     if (!confirm(`${dir} 이력을 삭제하시겠습니까?`)) return;
     try {
-        const res = await fetch(`${API_BASE}/history/${dir}`, { method: 'DELETE' });
+        const res = await apiFetch(`${API_BASE}/history/${dir}`, { method: 'DELETE' });
         if (res.ok) {
             if (currentDetailDir === dir) closeDetail();
             loadHistory();
@@ -1263,7 +1298,7 @@ async function deleteSelected() {
     if (!confirm(`선택한 ${checked.length}개 이력을 삭제하시겠습니까?`)) return;
     const dirs = Array.from(checked).map(cb => cb.value);
     try {
-        const res = await fetch(`${API_BASE}/history/bulk-delete`, {
+        const res = await apiFetch(`${API_BASE}/history/bulk-delete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dirs })
@@ -1286,7 +1321,7 @@ async function deleteAll() {
     if (!confirm(`전체 ${allChecks.length}개 이력을 모두 삭제하시겠습니까?`)) return;
     const dirs = Array.from(allChecks).map(cb => cb.value);
     try {
-        const res = await fetch(`${API_BASE}/history/bulk-delete`, {
+        const res = await apiFetch(`${API_BASE}/history/bulk-delete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dirs })

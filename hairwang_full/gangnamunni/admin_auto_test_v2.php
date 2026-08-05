@@ -15,6 +15,13 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_permission('auto_test_v2');
+require_once __DIR__ . '/includes/auto_test_security.php';
+require_auto_test_enabled();
+if (empty($_SESSION['admin_auto_test_v2_csrf'])) {
+    $_SESSION['admin_auto_test_v2_csrf'] = bin2hex(random_bytes(32));
+}
+$admin_auto_test_v2_csrf = $_SESSION['admin_auto_test_v2_csrf'];
+issue_auto_test_api_session('v2', $admin_auto_test_v2_csrf);
 if (!isset($connect) || !$connect) {
     $connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
     if ($connect) mysqli_set_charset($connect, 'utf8mb4');
@@ -257,10 +264,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <input class="form-check-input" type="checkbox" id="optCompare" checked>
                         <label class="form-check-label small" for="optCompare">이전 결과와 비교</label>
                     </div>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="optRetry">
-                        <label class="form-check-label small" for="optRetry">실패 시 자동 재시도 (최대 2회)</label>
-                    </div>
                 </div>
                 <div class="option-section">
                     <h6><i class="bi bi-bookmark-star"></i> 프리셋 저장</h6>
@@ -373,6 +376,13 @@ require_once __DIR__ . '/includes/admin_header.php';
 // ══════════════════════════════════════════════════════════════
 
 const API_BASE = '/auto-test-v2-api/api/v2';
+const AUTO_TEST_CSRF = <?= json_encode($admin_auto_test_v2_csrf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
+function apiFetch(url, options = {}) {
+    const headers = new Headers(options.headers || {});
+    headers.set('X-CSRF-Token', AUTO_TEST_CSRF);
+    return window.fetch(url, { ...options, headers, credentials: 'same-origin' });
+}
 let currentStep = 1;
 let testConfig = null;
 let selectedGroups = new Set();
@@ -390,7 +400,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadConfig() {
     try {
-        const res = await fetch(`${API_BASE}/config`);
+        const res = await apiFetch(`${API_BASE}/config`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         testConfig = await res.json();
         renderGroupGrid();
     } catch (e) {
@@ -518,9 +529,9 @@ function renderTestItems() {
 
         const testsDiv = section.querySelector(`#tests_${gid}`);
         (group.tests || []).forEach(cat => {
-            const catLabel = cat.category === 'basic' ? '기본 테스트 (페이지 접근)' :
-                            cat.category === 'functional' ? '기능 테스트 (폼/CRUD)' :
-                            '시나리오 테스트 (흐름)';
+            const catLabel = cat.label || (cat.category === 'basic' ? '기본 테스트 (페이지 접근)' :
+                            cat.category === 'functional' ? '폼 페이지 접근 (CRUD 미수행)' :
+                            '시나리오 시작 페이지 접근 (흐름 미수행)');
             const catIcon = cat.category === 'basic' ? 'bi-globe' :
                            cat.category === 'functional' ? 'bi-gear' : 'bi-diagram-3';
 
@@ -528,7 +539,7 @@ function renderTestItems() {
             catDiv.className = 'test-category';
             catDiv.innerHTML = `
                 <div class="test-category-label" onclick="toggleCategoryAll('${gid}', '${cat.category}', this)">
-                    <i class="bi ${catIcon}"></i> ${catLabel}
+                    <i class="bi ${catIcon}"></i> ${esc(catLabel)}
                     <span class="badge bg-light text-dark" id="catcount_${gid}_${cat.category}">0/${(cat.items||[]).length}</span>
                 </div>
                 <div class="test-item-list" id="items_${gid}_${cat.category}"></div>
@@ -697,7 +708,7 @@ function updateRunSummary() {
     const total = basic + functional + scenario;
     const delay = document.getElementById('optDelay').value;
     document.getElementById('runSummary').innerHTML =
-        `<strong>${groups}</strong>개 그룹 / <strong>${total}</strong>개 테스트 (기본 ${basic} + 기능 ${functional} + 시나리오 ${scenario}) / 딜레이 ${delay}초`;
+        `<strong>${groups}</strong>개 그룹 / <strong>${total}</strong>개 테스트 (기본 ${basic} + 폼 접근 ${functional} + 흐름 시작점 ${scenario}) / 딜레이 ${delay}초`;
 }
 
 // ── Step 4: 테스트 실행 ──
@@ -716,8 +727,7 @@ async function startRun() {
         viewport: { width: parseInt(viewport[0]), height: parseInt(viewport[1]) },
         fullPage: document.querySelector('input[name="optScreenshot"]:checked').value === 'fullPage',
         generateReport: document.getElementById('optDocx').checked,
-        compare: document.getElementById('optCompare').checked,
-        retry: document.getElementById('optRetry').checked
+        compare: document.getElementById('optCompare').checked
     };
 
     // 선택된 테스트 수집
@@ -736,7 +746,7 @@ async function startRun() {
     runTimer = setInterval(updateTimer, 1000);
 
     try {
-        const res = await fetch(`${API_BASE}/run`, {
+        const res = await apiFetch(`${API_BASE}/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tests, options })
@@ -819,9 +829,13 @@ async function stopRun() {
     if (!currentRunId) return;
     if (!confirm('테스트를 중단하시겠습니까?')) return;
     try {
-        await fetch(`${API_BASE}/stop/${currentRunId}`, { method: 'POST' });
+        const res = await apiFetch(`${API_BASE}/stop/${currentRunId}`, { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         addLog('warn', '사용자에 의해 중단됨');
-    } catch (e) {}
+    } catch (e) {
+        addLog('fail', `중단 실패: ${e.message}`);
+        return;
+    }
     if (eventSource) { eventSource.close(); eventSource = null; }
     clearInterval(runTimer);
 }
@@ -829,7 +843,7 @@ async function stopRun() {
 // ── 결과 표시 ──
 async function showResults(dir) {
     try {
-        const res = await fetch(`${API_BASE}/results/${dir}`);
+        const res = await apiFetch(`${API_BASE}/results/${dir}`);
         const data = await res.json();
 
         document.getElementById('runningView').style.display = 'none';
@@ -910,7 +924,7 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s || 
 // ── 히스토리 ──
 async function loadHistory() {
     try {
-        const res = await fetch(`${API_BASE}/history`);
+        const res = await apiFetch(`${API_BASE}/history`);
         const data = await res.json();
         const list = document.getElementById('historyList');
         if (!data.runs || data.runs.length === 0) {
@@ -951,8 +965,9 @@ async function loadHistory() {
 
 async function deleteRun(dir) {
     if (!confirm('이 결과를 삭제하시겠습니까?')) return;
-    await fetch(`${API_BASE}/delete/${dir}`, { method: 'DELETE' });
-    loadHistory();
+    const res = await apiFetch(`${API_BASE}/delete/${dir}`, { method: 'DELETE' });
+    if (res.ok) loadHistory();
+    else alert('삭제 실패: HTTP ' + res.status);
 }
 
 // ── 리포트 다운로드 ──
@@ -965,7 +980,7 @@ function downloadReport(type) {
 async function rerunFailed() {
     if (!currentRunId) { alert('먼저 실행된 테스트 결과가 필요합니다.'); return; }
     try {
-        const res = await fetch(`${API_BASE}/results/${currentRunId}`);
+        const res = await apiFetch(`${API_BASE}/results/${currentRunId}`);
         const data = await res.json();
 
         const tests = {};
@@ -996,8 +1011,7 @@ async function rerunFailed() {
             viewport: { width: parseInt(viewport[0]), height: parseInt(viewport[1]) },
             fullPage: document.querySelector('input[name="optScreenshot"]:checked').value === 'fullPage',
             generateReport: document.getElementById('optDocx').checked,
-            compare: document.getElementById('optCompare').checked,
-            retry: document.getElementById('optRetry').checked
+            compare: document.getElementById('optCompare').checked
         };
 
         document.getElementById('resultView').style.display = 'none';
@@ -1005,7 +1019,7 @@ async function rerunFailed() {
         runStartTime = Date.now();
         runTimer = setInterval(updateTimer, 1000);
 
-        const runRes = await fetch(`${API_BASE}/run`, {
+        const runRes = await apiFetch(`${API_BASE}/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tests, options })
@@ -1025,29 +1039,34 @@ async function rerunFailed() {
 async function savePreset() {
     const name = document.getElementById('presetName').value.trim();
     if (!name) { alert('프리셋 이름을 입력하세요.'); return; }
+    const viewport = document.getElementById('optViewport').value.split('x').map(Number);
     const preset = {
         name,
-        groups: [...selectedGroups],
         tests: {},
         options: {
             delay: parseInt(document.getElementById('optDelay').value),
-            viewport: document.getElementById('optViewport').value
+            viewport: { width: viewport[0], height: viewport[1] },
+            fullPage: document.querySelector('input[name="optScreenshot"]:checked').value === 'fullPage',
+            generateReport: document.getElementById('optDocx').checked,
+            compare: document.getElementById('optCompare').checked
         }
     };
     selectedGroups.forEach(gid => {
-        preset.tests[gid] = {};
+        preset.tests[gid] = [];
         if (selectedTests[gid]) {
             Object.entries(selectedTests[gid]).forEach(([cat, items]) => {
-                preset.tests[gid][cat] = [...items];
+                items.forEach(id => preset.tests[gid].push({ id, category: cat }));
             });
         }
     });
     try {
-        await fetch(`${API_BASE}/presets`, {
+        const res = await apiFetch(`${API_BASE}/presets`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(preset)
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         alert('프리셋이 저장되었습니다.');
         document.getElementById('presetName').value = '';
     } catch (e) {
@@ -1057,7 +1076,7 @@ async function savePreset() {
 
 async function loadPresets() {
     try {
-        const res = await fetch(`${API_BASE}/presets`);
+        const res = await apiFetch(`${API_BASE}/presets`);
         const presets = await res.json();
         if (!presets.length) { alert('저장된 프리셋이 없습니다.'); return; }
         const names = presets.map((p, i) => `${i + 1}. ${p.name}`).join('\n');
@@ -1069,7 +1088,8 @@ async function loadPresets() {
         const preset = presets[idx];
         // 그룹 선택 복원
         presetSelect('none');
-        (preset.groups || []).forEach(gid => {
+        const presetGroups = preset.groups?.length ? preset.groups : Object.keys(preset.tests || {});
+        presetGroups.forEach(gid => {
             const card = document.querySelector(`.group-card[data-group="${gid}"]`);
             if (card) {
                 selectedGroups.add(gid);
@@ -1081,15 +1101,36 @@ async function loadPresets() {
         if (preset.tests) {
             Object.entries(preset.tests).forEach(([gid, cats]) => {
                 selectedTests[gid] = {};
-                Object.entries(cats).forEach(([cat, items]) => {
-                    selectedTests[gid][cat] = new Set(items);
-                });
+                if (Array.isArray(cats)) {
+                    cats.forEach(item => {
+                        if (!selectedTests[gid][item.category]) selectedTests[gid][item.category] = new Set();
+                        selectedTests[gid][item.category].add(item.id);
+                    });
+                } else {
+                    // 이전 프리셋 형식도 호환해서 읽는다.
+                    Object.entries(cats).forEach(([cat, items]) => {
+                        selectedTests[gid][cat] = new Set(items);
+                    });
+                }
             });
         }
         // 옵션 복원
         if (preset.options) {
-            if (preset.options.delay) document.getElementById('optDelay').value = preset.options.delay;
-            if (preset.options.viewport) document.getElementById('optViewport').value = preset.options.viewport;
+            if (preset.options.delay !== undefined) {
+                document.getElementById('optDelay').value = preset.options.delay;
+                document.getElementById('delayVal').textContent = preset.options.delay + '초';
+            }
+            if (preset.options.viewport) {
+                const viewportValue = typeof preset.options.viewport === 'string'
+                    ? preset.options.viewport
+                    : `${preset.options.viewport.width}x${preset.options.viewport.height}`;
+                document.getElementById('optViewport').value = viewportValue;
+            }
+            if (preset.options.fullPage !== undefined) {
+                document.getElementById(preset.options.fullPage ? 'ssFullPage' : 'ssViewport').checked = true;
+            }
+            if (preset.options.generateReport !== undefined) document.getElementById('optDocx').checked = preset.options.generateReport;
+            if (preset.options.compare !== undefined) document.getElementById('optCompare').checked = preset.options.compare;
         }
         updateCounts();
     } catch (e) {

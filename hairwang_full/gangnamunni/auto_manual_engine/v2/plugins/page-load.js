@@ -43,10 +43,11 @@ class PageLoadPlugin {
         }
 
         // 2) 딜레이 (렌더링 대기)
-        await new Promise(r => setTimeout(r, Math.min(delay, 3000)));
+        await new Promise(r => setTimeout(r, Math.min(delay, 15000)));
 
         // 3) 스크린샷
-        const ssName = `${config.id}.png`;
+        const safeId = String(config.id || 'test').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'test';
+        const ssName = `${safeId}.png`;
         const ssPath = path.join(ctx.screenshotsDir, ssName);
         try {
             await page.screenshot({ path: ssPath, fullPage });
@@ -54,6 +55,14 @@ class PageLoadPlugin {
 
         // 4) 에러 감지
         const errors = await ctx.detectErrors(page);
+
+        // 보호된 페이지가 로그인 폼으로 돌아온 경우 HTTP 200이어도 PASS로 처리하지 않는다.
+        if (ctx.authenticated && Array.isArray(ctx.authFieldNames) && ctx.authFieldNames.length > 0) {
+            const loginFormVisible = await page.evaluate((fieldNames) => fieldNames.some(field =>
+                document.querySelector(`input[name="${CSS.escape(field)}"], input[id="${CSS.escape(field)}"]`)
+            ), ctx.authFieldNames).catch(() => false);
+            if (loginFormVisible) errors.auth = ['Authenticated page redirected to login form'];
+        }
 
         // HTTP 상태 에러
         if (httpStatus >= 400) {
@@ -66,7 +75,7 @@ class PageLoadPlugin {
 
         // 6) 상태 결정
         let status = 'PASS';
-        if (httpStatus >= 500 || errors.php?.length > 0) status = 'FAIL';
+        if (httpStatus >= 500 || errors.php?.length > 0 || errors.auth?.length > 0) status = 'FAIL';
         else if (httpStatus >= 400 || errors.js?.length > 0) status = 'WARN';
 
         return {

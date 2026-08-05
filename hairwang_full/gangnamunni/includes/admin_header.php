@@ -176,7 +176,6 @@ $admin_menus = [
         ['url' => 'ai_event_wizard.php', 'label' => 'AI 이벤트 마법사', 'icon' => 'bi-calendar-plus', 'key' => 'ai_settings'],
         ['url' => 'ai_raffle_editor.php', 'label' => 'AI 추첨 에디터', 'icon' => 'bi-gift', 'key' => 'ai_settings'],
         ['url' => 'ai_raffle_wizard.php', 'label' => 'AI 추첨 마법사', 'icon' => 'bi-gift-fill', 'key' => 'ai_settings'],
-        ['url' => 'admin_auto_test.php', 'label' => '자동 테스트', 'icon' => 'bi-clipboard-check', 'key' => 'auto_test'],
         ['url' => 'admin_auto_test_v2.php', 'label' => '자동 테스트 v2', 'icon' => 'bi-rocket', 'key' => 'auto_test_v2'],
         ['url' => 'admin_e2e_test.php', 'label' => 'E2E 테스트', 'icon' => 'bi-play-circle', 'key' => 'e2e_test'],
     ]],
@@ -348,6 +347,20 @@ $admin_menus = [
     ]],
 ];
 
+// 자동 테스트가 비활성화된 동안 관련 메뉴만 숨기고 다른 자동화 도구는 유지한다.
+if (strtolower(trim((string)getenv('AUTO_TEST_ENABLED'))) !== 'true') {
+    foreach ($admin_menus as &$menu_item) {
+        if (!isset($menu_item['children']) || !is_array($menu_item['children'])) continue;
+        $menu_item['children'] = array_values(array_filter(
+            $menu_item['children'],
+            static function ($child) {
+                return ($child['key'] ?? '') !== 'auto_test_v2';
+            }
+        ));
+    }
+    unset($menu_item);
+}
+
 // 메뉴별 기능 설명 (배너 + 메뉴 안내 페이지에서 공유)
 $menu_descriptions = [
     'dashboard' => '전체 현황을 한눈에 확인하고, 주요 기능에 빠르게 접근합니다.',
@@ -405,8 +418,8 @@ $menu_descriptions = [
     'mail_accounts' => 'IMAP/SMTP 메일 계정을 등록·설정합니다.',
     'mailserver' => '외부 메일서버(Mailcow) 관리 화면으로 이동합니다.',
     'ai_settings' => 'AI 프로바이더(OpenAI, Claude 등) API 키와 설정을 관리합니다.',
-    'auto_test' => '등록 마법사 7종의 자동화 테스트를 실행합니다.',
-    'auto_test_v2' => '고급 자동화 테스트(시나리오 기반)를 실행합니다.',
+    'auto_test' => '레거시 페이지 접근·오류·스크린샷 테스트를 실행합니다.',
+    'auto_test_v2' => '선택한 페이지의 접근·오류·스크린샷 테스트를 실행합니다.',
     'theme' => '사이트 테마(색상, 로고, 레이아웃)를 설정합니다.',
     'theme_advanced' => 'CSS/HTML 직접 편집으로 고급 테마를 커스터마이징합니다.',
     'nav_settings' => '사이트 상단/하단 네비게이션 메뉴를 구성합니다.',
