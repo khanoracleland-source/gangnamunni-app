@@ -136,6 +136,13 @@ function package_actual_prices($connect, $hospital_id, array $treatment_ids) {
     return $prices;
 }
 
+function package_has_missing_prices(array $treatment_ids, array $actual_prices) {
+    foreach ($treatment_ids as $treatment_id) {
+        if (($actual_prices[(int)$treatment_id] ?? 0) <= 0) return true;
+    }
+    return false;
+}
+
 // 병원 목록 조회
 $hospitals = [];
 $hospital_scope_sql = $my_in === null ? '' : " AND id IN ({$my_in})";
@@ -219,6 +226,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     die('해당 병원에 활성 배정된 시술만 패키지에 추가할 수 있습니다.');
                 }
                 $actual_prices = package_actual_prices($connect, $hospital_id, $ids_safe);
+                if (package_has_missing_prices($ids_safe, $actual_prices)) {
+                    package_redirect($hospital_id, '가격이 설정되지 않은 시술은 패키지에 추가할 수 없습니다.', 'warning');
+                }
                 $original_price = array_sum($actual_prices);
                 if ($original_price <= 0) package_redirect($hospital_id, '선택한 시술의 병원 가격을 먼저 설정해주세요.', 'warning');
                 if ($package_price > $original_price) {
@@ -279,6 +289,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     die('해당 병원에 활성 배정된 시술만 패키지에 추가할 수 있습니다.');
                 }
                 $actual_prices = package_actual_prices($connect, $action_hospital_id, $ids_safe);
+                if (package_has_missing_prices($ids_safe, $actual_prices)) {
+                    package_redirect($action_hospital_id, '가격이 설정되지 않은 시술은 패키지에 추가할 수 없습니다.', 'warning');
+                }
                 $original_price = array_sum($actual_prices);
                 if ($original_price <= 0) package_redirect($action_hospital_id, '선택한 시술의 병원 가격을 먼저 설정해주세요.', 'warning');
                 if ($package_price > $original_price) {
@@ -370,24 +383,6 @@ $stat_active = 0;
 $stat_avg_discount = 0;
 
 if ($selected_hospital > 0) {
-    // 구성 시술이 더 이상 해당 병원에 활성 배정되지 않은 패키지는 자동 비활성화한다.
-    $disable_stmt = mysqli_prepare($connect,
-        "UPDATE gangnamunni_treatment_packages p
-         SET p.is_active = 0, p.updated_at = NOW()
-         WHERE p.hospital_id = ? AND p.deleted_at IS NULL AND p.is_active = 1
-           AND EXISTS (
-               SELECT 1 FROM gangnamunni_treatment_package_items pi
-               LEFT JOIN gangnamunni_hospital_treatments ht
-                 ON ht.hospital_id = p.hospital_id AND ht.treatment_id = pi.treatment_id
-                AND ht.status = 'active' AND ht.is_active = 1
-               WHERE pi.package_id = p.id AND ht.id IS NULL
-           )"
-    );
-    if ($disable_stmt) {
-        mysqli_stmt_bind_param($disable_stmt, 'i', $selected_hospital);
-        mysqli_stmt_execute($disable_stmt);
-        mysqli_stmt_close($disable_stmt);
-    }
     $stat_r = mysqli_query($connect,
         "SELECT
             COUNT(*) AS total,
@@ -614,7 +609,11 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </td>
                     <td class="text-center">
                         <button class="btn btn-sm btn-outline-primary me-1" title="수정"
-                                onclick='openEditModal(<?= json_encode($pkg, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>)'>
+                                onclick='openEditModal(<?= htmlspecialchars(
+                                    json_encode($pkg, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE),
+                                    ENT_QUOTES | ENT_SUBSTITUTE,
+                                    'UTF-8'
+                                ) ?>)'>
                             <i class="bi bi-pencil"></i>
                         </button>
                         <form method="post" class="d-inline" onsubmit="return confirm('이 패키지를 삭제하시겠습니까?')">
@@ -693,8 +692,12 @@ require_once __DIR__ . '/includes/admin_header.php';
                                            name="treatment_ids[]" value="<?= $t['id'] ?>"
                                            id="treat_<?= $t['id'] ?>"
                                            data-price="<?= intval($t['actual_price']) ?>"
+                                           <?= intval($t['actual_price']) <= 0 ? 'disabled' : '' ?>
                                            onchange="calcDiscount()">
                                     <label class="form-check-label" for="treat_<?= $t['id'] ?>">
+                                        <?php if ($t['actual_price'] <= 0): ?>
+                                        <span class="badge bg-warning text-dark me-1">가격 미설정</span>
+                                        <?php endif; ?>
                                         <?= htmlspecialchars($t['name']) ?>
                                         <?php if ($t['actual_price'] > 0): ?>
                                         <small class="text-muted">(<?= number_format($t['actual_price']) ?>만원)</small>
@@ -781,7 +784,7 @@ function openEditModal(pkg) {
     // 체크박스: 패키지 항목에 해당하는 것만 체크
     var itemIds = (pkg.items || []).map(function(it) { return parseInt(it.treatment_id); });
     document.querySelectorAll('.treatment-checkbox').forEach(function(c) {
-        c.checked = itemIds.indexOf(parseInt(c.value)) !== -1;
+        c.checked = !c.disabled && itemIds.indexOf(parseInt(c.value)) !== -1;
     });
     calcDiscount();
 

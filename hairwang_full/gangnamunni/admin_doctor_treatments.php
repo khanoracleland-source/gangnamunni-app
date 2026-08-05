@@ -21,7 +21,7 @@ if (!isset($connect) || !$connect) {
     $connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
     if ($connect) mysqli_set_charset($connect, 'utf8mb4');
 }
-if (!$connect) die('DB 연결 실패');
+if (!$connect) die('DB 연결 실패'); 
 
 loadThemeSettings($connect);
 require_admin_login();
