@@ -216,13 +216,13 @@
             </div>
 
             <h3>방법 2: API 키 인증 (프로그램)</h3>
-            <p><strong>API 키</strong>: <code>mars_push_api_key_2025</code></p>
+            <p><strong>API 키</strong>: <code>YOUR_PUSH_API_KEY</code> (.env에서 설정)</p>
 
             <p><strong>HTTP 헤더 방식</strong>:</p>
-            <pre><code class="language-http">X-API-Key: mars_push_api_key_2025</code></pre>
+            <pre><code class="language-http">X-API-Key: YOUR_PUSH_API_KEY</code></pre>
 
             <p><strong>URL 파라미터 방식</strong>:</p>
-            <pre><code>?api_key=mars_push_api_key_2025</code></pre>
+            <p>API 키는 URL 파라미터로 전송할 수 없으며 <code>X-API-Key</code> 헤더만 사용합니다.</p>
 
             <hr class="section-divider">
 
@@ -231,7 +231,7 @@
             <p>특정 사용자에게 푸시 알림을 전송합니다.</p>
 
             <h3><i class="fas fa-map-marker-alt me-2"></i>엔드포인트</h3>
-            <pre><code>POST/GET https://hairwang.com/new_http_v1_mars/push_api.php</code></pre>
+            <pre><code>POST https://hairwang.com/new_http_v1_mars/push_api.php</code></pre>
 
             <h3><i class="fas fa-clipboard-list me-2"></i>필수 파라미터</h3>
             <table class="table table-hover">
@@ -314,7 +314,7 @@
             <h4><i class="fab fa-linux me-1"></i> cURL (Linux/Mac)</h4>
             <pre><code class="language-bash">curl -X POST "https://hairwang.com/new_http_v1_mars/push_api.php" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -H "X-API-Key: mars_push_api_key_2025" \
+  -H "X-API-Key: YOUR_PUSH_API_KEY" \
   -d "app=android" \
   -d "user_token=dXYz1234567890abcdefg..." \
   -d "title=새로운 메시지" \
@@ -334,7 +334,7 @@
 
 Invoke-RestMethod -Uri "https://hairwang.com/new_http_v1_mars/push_api.php" `
   -Method POST `
-  -Headers @{"X-API-Key"="mars_push_api_key_2025"} `
+  -Headers @{"X-API-Key"="YOUR_PUSH_API_KEY"} `
   -Body $body</code></pre>
 
             <h4><i class="fab fa-php me-1"></i> PHP</h4>
@@ -353,7 +353,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'X-API-Key: mars_push_api_key_2025'
+    'X-API-Key: YOUR_PUSH_API_KEY'
 ]);
 
 $response = curl_exec($ch);
@@ -377,7 +377,7 @@ fetch('https://hairwang.com/new_http_v1_mars/push_api.php', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'X-API-Key': 'mars_push_api_key_2025'
+        'X-API-Key': 'YOUR_PUSH_API_KEY'
     },
     body: new URLSearchParams(data)
 })
@@ -398,7 +398,7 @@ data = {
 }
 
 headers = {
-    'X-API-Key': 'mars_push_api_key_2025'
+    'X-API-Key': 'YOUR_PUSH_API_KEY'
 }
 
 response = requests.post(
@@ -416,7 +416,7 @@ print(response.json())</code></pre>
             <p>모든 사용자에게 푸시 알림을 전송합니다.</p>
 
             <h3><i class="fas fa-map-marker-alt me-2"></i>엔드포인트</h3>
-            <pre><code>POST/GET https://hairwang.com/new_http_v1_mars/push_api.php</code></pre>
+            <pre><code>POST https://hairwang.com/new_http_v1_mars/push_api.php</code></pre>
 
             <h3><i class="fas fa-clipboard-list me-2"></i>필수 파라미터</h3>
             <table class="table table-hover">
@@ -455,7 +455,7 @@ print(response.json())</code></pre>
             <h4><i class="fab fa-linux me-1"></i> cURL (Linux/Mac)</h4>
             <pre><code class="language-bash">curl -X POST "https://hairwang.com/new_http_v1_mars/push_api.php" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -H "X-API-Key: mars_push_api_key_2025" \
+  -H "X-API-Key: YOUR_PUSH_API_KEY" \
   -d "push_type=group" \
   -d "title=공지사항" \
   -d "memo=새로운 업데이트가 있습니다." \
@@ -477,7 +477,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'X-API-Key: mars_push_api_key_2025'
+    'X-API-Key: YOUR_PUSH_API_KEY'
 ]);
 
 $response = curl_exec($ch);
@@ -501,7 +501,7 @@ func sendIndividualPush() {
     let url = URL(string: "https://hairwang.com/new_http_v1_mars/push_api.php")!
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
-    request.setValue("mars_push_api_key_2025", forHTTPHeaderField: "X-API-Key")
+    request.setValue("YOUR_PUSH_API_KEY", forHTTPHeaderField: "X-API-Key")
     request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
     let parameters = [
@@ -565,7 +565,7 @@ data class PushResponse(
             <h4>2. 개별 푸시 호출</h4>
             <pre><code class="language-kotlin">fun sendIndividualPushNotification(fcmToken: String) {
     RetrofitClient.pushApi.sendIndividualPush(
-        apiKey = "mars_push_api_key_2025",
+        apiKey = "YOUR_PUSH_API_KEY",
         app = "android",
         userToken = fcmToken,
         title = "새로운 메시지",

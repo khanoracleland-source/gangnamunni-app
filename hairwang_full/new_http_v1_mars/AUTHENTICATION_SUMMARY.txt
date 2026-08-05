@@ -8,9 +8,9 @@
 ================================================================================
 로그인 정보
 ================================================================================
-아이디: admin
-비밀번호: ad12@!
-API 키: mars_push_api_key_2025
+아이디: 배포 환경에서 설정
+비밀번호: 배포 환경에서 설정
+API 키: .env의 PUSH_API_KEY 값 (예제: YOUR_PUSH_API_KEY)
 
 ================================================================================
 신규 파일 (3개)
@@ -40,14 +40,14 @@ API 키: mars_push_api_key_2025
 
 [API 호출 - 방법 1: HTTP 헤더]
 curl -X POST "https://vps20-mars.andpia.com/push_dashboard/new_http_v1_mars/push_api.php" \
-  -H "X-API-Key: mars_push_api_key_2025" \
+  -H "X-API-Key: YOUR_PUSH_API_KEY" \
   -d "push_type=group" \
   -d "title=테스트" \
   -d "message=테스트 메시지"
 
-[API 호출 - 방법 2: GET/POST 파라미터]
+[API 호출 - 방법 2: HTTP 헤더]
 curl -X POST "https://vps20-mars.andpia.com/push_dashboard/new_http_v1_mars/push_api.php" \
-  -d "api_key=mars_push_api_key_2025" \
+  -H "X-API-Key: YOUR_PUSH_API_KEY" \
   -d "push_type=group" \
   -d "title=테스트" \
   -d "message=테스트 메시지"

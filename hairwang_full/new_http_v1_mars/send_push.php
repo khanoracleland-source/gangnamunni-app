@@ -17,7 +17,8 @@ require_once __DIR__ . '/auth.php';
 
 // 오류 보고 설정
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 
 // 헤더 설정 - JSON 응답
 header('Content-Type: application/json');
@@ -131,7 +132,8 @@ function send_individual_push($device_type, $token, $title, $message, $url, $ima
     $fcm_url = 'https://fcm.googleapis.com/v1/projects/mars-38372/messages:send';
     
     // 서비스 계정 키 파일 경로
-    $service_account_path = __DIR__ . '/mars-38372-firebase-adminsdk-60l5a-23f211e854.json';
+    require_once __DIR__ . '/config.php';
+    $service_account_path = get_firebase_json_path();
     
     // 액세스 토큰 생성
     $access_token = get_access_token($service_account_path);
@@ -348,4 +350,4 @@ function get_access_token($service_account_path) {
     
     return $data['access_token'];
 }
-?> 
+?>

@@ -1,6 +1,11 @@
 // FCM 토큰 받기
 window.receiveFCMToken = function(token) {
-    console.log('FCM Token received:', token);
+    if (typeof token !== 'string' || token.length < 20 || token.length > 500) {
+        console.error('Invalid FCM token received');
+        return;
+    }
+
+    console.log('FCM Token received');
     
     // 로컬스토리지 저장
     localStorage.setItem('fcm_token', token);
@@ -15,16 +20,21 @@ window.receiveFCMToken = function(token) {
 
 // 그누보드 서버로 전송
 function savePushTokenToGnuboard(token) {
-    const platform = /android/i.test(navigator.userAgent) ? 'android' : 'ios';
+    let platform = 'web';
+    if (/android/i.test(navigator.userAgent)) {
+        platform = 'android';
+    } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+        platform = 'ios';
+    }
     
     fetch(g5_bbs_url + '/ajax.push_token.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
+        credentials: 'same-origin',
         body: JSON.stringify({
             token: token,
-            user_id: g5_member_id || '',
             platform: platform,
             device_info: {
                 user_agent: navigator.userAgent,
@@ -32,7 +42,12 @@ function savePushTokenToGnuboard(token) {
             }
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Token endpoint returned HTTP ' + response.status);
+        }
+        return response.json();
+    })
     .then(data => {
         if(data.success) {
             console.log('토큰 저장 성공');

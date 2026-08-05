@@ -30,11 +30,12 @@ function send_push_v1_jwt($app, $user_token, $title, $memo, $url2)
     $url = 'https://fcm.googleapis.com/v1/projects/mars-38372/messages:send';
 
     // 서비스 계정 키 파일의 경로
-    $serviceAccountPath = $_SERVER['DOCUMENT_ROOT'].'/_process/vendor/mars-38372-firebase-adminsdk-60l5a-23f211e854.json';
+    $serviceAccountPath = getenv('FIREBASE_JSON_PATH') ?: '';
 
     // 디버깅: 서비스 계정 파일 확인
     if (!file_exists($serviceAccountPath)) {
-        die("Service account file not found: $serviceAccountPath");
+        error_log('Service account file is not configured or not readable');
+        return 0;
     }
 
     // 액세스 토큰 생성
@@ -168,11 +169,11 @@ function getAccessToken($serviceAccountPath)
     ];
 
     // 서명 생성 준비
-    $header = base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+    $header = rtrim(strtr(base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT'])), '+/', '-_'), '=');
 
     //echo $jwt['private_key'];
 
-    $payload = base64_encode(json_encode($token));
+    $payload = rtrim(strtr(base64_encode(json_encode($token)), '+/', '-_'), '=');
     $signature = '';
 
     $privateKey = $jwt['private_key']; //?? '';
@@ -194,7 +195,8 @@ function getAccessToken($serviceAccountPath)
     }
 
 
-    $jwtToken = "$header.$payload." . base64_encode($signature);
+    $encodedSignature = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
+    $jwtToken = "$header.$payload.$encodedSignature";
 
     // 액세스 토큰 요청
     $ch = curl_init($jwt['token_uri']);
@@ -246,7 +248,7 @@ function send_push_v1($app, $user_token, $title, $memo, $url)
     $url = 'https://fcm.googleapis.com/v1/projects/YOUR_PROJECT_ID/messages:send';
 
     // 서비스 계정 키 파일의 경로
-    $serviceAccountPath = '/vendor/mars-38372-firebase-adminsdk-60l5a-23f211e854.json';
+    $serviceAccountPath = getenv('FIREBASE_JSON_PATH') ?: '';
 
     // 서비스 계정 키 파일을 읽어서 인증 토큰 생성
     putenv('GOOGLE_APPLICATION_CREDENTIALS=' . $serviceAccountPath);

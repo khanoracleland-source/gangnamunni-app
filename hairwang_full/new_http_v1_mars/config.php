@@ -29,7 +29,7 @@ define('TEST_NOTIFICATION_CONFIG_FILE', __DIR__ . '/test_notification_config.jso
  * - project_id: Firebase 프로젝트 ID
  */
 $default_config = [
-    'firebase_json_file' => env('FIREBASE_JSON_PATH', 'hairwang-web-app-firebase-adminsdk-fbsvc-b7135e1f94.json'),
+    'firebase_json_file' => env('FIREBASE_JSON_PATH', ''),
     'topic_name' => env('DEFAULT_TOPIC', 'news_test'),
     'project_id' => env('FIREBASE_PROJECT_ID', 'hairwang-web-app'),
     'arg3_value' => env('DEFAULT_SENDER', 'HAIRWANG'),  // 푸시 알림 arg3 기본값
@@ -47,20 +47,36 @@ $default_config = [
 function get_push_config() {
     global $default_config;
 
+    $config = $default_config;
+
     // 설정 파일이 존재하면 읽기
     if (file_exists(CONFIG_FILE)) {
         $config_content = file_get_contents(CONFIG_FILE);
-        $config = json_decode($config_content, true);
+        $file_config = json_decode($config_content, true);
 
         // JSON 파싱 성공 시
-        if (json_last_error() === JSON_ERROR_NONE) {
+        if (json_last_error() === JSON_ERROR_NONE && is_array($file_config)) {
             // 기본값과 병합 (누락된 키 방지)
-            return array_merge($default_config, $config);
+            $config = array_merge($config, $file_config);
         }
     }
 
-    // 파일이 없거나 파싱 실패 시 기본값 반환
-    return $default_config;
+    // Secrets and deployment-specific values from the environment always win.
+    $environment_overrides = [
+        'firebase_json_file' => env('FIREBASE_JSON_PATH', ''),
+        'project_id' => env('FIREBASE_PROJECT_ID', ''),
+        'topic_name' => env('DEFAULT_TOPIC', ''),
+        'arg3_value' => env('DEFAULT_SENDER', ''),
+        'default_url' => env('DEFAULT_URL', ''),
+    ];
+
+    foreach ($environment_overrides as $key => $value) {
+        if (is_string($value) && trim($value) !== '') {
+            $config[$key] = trim($value);
+        }
+    }
+
+    return $config;
 }
 
 /**
@@ -92,6 +108,10 @@ function save_push_config($config) {
 function get_firebase_json_path() {
     $config = get_push_config();
     $file_path = $config['firebase_json_file'];
+
+    if (!is_string($file_path) || trim($file_path) === '') {
+        return '';
+    }
 
     // 절대 경로인지 확인 (Windows: C:\... 또는 \\..., Linux: /...)
     if (preg_match('/^[a-zA-Z]:[\\\\\\/]/', $file_path) || preg_match('/^[\\\\\\/]/', $file_path)) {

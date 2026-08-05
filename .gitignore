@@ -6,6 +6,8 @@ composer.phar
 /storage/service-account-credentials.json
 *credentials*.json
 *service-account*.json
+*firebase-adminsdk*.json
+**/fcm_service_account.json
 *.pem
 *.p12
 
@@ -13,7 +15,6 @@ composer.phar
 .env
 .env.server.backup
 .env.backup
-.env.example
 .env.production.backup
 *.key
 

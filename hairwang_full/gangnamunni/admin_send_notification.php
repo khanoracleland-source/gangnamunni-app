@@ -234,6 +234,8 @@ if ($is_ajax) {
 
         // Native Android push: members without an active token still receive
         // the in-site notification created above.
+        // Global announcements intentionally include guest and logged-out
+        // Android installations. Narrower audiences remain member-token based.
         if ($target === 'all') {
             $push_result = send_push_to_android_broadcast(
                 $connect,

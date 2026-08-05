@@ -402,7 +402,7 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     
     // 서비스 워커 등록
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        navigator.serviceWorker.register('/firebase-messaging-sw.php', { scope: '/' })
             .then(function(registration) {
                 console.log('Service Worker 등록 성공:', registration);
                 messaging.useServiceWorker(registration);
@@ -488,25 +488,19 @@ function denyFCMPermission() {
 function getFCMToken() {
     const messaging = firebase.messaging();
     
-    messaging.getToken({ 
-        vapidKey: "<?php echo $fcm_config['vapidKey']; ?>" 
+    navigator.serviceWorker.ready.then(function(registration) {
+        return messaging.getToken({
+            vapidKey: "<?php echo $fcm_config['vapidKey']; ?>",
+            serviceWorkerRegistration: registration
+        });
     }).then(function(currentToken) {
         if (currentToken) {
-            console.log('FCM 토큰:', currentToken);
+            console.log('FCM 토큰을 받았습니다.');
             fcmToken = currentToken;
             
             // 서버에 토큰 저장
             saveFCMToken(currentToken);
             
-            // 토큰 갱신 리스너
-            messaging.onTokenRefresh(function() {
-                messaging.getToken({ 
-                    vapidKey: "<?php echo $fcm_config['vapidKey']; ?>" 
-                }).then(function(refreshedToken) {
-                    console.log('토큰이 갱신되었습니다.');
-                    saveFCMToken(refreshedToken);
-                });
-            });
         } else {
             console.log('토큰을 가져올 수 없습니다.');
         }
@@ -520,11 +514,13 @@ function getFCMToken() {
         
         // 브라우저 알림 표시
         if (Notification.permission === 'granted') {
-            const notificationTitle = payload.notification.title;
+            const payloadNotification = payload.notification || {};
+            const payloadData = payload.data || {};
+            const notificationTitle = payloadNotification.title || payloadData.title || '새로운 알림';
             const notificationOptions = {
-                body: payload.notification.body,
-                icon: payload.notification.icon || '/favicon.ico',
-                click_action: payload.notification.click_action || '/'
+                body: payloadNotification.body || payloadData.message || payloadData.body || '',
+                icon: payloadNotification.icon || payloadData.icon || '/favicon.ico',
+                click_action: payloadData.click_action || payloadData.url || '/'
             };
             
             const notification = new Notification(notificationTitle, notificationOptions);
@@ -540,23 +536,20 @@ function getFCMToken() {
 
 // FCM 토큰을 서버에 저장
 function saveFCMToken(token) {
-    // AJAX로 서버에 토큰 전송
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', '/rb/ajax.fcm_token.php', true);
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            console.log('토큰 저장 완료');
-        }
-    };
-    
-    // 회원 정보가 있으면 함께 전송
-    var params = 'token=' + encodeURIComponent(token);
-    <?php if ($member['mb_id']) { ?>
-    params += '&mb_id=<?php echo $member['mb_id']; ?>';
-    <?php } ?>
-    
-    xhr.send(params);
+    fetch('<?php echo G5_BBS_URL; ?>/ajax.push_token.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({token: token, platform: 'web'})
+    }).then(function(response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.json();
+    }).then(function(result) {
+        if (!result.success) throw new Error(result.message || 'Token save failed');
+        console.log('토큰 저장 완료');
+    }).catch(function(error) {
+        console.error('토큰 저장 실패:', error.message);
+    });
 }
 
 function updateCountdown() {

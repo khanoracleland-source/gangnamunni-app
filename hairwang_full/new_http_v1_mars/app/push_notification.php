@@ -1,3 +1,8 @@
+<?php
+require_once dirname(__DIR__) . '/auth.php';
+require_login();
+$push_csrf_token = generate_csrf_token();
+?>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -458,6 +463,7 @@
         document.getElementById('individualPushForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
+            formData.append('csrf_token', <?php echo json_encode($push_csrf_token); ?>);
             
             fetch('push_api.php', {
                 method: 'POST',
@@ -481,6 +487,7 @@
             
             if (confirm('정말로 모든 사용자에게 푸시 알림을 보내시겠습니까?')) {
                 const formData = new FormData(this);
+                formData.append('csrf_token', <?php echo json_encode($push_csrf_token); ?>);
                 
                 fetch('push_api.php', {
                     method: 'POST',
@@ -503,6 +510,7 @@
         document.getElementById('topicPushForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
+            formData.append('csrf_token', <?php echo json_encode($push_csrf_token); ?>);
             
             fetch('push_api.php', {
                 method: 'POST',
@@ -522,4 +530,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

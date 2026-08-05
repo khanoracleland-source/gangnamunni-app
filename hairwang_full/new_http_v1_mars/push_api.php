@@ -38,7 +38,8 @@ require_once __DIR__ . '/config.php';
 
 // 오류 보고 설정
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 
 // 헤더 설정 - JSON 응답
 header('Content-Type: application/json');
@@ -58,15 +59,14 @@ $response = [
  */
 
 // API 키 설정 (.env 파일에서 로드)
-define('API_KEY', env('PUSH_API_KEY', 'mars_push_api_key_2025'));
+define('API_KEY', (string) env('PUSH_API_KEY', ''));
 
 // 인증 방식 1: 세션 인증 (웹 브라우저에서 접근)
 $is_authenticated_session = is_logged_in();
 
 // 인증 방식 2: API 키 인증 (프로그램에서 접근)
 $api_key_header = isset($_SERVER['HTTP_X_API_KEY']) ? $_SERVER['HTTP_X_API_KEY'] : '';
-$api_key_param = isset($_REQUEST['api_key']) ? $_REQUEST['api_key'] : '';
-$is_authenticated_api = ($api_key_header === API_KEY) || ($api_key_param === API_KEY);
+$is_authenticated_api = API_KEY !== '' && $api_key_header !== '' && hash_equals(API_KEY, $api_key_header);
 
 // 둘 중 하나라도 인증되면 접근 허용
 if (!$is_authenticated_session && !$is_authenticated_api) {
@@ -79,24 +79,49 @@ if (!$is_authenticated_session && !$is_authenticated_api) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    $response['message'] = 'POST method required.';
+    echo json_encode($response);
+    exit;
+}
+
+if ($is_authenticated_session && !$is_authenticated_api) {
+    $csrf_token = isset($_SERVER['HTTP_X_CSRF_TOKEN']) ? (string) $_SERVER['HTTP_X_CSRF_TOKEN'] : (string) ($_POST['csrf_token'] ?? '');
+    if (!verify_csrf_token($csrf_token)) {
+        http_response_code(403);
+        $response['message'] = 'Invalid CSRF token.';
+        echo json_encode($response);
+        exit;
+    }
+}
+
 // GET 또는 POST 요청 파라미터 처리
-$push_type = isset($_REQUEST['push_type']) ? $_REQUEST['push_type'] : '';
-$app = isset($_REQUEST['app']) ? $_REQUEST['app'] : '';
-$user_token = isset($_REQUEST['user_token']) ? $_REQUEST['user_token'] : '';
-$title = isset($_REQUEST['title']) ? $_REQUEST['title'] : '';
-$message = isset($_REQUEST['message']) ? $_REQUEST['message'] : '';
-$memo = isset($_REQUEST['memo']) ? $_REQUEST['memo'] : ''; // message와 호환을 위해
-$url = isset($_REQUEST['url']) ? $_REQUEST['url'] : '';
-$file_url = isset($_REQUEST['file_url']) ? $_REQUEST['file_url'] : '';
-$image_url = isset($_REQUEST['image_url']) ? $_REQUEST['image_url'] : ''; // file_url과 호환을 위해
-$topic = isset($_REQUEST['topic']) ? $_REQUEST['topic'] : '';
-$target_devices = isset($_REQUEST['target_devices']) ? $_REQUEST['target_devices'] : []; // 전체 푸시 대상 기기 유형
+$push_type = isset($_POST['push_type']) ? (string) $_POST['push_type'] : '';
+$app = isset($_POST['app']) ? (string) $_POST['app'] : '';
+$user_token = isset($_POST['user_token']) ? trim((string) $_POST['user_token']) : '';
+$title = isset($_POST['title']) ? trim((string) $_POST['title']) : '';
+$message = isset($_POST['message']) ? trim((string) $_POST['message']) : '';
+$memo = isset($_POST['memo']) ? trim((string) $_POST['memo']) : '';
+$url = isset($_POST['url']) ? trim((string) $_POST['url']) : '';
+$file_url = isset($_POST['file_url']) ? trim((string) $_POST['file_url']) : '';
+$image_url = isset($_POST['image_url']) ? trim((string) $_POST['image_url']) : '';
+$topic = isset($_POST['topic']) ? trim((string) $_POST['topic']) : '';
+$target_devices = isset($_POST['target_devices']) && is_array($_POST['target_devices']) ? $_POST['target_devices'] : [];
 
 // 추가 인텐트 파라미터
-$order_id = isset($_REQUEST['order_id']) ? $_REQUEST['order_id'] : '';
-$arg1 = isset($_REQUEST['arg1']) ? $_REQUEST['arg1'] : '$arg1';
-$arg2 = isset($_REQUEST['arg2']) ? $_REQUEST['arg2'] : '1'; // 기본값 1 (팝업 표시)
-$arg3 = isset($_REQUEST['arg3']) ? $_REQUEST['arg3'] : get_arg3_value();
+$order_id = isset($_POST['order_id']) ? (string) $_POST['order_id'] : '';
+$arg1 = isset($_POST['arg1']) ? (string) $_POST['arg1'] : '$arg1';
+$arg2 = isset($_POST['arg2']) ? (string) $_POST['arg2'] : '1';
+$arg3 = get_arg3_value();
+
+if (strlen($title) > 200 || strlen($memo ?: $message) > 4000 || strlen($user_token) > 500) {
+    http_response_code(422);
+    $response['message'] = 'One or more parameters exceed the allowed length.';
+    echo json_encode($response);
+    exit;
+}
 
 // memo가 비어있고 message가 있으면 memo에 message 값 할당
 if (empty($memo) && !empty($message)) {
@@ -114,7 +139,7 @@ if (empty($file_url) && !empty($image_url)) {
 
 if ($push_type === 'group') {
     // 디버깅: 수신된 모든 파라미터 기록
-    error_log('Group push request - Parameters: ' . print_r($_REQUEST, true));
+    error_log('Group push requested');
 
     // 전체 푸시 처리
     if (empty($title) || empty($memo)) {
@@ -163,7 +188,6 @@ if ($push_type === 'group') {
             'topic' => $topic_name,
             'debug_info' => '클라이언트 앱에서 "' . $topic_name . '" 토픽을 구독했는지 확인하세요.',
             'error' => $error_logs ? $error_logs['message'] : '알 수 없는 오류',
-            'firebase_config' => get_firebase_json_path(),
             'success_count' => 0,
             'fail_count' => 1
         ];
@@ -247,7 +271,6 @@ else {
             'memo' => $memo,
             'url' => $url,
             'error' => $error_logs ? $error_logs['message'] : '알 수 없는 오류',
-            'firebase_config' => get_firebase_json_path(),
             'project_id' => get_project_id(),
             'arg3' => get_arg3_value(),
             'default_url' => get_default_url(),
@@ -281,7 +304,7 @@ exit;
 function send_push_v1_jwt($app, $user_token, $title, $memo, $url2, $file_url = '', $arg1 = '$arg1', $arg2 = '1')
 {
     error_log(">>> send_push_v1_jwt 함수 호출됨 <<<");
-    error_log("Parameters - App: $app, Token: " . substr($user_token, 0, 30) . "..., Title: $title, URL: $url2, file_url: $file_url");
+    error_log("Parameters - App: $app, Title: $title");
 
     global $dc, $Dcs, $member;
 
@@ -388,6 +411,8 @@ function send_push_v1_jwt($app, $user_token, $title, $memo, $url2, $file_url = '
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($pushdata));
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
     // FCM 서버로 푸시 요청 전송
     $response = curl_exec($ch);
@@ -396,19 +421,19 @@ function send_push_v1_jwt($app, $user_token, $title, $memo, $url2, $file_url = '
     if (curl_errno($ch)) {
         $error_msg = curl_error($ch);
         error_log("cURL Error: " . $error_msg);
+        curl_close($ch);
         return 0;
     }
 
+    $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
     // 푸시 전송 결과 반환
     $obj = json_decode($response);
 
     // 디버깅: 응답 로그
-    error_log("FCM Response: " . $response);
-
-    if (!$obj || !isset($obj->{"name"})) {
-        error_log("FCM Response Error: " . $response);
+    if ($http_status < 200 || $http_status >= 300 || !$obj || !isset($obj->{"name"})) {
+        error_log("FCM request failed with HTTP " . $http_status);
         // 에러 상세 정보 로그
         if ($obj && isset($obj->error)) {
             error_log("FCM Error Details: " . json_encode($obj->error));
@@ -443,7 +468,7 @@ function getAccessToken($serviceAccountPath) {
     }
 
     $jwt = json_decode($jsonContent, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
+    if (json_last_error() !== JSON_ERROR_NONE || !isset($jwt['client_email'], $jwt['token_uri'], $jwt['private_key'])) {
         return '';
     }
 
@@ -458,8 +483,8 @@ function getAccessToken($serviceAccountPath) {
     ];
 
     // 서명 생성 준비
-    $header = base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
-    $payload = base64_encode(json_encode($token));
+    $header = base64url_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+    $payload = base64url_encode(json_encode($token));
     $signature = '';
 
     $privateKey = $jwt['private_key'];
@@ -469,7 +494,7 @@ function getAccessToken($serviceAccountPath) {
         return '';
     }
 
-    $jwtToken = "$header.$payload." . base64_encode($signature);
+    $jwtToken = "$header.$payload." . base64url_encode($signature);
 
     // 액세스 토큰 요청
     $ch = curl_init($jwt['token_uri']);
@@ -479,6 +504,8 @@ function getAccessToken($serviceAccountPath) {
         'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
         'assertion' => $jwtToken
     ]));
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
     $response = curl_exec($ch);
 
@@ -488,15 +515,20 @@ function getAccessToken($serviceAccountPath) {
         return '';
     }
 
+    $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     $data = json_decode($response, true);
 
     // 액세스 토큰 확인
-    if (!isset($data['access_token'])) {
+    if ($http_status < 200 || $http_status >= 300 || !isset($data['access_token'])) {
         return '';
     }
 
     return $data['access_token'];
+}
+
+function base64url_encode($value) {
+    return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
 }
 
 /**
@@ -603,6 +635,8 @@ function send_topic_push($topic, $title, $memo, $url, $file_url = '', $arg1 = '$
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($pushdata));
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
     // FCM 서버로 푸시 요청 전송
     $response = curl_exec($ch);
@@ -615,6 +649,7 @@ function send_topic_push($topic, $title, $memo, $url, $file_url = '', $arg1 = '$
         return false;
     }
 
+    $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
     // 푸시 전송 결과 확인
@@ -625,11 +660,11 @@ function send_topic_push($topic, $title, $memo, $url, $file_url = '', $arg1 = '$
         return false;
     }
     
-    if (!isset($obj['name'])) {
-        error_log("Error: FCM response error: " . $response);
+    if ($http_status < 200 || $http_status >= 300 || !isset($obj['name'])) {
+        error_log("Error: FCM request failed with HTTP " . $http_status);
         return false;
     }
 
     return true;
 }
-?> 
+?>

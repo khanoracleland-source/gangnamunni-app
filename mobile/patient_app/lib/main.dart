@@ -53,14 +53,13 @@ Future<void> applyLanguage(String code) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform).then((value) {
-    PushNotificationService().setupFirebaseMessaging();
+  await GetStorage.init();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform).then((value) async {
+    await PushNotificationService().setupFirebaseMessaging();
     if (kReleaseMode) {
       FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
     }
   }).catchError(onError);
-
-  await GetStorage.init();
   //
   fontFamilyPrimaryGlobal = GoogleFonts.interTight(fontWeight: FontWeight.w500).fontFamily;
   textPrimarySizeGlobal = 14;

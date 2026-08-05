@@ -1,7 +1,4 @@
 <?php
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=UTF-8');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -10,6 +7,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 include_once('../common.php');
+
+if (empty($member['mb_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'code' => 'AUTHENTICATION_REQUIRED', 'message' => 'Login required']);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -44,8 +47,15 @@ if ($fcm_token) {
     $where = "pt_device_id = '".sql_real_escape_string($device_id)."'";
 }
 
-$sql = "UPDATE g5_push_tokens SET pt_use = 0 WHERE {$where}";
-sql_query($sql);
+$mb_id = sql_real_escape_string($member['mb_id']);
+$sql = "UPDATE g5_push_tokens SET pt_use = 0, pt_update_datetime = NOW() WHERE {$where} AND mb_id = '{$mb_id}'";
+$result = sql_query($sql, false);
+
+if (!$result) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'code' => 'SERVER_ERROR', 'message' => 'Token could not be disabled']);
+    exit;
+}
 
 echo json_encode([
     'success' => true,

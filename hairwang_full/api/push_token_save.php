@@ -1,8 +1,5 @@
 <?php
 // CORS 설정 (앱에서 호출 가능하도록)
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=UTF-8');
 
 // OPTIONS 요청 처리 (CORS preflight)
@@ -12,6 +9,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 include_once('../common.php');
+
+if (empty($member['mb_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'code' => 'AUTHENTICATION_REQUIRED', 'message' => 'Login required']);
+    exit;
+}
 
 // POST만 허용
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -29,7 +32,6 @@ $input = json_decode(file_get_contents('php://input'), true);
 
 // 필수 파라미터 체크
 $fcm_token = isset($input['fcm_token']) ? trim($input['fcm_token']) : '';
-$user_id = isset($input['user_id']) ? trim($input['user_id']) : '';
 $platform = isset($input['platform']) ? trim($input['platform']) : '';
 $device_id = isset($input['device_id']) ? trim($input['device_id']) : '';
 $app_version = isset($input['app_version']) ? trim($input['app_version']) : '';
@@ -46,12 +48,12 @@ if (!$fcm_token) {
 }
 
 // 플랫폼 체크 (android/ios)
-if (!in_array($platform, ['android', 'ios'])) {
+if (!in_array($platform, ['android', 'ios', 'web'], true)) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'code' => 'INVALID_PLATFORM',
-        'message' => 'Platform must be android or ios'
+        'message' => 'Platform must be android, ios or web'
     ]);
     exit;
 }
@@ -76,15 +78,7 @@ CREATE TABLE IF NOT EXISTS `g5_push_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8";
 @sql_query($create_table_sql);
 
-// 회원 확인 (user_id가 있으면)
-$mb_id = '';
-if ($user_id) {
-    $sql = "SELECT mb_id FROM {$g5['member_table']} WHERE mb_id = '".sql_real_escape_string($user_id)."'";
-    $member_check = sql_fetch($sql);
-    if ($member_check) {
-        $mb_id = $member_check['mb_id'];
-    }
-}
+$mb_id = $member['mb_id'];
 
 // device_info 구성
 $device_info = json_encode([
@@ -161,8 +155,8 @@ try {
     echo json_encode([
         'success' => false,
         'code' => 'SERVER_ERROR',
-        'message' => 'Failed to save token',
-        'error' => $e->getMessage()
+        'message' => 'Failed to save token'
     ]);
+    error_log('Push token save failed: ' . $e->getMessage());
 }
 ?>

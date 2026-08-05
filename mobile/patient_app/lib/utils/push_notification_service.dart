@@ -86,7 +86,8 @@ class PushNotificationService {
       return;
     }
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional) {
       log('------Request Notification Permission COMPLETED-----------');
       await registerNotificationListeners().then((value) {
         log('------Notification Listener REGISTRATION COMPLETED-----------');
@@ -145,7 +146,9 @@ class PushNotificationService {
   }
 
   Future<void> _registerTokenWithBackend(String token) async {
-    if (!Platform.isAndroid || !isLoggedIn.value || token.isEmpty) return;
+    if (!(Platform.isAndroid || Platform.isIOS) ||
+        !isLoggedIn.value ||
+        token.isEmpty) return;
 
     final deviceId = await _getDeviceId();
     await handleResponse(
@@ -155,6 +158,7 @@ class PushNotificationService {
         request: {
           'device_id': deviceId,
           'fcm_token': token,
+          'platform': Platform.isIOS ? 'ios' : 'android',
           if (currentPackageinfo.value.versionName.validate().isNotEmpty)
             'app_version': currentPackageinfo.value.versionName.validate(),
           'os_version': Platform.operatingSystemVersion,
@@ -165,7 +169,7 @@ class PushNotificationService {
   }
 
   Future<void> unregisterTokenFromBackend() async {
-    if (!Platform.isAndroid || !isLoggedIn.value) return;
+    if (!(Platform.isAndroid || Platform.isIOS) || !isLoggedIn.value) return;
 
     final deviceId = await _getDeviceId();
     await handleResponse(
@@ -189,7 +193,8 @@ class PushNotificationService {
   }
 
   Future<void> unsubscribeFirebaseTopic() async {
-    // The global broadcast topic intentionally remains subscribed after logout.
+    // Keep the public broadcast topic after logout so global announcements
+    // can reach guest installations as well.
     await FirebaseMessaging.instance
         .unsubscribeFromTopic(
             '${FirebaseTopicConst.userWithUnderscoreKey}${loginUserData.value.id}')
@@ -253,11 +258,14 @@ class PushNotificationService {
         NotificationData.fromJson(message.data);
     log("===============${FirebaseTopicConst.notificationDataKey}===============\n${notificationData.toJson()}");
     if (isForeGround) {
-      showNotification(
-          currentTimeStamp(),
-          message.notification!.title.validate(),
-          message.notification!.body.validate(),
-          message);
+      final title = message.notification?.title ??
+          message.data['title']?.toString() ??
+          'New notification';
+      final body = message.notification?.body ??
+          message.data['message']?.toString() ??
+          message.data['body']?.toString() ??
+          '';
+      showNotification(currentTimeStamp(), title, body, message);
     } else {
       log('======== ELSE PART ===============');
       try {

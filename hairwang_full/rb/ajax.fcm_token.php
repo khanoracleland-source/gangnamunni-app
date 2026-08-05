@@ -1,6 +1,7 @@
 <?php
 // /rb/ajax.fcm_token.php
 include_once('./_common.php');
+header('Content-Type: application/json; charset=UTF-8');
 
 // POST 요청만 허용
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -8,14 +9,19 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $token = isset($_POST['token']) ? trim($_POST['token']) : '';
-$mb_id = isset($_POST['mb_id']) ? trim($_POST['mb_id']) : '';
+if (empty($member['mb_id'])) {
+    http_response_code(401);
+    die(json_encode(['error' => 'Login required']));
+}
+
+$mb_id = $member['mb_id'];
 
 if (!$token) {
     die(json_encode(['error' => 'Token is required']));
 }
 
 // 토큰 유효성 검사 (간단한 길이 체크)
-if (strlen($token) < 100 || strlen($token) > 300) {
+if (strlen($token) < 20 || strlen($token) > 500) {
     die(json_encode(['error' => 'Invalid token format']));
 }
 
@@ -31,7 +37,7 @@ $device_info = array(
 $sql = "CREATE TABLE IF NOT EXISTS `g5_fcm_tokens` (
     `ft_id` int(11) NOT NULL AUTO_INCREMENT,
     `mb_id` varchar(20) NOT NULL DEFAULT '',
-    `ft_token` varchar(300) NOT NULL DEFAULT '',
+    `ft_token` varchar(500) NOT NULL DEFAULT '',
     `ft_device_info` text NOT NULL,
     `ft_created_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
     `ft_updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',

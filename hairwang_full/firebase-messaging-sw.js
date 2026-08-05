@@ -15,18 +15,27 @@ firebase.initializeApp({
     appId: ""
 });
 
-const messaging = firebase.messaging();
+let messaging = null;
+try {
+    if (firebase.app().options.projectId) {
+        messaging = firebase.messaging();
+    }
+} catch (error) {
+    console.error('[firebase-messaging-sw.js] Firebase initialization failed');
+}
 
 // 백그라운드 메시지 수신
-messaging.onBackgroundMessage(function(payload) {
+if (messaging) messaging.onBackgroundMessage(function(payload) {
     console.log('[firebase-messaging-sw.js] 백그라운드 메시지 수신 ', payload);
     
-    const notificationTitle = payload.notification.title || '새로운 알림';
+    const notification = payload.notification || {};
+    const data = payload.data || {};
+    const notificationTitle = notification.title || data.title || '새로운 알림';
     const notificationOptions = {
-        body: payload.notification.body || '내용을 확인하세요.',
-        icon: payload.notification.icon || '/favicon.ico',
+        body: notification.body || data.message || data.body || '내용을 확인하세요.',
+        icon: notification.icon || data.icon || '/favicon.ico',
         badge: '/favicon.ico',
-        data: payload.data || {},
+        data: data,
         requireInteraction: true,
         actions: [
             {
@@ -49,7 +58,19 @@ self.addEventListener('notificationclick', function(event) {
     
     event.notification.close();
     
-    let clickAction = event.notification.data.click_action || '/';
+    const notificationData = event.notification.data || {};
+    let clickAction = notificationData.click_action || notificationData.url || '/';
+
+    try {
+        const target = new URL(clickAction, self.location.origin);
+        if (target.origin !== self.location.origin) {
+            clickAction = '/';
+        } else {
+            clickAction = target.href;
+        }
+    } catch (error) {
+        clickAction = '/';
+    }
     
     if (event.action === 'open') {
         event.waitUntil(

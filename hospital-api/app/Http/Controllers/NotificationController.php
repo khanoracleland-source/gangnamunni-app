@@ -356,14 +356,14 @@ class NotificationController extends Controller
     {
         $request->merge([
             'user_id' => $request->user()->id,
-            'platform' => 'android',
+            'platform' => $request->input('platform', 'android'),
         ]);
 
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|integer',
             'device_id' => 'required|string|max:100',
             'fcm_token' => 'required|string|max:4096',
-            'platform' => 'required|in:android',
+            'platform' => 'required|in:android,ios',
             'app_version' => 'nullable|string|max:20',
             'os_version' => 'nullable|string|max:50',
             'device_model' => 'nullable|string|max:100',

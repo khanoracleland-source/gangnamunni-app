@@ -19,7 +19,7 @@
 // 에러 리포팅 설정 (디버깅용)
 // ============================================
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', '0');
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/logs/php_errors.log');
 
@@ -69,6 +69,7 @@ try {
 
     echo "<script>console.log('Step 3: Checking login status');</script>";
     require_login();  // 로그인하지 않은 사용자는 login.php로 리다이렉트
+    $push_csrf_token = generate_csrf_token();
 
     echo "<script>console.log('Step 4: Getting current user');</script>";
     // 현재 사용자 정보 가져오기
@@ -526,6 +527,7 @@ try {
         // 개별 푸시 전송 이벤트
         document.getElementById('sendIndividualPushBtn').addEventListener('click', function() {
             const formData = new FormData(document.getElementById('individualPushForm'));
+            formData.append('csrf_token', <?php echo json_encode($push_csrf_token); ?>);
 
             console.log('전송 데이터:', Object.fromEntries(formData));
 
@@ -566,6 +568,7 @@ try {
         document.getElementById('sendGroupPushBtn').addEventListener('click', function() {
             if (confirm('정말로 모든 사용자에게 푸시 알림을 보내시겠습니까?')) {
                 const formData = new FormData(document.getElementById('groupPushForm'));
+                formData.append('csrf_token', <?php echo json_encode($push_csrf_token); ?>);
 
                 console.log('전체 푸시 전송 데이터:', Object.fromEntries(formData));
 
@@ -591,4 +594,4 @@ try {
         });
     </script>
 </body>
-</html> 
+</html>
