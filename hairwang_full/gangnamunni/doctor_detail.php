@@ -336,7 +336,7 @@ $bio_lines = doctor_detail_lines($doctor['bio'] ?? '');
         </div>
         <div class="profile-info">
             <div class="profile-name"><?php echo htmlspecialchars($doctor['name']); ?></div>
-            <div class="profile-specialty"><i class="bi bi-file-medical"></i><?php echo htmlspecialchars($doctor['specialty'] ?: '전문의'); ?></div>
+            <div class="profile-specialty"><i class="bi bi-file-medical"></i><?php echo htmlspecialchars(trim($doctor['specialty'] ?? '') ?: '일반의'); ?></div>
         </div>
     </div>
 

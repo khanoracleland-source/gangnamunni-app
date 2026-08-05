@@ -42,10 +42,12 @@ function doctor_hospital_allowed($hospital_id, $allowed_hospital_ids) {
         && ($allowed_hospital_ids === null || in_array((int)$hospital_id, $allowed_hospital_ids, true));
 }
 
-function validate_doctor_profile($name, $hospital_id, $memberships) {
+function validate_doctor_profile($name, $hospital_id, $specialty, $memberships) {
     if ($name === '') return '의사 이름은 필수입니다.';
     if (mb_strlen($name, 'UTF-8') > 100) return '의사 이름은 100자 이하여야 합니다.';
     if ($hospital_id <= 0) return '소속 병원을 선택해주세요.';
+    if ($specialty === '') return '전문의 구분 또는 표기 문구를 입력해주세요.';
+    if (mb_strlen($specialty, 'UTF-8') > 100) return '전문의 구분 또는 표기는 100자 이하여야 합니다.';
     if (mb_strlen($memberships, 'UTF-8') > 2000) return '자격 및 학회 정보는 2000자 이하여야 합니다.';
     return '';
 }
@@ -162,9 +164,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'create_doctor') {
         $name = trim($_POST['name'] ?? '');
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
+        $specialty = trim($_POST['specialty'] ?? '');
         $memberships = trim($_POST['memberships'] ?? '');
 
-        $error = validate_doctor_profile($name, $hospital_id, $memberships);
+        $error = validate_doctor_profile($name, $hospital_id, $specialty, $memberships);
         if ($error !== '') {
         } elseif (!doctor_hospital_allowed($hospital_id, $allowed_hospital_ids)) {
             $error = '선택한 병원에 의사를 등록할 권한이 없습니다.';
@@ -174,9 +177,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $stmt = mysqli_prepare($connect,
                     "INSERT INTO gangnamunni_doctors
-                        (hospital_id, name, qualification, photo_url, status, created_at, updated_at)
-                     VALUES (?, ?, ?, '', 'active', NOW(), NOW())");
-                mysqli_stmt_bind_param($stmt, 'iss', $hospital_id, $name, $memberships);
+                        (hospital_id, name, specialty, qualification, photo_url, status, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, '', 'active', NOW(), NOW())");
+                mysqli_stmt_bind_param($stmt, 'isss', $hospital_id, $name, $specialty, $memberships);
                 if (!mysqli_stmt_execute($stmt)) {
                     throw new Exception(mysqli_stmt_error($stmt));
                 }
@@ -210,6 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $doctor_id = intval($_POST['doctor_id'] ?? 0);
         $name = trim($_POST['name'] ?? '');
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
+        $specialty = trim($_POST['specialty'] ?? '');
         $memberships = trim($_POST['memberships'] ?? '');
         $uploaded_photo = null;
         $own_stmt = mysqli_prepare($connect, "SELECT hospital_id, photo_url FROM gangnamunni_doctors WHERE id = ?");
@@ -221,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             && doctor_hospital_allowed((int)$own_row['hospital_id'], $allowed_hospital_ids)
             && doctor_hospital_allowed($hospital_id, $allowed_hospital_ids);
         $photo_url = (string)($own_row['photo_url'] ?? '');
-        $validation_error = validate_doctor_profile($name, $hospital_id, $memberships);
+        $validation_error = validate_doctor_profile($name, $hospital_id, $specialty, $memberships);
 
         // 파일 업로드 처리 (URL보다 우선)
         if ($edit_allowed && $validation_error === '') {
@@ -243,11 +247,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $stmt = mysqli_prepare($connect,
                     "UPDATE gangnamunni_doctors
-                        SET name=?, hospital_id=?, qualification=?, photo_url=?, updated_at=NOW()
+                        SET name=?, hospital_id=?, specialty=?, qualification=?, photo_url=?, updated_at=NOW()
                       WHERE id=?"
                 );
                 if (!$stmt) throw new RuntimeException(mysqli_error($connect));
-                mysqli_stmt_bind_param($stmt, 'sissi', $name, $hospital_id, $memberships, $photo_url, $doctor_id);
+                mysqli_stmt_bind_param($stmt, 'sisssi', $name, $hospital_id, $specialty, $memberships, $photo_url, $doctor_id);
                 if (!mysqli_stmt_execute($stmt)) throw new RuntimeException(mysqli_stmt_error($stmt));
                 mysqli_stmt_close($stmt);
 
@@ -402,7 +406,7 @@ if ($filter_hospital > 0) {
 }
 
 if (!empty($search)) {
-    $where .= ' AND (d.name LIKE ? OR d.qualification LIKE ? OR h.name LIKE ?
+    $where .= ' AND (d.name LIKE ? OR d.specialty LIKE ? OR d.qualification LIKE ? OR h.name LIKE ?
         OR EXISTS (
             SELECT 1
               FROM gangnamunni_doctor_treatments dt_search
@@ -412,8 +416,8 @@ if (!empty($search)) {
                AND tm_search.name LIKE ?
         ))';
     $search_param = "%{$search}%";
-    $where_params = array_merge($where_params, [$search_param, $search_param, $search_param, $search_param]);
-    $where_types .= 'ssss';
+    $where_params = array_merge($where_params, [$search_param, $search_param, $search_param, $search_param, $search_param]);
+    $where_types .= 'sssss';
 }
 
 // ===== 병원 격리: 목록에도 소속 병원 의사만 (상단에서 계산한 $hosp_in 재사용) =====
@@ -590,6 +594,13 @@ include __DIR__ . '/includes/admin_header.php';
                     </select>
                 </div>
                 <div class="col-12">
+                    <label class="form-label fw-semibold small">전문의 구분 또는 표기 <span class="text-danger">*</span></label>
+                    <input type="text" name="specialty" class="form-control form-control-sm" required maxlength="100"
+                           value="<?php echo htmlspecialchars($doctor['specialty'] ?? ''); ?>"
+                           placeholder="예: 피부과 전문의 또는 일반의">
+                    <div class="form-text">사이트에 노출할 표기를 그대로 노출합니다.</div>
+                </div>
+                <div class="col-12">
                     <label class="form-label fw-semibold small">자격 및 소속 학회</label>
                     <textarea name="memberships" class="form-control form-control-sm" rows="5"
                               maxlength="2000"
@@ -661,6 +672,10 @@ include __DIR__ . '/includes/admin_header.php';
                     <div class="col-md-6">
                         <div class="doctor-detail-label">소속 병원</div>
                         <div class="doctor-detail-value"><?php echo htmlspecialchars($doctor['hospital_name'] ?? '-'); ?></div>
+                    </div>
+                    <div class="col-12">
+                        <div class="doctor-detail-label">전문의 구분 또는 표기</div>
+                        <div class="doctor-detail-value"><?php echo htmlspecialchars(trim($doctor['specialty'] ?? '') ?: '일반의'); ?></div>
                     </div>
                     <div class="col-12">
                         <div class="doctor-detail-label">자격 및 소속 학회</div>
@@ -787,6 +802,12 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
                                 <option value="<?php echo (int)$hl['id']; ?>"><?php echo htmlspecialchars($hl['name']); ?></option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">전문의 구분 또는 표기 <span class="text-danger">*</span></label>
+                            <input type="text" name="specialty" class="form-control" required maxlength="100"
+                                   placeholder="예: 피부과 전문의 또는 일반의">
+                            <div class="form-text">사이트에 표시될 문구를 그대로 입력하세요.</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">프로필 사진</label>

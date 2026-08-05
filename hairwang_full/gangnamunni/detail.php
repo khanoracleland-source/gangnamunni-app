@@ -1906,7 +1906,7 @@ function extractImageFromHtml($file_path) {
                         </h3>
                         <p class="doctor-specialty" style="display:flex;align-items:center;gap:6px;">
                             <img src="assets/icons/categories/doctor.jpeg" alt="" style="width:auto;height:16px;object-fit:contain;">
-                            <span style="color:var(--color-primary,#AE1932);">피부과 전문의</span>
+                            <span style="color:var(--color-primary,#AE1932);"><?php echo htmlspecialchars(trim($doctor['specialty'] ?? '') ?: '일반의'); ?></span>
                         </p>
                         <?php
                         // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
@@ -2214,7 +2214,7 @@ function extractImageFromHtml($file_path) {
                         </h3>
                         <p class="doctor-specialty" style="display:flex;align-items:center;gap:6px;">
                             <img src="assets/icons/categories/doctor.jpeg" alt="" style="width:auto;height:16px;object-fit:contain;">
-                            <span style="color:var(--color-primary,#AE1932);">피부과 전문의</span>
+                            <span style="color:var(--color-primary,#AE1932);"><?php echo htmlspecialchars(trim($doctor['specialty'] ?? '') ?: '일반의'); ?></span>
                         </p>
                         <?php
                         // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
