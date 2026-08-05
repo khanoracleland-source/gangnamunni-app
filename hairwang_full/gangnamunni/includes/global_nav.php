@@ -93,7 +93,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 }
 
 .global-nav-logo img {
-    height: 24px;
+    height: 19px;
     width: auto;
 }
 

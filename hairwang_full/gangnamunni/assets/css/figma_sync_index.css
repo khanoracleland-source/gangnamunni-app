@@ -38,6 +38,86 @@
     padding: 18px 14px 2px 0 !important;
 }
 
+/* 지역 선택 패널 — 2026-08-05 reference screenshot */
+#regionPanel {
+    width: calc(100% - 32px);
+    max-width: 608px;
+    padding: 6px 12px 0;
+    border: 1px solid #c9c9c9;
+    box-shadow: none;
+}
+#regionPanel .region-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0;
+    min-height: 38px;
+    margin: 0;
+    align-items: center;
+}
+#regionPanel .region-divider {
+    margin: 0;
+    border-top-color: #e5e5e5;
+}
+#regionPanel label {
+    gap: 8px;
+    min-height: 38px;
+    font-size: 14px;
+}
+#regionPanel .region-cb {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+}
+#regionPanel .region-btn-wrap {
+    height: 40px;
+    margin: 0 -12px;
+    border-top: 1px solid #bdbdbd;
+    overflow: hidden;
+}
+#regionPanel .btn-reset {
+    width: 96px;
+    height: 40px;
+    padding: 0 0 0 10px;
+    text-align: left;
+    font-size: 14px;
+}
+#regionPanel #selectedRegionTags {
+    min-width: 0;
+    height: 40px;
+    padding: 4px 0;
+    flex-wrap: nowrap;
+    align-items: center;
+    overflow: hidden;
+}
+#regionPanel .region-tag {
+    height: 30px;
+    padding: 0 9px;
+    border-color: #df6b78;
+    border-radius: 5px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+#regionPanel .btn-apply {
+    width: 185px;
+    height: 40px;
+    padding: 0 8px;
+    background: #bd1731;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+@media (max-width: 479px) {
+    #regionPanel {
+        width: calc(100% - 24px);
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    #regionPanel .region-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    #regionPanel .region-btn-wrap { margin-left: -10px; margin-right: -10px; }
+    #regionPanel .btn-apply { width: 145px; }
+}
+
 /* 다크 모드 대응 (Figma는 라이트 기준이라 그대로 유지) */
 [data-bs-theme="dark"] .search-section .search-input {
     border-bottom-color: #555 !important;

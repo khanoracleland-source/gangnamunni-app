@@ -1078,9 +1078,17 @@ $page_css = '
         background: #fff; padding: 0 20px calc(24px + env(safe-area-inset-bottom, 0px));
     }
     .confirm-page-head {
-        height: 64px; display: grid; grid-template-columns: 1fr;
+        height: 64px; display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px;
         align-items: center; text-align: center;
     }
+    .confirm-back-button {
+        width: 40px; height: 40px; padding: 0; border: 0; background: transparent;
+        color: #111; display: inline-flex; align-items: center; justify-content: flex-start;
+        font-size: 26px; line-height: 1; cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .confirm-back-button:active { opacity: .55; }
+    .confirm-page-head-spacer { width: 40px; height: 40px; }
     .confirm-page-title { font-size: 19px; font-weight: 600; letter-spacing: -.04em; }
     .booking-state-badge {
         display: inline-flex; align-items: center; gap: 24px; margin: 18px 0 24px;
@@ -1865,7 +1873,11 @@ include __DIR__ . '/includes/header.php';
     <div class="booking-confirm-overlay" id="bookingConfirmOverlay" aria-hidden="true">
         <section class="booking-confirm-page" role="dialog" aria-modal="true" aria-labelledby="bookingConfirmTitle">
             <header class="confirm-page-head">
+                <button type="button" class="confirm-back-button" onclick="closeBookingConfirm()" aria-label="뒤로가기">
+                    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                </button>
                 <h2 class="confirm-page-title" id="bookingConfirmTitle">이대로 예약을 진행할까요?</h2>
+                <span class="confirm-page-head-spacer" aria-hidden="true"></span>
             </header>
             <div class="booking-state-badge"><span>시술예정</span><span id="confirmDday">D-0</span></div>
             <div class="confirm-info-list">

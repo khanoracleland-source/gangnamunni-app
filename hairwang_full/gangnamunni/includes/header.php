@@ -211,6 +211,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
         } else {
             var rect = wrap.getBoundingClientRect();
             panel.style.top = rect.bottom + 'px';
+            overlay.style.top = rect.bottom + 'px';
             panel.style.display = 'block';
             overlay.style.display = 'block';
         }

@@ -565,10 +565,8 @@ body.ae-active { padding-top:0 !important; }
 
         <style>
         /* ===== 시술 카테고리 테이블 공통 ===== */
-        .tc-table-wrap { height: 340px; }
-        @media (min-width: 801px) {
-            .tc-table-wrap { height: 400px; }
-        }
+        /* Jadval balandligini kategoriyalar soni belgilaydi. */
+        .tc-table-wrap { height: auto; }
         .tc-chip {
             display: inline-block; padding: calc(6px * var(--cat-scale,1) * var(--cat-pad,1)) calc(14px * var(--cat-scale,1) * var(--cat-chip,1)); background: var(--bs-body-bg, #fff);
             border-radius: 13px; color: #111; text-decoration: none;
@@ -629,38 +627,35 @@ body.ae-active { padding-top:0 !important; }
 
         /* ===== panel wrap ===== */
         .tc-panel-wrap {
-            display: flex;
-            height: 100%;
-            gap: 0;
+            position: relative;
+            display: block;
+            height: auto;
+            min-height: 0;
             overflow: hidden;
         }
         .tc-panel-right {
-            flex: 2;
-            height: 100%;
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 66.667%;
+            height: auto;
             min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
             padding: 10px;
-            border: 1px solid #D5D5D5;
-            border-left: none;
+            border: none;
             scrollbar-width: none;
         }
         .tc-panel-right::-webkit-scrollbar { display: none; }
         .tc-panel-body {
-            display: grid;
+            display: none;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
             width: 100%;
         }
-        .tc-panel-body + .tc-panel-body {
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid #EFEFEF;
-        }
-        .tc-panel-body:not(.tc-panel-body-active) .tc-chip {
-            color: #ccc;
-            pointer-events: none;
-            cursor: default;
+        .tc-panel-body.tc-panel-body-active {
+            display: grid;
         }
         .tc-panel-body .tc-chip {
             display: block;
@@ -709,16 +704,12 @@ body.ae-active { padding-top:0 !important; }
             display: flex;
             flex-direction: column;
             width: 33.333%;
-            flex-shrink: 0;
-            height: 100%;
-            overflow-y: auto;
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            border: 1px solid #D5D5D5;
+            height: auto;
+            overflow: visible;
+            -webkit-overflow-scrolling: auto;
+            border: none;
             background: var(--bs-tertiary-bg, #F1F1F1);
         }
-        .tc-nav-only::-webkit-scrollbar { display: none; }
         .tc-nav-item {
             padding: 14px 8px;
             text-align: center;
@@ -726,7 +717,7 @@ body.ae-active { padding-top:0 !important; }
             font-weight: 600;
             line-height: 1.3;
             cursor: pointer;
-            border-bottom: 1px solid #E5E5E5;
+            border-bottom: none;
             color: #666;
             transition: background 0.15s, color 0.15s;
         }
@@ -735,7 +726,7 @@ body.ae-active { padding-top:0 !important; }
             background: var(--bs-body-bg, #fff);
             color: #AE1932;
             font-weight: 700;
-            border-left: 3px solid #AE1932;
+            border-left: none;
         }
         </style>
 
@@ -762,11 +753,14 @@ body.ae-active { padding-top:0 !important; }
                 document.querySelectorAll('.tc-nav-item').forEach(function(x) { x.classList.remove('active'); });
                 el.classList.add('active');
                 document.querySelectorAll('.tc-panel-body').forEach(function(x) {
-                    x.style.display = 'grid';
+                    x.style.display = 'none';
                     x.classList.remove('tc-panel-body-active');
                 });
                 var body = document.getElementById('tcBody' + idx);
-                if (body) body.classList.add('tc-panel-body-active');
+                if (body) {
+                    body.style.display = 'grid';
+                    body.classList.add('tc-panel-body-active');
+                }
                 document.querySelectorAll('.tc-below-group').forEach(function(x) { x.style.display = 'none'; });
                 var divider = document.getElementById('tcBelowDivider');
                 if (divider) divider.style.display = 'none';
