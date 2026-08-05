@@ -89,16 +89,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $memo = isset($_POST['memo']) ? trim(stripslashes($_POST['memo'])) : '';
     $quantity = isset($_POST['quantity']) ? max(1, (int)$_POST['quantity']) : 1;
 
-    // 이름/연락처: 폼에 입력란이 없으므로(예약은 로그인 필수) 로그인 회원 정보에서 자동 사용.
-    if (($name === '' || $phone === '') && function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
+    // 이름은 로그인 회원 정보를 사용하고, 연락처는 확인 화면에서 전송된 값을 우선 사용한다.
+    if (($name === '' || !array_key_exists('phone', $_POST)) && function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
         $lm = get_gangnamunni_member();
         if ($name === '')  $name  = trim($lm['mb_name'] ?? '');
-        if ($phone === '') $phone = trim($lm['mb_hp'] ?? ($_SESSION['user_phone'] ?? ''));
+        // 예약 확인 화면에서 사용자가 직접 비운 연락처는 회원 정보로 다시 채우지 않는다.
+        if (!array_key_exists('phone', $_POST)) {
+            $phone = trim((string)($lm['mb_hp'] ?? ''));
+            if ($phone === '') $phone = trim((string)($lm['mb_tel'] ?? ''));
+            if ($phone === '') $phone = trim((string)($_SESSION['user_phone'] ?? ''));
+        }
     }
 
     if (empty($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
         $booking_error = '잘못된 요청입니다. 페이지를 새로고침 후 다시 시도해주세요.';
-    } elseif (empty($name) || empty($phone) || empty($treatment) || empty($date) || empty($time)) {
+    } elseif ($phone === '') {
+        $booking_error = '연락처를 입력해주세요.';
+    } elseif (empty($name) || empty($treatment) || empty($date) || empty($time)) {
         $booking_error = '필수 항목을 모두 입력해주세요.';
     } elseif (($booking_ts = strtotime($date . ' ' . $time)) === false || $booking_ts < time()) {
         // 클라이언트 검증(지난 시간 비활성)을 우회한 과거 시각 예약 차단
@@ -370,7 +377,11 @@ $booking_member = (function_exists('is_gangnamunni_logged_in') && is_gangnamunni
     ? get_gangnamunni_member()
     : [];
 $booking_member_name = trim((string)($booking_member['mb_name'] ?? ''));
-$booking_member_phone = trim((string)($booking_member['mb_hp'] ?? ($_SESSION['user_phone'] ?? '')));
+$booking_member_phone = trim((string)($booking_member['mb_hp'] ?? ''));
+if ($booking_member_phone === '') $booking_member_phone = trim((string)($booking_member['mb_tel'] ?? ''));
+if ($booking_member_phone === '') $booking_member_phone = trim((string)($_SESSION['user_phone'] ?? ''));
+$booking_member_has_saved_phone = trim((string)($booking_member['mb_hp'] ?? '')) !== ''
+    || trim((string)($booking_member['mb_tel'] ?? '')) !== '';
 
 $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true);
 
@@ -1108,6 +1119,21 @@ $page_css = '
     }
     .confirm-person-label { color: #aaa; font-weight: 600; }
     .confirm-person-value { font-weight: 700; }
+    .confirm-phone-field { min-width: 0; }
+    .confirm-phone-input {
+        width: 100%; min-width: 0; height: 38px; padding: 7px 10px;
+        border: 1px solid #ccc; border-radius: 4px; background: #fff;
+        color: #111; font: inherit; font-weight: 700; box-sizing: border-box;
+    }
+    .confirm-phone-input:focus { border-color: #BE1935; outline: 2px solid rgba(190,25,53,.12); }
+    .confirm-phone-input[aria-invalid="true"] { border-color: #BE1935; }
+    .confirm-phone-error { display: none; margin-top: 5px; color: #BE1935; font-size: 12px; font-weight: 600; }
+    .confirm-phone-error.show { display: block; }
+    .confirm-phone-help {
+        grid-column: 2; margin-top: -6px; color: #777;
+        font-size: 12px; line-height: 1.55; word-break: keep-all;
+    }
+    .confirm-phone-help a { color: #BE1935; font-weight: 700; text-decoration: underline; }
     .confirm-notice { background: #fff1f3; padding: 24px 24px 20px; margin-bottom: 20px; }
     .confirm-notice-title { color: #BE1935; font-size: 16px; font-weight: 700; margin-bottom: 10px; }
     .confirm-notice ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.85; }
@@ -1116,7 +1142,7 @@ $page_css = '
         width: 100%; height: 54px; border: 0; background: #BE1935; color: #fff;
         font-size: 17px; font-weight: 700; cursor: pointer;
     }
-    .confirm-submit:disabled { opacity: .55; cursor: wait; }
+    .confirm-submit:disabled { opacity: .55; cursor: not-allowed; }
 
     /* 접수 완료 바텀시트 */
     .booking-success-overlay { align-items: flex-end; background: rgba(0,0,0,.58); }
@@ -1558,6 +1584,7 @@ $page_js = '
         var today = new Date(SERVER_TODAY + "T00:00:00");
         var days = Math.max(0, Math.round((target - today) / 86400000));
         document.getElementById("confirmDday").textContent = "D-" + days;
+        validateConfirmPhone(false);
         overlay.classList.add("open");
         overlay.setAttribute("aria-hidden", "false");
         document.body.style.overflow = "hidden";
@@ -1572,6 +1599,7 @@ $page_js = '
         var form = document.getElementById("bookingForm");
         var button = document.getElementById("confirmBookingButton");
         if (!form || button.disabled) return;
+        if (!validateConfirmPhone(true)) return;
         button.disabled = true;
         button.textContent = "접수 중...";
         try {
@@ -1600,6 +1628,19 @@ $page_js = '
     }
     window.closeBookingConfirm = closeBookingConfirm;
     window.submitConfirmedBooking = submitConfirmedBooking;
+
+    function validateConfirmPhone(showError) {
+        var input = document.getElementById("confirmPhoneInput");
+        var error = document.getElementById("confirmPhoneError");
+        var button = document.getElementById("confirmBookingButton");
+        if (!input) return false;
+        var valid = input.value.trim() !== "";
+        input.setAttribute("aria-invalid", valid ? "false" : "true");
+        if (error) error.classList.toggle("show", !valid && !!showError);
+        if (button) button.disabled = !valid;
+        return valid;
+    }
+    window.validateConfirmPhone = validateConfirmPhone;
 
     var successExitAllowed = false;
     var successLockedElements = [];
@@ -1888,7 +1929,20 @@ include __DIR__ . '/includes/header.php';
             </div>
             <div class="confirm-person">
                 <span class="confirm-person-label">예약자</span><span class="confirm-person-value"><?php echo htmlspecialchars($booking_member_name); ?></span>
-                <span class="confirm-person-label">연락처</span><span class="confirm-person-value"><?php echo htmlspecialchars($booking_member_phone); ?></span>
+                <label class="confirm-person-label" for="confirmPhoneInput">연락처</label>
+                <span class="confirm-phone-field">
+                    <input type="tel" id="confirmPhoneInput" name="phone" form="bookingForm"
+                           class="confirm-phone-input" value="<?php echo htmlspecialchars($booking_member_phone); ?>"
+                           placeholder="연락처를 입력해주세요" autocomplete="tel" inputmode="tel"
+                           aria-describedby="confirmPhoneError" oninput="validateConfirmPhone(false)">
+                    <span class="confirm-phone-error" id="confirmPhoneError" role="alert">연락처를 입력해주세요.</span>
+                </span>
+                <?php if (!$booking_member_has_saved_phone): ?>
+                <p class="confirm-phone-help">
+                    매번 예약할 때마다 연락처를 입력하고 싶지 않으시면
+                    <a href="profile_edit.php">내 정보 수정</a>에서 휴대폰 번호를 미리 등록해 두세요.
+                </p>
+                <?php endif; ?>
             </div>
             <div class="confirm-notice">
                 <div class="confirm-notice-title">고객님 꼭 알아두세요!</div>
