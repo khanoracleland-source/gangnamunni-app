@@ -22,6 +22,10 @@ if (!defined('FCM_SERVICE_ACCOUNT_PATH')) {
     );
 }
 
+if (!defined('FCM_EXPECTED_PROJECT_ID')) {
+    define('FCM_EXPECTED_PROJECT_ID', 'hospital-8425b');
+}
+
 // FCM 설정 키 (gangnamunni_theme_settings 테이블)
 if (!defined('FCM_SERVER_KEY_SETTING')) {
     define('FCM_SERVER_KEY_SETTING', 'fcm_server_key');
@@ -33,7 +37,44 @@ if (!defined('FCM_ENABLED_SETTING')) {
     define('FCM_ENABLED_SETTING', 'fcm_enabled');
 }
 if (!defined('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC')) {
-    define('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC', 'seoulbeauty_android_all');
+    // Must match AppConfig.DEFAULT_FCM_TOPIC in the Android application.
+    define('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC', 'news_test');
+}
+
+/**
+ * Load and validate the Firebase service account used by the Android app.
+ * Never fall back to another product's Firebase project: FCM tokens/topics
+ * are scoped to a project and cross-project sends cannot succeed.
+ */
+function get_fcm_service_account() {
+    static $loaded = false;
+    static $serviceAccount = null;
+
+    if ($loaded) return $serviceAccount;
+    $loaded = true;
+
+    if (!is_readable(FCM_SERVICE_ACCOUNT_PATH)) {
+        error_log('[FCM] Android service account not found: ' . FCM_SERVICE_ACCOUNT_PATH);
+        return null;
+    }
+
+    $serviceAccount = json_decode(file_get_contents(FCM_SERVICE_ACCOUNT_PATH), true);
+    if (!is_array($serviceAccount) ||
+        empty($serviceAccount['project_id']) ||
+        empty($serviceAccount['private_key']) ||
+        empty($serviceAccount['client_email'])) {
+        error_log('[FCM] Android service account JSON is invalid');
+        $serviceAccount = null;
+        return null;
+    }
+
+    if (!hash_equals(FCM_EXPECTED_PROJECT_ID, (string)$serviceAccount['project_id'])) {
+        error_log('[FCM] Project mismatch: expected ' . FCM_EXPECTED_PROJECT_ID .
+            ', received ' . $serviceAccount['project_id']);
+        $serviceAccount = null;
+    }
+
+    return $serviceAccount;
 }
 
 /**
@@ -83,13 +124,11 @@ function get_fcm_project_id($connect) {
     static $cached_id = null;
     if ($cached_id !== null) return $cached_id;
 
-    // 서비스 계정 파일에서 먼저 시도
-    if (file_exists(FCM_SERVICE_ACCOUNT_PATH)) {
-        $sa = json_decode(file_get_contents(FCM_SERVICE_ACCOUNT_PATH), true);
-        if (!empty($sa['project_id'])) {
-            $cached_id = $sa['project_id'];
-            return $cached_id;
-        }
+    // A validated service account is the only safe source for HTTP v1 sends.
+    $sa = get_fcm_service_account();
+    if (!empty($sa['project_id'])) {
+        $cached_id = $sa['project_id'];
+        return $cached_id;
     }
 
     // DB 설정에서 가져오기
@@ -111,12 +150,8 @@ function get_fcm_project_id($connect) {
  * HTTP v1 API에 필요
  */
 function get_google_access_token() {
-    if (!file_exists(FCM_SERVICE_ACCOUNT_PATH)) {
-        return null;
-    }
-
-    $sa = json_decode(file_get_contents(FCM_SERVICE_ACCOUNT_PATH), true);
-    if (empty($sa['private_key']) || empty($sa['client_email'])) {
+    $sa = get_fcm_service_account();
+    if (!$sa) {
         return null;
     }
 
@@ -153,11 +188,13 @@ function get_google_access_token() {
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     $response = curl_exec($ch);
+    $curlError = curl_error($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($httpCode !== 200) {
-        error_log('[FCM] OAuth2 토큰 교환 실패: HTTP ' . $httpCode . ' - ' . $response);
+    if ($response === false || $httpCode !== 200) {
+        error_log('[FCM] OAuth2 토큰 교환 실패: HTTP ' . $httpCode . ' - ' .
+            ($curlError ?: $response));
         return null;
     }
 
@@ -268,8 +305,17 @@ function send_fcm_v1_target(
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     $response = curl_exec($ch);
+    $curlError = curl_error($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+
+    if ($response === false) {
+        return [
+            'success' => false,
+            'http_code' => 0,
+            'response' => ['error' => ['message' => $curlError ?: 'FCM network error']],
+        ];
+    }
 
     return [
         'success' => $httpCode === 200,
@@ -283,7 +329,13 @@ function send_fcm_v1_target(
  */
 function send_push_to_android_broadcast($connect, $title, $body, $link = null) {
     if (!is_fcm_enabled($connect)) {
-        return ['sent' => 0, 'failed' => 0, 'skipped' => true, 'reason' => 'FCM disabled'];
+        return [
+            'sent' => 0,
+            'failed' => 1,
+            'skipped' => true,
+            'reason' => 'FCM disabled',
+            'error' => 'FCM is disabled in Admin settings',
+        ];
     }
 
     $accessToken = get_google_access_token();
@@ -310,6 +362,8 @@ function send_push_to_android_broadcast($connect, $title, $body, $link = null) {
     return [
         'sent' => $result['success'] ? 1 : 0,
         'failed' => $result['success'] ? 0 : 1,
+        'error' => $result['success'] ? null :
+            ($result['response']['error']['message'] ?? 'FCM topic send failed'),
         'api' => 'v1',
         'mode' => 'topic',
         'topic' => SEOULBEAUTY_ANDROID_BROADCAST_TOPIC,
@@ -498,7 +552,13 @@ function send_push_notification($connect, $admin_id, $title, $body, $link = null
  */
 function send_push_to_members($connect, $memberIds, $title, $body, $link = null) {
     if (!is_fcm_enabled($connect)) {
-        return ['sent' => 0, 'failed' => 0, 'skipped' => true, 'reason' => 'FCM disabled'];
+        return [
+            'sent' => 0,
+            'failed' => 1,
+            'skipped' => true,
+            'reason' => 'FCM disabled',
+            'error' => 'FCM is disabled in Admin settings',
+        ];
     }
 
     $sql = "SELECT DISTINCT pt_token, mb_id
@@ -523,13 +583,21 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
 
     $tokenResult = mysqli_query($connect, $sql);
     if (!$tokenResult) {
-        return ['sent' => 0, 'failed' => 0, 'error' => 'Token query failed'];
+        return ['sent' => 0, 'failed' => 1, 'error' => 'Token query failed'];
+    }
+
+    if (mysqli_num_rows($tokenResult) === 0) {
+        return [
+            'sent' => 0,
+            'failed' => 1,
+            'error' => 'No active device tokens are registered',
+        ];
     }
 
     $accessToken = get_google_access_token();
     $projectId = get_fcm_project_id($connect);
     if (!$accessToken || !$projectId) {
-        return ['sent' => 0, 'failed' => 0, 'error' => 'Firebase credentials unavailable'];
+        return ['sent' => 0, 'failed' => 1, 'error' => 'Firebase credentials unavailable'];
     }
 
     $sent = 0;

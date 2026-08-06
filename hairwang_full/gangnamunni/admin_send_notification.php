@@ -232,13 +232,13 @@ if ($is_ajax) {
             !empty($link) ? $link : null
         );
 
-        // Native Android push: members without an active token still receive
-        // the in-site notification created above.
-        // Global announcements intentionally include guest and logged-out
-        // Android installations. Narrower audiences remain member-token based.
+        // Send directly to registered device tokens. A topic send can return
+        // HTTP 200 even when the topic has no subscribers, which made Admin
+        // report success without delivering anything to a phone.
         if ($target === 'all') {
-            $push_result = send_push_to_android_broadcast(
+            $push_result = send_push_to_members(
                 $connect,
+                null,
                 $title,
                 !empty($message) ? $message : $title,
                 !empty($link) ? $link : null
@@ -271,14 +271,21 @@ if ($is_ajax) {
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
 
+        $push_failed = (int)($push_result['failed'] ?? 0);
+        $push_error = trim((string)($push_result['error'] ?? ''));
+        $push_warning = $push_failed > 0 || $push_error !== '';
+
         echo json_encode([
             'success' => true,
             'sent' => $sent_count,
             'push_sent' => (int)($push_result['sent'] ?? 0),
-            'push_failed' => (int)($push_result['failed'] ?? 0),
+            'push_failed' => $push_failed,
+            'push_success' => !$push_warning,
+            'push_error' => $push_error,
             'message' => $sent_count . '명에게 알림 저장, 푸시 '
                 . (int)($push_result['sent'] ?? 0) . '건 성공, '
-                . (int)($push_result['failed'] ?? 0) . '건 실패'
+                . $push_failed . '건 실패'
+                . ($push_error !== '' ? ' (' . $push_error . ')' : '')
         ]);
         exit;
     }
@@ -817,7 +824,7 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
             if (!res) return;
 
             if (res.success) {
-                showToast(res.message, true);
+                showToast(res.message, res.push_success !== false);
                 // 이력 새로고침
                 loadHistory();
                 // 미리보기 업데이트
