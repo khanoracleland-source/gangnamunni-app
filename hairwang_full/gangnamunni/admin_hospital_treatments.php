@@ -34,6 +34,15 @@ $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_m
 require_once __DIR__ . '/includes/hospital_treatment_images.php';
 hti_ensure_schema($connect);
 
+// 세부 옵션명을 자유롭게 저장한다. 기존 설치는 관리자 페이지 진입 시 안전하게 업그레이드한다.
+$option_name_column = false;
+$option_col_r = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
+if ($option_col_r && mysqli_num_rows($option_col_r) > 0) {
+    $option_name_column = true;
+} elseif (@mysqli_query($connect, "ALTER TABLE gangnamunni_hospital_treatment_prices ADD COLUMN option_name VARCHAR(100) NOT NULL DEFAULT '' AFTER hospital_treatment_id")) {
+    $option_name_column = true;
+}
+
 // 승인 절차 폐기에 따라 과거 승인 대기 건을 모두 활성화한다.
 mysqli_query($connect, "UPDATE gangnamunni_hospital_treatments SET status = 'active', is_active = 1, reject_reason = NULL, updated_at = NOW() WHERE status = 'pending'");
 
@@ -249,9 +258,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $in_dv = $_POST['dosage_value'] ?? [];
             $in_du = $_POST['dosage_unit'] ?? [];
             $in_pr = $_POST['price'] ?? [];
+            $in_on = $_POST['option_name'] ?? [];
             if (!is_array($in_dv)) $in_dv = [$in_dv];
             if (!is_array($in_du)) $in_du = [$in_du];
             if (!is_array($in_pr)) $in_pr = [$in_pr];
+            if (!is_array($in_on)) $in_on = [$in_on];
 
             // 유효한 옵션만 추출 (샷수/용량 > 0). 최소 1건 필요.
             $options = [];
@@ -260,7 +271,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $dv = (isset($in_dv[$i]) && trim((string)$in_dv[$i]) !== '') ? floatval($in_dv[$i]) : 0;
                 $du = isset($in_du[$i]) ? trim((string)$in_du[$i]) : '';
                 $pr = (isset($in_pr[$i]) && trim((string)$in_pr[$i]) !== '') ? intval($in_pr[$i]) : 0;
-                if ($dv > 0 && $du !== '' && $pr > 0) $options[] = ['dv' => $dv, 'du' => mb_substr($du, 0, 20, 'UTF-8'), 'pr' => $pr];
+                $on = isset($in_on[$i]) ? trim((string)$in_on[$i]) : '';
+                if ($dv > 0 && $du !== '' && $pr > 0) $options[] = ['name' => mb_substr($on, 0, 100, 'UTF-8'), 'dv' => $dv, 'du' => mb_substr($du, 0, 20, 'UTF-8'), 'pr' => $pr];
             }
 
             if ($id <= 0) {
@@ -290,11 +302,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 mysqli_stmt_execute($del);
                 mysqli_stmt_close($del);
 
-                $ins = mysqli_prepare($connect,
-                    "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?)");
+                $ins = mysqli_prepare($connect, $option_name_column
+                    ? "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, option_name, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?, ?)"
+                    : "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?)");
                 $prices = [];
                 foreach ($options as $so => $opt) {
-                    mysqli_stmt_bind_param($ins, 'idsii', $id, $opt['dv'], $opt['du'], $opt['pr'], $so);
+                    if ($option_name_column) mysqli_stmt_bind_param($ins, 'isdsii', $id, $opt['name'], $opt['dv'], $opt['du'], $opt['pr'], $so);
+                    else mysqli_stmt_bind_param($ins, 'idsii', $id, $opt['dv'], $opt['du'], $opt['pr'], $so);
                     ht_execute_or_throw($ins, '가격 옵션 저장 실패');
                     $prices[] = $opt['pr'];
                 }
@@ -583,13 +597,14 @@ if (!empty($assigned_treatments)) {
     // 마이그레이션 미적용(테이블 없음) 등으로 실패해도 목록 페이지가 500 나지 않도록 방어
     try {
         $pr_r = mysqli_query($connect,
-            "SELECT hospital_treatment_id, dosage_value, dosage_unit, price
+            "SELECT hospital_treatment_id, " . ($option_name_column ? "option_name" : "'' AS option_name") . ", dosage_value, dosage_unit, price
              FROM gangnamunni_hospital_treatment_prices
              WHERE hospital_treatment_id IN ({$ht_in})
              ORDER BY sort_order ASC, id ASC");
         if ($pr_r) while ($pr = mysqli_fetch_assoc($pr_r)) {
             $ht_prices[intval($pr['hospital_treatment_id'])][] = [
                 'dosage_value' => rtrim(rtrim(number_format((float)$pr['dosage_value'], 2, '.', ''), '0'), '.'),
+                'option_name'  => $pr['option_name'] ?? '',
                 'dosage_unit'  => $pr['dosage_unit'],
                 'price'        => intval($pr['price']),
             ];
@@ -919,7 +934,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php if (!empty($opts)): ?>
                             <div class="mt-1 d-flex flex-wrap gap-1 justify-content-center">
                                 <?php foreach ($opts as $op): ?>
-                                <span class="badge bg-light text-dark border"><?php echo htmlspecialchars($op['dosage_value'] . $op['dosage_unit']); ?> · <?php echo number_format($op['price']); ?>만</span>
+                                <span class="badge bg-light text-dark border"><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · <?php echo number_format($op['price']); ?>만</span>
                                 <?php endforeach; ?>
                             </div>
                             <?php endif; ?>
@@ -1159,6 +1174,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                 <div class="modal-body">
                     <p class="mb-2">시술: <strong id="price_treatment_name"></strong></p>
                     <div class="d-flex fw-bold text-muted small px-1 mb-1" style="gap:8px;">
+                        <div style="flex:1.4;">옵션명</div>
                         <div style="flex:1;">샷수/용량</div>
                         <div style="width:96px;">단위</div>
                         <div style="width:110px;">가격 (만원)</div>
@@ -1166,9 +1182,9 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                     <div id="priceRows"></div>
                     <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addPriceRow()">
-                        <i class="bi bi-plus-lg me-1"></i>샷수/용량 추가
+                        <i class="bi bi-plus-lg me-1"></i>세부 옵션 추가
                     </button>
-                    <div class="form-text mt-2">최소 1개 이상 입력해야 합니다. 2개 이상이면 목록에 가격 범위(최소~최대)로 표시됩니다. 변경은 이력에 자동 기록됩니다.</div>
+                    <div class="form-text mt-2">최소 1개 이상 입력해야 합니다. 2개 이상이면 예약 화면에서 고객이 세부 옵션 1개를 선택하게 됩니다. 변경은 이력에 자동 기록됩니다.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
@@ -1320,11 +1336,12 @@ function deleteTreatmentImage(htId, imageId) {
 var HT_PRICES = <?php echo json_encode($ht_prices, JSON_UNESCAPED_UNICODE); ?>;
 var PRICE_UNITS = ['샷','cc','ml','회','병','IU','기타'];
 
-function priceRowHtml(dv, du, pr) {
+function priceRowHtml(dv, du, pr, optionName) {
     var opts = PRICE_UNITS.map(function(u){
         return '<option value="'+u+'"'+(u===du?' selected':'')+'>'+u+'</option>';
     }).join('');
     return '<div class="d-flex align-items-center mb-2 price-row" style="gap:8px;">' +
+        '<input type="text" name="option_name[]" class="form-control form-control-sm" style="flex:1.4;" maxlength="100" placeholder="예: 주름 100샷" value="'+tiEscape(optionName || '')+'">' +
         '<input type="number" name="dosage_value[]" class="form-control form-control-sm" style="flex:1;" min="0.01" step="0.01" required placeholder="예: 100" value="'+(dv==null?'':dv)+'">' +
         '<select name="dosage_unit[]" class="form-select form-select-sm" style="width:96px;">'+opts+'</select>' +
         '<input type="number" name="price[]" class="form-control form-control-sm" style="width:110px;" min="1" step="1" required placeholder="가격" value="'+(pr==null?'':pr)+'">' +
@@ -1332,8 +1349,8 @@ function priceRowHtml(dv, du, pr) {
         '</div>';
 }
 
-function addPriceRow(dv, du, pr) {
-    document.getElementById('priceRows').insertAdjacentHTML('beforeend', priceRowHtml(dv, du || '회', pr));
+function addPriceRow(dv, du, pr, optionName) {
+    document.getElementById('priceRows').insertAdjacentHTML('beforeend', priceRowHtml(dv, du || '회', pr, optionName));
     refreshPriceDelButtons();
 }
 
@@ -1358,7 +1375,7 @@ function openPriceModal(id, name) {
     document.getElementById('priceRows').innerHTML = '';
     var list = HT_PRICES[id] || [];
     if (!list.length) list = [{dosage_value:'', dosage_unit:'회', price:''}];
-    list.forEach(function(o){ addPriceRow(o.dosage_value, o.dosage_unit, o.price); });
+    list.forEach(function(o){ addPriceRow(o.dosage_value, o.dosage_unit, o.price, o.option_name); });
     new bootstrap.Modal(document.getElementById('priceModal')).show();
 }
 

@@ -74,6 +74,10 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrf_token = $_SESSION['csrf_token'];
 
+$booking_option_name_column = false;
+$booking_option_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
+if ($booking_option_col && mysqli_num_rows($booking_option_col) > 0) $booking_option_name_column = true;
+
 // 예약 처리
 $booking_submitted = false;
 $booking_error = '';
@@ -159,6 +163,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $treatments_arr = [];
         }
         $requested_individual_treatments = $treatments_arr;
+        if ($selection_type !== 'package' && count($requested_individual_treatments) > 1) {
+            $booking_error = '현재는 시술 1개만 선택할 수 있습니다.';
+        }
         $package_treatments = [];
 
         // 총 가격은 클라이언트 값을 믿지 않고 DB에서 다시 계산한다.
@@ -225,34 +232,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($booking_error === '' && !empty($requested_individual_treatments)) {
             $sum = 0; $found = false; $verified_treatments = [];
             $unit_stmt = mysqli_prepare($connect,
-                "SELECT ht.price_min AS ht_min,
-                        (SELECT MIN(p.price) FROM gangnamunni_hospital_treatment_prices p
-                           WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_min
+                "SELECT ht.price_min AS ht_min, p.id AS option_id, p.price AS option_price,
+                        " . ($booking_option_name_column ? "p.option_name" : "'' AS option_name") . ",
+                        p.dosage_value, p.dosage_unit,
+                        (SELECT COUNT(*) FROM gangnamunni_hospital_treatment_prices pc
+                           WHERE pc.hospital_treatment_id = ht.id AND pc.price > 0) AS option_count
                  FROM gangnamunni_hospital_treatments ht
                  JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
+                 LEFT JOIN gangnamunni_hospital_treatment_prices p
+                   ON p.hospital_treatment_id = ht.id AND p.price > 0 AND (p.id = ? OR ? = 0)
                  WHERE ht.hospital_id = ? AND tm.name = ? AND ht.status = 'active' AND ht.is_active = 1
-                 LIMIT 1");
+                 ORDER BY p.sort_order ASC, p.id ASC LIMIT 1");
             if ($unit_stmt) {
                 foreach ($requested_individual_treatments as $it) {
                     $tn = trim($it['name'] ?? '');
-                    $qty = max(1, min(99, (int)($it['qty'] ?? 1)));
+                    $qty = 1;
+                    $option_id = max(0, (int)($it['option_id'] ?? 0));
                     if ($tn === '') continue;
-                    mysqli_stmt_bind_param($unit_stmt, 'is', $hospital_id, $tn);
+                    mysqli_stmt_bind_param($unit_stmt, 'iiis', $option_id, $option_id, $hospital_id, $tn);
                     mysqli_stmt_execute($unit_stmt);
                     // get_result() 는 실패 시 false, 조회 결과 없으면 fetch 가 null 이므로 모두 방어
                     $res = mysqli_stmt_get_result($unit_stmt);
                     $r = ($res instanceof mysqli_result) ? $res->fetch_assoc() : null;
                     if (!is_array($r)) continue;
-                    $unit = (int)(($r['opt_min'] ?? 0) ?: ($r['ht_min'] ?? 0));
+                    if ((int)($r['option_count'] ?? 0) > 1 && $option_id <= 0) continue;
+                    if ($option_id > 0 && (int)($r['option_id'] ?? 0) !== $option_id) continue;
+                    $unit = (int)(($r['option_price'] ?? 0) ?: ($r['ht_min'] ?? 0));
                     if ($unit > 0) {
                         $sum += $unit * $qty; $found = true;
-                        $verified_treatments[] = ['name' => $tn, 'qty' => $qty];
+                        $option_label = trim((string)($r['option_name'] ?? ''));
+                        if ($option_label === '') $option_label = rtrim(rtrim(number_format((float)($r['dosage_value'] ?? 0), 2, '.', ''), '0'), '.') . ($r['dosage_unit'] ?? '');
+                        $verified_treatments[] = [
+                            'name' => $tn, 'qty' => $qty,
+                            'option_id' => (int)($r['option_id'] ?? 0),
+                            'option_name' => mb_substr($option_label, 0, 100),
+                            'dosage' => rtrim(rtrim(number_format((float)($r['dosage_value'] ?? 0), 2, '.', ''), '0'), '.') . ($r['dosage_unit'] ?? ''),
+                        ];
                     }
                 }
                 mysqli_stmt_close($unit_stmt);
             }
             if ($found && count($verified_treatments) === count($requested_individual_treatments)) {
-                $individual_summary = implode(', ', array_column($verified_treatments, 'name'));
+                $individual_summary = implode(', ', array_map(static function ($item) {
+                    return $item['name'] . (!empty($item['option_name']) ? ' · ' . $item['option_name'] : '');
+                }, $verified_treatments));
                 $individual_quantity = array_sum(array_column($verified_treatments, 'qty'));
                 $treatments_arr = array_merge($package_treatments, $verified_treatments);
                 $quantity = ($selection_type === 'package' ? 1 : 0) + $individual_quantity;
@@ -439,7 +462,7 @@ $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true);
 // gangnamunni_hospital_treatment_prices) 로드 → 예약 시술 선택/가격 연동.
 // 옵션 가격(샷수/용량)이 있으면 그 MIN~MAX, 없으면 배정 행의 price_min/max 사용.
 $booking_treatments = [];
-$bt_sql = "SELECT tm.id AS treatment_id, tm.name AS name, ht.price_min, ht.price_max,
+$bt_sql = "SELECT ht.id AS hospital_treatment_id, tm.id AS treatment_id, tm.name AS name, ht.price_min, ht.price_max,
              (SELECT MIN(p.price) FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_min,
              (SELECT MAX(p.price) FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_max
            FROM gangnamunni_hospital_treatments ht
@@ -454,6 +477,7 @@ if ($bt_stmt = mysqli_prepare($connect, $bt_sql)) {
         $pmin = (int)(($row['opt_min'] ?? 0) ?: ($row['price_min'] ?? 0));
         $pmax = (int)(($row['opt_max'] ?? 0) ?: ($row['price_max'] ?? 0));
         $booking_treatments[] = [
+            'hospital_treatment_id' => (int)$row['hospital_treatment_id'],
             'treatment_id' => (int)$row['treatment_id'],
             'name' => $row['name'],
             'price_min' => $pmin,
@@ -462,6 +486,27 @@ if ($bt_stmt = mysqli_prepare($connect, $bt_sql)) {
     }
     mysqli_stmt_close($bt_stmt);
 }
+
+// 각 시술의 선택 가능한 세부 옵션. 2개 이상일 때 예약 화면에서 반드시 하나를 고른다.
+$booking_options = [];
+if (!empty($booking_treatments)) {
+    $bt_ids = implode(',', array_map(static function ($t) { return (int)$t['hospital_treatment_id']; }, $booking_treatments));
+    $bo_sql = "SELECT id, hospital_treatment_id, " . ($booking_option_name_column ? "option_name" : "'' AS option_name") . ", dosage_value, dosage_unit, price
+               FROM gangnamunni_hospital_treatment_prices WHERE hospital_treatment_id IN ({$bt_ids}) AND price > 0
+               ORDER BY sort_order ASC, id ASC";
+    if ($bo_r = mysqli_query($connect, $bo_sql)) while ($bo = mysqli_fetch_assoc($bo_r)) {
+        $label = trim((string)$bo['option_name']);
+        $dosage = rtrim(rtrim(number_format((float)$bo['dosage_value'], 2, '.', ''), '0'), '.') . $bo['dosage_unit'];
+        if ($label === '') $label = $dosage;
+        $booking_options[(int)$bo['hospital_treatment_id']][] = [
+            'id' => (int)$bo['id'], 'name' => $label, 'dosage' => $dosage, 'price' => (int)$bo['price'],
+        ];
+    }
+}
+foreach ($booking_treatments as &$booking_treatment) {
+    $booking_treatment['options'] = $booking_options[$booking_treatment['hospital_treatment_id']] ?? [];
+}
+unset($booking_treatment);
 
 // A treatment coming from index -> hospitals -> detail is preselected only when
 // it is still an active, bookable treatment of this hospital.
@@ -965,6 +1010,7 @@ $page_css = '
         display: flex;
         align-items: center;
         justify-content: space-between;
+        min-width: 0;
     }
 
     .qty-stepper {
@@ -1044,6 +1090,41 @@ $page_css = '
         content: ""; flex: 1; height: 1px; background: #e8e8e8;
     }
     .package-item { background: rgba(174, 25, 50, .025); }
+    .inline-treatment-list { display:grid; gap:10px; margin-top:12px; }
+    .inline-treatment-choice { display:flex; align-items:center; gap:10px; padding:14px; border:1px solid #e6e6e6; border-radius:12px; cursor:pointer; background:#fff; }
+    .inline-treatment-choice.selected { border-color:#ae1932; background:#fff7f8; }
+    .inline-treatment-choice input { accent-color:#ae1932; width:18px; height:18px; }
+    .inline-treatment-choice .choice-price { margin-left:auto; font-weight:700; }
+    .detail-option-list { display:grid; gap:10px; width:100%; margin-top:2px; }
+    .detail-option-item {
+        display:grid;
+        grid-template-columns:20px minmax(0, 1fr) auto;
+        align-items:center;
+        gap:12px;
+        min-height:58px;
+        padding:12px 16px;
+        border:1px solid #e5e7eb;
+        border-radius:12px;
+        cursor:pointer;
+        background:#fff;
+        transition:border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+    }
+    .detail-option-item:hover { border-color:#c9cdd3; }
+    .detail-option-item.is-selected {
+        border-color:#ae1932;
+        background:#fff8f9;
+        box-shadow:0 0 0 1px rgba(174,25,50,.06);
+    }
+    .detail-option-item input {
+        width:18px;
+        height:18px;
+        margin:0;
+        accent-color:#ae1932;
+    }
+    .detail-option-copy { min-width:0; display:flex; align-items:baseline; gap:6px; }
+    .detail-option-name { color:#20242b; font-size:15px; font-weight:600; }
+    .detail-option-dosage { color:#8b9199; font-size:12px; }
+    .detail-option-price { color:#20242b; font-size:15px; font-weight:700; white-space:nowrap; }
     /* 옵션 카드 — 다중 선택(토글)이므로 라디오가 아니라 버튼을 쓴다 */
     .sheet-item {
         width: 100%;
@@ -1509,7 +1590,7 @@ $page_js = '
         el.setAttribute("aria-pressed", on ? "true" : "false");
     }
 
-    // 여러 시술 선택 지원: 각 항목 {name, price, qty}
+    // 현재 운영 정책: 시술 1개 + 해당 시술의 세부 옵션 1개.
     var selectedTreatments = [];
     var selectedPackage = null;
     var initialTreatmentName = ' . json_encode(
@@ -1525,10 +1606,28 @@ $page_js = '
     function pickTreatment(btn) {
         var name = btn.getAttribute("data-name") || "";
         var price = btn.getAttribute("data-price") || "";
-        var idx = -1;
-        for (var i = 0; i < selectedTreatments.length; i++) { if (selectedTreatments[i].name === name) { idx = i; break; } }
-        if (idx >= 0) { selectedTreatments.splice(idx, 1); markSheetItem(btn, false); }
-        else { selectedTreatments.push({ name: name, price: price, qty: 1 }); markSheetItem(btn, true); }
+        var options = [];
+        try { options = JSON.parse(btn.getAttribute("data-options") || "[]"); } catch (e) {}
+        var alreadySelected = !!findTreatment(name);
+        selectedTreatments = alreadySelected ? [] : [{
+            name: name, price: price, qty: 1, options: options,
+            option_id: options.length === 1 ? parseInt(options[0].id, 10) : 0,
+            option_name: options.length === 1 ? options[0].name : ""
+        }];
+        document.querySelectorAll("[data-treatment-choice]").forEach(function(el) {
+            var on = !alreadySelected && el.getAttribute("data-name") === name;
+            markSheetItem(el, on);
+            var cb = el.querySelector("input[type=checkbox]"); if (cb) cb.checked = on;
+        });
+        renderSelectedTreatments();
+    }
+    function pickInlineTreatment(input) { pickTreatment(input.closest("[data-treatment-choice]")); }
+    function pickDetailOption(treatmentName, optionId) {
+        var t = findTreatment(treatmentName); if (!t) return;
+        t.option_id = parseInt(optionId, 10) || 0;
+        for (var i = 0; i < (t.options || []).length; i++) if (parseInt(t.options[i].id, 10) === t.option_id) {
+            t.option_name = t.options[i].name || ""; t.price = (Number(t.options[i].price) * 10000).toLocaleString("ko-KR") + "원"; break;
+        }
         renderSelectedTreatments();
     }
     function pickPackage(btn) {
@@ -1555,8 +1654,11 @@ $page_js = '
     }
     function removeTreatment(name) {
         for (var i = 0; i < selectedTreatments.length; i++) { if (selectedTreatments[i].name === name) { selectedTreatments.splice(i, 1); break; } }
-        document.querySelectorAll("#treatmentSheet .sheet-item:not(.package-item)").forEach(function(el) {
-            if (el.getAttribute("data-name") === name) markSheetItem(el, false);
+        document.querySelectorAll("[data-treatment-choice]").forEach(function(el) {
+            if (el.getAttribute("data-name") === name) {
+                markSheetItem(el, false);
+                var cb = el.querySelector("input[type=checkbox]"); if (cb) cb.checked = false;
+            }
         });
         renderSelectedTreatments();
     }
@@ -1609,15 +1711,28 @@ $page_js = '
             item.appendChild(top);
             // 아랫줄: 수량 스테퍼(왼쪽) + 가격(오른쪽 끝)
             var qrow = document.createElement("div"); qrow.className = "st-qty-row";
-            var stepper = document.createElement("div"); stepper.className = "qty-stepper";
-            var minus = document.createElement("button"); minus.type = "button";
-            minus.className = "qty-btn qty-btn--minus" + (t.qty <= 1 ? " is-off" : "");
-            minus.textContent = "−"; minus.onclick = function() { changeItemQty(t.name, -1); };
-            var num = document.createElement("span"); num.className = "qty-num"; num.textContent = t.qty;
-            var plus = document.createElement("button"); plus.type = "button"; plus.className = "qty-btn qty-btn--plus"; plus.textContent = "+"; plus.onclick = function() { changeItemQty(t.name, 1); };
-            stepper.appendChild(minus); stepper.appendChild(num); stepper.appendChild(plus);
-            qrow.appendChild(stepper);
-            if (t.price) { var pEl = document.createElement("span"); pEl.className = "st-price"; pEl.textContent = t.price; qrow.appendChild(pEl); }
+            if ((t.options || []).length > 1) {
+                var optionBox = document.createElement("div"); optionBox.className = "detail-option-list";
+                t.options.forEach(function(o) {
+                    var label = document.createElement("label"); label.className = "detail-option-item";
+                    var radio = document.createElement("input"); radio.type = "radio"; radio.name = "detail_option_" + t.name;
+                    radio.checked = parseInt(t.option_id, 10) === parseInt(o.id, 10);
+                    if (radio.checked) label.classList.add("is-selected");
+                    radio.onchange = function() { pickDetailOption(t.name, o.id); };
+                    var copy = document.createElement("span"); copy.className = "detail-option-copy";
+                    var optionName = document.createElement("span"); optionName.className = "detail-option-name"; optionName.textContent = o.name;
+                    copy.appendChild(optionName);
+                    if (o.dosage && o.name !== o.dosage) {
+                        var dosage = document.createElement("span"); dosage.className = "detail-option-dosage"; dosage.textContent = o.dosage;
+                        copy.appendChild(dosage);
+                    }
+                    var optionPrice = document.createElement("span"); optionPrice.className = "detail-option-price";
+                    optionPrice.textContent = Number(o.price).toLocaleString("ko-KR") + "만원";
+                    label.appendChild(radio); label.appendChild(copy); label.appendChild(optionPrice); optionBox.appendChild(label);
+                });
+                qrow.appendChild(optionBox);
+            }
+            if (t.price && (t.options || []).length <= 1) { var pEl = document.createElement("span"); pEl.className = "st-price"; pEl.textContent = t.price; qrow.appendChild(pEl); }
             item.appendChild(qrow);
             disp.appendChild(item);
         });
@@ -1635,8 +1750,11 @@ $page_js = '
         selectedTreatments.push({
             name: initialTreatmentName,
             price: matchedButton.getAttribute("data-price") || "",
-            qty: 1
+            qty: 1,
+            options: JSON.parse(matchedButton.getAttribute("data-options") || "[]")
         });
+        var initial = selectedTreatments[0];
+        if (initial.options.length === 1) { initial.option_id = initial.options[0].id; initial.option_name = initial.options[0].name; }
         markSheetItem(matchedButton, true);
         renderSelectedTreatments();
     });
@@ -1648,9 +1766,11 @@ $page_js = '
         var dateEl = document.getElementById("bookingDate");
         var timeEl = document.getElementById("timeSelect");
         var treatEl = document.getElementById("treatmentInput");
+        var detailOptionReady = selectedTreatments.every(function(t) { return !(t.options || []).length || (t.options || []).length === 1 || parseInt(t.option_id, 10) > 0; });
         var ready = !!(dateEl && dateEl.value)
                  && !!(timeEl && timeEl.value)
-                 && !!(treatEl && treatEl.value);
+                 && !!(treatEl && treatEl.value)
+                 && detailOptionReady;
         btn.classList.toggle("is-incomplete", !ready);
     }
     window.updateSubmitState = updateSubmitState;
@@ -1671,6 +1791,7 @@ $page_js = '
         var dateValue = document.getElementById("bookingDate").value;
         var timeValue = document.getElementById("timeSelect").value;
         var treatment = document.getElementById("treatmentInput").value;
+        if (selectedTreatments.length && selectedTreatments[0].option_name) treatment += " · " + selectedTreatments[0].option_name;
         document.getElementById("confirmDateTime").textContent = formatBookingDateTime(dateValue, timeValue);
         document.getElementById("confirmTreatment").textContent = treatment;
 
@@ -1778,6 +1899,10 @@ $page_js = '
             var treatment = document.getElementById("treatmentInput").value;
             if (!treatment) {
                 alert("' . term('service', '시술') . '을 선택해주세요.");
+                return false;
+            }
+            if (selectedTreatments.some(function(t) { return (t.options || []).length > 1 && !parseInt(t.option_id, 10); })) {
+                alert("세부 옵션을 선택해주세요.");
                 return false;
             }
             var timeSel = document.getElementById("timeSelect");
@@ -1944,7 +2069,7 @@ include __DIR__ . '/includes/header.php';
         <div class="form-group head-group">
             <div class="section-head-row">
                 <span class="section-head-title"><?php echo term('booking', '예약'); ?>하기</span>
-                <button type="button" class="option-change-btn" onclick="openTreatmentSheet()">
+                <button type="button" class="option-change-btn" onclick="openTreatmentSheet()"<?php echo empty($booking_packages) ? ' style="display:none;"' : ''; ?>>
                     옵션 변경
                 </button>
             </div>
@@ -1955,9 +2080,28 @@ include __DIR__ . '/includes/header.php';
             <input type="hidden" name="treatments_json" id="treatmentsJson" value="[]">
             <input type="hidden" name="selection_type" id="selectionTypeInput" value="treatments">
             <input type="hidden" name="package_id" id="packageIdInput" value="0">
+            <?php if ($preselected_booking_treatment === null): ?>
+            <div class="inline-treatment-list" aria-label="<?php echo term('service', '시술'); ?> 선택">
+                <?php foreach ($booking_treatments as $inline_treatment):
+                    $inline_price = ((int)$inline_treatment['price_min'] > 0)
+                        ? (((int)$inline_treatment['price_max'] > (int)$inline_treatment['price_min'])
+                            ? number_format((int)$inline_treatment['price_min'] * 10000) . '~' . number_format((int)$inline_treatment['price_max'] * 10000) . '원'
+                            : number_format((int)$inline_treatment['price_min'] * 10000) . '원') : '';
+                ?>
+                <label class="inline-treatment-choice" data-treatment-choice
+                       data-name="<?php echo htmlspecialchars($inline_treatment['name'], ENT_QUOTES); ?>"
+                       data-price="<?php echo htmlspecialchars($inline_price, ENT_QUOTES); ?>"
+                       data-options="<?php echo htmlspecialchars(json_encode($inline_treatment['options'], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>">
+                    <input type="checkbox" onchange="pickInlineTreatment(this)">
+                    <span><?php echo htmlspecialchars($inline_treatment['name']); ?></span>
+                    <?php if ($inline_price !== ''): ?><span class="choice-price"><?php echo htmlspecialchars($inline_price); ?></span><?php endif; ?>
+                </label>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
             <!-- 선택된 시술 표시 -->
             <div id="selectedTreatmentDisplay" class="selected-treatment" style="display:none;"></div>
-            <div id="treatmentPlaceholder" class="form-help">‘옵션 변경’에서 패키지와 개별 <?php echo term('service', '시술'); ?>을 함께 선택할 수 있어요.</div>
+            <div id="treatmentPlaceholder" class="form-help"><?php echo $preselected_booking_treatment === null ? '원하는 시술 1개를 선택해주세요.' : '선택한 시술의 세부 옵션을 확인해주세요.'; ?></div>
         </div>
 
         <!-- 예약 날짜 (커스텀: 월 선택 → 날짜 선택) -->
@@ -2095,7 +2239,7 @@ include __DIR__ . '/includes/header.php';
                     ? number_format($bt['price_min'] * 10000) . '~' . number_format($bt['price_max'] * 10000) . '원'
                     : number_format($bt['price_min'] * 10000) . '원';
             }
-            $sheet_items[] = ['name' => $bt['name'], 'price' => $pl];
+            $sheet_items[] = ['name' => $bt['name'], 'price' => $pl, 'options' => $bt['options'] ?? []];
         }
     } elseif (!empty($treatment_tags) && is_array($treatment_tags)) {
         foreach (array_slice($treatment_tags, 0, 20) as $tag) {
@@ -2138,9 +2282,10 @@ include __DIR__ . '/includes/header.php';
                 <?php endif; ?>
                 <div class="sheet-section-title">개별 시술 선택</div>
                 <?php foreach ($sheet_items as $it): ?>
-                <button type="button" class="sheet-item"
+                <button type="button" class="sheet-item" data-treatment-choice
                         data-name="<?php echo htmlspecialchars($it['name'], ENT_QUOTES); ?>"
                         data-price="<?php echo htmlspecialchars($it['price'], ENT_QUOTES); ?>"
+                        data-options="<?php echo htmlspecialchars(json_encode($it['options'] ?? [], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>"
                         aria-pressed="false"
                         onclick="pickTreatment(this)">
                     <span class="sheet-item-name"><?php echo htmlspecialchars($it['name']); ?></span>
