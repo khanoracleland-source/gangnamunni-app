@@ -46,8 +46,13 @@ class Hybrid_Providers_Google extends Hybrid_Provider_Model_OAuth2 {
 	 * {@inheritdoc}
 	 */
 	function loginBegin() {
-		$parameters = array("scope" => $this->scope, "access_type" => "offline");
-		$optionals = array("scope", "access_type", "redirect_uri", "approval_prompt", "hd", "state");
+		$parameters = array(
+			"scope" => $this->scope,
+			"access_type" => "offline",
+			"state" => $this->createOAuthState()
+		);
+		// state is generated per request above and must never be overridden by static config.
+		$optionals = array("scope", "access_type", "redirect_uri", "approval_prompt", "hd");
 
 		foreach ($optionals as $parameter) {
 			if (isset($this->config[$parameter]) && !empty($this->config[$parameter])) {
@@ -229,4 +234,3 @@ class Hybrid_Providers_Google extends Hybrid_Provider_Model_OAuth2 {
 	}
 
 }
-

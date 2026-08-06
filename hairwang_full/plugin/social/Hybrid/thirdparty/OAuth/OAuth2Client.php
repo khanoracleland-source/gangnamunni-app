@@ -28,8 +28,8 @@ class OAuth2Client
   public $sign_token_name          = "access_token";
   public $curl_time_out            = 10;
   public $curl_connect_time_out    = 15;
-  public $curl_ssl_verifypeer      = false;
-  public $curl_ssl_verifyhost      = false;
+  public $curl_ssl_verifypeer      = true;
+  public $curl_ssl_verifyhost      = 2;
   public $curl_header              = array();
   public $curl_useragent           = "OAuth/2 Simple PHP Client v0.1.1; HybridAuth http://hybridauth.sourceforge.net/";
   public $curl_authenticate_method = "POST";
@@ -224,6 +224,12 @@ class OAuth2Client
     curl_setopt($ch, CURLOPT_MAXREDIRS , 10);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER , $this->curl_ssl_verifypeer );
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST , $this->curl_ssl_verifyhost );
+    if (defined('CURL_SSLVERSION_TLSv1_2')) {
+      curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+    }
+    if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTPS')) {
+      curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+    }
     curl_setopt($ch, CURLOPT_HTTPHEADER     , $this->curl_header );
 
     if ($this->curl_compressed){

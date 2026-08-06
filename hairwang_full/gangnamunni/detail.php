@@ -12,6 +12,12 @@ require_once __DIR__ . '/includes/recently_viewed.php';
 require_once __DIR__ . '/includes/before_after_gallery.php';
 require_once __DIR__ . '/includes/social_share.php';
 require_once __DIR__ . '/includes/wishlist_button.php';
+require_once __DIR__ . '/includes/functions.php';
+
+if (empty($_SESSION['consultation_csrf_token'])) {
+    $_SESSION['consultation_csrf_token'] = bin2hex(random_bytes(32));
+}
+$consultation_csrf_token = $_SESSION['consultation_csrf_token'];
 
 $hospital_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -1848,7 +1854,7 @@ function extractImageFromHtml($file_path) {
     <div class="features-section">
         <?php foreach ($hospital_features as $feature): ?>
         <div class="feature-item">
-            <div class="feature-icon"><?php echo $feature['feature_icon']; ?></div>
+            <div class="feature-icon"><?php echo htmlspecialchars((string)$feature['feature_icon'], ENT_QUOTES, 'UTF-8'); ?></div>
             <div class="feature-label"><?php echo htmlspecialchars($feature['feature_label']); ?></div>
         </div>
         <?php endforeach; ?>
@@ -2125,7 +2131,7 @@ function extractImageFromHtml($file_path) {
 
                     <div class="review-body">
                         <?php if (!empty($review['editor_content']) && ($review['editor_type'] ?? '') === 'quill'): ?>
-                        <?php echo $review['editor_content']; ?>
+                        <?php echo sanitizeHtml($review['editor_content']); ?>
                         <?php else: ?>
                         <?php echo nl2br(htmlspecialchars($review['content'])); ?>
                         <?php endif; ?>
@@ -2282,7 +2288,16 @@ function extractImageFromHtml($file_path) {
         <button class="btn btn-primary" onclick="openDoctorConsult()" style="flex:1;min-width:0;border:none;border-radius:0;color:#fff;background:var(--color-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
             <?php echo term('consultation', '상담'); ?> 신청
         </button>
-        <a href="booking.php?id=<?php echo $hospital['id']; ?>" class="btn btn-outline" style="flex:1;min-width:0;border:1px solid var(--color-primary);border-radius:0;color:var(--color-primary);background:var(--bs-body-bg, #fff);text-decoration:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;">
+        <?php
+        // Keep the treatment context that brought the user to this hospital.
+        // booking.php validates it against the hospital's active treatments before preselecting it.
+        $booking_url = 'booking.php?id=' . (int)$hospital['id'];
+        if ($matched_treatment) {
+            $booking_url .= '&treatment_id=' . (int)$matched_treatment['treatment_id']
+                . '&treatment=' . urlencode($matched_treatment['name']);
+        }
+        ?>
+        <a href="<?php echo htmlspecialchars($booking_url, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-outline" style="flex:1;min-width:0;border:1px solid var(--color-primary);border-radius:0;color:var(--color-primary);background:var(--bs-body-bg, #fff);text-decoration:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;">
             <?php echo term('booking', '예약'); ?>하기
         </a>
     </div>
@@ -2292,6 +2307,7 @@ function extractImageFromHtml($file_path) {
         <div class="modal-content">
             <div class="modal-header"><?= term("consultation") ?> 신청</div>
             <form id="consultForm" onsubmit="submitConsultation(event)">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($consultation_csrf_token, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
                 <input type="hidden" name="type" id="consultType" value="doctor">
                 <?php
@@ -2548,6 +2564,8 @@ function extractImageFromHtml($file_path) {
                 submitBtn.disabled = false;
                 submitBtn.textContent = '신청하기';
                 if (data.success) {
+                    const csrfInput = e.target.querySelector('input[name="csrf_token"]');
+                    if (csrfInput && data.csrf_token) csrfInput.value = data.csrf_token;
                     alert('<?php echo term('consultation', '상담'); ?> 신청이 완료되었습니다. 빠른 시일 내에 연락드리겠습니다.');
                     closeConsultModal();
                     e.target.reset();

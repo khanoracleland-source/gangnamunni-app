@@ -55,6 +55,7 @@ $csrf_token = $_SESSION['pwlost_csrf_token'];
 
 $done = false;      // 처리 완료(성공 메시지 노출) 여부
 $error = '';
+$request_id = '';
 
 function gnu_secure_temporary_password($length = 12) {
     $groups = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%*-_'];
@@ -70,7 +71,7 @@ function gnu_secure_temporary_password($length = 12) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['mb_email'] ?? '');
+    $email = strtolower(trim($_POST['mb_email'] ?? ''));
 
     if (empty($_POST['csrf_token']) || !hash_equals($csrf_token, (string)$_POST['csrf_token'])) {
         $error = '요청이 만료되었습니다. 페이지를 새로고침해주세요.';
@@ -86,11 +87,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$ip_rate['allowed'] || !$email_ip_rate['allowed']) {
                 $error = '잠시 후 다시 시도해주세요.';
             } else {
-            $_SESSION['pwlost_last'] = time();
+                $_SESSION['pwlost_last'] = time();
+                $request_id = bin2hex(random_bytes(6));
 
             // 해당 이메일의 활성 회원 조회(중복 이메일이면 안전하게 건너뜀)
             $rows = [];
-            if ($st = mysqli_prepare($connect, "SELECT mb_no, mb_id, mb_name, mb_nick, mb_email, mb_leave_date FROM {$member_table} WHERE mb_email = ?")) {
+            if ($st = mysqli_prepare($connect, "SELECT mb_no, mb_id, mb_name, mb_nick, mb_email, mb_leave_date FROM {$member_table} WHERE LOWER(mb_email) = ?")) {
                 mysqli_stmt_bind_param($st, 's', $email);
                 mysqli_stmt_execute($st);
                 $res = mysqli_stmt_get_result($st);
@@ -112,13 +114,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mb_expires      = time() + 1800;
                 $certify_value   = $mb_nonce . ' ' . $mb_expires . ' ' . $mb_lost_certify;
 
-                if ($up = mysqli_prepare($connect, "UPDATE {$member_table} SET mb_lost_certify = ? WHERE mb_no = ?")) {
-                    mysqli_stmt_bind_param($up, 'si', $certify_value, $mb['mb_no']);
-                    mysqli_stmt_execute($up);
-                    mysqli_stmt_close($up);
+                $href = $bbs_url . '/password_lost_certify.php?mb_no=' . (int)$mb['mb_no'] . '&mb_nonce=' . $mb_nonce;
+                if (!preg_match('#^https?://#i', $href) && preg_match('#^https?://#i', $g5_url)) {
+                    $origin = preg_replace('#(/[^/]*)?$#', '', rtrim($g5_url, '/'));
+                    $href = $origin . '/' . ltrim($href, '/');
                 }
-
-                $href = $bbs_url . '/password_lost_certify.php?mb_no=' . (int)$mb['mb_no'] . '&amp;mb_nonce=' . $mb_nonce;
                 $brand = $config['cf_title'] ?? '서울미녀';
                 $subject = '[' . $brand . '] 비밀번호 재설정 안내';
                 $body = "<div style='font-family:sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;max-width:560px'>"
@@ -127,16 +127,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       . "변경 완료 후 이메일과 아래 비밀번호로 로그인하실 수 있습니다.<br><br>"
                       . "<div style='padding:16px 20px;background:#f7f7f7;border-radius:8px'>"
                       . "변경될 비밀번호 : <strong style='font-size:20px;color:#AE1932;letter-spacing:2px'>" . $change_password . "</strong></div><br>"
-                      . "<a href='" . $href . "' style='display:inline-block;padding:14px 28px;background:#2b0000;color:#fff;text-decoration:none;border-radius:6px;font-weight:700'>비밀번호 변경</a><br><br>"
+                      . "<a href='" . htmlspecialchars($href, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block;padding:14px 28px;background:#2b0000;color:#fff;text-decoration:none;border-radius:6px;font-weight:700'>비밀번호 변경</a><br><br>"
                       . "<span style='font-size:13px;color:#999'>이 링크는 30분 동안만 유효합니다. 본인이 요청하지 않았다면 무시해주세요.</span>"
                       . "</div>";
 
-                if (function_exists('mail_send')) {
-                    $result = mail_send(0, $mb['mb_email'], $subject, $body);
-                    if (!(is_array($result) && !empty($result['success']))) {
-                        error_log('[password_lost] 메일 발송 실패: ' . (is_array($result) ? ($result['error'] ?? 'unknown') : 'no result'));
+                // 메일을 생성하기 전 토큰을 저장해, 빠른 링크 클릭과 DB 저장 사이의 race를 막는다.
+                $token_saved = false;
+                if ($up = mysqli_prepare($connect, "UPDATE {$member_table} SET mb_lost_certify = ? WHERE mb_no = ?")) {
+                    mysqli_stmt_bind_param($up, 'si', $certify_value, $mb['mb_no']);
+                    mysqli_stmt_execute($up);
+                    $token_saved = mysqli_stmt_affected_rows($up) === 1;
+                    mysqli_stmt_close($up);
+                }
+
+                $result = $token_saved && function_exists('mail_send')
+                    ? mail_send(0, $mb['mb_email'], $subject, $body)
+                    : ['error' => $token_saved ? 'mail_send is unavailable' : 'reset token could not be saved'];
+
+                // Mailcow helper ishlamasa, mavjud Gnuboard mailer yo'lini fallback sifatida sinaydi.
+                // Birinchi SMTP qabul qilgan bo'lsa fallback ishlamaydi va dublikat email ketmaydi.
+                if ($token_saved && !(is_array($result) && !empty($result['success']))) {
+                    $primary_error = is_array($result) ? ($result['error'] ?? 'unknown') : 'no result';
+                    if (defined('G5_LIB_PATH') && file_exists(G5_LIB_PATH . '/mailer.lib.php')) {
+                        include_once G5_LIB_PATH . '/mailer.lib.php';
+                    }
+                    if (function_exists('mailer')) {
+                        $from_name = $config['cf_admin_email_name'] ?? ($config['cf_title'] ?? '서울미녀');
+                        $from_email = $config['cf_admin_email'] ?? '';
+                        $fallback_ok = $from_email !== ''
+                            ? mailer($from_name, $from_email, $mb['mb_email'], $subject, $body, 1)
+                            : false;
+                        if ($fallback_ok) {
+                            $result = ['success' => true, 'transport' => 'gnuboard_mailer'];
+                            error_log('[password_lost][' . $request_id . '] primary SMTP 실패, Gnuboard fallback 성공: ' . $primary_error);
+                        } else {
+                            $result = ['error' => 'primary=' . $primary_error . '; fallback failed'];
+                        }
                     }
                 }
+                if (is_array($result) && !empty($result['success'])) {
+                    error_log('[password_lost][' . $request_id . '] SMTP 접수 완료');
+                } else {
+                    // 발송 실패 시 메일에 전달되지 않은 토큰을 즉시 폐기한다.
+                    if ($token_saved && ($clear = mysqli_prepare($connect, "UPDATE {$member_table} SET mb_lost_certify = '' WHERE mb_no = ? AND mb_lost_certify = ?"))) {
+                        mysqli_stmt_bind_param($clear, 'is', $mb['mb_no'], $certify_value);
+                        mysqli_stmt_execute($clear);
+                        mysqli_stmt_close($clear);
+                    }
+                    error_log('[password_lost][' . $request_id . '] 메일 발송 실패: ' . (is_array($result) ? ($result['error'] ?? 'unknown') : 'no result'));
+                }
+            } else {
+                error_log('[password_lost][' . $request_id . '] 발송 대상 없음 또는 제외된 계정');
             }
 
             $done = true; // 존재 여부와 무관하게 동일 안내
@@ -206,6 +247,7 @@ $primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932')
                 <div class="ok-box">
                     입력하신 이메일이 가입되어 있다면<br>비밀번호 재설정 안내 메일을 보내드렸습니다.<br>
                     메일함(스팸함 포함)을 확인해주세요.
+                    <?php if ($request_id): ?><br><small style="color:#718079">요청 번호: <?php echo htmlspecialchars($request_id, ENT_QUOTES); ?></small><?php endif; ?>
                 </div>
                 <a href="<?php echo htmlspecialchars($login_url, ENT_QUOTES); ?>" class="btn btn-primary">로그인으로 돌아가기</a>
             <?php else: ?>

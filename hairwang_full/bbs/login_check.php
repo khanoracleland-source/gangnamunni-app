@@ -91,11 +91,20 @@ if (isset($auto_login) && $auto_login) {
     // 3.27
     // 자동로그인 ---------------------------
     // 쿠키 한달간 저장
-    $key = md5($_SERVER['SERVER_ADDR'] . $_SERVER['SERVER_SOFTWARE'] . $_SERVER['HTTP_USER_AGENT'] . $mb['mb_password']);
-    set_cookie('ck_mb_id', $mb['mb_id'], 86400 * 31);
-    set_cookie('ck_auto', $key, 86400 * 31);
+    $remember_token = function_exists('create_remember_login_token')
+        ? create_remember_login_token($mb, 86400 * 31)
+        : '';
+    if ($remember_token !== '') {
+        set_cookie('ck_mb_id', $mb['mb_id'], 86400 * 31);
+        set_cookie('ck_auto', $remember_token, 86400 * 31);
+    } else {
+        set_cookie('ck_mb_id', '', 0);
+        set_cookie('ck_auto', '', 0);
+        error_log('[login_check] remember token creation failed');
+    }
     // 자동로그인 end ---------------------------
 } else {
+    if (function_exists('revoke_remember_login_token')) revoke_remember_login_token($mb['mb_id']);
     set_cookie('ck_mb_id', '', 0);
     set_cookie('ck_auto', '', 0);
 }

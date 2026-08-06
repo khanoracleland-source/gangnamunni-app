@@ -21,6 +21,29 @@
 class Hybrid_Provider_Model_OAuth2 extends Hybrid_Provider_Model {
 
   /**
+   * Create a one-time OAuth state value bound to the current HybridAuth session.
+   */
+  protected function createOAuthState() {
+    $state = bin2hex(random_bytes(32));
+    Hybrid_Auth::storage()->set('oauth_state.' . strtolower($this->providerId), $state);
+    return $state;
+  }
+
+  /**
+   * Consume and validate the OAuth state returned by the provider.
+   */
+  protected function validateOAuthState() {
+    $key = 'oauth_state.' . strtolower($this->providerId);
+    $expected = Hybrid_Auth::storage()->get($key);
+    Hybrid_Auth::storage()->set($key, null);
+    $received = isset($_REQUEST['state']) ? (string) $_REQUEST['state'] : '';
+
+    if (!is_string($expected) || $expected === '' || $received === '' || !hash_equals($expected, $received)) {
+      throw new Exception("Authentication failed! {$this->providerId} returned an invalid state.", 5);
+    }
+  }
+
+  /**
    * Default permissions
    * @var string
    */
@@ -99,13 +122,18 @@ class Hybrid_Provider_Model_OAuth2 extends Hybrid_Provider_Model {
    */
   function loginBegin() {
     // redirect the user to the provider authentication url
-    Hybrid_Auth::redirect($this->api->authorizeUrl(array("scope" => $this->scope)));
+    Hybrid_Auth::redirect($this->api->authorizeUrl(array(
+      "scope" => $this->scope,
+      "state" => $this->createOAuthState()
+    )));
   }
 
   /**
    * {@inheritdoc}
    */
   function loginFinish() {
+    $this->validateOAuthState();
+
     $error = (array_key_exists('error', $_REQUEST)) ? $_REQUEST['error'] : "";
 
     // check for errors

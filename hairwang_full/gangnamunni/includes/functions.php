@@ -69,7 +69,7 @@ function sanitizeHtml($html) {
             $href = $h[1];
             // http/https/#만 허용
             if (preg_match('/^(https?:\/\/|#|\/)/i', $href)) {
-                $attrs .= ' href="' . $href . '"';
+                $attrs .= ' href="' . htmlspecialchars($href, ENT_QUOTES, 'UTF-8') . '"';
             } else {
                 $attrs .= ' href="#"';
             }
@@ -86,7 +86,7 @@ function sanitizeHtml($html) {
         if (preg_match('/\bsrc\s*=\s*"([^"]*)"/i', $m[1], $s)) {
             $src = $s[1];
             if (preg_match('/^(https?:\/\/|\/)/i', $src)) {
-                $attrs .= ' src="' . $src . '"';
+                $attrs .= ' src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '"';
             }
         }
         if (preg_match('/\balt\s*=\s*"([^"]*)"/i', $m[1], $a)) {

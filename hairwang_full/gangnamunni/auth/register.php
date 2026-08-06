@@ -180,6 +180,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_sm
 }
 
 $reg_error = '';
+$reg_request_id = '';
+
+if (!function_exists('gnu_register_duplicate_log')) {
+    function gnu_register_duplicate_log($connect, $member_table, $email, $stage, $request_id) {
+        $database = 'unknown';
+        if ($db_result = @mysqli_query($connect, 'SELECT DATABASE() AS db_name')) {
+            $db_row = mysqli_fetch_assoc($db_result);
+            $database = (string)($db_row['db_name'] ?? 'unknown');
+            mysqli_free_result($db_result);
+        }
+        $account_hash = substr(hash('sha256', strtolower(trim((string)$email))), 0, 16);
+        error_log('[register][' . $request_id . '] duplicate gate; stage=' . $stage
+            . '; database=' . preg_replace('/[^a-zA-Z0-9_-]/', '', $database)
+            . '; table=' . preg_replace('/[^a-zA-Z0-9_]/', '', (string)$member_table)
+            . '; account=' . $account_hash);
+    }
+}
 
 if (!function_exists('reg_email_otp_gate')) {
     /**
@@ -224,6 +241,7 @@ if (!function_exists('reg_email_otp_gate')) {
 
 // ===== 회원가입 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'register') {
+    $reg_request_id = bin2hex(random_bytes(6));
     $email     = strtolower(trim((string)($_POST['email'] ?? '')));
     $code      = trim($_POST['cert_code'] ?? '');
     $password  = (string)($_POST['password'] ?? '');
@@ -277,7 +295,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
             mysqli_stmt_close($hs);
         }
         if ($dup) {
-            $reg_error = '가입을 진행할 수 없습니다. 이메일을 확인하거나 로그인해주세요.';
+            gnu_register_duplicate_log($connect, $member_table, $email, 'precheck', $reg_request_id);
+            $reg_error = '이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 이용해주세요. (' . $reg_request_id . ')';
         } elseif ($hosp_dup) {
             $reg_error = '이미 병원관리자로 신청/가입된 이메일입니다. 하나의 이메일은 일반회원 또는 병원관리자 중 하나로만 가입할 수 있습니다.';
         } else {
@@ -442,7 +461,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
                     header('Location: ' . $home_url);
                     exit;
                 } elseif ($ok && $affected === 0) {
-                    $reg_error = '가입을 진행할 수 없습니다. 이메일을 확인하거나 로그인해주세요.';
+                    gnu_register_duplicate_log($connect, $member_table, $email, 'atomic_insert', $reg_request_id);
+                    $reg_error = '이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 이용해주세요. (' . $reg_request_id . ')';
                 } else {
                     $reg_error = '가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
                 }
@@ -617,6 +637,7 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
 
             <div class="foot">
                 이미 서울미녀 회원이신가요?<a href="login.php">로그인</a>
+                <span aria-hidden="true">·</span><a href="password_lost.php">비밀번호 찾기</a>
             </div>
 
             <button type="submit" class="btn btn-primary" id="joinBtn" disabled>가입하기</button>

@@ -8,7 +8,7 @@
  *
  * 동작:
  * 1. 이미 Gnuboard 세션 로그인 상태면 아무것도 안 함
- * 2. sb_sso_token 쿠키 또는 ?sso_token= URL 파라미터 확인
+ * 2. sb_sso_token Secure 쿠키 또는 Authorization Bearer 헤더 확인
  * 3. sso_tokens 테이블에서 유효한 토큰 조회
  * 4. g5_member 정보로 Gnuboard 세션 변수 설정 (init.php 사용하지 않음)
  *
@@ -23,19 +23,19 @@ function sso_try_auto_login($connect) {
         return true;
     }
 
-    // SSO 토큰 확인: 쿠키 > URL 파라미터 > Authorization 헤더
+    // SSO 토큰은 URL query string에서 절대 읽지 않는다.
+    // URL은 access log, browser history, analytics, Referer를 통해 누출될 수 있다.
+    // WebView와 브라우저는 HttpOnly 쿠키, API 클라이언트는 Bearer 헤더를 사용한다.
     $sso_token = $_COOKIE['sb_sso_token'] ?? '';
     if (empty($sso_token)) {
-        $sso_token = $_GET['sso_token'] ?? $_GET['token'] ?? '';
-    }
-    if (empty($sso_token)) {
         $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-        if (preg_match('/Bearer\s+(\S+)/', $auth, $m)) {
+        if (preg_match('/^Bearer\s+([A-Fa-f0-9]{64})$/', trim($auth), $m)) {
             $sso_token = $m[1];
         }
     }
 
-    if (empty($sso_token)) {
+    // 발급되는 SSO 토큰은 random_bytes(32)의 64자 hex 문자열이어야 한다.
+    if (!is_string($sso_token) || !preg_match('/^[A-Fa-f0-9]{64}$/', $sso_token)) {
         return false;
     }
 
@@ -59,23 +59,39 @@ function sso_try_auto_login($connect) {
 
     // g5_member 조회
     $mb_id = $sso['g5_mb_id'];
+    $member_table = isset($GLOBALS['g5']['member_table']) ? $GLOBALS['g5']['member_table'] : 'g5_member';
     $stmt = mysqli_prepare($connect,
-        "SELECT * FROM g5_member WHERE mb_id = ? AND mb_leave_date = '' LIMIT 1");
+        "SELECT * FROM {$member_table} WHERE mb_id = ? LIMIT 1");
     mysqli_stmt_bind_param($stmt, 's', $mb_id);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
     $mb = mysqli_fetch_assoc($result);
     mysqli_stmt_close($stmt);
 
-    if (!$mb) {
+    if (!$mb
+        || (!empty($mb['mb_leave_date']) && $mb['mb_leave_date'] <= date('Ymd'))
+        || (!empty($mb['mb_intercept_date']) && $mb['mb_intercept_date'] <= date('Ymd'))
+        || (function_exists('is_use_email_certify')
+            && is_use_email_certify()
+            && !preg_match('/[1-9]/', $mb['mb_email_certify'] ?? ''))) {
         return false;
     }
 
-    // Gnuboard 세션 변수 설정 (common.php가 이미 세션을 시작했을 수 있음)
+    // 인증 전·후 같은 session id를 재사용하지 않도록 fixation을 차단한다.
     if (!session_id()) @session_start();
+    if (!session_regenerate_id(true)) return false;
 
-    $_SESSION['ss_mb_id'] = $mb['mb_id'];
-    $_SESSION['ss_mb_key'] = md5($mb['mb_datetime'] . $mb['mb_ip'] . $mb['mb_id']);
+    if (function_exists('set_session')) {
+        set_session('ss_mb_id', $mb['mb_id']);
+    } else {
+        $_SESSION['ss_mb_id'] = $mb['mb_id'];
+    }
+    if (function_exists('generate_mb_key')) {
+        generate_mb_key($mb);
+    }
+    if (function_exists('update_auth_session_token')) {
+        update_auth_session_token($mb['mb_datetime']);
+    }
 
     // Gnuboard 글로벌 변수 설정
     $is_member = true;

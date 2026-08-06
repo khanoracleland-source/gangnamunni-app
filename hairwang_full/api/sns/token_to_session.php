@@ -314,29 +314,13 @@ function create_gnuboard_session($member) {
     // 7일간 유효한 자동 로그인 쿠키
     // 보안: HTTPS 환경에서만 사용 권장
     if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
-        $cookie_domain = G5_COOKIE_DOMAIN;
-        $auto_login_key = md5($member['mb_id'] . $member['mb_password'] . $member['mb_datetime']);
-
-        // 쿠키 설정 (7일)
-        setcookie(
-            'ck_mb_id',
-            $member['mb_id'],
-            time() + (60 * 60 * 24 * 7), // 7일
-            '/',
-            $cookie_domain,
-            true, // Secure (HTTPS only)
-            true  // HttpOnly
-        );
-
-        setcookie(
-            'ck_auto',
-            $auto_login_key,
-            time() + (60 * 60 * 24 * 7),
-            '/',
-            $cookie_domain,
-            true,
-            true
-        );
+        $remember_token = function_exists('create_remember_login_token')
+            ? create_remember_login_token($member, 60 * 60 * 24 * 7)
+            : '';
+        if ($remember_token !== '') {
+            set_cookie('ck_mb_id', $member['mb_id'], 60 * 60 * 24 * 7);
+            set_cookie('ck_auto', $remember_token, 60 * 60 * 24 * 7);
+        }
     }
 
     // ============================================================

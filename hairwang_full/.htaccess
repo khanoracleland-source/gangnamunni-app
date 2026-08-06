@@ -1,5 +1,19 @@
 RedirectMatch 403 (?i)/\.(history|git|snapshots|stfolder)(/|$)
 
+# Auth/session cookielar HTTP orqali uzatilmasligi uchun production trafikni HTTPSga majburlash.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{HTTP_HOST} !^localhost(?::\d+)?$ [NC]
+RewriteCond %{HTTP_HOST} !^127\.0\.0\.1(?::\d+)?$ [NC]
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
 #### 서울미녀(gangnamunni) 리다이렉트 #####
 <IfModule mod_rewrite.c>
 RewriteEngine On

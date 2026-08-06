@@ -41,7 +41,10 @@ if (isset($_COOKIE['sb_sso_token']) && !empty($_COOKIE['sb_sso_token'])) {
         }
         mysqli_close($sso_conn);
     }
-    setcookie('sb_sso_token', '', time() - 3600, '/', '', true, true);
+    setcookie('sb_sso_token', '', [
+        'expires' => time() - 3600, 'path' => '/', 'secure' => true,
+        'httponly' => true, 'samesite' => 'Lax'
+    ]);
 }
 
 // 이호경님 제안 코드
@@ -49,6 +52,9 @@ session_unset(); // 모든 세션변수를 언레지스터 시켜줌
 session_destroy(); // 세션해제함
 
 // 자동로그인 해제 --------------------------------
+if (isset($member['mb_id']) && function_exists('revoke_remember_login_token')) {
+    revoke_remember_login_token($member['mb_id']);
+}
 set_cookie('ck_mb_id', '', 0);
 set_cookie('ck_auto', '', 0);
 // 자동로그인 해제 end --------------------------------

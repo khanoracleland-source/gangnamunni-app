@@ -29,7 +29,9 @@ if (isset($_GET['provider']) || isset($_REQUEST['provider'])) {
         (string)$raw_social_provider
     )));
 
-    if ($social_provider === 'Kakao' && function_exists('social_check_login_before')) {
+    $supported_social_providers = ['Kakao', 'Google'];
+
+    if (in_array($social_provider, $supported_social_providers, true) && function_exists('social_check_login_before')) {
         $_GET['provider'] = $_REQUEST['provider'] = $social_provider;
         if (array_key_exists('redirect_to_idp', $social_query)) {
             $_GET['redirect_to_idp'] = $_REQUEST['redirect_to_idp'] = '1';
@@ -40,19 +42,18 @@ if (isset($_GET['provider']) || isset($_REQUEST['provider'])) {
         }
 
         error_log(
-            '[Kakao flow] controller enter; callback='
+            '[' . $social_provider . ' flow] controller enter; callback='
             . (isset($_REQUEST['redirect_to_idp']) ? 'yes' : 'no')
-            . '; session=' . session_id()
         );
         social_check_login_before($social_provider);
 
-        error_log('[Kakao flow] social_check_login_before() returned unexpectedly');
+        error_log('[' . $social_provider . ' flow] social_check_login_before() returned unexpectedly');
         http_response_code(500);
-        exit('Kakao login handler returned unexpectedly.');
-    } elseif ($social_provider === 'Kakao') {
-        error_log('[Kakao flow] social_check_login_before() is not loaded');
+        exit($social_provider . ' login handler returned unexpectedly.');
+    } elseif (in_array($social_provider, $supported_social_providers, true)) {
+        error_log('[' . $social_provider . ' flow] social_check_login_before() is not loaded');
         http_response_code(500);
-        exit('Kakao login module is not loaded.');
+        exit($social_provider . ' login module is not loaded.');
     }
 }
 
@@ -70,26 +71,10 @@ $login_csrf_token = $_SESSION['login_csrf_token'];
 function gnu_login_rate_hit($scope, $value, $limit, $window, $record = true) {
     $base = defined('G5_DATA_PATH') ? G5_DATA_PATH : sys_get_temp_dir();
     $dir = $base . '/cache/login_rate';
-    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
-        return ['allowed' => false, 'retry' => 60];
-    }
-    if (random_int(1, 100) === 1) {
-        foreach (glob($dir . '/*.json') ?: [] as $old_file) {
-            if (@filemtime($old_file) < time() - 86400 && ($old_fp = @fopen($old_file, 'c+'))) {
-                if (@flock($old_fp, LOCK_EX | LOCK_NB)) {
-                    if (@filemtime($old_file) < time() - 86400) @unlink($old_file);
-                    @flock($old_fp, LOCK_UN);
-                }
-                @fclose($old_fp);
-            }
-        }
-    }
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) return ['allowed'=>false,'retry'=>60];
     $path = $dir . '/' . hash('sha256', $scope . '|' . strtolower((string)$value)) . '.json';
     $fp = @fopen($path, 'c+');
-    if (!$fp || !flock($fp, LOCK_EX)) {
-        if ($fp) fclose($fp);
-        return ['allowed' => false, 'retry' => 60];
-    }
+    if (!$fp || !flock($fp, LOCK_EX)) { if ($fp) fclose($fp); return ['allowed'=>false,'retry'=>60]; }
     $raw = stream_get_contents($fp);
     $data = json_decode($raw ?: '', true);
     $now = time();
@@ -97,13 +82,26 @@ function gnu_login_rate_hit($scope, $value, $limit, $window, $record = true) {
     $hits = array_values(array_filter($hits, function ($ts) use ($now, $window) { return (int)$ts > $now - $window; }));
     $retry = count($hits) >= $limit ? max(1, $window - ($now - (int)$hits[0])) : 0;
     if (!$retry && $record) $hits[] = $now;
-    ftruncate($fp, 0);
-    rewind($fp);
-    fwrite($fp, json_encode(['hits' => $hits]));
-    fflush($fp);
-    flock($fp, LOCK_UN);
-    fclose($fp);
+    ftruncate($fp, 0); rewind($fp);
+    fwrite($fp, json_encode(['hits'=>$hits])); fflush($fp);
+    flock($fp, LOCK_UN); fclose($fp);
+    if (random_int(1, 100) === 1) {
+        foreach (glob($dir . '/*.json') ?: [] as $old) {
+            if (@filemtime($old) < $now - 86400 && ($old_fp = @fopen($old, 'c+'))) {
+                if (@flock($old_fp, LOCK_EX | LOCK_NB)) { if (@filemtime($old) < $now - 86400) @unlink($old); @flock($old_fp, LOCK_UN); }
+                @fclose($old_fp);
+            }
+        }
+    }
     return ['allowed' => $retry === 0, 'retry' => $retry];
+}
+
+// Mavjud PHP/server error logdan foydalanadi; emailning o'zi logga yozilmaydi.
+function gnu_auth_log($event, $email = '', $details = '') {
+    $account = $email === '' ? '-' : substr(hash('sha256', strtolower(trim($email))), 0, 16);
+    $ip = preg_replace('/[^0-9a-fA-F:.]/', '', (string)($_SERVER['REMOTE_ADDR'] ?? ''));
+    $details = preg_replace('/[\r\n\x00-\x1F\x7F]/', '', (string)$details);
+    error_log('[auth][' . preg_replace('/[^a-z0-9_-]/i', '', $event) . '] account=' . $account . '; ip=' . $ip . ($details !== '' ? '; ' . substr($details, 0, 160) : ''));
 }
 
 // ===== Google reCAPTCHA v3 — 키는 gangnamunni/.env 에서 로드 (git 에 커밋되지 않음) =====
@@ -194,6 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
     $request_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $ip_rate = ['allowed' => true, 'retry' => 0];
     $email_rate = ['allowed' => true, 'retry' => 0];
+    $account_rate = ['allowed' => true, 'retry' => 0];
     $basic_request_valid = !empty($_POST['csrf_token'])
         && hash_equals($login_csrf_token, (string)$_POST['csrf_token'])
         && $email !== '' && $password !== '';
@@ -201,18 +200,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
         // 먼저 기존 실패 횟수만 확인하고, 아래의 실제 실패 지점에서만 추가한다.
         $ip_rate = gnu_login_rate_hit('ip', $request_ip, 10, 900, false);
         $email_rate = gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, false);
+        // IPdan mustaqil limit distributed botnetning bitta hisobga hujumini cheklaydi.
+        // Mavjud va mavjud bo'lmagan email uchun bir xil ishlaydi, account enumeration bermaydi.
+        $account_rate = gnu_login_rate_hit('account', strtolower($email), 20, 3600, false);
     }
 
     if (empty($_POST['csrf_token']) || !hash_equals($login_csrf_token, (string)$_POST['csrf_token'])) {
         $login_error = '요청이 만료되었습니다. 페이지를 새로고침해주세요.';
     } elseif ($email === '' || $password === '') {
         $login_error = '이메일과 비밀번호를 입력해주세요.';
-    } elseif (!$ip_rate['allowed'] || !$email_rate['allowed']) {
-        $retry = max((int)$ip_rate['retry'], (int)$email_rate['retry']);
+    } elseif (!$ip_rate['allowed'] || !$email_rate['allowed'] || !$account_rate['allowed']) {
+        $retry = max((int)$ip_rate['retry'], (int)$email_rate['retry'], (int)$account_rate['retry']);
+        gnu_auth_log('rate_limited', $email, 'retry=' . $retry);
         $login_error = '로그인 시도가 너무 많습니다. ' . $retry . '초 후 다시 시도해주세요.';
     } elseif (gnu_verify_recaptcha($recaptcha_secret, $_POST['recaptcha_token'] ?? '', $request_ip, 'login', preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '')) === 'fail') {
         gnu_login_rate_hit('ip', $request_ip, 10, 900, true);
         gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, true);
+        gnu_login_rate_hit('account', strtolower($email), 20, 3600, true);
+        gnu_auth_log('recaptcha_failed', $email);
         $login_error = '자동 방지 확인에 실패했습니다. 잠시 후 다시 시도해주세요.';
     } else {
         $mb_id_found = '';
@@ -229,13 +234,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
             // 이메일 존재 여부와 비밀번호 오류를 구분하지 않아 계정 수집을 막는다.
             gnu_login_rate_hit('ip', $request_ip, 10, 900, true);
             gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, true);
+            gnu_login_rate_hit('account', strtolower($email), 20, 3600, true);
             if (function_exists('run_event')) run_event('password_is_wrong', 'login', $login_mb);
+            gnu_auth_log('password_failed', $email);
             $login_error = '이메일 또는 비밀번호가 올바르지 않습니다.';
         } elseif (!empty($login_mb['mb_intercept_date']) && $login_mb['mb_intercept_date'] <= date('Ymd')) {
+            gnu_login_rate_hit('account', strtolower($email), 20, 3600, true);
+            gnu_auth_log('account_blocked', $email);
             $login_error = '이메일 또는 비밀번호가 올바르지 않습니다.';
         } elseif (!empty($login_mb['mb_leave_date']) && $login_mb['mb_leave_date'] <= date('Ymd')) {
+            gnu_login_rate_hit('account', strtolower($email), 20, 3600, true);
+            gnu_auth_log('account_deleted', $email);
             $login_error = '이메일 또는 비밀번호가 올바르지 않습니다.';
         } elseif (function_exists('is_use_email_certify') && is_use_email_certify() && !preg_match('/[1-9]/', $login_mb['mb_email_certify'] ?? '')) {
+            gnu_login_rate_hit('account', strtolower($email), 20, 3600, true);
+            gnu_auth_log('email_unverified', $email);
             $login_error = '이메일 또는 비밀번호가 올바르지 않습니다.';
         } else {
             if (function_exists('run_event')) run_event('login_session_before', $login_mb, false);
@@ -248,14 +261,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
             if (function_exists('update_auth_session_token')) update_auth_session_token($login_mb['mb_datetime']);
 
             if ($auto_login) {
-                $key = md5(($_SERVER['SERVER_ADDR'] ?? '') . ($_SERVER['SERVER_SOFTWARE'] ?? '') . ($_SERVER['HTTP_USER_AGENT'] ?? '') . $login_mb['mb_password']);
-                set_cookie('ck_mb_id', $login_mb['mb_id'], 86400 * 31);
-                set_cookie('ck_auto', $key, 86400 * 31);
+                $remember_token = function_exists('create_remember_login_token')
+                    ? create_remember_login_token($login_mb, 86400 * 31)
+                    : '';
+                if ($remember_token !== '') {
+                    set_cookie('ck_mb_id', $login_mb['mb_id'], 86400 * 31);
+                    set_cookie('ck_auto', $remember_token, 86400 * 31);
+                } else {
+                    set_cookie('ck_mb_id', '', 0);
+                    set_cookie('ck_auto', '', 0);
+                    error_log('[login] remember token creation failed');
+                }
             } else {
+                if (function_exists('revoke_remember_login_token')) revoke_remember_login_token($login_mb['mb_id']);
                 set_cookie('ck_mb_id', '', 0);
                 set_cookie('ck_auto', '', 0);
             }
             if (function_exists('run_event')) run_event('member_login_check', $login_mb, $after_url, false);
+            gnu_auth_log('login_success', $email, $auto_login ? 'remember=1' : 'remember=0');
             header('Location: ' . $after_url);
             exit;
         }
@@ -273,14 +296,18 @@ if (!empty($rb_builder['bu_logo_pc'])) {
 }
 $brand_name = function_exists('getTheme') ? getTheme('site_name', '서울미녀') : '서울미녀';
 $primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932') : '#AE1932';
-// 카카오 버튼은 관리자 설정(소셜로그인 사용 + kakao 서비스 + REST 키)이 모두 갖춰졌을 때만 노출한다.
+// 소셜 버튼은 관리자 설정(소셜로그인 사용 + 서비스 + OAuth 키)이 모두 갖춰졌을 때만 활성화한다.
 // 소셜 플러그인 로드 여부와 무관하게 g5_config 값만으로 판단(플러그인 미로드 페이지에서도 정확).
-$kakao_services = array_map('trim', explode(',', (string)($config['cf_social_servicelist'] ?? '')));
+$social_services = array_map('strtolower', array_map('trim', explode(',', (string)($config['cf_social_servicelist'] ?? ''))));
 $kakao_enabled = !empty($config['cf_social_login_use'])
-    && in_array('kakao', $kakao_services, true)
+    && in_array('kakao', $social_services, true)
     && !empty($config['cf_kakao_rest_key']);
+$google_enabled = !empty($config['cf_social_login_use'])
+    && in_array('google', $social_services, true)
+    && !empty($config['cf_google_clientid'])
+    && !empty($config['cf_google_secret']);
 $kakao_url = $g5_url . '/gangnamunni/auth/login.php?provider=kakao&url=' . urlencode($after_url);
-// 카카오 미설정 시엔 이메일 폼을 바로 펼쳐, 깨진 카카오 버튼 없이 로그인할 수 있게 한다.
+$google_url = $g5_url . '/gangnamunni/auth/login.php?provider=google&url=' . urlencode($after_url);
 $open_email = $login_error !== '';
 ?>
 <!DOCTYPE html>
@@ -307,6 +334,7 @@ $open_email = $login_error !== '';
         .btn:active { transform: scale(.99); }
         .btn-primary { background: var(--primary); color: #fff; }
         .btn-kakao { background: #FEE500; color: #191600; }
+        .btn-google { background: #fff; color: #202124; border: 1px solid #dadce0; margin-top: 10px; }
         .btn-email { background: #191919; color: #fff; margin-top: 10px; }
         .email-panel { max-height: 0; overflow: hidden; transition: max-height .32s ease; }
         .email-panel.open { max-height: 520px; }
@@ -351,6 +379,15 @@ $open_email = $login_error !== '';
         <div class="login-actions">
             <a href="<?php echo $kakao_enabled ? htmlspecialchars($kakao_url, ENT_QUOTES) : '#'; ?>" class="btn btn-kakao" <?php if (!$kakao_enabled) echo 'onclick="alert(\'카카오 로그인이 아직 설정되지 않았습니다. 이메일로 시작하기를 이용해 주세요.\'); return false;"'; ?>>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.48 2 10.78c0 2.76 1.82 5.18 4.57 6.56l-.93 3.47c-.08.3.25.54.51.36l4.1-2.73c.57.08 1.16.12 1.75.12 5.52 0 10-3.48 10-7.78S17.52 3 12 3Z"/></svg> 카카오톡으로 시작하기
+            </a>
+            <a href="<?php echo $google_enabled ? htmlspecialchars($google_url, ENT_QUOTES) : '#'; ?>" class="btn btn-google" <?php if (!$google_enabled) echo 'onclick="alert(\'구글 로그인이 아직 설정되지 않았습니다. 이메일로 시작하기를 이용해 주세요.\'); return false;"'; ?>>
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.91h5.38a4.6 4.6 0 0 1-2 3.02v2.54h3.24c1.9-1.75 2.98-4.33 2.98-7.4Z"/>
+                    <path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.42l-3.24-2.54c-.9.6-2.05.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.62A10 10 0 0 0 12 22Z"/>
+                    <path fill="#FBBC05" d="M6.39 13.87A6 6 0 0 1 6.08 12c0-.65.11-1.28.31-1.87V7.51H3.04A10 10 0 0 0 2 12c0 1.61.39 3.14 1.04 4.49l3.35-2.62Z"/>
+                    <path fill="#EA4335" d="M12 6c1.47 0 2.79.51 3.83 1.5l2.87-2.87A9.62 9.62 0 0 0 12 2a10 10 0 0 0-8.96 5.51l3.35 2.62C7.18 7.76 9.39 6 12 6Z"/>
+                </svg>
+                Google로 시작하기
             </a>
             <button type="button" class="btn btn-email" id="emailToggle" aria-expanded="<?php echo $open_email ? 'true' : 'false'; ?>" aria-controls="emailPanel" onclick="toggleEmail()">
                 <i class="bi bi-envelope-fill"></i> 이메일로 시작하기

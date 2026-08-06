@@ -41,6 +41,8 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
     */
     function loginFinish()
     {
+        $this->validateOAuthState();
+
         $error = (array_key_exists('error', $_REQUEST)) ? $_REQUEST['error'] : "";
         // check for errors
         if ( $error ){

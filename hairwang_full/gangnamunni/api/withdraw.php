@@ -67,21 +67,12 @@ try {
         session_destroy();
     }
 
-    foreach (['sb_sso_token', 'ck_mb_id', 'ck_auto'] as $cookie_name) {
+    foreach (['sb_sso_token', md5('ck_mb_id'), md5('ck_auto')] as $cookie_name) {
         setcookie($cookie_name, '', [
             'expires' => time() - 3600, 'path' => '/', 'secure' => !empty($_SERVER['HTTPS']),
             'httponly' => true, 'samesite' => 'Lax'
         ]);
     }
-
-    // SSO 쿠키 삭제
-    setcookie('sb_sso_token', '', [
-        'expires' => time() - 3600,
-        'path' => '/',
-        'secure' => true,
-        'httponly' => true,
-        'samesite' => 'Lax'
-    ]);
 
     jsonSuccess(['message' => '회원 탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.']);
 } catch (Throwable $e) {

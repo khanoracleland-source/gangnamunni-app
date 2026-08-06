@@ -22,7 +22,8 @@ class OAuth1Client{
 	public $decode_json           = true;
 	public $curl_time_out         = 10;
 	public $curl_connect_time_out = 15;
-	public $curl_ssl_verifypeer   = false;
+	public $curl_ssl_verifypeer   = true;
+	public $curl_ssl_verifyhost   = 2;
 	public $curl_auth_header      = true;
 	public $curl_useragent        = "OAuth/1 Simple PHP Client v0.1; HybridAuth http://hybridauth.sourceforge.net/";
 	public $curl_proxy            = null;
@@ -198,6 +199,9 @@ class OAuth1Client{
 		curl_setopt( $ci, CURLOPT_RETURNTRANSFER, true );
 		curl_setopt( $ci, CURLOPT_HTTPHEADER    , array('Expect:') );
 		curl_setopt( $ci, CURLOPT_SSL_VERIFYPEER, $this->curl_ssl_verifypeer );
+		curl_setopt( $ci, CURLOPT_SSL_VERIFYHOST, $this->curl_ssl_verifyhost );
+		if (defined('CURL_SSLVERSION_TLSv1_2')) curl_setopt($ci, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+		if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTPS')) curl_setopt($ci, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
 		curl_setopt( $ci, CURLOPT_HEADERFUNCTION, array($this, 'getHeader') );
 		curl_setopt( $ci, CURLOPT_HEADER        , false );
 

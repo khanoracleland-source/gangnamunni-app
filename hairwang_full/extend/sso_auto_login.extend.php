@@ -23,7 +23,7 @@ function _sso_try_auto_login() {
     global $connect;
 
     $token = $_COOKIE['sb_sso_token'] ?? '';
-    if (empty($token) || strlen($token) !== 64) return;
+    if (!is_string($token) || !preg_match('/^[A-Fa-f0-9]{64}$/', $token)) return;
     if (!$connect) return;
 
     // 토큰 검증
@@ -41,8 +41,15 @@ function _sso_try_auto_login() {
     $mb = get_member($sso['g5_mb_id']);
     if (!$mb || empty($mb['mb_id'])) return;
 
-    // 탈퇴/차단 회원 제외
-    if (!empty($mb['mb_leave_date']) || !empty($mb['mb_intercept_date'])) return;
+    // 탈퇴/차단/이메일 미인증 회원은 일반 로그인과 동일하게 제외한다.
+    if ((!empty($mb['mb_leave_date']) && $mb['mb_leave_date'] <= date('Ymd'))
+        || (!empty($mb['mb_intercept_date']) && $mb['mb_intercept_date'] <= date('Ymd'))
+        || (function_exists('is_use_email_certify')
+            && is_use_email_certify()
+            && !preg_match('/[1-9]/', $mb['mb_email_certify'] ?? ''))) return;
+
+    // 인증 전의 session id를 폐기해 session fixation을 차단한다.
+    if (!session_regenerate_id(true)) return;
 
     // 자동 로그인 세션 설정
     set_session('ss_mb_id', $mb['mb_id']);

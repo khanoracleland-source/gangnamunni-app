@@ -239,9 +239,9 @@ ini_set("session.gc_probability", 1); // session.gc_probability는 session.gc_di
 ini_set("session.gc_divisor", 100); // session.gc_divisor는 session.gc_probability와 결합하여 각 세션 초기화 시에 gc(쓰레기 수거) 프로세스를 시작할 확률을 정의합니다. 확률은 gc_probability/gc_divisor를 사용하여 계산합니다. 즉, 1/100은 각 요청시에 GC 프로세스를 시작할 확률이 1%입니다. session.gc_divisor의 기본값은 100입니다.
 
 if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
-    session_set_cookie_params(0, '/', null, true, true);
+    session_set_cookie_params(array('lifetime'=>0, 'path'=>'/', 'domain'=>'', 'secure'=>true, 'httponly'=>true, 'samesite'=>'Lax'));
 } else {
-    session_set_cookie_params(0, '/', null, false, true);
+    session_set_cookie_params(array('lifetime'=>0, 'path'=>'/', 'domain'=>'', 'secure'=>false, 'httponly'=>true, 'samesite'=>'Lax'));
 }
 
 ini_set("session.cookie_domain", G5_COOKIE_DOMAIN);
@@ -398,7 +398,7 @@ if( $config['cf_cert_use'] || (defined('G5_YOUNGCART_VER') && G5_YOUNGCART_VER) 
             $cookie_session_name = method_exists('XenoPostToForm', 'g5_session_name') ? XenoPostToForm::g5_session_name() : 'PHPSESSID'; 
             foreach ($headers as $header) {
                 if (!preg_match('~^Set-Cookie: '.$cookie_session_name.'=~', $header)) continue;
-                $header = preg_replace('~(; secure; HttpOnly)?$~', '; secure; HttpOnly; SameSite=None', $header);
+                $header = preg_replace('~(?:; secure)?; HttpOnly(?:; SameSite=Lax)?$~i', '; secure; HttpOnly; SameSite=None', $header);
                 header($header, false);
                 $g5['session_cookie_samesite'] = 'none';
                 break;
@@ -573,10 +573,9 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
             $sql = " select mb_password, mb_intercept_date, mb_leave_date, mb_email_certify, mb_datetime from {$g5['member_table']} where mb_id = '{$tmp_mb_id}' ";
             $row = sql_fetch($sql);
             if($row['mb_password']){
-                $key = md5($_SERVER['SERVER_ADDR'] . $_SERVER['SERVER_SOFTWARE'] . $_SERVER['HTTP_USER_AGENT'] . $row['mb_password']);
-                // 쿠키에 저장된 키와 같다면
+                // 쿠키의 원문 토큰과 DB의 해시가 일치하면
                 $tmp_key = get_cookie('ck_auto');
-                if ($tmp_key === $key && $tmp_key) {
+                if ($tmp_key && function_exists('verify_remember_login_token') && verify_remember_login_token($tmp_mb_id, $tmp_key)) {
                     // 차단, 탈퇴가 아니고 메일인증이 사용이면서 인증을 받았다면
                     if ($row['mb_intercept_date'] == '' &&
                         $row['mb_leave_date'] == '' &&
@@ -584,6 +583,14 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
                         // 세션에 회원아이디를 저장하여 로그인으로 간주
                         set_session('ss_mb_id', $tmp_mb_id);
                         if(function_exists('update_auth_session_token')) update_auth_session_token($row['mb_datetime']);
+
+                        // Har bir ishlatishda tokenni aylantirib, o'g'irlangan eski cookieni qayta ishlatishni to'xtatadi.
+                        $rotated_token = create_remember_login_token(array('mb_id'=>$tmp_mb_id));
+                        if ($rotated_token) set_cookie('ck_auto', $rotated_token, 86400 * 31);
+                        else {
+                            set_cookie('ck_mb_id', '', 0);
+                            set_cookie('ck_auto', '', 0);
+                        }
 
                         // 페이지를 재실행
                         echo "<script type='text/javascript'> window.location.reload(); </script>";

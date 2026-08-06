@@ -87,8 +87,16 @@ if (session_id()) {
 }
 
 // 5. Gnuboard 자동 로그인 쿠키도 제거
-setcookie('ck_mb_id', '', time() - 3600, '/');
-setcookie('ck_auto', '', time() - 3600, '/');
+foreach (['ck_mb_id', 'ck_auto'] as $cookie_name) {
+    // Gnuboard set_cookie() hashes the public cookie name with md5.
+    setcookie(md5($cookie_name), '', [
+        'expires' => time() - 3600,
+        'path' => '/',
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
 
 echo json_encode([
     'success' => true,
