@@ -25,7 +25,10 @@ if (function_exists('getSettingValue')) {
     $_phone_auth    = getSettingValue($connect, 'booking_phone_auth', '0') === '1';
     $_is_member = function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in();
     if ($_require_login && !$_phone_auth && !$_is_member && !$is_admin) {
-        header('Location: auth/login.php?url=' . urlencode('/hairwang/gangnamunni/booking.php?id=' . (isset($_GET['id']) ? intval($_GET['id']) : 0)));
+        $login_return_url = '/hairwang/gangnamunni/booking.php?id=' . (isset($_GET['id']) ? intval($_GET['id']) : 0);
+        if (isset($_GET['treatment_id'])) $login_return_url .= '&treatment_id=' . max(0, (int)$_GET['treatment_id']);
+        if (isset($_GET['treatment'])) $login_return_url .= '&treatment=' . urlencode(trim((string)$_GET['treatment']));
+        header('Location: auth/login.php?url=' . urlencode($login_return_url));
         exit;
     }
 }
@@ -79,20 +82,37 @@ $hms_api_success = false;    // HMS API 전송 성공 여부
 $is_ajax_booking = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['response_mode'] ?? '') === 'ajax';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $post_string = static function (string $key, string $default = ''): string {
+        $value = $_POST[$key] ?? $default;
+        return is_string($value) || is_numeric($value) ? trim(stripslashes((string)$value)) : $default;
+    };
     // init.php(그누보드)가 $_POST 에 슬래시를 추가하므로 stripslashes 후 사용해야
     // mysqli_real_escape_string 과 이중 이스케이프되지 않는다. (treatments_json 과 동일 처리)
-    $name = isset($_POST['name']) ? trim(stripslashes($_POST['name'])) : '';
-    $phone = isset($_POST['phone']) ? trim(stripslashes($_POST['phone'])) : '';
-    $treatment = isset($_POST['treatment']) ? trim(stripslashes($_POST['treatment'])) : '';
-    $date = isset($_POST['date']) ? trim(stripslashes($_POST['date'])) : '';
-    $time = isset($_POST['time']) ? trim(stripslashes($_POST['time'])) : '';
-    $memo = isset($_POST['memo']) ? trim(stripslashes($_POST['memo'])) : '';
+    $name = $post_string('name');
+    $phone = $post_string('phone');
+    $treatment = $post_string('treatment');
+    $date = $post_string('date');
+    $time = $post_string('time');
+    $memo = $post_string('memo');
     $quantity = isset($_POST['quantity']) ? max(1, (int)$_POST['quantity']) : 1;
 
+    // Bound public input before any DB/API work. The visible UI only emits these
+    // 30-minute slots, so accepting arbitrary times server-side is unnecessary.
+    $allowed_booking_times = [];
+    for ($hour = 9; $hour <= 18; $hour++) {
+        $allowed_booking_times[] = sprintf('%02d:00', $hour);
+        if ($hour < 18) $allowed_booking_times[] = sprintf('%02d:30', $hour);
+    }
+    $date_object = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+    $valid_date = $date_object && $date_object->format('Y-m-d') === $date;
+    $max_booking_date = new DateTimeImmutable('+1 year');
+
     // 이름은 로그인 회원 정보를 사용하고, 연락처는 확인 화면에서 전송된 값을 우선 사용한다.
-    if (($name === '' || !array_key_exists('phone', $_POST)) && function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
+    if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
         $lm = get_gangnamunni_member();
-        if ($name === '')  $name  = trim($lm['mb_name'] ?? '');
+        // A logged-in booking must always belong to the authenticated member;
+        // never trust a forged hidden `name` field.
+        $name = trim((string)($lm['mb_name'] ?? ''));
         // 예약 확인 화면에서 사용자가 직접 비운 연락처는 회원 정보로 다시 채우지 않는다.
         if (!array_key_exists('phone', $_POST)) {
             $phone = trim((string)($lm['mb_hp'] ?? ''));
@@ -101,12 +121,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if (empty($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+    $posted_csrf = $post_string('csrf_token');
+    if ($posted_csrf === '' || !hash_equals((string)($_SESSION['csrf_token'] ?? ''), $posted_csrf)) {
         $booking_error = '잘못된 요청입니다. 페이지를 새로고침 후 다시 시도해주세요.';
+    } elseif (mb_strlen($name) > 100 || mb_strlen($phone) > 30 || mb_strlen($memo) > 2000) {
+        $booking_error = '입력한 내용이 허용 길이를 초과했습니다.';
     } elseif ($phone === '') {
         $booking_error = '연락처를 입력해주세요.';
+    } elseif (!preg_match('/^[0-9+()\-\s]{7,30}$/', $phone)) {
+        $booking_error = '연락처 형식을 확인해주세요.';
     } elseif (empty($name) || empty($treatment) || empty($date) || empty($time)) {
         $booking_error = '필수 항목을 모두 입력해주세요.';
+    } elseif (!$valid_date || $date_object > $max_booking_date) {
+        $booking_error = '예약 날짜를 확인해주세요.';
+    } elseif (!in_array($time, $allowed_booking_times, true)) {
+        $booking_error = '선택할 수 없는 예약 시간입니다.';
     } elseif (($booking_ts = strtotime($date . ' ' . $time)) === false || $booking_ts < time()) {
         // 클라이언트 검증(지난 시간 비활성)을 우회한 과거 시각 예약 차단
         $booking_error = '지난 시간은 ' . term('booking', '예약') . '할 수 없습니다. 다른 시간을 선택해주세요.';
@@ -119,12 +148,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // 선택 방식: 개별 시술 다중 선택 또는 패키지 1개
-        $selection_type = ($_POST['selection_type'] ?? 'treatments') === 'package' ? 'package' : 'treatments';
+        $selection_type = $post_string('selection_type', 'treatments') === 'package' ? 'package' : 'treatments';
         $selected_package_id = max(0, (int)($_POST['package_id'] ?? 0));
         // init.php(그누보드)가 $_POST 에 슬래시를 추가하므로 stripslashes 후 파싱해야 JSON 이 유효.
-        $treatments_json = stripslashes($_POST['treatments_json'] ?? '[]');
+        $treatments_json = $post_string('treatments_json', '[]');
         $treatments_arr = json_decode($treatments_json, true);
         if (!is_array($treatments_arr)) $treatments_arr = [];
+        if (count($treatments_arr) > 20) {
+            $booking_error = '시술은 한 번에 최대 20개까지 선택할 수 있습니다.';
+            $treatments_arr = [];
+        }
         $requested_individual_treatments = $treatments_arr;
         $package_treatments = [];
 
@@ -253,24 +286,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $insert_query = "INSERT INTO gangnamunni_bookings
                         (hospital_id, hospital_name, name, phone, mb_id, treatment, treatments_json, quantity, booking_date, booking_time, memo, price, created_at)
-                        VALUES (
-                            {$hospital_id},
-                            '" . mysqli_real_escape_string($connect, $hospital['name']) . "',
-                            '" . mysqli_real_escape_string($connect, $name) . "',
-                            '" . mysqli_real_escape_string($connect, $phone) . "',
-                            '" . mysqli_real_escape_string($connect, $booking_mb_id) . "',
-                            '" . mysqli_real_escape_string($connect, $treatment) . "',
-                            '" . mysqli_real_escape_string($connect, json_encode($treatments_arr, JSON_UNESCAPED_UNICODE)) . "',
-                            {$quantity},
-                            '" . mysqli_real_escape_string($connect, $date) . "',
-                            '" . mysqli_real_escape_string($connect, $time) . "',
-                            '" . mysqli_real_escape_string($connect, $memo) . "',
-                            " . ($booking_price !== null ? $booking_price : 'NULL') . ",
-                            NOW()
-                        )";
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        $insert_stmt = mysqli_prepare($connect, $insert_query);
+        $treatments_json_for_db = json_encode($treatments_arr, JSON_UNESCAPED_UNICODE);
+        $price_for_db = $booking_price !== null ? (int)$booking_price : null;
+        if ($insert_stmt) {
+            mysqli_stmt_bind_param($insert_stmt, 'issssssisssi',
+                $hospital_id, $hospital['name'], $name, $phone, $booking_mb_id,
+                $treatment, $treatments_json_for_db, $quantity, $date, $time, $memo, $price_for_db
+            );
+        }
 
-        if (mysqli_query($connect, $insert_query)) {
+        if ($insert_stmt && mysqli_stmt_execute($insert_stmt)) {
             $booking_id = mysqli_insert_id($connect);
+            mysqli_stmt_close($insert_stmt);
             $booking_submitted = true;
 
             // 관리자 FCM + 인앱 알림
@@ -301,13 +330,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // 의사/진료과 선택이 있으면 포함 (없으면 서버가 자동 배정)
                     if ($selected_doctor_id) {
-                        $appointment_data['doctor_id'] = $selected_doctor_id;
+                        $doctor_stmt = mysqli_prepare($connect,
+                            "SELECT hms_doctor_id FROM gangnamunni_doctors
+                             WHERE id = ? AND hospital_id = ? AND status = 'active' LIMIT 1");
+                        if ($doctor_stmt) {
+                            mysqli_stmt_bind_param($doctor_stmt, 'ii', $selected_doctor_id, $hospital_id);
+                            mysqli_stmt_execute($doctor_stmt);
+                            $doctor_row = mysqli_fetch_assoc(mysqli_stmt_get_result($doctor_stmt));
+                            mysqli_stmt_close($doctor_stmt);
+                            if ($doctor_row && !empty($doctor_row['hms_doctor_id'])) {
+                                $appointment_data['doctor_id'] = (int)$doctor_row['hms_doctor_id'];
+                            }
+                        }
                     }
                     if ($selected_department) {
-                        // gangnamunni_departments의 hms_department_id 조회
-                        $dept_result = mysqli_query($connect,
-                            "SELECT hms_department_id FROM gangnamunni_departments WHERE id = {$selected_department}");
-                        $dept_row = $dept_result ? mysqli_fetch_assoc($dept_result) : null;
+                        // Scope the department to the selected hospital's HMS tenant.
+                        $dept_stmt = mysqli_prepare($connect,
+                            "SELECT hms_department_id FROM gangnamunni_departments
+                             WHERE id = ? AND hms_tenant_id = ? LIMIT 1");
+                        $tenant_id = (string)$hospital['hms_hospital_id'];
+                        $dept_row = null;
+                        if ($dept_stmt) {
+                            mysqli_stmt_bind_param($dept_stmt, 'is', $selected_department, $tenant_id);
+                            mysqli_stmt_execute($dept_stmt);
+                            $dept_row = mysqli_fetch_assoc(mysqli_stmt_get_result($dept_stmt));
+                            mysqli_stmt_close($dept_stmt);
+                        }
                         if ($dept_row) {
                             $appointment_data['department_id'] = (int)$dept_row['hms_department_id'];
                         }
@@ -356,7 +404,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: booking_detail.php?booking_id=' . (int)$booking_id . '&new=1');
             exit;
         } else {
-            error_log("[서울미녀] 예약 INSERT 실패: " . mysqli_error($connect) . " | query=" . $insert_query);
+            $insert_error = $insert_stmt ? mysqli_stmt_error($insert_stmt) : mysqli_error($connect);
+            error_log("[서울미녀] 예약 INSERT 실패: " . $insert_error);
+            if ($insert_stmt) mysqli_stmt_close($insert_stmt);
             $booking_error = term('booking', '예약') . ' 중 오류가 발생했습니다. 다시 시도해주세요.';
         }
         }
@@ -389,7 +439,7 @@ $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true);
 // gangnamunni_hospital_treatment_prices) 로드 → 예약 시술 선택/가격 연동.
 // 옵션 가격(샷수/용량)이 있으면 그 MIN~MAX, 없으면 배정 행의 price_min/max 사용.
 $booking_treatments = [];
-$bt_sql = "SELECT tm.name AS name, ht.price_min, ht.price_max,
+$bt_sql = "SELECT tm.id AS treatment_id, tm.name AS name, ht.price_min, ht.price_max,
              (SELECT MIN(p.price) FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_min,
              (SELECT MAX(p.price) FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_max
            FROM gangnamunni_hospital_treatments ht
@@ -403,9 +453,31 @@ if ($bt_stmt = mysqli_prepare($connect, $bt_sql)) {
     while ($row = mysqli_fetch_assoc($bt_r)) {
         $pmin = (int)(($row['opt_min'] ?? 0) ?: ($row['price_min'] ?? 0));
         $pmax = (int)(($row['opt_max'] ?? 0) ?: ($row['price_max'] ?? 0));
-        $booking_treatments[] = ['name' => $row['name'], 'price_min' => $pmin, 'price_max' => $pmax];
+        $booking_treatments[] = [
+            'treatment_id' => (int)$row['treatment_id'],
+            'name' => $row['name'],
+            'price_min' => $pmin,
+            'price_max' => $pmax,
+        ];
     }
     mysqli_stmt_close($bt_stmt);
+}
+
+// A treatment coming from index -> hospitals -> detail is preselected only when
+// it is still an active, bookable treatment of this hospital.
+$requested_treatment_id = max(0, (int)($_GET['treatment_id'] ?? 0));
+$requested_treatment_name = trim((string)($_GET['treatment'] ?? ''));
+$preselected_booking_treatment = null;
+foreach ($booking_treatments as $bookable_treatment) {
+    $id_matches = $requested_treatment_id > 0
+        && $bookable_treatment['treatment_id'] === $requested_treatment_id;
+    $name_matches = $requested_treatment_id === 0
+        && $requested_treatment_name !== ''
+        && hash_equals($bookable_treatment['name'], $requested_treatment_name);
+    if ($id_matches || $name_matches) {
+        $preselected_booking_treatment = $bookable_treatment;
+        break;
+    }
 }
 
 // 현재 병원에서 예약 가능한 패키지. 구성 시술이 모두 활성인 패키지만 노출한다.
@@ -1440,6 +1512,10 @@ $page_js = '
     // 여러 시술 선택 지원: 각 항목 {name, price, qty}
     var selectedTreatments = [];
     var selectedPackage = null;
+    var initialTreatmentName = ' . json_encode(
+        $preselected_booking_treatment['name'] ?? '',
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    ) . ';
 
     function findTreatment(name) {
         for (var i = 0; i < selectedTreatments.length; i++) { if (selectedTreatments[i].name === name) return selectedTreatments[i]; }
@@ -1547,6 +1623,24 @@ $page_js = '
         });
     }
 
+    // The sheet is rendered later in the document, so initialize after parsing.
+    // Users may still open "옵션 변경" and add any other treatments.
+    document.addEventListener("DOMContentLoaded", function() {
+        if (!initialTreatmentName || findTreatment(initialTreatmentName)) return;
+        var matchedButton = null;
+        document.querySelectorAll("#treatmentSheet .sheet-item:not(.package-item)").forEach(function(el) {
+            if (el.getAttribute("data-name") === initialTreatmentName) matchedButton = el;
+        });
+        if (!matchedButton) return;
+        selectedTreatments.push({
+            name: initialTreatmentName,
+            price: matchedButton.getAttribute("data-price") || "",
+            qty: 1
+        });
+        markSheetItem(matchedButton, true);
+        renderSelectedTreatments();
+    });
+
     // 날짜/시간/시술이 모두 선택돼야 제출 버튼이 활성 색상이 된다.
     function updateSubmitState() {
         var btn = document.querySelector(".btn-submit[type=submit]");
@@ -1631,10 +1725,11 @@ $page_js = '
 
     function validateConfirmPhone(showError) {
         var input = document.getElementById("confirmPhoneInput");
+        var nameInput = document.getElementById("confirmNameInput");
         var error = document.getElementById("confirmPhoneError");
         var button = document.getElementById("confirmBookingButton");
         if (!input) return false;
-        var valid = input.value.trim() !== "";
+        var valid = input.value.trim() !== "" && (!nameInput || nameInput.value.trim() !== "");
         input.setAttribute("aria-invalid", valid ? "false" : "true");
         if (error) error.classList.toggle("show", !valid && !!showError);
         if (button) button.disabled = !valid;
@@ -1929,6 +2024,14 @@ include __DIR__ . '/includes/header.php';
             </div>
             <div class="confirm-person">
                 <span class="confirm-person-label">예약자</span><span class="confirm-person-value"><?php echo htmlspecialchars($booking_member_name); ?></span>
+                <?php if ($booking_member_name === ''): ?>
+                <label class="confirm-person-label" for="confirmNameInput">예약자명</label>
+                <span class="confirm-phone-field">
+                    <input type="text" id="confirmNameInput" name="name" form="bookingForm"
+                           class="confirm-phone-input" maxlength="100" required
+                           placeholder="예약자명을 입력해주세요" autocomplete="name">
+                </span>
+                <?php endif; ?>
                 <label class="confirm-person-label" for="confirmPhoneInput">연락처</label>
                 <span class="confirm-phone-field">
                     <input type="tel" id="confirmPhoneInput" name="phone" form="bookingForm"
