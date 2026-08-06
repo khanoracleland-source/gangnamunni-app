@@ -123,6 +123,9 @@ if (!function_exists('gnu_load_env')) {
 $_env = gnu_load_env(dirname(__DIR__) . '/.env');
 $recaptcha_site_key = $_env['RECAPTCHA_SITE_KEY'] ?? (getenv('RECAPTCHA_SITE_KEY') ?: '');
 $recaptcha_secret   = $_env['RECAPTCHA_SECRET']   ?? (getenv('RECAPTCHA_SECRET')   ?: '');
+$recaptcha_request_host = strtolower(preg_replace('/:\\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+$recaptcha_is_local = in_array($recaptcha_request_host, ['127.0.0.1', 'localhost', '::1'], true);
+$recaptcha_enabled = !$recaptcha_is_local && $recaptcha_site_key !== '' && $recaptcha_secret !== '';
 if (!function_exists('gnu_verify_recaptcha')) {
     // reCAPTCHA v3 검증 결과를 상태 문자열로 반환한다.
     //   'skip' : 비밀키 미설정 / 구글 서버 도달 불가 (로그인 rate-limit은 계속 적용)
@@ -213,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
         $retry = max((int)$ip_rate['retry'], (int)$email_rate['retry'], (int)$account_rate['retry']);
         gnu_auth_log('rate_limited', $email, 'retry=' . $retry);
         $login_error = '로그인 시도가 너무 많습니다. ' . $retry . '초 후 다시 시도해주세요.';
-    } elseif (gnu_verify_recaptcha($recaptcha_secret, $_POST['recaptcha_token'] ?? '', $request_ip, 'login', preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '')) === 'fail') {
+    } elseif ($recaptcha_enabled && gnu_verify_recaptcha($recaptcha_secret, $_POST['recaptcha_token'] ?? '', $request_ip, 'login', $recaptcha_request_host) === 'fail') {
         gnu_login_rate_hit('ip', $request_ip, 10, 900, true);
         gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, true);
         gnu_login_rate_hit('account', strtolower($email), 20, 3600, true);
@@ -317,7 +320,9 @@ $open_email = $login_error !== '';
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>로그인 | <?php echo htmlspecialchars($brand_name); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <?php if ($recaptcha_enabled) { ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo htmlspecialchars($recaptcha_site_key, ENT_QUOTES); ?>"></script>
+    <?php } ?>
     <style>
         :root { --primary: <?php echo htmlspecialchars($primary, ENT_QUOTES); ?>; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -432,6 +437,7 @@ $open_email = $login_error !== '';
                 <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/bbs/register.php">회원가입</a>
             </div>
 
+            <?php if ($recaptcha_enabled) { ?>
             <div class="recaptcha-notice">
                 이 페이지는 Google reCAPTCHA의 보호를 받아<br>사용자가 로봇이 아님을 확인합니다.
                 <div>
@@ -441,6 +447,7 @@ $open_email = $login_error !== '';
                     <p>Google <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">개인정보처리방침</a> 및 <a href="https://policies.google.com/terms" target="_blank" rel="noopener">서비스 약관</a>이 적용됩니다.</p>
                 </div>
             </div>
+            <?php } ?>
         </div>
     </div>
 
@@ -467,6 +474,7 @@ $open_email = $login_error !== '';
     }
     // reCAPTCHA v3: 이메일 로그인 제출 시 토큰 발급 후 실제 전송
     // 키/도메인 오류 등으로 토큰 발급이 실패해도 폼은 반드시 제출한다(서버가 검증·안내) → 버튼이 먹통되지 않음
+    <?php if ($recaptcha_enabled) { ?>
     (function () {
         var emailForm = document.getElementById('emailForm');
         if (!emailForm) return;
@@ -486,6 +494,7 @@ $open_email = $login_error !== '';
             setTimeout(go, 6000);                            // 안전장치: 6초 내 무응답이면 그대로 제출
         });
     })();
+    <?php } ?>
 
     document.getElementById('auto_login').addEventListener('change', function () {
         if (this.checked) {
