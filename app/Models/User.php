@@ -292,6 +292,8 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
         'twitter_url',
         'instagram_url',
         'linkedIn_url',
+        'google_id',
+        'google_issuer',
         'is_super_admin_default',
         'is_admin_default',
         'region_code',

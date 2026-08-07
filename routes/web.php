@@ -218,6 +218,14 @@ Route::get('paystack-success',[PurchaseMedicineController::class, 'PaystackPayme
 
 Auth::routes(['verify' => true]);
 
+Route::middleware(['guest', 'throttle:8,1'])->group(function () {
+    Route::get('/auth/google', [AuthController\LoginController::class, 'redirectToGoogle'])
+        ->name('auth.google');
+});
+Route::get('/auth/google/callback', [AuthController\LoginController::class, 'handleGoogleCallback'])
+    ->middleware(['guest', 'throttle:30,1'])
+    ->name('auth.google.callback');
+
 Route::get('/home', [HomeController::class, 'index'])->middleware('verified');
 
 Route::middleware('auth', 'verified', 'xss', 'multi_tenant', 'checkUserStatus', 'check_subscription', 'check_super_admin_role')->group(function () {
