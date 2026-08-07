@@ -258,7 +258,7 @@ $business_hours_text = ($business_hours[$today_name] ?? $default_hours[$today_na
 
 // 현재 탭
 $current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'home';
-// 의료진/이벤트/후기 탭: 병원 정보를 영업시간까지만 노출 (주소/지도/언어/특징 숨김)
+// 의료진/이벤트/후기 탭: 병원 정보를 영업시간까지만 노출 (주소/지도/특징 숨김)
 $minimal_info_tab = in_array($current_tab, ['doctors', 'events', 'reviews'], true);
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $items_per_page = 20;
@@ -363,9 +363,9 @@ if ($doctors_count == 0) {
 
 if ($current_tab === 'doctors' || $current_tab === 'home') {
     if ($doctors_source === 'gangnamunni') {
-        $doc_stmt = mysqli_prepare($connect, "SELECT id, name as doctor_name, specialty, experience, bio as description, qualification, photo_url, status, schedule FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' ORDER BY id ASC LIMIT 20");
+        $doc_stmt = mysqli_prepare($connect, "SELECT id, name as doctor_name, experience, bio as description, qualification, photo_url, status, schedule FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' ORDER BY id ASC LIMIT 20");
     } else {
-        $doc_stmt = mysqli_prepare($connect, "SELECT id, doctor_name, specialty, description, NULL as experience, NULL as qualification, NULL as photo_url, 'active' as status, NULL as schedule FROM crawled_doctors WHERE hospital_id = ? ORDER BY id ASC LIMIT 20");
+        $doc_stmt = mysqli_prepare($connect, "SELECT id, doctor_name, description, NULL as experience, NULL as qualification, NULL as photo_url, 'active' as status, NULL as schedule FROM crawled_doctors WHERE hospital_id = ? ORDER BY id ASC LIMIT 20");
     }
     if ($doc_stmt) {
         mysqli_stmt_bind_param($doc_stmt, 'i', $hospital_id);
@@ -400,8 +400,6 @@ if ($current_tab === 'reviews') {
         $reviews_data[] = $review;
     }
 }
-
-// #23: YouTube tab removed per client request 2026-03-16
 
 // 이미지 추출 함수
 function extractImageFromHtml($file_path) {
@@ -1160,12 +1158,6 @@ function extractImageFromHtml($file_path) {
             margin-bottom: 4px;
         }
 
-        .doctor-specialty {
-            font-size: 15px ;
-            color: var(--color-text-secondary);
-            margin-bottom: 8px;
-        }
-
         .doctor-description {
             font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1));
             color: var(--color-text-secondary);
@@ -1434,12 +1426,6 @@ function extractImageFromHtml($file_path) {
             flex-shrink: 0;
         }
     
-    /* [1차 검수 #11 - 2026-05-28] 작동하지 않는 플로팅 채팅 버튼 숨김 처리 */
-    .chat-float-btn { display: none !important; }
-    /* 플로팅 채팅 버튼 - 기존 (참고용으로만 보존) */
-    .chat-float-btn-legacy { position:fixed; bottom:80px; right:calc(50% - 300px); z-index:90; width:52px; height:52px; border-radius:50%; background:#AE1932; color:#fff; border:none; box-shadow:0 4px 12px rgba(124,58,237,0.4); cursor:pointer; font-size:calc(22px * var(--fs-scale,1) * var(--fs-page,1)); display:flex; align-items:center; justify-content:center; transition:transform 0.2s; }
-    .chat-float-btn:hover { transform:scale(1.1); }
-    @media(max-width:640px) { .chat-float-btn { right:16px; } }
     /* AI 리뷰 요약 */
     .ai-review-section { padding:20px; margin:16px 0; background:var(--bs-tertiary-bg,#f8f9fa); border-radius:14px; }
     .ai-review-section h3 { font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; margin-bottom:12px; }
@@ -1826,26 +1812,6 @@ function extractImageFromHtml($file_path) {
         <?php endif; ?>
         <?php endif; ?>
 
-        <!-- 전화번호 -->
-    
-
-        <!-- 소통 가능 언어 (의료진/이벤트 탭에서는 숨김 · DB 컬럼 없어 임시 기본값) -->
-        <?php if (!$minimal_info_tab): ?>
-        <?php
-        $hospital_languages = !empty($hospital['languages']) ? $hospital['languages'] : 'English, 中文, 日本語, Español, Tiếng Việt, Монгол хэл, Bahasa Indonesia';
-        $lang_list = array_filter(array_map('trim', explode(',', $hospital_languages)));
-        ?>
-        <div class="info-row" style="border-top:1px solid var(--color-border); border-bottom:1px solid var(--color-border);">
-            <div class="info-content">
-                <h3 style="font-size: 18px; margin-bottom: 16px; color: var(--color-text-primary);">소통 가능 언어</h3>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                    <?php foreach ($lang_list as $lang): ?>
-                    <span style="background:#f2f2f2; color:#000; padding:4px 10px; border-radius:4px; font-size:13px;"><?php echo htmlspecialchars($lang); ?></span>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
     </div>
 
 
@@ -1910,10 +1876,6 @@ function extractImageFromHtml($file_path) {
                             <span style="font-size:11px;color:#ef4444;font-weight:400;margin-left:6px;"><?php echo $doc_status_label; ?></span>
                             <?php endif; ?>
                         </h3>
-                        <p class="doctor-specialty" style="display:flex;align-items:center;gap:6px;">
-                            <img src="assets/icons/categories/doctor.jpeg" alt="" style="width:auto;height:16px;object-fit:contain;">
-                            <span style="color:var(--color-primary,#AE1932);"><?php echo htmlspecialchars(trim($doctor['specialty'] ?? '') ?: '일반의'); ?></span>
-                        </p>
                         <?php
                         // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
                         $doc_treat_names = [];
@@ -2049,7 +2011,7 @@ function extractImageFromHtml($file_path) {
                         </div>
                     </a>
                     <?php if ($hospital['active_chat_consultation']): ?>
-                    <button class="kakao-chat-btn" onclick="openKakaoChat(<?php echo $event['id']; ?>)">
+                    <button class="kakao-chat-btn" onclick="openKakaoChat()">
                         <span>💬</span> 카톡<?php echo term('consultation', '상담'); ?>
                     </button>
                     <?php endif;?>
@@ -2218,10 +2180,6 @@ function extractImageFromHtml($file_path) {
                             <span style="font-size:11px;color:#ef4444;font-weight:400;margin-left:6px;"><?php echo $doc_status_label; ?></span>
                             <?php endif; ?>
                         </h3>
-                        <p class="doctor-specialty" style="display:flex;align-items:center;gap:6px;">
-                            <img src="assets/icons/categories/doctor.jpeg" alt="" style="width:auto;height:16px;object-fit:contain;">
-                            <span style="color:var(--color-primary,#AE1932);"><?php echo htmlspecialchars(trim($doctor['specialty'] ?? '') ?: '일반의'); ?></span>
-                        </p>
                         <?php
                         // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
                         $doc_treat_names = [];
@@ -2347,8 +2305,6 @@ function extractImageFromHtml($file_path) {
     <script>
         // 이미지 갤러리 (터치 스와이프 + 자동 슬라이드)
         const gallery = document.getElementById('imageGallery');
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
         const currentIndexEl = document.getElementById('currentIndex');
         const galleryContainer = document.getElementById('galleryContainer');
 
@@ -2448,7 +2404,7 @@ function extractImageFromHtml($file_path) {
         }
 
         // 카카오톡 상담
-        function openKakaoChat(eventId) {
+        function openKakaoChat() {
             document.getElementById('consultType').value = 'kakao';
             document.getElementById('consultModal').classList.add('show');
         }
@@ -2644,28 +2600,6 @@ function extractImageFromHtml($file_path) {
         updateGallery();
     </script>
     </div>
-
-<script>
-function switchTab(tabName) {
-    // 모든 탭 콘텐츠 숨기기
-    document.querySelectorAll('.tab-content').forEach(function(el) {
-        el.style.display = 'none';
-    });
-    // 모든 탭 버튼 비활성
-    document.querySelectorAll('.tab-btn').forEach(function(el) {
-        el.classList.remove('active');
-    });
-    // 선택 탭 표시
-    var target = document.getElementById('tab-' + tabName);
-    if (target) target.style.display = 'block';
-    // 선택 버튼 활성
-    var btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
-    if (btn) btn.classList.add('active');
-}
-</script>
-
-
-<!-- 예약하기 버튼은 bottom-bar에 통합됨 (#24 수정) -->
 
 <?php
 // CPV 추적 (페이지 로드 완료 시 과금 API 호출)
