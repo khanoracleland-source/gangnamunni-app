@@ -1,7 +1,7 @@
 <?php
 /**
  * 비밀번호 찾기 (공개 페이지 - CSRF 보호용 세션만 사용)
- * - 이메일 입력 -> gangnamunni_admins 조회
+ * - 관리자 아이디 + 이메일 입력 -> gangnamunni_admins 정확히 일치하는 계정 조회
  * - 매치 시: 임시 비밀번호를 이메일로만 발송
  * - 계정 존재 여부는 브라우저에 노출하지 않음
  *
@@ -41,6 +41,7 @@ $csrf_token = generateCsrfToken();
 $generic_success_msg = '가입된 관리자 계정이 확인되면 임시 비밀번호를 이메일로 발송합니다.';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
+    $input_username = trim($_POST['username'] ?? '');
     $input_email = trim($_POST['email'] ?? '');
     $normalized_email = strtolower($input_email);
     $client_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
@@ -48,8 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
     if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
         $result_msg = '요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.';
         $result_type = 'error';
-    } elseif (empty($input_email)) {
-        $result_msg = '이메일을 입력해주세요.';
+    } elseif ($input_username === '' || $input_email === '') {
+        $result_msg = '관리자 아이디와 이메일을 모두 입력해주세요.';
         $result_type = 'error';
     } elseif (!filter_var($input_email, FILTER_VALIDATE_EMAIL)) {
         $result_msg = '유효한 이메일 형식을 입력해주세요.';
@@ -59,10 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
         $result_msg = '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
         $result_type = 'error';
     } else {
-        // gangnamunni_admins 테이블에서 이메일 검색
-        $stmt = mysqli_prepare($connect, "SELECT id, username, name, email FROM gangnamunni_admins WHERE email = ? AND is_active = 1 LIMIT 1");
+        // 이메일만으로 LIMIT 1 조회하면 중복된 기존 데이터에서 다른 계정의
+        // 비밀번호를 변경할 수 있다. 아이디와 이메일이 같은 행에 속할 때만 재설정한다.
+        $stmt = mysqli_prepare($connect, "SELECT id, username, name, email FROM gangnamunni_admins WHERE username = ? AND LOWER(email) = LOWER(?) AND is_active = 1 LIMIT 1");
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 's', $input_email);
+            mysqli_stmt_bind_param($stmt, 'ss', $input_username, $input_email);
             mysqli_stmt_execute($stmt);
             $result = mysqli_stmt_get_result($stmt);
             $admin = mysqli_fetch_assoc($result);
@@ -101,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
                                 <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
                                 <p style="color:#999;font-size:12px;">서울미녀 관리자 시스템<br>https://hms.seoulbeauty.app/hairwang/gangnamunni/</p>
                             </div>';
-                            $send_result = mail_send(0, $input_email, '[서울미녀] 임시 비밀번호 발급', $email_body);
+                            $send_result = mail_send(0, $admin['email'], '[서울미녀] 임시 비밀번호 발급', $email_body);
                             if (isset($send_result['success']) && $send_result['success']) {
                                 $email_sent = true;
                             } else {
@@ -211,8 +213,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 <div class="mb-3">
+                    <label class="form-label">관리자 아이디</label>
+                    <input type="text" name="username" class="form-control" required autofocus
+                           autocomplete="username" placeholder="admin"
+                           value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>">
+                </div>
+                <div class="mb-3">
                     <label class="form-label">등록된 이메일</label>
-                    <input type="email" name="email" class="form-control" required autofocus
+                    <input type="email" name="email" class="form-control" required
+                           autocomplete="email"
                            placeholder="admin@example.com"
                            value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
                     <div class="form-text">관리자 계정에 등록된 이메일 주소를 입력하세요.</div>
@@ -231,14 +240,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
             <?php else: ?>
             <!-- 초기 상태: 이메일 입력 폼 -->
             <p class="text-center text-body-secondary small mb-3">
-                관리자 계정에 등록된 이메일을 입력하시면<br>임시 비밀번호를 발급해드립니다.
+                관리자 아이디와 등록된 이메일을 입력하시면<br>해당 계정에 임시 비밀번호를 발급해드립니다.
             </p>
 
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 <div class="mb-3">
+                    <label class="form-label">관리자 아이디</label>
+                    <input type="text" name="username" class="form-control" required autofocus
+                           autocomplete="username" placeholder="admin">
+                </div>
+                <div class="mb-3">
                     <label class="form-label">등록된 이메일</label>
-                    <input type="email" name="email" class="form-control" required autofocus
+                    <input type="email" name="email" class="form-control" required
+                           autocomplete="email"
                            placeholder="admin@example.com">
                     <div class="form-text">관리자 계정에 등록된 이메일 주소를 입력하세요.</div>
                 </div>

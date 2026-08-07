@@ -14,7 +14,7 @@ function provision_hospital_accounts($connect, $hospital_info) {
     if (!$hospital_info || empty($hospital_info['email'])) return;
 
     $hospital_id     = (int)($hospital_info['id'] ?? 0);
-    $h_email         = $hospital_info['email'];
+    $h_email         = strtolower(trim($hospital_info['email']));
     $h_name          = $hospital_info['name'] ?? '';
     $h_contact       = $hospital_info['contact_name'] ?? $h_name;
     $h_phone         = $hospital_info['phone'] ?? '';
@@ -24,6 +24,8 @@ function provision_hospital_accounts($connect, $hospital_info) {
     $temp_password   = substr(str_shuffle('abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 8);
     $hashed_pw       = password_hash($temp_password, PASSWORD_DEFAULT);
     $client_ip       = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $g5_account_created = false;
+    $admin_account_created = false;
 
     // mb_id 생성: 이메일 앞부분(영숫자 16자), 중복 시 숫자 추가
     $mb_id_base = substr(preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $h_email)[0]), 0, 16);
@@ -47,9 +49,10 @@ function provision_hospital_accounts($connect, $hospital_info) {
     mysqli_stmt_close($chk_g5);
     if ($g5_row) {
         $mb_id = $g5_row['mb_id'];
-        $existing_g5_pw = password_hash($temp_password, PASSWORD_DEFAULT);
-        $upd = mysqli_prepare($connect, "UPDATE g5_member SET mb_1='hospital', mb_password=? WHERE mb_id=?");
-        mysqli_stmt_bind_param($upd, 'ss', $existing_g5_pw, $mb_id);
+        // Provisioning may be retried (for example, an already-approved hospital
+        // can be approved again). Never replace an existing member's password.
+        $upd = mysqli_prepare($connect, "UPDATE g5_member SET mb_1='hospital' WHERE mb_id=?");
+        mysqli_stmt_bind_param($upd, 's', $mb_id);
         mysqli_stmt_execute($upd);
         mysqli_stmt_close($upd);
     } else {
@@ -66,13 +69,17 @@ function provision_hospital_accounts($connect, $hospital_info) {
             $h_address, $mb_1, $now, $client_ip);
         if (!mysqli_stmt_execute($stmt_g5)) {
             error_log('[provision] g5_member INSERT 실패: ' . mysqli_error($connect));
+        } else {
+            $g5_account_created = true;
         }
         mysqli_stmt_close($stmt_g5);
     }
 
-    // ② gangnamunni_admins — username(=email) 없으면 hospital_admin 생성
-    $chk_a = mysqli_prepare($connect, "SELECT id FROM gangnamunni_admins WHERE username=? LIMIT 1");
-    mysqli_stmt_bind_param($chk_a, 's', $h_email);
+    // ② gangnamunni_admins — username 또는 email로 기존 계정을 찾는다.
+    // 이메일은 관리자 전체에서 유일해야 하므로 이메일이 이미 연결된 계정이
+    // 있으면 새 계정을 만들지 않고 해당 계정을 재사용한다.
+    $chk_a = mysqli_prepare($connect, "SELECT id FROM gangnamunni_admins WHERE username=? OR LOWER(email)=LOWER(?) ORDER BY (LOWER(email) = LOWER(?)) DESC LIMIT 1");
+    mysqli_stmt_bind_param($chk_a, 'sss', $h_email, $h_email, $h_email);
     mysqli_stmt_execute($chk_a);
     $ex_a = mysqli_stmt_get_result($chk_a)->fetch_assoc();
     mysqli_stmt_close($chk_a);
@@ -82,11 +89,15 @@ function provision_hospital_accounts($connect, $hospital_info) {
         mysqli_stmt_bind_param($stmt_adm, 'sssssis', $h_email, $hashed_pw, $h_contact, $h_email, $h_contact_phone, $hospital_id, $h_name);
         if (!mysqli_stmt_execute($stmt_adm)) {
             error_log('[provision] gangnamunni_admins INSERT 실패: ' . mysqli_error($connect));
+        } else {
+            $admin_account_created = true;
         }
         mysqli_stmt_close($stmt_adm);
     } else {
-        $upd_a = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET password=?, email=?, phone=?, hospital_id=?, hospital_name=?, is_active=1 WHERE username=?");
-        mysqli_stmt_bind_param($upd_a, 'sssiss', $hashed_pw, $h_email, $h_contact_phone, $hospital_id, $h_name, $h_email);
+        // Keep the user's current password when provisioning is repeated. Only
+        // synchronise account metadata and reactivate the existing account.
+        $upd_a = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET email=?, phone=?, hospital_id=?, hospital_name=?, is_active=1 WHERE id=?");
+        mysqli_stmt_bind_param($upd_a, 'ssisi', $h_email, $h_contact_phone, $hospital_id, $h_name, $ex_a['id']);
         mysqli_stmt_execute($upd_a);
         mysqli_stmt_close($upd_a);
     }
@@ -101,21 +112,26 @@ function provision_hospital_accounts($connect, $hospital_info) {
     mysqli_stmt_close($stmt_sso);
 
     // ④ 승인 이메일 + 병원 관리자 알림
-    if (file_exists(__DIR__ . '/mail_helper.php')) {
+    // Send temporary credentials only when at least one account was actually
+    // created. On a retry, sending a newly generated (but unused) password would
+    // mislead the owner and look like another password reset.
+    if (($g5_account_created || $admin_account_created) && file_exists(__DIR__ . '/mail_helper.php')) {
         require_once __DIR__ . '/mail_helper.php';
         $base_url = defined('SITE_FULL_URL') ? SITE_FULL_URL : '';
         $approve_body = "<h2>병원 등록이 승인되었습니다!</h2>
             <p>안녕하세요, <strong>" . htmlspecialchars($h_contact) . "</strong>님.</p>
             <p><strong>" . htmlspecialchars($h_name) . "</strong>의 입점 신청이 승인되었습니다.</p>
             <hr>
+            " . ($admin_account_created ? "
             <h3>관리자 대시보드 로그인</h3>
             <p><strong>URL:</strong> <a href='" . $base_url . "dashboard.php'>" . $base_url . "dashboard.php</a></p>
             <p><strong>아이디:</strong> " . htmlspecialchars($h_email) . "</p>
             <p><strong>임시 비밀번호:</strong> " . htmlspecialchars($temp_password) . "</p>
-            <hr>
+            <hr>" : '') . "
+            " . ($g5_account_created ? "
             <h3>커뮤니티 (그누보드) 로그인</h3>
             <p><strong>아이디:</strong> " . htmlspecialchars($mb_id) . "</p>
-            <p><strong>비밀번호:</strong> " . htmlspecialchars($temp_password) . " (동일)</p>
+            <p><strong>임시 비밀번호:</strong> " . htmlspecialchars($temp_password) . "</p>" : '') . "
             <hr>
             <p style='color:#e74c3c;'><strong>보안을 위해 로그인 후 반드시 비밀번호를 변경해 주세요.</strong></p>
             <p>감사합니다.<br>서울미녀 팀</p>";

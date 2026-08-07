@@ -116,14 +116,33 @@ function build_permissions_json($post_data) {
 // 이메일은 로그인 식별자(username 또는 email)로 쓰이므로, 중복되면 이메일 로그인이
 // 어느 계정으로 매칭될지 모호해진다(admin_find_by_login 은 LIMIT 1). 그래서 유일해야 한다.
 function admin_email_taken($connect, $email, $exclude_id = 0) {
-    if ($email === '') return false; // 빈 이메일은 여러 계정이 가질 수 있고 로그인에도 안 쓰인다
-    $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_admins WHERE email = ? AND id <> ? LIMIT 1");
-    if (!$stmt) return false;
-    mysqli_stmt_bind_param($stmt, 'si', $email, $exclude_id);
-    mysqli_stmt_execute($stmt);
-    $taken = (bool) mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-    mysqli_stmt_close($stmt);
-    return $taken;
+    if ($email === '') return false;
+
+    $checks = [
+        ['table' => 'users', 'email' => 'email', 'id' => 'id', 'exclude' => 0],
+        ['table' => 'g5_member', 'email' => 'mb_email', 'id' => 'mb_no', 'exclude' => 0],
+        ['table' => 'gangnamunni_admins', 'email' => 'email', 'id' => 'id', 'exclude' => $exclude_id],
+    ];
+
+    foreach ($checks as $check) {
+        $table_exists = mysqli_query($connect, "SHOW TABLES LIKE '{$check['table']}'");
+        if (!$table_exists || mysqli_num_rows($table_exists) === 0) continue;
+
+        $sql = "SELECT {$check['id']} FROM {$check['table']} WHERE LOWER({$check['email']}) = LOWER(?)";
+        if ($check['exclude'] > 0) $sql .= " AND {$check['id']} <> ?";
+        $sql .= ' LIMIT 1';
+        $stmt = mysqli_prepare($connect, $sql);
+        if (!$stmt) continue;
+        if ($check['exclude'] > 0) mysqli_stmt_bind_param($stmt, 'si', $email, $check['exclude']);
+        else mysqli_stmt_bind_param($stmt, 's', $email);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_store_result($stmt);
+        $taken = mysqli_stmt_num_rows($stmt) > 0;
+        mysqli_stmt_close($stmt);
+        if ($taken) return true;
+    }
+
+    return false;
 }
 
 // === POST 처리 ===
@@ -136,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $name = trim($_POST['name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
+    $email = strtolower(trim($_POST['email'] ?? ''));
     $phone = trim($_POST['phone'] ?? '');
     $role = $_POST['role'] ?? 'editor';
 
@@ -151,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
     } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = '이메일 형식이 올바르지 않습니다.';
     } elseif (admin_email_taken($connect, $email)) {
-        $error = '이미 다른 관리자가 사용 중인 이메일입니다. (이메일 로그인 식별자로 사용되어 중복 불가)';
+        $error = '이미 다른 사용자가 사용 중인 이메일입니다.';
     } else {
         $check = mysqli_prepare($connect, "SELECT id FROM gangnamunni_admins WHERE username = ?");
         mysqli_stmt_bind_param($check, 's', $username);
@@ -187,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] ?? '') === 'edit') {
     $edit_id = intval($_POST['edit_id'] ?? 0);
     $name = trim($_POST['name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
+    $email = strtolower(trim($_POST['email'] ?? ''));
     $phone = trim($_POST['phone'] ?? '');
     $role = $_POST['role'] ?? '';
     $new_password = $_POST['new_password'] ?? '';
@@ -216,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
     } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = '이메일 형식이 올바르지 않습니다.';
     } elseif (admin_email_taken($connect, $email, $edit_id)) {
-        $error = '이미 다른 관리자가 사용 중인 이메일입니다. (이메일 로그인 식별자로 사용되어 중복 불가)';
+        $error = '이미 다른 사용자가 사용 중인 이메일입니다.';
     } else {
         if ($is_super_admin) {
             $valid_roles = ['super_admin', 'admin', 'editor', 'viewer'];
