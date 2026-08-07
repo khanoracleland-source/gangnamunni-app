@@ -640,6 +640,8 @@ foreach ($hospitals as $hospital):
                     $_tag_name = $_td['name'] ?? null;
                     $_price = !empty($_td['price_min']) && (int)$_td['price_min'] > 0 ? (int)$_td['price_min'] : 0;
                     $_price_max = !empty($_td['price_max']) && (int)$_td['price_max'] > 0 ? (int)$_td['price_max'] : 0;
+                    $_price_won = $_price;
+                    $_price_max_won = $_price_max;
                     $_dosage_label = '';
                     if ($_td && $_td['dosage_value'] !== null && $_td['dosage_unit']) {
                         $_dosage_label = ' · ' . rtrim(rtrim(number_format((float)$_td['dosage_value'], 2), '0'), '.') . $_td['dosage_unit'];
@@ -653,9 +655,9 @@ foreach ($hospitals as $hospital):
                         <?php if ($_price > 0): ?>
                         <span class="card-price">
                             <?php if ($_price_max > 0): ?>
-                            <span class="card-price-max"><?php echo number_format($_price_max * 10000); ?>원</span>
+                            <span class="card-price-max"><?php echo number_format($_price_max_won); ?>원</span>
                             <?php endif; ?>
-                            <span class="card-price-num"><?php echo number_format($_price * 10000); ?></span><span class="card-price-unit">원~</span>
+                            <span class="card-price-num"><?php echo number_format($_price_won); ?></span><span class="card-price-unit">원~</span>
                         </span>
                         <?php endif; ?>
                     </div>

@@ -114,17 +114,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mb_expires      = time() + 1800;
                 $certify_value   = $mb_nonce . ' ' . $mb_expires . ' ' . $mb_lost_certify;
 
-                $href = $bbs_url . '/password_lost_certify.php?mb_no=' . (int)$mb['mb_no'] . '&mb_nonce=' . $mb_nonce;
-                if (!preg_match('#^https?://#i', $href) && preg_match('#^https?://#i', $g5_url)) {
-                    $origin = preg_replace('#(/[^/]*)?$#', '', rtrim($g5_url, '/'));
-                    $href = $origin . '/' . ltrim($href, '/');
+                $href = rtrim($bbs_url, '/') . '/password_lost_certify.php?mb_no=' . (int)$mb['mb_no'] . '&mb_nonce=' . $mb_nonce;
+                if (!preg_match('#^https?://#i', $href)) {
+                    $configured_base = preg_match('#^https?://#i', $g5_url) ? rtrim($g5_url, '/') : '';
+                    if ($configured_base !== '') {
+                        $href = $configured_base . '/' . ltrim($href, '/');
+                    } else {
+                        $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+                        if (preg_match('/^[a-z0-9.-]+(?::[0-9]{1,5})?$/i', $host)) {
+                            $https = !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
+                            $scheme = $https ? 'https' : 'http';
+                            $href = $scheme . '://' . $host . '/' . ltrim($href, '/');
+                        }
+                    }
                 }
                 $brand = $config['cf_title'] ?? '서울미녀';
                 $subject = '[' . $brand . '] 비밀번호 재설정 안내';
                 $body = "<div style='font-family:sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;max-width:560px'>"
                       . htmlspecialchars($mb['mb_name']) . "님, 비밀번호 재설정을 요청하셨습니다.<br><br>"
-                      . "아래 <strong>변경될 비밀번호</strong>를 확인하신 후, <strong style='color:#AE1932'>비밀번호 변경</strong> 버튼을 눌러주세요.<br>"
-                      . "변경 완료 후 이메일과 아래 비밀번호로 로그인하실 수 있습니다.<br><br>"
+                      . "아래 임시 비밀번호를 확인한 후, 반드시 <strong style='color:#AE1932'>비밀번호 변경</strong> 버튼을 눌러 활성화해주세요.<br>"
+                      . "버튼을 누르기 전에는 이 비밀번호로 로그인할 수 없습니다.<br><br>"
                       . "<div style='padding:16px 20px;background:#f7f7f7;border-radius:8px'>"
                       . "변경될 비밀번호 : <strong style='font-size:20px;color:#AE1932;letter-spacing:2px'>" . $change_password . "</strong></div><br>"
                       . "<a href='" . htmlspecialchars($href, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block;padding:14px 28px;background:#2b0000;color:#fff;text-decoration:none;border-radius:6px;font-weight:700'>비밀번호 변경</a><br><br>"

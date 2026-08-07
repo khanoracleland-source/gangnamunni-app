@@ -233,7 +233,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
         }
         $login_mb = $mb_id_found !== '' ? get_member($mb_id_found) : [];
         if (function_exists('run_event')) run_event('member_login_check_before', $mb_id_found);
-        if (!$mb_id_found || empty($login_mb['mb_id']) || !login_password_check($login_mb, $password, $login_mb['mb_password'])) {
+
+        $password_valid = $mb_id_found !== ''
+            && !empty($login_mb['mb_id'])
+            && login_password_check($login_mb, $password, $login_mb['mb_password']);
+
+        // password_lost.php emailidagi vaqtinchalik parol hali havola orqali
+        // faollashtirilmagan bo'lsa, uni birinchi muvaffaqiyatli login paytida atomik
+        // ravishda faollashtiramiz. Emailga kira olmaydigan shaxs pending hashni
+        // bilmagani uchun akkaunt parolini o'zgartira olmaydi.
+        if (!$password_valid && !empty($login_mb['mb_lost_certify'])) {
+            $reset_value = (string)$login_mb['mb_lost_certify'];
+            $reset_parts = explode(' ', trim($reset_value), 3);
+            if (count($reset_parts) === 3
+                && strlen($reset_parts[0]) === 32
+                && ctype_digit($reset_parts[1])
+                && time() <= (int)$reset_parts[1]
+                && check_password($password, $reset_parts[2])) {
+                $pending_hash = $reset_parts[2];
+                $activate = mysqli_prepare(
+                    $connect,
+                    "UPDATE {$member_table}
+                     SET mb_password = ?, mb_lost_certify = ''
+                     WHERE mb_id = ? AND mb_lost_certify = ?"
+                );
+                if ($activate) {
+                    mysqli_stmt_bind_param($activate, 'sss', $pending_hash, $mb_id_found, $reset_value);
+                    mysqli_stmt_execute($activate);
+                    $password_valid = mysqli_stmt_affected_rows($activate) === 1;
+                    mysqli_stmt_close($activate);
+                    if ($password_valid) {
+                        $login_mb['mb_password'] = $pending_hash;
+                        $login_mb['mb_lost_certify'] = '';
+                        gnu_auth_log('password_reset_activated_on_login', $email);
+                    }
+                }
+            }
+        }
+
+        if (!$password_valid) {
             // 이메일 존재 여부와 비밀번호 오류를 구분하지 않아 계정 수집을 막는다.
             gnu_login_rate_hit('ip', $request_ip, 10, 900, true);
             gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, true);

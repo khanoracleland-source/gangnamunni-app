@@ -11,6 +11,11 @@ require_once __DIR__ . '/includes/dev_mode_helper.php';
 require_once __DIR__ . '/includes/notification_helper.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 
+// 시술 가격은 변환 없이 원 단위 정수 그대로 사용한다.
+function booking_price_won($price) {
+    return intval($price);
+}
+
 // HMS API 클라이언트 (실시간 예약 전송용)
 require_once __DIR__ . '/includes/infyhms_api.php';
 
@@ -169,8 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $package_treatments = [];
 
         // 총 가격은 클라이언트 값을 믿지 않고 DB에서 다시 계산한다.
-        // 주의: price_min/opt_min 은 '만원' 단위로 저장돼 있으나, bookings.price 는 '원' 단위로
-        //   표시(again_booking.php 등: number_format($price).'원')되므로 마지막에 ×10000 해서 원으로 저장한다.
+        // bookings.price 는 항상 원 단위로 저장한다. 과거 만원 가격은 호환 변환한다.
         $booking_price = null;
         if ($selection_type === 'package') {
             $package_stmt = mysqli_prepare($connect,
@@ -257,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!is_array($r)) continue;
                     if ((int)($r['option_count'] ?? 0) > 1 && $option_id <= 0) continue;
                     if ($option_id > 0 && (int)($r['option_id'] ?? 0) !== $option_id) continue;
-                    $unit = (int)(($r['option_price'] ?? 0) ?: ($r['ht_min'] ?? 0));
+                    $unit = booking_price_won(($r['option_price'] ?? 0) ?: ($r['ht_min'] ?? 0));
                     if ($unit > 0) {
                         $sum += $unit * $qty; $found = true;
                         $option_label = trim((string)($r['option_name'] ?? ''));
@@ -280,7 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $treatments_arr = array_merge($package_treatments, $verified_treatments);
                 $quantity = ($selection_type === 'package' ? 1 : 0) + $individual_quantity;
                 $treatment = ($selection_type === 'package' ? $treatment . ', ' : '') . $individual_summary;
-                $booking_price = ($booking_price ?? 0) + ($sum * 10000); // 만원 → 원
+                $booking_price = ($booking_price ?? 0) + $sum;
             } else {
                 $booking_error = '선택한 시술 중 현재 예약할 수 없는 항목이 있습니다.';
             }
@@ -1593,6 +1597,9 @@ $page_js = '
     // 현재 운영 정책: 시술 1개 + 해당 시술의 세부 옵션 1개.
     var selectedTreatments = [];
     var selectedPackage = null;
+    function bookingPriceWon(price) {
+        return Number(price) || 0;
+    }
     var initialTreatmentName = ' . json_encode(
         $preselected_booking_treatment['name'] ?? '',
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
@@ -1626,7 +1633,7 @@ $page_js = '
         var t = findTreatment(treatmentName); if (!t) return;
         t.option_id = parseInt(optionId, 10) || 0;
         for (var i = 0; i < (t.options || []).length; i++) if (parseInt(t.options[i].id, 10) === t.option_id) {
-            t.option_name = t.options[i].name || ""; t.price = (Number(t.options[i].price) * 10000).toLocaleString("ko-KR") + "원"; break;
+            t.option_name = t.options[i].name || ""; t.price = bookingPriceWon(t.options[i].price).toLocaleString("ko-KR") + "원"; break;
         }
         renderSelectedTreatments();
     }
@@ -1727,7 +1734,7 @@ $page_js = '
                         copy.appendChild(dosage);
                     }
                     var optionPrice = document.createElement("span"); optionPrice.className = "detail-option-price";
-                    optionPrice.textContent = Number(o.price).toLocaleString("ko-KR") + "만원";
+                    optionPrice.textContent = bookingPriceWon(o.price).toLocaleString("ko-KR") + "원";
                     label.appendChild(radio); label.appendChild(copy); label.appendChild(optionPrice); optionBox.appendChild(label);
                 });
                 qrow.appendChild(optionBox);
@@ -2083,10 +2090,12 @@ include __DIR__ . '/includes/header.php';
             <?php if ($preselected_booking_treatment === null): ?>
             <div class="inline-treatment-list" aria-label="<?php echo term('service', '시술'); ?> 선택">
                 <?php foreach ($booking_treatments as $inline_treatment):
-                    $inline_price = ((int)$inline_treatment['price_min'] > 0)
+                    $inline_min_won = booking_price_won($inline_treatment['price_min']);
+                    $inline_max_won = booking_price_won($inline_treatment['price_max']);
+                    $inline_price = ($inline_min_won > 0)
                         ? (((int)$inline_treatment['price_max'] > (int)$inline_treatment['price_min'])
-                            ? number_format((int)$inline_treatment['price_min'] * 10000) . '~' . number_format((int)$inline_treatment['price_max'] * 10000) . '원'
-                            : number_format((int)$inline_treatment['price_min'] * 10000) . '원') : '';
+                            ? number_format($inline_min_won) . '~' . number_format($inline_max_won) . '원'
+                            : number_format($inline_min_won) . '원') : '';
                 ?>
                 <label class="inline-treatment-choice" data-treatment-choice
                        data-name="<?php echo htmlspecialchars($inline_treatment['name'], ENT_QUOTES); ?>"
@@ -2231,13 +2240,14 @@ include __DIR__ . '/includes/header.php';
     $sheet_items = [];
     if (!empty($booking_treatments)) {
         foreach ($booking_treatments as $bt) {
-            // price_min/max 는 '만원' 단위로 저장돼 있다. 시트에는 축약 없이
-            // 원 단위 전체 금액으로 표시한다(예: 90만원 → 900,000원).
+            // 과거 만원 가격과 신규 원 가격을 모두 원 단위로 표시한다.
             $pl = '';
             if (!empty($bt['price_min']) && $bt['price_min'] > 0) {
+                $bt_min_won = booking_price_won($bt['price_min']);
+                $bt_max_won = booking_price_won($bt['price_max']);
                 $pl = ($bt['price_max'] > $bt['price_min'])
-                    ? number_format($bt['price_min'] * 10000) . '~' . number_format($bt['price_max'] * 10000) . '원'
-                    : number_format($bt['price_min'] * 10000) . '원';
+                    ? number_format($bt_min_won) . '~' . number_format($bt_max_won) . '원'
+                    : number_format($bt_min_won) . '원';
             }
             $sheet_items[] = ['name' => $bt['name'], 'price' => $pl, 'options' => $bt['options'] ?? []];
         }

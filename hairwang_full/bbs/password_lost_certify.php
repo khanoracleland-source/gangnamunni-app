@@ -19,22 +19,18 @@ if (count($parts) !== 3 || strlen($parts[0]) !== 32 || !ctype_digit($parts[1]) |
     die("Error");
 
 [$stored_nonce, $expires_at, $new_password_hash] = $parts;
-// nonce 및 만료시각을 검증한 후에만 한번 사용처리한다. 틀린 요청이 정상 토큰을 삭제하지 않는다.
+// nonce 및 만료시각을 검증한 후, 비밀번호 교체와 토큰 소모를 하나의 UPDATE로 처리한다.
+// 비밀번호 저장 실패 전에 토큰만 먼저 삭제되는 상황을 방지한다.
 if (hash_equals($stored_nonce, $mb_nonce) && time() <= (int)$expires_at) {
     global $connect;
-    $consumed = false;
-    if ($clear = mysqli_prepare($connect, "UPDATE {$g5['member_table']} SET mb_lost_certify = '' WHERE mb_no = ? AND mb_lost_certify = ?")) {
-        mysqli_stmt_bind_param($clear, 'is', $mb_no, $mb['mb_lost_certify']);
-        mysqli_stmt_execute($clear);
-        $consumed = mysqli_stmt_affected_rows($clear) === 1;
-        mysqli_stmt_close($clear);
-    }
-    if (!$consumed) die("Error");
-    if ($pw = mysqli_prepare($connect, "UPDATE {$g5['member_table']} SET mb_password = ? WHERE mb_no = ?")) {
-        mysqli_stmt_bind_param($pw, 'si', $new_password_hash, $mb_no);
+    $changed = false;
+    if ($pw = mysqli_prepare($connect, "UPDATE {$g5['member_table']} SET mb_password = ?, mb_lost_certify = '' WHERE mb_no = ? AND mb_lost_certify = ?")) {
+        mysqli_stmt_bind_param($pw, 'sis', $new_password_hash, $mb_no, $mb['mb_lost_certify']);
         mysqli_stmt_execute($pw);
+        $changed = mysqli_stmt_affected_rows($pw) === 1;
         mysqli_stmt_close($pw);
-    } else die("Error");
+    }
+    if (!$changed) die("Error");
 
     run_event('password_lost_certify_after', $mb, $mb_nonce);
 

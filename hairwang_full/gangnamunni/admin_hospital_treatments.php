@@ -102,6 +102,11 @@ function ht_execute_or_throw($stmt, $message) {
     }
 }
 
+// 가격은 변환 없이 원 단위 정수 그대로 사용한다.
+function ht_price_won($price) {
+    return intval($price);
+}
+
 $msg = '';
 $msg_type = 'success';
 
@@ -264,15 +269,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (!is_array($in_pr)) $in_pr = [$in_pr];
             if (!is_array($in_on)) $in_on = [$in_on];
 
-            // 유효한 옵션만 추출 (샷수/용량 > 0). 최소 1건 필요.
+            // 화면과 DB 모두 원 단위 전체 금액을 사용한다.
             $options = [];
             $cnt = max(count($in_dv), count($in_pr));
             for ($i = 0; $i < $cnt; $i++) {
                 $dv = (isset($in_dv[$i]) && trim((string)$in_dv[$i]) !== '') ? floatval($in_dv[$i]) : 0;
                 $du = isset($in_du[$i]) ? trim((string)$in_du[$i]) : '';
-                $pr = (isset($in_pr[$i]) && trim((string)$in_pr[$i]) !== '') ? intval($in_pr[$i]) : 0;
+                $pr_won = (isset($in_pr[$i]) && trim((string)$in_pr[$i]) !== '') ? intval($in_pr[$i]) : 0;
                 $on = isset($in_on[$i]) ? trim((string)$in_on[$i]) : '';
-                if ($dv > 0 && $du !== '' && $pr > 0) $options[] = ['name' => mb_substr($on, 0, 100, 'UTF-8'), 'dv' => $dv, 'du' => mb_substr($du, 0, 20, 'UTF-8'), 'pr' => $pr];
+                if ($dv > 0 && $du !== '' && $pr_won > 0) {
+                    $options[] = [
+                        'name' => mb_substr($on, 0, 100, 'UTF-8'),
+                        'dv' => $dv,
+                        'du' => mb_substr($du, 0, 20, 'UTF-8'),
+                        'pr' => $pr_won,
+                    ];
+                }
             }
 
             if ($id <= 0) {
@@ -841,7 +853,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td><strong><?php echo htmlspecialchars($pt['treatment_name'] ?? '(삭제됨)'); ?></strong></td>
                         <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($pt['category_name'] ?? '-'); ?></span></td>
                         <td class="text-center"><small class="text-muted"><?php echo htmlspecialchars($pt['hashtag'] ?? ''); ?></small></td>
-                        <td class="text-center"><?php echo number_format(intval($pt['price_min'])); ?>~<?php echo number_format(intval($pt['price_max'])); ?>만원</td>
+                        <td class="text-center"><?php echo number_format(ht_price_won($pt['price_min'])); ?>~<?php echo number_format(ht_price_won($pt['price_max'])); ?>원</td>
                         <td class="text-center"><span class="badge bg-<?php echo $pt['registered_by'] === 'admin' ? 'primary' : 'success'; ?>"><?php echo $pt['registered_by'] === 'admin' ? '관리자' : '병원'; ?></span></td>
                         <td class="text-center"><small><?php echo substr($pt['created_at'] ?? '', 0, 16); ?></small></td>
                         <td class="text-center">
@@ -887,7 +899,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <th style="width:100px;">해시태그</th>
                         <th>시술명</th>
                         <th class="text-center" style="width:100px;">카테고리</th>
-                        <th class="text-center" style="width:160px;">가격 (만원)</th>
+                        <th class="text-center" style="width:160px;">가격 (원)</th>
                         <th class="text-center" style="width:80px;">프로모션</th>
                         <th style="width:150px;">비고</th>
                         <th class="text-center" style="width:80px;">등록자</th>
@@ -923,9 +935,9 @@ require_once __DIR__ . '/includes/admin_header.php';
                             ?>
                             <span class="text-nowrap<?php echo $is_default ? ' text-muted fst-italic' : ''; ?>">
                                 <?php if ($disp_min == $disp_max): ?>
-                                    <?php echo number_format($disp_min); ?>만원
+                                    <?php echo number_format(ht_price_won($disp_min)); ?>원
                                 <?php else: ?>
-                                    <?php echo number_format($disp_min); ?>~<?php echo number_format($disp_max); ?>만원
+                                    <?php echo number_format(ht_price_won($disp_min)); ?>~<?php echo number_format(ht_price_won($disp_max)); ?>원
                                 <?php endif; ?>
                             </span>
                             <?php if ($is_default && ($disp_min > 0 || $disp_max > 0)): ?>
@@ -934,7 +946,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php if (!empty($opts)): ?>
                             <div class="mt-1 d-flex flex-wrap gap-1 justify-content-center">
                                 <?php foreach ($opts as $op): ?>
-                                <span class="badge bg-light text-dark border"><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · <?php echo number_format($op['price']); ?>만</span>
+                                <span class="badge bg-light text-dark border"><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · <?php echo number_format(ht_price_won($op['price'])); ?>원</span>
                                 <?php endforeach; ?>
                             </div>
                             <?php endif; ?>
@@ -1066,7 +1078,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                                         <small class="text-muted">
                                             <?php echo htmlspecialchars($at['category_name'] ?? '미분류'); ?>
                                             <?php if (intval($at['avg_price_min']) > 0 || intval($at['avg_price_max']) > 0): ?>
-                                            | <?php echo number_format(intval($at['avg_price_min'])); ?>~<?php echo number_format(intval($at['avg_price_max'])); ?>만원
+                                            | <?php echo number_format(ht_price_won($at['avg_price_min'])); ?>~<?php echo number_format(ht_price_won($at['avg_price_max'])); ?>원
                                             <?php endif; ?>
                                         </small>
                                     </label>
@@ -1177,14 +1189,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <div style="flex:1.4;">옵션명</div>
                         <div style="flex:1;">샷수/용량</div>
                         <div style="width:96px;">단위</div>
-                        <div style="width:110px;">가격 (만원)</div>
+                        <div style="width:140px;">가격 (원)</div>
                         <div style="width:34px;"></div>
                     </div>
                     <div id="priceRows"></div>
                     <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addPriceRow()">
                         <i class="bi bi-plus-lg me-1"></i>세부 옵션 추가
                     </button>
-                    <div class="form-text mt-2">최소 1개 이상 입력해야 합니다. 2개 이상이면 예약 화면에서 고객이 세부 옵션 1개를 선택하게 됩니다. 변경은 이력에 자동 기록됩니다.</div>
+                    <div class="form-text mt-2">가격은 축약하지 않은 원 단위 전체 금액으로 입력해주세요 (예: 10000, 250000). 최소 1개 이상 입력해야 합니다. 2개 이상이면 예약 화면에서 고객이 세부 옵션 1개를 선택하게 됩니다.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
@@ -1336,6 +1348,10 @@ function deleteTreatmentImage(htId, imageId) {
 var HT_PRICES = <?php echo json_encode($ht_prices, JSON_UNESCAPED_UNICODE); ?>;
 var PRICE_UNITS = ['샷','cc','ml','회','병','IU','기타'];
 
+function priceToWon(price) {
+    return Number(price) || 0;
+}
+
 function priceRowHtml(dv, du, pr, optionName) {
     var opts = PRICE_UNITS.map(function(u){
         return '<option value="'+u+'"'+(u===du?' selected':'')+'>'+u+'</option>';
@@ -1344,7 +1360,7 @@ function priceRowHtml(dv, du, pr, optionName) {
         '<input type="text" name="option_name[]" class="form-control form-control-sm" style="flex:1.4;" maxlength="100" placeholder="예: 주름 100샷" value="'+tiEscape(optionName || '')+'">' +
         '<input type="number" name="dosage_value[]" class="form-control form-control-sm" style="flex:1;" min="0.01" step="0.01" required placeholder="예: 100" value="'+(dv==null?'':dv)+'">' +
         '<select name="dosage_unit[]" class="form-select form-select-sm" style="width:96px;">'+opts+'</select>' +
-        '<input type="number" name="price[]" class="form-control form-control-sm" style="width:110px;" min="1" step="1" required placeholder="가격" value="'+(pr==null?'':pr)+'">' +
+        '<input type="number" name="price[]" class="form-control form-control-sm" style="width:140px;" min="1" step="1" required placeholder="예: 40825" value="'+(pr==null||pr===''?'':priceToWon(pr))+'">' +
         '<button type="button" class="btn btn-outline-danger btn-sm price-del" style="width:34px;" onclick="removePriceRow(this)"><i class="bi bi-x-lg"></i></button>' +
         '</div>';
 }
