@@ -1549,7 +1549,7 @@ $page_js = '
             if (!disabled && isToday) {
                 var hm = value.split(":");
                 var slotMin = parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10);
-                if (slotMin <= SERVER_NOW_MIN) { disabled = true; label = value + " (지남)"; }
+                if (slotMin <= SERVER_NOW_MIN) { disabled = true; }
             }
             (function(v, isDisabled, text) {
                 var cell = document.createElement("div");

@@ -409,6 +409,59 @@ $_fs_css_file = __DIR__ . '/assets/css/figma_sync_index.css';
 if (file_exists($_fs_css_file)) { $page_css .= "
 " . file_get_contents($_fs_css_file); }
 
+$page_css .= '
+/* 홈 회사 정보 푸터 */
+.home-company-footer {
+    margin: 40px -16px 0;
+    padding: 30px 20px 34px;
+    background: #f5f5f5;
+    color: #8f8f8f;
+    font-size: 13px;
+    line-height: 1.75;
+}
+.home-company-footer__logo {
+    margin-bottom: 14px;
+    color: #969696;
+    font-family: Georgia, "Times New Roman", "Apple SD Gothic Neo", serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -1.5px;
+}
+.home-company-footer__company p,
+.home-company-footer__notice p { margin: 0; }
+.home-company-footer__links {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 8px 0 18px;
+}
+.home-company-footer__links a {
+    color: #666;
+    text-decoration: none;
+}
+.home-company-footer__links a:hover,
+.home-company-footer__links a:focus { text-decoration: underline; }
+.home-company-footer__links a.home-company-footer__link-strong {
+    color: #555;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.home-company-footer__notice {
+    margin-top: 4px;
+    color: #adadad;
+}
+.home-company-footer__copyright {
+    margin: 6px 0 0;
+    color: #aaa;
+    font-weight: 600;
+}
+@media (max-width: 640px) {
+    .home-company-footer { margin-right: -12px; margin-left: -12px; }
+}
+';
+
 include __DIR__ . '/includes/header.php';
 ?>
 <?php if (function_exists('figma_review_mode') && figma_review_mode()): ?>
@@ -906,6 +959,29 @@ body.ae-active { padding-top:0 !important; }
         </div>
         <?php endif; ?>
         <?php endif; ?>
+
+
+<footer class="home-company-footer" aria-label="회사 정보">
+    <div class="home-company-footer__logo">서울미녀</div>
+    <div class="home-company-footer__company">
+        <p>셀럽몰 주식회사 | 대표자: 노영우</p>
+        <p>서울특별시 강남구 선릉로 612, 4층(삼성동, 한일빌딩)</p>
+        <p>사업자등록번호: 308-81-44202</p>
+        <p>통신판매업신고: 2018-서울강남-01913호</p>
+        <p>고객센터 E-mail: <a href="mailto:info@seoulbeauty.app" style="color:inherit;text-decoration:none;">info@seoulbeauty.app</a></p>
+    </div>
+    <nav class="home-company-footer__links" aria-label="회사 정책 및 고객센터">
+        <a class="home-company-footer__link-strong" href="qna.php">고객센터 문의하기</a>
+        <a href="terms_of_service.php">이용약관</a>
+        <a href="terms_of_service.php">위치기반서비스 이용약관</a>
+        <a class="home-company-footer__link-strong" href="privacy_policy.php">개인정보처리방침</a>
+    </nav>
+    <div class="home-company-footer__notice">
+        <p>셀럽몰 주식회사는 통신판매의 당사자가 아니므로,</p>
+        <p>의료기관이 등록한 시/수술 정보 및 거래 등에 대해 책임을 지지 않습니다.</p>
+    </div>
+    <p class="home-company-footer__copyright">©CELEBMALL Co., Ltd. All rights reserved.</p>
+</footer>
 
 
 <?php
