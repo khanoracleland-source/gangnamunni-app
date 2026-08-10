@@ -42,7 +42,7 @@ if (isset($connect) && $connect && function_exists('loadThemeSettings')) {
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <base href="<?php echo htmlspecialchars(defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/gangnamunni/', ENT_QUOTES, 'UTF-8'); ?>">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -74,7 +74,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
     <link rel="stylesheet" href="<?php echo $css_base; ?>/assets/css/tailwind.css">
 
     <!-- 공통 CSS -->
-    <link rel="stylesheet" href="<?php echo $css_base; ?>/assets/css/common.css?v=2">
+    <link rel="stylesheet" href="<?php echo $css_base; ?>/assets/css/common.css?v=3">
 
     <?php if (!empty($page_css_file)): ?>
     <link rel="stylesheet" href="<?php echo htmlspecialchars($page_css_file); ?>">

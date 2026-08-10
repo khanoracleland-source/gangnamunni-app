@@ -28,7 +28,10 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
   bool _isRefreshing = false;
-  bool _canGoBack = false;
+  String? _currentUrl;
+  DateTime? _lastExitBackPressedAt;
+
+  static const Duration _exitConfirmationWindow = Duration(seconds: 2);
 
   // 페이지 상단에서 아래로 당겨서 새로고침하는 JS (Android/iOS 호환)
   static const String _pullToRefreshJs = '''
@@ -93,15 +96,15 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
           onPageStarted: (String url) {
             setState(() {
               _isLoading = true;
+              _currentUrl = url;
             });
-            _updateCanGoBack();
           },
           onPageFinished: (String url) {
             setState(() {
               _isLoading = false;
               _isRefreshing = false;
+              _currentUrl = url;
             });
-            _updateCanGoBack();
             // pull-to-refresh JS 주입
             _controller.runJavaScript(_pullToRefreshJs);
             // Register the current FCM token using the website's authenticated
@@ -139,19 +142,48 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
     await _controller.reload();
   }
 
-  Future<void> _updateCanGoBack() async {
-    final canGoBack = await _controller.canGoBack();
-    setState(() {
-      _canGoBack = canGoBack;
-    });
+  String _normalizedPath(Uri uri) {
+    var path = uri.path.toLowerCase();
+    if (path.endsWith('/index.php')) {
+      path = path.substring(0, path.length - '/index.php'.length);
+    }
+    return path.replaceFirst(RegExp(r'/+$'), '');
   }
 
-  Future<bool> _onWillPop() async {
-    if (_canGoBack) {
+  bool _isRootPage(String? url) {
+    if (url == null || url.isEmpty) return false;
+
+    final uri = Uri.tryParse(url);
+    final startupUri = Uri.tryParse(widget.url);
+    if (uri == null || startupUri == null) return false;
+
+    return uri.host.toLowerCase() == startupUri.host.toLowerCase() &&
+        _normalizedPath(uri) == _normalizedPath(startupUri);
+  }
+
+  Future<void> _handleBackPressed() async {
+    final currentUrl = await _controller.currentUrl() ?? _currentUrl;
+    final canGoBack = await _controller.canGoBack();
+
+    // index.php is the app's root page. WebView history can still contain
+    // redirects/login pages, so it must not navigate further back from here.
+    if (!_isRootPage(currentUrl) && canGoBack) {
+      _lastExitBackPressedAt = null;
       await _controller.goBack();
-      return false;
+      return;
     }
-    return true;
+
+    final now = DateTime.now();
+    final shouldExit = _lastExitBackPressedAt != null &&
+        now.difference(_lastExitBackPressedAt!) <= _exitConfirmationWindow;
+
+    if (shouldExit) {
+      await SystemNavigator.pop();
+      return;
+    }
+
+    _lastExitBackPressedAt = now;
+    toast('종료하려면 뒤로가기 버튼을 한 번 더 누르세요.');
   }
 
   void _goToDashboard() {
@@ -165,8 +197,13 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleBackPressed();
+        }
+      },
       child: Scaffold(
         body: SafeArea(
           child: Stack(

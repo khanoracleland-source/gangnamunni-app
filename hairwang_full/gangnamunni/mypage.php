@@ -91,7 +91,7 @@ if (!preg_match('/^#[0-9a-fA-F]{6}$/', $primary_color)) $primary_color = '#AE193
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>마이페이지 — <?php echo htmlspecialchars(site_name()); ?></title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">

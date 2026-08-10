@@ -54,7 +54,7 @@ const STARTUP_WEBVIEW_URL =
 const STARTUP_WEBVIEW_TYPE = 'general'; // 'general' | 'sns'
 
 /// 웹사이트 하단 네비게이션 바 숨김 여부 (CSS 주입)
-const HIDE_WEBVIEW_BOTTOM_NAV = true;
+const HIDE_WEBVIEW_BOTTOM_NAV = false;
 
 /// WebView 상단 새로고침 버튼 숨김 여부
 const HIDE_WEBVIEW_REFRESH_BUTTON = true;

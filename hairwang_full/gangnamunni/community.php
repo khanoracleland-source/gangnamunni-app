@@ -250,7 +250,7 @@ function community_time_display($created_at, $updated_at = null) {
 
 $page_css = '
 /* === 커뮤니티 Figma 디자인 === */
-.community-wrap { max-width: 640px; margin: 0 auto; padding: 0 0 70px; }
+.community-wrap { width: 100%; min-width: 0; max-width: 640px; margin: 0 auto; padding: 0 0 70px; }
 
 /* 섹션 타이틀 */
 .community-section-title { font-size: 20px; font-weight: 700; color: #000000; padding: 16px 16px 8px; margin: 0; }

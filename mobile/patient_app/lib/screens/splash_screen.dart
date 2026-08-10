@@ -9,7 +9,8 @@ import '../utils/colors.dart';
 import 'splash_controller.dart';
 
 class SplashScreen extends StatelessWidget {
-  final SplashScreenController splashController = Get.put(SplashScreenController());
+  final SplashScreenController splashController =
+      Get.put(SplashScreenController());
 
   SplashScreen({super.key});
 
@@ -21,11 +22,10 @@ class SplashScreen extends StatelessWidget {
       body: Stack(
         alignment: Alignment.center,
         children: [
-          Align(
+          Positioned.fill(
             child: Image.asset(
               Assets.assetsAppLogo,
-              height: 150,
-              fit: BoxFit.fitHeight,
+              fit: BoxFit.cover,
             ),
           ),
           Positioned(

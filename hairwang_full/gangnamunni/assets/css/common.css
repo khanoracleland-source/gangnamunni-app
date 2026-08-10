@@ -14,10 +14,15 @@
 }
 
 html {
-    scrollbar-gutter: stable;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
     background: #FFFFFF;
     color: #000000;
@@ -105,6 +110,10 @@ body {
 
 /* PC 스타일 (768px 이상) - 640px 중앙 정렬 */
 @media (min-width: 768px) {
+    html {
+        scrollbar-gutter: stable;
+    }
+
     body {
         background: #F7F7F9;
     }
@@ -204,6 +213,8 @@ body {
 .community-topbar {
     display: flex;
     align-items: flex-end;
+    width: 100%;
+    min-width: 0;
     max-width: 640px;
     margin: 0 auto 15px;
     padding: 0 16px;
@@ -222,6 +233,8 @@ body {
 .hospital-search-input,
 .community-search-input {
     flex: 1;
+    width: 100%;
+    min-width: 0;
     height: 60px;
     padding: 10px 14px 10px 0;
     border: none;
@@ -243,6 +256,7 @@ body {
 .hospital-search-btn,
 .community-search-btn {
     width: 120px;
+    flex: 0 0 120px;
     padding: 14px 20px;
     box-sizing: border-box;
     border: 2px solid #333;
