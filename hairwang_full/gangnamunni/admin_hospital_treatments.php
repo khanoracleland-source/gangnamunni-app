@@ -107,6 +107,16 @@ function ht_price_won($price) {
     return intval($price);
 }
 
+// DB에서 삭제된 로컬 시술 이미지 파일도 함께 정리한다.
+function ht_delete_local_image_files(array $urls) {
+    foreach (array_unique($urls) as $url) {
+        if ($url !== '' && strpos($url, 'uploads/treatments/') === 0 && strpos($url, '..') === false) {
+            $path = __DIR__ . '/' . $url;
+            if (is_file($path)) @unlink($path);
+        }
+    }
+}
+
 $msg = '';
 $msg_type = 'success';
 
@@ -156,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } else {
                 $added = 0;
                 $skipped = 0;
+                $orphan_image_urls = [];
                 mysqli_begin_transaction($connect);
                 try {
                 foreach ($treatment_ids as $tid) {
@@ -171,10 +182,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         if (intval($existing['is_active']) === 0 || in_array($existing['status'], ['inactive', 'rejected'], true)) {
                             $new_status = 'active';
                             $existing_id = intval($existing['id']);
-                            $reactivate = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET status = ?, is_active = 1, reject_reason = NULL, is_promoted = 0, updated_at = NOW() WHERE id = ?");
-                            mysqli_stmt_bind_param($reactivate, 'si', $new_status, $existing_id);
+
+                            // 재배정은 새 배정과 동일하게 초기 상태로 시작한다. 해제 전에 저장된
+                            // 가격 옵션/상세 이미지가 같은 id를 따라 되살아나는 문제를 방지한다.
+                            $price_stmt = mysqli_prepare($connect, "SELECT avg_price_min, avg_price_max FROM gangnamunni_treatment_master WHERE id = ? AND is_active = 1");
+                            mysqli_stmt_bind_param($price_stmt, 'i', $tid);
+                            ht_execute_or_throw($price_stmt, '기본 가격 조회 실패');
+                            $price_r = mysqli_stmt_get_result($price_stmt);
+                            $price_row = mysqli_fetch_assoc($price_r);
+                            mysqli_stmt_close($price_stmt);
+                            if (!$price_row || max(intval($price_row['avg_price_min'] ?? 0), intval($price_row['avg_price_max'] ?? 0)) <= 0) {
+                                $skipped++;
+                                continue;
+                            }
+                            $p_min = intval($price_row['avg_price_min'] ?? 0);
+                            $p_max = intval($price_row['avg_price_max'] ?? 0);
+                            $def_price = $p_max > 0 ? $p_max : $p_min;
+
+                            $img_stmt = mysqli_prepare($connect, "SELECT image_url FROM gangnamunni_hospital_treatment_images WHERE hospital_treatment_id = ?");
+                            mysqli_stmt_bind_param($img_stmt, 'i', $existing_id);
+                            ht_execute_or_throw($img_stmt, '기존 이미지 조회 실패');
+                            $img_r = mysqli_stmt_get_result($img_stmt);
+                            while ($img = mysqli_fetch_assoc($img_r)) $orphan_image_urls[] = (string)($img['image_url'] ?? '');
+                            mysqli_stmt_close($img_stmt);
+
+                            $del_prices = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_treatment_prices WHERE hospital_treatment_id = ?");
+                            mysqli_stmt_bind_param($del_prices, 'i', $existing_id);
+                            ht_execute_or_throw($del_prices, '기존 가격 옵션 초기화 실패');
+                            mysqli_stmt_close($del_prices);
+                            $del_images = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_treatment_images WHERE hospital_treatment_id = ?");
+                            mysqli_stmt_bind_param($del_images, 'i', $existing_id);
+                            ht_execute_or_throw($del_images, '기존 이미지 초기화 실패');
+                            mysqli_stmt_close($del_images);
+
+                            $reactivate = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET status = ?, is_active = 1, reject_reason = NULL, is_promoted = 0, price_min = ?, price_max = ?, dosage_value = 1, dosage_unit = '회', updated_at = NOW() WHERE id = ?");
+                            mysqli_stmt_bind_param($reactivate, 'siii', $new_status, $p_min, $p_max, $existing_id);
                             ht_execute_or_throw($reactivate, '시술 재배정 실패');
                             mysqli_stmt_close($reactivate);
+                            $op = mysqli_prepare($connect, "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, 1, '회', ?, 0)");
+                            mysqli_stmt_bind_param($op, 'ii', $existing_id, $def_price);
+                            ht_execute_or_throw($op, '기본 가격 옵션 저장 실패');
+                            mysqli_stmt_close($op);
                             $added++;
                         } else {
                             $skipped++;
@@ -231,6 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     mysqli_stmt_close($stmt);
                 }
                 mysqli_commit($connect);
+                ht_delete_local_image_files($orphan_image_urls);
                 } catch (Throwable $e) {
                     mysqli_rollback($connect);
                     error_log('[hospital_treatments] assign 실패: ' . $e->getMessage());
@@ -247,12 +296,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($action === 'remove') {
             $id = intval($_POST['id'] ?? 0);
             if ($id > 0) {
-                $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET is_active = 0, is_promoted = 0, updated_at = NOW() WHERE id = ? AND is_active = 1");
-                mysqli_stmt_bind_param($stmt, 'i', $id);
-                ht_execute_or_throw($stmt, '시술 배정 해제 실패');
-                $affected = mysqli_stmt_affected_rows($stmt);
-                mysqli_stmt_close($stmt);
-                ht_redirect($post_hospital_id, $affected ? '시술 배정이 안전하게 비활성화되었습니다.' : '이미 해제되었거나 존재하지 않는 시술입니다.', $affected ? 'success' : 'warning');
+                $image_urls = [];
+                mysqli_begin_transaction($connect);
+                try {
+                    $img_stmt = mysqli_prepare($connect, "SELECT image_url FROM gangnamunni_hospital_treatment_images WHERE hospital_treatment_id = ?");
+                    mysqli_stmt_bind_param($img_stmt, 'i', $id);
+                    ht_execute_or_throw($img_stmt, '기존 이미지 조회 실패');
+                    $img_r = mysqli_stmt_get_result($img_stmt);
+                    while ($img = mysqli_fetch_assoc($img_r)) $image_urls[] = (string)($img['image_url'] ?? '');
+                    mysqli_stmt_close($img_stmt);
+
+                    $del_prices = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_treatment_prices WHERE hospital_treatment_id = ?");
+                    mysqli_stmt_bind_param($del_prices, 'i', $id);
+                    ht_execute_or_throw($del_prices, '가격 옵션 삭제 실패');
+                    mysqli_stmt_close($del_prices);
+                    $del_images = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_treatment_images WHERE hospital_treatment_id = ?");
+                    mysqli_stmt_bind_param($del_images, 'i', $id);
+                    ht_execute_or_throw($del_images, '상세 이미지 삭제 실패');
+                    mysqli_stmt_close($del_images);
+
+                    $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET is_active = 0, is_promoted = 0, price_min = 0, price_max = 0, dosage_value = NULL, dosage_unit = NULL, updated_at = NOW() WHERE id = ? AND is_active = 1");
+                    mysqli_stmt_bind_param($stmt, 'i', $id);
+                    ht_execute_or_throw($stmt, '시술 배정 해제 실패');
+                    $affected = mysqli_stmt_affected_rows($stmt);
+                    mysqli_stmt_close($stmt);
+                    mysqli_commit($connect);
+                    ht_delete_local_image_files($image_urls);
+                    ht_redirect($post_hospital_id, $affected ? '시술 배정과 가격 옵션, 상세 이미지가 삭제되었습니다.' : '이미 해제되었거나 존재하지 않는 시술입니다.', $affected ? 'success' : 'warning');
+                } catch (Throwable $e) {
+                    mysqli_rollback($connect);
+                    error_log('[hospital_treatments] remove 실패: ' . $e->getMessage());
+                    ht_redirect($post_hospital_id, '시술 배정 해제에 실패했습니다. 기존 데이터는 유지됩니다.', 'danger');
+                }
             }
         }
 
@@ -294,8 +369,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } else {
                 $option_keys = [];
                 foreach ($options as $opt) {
-                    $key = $opt['dv'] . '|' . mb_strtolower($opt['du'], 'UTF-8');
-                    if (isset($option_keys[$key])) ht_redirect($post_hospital_id, '동일한 용량과 단위의 가격 옵션을 중복 등록할 수 없습니다.', 'warning');
+                    // 같은 용량/단위라도 시술 부위·유형(옵션명)이 다르면 별도 옵션이다.
+                    // 예: 사각턱 / 1회, 주름 / 1회
+                    $key = mb_strtolower($opt['name'], 'UTF-8') . '|' . $opt['dv'] . '|' . mb_strtolower($opt['du'], 'UTF-8');
+                    if (isset($option_keys[$key])) ht_redirect($post_hospital_id, '동일한 옵션명, 용량, 단위의 가격 옵션을 중복 등록할 수 없습니다.', 'warning');
                     $option_keys[$key] = true;
                 }
                 // 대상 행 조회 (이력 기록용)
