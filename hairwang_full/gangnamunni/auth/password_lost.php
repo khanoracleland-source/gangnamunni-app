@@ -132,8 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $subject = '[' . $brand . '] 비밀번호 재설정 안내';
                 $body = "<div style='font-family:sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;max-width:560px'>"
                       . htmlspecialchars($mb['mb_name']) . "님, 비밀번호 재설정을 요청하셨습니다.<br><br>"
-                      . "아래 임시 비밀번호를 확인한 후, 반드시 <strong style='color:#AE1932'>비밀번호 변경</strong> 버튼을 눌러 활성화해주세요.<br>"
-                      . "버튼을 누르기 전에는 이 비밀번호로 로그인할 수 없습니다.<br><br>"
+                      . "아래 임시 비밀번호로 바로 로그인하거나, <strong style='color:#AE1932'>비밀번호 변경</strong> 버튼을 눌러 활성화해주세요.<br><br>"
                       . "<div style='padding:16px 20px;background:#f7f7f7;border-radius:8px'>"
                       . "변경될 비밀번호 : <strong style='font-size:20px;color:#AE1932;letter-spacing:2px'>" . $change_password . "</strong></div><br>"
                       . "<a href='" . htmlspecialchars($href, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block;padding:14px 28px;background:#2b0000;color:#fff;text-decoration:none;border-radius:6px;font-weight:700'>비밀번호 변경</a><br><br>"

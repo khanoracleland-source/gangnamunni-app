@@ -238,19 +238,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
             && !empty($login_mb['mb_id'])
             && login_password_check($login_mb, $password, $login_mb['mb_password']);
 
-        // password_lost.php emailidagi vaqtinchalik parol hali havola orqali
-        // faollashtirilmagan bo'lsa, uni birinchi muvaffaqiyatli login paytida atomik
-        // ravishda faollashtiramiz. Emailga kira olmaydigan shaxs pending hashni
-        // bilmagani uchun akkaunt parolini o'zgartira olmaydi.
+        // Custom reset stores "nonce expires hash", while Gnuboard's standard
+        // password_lost2.php stores the legacy "nonce hash" format. Accept both,
+        // otherwise a password mailed by the standard reset flow can never be
+        // used on this email-login page before the confirmation link is opened.
         if (!$password_valid && !empty($login_mb['mb_lost_certify'])) {
             $reset_value = (string)$login_mb['mb_lost_certify'];
             $reset_parts = explode(' ', trim($reset_value), 3);
+            $pending_hash = '';
             if (count($reset_parts) === 3
-                && strlen($reset_parts[0]) === 32
-                && ctype_digit($reset_parts[1])
-                && time() <= (int)$reset_parts[1]
-                && check_password($password, $reset_parts[2])) {
+                && strlen($reset_parts[0]) === 32 && ctype_xdigit($reset_parts[0])
+                && ctype_digit($reset_parts[1]) && time() <= (int)$reset_parts[1]) {
                 $pending_hash = $reset_parts[2];
+            } elseif (count($reset_parts) === 2
+                && strlen($reset_parts[0]) === 32 && ctype_xdigit($reset_parts[0])) {
+                $pending_hash = $reset_parts[1];
+            }
+
+            if ($pending_hash !== '' && check_password($password, $pending_hash)) {
                 $activate = mysqli_prepare(
                     $connect,
                     "UPDATE {$member_table}

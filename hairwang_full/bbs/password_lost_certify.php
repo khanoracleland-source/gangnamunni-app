@@ -15,13 +15,22 @@ $mb_nonce = isset($_GET['mb_nonce']) ? trim($_GET['mb_nonce']) : '';
 $sql = " select mb_id, mb_lost_certify from {$g5['member_table']} where mb_no = '$mb_no' ";
 $mb  = sql_fetch($sql);
 $parts = explode(' ', trim($mb['mb_lost_certify'] ?? ''), 3);
-if (count($parts) !== 3 || strlen($parts[0]) !== 32 || !ctype_digit($parts[1]) || strlen($parts[2]) < 33)
+$stored_nonce = $parts[0] ?? '';
+$expires_at = null;
+$new_password_hash = '';
+if (count($parts) === 3 && ctype_digit($parts[1])) {
+    $expires_at = (int)$parts[1];
+    $new_password_hash = $parts[2];
+} elseif (count($parts) === 2) {
+    // Gnuboard password_lost2.php legacy format: "nonce hash".
+    $new_password_hash = $parts[1];
+}
+if (strlen($stored_nonce) !== 32 || !ctype_xdigit($stored_nonce) || strlen($new_password_hash) < 33)
     die("Error");
 
-[$stored_nonce, $expires_at, $new_password_hash] = $parts;
 // nonce 및 만료시각을 검증한 후, 비밀번호 교체와 토큰 소모를 하나의 UPDATE로 처리한다.
 // 비밀번호 저장 실패 전에 토큰만 먼저 삭제되는 상황을 방지한다.
-if (hash_equals($stored_nonce, $mb_nonce) && time() <= (int)$expires_at) {
+if (hash_equals($stored_nonce, $mb_nonce) && ($expires_at === null || time() <= $expires_at)) {
     global $connect;
     $changed = false;
     if ($pw = mysqli_prepare($connect, "UPDATE {$g5['member_table']} SET mb_password = ?, mb_lost_certify = '' WHERE mb_no = ? AND mb_lost_certify = ?")) {

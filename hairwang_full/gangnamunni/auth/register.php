@@ -93,7 +93,7 @@ function gnu_send_cert_mail($to_email, $code) {
     $body    = "<div style='font-family:sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7'>"
              . "회원가입 인증 코드입니다.<br><br>"
              . "<div style='font-size:28px;font-weight:800;letter-spacing:4px;color:#AE1932'>{$code}</div><br>"
-             . "3분 이내에 입력해주세요."
+             . "10분 이내에 입력해주세요."
              . "</div>";
     // 계정 인덱스 0 = admin@seoulbeauty.app
     $result = mail_send(0, $to_email, $subject, $body);
@@ -137,9 +137,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_co
     }
     $_SESSION['reg_cert_code']   = $code;
     $_SESSION['reg_cert_email']  = $email;
-    $_SESSION['reg_cert_expire'] = time() + 180;
+    // 이 코드는(프로필 수정과 달리) 코드 입력 후에도 비밀번호 작성·전화번호 입력·
+    // 약관 동의를 모두 마쳐야 최종 제출된다. 3분(profile_edit.php의 "코드만 즉시
+    // 확인" 케이스에서 가져온 값)은 전체 가입 폼을 채우기엔 너무 짧아, 다수 사용자가
+    // 마지막 제출 시점에 "인증코드가 만료되었습니다" 오류를 겪는 원인이었다.
+    $_SESSION['reg_cert_expire'] = time() + 600;
     $_SESSION['reg_cert_attempts'] = 0;
-    echo json_encode(['ok' => true, 'msg' => '인증코드를 이메일로 발송했습니다. (3분 내 입력)']);
+    echo json_encode(['ok' => true, 'msg' => '인증코드를 이메일로 발송했습니다. (10분 내 입력)']);
     exit;
 }
 
@@ -167,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_sm
     $sms_code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     require_once __DIR__ . '/../includes/sms_helper.php';
     $sent = function_exists('sms_send')
-        ? sms_send($phone, '[서울미녀] 인증번호 [' . $sms_code . '] 를 3분 이내에 입력해주세요.')
+        ? sms_send($phone, '[서울미녀] 인증번호 [' . $sms_code . '] 를 10분 이내에 입력해주세요.')
         : ['success' => false, 'error' => 'SMS helper 없음'];
     if (!(is_array($sent) && !empty($sent['success']))) {
         error_log('[register] SMS 발송 실패: ' . (is_array($sent) ? ($sent['error'] ?? 'unknown') : 'no result'));
@@ -175,8 +179,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'send_sm
     }
     $_SESSION['reg_sms_code']   = $sms_code;
     $_SESSION['reg_sms_phone']  = $phone;
-    $_SESSION['reg_sms_expire'] = time() + 180;
-    echo json_encode(['ok' => true, 'msg' => '인증번호를 문자로 발송했습니다. (3분 내 입력)']); exit;
+    // 이메일 코드와 동일한 이유(비밀번호·약관 동의까지 마쳐야 최종 제출)로 10분으로 통일.
+    $_SESSION['reg_sms_expire'] = time() + 600;
+    echo json_encode(['ok' => true, 'msg' => '인증번호를 문자로 발송했습니다. (10분 내 입력)']); exit;
 }
 
 $reg_error = '';
@@ -665,7 +670,7 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
                 msg.textContent = d.msg || (d.ok ? '발송했습니다.' : '발송 실패');
                 if (d.ok) {
                     document.getElementById('cert_code').focus();
-                    var left = 180;
+                    var left = 600;
                     clearInterval(codeTimer);
                     codeTimer = setInterval(function () {
                         left--;
@@ -694,7 +699,7 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
                 msg.textContent = d.msg || (d.ok ? '발송했습니다.' : '발송 실패');
                 if (d.ok) {
                     document.getElementById('sms_code').focus();
-                    var left = 180; clearInterval(smsTimer);
+                    var left = 600; clearInterval(smsTimer);
                     smsTimer = setInterval(function () {
                         left--;
                         if (left <= 0) { clearInterval(smsTimer); btn.disabled = false; btn.textContent = '재발송'; return; }

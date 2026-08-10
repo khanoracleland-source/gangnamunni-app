@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stored = $pw_row['mb_password'] ?? '';
             $ok = function_exists('check_password') ? check_password($current_pw, $stored) : password_verify($current_pw, $stored);
             if (!$ok) {
-                $pw_error = '현재 비밀번호가 올바르지 않습니다.';
+                $pw_error = '현재 비밀번호가 올바르지 않습니다. 비밀번호를 재설정했다면 이메일로 받은 12자리 임시 비밀번호를 입력해주세요.';
             } else {
                 $new_hash = function_exists('create_hash') ? create_hash($new_pw) : password_hash($new_pw, PASSWORD_DEFAULT);
                 $ps = mysqli_prepare($connect, "UPDATE g5_member SET mb_password=? WHERE mb_id=?");
@@ -402,9 +402,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
         <div id="pw-section" style="display:<?php echo ($pw_error||$pw_saved)?'block':'none'; ?>;">
             <?php if ($pw_error): ?><div class="pw-error"><i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($pw_error); ?></div><?php endif; ?>
             <?php if ($pw_saved): ?><div class="pw-saved"><i class="bi bi-check-circle"></i> 비밀번호가 변경되었습니다</div><?php endif; ?>
-            <div class="field" style="margin-top:12px;"><div class="field-content"><label>현재 비밀번호</label><input type="password" name="current_pw" placeholder="현재 비밀번호 입력"></div></div>
-            <div class="field"><div class="field-content"><label>새 비밀번호</label><input type="password" name="new_pw" placeholder="6자 이상 입력"></div></div>
-            <div class="field"><div class="field-content"><label>새 비밀번호 확인</label><input type="password" name="new_pw_confirm" placeholder="새 비밀번호 재입력"></div></div>
+            <div style="margin:12px 2px 6px;font-size:calc(12px * var(--fs-scale,1));line-height:1.55;color:var(--bs-secondary-color,#777);">
+                비밀번호를 재설정했다면 이메일로 받은 12자리 임시 비밀번호가 현재 비밀번호입니다.
+            </div>
+            <div class="field"><div class="field-content"><label>현재 비밀번호</label><input type="password" name="current_pw" placeholder="기존 또는 이메일로 받은 임시 비밀번호" autocomplete="current-password" required></div></div>
+            <div class="field"><div class="field-content"><label>새 비밀번호</label><input type="password" name="new_pw" placeholder="6자 이상 입력" autocomplete="new-password" required minlength="6"></div></div>
+            <div class="field"><div class="field-content"><label>새 비밀번호 확인</label><input type="password" name="new_pw_confirm" placeholder="새 비밀번호 재입력" autocomplete="new-password" required minlength="6"></div></div>
             <button type="submit" class="save-btn">확인</button>
         </div>
     </form>
