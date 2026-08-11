@@ -46,10 +46,26 @@ function validate_doctor_profile($name, $hospital_id, $specialty, $memberships) 
     if ($name === '') return '의사 이름은 필수입니다.';
     if (mb_strlen($name, 'UTF-8') > 100) return '의사 이름은 100자 이하여야 합니다.';
     if ($hospital_id <= 0) return '소속 병원을 선택해주세요.';
-    if ($specialty === '') return '전문의 구분 또는 표기 문구를 입력해주세요.';
     if (mb_strlen($specialty, 'UTF-8') > 100) return '전문의 구분 또는 표기는 100자 이하여야 합니다.';
     if (mb_strlen($memberships, 'UTF-8') > 2000) return '자격 및 학회 정보는 2000자 이하여야 합니다.';
     return '';
+}
+
+function doctor_specialty_options() {
+    return [
+        '피부과 전문의',
+        '성형외과 전문의',
+        '마취통증의학과 전문의',
+        '가정의학과 전문의',
+        '일반의',
+    ];
+}
+
+function validate_doctor_specialty_option($specialty, $existing_specialty = '') {
+    if ($specialty === '' || in_array($specialty, doctor_specialty_options(), true)) return '';
+    // 기존에 자유 입력된 값은 수정 시 그대로 유지할 수 있게 한다.
+    if ($existing_specialty !== '' && hash_equals($existing_specialty, $specialty)) return '';
+    return '전문의 구분 또는 표기를 올바른 옵션에서 선택해주세요.';
 }
 
 function upload_doctor_photo($file_key, $doctor_id) {
@@ -164,10 +180,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'create_doctor') {
         $name = trim($_POST['name'] ?? '');
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
-        $specialty = trim($_POST['specialty'] ?? '');
+        $specialty = is_string($_POST['specialty'] ?? null) ? trim($_POST['specialty']) : '';
         $memberships = trim($_POST['memberships'] ?? '');
 
         $error = validate_doctor_profile($name, $hospital_id, $specialty, $memberships);
+        if ($error === '') $error = validate_doctor_specialty_option($specialty);
         if ($error !== '') {
         } elseif (!doctor_hospital_allowed($hospital_id, $allowed_hospital_ids)) {
             $error = '선택한 병원에 의사를 등록할 권한이 없습니다.';
@@ -213,10 +230,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $doctor_id = intval($_POST['doctor_id'] ?? 0);
         $name = trim($_POST['name'] ?? '');
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
-        $specialty = trim($_POST['specialty'] ?? '');
+        $specialty = is_string($_POST['specialty'] ?? null) ? trim($_POST['specialty']) : '';
         $memberships = trim($_POST['memberships'] ?? '');
         $uploaded_photo = null;
-        $own_stmt = mysqli_prepare($connect, "SELECT hospital_id, photo_url FROM gangnamunni_doctors WHERE id = ?");
+        $own_stmt = mysqli_prepare($connect, "SELECT hospital_id, photo_url, specialty FROM gangnamunni_doctors WHERE id = ?");
         mysqli_stmt_bind_param($own_stmt, 'i', $doctor_id);
         mysqli_stmt_execute($own_stmt);
         $own_row = mysqli_fetch_assoc(mysqli_stmt_get_result($own_stmt));
@@ -226,6 +243,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             && doctor_hospital_allowed($hospital_id, $allowed_hospital_ids);
         $photo_url = (string)($own_row['photo_url'] ?? '');
         $validation_error = validate_doctor_profile($name, $hospital_id, $specialty, $memberships);
+        if ($validation_error === '') {
+            $validation_error = validate_doctor_specialty_option($specialty, trim($own_row['specialty'] ?? ''));
+        }
 
         // 파일 업로드 처리 (URL보다 우선)
         if ($edit_allowed && $validation_error === '') {
@@ -349,6 +369,7 @@ if ($view_mode > 0) {
 
 // ===== 병원 목록 (필터 드롭다운/수정 폼 select용) — 소속 병원만 =====
 $hospital_list = [];
+$specialty_options = doctor_specialty_options();
 $h_where = ($hosp_in !== null) ? " WHERE id IN ({$hosp_in})" : "";
 $h_result = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals{$h_where} ORDER BY name ASC");
 if ($h_result) {
@@ -594,11 +615,18 @@ include __DIR__ . '/includes/admin_header.php';
                     </select>
                 </div>
                 <div class="col-12">
-                    <label class="form-label fw-semibold small">전문의 구분 또는 표기 <span class="text-danger">*</span></label>
-                    <input type="text" name="specialty" class="form-control form-control-sm" required maxlength="100"
-                           value="<?php echo htmlspecialchars($doctor['specialty'] ?? ''); ?>"
-                           placeholder="예: 피부과 전문의 또는 일반의">
-                    <div class="form-text">사이트에 노출할 표기를 그대로 노출합니다.</div>
+                    <label class="form-label fw-semibold small">전문의 구분 또는 표기</label>
+                    <select name="specialty" class="form-select form-select-sm">
+                        <option value="">해당 없음 (전문의 표기 안 함)</option>
+                        <?php $current_specialty = trim($doctor['specialty'] ?? ''); ?>
+                        <?php if ($current_specialty !== '' && !in_array($current_specialty, $specialty_options, true)): ?>
+                        <option value="<?php echo htmlspecialchars($current_specialty); ?>" selected><?php echo htmlspecialchars($current_specialty); ?></option>
+                        <?php endif; ?>
+                        <?php foreach ($specialty_options as $specialty_option): ?>
+                        <option value="<?php echo htmlspecialchars($specialty_option); ?>" <?php echo $current_specialty === $specialty_option ? 'selected' : ''; ?>><?php echo htmlspecialchars($specialty_option); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="form-text">선택하지 않으면 사이트에 표시되지 않습니다.</div>
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-semibold small">자격 및 소속 학회</label>
@@ -673,10 +701,12 @@ include __DIR__ . '/includes/admin_header.php';
                         <div class="doctor-detail-label">소속 병원</div>
                         <div class="doctor-detail-value"><?php echo htmlspecialchars($doctor['hospital_name'] ?? '-'); ?></div>
                     </div>
+                    <?php if (trim($doctor['specialty'] ?? '') !== ''): ?>
                     <div class="col-12">
                         <div class="doctor-detail-label">전문의 구분 또는 표기</div>
-                        <div class="doctor-detail-value"><?php echo htmlspecialchars(trim($doctor['specialty'] ?? '') ?: '일반의'); ?></div>
+                        <div class="doctor-detail-value"><?php echo htmlspecialchars(trim($doctor['specialty'])); ?></div>
                     </div>
+                    <?php endif; ?>
                     <div class="col-12">
                         <div class="doctor-detail-label">자격 및 소속 학회</div>
                         <div class="doctor-detail-value"><?php echo nl2br(htmlspecialchars($doctor['qualification'] ?? '-')); ?></div>
@@ -804,10 +834,14 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">전문의 구분 또는 표기 <span class="text-danger">*</span></label>
-                            <input type="text" name="specialty" class="form-control" required maxlength="100"
-                                   placeholder="예: 피부과 전문의 또는 일반의">
-                            <div class="form-text">사이트에 표시될 문구를 그대로 입력하세요.</div>
+                            <label class="form-label">전문의 구분 또는 표기</label>
+                            <select name="specialty" class="form-select">
+                                <option value="">해당 없음 (전문의 표기 안 함)</option>
+                                <?php foreach ($specialty_options as $specialty_option): ?>
+                                <option value="<?php echo htmlspecialchars($specialty_option); ?>"><?php echo htmlspecialchars($specialty_option); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text">선택하지 않으면 사이트에 표시되지 않습니다.</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">프로필 사진</label>
