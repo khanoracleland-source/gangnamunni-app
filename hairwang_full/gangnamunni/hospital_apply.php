@@ -34,12 +34,19 @@ $message = '';
 $error = '';
 $success = false;
 $current_admin = get_current_admin();
+if (empty($_SESSION['hospital_apply_csrf'])) {
+    $_SESSION['hospital_apply_csrf'] = bin2hex(random_bytes(32));
+}
+$hospital_apply_csrf = (string)$_SESSION['hospital_apply_csrf'];
 
 // show_hospital_apply 설정은 마이페이지 노출 여부만 제어
 // 관리자 페이지에서의 신청은 항상 가능
 
 // ===== POST 처리: 신청 제출 =====
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, (string)($_POST['csrf_token'] ?? ''))) {
+    http_response_code(403);
+    $error = '요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 필수 필드 검증
     $name = trim($_POST['hospital_name'] ?? '');
     $owner_name = trim($_POST['owner_name'] ?? '');
@@ -74,9 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // 파일 업로드 처리
         $applied_by = $current_admin['username'] ?? ($current_admin['name'] ?? 'unknown');
-        $upload_dir = __DIR__ . '/uploads/hospital_apply/' . $applied_by . '/';
+        $upload_owner = 'admin_' . max(0, (int)($current_admin['id'] ?? 0));
+        $upload_dir = __DIR__ . '/uploads/hospital_apply/' . $upload_owner . '/';
         if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
+            if (!mkdir($upload_dir, 0755, true) && !is_dir($upload_dir)) {
+                $error = '업로드 폴더를 준비할 수 없습니다.';
+            }
         }
 
         $cert_business_path = '';
@@ -85,12 +95,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $logo_image_path = '';
 
         // 사업자등록증 (필수)
-        if (!empty($_FILES['cert_business']['name']) && $_FILES['cert_business']['error'] === UPLOAD_ERR_OK) {
+        if (empty($error) && !empty($_FILES['cert_business']['name']) && $_FILES['cert_business']['error'] === UPLOAD_ERR_OK && is_uploaded_file($_FILES['cert_business']['tmp_name'])) {
             $ext = strtolower(pathinfo($_FILES['cert_business']['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'pdf']) && $_FILES['cert_business']['size'] <= 5 * 1024 * 1024) {
-                $fname = 'cert_business_' . time() . '.' . $ext;
+            $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['cert_business']['tmp_name']);
+            $allowed_mimes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'application/pdf' => 'pdf'];
+            if (isset($allowed_mimes[$mime]) && in_array($ext, ['jpg', 'jpeg', 'png', 'pdf'], true) && $_FILES['cert_business']['size'] <= 5 * 1024 * 1024) {
+                $fname = 'cert_business_' . bin2hex(random_bytes(16)) . '.' . $allowed_mimes[$mime];
                 if (move_uploaded_file($_FILES['cert_business']['tmp_name'], $upload_dir . $fname)) {
-                    $cert_business_path = 'uploads/hospital_apply/' . $applied_by . '/' . $fname;
+                    $cert_business_path = 'uploads/hospital_apply/' . $upload_owner . '/' . $fname;
+                } else {
+                    $error = '사업자등록증 파일 저장에 실패했습니다.';
                 }
             } else {
                 $error = '사업자등록증: JPG/PNG/PDF, 5MB 이하만 가능합니다.';
@@ -100,12 +114,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // 의료기관 개설허가증 (필수)
-        if (empty($error) && !empty($_FILES['cert_medical']['name']) && $_FILES['cert_medical']['error'] === UPLOAD_ERR_OK) {
+        if (empty($error) && !empty($_FILES['cert_medical']['name']) && $_FILES['cert_medical']['error'] === UPLOAD_ERR_OK && is_uploaded_file($_FILES['cert_medical']['tmp_name'])) {
             $ext = strtolower(pathinfo($_FILES['cert_medical']['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'pdf']) && $_FILES['cert_medical']['size'] <= 5 * 1024 * 1024) {
-                $fname = 'cert_medical_' . time() . '.' . $ext;
+            $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['cert_medical']['tmp_name']);
+            $allowed_mimes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'application/pdf' => 'pdf'];
+            if (isset($allowed_mimes[$mime]) && in_array($ext, ['jpg', 'jpeg', 'png', 'pdf'], true) && $_FILES['cert_medical']['size'] <= 5 * 1024 * 1024) {
+                $fname = 'cert_medical_' . bin2hex(random_bytes(16)) . '.' . $allowed_mimes[$mime];
                 if (move_uploaded_file($_FILES['cert_medical']['tmp_name'], $upload_dir . $fname)) {
-                    $cert_medical_path = 'uploads/hospital_apply/' . $applied_by . '/' . $fname;
+                    $cert_medical_path = 'uploads/hospital_apply/' . $upload_owner . '/' . $fname;
+                } else {
+                    $error = '의료기관 개설허가증 파일 저장에 실패했습니다.';
                 }
             } else {
                 $error = '의료기관 허가증: JPG/PNG/PDF, 5MB 이하만 가능합니다.';
@@ -115,13 +133,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // 대표 이미지 (선택)
-        if (empty($error) && !empty($_FILES['profile_image']['name']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
+        if (empty($error) && !empty($_FILES['profile_image']['name']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK && is_uploaded_file($_FILES['profile_image']['tmp_name'])) {
             $ext = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, ['jpg', 'jpeg', 'png']) && $_FILES['profile_image']['size'] <= 5 * 1024 * 1024) {
-                $fname = 'profile_' . time() . '.' . $ext;
+            $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['profile_image']['tmp_name']);
+            $allowed_mimes = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
+            if (isset($allowed_mimes[$mime]) && in_array($ext, ['jpg', 'jpeg', 'png'], true) && $_FILES['profile_image']['size'] <= 5 * 1024 * 1024) {
+                $fname = 'profile_' . bin2hex(random_bytes(16)) . '.' . $allowed_mimes[$mime];
                 if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $upload_dir . $fname)) {
-                    $profile_image_path = 'uploads/hospital_apply/' . $applied_by . '/' . $fname;
+                    $profile_image_path = 'uploads/hospital_apply/' . $upload_owner . '/' . $fname;
                 }
+            } else {
+                $error = '대표 이미지: 실제 JPG/PNG 파일, 5MB 이하만 가능합니다.';
             }
         }
 
@@ -142,43 +164,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
                 if (mysqli_stmt_execute($stmt)) {
                     $new_id = mysqli_insert_id($connect);
-                    $image_warnings = hti_save_application_treatments(
-                        $connect, $new_id, $_POST['application_treatment_ids'] ?? [], 'hospital'
-                    );
                     $success = true;
                     $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
-                    if ($image_warnings) $message .= ' 단, 일부 시술 이미지 업로드를 확인해 주세요: ' . implode(' / ', $image_warnings);
-
-                    // 관리자에게 이메일 알림
-                    if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
-                        require_once __DIR__ . '/includes/mail_helper.php';
-                        $admin_body = "<h2>새 병원 등록 신청</h2>
-                            <p><strong>병원명:</strong> " . htmlspecialchars($name) . "</p>
-                            <p><strong>대표자:</strong> " . htmlspecialchars($owner_name) . "</p>
-                            <p><strong>사업자번호:</strong> " . htmlspecialchars($business_number) . "</p>
-                            <p><strong>이메일:</strong> " . htmlspecialchars($email) . "</p>
-                            <p><strong>신청자:</strong> " . htmlspecialchars($applied_by) . "</p>
-                            <p><a href='" . SITE_FULL_URL . "admin_hospitals.php?status=pending'>신청 목록 확인</a></p>";
-                        @mail_send(0, 'admin@seoulbeauty.app', '[서울미녀] 새 병원 등록 신청 - ' . $name, $admin_body);
+                    try {
+                        $image_warnings = hti_save_application_treatments(
+                            $connect, $new_id, $_POST['application_treatment_ids'] ?? [], 'hospital'
+                        );
+                        if ($image_warnings) $message .= ' 단, 일부 시술 이미지 업로드를 확인해 주세요: ' . implode(' / ', $image_warnings);
+                    } catch (\Throwable $e) {
+                        error_log('[hospital_apply] 시술/이미지 저장 실패: ' . $e->getMessage());
                     }
 
-                    // 신청자에게 확인 이메일
-                    if (!empty($email) && file_exists(__DIR__ . '/includes/mail_helper.php')) {
-                        $user_body = "<h2>병원 등록 신청이 접수되었습니다</h2>
-                            <p>안녕하세요, <strong>" . htmlspecialchars($contact_name) . "</strong>님.</p>
-                            <p><strong>" . htmlspecialchars($name) . "</strong>의 입점 신청이 정상적으로 접수되었습니다.</p>
-                            <p>심사 결과는 1~3 영업일 내에 이메일로 안내드리겠습니다.</p>
-                            <p>감사합니다.<br>" . term('site_name', '서울미녀') . " 팀</p>";
-                        @mail_send(0, $email, '[서울미녀] 병원 등록 신청 접수 확인', $user_body);
+                    // 관리자에게 이메일 알림
+                    try {
+                        if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
+                            require_once __DIR__ . '/includes/mail_helper.php';
+                            $admin_body = "<h2>새 병원 등록 신청</h2>
+                                <p><strong>병원명:</strong> " . htmlspecialchars($name) . "</p>
+                                <p><strong>대표자:</strong> " . htmlspecialchars($owner_name) . "</p>
+                                <p><strong>사업자번호:</strong> " . htmlspecialchars($business_number) . "</p>
+                                <p><strong>이메일:</strong> " . htmlspecialchars($email) . "</p>
+                                <p><strong>신청자:</strong> " . htmlspecialchars($applied_by) . "</p>
+                                <p><a href='" . SITE_FULL_URL . "admin_hospitals.php?status=pending'>신청 목록 확인</a></p>";
+                            @mail_send(0, 'admin@seoulbeauty.app', '[서울미녀] 새 병원 등록 신청 - ' . $name, $admin_body);
+
+                            if (!empty($email)) {
+                                $user_body = "<h2>병원 등록 신청이 접수되었습니다</h2>
+                                    <p>안녕하세요, <strong>" . htmlspecialchars($contact_name) . "</strong>님.</p>
+                                    <p><strong>" . htmlspecialchars($name) . "</strong>의 입점 신청이 정상적으로 접수되었습니다.</p>
+                                    <p>심사 결과는 1~3 영업일 내에 이메일로 안내드리겠습니다.</p>
+                                    <p>감사합니다.<br>" . term('site_name', '서울미녀') . " 팀</p>";
+                                @mail_send(0, $email, '[서울미녀] 병원 등록 신청 접수 확인', $user_body);
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        error_log('[hospital_apply] 이메일 발송 실패: ' . $e->getMessage());
                     }
 
                     // 관리자 FCM + 인앱 알림
-                    notifyAdmins($connect, 'hospital_apply',
-                        '새 병원 등록 신청',
-                        htmlspecialchars($name) . ' (신청번호 #' . $new_id . ')',
-                        'admin_hospitals.php?status=pending',
-                        ['hospital_id' => $new_id, 'hospital_name' => $name]
-                    );
+                    try {
+                        notifyAdmins($connect, 'hospital_apply',
+                            '새 병원 등록 신청',
+                            htmlspecialchars($name) . ' (신청번호 #' . $new_id . ')',
+                            'admin_hospitals.php?status=pending',
+                            ['hospital_id' => $new_id, 'hospital_name' => $name]
+                        );
+                    } catch (\Throwable $e) {
+                        error_log('[hospital_apply] 관리자 알림 발송 실패: ' . $e->getMessage());
+                    }
 
                     // 신청 완료 후 POST 데이터가 없는 새 신청 폼으로 이동
                     header('Location: hospital_apply.php');
@@ -281,6 +314,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         </div>
         <div class="card-body">
             <form method="POST" enctype="multipart/form-data" id="applyForm">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($hospital_apply_csrf, ENT_QUOTES, 'UTF-8') ?>">
 
                 <!-- 기본 정보 -->
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-building me-2"></i>기본 정보</h6>
