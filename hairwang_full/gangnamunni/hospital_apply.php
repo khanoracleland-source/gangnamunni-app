@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     http_response_code(403);
     $error = '요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 필수 필드 검증
+    // 병원명만 필수, 나머지 필드는 선택
     $name = trim($_POST['hospital_name'] ?? '');
     $owner_name = trim($_POST['owner_name'] ?? '');
     $business_number = trim($_POST['business_number'] ?? '');
@@ -72,11 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     $agree_privacy = isset($_POST['agree_privacy']);
 
     // 유효성 검사
-    if (empty($name) || empty($owner_name) || empty($business_number) || empty($phone) || empty($email) || empty($contact_name) || empty($contact_phone) || empty($address)) {
-        $error = '필수 항목을 모두 입력해 주세요.';
-    } elseif (!$agree_terms || !$agree_privacy) {
-        $error = '필수 약관에 동의해 주세요.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (empty($name)) {
+        $error = '병원명을 입력해 주세요.';
+    } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = '올바른 이메일 주소를 입력해 주세요.';
     } else {
         // 파일 업로드 처리
@@ -94,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
         $profile_image_path = '';
         $logo_image_path = '';
 
-        // 사업자등록증 (필수)
+        // 사업자등록증 (선택)
         if (empty($error) && !empty($_FILES['cert_business']['name']) && $_FILES['cert_business']['error'] === UPLOAD_ERR_OK && is_uploaded_file($_FILES['cert_business']['tmp_name'])) {
             $ext = strtolower(pathinfo($_FILES['cert_business']['name'], PATHINFO_EXTENSION));
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['cert_business']['tmp_name']);
@@ -109,11 +107,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
             } else {
                 $error = '사업자등록증: JPG/PNG/PDF, 5MB 이하만 가능합니다.';
             }
-        } else {
-            $error = '사업자등록증은 필수 서류입니다.';
         }
 
-        // 의료기관 개설허가증 (필수)
+        // 의료기관 개설허가증 (선택)
         if (empty($error) && !empty($_FILES['cert_medical']['name']) && $_FILES['cert_medical']['error'] === UPLOAD_ERR_OK && is_uploaded_file($_FILES['cert_medical']['tmp_name'])) {
             $ext = strtolower(pathinfo($_FILES['cert_medical']['name'], PATHINFO_EXTENSION));
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['cert_medical']['tmp_name']);
@@ -128,8 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
             } else {
                 $error = '의료기관 허가증: JPG/PNG/PDF, 5MB 이하만 가능합니다.';
             }
-        } elseif (empty($error)) {
-            $error = '의료기관 개설허가증은 필수 서류입니다.';
         }
 
         // 대표 이미지 (선택)
@@ -324,28 +318,28 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <input type="text" name="hospital_name" class="form-control" required maxlength="255" value="<?= htmlspecialchars($_POST['hospital_name'] ?? '') ?>">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">대표자명 <span class="text-danger">*</span></label>
-                        <input type="text" name="owner_name" class="form-control" required maxlength="100" value="<?= htmlspecialchars($_POST['owner_name'] ?? '') ?>">
+                        <label class="form-label fw-semibold">대표자명</label>
+                        <input type="text" name="owner_name" class="form-control" maxlength="100" value="<?= htmlspecialchars($_POST['owner_name'] ?? '') ?>">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">사업자등록번호 <span class="text-danger">*</span></label>
-                        <input type="text" name="business_number" class="form-control" required maxlength="20" placeholder="000-00-00000" value="<?= htmlspecialchars($_POST['business_number'] ?? '') ?>">
+                        <label class="form-label fw-semibold">사업자등록번호</label>
+                        <input type="text" name="business_number" class="form-control" maxlength="20" placeholder="000-00-00000" value="<?= htmlspecialchars($_POST['business_number'] ?? '') ?>">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">병원 전화번호 <span class="text-danger">*</span></label>
-                        <input type="tel" name="phone" class="form-control" required maxlength="50" value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
+                        <label class="form-label fw-semibold">병원 전화번호</label>
+                        <input type="tel" name="phone" class="form-control" maxlength="50" value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">병원 이메일 <span class="text-danger">*</span></label>
-                        <input type="email" name="email" class="form-control" required maxlength="191" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
+                        <label class="form-label fw-semibold">병원 아이디(이메일 형식)</label>
+                        <input type="email" name="email" class="form-control" maxlength="191" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold">담당자명 <span class="text-danger">*</span></label>
-                        <input type="text" name="contact_name" class="form-control" required maxlength="100" value="<?= htmlspecialchars($_POST['contact_name'] ?? '') ?>">
+                        <label class="form-label fw-semibold">담당자명</label>
+                        <input type="text" name="contact_name" class="form-control" maxlength="100" value="<?= htmlspecialchars($_POST['contact_name'] ?? '') ?>">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold">담당자 전화 <span class="text-danger">*</span></label>
-                        <input type="tel" name="contact_phone" class="form-control" required maxlength="20" value="<?= htmlspecialchars($_POST['contact_phone'] ?? '') ?>">
+                        <label class="form-label fw-semibold">담당자 전화</label>
+                        <input type="tel" name="contact_phone" class="form-control" maxlength="20" value="<?= htmlspecialchars($_POST['contact_phone'] ?? '') ?>">
                     </div>
                 </div>
 
@@ -353,11 +347,11 @@ require_once __DIR__ . '/includes/admin_header.php';
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-geo-alt me-2"></i>병원 정보</h6>
                 <div class="row g-3 mb-4">
                     <div class="col-12">
-                        <label class="form-label fw-semibold">병원 주소 <span class="text-danger">*</span></label>
-                        <input type="text" name="address" class="form-control" required maxlength="500" placeholder="도로명 주소를 입력하세요" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
+                        <label class="form-label fw-semibold">병원 주소</label>
+                        <input type="text" name="address" class="form-control" maxlength="500" placeholder="도로명 주소를 입력하세요" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
                     </div>
                     <div class="col-12">
-                        <label class="form-label fw-semibold">주요 시술 <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">주요 시술</label>
                         <div class="d-flex flex-wrap gap-2">
                             <?php
                             $sel_tags = isset($_POST['treatment_tags']) ? explode(',', $_POST['treatment_tags']) : [];
@@ -372,7 +366,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <div class="form-text">주요 시술을 선택하면 아래 진료과목 목록이 갱신됩니다.</div>
                     </div>
                     <div class="col-12">
-                        <label class="form-label fw-semibold">진료과목 <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">진료과목</label>
                         <div id="treatmentPlaceholder" class="text-body-secondary small mb-2">먼저 위에서 주요 시술을 선택하세요.</div>
                         <div class="d-flex flex-wrap gap-2">
                             <?php
@@ -413,14 +407,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-cloud-upload me-2"></i>서류 업로드</h6>
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">사업자등록증 <span class="text-danger">*</span></label>
-                        <input type="file" name="cert_business" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
-                        <div class="form-text">JPG/PNG/PDF, 5MB 이하</div>
+                        <label class="form-label fw-semibold">사업자등록증</label>
+                        <input type="file" name="cert_business" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                        <div class="form-text">JPG/PNG/PDF, 5MB 이하 (선택)</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">의료기관 개설허가증 <span class="text-danger">*</span></label>
-                        <input type="file" name="cert_medical" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
-                        <div class="form-text">JPG/PNG/PDF, 5MB 이하</div>
+                        <label class="form-label fw-semibold">의료기관 개설허가증</label>
+                        <input type="file" name="cert_medical" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                        <div class="form-text">JPG/PNG/PDF, 5MB 이하 (선택)</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">병원 대표 이미지</label>
@@ -433,15 +427,15 @@ require_once __DIR__ . '/includes/admin_header.php';
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-shield-check me-2"></i>약관 동의</h6>
                 <div class="mb-4">
                     <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="agree_terms" id="agreeTerms" required>
+                        <input class="form-check-input" type="checkbox" name="agree_terms" id="agreeTerms">
                         <label class="form-check-label" for="agreeTerms">
-                            <span class="badge bg-danger me-1">필수</span> 서울미녀 병원 입점 약관에 동의합니다.
+                            <span class="badge bg-secondary me-1">선택</span> 서울미녀 병원 입점 약관에 동의합니다.
                         </label>
                     </div>
                     <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="agree_privacy" id="agreePrivacy" required>
+                        <input class="form-check-input" type="checkbox" name="agree_privacy" id="agreePrivacy">
                         <label class="form-check-label" for="agreePrivacy">
-                            <span class="badge bg-danger me-1">필수</span> 개인정보 수집/이용에 동의합니다.
+                            <span class="badge bg-secondary me-1">선택</span> 개인정보 수집/이용에 동의합니다.
                         </label>
                     </div>
                     <div class="form-check">
