@@ -59,6 +59,7 @@ $nav_top_mobile = isset($connect) ? getSettingValue($connect, 'nav_top_show_mobi
 $nav_top_desktop = isset($connect) ? getSettingValue($connect, 'nav_top_show_desktop', '1') : '1';
 
 $current_page = basename($_SERVER['PHP_SELF']);
+$share_copy_enabled = in_array($current_page, ['index.php', 'community.php', 'hospitals.php'], true);
 ?>
 
 <style>
@@ -136,6 +137,50 @@ $current_page = basename($_SERVER['PHP_SELF']);
 /* 로그인 버튼 */
 .global-nav-login {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.global-nav-share {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: var(--bs-body-color, #111);
+    font-size: 25px;
+    cursor: pointer;
+}
+
+.global-nav-share:hover,
+.global-nav-share:focus-visible {
+    color: var(--primary-color, #AE1932);
+}
+
+.share-copy-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 84px;
+    z-index: 2000;
+    transform: translate(-50%, 12px);
+    padding: 10px 16px;
+    border-radius: 20px;
+    background: rgba(20, 20, 20, 0.9);
+    color: #fff;
+    font-size: 13px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.share-copy-toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
 }
 
 .login-btn {
@@ -307,6 +352,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
     if ($nav_top_desktop !== '1') echo 'global-nav--hide-desktop-menu ';
     if ($is_logged_in) echo 'is-logged-in '; // [프론트 #4 - 2026-05-28] 로그인 상태 클래스
 ?>">
+    <?php if ($share_copy_enabled && $is_logged_in): ?>
+    <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
+        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+    </button>
+    <?php endif; ?>
+
     <a href="index.php" class="global-nav-logo">
         <?php if (file_exists($site_logo_path)): ?>
             <img src="<?php echo htmlspecialchars($site_logo_path); ?>" alt="<?php echo htmlspecialchars($site_name); ?>">
@@ -330,10 +381,70 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <div class="global-nav-login">
         <?php if (!$is_logged_in): ?>
+        <?php if ($share_copy_enabled): ?>
+        <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+        </button>
+        <?php endif; ?>
         <a href="<?php echo htmlspecialchars($login_url); ?>" class="login-btn">로그인 / <?= term('member') ?>가입</a>
         <?php endif; ?>
     </div>
 </div>
+
+<?php if ($share_copy_enabled): ?>
+<div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
+<script>
+(function () {
+    var toastTimer = null;
+
+    function getShareText() {
+        return '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
+    }
+
+    function fallbackCopy(text) {
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        var copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return copied;
+    }
+
+    function showToast(message) {
+        var toast = document.getElementById('pageShareCopyToast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('is-visible');
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(function () {
+            toast.classList.remove('is-visible');
+        }, 1800);
+    }
+
+    function copyShareText() {
+        var shareText = getShareText();
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(shareText).then(function () {
+                showToast('링크가 복사되었습니다.');
+            }).catch(function () {
+                showToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
+            });
+            return;
+        }
+        showToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var button = document.getElementById('pageShareCopyBtn');
+        if (button) button.addEventListener('click', copyShareText);
+    });
+}());
+</script>
+<?php endif; ?>
 
 <div class="global-nav-spacer"></div>
 <?php endif; ?>
