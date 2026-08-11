@@ -421,11 +421,12 @@ $page_css .= '
 }
 .home-company-footer__logo {
     margin-bottom: 14px;
-    color: #969696;
-    font-family: Georgia, "Times New Roman", "Apple SD Gothic Neo", serif;
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -1.5px;
+}
+.home-company-footer__logo img {
+    display: block;
+    width: clamp(76px, 20vw, 110px);
+    max-width: 100%;
+    height: auto;
 }
 .home-company-footer__company p,
 .home-company-footer__notice p { margin: 0; }
@@ -962,7 +963,9 @@ body.ae-active { padding-top:0 !important; }
 
 
 <footer class="home-company-footer" aria-label="회사 정보">
-    <div class="home-company-footer__logo">서울미녀</div>
+    <div class="home-company-footer__logo">
+        <img src="assets/images/footer_seoul_beauty_logo.jpeg" alt="서울미녀">
+    </div>
     <div class="home-company-footer__company">
         <p>셀럽몰 주식회사 | 대표자: 노영우</p>
         <p>서울특별시 강남구 선릉로 612, 4층(삼성동, 한일빌딩)</p>

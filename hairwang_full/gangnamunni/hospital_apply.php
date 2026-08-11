@@ -158,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <p><strong>사업자번호:</strong> " . htmlspecialchars($business_number) . "</p>
                             <p><strong>이메일:</strong> " . htmlspecialchars($email) . "</p>
                             <p><strong>신청자:</strong> " . htmlspecialchars($applied_by) . "</p>
-                            <p><a href='" . SITE_FULL_URL . "admin_hospitals.php?tab=pending'>신청 목록 확인</a></p>";
+                            <p><a href='" . SITE_FULL_URL . "admin_hospitals.php?status=pending'>신청 목록 확인</a></p>";
                         @mail_send(0, 'admin@seoulbeauty.app', '[서울미녀] 새 병원 등록 신청 - ' . $name, $admin_body);
                     }
 
@@ -176,9 +176,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     notifyAdmins($connect, 'hospital_apply',
                         '새 병원 등록 신청',
                         htmlspecialchars($name) . ' (신청번호 #' . $new_id . ')',
-                        'admin_hospitals.php?tab=pending',
+                        'admin_hospitals.php?status=pending',
                         ['hospital_id' => $new_id, 'hospital_name' => $name]
                     );
+
+                    // 신청 완료 후 POST 데이터가 없는 새 신청 폼으로 이동
+                    header('Location: hospital_apply.php');
+                    exit;
                 } else {
                     $error = '신청 저장 실패: ' . mysqli_error($connect);
                 }
