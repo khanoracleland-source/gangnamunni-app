@@ -81,10 +81,34 @@ switch($sort) {
     case 'rating': $order_clause = 'rating DESC, review_count DESC'; break;
     case 'popular': $order_clause = 'wishlist_count DESC, rating DESC'; break;
     case 'review': $order_clause = 'review_count DESC, rating DESC'; break;
-    default: $order_clause = 'min_price ASC, rating DESC'; // 낮은 가격순
+    default:
+        // 0원/미등록 가격은 맨 뒤로 보낸다. 특정 시술을 검색한 경우에는
+        // 카드에 표시하는 병원별 시술 옵션 최저가와 같은 값으로 정렬한다.
+        if ($effective_treatment_id > 0) {
+            $price_sort_value = "COALESCE(
+                NULLIF((
+                    SELECT MIN(tp.price)
+                    FROM gangnamunni_hospital_treatments sht
+                    INNER JOIN gangnamunni_hospital_treatment_prices tp
+                        ON tp.hospital_treatment_id = sht.id AND tp.price > 0
+                    WHERE sht.hospital_id = gangnamunni_hospitals.id
+                      AND sht.treatment_id = {$effective_treatment_id}
+                      AND sht.status = 'active' AND sht.is_active = 1
+                ), 0),
+                NULLIF((
+                    SELECT COALESCE(NULLIF(stm.avg_price_min, 0), NULLIF(stm.avg_price_max, 0))
+                    FROM gangnamunni_treatment_master stm
+                    WHERE stm.id = {$effective_treatment_id} AND stm.is_active = 1
+                    LIMIT 1
+                ), 0),
+                2147483647
+            )";
+        } else {
+            $price_sort_value = 'COALESCE(NULLIF(min_price, 0), 2147483647)';
+        }
+        $order_clause = $price_sort_value . ' ASC, rating DESC'; // 낮은 가격순
+        break;
 }
-// 광고 등급 우선 정렬 (S>A>B>C>D>E>none)
-$order_clause = "FIELD(ad_grade,'S','A','B','C','D','E','none') ASC, " . $order_clause;
 
 // 스타일 설정
 $s = [];
@@ -151,7 +175,9 @@ if (!empty($region_list)) {
     if ($result) { while ($row = mysqli_fetch_assoc($result)) $hospitals[] = $row; }
 } else {
     // 지역을 직접 선택하지 않은 경우 — 설정에 따라 대상 지역/그 외 지역 비율 혼합
-    $region_mix_enabled = getSettingValue($connect, 'region_mix_enabled', '0') === '1';
+    // 사용자가 선택한 정렬은 전체 결과에 적용되어야 한다. 지역 블록을
+    // 인터리빙하면 각 블록 내 SQL 정렬이 깨지므로 정렬 목록에서는 혼합하지 않는다.
+    $region_mix_enabled = false;
     $region_mix_target = trim(getSettingValue($connect, 'region_mix_target_region', ''));
     $region_mix_target_count = max(1, (int) getSettingValue($connect, 'region_mix_target_count', '10'));
     $region_mix_other_count = max(0, (int) getSettingValue($connect, 'region_mix_other_count', '5'));
@@ -619,9 +645,9 @@ foreach ($hospitals as $hospital):
                      class="hospital-image"
                      onerror="this.src='<?php echo $placeholder; ?>'">
                 <?php
-                // 광고 슬롯(시술/지역 검색 상단 고정) 병원도 일반 광고 등급 뱃지만 표시 — 'AD N위' 노출 안 함
+                // 유료 슬롯으로 상단 고정된 병원은 정렬 결과와 구분되도록 AD를 표시한다.
                 $ad_grade = $hospital['ad_grade'] ?? 'none';
-                if (in_array($ad_grade, ['S', 'A'])): ?>
+                if ($_slot_context || in_array($ad_grade, ['S', 'A'])): ?>
                 <span class="grade-badge grade-badge-sa">AD</span>
                 <?php endif; ?>
                 <div class="hospital-info">
