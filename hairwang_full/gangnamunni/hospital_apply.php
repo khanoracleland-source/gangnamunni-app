@@ -38,6 +38,13 @@ if (empty($_SESSION['hospital_apply_csrf'])) {
     $_SESSION['hospital_apply_csrf'] = bin2hex(random_bytes(32));
 }
 $hospital_apply_csrf = (string)$_SESSION['hospital_apply_csrf'];
+$application_price_option_name_column = false;
+$application_option_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
+if ($application_option_column_result && mysqli_num_rows($application_option_column_result) > 0) {
+    $application_price_option_name_column = true;
+} elseif (@mysqli_query($connect, "ALTER TABLE gangnamunni_hospital_treatment_prices ADD COLUMN option_name VARCHAR(100) NOT NULL DEFAULT '' AFTER hospital_treatment_id")) {
+    $application_price_option_name_column = true;
+}
 
 // show_hospital_apply 설정은 마이페이지 노출 여부만 제어
 // 관리자 페이지에서의 신청은 항상 가능
@@ -90,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
         $cert_business_path = '';
         $cert_medical_path = '';
         $profile_image_path = '';
-        $logo_image_path = '';
+        $interior_image_paths = [];
 
         // 사업자등록증 (선택)
         if (empty($error) && !empty($_FILES['cert_business']['name']) && $_FILES['cert_business']['error'] === UPLOAD_ERR_OK && is_uploaded_file($_FILES['cert_business']['tmp_name'])) {
@@ -141,6 +148,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
             }
         }
 
+        // 병원 내부 이미지 (선택, 최대 10장)
+        if (empty($error) && isset($_FILES['interior_images']['name']) && is_array($_FILES['interior_images']['name'])) {
+            $interior_count = count(array_filter($_FILES['interior_images']['name'], 'strlen'));
+            if ($interior_count > 10) {
+                $error = '병원 내부 이미지는 최대 10장까지 등록할 수 있습니다.';
+            } else {
+                foreach ($_FILES['interior_images']['name'] as $i => $original_name) {
+                    if ($original_name === '') continue;
+                    $file_error = (int)($_FILES['interior_images']['error'][$i] ?? UPLOAD_ERR_NO_FILE);
+                    $tmp_name = $_FILES['interior_images']['tmp_name'][$i] ?? '';
+                    $file_size = (int)($_FILES['interior_images']['size'][$i] ?? 0);
+                    if ($file_error !== UPLOAD_ERR_OK || !is_uploaded_file($tmp_name)) {
+                        $error = '병원 내부 이미지 업로드에 실패했습니다.';
+                        break;
+                    }
+                    $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+                    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp_name);
+                    $allowed_mimes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+                    if (!isset($allowed_mimes[$mime]) || !in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true) || $file_size > 10 * 1024 * 1024) {
+                        $error = '병원 내부 이미지: JPG/PNG/WebP, 파일당 10MB 이하만 가능합니다.';
+                        break;
+                    }
+                    $fname = 'interior_' . bin2hex(random_bytes(16)) . '.' . $allowed_mimes[$mime];
+                    if (!move_uploaded_file($tmp_name, $upload_dir . $fname)) {
+                        $error = '병원 내부 이미지 저장에 실패했습니다.';
+                        break;
+                    }
+                    $interior_image_paths[] = 'uploads/hospital_apply/' . $upload_owner . '/' . $fname;
+                }
+            }
+        }
+
         // DB INSERT
         if (empty($error)) {
             $stmt = mysqli_prepare($connect,
@@ -160,11 +199,118 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
                     $new_id = mysqli_insert_id($connect);
                     $success = true;
                     $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
+
+                    // 대표/내부 이미지를 승인 화면에서도 한 번에 확인할 수 있도록 병원 이미지에 연결
+                    $image_rows = [];
+                    if ($profile_image_path !== '') $image_rows[] = ['url' => $profile_image_path, 'type' => 'main', 'order' => 0];
+                    foreach ($interior_image_paths as $image_index => $image_path) {
+                        $image_rows[] = ['url' => $image_path, 'type' => 'interior', 'order' => $image_index + 1];
+                    }
+                    if ($image_rows) {
+                        $image_stmt = mysqli_prepare($connect, "INSERT INTO hospital_images (hospital_id, image_url, image_type, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, 1, NOW())");
+                        if ($image_stmt) {
+                            foreach ($image_rows as $image_row) {
+                                $image_url = $image_row['url'];
+                                $image_type = $image_row['type'];
+                                $image_order = $image_row['order'];
+                                mysqli_stmt_bind_param($image_stmt, 'issi', $new_id, $image_url, $image_type, $image_order);
+                                if (!mysqli_stmt_execute($image_stmt)) error_log('[hospital_apply] 병원 이미지 저장 실패: ' . mysqli_stmt_error($image_stmt));
+                            }
+                            mysqli_stmt_close($image_stmt);
+                        }
+                    }
+
+                    // 신청서에서 입력한 의사를 해당 병원에 연결
+                    $doctor_names = is_array($_POST['doctor_name'] ?? null) ? $_POST['doctor_name'] : [];
+                    $doctor_specialties = is_array($_POST['doctor_specialty'] ?? null) ? $_POST['doctor_specialty'] : [];
+                    $doctor_bios = is_array($_POST['doctor_bio'] ?? null) ? $_POST['doctor_bio'] : [];
+                    $doctor_qualifications = is_array($_POST['doctor_qualification'] ?? null) ? $_POST['doctor_qualification'] : [];
+                    $doctor_experiences = is_array($_POST['doctor_experience'] ?? null) ? $_POST['doctor_experience'] : [];
+                    $doctor_stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_doctors (hospital_id, name, specialty, experience, qualification, bio, photo_url, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, '', 'active', NOW(), NOW())");
+                    if ($doctor_stmt) {
+                        foreach ($doctor_names as $doctor_index => $doctor_name_raw) {
+                            $doctor_name = trim((string)$doctor_name_raw);
+                            if ($doctor_name === '') continue;
+                            $doctor_specialty = trim((string)($doctor_specialties[$doctor_index] ?? ''));
+                            $doctor_bio = trim((string)($doctor_bios[$doctor_index] ?? ''));
+                            $doctor_qualification = trim((string)($doctor_qualifications[$doctor_index] ?? ''));
+                            $doctor_experience = max(0, min(80, (int)($doctor_experiences[$doctor_index] ?? 0)));
+                            mysqli_stmt_bind_param($doctor_stmt, 'ississ', $new_id, $doctor_name, $doctor_specialty, $doctor_experience, $doctor_qualification, $doctor_bio);
+                            if (!mysqli_stmt_execute($doctor_stmt)) {
+                                error_log('[hospital_apply] 의사 저장 실패: ' . mysqli_stmt_error($doctor_stmt));
+                                continue;
+                            }
+                            $doctor_id = mysqli_insert_id($connect);
+                            $photo_name = $_FILES['doctor_photo']['name'][$doctor_index] ?? '';
+                            $photo_tmp = $_FILES['doctor_photo']['tmp_name'][$doctor_index] ?? '';
+                            $photo_error = (int)($_FILES['doctor_photo']['error'][$doctor_index] ?? UPLOAD_ERR_NO_FILE);
+                            $photo_size = (int)($_FILES['doctor_photo']['size'][$doctor_index] ?? 0);
+                            if ($photo_name !== '' && $photo_error === UPLOAD_ERR_OK && is_uploaded_file($photo_tmp)) {
+                                $photo_ext = strtolower(pathinfo($photo_name, PATHINFO_EXTENSION));
+                                $photo_mime = (new finfo(FILEINFO_MIME_TYPE))->file($photo_tmp);
+                                $photo_allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+                                if (isset($photo_allowed[$photo_mime]) && in_array($photo_ext, ['jpg', 'jpeg', 'png', 'webp'], true) && $photo_size <= 5 * 1024 * 1024) {
+                                    $photo_file = 'doctor_' . $doctor_id . '_' . bin2hex(random_bytes(8)) . '.' . $photo_allowed[$photo_mime];
+                                    if (move_uploaded_file($photo_tmp, $upload_dir . $photo_file)) {
+                                        $photo_path = 'uploads/hospital_apply/' . $upload_owner . '/' . $photo_file;
+                                        $photo_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_doctors SET photo_url=? WHERE id=? AND hospital_id=?");
+                                        if ($photo_stmt) {
+                                            mysqli_stmt_bind_param($photo_stmt, 'sii', $photo_path, $doctor_id, $new_id);
+                                            mysqli_stmt_execute($photo_stmt);
+                                            mysqli_stmt_close($photo_stmt);
+                                        }
+                                    }
+                                } else {
+                                    $message .= ' 의사 사진 일부가 형식 또는 용량 제한으로 제외되었습니다.';
+                                }
+                            }
+                        }
+                        mysqli_stmt_close($doctor_stmt);
+                    }
                     try {
+                        $application_treatment_ids = $_POST['application_treatment_ids'] ?? [];
                         $image_warnings = hti_save_application_treatments(
-                            $connect, $new_id, $_POST['application_treatment_ids'] ?? [], 'hospital'
+                            $connect, $new_id, $application_treatment_ids, 'hospital'
                         );
                         if ($image_warnings) $message .= ' 단, 일부 시술 이미지 업로드를 확인해 주세요: ' . implode(' / ', $image_warnings);
+
+                        // admin_hospital_treatments.php와 동일한 옵션명/용량/단위/가격 구조로 저장
+                        $valid_treatment_ids = hti_application_treatment_ids($connect, $application_treatment_ids);
+                        foreach ($valid_treatment_ids as $treatment_id) {
+                            $ht_id = 0;
+                            $ht_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospital_treatments WHERE hospital_id=? AND treatment_id=? AND is_active=1 LIMIT 1");
+                            if (!$ht_stmt) continue;
+                            mysqli_stmt_bind_param($ht_stmt, 'ii', $new_id, $treatment_id);
+                            mysqli_stmt_execute($ht_stmt);
+                            mysqli_stmt_bind_result($ht_stmt, $ht_id);
+                            mysqli_stmt_fetch($ht_stmt);
+                            mysqli_stmt_close($ht_stmt);
+                            if (!$ht_id) continue;
+
+                            $option_names = (array)($_POST['treatment_option_name'][$treatment_id] ?? []);
+                            $dosage_values = (array)($_POST['treatment_dosage_value'][$treatment_id] ?? []);
+                            $dosage_units = (array)($_POST['treatment_dosage_unit'][$treatment_id] ?? []);
+                            $prices = (array)($_POST['treatment_price'][$treatment_id] ?? []);
+                            $price_stmt = mysqli_prepare($connect, $application_price_option_name_column
+                                ? "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, option_name, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?, ?)"
+                                : "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?)");
+                            if (!$price_stmt) continue;
+                            $option_count = max(count($option_names), count($dosage_values), count($prices));
+                            for ($option_index = 0; $option_index < $option_count; $option_index++) {
+                                $option_name = mb_substr(trim((string)($option_names[$option_index] ?? '')), 0, 100, 'UTF-8');
+                                $dosage_value = (float)($dosage_values[$option_index] ?? 0);
+                                $dosage_unit = mb_substr(trim((string)($dosage_units[$option_index] ?? '')), 0, 20, 'UTF-8');
+                                $price = max(0, (int)($prices[$option_index] ?? 0));
+                                if ($dosage_value <= 0 || $dosage_unit === '' || $price <= 0) continue;
+                                if ($application_price_option_name_column) {
+                                    mysqli_stmt_bind_param($price_stmt, 'isdsii', $ht_id, $option_name, $dosage_value, $dosage_unit, $price, $option_index);
+                                } else {
+                                    mysqli_stmt_bind_param($price_stmt, 'idsii', $ht_id, $dosage_value, $dosage_unit, $price, $option_index);
+                                }
+                                if (!mysqli_stmt_execute($price_stmt)) error_log('[hospital_apply] 시술 가격 옵션 저장 실패: ' . mysqli_stmt_error($price_stmt));
+                            }
+                            mysqli_stmt_close($price_stmt);
+                        }
                     } catch (\Throwable $e) {
                         error_log('[hospital_apply] 시술/이미지 저장 실패: ' . $e->getMessage());
                     }
@@ -265,6 +411,151 @@ if ($tt_r) {
 require_once __DIR__ . '/includes/admin_header.php';
 ?>
 
+<style>
+.treatment-select-card {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    padding: 10px 12px;
+    height: 100%;
+}
+.treatment-select-card__head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 8px;
+}
+.treatment-select-card__step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    color: #fff;
+    background: var(--bs-primary);
+    font-size: .72rem;
+    font-weight: 700;
+    flex: 0 0 auto;
+}
+.treatment-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-content: flex-start;
+    max-height: 145px;
+    overflow-y: auto;
+    padding: 1px 1px 2px;
+}
+.treatment-chip {
+    margin: 0;
+    padding: 0;
+}
+.treatment-chip .form-check-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.treatment-chip .form-check-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 27px;
+    padding: 5px 9px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: .76rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.treatment-chip .form-check-label::before {
+    content: '+';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-secondary-color);
+    font-weight: 700;
+}
+.treatment-chip .form-check-label:hover {
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+    box-shadow: 0 2px 8px rgba(var(--bs-primary-rgb), .12);
+}
+.treatment-chip .form-check-input:checked + .form-check-label {
+    border-color: var(--bs-primary);
+    background: rgba(var(--bs-primary-rgb), .1);
+    color: var(--bs-primary);
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px rgba(var(--bs-primary-rgb), .12);
+}
+.treatment-chip .form-check-input:checked + .form-check-label::before {
+    content: '\2713';
+    background: var(--bs-primary);
+    color: #fff;
+}
+.treatment-empty-state {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px dashed var(--bs-border-color);
+    border-radius: 8px;
+    background: var(--bs-tertiary-bg);
+}
+.application-treatment-list {
+    max-height: 310px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+.application-treatment-card {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 58px;
+    padding: 9px 11px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 9px;
+    background: var(--bs-body-bg);
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.application-treatment-card:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 2px 8px rgba(var(--bs-primary-rgb), .1);
+}
+.application-treatment-card:has(.application-treatment-check:checked) {
+    border-color: var(--bs-primary);
+    background: rgba(var(--bs-primary-rgb), .07);
+}
+.application-treatment-checkmark {
+    color: var(--bs-primary);
+    opacity: 0;
+}
+.application-treatment-check:checked ~ .application-treatment-checkmark {
+    opacity: 1;
+}
+.application-treatment-detail {
+    border-left: 4px solid var(--bs-primary) !important;
+}
+.application-price-row {
+    display: grid;
+    grid-template-columns: minmax(130px, 1.4fr) minmax(85px, .65fr) 90px minmax(120px, .8fr) 34px;
+    gap: 7px;
+    align-items: center;
+}
+@media (max-width: 767.98px) {
+    .application-price-row { grid-template-columns: 1fr 1fr; }
+    .application-price-row .remove-application-price { width: 100%; }
+}
+</style>
+
 <div class="container-fluid px-4 py-4">
 
 <?php if ($success): ?>
@@ -340,50 +631,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">담당자 전화</label>
                         <input type="tel" name="contact_phone" class="form-control" maxlength="20" value="<?= htmlspecialchars($_POST['contact_phone'] ?? '') ?>">
-                    </div>
                 </div>
 
-                <!-- 병원 정보 -->
+                <!-- 병원 정보 / 병원별 시술 배정 -->
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-geo-alt me-2"></i>병원 정보</h6>
                 <div class="row g-3 mb-4">
                     <div class="col-12">
                         <label class="form-label fw-semibold">병원 주소</label>
                         <input type="text" name="address" class="form-control" maxlength="500" placeholder="도로명 주소를 입력하세요" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">주요 시술</label>
-                        <div class="d-flex flex-wrap gap-2">
-                            <?php
-                            $sel_tags = isset($_POST['treatment_tags']) ? explode(',', $_POST['treatment_tags']) : [];
-                            foreach ($treatment_tag_list as $tag): ?>
-                            <div class="form-check">
-                                <input class="form-check-input tag-check" type="checkbox" value="<?= htmlspecialchars($tag['name']) ?>" data-cat-id="<?= $tag['id'] ?>" id="tag_<?= md5($tag['name']) ?>" <?= in_array($tag['name'], $sel_tags) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="tag_<?= md5($tag['name']) ?>"><?= htmlspecialchars($tag['name']) ?></label>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                        <input type="hidden" name="treatment_tags" id="treatmentTagsInput">
-                        <div class="form-text">주요 시술을 선택하면 아래 진료과목 목록이 갱신됩니다.</div>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">진료과목</label>
-                        <div id="treatmentPlaceholder" class="text-body-secondary small mb-2">먼저 위에서 주요 시술을 선택하세요.</div>
-                        <div class="d-flex flex-wrap gap-2">
-                            <?php
-                            $sel_cats = isset($_POST['categories']) ? explode(',', $_POST['categories']) : [];
-                            foreach ($category_list as $cat): ?>
-                            <div class="form-check" style="display:none;">
-                                <input class="form-check-input cat-check" type="checkbox" value="<?= htmlspecialchars($cat['name']) ?>" data-treatment-id="<?= $cat['id'] ?>" data-cat-id="<?= $cat['category_id'] ?>" id="cat_<?= md5($cat['name']) ?>" <?= in_array($cat['name'], $sel_cats) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="cat_<?= md5($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></label>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                        <input type="hidden" name="categories" id="categoriesInput">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">시술별 상세페이지 이미지 <span class="text-muted fw-normal">(선택)</span></label>
-                        <div class="form-text mb-2">선택한 진료과목마다 상세페이지에 표시할 이미지를 여러 장 등록할 수 있습니다.</div>
-                        <div id="treatmentImageFields"></div>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">영업시간</label>
@@ -403,6 +658,116 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                 </div>
 
+                <!-- 병원별 시술 배정 -->
+                <div class="border rounded mb-4 overflow-hidden w-100">
+                    <button class="btn btn-light w-100 text-start d-flex justify-content-between align-items-center p-3" style="width:100%; max-width:none;" type="button" data-bs-toggle="collapse" data-bs-target="#treatmentSection" aria-expanded="false" aria-controls="treatmentSection">
+                        <span class="fw-bold"><i class="bi bi-clipboard2-pulse me-2 text-primary"></i>시술 추가 <span class="badge bg-secondary fw-normal">선택</span></span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <div class="collapse" id="treatmentSection">
+                    <div class="p-2 border-top bg-body-tertiary">
+                        <div class="bg-body rounded border p-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                                <div>
+                                    <div class="fw-semibold"><i class="bi bi-list-check text-primary me-1"></i>배정할 시술 선택</div>
+                                    <div class="form-text">카테고리로 찾은 후 여러 시술을 한 번에 선택할 수 있습니다.</div>
+                                </div>
+                                <span class="badge bg-primary" id="selectedTreatmentCount">0개 선택</span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-1 mb-3" id="applicationTreatmentTabs">
+                                <button type="button" class="btn btn-primary btn-sm treatment-filter active" data-cat="all">전체 <span class="badge bg-white text-primary ms-1"><?= count($category_list) ?></span></button>
+                                <?php foreach ($treatment_tag_list as $tag): ?>
+                                <button type="button" class="btn btn-outline-primary btn-sm treatment-filter" data-cat="<?= $tag['id'] ?>"><?= htmlspecialchars($tag['name']) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="row g-2 application-treatment-list" id="applicationTreatmentList">
+                                <?php foreach ($category_list as $cat): ?>
+                                <div class="col-md-6 col-xl-4 application-treatment-item" data-cat="<?= $cat['category_id'] ?>">
+                                    <label class="application-treatment-card">
+                                        <input class="form-check-input application-treatment-check" type="checkbox" value="<?= $cat['id'] ?>" data-name="<?= htmlspecialchars($cat['name'], ENT_QUOTES, 'UTF-8') ?>" data-category="<?= $cat['category_id'] ?>">
+                                        <span class="flex-grow-1">
+                                            <strong class="d-block small"><?= htmlspecialchars($cat['name']) ?></strong>
+                                            <?php
+                                            $application_category_name = '미분류';
+                                            foreach ($treatment_tag_list as $tag) {
+                                                if ($tag['id'] === $cat['category_id']) {
+                                                    $application_category_name = $tag['name'];
+                                                    break;
+                                                }
+                                            }
+                                            ?>
+                                            <small class="text-muted"><?= htmlspecialchars($application_category_name) ?></small>
+                                        </span>
+                                        <i class="bi bi-check-circle-fill application-treatment-checkmark"></i>
+                                    </label>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="mt-2 d-grid gap-2" id="selectedTreatmentDetails"></div>
+                        <input type="hidden" name="treatment_tags" id="treatmentTagsInput">
+                        <input type="hidden" name="categories" id="categoriesInput">
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- 병원 이미지 -->
+                <div class="border rounded mb-4 overflow-hidden w-100">
+                    <button class="btn btn-light w-100 text-start d-flex justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#hospitalImageSection" aria-expanded="false" aria-controls="hospitalImageSection">
+                        <span class="fw-bold"><i class="bi bi-images me-2 text-primary"></i>병원 이미지 추가 <span class="badge bg-secondary fw-normal">선택</span></span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <div class="collapse" id="hospitalImageSection">
+                    <div class="p-3 border-top bg-body-tertiary">
+                        <div class="row g-3">
+                            <div class="col-lg-5">
+                                <div class="bg-body rounded border p-3 h-100">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <i class="bi bi-image text-primary"></i>
+                                        <label class="form-label fw-semibold mb-0">메인 이미지</label>
+                                    </div>
+                                    <input type="file" name="profile_image" class="form-control form-control-sm image-preview-input" accept=".jpg,.jpeg,.png" data-preview="mainImagePreview">
+                                    <div class="form-text">목록 및 병원 상세 상단 · JPG/PNG · 5MB 이하</div>
+                                    <div id="mainImagePreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                                </div>
+                            </div>
+                            <div class="col-lg-7">
+                                <div class="bg-body rounded border p-3 h-100">
+                                    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bi bi-images text-primary"></i>
+                                            <label class="form-label fw-semibold mb-0">내부 상세 이미지</label>
+                                            <span class="badge bg-light text-dark border" id="interiorImageCount">1 / 10</span>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="addInteriorImageButton">
+                                            <i class="bi bi-plus-lg me-1"></i>이미지 추가
+                                        </button>
+                                    </div>
+                                    <div class="form-text mb-2">필요한 경우 버튼을 눌러 입력란을 추가하세요. 파일당 10MB 이하</div>
+                                    <div class="d-grid gap-2" id="interiorImageSlots"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- 의사 관리 -->
+                <div class="border rounded mb-4 overflow-hidden w-100">
+                    <button class="btn btn-light w-100 text-start d-flex justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#doctorSection" aria-expanded="false" aria-controls="doctorSection">
+                        <span class="fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>의사 추가 <span class="badge bg-secondary fw-normal">선택</span></span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <div class="collapse" id="doctorSection">
+                    <div class="p-3 border-top">
+                    <div class="form-text mb-3">선택 사항입니다. 해당 병원에 소속된 의사가 있을 경우에만 추가해 주세요.</div>
+                    <div id="doctorRows"></div>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="addDoctorButton"><i class="bi bi-plus-circle me-1"></i>다른 의사 추가</button>
+                    </div>
+                    </div>
+                </div>
+
                 <!-- 서류 업로드 -->
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-cloud-upload me-2"></i>서류 업로드</h6>
                 <div class="row g-3 mb-4">
@@ -415,11 +780,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <label class="form-label fw-semibold">의료기관 개설허가증</label>
                         <input type="file" name="cert_medical" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                         <div class="form-text">JPG/PNG/PDF, 5MB 이하 (선택)</div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">병원 대표 이미지</label>
-                        <input type="file" name="profile_image" class="form-control" accept=".jpg,.jpeg,.png">
-                        <div class="form-text">JPG/PNG, 5MB 이하 (선택)</div>
                     </div>
                 </div>
 
@@ -459,70 +819,189 @@ require_once __DIR__ . '/includes/admin_header.php';
 </div>
 
 <script>
-// 주요 시술에서 선택한 카테고리에 따라 관련 진료과목만 표시
-function updateTreatmentVisibility() {
-    var selectedCatIds = [];
-    document.querySelectorAll('.tag-check:checked').forEach(function(cb) {
-        selectedCatIds.push(cb.getAttribute('data-cat-id'));
-    });
-    var anySelected = selectedCatIds.length > 0;
+// 내부 상세 이미지: 버튼으로 입력란 추가 (최대 10장)
+var interiorImageSlotCount = 0;
+function addInteriorImageSlot() {
+    if (interiorImageSlotCount >= 10) return;
+    interiorImageSlotCount++;
+    var slotNumber = interiorImageSlotCount;
+    var column = document.createElement('div');
+    column.className = 'interior-image-slot';
+    column.innerHTML = '<div class="d-flex align-items-center gap-2 border rounded p-2">'
+        + '<span class="badge bg-primary-subtle text-primary flex-shrink-0">' + slotNumber + '</span>'
+        + '<input type="file" name="interior_images[]" class="form-control form-control-sm interior-image-input" accept=".jpg,.jpeg,.png,.webp">'
+        + '<div class="d-flex flex-shrink-0 interior-image-preview"></div>'
+        + (slotNumber > 1 ? '<button type="button" class="btn btn-outline-danger btn-sm flex-shrink-0 remove-interior-image" aria-label="이미지 입력 삭제"><i class="bi bi-x-lg"></i></button>' : '')
+        + '</div>';
+    document.getElementById('interiorImageSlots')?.appendChild(column);
 
-    document.querySelectorAll('.cat-check').forEach(function(cb) {
-        var wrap = cb.closest('.form-check');
-        var show = anySelected && selectedCatIds.indexOf(cb.getAttribute('data-cat-id')) !== -1;
-        wrap.style.display = show ? '' : 'none';
-        if (!show) cb.checked = false;
+    var input = column.querySelector('.interior-image-input');
+    input.addEventListener('change', function() {
+        var preview = column.querySelector('.interior-image-preview');
+        preview.innerHTML = '';
+        var file = input.files[0];
+        if (file && file.type.startsWith('image/')) {
+            var img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'rounded border object-fit-cover';
+            img.style.width = '96px'; img.style.height = '72px';
+            img.onload = function() { URL.revokeObjectURL(img.src); };
+            preview.appendChild(img);
+        }
     });
-
-    var placeholder = document.getElementById('treatmentPlaceholder');
-    if (placeholder) placeholder.style.display = anySelected ? 'none' : '';
-    updateTreatmentImageFields();
+    updateInteriorImageControls();
 }
-function updateTreatmentImageFields() {
-    var box = document.getElementById('treatmentImageFields');
-    if (!box) return;
-    var selected = Array.from(document.querySelectorAll('.cat-check:checked')).filter(function(cb) {
-        return parseInt(cb.getAttribute('data-treatment-id') || '0', 10) > 0;
+function updateInteriorImageControls() {
+    var slots = document.querySelectorAll('.interior-image-slot');
+    slots.forEach(function(slot, index) {
+        var numberBadge = slot.querySelector('.badge');
+        if (numberBadge) numberBadge.textContent = index + 1;
     });
+    var count = slots.length;
+    interiorImageSlotCount = count;
+    var countLabel = document.getElementById('interiorImageCount');
+    if (countLabel) countLabel.textContent = count + ' / 10';
+    var addButton = document.getElementById('addInteriorImageButton');
+    if (addButton) addButton.disabled = count >= 10;
+}
+document.getElementById('addInteriorImageButton')?.addEventListener('click', addInteriorImageSlot);
+document.getElementById('interiorImageSlots')?.addEventListener('click', function(e) {
+    var button = e.target.closest('.remove-interior-image');
+    if (!button) return;
+    button.closest('.interior-image-slot').remove();
+    updateInteriorImageControls();
+});
+addInteriorImageSlot();
+
+// 의사 입력 행 추가/삭제
+function addDoctorRow() {
+    var row = document.createElement('div');
+    row.className = 'border rounded p-3 mb-3 doctor-row';
+    row.innerHTML = '<div class="row g-2">'
+        + '<div class="col-md-4"><label class="form-label small fw-semibold">의사명</label><input type="text" name="doctor_name[]" class="form-control" maxlength="100" placeholder="예: 김서울"></div>'
+        + '<div class="col-md-4"><label class="form-label small fw-semibold">전문 분야</label><input type="text" name="doctor_specialty[]" class="form-control" maxlength="255" placeholder="예: 피부과 전문의"></div>'
+        + '<div class="col-md-3"><label class="form-label small fw-semibold">경력(년)</label><input type="number" name="doctor_experience[]" class="form-control" min="0" max="80" placeholder="예: 10"></div>'
+        + '<div class="col-md-1 d-flex align-items-end"><button type="button" class="btn btn-outline-danger w-100 remove-doctor" aria-label="의사 삭제"><i class="bi bi-trash"></i></button></div>'
+        + '<div class="col-md-6"><label class="form-label small fw-semibold">자격 및 학회</label><textarea name="doctor_qualification[]" class="form-control" rows="3" maxlength="2000" placeholder="예: 피부과 전문의&#10;대한피부과학회 정회원"></textarea></div>'
+        + '<div class="col-md-6"><label class="form-label small fw-semibold">의사 사진</label><input type="file" name="doctor_photo[]" class="form-control" accept=".jpg,.jpeg,.png,.webp"><div class="form-text">JPG/PNG/WebP, 5MB 이하</div></div>'
+        + '<div class="col-12"><label class="form-label small fw-semibold">소개 및 주요 경력</label><textarea name="doctor_bio[]" class="form-control" rows="3" maxlength="2000" placeholder="의사 소개, 주요 경력과 진료 철학을 입력해 주세요."></textarea></div>'
+        + '</div>';
+    document.getElementById('doctorRows').appendChild(row);
+}
+document.getElementById('addDoctorButton')?.addEventListener('click', addDoctorRow);
+document.getElementById('doctorRows')?.addEventListener('click', function(e) {
+    var button = e.target.closest('.remove-doctor');
+    if (button) button.closest('.doctor-row').remove();
+});
+document.getElementById('doctorSection')?.addEventListener('shown.bs.collapse', function() {
+    if (!document.querySelector('.doctor-row')) addDoctorRow();
+}, { once: true });
+
+// 선택한 병원 이미지 미리보기
+document.querySelectorAll('.image-preview-input').forEach(function(input) {
+    input.addEventListener('change', function() {
+        var preview = document.getElementById(input.getAttribute('data-preview'));
+        if (!preview) return;
+        preview.innerHTML = '';
+        Array.from(input.files).slice(0, 10).forEach(function(file) {
+            if (!file.type.startsWith('image/')) return;
+            var img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'rounded border object-fit-cover';
+            img.style.width = '96px'; img.style.height = '72px';
+            img.onload = function() { URL.revokeObjectURL(img.src); };
+            preview.appendChild(img);
+        });
+    });
+});
+
+// admin_hospital_treatments.php 흐름: 카테고리 필터 → 벌크 선택 → 시술별 가격 옵션/이미지
+var APPLICATION_PRICE_UNITS = ['샷', 'cc', 'ml', '회', '병', 'IU', '기타'];
+function applicationEscape(value) {
+    return String(value || '').replace(/[&<>"']/g, function(char) {
+        return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'}[char];
+    });
+}
+function applicationPriceRowHtml(treatmentId) {
+    var units = APPLICATION_PRICE_UNITS.map(function(unit) {
+        return '<option value="' + unit + '"' + (unit === '회' ? ' selected' : '') + '>' + unit + '</option>';
+    }).join('');
+    return '<div class="application-price-row">'
+        + '<input type="text" name="treatment_option_name[' + treatmentId + '][]" class="form-control form-control-sm" maxlength="100" placeholder="옵션명 (예: 주름 100샷)">'
+        + '<input type="number" name="treatment_dosage_value[' + treatmentId + '][]" class="form-control form-control-sm" min="0.01" step="0.01" placeholder="용량">'
+        + '<select name="treatment_dosage_unit[' + treatmentId + '][]" class="form-select form-select-sm">' + units + '</select>'
+        + '<input type="number" name="treatment_price[' + treatmentId + '][]" class="form-control form-control-sm" min="1" step="1" placeholder="가격(원)">'
+        + '<button type="button" class="btn btn-outline-danger btn-sm remove-application-price" aria-label="가격 옵션 삭제"><i class="bi bi-x-lg"></i></button>'
+        + '</div>';
+}
+function updateApplicationPriceButtons(detail) {
+    var rows = detail.querySelectorAll('.application-price-row');
+    rows.forEach(function(row) {
+        row.querySelector('.remove-application-price').disabled = rows.length <= 1;
+    });
+}
+function createTreatmentDetail(checkbox) {
+    var id = checkbox.value;
+    var detail = document.createElement('div');
+    detail.className = 'application-treatment-detail bg-body border rounded p-3';
+    detail.dataset.treatmentId = id;
+    detail.innerHTML = '<input type="hidden" name="application_treatment_ids[]" value="' + id + '">'
+        + '<div class="d-flex justify-content-between align-items-center mb-2"><strong>' + applicationEscape(checkbox.dataset.name) + '</strong><span class="badge bg-success">배정 선택</span></div>'
+        + '<div class="row g-3"><div class="col-xl-7">'
+        + '<div class="d-flex justify-content-between align-items-center mb-2"><label class="form-label small fw-semibold mb-0">가격 옵션 <span class="text-muted fw-normal">(선택)</span></label><button type="button" class="btn btn-outline-primary btn-sm add-application-price"><i class="bi bi-plus-lg me-1"></i>옵션 추가</button></div>'
+        + '<div class="d-grid gap-2 application-price-rows">' + applicationPriceRowHtml(id) + '</div>'
+        + '</div><div class="col-xl-5">'
+        + '<label class="form-label small fw-semibold">상세페이지 이미지 <span class="text-muted fw-normal">(선택)</span></label>'
+        + '<input type="file" name="treatment_images[' + id + '][]" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.webp" multiple>'
+        + '<div class="form-text">여러 장 선택 가능 · 파일당 10MB 이하</div>'
+        + '</div></div>';
+    return detail;
+}
+function refreshSelectedTreatments() {
+    var selected = Array.from(document.querySelectorAll('.application-treatment-check:checked'));
+    var box = document.getElementById('selectedTreatmentDetails');
     var existing = {};
-    box.querySelectorAll('[data-image-treatment-id]').forEach(function(el) {
-        existing[el.getAttribute('data-image-treatment-id')] = el;
-    });
-    selected.forEach(function(cb) {
-        var id = cb.getAttribute('data-treatment-id');
-        if (existing[id]) { delete existing[id]; return; }
-        var row = document.createElement('div');
-        row.className = 'border rounded p-3 mb-2';
-        row.setAttribute('data-image-treatment-id', id);
-        row.innerHTML = '<label class="form-label fw-semibold small">' + cb.value.replace(/[&<>"']/g, '') + '</label>'
-            + '<input type="hidden" name="application_treatment_ids[]" value="' + id + '">'
-            + '<input type="file" name="treatment_images[' + id + '][]" class="form-control" accept=".jpg,.jpeg,.png,.gif,.webp" multiple>'
-            + '<div class="form-text">JPG/PNG/GIF/WebP, 파일당 10MB 이하</div>';
-        box.appendChild(row);
+    box.querySelectorAll('.application-treatment-detail').forEach(function(detail) { existing[detail.dataset.treatmentId] = detail; });
+    selected.forEach(function(checkbox) {
+        if (existing[checkbox.value]) { delete existing[checkbox.value]; return; }
+        box.appendChild(createTreatmentDetail(checkbox));
     });
     Object.keys(existing).forEach(function(id) { existing[id].remove(); });
+    document.getElementById('selectedTreatmentCount').textContent = selected.length + '개 선택';
+    document.getElementById('categoriesInput').value = selected.map(function(cb) { return cb.dataset.name; }).join(',');
+    var categoryNames = [];
+    selected.forEach(function(cb) {
+        var filter = document.querySelector('.treatment-filter[data-cat="' + cb.dataset.category + '"]');
+        if (filter && categoryNames.indexOf(filter.textContent.trim()) === -1) categoryNames.push(filter.textContent.trim());
+    });
+    document.getElementById('treatmentTagsInput').value = categoryNames.join(',');
 }
-document.querySelectorAll('.tag-check').forEach(function(cb) {
-    cb.addEventListener('change', updateTreatmentVisibility);
+document.querySelectorAll('.application-treatment-check').forEach(function(checkbox) {
+    checkbox.addEventListener('change', refreshSelectedTreatments);
 });
-updateTreatmentVisibility();
-document.querySelectorAll('.cat-check').forEach(function(cb) {
-    cb.addEventListener('change', updateTreatmentImageFields);
+document.querySelectorAll('.treatment-filter').forEach(function(button) {
+    button.addEventListener('click', function() {
+        document.querySelectorAll('.treatment-filter').forEach(function(item) { item.classList.remove('btn-primary', 'active'); item.classList.add('btn-outline-primary'); });
+        button.classList.remove('btn-outline-primary'); button.classList.add('btn-primary', 'active');
+        var category = button.dataset.cat;
+        document.querySelectorAll('.application-treatment-item').forEach(function(item) {
+            item.style.display = category === 'all' || item.dataset.cat === category ? '' : 'none';
+        });
+    });
 });
-
-// 카테고리 / 주요 시술 체크박스 → hidden input 동기화
-document.getElementById('applyForm')?.addEventListener('submit', function() {
-    var checked = [];
-    document.querySelectorAll('.cat-check:checked').forEach(function(cb) {
-        checked.push(cb.value);
-    });
-    document.getElementById('categoriesInput').value = checked.join(',');
-
-    var checkedTags = [];
-    document.querySelectorAll('.tag-check:checked').forEach(function(cb) {
-        checkedTags.push(cb.value);
-    });
-    document.getElementById('treatmentTagsInput').value = checkedTags.join(',');
+document.getElementById('selectedTreatmentDetails')?.addEventListener('click', function(e) {
+    var add = e.target.closest('.add-application-price');
+    if (add) {
+        var detail = add.closest('.application-treatment-detail');
+        detail.querySelector('.application-price-rows').insertAdjacentHTML('beforeend', applicationPriceRowHtml(detail.dataset.treatmentId));
+        updateApplicationPriceButtons(detail);
+    }
+    var remove = e.target.closest('.remove-application-price');
+    if (remove) {
+        var removeDetail = remove.closest('.application-treatment-detail');
+        remove.closest('.application-price-row').remove();
+        updateApplicationPriceButtons(removeDetail);
+    }
 });
 
 // 사업자등록번호 자동 포맷
