@@ -430,7 +430,7 @@ $page_css = '
     /* === 리스트형 (고정) === */
     .hospital-grid.list-view { grid-template-columns: 1fr; }
     .hospital-grid.list-view .hospital-card { flex-direction: row; }
-    .hospital-grid.list-view .hospital-image { width: 120px; height: 120px; flex-shrink: 0; }
+    .hospital-grid.list-view .hospital-image { width: 100px; height: 100px; flex-shrink: 0; }
     .hospital-grid.list-view .card-link { display: flex; flex-direction: row; flex: 1; min-width: 0; }
     .hospital-grid.list-view .hospital-info { flex: 1; padding: 10px 12px; min-width: 0; }
     .hospital-grid.list-view .card-cta { flex-direction: column; width: auto; padding: 10px 12px; justify-content: center; min-width: 90px; }

@@ -51,7 +51,12 @@ $matched_treatment_id = isset($_GET['treatment_id']) ? intval($_GET['treatment_i
 // ID를 우선 사용해 목록에 표시된 가격과 상세 이미지가 정확히 같은 시술에 연결되게 한다.
 if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_query !== '')) {
     $mt_stmt = mysqli_prepare($connect, "
-        SELECT tm.id AS treatment_id, tm.name, tm.description
+        SELECT tm.id AS treatment_id, tm.name, tm.description,
+               (SELECT p.price
+                  FROM gangnamunni_hospital_treatment_prices p
+                 WHERE p.hospital_treatment_id = ht.id AND p.price > 0
+                 ORDER BY p.sort_order ASC, p.id ASC
+                 LIMIT 1) AS selected_price
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         WHERE ht.hospital_id = ?
@@ -258,83 +263,65 @@ $business_hours_text = ($business_hours[$today_name] ?? $default_hours[$today_na
 
 // 현재 탭
 $current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'home';
-// 의료진/이벤트/후기 탭: 병원 정보를 영업시간까지만 노출 (주소/지도/특징 숨김)
+// 의료진/시술목록/후기 탭: 병원 정보를 영업시간까지만 노출 (주소/지도/특징 숨김)
 $minimal_info_tab = in_array($current_tab, ['doctors', 'events', 'reviews'], true);
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $items_per_page = 20;
 
-// 이벤트 카운트 및 데이터 (해당 병원 이벤트만)
-$events_count = 0;
-$events_data = [];
-
-// gangnamunni_events 테이블에서 해당 병원 이벤트 조회
-$evt_cnt_stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_events WHERE hospital_id = ? AND is_active = 1");
-if ($evt_cnt_stmt) {
-    mysqli_stmt_bind_param($evt_cnt_stmt, 'i', $hospital_id);
-    mysqli_stmt_execute($evt_cnt_stmt);
-    $evt_cnt_result = mysqli_stmt_get_result($evt_cnt_stmt);
-    $events_count = mysqli_fetch_assoc($evt_cnt_result)['cnt'] ?? 0;
-    mysqli_stmt_close($evt_cnt_stmt);
-}
-
-// 이벤트 없으면 crawled_events fallback (hospital_name 매칭)
-if ($events_count == 0 && !empty(trim($hospital['name'] ?? ''))) {
-    $site_id_query = "SELECT id FROM crawled_sites WHERE site_name = 'www.gangnamunni.com' LIMIT 1";
-    $site_id_result = mysqli_query($connect, $site_id_query);
-    if ($site_id_row = mysqli_fetch_assoc($site_id_result)) {
-        $site_id = $site_id_row['id'];
-        $evt_fb_stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM crawled_events WHERE site_id = ? AND hospital_name = ?");
-        if ($evt_fb_stmt) {
-            mysqli_stmt_bind_param($evt_fb_stmt, 'is', $site_id, $hospital['name']);
-            mysqli_stmt_execute($evt_fb_stmt);
-            $events_count = intval(mysqli_fetch_assoc(mysqli_stmt_get_result($evt_fb_stmt))['cnt'] ?? 0);
-            mysqli_stmt_close($evt_fb_stmt);
-        }
-    }
-}
-
-// 이벤트 탭일 때 데이터 조회
-if ($current_tab === 'events') {
-    $sort = isset($_GET['sort']) ? $_GET['sort'] : 'popular';
+// 시술목록: 병원에 활성 배정된 시술과 실제 판매가를 노출한다.
+$procedure_count = 0;
+$procedure_data = [];
+if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를 유지
     $offset_val = ($page - 1) * $items_per_page;
+    $procedure_option_name_column = false;
+    $procedure_option_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
+    if ($procedure_option_column_result && mysqli_num_rows($procedure_option_column_result) > 0) {
+        $procedure_option_name_column = true;
+    }
+    $procedure_option_name_select = $procedure_option_name_column ? 'p.option_name' : "'' AS option_name";
 
-    // gangnamunni_events에서 먼저 조회
-    $evt_stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_events WHERE hospital_id = ? AND is_active = 1 ORDER BY created_at DESC LIMIT ?, ?");
-    if ($evt_stmt) {
-        mysqli_stmt_bind_param($evt_stmt, 'iii', $hospital_id, $offset_val, $items_per_page);
-        mysqli_stmt_execute($evt_stmt);
-        $evt_result = mysqli_stmt_get_result($evt_stmt);
-        while ($event = mysqli_fetch_assoc($evt_result)) {
-            $events_data[] = $event;
-        }
-        mysqli_stmt_close($evt_stmt);
+    $pc_stmt = mysqli_prepare($connect, "SELECT COUNT(*) AS cnt
+        FROM gangnamunni_hospital_treatments ht
+        INNER JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
+        INNER JOIN gangnamunni_hospital_treatment_prices p
+          ON p.hospital_treatment_id = ht.id AND p.price > 0
+        WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1 AND tm.is_active = 1");
+    if ($pc_stmt) {
+        mysqli_stmt_bind_param($pc_stmt, 'i', $hospital_id);
+        mysqli_stmt_execute($pc_stmt);
+        $procedure_count = (int)(mysqli_fetch_assoc(mysqli_stmt_get_result($pc_stmt))['cnt'] ?? 0);
+        mysqli_stmt_close($pc_stmt);
     }
 
-    // fallback: crawled_events (hospital_name 기반)
-    if (empty($events_data) && isset($site_id) && !empty(trim($hospital['name'] ?? ''))) {
-        $sort_sql = "ce.id DESC";
-        switch($sort) {
-            case 'latest': $sort_sql = "ce.created_at DESC"; break;
-            case 'popular': $sort_sql = "ce.review_count DESC, ce.id DESC"; break;
-            case 'review': $sort_sql = "ce.review_count DESC"; break;
-            case 'low_price': $sort_sql = "ce.discount_price ASC, ce.original_price ASC"; break;
-            case 'high_price': $sort_sql = "ce.discount_price DESC, ce.original_price DESC"; break;
-            case 'rating': $sort_sql = "ce.rating DESC"; break;
+    $procedure_sql = "SELECT ht.id AS hospital_treatment_id, tm.id AS treatment_id,
+            tm.name, tm.description,
+            p.id AS option_id, {$procedure_option_name_select},
+            p.dosage_value AS option_dosage_value, p.dosage_unit AS option_dosage_unit,
+            p.price AS option_price
+        FROM gangnamunni_hospital_treatments ht
+        INNER JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
+        INNER JOIN gangnamunni_hospital_treatment_prices p
+          ON p.hospital_treatment_id = ht.id AND p.price > 0
+        WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1 AND tm.is_active = 1
+        ORDER BY ht.is_promoted DESC, tm.name ASC, p.sort_order ASC, p.id ASC
+        LIMIT ?, ?";
+    $procedure_stmt = mysqli_prepare($connect, $procedure_sql);
+    if ($procedure_stmt) {
+        mysqli_stmt_bind_param($procedure_stmt, 'iii', $hospital_id, $offset_val, $items_per_page);
+        mysqli_stmt_execute($procedure_stmt);
+        $procedure_result = mysqli_stmt_get_result($procedure_stmt);
+        while ($row = mysqli_fetch_assoc($procedure_result)) {
+            $option_name = trim((string)($row['option_name'] ?? ''));
+            $dosage_value = (float)($row['option_dosage_value'] ?? 0);
+            $dosage_text = $dosage_value > 0
+                ? rtrim(rtrim(number_format($dosage_value, 2, '.', ''), '0'), '.') . trim((string)($row['option_dosage_unit'] ?? ''))
+                : '';
+            $row['display_name'] = trim($option_name . ($option_name !== '' && $dosage_text !== '' ? ' ' : '') . $dosage_text);
+            if ($row['display_name'] === '') $row['display_name'] = $row['name'];
+            $row['display_price'] = (int)$row['option_price'];
+            $procedure_data[] = $row;
         }
-        $events_query = "SELECT ce.* FROM crawled_events ce
-                         WHERE ce.site_id = ? AND ce.hospital_name = ?
-                         ORDER BY {$sort_sql}
-                         LIMIT ?, ?";
-        $evt_fb_data_stmt = mysqli_prepare($connect, $events_query);
-        if ($evt_fb_data_stmt) {
-            mysqli_stmt_bind_param($evt_fb_data_stmt, 'isii', $site_id, $hospital['name'], $offset_val, $items_per_page);
-            mysqli_stmt_execute($evt_fb_data_stmt);
-            $evt_fb_result = mysqli_stmt_get_result($evt_fb_data_stmt);
-            while ($event = mysqli_fetch_assoc($evt_fb_result)) {
-                $events_data[] = $event;
-            }
-            mysqli_stmt_close($evt_fb_data_stmt);
-        }
+        mysqli_stmt_close($procedure_stmt);
     }
 }
 
@@ -1021,6 +1008,59 @@ function extractImageFromHtml($file_path) {
             margin-top: 12px;
         }
 
+        /* 시술목록: 병원 상세 시안의 단순한 가격 카드 */
+        .procedure-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        .procedure-card {
+            display: block;
+            padding: 22px 20px 20px;
+            color: var(--color-text-primary, #111);
+            text-decoration: none;
+            background: var(--color-bg-white, #fff);
+            border: 1px solid var(--color-border, #ddd);
+            border-radius: 0;
+            transition: border-color .2s ease, box-shadow .2s ease;
+        }
+
+        .procedure-card:hover {
+            color: var(--color-text-primary, #111);
+            border-color: var(--color-primary, #c41432);
+            box-shadow: 0 3px 12px rgba(0, 0, 0, .06);
+        }
+
+        .procedure-name {
+            margin: 0 0 28px;
+            font-size: 24px;
+            line-height: 1.4;
+            font-weight: 700;
+            word-break: keep-all;
+        }
+
+        .procedure-vat {
+            display: block;
+            margin-bottom: 3px;
+            color: var(--color-text-muted, #aaa);
+            font-size: 16px;
+        }
+
+        .procedure-price {
+            color: #d00000;
+            font-size: 26px;
+            line-height: 1.25;
+            font-weight: 800;
+            letter-spacing: -.4px;
+        }
+
+        .procedure-price-unit {
+            margin-left: 2px;
+            color: var(--color-text-primary, #111);
+            font-size: 26px;
+            font-weight: 400;
+        }
+
         /* 후기 탭 */
         .review-list {
             display: block;
@@ -1481,7 +1521,7 @@ function extractImageFromHtml($file_path) {
     </script>
 
     <!-- 탭 메뉴 -->
-    <!-- [1차 검수 #9 - 2026-05-28] 상세 탭 재정의 [홈 / 의료진 / 이벤트 / 시술후기] -->
+    <!-- [1차 검수 #9 - 2026-05-28] 상세 탭 재정의 [홈 / 의료진 / 시술목록 / 시술후기] -->
     <?php
     // 탭 전환 시에도 검색 시술 컨텍스트 유지 — 같은 시술의 설명/이미지를 계속 표시한다.
     $tab_qs = '';
@@ -1496,7 +1536,7 @@ function extractImageFromHtml($file_path) {
             의료진
         </a>
         <a href="?id=<?php echo $hospital_id; ?>&tab=events<?php echo $tab_qs; ?>" class="tab-item <?php echo $current_tab === 'events' ? 'active' : ''; ?>">
-            이벤트
+            시술목록
         </a>
         <a href="?id=<?php echo $hospital_id; ?>&tab=reviews<?php echo $tab_qs; ?>" class="tab-item <?php echo $current_tab === 'reviews' ? 'active' : ''; ?>">
             시술후기
@@ -1711,6 +1751,20 @@ function extractImageFromHtml($file_path) {
         <!-- 검색하신 시술 (hospitals.php 시술 검색에서 넘어온 경우) — 홈 탭에서만 영업시간 아래 배치 -->
         <?php if ($matched_treatment && $current_tab === 'home'): ?>
         <div id="matched-treatment" style="scroll-margin-top:160px; margin:16px 0 4px; overflow:hidden; background:var(--color-bg-white);">
+            <!-- 선택한 시술명 + 해당 병원이 등록한 첫 번째 독립 옵션 가격 -->
+            <div style="padding:16px; border-bottom:1px solid var(--color-border); display:flex; align-items:baseline; justify-content:space-between; gap:16px;">
+                <div style="min-width:0; font-size:20px; line-height:1.4; font-weight:700; color:#000; word-break:keep-all;">
+                    <?php echo htmlspecialchars($matched_treatment['name'], ENT_QUOTES, 'UTF-8'); ?>
+                </div>
+                <?php if ((int)($matched_treatment['selected_price'] ?? 0) > 0): ?>
+                <div style="flex-shrink:0; color:#d00000; font-size:20px; line-height:1.25; font-weight:800; white-space:nowrap;">
+                    <?php echo number_format((int)$matched_treatment['selected_price']); ?><span style="margin-left:2px; color:#111; font-size:19px; font-weight:400;">원</span>
+                </div>
+                <?php else: ?>
+                <div style="flex-shrink:0; color:var(--color-text-muted); font-size:14px; white-space:nowrap;">가격 미등록</div>
+                <?php endif; ?>
+            </div>
+
             <!-- 시술 설명 -->
             <div style="padding:16px;">
                 <div style="font-size:18px; font-weight:700; color: #000000; margin-bottom:8px;">시술 설명</div>
@@ -1931,102 +1985,40 @@ function extractImageFromHtml($file_path) {
 
         </div>
 
-        <!-- 이벤트 탭 -->
+        <!-- 시술목록 탭 (URL 호환성을 위해 tab=events 유지) -->
         <div class="tab-pane <?php echo $current_tab === 'events' ? 'active' : ''; ?>" id="tab-events">
-            <h3 id="eventsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;">이벤트</h3>
-            <?php if (!empty($events_data)): ?>
-            <?php
-            // 주소에서 '구'로 끝나는 토큰(자치구) 추출 — 예: "서울 강남구 …" → "강남구"
-            $hospital_gu = '';
-            foreach (preg_split('/\s+/', trim($hospital['address'] ?? '')) as $_ap) {
-                if ($_ap !== '' && mb_substr($_ap, -1) === '구') { $hospital_gu = $_ap; break; }
-            }
-            ?>
-            <!-- 이벤트 리스트 -->
-            <div class="event-list">
-                <?php foreach ($events_data as $event): ?>
+            <h3 id="eventsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;">시술목록</h3>
+            <?php if (!empty($procedure_data)): ?>
+            <div class="procedure-list">
+                <?php foreach ($procedure_data as $procedure): ?>
                 <?php
-                $event_image = null;
-                if (!empty($event['image_url'])) {
-                    $event_image = $event['image_url'];
-                } elseif (!empty($event['file_path'])) {
-                    $event_image = extractImageFromHtml($event['file_path']);
-                }
+                $procedure_price = (int)($procedure['display_price'] ?? 0);
+                $procedure_url = 'booking.php?id=' . $hospital_id
+                    . '&treatment_id=' . (int)($procedure['treatment_id'] ?? 0)
+                    . '&treatment=' . urlencode($procedure['name'] ?? '');
                 ?>
-                <article class="event-card">
-                    <span class="event-wishlist" style="position:absolute; top:8px; right:8px; z-index:2; background:rgba(255,255,255,0.9); border-radius:50%; display:inline-flex;"><?php renderWishlistButton('event', (int)$event['id'], 'sm', false, 'star'); ?></span>
-                    <a href="event_detail.php?id=<?php echo $event['id']; ?>" class="event-card-link">
-                        <div class="event-thumbnail">
-                            <?php if ($event_image): ?>
-                            <img src="<?php echo htmlspecialchars($event_image); ?>"
-                                 alt="<?php echo htmlspecialchars($event['title'] ?? $event['event_name'] ?? ''); ?>"
-                                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'200\'%3E%3Crect fill=\'%23e0e0e0\' width=\'400\' height=\'200\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' fill=\'%23999\' text-anchor=\'middle\' dominant-baseline=\'middle\' font-size=\'16\'%3E이벤트 이미지%3C/text%3E%3C/svg%3E'">
-                            <?php else: ?>
-                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Crect fill='%23e0e0e0' width='400' height='200'/%3E%3Ctext x='50%25' y='50%25' fill='%23999' text-anchor='middle' dominant-baseline='middle' font-size='16'%3E이벤트 이미지%3C/text%3E%3C/svg%3E"
-                                 alt="이미지 없음">
-                            <?php endif; ?>
-                        </div>
-                        <div class="event-info">
-                            <h3 class="event-title" style="padding-right:28px;"><?php echo htmlspecialchars($event['title'] ?? $event['event_name'] ?? ''); ?></h3>
-
-                            <?php if (!empty($hospital['address'])): ?>
-                            <p style="font-size:12px; color:var(--color-text-muted,#999); margin:2px 0 8px; display:flex; align-items:center; gap:4px;">
-                                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php if (!empty($hospital_gu)): ?><strong style="color:var(--color-text-secondary,#666); font-weight:600;"><?php echo htmlspecialchars($hospital_gu); ?></strong> | <?php endif; ?><?php echo htmlspecialchars($hospital['address']); ?></span>
-                            </p>
-                            <?php endif; ?>
-
-                            <?php if (($hospital['show_rating'] ?? 1) == 1): ?>
-                            <div style="display:flex; align-items:center; gap:5px; font-size:12px; margin-bottom:8px;">
-                                <img src="assets/icons/categories/rating_2.svg" alt="" style="width:14px; height:14px; object-fit:contain; flex-shrink:0;">
-                                <span style="font-weight:700; color:var(--color-text-primary,#333);"><?php echo number_format(!empty($hospital['rating']) ? $hospital['rating'] : 4.8, 1); ?>/5.0</span>
-                                <span style="color:var(--color-text-muted,#999); display:inline-flex; align-items:center; gap:4px;"><i class="bi bi-chat-square-text"></i>병원후기 <?php echo number_format($reviews_count); ?></span>
-                            </div>
-                            <?php endif; ?>
-
-                            <?php if ($event['discount_price'] || $event['original_price']): ?>
-                            <div style="text-align:right; font-size:11px; color:var(--color-text-muted,#999); margin-bottom:2px;">VAT 포함</div>
-                            <div class="event-price-row">
-                                <?php if ($event['original_price'] && $event['discount_price'] < $event['original_price']): ?>
-                                <span class="original-price"><?php echo number_format($event['original_price']); ?>원</span>
-                                <?php endif; ?>
-                                <?php if ($event['discount_price']): ?>
-                                <span class="event-price"><?php echo number_format($event['discount_price']); ?>원</span>
-                                <?php endif; ?>
-                            </div>
-                            <?php endif; ?>
-
-                            <?php if ($event['hospital_name'] || $event['brand_name']): ?>
-                            <p class="event-location">
-                                <?php echo htmlspecialchars($event['hospital_name'] ?? $event['brand_name'] ?? ''); ?>
-                            </p>
-                            <?php endif; ?>
-
-                            <?php if ($event['rating'] || $event['review_count']): ?>
-                            <div class="event-rating">
-                                <span class="star-icon">★</span>
-                                <span><?php echo number_format($event['rating'] ?? 0, 1); ?></span>
-                                <span class="review-count">(<?php echo number_format($event['review_count'] ?? 0); ?>)</span>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                    </a>
-                    <?php if ($hospital['active_chat_consultation']): ?>
-                    <button class="kakao-chat-btn" onclick="openKakaoChat()">
-                        <span>💬</span> 카톡<?php echo term('consultation', '상담'); ?>
-                    </button>
-                    <?php endif;?>
-                </article>
-                <?php endforeach;?>
+                <a class="procedure-card" href="<?php echo htmlspecialchars($procedure_url, ENT_QUOTES, 'UTF-8'); ?>">
+                    <h4 class="procedure-name"><?php echo htmlspecialchars($procedure['display_name'] ?? $procedure['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?></h4>
+                    <span class="procedure-vat">VAT 포함</span>
+                    <?php if ($procedure_price > 0): ?>
+                    <div>
+                        <span class="procedure-price"><?php echo number_format($procedure_price); ?></span><span class="procedure-price-unit">원</span>
+                    </div>
+                    <?php else: ?>
+                    <div class="procedure-price" style="font-size:18px;">가격 문의</div>
+                    <?php endif; ?>
+                </a>
+                <?php endforeach; ?>
             </div>
 
             <!-- 페이지네이션 -->
-            <?php if ($events_count > $items_per_page): ?>
+            <?php if ($procedure_count > $items_per_page): ?>
             <div class="pagination">
                 <?php
-                $total_pages = ceil($events_count / $items_per_page);
+                $total_pages = ceil($procedure_count / $items_per_page);
                 for ($i = 1; $i <= min($total_pages, 10); $i++):
                 ?>
-                <a href="?id=<?php echo $hospital_id; ?>&tab=events&sort=<?php echo $sort; ?>&page=<?php echo $i; ?>"
+                <a href="?id=<?php echo $hospital_id; ?>&tab=events&page=<?php echo $i; ?>"
                    class="page-btn <?php echo $page === $i ? 'active' : ''; ?>">
                     <?php echo $i; ?>
                 </a>
@@ -2036,13 +2028,13 @@ function extractImageFromHtml($file_path) {
             <?php else: ?>
             <div class="empty-state">
                 <div class="empty-state-icon">📋</div>
-                <div class="empty-state-text">등록된 이벤트가 없습니다.</div>
+                <div class="empty-state-text">등록된 시술이 없습니다.</div>
             </div>
             <?php endif; ?>
         </div>
         <?php if ($current_tab === 'events'): ?>
         <script>
-        // 이벤트 탭 진입 시 '이벤트' 제목 위치로 스크롤
+        // 시술목록 탭 진입 시 제목 위치로 스크롤
         document.addEventListener('DOMContentLoaded', function(){
             var el = document.getElementById('eventsIntro');
             if (!el) return;
@@ -2389,18 +2381,6 @@ function extractImageFromHtml($file_path) {
                 resetAutoSlide();
             });
             galleryContainer.addEventListener('mouseleave', function() { isDragging = false; });
-        }
-
-        // 정렬 드롭다운
-        function toggleSortDropdown() {
-            const dropdown = document.getElementById('sortOptions');
-            if (dropdown) {
-                dropdown.classList.toggle('show');
-            }
-        }
-
-        function changeSort(sort) {
-            location.href = '?id=<?php echo $hospital_id; ?>&tab=events&sort=' + sort;
         }
 
         // 카카오톡 상담

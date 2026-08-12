@@ -1,8 +1,7 @@
 <?php
 /**
  * 병원별 시술 배정 관리 페이지 (admin_hospital_treatments.php)
- * - 병원 선택 후 시술 배정/해제/가격 수정/프로모션 토글
- * - 가격 변경 이력 기록
+ * - 병원 선택 후 시술 배정/해제/독립 가격 옵션 수정/프로모션 토글
  * Bootstrap 5.3 + 다크모드 지원
  * @created 2026-03-25
  */
@@ -185,20 +184,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                             // 재배정은 새 배정과 동일하게 초기 상태로 시작한다. 해제 전에 저장된
                             // 가격 옵션/상세 이미지가 같은 id를 따라 되살아나는 문제를 방지한다.
-                            $price_stmt = mysqli_prepare($connect, "SELECT avg_price_min, avg_price_max FROM gangnamunni_treatment_master WHERE id = ? AND is_active = 1");
-                            mysqli_stmt_bind_param($price_stmt, 'i', $tid);
-                            ht_execute_or_throw($price_stmt, '기본 가격 조회 실패');
-                            $price_r = mysqli_stmt_get_result($price_stmt);
-                            $price_row = mysqli_fetch_assoc($price_r);
-                            mysqli_stmt_close($price_stmt);
-                            if (!$price_row || max(intval($price_row['avg_price_min'] ?? 0), intval($price_row['avg_price_max'] ?? 0)) <= 0) {
-                                $skipped++;
-                                continue;
-                            }
-                            $p_min = intval($price_row['avg_price_min'] ?? 0);
-                            $p_max = intval($price_row['avg_price_max'] ?? 0);
-                            $def_price = $p_max > 0 ? $p_max : $p_min;
-
                             $img_stmt = mysqli_prepare($connect, "SELECT image_url FROM gangnamunni_hospital_treatment_images WHERE hospital_treatment_id = ?");
                             mysqli_stmt_bind_param($img_stmt, 'i', $existing_id);
                             ht_execute_or_throw($img_stmt, '기존 이미지 조회 실패');
@@ -215,14 +200,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             ht_execute_or_throw($del_images, '기존 이미지 초기화 실패');
                             mysqli_stmt_close($del_images);
 
-                            $reactivate = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET status = ?, is_active = 1, reject_reason = NULL, is_promoted = 0, price_min = ?, price_max = ?, dosage_value = 1, dosage_unit = '회', updated_at = NOW() WHERE id = ?");
-                            mysqli_stmt_bind_param($reactivate, 'siii', $new_status, $p_min, $p_max, $existing_id);
+                            $reactivate = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET status = ?, is_active = 1, reject_reason = NULL, is_promoted = 0, price_min = 0, price_max = 0, dosage_value = NULL, dosage_unit = NULL, updated_at = NOW() WHERE id = ?");
+                            mysqli_stmt_bind_param($reactivate, 'si', $new_status, $existing_id);
                             ht_execute_or_throw($reactivate, '시술 재배정 실패');
                             mysqli_stmt_close($reactivate);
-                            $op = mysqli_prepare($connect, "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, 1, '회', ?, 0)");
-                            mysqli_stmt_bind_param($op, 'ii', $existing_id, $def_price);
-                            ht_execute_or_throw($op, '기본 가격 옵션 저장 실패');
-                            mysqli_stmt_close($op);
                             $added++;
                         } else {
                             $skipped++;
@@ -231,48 +212,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     }
                     mysqli_stmt_close($chk);
 
-                    // 마스터에서 기본 가격 조회
-                    $price_stmt = mysqli_prepare($connect, "SELECT avg_price_min, avg_price_max FROM gangnamunni_treatment_master WHERE id = ? AND is_active = 1");
-                    mysqli_stmt_bind_param($price_stmt, 'i', $tid);
-                    mysqli_stmt_execute($price_stmt);
-                    $price_r = mysqli_stmt_get_result($price_stmt);
-                    $price_row = mysqli_fetch_assoc($price_r);
-                    if (!$price_row) {
-                        mysqli_stmt_close($price_stmt);
-                        $skipped++;
-                        continue;
-                    }
-                    $p_min = intval($price_row['avg_price_min'] ?? 0);
-                    $p_max = intval($price_row['avg_price_max'] ?? 0);
-                    mysqli_stmt_close($price_stmt);
-                    if (max($p_min, $p_max) <= 0) { $skipped++; continue; }
-
                     $status = 'active';
                     $registered_by = $is_hospital_account ? 'hospital' : 'admin';
                     $stmt = mysqli_prepare($connect,
                         "INSERT INTO gangnamunni_hospital_treatments (hospital_id, treatment_id, price_min, price_max, is_promoted, note, status, registered_by, is_active, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, 0, '', ?, ?, 1, NOW(), NOW())");
-                    mysqli_stmt_bind_param($stmt, 'iiiiss', $post_hospital_id, $tid, $p_min, $p_max, $status, $registered_by);
+                         VALUES (?, ?, 0, 0, 0, '', ?, ?, 1, NOW(), NOW())");
+                    mysqli_stmt_bind_param($stmt, 'iiss', $post_hospital_id, $tid, $status, $registered_by);
                     if (mysqli_stmt_execute($stmt)) {
                         $added++;
-                        // 기본 가격 옵션 1건 생성 (샷수/용량 1회, 가격=마스터 기준) — 최소 1건 보장
-                        $new_ht_id = mysqli_insert_id($connect);
-                        $def_price = $p_max > 0 ? $p_max : $p_min;
-                        $op = mysqli_prepare($connect, "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, 1, '회', ?, 0)");
-                        mysqli_stmt_bind_param($op, 'ii', $new_ht_id, $def_price);
-                        ht_execute_or_throw($op, '기본 가격 옵션 저장 실패');
-                        mysqli_stmt_close($op);
-                        // 가격 이력 기록 — changed_by 는 enum('admin','hospital','system') 이므로
-                        // 이름 문자열($admin_name)을 넣으면 "Data truncated" 예외로 루프가 중단돼
-                        // 선택한 시술 중 첫 1건만 배정되던 버그가 발생. 유효한 enum 값으로 저장하고,
-                        // 이력 기록 실패가 배정 전체를 막지 않도록 try/catch 로 격리한다.
-                        $changed_by = $is_hospital_account ? 'hospital' : 'admin';
-                        $hist = mysqli_prepare($connect,
-                                "INSERT INTO gangnamunni_treatment_price_history (hospital_id, treatment_id, price_min, price_max, changed_by, recorded_at)
-                                 VALUES (?, ?, ?, ?, ?, NOW())");
-                        mysqli_stmt_bind_param($hist, 'iiiis', $post_hospital_id, $tid, $p_min, $p_max, $changed_by);
-                        ht_execute_or_throw($hist, '가격 이력 저장 실패');
-                        mysqli_stmt_close($hist);
                     } else {
                         throw new RuntimeException('시술 배정 저장 실패: ' . mysqli_stmt_error($stmt));
                     }
@@ -375,8 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if (isset($option_keys[$key])) ht_redirect($post_hospital_id, '동일한 옵션명, 용량, 단위의 가격 옵션을 중복 등록할 수 없습니다.', 'warning');
                     $option_keys[$key] = true;
                 }
-                // 대상 행 조회 (이력 기록용)
-                $old_stmt = mysqli_prepare($connect, "SELECT hospital_id, treatment_id FROM gangnamunni_hospital_treatments WHERE id = ?");
+                // 대상 배정 시술이 존재하는지 확인한다.
+                $old_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospital_treatments WHERE id = ?");
                 mysqli_stmt_bind_param($old_stmt, 'i', $id);
                 mysqli_stmt_execute($old_stmt);
                 $old_row = mysqli_fetch_assoc(mysqli_stmt_get_result($old_stmt));
@@ -394,38 +341,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $ins = mysqli_prepare($connect, $option_name_column
                     ? "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, option_name, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?, ?)"
                     : "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?)");
-                $prices = [];
                 foreach ($options as $so => $opt) {
                     if ($option_name_column) mysqli_stmt_bind_param($ins, 'isdsii', $id, $opt['name'], $opt['dv'], $opt['du'], $opt['pr'], $so);
                     else mysqli_stmt_bind_param($ins, 'idsii', $id, $opt['dv'], $opt['du'], $opt['pr'], $so);
                     ht_execute_or_throw($ins, '가격 옵션 저장 실패');
-                    $prices[] = $opt['pr'];
                 }
                 mysqli_stmt_close($ins);
 
-                // 부모 price_min/max 재계산(옵션 MIN/MAX) + 대표 용량·단위(첫 옵션) 반영
-                $pmin = min($prices);
-                $pmax = max($prices);
-                $first_dv = $options[0]['dv'];
-                $first_du = $options[0]['du'];
+                // 각 옵션은 독립 가격 행이며 부모 시술에 대표/MIN/MAX 가격을 만들지 않는다.
                 $upd = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_hospital_treatments SET price_min = ?, price_max = ?, dosage_value = ?, dosage_unit = ?, updated_at = NOW() WHERE id = ?");
-                mysqli_stmt_bind_param($upd, 'iidsi', $pmin, $pmax, $first_dv, $first_du, $id);
-                ht_execute_or_throw($upd, '대표 가격 저장 실패');
+                    "UPDATE gangnamunni_hospital_treatments SET price_min = 0, price_max = 0, dosage_value = NULL, dosage_unit = NULL, updated_at = NOW() WHERE id = ?");
+                mysqli_stmt_bind_param($upd, 'i', $id);
+                ht_execute_or_throw($upd, '시술 수정일 갱신 실패');
                 mysqli_stmt_close($upd);
-
-                // 가격 이력 기록 — changed_by 는 enum('admin','hospital','system'). 이름 문자열 금지.
-                if ($old_row) {
-                    $changed_by = $is_hospital_account ? 'hospital' : 'admin';
-                    try {
-                        $hist = mysqli_prepare($connect,
-                            "INSERT INTO gangnamunni_treatment_price_history (hospital_id, treatment_id, price_min, price_max, changed_by, recorded_at)
-                             VALUES (?, ?, ?, ?, ?, NOW())");
-                        mysqli_stmt_bind_param($hist, 'iiiis', $old_row['hospital_id'], $old_row['treatment_id'], $pmin, $pmax, $changed_by);
-                        ht_execute_or_throw($hist, '가격 이력 저장 실패');
-                        mysqli_stmt_close($hist);
-                    } catch (\mysqli_sql_exception $e) { throw $e; }
-                }
                 mysqli_commit($connect);
                 } catch (Throwable $e) {
                     mysqli_rollback($connect);
@@ -664,7 +592,7 @@ if ($hospital_id > 0) {
     mysqli_stmt_close($pend_stmt);
 
     // 배정된 활성 시술
-    $assign_sql = "SELECT ht.*, tm.name AS treatment_name, tm.hashtag, tm.avg_price_min, tm.avg_price_max, tc.name AS category_name, tc.id AS cat_id
+    $assign_sql = "SELECT ht.*, tm.name AS treatment_name, tm.hashtag, tc.name AS category_name, tc.id AS cat_id
         FROM gangnamunni_hospital_treatments ht
         LEFT JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         LEFT JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
@@ -930,7 +858,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td><strong><?php echo htmlspecialchars($pt['treatment_name'] ?? '(삭제됨)'); ?></strong></td>
                         <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($pt['category_name'] ?? '-'); ?></span></td>
                         <td class="text-center"><small class="text-muted"><?php echo htmlspecialchars($pt['hashtag'] ?? ''); ?></small></td>
-                        <td class="text-center"><?php echo number_format(ht_price_won($pt['price_min'])); ?>~<?php echo number_format(ht_price_won($pt['price_max'])); ?>원</td>
+                        <td class="text-center"><span class="text-muted">-</span></td>
                         <td class="text-center"><span class="badge bg-<?php echo $pt['registered_by'] === 'admin' ? 'primary' : 'success'; ?>"><?php echo $pt['registered_by'] === 'admin' ? '관리자' : '병원'; ?></span></td>
                         <td class="text-center"><small><?php echo substr($pt['created_at'] ?? '', 0, 16); ?></small></td>
                         <td class="text-center">
@@ -1000,32 +928,15 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td><strong><?php echo htmlspecialchars($at['treatment_name'] ?? '(삭제됨)'); ?></strong></td>
                         <td class="text-center"><span class="badge bg-info text-dark"><?php echo htmlspecialchars($at['category_name'] ?? '-'); ?></span></td>
                         <td class="text-center">
-                            <?php
-                            $opts = $ht_prices[intval($at['id'])] ?? [];
-                            $disp_min = intval($at['price_min']);
-                            $disp_max = intval($at['price_max']);
-                            $is_default = ($disp_min == 0 && $disp_max == 0 && empty($opts));
-                            if ($is_default) {
-                                $disp_min = intval($at['avg_price_min'] ?? 0);
-                                $disp_max = intval($at['avg_price_max'] ?? 0);
-                            }
-                            ?>
-                            <span class="text-nowrap<?php echo $is_default ? ' text-muted fst-italic' : ''; ?>">
-                                <?php if ($disp_min == $disp_max): ?>
-                                    <?php echo number_format(ht_price_won($disp_min)); ?>원
-                                <?php else: ?>
-                                    <?php echo number_format(ht_price_won($disp_min)); ?>~<?php echo number_format(ht_price_won($disp_max)); ?>원
-                                <?php endif; ?>
-                            </span>
-                            <?php if ($is_default && ($disp_min > 0 || $disp_max > 0)): ?>
-                            <br><small class="text-muted">(기본값)</small>
-                            <?php endif; ?>
+                            <?php $opts = $ht_prices[intval($at['id'])] ?? []; ?>
                             <?php if (!empty($opts)): ?>
-                            <div class="mt-1 d-flex flex-wrap gap-1 justify-content-center">
+                            <div class="d-flex flex-wrap gap-1 justify-content-center">
                                 <?php foreach ($opts as $op): ?>
                                 <span class="badge bg-light text-dark border"><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · <?php echo number_format(ht_price_won($op['price'])); ?>원</span>
                                 <?php endforeach; ?>
                             </div>
+                            <?php else: ?>
+                            <span class="text-muted small">가격 옵션 미등록</span>
                             <?php endif; ?>
                         </td>
                         <td class="text-center">
@@ -1154,9 +1065,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                                         <?php endif; ?>
                                         <small class="text-muted">
                                             <?php echo htmlspecialchars($at['category_name'] ?? '미분류'); ?>
-                                            <?php if (intval($at['avg_price_min']) > 0 || intval($at['avg_price_max']) > 0): ?>
-                                            | <?php echo number_format(ht_price_won($at['avg_price_min'])); ?>~<?php echo number_format(ht_price_won($at['avg_price_max'])); ?>원
-                                            <?php endif; ?>
                                         </small>
                                     </label>
                                 </div>
