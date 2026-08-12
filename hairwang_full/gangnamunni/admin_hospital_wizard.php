@@ -495,7 +495,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <div class="hours-row"><label>금요일</label><input type="time" class="form-control form-control-sm" value="09:00" data-day="fri" data-type="open"><span>~</span><input type="time" class="form-control form-control-sm" value="18:00" data-day="fri" data-type="close"><div class="form-check ms-2"><input class="form-check-input" type="checkbox" data-day="fri" data-type="closed"><label class="form-check-label small">휴진</label></div></div>
                     <div class="hours-row"><label>토요일</label><input type="time" class="form-control form-control-sm" value="09:00" data-day="sat" data-type="open"><span>~</span><input type="time" class="form-control form-control-sm" value="14:00" data-day="sat" data-type="close"><div class="form-check ms-2"><input class="form-check-input" type="checkbox" data-day="sat" data-type="closed"><label class="form-check-label small">휴진</label></div></div>
                     <div class="hours-row"><label>일요일</label><input type="time" class="form-control form-control-sm" value="09:00" data-day="sun" data-type="open"><span>~</span><input type="time" class="form-control form-control-sm" value="13:00" data-day="sun" data-type="close"><div class="form-check ms-2"><input class="form-check-input" type="checkbox" data-day="sun" data-type="closed" checked><label class="form-check-label small">휴진</label></div></div>
-                    <div class="hours-row mt-2"><label>점심시간</label><input type="time" class="form-control form-control-sm" value="12:30" id="lunchOpen"><span>~</span><input type="time" class="form-control form-control-sm" value="13:30" id="lunchClose"></div>
+                    <div class="hours-row mt-2"><label>점심시간</label><div class="form-check me-2"><input class="form-check-input" type="checkbox" id="noLunchBreak" onchange="toggleWizardLunch()"><label class="form-check-label small text-nowrap" for="noLunchBreak">점심시간 없음</label></div><input type="time" class="form-control form-control-sm" value="12:30" id="lunchOpen"><span>~</span><input type="time" class="form-control form-control-sm" value="13:30" id="lunchClose"></div>
                 </div>
             </div>
             <div class="mb-3">
@@ -939,6 +939,11 @@ function selectPlan(el) {
 }
 
 // ── 진료시간 수집 ──
+function toggleWizardLunch() {
+    const disabled = !!document.getElementById('noLunchBreak')?.checked;
+    document.getElementById('lunchOpen').disabled = disabled;
+    document.getElementById('lunchClose').disabled = disabled;
+}
 function getBusinessHours() {
     const days = ['mon','tue','wed','thu','fri','sat','sun'];
     const labels = ['월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
@@ -953,7 +958,11 @@ function getBusinessHours() {
             hours[labels[i]] = `${open?.value || '09:00'} ~ ${close?.value || '18:00'}`;
         }
     });
-    hours['점심시간'] = `${document.getElementById('lunchOpen')?.value || '12:30'} ~ ${document.getElementById('lunchClose')?.value || '13:30'}`;
+    if (document.getElementById('noLunchBreak')?.checked) {
+        hours['no_lunch_break'] = true;
+    } else {
+        hours['점심'] = `${document.getElementById('lunchOpen')?.value || '12:30'}~${document.getElementById('lunchClose')?.value || '13:30'}`;
+    }
     return hours;
 }
 

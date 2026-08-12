@@ -914,12 +914,20 @@ include __DIR__ . '/includes/admin_header.php';
                         <?php endforeach; ?>
                         </tbody>
                     </table>
-                    <?php $bh_lunch = $bh_data['점심'] ?? ''; $bh_lunch_parts = strpos($bh_lunch, '~') !== false ? explode('~', $bh_lunch) : ['13:00','14:00']; ?>
+                    <?php
+                    $bh_no_lunch = !empty($bh_data['no_lunch_break']);
+                    $bh_lunch = $bh_data['점심'] ?? $bh_data['점심시간'] ?? '';
+                    $bh_lunch_parts = strpos($bh_lunch, '~') !== false ? explode('~', $bh_lunch) : ['13:00','14:00'];
+                    ?>
                     <div class="d-flex align-items-center gap-2 mb-2" style="font-size:13px;">
                         <span class="fw-semibold" style="width:75px;">점심시간</span>
-                        <input type="time" class="form-control form-control-sm" id="bhLunchStart" value="<?php echo htmlspecialchars($bh_lunch_parts[0]); ?>" style="width:110px;">
+                        <div class="form-check mb-0 me-2">
+                            <input class="form-check-input" type="checkbox" id="bhNoLunch" <?php echo $bh_no_lunch ? 'checked' : ''; ?> onchange="bhToggleLunch()">
+                            <label class="form-check-label text-nowrap" for="bhNoLunch">점심시간 없음</label>
+                        </div>
+                        <input type="time" class="form-control form-control-sm" id="bhLunchStart" value="<?php echo htmlspecialchars($bh_lunch_parts[0]); ?>" style="width:110px;" <?php echo $bh_no_lunch ? 'disabled' : ''; ?>>
                         <span>~</span>
-                        <input type="time" class="form-control form-control-sm" id="bhLunchEnd" value="<?php echo htmlspecialchars($bh_lunch_parts[1] ?? '14:00'); ?>" style="width:110px;">
+                        <input type="time" class="form-control form-control-sm" id="bhLunchEnd" value="<?php echo htmlspecialchars($bh_lunch_parts[1] ?? '14:00'); ?>" style="width:110px;" <?php echo $bh_no_lunch ? 'disabled' : ''; ?>>
                     </div>
                     <script>
                     function bhToggle(sel) {
@@ -927,6 +935,11 @@ include __DIR__ . '/includes/admin_header.php';
                         var inputs = tr.querySelectorAll('input[type=time]');
                         var off = (sel.value !== 'normal');
                         inputs.forEach(function(inp) { inp.disabled = off; if (off) inp.value = ''; });
+                    }
+                    function bhToggleLunch() {
+                        var noLunch = document.getElementById('bhNoLunch').checked;
+                        document.getElementById('bhLunchStart').disabled = noLunch;
+                        document.getElementById('bhLunchEnd').disabled = noLunch;
                     }
                     function bhCollectJSON() {
                         var data = {};
@@ -941,9 +954,14 @@ include __DIR__ . '/includes/admin_header.php';
                                 data[dk] = (s && e) ? s+'~'+e : '휴무';
                             }
                         });
-                        var ls = document.getElementById('bhLunchStart').value;
-                        var le = document.getElementById('bhLunchEnd').value;
-                        if (ls && le) data['점심'] = ls+'~'+le;
+                        var noLunch = document.getElementById('bhNoLunch').checked;
+                        if (noLunch) {
+                            data['no_lunch_break'] = true;
+                        } else {
+                            var ls = document.getElementById('bhLunchStart').value;
+                            var le = document.getElementById('bhLunchEnd').value;
+                            if (ls && le) data['점심'] = ls+'~'+le;
+                        }
                         document.getElementById('bhHiddenInput').value = JSON.stringify(data);
                     }
                     // 폼 제출 전 JSON 수집

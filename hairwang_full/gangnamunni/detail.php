@@ -255,6 +255,17 @@ if (empty($business_hours) || !is_array($business_hours)) {
     $business_hours = $default_hours;
 }
 
+// 관리자 JSON의 점심 표현을 표준 키로 정규화한다 (기존 '점심시간' 키도 지원).
+if (!empty($business_hours['no_lunch_break'])) {
+    unset($business_hours['점심'], $business_hours['점심시간'], $business_hours['lunch_start'], $business_hours['lunch_end']);
+} else {
+    $normalized_lunch = trim((string)($business_hours['점심'] ?? $business_hours['점심시간'] ?? ''));
+    if (preg_match('/^(\d{1,2}:\d{2})\s*[~\-]\s*(\d{1,2}:\d{2})$/u', $normalized_lunch, $normalized_lunch_match)) {
+        $business_hours['lunch_start'] = $normalized_lunch_match[1];
+        $business_hours['lunch_end'] = $normalized_lunch_match[2];
+    }
+}
+
 // 오늘 영업시간 표시 문자열 생성
 $today = date('N'); // 1(월) ~ 7(일)
 $days = ['월', '화', '수', '목', '금', '토', '일'];
@@ -1033,7 +1044,7 @@ function extractImageFromHtml($file_path) {
 
         .procedure-name {
             margin: 0 0 28px;
-            font-size: 24px;
+            font-size: 20px;
             line-height: 1.4;
             font-weight: 700;
             word-break: keep-all;
@@ -1043,12 +1054,12 @@ function extractImageFromHtml($file_path) {
             display: block;
             margin-bottom: 3px;
             color: var(--color-text-muted, #aaa);
-            font-size: 16px;
+            font-size: 13px;
         }
 
         .procedure-price {
             color: #d00000;
-            font-size: 26px;
+            font-size: 22px;
             line-height: 1.25;
             font-weight: 800;
             letter-spacing: -.4px;
@@ -1057,7 +1068,7 @@ function extractImageFromHtml($file_path) {
         .procedure-price-unit {
             margin-left: 2px;
             color: var(--color-text-primary, #111);
-            font-size: 26px;
+            font-size: 22px;
             font-weight: 400;
         }
 
@@ -1675,7 +1686,8 @@ function extractImageFromHtml($file_path) {
             $close_min = intval($oh[3]) * 60 + intval($oh[4]);
             if ($now_min >= $open_min && $now_min < $close_min) {
                 $is_open_now = true;
-                if (!empty($business_hours['lunch_start']) && !empty($business_hours['lunch_end'])
+                if (empty($business_hours['no_lunch_break'])
+                    && !empty($business_hours['lunch_start']) && !empty($business_hours['lunch_end'])
                     && preg_match('/(\d{1,2}):(\d{2})/', $business_hours['lunch_start'], $ls)
                     && preg_match('/(\d{1,2}):(\d{2})/', $business_hours['lunch_end'], $le)) {
                     $lunch_s = intval($ls[1]) * 60 + intval($ls[2]);

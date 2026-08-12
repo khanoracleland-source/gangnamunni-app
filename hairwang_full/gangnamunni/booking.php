@@ -56,6 +56,27 @@ if (!$result || mysqli_num_rows($result) == 0) {
 
 $hospital = mysqli_fetch_assoc($result);
 
+// 병원 점심시간. no_lunch_break=true 이면 점심시간 제한을 적용하지 않는다.
+$booking_business_hours = json_decode($hospital['business_hours'] ?? '{}', true);
+if (!is_array($booking_business_hours)) $booking_business_hours = [];
+$booking_no_lunch = !empty($booking_business_hours['no_lunch_break']);
+$booking_lunch_start = '';
+$booking_lunch_end = '';
+if (!$booking_no_lunch) {
+    $booking_lunch_value = trim((string)($booking_business_hours['점심'] ?? $booking_business_hours['점심시간'] ?? ''));
+    if (preg_match('/^(\d{1,2}:\d{2})\s*[~\-]\s*(\d{1,2}:\d{2})$/u', $booking_lunch_value, $booking_lunch_match)) {
+        $booking_lunch_start = $booking_lunch_match[1];
+        $booking_lunch_end = $booking_lunch_match[2];
+    } else {
+        $booking_lunch_start = trim((string)($booking_business_hours['lunch_start'] ?? $booking_business_hours['점심시작'] ?? ''));
+        $booking_lunch_end = trim((string)($booking_business_hours['lunch_end'] ?? $booking_business_hours['점심종료'] ?? ''));
+    }
+}
+$booking_lunch_start_min = preg_match('/^(\d{1,2}):(\d{2})$/', $booking_lunch_start, $booking_ls_match)
+    ? ((int)$booking_ls_match[1] * 60 + (int)$booking_ls_match[2]) : null;
+$booking_lunch_end_min = preg_match('/^(\d{1,2}):(\d{2})$/', $booking_lunch_end, $booking_le_match)
+    ? ((int)$booking_le_match[1] * 60 + (int)$booking_le_match[2]) : null;
+
 // 병원 이미지 로드 (최대 10개)
 $images = [];
 $images_query = "SELECT image_url FROM gangnamunni_hospital_images WHERE hospital_id = {$hospital_id} ORDER BY display_order ASC LIMIT 10";
@@ -145,6 +166,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $booking_error = '예약 날짜를 확인해주세요.';
     } elseif (!in_array($time, $allowed_booking_times, true)) {
         $booking_error = '선택할 수 없는 예약 시간입니다.';
+    } elseif (!$booking_no_lunch && $booking_lunch_start_min !== null && $booking_lunch_end_min !== null
+        && (($booking_time_parts = explode(':', $time)) && ((int)$booking_time_parts[0] * 60 + (int)$booking_time_parts[1]) >= $booking_lunch_start_min)
+        && ((int)$booking_time_parts[0] * 60 + (int)$booking_time_parts[1]) < $booking_lunch_end_min) {
+        $booking_error = '점심시간에는 ' . term('booking', '예약') . '할 수 없습니다. 다른 시간을 선택해주세요.';
     } elseif (($booking_ts = strtotime($date . ' ' . $time)) === false || $booking_ts < time()) {
         // 클라이언트 검증(지난 시간 비활성)을 우회한 과거 시각 예약 차단
         $booking_error = '지난 시간은 ' . term('booking', '예약') . '할 수 없습니다. 다른 시간을 선택해주세요.';
@@ -1529,6 +1554,8 @@ $page_js = '
     // [오늘 지난 시간 픽스] 서버(KST) 기준 오늘 날짜/현재시각(자정 이후 분) — 지난 시간대 비활성용
     var SERVER_TODAY = "' . date('Y-m-d') . '";
     var SERVER_NOW_MIN = ' . (date('G') * 60 + (int)date('i')) . ';
+    var LUNCH_START_MIN = ' . ($booking_lunch_start_min === null ? 'null' : (int)$booking_lunch_start_min) . ';
+    var LUNCH_END_MIN = ' . ($booking_lunch_end_min === null ? 'null' : (int)$booking_lunch_end_min) . ';
 
     // 시간대 그리드 (숨긴 select 옵션 → 빨강 박스 칩, 한 줄 4개). 클릭 시 select 값 동기화.
     function buildTimeGrid() {
@@ -1550,6 +1577,12 @@ $page_js = '
                 var hm = value.split(":");
                 var slotMin = parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10);
                 if (slotMin <= SERVER_NOW_MIN) { disabled = true; }
+            }
+            // 점심시간이 설정된 병원만 해당 시간대 예약을 막는다.
+            if (!disabled && LUNCH_START_MIN !== null && LUNCH_END_MIN !== null) {
+                var lunchHm = value.split(":");
+                var lunchSlotMin = parseInt(lunchHm[0], 10) * 60 + parseInt(lunchHm[1], 10);
+                if (lunchSlotMin >= LUNCH_START_MIN && lunchSlotMin < LUNCH_END_MIN) disabled = true;
             }
             (function(v, isDisabled, text) {
                 var cell = document.createElement("div");
