@@ -95,39 +95,45 @@ class AuthController extends AppBaseController
     {
         $request->validate([
             'email' => 'required|email',
-            'url_domain' => 'required'
         ]);
 
-        $data['user'] = User::whereEmail($request->email)->first();
+        $data['user'] = User::whereRaw('lower(email) = ?', [strtolower($request->email)])->first();
 
         if (! $data['user']) {
             return $this->sendError(__('messages.common.we_cant_find_user'));
         }
 
-        $data['token'] = encrypt($data['user']->email.''.$data['user']->id);
+        // Keep the token URL-safe and only persist its hash. Encrypted payloads can
+        // contain characters such as "+" which are changed while parsing a query string.
+        $data['token'] = Str::random(64);
+        $storedToken = hash('sha256', $data['token']);
+        $query = http_build_query([
+            'token' => $data['token'],
+            'email' => $data['user']->email,
+            'apn' => 'com.example.infyhms_flutter',
+        ], '', '&', PHP_QUERY_RFC3986);
+        $data['link'] = rtrim(config('app.url'), '/').'/createNewPassword?'.$query;
 
-        $data['link'] = $request->url_domain.'//hms-saas.com/createNewPassword?token='.$data['token'].'&email='.$request->email.'&apn=com.example.infyhms_flutter';
+        $user = DB::table('password_reset_tokens')->where('email', $data['user']->email)->first();
+
+        if ($user) {
+            DB::table('password_reset_tokens')->where('email', $user->email)->update([
+                'email' => $data['user']->email,
+                'token' => $storedToken,
+                'created_at' => Carbon::now(),
+            ]);
+        } else {
+            DB::table('password_reset_tokens')->insert([
+                'email' => $data['user']->email,
+                'token' => $storedToken,
+                'created_at' => Carbon::now(),
+            ]);
+        }
 
         Mail::to($data['user']->email)
             ->send(new ForgotPasswordMail('emails.forgot_password',
                 'Reset Password Notification',
                 $data));
-
-        $user = DB::table('password_reset_tokens')->where('email', $request->email)->first();
-
-        if ($user) {
-            DB::table('password_reset_tokens')->where('email', $user->email)->update([
-                'email' => $request->email,
-                'token' => $data['token'],
-                'created_at' => Carbon::now(),
-            ]);
-        } else {
-            DB::table('password_reset_tokens')->insert([
-                'email' => $request->email,
-                'token' => $data['token'],
-                'created_at' => Carbon::now(),
-            ]);
-        }
 
         return $this->sendSuccess(__('messages.common.we_have_your_password_resetk_link'));
     }
@@ -142,17 +148,31 @@ class AuthController extends AppBaseController
 
         $request->validate([
             'token' => 'required',
+            'email' => 'required|email',
             'password' => 'required|min:6|confirmed',
         ]);
 
         $tokenData = DB::table('password_reset_tokens')
-            ->where('token', $request->token)->first();
+            ->where('email', $request->email)
+            ->where(function ($query) use ($request) {
+                $query->where('token', hash('sha256', $request->token))
+                    // Allow links issued before tokens started being hashed.
+                    ->orWhere('token', $request->token);
+            })->first();
 
-        if (! $tokenData) {
+        $expiresAt = $tokenData
+            ? Carbon::parse($tokenData->created_at)->addMinutes(config('auth.passwords.users.expire', 60))
+            : null;
+
+        if (! $tokenData || Carbon::now()->greaterThan($expiresAt)) {
+            if ($tokenData) {
+                DB::table('password_reset_tokens')->where('email', $tokenData->email)->delete();
+            }
+
             return $this->sendError(__('messages.common.this_password_reset_token_is_invalid'));
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::whereRaw('lower(email) = ?', [strtolower($request->email)])->first();
 
         if (! $user) {
             return $this->sendError(__('messages.common.we_cant_find_user'));
@@ -162,7 +182,7 @@ class AuthController extends AppBaseController
         $user->save();
 
         DB::table('password_reset_tokens')
-            ->where('token', $request->token)->delete();
+            ->where('email', $tokenData->email)->delete();
 
         return $this->sendSuccess(__('messages.common.password_reset_successfully'));
 
