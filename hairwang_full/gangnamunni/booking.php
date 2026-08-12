@@ -59,6 +59,37 @@ $hospital = mysqli_fetch_assoc($result);
 // 병원 점심시간. no_lunch_break=true 이면 점심시간 제한을 적용하지 않는다.
 $booking_business_hours = json_decode($hospital['business_hours'] ?? '{}', true);
 if (!is_array($booking_business_hours)) $booking_business_hours = [];
+$booking_special_closed_dates = array_values(array_filter(
+    is_array($booking_business_hours['special_closed_dates'] ?? null) ? $booking_business_hours['special_closed_dates'] : [],
+    static function($date) { return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date); }
+));
+
+// 관리자에서 저장한 요일별 운영시간을 예약 검증/시간 선택에서 공통 사용한다.
+// 크롤링 데이터의 officeHours(영문 요일) 형식도 기존 병원 호환을 위해 지원한다.
+$booking_day_keys = [0 => '일', 1 => '월', 2 => '화', 3 => '수', 4 => '목', 5 => '금', 6 => '토'];
+$booking_office_day_keys = [0 => 'SUN', 1 => 'MON', 2 => 'TUE', 3 => 'WED', 4 => 'THU', 5 => 'FRI', 6 => 'SAT'];
+$booking_weekly_hours = [];
+$booking_has_weekly_hours = false;
+foreach ($booking_day_keys as $booking_day_number => $booking_day_key) {
+    $booking_day_value = $booking_business_hours[$booking_day_key] ?? null;
+    if ($booking_day_value === null && isset($booking_business_hours['officeHours']) && is_array($booking_business_hours['officeHours'])) {
+        $booking_office_key = $booking_office_day_keys[$booking_day_number];
+        $booking_day_value = $booking_business_hours['officeHours'][$booking_office_key]
+            ?? $booking_business_hours['officeHours'][strtolower($booking_office_key)]
+            ?? null;
+    }
+    if ($booking_day_value !== null) $booking_has_weekly_hours = true;
+    $booking_day_value = trim((string)($booking_day_value ?? ''));
+    if (preg_match('/^(\d{1,2}):(\d{2})\s*[~\-]\s*(\d{1,2}):(\d{2})$/u', $booking_day_value, $booking_hours_match)) {
+        $booking_open_min = (int)$booking_hours_match[1] * 60 + (int)$booking_hours_match[2];
+        $booking_close_min = (int)$booking_hours_match[3] * 60 + (int)$booking_hours_match[4];
+        $booking_weekly_hours[$booking_day_number] = ($booking_open_min < $booking_close_min)
+            ? ['open' => $booking_open_min, 'close' => $booking_close_min]
+            : null;
+    } else {
+        $booking_weekly_hours[$booking_day_number] = null;
+    }
+}
 $booking_no_lunch = !empty($booking_business_hours['no_lunch_break']);
 $booking_lunch_start = '';
 $booking_lunch_end = '';
@@ -128,11 +159,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Bound public input before any DB/API work. The visible UI only emits these
     // 30-minute slots, so accepting arbitrary times server-side is unnecessary.
-    $allowed_booking_times = [];
-    for ($hour = 9; $hour <= 18; $hour++) {
-        $allowed_booking_times[] = sprintf('%02d:00', $hour);
-        if ($hour < 18) $allowed_booking_times[] = sprintf('%02d:30', $hour);
-    }
+    $valid_booking_time_format = preg_match('/^(?:[01]\d|2[0-3]):(?:00|30)$/', $time) === 1;
+    $booking_time_parts = $valid_booking_time_format ? explode(':', $time) : [];
+    $booking_time_min = $valid_booking_time_format ? ((int)$booking_time_parts[0] * 60 + (int)$booking_time_parts[1]) : null;
     $date_object = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
     $valid_date = $date_object && $date_object->format('Y-m-d') === $date;
     $max_booking_date = new DateTimeImmutable('+1 year');
@@ -164,11 +193,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $booking_error = '필수 항목을 모두 입력해주세요.';
     } elseif (!$valid_date || $date_object > $max_booking_date) {
         $booking_error = '예약 날짜를 확인해주세요.';
-    } elseif (!in_array($time, $allowed_booking_times, true)) {
+    } elseif (!$valid_booking_time_format) {
         $booking_error = '선택할 수 없는 예약 시간입니다.';
+    } elseif (!$booking_has_weekly_hours && ($booking_time_min < 540 || $booking_time_min > 1080)) {
+        // 운영시간 데이터가 전혀 없는 기존 병원은 종전 09:00~18:00 정책을 유지한다.
+        $booking_error = '선택할 수 없는 예약 시간입니다.';
+    } elseif (in_array($date, $booking_special_closed_dates, true)) {
+        $booking_error = '선택한 날짜는 임시 휴무일입니다. 다른 날짜를 선택해주세요.';
+    } elseif ($booking_has_weekly_hours && empty($booking_weekly_hours[(int)$date_object->format('w')])) {
+        $booking_error = '선택한 날짜는 휴무일입니다. 다른 날짜를 선택해주세요.';
+    } elseif ($booking_has_weekly_hours
+        && (($booking_selected_hours = $booking_weekly_hours[(int)$date_object->format('w')] ?? null) !== null)
+        && ($booking_time_min < $booking_selected_hours['open'] || $booking_time_min >= $booking_selected_hours['close'])) {
+        $booking_error = '선택한 시간은 병원 진료시간이 아닙니다. 다른 시간을 선택해주세요.';
     } elseif (!$booking_no_lunch && $booking_lunch_start_min !== null && $booking_lunch_end_min !== null
-        && (($booking_time_parts = explode(':', $time)) && ((int)$booking_time_parts[0] * 60 + (int)$booking_time_parts[1]) >= $booking_lunch_start_min)
-        && ((int)$booking_time_parts[0] * 60 + (int)$booking_time_parts[1]) < $booking_lunch_end_min) {
+        && $booking_time_min >= $booking_lunch_start_min && $booking_time_min < $booking_lunch_end_min) {
         $booking_error = '점심시간에는 ' . term('booking', '예약') . '할 수 없습니다. 다른 시간을 선택해주세요.';
     } elseif (($booking_ts = strtotime($date . ' ' . $time)) === false || $booking_ts < time()) {
         // 클라이언트 검증(지난 시간 비활성)을 우회한 과거 시각 예약 차단
@@ -1470,6 +1509,10 @@ $page_css = '
 // 페이지별 JS (script 태그 없이)
 // ========================================
 $page_js = '
+    var HAS_WEEKLY_HOURS = ' . ($booking_has_weekly_hours ? 'true' : 'false') . ';
+    var WEEKLY_HOURS = ' . json_encode($booking_weekly_hours, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+    var SPECIAL_CLOSED_DATES = ' . json_encode($booking_special_closed_dates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+
     // 커스텀 날짜 선택 (월 → 날짜). hidden #bookingDate 에 YYYY-MM-DD 저장.
     function initDatePicker() {
         var hidden = document.getElementById("bookingDate");
@@ -1485,13 +1528,21 @@ $page_js = '
         var endDate = new Date(today); endDate.setMonth(endDate.getMonth() + 1);
         var dates = [];
         var cur = new Date(today);
-        while (cur < endDate) { dates.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+        while (cur < endDate) {
+            // 관리자에서 휴무로 설정한 요일은 날짜 선택 목록에서 제외한다.
+            var curValue = cur.getFullYear() + "-" + (cur.getMonth() + 1 < 10 ? "0" : "") + (cur.getMonth() + 1) + "-" + (cur.getDate() < 10 ? "0" : "") + cur.getDate();
+            if ((!HAS_WEEKLY_HOURS || WEEKLY_HOURS[cur.getDay()]) && SPECIAL_CLOSED_DATES.indexOf(curValue) < 0) dates.push(new Date(cur));
+            cur.setDate(cur.getDate() + 1);
+        }
         var months = [];
         dates.forEach(function(d) { var k = d.getFullYear() + "-" + (d.getMonth() + 1); if (months.indexOf(k) < 0) months.push(k); });
         var selectedMonth = months[0];
 
         function pad(n) { return n < 10 ? "0" + n : "" + n; }
         function fmt(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+        // 오늘이 휴무라 목록에서 빠진 경우 첫 번째 영업일을 기본 선택한다.
+        if (dates.length && !dates.some(function(d) { return fmt(d) === hidden.value; })) hidden.value = fmt(dates[0]);
 
         // 월 표시(클릭 불가) — 스와이프로 보이는 날짜의 월이 자동 활성화된다.
         function renderMonths() {
@@ -1566,16 +1617,30 @@ $page_js = '
         // 선택된 날짜가 오늘이면 이미 지난 시간대는 클릭 불가로 만든다.
         var selDate = (document.getElementById("bookingDate") || {}).value || "";
         var isToday = (selDate === SERVER_TODAY);
+        var selectedDay = selDate ? new Date(selDate + "T00:00:00").getDay() : -1;
+        var dayHours = HAS_WEEKLY_HOURS && selectedDay >= 0 ? WEEKLY_HOURS[selectedDay] : null;
+        // 날짜 변경 뒤 이전 날짜에서 고른 시간이 남지 않도록 먼저 초기화한다.
+        sel.value = "";
+        if (HAS_WEEKLY_HOURS && !dayHours) {
+            var closed = document.createElement("div");
+            closed.className = "time-slot disabled";
+            closed.style.gridColumn = "1 / -1";
+            closed.textContent = "선택한 날짜는 휴무일입니다.";
+            grid.appendChild(closed);
+            return;
+        }
         for (var i = 0; i < sel.options.length; i++) {
             var value = sel.options[i].value;
             if (!value) continue;
             // HMS 스케줄 로딩 시 예약됨/지난 시간은 disabled 로 온다 → 표시는 하되 클릭 불가
             var disabled = sel.options[i].disabled;
             var label = sel.options[i].textContent || value;
+            var hm = value.split(":");
+            var slotMin = parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10);
+            // 종료 시각은 진료가 끝나는 시각이므로 해당 시각 슬롯은 포함하지 않는다.
+            if (dayHours && (slotMin < dayHours.open || slotMin >= dayHours.close)) continue;
             // 오늘 && 지난 시간대 → 비활성 (정적 그리드/HMS 공통)
             if (!disabled && isToday) {
-                var hm = value.split(":");
-                var slotMin = parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10);
                 if (slotMin <= SERVER_NOW_MIN) { disabled = true; }
             }
             // 점심시간이 설정된 병원만 해당 시간대 예약을 막는다.
@@ -1598,6 +1663,13 @@ $page_js = '
                 }
                 grid.appendChild(cell);
             })(value, disabled, label);
+        }
+        if (!grid.children.length) {
+            var empty = document.createElement("div");
+            empty.className = "time-slot disabled";
+            empty.style.gridColumn = "1 / -1";
+            empty.textContent = "선택 가능한 시간이 없습니다.";
+            grid.appendChild(empty);
         }
     }
     buildTimeGrid();
@@ -2161,25 +2233,14 @@ include __DIR__ . '/includes/header.php';
             <!-- select 는 폼 제출/HMS 스케줄용으로 숨김 유지, 실제 표시는 아래 time-grid -->
             <select name="time" id="timeSelect" style="display:none;">
                 <option value="">시간을 선택하세요</option>
-                <option value="09:00">오전 09:00</option>
-                <option value="09:30">오전 09:30</option>
-                <option value="10:00">오전 10:00</option>
-                <option value="10:30">오전 10:30</option>
-                <option value="11:00">오전 11:00</option>
-                <option value="11:30">오전 11:30</option>
-                <option value="12:00">오후 12:00</option>
-                <option value="12:30">오후 12:30</option>
-                <option value="13:00">오후 01:00</option>
-                <option value="13:30">오후 01:30</option>
-                <option value="14:00">오후 02:00</option>
-                <option value="14:30">오후 02:30</option>
-                <option value="15:00">오후 03:00</option>
-                <option value="15:30">오후 03:30</option>
-                <option value="16:00">오후 04:00</option>
-                <option value="16:30">오후 04:30</option>
-                <option value="17:00">오후 05:00</option>
-                <option value="17:30">오후 05:30</option>
-                <option value="18:00">오후 06:00</option>
+                <?php for ($slot_minute = 0; $slot_minute < 24 * 60; $slot_minute += 30):
+                    $slot_hour = intdiv($slot_minute, 60);
+                    $slot_value = sprintf('%02d:%02d', $slot_hour, $slot_minute % 60);
+                    $slot_period = $slot_hour < 12 ? '오전' : '오후';
+                    $slot_display_hour = $slot_hour % 12 ?: 12;
+                ?>
+                <option value="<?php echo $slot_value; ?>"><?php echo $slot_period . ' ' . sprintf('%02d:%02d', $slot_display_hour, $slot_minute % 60); ?></option>
+                <?php endfor; ?>
             </select>
             <!-- 병원 운영 시간대 (빨강 테두리 박스, 한 줄에 4개) -->
             <div class="time-grid" id="timeGrid"></div>

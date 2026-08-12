@@ -918,6 +918,10 @@ include __DIR__ . '/includes/admin_header.php';
                     $bh_no_lunch = !empty($bh_data['no_lunch_break']);
                     $bh_lunch = $bh_data['점심'] ?? $bh_data['점심시간'] ?? '';
                     $bh_lunch_parts = strpos($bh_lunch, '~') !== false ? explode('~', $bh_lunch) : ['13:00','14:00'];
+                    $bh_special_closed_dates = array_values(array_filter(
+                        is_array($bh_data['special_closed_dates'] ?? null) ? $bh_data['special_closed_dates'] : [],
+                        function($date) { return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date); }
+                    ));
                     ?>
                     <div class="d-flex align-items-center gap-2 mb-2" style="font-size:13px;">
                         <span class="fw-semibold" style="width:75px;">점심시간</span>
@@ -929,7 +933,39 @@ include __DIR__ . '/includes/admin_header.php';
                         <span>~</span>
                         <input type="time" class="form-control form-control-sm" id="bhLunchEnd" value="<?php echo htmlspecialchars($bh_lunch_parts[1] ?? '14:00'); ?>" style="width:110px;" <?php echo $bh_no_lunch ? 'disabled' : ''; ?>>
                     </div>
+                    <div class="border rounded p-2 mb-2" style="font-size:13px;">
+                        <div class="fw-semibold mb-2">임시 휴무일 (정기 휴무 외)</div>
+                        <div class="d-flex gap-2 align-items-center mb-2">
+                            <input type="date" class="form-control form-control-sm" id="bhSpecialClosedDate" style="max-width:180px;" min="<?php echo date('Y-m-d'); ?>">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="bhAddSpecialClosedDate()">추가</button>
+                        </div>
+                        <div id="bhSpecialClosedList" class="d-flex flex-wrap gap-2"></div>
+                    </div>
                     <script>
+                    var bhSpecialClosedDates = <?php echo json_encode($bh_special_closed_dates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+                    function bhRenderSpecialClosedDates() {
+                        var list = document.getElementById('bhSpecialClosedList');
+                        list.innerHTML = '';
+                        bhSpecialClosedDates.sort().forEach(function(date) {
+                            var badge = document.createElement('span');
+                            badge.className = 'badge text-bg-secondary d-inline-flex align-items-center gap-1';
+                            badge.textContent = date;
+                            var remove = document.createElement('button');
+                            remove.type = 'button'; remove.className = 'btn-close btn-close-white';
+                            remove.style.fontSize = '8px'; remove.setAttribute('aria-label', '삭제');
+                            remove.onclick = function() {
+                                bhSpecialClosedDates = bhSpecialClosedDates.filter(function(v) { return v !== date; });
+                                bhRenderSpecialClosedDates();
+                            };
+                            badge.appendChild(remove); list.appendChild(badge);
+                        });
+                    }
+                    function bhAddSpecialClosedDate() {
+                        var input = document.getElementById('bhSpecialClosedDate');
+                        if (input.value && bhSpecialClosedDates.indexOf(input.value) < 0) {
+                            bhSpecialClosedDates.push(input.value); input.value = ''; bhRenderSpecialClosedDates();
+                        }
+                    }
                     function bhToggle(sel) {
                         var tr = sel.closest('tr');
                         var inputs = tr.querySelectorAll('input[type=time]');
@@ -962,8 +998,10 @@ include __DIR__ . '/includes/admin_header.php';
                             var le = document.getElementById('bhLunchEnd').value;
                             if (ls && le) data['점심'] = ls+'~'+le;
                         }
+                        data['special_closed_dates'] = bhSpecialClosedDates.slice().sort();
                         document.getElementById('bhHiddenInput').value = JSON.stringify(data);
                     }
+                    bhRenderSpecialClosedDates();
                     // 폼 제출 전 JSON 수집
                     var bhForm = document.getElementById('bhHiddenInput').closest('form');
                     if (bhForm) bhForm.addEventListener('submit', function() { bhCollectJSON(); });
