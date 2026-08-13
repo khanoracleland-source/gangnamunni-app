@@ -328,7 +328,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $hospital_id = intval($_POST['hospital_id'] ?? 0);
             $name = trim($_POST['name'] ?? '');
-            $description = trim($_POST['description'] ?? '');
             $introduction = trim($_POST['introduction'] ?? '');
             $address = trim($_POST['address'] ?? '');
             $phone = trim($_POST['phone'] ?? '');
@@ -368,15 +367,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = '병원 ID와 이름은 필수입니다.';
             } else {
                 $stmt = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_hospitals SET name=?, description=?, introduction=?, address=?, phone=?, email=?, categories=?, badges=?, treatment_tags=?, subway_names=?, business_hours=?, latitude=?, longitude=?, show_rating=?, ad_grade=?, updated_at=NOW() WHERE id=?"
+                    "UPDATE gangnamunni_hospitals SET name=?, introduction=?, address=?, phone=?, email=?, categories=?, badges=?, treatment_tags=?, subway_names=?, business_hours=?, latitude=?, longitude=?, show_rating=?, ad_grade=?, updated_at=NOW() WHERE id=?"
                 );
                 if (!$stmt) {
                     $err_msg = mysqli_error($connect);
                     error_log("[admin_hospitals #24] Prepare 실패: {$err_msg}");
                     $error = 'SQL Prepare 실패: ' . $err_msg;
                 } else {
-                    if (!mysqli_stmt_bind_param($stmt, 'sssssssssssddisi',
-                        $name, $description, $introduction, $address, $phone, $email,
+                    if (!mysqli_stmt_bind_param($stmt, 'ssssssssssddisi',
+                        $name, $introduction, $address, $phone, $email,
                         $categories, $badges, $treatment_tags, $subway_names, $business_hours,
                         $latitude, $longitude, $show_rating, $ad_grade, $hospital_id
                     )) {
@@ -840,12 +839,8 @@ include __DIR__ . '/includes/admin_header.php';
                     <div class="form-text">S/A: 빨간 AD 뱃지 | B/C: 파란 제휴 뱃지 | D/E: 회색 제휴 텍스트 | 목록 상위 노출</div>
                 </div>
                 <div class="col-12">
-                    <label class="form-label fw-semibold small">설명</label>
-                    <textarea name="description" class="form-control form-control-sm" rows="3"><?php echo htmlspecialchars($hospital['description'] ?? ''); ?></textarea>
-                </div>
-                <div class="col-12">
-                    <label class="form-label fw-semibold small">소개</label>
-                    <textarea name="introduction" class="form-control form-control-sm" rows="3"><?php echo htmlspecialchars($hospital['introduction'] ?? ''); ?></textarea>
+                    <label class="form-label fw-semibold small">병원 소개</label>
+                    <textarea name="introduction" class="form-control form-control-sm" rows="5" placeholder="병원의 특장점, 전문 분야, 진료 철학 등을 입력하세요."><?php echo htmlspecialchars($hospital['introduction'] ?? ''); ?></textarea>
                 </div>
             </div>
         </div>
@@ -1182,7 +1177,7 @@ if ($unreviewed) {
     while ($rv = mysqli_fetch_assoc($rv_res)) $revisions[] = $rv;
     mysqli_stmt_close($rv_stmt);
 }
-$field_labels_map = ['name'=>'병원명','owner_name'=>'대표자명','business_number'=>'사업자번호','phone'=>'전화','email'=>'이메일','contact_name'=>'담당자','contact_phone'=>'담당자전화','address'=>'주소','description'=>'소개','website'=>'홈페이지','sns_url'=>'SNS','business_hours'=>'영업시간','treatment_tags'=>'시술'];
+$field_labels_map = ['name'=>'병원명','owner_name'=>'대표자명','business_number'=>'사업자번호','phone'=>'전화','email'=>'이메일','contact_name'=>'담당자','contact_phone'=>'담당자전화','address'=>'주소','introduction'=>'병원 소개','website'=>'홈페이지','sns_url'=>'SNS','business_hours'=>'영업시간','treatment_tags'=>'시술'];
 ?>
 <?php if ($unreviewed && !empty($revisions)): ?>
 <div class="card mb-3 border-info">
@@ -1365,11 +1360,7 @@ $application_assets = [
                         <div class="hospital-detail-value"><?php if (!empty($hospital['sns_url'])): ?><a href="<?= htmlspecialchars($hospital['sns_url']) ?>" target="_blank"><?= htmlspecialchars($hospital['sns_url']) ?></a><?php else: ?>-<?php endif; ?></div>
                     </div>
                     <div class="col-12">
-                        <div class="hospital-detail-label">설명</div>
-                        <div class="hospital-detail-value"><?php echo nl2br(htmlspecialchars($hospital['description'] ?? '-')); ?></div>
-                    </div>
-                    <div class="col-12">
-                        <div class="hospital-detail-label">소개</div>
+                        <div class="hospital-detail-label">병원 소개</div>
                         <div class="hospital-detail-value"><?php echo nl2br(htmlspecialchars($hospital['introduction'] ?? '-')); ?></div>
                     </div>
                     <div class="col-12">

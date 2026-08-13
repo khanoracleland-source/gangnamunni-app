@@ -62,8 +62,8 @@ $admin_menus = [
 
     // 콘텐츠 관리 그룹
     ['type' => 'group', 'label' => '콘텐츠 관리', 'icon' => 'bi-collection', 'key' => 'content', 'children' => [
-        ['url' => 'admin_content_hub.php', 'label' => '콘텐츠 허브', 'icon' => 'bi-collection-fill', 'key' => 'hospitals'],
-        ['url' => 'admin_recommend.php', 'label' => '메인 추천 병원', 'icon' => 'bi-star', 'key' => 'hospitals'],
+        ['url' => 'admin_content_hub.php', 'label' => '콘텐츠 허브', 'icon' => 'bi-collection-fill', 'key' => 'content_hub'],
+        ['url' => 'admin_recommend.php', 'label' => '메인 추천 병원', 'icon' => 'bi-star', 'key' => 'recommend'],
         ['url' => 'admin_hospitals.php', 'label' => term('business') . ' 관리', 'icon' => 'bi-building', 'key' => 'hospitals'],
         ['url' => 'admin_doctors.php', 'label' => term('doctor') . ' 관리', 'icon' => 'bi-person-badge', 'key' => 'doctors'],
         ['url' => 'admin_personnel.php', 'label' => '인력 관리', 'icon' => 'bi-people', 'key' => 'personnel'],

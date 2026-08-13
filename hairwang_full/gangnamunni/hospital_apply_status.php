@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $editable_fields = [
                 'name' => '병원명', 'owner_name' => '대표자명', 'business_number' => '사업자등록번호',
                 'phone' => '전화번호', 'email' => '이메일', 'contact_name' => '담당자명',
-                'contact_phone' => '담당자 전화', 'address' => '주소', 'description' => '병원 소개',
+                'contact_phone' => '담당자 전화', 'address' => '주소', 'introduction' => '병원 소개',
                 'website' => '홈페이지', 'sns_url' => 'SNS', 'business_hours' => '영업시간',
                 'treatment_tags' => '주요 시술',
             ];
@@ -131,7 +131,7 @@ if ($view_id > 0) {
 $field_labels = [
     'name' => '병원명', 'owner_name' => '대표자명', 'business_number' => '사업자등록번호',
     'phone' => '전화번호', 'email' => '이메일', 'contact_name' => '담당자명',
-    'contact_phone' => '담당자 전화', 'address' => '주소', 'description' => '병원 소개',
+    'contact_phone' => '담당자 전화', 'address' => '주소', 'introduction' => '병원 소개',
     'website' => '홈페이지', 'sns_url' => 'SNS', 'business_hours' => '영업시간',
     'treatment_tags' => '주요 시술', 'categories' => '진료과목',
 ];
@@ -293,7 +293,7 @@ $edit_mode = isset($_GET['edit']) && $is_editable;
                         ['treatment_tags', '주요 시술', 'text', false],
                         ['website', '홈페이지', 'url', false],
                         ['sns_url', 'SNS', 'text', false],
-                        ['description', '병원 소개', 'textarea', false],
+                        ['introduction', '병원 소개', 'textarea', false],
                     ];
                     foreach ($edit_fields as $ef):
                         $fname = $ef[0]; $flabel = $ef[1]; $ftype = $ef[2]; $freq = $ef[3];
@@ -326,7 +326,7 @@ $edit_mode = isset($_GET['edit']) && $is_editable;
                     ['phone', '전화번호'], ['email', '이메일'], ['contact_name', '담당자명'],
                     ['contact_phone', '담당자 전화'], ['address', '주소'], ['business_hours', '영업시간'],
                     ['categories', '진료과목'], ['treatment_tags', '주요 시술'],
-                    ['website', '홈페이지'], ['sns_url', 'SNS'], ['description', '병원 소개'],
+                    ['website', '홈페이지'], ['sns_url', 'SNS'], ['introduction', '병원 소개'],
                 ];
                 foreach ($detail_fields as $df):
                     $val = $view_app[$df[0]] ?? '';
@@ -339,7 +339,7 @@ $edit_mode = isset($_GET['edit']) && $is_editable;
                         <a href="<?= htmlspecialchars($val) ?>" target="_blank" class="text-decoration-none"><?= htmlspecialchars($val) ?> <i class="bi bi-box-arrow-up-right" style="font-size:0.7rem;"></i></a>
                         <?php elseif ($df[0] === 'email'): ?>
                         <a href="mailto:<?= htmlspecialchars($val) ?>" class="text-decoration-none"><?= htmlspecialchars($val) ?></a>
-                        <?php elseif ($df[0] === 'description'): ?>
+                        <?php elseif ($df[0] === 'introduction'): ?>
                         <div class="text-muted small"><?= nl2br(htmlspecialchars($val)) ?></div>
                         <?php else: ?>
                         <?= htmlspecialchars($val) ?>

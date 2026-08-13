@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     // gangnamunni_hospitals.business_hours 컬럼의 JSON CHECK 제약과 예약/상세 화면 형식을 동시에 맞춘다.
     $business_hours_data = normalizeHospitalApplyBusinessHours($_POST['business_hours'] ?? '');
     $business_hours = json_encode($business_hours_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    $description = trim($_POST['description'] ?? '');
+    $introduction = trim($_POST['introduction'] ?? '');
     $website = trim($_POST['website'] ?? '');
     $sns_url = trim($_POST['sns_url'] ?? '');
 
@@ -235,14 +235,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
         // DB INSERT
         if (empty($error)) {
             $stmt = mysqli_prepare($connect,
-                "INSERT INTO gangnamunni_hospitals (name, owner_name, business_number, phone, email, contact_name, contact_phone, address, categories, treatment_tags, business_hours, description, website, sns_url, profile_image_url, cert_business, cert_medical, applied_by, applied_at, status, is_active, ad_grade, is_demo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending', 0, 'none', ?, NOW())"
+                "INSERT INTO gangnamunni_hospitals (name, owner_name, business_number, phone, email, contact_name, contact_phone, address, categories, treatment_tags, business_hours, introduction, website, sns_url, profile_image_url, cert_business, cert_medical, applied_by, applied_at, status, is_active, ad_grade, is_demo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending', 0, 'none', ?, NOW())"
             );
             if ($stmt) {
                 $is_demo_val = isDevMode($connect) ? 1 : 0;
                 mysqli_stmt_bind_param($stmt, 'sssssssssssssssss' . 'si',
                     $name, $owner_name, $business_number, $phone, $email,
                     $contact_name, $contact_phone, $address, $categories,
-                    $treatment_tags, $business_hours, $description,
+                    $treatment_tags, $business_hours, $introduction,
                     $website, $sns_url, $profile_image_path,
                     $cert_business_path, $cert_medical_path, $applied_by,
                     $is_demo_val
@@ -794,7 +794,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">병원 소개</label>
-                        <textarea name="description" class="form-control" rows="4" maxlength="2000"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                        <textarea name="introduction" class="form-control" rows="4" maxlength="2000"><?= htmlspecialchars($_POST['introduction'] ?? '') ?></textarea>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">홈페이지 URL</label>

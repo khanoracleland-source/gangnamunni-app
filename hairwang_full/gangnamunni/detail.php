@@ -1638,8 +1638,8 @@ function extractImageFromHtml($file_path) {
         if (empty($spec_text) && !empty($matched_treatment_categories)) {
             $spec_text = implode(', ', array_slice($matched_treatment_categories, 0, 3));
         }
-        if (empty($spec_text) && !empty($hospital['description'])) {
-            if (preg_match_all('/([가-힣]+과)/u', $hospital['description'], $m)) {
+        if (empty($spec_text) && !empty($hospital['introduction'])) {
+            if (preg_match_all('/([가-힣]+과)/u', $hospital['introduction'], $m)) {
                 $filtered = array_filter(array_unique($m[1]), function($v) { return mb_strlen($v) >= 3 && mb_strlen($v) <= 8; });
                 $filtered = array_intersect(array_values($filtered), $tc_names);
                 if (!empty($filtered)) $spec_text = implode(', ', array_slice(array_values($filtered), 0, 3));
@@ -1896,18 +1896,14 @@ function extractImageFromHtml($file_path) {
     <!-- 탭 컨텐츠 -->
     <div class="tab-content">
         <!-- 홈 탭 -->
-        <!-- #19 fix: description(required) first, introduction(optional) second -->
         <div class="tab-pane <?php echo $current_tab === 'home' ? 'active' : ''; ?>" id="tab-home">
             <?php
-            $has_desc = !empty(trim($hospital['description'] ?? ''));
-            $has_intro = !empty(trim($hospital['introduction'] ?? '')) && ($hospital['introduction'] !== ($hospital['description'] ?? ''));
+            $has_intro = !empty(trim($hospital['introduction'] ?? ''));
             ?>
-            <?php if ($has_desc || $has_intro): ?>
+            <?php if ($has_intro): ?>
             <h3 style="font-size: 18px; margin-bottom: 16px;"><?= term("business") ?> 소개</h3>
             <div style="line-height: 1.8; color: var(--color-text-secondary);">
-                <?php if ($has_desc): ?><?php echo nl2br(htmlspecialchars($hospital['description'])); ?><?php endif; ?>
-                <?php if ($has_desc && $has_intro): ?><br><br><?php endif; ?>
-                <?php if ($has_intro): ?><?php echo nl2br(htmlspecialchars($hospital['introduction'])); ?><?php endif; ?>
+                <?php echo nl2br(htmlspecialchars($hospital['introduction'])); ?>
             </div>
             <?php else: ?>
             <div class="empty-state">
