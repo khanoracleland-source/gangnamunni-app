@@ -42,6 +42,18 @@ function doctor_hospital_allowed($hospital_id, $allowed_hospital_ids) {
         && ($allowed_hospital_ids === null || in_array((int)$hospital_id, $allowed_hospital_ids, true));
 }
 
+function doctor_table_has_column($connect, $table_name, $column_name) {
+    $stmt = mysqli_prepare($connect,
+        "SELECT 1 FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1");
+    if (!$stmt) return false;
+    mysqli_stmt_bind_param($stmt, 'ss', $table_name, $column_name);
+    mysqli_stmt_execute($stmt);
+    $exists = mysqli_fetch_row(mysqli_stmt_get_result($stmt)) !== null;
+    mysqli_stmt_close($stmt);
+    return $exists;
+}
+
 function validate_doctor_profile($name, $hospital_id, $specialty, $memberships) {
     if ($name === '') return '의사 이름은 필수입니다.';
     if (mb_strlen($name, 'UTF-8') > 100) return '의사 이름은 100자 이하여야 합니다.';
@@ -330,6 +342,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = '삭제 실패: ' . mysqli_error($connect);
             }
             mysqli_stmt_close($stmt);
+        }
+    }
+
+    // 완전 삭제: 의사 프로필과 시술/일정 연결을 제거하고, 예약·후기의 문자 이력은 보존한다.
+    if ($action === 'hard_delete_doctor') {
+        $doctor_id = intval($_POST['doctor_id'] ?? 0);
+        if ($doctor_id <= 0) {
+            $error = '삭제할 의사 정보가 올바르지 않습니다.';
+        } else {
+            $lookup = mysqli_prepare($connect, "SELECT name, hospital_id, photo_url FROM gangnamunni_doctors WHERE id = ?");
+            mysqli_stmt_bind_param($lookup, 'i', $doctor_id);
+            mysqli_stmt_execute($lookup);
+            $delete_doctor = mysqli_fetch_assoc(mysqli_stmt_get_result($lookup));
+            mysqli_stmt_close($lookup);
+
+            if (!$delete_doctor || !doctor_hospital_allowed((int)$delete_doctor['hospital_id'], $allowed_hospital_ids)) {
+                $error = '이 의사를 완전 삭제할 권한이 없습니다.';
+            } else {
+                mysqli_begin_transaction($connect);
+                try {
+                    // 예약/후기의 의사명 스냅샷은 남기고 삭제될 프로필 ID 참조만 해제한다.
+                    foreach (['gangnamunni_bookings', 'gangnamunni_reviews'] as $history_table) {
+                        if (doctor_table_has_column($connect, $history_table, 'doctor_id')) {
+                            $history_stmt = mysqli_prepare($connect, "UPDATE `{$history_table}` SET doctor_id = NULL WHERE doctor_id = ?");
+                            if (!$history_stmt) throw new RuntimeException(mysqli_error($connect));
+                            mysqli_stmt_bind_param($history_stmt, 'i', $doctor_id);
+                            if (!mysqli_stmt_execute($history_stmt)) throw new RuntimeException(mysqli_stmt_error($history_stmt));
+                            mysqli_stmt_close($history_stmt);
+                        }
+                    }
+
+                    foreach (['gangnamunni_doctor_treatments', 'gangnamunni_doctor_schedules'] as $relation_table) {
+                        if (doctor_table_has_column($connect, $relation_table, 'doctor_id')) {
+                            $relation_stmt = mysqli_prepare($connect, "DELETE FROM `{$relation_table}` WHERE doctor_id = ?");
+                            if (!$relation_stmt) throw new RuntimeException(mysqli_error($connect));
+                            mysqli_stmt_bind_param($relation_stmt, 'i', $doctor_id);
+                            if (!mysqli_stmt_execute($relation_stmt)) throw new RuntimeException(mysqli_stmt_error($relation_stmt));
+                            mysqli_stmt_close($relation_stmt);
+                        }
+                    }
+
+                    $delete_stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_doctors WHERE id = ? AND hospital_id = ?");
+                    if (!$delete_stmt) throw new RuntimeException(mysqli_error($connect));
+                    $delete_hospital_id = (int)$delete_doctor['hospital_id'];
+                    mysqli_stmt_bind_param($delete_stmt, 'ii', $doctor_id, $delete_hospital_id);
+                    if (!mysqli_stmt_execute($delete_stmt)) throw new RuntimeException(mysqli_stmt_error($delete_stmt));
+                    if (mysqli_stmt_affected_rows($delete_stmt) !== 1) throw new RuntimeException('의사 정보를 찾을 수 없습니다.');
+                    mysqli_stmt_close($delete_stmt);
+
+                    mysqli_commit($connect);
+
+                    $photo_url = (string)($delete_doctor['photo_url'] ?? '');
+                    if (str_starts_with($photo_url, 'uploads/doctors/')) {
+                        $photo_path = __DIR__ . '/' . $photo_url;
+                        if (is_file($photo_path)) @unlink($photo_path);
+                    }
+
+                    $deleted_name = (string)$delete_doctor['name'];
+                    header('Location: admin_doctors.php?msg=' . urlencode("의사 '{$deleted_name}'이(가) 완전 삭제되었습니다."));
+                    exit;
+                } catch (Throwable $e) {
+                    mysqli_rollback($connect);
+                    error_log('[admin_doctors] hard delete failed: ' . $e->getMessage());
+                    $error = '완전 삭제에 실패했습니다. 연결된 데이터를 확인해주세요.';
+                }
+            }
         }
     }
 
@@ -766,14 +844,24 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
                     <i class="bi bi-pencil me-1"></i>수정
                 </a>
             </div>
-            <form method="POST" class="d-inline" onsubmit="return confirm('이 의사를 퇴직 처리하시겠습니까?\n기존 예약과 이력은 보존되고 시술 배정은 비활성화됩니다.')">
-                <input type="hidden" name="action" value="delete_doctor">
-                <input type="hidden" name="doctor_id" value="<?php echo $doctor['id']; ?>">
-                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
-                <button type="submit" class="btn btn-outline-danger btn-sm">
-                    <i class="bi bi-person-x me-1"></i>퇴직 처리
-                </button>
-            </form>
+            <div class="d-flex gap-2 flex-wrap">
+                <form method="POST" class="d-inline" onsubmit="return confirm('이 의사를 퇴직 처리하시겠습니까?\n기존 예약과 이력은 보존되고 시술 배정은 비활성화됩니다.')">
+                    <input type="hidden" name="action" value="delete_doctor">
+                    <input type="hidden" name="doctor_id" value="<?php echo $doctor['id']; ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-person-x me-1"></i>퇴직 처리
+                    </button>
+                </form>
+                <form method="POST" class="d-inline" onsubmit="return confirm('⚠️ 이 의사를 완전히 삭제하시겠습니까?\n\n프로필, 사진, 시술 배정과 일정이 영구적으로 삭제되며 복구할 수 없습니다.\n예약·후기의 문자 이력은 보존됩니다.')">
+                    <input type="hidden" name="action" value="hard_delete_doctor">
+                    <input type="hidden" name="doctor_id" value="<?php echo $doctor['id']; ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash3 me-1"></i>완전 삭제
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
