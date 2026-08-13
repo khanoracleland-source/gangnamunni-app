@@ -117,6 +117,17 @@ $page_css_file = 'assets/css/index-page.css';
 
 // 이벤트/응모 섹션 추가 CSS
 $page_css = '
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap");
+
+/* 홈 화면의 모든 일반 텍스트에 Noto Sans KR 적용 (아이콘 폰트 제외) */
+body,
+button,
+input,
+select,
+textarea {
+    font-family: "Noto Sans KR", sans-serif !important;
+}
+
 /* 이벤트 섹션 */
 .events-section {
     margin-bottom: 45px;

@@ -352,12 +352,6 @@ $share_copy_enabled = in_array($current_page, ['index.php', 'community.php', 'ho
     if ($nav_top_desktop !== '1') echo 'global-nav--hide-desktop-menu ';
     if ($is_logged_in) echo 'is-logged-in '; // [프론트 #4 - 2026-05-28] 로그인 상태 클래스
 ?>">
-    <?php if ($share_copy_enabled && $is_logged_in): ?>
-    <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
-        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-    </button>
-    <?php endif; ?>
-
     <a href="index.php" class="global-nav-logo">
         <?php if (file_exists($site_logo_path)): ?>
             <img src="<?php echo htmlspecialchars($site_logo_path); ?>" alt="<?php echo htmlspecialchars($site_name); ?>">
@@ -380,6 +374,11 @@ $share_copy_enabled = in_array($current_page, ['index.php', 'community.php', 'ho
     </nav>
 
     <div class="global-nav-login">
+        <?php if ($share_copy_enabled && $is_logged_in): ?>
+        <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+        </button>
+        <?php endif; ?>
         <?php if (!$is_logged_in): ?>
         <?php if ($share_copy_enabled): ?>
         <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">

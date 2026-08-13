@@ -96,13 +96,22 @@ if (!preg_match('/^#[0-9a-fA-F]{6}$/', $primary_color)) $primary_color = '#AE193
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <style>
 :root { --pri: <?php echo $primary_color; ?>; --page-bg:#f3f3f3; --card-bg:#fff; }
 * { margin:0; padding:0; box-sizing:border-box; }
 html { background:#3f3f3f; }
+body,
+button,
+input,
+select,
+textarea {
+    font-family:'Noto Sans KR',sans-serif !important;
+}
 body {
-    font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;
     background:var(--page-bg); max-width:640px; margin:0 auto; min-height:100vh;
     padding-bottom:calc(82px + env(safe-area-inset-bottom, 0px)); color:#111;
 }

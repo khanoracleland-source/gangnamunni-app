@@ -668,6 +668,17 @@ $page_title = htmlspecialchars($hospital['name']) . ' ' . term('appointment');
 $show_search = false;
 
 $page_css = '
+    @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap");
+
+    /* 예약 화면의 모든 일반 텍스트에 Noto Sans KR 적용 (아이콘 폰트 제외) */
+    body,
+    button,
+    input,
+    select,
+    textarea {
+        font-family: "Noto Sans KR", sans-serif !important;
+    }
+
     /* 페이지 헤더 (글로벌 네비 아래) */
     .page-header {
         padding: 12px 20px;

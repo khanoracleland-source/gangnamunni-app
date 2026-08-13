@@ -426,6 +426,9 @@ function extractImageFromHtml($file_path) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo htmlspecialchars($hospital['name']); ?> | <?= site_name() ?></title>
     <?php echo generateFaviconLinks(); ?>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
@@ -451,8 +454,15 @@ function extractImageFromHtml($file_path) {
             box-sizing: border-box;
         }
 
+        body,
+        button,
+        input,
+        select,
+        textarea {
+            font-family: 'Noto Sans KR', sans-serif !important;
+        }
+
         body {
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
             background: var(--color-bg-light);
             color: var(--color-text-primary);
             line-height: 1.6;

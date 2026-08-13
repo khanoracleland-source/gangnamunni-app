@@ -249,6 +249,17 @@ function community_time_display($created_at, $updated_at = null) {
 }
 
 $page_css = '
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap");
+
+/* 커뮤니티 화면의 모든 일반 텍스트에 Noto Sans KR 적용 (아이콘 폰트 제외) */
+body,
+button,
+input,
+select,
+textarea {
+    font-family: "Noto Sans KR", sans-serif !important;
+}
+
 /* === 커뮤니티 Figma 디자인 === */
 .community-wrap { width: 100%; min-width: 0; max-width: 640px; margin: 0 auto; padding: 0 0 70px; }
 

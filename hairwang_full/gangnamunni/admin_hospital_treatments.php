@@ -1331,7 +1331,7 @@ function deleteTreatmentImage(htId, imageId) {
 // 가격 수정 모달
 // 배정 시술별 가격 옵션 맵 (id → [{dosage_value, dosage_unit, price}, ...])
 var HT_PRICES = <?php echo json_encode($ht_prices, JSON_UNESCAPED_UNICODE); ?>;
-var PRICE_UNITS = ['샷','cc','ml','회','병','IU','기타'];
+var PRICE_UNITS = ['샷','cc','ml','kj','회','병','IU','기타'];
 
 function priceToWon(price) {
     return Number(price) || 0;
