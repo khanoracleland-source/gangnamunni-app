@@ -328,10 +328,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $hospital_id = intval($_POST['hospital_id'] ?? 0);
             $name = trim($_POST['name'] ?? '');
+            $owner_name = trim($_POST['owner_name'] ?? '');
+            $business_number = trim($_POST['business_number'] ?? '');
             $introduction = trim($_POST['introduction'] ?? '');
             $address = trim($_POST['address'] ?? '');
             $phone = trim($_POST['phone'] ?? '');
             $email = trim($_POST['email'] ?? '');
+            $contact_name = trim($_POST['contact_name'] ?? '');
+            $contact_phone = trim($_POST['contact_phone'] ?? '');
+            $website = trim($_POST['website'] ?? '');
+            $sns_url = trim($_POST['sns_url'] ?? '');
             // JSON 컬럼 정규화 — gangnamunni_hospitals 에 json_valid() CHECK 제약이 걸려 있어
             // (categories/badges/treatment_tags/subway_names/business_hours) 반드시 유효한 JSON 이어야 함.
             // 이미 유효한 JSON(예: treatment_tags 객체 배열)은 그대로 보존, CSV 문자열이면 배열로 변환,
@@ -367,15 +373,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = '병원 ID와 이름은 필수입니다.';
             } else {
                 $stmt = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_hospitals SET name=?, introduction=?, address=?, phone=?, email=?, categories=?, badges=?, treatment_tags=?, subway_names=?, business_hours=?, latitude=?, longitude=?, show_rating=?, ad_grade=?, updated_at=NOW() WHERE id=?"
+                    "UPDATE gangnamunni_hospitals SET name=?, owner_name=?, business_number=?, introduction=?, address=?, phone=?, email=?, contact_name=?, contact_phone=?, website=?, sns_url=?, categories=?, badges=?, treatment_tags=?, subway_names=?, business_hours=?, latitude=?, longitude=?, show_rating=?, ad_grade=?, updated_at=NOW() WHERE id=?"
                 );
                 if (!$stmt) {
                     $err_msg = mysqli_error($connect);
                     error_log("[admin_hospitals #24] Prepare 실패: {$err_msg}");
                     $error = 'SQL Prepare 실패: ' . $err_msg;
                 } else {
-                    if (!mysqli_stmt_bind_param($stmt, 'ssssssssssddisi',
-                        $name, $introduction, $address, $phone, $email,
+                    if (!mysqli_stmt_bind_param($stmt, 'ssssssssssssssssddisi',
+                        $name, $owner_name, $business_number, $introduction, $address, $phone, $email,
+                        $contact_name, $contact_phone, $website, $sns_url,
                         $categories, $badges, $treatment_tags, $subway_names, $business_hours,
                         $latitude, $longitude, $show_rating, $ad_grade, $hospital_id
                     )) {
@@ -554,6 +561,7 @@ $edit_mode = isset($_GET['edit']) && $_GET['edit'] == '1';
 $hospital = null;
 $hospital_images = [];
 $application_treatments = [];
+$application_doctors = [];
 
 if ($view_mode > 0) {
     // 범위 제한 관리자(editor·병원역할)는 자기 소유 병원 상세만 열람 가능
@@ -601,6 +609,7 @@ if ($view_mode > 0) {
                             'name' => $row['treatment_name'],
                             'status' => $row['status'],
                             'images' => [],
+                            'prices' => [],
                         ];
                     }
                     if (!empty($row['image_url'])) {
@@ -616,6 +625,48 @@ if ($view_mode > 0) {
             }
         } catch (\mysqli_sql_exception $e) {
             error_log('[admin_hospitals] 신청 시술 이미지 조회 실패: ' . $e->getMessage());
+        }
+
+        // 신청서에서 등록한 시술별 옵션/용량/가격
+        try {
+            $price_option_column = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
+            $price_option_select = ($price_option_column && mysqli_num_rows($price_option_column) > 0)
+                ? 'p.option_name' : "'' AS option_name";
+            $price_stmt = mysqli_prepare($connect,
+                "SELECT p.hospital_treatment_id, {$price_option_select}, p.dosage_value, p.dosage_unit, p.price
+                 FROM gangnamunni_hospital_treatment_prices p
+                 INNER JOIN gangnamunni_hospital_treatments ht ON ht.id = p.hospital_treatment_id
+                 WHERE ht.hospital_id = ? ORDER BY p.hospital_treatment_id, p.sort_order, p.id");
+            if ($price_stmt) {
+                mysqli_stmt_bind_param($price_stmt, 'i', $view_mode);
+                mysqli_stmt_execute($price_stmt);
+                $price_result = mysqli_stmt_get_result($price_stmt);
+                while ($price_row = mysqli_fetch_assoc($price_result)) {
+                    $price_ht_id = (int)$price_row['hospital_treatment_id'];
+                    if (isset($application_treatments[$price_ht_id])) {
+                        $application_treatments[$price_ht_id]['prices'][] = $price_row;
+                    }
+                }
+                mysqli_stmt_close($price_stmt);
+            }
+        } catch (\mysqli_sql_exception $e) {
+            error_log('[admin_hospitals] 신청 시술 가격 조회 실패: ' . $e->getMessage());
+        }
+
+        // 신청서에서 등록한 의사 정보
+        try {
+            $doctor_stmt = mysqli_prepare($connect,
+                "SELECT id, name, specialty, experience, qualification, bio, photo_url, status
+                 FROM gangnamunni_doctors WHERE hospital_id = ? ORDER BY id ASC");
+            if ($doctor_stmt) {
+                mysqli_stmt_bind_param($doctor_stmt, 'i', $view_mode);
+                mysqli_stmt_execute($doctor_stmt);
+                $doctor_result = mysqli_stmt_get_result($doctor_stmt);
+                while ($doctor_row = mysqli_fetch_assoc($doctor_result)) $application_doctors[] = $doctor_row;
+                mysqli_stmt_close($doctor_stmt);
+            }
+        } catch (\mysqli_sql_exception $e) {
+            error_log('[admin_hospitals] 신청 의사 정보 조회 실패: ' . $e->getMessage());
         }
     }
 }
@@ -796,6 +847,18 @@ include __DIR__ . '/includes/admin_header.php';
 
 <?php if ($edit_mode): ?>
 <!-- ===== 수정 폼 ===== -->
+<?php
+$edit_json_list_value = static function ($raw) {
+    $decoded = json_decode((string)$raw, true);
+    if (!is_array($decoded)) return (string)$raw;
+    $labels = [];
+    foreach ($decoded as $item) {
+        $label = is_array($item) ? ($item['name'] ?? '') : $item;
+        if (is_scalar($label) && trim((string)$label) !== '') $labels[] = trim((string)$label);
+    }
+    return implode(', ', $labels);
+};
+?>
 <form method="POST" id="editHospitalForm">
     <input type="hidden" name="action" value="edit_hospital">
     <input type="hidden" name="hospital_id" value="<?php echo $hospital['id']; ?>">
@@ -815,14 +878,38 @@ include __DIR__ . '/includes/admin_header.php';
                            value="<?php echo htmlspecialchars($hospital['email'] ?? ''); ?>">
                 </div>
                 <div class="col-md-6">
+                    <label class="form-label fw-semibold small">대표자명</label>
+                    <input type="text" name="owner_name" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hospital['owner_name'] ?? ''); ?>">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">사업자등록번호</label>
+                    <input type="text" name="business_number" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hospital['business_number'] ?? ''); ?>">
+                </div>
+                <div class="col-md-6">
                     <label class="form-label fw-semibold small">전화번호</label>
                     <input type="text" name="phone" class="form-control form-control-sm"
                            value="<?php echo htmlspecialchars($hospital['phone'] ?? ''); ?>">
                 </div>
                 <div class="col-md-6">
+                    <label class="form-label fw-semibold small">담당자명</label>
+                    <input type="text" name="contact_name" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hospital['contact_name'] ?? ''); ?>">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">담당자 전화</label>
+                    <input type="text" name="contact_phone" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hospital['contact_phone'] ?? ''); ?>">
+                </div>
+                <div class="col-md-6">
                     <label class="form-label fw-semibold small">주소</label>
                     <input type="text" name="address" class="form-control form-control-sm"
                            value="<?php echo htmlspecialchars($hospital['address'] ?? ''); ?>">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">홈페이지 URL</label>
+                    <input type="url" name="website" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hospital['website'] ?? ''); ?>">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">SNS URL</label>
+                    <input type="url" name="sns_url" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hospital['sns_url'] ?? ''); ?>">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">광고 등급</label>
@@ -853,29 +940,39 @@ include __DIR__ . '/includes/admin_header.php';
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">카테고리 (쉼표 구분)</label>
                     <input type="text" name="categories" class="form-control form-control-sm"
-                           value="<?php echo htmlspecialchars($hospital['categories'] ?? ''); ?>"
+                           value="<?php echo htmlspecialchars($edit_json_list_value($hospital['categories'] ?? '')); ?>"
                            placeholder="성형외과, 피부과, 치과">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">뱃지 (쉼표 구분)</label>
                     <input type="text" name="badges" class="form-control form-control-sm"
-                           value="<?php echo htmlspecialchars($hospital['badges'] ?? ''); ?>"
+                           value="<?php echo htmlspecialchars($edit_json_list_value($hospital['badges'] ?? '')); ?>"
                            placeholder="인기, 신규, 이벤트">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">시술 태그 (쉼표 구분)</label>
                     <input type="text" name="treatment_tags" class="form-control form-control-sm"
-                           value="<?php echo htmlspecialchars($hospital['treatment_tags'] ?? ''); ?>"
+                           value="<?php echo htmlspecialchars($edit_json_list_value($hospital['treatment_tags'] ?? '')); ?>"
                            placeholder="보톡스, 필러, 리프팅">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">인근 지하철 (쉼표 구분)</label>
                     <input type="text" name="subway_names" class="form-control form-control-sm"
-                           value="<?php echo htmlspecialchars($hospital['subway_names'] ?? ''); ?>"
+                           value="<?php echo htmlspecialchars($edit_json_list_value($hospital['subway_names'] ?? '')); ?>"
                            placeholder="강남역, 신논현역">
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editBusinessHoursSection" aria-expanded="false">
+            <span><i class="bi bi-clock me-1"></i><strong>영업시간 설정</strong></span><i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse" id="editBusinessHoursSection"><div class="card-body">
+            <div class="row g-3">
                 <div class="col-12">
-                    <label class="form-label fw-semibold small">영업시간</label>
+                    <div class="text-body-secondary small mb-2">요일별 진료시간, 점심시간, 임시 휴무일을 확인·수정합니다.</div>
                     <?php
                     $bh_data = json_decode($hospital['business_hours'] ?? '{}', true) ?: [];
                     $bh_days = ['월'=>'월요일','화'=>'화요일','수'=>'수요일','목'=>'목요일','금'=>'금요일','토'=>'토요일','일'=>'일요일'];
@@ -1009,7 +1106,7 @@ include __DIR__ . '/includes/admin_header.php';
                     </div>
                 </div>
             </div>
-        </div>
+        </div></div>
     </div>
 
     <?php
@@ -1030,16 +1127,82 @@ include __DIR__ . '/includes/admin_header.php';
     </div>
 </form>
 
+<!-- 수정 모드에서도 승인 전 신청 내용을 바로 확인 -->
+<div class="card mt-3">
+    <div class="card-header"><i class="bi bi-file-earmark-check me-1"></i><strong>제출 서류</strong></div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <?php foreach ([
+                ['사업자등록증', $hospital['cert_business'] ?? ''],
+                ['의료기관개설허가증', $hospital['cert_medical'] ?? ''],
+            ] as $edit_asset): ?>
+                <?php if (!empty($edit_asset[1])): ?>
+                <a href="<?= htmlspecialchars($edit_asset[1]) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm"><i class="bi bi-box-arrow-up-right me-1"></i><?= htmlspecialchars($edit_asset[0]) ?></a>
+                <?php else: ?>
+                <span class="btn btn-outline-secondary btn-sm disabled"><?= htmlspecialchars($edit_asset[0]) ?> 미제출</span>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editTreatmentsSection" aria-expanded="false">
+        <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가</strong></span><span><span class="badge bg-secondary me-2"><?= count($application_treatments) ?>개</span><i class="bi bi-chevron-down"></i></span>
+    </button>
+    <div class="collapse" id="editTreatmentsSection"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small text-body-secondary">신청한 시술과 옵션별 용량·가격·이미지를 확인합니다.</span>
+        </div>
+        <?php if (!empty($application_treatments)): ?>
+        <div class="table-responsive mb-4">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light"><tr><th>시술</th><th>옵션명</th><th>용량</th><th>가격</th><th>이미지</th></tr></thead>
+                <tbody>
+                <?php foreach ($application_treatments as $edit_treatment): ?>
+                    <?php if (!empty($edit_treatment['prices'])): foreach ($edit_treatment['prices'] as $edit_price): ?>
+                    <tr><td><?= htmlspecialchars($edit_treatment['name']) ?></td><td><?= htmlspecialchars($edit_price['option_name'] ?? '') ?: '-' ?></td><td><?= rtrim(rtrim(number_format((float)$edit_price['dosage_value'], 2, '.', ''), '0'), '.') ?> <?= htmlspecialchars($edit_price['dosage_unit'] ?? '') ?></td><td><?= number_format((int)$edit_price['price']) ?>원</td><td><?= count($edit_treatment['images']) ?>장</td></tr>
+                    <?php endforeach; else: ?>
+                    <tr><td><?= htmlspecialchars($edit_treatment['name']) ?></td><td colspan="3" class="text-body-secondary">가격 옵션 미등록</td><td><?= count($edit_treatment['images']) ?>장</td></tr>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php else: ?><div class="text-body-secondary small mb-4">신청된 시술이 없습니다.</div><?php endif; ?>
+    </div></div>
+</div>
+
+<div class="card mt-3">
+    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editDoctorsSection" aria-expanded="false">
+        <span><i class="bi bi-person-badge me-1"></i><strong>의사 추가</strong></span><span><span class="badge bg-secondary me-2"><?= count($application_doctors) ?>명</span><i class="bi bi-chevron-down"></i></span>
+    </button>
+    <div class="collapse" id="editDoctorsSection"><div class="card-body">
+        <?php if (!empty($application_doctors)): ?>
+        <div class="row g-2">
+            <?php foreach ($application_doctors as $edit_doctor): ?>
+            <div class="col-md-6"><div class="border rounded p-3 h-100 d-flex gap-3">
+                <?php if (!empty($edit_doctor['photo_url'])): ?><img src="<?= htmlspecialchars($edit_doctor['photo_url']) ?>" class="rounded border" style="width:72px;height:88px;object-fit:cover" alt=""><?php endif; ?>
+                <div><strong><?= htmlspecialchars($edit_doctor['name']) ?></strong><div class="small text-primary"><?= htmlspecialchars($edit_doctor['specialty'] ?? '') ?: '전문 분야 미입력' ?></div><div class="small">경력 <?= (int)($edit_doctor['experience'] ?? 0) ?>년</div><?php if (!empty($edit_doctor['qualification'])): ?><div class="small mt-1"><?= nl2br(htmlspecialchars($edit_doctor['qualification'])) ?></div><?php endif; ?><?php if (!empty($edit_doctor['bio'])): ?><div class="small text-body-secondary mt-1"><?= nl2br(htmlspecialchars($edit_doctor['bio'])) ?></div><?php endif; ?></div>
+            </div></div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?><div class="text-body-secondary small">신청된 의료진이 없습니다.</div><?php endif; ?>
+    </div></div>
+</div>
+
 <!-- ===== 이미지 관리 섹션 ===== -->
 <!-- 업로드/수정/삭제는 전용 페이지(admin_hospital_images.php)에서 처리 — 여기서는 현재 이미지 미리보기 + 관리 진입 -->
 <div class="card mt-3">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-images me-1"></i> 병원 이미지 (<?php echo count($hospital_images); ?>장)</span>
+        <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editHospitalImagesSection" aria-expanded="false">
+            <i class="bi bi-images me-1"></i><strong>병원 이미지 추가</strong> <span class="badge bg-secondary ms-1"><?php echo count($hospital_images); ?>장</span> <i class="bi bi-chevron-down ms-2"></i>
+        </button>
         <a href="admin_hospital_images.php?hospital_id=<?php echo $hospital['id']; ?>" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-pencil-square me-1"></i>이미지 관리 (추가/수정/삭제)
         </a>
     </div>
-    <div class="card-body">
+    <div class="collapse" id="editHospitalImagesSection"><div class="card-body">
         <?php if (!empty($hospital_images)): ?>
         <div class="d-flex flex-wrap gap-2">
             <?php foreach ($hospital_images as $img): ?>
@@ -1053,7 +1216,7 @@ include __DIR__ . '/includes/admin_header.php';
         <?php else: ?>
         <p class="text-muted mb-0">등록된 이미지가 없습니다. <strong>"이미지 관리"</strong> 버튼으로 추가하세요.</p>
         <?php endif; ?>
-    </div>
+    </div></div>
 </div>
 
 <!-- ===== AI 설정 섹션 ===== -->
@@ -1214,12 +1377,11 @@ $field_labels_map = ['name'=>'병원명','owner_name'=>'대표자명','business_
 $application_assets = [
     ['label' => '사업자등록증', '상세' => '필수 서류', 'path' => (string)($hospital['cert_business'] ?? ''), 'required' => true, 'icon' => 'bi-file-earmark-text'],
     ['label' => '의료기관개설허가증', '상세' => '필수 서류', 'path' => (string)($hospital['cert_medical'] ?? ''), 'required' => true, 'icon' => 'bi-file-earmark-medical'],
-    ['label' => '프로필 이미지', '상세' => '선택 자료', 'path' => (string)($hospital['profile_image_url'] ?? ''), 'required' => false, 'icon' => 'bi-image'],
 ];
 ?>
-<div class="card mb-3 border-primary">
-    <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span><i class="bi bi-folder-check me-1"></i><strong>신청 제출 자료</strong></span>
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-file-earmark-check me-1"></i><strong>제출 서류</strong></span>
         <span class="small text-body-secondary">서류를 확인한 후 승인 또는 반려해 주세요.</span>
     </div>
     <div class="card-body">
@@ -1229,7 +1391,7 @@ $application_assets = [
                 $asset_ext = strtolower(pathinfo((string)(parse_url($asset_path, PHP_URL_PATH) ?? ''), PATHINFO_EXTENSION));
                 $is_pdf = $asset_ext === 'pdf';
             ?>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="application-asset">
                     <div class="p-3 d-flex justify-content-between align-items-start gap-2">
                         <div>
@@ -1272,11 +1434,17 @@ $application_assets = [
             </div>
             <?php endforeach; ?>
         </div>
+    </div>
+</div>
 
-        <hr class="my-4">
+<div class="card mb-3">
+    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewTreatmentsSection" aria-expanded="false">
+        <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가</strong></span>
+        <span><span class="badge bg-body-secondary text-body me-2"><?= count($application_treatments) ?>개</span><i class="bi bi-chevron-down"></i></span>
+    </button>
+    <div class="collapse" id="viewTreatmentsSection"><div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="mb-0"><i class="bi bi-card-image me-1"></i>신청 시술 / 시술 이미지</h6>
-            <span class="badge bg-body-secondary text-body"><?= count($application_treatments) ?>개 시술</span>
+            <span class="small text-body-secondary">신청한 시술과 가격 옵션, 시술 이미지를 확인합니다.</span>
         </div>
         <?php if (!empty($application_treatments)): ?>
             <?php foreach ($application_treatments as $treatment): ?>
@@ -1285,6 +1453,20 @@ $application_assets = [
                     <strong><?= htmlspecialchars($treatment['name']) ?></strong>
                     <span class="badge bg-body-secondary text-body"><?= count($treatment['images']) ?>장</span>
                 </div>
+                <?php if (!empty($treatment['prices'])): ?>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="table-light"><tr><th>옵션명</th><th>용량</th><th>가격</th></tr></thead>
+                        <tbody><?php foreach ($treatment['prices'] as $price_option): ?><tr>
+                            <td><?= htmlspecialchars($price_option['option_name'] ?? '') ?: '-' ?></td>
+                            <td><?= rtrim(rtrim(number_format((float)$price_option['dosage_value'], 2, '.', ''), '0'), '.') ?> <?= htmlspecialchars($price_option['dosage_unit'] ?? '') ?></td>
+                            <td class="fw-semibold"><?= number_format((int)$price_option['price']) ?>원</td>
+                        </tr><?php endforeach; ?></tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <div class="small text-body-secondary mb-2">등록된 가격 옵션이 없습니다.</div>
+                <?php endif; ?>
                 <?php if (!empty($treatment['images'])): ?>
                 <div class="row g-2">
                     <?php foreach ($treatment['images'] as $treatment_image): ?>
@@ -1312,11 +1494,42 @@ $application_assets = [
         <?php else: ?>
         <div class="alert alert-secondary py-2 mb-0 small"><i class="bi bi-info-circle me-1"></i>신청서에 선택된 시술이 없습니다.</div>
         <?php endif; ?>
-    </div>
+    </div></div>
+</div>
+
+<div class="card mb-3">
+    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewDoctorsSection" aria-expanded="false">
+        <span><i class="bi bi-person-badge me-1"></i><strong>의사 추가</strong></span>
+        <span><span class="badge bg-body-secondary text-body me-2"><?= count($application_doctors) ?>명</span><i class="bi bi-chevron-down"></i></span>
+    </button>
+    <div class="collapse" id="viewDoctorsSection"><div class="card-body">
+        <?php if (!empty($application_doctors)): ?>
+        <div class="row g-3">
+            <?php foreach ($application_doctors as $application_doctor): ?>
+            <div class="col-md-6">
+                <div class="border rounded-3 p-3 h-100 d-flex gap-3">
+                    <?php if (!empty($application_doctor['photo_url'])): ?>
+                    <img src="<?= htmlspecialchars($application_doctor['photo_url']) ?>" alt="<?= htmlspecialchars($application_doctor['name']) ?>" class="rounded border flex-shrink-0" style="width:92px;height:112px;object-fit:cover;cursor:pointer" onclick='showImageModal(<?= json_encode($application_doctor['photo_url'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                    <?php endif; ?>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-bold mb-1"><?= htmlspecialchars($application_doctor['name']) ?></div>
+                        <div class="small text-primary mb-2"><?= htmlspecialchars($application_doctor['specialty'] ?? '') ?: '전문 분야 미입력' ?></div>
+                        <div class="small mb-1"><strong>경력:</strong> <?= (int)($application_doctor['experience'] ?? 0) ?>년</div>
+                        <?php if (!empty($application_doctor['qualification'])): ?><div class="small mb-1"><strong>자격/학회:</strong><br><?= nl2br(htmlspecialchars($application_doctor['qualification'])) ?></div><?php endif; ?>
+                        <?php if (!empty($application_doctor['bio'])): ?><div class="small text-body-secondary mt-2"><?= nl2br(htmlspecialchars($application_doctor['bio'])) ?></div><?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <div class="alert alert-secondary py-2 mb-0 small"><i class="bi bi-info-circle me-1"></i>신청서에 등록된 의료진이 없습니다.</div>
+        <?php endif; ?>
+    </div></div>
 </div>
 <?php endif; ?>
 
-<!-- 기본 정보 카드 -->
+<!-- 기본 정보 -->
 <div class="row g-3 mb-3">
     <div class="col-lg-8">
         <div class="card h-100">
@@ -1362,10 +1575,6 @@ $application_assets = [
                     <div class="col-12">
                         <div class="hospital-detail-label">병원 소개</div>
                         <div class="hospital-detail-value"><?php echo nl2br(htmlspecialchars($hospital['introduction'] ?? '-')); ?></div>
-                    </div>
-                    <div class="col-12">
-                        <div class="hospital-detail-label">영업시간</div>
-                        <div class="hospital-detail-value"><?php echo nl2br(htmlspecialchars($hospital['business_hours'] ?? '-')); ?></div>
                     </div>
                     <?php if (!empty($hospital['applied_by'])): ?>
                     <div class="col-md-6">
@@ -1443,6 +1652,37 @@ $application_assets = [
             </div>
         </div>
     </div>
+</div>
+
+<!-- 영업시간 설정: 보기 모드에서 독립 표시 -->
+<div class="card mb-3">
+    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewBusinessHoursSection" aria-expanded="false">
+        <span><i class="bi bi-clock me-1"></i><strong>영업시간 설정</strong></span><i class="bi bi-chevron-down"></i>
+    </button>
+    <div class="collapse" id="viewBusinessHoursSection"><div class="card-body">
+        <?php $detail_hours = json_decode($hospital['business_hours'] ?? '{}', true); ?>
+        <?php if (is_array($detail_hours) && !empty($detail_hours)): ?>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-3">
+                <thead class="table-light"><tr><th>요일</th><th>진료시간</th><th>상태</th></tr></thead>
+                <tbody>
+                <?php foreach (['월'=>'월요일','화'=>'화요일','수'=>'수요일','목'=>'목요일','금'=>'금요일','토'=>'토요일','일'=>'일요일'] as $hours_key => $hours_label):
+                    $hours_value = trim((string)($detail_hours[$hours_key] ?? '휴무'));
+                    $hours_is_closed = in_array($hours_value, ['휴무', '공사중', '임시휴업', ''], true);
+                ?>
+                <tr><td class="fw-semibold"><?= $hours_label ?></td><td><?= $hours_is_closed ? '-' : htmlspecialchars($hours_value) ?></td><td><span class="badge <?= $hours_is_closed ? 'bg-secondary' : 'bg-success' ?>"><?= $hours_is_closed ? htmlspecialchars($hours_value ?: '휴무') : '정상진료' ?></span></td></tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex flex-wrap gap-4 small">
+            <div><strong>점심시간:</strong> <?= !empty($detail_hours['no_lunch_break']) ? '없음' : htmlspecialchars($detail_hours['점심'] ?? '-') ?></div>
+            <div><strong>임시 휴무일:</strong> <?= !empty($detail_hours['special_closed_dates']) ? htmlspecialchars(implode(', ', (array)$detail_hours['special_closed_dates'])) : '없음' ?></div>
+        </div>
+        <?php else: ?>
+        <div class="alert alert-secondary mb-0"><i class="bi bi-info-circle me-1"></i>등록된 영업시간 정보가 없습니다.</div>
+        <?php endif; ?>
+    </div></div>
 </div>
 
 <!-- 카테고리 / 태그 -->
@@ -1544,13 +1784,16 @@ $application_assets = [
 </div>
 <?php endif; ?>
 
-<!-- 병원 이미지 갤러리 (hospital_images) -->
-<?php if (!empty($hospital_images)): ?>
+<!-- 병원 이미지 추가 -->
 <div class="card mb-3">
-    <div class="card-header">
-        <i class="bi bi-images me-1"></i> 병원 이미지 (<?php echo count($hospital_images); ?>장)
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewHospitalImagesSection" aria-expanded="false">
+            <i class="bi bi-images me-1"></i><strong>병원 이미지 추가</strong> <span class="badge bg-body-secondary text-body ms-1"><?php echo count($hospital_images); ?>장</span> <i class="bi bi-chevron-down ms-2"></i>
+        </button>
+        <a href="admin_hospital_images.php?hospital_id=<?= (int)$hospital['id'] ?>" class="btn btn-outline-primary btn-sm">이미지 관리</a>
     </div>
-    <div class="card-body">
+    <div class="collapse" id="viewHospitalImagesSection"><div class="card-body">
+        <?php if (!empty($hospital_images)): ?>
         <div class="row g-2">
             <?php foreach ($hospital_images as $img): ?>
             <div class="col-6 col-md-4 col-lg-3">
@@ -1571,9 +1814,11 @@ $application_assets = [
             </div>
             <?php endforeach; ?>
         </div>
-    </div>
+        <?php else: ?>
+        <div class="text-body-secondary small">등록된 병원 이미지가 없습니다.</div>
+        <?php endif; ?>
+    </div></div>
 </div>
-<?php endif; ?>
 
 <!-- 하단 관리 버튼 -->
 <div class="card mb-3">
