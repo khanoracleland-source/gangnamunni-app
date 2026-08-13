@@ -361,7 +361,11 @@ if ($doctors_count == 0) {
 
 if ($current_tab === 'doctors' || $current_tab === 'home') {
     if ($doctors_source === 'gangnamunni') {
-        $doc_stmt = mysqli_prepare($connect, "SELECT id, name as doctor_name, experience, bio as description, qualification, photo_url, status, schedule FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' ORDER BY id ASC LIMIT 20");
+        $display_order_exists = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_doctors LIKE 'display_order'");
+        $doctor_order_sql = ($display_order_exists && mysqli_num_rows($display_order_exists) > 0)
+            ? "CASE WHEN display_order IS NULL THEN 1 ELSE 0 END ASC, display_order ASC, name COLLATE utf8mb4_unicode_ci ASC, id ASC"
+            : "name COLLATE utf8mb4_unicode_ci ASC, id ASC";
+        $doc_stmt = mysqli_prepare($connect, "SELECT id, name as doctor_name, experience, bio as description, qualification, photo_url, status, schedule FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' ORDER BY {$doctor_order_sql} LIMIT 20");
     } else {
         $doc_stmt = mysqli_prepare($connect, "SELECT id, doctor_name, description, NULL as experience, NULL as qualification, NULL as photo_url, 'active' as status, NULL as schedule FROM crawled_doctors WHERE hospital_id = ? ORDER BY id ASC LIMIT 20");
     }

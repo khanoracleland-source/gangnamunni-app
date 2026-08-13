@@ -25,7 +25,11 @@ if ($r) while ($row = mysqli_fetch_assoc($r)) $departments[] = $row;
 
 // 의사 목록
 $doctors = [];
-$r = mysqli_query($connect, "SELECT * FROM gangnamunni_doctors WHERE hospital_id = {$hospital_id} ORDER BY name");
+$display_order_exists = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_doctors LIKE 'display_order'");
+$doctor_order_sql = ($display_order_exists && mysqli_num_rows($display_order_exists) > 0)
+    ? "CASE WHEN display_order IS NULL THEN 1 ELSE 0 END, display_order, name COLLATE utf8mb4_unicode_ci, id"
+    : "name COLLATE utf8mb4_unicode_ci, id";
+$r = mysqli_query($connect, "SELECT * FROM gangnamunni_doctors WHERE hospital_id = {$hospital_id} AND status = 'active' ORDER BY {$doctor_order_sql}");
 if ($r) while ($row = mysqli_fetch_assoc($r)) $doctors[] = $row;
 
 // AJAX 처리: 예약 제출

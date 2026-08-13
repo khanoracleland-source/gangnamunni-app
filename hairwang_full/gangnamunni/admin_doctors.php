@@ -24,6 +24,7 @@ require_permission('doctors');
 
 $message = '';
 $error = '';
+$schema_warning = '';
 $current_admin = get_current_admin();
 $allowed_hospital_ids = get_strict_admin_hospital_ids($connect);
 $hosp_in = $allowed_hospital_ids === null
@@ -31,6 +32,20 @@ $hosp_in = $allowed_hospital_ids === null
     : (empty($allowed_hospital_ids) ? '0' : implode(',', array_map('intval', $allowed_hospital_ids)));
 $hosp_where_plain = ($hosp_in !== null) ? " WHERE hospital_id IN ({$hosp_in})" : "";
 $hosp_and_plain   = ($hosp_in !== null) ? " AND hospital_id IN ({$hosp_in})" : "";
+
+// 병원별 의사 노출 순서. 마이그레이션 실패가 관리 페이지 전체를 중단시키지 않게 한다.
+$doctor_display_order_column = doctor_table_has_column($connect, 'gangnamunni_doctors', 'display_order');
+if (!$doctor_display_order_column) {
+    try {
+        mysqli_query($connect, "ALTER TABLE gangnamunni_doctors ADD COLUMN display_order INT NULL AFTER status");
+        $doctor_display_order_column = doctor_table_has_column($connect, 'gangnamunni_doctors', 'display_order');
+    } catch (Throwable $e) {
+        error_log('[admin_doctors] display_order migration failed: ' . $e->getMessage());
+    }
+}
+if (!$doctor_display_order_column) {
+    $schema_warning = '의사 노출 순서 DB 마이그레이션이 필요합니다. 기존 의사 관리는 계속 사용할 수 있습니다.';
+}
 
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -43,15 +58,133 @@ function doctor_hospital_allowed($hospital_id, $allowed_hospital_ids) {
 }
 
 function doctor_table_has_column($connect, $table_name, $column_name) {
+    try {
+        $stmt = mysqli_prepare($connect,
+            "SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1");
+        if (!$stmt) return false;
+        mysqli_stmt_bind_param($stmt, 'ss', $table_name, $column_name);
+        mysqli_stmt_execute($stmt);
+        $exists = mysqli_fetch_row(mysqli_stmt_get_result($stmt)) !== null;
+        mysqli_stmt_close($stmt);
+        return $exists;
+    } catch (Throwable $e) {
+        error_log('[admin_doctors] schema check failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+function normalize_doctor_display_order($connect, $hospital_id, $raw_order, $is_create = false) {
+    if ($raw_order === '' || $raw_order === null) return null;
+    $display_order = filter_var($raw_order, FILTER_VALIDATE_INT);
+    if ($display_order === false || $display_order < 1) {
+        throw new InvalidArgumentException('노출 순서는 1 이상의 숫자로 입력해주세요.');
+    }
     $stmt = mysqli_prepare($connect,
-        "SELECT 1 FROM information_schema.COLUMNS
-          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1");
-    if (!$stmt) return false;
-    mysqli_stmt_bind_param($stmt, 'ss', $table_name, $column_name);
+        "SELECT COUNT(*) AS doctor_count FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active'");
+    mysqli_stmt_bind_param($stmt, 'i', $hospital_id);
     mysqli_stmt_execute($stmt);
-    $exists = mysqli_fetch_row(mysqli_stmt_get_result($stmt)) !== null;
+    $doctor_count = (int)(mysqli_fetch_assoc(mysqli_stmt_get_result($stmt))['doctor_count'] ?? 0);
     mysqli_stmt_close($stmt);
-    return $exists;
+    $maximum = $doctor_count + ($is_create ? 1 : 0);
+    if ($display_order > max(1, $maximum)) {
+        throw new InvalidArgumentException("노출 순서는 현재 의사 수에 맞게 1~{$maximum} 사이로 입력해주세요.");
+    }
+    return $display_order;
+}
+
+function claim_doctor_display_order($connect, $doctor_id, $hospital_id, $display_order) {
+    if ($display_order === null) return;
+    $stmt = mysqli_prepare($connect,
+        "UPDATE gangnamunni_doctors SET display_order = NULL, updated_at = NOW()
+          WHERE hospital_id = ? AND display_order = ? AND id <> ?");
+    mysqli_stmt_bind_param($stmt, 'iii', $hospital_id, $display_order, $doctor_id);
+    if (!mysqli_stmt_execute($stmt)) throw new RuntimeException(mysqli_stmt_error($stmt));
+    mysqli_stmt_close($stmt);
+}
+
+function reorder_doctor_display($connect, $doctor_id, $new_order, $allowed_hospital_ids) {
+    mysqli_begin_transaction($connect);
+    try {
+        $doctor_stmt = mysqli_prepare($connect,
+            "SELECT hospital_id, display_order, status FROM gangnamunni_doctors WHERE id = ? FOR UPDATE");
+        mysqli_stmt_bind_param($doctor_stmt, 'i', $doctor_id);
+        mysqli_stmt_execute($doctor_stmt);
+        $doctor = mysqli_fetch_assoc(mysqli_stmt_get_result($doctor_stmt));
+        mysqli_stmt_close($doctor_stmt);
+        if (!$doctor || !doctor_hospital_allowed((int)$doctor['hospital_id'], $allowed_hospital_ids)) {
+            throw new RuntimeException('이 의사의 노출 순서를 변경할 권한이 없습니다.');
+        }
+        if (($doctor['status'] ?? '') !== 'active') {
+            throw new RuntimeException('재직 중인 의사만 노출 순서를 지정할 수 있습니다.');
+        }
+
+        $hospital_id = (int)$doctor['hospital_id'];
+        $count_stmt = mysqli_prepare($connect,
+            "SELECT id, display_order FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' FOR UPDATE");
+        mysqli_stmt_bind_param($count_stmt, 'i', $hospital_id);
+        mysqli_stmt_execute($count_stmt);
+        $locked_result = mysqli_stmt_get_result($count_stmt);
+        $doctor_count = mysqli_num_rows($locked_result);
+        $occupied_orders = [];
+        while ($locked_doctor = mysqli_fetch_assoc($locked_result)) {
+            if ($locked_doctor['display_order'] !== null && (int)$locked_doctor['id'] !== $doctor_id) {
+                $occupied_orders[(int)$locked_doctor['display_order']] = (int)$locked_doctor['id'];
+            }
+        }
+        mysqli_stmt_close($count_stmt);
+        if ($new_order < 1 || $new_order > $doctor_count) {
+            throw new InvalidArgumentException("노출 순서는 1~{$doctor_count} 사이에서만 지정할 수 있습니다.");
+        }
+
+        $old_order = $doctor['display_order'] === null ? null : (int)$doctor['display_order'];
+        if ($old_order === null) {
+            // 선택한 자리가 사용 중일 때만 다음 빈 자리까지 연속된 의사들을 한 칸씩 민다.
+            if (isset($occupied_orders[$new_order])) {
+                $free_order = $new_order;
+                while ($free_order <= $doctor_count && isset($occupied_orders[$free_order])) $free_order++;
+                if ($free_order > $doctor_count) {
+                    throw new RuntimeException('노출 순서를 재배치할 빈 자리가 없습니다.');
+                }
+                $shift_one = mysqli_prepare($connect,
+                    "UPDATE gangnamunni_doctors SET display_order = ?, updated_at = NOW() WHERE id = ?");
+                for ($order = $free_order - 1; $order >= $new_order; $order--) {
+                    $shifted_order = $order + 1;
+                    $shifted_doctor_id = $occupied_orders[$order];
+                    mysqli_stmt_bind_param($shift_one, 'ii', $shifted_order, $shifted_doctor_id);
+                    mysqli_stmt_execute($shift_one);
+                }
+                mysqli_stmt_close($shift_one);
+            }
+        } elseif ($new_order < $old_order) {
+            $shift_stmt = mysqli_prepare($connect,
+                "UPDATE gangnamunni_doctors SET display_order = display_order + 1, updated_at = NOW()
+                  WHERE hospital_id = ? AND status = 'active' AND id <> ?
+                    AND display_order >= ? AND display_order < ?");
+            mysqli_stmt_bind_param($shift_stmt, 'iiii', $hospital_id, $doctor_id, $new_order, $old_order);
+            mysqli_stmt_execute($shift_stmt);
+            mysqli_stmt_close($shift_stmt);
+        } elseif ($new_order > $old_order) {
+            $shift_stmt = mysqli_prepare($connect,
+                "UPDATE gangnamunni_doctors SET display_order = display_order - 1, updated_at = NOW()
+                  WHERE hospital_id = ? AND status = 'active' AND id <> ?
+                    AND display_order > ? AND display_order <= ?");
+            mysqli_stmt_bind_param($shift_stmt, 'iiii', $hospital_id, $doctor_id, $old_order, $new_order);
+            mysqli_stmt_execute($shift_stmt);
+            mysqli_stmt_close($shift_stmt);
+        }
+
+        $update_stmt = mysqli_prepare($connect,
+            "UPDATE gangnamunni_doctors SET display_order = ?, updated_at = NOW() WHERE id = ?");
+        mysqli_stmt_bind_param($update_stmt, 'ii', $new_order, $doctor_id);
+        mysqli_stmt_execute($update_stmt);
+        mysqli_stmt_close($update_stmt);
+        mysqli_commit($connect);
+        return $hospital_id;
+    } catch (Throwable $e) {
+        mysqli_rollback($connect);
+        throw $e;
+    }
 }
 
 function validate_doctor_profile($name, $hospital_id, $specialty, $memberships) {
@@ -188,6 +321,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = '';
     }
 
+    // 목록 화면에서 병원별 사용자 노출 순서를 즉시 변경한다.
+    if ($action === 'update_display_order') {
+        $doctor_id = intval($_POST['doctor_id'] ?? 0);
+        $new_order = filter_var($_POST['display_order'] ?? null, FILTER_VALIDATE_INT);
+        if (!$doctor_display_order_column) {
+            $error = '의사 노출 순서 DB 마이그레이션이 필요합니다.';
+        } elseif ($doctor_id <= 0 || $new_order === false) {
+            $error = '의사와 노출 순서를 올바르게 선택해주세요.';
+        } else {
+            try {
+                $ordered_hospital_id = reorder_doctor_display($connect, $doctor_id, (int)$new_order, $allowed_hospital_ids);
+                if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+                    $orders = [];
+                    $order_stmt = mysqli_prepare($connect,
+                        "SELECT id, display_order FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active'");
+                    mysqli_stmt_bind_param($order_stmt, 'i', $ordered_hospital_id);
+                    mysqli_stmt_execute($order_stmt);
+                    $order_result = mysqli_stmt_get_result($order_stmt);
+                    while ($order_row = mysqli_fetch_assoc($order_result)) {
+                        $orders[(int)$order_row['id']] = $order_row['display_order'] === null ? null : (int)$order_row['display_order'];
+                    }
+                    mysqli_stmt_close($order_stmt);
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode(['success' => true, 'orders' => $orders], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+                $params = [];
+                foreach (['hospital', 'search', 'per_page', 'page'] as $key) {
+                    if (isset($_POST[$key]) && $_POST[$key] !== '') $params[$key] = $_POST[$key];
+                }
+                $params['msg'] = '의사 노출 순서가 변경되었습니다.';
+                header('Location: admin_doctors.php?' . http_build_query($params));
+                exit;
+            } catch (Throwable $e) {
+                if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+                    header('Content-Type: application/json; charset=utf-8');
+                    http_response_code(422);
+                    echo json_encode(['success' => false, 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+                $error = $e->getMessage();
+            }
+        }
+    }
+
     // 신규 등록
     if ($action === 'create_doctor') {
         $name = trim($_POST['name'] ?? '');
@@ -195,7 +373,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $specialty = is_string($_POST['specialty'] ?? null) ? trim($_POST['specialty']) : '';
         $memberships = trim($_POST['memberships'] ?? '');
 
-        $error = validate_doctor_profile($name, $hospital_id, $specialty, $memberships);
+        $display_order = null;
+
+        if ($error === '') $error = validate_doctor_profile($name, $hospital_id, $specialty, $memberships);
         if ($error === '') $error = validate_doctor_specialty_option($specialty);
         if ($error !== '') {
         } elseif (!doctor_hospital_allowed($hospital_id, $allowed_hospital_ids)) {
@@ -204,16 +384,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $uploaded_photo = null;
             mysqli_begin_transaction($connect);
             try {
-                $stmt = mysqli_prepare($connect,
-                    "INSERT INTO gangnamunni_doctors
-                        (hospital_id, name, specialty, qualification, photo_url, status, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, '', 'active', NOW(), NOW())");
-                mysqli_stmt_bind_param($stmt, 'isss', $hospital_id, $name, $specialty, $memberships);
+                if ($doctor_display_order_column) {
+                    $stmt = mysqli_prepare($connect,
+                        "INSERT INTO gangnamunni_doctors
+                            (hospital_id, name, specialty, qualification, photo_url, status, display_order, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, '', 'active', ?, NOW(), NOW())");
+                    mysqli_stmt_bind_param($stmt, 'isssi', $hospital_id, $name, $specialty, $memberships, $display_order);
+                } else {
+                    $stmt = mysqli_prepare($connect,
+                        "INSERT INTO gangnamunni_doctors
+                            (hospital_id, name, specialty, qualification, photo_url, status, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, '', 'active', NOW(), NOW())");
+                    mysqli_stmt_bind_param($stmt, 'isss', $hospital_id, $name, $specialty, $memberships);
+                }
                 if (!mysqli_stmt_execute($stmt)) {
                     throw new Exception(mysqli_stmt_error($stmt));
                 }
                 $doctor_id = mysqli_insert_id($connect);
                 mysqli_stmt_close($stmt);
+                if ($doctor_display_order_column) claim_doctor_display_order($connect, $doctor_id, $hospital_id, $display_order);
 
                 $uploaded_photo = upload_doctor_photo('photo_file', $doctor_id);
                 if ($uploaded_photo !== null) {
@@ -245,7 +434,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $specialty = is_string($_POST['specialty'] ?? null) ? trim($_POST['specialty']) : '';
         $memberships = trim($_POST['memberships'] ?? '');
         $uploaded_photo = null;
-        $own_stmt = mysqli_prepare($connect, "SELECT hospital_id, photo_url, specialty FROM gangnamunni_doctors WHERE id = ?");
+        $display_order_select = $doctor_display_order_column ? 'display_order' : 'NULL AS display_order';
+        $own_stmt = mysqli_prepare($connect, "SELECT hospital_id, photo_url, specialty, {$display_order_select} FROM gangnamunni_doctors WHERE id = ?");
         mysqli_stmt_bind_param($own_stmt, 'i', $doctor_id);
         mysqli_stmt_execute($own_stmt);
         $own_row = mysqli_fetch_assoc(mysqli_stmt_get_result($own_stmt));
@@ -257,6 +447,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $validation_error = validate_doctor_profile($name, $hospital_id, $specialty, $memberships);
         if ($validation_error === '') {
             $validation_error = validate_doctor_specialty_option($specialty, trim($own_row['specialty'] ?? ''));
+        }
+        if ($validation_error === '') {
+            try {
+                if (!$doctor_display_order_column && ($_POST['display_order'] ?? '') !== '') {
+                    throw new InvalidArgumentException('DB 마이그레이션 후 노출 순서를 지정할 수 있습니다.');
+                }
+                $display_order = normalize_doctor_display_order(
+                    $connect,
+                    $hospital_id,
+                    array_key_exists('display_order', $_POST) ? $_POST['display_order'] : ($own_row['display_order'] ?? ''),
+                    (int)($own_row['hospital_id'] ?? 0) !== $hospital_id
+                );
+            } catch (InvalidArgumentException $e) {
+                $display_order = null;
+                $validation_error = $e->getMessage();
+            }
         }
 
         // 파일 업로드 처리 (URL보다 우선)
@@ -277,13 +483,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($doctor_id > 0) {
             mysqli_begin_transaction($connect);
             try {
+                if ($doctor_display_order_column) claim_doctor_display_order($connect, $doctor_id, $hospital_id, $display_order);
+                $display_order_update = $doctor_display_order_column ? ', display_order=?' : '';
                 $stmt = mysqli_prepare($connect,
                     "UPDATE gangnamunni_doctors
-                        SET name=?, hospital_id=?, specialty=?, qualification=?, photo_url=?, updated_at=NOW()
-                      WHERE id=?"
-                );
+                        SET name=?, hospital_id=?, specialty=?, qualification=?, photo_url=?{$display_order_update}, updated_at=NOW()
+                      WHERE id=?");
                 if (!$stmt) throw new RuntimeException(mysqli_error($connect));
-                mysqli_stmt_bind_param($stmt, 'sisssi', $name, $hospital_id, $specialty, $memberships, $photo_url, $doctor_id);
+                if ($doctor_display_order_column) mysqli_stmt_bind_param($stmt, 'sisssii', $name, $hospital_id, $specialty, $memberships, $photo_url, $display_order, $doctor_id);
+                else mysqli_stmt_bind_param($stmt, 'sisssi', $name, $hospital_id, $specialty, $memberships, $photo_url, $doctor_id);
                 if (!mysqli_stmt_execute($stmt)) throw new RuntimeException(mysqli_stmt_error($stmt));
                 mysqli_stmt_close($stmt);
 
@@ -314,8 +522,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $doctor_id = intval($_POST['doctor_id'] ?? 0);
         if ($doctor_id > 0) {
             mysqli_begin_transaction($connect);
+            $retire_order_sql = $doctor_display_order_column ? ', display_order=NULL' : '';
             $stmt = mysqli_prepare($connect,
-                "UPDATE gangnamunni_doctors SET status='resigned', updated_at=NOW()
+                "UPDATE gangnamunni_doctors SET status='resigned'{$retire_order_sql}, updated_at=NOW()
                   WHERE id=?
                     AND hospital_id IN (" . ($hosp_in === null ? "SELECT id FROM gangnamunni_hospitals" : $hosp_in) . ")");
             mysqli_stmt_bind_param($stmt, 'i', $doctor_id);
@@ -456,18 +665,30 @@ if ($h_result) {
     }
 }
 
+$hospital_doctor_counts = [];
+$doctor_count_scope = $hosp_in === null ? '' : " AND hospital_id IN ({$hosp_in})";
+$doctor_count_result = mysqli_query($connect,
+    "SELECT hospital_id, COUNT(*) AS doctor_count
+       FROM gangnamunni_doctors
+      WHERE status = 'active'{$doctor_count_scope}
+      GROUP BY hospital_id");
+while ($doctor_count_result && $count_row = mysqli_fetch_assoc($doctor_count_result)) {
+    $hospital_doctor_counts[(int)$count_row['hospital_id']] = (int)$count_row['doctor_count'];
+}
+
 // ===== 소속 병원에 실제 배정된 시술 목록 =====
 $hospital_treatments = [];
 $treatment_scope_sql = $hosp_in === null ? '' : " AND ht.hospital_id IN ({$hosp_in})";
 $treatment_result = mysqli_query($connect,
-    "SELECT DISTINCT ht.hospital_id, ht.treatment_id, tm.name, tc.name AS category_name
+    "SELECT DISTINCT ht.hospital_id, ht.treatment_id, tm.name, tc.name AS category_name,
+                     COALESCE(tc.sort_order, 999999) AS category_sort_order
        FROM gangnamunni_hospital_treatments ht
        JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
   LEFT JOIN gangnamunni_treatment_categories tc ON tc.id = tm.category_id
       WHERE ht.is_active = 1
         AND ht.status = 'active'
         {$treatment_scope_sql}
-   ORDER BY ht.hospital_id, tc.sort_order, tm.name");
+   ORDER BY ht.hospital_id, category_sort_order, tm.name");
 while ($treatment_result && $tr = mysqli_fetch_assoc($treatment_result)) {
     $hospital_treatments[(int)$tr['hospital_id']][] = $tr;
 }
@@ -550,11 +771,14 @@ $total_pages = $total > 0 ? ceil($total / $per_page) : 0;
 // 목록 조회
 $doctors = [];
 if (!$view_mode) {
-    $list_sql = "SELECT d.*, h.name AS hospital_name
+    $admin_doctor_order_sql = $doctor_display_order_column
+        ? "CASE WHEN d.display_order IS NULL THEN 1 ELSE 0 END ASC, d.display_order ASC, d.name COLLATE utf8mb4_unicode_ci ASC, d.id ASC"
+        : "d.name COLLATE utf8mb4_unicode_ci ASC, d.id ASC";
+    $list_sql = "SELECT d.*, " . ($doctor_display_order_column ? 'd.display_order' : 'NULL AS display_order') . ", h.name AS hospital_name
                  FROM gangnamunni_doctors d
                  LEFT JOIN gangnamunni_hospitals h ON d.hospital_id = h.id
                  WHERE {$where}
-                 ORDER BY d.created_at DESC LIMIT ?, ?";
+                 ORDER BY d.hospital_id ASC, {$admin_doctor_order_sql} LIMIT ?, ?";
     if (!empty($where_params)) {
         $list_stmt = mysqli_prepare($connect, $list_sql);
         $bind_types = $where_types . 'ii';
@@ -637,6 +861,11 @@ include __DIR__ . '/includes/admin_header.php';
 <div class="alert alert-danger alert-dismissible fade show py-2" role="alert">
     <i class="bi bi-exclamation-circle me-1"></i> <?php echo htmlspecialchars($error); ?>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+<?php if ($schema_warning): ?>
+<div class="alert alert-warning py-2" role="alert">
+    <i class="bi bi-exclamation-triangle me-1"></i> <?php echo htmlspecialchars($schema_warning); ?>
 </div>
 <?php endif; ?>
 
@@ -778,6 +1007,10 @@ include __DIR__ . '/includes/admin_header.php';
                     <div class="col-md-6">
                         <div class="doctor-detail-label">소속 병원</div>
                         <div class="doctor-detail-value"><?php echo htmlspecialchars($doctor['hospital_name'] ?? '-'); ?></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="doctor-detail-label">사용자 화면 노출 순서</div>
+                        <div class="doctor-detail-value"><?php echo ($doctor['display_order'] ?? null) !== null ? (int)$doctor['display_order'] . '번' : '미지정 (이름순)'; ?></div>
                     </div>
                     <?php if (trim($doctor['specialty'] ?? '') !== ''): ?>
                     <div class="col-12">
@@ -1057,6 +1290,7 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
                 <th style="width:50px;">#</th>
                 <th>이름</th>
                 <th>소속 병원</th>
+                <th style="width:90px;">노출 순서</th>
                 <th>전문 시술 분야</th>
                 <th>자격 및 소속 학회</th>
                 <th style="width:90px;">관리</th>
@@ -1064,10 +1298,10 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
         </thead>
         <tbody>
             <?php if (empty($doctors)): ?>
-            <tr><td colspan="6" class="empty-state"><i class="bi bi-person-badge"></i>등록된 의사가 없습니다.</td></tr>
+            <tr><td colspan="7" class="empty-state"><i class="bi bi-person-badge"></i>등록된 의사가 없습니다.</td></tr>
             <?php else: ?>
             <?php foreach ($doctors as $d): ?>
-            <tr>
+            <tr data-doctor-id="<?php echo (int)$d['id']; ?>" data-hospital-id="<?php echo (int)$d['hospital_id']; ?>">
                 <td class="text-center"><?php echo $d['id']; ?></td>
                 <td>
                     <div class="d-flex align-items-center gap-2">
@@ -1090,6 +1324,31 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
                     </span>
                     <?php else: ?>
                     <span class="text-body-tertiary">-</span>
+                    <?php endif; ?>
+                </td>
+                <td class="text-center">
+                    <?php $row_doctor_count = $hospital_doctor_counts[(int)$d['hospital_id']] ?? 0; ?>
+                    <?php if (($d['status'] ?? '') === 'active' && $doctor_display_order_column && $row_doctor_count > 0): ?>
+                    <form method="POST" class="d-inline">
+                        <input type="hidden" name="action" value="update_display_order">
+                        <input type="hidden" name="doctor_id" value="<?php echo (int)$d['id']; ?>">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                        <input type="hidden" name="hospital" value="<?php echo (int)$filter_hospital; ?>">
+                        <input type="hidden" name="search" value="<?php echo htmlspecialchars($search); ?>">
+                        <input type="hidden" name="per_page" value="<?php echo (int)$per_page; ?>">
+                        <input type="hidden" name="page" value="<?php echo (int)$page; ?>">
+                        <select name="display_order" class="form-select form-select-sm mx-auto" style="width:82px;"
+                                aria-label="<?php echo htmlspecialchars($d['name']); ?> 노출 순서"
+                                data-current-value="<?php echo $d['display_order'] === null ? '' : (int)$d['display_order']; ?>"
+                                onchange="submitDoctorOrder(this)">
+                            <option value="" <?php echo $d['display_order'] === null ? 'selected' : ''; ?> disabled>미지정</option>
+                            <?php for ($order_number = 1; $order_number <= $row_doctor_count; $order_number++): ?>
+                            <option value="<?php echo $order_number; ?>" <?php echo (int)($d['display_order'] ?? 0) === $order_number ? 'selected' : ''; ?>><?php echo $order_number; ?>번</option>
+                            <?php endfor; ?>
+                        </select>
+                    </form>
+                    <?php else: ?>
+                    <span class="text-body-secondary small">-</span>
                     <?php endif; ?>
                 </td>
                 <td>
@@ -1159,6 +1418,55 @@ foreach (($hospital_treatments[(int)($doctor['hospital_id'] ?? 0)] ?? []) as $tr
 
 <?php
 $admin_extra_js = '
+async function submitDoctorOrder(select) {
+    var originalValue = select.dataset.currentValue || "";
+    select.style.pointerEvents = "none";
+    select.setAttribute("aria-disabled", "true");
+    try {
+        var result = await new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "admin_doctors.php", true);
+            xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== 4) return;
+                var data;
+                try {
+                    data = JSON.parse(xhr.responseText || "{}");
+                } catch (parseError) {
+                    reject(new Error("서버 응답을 확인할 수 없습니다."));
+                    return;
+                }
+                if (xhr.status < 200 || xhr.status >= 300 || !data.success) {
+                    reject(new Error(data.message || "노출 순서 변경에 실패했습니다."));
+                    return;
+                }
+                resolve(data);
+            };
+            xhr.onerror = function() {
+                reject(new Error("서버에 연결할 수 없습니다."));
+            };
+            xhr.send(new FormData(select.form));
+        });
+        var doctorRows = document.querySelectorAll("tr[data-doctor-id]");
+        Object.keys(result.orders || {}).forEach(function(doctorId) {
+            var matchedRow = null;
+            doctorRows.forEach(function(row) {
+                if (String(row.dataset.doctorId) === String(doctorId)) matchedRow = row;
+            });
+            var rowSelect = matchedRow ? matchedRow.querySelector("select[name=display_order]") : null;
+            if (!rowSelect || result.orders[doctorId] === null) return;
+            rowSelect.value = String(result.orders[doctorId]);
+            rowSelect.dataset.currentValue = rowSelect.value;
+        });
+    } catch (error) {
+        select.value = originalValue;
+        alert(error.message || "노출 순서 변경에 실패했습니다.");
+    } finally {
+        select.style.pointerEvents = "";
+        select.removeAttribute("aria-disabled");
+    }
+}
+
 function updateDoctorTreatmentGroups(select) {
     var target = document.getElementById(select.dataset.treatmentTarget || "");
     if (!target) return;

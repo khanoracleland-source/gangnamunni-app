@@ -90,11 +90,15 @@ switch ($action) {
             $where .= " AND d.hospital_id = {$hospital_id}";
         }
 
+        $display_order_exists = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_doctors LIKE 'display_order'");
+        $doctor_order_sql = ($display_order_exists && mysqli_num_rows($display_order_exists) > 0)
+            ? "CASE WHEN d.display_order IS NULL THEN 1 ELSE 0 END, d.display_order, d.name COLLATE utf8mb4_unicode_ci, d.id"
+            : "d.name COLLATE utf8mb4_unicode_ci, d.id";
         $result = mysqli_query($connect,
             "SELECT d.id, d.hms_doctor_id, d.name, d.specialty, d.phone, d.qualification, d.appointment_charge
              FROM gangnamunni_doctors d
              WHERE {$where}
-             ORDER BY d.name");
+             ORDER BY {$doctor_order_sql}");
 
         $doctors = [];
         if ($result) {
