@@ -13,6 +13,21 @@ require_once __DIR__ . '/includes/ad_slot_performance.php';
 
 loadCategoriesFromDB($connect); // 반환값 미사용 — $category_icons 전역 초기화 목적
 
+// 신규 정가 컬럼이 아직 배포되지 않은 DB에서도 목록이 정상 동작하도록 판매가로 폴백한다.
+$hospital_regular_price_column = false;
+$_regular_col_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'regular_price'");
+if ($_regular_col_result && mysqli_num_rows($_regular_col_result) > 0) {
+    $hospital_regular_price_column = true;
+}
+$hospital_representative_price_column = false;
+$_representative_col_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'is_representative'");
+if ($_representative_col_result && mysqli_num_rows($_representative_col_result) > 0) {
+    $hospital_representative_price_column = true;
+}
+$hospital_price_option_order = $hospital_representative_price_column
+    ? 'p.is_representative DESC, p.price ASC, p.sort_order ASC, p.id ASC'
+    : 'p.price ASC, p.sort_order ASC, p.id ASC';
+
 /**
  * 주소에서 '구'(district)를 추출한다.
  * 예) "서울특별시 강남구 테헤란로 123" → "강남"
@@ -87,13 +102,15 @@ switch($sort) {
         if ($effective_treatment_id > 0) {
             $price_sort_value = "COALESCE(
                 NULLIF((
-                    SELECT MIN(tp.price)
+                    SELECT tp.price
                     FROM gangnamunni_hospital_treatments sht
                     INNER JOIN gangnamunni_hospital_treatment_prices tp
                         ON tp.hospital_treatment_id = sht.id AND tp.price > 0
                     WHERE sht.hospital_id = gangnamunni_hospitals.id
                       AND sht.treatment_id = {$effective_treatment_id}
                       AND sht.status = 'active' AND sht.is_active = 1
+                    ORDER BY " . ($hospital_representative_price_column ? "tp.is_representative DESC, " : "") . "tp.price ASC, tp.sort_order ASC, tp.id ASC
+                    LIMIT 1
                 ), 0),
                 NULLIF((
                     SELECT COALESCE(NULLIF(stm.avg_price_min, 0), NULLIF(stm.avg_price_max, 0))
@@ -322,18 +339,18 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
     $h_ids = array_column($hospitals, 'id');
     $h_ids_str = implode(',', array_map('intval', $h_ids));
     // 병원이 admin_hospital_treatments 에서 설정한 가격(옵션)을 우선 사용한다.
-    //  - 옵션에 가격(>0)이 있으면: 최저~최고 (옵션이 1개이거나 최저=최고면 최고 숨김 → 단일가)
+    //  - 옵션에 가격(>0)이 있으면: 판매가 최저 + 정가 최고
     //  - 설정된 가격이 없으면: 기본 시술(마스터) 가격(avg_price_min~avg_price_max) 로 폴백
     $_td_sql = "
         SELECT ht.hospital_id, tm.name AS treatment_name, tm.description,
                ht.dosage_value, ht.dosage_unit,
                tm.avg_price_min AS default_min, tm.avg_price_max AS default_max,
-               (SELECT COUNT(*) FROM gangnamunni_hospital_treatment_prices p
-                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_priced_count,
-               (SELECT MIN(p.price) FROM gangnamunni_hospital_treatment_prices p
-                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_min,
-               (SELECT MAX(p.price) FROM gangnamunni_hospital_treatment_prices p
-                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_max
+               (SELECT p.price FROM gangnamunni_hospital_treatment_prices p
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0
+                  ORDER BY {$hospital_price_option_order} LIMIT 1) AS display_sale_price,
+               (SELECT " . ($hospital_regular_price_column ? "p.regular_price" : "p.price") . " FROM gangnamunni_hospital_treatment_prices p
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0
+                  ORDER BY {$hospital_price_option_order} LIMIT 1) AS display_regular_price
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         WHERE ht.hospital_id IN ({$h_ids_str})
@@ -344,16 +361,15 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
     $_td_result = mysqli_query($connect, $_td_sql);
     if ($_td_result) {
         while ($_td_row = mysqli_fetch_assoc($_td_result)) {
-            $opt_priced = (int)($_td_row['opt_priced_count'] ?? 0);
-            $opt_min    = (int)($_td_row['opt_min'] ?? 0);
-            $opt_max    = (int)($_td_row['opt_max'] ?? 0);
+            $display_sale_price = (int)($_td_row['display_sale_price'] ?? 0);
+            $display_regular_price = (int)($_td_row['display_regular_price'] ?? 0);
             $def_min    = (int)($_td_row['default_min'] ?? 0);
             $def_max    = (int)($_td_row['default_max'] ?? 0);
 
-            if ($opt_priced >= 1 && $opt_max > 0) {
-                // 병원이 직접 설정한 가격
-                $final_min = $opt_min;
-                $final_max = ($opt_priced <= 1 || $opt_min >= $opt_max) ? 0 : $opt_max; // 단일이면 최고가 숨김
+            if ($display_sale_price > 0) {
+                // 대표 옵션이 있으면 해당 옵션, 없으면 판매가가 가장 낮은 옵션의 가격 쌍.
+                $final_min = $display_sale_price;
+                $final_max = $display_regular_price > $display_sale_price ? $display_regular_price : 0;
             } else {
                 // 병원 미설정 → 기본 시술(마스터) 가격
                 $final_min = $def_min > 0 ? $def_min : $def_max;
