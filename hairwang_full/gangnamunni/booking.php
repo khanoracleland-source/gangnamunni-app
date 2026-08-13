@@ -1643,12 +1643,9 @@ $page_js = '
             if (!disabled && isToday) {
                 if (slotMin <= SERVER_NOW_MIN) { disabled = true; }
             }
-            // 점심시간이 설정된 병원만 해당 시간대 예약을 막는다.
-            if (!disabled && LUNCH_START_MIN !== null && LUNCH_END_MIN !== null) {
-                var lunchHm = value.split(":");
-                var lunchSlotMin = parseInt(lunchHm[0], 10) * 60 + parseInt(lunchHm[1], 10);
-                if (lunchSlotMin >= LUNCH_START_MIN && lunchSlotMin < LUNCH_END_MIN) disabled = true;
-            }
+            // 점심시간 슬롯은 비활성 표시하지 않고 예약 시간표에서 완전히 제외한다.
+            if (LUNCH_START_MIN !== null && LUNCH_END_MIN !== null
+                && slotMin >= LUNCH_START_MIN && slotMin < LUNCH_END_MIN) continue;
             (function(v, isDisabled, text) {
                 var cell = document.createElement("div");
                 cell.className = "time-slot" + (sel.value === v ? " active" : "") + (isDisabled ? " disabled" : "");

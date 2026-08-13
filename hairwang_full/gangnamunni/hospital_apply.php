@@ -46,6 +46,58 @@ if ($application_option_column_result && mysqli_num_rows($application_option_col
     $application_price_option_name_column = true;
 }
 
+/**
+ * 신청 폼의 구조화된 영업시간 JSON을 공개/예약 화면과 공통으로 쓰는 형식으로 정규화한다.
+ */
+function normalizeHospitalApplyBusinessHours($raw)
+{
+    $decoded = json_decode((string)$raw, true);
+    if (!is_array($decoded)) return [];
+
+    $valid_time = static function ($time) {
+        if (!preg_match('/^(\d{2}):(\d{2})$/', (string)$time, $parts)) return false;
+        return (int)$parts[1] >= 0 && (int)$parts[1] <= 23
+            && (int)$parts[2] >= 0 && (int)$parts[2] <= 59;
+    };
+
+    $normalized = [];
+    $days = ['월', '화', '수', '목', '금', '토', '일'];
+    $closed_statuses = ['휴무', '공사중', '임시휴업'];
+    foreach ($days as $day) {
+        $value = trim((string)($decoded[$day] ?? ''));
+        if (in_array($value, $closed_statuses, true)) {
+            $normalized[$day] = $value;
+        } elseif (preg_match('/^(\d{2}:\d{2})~(\d{2}:\d{2})$/', $value, $match)
+            && $valid_time($match[1]) && $valid_time($match[2]) && $match[1] < $match[2]) {
+            $normalized[$day] = $match[1] . '~' . $match[2];
+        } else {
+            $normalized[$day] = '휴무';
+        }
+    }
+
+    if (!empty($decoded['no_lunch_break'])) {
+        $normalized['no_lunch_break'] = true;
+    } else {
+        $lunch = trim((string)($decoded['점심'] ?? ''));
+        if (preg_match('/^(\d{2}:\d{2})~(\d{2}:\d{2})$/', $lunch, $match)
+            && $valid_time($match[1]) && $valid_time($match[2]) && $match[1] < $match[2]) {
+            $normalized['점심'] = $match[1] . '~' . $match[2];
+        }
+    }
+
+    $closed_dates = [];
+    foreach ((array)($decoded['special_closed_dates'] ?? []) as $date) {
+        $date = trim((string)$date);
+        $parts = explode('-', $date);
+        if (count($parts) === 3 && checkdate((int)$parts[1], (int)$parts[2], (int)$parts[0])) {
+            $closed_dates[$date] = $date;
+        }
+    }
+    ksort($closed_dates);
+    $normalized['special_closed_dates'] = array_values($closed_dates);
+    return $normalized;
+}
+
 // show_hospital_apply 설정은 마이페이지 노출 여부만 제어
 // 관리자 페이지에서의 신청은 항상 가능
 
@@ -67,9 +119,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     $categories = !empty($categories_raw) ? json_encode(explode(',', $categories_raw), JSON_UNESCAPED_UNICODE) : '[]';
     $treatment_tags_raw = trim($_POST['treatment_tags'] ?? '');
     $treatment_tags = !empty($treatment_tags_raw) ? json_encode(explode(',', $treatment_tags_raw), JSON_UNESCAPED_UNICODE) : '[]';
-    $business_hours_text = trim($_POST['business_hours'] ?? '');
-    // gangnamunni_hospitals.business_hours 컬럼은 JSON 형식만 허용하는 DB 제약(CHECK)이 있음
-    $business_hours = !empty($business_hours_text) ? json_encode(['note' => $business_hours_text], JSON_UNESCAPED_UNICODE) : '{}';
+    // gangnamunni_hospitals.business_hours 컬럼의 JSON CHECK 제약과 예약/상세 화면 형식을 동시에 맞춘다.
+    $business_hours_data = normalizeHospitalApplyBusinessHours($_POST['business_hours'] ?? '');
+    $business_hours = json_encode($business_hours_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $description = trim($_POST['description'] ?? '');
     $website = trim($_POST['website'] ?? '');
     $sns_url = trim($_POST['sns_url'] ?? '');
@@ -550,9 +602,30 @@ require_once __DIR__ . '/includes/admin_header.php';
     gap: 7px;
     align-items: center;
 }
+.business-lunch-card {
+    border: 1px solid rgba(var(--bs-primary-rgb), .2);
+    border-radius: 12px;
+    background: var(--bs-body-bg);
+}
+.business-lunch-time-box {
+    min-width: 128px;
+}
+.business-lunch-time-box .form-control {
+    min-height: 38px;
+}
+.business-lunch-separator {
+    color: var(--bs-secondary-color);
+    font-weight: 700;
+    padding-top: 22px;
+}
+.business-lunch-card.is-disabled .business-lunch-time-area {
+    opacity: .45;
+}
 @media (max-width: 767.98px) {
     .application-price-row { grid-template-columns: 1fr 1fr; }
     .application-price-row .remove-application-price { width: 100%; }
+    .business-lunch-time-area { width: 100%; }
+    .business-lunch-time-box { flex: 1 1 120px; }
 }
 </style>
 
@@ -640,9 +713,84 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <label class="form-label fw-semibold">병원 주소</label>
                         <input type="text" name="address" class="form-control" maxlength="500" placeholder="도로명 주소를 입력하세요" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
                     </div>
+                    <?php
+                    $apply_bh_data = normalizeHospitalApplyBusinessHours($_POST['business_hours'] ?? '');
+                    $apply_bh_days = ['월'=>'월요일','화'=>'화요일','수'=>'수요일','목'=>'목요일','금'=>'금요일','토'=>'토요일','일'=>'일요일'];
+                    $apply_bh_defaults = ['월'=>'10:00~19:00','화'=>'10:00~19:00','수'=>'10:00~19:00','목'=>'10:00~19:00','금'=>'10:00~19:00','토'=>'10:00~15:00','일'=>'휴무'];
+                    $apply_no_lunch = !empty($apply_bh_data['no_lunch_break']);
+                    $apply_lunch_parts = explode('~', $apply_bh_data['점심'] ?? '13:00~14:00');
+                    $apply_closed_dates = $apply_bh_data['special_closed_dates'] ?? [];
+                    ?>
                     <div class="col-12">
-                        <label class="form-label fw-semibold">영업시간</label>
-                        <input type="text" name="business_hours" class="form-control" placeholder="예: 평일 10:00~19:00, 토 10:00~15:00" value="<?= htmlspecialchars($_POST['business_hours'] ?? '') ?>">
+                        <div class="border rounded overflow-hidden">
+                            <button class="btn btn-light w-100 text-start d-flex justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#businessHoursSection" aria-expanded="false" aria-controls="businessHoursSection">
+                                <span class="fw-bold"><i class="bi bi-clock me-2 text-primary"></i>영업시간 설정 <span class="badge bg-secondary fw-normal">선택</span></span>
+                                <i class="bi bi-chevron-down business-hours-chevron"></i>
+                            </button>
+                            <div class="collapse" id="businessHoursSection">
+                                <div class="p-3 border-top bg-body-tertiary">
+                                    <input type="hidden" name="business_hours" id="businessHoursInput" value="<?= htmlspecialchars($_POST['business_hours'] ?? '{}', ENT_QUOTES, 'UTF-8') ?>">
+                                    <div class="table-responsive bg-body rounded border mb-3">
+                                        <table class="table table-sm align-middle mb-0 business-hours-table">
+                                            <thead class="table-light"><tr><th>요일</th><th>시작</th><th>종료</th><th>상태</th></tr></thead>
+                                            <tbody>
+                                            <?php foreach ($apply_bh_days as $day_key => $day_label):
+                                                $day_value = $apply_bh_data[$day_key] ?? $apply_bh_defaults[$day_key];
+                                                $day_status = in_array($day_value, ['휴무','공사중','임시휴업'], true) ? $day_value : 'normal';
+                                                $day_parts = $day_status === 'normal' ? explode('~', $day_value) : ['', ''];
+                                            ?>
+                                                <tr>
+                                                    <td class="fw-semibold text-nowrap"><?= $day_label ?></td>
+                                                    <td><input type="time" class="form-control form-control-sm apply-bh-start" data-day="<?= $day_key ?>" value="<?= htmlspecialchars($day_parts[0] ?? '') ?>" <?= $day_status !== 'normal' ? 'disabled' : '' ?>></td>
+                                                    <td><input type="time" class="form-control form-control-sm apply-bh-end" data-day="<?= $day_key ?>" value="<?= htmlspecialchars($day_parts[1] ?? '') ?>" <?= $day_status !== 'normal' ? 'disabled' : '' ?>></td>
+                                                    <td><select class="form-select form-select-sm apply-bh-status" data-day="<?= $day_key ?>">
+                                                        <option value="normal" <?= $day_status === 'normal' ? 'selected' : '' ?>>정상진료</option>
+                                                        <option value="휴무" <?= $day_status === '휴무' ? 'selected' : '' ?>>휴무</option>
+                                                        <option value="공사중" <?= $day_status === '공사중' ? 'selected' : '' ?>>공사중</option>
+                                                        <option value="임시휴업" <?= $day_status === '임시휴업' ? 'selected' : '' ?>>임시휴업</option>
+                                                    </select></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="business-lunch-card p-3 mb-3 <?= $apply_no_lunch ? 'is-disabled' : '' ?>" id="businessLunchCard">
+                                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div>
+                                                    <div class="fw-bold">점심시간</div>
+                                                    <div class="small text-muted">예약을 받지 않는 점심 휴게 시간을 설정하세요.</div>
+                                                </div>
+                                            </div>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="applyBhNoLunch" <?= $apply_no_lunch ? 'checked' : '' ?>>
+                                                <label class="form-check-label fw-semibold text-nowrap" for="applyBhNoLunch">점심시간 없음</label>
+                                            </div>
+                                        </div>
+                                        <div class="business-lunch-time-area d-flex flex-wrap align-items-center gap-2">
+                                            <label class="business-lunch-time-box">
+                                                <span class="d-block small fw-semibold text-muted mb-1">시작 시간</span>
+                                                <input type="time" class="form-control form-control-sm apply-bh-lunch-time" id="applyBhLunchStart" value="<?= htmlspecialchars($apply_lunch_parts[0] ?? '13:00') ?>" <?= $apply_no_lunch ? 'disabled' : '' ?>>
+                                            </label>
+                                            <span class="business-lunch-separator"><i class="bi bi-arrow-right"></i></span>
+                                            <label class="business-lunch-time-box">
+                                                <span class="d-block small fw-semibold text-muted mb-1">종료 시간</span>
+                                                <input type="time" class="form-control form-control-sm apply-bh-lunch-time" id="applyBhLunchEnd" value="<?= htmlspecialchars($apply_lunch_parts[1] ?? '14:00') ?>" <?= $apply_no_lunch ? 'disabled' : '' ?>>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="bg-body border rounded p-3">
+                                        <div class="fw-semibold mb-1">임시 휴무일 (정기 휴무 외)</div>
+                                        <div class="text-muted small mb-2">정기 휴무일 외에 추가로 쉬는 날짜를 등록하세요.</div>
+                                        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                                            <input type="date" class="form-control form-control-sm" id="applyBhClosedDate" min="<?= date('Y-m-d') ?>" style="max-width:190px;">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="applyBhAddClosedDate"><i class="bi bi-plus-lg me-1"></i>추가</button>
+                                        </div>
+                                        <div id="applyBhClosedDateList" class="d-flex flex-wrap gap-2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">병원 소개</label>
@@ -1003,6 +1151,86 @@ document.getElementById('selectedTreatmentDetails')?.addEventListener('click', f
         updateApplicationPriceButtons(removeDetail);
     }
 });
+
+// 영업시간: 요일별 시간, 점심시간, 임시 휴무일을 하나의 JSON으로 저장
+var applyBhClosedDates = <?= json_encode($apply_closed_dates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+function renderApplyBhClosedDates() {
+    var list = document.getElementById('applyBhClosedDateList');
+    if (!list) return;
+    list.innerHTML = '';
+    applyBhClosedDates.sort().forEach(function(date) {
+        var badge = document.createElement('span');
+        badge.className = 'badge text-bg-secondary d-inline-flex align-items-center gap-2 px-2 py-2';
+        badge.appendChild(document.createTextNode(date));
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn-close btn-close-white';
+        remove.style.fontSize = '8px';
+        remove.setAttribute('aria-label', '삭제');
+        remove.addEventListener('click', function() {
+            applyBhClosedDates = applyBhClosedDates.filter(function(value) { return value !== date; });
+            renderApplyBhClosedDates();
+        });
+        badge.appendChild(remove);
+        list.appendChild(badge);
+    });
+}
+document.getElementById('applyBhAddClosedDate')?.addEventListener('click', function() {
+    var input = document.getElementById('applyBhClosedDate');
+    if (input.value && applyBhClosedDates.indexOf(input.value) === -1) {
+        applyBhClosedDates.push(input.value);
+        input.value = '';
+        renderApplyBhClosedDates();
+    }
+});
+document.querySelectorAll('.apply-bh-status').forEach(function(select) {
+    select.addEventListener('change', function() {
+        var row = select.closest('tr');
+        var closed = select.value !== 'normal';
+        row.querySelectorAll('input[type="time"]').forEach(function(input) {
+            input.disabled = closed;
+            if (closed) input.value = '';
+        });
+    });
+});
+document.getElementById('applyBhNoLunch')?.addEventListener('change', function() {
+    var noLunch = document.getElementById('applyBhNoLunch').checked;
+    document.querySelectorAll('.apply-bh-lunch-time').forEach(function(input) {
+        input.disabled = noLunch;
+    });
+    document.getElementById('businessLunchCard')?.classList.toggle('is-disabled', noLunch);
+});
+document.getElementById('businessHoursSection')?.addEventListener('show.bs.collapse', function() {
+    document.querySelector('.business-hours-chevron')?.classList.replace('bi-chevron-down', 'bi-chevron-up');
+});
+document.getElementById('businessHoursSection')?.addEventListener('hide.bs.collapse', function() {
+    document.querySelector('.business-hours-chevron')?.classList.replace('bi-chevron-up', 'bi-chevron-down');
+});
+function collectApplyBusinessHours() {
+    var data = {};
+    document.querySelectorAll('.apply-bh-status').forEach(function(select) {
+        var day = select.dataset.day;
+        if (select.value !== 'normal') {
+            data[day] = select.value;
+            return;
+        }
+        var start = document.querySelector('.apply-bh-start[data-day="' + day + '"]').value;
+        var end = document.querySelector('.apply-bh-end[data-day="' + day + '"]').value;
+        data[day] = start && end && start < end ? start + '~' + end : '휴무';
+    });
+    var noLunch = document.getElementById('applyBhNoLunch').checked;
+    if (noLunch) {
+        data.no_lunch_break = true;
+    } else {
+        var lunchStart = document.getElementById('applyBhLunchStart').value;
+        var lunchEnd = document.getElementById('applyBhLunchEnd').value;
+        if (lunchStart && lunchEnd && lunchStart < lunchEnd) data['점심'] = lunchStart + '~' + lunchEnd;
+    }
+    data.special_closed_dates = applyBhClosedDates.slice().sort();
+    document.getElementById('businessHoursInput').value = JSON.stringify(data);
+}
+renderApplyBhClosedDates();
+document.getElementById('applyForm')?.addEventListener('submit', collectApplyBusinessHours);
 
 // 사업자등록번호 자동 포맷
 document.querySelector('[name="business_number"]')?.addEventListener('input', function(e) {
