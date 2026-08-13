@@ -13,6 +13,7 @@ $admin_current = 'treatment_master';
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/hospital_treatment_images.php';
 
 // DB 연결
 if (!isset($connect) || !$connect) {
@@ -24,6 +25,7 @@ if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
 require_admin_login();
 require_permission('treatments');
+hti_ensure_schema($connect);
 
 // CSRF 토큰 생성
 if (empty($_SESSION['csrf_token'])) {
@@ -88,8 +90,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $precautions = trim($_POST['precautions'] ?? '');
             $avg_price_min = intval($_POST['avg_price_min'] ?? 0);
             $avg_price_max = intval($_POST['avg_price_max'] ?? 0);
+            $default_image_url = trim($_POST['default_image_url'] ?? '');
+            $default_upload = hti_handle_upload('default_image');
+            if (is_array($default_upload) && isset($default_upload['error'])) {
+                $msg = $default_upload['error'];
+                $msg_type = 'danger';
+            } elseif (is_array($default_upload) && !empty($default_upload['url'])) {
+                $default_image_url = $default_upload['url'];
+            }
+            if ($default_image_url !== '' && !preg_match('#^uploads/treatments/[A-Za-z0-9._-]+$#', $default_image_url)
+                && (!filter_var($default_image_url, FILTER_VALIDATE_URL)
+                    || !in_array(strtolower((string)parse_url($default_image_url, PHP_URL_SCHEME)), ['http', 'https'], true))) {
+                $msg = '기본 이미지 URL은 http:// 또는 https:// 형식으로 입력해주세요.';
+                $msg_type = 'danger';
+            }
 
-            if ($name === '') {
+            if ($msg_type === 'danger') {
+                // The upload validation message is already set.
+            } elseif ($name === '') {
                 $msg = '시술명을 입력해주세요.';
                 $msg_type = 'danger';
             } elseif ($category_id <= 0) {
@@ -108,12 +126,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $sort_order = intval($_POST['sort_order'] ?? 0);
                 $stmt = mysqli_prepare($connect,
                     "INSERT INTO gangnamunni_treatment_master
-                    (category_id, sort_order, name, hashtag, description, duration_min, recovery_days, anesthesia_type, repeat_cycle_months, precautions, avg_price_min, avg_price_max, is_active, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)"
+                    (category_id, sort_order, name, hashtag, description, default_image_url, duration_min, recovery_days, anesthesia_type, repeat_cycle_months, precautions, avg_price_min, avg_price_max, is_active, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)"
                 );
                 if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, 'iisssiisisiis',
-                        $category_id, $sort_order, $name, $hashtag, $description,
+                    mysqli_stmt_bind_param($stmt, 'iissssiisisiis',
+                        $category_id, $sort_order, $name, $hashtag, $description, $default_image_url,
                         $duration_min, $recovery_days, $anesthesia_type,
                         $repeat_cycle_months, $precautions,
                         $avg_price_min, $avg_price_max, $created_by
@@ -145,8 +163,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $precautions = trim($_POST['precautions'] ?? '');
             $avg_price_min = intval($_POST['avg_price_min'] ?? 0);
             $avg_price_max = intval($_POST['avg_price_max'] ?? 0);
+            $default_image_url = trim($_POST['default_image_url'] ?? '');
+            $default_upload = hti_handle_upload('default_image');
+            if (is_array($default_upload) && isset($default_upload['error'])) {
+                $msg = $default_upload['error'];
+                $msg_type = 'danger';
+            } elseif (is_array($default_upload) && !empty($default_upload['url'])) {
+                $default_image_url = $default_upload['url'];
+            }
+            if ($default_image_url !== '' && !preg_match('#^uploads/treatments/[A-Za-z0-9._-]+$#', $default_image_url)
+                && (!filter_var($default_image_url, FILTER_VALIDATE_URL)
+                    || !in_array(strtolower((string)parse_url($default_image_url, PHP_URL_SCHEME)), ['http', 'https'], true))) {
+                $msg = '기본 이미지 URL은 http:// 또는 https:// 형식으로 입력해주세요.';
+                $msg_type = 'danger';
+            }
 
-            if ($id <= 0 || $name === '' || $category_id <= 0) {
+            if ($msg_type === 'danger') {
+                // The upload validation message is already set.
+            } elseif ($id <= 0 || $name === '' || $category_id <= 0) {
                 $msg = '필수 항목을 모두 입력해주세요.';
                 $msg_type = 'danger';
             } else {
@@ -158,13 +192,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 $stmt = mysqli_prepare($connect,
                     "UPDATE gangnamunni_treatment_master SET
-                    category_id=?, sort_order=?, name=?, hashtag=?, description=?, duration_min=?, recovery_days=?,
+                    category_id=?, sort_order=?, name=?, hashtag=?, description=?, default_image_url=?, duration_min=?, recovery_days=?,
                     anesthesia_type=?, repeat_cycle_months=?, precautions=?, avg_price_min=?, avg_price_max=?
                     WHERE id=?"
                 );
                 if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, 'iisssiisisiii',
-                        $category_id, $sort_order, $name, $hashtag, $description,
+                    mysqli_stmt_bind_param($stmt, 'iissssiisisiii',
+                        $category_id, $sort_order, $name, $hashtag, $description, $default_image_url,
                         $duration_min, $recovery_days, $anesthesia_type,
                         $repeat_cycle_months, $precautions,
                         $avg_price_min, $avg_price_max, $id
@@ -889,10 +923,20 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <span class="text-primary fw-bold"><?php echo htmlspecialchars($t['hashtag'] ?? ''); ?></span>
                         </td>
                         <td>
-                            <strong><?php echo htmlspecialchars($t['name']); ?></strong>
+                            <div class="d-flex align-items-center gap-2">
+                                <?php if (!empty($t['default_image_url'])): ?>
+                                <img src="<?php echo htmlspecialchars($t['default_image_url'], ENT_QUOTES); ?>"
+                                     alt="" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex:0 0 auto;">
+                                <?php else: ?>
+                                <span class="d-inline-flex align-items-center justify-content-center bg-light text-muted border rounded"
+                                      style="width:44px;height:44px;flex:0 0 auto;" title="기본 이미지 미등록"><i class="bi bi-image"></i></span>
+                                <?php endif; ?>
+                                <div><strong><?php echo htmlspecialchars($t['name']); ?></strong>
                             <?php if (!empty($t['description'])): ?>
                             <br><small class="text-muted"><?php echo htmlspecialchars(mb_substr($t['description'], 0, 50, 'UTF-8')); ?><?php echo mb_strlen($t['description'], 'UTF-8') > 50 ? '...' : ''; ?></small>
                             <?php endif; ?>
+                                </div>
+                            </div>
                         </td>
                         <td>
                             <?php
@@ -978,7 +1022,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 <div class="modal fade" id="createModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form method="post">
+            <form method="post" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="create">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                 <div class="modal-header">
@@ -1021,6 +1065,12 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <label class="form-label fw-bold">설명</label>
                             <textarea name="description" class="form-control" rows="3" placeholder="시술에 대한 설명"></textarea>
                         </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">기본 시술 상세 이미지</label>
+                            <input type="file" name="default_image" class="form-control" accept=".jpg,.jpeg,.png,.gif,.webp">
+                            <input type="url" name="default_image_url" class="form-control mt-2" maxlength="500" placeholder="또는 https://... 이미지 URL">
+                            <div class="form-text">병원이 이 시술에 대한 이미지를 따로 등록하지 않은 경우에만 노출됩니다.</div>
+                        </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold">시술 시간 (분)</label>
                             <input type="number" name="duration_min" class="form-control" value="0" min="0">
@@ -1062,7 +1112,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form method="post">
+            <form method="post" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="id" id="edit_id">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
@@ -1104,6 +1154,13 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <div class="col-12">
                             <label class="form-label fw-bold">설명</label>
                             <textarea name="description" id="edit_description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">기본 시술 상세 이미지</label>
+                            <div id="edit_default_image_preview" class="mb-2"></div>
+                            <input type="file" name="default_image" class="form-control" accept=".jpg,.jpeg,.png,.gif,.webp">
+                            <input type="url" name="default_image_url" id="edit_default_image_url" class="form-control mt-2" maxlength="500" placeholder="https://... (비우면 기본 이미지 삭제)">
+                            <div class="form-text">새 파일을 업로드하면 기존 이미지가 교체됩니다.</div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold">시술 시간 (분)</label>
@@ -1250,6 +1307,18 @@ function openEditModal(t) {
     document.getElementById('edit_hashtag').value = t.hashtag || '';
     document.getElementById('edit_hashtag').dataset.auto = '0';
     document.getElementById('edit_description').value = t.description || '';
+    document.getElementById('edit_default_image_url').value = t.default_image_url || '';
+    var preview = document.getElementById('edit_default_image_preview');
+    preview.textContent = '';
+    if (t.default_image_url) {
+        var image = document.createElement('img');
+        image.src = t.default_image_url;
+        image.alt = '현재 기본 이미지';
+        image.style.cssText = 'max-width:240px;max-height:160px;object-fit:cover;border-radius:8px;';
+        preview.appendChild(image);
+    } else {
+        preview.innerHTML = '<span class="text-muted small">등록된 기본 이미지가 없습니다.</span>';
+    }
     document.getElementById('edit_duration_min').value = t.duration_min || 0;
     document.getElementById('edit_recovery_days').value = t.recovery_days || 0;
     document.getElementById('edit_anesthesia_type').value = t.anesthesia_type || '없음';

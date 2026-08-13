@@ -54,6 +54,10 @@ if (!function_exists('hti_ensure_schema')) {
                     mysqli_query($connect, "ALTER TABLE gangnamunni_hospital_treatment_images ADD COLUMN `{$column}` {$definition}");
                 }
             }
+            $master_image_check = mysqli_query($connect, "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gangnamunni_treatment_master' AND COLUMN_NAME = 'default_image_url' LIMIT 1");
+            if ($master_image_check && mysqli_num_rows($master_image_check) === 0) {
+                mysqli_query($connect, "ALTER TABLE gangnamunni_treatment_master ADD COLUMN default_image_url VARCHAR(500) DEFAULT NULL AFTER description");
+            }
         } catch (\mysqli_sql_exception $e) {
             error_log('[hospital_treatment_images] 스키마 생성 실패: ' . $e->getMessage());
             return false;
@@ -133,6 +137,24 @@ if (!function_exists('hti_images_for')) {
                 ];
             }
             mysqli_stmt_close($stmt);
+            if (empty($out)) {
+                $default_stmt = mysqli_prepare($connect,
+                    "SELECT default_image_url FROM gangnamunni_treatment_master WHERE id = ? AND is_active = 1 LIMIT 1");
+                if ($default_stmt) {
+                    mysqli_stmt_bind_param($default_stmt, 'i', $treatment_id);
+                    mysqli_stmt_execute($default_stmt);
+                    mysqli_stmt_bind_result($default_stmt, $default_image_url);
+                    if (mysqli_stmt_fetch($default_stmt) && trim((string)$default_image_url) !== '') {
+                        $out[] = [
+                            'id' => 0,
+                            'image_url' => $default_image_url,
+                            'caption' => null,
+                            'is_default' => true,
+                        ];
+                    }
+                    mysqli_stmt_close($default_stmt);
+                }
+            }
         } catch (\mysqli_sql_exception $e) {
             error_log('[hospital_treatment_images] 조회 실패(마이그레이션 확인): ' . $e->getMessage());
         }
