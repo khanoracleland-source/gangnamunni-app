@@ -58,6 +58,12 @@ if (!function_exists('hti_ensure_schema')) {
             if ($master_image_check && mysqli_num_rows($master_image_check) === 0) {
                 mysqli_query($connect, "ALTER TABLE gangnamunni_treatment_master ADD COLUMN default_image_url VARCHAR(500) DEFAULT NULL AFTER description");
             }
+            // ALTER 권한이 없거나 DDL이 실패했는데 성공으로 처리하지 않도록 최종 확인한다.
+            $master_image_verify = mysqli_query($connect, "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gangnamunni_treatment_master' AND COLUMN_NAME = 'default_image_url' LIMIT 1");
+            if (!$master_image_verify || mysqli_num_rows($master_image_verify) === 0) {
+                error_log('[hospital_treatment_images] gangnamunni_treatment_master.default_image_url 컬럼이 없습니다. sql/treatment_master_default_image.sql 적용 필요');
+                return false;
+            }
         } catch (\mysqli_sql_exception $e) {
             error_log('[hospital_treatment_images] 스키마 생성 실패: ' . $e->getMessage());
             return false;

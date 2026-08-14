@@ -25,7 +25,7 @@ if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
 require_admin_login();
 require_permission('treatments');
-hti_ensure_schema($connect);
+$treatment_image_schema_ready = hti_ensure_schema($connect);
 
 // CSRF 토큰 생성
 if (empty($_SESSION['csrf_token'])) {
@@ -43,8 +43,13 @@ $categories = [];
 $cat_r = mysqli_query($connect, "SELECT * FROM gangnamunni_treatment_categories WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
 if ($cat_r) while ($c = mysqli_fetch_assoc($cat_r)) $categories[$c['id']] = $c;
 
-// 마취 유형 목록
-$anesthesia_types = ['없음', '수면마취', '국소마취', '전신마취', '크림마취'];
+// DB ENUM 값(none/local/sedation/general)은 그대로 저장하고 화면에만 한국어로 표시한다.
+$anesthesia_types = [
+    'none' => '없음',
+    'local' => '국소마취',
+    'sedation' => '수면마취',
+    'general' => '전신마취',
+];
 
 // 언어 목록
 $lang_options = ['ko' => '한국어', 'en' => '영어', 'zh' => '중국어', 'ja' => '일본어'];
@@ -85,7 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $description = trim($_POST['description'] ?? '');
             $duration_min = intval($_POST['duration_min'] ?? 0);
             $recovery_days = intval($_POST['recovery_days'] ?? 0);
-            $anesthesia_type = trim($_POST['anesthesia_type'] ?? '없음');
+            $anesthesia_type = trim($_POST['anesthesia_type'] ?? 'none');
+            if (!array_key_exists($anesthesia_type, $anesthesia_types)) $anesthesia_type = 'none';
             $repeat_cycle_months = intval($_POST['repeat_cycle_months'] ?? 0);
             $precautions = trim($_POST['precautions'] ?? '');
             $avg_price_min = intval($_POST['avg_price_min'] ?? 0);
@@ -158,18 +164,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $description = trim($_POST['description'] ?? '');
             $duration_min = intval($_POST['duration_min'] ?? 0);
             $recovery_days = intval($_POST['recovery_days'] ?? 0);
-            $anesthesia_type = trim($_POST['anesthesia_type'] ?? '없음');
+            $anesthesia_type = trim($_POST['anesthesia_type'] ?? 'none');
+            if (!array_key_exists($anesthesia_type, $anesthesia_types)) $anesthesia_type = 'none';
             $repeat_cycle_months = intval($_POST['repeat_cycle_months'] ?? 0);
             $precautions = trim($_POST['precautions'] ?? '');
             $avg_price_min = intval($_POST['avg_price_min'] ?? 0);
             $avg_price_max = intval($_POST['avg_price_max'] ?? 0);
-            $default_image_url = trim($_POST['default_image_url'] ?? '');
-            $default_upload = hti_handle_upload('default_image');
-            if (is_array($default_upload) && isset($default_upload['error'])) {
-                $msg = $default_upload['error'];
+            // Preserve the current image unless the admin explicitly replaces
+            // or removes it. Uploaded files are stored as relative URLs.
+            $default_image_url = trim($_POST['current_default_image_url'] ?? '');
+            $replacement_image_url = trim($_POST['default_image_url'] ?? '');
+            if (!empty($_POST['remove_default_image'])) {
+                $default_image_url = '';
+            }
+            if ($replacement_image_url !== '') {
+                $default_image_url = $replacement_image_url;
+            }
+            $default_upload = null;
+            if (!$treatment_image_schema_ready) {
+                $msg = '기본 이미지 저장 컬럼이 없습니다. sql/treatment_master_default_image.sql을 DB에 적용해주세요.';
                 $msg_type = 'danger';
-            } elseif (is_array($default_upload) && !empty($default_upload['url'])) {
-                $default_image_url = $default_upload['url'];
+            } else {
+                try {
+                    $default_upload = hti_handle_upload('default_image');
+                    if (is_array($default_upload) && isset($default_upload['error'])) {
+                        $msg = $default_upload['error'];
+                        $msg_type = 'danger';
+                    } elseif (is_array($default_upload) && !empty($default_upload['url'])) {
+                        $default_image_url = $default_upload['url'];
+                    }
+                } catch (Throwable $e) {
+                    error_log('[admin_treatments] 기본 이미지 업로드 실패: ' . $e->getMessage());
+                    $msg = '이미지 업로드 처리 중 오류가 발생했습니다.';
+                    $msg_type = 'danger';
+                }
             }
             if ($default_image_url !== '' && !preg_match('#^uploads/treatments/[A-Za-z0-9._-]+$#', $default_image_url)
                 && (!filter_var($default_image_url, FILTER_VALIDATE_URL)
@@ -190,13 +218,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $hashtag = '#' . $hashtag;
                 }
 
-                $stmt = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_treatment_master SET
-                    category_id=?, sort_order=?, name=?, hashtag=?, description=?, default_image_url=?, duration_min=?, recovery_days=?,
-                    anesthesia_type=?, repeat_cycle_months=?, precautions=?, avg_price_min=?, avg_price_max=?
-                    WHERE id=?"
-                );
-                if ($stmt) {
+                $stmt = null;
+                try {
+                    $stmt = mysqli_prepare($connect,
+                        "UPDATE gangnamunni_treatment_master SET
+                        category_id=?, sort_order=?, name=?, hashtag=?, description=?, default_image_url=?, duration_min=?, recovery_days=?,
+                        anesthesia_type=?, repeat_cycle_months=?, precautions=?, avg_price_min=?, avg_price_max=?
+                        WHERE id=?"
+                    );
+                    if (!$stmt) throw new RuntimeException(mysqli_error($connect));
                     mysqli_stmt_bind_param($stmt, 'iissssiisisiii',
                         $category_id, $sort_order, $name, $hashtag, $description, $default_image_url,
                         $duration_min, $recovery_days, $anesthesia_type,
@@ -206,11 +236,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if (mysqli_stmt_execute($stmt)) {
                         header('Location: admin_treatments.php?msg=' . urlencode('시술이 수정되었습니다.'));
                         exit;
-                    } else {
-                        $msg = '시술 수정 실패: ' . mysqli_error($connect);
-                        $msg_type = 'danger';
                     }
-                    mysqli_stmt_close($stmt);
+                    throw new RuntimeException(mysqli_stmt_error($stmt));
+                } catch (Throwable $e) {
+                    error_log('[admin_treatments] 시술 수정 실패(id=' . $id . '): ' . $e->getMessage());
+                    // 관리자 전용 페이지에서 실제 DB 오류를 보여줘 배포 환경의 원인을 즉시 확인할 수 있게 한다.
+                    $msg = '시술 수정에 실패했습니다: ' . $e->getMessage();
+                    $msg_type = 'danger';
+                } finally {
+                    if ($stmt) mysqli_stmt_close($stmt);
                 }
             }
         }
@@ -1056,8 +1090,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <div class="col-md-6">
                             <label class="form-label fw-bold">마취 유형</label>
                             <select name="anesthesia_type" class="form-select">
-                                <?php foreach ($anesthesia_types as $at): ?>
-                                <option value="<?php echo htmlspecialchars($at); ?>"><?php echo htmlspecialchars($at); ?></option>
+                                <?php foreach ($anesthesia_types as $at_value => $at_label): ?>
+                                <option value="<?php echo htmlspecialchars($at_value); ?>"><?php echo htmlspecialchars($at_label); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -1146,8 +1180,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <div class="col-md-6">
                             <label class="form-label fw-bold">마취 유형</label>
                             <select name="anesthesia_type" id="edit_anesthesia_type" class="form-select">
-                                <?php foreach ($anesthesia_types as $at): ?>
-                                <option value="<?php echo htmlspecialchars($at); ?>"><?php echo htmlspecialchars($at); ?></option>
+                                <?php foreach ($anesthesia_types as $at_value => $at_label): ?>
+                                <option value="<?php echo htmlspecialchars($at_value); ?>"><?php echo htmlspecialchars($at_label); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -1158,9 +1192,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <div class="col-12">
                             <label class="form-label fw-bold">기본 시술 상세 이미지</label>
                             <div id="edit_default_image_preview" class="mb-2"></div>
-                            <input type="file" name="default_image" class="form-control" accept=".jpg,.jpeg,.png,.gif,.webp">
-                            <input type="url" name="default_image_url" id="edit_default_image_url" class="form-control mt-2" maxlength="500" placeholder="https://... (비우면 기본 이미지 삭제)">
-                            <div class="form-text">새 파일을 업로드하면 기존 이미지가 교체됩니다.</div>
+                            <input type="hidden" name="current_default_image_url" id="edit_current_default_image_url">
+                            <input type="file" name="default_image" id="edit_default_image" class="form-control" accept=".jpg,.jpeg,.png,.gif,.webp">
+                            <input type="text" name="default_image_url" id="edit_default_image_url" class="form-control mt-2" maxlength="500" placeholder="또는 https://... 이미지 URL">
+                            <div class="form-check mt-2" id="edit_remove_default_image_wrap">
+                                <input class="form-check-input" type="checkbox" name="remove_default_image" value="1" id="edit_remove_default_image">
+                                <label class="form-check-label" for="edit_remove_default_image">현재 기본 이미지 삭제</label>
+                            </div>
+                            <div class="form-text">파일을 선택하거나 새 URL을 입력하면 기존 이미지가 교체됩니다.</div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold">시술 시간 (분)</label>
@@ -1307,7 +1346,11 @@ function openEditModal(t) {
     document.getElementById('edit_hashtag').value = t.hashtag || '';
     document.getElementById('edit_hashtag').dataset.auto = '0';
     document.getElementById('edit_description').value = t.description || '';
-    document.getElementById('edit_default_image_url').value = t.default_image_url || '';
+    document.getElementById('edit_current_default_image_url').value = t.default_image_url || '';
+    document.getElementById('edit_default_image_url').value = '';
+    document.getElementById('edit_default_image').value = '';
+    document.getElementById('edit_remove_default_image').checked = false;
+    document.getElementById('edit_remove_default_image_wrap').style.display = t.default_image_url ? '' : 'none';
     var preview = document.getElementById('edit_default_image_preview');
     preview.textContent = '';
     if (t.default_image_url) {
@@ -1321,7 +1364,7 @@ function openEditModal(t) {
     }
     document.getElementById('edit_duration_min').value = t.duration_min || 0;
     document.getElementById('edit_recovery_days').value = t.recovery_days || 0;
-    document.getElementById('edit_anesthesia_type').value = t.anesthesia_type || '없음';
+    document.getElementById('edit_anesthesia_type').value = t.anesthesia_type || 'none';
     document.getElementById('edit_repeat_cycle_months').value = t.repeat_cycle_months || 0;
     document.getElementById('edit_avg_price_min').value = t.avg_price_min || 0;
     document.getElementById('edit_avg_price_max').value = t.avg_price_max || 0;

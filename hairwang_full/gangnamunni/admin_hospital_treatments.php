@@ -42,6 +42,15 @@ if ($option_col_r && mysqli_num_rows($option_col_r) > 0) {
     $option_name_column = true;
 }
 
+// 가격 옵션별 시술 부위를 자유롭게 저장한다.
+$body_part_column = false;
+$body_part_col_r = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'body_part'");
+if ($body_part_col_r && mysqli_num_rows($body_part_col_r) > 0) {
+    $body_part_column = true;
+} elseif (@mysqli_query($connect, "ALTER TABLE gangnamunni_hospital_treatment_prices ADD COLUMN body_part VARCHAR(100) NOT NULL DEFAULT '' AFTER option_name")) {
+    $body_part_column = true;
+}
+
 // 가격 옵션별 정가를 별도로 저장한다. 기존 price 컬럼은 판매가로 계속 사용해
 // 예약/결제 흐름과의 하위 호환성을 유지한다.
 $regular_price_column = false;
@@ -314,12 +323,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $in_pr = $_POST['price'] ?? [];
             $in_rep = $_POST['is_representative'] ?? [];
             $in_on = $_POST['option_name'] ?? [];
+            $in_bp = $_POST['body_part'] ?? [];
             if (!is_array($in_dv)) $in_dv = [$in_dv];
             if (!is_array($in_du)) $in_du = [$in_du];
             if (!is_array($in_rp)) $in_rp = [$in_rp];
             if (!is_array($in_pr)) $in_pr = [$in_pr];
             if (!is_array($in_rep)) $in_rep = [$in_rep];
             if (!is_array($in_on)) $in_on = [$in_on];
+            if (!is_array($in_bp)) $in_bp = [$in_bp];
 
             // 화면과 DB 모두 원 단위 전체 금액을 사용한다.
             $options = [];
@@ -330,9 +341,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $rp_won = (isset($in_rp[$i]) && trim((string)$in_rp[$i]) !== '') ? intval($in_rp[$i]) : 0;
                 $pr_won = (isset($in_pr[$i]) && trim((string)$in_pr[$i]) !== '') ? intval($in_pr[$i]) : 0;
                 $on = isset($in_on[$i]) ? trim((string)$in_on[$i]) : '';
+                $bp = isset($in_bp[$i]) ? trim((string)$in_bp[$i]) : '';
                 if ($dv > 0 && $du !== '' && $rp_won > 0 && $pr_won > 0) {
                     $options[] = [
                         'name' => mb_substr($on, 0, 100, 'UTF-8'),
+                        'body_part' => mb_substr($bp, 0, 100, 'UTF-8'),
                         'dv' => $dv,
                         'du' => mb_substr($du, 0, 20, 'UTF-8'),
                         'rp' => $rp_won,
@@ -354,8 +367,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $representative_count += $opt['rep'];
                     // 같은 용량/단위라도 시술 부위·유형(옵션명)이 다르면 별도 옵션이다.
                     // 예: 사각턱 / 1회, 주름 / 1회
-                    $key = mb_strtolower($opt['name'], 'UTF-8') . '|' . $opt['dv'] . '|' . mb_strtolower($opt['du'], 'UTF-8');
-                    if (isset($option_keys[$key])) ht_redirect($post_hospital_id, '동일한 옵션명, 용량, 단위의 가격 옵션을 중복 등록할 수 없습니다.', 'warning');
+                    $key = mb_strtolower($opt['name'], 'UTF-8') . '|' . mb_strtolower($opt['body_part'], 'UTF-8') . '|' . $opt['dv'] . '|' . mb_strtolower($opt['du'], 'UTF-8');
+                    if (isset($option_keys[$key])) ht_redirect($post_hospital_id, '동일한 옵션명, 부위, 용량, 단위의 가격 옵션을 중복 등록할 수 없습니다.', 'warning');
                     $option_keys[$key] = true;
                 }
                 if ($representative_count > 1) ht_redirect($post_hospital_id, '대표 가격 옵션은 하나만 선택할 수 있습니다.', 'warning');
@@ -375,11 +388,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 mysqli_stmt_execute($del);
                 mysqli_stmt_close($del);
 
-                $ins = mysqli_prepare($connect, $option_name_column
-                    ? "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, option_name, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-                    : "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $ins = mysqli_prepare($connect, $option_name_column && $body_part_column
+                    ? "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, option_name, body_part, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    : ($option_name_column
+                        ? "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, option_name, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                        : "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)"));
                 foreach ($options as $so => $opt) {
-                    if ($option_name_column) mysqli_stmt_bind_param($ins, 'isdsiiii', $id, $opt['name'], $opt['dv'], $opt['du'], $opt['rp'], $opt['pr'], $opt['rep'], $so);
+                    if ($option_name_column && $body_part_column) mysqli_stmt_bind_param($ins, 'issdsiiii', $id, $opt['name'], $opt['body_part'], $opt['dv'], $opt['du'], $opt['rp'], $opt['pr'], $opt['rep'], $so);
+                    elseif ($option_name_column) mysqli_stmt_bind_param($ins, 'isdsiiii', $id, $opt['name'], $opt['dv'], $opt['du'], $opt['rp'], $opt['pr'], $opt['rep'], $so);
                     else mysqli_stmt_bind_param($ins, 'idsiiii', $id, $opt['dv'], $opt['du'], $opt['rp'], $opt['pr'], $opt['rep'], $so);
                     ht_execute_or_throw($ins, '가격 옵션 저장 실패');
                 }
@@ -651,7 +667,7 @@ if (!empty($assigned_treatments)) {
     // 마이그레이션 미적용(테이블 없음) 등으로 실패해도 목록 페이지가 500 나지 않도록 방어
     try {
         $pr_r = mysqli_query($connect,
-            "SELECT hospital_treatment_id, " . ($option_name_column ? "option_name" : "'' AS option_name") . ", dosage_value, dosage_unit, " . ($regular_price_column ? "regular_price" : "price AS regular_price") . ", price, " . ($representative_price_column ? "is_representative" : "0 AS is_representative") . "
+            "SELECT hospital_treatment_id, " . ($option_name_column ? "option_name" : "'' AS option_name") . ", " . ($body_part_column ? "body_part" : "'' AS body_part") . ", dosage_value, dosage_unit, " . ($regular_price_column ? "regular_price" : "price AS regular_price") . ", price, " . ($representative_price_column ? "is_representative" : "0 AS is_representative") . "
              FROM gangnamunni_hospital_treatment_prices
              WHERE hospital_treatment_id IN ({$ht_in})
              ORDER BY sort_order ASC, id ASC");
@@ -659,6 +675,7 @@ if (!empty($assigned_treatments)) {
             $ht_prices[intval($pr['hospital_treatment_id'])][] = [
                 'dosage_value' => rtrim(rtrim(number_format((float)$pr['dosage_value'], 2, '.', ''), '0'), '.'),
                 'option_name'  => $pr['option_name'] ?? '',
+                'body_part'    => $pr['body_part'] ?? '',
                 'dosage_unit'  => $pr['dosage_unit'],
                 'regular_price'=> intval($pr['regular_price']),
                 'price'        => intval($pr['price']),
@@ -971,7 +988,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php if (!empty($opts)): ?>
                             <div class="d-flex flex-wrap gap-1 justify-content-center">
                                 <?php foreach ($opts as $op): ?>
-                                <span class="badge bg-light text-dark border"><?php if (!empty($op['is_representative'])): ?><i class="bi bi-check-square-fill text-primary me-1"></i><?php endif; ?><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · 정가 <?php echo number_format(ht_price_won($op['regular_price'])); ?>원 / 판매가 <?php echo number_format(ht_price_won($op['price'])); ?>원</span>
+                                <span class="badge bg-light text-dark border"><?php if (!empty($op['is_representative'])): ?><i class="bi bi-check-square-fill text-primary me-1"></i><?php endif; ?><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . ($op['body_part'] !== '' ? $op['body_part'] . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · 정가 <?php echo number_format(ht_price_won($op['regular_price'])); ?>원 / 판매가 <?php echo number_format(ht_price_won($op['price'])); ?>원</span>
                                 <?php endforeach; ?>
                             </div>
                             <?php else: ?>
@@ -1196,7 +1213,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 
 <!-- ===== 가격 수정 모달 ===== -->
 <div class="modal fade" id="priceModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
             <input type="hidden" name="action" value="update_price">
@@ -1212,6 +1229,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <div class="d-flex fw-bold text-muted small px-1 mb-1" style="gap:8px;">
                         <div style="width:32px;" class="text-center">대표</div>
                         <div style="flex:1.4;">옵션명</div>
+                        <div style="flex:1;">부위</div>
                         <div style="flex:1;">샷수/용량</div>
                         <div style="width:96px;">단위</div>
                         <div style="width:130px;">정가 (원)</div>
@@ -1373,12 +1391,36 @@ function deleteTreatmentImage(htId, imageId) {
 // 배정 시술별 가격 옵션 맵 (id → [{dosage_value, dosage_unit, regular_price, price}, ...])
 var HT_PRICES = <?php echo json_encode($ht_prices, JSON_UNESCAPED_UNICODE); ?>;
 var PRICE_UNITS = ['샷','cc','ml','kj','회','병','IU','기타'];
+var BODY_PART_GROUPS = [
+    {label:'얼굴 전체 및 헤어', items:['얼굴 전체 (풀페이스)','헤어라인','두피']},
+    {label:'상안면부 (눈/이마 주변)', items:['이마','미간','눈가 (눈웃음 주름)','눈밑 (다크서클, 눈밑 꺼짐)','애교살','관자놀이']},
+    {label:'중안면부 (코/볼/팔자 주변)', items:['앞광대','옆광대','코 (콧대, 코끝)','콧볼 (콧볼 축소 등)','팔자주름','인중']},
+    {label:'하안면부 (입술/턱 주변)', items:['입술 (입술 볼륨)','입꼬리','사각턱 (턱 근육)','턱끝 (무턱)','이중턱 (턱밑 뱃살)','심부볼 (불독살)','턱선 (마리오넷 주름, 페이스라인)']},
+    {label:'바디 (체형 및 레이저 제모 등)', items:['목 (목주름)','승모근 (어깨 라인)','쇄골','겨드랑이','팔 (팔뚝)','복부 (윗배, 아랫배)','러브핸들 (옆구리)','등','허벅지 (안쪽, 바깥쪽)','종아리 (종아리 알)','손등 / 발등']}
+];
 
 function priceToWon(price) {
     return Number(price) || 0;
 }
 
-function priceRowHtml(dv, du, regularPrice, pr, optionName, isRepresentative) {
+function bodyPartOptions(selectedBodyPart) {
+    var selected = selectedBodyPart || '';
+    var known = false;
+    var html = '<option value="">부위 선택</option>';
+    BODY_PART_GROUPS.forEach(function(group) {
+        html += '<optgroup label="'+tiEscape(group.label)+'">';
+        group.items.forEach(function(item) {
+            if (item === selected) known = true;
+            html += '<option value="'+tiEscape(item)+'"'+(item === selected ? ' selected' : '')+'>'+tiEscape(item)+'</option>';
+        });
+        html += '</optgroup>';
+    });
+    // 기존에 자유 입력한 부위가 있었다면 값을 잃지 않고 계속 표시한다.
+    if (selected && !known) html += '<option value="'+tiEscape(selected)+'" selected>'+tiEscape(selected)+'</option>';
+    return html;
+}
+
+function priceRowHtml(dv, du, regularPrice, pr, optionName, bodyPart, isRepresentative) {
     var opts = PRICE_UNITS.map(function(u){
         return '<option value="'+u+'"'+(u===du?' selected':'')+'>'+u+'</option>';
     }).join('');
@@ -1387,6 +1429,7 @@ function priceRowHtml(dv, du, regularPrice, pr, optionName, isRepresentative) {
         '<input type="hidden" name="is_representative[]" class="price-representative-value" value="'+(isRepresentative ? '1' : '0')+'">' +
         '<input type="checkbox" class="form-check-input price-representative" aria-label="대표 가격 옵션"'+(isRepresentative ? ' checked' : '')+' onchange="selectRepresentativePrice(this)"></div>' +
         '<input type="text" name="option_name[]" class="form-control form-control-sm" style="flex:1.4;" maxlength="100" placeholder="예: 주름 100샷" value="'+tiEscape(optionName || '')+'">' +
+        '<select name="body_part[]" class="form-select form-select-sm" style="flex:1;">'+bodyPartOptions(bodyPart)+'</select>' +
         '<input type="number" name="dosage_value[]" class="form-control form-control-sm" style="flex:1;" min="0.01" step="0.01" required placeholder="예: 100" value="'+(dv==null?'':dv)+'">' +
         '<select name="dosage_unit[]" class="form-select form-select-sm" style="width:96px;">'+opts+'</select>' +
         '<input type="number" name="regular_price[]" class="form-control form-control-sm" style="width:130px;" min="1" step="1" required placeholder="예: 50000" value="'+(regularPrice==null||regularPrice===''?'':priceToWon(regularPrice))+'">' +
@@ -1395,8 +1438,8 @@ function priceRowHtml(dv, du, regularPrice, pr, optionName, isRepresentative) {
         '</div>';
 }
 
-function addPriceRow(dv, du, regularPrice, pr, optionName, isRepresentative) {
-    document.getElementById('priceRows').insertAdjacentHTML('beforeend', priceRowHtml(dv, du || '회', regularPrice, pr, optionName, isRepresentative));
+function addPriceRow(dv, du, regularPrice, pr, optionName, bodyPart, isRepresentative) {
+    document.getElementById('priceRows').insertAdjacentHTML('beforeend', priceRowHtml(dv, du || '회', regularPrice, pr, optionName, bodyPart, isRepresentative));
     refreshPriceDelButtons();
     refreshRepresentativeCheckboxes();
 }
@@ -1435,8 +1478,8 @@ function openPriceModal(id, name) {
     document.getElementById('price_treatment_name').textContent = name;
     document.getElementById('priceRows').innerHTML = '';
     var list = HT_PRICES[id] || [];
-    if (!list.length) list = [{dosage_value:'', dosage_unit:'회', regular_price:'', price:'', is_representative:0}];
-    list.forEach(function(o){ addPriceRow(o.dosage_value, o.dosage_unit, o.regular_price, o.price, o.option_name, Number(o.is_representative) === 1); });
+    if (!list.length) list = [{dosage_value:'', dosage_unit:'회', regular_price:'', price:'', body_part:'', is_representative:0}];
+    list.forEach(function(o){ addPriceRow(o.dosage_value, o.dosage_unit, o.regular_price, o.price, o.option_name, o.body_part, Number(o.is_representative) === 1); });
     new bootstrap.Modal(document.getElementById('priceModal')).show();
 }
 
