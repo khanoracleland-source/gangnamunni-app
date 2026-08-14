@@ -12,6 +12,13 @@ $esc = function($v) use ($connect) { return mysqli_real_escape_string($connect, 
 $member = $_SESSION['member'] ?? null;
 if (!$member) { header('Location: auth/login.php?url=' . urlencode($_SERVER['REQUEST_URI'])); exit; }
 
+// Retire the legacy writer in favor of the maintained, approval-gated form.
+$review_write_params = [];
+if (!empty($_GET['hospital_id'])) $review_write_params['hospital_id'] = (int)$_GET['hospital_id'];
+if (!empty($_GET['booking_id'])) $review_write_params['booking_id'] = (int)$_GET['booking_id'];
+header('Location: review_write.php' . ($review_write_params ? '?' . http_build_query($review_write_params) : ''));
+exit;
+
 $hospital_id = intval($_GET['hospital_id'] ?? 0);
 
 // 병원 목록 (드롭다운용)

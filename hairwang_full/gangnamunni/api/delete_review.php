@@ -19,7 +19,7 @@ $db = Database::getInstance();
 
 // 후기 존재 확인
 $review = $db->fetchOne(
-    "SELECT id, hospital_id, user_name FROM hospital_reviews WHERE id = ? AND is_active = 1",
+    "SELECT id, hospital_id, user_id FROM hospital_reviews WHERE id = ? AND is_active = 1",
     [$review_id]
 );
 
@@ -28,7 +28,7 @@ if (!$review) {
 }
 
 // 작성자 또는 관리자만 삭제 가능
-requireOwnership($review['user_name'] ?? '', $authUser);
+requireOwnership($review['user_id'] ?? '', $authUser);
 
 // 소프트 삭제
 $db->execute(

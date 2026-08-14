@@ -51,12 +51,12 @@ try {
     if ($review_id > 0) {
         // 수정 모드 - 소유권 확인
         $existing = $db->fetchOne(
-            "SELECT user_name, hospital_id, is_active FROM hospital_reviews WHERE id = ?",
+            "SELECT user_id, hospital_id, is_active FROM hospital_reviews WHERE id = ?",
             [$review_id]
         );
         if (!$existing) jsonError('후기를 찾을 수 없습니다.', 404);
         // 작성자 또는 관리자만 수정 가능
-        requireOwnership($existing['user_name'] ?? '', $authUser);
+        requireOwnership($existing['user_id'] ?? '', $authUser);
 
         $db->execute(
             "UPDATE hospital_reviews SET
@@ -98,9 +98,9 @@ try {
 
         $db->execute(
             "INSERT INTO hospital_reviews
-                (hospital_id, title, user_name, content, editor_content, editor_type, rating, treatments, review_status, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, 'quill', ?, ?, 'published', 0, NOW())",
-            [$hospital_id, $title, $user_name, $content, $editor_content, $rating, $treatments]
+                (hospital_id, title, user_name, user_id, content, editor_content, editor_type, rating, treatments, review_status, is_active, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'quill', ?, ?, 'published', 0, NOW())",
+            [$hospital_id, $title, $user_name, $user_id, $content, $editor_content, $rating, $treatments]
         );
         $review_id = $db->lastInsertId();
 

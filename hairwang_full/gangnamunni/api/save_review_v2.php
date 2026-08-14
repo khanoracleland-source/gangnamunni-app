@@ -122,9 +122,9 @@ try {
 
     if ($review_id > 0) {
         // 수정 모드
-        $existing = $db->fetchOne("SELECT user_name, hospital_id, is_active FROM hospital_reviews WHERE id = ?", [$review_id]);
+        $existing = $db->fetchOne("SELECT user_id, hospital_id, is_active FROM hospital_reviews WHERE id = ?", [$review_id]);
         if (!$existing) jsonError('후기를 찾을 수 없습니다.', 404);
-        requireOwnership($existing['user_name'] ?? '', $authUser);
+        requireOwnership($existing['user_id'] ?? '', $authUser);
 
         $db->execute(
             "UPDATE hospital_reviews SET

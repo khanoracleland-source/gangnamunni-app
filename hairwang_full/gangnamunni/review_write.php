@@ -37,6 +37,18 @@ if ($is_logged_in) {
     $user_id = $_SESSION['ad_admin_user'] ?? 'admin';
 }
 
+if (empty($_SESSION['review_write_csrf'])) {
+    $_SESSION['review_write_csrf'] = bin2hex(random_bytes(32));
+}
+$review_write_csrf = $_SESSION['review_write_csrf'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $posted_csrf = (string)($_POST['csrf_token'] ?? '');
+    if ($posted_csrf === '' || !hash_equals($review_write_csrf, $posted_csrf)) {
+        http_response_code(403);
+        exit('Invalid request. Please refresh the page and try again.');
+    }
+}
+
 // 수정 모드 확인 (review_detail.php "수정하기"에서 ?id= 로 진입, 본인 후기만 허용)
 $edit_id = intval($_GET['id'] ?? 0);
 $edit_review = null;
@@ -437,6 +449,7 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
 
     <?php if ($msg_type !== 'success'): ?>
     <form method="post" action="" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($review_write_csrf, ENT_QUOTES, 'UTF-8'); ?>">
         <?php if ($edit_review): ?>
         <input type="hidden" name="edit_id" value="<?php echo (int)$edit_review['id']; ?>">
         <?php endif; ?>

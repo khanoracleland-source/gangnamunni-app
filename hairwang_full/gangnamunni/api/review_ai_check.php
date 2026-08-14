@@ -58,9 +58,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } elseif ($action === 'reject') {
         $reason = sanitizeInput($body['reason'] ?? '');
         $db->execute(
-            "UPDATE hospital_reviews SET is_active = 0, review_status = 'rejected', updated_at = NOW() WHERE id = ?",
+            "UPDATE hospital_reviews SET is_active = 0, review_status = 'published', updated_at = NOW() WHERE id = ?",
             [$review_id]
         );
+        if (!empty($review['is_active'])) {
+            $db->execute(
+                "UPDATE gangnamunni_hospitals SET
+                    review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1),
+                    rating = (SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))), 0) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1)
+                 WHERE id = ?",
+                [$review['hospital_id'], $review['hospital_id'], $review['hospital_id']]
+            );
+        }
         jsonSuccess(['status' => 'rejected'], '후기가 거부되었습니다.');
 
     } else {

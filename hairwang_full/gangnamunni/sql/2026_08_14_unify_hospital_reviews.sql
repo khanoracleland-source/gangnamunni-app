@@ -1,6 +1,9 @@
 -- Back up both review tables before running this migration.
 START TRANSACTION;
 
+-- Fail closed even when a legacy/import script omits is_active.
+ALTER TABLE hospital_reviews ALTER is_active SET DEFAULT 0;
+
 -- Every submitted review is published as a record, but only admin-approved
 -- reviews (is_active=1) are public and participate in hospital ratings.
 UPDATE hospital_reviews
