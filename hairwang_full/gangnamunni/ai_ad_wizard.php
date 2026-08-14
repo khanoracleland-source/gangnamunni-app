@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * AI 광고 생성 마법사
  * 초보자를 위한 단계별 AI 광고 생성 가이드

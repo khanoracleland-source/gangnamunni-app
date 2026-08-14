@@ -14,6 +14,17 @@ function enforce_temporarily_disabled_admin_page(string $page): void
         'admin_pharmacist_wizard.php',
         'admin_medicine_wizard.php',
         'admin_medicines.php',
+        'admin_ai_settings.php',
+        'partner_ai_settings.php',
+        'ai_image_editor.php',
+        'ai_ad_editor.php',
+        'ai_ad_wizard.php',
+        'ai_event_editor.php',
+        'ai_event_wizard.php',
+        'ai_raffle_editor.php',
+        'ai_raffle_wizard.php',
+        'admin_auto_test_v2.php',
+        'admin_e2e_test.php',
     ];
 
     if (in_array(basename($page), $disabledPages, true)) {

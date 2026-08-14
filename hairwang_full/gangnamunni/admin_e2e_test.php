@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * E2E 테스트 대시보드 — Playwright 기반
  * 체크박스로 테스트 선택 → 실행 → 실시간 결과 + DB 저장

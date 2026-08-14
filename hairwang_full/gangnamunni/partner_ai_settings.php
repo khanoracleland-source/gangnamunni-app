@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 병원 파트너 AI 설정 페이지 (standalone, 관리자 헤더 없음)
  * 병원이 직접 AI API 키를 등록/관리하는 페이지

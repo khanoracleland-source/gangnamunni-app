@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * AI 응모 에디터
  * GPT-4 + DALL-E를 사용한 자동 응모 이벤트 생성

@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 자동 테스트 v2 - 마법사 인터페이스
  * 플러그인 기반 확장 가능한 테스트 시스템

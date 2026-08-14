@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * AI 이벤트 생성 마법사
  * 5단계: 기본정보 → AI 카피 → 이미지 → 레이아웃/응모 → 미리보기/저장

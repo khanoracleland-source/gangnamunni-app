@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * AI 이벤트 에디터
  * GPT-4 + DALL-E를 사용한 자동 이벤트 생성

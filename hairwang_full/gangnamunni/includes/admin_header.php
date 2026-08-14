@@ -158,21 +158,7 @@ $admin_menus = [
     // ── 구분선: AI/자동화 영역 ──
     ['type' => 'divider'],
 
-    // AI / 자동화 그룹
-    ['type' => 'group', 'label' => 'AI / 자동화', 'icon' => 'bi-robot', 'key' => 'ai_tools', 'children' => [
-        ['url' => 'admin_ai_settings.php', 'label' => 'AI 자동화 설정', 'icon' => 'bi-gear', 'key' => 'ai_settings'],
-        ['url' => 'partner_ai_settings.php', 'label' => '병원 자체 키 설정', 'icon' => 'bi-key', 'key' => 'ai_settings'],
-        // AI 콘텐츠 생성 에디터/마법사 (기존 미연결 → 노출, 권한 키는 ai_settings 공유)
-        ['url' => 'ai_image_editor.php', 'label' => 'AI 이미지 에디터', 'icon' => 'bi-image', 'key' => 'ai_settings'],
-        ['url' => 'ai_ad_editor.php', 'label' => 'AI 광고 에디터', 'icon' => 'bi-badge-ad', 'key' => 'ai_settings'],
-        ['url' => 'ai_ad_wizard.php', 'label' => 'AI 광고 마법사', 'icon' => 'bi-magic', 'key' => 'ai_settings'],
-        ['url' => 'ai_event_editor.php', 'label' => 'AI 이벤트 에디터', 'icon' => 'bi-calendar-event', 'key' => 'ai_settings'],
-        ['url' => 'ai_event_wizard.php', 'label' => 'AI 이벤트 마법사', 'icon' => 'bi-calendar-plus', 'key' => 'ai_settings'],
-        ['url' => 'ai_raffle_editor.php', 'label' => 'AI 추첨 에디터', 'icon' => 'bi-gift', 'key' => 'ai_settings'],
-        ['url' => 'ai_raffle_wizard.php', 'label' => 'AI 추첨 마법사', 'icon' => 'bi-gift-fill', 'key' => 'ai_settings'],
-        ['url' => 'admin_auto_test_v2.php', 'label' => '자동 테스트 v2', 'icon' => 'bi-rocket', 'key' => 'auto_test_v2'],
-        ['url' => 'admin_e2e_test.php', 'label' => 'E2E 테스트', 'icon' => 'bi-play-circle', 'key' => 'e2e_test'],
-    ]],
+    // TEMPORARILY DISABLED: AI / 자동화 group and all child pages.
 
     // ── 구분선: 시스템/관리자 영역 (하단) ──
     ['type' => 'divider'],

@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * AI 자동화 설정 페이지 (슈퍼 어드민 전용)
  * - AI 기능별 ON/OFF 토글

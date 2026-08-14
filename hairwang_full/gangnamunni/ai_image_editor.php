@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * AI 이미지 에디터
  * 기존 광고/이벤트 이미지 불러와서 편집 + AI 생성

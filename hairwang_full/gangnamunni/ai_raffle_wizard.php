@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * AI 응모 마법사
  * 4단계: 이벤트 선택 → 응모 설정 → AI 홍보문 생성 → 미리보기/저장
