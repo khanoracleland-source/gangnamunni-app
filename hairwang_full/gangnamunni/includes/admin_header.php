@@ -243,10 +243,7 @@ $admin_menus = [
     // ── 구분선: 진행사항 ──
     ['type' => 'divider'],
 
-    // 진행사항 그룹
-    ['type' => 'group', 'label' => '진행사항', 'icon' => 'bi-rocket-takeoff', 'key' => 'progress_group', 'children' => [
-        ['url' => 'admin_progress.php', 'label' => date('Y-m-d') . ' 진행사항', 'icon' => 'bi-calendar-check', 'key' => 'progress_today'],
-    ]],
+    // TEMPORARILY DISABLED: 진행사항 group.
 ];
 
 // 자동 테스트가 비활성화된 동안 관련 메뉴만 숨기고 다른 자동화 도구는 유지한다.

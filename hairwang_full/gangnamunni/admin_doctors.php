@@ -53,8 +53,13 @@ if (empty($_SESSION['csrf_token'])) {
 $csrf_token = $_SESSION['csrf_token'];
 
 function doctor_hospital_allowed($hospital_id, $allowed_hospital_ids) {
-    return $hospital_id > 0
-        && ($allowed_hospital_ids === null || in_array((int)$hospital_id, $allowed_hospital_ids, true));
+    // null scope is reserved for super_admin: it may manage every doctor,
+    // including legacy/orphan records whose hospital_id is NULL or 0.
+    if ($allowed_hospital_ids === null) return true;
+
+    // Every other admin is restricted to explicitly assigned hospitals.
+    return (int)$hospital_id > 0
+        && in_array((int)$hospital_id, $allowed_hospital_ids, true);
 }
 
 function doctor_table_has_column($connect, $table_name, $column_name) {
@@ -72,6 +77,42 @@ function doctor_table_has_column($connect, $table_name, $column_name) {
         error_log('[admin_doctors] schema check failed: ' . $e->getMessage());
         return false;
     }
+}
+
+/**
+ * Remove rows from any additional tables that have a real foreign key to
+ * gangnamunni_doctors.id. Known history tables are handled separately so
+ * their text snapshots can be preserved.
+ */
+function cleanup_doctor_foreign_key_relations($connect, $doctor_id, $excluded_tables = []) {
+    $stmt = mysqli_prepare($connect,
+        "SELECT DISTINCT TABLE_NAME, COLUMN_NAME
+           FROM information_schema.KEY_COLUMN_USAGE
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND REFERENCED_TABLE_NAME = 'gangnamunni_doctors'
+            AND REFERENCED_COLUMN_NAME = 'id'");
+    if (!$stmt) throw new RuntimeException(mysqli_error($connect));
+    if (!mysqli_stmt_execute($stmt)) throw new RuntimeException(mysqli_stmt_error($stmt));
+
+    $relations = mysqli_stmt_get_result($stmt);
+    while ($relation = mysqli_fetch_assoc($relations)) {
+        $table = (string)$relation['TABLE_NAME'];
+        $column = (string)$relation['COLUMN_NAME'];
+        if (in_array($table, $excluded_tables, true)) continue;
+
+        // Names originate from information_schema, but validate before using
+        // them as identifiers because identifiers cannot be bound parameters.
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $table) || !preg_match('/^[A-Za-z0-9_]+$/', $column)) {
+            throw new RuntimeException('Invalid doctor relation metadata.');
+        }
+
+        $delete = mysqli_prepare($connect, "DELETE FROM `{$table}` WHERE `{$column}` = ?");
+        if (!$delete) throw new RuntimeException("{$table}: " . mysqli_error($connect));
+        mysqli_stmt_bind_param($delete, 'i', $doctor_id);
+        if (!mysqli_stmt_execute($delete)) throw new RuntimeException("{$table}: " . mysqli_stmt_error($delete));
+        mysqli_stmt_close($delete);
+    }
+    mysqli_stmt_close($stmt);
 }
 
 function normalize_doctor_display_order($connect, $hospital_id, $raw_order, $is_create = false) {
@@ -592,10 +633,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
 
-                    $delete_stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_doctors WHERE id = ? AND hospital_id = ?");
+                    // Production schemas may contain extra modules with an FK
+                    // to the doctor profile. Clear those dependent rows too,
+                    // otherwise DELETE FROM gangnamunni_doctors is rejected.
+                    cleanup_doctor_foreign_key_relations($connect, $doctor_id, [
+                        'gangnamunni_bookings',
+                        'hospital_reviews',
+                        'gangnamunni_doctor_treatments',
+                        'gangnamunni_doctor_schedules',
+                    ]);
+
+                    // Ownership was already checked above. Delete by the unique
+                    // doctor id so super_admin can also remove legacy records
+                    // whose hospital_id is NULL.
+                    $delete_stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_doctors WHERE id = ?");
                     if (!$delete_stmt) throw new RuntimeException(mysqli_error($connect));
-                    $delete_hospital_id = (int)$delete_doctor['hospital_id'];
-                    mysqli_stmt_bind_param($delete_stmt, 'ii', $doctor_id, $delete_hospital_id);
+                    mysqli_stmt_bind_param($delete_stmt, 'i', $doctor_id);
                     if (!mysqli_stmt_execute($delete_stmt)) throw new RuntimeException(mysqli_stmt_error($delete_stmt));
                     if (mysqli_stmt_affected_rows($delete_stmt) !== 1) throw new RuntimeException('의사 정보를 찾을 수 없습니다.');
                     mysqli_stmt_close($delete_stmt);

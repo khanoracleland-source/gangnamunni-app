@@ -44,6 +44,7 @@ function enforce_temporarily_disabled_admin_page(string $page): void
         'admin_qa_dashboard.php',
         'admin_project_status.php',
         'admin_fix_log.php',
+        'admin_progress.php',
     ];
 
     if (in_array(basename($page), $disabledPages, true)) {

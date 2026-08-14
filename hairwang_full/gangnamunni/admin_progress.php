@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * admin_progress.php - 프로젝트 진행사항 (클라이언트 진행 보고)
  *
