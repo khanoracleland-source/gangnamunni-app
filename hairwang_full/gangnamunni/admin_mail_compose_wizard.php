@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 메일 작성 마법사 - 4단계 (수신자 → 템플릿 → 내용 작성 → 미리보기+발송)
  */

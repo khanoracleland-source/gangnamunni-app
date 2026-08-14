@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * admin_server_info.php - 서버 인프라 대시보드
  * SSH/SFTP 접속정보, 디렉토리 구조, 서비스 현황, 도메인 매핑

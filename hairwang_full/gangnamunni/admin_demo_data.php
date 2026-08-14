@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 데모 데이터 관리 대시보드
  * 대량 생성 / 삭제 + 개발모드 토글

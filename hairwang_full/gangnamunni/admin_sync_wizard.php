@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 동기화 마법사 - 3단계 (대상 선택 → 옵션 → 실행+결과)
  */

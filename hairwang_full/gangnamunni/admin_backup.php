@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * admin_backup.php - 백업 관리
  * DB/소스/전체 백업 생성, 이력 조회, 다운로드, 삭제

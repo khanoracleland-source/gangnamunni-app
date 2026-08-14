@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 클라이언트 기획서 관리 페이지
  * Google Sheets 기획서 데이터를 DB에서 조회하고, 개발 메모/상태를 관리

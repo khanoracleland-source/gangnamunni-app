@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 회원 일괄 처리 마법사 - 3단계 (대상 선택 → 작업 선택 → 확인+실행)
  */

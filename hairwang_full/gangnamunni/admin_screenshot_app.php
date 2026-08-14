@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 session_start();
 /**
  * admin_screenshot_app.php - 스크린샷 앱 매뉴얼 자동 생성

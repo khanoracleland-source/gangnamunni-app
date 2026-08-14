@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * PHP 코드 문법 검사 — 관리 대시보드
  * 사이드바: 개발 도구 → 코드 문법 검사

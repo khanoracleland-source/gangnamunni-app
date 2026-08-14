@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 // ============================================================================
 // [Figma Review - 2026-06-05] 피그마 검수 메모 대시보드
 // 원인 : figma_compare.html에서 저장된 검수 메모를 한눈에 확인/관리할 페이지 필요

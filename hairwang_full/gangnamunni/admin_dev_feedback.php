@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 개발 피드백 관리 대시보드
  * 피드백 목록, 상태 변경, 필터, 프롬프트 생성

@@ -200,21 +200,7 @@ $admin_menus = [
         ['url' => 'admin_finance.php', 'label' => '재무 관리', 'icon' => 'bi-cash-stack', 'key' => 'finance'],
     ]],
 
-    // 개발 도구 그룹
-    ['type' => 'group', 'label' => '개발 도구', 'icon' => 'bi-wrench-adjustable', 'key' => 'dev_tools', 'children' => [
-        ['url' => 'admin_demo_data.php', 'label' => '데모 데이터 관리', 'icon' => 'bi-database-gear', 'key' => 'demo_data'],
-        ['url' => 'admin_dev_feedback.php', 'label' => '개발 피드백', 'icon' => 'bi-chat-dots', 'key' => 'dev_feedback'],
-        ['url' => 'admin_usage_stats.php', 'label' => '월별 사용량 통계', 'icon' => 'bi-bar-chart-line', 'key' => 'usage_stats'],
-        ['url' => 'admin_code_check.php', 'label' => '코드 문법 검사', 'icon' => 'bi-bug', 'key' => 'code_check'],
-        ['url' => 'admin_server_info.php', 'label' => '서버 정보', 'icon' => 'bi-hdd-rack', 'key' => 'demo_data'],
-        ['url' => 'admin_backup.php', 'label' => '백업 관리', 'icon' => 'bi-archive', 'key' => 'demo_data'],
-        ['url' => 'admin_sync_wizard.php', 'label' => 'DB 동기화 마법사', 'icon' => 'bi-arrow-repeat', 'key' => 'demo_data'],
-        ['url' => 'admin_client_spec.php', 'label' => '클라이언트 기획서', 'icon' => 'bi-journal-text', 'key' => 'demo_data'],
-        ['url' => 'admin_figma_review.php', 'label' => '피그마 검수', 'icon' => 'bi-vector-pen', 'key' => 'demo_data'],
-        ['url' => 'admin_screenshot_app.php', 'label' => '앱 화면 캡처 매뉴얼', 'icon' => 'bi-phone', 'key' => 'demo_data'],
-        ['url' => 'admin_members_bulk_wizard.php', 'label' => '회원 일괄 처리 마법사', 'icon' => 'bi-people-fill', 'key' => 'demo_data'],
-        ['url' => 'admin_mail_compose_wizard.php', 'label' => '메일 작성 마법사', 'icon' => 'bi-envelope-plus', 'key' => 'demo_data'],
-    ]],
+    // TEMPORARILY DISABLED: 개발 도구 group and all child pages.
 
     // ── 구분선: QA / 프로젝트 영역 ──
     ['type' => 'divider'],

@@ -29,6 +29,18 @@ function enforce_temporarily_disabled_admin_page(string $page): void
         'admin_auto_manual.php',
         'admin_screenshot_book.php',
         'admin_manual_feedback_list.php',
+        'admin_demo_data.php',
+        'admin_dev_feedback.php',
+        'admin_usage_stats.php',
+        'admin_code_check.php',
+        'admin_server_info.php',
+        'admin_backup.php',
+        'admin_sync_wizard.php',
+        'admin_client_spec.php',
+        'admin_figma_review.php',
+        'admin_screenshot_app.php',
+        'admin_members_bulk_wizard.php',
+        'admin_mail_compose_wizard.php',
     ];
 
     if (in_array(basename($page), $disabledPages, true)) {

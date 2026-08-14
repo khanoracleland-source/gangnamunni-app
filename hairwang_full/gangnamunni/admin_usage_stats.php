@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 월별 사용량 통계 대시보드
  * AI 호출, 예약, 후기, 이벤트, 회원 등 월별 추이
