@@ -47,7 +47,11 @@ $body_part_column = false;
 $body_part_col_r = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'body_part'");
 if ($body_part_col_r && mysqli_num_rows($body_part_col_r) > 0) {
     $body_part_column = true;
-} elseif (@mysqli_query($connect, "ALTER TABLE gangnamunni_hospital_treatment_prices ADD COLUMN body_part VARCHAR(100) NOT NULL DEFAULT '' AFTER option_name")) {
+    $body_part_col = mysqli_fetch_assoc($body_part_col_r);
+    if (preg_match('/varchar\((\d+)\)/i', (string)($body_part_col['Type'] ?? ''), $body_part_size) && intval($body_part_size[1]) < 500) {
+        @mysqli_query($connect, "ALTER TABLE gangnamunni_hospital_treatment_prices MODIFY COLUMN body_part VARCHAR(500) NOT NULL DEFAULT ''");
+    }
+} elseif (@mysqli_query($connect, "ALTER TABLE gangnamunni_hospital_treatment_prices ADD COLUMN body_part VARCHAR(500) NOT NULL DEFAULT '' AFTER option_name")) {
     $body_part_column = true;
 }
 
@@ -345,7 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if ($dv > 0 && $du !== '' && $rp_won > 0 && $pr_won > 0) {
                     $options[] = [
                         'name' => mb_substr($on, 0, 100, 'UTF-8'),
-                        'body_part' => mb_substr($bp, 0, 100, 'UTF-8'),
+                        'body_part' => mb_substr($bp, 0, 500, 'UTF-8'),
                         'dv' => $dv,
                         'du' => mb_substr($du, 0, 20, 'UTF-8'),
                         'rp' => $rp_won,
@@ -988,7 +992,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php if (!empty($opts)): ?>
                             <div class="d-flex flex-wrap gap-1 justify-content-center">
                                 <?php foreach ($opts as $op): ?>
-                                <span class="badge bg-light text-dark border"><?php if (!empty($op['is_representative'])): ?><i class="bi bi-check-square-fill text-primary me-1"></i><?php endif; ?><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . ($op['body_part'] !== '' ? $op['body_part'] . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · 정가 <?php echo number_format(ht_price_won($op['regular_price'])); ?>원 / 판매가 <?php echo number_format(ht_price_won($op['price'])); ?>원</span>
+                                <span class="badge bg-light text-dark border"><?php if (!empty($op['is_representative'])): ?><i class="bi bi-check-square-fill text-primary me-1"></i><?php endif; ?><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . ($op['body_part'] !== '' ? str_replace('||', ', ', $op['body_part']) . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · 정가 <?php echo number_format(ht_price_won($op['regular_price'])); ?>원 / 판매가 <?php echo number_format(ht_price_won($op['price'])); ?>원</span>
                                 <?php endforeach; ?>
                             </div>
                             <?php else: ?>
@@ -1229,7 +1233,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <div class="d-flex fw-bold text-muted small px-1 mb-1" style="gap:8px;">
                         <div style="width:32px;" class="text-center">대표</div>
                         <div style="flex:1.4;">옵션명</div>
-                        <div style="flex:1;">부위</div>
+                        <div style="flex:1;">부위 (복수 선택)</div>
                         <div style="flex:1;">샷수/용량</div>
                         <div style="width:96px;">단위</div>
                         <div style="width:130px;">정가 (원)</div>
@@ -1240,6 +1244,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addPriceRow()">
                         <i class="bi bi-plus-lg me-1"></i>세부 옵션 추가
                     </button>
+                    <div class="form-text mt-2">부위 드롭다운을 열어 여러 개를 선택할 수 있습니다.</div>
                     <div class="form-text mt-2">정가와 판매가는 축약하지 않은 원 단위 전체 금액으로 입력해주세요 (예: 10000, 250000). 정가는 판매가보다 작을 수 없습니다. 최소 1개 이상 입력해야 합니다.</div>
                 </div>
                 <div class="modal-footer">
@@ -1403,21 +1408,49 @@ function priceToWon(price) {
     return Number(price) || 0;
 }
 
-function bodyPartOptions(selectedBodyPart) {
-    var selected = selectedBodyPart || '';
-    var known = false;
-    var html = '<option value="">부위 선택</option>';
+var BODY_PART_PICKER_SEQ = 0;
+
+function bodyPartPickerHtml(selectedBodyPart) {
+    var selectedItems = selectedBodyPart ? String(selectedBodyPart).split('||').filter(Boolean) : [];
+    var knownItems = [];
+    var pickerId = 'bodyPartPicker' + (++BODY_PART_PICKER_SEQ);
+    var buttonLabel = selectedItems.length === 0 ? '부위 선택' : (selectedItems.length === 1 ? selectedItems[0] : selectedItems[0] + ' 외 ' + (selectedItems.length - 1) + '개');
+    var menu = '';
     BODY_PART_GROUPS.forEach(function(group) {
-        html += '<optgroup label="'+tiEscape(group.label)+'">';
+        menu += '<div class="small fw-bold text-muted px-2 pt-2 pb-1">'+tiEscape(group.label)+'</div>';
         group.items.forEach(function(item) {
-            if (item === selected) known = true;
-            html += '<option value="'+tiEscape(item)+'"'+(item === selected ? ' selected' : '')+'>'+tiEscape(item)+'</option>';
+            knownItems.push(item);
+            var checkboxId = pickerId + 'Item' + knownItems.length;
+            menu += '<div class="form-check px-2 ms-4 mb-1">' +
+                '<input class="form-check-input body-part-check" type="checkbox" value="'+tiEscape(item)+'" id="'+checkboxId+'"'+(selectedItems.indexOf(item) !== -1 ? ' checked' : '')+' onchange="syncBodyParts(this)">' +
+                '<label class="form-check-label small" for="'+checkboxId+'">'+tiEscape(item)+'</label></div>';
         });
-        html += '</optgroup>';
     });
     // 기존에 자유 입력한 부위가 있었다면 값을 잃지 않고 계속 표시한다.
-    if (selected && !known) html += '<option value="'+tiEscape(selected)+'" selected>'+tiEscape(selected)+'</option>';
-    return html;
+    selectedItems.forEach(function(item, legacyIndex) {
+        if (knownItems.indexOf(item) === -1) {
+            var checkboxId = pickerId + 'Legacy' + legacyIndex;
+            menu += '<div class="form-check px-2 ms-4 mb-1"><input class="form-check-input body-part-check" type="checkbox" value="'+tiEscape(item)+'" id="'+checkboxId+'" checked onchange="syncBodyParts(this)"><label class="form-check-label small" for="'+checkboxId+'">'+tiEscape(item)+'</label></div>';
+        }
+    });
+    return '<div class="dropdown body-part-picker" style="flex:1;min-width:180px;">' +
+        '<button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start text-truncate body-part-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="'+tiEscape(buttonLabel)+'">'+tiEscape(buttonLabel)+'</button>' +
+        '<div class="dropdown-menu p-2 shadow" style="width:310px;max-height:360px;overflow-y:auto;">'+menu+'</div></div>';
+}
+
+function syncBodyParts(checkbox) {
+    var row = checkbox.closest('.price-row');
+    var hidden = row ? row.querySelector('.body-part-value') : null;
+    var picker = checkbox.closest('.body-part-picker');
+    var toggle = picker ? picker.querySelector('.body-part-toggle') : null;
+    if (!hidden || !picker) return;
+    var selected = Array.from(picker.querySelectorAll('.body-part-check:checked')).map(function(input){ return input.value; }).filter(Boolean);
+    hidden.value = selected.join('||');
+    var label = selected.length === 0 ? '부위 선택' : (selected.length === 1 ? selected[0] : selected[0] + ' 외 ' + (selected.length - 1) + '개');
+    if (toggle) {
+        toggle.textContent = label;
+        toggle.title = label;
+    }
 }
 
 function priceRowHtml(dv, du, regularPrice, pr, optionName, bodyPart, isRepresentative) {
@@ -1429,7 +1462,8 @@ function priceRowHtml(dv, du, regularPrice, pr, optionName, bodyPart, isRepresen
         '<input type="hidden" name="is_representative[]" class="price-representative-value" value="'+(isRepresentative ? '1' : '0')+'">' +
         '<input type="checkbox" class="form-check-input price-representative" aria-label="대표 가격 옵션"'+(isRepresentative ? ' checked' : '')+' onchange="selectRepresentativePrice(this)"></div>' +
         '<input type="text" name="option_name[]" class="form-control form-control-sm" style="flex:1.4;" maxlength="100" placeholder="예: 주름 100샷" value="'+tiEscape(optionName || '')+'">' +
-        '<select name="body_part[]" class="form-select form-select-sm" style="flex:1;">'+bodyPartOptions(bodyPart)+'</select>' +
+        '<input type="hidden" name="body_part[]" class="body-part-value" value="'+tiEscape(bodyPart || '')+'">' +
+        bodyPartPickerHtml(bodyPart) +
         '<input type="number" name="dosage_value[]" class="form-control form-control-sm" style="flex:1;" min="0.01" step="0.01" required placeholder="예: 100" value="'+(dv==null?'':dv)+'">' +
         '<select name="dosage_unit[]" class="form-select form-select-sm" style="width:96px;">'+opts+'</select>' +
         '<input type="number" name="regular_price[]" class="form-control form-control-sm" style="width:130px;" min="1" step="1" required placeholder="예: 50000" value="'+(regularPrice==null||regularPrice===''?'':priceToWon(regularPrice))+'">' +

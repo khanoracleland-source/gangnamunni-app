@@ -12,7 +12,10 @@ BEGIN
       AND column_name = 'body_part'
   ) THEN
     ALTER TABLE gangnamunni_hospital_treatment_prices
-      ADD COLUMN body_part VARCHAR(100) NOT NULL DEFAULT '' AFTER option_name;
+      ADD COLUMN body_part VARCHAR(500) NOT NULL DEFAULT '' AFTER option_name;
+  ELSE
+    ALTER TABLE gangnamunni_hospital_treatment_prices
+      MODIFY COLUMN body_part VARCHAR(500) NOT NULL DEFAULT '';
   END IF;
 END;
 
