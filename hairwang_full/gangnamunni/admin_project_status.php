@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * admin_project_status.php - Project Status Report (관리자 내장)
  * 프로젝트 현황, QA 검수, 클라이언트 요구사항, 개발 타임라인

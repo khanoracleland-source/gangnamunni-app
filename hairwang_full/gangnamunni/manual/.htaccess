@@ -1,4 +1,8 @@
 
+<FilesMatch "^(ai_test_report|system_test_report|wizard_test_report)\.html$">
+  Deny from all
+</FilesMatch>
+
 <IfModule mod_headers.c>
   <FilesMatch "\.(html|htm)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"

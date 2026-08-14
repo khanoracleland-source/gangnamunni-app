@@ -41,6 +41,9 @@ function enforce_temporarily_disabled_admin_page(string $page): void
         'admin_screenshot_app.php',
         'admin_members_bulk_wizard.php',
         'admin_mail_compose_wizard.php',
+        'admin_qa_dashboard.php',
+        'admin_project_status.php',
+        'admin_fix_log.php',
     ];
 
     if (in_array(basename($page), $disabledPages, true)) {

@@ -656,9 +656,6 @@ $status_colors = ['completed' => 'success', 'in_progress' => 'warning', 'planned
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="fw-bold mb-0"><i class="bi bi-tools"></i> 수정 이력 <span class="badge bg-secondary ms-1"><?php echo $fix_total; ?>건</span></h6>
-            <?php if (check_permission('fix_log')): ?>
-            <a href="admin_fix_log.php" class="btn btn-sm btn-outline-primary">전체 보기 <i class="bi bi-arrow-right"></i></a>
-            <?php endif; ?>
         </div>
 
         <?php if (empty($fix_by_date)): ?>

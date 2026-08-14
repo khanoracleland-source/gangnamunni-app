@@ -274,7 +274,6 @@ body.lp-active .live-panel-toggle{left:356px}
       <a href="admin_bookings.php" class="lp-link">📅 예약</a>
       <a href="admin_backup.php" class="lp-link">💾 백업</a>
       <a href="admin_auto_manual.php" class="lp-link">📖 매뉴얼</a>
-      <a href="admin_fix_log.php" class="lp-link">📋 수정이력</a>
       <a href="admin_ad_settings.php" class="lp-link">⚙ 광고설정</a>
     </div>
     </div></div>

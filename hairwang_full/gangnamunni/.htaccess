@@ -1,6 +1,13 @@
 # gangnamunni 루트 .htaccess
 RewriteEngine On
 
+# Temporarily disabled QA/report pages. Source files remain for restoration.
+RewriteRule ^(qa_master_v2|qa_full_dashboard|project_status_report|qa_screenshot_report|qa_round3_report|qa_v1\.1_fix_report|qa_v1\.1_round2_report|qa_back_button_report|qa_cpv_report_v2|qa_cpv_report|cpv_dev_reference|cpv_feature_confirm|payment_process_guide)\.html$ - [R=404,L]
+RewriteRule ^manual/(ai_test_report|system_test_report|wizard_test_report)\.html$ - [R=404,L]
+
+# Temporarily disabled dated Project Status reports.
+RewriteRule ^project_status_report_[0-9]{8}\.html$ - [R=404,L]
+
 # HTTPS 자동 리다이렉트
 # SSL 미설정 호스팅에서는 .htaccess에서 아래 4줄 삭제하면 HTTP로 동작
 RewriteCond %{HTTPS} off

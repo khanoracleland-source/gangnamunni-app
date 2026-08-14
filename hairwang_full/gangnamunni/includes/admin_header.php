@@ -228,75 +228,17 @@ $admin_menus = [
         ['url' => 'admin_app_downloads.php?app=admin', 'label' => '서울미녀 파트너', 'icon' => 'bi-phone', 'key' => 'app_admin'],
     ]],
 
-    // QA & 리포트 그룹
-    ['type' => 'group', 'label' => 'QA & 리포트', 'icon' => 'bi-clipboard2-check', 'key' => 'qa_report_group', 'children' => [
-        // QA 대시보드
-        ['url' => 'qa_master_v2.html', 'label' => 'QA 마스터 대시보드', 'icon' => 'bi-speedometer2', 'key' => 'qa_master'],
-        ['url' => 'qa_full_dashboard.html', 'label' => 'QA 전체 대시보드', 'icon' => 'bi-kanban', 'key' => 'qa_full_dash'],
-        ['url' => 'project_status_report.html', 'label' => '프로젝트 현황', 'icon' => 'bi-graph-up', 'key' => 'qa_project_status'],
-        // QA 리포트
-        ['url' => 'qa_screenshot_report.html', 'label' => 'QA 스크린샷 리포트', 'icon' => 'bi-camera', 'key' => 'qa_screenshot'],
-        ['url' => 'qa_round3_report.html', 'label' => 'QA 3차 리포트', 'icon' => 'bi-3-circle', 'key' => 'qa_round3'],
-        ['url' => 'qa_v1.1_fix_report.html', 'label' => 'QA v1.1 검수 리포트', 'icon' => 'bi-bug', 'key' => 'qa_v11_fix'],
-        ['url' => 'qa_v1.1_round2_report.html', 'label' => 'QA v1.1 2차 리포트', 'icon' => 'bi-arrow-repeat', 'key' => 'qa_v11_r2'],
-        ['url' => 'qa_back_button_report.html', 'label' => '백버튼 QA 리포트', 'icon' => 'bi-arrow-left-circle', 'key' => 'qa_back_btn'],
-        // CPV 리포트
-        ['url' => 'qa_cpv_report_v2.html', 'label' => 'CPV QA 리포트 v2', 'icon' => 'bi-clipboard-check', 'key' => 'qa_cpv_v2'],
-        ['url' => 'qa_cpv_report.html', 'label' => 'CPV QA 리포트 v1', 'icon' => 'bi-clipboard', 'key' => 'qa_cpv_v1'],
-        ['url' => 'cpv_dev_reference.html', 'label' => 'CPV 개발참조', 'icon' => 'bi-file-earmark-text', 'key' => 'qa_cpv_dev'],
-        ['url' => 'cpv_feature_confirm.html', 'label' => 'CPV 기능 확인서', 'icon' => 'bi-check2-square', 'key' => 'qa_cpv_confirm'],
-        // 기타 리포트
-        ['url' => 'payment_process_guide.html', 'label' => '결제 프로세스 가이드', 'icon' => 'bi-credit-card', 'key' => 'qa_payment'],
-        ['url' => 'manual/ai_test_report.html', 'label' => 'AI 테스트 리포트', 'icon' => 'bi-robot', 'key' => 'qa_ai_test'],
-        ['url' => 'manual/system_test_report.html', 'label' => '시스템 테스트 리포트', 'icon' => 'bi-gear', 'key' => 'qa_sys_test'],
-        ['url' => 'manual/wizard_test_report.html', 'label' => '마법사 테스트 리포트', 'icon' => 'bi-magic', 'key' => 'qa_wiz_test'],
-    ]],
+    // TEMPORARILY DISABLED: QA & 리포트 group and all 16 report pages.
 
     // ── 구분선: QA 통합 ──
     ['type' => 'divider'],
 
-    // QA & 테스트 그룹
-    ['type' => 'group', 'label' => 'QA & 테스트', 'icon' => 'bi-clipboard-check', 'key' => 'qa_test_group', 'children' => [
-        ['url' => 'admin_qa_dashboard.php', 'label' => 'QA 통합 대시보드', 'icon' => 'bi-clipboard-data', 'key' => 'qa_dashboard'],
-    ]],
+    // TEMPORARILY DISABLED: QA 통합 대시보드.
 
     // ── 구분선: Project Status (사이드바 최하단) ──
     ['type' => 'divider'],
 
-    // Project Status Report (날짜별 작업 이력 동적 생성) — 스크롤 끝으로 이동 (한글 주석)
-    ['type' => 'group', 'label' => 'Project Status', 'icon' => 'bi-kanban', 'key' => 'project_status_group', 'children' => array_merge(
-        [
-            ['url' => 'admin_project_status.php', 'label' => '프로젝트 현황', 'icon' => 'bi-clipboard-data', 'key' => 'project_status'],
-            ['url' => 'admin_fix_log.php', 'label' => '수정 이력', 'icon' => 'bi-tools', 'key' => 'fix_log'],
-        ],
-        // 날짜별 작업 이력 (DB에서 동적 생성)
-        (function() {
-            global $connect;
-            $items = [];
-            if (isset($connect) && $connect) {
-                $r = mysqli_query($connect, "SELECT event_date, MAX(title) AS title, COUNT(*) as cnt FROM gangnamunni_dev_timeline GROUP BY event_date ORDER BY event_date DESC LIMIT 30");
-                if ($r) {
-                    while ($row = mysqli_fetch_assoc($r)) {
-                        $d = $row['event_date'];
-                        $label = date('m/d', strtotime($d)) . ' ' . mb_substr($row['title'], 0, 15, 'UTF-8');
-                        $items[] = ['url' => 'admin_project_status.php?date=' . $d, 'label' => $label, 'icon' => 'bi-calendar-date', 'key' => 'timeline_' . str_replace('-', '', $d)];
-                    }
-                }
-            }
-            // HTML 리포트 파일도 추가
-            $reports = glob(__DIR__ . '/../project_status_report_*.html');
-            rsort($reports);
-            foreach ($reports as $rp) {
-                $fn = basename($rp);
-                preg_match('/report_(\d{8})\.html/', $fn, $m);
-                if (!$m) continue;
-                $d = $m[1];
-                $label = substr($d,0,4).'-'.substr($d,4,2).'-'.substr($d,6,2) . ' 리포트';
-                $items[] = ['url' => $fn, 'label' => $label, 'icon' => 'bi-file-earmark-richtext', 'key' => 'report_'.$d];
-            }
-            return $items;
-        })()
-    )],
+    // TEMPORARILY DISABLED: Project Status group, fix log, timeline and dated reports.
 
     // ── 구분선: 진행사항 ──
     ['type' => 'divider'],
@@ -1049,17 +991,6 @@ if (isset($connect) && $connect) {
            onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
             <i class="bi bi-credit-card-2-front" style="font-size:15px;"></i>
             PG Test Report
-            <i class="bi bi-box-arrow-up-right" style="font-size:10px; margin-left:auto; opacity:0.7;"></i>
-        </a>
-    </div>
-
-    <!-- Project Status Report — 사이드바 스크롤 영역 최하단 (한글 주석) -->
-    <div style="padding:8px 12px 4px;">
-        <a href="/hairwang/gangnamunni/project_status_report.html" target="_blank"
-           style="display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:8px; font-size:12.5px; font-weight:700; color:#fff; text-decoration:none; background:linear-gradient(135deg,#6366f1,#8b5cf6); transition:all 0.2s; box-shadow:0 2px 6px rgba(99,102,241,0.25);"
-           onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
-            <i class="bi bi-clipboard-data" style="font-size:15px;"></i>
-            Project Status Report
             <i class="bi bi-box-arrow-up-right" style="font-size:10px; margin-left:auto; opacity:0.7;"></i>
         </a>
     </div>
