@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 매뉴얼 수정요청 관리 목록
  * @created 2026-04-08

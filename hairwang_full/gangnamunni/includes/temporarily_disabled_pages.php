@@ -25,6 +25,10 @@ function enforce_temporarily_disabled_admin_page(string $page): void
         'ai_raffle_wizard.php',
         'admin_auto_test_v2.php',
         'admin_e2e_test.php',
+        'admin_wizard_guide.php',
+        'admin_auto_manual.php',
+        'admin_screenshot_book.php',
+        'admin_manual_feedback_list.php',
     ];
 
     if (in_array(basename($page), $disabledPages, true)) {

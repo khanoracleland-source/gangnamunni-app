@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 자동 매뉴얼 생성 페이지
  * Playwright 기반 웹 자동 캡처 + marker.js 피드백 + 워드 내보내기

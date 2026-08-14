@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 session_start();
 $admin_page_title = '마법사 사용법 가이드';
 $admin_current = 'wizard_guide';

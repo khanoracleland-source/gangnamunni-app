@@ -191,13 +191,7 @@ $admin_menus = [
     // ── 구분선: 도움말 영역 (최하단) ──
     ['type' => 'divider'],
 
-    // 도움말 그룹
-    ['type' => 'group', 'label' => '도움말', 'icon' => 'bi-question-circle', 'key' => 'help', 'children' => [
-        ['url' => 'admin_wizard_guide.php', 'label' => '마법사 사용법 가이드', 'icon' => 'bi-book', 'key' => 'wizard_guide'],
-        ['url' => 'admin_auto_manual.php', 'label' => '자동 매뉴얼', 'icon' => 'bi-journal-text', 'key' => 'auto_manual'],
-        ['url' => 'admin_screenshot_book.php', 'label' => '스크린샷 매뉴얼', 'icon' => 'bi-camera', 'key' => 'screenshot_book'],
-        ['url' => 'admin_manual_feedback_list.php', 'label' => '매뉴얼 수정요청', 'icon' => 'bi-pencil-square', 'key' => 'manual_feedback'],
-    ]],
+    // TEMPORARILY DISABLED: 도움말 group and all child pages.
     // 운영 관리
     ['type' => 'group', 'label' => '운영 관리', 'icon' => 'bi-gear-wide-connected', 'key' => 'operations', 'children' => [
         ['url' => 'admin_pharmacy.php', 'label' => '약국 관리', 'icon' => 'bi-capsule', 'key' => 'pharmacy'],
