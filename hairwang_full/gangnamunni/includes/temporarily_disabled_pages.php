@@ -45,6 +45,16 @@ function enforce_temporarily_disabled_admin_page(string $page): void
         'admin_project_status.php',
         'admin_fix_log.php',
         'admin_progress.php',
+        'admin_patients.php',
+        'admin_opd.php',
+        'admin_prescriptions.php',
+        'admin_ipd.php',
+        'admin_beds.php',
+        'admin_bills.php',
+        'admin_pharmacy.php',
+        'admin_lab.php',
+        'admin_schedules.php',
+        'admin_finance.php',
     ];
 
     if (in_array(basename($page), $disabledPages, true)) {

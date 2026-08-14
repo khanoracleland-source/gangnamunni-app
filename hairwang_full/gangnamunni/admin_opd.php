@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 외래(OPD) 관리 페이지
  * HMS opd_patient_departments 테이블 직접 조회

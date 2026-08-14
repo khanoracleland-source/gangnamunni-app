@@ -266,7 +266,6 @@ $hms_opd_today = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c
                 <small class="text-muted">가용 병상</small>
             </div>
             <div class="col-md-2 col-4">
-                <a href="admin_patients.php" class="btn btn-sm btn-outline-primary">환자 관리</a>
             </div>
         </div>
     </div>

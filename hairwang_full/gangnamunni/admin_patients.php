@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * ============================================================================
  * [관리자 #13 - 2026-05-28] 회원/환자 분리 + 환자 관리 페이지

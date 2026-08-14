@@ -100,15 +100,7 @@ $admin_menus = [
         ['url' => 'admin_appointment_wizard.php', 'label' => '예약 등록 마법사', 'icon' => 'bi-calendar-plus', 'key' => 'appointment_wizard'],
     ]],
 
-    // HMS 진료 관리 그룹
-    ['type' => 'group', 'label' => '진료 관리', 'icon' => 'bi-heart-pulse', 'key' => 'clinical', 'children' => [
-        ['url' => 'admin_patients.php', 'label' => '환자 관리', 'icon' => 'bi-person-vcard', 'key' => 'patients'],
-        ['url' => 'admin_opd.php', 'label' => '외래 환자 관리', 'icon' => 'bi-clipboard2-pulse', 'key' => 'opd'],
-        ['url' => 'admin_prescriptions.php', 'label' => '처방전', 'icon' => 'bi-file-earmark-medical', 'key' => 'prescriptions'],
-        ['url' => 'admin_ipd.php', 'label' => '입원 관리', 'icon' => 'bi-hospital', 'key' => 'ipd'],
-        ['url' => 'admin_beds.php', 'label' => '병상 관리', 'icon' => 'bi-grid-3x3', 'key' => 'beds'],
-        ['url' => 'admin_bills.php', 'label' => '청구/결제 관리', 'icon' => 'bi-receipt', 'key' => 'bills'],
-    ]],
+    // TEMPORARILY HIDDEN FROM ADMIN UI: 진료 관리 group.
     // 시술 관리 그룹
     ['type' => 'group', 'label' => term('service', '시술') . ' 관리', 'icon' => 'bi-heart-pulse', 'key' => 'treatment_mgmt', 'children' => [
         ['url' => 'admin_treatments.php', 'label' => '시술 마스터 관리', 'icon' => 'bi-scissors', 'key' => 'treatment_master'],
@@ -192,13 +184,7 @@ $admin_menus = [
     ['type' => 'divider'],
 
     // TEMPORARILY DISABLED: 도움말 group and all child pages.
-    // 운영 관리
-    ['type' => 'group', 'label' => '운영 관리', 'icon' => 'bi-gear-wide-connected', 'key' => 'operations', 'children' => [
-        ['url' => 'admin_pharmacy.php', 'label' => '약국 관리', 'icon' => 'bi-capsule', 'key' => 'pharmacy'],
-        ['url' => 'admin_lab.php', 'label' => '검사실 관리', 'icon' => 'bi-eyedropper', 'key' => 'lab'],
-        ['url' => 'admin_schedules.php', 'label' => '일정 관리', 'icon' => 'bi-calendar-week', 'key' => 'schedules'],
-        ['url' => 'admin_finance.php', 'label' => '재무 관리', 'icon' => 'bi-cash-stack', 'key' => 'finance'],
-    ]],
+    // TEMPORARILY HIDDEN FROM ADMIN UI: 운영 관리 group.
 
     // TEMPORARILY DISABLED: 개발 도구 group and all child pages.
 
