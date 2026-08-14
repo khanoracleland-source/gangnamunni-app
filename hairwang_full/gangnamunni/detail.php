@@ -2015,7 +2015,7 @@ function extractImageFromHtml($file_path) {
                 <?php foreach ($procedure_data as $procedure): ?>
                 <?php
                 $procedure_price = (int)($procedure['display_price'] ?? 0);
-                $procedure_url = 'booking.php?id=' . $hospital_id
+                $procedure_url = 'detail.php?id=' . $hospital_id
                     . '&treatment_id=' . (int)($procedure['treatment_id'] ?? 0)
                     . '&treatment=' . urlencode($procedure['name'] ?? '');
                 ?>
