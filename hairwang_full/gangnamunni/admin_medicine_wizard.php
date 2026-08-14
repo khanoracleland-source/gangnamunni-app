@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * admin_medicine_wizard.php - 의약품 등록 마법사
  * 4단계: 기본 정보 -> 가격/수량 -> 추가 정보 -> 검토 완료

@@ -208,6 +208,12 @@ $sections = [
         'tips'=>['병원 = HMS tenants 테이블','후기 = hospital_reviews','회원 = g5_member (Gnuboard)','필터 없이 검색 시 전체 데이터'],
     ],
 ];
+
+// TEMPORARILY DISABLED: hide documentation links for unavailable pages.
+$disabledGuideSections = ['nurse', 'pharmacist', 'patient', 'medicine'];
+$sections = array_values(array_filter($sections, static function (array $section) use ($disabledGuideSections): bool {
+    return !in_array($section['id'] ?? '', $disabledGuideSections, true);
+}));
 ?>
 
 <style>

@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * 의약품 관리 페이지
  * Bootstrap 5.3 + 공통 관리자 레이아웃

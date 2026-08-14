@@ -539,12 +539,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">&nbsp;</label>
-                    <div>
-                        <a href="admin_patient_wizard.php" target="_blank" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-person-plus"></i> 신규 환자 등록
-                        </a>
-                    </div>
                 </div>
                 <div class="col-md-12">
                     <label class="form-label fw-bold">환자 검색 <span class="text-danger">*</span></label>

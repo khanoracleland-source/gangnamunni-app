@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/temporarily_disabled_pages.php';
+enforce_temporarily_disabled_admin_page(__FILE__);
+
 /**
  * admin_nurse_wizard.php - 간호사 등록 마법사
  * 4단계 원형 스텝 프로세서로 간호사 등록 처리

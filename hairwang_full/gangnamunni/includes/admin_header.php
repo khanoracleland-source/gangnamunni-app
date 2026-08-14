@@ -76,7 +76,7 @@ $admin_menus = [
         // ['url' => 'admin_tips.php', 'label' => '꿀팁 관리', 'icon' => 'bi-lightbulb', 'key' => 'tips'],
         ['url' => 'admin_events.php', 'label' => '이벤트 관리', 'icon' => 'bi-calendar-event', 'key' => 'events'],
         ['url' => 'admin_columns.php', 'label' => '칼럼/뉴스 관리', 'icon' => 'bi-newspaper', 'key' => 'columns'],
-        ['url' => 'admin_event_entries.php', 'label' => '응모 관리', 'icon' => 'bi-gift', 'key' => 'event_entries'],
+        // TEMPORARILY DISABLED: admin_event_entries.php
     ]],
     // 광고 관리 그룹
     ['type' => 'group', 'label' => '광고 관리', 'icon' => 'bi-megaphone', 'key' => 'ad_management', 'children' => [
@@ -97,12 +97,9 @@ $admin_menus = [
     ]],
     // 등록 관리 그룹
     ['type' => 'group', 'label' => '등록 관리', 'icon' => 'bi-person-plus', 'key' => 'register', 'children' => [
-        ['url' => 'admin_nurse_wizard.php', 'label' => '간호사 등록 마법사', 'icon' => 'bi-heart-pulse', 'key' => 'nurse_wizard'],
-        ['url' => 'admin_pharmacist_wizard.php', 'label' => '약사 등록 마법사', 'icon' => 'bi-capsule', 'key' => 'pharmacist_wizard'],
-        ['url' => 'admin_patient_wizard.php', 'label' => '환자 등록 마법사', 'icon' => 'bi-person-heart', 'key' => 'patient_wizard'],
+        // TEMPORARILY DISABLED: admin_nurse_wizard.php, admin_pharmacist_wizard.php, admin_patient_wizard.php
         ['url' => 'admin_staff_wizard.php', 'label' => '직원 등록 마법사', 'icon' => 'bi-people', 'key' => 'staff_wizard'],
-        ['url' => 'admin_medicine_wizard.php', 'label' => '의약품 등록 마법사', 'icon' => 'bi-prescription2', 'key' => 'medicine_wizard'],
-        ['url' => 'admin_medicines.php', 'label' => '의약품 관리', 'icon' => 'bi-capsule', 'key' => 'medicines'],
+        // TEMPORARILY DISABLED: admin_medicine_wizard.php, admin_medicines.php
         ['url' => 'admin_appointment_wizard.php', 'label' => '예약 등록 마법사', 'icon' => 'bi-calendar-plus', 'key' => 'appointment_wizard'],
     ]],
 

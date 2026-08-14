@@ -81,9 +81,6 @@ include __DIR__ . '/includes/admin_header.php';
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="bi bi-capsule"></i> 약사 관리</h5>
-    <div class="d-flex gap-2">
-        <a href="admin_pharmacist_wizard.php" class="btn btn-primary btn-sm"><i class="bi bi-magic"></i> 등록 마법사</a>
-    </div>
 </div>
 
 <!-- 통계 -->
@@ -126,7 +123,6 @@ include __DIR__ . '/includes/admin_header.php';
                 <?php if (empty($items)): ?>
                 <tr><td colspan="10" class="text-center py-4 text-muted">
                     <i class="bi bi-inbox" style="font-size:2rem;"></i><br>등록된 데이터가 없습니다.
-                    <br><a href="admin_pharmacist_wizard.php" class="btn btn-primary btn-sm mt-2"><i class="bi bi-magic"></i> 등록 마법사로 추가</a>
                 </td></tr>
                 <?php else: ?>
                 <?php foreach ($items as $item): ?>

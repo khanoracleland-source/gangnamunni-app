@@ -542,7 +542,6 @@ include __DIR__ . '/includes/admin_header.php';
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h4 class="mb-0 d-inline"><i class="bi bi-person-lines-fill me-2"></i><?= term("member") ?> 관리</h4>
-        <a href="admin_patient_wizard.php" class="btn btn-sm btn-outline-primary ms-2"><i class="bi bi-magic"></i> 환자 등록 마법사</a>
         <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#levelGuideModal" title="등급 안내"><i class="bi bi-info-circle"></i> 등급 안내</button>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#memberPatientModal" title="회원/환자 차이"><i class="bi bi-question-circle"></i> <?= term("member") ?>/환자 차이</button>
     </div>
