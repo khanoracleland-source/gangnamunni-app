@@ -23,4 +23,3 @@ function enforce_temporarily_disabled_admin_page(string $page): void
         exit('404 Not Found');
     }
 }
-

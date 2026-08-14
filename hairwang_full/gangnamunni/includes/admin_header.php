@@ -49,12 +49,9 @@ $admin_menus = [
 
     // ━━ 병원 등록 ━━
     ['type' => 'group', 'label' => '병원 등록', 'icon' => 'bi-hospital', 'key' => 'hospital_register', 'children' => [
-        ['url' => 'admin_hospital_landing.php', 'label' => '병원 입점 안내', 'icon' => 'bi-info-circle', 'key' => 'hospital_landing'],
         ['url' => 'hospital_apply.php', 'label' => '병원 등록 신청', 'icon' => 'bi-pencil-square', 'key' => 'hospital_apply'],
         ['url' => 'hospital_apply_status.php', 'label' => '내 신청 현황', 'icon' => 'bi-clock-history', 'key' => 'hospital_apply_status'],
         ['url' => 'admin_hospitals.php?tab=pending', 'label' => '신청 목록 (관리자)', 'icon' => 'bi-list-check', 'key' => 'hospital_pending'],
-        ['url' => 'admin_hospital_process.php', 'label' => '등록 프로세스 안내', 'icon' => 'bi-diagram-3', 'key' => 'hospital_process'],
-        ['url' => 'manual/hospital_operation_guide.html', 'label' => '등록 가이드', 'icon' => 'bi-book', 'key' => 'hospital_guide', 'target' => '_blank'],
     ]],
 
     // ── 구분선: 콘텐츠/데이터 영역 ──
