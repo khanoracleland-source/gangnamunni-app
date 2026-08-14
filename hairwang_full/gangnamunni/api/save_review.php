@@ -51,7 +51,7 @@ try {
     if ($review_id > 0) {
         // 수정 모드 - 소유권 확인
         $existing = $db->fetchOne(
-            "SELECT user_name FROM hospital_reviews WHERE id = ? AND is_active = 1",
+            "SELECT user_name, hospital_id, is_active FROM hospital_reviews WHERE id = ?",
             [$review_id]
         );
         if (!$existing) jsonError('후기를 찾을 수 없습니다.', 404);
@@ -62,6 +62,7 @@ try {
             "UPDATE hospital_reviews SET
                 title = ?, content = ?, editor_content = ?,
                 editor_type = 'quill', rating = ?, treatments = ?,
+                review_status = 'published', is_active = 0,
                 updated_at = NOW()
              WHERE id = ? AND is_active = 1",
             [$title, $content, $editor_content, $rating, $treatments, $review_id]
@@ -69,6 +70,16 @@ try {
 
         // 기존 이미지 삭제 후 재삽입
         $db->execute("DELETE FROM review_images WHERE review_id = ?", [$review_id]);
+        if (!empty($existing['is_active'])) {
+            $old_hospital_id = (int)$existing['hospital_id'];
+            $db->execute(
+                "UPDATE gangnamunni_hospitals SET
+                    review_count=(SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id=? AND is_active=1),
+                    rating=(SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))),0) FROM hospital_reviews WHERE hospital_id=? AND is_active=1)
+                 WHERE id=?",
+                [$old_hospital_id, $old_hospital_id, $old_hospital_id]
+            );
+        }
     } else {
         // 신규 작성
         // 병원명 조회
@@ -87,8 +98,8 @@ try {
 
         $db->execute(
             "INSERT INTO hospital_reviews
-                (hospital_id, title, user_name, content, editor_content, editor_type, rating, treatments, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, 'quill', ?, ?, 1, NOW())",
+                (hospital_id, title, user_name, content, editor_content, editor_type, rating, treatments, review_status, is_active, created_at)
+             VALUES (?, ?, ?, ?, ?, 'quill', ?, ?, 'published', 0, NOW())",
             [$hospital_id, $title, $user_name, $content, $editor_content, $rating, $treatments]
         );
         $review_id = $db->lastInsertId();
@@ -106,7 +117,7 @@ try {
         $ai_score = $aiResult['score'] ?? 0;
 
         // ai_score + review_status 업데이트
-        $review_status = ($aiResult['passed'] ?? true) ? 'published' : 'pending';
+        $review_status = 'published';
         $db->execute(
             "UPDATE hospital_reviews SET ai_score = ?, review_status = ? WHERE id = ?",
             [$ai_score, $review_status, $review_id]
@@ -114,6 +125,9 @@ try {
 
         // 리뷰어 통계 갱신
         postReviewAIUpdate((int)$review_id, $ai_score, $user_name);
+
+        // Inactive reviews do not affect the cached hospital rating.
+        if (false) {
 
 
         // 병원 review_count 업데이트
@@ -134,6 +148,7 @@ try {
     }
 
     // 이미지 저장
+        }
     foreach ($images as $idx => $img_url) {
         if (empty($img_url)) continue;
         $db->execute(

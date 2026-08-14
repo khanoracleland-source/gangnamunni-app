@@ -89,7 +89,7 @@ if ($treatment_id > 0) {
                 COALESCE(ts.score, 0) AS treatment_score,
                 COALESCE(ts.total_reviews, 0) AS treatment_reviews,
                 COALESCE(ts.avg_sentiment, 0) AS avg_sentiment,
-                (SELECT COUNT(*) FROM hospital_reviews hr WHERE hr.hospital_id = h.id AND hr.review_status = 'published') AS total_hospital_reviews
+                (SELECT COUNT(*) FROM hospital_reviews hr WHERE hr.hospital_id = h.id AND hr.is_active = 1) AS total_hospital_reviews
             FROM gangnamunni_hospital_treatments ht
             INNER JOIN gangnamunni_hospitals h ON ht.hospital_id = h.id AND h.is_active = 1
             LEFT JOIN gangnamunni_treatment_scores ts ON ts.hospital_id = ht.hospital_id AND ts.treatment_id = ht.treatment_id

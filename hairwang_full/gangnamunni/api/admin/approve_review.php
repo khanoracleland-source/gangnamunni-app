@@ -34,7 +34,7 @@ if ($action === 'approve') {
     $message = '후기가 승인되었습니다.';
 } else {
     $db->execute(
-        "UPDATE hospital_reviews SET review_status = 'rejected', is_active = 0, updated_at = NOW() WHERE id = ?",
+        "UPDATE hospital_reviews SET review_status = 'published', is_active = 0, updated_at = NOW() WHERE id = ?",
         [$review_id]
     );
     $message = '후기가 거부되었습니다.';
@@ -44,8 +44,8 @@ if ($action === 'approve') {
 $hospital_id = $review['hospital_id'];
 $db->execute(
     "UPDATE gangnamunni_hospitals SET
-        review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published'),
-        rating = (SELECT COALESCE(AVG(rating), 0) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published')
+        review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1),
+        rating = (SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))), 0) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1)
      WHERE id = ?",
     [$hospital_id, $hospital_id, $hospital_id]
 );

@@ -28,7 +28,7 @@ if (function_exists('getTheme')) {
 
 // Table counts (quick check)
 $_tables = [];
-$tables_to_check = ['gangnamunni_hospitals', 'gangnamunni_reviews', 'gangnamunni_tips', 'gangnamunni_events', 'gangnamunni_ads', 'gangnamunni_consultations', 'gangnamunni_bookings'];
+$tables_to_check = ['gangnamunni_hospitals', 'hospital_reviews', 'gangnamunni_tips', 'gangnamunni_events', 'gangnamunni_ads', 'gangnamunni_consultations', 'gangnamunni_bookings'];
 foreach ($tables_to_check as $tbl) {
     $r = @mysqli_query($connect, "SELECT COUNT(*) as cnt FROM $tbl");
     if ($r) {

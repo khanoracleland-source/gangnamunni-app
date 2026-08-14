@@ -216,13 +216,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($post_edit_id > 0) {
         // 수정 (본인 후기만, 재승인 대기 상태로 전환)
         $stmt = mysqli_prepare($connect,
-            "UPDATE hospital_reviews SET hospital_id=?, title=?, content=?, rating=?, treatments=?, review_status='pending', updated_at=NOW()
+            "UPDATE hospital_reviews SET hospital_id=?, title=?, content=?, rating=?, treatments=?, review_status='published', is_active=0, updated_at=NOW()
              WHERE id=? AND user_id=?"
         );
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, 'issssis', $hospital_id, $title, $content, $rating, $treatments, $post_edit_id, $user_id);
             if (mysqli_stmt_execute($stmt)) {
                 $review_id = $post_edit_id;
+
+                $old_hospital_id = (int)($edit_review['hospital_id'] ?? $hospital_id);
+                foreach (array_unique([$old_hospital_id, $hospital_id]) as $rating_hospital_id) {
+                    if ($rating_hospital_id <= 0) continue;
+                    mysqli_query($connect, "UPDATE gangnamunni_hospitals SET
+                        review_count=(SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id={$rating_hospital_id} AND is_active=1),
+                        rating=(SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))),0) FROM hospital_reviews WHERE hospital_id={$rating_hospital_id} AND is_active=1)
+                        WHERE id={$rating_hospital_id}");
+                }
 
                 if (!empty($_POST['treatment_ids'])) {
                     require_once __DIR__ . '/includes/treatment_review_scorer.php';
@@ -245,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $booking_id_val = $booking_id > 0 ? $booking_id : null;
         $stmt = mysqli_prepare($connect,
             "INSERT INTO hospital_reviews (hospital_id, user_id, user_name, title, content, rating, treatments, booking_id, review_status, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, NOW())"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', 0, NOW())"
         );
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, 'issssssi', $hospital_id, $user_id, $user_name, $title, $content, $rating, $treatments, $booking_id_val);

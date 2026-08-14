@@ -7,10 +7,23 @@ $member_id = get_gangnamunni_member_id();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     $rid = intval($_POST['review_id'] ?? 0);
     if ($rid > 0) {
+        $deleted_review = null;
+        $lookup = mysqli_prepare($connect, "SELECT hospital_id, is_active FROM hospital_reviews WHERE id=? AND user_id=?");
+        mysqli_stmt_bind_param($lookup, 'is', $rid, $member_id);
+        mysqli_stmt_execute($lookup);
+        $deleted_review = mysqli_fetch_assoc(mysqli_stmt_get_result($lookup));
+        mysqli_stmt_close($lookup);
         $stmt = mysqli_prepare($connect, "UPDATE hospital_reviews SET is_active=0 WHERE id=? AND user_id=?");
         mysqli_stmt_bind_param($stmt, 'is', $rid, $member_id);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
+        if (!empty($deleted_review['is_active'])) {
+            $hid = (int)$deleted_review['hospital_id'];
+            mysqli_query($connect, "UPDATE gangnamunni_hospitals SET
+                review_count=(SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id={$hid} AND is_active=1),
+                rating=(SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))),0) FROM hospital_reviews WHERE hospital_id={$hid} AND is_active=1)
+                WHERE id={$hid}");
+        }
     }
 }
 

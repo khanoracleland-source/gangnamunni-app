@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     SELECT r.hospital_id,
                            COUNT(*) AS cnt,
                            ROUND(AVG(r.rating), 2) AS avg_r
-                    FROM gangnamunni_reviews r
+                    FROM hospital_reviews r
                     WHERE r.is_active = 1{$date_cond_reviews}
                     GROUP BY r.hospital_id
                 ) rev ON rev.hospital_id = h.id

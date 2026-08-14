@@ -20,7 +20,7 @@ $action = $_GET['action'] ?? $_POST['action'] ?? '';
 switch ($action) {
 
 case 'db_stats':
-    $tables = ['gangnamunni_hospitals','gangnamunni_reviews','gangnamunni_tips','gangnamunni_events',
+    $tables = ['gangnamunni_hospitals','hospital_reviews','gangnamunni_tips','gangnamunni_events',
                'gangnamunni_ads','gangnamunni_bookings','gangnamunni_consultations','gangnamunni_promos',
                'gangnamunni_columns','gangnamunni_doctors','gangnamunni_members','gangnamunni_treatments',
                'gangnamunni_settings_log'];
@@ -94,7 +94,7 @@ case 'sample_create':
         }
     } elseif ($type === 'reviews') {
         for ($i = 1; $i <= 3; $i++) {
-            $r = mysqli_query($connect, "INSERT INTO gangnamunni_reviews (hospital_id, hospital_name, author_name, rating, title, content, status) VALUES (1, 'Sample Hospital', 'Tester$i', " . (3 + $i) . ", 'Sample Review $i', 'This is a test review content.', 'approved')");
+            $r = mysqli_query($connect, "INSERT INTO hospital_reviews (hospital_id, user_name, rating, title, content, review_status, is_active) VALUES (1, 'Tester$i', " . min(5, 3 + $i) . ", 'Sample Review $i', 'This is a test review content.', 'published', 0)");
             if ($r) $count++;
         }
     } elseif ($type === 'events') {
@@ -110,7 +110,7 @@ case 'sample_delete':
     $deleted = [];
     $r = mysqli_query($connect, "DELETE FROM gangnamunni_hospitals WHERE name LIKE 'Sample Hospital%'");
     $deleted['hospitals'] = mysqli_affected_rows($connect);
-    $r = mysqli_query($connect, "DELETE FROM gangnamunni_reviews WHERE author_name LIKE 'Tester%' AND title LIKE 'Sample%'");
+    $r = mysqli_query($connect, "DELETE FROM hospital_reviews WHERE user_name LIKE 'Tester%' AND title LIKE 'Sample%'");
     $deleted['reviews'] = mysqli_affected_rows($connect);
     $r = mysqli_query($connect, "DELETE FROM gangnamunni_events WHERE title LIKE 'Sample Event%'");
     $deleted['events'] = mysqli_affected_rows($connect);

@@ -141,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                             // 콘텐츠 유형별 비활성화 테이블 매핑
                             $deactivate_map = [
-                                'review'    => ['table' => 'gangnamunni_reviews',         'col' => 'is_active'],
+                                'review'    => ['table' => 'hospital_reviews',            'col' => 'is_active'],
                                 'qna'       => ['table' => 'gangnamunni_qna',             'col' => 'is_active'],
                                 'community' => ['table' => 'gangnamunni_community',       'col' => 'is_active'],
                                 'comment'   => ['table' => 'gangnamunni_comments',        'col' => 'is_active'],

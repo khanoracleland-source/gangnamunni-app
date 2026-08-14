@@ -192,8 +192,8 @@ function reviews_recalc_hospital($db, $hids) {
         if ($hid <= 0) continue;
         $db->execute(
             "UPDATE gangnamunni_hospitals SET
-                review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published'),
-                rating = (SELECT COALESCE(AVG(rating), 0) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published')
+                review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1),
+                rating = (SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))), 0) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1)
              WHERE id = ?",
             [$hid, $hid, $hid]
         );
@@ -207,12 +207,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         // 적립/통계 처리를 위해 상태 변경 전 대상 후기 정보를 조회(이미 published 였는지 판별)
-        $rows = $db->fetchAll("SELECT id, hospital_id, user_id, review_status FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
+        $rows = $db->fetchAll("SELECT id, hospital_id, user_id, review_status, is_active FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
         $db->execute("UPDATE hospital_reviews SET review_status = 'published', is_active = 1 WHERE id IN ({$placeholders})", $ids);
         $awarded = 0; $hids = [];
         foreach ($rows as $r) {
             $hids[] = $r['hospital_id'];
-            if (($r['review_status'] ?? '') !== 'published' && reviews_award_point($connect, $r, (int)$r['id']) > 0) $awarded++;
+            if (empty($r['is_active']) && reviews_award_point($connect, $r, (int)$r['id']) > 0) $awarded++;
         }
         reviews_recalc_hospital($db, $hids);
         $message = count($ids) . "개 후기가 승인되었습니다." . ($awarded > 0 ? " ({$awarded}건 적립)" : "");
@@ -226,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
     if (!empty($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $rows = $db->fetchAll("SELECT id, hospital_id, review_status FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
-        $db->execute("UPDATE hospital_reviews SET review_status = 'rejected', is_active = 0 WHERE id IN ({$placeholders})", $ids);
+        $db->execute("UPDATE hospital_reviews SET review_status = 'published', is_active = 0 WHERE id IN ({$placeholders})", $ids);
         $hids = [];
         foreach ($rows as $r) {
             $hids[] = $r['hospital_id'];
@@ -260,13 +260,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
 // api/admin/approve_review.php 는 그누보드 회원세션(ss_mb_id/레벨10) 기준이라 강남언니 관리자 세션과 맞지 않아 여기서 처리.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), ['approve_one', 'reject_one'], true)) {
     $rid = intval($_POST['review_id'] ?? 0);
-    $review = $rid > 0 ? $db->fetchOne("SELECT id, hospital_id, user_id, review_status FROM hospital_reviews WHERE id = ?", [$rid]) : null;
+    $review = $rid > 0 ? $db->fetchOne("SELECT id, hospital_id, user_id, review_status, is_active FROM hospital_reviews WHERE id = ?", [$rid]) : null;
     if ($review && !review_in_scope($db, $rid, $review_hospital_ids)) {
         $error = '접근 권한이 없는 후기입니다.';
         $review = null;
     }
     if ($review) {
-        $was_published = ($review['review_status'] === 'published');
+        $was_published = !empty($review['is_active']);
         if ($_POST['action'] === 'approve_one') {
             $db->execute("UPDATE hospital_reviews SET review_status = 'published', is_active = 1, updated_at = NOW() WHERE id = ?", [$rid]);
             $message = "후기 #{$rid}이(가) 승인되었습니다.";
@@ -276,7 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
                 if ($pt > 0) $message .= " ({$pt}P 지급)";
             }
         } else {
-            $db->execute("UPDATE hospital_reviews SET review_status = 'rejected', is_active = 0, updated_at = NOW() WHERE id = ?", [$rid]);
+            $db->execute("UPDATE hospital_reviews SET review_status = 'published', is_active = 0, updated_at = NOW() WHERE id = ?", [$rid]);
             $message = "후기 #{$rid}이(가) 거부되었습니다.";
             // 이미 지급했던 적립이 있으면 회수(멱등)
             if ($was_published) reviews_revoke_point($connect, $rid);
@@ -285,8 +285,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
         if ($hid > 0) {
             $db->execute(
                 "UPDATE gangnamunni_hospitals SET
-                    review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published'),
-                    rating = (SELECT COALESCE(AVG(rating), 0) FROM hospital_reviews WHERE hospital_id = ? AND review_status = 'published')
+                    review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1),
+                    rating = (SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))), 0) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1)
                  WHERE id = ?",
                 [$hid, $hid, $hid]
             );

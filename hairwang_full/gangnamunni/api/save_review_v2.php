@@ -106,14 +106,14 @@ try {
 } catch (Exception $e) {}
 
 // AI 검수 실패 시 자동 승인 불가
-$is_active = 1;
+$is_active = 0;
 $review_status = 'published';
 if ($ai_check && !$ai_check['passed']) {
     $is_active = 0;
-    $review_status = 'pending';
+    $review_status = 'published';
 } elseif (!$auto_approve) {
     $is_active = 0;
-    $review_status = 'pending';
+    $review_status = 'published';
 }
 
 try {
@@ -122,7 +122,7 @@ try {
 
     if ($review_id > 0) {
         // 수정 모드
-        $existing = $db->fetchOne("SELECT user_name FROM hospital_reviews WHERE id = ? AND is_active IN (0,1)", [$review_id]);
+        $existing = $db->fetchOne("SELECT user_name, hospital_id, is_active FROM hospital_reviews WHERE id = ?", [$review_id]);
         if (!$existing) jsonError('후기를 찾을 수 없습니다.', 404);
         requireOwnership($existing['user_name'] ?? '', $authUser);
 
@@ -133,7 +133,7 @@ try {
                 rating_wait = ?, rating_cost = ?, rating_recovery = ?,
                 doctor_id = ?, doctor_name = ?,
                 procedure_date = ?, procedure_cost = ?,
-                treatments = ?, review_status = ?,
+                treatments = ?, review_status = ?, is_active = 0,
                 ai_score = ?, updated_at = NOW()
              WHERE id = ?",
             [$title, $content, $editor_content,
@@ -145,6 +145,16 @@ try {
              $ai_check ? $ai_check['score'] : null, $review_id]
         );
         $db->execute("DELETE FROM review_images WHERE review_id = ?", [$review_id]);
+        if (!empty($existing['is_active'])) {
+            $old_hospital_id = (int)$existing['hospital_id'];
+            $db->execute(
+                "UPDATE gangnamunni_hospitals SET
+                    review_count=(SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id=? AND is_active=1),
+                    rating=(SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))),0) FROM hospital_reviews WHERE hospital_id=? AND is_active=1)
+                 WHERE id=?",
+                [$old_hospital_id, $old_hospital_id, $old_hospital_id]
+            );
+        }
     } else {
         // 신규
         $hospital = $db->fetchOne("SELECT name FROM gangnamunni_hospitals WHERE id = ?", [$hospital_id]);
@@ -175,6 +185,9 @@ try {
         );
         $review_id = $db->lastInsertId();
 
+        // Inactive reviews do not affect the cached hospital rating.
+        if (false) {
+
         // 병원 통계 업데이트 (활성 후기만)
         $db->execute(
             "UPDATE gangnamunni_hospitals SET review_count = (
@@ -191,6 +204,7 @@ try {
     }
 
     // 이미지 저장 (카테고리 포함)
+        }
     foreach ($images as $idx => $img) {
         $img_url = is_array($img) ? ($img['url'] ?? '') : $img;
         $category = is_array($img) ? ($img['category'] ?? 'general') : 'general';

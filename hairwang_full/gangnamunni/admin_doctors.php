@@ -572,7 +572,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_begin_transaction($connect);
                 try {
                     // 예약/후기의 의사명 스냅샷은 남기고 삭제될 프로필 ID 참조만 해제한다.
-                    foreach (['gangnamunni_bookings', 'gangnamunni_reviews'] as $history_table) {
+                    foreach (['gangnamunni_bookings', 'hospital_reviews'] as $history_table) {
                         if (doctor_table_has_column($connect, $history_table, 'doctor_id')) {
                             $history_stmt = mysqli_prepare($connect, "UPDATE `{$history_table}` SET doctor_id = NULL WHERE doctor_id = ?");
                             if (!$history_stmt) throw new RuntimeException(mysqli_error($connect));

@@ -60,7 +60,7 @@ $total_count = 0;
 if ($tab === 'review') {
     // 시술후기 탭 = 승인(published)된 병원 후기(hospital_reviews) 노출
     //  → review_write.php 로 작성 후 관리자 승인된 후기가 여기에 표시된다.
-    $rev_where = "r.review_status = 'published'";
+    $rev_where = "r.is_active = 1";
     $rev_types = '';
     $rev_vals = [];
     if ($keyword !== '') {

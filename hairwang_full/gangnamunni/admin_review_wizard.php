@@ -117,7 +117,12 @@ if (isset($_POST['ajax_action'])) {
             $reason = trim($_POST['reason'] ?? '');
             if ($id <= 0) throw new Exception('review_id 필요');
             if (!review_in_scope($db, $id, $is_editor_scope, $scope_hospital_id)) throw new Exception('접근 권한이 없는 후기입니다.');
-            $db->execute("UPDATE hospital_reviews SET is_active = 0, review_status = 'rejected', updated_at = NOW() WHERE id = ?", [$id]);
+            $review = $db->fetchOne("SELECT hospital_id, is_active FROM hospital_reviews WHERE id = ?", [$id]);
+            $db->execute("UPDATE hospital_reviews SET is_active = 0, review_status = 'published', updated_at = NOW() WHERE id = ?", [$id]);
+            if (!empty($review['is_active'])) {
+                $hid = (int)$review['hospital_id'];
+                $db->execute("UPDATE gangnamunni_hospitals SET review_count=(SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id=? AND is_active=1), rating=(SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))),0) FROM hospital_reviews WHERE hospital_id=? AND is_active=1) WHERE id=?", [$hid, $hid, $hid]);
+            }
             echo json_encode(['success' => true, 'message' => '거부 완료']);
 
         } elseif ($action === 'recheck') {
@@ -158,7 +163,7 @@ if (isset($_POST['ajax_action'])) {
                 }
                 echo json_encode(['success' => true, 'message' => count($ids) . '건 승인']);
             } elseif ($bulk === 'reject') {
-                $db->execute("UPDATE hospital_reviews SET is_active = 0, review_status = 'rejected', updated_at = NOW() WHERE id IN ({$placeholders})", $ids);
+                $db->execute("UPDATE hospital_reviews SET is_active = 0, review_status = 'published', updated_at = NOW() WHERE id IN ({$placeholders})", $ids);
                 echo json_encode(['success' => true, 'message' => count($ids) . '건 거부']);
             } elseif ($bulk === 'delete') {
                 $db->execute("DELETE FROM review_images WHERE review_id IN ({$placeholders})", $ids);

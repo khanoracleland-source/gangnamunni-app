@@ -36,7 +36,7 @@ if ($res_k && $rk = mysqli_fetch_assoc($res_k)) $kakao_key = $rk['setting_value'
 $stat_hospitals = 0; $stat_reviews = 0;
 $res = mysqli_query($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_hospitals WHERE is_active=1");
 if ($res && $row = mysqli_fetch_assoc($res)) $stat_hospitals = $row['cnt'];
-$res2 = mysqli_query($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_reviews");
+$res2 = mysqli_query($connect, "SELECT COUNT(*) as cnt FROM hospital_reviews WHERE is_active=1");
 if ($res2 && $row2 = mysqli_fetch_assoc($res2)) $stat_reviews = $row2['cnt'];
 
 // 카테고리

@@ -83,7 +83,7 @@ $total_pages = 1;
 
 if ($reviews_table_exists) {
     // WHERE 절 구성
-    $where_clauses = ["r.review_status = 'published'"];
+    $where_clauses = ["r.is_active = 1"];
     $bind_types = '';
     $bind_values = [];
 
