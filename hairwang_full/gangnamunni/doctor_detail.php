@@ -14,7 +14,19 @@ if ($doctor_id <= 0) {
 }
 
 // 의사 정보 조회
-$stmt = $connect->prepare("SELECT d.*, h.name as hospital_name, h.address as hospital_address, h.phone as hospital_phone, COALESCE(NULLIF(h.main_image_url, ''), NULLIF(h.profile_image_url, '')) as hospital_image, h.rating as hospital_rating, h.review_count as hospital_review_count, h.ad_grade as hospital_ad_grade
+$stmt = $connect->prepare("SELECT d.*, h.name as hospital_name, h.address as hospital_address, h.phone as hospital_phone,
+    COALESCE(
+        (SELECT NULLIF(hi.image_url, '')
+         FROM hospital_images hi
+         WHERE hi.hospital_id = h.id
+           AND hi.is_active = 1
+           AND hi.image_type = 'main'
+         ORDER BY hi.sort_order ASC, hi.id ASC
+         LIMIT 1),
+        NULLIF(h.main_image_url, ''),
+        NULLIF(h.profile_image_url, '')
+    ) as hospital_image,
+    h.rating as hospital_rating, h.review_count as hospital_review_count, h.ad_grade as hospital_ad_grade
     FROM gangnamunni_doctors d
     LEFT JOIN gangnamunni_hospitals h ON d.hospital_id = h.id
     WHERE d.id = ?");
