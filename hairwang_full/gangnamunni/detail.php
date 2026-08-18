@@ -9,8 +9,6 @@ require_once __DIR__ . '/includes/init.php';
 // 앱 모드 감지 (?app=1 파라미터)
 $is_app_mode = isset($_GET['app']) && $_GET['app'] == '1';
 require_once __DIR__ . '/includes/recently_viewed.php';
-require_once __DIR__ . '/includes/before_after_gallery.php';
-require_once __DIR__ . '/includes/social_share.php';
 require_once __DIR__ . '/includes/wishlist_button.php';
 require_once __DIR__ . '/includes/functions.php';
 
@@ -23,7 +21,6 @@ $hospital_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
 // 시술/가격 데이터 로드
 $treatments = [];
-$treatment_categories = [];
 if (!empty($hospital_id)) {
     $stmt = $connect->prepare("SELECT * FROM gangnamunni_treatments WHERE hospital_id = ? AND is_active = 1 ORDER BY category, sort_order, name");
     if ($stmt) {
@@ -32,10 +29,6 @@ if (!empty($hospital_id)) {
         $result_treat = $stmt->get_result();
         while ($row = $result_treat->fetch_assoc()) {
             $treatments[] = $row;
-            $cat = $row['category'] ?: '기타';
-            if (!in_array($cat, $treatment_categories)) {
-                $treatment_categories[] = $cat;
-            }
         }
         $stmt->close();
     }
@@ -403,25 +396,6 @@ if ($current_tab === 'reviews') {
     }
 }
 
-// 이미지 추출 함수
-function extractImageFromHtml($file_path) {
-    if (!file_exists($file_path)) return null;
-
-    $html = file_get_contents($file_path);
-
-    // og:image 메타 태그에서 이미지 추출
-    if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\'](.*?)["\']/i', $html, $matches)) {
-        return $matches[1];
-    }
-
-    // 첫 번째 img 태그에서 이미지 추출
-    if (preg_match('/<img[^>]+src=["\'](.*?)["\']/i', $html, $matches)) {
-        return $matches[1];
-    }
-
-    return null;
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="ko">
@@ -611,6 +585,102 @@ function extractImageFromHtml($file_path) {
         .gallery-dot.active {
             background: var(--bs-body-bg, #fff);
             transform: scale(1.3);
+        }
+
+        /* 시술 상세 이미지 확대 모달 */
+        .treatment-image img {
+            cursor: zoom-in;
+        }
+        .treatment-image-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 56px 16px 24px;
+            background: rgba(0, 0, 0, 0.92);
+            overflow: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            touch-action: none;
+        }
+        .treatment-image-modal.show {
+            display: flex;
+        }
+        .treatment-image-modal.image-zoomed {
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+        .treatment-image-modal img {
+            display: block;
+            max-width: 100%;
+            max-height: calc(100vh - 80px);
+            object-fit: contain;
+            cursor: zoom-in;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-drag: none;
+            transition: width 0.2s ease;
+        }
+        .treatment-image-modal img.zoomed {
+            max-width: none;
+            max-height: none;
+            width: auto;
+            cursor: zoom-out;
+        }
+        .treatment-image-zoom-controls {
+            position: fixed;
+            left: 50%;
+            bottom: max(20px, env(safe-area-inset-bottom));
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px;
+            border-radius: 24px;
+            background: rgba(20, 20, 20, 0.78);
+            backdrop-filter: blur(6px);
+            transform: translateX(-50%);
+        }
+        .treatment-image-zoom-controls button {
+            width: 38px;
+            height: 38px;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .treatment-image-zoom-controls button:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+        .treatment-image-zoom-value {
+            width: 54px;
+            color: #fff;
+            font-size: 13px;
+            text-align: center;
+        }
+        .treatment-image-modal-close {
+            position: fixed;
+            top: max(14px, env(safe-area-inset-top));
+            right: 16px;
+            z-index: 10001;
+            width: 40px;
+            height: 40px;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+            font-size: 28px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        body.treatment-image-modal-open {
+            overflow: hidden;
         }
 
         /* 병원 정보 */
@@ -838,199 +908,6 @@ function extractImageFromHtml($file_path) {
 
         .tab-pane.active {
             display: block;
-        }
-
-        /* 이벤트 탭 */
-        .sort-filter {
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .sort-dropdown {
-            position: relative;
-        }
-
-        .sort-btn {
-            padding: 8px 16px;
-            background: var(--color-bg-white, #fff);
-            border: 1px solid var(--color-border);
-            border-radius: 6px;
-            font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1));
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .sort-options {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            margin-top: 4px;
-            background: var(--color-bg-white, #fff);
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            min-width: 150px;
-            display: none;
-            z-index: 10;
-        }
-
-        .sort-options.show {
-            display: block;
-        }
-
-        .sort-option {
-            display: block;
-            width: 100%;
-            padding: 12px 16px;
-            background: none;
-            border: none;
-            text-align: left;
-            font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1));
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .sort-option:hover {
-            background: var(--color-bg-light);
-        }
-
-        .sort-option.active {
-            color: var(--color-primary);
-            font-weight: 600;
-        }
-
-        .event-list {
-            display: grid;
-            gap: 20px;
-        }
-
-        .event-card {
-            position: relative;
-            background: var(--color-bg-white, #fff);
-            border: 1px solid var(--color-border, #f0f0f0);
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            transition: box-shadow 0.2s ease;
-        }
-
-        .event-card:hover {
-            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-        }
-
-        .event-card-link {
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            align-items: stretch;
-        }
-
-        .event-thumbnail {
-            position: relative;
-            width: 130px;
-            flex-shrink: 0;
-            align-self: stretch;
-            min-height: 130px;
-            background: var(--color-bg-light);
-            overflow: hidden;
-        }
-
-        .event-thumbnail img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .event-badge {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            background: rgba(0, 0, 0, 0.55);
-            -webkit-backdrop-filter: blur(4px);
-            backdrop-filter: blur(4px);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 8px;
-            font-size: calc(11px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: 500;
-            letter-spacing: 0.3px;
-        }
-
-        .discount-badge {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: var(--color-primary, #AE1932);
-            color: white;
-            padding: 5px 11px;
-            border-radius: 999px;
-            font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: 700;
-            box-shadow: 0 2px 8px rgba(174,25,50,0.35);
-        }
-
-        .event-info {
-            flex: 1;
-            min-width: 0;
-            padding: 14px;
-        }
-
-        .event-title {
-            font-size: calc(16px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: 700;
-            margin-bottom: 10px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .event-price-row {
-            display: flex;
-            align-items: baseline;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-bottom: 6px;
-        }
-
-        .event-price {
-            font-size: 14px ;
-            font-weight: 800;
-            color: var(--color-primary);
-        }
-
-        .original-price {
-            font-size: 12px;
-            color: var(--color-text-muted);
-            text-decoration: line-through;
-        }
-
-        .event-location {
-            font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1));
-            color: var(--color-text-muted);
-            margin-bottom: 12px;
-        }
-
-        .event-rating {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1));
-        }
-
-        .kakao-chat-btn {
-            width: 100%;
-            padding: 12px;
-            background: var(--color-kakao);
-            color: #000;
-            border: none;
-            border-radius: 8px;
-            font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1));
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 12px;
         }
 
         /* 시술목록: 병원 상세 시안의 단순한 가격 카드 */
@@ -1491,20 +1368,6 @@ function extractImageFromHtml($file_path) {
             flex-shrink: 0;
         }
     
-    /* AI 리뷰 요약 */
-    .ai-review-section { padding:20px; margin:16px 0; background:var(--bs-tertiary-bg,#f8f9fa); border-radius:14px; }
-    .ai-review-section h3 { font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; margin-bottom:12px; }
-    .ai-keywords { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
-    .ai-keyword { padding:4px 12px; border-radius:20px; background:var(--bs-body-bg,#fff); border:1px solid var(--bs-border-color,#ddd); font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1)); color:var(--bs-body-color); }
-    .ai-summary-text { font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1)); line-height:1.6; color:var(--bs-secondary-color,#666); }
-    .ai-stats { display:flex; gap:16px; margin-top:10px; font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1)); }
-    .ai-stats span { display:flex; align-items:center; gap:4px; }
-    /* 쿠폰 배너 */
-    .coupon-banner { margin:16px 0; padding:14px 20px; background:linear-gradient(135deg,#AE1932,#a855f7); border-radius:12px; color:#fff; display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
-    .coupon-banner:hover { opacity:0.95; }
-    .coupon-banner .coupon-text { font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:600; }
-    .coupon-banner .coupon-sub { font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1)); opacity:0.85; margin-top:2px; }
-    .coupon-banner .coupon-icon { font-size:calc(28px * var(--fs-scale,1) * var(--fs-page,1)); }
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
@@ -1812,6 +1675,10 @@ function extractImageFromHtml($file_path) {
                         <img src="<?php echo htmlspecialchars($ti['image_url'], ENT_QUOTES); ?>"
                              alt="<?php echo htmlspecialchars($matched_treatment['name'] . ' 상세 이미지 ' . ($ti_idx + 1), ENT_QUOTES); ?>"
                              loading="lazy"
+                             role="button"
+                             tabindex="0"
+                             onclick="openTreatmentImageModal(this)"
+                             onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); openTreatmentImageModal(this); }"
                              style="width:100%; display:block; background:var(--color-bg-light);">
                         <?php if (!empty($ti['caption'])): ?>
                         <figcaption style="padding:6px 2px 0; font-size:12px; color:var(--color-text-secondary);"><?php echo htmlspecialchars($ti['caption']); ?></figcaption>
@@ -2316,6 +2183,17 @@ function extractImageFromHtml($file_path) {
         </div>
     </div>
 
+    <!-- 시술 상세 이미지 확대 모달 -->
+    <div class="treatment-image-modal" id="treatmentImageModal" role="dialog" aria-modal="true" aria-label="시술 상세 이미지" onclick="handleTreatmentImageModalBackdrop(event)">
+        <button type="button" class="treatment-image-modal-close" aria-label="닫기" onclick="closeTreatmentImageModal()">×</button>
+        <img id="treatmentImageModalImage" src="" alt="">
+        <div class="treatment-image-zoom-controls" onclick="event.stopPropagation()">
+            <button type="button" id="treatmentZoomOut" aria-label="축소" onclick="changeTreatmentImageZoom(-0.5)">−</button>
+            <span class="treatment-image-zoom-value" id="treatmentZoomValue">100%</span>
+            <button type="button" id="treatmentZoomIn" aria-label="확대" onclick="changeTreatmentImageZoom(0.5)">+</button>
+        </div>
+    </div>
+
     <script>
         // 이미지 갤러리 (터치 스와이프 + 자동 슬라이드)
         const gallery = document.getElementById('imageGallery');
@@ -2405,12 +2283,6 @@ function extractImageFromHtml($file_path) {
             galleryContainer.addEventListener('mouseleave', function() { isDragging = false; });
         }
 
-        // 카카오톡 상담
-        function openKakaoChat() {
-            document.getElementById('consultType').value = 'kakao';
-            document.getElementById('consultModal').classList.add('show');
-        }
-
         // 의사 상담
         function openDoctorConsult() {
             document.getElementById('consultType').value = 'doctor';
@@ -2421,6 +2293,162 @@ function extractImageFromHtml($file_path) {
         function closeConsultModal() {
             document.getElementById('consultModal').classList.remove('show');
         }
+
+        // 시술 상세 이미지 확대/축소 (100% ~ 400%)
+        let treatmentImageZoom = 1;
+        let treatmentImageBaseWidth = 0;
+        let treatmentTouchMode = '';
+        let treatmentTouchStartDistance = 0;
+        let treatmentTouchStartZoom = 1;
+        let treatmentTouchStartX = 0;
+        let treatmentTouchStartY = 0;
+        let treatmentTouchStartScrollLeft = 0;
+        let treatmentTouchStartScrollTop = 0;
+        let treatmentImageGestureMoved = false;
+
+        function openTreatmentImageModal(sourceImage) {
+            const modal = document.getElementById('treatmentImageModal');
+            const modalImage = document.getElementById('treatmentImageModalImage');
+            if (!modal || !modalImage || !sourceImage) return;
+
+            modalImage.src = sourceImage.currentSrc || sourceImage.src;
+            modalImage.alt = sourceImage.alt || '시술 상세 이미지';
+            modalImage.classList.remove('zoomed');
+            modalImage.style.width = '';
+            modal.classList.remove('image-zoomed');
+            modal.classList.add('show');
+            document.body.classList.add('treatment-image-modal-open');
+            treatmentImageZoom = 1;
+            const captureBaseWidth = function() {
+                treatmentImageBaseWidth = modalImage.getBoundingClientRect().width;
+                updateTreatmentImageZoom();
+            };
+            modalImage.onload = captureBaseWidth;
+            requestAnimationFrame(captureBaseWidth);
+            modal.querySelector('.treatment-image-modal-close')?.focus();
+        }
+
+        function changeTreatmentImageZoom(step) {
+            treatmentImageZoom = Math.min(4, Math.max(1, treatmentImageZoom + step));
+            updateTreatmentImageZoom();
+        }
+
+        function updateTreatmentImageZoom() {
+            const modal = document.getElementById('treatmentImageModal');
+            const modalImage = document.getElementById('treatmentImageModalImage');
+            const zoomValue = document.getElementById('treatmentZoomValue');
+            if (!modal || !modalImage) return;
+
+            const isZoomed = treatmentImageZoom > 1;
+            modalImage.classList.toggle('zoomed', isZoomed);
+            modal.classList.toggle('image-zoomed', isZoomed);
+            modalImage.style.width = isZoomed && treatmentImageBaseWidth
+                ? Math.round(treatmentImageBaseWidth * treatmentImageZoom) + 'px'
+                : '';
+            if (zoomValue) zoomValue.textContent = Math.round(treatmentImageZoom * 100) + '%';
+            const zoomOut = document.getElementById('treatmentZoomOut');
+            const zoomIn = document.getElementById('treatmentZoomIn');
+            if (zoomOut) zoomOut.disabled = treatmentImageZoom <= 1;
+            if (zoomIn) zoomIn.disabled = treatmentImageZoom >= 4;
+        }
+
+        function closeTreatmentImageModal() {
+            const modal = document.getElementById('treatmentImageModal');
+            const modalImage = document.getElementById('treatmentImageModalImage');
+            if (!modal) return;
+
+            modal.classList.remove('show');
+            modal.classList.remove('image-zoomed');
+            document.body.classList.remove('treatment-image-modal-open');
+            if (modalImage) {
+                modalImage.classList.remove('zoomed');
+                modalImage.style.width = '';
+                modalImage.src = '';
+            }
+            treatmentImageZoom = 1;
+            treatmentImageBaseWidth = 0;
+            treatmentTouchMode = '';
+            treatmentImageGestureMoved = false;
+        }
+
+        function handleTreatmentImageModalBackdrop(event) {
+            if (event.target === event.currentTarget) closeTreatmentImageModal();
+        }
+
+        document.getElementById('treatmentImageModalImage')?.addEventListener('click', function(event) {
+            event.stopPropagation();
+            if (treatmentImageGestureMoved) {
+                treatmentImageGestureMoved = false;
+                return;
+            }
+            changeTreatmentImageZoom(treatmentImageZoom >= 4 ? -3 : 0.5);
+        });
+
+        function treatmentTouchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        const treatmentImageModal = document.getElementById('treatmentImageModal');
+        treatmentImageModal?.addEventListener('touchstart', function(event) {
+            if (event.target.closest('.treatment-image-modal-close, .treatment-image-zoom-controls')) return;
+            treatmentImageGestureMoved = false;
+            if (event.touches.length === 2) {
+                treatmentTouchMode = 'pinch';
+                treatmentTouchStartDistance = treatmentTouchDistance(event.touches);
+                treatmentTouchStartZoom = treatmentImageZoom;
+                event.preventDefault();
+            } else if (event.touches.length === 1 && treatmentImageZoom > 1) {
+                treatmentTouchMode = 'pan';
+                treatmentTouchStartX = event.touches[0].clientX;
+                treatmentTouchStartY = event.touches[0].clientY;
+                treatmentTouchStartScrollLeft = treatmentImageModal.scrollLeft;
+                treatmentTouchStartScrollTop = treatmentImageModal.scrollTop;
+                event.preventDefault();
+            }
+        }, { passive: false });
+
+        treatmentImageModal?.addEventListener('touchmove', function(event) {
+            if (treatmentTouchMode === 'pinch' && event.touches.length === 2) {
+                const distance = treatmentTouchDistance(event.touches);
+                if (!treatmentTouchStartDistance) return;
+                treatmentImageZoom = Math.min(4, Math.max(1, treatmentTouchStartZoom * distance / treatmentTouchStartDistance));
+                treatmentImageGestureMoved = true;
+                updateTreatmentImageZoom();
+                event.preventDefault();
+            } else if (treatmentTouchMode === 'pan' && event.touches.length === 1) {
+                const deltaX = event.touches[0].clientX - treatmentTouchStartX;
+                const deltaY = event.touches[0].clientY - treatmentTouchStartY;
+                if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) treatmentImageGestureMoved = true;
+                treatmentImageModal.scrollLeft = treatmentTouchStartScrollLeft - deltaX;
+                treatmentImageModal.scrollTop = treatmentTouchStartScrollTop - deltaY;
+                event.preventDefault();
+            }
+        }, { passive: false });
+
+        treatmentImageModal?.addEventListener('touchend', function(event) {
+            if (event.touches.length === 1 && treatmentImageZoom > 1) {
+                treatmentTouchMode = 'pan';
+                treatmentTouchStartX = event.touches[0].clientX;
+                treatmentTouchStartY = event.touches[0].clientY;
+                treatmentTouchStartScrollLeft = treatmentImageModal.scrollLeft;
+                treatmentTouchStartScrollTop = treatmentImageModal.scrollTop;
+            } else if (event.touches.length === 0) {
+                treatmentTouchMode = '';
+                window.setTimeout(function() { treatmentImageGestureMoved = false; }, 250);
+            }
+        }, { passive: true });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && document.getElementById('treatmentImageModal')?.classList.contains('show')) {
+                closeTreatmentImageModal();
+            }
+            if (document.getElementById('treatmentImageModal')?.classList.contains('show')) {
+                if (event.key === '+' || event.key === '=') changeTreatmentImageZoom(0.5);
+                if (event.key === '-') changeTreatmentImageZoom(-0.5);
+            }
+        });
 
         // === 사진 첨부 ===
         let selectedPhotos = []; // {file, dataUrl}
@@ -2540,16 +2568,6 @@ function extractImageFromHtml($file_path) {
                 alert('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.');
             });
         }
-
-        // 외부 클릭시 드롭다운 닫기
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.sort-dropdown')) {
-                const dropdown = document.getElementById('sortOptions');
-                if (dropdown) {
-                    dropdown.classList.remove('show');
-                }
-            }
-        });
 
         // 모달 외부 클릭시 닫기
         document.getElementById('consultModal')?.addEventListener('click', function(e) {

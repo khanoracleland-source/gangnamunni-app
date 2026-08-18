@@ -978,7 +978,7 @@ body.ae-active { padding-top:0 !important; }
         <img src="assets/images/footer_seoul_beauty_logo.jpg" alt="서울미녀">
     </div>
     <div class="home-company-footer__company">
-        <p>셀럽몰 주식회사 | 대표자: 노영우</p>
+        <p>셀럽몰 주식회사 | 대표자: 최서진</p>
         <p>서울특별시 강남구 선릉로 612, 4층(삼성동, 한일빌딩)</p>
         <p>사업자등록번호: 308-81-44202</p>
         <p>통신판매업신고: 2018-서울강남-01913호</p>
