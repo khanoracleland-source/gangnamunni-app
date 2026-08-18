@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.celebhospital.patient",
+      "sha256_cert_fingerprints": [
+        "53:08:3A:95:D0:81:8C:40:FF:AF:B7:48:03:6C:F1:DE:14:EF:1B:F0:3D:0C:37:9F:3C:02:77:8A:1B:BF:64:4F",
+        "74:5A:1A:9F:1F:16:21:02:EF:7B:A3:85:99:F2:1E:96:A7:5F:28:3E:E5:94:A0:5A:6D:00:E3:79:CF:07:78:B8"
+      ]
+    }
+  }
+]

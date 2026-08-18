@@ -18,12 +18,11 @@ import '../screens/doctor/model/doctor_list_res.dart';
 import '../screens/service/service_detail_screen.dart';
 import '../screens/slots/booking_form_screen.dart';
 import '../screens/webview/startup_webview_screen.dart';
-import '../utils/app_common.dart';
 
 /// 딥링크 처리 서비스
 ///
-/// wellness:// (Android) 및 kivicare:// (iOS) URL 스킴을 처리하여
-/// 앱 내 적절한 화면으로 라우팅합니다.
+/// Custom-scheme links and verified Seoul Beauty HTTPS links are routed into
+/// the appropriate native screen or the app WebView.
 ///
 /// 지원 경로:
 ///   /dashboard         -> DashboardScreen
@@ -63,6 +62,10 @@ class DeepLinkService {
 
   /// 지원하는 URL 스킴 목록
   static const List<String> _supportedSchemes = ['wellness', 'kivicare'];
+
+  /// Only verified first-party web links may be opened inside the app.
+  static const List<String> _supportedWebHosts = ['hms.seoulbeauty.app'];
+  static const String _supportedWebPath = '/hairwang/gangnamunni';
 
   // -------------------------------------------------------
   // 초기화
@@ -139,6 +142,14 @@ class DeepLinkService {
   /// [uri] wellness:// 또는 kivicare:// 스킴의 URI
   void handleDeepLink(Uri uri) {
     debugPrint('[DeepLinkService] 딥링크 처리 시작: $uri');
+
+    // Android App Links / iOS Universal Links keep the original HTTPS URL.
+    // Opening the same URL in the WebView also preserves every query parameter
+    // (for example detail.php?id=123 or my_reviews.php?tab=done).
+    if (_isSupportedWebLink(uri)) {
+      _navigateToVerifiedWebView(uri);
+      return;
+    }
 
     // 스킴 유효성 검증
     if (!_isSupportedScheme(uri.scheme)) {
@@ -375,8 +386,7 @@ class DeepLinkService {
           debugPrint(
               '[DeepLinkService] 탭 전환 완료: ${targetTab.name} (index=$tabIndex)');
         } else {
-          debugPrint(
-              '[DeepLinkService] 탭을 찾을 수 없음: ${targetTab.name}');
+          debugPrint('[DeepLinkService] 탭을 찾을 수 없음: ${targetTab.name}');
         }
       } catch (e) {
         debugPrint('[DeepLinkService] 탭 전환 실패: $e');
@@ -405,6 +415,15 @@ class DeepLinkService {
 
     Get.to(
       () => StartupWebViewScreen(url: decodedUrl, type: type),
+    );
+  }
+
+  /// Opens a verified shared website URL as the app's active WebView screen.
+  void _navigateToVerifiedWebView(Uri uri) {
+    final String url = uri.toString();
+    debugPrint('[DeepLinkService] -> verified web URL: $url');
+    Get.offAll(
+      () => StartupWebViewScreen(url: url, type: 'general'),
     );
   }
 
@@ -457,8 +476,7 @@ class DeepLinkService {
   /// 인증 완료 후 자동으로 처리되도록 합니다.
   ///
   /// [handler] 인증 코드(code)와 상태(state)를 받는 콜백 함수
-  void registerOAuthCallback(
-      void Function(String code, String state) handler) {
+  void registerOAuthCallback(void Function(String code, String state) handler) {
     _oauthCallbackHandler = handler;
     debugPrint('[DeepLinkService] OAuth 콜백 핸들러 등록됨');
   }
@@ -476,6 +494,16 @@ class DeepLinkService {
   /// URI 스킴이 지원되는지 확인
   bool _isSupportedScheme(String scheme) {
     return _supportedSchemes.contains(scheme.toLowerCase());
+  }
+
+  bool _isSupportedWebLink(Uri uri) {
+    if (uri.scheme.toLowerCase() != 'https') return false;
+    if (!_supportedWebHosts.contains(uri.host.toLowerCase())) return false;
+
+    final path = uri.path.toLowerCase();
+    return path == _supportedWebPath ||
+        path == '$_supportedWebPath/' ||
+        path.startsWith('$_supportedWebPath/');
   }
 
   /// 경로 세그먼트의 첫 번째 요소를 정수 ID로 추출

@@ -1,0 +1,20 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "JZ4MFA48JA.com.celebhospital.patient",
+        "components": [
+          {
+            "/": "/hairwang/gangnamunni",
+            "comment": "Open the Seoul Beauty web root in the patient app"
+          },
+          {
+            "/": "/hairwang/gangnamunni/*",
+            "comment": "Open Seoul Beauty shared pages in the patient app"
+          }
+        ]
+      }
+    ]
+  }
+}
