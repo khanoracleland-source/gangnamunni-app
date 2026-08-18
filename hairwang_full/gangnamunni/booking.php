@@ -32,6 +32,7 @@ if (function_exists('getSettingValue')) {
     if ($_require_login && !$_phone_auth && !$_is_member && !$is_admin) {
         $login_return_url = '/hairwang/gangnamunni/booking.php?id=' . (isset($_GET['id']) ? intval($_GET['id']) : 0);
         if (isset($_GET['treatment_id'])) $login_return_url .= '&treatment_id=' . max(0, (int)$_GET['treatment_id']);
+        if (isset($_GET['option_id'])) $login_return_url .= '&option_id=' . max(0, (int)$_GET['option_id']);
         if (isset($_GET['treatment'])) $login_return_url .= '&treatment=' . urlencode(trim((string)$_GET['treatment']));
         header('Location: auth/login.php?url=' . urlencode($login_return_url));
         exit;
@@ -134,6 +135,9 @@ $csrf_token = $_SESSION['csrf_token'];
 $booking_option_name_column = false;
 $booking_option_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
 if ($booking_option_col && mysqli_num_rows($booking_option_col) > 0) $booking_option_name_column = true;
+$booking_body_part_column = false;
+$booking_body_part_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'body_part'");
+if ($booking_body_part_col && mysqli_num_rows($booking_body_part_col) > 0) $booking_body_part_column = true;
 
 // 예약 처리
 $booking_submitted = false;
@@ -559,15 +563,24 @@ if ($bt_stmt = mysqli_prepare($connect, $bt_sql)) {
 $booking_options = [];
 if (!empty($booking_treatments)) {
     $bt_ids = implode(',', array_map(static function ($t) { return (int)$t['hospital_treatment_id']; }, $booking_treatments));
-    $bo_sql = "SELECT id, hospital_treatment_id, " . ($booking_option_name_column ? "option_name" : "'' AS option_name") . ", dosage_value, dosage_unit, price
+    $bo_sql = "SELECT id, hospital_treatment_id, " . ($booking_option_name_column ? "option_name" : "'' AS option_name") . ", " . ($booking_body_part_column ? "body_part" : "'' AS body_part") . ", dosage_value, dosage_unit, price
                FROM gangnamunni_hospital_treatment_prices WHERE hospital_treatment_id IN ({$bt_ids}) AND price > 0
                ORDER BY sort_order ASC, id ASC";
     if ($bo_r = mysqli_query($connect, $bo_sql)) while ($bo = mysqli_fetch_assoc($bo_r)) {
-        $label = trim((string)$bo['option_name']);
+        $option_name = trim((string)$bo['option_name']);
+        $body_part = trim(str_replace('||', ', ', (string)($bo['body_part'] ?? '')));
+        $body_part_display = $body_part !== '' ? '(' . $body_part . ')' : '';
         $dosage = rtrim(rtrim(number_format((float)$bo['dosage_value'], 2, '.', ''), '0'), '.') . $bo['dosage_unit'];
+        $label_parts = array_values(array_filter([$option_name, $body_part_display], static function ($part) { return $part !== ''; }));
+        $label = implode(' · ', $label_parts);
         if ($label === '') $label = $dosage;
         $booking_options[(int)$bo['hospital_treatment_id']][] = [
-            'id' => (int)$bo['id'], 'name' => $label, 'dosage' => $dosage, 'price' => (int)$bo['price'],
+            'id' => (int)$bo['id'],
+            'name' => $label,
+            'option_name' => $option_name,
+            'body_part' => $body_part_display,
+            'dosage' => $dosage,
+            'price' => (int)$bo['price'],
         ];
     }
 }
@@ -579,8 +592,10 @@ unset($booking_treatment);
 // A treatment coming from index -> hospitals -> detail is preselected only when
 // it is still an active, bookable treatment of this hospital.
 $requested_treatment_id = max(0, (int)($_GET['treatment_id'] ?? 0));
+$requested_option_id = max(0, (int)($_GET['option_id'] ?? 0));
 $requested_treatment_name = trim((string)($_GET['treatment'] ?? ''));
 $preselected_booking_treatment = null;
+$preselected_booking_option_id = 0;
 foreach ($booking_treatments as $bookable_treatment) {
     $id_matches = $requested_treatment_id > 0
         && $bookable_treatment['treatment_id'] === $requested_treatment_id;
@@ -589,6 +604,12 @@ foreach ($booking_treatments as $bookable_treatment) {
         && hash_equals($bookable_treatment['name'], $requested_treatment_name);
     if ($id_matches || $name_matches) {
         $preselected_booking_treatment = $bookable_treatment;
+        foreach ($bookable_treatment['options'] as $bookable_option) {
+            if ((int)$bookable_option['id'] === $requested_option_id) {
+                $preselected_booking_option_id = $requested_option_id;
+                break;
+            }
+        }
         break;
     }
 }
@@ -1717,6 +1738,7 @@ $page_js = '
         $preselected_booking_treatment['name'] ?? '',
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     ) . ';
+    var initialOptionId = ' . (int)$preselected_booking_option_id . ';
 
     function findTreatment(name) {
         for (var i = 0; i < selectedTreatments.length; i++) { if (selectedTreatments[i].name === name) return selectedTreatments[i]; }
@@ -1764,12 +1786,6 @@ $page_js = '
                 items: btn.getAttribute("data-items") || ""
             };
         }
-        renderSelectedTreatments();
-    }
-    function changeItemQty(name, delta) {
-        var t = findTreatment(name);
-        if (!t) return;
-        t.qty = Math.max(1, Math.min(99, t.qty + delta));
         renderSelectedTreatments();
     }
     function removeTreatment(name) {
@@ -1840,9 +1856,17 @@ $page_js = '
                     if (radio.checked) label.classList.add("is-selected");
                     radio.onchange = function() { pickDetailOption(t.name, o.id); };
                     var copy = document.createElement("span"); copy.className = "detail-option-copy";
-                    var optionName = document.createElement("span"); optionName.className = "detail-option-name"; optionName.textContent = o.name;
-                    copy.appendChild(optionName);
-                    if (o.dosage && o.name !== o.dosage) {
+                    var optionName = document.createElement("span");
+                    optionName.className = "detail-option-name";
+                    optionName.textContent = o.option_name || (!o.body_part && !o.dosage ? (o.name || "") : "");
+                    if (optionName.textContent) copy.appendChild(optionName);
+                    if (o.body_part) {
+                        var bodyPart = document.createElement("span");
+                        bodyPart.className = "detail-option-dosage";
+                        bodyPart.textContent = o.body_part;
+                        copy.appendChild(bodyPart);
+                    }
+                    if (o.dosage) {
                         var dosage = document.createElement("span"); dosage.className = "detail-option-dosage"; dosage.textContent = o.dosage;
                         copy.appendChild(dosage);
                     }
@@ -1874,7 +1898,19 @@ $page_js = '
             options: JSON.parse(matchedButton.getAttribute("data-options") || "[]")
         });
         var initial = selectedTreatments[0];
-        if (initial.options.length === 1) { initial.option_id = initial.options[0].id; initial.option_name = initial.options[0].name; }
+        if (initialOptionId > 0) {
+            for (var i = 0; i < initial.options.length; i++) {
+                if (parseInt(initial.options[i].id, 10) === initialOptionId) {
+                    initial.option_id = initial.options[i].id;
+                    initial.option_name = initial.options[i].name;
+                    initial.price = bookingPriceWon(initial.options[i].price).toLocaleString("ko-KR") + "원";
+                    break;
+                }
+            }
+        } else if (initial.options.length === 1) {
+            initial.option_id = initial.options[0].id;
+            initial.option_name = initial.options[0].name;
+        }
         markSheetItem(matchedButton, true);
         renderSelectedTreatments();
     });

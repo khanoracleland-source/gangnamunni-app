@@ -432,10 +432,11 @@ $page_css .= '
 }
 .home-company-footer__logo {
     margin-bottom: 14px;
+    max-width: 90px;
 }
 .home-company-footer__logo img {
     display: block;
-    width: clamp(76px, 20vw, 110px);
+    width: 100%;
     max-width: 100%;
     height: auto;
 }

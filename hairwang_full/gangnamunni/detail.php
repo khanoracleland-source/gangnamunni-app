@@ -37,6 +37,7 @@ if (!empty($hospital_id)) {
 // hospitals.php에서 특정 시술(gangnamunni_treatment_master) 검색 후 넘어온 경우
 // 해당 병원의 그 시술 정보를 정확히 찾아 홈 탭 상단에 강조 표시
 $matched_treatment = null;
+$matched_treatment_options = [];
 $matched_treatment_images = []; // 이 병원 · 이 시술 전용 상세 이미지 (#시술이미지)
 $matched_treatment_query = isset($_GET['treatment']) ? trim($_GET['treatment']) : '';
 $matched_treatment_id = isset($_GET['treatment_id']) ? intval($_GET['treatment_id']) : 0;
@@ -44,12 +45,7 @@ $matched_treatment_id = isset($_GET['treatment_id']) ? intval($_GET['treatment_i
 // ID를 우선 사용해 목록에 표시된 가격과 상세 이미지가 정확히 같은 시술에 연결되게 한다.
 if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_query !== '')) {
     $mt_stmt = mysqli_prepare($connect, "
-        SELECT tm.id AS treatment_id, tm.name, tm.description,
-               (SELECT p.price
-                  FROM gangnamunni_hospital_treatment_prices p
-                 WHERE p.hospital_treatment_id = ht.id AND p.price > 0
-                 ORDER BY p.sort_order ASC, p.id ASC
-                 LIMIT 1) AS selected_price
+        SELECT ht.id AS hospital_treatment_id, tm.id AS treatment_id, tm.name, tm.description
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         WHERE ht.hospital_id = ?
@@ -66,6 +62,55 @@ if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_que
         $mt_result = mysqli_stmt_get_result($mt_stmt);
         $matched_treatment = mysqli_fetch_assoc($mt_result) ?: null;
         mysqli_stmt_close($mt_stmt);
+    }
+    // 선택한 시술의 가격 옵션을 모두 노출한다. 옵션명 컬럼이 없는 기존 DB도 호환한다.
+    if ($matched_treatment) {
+        $mt_option_name_column = false;
+        $mt_option_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
+        if ($mt_option_column_result && mysqli_num_rows($mt_option_column_result) > 0) {
+            $mt_option_name_column = true;
+        }
+        $mt_body_part_column = false;
+        $mt_body_part_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'body_part'");
+        if ($mt_body_part_column_result && mysqli_num_rows($mt_body_part_column_result) > 0) {
+            $mt_body_part_column = true;
+        }
+        $mt_representative_column = false;
+        $mt_representative_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'is_representative'");
+        if ($mt_representative_column_result && mysqli_num_rows($mt_representative_column_result) > 0) {
+            $mt_representative_column = true;
+        }
+        $mt_option_name_select = $mt_option_name_column ? 'p.option_name' : "'' AS option_name";
+        $mt_body_part_select = $mt_body_part_column ? 'p.body_part' : "'' AS body_part";
+        $mt_options_stmt = mysqli_prepare($connect, "
+            SELECT p.id AS option_id, {$mt_option_name_select}, {$mt_body_part_select}, p.dosage_value, p.dosage_unit, p.price
+            FROM gangnamunni_hospital_treatment_prices p
+            WHERE p.hospital_treatment_id = ? AND p.price > 0
+            ORDER BY " . ($mt_representative_column ? "p.is_representative DESC, " : "") . "p.price ASC, p.sort_order ASC, p.id ASC
+        ");
+        if ($mt_options_stmt) {
+            mysqli_stmt_bind_param($mt_options_stmt, 'i', $matched_treatment['hospital_treatment_id']);
+            mysqli_stmt_execute($mt_options_stmt);
+            $mt_options_result = mysqli_stmt_get_result($mt_options_stmt);
+            while ($mt_option = mysqli_fetch_assoc($mt_options_result)) {
+                $dosage_value = (float)($mt_option['dosage_value'] ?? 0);
+                $dosage_text = $dosage_value > 0
+                    ? rtrim(rtrim(number_format($dosage_value, 2, '.', ''), '0'), '.') . trim((string)($mt_option['dosage_unit'] ?? ''))
+                    : '';
+                $option_name = trim((string)($mt_option['option_name'] ?? ''));
+                $body_part = trim(str_replace('||', ', ', (string)($mt_option['body_part'] ?? '')));
+                if ($body_part !== '') $body_part = '(' . $body_part . ')';
+                $display_name_parts = array_values(array_filter([$option_name, $body_part, $dosage_text], static function ($part) {
+                    return $part !== '';
+                }));
+                $mt_option['display_name'] = implode(' · ', $display_name_parts);
+                if ($mt_option['display_name'] === '') {
+                    $mt_option['display_name'] = $matched_treatment['name'];
+                }
+                $matched_treatment_options[] = $mt_option;
+            }
+            mysqli_stmt_close($mt_options_stmt);
+        }
     }
     // 병원이 이 시술에 대해 올려둔 상세페이지 이미지 (없으면 빈 배열 → 기존 안내 문구 유지)
     if ($matched_treatment) {
@@ -282,7 +327,13 @@ if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를
     if ($procedure_option_column_result && mysqli_num_rows($procedure_option_column_result) > 0) {
         $procedure_option_name_column = true;
     }
+    $procedure_body_part_column = false;
+    $procedure_body_part_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'body_part'");
+    if ($procedure_body_part_column_result && mysqli_num_rows($procedure_body_part_column_result) > 0) {
+        $procedure_body_part_column = true;
+    }
     $procedure_option_name_select = $procedure_option_name_column ? 'p.option_name' : "'' AS option_name";
+    $procedure_body_part_select = $procedure_body_part_column ? 'p.body_part' : "'' AS body_part";
 
     $pc_stmt = mysqli_prepare($connect, "SELECT COUNT(*) AS cnt
         FROM gangnamunni_hospital_treatments ht
@@ -299,7 +350,7 @@ if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를
 
     $procedure_sql = "SELECT ht.id AS hospital_treatment_id, tm.id AS treatment_id,
             tm.name, tm.description,
-            p.id AS option_id, {$procedure_option_name_select},
+            p.id AS option_id, {$procedure_option_name_select}, {$procedure_body_part_select},
             p.dosage_value AS option_dosage_value, p.dosage_unit AS option_dosage_unit,
             p.price AS option_price
         FROM gangnamunni_hospital_treatments ht
@@ -320,7 +371,12 @@ if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를
             $dosage_text = $dosage_value > 0
                 ? rtrim(rtrim(number_format($dosage_value, 2, '.', ''), '0'), '.') . trim((string)($row['option_dosage_unit'] ?? ''))
                 : '';
-            $row['display_name'] = trim($option_name . ($option_name !== '' && $dosage_text !== '' ? ' ' : '') . $dosage_text);
+            $body_part = trim(str_replace('||', ', ', (string)($row['body_part'] ?? '')));
+            if ($body_part !== '') $body_part = '(' . $body_part . ')';
+            $display_name_parts = array_values(array_filter([$option_name, $body_part, $dosage_text], static function ($part) {
+                return $part !== '';
+            }));
+            $row['display_name'] = implode(' · ', $display_name_parts);
             if ($row['display_name'] === '') $row['display_name'] = $row['name'];
             $row['display_price'] = (int)$row['option_price'];
             $procedure_data[] = $row;
@@ -1455,7 +1511,7 @@ if ($current_tab === 'reviews') {
         var shareBtn = document.getElementById('pageShareCopyBtn');
         var shareToastTimer = null;
 
-        function fallbackCopy(text) {
+        function fallbackCopy(text, onSuccess) {
             var textarea = document.createElement('textarea');
             textarea.value = text;
             textarea.setAttribute('readonly', '');
@@ -1463,8 +1519,15 @@ if ($current_tab === 'reviews') {
             textarea.style.opacity = '0';
             document.body.appendChild(textarea);
             textarea.select();
-            var copied = document.execCommand('copy');
-            document.body.removeChild(textarea);
+            var copied = false;
+            try {
+                copied = document.execCommand('copy');
+                if (copied && typeof onSuccess === 'function') onSuccess();
+            } catch (e) {
+                copied = false;
+            } finally {
+                document.body.removeChild(textarea);
+            }
             return copied;
         }
 
@@ -1728,19 +1791,33 @@ if ($current_tab === 'reviews') {
         <!-- 검색하신 시술 (hospitals.php 시술 검색에서 넘어온 경우) — 홈 탭에서만 영업시간 아래 배치 -->
         <?php if ($matched_treatment && $current_tab === 'home'): ?>
         <div id="matched-treatment" style="scroll-margin-top:160px; margin:16px 0 4px; overflow:hidden; background:var(--color-bg-white);">
-            <!-- 선택한 시술명 + 해당 병원이 등록한 첫 번째 독립 옵션 가격 -->
+            <!-- 선택한 시술에 등록된 모든 독립 가격 옵션 -->
+            <?php if (!empty($matched_treatment_options)): ?>
+                <?php foreach ($matched_treatment_options as $matched_option): ?>
+                <?php
+                $matched_option_booking_url = 'booking.php?id=' . (int)$hospital_id
+                    . '&treatment_id=' . (int)$matched_treatment['treatment_id']
+                    . '&option_id=' . (int)$matched_option['option_id']
+                    . '&treatment=' . urlencode($matched_treatment['name']);
+                ?>
+                <a href="<?php echo htmlspecialchars($matched_option_booking_url, ENT_QUOTES, 'UTF-8'); ?>"
+                   style="padding:16px; border-bottom:1px solid var(--color-border); display:flex; align-items:baseline; justify-content:space-between; gap:16px; color:inherit; text-decoration:none; cursor:pointer;">
+                    <div style="min-width:0; font-size:20px; line-height:1.4; font-weight:700; color:#000; word-break:keep-all;">
+                        <?php echo htmlspecialchars($matched_option['display_name'], ENT_QUOTES, 'UTF-8'); ?>
+                    </div>
+                    <div style="flex-shrink:0; color:#d00000; font-size:20px; line-height:1.25; font-weight:800; white-space:nowrap;">
+                        <?php echo number_format((int)$matched_option['price']); ?><span style="margin-left:2px; color:#111; font-size:19px; font-weight:400;">원</span>
+                    </div>
+                </a>
+                <?php endforeach; ?>
+            <?php else: ?>
             <div style="padding:16px; border-bottom:1px solid var(--color-border); display:flex; align-items:baseline; justify-content:space-between; gap:16px;">
                 <div style="min-width:0; font-size:20px; line-height:1.4; font-weight:700; color:#000; word-break:keep-all;">
                     <?php echo htmlspecialchars($matched_treatment['name'], ENT_QUOTES, 'UTF-8'); ?>
                 </div>
-                <?php if ((int)($matched_treatment['selected_price'] ?? 0) > 0): ?>
-                <div style="flex-shrink:0; color:#d00000; font-size:20px; line-height:1.25; font-weight:800; white-space:nowrap;">
-                    <?php echo number_format((int)$matched_treatment['selected_price']); ?><span style="margin-left:2px; color:#111; font-size:19px; font-weight:400;">원</span>
-                </div>
-                <?php else: ?>
                 <div style="flex-shrink:0; color:var(--color-text-muted); font-size:14px; white-space:nowrap;">가격 미등록</div>
-                <?php endif; ?>
             </div>
+            <?php endif; ?>
 
             <!-- 시술 설명 -->
             <div style="padding:16px;">
@@ -2680,17 +2757,6 @@ if ($current_tab === 'reviews') {
                 fallbackCopy(addr, done);
             }
         }
-        function fallbackCopy(text, cb) {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            try { document.execCommand('copy'); cb(); } catch (e) {}
-            document.body.removeChild(ta);
-        }
-
         function toggleBusinessHours() {
             const expand = document.getElementById('businessHoursExpand');
             const icon = document.getElementById('hoursToggleIcon');
