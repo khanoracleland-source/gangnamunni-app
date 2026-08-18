@@ -975,7 +975,7 @@ body.ae-active { padding-top:0 !important; }
 
 <footer class="home-company-footer" aria-label="회사 정보">
     <div class="home-company-footer__logo">
-        <img src="assets/images/footer_seoul_beauty_logo.jpg" alt="서울미녀">
+        <img src="assets/images/logo_of_footer.png" alt="서울미녀">
     </div>
     <div class="home-company-footer__company">
         <p>셀럽몰 주식회사 | 대표자: 최서진</p>
