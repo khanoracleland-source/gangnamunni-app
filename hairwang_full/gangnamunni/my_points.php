@@ -24,7 +24,6 @@ $lq = mysqli_prepare($connect, "SELECT * FROM gangnamunni_points WHERE member_id
 if ($lq) { mysqli_stmt_bind_param($lq,'i',$mb_no); mysqli_stmt_execute($lq); $r=mysqli_stmt_get_result($lq); while($row=mysqli_fetch_assoc($r)) $logs[]=$row; mysqli_stmt_close($lq); }
 
 if (!function_exists('term')) require_once __DIR__ . '/includes/industry_terms.php';
-require_once __DIR__ . '/includes/global_nav.php';
 ?>
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="light">

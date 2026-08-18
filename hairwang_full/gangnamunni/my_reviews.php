@@ -65,6 +65,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .header{padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bs-border-color,#eee);background:var(--bs-body-bg,#fff);position:relative;}
 .header .back{width:36px;height:36px;border:none;background:none;font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1));cursor:pointer;color:inherit;position:relative;z-index:1;}
 .header h1{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;white-space:nowrap;}
+.global-nav-share{width:36px;height:36px;margin-left:auto;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--bs-body-color,#111);font-size:22px;cursor:pointer;position:relative;z-index:1;}
+.global-nav-share:hover,.global-nav-share:focus-visible{color:var(--pri,#AE1932);}
+.share-copy-toast{position:fixed;left:50%;bottom:84px;z-index:2000;transform:translate(-50%,12px);padding:10px 16px;border-radius:20px;background:rgba(20,20,20,.9);color:#fff;font-size:13px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;}
+.share-copy-toast.is-visible{opacity:1;transform:translate(-50%,0);}
 .filter-tabs{display:flex;background:var(--bs-body-bg,#fff);border-bottom:1px solid var(--bs-border-color,#eee);}
 .filter-tab{flex:1;padding:12px;text-align:center;font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;cursor:pointer;color:var(--bs-secondary-color,#888);border-bottom:2px solid transparent;text-decoration:none;}
 .filter-tab.active{color:var(--pri);border-bottom-color:var(--pri);}
@@ -87,7 +91,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .empty{text-align:center;padding:60px 20px;color:var(--bs-secondary-color);}
 </style><?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head><body>
-<div class="header"><button class="back" onclick="location.href='mypage.php'"><i class="bi bi-chevron-left"></i></button><h1>내가 작성한 후기</h1></div>
+<div class="header">
+    <button class="back" onclick="location.href='mypage.php'"><i class="bi bi-chevron-left"></i></button>
+    <h1>내가 작성한 후기</h1>
+    <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
+        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+    </button>
+</div>
+<div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
 
 <div class="filter-tabs">
     <a href="?tab=writable" class="filter-tab <?php echo $tab === 'writable' ? 'active' : ''; ?>">작성가능</a>
@@ -144,4 +155,49 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
     <?php endforeach; endif; ?>
 <?php endif; ?>
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
+<script>
+(function () {
+    var button = document.getElementById('pageShareCopyBtn');
+    var toastTimer = null;
+
+    function fallbackCopy(text) {
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        var copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return copied;
+    }
+
+    function showToast(message) {
+        var toast = document.getElementById('pageShareCopyToast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('is-visible');
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(function () {
+            toast.classList.remove('is-visible');
+        }, 1800);
+    }
+
+    if (button) {
+        button.addEventListener('click', function () {
+            var shareText = '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(shareText).then(function () {
+                    showToast('링크가 복사되었습니다.');
+                }).catch(function () {
+                    showToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
+                });
+                return;
+            }
+            showToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
+        });
+    }
+}());
+</script>
 </body></html>

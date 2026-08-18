@@ -215,6 +215,44 @@ $page_css = '
     cursor: pointer;
     text-decoration: none;
 }
+.global-nav-share {
+    width: 36px;
+    height: 36px;
+    margin-left: auto;
+    flex: 0 0 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: var(--bs-body-color, #111);
+    font-size: 22px;
+    cursor: pointer;
+}
+.global-nav-share:hover,
+.global-nav-share:focus-visible {
+    color: var(--primary-color, #AE1932);
+}
+.share-copy-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 84px;
+    z-index: 2000;
+    transform: translate(-50%, 12px);
+    padding: 10px 16px;
+    border-radius: 20px;
+    background: rgba(20, 20, 20, 0.9);
+    color: #fff;
+    font-size: 13px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.share-copy-toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
 .page-title {
     position: absolute;
     left: 50%;
@@ -398,7 +436,11 @@ include __DIR__ . '/includes/header.php';
     <div class="page-header">
         <a href="community.php" class="back-btn"><i class="bi bi-chevron-left"></i></a>
         <div class="page-title">커뮤니티</div>
+        <button type="button" class="global-nav-share" id="pageShareCopyBtn" onclick="copyPageShareLink()" aria-label="공유하기" title="공유하기">
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+        </button>
     </div>
+    <div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
 
     <div class="post-detail-container">
         <!-- 카테고리 -->
@@ -589,6 +631,41 @@ function sharePost() {
     } else {
         alert("공유 기능을 지원하지 않는 브라우저입니다.");
     }
+}
+var pageShareToastTimer = null;
+function showPageShareToast(message) {
+    var toast = document.getElementById("pageShareCopyToast");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add("is-visible");
+    window.clearTimeout(pageShareToastTimer);
+    pageShareToastTimer = window.setTimeout(function () {
+        toast.classList.remove("is-visible");
+    }, 1800);
+}
+function fallbackPageShareCopy(text) {
+    var textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    var copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return copied;
+}
+function copyPageShareLink() {
+    var shareText = "이거 완전 괜찮은 앱이야!\\n서울미녀\\n" + window.location.href;
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(shareText).then(function () {
+            showPageShareToast("링크가 복사되었습니다.");
+        }).catch(function () {
+            showPageShareToast(fallbackPageShareCopy(shareText) ? "링크가 복사되었습니다." : "링크 복사에 실패했습니다.");
+        });
+        return;
+    }
+    showPageShareToast(fallbackPageShareCopy(shareText) ? "링크가 복사되었습니다." : "링크 복사에 실패했습니다.");
 }
 ';
 

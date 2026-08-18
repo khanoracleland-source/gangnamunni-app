@@ -59,7 +59,6 @@ $nav_top_mobile = isset($connect) ? getSettingValue($connect, 'nav_top_show_mobi
 $nav_top_desktop = isset($connect) ? getSettingValue($connect, 'nav_top_show_desktop', '1') : '1';
 
 $current_page = basename($_SERVER['PHP_SELF']);
-$share_copy_enabled = in_array($current_page, ['index.php', 'community.php', 'hospitals.php'], true);
 ?>
 
 <style>
@@ -374,23 +373,15 @@ $share_copy_enabled = in_array($current_page, ['index.php', 'community.php', 'ho
     </nav>
 
     <div class="global-nav-login">
-        <?php if ($share_copy_enabled && $is_logged_in): ?>
         <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
             <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
         </button>
-        <?php endif; ?>
         <?php if (!$is_logged_in): ?>
-        <?php if ($share_copy_enabled): ?>
-        <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
-            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-        </button>
-        <?php endif; ?>
         <a href="<?php echo htmlspecialchars($login_url); ?>" class="login-btn">로그인 / <?= term('member') ?>가입</a>
         <?php endif; ?>
     </div>
 </div>
 
-<?php if ($share_copy_enabled): ?>
 <div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
 <script>
 (function () {
@@ -443,7 +434,6 @@ $share_copy_enabled = in_array($current_page, ['index.php', 'community.php', 'ho
     });
 }());
 </script>
-<?php endif; ?>
 
 <div class="global-nav-spacer"></div>
 <?php endif; ?>

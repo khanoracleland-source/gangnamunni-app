@@ -483,6 +483,48 @@ if ($current_tab === 'reviews') {
             text-decoration: none;
         }
 
+        .global-nav-share {
+            width: 36px;
+            height: 36px;
+            margin-left: auto;
+            flex: 0 0 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            background: transparent;
+            color: var(--color-text-primary, #111);
+            font-size: 22px;
+            cursor: pointer;
+        }
+
+        .global-nav-share:hover,
+        .global-nav-share:focus-visible {
+            color: var(--color-primary, #AE1932);
+        }
+
+        .share-copy-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 84px;
+            z-index: 2000;
+            transform: translate(-50%, 12px);
+            padding: 10px 16px;
+            border-radius: 20px;
+            background: rgba(20, 20, 20, 0.9);
+            color: #fff;
+            font-size: 13px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .share-copy-toast.is-visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
         .hospital-name-header {
             position: absolute;
             left: 50%;
@@ -1377,7 +1419,11 @@ if ($current_tab === 'reviews') {
     <div class="header">
         <a href="hospitals.php" id="detailBackBtn" class="back-btn"><i class="bi bi-chevron-left"></i></a>
         <div class="hospital-name-header"><?php echo htmlspecialchars($hospital['name']); ?></div>
+        <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+        </button>
     </div>
+    <div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
     <script>
     (function () {
         // 병원 목록에서 진입하면 그 전체 URL(정렬/시술/지역 포함)을 저장 —
@@ -1403,6 +1449,48 @@ if ($current_tab === 'reviews') {
                     e.preventDefault();
                     location.href = listUrl;
                 }
+            });
+        }
+
+        var shareBtn = document.getElementById('pageShareCopyBtn');
+        var shareToastTimer = null;
+
+        function fallbackCopy(text) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            var copied = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            return copied;
+        }
+
+        function showShareToast(message) {
+            var toast = document.getElementById('pageShareCopyToast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.add('is-visible');
+            window.clearTimeout(shareToastTimer);
+            shareToastTimer = window.setTimeout(function () {
+                toast.classList.remove('is-visible');
+            }, 1800);
+        }
+
+        if (shareBtn) {
+            shareBtn.addEventListener('click', function () {
+                var shareText = '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(shareText).then(function () {
+                        showShareToast('링크가 복사되었습니다.');
+                    }).catch(function () {
+                        showShareToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
+                    });
+                    return;
+                }
+                showShareToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
             });
         }
     })();
