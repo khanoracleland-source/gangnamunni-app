@@ -614,6 +614,15 @@ foreach ($booking_treatments as $bookable_treatment) {
     }
 }
 
+// 예약 화면에서 뒤로 이동할 때 사용자가 보고 있던 시술 상세 컨텍스트를 유지한다.
+// 요청값을 그대로 사용하지 않고, 현재 병원의 활성 시술로 검증된 값만 URL에 포함한다.
+$booking_back_url = 'detail.php?id=' . (int)$hospital_id;
+if ($preselected_booking_treatment !== null) {
+    $booking_back_url .= '&treatment_id=' . (int)$preselected_booking_treatment['treatment_id']
+        . '&treatment=' . urlencode($preselected_booking_treatment['name'])
+        . '#matched-treatment';
+}
+
 // 현재 병원에서 예약 가능한 패키지. 구성 시술이 모두 활성인 패키지만 노출한다.
 $booking_packages = [];
 $package_table_check = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_packages'");
@@ -2154,7 +2163,7 @@ include __DIR__ . '/includes/header.php';
 
     <!-- 페이지 헤더 -->
     <div class="page-header">
-            <a href="detail.php?id=<?php echo $hospital_id; ?>" class="back-btn" aria-label="뒤로"><i class="bi bi-chevron-left"></i></a>
+            <a href="<?php echo htmlspecialchars($booking_back_url, ENT_QUOTES, 'UTF-8'); ?>" class="back-btn" aria-label="뒤로"><i class="bi bi-chevron-left"></i></a>
             <div class="page-title"><?php echo term('booking', '예약'); ?>하기</div>
     </div>
 
