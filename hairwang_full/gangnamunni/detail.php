@@ -80,10 +80,17 @@ if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_que
         if ($mt_representative_column_result && mysqli_num_rows($mt_representative_column_result) > 0) {
             $mt_representative_column = true;
         }
+        $mt_regular_price_column = false;
+        $mt_regular_price_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'regular_price'");
+        if ($mt_regular_price_column_result && mysqli_num_rows($mt_regular_price_column_result) > 0) {
+            $mt_regular_price_column = true;
+        }
         $mt_option_name_select = $mt_option_name_column ? 'p.option_name' : "'' AS option_name";
         $mt_body_part_select = $mt_body_part_column ? 'p.body_part' : "'' AS body_part";
+        $mt_regular_price_select = $mt_regular_price_column ? 'p.regular_price' : 'p.price AS regular_price';
         $mt_options_stmt = mysqli_prepare($connect, "
-            SELECT p.id AS option_id, {$mt_option_name_select}, {$mt_body_part_select}, p.dosage_value, p.dosage_unit, p.price
+            SELECT p.id AS option_id, {$mt_option_name_select}, {$mt_body_part_select}, p.dosage_value, p.dosage_unit,
+                   {$mt_regular_price_select}, p.price
             FROM gangnamunni_hospital_treatment_prices p
             WHERE p.hospital_treatment_id = ? AND p.price > 0
             ORDER BY " . ($mt_representative_column ? "p.is_representative DESC, " : "") . "p.price ASC, p.sort_order ASC, p.id ASC
@@ -107,6 +114,11 @@ if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_que
                 if ($mt_option['display_name'] === '') {
                     $mt_option['display_name'] = $matched_treatment['name'];
                 }
+                $regular_price = (int)($mt_option['regular_price'] ?? 0);
+                $sale_price = (int)($mt_option['price'] ?? 0);
+                $mt_option['discount_rate'] = ($regular_price > $sale_price && $sale_price > 0)
+                    ? (int)round((($regular_price - $sale_price) / $regular_price) * 100)
+                    : 0;
                 $matched_treatment_options[] = $mt_option;
             }
             mysqli_stmt_close($mt_options_stmt);
@@ -334,6 +346,12 @@ if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를
     }
     $procedure_option_name_select = $procedure_option_name_column ? 'p.option_name' : "'' AS option_name";
     $procedure_body_part_select = $procedure_body_part_column ? 'p.body_part' : "'' AS body_part";
+    $procedure_regular_price_column = false;
+    $procedure_regular_price_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'regular_price'");
+    if ($procedure_regular_price_column_result && mysqli_num_rows($procedure_regular_price_column_result) > 0) {
+        $procedure_regular_price_column = true;
+    }
+    $procedure_regular_price_select = $procedure_regular_price_column ? 'p.regular_price' : 'p.price AS regular_price';
 
     $pc_stmt = mysqli_prepare($connect, "SELECT COUNT(*) AS cnt
         FROM gangnamunni_hospital_treatments ht
@@ -352,7 +370,7 @@ if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를
             tm.name, tm.description,
             p.id AS option_id, {$procedure_option_name_select}, {$procedure_body_part_select},
             p.dosage_value AS option_dosage_value, p.dosage_unit AS option_dosage_unit,
-            p.price AS option_price
+            {$procedure_regular_price_select}, p.price AS option_price
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
         INNER JOIN gangnamunni_hospital_treatment_prices p
@@ -379,6 +397,10 @@ if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를
             $row['display_name'] = implode(' · ', $display_name_parts);
             if ($row['display_name'] === '') $row['display_name'] = $row['name'];
             $row['display_price'] = (int)$row['option_price'];
+            $row['display_regular_price'] = (int)($row['regular_price'] ?? 0);
+            $row['discount_rate'] = ($row['display_regular_price'] > $row['display_price'] && $row['display_price'] > 0)
+                ? (int)round((($row['display_regular_price'] - $row['display_price']) / $row['display_regular_price']) * 100)
+                : 0;
             $procedure_data[] = $row;
         }
         mysqli_stmt_close($procedure_stmt);
@@ -686,7 +708,18 @@ if ($current_tab === 'reviews') {
         }
 
         /* 시술 상세 이미지 확대 모달 */
+        #treatment-images,
+        .treatment-image-empty {
+            width: calc(100% + 40px);
+            margin-left: -20px;
+        }
+        .treatment-image {
+            width: 100%;
+        }
         .treatment-image img {
+            width: 100%;
+            height: auto;
+            display: block;
             cursor: zoom-in;
         }
         .treatment-image-modal {
@@ -1059,6 +1092,58 @@ if ($current_tab === 'reviews') {
             color: var(--color-text-primary, #111);
             font-size: 22px;
             font-weight: 400;
+        }
+
+        .procedure-price-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .procedure-discount-rate {
+            color: var(--color-primary, #AE1932);
+            font-size: 22px;
+            line-height: 1.25;
+            font-weight: 800;
+        }
+
+        .procedure-regular-price {
+            color: var(--color-text-muted, #aaa);
+            font-size: 16px;
+            text-decoration: line-through;
+            white-space: nowrap;
+        }
+
+        .matched-option-card {
+            display: block;
+            padding: 16px 0;
+            border: 0;
+            margin-bottom: 12px;
+            color: inherit;
+            text-decoration: none;
+            background: var(--color-bg-white, #fff);
+        }
+
+        .matched-option-card:hover {
+            color: inherit;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, .06);
+        }
+
+        .matched-option-name {
+            margin-bottom: 24px;
+            font-size: 20px;
+            line-height: 1.4;
+            font-weight: 700;
+            color: var(--color-text-primary, #111);
+            word-break: keep-all;
+        }
+
+        @media (max-width: 480px) {
+            .procedure-price-row { gap: 7px; }
+            .procedure-discount-rate, .procedure-price, .procedure-price-unit { font-size: 18px; }
+            .procedure-regular-price { font-size: 14px; }
         }
 
         /* 후기 탭 */
@@ -1790,7 +1875,7 @@ if ($current_tab === 'reviews') {
 
         <!-- 검색하신 시술 (hospitals.php 시술 검색에서 넘어온 경우) — 홈 탭에서만 영업시간 아래 배치 -->
         <?php if ($matched_treatment && $current_tab === 'home'): ?>
-        <div id="matched-treatment" style="scroll-margin-top:160px; margin:16px 0 4px; overflow:hidden; background:var(--color-bg-white);">
+        <div id="matched-treatment" style="scroll-margin-top:160px; margin:16px 0 4px; overflow:visible; background:var(--color-bg-white);">
             <!-- 선택한 시술에 등록된 모든 독립 가격 옵션 -->
             <?php if (!empty($matched_treatment_options)): ?>
                 <?php foreach ($matched_treatment_options as $matched_option): ?>
@@ -1800,13 +1885,21 @@ if ($current_tab === 'reviews') {
                     . '&option_id=' . (int)$matched_option['option_id']
                     . '&treatment=' . urlencode($matched_treatment['name']);
                 ?>
-                <a href="<?php echo htmlspecialchars($matched_option_booking_url, ENT_QUOTES, 'UTF-8'); ?>"
-                   style="padding:16px; border-bottom:1px solid var(--color-border); display:flex; align-items:baseline; justify-content:space-between; gap:16px; color:inherit; text-decoration:none; cursor:pointer;">
-                    <div style="min-width:0; font-size:20px; line-height:1.4; font-weight:700; color:#000; word-break:keep-all;">
+                <?php
+                $matched_sale_price = (int)($matched_option['price'] ?? 0);
+                $matched_regular_price = (int)($matched_option['regular_price'] ?? 0);
+                $matched_discount_rate = (int)($matched_option['discount_rate'] ?? 0);
+                ?>
+                <a href="<?php echo htmlspecialchars($matched_option_booking_url, ENT_QUOTES, 'UTF-8'); ?>" class="matched-option-card">
+                    <div class="matched-option-name">
                         <?php echo htmlspecialchars($matched_option['display_name'], ENT_QUOTES, 'UTF-8'); ?>
                     </div>
-                    <div style="flex-shrink:0; color:#d00000; font-size:20px; line-height:1.25; font-weight:800; white-space:nowrap;">
-                        <?php echo number_format((int)$matched_option['price']); ?><span style="margin-left:2px; color:#111; font-size:19px; font-weight:400;">원</span>
+                    <div class="procedure-price-row">
+                        <?php if ($matched_discount_rate > 0): ?>
+                            <span class="procedure-discount-rate"><?php echo $matched_discount_rate; ?>%</span>
+                            <span class="procedure-regular-price"><?php echo number_format($matched_regular_price); ?>원</span>
+                        <?php endif; ?>
+                        <span><span class="procedure-price"><?php echo number_format($matched_sale_price); ?></span><span class="procedure-price-unit">원</span></span>
                     </div>
                 </a>
                 <?php endforeach; ?>
@@ -1820,7 +1913,7 @@ if ($current_tab === 'reviews') {
             <?php endif; ?>
 
             <!-- 시술 설명 -->
-            <div style="padding:16px;">
+            <div style="padding:16px 0;">
                 <div style="font-size:18px; font-weight:700; color: #000000; margin-bottom:8px;">시술 설명</div>
                 <?php if (!empty($matched_treatment['description'])): ?>
                 <div style="font-size:13px; color:var(--color-text-secondary); line-height:1.6;"><?php echo nl2br(htmlspecialchars($matched_treatment['description'])); ?></div>
@@ -1830,7 +1923,7 @@ if ($current_tab === 'reviews') {
             </div>
 
             <!-- 상세 정보 — 병원이 이 시술에 대해 등록한 상세페이지 이미지 (#시술이미지) -->
-            <div style="padding:16px; border-top:1px solid var(--color-border);">
+            <div style="padding:16px 0; border-top:1px solid var(--color-border);">
                 <div style="font-size:18px; font-weight:700; color: #000000; margin-bottom:10px;">상세 정보</div>
                 <?php if (!empty($matched_treatment_images)): ?>
                 <div id="treatment-images">
@@ -1855,7 +1948,7 @@ if ($current_tab === 'reviews') {
                 <button type="button" id="treatment-images-more" onclick="moreTreatmentImages(this)" style="width:100%; margin-top:12px; border:1px solid #000; background:var(--color-bg-white); color:var(--color-text-primary); padding:11px; font-size:14px; font-weight:700; cursor:pointer;">이미지 더보기 (<?php echo count($matched_treatment_images) - 1; ?>)</button>
                 <?php endif; ?>
                 <?php else: ?>
-                <div style="aspect-ratio:4/3; background:var(--color-bg-light); border:1px dashed var(--color-border); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--color-text-muted);">
+                <div class="treatment-image-empty" style="aspect-ratio:4/3; background:var(--color-bg-light); border:1px dashed var(--color-border); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--color-text-muted);">
                     <i class="bi bi-image" style="font-size:34px;"></i>
                     <span style="font-size:12px;">이미지 준비 중</span>
                 </div>
@@ -2047,6 +2140,8 @@ if ($current_tab === 'reviews') {
                 <?php foreach ($procedure_data as $procedure): ?>
                 <?php
                 $procedure_price = (int)($procedure['display_price'] ?? 0);
+                $procedure_regular_price = (int)($procedure['display_regular_price'] ?? 0);
+                $procedure_discount_rate = (int)($procedure['discount_rate'] ?? 0);
                 $procedure_url = 'detail.php?id=' . $hospital_id
                     . '&treatment_id=' . (int)($procedure['treatment_id'] ?? 0)
                     . '&treatment=' . urlencode($procedure['name'] ?? '');
@@ -2055,8 +2150,12 @@ if ($current_tab === 'reviews') {
                     <h4 class="procedure-name"><?php echo htmlspecialchars($procedure['display_name'] ?? $procedure['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?></h4>
                     <span class="procedure-vat">VAT 포함</span>
                     <?php if ($procedure_price > 0): ?>
-                    <div>
-                        <span class="procedure-price"><?php echo number_format($procedure_price); ?></span><span class="procedure-price-unit">원</span>
+                    <div class="procedure-price-row">
+                        <?php if ($procedure_discount_rate > 0): ?>
+                            <span class="procedure-discount-rate"><?php echo $procedure_discount_rate; ?>%</span>
+                            <span class="procedure-regular-price"><?php echo number_format($procedure_regular_price); ?>원</span>
+                        <?php endif; ?>
+                        <span><span class="procedure-price"><?php echo number_format($procedure_price); ?></span><span class="procedure-price-unit">원</span></span>
                     </div>
                     <?php else: ?>
                     <div class="procedure-price" style="font-size:18px;">가격 문의</div>
