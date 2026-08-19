@@ -1097,9 +1097,22 @@ if ($current_tab === 'reviews') {
         .procedure-price-row {
             display: flex;
             align-items: baseline;
-            justify-content: flex-end;
+            justify-content: flex-start;
+            width: 100%;
             flex-wrap: wrap;
             gap: 12px;
+            text-align: left;
+        }
+
+        .procedure-price-value {
+            margin-left: 0;
+            white-space: nowrap;
+        }
+
+        .procedure-card > .procedure-price {
+            display: block;
+            width: 100%;
+            text-align: left;
         }
 
         .procedure-discount-rate {
@@ -1142,7 +1155,8 @@ if ($current_tab === 'reviews') {
 
         @media (max-width: 480px) {
             .procedure-price-row { gap: 7px; }
-            .procedure-discount-rate, .procedure-price, .procedure-price-unit { font-size: 18px; }
+            .procedure-discount-rate { font-size: 18px; }
+            .procedure-price, .procedure-price-unit { font-size: 22px; }
             .procedure-regular-price { font-size: 14px; }
         }
 
@@ -1899,7 +1913,7 @@ if ($current_tab === 'reviews') {
                             <span class="procedure-discount-rate"><?php echo $matched_discount_rate; ?>%</span>
                             <span class="procedure-regular-price"><?php echo number_format($matched_regular_price); ?>원</span>
                         <?php endif; ?>
-                        <span><span class="procedure-price"><?php echo number_format($matched_sale_price); ?></span><span class="procedure-price-unit">원</span></span>
+                        <span class="procedure-price-value"><span class="procedure-price"><?php echo number_format($matched_sale_price); ?></span><span class="procedure-price-unit">원</span></span>
                     </div>
                 </a>
                 <?php endforeach; ?>
@@ -2155,7 +2169,7 @@ if ($current_tab === 'reviews') {
                             <span class="procedure-discount-rate"><?php echo $procedure_discount_rate; ?>%</span>
                             <span class="procedure-regular-price"><?php echo number_format($procedure_regular_price); ?>원</span>
                         <?php endif; ?>
-                        <span><span class="procedure-price"><?php echo number_format($procedure_price); ?></span><span class="procedure-price-unit">원</span></span>
+                        <span class="procedure-price-value"><span class="procedure-price"><?php echo number_format($procedure_price); ?></span><span class="procedure-price-unit">원</span></span>
                     </div>
                     <?php else: ?>
                     <div class="procedure-price" style="font-size:18px;">가격 문의</div>
@@ -2332,6 +2346,7 @@ if ($current_tab === 'reviews') {
         ?>
         <script>
         document.addEventListener('DOMContentLoaded', function(){
+            if (!window.matchMedia('(max-width: 640px)').matches) return;
             var el = document.getElementById(<?php echo json_encode($tab_intro_id); ?>);
             if (!el) return;
             setTimeout(function(){

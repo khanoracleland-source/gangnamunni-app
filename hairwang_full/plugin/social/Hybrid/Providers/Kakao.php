@@ -21,7 +21,7 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
     // Ask Kakao for the fields used by the local member profile. Kakao only
     // returns fields enabled as consent items for the application and accepted
     // by the user.
-    public $scope = "profile_nickname,account_email,name,phone_number,birthyear,birthday,age_range";
+    public $scope = "profile_nickname,account_email,name,phone_number,birthyear,birthday";
 
     /**
     * initialization
@@ -98,8 +98,7 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
             'kakao_account.name',
             'kakao_account.phone_number',
             'kakao_account.birthyear',
-            'kakao_account.birthday',
-            'kakao_account.age_range'
+            'kakao_account.birthday'
         );
         $response = $this->request(
             $this->api->api_base_url . 'user/me',
