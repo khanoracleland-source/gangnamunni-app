@@ -62,6 +62,7 @@ $admin_menus = [
         ['url' => 'admin_content_hub.php', 'label' => '콘텐츠 허브', 'icon' => 'bi-collection-fill', 'key' => 'content_hub'],
         ['url' => 'admin_recommend.php', 'label' => '메인 추천 병원', 'icon' => 'bi-star', 'key' => 'recommend'],
         ['url' => 'admin_hospitals.php', 'label' => term('business') . ' 관리', 'icon' => 'bi-building', 'key' => 'hospitals'],
+        ['url' => 'admin_hospital_locations.php', 'label' => '병원 노출 순서', 'icon' => 'bi-sort-numeric-down', 'key' => 'hospitals', 'active_key' => 'hospital_locations'],
         ['url' => 'admin_doctors.php', 'label' => term('doctor') . ' 관리', 'icon' => 'bi-person-badge', 'key' => 'doctors'],
         ['url' => 'admin_personnel.php', 'label' => '인력 관리', 'icon' => 'bi-people', 'key' => 'personnel'],
         ['url' => 'admin_reviews.php', 'label' => term('review') . ' 관리', 'icon' => 'bi-chat-dots', 'key' => 'reviews'],
@@ -909,7 +910,9 @@ if (isset($connect) && $connect) {
             // 그룹 메뉴 (확장/축소)
             if (isset($menu['type']) && $menu['type'] === 'group'):
                 $collapse_id = 'grp_' . $menu['key']; // 분기에서 사용하므로 먼저 정의 (한글 주석)
-                $group_keys = array_column($menu['children'], 'key');
+                $group_keys = array_map(static function ($child) {
+                    return $child['active_key'] ?? $child['key'];
+                }, $menu['children']);
                 // null = 쿠키 없음 → 모든 그룹 열림
                 // array = 쿠키 있음 → 저장된 상태 그대로 유지
                 if ($_sb_open_groups === null) {
@@ -936,7 +939,7 @@ if (isset($connect) && $connect) {
                         if (function_exists('check_permission') && !check_permission($child['key'])) continue;
                     ?>
                     <li class="nav-item">
-                        <a class="nav-link py-1 <?php echo ($admin_current === $child['key']) ? 'active' : ''; ?>"
+                        <a class="nav-link py-1 <?php echo ($admin_current === ($child['active_key'] ?? $child['key'])) ? 'active' : ''; ?>"
                            href="<?php echo (strpos($child['url'], 'http') === 0) ? $child['url'] : (defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/gangnamunni/') . $child['url']; ?>"<?php echo isset($child['target']) ? ' target="'.$child['target'].'"' : ''; ?>
                            style="font-size:12px;">
                             <i class="bi <?php echo $child['icon']; ?>"></i>

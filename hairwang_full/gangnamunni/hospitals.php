@@ -88,15 +88,20 @@ $region = isset($_GET['region']) ? trim($_GET['region']) : '';
 // 다중 지역 지원 (콤마 구분)
 $region_list = array_filter(array_map('trim', explode(',', $region)));
 
-// 정렬 옵션 (피그마: 낮은가격순/평점순/인기순/후기순)
-$sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'price';
-$allowed_sorts = ['price', 'rating', 'popular', 'review'];
-if (!in_array($sort, $allowed_sorts)) $sort = 'price';
+// 정렬을 지정하지 않은 첫 진입은 관리자가 설정한 병원 노출 순서를 사용한다.
+// 기존 DB에 display_order가 아직 없어도 페이지가 중단되지 않도록 id 순으로 폴백한다.
+$hospital_display_order_column = false;
+$_hospital_order_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospitals LIKE 'display_order'");
+if ($_hospital_order_col && mysqli_num_rows($_hospital_order_col) > 0) $hospital_display_order_column = true;
+
+$sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'manual';
+$allowed_sorts = ['manual', 'price', 'rating', 'popular', 'review'];
+if (!in_array($sort, $allowed_sorts, true)) $sort = 'manual';
 switch($sort) {
     case 'rating': $order_clause = 'rating DESC, review_count DESC'; break;
     case 'popular': $order_clause = 'wishlist_count DESC, rating DESC'; break;
     case 'review': $order_clause = 'review_count DESC, rating DESC'; break;
-    default:
+    case 'price':
         // 0원/미등록 가격은 맨 뒤로 보낸다. 특정 시술을 검색한 경우에는
         // 카드에 표시하는 병원별 시술 옵션 최저가와 같은 값으로 정렬한다.
         if ($effective_treatment_id > 0) {
@@ -124,6 +129,11 @@ switch($sort) {
             $price_sort_value = 'COALESCE(NULLIF(min_price, 0), 2147483647)';
         }
         $order_clause = $price_sort_value . ' ASC, rating DESC'; // 낮은 가격순
+        break;
+    default:
+        $order_clause = $hospital_display_order_column
+            ? 'CASE WHEN display_order IS NULL OR display_order < 1 THEN 1 ELSE 0 END, display_order ASC, id ASC'
+            : 'id ASC';
         break;
 }
 
@@ -511,12 +521,6 @@ include __DIR__ . '/includes/header.php';
         var sortParam = urlParams.get('sort');
         if (sortParam) {
             localStorage.setItem('sb_selected_sort', sortParam);
-        } else {
-            var savedSort = localStorage.getItem('sb_selected_sort');
-            if (savedSort) {
-                url.searchParams.set('sort', savedSort);
-                needsRedirect = true;
-            }
         }
 
         if (needsRedirect) {

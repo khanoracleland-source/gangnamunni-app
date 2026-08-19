@@ -342,11 +342,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             for ($i = 0; $i < $cnt; $i++) {
                 $dv = (isset($in_dv[$i]) && trim((string)$in_dv[$i]) !== '') ? floatval($in_dv[$i]) : 0;
                 $du = isset($in_du[$i]) ? trim((string)$in_du[$i]) : '';
-                $rp_won = (isset($in_rp[$i]) && trim((string)$in_rp[$i]) !== '') ? intval($in_rp[$i]) : 0;
-                $pr_won = (isset($in_pr[$i]) && trim((string)$in_pr[$i]) !== '') ? intval($in_pr[$i]) : 0;
+                $rp_won = (isset($in_rp[$i]) && trim((string)$in_rp[$i]) !== '') ? max(0, intval($in_rp[$i])) : 0;
+                $pr_won = (isset($in_pr[$i]) && trim((string)$in_pr[$i]) !== '') ? max(0, intval($in_pr[$i])) : 0;
                 $on = isset($in_on[$i]) ? trim((string)$in_on[$i]) : '';
                 $bp = isset($in_bp[$i]) ? trim((string)$in_bp[$i]) : '';
-                if ($dv > 0 && $du !== '' && $rp_won > 0 && $pr_won > 0) {
+                // 정가/판매가는 선택 항목. 샷수/용량과 단위만 있으면 옵션으로 저장한다.
+                if ($dv > 0 && $du !== '') {
                     $options[] = [
                         'name' => mb_substr($on, 0, 100, 'UTF-8'),
                         'body_part' => mb_substr($bp, 0, 500, 'UTF-8'),
@@ -362,12 +363,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($id <= 0) {
                 $msg = '잘못된 요청입니다.'; $msg_type = 'danger';
             } elseif (empty($options)) {
-                $msg = '최소 1개의 샷수/용량, 정가, 판매가를 입력해주세요.'; $msg_type = 'warning';
+                $msg = '최소 1개의 샷수/용량과 단위를 입력해주세요.'; $msg_type = 'warning';
             } else {
                 $option_keys = [];
                 $representative_count = 0;
                 foreach ($options as $opt) {
-                    if ($opt['rp'] < $opt['pr']) ht_redirect($post_hospital_id, '정가는 판매가보다 작을 수 없습니다.', 'warning');
+                    if ($opt['rp'] > 0 && $opt['pr'] > 0 && $opt['rp'] < $opt['pr']) ht_redirect($post_hospital_id, '정가는 판매가보다 작을 수 없습니다.', 'warning');
                     $representative_count += $opt['rep'];
                     // 같은 용량/단위라도 시술 부위·유형(옵션명)이 다르면 별도 옵션이다.
                     // 예: 사각턱 / 1회, 주름 / 1회
@@ -992,7 +993,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php if (!empty($opts)): ?>
                             <div class="d-flex flex-wrap gap-1 justify-content-center">
                                 <?php foreach ($opts as $op): ?>
-                                <span class="badge bg-light text-dark border"><?php if (!empty($op['is_representative'])): ?><i class="bi bi-check-square-fill text-primary me-1"></i><?php endif; ?><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . ($op['body_part'] !== '' ? str_replace('||', ', ', $op['body_part']) . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · 정가 <?php echo number_format(ht_price_won($op['regular_price'])); ?>원 / 판매가 <?php echo number_format(ht_price_won($op['price'])); ?>원</span>
+                                <span class="badge bg-light text-dark border"><?php if (!empty($op['is_representative'])): ?><i class="bi bi-check-square-fill text-primary me-1"></i><?php endif; ?><?php echo htmlspecialchars(($op['option_name'] !== '' ? $op['option_name'] . ' · ' : '') . ($op['body_part'] !== '' ? str_replace('||', ', ', $op['body_part']) . ' · ' : '') . $op['dosage_value'] . $op['dosage_unit']); ?> · 정가 <?php echo ht_price_won($op['regular_price']) > 0 ? number_format(ht_price_won($op['regular_price'])) . '원' : '미입력'; ?> / 판매가 <?php echo ht_price_won($op['price']) > 0 ? number_format(ht_price_won($op['price'])) . '원' : '미입력'; ?></span>
                                 <?php endforeach; ?>
                             </div>
                             <?php else: ?>
@@ -1245,7 +1246,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <i class="bi bi-plus-lg me-1"></i>세부 옵션 추가
                     </button>
                     <div class="form-text mt-2">부위 드롭다운을 열어 여러 개를 선택할 수 있습니다.</div>
-                    <div class="form-text mt-2">정가와 판매가는 축약하지 않은 원 단위 전체 금액으로 입력해주세요 (예: 10000, 250000). 정가는 판매가보다 작을 수 없습니다. 최소 1개 이상 입력해야 합니다.</div>
+                    <div class="form-text mt-2">정가와 판매가는 선택 입력입니다. 입력할 경우 축약하지 않은 원 단위 전체 금액을 사용해주세요 (예: 10000, 250000). 두 금액을 모두 입력하면 정가는 판매가보다 작을 수 없습니다.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
@@ -1466,8 +1467,8 @@ function priceRowHtml(dv, du, regularPrice, pr, optionName, bodyPart, isRepresen
         bodyPartPickerHtml(bodyPart) +
         '<input type="number" name="dosage_value[]" class="form-control form-control-sm" style="flex:1;" min="0.01" step="0.01" required placeholder="예: 100" value="'+(dv==null?'':dv)+'">' +
         '<select name="dosage_unit[]" class="form-select form-select-sm" style="width:96px;">'+opts+'</select>' +
-        '<input type="number" name="regular_price[]" class="form-control form-control-sm" style="width:130px;" min="1" step="1" required placeholder="예: 50000" value="'+(regularPrice==null||regularPrice===''?'':priceToWon(regularPrice))+'">' +
-        '<input type="number" name="price[]" class="form-control form-control-sm" style="width:130px;" min="1" step="1" required placeholder="예: 30000" value="'+(pr==null||pr===''?'':priceToWon(pr))+'">' +
+        '<input type="number" name="regular_price[]" class="form-control form-control-sm" style="width:130px;" min="0" step="1" placeholder="선택" value="'+(Number(regularPrice)>0?priceToWon(regularPrice):'')+'">' +
+        '<input type="number" name="price[]" class="form-control form-control-sm" style="width:130px;" min="0" step="1" placeholder="선택" value="'+(Number(pr)>0?priceToWon(pr):'')+'">' +
         '<button type="button" class="btn btn-outline-danger btn-sm price-del" style="width:34px;" onclick="removePriceRow(this)"><i class="bi bi-x-lg"></i></button>' +
         '</div>';
 }
