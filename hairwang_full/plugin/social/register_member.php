@@ -27,8 +27,47 @@ $user_email = isset($user_profile->emailVerified) ? $user_profile->emailVerified
 if (!$user_email && !empty($user_profile->sid)) {
     $user_email = 'kakao_' . preg_replace('/[^0-9a-z_-]/i', '', $user_profile->sid) . '@social.local';
 }
+
+// If Kakao verifies an email already owned by a local member, link the Kakao
+// identity instead of failing registration on the duplicate email constraint.
+if (strtolower($provider_name) === 'kakao'
+    && !empty($user_profile->emailVerified)
+    && filter_var($user_profile->emailVerified, FILTER_VALIDATE_EMAIL)) {
+    $verified_email = strtolower(trim((string)$user_profile->emailVerified));
+    $existing_member = sql_fetch(
+        "SELECT * FROM {$g5['member_table']} WHERE LOWER(mb_email) = '"
+        . sql_real_escape_string($verified_email) . "' LIMIT 1"
+    );
+
+    if (!empty($existing_member['mb_id'])) {
+        $today = date('Ymd', G5_SERVER_TIME);
+        $is_blocked = (!empty($existing_member['mb_intercept_date']) && $existing_member['mb_intercept_date'] <= $today)
+            || (!empty($existing_member['mb_leave_date']) && $existing_member['mb_leave_date'] <= $today);
+        $linked_kakao = sql_fetch(
+            "SELECT identifier FROM {$g5['social_profile_table']} WHERE mb_id = '"
+            . sql_real_escape_string($existing_member['mb_id']) . "' AND provider = 'kakao' LIMIT 1"
+        );
+
+        if (!$is_blocked && empty($linked_kakao['identifier'])) {
+            social_user_profile_replace($existing_member['mb_id'], $provider_name, $user_profile);
+            social_sync_kakao_member_profile($existing_member['mb_id'], $user_profile);
+
+            echo social_return_from_provider_page(
+                $provider_name,
+                G5_HTTPS_BBS_URL . '/login_check.php',
+                $existing_member['mb_id'],
+                bin2hex(random_bytes(20)),
+                isset($url) ? $url : G5_URL . '/gangnamunni/index.php',
+                2
+            );
+            exit;
+        }
+    }
+}
 $user_id = $user_profile->sid ? preg_replace("/[^0-9a-z_]+/i", "", $user_profile->sid) : get_social_convert_id($user_profile->identifier, $provider_name);
-$user_phone = $user_profile->phone;
+$user_phone = strtolower($provider_name) === 'kakao'
+    ? social_normalize_kakao_phone($user_profile->phone ?? '')
+    : ($user_profile->phone ?? '');
 
 if(! $user_nick) {
     $tmp = explode('_', $user_id);
@@ -51,7 +90,7 @@ if (strtolower($provider_name) === 'kakao') {
     $_POST['mb_nick'] = $user_nick;
     $_POST['mb_email'] = $user_email;
     $_POST['mb_name'] = $user_name ?: $user_nick;
-    $_POST['mb_hp'] = '';
+    $_POST['mb_hp'] = $user_phone;
     $_POST['mb_mailling'] = 0;
     $_POST['mb_open'] = 0;
     $w = '';

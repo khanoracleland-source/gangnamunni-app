@@ -18,6 +18,11 @@
 //https://github.com/jinseokoh/additional-providers
 class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
 {
+    // Ask Kakao for the fields used by the local member profile. Kakao only
+    // returns fields enabled as consent items for the application and accepted
+    // by the user.
+    public $scope = "profile_nickname,account_email,name,phone_number,birthyear,birthday,age_range";
+
     /**
     * initialization
     */
@@ -87,7 +92,20 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
             'Accept: application/json'
         );
 
-        $response = $this->request($this->api->api_base_url . 'user/me');
+        $property_keys = array(
+            'kakao_account.profile',
+            'kakao_account.email',
+            'kakao_account.name',
+            'kakao_account.phone_number',
+            'kakao_account.birthyear',
+            'kakao_account.birthday',
+            'kakao_account.age_range'
+        );
+        $response = $this->request(
+            $this->api->api_base_url . 'user/me',
+            array('property_keys' => json_encode($property_keys)),
+            'POST'
+        );
         $data = is_string($response) ? json_decode($response) : null;
 
         if ( ! is_object($data) || ! isset($data->id) ) {
@@ -124,6 +142,26 @@ class Hybrid_Providers_Kakao extends Hybrid_Provider_Model_OAuth2
                 $this->user->profile->emailVerified = $email;
             }
         }
+
+        $this->user->profile->username = !empty($account->name)
+            ? (string)$account->name
+            : $this->user->profile->displayName;
+        $this->user->profile->phone = !empty($account->phone_number)
+            ? (string)$account->phone_number
+            : '';
+        $this->user->profile->birthYear = !empty($account->birthyear)
+            ? (int)$account->birthyear
+            : null;
+        $birthday = !empty($account->birthday)
+            ? preg_replace('/[^0-9]/', '', (string)$account->birthday)
+            : '';
+        if (strlen($birthday) === 4) {
+            $this->user->profile->birthMonth = (int)substr($birthday, 0, 2);
+            $this->user->profile->birthDay = (int)substr($birthday, 2, 2);
+        }
+        $this->user->profile->age = !empty($account->age_range)
+            ? (string)$account->age_range
+            : null;
 
         $this->user->profile->sid         = get_social_convert_id( $this->user->profile->identifier, $this->providerId );
 

@@ -157,6 +157,16 @@ $sql = " insert into {$g5['member_table']}
                 mb_nick = '{$mb_nick}',
                 mb_nick_date = '".G5_TIME_YMD."',
                 mb_email = '{$mb_email}',
+                mb_hp = '" . sql_real_escape_string($mb_hp) . "',
+                mb_birth = '" . (($birth_year = (int)($user_profile->birthYear ?? 0)) >= 1900
+                    && ($birth_month = (int)($user_profile->birthMonth ?? 0)) > 0
+                    && ($birth_day = (int)($user_profile->birthDay ?? 0)) > 0
+                    && checkdate($birth_month, $birth_day, $birth_year)
+                    ? sprintf('%04d%02d%02d', $birth_year, $birth_month, $birth_day)
+                    : '') . "',
+                mb_2 = '" . (preg_match('/^(?:[0-9]{1,3}~[0-9]{1,3}|[0-9]{1,3}~)$/', (string)($user_profile->age ?? ''))
+                    ? sql_real_escape_string((string)$user_profile->age)
+                    : '') . "',
                 mb_email_certify = '".$mb_email_certify."',
                 mb_today_login = '".G5_TIME_YMDHIS."',
                 mb_datetime = '".G5_TIME_YMDHIS."',

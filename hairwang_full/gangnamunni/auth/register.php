@@ -251,6 +251,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
     $code      = trim($_POST['cert_code'] ?? '');
     $password  = (string)($_POST['password'] ?? '');
     $password2 = (string)($_POST['password2'] ?? '');
+    $name = preg_replace('/[\x00-\x1F\x7F]/u', '', trim((string)($_POST['name'] ?? '')));
+    $birth_date = trim((string)($_POST['birth_date'] ?? ''));
+    $birth = DateTimeImmutable::createFromFormat('!Y-m-d', $birth_date);
+    $birth_valid = $birth instanceof DateTimeImmutable
+        && $birth->format('Y-m-d') === $birth_date
+        && $birth <= new DateTimeImmutable('today')
+        && $birth >= new DateTimeImmutable('today -120 years');
+    $age = $birth_valid ? $birth->diff(new DateTimeImmutable('today'))->y : null;
     // 마케팅 수신 동의(선택): 체크했을 때만 1. 가입 시 미체크면 마이페이지에서도 수신 꺼진 상태로 저장한다.
     $agree_marketing = (($_POST['agree_marketing'] ?? '') === '1') ? 1 : 0;
     // 휴대폰 번호(필수): 숫자만 남겨 저장. 예약 알림 등에 사용.
@@ -262,6 +270,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
         $reg_error = '회원가입 약관과 개인정보 수집·이용에 동의해주세요.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $reg_error = '올바른 이메일 주소를 입력해주세요.';
+    } elseif ($name === '' || !preg_match("/^[\\p{L}\\p{M} .'-]{2,50}$/u", $name)) {
+        $reg_error = '이름을 2~50자의 올바른 형식으로 입력해주세요.';
+    } elseif (!$birth_valid || $age === null) {
+        $reg_error = '올바른 생년월일을 입력해주세요.';
     } elseif (function_exists('prohibit_mb_email') && ($email_policy_error = prohibit_mb_email($email))) {
         $reg_error = $email_policy_error;
     } elseif (($__otp_err = reg_email_otp_gate($email)) !== '') {
@@ -312,16 +324,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
             // 검증 로직(check_password/validate_password)과 항상 동일한 방식이 보장된다.
             // (bcrypt 등 다른 해시로 저장하면 검증이 항상 실패 → 가입 계정이 영영 로그인 불가)
             $mb_hash  = get_encrypt_string($password);
-            // mb_name은 이메일 local-part에서 만들되, HTML 메타문자 등 위험 문자를 제거한다(#6).
-            // 이메일 검증을 통과했더라도 quoted local-part엔 "'<>& 등이 올 수 있어, escape 누락된
-            // 구 스킨/플러그인에서 저장형 XSS·깨진 표시가 되지 않도록 안전 문자만 남긴다.
-            $mb_name_raw = substr($email, 0, (int)strpos($email, '@'));
-            $mb_name = preg_replace('/[^A-Za-z0-9._-]/', '', (string)$mb_name_raw);
-            $mb_name = $mb_name !== '' ? substr($mb_name, 0, 24) : 'user';
+            $mb_name = $name;
+            $mb_birth = $birth->format('Ymd');
 
             // mb_id의 난수 부분을 포함하는 영문/숫자 닉네임으로 만들어 동시 가입에서도 충돌하지 않게 한다.
-            $nick_base = preg_replace('/[^A-Za-z0-9]/', '', $mb_name);
-            $nick_base = substr($nick_base !== '' ? $nick_base : 'user', 0, 24);
+            $nick_base = preg_replace('/[^\p{L}\p{N}]/u', '', $mb_name);
+            $nick_base = $nick_base !== '' ? $nick_base : 'user';
+            $nick_base = function_exists('mb_substr')
+                ? mb_substr($nick_base, 0, 24, 'UTF-8')
+                : substr($nick_base, 0, 24);
             $mb_nick = $nick_base . substr($mb_id, -8);
             if (function_exists('reserve_mb_nick') && reserve_mb_nick($mb_nick)) {
                 $mb_nick = 'member' . substr(hash('sha256', $mb_id), 0, 10);
@@ -388,12 +399,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
             // 없애기 위해, 동일 이메일이 없을 때에만 삽입되는 단일 문으로 처리한다. 동시 요청이 먼저
             // 선점하면 삽입 행이 0 → 중복으로 안내한다. (추가로 DB에 mb_email UNIQUE 인덱스를 두면 더 견고)
             $ins = mysqli_prepare($connect,
-                "INSERT INTO {$member_table} (mb_id, mb_password, mb_name, mb_nick, mb_nick_date, mb_email, mb_level, mb_datetime, mb_today_login, mb_ip, mb_login_ip, mb_email_certify, mb_open_date, mb_1, mb_recommend, mb_mailling, mb_sms, mb_hp)
-                 SELECT ?, ?, ?, ?, ?, ?, {$register_level}, ?, ?, ?, ?, ?, ?, 'general', ?, ?, ?, ?
+                "INSERT INTO {$member_table} (mb_id, mb_password, mb_name, mb_nick, mb_nick_date, mb_email, mb_level, mb_datetime, mb_today_login, mb_ip, mb_login_ip, mb_email_certify, mb_open_date, mb_1, mb_recommend, mb_mailling, mb_sms, mb_hp, mb_birth, mb_2)
+                 SELECT ?, ?, ?, ?, ?, ?, {$register_level}, ?, ?, ?, ?, ?, ?, 'general', ?, ?, ?, ?, ?, ?
                  FROM DUAL
                  WHERE NOT EXISTS (SELECT 1 FROM {$member_table} WHERE LOWER(mb_email) = LOWER(?))");
             if ($ins) {
-                mysqli_stmt_bind_param($ins, 'sssssssssssssiiss', $mb_id, $mb_hash, $mb_name, $mb_nick, $today, $email, $now, $now, $ip, $ip, $now, $today, $mb_recommend, $agree_marketing, $agree_marketing, $phone, $email);
+                $age_string = (string)$age;
+                mysqli_stmt_bind_param($ins, 'sssssssssssssssssss', $mb_id, $mb_hash, $mb_name, $mb_nick, $today, $email, $now, $now, $ip, $ip, $now, $today, $mb_recommend, $agree_marketing, $agree_marketing, $phone, $mb_birth, $age_string, $email);
                 $ok = mysqli_stmt_execute($ins);
                 $affected = mysqli_stmt_affected_rows($ins);
                 mysqli_stmt_close($ins);
@@ -617,6 +629,29 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
             </div>
 
             <div class="field">
+                <label for="name">이름</label>
+                <input type="text" name="name" id="name" minlength="2" maxlength="50"
+                       placeholder="실명을 입력해주세요" required autocomplete="name"
+                       value="<?php echo htmlspecialchars($_POST['name'] ?? '', ENT_QUOTES); ?>">
+                <div class="hint">예약과 본인 확인에 사용할 이름입니다.</div>
+            </div>
+
+            <div class="field">
+                <label for="birth_date">생년월일</label>
+                <input type="date" name="birth_date" id="birth_date" required autocomplete="bday"
+                       max="<?php echo date('Y-m-d'); ?>"
+                       min="<?php echo date('Y-m-d', strtotime('-120 years')); ?>"
+                       value="<?php echo htmlspecialchars($_POST['birth_date'] ?? '', ENT_QUOTES); ?>">
+            </div>
+
+            <div class="field">
+                <label for="age">나이</label>
+                <input type="number" name="age" id="age" min="0" max="120"
+                       placeholder="생년월일을 입력하면 자동 계산됩니다" readonly required>
+                <div class="hint">만 나이 기준으로 자동 계산됩니다.</div>
+            </div>
+
+            <div class="field">
                 <label for="phone">휴대폰 번호</label>
                 <?php if ($enable_sms_verify): ?>
                 <div class="row">
@@ -714,6 +749,20 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
     var emailInput = document.getElementById('email'), codeInput = document.getElementById('cert_code'), joinBtn = document.getElementById('joinBtn');
     var agreeTerms = document.getElementById('agreeTerms'), agreePrivacy = document.getElementById('agreePrivacy');
     var phoneInput = document.getElementById('phone'), smsCodeInput = document.getElementById('sms_code');
+    var nameInput = document.getElementById('name'), birthInput = document.getElementById('birth_date'), ageInput = document.getElementById('age');
+    function updateAge() {
+        ageInput.value = '';
+        if (!birthInput.value) return false;
+        var birth = new Date(birthInput.value + 'T00:00:00');
+        if (isNaN(birth.getTime())) return false;
+        var today = new Date(), age = today.getFullYear() - birth.getFullYear();
+        var beforeBirthday = today.getMonth() < birth.getMonth()
+            || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+        if (beforeBirthday) age--;
+        if (age < 0 || age > 120) return false;
+        ageInput.value = age;
+        return true;
+    }
     function checkMatch() {
         if (!p2.value) { pm.textContent = ''; return true; }
         var ok = p1.value === p2.value;
@@ -724,12 +773,16 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
     function updateJoinState() {
         var phoneOk = /^01[0-9]{8,9}$/.test((phoneInput.value || '').replace(/[^0-9]/g, ''));
         var smsOk = !smsEnabled || (smsCodeInput && smsCodeInput.value.trim().length === 6);
-        var canJoin = emailInput.value.trim() && codeInput.value.trim() && p1.value && p2.value && p1.value === p2.value && agreeTerms.checked && agreePrivacy.checked && phoneOk && smsOk;
+        var nameOk = nameInput.value.trim().length >= 2;
+        var ageOk = updateAge();
+        var canJoin = emailInput.value.trim() && codeInput.value.trim() && p1.value && p2.value && p1.value === p2.value && nameOk && ageOk && agreeTerms.checked && agreePrivacy.checked && phoneOk && smsOk;
         joinBtn.disabled = !canJoin;
     }
     emailInput.addEventListener('input', updateJoinState);
     codeInput.addEventListener('input', updateJoinState);
     phoneInput.addEventListener('input', updateJoinState);
+    nameInput.addEventListener('input', updateJoinState);
+    birthInput.addEventListener('change', updateJoinState);
     if (smsCodeInput) smsCodeInput.addEventListener('input', updateJoinState);
     p1.addEventListener('input', function () { checkMatch(); updateJoinState(); });
     p2.addEventListener('input', function () { checkMatch(); updateJoinState(); });

@@ -873,6 +873,10 @@ function social_login_success_after($mb, $link='', $mode='', $tmp_create_info=ar
         //로그인에 성공 했으면  기존 데이터와 비교하여 틀린 값이 없으면 업데이트 합니다.
         social_user_profile_replace($mb_id, $provider, $user_profile);
 
+        if (strtolower($provider) === 'kakao') {
+            social_sync_kakao_member_profile($mb_id, $user_profile);
+        }
+
         //소셜로그인의 provider 이름( naver, kakao, facebook 기타 등등 ) 서비스 이름을 세션에 입력합니다.
         set_session('ss_social_provider', $provider);
 
@@ -888,6 +892,64 @@ function social_login_success_after($mb, $link='', $mode='', $tmp_create_info=ar
     }
 
     return $link;
+}
+
+// Copy consented Kakao profile fields into the Gnuboard member record. Missing
+// or unapproved fields are ignored, so a login never erases existing data.
+function social_normalize_kakao_phone($phone)
+{
+    $phone = preg_replace('/[^0-9+]/', '', trim((string)$phone));
+    if (strpos($phone, '+82') === 0) {
+        $phone = '0' . substr($phone, 3);
+    }
+
+    return preg_match('/^(?:01[016789][0-9]{7,8}|[+]?[0-9]{8,15})$/', $phone)
+        ? $phone
+        : '';
+}
+
+function social_sync_kakao_member_profile($mb_id, $profile)
+{
+    global $g5;
+
+    if (!$mb_id || !is_object($profile)) return false;
+
+    $updates = array();
+    $name = trim((string)($profile->username ?? ''));
+    if ($name !== '') {
+        $updates[] = "mb_name = '" . sql_real_escape_string($name) . "'";
+    }
+
+    $phone = trim((string)($profile->phone ?? ''));
+    if ($phone !== '') {
+        $phone = social_normalize_kakao_phone($phone);
+        if ($phone !== '') {
+            $updates[] = "mb_hp = '" . sql_real_escape_string($phone) . "'";
+        }
+    }
+
+    $year = (int)($profile->birthYear ?? 0);
+    $month = (int)($profile->birthMonth ?? 0);
+    $day = (int)($profile->birthDay ?? 0);
+    if ($year >= 1900 && $year <= (int)date('Y')
+        && checkdate($month, $day, $year)) {
+        $updates[] = "mb_birth = '" . sprintf('%04d%02d%02d', $year, $month, $day) . "'";
+    }
+
+    $age_range = trim((string)($profile->age ?? ''));
+    if (preg_match('/^(?:[0-9]{1,3}~[0-9]{1,3}|[0-9]{1,3}~)$/', $age_range)) {
+        // mb_1 is already the local account type; mb_2 is reserved here for
+        // Kakao's age range because Gnuboard has no dedicated age column.
+        $updates[] = "mb_2 = '" . sql_real_escape_string($age_range) . "'";
+    }
+
+    if (!$updates) return false;
+
+    return (bool)sql_query(
+        "UPDATE {$g5['member_table']} SET " . implode(', ', $updates)
+        . " WHERE mb_id = '" . sql_real_escape_string($mb_id) . "'",
+        false
+    );
 }
 
 function social_login_link_account($mb_id, $is_buffer=false, $is_type=''){

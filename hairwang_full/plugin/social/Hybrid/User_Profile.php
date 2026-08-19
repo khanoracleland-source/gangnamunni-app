@@ -48,6 +48,13 @@ class Hybrid_User_Profile {
 	public $displayName = null;
 
 	/**
+	 * Account holder's real name when the provider exposes it separately from
+	 * the public display name.
+	 * @var string
+	 */
+	public $username = null;
+
+	/**
 	 * A short about_me
 	 * @var string
 	 */
