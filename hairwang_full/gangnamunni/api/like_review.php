@@ -1,7 +1,7 @@
 <?php
 /**
  * 후기 좋아요 토글 API
- * POST JSON { review_id, user_id }
+ * POST JSON { review_id, csrf_token }
  * 응답: { success, liked, like_count }
  */
 require_once __DIR__ . '/bootstrap.php';
@@ -11,6 +11,9 @@ $authUser = getAuthUser(true);
 
 $body = getJsonBody();
 if (!$body) jsonError('잘못된 요청 데이터입니다.');
+if (!validateCsrfToken((string)($body['csrf_token'] ?? ''))) {
+    jsonError('유효하지 않은 요청입니다. 페이지를 새로고침 해주세요.', 403);
+}
 
 $review_id = intval($body['review_id'] ?? 0);
 $user_id = $authUser['user_id'];

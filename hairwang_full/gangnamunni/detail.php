@@ -454,7 +454,7 @@ if ($current_tab === 'doctors' || $current_tab === 'home') {
 // #21 fix: review count with fallback
 $reviews_data = [];
 $reviews_count = 0;
-$rev_cnt_stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1");
+$rev_cnt_stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1 AND review_status = 'published'");
 if ($rev_cnt_stmt) {
     mysqli_stmt_bind_param($rev_cnt_stmt, 'i', $hospital_id);
     mysqli_stmt_execute($rev_cnt_stmt);
@@ -467,7 +467,7 @@ if ($reviews_count == 0 && !empty($hospital['review_count'])) {
 }
 
 if ($current_tab === 'reviews') {
-    $reviews_query = "SELECT * FROM hospital_reviews WHERE hospital_id = {$hospital_id} AND is_active = 1 ORDER BY created_at DESC LIMIT 20";
+    $reviews_query = "SELECT * FROM hospital_reviews WHERE hospital_id = {$hospital_id} AND is_active = 1 AND review_status = 'published' ORDER BY created_at DESC LIMIT 20";
     $reviews_result = mysqli_query($connect, $reviews_query);
     while ($review = mysqli_fetch_assoc($reviews_result)) {
         $reviews_data[] = $review;

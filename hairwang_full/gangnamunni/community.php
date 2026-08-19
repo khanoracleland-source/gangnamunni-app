@@ -11,6 +11,9 @@
  */
 
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/functions.php';
+
+$community_csrf_token = generateCsrfToken();
 
 // --- 탭 / 정렬 ---
 $tab = isset($_GET['tab']) ? trim($_GET['tab']) : 'latest';
@@ -60,7 +63,7 @@ $total_count = 0;
 if ($tab === 'review') {
     // 시술후기 탭 = 승인(published)된 병원 후기(hospital_reviews) 노출
     //  → review_write.php 로 작성 후 관리자 승인된 후기가 여기에 표시된다.
-    $rev_where = "r.is_active = 1";
+    $rev_where = "r.is_active = 1 AND r.review_status = 'published'";
     $rev_types = '';
     $rev_vals = [];
     if ($keyword !== '') {
@@ -489,6 +492,7 @@ include __DIR__ . '/includes/header.php';
 <script>
 // 목록에서 바로 좋아요 토글 — 커뮤니티 글(detail_community.php) / 시술후기(api/like_review.php) 분기
 var CM_USER_ID = <?php echo json_encode(function_exists('get_gangnamunni_member_id') ? (get_gangnamunni_member_id() ?? '') : ''); ?>;
+var CM_CSRF_TOKEN = <?php echo json_encode($community_csrf_token); ?>;
 function cmLoginPrompt() {
     if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
         location.href = 'auth/login.php?url=' + encodeURIComponent(location.href);
@@ -508,7 +512,7 @@ function cmToggleLike(el, id, isReview) {
         fetch('api/like_review.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ review_id: id, user_id: CM_USER_ID })
+            body: JSON.stringify({ review_id: id, csrf_token: CM_CSRF_TOKEN })
         }).then(function(r){ return r.json(); }).then(function(d){
             if (d && d.success) cmApplyLikeState(el, d.liked, d.like_count);
         }).catch(function(){ alert('좋아요 처리 중 오류가 발생했습니다.'); });
@@ -516,6 +520,7 @@ function cmToggleLike(el, id, isReview) {
         var fd = new FormData();
         fd.append('action', 'toggle_like');
         fd.append('post_id', id);
+        fd.append('csrf_token', CM_CSRF_TOKEN);
         fetch('detail_community.php?id=' + id + '&_ajax=1', { method: 'POST', body: fd })
             .then(function(r){ return r.json(); }).then(function(d){
                 if (d && d.login_required) { cmLoginPrompt(); return; }

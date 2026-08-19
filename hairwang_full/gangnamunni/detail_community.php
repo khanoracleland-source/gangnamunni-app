@@ -8,6 +8,7 @@
 
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/functions.php';
 
 // 변경: 웹 요청은 기존 값 유지, CLI 검증에서는 GET 기본값 사용. 영향 범위: POST 분기 조건의 경고 제거만 수행.
 $request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -37,6 +38,11 @@ if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] ==
 // [1차 검수 #17 - 2026-05-28] 좋아요 토글 처리 (AJAX POST)
 if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_like') {
     header('Content-Type: application/json');
+    if (!validateCsrfToken((string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => '유효하지 않은 요청입니다.']);
+        exit;
+    }
     $like_post_id = intval($_POST['post_id'] ?? 0);
     if ($like_post_id <= 0) { echo json_encode(['success' => false, 'message' => 'invalid post id']); exit; }
     if (!is_gangnamunni_logged_in()) { echo json_encode(['login_required' => true]); exit; }
