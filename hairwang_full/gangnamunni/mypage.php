@@ -181,21 +181,6 @@ body {
 .menu-row-text { flex:1; font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:650; letter-spacing:-.35px; }
 .menu-row-arrow { color:#000; font-weight:900; font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
-/* 활동 요약 4칸 그리드 */
-.activity-summary {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
-    border: 1px solid var(--bs-border-color, #eee); border-radius: 10px; overflow: hidden;
-}
-.activity-item {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 16px 8px; text-decoration: none; color: inherit; transition: background 0.15s;
-    border-right: 1px solid var(--bs-border-color, #eee);
-}
-.activity-item:last-child { border-right: none; }
-.activity-item:hover { background: var(--bs-tertiary-bg, #fafafa); }
-.activity-num { font-size: calc(22px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; color: var(--pri, #AE1932); line-height: 1.2; }
-.activity-label { font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); color: #888; margin-top: 4px; }
-
 /* 광고 배너 */
 .advertisement-section {
     padding: 20px 22px;

@@ -144,12 +144,9 @@ if ($style_q) { while ($sr = mysqli_fetch_assoc($style_q)) $s[$sr['setting_key']
 $sv = function($key, $default) use ($s) { return $s[$key] ?? $default; };
 
 // 스타일 변수
-$list_btn    = $sv('hv_list_btn_color', '#AE1932');
-$list_btxt   = $sv('hv_list_btn_text', '#ffffff');
 $list_name   = $sv('hv_list_name_size', '15');
 $list_tag_s  = $sv('hv_list_tag_size', '11');
 $list_tag_c  = $sv('hv_list_tag_color', '#AE1932');
-$list_cta    = $sv('hv_list_cta_size', '12');
 
 // 병원 검색
 $hospitals = [];
@@ -402,16 +399,8 @@ $page_title = term('business');
 $show_search = true; // 메인과 동일한 공용 헤더 검색바(includes/header.php) 사용
 
 $page_css = '
-    .search-header { padding: 12px 20px; }
-    .search-header-content { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
-    .back-btn { font-size: 24px; cursor: pointer; text-decoration: none; color: inherit; }
-    .search-bar { flex: 1; }
-    .search-input { width: 100%; padding: 10px 16px; border: 1px solid #E0E0E0; border-radius: 8px; font-size: 14px; background: var(--bs-tertiary-bg, #F5F5F5); color: inherit; }
-    .search-input:focus { outline: none; border-color: #AE1932; }
     .results-header { margin-bottom: 16px; }
     .results-header h1 { font-size: 20px; margin-bottom: 8px; }
-    .search-count { color: var(--bs-secondary-color, #666); font-size: 14px; }
-    .search-keyword { color: #AE1932; font-weight: bold; }
     .search-filter-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; color: #000; font-size: 12px; padding: 4px 10px; border: 1px solid #AE1932 }
     .search-filter-chip .chip-remove { cursor: pointer; font-size: 15px; line-height: 1; font-weight: 700; opacity: 0.9; }
     .search-filter-chip .chip-remove:hover { opacity: 1; }
@@ -426,32 +415,11 @@ $page_css = '
     .hospital-name { font-size: 16px; font-weight: 500; margin-bottom: 4px; color: var(--bs-body-color, #000000); }
     .hospital-address { font-size: 14px; font-weight: 400; color: var(--bs-body-color, #000000); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hospital-address * { font-size: 14px; }
-    .rating-section { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-    .rating-score { font-weight: 700; color: #AE1932; }
-    .review-count { font-size: 12px; color: var(--bs-secondary-color, #666); }
 
     /* 태그 - 가로 스크롤 */
     .badge-group { display: flex; gap: 6px; margin-top: 6px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 4px; scrollbar-width: none; }
     .badge-group::-webkit-scrollbar { display: none; }
     .tag-badge { display: inline-block; padding: 3px 10px; border: 1px solid currentColor; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
-
-    /* CTA 버튼 - 중앙 균등 */
-    .card-cta { display: flex; gap: 10px; padding: 10px 16px 14px; }
-    .card-cta .btn { flex: 1; text-align: center; border-radius: 8px; font-weight: 500; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; }
-    .btn-consult { border: none; }
-    .btn-consult:hover { filter: brightness(0.9); }
-    .btn-detail { background: transparent; border: 1px solid var(--bs-border-color, #ddd); color: var(--bs-body-color, #666); }
-    .btn-detail:hover { background: var(--bs-tertiary-bg, #f0f0f0); }
-
-    /* 필터 */
-    .filter-section { border-bottom: 1px solid var(--bs-border-color, #F5F5F5); padding: 12px 16px; display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
-    .filter-section::-webkit-scrollbar { display: none; }
-    .filter-btn { padding: 8px 16px; border: 1px solid var(--bs-border-color, #E0E0E0); border-radius: 20px; background: var(--bs-body-bg, #fff); color: var(--bs-secondary-color, #666); font-size: 14px; cursor: pointer; transition: all 0.3s; white-space: nowrap; }
-    .filter-btn:hover { border-color: #AE1932; color: #AE1932; }
-    .filter-btn.active { background: #AE1932; color: white; border-color: #AE1932; }
-    .region-btn { display: inline-block; padding: 6px 14px; border: 1px solid var(--bs-border-color, #e0e0e0); border-radius: 20px; background: var(--bs-body-bg, #fff); color: var(--bs-secondary-color, #666); font-size: 13px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-    .region-btn:hover { border-color: #AE1932; color: #AE1932; }
-    .region-btn.active { background: #AE1932; color: #fff; border-color: #AE1932; }
 
     /* === 리스트형 (고정) === */
     .hospital-grid.list-view { grid-template-columns: 1fr; }
@@ -459,11 +427,8 @@ $page_css = '
     .hospital-grid.list-view .hospital-image { width: 100px; height: 100px; flex-shrink: 0; }
     .hospital-grid.list-view .card-link { display: flex; flex-direction: row; flex: 1; min-width: 0; }
     .hospital-grid.list-view .hospital-info { flex: 1; padding: 10px 12px; min-width: 0; }
-    .hospital-grid.list-view .card-cta { flex-direction: column; width: auto; padding: 10px 12px; justify-content: center; min-width: 90px; }
-    .hospital-grid.list-view .btn-detail { display: none; }
     .hospital-grid.list-view .hospital-name { font-size: ' . $list_name . 'px; }
     .hospital-grid.list-view .tag-badge { font-size: ' . $list_tag_s . 'px; color: ' . $list_tag_c . '; border-color: ' . $list_tag_c . '; }
-    .hospital-grid.list-view .btn-consult { background: ' . $list_btn . '; color: ' . $list_btxt . '; font-size: ' . $list_cta . 'px; padding: 8px 12px; }
 
     .addr-full { display: none; }
     .addr-short { display: inline; }
@@ -473,8 +438,6 @@ $page_css = '
     /* 광고 등급 뱃지 (이미지 좌측 상단) */
     .grade-badge { position: absolute; top: 8px; left: 8px; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; z-index: 5; line-height: 1.4; }
     .grade-badge-sa { background: #DC3545; color: #fff; }
-    .grade-badge-bc { background: #2E75B6; color: #fff; }
-    .grade-badge-de { background: transparent; color: #999; font-size: 10px; font-weight: 500; padding: 0; position: absolute; top: 8px; left: 8px; }
 
     @media (max-width: 768px) {
         .hospital-grid { grid-template-columns: 1fr; }
@@ -552,12 +515,6 @@ include __DIR__ . '/includes/header.php';
           .sort-chip i { font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1));width:18px;height:18px; }
         }
         </style>
-        <select id="sortOrder" style="display:none;" onchange="applySort()">
-            <option value="price"<?php echo $sort==='price' ? ' selected' : ''; ?>>낮은가격순</option>
-            <option value="rating"<?php echo $sort==='rating' ? ' selected' : ''; ?>>평점순</option>
-            <option value="popular"<?php echo $sort==='popular' ? ' selected' : ''; ?>>인기순</option>
-            <option value="review"<?php echo $sort==='review' ? ' selected' : ''; ?>><?php echo term('review', '후기'); ?>순</option>
-        </select>
     </div>
 
     <div class="results-header" style="padding: 0 16px;">
@@ -579,7 +536,6 @@ include __DIR__ . '/includes/header.php';
     <?php if (!empty($hospitals)): ?>
 <?php
 // 리스트형 고정 — 뷰 전환 토글 제거 (카드형/리스트형 버튼 삭제)
-require_once __DIR__ . '/includes/settings_helper.php';
 $_infeed_enabled = getSettingValue($connect, 'ad_show_hospitals_infeed', '1');
 $_infeed_interval = (int)getSettingValue($connect, 'ad_infeed_interval', '4');
 $_infeed_ads = [];
@@ -632,9 +588,6 @@ foreach ($hospitals as $hospital):
     endif;
     $__hi++;
 
-    $has_rating = (int)($hospital['review_count'] ?? 0) > 0;
-    $rating_val = number_format((float)($hospital['rating'] ?? 0), 1);
-    $review_cnt = number_format((int)($hospital['review_count'] ?? 0));
     // 특정 시술로 필터링해서 들어온 경우, 상세 페이지에서도 그 시술 정보로 바로 이동
     $_detail_url = 'detail.php?id=' . (int)$hospital['id'];
     if (!empty($effective_treatment) && $effective_treatment_id > 0) {
@@ -723,22 +676,10 @@ foreach ($hospitals as $hospital):
 
 <script>
 function setSort(val) {
-    document.getElementById('sortOrder').value = val;
-    applySort();
-}
-function applySort() {
     var url = new URL(window.location);
-    url.searchParams.set('sort', document.getElementById('sortOrder').value);
+    url.searchParams.set('sort', val);
     window.location = url;
 }
-document.addEventListener("DOMContentLoaded", function() {
-    var params = new URLSearchParams(window.location.search);
-    var cr = params.get("region") || "";
-    document.querySelectorAll(".region-btn").forEach(function(b) {
-        b.classList.remove("active");
-        if (b.getAttribute("data-region") === cr) b.classList.add("active");
-    });
-});
 </script>
 
 <?php

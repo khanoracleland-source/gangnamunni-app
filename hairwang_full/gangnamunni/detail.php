@@ -2185,26 +2185,6 @@ if ($current_tab === 'reviews') {
             </div>
             <?php endif; ?>
         </div>
-        <?php if ($current_tab === 'events'): ?>
-        <script>
-        // 시술목록 탭 진입 시 제목 위치로 스크롤
-        document.addEventListener('DOMContentLoaded', function(){
-            var el = document.getElementById('eventsIntro');
-            if (!el) return;
-            setTimeout(function(){
-                var tabMenu = document.querySelector('.tab-menu');
-                var stickyBottom = 160;
-                if (tabMenu) {
-                    var topPx = parseInt(getComputedStyle(tabMenu).top, 10) || 112;
-                    stickyBottom = topPx + tabMenu.offsetHeight;
-                }
-                var y = el.getBoundingClientRect().top + window.pageYOffset - stickyBottom - 12;
-                window.scrollTo({ top: y, behavior: 'smooth' });
-            }, 150);
-        });
-        </script>
-        <?php endif; ?>
-
         <!-- 후기 탭 -->
         <div class="tab-pane <?php echo $current_tab === 'reviews' ? 'active' : ''; ?>" id="tab-reviews">
             <h3 id="reviewsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;"><?php echo term('review', '시술후기'); ?></h3>
@@ -2279,26 +2259,6 @@ if ($current_tab === 'reviews') {
             </div>
             <?php endif; ?>
         </div>
-        <?php if ($current_tab === 'reviews'): ?>
-        <script>
-        // 시술후기 탭 진입 시 '시술후기' 제목 위치로 스크롤
-        document.addEventListener('DOMContentLoaded', function(){
-            var el = document.getElementById('reviewsIntro');
-            if (!el) return;
-            setTimeout(function(){
-                var tabMenu = document.querySelector('.tab-menu');
-                var stickyBottom = 160;
-                if (tabMenu) {
-                    var topPx = parseInt(getComputedStyle(tabMenu).top, 10) || 112;
-                    stickyBottom = topPx + tabMenu.offsetHeight;
-                }
-                var y = el.getBoundingClientRect().top + window.pageYOffset - stickyBottom - 12;
-                window.scrollTo({ top: y, behavior: 'smooth' });
-            }, 150);
-        });
-        </script>
-        <?php endif; ?>
-
         <!-- 의사 탭 -->
         <div class="tab-pane <?php echo $current_tab === 'doctors' ? 'active' : ''; ?>" id="tab-doctors">
             <h3 id="doctorsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;">의료진 소개</h3>
@@ -2361,12 +2321,18 @@ if ($current_tab === 'reviews') {
             </div>
             <?php endif; ?>
         </div>
-        <?php if ($current_tab === 'doctors'): ?>
+        <?php
+        $tab_intro_ids = [
+            'events' => 'eventsIntro',
+            'reviews' => 'reviewsIntro',
+            'doctors' => 'doctorsIntro',
+        ];
+        $tab_intro_id = $tab_intro_ids[$current_tab] ?? '';
+        if ($tab_intro_id !== ''):
+        ?>
         <script>
-        // 의료진 탭 진입 시 '의료진 소개' 제목 위치로 스크롤
-        // sticky 탭메뉴(가장 아래 고정요소)의 실제 하단을 측정해 그만큼 여백 확보
         document.addEventListener('DOMContentLoaded', function(){
-            var el = document.getElementById('doctorsIntro');
+            var el = document.getElementById(<?php echo json_encode($tab_intro_id); ?>);
             if (!el) return;
             setTimeout(function(){
                 var tabMenu = document.querySelector('.tab-menu');
@@ -2887,8 +2853,6 @@ include __DIR__ . '/includes/cpv_tracker.php';
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
 <?php renderWishlistScript(); ?>
 <?php include __DIR__ . '/includes/report_block_modal.php'; ?>
-</body>
-</html>
 <?php
 // 최근 본 병원 저장
 if (!empty($hospital_id) && isset($hospital)) {
@@ -2902,4 +2866,6 @@ if (!empty($hospital_id) && isset($hospital)) {
     );
 }
 ?>
+</body>
+</html>
 <?php mysqli_close($connect); ?>
