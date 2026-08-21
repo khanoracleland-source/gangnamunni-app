@@ -24,11 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'withdraw_social') {
-        if (!$is_social_member) {
-            http_response_code(403);
-            echo json_encode(['ok' => false, 'message' => '비밀번호 확인이 필요합니다.']); exit;
-        }
-
         $member_stmt = mysqli_prepare($connect,
             "SELECT mb_no, mb_id, mb_nick, mb_email FROM g5_member WHERE mb_id = ? LIMIT 1");
         mysqli_stmt_bind_param($member_stmt, 's', $member_id);
@@ -42,12 +37,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         mysqli_begin_transaction($connect);
         try {
-            $reason = 'notification_settings';
-            $log_stmt = mysqli_prepare($connect,
-                "INSERT INTO gangnamunni_withdrawals (mb_id, mb_nick, mb_email, reason, withdrawn_at) VALUES (?, ?, ?, ?, NOW())");
-            mysqli_stmt_bind_param($log_stmt, 'ssss', $member_row['mb_id'], $member_row['mb_nick'], $member_row['mb_email'], $reason);
-            if (!mysqli_stmt_execute($log_stmt)) throw new RuntimeException(mysqli_stmt_error($log_stmt));
-            mysqli_stmt_close($log_stmt);
+            // Some service tables use the numeric mb_no while others use the
+            // Kakao-derived mb_id. Remove both forms so a later Kakao signup
+            // cannot inherit the withdrawn account's data.
+            $delete_by = function ($table, $column, $value, $type = 's') use ($connect) {
+                $column_stmt = mysqli_prepare($connect,
+                    "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1");
+                mysqli_stmt_bind_param($column_stmt, 'ss', $table, $column);
+                mysqli_stmt_execute($column_stmt);
+                $exists = mysqli_stmt_get_result($column_stmt)->num_rows > 0;
+                mysqli_stmt_close($column_stmt);
+                if (!$exists) return;
+
+                // Identifiers come exclusively from the hard-coded maps below.
+                $stmt = mysqli_prepare($connect, "DELETE FROM `{$table}` WHERE `{$column}` = ?");
+                mysqli_stmt_bind_param($stmt, $type, $value);
+                if (!mysqli_stmt_execute($stmt)) throw new RuntimeException(mysqli_stmt_error($stmt));
+                mysqli_stmt_close($stmt);
+            };
 
             $sync_stmt = mysqli_prepare($connect,
                 "SELECT hms_user_id FROM member_sync WHERE mb_no = ? OR mb_id = ? LIMIT 1");
@@ -61,6 +68,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_stmt_bind_param($status_stmt, 'i', $hms_user_id);
                 if (!mysqli_stmt_execute($status_stmt)) throw new RuntimeException(mysqli_stmt_error($status_stmt));
                 mysqli_stmt_close($status_stmt);
+            }
+
+            $mb_no = (int)$member_row['mb_no'];
+            $mb_id = (string)$member_row['mb_id'];
+
+            // Data keyed by the numeric Gnuboard member number.
+            foreach ([
+                ['gangnamunni_wishlist', 'member_id'],
+                ['gangnamunni_points', 'member_id'],
+                ['gangnamunni_user_actions', 'member_id'],
+                ['gangnamunni_coupon_claims', 'member_id'],
+                ['gangnamunni_chat_rooms', 'member_id'],
+                ['gangnamunni_content_reports', 'reported_user_id'],
+                ['gangnamunni_members', 'mb_no'],
+            ] as $target) {
+                $delete_by($target[0], $target[1], $mb_no, 'i');
+            }
+
+            // Data keyed by the stable social/Gnuboard login id.
+            foreach ([
+                ['gangnamunni_notification_settings', 'member_id'],
+                ['gangnamunni_user_agreements', 'user_id'],
+                ['gangnamunni_user_notifications', 'member_id'],
+                ['gangnamunni_bookings', 'mb_id'],
+                ['hospital_reviews', 'user_id'],
+                ['gangnamunni_community_comments', 'mb_id'],
+                ['gangnamunni_community_likes', 'user_id'],
+                ['gangnamunni_community_posts', 'mb_id'],
+                ['gangnamunni_members', 'mb_id'],
+                ['gangnamunni_withdrawals', 'mb_id'],
+                ['g5_point', 'mb_id'],
+                ['g5_scrap', 'mb_id'],
+                ['g5_memo', 'me_recv_mb_id'],
+                ['g5_memo', 'me_send_mb_id'],
+            ] as $target) {
+                $delete_by($target[0], $target[1], $mb_id, 's');
             }
 
             $sync_delete_stmt = mysqli_prepare($connect,
@@ -94,7 +137,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException(mysqli_stmt_error($delete_stmt) ?: 'member_not_deleted');
             }
             mysqli_stmt_close($delete_stmt);
+
+            $verify_stmt = mysqli_prepare($connect,
+                "SELECT
+                    (SELECT COUNT(*) FROM g5_member WHERE mb_id = ?) AS members,
+                    (SELECT COUNT(*) FROM g5_member_social_profiles WHERE mb_id = ?) AS social_profiles,
+                    (SELECT COUNT(*) FROM sso_tokens WHERE g5_mb_id = ?) AS tokens");
+            mysqli_stmt_bind_param($verify_stmt, 'sss', $mb_id, $mb_id, $mb_id);
+            mysqli_stmt_execute($verify_stmt);
+            $remaining = mysqli_fetch_assoc(mysqli_stmt_get_result($verify_stmt));
+            mysqli_stmt_close($verify_stmt);
+            if (array_sum(array_map('intval', $remaining ?: [])) !== 0) {
+                throw new RuntimeException('withdrawal_verification_failed');
+            }
             mysqli_commit($connect);
+
+            // Profile photos use the stable mb_id as the filename, so leaving
+            // one behind would make a later Kakao signup look like the old account.
+            $profile_file_id = preg_replace('/[^A-Za-z0-9_-]/', '', $mb_id);
+            foreach (['jpg', 'jpeg', 'png', 'webp'] as $extension) {
+                $profile_path = __DIR__ . '/uploads/profile/' . $profile_file_id . '.' . $extension;
+                if ($profile_file_id !== '' && is_file($profile_path)) @unlink($profile_path);
+            }
 
             unset($_SESSION['ss_mb_id']);
             if (session_status() === PHP_SESSION_ACTIVE) session_destroy();
@@ -305,6 +369,8 @@ if ($sheet_nick === '') $sheet_nick = '회원';
         })
         .then(function (data) {
             alert(data.message || '탈퇴가 완료되었습니다.');
+            try { localStorage.clear(); } catch (e) {}
+            try { sessionStorage.clear(); } catch (e) {}
             window.location.replace(WITHDRAW_SUCCESS_URL);
         })
         .catch(function (error) {
@@ -331,11 +397,10 @@ if ($sheet_nick === '') $sheet_nick = '회원';
             desc:        '탈퇴 후에는 일부 정보가 복구되지 않을 수 있어요',
             confirmText: '탈퇴하기',
             cancelText:  '아니오',
-            // SNS 회원은 로컬 비밀번호가 없으므로 현재 인증 세션에서 즉시 탈퇴한다.
-            // 일반 회원은 비밀번호 확인 페이지로 이동한다.
+            // The settings page already has an authenticated Gnuboard/SSO
+            // session. Perform the verified hard-delete here for every account.
             onConfirm:   function () {
-                if (IS_SOCIAL_MEMBER) deleteSocialAccount();
-                else location.href = WITHDRAW_URL;
+                deleteSocialAccount();
             }
         });
     });

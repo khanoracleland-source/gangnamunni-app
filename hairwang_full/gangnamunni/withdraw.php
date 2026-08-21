@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/functions.php';
 require_login();
 
 $withdraw_member_id = get_gangnamunni_member_id();
@@ -139,7 +140,7 @@ $withdraw_success_url = G5_URL . '/gangnamunni/index.php';
 }
 </style>
 
-<meta name="csrf-token" content="<?php echo htmlspecialchars(get_csrf_token()); ?>">
+<meta name="csrf-token" content="<?php echo htmlspecialchars(generateCsrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
 
 <div class="withdraw-container">
     <div class="withdraw-header">
