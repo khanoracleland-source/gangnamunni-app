@@ -21,7 +21,7 @@ $member = $db->fetchOne("SELECT mb_no, mb_id, mb_password, mb_nick, mb_email FRO
 if (!$member) jsonError('회원 정보를 찾을 수 없습니다.', 404);
 
 $social_profile = $db->fetchOne(
-    "SELECT mp_no FROM g5_member_social_profiles WHERE mb_id = ? LIMIT 1",
+    "SELECT mp_no, provider, identifier FROM g5_member_social_profiles WHERE mb_id = ? LIMIT 1",
     [$user_id]
 );
 
@@ -30,6 +30,14 @@ $social_profile = $db->fetchOne(
 // Kakao/Google 회원은 서비스 비밀번호가 없으므로 인증된 세션 + CSRF로 확인한다.
 if (!$social_profile && !validate_password($password, $member['mb_password'])) {
     jsonError('비밀번호가 일치하지 않습니다.');
+}
+
+if (strtolower((string)($social_profile['provider'] ?? '')) === 'kakao') {
+    $unlink = unlinkKakaoAccountForWithdrawal((string)($social_profile['identifier'] ?? ''));
+    if (empty($unlink['ok'])) {
+        error_log('[Withdraw API] ' . ($unlink['message'] ?? 'Kakao unlink failed'));
+        jsonError('카카오 계정 연결 해제에 실패했습니다. 다시 로그인한 후 재시도해주세요.', 502);
+    }
 }
 
 try {

@@ -329,6 +329,69 @@ function validateCsrfToken($token) {
 }
 
 /**
+ * Disconnect a Kakao account before deleting the local service account.
+ * Kakao requires /v1/user/unlink (not logout) so consent is withdrawn and the
+ * consent/signup screen is shown again on a later Kakao login.
+ */
+function unlinkKakaoAccountForWithdrawal($kakaoUserId = '') {
+    $accessToken = '';
+
+    try {
+        if (!class_exists('Hybrid_Auth') && defined('G5_SOCIAL_LOGIN_PATH')) {
+            require_once G5_SOCIAL_LOGIN_PATH . '/Hybrid/Auth.php';
+        }
+        if (class_exists('Hybrid_Auth')) {
+            $adapter = Hybrid_Auth::getAdapter('Kakao');
+            $tokens = $adapter->getAccessToken();
+            $accessToken = trim((string)($tokens['access_token'] ?? ''));
+        }
+    } catch (Throwable $e) {
+        error_log('[Kakao unlink] Access token unavailable: ' . $e->getMessage());
+    }
+
+    $headers = ['Content-Type: application/x-www-form-urlencoded;charset=utf-8'];
+    $body = '';
+    if ($accessToken !== '') {
+        $headers[] = 'Authorization: Bearer ' . $accessToken;
+    } else {
+        $adminKey = defined('KAKAO_ADMIN_KEY') ? (string)KAKAO_ADMIN_KEY : (string)getenv('KAKAO_ADMIN_KEY');
+        if ($adminKey === '' || $kakaoUserId === '' || !ctype_digit((string)$kakaoUserId)) {
+            return ['ok' => false, 'message' => 'Kakao unlink credentials are unavailable.'];
+        }
+        $headers[] = 'Authorization: KakaoAK ' . $adminKey;
+        $body = http_build_query(['target_id_type' => 'user_id', 'target_id' => (string)$kakaoUserId]);
+    }
+
+    $curl = curl_init('https://kapi.kakao.com/v1/user/unlink');
+    if ($curl === false) return ['ok' => false, 'message' => 'Unable to initialize Kakao unlink.'];
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => $body,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 10,
+    ]);
+    $response = curl_exec($curl);
+    $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($curl);
+    curl_close($curl);
+
+    $payload = is_string($response) ? json_decode($response, true) : null;
+    $unlinkedId = is_array($payload) ? (string)($payload['id'] ?? '') : '';
+    if ($httpCode !== 200 || $unlinkedId === '') {
+        error_log('[Kakao unlink] HTTP ' . $httpCode . ': ' . ($curlError ?: (string)$response));
+        return ['ok' => false, 'message' => 'Kakao account unlink failed.'];
+    }
+    if ($kakaoUserId !== '' && ctype_digit((string)$kakaoUserId) && $unlinkedId !== (string)$kakaoUserId) {
+        error_log('[Kakao unlink] User id mismatch.');
+        return ['ok' => false, 'message' => 'Kakao unlink identity mismatch.'];
+    }
+
+    return ['ok' => true, 'id' => $unlinkedId];
+}
+
+/**
  * 날짜 포맷 (상대 시간)
  */
 function formatRelativeTime($datetime) {

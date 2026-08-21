@@ -8,9 +8,10 @@ $csrf_token = generateCsrfToken();
 $member_id_escaped = mysqli_real_escape_string($connect, (string)$member_id);
 $social_login_result = mysqli_query(
     $connect,
-    "SELECT 1 FROM g5_member_social_profiles WHERE mb_id = '{$member_id_escaped}' LIMIT 1"
+    "SELECT provider, identifier FROM g5_member_social_profiles WHERE mb_id = '{$member_id_escaped}' LIMIT 1"
 );
-$is_social_member = $social_login_result && mysqli_num_rows($social_login_result) > 0;
+$social_login_profile = $social_login_result ? mysqli_fetch_assoc($social_login_result) : null;
+$is_social_member = !empty($social_login_profile);
 $editable_fields = ['noti_general','noti_message','mkt_push','mkt_sms','mkt_email','mkt_night_push'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -33,6 +34,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$member_row) {
             http_response_code(404);
             echo json_encode(['ok' => false, 'message' => '회원 정보를 찾을 수 없습니다.']); exit;
+        }
+
+        // Kakao consent must be withdrawn before local PII is deleted. If
+        // unlink fails, stop here so the UI never reports a false withdrawal.
+        if (strtolower((string)($social_login_profile['provider'] ?? '')) === 'kakao') {
+            $unlink = unlinkKakaoAccountForWithdrawal((string)($social_login_profile['identifier'] ?? ''));
+            if (empty($unlink['ok'])) {
+                error_log('[Withdraw settings] ' . ($unlink['message'] ?? 'Kakao unlink failed'));
+                http_response_code(502);
+                echo json_encode([
+                    'ok' => false,
+                    'message' => '카카오 계정 연결 해제에 실패했습니다. 다시 로그인한 후 재시도해주세요.'
+                ]); exit;
+            }
         }
 
         mysqli_begin_transaction($connect);
