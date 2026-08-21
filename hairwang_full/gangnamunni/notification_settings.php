@@ -5,16 +5,112 @@ if (!is_gangnamunni_logged_in()) { header('Location: auth/login.php?url='.urlenc
 $member_id = get_gangnamunni_member_id();
 
 $csrf_token = generateCsrfToken();
+$member_id_escaped = mysqli_real_escape_string($connect, (string)$member_id);
+$social_login_result = mysqli_query(
+    $connect,
+    "SELECT 1 FROM g5_member_social_profiles WHERE mb_id = '{$member_id_escaped}' LIMIT 1"
+);
+$is_social_member = $social_login_result && mysqli_num_rows($social_login_result) > 0;
 $editable_fields = ['noti_general','noti_message','mkt_push','mkt_sms','mkt_email','mkt_night_push'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=utf-8');
+    $action = (string)($_POST['action'] ?? '');
     $field = (string)($_POST['field'] ?? '');
     $value = (string)($_POST['value'] ?? '') === '1' ? 1 : 0;
     if (!validateCsrfToken($_POST['csrf_token'] ?? '')) {
         http_response_code(403);
         echo json_encode(['ok' => false, 'message' => '요청이 만료되었습니다.']); exit;
     }
+
+    if ($action === 'withdraw_social') {
+        if (!$is_social_member) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'message' => '비밀번호 확인이 필요합니다.']); exit;
+        }
+
+        $member_stmt = mysqli_prepare($connect,
+            "SELECT mb_no, mb_id, mb_nick, mb_email FROM g5_member WHERE mb_id = ? LIMIT 1");
+        mysqli_stmt_bind_param($member_stmt, 's', $member_id);
+        mysqli_stmt_execute($member_stmt);
+        $member_row = mysqli_fetch_assoc(mysqli_stmt_get_result($member_stmt));
+        mysqli_stmt_close($member_stmt);
+        if (!$member_row) {
+            http_response_code(404);
+            echo json_encode(['ok' => false, 'message' => '회원 정보를 찾을 수 없습니다.']); exit;
+        }
+
+        mysqli_begin_transaction($connect);
+        try {
+            $reason = 'notification_settings';
+            $log_stmt = mysqli_prepare($connect,
+                "INSERT INTO gangnamunni_withdrawals (mb_id, mb_nick, mb_email, reason, withdrawn_at) VALUES (?, ?, ?, ?, NOW())");
+            mysqli_stmt_bind_param($log_stmt, 'ssss', $member_row['mb_id'], $member_row['mb_nick'], $member_row['mb_email'], $reason);
+            if (!mysqli_stmt_execute($log_stmt)) throw new RuntimeException(mysqli_stmt_error($log_stmt));
+            mysqli_stmt_close($log_stmt);
+
+            $sync_stmt = mysqli_prepare($connect,
+                "SELECT hms_user_id FROM member_sync WHERE mb_no = ? OR mb_id = ? LIMIT 1");
+            mysqli_stmt_bind_param($sync_stmt, 'is', $member_row['mb_no'], $member_row['mb_id']);
+            mysqli_stmt_execute($sync_stmt);
+            $sync_row = mysqli_fetch_assoc(mysqli_stmt_get_result($sync_stmt));
+            mysqli_stmt_close($sync_stmt);
+            if ($sync_row && !empty($sync_row['hms_user_id'])) {
+                $hms_user_id = (int)$sync_row['hms_user_id'];
+                $status_stmt = mysqli_prepare($connect, "UPDATE users SET status = 0 WHERE id = ?");
+                mysqli_stmt_bind_param($status_stmt, 'i', $hms_user_id);
+                if (!mysqli_stmt_execute($status_stmt)) throw new RuntimeException(mysqli_stmt_error($status_stmt));
+                mysqli_stmt_close($status_stmt);
+            }
+
+            $sync_delete_stmt = mysqli_prepare($connect,
+                "DELETE FROM member_sync WHERE mb_no = ? OR mb_id = ?");
+            mysqli_stmt_bind_param($sync_delete_stmt, 'is', $member_row['mb_no'], $member_row['mb_id']);
+            if (!mysqli_stmt_execute($sync_delete_stmt)) throw new RuntimeException(mysqli_stmt_error($sync_delete_stmt));
+            mysqli_stmt_close($sync_delete_stmt);
+
+            $token_delete_stmt = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ?");
+            mysqli_stmt_bind_param($token_delete_stmt, 's', $member_row['mb_id']);
+            if (!mysqli_stmt_execute($token_delete_stmt)) throw new RuntimeException(mysqli_stmt_error($token_delete_stmt));
+            mysqli_stmt_close($token_delete_stmt);
+
+            $social_delete_stmt = mysqli_prepare($connect,
+                "DELETE FROM g5_member_social_profiles WHERE mb_id = ?");
+            mysqli_stmt_bind_param($social_delete_stmt, 's', $member_row['mb_id']);
+            if (!mysqli_stmt_execute($social_delete_stmt)) throw new RuntimeException(mysqli_stmt_error($social_delete_stmt));
+            mysqli_stmt_close($social_delete_stmt);
+
+            if (!empty($member_row['mb_email'])) {
+                $admin_stmt = mysqli_prepare($connect,
+                    "DELETE FROM gangnamunni_admins WHERE (username = ? OR email = ?) AND role IN ('hospital_super_admin','hospital_admin','hospital_sub_admin','hospital_staff')");
+                mysqli_stmt_bind_param($admin_stmt, 'ss', $member_row['mb_email'], $member_row['mb_email']);
+                if (!mysqli_stmt_execute($admin_stmt)) throw new RuntimeException(mysqli_stmt_error($admin_stmt));
+                mysqli_stmt_close($admin_stmt);
+            }
+
+            $delete_stmt = mysqli_prepare($connect, "DELETE FROM g5_member WHERE mb_id = ?");
+            mysqli_stmt_bind_param($delete_stmt, 's', $member_row['mb_id']);
+            if (!mysqli_stmt_execute($delete_stmt) || mysqli_stmt_affected_rows($delete_stmt) !== 1) {
+                throw new RuntimeException(mysqli_stmt_error($delete_stmt) ?: 'member_not_deleted');
+            }
+            mysqli_stmt_close($delete_stmt);
+            mysqli_commit($connect);
+
+            unset($_SESSION['ss_mb_id']);
+            if (session_status() === PHP_SESSION_ACTIVE) session_destroy();
+            foreach (['sb_sso_token', md5('ck_mb_id'), md5('ck_auto')] as $cookie_name) {
+                setcookie($cookie_name, '', time() - 3600, '/');
+            }
+
+            echo json_encode(['ok' => true, 'message' => '회원 탈퇴가 완료되었습니다.']); exit;
+        } catch (Throwable $e) {
+            mysqli_rollback($connect);
+            error_log('[Withdraw settings] ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'message' => '탈퇴 처리 중 오류가 발생했습니다.']); exit;
+        }
+    }
+
     if (!in_array($field, $editable_fields, true)) {
         http_response_code(422);
         echo json_encode(['ok' => false, 'message' => '허용되지 않은 설정입니다.']); exit;
@@ -155,6 +251,7 @@ $is_app_mode   = isset($_GET['app']) && $_GET['app'] == '1';
 $logout_return = rtrim((string) parse_url(G5_URL, PHP_URL_PATH), '/') . '/gangnamunni/index.php' . ($is_app_mode ? '?app=1' : '');
 $logout_url    = G5_BBS_URL . '/logout.php?url=' . urlencode($logout_return);
 $withdraw_url  = G5_URL . '/gangnamunni/withdraw.php';
+$withdraw_success_url = G5_URL . '/gangnamunni/index.php' . ($is_app_mode ? '?app=1' : '');
 // 바텀시트 문구용 — 로그인한 본인의 이름. 닉네임 > 이름 > 아이디 순으로 사용한다.
 $sheet_member  = function_exists('get_gangnamunni_member') ? get_gangnamunni_member() : ($member ?? []);
 $sheet_nick    = '';
@@ -181,7 +278,41 @@ if ($sheet_nick === '') $sheet_nick = '회원';
 (function () {
     var LOGOUT_URL   = <?php echo json_encode($logout_url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
     var WITHDRAW_URL = <?php echo json_encode($withdraw_url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    var WITHDRAW_SUCCESS_URL = <?php echo json_encode($withdraw_success_url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    var WITHDRAW_CSRF = <?php echo json_encode($csrf_token); ?>;
+    var IS_SOCIAL_MEMBER = <?php echo $is_social_member ? 'true' : 'false'; ?>;
     var NICK         = <?php echo json_encode($sheet_nick, JSON_UNESCAPED_UNICODE); ?>;
+
+    function deleteSocialAccount() {
+        var button = document.getElementById('btnWithdraw');
+        button.style.pointerEvents = 'none';
+        button.style.opacity = '0.55';
+
+        var withdrawData = new FormData();
+        withdrawData.set('action', 'withdraw_social');
+        withdrawData.set('csrf_token', WITHDRAW_CSRF);
+
+        fetch(location.pathname + location.search, {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: withdrawData
+        })
+        .then(function (res) {
+            return res.json().then(function (data) {
+                if (!res.ok || !data.ok) throw new Error(data.message || '탈퇴 처리에 실패했습니다.');
+                return data;
+            });
+        })
+        .then(function (data) {
+            alert(data.message || '탈퇴가 완료되었습니다.');
+            window.location.replace(WITHDRAW_SUCCESS_URL);
+        })
+        .catch(function (error) {
+            alert(error.message || '탈퇴 처리에 실패했습니다.');
+            button.style.pointerEvents = '';
+            button.style.opacity = '';
+        });
+    }
 
     document.getElementById('btnLogout').addEventListener('click', function (e) {
         e.preventDefault();
@@ -200,8 +331,12 @@ if ($sheet_nick === '') $sheet_nick = '회원';
             desc:        '탈퇴 후에는 일부 정보가 복구되지 않을 수 있어요',
             confirmText: '탈퇴하기',
             cancelText:  '아니오',
-            // 실제 탈퇴는 withdraw.php 에서 비밀번호 확인 + CSRF 로 처리한다.
-            onConfirm:   function () { location.href = WITHDRAW_URL; }
+            // SNS 회원은 로컬 비밀번호가 없으므로 현재 인증 세션에서 즉시 탈퇴한다.
+            // 일반 회원은 비밀번호 확인 페이지로 이동한다.
+            onConfirm:   function () {
+                if (IS_SOCIAL_MEMBER) deleteSocialAccount();
+                else location.href = WITHDRAW_URL;
+            }
         });
     });
 })();

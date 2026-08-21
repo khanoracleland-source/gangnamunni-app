@@ -2,9 +2,18 @@
 require_once __DIR__ . '/includes/init.php';
 require_login();
 
+$withdraw_member_id = get_gangnamunni_member_id();
+$withdraw_member_id_escaped = mysqli_real_escape_string($connect, (string)$withdraw_member_id);
+$withdraw_social_result = mysqli_query(
+    $connect,
+    "SELECT 1 FROM g5_member_social_profiles WHERE mb_id = '{$withdraw_member_id_escaped}' LIMIT 1"
+);
+$is_social_member = $withdraw_social_result && mysqli_num_rows($withdraw_social_result) > 0;
+
 $page_title = term('member') . ' 탈퇴';
 $body_class = 'page-withdraw';
 include __DIR__ . '/includes/header.php';
+$withdraw_success_url = G5_URL . '/gangnamunni/index.php';
 ?>
 
 <style>
@@ -166,10 +175,14 @@ include __DIR__ . '/includes/header.php';
             <textarea id="reason_detail" name="reason_detail" placeholder="서비스 개선을 위해 의견을 남겨주세요."></textarea>
         </div>
 
+        <?php if (!$is_social_member) { ?>
         <div class="form-group">
             <label for="password">비밀번호 확인</label>
             <input type="password" id="password" name="password" placeholder="현재 비밀번호를 입력해주세요" required>
         </div>
+        <?php } else { ?>
+        <input type="hidden" id="password" name="password" value="">
+        <?php } ?>
 
         <label class="confirm-check">
             <input type="checkbox" id="confirmCheck">
@@ -191,7 +204,7 @@ function doWithdraw() {
     var detail = document.getElementById('reason_detail').value;
     var password = document.getElementById('password').value;
 
-    if (!password) {
+    if (!<?php echo $is_social_member ? 'true' : 'false'; ?> && !password) {
         alert('비밀번호를 입력해주세요.');
         return;
     }
@@ -226,8 +239,8 @@ function doWithdraw() {
     .then(function(res) { return res.json(); })
     .then(function(data) {
         if (data.success) {
-            alert(data.data.message || '탈퇴가 완료되었습니다.');
-            window.location.href = 'index.php';
+            alert(data.message || '탈퇴가 완료되었습니다.');
+            window.location.replace(<?php echo json_encode($withdraw_success_url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>);
         } else {
             alert(data.message || '탈퇴 처리에 실패했습니다.');
             btn.disabled = false;
