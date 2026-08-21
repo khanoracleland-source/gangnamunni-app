@@ -26,6 +26,7 @@ class StartupWebViewScreen extends StatefulWidget {
 
 class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
   late final WebViewController _controller;
+  final WebViewCookieManager _cookieManager = WebViewCookieManager();
   bool _isLoading = true;
   bool _isRefreshing = false;
   String? _currentUrl;
@@ -78,9 +79,22 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
     _initializeWebView();
   }
 
-  void _initializeWebView() {
+  Future<void> _initializeWebView() async {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted);
+
+    // Tell the website that this request comes from the patient app. The
+    // marker is deliberately not an auth token; it only lets the login page
+    // enable its existing, rotating 31-day remember-login token by default.
+    final startupUri = Uri.parse(widget.url);
+    await _cookieManager.setCookie(
+      WebViewCookie(
+        name: 'sb_patient_app',
+        value: '1',
+        domain: startupUri.host,
+        path: '/',
+      ),
+    );
 
     // WebViewBridge 생성 및 채널 등록 (FlutterBridge + PullToRefresh)
     final bridge = WebViewBridge(
@@ -131,7 +145,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(widget.url));
+      ..loadRequest(startupUri);
   }
 
   Future<void> _handlePullToRefresh() async {

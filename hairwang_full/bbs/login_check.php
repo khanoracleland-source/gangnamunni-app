@@ -6,6 +6,14 @@ $g5['title'] = "로그인 검사";
 $mb_id       = isset($_POST['mb_id']) ? trim($_POST['mb_id']) : '';
 $mb_password = isset($_POST['mb_password']) ? trim($_POST['mb_password']) : '';
 
+// WebView session cookies disappear when the patient app process is killed.
+// In the app, enable the existing rotating 31-day remember-login token for
+// both password and social (Kakao, etc.) logins. Browser logins still require
+// the explicit auto-login checkbox.
+$is_patient_app = isset($_COOKIE['sb_patient_app'])
+    && hash_equals('1', (string) $_COOKIE['sb_patient_app']);
+$auto_login = $is_patient_app || isset($_POST['auto_login']);
+
 run_event('member_login_check_before', $mb_id);
 
 if (!$mb_id || run_replace('check_empty_member_login_password', !$mb_password, $mb_id))

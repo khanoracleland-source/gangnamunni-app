@@ -184,13 +184,17 @@ if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
 }
 
 $login_error = '';
+$is_patient_app = isset($_COOKIE['sb_patient_app']) && hash_equals('1', (string)$_COOKIE['sb_patient_app']);
 
 // ===== 이메일 로그인 처리 =====
 // 이메일로 회원을 찾고 그누보드의 비밀번호/세션 함수로 서버 내에서 로그인한다.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email') {
     $email      = strtolower(trim((string)($_POST['mb_email'] ?? '')));
     $password   = (string)($_POST['mb_password'] ?? '');
-    $auto_login = isset($_POST['auto_login']) ? 1 : 0;
+    // A WebView session cookie is discarded when the app process exits.
+    // Patient-app logins therefore use the existing rotating remember token,
+    // while normal browser users keep controlling this with the checkbox.
+    $auto_login = ($is_patient_app || isset($_POST['auto_login'])) ? 1 : 0;
 
     $request_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $ip_rate = ['allowed' => true, 'retry' => 0];
@@ -463,7 +467,7 @@ $open_email = $login_error !== '';
                         </div>
 
                         <div class="row-between">
-                            <label><input type="checkbox" name="auto_login" id="auto_login"> 자동 로그인</label>
+                            <label><input type="checkbox" name="auto_login" id="auto_login"<?php echo (!empty($is_patient_app) ? ' checked' : ''); ?>> 자동 로그인</label>
                             <a href="password_lost.php">비밀번호 찾기</a>
                         </div>
 
