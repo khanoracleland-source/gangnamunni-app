@@ -27,6 +27,17 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 
 flutter_ios_podfile_setup
 
+# The upstream midpay plugin pins Midtrans 1.20.1, whose published iOS pod is
+# incomplete on current Xcode. Keep the Flutter API while using the maintained
+# compatible SDK release for reproducible App Store builds.
+midpay_podspec = File.join('.symlinks', 'plugins', 'midpay', 'ios', 'midpay.podspec')
+if File.exist?(midpay_podspec)
+  midpay_spec = File.read(midpay_podspec)
+  updated_midpay_spec = midpay_spec.gsub("'MidtransKit', '1.20.1'", "'MidtransKit', '1.29.0'")
+                                    .gsub("'MidtransCoreKit', '1.20.1'", "'MidtransCoreKit', '1.29.0'")
+  File.write(midpay_podspec, updated_midpay_spec) if updated_midpay_spec != midpay_spec
+end
+
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
