@@ -56,6 +56,14 @@ $upcoming_bookings = [];
 $completed_bookings = [];
 $cancelled_bookings = []; 
 
+// 예약 시간이 지나도 병원/마스터가 확인하기 전에는 completed로 자동 변경하지 않는다.
+// 대신 내 예약 화면에서는 '완료 확인중'으로 시술완료 탭에 노출한다.
+$is_booking_time_passed = static function (array $booking): bool {
+    $value = trim((string)($booking['booking_date'] ?? '') . ' ' . (string)($booking['booking_time'] ?? ''));
+    $timestamp = strtotime($value);
+    return $timestamp !== false && $timestamp <= time();
+};
+
 if ($is_user_logged_in && !empty($logged_mb_id)) {
     // 로그인 회원: mb_id가 일치하거나, 과거 데이터 중 mb_id가 비어 있고 본인 전화번호가 일치하는 예약만 조회
     $clean_phone = preg_replace('/[^0-9]/', '', $search_phone);
@@ -73,7 +81,7 @@ if ($is_user_logged_in && !empty($logged_mb_id)) {
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
         $bookings[] = $row;
-        if (in_array($row['status'], ['pending', 'confirmed'])) {
+        if (in_array($row['status'], ['pending', 'confirmed']) && !$is_booking_time_passed($row)) {
             $active_bookings[] = $row;
             $upcoming_bookings[] = $row;
         } elseif (in_array($row['status'], ['cancelled', 'no_show'])) {
@@ -99,7 +107,7 @@ if ($is_user_logged_in && !empty($logged_mb_id)) {
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
         $bookings[] = $row;
-        if (in_array($row['status'], ['pending', 'confirmed'])) {
+        if (in_array($row['status'], ['pending', 'confirmed']) && !$is_booking_time_passed($row)) {
             $active_bookings[] = $row;
             $upcoming_bookings[] = $row;
         } elseif (in_array($row['status'], ['cancelled', 'no_show'])) {
@@ -223,6 +231,15 @@ $page_title = '내 예약';
         /* 시술완료: 회색 배경 + 어두운 글자 */
         .booking-detail.bd-done { background: #f2f2f2; }
         .booking-detail.bd-done .detail-1, .booking-detail.bd-done .detail-2 { color: #333; }
+        .past-procedure-card { padding: 14px 0 28px; margin: 0; border-bottom: 1px solid #ddd; background: #fff; }
+        .past-procedure-card + .past-procedure-card { padding-top: 28px; }
+        .past-procedure-card .booking-header { margin-bottom: 8px; }
+        .past-procedure-card .booking-date { font-size: 18px; font-weight: 500; }
+        .completion-state { display:block; margin: 4px 0 10px; color: var(--color-primary); font-size: 18px; font-weight: 600; }
+        .past-procedure-card .booking-detail-row { gap: 0; }
+        .past-procedure-card .booking-detail { width: 68%; min-height: 70px; padding: 12px 18px; }
+        .past-procedure-card .detail-btns { width: 32%; flex: 0 0 32%; flex-direction: row; align-items: center; justify-content: space-evenly; gap: 4px; }
+        .past-procedure-card .detail-btn { flex: 0 1 auto; padding: 10px 4px; border-radius: 0; font-size: 18px; font-weight: 500; white-space: nowrap; }
         .bd-left { padding-left: 12px; flex: 1; min-width: 0; }
         .bd-right { padding-right: 12px; font-size: 18px; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
         .booking-detail i { width: 18px; display: inline-block; }
@@ -269,7 +286,7 @@ $page_title = '내 예약';
         .header .back { font-size: 26px; }
         .header h1 { font-size: 18px; font-weight: 650; white-space: nowrap; }
         .tabs { padding-top: 34px; background: #fff; border-bottom-color: #ccc; }
-        .tab-btn { padding: 15px 8px 13px; font-size: 16px; font-weight: 500; color: #111; }
+        .tab-btn { padding: 15px 8px 13px; font-size: 18px; font-weight: 500; color: #111; }
         .tab-btn.active { font-weight: 650; }
         .tab-count { margin-left: 3px; }
         .tab-content { padding: 20px 18px 4px; }
@@ -332,6 +349,22 @@ $page_title = '내 예약';
             font-size: 13px; font-weight: 600; line-height: 1.55;
         }
         .push-tip-close { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 22px; cursor: pointer; }
+
+        /* Figma: upcoming treatment tab */
+        #tab-active { min-height: calc(100vh - 145px); padding: 17px 20px 0; background: #fff; }
+        .upcoming-booking { margin: 0; padding: 16px 0 24px; border-bottom: 1px solid #dedede; background: #fff; }
+        .upcoming-booking:first-of-type { padding-top: 0; }
+        .upcoming-booking + .upcoming-booking { padding-top: 24px; }
+        .upcoming-date { margin-bottom: 13px; font-size: 18px; font-weight: 650; line-height: 1.35; letter-spacing: -.45px; color: #111; }
+        .upcoming-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(112px, 1fr); align-items: stretch; gap: 12px; }
+        .upcoming-summary { min-width: 0; min-height: 66px; padding: 12px 16px 11px 18px; display: flex; align-items: center; gap: 14px; background: var(--color-primary); color: #fff; text-decoration: none; }
+        .upcoming-copy { min-width: 0; flex: 1; }
+        .upcoming-treatment { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; line-height: 1.35; letter-spacing: 0; }
+        .upcoming-hospital { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; font-size: 13px; font-weight: 400; line-height: 1.35; color: #fff; }
+        .upcoming-dday { flex: 0 0 auto; font-size: 20px; font-weight: 700; white-space: nowrap; }
+        .upcoming-actions { display: flex; align-items: center; justify-content: space-around; gap: 12px; white-space: nowrap; }
+        .upcoming-action { padding: 10px 0; border: 0; background: transparent; color: #111; font: inherit; font-size: 18px; font-weight: 500; cursor: pointer; }
+        .upcoming-action:disabled { color: #aaa; cursor: not-allowed; }
 
         .modal-overlay.bottom-sheet-modal { align-items: flex-end; z-index: 12000; }
         .change-confirm-box {
@@ -398,7 +431,22 @@ $page_title = '내 예약';
             .cancel-sheet { padding-left:20px; padding-right:20px; }
             .cancel-reason-grid { gap:18px 14px; }
             .cancel-reason-option { font-size:14px; }
+            #tab-active { padding-left: 14px; padding-right: 14px; }
+            .upcoming-row { gap: 10px; }
+            .upcoming-summary { padding-left: 14px; padding-right: 12px; gap: 10px; }
+            .upcoming-actions { gap: 8px; }
+            .upcoming-action { font-size: 18px; }
         }
+        /* 시술완료/완료 확인중 Figma 목록 */
+        #tab-past.active { min-height:calc(100vh - 180px); background:#fff; }
+        #tab-past .past-procedure-card { margin:0; padding:14px 0 28px; border-bottom:1px solid #ddd; background:#fff; }
+        #tab-past .past-procedure-card + .past-procedure-card { padding-top:28px; }
+        #tab-past .past-procedure-card .booking-header { margin-bottom:8px; }
+        #tab-past .past-procedure-card .booking-date { font-size:18px; font-weight:500; }
+        #tab-past .past-procedure-card .booking-detail { width:68%; min-height:70px; padding:12px 18px; }
+        #tab-past .past-procedure-card .detail-btns { width:32%; flex:0 0 32%; flex-direction:row; align-items:center; justify-content:space-evenly; gap:4px; }
+        #tab-past .past-procedure-card .detail-btn { flex:0 1 auto; padding:10px 4px; border-radius:0; font-size:18px; font-weight:500; white-space:nowrap; }
+        @media(max-width:420px){#tab-past .past-procedure-card{padding-left:0;padding-right:0}#tab-past .past-procedure-card .booking-date,.completion-state,#tab-past .past-procedure-card .detail-btn{font-size:16px}#tab-past .past-procedure-card .booking-detail{width:67%;padding:10px 12px}#tab-past .past-procedure-card .detail-btns{width:33%;flex-basis:33%}}
     </style>
     <script>
         (function(){
@@ -444,7 +492,7 @@ $page_title = '내 예약';
         </div>
         <?php else: ?>
         <?php foreach ($active_bookings as $bk): ?>
-        <div class="booking-card" id="card-<?php echo $bk['id']; ?>" data-status="<?php echo $bk['status']; ?>">
+        <article class="upcoming-booking" id="card-<?php echo $bk['id']; ?>" data-status="<?php echo htmlspecialchars($bk['status']); ?>" data-booking-date="<?php echo htmlspecialchars($bk['booking_date'], ENT_QUOTES); ?>" data-booking-time="<?php echo htmlspecialchars(substr($bk['booking_time'], 0, 5), ENT_QUOTES); ?>" data-edits-left="<?php echo max(0, 3 - (int)($bk['edit_count'] ?? 0)); ?>">
             <?php
                 $_days_ko = ['일','월','화','수','목','금','토'];
                 $_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
@@ -456,48 +504,23 @@ $page_title = '내 예약';
                 $_dd = (int)(new DateTime('today'))->diff(new DateTime($bk['booking_date']))->format('%r%a');
                 $_dd_text = $_dd > 0 ? 'D-' . $_dd : ($_dd === 0 ? 'D-0' : 'D+' . abs($_dd));
                 $_edits_left = max(0, 3 - (int)($bk['edit_count'] ?? 0));
-                $_pay_state = booking_payment_state($bk, $payment_map);
-                $_progress_active = ($bk['status'] ?? '') === 'confirmed' ? 2 : 1;
-                if ($_pay_state === 'paid') $_progress_active = 4;
-                elseif ($_pay_state === 'payable') $_progress_active = 3;
             ?>
-            <div class="booking-card-top">
-                <div class="booking-card-date"><?php echo htmlspecialchars($_date_text); ?></div>
-                <div class="booking-dday"><?php echo htmlspecialchars($_dd_text); ?></div>
-                <a href="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>" class="booking-detail-link">예약상세</a>
-            </div>
-            <div class="booking-summary">
-                <div class="booking-thumb">
-                    <?php if (!empty($bk['hospital_image'])): ?>
-                    <img src="<?php echo htmlspecialchars($bk['hospital_image']); ?>" alt="<?php echo htmlspecialchars($bk['hospital_name']); ?>">
-                    <?php else: ?>
-                    <span>SEOUL<br>BEAUTY</span>
-                    <?php endif; ?>
-                </div>
-                <div class="booking-summary-copy">
-                    <div class="booking-treatment"><?php echo htmlspecialchars($bk['treatment'] ?: '선택 시술'); ?></div>
-                    <div class="booking-hospital"><?php echo htmlspecialchars($bk['hospital_name']); ?></div>
-                    <?php if (isset($bk['price']) && $bk['price'] !== null): ?>
-                    <div class="booking-price"><?php echo number_format((int)$bk['price']); ?>원</div>
-                    <?php endif; ?>
+            <div class="upcoming-date"><?php echo htmlspecialchars($_date_text); ?></div>
+            <div class="upcoming-row">
+                <a class="upcoming-summary" href="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>" aria-label="예약 상세 보기">
+                    <span class="upcoming-copy">
+                        <span class="upcoming-treatment"><?php echo htmlspecialchars($bk['treatment'] ?: '선택 시술'); ?></span>
+                        <span class="upcoming-hospital"><?php echo htmlspecialchars($bk['hospital_name'] ?: '-'); ?></span>
+                    </span>
+                    <span class="upcoming-dday"><?php echo htmlspecialchars($_dd_text); ?></span>
+                </a>
+                <div class="upcoming-actions">
+                    <button type="button" class="upcoming-action" onclick="location.href='booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>'" <?php echo $_edits_left <= 0 ? 'disabled' : ''; ?>>예약변경</button>
+                    <button type="button" class="upcoming-action" onclick="openCancelModal(<?php echo (int)$bk['id']; ?>)">예약취소</button>
                 </div>
             </div>
-            <div class="booking-progress" aria-label="예약 진행 상태">
-                <?php foreach (['예약 요청 접수','병원 확인 중','결제 대기','예약 확정'] as $_step_i => $_step_label): ?>
-                <div class="progress-step<?php echo ($_step_i + 1) <= $_progress_active ? ' active' : ''; ?>"><?php echo $_step_label; ?></div>
-                <?php endforeach; ?>
-            </div>
-            <div class="booking-card-actions">
-                <button type="button" class="booking-card-action primary" onclick="openChangeConfirm(<?php echo (int)$bk['id']; ?>, '<?php echo htmlspecialchars($bk['booking_date'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars(substr($bk['booking_time'], 0, 5), ENT_QUOTES); ?>', <?php echo $_edits_left; ?>)" <?php echo $_edits_left <= 0 ? 'disabled' : ''; ?>>예약변경</button>
-                <button type="button" class="booking-card-action" onclick="openCancelModal(<?php echo (int)$bk['id']; ?>)">예약취소</button>
-            </div>
-        </div>
+        </article>
         <?php endforeach; ?>
-        <div class="push-tip" id="pushTip">
-            기기 알림을 켜면 예약현황을 푸시로도 알려드려요<br>
-            (마이페이지 &gt; 설정 &gt; 일반알림 켜기)
-            <button type="button" class="push-tip-close" onclick="document.getElementById('pushTip').remove()" aria-label="닫기">×</button>
-        </div>
         <?php endif; ?>
     </div>
 
@@ -535,10 +558,10 @@ $page_title = '내 예약';
             <div class="booking-progress" aria-label="예약 취소 진행 상태">
                 <?php foreach ($_cancel_steps as $_cancel_i => $_cancel_label): ?><div class="progress-step<?php echo ($_cancel_i + 1) === $_cancel_active ? ' active' : (($_cancel_i + 1) < $_cancel_active ? ' done' : ''); ?>"><?php echo $_cancel_label; ?></div><?php endforeach; ?>
             </div>
-            <div class="booking-card-actions"><a class="booking-card-action primary" href="booking.php?id=<?php echo (int)$bk['hospital_id']; ?>">다시예약</a></div>
+            <div class="booking-card-actions"><a class="booking-card-action primary" href="booking.php?id=<?php echo (int)$bk['hospital_id']; ?>&amp;rebook=1&amp;source_booking_id=<?php echo (int)$bk['id']; ?>&amp;treatment=<?php echo urlencode((string)$bk['treatment']); ?>">다시예약</a></div>
         </div>
         <?php else: ?>
-        <div class="booking-card" data-status="<?php echo $bk['status']; ?>">
+        <div class="booking-card past-procedure-card" data-status="<?php echo htmlspecialchars($bk['status']); ?>">
             <div class="booking-header">
                 <div>
                     <div class="booking-date"><?php
@@ -552,13 +575,11 @@ $page_title = '내 예약';
                         $_h12 = $_h % 12; if ($_h12 === 0) $_h12 = 12;
                         echo date('Y.n.j', $_ts) . '(' . $_dow . ') ' . $_ampm . ' ' . $_h12 . ':' . date('i', $_ts);
                     ?></div>
-                    <?php if ($_is_cancelled): // 시술완료(completed)엔 상태뱃지 숨김, 예약취소/노쇼만 표시 ?>
-                    <span class="booking-status <?php echo $status_class; ?>"><?php echo $status_label; ?></span>
-                    <?php endif; ?>
+                    <span class="completion-state"><?php echo $bk['status'] === 'completed' ? '시술완료' : '완료 확인중'; ?></span>
                 </div>
             </div>
             <div class="booking-detail-row">
-                <div class="booking-detail bd-stacked<?php echo $bk['status'] === 'completed' ? ' bd-done' : ''; ?>">
+                <div class="booking-detail bd-stacked bd-done"<?php if ($bk['status'] === 'completed'): ?> role="link" tabindex="0" style="cursor:pointer" onclick="location.href='booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>'" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();location.href='booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>'}"<?php endif; ?>>
                     <?php if (!empty($bk['treatment'])): ?>
                     <div class="detail-1"><?php echo htmlspecialchars($bk['treatment']); ?></div>
                     <?php endif; ?>
@@ -571,18 +592,17 @@ $page_title = '내 예약';
                         $_rs = bookingReviewState($_rv);
                     ?>
                     <?php if ($_rs['state'] === 'none'): ?>
-                    <a href="review_write.php?booking_id=<?php echo (int)$bk['id']; ?>" class="detail-btn" style="background:var(--color-primary,#AE1932);color:#fff;">★ <?php echo term('review', '후기'); ?> 작성</a>
+                    <a href="review_write.php?booking_id=<?php echo (int)$bk['id']; ?>" class="detail-btn"><?php echo term('review', '후기'); ?>작성</a>
                     <?php elseif ($_rs['state'] === 'published'): ?>
                     <a href="review_detail.php?id=<?php echo (int)$_rv['id']; ?>" class="detail-btn"><?php echo htmlspecialchars($_rs['label']); ?></a>
                     <?php elseif ($_rs['state'] === 'rejected'): ?>
-                    <a href="review_write.php?id=<?php echo (int)$_rv['id']; ?>" class="detail-btn" style="background:var(--color-primary,#AE1932);color:#fff;">★ <?php echo term('review', '후기'); ?> 다시 작성</a>
+                    <a href="review_write.php?id=<?php echo (int)$_rv['id']; ?>" class="detail-btn"><?php echo term('review', '후기'); ?> 다시 작성</a>
                     <?php else: ?>
                     <span class="detail-btn" style="opacity:.6;">⏳ <?php echo htmlspecialchars($_rs['label']); ?></span>
                     <?php endif; ?>
-                    <a href="booking.php?id=<?php echo $bk['hospital_id']; ?>" class="detail-btn">다시예약</a>
+                    <a href="booking.php?id=<?php echo (int)$bk['hospital_id']; ?>&amp;rebook=1&amp;source_booking_id=<?php echo (int)$bk['id']; ?>&amp;treatment=<?php echo urlencode((string)$bk['treatment']); ?>" class="detail-btn">다시예약</a>
                     <?php else: ?>
-                    <a href="again_booking.php?booking_id=<?php echo $bk['id']; ?>" class="detail-btn">상세보기</a>
-                    <a href="booking.php?id=<?php echo $bk['hospital_id']; ?>" class="detail-btn">다시예약</a>
+                    <a href="booking.php?id=<?php echo (int)$bk['hospital_id']; ?>&amp;rebook=1&amp;source_booking_id=<?php echo (int)$bk['id']; ?>&amp;treatment=<?php echo urlencode((string)$bk['treatment']); ?>" class="detail-btn">다시예약</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -727,6 +747,33 @@ function switchTab(tab) {
 var requestedTab = new URLSearchParams(window.location.search).get('tab');
 if (requestedTab === 'completed' || requestedTab === 'cancelled') {
     switchTab(requestedTab);
+}
+
+// Detail page actions return here and continue through the existing,
+// CSRF-protected change/cancel modal flows.
+var actionParams = new URLSearchParams(window.location.search);
+var requestedAction = actionParams.get('action');
+var requestedBookingId = parseInt(actionParams.get('booking_id') || '0', 10);
+if ((requestedAction === 'change' || requestedAction === 'cancel') && requestedBookingId > 0) {
+    var requestedCard = document.getElementById('card-' + requestedBookingId);
+    if (requestedCard) {
+        window.setTimeout(function () {
+            if (requestedAction === 'change') {
+                openChangeConfirm(
+                    requestedBookingId,
+                    requestedCard.getAttribute('data-booking-date') || '',
+                    requestedCard.getAttribute('data-booking-time') || '',
+                    parseInt(requestedCard.getAttribute('data-edits-left') || '0', 10)
+                );
+            } else {
+                openCancelModal(requestedBookingId);
+            }
+            actionParams.delete('action');
+            actionParams.delete('booking_id');
+            var cleanQuery = actionParams.toString();
+            history.replaceState(null, '', window.location.pathname + (cleanQuery ? '?' + cleanQuery : ''));
+        }, 0);
+    }
 }
 
 function openCancelModal(id) {

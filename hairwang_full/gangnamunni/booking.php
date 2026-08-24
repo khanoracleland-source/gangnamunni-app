@@ -34,6 +34,8 @@ if (function_exists('getSettingValue')) {
         if (isset($_GET['treatment_id'])) $login_return_url .= '&treatment_id=' . max(0, (int)$_GET['treatment_id']);
         if (isset($_GET['option_id'])) $login_return_url .= '&option_id=' . max(0, (int)$_GET['option_id']);
         if (isset($_GET['treatment'])) $login_return_url .= '&treatment=' . urlencode(trim((string)$_GET['treatment']));
+        if (isset($_GET['rebook']) && $_GET['rebook'] === '1') $login_return_url .= '&rebook=1';
+        if (isset($_GET['source_booking_id'])) $login_return_url .= '&source_booking_id=' . max(0, (int)$_GET['source_booking_id']);
         header('Location: auth/login.php?url=' . urlencode($login_return_url));
         exit;
     }
@@ -41,6 +43,8 @@ if (function_exists('getSettingValue')) {
 
 // 병원 ID 가져오기
 $hospital_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$is_rebooking = isset($_GET['rebook']) && $_GET['rebook'] === '1';
+$source_booking_id = max(0, (int)($_GET['source_booking_id'] ?? 0));
 
 if ($hospital_id <= 0) {
     header('Location: index.php');
@@ -236,9 +240,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $treatments_arr = [];
         }
         $requested_individual_treatments = $treatments_arr;
-        if ($selection_type !== 'package' && count($requested_individual_treatments) > 1) {
-            $booking_error = '현재는 시술 1개만 선택할 수 있습니다.';
-        }
         $package_treatments = [];
 
         // 총 가격은 클라이언트 값을 믿지 않고 DB에서 다시 계산한다.
@@ -302,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 패키지와 별개로 선택한 시술을 함께 검증·합산한다.
         if ($booking_error === '' && !empty($requested_individual_treatments)) {
-            $sum = 0; $found = false; $verified_treatments = [];
+            $sum = 0; $found = false; $verified_treatments = []; $seen_treatment_names = [];
             $unit_stmt = mysqli_prepare($connect,
                 "SELECT ht.price_min AS ht_min, p.id AS option_id, p.price AS option_price,
                         " . ($booking_option_name_column ? "p.option_name" : "'' AS option_name") . ",
@@ -321,6 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $qty = 1;
                     $option_id = max(0, (int)($it['option_id'] ?? 0));
                     if ($tn === '') continue;
+                    if (isset($seen_treatment_names[$tn])) continue;
+                    $seen_treatment_names[$tn] = true;
                     mysqli_stmt_bind_param($unit_stmt, 'iiis', $option_id, $option_id, $hospital_id, $tn);
                     mysqli_stmt_execute($unit_stmt);
                     // get_result() 는 실패 시 false, 조회 결과 없으면 fetch 가 null 이므로 모두 방어
@@ -617,10 +620,15 @@ foreach ($booking_treatments as $bookable_treatment) {
 // 예약 화면에서 뒤로 이동할 때 사용자가 보고 있던 시술 상세 컨텍스트를 유지한다.
 // 요청값을 그대로 사용하지 않고, 현재 병원의 활성 시술로 검증된 값만 URL에 포함한다.
 $booking_back_url = 'detail.php?id=' . (int)$hospital_id;
+if ($is_rebooking && $source_booking_id > 0) {
+    $booking_back_url = 'booking_request_detail.php?booking_id=' . $source_booking_id;
+}
 if ($preselected_booking_treatment !== null) {
-    $booking_back_url .= '&treatment_id=' . (int)$preselected_booking_treatment['treatment_id']
-        . '&treatment=' . urlencode($preselected_booking_treatment['name'])
-        . '#matched-treatment';
+    if (!$is_rebooking) {
+        $booking_back_url .= '&treatment_id=' . (int)$preselected_booking_treatment['treatment_id']
+            . '&treatment=' . urlencode($preselected_booking_treatment['name'])
+            . '#matched-treatment';
+    }
 }
 
 // 현재 병원에서 예약 가능한 패키지. 구성 시술이 모두 활성인 패키지만 노출한다.
@@ -946,6 +954,15 @@ $page_css = '
         font-size: 17px;
         font-weight: 700;
     }
+    .rebook-method { display:flex; flex-direction:column; gap:7px; margin-top:14px; }
+    .rebook-method strong { font-size:15px; }
+    .rebook-method span { color:#AE1932; font-size:13px; }
+    .booking-form.rebooking { padding-top:22px; }
+    .booking-form.rebooking .section-head-title,
+    .booking-form.rebooking .form-label.date-select-label { font-size:18px; }
+    .booking-form.rebooking .form-group { padding:0 4px 28px; margin:0 0 8px; border-bottom:8px solid #f4f4f4; }
+    .booking-form.rebooking .form-group:last-of-type { border-bottom:0; }
+    .booking-form.rebooking .submit-section { padding:0 4px 18px; }
 
     .date-selector {
         display: flex;
@@ -1737,7 +1754,7 @@ $page_js = '
         el.setAttribute("aria-pressed", on ? "true" : "false");
     }
 
-    // 현재 운영 정책: 시술 1개 + 해당 시술의 세부 옵션 1개.
+    // 개별 시술은 여러 개를 선택할 수 있고, 각 시술별 세부 옵션은 1개를 선택한다.
     var selectedTreatments = [];
     var selectedPackage = null;
     function bookingPriceWon(price) {
@@ -1760,13 +1777,21 @@ $page_js = '
         var options = [];
         try { options = JSON.parse(btn.getAttribute("data-options") || "[]"); } catch (e) {}
         var alreadySelected = !!findTreatment(name);
-        selectedTreatments = alreadySelected ? [] : [{
-            name: name, price: price, qty: 1, options: options,
-            option_id: options.length === 1 ? parseInt(options[0].id, 10) : 0,
-            option_name: options.length === 1 ? options[0].name : ""
-        }];
+        if (alreadySelected) {
+            selectedTreatments = selectedTreatments.filter(function(t) { return t.name !== name; });
+        } else {
+            if (selectedTreatments.length >= 20) {
+                alert("시술은 한 번에 최대 20개까지 선택할 수 있습니다.");
+                return;
+            }
+            selectedTreatments.push({
+                name: name, price: price, qty: 1, options: options,
+                option_id: options.length === 1 ? parseInt(options[0].id, 10) : 0,
+                option_name: options.length === 1 ? options[0].name : ""
+            });
+        }
         document.querySelectorAll("[data-treatment-choice]").forEach(function(el) {
-            var on = !alreadySelected && el.getAttribute("data-name") === name;
+            var on = !!findTreatment(el.getAttribute("data-name"));
             markSheetItem(el, on);
             var cb = el.querySelector("input[type=checkbox]"); if (cb) cb.checked = on;
         });
@@ -1955,8 +1980,9 @@ $page_js = '
         var overlay = document.getElementById("bookingConfirmOverlay");
         var dateValue = document.getElementById("bookingDate").value;
         var timeValue = document.getElementById("timeSelect").value;
-        var treatment = document.getElementById("treatmentInput").value;
-        if (selectedTreatments.length && selectedTreatments[0].option_name) treatment += " · " + selectedTreatments[0].option_name;
+        var treatment = (selectedPackage ? ["패키지 " + selectedPackage.name] : []).concat(selectedTreatments.map(function(t) {
+            return t.name + (t.option_name ? " · " + t.option_name : "");
+        })).join(", ");
         document.getElementById("confirmDateTime").textContent = formatBookingDateTime(dateValue, timeValue);
         document.getElementById("confirmTreatment").textContent = treatment;
 
@@ -2164,11 +2190,11 @@ include __DIR__ . '/includes/header.php';
     <!-- 페이지 헤더 -->
     <div class="page-header">
             <a href="<?php echo htmlspecialchars($booking_back_url, ENT_QUOTES, 'UTF-8'); ?>" class="back-btn" aria-label="뒤로"><i class="bi bi-chevron-left"></i></a>
-            <div class="page-title"><?php echo term('booking', '예약'); ?>하기</div>
+            <div class="page-title"><?php echo $is_rebooking ? '예약 선택' : term('booking', '예약') . '하기'; ?></div>
     </div>
 
     <!-- 병원 이미지 슬라이더 -->
-    <?php if (!empty($images)): ?>
+    <?php if (!$is_rebooking && !empty($images)): ?>
     <div class="hospital-images-section">
         <button class="image-nav-btn left" onclick="scrollImageContainer(-1)">‹</button>
         <button class="image-nav-btn right" onclick="scrollImageContainer(1)">›</button>
@@ -2227,13 +2253,13 @@ include __DIR__ . '/includes/header.php';
     <?php endif; ?>
 
     <!-- 예약 폼 -->
-    <form method="POST" class="booking-form" id="bookingForm">
+    <form method="POST" class="booking-form<?php echo $is_rebooking ? ' rebooking' : ''; ?>" id="bookingForm">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
         <input type="hidden" name="response_mode" value="ajax">
         <!-- 예약하기 헤더 + 옵션 변경(시술 선택 시트) -->
         <div class="form-group head-group">
             <div class="section-head-row">
-                <span class="section-head-title"><?php echo term('booking', '예약'); ?>하기</span>
+                <span class="section-head-title"><?php echo $is_rebooking ? '예약을 진행해볼까요?' : term('booking', '예약') . '하기'; ?></span>
                 <button type="button" class="option-change-btn" onclick="openTreatmentSheet()"<?php echo empty($booking_packages) ? ' style="display:none;"' : ''; ?>>
                     옵션 변경
                 </button>
@@ -2273,7 +2299,7 @@ include __DIR__ . '/includes/header.php';
 
         <!-- 예약 날짜 (커스텀: 월 선택 → 날짜 선택) -->
         <div class="form-group">
-            <label class="form-label date-select-label">날짜 선택</label>
+            <label class="form-label date-select-label"><?php echo $is_rebooking ? '언제 방문하시겠어요?' : '날짜 선택'; ?></label>
             <input type="hidden" name="date" id="bookingDate" value="<?php echo date('Y-m-d'); ?>">
             <div class="month-selector" id="monthSelector"></div>
             <div class="date-selector" id="dateSelector"></div>
@@ -2281,7 +2307,8 @@ include __DIR__ . '/includes/header.php';
 
         <!-- 예약 시간 -->
         <div class="form-group">
-            <label class="form-label date-select-label">시간 선택</label>
+            <label class="form-label date-select-label"><?php echo $is_rebooking ? '예약 시간을 선택해주세요' : '시간 선택'; ?></label>
+            <?php if ($is_rebooking): ?><div class="rebook-method"><strong>예약 확정 방식</strong><span>병원에서 확인 후 일정이 확정돼요</span></div><?php endif; ?>
             <!-- [1차 검수 #15 - 2026-05-28] 예약 시간 선택 30분 단위로 세분화 -->
             <!-- select 는 폼 제출/HMS 스케줄용으로 숨김 유지, 실제 표시는 아래 time-grid -->
             <select name="time" id="timeSelect" style="display:none;">
@@ -2301,7 +2328,7 @@ include __DIR__ . '/includes/header.php';
 
         <!-- 제출 버튼 -->
         <div class="submit-section">
-            <button type="submit" class="btn-submit"><?php echo term('booking', '예약'); ?> 신청하기</button>
+            <button type="submit" class="btn-submit"><?php echo $is_rebooking ? '예약할게요!' : term('booking', '예약') . ' 신청하기'; ?></button>
         </div>
     </form>
 
@@ -2411,7 +2438,7 @@ include __DIR__ . '/includes/header.php';
     <div class="treatment-sheet-overlay" id="treatmentSheet" onclick="if(event.target===this)closeTreatmentSheet()">
         <div class="treatment-sheet" role="dialog" aria-modal="true" aria-labelledby="treatmentSheetTitle">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2 class="sheet-title" id="treatmentSheetTitle">원하는 옵션으로 변경해주세요</h2>
+            <h2 class="sheet-title" id="treatmentSheetTitle">원하는 시술을 여러 개 선택해주세요</h2>
             <div class="sheet-list" role="group" aria-labelledby="treatmentSheetTitle">
                 <?php if (!empty($booking_packages)): ?>
                 <div class="sheet-section-title">패키지 중 1개 선택</div>
