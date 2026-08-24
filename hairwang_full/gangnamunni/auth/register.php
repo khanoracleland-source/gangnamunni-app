@@ -428,18 +428,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'registe
                     // 실패시키지 않는다(계정은 이미 생성됨). 실패 시 로그만 남기고 진행한다.
                     try {
                         require_once dirname(__DIR__) . '/includes/points_ledger.php';
-                        if (points_kind_enabled($connect, 'signup')) {
-                            $signup_point = (int)points_setting($connect, 'signup_point', '0');
-                            if ($signup_point > 0) {
-                                $new_mb_no = points_member_no($connect, $mb_id);
-                                if ($new_mb_no > 0) {
-                                    $pr = points_earn($connect, $new_mb_no, $signup_point, '회원가입 축하 적립', 'signup', $new_mb_no);
-                                    // 첫 화면에서 "N P 적립" 안내(토스트)를 1회 노출하기 위한 플래시
-                                    if (!empty($pr['ok']) && empty($pr['skipped'])) {
-                                        $_SESSION['reg_welcome_point'] = $signup_point;
-                                    }
-                                }
-                            }
+                        $new_mb_no = points_member_no($connect, $mb_id);
+                        $pr = points_earn_signup($connect, $new_mb_no);
+                        // 첫 화면에서 "N P 적립" 안내(토스트)를 1회 노출하기 위한 플래시
+                        if (!empty($pr['ok']) && empty($pr['skipped'])) {
+                            $_SESSION['reg_welcome_point'] = (int)$pr['amount'];
                         }
                     } catch (\Throwable $e) {
                         error_log('[register] signup point award failed: ' . $e->getMessage());

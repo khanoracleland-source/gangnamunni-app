@@ -187,8 +187,21 @@ if($result) {
     }else if($cert_type != 'ipin' && get_session('ss_cert_hash') == md5($mb_name.$cert_type.get_session('ss_cert_birth').$mb_hp.$md5_cert_no)) { // 간편인증, 휴대폰일때 hash 값 체크 hp포함
         insert_member_cert_history($mb_id, $mb_name, $mb_hp, get_session('ss_cert_birth'), get_session('ss_cert_type') ); // 본인인증 후 정보 수정 시 내역 기록
     }
-    // 회원가입 포인트 부여
-    insert_point($mb_id, $config['cf_register_point'], '회원가입 축하', '@member', $mb_id, '회원가입');
+    // 소셜(카카오 등) 신규 가입도 일반 가입과 같은 포인트 원장/설정을 사용한다.
+    // 적립 실패는 이미 생성된 계정을 롤백하지 않고 로그만 남긴다.
+    try {
+        require_once G5_PATH . '/gangnamunni/includes/points_ledger.php';
+        // Gnuboard common.php exposes its mysqli connection as $connect_db.
+        // $connect is used only by the custom Gangnamunni bootstrap and is not
+        // available on this social-plugin registration path.
+        $new_mb_no = points_member_no($connect_db, $mb_id);
+        $point_result = points_earn_signup($connect_db, $new_mb_no);
+        if (!empty($point_result['ok']) && empty($point_result['skipped'])) {
+            set_session('reg_welcome_point', (int)$point_result['amount']);
+        }
+    } catch (Throwable $e) {
+        error_log('[social register] signup point award failed: ' . $e->getMessage());
+    }
 
     // 최고관리자님께 메일 발송
     if ($config['cf_email_mb_super_admin']) {

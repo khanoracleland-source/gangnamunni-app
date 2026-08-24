@@ -247,6 +247,26 @@ if (!defined('POINTS_LEDGER_LOADED')) {
         return points_txn($connect, $member_no, 'earn', $amount, $reason, $ref_type, $ref_id);
     }
 
+    /**
+     * 신규 가입 포인트를 설정에 따라 1회 지급한다.
+     * 이메일/카카오 등 가입 경로가 달라도 같은 설정과 사용자 표시 문구를 사용한다.
+     */
+    function points_earn_signup($connect, $member_no) {
+        $member_no = (int)$member_no;
+        if ($member_no <= 0 || !points_kind_enabled($connect, 'signup')) {
+            return ['ok' => false, 'skipped' => true, 'balance' => 0, 'amount' => 0, 'error' => 'disabled_or_invalid'];
+        }
+
+        $amount = max(0, (int)points_setting($connect, 'signup_point', '1000'));
+        if ($amount <= 0) {
+            return ['ok' => false, 'skipped' => true, 'balance' => points_balance($connect, $member_no), 'amount' => 0, 'error' => 'zero_amount'];
+        }
+
+        $result = points_earn($connect, $member_no, $amount, '신규 가입 포인트 증정', 'signup', $member_no);
+        $result['amount'] = $amount;
+        return $result;
+    }
+
     /** 사용(차감). 잔액 부족 시 실패. */
     function points_use($connect, $member_no, $amount, $reason, $ref_type = null, $ref_id = null) {
         return points_txn($connect, $member_no, 'use', $amount, $reason, $ref_type, $ref_id);

@@ -80,7 +80,8 @@ INSERT INTO gangnamunni_point_settings (skey, sval) VALUES
   ('expire_days','365'),
   ('schema_version','3')
 ON DUPLICATE KEY UPDATE
-  sval = IF(skey = 'schema_version', VALUES(sval), sval);
+  -- 신규 가입 기본 정책은 1,000P. PROD에 남은 임시 10,000P 값도 배포 시 교정한다.
+  sval = IF(skey IN ('schema_version', 'signup_point'), VALUES(sval), sval);
 
 -- 6) 등급 시드(테이블이 비어 있을 때만)
 INSERT INTO gangnamunni_membership_levels (name,min_points,icon,color,benefits,discount_rate,sort_order)

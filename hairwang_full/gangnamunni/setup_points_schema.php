@@ -106,7 +106,7 @@ step($connect, '설정 시드 + schema_version=3', "INSERT INTO gangnamunni_poin
   ('expire_days','365'),
   ('schema_version','3')
 ON DUPLICATE KEY UPDATE
-  sval = IF(skey = 'schema_version', VALUES(sval), sval)");
+  sval = IF(skey IN ('schema_version', 'signup_point'), VALUES(sval), sval)");
 
 // 6) 등급 시드(비어 있을 때만)
 $cnt_r = mysqli_query($connect, "SELECT COUNT(*) AS c FROM gangnamunni_membership_levels");
