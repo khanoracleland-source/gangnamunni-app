@@ -10,6 +10,11 @@ $w == u : 수정
 if($is_guest)
     alert('회원이시라면 로그인 후 이용해 보십시오.', './login.php?url='.urlencode(G5_BBS_URL.'/qalist.php'));
 
+// 고객센터 개편 전까지 사용자의 새 문의·추가 질문 등록을 임시 중지한다.
+$qa_submission_enabled = false;
+if(!$qa_submission_enabled && !$is_admin && ($w == '' || $w == 'r'))
+    alert('1:1 문의 기능은 현재 준비 중입니다.\n서비스 오픈 후 다시 이용해 주세요.', G5_URL);
+
 $msg = array();
 
 $write_token = get_session('ss_qa_write_token');
@@ -128,6 +133,33 @@ if($w == 'u' || $w == 'a' || $w == 'r') {
         if($write['qa_type'] == 1)
             alert('답변글에는 다시 답변을 등록할 수 없습니다.');
     }
+}
+
+// 로그인 회원의 1:1 문의 도배 방지 (새 문의·추가 질문에만 적용)
+// 수정과 관리자 답변은 정상적인 운영을 위해 제한하지 않는다.
+if(!$is_admin && ($w == '' || $w == 'r')) {
+    $rate_limit_member_id = addslashes($member['mb_id']);
+    $rate_limit = sql_fetch(" select
+            count(*) as count_24h,
+            sum(case when qa_datetime >= date_sub(now(), interval 1 hour) then 1 else 0 end) as count_1h,
+            unix_timestamp(max(qa_datetime)) as latest_created_at
+        from {$g5['qa_content_table']}
+        where mb_id = '{$rate_limit_member_id}'
+          and qa_type = '0'
+          and qa_datetime >= date_sub(now(), interval 1 day) ");
+
+    $latest_created_at = isset($rate_limit['latest_created_at']) ? (int) $rate_limit['latest_created_at'] : 0;
+    $count_1h = isset($rate_limit['count_1h']) ? (int) $rate_limit['count_1h'] : 0;
+    $count_24h = isset($rate_limit['count_24h']) ? (int) $rate_limit['count_24h'] : 0;
+
+    if($latest_created_at > 0 && $latest_created_at > time() - 60)
+        alert('1:1 문의는 1분에 1건만 등록할 수 있습니다.\n잠시 후 다시 시도해 주세요.');
+
+    if($count_1h >= 5)
+        alert('1시간 내 1:1 문의 등록 가능 횟수(5건)를 초과했습니다.\n잠시 후 다시 시도해 주세요.');
+
+    if($count_24h >= 10)
+        alert('24시간 내 1:1 문의 등록 가능 횟수(10건)를 초과했습니다.\n나중에 다시 시도해 주세요.');
 }
 
 // 파일개수 체크

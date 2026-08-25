@@ -53,7 +53,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .faq-a{padding:0 16px 14px;font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));line-height:1.7;color:var(--bs-secondary-color,#666);display:none;}
 .faq-a.show{display:block;}
 .contact{padding:20px 16px;text-align:center;}
-.contact a{display:inline-block;padding:12px 32px;background:var(--pri);color:#fff;border-radius:10px;text-decoration:none;font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;}
+.contact .disabled-contact{display:inline-block;padding:12px 32px;background:var(--bs-secondary-bg,#ddd);color:var(--bs-secondary-color,#888);border-radius:10px;font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;cursor:not-allowed;}
 </style><?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head><body>
 <div class="header"><button class="back" onclick="history.back()"><i class="bi bi-chevron-left"></i></button><h1><i class="bi bi-question-circle"></i> FAQ</h1></div>
@@ -68,6 +68,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 </div>
 <?php endforeach; ?>
 <?php endforeach; ?>
-<div class="contact"><p style="font-size:13px;color:var(--bs-secondary-color);margin-bottom:12px;">원하는 답변을 찾지 못하셨나요?</p><a href="qna.php">1:1 문의하기</a></div>
+<div class="contact"><p style="font-size:13px;color:var(--bs-secondary-color);margin-bottom:12px;">1:1 문의 기능은 현재 준비 중입니다.</p><span class="disabled-contact" aria-disabled="true">1:1 문의 준비중</span></div>
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
 </body></html>

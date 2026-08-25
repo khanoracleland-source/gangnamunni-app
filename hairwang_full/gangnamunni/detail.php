@@ -12,6 +12,25 @@ require_once __DIR__ . '/includes/recently_viewed.php';
 require_once __DIR__ . '/includes/wishlist_button.php';
 require_once __DIR__ . '/includes/functions.php';
 
+// 시술 부위는 기존 괄호를 제거한 뒤 "[부위1, 부위2]" 형식으로 표시한다.
+function format_treatment_body_parts($body_part) {
+    $raw_parts = preg_split('/\s*\|\|\s*/', trim((string)$body_part));
+    $parts = [];
+
+    foreach ($raw_parts as $raw_part) {
+        $part = trim($raw_part);
+        // 이전에 저장된 (), []가 중첩되어 있어도 한 번에 정리한다.
+        while (preg_match('/^[\(\[]\s*(.*?)\s*[\)\]]$/u', $part, $matches)) {
+            $part = trim($matches[1]);
+        }
+        if ($part !== '') {
+            $parts[] = $part;
+        }
+    }
+
+    return empty($parts) ? '' : '[' . implode(', ', $parts) . ']';
+}
+
 if (empty($_SESSION['consultation_csrf_token'])) {
     $_SESSION['consultation_csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -105,8 +124,7 @@ if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_que
                     ? rtrim(rtrim(number_format($dosage_value, 2, '.', ''), '0'), '.') . trim((string)($mt_option['dosage_unit'] ?? ''))
                     : '';
                 $option_name = trim((string)($mt_option['option_name'] ?? ''));
-                $body_part = trim(str_replace('||', ', ', (string)($mt_option['body_part'] ?? '')));
-                if ($body_part !== '') $body_part = '(' . $body_part . ')';
+                $body_part = format_treatment_body_parts($mt_option['body_part'] ?? '');
                 $display_name_parts = array_values(array_filter([$option_name, $body_part, $dosage_text], static function ($part) {
                     return $part !== '';
                 }));
@@ -389,8 +407,7 @@ if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를
             $dosage_text = $dosage_value > 0
                 ? rtrim(rtrim(number_format($dosage_value, 2, '.', ''), '0'), '.') . trim((string)($row['option_dosage_unit'] ?? ''))
                 : '';
-            $body_part = trim(str_replace('||', ', ', (string)($row['body_part'] ?? '')));
-            if ($body_part !== '') $body_part = '(' . $body_part . ')';
+            $body_part = format_treatment_body_parts($row['body_part'] ?? '');
             $display_name_parts = array_values(array_filter([$option_name, $body_part, $dosage_text], static function ($part) {
                 return $part !== '';
             }));
@@ -1130,27 +1147,51 @@ if ($current_tab === 'reviews') {
         }
 
         .matched-option-card {
-            display: block;
-            padding: 16px 0;
-            border: 0;
-            margin-bottom: 12px;
+            display: flex;
+            min-height: 122px;
+            padding: 20px 24px 18px;
+            border: 1px solid var(--color-border, #ddd);
+            margin-bottom: 16px;
+            flex-direction: column;
             color: inherit;
             text-decoration: none;
             background: var(--color-bg-white, #fff);
+            transition: border-color .2s ease, box-shadow .2s ease;
         }
 
         .matched-option-card:hover {
             color: inherit;
+            border-color: var(--color-primary, #AE1932);
             box-shadow: 0 3px 12px rgba(0, 0, 0, .06);
         }
 
         .matched-option-name {
-            margin-bottom: 24px;
-            font-size: 20px;
+            margin-bottom: 22px;
+            font-size: 16px;
             line-height: 1.4;
             font-weight: 700;
             color: var(--color-text-primary, #111);
             word-break: keep-all;
+        }
+
+        .matched-option-card .procedure-price-row {
+            justify-content: flex-end;
+            margin-top: auto;
+            gap: 18px;
+            text-align: right;
+        }
+
+        .matched-option-card .procedure-price {
+            font-size: 22px;
+        }
+
+        .matched-option-card .procedure-price-unit {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .matched-option-card .procedure-regular-price {
+            font-size: 13px;
         }
 
         @media (max-width: 480px) {
@@ -1158,6 +1199,12 @@ if ($current_tab === 'reviews') {
             .procedure-discount-rate { font-size: 18px; }
             .procedure-price, .procedure-price-unit { font-size: 22px; }
             .procedure-regular-price { font-size: 14px; }
+            .matched-option-card { min-height: 112px; padding: 18px 20px 16px; }
+            .matched-option-name { font-size: 15px; margin-bottom: 18px; }
+            .matched-option-card .procedure-price-row { gap: 14px; }
+            .matched-option-card .procedure-price { font-size: 22px; }
+            .matched-option-card .procedure-price-unit,
+            .matched-option-card .procedure-regular-price { font-size: 13px; }
         }
 
         /* 후기 탭 */
@@ -1910,7 +1957,6 @@ if ($current_tab === 'reviews') {
                     </div>
                     <div class="procedure-price-row">
                         <?php if ($matched_discount_rate > 0): ?>
-                            <span class="procedure-discount-rate"><?php echo $matched_discount_rate; ?>%</span>
                             <span class="procedure-regular-price"><?php echo number_format($matched_regular_price); ?>원</span>
                         <?php endif; ?>
                         <span class="procedure-price-value"><span class="procedure-price"><?php echo number_format($matched_sale_price); ?></span><span class="procedure-price-unit">원</span></span>

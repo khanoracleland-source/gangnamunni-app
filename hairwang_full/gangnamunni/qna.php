@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/includes/init.php';
 
+// 고객센터 디자인·기능 개편 전까지 Q&A 서비스를 임시 중지한다.
+$qna_service_enabled = false;
+
 // 테이블 자동 생성
 mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_qna (
     id INT AUTO_INCREMENT PRIMARY KEY, member_id VARCHAR(100), user_name VARCHAR(100),
@@ -13,11 +16,11 @@ mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_qna (
 $page = max(1, intval($_GET['page'] ?? 1));
 $limit = 20; $offset = ($page-1)*$limit;
 $total = 0;
-$res = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_qna WHERE is_public=1");
+$res = $qna_service_enabled ? mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_qna WHERE is_public=1") : false;
 if ($res) $total = mysqli_fetch_assoc($res)['c'];
 
 $questions = [];
-$res2 = mysqli_query($connect, "SELECT q.*, h.name as hospital_name FROM gangnamunni_qna q LEFT JOIN gangnamunni_hospitals h ON q.hospital_id=h.id WHERE q.is_public=1 ORDER BY q.created_at DESC LIMIT $limit OFFSET $offset");
+$res2 = $qna_service_enabled ? mysqli_query($connect, "SELECT q.*, h.name as hospital_name FROM gangnamunni_qna q LEFT JOIN gangnamunni_hospitals h ON q.hospital_id=h.id WHERE q.is_public=1 ORDER BY q.created_at DESC LIMIT $limit OFFSET $offset") : false;
 if ($res2) while ($r = mysqli_fetch_assoc($res2)) $questions[] = $r;
 ?>
 <!DOCTYPE html><html lang="ko" data-bs-theme="light"><head>
@@ -42,7 +45,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 </style><?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head><body>
 <div class="header"><button class="back" onclick="history.back()"><i class="bi bi-chevron-left"></i></button><h1>Q&A</h1></div>
-<?php if (empty($questions)): ?>
+<?php if (!$qna_service_enabled): ?>
+<div class="empty"><i class="bi bi-tools" style="font-size:48px;display:block;margin-bottom:12px;"></i><strong style="display:block;margin-bottom:8px;color:var(--bs-body-color);">1:1 문의 기능을 준비하고 있습니다</strong>서비스 오픈 후 다시 이용해 주세요.</div>
+<?php elseif (empty($questions)): ?>
 <div class="empty"><i class="bi bi-question-circle" style="font-size:48px;display:block;margin-bottom:12px;"></i>등록된 질문이 없습니다</div>
 <?php else: foreach ($questions as $q): ?>
 <div class="qa-item">

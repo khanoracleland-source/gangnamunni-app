@@ -269,7 +269,7 @@ body {
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <?php // 포인트(#포인트제도) — 상단 포인트/쿠폰 박스를 걷어내고 예약과 같은 메뉴 행으로 노출한다. ?>
-    <a href="my_points.php" class="menu-row">
+    <a href="my_points.php" class="menu-row" style="display:none;">
         <span class="menu-row-icon"><i class="bi bi-coin"></i></span>
         <span class="menu-row-text">포인트</span>
         <span class="menu-row-badge"><?php echo number_format($point_balance); ?>P</span>
@@ -315,7 +315,7 @@ body {
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="faq.php" class="menu-row">
-        <span class="menu-row-text">공지사항</span>
+        <span class="menu-row-text">FAQ</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
 </div>
@@ -347,7 +347,7 @@ body {
     </a>
     <a href="faq.php" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-megaphone"></i></span>
-        <span class="menu-row-text">공지사항</span>
+        <span class="menu-row-text">FAQ</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
 </div>
