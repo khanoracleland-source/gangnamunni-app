@@ -2296,8 +2296,6 @@ include __DIR__ . '/includes/header.php';
             <div id="selectedTreatmentDisplay" class="selected-treatment" style="display:none;"></div>
             <div id="treatmentPlaceholder" class="form-help"><?php echo $preselected_booking_treatment === null ? '원하는 시술 1개를 선택해주세요.' : '선택한 시술의 세부 옵션을 확인해주세요.'; ?></div>
         </div>
-
-        <!-- 예약 날짜 (커스텀: 월 선택 → 날짜 선택) -->
         <div class="form-group">
             <label class="form-label date-select-label"><?php echo $is_rebooking ? '언제 방문하시겠어요?' : '날짜 선택'; ?></label>
             <input type="hidden" name="date" id="bookingDate" value="<?php echo date('Y-m-d'); ?>">

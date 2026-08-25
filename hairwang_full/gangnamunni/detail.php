@@ -502,7 +502,7 @@ if ($current_tab === 'reviews') {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         :root {
             --color-primary: #AE1932;
@@ -1896,23 +1896,19 @@ if ($current_tab === 'reviews') {
                     </div>
                     <?php endforeach; ?>
                     <?php
-                    // 점심시간 표시 (점심 키 또는 lunch_start/lunch_end)
                     $lunch_val = $business_hours['점심'] ?? '';
                     $lunch_start = $business_hours['lunch_start'] ?? $business_hours['점심시작'] ?? '';
                     $lunch_end = $business_hours['lunch_end'] ?? $business_hours['점심종료'] ?? '';
-                    // "점심" 키에서 시작~종료 파싱
                     if (!empty($lunch_val) && strpos($lunch_val, '~') !== false) {
                         $lp = explode('~', $lunch_val);
                         $lunch_start = trim($lp[0]);
                         $lunch_end = trim($lp[1] ?? '');
                     }
-                    // 하이픈 구분자 파싱 (13:00-14:00)
                     if (empty($lunch_start) && !empty($lunch_val) && strpos($lunch_val, '-') !== false) {
                         $lp = explode('-', $lunch_val);
                         $lunch_start = trim($lp[0]);
                         $lunch_end = trim($lp[1] ?? '');
                     }
-                    // 점심시간 없음 표시가 아닌 경우에만 표시
                     $no_lunch = $business_hours['no_lunch_break'] ?? false;
                     if (!$no_lunch && !empty($lunch_start) && !empty($lunch_end)):
                     ?>
@@ -1922,7 +1918,6 @@ if ($current_tab === 'reviews') {
                     </div>
                     <?php endif; ?>
                     <?php
-                    // 영업시간 비고 표시 (크롤링 데이터의 officeHoursComment)
                     $bh_comment = $business_hours['영업시간_비고'] ?? '';
                     if (!empty($bh_comment)):
                     ?>

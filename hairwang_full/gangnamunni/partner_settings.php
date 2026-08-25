@@ -123,7 +123,7 @@ $balance = (float) $wallet['balance'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>파트너 예산 설정 - <?= htmlspecialchars($hospital_name) ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         /* 다크모드 anti-flash */
         html { background: var(--bs-body-bg, #fff); }

@@ -104,7 +104,7 @@ $page_title = term('booking', '예약') . ' 상세';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo htmlspecialchars($page_title); ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         :root { --color-primary:#AE1932; --color-bg:#fff; --color-bg-light:#f8f9fa; --color-text:#222; --color-text-secondary:#666; --color-border:#eee; }
         [data-bs-theme="dark"] { --color-bg:#1a1a2e; --color-bg-light:#16213e; --color-text:#e0e0e0; --color-text-secondary:#aaa; --color-border:#333; }

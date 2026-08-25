@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>회원가입 | 서울미녀</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <style>
 /* ── wizard_base.css (인라인 — includes/ 403 우회) ── */
 .wz-steps{display:flex;justify-content:center;align-items:center;padding:20px 0 28px;gap:0;flex-wrap:wrap}
@@ -163,23 +163,8 @@ body{background:var(--bs-body-bg);padding-bottom:80px}
 </div>
 
 <div class="wz-body">
-
-    <!-- Step 1: 기본 정보 -->
     <div class="wz-panel active" id="wzPanel1">
         <h5 class="mb-3"><i class="bi bi-person-plus"></i> 기본 정보</h5>
-
-        <!-- 소셜 로그인 -->
-        <!--
-          [인수인계 가이드 2026-06-19] 카카오/네이버 소셜 로그인 활성화 방법
-          현재는 미연동(키 미보유) 상태라 alert('준비 중')로 둠. 실제 키 없이 켜면 동작하지 않으므로
-          가짜 구현을 피하기 위해 의도적으로 비활성. 활성화하려면:
-            1) 카카오: developers.kakao.com 앱 생성 → REST API 키 + Redirect URI 등록
-               네이버: developers.naver.com 앱 생성 → Client ID/Secret + Callback URL 등록
-            2) 발급 키를 admin_ai_settings 같은 설정 테이블 또는 .env 에 저장 (서버 보관)
-            3) 콜백 처리 PHP 추가: kakao_callback.php / naver_callback.php (인가코드→토큰→프로필→회원생성)
-            4) 아래 onclick 의 alert(...) 를 location.href='https://kauth.kakao.com/oauth/authorize?...' 로 교체
-            5) auth_apis(앱) socialLogin 엔드포인트와 동일 회원테이블(g5_member) 연동 확인
-        -->
         <div class="mb-3">
             <button class="social-btn social-kakao" onclick="alert('카카오 로그인은 준비 중입니다. (관리자: 카카오 REST API 키 발급 후 활성화)')">
                 <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#3C1E1E" d="M12 3C6.5 3 2 6.58 2 11c0 2.84 1.87 5.33 4.68 6.74l-1.2 4.46c-.08.3.26.54.52.36l5.28-3.52c.24.02.48.03.72.03 5.5 0 10-3.58 10-8s-4.5-8-10-8z"/></svg>

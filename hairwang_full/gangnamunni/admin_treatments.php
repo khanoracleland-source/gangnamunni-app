@@ -1291,7 +1291,6 @@ require_once __DIR__ . '/includes/admin_header.php';
     <div id="bulkIdsContainer"></div>
 </form>
 
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 <script>
 // 전체 별칭 데이터 (PHP -> JS)
 var allAliases = <?php echo json_encode($all_aliases, JSON_UNESCAPED_UNICODE); ?>;
