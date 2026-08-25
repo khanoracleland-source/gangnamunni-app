@@ -311,12 +311,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
             if (function_exists('update_auth_session_token')) update_auth_session_token($login_mb['mb_datetime']);
 
             if ($auto_login) {
+                $remember_lifetime = $is_patient_app ? 86400 * 100 : 86400 * 31;
                 $remember_token = function_exists('create_remember_login_token')
-                    ? create_remember_login_token($login_mb, 86400 * 31)
+                    ? create_remember_login_token($login_mb, $remember_lifetime)
                     : '';
                 if ($remember_token !== '') {
-                    set_cookie('ck_mb_id', $login_mb['mb_id'], 86400 * 31);
-                    set_cookie('ck_auto', $remember_token, 86400 * 31);
+                    set_cookie('ck_mb_id', $login_mb['mb_id'], $remember_lifetime);
+                    set_cookie('ck_auto', $remember_token, $remember_lifetime);
                 } else {
                     set_cookie('ck_mb_id', '', 0);
                     set_cookie('ck_auto', '', 0);

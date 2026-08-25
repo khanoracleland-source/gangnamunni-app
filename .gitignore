@@ -86,6 +86,7 @@ Thumbs.db
 /site_get/
 
 # 개발 환경 — 비밀번호 포함 파일 (GitHub 비공개)
+.dev/CLAUDE.md
 .dev/server_info.md
 
 # Windows 예약어 파일 (Windows clone 불가)

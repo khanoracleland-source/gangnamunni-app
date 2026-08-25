@@ -7,6 +7,7 @@ import 'package:kivicare_patient/configs.dart';
 import 'package:kivicare_patient/screens/dashboard/dashboard_screen.dart';
 import 'package:kivicare_patient/screens/home/home_controller.dart';
 import 'package:kivicare_patient/services/webview_bridge.dart';
+import 'package:kivicare_patient/services/webview_cookie_persistence.dart';
 
 /// 앱 시작 시 보여지는 WebView 화면
 /// configs.dart의 SHOW_WEBVIEW_ON_STARTUP = true 일 때 실행됨
@@ -24,7 +25,8 @@ class StartupWebViewScreen extends StatefulWidget {
   State<StartupWebViewScreen> createState() => _StartupWebViewScreenState();
 }
 
-class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
+class _StartupWebViewScreenState extends State<StartupWebViewScreen>
+    with WidgetsBindingObserver {
   late final WebViewController _controller;
   final WebViewCookieManager _cookieManager = WebViewCookieManager();
   bool _isLoading = true;
@@ -70,6 +72,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // 상태바(배터리, 시간 등) 표시
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
@@ -77,6 +80,16 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
     _initializeWebView();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      WebViewCookiePersistence.flush();
+    }
   }
 
   Future<void> _initializeWebView() async {
@@ -126,6 +139,10 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
             // bridge, but this direct call makes registration resilient to
             // cached HTML and delayed JavaScript execution.
             bridge.requestFcmTokenForWebsite();
+            // Login and remember-token cookies are commonly received during a
+            // redirect. Persist them immediately so Android "Close all" cannot
+            // discard the authenticated WebView state with the process RAM.
+            WebViewCookiePersistence.flush();
             // 하단 네비게이션 바 숨김 CSS 주입
             if (HIDE_WEBVIEW_BOTTOM_NAV) {
               _controller.runJavaScript('''
@@ -207,6 +224,13 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen> {
         Get.put(HomeController());
       }),
     );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    WebViewCookiePersistence.flush();
+    super.dispose();
   }
 
   @override

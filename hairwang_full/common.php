@@ -539,6 +539,40 @@ if (isset($_REQUEST['gr_id'])) {
 //===================================
 
 
+$patient_app_lifetime = 86400 * 100;
+$is_patient_app_launch = isset($_GET['app']) && hash_equals('patient', (string)$_GET['app']);
+$request_user_agent = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
+$is_android_app_webview = preg_match('/;\s*wv\)/i', $request_user_agent) === 1;
+$is_patient_app_request = $is_patient_app_launch
+    || $is_android_app_webview
+    || (isset($_COOKIE['sb_patient_app']) && hash_equals('1', (string)$_COOKIE['sb_patient_app']));
+
+// Keep a random, non-authenticating device identifier in the WebView. The
+// remember token is bound to its hash, so an app/WebView update does not log
+// the user out while copying the auth cookie to another device does not work.
+if ($is_patient_app_request) {
+    $app_device_id = $_COOKIE['sb_app_device'] ?? '';
+    if (!is_string($app_device_id) || !preg_match('/^[a-f0-9]{64}$/i', $app_device_id)) {
+        $app_device_id = bin2hex(random_bytes(32));
+    }
+    setcookie('sb_patient_app', '1', [
+        'expires' => G5_SERVER_TIME + $patient_app_lifetime,
+        'path' => '/',
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    setcookie('sb_app_device', $app_device_id, [
+        'expires' => G5_SERVER_TIME + $patient_app_lifetime,
+        'path' => '/',
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    $_COOKIE['sb_patient_app'] = '1';
+    $_COOKIE['sb_app_device'] = $app_device_id;
+}
+
 // 자동로그인 부분에서 첫로그인에 포인트 부여하던것을 로그인중일때로 변경하면서 코드도 대폭 수정하였습니다.
 if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이라면
     $member = get_member($_SESSION['ss_mb_id']);
@@ -551,6 +585,21 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
         set_session('ss_mb_id', '');
         $member = array();
     } else {
+        // On every app launch, rotate the persistent credential and slide its
+        // expiry back to 100 days. Also upgrades sessions created before this
+        // mechanism existed, without asking the user to log in again.
+        if ($is_patient_app_request
+            && ($is_patient_app_launch || !get_cookie('ck_auto') || !get_cookie('ck_mb_id'))
+            && function_exists('create_remember_login_token')) {
+            $app_remember_token = create_remember_login_token($member, $patient_app_lifetime);
+            if ($app_remember_token) {
+                set_cookie('ck_mb_id', $member['mb_id'], $patient_app_lifetime);
+                set_cookie('ck_auto', $app_remember_token, $patient_app_lifetime);
+            } else {
+                error_log('[common] patient app remember token creation failed');
+            }
+        }
+
         // 오늘 처음 로그인 이라면
         if (substr($member['mb_today_login'], 0, 10) != G5_TIME_YMD) {
             // 첫 로그인 포인트 지급
@@ -585,8 +634,12 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
                         if(function_exists('update_auth_session_token')) update_auth_session_token($row['mb_datetime']);
 
                         // Har bir ishlatishda tokenni aylantirib, o'g'irlangan eski cookieni qayta ishlatishni to'xtatadi.
-                        $rotated_token = create_remember_login_token(array('mb_id'=>$tmp_mb_id));
-                        if ($rotated_token) set_cookie('ck_auto', $rotated_token, 86400 * 31);
+                        $remember_lifetime = $is_patient_app_request ? $patient_app_lifetime : 86400 * 31;
+                        $rotated_token = create_remember_login_token(array('mb_id'=>$tmp_mb_id), $remember_lifetime);
+                        if ($rotated_token) {
+                            set_cookie('ck_mb_id', $tmp_mb_id, $remember_lifetime);
+                            set_cookie('ck_auto', $rotated_token, $remember_lifetime);
+                        }
                         else {
                             set_cookie('ck_mb_id', '', 0);
                             set_cookie('ck_auto', '', 0);

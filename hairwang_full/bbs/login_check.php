@@ -99,12 +99,13 @@ if (isset($auto_login) && $auto_login) {
     // 3.27
     // 자동로그인 ---------------------------
     // 쿠키 한달간 저장
+    $remember_lifetime = $is_patient_app ? 86400 * 100 : 86400 * 31;
     $remember_token = function_exists('create_remember_login_token')
-        ? create_remember_login_token($mb, 86400 * 31)
+        ? create_remember_login_token($mb, $remember_lifetime)
         : '';
     if ($remember_token !== '') {
-        set_cookie('ck_mb_id', $mb['mb_id'], 86400 * 31);
-        set_cookie('ck_auto', $remember_token, 86400 * 31);
+        set_cookie('ck_mb_id', $mb['mb_id'], $remember_lifetime);
+        set_cookie('ck_auto', $remember_token, $remember_lifetime);
     } else {
         set_cookie('ck_mb_id', '', 0);
         set_cookie('ck_auto', '', 0);

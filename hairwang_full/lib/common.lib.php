@@ -181,9 +181,14 @@ function create_remember_login_token($member, $lifetime=2678400)
     if (!$connect || empty($member['mb_id'])) return '';
     $raw_token = bin2hex(random_bytes(32));
     $token_hash = hash('sha256', $raw_token);
-    $user_type = 'web_remember';
+    $is_patient_app = isset($_COOKIE['sb_patient_app'])
+        && hash_equals('1', (string)$_COOKIE['sb_patient_app']);
+    $user_type = $is_patient_app ? 'patient_app_remember' : 'web_remember';
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+    $device_id = $_COOKIE['sb_app_device'] ?? '';
+    $ua = ($is_patient_app && is_string($device_id) && preg_match('/^[a-f0-9]{64}$/i', $device_id))
+        ? 'patient-app-device:' . hash('sha256', strtolower($device_id))
+        : substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
     $expires = date('Y-m-d H:i:s', G5_SERVER_TIME + (int)$lifetime);
 
     $delete = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ? AND user_type = ?");
@@ -195,9 +200,15 @@ function create_remember_login_token($member, $lifetime=2678400)
     $insert = mysqli_prepare($connect,
         "INSERT INTO sso_tokens (token, user_type, g5_mb_id, ip_address, user_agent, expires_at, created_at)
          VALUES (?, ?, ?, ?, ?, ?, NOW())");
-    if (!$insert) return '';
+    if (!$insert) {
+        error_log('[remember-login] token prepare failed: ' . mysqli_error($connect));
+        return '';
+    }
     mysqli_stmt_bind_param($insert, 'ssssss', $token_hash, $user_type, $member['mb_id'], $ip, $ua, $expires);
     $ok = mysqli_stmt_execute($insert);
+    if (!$ok) {
+        error_log('[remember-login] token insert failed: ' . mysqli_stmt_error($insert));
+    }
     mysqli_stmt_close($insert);
     return $ok ? $raw_token : '';
 }
@@ -207,19 +218,35 @@ function verify_remember_login_token($mb_id, $raw_token)
     global $connect;
     if (!$connect || $mb_id === '' || !is_string($raw_token) || !preg_match('/^[a-f0-9]{64}$/i', $raw_token)) return false;
     $token_hash = hash('sha256', $raw_token);
-    $user_type = 'web_remember';
-    $stmt = mysqli_prepare($connect,
-        "SELECT token, user_agent FROM sso_tokens
-         WHERE token = ? AND g5_mb_id = ? AND user_type = ? AND expires_at > NOW() LIMIT 1");
+    $is_patient_app = isset($_COOKIE['sb_patient_app'])
+        && hash_equals('1', (string)$_COOKIE['sb_patient_app']);
+    $user_type = $is_patient_app ? 'patient_app_remember' : 'web_remember';
+    $legacy_user_type = 'web_remember';
+    $sql = $is_patient_app
+        ? "SELECT token, user_agent, user_type FROM sso_tokens
+           WHERE token = ? AND g5_mb_id = ? AND user_type IN (?, ?) AND expires_at > NOW() LIMIT 1"
+        : "SELECT token, user_agent, user_type FROM sso_tokens
+           WHERE token = ? AND g5_mb_id = ? AND user_type = ? AND expires_at > NOW() LIMIT 1";
+    $stmt = mysqli_prepare($connect, $sql);
     if (!$stmt) return false;
-    mysqli_stmt_bind_param($stmt, 'sss', $token_hash, $mb_id, $user_type);
+    if ($is_patient_app) {
+        mysqli_stmt_bind_param($stmt, 'ssss', $token_hash, $mb_id, $user_type, $legacy_user_type);
+    } else {
+        mysqli_stmt_bind_param($stmt, 'sss', $token_hash, $mb_id, $user_type);
+    }
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
     $row = mysqli_fetch_assoc($result);
     mysqli_stmt_close($stmt);
     if (!$row || !hash_equals($row['token'], $token_hash)) return false;
 
-    $current_ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+    $device_id = $_COOKIE['sb_app_device'] ?? '';
+    $is_device_bound_token = $is_patient_app
+        && $row['user_type'] === 'patient_app_remember'
+        && strpos((string)$row['user_agent'], 'patient-app-device:') === 0;
+    $current_ua = ($is_device_bound_token && is_string($device_id) && preg_match('/^[a-f0-9]{64}$/i', $device_id))
+        ? 'patient-app-device:' . hash('sha256', strtolower($device_id))
+        : substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
     return hash_equals((string)$row['user_agent'], $current_ua);
 }
 
@@ -227,9 +254,9 @@ function revoke_remember_login_token($mb_id)
 {
     global $connect;
     if (!$connect || $mb_id === '') return;
-    $user_type = 'web_remember';
-    if ($stmt = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ? AND user_type = ?")) {
-        mysqli_stmt_bind_param($stmt, 'ss', $mb_id, $user_type);
+    $user_types = ['web_remember', 'patient_app_remember'];
+    if ($stmt = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ? AND user_type IN (?, ?)")) {
+        mysqli_stmt_bind_param($stmt, 'sss', $mb_id, $user_types[0], $user_types[1]);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
     }

@@ -17,16 +17,17 @@ function sso_create_token($connect, $user_type, $g5_mb_id = null, $hms_user_id =
     $token = bin2hex(random_bytes(32));
     $expires = date('Y-m-d H:i:s', time() + SSO_TOKEN_LIFETIME);
 
-    // 기존 토큰 삭제
+    // Replace only this SSO channel's token. Remember-login tokens use the
+    // same table and must survive this post-login synchronization hook.
     if ($g5_mb_id) {
-        $stmt = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ?");
-        mysqli_stmt_bind_param($stmt, 's', $g5_mb_id);
+        $stmt = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ? AND user_type = ?");
+        mysqli_stmt_bind_param($stmt, 'ss', $g5_mb_id, $user_type);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
     }
     if ($hms_user_id) {
-        $stmt = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE hms_user_id = ?");
-        mysqli_stmt_bind_param($stmt, 'i', $hms_user_id);
+        $stmt = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE hms_user_id = ? AND user_type = ?");
+        mysqli_stmt_bind_param($stmt, 'is', $hms_user_id, $user_type);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
     }
