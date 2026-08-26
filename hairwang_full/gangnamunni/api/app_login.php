@@ -64,16 +64,17 @@ $token = bin2hex(random_bytes(32));
 $expiry = date('Y-m-d H:i:s', time() + 86400 * 30);
 
 // Phase5 fix: use correct column g5_mb_id (NOT mb_id which doesn't exist in sso_tokens)
-$del = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ?");
+$login_user_type = 'gnuboard';
+$del = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ? AND user_type = ?");
 if ($del) {
-    mysqli_stmt_bind_param($del, 's', $member['mb_id']);
+    mysqli_stmt_bind_param($del, 'ss', $member['mb_id'], $login_user_type);
     mysqli_stmt_execute($del);
     mysqli_stmt_close($del);
 }
 
 $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
-$user_type = 'gnuboard';
+$user_type = $login_user_type;
 
 $ins = mysqli_prepare($connect,
     "INSERT INTO sso_tokens (token, user_type, g5_mb_id, ip_address, user_agent, expires_at, created_at)

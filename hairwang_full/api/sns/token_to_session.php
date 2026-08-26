@@ -311,15 +311,18 @@ function create_gnuboard_session($member) {
     // 4. 자동 로그인 쿠키 설정 (선택 사항)
     // ============================================================
 
-    // 7일간 유효한 자동 로그인 쿠키
+    // 환자 앱(webview)에서 호출된 경우 100일, 그 외 일반 웹에서는 7일 유지
     // 보안: HTTPS 환경에서만 사용 권장
     if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+        $sns_remember_lifetime = (!empty($is_patient_app_request) && !empty($patient_app_lifetime))
+            ? $patient_app_lifetime
+            : 60 * 60 * 24 * 7;
         $remember_token = function_exists('create_remember_login_token')
-            ? create_remember_login_token($member, 60 * 60 * 24 * 7)
+            ? create_remember_login_token($member, $sns_remember_lifetime)
             : '';
         if ($remember_token !== '') {
-            set_cookie('ck_mb_id', $member['mb_id'], 60 * 60 * 24 * 7);
-            set_cookie('ck_auto', $remember_token, 60 * 60 * 24 * 7);
+            set_cookie('ck_mb_id', $member['mb_id'], $sns_remember_lifetime);
+            set_cookie('ck_auto', $remember_token, $sns_remember_lifetime);
         }
     }
 

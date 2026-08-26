@@ -546,6 +546,10 @@ $is_android_app_webview = preg_match('/;\s*wv\)/i', $request_user_agent) === 1;
 $is_patient_app_request = $is_patient_app_launch
     || $is_android_app_webview
     || (isset($_COOKIE['sb_patient_app']) && hash_equals('1', (string)$_COOKIE['sb_patient_app']));
+$had_patient_app_device_cookie = isset($_COOKIE['sb_app_device'])
+    && is_string($_COOKIE['sb_app_device'])
+    && preg_match('/^[a-f0-9]{64}$/i', $_COOKIE['sb_app_device']);
+$incoming_patient_app_device = $had_patient_app_device_cookie ? (string)$_COOKIE['sb_app_device'] : '';
 
 // Keep a random, non-authenticating device identifier in the WebView. The
 // remember token is bound to its hash, so an app/WebView update does not log
@@ -613,6 +617,16 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
     }
 } else {
     // 자동로그인 ---------------------------------------
+    if ($is_patient_app_launch && function_exists('remember_login_diagnostic')) {
+        $diagnostic_mb_id = get_cookie('ck_mb_id');
+        remember_login_diagnostic('app_launch_no_session', $diagnostic_mb_id, array(
+            'app'=>'1',
+            'mb_cookie'=>$diagnostic_mb_id !== '' ? '1' : '0',
+            'auto_cookie'=>get_cookie('ck_auto') !== '' ? '1' : '0',
+            'device_cookie'=>$had_patient_app_device_cookie ? '1' : '0',
+            'device'=>$incoming_patient_app_device !== '' ? substr(hash('sha256', strtolower($incoming_patient_app_device)), 0, 12) : '-',
+        ));
+    }
     // 회원아이디가 쿠키에 저장되어 있다면 (3.27)
     if ($tmp_mb_id = get_cookie('ck_mb_id')) {
 

@@ -31,14 +31,8 @@ if (isset($_COOKIE['sb_sso_token']) && !empty($_COOKIE['sb_sso_token'])) {
             mysqli_stmt_execute($sso_del);
             mysqli_stmt_close($sso_del);
         }
-        if (isset($member['mb_id']) && !empty($member['mb_id'])) {
-            $sso_del2 = mysqli_prepare($sso_conn, "DELETE FROM sso_tokens WHERE g5_mb_id = ?");
-            if ($sso_del2) {
-                mysqli_stmt_bind_param($sso_del2, 's', $member['mb_id']);
-                mysqli_stmt_execute($sso_del2);
-                mysqli_stmt_close($sso_del2);
-            }
-        }
+        // The exact SSO token above is enough. Do not delete every token for
+        // the account: that would also log the patient app out on all devices.
         mysqli_close($sso_conn);
     }
     setcookie('sb_sso_token', '', [

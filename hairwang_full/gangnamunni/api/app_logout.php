@@ -38,7 +38,8 @@ if (!$token) {
 $deleted = false;
 
 if (!empty($token)) {
-    // 1. SSO 토큰으로 사용자 확인 후 해당 사용자의 모든 토큰 삭제
+    // 1. Revoke only the presented SSO token. Logging out this client must not
+    // invalidate the same user's patient-app remember tokens on other devices.
     $stmt = mysqli_prepare($connect, "SELECT g5_mb_id FROM sso_tokens WHERE token = ? LIMIT 1");
     if ($stmt) {
         mysqli_stmt_bind_param($stmt, 's', $token);
@@ -48,14 +49,14 @@ if (!empty($token)) {
         mysqli_stmt_close($stmt);
 
         if ($sso && !empty($sso['g5_mb_id'])) {
-            // 해당 사용자의 모든 토큰 삭제
-            $del = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ?");
+            $del = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE token = ?");
             if ($del) {
-                mysqli_stmt_bind_param($del, 's', $sso['g5_mb_id']);
+                mysqli_stmt_bind_param($del, 's', $token);
                 mysqli_stmt_execute($del);
+                $deleted = (mysqli_affected_rows($connect) > 0);
                 mysqli_stmt_close($del);
-                $deleted = true;
             }
+
         }
     }
 
@@ -68,6 +69,27 @@ if (!empty($token)) {
             $deleted = (mysqli_affected_rows($connect) > 0);
             mysqli_stmt_close($del);
         }
+    }
+}
+
+// Revoke the exact remember credential even when the shorter-lived SSO token
+// is already expired or absent. Gnuboard stores the raw 64-hex value as a
+// base64 cookie and only its SHA-256 hash in the unique token column, so this
+// cannot affect another browser, account, or app device.
+$remember_cookie_name = md5('ck_auto');
+$remember_cookie = $_COOKIE[$remember_cookie_name] ?? '';
+$remember_raw = is_string($remember_cookie)
+    ? base64_decode($remember_cookie, true)
+    : false;
+if (is_string($remember_raw) && preg_match('/^[a-f0-9]{64}$/i', $remember_raw)) {
+    $remember_hash = hash('sha256', $remember_raw);
+    $remember_delete = mysqli_prepare($connect,
+        "DELETE FROM sso_tokens
+         WHERE token = ? AND user_type IN ('web_remember', 'patient_app_remember')");
+    if ($remember_delete) {
+        mysqli_stmt_bind_param($remember_delete, 's', $remember_hash);
+        mysqli_stmt_execute($remember_delete);
+        mysqli_stmt_close($remember_delete);
     }
 }
 
