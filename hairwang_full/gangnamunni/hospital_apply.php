@@ -621,6 +621,14 @@ require_once __DIR__ . '/includes/admin_header.php';
 .business-lunch-card.is-disabled .business-lunch-time-area {
     opacity: .45;
 }
+.business-hours-bulk-card {
+    border: 1px solid rgba(var(--bs-primary-rgb), .25);
+    border-radius: 12px;
+    background: var(--bs-body-bg);
+}
+.business-hours-bulk-days .btn {
+    min-width: 54px;
+}
 @media (max-width: 767.98px) {
     .application-price-row { grid-template-columns: 1fr 1fr; }
     .application-price-row .remove-application-price { width: 100%; }
@@ -730,6 +738,33 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <div class="collapse" id="businessHoursSection">
                                 <div class="p-3 border-top bg-body-tertiary">
                                     <input type="hidden" name="business_hours" id="businessHoursInput" value="<?= htmlspecialchars($_POST['business_hours'] ?? '{}', ENT_QUOTES, 'UTF-8') ?>">
+                                    <div class="business-hours-bulk-card p-3 mb-3">
+                                        <div class="fw-bold mb-1"><i class="bi bi-lightning-charge me-1 text-primary"></i>영업시간 일괄 설정</div>
+                                        <div class="small text-muted mb-3">시간과 적용할 요일을 선택한 후 적용하세요. 적용 후 아래 표에서 요일별로 다시 수정할 수 있습니다.</div>
+                                        <div class="row g-2 align-items-end mb-3">
+                                            <div class="col-sm-4">
+                                                <label class="form-label small fw-semibold mb-1" for="applyBhBulkStart">시작 시간</label>
+                                                <input type="time" class="form-control form-control-sm" id="applyBhBulkStart" value="10:00">
+                                            </div>
+                                            <div class="col-sm-4">
+                                                <label class="form-label small fw-semibold mb-1" for="applyBhBulkEnd">종료 시간</label>
+                                                <input type="time" class="form-control form-control-sm" id="applyBhBulkEnd" value="19:00">
+                                            </div>
+                                            <div class="col-sm-4">
+                                                <button type="button" class="btn btn-primary btn-sm w-100" id="applyBhBulkApply"><i class="bi bi-check2 me-1"></i>선택 요일에 적용</button>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="applyBhSelectWeekdays">평일 (월~금)</button>
+                                        </div>
+                                        <div class="business-hours-bulk-days d-flex flex-wrap gap-2">
+                                            <?php foreach ($apply_bh_days as $day_key => $day_label): ?>
+                                                <input type="checkbox" class="btn-check apply-bh-bulk-day" id="applyBhBulkDay<?= $day_key ?>" value="<?= $day_key ?>" autocomplete="off">
+                                                <label class="btn btn-outline-secondary btn-sm" for="applyBhBulkDay<?= $day_key ?>"><?= $day_label ?></label>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <div class="small mt-2 d-none" id="applyBhBulkMessage" role="status"></div>
+                                    </div>
                                     <div class="table-responsive bg-body rounded border mb-3">
                                         <table class="table table-sm align-middle mb-0 business-hours-table">
                                             <thead class="table-light"><tr><th>요일</th><th>시작</th><th>종료</th><th>상태</th></tr></thead>
@@ -1192,6 +1227,45 @@ document.querySelectorAll('.apply-bh-status').forEach(function(select) {
             if (closed) input.value = '';
         });
     });
+});
+document.getElementById('applyBhSelectWeekdays')?.addEventListener('click', function() {
+    var weekdays = ['월', '화', '수', '목', '금'];
+    var weekdayInputs = Array.from(document.querySelectorAll('.apply-bh-bulk-day'))
+        .filter(function(input) { return weekdays.indexOf(input.value) !== -1; });
+    var shouldSelect = weekdayInputs.some(function(input) { return !input.checked; });
+    weekdayInputs.forEach(function(input) { input.checked = shouldSelect; });
+});
+document.getElementById('applyBhBulkApply')?.addEventListener('click', function() {
+    var start = document.getElementById('applyBhBulkStart').value;
+    var end = document.getElementById('applyBhBulkEnd').value;
+    var selectedDays = Array.from(document.querySelectorAll('.apply-bh-bulk-day:checked'));
+    var message = document.getElementById('applyBhBulkMessage');
+
+    message.classList.remove('d-none', 'text-success', 'text-danger');
+    if (!start || !end || start >= end) {
+        message.classList.add('text-danger');
+        message.textContent = '시작 시간보다 늦은 종료 시간을 선택해 주세요.';
+        return;
+    }
+    if (!selectedDays.length) {
+        message.classList.add('text-danger');
+        message.textContent = '적용할 요일을 하나 이상 선택해 주세요.';
+        return;
+    }
+
+    selectedDays.forEach(function(input) {
+        var day = input.value;
+        var status = document.querySelector('.apply-bh-status[data-day="' + day + '"]');
+        var startInput = document.querySelector('.apply-bh-start[data-day="' + day + '"]');
+        var endInput = document.querySelector('.apply-bh-end[data-day="' + day + '"]');
+        status.value = 'normal';
+        startInput.disabled = false;
+        endInput.disabled = false;
+        startInput.value = start;
+        endInput.value = end;
+    });
+    message.classList.add('text-success');
+    message.textContent = selectedDays.map(function(input) { return input.value; }).join(', ') + '요일에 적용했습니다.';
 });
 document.getElementById('applyBhNoLunch')?.addEventListener('change', function() {
     var noLunch = document.getElementById('applyBhNoLunch').checked;
