@@ -16,6 +16,7 @@ require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/notification_helper.php';
 require_once __DIR__ . '/includes/hospital_treatment_images.php';
+require_once __DIR__ . '/includes/hospital_phone_helper.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
@@ -333,6 +334,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $introduction = trim($_POST['introduction'] ?? '');
             $address = trim($_POST['address'] ?? '');
             $phone = trim($_POST['phone'] ?? '');
+            if ($phone !== '') $phone = hospital_phone_format($phone);
             $email = trim($_POST['email'] ?? '');
             $contact_name = trim($_POST['contact_name'] ?? '');
             $contact_phone = trim($_POST['contact_phone'] ?? '');
@@ -371,6 +373,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($hospital_id <= 0 || empty($name)) {
                 $error = '병원 ID와 이름은 필수입니다.';
+            } elseif ($phone !== '' && ($duplicate_phone_hospital = hospital_phone_find_duplicate($connect, $phone, $hospital_id))) {
+                $error = "이미 '{$duplicate_phone_hospital['name']}' 병원에서 사용 중인 전화번호입니다.";
             } else {
                 $stmt = mysqli_prepare($connect,
                     "UPDATE gangnamunni_hospitals SET name=?, owner_name=?, business_number=?, introduction=?, address=?, phone=?, email=?, contact_name=?, contact_phone=?, website=?, sns_url=?, categories=?, badges=?, treatment_tags=?, subway_names=?, business_hours=?, latitude=?, longitude=?, show_rating=?, ad_grade=?, updated_at=NOW() WHERE id=?"
@@ -887,7 +891,7 @@ $edit_json_list_value = static function ($raw) {
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">전화번호</label>
-                    <input type="text" name="phone" class="form-control form-control-sm"
+                    <input type="tel" name="phone" class="form-control form-control-sm" inputmode="tel" autocomplete="tel" placeholder="02-1234-5678"
                            value="<?php echo htmlspecialchars($hospital['phone'] ?? ''); ?>">
                 </div>
                 <div class="col-md-6">

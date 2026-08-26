@@ -7,6 +7,7 @@
  */
 
 session_start();
+require_once __DIR__ . '/includes/hospital_phone_helper.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
@@ -111,6 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     $owner_name = trim($_POST['owner_name'] ?? '');
     $business_number = trim($_POST['business_number'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
+    if ($phone !== '') $phone = hospital_phone_format($phone);
     $email = trim($_POST['email'] ?? '');
     $contact_name = trim($_POST['contact_name'] ?? '');
     $contact_phone = trim($_POST['contact_phone'] ?? '');
@@ -133,6 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     // 유효성 검사
     if (empty($name)) {
         $error = '병원명을 입력해 주세요.';
+    } elseif ($phone !== '' && ($duplicate_phone_hospital = hospital_phone_find_duplicate($connect, $phone))) {
+        $error = "이미 '{$duplicate_phone_hospital['name']}' 병원에서 사용 중인 전화번호입니다.";
     } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = '올바른 이메일 주소를 입력해 주세요.';
     } else {
@@ -699,7 +703,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">병원 전화번호</label>
-                        <input type="tel" name="phone" class="form-control" maxlength="50" value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
+                        <input type="tel" name="phone" class="form-control" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="02-1234-5678" value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">병원 아이디(이메일 형식)</label>
