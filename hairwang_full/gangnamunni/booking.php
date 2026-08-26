@@ -940,6 +940,7 @@ $page_css = '
         color: #aaaaaa;
         white-space: nowrap;
         user-select: none;
+        cursor: pointer;
     }
     .month-item.active {
         color: #000;
@@ -974,6 +975,12 @@ $page_css = '
         border-bottom: 1px solid var(--bs-border-color, #eee);
     }
     .date-selector::-webkit-scrollbar { display: none; }
+    .date-selector-tail {
+        flex: 0 0 calc(100% - 46px);
+        width: 0;
+        height: 1px;
+        pointer-events: none;
+    }
     .date-chip {
         flex-shrink: 0;
         display: flex;
@@ -1602,7 +1609,7 @@ $page_js = '
         // 오늘이 휴무라 목록에서 빠진 경우 첫 번째 영업일을 기본 선택한다.
         if (dates.length && !dates.some(function(d) { return fmt(d) === hidden.value; })) hidden.value = fmt(dates[0]);
 
-        // 월 표시(클릭 불가) — 스와이프로 보이는 날짜의 월이 자동 활성화된다.
+        // 월 클릭 시 첫 달은 오늘(목록의 첫 날짜), 다음 달은 해당 월의 첫 예약 가능 날짜를 왼쪽에 맞춘다.
         function renderMonths() {
             monthSel.innerHTML = "";
             months.forEach(function(k) {
@@ -1610,6 +1617,16 @@ $page_js = '
                 var el = document.createElement("span");
                 el.className = "month-item" + (k === selectedMonth ? " active" : "");
                 el.textContent = m + "월";
+                el.setAttribute("role", "button");
+                el.setAttribute("tabindex", "0");
+                el.setAttribute("aria-pressed", k === selectedMonth ? "true" : "false");
+                el.onclick = function() { scrollToMonth(k); };
+                el.onkeydown = function(event) {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        scrollToMonth(k);
+                    }
+                };
                 monthSel.appendChild(el);
             });
         }
@@ -1642,14 +1659,32 @@ $page_js = '
                 };
                 dateSel.appendChild(chip);
             });
+            // 다음 달의 날짜가 적어도 그 달 첫 날짜를 항상 왼쪽 끝까지 이동할 수 있게 한다.
+            if (months.length > 1) {
+                var tail = document.createElement("span");
+                tail.className = "date-selector-tail";
+                tail.setAttribute("aria-hidden", "true");
+                dateSel.appendChild(tail);
+            }
+        }
+        function scrollToMonth(monthKey) {
+            var target = dateSel.querySelector(".date-chip[data-month=\"" + monthKey + "\"]");
+            if (!target) return;
+            selectedMonth = monthKey;
+            renderMonths();
+            var targetLeft = target.getBoundingClientRect().left - dateSel.getBoundingClientRect().left + dateSel.scrollLeft;
+            dateSel.scrollTo({ left: targetLeft, behavior: "auto" });
         }
         // 스와이프(스크롤) 시 왼쪽에 보이는 날짜의 월로 활성 월 자동 변경
         function updateActiveMonthFromScroll() {
             var chips = dateSel.querySelectorAll(".date-chip");
-            var sl = dateSel.scrollLeft;
+            var selectorLeft = dateSel.getBoundingClientRect().left;
             var current = null;
             for (var i = 0; i < chips.length; i++) {
-                if (chips[i].offsetLeft + chips[i].offsetWidth > sl + 4) { current = chips[i].getAttribute("data-month"); break; }
+                if (chips[i].getBoundingClientRect().right > selectorLeft + 4) {
+                    current = chips[i].getAttribute("data-month");
+                    break;
+                }
             }
             if (current && current !== selectedMonth) { selectedMonth = current; renderMonths(); }
         }
