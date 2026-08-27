@@ -10,6 +10,14 @@ composer.phar
 **/fcm_service_account.json
 *.pem
 *.p12
+*.pfx
+key.properties
+
+# Runtime logs and editor/manual backup artifacts
+*.log
+*.bak
+*.bak_*
+*.backup
 
 # 환경설정 (직접 생성 필요)
 .env
