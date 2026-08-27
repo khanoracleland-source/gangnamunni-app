@@ -91,6 +91,25 @@ function getStatusLabel($hms_data) {
 
 // 레이아웃 변수
 $page_title = '내 ' . term('appointment') . ' 조회';
+function getPatientStatusLabel($local_status, $hms_data, $consultation = false) {
+    $labels = $consultation
+        ? [
+            'pending' => ['label' => '접수대기', 'color' => '#9E9E9E'],
+            'approved' => ['label' => '상담확정', 'color' => '#198754'],
+            'completed' => ['label' => '상담완료', 'color' => '#4CAF50'],
+            'rejected' => ['label' => '상담거절', 'color' => '#F44336'],
+            'cancelled' => ['label' => '추소됨', 'color' => '#F44336'],
+        ]
+        : [
+            'pending' => ['label' => '예약대기', 'color' => '#FF9800'],
+            'confirmed' => ['label' => '예약확정', 'color' => '#198754'],
+            'completed' => ['label' => '진료완료', 'color' => '#4CAF50'],
+            'cancelled' => ['label' => '추소됨', 'color' => '#F44336'],
+            'no_show' => ['label' => '노쇼', 'color' => '#F44336'],
+        ];
+    return $labels[(string)$local_status] ?? getStatusLabel($hms_data);
+}
+
 $show_search = false;
 
 $page_css = '
@@ -288,18 +307,16 @@ include __DIR__ . '/includes/header.php';
             <?php foreach ($bookings as $b):
                 $hms_id = $b['hms_appointment_id'] ?? null;
                 $hms_data = $hms_id ? ($hms_statuses[$hms_id] ?? null) : null;
-                $status = getStatusLabel($hms_data);
+                $status = getPatientStatusLabel($b['status'] ?? '', $hms_data);
             ?>
             <div class="appointment-card">
                 <div class="appointment-header">
                     <div class="appointment-hospital">
                         <?php echo htmlspecialchars($b['hospital_name_display'] ?? $b['hospital_name'] ?? ''); ?>
                     </div>
-                    <?php if ($hms_id): ?>
                     <span class="status-badge" style="background:<?php echo $status['color']; ?>">
                         <?php echo $status['label']; ?>
                     </span>
-                    <?php endif; ?>
                 </div>
                 <div class="appointment-info">
                     <div><strong>예약자:</strong> <?php echo htmlspecialchars($b['name']); ?></div>
@@ -344,14 +361,14 @@ include __DIR__ . '/includes/header.php';
             <?php foreach ($consultations as $c):
                 $hms_id = $c['hms_appointment_id'] ?? null;
                 $hms_data = $hms_id ? ($hms_statuses[$hms_id] ?? null) : null;
-                $status = getStatusLabel($hms_data);
+                $status = getPatientStatusLabel($c['status'] ?? '', $hms_data, true);
             ?>
             <div class="appointment-card" style="border-left-color: #2196F3;">
                 <div class="appointment-header">
                     <div class="appointment-hospital">
                         <?php echo htmlspecialchars($c['hospital_name_display'] ?? $c['hospital_name'] ?? ''); ?>
                     </div>
-                    <?php if ($hms_id): ?>
+                    <?php if ($hms_id || isset($status)): ?>
                     <span class="status-badge" style="background:<?php echo $status['color']; ?>">
                         <?php echo $status['label']; ?>
                     </span>

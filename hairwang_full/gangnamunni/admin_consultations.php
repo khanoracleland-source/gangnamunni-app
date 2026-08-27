@@ -38,12 +38,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($id > 0 && isset($status_map[$action])) {
         $new_status = $status_map[$action];
         $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_consultations SET status = ? WHERE id = ?");
+        $status_changed = false;
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, 'si', $new_status, $id);
-            mysqli_stmt_execute($stmt);
+            $status_changed = mysqli_stmt_execute($stmt) && mysqli_stmt_affected_rows($stmt) === 1;
             mysqli_stmt_close($stmt);
         }
         $msg = '상담 상태가 변경되었습니다.';
+        if ($new_status === 'approved' && $status_changed) {
+            try {
+                $consult_result = mysqli_query($connect, "SELECT * FROM gangnamunni_consultations WHERE id = {$id} LIMIT 1");
+                $consultation_row = $consult_result ? mysqli_fetch_assoc($consult_result) : null;
+                $patient_phone = preg_replace('/[^0-9]/', '', (string)($consultation_row['phone'] ?? $consultation_row['patient_phone'] ?? ''));
+                $member_table = (defined('G5_TABLE_PREFIX') ? G5_TABLE_PREFIX : 'g5_') . 'member';
+                $patient_member_id = '';
+
+                if ($patient_phone !== '' && preg_match('/^[A-Za-z0-9_]+$/', $member_table)) {
+                    $member_stmt = mysqli_prepare($connect,
+                        "SELECT mb_id FROM {$member_table} WHERE REPLACE(REPLACE(mb_hp, '-', ''), ' ', '') = ? LIMIT 1");
+                    if ($member_stmt) {
+                        mysqli_stmt_bind_param($member_stmt, 's', $patient_phone);
+                        mysqli_stmt_execute($member_stmt);
+                        $member_row = mysqli_fetch_assoc(mysqli_stmt_get_result($member_stmt));
+                        mysqli_stmt_close($member_stmt);
+                        $patient_member_id = trim((string)($member_row['mb_id'] ?? ''));
+                    }
+                }
+
+                if ($patient_member_id !== '') {
+                    require_once __DIR__ . '/includes/user_notifications.php';
+                    require_once __DIR__ . '/includes/admin_fcm.php';
+                    $notification_title = '상담신청이 확인되었습니다';
+                    $notification_body = trim((string)($consultation_row['hospital_name'] ?? ''));
+                    $notification_link = (defined('SITE_FULL_URL') ? SITE_FULL_URL : '') . 'my_appointments.php';
+                    create_user_notification($connect, $patient_member_id, 'general', $notification_title, $notification_body, $notification_link);
+                    send_push_to_members($connect, [$patient_member_id], $notification_title, $notification_body, $notification_link);
+                }
+            } catch (Throwable $e) {
+                error_log('[admin_consultations] patient notification failed (consultation already approved): ' . $e->getMessage());
+            }
+        }
         $msg_type = 'success';
     }
 }

@@ -355,7 +355,11 @@ $page_title = '내 예약';
         .upcoming-booking { margin: 0; padding: 16px 0 24px; border-bottom: 1px solid #dedede; background: #fff; }
         .upcoming-booking:first-of-type { padding-top: 0; }
         .upcoming-booking + .upcoming-booking { padding-top: 24px; }
-        .upcoming-date { margin-bottom: 13px; font-size: 18px; font-weight: 650; line-height: 1.35; letter-spacing: -.45px; color: #111; }
+        .upcoming-date-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:13px; }
+        .upcoming-date { font-size: 18px; font-weight: 650; line-height: 1.35; letter-spacing: -.45px; color: #111; }
+        .upcoming-status { flex-shrink:0; padding:4px 9px; border-radius:999px; font-size:12px; font-weight:700; }
+        .upcoming-status.pending { background:#fff3cd; color:#856404; }
+        .upcoming-status.confirmed { background:#d1e7dd; color:#0f5132; }
         .upcoming-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(112px, 1fr); align-items: stretch; gap: 12px; }
         .upcoming-summary { min-width: 0; min-height: 66px; padding: 12px 16px 11px 18px; display: flex; align-items: center; gap: 14px; background: var(--color-primary); color: #fff; text-decoration: none; }
         .upcoming-copy { min-width: 0; flex: 1; }
@@ -505,7 +509,12 @@ $page_title = '내 예약';
                 $_dd_text = $_dd > 0 ? 'D-' . $_dd : ($_dd === 0 ? 'D-0' : 'D+' . abs($_dd));
                 $_edits_left = max(0, 3 - (int)($bk['edit_count'] ?? 0));
             ?>
-            <div class="upcoming-date"><?php echo htmlspecialchars($_date_text); ?></div>
+            <div class="upcoming-date-row">
+                <div class="upcoming-date"><?php echo htmlspecialchars($_date_text); ?></div>
+                <span class="upcoming-status <?php echo $bk['status'] === 'confirmed' ? 'confirmed' : 'pending'; ?>">
+                    <?php echo $bk['status'] === 'confirmed' ? '예약확정' : '예약대기'; ?>
+                </span>
+            </div>
             <div class="upcoming-row">
                 <a class="upcoming-summary" href="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>" aria-label="예약 상세 보기">
                     <span class="upcoming-copy">

@@ -179,12 +179,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         // 예약 확정 알림: 환자의 사이트 알림함 + Android FCM push.
         // Push is best-effort; a missing/expired token must not roll back approval.
-        if ($new_status === 'confirmed' && $booking_row && !empty($booking_row['mb_id'])) {
+        $patient_member_id = trim((string)($booking_row['mb_id'] ?? ''));
+        if ($new_status === 'confirmed' && $booking_row && $patient_member_id === '') {
+            $patient_phone = preg_replace('/[^0-9]/', '', (string)($booking_row['phone'] ?? ''));
+            $member_table = $g5['member_table'] ?? 'g5_member';
+            if ($patient_phone !== '' && preg_match('/^[A-Za-z0-9_]+$/', $member_table)) {
+                $member_stmt = mysqli_prepare($connect,
+                    "SELECT mb_id FROM {$member_table} WHERE REPLACE(REPLACE(mb_hp, '-', ''), ' ', '') = ? LIMIT 1");
+                if ($member_stmt) {
+                    mysqli_stmt_bind_param($member_stmt, 's', $patient_phone);
+                    mysqli_stmt_execute($member_stmt);
+                    $member_row = mysqli_fetch_assoc(mysqli_stmt_get_result($member_stmt));
+                    mysqli_stmt_close($member_stmt);
+                    $patient_member_id = trim((string)($member_row['mb_id'] ?? ''));
+                }
+            }
+        }
+        if ($new_status === 'confirmed' && $booking_row && $patient_member_id !== '') {
             try {
                 require_once __DIR__ . '/includes/user_notifications.php';
                 require_once __DIR__ . '/includes/admin_fcm.php';
 
-                $patient_member_id = (string)$booking_row['mb_id'];
                 $notification_title = '예약이 확정되었습니다';
                 $notification_body = trim(
                     ($booking_row['hospital_name'] ?? '') . ' · '
