@@ -610,13 +610,13 @@ foreach ($hospitals as $hospital):
                          ?? $hospital['main_image_url']
                          ?? $hospital_logos[(int)$hospital['id']]
                          ?? $hospital['profile_image_url'] ?? '';
-                $placeholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360'%3E%3Crect fill='%23e9ecef' width='640' height='360'/%3E%3Ctext x='50%25' y='45%25' fill='%23adb5bd' text-anchor='middle' font-size='18' font-family='sans-serif'%3E" . urlencode(htmlspecialchars($hospital['name'])) . "%3C/text%3E%3Ctext x='50%25' y='58%25' fill='%23ced4da' text-anchor='middle' font-size='13' font-family='sans-serif'%3ENo Image%3C/text%3E%3C/svg%3E";
+                $placeholder = 'assets/images/seoul_beauty_logo.png';
                 $img_src = !empty($h_img) ? htmlspecialchars($h_img) : $placeholder;
                 ?>
                 <img src="<?php echo $img_src; ?>"
                      alt="<?php echo htmlspecialchars($hospital['name']); ?>"
                      class="hospital-image"
-                     onerror="this.src='<?php echo $placeholder; ?>'">
+                     onerror="this.onerror=null;this.src='<?php echo $placeholder; ?>'">
                 <?php
                 // 유료 슬롯으로 상단 고정된 병원은 정렬 결과와 구분되도록 AD를 표시한다.
                 $ad_grade = $hospital['ad_grade'] ?? 'none';
