@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
     $id = intval($_POST['id'] ?? 0);
     $action = $_POST['action'];
-    $allowed = ['confirm', 'cancel', 'complete', 'noshow'];
+    $allowed = ['pending', 'confirm', 'cancel', 'complete', 'noshow'];
     // 병원 격리: super_admin 이 아니면 소속 병원 예약만 상태 변경 가능
     $_act_hin = $booking_hosp_in;
     if ($id > 0 && $_act_hin !== null) {
@@ -70,12 +70,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
     if ($id > 0 && in_array($action, $allowed)) {
-        $status_map = ['confirm' => 'confirmed', 'cancel' => 'cancelled', 'complete' => 'completed', 'noshow' => 'no_show'];
+        $status_map = ['pending' => 'pending', 'confirm' => 'confirmed', 'cancel' => 'cancelled', 'complete' => 'completed', 'noshow' => 'no_show'];
         $new_status = $status_map[$action];
+        $current_scope = $_act_hin !== null ? " AND hospital_id IN ({$_act_hin})" : '';
+        $current_result = mysqli_query($connect,
+            "SELECT status FROM gangnamunni_bookings WHERE id={$id}{$current_scope} LIMIT 1");
+        $current_row = $current_result ? mysqli_fetch_assoc($current_result) : null;
+        $current_status = (string)($current_row['status'] ?? '');
+        $is_super_admin = ($admin_role === 'super_admin');
+        $is_hospital_admin = in_array($admin_role, ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin'], true);
+        $can_override_status = $is_super_admin || $is_hospital_admin;
+        $normal_transitions = [
+            'pending' => ['confirmed', 'cancelled'],
+            'confirmed' => ['completed', 'no_show'],
+        ];
+
+        if ($current_status === '' || $current_status === $new_status) {
+            $msg = '예약 상태를 변경할 수 없습니다.';
+            $msg_type = 'warning';
+            goto skip_action;
+        }
+        if (!$can_override_status && !in_array($new_status, $normal_transitions[$current_status] ?? [], true)) {
+            $msg = '해당 예약 상태를 수정할 권한이 없습니다.';
+            $msg_type = 'danger';
+            goto skip_action;
+        }
+
         $sql = "UPDATE gangnamunni_bookings SET status='" . mysqli_real_escape_string($connect, $new_status) . "'";
         if ($action === 'cancel') {
             $reason = mysqli_real_escape_string($connect, $_POST['cancel_reason'] ?? '');
             $sql .= ", cancel_reason='" . $reason . "', cancelled_at=NOW()";
+        } elseif ($current_status === 'cancelled') {
+            $sql .= ", cancel_reason=NULL, cancelled_at=NULL";
         }
         $sql .= " WHERE id=" . $id;
         if ($_act_hin !== null) {
@@ -431,7 +457,12 @@ require_once __DIR__ . '/includes/admin_header.php';
                 <tbody>
                     <?php if (empty($bookings)): ?>
                     <tr><td colspan="11" class="text-center py-5 text-muted"><i class="bi bi-inbox" style="font-size:2rem;"></i><br>예약 내역이 없습니다.</td></tr>
-                    <?php else: $is_viewer = (($_SESSION['ad_admin_role'] ?? '') === 'viewer'); foreach ($bookings as $b): ?>
+                    <?php else:
+                    $is_viewer = (($_SESSION['ad_admin_role'] ?? '') === 'viewer');
+                    $is_super_admin = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
+                    $is_hospital_admin = in_array(($_SESSION['ad_admin_role'] ?? ''), ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin'], true);
+                    $can_override_status = $is_super_admin || $is_hospital_admin;
+                    foreach ($bookings as $b): ?>
                     <tr>
                         <td><?php echo $b['id']; ?></td>
                         <td><strong><?php echo htmlspecialchars($b['name']); ?></strong></td>
@@ -464,7 +495,23 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php if ($is_viewer): ?>
+                            <?php if ($can_override_status): ?>
+                            <form method="post" class="d-flex align-items-center gap-1"
+                                  onsubmit="return confirm('예약 상태를 변경하시겠습니까?');">
+                                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
+                                <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
+                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경">
+                                    <?php if ($st !== 'pending'): ?><option value="pending">예약대기</option><?php endif; ?>
+                                    <?php if ($st !== 'confirmed'): ?><option value="confirm">예약확정</option><?php endif; ?>
+                                    <?php if ($st !== 'completed'): ?><option value="complete">시술완료</option><?php endif; ?>
+                                    <?php if ($st !== 'no_show'): ?><option value="noshow">노쇼</option><?php endif; ?>
+                                    <?php if ($st !== 'cancelled'): ?><option value="cancel">예약취소</option><?php endif; ?>
+                                </select>
+                                <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                            </form>
+                            <?php elseif ($is_viewer): ?>
                             <span class="text-muted small">보기 전용</span>
                             <?php elseif ($st === 'pending'): ?>
                             <form method="post" class="d-inline">
