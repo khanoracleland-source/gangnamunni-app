@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../utils/app_common.dart';
@@ -398,7 +399,7 @@ class WebViewBridge {
       onPageStarted: onPageStarted,
       onPageFinished: onPageFinished,
       onWebResourceError: onWebResourceError,
-      onNavigationRequest: (NavigationRequest request) {
+      onNavigationRequest: (NavigationRequest request) async {
         final Uri uri = Uri.parse(request.url);
         final String scheme = uri.scheme.toLowerCase();
 
@@ -412,6 +413,13 @@ class WebViewBridge {
 
         // intent:// 스킴 차단 (Android에서 앱 인텐트)
         if (scheme == 'intent') {
+          if (request.url.contains('package=com.kakao.talk')) {
+            try {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } catch (e) {
+              _log('KakaoTalk intent launch failed: $e');
+            }
+          }
           _log('intent:// 스킴 차단: ${request.url}');
           return NavigationDecision.prevent;
         }
@@ -425,6 +433,17 @@ class WebViewBridge {
         // http/https는 정상 로드
         if (scheme == 'http' || scheme == 'https') {
           return NavigationDecision.navigate;
+        }
+
+        // Kakao OAuth uses these app-specific schemes to continue in the
+        // installed KakaoTalk app. Do not open arbitrary schemes from web content.
+        const kakaoSchemes = {'kakaotalk', 'kakaokompassauth', 'kakaolink'};
+        if (kakaoSchemes.contains(scheme)) {
+          try {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } catch (e) {
+            _log('KakaoTalk custom scheme launch failed: $e');
+          }
         }
 
         // 그 외 알 수 없는 스킴은 차단
