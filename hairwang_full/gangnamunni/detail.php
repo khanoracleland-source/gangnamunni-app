@@ -1729,6 +1729,7 @@ if ($current_tab === 'reviews') {
     </div>
 
     <!-- 이미지 갤러리 -->
+    <?php if (!empty($hospital_images)): ?>
     <div class="image-gallery-container" id="galleryContainer">
         <div class="image-gallery" id="imageGallery">
             <?php if (empty($hospital_images)): ?>
@@ -1764,6 +1765,7 @@ if ($current_tab === 'reviews') {
         </div>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 
     <!-- 병원 정보 -->
     <div class="hospital-info-section">

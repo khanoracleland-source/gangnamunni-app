@@ -59,10 +59,10 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBv87wEeWZZwUdJPJ5CV6zz79t_7sG_YwY',
-    appId: '1:397157172970:ios:35715c2a7e8fafcedf3993',
+    appId: '1:397157172970:ios:87a144fd74567692df3993',
     messagingSenderId: '397157172970',
     projectId: 'hospital-8425b',
     storageBucket: 'hospital-8425b.firebasestorage.app',
-    iosBundleId: 'com.celebhospital.patient',
+    iosBundleId: 'com.celebhospital.patient.public',
   );
 }

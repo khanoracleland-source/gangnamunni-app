@@ -610,7 +610,7 @@ foreach ($hospitals as $hospital):
                          ?? $hospital['main_image_url']
                          ?? $hospital_logos[(int)$hospital['id']]
                          ?? $hospital['profile_image_url'] ?? '';
-                $placeholder = 'assets/images/seoul_beauty_logo.png';
+                $placeholder = 'assets/images/seoul_beauty_hospital_placeholder.jpeg';
                 $img_src = !empty($h_img) ? htmlspecialchars($h_img) : $placeholder;
                 ?>
                 <img src="<?php echo $img_src; ?>"

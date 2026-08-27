@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CLIENT_ID</key>
+	<string>397157172970-kdoisdf77ft7te30v1s8m8jpvhgcb8sf.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.397157172970-kdoisdf77ft7te30v1s8m8jpvhgcb8sf</string>
 	<key>API_KEY</key>
 	<string>AIzaSyBv87wEeWZZwUdJPJ5CV6zz79t_7sG_YwY</string>
 	<key>GCM_SENDER_ID</key>
@@ -9,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.celebhospital.patient</string>
+	<string>com.celebhospital.patient.public</string>
 	<key>PROJECT_ID</key>
 	<string>hospital-8425b</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:397157172970:ios:35715c2a7e8fafcedf3993</string>
+	<string>1:397157172970:ios:87a144fd74567692df3993</string>
 </dict>
 </plist>
