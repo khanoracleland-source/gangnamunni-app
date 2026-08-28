@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appID": "JZ4MFA48JA.com.celebhospital.patient",
+        "appID": "JZ4MFA48JA.com.celebhospital.patient.public",
         "components": [
           {
             "/": "/hairwang/gangnamunni",
@@ -12,6 +12,19 @@
           {
             "/": "/hairwang/gangnamunni/*",
             "comment": "Open Seoul Beauty shared pages in the patient app"
+          }
+        ]
+      },
+      {
+        "appID": "JZ4MFA48JA.com.celebhospital.patient",
+        "components": [
+          {
+            "/": "/hairwang/gangnamunni",
+            "comment": "Legacy private build (com.celebhospital.patient) - remove once fully retired"
+          },
+          {
+            "/": "/hairwang/gangnamunni/*",
+            "comment": "Legacy private build (com.celebhospital.patient) - remove once fully retired"
           }
         ]
       }
