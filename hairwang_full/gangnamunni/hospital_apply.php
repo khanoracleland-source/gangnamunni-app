@@ -921,18 +921,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                             </div>
                             <div class="col-lg-7">
                                 <div class="bg-body rounded border p-3 h-100">
-                                    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="bi bi-images text-primary"></i>
-                                            <label class="form-label fw-semibold mb-0">내부 상세 이미지</label>
-                                            <span class="badge bg-light text-dark border" id="interiorImageCount">1 / 10</span>
-                                        </div>
-                                        <button type="button" class="btn btn-outline-primary btn-sm" id="addInteriorImageButton">
-                                            <i class="bi bi-plus-lg me-1"></i>이미지 추가
-                                        </button>
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <i class="bi bi-images text-primary"></i>
+                                        <label class="form-label fw-semibold mb-0" for="interiorImagesInput">내부 상세 이미지</label>
+                                        <span class="badge bg-light text-dark border" id="interiorImageCount">0 / 10</span>
                                     </div>
-                                    <div class="form-text mb-2">필요한 경우 버튼을 눌러 입력란을 추가하세요. 파일당 10MB 이하</div>
-                                    <div class="d-grid gap-2" id="interiorImageSlots"></div>
+                                    <input type="file" name="interior_images[]" id="interiorImagesInput" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.webp" multiple>
+                                    <div class="form-text">한 번에 최대 10장 선택 가능 · JPG/PNG/WebP · 파일당 10MB 이하</div>
+                                    <div class="d-flex flex-wrap gap-2 mt-2" id="interiorImagesPreview"></div>
                                 </div>
                             </div>
                         </div>
@@ -1006,59 +1002,52 @@ require_once __DIR__ . '/includes/admin_header.php';
 </div>
 
 <script>
-// 내부 상세 이미지: 버튼으로 입력란 추가 (최대 10장)
-var interiorImageSlotCount = 0;
-function addInteriorImageSlot() {
-    if (interiorImageSlotCount >= 10) return;
-    interiorImageSlotCount++;
-    var slotNumber = interiorImageSlotCount;
-    var column = document.createElement('div');
-    column.className = 'interior-image-slot';
-    column.innerHTML = '<div class="d-flex align-items-center gap-2 border rounded p-2">'
-        + '<span class="badge bg-primary-subtle text-primary flex-shrink-0">' + slotNumber + '</span>'
-        + '<input type="file" name="interior_images[]" class="form-control form-control-sm interior-image-input" accept=".jpg,.jpeg,.png,.webp">'
-        + '<div class="d-flex flex-shrink-0 interior-image-preview"></div>'
-        + (slotNumber > 1 ? '<button type="button" class="btn btn-outline-danger btn-sm flex-shrink-0 remove-interior-image" aria-label="이미지 입력 삭제"><i class="bi bi-x-lg"></i></button>' : '')
-        + '</div>';
-    document.getElementById('interiorImageSlots')?.appendChild(column);
-
-    var input = column.querySelector('.interior-image-input');
-    input.addEventListener('change', function() {
-        var preview = column.querySelector('.interior-image-preview');
-        preview.innerHTML = '';
-        var file = input.files[0];
-        if (file && file.type.startsWith('image/')) {
-            var img = document.createElement('img');
-            img.src = URL.createObjectURL(file);
-            img.className = 'rounded border object-fit-cover';
-            img.style.width = '96px'; img.style.height = '72px';
-            img.onload = function() { URL.revokeObjectURL(img.src); };
-            preview.appendChild(img);
-        }
-    });
-    updateInteriorImageControls();
-}
-function updateInteriorImageControls() {
-    var slots = document.querySelectorAll('.interior-image-slot');
-    slots.forEach(function(slot, index) {
-        var numberBadge = slot.querySelector('.badge');
-        if (numberBadge) numberBadge.textContent = index + 1;
-    });
-    var count = slots.length;
-    interiorImageSlotCount = count;
+// 내부 상세 이미지: 한 번의 파일 선택으로 최대 10장 + 전체 미리보기.
+document.getElementById('interiorImagesInput')?.addEventListener('change', function() {
+    var input = this;
+    var files = Array.from(input.files || []);
+    var preview = document.getElementById('interiorImagesPreview');
     var countLabel = document.getElementById('interiorImageCount');
-    if (countLabel) countLabel.textContent = count + ' / 10';
-    var addButton = document.getElementById('addInteriorImageButton');
-    if (addButton) addButton.disabled = count >= 10;
-}
-document.getElementById('addInteriorImageButton')?.addEventListener('click', addInteriorImageSlot);
-document.getElementById('interiorImageSlots')?.addEventListener('click', function(e) {
-    var button = e.target.closest('.remove-interior-image');
-    if (!button) return;
-    button.closest('.interior-image-slot').remove();
-    updateInteriorImageControls();
+    if (!preview || !countLabel) return;
+    preview.innerHTML = '';
+
+    if (files.length > 10) {
+        input.value = '';
+        countLabel.textContent = '0 / 10';
+        alert('내부 상세 이미지는 최대 10장까지 선택할 수 있습니다.');
+        return;
+    }
+
+    var invalidFile = files.find(function(file) {
+        return !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024;
+    });
+    if (invalidFile) {
+        input.value = '';
+        countLabel.textContent = '0 / 10';
+        alert('JPG/PNG/WebP 이미지이며 파일당 10MB 이하인지 확인해 주세요.');
+        return;
+    }
+
+    countLabel.textContent = files.length + ' / 10';
+    files.forEach(function(file, index) {
+        var item = document.createElement('div');
+        item.className = 'text-center';
+        item.style.width = '96px';
+        var image = document.createElement('img');
+        image.src = URL.createObjectURL(file);
+        image.className = 'rounded border object-fit-cover d-block';
+        image.style.width = '96px';
+        image.style.height = '72px';
+        image.onload = function() { URL.revokeObjectURL(image.src); };
+        var label = document.createElement('div');
+        label.className = 'small text-body-secondary text-truncate mt-1';
+        label.title = file.name;
+        label.textContent = (index + 1) + '. ' + file.name;
+        item.appendChild(image);
+        item.appendChild(label);
+        preview.appendChild(item);
+    });
 });
-addInteriorImageSlot();
 
 // 의사 입력 행 추가/삭제
 function addDoctorRow() {

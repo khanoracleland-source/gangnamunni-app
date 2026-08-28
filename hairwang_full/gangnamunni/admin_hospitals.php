@@ -67,6 +67,40 @@ $message = '';
 $error = '';
 $current_admin = get_current_admin();
 
+/**
+ * 병원 이미지 업로드를 MIME/확장자/크기로 검증하고 병원별 폴더에 저장한다.
+ * 성공: ['url' => ..., 'path' => ...], 실패: ['error' => ...]
+ */
+function admin_hospital_store_image(array $file, $hospital_id, array $allowed_mimes, array $allowed_extensions, $max_bytes, $prefix) {
+    $upload_error = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($upload_error === UPLOAD_ERR_NO_FILE) return null;
+    if ($upload_error !== UPLOAD_ERR_OK) return ['error' => '이미지 업로드에 실패했습니다. (코드: ' . $upload_error . ')'];
+
+    $tmp_name = (string)($file['tmp_name'] ?? '');
+    $original_name = (string)($file['name'] ?? '');
+    $file_size = (int)($file['size'] ?? 0);
+    if ($tmp_name === '' || !is_uploaded_file($tmp_name)) return ['error' => '올바른 업로드 파일이 아닙니다.'];
+    if ($file_size <= 0 || $file_size > $max_bytes) return ['error' => '허용된 이미지 용량을 초과했습니다.'];
+
+    $extension = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp_name);
+    if (!isset($allowed_mimes[$mime]) || !in_array($extension, $allowed_extensions, true)) {
+        return ['error' => '허용되지 않은 이미지 형식입니다.'];
+    }
+
+    $relative_dir = 'uploads/hospitals/' . (int)$hospital_id . '/';
+    $upload_dir = __DIR__ . '/' . $relative_dir;
+    if (!is_dir($upload_dir) && !mkdir($upload_dir, 0755, true) && !is_dir($upload_dir)) {
+        return ['error' => '이미지 업로드 폴더를 준비할 수 없습니다.'];
+    }
+
+    $filename = $prefix . '_' . bin2hex(random_bytes(16)) . '.' . $allowed_mimes[$mime];
+    $absolute_path = $upload_dir . $filename;
+    if (!move_uploaded_file($tmp_name, $absolute_path)) return ['error' => '이미지 파일 저장에 실패했습니다.'];
+
+    return ['url' => $relative_dir . $filename, 'path' => $absolute_path];
+}
+
 // ===== POST 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($_POST['admin_csrf']) || !hash_equals($admin_hospitals_csrf, (string)$_POST['admin_csrf'])) {
@@ -74,6 +108,154 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('잘못된 요청입니다. 페이지를 새로고침한 후 다시 시도해주세요.');
     }
     $action = $_POST['action'] ?? '';
+
+    // 수정 화면에서 메인 이미지 1장 + 내부 상세 이미지(총 10장)를 바로 추가한다.
+    if ($action === 'add_hospital_images') {
+        $hospital_id = intval($_POST['hospital_id'] ?? 0);
+        $uploaded_files = [];
+        $main_upload = null;
+        $interior_uploads = [];
+
+        if ($hospital_id <= 0) {
+            $error = '병원 정보가 올바르지 않습니다.';
+        } else {
+            $main_upload = admin_hospital_store_image(
+                $_FILES['admin_main_image'] ?? [],
+                $hospital_id,
+                ['image/jpeg' => 'jpg', 'image/png' => 'png'],
+                ['jpg', 'jpeg', 'png'],
+                5 * 1024 * 1024,
+                'main'
+            );
+            if (is_array($main_upload) && isset($main_upload['error'])) {
+                $error = '메인 이미지: ' . $main_upload['error'];
+            } elseif (is_array($main_upload)) {
+                $uploaded_files[] = $main_upload['path'];
+            }
+
+            $interior_names = $_FILES['admin_interior_images']['name'] ?? [];
+            $requested_interior_count = is_array($interior_names) ? count(array_filter($interior_names, 'strlen')) : 0;
+            $existing_interior_count = 0;
+            $count_stmt = mysqli_prepare($connect, "SELECT COUNT(*) AS cnt FROM hospital_images WHERE hospital_id=? AND is_active=1 AND image_type NOT IN ('main','logo')");
+            if ($count_stmt) {
+                mysqli_stmt_bind_param($count_stmt, 'i', $hospital_id);
+                mysqli_stmt_execute($count_stmt);
+                $count_row = mysqli_fetch_assoc(mysqli_stmt_get_result($count_stmt));
+                $existing_interior_count = (int)($count_row['cnt'] ?? 0);
+                mysqli_stmt_close($count_stmt);
+            } else {
+                $error = '기존 이미지 수를 확인할 수 없습니다.';
+            }
+            if ($error === '' && $existing_interior_count + $requested_interior_count > 10) {
+                $error = '내부 상세 이미지는 기존 이미지를 포함해 최대 10장까지 등록할 수 있습니다.';
+            }
+
+            if ($error === '' && is_array($interior_names)) {
+                foreach ($interior_names as $index => $name) {
+                    if ($name === '') continue;
+                    $file = [
+                        'name' => $name,
+                        'tmp_name' => $_FILES['admin_interior_images']['tmp_name'][$index] ?? '',
+                        'size' => $_FILES['admin_interior_images']['size'][$index] ?? 0,
+                        'error' => $_FILES['admin_interior_images']['error'][$index] ?? UPLOAD_ERR_NO_FILE,
+                    ];
+                    $upload = admin_hospital_store_image(
+                        $file,
+                        $hospital_id,
+                        ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'],
+                        ['jpg', 'jpeg', 'png', 'webp'],
+                        10 * 1024 * 1024,
+                        'interior'
+                    );
+                    if (is_array($upload) && isset($upload['error'])) {
+                        $error = '내부 상세 이미지: ' . $upload['error'];
+                        break;
+                    }
+                    if (is_array($upload)) {
+                        $interior_uploads[] = $upload;
+                        $uploaded_files[] = $upload['path'];
+                    }
+                }
+            }
+
+            if ($error === '' && !$main_upload && !$interior_uploads) {
+                $error = '추가할 이미지를 선택해 주세요.';
+            }
+
+            if ($error === '') {
+                mysqli_begin_transaction($connect);
+                try {
+                    if (is_array($main_upload)) {
+                        $main_url = $main_upload['url'];
+                        $main_id = 0;
+                        $main_find = mysqli_prepare($connect, "SELECT id FROM hospital_images WHERE hospital_id=? AND image_type='main' ORDER BY is_active DESC, sort_order ASC, id ASC LIMIT 1");
+                        if (!$main_find) throw new RuntimeException('기존 메인 이미지 조회에 실패했습니다.');
+                        mysqli_stmt_bind_param($main_find, 'i', $hospital_id);
+                        if (!mysqli_stmt_execute($main_find)) throw new RuntimeException('기존 메인 이미지 조회에 실패했습니다.');
+                        $main_row = mysqli_fetch_assoc(mysqli_stmt_get_result($main_find));
+                        $main_id = (int)($main_row['id'] ?? 0);
+                        mysqli_stmt_close($main_find);
+
+                        if ($main_id > 0) {
+                            $main_stmt = mysqli_prepare($connect, "UPDATE hospital_images SET image_url=?, sort_order=0, is_active=1 WHERE id=? AND hospital_id=?");
+                            if (!$main_stmt) throw new RuntimeException('메인 이미지 DB 준비에 실패했습니다.');
+                            mysqli_stmt_bind_param($main_stmt, 'sii', $main_url, $main_id, $hospital_id);
+                        } else {
+                            $main_type = 'main';
+                            $main_order = 0;
+                            $main_stmt = mysqli_prepare($connect, "INSERT INTO hospital_images (hospital_id, image_url, image_type, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, 1, NOW())");
+                            if (!$main_stmt) throw new RuntimeException('메인 이미지 DB 준비에 실패했습니다.');
+                            mysqli_stmt_bind_param($main_stmt, 'issi', $hospital_id, $main_url, $main_type, $main_order);
+                        }
+                        if (!mysqli_stmt_execute($main_stmt)) throw new RuntimeException('메인 이미지 DB 저장에 실패했습니다.');
+                        if ($main_id <= 0) $main_id = (int)mysqli_insert_id($connect);
+                        mysqli_stmt_close($main_stmt);
+                        $disable_other_main = mysqli_prepare($connect, "UPDATE hospital_images SET is_active=0 WHERE hospital_id=? AND image_type='main' AND id<>?");
+                        if (!$disable_other_main) throw new RuntimeException('기존 메인 이미지 정리에 실패했습니다.');
+                        mysqli_stmt_bind_param($disable_other_main, 'ii', $hospital_id, $main_id);
+                        if (!mysqli_stmt_execute($disable_other_main)) throw new RuntimeException('기존 메인 이미지 정리에 실패했습니다.');
+                        mysqli_stmt_close($disable_other_main);
+                        $sync_main = mysqli_prepare($connect, "UPDATE gangnamunni_hospitals SET main_image_url=?, updated_at=NOW() WHERE id=?");
+                        if (!$sync_main) throw new RuntimeException('메인 이미지 동기화 준비에 실패했습니다.');
+                        mysqli_stmt_bind_param($sync_main, 'si', $main_url, $hospital_id);
+                        if (!mysqli_stmt_execute($sync_main)) throw new RuntimeException('메인 이미지 동기화에 실패했습니다.');
+                        mysqli_stmt_close($sync_main);
+                    }
+
+                    if ($interior_uploads) {
+                        $sort_result = mysqli_query($connect, "SELECT COALESCE(MAX(sort_order),0) AS max_sort FROM hospital_images WHERE hospital_id=" . (int)$hospital_id);
+                        $sort_row = $sort_result ? mysqli_fetch_assoc($sort_result) : null;
+                        $sort_order = (int)($sort_row['max_sort'] ?? 0);
+                        $interior_type = 'interior';
+                        $interior_stmt = mysqli_prepare($connect, "INSERT INTO hospital_images (hospital_id, image_url, image_type, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, 1, NOW())");
+                        if (!$interior_stmt) throw new RuntimeException('내부 이미지 DB 준비에 실패했습니다.');
+                        foreach ($interior_uploads as $interior_upload) {
+                            $sort_order++;
+                            $interior_url = $interior_upload['url'];
+                            mysqli_stmt_bind_param($interior_stmt, 'issi', $hospital_id, $interior_url, $interior_type, $sort_order);
+                            if (!mysqli_stmt_execute($interior_stmt)) throw new RuntimeException('내부 이미지 DB 저장에 실패했습니다.');
+                        }
+                        mysqli_stmt_close($interior_stmt);
+                    }
+
+                    mysqli_commit($connect);
+                    $added_count = count($interior_uploads) + (is_array($main_upload) ? 1 : 0);
+                    $message = $added_count . '장의 병원 이미지가 저장되었습니다.';
+                } catch (Throwable $image_exception) {
+                    mysqli_rollback($connect);
+                    foreach ($uploaded_files as $uploaded_path) {
+                        if (is_file($uploaded_path)) @unlink($uploaded_path);
+                    }
+                    error_log('[admin_hospitals] image upload failed: ' . $image_exception->getMessage());
+                    $error = $image_exception->getMessage();
+                }
+            } elseif ($uploaded_files) {
+                foreach ($uploaded_files as $uploaded_path) {
+                    if (is_file($uploaded_path)) @unlink($uploaded_path);
+                }
+            }
+        }
+    }
 
     // 승인 — 자동 계정 3곳 생성 (gangnamunni_admins + g5_member + sso_tokens) + 이메일
     if ($action === 'approve') {
@@ -1196,7 +1378,20 @@ $edit_json_list_value = static function ($raw) {
 </div>
 
 <!-- ===== 이미지 관리 섹션 ===== -->
-<!-- 업로드/수정/삭제는 전용 페이지(admin_hospital_images.php)에서 처리 — 여기서는 현재 이미지 미리보기 + 관리 진입 -->
+<?php
+$edit_main_image_url = (string)($hospital['main_image_url'] ?? '');
+$edit_detail_image_count = 0;
+foreach ($hospital_images as $edit_image) {
+    if ((int)($edit_image['is_active'] ?? 1) !== 1) continue;
+    $edit_image_type = (string)($edit_image['image_type'] ?? '');
+    if ($edit_image_type === 'main' && !empty($edit_image['image_url'])) {
+        $edit_main_image_url = (string)$edit_image['image_url'];
+    } elseif (!in_array($edit_image_type, ['main', 'logo'], true)) {
+        $edit_detail_image_count++;
+    }
+}
+$edit_detail_slots_remaining = max(0, 10 - $edit_detail_image_count);
+?>
 <div class="card mt-3">
     <div class="card-header d-flex justify-content-between align-items-center">
         <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editHospitalImagesSection" aria-expanded="false">
@@ -1207,7 +1402,49 @@ $edit_json_list_value = static function ($raw) {
         </a>
     </div>
     <div class="collapse" id="editHospitalImagesSection"><div class="card-body">
+        <form method="POST" action="?view=<?php echo (int)$hospital['id']; ?>&amp;edit=1" enctype="multipart/form-data" id="adminHospitalImageForm">
+            <input type="hidden" name="action" value="add_hospital_images">
+            <input type="hidden" name="hospital_id" value="<?php echo (int)$hospital['id']; ?>">
+            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_hospitals_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+            <div class="row g-3">
+                <div class="col-lg-5">
+                    <div class="bg-body rounded border p-3 h-100">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-image text-primary"></i>
+                            <label class="form-label fw-semibold mb-0" for="adminMainImageInput">메인 이미지</label>
+                        </div>
+                        <input type="file" name="admin_main_image" id="adminMainImageInput" class="form-control form-control-sm" accept=".jpg,.jpeg,.png">
+                        <div class="form-text">목록 및 병원 상세 상단 · JPG/PNG · 5MB 이하</div>
+                        <div id="adminMainImagePreview" class="d-flex flex-wrap gap-2 mt-2">
+                            <?php if ($edit_main_image_url !== ''): ?>
+                            <img src="<?php echo htmlspecialchars($edit_main_image_url); ?>" alt="현재 메인 이미지" class="rounded border object-fit-cover" style="width:120px;height:88px;">
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="bg-body rounded border p-3 h-100">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-images text-primary"></i>
+                            <label class="form-label fw-semibold mb-0" for="adminInteriorImagesInput">내부 상세 이미지</label>
+                            <span class="badge bg-light text-dark border" id="adminInteriorImageCount"><?php echo $edit_detail_image_count; ?> / 10</span>
+                        </div>
+                        <input type="file" name="admin_interior_images[]" id="adminInteriorImagesInput" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.webp" multiple <?php echo $edit_detail_slots_remaining === 0 ? 'disabled' : ''; ?>>
+                        <div class="form-text">한 번에 여러 장 선택 가능 · 추가 가능 <?php echo $edit_detail_slots_remaining; ?>장 · JPG/PNG/WebP · 파일당 10MB 이하</div>
+                        <div class="d-flex flex-wrap gap-2 mt-2" id="adminInteriorImagesPreview"></div>
+                        <?php if ($edit_detail_slots_remaining === 0): ?>
+                        <div class="alert alert-secondary py-2 px-3 mt-2 mb-0 small">내부 상세 이미지가 10장 등록되어 있습니다. 이미지 관리에서 삭제 후 추가해 주세요.</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-cloud-upload me-1"></i>선택 이미지 저장</button>
+            </div>
+        </form>
+
         <?php if (!empty($hospital_images)): ?>
+        <hr>
         <div class="d-flex flex-wrap gap-2">
             <?php foreach ($hospital_images as $img): ?>
             <div class="text-center" style="width:100px;">
@@ -2319,6 +2556,82 @@ function bulkReject() {
         bulkSubmit('bulk_reject', { reject_reason: reason });
     }
 }
+
+// 병원 수정 화면 이미지 업로드: 한 번의 파일 선택으로 여러 내부 이미지를 추가한다.
+(function() {
+    var interiorInput = document.getElementById('adminInteriorImagesInput');
+    var interiorPreview = document.getElementById('adminInteriorImagesPreview');
+    var countLabel = document.getElementById('adminInteriorImageCount');
+    var mainInput = document.getElementById('adminMainImageInput');
+    var mainPreview = document.getElementById('adminMainImagePreview');
+    if (!countLabel) return;
+
+    var existingCount = <?php echo isset($edit_detail_image_count) ? (int)$edit_detail_image_count : 0; ?>;
+    var remainingCount = Math.max(0, 10 - existingCount);
+
+    function renderMainPreview(input, target, maxBytes) {
+        var file = input.files && input.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/') || file.size > maxBytes) {
+            input.value = '';
+            alert(file.size > maxBytes ? '파일 용량 제한을 확인해 주세요.' : '이미지 파일만 선택할 수 있습니다.');
+            return;
+        }
+        target.innerHTML = '';
+        var image = document.createElement('img');
+        image.src = URL.createObjectURL(file);
+        image.className = 'rounded border object-fit-cover';
+        image.style.width = '96px';
+        image.style.height = '72px';
+        image.onload = function() { URL.revokeObjectURL(image.src); };
+        target.appendChild(image);
+    }
+
+    function renderInteriorPreviews() {
+        if (!interiorInput || !interiorPreview) return;
+        var files = Array.from(interiorInput.files || []);
+        interiorPreview.innerHTML = '';
+        if (files.length > remainingCount) {
+            interiorInput.value = '';
+            countLabel.textContent = existingCount + ' / 10';
+            alert('내부 상세 이미지는 ' + remainingCount + '장까지 추가할 수 있습니다.');
+            return;
+        }
+        var invalidFile = files.find(function(file) {
+            return !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024;
+        });
+        if (invalidFile) {
+            interiorInput.value = '';
+            countLabel.textContent = existingCount + ' / 10';
+            alert('JPG/PNG/WebP 이미지이며 파일당 10MB 이하인지 확인해 주세요.');
+            return;
+        }
+        countLabel.textContent = (existingCount + files.length) + ' / 10';
+        files.forEach(function(file, index) {
+            var item = document.createElement('div');
+            item.className = 'text-center';
+            item.style.width = '96px';
+            var image = document.createElement('img');
+            image.src = URL.createObjectURL(file);
+            image.className = 'rounded border object-fit-cover d-block';
+            image.style.width = '96px';
+            image.style.height = '72px';
+            image.onload = function() { URL.revokeObjectURL(image.src); };
+            var label = document.createElement('div');
+            label.className = 'small text-body-secondary text-truncate mt-1';
+            label.title = file.name;
+            label.textContent = (index + 1) + '. ' + file.name;
+            item.appendChild(image);
+            item.appendChild(label);
+            interiorPreview.appendChild(item);
+        });
+    }
+
+    if (interiorInput) interiorInput.addEventListener('change', renderInteriorPreviews);
+    if (mainInput && mainPreview) {
+        mainInput.addEventListener('change', function() { renderMainPreview(mainInput, mainPreview, 5 * 1024 * 1024); });
+    }
+})();
 </script>
 <?php
 include __DIR__ . '/includes/admin_footer.php';
