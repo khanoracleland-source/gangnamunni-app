@@ -257,6 +257,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // 수정 화면에서 해당 병원에 소속된 의사를 여러 명 추가한다.
+    if ($action === 'add_hospital_doctors') {
+        $hospital_id = intval($_POST['hospital_id'] ?? 0);
+        $doctor_names = is_array($_POST['doctor_name'] ?? null) ? $_POST['doctor_name'] : [];
+        $doctor_specialties = is_array($_POST['doctor_specialty'] ?? null) ? $_POST['doctor_specialty'] : [];
+        $doctor_experiences = is_array($_POST['doctor_experience'] ?? null) ? $_POST['doctor_experience'] : [];
+        $doctor_qualifications = is_array($_POST['doctor_qualification'] ?? null) ? $_POST['doctor_qualification'] : [];
+        $doctor_bios = is_array($_POST['doctor_bio'] ?? null) ? $_POST['doctor_bio'] : [];
+        $stored_doctor_photos = [];
+        $valid_doctor_count = 0;
+
+        if ($hospital_id <= 0) {
+            $error = '병원 정보가 올바르지 않습니다.';
+        } elseif (count($doctor_names) > 20) {
+            $error = '의사는 한 번에 최대 20명까지 추가할 수 있습니다.';
+        } else {
+            mysqli_begin_transaction($connect);
+            try {
+                $doctor_insert = mysqli_prepare($connect,
+                    "INSERT INTO gangnamunni_doctors (hospital_id, name, specialty, experience, qualification, bio, photo_url, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, '', 'active', NOW(), NOW())"
+                );
+                if (!$doctor_insert) throw new RuntimeException('의사 정보 DB 준비에 실패했습니다.');
+
+                foreach ($doctor_names as $doctor_index => $doctor_name_raw) {
+                    $doctor_name = trim((string)$doctor_name_raw);
+                    if ($doctor_name === '') continue;
+
+                    $doctor_specialty = trim((string)($doctor_specialties[$doctor_index] ?? ''));
+                    $doctor_experience = max(0, min(80, (int)($doctor_experiences[$doctor_index] ?? 0)));
+                    $doctor_qualification = trim((string)($doctor_qualifications[$doctor_index] ?? ''));
+                    $doctor_bio = trim((string)($doctor_bios[$doctor_index] ?? ''));
+                    mysqli_stmt_bind_param($doctor_insert, 'ississ',
+                        $hospital_id, $doctor_name, $doctor_specialty, $doctor_experience, $doctor_qualification, $doctor_bio
+                    );
+                    if (!mysqli_stmt_execute($doctor_insert)) throw new RuntimeException('의사 정보 저장에 실패했습니다.');
+                    $doctor_id = (int)mysqli_insert_id($connect);
+
+                    $photo_name = (string)($_FILES['doctor_photo']['name'][$doctor_index] ?? '');
+                    if ($photo_name !== '') {
+                        $photo_upload = admin_hospital_store_image([
+                            'name' => $photo_name,
+                            'tmp_name' => $_FILES['doctor_photo']['tmp_name'][$doctor_index] ?? '',
+                            'size' => $_FILES['doctor_photo']['size'][$doctor_index] ?? 0,
+                            'error' => $_FILES['doctor_photo']['error'][$doctor_index] ?? UPLOAD_ERR_NO_FILE,
+                        ], $hospital_id,
+                            ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'],
+                            ['jpg', 'jpeg', 'png', 'webp'],
+                            5 * 1024 * 1024,
+                            'doctor_' . $doctor_id
+                        );
+                        if (is_array($photo_upload) && isset($photo_upload['error'])) {
+                            throw new RuntimeException($doctor_name . ' 의사 사진: ' . $photo_upload['error']);
+                        }
+                        if (is_array($photo_upload)) {
+                            $stored_doctor_photos[] = $photo_upload['path'];
+                            $photo_url = $photo_upload['url'];
+                            $photo_update = mysqli_prepare($connect, "UPDATE gangnamunni_doctors SET photo_url=? WHERE id=? AND hospital_id=?");
+                            if (!$photo_update) throw new RuntimeException('의사 사진 DB 준비에 실패했습니다.');
+                            mysqli_stmt_bind_param($photo_update, 'sii', $photo_url, $doctor_id, $hospital_id);
+                            if (!mysqli_stmt_execute($photo_update)) throw new RuntimeException('의사 사진 저장에 실패했습니다.');
+                            mysqli_stmt_close($photo_update);
+                        }
+                    }
+                    $valid_doctor_count++;
+                }
+                mysqli_stmt_close($doctor_insert);
+
+                if ($valid_doctor_count === 0) throw new RuntimeException('추가할 의사의 이름을 입력해 주세요.');
+                mysqli_commit($connect);
+                $message = $valid_doctor_count . '명의 의사가 추가되었습니다.';
+            } catch (Throwable $doctor_exception) {
+                mysqli_rollback($connect);
+                foreach ($stored_doctor_photos as $stored_doctor_photo) {
+                    if (is_file($stored_doctor_photo)) @unlink($stored_doctor_photo);
+                }
+                error_log('[admin_hospitals] doctor add failed: ' . $doctor_exception->getMessage());
+                $error = $doctor_exception->getMessage();
+            }
+        }
+    }
+
     // 승인 — 자동 계정 3곳 생성 (gangnamunni_admins + g5_member + sso_tokens) + 이메일
     if ($action === 'approve') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
@@ -1364,7 +1445,21 @@ $edit_json_list_value = static function ($raw) {
         <span><i class="bi bi-person-badge me-1"></i><strong>의사 추가</strong></span><span><span class="badge bg-secondary me-2"><?= count($application_doctors) ?>명</span><i class="bi bi-chevron-down"></i></span>
     </button>
     <div class="collapse" id="editDoctorsSection"><div class="card-body">
+        <form method="POST" action="?view=<?php echo (int)$hospital['id']; ?>&amp;edit=1" enctype="multipart/form-data" id="adminHospitalDoctorForm">
+            <input type="hidden" name="action" value="add_hospital_doctors">
+            <input type="hidden" name="hospital_id" value="<?php echo (int)$hospital['id']; ?>">
+            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_hospitals_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+            <div class="form-text mb-3">해당 병원에 소속된 의사를 추가합니다. 여러 명을 입력한 후 한 번에 저장할 수 있습니다.</div>
+            <div id="adminDoctorRows"></div>
+            <div class="d-flex flex-wrap justify-content-between gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addAdminDoctorButton"><i class="bi bi-plus-circle me-1"></i>다른 의사 추가</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>의사 저장</button>
+            </div>
+        </form>
+
         <?php if (!empty($application_doctors)): ?>
+        <hr class="my-4">
+        <div class="small fw-semibold mb-2">등록된 의사</div>
         <div class="row g-2">
             <?php foreach ($application_doctors as $edit_doctor): ?>
             <div class="col-md-6"><div class="border rounded p-3 h-100 d-flex gap-3">
@@ -1373,7 +1468,7 @@ $edit_json_list_value = static function ($raw) {
             </div></div>
             <?php endforeach; ?>
         </div>
-        <?php else: ?><div class="text-body-secondary small">신청된 의료진이 없습니다.</div><?php endif; ?>
+        <?php else: ?><div class="text-body-secondary small mt-4">등록된 의료진이 없습니다.</div><?php endif; ?>
     </div></div>
 </div>
 
@@ -2556,6 +2651,64 @@ function bulkReject() {
         bulkSubmit('bulk_reject', { reject_reason: reason });
     }
 }
+
+// 병원 수정 화면: 신청서와 동일한 의사 입력 행을 추가/삭제한다.
+(function() {
+    var rows = document.getElementById('adminDoctorRows');
+    var addButton = document.getElementById('addAdminDoctorButton');
+    var section = document.getElementById('editDoctorsSection');
+    if (!rows || !addButton) return;
+
+    function addAdminDoctorRow() {
+        if (rows.querySelectorAll('.admin-doctor-row').length >= 20) {
+            alert('의사는 한 번에 최대 20명까지 추가할 수 있습니다.');
+            return;
+        }
+        var row = document.createElement('div');
+        row.className = 'border rounded p-3 mb-3 admin-doctor-row';
+        row.innerHTML = '<div class="row g-2">'
+            + '<div class="col-md-4"><label class="form-label small fw-semibold">의사명</label><input type="text" name="doctor_name[]" class="form-control form-control-sm" maxlength="100" placeholder="예: 김서울"></div>'
+            + '<div class="col-md-4"><label class="form-label small fw-semibold">전문 분야</label><input type="text" name="doctor_specialty[]" class="form-control form-control-sm" maxlength="255" placeholder="예: 피부과 전문의"></div>'
+            + '<div class="col-md-3"><label class="form-label small fw-semibold">경력(년)</label><input type="number" name="doctor_experience[]" class="form-control form-control-sm" min="0" max="80" placeholder="예: 10"></div>'
+            + '<div class="col-md-1 d-flex align-items-end"><button type="button" class="btn btn-outline-danger btn-sm w-100 remove-admin-doctor" aria-label="의사 삭제"><i class="bi bi-trash"></i></button></div>'
+            + '<div class="col-md-6"><label class="form-label small fw-semibold">자격 및 학회</label><textarea name="doctor_qualification[]" class="form-control form-control-sm" rows="3" maxlength="2000" placeholder="예: 피부과 전문의&#10;대한피부과학회 정회원"></textarea></div>'
+            + '<div class="col-md-6"><label class="form-label small fw-semibold">의사 사진</label><input type="file" name="doctor_photo[]" class="form-control form-control-sm admin-doctor-photo" accept=".jpg,.jpeg,.png,.webp"><div class="form-text">JPG/PNG/WebP · 5MB 이하</div><div class="admin-doctor-photo-preview mt-2"></div></div>'
+            + '<div class="col-12"><label class="form-label small fw-semibold">소개 및 주요 경력</label><textarea name="doctor_bio[]" class="form-control form-control-sm" rows="3" maxlength="2000" placeholder="의사 소개, 주요 경력과 진료 철학을 입력해 주세요."></textarea></div>'
+            + '</div>';
+        rows.appendChild(row);
+    }
+
+    addButton.addEventListener('click', addAdminDoctorRow);
+    rows.addEventListener('click', function(event) {
+        var removeButton = event.target.closest('.remove-admin-doctor');
+        if (removeButton) removeButton.closest('.admin-doctor-row').remove();
+    });
+    rows.addEventListener('change', function(event) {
+        if (!event.target.classList.contains('admin-doctor-photo')) return;
+        var input = event.target;
+        var file = input.files && input.files[0];
+        var preview = input.closest('.col-md-6').querySelector('.admin-doctor-photo-preview');
+        preview.innerHTML = '';
+        if (!file) return;
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+            input.value = '';
+            alert('JPG/PNG/WebP 이미지이며 5MB 이하인지 확인해 주세요.');
+            return;
+        }
+        var image = document.createElement('img');
+        image.src = URL.createObjectURL(file);
+        image.className = 'rounded border object-fit-cover';
+        image.style.width = '72px';
+        image.style.height = '88px';
+        image.onload = function() { URL.revokeObjectURL(image.src); };
+        preview.appendChild(image);
+    });
+    if (section) {
+        section.addEventListener('shown.bs.collapse', function() {
+            if (!rows.querySelector('.admin-doctor-row')) addAdminDoctorRow();
+        });
+    }
+})();
 
 // 병원 수정 화면 이미지 업로드: 한 번의 파일 선택으로 여러 내부 이미지를 추가한다.
 (function() {
