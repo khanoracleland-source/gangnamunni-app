@@ -1389,7 +1389,7 @@ $page_css = '
     .confirm-page-title { font-size: 19px; font-weight: 600; letter-spacing: -.04em; }
     .booking-state-badge {
         display: inline-flex; align-items: center; gap: 24px; margin: 18px 0 24px;
-        padding: 10px 16px; background: #BE1935; color: #fff; font-size: 18px; font-weight: 700;
+        padding: 10px 16px; background: #BE1935; color: #fff; font-size:18px; font-weight: 700;
     }
     .confirm-info-list { border-bottom: 1px solid #ddd; }
     .confirm-info-row {
