@@ -601,11 +601,11 @@ $page_title = '내 예약';
                         $_rs = bookingReviewState($_rv);
                     ?>
                     <?php if ($_rs['state'] === 'none'): ?>
-                    <a href="review_write.php?booking_id=<?php echo (int)$bk['id']; ?>" class="detail-btn"><?php echo term('review', '후기'); ?>작성</a>
+                    <a href="review_write.php?booking_id=<?php echo (int)$bk['id']; ?>&amp;return_url=<?php echo urlencode('my_bookings.php?tab=completed'); ?>" class="detail-btn"><?php echo term('review', '후기'); ?>작성</a>
                     <?php elseif ($_rs['state'] === 'published'): ?>
                     <a href="review_detail.php?id=<?php echo (int)$_rv['id']; ?>" class="detail-btn"><?php echo htmlspecialchars($_rs['label']); ?></a>
                     <?php elseif ($_rs['state'] === 'rejected'): ?>
-                    <a href="review_write.php?id=<?php echo (int)$_rv['id']; ?>" class="detail-btn"><?php echo term('review', '후기'); ?> 다시 작성</a>
+                    <a href="review_write.php?id=<?php echo (int)$_rv['id']; ?>&amp;return_url=<?php echo urlencode('my_bookings.php?tab=completed'); ?>" class="detail-btn"><?php echo term('review', '후기'); ?> 다시 작성</a>
                     <?php else: ?>
                     <span class="detail-btn" style="opacity:.6;">⏳ <?php echo htmlspecialchars($_rs['label']); ?></span>
                     <?php endif; ?>

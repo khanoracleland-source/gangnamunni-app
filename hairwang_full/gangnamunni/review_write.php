@@ -18,6 +18,26 @@ require_once __DIR__ . '/includes/settings_helper.php';
 require_once __DIR__ . '/includes/photo_upload_helper.php';
 require_once __DIR__ . '/includes/review_booking.php';
 
+// 작성 화면을 연 페이지로 안전하게 돌아간다. 외부 URL/open redirect는 허용하지 않는다.
+function rw_safe_back_url($candidate) {
+    $fallback = 'my_reviews.php';
+    $candidate = trim((string)$candidate);
+    if ($candidate === '' || preg_match('/[\\x00-\\x1F\\x7F\\\\]/', $candidate)) return $fallback;
+
+    $parts = parse_url($candidate);
+    if ($parts === false || isset($parts['scheme']) || isset($parts['host']) || isset($parts['user']) || isset($parts['port'])) {
+        return $fallback;
+    }
+
+    $path = ltrim((string)($parts['path'] ?? ''), '/');
+    $allowed = ['my_reviews.php', 'my_bookings.php', 'booking_detail.php', 'booking_request_detail.php', 'review_detail.php', 'reviews.php'];
+    if (!in_array($path, $allowed, true)) return $fallback;
+
+    return $path . (isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '');
+}
+
+$review_back_url = rw_safe_back_url($_GET['return_url'] ?? $_POST['return_url'] ?? '');
+
 // 로그인 확인 (Gnuboard 회원 또는 관리자 세션)
 $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
 $is_admin_logged = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true;
@@ -61,7 +81,7 @@ if ($edit_id > 0) {
         mysqli_stmt_close($er_stmt);
     }
     if (!$edit_review) {
-        header('Location: reviews.php');
+        header('Location: ' . $review_back_url);
         exit;
     }
 }
@@ -408,7 +428,7 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
 </style>
 
 <div class="rw-header">
-    <a href="reviews.php" class="rw-back-btn"><i class="bi bi-chevron-left"></i></a>
+    <a href="<?php echo htmlspecialchars($review_back_url, ENT_QUOTES, 'UTF-8'); ?>" class="rw-back-btn"><i class="bi bi-chevron-left"></i></a>
     <div class="rw-header-title"><?php echo term('review', '후기'); ?> <?php echo $edit_review ? '수정' : '작성'; ?></div>
 </div>
 
@@ -439,7 +459,7 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
     <?php if ($msg): ?>
     <div class="rw-alert rw-alert-<?php echo $msg_type; ?>"><?php echo htmlspecialchars($msg); ?></div>
     <?php if ($msg_type === 'success'): ?>
-    <a href="reviews.php" class="rw-submit" style="display:block; text-align:center; text-decoration:none;"><?php echo term('review', '후기'); ?> 목록으로 돌아가기</a>
+    <a href="my_reviews.php" class="rw-submit" style="display:block; text-align:center; text-decoration:none;"><?php echo term('review', '후기'); ?> 목록으로 돌아가기</a>
     <?php endif; ?>
     <?php endif; ?>
 
@@ -450,6 +470,7 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
     <?php if ($msg_type !== 'success'): ?>
     <form method="post" action="" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($review_write_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+        <input type="hidden" name="return_url" value="<?php echo htmlspecialchars($review_back_url, ENT_QUOTES, 'UTF-8'); ?>">
         <?php if ($edit_review): ?>
         <input type="hidden" name="edit_id" value="<?php echo (int)$edit_review['id']; ?>">
         <?php endif; ?>
