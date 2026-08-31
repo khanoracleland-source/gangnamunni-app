@@ -311,7 +311,7 @@ function create_gnuboard_session($member) {
     // 4. 자동 로그인 쿠키 설정 (선택 사항)
     // ============================================================
 
-    // 환자 앱(webview)에서 호출된 경우 100일, 그 외 일반 웹에서는 7일 유지
+    // 환자 앱(webview)에서 호출된 경우 120일, 그 외 일반 웹에서는 7일 유지
     // 보안: HTTPS 환경에서만 사용 권장
     if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
         $sns_remember_lifetime = (!empty($is_patient_app_request) && !empty($patient_app_lifetime))

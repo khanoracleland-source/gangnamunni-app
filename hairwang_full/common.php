@@ -539,7 +539,10 @@ if (isset($_REQUEST['gr_id'])) {
 //===================================
 
 
-$patient_app_lifetime = 86400 * 100;
+// Patient app login uses a sliding 120-day inactivity window. Every app
+// launch reaches this file with app=patient and renews both the persistent
+// cookie and its server-side token expiry for another 120 days.
+$patient_app_lifetime = 86400 * 120;
 $is_patient_app_launch = isset($_GET['app']) && hash_equals('patient', (string)$_GET['app']);
 $request_user_agent = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
 $is_android_app_webview = preg_match('/;\s*wv\)/i', $request_user_agent) === 1;
@@ -590,7 +593,7 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
         $member = array();
     } else {
         // On every app launch, rotate the persistent credential and slide its
-        // expiry back to 100 days. Also upgrades sessions created before this
+        // expiry back to 120 days. Also upgrades sessions created before this
         // mechanism existed, without asking the user to log in again.
         if ($is_patient_app_request
             && ($is_patient_app_launch || !get_cookie('ck_auto') || !get_cookie('ck_mb_id'))

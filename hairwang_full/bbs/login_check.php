@@ -7,7 +7,7 @@ $mb_id       = isset($_POST['mb_id']) ? trim($_POST['mb_id']) : '';
 $mb_password = isset($_POST['mb_password']) ? trim($_POST['mb_password']) : '';
 
 // WebView session cookies disappear when the patient app process is killed.
-// In the app, enable the existing rotating 31-day remember-login token for
+// In the app, enable the rotating 120-day remember-login token for
 // both password and social (Kakao, etc.) logins. Browser logins still require
 // the explicit auto-login checkbox.
 $is_patient_app = isset($_COOKIE['sb_patient_app'])
@@ -99,7 +99,7 @@ if (isset($auto_login) && $auto_login) {
     // 3.27
     // 자동로그인 ---------------------------
     // 쿠키 한달간 저장
-    $remember_lifetime = $is_patient_app ? 86400 * 100 : 86400 * 31;
+    $remember_lifetime = $is_patient_app ? $patient_app_lifetime : 86400 * 31;
     $remember_token = function_exists('create_remember_login_token')
         ? create_remember_login_token($mb, $remember_lifetime)
         : '';

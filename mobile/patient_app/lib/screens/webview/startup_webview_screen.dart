@@ -98,7 +98,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
 
     // Tell the website that this request comes from the patient app. The
     // marker is deliberately not an auth token; it only lets the login page
-    // enable its existing, rotating 31-day remember-login token by default.
+    // enable its rotating 120-day remember-login token by default.
     final startupUri = Uri.parse(widget.url);
     await _cookieManager.setCookie(
       WebViewCookie(

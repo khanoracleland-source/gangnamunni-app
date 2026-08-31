@@ -311,7 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
             if (function_exists('update_auth_session_token')) update_auth_session_token($login_mb['mb_datetime']);
 
             if ($auto_login) {
-                $remember_lifetime = $is_patient_app ? 86400 * 100 : 86400 * 31;
+                $remember_lifetime = $is_patient_app ? $patient_app_lifetime : 86400 * 31;
                 $remember_token = function_exists('create_remember_login_token')
                     ? create_remember_login_token($login_mb, $remember_lifetime)
                     : '';
