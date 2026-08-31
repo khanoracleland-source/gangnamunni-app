@@ -181,16 +181,42 @@ $csrf_token = generateCsrfToken();
         .report-option { display: block; width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; text-align: left; background: var(--bs-body-bg, #fff); cursor: pointer; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); }
         .report-option:hover { background: var(--bg); }
         .report-cancel { display: block; width: 100%; padding: 12px; border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); margin-top: 4px; }
+
+        /* 내가 작성한 후기 상세 디자인 */
+        html { background:#3f3f3f; }
+        body { min-height:100vh; background:#3f3f3f; color:#111; }
+        .container { width:100%; max-width:640px; min-height:100vh; background:#fff; }
+        .detail-header { top:0; height:64px; padding:0 14px; background:#fff; z-index:20; }
+        .detail-header a { width:40px; height:40px; margin:0; display:flex; align-items:center; justify-content:center; font-size:28px; }
+        .detail-header h1 { font-size:18px; font-weight:500; }
+        .review-card-area { padding:24px 20px 28px; border-bottom:1px solid #ddd; }
+        .treatment-section { margin-bottom:8px; }
+        .tag { margin:0 0 10px; padding:3px 9px; border-radius:0; font-size:12px; }
+        .review-rating { gap:5px; margin-bottom:12px; }
+        .review-rating-stars { gap:1px; font-size:16px; }
+        .review-rating-score { color:#111; font-size:12px; }
+        .review-title { margin-bottom:8px; font-size:17px; font-weight:700; }
+        .review-body { font-size:14px; line-height:1.5; color:#111; }
+        .post-thumbs { margin-top:26px; gap:0; border-radius:0; }
+        .post-thumbs.thumbs-1 { max-width:100%; }
+        .post-thumbs.thumbs-3plus { grid-template-columns:repeat(2,1fr); }
+        .post-thumbs .thumb-item { aspect-ratio:1.55/1; }
+        .post-meta-row { margin-top:16px; min-height:42px; }
+        .post-avatar { width:34px; height:34px; background:#ddd; }
+        .post-author-name { font-size:13px; }
+        .post-stat-group { gap:34px; font-size:12px; }
+        .post-stat-group .stat i { font-size:20px; }
+        .hospital-section { margin:0 20px; padding:38px 0; gap:18px; border-bottom:1px solid #ddd; }
+        .hospital-thumb,.hospital-thumb-empty { width:96px; height:96px; }
+        .hospital-name { font-size:17px; font-weight:700; }
+        .hospital-address { margin-top:6px; color:#111; font-size:13px; }
+        .hospital-rating { margin-top:8px; font-size:12px; }
+        .edit-section { height:50px; margin:38px 20px 0; padding:0; border-color:#AE1932; font-size:15px; }
+        @media(max-width:420px){.post-stat-group{gap:16px}.hospital-thumb,.hospital-thumb-empty{width:82px;height:82px}.review-card-area{padding-left:16px;padding-right:16px}.hospital-section{margin-left:16px;margin-right:16px}}
     </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
 <body>
-
-<?php
-// 글로벌 네비게이션 (홈/후기/병원/이벤트/커뮤니티/칼럼 + 로그인)
-$has_global_nav = file_exists(__DIR__ . '/includes/global_nav.php');
-if ($has_global_nav) { include __DIR__ . '/includes/global_nav.php'; }
-?>
 
 <div class="container">
     <!-- 헤더 -->
@@ -284,7 +310,7 @@ if ($has_global_nav) { include __DIR__ . '/includes/global_nav.php'; }
 
     <!-- 수정하기 (본인 후기만) -->
     <?php if ($current_user_id && $current_user_id === ($review['user_id'] ?? '')): ?>
-    <a href="review_write.php?id=<?php echo $review_id; ?>" class="edit-section">
+    <a href="review_write.php?id=<?php echo $review_id; ?>&amp;return_url=<?php echo urlencode('review_detail.php?id=' . $review_id); ?>" class="edit-section">
          수정하기
     </a>
     <?php endif; ?>
@@ -368,7 +394,8 @@ async function submitComment() {
 }
 
 // Enter 키로 댓글 등록
-document.getElementById('commentInput').addEventListener('keypress', function(e) {
+const commentInput = document.getElementById('commentInput');
+if (commentInput) commentInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') submitComment();
 });
 

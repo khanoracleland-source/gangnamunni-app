@@ -123,28 +123,12 @@ body {
     height:62px; padding:0 20px; background:var(--card-bg); border-bottom:0;
 }
 .page-header-title { font-size:calc(21px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:800; color:#000; letter-spacing:-.5px; }
-.page-header-actions { display:flex; align-items:center; gap:2px; }
-.global-nav-share {
-    width:40px; height:40px; display:inline-flex; align-items:center; justify-content:center;
-    border:0; border-radius:50%; background:transparent; color:#111;
-    font-size:23px; cursor:pointer;
-}
-.global-nav-share:hover,
-.global-nav-share:focus-visible { color:var(--pri, #AE1932); background:var(--bs-tertiary-bg, #f5f5f5); }
 .page-header .settings-btn {
     width:40px; height:40px; display:flex; align-items:center; justify-content:center;
     border-radius:50%; background:transparent; border:none; cursor:pointer; color:#aaa; font-size:calc(29px * var(--fs-scale,1) * var(--fs-page,1));
     text-decoration:none;
 }
 .page-header .settings-btn:hover { background:var(--bs-tertiary-bg, #f5f5f5); }
-.share-copy-toast {
-    position:fixed; left:50%; bottom:84px; z-index:2000;
-    transform:translate(-50%, 12px); padding:10px 16px; border-radius:20px;
-    background:rgba(20,20,20,.9); color:#fff; font-size:13px; white-space:nowrap;
-    opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease;
-}
-.share-copy-toast.is-visible { opacity:1; transform:translate(-50%, 0); }
-
 /* 프로필 섹션 */
 .profile-section {
     display:flex; align-items:center; gap:14px;
@@ -177,6 +161,22 @@ body {
 .menu-row-icon {
     width:28px; height:32px; display:flex; align-items:center; justify-content:center;
     font-size:calc(25px * var(--fs-scale,1) * var(--fs-page,1)); color:#111; flex-shrink:0;
+}
+.menu-icon-point {
+    width:27px; height:27px; border:1.6px solid #111; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:Arial,sans-serif; font-size:18px; font-weight:500; line-height:1;
+}
+.menu-icon-review {
+    position:relative; width:25px; height:22px; border:1.6px solid #111; border-radius:4px;
+}
+.menu-icon-review::before {
+    content:""; position:absolute; left:5px; top:6px; width:11px; height:1.5px;
+    background:#111; box-shadow:0 5px 0 #111;
+}
+.menu-icon-review::after {
+    content:""; position:absolute; left:5px; bottom:-5px; width:7px; height:7px;
+    border-left:1.6px solid #111; transform:skewY(-38deg); background:#fff;
 }
 .menu-row-text { flex:1; font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:650; letter-spacing:-.35px; }
 .menu-row-arrow { color:#000; font-weight:900; font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
@@ -232,14 +232,8 @@ body {
 <!-- 페이지 헤더: "마이페이지" + 설정 아이콘 -->
 <div class="page-header">
     <span class="page-header-title">마이페이지</span>
-    <div class="page-header-actions">
-        <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
-            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-        </button>
-        <a href="notification_settings.php" class="settings-btn" title="설정"><i class="bi bi-gear"></i></a>
-    </div>
+    <a href="notification_settings.php" class="settings-btn" title="설정" aria-label="설정"><i class="bi bi-gear"></i></a>
 </div>
-<div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
 
 <?php if ($is_logged_in): ?>
 <!-- 프로필 섹션: 이름 + 화살표 (클릭 시 프로필 수정) -->
@@ -269,19 +263,19 @@ body {
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <?php // 포인트(#포인트제도) — 상단 포인트/쿠폰 박스를 걷어내고 예약과 같은 메뉴 행으로 노출한다. ?>
-    <a href="my_points.php" class="menu-row" style="display:none;">
-        <span class="menu-row-icon"><i class="bi bi-coin"></i></span>
+    <a href="my_points.php" class="menu-row">
+        <span class="menu-row-icon"><span class="menu-icon-point" aria-hidden="true">P</span></span>
         <span class="menu-row-text">포인트</span>
         <span class="menu-row-badge"><?php echo number_format($point_balance); ?>P</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_wishlist.php" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-star"></i></span>
-        <span class="menu-row-text"><?php echo term('business', '병원'); ?>/<?php echo term('service', '시술'); ?> 찜 목록</span>
+        <span class="menu-row-text"><?php echo term('business', '병원'); ?> 찜</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_reviews.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-chat-square-text"></i></span>
+        <span class="menu-row-icon"><span class="menu-icon-review" aria-hidden="true"></span></span>
         <span class="menu-row-text">내가 작성한 <?php echo term('review', '후기'); ?></span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
@@ -315,7 +309,7 @@ body {
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="faq.php" class="menu-row">
-        <span class="menu-row-text">FAQ</span>
+        <span class="menu-row-text">공지사항</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
 </div>
@@ -357,52 +351,6 @@ body {
 // 하단 네비게이션
 if (!$is_app_mode) { include_once __DIR__ . '/includes/bottom_nav.php'; }
 ?>
-
-<script>
-(function () {
-    var button = document.getElementById('pageShareCopyBtn');
-    var toastTimer = null;
-
-    function fallbackCopy(text) {
-        var textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        var copied = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        return copied;
-    }
-
-    function showToast(message) {
-        var toast = document.getElementById('pageShareCopyToast');
-        if (!toast) return;
-        toast.textContent = message;
-        toast.classList.add('is-visible');
-        window.clearTimeout(toastTimer);
-        toastTimer = window.setTimeout(function () {
-            toast.classList.remove('is-visible');
-        }, 1800);
-    }
-
-    if (button) {
-        button.addEventListener('click', function () {
-            var shareText = '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(shareText).then(function () {
-                    showToast('링크가 복사되었습니다.');
-                }).catch(function () {
-                    showToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
-                });
-                return;
-            }
-            showToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
-        });
-    }
-}());
-</script>
 
 </body>
 </html>

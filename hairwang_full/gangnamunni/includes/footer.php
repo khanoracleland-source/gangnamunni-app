@@ -1,7 +1,7 @@
     </div><!-- /.main-content -->
 
     <!-- 하단 네비게이션 (앱 모드에서는 숨김) -->
-    <?php if (empty($is_app_mode)) { include_once __DIR__ . '/bottom_nav.php'; } ?>
+    <?php if (empty($is_app_mode) && empty($hide_bottom_nav)) { include_once __DIR__ . '/bottom_nav.php'; } ?>
 
     <?php if (!empty($page_js)): ?>
     <script>

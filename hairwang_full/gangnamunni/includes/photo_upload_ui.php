@@ -62,7 +62,7 @@ $show_consent = $photo_config['show_consent'] ?? true;
 <?php endif; ?>
 
 <!-- 사진 첨부 HTML -->
-<div class="pu-section" id="<?php echo $prefix; ?>_section">
+<div class="pu-section" id="<?php echo $prefix; ?>_section" data-max-photos="<?php echo $max_photos; ?>">
     <span class="pu-label"><?php echo htmlspecialchars($label); ?></span>
     <input type="file" id="<?php echo $prefix; ?>_input" accept="image/*" multiple style="display:none;"
            onchange="puHandleSelect('<?php echo $prefix; ?>', this)">

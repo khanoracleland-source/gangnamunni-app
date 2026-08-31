@@ -102,7 +102,17 @@ $card = null;
 $prefill_booking_id = intval($_GET['booking_id'] ?? 0);
 if ($prefill_booking_id > 0) {
     $bk_stmt = mysqli_prepare($connect, "SELECT b.hospital_id, b.hospital_name AS name, b.treatment, b.booking_date,
-            h.address, h.main_image_url,
+            h.address,
+            COALESCE(
+                (SELECT NULLIF(hi.image_url, '') FROM hospital_images hi
+                 WHERE hi.hospital_id=h.id AND hi.is_active=1 AND hi.image_type='main'
+                 ORDER BY hi.sort_order ASC, hi.id ASC LIMIT 1),
+                NULLIF(h.main_image_url, ''),
+                (SELECT NULLIF(hi.image_url, '') FROM hospital_images hi
+                 WHERE hi.hospital_id=h.id AND hi.is_active=1 AND hi.image_type='logo'
+                 ORDER BY hi.sort_order ASC, hi.id ASC LIMIT 1),
+                NULLIF(h.profile_image_url, '')
+            ) AS main_image_url,
             TRIM(CONCAT(u.first_name, ' ', COALESCE(u.last_name, ''))) AS doctor_name
         FROM gangnamunni_bookings b
         LEFT JOIN gangnamunni_hospitals h ON b.hospital_id = h.id
@@ -121,7 +131,18 @@ if ($prefill_booking_id > 0) {
 if (!$card) {
     $card_hospital_id = $edit_review ? intval($edit_review['hospital_id']) : $prefill_hospital_id;
     if ($card_hospital_id > 0) {
-        $ch_stmt = mysqli_prepare($connect, "SELECT name, address, main_image_url FROM gangnamunni_hospitals WHERE id = ?");
+        $ch_stmt = mysqli_prepare($connect, "SELECT h.name, h.address,
+                COALESCE(
+                    (SELECT NULLIF(hi.image_url, '') FROM hospital_images hi
+                     WHERE hi.hospital_id=h.id AND hi.is_active=1 AND hi.image_type='main'
+                     ORDER BY hi.sort_order ASC, hi.id ASC LIMIT 1),
+                    NULLIF(h.main_image_url, ''),
+                    (SELECT NULLIF(hi.image_url, '') FROM hospital_images hi
+                     WHERE hi.hospital_id=h.id AND hi.is_active=1 AND hi.image_type='logo'
+                     ORDER BY hi.sort_order ASC, hi.id ASC LIMIT 1),
+                    NULLIF(h.profile_image_url, '')
+                ) AS main_image_url
+            FROM gangnamunni_hospitals h WHERE h.id = ?");
         if ($ch_stmt) {
             mysqli_stmt_bind_param($ch_stmt, 'i', $card_hospital_id);
             mysqli_stmt_execute($ch_stmt);
@@ -137,15 +158,36 @@ if (!empty($card['hospital_id'])) $sel_hospital_id = (int)$card['hospital_id'];
 elseif ($edit_review) $sel_hospital_id = (int)$edit_review['hospital_id'];
 elseif ($prefill_hospital_id) $sel_hospital_id = $prefill_hospital_id;
 
-// 병원이 보유한 시술 대분류(전체 19개 중) — "어떤 시술을 받으셨나요?" 선택지
+// 의사 검색 바텀시트 — 선택된 병원에 등록된 활성 의사만 노출한다.
+$available_doctors = [];
+if ($sel_hospital_id > 0) {
+    $doc_stmt = mysqli_prepare($connect, "SELECT d.id, d.name, d.specialty, d.photo_url,
+            (SELECT GROUP_CONCAT(DISTINCT tc.name ORDER BY tc.sort_order SEPARATOR '||')
+             FROM gangnamunni_doctor_treatments dt
+             JOIN gangnamunni_treatment_master tm ON dt.treatment_id=tm.id
+             JOIN gangnamunni_treatment_categories tc ON tm.category_id=tc.id
+             WHERE dt.doctor_id=d.id AND dt.is_active=1) AS treatment_tags
+        FROM gangnamunni_doctors d
+        WHERE d.hospital_id=? AND d.status='active'
+        ORDER BY d.id ASC");
+    if ($doc_stmt) {
+        mysqli_stmt_bind_param($doc_stmt, 'i', $sel_hospital_id);
+        mysqli_stmt_execute($doc_stmt);
+        $doc_res = mysqli_stmt_get_result($doc_stmt);
+        while ($doctor_row = mysqli_fetch_assoc($doc_res)) $available_doctors[] = $doctor_row;
+        mysqli_stmt_close($doc_stmt);
+    }
+}
+
+// 병원이 실제 보유한 모든 활성 시술 — "어떤 시술을 받으셨나요?" 선택지
 $review_categories = [];
 if ($sel_hospital_id > 0) {
-    $rc_stmt = mysqli_prepare($connect, "SELECT DISTINCT tc.name, tc.sort_order
+    $rc_stmt = mysqli_prepare($connect, "SELECT DISTINCT tm.name, tc.sort_order, tm.id
         FROM gangnamunni_hospital_treatments ht
         JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
-        JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
+        LEFT JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
         WHERE ht.hospital_id = ? AND ht.status = 'active' AND tm.is_active = 1
-        ORDER BY tc.sort_order ASC");
+        ORDER BY COALESCE(tc.sort_order, 999999) ASC, tm.name ASC, tm.id ASC");
     if ($rc_stmt) {
         mysqli_stmt_bind_param($rc_stmt, 'i', $sel_hospital_id);
         mysqli_stmt_execute($rc_stmt);
@@ -155,30 +197,21 @@ if ($sel_hospital_id > 0) {
     }
 }
 
-// 예약한 시술(카드의 wc-treatment)이 위 5개 대분류 중 어디에 속하는지 → 해당 칩 기본 선택
+// 예약에서 실제 주문·시술받은 항목만 고정 선택한다.
 $card_treatment_category = '';
 if (!empty($card['treatment'])) {
-    $tcat_stmt = mysqli_prepare($connect, "SELECT tc.name
-        FROM gangnamunni_treatment_master tm
-        JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
-        WHERE tm.name = ? AND tm.is_active = 1 LIMIT 1");
-    if ($tcat_stmt) {
-        mysqli_stmt_bind_param($tcat_stmt, 's', $card['treatment']);
-        mysqli_stmt_execute($tcat_stmt);
-        $tcat_row = mysqli_fetch_assoc(mysqli_stmt_get_result($tcat_stmt));
-        if ($tcat_row && in_array($tcat_row['name'], $review_categories, true)) {
-            $card_treatment_category = $tcat_row['name'];
+    $booked_treatment = trim((string)$card['treatment']);
+    foreach ($review_categories as $rc) {
+        if ($rc === $booked_treatment) {
+            $card_treatment_category = $rc;
+            break;
         }
-        mysqli_stmt_close($tcat_stmt);
     }
-    // 정확 매칭 실패 시 부분일치 — 5개 대분류 이름이 예약 시술명에 포함되는지 (예: "보톡스 100단위" → "보톡스")
+    // 예약 시술명이 마스터 목록에 없어도 예약에 저장된 정확한 이름을 노출·선택한다.
     if ($card_treatment_category === '') {
-        foreach ($review_categories as $rc) {
-            if ($rc !== '' && (mb_strpos($card['treatment'], $rc) !== false || mb_strpos($rc, $card['treatment']) !== false)) {
-                $card_treatment_category = $rc;
-                break;
-            }
-        }
+        array_unshift($review_categories, $booked_treatment);
+        $review_categories = array_values(array_unique(array_filter($review_categories)));
+        $card_treatment_category = $booked_treatment;
     }
 }
 
@@ -229,8 +262,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $content = trim($_POST['content'] ?? '');
     $rating = intval($_POST['rating'] ?? 0);
-    $treatments = trim($_POST['treatments'] ?? '');
+    // 시술은 사용자 입력이 아닌 본인 예약 데이터에서만 결정한다.
+    $treatments = $post_edit_id > 0
+        ? trim((string)($edit_review['treatments'] ?? ''))
+        : trim((string)($card['treatment'] ?? ''));
     $booking_id = intval($_POST['booking_id'] ?? 0);
+    $doctor_unknown = !empty($_POST['doctor_unknown']);
+    $posted_doctor_ids = array_values(array_unique(array_filter(array_map('intval', explode(',', (string)($_POST['doctor_ids'] ?? ''))), function ($id) { return $id > 0; })));
+    $doctor_id = 0;
+    $doctor_name = $doctor_unknown ? '담당 의사 모름' : '';
+    if (!$doctor_unknown && $posted_doctor_ids && $hospital_id > 0) {
+        $doctor_placeholders = implode(',', array_fill(0, count($posted_doctor_ids), '?'));
+        $doctor_check = mysqli_prepare($connect, "SELECT id, name FROM gangnamunni_doctors WHERE id IN ($doctor_placeholders) AND hospital_id=? AND status='active'");
+        if ($doctor_check) {
+            $doctor_bind_values = array_merge($posted_doctor_ids, [$hospital_id]);
+            mysqli_stmt_bind_param($doctor_check, str_repeat('i', count($doctor_bind_values)), ...$doctor_bind_values);
+            mysqli_stmt_execute($doctor_check);
+            $valid_doctor_names = [];
+            $valid_doctor_ids = [];
+            $doctor_result = mysqli_stmt_get_result($doctor_check);
+            while ($doctor_row = mysqli_fetch_assoc($doctor_result)) {
+                $valid_doctor_ids[(int)$doctor_row['id']] = true;
+                $valid_doctor_names[(int)$doctor_row['id']] = trim((string)$doctor_row['name']);
+            }
+            mysqli_stmt_close($doctor_check);
+            // 사용자가 선택한 순서를 유지한다.
+            $ordered_names = [];
+            $ordered_ids = [];
+            foreach ($posted_doctor_ids as $selected_id) {
+                if (isset($valid_doctor_ids[$selected_id])) {
+                    $ordered_ids[] = $selected_id;
+                    $ordered_names[] = $valid_doctor_names[$selected_id];
+                }
+            }
+            if ($ordered_names) {
+                $doctor_id = $ordered_ids[0];
+                $doctor_name = mb_substr(implode(', ', $ordered_names), 0, 100, 'UTF-8');
+            }
+        }
+    }
+    $agreed_guidelines = !empty($_POST['agree_guidelines']);
 
     // 예약당 후기 1회 제한 (신규 작성 시) — 이미 작성했다면 중복 방지
     if ($post_edit_id <= 0 && $booking_id > 0) {
@@ -241,18 +312,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 필수: 평점 / 제목 / 내용 (사진은 선택)
-    if ($hospital_id <= 0 || $rating < 1 || $rating > 5 || empty($title) || empty($content)) {
-        $msg = '평점, 제목, 내용을 모두 입력해주세요.';
+    // 필수: 담당 의사(또는 모름), 평점, 커뮤니티 가이드라인 동의.
+    // 제목/내용/사진은 선택 입력이다.
+    if ($hospital_id <= 0) {
+        $msg = '병원 정보를 확인해주세요.';
+        $msg_type = 'danger';
+    } elseif ($doctor_name === '') {
+        $msg = '담당 의사를 입력하거나 ‘담당 의사 모름’을 선택해주세요.';
+        $msg_type = 'danger';
+    } elseif ($rating < 1 || $rating > 5) {
+        $msg = '평점을 선택해주세요.';
+        $msg_type = 'danger';
+    } elseif ($title === '') {
+        $msg = '제목을 입력해주세요.';
+        $msg_type = 'danger';
+    } elseif (mb_strlen($content, 'UTF-8') < 10) {
+        $msg = '내용을 10자 이상 입력해주세요.';
+        $msg_type = 'danger';
+    } elseif (!$agreed_guidelines) {
+        $msg = '커뮤니티 가이드라인에 동의해주세요.';
         $msg_type = 'danger';
     } elseif ($post_edit_id > 0) {
         // 수정 (본인 후기만, 재승인 대기 상태로 전환)
         $stmt = mysqli_prepare($connect,
-            "UPDATE hospital_reviews SET hospital_id=?, title=?, content=?, rating=?, treatments=?, review_status='published', is_active=0, updated_at=NOW()
+            "UPDATE hospital_reviews SET hospital_id=?, title=?, content=?, rating=?, treatments=?, doctor_id=NULLIF(?,0), doctor_name=?, review_status='pending', is_active=0, updated_at=NOW()
              WHERE id=? AND user_id=?"
         );
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'issssis', $hospital_id, $title, $content, $rating, $treatments, $post_edit_id, $user_id);
+            mysqli_stmt_bind_param($stmt, 'issisisis', $hospital_id, $title, $content, $rating, $treatments, $doctor_id, $doctor_name, $post_edit_id, $user_id);
             if (mysqli_stmt_execute($stmt)) {
                 $review_id = $post_edit_id;
 
@@ -285,11 +372,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ensureReviewBookingColumn($connect);
         $booking_id_val = $booking_id > 0 ? $booking_id : null;
         $stmt = mysqli_prepare($connect,
-            "INSERT INTO hospital_reviews (hospital_id, user_id, user_name, title, content, rating, treatments, booking_id, review_status, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', 0, NOW())"
+            "INSERT INTO hospital_reviews (hospital_id, user_id, user_name, title, content, rating, treatments, booking_id, doctor_id, doctor_name, review_status, is_active, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?,0), ?, 'pending', 0, NOW())"
         );
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'issssssi', $hospital_id, $user_id, $user_name, $title, $content, $rating, $treatments, $booking_id_val);
+            mysqli_stmt_bind_param($stmt, 'issssisiis', $hospital_id, $user_id, $user_name, $title, $content, $rating, $treatments, $booking_id_val, $doctor_id, $doctor_name);
             if (mysqli_stmt_execute($stmt)) {
                 $review_id = mysqli_insert_id($connect);
 
@@ -362,83 +449,126 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
     <div class="main-content"><?php ?>
 
 <style>
-.rw-container { max-width: 640px; margin: 0 auto; padding: 20px 16px 80px; }
+html{background:#3f3f3f;}
+body{margin:0;background:#3f3f3f;color:#111;}
+.main-content{width:100%;max-width:640px;min-height:100vh;margin:0 auto;background:#fff;}
+.rw-container { max-width: 640px; margin: 0 auto; padding: 4px 20px 18px; }
 /* 상단 헤더 (detail.php 스타일) */
 .rw-header {
-    position: sticky; top: 0;
-    max-width: 640px; margin: 0 auto;
-    padding: 14px 0px;
-    background: var(--bs-body-bg, #fff);
+    position: sticky; top: 0; height:64px;
+    max-width: 640px; margin: 0 auto; padding:0 14px;
+    background:#fff;
     display: flex; align-items: center; gap: 12px;
     z-index: 99;
 }
 .rw-back-btn {
-    width: 36px; height: 36px;
+    width: 40px; height: 40px;
     display: flex; align-items: center; justify-content: center;
     border: none; background: none;
-    font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1));
+    font-size:28px;
     color: inherit; cursor: pointer; text-decoration: none;
 }
 .rw-header-title {
     position: absolute; left: 50%; transform: translateX(-50%);
     max-width: 60%; text-align: center;
-    font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1));
-    font-weight: 700;
+    font-size:20px;
+    font-weight:500;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* 상단 병원 카드 (my_reviews.php writable-card 스타일) */
-.writable-card{background:var(--bs-body-bg,#fff);padding:16px;display:flex;gap:12px;}
-.writable-card .wc-img{width:100px;height:130px;object-fit:cover;flex-shrink:0;background:var(--bs-tertiary-bg,#eee);border-radius:8px;}
-.writable-card .wc-noimg{width:100px;height:130px;border-radius:8px;background:var(--bs-tertiary-bg,#eee);display:flex;align-items:center;justify-content:center;color:var(--bs-secondary-color,#bbb);font-size:calc(26px * var(--fs-scale,1) * var(--fs-page,1));flex-shrink:0;}
+.writable-card{background:#fff;padding:20px;display:flex;gap:18px;}
+.writable-card .wc-img{display:block;width:120px;height:160px;max-width:120px;object-fit:contain;object-position:center;overflow:hidden;flex:0 0 120px;background:#fff;border-radius:0;}
+.writable-card .wc-noimg{width:120px;height:160px;border-radius:0;background:#d9d9d9;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:28px;flex:0 0 120px;overflow:hidden;}
 .writable-card .wc-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
-.writable-card .wc-hospital{font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;color:var(--bs-body-color);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}
-.writable-card .wc-treatment{font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;color:var(--primary-color,#AE1932);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}
-.writable-card .wc-address{font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));color:var(--bs-secondary-color,#888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}
-.writable-card .wc-meta{font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));color:var(--bs-secondary-color,#888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rw-form-group { margin-bottom: 16px; }
-.rw-label { display: block; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; color: var(--bs-body-color, #333); margin-bottom: 6px; }
+.writable-card .wc-hospital{font-size:15px;font-weight:400;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;}
+.writable-card .wc-treatment{font-size:20px;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;letter-spacing:-.03em;}
+.writable-card .wc-address,.writable-card .wc-meta{font-size:15px;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;}
+.rw-form-group { margin-bottom: 22px; }
+.rw-label { display: block; font-size:15px; font-weight:600; color:#111; margin-bottom:10px; }
+.rw-required{color:#AE1932;}
 .rw-input, .rw-select, .rw-textarea {
-    width: 100%; padding: 10px 12px; border: 1px solid #ddd; 
-    font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); box-sizing: border-box; transition: border-color 0.2s;
+    width: 100%; padding: 12px 14px; border: 1px solid #ddd; border-radius:0;background:#fff;
+    font-size:14px; box-sizing: border-box; transition: border-color 0.2s;
 }
 .rw-input:focus, .rw-select:focus, .rw-textarea:focus { border-color: var(--primary-color, #AE1932); outline: none; }
-.rw-textarea { min-height: 150px; resize: vertical; }
+.rw-textarea { min-height: 190px; resize: vertical; }
 .rw-rating { display: flex; gap: 8px; flex-direction: row-reverse; justify-content: center; }
 .rw-rating input { display: none; }
-.rw-rating label { font-size:35px ; color: #ddd; cursor: pointer; transition: color 0.2s; }
+.rw-rating label { font-size:42px;line-height:1;color:#d8d8d8;cursor:pointer;transition:color .2s; }
 .rw-rating label:hover, .rw-rating label:hover ~ label,
 .rw-rating input:checked ~ label { color: #FFB800; }
 .rw-submit {
-    width: 100%; padding: 14px; background: var(--primary-color, #AE1932); color: #fff;
-    border: none; border-radius: 10px; font-size: calc(16px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; cursor: pointer;
+    width:100%;height:52px;padding:0;background:#AE1932;color:#fff;
+    border:0;border-radius:0;font-size:18px;font-weight:700;cursor:pointer;
 }
 .rw-submit:hover { opacity: 0.9; }
 .rw-alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); }
 .rw-alert-success { background: #d4edda; color: #155724; }
 .rw-alert-danger { background: #f8d7da; color: #721c24; }
-.rw-treatment-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rw-treatment-chips { display:flex;flex-wrap:wrap;gap:8px 18px; }
 .rw-tchip {
-    padding: 8px 14px;
-    background: var(--bs-body-bg, #dcdcdc); color: #000;
-    font-size: 13px;
-    cursor: pointer; font-family: inherit; transition: all 0.2s;
+    padding:3px 10px;border:0;
+    background:#f1f1f1;color:#aaa;
+    font-size:12px;
+    cursor: default; font-family: inherit;
 }
-.rw-tchip.selected { background:  #FFEEEE; color: #AE1932; }
-.rw-divider { border-bottom: 1px solid #d2cfcf; padding-bottom: 20px; }
+.rw-tchip.selected { background:#FFEEEE;color:#AE1932; }
+.rw-divider { border-bottom:1px solid #d2cfcf;padding-bottom:20px; }
+.rw-doctor-head{display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.rw-doctor-search{width:112px;height:34px;border:0;background:#AE1932;color:#fff;font-size:13px;cursor:pointer;}
+.rw-doctor-row{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:15px;}
+.rw-selected-doctor{display:none;width:max-content;max-width:100%;margin-top:8px;padding:5px 9px;border:1px solid #e5a8b1;border-radius:4px;color:#222;font-size:13px;align-items:center;gap:8px;}
+.rw-selected-doctor.visible{display:flex;}
+.rw-selected-doctor button{border:0;background:transparent;color:#777;font-size:18px;line-height:1;cursor:pointer;}
+.rw-selected-doctors{display:flex;flex-wrap:wrap;gap:8px;}
+.rw-doctor-modal{position:fixed;inset:0;z-index:20000;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);}
+.rw-doctor-modal.open{display:flex;}
+.rw-doctor-sheet{width:100%;max-width:640px;max-height:92vh;padding:16px 20px 20px;background:#fff;display:flex;flex-direction:column;transform:translateY(0);transition:transform .25s ease;will-change:transform;}
+.rw-doctor-sheet.dragging{transition:none;}
+.rw-doctor-handle{width:48px;height:5px;margin:0 auto 18px;border-radius:4px;background:#AE1932;flex:none;cursor:grab;touch-action:none;}
+.rw-doctor-handle:active{cursor:grabbing;}
+.rw-doctor-sheet h2{font-size:21px;margin:0 0 22px;font-weight:700;}
+.rw-doctor-list{max-height:504px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:y proximity;display:flex;flex-direction:column;gap:18px;padding-bottom:18px;}
+.rw-doctor-card{width:100%;height:150px;flex:0 0 150px;padding:22px;border:3px solid #f1f1f1;background:#fff;display:flex;align-items:center;gap:28px;text-align:left;cursor:pointer;font:inherit;color:#111;}
+.rw-doctor-card{scroll-snap-align:start;}
+.rw-doctor-card.selected{border-color:#AE1932;}
+.rw-doctor-photo{width:104px;height:104px;flex:0 0 104px;border-radius:50%;object-fit:cover;background:#ddd;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:34px;overflow:hidden;}
+.rw-doctor-copy{min-width:0;flex:1;}
+.rw-doctor-card-name{display:block;font-size:17px;font-weight:700;margin-bottom:10px;}
+.rw-doctor-specialty{display:block;font-size:14px;color:#AE1932;margin-bottom:24px;}
+.rw-doctor-tags{display:flex;flex-wrap:wrap;gap:8px 14px;}
+.rw-doctor-tag{padding:4px 8px;background:#f4f4f4;font-size:13px;}
+.rw-doctor-confirm{width:100%;height:52px;flex:none;border:0;background:#AE1932;color:#fff;font-size:18px;font-weight:700;cursor:pointer;}
+.rw-doctor-confirm:disabled{opacity:.45;cursor:not-allowed;}
+.rw-doctor-empty{padding:50px 20px;text-align:center;color:#888;border:1px solid #eee;}
+.rw-counter{text-align:right;margin-top:5px;font-size:11px;color:#aaa;}
+.rw-photo-title{margin-bottom:14px;font-size:15px;font-weight:700;}
+.rw-photo-note{font-weight:500;}
+.rw-container .pu-slot{width:112px;height:112px;border:1px dashed #bbb;border-radius:0;background:#fff;}
+.rw-container .pu-grid{gap:12px;}
+.rw-container .pu-add{font-size:28px;color:#ccc;}
+.rw-photo-row{display:flex;align-items:flex-end;gap:12px;}
+.rw-photo-row .pu-section{margin:0;}
+.rw-photo-capacity{width:112px;height:112px;border:1px dashed #bbb;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:13px;}
+.rw-native-photo-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+.rw-native-photo-grid{display:flex;flex-wrap:wrap;gap:12px;}
+.rw-native-photo-add,.rw-native-photo-preview{width:112px;height:112px;border:1px dashed #bbb;background:#fff;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.rw-native-photo-add{flex-direction:column;gap:7px;color:#bbb;font-size:12px;cursor:pointer;}
+.rw-native-photo-add i{font-size:25px;}
+.rw-native-photo-preview img{width:100%;height:100%;object-fit:cover;}
+.rw-native-photo-count{color:#bbb;font-size:12px;}
+@media(max-width:420px){.writable-card{gap:14px}.writable-card .wc-img,.writable-card .wc-noimg{width:120px;height:160px;max-width:120px;flex-basis:120px}.rw-container .pu-slot{width:88px;height:88px}.rw-doctor-list{max-height:432px}.rw-doctor-card{height:126px;flex-basis:126px;padding:16px;gap:16px}.rw-doctor-photo{width:82px;height:82px;flex-basis:82px}.rw-doctor-specialty{margin-bottom:14px}.rw-doctor-sheet{padding-left:16px;padding-right:16px}}
 </style>
 
 <div class="rw-header">
     <a href="<?php echo htmlspecialchars($review_back_url, ENT_QUOTES, 'UTF-8'); ?>" class="rw-back-btn"><i class="bi bi-chevron-left"></i></a>
-    <div class="rw-header-title"><?php echo term('review', '후기'); ?> <?php echo $edit_review ? '수정' : '작성'; ?></div>
+    <div class="rw-header-title"><?php echo $edit_review ? '시술후기 수정' : '시술후기 작성'; ?></div>
 </div>
 
 <?php if ($card): ?>
 <div class="writable-card">
-    <?php if (!empty($card['main_image_url'])): ?>
-    <img class="wc-img" src="<?php echo htmlspecialchars($card['main_image_url']); ?>" alt="">
-    <?php else: ?>
-    <div class="wc-noimg"><i class="bi bi-building"></i></div>
-    <?php endif; ?>
+    <?php $hospital_placeholder = 'assets/images/seoul_beauty_hospital_placeholder.jpeg'; ?>
+    <img class="wc-img" src="<?php echo htmlspecialchars(!empty($card['main_image_url']) ? $card['main_image_url'] : $hospital_placeholder); ?>" alt="<?php echo htmlspecialchars($card['name'] ?? ''); ?>" onerror="this.onerror=null;this.src='<?php echo $hospital_placeholder; ?>'">
     <div class="wc-info">
         <div class="wc-hospital"><?php echo htmlspecialchars($card['name'] ?? ''); ?></div>
         <?php if (!empty($card['treatment'])): ?>
@@ -448,7 +578,7 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
         <div class="wc-address"><?php echo htmlspecialchars($card['address']); ?></div>
         <?php endif; ?>
         <?php if (!empty($card['doctor_name']) || !empty($card['booking_date'])): ?>
-        <div class="wc-meta"><?php echo htmlspecialchars($card['doctor_name'] ?? ''); ?><?php echo (!empty($card['doctor_name']) && !empty($card['booking_date'])) ? ' | ' : ''; ?><?php echo !empty($card['booking_date']) ? htmlspecialchars(str_replace('-', '.', $card['booking_date'])) : ''; ?></div>
+        <div class="wc-meta"><?php echo htmlspecialchars($card['doctor_name'] ?? ''); ?><?php echo (!empty($card['doctor_name']) && !empty($card['booking_date'])) ? ' | ' : ''; ?><?php echo !empty($card['booking_date']) ? '시술일 ' . htmlspecialchars(str_replace('-', '.', $card['booking_date'])) : ''; ?></div>
         <?php endif; ?>
     </div>
 </div>
@@ -479,14 +609,14 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
         <input type="hidden" name="booking_id" value="<?php echo (int)$prefill_booking_id; ?>">
         <?php endif; ?>
 
-        <?php $sel_treatment = $_POST['treatments'] ?? ($edit_review['treatments'] ?? $card_treatment_category); ?>
+        <?php $sel_treatment = $edit_review ? trim((string)$edit_review['treatments']) : $card_treatment_category; ?>
         <?php if (!empty($review_categories)): ?>
         <div class="rw-form-group rw-divider">
-            <label class="rw-label">어떤 <?php echo term('service', '시술'); ?>을 받으셨나요?</label>
+            <label class="rw-label">어떤 <?php echo term('service', '시술'); ?>을 받으셨나요?<span class="rw-required">*</span></label>
             <input type="hidden" name="treatments" id="treatmentInput" value="<?php echo htmlspecialchars($sel_treatment); ?>">
             <div class="rw-treatment-chips">
                 <?php foreach ($review_categories as $rc): ?>
-                <button type="button" class="rw-tchip <?php echo ($sel_treatment === $rc) ? 'selected' : ''; ?>" data-val="<?php echo htmlspecialchars($rc); ?>" onclick="selectRwTreatment(this)"><?php echo htmlspecialchars($rc); ?></button>
+                <span class="rw-tchip <?php echo ($sel_treatment === $rc) ? 'selected' : ''; ?>"><?php echo htmlspecialchars($rc); ?></span>
                 <?php endforeach; ?>
             </div>
         </div>
@@ -494,43 +624,71 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
         <input type="hidden" name="treatments" id="treatmentInput" value="<?php echo htmlspecialchars($sel_treatment); ?>">
         <?php endif; ?>
 
+        <?php
+        $selected_doctor_ids = array_values(array_unique(array_filter(array_map('intval', explode(',', (string)($_POST['doctor_ids'] ?? ''))))));
+        if (!$selected_doctor_ids && !empty($edit_review['doctor_id'])) $selected_doctor_ids[] = (int)$edit_review['doctor_id'];
+        $edit_doctor_names = array_values(array_filter(array_map('trim', explode(',', (string)($edit_review['doctor_name'] ?? '')))));
+        $selected_doctor_names = [];
+        foreach ($available_doctors as $_doctor_option) {
+            $_option_id = (int)$_doctor_option['id'];
+            if (in_array($_option_id, $selected_doctor_ids, true) || in_array(trim((string)$_doctor_option['name']), $edit_doctor_names, true) || (!$selected_doctor_ids && !empty($card['doctor_name']) && trim((string)$card['doctor_name']) === trim((string)$_doctor_option['name']))) {
+                if (!in_array($_option_id, $selected_doctor_ids, true)) $selected_doctor_ids[] = $_option_id;
+                $selected_doctor_names[$_option_id] = (string)$_doctor_option['name'];
+            }
+        }
+        $doctor_unknown_checked = !empty($_POST['doctor_unknown']);
+        ?>
+        <div class="rw-form-group rw-divider">
+            <div class="rw-doctor-head">
+                <label class="rw-label" style="margin:0;">담당 의사<span class="rw-required">*</span></label>
+                <button type="button" class="rw-doctor-search" onclick="openDoctorModal()">의사 검색</button>
+            </div>
+            <input type="hidden" id="reviewDoctorIds" name="doctor_ids" value="<?php echo $doctor_unknown_checked ? '' : htmlspecialchars(implode(',', $selected_doctor_ids)); ?>">
+            <input type="hidden" id="reviewDoctorName" name="doctor_name" value="<?php echo $doctor_unknown_checked ? '' : htmlspecialchars(implode(', ', array_values($selected_doctor_names))); ?>">
+            <div class="rw-selected-doctors" id="selectedDoctorChips"><?php if (!$doctor_unknown_checked): foreach ($selected_doctor_names as $_selected_id => $_selected_name): ?><div class="rw-selected-doctor visible" data-selected-doctor-id="<?php echo (int)$_selected_id; ?>"><span><?php echo htmlspecialchars($_selected_name); ?></span><button type="button" aria-label="선택 해제" onclick="removeSelectedDoctor(<?php echo (int)$_selected_id; ?>)">×</button></div><?php endforeach; endif; ?></div>
+            <label class="rw-doctor-row"><input type="checkbox" id="doctorUnknown" name="doctor_unknown" value="1" onchange="toggleReviewDoctor(this)" <?php echo $doctor_unknown_checked ? 'checked' : ''; ?>><span>담당 의사 모름</span></label>
+        </div>
+
         <div class="rw-form-group">
-            <label class="rw-label">평점</label>
+            <label class="rw-label">평점<span class="rw-required">*</span></label>
             <div class="rw-rating">
                 <?php for ($i = 5; $i >= 1; $i--): ?>
-                <input type="radio" name="rating" id="star<?php echo $i; ?>" value="<?php echo $i; ?>" <?php echo ($i == ($_POST['rating'] ?? ($edit_review['rating'] ?? 5))) ? 'checked' : ''; ?>>
+                <input type="radio" name="rating" id="star<?php echo $i; ?>" value="<?php echo $i; ?>" <?php echo ($i == ($_POST['rating'] ?? ($edit_review['rating'] ?? 0))) ? 'checked' : ''; ?> required>
                 <label for="star<?php echo $i; ?>">&#9733;</label>
                 <?php endfor; ?>
             </div>
         </div>
 
         <div class="rw-form-group">
-            <label class="rw-label">제목</label>
-            <input type="text" name="title" class="rw-input" placeholder="<?php echo term('review', '후기'); ?> 제목을 입력하세요" value="<?php echo htmlspecialchars($_POST['title'] ?? ($edit_review['title'] ?? '')); ?>" required maxlength="200">
+            <label class="rw-label">제목<span class="rw-required">*</span></label>
+            <input type="text" name="title" class="rw-input" placeholder="<?php echo term('review', '후기'); ?> 제목을 입력하세요." value="<?php echo htmlspecialchars($_POST['title'] ?? ($edit_review['title'] ?? '')); ?>" required maxlength="200">
         </div>
 
         <div class="rw-form-group">
-            <label class="rw-label">내용 *</label>
-            <textarea name="content" class="rw-textarea" placeholder="<?php echo term('service', '시술'); ?> 경험을 자세히 공유해주세요" required><?php echo htmlspecialchars($_POST['content'] ?? ($edit_review['content'] ?? '')); ?></textarea>
+            <label class="rw-label">내용<span class="rw-required">*</span></label>
+            <textarea name="content" id="reviewContent" class="rw-textarea" placeholder="상세한 <?php echo term('service', '시술'); ?> 경험을 공유해주세요." required minlength="10" maxlength="2000" oninput="updateReviewCounter(this)"><?php echo htmlspecialchars($_POST['content'] ?? ($edit_review['content'] ?? '')); ?></textarea>
+            <div class="rw-counter"><span id="reviewContentCount">0</span>자 / 최소 10자</div>
         </div>
 
         <!-- 사진 첨부 (시술 전 2장 + 시술 후 2장) -->
         <div class="rw-form-group">
-            <label class="rw-label">📷 <?php echo term('service', '시술'); ?> 사진 <span style="color:#999; font-weight:400;">(선택, 각 5MB 이하)</span></label>
+            <div class="rw-photo-title"><?php echo term('service', '시술'); ?> 전후 사진 <span class="rw-photo-note">(최대 4장, 각 5MB 이하)</span></div>
             <div style="display:flex; flex-direction:column; gap:16px;">
                 <div>
                     <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--bs-body-color,#333);"><?php echo term('service', '시술'); ?> 전 <span style="color:#999; font-weight:400;"></span></div>
-                    <?php
-                    $photo_config = ['prefix' => 'review_before', 'max_photos' => 2, 'label' => '', 'show_consent' => false];
-                    include __DIR__ . '/includes/photo_upload_ui.php';
-                    ?>
+                    <div class="rw-native-photo-grid" id="reviewBeforeGrid">
+                        <input class="rw-native-photo-input" type="file" id="reviewBeforeInput" name="photos_before[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple onchange="previewReviewPhotos(this,'reviewBeforeGrid','reviewBeforeCount')">
+                        <label class="rw-native-photo-add" for="reviewBeforeInput"><i class="bi bi-plus-circle"></i><span>사진 추가</span></label>
+                        <div class="rw-photo-capacity" id="reviewBeforeCount">0 / 2</div>
+                    </div>
                 </div>
                 <div>
                     <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--bs-body-color,#333);"><?php echo term('service', '시술'); ?> 후 <span style="color:#999; font-weight:400;"></span></div>
-                    <?php
-                    $photo_config = ['prefix' => 'review_after', 'max_photos' => 2, 'label' => '', 'show_consent' => false];
-                    include __DIR__ . '/includes/photo_upload_ui.php';
-                    ?>
+                    <div class="rw-native-photo-grid" id="reviewAfterGrid">
+                        <input class="rw-native-photo-input" type="file" id="reviewAfterInput" name="photos_after[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple onchange="previewReviewPhotos(this,'reviewAfterGrid','reviewAfterCount')">
+                        <label class="rw-native-photo-add" for="reviewAfterInput"><i class="bi bi-plus-circle"></i><span>사진 추가</span></label>
+                        <div class="rw-photo-capacity" id="reviewAfterCount">0 / 2</div>
+                    </div>
                 </div>
             </div>
             <!-- 공용 동의 (사진 첨부 시 표시) -->
@@ -548,19 +706,239 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
             </label>
         </div>
 
-        <button type="submit" class="rw-submit" id="reviewSubmitBtn"><?php echo term('review', '후기'); ?> <?php echo $edit_review ? '수정하기' : '등록하기'; ?></button>
-        <p style="text-align:center; font-size:12px; color:#999; margin-top:8px;"><?php echo $edit_review ? '수정된' : '등록된'; ?> <?php echo term('review', '후기'); ?>는 관리자 승인 후 공개됩니다.</p>
+        <p style="font-size:13px;color:#bbb;margin:-6px 0 20px 20px;">등록된 후기는 관리자 승인 후 공개됩니다.</p>
+        <button type="submit" class="rw-submit" id="reviewSubmitBtn"><?php echo $edit_review ? '수정했어요' : '작성했어요'; ?></button>
     </form>
     <?php endif; ?>
 </div>
 
+<div class="rw-doctor-modal" id="doctorModal" aria-hidden="true" onclick="if(event.target===this)closeDoctorModal()">
+    <section class="rw-doctor-sheet" id="doctorSheet" role="dialog" aria-modal="true" aria-labelledby="doctorModalTitle">
+        <div class="rw-doctor-handle" id="doctorSheetHandle" aria-label="아래로 끌어 닫기" role="button" tabindex="0"></div>
+        <h2 id="doctorModalTitle">어떤 원장님께 시술받으셨나요?</h2>
+        <div class="rw-doctor-list">
+            <?php if (empty($available_doctors)): ?>
+            <div class="rw-doctor-empty">등록된 의사가 없습니다.<br>담당 의사 모름을 선택해주세요.</div>
+            <?php else: foreach ($available_doctors as $_doctor):
+                $_tags = array_values(array_filter(explode('||', (string)($_doctor['treatment_tags'] ?? ''))));
+            ?>
+            <button type="button" class="rw-doctor-card" data-doctor-id="<?php echo (int)$_doctor['id']; ?>" data-doctor-name="<?php echo htmlspecialchars($_doctor['name'], ENT_QUOTES, 'UTF-8'); ?>" onclick="selectDoctorCard(this)">
+                <span class="rw-doctor-photo"><?php if (!empty($_doctor['photo_url'])): ?><img src="<?php echo htmlspecialchars($_doctor['photo_url']); ?>" alt="" style="width:100%;height:100%;object-fit:cover;"><?php else: ?><i class="bi bi-person"></i><?php endif; ?></span>
+                <span class="rw-doctor-copy">
+                    <span class="rw-doctor-card-name"><?php echo htmlspecialchars($_doctor['name']); ?></span>
+                    <span class="rw-doctor-specialty"><i class="bi bi-file-medical"></i> <?php echo htmlspecialchars($_doctor['specialty'] ?: '전문의'); ?></span>
+                    <?php if ($_tags): ?><span class="rw-doctor-tags"><?php foreach (array_slice($_tags, 0, 4) as $_tag): ?><span class="rw-doctor-tag"><?php echo htmlspecialchars($_tag); ?></span><?php endforeach; ?></span><?php endif; ?>
+                </span>
+            </button>
+            <?php endforeach; endif; ?>
+        </div>
+        <button type="button" class="rw-doctor-confirm" id="doctorConfirmButton" onclick="confirmDoctorSelection()" disabled>선택했어요</button>
+    </section>
+</div>
+
 <script>
-// "어떤 시술을 받으셨나요?" 칩 단일 선택
-function selectRwTreatment(btn) {
-    document.querySelectorAll('.rw-tchip').forEach(function(b){ b.classList.remove('selected'); });
-    btn.classList.add('selected');
-    var inp = document.getElementById('treatmentInput');
-    if (inp) inp.value = btn.getAttribute('data-val');
+function toggleReviewDoctor(checkbox) {
+    if (checkbox.checked) clearAllSelectedDoctors(false);
+}
+
+var draftDoctors = [];
+
+function getCommittedDoctors() {
+    var ids = (document.getElementById('reviewDoctorIds').value || '').split(',').filter(Boolean).map(Number);
+    var doctors = [];
+    ids.forEach(function(id) {
+        var card = document.querySelector('.rw-doctor-card[data-doctor-id="' + id + '"]');
+        if (card) doctors.push({ id: id, name: card.dataset.doctorName || '' });
+    });
+    return doctors;
+}
+
+function openDoctorModal() {
+    var modal = document.getElementById('doctorModal');
+    var sheet = document.getElementById('doctorSheet');
+    sheet.classList.remove('dragging');
+    sheet.style.transform = 'translateY(0)';
+    draftDoctors = getCommittedDoctors();
+    document.querySelectorAll('.rw-doctor-card').forEach(function(card) {
+        var id = parseInt(card.dataset.doctorId, 10);
+        card.classList.toggle('selected', draftDoctors.some(function(doctor) { return doctor.id === id; }));
+    });
+    var confirmButton = document.getElementById('doctorConfirmButton');
+    if (confirmButton) confirmButton.disabled = draftDoctors.length === 0;
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDoctorModal() {
+    var modal = document.getElementById('doctorModal');
+    var sheet = document.getElementById('doctorSheet');
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    sheet.classList.remove('dragging');
+    sheet.style.transform = 'translateY(0)';
+    document.body.style.overflow = '';
+}
+
+function selectDoctorCard(card) {
+    var id = parseInt(card.dataset.doctorId || '0', 10);
+    var index = draftDoctors.findIndex(function(doctor) { return doctor.id === id; });
+    if (index >= 0) {
+        draftDoctors.splice(index, 1);
+        card.classList.remove('selected');
+    } else {
+        draftDoctors.push({ id: id, name: card.dataset.doctorName || '' });
+        card.classList.add('selected');
+    }
+    document.getElementById('doctorConfirmButton').disabled = draftDoctors.length === 0;
+}
+
+function confirmDoctorSelection() {
+    if (draftDoctors.length === 0) return;
+    commitDoctors(draftDoctors);
+    document.getElementById('doctorUnknown').checked = false;
+    closeDoctorModal();
+}
+
+function commitDoctors(doctors) {
+    document.getElementById('reviewDoctorIds').value = doctors.map(function(doctor) { return doctor.id; }).join(',');
+    document.getElementById('reviewDoctorName').value = doctors.map(function(doctor) { return doctor.name; }).join(', ');
+    var chips = document.getElementById('selectedDoctorChips');
+    chips.innerHTML = '';
+    doctors.forEach(function(doctor) {
+        var chip = document.createElement('div');
+        chip.className = 'rw-selected-doctor visible';
+        chip.dataset.selectedDoctorId = String(doctor.id);
+        var label = document.createElement('span');
+        label.textContent = doctor.name;
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.setAttribute('aria-label', '선택 해제');
+        remove.textContent = '×';
+        remove.onclick = function() { removeSelectedDoctor(doctor.id); };
+        chip.appendChild(label);
+        chip.appendChild(remove);
+        chips.appendChild(chip);
+    });
+}
+
+function removeSelectedDoctor(id) {
+    commitDoctors(getCommittedDoctors().filter(function(doctor) { return doctor.id !== id; }));
+}
+
+function clearAllSelectedDoctors(clearUnknown) {
+    document.getElementById('reviewDoctorIds').value = '';
+    document.getElementById('reviewDoctorName').value = '';
+    document.getElementById('selectedDoctorChips').innerHTML = '';
+    if (clearUnknown !== false) document.getElementById('doctorUnknown').checked = false;
+}
+
+function updateReviewCounter(textarea) {
+    var counter = document.getElementById('reviewContentCount');
+    if (counter) counter.textContent = textarea.value.length;
+}
+
+var initialReviewContent = document.getElementById('reviewContent');
+if (initialReviewContent) updateReviewCounter(initialReviewContent);
+document.addEventListener('keydown', function(event) { if (event.key === 'Escape') closeDoctorModal(); });
+
+(function enableDoctorSheetDrag() {
+    var handle = document.getElementById('doctorSheetHandle');
+    var sheet = document.getElementById('doctorSheet');
+    var modal = document.getElementById('doctorModal');
+    var startY = 0;
+    var currentY = 0;
+    var startTime = 0;
+    var dragging = false;
+
+    handle.addEventListener('pointerdown', function(event) {
+        if (!modal.classList.contains('open')) return;
+        dragging = true;
+        startY = event.clientY;
+        currentY = startY;
+        startTime = performance.now();
+        sheet.classList.add('dragging');
+        handle.setPointerCapture(event.pointerId);
+        event.preventDefault();
+    });
+
+    handle.addEventListener('pointermove', function(event) {
+        if (!dragging) return;
+        currentY = event.clientY;
+        var distance = Math.max(0, currentY - startY);
+        sheet.style.transform = 'translateY(' + distance + 'px)';
+        event.preventDefault();
+    });
+
+    function finishDrag(event) {
+        if (!dragging) return;
+        dragging = false;
+        var distance = Math.max(0, currentY - startY);
+        var elapsed = Math.max(1, performance.now() - startTime);
+        var velocity = distance / elapsed;
+        sheet.classList.remove('dragging');
+        if (distance > Math.min(140, sheet.offsetHeight * 0.22) || velocity > 0.75) {
+            sheet.style.transform = 'translateY(100%)';
+            window.setTimeout(closeDoctorModal, 220);
+        } else {
+            sheet.style.transform = 'translateY(0)';
+        }
+        if (event && handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+    }
+
+    handle.addEventListener('pointerup', finishDrag);
+    handle.addEventListener('pointercancel', finishDrag);
+    handle.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            closeDoctorModal();
+        }
+    });
+})();
+
+function previewReviewPhotos(input, gridId, countId) {
+    var files = Array.from(input.files || []);
+    if (files.some(function(file) { return file.size > 5 * 1024 * 1024; })) {
+        alert('각 사진은 5MB 이하만 첨부할 수 있습니다.');
+        input.value = '';
+        files = [];
+    }
+    if (files.length > 2) {
+        alert('시술 전·후 사진은 각각 최대 2장까지 첨부할 수 있습니다.');
+        if (typeof DataTransfer !== 'undefined') {
+            var transfer = new DataTransfer();
+            files.slice(0, 2).forEach(function(file) { transfer.items.add(file); });
+            input.files = transfer.files;
+            files = files.slice(0, 2);
+        } else {
+            input.value = '';
+            files = [];
+        }
+    }
+    var grid = document.getElementById(gridId);
+    grid.querySelectorAll('.rw-native-photo-preview').forEach(function(preview) {
+        var url = preview.dataset.objectUrl;
+        if (url) URL.revokeObjectURL(url);
+        preview.remove();
+    });
+    var count = document.getElementById(countId);
+    files.forEach(function(file) {
+        var url = URL.createObjectURL(file);
+        var preview = document.createElement('div');
+        preview.className = 'rw-native-photo-preview';
+        preview.dataset.objectUrl = url;
+        var image = document.createElement('img');
+        image.src = url;
+        image.alt = '';
+        preview.appendChild(image);
+        grid.insertBefore(preview, count);
+    });
+    count.textContent = files.length + ' / 2';
+    var beforeInput = document.getElementById('reviewBeforeInput');
+    var afterInput = document.getElementById('reviewAfterInput');
+    var total = (beforeInput.files ? beforeInput.files.length : 0) + (afterInput.files ? afterInput.files.length : 0);
+    var consent = document.getElementById('reviewPhotoConsent');
+    if (consent) consent.style.display = total > 0 ? 'flex' : 'none';
 }
 
 // 후기 폼 제출 시 시술 전/후 사진 blob을 FormData에 추가
@@ -583,11 +961,21 @@ function selectRwTreatment(btn) {
         var _origRender = window.puRenderGrid;
         window.puRenderGrid = function(prefix) {
             _origRender(prefix);
+            var count = ((window._puData && window._puData[prefix]) || []).length;
+            var countEl = document.getElementById(prefix === 'review_before' ? 'reviewBeforeCount' : 'reviewAfterCount');
+            if (countEl) countEl.textContent = count + ' / 2';
             if (prefix === 'review_before' || prefix === 'review_after') updatePhotoConsent();
         };
     }
 
     form.addEventListener('submit', function(e) {
+        var doctorIds = document.getElementById('reviewDoctorIds').value;
+        var doctorUnknown = document.getElementById('doctorUnknown').checked;
+        if (!doctorIds && !doctorUnknown) {
+            e.preventDefault();
+            alert('담당 의사를 선택하거나 담당 의사 모름을 체크해주세요.');
+            return;
+        }
         var before = (window._puData && window._puData['review_before']) || [];
         var after = (window._puData && window._puData['review_after']) || [];
         if (before.length === 0 && after.length === 0) return; // 사진 없으면 기본 제출
@@ -612,10 +1000,10 @@ function selectRwTreatment(btn) {
             .then(function(html) { if (html === null) return; document.open(); document.write(html); document.close(); })
             .catch(function(err) {
                 alert('오류가 발생했습니다: ' + err.message);
-                if (btn) { btn.disabled = false; btn.textContent = '<?php echo term('review', '후기'); ?> <?php echo $edit_review ? '수정하기' : '등록하기'; ?>'; }
+                if (btn) { btn.disabled = false; btn.textContent = '<?php echo $edit_review ? '수정했어요' : '작성했어요'; ?>'; }
             });
     });
 })();
 </script>
 <?php if (isDevMode($connect)) { echo getDevModeJS_review(); } ?>
-<?php include __DIR__ . '/includes/footer.php'; ?>
+<?php $hide_bottom_nav = true; include __DIR__ . '/includes/footer.php'; ?>
