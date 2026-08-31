@@ -188,8 +188,8 @@ $page_title = '내 예약';
             --color-border: #333;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--color-bg); color: var(--color-text); padding-bottom: 80px; }
-        .container { max-width: 640px; margin: 0 auto; }
+        body { width: 100%; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--color-bg); color: var(--color-text); padding-bottom: 77px; overflow-x: hidden; }
+        .container { width: 100%; max-width: 640px; min-height: 0; margin: 0 auto; overflow-x: clip; flex: 1; display: flex; flex-direction: column; }
 
         .header{position:relative;padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bs-border-color,#eee);background:var(--bs-body-bg,#fff);}
         .header .back{width:36px;height:36px;border:none;background:none;font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1));cursor:pointer;color:inherit;}
@@ -209,7 +209,7 @@ $page_title = '내 예약';
         /* 탭 건수 — 배경 없이 숫자만. 색은 탭 상태(활성/비활성)를 그대로 상속한다. */
         .tab-count { margin-left: 4px; font-weight: 700; }
         .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .tab-content.active { display: block; flex: 1; }
 
         /* 예약 카드 */
         .booking-card { background: var(--color-bg); margin: 8px 12px; padding: 16px; }
@@ -224,7 +224,7 @@ $page_title = '내 예약';
         .status-cancelled { color: #991b1b;}
         .status-no_show { background: #f3f4f6; color: #6b7280; }
 
-        .booking-detail-row { display: flex; align-items: center; gap: 8px; }
+        .booking-detail-row { display: flex; width: 100%; min-width: 0; align-items: center; gap: 8px; }
         .booking-detail { display: flex; align-items: center; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: #fff; line-height: 1.8; background: #AE1932; width: 60%; min-width: 0; }
         /* 시술완료/예약취소: detail-1(위)·detail-2(아래) 세로 배치 */
         .booking-detail.bd-stacked { flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 12px; }
@@ -236,9 +236,9 @@ $page_title = '내 예약';
         .past-procedure-card .booking-header { margin-bottom: 8px; }
         .past-procedure-card .booking-date { font-size: 18px; font-weight: 500; }
         .completion-state { display:block; margin: 4px 0 10px; color: var(--color-primary); font-size: 18px; font-weight: 600; }
-        .past-procedure-card .booking-detail-row { gap: 0; }
-        .past-procedure-card .booking-detail { width: 68%; min-height: 70px; padding: 12px 18px; }
-        .past-procedure-card .detail-btns { width: 32%; flex: 0 0 32%; flex-direction: row; align-items: center; justify-content: space-evenly; gap: 4px; }
+        .past-procedure-card .booking-detail-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0; }
+        .past-procedure-card .booking-detail { width: auto; min-width: 0; min-height: 70px; padding: 12px 18px; }
+        .past-procedure-card .detail-btns { width: auto; min-width: 0; flex-direction: row; align-items: center; justify-content: space-evenly; gap: 4px; }
         .past-procedure-card .detail-btn { flex: 0 1 auto; padding: 10px 4px; border-radius: 0; font-size: 18px; font-weight: 500; white-space: nowrap; }
         .bd-left { padding-left: 12px; flex: 1; min-width: 0; }
         .bd-right { padding-right: 12px; font-size: 18px; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
@@ -280,8 +280,8 @@ $page_title = '내 예약';
 
         /* Screenshot reference: 예약/결제 내역 */
         html { background: #3f3f3f; }
-        body { max-width: 640px; margin: 0 auto; background: #f3f3f3; color: #111; }
-        .container { max-width: 640px; min-height: calc(100vh - 64px); background: #f3f3f3; }
+        body { width: 100%; max-width: 640px; margin: 0 auto; background: #f3f3f3; color: #111; }
+        .container { width: 100%; max-width: 640px; min-height: 0; background: #f3f3f3; }
         .header { height: 64px; padding: 0 16px; border-bottom: 0; background: #fff; }
         .header .back { font-size: 26px; }
         .header h1 { font-size: 18px; font-weight: 650; white-space: nowrap; }
@@ -351,7 +351,7 @@ $page_title = '내 예약';
         .push-tip-close { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 22px; cursor: pointer; }
 
         /* Figma: upcoming treatment tab */
-        #tab-active { min-height: calc(100vh - 145px); padding: 17px 20px 0; background: #fff; }
+        #tab-active { padding: 17px 20px 0; background: #fff; }
         .upcoming-booking { margin: 0; padding: 16px 0 24px; border-bottom: 1px solid #dedede; background: #fff; }
         .upcoming-booking:first-of-type { padding-top: 0; }
         .upcoming-booking + .upcoming-booking { padding-top: 24px; }
@@ -442,15 +442,15 @@ $page_title = '내 예약';
             .upcoming-action { font-size: 18px; }
         }
         /* 시술완료/완료 확인중 Figma 목록 */
-        #tab-past.active { min-height:calc(100vh - 180px); background:#fff; }
+        #tab-past.active { background:#fff; }
         #tab-past .past-procedure-card { margin:0; padding:14px 0 28px; border-bottom:1px solid #ddd; background:#fff; }
         #tab-past .past-procedure-card + .past-procedure-card { padding-top:28px; }
         #tab-past .past-procedure-card .booking-header { margin-bottom:8px; }
         #tab-past .past-procedure-card .booking-date { font-size:18px; font-weight:500; }
-        #tab-past .past-procedure-card .booking-detail { width:68%; min-height:70px; padding:12px 18px; }
-        #tab-past .past-procedure-card .detail-btns { width:32%; flex:0 0 32%; flex-direction:row; align-items:center; justify-content:space-evenly; gap:4px; }
+        #tab-past .past-procedure-card .booking-detail { width:auto; min-width:0; min-height:70px; padding:12px 18px; }
+        #tab-past .past-procedure-card .detail-btns { width:auto; min-width:0; flex:initial; flex-direction:row; align-items:center; justify-content:space-evenly; gap:4px; }
         #tab-past .past-procedure-card .detail-btn { flex:0 1 auto; padding:10px 4px; border-radius:0; font-size:18px; font-weight:500; white-space:nowrap; }
-        @media(max-width:420px){#tab-past .past-procedure-card{padding-left:0;padding-right:0}#tab-past .past-procedure-card .booking-date,.completion-state,#tab-past .past-procedure-card .detail-btn{font-size:16px}#tab-past .past-procedure-card .booking-detail{width:67%;padding:10px 12px}#tab-past .past-procedure-card .detail-btns{width:33%;flex-basis:33%}}
+        @media(max-width:420px){#tab-past .past-procedure-card{padding-left:0;padding-right:0}#tab-past .past-procedure-card .booking-date,.completion-state{font-size:16px}#tab-past .past-procedure-card .booking-detail-row{grid-template-columns:minmax(0,1.75fr) minmax(124px,1fr)}#tab-past .past-procedure-card .booking-detail{width:auto;padding:10px 12px}#tab-past .past-procedure-card .detail-btns{width:auto;min-width:124px;flex-basis:auto;gap:0;overflow:hidden}#tab-past .past-procedure-card .detail-btn{min-width:0;padding:10px 1px;font-size:13px;letter-spacing:-.04em}}
     </style>
     <script>
         (function(){
