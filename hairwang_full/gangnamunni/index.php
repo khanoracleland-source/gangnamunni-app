@@ -722,6 +722,7 @@ body.ae-active { padding-top:0 !important; }
         }
         .tc-panel-body.tc-panel-body-active {
             display: grid;
+            margin-top: var(--tc-panel-offset, 0px);
         }
         .tc-panel-body .tc-chip {
             display: block;
@@ -832,9 +833,10 @@ body.ae-active { padding-top:0 !important; }
                 if (divider) divider.style.display = 'none';
                 var right = document.getElementById('tcPanelRight');
                 if (right && body) {
-                    var rRect = right.getBoundingClientRect();
-                    var bRect = body.getBoundingClientRect();
-                    right.scrollTop += bRect.top - rRect.top - 10;
+                    // O'ng submenu tanlangan chap kategoriya bilan bir qatordan boshlanadi.
+                    right.scrollTop = 0;
+                    var rightTopPadding = parseFloat(window.getComputedStyle(right).paddingTop) || 0;
+                    right.style.setProperty('--tc-panel-offset', Math.max(0, el.offsetTop - rightTopPadding) + 'px');
                 }
             };
             var _initNav = document.querySelector('.tc-nav-item.active');
