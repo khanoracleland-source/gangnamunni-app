@@ -1,30 +1,19 @@
 <?php
-/**
- * ========================================
- * 서울미녀 스타일 예약 페이지
- * ========================================
- */
 
-// 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/dev_mode_helper.php';
 require_once __DIR__ . '/includes/notification_helper.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 $booking_from_wishlist = isset($_GET['from']) && $_GET['from'] === 'my_wishlist';
 
-// 시술 가격은 변환 없이 원 단위 정수 그대로 사용한다.
 function booking_price_won($price) {
     return intval($price);
 }
 
-// HMS API 클라이언트 (실시간 예약 전송용)
 require_once __DIR__ . '/includes/infyhms_api.php';
 
-// 관리자 로그인 체크
 $is_admin = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true;
 
-// [2026-06-15] 예약 로그인 필수 (관리 대시보드 booking_require_login 설정으로 ON/OFF, 기본 ON)
-//   booking_phone_auth=1 이면 비로그인 전화번호 예약도 허용 (다른 채널 대비)
 if (!function_exists('getSettingValue') && file_exists(__DIR__ . '/includes/settings_helper.php')) { require_once __DIR__ . '/includes/settings_helper.php'; }
 if (function_exists('getSettingValue')) {
     $_require_login = getSettingValue($connect, 'booking_require_login', '1') === '1';
@@ -34,6 +23,9 @@ if (function_exists('getSettingValue')) {
         $login_return_url = '/hairwang/gangnamunni/booking.php?id=' . (isset($_GET['id']) ? intval($_GET['id']) : 0);
         if (isset($_GET['treatment_id'])) $login_return_url .= '&treatment_id=' . max(0, (int)$_GET['treatment_id']);
         if (isset($_GET['option_id'])) $login_return_url .= '&option_id=' . max(0, (int)$_GET['option_id']);
+        if (isset($_GET['date'])) $login_return_url .= '&date=' . urlencode((string)$_GET['date']);
+        if (isset($_GET['time'])) $login_return_url .= '&time=' . urlencode((string)$_GET['time']);
+        if (isset($_GET['quantity'])) $login_return_url .= '&quantity=' . max(1, (int)$_GET['quantity']);
         if (isset($_GET['treatment'])) $login_return_url .= '&treatment=' . urlencode(trim((string)$_GET['treatment']));
         if (isset($_GET['rebook']) && $_GET['rebook'] === '1') $login_return_url .= '&rebook=1';
         if (isset($_GET['source_booking_id'])) $login_return_url .= '&source_booking_id=' . max(0, (int)$_GET['source_booking_id']);
@@ -43,7 +35,6 @@ if (function_exists('getSettingValue')) {
     }
 }
 
-// 병원 ID 가져오기
 $hospital_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $is_rebooking = isset($_GET['rebook']) && $_GET['rebook'] === '1';
 $source_booking_id = max(0, (int)($_GET['source_booking_id'] ?? 0));
@@ -53,7 +44,6 @@ if ($hospital_id <= 0) {
     exit;
 }
 
-// 병원 정보 조회
 $query = "SELECT * FROM gangnamunni_hospitals WHERE id = {$hospital_id}";
 $result = mysqli_query($connect, $query);
 
@@ -63,7 +53,6 @@ if (!$result || mysqli_num_rows($result) == 0) {
 
 $hospital = mysqli_fetch_assoc($result);
 
-// 병원 점심시간. no_lunch_break=true 이면 점심시간 제한을 적용하지 않는다.
 $booking_business_hours = json_decode($hospital['business_hours'] ?? '{}', true);
 if (!is_array($booking_business_hours)) $booking_business_hours = [];
 $booking_special_closed_dates = array_values(array_filter(
@@ -71,8 +60,6 @@ $booking_special_closed_dates = array_values(array_filter(
     static function($date) { return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date); }
 ));
 
-// 관리자에서 저장한 요일별 운영시간을 예약 검증/시간 선택에서 공통 사용한다.
-// 크롤링 데이터의 officeHours(영문 요일) 형식도 기존 병원 호환을 위해 지원한다.
 $booking_day_keys = [0 => '일', 1 => '월', 2 => '화', 3 => '수', 4 => '목', 5 => '금', 6 => '토'];
 $booking_office_day_keys = [0 => 'SUN', 1 => 'MON', 2 => 'TUE', 3 => 'WED', 4 => 'THU', 5 => 'FRI', 6 => 'SAT'];
 $booking_weekly_hours = [];
@@ -115,7 +102,6 @@ $booking_lunch_start_min = preg_match('/^(\d{1,2}):(\d{2})$/', $booking_lunch_st
 $booking_lunch_end_min = preg_match('/^(\d{1,2}):(\d{2})$/', $booking_lunch_end, $booking_le_match)
     ? ((int)$booking_le_match[1] * 60 + (int)$booking_le_match[2]) : null;
 
-// 병원 이미지 로드 (최대 10개)
 $images = [];
 $images_query = "SELECT image_url FROM gangnamunni_hospital_images WHERE hospital_id = {$hospital_id} ORDER BY display_order ASC LIMIT 10";
 $images_result = mysqli_query($connect, $images_query);
@@ -127,12 +113,10 @@ if ($images_result) {
     }
 }
 
-// 이미지가 없으면 기본 이미지 URL 사용
 if (empty($images) && !empty($hospital['image_url'])) {
     $images[] = $hospital['image_url'];
 }
 
-// CSRF 토큰 (consultation.php 와 동일 패턴) — 폼 hidden 필드 + POST 검증에 사용
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -145,11 +129,10 @@ $booking_body_part_column = false;
 $booking_body_part_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'body_part'");
 if ($booking_body_part_col && mysqli_num_rows($booking_body_part_col) > 0) $booking_body_part_column = true;
 
-// 예약 처리
 $booking_submitted = false;
 $booking_error = '';
-$hms_appointment_id = null;  // HMS 예약 번호 (실시간 연동 시)
-$hms_api_success = false;    // HMS API 전송 성공 여부
+$hms_appointment_id = null;  
+$hms_api_success = false;    
 $is_ajax_booking = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['response_mode'] ?? '') === 'ajax';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -157,8 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = $_POST[$key] ?? $default;
         return is_string($value) || is_numeric($value) ? trim(stripslashes((string)$value)) : $default;
     };
-    // init.php(그누보드)가 $_POST 에 슬래시를 추가하므로 stripslashes 후 사용해야
-    // mysqli_real_escape_string 과 이중 이스케이프되지 않는다. (treatments_json 과 동일 처리)
     $name = $post_string('name');
     $phone = $post_string('phone');
     $treatment = $post_string('treatment');
@@ -167,8 +148,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $memo = $post_string('memo');
     $quantity = isset($_POST['quantity']) ? max(1, (int)$_POST['quantity']) : 1;
 
-    // Bound public input before any DB/API work. The visible UI only emits these
-    // 30-minute slots, so accepting arbitrary times server-side is unnecessary.
     $valid_booking_time_format = preg_match('/^(?:[01]\d|2[0-3]):(?:00|30)$/', $time) === 1;
     $booking_time_parts = $valid_booking_time_format ? explode(':', $time) : [];
     $booking_time_min = $valid_booking_time_format ? ((int)$booking_time_parts[0] * 60 + (int)$booking_time_parts[1]) : null;
@@ -176,13 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $valid_date = $date_object && $date_object->format('Y-m-d') === $date;
     $max_booking_date = new DateTimeImmutable('+1 year');
 
-    // 이름은 로그인 회원 정보를 사용하고, 연락처는 확인 화면에서 전송된 값을 우선 사용한다.
     if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
         $lm = get_gangnamunni_member();
-        // A logged-in booking must always belong to the authenticated member;
-        // never trust a forged hidden `name` field.
         $name = trim((string)($lm['mb_name'] ?? ''));
-        // 예약 확인 화면에서 사용자가 직접 비운 연락처는 회원 정보로 다시 채우지 않는다.
         if (!array_key_exists('phone', $_POST)) {
             $phone = trim((string)($lm['mb_hp'] ?? ''));
             if ($phone === '') $phone = trim((string)($lm['mb_tel'] ?? ''));
@@ -206,7 +181,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!$valid_booking_time_format) {
         $booking_error = '선택할 수 없는 예약 시간입니다.';
     } elseif (!$booking_has_weekly_hours && ($booking_time_min < 540 || $booking_time_min > 1080)) {
-        // 운영시간 데이터가 전혀 없는 기존 병원은 종전 09:00~18:00 정책을 유지한다.
         $booking_error = '선택할 수 없는 예약 시간입니다.';
     } elseif (in_array($date, $booking_special_closed_dates, true)) {
         $booking_error = '선택한 날짜는 임시 휴무일입니다. 다른 날짜를 선택해주세요.';
@@ -220,20 +194,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         && $booking_time_min >= $booking_lunch_start_min && $booking_time_min < $booking_lunch_end_min) {
         $booking_error = '점심시간에는 ' . term('booking', '예약') . '할 수 없습니다. 다른 시간을 선택해주세요.';
     } elseif (($booking_ts = strtotime($date . ' ' . $time)) === false || $booking_ts < time()) {
-        // 클라이언트 검증(지난 시간 비활성)을 우회한 과거 시각 예약 차단
         $booking_error = '지난 시간은 ' . term('booking', '예약') . '할 수 없습니다. 다른 시간을 선택해주세요.';
     } else {
-        // 1단계: 서울미녀 로컬 DB에 저장 (항상 실행)
         $booking_mb_id = '';
         if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
             $bm = get_gangnamunni_member();
             $booking_mb_id = $bm['mb_id'] ?? '';
         }
 
-        // 선택 방식: 개별 시술 다중 선택 또는 패키지 1개
         $selection_type = $post_string('selection_type', 'treatments') === 'package' ? 'package' : 'treatments';
         $selected_package_id = max(0, (int)($_POST['package_id'] ?? 0));
-        // init.php(그누보드)가 $_POST 에 슬래시를 추가하므로 stripslashes 후 파싱해야 JSON 이 유효.
         $treatments_json = $post_string('treatments_json', '[]');
         $treatments_arr = json_decode($treatments_json, true);
         if (!is_array($treatments_arr)) $treatments_arr = [];
@@ -244,8 +214,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $requested_individual_treatments = $treatments_arr;
         $package_treatments = [];
 
-        // 총 가격은 클라이언트 값을 믿지 않고 DB에서 다시 계산한다.
-        // bookings.price 는 항상 원 단위로 저장한다. 과거 만원 가격은 호환 변환한다.
         $booking_price = null;
         if ($selection_type === 'package') {
             $package_stmt = mysqli_prepare($connect,
@@ -303,7 +271,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // 패키지와 별개로 선택한 시술을 함께 검증·합산한다.
         if ($booking_error === '' && !empty($requested_individual_treatments)) {
             $sum = 0; $found = false; $verified_treatments = []; $seen_treatment_names = [];
             $unit_stmt = mysqli_prepare($connect,
@@ -328,7 +295,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $seen_treatment_names[$tn] = true;
                     mysqli_stmt_bind_param($unit_stmt, 'iiis', $option_id, $option_id, $hospital_id, $tn);
                     mysqli_stmt_execute($unit_stmt);
-                    // get_result() 는 실패 시 false, 조회 결과 없으면 fetch 가 null 이므로 모두 방어
                     $res = mysqli_stmt_get_result($unit_stmt);
                     $r = ($res instanceof mysqli_result) ? $res->fetch_assoc() : null;
                     if (!is_array($r)) continue;
@@ -366,12 +332,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($booking_error === '') {
             $booking_error = '최소 1개 이상의 시술 또는 패키지를 선택해주세요.';
         }
-        // treatment 컬럼(varchar 100)엔 요약(쉼표 이름) 저장 — 초과 시 잘라냄
         $treatment = mb_substr($treatment, 0, 100);
 
         if ($booking_error === '') {
-        // [예약 저장 안정화] 재설계(다중 시술/수량)로 추가된 컬럼이 없는 DB(운영 등)에서도
-        // INSERT 가 'Unknown column' 으로 실패하지 않도록, 없으면 즉시 추가 (idempotent).
         $_ensure_cols = [
             'treatments_json' => "ADD COLUMN treatments_json TEXT NULL AFTER treatment",
             'quantity'        => "ADD COLUMN quantity INT NOT NULL DEFAULT 1 AFTER treatments_json",
@@ -402,7 +365,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_close($insert_stmt);
             $booking_submitted = true;
 
-            // 관리자 FCM + 인앱 알림
             notifyAdmins($connect, 'booking',
                 '새 예약 접수',
                 htmlspecialchars($hospital['name']) . ' — ' . htmlspecialchars($name) . ' (' . $date . ' ' . $time . ')',
@@ -410,12 +372,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ['booking_id' => $booking_id, 'hospital_id' => $hospital_id]
             );
 
-            // 2단계: HMS API로 실시간 예약 전송 (HMS 연동 병원만)
-            // hms_hospital_id가 있는 병원 = HMS에 등록된 병원
             if (!empty($hospital['hms_hospital_id'])) {
                 try {
                     $hms_api = get_infyhms_api();
-                    // 사용자가 선택한 의사/진료과 ID (있으면 포함)
                     $selected_doctor_id = isset($_POST['doctor_id']) ? intval($_POST['doctor_id']) : null;
                     $selected_department = isset($_POST['department']) ? intval($_POST['department']) : null;
 
@@ -428,7 +387,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'tenant_id'     => $hospital['hms_hospital_id'],
                     ];
 
-                    // 의사/진료과 선택이 있으면 포함 (없으면 서버가 자동 배정)
                     if ($selected_doctor_id) {
                         $doctor_stmt = mysqli_prepare($connect,
                             "SELECT hms_doctor_id FROM gangnamunni_doctors
@@ -444,7 +402,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                     if ($selected_department) {
-                        // Scope the department to the selected hospital's HMS tenant.
                         $dept_stmt = mysqli_prepare($connect,
                             "SELECT hms_department_id FROM gangnamunni_departments
                              WHERE id = ? AND hms_tenant_id = ? LIMIT 1");
@@ -463,12 +420,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $hms_result = $hms_api->createAppointment($appointment_data);
 
-                    // HMS API 성공 시 예약 번호 저장
                     if (!empty($hms_result['success']) && !empty($hms_result['data']['id'])) {
                         $hms_appointment_id = (int) $hms_result['data']['id'];
                         $hms_api_success = true;
-
-                        // gangnamunni_bookings에 HMS 예약 ID 저장 (컬럼 있으면)
                         @mysqli_query($connect,
                             "UPDATE gangnamunni_bookings
                              SET hms_appointment_id = {$hms_appointment_id}
@@ -479,8 +433,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             . json_encode($hms_result, JSON_UNESCAPED_UNICODE));
                     }
                 } catch (Exception $e) {
-                    // HMS API 장애 시에도 로컬 저장은 완료 (폴백)
-                    // 크론잡 배치 동기화가 나중에 처리함
                     error_log("[서울미녀] HMS API 예약 전송 실패 (booking #{$booking_id}): "
                         . $e->getMessage());
                 }
@@ -498,9 +450,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
-            // 예약 신청 완료 → 예약 상세(booking_detail.php)로 이동 : 신청 후 화면을 상세 뷰로 통일
-            // new=1 : 방금 신청 완료 상태 → booking_detail.php 에서 추가 요소 표시용
-            // (출력 전이므로 header 안전. 본인 예약이므로 booking_detail 소유자 검증 통과)
             header('Location: booking_detail.php?booking_id=' . (int)$booking_id . '&new=1');
             exit;
         } else {
@@ -535,9 +484,6 @@ $booking_member_has_saved_phone = trim((string)($booking_member['mb_hp'] ?? ''))
 
 $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true);
 
-// 병원에 실제 배정된 시술 + 가격(신 시스템: gangnamunni_hospital_treatments +
-// gangnamunni_hospital_treatment_prices) 로드 → 예약 시술 선택/가격 연동.
-// 옵션 가격(샷수/용량)이 있으면 그 MIN~MAX, 없으면 배정 행의 price_min/max 사용.
 $booking_treatments = [];
 $bt_sql = "SELECT ht.id AS hospital_treatment_id, tm.id AS treatment_id, tm.name AS name, ht.price_min, ht.price_max,
              (SELECT MIN(p.price) FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_min,
@@ -564,7 +510,6 @@ if ($bt_stmt = mysqli_prepare($connect, $bt_sql)) {
     mysqli_stmt_close($bt_stmt);
 }
 
-// 각 시술의 선택 가능한 세부 옵션. 2개 이상일 때 예약 화면에서 반드시 하나를 고른다.
 $booking_options = [];
 if (!empty($booking_treatments)) {
     $bt_ids = implode(',', array_map(static function ($t) { return (int)$t['hospital_treatment_id']; }, $booking_treatments));
@@ -594,8 +539,6 @@ foreach ($booking_treatments as &$booking_treatment) {
 }
 unset($booking_treatment);
 
-// A treatment coming from index -> hospitals -> detail is preselected only when
-// it is still an active, bookable treatment of this hospital.
 $requested_treatment_id = max(0, (int)($_GET['treatment_id'] ?? 0));
 $requested_option_id = max(0, (int)($_GET['option_id'] ?? 0));
 $requested_treatment_name = trim((string)($_GET['treatment'] ?? ''));
@@ -619,8 +562,6 @@ foreach ($booking_treatments as $bookable_treatment) {
     }
 }
 
-// 예약 화면에서 뒤로 이동할 때 사용자가 보고 있던 시술 상세 컨텍스트를 유지한다.
-// 요청값을 그대로 사용하지 않고, 현재 병원의 활성 시술로 검증된 값만 URL에 포함한다.
 $booking_back_url = 'detail.php?id=' . (int)$hospital_id;
 if ($booking_from_wishlist) {
     $booking_back_url .= '&from=my_wishlist';
@@ -636,7 +577,6 @@ if ($preselected_booking_treatment !== null) {
     }
 }
 
-// 현재 병원에서 예약 가능한 패키지. 구성 시술이 모두 활성인 패키지만 노출한다.
 $booking_packages = [];
 $package_table_check = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_packages'");
 if ($package_table_check && mysqli_num_rows($package_table_check) > 0) {
@@ -669,11 +609,8 @@ if ($package_table_check && mysqli_num_rows($package_table_check) > 0) {
     }
 }
 
-// [1차 검수 #14 - 2026-05-28] 시술 선택 병원 데이터 미연동 픽스
-// 신 테이블 gangnamunni_treatment_master 우선 조회, 없으면 구 테이블 fallback
 if (empty($treatment_tags) || !is_array($treatment_tags)) {
     $treatment_tags = [];
-    // 1순위: 신 테이블 gangnamunni_treatment_master
     $master_check = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_master'");
     if ($master_check && mysqli_num_rows($master_check) > 0) {
         $master_stmt = mysqli_prepare($connect, "SELECT name FROM gangnamunni_treatment_master WHERE hospital_id = ? AND (is_active = 1 OR is_active IS NULL) ORDER BY name ASC");
@@ -689,7 +626,6 @@ if (empty($treatment_tags) || !is_array($treatment_tags)) {
             mysqli_stmt_close($master_stmt);
         }
     }
-    // 2순위 (fallback): 구 테이블
     if (empty($treatment_tags)) {
         $treat_stmt = mysqli_prepare($connect, "SELECT name FROM gangnamunni_treatments WHERE hospital_id = ? AND is_active = 1 ORDER BY is_popular DESC, sort_order ASC, name ASC");
         if ($treat_stmt) {
@@ -704,16 +640,12 @@ if (empty($treatment_tags) || !is_array($treatment_tags)) {
     }
 }
 
-// ========================================
-// 공유 레이아웃 변수 설정
-// ========================================
 $page_title = htmlspecialchars($hospital['name']) . ' ' . term('appointment');
 $show_search = false;
 
 $page_css = '
     @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap");
 
-    /* 예약 화면의 모든 일반 텍스트에 Noto Sans KR 적용 (아이콘 폰트 제외) */
     body,
     button,
     input,
@@ -722,7 +654,6 @@ $page_css = '
         font-family: "Noto Sans KR", sans-serif !important;
     }
 
-    /* 페이지 헤더 (글로벌 네비 아래) */
     .page-header {
         padding: 12px 20px;
         /* common.css 는 sticky 헤더를 global_nav 높이(모바일 48px / PC 56px)만큼
@@ -734,7 +665,6 @@ $page_css = '
         .page-header { top: 0; }
     }
 
-    /* 뒤로가기 버튼 — 좌측 고정 (bi-chevron-left) */
     .back-btn {
         position: absolute;
         left: 0;
@@ -752,7 +682,6 @@ $page_css = '
         color: #000;
     }
 
-    /* 페이지 제목 — 폭 기준 정중앙 */
     .page-title {
         font-size: 18px;
         font-weight: bold;
@@ -835,7 +764,6 @@ $page_css = '
         z-index: 10;
     }
 
-    /* 병원 정보 카드 */
     .hospital-card {
         background: var(--bs-body-bg, #fff);
         border-radius: 12px;
@@ -855,7 +783,7 @@ $page_css = '
         color: var(--bs-secondary-color, #666);
     }
 
-    /* 성공 메시지 */
+
     .success-message {
         background: #E8F5E9;
         border-left: 4px solid #4CAF50;
@@ -902,7 +830,6 @@ $page_css = '
         background: #FFF3E0;
     }
 
-    /* 에러 메시지 */
     .error-message {
         background: #FFEBEE;
         border-left: 4px solid #F44336;
@@ -912,7 +839,6 @@ $page_css = '
         color: #C62828;
     }
 
-    /* 폼 — theme_helper.php 가 주입하는 카드 스타일(border-radius/box-shadow)을 명시적으로 해제 */
     .booking-form {
         padding: 15px;
         border: none;
@@ -924,12 +850,10 @@ $page_css = '
         margin-bottom: 24px;
     }
 
-    /* 예약하기 헤더 그룹 — 아래 여백 */
     .form-group.head-group {
         margin-bottom: 32px;
     }
 
-    /* 커스텀 날짜 선택 (월 → 날짜) */
     .month-selector {
         display: flex;
         gap: 16px;
@@ -952,10 +876,6 @@ $page_css = '
         font-weight: 700;
     }
 
-    /* 날짜 선택 라벨 — 크게 */
-    /* 날짜/시간 선택 라벨 — 예약하기(section-head-title)와 동일 크기.
-       주의: 아래에 .form-label(577줄)이 뒤에 정의돼 같은 우선순위면 덮어쓴다.
-       그래서 반드시 클래스 2개(.form-label.date-select-label)로 우선순위를 높여야 적용됨. */
     .form-label.date-select-label {
         font-size: 17px;
         font-weight: 700;
@@ -998,9 +918,8 @@ $page_css = '
         background: none;
         border: none;
     }
-    /* 요일 (위) — 선택해도 바뀌지 않음 */
+
     .date-chip .dc-wd { font-size: 12px; color: #9aa0a6; }
-    /* 날짜 (아래) — 선택 시 이것만 배경 빨강 + 글자 흰색 */
     .date-chip .dc-day {
         width: 36px; height: 36px;
         display: flex; align-items: center; justify-content: center;
@@ -1010,10 +929,8 @@ $page_css = '
     }
     .date-chip:hover .dc-day { background: #f2f2f2; }
     .date-chip.active .dc-day { background: var(--color-primary, #AE1932); color: #fff; }
-    /* 오늘 라벨 (날짜 아래) */
     .date-chip .dc-today { font-size: 12px; font-weight: 600; color: #aaaaaa; margin-top: -1px; }
 
-    /* 시간대 그리드 — 빨강 테두리 박스, 한 줄에 4개 */
     .time-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -1036,7 +953,6 @@ $page_css = '
         color: #AE1932;
         border-color: #AE1932;
     }
-    /* HMS 스케줄: 예약됨/지난 시간 — 흐리게, 클릭 불가 */
     .time-slot.disabled {
         color: #bbbbbb;
         background: #f5f5f5;
@@ -1087,7 +1003,6 @@ $page_css = '
         margin-top: 6px;
     }
 
-    /* 예약하기 헤더 + 옵션 변경 */
     .section-head-row {
         display: flex;
         align-items: center;
@@ -1112,14 +1027,12 @@ $page_css = '
         cursor: pointer;
     }
 
-    /* 선택된 시술 표시 */
     .selected-treatment {
         display: flex;
         flex-direction: column;
         gap: 18px;
         margin-top: 12px;
     }
-    /* 각 선택 시술 (여러 개) — 항목 사이는 여백으로만 구분 (선 없음) */
     .st-item {
         display: flex;
         flex-direction: column;
@@ -1143,7 +1056,6 @@ $page_css = '
     .st-remove:hover { color: #AE1932; }
     .selected-treatment .st-name { font-weight: 700; color: #1f2937; }
     .selected-treatment .st-price { font-size: 13px; font-weight: 600; color: #1A1A1A; }
-    /* 수량 스테퍼 */
     .st-qty-row {
         display: flex;
         align-items: center;
@@ -1167,12 +1079,10 @@ $page_css = '
     }
     .qty-btn:hover { background: #faf0f2; }
     .qty-btn--plus { color: #1A1A1A; }
-    /* 수량이 1이면 더 줄일 수 없으므로 − 를 비활성 색으로 표시 */
     .qty-btn--minus.is-off { color: #BBBBBB; }
     .qty-btn--minus.is-off:hover { background: var(--bs-body-bg, #fff); }
     .qty-num { min-width: 40px; text-align: center; font-weight: 700; font-size: 15px; }
 
-    /* 시술 선택 바텀시트 */
     .treatment-sheet-overlay {
         display: none;
         position: fixed; inset: 0;
@@ -1198,7 +1108,6 @@ $page_css = '
     }
     @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-    /* 상단 손잡이 + 제목 */
     .sheet-handle {
         width: 52px; height: 4px; border-radius: 2px;
         background: #AE1932;
@@ -1212,7 +1121,6 @@ $page_css = '
     }
 
     .sheet-close { border: none; background: none; font-size: 18px; cursor: pointer; color: #666; }
-    /* flex:1 + min-height:0 → 목록이 남은 공간만 차지하고 스크롤되어 하단 완료 버튼이 항상 보임 */
     .sheet-list {
         flex: 1 1 auto; min-height: 0; overflow-y: auto;
         display: flex; flex-direction: column; gap: 10px;
@@ -1263,7 +1171,6 @@ $page_css = '
     .detail-option-name { color:#20242b; font-size:15px; font-weight:600; }
     .detail-option-dosage { color:#8b9199; font-size:12px; }
     .detail-option-price { color:#20242b; font-size:15px; font-weight:700; white-space:nowrap; }
-    /* 옵션 카드 — 다중 선택(토글)이므로 라디오가 아니라 버튼을 쓴다 */
     .sheet-item {
         width: 100%;
         display: block;
@@ -1298,13 +1205,11 @@ $page_css = '
         margin-left: auto;
         white-space: nowrap;
     }
-    /* 정가/할인율은 할인 데이터가 있을 때만 출력된다 */
     .price-was { font-size: 12px; color: #9A9A9A; text-decoration: line-through; }
     .price-off { font-size: 14px; font-weight: 700; color: #1A1A1A; }
     .price-now { font-size: 17px; font-weight: 700; color: #AE1932; }
     .price-now .price-unit { font-size: 14px; }
 
-    /* 시트 하단 선택 완료 버튼 */
     .sheet-footer {
         flex-shrink: 0;
         background: var(--bs-body-bg, #fff);
@@ -1330,7 +1235,6 @@ $page_css = '
         .sheet-item, .sheet-confirm { transition-duration: .01ms; }
     }
 
-    /* 제출 버튼 */
     .submit-section {
         margin-top: 30px;
         /* 고정 하단 네비(77px) 에 가리지 않도록 여유 공간 확보 */
@@ -1357,15 +1261,13 @@ $page_css = '
         cursor: not-allowed;
     }
 
-    /* 날짜/시간/시술 중 하나라도 미선택 → 비활성 색상.
-       클릭은 막지 않는다(기존 submit 검증이 무엇이 빠졌는지 알려주기 위함). */
+
     .btn-submit.is-incomplete,
     .btn-submit.is-incomplete:hover {
         background: #F2F2F2;
         color: #BBBBBB;
     }
 
-    /* 예약 최종 확인 화면 */
     .booking-confirm-overlay,
     .booking-success-overlay {
         display: none;
@@ -1435,7 +1337,6 @@ $page_css = '
     }
     .confirm-submit:disabled { opacity: .55; cursor: not-allowed; }
 
-    /* 접수 완료 바텀시트 */
     .booking-success-overlay { align-items: flex-end; background: rgba(0,0,0,.58); }
     .booking-success-overlay.open { display: flex; }
     .booking-success-sheet {
@@ -1473,7 +1374,6 @@ $page_css = '
         .success-sheet-title { font-size: 22px; }
     }
 
-    /* 안내 사항 */
     .notice-box {
         background: #FFF3E0;
         border-radius: 8px;
@@ -1495,7 +1395,6 @@ $page_css = '
         padding-left: 20px;
     }
 
-    /* 지도 섹션 */
     .map-section {
         background: var(--bs-body-bg, #fff);
         border-radius: 12px;
@@ -1523,7 +1422,6 @@ $page_css = '
         color: #999;
     }
 
-    /* 병원 정보 섹션 */
     .hospital-info-section {
         background: var(--bs-body-bg, #fff);
         border-radius: 12px;
@@ -1573,17 +1471,81 @@ $page_css = '
             grid-template-columns: repeat(2, 1fr);
         }
     }
+
+    .main-content { background: #f2f2f2; }
+    .page-header {
+        height: 54px; min-height: 54px; padding: 0 20px;
+        background: #fff; border-bottom: 1px solid #ededed;
+        box-shadow: none;
+    }
+    .page-title { font-size: 16px; font-weight: 500; }
+    .hospital-images-section { display: none; }
+    .booking-form { padding: 0; background: #f2f2f2; }
+    .booking-form .form-group {
+        margin: 0; padding: 20px;
+        background: #fff; border-bottom: 8px solid #f2f2f2;
+    }
+    .booking-form .form-group.head-group { margin: 0; padding-top: 14px; padding-bottom: 22px; }
+    .section-head-row { padding-bottom: 14px; }
+    .section-head-title, .form-label.date-select-label { font-size: 17px; font-weight: 700; }
+    .option-change-btn { min-width: 78px; justify-content: center; padding: 8px 13px; border: 0; }
+    .selected-treatment { gap: 0; margin-top: 0; }
+    .st-item { gap: 8px; padding: 17px 0; border-bottom: 1px solid #e5e5e5; }
+    .st-item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .selected-treatment .st-name { font-size: 14px; color: #111; }
+    .selected-treatment .st-price { font-size: 14px; }
+    .qty-stepper { height: 28px; }
+    .qty-btn { width: 30px; height: 26px; font-size: 18px; }
+    .qty-num { min-width: 34px; font-size: 14px; }
+    .month-selector { margin: 10px 0 12px; padding-bottom: 10px; border-bottom: 1px solid #aaa; }
+    .month-item { font-size: 14px; }
+    .date-selector { margin-top: -12px; border-top: 0; border-bottom: 0; padding: 10px 0 0; }
+    .date-chip { width: 48px; }
+    .date-chip .dc-day { width: 30px; height: 30px; font-size: 14px; }
+    .rebook-method { margin-top: 12px; gap: 5px; }
+    .rebook-method strong { font-size: 14px; }
+    .rebook-method span { font-size: 12px; }
+    .time-grid { gap: 16px 24px; margin-top: 16px; }
+    .time-slot { padding: 7px 4px; font-size: 13px; font-weight: 500; }
+    .submit-section { margin: 0; padding: 20px 20px 18px; background: #fff; }
+    .btn-submit { height: 48px; padding: 0 16px; border-radius: 0; font-size: 15px; }
+
+    .treatment-sheet-overlay { background: rgba(0,0,0,.58); }
+    .treatment-sheet {
+        max-height: 54vh; min-height: 48vh; padding: 10px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+        border-radius: 0;
+    }
+    .sheet-handle {
+        width: 34px; height: 4px; margin: 2px auto 12px;
+        cursor: grab; touch-action: none; user-select: none;
+    }
+    .sheet-handle:active { cursor: grabbing; }
+    .treatment-sheet.is-dragging { animation: none; transition: none; }
+    .treatment-sheet.is-snapping { transition: transform .22s ease-out; }
+    .sheet-title { margin-bottom: 12px; font-size: 14px; font-weight: 600; }
+    .sheet-list { gap: 14px; margin-bottom: 14px; }
+    .sheet-section-title { display: none; }
+    .sheet-choice-divider { display: none; }
+    .sheet-item { padding: 13px 10px; border-radius: 3px; background: #fff; }
+    .sheet-item.selected { border: 2px solid #AE1932; box-shadow: none; padding: 12px 9px; }
+    .sheet-item-name { margin-bottom: 8px; font-size: 14px; line-height: 1.45; }
+    .sheet-item-desc { font-size: 12px; }
+    .sheet-item-price { gap: 8px; }
+    .price-now { font-size: 15px; }
+    .sheet-confirm { height: 48px; padding: 0 16px; border-radius: 0; font-size: 14px; }
+
+    @media (max-width: 420px) {
+        .booking-form .form-group { padding-left: 14px; padding-right: 14px; }
+        .time-grid { gap: 14px 18px; }
+        .treatment-sheet { padding-left: 14px; padding-right: 14px; }
+    }
 ';
 
-// ========================================
-// 페이지별 JS (script 태그 없이)
-// ========================================
 $page_js = '
     var HAS_WEEKLY_HOURS = ' . ($booking_has_weekly_hours ? 'true' : 'false') . ';
     var WEEKLY_HOURS = ' . json_encode($booking_weekly_hours, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
     var SPECIAL_CLOSED_DATES = ' . json_encode($booking_special_closed_dates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
 
-    // 커스텀 날짜 선택 (월 → 날짜). hidden #bookingDate 에 YYYY-MM-DD 저장.
     function initDatePicker() {
         var hidden = document.getElementById("bookingDate");
         var monthSel = document.getElementById("monthSelector");
@@ -1591,15 +1553,11 @@ $page_js = '
         if (!hidden || !monthSel || !dateSel) return;
 
         var weekdays = ["일","월","화","수","목","금","토"];
-        // 예약 가능 기간: 오늘부터 정확히 1개월 (오늘 7/13 이면 8/12 까지 — 다음 달 같은 날 전까지)
-        // [timezone 픽스] 클라이언트 new Date() 대신 서버(KST) 기준 오늘로 목록을 구성해야
-        //   hidden #bookingDate 기본값(서버 date(\'Y-m-d\'))과 활성 칩/제출 날짜가 항상 일치한다.
         var today = new Date(' . date('Y') . ', ' . (date('n') - 1) . ', ' . date('j') . '); today.setHours(0,0,0,0);
         var endDate = new Date(today); endDate.setMonth(endDate.getMonth() + 1);
         var dates = [];
         var cur = new Date(today);
         while (cur < endDate) {
-            // 관리자에서 휴무로 설정한 요일은 날짜 선택 목록에서 제외한다.
             var curValue = cur.getFullYear() + "-" + (cur.getMonth() + 1 < 10 ? "0" : "") + (cur.getMonth() + 1) + "-" + (cur.getDate() < 10 ? "0" : "") + cur.getDate();
             if ((!HAS_WEEKLY_HOURS || WEEKLY_HOURS[cur.getDay()]) && SPECIAL_CLOSED_DATES.indexOf(curValue) < 0) dates.push(new Date(cur));
             cur.setDate(cur.getDate() + 1);
@@ -1611,10 +1569,8 @@ $page_js = '
         function pad(n) { return n < 10 ? "0" + n : "" + n; }
         function fmt(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
 
-        // 오늘이 휴무라 목록에서 빠진 경우 첫 번째 영업일을 기본 선택한다.
         if (dates.length && !dates.some(function(d) { return fmt(d) === hidden.value; })) hidden.value = fmt(dates[0]);
 
-        // 월 클릭 시 첫 달은 오늘(목록의 첫 날짜), 다음 달은 해당 월의 첫 예약 가능 날짜를 왼쪽에 맞춘다.
         function renderMonths() {
             monthSel.innerHTML = "";
             months.forEach(function(k) {
@@ -1635,7 +1591,6 @@ $page_js = '
                 monthSel.appendChild(el);
             });
         }
-        // 모든 날짜를 하나의 스크롤 목록으로 렌더 (월 필터 없음)
         function renderDates() {
             dateSel.innerHTML = "";
             dates.forEach(function(d) {
@@ -1646,9 +1601,9 @@ $page_js = '
                 chip.setAttribute("data-month", k);
                 var wd = document.createElement("span"); wd.className = "dc-wd"; wd.textContent = weekdays[d.getDay()];
                 var day = document.createElement("span"); day.className = "dc-day"; day.textContent = d.getDate();
-                chip.appendChild(wd);   // 요일 위
-                chip.appendChild(day);  // 날짜 아래
-                if (val === fmt(today)) { // 오늘 날짜: 아래에 오늘 라벨 추가
+                chip.appendChild(wd);   
+                chip.appendChild(day);  
+                if (val === fmt(today)) { 
                     var todayLbl = document.createElement("span");
                     todayLbl.className = "dc-today";
                     todayLbl.textContent = "오늘";
@@ -1658,13 +1613,11 @@ $page_js = '
                     hidden.value = val;
                     dateSel.querySelectorAll(".date-chip").forEach(function(c){ c.classList.remove("active"); });
                     chip.classList.add("active");
-                    // 날짜가 바뀌면 시간 그리드 재생성(오늘 지난 시간 재평가).
                     if (window.buildTimeGrid) window.buildTimeGrid();
                     if (window.updateSubmitState) window.updateSubmitState();
                 };
                 dateSel.appendChild(chip);
             });
-            // 다음 달의 날짜가 적어도 그 달 첫 날짜를 항상 왼쪽 끝까지 이동할 수 있게 한다.
             if (months.length > 1) {
                 var tail = document.createElement("span");
                 tail.className = "date-selector-tail";
@@ -1680,7 +1633,6 @@ $page_js = '
             var targetLeft = target.getBoundingClientRect().left - dateSel.getBoundingClientRect().left + dateSel.scrollLeft;
             dateSel.scrollTo({ left: targetLeft, behavior: "auto" });
         }
-        // 스와이프(스크롤) 시 왼쪽에 보이는 날짜의 월로 활성 월 자동 변경
         function updateActiveMonthFromScroll() {
             var chips = dateSel.querySelectorAll(".date-chip");
             var selectorLeft = dateSel.getBoundingClientRect().left;
@@ -1699,25 +1651,28 @@ $page_js = '
         renderDates();
     }
     initDatePicker();
+    var PRESELECT_TIME = ' . json_encode(preg_match('/^\d{2}:\d{2}$/', (string)($_GET['time'] ?? '')) ? (string)$_GET['time'] : '') . ';
+    if (PRESELECT_TIME) setTimeout(function(){
+        var slots = document.querySelectorAll("#timeGrid .time-slot");
+        for (var i = 0; i < slots.length; i++) {
+            if (slots[i].textContent.trim() === PRESELECT_TIME && !slots[i].classList.contains("disabled")) { slots[i].click(); break; }
+        }
+    }, 400);
 
-    // [오늘 지난 시간 픽스] 서버(KST) 기준 오늘 날짜/현재시각(자정 이후 분) — 지난 시간대 비활성용
     var SERVER_TODAY = "' . date('Y-m-d') . '";
     var SERVER_NOW_MIN = ' . (date('G') * 60 + (int)date('i')) . ';
     var LUNCH_START_MIN = ' . ($booking_lunch_start_min === null ? 'null' : (int)$booking_lunch_start_min) . ';
     var LUNCH_END_MIN = ' . ($booking_lunch_end_min === null ? 'null' : (int)$booking_lunch_end_min) . ';
 
-    // 시간대 그리드 (숨긴 select 옵션 → 빨강 박스 칩, 한 줄 4개). 클릭 시 select 값 동기화.
     function buildTimeGrid() {
         var sel = document.getElementById("timeSelect");
         var grid = document.getElementById("timeGrid");
         if (!sel || !grid) return;
         grid.innerHTML = "";
-        // 선택된 날짜가 오늘이면 이미 지난 시간대는 클릭 불가로 만든다.
         var selDate = (document.getElementById("bookingDate") || {}).value || "";
         var isToday = (selDate === SERVER_TODAY);
         var selectedDay = selDate ? new Date(selDate + "T00:00:00").getDay() : -1;
         var dayHours = HAS_WEEKLY_HOURS && selectedDay >= 0 ? WEEKLY_HOURS[selectedDay] : null;
-        // 날짜 변경 뒤 이전 날짜에서 고른 시간이 남지 않도록 먼저 초기화한다.
         sel.value = "";
         if (HAS_WEEKLY_HOURS && !dayHours) {
             var closed = document.createElement("div");
@@ -1730,18 +1685,14 @@ $page_js = '
         for (var i = 0; i < sel.options.length; i++) {
             var value = sel.options[i].value;
             if (!value) continue;
-            // HMS 스케줄 로딩 시 예약됨/지난 시간은 disabled 로 온다 → 표시는 하되 클릭 불가
             var disabled = sel.options[i].disabled;
             var label = sel.options[i].textContent || value;
             var hm = value.split(":");
             var slotMin = parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10);
-            // 종료 시각은 진료가 끝나는 시각이므로 해당 시각 슬롯은 포함하지 않는다.
             if (dayHours && (slotMin < dayHours.open || slotMin >= dayHours.close)) continue;
-            // 오늘 && 지난 시간대 → 비활성 (정적 그리드/HMS 공통)
             if (!disabled && isToday) {
                 if (slotMin <= SERVER_NOW_MIN) { disabled = true; }
             }
-            // 점심시간 슬롯은 비활성 표시하지 않고 예약 시간표에서 완전히 제외한다.
             if (LUNCH_START_MIN !== null && LUNCH_END_MIN !== null
                 && slotMin >= LUNCH_START_MIN && slotMin < LUNCH_END_MIN) continue;
             (function(v, isDisabled, text) {
@@ -1768,13 +1719,11 @@ $page_js = '
         }
     }
     buildTimeGrid();
-    window.buildTimeGrid = buildTimeGrid; // 날짜 변경 시 재생성용(오늘 지난 시간 재평가)
+    window.buildTimeGrid = buildTimeGrid; 
 
-    // 시술 선택 시트(옵션 변경)
     function openTreatmentSheet() {
         var s = document.getElementById("treatmentSheet");
         if (!s) return;
-        // 이미 선택된 항목을 시트에 표시 동기화
         s.querySelectorAll(".sheet-item:not(.package-item)").forEach(function(el) {
             markSheetItem(el, !!findTreatment(el.getAttribute("data-name")));
         });
@@ -1785,16 +1734,78 @@ $page_js = '
     }
     function closeTreatmentSheet() {
         var s = document.getElementById("treatmentSheet");
-        if (s) { s.classList.remove("open"); document.body.style.overflow = ""; }
+        if (s) {
+            var panel = s.querySelector(".treatment-sheet");
+            if (panel) {
+                panel.classList.remove("is-dragging", "is-snapping");
+                panel.style.transform = "";
+            }
+            s.classList.remove("open"); document.body.style.overflow = "";
+        }
     }
-    // 시트 카드의 선택 표시(테두리 강조)와 스크린리더 상태를 함께 갱신한다.
+
+    (function initTreatmentSheetDrag() {
+        var overlay = document.getElementById("treatmentSheet");
+        if (!overlay) return;
+        var panel = overlay.querySelector(".treatment-sheet");
+        var handle = overlay.querySelector(".sheet-handle");
+        if (!panel || !handle) return;
+
+        var startY = 0;
+        var currentY = 0;
+        var startedAt = 0;
+        var dragging = false;
+
+        handle.addEventListener("pointerdown", function(e) {
+            if (!overlay.classList.contains("open")) return;
+            dragging = true;
+            startY = e.clientY;
+            currentY = 0;
+            startedAt = Date.now();
+            panel.classList.remove("is-snapping");
+            panel.classList.add("is-dragging");
+            handle.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+
+        handle.addEventListener("pointermove", function(e) {
+            if (!dragging) return;
+            var delta = e.clientY - startY;
+            currentY = delta < 0 ? Math.max(delta * .22, -28) : delta;
+            panel.style.transform = "translateY(" + currentY + "px)";
+            e.preventDefault();
+        });
+
+        function finishDrag(e) {
+            if (!dragging) return;
+            dragging = false;
+            var elapsed = Math.max(Date.now() - startedAt, 1);
+            var velocity = currentY / elapsed;
+            panel.classList.remove("is-dragging");
+
+            if (currentY >= 90 || velocity > .65) {
+                panel.classList.add("is-snapping");
+                panel.style.transform = "translateY(110%)";
+                window.setTimeout(closeTreatmentSheet, 220);
+            } else {
+                panel.classList.add("is-snapping");
+                panel.style.transform = "translateY(0)";
+                window.setTimeout(function() { panel.classList.remove("is-snapping"); }, 220);
+            }
+            if (e && handle.hasPointerCapture && handle.hasPointerCapture(e.pointerId)) {
+                handle.releasePointerCapture(e.pointerId);
+            }
+        }
+
+        handle.addEventListener("pointerup", finishDrag);
+        handle.addEventListener("pointercancel", finishDrag);
+    })();
     function markSheetItem(el, on) {
         if (!el) return;
         el.classList.toggle("selected", !!on);
         el.setAttribute("aria-pressed", on ? "true" : "false");
     }
 
-    // 개별 시술은 여러 개를 선택할 수 있고, 각 시술별 세부 옵션은 1개를 선택한다.
     var selectedTreatments = [];
     var selectedPackage = null;
     function bookingPriceWon(price) {
@@ -1810,7 +1821,6 @@ $page_js = '
         for (var i = 0; i < selectedTreatments.length; i++) { if (selectedTreatments[i].name === name) return selectedTreatments[i]; }
         return null;
     }
-    // 시트 항목 탭 → 목록에 추가/제거 (토글). 시트는 닫지 않아 여러 개 선택 가능.
     function pickTreatment(btn) {
         var name = btn.getAttribute("data-name") || "";
         var price = btn.getAttribute("data-price") || "";
@@ -1873,7 +1883,6 @@ $page_js = '
         renderSelectedTreatments();
     }
     function renderSelectedTreatments() {
-        // 폼 필드 동기화
         document.getElementById("selectionTypeInput").value = selectedPackage ? "package" : "treatments";
         document.getElementById("packageIdInput").value = selectedPackage ? selectedPackage.id : 0;
         document.getElementById("treatmentsJson").value = JSON.stringify(selectedTreatments);
@@ -1911,7 +1920,6 @@ $page_js = '
         }
         selectedTreatments.forEach(function(t) {
             var item = document.createElement("div"); item.className = "st-item";
-            // 윗줄: 시술명 + 삭제(×)
             var top = document.createElement("div"); top.className = "st-top";
             var nameEl = document.createElement("span"); nameEl.className = "st-name"; nameEl.textContent = t.name;
             top.appendChild(nameEl);
@@ -1919,7 +1927,6 @@ $page_js = '
             rm.onclick = function() { removeTreatment(t.name); };
             top.appendChild(rm);
             item.appendChild(top);
-            // 아랫줄: 수량 스테퍼(왼쪽) + 가격(오른쪽 끝)
             var qrow = document.createElement("div"); qrow.className = "st-qty-row";
             if ((t.options || []).length > 1) {
                 var optionBox = document.createElement("div"); optionBox.className = "detail-option-list";
@@ -1956,8 +1963,6 @@ $page_js = '
         });
     }
 
-    // The sheet is rendered later in the document, so initialize after parsing.
-    // Users may still open "옵션 변경" and add any other treatments.
     document.addEventListener("DOMContentLoaded", function() {
         if (!initialTreatmentName || findTreatment(initialTreatmentName)) return;
         var matchedButton = null;
@@ -1989,7 +1994,6 @@ $page_js = '
         renderSelectedTreatments();
     });
 
-    // 날짜/시간/시술이 모두 선택돼야 제출 버튼이 활성 색상이 된다.
     function updateSubmitState() {
         var btn = document.querySelector(".btn-submit[type=submit]");
         if (!btn) return;
@@ -2095,8 +2099,6 @@ $page_js = '
         var overlay = document.getElementById("bookingSuccessOverlay");
         if (!overlay) return;
 
-        // 바텀시트 밖의 모든 포커스 가능한 요소를 잠가 키보드/보조기기에서도
-        // 아래 두 링크 외에는 조작할 수 없게 한다.
         successLockedElements = [];
         document.querySelectorAll("a,button,input,select,textarea,[tabindex]").forEach(function(el) {
             if (overlay.contains(el)) return;
@@ -2108,7 +2110,6 @@ $page_js = '
             link.addEventListener("click", function() { successExitAllowed = true; }, { once: true });
         });
 
-        // 모바일 하드웨어 Back/브라우저 Back도 완료 화면을 닫지 못하게 한다.
         history.pushState({ bookingSuccessLocked: true }, "", window.location.href);
         window.addEventListener("popstate", keepBookingSuccessOpen);
         var firstAction = overlay.querySelector(".success-action.primary");
@@ -2122,7 +2123,6 @@ $page_js = '
         }
     }
 
-    // 폼 유효성 검사 후 서버 제출 대신 최종 확인 화면을 먼저 연다.
     var bookingForm = document.getElementById("bookingForm");
     if (bookingForm) {
         bookingForm.addEventListener("submit", function(e) {
@@ -2146,7 +2146,6 @@ $page_js = '
         });
     }
 
-    // 병원 이미지 슬라이더
     var currentImageIndex = 0;
     var imageWrapper = document.getElementById("hospitalImagesWrapper");
 
@@ -2199,7 +2198,6 @@ $page_js = '
             updateImageCounter();
         }
 
-        // 스크롤 이벤트로 현재 인덱스 업데이트
         imageWrapper.addEventListener("scroll", function() {
             var scrollPosition = imageWrapper.scrollLeft;
             var itemWidth = imageWrapper.offsetWidth;
@@ -2211,29 +2209,20 @@ $page_js = '
             }
         });
 
-        // 전역 함수로 노출
+
         window.scrollImageContainer = scrollImageContainer;
     }
 ';
 
-// ========================================
-// 공유 헤더 포함 (HTML 시작, Tailwind, main-content 열기)
-// ========================================
-$hide_global_nav = true;         // 예약 화면에선 글로벌 네비게이션(로고 포함) 숨김
-// global_nav 가 사라지면 fixed 인 관리자 인라인 편집 상단바(.ae-topbar, z-index 9999)가
-// 페이지 헤더(예약하기 / 옵션 변경)를 덮어 클릭할 수 없게 된다.
-// detail_community.php 와 동일하게 두 상단바를 함께 숨긴다.
-$hide_admin_inline_edit = true;  // 관리자 인라인 편집 상단바(ae-topbar) 숨김
+$hide_global_nav = true;
+$hide_admin_inline_edit = true;
 include __DIR__ . '/includes/header.php';
 ?>
-
-    <!-- 페이지 헤더 -->
     <div class="page-header">
             <a href="<?php echo htmlspecialchars($booking_back_url, ENT_QUOTES, 'UTF-8'); ?>" class="back-btn" aria-label="뒤로"><i class="bi bi-chevron-left"></i></a>
-            <div class="page-title"><?php echo $is_rebooking ? '예약 선택' : term('booking', '예약') . '하기'; ?></div>
+            <div class="page-title"><?php echo $is_rebooking ? '예약 변경' : '예약 선택'; ?></div>
     </div>
 
-    <!-- 병원 이미지 슬라이더 -->
     <?php if (!$is_rebooking && !empty($images)): ?>
     <div class="hospital-images-section">
         <button class="image-nav-btn left" onclick="scrollImageContainer(-1)">‹</button>
@@ -2252,7 +2241,6 @@ include __DIR__ . '/includes/header.php';
     <?php endif; ?>
 
     <?php if ($booking_submitted): ?>
-    <!-- 예약 성공 메시지 -->
     <div class="success-message">
         <h2>&#x2705; <?php echo term('booking', '예약'); ?> 신청이 완료되었습니다</h2>
         <?php if ($hms_appointment_id): ?>
@@ -2282,7 +2270,6 @@ include __DIR__ . '/includes/header.php';
     <?php else: ?>
 
     <?php if ($booking_error): ?>
-    <!-- 에러 메시지 -->
     <div class="error-message">
         <?php echo htmlspecialchars($booking_error); ?>
     </div>
@@ -2292,20 +2279,18 @@ include __DIR__ . '/includes/header.php';
         <?php renderDevModeButton('booking'); ?>
     <?php endif; ?>
 
-    <!-- 예약 폼 -->
+
     <form method="POST" class="booking-form<?php echo $is_rebooking ? ' rebooking' : ''; ?>" id="bookingForm">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
         <input type="hidden" name="response_mode" value="ajax">
-        <!-- 예약하기 헤더 + 옵션 변경(시술 선택 시트) -->
+
         <div class="form-group head-group">
             <div class="section-head-row">
-                <span class="section-head-title"><?php echo $is_rebooking ? '예약을 진행해볼까요?' : term('booking', '예약') . '하기'; ?></span>
+                <span class="section-head-title">예약을 진행해볼까요?</span>
                 <button type="button" class="option-change-btn" onclick="openTreatmentSheet()"<?php echo empty($booking_packages) ? ' style="display:none;"' : ''; ?>>
                     옵션 변경
                 </button>
             </div>
-            <!-- hidden 필드엔 HTML5 required 가 적용되지 않으므로 제거 — 실제 검증은
-                 아래 submit 핸들러(JS)와 서버측 empty() 체크가 담당한다. -->
             <input type="hidden" name="treatment" id="treatmentInput">
             <input type="hidden" name="quantity" id="quantityInput" value="1">
             <input type="hidden" name="treatments_json" id="treatmentsJson" value="[]">
@@ -2332,23 +2317,22 @@ include __DIR__ . '/includes/header.php';
                 <?php endforeach; ?>
             </div>
             <?php endif; ?>
-            <!-- 선택된 시술 표시 -->
             <div id="selectedTreatmentDisplay" class="selected-treatment" style="display:none;"></div>
             <div id="treatmentPlaceholder" class="form-help"><?php echo $preselected_booking_treatment === null ? '원하는 시술 1개를 선택해주세요.' : '선택한 시술의 세부 옵션을 확인해주세요.'; ?></div>
         </div>
         <div class="form-group">
-            <label class="form-label date-select-label"><?php echo $is_rebooking ? '언제 방문하시겠어요?' : '날짜 선택'; ?></label>
-            <input type="hidden" name="date" id="bookingDate" value="<?php echo date('Y-m-d'); ?>">
+            <label class="form-label date-select-label">언제 방문하시겠어요?</label>
+            <input type="hidden" name="date" id="bookingDate" value="<?php
+                $bk_get_date = trim((string)($_GET['date'] ?? ''));
+                echo htmlspecialchars(preg_match('/^\d{4}-\d{2}-\d{2}$/', $bk_get_date) && $bk_get_date >= date('Y-m-d') ? $bk_get_date : date('Y-m-d'));
+            ?>">
             <div class="month-selector" id="monthSelector"></div>
             <div class="date-selector" id="dateSelector"></div>
         </div>
 
-        <!-- 예약 시간 -->
         <div class="form-group">
-            <label class="form-label date-select-label"><?php echo $is_rebooking ? '예약 시간을 선택해주세요' : '시간 선택'; ?></label>
-            <?php if ($is_rebooking): ?><div class="rebook-method"><strong>예약 확정 방식</strong><span>병원에서 확인 후 일정이 확정돼요</span></div><?php endif; ?>
-            <!-- [1차 검수 #15 - 2026-05-28] 예약 시간 선택 30분 단위로 세분화 -->
-            <!-- select 는 폼 제출/HMS 스케줄용으로 숨김 유지, 실제 표시는 아래 time-grid -->
+            <label class="form-label date-select-label">예약 시간을 선택해주세요</label>
+            <div class="rebook-method"><strong>예약 확정 방식</strong><span>병원에서 확인 후 일정이 확정돼요</span></div>
             <select name="time" id="timeSelect" style="display:none;">
                 <option value="">시간을 선택하세요</option>
                 <?php for ($slot_minute = 0; $slot_minute < 24 * 60; $slot_minute += 30):
@@ -2360,17 +2344,14 @@ include __DIR__ . '/includes/header.php';
                 <option value="<?php echo $slot_value; ?>"><?php echo $slot_period . ' ' . sprintf('%02d:%02d', $slot_display_hour, $slot_minute % 60); ?></option>
                 <?php endfor; ?>
             </select>
-            <!-- 병원 운영 시간대 (빨강 테두리 박스, 한 줄에 4개) -->
             <div class="time-grid" id="timeGrid"></div>
         </div>
 
-        <!-- 제출 버튼 -->
         <div class="submit-section">
-            <button type="submit" class="btn-submit"><?php echo $is_rebooking ? '예약할게요!' : term('booking', '예약') . ' 신청하기'; ?></button>
+            <button type="submit" class="btn-submit">예약할게요!</button>
         </div>
     </form>
 
-    <!-- 1단계: 예약 내용 최종 확인 -->
     <div class="booking-confirm-overlay" id="bookingConfirmOverlay" aria-hidden="true">
         <section class="booking-confirm-page" role="dialog" aria-modal="true" aria-labelledby="bookingConfirmTitle">
             <header class="confirm-page-head">
@@ -2424,7 +2405,6 @@ include __DIR__ . '/includes/header.php';
         </section>
     </div>
 
-    <!-- 2단계: 예약 요청 접수 완료 (아래에서 올라오는 바텀시트) -->
     <div class="booking-success-overlay" id="bookingSuccessOverlay" aria-hidden="true">
         <section class="booking-success-sheet" role="dialog" aria-modal="true" aria-labelledby="bookingSuccessTitle">
             <div class="success-sheet-handle" aria-hidden="true"></div>
@@ -2446,13 +2426,10 @@ include __DIR__ . '/includes/header.php';
         </section>
     </div>
 
-    <!-- 시술 선택 시트 (옵션 변경) -->
     <?php
-    // 시트에 표시할 시술 목록 구성 (신 시스템 우선 → 태그 → 기본값)
     $sheet_items = [];
     if (!empty($booking_treatments)) {
         foreach ($booking_treatments as $bt) {
-            // 과거 만원 가격과 신규 원 가격을 모두 원 단위로 표시한다.
             $pl = '';
             if (!empty($bt['price_min']) && $bt['price_min'] > 0) {
                 $bt_min_won = booking_price_won($bt['price_min']);
@@ -2472,15 +2449,39 @@ include __DIR__ . '/includes/header.php';
     if (empty($sheet_items)) {
         foreach (['코성형','눈성형','지방흡입','가슴성형','리프팅','보톡스'] as $d) $sheet_items[] = ['name' => $d, 'price' => ''];
     }
+    $preselected_sheet_item = null;
+    if ($preselected_booking_treatment !== null) {
+        $preselected_name = (string)($preselected_booking_treatment['name'] ?? '');
+        foreach ($sheet_items as $sheet_item_index => $sheet_item) {
+            if ((string)($sheet_item['name'] ?? '') === $preselected_name) {
+                $preselected_sheet_item = $sheet_item;
+                unset($sheet_items[$sheet_item_index]);
+                break;
+            }
+        }
+        $sheet_items = array_values($sheet_items);
+    }
+
+    $sheet_packages = array_slice($booking_packages, 0, $preselected_sheet_item !== null ? 2 : 3);
+    $sheet_item_slots = max(0, 3 - count($sheet_packages));
+    $visible_sheet_items = [];
+    if ($preselected_sheet_item !== null && $sheet_item_slots > 0) {
+        $visible_sheet_items[] = $preselected_sheet_item;
+    }
+    $remaining_sheet_item_slots = $sheet_item_slots - count($visible_sheet_items);
+    if ($remaining_sheet_item_slots > 0) {
+        $visible_sheet_items = array_merge($visible_sheet_items, array_slice($sheet_items, 0, $remaining_sheet_item_slots));
+    }
+    $sheet_items = $visible_sheet_items;
     ?>
     <div class="treatment-sheet-overlay" id="treatmentSheet" onclick="if(event.target===this)closeTreatmentSheet()">
         <div class="treatment-sheet" role="dialog" aria-modal="true" aria-labelledby="treatmentSheetTitle">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2 class="sheet-title" id="treatmentSheetTitle">원하는 시술을 여러 개 선택해주세요</h2>
+            <h2 class="sheet-title" id="treatmentSheetTitle">옵션 선택</h2>
             <div class="sheet-list" role="group" aria-labelledby="treatmentSheetTitle">
-                <?php if (!empty($booking_packages)): ?>
+                <?php if (!empty($sheet_packages)): ?>
                 <div class="sheet-section-title">패키지 중 1개 선택</div>
-                <?php foreach ($booking_packages as $bp): ?>
+                <?php foreach ($sheet_packages as $bp): ?>
                 <button type="button" class="sheet-item package-item"
                         data-package-id="<?php echo (int)$bp['id']; ?>"
                         data-name="<?php echo htmlspecialchars($bp['name'], ENT_QUOTES); ?>"
@@ -2524,7 +2525,6 @@ include __DIR__ . '/includes/header.php';
                             <span class="price-off"><?php echo htmlspecialchars($it['price_off']); ?></span>
                             <?php endif; ?>
                             <?php
-                            // 숫자와 단위(만원/원)를 나눠 단위만 작게 표시한다.
                             $_pnum = $it['price']; $_punit = '';
                             if (preg_match('/^(.*?)(만원|원)$/u', $it['price'], $_pm)) {
                                 $_pnum = $_pm[1]; $_punit = $_pm[2];
@@ -2547,9 +2547,6 @@ include __DIR__ . '/includes/header.php';
     <?php endif; ?>
 
 <?php
-// ========================================
-// 공유 푸터 포함 (main-content 닫기, bottom_navigation, closing tags)
-// ========================================
 if ($booking_from_wishlist) $bottom_nav_active = 'my';
 include __DIR__ . '/includes/footer.php';
 
