@@ -424,7 +424,7 @@ $page_css = '
     .search-filter-chip .chip-remove:hover { opacity: 1; }
 
     /* 그리드 */
-    .hospital-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 40px; }
+    .hospital-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: 100%; padding-inline: 16px; margin-bottom: 40px; box-sizing: border-box; }
     .hospital-card { background: var(--bs-body-bg, #fff); border-radius: 0px; overflow: hidden; box-shadow: none; position: relative; display: flex; flex-direction: column; }
     .hospital-card:hover { }
     .card-link { cursor: pointer; flex: 1; }
@@ -575,7 +575,7 @@ if ($_infeed_enabled === '1') {
 }
 $_ad_idx = 0;
 ?>
-    <div class="hospital-grid list-view" id="hospital-grid" style="padding: 0 16px;">
+    <div class="hospital-grid list-view" id="hospital-grid">
 <?php
 $__hi = 0;
 foreach ($hospitals as $hospital):
@@ -623,7 +623,7 @@ foreach ($hospitals as $hospital):
              data-target-url="<?php echo htmlspecialchars($_detail_url, ENT_QUOTES, 'UTF-8'); ?>"
              <?php endif; ?>>
             <div style="position:absolute;top:8px;right:8px;z-index:3;background:rgba(255,255,255,.9);border-radius:999px;">
-                <?php renderWishlistButton('hospital', (int)$hospital['id'], 'sm', false, 'heart'); ?>
+                <?php renderWishlistButton('hospital', (int)$hospital['id'], 'sm', false, 'star'); ?>
             </div>
             <div class="card-link">
                 <?php

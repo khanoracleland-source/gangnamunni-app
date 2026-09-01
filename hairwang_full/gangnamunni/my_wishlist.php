@@ -32,22 +32,7 @@ $sql = "SELECT w.*, w.target_type,
                AND h.is_active=1
                AND COALESCE(h.is_demo,0)=0
                AND (h.status='approved' OR h.status IS NULL)
-             THEN 1 ELSE 0 END as hospital_available,
-        (
-            SELECT rt.name FROM gangnamunni_treatments rt
-            WHERE rt.hospital_id=h.id AND rt.is_active=1
-            ORDER BY rt.is_popular DESC, rt.sort_order ASC, rt.id ASC LIMIT 1
-        ) as display_treatment_name,
-        (
-            SELECT rt.price FROM gangnamunni_treatments rt
-            WHERE rt.hospital_id=h.id AND rt.is_active=1
-            ORDER BY rt.is_popular DESC, rt.sort_order ASC, rt.id ASC LIMIT 1
-        ) as treatment_regular_price,
-        (
-            SELECT COALESCE(NULLIF(rt.discount_price,0), rt.price) FROM gangnamunni_treatments rt
-            WHERE rt.hospital_id=h.id AND rt.is_active=1
-            ORDER BY rt.is_popular DESC, rt.sort_order ASC, rt.id ASC LIMIT 1
-        ) as treatment_price
+             THEN 1 ELSE 0 END as hospital_available
         FROM gangnamunni_wishlist w
         LEFT JOIN gangnamunni_hospitals h ON w.target_id=h.id
         WHERE w.member_id = ? AND w.target_type='hospital'
@@ -62,6 +47,33 @@ while ($row = mysqli_fetch_assoc($result)) {
     $items[] = $row;
 }
 mysqli_stmt_close($stmt);
+
+// hospitals.php와 동일하게 관리자가 지정한 main/logo 이미지를 우선 사용한다.
+$hospital_main_images = [];
+$hospital_logos = [];
+if (!empty($items)) {
+    $hospital_ids = array_values(array_filter(array_map('intval', array_column($items, 'target_id'))));
+    $hospital_ids_sql = implode(',', $hospital_ids);
+    if ($hospital_ids_sql !== '') {
+        $image_result = mysqli_query($connect,
+            "SELECT hospital_id, image_url, image_type
+             FROM hospital_images
+             WHERE hospital_id IN ({$hospital_ids_sql})
+               AND is_active=1 AND image_type IN ('main','logo')
+             ORDER BY hospital_id ASC, sort_order ASC, id ASC");
+        if ($image_result) {
+            while ($image_row = mysqli_fetch_assoc($image_result)) {
+                $hospital_id = (int)$image_row['hospital_id'];
+                if (empty($image_row['image_url'])) continue;
+                if (($image_row['image_type'] ?? '') === 'logo') {
+                    if (!isset($hospital_logos[$hospital_id])) $hospital_logos[$hospital_id] = $image_row['image_url'];
+                } elseif (!isset($hospital_main_images[$hospital_id])) {
+                    $hospital_main_images[$hospital_id] = $image_row['image_url'];
+                }
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="light">
@@ -90,43 +102,23 @@ body { font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 .empty-state i { font-size: calc(48px * var(--fs-scale,1) * var(--fs-page,1)); margin-bottom: 12px; display: block; }
 
-.wishlist-list { padding:0 20px; }
-.wishlist-card { position:relative; display:flex; gap:20px; min-height:176px; padding:30px 0; border-bottom:1px solid var(--border); background:var(--card); cursor:pointer; }
-.wishlist-card:last-child { border-bottom:0; }
-.wishlist-card .img-wrap { position: relative; flex-shrink: 0; }
-.wishlist-card img { width:120px; height:120px; object-fit:cover; display:block; border:1px solid #ddd; }
-.wishlist-card .no-img { width:120px; height:120px; background:#f2f2f2; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; font-size:34px; color:#aaa; }
-.wishlist-info { flex:1; min-width:0; padding-right:42px; }
-.wishlist-info h3 { font-size:20px; font-weight:700; line-height:1.35; margin:0 0 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.wishlist-info h3 a { color: var(--text); text-decoration: none; }
-.wishlist-info .meta { font-size:15px; color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:10px; }
-.wishlist-info .meta .district { font-weight:500; }
-.wishlist-info .meta .divider { color:#bbb; margin:0 8px; }
-.wishlist-info .treatment-name { font-size:22px; font-weight:700; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:7px; }
-.unavailable-label { color:#999; font-size:15px; font-weight:600; margin-top:8px; }
-.wishlist-card.is-unavailable { cursor:default; opacity:.72; }
-.wishlist-card.is-unavailable .img-wrap { filter:grayscale(1); }
-.price-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:7px; line-height:1.35; }
-.regular-price { color:#aaa; font-size:14px; text-decoration:line-through; }
-.sale-price { color:#d50000; font-size:22px; font-weight:800; }
-.price-unit { color:#222; font-size:13px; font-weight:500; margin-left:1px; }
-.price-inquiry { color:#777; font-size:14px; }
-.wishlist-actions { position:absolute; right:0; top:28px; }
-.wishlist-actions .remove-btn { border:0; background:none; cursor:pointer; padding:4px; font-size:25px; color:var(--primary); line-height:1; transition:transform .15s; }
-.wishlist-actions .remove-btn:hover { transform: scale(1.1); }
+.hospital-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; width:100%; padding-inline:16px; margin-bottom:40px; box-sizing:border-box; }
+.hospital-card { position:relative; display:flex; flex-direction:row; overflow:hidden; background:var(--card); }
+.hospital-card .card-link { display:flex; flex-direction:row; flex:1; min-width:0; cursor:pointer; }
+.hospital-card .hospital-image { width:100px; height:100px; flex-shrink:0; object-fit:cover; background:#d9d9d9; display:block; }
+.hospital-card .hospital-info { flex:1; min-width:0; padding:10px 44px 10px 12px; }
+.hospital-card .hospital-name { color:var(--text); font-size:15px; font-weight:500; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hospital-card .hospital-address { color:var(--text); font-size:14px; font-weight:400; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hospital-card .addr-district { font-weight:600; }
+.hospital-card .addr-sep { color:#aaa; margin:0 5px; }
+.wishlist-actions { position:absolute; top:8px; right:8px; z-index:3; background:rgba(255,255,255,.9); border-radius:999px; }
+.wishlist-actions .remove-btn { border:0; background:none; cursor:pointer; padding:4px; font-size:20px; color:var(--primary); line-height:1; }
+.unavailable-label { color:#999; font-size:14px; font-weight:600; margin-top:8px; }
+.hospital-card.is-unavailable { opacity:.72; }
+.hospital-card.is-unavailable .hospital-image { filter:grayscale(1); }
 @media (max-width:480px) {
   .page-header { height:64px; }
   .page-header h1 { font-size:17px; }
-  .wishlist-list { padding:0 16px; }
-  .wishlist-card { min-height:142px; gap:14px; padding:22px 0; }
-  .wishlist-card img,.wishlist-card .no-img { width:120px; height:120px; }
-  .wishlist-info { padding-right:34px; }
-  .wishlist-info h3 { font-size:20px; }
-  .wishlist-info .meta { font-size:15px; margin-bottom:7px; }
-  .wishlist-info .treatment-name { font-size:22px; margin-bottom:5px; }
-  .sale-price { font-size:22px; }
-  .regular-price { font-size:12px; }
-  .wishlist-actions { top:19px; }
 }
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
@@ -145,37 +137,26 @@ body { font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     <a href="hospitals.php" style="display:inline-block; margin-top:16px; padding:10px 24px; background:var(--primary); color:#fff; border-radius:8px; text-decoration:none; font-size:14px;"><?php echo term('business', '병원'); ?> 둘러보기</a>
 </div>
 <?php else: ?>
-<div class="wishlist-list">
+<div class="hospital-grid list-view">
 <?php foreach ($items as $item): ?>
     <?php
     $is_available = !empty($item['hospital_available']);
     $link = $is_available ? "detail.php?id={$item['target_id']}" : '';
     ?>
-<div class="wishlist-card<?php echo $is_available ? '' : ' is-unavailable'; ?>" id="wcard_<?php echo $item['id']; ?>"<?php if ($is_available): ?> onclick="location.href='<?php echo htmlspecialchars($link, ENT_QUOTES); ?>'"<?php endif; ?>>
-    <div class="img-wrap">
-        <?php if ($item['target_image']): ?>
-        <?php if ($is_available): ?><a href="<?php echo htmlspecialchars($link); ?>"><?php endif; ?><img src="<?php echo htmlspecialchars($item['target_image']); ?>" alt=""><?php if ($is_available): ?></a><?php endif; ?>
-        <?php else: ?>
-        <?php if ($is_available): ?><a href="<?php echo htmlspecialchars($link); ?>"><?php endif; ?><div class="no-img"><i class="bi bi-building"></i></div><?php if ($is_available): ?></a><?php endif; ?>
-        <?php endif; ?>
-    </div>
-
-    <div class="wishlist-info">
-        <h3><?php if ($is_available): ?><a href="<?php echo htmlspecialchars($link); ?>"><?php endif; ?><?php echo htmlspecialchars($item['target_name'] ?? '(삭제됨)'); ?><?php if ($is_available): ?></a><?php endif; ?></h3>
-        <?php if (!$is_available): ?><div class="unavailable-label">현재 이용할 수 없는 병원입니다</div><?php else: ?>
-        <?php $_address = trim((string)($item['target_address'] ?? '')); $_address_parts = preg_split('/\s+/u', $_address); $_district = $_address_parts[1] ?? ($_address_parts[0] ?? ''); ?>
-        <?php if ($_address !== ''): ?><div class="meta"><span class="district"><?php echo htmlspecialchars($_district); ?></span><span class="divider">|</span><span><?php echo htmlspecialchars($_address); ?></span></div><?php endif; ?>
-        <?php if (!empty($item['display_treatment_name'])): ?><div class="treatment-name"><?php echo htmlspecialchars($item['display_treatment_name']); ?></div><?php endif; ?>
-        <?php $_regular = (int)($item['treatment_regular_price'] ?? 0); $_sale = (int)($item['treatment_price'] ?? 0); ?>
-        <div class="price-row">
-            <?php if ($_regular > $_sale && $_sale > 0): ?><span class="regular-price">VAT 포함&nbsp; <?php echo number_format($_regular); ?>원</span><?php endif; ?>
-            <?php if ($_sale > 0): ?><span class="sale-price"><?php echo number_format($_sale); ?><span class="price-unit">원</span></span><?php else: ?><span class="price-inquiry">가격 문의</span><?php endif; ?>
-        </div>
-        <?php endif; ?>
-    </div>
-
+<div class="hospital-card<?php echo $is_available ? '' : ' is-unavailable'; ?>" id="wcard_<?php echo $item['id']; ?>"<?php if ($is_available): ?> onclick="location.href='<?php echo htmlspecialchars($link, ENT_QUOTES); ?>'" style="cursor:pointer;"<?php endif; ?>>
     <div class="wishlist-actions">
-        <button class="remove-btn" onclick="event.stopPropagation();removeWishlist(<?php echo $item['id']; ?>, '<?php echo $item['target_type']; ?>', <?php echo $item['target_id']; ?>)" title="찜 해제" aria-label="찜 해제"><i class="bi bi-star-fill"></i></button>
+        <button class="remove-btn" onclick="event.stopPropagation();removeWishlist(<?php echo $item['id']; ?>, 'hospital', <?php echo (int)$item['target_id']; ?>)" title="찜 해제" aria-label="찜 해제"><i class="bi bi-star-fill"></i></button>
+    </div>
+    <div class="card-link">
+        <?php $hospital_id=(int)$item['target_id']; $image_url=$hospital_main_images[$hospital_id] ?? $item['target_image'] ?? $hospital_logos[$hospital_id] ?? ''; $image_url=$image_url ?: 'assets/images/seoul_beauty_hospital_placeholder.jpeg'; ?>
+        <img src="<?php echo htmlspecialchars($image_url); ?>" alt="<?php echo htmlspecialchars($item['target_name'] ?? ''); ?>" class="hospital-image" onerror="this.onerror=null;this.src='assets/images/seoul_beauty_hospital_placeholder.jpeg'">
+        <div class="hospital-info">
+            <div class="hospital-name"><?php echo htmlspecialchars($item['target_name'] ?? '(삭제됨)'); ?></div>
+            <?php if (!$is_available): ?><div class="unavailable-label">현재 이용할 수 없는 병원입니다</div><?php else: ?>
+        <?php $_address = trim((string)($item['target_address'] ?? '')); $_address_parts = preg_split('/\s+/u', $_address); $_district = $_address_parts[1] ?? ($_address_parts[0] ?? ''); ?>
+        <?php if ($_address !== ''): ?><div class="hospital-address"><span class="addr-district"><?php echo htmlspecialchars($_district); ?></span><span class="addr-sep">|</span><span><?php echo htmlspecialchars(mb_substr($_address,0,20,'UTF-8')).(mb_strlen($_address,'UTF-8')>20?'...':''); ?></span></div><?php endif; ?>
+        <?php endif; ?>
+        </div>
     </div>
 </div>
 <?php endforeach; ?>
