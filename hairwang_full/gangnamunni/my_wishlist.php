@@ -28,13 +28,27 @@ if (!in_array($type_filter, ['hospital', 'treatment'])) $type_filter = 'hospital
 
 $sql = "SELECT w.*, w.target_type,
         CASE WHEN w.target_type='hospital' THEN h.name ELSE t.name END as target_name,
-        CASE WHEN w.target_type='hospital' THEN h.main_image_url ELSE NULL END as target_image,
-        CASE WHEN w.target_type='hospital' THEN h.address ELSE NULL END as target_address,
+        CASE WHEN w.target_type='hospital' THEN h.main_image_url ELSE th.main_image_url END as target_image,
+        CASE WHEN w.target_type='hospital' THEN h.address ELSE th.address END as target_address,
         CASE WHEN w.target_type='hospital' THEN h.rating ELSE NULL END as target_rating,
         CASE WHEN w.target_type='hospital' THEN h.review_count ELSE NULL END as target_review_count,
         CASE WHEN w.target_type='treatment' THEN t.hospital_id ELSE NULL END as treatment_hospital_id,
         CASE WHEN w.target_type='treatment' THEN th.name ELSE NULL END as treatment_hospital_name,
-        CASE WHEN w.target_type='treatment' THEN COALESCE(NULLIF(t.discount_price,0), t.price) ELSE NULL END as treatment_price
+        CASE WHEN w.target_type='hospital' THEN (
+            SELECT rt.name FROM gangnamunni_treatments rt
+            WHERE rt.hospital_id=h.id AND rt.is_active=1
+            ORDER BY rt.is_popular DESC, rt.sort_order ASC, rt.id ASC LIMIT 1
+        ) ELSE t.name END as display_treatment_name,
+        CASE WHEN w.target_type='hospital' THEN (
+            SELECT rt.price FROM gangnamunni_treatments rt
+            WHERE rt.hospital_id=h.id AND rt.is_active=1
+            ORDER BY rt.is_popular DESC, rt.sort_order ASC, rt.id ASC LIMIT 1
+        ) ELSE t.price END as treatment_regular_price,
+        CASE WHEN w.target_type='hospital' THEN (
+            SELECT COALESCE(NULLIF(rt.discount_price,0), rt.price) FROM gangnamunni_treatments rt
+            WHERE rt.hospital_id=h.id AND rt.is_active=1
+            ORDER BY rt.is_popular DESC, rt.sort_order ASC, rt.id ASC LIMIT 1
+        ) ELSE COALESCE(NULLIF(t.discount_price,0), t.price) END as treatment_price
         FROM gangnamunni_wishlist w
         LEFT JOIN gangnamunni_hospitals h ON w.target_type='hospital' AND w.target_id=h.id
         LEFT JOIN gangnamunni_treatments t ON w.target_type='treatment' AND w.target_id=t.id
@@ -67,57 +81,74 @@ $items = array_values(array_filter($all_items, function($item) use ($type_filter
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>내 찜 목록 - <?php echo site_name(); ?></title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script>
 (function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();
 </script>
 <style>
-:root { --primary: #AE1932; --bg: #f8f9fa; --card: #fff; --text: #1a1a1a; --text-muted: #888; --border: #eee; }
+:root { --primary: #AE1932; --bg: #fff; --card: #fff; --text: #111; --text-muted: #777; --border: #dedede; }
 [data-bs-theme="dark"] { --bg: #1a1a1a; --card: #2d2d2d; --text: #e5e5e5; --text-muted: #999; --border: #444; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); max-width: 640px; margin: 0 auto; padding-bottom: 80px; }
+html { background:#3f3f3f; }
+body { font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:90px; }
 
-.page-header { padding: 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); background: var(--card); position: sticky; top: 0; z-index: 10; }
-.page-header .back-btn { width: 36px; height: 36px; border: none; background: none; font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1)); cursor: pointer; color: var(--text); position: relative; z-index: 1; }
-.page-header h1 { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; white-space: nowrap; }
-.global-nav-share { width: 36px; height: 36px; margin-left: auto; display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; color: var(--text); font-size: 22px; cursor: pointer; position: relative; z-index: 1; }
-.global-nav-share:hover, .global-nav-share:focus-visible { color: var(--primary); }
-.share-copy-toast { position: fixed; left: 50%; bottom: 84px; z-index: 2000; transform: translate(-50%, 12px); padding: 10px 16px; border-radius: 20px; background: rgba(20,20,20,.9); color: #fff; font-size: 13px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; }
-.share-copy-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+.page-header { height:80px; padding:0 20px; display:flex; align-items:center; background:var(--card); position:sticky; top:0; z-index:10; }
+.page-header .back-btn { width:40px; height:40px; border:0; background:none; font-size:27px; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:flex-start; }
+.page-header h1 { position:absolute; left:50%; transform:translateX(-50%); font-size:20px; font-weight:500; white-space:nowrap; letter-spacing:-.5px; }
 
-.filter-tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--border); }
-.filter-tab { flex: 1; padding: 12px; text-align: center; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; text-decoration: none; }
-.filter-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.filter-tabs { display:flex; width:calc(100% - 40px); margin:0 auto 8px; border-bottom:1px solid var(--border); background:var(--card); }
+.filter-tab { flex:1; padding:11px 8px 12px; text-align:center; font-size:15px; font-weight:500; color:#999; border-bottom:2px solid transparent; text-decoration:none; }
+.filter-tab.active { color:var(--primary); border-bottom-color:var(--primary); font-weight:700; }
 
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 .empty-state i { font-size: calc(48px * var(--fs-scale,1) * var(--fs-page,1)); margin-bottom: 12px; display: block; }
 
-.wishlist-card { display: flex; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); background: var(--card); }
+.wishlist-list { padding:0 20px; }
+.wishlist-card { position:relative; display:flex; gap:20px; min-height:176px; padding:30px 0; border-bottom:1px solid var(--border); background:var(--card); cursor:pointer; }
+.wishlist-card:last-child { border-bottom:0; }
 .wishlist-card .img-wrap { position: relative; flex-shrink: 0; }
-.wishlist-card img { width: 80px; height: 80px; object-fit: cover; flex-shrink: 0; display: block; }
-.wishlist-card .no-img { width: 80px; height: 80px; border-radius: 10px; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: calc(28px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--text-muted); flex-shrink: 0; }
-.rank-badge { position: absolute; top: -6px; left: -6px; background: var(--primary); color: #fff; font-size: calc(11px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 700; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-.wishlist-info { flex: 1; min-width: 0; }
-.wishlist-info h3 { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wishlist-card img { width:120px; height:120px; object-fit:cover; display:block; border:1px solid #ddd; }
+.wishlist-card .no-img { width:120px; height:120px; background:#f2f2f2; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; font-size:34px; color:#aaa; }
+.wishlist-info { flex:1; min-width:0; padding-right:42px; }
+.wishlist-info h3 { font-size:20px; font-weight:700; line-height:1.35; margin:0 0 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .wishlist-info h3 a { color: var(--text); text-decoration: none; }
-.wishlist-info .meta { font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wishlist-info .rating { color: #f59e0b; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); margin-top: 4px; }
-.wishlist-info .price { color: var(--primary); font-weight: 700; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); margin-top: 4px; }
-.wishlist-actions { display: flex; flex-direction: column; justify-content: center; align-items: center; }
-.wishlist-actions .remove-btn { border: none; background: none; cursor: pointer; padding: 6px; font-size: calc(24px * var(--fs-scale,1) * var(--fs-page,1)); color: #e53e3e; line-height: 1; transition: transform 0.15s; }
+.wishlist-info .meta { font-size:15px; color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:10px; }
+.wishlist-info .meta .district { font-weight:500; }
+.wishlist-info .meta .divider { color:#bbb; margin:0 8px; }
+.wishlist-info .treatment-name { font-size:22px; font-weight:700; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:7px; }
+.price-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:7px; line-height:1.35; }
+.regular-price { color:#aaa; font-size:14px; text-decoration:line-through; }
+.sale-price { color:#d50000; font-size:22px; font-weight:800; }
+.price-unit { color:#222; font-size:13px; font-weight:500; margin-left:1px; }
+.price-inquiry { color:#777; font-size:14px; }
+.wishlist-actions { position:absolute; right:0; top:28px; }
+.wishlist-actions .remove-btn { border:0; background:none; cursor:pointer; padding:4px; font-size:25px; color:var(--primary); line-height:1; transition:transform .15s; }
 .wishlist-actions .remove-btn:hover { transform: scale(1.1); }
+@media (max-width:480px) {
+  .page-header { height:64px; }
+  .page-header h1 { font-size:17px; }
+  .wishlist-list { padding:0 16px; }
+  .wishlist-card { min-height:142px; gap:14px; padding:22px 0; }
+  .wishlist-card img,.wishlist-card .no-img { width:120px; height:120px; }
+  .wishlist-info { padding-right:34px; }
+  .wishlist-info h3 { font-size:20px; }
+  .wishlist-info .meta { font-size:15px; margin-bottom:7px; }
+  .wishlist-info .treatment-name { font-size:22px; margin-bottom:5px; }
+  .sale-price { font-size:22px; }
+  .regular-price { font-size:12px; }
+  .wishlist-actions { top:19px; }
+}
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
 <body>
 <div class="page-header">
     <button class="back-btn" onclick="location.href='mypage.php'"><i class="bi bi-chevron-left"></i></button>
-    <h1>병원/시술 찜 목록</h1>
-    <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
-        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-    </button>
+    <h1><?php echo $type_filter === 'hospital' ? '찜한 병원을 확인해보세요' : '찜한 시술을 확인해보세요'; ?></h1>
 </div>
-<div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
 
 <div class="filter-tabs">
     <a href="my_wishlist.php?type=treatment" class="filter-tab <?php echo $type_filter === 'treatment' ? 'active' : ''; ?>"><?php echo term('service', '시술'); ?> </a>
@@ -132,9 +163,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <a href="hospitals.php" style="display:inline-block; margin-top:16px; padding:10px 24px; background:var(--primary); color:#fff; border-radius:8px; text-decoration:none; font-size:14px;"><?php echo term('business', '병원'); ?> 둘러보기</a>
 </div>
 <?php else: ?>
+<div class="wishlist-list">
 <?php $_hospital_rank = 0; ?>
 <?php foreach ($items as $item): ?>
-<div class="wishlist-card" id="wcard_<?php echo $item['id']; ?>">
+<div class="wishlist-card" id="wcard_<?php echo $item['id']; ?>" onclick="location.href='<?php echo htmlspecialchars($item['target_type'] === 'treatment' ? "detail.php?id={$item['treatment_hospital_id']}" : "detail.php?id={$item['target_id']}", ENT_QUOTES); ?>'">
     <?php
     $is_treatment = $item['target_type'] === 'treatment';
     $link = $is_treatment ? "detail.php?id={$item['treatment_hospital_id']}" : "detail.php?id={$item['target_id']}";
@@ -150,67 +182,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
 
     <div class="wishlist-info">
-        <h3><a href="<?php echo $link; ?>"><?php echo htmlspecialchars($item['target_name'] ?? '(삭제됨)'); ?></a></h3>
-        <?php if ($is_treatment && $item['treatment_hospital_name']): ?>
-        <div class="meta"><i class="bi bi-building"></i> <?php echo htmlspecialchars($item['treatment_hospital_name']); ?></div>
-        <?php endif; ?>
-        <?php if (!$is_treatment && $item['target_address']): ?>
-        <div class="meta"><i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars($item['target_address']); ?></div>
-        <?php endif; ?>
-        <?php if (!$is_treatment && $item['target_rating']): ?>
-        <div class="rating"><i class="bi bi-star-fill"></i> <?php echo number_format($item['target_rating'], 1); ?> (<?php echo $item['target_review_count'] ?? 0; ?>)</div>
-        <?php endif; ?>
+        <h3><a href="<?php echo $link; ?>"><?php echo htmlspecialchars($is_treatment ? ($item['treatment_hospital_name'] ?: '(삭제됨)') : ($item['target_name'] ?? '(삭제됨)')); ?></a></h3>
+        <?php $_address = trim((string)($item['target_address'] ?? '')); $_address_parts = preg_split('/\s+/u', $_address); $_district = $_address_parts[1] ?? ($_address_parts[0] ?? ''); ?>
+        <?php if ($_address !== ''): ?><div class="meta"><span class="district"><?php echo htmlspecialchars($_district); ?></span><span class="divider">|</span><span><?php echo htmlspecialchars($_address); ?></span></div><?php endif; ?>
+        <?php if (!empty($item['display_treatment_name'])): ?><div class="treatment-name"><?php echo htmlspecialchars($item['display_treatment_name']); ?></div><?php endif; ?>
+        <?php $_regular = (int)($item['treatment_regular_price'] ?? 0); $_sale = (int)($item['treatment_price'] ?? 0); ?>
+        <div class="price-row">
+            <?php if ($_regular > $_sale && $_sale > 0): ?><span class="regular-price">VAT 포함&nbsp; <?php echo number_format($_regular); ?>원</span><?php endif; ?>
+            <?php if ($_sale > 0): ?><span class="sale-price"><?php echo number_format($_sale); ?><span class="price-unit">원</span></span><?php else: ?><span class="price-inquiry">가격 문의</span><?php endif; ?>
+        </div>
     </div>
 
     <div class="wishlist-actions">
-        <button class="remove-btn" onclick="removeWishlist(<?php echo $item['id']; ?>, '<?php echo $item['target_type']; ?>', <?php echo $item['target_id']; ?>)" title="찜 해제" aria-label="찜 해제"><i class="bi bi-heart-fill"></i></button>
+        <button class="remove-btn" onclick="event.stopPropagation();removeWishlist(<?php echo $item['id']; ?>, '<?php echo $item['target_type']; ?>', <?php echo $item['target_id']; ?>)" title="찜 해제" aria-label="찜 해제"><i class="bi bi-star-fill"></i></button>
     </div>
 </div>
 <?php endforeach; ?>
+</div>
 <?php endif; ?>
 
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
 
 <script>
-var pageShareToastTimer = null;
-
-function fallbackPageShareCopy(text) {
-    var textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    var copied = document.execCommand('copy');
-    document.body.removeChild(textarea);
-    return copied;
-}
-
-function showPageShareToast(message) {
-    var toast = document.getElementById('pageShareCopyToast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.classList.add('is-visible');
-    window.clearTimeout(pageShareToastTimer);
-    pageShareToastTimer = window.setTimeout(function () {
-        toast.classList.remove('is-visible');
-    }, 1800);
-}
-
-document.getElementById('pageShareCopyBtn').addEventListener('click', function () {
-    var shareText = '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(shareText).then(function () {
-            showPageShareToast('링크가 복사되었습니다.');
-        }).catch(function () {
-            showPageShareToast(fallbackPageShareCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
-        });
-        return;
-    }
-    showPageShareToast(fallbackPageShareCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
-});
-
 function removeWishlist(wlId, type, targetId) {
     var basePath = window.location.pathname.replace(/\/[^\/]*$/, '');
     fetch(basePath + '/api_wishlist.php', {
