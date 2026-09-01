@@ -1,7 +1,7 @@
 <?php
 /**
  * 찜하기 (즐겨찾기) API
- * 병원/의사 찜 토글 + 목록 조회
+ * 병원 찜 토글 + 목록 조회
  * DB: gangnamunni_wishlist (자동 생성)
  */
 header('Content-Type: application/json; charset=utf-8');
@@ -60,7 +60,7 @@ if ($method === 'GET') {
     if ($action === 'check') {
         $type = $_GET['type'] ?? 'hospital';
         $tid = intval($_GET['target_id'] ?? 0);
-        if (!in_array($type, ['hospital', 'doctor', 'treatment', 'event'], true) || $tid <= 0) {
+        if ($type !== 'hospital' || $tid <= 0) {
             echo json_encode(['success' => true, 'wishlisted' => false, 'count' => 0]);
             exit;
         }
@@ -90,37 +90,20 @@ if ($method === 'GET') {
         exit;
     }
 
-    $type_filter = $_GET['type'] ?? '';
-    $where = 'w.member_id = ?';
-    $params = [$member_id];
-    $types = 'i';
-
-    if ($type_filter && in_array($type_filter, ['hospital', 'treatment'])) {
-        $where .= ' AND w.target_type = ?';
-        $params[] = $type_filter;
-        $types .= 's';
-    }
-
-    // 병원/의사/시술 찜 목록 (JOIN)
+    // 실제 UI에서 사용하는 병원 찜 목록만 반환한다.
     $sql = "SELECT w.*, w.target_type,
-            CASE WHEN w.target_type='hospital' THEN h.name WHEN w.target_type='doctor' THEN d.name ELSE t.name END as target_name,
-            CASE WHEN w.target_type='hospital' THEN h.main_image_url WHEN w.target_type='doctor' THEN d.profile_image_url ELSE NULL END as target_image,
-            CASE WHEN w.target_type='hospital' THEN h.address ELSE NULL END as target_address,
-            CASE WHEN w.target_type='hospital' THEN h.rating ELSE NULL END as target_rating,
-            CASE WHEN w.target_type='hospital' THEN h.review_count ELSE NULL END as target_review_count,
-            CASE WHEN w.target_type='treatment' THEN t.hospital_id ELSE NULL END as treatment_hospital_id,
-            CASE WHEN w.target_type='treatment' THEN th.name ELSE NULL END as treatment_hospital_name,
-            CASE WHEN w.target_type='treatment' THEN COALESCE(NULLIF(t.discount_price,0), t.price) ELSE NULL END as treatment_price
+            h.name as target_name,
+            h.main_image_url as target_image,
+            h.address as target_address,
+            h.rating as target_rating,
+            h.review_count as target_review_count
             FROM gangnamunni_wishlist w
-            LEFT JOIN gangnamunni_hospitals h ON w.target_type='hospital' AND w.target_id=h.id
-            LEFT JOIN gangnamunni_doctors d ON w.target_type='doctor' AND w.target_id=d.id
-            LEFT JOIN gangnamunni_treatments t ON w.target_type='treatment' AND w.target_id=t.id
-            LEFT JOIN gangnamunni_hospitals th ON w.target_type='treatment' AND t.hospital_id=th.id
-            WHERE {$where}
+            LEFT JOIN gangnamunni_hospitals h ON w.target_id=h.id
+            WHERE w.member_id = ? AND w.target_type = 'hospital'
             ORDER BY w.created_at DESC";
 
     $stmt = mysqli_prepare($connect, $sql);
-    mysqli_stmt_bind_param($stmt, $types, ...$params);
+    mysqli_stmt_bind_param($stmt, 'i', $member_id);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
     $items = [];
@@ -143,7 +126,7 @@ if ($method === 'POST') {
     $type = $input['type'] ?? 'hospital';
     $tid = intval($input['target_id'] ?? 0);
 
-    if (!in_array($type, ['hospital', 'doctor', 'treatment', 'event']) || $tid <= 0) {
+    if ($type !== 'hospital' || $tid <= 0) {
         echo json_encode(['success' => false, 'message' => '잘못된 요청']);
         exit;
     }
