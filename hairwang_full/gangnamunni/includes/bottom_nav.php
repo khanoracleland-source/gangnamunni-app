@@ -16,6 +16,14 @@ $is_hospital = in_array($current_page, ['hospitals.php', 'detail.php', 'doctor_d
 $is_community = in_array($current_page, ['community.php', 'community_write.php', 'detail_community.php', 'reviews.php', 'review_write.php']);
 $is_my = in_array($current_page, ['mypage.php', 'my_bookings.php', 'booking_request_detail.php', 'booking_cancel_request.php', 'booking_cancel_complete.php', 'booking_cancel_detail.php', 'my_notifications.php', 'my_events.php', 'my_wishlist.php', 'my_reviews.php', 'my_points.php', 'my_coupons.php', 'profile_edit.php', 'notification_settings.php', 'qna.php', 'faq.php', 'chat.php']);
 
+// Detail kabi umumiy sahifalar manba bo'limining pastki navigatsiyasini faol saqlashi mumkin.
+if (isset($bottom_nav_active)) {
+    $is_home = $bottom_nav_active === 'home';
+    $is_hospital = $bottom_nav_active === 'hospital';
+    $is_community = $bottom_nav_active === 'community';
+    $is_my = $bottom_nav_active === 'my';
+}
+
 // 관리자 설정에서 탭 ON/OFF 로드
 $bottom_nav_settings = [];
 if (isset($connect) && $connect) {
@@ -129,7 +137,13 @@ if ($tab_count === 0) return;
 }
 </style>
 
-<nav class="bottom-nav" id="bottomNav">
+<?php
+$active_nav_url = '';
+foreach ($nav_items as $item) {
+    if ($item['active']) { $active_nav_url = $item['url']; break; }
+}
+?>
+<nav class="bottom-nav" id="bottomNav" data-active-url="<?php echo htmlspecialchars($active_nav_url); ?>">
 <?php foreach ($nav_items as $item): ?>
     <a href="<?php echo $item['url']; ?>" class="bottom-nav-item<?php echo $item['active'] ? ' active' : ''; ?>">
         <img src="<?php echo htmlspecialchars($item['icon_img']); ?>" alt="<?php echo htmlspecialchars($item['label']); ?>" class="nav-icon">
@@ -169,7 +183,7 @@ if ($tab_count === 0) return;
     // BFCache 복원 시 active 상태 보정
     window.addEventListener('pageshow', function(e) {
         if (e.persisted) {
-            var page = location.pathname.split('/').pop() || 'index.php';
+            var page = nav.getAttribute('data-active-url') || location.pathname.split('/').pop() || 'index.php';
             nav.querySelectorAll('.bottom-nav-item').forEach(function(el) {
                 var href = el.getAttribute('href');
                 el.classList.toggle('active', href === page);

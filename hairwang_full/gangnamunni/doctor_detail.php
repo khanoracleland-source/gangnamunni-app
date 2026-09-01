@@ -425,7 +425,7 @@ $bio_lines = doctor_detail_lines($doctor['bio'] ?? '');
                     <?php endif; ?>
                     <div class="hospital-meta">
                         <div class="hospital-rating">
-                            <span class="hospital-wishlist"><?php renderWishlistButton('hospital', (int)$doctor['hospital_id'], 'sm', false, 'star'); ?></span>
+                            <span class="hospital-wishlist"><?php renderWishlistButton('hospital', (int)$doctor['hospital_id'], 'sm', 'star'); ?></span>
                             <span class="rating-score"><?php echo number_format(!empty($doctor['hospital_rating']) ? $doctor['hospital_rating'] : 0, 1); ?></span>
                             <span class="review-count">(<?php echo number_format((int)($doctor['hospital_review_count'] ?? 0)); ?>)</span>
                         </div>

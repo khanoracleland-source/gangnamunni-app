@@ -11,7 +11,7 @@ if (!defined('WISHLIST_COMPONENT_LOADED')) {
     define('WISHLIST_COMPONENT_LOADED', true);
 }
 
-function renderWishlistButton($type, $targetId, $size = 'md', $showCount = true, $icon = 'heart') {
+function renderWishlistButton($type, $targetId, $size = 'md', $icon = 'heart') {
     $sizeMap = ['sm' => '20px', 'md' => '28px', 'lg' => '28px'];
     $iconSize = $sizeMap[$size] ?? $sizeMap['md'];
     $uid = "wl_{$type}_{$targetId}";
@@ -21,9 +21,6 @@ function renderWishlistButton($type, $targetId, $size = 'md', $showCount = true,
         echo "<i class=\"bi bi-star-fill wl-icon wl-star-full\" style=\"font-size:{$iconSize};line-height:1;display:none;\"></i>";
     } else {
         echo "<svg class=\"wl-icon\" width=\"{$iconSize}\" height=\"{$iconSize}\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg>";
-    }
-    if ($showCount) {
-        echo '<span class="wl-count" style="font-size:12px;line-height:1;">0</span>';
     }
     echo "</button>";
 }
@@ -71,14 +68,10 @@ function toggleWishlist(type, targetId, btn) {
             btn.classList.toggle('active', res.wishlisted);
             btn.classList.add('pop');
             setTimeout(function() { btn.classList.remove('pop'); }, 300);
-            var countEl = btn.querySelector('.wl-count');
-            if (countEl) countEl.textContent = res.count;
             // 같은 대상의 다른 버튼도 업데이트
             document.querySelectorAll('.wishlist-btn[data-type="'+type+'"][data-id="'+targetId+'"]').forEach(function(b) {
                 if (b !== btn) {
                     b.classList.toggle('active', res.wishlisted);
-                    var c = b.querySelector('.wl-count');
-                    if (c) c.textContent = res.count;
                 }
             });
         }
@@ -98,8 +91,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(res) {
                 if (res.success) {
                     btn.classList.toggle('active', res.wishlisted);
-                    var countEl = btn.querySelector('.wl-count');
-                    if (countEl) countEl.textContent = res.count;
                 }
             })
             .catch(function() {});

@@ -37,6 +37,8 @@ if (empty($_SESSION['consultation_csrf_token'])) {
 $consultation_csrf_token = $_SESSION['consultation_csrf_token'];
 
 $hospital_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$detail_from_wishlist = isset($_GET['from']) && $_GET['from'] === 'my_wishlist';
+$detail_source_qs = $detail_from_wishlist ? '&from=my_wishlist' : '';
 
 // 시술/가격 데이터 로드
 $treatments = [];
@@ -1619,7 +1621,7 @@ if ($current_tab === 'reviews') {
     <div class="page-container">
     <!-- 페이지 헤더 -->
     <div class="header">
-        <a href="hospitals.php" id="detailBackBtn" class="back-btn"><i class="bi bi-chevron-left"></i></a>
+        <a href="<?php echo $detail_from_wishlist ? 'my_wishlist.php' : 'hospitals.php'; ?>" id="detailBackBtn" class="back-btn"><i class="bi bi-chevron-left"></i></a>
         <div class="hospital-name-header"><?php echo htmlspecialchars($hospital['name']); ?></div>
         <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
             <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
@@ -1638,6 +1640,12 @@ if ($current_tab === 'reviews') {
         var backBtn = document.getElementById('detailBackBtn');
         if (backBtn) {
             backBtn.addEventListener('click', function (e) {
+                // 찜 목록에서 진입한 상세 페이지는 항상 찜 목록으로 복귀한다.
+                if (new URLSearchParams(window.location.search).get('from') === 'my_wishlist') {
+                    e.preventDefault();
+                    location.href = 'my_wishlist.php';
+                    return;
+                }
                 // 목록에서 바로 진입(탭 이동 없음) → history.back()으로 스크롤 위치까지 보존
                 if (document.referrer.indexOf('hospitals.php') !== -1) {
                     e.preventDefault();
@@ -1712,6 +1720,7 @@ if ($current_tab === 'reviews') {
     $tab_qs = '';
     if ($matched_treatment_id > 0) $tab_qs .= '&treatment_id=' . $matched_treatment_id;
     if ($matched_treatment_query !== '') $tab_qs .= '&treatment=' . urlencode($matched_treatment_query);
+    $tab_qs .= $detail_source_qs;
     ?>
     <div class="tab-menu">
         <a href="?id=<?php echo $hospital_id; ?>&tab=home<?php echo $tab_qs; ?>" class="tab-item <?php echo $current_tab === 'home' ? 'active' : ''; ?>">
@@ -1771,7 +1780,7 @@ if ($current_tab === 'reviews') {
     <div class="hospital-info-section">
         <div style="display:flex; align-items:center; gap:12px;">
             <h1 class="hospital-name" style="flex:1; margin-bottom:0;"><?php echo htmlspecialchars($hospital['name']); ?></h1>
-            <div style="flex-shrink:0;"><?php renderWishlistButton('hospital', $hospital_id, 'lg', true, 'star'); ?></div>
+            <div style="flex-shrink:0;"><?php renderWishlistButton('hospital', $hospital_id, 'lg', 'star'); ?></div>
         </div>
         <?php
         // #16 fix: dynamic specialty (gangnamunni_doctors -> crawled -> categories -> desc)
@@ -1941,7 +1950,8 @@ if ($current_tab === 'reviews') {
                 $matched_option_booking_url = 'booking.php?id=' . (int)$hospital_id
                     . '&treatment_id=' . (int)$matched_treatment['treatment_id']
                     . '&option_id=' . (int)$matched_option['option_id']
-                    . '&treatment=' . urlencode($matched_treatment['name']);
+                    . '&treatment=' . urlencode($matched_treatment['name'])
+                    . $detail_source_qs;
                 ?>
                 <?php
                 $matched_sale_price = (int)($matched_option['price'] ?? 0);
@@ -2165,7 +2175,7 @@ if ($current_tab === 'reviews') {
             </div>
             <?php if ($doctors_count > 2): ?>
             <div style="text-align:center;margin-top:12px;">
-                <a href="?id=<?php echo $hospital_id; ?>&tab=doctors" style="font-size:13px;color:var(--color-primary,#AE1932);text-decoration:none;"><?= term("staff", "의료진") ?> 전체 보기 →</a>
+                <a href="?id=<?php echo $hospital_id; ?>&tab=doctors<?php echo $detail_source_qs; ?>" style="font-size:13px;color:var(--color-primary,#AE1932);text-decoration:none;"><?= term("staff", "의료진") ?> 전체 보기 →</a>
             </div>
             <?php endif; ?>
             <script>
@@ -2201,7 +2211,8 @@ if ($current_tab === 'reviews') {
                 $procedure_discount_rate = (int)($procedure['discount_rate'] ?? 0);
                 $procedure_url = 'detail.php?id=' . $hospital_id
                     . '&treatment_id=' . (int)($procedure['treatment_id'] ?? 0)
-                    . '&treatment=' . urlencode($procedure['name'] ?? '');
+                    . '&treatment=' . urlencode($procedure['name'] ?? '')
+                    . $detail_source_qs;
                 ?>
                 <a class="procedure-card" href="<?php echo htmlspecialchars($procedure_url, ENT_QUOTES, 'UTF-8'); ?>">
                     <h4 class="procedure-name"><?php echo htmlspecialchars($procedure['display_name'] ?? $procedure['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?></h4>
@@ -2228,7 +2239,7 @@ if ($current_tab === 'reviews') {
                 $total_pages = ceil($procedure_count / $items_per_page);
                 for ($i = 1; $i <= min($total_pages, 10); $i++):
                 ?>
-                <a href="?id=<?php echo $hospital_id; ?>&tab=events&page=<?php echo $i; ?>"
+                <a href="?id=<?php echo $hospital_id; ?>&tab=events&page=<?php echo $i; ?><?php echo $detail_source_qs; ?>"
                    class="page-btn <?php echo $page === $i ? 'active' : ''; ?>">
                     <?php echo $i; ?>
                 </a>
@@ -2423,6 +2434,7 @@ if ($current_tab === 'reviews') {
             $booking_url .= '&treatment_id=' . (int)$matched_treatment['treatment_id']
                 . '&treatment=' . urlencode($matched_treatment['name']);
         }
+        $booking_url .= $detail_source_qs;
         ?>
         <a href="<?php echo htmlspecialchars($booking_url, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-outline" style="flex:1;min-width:0;border:1px solid var(--color-primary);border-radius:0;color:var(--color-primary);background:var(--bs-body-bg, #fff);text-decoration:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;">
             <?php echo term('booking', '예약'); ?>하기
@@ -2908,7 +2920,10 @@ include __DIR__ . '/includes/cpv_tracker.php';
 <div style="height:70px;"></div>
 
 
-<?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
+<?php
+if ($detail_from_wishlist) $bottom_nav_active = 'my';
+include_once __DIR__ . '/includes/bottom_nav.php';
+?>
 <?php renderWishlistScript(); ?>
 <?php include __DIR__ . '/includes/report_block_modal.php'; ?>
 <?php

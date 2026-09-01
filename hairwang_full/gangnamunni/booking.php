@@ -10,6 +10,7 @@ require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/dev_mode_helper.php';
 require_once __DIR__ . '/includes/notification_helper.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
+$booking_from_wishlist = isset($_GET['from']) && $_GET['from'] === 'my_wishlist';
 
 // 시술 가격은 변환 없이 원 단위 정수 그대로 사용한다.
 function booking_price_won($price) {
@@ -36,6 +37,7 @@ if (function_exists('getSettingValue')) {
         if (isset($_GET['treatment'])) $login_return_url .= '&treatment=' . urlencode(trim((string)$_GET['treatment']));
         if (isset($_GET['rebook']) && $_GET['rebook'] === '1') $login_return_url .= '&rebook=1';
         if (isset($_GET['source_booking_id'])) $login_return_url .= '&source_booking_id=' . max(0, (int)$_GET['source_booking_id']);
+        if ($booking_from_wishlist) $login_return_url .= '&from=my_wishlist';
         header('Location: auth/login.php?url=' . urlencode($login_return_url));
         exit;
     }
@@ -620,6 +622,9 @@ foreach ($booking_treatments as $bookable_treatment) {
 // 예약 화면에서 뒤로 이동할 때 사용자가 보고 있던 시술 상세 컨텍스트를 유지한다.
 // 요청값을 그대로 사용하지 않고, 현재 병원의 활성 시술로 검증된 값만 URL에 포함한다.
 $booking_back_url = 'detail.php?id=' . (int)$hospital_id;
+if ($booking_from_wishlist) {
+    $booking_back_url .= '&from=my_wishlist';
+}
 if ($is_rebooking && $source_booking_id > 0) {
     $booking_back_url = 'booking_request_detail.php?booking_id=' . $source_booking_id;
 }
@@ -2269,7 +2274,7 @@ include __DIR__ . '/includes/header.php';
         </p>
         <div class="success-buttons">
             <button class="btn-primary-outline" onclick="location.href='my_bookings.php'">내 <?php echo term('booking', '예약'); ?> 보기</button>
-            <button class="btn-primary-outline" onclick="location.href='detail.php?id=<?php echo $hospital_id; ?>'"><?php echo term('business', '병원'); ?> 상세보기</button>
+            <button class="btn-primary-outline" onclick="location.href='detail.php?id=<?php echo $hospital_id; ?><?php echo $booking_from_wishlist ? '&from=my_wishlist' : ''; ?>'"><?php echo term('business', '병원'); ?> 상세보기</button>
             <button class="btn-submit" onclick="location.href='index.php'">홈으로</button>
         </div>
     </div>
@@ -2435,7 +2440,7 @@ include __DIR__ . '/includes/header.php';
                 </div>
             </div>
             <div class="success-actions">
-                <a href="detail.php?id=<?php echo (int)$hospital_id; ?>" class="success-action primary">확인했어요</a>
+                <a href="detail.php?id=<?php echo (int)$hospital_id; ?><?php echo $booking_from_wishlist ? '&from=my_wishlist' : ''; ?>" class="success-action primary">확인했어요</a>
                 <a href="my_bookings.php" class="success-action" id="successBookingsLink">내 예약 현황</a>
             </div>
         </section>
@@ -2545,6 +2550,7 @@ include __DIR__ . '/includes/header.php';
 // ========================================
 // 공유 푸터 포함 (main-content 닫기, bottom_navigation, closing tags)
 // ========================================
+if ($booking_from_wishlist) $bottom_nav_active = 'my';
 include __DIR__ . '/includes/footer.php';
 
 if (isDevMode($connect)) { echo getDevModeJS_booking(); }

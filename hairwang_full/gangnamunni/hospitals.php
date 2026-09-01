@@ -623,7 +623,7 @@ foreach ($hospitals as $hospital):
              data-target-url="<?php echo htmlspecialchars($_detail_url, ENT_QUOTES, 'UTF-8'); ?>"
              <?php endif; ?>>
             <div style="position:absolute;top:8px;right:8px;z-index:3;background:rgba(255,255,255,.9);border-radius:999px;">
-                <?php renderWishlistButton('hospital', (int)$hospital['id'], 'sm', false, 'star'); ?>
+                <?php renderWishlistButton('hospital', (int)$hospital['id'], 'sm', 'star'); ?>
             </div>
             <div class="card-link">
                 <?php

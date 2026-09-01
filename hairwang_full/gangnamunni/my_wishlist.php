@@ -141,7 +141,7 @@ body { font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 <?php foreach ($items as $item): ?>
     <?php
     $is_available = !empty($item['hospital_available']);
-    $link = $is_available ? "detail.php?id={$item['target_id']}" : '';
+    $link = $is_available ? "detail.php?id={$item['target_id']}&from=my_wishlist" : '';
     ?>
 <div class="hospital-card<?php echo $is_available ? '' : ' is-unavailable'; ?>" id="wcard_<?php echo $item['id']; ?>"<?php if ($is_available): ?> onclick="location.href='<?php echo htmlspecialchars($link, ENT_QUOTES); ?>'" style="cursor:pointer;"<?php endif; ?>>
     <div class="wishlist-actions">
