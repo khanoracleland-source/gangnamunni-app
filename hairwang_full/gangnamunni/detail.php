@@ -1,25 +1,22 @@
 <?php
-/**
- * 바비톡 스타일 병원 상세 페이지
- * 모든 데이터는 DB에서 동적으로 로드
- */
 
-// 초기화 (그누보드 세션 + DB 연결)
+
+
 require_once __DIR__ . '/includes/init.php';
-// 앱 모드 감지 (?app=1 파라미터)
+
 $is_app_mode = isset($_GET['app']) && $_GET['app'] == '1';
 require_once __DIR__ . '/includes/recently_viewed.php';
 require_once __DIR__ . '/includes/wishlist_button.php';
 require_once __DIR__ . '/includes/functions.php';
 
-// 시술 부위는 기존 괄호를 제거한 뒤 "[부위1, 부위2]" 형식으로 표시한다.
+
 function format_treatment_body_parts($body_part) {
     $raw_parts = preg_split('/\s*\|\|\s*/', trim((string)$body_part));
     $parts = [];
 
     foreach ($raw_parts as $raw_part) {
         $part = trim($raw_part);
-        // 이전에 저장된 (), []가 중첩되어 있어도 한 번에 정리한다.
+        
         while (preg_match('/^[\(\[]\s*(.*?)\s*[\)\]]$/u', $part, $matches)) {
             $part = trim($matches[1]);
         }
@@ -40,7 +37,7 @@ $hospital_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $detail_from_wishlist = isset($_GET['from']) && $_GET['from'] === 'my_wishlist';
 $detail_source_qs = $detail_from_wishlist ? '&from=my_wishlist' : '';
 
-// 시술/가격 데이터 로드
+
 $treatments = [];
 if (!empty($hospital_id)) {
     $stmt = $connect->prepare("SELECT * FROM gangnamunni_treatments WHERE hospital_id = ? AND is_active = 1 ORDER BY category, sort_order, name");
@@ -55,15 +52,15 @@ if (!empty($hospital_id)) {
     }
 }
 
-// hospitals.php에서 특정 시술(gangnamunni_treatment_master) 검색 후 넘어온 경우
-// 해당 병원의 그 시술 정보를 정확히 찾아 홈 탭 상단에 강조 표시
+
+
 $matched_treatment = null;
 $matched_treatment_options = [];
-$matched_treatment_images = []; // 이 병원 · 이 시술 전용 상세 이미지 (#시술이미지)
+$matched_treatment_images = []; 
 $matched_treatment_query = isset($_GET['treatment']) ? trim($_GET['treatment']) : '';
 $matched_treatment_id = isset($_GET['treatment_id']) ? intval($_GET['treatment_id']) : 0;
-// 목록의 시술 필터 컨텍스트가 있을 때만 해당 시술 설명/이미지를 노출한다.
-// ID를 우선 사용해 목록에 표시된 가격과 상세 이미지가 정확히 같은 시술에 연결되게 한다.
+
+
 if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_query !== '')) {
     $mt_stmt = mysqli_prepare($connect, "
         SELECT ht.id AS hospital_treatment_id, tm.id AS treatment_id, tm.name, tm.description
@@ -84,7 +81,7 @@ if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_que
         $matched_treatment = mysqli_fetch_assoc($mt_result) ?: null;
         mysqli_stmt_close($mt_stmt);
     }
-    // 선택한 시술의 가격 옵션을 모두 노출한다. 옵션명 컬럼이 없는 기존 DB도 호환한다.
+    
     if ($matched_treatment) {
         $mt_option_name_column = false;
         $mt_option_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
@@ -144,7 +141,7 @@ if (!empty($hospital_id) && ($matched_treatment_id > 0 || $matched_treatment_que
             mysqli_stmt_close($mt_options_stmt);
         }
     }
-    // 병원이 이 시술에 대해 올려둔 상세페이지 이미지 (없으면 빈 배열 → 기존 안내 문구 유지)
+    
     if ($matched_treatment) {
         require_once __DIR__ . '/includes/hospital_treatment_images.php';
         $matched_treatment_images = hti_images_for($connect, $hospital_id, $matched_treatment['treatment_id']);
@@ -157,7 +154,7 @@ if ($hospital_id <= 0) {
     exit;
 }
 
-// 병원 정보 조회
+
 $query = "SELECT * FROM gangnamunni_hospitals WHERE id = {$hospital_id}";
 $result = mysqli_query($connect, $query);
 
@@ -198,7 +195,7 @@ $add_logo_url = function ($url) use (&$hospital_logo_keys, $image_url_keys) {
     }
 };
 
-// 이 프로젝트에서는 profile_image_url 이 병원 로고 저장값으로 쓰인 데이터가 있어 상세 갤러리에서 제외한다.
+
 $add_logo_url($hospital['profile_image_url'] ?? '');
 $logo_result = mysqli_query($connect, "SELECT image_url FROM hospital_images WHERE hospital_id = {$hospital_id} AND is_active = 1 AND image_type = 'logo'");
 while ($logo_row = mysqli_fetch_assoc($logo_result)) {
@@ -215,15 +212,15 @@ $is_logo_image_url = function ($url) use ($hospital_logo_keys, $image_url_keys) 
     return false;
 };
 
-// 병원 이미지 갤러리 조회
-// 상세 갤러리에는 내부 사진(image_type='interior' 등)만 노출한다.
-// - 로고(image_type='logo' / profile_image_url)는 제외
-// - 대표 이미지(image_type='main' / main_image_url)도 제외 — 상세에서는 노출하지 않는다.
+
+
+
+
 $images_query = "SELECT * FROM hospital_images WHERE hospital_id = {$hospital_id} AND is_active = 1 AND image_type <> 'logo' AND image_type <> 'main' ORDER BY sort_order ASC, id ASC";
 $images_result = mysqli_query($connect, $images_query);
 $hospital_images = [];
 while ($img_row = mysqli_fetch_assoc($images_result)) {
-    // 로고 URL이거나 대표 이미지(main_image_url)와 같은 URL이면 제외
+    
     if ($is_logo_image_url($img_row['image_url'] ?? '')) {
         continue;
     }
@@ -233,7 +230,7 @@ while ($img_row = mysqli_fetch_assoc($images_result)) {
     $hospital_images[] = $img_row;
 }
 
-// 병원 특징 조회
+
 $features_query = "SELECT * FROM hospital_features WHERE hospital_id = {$hospital_id} AND is_active = 1 ORDER BY sort_order ASC";
 $features_result = mysqli_query($connect, $features_query);
 $hospital_features = [];
@@ -241,14 +238,14 @@ while ($feature = mysqli_fetch_assoc($features_result)) {
     $hospital_features[] = $feature;
 }
 
-// JSON 데이터 파싱
-// categories는 저장 경로에 따라 JSON 배열 또는 콤마구분 문자열로 저장될 수 있음 (admin_hospitals.php와 동일한 방어 로직)
+
+
 $categories = json_decode($hospital['categories'] ?? '[]', true);
 if (!is_array($categories)) {
     $categories = array_filter(array_map('trim', explode(',', $hospital['categories'] ?? '')));
 }
 
-// gangnamunni_treatment_categories(19개 대분류) 이름 목록 — hospital-specialty 각 단계 매칭에 재사용
+
 $tc_names = [];
 $tc_r = mysqli_query($connect, "SELECT name FROM gangnamunni_treatment_categories WHERE is_active = 1");
 if ($tc_r) {
@@ -257,13 +254,13 @@ if ($tc_r) {
     }
 }
 
-// $categories 값을 treatment_categories와 매칭 — 정확히 일치하는 이름만 사용
+
 $matched_treatment_categories = !empty($categories) ? array_values(array_intersect($categories, $tc_names)) : [];
 
 $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true) ?: [];
 $business_hours_raw = json_decode($hospital['business_hours'] ?? '{}', true) ?: [];
 
-// 기본 영업시간 설정
+
 $default_hours = [
     '월' => '10:00~19:00',
     '화' => '10:00~19:00',
@@ -276,23 +273,23 @@ $default_hours = [
     'lunch_end' => '14:00'
 ];
 
-// officeHours 크롤링 포맷 → 한국어 키 변환
+
 $business_hours = [];
 if (!empty($business_hours_raw['officeHours']) && is_array($business_hours_raw['officeHours'])) {
     $eng_to_kr = ['MON'=>'월','TUE'=>'화','WED'=>'수','THU'=>'목','FRI'=>'금','SAT'=>'토','SUN'=>'일'];
     foreach ($eng_to_kr as $eng => $kr) {
         if (isset($business_hours_raw['officeHours'][$eng])) {
-            // 하이픈 구분자(10:00-19:00) → 물결표(10:00~19:00) 통일
+            
             $business_hours[$kr] = str_replace('-', '~', $business_hours_raw['officeHours'][$eng]);
         } else {
             $business_hours[$kr] = '휴무';
         }
     }
-    // officeHoursComment에서 점심시간 파싱
+    
     $comment = $business_hours_raw['officeHoursComment'] ?? '';
     if (!empty($comment)) {
         $business_hours['영업시간_비고'] = $comment;
-        // 점심시간 패턴 추출: "13:00~14:00", "1시-2시", "PM 1:00 ~ 2:00" 등
+        
         if (preg_match('/점심[^0-9]*(\d{1,2})[시:](\d{0,2})\s*[~\-–]\s*(\d{1,2})[시:](\d{0,2})/', $comment, $m)) {
             $lh = str_pad($m[1], 2, '0', STR_PAD_LEFT);
             $lm = !empty($m[2]) ? str_pad($m[2], 2, '0', STR_PAD_LEFT) : '00';
@@ -309,23 +306,23 @@ if (!empty($business_hours_raw['officeHours']) && is_array($business_hours_raw['
             $business_hours['lunch_start'] = "{$lh}:{$m[2]}";
             $business_hours['lunch_end'] = "{$eh}:{$m[4]}";
         }
-        // "점심시간 없" 또는 "점심시간X" 패턴 감지 시 점심시간 미표시
+        
         if (preg_match('/점심[시간\s]*없|점심[시간\s]*[Xx×]|점심[시간\s]*따로\s*없/', $comment)) {
             unset($business_hours['lunch_start'], $business_hours['lunch_end']);
             $business_hours['no_lunch_break'] = true;
         }
     }
 } elseif (!empty($business_hours_raw)) {
-    // 이미 한국어 키 형태인 경우 그대로 사용
+    
     $business_hours = $business_hours_raw;
 }
 
-// 영업시간이 비어있으면 기본값 사용
+
 if (empty($business_hours) || !is_array($business_hours)) {
     $business_hours = $default_hours;
 }
 
-// 관리자 JSON의 점심 표현을 표준 키로 정규화한다 (기존 '점심시간' 키도 지원).
+
 if (!empty($business_hours['no_lunch_break'])) {
     unset($business_hours['점심'], $business_hours['점심시간'], $business_hours['lunch_start'], $business_hours['lunch_end']);
 } else {
@@ -336,23 +333,23 @@ if (!empty($business_hours['no_lunch_break'])) {
     }
 }
 
-// 오늘 영업시간 표시 문자열 생성
-$today = date('N'); // 1(월) ~ 7(일)
+
+$today = date('N'); 
 $days = ['월', '화', '수', '목', '금', '토', '일'];
 $today_name = $days[$today - 1];
 $business_hours_text = ($business_hours[$today_name] ?? $default_hours[$today_name]);
 
-// 현재 탭
+
 $current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'home';
-// 의료진/시술목록/후기 탭: 병원 정보를 영업시간까지만 노출 (주소/지도/특징 숨김)
+
 $minimal_info_tab = in_array($current_tab, ['doctors', 'events', 'reviews'], true);
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $items_per_page = 20;
 
-// 시술목록: 병원에 활성 배정된 시술과 실제 판매가를 노출한다.
+
 $procedure_count = 0;
 $procedure_data = [];
-if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를 유지
+if ($current_tab === 'events') { 
     $offset_val = ($page - 1) * $items_per_page;
     $procedure_option_name_column = false;
     $procedure_option_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
@@ -426,7 +423,7 @@ if ($current_tab === 'events') { // 기존 URL 호환성을 위해 tab=events를
     }
 }
 
-// 의사 카운트 및 데이터 (gangnamunni_doctors 우선, 없으면 crawled_doctors 폴백)
+
 $doctors_count = 0;
 $doctors_data = [];
 $doctors_source = 'gangnamunni';
@@ -470,7 +467,7 @@ if ($current_tab === 'doctors' || $current_tab === 'home') {
     }
 }
 
-// #21 fix: review count with fallback
+
 $reviews_data = [];
 $reviews_count = 0;
 $rev_cnt_stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1 AND review_status = 'published'");
@@ -543,7 +540,7 @@ if ($current_tab === 'reviews') {
             line-height: 1.6;
         }
 
-        /* PC 중앙 정렬 컨테이너 */
+        
         .page-container {
             max-width: 640px;
             margin: 0 auto;
@@ -552,7 +549,7 @@ if ($current_tab === 'reviews') {
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
         }
 
-        /* 페이지 헤더 — #14 수정: sticky로 변경, 빈 공간 제거 */
+        
         .header {
             position: sticky;
             top: 0;
@@ -635,14 +632,14 @@ if ($current_tab === 'reviews') {
             white-space: nowrap;
         }
 
-        /* 이미지 갤러리 */
+        
         .image-gallery-container {
             position: relative;
             width: 100%;
             height: 200px;
             background: var(--color-bg-light);
             overflow: hidden;
-            margin-top: 0; /* #14 fix */
+            margin-top: 0; 
         }
 
         .image-gallery {
@@ -704,7 +701,7 @@ if ($current_tab === 'reviews') {
             cursor: not-allowed;
         }
 
-        /* 갤러리 도트 인디케이터 */
+        
         .gallery-dots {
             position: absolute;
             bottom: 12px;
@@ -726,7 +723,7 @@ if ($current_tab === 'reviews') {
             transform: scale(1.3);
         }
 
-        /* 시술 상세 이미지 확대 모달 */
+        
         #treatment-images,
         .treatment-image-empty {
             width: calc(100% + 40px);
@@ -833,7 +830,7 @@ if ($current_tab === 'reviews') {
             overflow: hidden;
         }
 
-        /* 병원 정보 */
+        
         .hospital-info-section {
             padding: 10px 20px;
             background: var(--color-bg-white, #fff);
@@ -875,7 +872,7 @@ if ($current_tab === 'reviews') {
             color: var(--color-text-secondary);
         }
 
-        /* 태그 */
+        
         .tags-section {
             display: flex;
             flex-wrap: wrap;
@@ -892,7 +889,7 @@ if ($current_tab === 'reviews') {
             font-weight: 500;
         }
 
-        /* 영업시간 & 주소 */
+        
         .info-row {
             display: flex;
             padding: 12px 0;
@@ -920,7 +917,7 @@ if ($current_tab === 'reviews') {
             color: var(--color-text-primary);
         }
 
-        /* 영업시간 확장 */
+        
         .business-hours-expand {
             margin-top: 12px;
             display: none;
@@ -968,7 +965,7 @@ if ($current_tab === 'reviews') {
             transform: rotate(180deg);
         }
 
-        /* 병원 특징 아이콘 */
+        
         .features-section {
             display: flex;
             padding: 16px 20px;
@@ -1005,8 +1002,8 @@ if ($current_tab === 'reviews') {
             color: var(--color-text-secondary);
         }
 
-        /* 탭 메뉴 */
-        /* #14 fix: tab-menu under header (global_nav 제거됨) */
+        
+        
         .tab-menu {
             position: sticky;
             top: 64px;
@@ -1045,7 +1042,7 @@ if ($current_tab === 'reviews') {
             color: var(--color-primary);
         }
 
-        /* 탭 컨텐츠 */
+        
         .tab-content {
             padding: 0 20px;
             background: var(--color-bg-white, #fff);
@@ -1060,7 +1057,7 @@ if ($current_tab === 'reviews') {
             display: block;
         }
 
-        /* 시술목록: 병원 상세 시안의 단순한 가격 카드 */
+        
         .procedure-list {
             display: grid;
             gap: 16px;
@@ -1209,7 +1206,7 @@ if ($current_tab === 'reviews') {
             .matched-option-card .procedure-regular-price { font-size: 13px; }
         }
 
-        /* 후기 탭 */
+        
         .review-list {
             display: block;
         }
@@ -1285,7 +1282,7 @@ if ($current_tab === 'reviews') {
             font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1));
         }
 
-        /* 후기 카드 — review_detail.php .review-card-area 와 동일 구성 */
+        
         .review-card-area { padding: 16px 0; border-bottom: 1px solid var(--color-border, #e0e0e0); }
         .review-card-area .tag { display: inline-block; margin: 5px 4px 5px 0; padding: 3px 8px; background: #FFEEEE; color: #AE1932; border-radius: 4px; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; }
         .review-card-area .review-title { font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: var(--color-text-primary, #000); margin: 6px 0 4px; line-height: 1.4; }
@@ -1307,7 +1304,7 @@ if ($current_tab === 'reviews') {
         .post-stat-group .stat i { font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); }
         .post-stat-group .heart-icon { color: #AE1932; }
 
-        /* 의사 탭 */
+        
         .doctor-list {
             display: grid;
             gap: 16px;
@@ -1357,7 +1354,7 @@ if ($current_tab === 'reviews') {
             -webkit-box-orient: vertical;
         }
 
-        /* 페이지네이션 */
+        
         .pagination {
             display: flex;
             justify-content: center;
@@ -1391,9 +1388,7 @@ if ($current_tab === 'reviews') {
             border-color: var(--color-primary);
         }
 
-        /* [1차 검수 #12 - 2026-05-28] 하단 상담/예약 버튼 가시성 강화
-           기존 z-index:100 은 bottom_nav.php 와 충돌하여 가려지는 케이스 있어 9999로 상향.
-           bottom_nav(5탭)는 60~70px 높이이므로 그 위에 위치시킴 (bottom: 70px) */
+        
         .bottom-bar {
             position: fixed;
             bottom: 70px;
@@ -1444,12 +1439,12 @@ if ($current_tab === 'reviews') {
             background: var(--color-primary-dark);
         }
 
-        /* 컨텐츠 여백 */
+        
         .content-spacer {
             height: 80px;
         }
 
-        /* 빈 상태 */
+        
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -1465,7 +1460,7 @@ if ($current_tab === 'reviews') {
             font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1));
         }
 
-        /* 상담 모달 */
+        
         .consultation-modal {
             display: none;
             position: fixed;
@@ -1542,7 +1537,7 @@ if ($current_tab === 'reviews') {
             color: white;
         }
 
-        /* 사진 첨부 영역 */
+        
         .photo-upload-section {
             margin-bottom: 14px;
         }
@@ -1619,7 +1614,7 @@ if ($current_tab === 'reviews') {
 </head>
 <body>
     <div class="page-container">
-    <!-- 페이지 헤더 -->
+    
     <div class="header">
         <a href="<?php echo $detail_from_wishlist ? 'my_wishlist.php' : 'hospitals.php'; ?>" id="detailBackBtn" class="back-btn"><i class="bi bi-chevron-left"></i></a>
         <div class="hospital-name-header"><?php echo htmlspecialchars($hospital['name']); ?></div>
@@ -1630,8 +1625,8 @@ if ($current_tab === 'reviews') {
     <div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
     <script>
     (function () {
-        // 병원 목록에서 진입하면 그 전체 URL(정렬/시술/지역 포함)을 저장 —
-        // 상세 내 탭 이동으로 referrer가 detail.php로 바뀌어도 목록 복귀 상태를 유지한다.
+        
+        
         try {
             if (document.referrer.indexOf('hospitals.php') !== -1) {
                 sessionStorage.setItem('hospitalListReturnUrl', document.referrer);
@@ -1640,19 +1635,19 @@ if ($current_tab === 'reviews') {
         var backBtn = document.getElementById('detailBackBtn');
         if (backBtn) {
             backBtn.addEventListener('click', function (e) {
-                // 찜 목록에서 진입한 상세 페이지는 항상 찜 목록으로 복귀한다.
+                
                 if (new URLSearchParams(window.location.search).get('from') === 'my_wishlist') {
                     e.preventDefault();
                     location.href = 'my_wishlist.php';
                     return;
                 }
-                // 목록에서 바로 진입(탭 이동 없음) → history.back()으로 스크롤 위치까지 보존
+                
                 if (document.referrer.indexOf('hospitals.php') !== -1) {
                     e.preventDefault();
                     history.back();
                     return;
                 }
-                // 탭 이동으로 referrer가 detail.php로 바뀐 경우 → 저장해둔 목록 URL로 복귀
+                
                 var listUrl = null;
                 try { listUrl = sessionStorage.getItem('hospitalListReturnUrl'); } catch (e2) {}
                 if (listUrl) {
@@ -1713,10 +1708,10 @@ if ($current_tab === 'reviews') {
     })();
     </script>
 
-    <!-- 탭 메뉴 -->
-    <!-- [1차 검수 #9 - 2026-05-28] 상세 탭 재정의 [홈 / 의료진 / 시술목록 / 시술후기] -->
+    
+    
     <?php
-    // 탭 전환 시에도 검색 시술 컨텍스트 유지 — 같은 시술의 설명/이미지를 계속 표시한다.
+    
     $tab_qs = '';
     if ($matched_treatment_id > 0) $tab_qs .= '&treatment_id=' . $matched_treatment_id;
     if ($matched_treatment_query !== '') $tab_qs .= '&treatment=' . urlencode($matched_treatment_query);
@@ -1737,7 +1732,7 @@ if ($current_tab === 'reviews') {
         </a>
     </div>
 
-    <!-- 이미지 갤러리 -->
+    
     <?php if (!empty($hospital_images)): ?>
     <div class="image-gallery-container" id="galleryContainer">
         <div class="image-gallery" id="imageGallery">
@@ -1776,14 +1771,14 @@ if ($current_tab === 'reviews') {
     </div>
     <?php endif; ?>
 
-    <!-- 병원 정보 -->
+    
     <div class="hospital-info-section">
         <div style="display:flex; align-items:center; gap:12px;">
             <h1 class="hospital-name" style="flex:1; margin-bottom:0;"><?php echo htmlspecialchars($hospital['name']); ?></h1>
             <div style="flex-shrink:0;"><?php renderWishlistButton('hospital', $hospital_id, 'lg', 'star'); ?></div>
         </div>
         <?php
-        // #16 fix: dynamic specialty (gangnamunni_doctors -> crawled -> categories -> desc)
+        
         $spec_text = '';
         $spec_stmt1 = mysqli_prepare($connect, "SELECT DISTINCT specialty FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' AND specialty IS NOT NULL AND specialty != '' LIMIT 5");
         if ($spec_stmt1) {
@@ -1843,7 +1838,7 @@ if ($current_tab === 'reviews') {
         </div>
         <?php endif; ?>
 
-        <!-- 태그 -->
+        
         <?php if (!empty($treatment_tags)): ?>
         <div class="tags-section">
             <?php foreach (array_slice($treatment_tags, 0, 10) as $tag): ?>
@@ -1857,12 +1852,12 @@ if ($current_tab === 'reviews') {
         </div>
         <?php endif; ?>
 
-        <!-- rating/태그 와 영업시간 사이 구분선 -->
+        
         <hr style="border:none; border-top:1px solid var(--color-border);">
 
-        <!-- 영업시간 -->
+        
         <?php
-        // 현재 진료중 여부 계산 (오늘 영업시간 범위 내 + 점심시간 제외)
+        
         $is_open_now = false;
         $today_hours_str = $business_hours[$today_name] ?? $default_hours[$today_name] ?? '';
         if (preg_match('/(\d{1,2}):(\d{2})\s*[~\-–]\s*(\d{1,2}):(\d{2})/', $today_hours_str, $oh)) {
@@ -1940,10 +1935,10 @@ if ($current_tab === 'reviews') {
             </div>
         </div>
 
-        <!-- 검색하신 시술 (hospitals.php 시술 검색에서 넘어온 경우) — 홈 탭에서만 영업시간 아래 배치 -->
+        
         <?php if ($matched_treatment && $current_tab === 'home'): ?>
         <div id="matched-treatment" style="scroll-margin-top:160px; margin:16px 0 4px; overflow:visible; background:var(--color-bg-white);">
-            <!-- 선택한 시술에 등록된 모든 독립 가격 옵션 -->
+            
             <?php if (!empty($matched_treatment_options)): ?>
                 <?php foreach ($matched_treatment_options as $matched_option): ?>
                 <?php
@@ -1979,7 +1974,7 @@ if ($current_tab === 'reviews') {
             </div>
             <?php endif; ?>
 
-            <!-- 시술 설명 -->
+            
             <div style="padding:16px 0;">
                 <div style="font-size:18px; font-weight:700; color: #000000; margin-bottom:8px;">시술 설명</div>
                 <?php if (!empty($matched_treatment['description'])): ?>
@@ -1989,7 +1984,7 @@ if ($current_tab === 'reviews') {
                 <?php endif; ?>
             </div>
 
-            <!-- 상세 정보 — 병원이 이 시술에 대해 등록한 상세페이지 이미지 (#시술이미지) -->
+            
             <div style="padding:16px 0; border-top:1px solid var(--color-border);">
                 <div style="font-size:18px; font-weight:700; color: #000000; margin-bottom:10px;">상세 정보</div>
                 <?php if (!empty($matched_treatment_images)): ?>
@@ -2024,7 +2019,7 @@ if ($current_tab === 'reviews') {
         </div>
         <script>
         document.addEventListener('DOMContentLoaded', function(){ var el = document.getElementById('matched-treatment'); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); });
-        // 첫 장만 보여주고 나머지는 "이미지 더보기"로 펼친다. (한글 주석)
+        
         function moreTreatmentImages(btn){
             document.querySelectorAll('.treatment-image-more').forEach(function(el){ el.style.display = ''; });
             if (btn) btn.style.display = 'none';
@@ -2032,7 +2027,7 @@ if ($current_tab === 'reviews') {
         </script>
         <?php endif; ?>
 
-        <!-- 주소 (의료진/이벤트 탭에서는 숨김) -->
+        
         <?php if (!$minimal_info_tab): ?>
         <div class="info-row" style="border-bottom:none;">
             <span class="info-icon" style="margin-right:0;"><i class="bi bi-geo-alt"></i></span>
@@ -2047,10 +2042,10 @@ if ($current_tab === 'reviews') {
         </div>
         <?php endif; ?>
 
-        <!-- 카카오 지도 (의료진/이벤트 탭에서는 숨김) -->
+        
         <?php if (!$minimal_info_tab): ?>
         <?php if (!empty($is_app_mode)): ?>
-        <!-- 앱 모드: 임베디드 지도 대신 네비 버튼만 표시 (WebView 내 지도 충돌 방지) -->
+        
         <?php
         $map_lat = floatval($hospital['latitude'] ?? 0);
         $map_lng = floatval($hospital['longitude'] ?? 0);
@@ -2066,7 +2061,7 @@ if ($current_tab === 'reviews') {
         </div>
         <?php endif; ?>
         <?php else: ?>
-        <!-- 웹 모드: 카카오 임베디드 지도 -->
+        
         <?php
         $map_config = [
             'container_id' => 'detailMap',
@@ -2076,7 +2071,7 @@ if ($current_tab === 'reviews') {
             'name'         => $hospital['name'] ?? '',
             'height'       => '220px',
             'show_title'   => false,
-            // 표시되는 주소와 지도 마커 위치를 일치시킨다(저장 좌표가 주소와 어긋난 경우 대응).
+            
             'prefer_address' => true,
         ];
         include __DIR__ . '/includes/kakao_map.php';
@@ -2087,7 +2082,7 @@ if ($current_tab === 'reviews') {
     </div>
 
 
-    <!-- 병원 특징 (의료진/이벤트 탭에서는 숨김) -->
+    
     <?php if (!empty($hospital_features) && !$minimal_info_tab): ?>
     <div class="features-section">
         <?php foreach ($hospital_features as $feature): ?>
@@ -2099,9 +2094,9 @@ if ($current_tab === 'reviews') {
     </div>
     <?php endif; ?>
 
-    <!-- 탭 컨텐츠 -->
+    
     <div class="tab-content">
-        <!-- 홈 탭 -->
+        
         <div class="tab-pane <?php echo $current_tab === 'home' ? 'active' : ''; ?>" id="tab-home">
             <?php
             $has_intro = !empty(trim($hospital['introduction'] ?? ''));
@@ -2118,7 +2113,7 @@ if ($current_tab === 'reviews') {
             </div>
             <?php endif; ?>
 
-            <!-- 의료진 소개 (홈 탭 · 최대 2명) -->
+            
             <?php if (!empty($doctors_data)): ?>
             <hr style="border:none; border-top:1px solid var(--color-border); margin:24px 0;">
             <h3 style="font-size: 18px; margin-bottom: 16px;">의료진 소개</h3>
@@ -2145,7 +2140,7 @@ if ($current_tab === 'reviews') {
                             <?php endif; ?>
                         </h3>
                         <?php
-                        // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
+                        
                         $doc_treat_names = [];
                         $dt_stmt = mysqli_prepare($connect, "SELECT tm.name FROM gangnamunni_doctor_treatments dt JOIN gangnamunni_treatment_master tm ON dt.treatment_id = tm.id WHERE dt.doctor_id = ? AND dt.is_active = 1 ORDER BY dt.case_count DESC LIMIT 6");
                         if ($dt_stmt) {
@@ -2179,7 +2174,7 @@ if ($current_tab === 'reviews') {
             </div>
             <?php endif; ?>
             <script>
-            // 시술 태그: 한 줄에 안 들어가는 태그는 숨김
+            
             (function(){
                 function trimTreatTags(){
                     document.querySelectorAll('.doc-treat-row').forEach(function(row){
@@ -2199,7 +2194,7 @@ if ($current_tab === 'reviews') {
 
         </div>
 
-        <!-- 시술목록 탭 (URL 호환성을 위해 tab=events 유지) -->
+        
         <div class="tab-pane <?php echo $current_tab === 'events' ? 'active' : ''; ?>" id="tab-events">
             <h3 id="eventsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;">시술목록</h3>
             <?php if (!empty($procedure_data)): ?>
@@ -2232,7 +2227,7 @@ if ($current_tab === 'reviews') {
                 <?php endforeach; ?>
             </div>
 
-            <!-- 페이지네이션 -->
+            
             <?php if ($procedure_count > $items_per_page): ?>
             <div class="pagination">
                 <?php
@@ -2253,14 +2248,14 @@ if ($current_tab === 'reviews') {
             </div>
             <?php endif; ?>
         </div>
-        <!-- 후기 탭 -->
+        
         <div class="tab-pane <?php echo $current_tab === 'reviews' ? 'active' : ''; ?>" id="tab-reviews">
             <h3 id="reviewsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;"><?php echo term('review', '시술후기'); ?></h3>
             <?php if (!empty($reviews_data)): ?>
             <div class="review-list">
                 <?php foreach ($reviews_data as $review): ?>
                 <?php
-                // 후기 이미지 조회
+                
                 $review_imgs = [];
                 $img_query = mysqli_prepare($connect, "SELECT image_url, thumbnail_url FROM review_images WHERE review_id = ? ORDER BY image_order ASC LIMIT 5");
                 if ($img_query) {
@@ -2327,7 +2322,7 @@ if ($current_tab === 'reviews') {
             </div>
             <?php endif; ?>
         </div>
-        <!-- 의사 탭 -->
+        
         <div class="tab-pane <?php echo $current_tab === 'doctors' ? 'active' : ''; ?>" id="tab-doctors">
             <h3 id="doctorsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;">의료진 소개</h3>
             <?php if (!empty($doctors_data)): ?>
@@ -2354,7 +2349,7 @@ if ($current_tab === 'reviews') {
                             <?php endif; ?>
                         </h3>
                         <?php
-                        // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
+                        
                         $doc_treat_names = [];
                         $dt_stmt = mysqli_prepare($connect, "SELECT tm.name FROM gangnamunni_doctor_treatments dt JOIN gangnamunni_treatment_master tm ON dt.treatment_id = tm.id WHERE dt.doctor_id = ? AND dt.is_active = 1 ORDER BY dt.case_count DESC LIMIT 6");
                         if ($dt_stmt) {
@@ -2421,14 +2416,14 @@ if ($current_tab === 'reviews') {
 
     <div class="content-spacer"></div>
 
-    <!-- #24 fix: bottom buttons no overlap -->
+    
     <div class="bottom-bar">
         <button class="btn btn-primary" onclick="openDoctorConsult()" style="flex:1;min-width:0;border:none;border-radius:0;color:#fff;background:var(--color-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
             <?php echo term('consultation', '상담'); ?> 신청
         </button>
         <?php
-        // Keep the treatment context that brought the user to this hospital.
-        // booking.php validates it against the hospital's active treatments before preselecting it.
+        
+        
         $booking_url = 'booking.php?id=' . (int)$hospital['id'];
         if ($matched_treatment) {
             $booking_url .= '&treatment_id=' . (int)$matched_treatment['treatment_id']
@@ -2441,7 +2436,344 @@ if ($current_tab === 'reviews') {
         </a>
     </div>
 
-    <!-- 상담 신청 모달 -->
+    <?php
+    
+    $bk_sheet_treatments = [];
+    if (!empty($hospital['id'])) {
+        $bk_regular_col = false;
+        $bk_col_res = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'regular_price'");
+        if ($bk_col_res && mysqli_num_rows($bk_col_res) > 0) $bk_regular_col = true;
+        $bk_repr_col = false;
+        $bk_repr_res = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'is_representative'");
+        if ($bk_repr_res && mysqli_num_rows($bk_repr_res) > 0) $bk_repr_col = true;
+        $bk_order = $bk_repr_col ? 'p.is_representative DESC, p.price ASC, p.sort_order ASC, p.id ASC' : 'p.price ASC, p.sort_order ASC, p.id ASC';
+        $bk_regular_expr = $bk_regular_col ? 'p.regular_price' : 'p.price';
+        $bk_sql = "SELECT tm.id AS treatment_id, tm.name, ht.price_min, ht.price_max,
+            (SELECT p.id FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id=ht.id AND p.price>0 ORDER BY {$bk_order} LIMIT 1) AS option_id,
+            (SELECT p.price FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id=ht.id AND p.price>0 ORDER BY {$bk_order} LIMIT 1) AS sale_price,
+            (SELECT {$bk_regular_expr} FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id=ht.id AND p.price>0 ORDER BY {$bk_order} LIMIT 1) AS regular_price
+            FROM gangnamunni_hospital_treatments ht
+            JOIN gangnamunni_treatment_master tm ON tm.id=ht.treatment_id
+            WHERE ht.hospital_id=? AND ht.status='active' AND ht.is_active=1
+            ORDER BY ht.is_promoted DESC, tm.name";
+        $bk_stmt = mysqli_prepare($connect, $bk_sql);
+        if ($bk_stmt) {
+            $bk_hid = (int)$hospital['id'];
+            mysqli_stmt_bind_param($bk_stmt, 'i', $bk_hid);
+            mysqli_stmt_execute($bk_stmt);
+            $bk_res = mysqli_stmt_get_result($bk_stmt);
+            while ($bk_row = mysqli_fetch_assoc($bk_res)) {
+                $bk_sale = max(0, (int)($bk_row['sale_price'] ?? 0));
+                $bk_regular = max(0, (int)($bk_row['regular_price'] ?? 0));
+                $bk_min = max(0, (int)($bk_row['price_min'] ?? 0));
+                if ($bk_sale <= 0) $bk_sale = $bk_min;
+                $bk_has_disc = $bk_sale > 0 && $bk_regular > $bk_sale;
+                $bk_sheet_treatments[] = [
+                    'treatment_id' => (int)$bk_row['treatment_id'],
+                    'option_id' => (int)($bk_row['option_id'] ?? 0),
+                    'name' => (string)$bk_row['name'],
+                    'sale_price' => $bk_sale,
+                    'regular_price' => $bk_has_disc ? $bk_regular : 0,
+                    'discount_rate' => $bk_has_disc ? (int)round((1 - ($bk_sale / $bk_regular)) * 100) : 0,
+                ];
+            }
+            mysqli_stmt_close($bk_stmt);
+        }
+    }
+    $bk_initial_index = 0;
+    if ($matched_treatment) {
+        foreach ($bk_sheet_treatments as $bk_i => $bk_t) {
+            if ($bk_t['treatment_id'] === (int)$matched_treatment['treatment_id']) { $bk_initial_index = $bk_i; break; }
+        }
+    }
+    ?>
+    <?php if (!empty($bk_sheet_treatments)): ?>
+    <style>
+    
+    .bk-sheet-wrap{position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.4);opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+    .bk-sheet-wrap.active{opacity:1;visibility:visible}
+    .bk-sheet{position:absolute;inset:0;margin:0 auto;max-width:640px;background:#f3f3f3;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .28s ease;overflow:hidden}
+    .bk-sheet-wrap.active .bk-sheet{transform:translateY(0)}
+    .bk-head{flex:none;height:64px;padding:0 18px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;background:#fff;border-bottom:1px solid #f0f0f0}
+    .bk-back{border:0;background:none;font-size:30px;line-height:1;text-align:left;cursor:pointer;color:#111}
+    .bk-head h1{margin:0;text-align:center;font-size:18px;font-weight:700;color:#111}
+    .bk-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+    .bk-section{padding:32px 20px;background:#fff}
+    .bk-section + .bk-section{margin-top:10px}
+    .bk-intro{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px;border-bottom:1px solid #e4e4e4}
+    .bk-intro h2,.bk-title{margin:0;font-size:22px;font-weight:700;letter-spacing:-.04em;color:#111}
+    .bk-option-btn{border:0;background:var(--color-primary,#AE1932);color:#fff;padding:10px 20px;font-size:17px;font-weight:650;cursor:pointer}
+    .bk-treatment{padding:22px 0;border-bottom:1px solid #e4e4e4}
+    .bk-treatment-top{display:flex;justify-content:space-between;gap:16px}
+    .bk-treatment-name{font-size:18px;font-weight:700;color:#111}
+    .bk-remove{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:#111}
+    .bk-detail-toggle{margin-top:10px;border:0;background:none;font-size:15px;font-weight:650;cursor:pointer;color:#111}
+    .bk-qty-price{margin-top:20px;display:flex;align-items:center;justify-content:space-between}
+    .bk-qty{display:flex;border:1px solid #e4e4e4}
+    .bk-qty button{width:40px;height:34px;display:grid;place-items:center;border:0;background:#fff;font-size:18px;cursor:pointer;color:#111}
+    .bk-qty span{width:40px;height:34px;display:grid;place-items:center;font-size:16px;color:#111}
+    .bk-price{font-size:18px;font-weight:650;color:#111}
+    .bk-empty{padding:26px 0;color:#999;font-size:15px}
+    .bk-months{display:flex;gap:28px;margin-top:20px;padding-bottom:16px;border-bottom:1px solid #bbb}
+    .bk-month-btn{border:0;background:none;color:#aaa;font-size:16px;cursor:pointer}
+    .bk-month-btn.active{color:#111;font-weight:700}
+    .bk-weekdays,.bk-days{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+    .bk-weekdays{padding:14px 0 8px;color:#aaa;font-size:13px}
+    .bk-day{height:38px;border:0;background:none;font-size:16px;cursor:pointer;color:#111}
+    .bk-day.selected{background:var(--color-primary,#AE1932);color:#fff}
+    .bk-day:disabled{color:#ccc;cursor:default}
+    .bk-today-label{height:28px;padding:4px;color:#aaa;font-size:13px;border-bottom:1px solid #bbb}
+    .bk-method{margin-top:20px;font-size:16px;font-weight:650;color:#111}
+    .bk-method-note{margin-top:8px;color:var(--color-primary,#AE1932);font-size:13px}
+    .bk-times{display:grid;grid-template-columns:repeat(4,1fr);gap:22px 38px;margin-top:26px}
+    .bk-time{height:38px;border:1px solid #e4e4e4;background:#fff;font-size:16px;cursor:pointer;color:#111}
+    .bk-time.selected{border-color:var(--color-primary,#AE1932);color:var(--color-primary,#AE1932)}
+    .bk-submit{width:100%;height:54px;margin-top:38px;border:0;background:#eee;color:#aaa;font-size:18px;font-weight:700;cursor:pointer}
+    .bk-submit.ready{background:var(--color-primary,#AE1932);color:#fff}
+    .bk-option-wrap{position:fixed;inset:0;z-index:1300;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+    .bk-option-wrap.active{opacity:1;visibility:visible}
+    .bk-option-sheet{width:min(640px,100%);height:min(72vh,760px);padding:14px 20px 0;background:#fff;display:flex;flex-direction:column;overflow:hidden;transform:translateY(100%);transition:transform .25s ease}
+    .bk-option-wrap.active .bk-option-sheet{transform:translateY(0)}
+    .bk-handle{width:44px;height:4px;margin:0 auto 12px;border-radius:4px;background:#d1d1d1;flex:none}
+    .bk-sheet-title{margin:0;font-size:18px;font-weight:700;flex:none;color:#111}
+    .bk-option-list{display:grid;gap:16px;margin:18px -4px 0;padding:0 4px 18px;overflow-y:auto;min-height:0;flex:1;align-content:start}
+    .bk-option-card{width:100%;padding:18px 14px;border:2px solid #eee;border-radius:4px;background:#fff;color:#111;text-align:left;cursor:pointer}
+    .bk-option-card.selected{border-color:var(--color-primary,#AE1932)}
+    .bk-option-card-name{font-size:17px;font-weight:700;line-height:1.45}
+    .bk-option-card-detail{margin-top:12px;font-size:14px;line-height:1.55;color:#333}
+    .bk-option-card-price{display:flex;align-items:baseline;justify-content:flex-end;gap:12px;margin-top:7px}
+    .bk-old-price{color:#aaa;font-size:13px;text-decoration:line-through}
+    .bk-discount{font-size:17px}
+    .bk-sale-price{color:#d00;font-size:17px;font-weight:800}
+    .bk-no-price{color:#999;font-size:14px}
+    .bk-complete{width:calc(100% + 40px);height:58px;margin:0 -20px;padding-bottom:env(safe-area-inset-bottom,0);border:0;background:var(--color-primary,#AE1932);color:#fff;font-size:18px;font-weight:700;flex:none;cursor:pointer}
+    @media(max-width:420px){.bk-times{gap:18px 12px}.bk-section{padding-left:16px;padding-right:16px}}
+    </style>
+    <div class="bk-sheet-wrap" id="bkSheetWrap" role="dialog" aria-modal="true" aria-labelledby="bkSheetHeading">
+      <div class="bk-sheet">
+        <header class="bk-head">
+          <button class="bk-back" type="button" onclick="closeBookingSheet()" aria-label="닫기">&#8249;</button>
+          <h1 id="bkSheetHeading"><?php echo term('booking', '예약'); ?>하기</h1>
+          <span></span>
+        </header>
+        <div class="bk-body">
+          <section class="bk-section">
+            <div class="bk-intro">
+              <h2>예약을 진행해볼까요?</h2>
+              <button class="bk-option-btn" type="button" onclick="bkOpenOptions()">옵션 변경</button>
+            </div>
+            <div id="bkCart"></div>
+          </section>
+          <section class="bk-section">
+            <h2 class="bk-title">언제 방문하시겠어요?</h2>
+            <div class="bk-months" id="bkMonths"></div>
+            <div class="bk-weekdays"><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span></div>
+            <div class="bk-days" id="bkDays"></div>
+            <div class="bk-today-label">오늘</div>
+          </section>
+          <section class="bk-section">
+            <h2 class="bk-title">예약 시간을 선택해주세요</h2>
+            <div class="bk-method">예약 확정 방식</div>
+            <div class="bk-method-note">병원에서 확인 후 일정이 확정돼요</div>
+            <div class="bk-times" id="bkTimes"></div>
+            <button class="bk-submit" id="bkSubmit" type="button" onclick="bkSubmit()"><?php echo term('booking', '예약'); ?>하기</button>
+          </section>
+        </div>
+      </div>
+      <div class="bk-option-wrap" id="bkOptionWrap" onclick="bkCloseOptions(event)">
+        <section class="bk-option-sheet" role="dialog" aria-modal="true" aria-labelledby="bkOptionTitle">
+          <div class="bk-handle"></div>
+          <h2 class="bk-sheet-title" id="bkOptionTitle">옵션 선택</h2>
+          <div class="bk-option-list" id="bkOptionList"></div>
+          <button class="bk-complete" type="button" onclick="bkCompleteOption()">선택 완료</button>
+        </section>
+      </div>
+    </div>
+    <script>
+    (function(){
+      var BK_TREATMENTS = <?php echo json_encode($bk_sheet_treatments, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+      var BK_HOSPITAL_ID = <?php echo (int)$hospital['id']; ?>;
+      var BK_FROM = <?php echo json_encode($detail_from_wishlist ? '&from=my_wishlist' : ''); ?>;
+      var bkSelectedIndex = <?php echo (int)$bk_initial_index; ?>;
+      var bkPendingIndex = bkSelectedIndex;
+      var bkCartItems = [{ index: bkSelectedIndex, qty: 1 }];
+      var bkDate = '', bkTime = '';
+      var bkShownMonth = new Date();
+
+      function fmtWon(n){ return n > 0 ? n.toLocaleString('ko-KR') : ''; }
+
+      window.openBookingSheet = function(e){
+        if (e) e.preventDefault();
+        document.getElementById('bkSheetWrap').classList.add('active');
+        document.body.style.overflow = 'hidden';
+        return false;
+      };
+      window.closeBookingSheet = function(){
+        document.getElementById('bkSheetWrap').classList.remove('active');
+        document.body.style.overflow = '';
+      };
+
+      function renderCart(){
+        var box = document.getElementById('bkCart');
+        box.innerHTML = '';
+        if (!bkCartItems.length) {
+          box.innerHTML = '<div class="bk-empty">선택된 시술이 없습니다. 옵션 변경을 눌러 시술을 선택해주세요.</div>';
+          updateSubmit();
+          return;
+        }
+        bkCartItems.forEach(function(item, i){
+          var t = BK_TREATMENTS[item.index];
+          var art = document.createElement('article');
+          art.className = 'bk-treatment';
+          var price = t.sale_price > 0 ? fmtWon(t.sale_price * item.qty) : '가격 문의';
+          art.innerHTML =
+            '<div class="bk-treatment-top"><span class="bk-treatment-name"></span>' +
+            '<button class="bk-remove" type="button" aria-label="삭제">&times;</button></div>' +
+            '<button class="bk-detail-toggle" type="button">자세히 &#x2304;</button>' +
+            '<div class="bk-qty-price"><div class="bk-qty">' +
+            '<button type="button" class="bk-minus">&minus;</button><span>' + item.qty + '</span><button type="button" class="bk-plus">+</button>' +
+            '</div><span class="bk-price">' + price + '</span></div>';
+          art.querySelector('.bk-treatment-name').textContent = t.name;
+          art.querySelector('.bk-remove').onclick = function(){ bkCartItems.splice(i,1); renderCart(); };
+          art.querySelector('.bk-minus').onclick = function(){ if(item.qty>1){item.qty--; renderCart();} };
+          art.querySelector('.bk-plus').onclick = function(){ item.qty++; renderCart(); };
+          box.appendChild(art);
+        });
+        updateSubmit();
+      }
+
+      window.bkOpenOptions = function(){
+        bkPendingIndex = bkCartItems.length ? bkCartItems[0].index : bkSelectedIndex;
+        renderOptions();
+        document.getElementById('bkOptionWrap').classList.add('active');
+      };
+      window.bkCloseOptions = function(e){
+        if (e && e.target !== document.getElementById('bkOptionWrap')) return;
+        document.getElementById('bkOptionWrap').classList.remove('active');
+      };
+      function renderOptions(){
+        var list = document.getElementById('bkOptionList');
+        list.innerHTML = '';
+        BK_TREATMENTS.forEach(function(t, i){
+          var card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'bk-option-card' + (i === bkPendingIndex ? ' selected' : '');
+          var priceHtml;
+          if (t.regular_price > 0) {
+            priceHtml = '<span class="bk-old-price">' + fmtWon(t.regular_price) + '원</span>' +
+                        '<span class="bk-discount">' + t.discount_rate + '%</span>' +
+                        '<span class="bk-sale-price">' + fmtWon(t.sale_price) + '원</span>';
+          } else if (t.sale_price > 0) {
+            priceHtml = '<span class="bk-sale-price" style="color:#111">' + fmtWon(t.sale_price) + '원</span>';
+          } else {
+            priceHtml = '<span class="bk-no-price">가격 문의</span>';
+          }
+          card.innerHTML = '<div class="bk-option-card-name"></div>' +
+                           '<div class="bk-option-card-detail"></div>' +
+                           '<div class="bk-option-card-price">' + priceHtml + '</div>';
+          card.querySelector('.bk-option-card-name').textContent = t.name;
+          card.querySelector('.bk-option-card-detail').textContent = t.name + ' 1회';
+          card.onclick = function(){
+            bkPendingIndex = i;
+            list.querySelectorAll('.bk-option-card').forEach(function(c, j){ c.classList.toggle('selected', j === i); });
+          };
+          list.appendChild(card);
+        });
+      }
+      window.bkCompleteOption = function(){
+        bkSelectedIndex = bkPendingIndex;
+        if (bkCartItems.length) { bkCartItems[0].index = bkSelectedIndex; }
+        else { bkCartItems = [{ index: bkSelectedIndex, qty: 1 }]; }
+        renderCart();
+        document.getElementById('bkOptionWrap').classList.remove('active');
+      };
+
+      function iso(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+      function renderMonths(){
+        var box = document.getElementById('bkMonths');
+        box.innerHTML = '';
+        for (var i = 0; i < 2; i++) {
+          (function(){
+            var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + i);
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'bk-month-btn' + (d.getMonth() === bkShownMonth.getMonth() && d.getFullYear() === bkShownMonth.getFullYear() ? ' active' : '');
+            b.textContent = (d.getMonth() + 1) + '월';
+            b.onclick = function(){ bkShownMonth = d; renderMonths(); renderDays(); };
+            box.appendChild(b);
+          })();
+        }
+      }
+      function renderDays(){
+        var box = document.getElementById('bkDays');
+        box.innerHTML = '';
+        var y = bkShownMonth.getFullYear(), m = bkShownMonth.getMonth();
+        var first = new Date(y, m, 1), offset = (first.getDay() + 6) % 7, last = new Date(y, m + 1, 0).getDate();
+        for (var i = 0; i < offset; i++) box.appendChild(document.createElement('span'));
+        for (var n = 1; n <= last; n++) {
+          (function(){
+            var d = new Date(y, m, n), b = document.createElement('button'), v = iso(d);
+            b.type = 'button';
+            b.className = 'bk-day' + (v === bkDate ? ' selected' : '');
+            b.textContent = n;
+            b.disabled = d < new Date(new Date().toDateString());
+            b.onclick = function(){ bkDate = v; renderDays(); updateSubmit(); };
+            box.appendChild(b);
+          })();
+        }
+      }
+      function renderTimes(){
+        var box = document.getElementById('bkTimes');
+        box.innerHTML = '';
+        for (var h = 10; h <= 20; h++) {
+          [0, 30].forEach(function(min){
+            if (h === 20 && min > 30) return;
+            var v = String(h).padStart(2,'0') + ':' + String(min).padStart(2,'0');
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'bk-time' + (v === bkTime ? ' selected' : '');
+            b.textContent = v;
+            b.onclick = function(){
+              bkTime = v;
+              box.querySelectorAll('.bk-time').forEach(function(x){ x.classList.remove('selected'); });
+              b.classList.add('selected');
+              updateSubmit();
+            };
+            box.appendChild(b);
+          });
+        }
+      }
+      function updateSubmit(){
+        document.getElementById('bkSubmit').classList.toggle('ready', !!bkDate && !!bkTime && bkCartItems.length > 0);
+      }
+      window.bkSubmit = function(){
+        if (!bkDate || !bkTime || !bkCartItems.length) return;
+        var item = bkCartItems[0], t = BK_TREATMENTS[item.index];
+        var url = 'booking.php?id=' + BK_HOSPITAL_ID +
+          '&treatment_id=' + t.treatment_id +
+          '&treatment=' + encodeURIComponent(t.name) +
+          (t.option_id ? '&option_id=' + t.option_id : '') +
+          '&quantity=' + item.qty +
+          '&date=' + bkDate +
+          '&time=' + encodeURIComponent(bkTime) + BK_FROM;
+        location.href = url;
+      };
+
+      document.addEventListener('keydown', function(e){
+        if (e.key !== 'Escape') return;
+        var opt = document.getElementById('bkOptionWrap');
+        if (opt.classList.contains('active')) { opt.classList.remove('active'); return; }
+        closeBookingSheet();
+      });
+      var bkAnchor = document.querySelector('.bottom-bar a[href^="booking.php"]');
+      if (bkAnchor) bkAnchor.addEventListener('click', openBookingSheet);
+
+      renderCart(); renderMonths(); renderDays(); renderTimes(); updateSubmit();
+    })();
+    </script>
+    <?php endif; ?>
+
+    
     <div class="consultation-modal" id="consultModal">
         <div class="modal-content">
             <div class="modal-header"><?= term("consultation") ?> 신청</div>
@@ -2458,7 +2790,7 @@ if ($current_tab === 'reviews') {
                 <input type="tel" name="phone" class="modal-input" placeholder="연락처" value="<?php echo $auto_phone; ?>" required>
                 <textarea name="message" class="modal-textarea" placeholder="<?php echo term('consultation', '상담'); ?> 내용을 입력해주세요"></textarea>
 
-                <!-- 사진 첨부 -->
+                
                 <div class="photo-upload-section">
                     <span class="photo-upload-label">📷 사진 첨부 (선택, 최대 3장)</span>
                     <input type="file" id="photoInput" accept="image/*" multiple style="display:none;" onchange="handlePhotoSelect(this)">
@@ -2469,7 +2801,7 @@ if ($current_tab === 'reviews') {
                     </div>
                 </div>
 
-                <!-- 동의 (사진 첨부 시 표시) -->
+                
                 <div class="consent-row" id="consentRow" style="display:none;">
                     <input type="checkbox" name="photo_consent" id="photoConsent" value="1">
                     <label for="photoConsent">상담 참고용 사진을 첨부합니다. 제공된 사진은 상담 목적으로만 사용되며, 상담 완료 후 30일 이내에 삭제됩니다.</label>
@@ -2483,7 +2815,7 @@ if ($current_tab === 'reviews') {
         </div>
     </div>
 
-    <!-- 시술 상세 이미지 확대 모달 -->
+    
     <div class="treatment-image-modal" id="treatmentImageModal" role="dialog" aria-modal="true" aria-label="시술 상세 이미지" onclick="handleTreatmentImageModalBackdrop(event)">
         <button type="button" class="treatment-image-modal-close" aria-label="닫기" onclick="closeTreatmentImageModal()">×</button>
         <img id="treatmentImageModalImage" src="" alt="">
@@ -2495,7 +2827,7 @@ if ($current_tab === 'reviews') {
     </div>
 
     <script>
-        // 이미지 갤러리 (터치 스와이프 + 자동 슬라이드)
+        
         const gallery = document.getElementById('imageGallery');
         const currentIndexEl = document.getElementById('currentIndex');
         const galleryContainer = document.getElementById('galleryContainer');
@@ -2507,7 +2839,7 @@ if ($current_tab === 'reviews') {
 
         function navigateGallery(direction) {
             currentIndex += direction;
-            // 무한 루프 (마지막→첫번째, 첫번째→마지막)
+            
             if (currentIndex < 0) currentIndex = totalImages - 1;
             if (currentIndex >= totalImages) currentIndex = 0;
             updateGallery();
@@ -2525,12 +2857,12 @@ if ($current_tab === 'reviews') {
                 gallery.style.transform = 'translateX(-' + (currentIndex * 100) + '%)';
             }
             if (currentIndexEl) currentIndexEl.textContent = currentIndex + 1;
-            // 도트 업데이트
+            
             var dots = document.querySelectorAll('.gallery-dot');
             dots.forEach(function(d, i) { d.classList.toggle('active', i === currentIndex); });
         }
 
-        // 자동 슬라이드 (3초 간격)
+        
         function startAutoSlide() {
             if (totalImages <= 1) return;
             autoSlideTimer = setInterval(function() { navigateGallery(1); }, 3000);
@@ -2541,7 +2873,7 @@ if ($current_tab === 'reviews') {
         }
         startAutoSlide();
 
-        // 터치 스와이프
+        
         if (galleryContainer) {
             galleryContainer.addEventListener('touchstart', function(e) {
                 touchStartX = e.changedTouches[0].screenX;
@@ -2556,15 +2888,15 @@ if ($current_tab === 'reviews') {
                 touchEndX = e.changedTouches[0].screenX;
                 var diffX = touchStartX - touchEndX;
                 var diffY = Math.abs(touchStartY - e.changedTouches[0].screenY);
-                // 수평 스와이프만 (수직 스크롤과 구분)
+                
                 if (Math.abs(diffX) > 40 && diffY < 80) {
-                    if (diffX > 0) navigateGallery(1);  // 왼쪽 스와이프 → 다음
-                    else navigateGallery(-1);             // 오른쪽 스와이프 → 이전
+                    if (diffX > 0) navigateGallery(1);
+                    else navigateGallery(-1);
                 }
                 resetAutoSlide();
             }, { passive: true });
 
-            // 마우스 드래그 (PC)
+            
             galleryContainer.addEventListener('mousedown', function(e) {
                 touchStartX = e.clientX;
                 isDragging = true;
@@ -2583,18 +2915,18 @@ if ($current_tab === 'reviews') {
             galleryContainer.addEventListener('mouseleave', function() { isDragging = false; });
         }
 
-        // 의사 상담
+        
         function openDoctorConsult() {
             document.getElementById('consultType').value = 'doctor';
             document.getElementById('consultModal').classList.add('show');
         }
 
-        // 상담 모달 닫기
+        
         function closeConsultModal() {
             document.getElementById('consultModal').classList.remove('show');
         }
 
-        // 시술 상세 이미지 확대/축소 (100% ~ 400%)
+        
         let treatmentImageZoom = 1;
         let treatmentImageBaseWidth = 0;
         let treatmentTouchMode = '';
@@ -2750,11 +3082,11 @@ if ($current_tab === 'reviews') {
             }
         });
 
-        // === 사진 첨부 ===
-        let selectedPhotos = []; // {file, dataUrl}
+        
+        let selectedPhotos = [];
         const MAX_PHOTOS = 3;
-        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-        const MAX_DIM = 1280; // 리사이즈 최대 px
+        const MAX_SIZE = 5 * 1024 * 1024;
+        const MAX_DIM = 1280;
 
         function handlePhotoSelect(input) {
             const files = Array.from(input.files);
@@ -2813,23 +3145,23 @@ if ($current_tab === 'reviews') {
                 addSlot.onclick = function() { document.getElementById('photoInput').click(); };
                 grid.appendChild(addSlot);
             }
-            // 동의 체크박스 표시/숨김
+            
             document.getElementById('consentRow').style.display = selectedPhotos.length > 0 ? 'flex' : 'none';
             if (selectedPhotos.length === 0) document.getElementById('photoConsent').checked = false;
         }
 
-        // 상담 신청 제출
+        
         function submitConsultation(e) {
             e.preventDefault();
 
-            // 사진 있을 때 동의 체크 검증
+            
             if (selectedPhotos.length > 0 && !document.getElementById('photoConsent').checked) {
                 alert('사진 첨부 시 동의가 필요합니다.');
                 return;
             }
 
             const formData = new FormData(e.target);
-            // 사진 blob 추가
+            
             selectedPhotos.forEach(function(p, i) {
                 formData.append('photos[]', p.blob, 'photo_' + i + '.jpg');
             });
@@ -2869,14 +3201,14 @@ if ($current_tab === 'reviews') {
             });
         }
 
-        // 모달 외부 클릭시 닫기
+        
         document.getElementById('consultModal')?.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeConsultModal();
             }
         });
 
-        // 영업시간 확장/축소
+        
         function copyAddress(btn) {
             const addr = btn.getAttribute('data-address') || '';
             if (!addr) return;
@@ -2905,13 +3237,13 @@ if ($current_tab === 'reviews') {
             }
         }
 
-        // 초기화
+        
         updateGallery();
     </script>
     </div>
 
 <?php
-// CPV 추적 (페이지 로드 완료 시 과금 API 호출)
+
 $cpv_page_type = 'hospital';
 $cpv_target_id = $hospital_id;
 include __DIR__ . '/includes/cpv_tracker.php';
@@ -2927,7 +3259,7 @@ include_once __DIR__ . '/includes/bottom_nav.php';
 <?php renderWishlistScript(); ?>
 <?php include __DIR__ . '/includes/report_block_modal.php'; ?>
 <?php
-// 최근 본 병원 저장
+
 if (!empty($hospital_id) && isset($hospital)) {
     renderRecentlyViewedSave(
         $hospital_id,
