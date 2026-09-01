@@ -1194,7 +1194,7 @@ $page_css = '
         padding: 10px 20px calc(20px + env(safe-area-inset-bottom, 0px));
         display: flex;
         flex-direction: column;
-        animation: sheetUp 0.34s cubic-bezier(.32,.72,0,1);
+        animation: none;
     }
     @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
@@ -1228,11 +1228,6 @@ $page_css = '
         content: ""; flex: 1; height: 1px; background: #e8e8e8;
     }
     .package-item { background: rgba(174, 25, 50, .025); }
-    .inline-treatment-list { display:grid; gap:10px; margin-top:12px; }
-    .inline-treatment-choice { display:flex; align-items:center; gap:10px; padding:14px; border:1px solid #e6e6e6; border-radius:12px; cursor:pointer; background:#fff; }
-    .inline-treatment-choice.selected { border-color:#ae1932; background:#fff7f8; }
-    .inline-treatment-choice input { accent-color:#ae1932; width:18px; height:18px; }
-    .inline-treatment-choice .choice-price { margin-left:auto; font-weight:700; }
     .detail-option-list { display:grid; gap:10px; width:100%; margin-top:2px; }
     .detail-option-item {
         display:grid;
@@ -1573,6 +1568,48 @@ $page_css = '
             grid-template-columns: repeat(2, 1fr);
         }
     }
+
+    .treatment-sheet-overlay { background: rgba(0,0,0,.58); }
+    .treatment-sheet {
+        /* max-height는 지정하지 않는다 — 손잡이/제목/완료 버튼 높이까지 합치면
+           54vh로는 시술 카드 3개(.sheet-list max-height:342px)가 다 안 들어가
+           잘려 보이는 문제가 있었다. 기본 규칙의 max-height:88%가 안전망 역할. */
+        padding: 10px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+        border-radius: 0;
+        will-change: transform;
+    }
+    .sheet-handle {
+        position: relative;
+        width: 64px; height: 28px; margin: -6px auto 0;
+        background: transparent; border-radius: 0;
+        cursor: grab; touch-action: none; user-select: none;
+    }
+    .sheet-handle::before {
+        content: ""; position: absolute; left: 50%; top: 10px;
+        width: 34px; height: 4px; transform: translateX(-50%);
+        border-radius: 2px; background: #AE1932;
+    }
+    .sheet-handle:active { cursor: grabbing; }
+    .treatment-sheet.is-opening { animation: sheetUp 0.22s ease-out; }
+    .treatment-sheet.is-dragging { animation: none; transition: none; }
+    .treatment-sheet.is-closing { animation: none; transform: translateY(110%); transition: transform .22s ease-out; }
+    .treatment-sheet.is-snapping { animation: none; transition: transform .22s ease-out; }
+    .sheet-title { margin-bottom: 12px; font-size: 14px; font-weight: 600; }
+    .sheet-list {
+        flex: 0 1 auto; gap: 14px; margin-bottom: 14px;
+        max-height: 342px; overflow-y: auto;
+        overscroll-behavior: contain; touch-action: pan-y;
+        -webkit-overflow-scrolling: touch;
+    }
+    .sheet-section-title, .sheet-choice-divider { display: none; }
+    .sheet-item { padding: 13px 10px; border-radius: 3px; background: #fff; }
+    .sheet-item.selected { border: 2px solid #AE1932; box-shadow: none; padding: 12px 9px; }
+    .sheet-item-name { margin-bottom: 8px; font-size: 14px; line-height: 1.45; }
+    .sheet-item-desc { font-size: 12px; }
+    .sheet-item-price { gap: 8px; }
+    .price-now { font-size: 15px; }
+    .sheet-confirm { height: 48px; padding: 0 16px; border-radius: 0; font-size: 14px; }
+
 ';
 
 // ========================================
@@ -1770,6 +1807,26 @@ $page_js = '
     buildTimeGrid();
     window.buildTimeGrid = buildTimeGrid; // 날짜 변경 시 재생성용(오늘 지난 시간 재평가)
 
+    var treatmentSheetScrollY = 0;
+    function lockTreatmentSheetBackground() {
+        treatmentSheetScrollY = window.scrollY || window.pageYOffset || 0;
+        document.body.style.position = "fixed";
+        document.body.style.top = "-" + treatmentSheetScrollY + "px";
+        document.body.style.left = "0";
+        document.body.style.right = "0";
+        document.body.style.width = "100%";
+        document.body.style.overflow = "hidden";
+    }
+    function unlockTreatmentSheetBackground() {
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.left = "";
+        document.body.style.right = "";
+        document.body.style.width = "";
+        document.body.style.overflow = "";
+        window.scrollTo(0, treatmentSheetScrollY);
+    }
+
     // 시술 선택 시트(옵션 변경)
     function openTreatmentSheet() {
         var s = document.getElementById("treatmentSheet");
@@ -1781,12 +1838,81 @@ $page_js = '
         s.querySelectorAll(".package-item").forEach(function(el) {
             markSheetItem(el, !!selectedPackage && parseInt(el.getAttribute("data-package-id"), 10) === selectedPackage.id);
         });
-        s.classList.add("open"); document.body.style.overflow = "hidden";
+        var panel = s.querySelector(".treatment-sheet");
+        if (panel) {
+            panel.classList.remove("is-closing", "is-dragging", "is-snapping", "is-opening");
+            panel.style.transform = "";
+            void panel.offsetWidth;
+            panel.classList.add("is-opening");
+            window.setTimeout(function() { panel.classList.remove("is-opening"); }, 220);
+        }
+        lockTreatmentSheetBackground();
+        s.classList.add("open");
     }
     function closeTreatmentSheet() {
         var s = document.getElementById("treatmentSheet");
-        if (s) { s.classList.remove("open"); document.body.style.overflow = ""; }
+        if (!s || !s.classList.contains("open")) return;
+        var panel = s.querySelector(".treatment-sheet");
+        if (!panel) {
+            s.classList.remove("open");
+            unlockTreatmentSheetBackground();
+            return;
+        }
+        panel.classList.remove("is-dragging", "is-snapping", "is-opening");
+        panel.classList.add("is-closing");
+        // 드래그로 이미 내려간 위치가 있으면 0으로 되감지 않고 그 자리에서
+        // 이어서 화면 밖으로 미끄러지듯 닫는다 (되감김 방지).
+        requestAnimationFrame(function() {
+            panel.style.transform = "translateY(110%)";
+        });
+        window.setTimeout(function() {
+            s.classList.remove("open");
+            panel.classList.remove("is-closing");
+            panel.style.transform = "";
+            unlockTreatmentSheetBackground();
+        }, 220);
     }
+
+    (function() {
+        var overlay = document.getElementById("treatmentSheet");
+        if (!overlay) return;
+        var panel = overlay.querySelector(".treatment-sheet");
+        var handle = overlay.querySelector(".sheet-handle");
+        if (!panel || !handle) return;
+        var startY = 0, currentY = 0, startedAt = 0, dragging = false;
+
+        handle.addEventListener("pointerdown", function(e) {
+            if (!overlay.classList.contains("open")) return;
+            dragging = true; startY = e.clientY; currentY = 0; startedAt = Date.now();
+            panel.classList.remove("is-closing", "is-snapping", "is-opening");
+            panel.classList.add("is-dragging");
+            handle.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+        handle.addEventListener("pointermove", function(e) {
+            if (!dragging) return;
+            var delta = e.clientY - startY;
+            currentY = Math.max(0, delta);
+            panel.style.transform = "translateY(" + currentY + "px)";
+            e.preventDefault();
+        });
+        function finishDrag(e) {
+            if (!dragging) return;
+            dragging = false;
+            var velocity = currentY / Math.max(Date.now() - startedAt, 1);
+            panel.classList.remove("is-dragging");
+            if (currentY >= 90 || velocity > .65) {
+                closeTreatmentSheet();
+            } else {
+                panel.classList.add("is-snapping");
+                panel.style.transform = "translateY(0)";
+                window.setTimeout(function() { panel.classList.remove("is-snapping"); }, 220);
+            }
+            if (handle.hasPointerCapture && handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+        }
+        handle.addEventListener("pointerup", finishDrag);
+        handle.addEventListener("pointercancel", finishDrag);
+    })();
     // 시트 카드의 선택 표시(테두리 강조)와 스크린리더 상태를 함께 갱신한다.
     function markSheetItem(el, on) {
         if (!el) return;
@@ -1837,7 +1963,6 @@ $page_js = '
         });
         renderSelectedTreatments();
     }
-    function pickInlineTreatment(input) { pickTreatment(input.closest("[data-treatment-choice]")); }
     function pickDetailOption(treatmentName, optionId) {
         var t = findTreatment(treatmentName); if (!t) return;
         t.option_id = parseInt(optionId, 10) || 0;
@@ -2300,7 +2425,7 @@ include __DIR__ . '/includes/header.php';
         <div class="form-group head-group">
             <div class="section-head-row">
                 <span class="section-head-title"><?php echo $is_rebooking ? '예약을 진행해볼까요?' : term('booking', '예약') . '하기'; ?></span>
-                <button type="button" class="option-change-btn" onclick="openTreatmentSheet()"<?php echo empty($booking_packages) ? ' style="display:none;"' : ''; ?>>
+                <button type="button" class="option-change-btn" onclick="openTreatmentSheet()">
                     옵션 변경
                 </button>
             </div>
@@ -2311,27 +2436,6 @@ include __DIR__ . '/includes/header.php';
             <input type="hidden" name="treatments_json" id="treatmentsJson" value="[]">
             <input type="hidden" name="selection_type" id="selectionTypeInput" value="treatments">
             <input type="hidden" name="package_id" id="packageIdInput" value="0">
-            <?php if ($preselected_booking_treatment === null): ?>
-            <div class="inline-treatment-list" aria-label="<?php echo term('service', '시술'); ?> 선택">
-                <?php foreach ($booking_treatments as $inline_treatment):
-                    $inline_min_won = booking_price_won($inline_treatment['price_min']);
-                    $inline_max_won = booking_price_won($inline_treatment['price_max']);
-                    $inline_price = ($inline_min_won > 0)
-                        ? (((int)$inline_treatment['price_max'] > (int)$inline_treatment['price_min'])
-                            ? number_format($inline_min_won) . '~' . number_format($inline_max_won) . '원'
-                            : number_format($inline_min_won) . '원') : '';
-                ?>
-                <label class="inline-treatment-choice" data-treatment-choice
-                       data-name="<?php echo htmlspecialchars($inline_treatment['name'], ENT_QUOTES); ?>"
-                       data-price="<?php echo htmlspecialchars($inline_price, ENT_QUOTES); ?>"
-                       data-options="<?php echo htmlspecialchars(json_encode($inline_treatment['options'], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>">
-                    <input type="checkbox" onchange="pickInlineTreatment(this)">
-                    <span><?php echo htmlspecialchars($inline_treatment['name']); ?></span>
-                    <?php if ($inline_price !== ''): ?><span class="choice-price"><?php echo htmlspecialchars($inline_price); ?></span><?php endif; ?>
-                </label>
-                <?php endforeach; ?>
-            </div>
-            <?php endif; ?>
             <!-- 선택된 시술 표시 -->
             <div id="selectedTreatmentDisplay" class="selected-treatment" style="display:none;"></div>
             <div id="treatmentPlaceholder" class="form-help"><?php echo $preselected_booking_treatment === null ? '원하는 시술 1개를 선택해주세요.' : '선택한 시술의 세부 옵션을 확인해주세요.'; ?></div>
@@ -2472,15 +2576,29 @@ include __DIR__ . '/includes/header.php';
     if (empty($sheet_items)) {
         foreach (['코성형','눈성형','지방흡입','가슴성형','리프팅','보톡스'] as $d) $sheet_items[] = ['name' => $d, 'price' => ''];
     }
+    $preselected_sheet_item = null;
+    if ($preselected_booking_treatment !== null) {
+        $preselected_name = (string)($preselected_booking_treatment['name'] ?? '');
+        foreach ($sheet_items as $sheet_item_index => $sheet_item) {
+            if ((string)($sheet_item['name'] ?? '') === $preselected_name) {
+                $preselected_sheet_item = $sheet_item;
+                unset($sheet_items[$sheet_item_index]);
+                break;
+            }
+        }
+        $sheet_items = array_values($sheet_items);
+    }
+    if ($preselected_sheet_item !== null) array_unshift($sheet_items, $preselected_sheet_item);
+    $sheet_packages = $booking_packages;
     ?>
     <div class="treatment-sheet-overlay" id="treatmentSheet" onclick="if(event.target===this)closeTreatmentSheet()">
         <div class="treatment-sheet" role="dialog" aria-modal="true" aria-labelledby="treatmentSheetTitle">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2 class="sheet-title" id="treatmentSheetTitle">원하는 시술을 여러 개 선택해주세요</h2>
+            <h2 class="sheet-title" id="treatmentSheetTitle">옵션 선택</h2>
             <div class="sheet-list" role="group" aria-labelledby="treatmentSheetTitle">
-                <?php if (!empty($booking_packages)): ?>
+                <?php if (!empty($sheet_packages)): ?>
                 <div class="sheet-section-title">패키지 중 1개 선택</div>
-                <?php foreach ($booking_packages as $bp): ?>
+                <?php foreach ($sheet_packages as $bp): ?>
                 <button type="button" class="sheet-item package-item"
                         data-package-id="<?php echo (int)$bp['id']; ?>"
                         data-name="<?php echo htmlspecialchars($bp['name'], ENT_QUOTES); ?>"
