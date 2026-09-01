@@ -60,15 +60,18 @@ if ($method === 'GET') {
     if ($action === 'check') {
         $type = $_GET['type'] ?? 'hospital';
         $tid = intval($_GET['target_id'] ?? 0);
-        if ($member_id <= 0 || $tid <= 0) {
+        if (!in_array($type, ['hospital', 'doctor', 'treatment', 'event'], true) || $tid <= 0) {
             echo json_encode(['success' => true, 'wishlisted' => false, 'count' => 0]);
             exit;
         }
-        $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_wishlist WHERE member_id=? AND target_type=? AND target_id=?");
-        mysqli_stmt_bind_param($stmt, 'isi', $member_id, $type, $tid);
-        mysqli_stmt_execute($stmt);
-        $exists = mysqli_stmt_get_result($stmt)->num_rows > 0;
-        mysqli_stmt_close($stmt);
+        $exists = false;
+        if ($member_id > 0) {
+            $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_wishlist WHERE member_id=? AND target_type=? AND target_id=?");
+            mysqli_stmt_bind_param($stmt, 'isi', $member_id, $type, $tid);
+            mysqli_stmt_execute($stmt);
+            $exists = mysqli_stmt_get_result($stmt)->num_rows > 0;
+            mysqli_stmt_close($stmt);
+        }
 
         // 해당 대상의 총 찜 수
         $stmt2 = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_wishlist WHERE target_type=? AND target_id=?");

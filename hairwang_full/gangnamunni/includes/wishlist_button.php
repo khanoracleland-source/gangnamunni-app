@@ -15,12 +15,15 @@ function renderWishlistButton($type, $targetId, $size = 'md', $showCount = true,
     $sizeMap = ['sm' => '20px', 'md' => '28px', 'lg' => '28px'];
     $iconSize = $sizeMap[$size] ?? $sizeMap['md'];
     $uid = "wl_{$type}_{$targetId}";
-    echo "<button type=\"button\" class=\"wishlist-btn wl-style-{$icon}\" id=\"{$uid}\" data-type=\"{$type}\" data-id=\"{$targetId}\" onclick=\"toggleWishlist('{$type}', {$targetId}, this)\" style=\"background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px;\">";
+    echo "<button type=\"button\" class=\"wishlist-btn wl-style-{$icon}\" id=\"{$uid}\" data-type=\"{$type}\" data-id=\"{$targetId}\" onclick=\"event.preventDefault();event.stopPropagation();toggleWishlist('{$type}', {$targetId}, this)\" aria-label=\"찜하기\" style=\"background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px;\">";
     if ($icon === 'star') {
         echo "<i class=\"bi bi-star wl-icon wl-star-empty\" style=\"font-size:{$iconSize};line-height:1;\"></i>";
         echo "<i class=\"bi bi-star-fill wl-icon wl-star-full\" style=\"font-size:{$iconSize};line-height:1;display:none;\"></i>";
     } else {
         echo "<svg class=\"wl-icon\" width=\"{$iconSize}\" height=\"{$iconSize}\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg>";
+    }
+    if ($showCount) {
+        echo '<span class="wl-count" style="font-size:12px;line-height:1;">0</span>';
     }
     echo "</button>";
 }

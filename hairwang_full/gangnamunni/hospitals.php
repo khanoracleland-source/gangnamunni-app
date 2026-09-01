@@ -10,6 +10,7 @@ if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms
 require_once __DIR__ . '/includes/recently_viewed.php';
 require_once __DIR__ . '/includes/settings_helper.php';
 require_once __DIR__ . '/includes/ad_slot_performance.php';
+require_once __DIR__ . '/includes/wishlist_button.php';
 
 loadCategoriesFromDB($connect); // 반환값 미사용 — $category_icons 전역 초기화 목적
 
@@ -27,6 +28,23 @@ if ($_representative_col_result && mysqli_num_rows($_representative_col_result) 
 $hospital_price_option_order = $hospital_representative_price_column
     ? 'p.is_representative DESC, p.price ASC, p.sort_order ASC, p.id ASC'
     : 'p.price ASC, p.sort_order ASC, p.id ASC';
+
+// 인기 정렬은 병원 테이블의 캐시 컬럼이 아니라 실제 찜 데이터를 기준으로 한다.
+// 아직 wishlist API가 한 번도 호출되지 않아 테이블이 없는 환경에서는 0으로 폴백한다.
+$wishlist_table_exists = false;
+$_wishlist_table_result = @mysqli_query(
+    $connect,
+    "SELECT 1 FROM information_schema.tables
+     WHERE table_schema = DATABASE() AND table_name = 'gangnamunni_wishlist' LIMIT 1"
+);
+if ($_wishlist_table_result && mysqli_num_rows($_wishlist_table_result) > 0) {
+    $wishlist_table_exists = true;
+}
+$wishlist_count_select = $wishlist_table_exists
+    ? "(SELECT COUNT(*) FROM gangnamunni_wishlist gw
+         WHERE gw.target_type = 'hospital' AND gw.target_id = gangnamunni_hospitals.id) AS wishlist_count"
+    : '0 AS wishlist_count';
+$hospital_select = "SELECT gangnamunni_hospitals.*, {$wishlist_count_select} FROM gangnamunni_hospitals";
 
 /**
  * 주소에서 '구'(district)를 추출한다.
@@ -99,7 +117,7 @@ $allowed_sorts = ['manual', 'price', 'rating', 'popular', 'review'];
 if (!in_array($sort, $allowed_sorts, true)) $sort = 'manual';
 switch($sort) {
     case 'rating': $order_clause = 'rating DESC, review_count DESC'; break;
-    case 'popular': $order_clause = 'wishlist_count DESC, rating DESC'; break;
+    case 'popular': $order_clause = 'wishlist_count DESC, rating DESC, review_count DESC'; break;
     case 'review': $order_clause = 'review_count DESC, rating DESC'; break;
     case 'price':
         // 0원/미등록 가격은 맨 뒤로 보낸다. 특정 시술을 검색한 경우에는
@@ -192,7 +210,7 @@ if (!empty($region_list)) {
         $r_esc = mysqli_real_escape_string($connect, $r);
         $region_conditions[] = "address LIKE '%{$r_esc}%'";
     }
-    $query = "SELECT * FROM gangnamunni_hospitals" . $base_where
+    $query = $hospital_select . $base_where
         . " AND (" . implode(' OR ', $region_conditions) . ")"
         . " ORDER BY " . $order_clause . " LIMIT 100";
     $result = mysqli_query($connect, $query);
@@ -209,14 +227,14 @@ if (!empty($region_list)) {
     if ($region_mix_enabled && $region_mix_target !== '') {
         $target_esc = mysqli_real_escape_string($connect, $region_mix_target);
 
-        $target_query = "SELECT * FROM gangnamunni_hospitals" . $base_where
+        $target_query = $hospital_select . $base_where
             . " AND address LIKE '%{$target_esc}%'"
             . " ORDER BY " . $order_clause . " LIMIT 100";
         $target_list = [];
         $tr_result = mysqli_query($connect, $target_query);
         if ($tr_result) { while ($row = mysqli_fetch_assoc($tr_result)) $target_list[] = $row; }
 
-        $other_query = "SELECT * FROM gangnamunni_hospitals" . $base_where
+        $other_query = $hospital_select . $base_where
             . " AND address NOT LIKE '%{$target_esc}%'"
             . " ORDER BY " . $order_clause . " LIMIT 100";
         $other_list = [];
@@ -235,7 +253,7 @@ if (!empty($region_list)) {
             if ($ti >= count($target_list) && $oi >= count($other_list)) break;
         }
     } else {
-        $query = "SELECT * FROM gangnamunni_hospitals" . $base_where . " ORDER BY " . $order_clause . " LIMIT 100";
+        $query = $hospital_select . $base_where . " ORDER BY " . $order_clause . " LIMIT 100";
         $result = mysqli_query($connect, $query);
         if ($result) { while ($row = mysqli_fetch_assoc($result)) $hospitals[] = $row; }
     }
@@ -604,6 +622,9 @@ foreach ($hospitals as $hospital):
              data-ad-slot-rank="<?php echo (int) $_slot_context['rank_position']; ?>"
              data-target-url="<?php echo htmlspecialchars($_detail_url, ENT_QUOTES, 'UTF-8'); ?>"
              <?php endif; ?>>
+            <div style="position:absolute;top:8px;right:8px;z-index:3;background:rgba(255,255,255,.9);border-radius:999px;">
+                <?php renderWishlistButton('hospital', (int)$hospital['id'], 'sm', false, 'heart'); ?>
+            </div>
             <div class="card-link">
                 <?php
                 $h_img = $hospital_main_images[(int)$hospital['id']]
@@ -685,6 +706,7 @@ function setSort(val) {
 <?php
 echo '<div style="height:70px;"></div>';
 include_once __DIR__ . '/includes/bottom_nav.php';
+renderWishlistScript();
 include __DIR__ . '/includes/footer.php';
 mysqli_close($connect);
 ?>
