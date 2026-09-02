@@ -1,4 +1,5 @@
 RedirectMatch 403 (?i)/\.(history|git|snapshots|stfolder)(/|$)
+RedirectMatch 403 /data/cache/apple_oauth/.*
 
 # Auth/session cookielar HTTP orqali uzatilmasligi uchun production trafikni HTTPSga majburlash.
 <IfModule mod_rewrite.c>

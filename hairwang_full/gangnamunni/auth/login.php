@@ -1,22 +1,8 @@
 <?php
-/**
- * ============================================================================
- * 서울미녀 커스텀 이메일 로그인
- * ============================================================================
- * 위치 : gangnamunni/auth/login.php
- * 목적 : 그누보드 기본 로그인 스킨 대신, 서울미녀 전용 로그인 화면 제공.
- *        - 이메일 + 비밀번호 로그인 (서버에서 검증 후 그누보드 세션 생성)
- * ============================================================================
- */
-
 require_once __DIR__ . '/../includes/init.php';
 
-global $is_member, $config, $connect, $g5;
+global $config, $connect, $g5;
 
-// Handle the complete social-login flow on this custom login controller.
-// Pass the validated provider explicitly: the callback request must not fall
-// through to the ordinary email-login HTML when the request value is altered
-// by bootstrap/filter code.
 if (isset($_GET['provider']) || isset($_REQUEST['provider'])) {
     $social_query = array();
     parse_str(isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '', $social_query);
@@ -29,7 +15,7 @@ if (isset($_GET['provider']) || isset($_REQUEST['provider'])) {
         (string)$raw_social_provider
     )));
 
-    $supported_social_providers = ['Kakao', 'Google'];
+    $supported_social_providers = ['Kakao', 'Google', 'Apple'];
 
     if (in_array($social_provider, $supported_social_providers, true) && function_exists('social_check_login_before')) {
         $_GET['provider'] = $_REQUEST['provider'] = $social_provider;
@@ -61,13 +47,11 @@ $bbs_url = defined('G5_BBS_URL') ? G5_BBS_URL : '/bbs';
 $g5_url  = defined('G5_URL') ? G5_URL : '';
 $member_table = $g5['member_table'] ?? 'g5_member';
 
-// 이메일 로그인 POST CSRF 토큰 (세션 기반). reCAPTCHA 와 별개로 교차 사이트 위조 요청을 차단.
 if (empty($_SESSION['login_csrf_token'])) {
     $_SESSION['login_csrf_token'] = bin2hex(random_bytes(32));
 }
 $login_csrf_token = $_SESSION['login_csrf_token'];
 
-// 로그인 브루트포스 방지: 세션과 무관하게 IP/이메일별 요청 횟수를 제한한다.
 function gnu_login_rate_hit($scope, $value, $limit, $window, $record = true) {
     $base = defined('G5_DATA_PATH') ? G5_DATA_PATH : sys_get_temp_dir();
     $dir = $base . '/cache/login_rate';
@@ -96,7 +80,6 @@ function gnu_login_rate_hit($scope, $value, $limit, $window, $record = true) {
     return ['allowed' => $retry === 0, 'retry' => $retry];
 }
 
-// Mavjud PHP/server error logdan foydalanadi; emailning o'zi logga yozilmaydi.
 function gnu_auth_log($event, $email = '', $details = '') {
     $account = $email === '' ? '-' : substr(hash('sha256', strtolower(trim($email))), 0, 16);
     $ip = preg_replace('/[^0-9a-fA-F:.]/', '', (string)($_SERVER['REMOTE_ADDR'] ?? ''));
@@ -104,9 +87,7 @@ function gnu_auth_log($event, $email = '', $details = '') {
     error_log('[auth][' . preg_replace('/[^a-z0-9_-]/i', '', $event) . '] account=' . $account . '; ip=' . $ip . ($details !== '' ? '; ' . substr($details, 0, 160) : ''));
 }
 
-// ===== Google reCAPTCHA v3 — 키는 gangnamunni/.env 에서 로드 (git 에 커밋되지 않음) =====
 if (!function_exists('gnu_load_env')) {
-    // .env 파서 (# / ; 주석, KEY=VALUE 지원). parse_ini_file 은 # 주석을 못 읽어 직접 파싱.
     function gnu_load_env($file) {
         $out = [];
         if (!is_readable($file)) return $out;
@@ -127,14 +108,9 @@ $recaptcha_request_host = strtolower(preg_replace('/:\\d+$/', '', (string)($_SER
 $recaptcha_is_local = in_array($recaptcha_request_host, ['127.0.0.1', 'localhost', '::1'], true);
 $recaptcha_enabled = !$recaptcha_is_local && $recaptcha_site_key !== '' && $recaptcha_secret !== '';
 if (!function_exists('gnu_verify_recaptcha')) {
-    // reCAPTCHA v3 검증 결과를 상태 문자열로 반환한다.
-    //   'skip' : 비밀키 미설정 / 구글 서버 도달 불가 (로그인 rate-limit은 계속 적용)
-    //   'fail' : 구글이 토큰을 명시적으로 거부(success=false)하거나 점수가 낮음(봇 의심) → 차단.
-    //   'pass' : 사람으로 판단.
-    // v3는 비밀번호 인증을 보조하는 소프트 신호이므로, 하드 게이트로 두어 로그인을 막지 않는다.
     function gnu_verify_recaptcha($secret, $token, $remote_ip = '', $expected_action = 'login', $expected_host = '') {
         if ($secret === '') return 'skip';
-        if ($token === '') return 'fail'; // 키가 설정된 환경에서 토큰 생략 우회 차단
+        if ($token === '') return 'fail';
         $post = http_build_query(['secret' => $secret, 'response' => $token, 'remoteip' => $remote_ip]);
         $body = false;
         if (function_exists('curl_init')) {
@@ -143,23 +119,21 @@ if (!function_exists('gnu_verify_recaptcha')) {
             $body = curl_exec($ch);
             curl_close($ch);
         }
-        if ($body === false) { // cURL 없거나 실패 시 폴백
+        if ($body === false) {
             $ctx = stream_context_create(['http' => ['method' => 'POST', 'header' => 'Content-Type: application/x-www-form-urlencoded', 'content' => $post, 'timeout' => 5]]);
             $body = @file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, $ctx);
         }
-        if (!$body) return 'skip';                // 구글 서버 도달 불가 → 사용자 책임 아님 → 통과
+        if (!$body) return 'skip';
         $r = json_decode($body, true);
         if (!is_array($r)) return 'skip';
-        if (empty($r['success'])) return 'fail';  // 토큰 위조/만료 등 명시적 거부
-        if (isset($r['score']) && $r['score'] < 0.5) return 'fail'; // v3 점수(0.0~1.0) 봇 의심
+        if (empty($r['success'])) return 'fail';
+        if (isset($r['score']) && $r['score'] < 0.5) return 'fail';
         if (($r['action'] ?? '') !== $expected_action) return 'fail';
         if ($expected_host !== '' && strtolower($r['hostname'] ?? '') !== strtolower($expected_host)) return 'fail';
         return 'pass';
     }
 }
 
-// 로그인 후 이동할 URL. 외부 URL/프로토콜 상대 URL은 피싱용 open redirect를
-// 만들 수 있으므로 현재 호스트의 http(s) URL 또는 / 로 시작하는 로컬 경로만 허용한다.
 function gnu_safe_after_url($candidate, $fallback) {
     $candidate = trim((string)$candidate);
     if ($candidate === '' || strpos($candidate, '\\') !== false || preg_match('/[\x00-\x1F\x7F]/', $candidate)) return $fallback;
@@ -172,12 +146,10 @@ function gnu_safe_after_url($candidate, $fallback) {
     return $request_host !== '' && strtolower($parts['host']) === $request_host ? $candidate : $fallback;
 }
 
-// 로그인 후 이동할 URL (url 파라미터 우선, 없으면 강남언니 홈)
 $after_url = $g5_url . '/gangnamunni/index.php';
 if (isset($_GET['url']) && $_GET['url'] !== '')  $after_url = gnu_safe_after_url($_GET['url'], $after_url);
 if (isset($_POST['url']) && $_POST['url'] !== '') $after_url = gnu_safe_after_url($_POST['url'], $after_url);
 
-// 이미 로그인 상태면 바로 이동
 if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
     header('Location: ' . $after_url);
     exit;
@@ -186,14 +158,9 @@ if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
 $login_error = '';
 $is_patient_app = isset($_COOKIE['sb_patient_app']) && hash_equals('1', (string)$_COOKIE['sb_patient_app']);
 
-// ===== 이메일 로그인 처리 =====
-// 이메일로 회원을 찾고 그누보드의 비밀번호/세션 함수로 서버 내에서 로그인한다.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email') {
     $email      = strtolower(trim((string)($_POST['mb_email'] ?? '')));
     $password   = (string)($_POST['mb_password'] ?? '');
-    // A WebView session cookie is discarded when the app process exits.
-    // Patient-app logins therefore use the existing rotating remember token,
-    // while normal browser users keep controlling this with the checkbox.
     $auto_login = ($is_patient_app || isset($_POST['auto_login'])) ? 1 : 0;
 
     $request_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
@@ -204,11 +171,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
         && hash_equals($login_csrf_token, (string)$_POST['csrf_token'])
         && $email !== '' && $password !== '';
     if ($basic_request_valid) {
-        // 먼저 기존 실패 횟수만 확인하고, 아래의 실제 실패 지점에서만 추가한다.
         $ip_rate = gnu_login_rate_hit('ip', $request_ip, 10, 900, false);
         $email_rate = gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, false);
-        // IPdan mustaqil limit distributed botnetning bitta hisobga hujumini cheklaydi.
-        // Mavjud va mavjud bo'lmagan email uchun bir xil ishlaydi, account enumeration bermaydi.
         $account_rate = gnu_login_rate_hit('account', strtolower($email), 20, 3600, false);
     }
 
@@ -242,10 +206,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
             && !empty($login_mb['mb_id'])
             && login_password_check($login_mb, $password, $login_mb['mb_password']);
 
-        // Custom reset stores "nonce expires hash", while Gnuboard's standard
-        // password_lost2.php stores the legacy "nonce hash" format. Accept both,
-        // otherwise a password mailed by the standard reset flow can never be
-        // used on this email-login page before the confirmation link is opened.
         if (!$password_valid && !empty($login_mb['mb_lost_certify'])) {
             $reset_value = (string)$login_mb['mb_lost_certify'];
             $reset_parts = explode(' ', trim($reset_value), 3);
@@ -281,7 +241,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
         }
 
         if (!$password_valid) {
-            // 이메일 존재 여부와 비밀번호 오류를 구분하지 않아 계정 수집을 막는다.
             gnu_login_rate_hit('ip', $request_ip, 10, 900, true);
             gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, true);
             gnu_login_rate_hit('account', strtolower($email), 20, 3600, true);
@@ -336,7 +295,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
     }
 }
 
-// 로고 / 브랜드 — bbs/login.php(rb.member 스킨)와 동일한 로고 사용
 global $rb_builder;
 $_logo_ver = defined('G5_SERVER_TIME') ? G5_SERVER_TIME : time();
 if (!empty($rb_builder['bu_logo_pc'])) {
@@ -347,8 +305,6 @@ if (!empty($rb_builder['bu_logo_pc'])) {
 }
 $brand_name = function_exists('getTheme') ? getTheme('site_name', '서울미녀') : '서울미녀';
 $primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932') : '#AE1932';
-// 소셜 버튼은 관리자 설정(소셜로그인 사용 + 서비스 + OAuth 키)이 모두 갖춰졌을 때만 활성화한다.
-// 소셜 플러그인 로드 여부와 무관하게 g5_config 값만으로 판단(플러그인 미로드 페이지에서도 정확).
 $social_services = array_map('strtolower', array_map('trim', explode(',', (string)($config['cf_social_servicelist'] ?? ''))));
 $kakao_enabled = !empty($config['cf_social_login_use'])
     && in_array('kakao', $social_services, true)
@@ -357,8 +313,15 @@ $google_enabled = !empty($config['cf_social_login_use'])
     && in_array('google', $social_services, true)
     && !empty($config['cf_google_clientid'])
     && !empty($config['cf_google_secret']);
+$apple_enabled = !empty($config['cf_social_login_use'])
+    && in_array('apple', $social_services, true)
+    && !empty($config['cf_apple_team_id'])
+    && !empty($config['cf_apple_key_id'])
+    && !empty($config['cf_apple_bundle_id'])
+    && !empty($config['cf_apple_key_file']);
 $kakao_url = $g5_url . '/gangnamunni/auth/login.php?provider=kakao&url=' . urlencode($after_url);
 $google_url = $g5_url . '/gangnamunni/auth/login.php?provider=google&url=' . urlencode($after_url);
+$apple_url = $g5_url . '/gangnamunni/auth/login.php?provider=apple&url=' . urlencode($after_url);
 $open_email = $login_error !== '';
 ?>
 <!DOCTYPE html>
@@ -378,16 +341,17 @@ $open_email = $login_error !== '';
         .login-wrap { max-width: 420px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; padding: 20px 24px 36px; }
         .login-top { min-height: 24px; }
         .login-top a { color: #bbb; text-decoration: none; display: inline-flex; align-items: center; }
-        /* 상단 로고 영역 — 화면 중앙 위쪽에 위치 */
         .login-hero { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; text-align: center; padding: 24px 0 0; }
         .login-hero img { width: auto; height: auto; max-width: 66%; max-height: 78px; }
-        /* 하단 액션 영역 — 로고에서 130px 아래 */
         .login-actions { flex: 0 0 auto; display: flex; flex-direction: column; margin-top: 130px; }
         .btn { width: 100%; height: 54px; border: none; font-size: 16px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
         .btn:active { transform: scale(.99); }
         .btn-primary { background: var(--primary); color: #fff; }
         .btn-kakao { background: #FEE500; color: #191600; }
         .btn-google { background: #fff; color: #202124; border: 1px solid #dadce0; margin-top: 10px; }
+        .btn-apple { display: none; background: #000; color: #fff; margin-top: 10px; }
+        .is-ios .btn-apple { display: inline-flex; }
+        .btn-apple svg { flex: 0 0 auto; }
         .btn-email { background: #191919; color: #fff; margin-top: 10px; }
         .email-panel { max-height: 0; overflow: hidden; transition: max-height .32s ease; }
         .email-panel.open { max-height: 520px; }
@@ -404,14 +368,12 @@ $open_email = $login_error !== '';
         .foot-links a { font-size: 14px; font-weight: 600; color: #666; text-decoration: none; }
         .foot-links a:active { color: #000; }
         .foot-links .sep { color: #dcdce1; font-size: 13px; }
-        /* reCAPTCHA 고지 */
         .recaptcha-notice { margin-top: 56px; text-align: left; font-size: 11px; line-height: 1.7; color: #000000; }
         .rc-more { background: none; border: none; color: #999; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 4px; text-decoration: underline; padding: 4px 6px; }
         .recaptcha-detail { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
         .recaptcha-detail.open { max-height: 120px; }
         .recaptcha-detail p { margin: 8px 0 0; font-size: 11px; line-height: 1.7; color: #b6b6bc; }
         .recaptcha-detail a { color: #888; text-decoration: underline; }
-        /* v3 배지는 숨김(고지 문구로 대체 — 구글 정책 허용) */
         .grecaptcha-badge { visibility: hidden; }
     </style>
 </head>
@@ -442,6 +404,14 @@ $open_email = $login_error !== '';
                 </svg>
                 Google로 시작하기
             </a>
+            <?php if ($apple_enabled): ?>
+            <a href="<?php echo htmlspecialchars($apple_url, ENT_QUOTES); ?>" class="btn btn-apple" id="appleLoginButton">
+                <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.05 12.54c-.02-2.19 1.79-3.25 1.87-3.3a4.02 4.02 0 0 0-3.17-1.72c-1.33-.14-2.62.8-3.3.8-.7 0-1.74-.78-2.88-.76a4.2 4.2 0 0 0-3.54 2.16c-1.53 2.65-.39 6.54 1.08 8.68.74 1.05 1.6 2.23 2.74 2.19 1.11-.05 1.53-.7 2.87-.7 1.33 0 1.72.7 2.88.67 1.2-.02 1.95-1.05 2.66-2.11a8.6 8.6 0 0 0 1.22-2.48 3.77 3.77 0 0 1-2.43-3.43ZM14.88 6.1a3.83 3.83 0 0 0 .88-2.75 3.9 3.9 0 0 0-2.54 1.31 3.65 3.65 0 0 0-.9 2.65 3.22 3.22 0 0 0 2.56-1.21Z"/>
+                </svg>
+                Apple로 시작하기
+            </a>
+            <?php endif; ?>
             <button type="button" class="btn btn-email" id="emailToggle" aria-expanded="<?php echo $open_email ? 'true' : 'false'; ?>" aria-controls="emailPanel" onclick="toggleEmail()">
                 <i class="bi bi-envelope-fill"></i> 이메일로 시작하기
             </button>
@@ -500,6 +470,14 @@ $open_email = $login_error !== '';
     </div>
 
     <script>
+    (function () {
+        var ua = navigator.userAgent || '';
+        var platform = navigator.platform || '';
+        var isIOS = /iPhone|iPad|iPod/i.test(ua)
+            || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (isIOS) document.documentElement.classList.add('is-ios');
+    })();
+
     function toggleEmail() {
         var panel = document.getElementById('emailPanel');
         var btn = document.getElementById('emailToggle');
@@ -520,15 +498,13 @@ $open_email = $login_error !== '';
         b.setAttribute('aria-expanded', open ? 'true' : 'false');
         b.textContent = open ? '접기' : '자세히 보기';
     }
-    // reCAPTCHA v3: 이메일 로그인 제출 시 토큰 발급 후 실제 전송
-    // 키/도메인 오류 등으로 토큰 발급이 실패해도 폼은 반드시 제출한다(서버가 검증·안내) → 버튼이 먹통되지 않음
     <?php if ($recaptcha_enabled) { ?>
     (function () {
         var emailForm = document.getElementById('emailForm');
         if (!emailForm) return;
         emailForm.addEventListener('submit', function (e) {
-            if (emailForm.dataset.rcDone === '1') return;      // 토큰 처리 완료 → 그대로 제출
-            if (typeof grecaptcha === 'undefined') return;     // reCAPTCHA 미로드 시 서버 검증에서 처리
+            if (emailForm.dataset.rcDone === '1') return;
+            if (typeof grecaptcha === 'undefined') return;
             e.preventDefault();
             var submitted = false;
             var go = function () { if (submitted) return; submitted = true; emailForm.dataset.rcDone = '1'; emailForm.submit(); };
@@ -536,10 +512,10 @@ $open_email = $login_error !== '';
                 grecaptcha.ready(function () {
                     grecaptcha.execute('<?php echo htmlspecialchars($recaptcha_site_key, ENT_QUOTES); ?>', { action: 'login' })
                         .then(function (token) { document.getElementById('recaptchaToken').value = token; go(); })
-                        .catch(function () { go(); });   // 토큰 실패해도 제출 → 서버가 거부/안내
+                        .catch(function () { go(); });
                 });
             } catch (err) { go(); }
-            setTimeout(go, 6000);                            // 안전장치: 6초 내 무응답이면 그대로 제출
+            setTimeout(go, 6000);
         });
     })();
     <?php } ?>
