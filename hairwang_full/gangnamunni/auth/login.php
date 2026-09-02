@@ -349,8 +349,7 @@ $open_email = $login_error !== '';
         .btn-primary { background: var(--primary); color: #fff; }
         .btn-kakao { background: #FEE500; color: #191600; }
         .btn-google { background: #fff; color: #202124; border: 1px solid #dadce0; margin-top: 10px; }
-        .btn-apple { display: none; background: #000; color: #fff; margin-top: 10px; }
-        .is-ios .btn-apple { display: inline-flex; }
+        .btn-apple { background: #000; color: #fff; margin-top: 10px; }
         .btn-apple svg { flex: 0 0 auto; }
         .btn-email { background: #191919; color: #fff; margin-top: 10px; }
         .email-panel { max-height: 0; overflow: hidden; transition: max-height .32s ease; }
@@ -470,14 +469,6 @@ $open_email = $login_error !== '';
     </div>
 
     <script>
-    (function () {
-        var ua = navigator.userAgent || '';
-        var platform = navigator.platform || '';
-        var isIOS = /iPhone|iPad|iPod/i.test(ua)
-            || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        if (isIOS) document.documentElement.classList.add('is-ios');
-    })();
-
     function toggleEmail() {
         var panel = document.getElementById('emailPanel');
         var btn = document.getElementById('emailToggle');

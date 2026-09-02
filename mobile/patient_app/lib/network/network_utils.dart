@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -17,11 +18,13 @@ import '../utils/common_base.dart';
 import '../utils/constants.dart';
 import '../utils/local_storage.dart';
 
+const Duration _requestTimeout = Duration(seconds: 30);
+const Duration paymentRequestTimeout = Duration(seconds: 60);
+
 Map<String, String> buildHeaderTokens({
   Map? extraKeys,
   String? endPoint,
 }) {
-  /// Initialize & Handle if key is not present
   if (extraKeys == null) {
     extraKeys = {};
     extraKeys.putIfAbsent('isFlutterWave', () => false);
@@ -37,20 +40,28 @@ Map<String, String> buildHeaderTokens({
   if (endPoint == APIEndPoints.register) {
     header.putIfAbsent(HttpHeaders.acceptHeader, () => 'application/json');
   }
-  header.putIfAbsent(HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
+  header.putIfAbsent(
+      HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
 
-  if (isLoggedIn.value && extraKeys.containsKey('isFlutterWave') && extraKeys['isFlutterWave']) {
-    header.putIfAbsent(HttpHeaders.authorizationHeader, () => "Bearer ${extraKeys!['flutterWaveSecretKey']}");
-  } else if (isLoggedIn.value && extraKeys.containsKey('isAirtelMoney') && extraKeys['isAirtelMoney']) {
-    header.putIfAbsent(HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
-    header.putIfAbsent(HttpHeaders.authorizationHeader, () => 'Bearer ${extraKeys!['access_token']}');
+  if (isLoggedIn.value &&
+      extraKeys.containsKey('isFlutterWave') &&
+      extraKeys['isFlutterWave']) {
+    header.putIfAbsent(HttpHeaders.authorizationHeader,
+        () => "Bearer ${extraKeys!['flutterWaveSecretKey']}");
+  } else if (isLoggedIn.value &&
+      extraKeys.containsKey('isAirtelMoney') &&
+      extraKeys['isAirtelMoney']) {
+    header.putIfAbsent(
+        HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
+    header.putIfAbsent(HttpHeaders.authorizationHeader,
+        () => 'Bearer ${extraKeys!['access_token']}');
     header.putIfAbsent('X-Country', () => '${extraKeys!['X-Country']}');
     header.putIfAbsent('X-Currency', () => '${extraKeys!['X-Currency']}');
   } else if (isLoggedIn.value) {
-    header.putIfAbsent(HttpHeaders.authorizationHeader, () => 'Bearer ${loginUserData.value.apiToken}');
+    header.putIfAbsent(HttpHeaders.authorizationHeader,
+        () => 'Bearer ${loginUserData.value.apiToken}');
   }
 
-  // log(jsonEncode(header));
   return header;
 }
 
@@ -68,9 +79,12 @@ Future<Response> buildHttpResponse(
   Map? request,
   Map? extraKeys,
   Map<String, String>? header,
+  Duration? timeout,
 }) async {
-  final headers = header ?? buildHeaderTokens(extraKeys: extraKeys, endPoint: endPoint);
+  final headers =
+      header ?? buildHeaderTokens(extraKeys: extraKeys, endPoint: endPoint);
   final Uri url = buildBaseUrl(endPoint);
+  final Duration effectiveTimeout = timeout ?? _requestTimeout;
 
   Response response;
   log('URL (${method.name}): $url');
@@ -78,13 +92,16 @@ Future<Response> buildHttpResponse(
   try {
     if (method == HttpMethodType.POST) {
       log('Request: ${jsonEncode(request)}');
-      response = await http.post(url, body: jsonEncode(request), headers: headers);
+      response = await http
+          .post(url, body: jsonEncode(request), headers: headers)
+          .timeout(effectiveTimeout);
     } else if (method == HttpMethodType.DELETE) {
-      response = await delete(url, headers: headers);
+      response = await delete(url, headers: headers).timeout(effectiveTimeout);
     } else if (method == HttpMethodType.PUT) {
-      response = await put(url, body: jsonEncode(request), headers: headers);
+      response = await put(url, body: jsonEncode(request), headers: headers)
+          .timeout(effectiveTimeout);
     } else {
-      response = await get(url, headers: headers);
+      response = await get(url, headers: headers).timeout(effectiveTimeout);
     }
     apiPrint(
       url: url.toString(),
@@ -96,11 +113,15 @@ Future<Response> buildHttpResponse(
       responseBody: response.body.trim(),
       methodtype: method.name,
     );
-    // log('Response (${method.name}) ${response.statusCode}: ${response.body.trim().trim()}');
-
-    if (isLoggedIn.value && response.statusCode == 401 && !endPoint.startsWith('http')) {
+    if (isLoggedIn.value &&
+        response.statusCode == 401 &&
+        !endPoint.startsWith('http')) {
       return await reGenerateToken().then((value) async {
-        return buildHttpResponse(endPoint, method: method, request: request, extraKeys: extraKeys);
+        return buildHttpResponse(endPoint,
+            method: method,
+            request: request,
+            extraKeys: extraKeys,
+            timeout: timeout);
       }).catchError((e) async {
         if (!await isNetworkAvailable()) {
           throw errorInternetNotAvailable;
@@ -111,6 +132,9 @@ Future<Response> buildHttpResponse(
     } else {
       return response;
     }
+  } on TimeoutException catch (e) {
+    log(e);
+    throw locale.value.gatewayTimeout;
   } on Exception catch (e) {
     log(e);
     throw errorInternetNotAvailable;
@@ -131,14 +155,19 @@ Future<void> reGenerateToken() async {
   } else {
     req[UserKeys.password] = userPASSWORD;
   }
-  return AuthServiceApis.loginUser(request: req, isSocialLogin: loginUserData.value.isSocialLoginType).then((value) async {
+  return AuthServiceApis.loginUser(
+          request: req, isSocialLogin: loginUserData.value.isSocialLoginType)
+      .then((value) async {
     loginUserData.value.apiToken = value.userData.apiToken;
   }).catchError((e) {
     throw e;
   });
 }
 
-Future handleResponse(Response response, {HttpResponseType httpResponseType = HttpResponseType.JSON, bool? avoidTokenError, bool? isFlutterWave}) async {
+Future handleResponse(Response response,
+    {HttpResponseType httpResponseType = HttpResponseType.JSON,
+    bool? avoidTokenError,
+    bool? isFlutterWave}) async {
   if (!await isNetworkAvailable()) {
     throw errorInternetNotAvailable;
   }
@@ -201,8 +230,8 @@ Future handleResponse(Response response, {HttpResponseType httpResponseType = Ht
   }
 }
 
-//region CommonFunctions
-Future<Map<String, String>> getMultipartFields({required Map<String, dynamic> val}) async {
+Future<Map<String, String>> getMultipartFields(
+    {required Map<String, dynamic> val}) async {
   final Map<String, String> data = {};
 
   val.forEach((key, value) {
@@ -212,14 +241,16 @@ Future<Map<String, String>> getMultipartFields({required Map<String, dynamic> va
   return data;
 }
 
-Future<MultipartRequest> getMultiPartRequest(String endPoint, {String? baseUrl}) async {
+Future<MultipartRequest> getMultiPartRequest(String endPoint,
+    {String? baseUrl}) async {
   final String url = baseUrl ?? buildBaseUrl(endPoint).toString();
-  // log(url);
   return MultipartRequest('POST', Uri.parse(url));
 }
 
-Future<void> sendMultiPartRequest(MultipartRequest multiPartRequest, {Function(dynamic)? onSuccess, Function(dynamic)? onError}) async {
-  final http.Response response = await http.Response.fromStream(await multiPartRequest.send());
+Future<void> sendMultiPartRequest(MultipartRequest multiPartRequest,
+    {Function(dynamic)? onSuccess, Function(dynamic)? onError}) async {
+  final http.Response response =
+      await http.Response.fromStream(await multiPartRequest.send());
   apiPrint(
     url: multiPartRequest.url.toString(),
     headers: jsonEncode(multiPartRequest.headers),
@@ -229,15 +260,14 @@ Future<void> sendMultiPartRequest(MultipartRequest multiPartRequest, {Function(d
     responseBody: response.body.trim(),
     methodtype: "MultiPart",
   );
-  // log("Result: ${response.statusCode} - ${multiPartRequest.fields}");
-  // log(response.body.trim());
   if (response.statusCode.isSuccessful()) {
     onSuccess?.call(response.body.trim());
   } else {
     if (isLoggedIn.value && response.statusCode == 401) {
       return reGenerateToken().then((value) async {
         try {
-          final http.Response response = await http.Response.fromStream(await multiPartRequest.send());
+          final http.Response response =
+              await http.Response.fromStream(await multiPartRequest.send());
           if (response.statusCode.isSuccessful()) {
             onSuccess?.call(response.body.trim());
           } else {
@@ -264,7 +294,8 @@ Future buildMultiPartResponse({
   bool isKeyRequireIndexing = false,
 }) async {
   try {
-    final MultipartRequest multiPartRequest = await getMultiPartRequest(endPoint);
+    final MultipartRequest multiPartRequest =
+        await getMultiPartRequest(endPoint);
     multiPartRequest.headers.addAll(buildHeaderTokens());
     multiPartRequest.fields.addAll(await getMultipartFields(val: request));
     if (files != null && files.isNotEmpty) {
@@ -272,23 +303,27 @@ Future buildMultiPartResponse({
       if (files.length > 1) {
         files.forEachIndexed(
           (element, index) async {
-            multiPartRequest.files.add(await MultipartFile.fromPath('${fileKey}_$index', element.path));
+            multiPartRequest.files.add(await MultipartFile.fromPath(
+                '${fileKey}_$index', element.path));
           },
         );
       } else if (files.length == 1) {
         files.forEachIndexed(
           (element, index) async {
             if (isKeyRequireIndexing) {
-              multiPartRequest.files.add(await MultipartFile.fromPath('${fileKey}_$index', element.path));
+              multiPartRequest.files.add(await MultipartFile.fromPath(
+                  '${fileKey}_$index', element.path));
             } else {
-              multiPartRequest.files.add(await MultipartFile.fromPath('$fileKey', element.path));
+              multiPartRequest.files
+                  .add(await MultipartFile.fromPath('$fileKey', element.path));
             }
           },
         );
       }
     }
 
-    final Response response = await Response.fromStream(await multiPartRequest.send());
+    final Response response =
+        await Response.fromStream(await multiPartRequest.send());
 
     apiPrint(
       url: multiPartRequest.url.toString(),
@@ -307,25 +342,29 @@ Future buildMultiPartResponse({
   }
 }
 
-Future<List<MultipartFile>> getMultipartImages({required List<PlatformFile> files, required String name}) async {
+Future<List<MultipartFile>> getMultipartImages(
+    {required List<PlatformFile> files, required String name}) async {
   final List<MultipartFile> multiPartRequest = [];
 
   await Future.forEach<PlatformFile>(files, (element) async {
     final int i = files.indexOf(element);
 
-    multiPartRequest.add(await MultipartFile.fromPath('$name[$i]', element.path.validate()));
+    multiPartRequest.add(
+        await MultipartFile.fromPath('$name[$i]', element.path.validate()));
   });
 
   return multiPartRequest;
 }
 
-Future<List<MultipartFile>> getMultipartImages2({required List<XFile> files, required String name}) async {
+Future<List<MultipartFile>> getMultipartImages2(
+    {required List<XFile> files, required String name}) async {
   final List<MultipartFile> multiPartRequest = [];
 
   await Future.forEach<XFile>(files, (element) async {
     final int i = files.indexOf(element);
 
-    multiPartRequest.add(await MultipartFile.fromPath('$name[$i]', element.path.validate()));
+    multiPartRequest.add(
+        await MultipartFile.fromPath('$name[$i]', element.path.validate()));
     log('MultipartFile: $name[$i]');
   });
 
@@ -355,7 +394,8 @@ void apiPrint({
   String responseHeader = '',
 }) {
   if (fullLog) {
-    debugPrint("┌───────────────────────────────────────────────────────────────────────────────────────────────────────");
+    debugPrint(
+        "┌───────────────────────────────────────────────────────────────────────────────────────────────────────");
     debugPrint("\u001b[93m Url: \u001B[39m $url");
     debugPrint("\u001b[93m endPoint: \u001B[39m \u001B[1m$endPoint\u001B[22m");
     debugPrint("\u001b[93m header: \u001B[39m \u001b[96m$headers\u001B[39m");
@@ -363,27 +403,35 @@ void apiPrint({
       debugPrint('\u001b[93m Request: \u001B[39m \u001b[95m$request\u001B[39m');
     }
     debugPrint(statusCode.isSuccessful() ? "\u001b[32m" : "\u001b[31m");
-    debugPrint("\u001b[93m Response header: \u001B[39m \u001b[96m$responseHeader\u001B[39m");
-    debugPrint('\u001b[93m MethodType ($methodtype) | StatusCode ($statusCode)\u001B[39m');
+    debugPrint(
+        "\u001b[93m Response header: \u001B[39m \u001b[96m$responseHeader\u001B[39m");
+    debugPrint(
+        '\u001b[93m MethodType ($methodtype) | StatusCode ($statusCode)\u001B[39m');
     debugPrint('Response : ');
     debugPrint('\x1B[32m${formatJson(responseBody)}\x1B[0m');
     debugPrint("\u001B[0m");
-    debugPrint("└───────────────────────────────────────────────────────────────────────────────────────────────────────");
+    debugPrint(
+        "└───────────────────────────────────────────────────────────────────────────────────────────────────────");
   } else {
-    debugPrint("┌───────────────────────────────────────────────────────────────────────────────────────────────────────");
+    debugPrint(
+        "┌───────────────────────────────────────────────────────────────────────────────────────────────────────");
     debugPrint("\u001b[93m Url: \u001B[39m $url");
     debugPrint("\u001b[93m endPoint: \u001B[39m \u001B[1m$endPoint\u001B[22m");
-    debugPrint("\u001b[93m header: \u001B[39m \u001b[96m${headers.split(',').join(',\n')}\u001B[39m");
+    debugPrint(
+        "\u001b[93m header: \u001B[39m \u001b[96m${headers.split(',').join(',\n')}\u001B[39m");
     if (hasRequest) {
       debugPrint('\u001b[93m Request: \u001B[39m \u001b[95m$request\u001B[39m');
     }
     debugPrint(statusCode.isSuccessful() ? "\u001b[32m" : "\u001b[31m");
-    debugPrint('\u001b[93m MethodType ($methodtype) | statusCode: ($statusCode)\u001B[39m');
-    debugPrint("\u001b[93m Response header: \u001B[39m \u001b[96m$responseHeader\u001B[39m");
+    debugPrint(
+        '\u001b[93m MethodType ($methodtype) | statusCode: ($statusCode)\u001B[39m');
+    debugPrint(
+        "\u001b[93m Response header: \u001B[39m \u001b[96m$responseHeader\u001B[39m");
     debugPrint('\u001b[93m Response \u001B[39m');
     debugPrint(responseBody);
     debugPrint("\u001B[0m");
-    debugPrint("└───────────────────────────────────────────────────────────────────────────────────────────────────────");
+    debugPrint(
+        "└───────────────────────────────────────────────────────────────────────────────────────────────────────");
   }
 }
 
@@ -401,8 +449,10 @@ String formatJson(String jsonStr) {
 Map<String, String> buildHeaderForStripe(String stripeKeyPayment) {
   final Map<String, String> header = defaultHeaders();
 
-  header.putIfAbsent(HttpHeaders.contentTypeHeader, () => 'application/x-www-form-urlencoded');
-  header.putIfAbsent(HttpHeaders.authorizationHeader, () => 'Bearer $stripeKeyPayment');
+  header.putIfAbsent(
+      HttpHeaders.contentTypeHeader, () => 'application/x-www-form-urlencoded');
+  header.putIfAbsent(
+      HttpHeaders.authorizationHeader, () => 'Bearer $stripeKeyPayment');
 
   return header;
 }
@@ -421,16 +471,20 @@ Map<String, String> buildHeaderForSadad({String? sadadToken}) {
 Map<String, String> buildHeaderForFlutterWave(String flutterWaveSecretKey) {
   final Map<String, String> header = defaultHeaders();
 
-  header.putIfAbsent(HttpHeaders.authorizationHeader, () => "Bearer $flutterWaveSecretKey");
+  header.putIfAbsent(
+      HttpHeaders.authorizationHeader, () => "Bearer $flutterWaveSecretKey");
 
   return header;
 }
 
-Map<String, String> buildHeaderForAirtelMoney(String accessToken, String xCountry, String xCurrency) {
+Map<String, String> buildHeaderForAirtelMoney(
+    String accessToken, String xCountry, String xCurrency) {
   final Map<String, String> header = defaultHeaders();
 
-  header.putIfAbsent(HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
-  header.putIfAbsent(HttpHeaders.authorizationHeader, () => 'Bearer $accessToken');
+  header.putIfAbsent(
+      HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
+  header.putIfAbsent(
+      HttpHeaders.authorizationHeader, () => 'Bearer $accessToken');
   header.putIfAbsent('X-Country', () => xCountry);
   header.putIfAbsent('X-Currency', () => xCurrency);
 

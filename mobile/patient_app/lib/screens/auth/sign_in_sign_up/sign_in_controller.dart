@@ -37,7 +37,7 @@ class SignInController extends GetxController {
   FocusNode passwordFocus = FocusNode();
   FocusNode otpFocus = FocusNode();
 
-  final RxInt remainingSeconds = 600.obs; // 10 minutes
+  final RxInt remainingSeconds = 600.obs;
   final DashboardController dashcont = Get.put(DashboardController());
   Timer? _timer;
 
@@ -58,8 +58,10 @@ class SignInController extends GetxController {
     if (Get.arguments is bool) {
       isNavigateToDashboard(Get.arguments == true);
     }
-    final userIsRemeberMe = getValueFromLocal(SharedPreferenceConst.IS_REMEMBER_ME);
-    final userNameFromLocal = getValueFromLocal(SharedPreferenceConst.USER_NAME);
+    final userIsRemeberMe =
+        getValueFromLocal(SharedPreferenceConst.IS_REMEMBER_ME);
+    final userNameFromLocal =
+        getValueFromLocal(SharedPreferenceConst.USER_NAME);
     if (userNameFromLocal is String) {
       userName(userNameFromLocal);
     }
@@ -68,7 +70,8 @@ class SignInController extends GetxController {
       if (userEmail is String) {
         emailCont.text = userEmail;
       }
-      final userPASSWORD = getValueFromLocal(SharedPreferenceConst.USER_PASSWORD);
+      final userPASSWORD =
+          getValueFromLocal(SharedPreferenceConst.USER_PASSWORD);
       if (userPASSWORD is String) {
         passwordCont.text = userPASSWORD;
       }
@@ -119,15 +122,14 @@ class SignInController extends GetxController {
       UserKeys.userType: LoginTypeConst.LOGIN_TYPE_USER,
     };
 
-    if(emailCont.text == Constants.DEFAULT_EMAIL && passwordCont.text == Constants.DEFAULT_PASS){
-      otpCont.text == Constants.DEFAULT_PASS;
-    }
-
     await AuthServiceApis.loginUser(request: req).then((value) async {
       if (value.status == true) {
-        setValueToLocal(SharedPreferenceConst.USER_ID, value.userData.id.toString());
-        setValueToLocal(SharedPreferenceConst.IS_GOOGLE_AUTHENTICATION, value.userData.isGoogleAuthentication.toString());
-        setValueToLocal(SharedPreferenceConst.GOOGLE_AUTHENTICATION_TYPE, value.userData.googleAuthenticationType);
+        setValueToLocal(
+            SharedPreferenceConst.USER_ID, value.userData.id.toString());
+        setValueToLocal(SharedPreferenceConst.IS_GOOGLE_AUTHENTICATION,
+            value.userData.isGoogleAuthentication.toString());
+        setValueToLocal(SharedPreferenceConst.GOOGLE_AUTHENTICATION_TYPE,
+            value.userData.googleAuthenticationType);
         loginSucessfull.value = true;
       } else {
         isLoading(false);
@@ -137,9 +139,13 @@ class SignInController extends GetxController {
 
       loginUserData(value.userData);
       log('loginUserData: ${loginUserData.value.toJson()}');
-      isGoogleAuthentication.value = int.tryParse(getValueFromLocal(SharedPreferenceConst.IS_GOOGLE_AUTHENTICATION).toString()) ?? 0;
+      isGoogleAuthentication.value = int.tryParse(
+              getValueFromLocal(SharedPreferenceConst.IS_GOOGLE_AUTHENTICATION)
+                  .toString()) ??
+          0;
       if (isRememberMe.value) {
-        setValueToLocal(SharedPreferenceConst.USER_EMAIL, emailCont.text.trim());
+        setValueToLocal(
+            SharedPreferenceConst.USER_EMAIL, emailCont.text.trim());
         setValueToLocal(SharedPreferenceConst.USER_NAME, userName.value);
       } else {
         setValueToLocal(SharedPreferenceConst.USER_EMAIL, "");
@@ -148,8 +154,6 @@ class SignInController extends GetxController {
 
       handleLoginResponse(loginResponse: value);
       setValueToLocal(SharedPreferenceConst.USER_ID, value.userData.id);
-      // setValueToLocal(
-      //     SharedPreferenceConst.ONE_TIME_PASSWORD, value.userData.mobile);
     }).catchError((e) {
       isLoading(false);
       toast(e.toString(), print: true);
@@ -179,8 +183,12 @@ class SignInController extends GetxController {
   }
 
   Future<void> googleSignIn() async {
+    if (isLoading.value) return;
+
     isLoading(true);
-    await GoogleSignInAuthService.signInWithGoogle().then((value) async {
+    try {
+      final value = await GoogleSignInAuthService.signInWithGoogle()
+          .timeout(const Duration(seconds: 90));
       final Map request = {
         UserKeys.contactNumber: value.mobile,
         UserKeys.email: value.email,
@@ -193,24 +201,27 @@ class SignInController extends GetxController {
       };
       log('signInWithGoogle REQUEST: $request');
 
-      /// Social Login Api
-      await AuthServiceApis.loginUser(request: request, isSocialLogin: true).then((value) async {
-        handleLoginResponse(loginResponse: value, isSocialLogin: true);
-        /*await Future.delayed(GetNumUtils(5).milliseconds);
-        dashcont.showNumberSheet();*/
-      }).catchError((e) {
-        isLoading(false);
-        toast(e.toString(), print: true);
-      });
-    }).catchError((e) {
-      isLoading(false);
+      final response = await AuthServiceApis.loginUser(
+        request: request,
+        isSocialLogin: true,
+      );
+      handleLoginResponse(loginResponse: response, isSocialLogin: true);
+    } on TimeoutException {
+      toast(locale.value.gatewayTimeout, print: true);
+    } catch (e) {
       toast(e.toString(), print: true);
-    });
+    } finally {
+      isLoading(false);
+    }
   }
 
   Future<void> appleSignIn() async {
+    if (isLoading.value) return;
+
     isLoading(true);
-    await GoogleSignInAuthService.signInWithApple().then((value) async {
+    try {
+      final value = await GoogleSignInAuthService.signInWithApple()
+          .timeout(const Duration(seconds: 90));
       final Map request = {
         UserKeys.contactNumber: value.mobile,
         UserKeys.email: value.email,
@@ -221,33 +232,37 @@ class SignInController extends GetxController {
         UserKeys.userType: LoginTypeConst.LOGIN_TYPE_USER,
         UserKeys.loginType: LoginTypeConst.LOGIN_TYPE_APPLE,
       };
-      log('signInWithGoogle REQUEST: $request');
+      log('signInWithApple REQUEST: $request');
 
-      /// Social Login Api
-      await AuthServiceApis.loginUser(request: request, isSocialLogin: true).then((value) async {
-        handleLoginResponse(loginResponse: value, isSocialLogin: true);
-        setValueToLocal(SharedPreferenceConst.LOGIN_SUCCESSFULL, true);
-        /*await Future.delayed(GetNumUtils(5).milliseconds);
-        dashcont.showNumberSheet();*/
-      }).catchError((e) {
-        isLoading(false);
-        toast(e.toString(), print: true);
-      });
-    }).catchError((e) {
-      isLoading(false);
+      final response = await AuthServiceApis.loginUser(
+        request: request,
+        isSocialLogin: true,
+      );
+      handleLoginResponse(loginResponse: response, isSocialLogin: true);
+      setValueToLocal(SharedPreferenceConst.LOGIN_SUCCESSFULL, true);
+    } on TimeoutException {
+      toast(locale.value.gatewayTimeout, print: true);
+    } catch (e) {
       toast(e.toString(), print: true);
-    });
+    } finally {
+      isLoading(false);
+    }
   }
 
-  void handleLoginResponse({required UserResponse loginResponse, bool isVerifyOTP = false, bool isSocialLogin = false}) {
+  void handleLoginResponse(
+      {required UserResponse loginResponse,
+      bool isVerifyOTP = false,
+      bool isSocialLogin = false}) {
     log("-----------handleLoginResponse-------------${loginResponse.userData.userRole.contains(LoginTypeConst.LOGIN_TYPE_USER)}");
     log("-----------LOGIN_TYPE_USER-------------${LoginTypeConst.LOGIN_TYPE_USER}");
     log("-----------userRole-------------${loginResponse.userData.userRole}");
-    if (loginResponse.userData.userRole.contains(LoginTypeConst.LOGIN_TYPE_USER)) {
+    if (loginResponse.userData.userRole
+        .contains(LoginTypeConst.LOGIN_TYPE_USER)) {
       loginUserData(loginResponse.userData);
       loginUserData.value.isSocialLogin = isSocialLogin;
       setValueToLocal(SharedPreferenceConst.USER_DATA, loginUserData.toJson());
-      setValueToLocal(SharedPreferenceConst.USER_PASSWORD, isSocialLogin ? "" : passwordCont.text.trim());
+      setValueToLocal(SharedPreferenceConst.USER_PASSWORD,
+          isSocialLogin ? "" : passwordCont.text.trim());
       isLoggedIn(true);
       setValueToLocal(SharedPreferenceConst.IS_LOGGED_IN, true);
       setValueToLocal(SharedPreferenceConst.IS_REMEMBER_ME, isRememberMe.value);

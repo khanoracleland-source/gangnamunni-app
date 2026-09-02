@@ -20,8 +20,10 @@ class G5_Hybrid_Endpoint extends Hybrid_Endpoint
 				}
 
 				$storage = new Hybrid_Storage();
-				$provider_id = ucfirst(trim(strip_tags($this->request["hauth_start"])));
-				if(!$provider_id) $provider_id = ucfirst(trim(strip_tags($this->request["hauth_done"])));
+				$provider_start = isset($this->request["hauth_start"]) ? (string) $this->request["hauth_start"] : '';
+				$provider_done = isset($this->request["hauth_done"]) ? (string) $this->request["hauth_done"] : '';
+				$provider_id = ucfirst(trim(strip_tags($provider_start)));
+				if (!$provider_id) $provider_id = ucfirst(trim(strip_tags($provider_done)));
 
 				$storage->config("CONFIG", social_build_provider_config($provider_id));
 				// Check if Hybrid_Auth session already exist

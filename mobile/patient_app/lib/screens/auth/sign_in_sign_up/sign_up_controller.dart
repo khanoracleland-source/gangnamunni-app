@@ -50,6 +50,8 @@ class SignUpController extends GetxController {
   }
 
   Future<void> saveForm() async {
+    if (isLoading.value) return;
+
     if (isAcceptedTc.value) {
       hideKeyBoardWithoutContext();
       final Map<String, dynamic> req = {
@@ -58,32 +60,34 @@ class SignUpController extends GetxController {
         "last_name": lastNameCont.text.trim(),
         "password": passwordCont.text.trim(),
         "google_authentication_type": "Email",
-        "date_of_birth" : dateCont.text.trim(),
-        "mobile" : '+${pickedPhoneCode.value.phoneCode.trim()} ${phoneCont.text.trim()}',
-        "gender" : selectedGender.value.slug,
+        "date_of_birth": dateCont.text.trim(),
+        "mobile":
+            '+${pickedPhoneCode.value.phoneCode.trim()} ${phoneCont.text.trim()}',
+        "gender": selectedGender.value.slug,
         UserKeys.userType: LoginTypeConst.LOGIN_TYPE_USER,
       };
 
       isLoading(true);
-      await AuthServiceApis.createUser(request: req).then((value) async {
+      try {
+        final value = await AuthServiceApis.createUser(request: req);
         toast(value.message, print: true);
         try {
           final SignInController sCont = Get.find();
           sCont.emailCont.text = emailCont.text.trim();
           sCont.passwordCont.text = passwordCont.text.trim();
           sCont.isNavigateToDashboard(true);
-          sCont.userName("${firstNameCont.text.trim()} ${lastNameCont.text.trim()}");
+          sCont.userName(
+              "${firstNameCont.text.trim()} ${lastNameCont.text.trim()}");
           Get.back();
-          // isLoading(true);
-          // sCont.saveForm().whenComplete(() => isLoading(false));
         } catch (e) {
           log('E: $e');
           toast(e.toString(), print: true);
         }
-      }).catchError((e) {
-        isLoading(false);
+      } catch (e) {
         toast(e.toString(), print: true);
-      }).whenComplete(() => isLoading(false));
+      } finally {
+        isLoading(false);
+      }
     } else {
       toast(locale.value.pleaseAcceptTermsAnd);
     }

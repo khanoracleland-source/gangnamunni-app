@@ -16,7 +16,6 @@ class SadadServices {
     required Function(Map<String, dynamic>) onComplete,
   });
 
-  //region Sadad Payment Api
   Future<String> sadadLogin(Map request) async {
     try {
       final res = await handleSadadResponse(
@@ -25,6 +24,7 @@ class SadadServices {
           method: HttpMethodType.POST,
           request: request,
           header: buildHeaderForSadad(),
+          timeout: paymentRequestTimeout,
         ),
       );
 
@@ -34,13 +34,16 @@ class SadadServices {
     }
   }
 
-  Future sadadCreateInvoice({required Map<String, dynamic> request, required String sadadToken}) async {
+  Future sadadCreateInvoice(
+      {required Map<String, dynamic> request,
+      required String sadadToken}) async {
     return handleResponse(
       await buildHttpResponse(
         '$SADAD_API_URL/api/invoices/createInvoice',
         method: HttpMethodType.POST,
         request: request,
         header: buildHeaderForSadad(sadadToken: sadadToken),
+        timeout: paymentRequestTimeout,
       ),
     );
   }
@@ -53,9 +56,7 @@ class SadadServices {
     };
     await sadadLogin(request).then((accessToken) async {
       if (!context.mounted) return;
-      await createInvoice(context, accessToken: accessToken).then((value) async {
-        //
-      }).catchError((e) {
+      await createInvoice(context, accessToken: accessToken).catchError((e) {
         toast(e.toString());
       });
     }).catchError((e) {
@@ -63,14 +64,17 @@ class SadadServices {
     });
   }
 
-  Future<void> createInvoice(BuildContext context, {required String accessToken}) async {
+  Future<void> createInvoice(BuildContext context,
+      {required String accessToken}) async {
     final Map<String, dynamic> req = {
       "countryCode": 974,
-      "clientname": "${loginUserData.value.firstName} ${loginUserData.value.lastName}",
+      "clientname":
+          "${loginUserData.value.firstName} ${loginUserData.value.lastName}",
       "cellnumber": loginUserData.value.mobile.splitAfter('-'),
       "invoicedetails": [
         {
-          "description": 'Name:${loginUserData.value.firstName} ${loginUserData.value.lastName} - Email: ${loginUserData.value.email}',
+          "description":
+              'Name:${loginUserData.value.firstName} ${loginUserData.value.lastName} - Email: ${loginUserData.value.email}',
           "quantity": 1,
           "amount": totalAmount,
         },
@@ -79,21 +83,12 @@ class SadadServices {
       "remarks": remarks,
       "amount": totalAmount,
     };
-    sadadCreateInvoice(request: req, sadadToken: accessToken).then((value) async {
+    sadadCreateInvoice(request: req, sadadToken: accessToken)
+        .then((value) async {
       log('val:${value[0]['shareUrl']}');
-      String? res;
-      //String? res = await PaymentWebViewScreen(url: value[0]['shareUrl'], accessToken: accessToken).launch(context);
-
-      if (res.validate().isNotEmpty) {
-        onComplete.call({
-          'transaction_id': res,
-        });
-      } else {
-        toast(locale.value.transactionFailed, print: true);
-      }
+      toast(locale.value.transactionFailed, print: true);
     }).catchError((e) {
       toast('Error: $e', print: true);
     });
   }
 }
-// Handle CinetPayment

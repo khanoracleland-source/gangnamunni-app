@@ -81,9 +81,11 @@ $user_nick = exist_mb_nick_recursive($user_nick, '');
 $is_exists_email = $user_email ? exist_mb_email($user_email, '') : false;
 $user_name = isset($user_profile->username) ? $user_profile->username : '';
 
-// Kakao consent is enough for this service: create the local account on the
-// first successful Kakao authentication instead of showing another form.
-if (strtolower($provider_name) === 'kakao') {
+// Kakao/Apple consent is enough for this service: create the local account
+// on the first successful authentication instead of showing another form.
+// (Apple's own consent screen already collects/confirms name and email —
+// Apple's guidelines call for accepting that instead of re-asking for it.)
+if (in_array(strtolower($provider_name), array('kakao', 'apple'), true)) {
     $_POST['mb_id'] = $user_id;
     $_POST['mb_password'] = '';
     $_POST['mb_password_re'] = '';

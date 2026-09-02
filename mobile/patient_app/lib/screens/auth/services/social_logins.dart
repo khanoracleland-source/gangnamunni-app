@@ -1,16 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:the_apple_sign_in/the_apple_sign_in.dart';
 import '../../../main.dart';
-import '../../../services/oauth_service.dart';
 import '../../../utils/constants.dart';
 import '../model/login_response.dart';
 
-//region FIREBASE AUTH
 final FirebaseAuth auth = FirebaseAuth.instance;
-//endregion
 
 class GoogleSignInAuthService {
   static final GoogleSignIn googleSignIn = GoogleSignIn();
@@ -19,14 +15,16 @@ class GoogleSignInAuthService {
     GoogleSignInAccount? googleSignInAccount = await googleSignIn.signIn();
 
     if (googleSignInAccount != null) {
-      final GoogleSignInAuthentication googleSignInAuthentication = await googleSignInAccount.authentication;
+      final GoogleSignInAuthentication googleSignInAuthentication =
+          await googleSignInAccount.authentication;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleSignInAuthentication.accessToken,
         idToken: googleSignInAuthentication.idToken,
       );
 
-      final UserCredential authResult = await auth.signInWithCredential(credential);
+      final UserCredential authResult =
+          await auth.signInWithCredential(credential);
       final User user = authResult.user!;
       assert(!user.isAnonymous);
 
@@ -39,10 +37,13 @@ class GoogleSignInAuthService {
 
       String firstName = '';
       String lastName = '';
-      if (currentUser.displayName.validate().split(' ').isNotEmpty) firstName = currentUser.displayName.splitBefore(' ');
-      if (currentUser.displayName.validate().split(' ').length >= 2) lastName = currentUser.displayName.splitAfter(' ');
+      if (currentUser.displayName.validate().split(' ').isNotEmpty) {
+        firstName = currentUser.displayName.splitBefore(' ');
+      }
+      if (currentUser.displayName.validate().split(' ').length >= 2) {
+        lastName = currentUser.displayName.splitAfter(' ');
+      }
 
-      /// Create a temporary request to send
       UserData tempUserData = UserData()
         ..mobile = currentUser.phoneNumber.validate()
         ..email = currentUser.email.validate()
@@ -58,7 +59,6 @@ class GoogleSignInAuthService {
     }
   }
 
-  // region Apple Sign
   static Future<UserData> signInWithApple() async {
     if (await TheAppleSignIn.isAvailable()) {
       AuthorizationResult result = await TheAppleSignIn.performRequests([
@@ -71,7 +71,8 @@ class GoogleSignInAuthService {
           final oAuthProvider = OAuthProvider('apple.com');
           final credential = oAuthProvider.credential(
             idToken: String.fromCharCodes(appleIdCredential.identityToken!),
-            accessToken: String.fromCharCodes(appleIdCredential.authorizationCode!),
+            accessToken:
+                String.fromCharCodes(appleIdCredential.authorizationCode!),
           );
 
           final authResult = await auth.signInWithCredential(credential);
@@ -83,19 +84,15 @@ class GoogleSignInAuthService {
 
           log('CURRENTUSER: $currentUser');
 
-          // await googleSignIn.signOut();
-
           String firstName = '';
           String lastName = '';
-          log('result.credential ==> ${result.credential?.toMap()}');
-          log('result.credential!.fullName ==> ${result.credential!.fullName!.toMap()}');
 
-          if (result.credential != null && result.credential!.fullName != null) {
+          if (result.credential != null &&
+              result.credential!.fullName != null) {
             firstName = result.credential!.fullName!.givenName.validate();
             lastName = result.credential!.fullName!.familyName.validate();
           }
 
-          /// Create a temporary request to send
           UserData tempUserData = UserData()
             ..mobile = currentUser.phoneNumber.validate()
             ..email = currentUser.email.validate()
@@ -114,32 +111,5 @@ class GoogleSignInAuthService {
     } else {
       throw locale.value.appleSigninIsNot;
     }
-  }
-
-  // OAuth WebView 방식
-  static Future<void> signInWithGoogleOAuth(BuildContext context) async {
-    // Google Cloud Console > OAuth 2.0 클라이언트 ID
-    const clientId = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'; // TODO: Google Cloud Console에서 발급
-    const redirectUri = 'wellness://oauth/callback';
-
-    final oauthUrl = OAuthService.buildGoogleOAuthUrl(
-      clientId: clientId,
-      redirectUri: redirectUri,
-    );
-
-    await OAuthService.launchOAuthWithCustomTabs(context, oauthUrl);
-  }
-
-  static Future<void> signInWithAppleOAuth(BuildContext context) async {
-    // Apple Developer > Identifiers > Service IDs에서 발급
-    const clientId = 'YOUR_APPLE_CLIENT_ID'; // TODO: Apple Developer Console에서 발급
-    const redirectUri = 'wellness://oauth/callback';
-
-    final oauthUrl = OAuthService.buildAppleOAuthUrl(
-      clientId: clientId,
-      redirectUri: redirectUri,
-    );
-
-    await OAuthService.launchOAuthWithCustomTabs(context, oauthUrl);
   }
 }

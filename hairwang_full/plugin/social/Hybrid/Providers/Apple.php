@@ -11,6 +11,19 @@
  * reference  : thisgun <Hybrid_Providers_Payco>4
  */
 
+// vendor/firebase/php-jwt was dropped into place by hand (not via `composer
+// require`), so it was never added to vendor/composer/autoload_*.php — the
+// autoloader has no idea this package exists. Load it explicitly instead of
+// relying on `use` + autoload, otherwise every one of these classes is a
+// fatal "Class not found" the moment it's referenced.
+if (!class_exists('Firebase\\JWT\\JWT', false)) {
+    $__jwt_lib_dir = __DIR__ . '/../../vendor/firebase/php-jwt/src';
+    require_once $__jwt_lib_dir . '/BeforeValidException.php';
+    require_once $__jwt_lib_dir . '/ExpiredException.php';
+    require_once $__jwt_lib_dir . '/SignatureInvalidException.php';
+    require_once $__jwt_lib_dir . '/JWT.php';
+}
+
 use \Firebase\JWT\JWT;
 
 class Hybrid_Providers_Apple extends Hybrid_Provider_Model_OAuth2 {
@@ -32,6 +45,7 @@ class Hybrid_Providers_Apple extends Hybrid_Provider_Model_OAuth2 {
         $this->response_mode = 'form_post';
         $this->auth_user_dir = 'https://appleid.apple.com';
         $this->client_info = $this->api->client_secret;
+        $this->restoreCallbackHandoff();
     }
 
     function loginBegin() {
@@ -138,10 +152,6 @@ class Hybrid_Providers_Apple extends Hybrid_Provider_Model_OAuth2 {
         }
         $expected_nonce = $auth_data['nonce'];
 
-        if (!empty($auth_data['return_to'])) {
-            Hybrid_Auth::storage()->set("hauth_session.{$this->providerId}.hauth_return_to", $auth_data['return_to']);
-        }
-
         $code = (array_key_exists('code', $_REQUEST)) ? $_REQUEST['code'] : "";
         $this->api->client_secret = $this->generateClientSecret();
 
@@ -181,13 +191,35 @@ class Hybrid_Providers_Apple extends Hybrid_Provider_Model_OAuth2 {
         $this->token("expires_at",    $this->api->access_token_expires_at);
 
         $this->setUserConnected();
+
+        $handoff = bin2hex(random_bytes(32));
+        $handoff_data = array(
+            'nonce' => $expected_nonce,
+            'user_name' => $this->post_user_name,
+            'api_response' => $this->api_response,
+            'access_token' => $this->api->access_token,
+            'refresh_token' => $this->api->refresh_token,
+            'expires_in' => $this->api->access_token_expires_in,
+            'expires_at' => $this->api->access_token_expires_at,
+        );
+        if (!self::saveCallbackHandoff($handoff, $handoff_data)) {
+            error_log('[Apple flow] failed to persist callback handoff');
+            exit("Apple 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        }
+
+        $return_to = !empty($auth_data['return_to'])
+            ? $auth_data['return_to']
+            : (defined('G5_URL') ? G5_URL . '/gangnamunni/auth/login.php?provider=Apple&redirect_to_idp=1' : '/gangnamunni/auth/login.php?provider=Apple&redirect_to_idp=1');
+        $separator = strpos($return_to, '?') === false ? '?' : '&';
+        $return_to .= $separator . 'apple_handoff=' . rawurlencode($handoff);
+        Hybrid_Auth::storage()->set("hauth_session.{$this->providerId}.hauth_return_to", $return_to);
     }
 
     function getUserProfile() {
         $data = Hybrid_Auth::storage()->get('apple_auth_user');
         $username = Hybrid_Auth::storage()->get('apple_user_name');
 
-        if( empty($data->id_token) ){
+        if (!is_object($data) || empty($data->id_token)) {
             error_log('[Apple flow] missing id_token');
             exit( "Apple 로그인에 실패했습니다. 잠시 후 다시 시도해주세요." );
         }
@@ -362,6 +394,63 @@ class Hybrid_Providers_Apple extends Hybrid_Provider_Model_OAuth2 {
         }
 
         return $ok;
+    }
+
+    private function restoreCallbackHandoff() {
+        $handoff = isset($_GET['apple_handoff']) ? (string)$_GET['apple_handoff'] : '';
+        if (!preg_match('/^[a-f0-9]{64}$/', $handoff)) return;
+
+        $data = self::consumeCallbackHandoff($handoff);
+        if ($data === null) {
+            error_log('[Apple flow] callback handoff missing or expired');
+            return;
+        }
+
+        $response = isset($data['api_response']) && is_array($data['api_response'])
+            ? (object)$data['api_response']
+            : null;
+        Hybrid_Auth::storage()->set('apple_auth_nonce', isset($data['nonce']) ? $data['nonce'] : '');
+        Hybrid_Auth::storage()->set('apple_user_name', isset($data['user_name']) ? $data['user_name'] : '');
+        Hybrid_Auth::storage()->set('apple_auth_user', $response);
+
+        $this->token('access_token', isset($data['access_token']) ? $data['access_token'] : '');
+        $this->token('refresh_token', isset($data['refresh_token']) ? $data['refresh_token'] : '');
+        $this->token('expires_in', isset($data['expires_in']) ? $data['expires_in'] : 0);
+        $this->token('expires_at', isset($data['expires_at']) ? $data['expires_at'] : 0);
+        $this->setUserConnected();
+    }
+
+    private static function saveCallbackHandoff($handoff, $data) {
+        $file = self::oneTimeAuthDir() . '/handoff_' . hash('sha256', $handoff) . '.json';
+        $tmp_file = $file . '.' . getmypid() . '.' . bin2hex(random_bytes(4)) . '.tmp';
+        $data['created'] = time();
+        $payload = json_encode($data);
+        if ($payload === false) return false;
+
+        $ok = @file_put_contents($tmp_file, $payload, LOCK_EX) !== false
+            && @chmod($tmp_file, 0600)
+            && @rename($tmp_file, $file);
+        if (!$ok) @unlink($tmp_file);
+        return $ok;
+    }
+
+    private static function consumeCallbackHandoff($handoff) {
+        $file = self::oneTimeAuthDir() . '/handoff_' . hash('sha256', $handoff) . '.json';
+        if (!is_file($file)) return null;
+
+        $fp = @fopen($file, 'r');
+        if (!$fp || !@flock($fp, LOCK_EX)) {
+            if ($fp) @fclose($fp);
+            return null;
+        }
+        $raw = stream_get_contents($fp);
+        @unlink($file);
+        @flock($fp, LOCK_UN);
+        @fclose($fp);
+
+        $data = json_decode((string)$raw, true);
+        if (!is_array($data) || empty($data['created']) || time() - (int)$data['created'] > 600) return null;
+        return $data;
     }
 
     private static function consumeOneTimeAuthValue($state) {

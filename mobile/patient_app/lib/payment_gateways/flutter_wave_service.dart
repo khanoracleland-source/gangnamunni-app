@@ -35,7 +35,8 @@ class FlutterWaveService {
       amount: totalAmount.validate().toStringAsFixed(Constants.DECIMAL_POINT),
       customer: customer,
       paymentOptions: "ussd, card, payattitude, barter, bank transfer",
-      customization: Customization(title: "FlutterWave", logo: Assets.imagesFlutterWaveLogo),
+      customization: Customization(
+          title: "FlutterWave", logo: Assets.imagesFlutterWaveLogo),
       isTestMode: isTestMode,
     );
 
@@ -43,7 +44,8 @@ class FlutterWaveService {
       if (value.status == "successful") {
         verifyPayment(
           transactionId: value.transactionId.validate(),
-          flutterWaveSecretKey: appConfigs.value.flutterwavePay.flutterwaveSecretkey,
+          flutterWaveSecretKey:
+              appConfigs.value.flutterwavePay.flutterwaveSecretkey,
           loderOnOFF: loderOnOFF,
         ).then((isSuccess) async {
           if (isSuccess) {
@@ -63,10 +65,17 @@ class FlutterWaveService {
   }
 }
 
-//region FlutterWave Verify Transaction API
-Future<bool> verifyPayment({required String transactionId, required String flutterWaveSecretKey, required Function(bool) loderOnOFF}) async {
+Future<bool> verifyPayment(
+    {required String transactionId,
+    required String flutterWaveSecretKey,
+    required Function(bool) loderOnOFF}) async {
   try {
-  final res = await handleResponse(await buildHttpResponse("https://api.flutterwave.com/v3/transactions/$transactionId/verify", header: buildHeaderForFlutterWave(flutterWaveSecretKey)), isFlutterWave: true);
+    final res = await handleResponse(
+        await buildHttpResponse(
+            "https://api.flutterwave.com/v3/transactions/$transactionId/verify",
+            header: buildHeaderForFlutterWave(flutterWaveSecretKey),
+            timeout: paymentRequestTimeout),
+        isFlutterWave: true);
     log("Response: $res");
     loderOnOFF.call(false);
     return res["status"] == "success";
@@ -75,4 +84,3 @@ Future<bool> verifyPayment({required String transactionId, required String flutt
   }
   return false;
 }
-//endregion

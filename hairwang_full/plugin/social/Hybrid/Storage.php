@@ -41,12 +41,12 @@ class Hybrid_Storage implements Hybrid_Storage_Interface {
 			$serialize_value = function_exists('get_string_encrypt') ? get_string_encrypt(serialize($value)) : serialize($value);
 
 			if( in_array($key, array('php_session_id', 'config')) ){
-				$this->stores[$key] = $serialize_value;
+				self::$stores[$key] = $serialize_value;
 			} else {
 				$_SESSION["HA::CONFIG"][$key] = $serialize_value;
 			}
-		} elseif (isset($this->stores[$key])) {
-			$unserialize_value = function_exists('get_string_decrypt') ? unserialize(get_string_decrypt($this->stores[$key])) : unserialize($this->stores[$key]);
+		} elseif (isset(self::$stores[$key])) {
+			$unserialize_value = function_exists('get_string_decrypt') ? unserialize(get_string_decrypt(self::$stores[$key])) : unserialize(self::$stores[$key]);
 			return $unserialize_value;
 		} elseif (isset($_SESSION["HA::CONFIG"][$key])) {
 			$unserialize_value = function_exists('get_string_decrypt') ? unserialize(get_string_decrypt($_SESSION["HA::CONFIG"][$key])) : unserialize($_SESSION["HA::CONFIG"][$key]);
