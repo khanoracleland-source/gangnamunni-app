@@ -51,4 +51,3 @@ define('REVIEWS_PER_PAGE', 20);
 // Rate Limiting
 define('RATE_LIMIT_MAX', 60);
 define('RATE_LIMIT_WINDOW', 60);
-?>

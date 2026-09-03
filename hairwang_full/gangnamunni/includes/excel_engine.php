@@ -1239,6 +1239,103 @@ function exportToExcel($data, $headers, $filename) {
 
 
 /**
+ * 그룹별로 시트를 나눈 엑셀 생성 (예: 병원별 예약 내역을 병원마다 별도 시트로)
+ * @param array $sheetsData ['시트 제목' => [행배열, ...], ...] — 순서대로 시트가 생성된다
+ * @param array $headers [{key, label}, ...] — 모든 시트에 동일하게 적용
+ * @param string $filename 파일명
+ * @return string 생성된 파일 경로
+ */
+function exportToExcelMultiSheet($sheetsData, $headers, $filename) {
+    global $HAS_PHPSPREADSHEET;
+
+    $dir = sys_get_temp_dir() . '/excel_exports/';
+    if (!is_dir($dir)) mkdir($dir, 0775, true);
+    $filepath = $dir . $filename;
+
+    if ($HAS_PHPSPREADSHEET) {
+        $spreadsheet = new Spreadsheet();
+        $usedTitles = [];
+        $sheetIndex = 0;
+        foreach ($sheetsData as $title => $rows) {
+            $sheet = $sheetIndex === 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
+            $sheet->setTitle(_excelSafeSheetTitle($title, $usedTitles));
+
+            foreach ($headers as $ci => $h) {
+                $colLetter = _indexToLetter($ci);
+                $sheet->setCellValue("{$colLetter}1", $h['label']);
+                $sheet->getStyle("{$colLetter}1")->getFont()->setBold(true);
+                $sheet->getStyle("{$colLetter}1")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('4472C4');
+                $sheet->getStyle("{$colLetter}1")->getFont()->getColor()->setRGB('FFFFFF');
+            }
+            foreach ($rows as $ri => $row) {
+                foreach ($headers as $ci => $h) {
+                    $colLetter = _indexToLetter($ci);
+                    $sheet->setCellValue("{$colLetter}" . ($ri + 2), $row[$h['key']] ?? '');
+                }
+                if ($ri % 2 === 1) {
+                    $range = 'A' . ($ri + 2) . ':' . _indexToLetter(count($headers) - 1) . ($ri + 2);
+                    $sheet->getStyle($range)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('D9E2F3');
+                }
+            }
+            foreach (range(0, count($headers) - 1) as $ci) {
+                $sheet->getColumnDimension(_indexToLetter($ci))->setAutoSize(true);
+            }
+            $lastCol = _indexToLetter(count($headers) - 1);
+            $sheet->setAutoFilter("A1:{$lastCol}1");
+            $sheetIndex++;
+        }
+        if ($sheetIndex === 0) {
+            $spreadsheet->getActiveSheet()->setTitle('데이터 없음');
+        }
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($filepath);
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
+    } else {
+        // CSV는 시트를 나눌 수 없으므로 입력 순서(보통 병원별로 이미 정렬됨) 그대로 한 파일에 이어붙인다.
+        $filepath = str_replace('.xlsx', '.csv', $filepath);
+        $fp = fopen($filepath, 'w');
+        fprintf($fp, "\xEF\xBB\xBF");
+        $headerLabels = array_map(function($h) { return $h['label']; }, $headers);
+        fputcsv($fp, $headerLabels);
+        foreach ($sheetsData as $rows) {
+            foreach ($rows as $row) {
+                $line = [];
+                foreach ($headers as $h) $line[] = $row[$h['key']] ?? '';
+                fputcsv($fp, $line);
+            }
+        }
+        fclose($fp);
+    }
+
+    return $filepath;
+}
+
+/**
+ * 엑셀 시트명 제약(31자, 특정 특수문자 금지, 중복 불가)에 맞춰 안전한 시트명을 만든다.
+ * @param string $title 원하는 시트명
+ * @param array $usedTitles 이미 사용된 시트명 (참조로 갱신됨)
+ * @return string
+ */
+function _excelSafeSheetTitle($title, array &$usedTitles) {
+    $title = trim((string)preg_replace('/[:\\\\\/\?\*\[\]]/', ' ', (string)$title));
+    if ($title === '') $title = '시트';
+    $title = mb_substr($title, 0, 31);
+    $base = $title;
+    $n = 2;
+    while (isset($usedTitles[$title])) {
+        $suffix = '_' . $n;
+        $title = mb_substr($base, 0, max(1, 31 - mb_strlen($suffix))) . $suffix;
+        $n++;
+    }
+    $usedTitles[$title] = true;
+    return $title;
+}
+
+
+/**
  * 엔티티별 양식 엑셀 생성 (3시트: 데이터입력/가이드/코드표)
  * @param string $entityType 엔티티 유형
  * @return string 생성된 파일 경로

@@ -272,5 +272,3 @@ function generateFontScaleCSS() {
     return $css;
 }
 
-?>
-
