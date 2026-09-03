@@ -68,9 +68,11 @@ class GoogleSignInAuthService {
       switch (result.status) {
         case AuthorizationStatus.authorized:
           final appleIdCredential = result.credential!;
+          final identityToken =
+              String.fromCharCodes(appleIdCredential.identityToken!);
           final oAuthProvider = OAuthProvider('apple.com');
           final credential = oAuthProvider.credential(
-            idToken: String.fromCharCodes(appleIdCredential.identityToken!),
+            idToken: identityToken,
             accessToken:
                 String.fromCharCodes(appleIdCredential.authorizationCode!),
           );
@@ -100,6 +102,7 @@ class GoogleSignInAuthService {
             ..lastName = lastName.validate()
             ..profileImage = currentUser.photoURL.validate()
             ..loginType = LoginTypeConst.LOGIN_TYPE_APPLE
+            ..socialIdentityToken = identityToken
             ..userName = "${firstName.validate()} ${lastName.validate()}";
 
           return tempUserData;

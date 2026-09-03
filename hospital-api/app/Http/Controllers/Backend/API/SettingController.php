@@ -202,7 +202,7 @@ class SettingController extends Controller
         $response['tax'] = $taxesData;
         $response['currency'] = $currencyData;
         $response['google_login_status'] = isset($settings['is_google_login']) ? (int)$settings['is_google_login'] : 0;
-        $response['apple_login_status'] = 'false';
+        $response['apple_login_status'] = 1;
         $response['otp_login_status'] = 'false';
         $response['site_description'] = $settings['site_description'] ?? null;
         $response['is_quick_booking_on'] = isset($settings['clinic']) ? (int) $settings['clinic'] : null;

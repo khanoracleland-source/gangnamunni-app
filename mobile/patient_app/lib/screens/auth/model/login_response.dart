@@ -42,6 +42,7 @@ class UserData {
   String apiToken;
   String profileImage;
   String loginType;
+  String socialIdentityToken;
   bool isSocialLogin;
   String userType;
   num walletAmount;
@@ -70,6 +71,7 @@ class UserData {
     this.apiToken = "",
     this.profileImage = "",
     this.loginType = "",
+    this.socialIdentityToken = "",
     this.isSocialLogin = false,
     this.userType = "",
     this.walletAmount = 0,

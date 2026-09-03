@@ -231,8 +231,9 @@ class SignInController extends GetxController {
         UserKeys.profileImage: value.profileImage,
         UserKeys.userType: LoginTypeConst.LOGIN_TYPE_USER,
         UserKeys.loginType: LoginTypeConst.LOGIN_TYPE_APPLE,
+        'identity_token': value.socialIdentityToken,
       };
-      log('signInWithApple REQUEST: $request');
+      log('Sign in with Apple credential verified by Firebase.');
 
       final response = await AuthServiceApis.loginUser(
         request: request,

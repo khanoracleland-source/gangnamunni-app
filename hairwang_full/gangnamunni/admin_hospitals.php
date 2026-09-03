@@ -109,6 +109,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $action = $_POST['action'] ?? '';
 
+    if ($action === 'add_hospital_treatments') {
+        $hospital_id = intval($_POST['hospital_id'] ?? 0);
+        $raw_treatment_ids = $_POST['application_treatment_ids'] ?? [];
+        if ($hospital_id <= 0 || ($my_ids !== null && !in_array($hospital_id, $my_ids, true))) {
+            $error = '병원 정보가 올바르지 않습니다.';
+        } else {
+            $valid_treatment_ids = hti_application_treatment_ids($connect, $raw_treatment_ids);
+            if (empty($valid_treatment_ids)) {
+                $error = '추가할 시술을 하나 이상 선택해 주세요.';
+            } else {
+                try {
+                    $treatment_warnings = hti_save_application_treatments($connect, $hospital_id, $valid_treatment_ids, 'admin');
+                    $option_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
+                    $has_option_name = $option_column_result && mysqli_num_rows($option_column_result) > 0;
+                    $saved_price_count = 0;
+                    foreach ($valid_treatment_ids as $treatment_id) {
+                        $ht_id = 0;
+                        $ht_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospital_treatments WHERE hospital_id=? AND treatment_id=? AND is_active=1 LIMIT 1");
+                        if (!$ht_stmt) continue;
+                        mysqli_stmt_bind_param($ht_stmt, 'ii', $hospital_id, $treatment_id);
+                        mysqli_stmt_execute($ht_stmt);
+                        mysqli_stmt_bind_result($ht_stmt, $ht_id);
+                        mysqli_stmt_fetch($ht_stmt);
+                        mysqli_stmt_close($ht_stmt);
+                        if (!$ht_id) continue;
+                        $option_names = (array)($_POST['treatment_option_name'][$treatment_id] ?? []);
+                        $dosage_values = (array)($_POST['treatment_dosage_value'][$treatment_id] ?? []);
+                        $dosage_units = (array)($_POST['treatment_dosage_unit'][$treatment_id] ?? []);
+                        $prices = (array)($_POST['treatment_price'][$treatment_id] ?? []);
+                        $price_stmt = mysqli_prepare($connect, $has_option_name
+                            ? "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, option_name, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?, ?)"
+                            : "INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, dosage_value, dosage_unit, price, sort_order) VALUES (?, ?, ?, ?, ?)");
+                        if (!$price_stmt) continue;
+                        $option_count = max(count($option_names), count($dosage_values), count($prices));
+                        for ($option_index = 0; $option_index < $option_count; $option_index++) {
+                            $option_name = mb_substr(trim((string)($option_names[$option_index] ?? '')), 0, 100, 'UTF-8');
+                            $dosage_value = (float)($dosage_values[$option_index] ?? 0);
+                            $dosage_unit = mb_substr(trim((string)($dosage_units[$option_index] ?? '')), 0, 20, 'UTF-8');
+                            $price = max(0, (int)($prices[$option_index] ?? 0));
+                            if ($dosage_value <= 0 || $dosage_unit === '' || $price <= 0) continue;
+                            if ($has_option_name) mysqli_stmt_bind_param($price_stmt, 'isdsii', $ht_id, $option_name, $dosage_value, $dosage_unit, $price, $option_index);
+                            else mysqli_stmt_bind_param($price_stmt, 'idsii', $ht_id, $dosage_value, $dosage_unit, $price, $option_index);
+                            if (mysqli_stmt_execute($price_stmt)) $saved_price_count++;
+                        }
+                        mysqli_stmt_close($price_stmt);
+                    }
+                    $message = count($valid_treatment_ids) . '개 시술이 저장되었습니다.';
+                    if ($saved_price_count > 0) $message .= ' 가격 옵션 ' . $saved_price_count . '개가 추가되었습니다.';
+                    if ($treatment_warnings) $message .= ' ' . implode(' / ', $treatment_warnings);
+                } catch (Throwable $treatment_exception) {
+                    error_log('[admin_hospitals] treatment add failed: ' . $treatment_exception->getMessage());
+                    $error = '시술 저장 중 오류가 발생했습니다.';
+                }
+            }
+        }
+    }
+
     // 수정 화면에서 메인 이미지 1장 + 내부 상세 이미지(총 10장)를 바로 추가한다.
     if ($action === 'add_hospital_images') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
@@ -873,6 +930,7 @@ if ($view_mode > 0) {
                     $ht_id = (int)$row['hospital_treatment_id'];
                     if (!isset($application_treatments[$ht_id])) {
                         $application_treatments[$ht_id] = [
+                            'treatment_id' => (int)$row['treatment_id'],
                             'name' => $row['treatment_name'],
                             'status' => $row['status'],
                             'images' => [],
@@ -918,6 +976,17 @@ if ($view_mode > 0) {
             }
         } catch (\mysqli_sql_exception $e) {
             error_log('[admin_hospitals] 신청 시술 가격 조회 실패: ' . $e->getMessage());
+        }
+
+        $treatment_master_list = [];
+        $treatment_category_list = [];
+        $master_result = mysqli_query($connect, "SELECT id, name, category_id FROM gangnamunni_treatment_master WHERE is_active=1 ORDER BY sort_order ASC, id ASC");
+        if ($master_result) while ($master_row = mysqli_fetch_assoc($master_result)) {
+            $treatment_master_list[] = ['id'=>(int)$master_row['id'], 'name'=>$master_row['name'], 'category_id'=>(int)$master_row['category_id']];
+        }
+        $category_result = mysqli_query($connect, "SELECT id, name FROM gangnamunni_treatment_categories WHERE is_active=1 ORDER BY sort_order ASC, id ASC");
+        if ($category_result) while ($category_row = mysqli_fetch_assoc($category_result)) {
+            $treatment_category_list[] = ['id'=>(int)$category_row['id'], 'name'=>$category_row['name']];
         }
 
         // 신청서에서 등록한 의사 정보
@@ -1065,6 +1134,14 @@ $admin_extra_css = '
 .application-asset-preview img { width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
 .application-asset-missing { color: var(--bs-secondary-color); text-align: center; }
 .application-treatment-image { width: 100%; height: 150px; object-fit: cover; cursor: pointer; border-radius: 8px; border: 1px solid var(--bs-border-color); }
+.admin-treatment-list { max-height: 310px; overflow-y: auto; padding-right: 2px; }
+.admin-treatment-card { display:flex; align-items:center; gap:9px; min-height:58px; padding:9px 11px; border:1px solid var(--bs-border-color); border-radius:9px; background:var(--bs-body-bg); cursor:pointer; }
+.admin-treatment-card:hover, .admin-treatment-card:has(.admin-treatment-check:checked) { border-color:var(--bs-primary); background:rgba(var(--bs-primary-rgb),.07); }
+.admin-treatment-checkmark { color:var(--bs-primary); opacity:0; }
+.admin-treatment-check:checked ~ .admin-treatment-checkmark { opacity:1; }
+.admin-treatment-detail { border-left:4px solid var(--bs-primary)!important; }
+.admin-treatment-price-row { display:grid; grid-template-columns:minmax(130px,1.4fr) minmax(85px,.65fr) 90px minmax(120px,.8fr) 34px; gap:7px; align-items:center; }
+@media (max-width:767.98px) { .admin-treatment-price-row { grid-template-columns:1fr 1fr; } }
 .category-badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
 .tag-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
 ';
@@ -1414,12 +1491,52 @@ $edit_json_list_value = static function ($raw) {
 </div>
 
 <div class="card mt-3">
-    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editTreatmentsSection" aria-expanded="false">
-        <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가</strong></span><span><span class="badge bg-secondary me-2"><?= count($application_treatments) ?>개</span><i class="bi bi-chevron-down"></i></span>
-    </button>
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editTreatmentsSection" aria-expanded="false">
+            <i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가</strong> <span class="badge bg-secondary ms-1"><?= count($application_treatments) ?>개</span> <i class="bi bi-chevron-down ms-2"></i>
+        </button>
+        <a href="admin_hospital_treatments.php?hospital_id=<?php echo (int)$hospital['id']; ?>" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil-square me-1"></i>시술 관리 (추가/수정/삭제)
+        </a>
+    </div>
     <div class="collapse" id="editTreatmentsSection"><div class="card-body">
+        <form method="POST" action="?view=<?= (int)$hospital['id'] ?>&amp;edit=1" enctype="multipart/form-data" id="adminHospitalTreatmentForm">
+            <input type="hidden" name="action" value="add_hospital_treatments">
+            <input type="hidden" name="hospital_id" value="<?= (int)$hospital['id'] ?>">
+            <input type="hidden" name="admin_csrf" value="<?= htmlspecialchars($admin_hospitals_csrf, ENT_QUOTES, 'UTF-8') ?>">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div><div class="fw-semibold"><i class="bi bi-list-check text-primary me-1"></i>배정할 시술 선택</div><div class="form-text">카테고리로 찾은 후 여러 시술을 한 번에 선택할 수 있습니다.</div></div>
+                <span class="badge bg-primary" id="adminSelectedTreatmentCount">0개 선택</span>
+            </div>
+            <div class="d-flex flex-wrap gap-1 mb-3">
+                <button type="button" class="btn btn-primary btn-sm admin-treatment-filter active" data-cat="all">전체 <span class="badge bg-white text-primary ms-1"><?= count($treatment_master_list ?? []) ?></span></button>
+                <?php foreach (($treatment_category_list ?? []) as $category): ?>
+                <button type="button" class="btn btn-outline-primary btn-sm admin-treatment-filter" data-cat="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></button>
+                <?php endforeach; ?>
+            </div>
+            <div class="row g-2 admin-treatment-list">
+                <?php
+                $assigned_treatment_ids = array_map(static function($item) { return (int)($item['treatment_id'] ?? 0); }, $application_treatments);
+                foreach (($treatment_master_list ?? []) as $master_treatment):
+                    $already_assigned = in_array($master_treatment['id'], $assigned_treatment_ids, true);
+                    $master_category_name = '미분류';
+                    foreach (($treatment_category_list ?? []) as $category) if ($category['id'] === $master_treatment['category_id']) { $master_category_name = $category['name']; break; }
+                ?>
+                <div class="col-md-6 col-xl-4 admin-treatment-item" data-cat="<?= $master_treatment['category_id'] ?>">
+                    <label class="admin-treatment-card">
+                        <input class="form-check-input admin-treatment-check" type="checkbox" value="<?= $master_treatment['id'] ?>" data-name="<?= htmlspecialchars($master_treatment['name'], ENT_QUOTES, 'UTF-8') ?>" <?= $already_assigned ? 'checked disabled data-existing="1"' : '' ?>>
+                        <span class="flex-grow-1"><strong class="d-block small"><?= htmlspecialchars($master_treatment['name']) ?></strong><small class="text-muted"><?= htmlspecialchars($master_category_name) ?><?= $already_assigned ? ' · 배정됨' : '' ?></small></span>
+                        <i class="bi bi-check-circle-fill admin-treatment-checkmark"></i>
+                    </label>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="mt-2 d-grid gap-2" id="adminSelectedTreatmentDetails"></div>
+            <div class="d-flex justify-content-end mt-3"><button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>선택한 시술 저장</button></div>
+        </form>
+        <hr class="my-4">
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="small text-body-secondary">신청한 시술과 옵션별 용량·가격·이미지를 확인합니다.</span>
+            <span class="small text-body-secondary">현재 배정된 시술과 옵션별 용량·가격·이미지입니다.</span>
         </div>
         <?php if (!empty($application_treatments)): ?>
         <div class="table-responsive mb-4">
@@ -1772,15 +1889,21 @@ $application_assets = [
         </div>
     </div>
 </div>
+<?php endif; ?>
 
+<!-- 시술 추가: 신청서 경유 여부와 무관하게 항상 표시(직접 등록 병원도 관리 가능) -->
 <div class="card mb-3">
-    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewTreatmentsSection" aria-expanded="false">
-        <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가</strong></span>
-        <span><span class="badge bg-body-secondary text-body me-2"><?= count($application_treatments) ?>개</span><i class="bi bi-chevron-down"></i></span>
-    </button>
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewTreatmentsSection" aria-expanded="false">
+            <i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가</strong> <span class="badge bg-body-secondary text-body ms-1"><?= count($application_treatments) ?>개</span> <i class="bi bi-chevron-down ms-2"></i>
+        </button>
+        <a href="admin_hospital_treatments.php?hospital_id=<?= (int)$view_mode ?>" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil-square me-1"></i>시술 관리 (추가/수정/삭제)
+        </a>
+    </div>
     <div class="collapse" id="viewTreatmentsSection"><div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <span class="small text-body-secondary">신청한 시술과 가격 옵션, 시술 이미지를 확인합니다.</span>
+            <span class="small text-body-secondary">신청한 시술과 가격 옵션, 시술 이미지를 확인합니다. 새 시술을 배정하려면 위 <strong>"시술 관리"</strong> 버튼을 이용하세요.</span>
         </div>
         <?php if (!empty($application_treatments)): ?>
             <?php foreach ($application_treatments as $treatment): ?>
@@ -1833,6 +1956,7 @@ $application_assets = [
     </div></div>
 </div>
 
+<?php if (!empty($hospital['applied_by'])): ?>
 <div class="card mb-3">
     <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewDoctorsSection" aria-expanded="false">
         <span><i class="bi bi-person-badge me-1"></i><strong>의사 추가</strong></span>
@@ -2447,7 +2571,7 @@ function bgFinish() {
                 <td class="text-center"><input type="checkbox" class="form-check-input row-check" value="<?php echo $h['id']; ?>"></td>
                 <td class="text-center"><?php echo $h['id']; ?></td>
                 <td>
-                    <a href="?view=<?php echo $h['id']; ?>" class="text-decoration-none fw-semibold">
+                    <a href="?view=<?php echo $h['id']; ?>&edit=1" class="text-decoration-none fw-semibold">
                         <?php echo htmlspecialchars($h['name']); ?>
                     </a>
                     <?php if (!empty($h['has_unreviewed_changes'])): ?><span class="badge bg-info ms-1" title="신청자가 정보를 수정함">수정됨</span><?php endif; ?>
@@ -2651,6 +2775,68 @@ function bulkReject() {
         bulkSubmit('bulk_reject', { reject_reason: reason });
     }
 }
+
+// 병원 수정 화면: 시술 선택, 가격 옵션, 이미지를 한 번에 저장한다.
+(function() {
+    var details = document.getElementById('adminSelectedTreatmentDetails');
+    var count = document.getElementById('adminSelectedTreatmentCount');
+    if (!details || !count) return;
+    function escapeHtml(value) {
+        var span = document.createElement('span');
+        span.textContent = value;
+        return span.innerHTML;
+    }
+    function priceRowHtml(id) {
+        var units = ['샷','cc','ml','개','부위','회'].map(function(unit) { return '<option value="'+unit+'">'+unit+'</option>'; }).join('');
+        return '<div class="admin-treatment-price-row mb-2">'
+            + '<input type="text" name="treatment_option_name['+id+'][]" class="form-control form-control-sm" maxlength="100" placeholder="옵션명 (예: 주름 100샷)">'
+            + '<input type="number" name="treatment_dosage_value['+id+'][]" class="form-control form-control-sm" min="0.01" step="0.01" placeholder="용량">'
+            + '<select name="treatment_dosage_unit['+id+'][]" class="form-select form-select-sm">'+units+'</select>'
+            + '<input type="number" name="treatment_price['+id+'][]" class="form-control form-control-sm" min="1" step="1" placeholder="가격(원)">'
+            + '<button type="button" class="btn btn-outline-danger btn-sm remove-admin-treatment-price" aria-label="옵션 삭제"><i class="bi bi-x"></i></button></div>';
+    }
+    function detailNode(checkbox) {
+        var id = checkbox.value;
+        var node = document.createElement('div');
+        node.className = 'admin-treatment-detail bg-body border rounded p-3';
+        node.dataset.treatmentId = id;
+        node.innerHTML = '<input type="hidden" name="application_treatment_ids[]" value="'+id+'">'
+            + '<div class="d-flex justify-content-between align-items-center mb-2"><strong>'+escapeHtml(checkbox.dataset.name)+'</strong><button type="button" class="btn btn-outline-secondary btn-sm add-admin-treatment-price"><i class="bi bi-plus"></i> 가격 옵션</button></div>'
+            + '<div class="admin-treatment-price-rows">'+priceRowHtml(id)+'</div>'
+            + '<label class="form-label small fw-semibold mt-1">시술 이미지 (여러 장 선택)</label>'
+            + '<input type="file" name="treatment_images['+id+'][]" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.gif,.webp" multiple>';
+        return node;
+    }
+    function syncTreatments() {
+        var checked = Array.from(document.querySelectorAll('.admin-treatment-check:checked:not([data-existing="1"])'));
+        var existing = {};
+        details.querySelectorAll('.admin-treatment-detail').forEach(function(node) { existing[node.dataset.treatmentId] = node; });
+        checked.forEach(function(checkbox) {
+            if (!existing[checkbox.value]) details.appendChild(detailNode(checkbox));
+            else delete existing[checkbox.value];
+        });
+        Object.keys(existing).forEach(function(id) { existing[id].remove(); });
+        count.textContent = checked.length + '개 선택';
+    }
+    document.querySelectorAll('.admin-treatment-check').forEach(function(checkbox) { checkbox.addEventListener('change', syncTreatments); });
+    document.querySelectorAll('.admin-treatment-filter').forEach(function(button) {
+        button.addEventListener('click', function() {
+            document.querySelectorAll('.admin-treatment-filter').forEach(function(item) { item.classList.remove('btn-primary','active'); item.classList.add('btn-outline-primary'); });
+            button.classList.remove('btn-outline-primary'); button.classList.add('btn-primary','active');
+            document.querySelectorAll('.admin-treatment-item').forEach(function(item) { item.style.display = button.dataset.cat === 'all' || item.dataset.cat === button.dataset.cat ? '' : 'none'; });
+        });
+    });
+    details.addEventListener('click', function(event) {
+        var add = event.target.closest('.add-admin-treatment-price');
+        if (add) {
+            var detail = add.closest('.admin-treatment-detail');
+            detail.querySelector('.admin-treatment-price-rows').insertAdjacentHTML('beforeend', priceRowHtml(detail.dataset.treatmentId));
+        }
+        var remove = event.target.closest('.remove-admin-treatment-price');
+        if (remove && remove.closest('.admin-treatment-price-rows').children.length > 1) remove.closest('.admin-treatment-price-row').remove();
+    });
+    syncTreatments();
+})();
 
 // 병원 수정 화면: 신청서와 동일한 의사 입력 행을 추가/삭제한다.
 (function() {

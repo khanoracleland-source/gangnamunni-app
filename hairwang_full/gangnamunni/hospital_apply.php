@@ -600,6 +600,17 @@ require_once __DIR__ . '/includes/admin_header.php';
 .application-treatment-detail {
     border-left: 4px solid var(--bs-primary) !important;
 }
+.application-section {
+    padding: 0 !important;
+}
+.application-section-toggle {
+    display: flex !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+}
 .application-price-row {
     display: grid;
     grid-template-columns: minmax(130px, 1.4fr) minmax(85px, .65fr) 90px minmax(120px, .8fr) 34px;
@@ -846,14 +857,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                 </div>
 
                 <!-- 병원별 시술 배정 -->
-                <div class="border rounded mb-4 overflow-hidden w-100">
-                    <button class="btn btn-light w-100 text-start d-flex justify-content-between align-items-center p-3" style="width:100%; max-width:none;" type="button" data-bs-toggle="collapse" data-bs-target="#treatmentSection" aria-expanded="false" aria-controls="treatmentSection">
+                <div class="application-section border rounded mb-4 overflow-hidden w-100">
+                    <button class="application-section-toggle btn btn-light text-start justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#treatmentSection" aria-expanded="false" aria-controls="treatmentSection">
                         <span class="fw-bold"><i class="bi bi-clipboard2-pulse me-2 text-primary"></i>시술 추가 <span class="badge bg-secondary fw-normal">선택</span></span>
                         <i class="bi bi-chevron-down"></i>
                     </button>
-                    <div class="collapse" id="treatmentSection">
-                    <div class="p-2 border-top bg-body-tertiary">
-                        <div class="bg-body rounded border p-3">
+                    <div class="collapse w-100" id="treatmentSection">
+                        <div class="p-2 border-top bg-body-tertiary w-100">
+                        <div class="bg-body rounded border p-3 w-100">
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                                 <div>
                                     <div class="fw-semibold"><i class="bi bi-list-check text-primary me-1"></i>배정할 시술 선택</div>
@@ -891,17 +902,16 @@ require_once __DIR__ . '/includes/admin_header.php';
                                 <?php endforeach; ?>
                             </div>
                         </div>
-                        <div class="mt-2 d-grid gap-2" id="selectedTreatmentDetails"></div>
+                        <div class="mt-2 d-grid gap-2 w-100" id="selectedTreatmentDetails"></div>
                         <input type="hidden" name="treatment_tags" id="treatmentTagsInput">
                         <input type="hidden" name="categories" id="categoriesInput">
                         </div>
                     </div>
-                    </div>
                 </div>
 
                 <!-- 병원 이미지 -->
-                <div class="border rounded mb-4 overflow-hidden w-100">
-                    <button class="btn btn-light w-100 text-start d-flex justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#hospitalImageSection" aria-expanded="false" aria-controls="hospitalImageSection">
+                <div class="application-section border rounded mb-4 overflow-hidden w-100">
+                    <button class="application-section-toggle btn btn-light text-start justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#hospitalImageSection" aria-expanded="false" aria-controls="hospitalImageSection">
                         <span class="fw-bold"><i class="bi bi-images me-2 text-primary"></i>병원 이미지 추가 <span class="badge bg-secondary fw-normal">선택</span></span>
                         <i class="bi bi-chevron-down"></i>
                     </button>
@@ -937,8 +947,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                 </div>
 
                 <!-- 의사 관리 -->
-                <div class="border rounded mb-4 overflow-hidden w-100">
-                    <button class="btn btn-light w-100 text-start d-flex justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#doctorSection" aria-expanded="false" aria-controls="doctorSection">
+                <div class="application-section border rounded mb-4 overflow-hidden w-100">
+                    <button class="application-section-toggle btn btn-light text-start justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#doctorSection" aria-expanded="false" aria-controls="doctorSection">
                         <span class="fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>의사 추가 <span class="badge bg-secondary fw-normal">선택</span></span>
                         <i class="bi bi-chevron-down"></i>
                     </button>

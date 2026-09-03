@@ -20,6 +20,10 @@ use Modules\Commission\Models\Commission;
 use App\Models\UserProfile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Firebase\JWT\JWK;
+use Firebase\JWT\JWT;
 use Modules\Clinic\Models\Doctor;
 
 class AuthController extends Controller
@@ -276,6 +280,21 @@ class AuthController extends Controller
     {
         $input = $request->all();
 
+        if (($input['login_type'] ?? '') === 'apple') {
+            try {
+                $appleClaims = $this->verifyAppleIdentityToken((string) ($input['identity_token'] ?? ''));
+                $input['email'] = (string) $appleClaims->email;
+                unset($input['identity_token']);
+                $request->merge(['email' => $input['email']]);
+            } catch (\Throwable $exception) {
+                report($exception);
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Apple login verification failed. Please try again.',
+                ], 401);
+            }
+        }
+
         if ($input['login_type'] === 'mobile') {
             $user_data = User::where('username', $input['username'])->where('login_type', 'mobile')->first();
         } else {
@@ -415,6 +434,33 @@ class AuthController extends Controller
         $socialLogin = new SocialLoginResource($user_data);
 
         return $this->sendResponse($socialLogin, $message);
+    }
+
+    private function verifyAppleIdentityToken(string $identityToken): object
+    {
+        if ($identityToken === '') {
+            throw new \InvalidArgumentException('Apple identity token is missing.');
+        }
+
+        $jwks = Cache::remember('apple-sign-in-jwks', now()->addHours(6), function (): array {
+            $response = Http::acceptJson()->timeout(5)->get('https://appleid.apple.com/auth/keys');
+            $response->throw();
+            return $response->json();
+        });
+        $claims = JWT::decode($identityToken, JWK::parseKeySet($jwks, 'RS256'));
+        $audience = config('services.apple.client_id');
+        $tokenAudiences = is_array($claims->aud ?? null) ? $claims->aud : [$claims->aud ?? null];
+
+        if (($claims->iss ?? null) !== 'https://appleid.apple.com'
+            || !$audience
+            || !in_array($audience, $tokenAudiences, true)
+            || empty($claims->sub)
+            || empty($claims->email)
+            || !in_array($claims->email_verified ?? false, [true, 'true', 1, '1'], true)) {
+            throw new \UnexpectedValueException('Apple identity token claims are invalid.');
+        }
+
+        return $claims;
     }
 
     public function logout(Request $request)
