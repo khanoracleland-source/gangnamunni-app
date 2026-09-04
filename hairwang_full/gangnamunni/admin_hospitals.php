@@ -1,10 +1,5 @@
 <?php
-/**
- * 병원 관리 페이지
- * 병원 목록, 상세 보기, 수정, 승인/반려 워크플로우
- * Bootstrap 5.3 + 주간/야간 모드
- * @created 2026-03-04
- */
+
 
 session_start();
 error_reporting(E_ALL);
@@ -24,12 +19,8 @@ mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 hti_ensure_schema($connect);
 
-// 승인/반려 메일 본문에서 SITE_FULL_URL 을 사용하는데, 이 상수는 admin_header.php(하단 include)에서
-// 정의되어 POST 처리 시점엔 미정의 → PHP 8 에서 "Undefined constant" 치명적 오류(백지화) 발생.
-// 다른 admin_* 페이지와 동일하게 여기서 미리 guard-define 한다.
 if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://hms.seoulbeauty.app/hairwang/gangnamunni/');
 
-// 로그인 + 권한 체크
 require_admin_login();
 require_permission('hospitals');
 
@@ -38,21 +29,15 @@ if (empty($_SESSION['admin_hospitals_csrf'])) {
 }
 $admin_hospitals_csrf = $_SESSION['admin_hospitals_csrf'];
 
-// 병원 역할 격리: get_hospital_filter() 는 super_admin/admin/editor(hospital_id 없음)면 null(전체),
-// hospital_* 역할이면 자기 hospital_id 반환 → superadmin 은 전체 병원, 병원 관리자는 자기 병원만 표시.
 require_once __DIR__ . '/includes/hospital_filter.php';
-require_once __DIR__ . '/includes/hospital_provision_helper.php'; // 승인 시 계정 자동 생성(단일/일괄 공통)
-// 다병원 지원: 한 관리자가 email 이 일치하는 여러 병원을 소유할 수 있다. null 이면 전체(플랫폼).
+require_once __DIR__ . '/includes/hospital_provision_helper.php'; 
 $my_ids = get_hospital_filter_ids($connect);
-// editor 는 항상 본인 소속 병원으로 제한(공유 헬퍼는 건드리지 않고 이 페이지에서만 강제).
-// 소속 병원 없는 editor 는 빈 배열 → 목록 아무것도 없음 + 아래 POST 가드가 모든 액션 차단.
 if (($_SESSION['ad_admin_role'] ?? '') === 'editor' && $my_ids === null) {
     $ed_hid = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
     $my_ids = $ed_hid > 0 ? [$ed_hid] : [];
 }
 $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
 
-// 병원 역할은 플랫폼 전용 액션(승인/반려/삭제/일괄) 금지 + 나머지 액션은 자기 소유 병원만 대상 허용.
 if ($my_ids !== null && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $_pa = $_POST['action'] ?? '';
     $_platform_only = ['approve', 'reject', 'bulk_approve', 'bulk_reject', 'bulk_delete', 'delete_hospital'];
@@ -67,10 +52,7 @@ $message = '';
 $error = '';
 $current_admin = get_current_admin();
 
-/**
- * 병원 이미지 업로드를 MIME/확장자/크기로 검증하고 병원별 폴더에 저장한다.
- * 성공: ['url' => ..., 'path' => ...], 실패: ['error' => ...]
- */
+
 function admin_hospital_store_image(array $file, $hospital_id, array $allowed_mimes, array $allowed_extensions, $max_bytes, $prefix) {
     $upload_error = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
     if ($upload_error === UPLOAD_ERR_NO_FILE) return null;
@@ -101,7 +83,6 @@ function admin_hospital_store_image(array $file, $hospital_id, array $allowed_mi
     return ['url' => $relative_dir . $filename, 'path' => $absolute_path];
 }
 
-// ===== POST 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($_POST['admin_csrf']) || !hash_equals($admin_hospitals_csrf, (string)$_POST['admin_csrf'])) {
         http_response_code(403);
@@ -166,7 +147,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 수정 화면에서 메인 이미지 1장 + 내부 상세 이미지(총 10장)를 바로 추가한다.
     if ($action === 'add_hospital_images') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         $uploaded_files = [];
@@ -314,7 +294,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 수정 화면에서 해당 병원에 소속된 의사를 여러 명 추가한다.
     if ($action === 'add_hospital_doctors') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         $doctor_names = is_array($_POST['doctor_name'] ?? null) ? $_POST['doctor_name'] : [];
@@ -395,18 +374,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 승인 — 자동 계정 3곳 생성 (gangnamunni_admins + g5_member + sso_tokens) + 이메일
     if ($action === 'approve') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         if ($hospital_id > 0) {
-            // 병원 전체 정보 조회
             $stmt_info = mysqli_prepare($connect, "SELECT * FROM gangnamunni_hospitals WHERE id=?");
             mysqli_stmt_bind_param($stmt_info, 'i', $hospital_id);
             mysqli_stmt_execute($stmt_info);
             $hospital_info = mysqli_stmt_get_result($stmt_info)->fetch_assoc();
             mysqli_stmt_close($stmt_info);
 
-            // 상태 업데이트
             $stmt = mysqli_prepare($connect,
                 "UPDATE gangnamunni_hospitals SET status='approved', is_active=1, ad_grade='none', reviewed_by=?, reviewed_at=NOW(), updated_at=NOW() WHERE id=?"
             );
@@ -415,162 +391,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (mysqli_stmt_execute($stmt)) {
                 $message = "병원 #{$hospital_id}이(가) 승인되었습니다.";
 
-                // 단일 승인도 bulk 승인과 동일한 공용 계정/메일 프로비저닝을 사용한다.
                 if ($hospital_info) provision_hospital_accounts($connect, $hospital_info);
 
-                /* 레거시 단일 승인 프로비저닝 코드는 공용 helper로 대체됨. */
-                if (false && $hospital_info && !empty($hospital_info['email'])) {
-                    $h_email = $hospital_info['email'];
-                    $h_name = $hospital_info['name'];
-                    $h_contact = $hospital_info['contact_name'] ?? $h_name;
-                    $h_phone = $hospital_info['phone'] ?? '';
-                    $h_contact_phone = $hospital_info['contact_phone'] ?? $h_phone;
-                    $h_address = $hospital_info['address'] ?? '';
-                    $h_owner = $hospital_info['owner_name'] ?? '';
-                    $temp_password = substr(str_shuffle('abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 8);
-                    $hashed_pw = password_hash($temp_password, PASSWORD_DEFAULT);
-
-                    // mb_id 생성: 이메일 앞부분, 최대 20자, 중복 시 숫자 추가
-                    $mb_id_base = substr(preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $h_email)[0]), 0, 16);
-                    if (empty($mb_id_base)) $mb_id_base = 'hosp';
-                    $mb_id = $mb_id_base;
-                    $mb_id_suffix = 1;
-                    while (true) {
-                        $chk_mb = mysqli_prepare($connect, "SELECT mb_id FROM g5_member WHERE mb_id=? LIMIT 1");
-                        mysqli_stmt_bind_param($chk_mb, 's', $mb_id);
-                        mysqli_stmt_execute($chk_mb);
-                        $exist_mb = mysqli_stmt_get_result($chk_mb)->fetch_assoc();
-                        mysqli_stmt_close($chk_mb);
-                        if (!$exist_mb) break;
-                        $mb_id = $mb_id_base . $mb_id_suffix;
-                        $mb_id_suffix++;
-                    }
-
-                    // ① g5_member INSERT
-                    $g5_exists = false;
-                    $chk_g5 = mysqli_prepare($connect, "SELECT mb_id FROM g5_member WHERE mb_email=? LIMIT 1");
-                    mysqli_stmt_bind_param($chk_g5, 's', $h_email);
-                    mysqli_stmt_execute($chk_g5);
-                    $g5_row = mysqli_stmt_get_result($chk_g5)->fetch_assoc();
-                    mysqli_stmt_close($chk_g5);
-
-                    if ($g5_row) {
-                        $mb_id = $g5_row['mb_id'];
-                        $g5_exists = true;
-                        // mb_1을 hospital로 업데이트
-                        $g5_pw_existing = password_hash($temp_password, PASSWORD_DEFAULT);
-                        $upd_g5 = mysqli_prepare($connect, "UPDATE g5_member SET mb_1='hospital', mb_password=? WHERE mb_id=?");
-                        mysqli_stmt_bind_param($upd_g5, 'ss', $g5_pw_existing, $mb_id);
-                        mysqli_stmt_execute($upd_g5);
-                        mysqli_stmt_close($upd_g5);
-                        $message .= " 기존 회원({$mb_id}) → 병원관계자로 전환.";
-                    } else {
-                        // g5_member 비밀번호는 그누보드 방식 (sha256 + salt)
-                        $g5_pw = password_hash($temp_password, PASSWORD_DEFAULT);
-                        $mb_nick = $h_contact ?: $h_name;
-                        $mb_1 = 'hospital'; // 병원관계자 표시
-                        $mb_level = 2;
-                        $now = date('Y-m-d H:i:s');
-
-                        $stmt_g5 = mysqli_prepare($connect,
-                            "INSERT INTO g5_member (mb_id, mb_password, mb_name, mb_nick, mb_email, mb_homepage, mb_level, mb_hp, mb_tel, mb_addr1, mb_1, mb_datetime, mb_ip, mb_mailling, mb_open) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)"
-                        );
-                        $website = $hospital_info['website'] ?? '';
-                        $client_ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-                        mysqli_stmt_bind_param($stmt_g5, 'ssssssissssss',
-                            $mb_id, $g5_pw, $h_contact, $mb_nick, $h_email,
-                            $website, $mb_level, $h_contact_phone, $h_phone,
-                            $h_address, $mb_1, $now, $client_ip
-                        );
-                        if (mysqli_stmt_execute($stmt_g5)) {
-                            $message .= " 그누보드 회원({$mb_id}) 자동 생성.";
-                        } else {
-                            error_log('[Hospital Approve] g5_member INSERT 실패: ' . mysqli_error($connect));
-                        }
-                        mysqli_stmt_close($stmt_g5);
-                    }
-
-                    // ② gangnamunni_admins INSERT
-                    $stmt_chk = mysqli_prepare($connect, "SELECT id, hospital_id FROM gangnamunni_admins WHERE username=? LIMIT 1");
-                    mysqli_stmt_bind_param($stmt_chk, 's', $h_email);
-                    mysqli_stmt_execute($stmt_chk);
-                    $existing_admin = mysqli_stmt_get_result($stmt_chk)->fetch_assoc();
-                    mysqli_stmt_close($stmt_chk);
-
-                    if (!$existing_admin) {
-                        $stmt_adm = mysqli_prepare($connect,
-                            "INSERT INTO gangnamunni_admins (username, password, name, email, phone, role, hospital_id, hospital_name, is_active, created_at) VALUES (?, ?, ?, ?, ?, 'hospital_admin', ?, ?, 1, NOW())"
-                        );
-                        mysqli_stmt_bind_param($stmt_adm, 'sssssis', $h_email, $hashed_pw, $h_contact, $h_email, $h_contact_phone, $hospital_id, $h_name);
-                        if (mysqli_stmt_execute($stmt_adm)) {
-                            $message .= " 관리자 계정 자동 생성.";
-                        }
-                        mysqli_stmt_close($stmt_adm);
-                    } else {
-                        // 다병원: 기존 계정이 있으면 hospital_id만 업데이트 (최신 병원)
-                        $message .= " 기존 관리자 계정 사용 (다병원).";
-                        $upd_adm = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET password=?, email=?, phone=?, hospital_id=?, hospital_name=?, is_active=1 WHERE username=?");
-                        mysqli_stmt_bind_param($upd_adm, 'sssiss', $hashed_pw, $h_email, $h_contact_phone, $hospital_id, $h_name, $h_email);
-                        mysqli_stmt_execute($upd_adm);
-                        mysqli_stmt_close($upd_adm);
-                    }
-
-                    // ③ sso_tokens — SSO 토큰 생성 (로그인 준비)
-                    $sso_token = bin2hex(random_bytes(32));
-                    $sso_expires = date('Y-m-d H:i:s', time() + 86400);
-                    $stmt_sso = mysqli_prepare($connect,
-                        "INSERT INTO sso_tokens (token, user_type, g5_mb_id, ip_address, expires_at, created_at) VALUES (?, 'admin', ?, ?, ?, NOW())"
-                    );
-                    $client_ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-                    mysqli_stmt_bind_param($stmt_sso, 'ssss', $sso_token, $mb_id, $client_ip, $sso_expires);
-                    mysqli_stmt_execute($stmt_sso);
-                    mysqli_stmt_close($stmt_sso);
-
-                    // ④ 승인 이메일 발송 (3개 계정 정보 포함)
-                    if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
-                        require_once __DIR__ . '/includes/mail_helper.php';
-                        $approve_body = "<h2>병원 등록이 승인되었습니다!</h2>
-                            <p>안녕하세요, <strong>" . htmlspecialchars($h_contact) . "</strong>님.</p>
-                            <p><strong>" . htmlspecialchars($h_name) . "</strong>의 입점 신청이 승인되었습니다.</p>
-                            <hr>
-                            <h3>관리자 대시보드 로그인</h3>
-                            <p><strong>URL:</strong> <a href='" . SITE_FULL_URL . "dashboard.php'>" . SITE_FULL_URL . "dashboard.php</a></p>
-                            <p><strong>아이디:</strong> " . htmlspecialchars($h_email) . "</p>
-                            <p><strong>임시 비밀번호:</strong> " . htmlspecialchars($temp_password) . "</p>
-                            <hr>
-                            <h3>커뮤니티 (그누보드) 로그인</h3>
-                            <p><strong>아이디:</strong> " . htmlspecialchars($mb_id) . "</p>
-                            <p><strong>비밀번호:</strong> " . htmlspecialchars($temp_password) . " (동일)</p>
-                            <hr>
-                            <p style='color:#e74c3c;'><strong>보안을 위해 로그인 후 반드시 비밀번호를 변경해 주세요.</strong></p>
-                            <p>감사합니다.<br>서울미녀 팀</p>";
-                        // 발송 결과를 확인·기록한다. 실패를 조용히 삼키면(@) "승인 완료"만 뜨고
-                        // 실제 메일은 안 가는 상황이 생기므로, 결과를 관리자 화면과 로그에 반영한다.
-                        $approve_mail_ok = false;
-                        try {
-                            $mres = mail_send(0, $h_email, '[서울미녀] 병원 등록 승인 완료 - 계정 안내', $approve_body);
-                            $approve_mail_ok = is_array($mres) ? !empty($mres['success']) : (bool) $mres;
-                        } catch (\Throwable $e) {
-                            error_log('[Hospital Approve] 승인 이메일 예외: ' . $e->getMessage());
-                        }
-                        if ($approve_mail_ok) {
-                            $message .= ' 승인 안내 메일을 ' . htmlspecialchars($h_email) . ' 로 발송했습니다.';
-                        } else {
-                            error_log('[Hospital Approve] 승인 이메일 발송 실패 → ' . $h_email);
-                            $error = '병원은 승인됐지만 승인 안내 메일 발송에 실패했습니다. 메일 설정을 확인하거나 아래 계정 정보를 수동으로 전달해 주세요. (아이디: '
-                                   . htmlspecialchars($h_email) . ' / 임시 비밀번호: ' . htmlspecialchars($temp_password) . ')';
-                        }
-
-                        // 병원 관리자에게 인앱 + FCM 알림
-                        notifyMember($connect, $mb_id, 'hospital_approve',
-                            '병원 등록이 승인되었습니다',
-                            htmlspecialchars($h_name) . '의 입점이 승인되었습니다. 관리자 계정으로 로그인해주세요.',
-                            'dashboard.php'
-                        );
-                    }
-                }
-
-                // 관리자들에게도 알림
                 notifyAdmins($connect, 'hospital_approve',
                     '병원 승인 완료',
                     '병원 #' . $hospital_id . ' 승인됨',
@@ -583,12 +405,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 반려 — 사유 저장 + 이메일 발송
     if ($action === 'reject') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         $reject_reason = trim($_POST['reject_reason'] ?? '');
         if ($hospital_id > 0) {
-            // 병원 정보 조회
             $stmt_info2 = mysqli_prepare($connect, "SELECT name, email, contact_name FROM gangnamunni_hospitals WHERE id=?");
             mysqli_stmt_bind_param($stmt_info2, 'i', $hospital_id);
             mysqli_stmt_execute($stmt_info2);
@@ -603,7 +423,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (mysqli_stmt_execute($stmt)) {
                 $message = "병원 #{$hospital_id}이(가) 반려되었습니다.";
 
-                // 반려 이메일 발송
                 if ($reject_info && !empty($reject_info['email']) && file_exists(__DIR__ . '/includes/mail_helper.php')) {
                     require_once __DIR__ . '/includes/mail_helper.php';
                     $reject_body = "<h2>병원 등록 신청 반려 안내</h2>
@@ -621,7 +440,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } catch (Throwable $e) { error_log('[Hospital Reject] 이메일 예외: ' . $e->getMessage()); }
                 }
 
-                // 관리자 알림
                 notifyAdmins($connect, 'hospital_reject',
                     '병원 신청 반려',
                     htmlspecialchars($reject_info['name'] ?? '') . ' — ' . mb_substr($reject_reason, 0, 50),
@@ -634,16 +452,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 수정
     if ($action === 'edit_hospital') {
-        // ================================================================
-        // [프론트 #24 - 2026-05-28] 병원 수정 저장 시 HTTP 500 픽스
-        // 원인 : 기존 코드 자체는 정상이나 HTTP-FPM 환경에서 일부 케이스 (메모리 한도,
-        //        한글 POST 인코딩, 특정 컬럼 NULL 처리 등) 에서 500 발생 가능.
-        // 변경 : try-catch + error_log + 메모리/실행시간 사전 보장 + NULL 안전 처리.
-        //        실패 시 명확한 에러 메시지 + 서버 로그 기록으로 추가 진단 가능.
-        // 영향 범위 : edit_hospital 핸들러만. 기존 SQL 로직 100% 보존 (try 안에 그대로).
-        // ================================================================
         @ini_set('memory_limit', '256M');
         @set_time_limit(60);
         try {
@@ -660,15 +469,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $contact_phone = trim($_POST['contact_phone'] ?? '');
             $website = trim($_POST['website'] ?? '');
             $sns_url = trim($_POST['sns_url'] ?? '');
-            // JSON 컬럼 정규화 — gangnamunni_hospitals 에 json_valid() CHECK 제약이 걸려 있어
-            // (categories/badges/treatment_tags/subway_names/business_hours) 반드시 유효한 JSON 이어야 함.
-            // 이미 유효한 JSON(예: treatment_tags 객체 배열)은 그대로 보존, CSV 문자열이면 배열로 변환,
-            // 빈 값은 [] / {} 로 저장하여 CONSTRAINT 위반(저장 실패)을 방지한다.
             $normalize_json_list = function($raw) {
                 $raw = trim($raw);
                 if ($raw === '') return '[]';
                 $decoded = json_decode($raw, true);
-                if (is_array($decoded)) return $raw; // 이미 유효한 JSON 배열/객체
+                if (is_array($decoded)) return $raw;
                 $items = array_values(array_filter(array_map('trim', explode(',', $raw)), function($v){ return $v !== ''; }));
                 return json_encode($items, JSON_UNESCAPED_UNICODE);
             };
@@ -728,28 +533,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = '시스템 오류가 발생했습니다. 관리자에게 문의하세요. (' . $e->getMessage() . ')';
         }
     }
-    /* 기존 코드 (보존) — 신택스 참고용
-    if ($action === 'edit_hospital_OLD_BACKUP') {
-        // ... 기존 로직 동일 ...
-    }
-    */
 
-    // 삭제
+
     if ($action === 'delete_hospital') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         if ($hospital_id > 0) {
-            // 관련 이미지 삭제
             $stmt_img = mysqli_prepare($connect, "DELETE FROM hospital_images WHERE hospital_id=?");
             mysqli_stmt_bind_param($stmt_img, 'i', $hospital_id);
             mysqli_stmt_execute($stmt_img);
             mysqli_stmt_close($stmt_img);
 
-            // 병원 삭제
             $stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospitals WHERE id=?");
             mysqli_stmt_bind_param($stmt, 'i', $hospital_id);
             if (mysqli_stmt_execute($stmt)) {
                 $message = "병원 #{$hospital_id}이(가) 삭제되었습니다.";
-                // 삭제 후 목록으로 리다이렉트
                 if (isset($_GET['view'])) {
                     header('Location: admin_hospitals.php?msg=' . urlencode($message));
                     exit;
@@ -761,7 +558,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 일괄 삭제
     if ($action === 'bulk_delete') {
         $ids = array_filter(array_map('intval', explode(',', $_POST['ids'] ?? '')));
         if (!empty($ids)) {
@@ -773,7 +569,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 일괄 승인
     if ($action === 'bulk_approve') {
         $ids = array_filter(array_map('intval', explode(',', $_POST['ids'] ?? '')));
         if (!empty($ids)) {
@@ -784,7 +579,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_stmt_execute($stmt_ba);
                 $ba_approved = mysqli_stmt_affected_rows($stmt_ba) > 0;
                 mysqli_stmt_close($stmt_ba);
-                // 실제로 대기→승인된 병원만 계정 자동 생성 (단일 승인과 동일하게 g5_member+관리자+SSO)
                 if ($ba_approved) {
                     $ba_hi_r = mysqli_query($connect, "SELECT * FROM gangnamunni_hospitals WHERE id=" . (int)$bid);
                     $ba_hi = $ba_hi_r ? mysqli_fetch_assoc($ba_hi_r) : null;
@@ -795,7 +589,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 일괄 반려
     if ($action === 'bulk_reject') {
         $ids = array_filter(array_map('intval', explode(',', $_POST['ids'] ?? '')));
         $reason = trim($_POST['reject_reason'] ?? '일괄 반려');
@@ -811,7 +604,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 수정 이력 확인 완료
     if ($action === 'mark_reviewed') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         if ($hospital_id > 0) {
@@ -824,7 +616,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 활성/비활성 토글
     if ($action === 'toggle_active') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         if ($hospital_id > 0) {
@@ -837,7 +628,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // AI 설정 저장
     if ($action === 'save_ai_settings') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         if ($hospital_id > 0) {
@@ -846,11 +636,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ai_own_provider = in_array($_POST['ai_own_provider'] ?? '', ['openai','anthropic','google']) ? $_POST['ai_own_provider'] : 'openai';
             $ai_cost_from_wallet = isset($_POST['ai_cost_from_wallet']) ? 1 : 0;
 
-            // 자체 키 암호화 저장
             $ai_key_raw = trim($_POST['ai_own_api_key'] ?? '');
             $ai_key_sql = '';
             if (!empty($ai_key_raw) && strpos($ai_key_raw, '****') === false) {
-                // 새 키 입력 → 암호화
                 require_once __DIR__ . '/includes/ai_proxy.php';
                 $ai_key_encrypted = aiEncryptKey($ai_key_raw);
                 $ai_key_sql = ", ai_own_api_key = '" . mysqli_real_escape_string($connect, $ai_key_encrypted) . "'";
@@ -865,7 +653,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // POST 후 redirect (PRG 패턴) - view 모드일 때
     if (!empty($message) && isset($_GET['view'])) {
         $view_id = intval($_GET['view']);
         $edit_flag = isset($_GET['edit']) ? '&edit=1' : '';
@@ -874,12 +661,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// GET 파라미터에서 메시지 수신 (PRG 패턴)
 if (isset($_GET['msg']) && !empty($_GET['msg'])) {
     $message = $_GET['msg'];
 }
 
-// ===== 상세 보기 / 수정 모드 =====
 $view_mode = isset($_GET['view']) ? intval($_GET['view']) : 0;
 $edit_mode = isset($_GET['edit']) && $_GET['edit'] == '1';
 $hospital = null;
@@ -888,7 +673,6 @@ $application_treatments = [];
 $application_doctors = [];
 
 if ($view_mode > 0) {
-    // 범위 제한 관리자(editor·병원역할)는 자기 소유 병원 상세만 열람 가능
     if ($my_ids !== null && !in_array($view_mode, $my_ids, true)) {
         header('Location: admin_hospitals.php?msg=' . urlencode('접근 권한이 없습니다.'));
         exit;
@@ -901,7 +685,6 @@ if ($view_mode > 0) {
     mysqli_stmt_close($stmt);
 
     if ($hospital) {
-        // 병원 이미지 조회
         $img_stmt = mysqli_prepare($connect, "SELECT * FROM hospital_images WHERE hospital_id = ? ORDER BY sort_order ASC, id ASC");
         mysqli_stmt_bind_param($img_stmt, 'i', $view_mode);
         mysqli_stmt_execute($img_stmt);
@@ -911,7 +694,6 @@ if ($view_mode > 0) {
         }
         mysqli_stmt_close($img_stmt);
 
-        // 신청서에서 선택한 시술과 함께 제출한 시술 이미지 조회
         try {
             $treatment_stmt = mysqli_prepare($connect,
                 "SELECT ht.id AS hospital_treatment_id, ht.treatment_id, ht.status,
@@ -952,7 +734,6 @@ if ($view_mode > 0) {
             error_log('[admin_hospitals] 신청 시술 이미지 조회 실패: ' . $e->getMessage());
         }
 
-        // 신청서에서 등록한 시술별 옵션/용량/가격
         try {
             $price_option_column = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
             $price_option_select = ($price_option_column && mysqli_num_rows($price_option_column) > 0)
@@ -989,7 +770,6 @@ if ($view_mode > 0) {
             $treatment_category_list[] = ['id'=>(int)$category_row['id'], 'name'=>$category_row['name']];
         }
 
-        // 신청서에서 등록한 의사 정보
         try {
             $doctor_stmt = mysqli_prepare($connect,
                 "SELECT id, name, specialty, experience, qualification, bio, photo_url, status
@@ -1007,7 +787,6 @@ if ($view_mode > 0) {
     }
 }
 
-// ===== 목록 모드: 필터, 검색, 페이징 =====
 $filter_status = $_GET['status'] ?? 'all';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 20;
@@ -1015,12 +794,10 @@ if (!in_array($per_page, [10, 20, 50])) $per_page = 20;
 $page = max(1, intval($_GET['page'] ?? 1));
 $offset = ($page - 1) * $per_page;
 
-// WHERE 조건 조립
 $where = '1=1';
 $where_params = [];
 $where_types = '';
 
-// 병원 역할이면 자기 소유 병원만 조회 (목록·통계 모두 격리, 다병원 IN)
 $stat_scope = '';
 if ($my_in !== null) {
     $where .= ' AND id IN (' . $my_in . ')';
@@ -1042,7 +819,6 @@ if (!empty($search)) {
     $where_types = 'sssss';
 }
 
-// 통계
 $stats = [
     'total' => 0,
     'pending' => 0,
@@ -1058,7 +834,6 @@ if ($stat_result) $stats['approved'] = (int)mysqli_fetch_assoc($stat_result)['c'
 $stat_result = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE status='rejected'{$stat_scope}");
 if ($stat_result) $stats['rejected'] = (int)mysqli_fetch_assoc($stat_result)['c'];
 
-// 필터링된 전체 건수
 $count_sql = "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE {$where}";
 if (!empty($where_params)) {
     $count_stmt = mysqli_prepare($connect, $count_sql);
@@ -1071,7 +846,6 @@ if (!empty($where_params)) {
 }
 $total_pages = $total > 0 ? ceil($total / $per_page) : 0;
 
-// 목록 조회
 $hospitals = [];
 if (!$view_mode) {
     $list_sql = "SELECT * FROM gangnamunni_hospitals WHERE {$where} ORDER BY created_at DESC LIMIT ?, ?";
@@ -1092,7 +866,6 @@ if (!$view_mode) {
     mysqli_stmt_close($list_stmt);
 }
 
-// URL 빌더 헬퍼 (현재 필터 유지)
 function buildHospitalUrl($overrides = []) {
     global $filter_status, $per_page, $search;
     $params = [
@@ -1106,7 +879,6 @@ function buildHospitalUrl($overrides = []) {
     return '?' . http_build_query($params);
 }
 
-// 상태 배지 헬퍼
 function statusBadge($status) {
     $map = [
         'pending'  => ['bg-warning text-dark', '대기'],
@@ -1117,7 +889,13 @@ function statusBadge($status) {
     return '<span class="badge ' . $info[0] . '">' . htmlspecialchars($info[1]) . '</span>';
 }
 
-// 공통 헤더
+// 페이지네이션 AJAX 부분 갱신: 전체 레이아웃(헤더/필터/통계) 없이 목록 패널 HTML만 반환하고 종료한다.
+// 목록 모드(view=0)에서만 유효 — 상세/수정 화면에는 이 패널이 없다.
+if (!$view_mode && isset($_GET['ajax_list']) && $_GET['ajax_list'] === '1') {
+    include __DIR__ . '/includes/admin_hospitals_list_partial.php';
+    exit;
+}
+
 $admin_page_title = '병원 관리';
 $admin_current = 'hospitals';
 
@@ -1144,12 +922,28 @@ $admin_extra_css = '
 @media (max-width:767.98px) { .admin-treatment-price-row { grid-template-columns:1fr 1fr; } }
 .category-badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
 .tag-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+/* 병원 목록 테이블: 전화/카테고리처럼 길어질 수 있는 셀을 최대 2줄로 제한하고 넘치면 ... 처리.
+   행 높이가 무한정 늘어나 하단 페이지네이션이 아래로 밀리는 것을 방지한다. */
+.admin-table .cell-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+    line-height: 1.3;
+}
+/* 모든 행의 높이를 정확히 고정: 셀 내용이 cell-clamp-2로 이미 최대 2줄로 제한되므로,
+   td 자체에도 동일한 고정 높이를 줘서 행마다 더 크거나 작아지지 않고 항상 일정하게 만든다. */
+.admin-table td {
+    height: 56px;
+    vertical-align: middle;
+    overflow: hidden;
+}
 ';
 
 include __DIR__ . '/includes/admin_header.php';
 ?>
 
-<!-- 알림 메시지 -->
 <?php if ($message): ?>
 <div class="alert alert-success alert-dismissible fade show py-2" role="alert">
     <i class="bi bi-check-circle me-1"></i> <?php echo htmlspecialchars($message); ?>
@@ -1438,7 +1232,6 @@ $edit_json_list_value = static function ($raw) {
                         document.getElementById('bhHiddenInput').value = JSON.stringify(data);
                     }
                     bhRenderSpecialClosedDates();
-                    // 폼 제출 전 JSON 수집
                     var bhForm = document.getElementById('bhHiddenInput').closest('form');
                     if (bhForm) bhForm.addEventListener('submit', function() { bhCollectJSON(); });
                     </script>
@@ -1454,7 +1247,6 @@ $edit_json_list_value = static function ($raw) {
     </div>
 
     <?php
-    // 지도 피커 컴포넌트 (드래그 가능 마커 + 검색 + 주소→좌표 변환)
     $picker_config = [
         'lat_field'  => 'latitude',
         'lng_field'  => 'longitude',
@@ -2191,7 +1983,6 @@ $application_assets = [
                     if (!is_array($tags)) $tags = array_filter(array_map('trim', explode(',', $tags_raw)));
                     if (!empty($tags)):
                         foreach ($tags as $tag):
-                            // treatment_tags 는 객체배열 [{"tagId":..,"name":".."}] 또는 문자열배열 둘 다 가능
                             $tag_label = is_array($tag) ? ($tag['name'] ?? '') : $tag;
                             if ($tag_label === '') continue; ?>
                             <span class="badge bg-body-secondary text-body tag-badge me-1 mb-1"><?php echo htmlspecialchars($tag_label); ?></span>
@@ -2361,7 +2152,7 @@ $application_assets = [
     </div>
 </div>
 
-<?php endif; // end edit_mode vs view_mode ?>
+<?php endif; ?>
 
 <?php elseif ($view_mode > 0 && !$hospital): ?>
 <!-- 병원을 찾을 수 없음 -->
@@ -2384,7 +2175,7 @@ $application_assets = [
 <!-- 통계 카드 -->
 <div class="row g-2 mb-3">
     <div class="col-6 col-md-3">
-        <a href="<?php echo buildHospitalUrl(['status' => 'all']); ?>" class="text-decoration-none">
+        <a href="<?php echo buildHospitalUrl(['status' => 'all']); ?>" class="text-decoration-none hospital-status-link" data-status="all">
             <div class="card text-center hospital-stat-card <?php echo $filter_status === 'all' ? 'active-filter' : ''; ?>">
                 <div class="card-body py-3">
                     <div class="fs-4 fw-bold text-primary"><?php echo number_format($stats['total']); ?></div>
@@ -2394,7 +2185,7 @@ $application_assets = [
         </a>
     </div>
     <div class="col-6 col-md-3">
-        <a href="<?php echo buildHospitalUrl(['status' => 'pending']); ?>" class="text-decoration-none">
+        <a href="<?php echo buildHospitalUrl(['status' => 'pending']); ?>" class="text-decoration-none hospital-status-link" data-status="pending">
             <div class="card text-center hospital-stat-card <?php echo $filter_status === 'pending' ? 'active-filter' : ''; ?>">
                 <div class="card-body py-3">
                     <div class="fs-4 fw-bold text-warning"><?php echo number_format($stats['pending']); ?></div>
@@ -2404,7 +2195,7 @@ $application_assets = [
         </a>
     </div>
     <div class="col-6 col-md-3">
-        <a href="<?php echo buildHospitalUrl(['status' => 'approved']); ?>" class="text-decoration-none">
+        <a href="<?php echo buildHospitalUrl(['status' => 'approved']); ?>" class="text-decoration-none hospital-status-link" data-status="approved">
             <div class="card text-center hospital-stat-card <?php echo $filter_status === 'approved' ? 'active-filter' : ''; ?>">
                 <div class="card-body py-3">
                     <div class="fs-4 fw-bold text-success"><?php echo number_format($stats['approved']); ?></div>
@@ -2414,7 +2205,7 @@ $application_assets = [
         </a>
     </div>
     <div class="col-6 col-md-3">
-        <a href="<?php echo buildHospitalUrl(['status' => 'rejected']); ?>" class="text-decoration-none">
+        <a href="<?php echo buildHospitalUrl(['status' => 'rejected']); ?>" class="text-decoration-none hospital-status-link" data-status="rejected">
             <div class="card text-center hospital-stat-card <?php echo $filter_status === 'rejected' ? 'active-filter' : ''; ?>">
                 <div class="card-body py-3">
                     <div class="fs-4 fw-bold text-danger"><?php echo number_format($stats['rejected']); ?></div>
@@ -2430,19 +2221,19 @@ $application_assets = [
     <div class="card-body py-2">
         <div class="d-flex flex-wrap align-items-center gap-2">
             <span class="fw-semibold small text-body-secondary me-1">상태</span>
-            <a href="<?php echo buildHospitalUrl(['status' => 'all']); ?>"
-               class="btn btn-sm <?php echo $filter_status === 'all' ? 'btn-primary' : 'btn-outline-secondary'; ?>">전체</a>
-            <a href="<?php echo buildHospitalUrl(['status' => 'pending']); ?>"
-               class="btn btn-sm <?php echo $filter_status === 'pending' ? 'btn-warning' : 'btn-outline-secondary'; ?>">
+            <a href="<?php echo buildHospitalUrl(['status' => 'all']); ?>" data-status="all"
+               class="btn btn-sm hospital-status-link <?php echo $filter_status === 'all' ? 'btn-primary' : 'btn-outline-secondary'; ?>">전체</a>
+            <a href="<?php echo buildHospitalUrl(['status' => 'pending']); ?>" data-status="pending"
+               class="btn btn-sm hospital-status-link <?php echo $filter_status === 'pending' ? 'btn-warning' : 'btn-outline-secondary'; ?>">
                 대기
                 <?php if ($stats['pending'] > 0): ?>
                 <span class="badge bg-white text-warning ms-1"><?php echo $stats['pending']; ?></span>
                 <?php endif; ?>
             </a>
-            <a href="<?php echo buildHospitalUrl(['status' => 'approved']); ?>"
-               class="btn btn-sm <?php echo $filter_status === 'approved' ? 'btn-success' : 'btn-outline-secondary'; ?>">승인</a>
-            <a href="<?php echo buildHospitalUrl(['status' => 'rejected']); ?>"
-               class="btn btn-sm <?php echo $filter_status === 'rejected' ? 'btn-danger' : 'btn-outline-secondary'; ?>">반려</a>
+            <a href="<?php echo buildHospitalUrl(['status' => 'approved']); ?>" data-status="approved"
+               class="btn btn-sm hospital-status-link <?php echo $filter_status === 'approved' ? 'btn-success' : 'btn-outline-secondary'; ?>">승인</a>
+            <a href="<?php echo buildHospitalUrl(['status' => 'rejected']); ?>" data-status="rejected"
+               class="btn btn-sm hospital-status-link <?php echo $filter_status === 'rejected' ? 'btn-danger' : 'btn-outline-secondary'; ?>">반려</a>
         </div>
     </div>
 </div>
@@ -2490,7 +2281,6 @@ $application_assets = [
 </div>
 <script>
 (function(){
-    // 미변환 건수 체크
     fetch('api/geocode_batch.php?action=count')
     .then(function(r){ return r.json(); })
     .then(function(d){
@@ -2521,7 +2311,6 @@ function bgNext() {
         document.getElementById('bgOk').textContent = _bgOk;
         document.getElementById('bgFail').textContent = _bgFail;
         document.getElementById('bgLeft').textContent = Math.max(0, _bgTotal - _bgDone);
-        // Nominatim 1초 간격 준수
         setTimeout(bgNext, 1100);
     })
     .catch(function(){ _bgFail++; _bgDone++; setTimeout(bgNext, 2000); });
@@ -2534,162 +2323,15 @@ function bgFinish() {
 }
 </script>
 
-<!-- 일괄 작업 바 -->
-<div id="bulkBar" class="alert alert-primary d-flex align-items-center gap-3 mb-2" style="display:none !important;">
-    <span><strong id="bulkCount">0</strong>개 선택</span>
-    <button type="button" class="btn btn-danger btn-sm" onclick="bulkDelete()"><i class="bi bi-trash me-1"></i>선택 삭제</button>
-    <button type="button" class="btn btn-success btn-sm" onclick="bulkApprove()"><i class="bi bi-check-lg me-1"></i>선택 승인</button>
-    <button type="button" class="btn btn-warning btn-sm" onclick="bulkReject()"><i class="bi bi-x-lg me-1"></i>선택 반려</button>
-    <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" onclick="uncheckAll()"><i class="bi bi-x me-1"></i>선택 해제</button>
+<!-- 병원 목록 패널: AJAX 페이지네이션(ajax_list=1)이 이 안만 교체한다 -->
+<div id="hospitalListPanel">
+    <?php include __DIR__ . '/includes/admin_hospitals_list_partial.php'; ?>
 </div>
 
-<!-- 병원 테이블 -->
-<div class="table-responsive">
-    <table class="table table-hover table-bordered admin-table mb-0" id="hospitalTable">
-        <thead class="table-light">
-            <tr>
-                <th style="width:36px;"><input type="checkbox" class="form-check-input" id="checkAll" title="전체 선택"></th>
-                <th style="width:40px;">#</th>
-                <th style="width:120px;">이름</th>
-                <th style="width:140px;">주소</th>
-                <th style="width:100px;">전화</th>
-                <th style="min-width:200px;">카테고리</th>
-                <th style="width:70px;">상태</th>
-                <th style="width:70px;">광고</th>
-                <th style="width:60px;">활성</th>
-                <th style="width:70px;">평점</th>
-                <th style="width:90px;">등록일</th>
-                <th style="width:90px;">관리</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (empty($hospitals)): ?>
-            <tr><td colspan="12" class="empty-state"><i class="bi bi-building"></i>등록된 병원이 없습니다.</td></tr>
-            <?php else: ?>
-            <?php foreach ($hospitals as $h): ?>
-            <tr>
-                <td class="text-center"><input type="checkbox" class="form-check-input row-check" value="<?php echo $h['id']; ?>"></td>
-                <td class="text-center"><?php echo $h['id']; ?></td>
-                <td>
-                    <a href="?view=<?php echo $h['id']; ?>&edit=1" class="text-decoration-none fw-semibold">
-                        <?php echo htmlspecialchars($h['name']); ?>
-                    </a>
-                    <?php if (!empty($h['has_unreviewed_changes'])): ?><span class="badge bg-info ms-1" title="신청자가 정보를 수정함">수정됨</span><?php endif; ?>
-                </td>
-                <td class="small">
-                    <span class="text-truncate d-inline-block" style="max-width:200px;" title="<?php echo htmlspecialchars($h['address'] ?? ''); ?>">
-                        <?php echo htmlspecialchars($h['address'] ?? '-'); ?>
-                    </span>
-                </td>
-                <td class="small"><?php echo htmlspecialchars($h['phone'] ?? '-'); ?></td>
-                <td>
-                    <?php
-                    $cat_raw = $h['categories'] ?? '';
-                    $cat_list = json_decode($cat_raw, true);
-                    if (!is_array($cat_list)) $cat_list = array_filter(array_map('trim', explode(',', $cat_raw)));
-                    if (!empty($cat_list)):
-                        foreach ($cat_list as $c): ?>
-                            <span class="badge bg-primary category-badge"><?php echo htmlspecialchars($c); ?></span>
-                        <?php endforeach;
-                        if (false): ?>
-                        <?php endif;
-                    else: ?>
-                        <span class="text-body-tertiary">-</span>
-                    <?php endif; ?>
-                </td>
-                <td><?php echo statusBadge($h['status'] ?? 'pending'); ?></td>
-                <td class="text-center">
-                    <?php
-                    $lg = $h['ad_grade'] ?? 'none';
-                    $lg_map = ['S'=>'bg-danger','A'=>'bg-danger','B'=>'bg-primary','C'=>'bg-primary','D'=>'bg-secondary','E'=>'bg-secondary'];
-                    if ($lg !== 'none' && isset($lg_map[$lg])): ?>
-                        <span class="badge <?php echo $lg_map[$lg]; ?>"><?php echo $lg; ?></span>
-                    <?php else: ?>
-                        <span class="text-body-tertiary">-</span>
-                    <?php endif; ?>
-                </td>
-                <td class="text-center">
-                    <?php if ($h['is_active']): ?>
-                        <span class="badge bg-success">ON</span>
-                    <?php else: ?>
-                        <span class="badge bg-secondary">OFF</span>
-                    <?php endif; ?>
-                </td>
-                <td>
-                    <?php if (($h['rating'] ?? 0) > 0): ?>
-                    <span class="text-warning">&#9733;</span>
-                    <span class="small"><?php echo number_format($h['rating'], 1); ?></span>
-                    <span class="text-body-tertiary small">(<?php echo $h['review_count'] ?? 0; ?>)</span>
-                    <?php else: ?>
-                    <span class="text-body-tertiary">-</span>
-                    <?php endif; ?>
-                </td>
-                <td class="small"><?php echo $h['created_at'] ? date('Y.m.d', strtotime($h['created_at'])) : '-'; ?></td>
-                <td>
-                    <div class="btn-group btn-group-sm">
-                        <a href="?view=<?php echo $h['id']; ?>" class="btn btn-outline-info" title="상세보기">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                        <a href="?view=<?php echo $h['id']; ?>&edit=1" class="btn btn-outline-primary" title="수정">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <?php if (($h['status'] ?? 'pending') === 'pending'): ?>
-                        <form method="POST" class="d-inline" onsubmit="return confirm('승인하시겠습니까?')">
-                            <input type="hidden" name="action" value="approve">
-                            <input type="hidden" name="hospital_id" value="<?php echo $h['id']; ?>">
-                            <button type="submit" class="btn btn-outline-success" title="승인">
-                                <i class="bi bi-check-lg"></i>
-                            </button>
-                        </form>
-                        <?php endif; ?>
-                    </div>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-            <?php endif; ?>
-        </tbody>
-    </table>
-</div>
-
-<!-- 페이지네이션 -->
-<?php if ($total_pages > 1): ?>
-<nav class="mt-3">
-    <ul class="pagination pagination-sm justify-content-center mb-0">
-        <?php if ($page > 1): ?>
-        <li class="page-item">
-            <a class="page-link" href="<?php echo buildHospitalUrl(['page' => $page - 1]); ?>">&laquo;</a>
-        </li>
-        <?php endif; ?>
-        <?php
-        $start = max(1, $page - 4);
-        $end = min($total_pages, $page + 4);
-        if ($start > 1): ?>
-        <li class="page-item"><a class="page-link" href="<?php echo buildHospitalUrl(['page' => 1]); ?>">1</a></li>
-        <?php if ($start > 2): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
-        <?php endif; ?>
-        <?php for ($i = $start; $i <= $end; $i++): ?>
-        <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
-            <a class="page-link" href="<?php echo buildHospitalUrl(['page' => $i]); ?>"><?php echo $i; ?></a>
-        </li>
-        <?php endfor; ?>
-        <?php if ($end < $total_pages): ?>
-        <?php if ($end < $total_pages - 1): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
-        <li class="page-item"><a class="page-link" href="<?php echo buildHospitalUrl(['page' => $total_pages]); ?>"><?php echo $total_pages; ?></a></li>
-        <?php endif; ?>
-        <?php if ($page < $total_pages): ?>
-        <li class="page-item">
-            <a class="page-link" href="<?php echo buildHospitalUrl(['page' => $page + 1]); ?>">&raquo;</a>
-        </li>
-        <?php endif; ?>
-    </ul>
-</nav>
-<?php endif; ?>
-
-<?php endif; // end list mode vs view mode ?>
+<?php endif;  ?>
 
 <?php
 $admin_extra_js = '
-// 이미지 확대 모달
 function showImageModal(src) {
     var img = document.getElementById("modalImage");
     if (img) img.src = src;
@@ -2700,13 +2342,69 @@ function showImageModal(src) {
 
 ?>
 <script>
-// 체크박스 일괄 선택
-document.getElementById('checkAll')?.addEventListener('change', function() {
-    document.querySelectorAll('.row-check').forEach(function(cb) { cb.checked = this.checked; }.bind(this));
-    updateBulkBar();
-});
+// 페이지네이션 AJAX 갱신: 목록 패널(#hospitalListPanel)만 fetch로 교체한다.
+// 전체 페이지를 새로 로드하지 않으므로 스크롤 위치가 그대로 유지된다.
+(function() {
+    var panel = document.getElementById('hospitalListPanel');
+    if (!panel) return;
+
+    function loadListPage(url, pushState) {
+        var ajaxUrl = url + (url.indexOf('?') > -1 ? '&' : '?') + 'ajax_list=1';
+        panel.style.opacity = '0.5';
+        fetch(ajaxUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(res) { if (!res.ok) throw new Error('요청 실패'); return res.text(); })
+            .then(function(html) {
+                panel.innerHTML = html;
+                panel.style.opacity = '';
+                if (pushState) history.pushState(null, '', url);
+            })
+            .catch(function() {
+                // AJAX 실패 시 일반 페이지 이동으로 대체(폴백)
+                window.location.href = url;
+            });
+    }
+
+    // 상태 필터 카드/버튼(전체·대기·승인·반려)도 클릭 시 페이지=1로 이동하는 링크라
+    // 페이지네이션과 동일하게 AJAX로 처리한다. 이 링크들은 목록 패널 바깥에 있으므로
+    // 서버가 다시 그려주지 않는 활성 표시(하이라이트)를 직접 갱신해 준다.
+    function syncStatusLinks(url) {
+        var status = new URL(url, location.href).searchParams.get('status') || 'all';
+        var solidClass = { all: 'btn-primary', pending: 'btn-warning', approved: 'btn-success', rejected: 'btn-danger' };
+        document.querySelectorAll('.hospital-status-link').forEach(function(el) {
+            var active = el.dataset.status === status;
+            var card = el.querySelector('.hospital-stat-card');
+            if (card) card.classList.toggle('active-filter', active);
+            if (el.classList.contains('btn')) {
+                Object.keys(solidClass).forEach(function(k) { el.classList.remove(solidClass[k]); });
+                el.classList.remove('btn-outline-secondary');
+                el.classList.add(active ? solidClass[el.dataset.status] : 'btn-outline-secondary');
+            }
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('.pagination .page-link, .hospital-status-link');
+        if (!link) return;
+        e.preventDefault();
+        var href = link.getAttribute('href');
+        if (link.classList.contains('hospital-status-link')) syncStatusLinks(href);
+        loadListPage(href, true);
+    });
+
+    window.addEventListener('popstate', function() {
+        var url = location.pathname + location.search;
+        syncStatusLinks(url);
+        loadListPage(url, false);
+    });
+})();
+
 document.addEventListener('change', function(e) {
-    if (e.target.classList.contains('row-check')) updateBulkBar();
+    if (e.target.id === 'checkAll') {
+        document.querySelectorAll('.row-check').forEach(function(cb) { cb.checked = e.target.checked; });
+        updateBulkBar();
+    } else if (e.target.classList.contains('row-check')) {
+        updateBulkBar();
+    }
 });
 
 function getCheckedIds() {
@@ -2744,7 +2442,6 @@ function bulkSubmit(action, extraData) {
     form.submit();
 }
 
-// Server-side CSRF tekshiruviga barcha oddiy POST formalari uchun token qo‘shish.
 document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(function(form) {
     if (!form.querySelector('input[name="admin_csrf"]')) {
         var input = document.createElement('input');
@@ -2776,7 +2473,6 @@ function bulkReject() {
     }
 }
 
-// 병원 수정 화면: 시술 선택, 가격 옵션, 이미지를 한 번에 저장한다.
 (function() {
     var details = document.getElementById('adminSelectedTreatmentDetails');
     var count = document.getElementById('adminSelectedTreatmentCount');
@@ -2838,7 +2534,6 @@ function bulkReject() {
     syncTreatments();
 })();
 
-// 병원 수정 화면: 신청서와 동일한 의사 입력 행을 추가/삭제한다.
 (function() {
     var rows = document.getElementById('adminDoctorRows');
     var addButton = document.getElementById('addAdminDoctorButton');
@@ -2896,7 +2591,6 @@ function bulkReject() {
     }
 })();
 
-// 병원 수정 화면 이미지 업로드: 한 번의 파일 선택으로 여러 내부 이미지를 추가한다.
 (function() {
     var interiorInput = document.getElementById('adminInteriorImagesInput');
     var interiorPreview = document.getElementById('adminInteriorImagesPreview');
@@ -2974,6 +2668,4 @@ function bulkReject() {
 </script>
 <?php
 include __DIR__ . '/includes/admin_footer.php';
-// mysqli_close removed - PHP closes connections at script end
-// Explicit close caused issues with debug_panel.php in admin_footer
 ?>
