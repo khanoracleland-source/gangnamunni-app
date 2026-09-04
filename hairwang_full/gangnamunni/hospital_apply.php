@@ -1,10 +1,4 @@
 <?php
-/**
- * 병원 등록 신청 폼
- * 그누보드 로그인 필수, 파일 업로드 + DB INSERT
- * Bootstrap 5.3 + 관리자 레이아웃
- * @created 2026-04-03
- */
 
 session_start();
 require_once __DIR__ . '/includes/hospital_phone_helper.php';
@@ -28,7 +22,6 @@ if (!$connect) die("MySQL 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
-// 로그인 필수
 require_admin_login();
 
 $message = '';
@@ -39,6 +32,23 @@ if (empty($_SESSION['hospital_apply_csrf'])) {
     $_SESSION['hospital_apply_csrf'] = bin2hex(random_bytes(32));
 }
 $hospital_apply_csrf = (string)$_SESSION['hospital_apply_csrf'];
+
+if (isset($_GET['check_phone'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $checked_phone = trim((string)($_GET['check_phone'] ?? ''));
+    if ($checked_phone === '') {
+        echo json_encode(['ok' => false, 'error' => '전화번호를 입력해 주세요.']);
+    } else {
+        $dup = hospital_phone_find_duplicate($connect, $checked_phone);
+        echo json_encode([
+            'ok' => true,
+            'duplicate' => $dup ? true : false,
+            'hospital_name' => $dup['name'] ?? null,
+        ], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
 $application_price_option_name_column = false;
 $application_option_column_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
 if ($application_option_column_result && mysqli_num_rows($application_option_column_result) > 0) {
@@ -47,9 +57,6 @@ if ($application_option_column_result && mysqli_num_rows($application_option_col
     $application_price_option_name_column = true;
 }
 
-/**
- * 신청 폼의 구조화된 영업시간 JSON을 공개/예약 화면과 공통으로 쓰는 형식으로 정규화한다.
- */
 function normalizeHospitalApplyBusinessHours($raw)
 {
     $decoded = json_decode((string)$raw, true);
@@ -99,15 +106,10 @@ function normalizeHospitalApplyBusinessHours($raw)
     return $normalized;
 }
 
-// show_hospital_apply 설정은 마이페이지 노출 여부만 제어
-// 관리자 페이지에서의 신청은 항상 가능
-
-// ===== POST 처리: 신청 제출 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, (string)($_POST['csrf_token'] ?? ''))) {
     http_response_code(403);
     $error = '요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 병원명만 필수, 나머지 필드는 선택
     $name = trim($_POST['hospital_name'] ?? '');
     $owner_name = trim($_POST['owner_name'] ?? '');
     $business_number = trim($_POST['business_number'] ?? '');
@@ -121,18 +123,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     $categories = !empty($categories_raw) ? json_encode(explode(',', $categories_raw), JSON_UNESCAPED_UNICODE) : '[]';
     $treatment_tags_raw = trim($_POST['treatment_tags'] ?? '');
     $treatment_tags = !empty($treatment_tags_raw) ? json_encode(explode(',', $treatment_tags_raw), JSON_UNESCAPED_UNICODE) : '[]';
-    // gangnamunni_hospitals.business_hours 컬럼의 JSON CHECK 제약과 예약/상세 화면 형식을 동시에 맞춘다.
     $business_hours_data = normalizeHospitalApplyBusinessHours($_POST['business_hours'] ?? '');
     $business_hours = json_encode($business_hours_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $introduction = trim($_POST['introduction'] ?? '');
     $website = trim($_POST['website'] ?? '');
     $sns_url = trim($_POST['sns_url'] ?? '');
 
-    // 약관 동의
-    $agree_terms = isset($_POST['agree_terms']);
-    $agree_privacy = isset($_POST['agree_privacy']);
-
-    // 유효성 검사
     if (empty($name)) {
         $error = '병원명을 입력해 주세요.';
     } elseif ($phone !== '' && ($duplicate_phone_hospital = hospital_phone_find_duplicate($connect, $phone))) {
@@ -140,7 +136,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = '올바른 이메일 주소를 입력해 주세요.';
     } else {
-        // 파일 업로드 처리
         $applied_by = $current_admin['username'] ?? ($current_admin['name'] ?? 'unknown');
         $upload_owner = 'admin_' . max(0, (int)($current_admin['id'] ?? 0));
         $upload_dir = __DIR__ . '/uploads/hospital_apply/' . $upload_owner . '/';
@@ -155,7 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
         $profile_image_path = '';
         $interior_image_paths = [];
 
-        // 사업자등록증 (선택)
         if (empty($error) && !empty($_FILES['cert_business']['name']) && $_FILES['cert_business']['error'] === UPLOAD_ERR_OK && is_uploaded_file($_FILES['cert_business']['tmp_name'])) {
             $ext = strtolower(pathinfo($_FILES['cert_business']['name'], PATHINFO_EXTENSION));
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['cert_business']['tmp_name']);
@@ -172,7 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
             }
         }
 
-        // 의료기관 개설허가증 (선택)
         if (empty($error) && !empty($_FILES['cert_medical']['name']) && $_FILES['cert_medical']['error'] === UPLOAD_ERR_OK && is_uploaded_file($_FILES['cert_medical']['tmp_name'])) {
             $ext = strtolower(pathinfo($_FILES['cert_medical']['name'], PATHINFO_EXTENSION));
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['cert_medical']['tmp_name']);
@@ -189,7 +182,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
             }
         }
 
-        // 대표 이미지 (선택)
         if (empty($error) && !empty($_FILES['profile_image']['name']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK && is_uploaded_file($_FILES['profile_image']['tmp_name'])) {
             $ext = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['profile_image']['tmp_name']);
@@ -204,7 +196,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
             }
         }
 
-        // 병원 내부 이미지 (선택, 최대 10장)
         if (empty($error) && isset($_FILES['interior_images']['name']) && is_array($_FILES['interior_images']['name'])) {
             $interior_count = count(array_filter($_FILES['interior_images']['name'], 'strlen'));
             if ($interior_count > 10) {
@@ -236,7 +227,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
             }
         }
 
-        // DB INSERT
         if (empty($error)) {
             $stmt = mysqli_prepare($connect,
                 "INSERT INTO gangnamunni_hospitals (name, owner_name, business_number, phone, email, contact_name, contact_phone, address, categories, treatment_tags, business_hours, introduction, website, sns_url, profile_image_url, cert_business, cert_medical, applied_by, applied_at, status, is_active, ad_grade, is_demo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending', 0, 'none', ?, NOW())"
@@ -256,7 +246,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
                     $success = true;
                     $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
 
-                    // 대표/내부 이미지를 승인 화면에서도 한 번에 확인할 수 있도록 병원 이미지에 연결
                     $image_rows = [];
                     if ($profile_image_path !== '') $image_rows[] = ['url' => $profile_image_path, 'type' => 'main', 'order' => 0];
                     foreach ($interior_image_paths as $image_index => $image_path) {
@@ -276,7 +265,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
                         }
                     }
 
-                    // 신청서에서 입력한 의사를 해당 병원에 연결
                     $doctor_names = is_array($_POST['doctor_name'] ?? null) ? $_POST['doctor_name'] : [];
                     $doctor_specialties = is_array($_POST['doctor_specialty'] ?? null) ? $_POST['doctor_specialty'] : [];
                     $doctor_bios = is_array($_POST['doctor_bio'] ?? null) ? $_POST['doctor_bio'] : [];
@@ -330,7 +318,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
                         );
                         if ($image_warnings) $message .= ' 단, 일부 시술 이미지 업로드를 확인해 주세요: ' . implode(' / ', $image_warnings);
 
-                        // admin_hospital_treatments.php와 동일한 옵션명/용량/단위/가격 구조로 저장
                         $valid_treatment_ids = hti_application_treatment_ids($connect, $application_treatment_ids);
                         foreach ($valid_treatment_ids as $treatment_id) {
                             $ht_id = 0;
@@ -371,7 +358,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
                         error_log('[hospital_apply] 시술/이미지 저장 실패: ' . $e->getMessage());
                     }
 
-                    // 관리자에게 이메일 알림
                     try {
                         if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
                             require_once __DIR__ . '/includes/mail_helper.php';
@@ -397,7 +383,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
                         error_log('[hospital_apply] 이메일 발송 실패: ' . $e->getMessage());
                     }
 
-                    // 관리자 FCM + 인앱 알림
                     try {
                         notifyAdmins($connect, 'hospital_apply',
                             '새 병원 등록 신청',
@@ -409,8 +394,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
                         error_log('[hospital_apply] 관리자 알림 발송 실패: ' . $e->getMessage());
                     }
 
-                    // 신청 완료 후 POST 데이터가 없는 새 신청 폼으로 이동
-                    header('Location: hospital_apply.php');
+                    header('Location: hospital_apply.php?applied=1&msg=' . urlencode($message));
                     exit;
                 } else {
                     $error = '신청 저장 실패: ' . mysqli_error($connect);
@@ -423,7 +407,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     }
 }
 
-// 기존 신청 확인
+if (($_GET['applied'] ?? '') === '1') {
+    $success = true;
+    $message = (string)($_GET['msg'] ?? '신청이 접수되었습니다.');
+}
+
 $my_applications = [];
 $applied_by_check = $current_admin['username'] ?? ($current_admin['name'] ?? '');
 if (!empty($applied_by_check)) {
@@ -439,8 +427,6 @@ if (!empty($applied_by_check)) {
     }
 }
 
-// 진료과목 체크박스 목록 — gangnamunni_treatment_master에서 동적 로드 (전체 시술, category_id 포함)
-// 주요 시술(카테고리)에서 선택한 항목에 따라 관련 진료과목만 표시하기 위해 category_id를 함께 가져옴
 $category_list = [];
 $cat_r = mysqli_query($connect, "SELECT id, name, category_id FROM gangnamunni_treatment_master WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
 if ($cat_r) {
@@ -455,7 +441,6 @@ if (empty($category_list)) {
     }
 }
 
-// 주요 시술 체크박스 목록 — gangnamunni_treatment_categories에서 동적 로드 (id 포함)
 $treatment_tag_list = [];
 $tt_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_treatment_categories WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
 if ($tt_r) {
@@ -714,7 +699,13 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">병원 전화번호</label>
-                        <input type="tel" name="phone" class="form-control" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="02-1234-5678" value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
+                        <div class="input-group">
+                            <button type="button" id="checkPhoneDupBtn" class="btn btn-outline-secondary">
+                                <i class="bi bi-shield-check me-1"></i>중복 확인
+                            </button>
+                            <input type="tel" name="phone" id="hospitalPhoneInput" class="form-control" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="02-1234-5678" value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
+                        </div>
+                        <div id="checkPhoneDupResult" class="form-text"></div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">병원 아이디(이메일 형식)</label>
@@ -1012,7 +1003,6 @@ require_once __DIR__ . '/includes/admin_header.php';
 </div>
 
 <script>
-// 내부 상세 이미지: 한 번의 파일 선택으로 최대 10장 + 전체 미리보기.
 document.getElementById('interiorImagesInput')?.addEventListener('change', function() {
     var input = this;
     var files = Array.from(input.files || []);
@@ -1059,7 +1049,6 @@ document.getElementById('interiorImagesInput')?.addEventListener('change', funct
     });
 });
 
-// 의사 입력 행 추가/삭제
 function addDoctorRow() {
     var row = document.createElement('div');
     row.className = 'border rounded p-3 mb-3 doctor-row';
@@ -1083,7 +1072,6 @@ document.getElementById('doctorSection')?.addEventListener('shown.bs.collapse', 
     if (!document.querySelector('.doctor-row')) addDoctorRow();
 }, { once: true });
 
-// 선택한 병원 이미지 미리보기
 document.querySelectorAll('.image-preview-input').forEach(function(input) {
     input.addEventListener('change', function() {
         var preview = document.getElementById(input.getAttribute('data-preview'));
@@ -1101,7 +1089,6 @@ document.querySelectorAll('.image-preview-input').forEach(function(input) {
     });
 });
 
-// admin_hospital_treatments.php 흐름: 카테고리 필터 → 벌크 선택 → 시술별 가격 옵션/이미지
 var APPLICATION_PRICE_UNITS = ['샷', 'cc', 'ml', '회', '병', 'IU', '기타'];
 function applicationEscape(value) {
     return String(value || '').replace(/[&<>"']/g, function(char) {
@@ -1190,7 +1177,6 @@ document.getElementById('selectedTreatmentDetails')?.addEventListener('click', f
     }
 });
 
-// 영업시간: 요일별 시간, 점심시간, 임시 휴무일을 하나의 JSON으로 저장
 var applyBhClosedDates = <?= json_encode($apply_closed_dates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 function renderApplyBhClosedDates() {
     var list = document.getElementById('applyBhClosedDateList');
@@ -1309,12 +1295,44 @@ function collectApplyBusinessHours() {
 renderApplyBhClosedDates();
 document.getElementById('applyForm')?.addEventListener('submit', collectApplyBusinessHours);
 
-// 사업자등록번호 자동 포맷
 document.querySelector('[name="business_number"]')?.addEventListener('input', function(e) {
     var v = e.target.value.replace(/[^0-9]/g, '');
     if (v.length > 3 && v.length <= 5) v = v.slice(0,3) + '-' + v.slice(3);
     else if (v.length > 5) v = v.slice(0,3) + '-' + v.slice(3,5) + '-' + v.slice(5,10);
     e.target.value = v;
+});
+
+document.getElementById('checkPhoneDupBtn')?.addEventListener('click', function() {
+    var btn = this;
+    var input = document.getElementById('hospitalPhoneInput');
+    var resultEl = document.getElementById('checkPhoneDupResult');
+    var phone = (input.value || '').trim();
+    if (!phone) {
+        resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>전화번호를 입력해 주세요.</span>';
+        return;
+    }
+    var originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    resultEl.innerHTML = '';
+    fetch('hospital_apply.php?check_phone=' + encodeURIComponent(phone), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (!data.ok) {
+                resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>' + applicationEscape(data.error || '확인 중 오류가 발생했습니다.') + '</span>';
+            } else if (data.duplicate) {
+                resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>이미 \'' + applicationEscape(data.hospital_name) + '\' 병원에서 사용 중인 전화번호입니다.</span>';
+            } else {
+                resultEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>사용 가능한 전화번호입니다.</span>';
+            }
+        })
+        .catch(function() {
+            resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>확인 중 오류가 발생했습니다.</span>';
+        })
+        .finally(function() {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        });
 });
 </script>
 
