@@ -7,8 +7,10 @@ import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../configs.dart';
 import '../utils/app_common.dart';
 import 'deep_link_service.dart';
+import 'native_auth_service.dart';
 
 /// WebView <-> Flutter 양방향 통신 브릿지 (환자 앱)
 ///
@@ -45,6 +47,15 @@ import 'deep_link_service.dart';
 ///
 /// FlutterBridge.postMessage(JSON.stringify({
 ///   action: 'closeWebView'   // WebView 닫기
+/// }));
+///
+/// FlutterBridge.postMessage(JSON.stringify({
+///   action: 'authExchange',  // 로그인 직후 1회용 코드 -> 네이티브 토큰 교환
+///   code: '...'
+/// }));
+///
+/// FlutterBridge.postMessage(JSON.stringify({
+///   action: 'logout'         // 웹 로그아웃과 함께 네이티브 토큰도 폐기
 /// }));
 /// ```
 ///
@@ -100,13 +111,11 @@ class WebViewBridge {
   /// bridge.registerChannels();
   /// ```
   void registerChannels() {
-    // FlutterBridge 채널 등록
     controller.addJavaScriptChannel(
       'FlutterBridge',
       onMessageReceived: _handleFlutterBridgeMessage,
     );
 
-    // PullToRefresh 채널 등록
     controller.addJavaScriptChannel(
       'PullToRefresh',
       onMessageReceived: (JavaScriptMessage message) {
@@ -127,7 +136,7 @@ class WebViewBridge {
   // -------------------------------------------------------------------
 
   /// FlutterBridge 채널로 수신된 JSON 메시지를 파싱하고 적절한 액션을 수행
-  void _handleFlutterBridgeMessage(JavaScriptMessage message) {
+  void _handleFlutterBridgeMessage(JavaScriptMessage message) async {
     _log('FlutterBridge 메시지 수신: ${message.message}');
 
     Map<String, dynamic> data;
@@ -173,10 +182,75 @@ class WebViewBridge {
         _handleCloseWebView();
         break;
 
+      case 'authExchange':
+        await _handleAuthExchange(data);
+        break;
+
+      case 'logout':
+        await _handleNativeLogout();
+        break;
+
       default:
         _log('알 수 없는 action: $action');
         break;
     }
+  }
+
+  /// JavaScriptChannel은 컨트롤러 전역에 노출되므로, 로그인 사이트가 아닌
+  /// 다른 곳(카카오 OAuth, 결제 게이트웨이 등)으로 이동한 상태에서 같은
+  /// 이름의 채널을 호출해도 토큰 관련 액션은 절대 처리하지 않는다.
+  ///
+  /// scheme(https만)+host+port를 모두 맞춰본다 — host만 같고 http로 다운그레이드
+  /// 됐거나 포트가 다른 경우까지 "신뢰"로 오인하지 않기 위함이다.
+  ///
+  /// 한계: webview_flutter의 JavaScriptChannel API는 메시지를 보낸 프레임의
+  /// origin을 알려주지 않는다 — currentUrl()은 최상위 프레임 기준이라, 신뢰된
+  /// 최상위 페이지 안에 포함된 (서드파티 광고 등) iframe이 이 채널을 직접
+  /// 호출해도 여기서는 걸러낼 수 없다. 이 앱은 그런 서드파티 iframe을 로드하지
+  /// 않지만, 향후 광고/결제 iframe을 넣는다면 네이티브 플랫폼 코드로 프레임별
+  /// 검증을 추가해야 한다.
+  Future<bool> _isFromTrustedOrigin() async {
+    try {
+      final current = await controller.currentUrl();
+      if (current == null) return false;
+      final currentUri = Uri.parse(current);
+      final trustedUri = Uri.parse(STARTUP_WEBVIEW_URL);
+      return currentUri.scheme.toLowerCase() == 'https' &&
+          currentUri.host.toLowerCase() == trustedUri.host.toLowerCase() &&
+          currentUri.port == trustedUri.port;
+    } catch (e) {
+      _log('origin 확인 실패: $e');
+      return false;
+    }
+  }
+
+  /// authExchange 액션: 로그인 직후 페이지가 건네준 1회용 코드를 네이티브
+  /// accessToken/refreshToken으로 교환한다 (HTTPS 응답으로만 전달받음 — 코드
+  /// 자체는 이 채널로 오지만 실제 토큰 값은 여기를 거치지 않는다).
+  ///
+  /// JSON 형식: { "action": "authExchange", "code": "<1회용 코드>" }
+  Future<void> _handleAuthExchange(Map<String, dynamic> data) async {
+    if (!await _isFromTrustedOrigin()) {
+      _log('authExchange 거부: 신뢰되지 않은 origin');
+      return;
+    }
+    final String? code = data['code'] as String?;
+    if (code == null || code.isEmpty) {
+      _log('authExchange 액션에 code가 없음');
+      return;
+    }
+    final ok = await NativeAuthService.instance.exchangeCode(code);
+    _log('authExchange 결과: $ok');
+  }
+
+  /// logout 액션: 웹 페이지에서 로그아웃했을 때 네이티브 토큰도 함께 폐기한다.
+  Future<void> _handleNativeLogout() async {
+    if (!await _isFromTrustedOrigin()) {
+      _log('logout 거부: 신뢰되지 않은 origin');
+      return;
+    }
+    await NativeAuthService.instance.logout();
+    _log('네이티브 토큰 로그아웃 완료');
   }
 
   // -------------------------------------------------------------------

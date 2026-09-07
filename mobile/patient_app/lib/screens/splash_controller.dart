@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:kivicare_patient/screens/home/home_controller.dart';
 import 'package:kivicare_patient/screens/walkthrough/walkthrough_screen.dart';
-import 'package:kivicare_patient/screens/webview/startup_webview_screen.dart';
+import 'package:kivicare_patient/screens/webview/app_auth_gate_screen.dart';
 import 'package:kivicare_patient/utils/app_common.dart';
 import 'package:kivicare_patient/utils/local_storage.dart';
 import '../main.dart';
@@ -66,7 +66,7 @@ class SplashScreenController extends GetxController {
   void navigationLogic() {
     // Check if WebView should be shown on startup
     if (SHOW_WEBVIEW_ON_STARTUP) {
-      Get.offAll(() => StartupWebViewScreen(
+      Get.offAll(() => AppAuthGateScreen(
             url: STARTUP_WEBVIEW_URL,
             type: STARTUP_WEBVIEW_TYPE,
           ));

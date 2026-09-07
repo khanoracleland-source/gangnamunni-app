@@ -4,8 +4,6 @@ import 'package:get/get.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:kivicare_patient/configs.dart';
-import 'package:kivicare_patient/screens/dashboard/dashboard_screen.dart';
-import 'package:kivicare_patient/screens/home/home_controller.dart';
 import 'package:kivicare_patient/services/webview_bridge.dart';
 import 'package:kivicare_patient/services/webview_cookie_persistence.dart';
 
@@ -15,10 +13,25 @@ class StartupWebViewScreen extends StatefulWidget {
   final String url;
   final String type; // 'general' or 'sns'
 
+  /// This install's stable device id (see NativeAuthService). Injected as the
+  /// sb_app_device cookie so the server's device binding (native tokens AND
+  /// the legacy ck_auto remember-cookie) always agrees with what the app
+  /// itself considers "this device" — regardless of what the WebView's own
+  /// cookie jar did or did not manage to persist.
+  final String? deviceId;
+
+  /// A one-shot WebView session-bridge token (see app_auth_verify/refresh.php)
+  /// from a native accessToken/refreshToken that was already verified valid.
+  /// When present, it is injected as sb_sso_token before the first page load
+  /// so the site opens already logged in — no login page, no cookie roulette.
+  final String? sessionBridgeToken;
+
   const StartupWebViewScreen({
     Key? key,
     required this.url,
     this.type = 'general',
+    this.deviceId,
+    this.sessionBridgeToken,
   }) : super(key: key);
 
   @override
@@ -108,6 +121,34 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
         path: '/',
       ),
     );
+
+    // Pin the server's device binding to the same id NativeAuthService uses,
+    // instead of letting the server mint one and the WebView cookie jar be
+    // the only place it's remembered.
+    if (widget.deviceId != null && widget.deviceId!.isNotEmpty) {
+      await _cookieManager.setCookie(
+        WebViewCookie(
+          name: 'sb_app_device',
+          value: widget.deviceId!,
+          domain: startupUri.host,
+          path: '/',
+        ),
+      );
+    }
+
+    // A verified accessToken (or a fresh one from refreshToken) hands the
+    // WebView an already-authenticated session — sso_auto_login.php promotes
+    // this cookie to a real login on the very first page load.
+    if (widget.sessionBridgeToken != null && widget.sessionBridgeToken!.isNotEmpty) {
+      await _cookieManager.setCookie(
+        WebViewCookie(
+          name: 'sb_sso_token',
+          value: widget.sessionBridgeToken!,
+          domain: startupUri.host,
+          path: '/',
+        ),
+      );
+    }
 
     // WebViewBridge 생성 및 채널 등록 (FlutterBridge + PullToRefresh)
     final bridge = WebViewBridge(
@@ -215,15 +256,6 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
 
     _lastExitBackPressedAt = now;
     toast('종료하려면 뒤로가기 버튼을 한 번 더 누르세요.');
-  }
-
-  void _goToDashboard() {
-    Get.offAll(
-      () => DashboardScreen(),
-      binding: BindingsBuilder(() {
-        Get.put(HomeController());
-      }),
-    );
   }
 
   @override
