@@ -1,31 +1,13 @@
 <?php
-/**
- * SSO Auto-Login for WebView pages
- * Phase5: 앱 WebView에서 SSO 토큰으로 자동 로그인
- *
- * 사용법: 각 페이지에서 Gnuboard common.php 로드 후, 로그인 체크 전에 include
- *   include_once __DIR__ . '/includes/sso_auto_login.php';
- *
- * 동작:
- * 1. 이미 Gnuboard 세션 로그인 상태면 아무것도 안 함
- * 2. sb_sso_token Secure 쿠키 또는 Authorization Bearer 헤더 확인
- * 3. sso_tokens 테이블에서 유효한 토큰 조회
- * 4. g5_member 정보로 Gnuboard 세션 변수 설정 (init.php 사용하지 않음)
- *
- * @created 2026-03-22
- */
+
 
 function sso_try_auto_login($connect) {
     global $is_member, $member;
 
-    // 이미 로그인되어 있으면 스킵
     if (isset($is_member) && $is_member && !empty($member['mb_id'])) {
         return true;
     }
 
-    // SSO 토큰은 URL query string에서 절대 읽지 않는다.
-    // URL은 access log, browser history, analytics, Referer를 통해 누출될 수 있다.
-    // WebView와 브라우저는 HttpOnly 쿠키, API 클라이언트는 Bearer 헤더를 사용한다.
     $sso_token = $_COOKIE['sb_sso_token'] ?? '';
     if (empty($sso_token)) {
         $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
@@ -34,31 +16,60 @@ function sso_try_auto_login($connect) {
         }
     }
 
-    // 발급되는 SSO 토큰은 random_bytes(32)의 64자 hex 문자열이어야 한다.
     if (!is_string($sso_token) || !preg_match('/^[A-Fa-f0-9]{64}$/', $sso_token)) {
         return false;
     }
 
-    // DB에서 토큰 확인
-    $stmt = mysqli_prepare($connect, "SELECT g5_mb_id, expires_at FROM sso_tokens WHERE token = ? LIMIT 1");
-    if (!$stmt) return false;
-    mysqli_stmt_bind_param($stmt, 's', $sso_token);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    $sso = mysqli_fetch_assoc($result);
-    mysqli_stmt_close($stmt);
+    // 잠그고(FOR UPDATE) 같은 트랜잭션 안에서 즉시 소비(삭제)한다 — 세션을
+    // 먼저 만들고 나중에 지우면, 두 요청이 동시에 같은 1회용 브릿지 토큰을
+    // 제출했을 때 삭제 전까지의 창에서 둘 다 통과할 수 있었다.
+    $mb_id = null;
+    $is_native_bridge_token = false;
+    mysqli_begin_transaction($connect);
+    try {
+        $stmt = mysqli_prepare($connect,
+            "SELECT g5_mb_id, expires_at, user_type, user_agent FROM sso_tokens WHERE token = ? LIMIT 1 FOR UPDATE");
+        if (!$stmt) throw new RuntimeException('prepare failed: ' . mysqli_error($connect));
+        mysqli_stmt_bind_param($stmt, 's', $sso_token);
+        mysqli_stmt_execute($stmt);
+        $sso = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        mysqli_stmt_close($stmt);
 
-    if (!$sso || empty($sso['g5_mb_id'])) {
+        if (!$sso || empty($sso['g5_mb_id']) || strtotime($sso['expires_at']) < time()) {
+            mysqli_rollback($connect);
+            return false;
+        }
+
+        $is_native_bridge_token = $sso['user_type'] === 'patient_app_bridge';
+        if ($is_native_bridge_token) {
+            $device_id = $_COOKIE['sb_app_device'] ?? '';
+            $expected_ua = (is_string($device_id) && preg_match('/^[a-f0-9]{64}$/i', $device_id))
+                ? 'patient-app-device:' . hash('sha256', strtolower($device_id))
+                : null;
+            if ($expected_ua === null || !hash_equals((string)$sso['user_agent'], $expected_ua)) {
+                mysqli_rollback($connect);
+                return false;
+            }
+
+            $del = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE token = ? AND user_type = 'patient_app_bridge'");
+            if (!$del) throw new RuntimeException('delete prepare failed: ' . mysqli_error($connect));
+            mysqli_stmt_bind_param($del, 's', $sso_token);
+            mysqli_stmt_execute($del);
+            $affected = mysqli_stmt_affected_rows($del);
+            mysqli_stmt_close($del);
+            if ($affected !== 1) {
+                mysqli_rollback($connect);
+                return false; // 다른 요청이 먼저 소비했다
+            }
+        }
+
+        $mb_id = $sso['g5_mb_id'];
+        mysqli_commit($connect);
+    } catch (Throwable $e) {
+        mysqli_rollback($connect);
+        error_log('[sso_auto_login] token claim failed: ' . $e->getMessage());
         return false;
     }
-
-    // 만료 확인
-    if (strtotime($sso['expires_at']) < time()) {
-        return false;
-    }
-
-    // g5_member 조회
-    $mb_id = $sso['g5_mb_id'];
     $member_table = isset($GLOBALS['g5']['member_table']) ? $GLOBALS['g5']['member_table'] : 'g5_member';
     $stmt = mysqli_prepare($connect,
         "SELECT * FROM {$member_table} WHERE mb_id = ? LIMIT 1");
@@ -77,7 +88,6 @@ function sso_try_auto_login($connect) {
         return false;
     }
 
-    // 인증 전·후 같은 session id를 재사용하지 않도록 fixation을 차단한다.
     if (!session_id()) @session_start();
     if (!session_regenerate_id(true)) return false;
 
@@ -93,14 +103,21 @@ function sso_try_auto_login($connect) {
         update_auth_session_token($mb['mb_datetime']);
     }
 
-    // Gnuboard 글로벌 변수 설정
-    $is_member = true;
+    // common.php의 "회원, 비회원 구분" 블록과 동일한 형태로 채운다 — 이
+    // 요청의 나머지 부분(mb_dir/is_admin을 참조하는 다른 코드 포함)이
+    // 일반 로그인과 똑같이 동작하게 하기 위함이다.
+    global $is_admin;
+    $mb['mb_dir'] = substr($mb['mb_id'], 0, 2);
     $member = $mb;
+    $is_member = true;
+    $is_admin = function_exists('is_admin') ? is_admin($mb['mb_id']) : '';
+
+    // patient_app_bridge 토큰은 위 트랜잭션에서 이미 원자적으로 소비(삭제)됐다.
+    // 'gnuboard' 등 다른 SSO 채널은 여러 요청에 걸쳐 쓰이는 기존 동작을 유지한다.
 
     return true;
 }
 
-// 자동 실행: $connect가 이미 있으면 바로 시도
 if (isset($connect) && $connect) {
     sso_try_auto_login($connect);
 }

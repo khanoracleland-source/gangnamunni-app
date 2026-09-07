@@ -592,7 +592,7 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
         set_session('ss_mb_id', '');
         $member = array();
     } else {
-        // On every app launch, rotate the persistent credential and slide its
+        // On every app launch, renew the persistent credential and slide its
         // expiry back to 120 days. Also upgrades sessions created before this
         // mechanism existed, without asking the user to log in again.
         if ($is_patient_app_request
@@ -650,7 +650,7 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
                         set_session('ss_mb_id', $tmp_mb_id);
                         if(function_exists('update_auth_session_token')) update_auth_session_token($row['mb_datetime']);
 
-                        // Har bir ishlatishda tokenni aylantirib, o'g'irlangan eski cookieni qayta ishlatishni to'xtatadi.
+                        // App credentials keep their value while their 120-day expiry slides.
                         $remember_lifetime = $is_patient_app_request ? $patient_app_lifetime : 86400 * 31;
                         $rotated_token = create_remember_login_token(array('mb_id'=>$tmp_mb_id), $remember_lifetime);
                         if ($rotated_token) {
@@ -658,8 +658,9 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
                             set_cookie('ck_auto', $rotated_token, $remember_lifetime);
                         }
                         else {
-                            set_cookie('ck_mb_id', '', 0);
-                            set_cookie('ck_auto', '', 0);
+                            // A transient renewal failure must not erase the
+                            // valid credential that just restored this session.
+                            error_log('[common] remember token renewal failed');
                         }
 
                         // 페이지를 재실행

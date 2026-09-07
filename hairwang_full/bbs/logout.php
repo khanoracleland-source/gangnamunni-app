@@ -2,7 +2,6 @@
 define('G5_CERT_IN_PROG', true);
 include_once('./_common.php');
 
-/* 로그아웃 시 다시 관리자로 이동되도록 */
 if(get_session('ss_user_mb_id')){
 	$mb = get_member(get_session('ss_user_mb_id'));
 	if(get_session('ss_mb_id') && get_session('ss_user_mb_id')!= get_session('ss_mb_id')){
@@ -13,13 +12,11 @@ if(get_session('ss_user_mb_id')){
 		exit;
 	}
 }
-/* 로그아웃 시 다시 관리자로 이동되도록 */
 
 if(function_exists('social_provider_logout')){
     social_provider_logout();
 }
 
-// Phase5: SSO 토큰 삭제 (통합 로그아웃)
 if (isset($_COOKIE['sb_sso_token']) && !empty($_COOKIE['sb_sso_token'])) {
     $sso_token = $_COOKIE['sb_sso_token'];
     require_once dirname(__DIR__) . '/dbconfig.php';
@@ -31,8 +28,6 @@ if (isset($_COOKIE['sb_sso_token']) && !empty($_COOKIE['sb_sso_token'])) {
             mysqli_stmt_execute($sso_del);
             mysqli_stmt_close($sso_del);
         }
-        // The exact SSO token above is enough. Do not delete every token for
-        // the account: that would also log the patient app out on all devices.
         mysqli_close($sso_conn);
     }
     setcookie('sb_sso_token', '', [
@@ -41,27 +36,30 @@ if (isset($_COOKIE['sb_sso_token']) && !empty($_COOKIE['sb_sso_token'])) {
     ]);
 }
 
-// 이호경님 제안 코드
-session_unset(); // 모든 세션변수를 언레지스터 시켜줌
-session_destroy(); // 세션해제함
+session_unset(); 
+session_destroy(); 
 
-// 자동로그인 해제 --------------------------------
 if (isset($member['mb_id']) && function_exists('revoke_remember_login_token')) {
     revoke_remember_login_token($member['mb_id']);
 }
 set_cookie('ck_mb_id', '', 0);
 set_cookie('ck_auto', '', 0);
-// 자동로그인 해제 end --------------------------------
+
+$app_native_auth_helper = dirname(__DIR__) . '/gangnamunni/includes/app_native_auth.php';
+if (isset($member['mb_id']) && file_exists($app_native_auth_helper)) {
+    require_once $app_native_auth_helper;
+    $app_device_id = $_COOKIE['sb_app_device'] ?? '';
+    if (app_native_auth_is_valid_device_id($app_device_id)) {
+        app_revoke_native_auth_tokens($connect, $member['mb_id'], $app_device_id);
+    }
+}
 
 if ($url) {
     if ( substr($url, 0, 2) == '//' )
         $url = 'http:' . $url;
 
     $p = @parse_url(urldecode($url));
-    /*
-        // OpenRediect 취약점관련, PHP 5.3 이하버전에서는 parse_url 버그가 있음 ( Safflower 님 제보 ) 아래 url 예제
-        // http://localhost/bbs/logout.php?url=http://sir.kr%23@/
-    */
+
     if (preg_match('/^https?:\/\//i', $url) || $p['scheme'] || $p['host']) {
         alert('url에 도메인을 지정할 수 없습니다.', G5_URL);
     }
@@ -78,6 +76,9 @@ if ($url) {
 
 run_event('member_logout', $link);
 
-// Redirect immediately after the session and social-provider state are cleared.
-// A server-side redirect avoids flashing an intermediate logout message.
+
+if (isset($_COOKIE['sb_patient_app']) && hash_equals('1', (string)$_COOKIE['sb_patient_app'])) {
+    $link .= (strpos($link, '?') !== false ? '&' : '?') . 'app_logout=1';
+}
+
 goto_url($link);
