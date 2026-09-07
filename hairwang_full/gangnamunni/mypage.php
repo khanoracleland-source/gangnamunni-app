@@ -28,11 +28,14 @@ include_once __DIR__ . '/includes/sso_auto_login.php';
 $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
 
 if (!$is_logged_in) {
-    // [로그아웃 오류 팝업 수정] 앱 WebView 는 이 페이지를 HTML 로 렌더링한다.
-    // 예전에는 앱 모드에서 JSON {"error":"login_required"} 를 내려보냈는데,
-    // 로그아웃 직후 앱이 마이페이지를 다시 열면 그 JSON 을 오류로 해석해 팝업을 띄웠다.
-    // → 앱 모드에서도 아래 "로그인 안내" HTML 을 그대로 보여준다(팝업 없음, 리다이렉트 루프 없음).
-    // 비로그인: 리다이렉트 대신 로그인 안내 UI 표시 (리다이렉트 루프 방지)
+    // 웹 방문자는 로그인 후 마이페이지로 돌아온다.
+    if (!$is_app_mode) {
+        $login_return = G5_URL . '/gangnamunni/mypage.php';
+        header('Location: ' . G5_URL . '/gangnamunni/auth/login.php?url=' . urlencode($login_return));
+        exit;
+    }
+    // 7312fb73: 로그아웃 직후 WebView 재진입은 리다이렉트/JSON 오류 없이
+    // 아래 로그인 안내 HTML을 렌더링한다. 로그인 링크는 app=1을 유지한다.
     $mb_id = ''; $mb_nick = '';
 } else {
     $mb_id = $member['mb_id'];
