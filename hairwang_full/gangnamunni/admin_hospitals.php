@@ -2456,7 +2456,7 @@ function bulkReject() {
         return span.innerHTML;
     }
     function priceRowHtml(id) {
-        var units = ['샷','cc','ml','개','부위','회'].map(function(unit) { return '<option value="'+unit+'">'+unit+'</option>'; }).join('');
+        var units = ['샷','cc','ml','kj','개','부위','회'].map(function(unit) { return '<option value="'+unit+'">'+unit+'</option>'; }).join('');
         return '<div class="admin-treatment-price-row mb-2">'
             + '<input type="text" name="treatment_option_name['+id+'][]" class="form-control form-control-sm" maxlength="100" placeholder="옵션명 (예: 주름 100샷)">'
             + '<input type="number" name="treatment_dosage_value['+id+'][]" class="form-control form-control-sm" min="0.01" step="0.01" placeholder="용량">'

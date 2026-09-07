@@ -609,6 +609,7 @@ include __DIR__ . '/includes/header.php';
                             <option value="샷" <?php echo ($t['dosage_unit'] ?? '') === '샷' ? 'selected' : ''; ?>>샷</option>
                             <option value="cc" <?php echo ($t['dosage_unit'] ?? '') === 'cc' ? 'selected' : ''; ?>>cc</option>
                             <option value="ml" <?php echo ($t['dosage_unit'] ?? '') === 'ml' ? 'selected' : ''; ?>>ml</option>
+                            <option value="kj" <?php echo ($t['dosage_unit'] ?? '') === 'kj' ? 'selected' : ''; ?>>kj</option>
                             <option value="회" <?php echo ($t['dosage_unit'] ?? '') === '회' ? 'selected' : ''; ?>>회</option>
                             <option value="병" <?php echo ($t['dosage_unit'] ?? '') === '병' ? 'selected' : ''; ?>>병</option>
                             <option value="IU" <?php echo ($t['dosage_unit'] ?? '') === 'IU' ? 'selected' : ''; ?>>IU</option>

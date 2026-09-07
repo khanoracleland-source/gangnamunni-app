@@ -1081,7 +1081,7 @@ document.querySelectorAll('.image-preview-input').forEach(function(input) {
     });
 });
 
-var APPLICATION_PRICE_UNITS = ['샷', 'cc', 'ml', '회', '병', 'IU', '기타'];
+var APPLICATION_PRICE_UNITS = ['샷', 'cc', 'ml', 'kj', '회', '병', 'IU', '기타'];
 function applicationEscape(value) {
     return String(value || '').replace(/[&<>"']/g, function(char) {
         return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'}[char];
