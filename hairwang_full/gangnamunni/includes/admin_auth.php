@@ -7,7 +7,6 @@
  * @created 2026-02-11
  */
 
-// 역할별 기본 권한
 // 역할별 기본 권한 — 9역할 (플랫폼 5 + 병원 4)
 $ADMIN_ROLE_PERMISSIONS = [
     // === 플랫폼 역할 ===
@@ -94,11 +93,8 @@ function admin_set_session($admin, $connect = null) {
     $_SESSION['ad_admin_hospital_name'] = $admin['hospital_name'] ?? '';
     $_SESSION['partner_hospital_id'] = $admin['hospital_id'] ?? null;
 
-    // 병원 ↔ 관리자 연결 규칙: 관리자 로그인(username/email)이 어떤 병원의 email 과 일치하면
-    // 그 병원의 관리자로 간주한다. (병원 관리자는 병원 명의로 가입하므로 email 이 곧 로그인 아이디)
-    // 이메일 매칭을 '권위 있는' 소속으로 사용 → 기존 hospital_id 가 다른(잘못된) 병원을 가리켜도 교정한다.
-    // (정상 계정은 username=병원.email 이라 같은 병원으로 해석되어 변화 없음)
-    // super_admin 은 전체 관리자이므로 제외.
+    // 병원 관리자는 병원 명의(email)로 가입하므로, 로그인 아이디가 어떤 병원의
+    // email 과 일치하면 그 병원 소속으로 간주하고 기존 hospital_id 를 교정한다.
     if ($connect && in_array(($admin['role'] ?? ''), ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'], true)) {
         $login = trim($admin['username'] ?? '');
         $mail  = trim($admin['email'] ?? '');
@@ -376,6 +372,37 @@ function check_permission($permission) {
 
     // 커스텀 없으면 역할 기본값
     return in_array($permission, $role_perms);
+}
+
+/**
+ * 병원 계정의 첫 화면. 역할 기본값뿐 아니라 개별 pages 설정도 반영한다.
+ * 플랫폼 대시보드로 되돌리지 않아 병원 계정의 리다이렉트 반복을 방지한다.
+ */
+function admin_login_destination($return_url) {
+    if (!is_hospital_role()) return $return_url;
+    $page = basename(parse_url($return_url, PHP_URL_PATH) ?: 'dashboard.php');
+    if ($page === 'dashboard.php'
+        || ($page === 'partner_hospital.php' && !check_permission('partner_hospital'))) {
+        return hospital_admin_landing_page();
+    }
+    return $return_url;
+}
+
+function hospital_admin_landing_page() {
+    $pages = [
+        'partner_hospital' => 'partner_hospital.php',
+        'bookings' => 'admin_bookings.php',
+        'reviews' => 'admin_reviews.php',
+        'notifications' => 'admin_notifications.php',
+        'doctors' => 'admin_doctors.php',
+        'hospital_images' => 'admin_hospital_images.php',
+    ];
+    foreach ($pages as $permission => $url) {
+        if (check_permission($permission)) return $url;
+    }
+
+    // 모든 로그인 관리자는 본인 프로필에 접근할 수 있다.
+    return 'admin_admins.php';
 }
 
 /**

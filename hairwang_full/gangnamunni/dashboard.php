@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
     if (admin_login($username, $password, $connect)) {
-        header('Location: ' . $return_url);
+        header('Location: ' . admin_login_destination($return_url));
         exit;
     } else {
         $login_error = '로그인 정보가 올바르지 않습니다.';
@@ -55,11 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !check_admin_login()) {
 // 로그인 체크
 $is_logged_in = check_admin_login();
 if ($is_logged_in && $return_url !== 'dashboard.php' && (!empty($_GET['return']) || $sso_logged_in)) {
-    header('Location: ' . $return_url);
+    header('Location: ' . admin_login_destination($return_url));
     exit;
 }
 if ($is_logged_in && $return_url === 'dashboard.php' && function_exists('is_hospital_role') && is_hospital_role()) {
-    header('Location: partner_hospital.php');
+    header('Location: ' . hospital_admin_landing_page());
     exit;
 }
 
@@ -73,7 +73,7 @@ if (!$is_logged_in):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>관리자 로그인 | <?php echo getTheme('site_name'); ?></title>
     <?php echo generateFaviconLinks(); ?>
-    <!-- 리플래시 방지 -->
+    <!-- 다크모드 깜빡임 방지 -->
     <style>
     html{background:#fff;color:#212529}
     html[data-bs-theme="dark"]{background:#212529;color:#dee2e6}
@@ -138,9 +138,6 @@ if (!$is_logged_in):
                 </div>
                 <button type="submit" name="login" class="btn btn-primary w-100">로그인</button>
             </form>
-
-
-
             <div class="text-center mt-3">
                 <a href="admin_forgot_password.php" class="text-body-secondary small text-decoration-none">
                     <i class="bi bi-key"></i> 비밀번호 찾기
@@ -216,7 +213,6 @@ if ($result) { while ($row = mysqli_fetch_assoc($result)) { $recent_consultation
 
 $db_size = round(mysqli_fetch_assoc(mysqli_query($connect, "SELECT SUM(data_length + index_length)/1024/1024 AS s FROM information_schema.TABLES WHERE table_schema = '" . G5_MYSQL_DB . "'"))['s'], 2);
 
-
 // 공통 헤더 include
 $admin_page_title = '대시보드';
 $admin_current = 'dashboard';
@@ -275,8 +271,6 @@ $hms_opd_today = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="bi bi-speedometer2"></i> 대시보드</h5>
 </div>
-
-
 
 <!-- 외부 사이트 바로가기 -->
 <div class="d-flex flex-wrap gap-2 mb-4">
@@ -472,7 +466,7 @@ $hms_opd_today = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c
     </div>
 </div>
 
-<!-- 대기중 승인 요청 (풀폭, 최근활동 위로 이동 — 그리드 정상화) -->
+<!-- 대기중 승인 요청 -->
 <?php
 $pending_hospitals = 0;
 $ph = mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_hospitals WHERE status='pending'");
@@ -554,7 +548,7 @@ if ($pb_r) while ($pr = mysqli_fetch_assoc($pb_r)) $pending_bookings[] = $pr;
     </div>
 </div>
 
-<!-- 최근 활동 (최근 리뷰 8 + 최근 상담 4, 그리드 정상) -->
+<!-- 최근 활동 -->
 <div class="row g-3">
     <!-- 최근 리뷰 -->
     <div class="col-lg-8">

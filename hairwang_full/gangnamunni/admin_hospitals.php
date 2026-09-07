@@ -958,9 +958,6 @@ include __DIR__ . '/includes/admin_header.php';
 <?php endif; ?>
 
 <?php if ($view_mode && $hospital): ?>
-<!-- ============================================================ -->
-<!-- 상세 보기 / 수정 모드                                        -->
-<!-- ============================================================ -->
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
@@ -984,7 +981,6 @@ include __DIR__ . '/includes/admin_header.php';
 </div>
 
 <?php if ($edit_mode): ?>
-<!-- ===== 수정 폼 ===== -->
 <?php
 $edit_json_list_value = static function ($raw) {
     $decoded = json_decode((string)$raw, true);
@@ -1263,7 +1259,6 @@ $edit_json_list_value = static function ($raw) {
     </div>
 </form>
 
-<!-- 수정 모드에서도 승인 전 신청 내용을 바로 확인 -->
 <div class="card mt-3">
     <div class="card-header"><i class="bi bi-file-earmark-check me-1"></i><strong>제출 서류</strong></div>
     <div class="card-body">
@@ -1381,7 +1376,7 @@ $edit_json_list_value = static function ($raw) {
     </div></div>
 </div>
 
-<!-- ===== 이미지 관리 섹션 ===== -->
+
 <?php
 $edit_main_image_url = (string)($hospital['main_image_url'] ?? '');
 $edit_detail_image_count = 0;
@@ -1464,7 +1459,7 @@ $edit_detail_slots_remaining = max(0, 10 - $edit_detail_image_count);
     </div></div>
 </div>
 
-<!-- ===== AI 설정 섹션 ===== -->
+
 <div class="card mt-3 border-info">
     <div class="card-header bg-info bg-opacity-10">
         <i class="bi bi-robot me-1"></i> AI 기능 설정
@@ -1528,9 +1523,7 @@ $edit_detail_slots_remaining = max(0, 10 - $edit_detail_image_count);
 </div>
 
 <?php else: ?>
-<!-- ===== 상세 보기 ===== -->
 
-<!-- 승인/반려 액션 카드 -->
 <?php if (($hospital['status'] ?? 'pending') === 'pending'): ?>
 <div class="card mb-3 border-warning">
     <div class="card-header bg-warning bg-opacity-10">
@@ -1573,7 +1566,6 @@ $edit_detail_slots_remaining = max(0, 10 - $edit_detail_image_count);
 </div>
 <?php endif; ?>
 
-<!-- 수정됨 알림 -->
 <?php
 $unreviewed = $hospital['has_unreviewed_changes'] ?? 0;
 $revisions = [];
@@ -1616,7 +1608,6 @@ $field_labels_map = ['name'=>'병원명','owner_name'=>'대표자명','business_
 </div>
 <?php endif; ?>
 
-<!-- 신청 제출 자료: 승인/반려 판단에 필요한 서류와 이미지를 한곳에 표시 -->
 <?php if (!empty($hospital['applied_by'])): ?>
 <?php
 $application_assets = [
@@ -1683,7 +1674,6 @@ $application_assets = [
 </div>
 <?php endif; ?>
 
-<!-- 시술 추가: 신청서 경유 여부와 무관하게 항상 표시(직접 등록 병원도 관리 가능) -->
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewTreatmentsSection" aria-expanded="false">
@@ -1781,7 +1771,6 @@ $application_assets = [
 </div>
 <?php endif; ?>
 
-<!-- 기본 정보 -->
 <div class="row g-3 mb-3">
     <div class="col-lg-8">
         <div class="card h-100">
@@ -1906,7 +1895,6 @@ $application_assets = [
     </div>
 </div>
 
-<!-- 영업시간 설정: 보기 모드에서 독립 표시 -->
 <div class="card mb-3">
     <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewBusinessHoursSection" aria-expanded="false">
         <span><i class="bi bi-clock me-1"></i><strong>영업시간 설정</strong></span><i class="bi bi-chevron-down"></i>
@@ -1937,7 +1925,6 @@ $application_assets = [
     </div></div>
 </div>
 
-<!-- 카테고리 / 태그 -->
 <div class="card mb-3">
     <div class="card-header"><i class="bi bi-tags me-1"></i> 카테고리 / 태그</div>
     <div class="card-body">
@@ -2012,7 +1999,6 @@ $application_assets = [
     </div>
 </div>
 
-<!-- 프로필/메인 이미지 -->
 <?php if (empty($hospital['applied_by']) && (!empty($hospital['profile_image_url']) || !empty($hospital['main_image_url']))): ?>
 <div class="card mb-3">
     <div class="card-header"><i class="bi bi-image me-1"></i> 대표 이미지</div>
@@ -2035,7 +2021,6 @@ $application_assets = [
 </div>
 <?php endif; ?>
 
-<!-- 병원 이미지 추가 -->
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
         <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewHospitalImagesSection" aria-expanded="false">
@@ -2071,7 +2056,6 @@ $application_assets = [
     </div></div>
 </div>
 
-<!-- 하단 관리 버튼 -->
 <div class="card mb-3">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -2108,7 +2092,6 @@ $application_assets = [
     </div>
 </div>
 
-<!-- 반려 모달 -->
 <div class="modal fade" id="rejectModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -2137,7 +2120,6 @@ $application_assets = [
     </div>
 </div>
 
-<!-- 이미지 확대 모달 -->
 <div class="modal fade" id="imageModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -2155,16 +2137,12 @@ $application_assets = [
 <?php endif; ?>
 
 <?php elseif ($view_mode > 0 && !$hospital): ?>
-<!-- 병원을 찾을 수 없음 -->
 <div class="alert alert-warning">
     <i class="bi bi-exclamation-triangle me-1"></i> 해당 병원을 찾을 수 없습니다.
     <a href="admin_hospitals.php" class="alert-link ms-2">목록으로 돌아가기</a>
 </div>
 
 <?php else: ?>
-<!-- ============================================================ -->
-<!-- 목록 모드                                                     -->
-<!-- ============================================================ -->
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="bi bi-building"></i> <?php echo term('business'); ?> 관리</h5>
@@ -2172,7 +2150,6 @@ $application_assets = [
     <a href="admin_hospital_wizard.php" class="btn btn-outline-primary btn-sm"><i class="bi bi-magic"></i> 마법사로 등록</a>
 </div>
 
-<!-- 통계 카드 -->
 <div class="row g-2 mb-3">
     <div class="col-6 col-md-3">
         <a href="<?php echo buildHospitalUrl(['status' => 'all']); ?>" class="text-decoration-none hospital-status-link" data-status="all">
@@ -2216,7 +2193,6 @@ $application_assets = [
     </div>
 </div>
 
-<!-- 필터 바 -->
 <div class="card mb-3">
     <div class="card-body py-2">
         <div class="d-flex flex-wrap align-items-center gap-2">
@@ -2238,7 +2214,6 @@ $application_assets = [
     </div>
 </div>
 
-<!-- 툴바: 검색 + 행수 -->
 <div class="admin-toolbar">
     <form method="GET" class="d-flex gap-2 search-box flex-grow-1" style="max-width:400px;">
         <input type="hidden" name="status" value="<?php echo htmlspecialchars($filter_status); ?>">
@@ -2258,7 +2233,6 @@ $application_assets = [
     </div>
 </div>
 
-<!-- 일괄 좌표 변환 -->
 <div id="batchGeocodeCard" class="card mb-3 border-info" style="display:none;">
     <div class="card-body py-2">
         <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -2323,7 +2297,6 @@ function bgFinish() {
 }
 </script>
 
-<!-- 병원 목록 패널: AJAX 페이지네이션(ajax_list=1)이 이 안만 교체한다 -->
 <div id="hospitalListPanel">
     <?php include __DIR__ . '/includes/admin_hospitals_list_partial.php'; ?>
 </div>

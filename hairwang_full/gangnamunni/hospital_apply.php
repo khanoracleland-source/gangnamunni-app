@@ -640,7 +640,6 @@ require_once __DIR__ . '/includes/admin_header.php';
 <div class="container-fluid px-4 py-4">
 
 <?php if ($success): ?>
-    <!-- 신청 완료 -->
     <div class="text-center py-5">
         <div class="mb-4">
             <i class="bi bi-check-circle text-success" style="font-size: 5rem;"></i>
@@ -682,7 +681,6 @@ require_once __DIR__ . '/includes/admin_header.php';
             <form method="POST" enctype="multipart/form-data" id="applyForm">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($hospital_apply_csrf, ENT_QUOTES, 'UTF-8') ?>">
 
-                <!-- 기본 정보 -->
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-building me-2"></i>기본 정보</h6>
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
@@ -720,7 +718,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <input type="tel" name="contact_phone" class="form-control" maxlength="20" value="<?= htmlspecialchars($_POST['contact_phone'] ?? '') ?>">
                 </div>
 
-                <!-- 병원 정보 / 병원별 시술 배정 -->
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-geo-alt me-2"></i>병원 정보</h6>
                 <div class="row g-3 mb-4">
                     <div class="col-12">
@@ -847,7 +844,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                 </div>
 
-                <!-- 병원별 시술 배정 -->
                 <div class="application-section border rounded mb-4 overflow-hidden w-100">
                     <button class="application-section-toggle btn btn-light text-start justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#treatmentSection" aria-expanded="false" aria-controls="treatmentSection">
                         <span class="fw-bold"><i class="bi bi-clipboard2-pulse me-2 text-primary"></i>시술 추가 <span class="badge bg-secondary fw-normal">선택</span></span>
@@ -900,7 +896,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                 </div>
 
-                <!-- 병원 이미지 -->
                 <div class="application-section border rounded mb-4 overflow-hidden w-100">
                     <button class="application-section-toggle btn btn-light text-start justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#hospitalImageSection" aria-expanded="false" aria-controls="hospitalImageSection">
                         <span class="fw-bold"><i class="bi bi-images me-2 text-primary"></i>병원 이미지 추가 <span class="badge bg-secondary fw-normal">선택</span></span>
@@ -937,7 +932,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                 </div>
 
-                <!-- 의사 관리 -->
                 <div class="application-section border rounded mb-4 overflow-hidden w-100">
                     <button class="application-section-toggle btn btn-light text-start justify-content-between align-items-center p-3" type="button" data-bs-toggle="collapse" data-bs-target="#doctorSection" aria-expanded="false" aria-controls="doctorSection">
                         <span class="fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>의사 추가 <span class="badge bg-secondary fw-normal">선택</span></span>
@@ -952,7 +946,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                 </div>
 
-                <!-- 서류 업로드 -->
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-cloud-upload me-2"></i>서류 업로드</h6>
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
@@ -967,7 +960,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </div>
                 </div>
 
-                <!-- 약관 동의 -->
                 <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-shield-check me-2"></i>약관 동의</h6>
                 <div class="mb-4">
                     <div class="form-check mb-2">
