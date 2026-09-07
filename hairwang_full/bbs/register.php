@@ -6,9 +6,24 @@ if ($is_member) {
     goto_url(G5_URL);
 }
 
-// 일반 회원가입은 회원유형 선택 후, general이면 커스텀 email 페이지로 이동한다.
+// 병원관계자 가입 선택은 임시 비활성. 다시 필요하면 true로 변경한다.
+$show_hospital_registration = false;
+
+// 일반 회원가입은 커스텀 이메일 페이지로 바로 이동한다.
 // 약관 보기는 아래의 순수 read-only 화면을 사용한다.
 if (($_GET['view'] ?? '') !== 'terms') {
+    if (!$show_hospital_registration) {
+        // 회원유형 화면을 건너뛰어도 추천인 정보는 유지한다.
+        if (isset($_GET['mb_recommend']) && is_string($_GET['mb_recommend'])) {
+            $mb_recommend = preg_replace('/[^a-zA-Z0-9_]/', '', $_GET['mb_recommend']);
+            if ($mb_recommend !== '') {
+                set_cookie('reg_mb_recommend', $mb_recommend, 86400);
+                set_session('ss_mb_recommend', $mb_recommend);
+            }
+        }
+        goto_url(G5_URL.'/gangnamunni/auth/register.php');
+        exit;
+    }
     $g5['title'] = '회원가입약관';
     include_once('./_head.sub.php');
     $register_action_url = G5_BBS_URL.'/register_form.php';
