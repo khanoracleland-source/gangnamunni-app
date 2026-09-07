@@ -1,10 +1,4 @@
 <?php
-/**
- * 병원별 시술 배정 관리 페이지 (admin_hospital_treatments.php)
- * - 병원 선택 후 시술 배정/해제/독립 가격 옵션 수정/프로모션 토글
- * Bootstrap 5.3 + 다크모드 지원
- * @created 2026-03-25
- */
 session_start();
 
 $admin_page_title = '병원별 시술 배정';
@@ -14,7 +8,6 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 
-// DB 연결
 if (!isset($connect) || !$connect) {
     $connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
     if ($connect) mysqli_set_charset($connect, 'utf8mb4');
@@ -25,7 +18,6 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('hospital_treatments');
 
-// super_admin 만 전체, 그 외 모든 관리자는 자기 소속 병원만.
 require_once __DIR__ . '/includes/hospital_filter.php';
 $my_ids = get_strict_admin_hospital_ids($connect);
 $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_map('intval', $my_ids)));
@@ -33,7 +25,6 @@ $my_in  = $my_ids === null ? null : (empty($my_ids) ? '0' : implode(',', array_m
 require_once __DIR__ . '/includes/hospital_treatment_images.php';
 hti_ensure_schema($connect);
 
-// 세부 옵션명을 자유롭게 저장한다. 기존 설치는 관리자 페이지 진입 시 안전하게 업그레이드한다.
 $option_name_column = false;
 $option_col_r = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
 if ($option_col_r && mysqli_num_rows($option_col_r) > 0) {
@@ -42,7 +33,6 @@ if ($option_col_r && mysqli_num_rows($option_col_r) > 0) {
     $option_name_column = true;
 }
 
-// 가격 옵션별 시술 부위를 자유롭게 저장한다.
 $body_part_column = false;
 $body_part_col_r = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'body_part'");
 if ($body_part_col_r && mysqli_num_rows($body_part_col_r) > 0) {
@@ -55,8 +45,6 @@ if ($body_part_col_r && mysqli_num_rows($body_part_col_r) > 0) {
     $body_part_column = true;
 }
 
-// 가격 옵션별 정가를 별도로 저장한다. 기존 price 컬럼은 판매가로 계속 사용해
-// 예약/결제 흐름과의 하위 호환성을 유지한다.
 $regular_price_column = false;
 $regular_col_r = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'regular_price'");
 if ($regular_col_r && mysqli_num_rows($regular_col_r) > 0) {
@@ -65,11 +53,9 @@ if ($regular_col_r && mysqli_num_rows($regular_col_r) > 0) {
     $regular_price_column = true;
 }
 if ($regular_price_column) {
-    // 마이그레이션 전 단일 가격은 정가/판매가가 같은 상품으로 보존한다.
     @mysqli_query($connect, "UPDATE gangnamunni_hospital_treatment_prices SET regular_price = price WHERE regular_price <= 0 AND price > 0");
 }
 
-// 목록 카드에 대표로 노출할 가격 옵션. 한 시술당 하나만 선택할 수 있다.
 $representative_price_column = false;
 $representative_col_r = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'is_representative'");
 if ($representative_col_r && mysqli_num_rows($representative_col_r) > 0) {
@@ -78,21 +64,17 @@ if ($representative_col_r && mysqli_num_rows($representative_col_r) > 0) {
     $representative_price_column = true;
 }
 
-// 승인 절차 폐기에 따라 과거 승인 대기 건을 모두 활성화한다.
 mysqli_query($connect, "UPDATE gangnamunni_hospital_treatments SET status = 'active', is_active = 1, reject_reason = NULL, updated_at = NOW() WHERE status = 'pending'");
 
-// CSRF 토큰 생성
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 $csrf_token = $_SESSION['csrf_token'];
 
-// CSRF 검증 함수
 function verify_csrf_ht($token) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
 }
 
-// ===== 병원 목록 로드 (병원 역할은 자기 소유 병원들만) =====
 $hospitals = [];
 if ($my_in !== null) {
     $h_r = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE is_active = 1 AND id IN (" . $my_in . ") ORDER BY name ASC");
@@ -101,18 +83,15 @@ if ($my_in !== null) {
 }
 if ($h_r) while ($h = mysqli_fetch_assoc($h_r)) $hospitals[] = $h;
 
-// 선택된 병원 (병원 역할: 선택값이 자기 소유가 아니면 첫 병원으로 — 다병원이면 소유 병원 간 전환 가능)
 $hospital_id = intval($_GET['hospital_id'] ?? $_POST['hospital_id'] ?? 0);
 if ($my_ids !== null && !in_array($hospital_id, $my_ids, true)) {
     $hospital_id = $my_ids[0] ?? 0;
 }
 
-// 카테고리 목록
 $categories = [];
 $cat_r = mysqli_query($connect, "SELECT * FROM gangnamunni_treatment_categories WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
 if ($cat_r) while ($c = mysqli_fetch_assoc($cat_r)) $categories[$c['id']] = $c;
 
-// 설정 조회 (관리 모드)
 $treatment_mgmt_mode = 'both';
 $set_r = mysqli_query($connect, "SELECT `key`, `value` FROM settings WHERE `key` = 'treatment_mgmt_mode'");
 if ($set_r) while ($s = mysqli_fetch_assoc($set_r)) {
@@ -137,12 +116,10 @@ function ht_execute_or_throw($stmt, $message) {
     }
 }
 
-// 가격은 변환 없이 원 단위 정수 그대로 사용한다.
 function ht_price_won($price) {
     return intval($price);
 }
 
-// DB에서 삭제된 로컬 시술 이미지 파일도 함께 정리한다.
 function ht_delete_local_image_files(array $urls) {
     foreach (array_unique($urls) as $url) {
         if ($url !== '' && strpos($url, 'uploads/treatments/') === 0 && strpos($url, '..') === false) {
@@ -155,7 +132,6 @@ function ht_delete_local_image_files(array $urls) {
 $msg = '';
 $msg_type = 'success';
 
-// ===== POST Actions =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     $post_hospital_id = intval($_POST['hospital_id'] ?? 0);
@@ -174,8 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ht_redirect($post_hospital_id, '현재 시술 관리 설정에서는 이 작업을 수행할 수 없습니다.', 'danger');
         }
 
-        // 병원 역할 격리(다병원): 대상 병원이 자기 소유가 아니면 첫 병원으로 강제 +
-        // id 기반 액션(해제/가격/승인/거절/프로모션)의 대상 행이 자기 소유 병원 소속인지 검증.
         if ($my_ids !== null) {
             if (!in_array($post_hospital_id, $my_ids, true)) $post_hospital_id = $my_ids[0] ?? 0;
             $row_id = intval($_POST['id'] ?? 0);
@@ -192,7 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // --- 시술 배정 (벌크) ---
         if ($action === 'assign' && $post_hospital_id > 0) {
             $treatment_ids = $_POST['treatment_ids'] ?? [];
             if (empty($treatment_ids)) {
@@ -207,7 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 foreach ($treatment_ids as $tid) {
                     $tid = intval($tid);
                     if ($tid <= 0) continue;
-                    // 중복 체크
                     $chk = mysqli_prepare($connect, "SELECT id, status, is_active FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND treatment_id = ?");
                     mysqli_stmt_bind_param($chk, 'ii', $post_hospital_id, $tid);
                     mysqli_stmt_execute($chk);
@@ -218,8 +190,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             $new_status = 'active';
                             $existing_id = intval($existing['id']);
 
-                            // 재배정은 새 배정과 동일하게 초기 상태로 시작한다. 해제 전에 저장된
-                            // 가격 옵션/상세 이미지가 같은 id를 따라 되살아나는 문제를 방지한다.
                             $img_stmt = mysqli_prepare($connect, "SELECT image_url FROM gangnamunni_hospital_treatment_images WHERE hospital_treatment_id = ?");
                             mysqli_stmt_bind_param($img_stmt, 'i', $existing_id);
                             ht_execute_or_throw($img_stmt, '기존 이미지 조회 실패');
@@ -275,7 +245,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // --- 시술 해제 ---
         if ($action === 'remove') {
             $id = intval($_POST['id'] ?? 0);
             if ($id > 0) {
@@ -314,13 +283,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // --- 가격 수정 (샷수/용량·단위·가격 여러 개) ---
         if ($action === 'update_price') {
             if (!$regular_price_column || !$representative_price_column) {
                 ht_redirect($post_hospital_id, '가격 컬럼을 준비하지 못했습니다. DB 마이그레이션을 확인해주세요.', 'danger');
             }
             $id = intval($_POST['id'] ?? 0);
-            // 배열로 전달된 가격 옵션들 (단일 값이 오면 배열로 감싼다)
             $in_dv = $_POST['dosage_value'] ?? [];
             $in_du = $_POST['dosage_unit'] ?? [];
             $in_rp = $_POST['regular_price'] ?? [];
@@ -336,7 +303,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (!is_array($in_on)) $in_on = [$in_on];
             if (!is_array($in_bp)) $in_bp = [$in_bp];
 
-            // 화면과 DB 모두 원 단위 전체 금액을 사용한다.
             $options = [];
             $cnt = max(count($in_dv), count($in_rp), count($in_pr));
             for ($i = 0; $i < $cnt; $i++) {
@@ -346,7 +312,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $pr_won = (isset($in_pr[$i]) && trim((string)$in_pr[$i]) !== '') ? max(0, intval($in_pr[$i])) : 0;
                 $on = isset($in_on[$i]) ? trim((string)$in_on[$i]) : '';
                 $bp = isset($in_bp[$i]) ? trim((string)$in_bp[$i]) : '';
-                // 정가/판매가는 선택 항목. 샷수/용량과 단위만 있으면 옵션으로 저장한다.
                 if ($dv > 0 && $du !== '') {
                     $options[] = [
                         'name' => mb_substr($on, 0, 100, 'UTF-8'),
@@ -370,14 +335,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 foreach ($options as $opt) {
                     if ($opt['rp'] > 0 && $opt['pr'] > 0 && $opt['rp'] < $opt['pr']) ht_redirect($post_hospital_id, '정가는 판매가보다 작을 수 없습니다.', 'warning');
                     $representative_count += $opt['rep'];
-                    // 같은 용량/단위라도 시술 부위·유형(옵션명)이 다르면 별도 옵션이다.
-                    // 예: 사각턱 / 1회, 주름 / 1회
                     $key = mb_strtolower($opt['name'], 'UTF-8') . '|' . mb_strtolower($opt['body_part'], 'UTF-8') . '|' . $opt['dv'] . '|' . mb_strtolower($opt['du'], 'UTF-8');
                     if (isset($option_keys[$key])) ht_redirect($post_hospital_id, '동일한 옵션명, 부위, 용량, 단위의 가격 옵션을 중복 등록할 수 없습니다.', 'warning');
                     $option_keys[$key] = true;
                 }
                 if ($representative_count > 1) ht_redirect($post_hospital_id, '대표 가격 옵션은 하나만 선택할 수 있습니다.', 'warning');
-                // 대상 배정 시술이 존재하는지 확인한다.
                 $old_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospital_treatments WHERE id = ?");
                 mysqli_stmt_bind_param($old_stmt, 'i', $id);
                 mysqli_stmt_execute($old_stmt);
@@ -387,7 +349,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 mysqli_begin_transaction($connect);
                 try {
-                // 기존 옵션 전체 삭제 후 재삽입 (동기화)
                 $del = mysqli_prepare($connect, "DELETE FROM gangnamunni_hospital_treatment_prices WHERE hospital_treatment_id = ?");
                 mysqli_stmt_bind_param($del, 'i', $id);
                 mysqli_stmt_execute($del);
@@ -406,7 +367,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
                 mysqli_stmt_close($ins);
 
-                // 각 옵션은 독립 가격 행이며 부모 시술에 대표/MIN/MAX 가격을 만들지 않는다.
                 $upd = mysqli_prepare($connect,
                     "UPDATE gangnamunni_hospital_treatments SET price_min = 0, price_max = 0, dosage_value = NULL, dosage_unit = NULL, updated_at = NOW() WHERE id = ?");
                 mysqli_stmt_bind_param($upd, 'i', $id);
@@ -423,7 +383,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // --- 프로모션 토글 ---
         if ($action === 'toggle_promoted') {
             $id = intval($_POST['id'] ?? 0);
             if ($id > 0) {
@@ -437,7 +396,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // 시술 상세페이지 이미지 추가
         if ($action === 'image_add') {
             $id = intval($_POST['id'] ?? 0);
             if ($id > 0) {
@@ -509,7 +467,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // 시술 상세페이지 이미지 삭제
         if ($action === 'image_delete') {
             $id = intval($_POST['id'] ?? 0);
             $image_id = intval($_POST['image_id'] ?? 0);
@@ -597,20 +554,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-// GET ?msg= 파라미터 처리
 if (!empty($_GET['msg'])) {
     $msg = $_GET['msg'];
     $msg_type = in_array($_GET['msg_type'] ?? '', ['success', 'danger', 'warning', 'info'], true) ? $_GET['msg_type'] : 'success';
 }
 
-// ===== 데이터 로드 (병원 선택 시) =====
 $assigned_treatments = [];
 $pending_treatments = [];
 $stats = ['total_assigned' => 0, 'pending' => 0, 'promoted' => 0];
 $selected_hospital_name = '';
 
 if ($hospital_id > 0) {
-    // 병원명
     foreach ($hospitals as $h) {
         if (intval($h['id']) === $hospital_id) {
             $selected_hospital_name = $h['name'];
@@ -618,7 +572,6 @@ if ($hospital_id > 0) {
         }
     }
 
-    // 통계
     $stat_sql = "SELECT
         COUNT(CASE WHEN status = 'active' THEN 1 END) AS total_assigned,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending,
@@ -635,7 +588,6 @@ if ($hospital_id > 0) {
     }
     mysqli_stmt_close($stat_stmt);
 
-    // 승인 대기 시술
     $pend_sql = "SELECT ht.*, tm.name AS treatment_name, tm.hashtag, tc.name AS category_name
         FROM gangnamunni_hospital_treatments ht
         LEFT JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
@@ -649,7 +601,6 @@ if ($hospital_id > 0) {
     while ($row = mysqli_fetch_assoc($pend_r)) $pending_treatments[] = $row;
     mysqli_stmt_close($pend_stmt);
 
-    // 배정된 활성 시술
     $assign_sql = "SELECT ht.*, tm.name AS treatment_name, tm.hashtag, tc.name AS category_name, tc.id AS cat_id
         FROM gangnamunni_hospital_treatments ht
         LEFT JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
@@ -664,12 +615,10 @@ if ($hospital_id > 0) {
     mysqli_stmt_close($assign_stmt);
 }
 
-// 배정 시술별 가격 옵션(샷수/용량·단위·가격) 로드 → 수정 모달·목록 표시용
 $ht_prices = [];
 if (!empty($assigned_treatments)) {
     $ht_ids = array_map(function ($r) { return intval($r['id']); }, $assigned_treatments);
-    $ht_in = implode(',', $ht_ids); // 정수만 담기므로 안전
-    // 마이그레이션 미적용(테이블 없음) 등으로 실패해도 목록 페이지가 500 나지 않도록 방어
+    $ht_in = implode(',', $ht_ids);
     try {
         $pr_r = mysqli_query($connect,
             "SELECT hospital_treatment_id, " . ($option_name_column ? "option_name" : "'' AS option_name") . ", " . ($body_part_column ? "body_part" : "'' AS body_part") . ", dosage_value, dosage_unit, " . ($regular_price_column ? "regular_price" : "price AS regular_price") . ", price, " . ($representative_price_column ? "is_representative" : "0 AS is_representative") . "
@@ -699,7 +648,6 @@ if (!empty($assigned_treatments)) {
     }, $assigned_treatments));
 }
 
-// ===== 미배정 시술 목록 (추가용) =====
 $available_treatments = [];
 if ($hospital_id > 0) {
     $avail_sql = "SELECT tm.*, tc.name AS category_name, tc.id AS cat_id
@@ -716,12 +664,10 @@ if ($hospital_id > 0) {
     mysqli_stmt_close($avail_stmt);
 }
 
-// ===== 병원 미선택 시: 전체 요약 통계 =====
 $global_stats = [];
 $top_hospitals = [];
 $global_pending_count = 0;
 if ($hospital_id <= 0 && $my_ids === null) {
-    // 전체 통계
     $gs_r = mysqli_query($connect, "SELECT
         COUNT(DISTINCT hospital_id) AS hospital_count,
         COUNT(*) AS total_assignments,
@@ -731,7 +677,6 @@ if ($hospital_id <= 0 && $my_ids === null) {
     if ($gs_r) $global_stats = mysqli_fetch_assoc($gs_r);
     $global_pending_count = intval($global_stats['pending_count'] ?? 0);
 
-    // Top 10 병원 (시술 수 기준)
     $top_sql = "SELECT h.id, h.name, COUNT(ht.id) AS treatment_count,
         COUNT(CASE WHEN ht.is_promoted = 1 THEN 1 END) AS promoted_count,
         COUNT(CASE WHEN ht.status = 'pending' THEN 1 END) AS pending_count
@@ -770,32 +715,82 @@ require_once __DIR__ . '/includes/admin_header.php';
         </div>
     </div>
 
-    <!-- 병원 선택 드롭다운 -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body py-3">
-            <form method="get" class="row g-2 align-items-end">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold mb-1"><i class="bi bi-hospital me-1"></i>병원 선택</label>
-                    <select name="hospital_id" class="form-select" onchange="this.form.submit()">
-                        <option value="">-- 병원을 선택하세요 --</option>
+    <style>
+        .ht-hospital-picker {border:1px solid var(--bs-border-color);border-radius:16px;background:var(--bs-body-bg);padding:24px;margin-bottom:24px;}
+        .ht-picker-heading {display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+        .ht-hospital-icon {display:flex;align-items:center;justify-content:center;flex-shrink:0;width:42px;height:42px;border-radius:12px;background:rgba(var(--bs-primary-rgb),.09);color:var(--bs-primary);font-size:19px;}
+        .ht-picker-heading h6 {margin:0 0 4px;font-weight:700;}
+        .ht-picker-heading p {margin:0;color:var(--bs-secondary-color);font-size:13px;}
+        .ht-picker-fields {display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:start;}
+        .ht-picker-fields label {font-size:13px;font-weight:600;margin-bottom:8px;display:block;}
+        .ht-search-form {position:relative;min-width:0;}
+        .ht-search-box {display:flex;align-items:center;gap:10px;padding:5px 6px 5px 14px;border:1px solid var(--bs-border-color);border-radius:10px;background:var(--bs-tertiary-bg);transition:border-color .15s,box-shadow .15s;}
+        .ht-search-box:focus-within {border-color:var(--bs-primary);box-shadow:0 0 0 3px rgba(var(--bs-primary-rgb),.12);}
+        .ht-search-box > i {color:var(--bs-secondary-color);}
+        .ht-search-box input {min-width:0;width:100%;border:0;outline:0;background:transparent;color:var(--bs-body-color);font-size:14px;height:34px;}
+        .ht-search-box .btn {flex-shrink:0;border-radius:7px;padding:7px 16px;font-size:13px;}
+        .ht-picker-select {display:flex;gap:8px;}
+        .ht-picker-select .form-select {min-width:0;height:46px;border-radius:10px;font-size:14px;}
+        .ht-picker-select .btn {flex-shrink:0;border-radius:10px;font-size:13px;}
+        .ht-search-popover {position:absolute;top:100%;left:0;right:0;margin-top:8px;z-index:1040;border:1px solid var(--bs-border-color);border-radius:12px;background:var(--bs-body-bg);box-shadow:0 12px 32px rgba(0,0,0,.12);overflow:hidden;}
+        .ht-search-status {display:block;padding:12px 16px;font-size:12px;color:var(--bs-secondary-color);border-bottom:1px solid var(--bs-border-color);}
+        .ht-search-results {max-height:300px;overflow-y:auto;padding:6px;}
+        .ht-search-result {display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:8px;color:var(--bs-body-color);text-decoration:none;}
+        .ht-search-result:hover,.ht-search-result:focus-visible {background:rgba(var(--bs-primary-rgb),.08);color:var(--bs-body-color);outline:2px solid var(--bs-primary);outline-offset:-2px;}
+        .ht-result-copy {min-width:0;flex:1;}
+        .ht-result-copy strong {display:block;font-size:14px;overflow-wrap:anywhere;}
+        .ht-result-copy small {display:block;margin-top:3px;color:var(--bs-secondary-color);font-size:11px;}
+        .ht-result-action {flex-shrink:0;font-size:12px;color:var(--bs-primary);}
+        .ht-picker-current {display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--bs-border-color);font-size:13px;}
+        .ht-picker-current strong {overflow-wrap:anywhere;}
+        .ht-picker-current a {margin-left:auto;color:var(--bs-secondary-color);text-decoration:none;font-size:12px;}
+        .ht-search-empty {padding:20px 16px;text-align:center;font-size:13px;color:var(--bs-secondary-color);}
+        @media(max-width:767.98px) {
+            .ht-hospital-picker {padding:18px;}
+            .ht-picker-fields {grid-template-columns:minmax(0,1fr);gap:18px;}
+            .ht-result-action {font-size:11px;}
+            .ht-search-result {gap:8px;}
+        }
+    </style>
+    <section class="ht-hospital-picker" aria-label="병원 선택">
+        <div class="ht-picker-heading">
+            <span class="ht-hospital-icon" aria-hidden="true"><i class="bi bi-hospital"></i></span>
+            <div><h6>시술을 관리할 병원</h6><p>병원을 검색하거나 목록에서 선택해주세요.</p></div>
+        </div>
+        <div class="ht-picker-fields">
+            <form id="hospitalSearchForm" class="ht-search-form" role="search">
+                <label for="hospitalSearch">병원 검색</label>
+                <div class="ht-search-box">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" id="hospitalSearch" placeholder="병원명으로 빠르게 검색" autocomplete="off" aria-controls="hospitalSearchResults" aria-describedby="hospitalSearchStatus">
+                    <button type="submit" class="btn btn-primary" aria-label="병원 검색">검색</button>
+                </div>
+                <div id="hospitalSearchPopover" class="ht-search-popover" hidden>
+                    <small id="hospitalSearchStatus" class="ht-search-status" role="status" aria-live="polite"></small>
+                    <div id="hospitalSearchResults" class="ht-search-results"></div>
+                </div>
+            </form>
+            <form method="get">
+                <label for="hospitalSelect">병원 선택</label>
+                <div class="ht-picker-select">
+                    <select id="hospitalSelect" name="hospital_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">전체 병원 목록에서 선택</option>
                         <?php foreach ($hospitals as $h): ?>
-                        <option value="<?php echo intval($h['id']); ?>" <?php echo $hospital_id === intval($h['id']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($h['name']); ?> (ID: <?php echo intval($h['id']); ?>)
-                        </option>
+                        <option value="<?php echo intval($h['id']); ?>" <?php echo $hospital_id === intval($h['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($h['name']); ?> (ID: <?php echo intval($h['id']); ?>)</option>
                         <?php endforeach; ?>
                     </select>
+                    <button type="submit" class="btn btn-primary">조회</button>
                 </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>조회</button>
-                </div>
-                <?php if ($hospital_id > 0): ?>
-                <div class="col-md-2">
-                    <a href="admin_hospital_treatments.php" class="btn btn-outline-secondary w-100"><i class="bi bi-x-lg me-1"></i>초기화</a>
-                </div>
-                <?php endif; ?>
             </form>
         </div>
-    </div>
+        <?php if ($hospital_id > 0 && $selected_hospital_name !== ''): ?>
+        <div class="ht-picker-current">
+            <i class="bi bi-check-circle-fill text-primary" aria-hidden="true"></i>
+            <span class="text-muted">선택된 병원</span><strong><?php echo htmlspecialchars($selected_hospital_name); ?></strong>
+            <a href="admin_hospital_treatments.php"><i class="bi bi-arrow-counterclockwise me-1"></i>초기화</a>
+        </div>
+        <?php endif; ?>
+    </section>
 
 <?php if ($hospital_id <= 0): ?>
     <!-- ===== 병원 미선택: 전체 요약 ===== -->
@@ -894,8 +889,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         </div>
     </div>
 
-    <!-- ===== 승인 대기 섹션 ===== -->
-    <?php if (false): // 승인 워크플로우 폐기 ?>
+    <?php if (false):  ?>
     <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
         <div class="card-header bg-warning bg-opacity-10">
             <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>승인 대기 시술 (<?php echo count($pending_treatments); ?>건)</h6>
@@ -1062,7 +1056,7 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 
     <!-- ===== 시술 추가 섹션 (Collapse) ===== -->
-    <div class="collapse mb-4" id="addTreatmentSection">
+    <div class="collapse<?php echo $can_manage_treatments && ($_GET['add_treatment'] ?? '') === '1' ? ' show' : ''; ?> mb-4" id="addTreatmentSection">
         <div class="card border-0 shadow-sm border-start border-4 border-primary">
             <div class="card-header bg-primary bg-opacity-10">
                 <h6 class="mb-0"><i class="bi bi-plus-circle me-2"></i>시술 추가 (미배정 시술 <?php echo count($available_treatments); ?>건)</h6>
@@ -1158,7 +1152,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             mysqli_stmt_close($log_stmt);
         }
     }
-    if (false): // 승인 워크플로우 폐기
+    if (false): 
     ?>
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-transparent">
@@ -1322,6 +1316,97 @@ require_once __DIR__ . '/includes/admin_header.php';
 </form>
 
 <script>
+// Search only the hospitals already allowed by the server's hospital filter.
+(function () {
+    var hospitals = <?php echo json_encode($hospitals, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    var input = document.getElementById('hospitalSearch');
+    var results = document.getElementById('hospitalSearchResults');
+    var status = document.getElementById('hospitalSearchStatus');
+    var popover = document.getElementById('hospitalSearchPopover');
+    var form = document.getElementById('hospitalSearchForm');
+    var canManage = <?php echo $can_manage_treatments ? 'true' : 'false'; ?>;
+    function normalize(value) {
+        return String(value).normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, '');
+    }
+    function searchHospitals() {
+        var query = normalize(input.value);
+        results.replaceChildren();
+        popover.hidden = !query;
+        status.textContent = '';
+        if (!query) return;
+        var matches = hospitals.filter(function (hospital) {
+            return normalize(hospital.name).includes(query);
+        });
+        status.textContent = matches.length ? '검색 결과 · ' + matches.length + '개 병원' : '검색 결과가 없습니다';
+        if (!matches.length) {
+            var empty = document.createElement('div');
+            empty.className = 'ht-search-empty';
+            empty.textContent = '다른 병원명으로 다시 검색해보세요.';
+            results.appendChild(empty);
+        }
+        matches.forEach(function (hospital) {
+            var link = document.createElement('a');
+            link.className = 'ht-search-result';
+            link.href = 'admin_hospital_treatments.php?hospital_id=' + encodeURIComponent(hospital.id)
+                + (canManage ? '&add_treatment=1#addTreatmentSection' : '');
+            var icon = document.createElement('span');
+            icon.className = 'ht-hospital-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.innerHTML = '<i class="bi bi-hospital"></i>';
+            var copy = document.createElement('span');
+            copy.className = 'ht-result-copy';
+            var name = document.createElement('strong');
+            name.textContent = hospital.name;
+            var meta = document.createElement('small');
+            meta.textContent = '병원 ID · ' + hospital.id;
+            copy.append(name, meta);
+            var action = document.createElement('span');
+            action.className = 'ht-result-action';
+            action.textContent = canManage ? '시술 추가 →' : '선택 →';
+            link.append(icon, copy, action);
+            results.appendChild(link);
+        });
+    }
+    input.addEventListener('input', searchHospitals);
+    input.addEventListener('focus', searchHospitals);
+    document.addEventListener('click', function (event) {
+        if (!form.contains(event.target)) popover.hidden = true;
+    });
+    // Some browsers blur the input with relatedTarget=null when a result is
+    // pressed. Keep the link visible until its native click can navigate.
+    // Close for keyboard users once focus actually enters an outside element.
+    document.addEventListener('focusin', function (event) {
+        if (!form.contains(event.target)) popover.hidden = true;
+    });
+    form.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            input.focus();
+            popover.hidden = true;
+        }
+        if (event.target.closest('.ht-search-result') && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+            event.preventDefault();
+            var links = Array.from(results.querySelectorAll('a'));
+            var index = links.indexOf(event.target.closest('a'));
+            var next = event.key === 'ArrowDown' ? index + 1 : index - 1;
+            if (next < 0) input.focus();
+            else if (links[next]) links[next].focus();
+        }
+    });
+    document.getElementById('hospitalSearchForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+        searchHospitals();
+        var first = results.querySelector('a');
+        if (first) first.focus();
+    });
+    input.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowDown') {
+            if (popover.hidden) searchHospitals();
+            var first = results.querySelector('a');
+            if (first) { event.preventDefault(); first.focus(); }
+        }
+    });
+})();
+
 var HT_IMAGES = <?php echo json_encode($ht_images, JSON_UNESCAPED_UNICODE); ?>;
 var IS_SUPER_ADMIN = <?php echo $is_super_admin ? 'true' : 'false'; ?>;
 
@@ -1393,8 +1478,6 @@ function deleteTreatmentImage(htId, imageId) {
     document.getElementById('ti_delete_form').submit();
 }
 
-// 가격 수정 모달
-// 배정 시술별 가격 옵션 맵 (id → [{dosage_value, dosage_unit, regular_price, price}, ...])
 var HT_PRICES = <?php echo json_encode($ht_prices, JSON_UNESCAPED_UNICODE); ?>;
 var PRICE_UNITS = ['샷','cc','ml','kj','회','병','IU','기타'];
 var BODY_PART_GROUPS = [
@@ -1427,7 +1510,6 @@ function bodyPartPickerHtml(selectedBodyPart) {
                 '<label class="form-check-label small" for="'+checkboxId+'">'+tiEscape(item)+'</label></div>';
         });
     });
-    // 기존에 자유 입력한 부위가 있었다면 값을 잃지 않고 계속 표시한다.
     selectedItems.forEach(function(item, legacyIndex) {
         if (knownItems.indexOf(item) === -1) {
             var checkboxId = pickerId + 'Legacy' + legacyIndex;
@@ -1499,7 +1581,6 @@ function removePriceRow(btn) {
     refreshRepresentativeCheckboxes();
 }
 
-// 최소 1개 유지 — 행이 1개뿐이면 삭제 버튼 비활성화
 function refreshPriceDelButtons() {
     var rows = document.querySelectorAll('#priceRows .price-row');
     rows.forEach(function(r){
@@ -1518,20 +1599,16 @@ function openPriceModal(id, name) {
     new bootstrap.Modal(document.getElementById('priceModal')).show();
 }
 
-// 거절 모달
 function openRejectModal(id, name) {
     document.getElementById('reject_id').value = id;
     document.getElementById('reject_treatment_name').textContent = name;
     new bootstrap.Modal(document.getElementById('rejectModal')).show();
 }
 
-// 카테고리 탭 필터
 function filterCategory(e, catId) {
     e.preventDefault();
-    // 탭 활성화
     document.querySelectorAll('#catTabs .nav-link').forEach(function(el) { el.classList.remove('active'); });
     e.target.classList.add('active');
-    // 항목 필터
     document.querySelectorAll('.treatment-item').forEach(function(el) {
         if (catId === 'all' || parseInt(el.dataset.cat) === catId) {
             el.style.display = '';
@@ -1539,11 +1616,9 @@ function filterCategory(e, catId) {
             el.style.display = 'none';
         }
     });
-    // 전체 선택 체크 해제
     document.getElementById('selectAll').checked = false;
 }
 
-// 전체 선택/해제
 function toggleSelectAll(el) {
     document.querySelectorAll('.treatment-item').forEach(function(item) {
         if (item.style.display !== 'none') {
