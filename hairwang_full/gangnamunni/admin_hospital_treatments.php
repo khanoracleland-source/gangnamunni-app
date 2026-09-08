@@ -1,5 +1,10 @@
 <?php
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+
+// Set only by the hospital page's isolated renderer, never by a request parameter.
+$ht_panel = isset($ht_panel_hospital_id) && (int)$ht_panel_hospital_id > 0;
+$ht_return_mode = $ht_panel ? ($ht_panel_edit ? 'edit' : 'view') : (string)($_GET['hospital_panel'] ?? '');
+$ht_return_mode = in_array($ht_return_mode, ['edit', 'view'], true) ? $ht_return_mode : '';
 
 $admin_page_title = '병원별 시술 배정';
 $admin_current = 'hospital_treatments';
@@ -83,8 +88,12 @@ if ($my_in !== null) {
 }
 if ($h_r) while ($h = mysqli_fetch_assoc($h_r)) $hospitals[] = $h;
 
-$hospital_id = intval($_GET['hospital_id'] ?? $_POST['hospital_id'] ?? 0);
+$hospital_id = $ht_panel ? (int)$ht_panel_hospital_id : intval($_GET['hospital_id'] ?? $_POST['hospital_id'] ?? 0);
 if ($my_ids !== null && !in_array($hospital_id, $my_ids, true)) {
+    if ($ht_panel) {
+        echo '<div class="alert alert-warning mb-0">이 병원의 시술을 관리할 권한이 없습니다.</div>';
+        return;
+    }
     $hospital_id = $my_ids[0] ?? 0;
 }
 
@@ -105,8 +114,17 @@ $can_manage_treatments = $is_super_admin
     || (!$is_hospital_account && in_array($treatment_mgmt_mode, ['admin_only', 'both'], true));
 
 function ht_redirect($hospital_id, $message, $type = 'success') {
-    header('Location: admin_hospital_treatments.php?hospital_id=' . intval($hospital_id)
-        . '&msg=' . urlencode($message) . '&msg_type=' . urlencode($type));
+    $mode = (string)($_GET['hospital_panel'] ?? '');
+    if (in_array($mode, ['edit', 'view'], true)) {
+        $section = $mode === 'edit' ? 'editTreatmentsSection' : 'viewTreatmentsSection';
+        header('Location: admin_hospitals.php?view=' . intval($hospital_id)
+            . ($mode === 'edit' ? '&edit=1' : '')
+            . '&treatment_msg=' . urlencode($message) . '&treatment_msg_type=' . urlencode($type)
+            . '#' . $section);
+    } else {
+        header('Location: admin_hospital_treatments.php?hospital_id=' . intval($hospital_id)
+            . '&msg=' . urlencode($message) . '&msg_type=' . urlencode($type));
+    }
     exit;
 }
 
@@ -132,7 +150,7 @@ function ht_delete_local_image_files(array $urls) {
 $msg = '';
 $msg_type = 'success';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     $post_hospital_id = intval($_POST['hospital_id'] ?? 0);
 
@@ -160,8 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $own_row = mysqli_fetch_assoc(mysqli_stmt_get_result($own));
                 mysqli_stmt_close($own);
                 if (!$own_row || !in_array((int)$own_row['hospital_id'], $my_ids, true)) {
-                    header('Location: admin_hospital_treatments.php?msg=' . urlencode('접근 권한이 없습니다.'));
-                    exit;
+                    ht_redirect($post_hospital_id, '접근 권한이 없습니다.', 'danger'); // exits internally
                 }
             }
         }
@@ -240,7 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
                 $msg = "{$added}개 시술이 배정되었습니다.";
                 if ($skipped > 0) $msg .= " (이미 배정된 {$skipped}개 건너뜀)";
-                header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode($msg));
+                ht_redirect($post_hospital_id, $msg);
                 exit;
             }
         }
@@ -378,7 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     error_log('[hospital_treatments] update_price 실패: ' . $e->getMessage());
                     ht_redirect($post_hospital_id, '가격 저장에 실패했습니다. 기존 가격은 유지됩니다.', 'danger');
                 }
-                header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('가격이 수정되었습니다.'));
+                ht_redirect($post_hospital_id, '가격이 수정되었습니다.');
                 exit;
             }
         }
@@ -391,7 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 mysqli_stmt_bind_param($stmt, 'i', $id);
                 mysqli_stmt_execute($stmt);
                 mysqli_stmt_close($stmt);
-                header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('프로모션 상태가 변경되었습니다.'));
+                ht_redirect($post_hospital_id, '프로모션 상태가 변경되었습니다.');
                 exit;
             }
         }
@@ -457,7 +474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             mysqli_stmt_execute($ins);
                             mysqli_stmt_close($ins);
                             $image_message = $image_status === 'pending' ? '시술 이미지가 등록되었으며 최고관리자 검수 후 공개됩니다.' : '시술 이미지가 등록되었습니다.';
-                            header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode($image_message));
+                            ht_redirect($post_hospital_id, $image_message);
                             exit;
                         }
                         $msg = '이미지 등록에 실패했습니다.';
@@ -494,7 +511,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $path = __DIR__ . '/' . $old_url;
                     if (is_file($path)) @unlink($path);
                 }
-                header("Location: admin_hospital_treatments.php?hospital_id={$post_hospital_id}&msg=" . urlencode('시술 이미지가 삭제되었습니다.'));
+                ht_redirect($post_hospital_id, '시술 이미지가 삭제되었습니다.');
                 exit;
             }
         }
@@ -554,7 +571,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-if (!empty($_GET['msg'])) {
+// Failed validation also returns to the hospital panel with its error visible.
+if (!$ht_panel && $ht_return_mode !== '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    ht_redirect($hospital_id, $msg !== '' ? $msg : '요청을 처리하지 못했습니다.', $msg !== '' ? $msg_type : 'danger');
+}
+if ($ht_panel && !empty($_GET['treatment_msg'])) {
+    $msg = (string)$_GET['treatment_msg'];
+    $msg_type = in_array($_GET['treatment_msg_type'] ?? '', ['success', 'danger', 'warning', 'info'], true)
+        ? $_GET['treatment_msg_type'] : 'success';
+}
+
+if (!$ht_panel && !empty($_GET['msg'])) {
     $msg = $_GET['msg'];
     $msg_type = in_array($_GET['msg_type'] ?? '', ['success', 'danger', 'warning', 'info'], true) ? $_GET['msg_type'] : 'success';
 }
@@ -690,7 +717,9 @@ if ($hospital_id <= 0 && $my_ids === null) {
     if ($top_r) while ($row = mysqli_fetch_assoc($top_r)) $top_hospitals[] = $row;
 }
 
-require_once __DIR__ . '/includes/admin_header.php';
+$ht_form_action = 'admin_hospital_treatments.php?hospital_id=' . $hospital_id
+    . ($ht_return_mode !== '' ? '&hospital_panel=' . $ht_return_mode : '');
+if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
 ?>
 
 <div class="container-fluid py-4">
@@ -752,6 +781,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             .ht-search-result {gap:8px;}
         }
     </style>
+    <?php if (!$ht_panel): ?>
     <section class="ht-hospital-picker" aria-label="병원 선택">
         <div class="ht-picker-heading">
             <span class="ht-hospital-icon" aria-hidden="true"><i class="bi bi-hospital"></i></span>
@@ -791,6 +821,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         </div>
         <?php endif; ?>
     </section>
+    <?php endif; ?>
 
 <?php if ($hospital_id <= 0): ?>
     <!-- ===== 병원 미선택: 전체 요약 ===== -->
@@ -919,7 +950,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td class="text-center">
                             <?php if ($is_platform_approver): ?>
                             <!-- 승인 -->
-                            <form method="post" class="d-inline">
+                            <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" class="d-inline">
                                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                                 <input type="hidden" name="action" value="approve">
                                 <input type="hidden" name="id" value="<?php echo intval($pt['id']); ?>">
@@ -995,7 +1026,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php endif; ?>
                         </td>
                         <td class="text-center">
-                            <form method="post" class="d-inline">
+                            <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" class="d-inline">
                                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                                 <input type="hidden" name="action" value="toggle_promoted">
                                 <input type="hidden" name="id" value="<?php echo intval($at['id']); ?>">
@@ -1039,7 +1070,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <!-- 배정 해제 -->
-                            <form method="post" class="d-inline" onsubmit="return confirm('이 시술 배정을 해제하시겠습니까?');">
+                            <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" class="d-inline" onsubmit="return confirm('이 시술 배정을 해제하시겠습니까?');">
                                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                                 <input type="hidden" name="action" value="remove">
                                 <input type="hidden" name="id" value="<?php echo intval($at['id']); ?>">
@@ -1068,7 +1099,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         모든 시술이 이미 배정되어 있습니다.
                     </div>
                 <?php else: ?>
-                <form method="post" id="assignForm">
+                <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" id="assignForm">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                     <input type="hidden" name="action" value="assign">
                     <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
@@ -1213,7 +1244,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 <!-- ===== 가격 수정 모달 ===== -->
 <div class="modal fade" id="priceModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
-        <form method="post">
+        <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
             <input type="hidden" name="action" value="update_price">
             <input type="hidden" name="id" id="price_id">
@@ -1262,7 +1293,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             <div class="modal-body">
                 <p class="text-muted small">등록한 이미지는 해당 병원의 이 시술 상세페이지에만 노출됩니다.</p>
                 <div id="ti_gallery" class="row g-2 mb-3"></div>
-                <form method="post" enctype="multipart/form-data" class="border-top pt-3">
+                <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" enctype="multipart/form-data" class="border-top pt-3">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                     <input type="hidden" name="action" value="image_add">
                     <input type="hidden" name="id" id="ti_ht_id">
@@ -1291,14 +1322,14 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
-<form method="post" id="ti_delete_form" class="d-none">
+<form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" id="ti_delete_form" class="d-none">
     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
     <input type="hidden" name="action" value="image_delete">
     <input type="hidden" name="id" id="ti_del_ht_id">
     <input type="hidden" name="image_id" id="ti_del_image_id">
     <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
 </form>
-<form method="post" id="ti_move_form" class="d-none">
+<form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" id="ti_move_form" class="d-none">
     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
     <input type="hidden" name="action" value="image_move">
     <input type="hidden" name="id" id="ti_move_ht_id">
@@ -1306,7 +1337,7 @@ require_once __DIR__ . '/includes/admin_header.php';
     <input type="hidden" name="direction" id="ti_move_direction">
     <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
 </form>
-<form method="post" id="ti_review_form" class="d-none">
+<form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" id="ti_review_form" class="d-none">
     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
     <input type="hidden" name="action" id="ti_review_action">
     <input type="hidden" name="id" id="ti_review_ht_id">
@@ -1324,6 +1355,7 @@ require_once __DIR__ . '/includes/admin_header.php';
     var status = document.getElementById('hospitalSearchStatus');
     var popover = document.getElementById('hospitalSearchPopover');
     var form = document.getElementById('hospitalSearchForm');
+    if (!input || !form) return;
     var canManage = <?php echo $can_manage_treatments ? 'true' : 'false'; ?>;
     function normalize(value) {
         return String(value).normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, '');
@@ -1629,4 +1661,4 @@ function toggleSelectAll(el) {
 }
 </script>
 
-<?php require_once __DIR__ . '/includes/admin_footer.php'; ?>
+<?php if (!$ht_panel) require_once __DIR__ . '/includes/admin_footer.php'; ?>
