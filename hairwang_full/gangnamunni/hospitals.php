@@ -1,9 +1,4 @@
 <?php
-/**
- * ========================================
- * 병원 목록 - 3뷰 모드 (카드형/리스트형/서울미녀형)
- * ========================================
- */
 require_once __DIR__ . '/includes/init.php';
 $hospital_return_url = 'hospitals.php' . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '');
 if (file_exists(__DIR__ . '/includes/design_tokens.php')) { include_once __DIR__ . '/includes/design_tokens.php'; }
@@ -13,9 +8,8 @@ require_once __DIR__ . '/includes/settings_helper.php';
 require_once __DIR__ . '/includes/ad_slot_performance.php';
 require_once __DIR__ . '/includes/wishlist_button.php';
 
-loadCategoriesFromDB($connect); // 반환값 미사용 — $category_icons 전역 초기화 목적
+loadCategoriesFromDB($connect); 
 
-// 신규 정가 컬럼이 아직 배포되지 않은 DB에서도 목록이 정상 동작하도록 판매가로 폴백한다.
 $hospital_regular_price_column = false;
 $_regular_col_result = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'regular_price'");
 if ($_regular_col_result && mysqli_num_rows($_regular_col_result) > 0) {
@@ -30,8 +24,6 @@ $hospital_price_option_order = $hospital_representative_price_column
     ? 'p.is_representative DESC, p.price ASC, p.sort_order ASC, p.id ASC'
     : 'p.price ASC, p.sort_order ASC, p.id ASC';
 
-// 인기 정렬은 병원 테이블의 캐시 컬럼이 아니라 실제 찜 데이터를 기준으로 한다.
-// 아직 wishlist API가 한 번도 호출되지 않아 테이블이 없는 환경에서는 0으로 폴백한다.
 $wishlist_table_exists = false;
 $_wishlist_table_result = @mysqli_query(
     $connect,
@@ -47,18 +39,12 @@ $wishlist_count_select = $wishlist_table_exists
     : '0 AS wishlist_count';
 $hospital_select = "SELECT gangnamunni_hospitals.*, {$wishlist_count_select} FROM gangnamunni_hospitals";
 
-/**
- * 주소에서 '구'(district)를 추출한다.
- * 예) "서울특별시 강남구 테헤란로 123" → "강남"
- * 한국 주소는 보통 "시/도 구/군 ..." 순서라 두 번째 토큰을 먼저 확인하고,
- * 두 번째 토큰이 '구'로 끝나지 않으면 나머지 토큰을 검사한다.
- */
+
 if (!function_exists('extract_addr_district')) {
     function extract_addr_district($addr) {
         $addr = trim((string)$addr);
         if ($addr === '') return '';
         $parts = preg_split('/\s+/u', $addr);
-        // 두 번째 토큰을 먼저 검사, 그 다음 전체 토큰
         $order = [];
         if (isset($parts[1])) $order[] = $parts[1];
         foreach ($parts as $p) $order[] = $p;
@@ -75,7 +61,6 @@ $keyword = isset($_GET['q']) ? trim($_GET['q']) : '';
 $escaped_keyword = mysqli_real_escape_string($connect, $keyword);
 $category = isset($_GET['category']) ? trim($_GET['category']) : '';
 $escaped_category = mysqli_real_escape_string($connect, $category);
-// 특정 시술(gangnamunni_treatment_master, 103개) 기준 검색 — gangnamunni_hospital_treatments로 실제 배정된 병원만 매칭
 $treatment = isset($_GET['treatment']) ? trim($_GET['treatment']) : '';
 $escaped_treatment = mysqli_real_escape_string($connect, $treatment);
 $resolved_keyword_treatment = null;
@@ -89,8 +74,6 @@ $effective_treatment_id = $resolved_keyword_treatment
     ? (int) $resolved_keyword_treatment['id']
     : 0;
 $escaped_effective_treatment = mysqli_real_escape_string($connect, $effective_treatment);
-// index.php 의 ae-wrap 시술 필터로 들어온 경우에도 이름이 아니라 고유 ID를 함께 전달한다.
-// 목록의 가격과 상세페이지의 시술 이미지가 반드시 같은 시술을 가리키게 하기 위함이다.
 if ($effective_treatment_id <= 0 && $effective_treatment !== '') {
     $_effective_tid_stmt = mysqli_prepare($connect,
         "SELECT id FROM gangnamunni_treatment_master WHERE name = ? AND is_active = 1 LIMIT 1");
@@ -104,11 +87,8 @@ if ($effective_treatment_id <= 0 && $effective_treatment !== '') {
     }
 }
 $region = isset($_GET['region']) ? trim($_GET['region']) : '';
-// 다중 지역 지원 (콤마 구분)
 $region_list = array_filter(array_map('trim', explode(',', $region)));
 
-// 정렬을 지정하지 않은 첫 진입은 관리자가 설정한 병원 노출 순서를 사용한다.
-// 기존 DB에 display_order가 아직 없어도 페이지가 중단되지 않도록 id 순으로 폴백한다.
 $hospital_display_order_column = false;
 $_hospital_order_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospitals LIKE 'display_order'");
 if ($_hospital_order_col && mysqli_num_rows($_hospital_order_col) > 0) $hospital_display_order_column = true;
@@ -121,8 +101,6 @@ switch($sort) {
     case 'popular': $order_clause = 'wishlist_count DESC, rating DESC, review_count DESC'; break;
     case 'review': $order_clause = 'review_count DESC, rating DESC'; break;
     case 'price':
-        // 0원/미등록 가격은 맨 뒤로 보낸다. 특정 시술을 검색한 경우에는
-        // 카드에 표시하는 병원별 시술 옵션 최저가와 같은 값으로 정렬한다.
         if ($effective_treatment_id > 0) {
             $price_sort_value = "COALESCE(
                 NULLIF((
@@ -147,7 +125,7 @@ switch($sort) {
         } else {
             $price_sort_value = 'COALESCE(NULLIF(min_price, 0), 2147483647)';
         }
-        $order_clause = $price_sort_value . ' ASC, rating DESC'; // 낮은 가격순
+        $order_clause = $price_sort_value . ' ASC, rating DESC';
         break;
     default:
         $order_clause = $hospital_display_order_column
@@ -156,25 +134,21 @@ switch($sort) {
         break;
 }
 
-// 스타일 설정
 $s = [];
 $style_q = mysqli_query($connect, "SELECT setting_key, setting_value FROM gangnamunni_settings WHERE setting_group='hospital_view_style'");
 if ($style_q) { while ($sr = mysqli_fetch_assoc($style_q)) $s[$sr['setting_key']] = $sr['setting_value']; }
 $sv = function($key, $default) use ($s) { return $s[$key] ?? $default; };
 
-// 스타일 변수
 $list_name   = $sv('hv_list_name_size', '15');
 $list_tag_s  = $sv('hv_list_tag_size', '11');
 $list_tag_c  = $sv('hv_list_tag_color', '#AE1932');
 
-// 병원 검색
 $hospitals = [];
 $base_where = "
     WHERE is_active=1
       AND COALESCE(is_demo, 0)=0
       AND (status='approved' OR status IS NULL)";
 if (!empty($keyword)) {
-    // 병원명/주소/태그뿐 아니라, 실제 배정된 시술명(gangnamunni_treatment_master)으로도 검색
     $resolved_treatment_condition = '';
     if ($effective_treatment_id > 0) {
         $resolved_treatment_condition = " OR id IN (
@@ -205,7 +179,6 @@ if (!empty($treatment)) {
 }
 
 if (!empty($region_list)) {
-    // 사용자가 직접 지역을 선택한 경우 — 해당 지역만, 지역 혼합 비율 미적용
     $region_conditions = [];
     foreach ($region_list as $r) {
         $r_esc = mysqli_real_escape_string($connect, $r);
@@ -217,9 +190,6 @@ if (!empty($region_list)) {
     $result = mysqli_query($connect, $query);
     if ($result) { while ($row = mysqli_fetch_assoc($result)) $hospitals[] = $row; }
 } else {
-    // 지역을 직접 선택하지 않은 경우 — 설정에 따라 대상 지역/그 외 지역 비율 혼합
-    // 사용자가 선택한 정렬은 전체 결과에 적용되어야 한다. 지역 블록을
-    // 인터리빙하면 각 블록 내 SQL 정렬이 깨지므로 정렬 목록에서는 혼합하지 않는다.
     $region_mix_enabled = false;
     $region_mix_target = trim(getSettingValue($connect, 'region_mix_target_region', ''));
     $region_mix_target_count = max(1, (int) getSettingValue($connect, 'region_mix_target_count', '10'));
@@ -242,7 +212,6 @@ if (!empty($region_list)) {
         $or_result = mysqli_query($connect, $other_query);
         if ($or_result) { while ($row = mysqli_fetch_assoc($or_result)) $other_list[] = $row; }
 
-        // 대상 지역 N개 + 그 외 지역 M개 블록을 반복하며 인터리빙, 한쪽이 소진되면 남은 쪽으로 채움
         $ti = 0; $oi = 0;
         while (($ti < count($target_list) || $oi < count($other_list)) && count($hospitals) < 100) {
             for ($i = 0; $i < $region_mix_target_count && $ti < count($target_list) && count($hospitals) < 100; $i++) {
@@ -260,8 +229,7 @@ if (!empty($region_list)) {
     }
 }
 
-// 시술 키워드 광고 슬롯: 이 시술에 대해 유료로 순위를 산 병원을 리스트 최상단에 고정
-$slot_hospital_context = []; // hospital_id => tracking context
+$slot_hospital_context = [];
 if (!empty($effective_treatment)) {
     $treatment_id_for_slot = $effective_treatment_id;
     if ($treatment_id_for_slot <= 0) {
@@ -271,7 +239,7 @@ if (!empty($effective_treatment)) {
         }
     }
 
-    $slot_hospital_ranks = []; // hospital_id => rank_position
+    $slot_hospital_ranks = []; 
     if ($treatment_id_for_slot > 0) {
         $_slot_sql = "
             SELECT b.id AS booking_id, b.hospital_id, p.id AS product_id,
@@ -307,7 +275,6 @@ if (!empty($effective_treatment)) {
         $_slot_h_rows = [];
         if ($_slot_h_r) { while ($_slot_h_row = mysqli_fetch_assoc($_slot_h_r)) { $_slot_h_rows[(int)$_slot_h_row['id']] = $_slot_h_row; } }
 
-        // rank_position 순서(ORDER BY)대로 상단 고정 — 뱃지는 표시하지 않음
         $ad_slot_hospitals = [];
         foreach (array_keys($slot_hospital_ranks) as $_hid) {
             if (isset($_slot_h_rows[$_hid])) {
@@ -316,7 +283,6 @@ if (!empty($effective_treatment)) {
         }
 
         if (!empty($ad_slot_hospitals)) {
-            // 일반 목록에서 슬롯에 이미 있는 병원을 제외해 중복 카드 방지
             $hospitals = array_values(array_filter($hospitals, function($h) use ($slot_hospital_ranks) {
                 return !isset($slot_hospital_ranks[(int)$h['id']]);
             }));
@@ -325,13 +291,8 @@ if (!empty($effective_treatment)) {
     }
 }
 
-// 병원별 대표 썸네일 조회 (hospital_images 의 '메인' 이미지 우선)
-// gangnamunni_hospitals.main_image_url 컬럼은 최초 등록 시점 값에 고정되어 있어
-// 관리자가 admin_hospital_images.php 에서 이미지를 바꿔도 반영되지 않는다.
-// hospital_images 에 image_type='main' 인 활성 이미지가 있으면 그것을 대표로 사용하고,
-// 없을 때만 기존 main_image_url/profile_image_url 로 폴백한다.
-$hospital_main_images = []; // hospital_id => image_url
-$hospital_logos = [];       // hospital_id => image_url (image_type='logo', 목록 전용)
+$hospital_main_images = [];
+$hospital_logos = [];       
 if (!empty($hospitals)) {
     $thumb_ids = array_column($hospitals, 'id');
     $thumb_ids_str = implode(',', array_map('intval', $thumb_ids));
@@ -346,7 +307,6 @@ if (!empty($hospitals)) {
             while ($_thumb_row = mysqli_fetch_assoc($_thumb_r)) {
                 $_thid = (int) $_thumb_row['hospital_id'];
                 if (empty($_thumb_row['image_url'])) continue;
-                // 병원당 첫(가장 낮은 sort_order) 이미지만 사용
                 if (($_thumb_row['image_type'] ?? '') === 'logo') {
                     if (!isset($hospital_logos[$_thid])) $hospital_logos[$_thid] = $_thumb_row['image_url'];
                 } else {
@@ -357,16 +317,10 @@ if (!empty($hospitals)) {
     }
 }
 
-// 병원별 대표 시술 설명 조회
-// [QA #2] ?treatment= 로 특정 시술 검색 중일 때만 그 시술의 가격을 보여준다.
-// 지역 검색이나 필터 없는 단순 목록에서는 어떤 시술을 대표로 보여줘야 할지 알 수 없으므로 표시하지 않는다.
 $hospital_treatment_descs = [];
 if (!empty($hospitals) && !empty($effective_treatment)) {
     $h_ids = array_column($hospitals, 'id');
     $h_ids_str = implode(',', array_map('intval', $h_ids));
-    // 병원이 admin_hospital_treatments 에서 설정한 가격(옵션)을 우선 사용한다.
-    //  - 옵션에 가격(>0)이 있으면: 판매가 최저 + 정가 최고
-    //  - 설정된 가격이 없으면: 기본 시술(마스터) 가격(avg_price_min~avg_price_max) 로 폴백
     $_td_sql = "
         SELECT ht.hospital_id, tm.name AS treatment_name, tm.description,
                ht.dosage_value, ht.dosage_unit,
@@ -393,11 +347,9 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
             $def_max    = (int)($_td_row['default_max'] ?? 0);
 
             if ($display_sale_price > 0) {
-                // 대표 옵션이 있으면 해당 옵션, 없으면 판매가가 가장 낮은 옵션의 가격 쌍.
                 $final_min = $display_sale_price;
                 $final_max = $display_regular_price > $display_sale_price ? $display_regular_price : 0;
             } else {
-                // 병원 미설정 → 기본 시술(마스터) 가격
                 $final_min = $def_min > 0 ? $def_min : $def_max;
                 $final_max = ($def_min > 0 && $def_max > $def_min) ? $def_max : 0;
             }
@@ -415,7 +367,7 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
 }
 
 $page_title = term('business');
-$show_search = true; // 메인과 동일한 공용 헤더 검색바(includes/header.php) 사용
+$show_search = true; 
 
 $page_css = '
     .results-header { margin-bottom: 16px; }
@@ -424,7 +376,6 @@ $page_css = '
     .search-filter-chip .chip-remove { cursor: pointer; font-size: 15px; line-height: 1; font-weight: 700; opacity: 0.9; }
     .search-filter-chip .chip-remove:hover { opacity: 1; }
 
-    /* 그리드 */
     .hospital-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: 100%; padding-inline: 16px; margin-bottom: 40px; box-sizing: border-box; }
     .hospital-card { background: var(--bs-body-bg, #fff); border-radius: 0px; overflow: hidden; box-shadow: none; position: relative; display: flex; flex-direction: column; }
     .hospital-card:hover { }
@@ -435,12 +386,10 @@ $page_css = '
     .hospital-address { font-size: 14px; font-weight: 400; color: var(--bs-body-color, #000000); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hospital-address * { font-size: 14px; }
 
-    /* 태그 - 가로 스크롤 */
     .badge-group { display: flex; gap: 6px; margin-top: 6px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 4px; scrollbar-width: none; }
     .badge-group::-webkit-scrollbar { display: none; }
     .tag-badge { display: inline-block; padding: 3px 10px; border: 1px solid currentColor; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
 
-    /* === 리스트형 (고정) === */
     .hospital-grid.list-view { grid-template-columns: 1fr; }
     .hospital-grid.list-view .hospital-card { flex-direction: row; }
     .hospital-grid.list-view .hospital-image { width: 100px; height: 100px; flex-shrink: 0; }
@@ -454,7 +403,6 @@ $page_css = '
     .no-result { text-align: center; padding: 80px 20px; color: var(--bs-secondary-color, #999); }
     .ad-card { text-decoration: none !important; }
     .ad-badge { position: absolute; top: 8px; right: 8px; background: #2E75B6; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; z-index: 5; }
-    /* 광고 등급 뱃지 (이미지 좌측 상단) */
     .grade-badge { position: absolute; top: 8px; left: 8px; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; z-index: 5; line-height: 1.4; }
     .grade-badge-sa { background: #DC3545; color: #fff; }
 
@@ -465,21 +413,19 @@ $page_css = '
 .card-tag-price { display: flex; flex-direction: column; gap: 0; margin-top: 6px; }
 .card-tag-item { font-size: 18px; font-weight: 700; color: #000; padding: 2px 0; text-align: left; }
 .card-price { width: 100%; text-align: left; font-size: 22px; line-height: 1; }
-.card-price-num { font-size: 22px; font-weight: 700; color: #AE1932; line-height: 1; }
-.card-price-unit { font-size: 22px; font-weight: 400; color: #000000; }
+.card-price-num { font-size: 20px; font-weight: 700; color: #AE1932; line-height: 1; }
+.card-price-unit { font-size: 20px; font-weight: 400; color: #000000; }
 .card-price-max { font-size: 22px; color: #858484; text-decoration: line-through; margin-right: 2px; }
 ';
 
 $page_js = '';
 
-// 메인과 동일한 헤더 검색바 스타일 적용 (지역 선택 버튼 pill + placeholder 정렬)
 $_fs_css_file = __DIR__ . '/assets/css/figma_sync_index.css';
 if (file_exists($_fs_css_file)) { $page_css .= "\n" . file_get_contents($_fs_css_file); }
 
 include __DIR__ . '/includes/header.php';
 ?>
     <script>
-    // localStorage 동기화: URL ↔ storage (지역, 정렬 — 뒤로가기로 돌아왔을 때 이전 선택 복원)
     (function() {
         var urlParams = new URLSearchParams(window.location.search);
         var url = new URL(window.location.href);
@@ -487,10 +433,8 @@ include __DIR__ . '/includes/header.php';
 
         var regionParam = urlParams.get('region');
         if (regionParam) {
-            // URL에 region 있으면 localStorage에 저장
             localStorage.setItem('sb_selected_regions', JSON.stringify(regionParam.split(',').filter(Boolean)));
         } else {
-            // URL에 region 없으면 localStorage에서 복원
             try {
                 var savedRegions = JSON.parse(localStorage.getItem('sb_selected_regions') || '[]');
                 if (savedRegions.length > 0) {
@@ -509,12 +453,9 @@ include __DIR__ . '/includes/header.php';
             window.location.replace(url.toString());
         }
     })();
-    // 검색바/지역 선택 UI + 로직은 includes/header.php 공용 컴포넌트가 담당
     </script>
 
-    <!-- 정렬 옵션 -->
     <div style="padding: 0 16px; margin-bottom: 8px; display: flex; justify-content: flex-start; align-items: center; gap: 8px;">
-        <!-- <label style="font-size:13px; color:var(--bs-secondary-color,#888);">정렬:</label> -->
         <div id="sortChips" style="display:flex; gap:6px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
             <button onclick="setSort('price')" class="sort-chip<?php echo $sort==='price' ? ' active' : ''; ?>"><img src="assets/icons/categories/<?php echo $sort==='price' ? 'low_price_2.svg' : 'low_price_1.png'; ?>" class="sort-chip-icon"> 낮은가격</button>
             <button onclick="setSort('rating')" class="sort-chip<?php echo $sort==='rating' ? ' active' : ''; ?>"><img src="assets/icons/categories/<?php echo $sort==='rating' ? 'rating_2.svg' : 'rating_1.png'; ?>" class="sort-chip-icon"> 평점</button>
@@ -528,7 +469,7 @@ include __DIR__ . '/includes/header.php';
         .sort-chip-icon { width:22px;height:22px;object-fit:contain;display:inline-block;vertical-align:middle; }
         .sort-chip.active { background:#FFFFFF;color:#000000;border:1px solid #000000;font-weight:600; }
         .sort-chip:hover:not(.active) { border-color:#000000;color:#000000; }
-        #sortChips::-webkit-scrollbar { display:none; } /* sortChips 가로스크롤 바 숨김 */
+        #sortChips::-webkit-scrollbar { display:none; } 
         @media (max-width:480px){
           .sort-chip { font-size:calc(14px * var(--fs-scale,1) * var(--fs-page,1)); padding:5px 9px; }
           .sort-chip i { font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1));width:18px;height:18px; }
@@ -554,7 +495,6 @@ include __DIR__ . '/includes/header.php';
 
     <?php if (!empty($hospitals)): ?>
 <?php
-// 리스트형 고정 — 뷰 전환 토글 제거 (카드형/리스트형 버튼 삭제)
 $_infeed_enabled = getSettingValue($connect, 'ad_show_hospitals_infeed', '1');
 $_infeed_interval = (int)getSettingValue($connect, 'ad_infeed_interval', '4');
 $_infeed_ads = [];
@@ -607,7 +547,6 @@ foreach ($hospitals as $hospital):
     endif;
     $__hi++;
 
-    // 특정 시술로 필터링해서 들어온 경우, 상세 페이지에서도 그 시술 정보로 바로 이동
     $_detail_url = 'detail.php?id=' . (int)$hospital['id']
         . '&return_url=' . rawurlencode($hospital_return_url);
     if (!empty($effective_treatment) && $effective_treatment_id > 0) {
@@ -641,7 +580,6 @@ foreach ($hospitals as $hospital):
                      class="hospital-image"
                      onerror="this.onerror=null;this.src='<?php echo $placeholder; ?>'">
                 <?php
-                // 유료 슬롯으로 상단 고정된 병원은 정렬 결과와 구분되도록 AD를 표시한다.
                 $ad_grade = $hospital['ad_grade'] ?? 'none';
                 if ($_slot_context || in_array($ad_grade, ['S', 'A'])): ?>
                 <span class="grade-badge grade-badge-sa">AD</span>
