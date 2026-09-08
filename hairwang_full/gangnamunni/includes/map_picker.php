@@ -18,6 +18,9 @@
  *   include __DIR__ . '/map_picker.php';
  */
 
+$pk_collapse_id = (string)($picker_config['collapse_id'] ?? '');
+$pk_collapse_attr = htmlspecialchars($pk_collapse_id, ENT_QUOTES, 'UTF-8');
+
 $pk_lat_field  = $picker_config['lat_field'] ?? 'latitude';
 $pk_lng_field  = $picker_config['lng_field'] ?? 'longitude';
 $pk_addr_field = $picker_config['addr_field'] ?? 'address';
@@ -124,12 +127,23 @@ $pk_use_kakao = !empty($pk_kakao_key);
 </style>
 
 <div class="mp-card mb-3">
+    <?php if ($pk_collapse_id !== ''): ?>
+    <button class="mp-card-head btn border-0 text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#<?= $pk_collapse_attr ?>" aria-controls="<?= $pk_collapse_attr ?>" aria-expanded="false">
+    <?php else: ?>
     <div class="mp-card-head">
+    <?php endif; ?>
         <i class="bi bi-geo-alt-fill"></i> 위치 정보
         <span class="mp-provider-badge <?php echo $pk_use_kakao ? 'kakao' : 'osm'; ?>">
             <?php echo $pk_use_kakao ? '카카오 지도' : 'OpenStreetMap'; ?>
         </span>
+    <?php if ($pk_collapse_id !== ''): ?>
+        <i class="bi bi-chevron-down"></i>
+    </button>
+    <?php else: ?>
     </div>
+    <?php endif; ?>
+
+    <?php if ($pk_collapse_id !== ''): ?><div class="collapse" id="<?= $pk_collapse_attr ?>"><?php endif; ?>
     <div class="mp-card-body">
         <!-- 주소 → 좌표 변환 -->
         <div class="mp-search">
@@ -175,6 +189,7 @@ $pk_use_kakao = !empty($pk_kakao_key);
             </div>
         </div>
     </div>
+    <?php if ($pk_collapse_id !== ''): ?></div><?php endif; ?>
 </div>
 
 <?php if ($pk_use_kakao): ?>
@@ -239,6 +254,8 @@ $pk_use_kakao = !empty($pk_kakao_key);
             moveMarker(p.getLat(), p.getLng(), false);
         });
 
+        var mapSection = document.getElementById('mpPickerMap').closest('.collapse');
+        if (mapSection) mapSection.addEventListener('shown.bs.collapse', function() { var center = map.getCenter(); map.relayout(); map.setCenter(center); });
         setTimeout(function(){ map.relayout(); map.setCenter(new kakao.maps.LatLng(lat, lng)); }, 300);
     }
 
@@ -358,6 +375,8 @@ $pk_use_kakao = !empty($pk_kakao_key);
             lmap.on('click', function(e) { lmarker.setLatLng(e.latlng); updateCoords(e.latlng.lat, e.latlng.lng); });
             var badge = document.querySelector('.card-header .badge');
             if (badge) { badge.textContent = 'OSM (카카오 로드 실패)'; badge.className = 'badge bg-secondary ms-2'; }
+            var mapSection = document.getElementById('mpPickerMap').closest('.collapse');
+            if (mapSection) mapSection.addEventListener('shown.bs.collapse', function() { lmap.invalidateSize(); });
             setTimeout(function(){ lmap.invalidateSize(); }, 300);
         }
         function getAddressInput() {
@@ -543,6 +562,8 @@ $pk_use_kakao = !empty($pk_kakao_key);
     }
 
     bindAddressSync();
+    var mapSection = document.getElementById('mpPickerMap').closest('.collapse');
+    if (mapSection) mapSection.addEventListener('shown.bs.collapse', function() { map.invalidateSize(); });
     setTimeout(function(){ map.invalidateSize(); }, 500);
 })();
 </script>

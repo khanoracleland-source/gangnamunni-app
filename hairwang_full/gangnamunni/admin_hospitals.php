@@ -872,8 +872,8 @@ $edit_json_list_value = static function ($raw) {
     <input type="hidden" name="hospital_id" value="<?php echo $hospital['id']; ?>">
 
     <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-pencil me-1"></i> 기본 정보 수정</div>
-        <div class="card-body">
+        <button class="card-header btn border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editBasicInfoSection" aria-controls="editBasicInfoSection" aria-expanded="false"><span><i class="bi bi-pencil me-1"></i> 기본 정보 수정</span><i class="bi bi-chevron-down"></i></button>
+        <div class="collapse" id="editBasicInfoSection"><div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">병원 이름 <span class="text-danger">*</span></label>
@@ -938,12 +938,12 @@ $edit_json_list_value = static function ($raw) {
                     <textarea name="introduction" class="form-control form-control-sm" rows="5" placeholder="병원의 특장점, 전문 분야, 진료 철학 등을 입력하세요."><?php echo htmlspecialchars($hospital['introduction'] ?? ''); ?></textarea>
                 </div>
             </div>
-        </div>
+        </div></div>
     </div>
 
     <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-tags me-1"></i> 카테고리 / 태그</div>
-        <div class="card-body">
+        <button class="card-header btn border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editCategoriesSection" aria-controls="editCategoriesSection" aria-expanded="false"><span><i class="bi bi-tags me-1"></i> 카테고리 / 태그</span><i class="bi bi-chevron-down"></i></button>
+        <div class="collapse" id="editCategoriesSection"><div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">카테고리 (쉼표 구분)</label>
@@ -970,7 +970,7 @@ $edit_json_list_value = static function ($raw) {
                            placeholder="강남역, 신논현역">
                 </div>
             </div>
-        </div>
+        </div></div>
     </div>
 
     <div class="card mb-3">
@@ -1118,6 +1118,7 @@ $edit_json_list_value = static function ($raw) {
 
     <?php
     $picker_config = [
+        'collapse_id' => 'editLocationSection',
         'lat_field'  => 'latitude',
         'lng_field'  => 'longitude',
         'addr_field' => 'address',
@@ -1127,15 +1128,11 @@ $edit_json_list_value = static function ($raw) {
     include __DIR__ . '/includes/map_picker.php';
     ?>
 
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>저장</button>
-        <a href="?view=<?php echo $hospital['id']; ?>" class="btn btn-secondary btn-sm">취소</a>
-    </div>
 </form>
 
 <div class="card mt-3">
-    <div class="card-header"><i class="bi bi-file-earmark-check me-1"></i><strong>제출 서류</strong></div>
-    <div class="card-body">
+    <button class="card-header btn border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editDocumentsSection" aria-controls="editDocumentsSection" aria-expanded="false"><span><i class="bi bi-file-earmark-check me-1"></i><strong>제출 서류</strong></span><i class="bi bi-chevron-down"></i></button>
+    <div class="collapse" id="editDocumentsSection"><div class="card-body">
         <div class="d-flex flex-wrap gap-2 mb-4">
             <?php foreach ([
                 ['사업자등록증', $hospital['cert_business'] ?? ''],
@@ -1148,7 +1145,7 @@ $edit_json_list_value = static function ($raw) {
                 <?php endif; ?>
             <?php endforeach; ?>
         </div>
-    </div>
+    </div></div>
 </div>
 
 <div class="card mt-3">
@@ -1278,13 +1275,13 @@ $edit_detail_slots_remaining = max(0, 10 - $edit_detail_image_count);
 
 
 <div class="card mt-3 border-info">
-    <div class="card-header bg-info bg-opacity-10">
+    <button class="card-header bg-info bg-opacity-10 btn border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editAiSettingsSection" aria-controls="editAiSettingsSection" aria-expanded="false"><span>
         <i class="bi bi-robot me-1"></i> AI 기능 설정
         <span class="badge bg-<?php echo (($hospital['ai_enabled'] ?? 0) == 1) ? 'success' : 'secondary'; ?> ms-2">
             <?php echo (($hospital['ai_enabled'] ?? 0) == 1) ? 'ON' : 'OFF'; ?>
         </span>
-    </div>
-    <div class="card-body">
+    </span><i class="bi bi-chevron-down"></i></button>
+    <div class="collapse" id="editAiSettingsSection"><div class="card-body">
         <form method="POST" action="?view=<?php echo $hospital['id']; ?>&edit=1">
             <input type="hidden" name="action" value="save_ai_settings">
             <input type="hidden" name="hospital_id" value="<?php echo $hospital['id']; ?>">
@@ -1336,7 +1333,12 @@ $edit_detail_slots_remaining = max(0, 10 - $edit_detail_image_count);
 
             <button type="submit" class="btn btn-info btn-sm"><i class="bi bi-check-lg me-1"></i>AI 설정 저장</button>
         </form>
-    </div>
+    </div></div>
+</div>
+
+<div class="d-flex gap-2 mt-4 mb-3">
+    <button type="submit" form="editHospitalForm" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>저장</button>
+    <a href="?view=<?php echo $hospital['id']; ?>" class="btn btn-secondary btn-sm">취소</a>
 </div>
 
 <?php else: ?>
@@ -1433,11 +1435,11 @@ $application_assets = [
 ];
 ?>
 <div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <button class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 btn border-0 text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#viewDocumentsSection" aria-controls="viewDocumentsSection" aria-expanded="false"><span>
         <span><i class="bi bi-file-earmark-check me-1"></i><strong>제출 서류</strong></span>
         <span class="small text-body-secondary">서류를 확인한 후 승인 또는 반려해 주세요.</span>
-    </div>
-    <div class="card-body">
+    </span><i class="bi bi-chevron-down"></i></button>
+    <div class="collapse" id="viewDocumentsSection"><div class="card-body">
         <div class="row g-3">
             <?php foreach ($application_assets as $asset):
                 $asset_path = trim($asset['path']);
@@ -1487,7 +1489,7 @@ $application_assets = [
             </div>
             <?php endforeach; ?>
         </div>
-    </div>
+    </div></div>
 </div>
 <?php endif; ?>
 
@@ -1691,8 +1693,8 @@ $application_assets = [
 </div>
 
 <div class="card mb-3">
-    <div class="card-header"><i class="bi bi-tags me-1"></i> 카테고리 / 태그</div>
-    <div class="card-body">
+    <button class="card-header btn border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#viewCategoriesSection" aria-controls="viewCategoriesSection" aria-expanded="false"><span><i class="bi bi-tags me-1"></i> 카테고리 / 태그</span><i class="bi bi-chevron-down"></i></button>
+    <div class="collapse" id="viewCategoriesSection"><div class="card-body">
         <div class="row g-3">
             <div class="col-md-6">
                 <div class="hospital-detail-label">카테고리</div>
@@ -1761,7 +1763,7 @@ $application_assets = [
                 </div>
             </div>
         </div>
-    </div>
+    </div></div>
 </div>
 
 <?php if (empty($hospital['applied_by']) && (!empty($hospital['profile_image_url']) || !empty($hospital['main_image_url']))): ?>
@@ -2179,6 +2181,19 @@ function bulkSubmit(action, extraData) {
     document.body.appendChild(form);
     form.submit();
 }
+
+// Reveal invalid fields before the browser tries to focus a collapsed section.
+document.addEventListener('invalid', function(event) {
+    var field = event.target;
+    var section = field.closest('.collapse:not(.show)');
+    if (!section || !field.closest('#editHospitalForm')) return;
+    event.preventDefault();
+    section.addEventListener('shown.bs.collapse', function() {
+        field.focus();
+        field.reportValidity();
+    }, { once: true });
+    bootstrap.Collapse.getOrCreateInstance(section, { toggle: false }).show();
+}, true);
 
 document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(function(form) {
     if (!form.querySelector('input[name="admin_csrf"]')) {
