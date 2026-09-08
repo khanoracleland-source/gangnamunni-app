@@ -10,14 +10,12 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/notification_helper.php';
-require_once __DIR__ . '/includes/hospital_treatment_images.php';
 require_once __DIR__ . '/includes/hospital_phone_helper.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
-hti_ensure_schema($connect);
 
 if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://hms.seoulbeauty.app/hairwang/gangnamunni/');
 
@@ -507,7 +505,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $placeholders = implode(',', $ids);
             mysqli_query($connect, "DELETE FROM hospital_images WHERE hospital_id IN ({$placeholders})");
             mysqli_query($connect, "DELETE FROM gangnamunni_hospital_revisions WHERE hospital_id IN ({$placeholders})");
-            $del_result = mysqli_query($connect, "DELETE FROM gangnamunni_hospitals WHERE id IN ({$placeholders})");
+            mysqli_query($connect, "DELETE FROM gangnamunni_hospitals WHERE id IN ({$placeholders})");
             $message = count($ids) . '개 병원이 삭제되었습니다.';
         }
     }
@@ -612,7 +610,6 @@ $view_mode = isset($_GET['view']) ? intval($_GET['view']) : 0;
 $edit_mode = isset($_GET['edit']) && $_GET['edit'] == '1';
 $hospital = null;
 $hospital_images = [];
-$application_treatments = [];
 $application_doctors = [];
 
 if ($view_mode > 0) {
@@ -636,71 +633,6 @@ if ($view_mode > 0) {
             $hospital_images[] = $img_row;
         }
         mysqli_stmt_close($img_stmt);
-
-        try {
-            $treatment_stmt = mysqli_prepare($connect,
-                "SELECT ht.id AS hospital_treatment_id, ht.treatment_id, ht.status,
-                        COALESCE(tm.name, CONCAT('시술 #', ht.treatment_id)) AS treatment_name,
-                        ti.id AS image_id, ti.image_url, ti.caption, ti.approval_status, ti.reject_reason
-                 FROM gangnamunni_hospital_treatments ht
-                 LEFT JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
-                 LEFT JOIN gangnamunni_hospital_treatment_images ti ON ti.hospital_treatment_id = ht.id
-                 WHERE ht.hospital_id = ?
-                 ORDER BY tm.name ASC, ti.sort_order ASC, ti.id ASC");
-            if ($treatment_stmt) {
-                mysqli_stmt_bind_param($treatment_stmt, 'i', $view_mode);
-                mysqli_stmt_execute($treatment_stmt);
-                $treatment_result = mysqli_stmt_get_result($treatment_stmt);
-                while ($row = mysqli_fetch_assoc($treatment_result)) {
-                    $ht_id = (int)$row['hospital_treatment_id'];
-                    if (!isset($application_treatments[$ht_id])) {
-                        $application_treatments[$ht_id] = [
-                            'treatment_id' => (int)$row['treatment_id'],
-                            'name' => $row['treatment_name'],
-                            'status' => $row['status'],
-                            'images' => [],
-                            'prices' => [],
-                        ];
-                    }
-                    if (!empty($row['image_url'])) {
-                        $application_treatments[$ht_id]['images'][] = [
-                            'url' => $row['image_url'],
-                            'caption' => $row['caption'] ?? '',
-                            'approval_status' => $row['approval_status'] ?? 'approved',
-                            'reject_reason' => $row['reject_reason'] ?? '',
-                        ];
-                    }
-                }
-                mysqli_stmt_close($treatment_stmt);
-            }
-        } catch (\mysqli_sql_exception $e) {
-            error_log('[admin_hospitals] 신청 시술 이미지 조회 실패: ' . $e->getMessage());
-        }
-
-        try {
-            $price_option_column = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'option_name'");
-            $price_option_select = ($price_option_column && mysqli_num_rows($price_option_column) > 0)
-                ? 'p.option_name' : "'' AS option_name";
-            $price_stmt = mysqli_prepare($connect,
-                "SELECT p.hospital_treatment_id, {$price_option_select}, p.dosage_value, p.dosage_unit, p.price
-                 FROM gangnamunni_hospital_treatment_prices p
-                 INNER JOIN gangnamunni_hospital_treatments ht ON ht.id = p.hospital_treatment_id
-                 WHERE ht.hospital_id = ? ORDER BY p.hospital_treatment_id, p.sort_order, p.id");
-            if ($price_stmt) {
-                mysqli_stmt_bind_param($price_stmt, 'i', $view_mode);
-                mysqli_stmt_execute($price_stmt);
-                $price_result = mysqli_stmt_get_result($price_stmt);
-                while ($price_row = mysqli_fetch_assoc($price_result)) {
-                    $price_ht_id = (int)$price_row['hospital_treatment_id'];
-                    if (isset($application_treatments[$price_ht_id])) {
-                        $application_treatments[$price_ht_id]['prices'][] = $price_row;
-                    }
-                }
-                mysqli_stmt_close($price_stmt);
-            }
-        } catch (\mysqli_sql_exception $e) {
-            error_log('[admin_hospitals] 신청 시술 가격 조회 실패: ' . $e->getMessage());
-        }
 
         try {
             $doctor_stmt = mysqli_prepare($connect,
@@ -837,13 +769,11 @@ $admin_extra_css = '
 .hospital-stat-card.active-filter { box-shadow: 0 0 0 2px var(--bs-primary); }
 .hospital-detail-label { font-size: 12px; font-weight: 600; color: var(--bs-secondary-color); margin-bottom: 2px; }
 .hospital-detail-value { font-size: 14px; margin-bottom: 12px; }
-.hospital-img-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--bs-border-color); }
 .hospital-img-large { max-width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; }
 .application-asset { height: 100%; border: 1px solid var(--bs-border-color); border-radius: 10px; overflow: hidden; background: var(--bs-body-bg); }
 .application-asset-preview { height: 210px; display: flex; align-items: center; justify-content: center; background: var(--bs-tertiary-bg); overflow: hidden; }
 .application-asset-preview img { width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
 .application-asset-missing { color: var(--bs-secondary-color); text-align: center; }
-.application-treatment-image { width: 100%; height: 150px; object-fit: cover; cursor: pointer; border-radius: 8px; border: 1px solid var(--bs-border-color); }
 
 .category-badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
 .tag-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; }

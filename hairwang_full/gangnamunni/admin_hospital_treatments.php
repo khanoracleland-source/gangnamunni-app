@@ -97,10 +97,6 @@ if ($my_ids !== null && !in_array($hospital_id, $my_ids, true)) {
     $hospital_id = $my_ids[0] ?? 0;
 }
 
-$categories = [];
-$cat_r = mysqli_query($connect, "SELECT * FROM gangnamunni_treatment_categories WHERE is_active = 1 ORDER BY sort_order ASC, id ASC");
-if ($cat_r) while ($c = mysqli_fetch_assoc($cat_r)) $categories[$c['id']] = $c;
-
 $treatment_mgmt_mode = 'both';
 $set_r = mysqli_query($connect, "SELECT `key`, `value` FROM settings WHERE `key` = 'treatment_mgmt_mode'");
 if ($set_r) while ($s = mysqli_fetch_assoc($set_r)) {
@@ -258,7 +254,6 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
                 $msg = "{$added}개 시술이 배정되었습니다.";
                 if ($skipped > 0) $msg .= " (이미 배정된 {$skipped}개 건너뜀)";
                 ht_redirect($post_hospital_id, $msg);
-                exit;
             }
         }
 
@@ -396,7 +391,6 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
                     ht_redirect($post_hospital_id, '가격 저장에 실패했습니다. 기존 가격은 유지됩니다.', 'danger');
                 }
                 ht_redirect($post_hospital_id, '가격이 수정되었습니다.');
-                exit;
             }
         }
 
@@ -409,7 +403,6 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
                 mysqli_stmt_execute($stmt);
                 mysqli_stmt_close($stmt);
                 ht_redirect($post_hospital_id, '프로모션 상태가 변경되었습니다.');
-                exit;
             }
         }
 
@@ -475,7 +468,6 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
                             mysqli_stmt_close($ins);
                             $image_message = $image_status === 'pending' ? '시술 이미지가 등록되었으며 최고관리자 검수 후 공개됩니다.' : '시술 이미지가 등록되었습니다.';
                             ht_redirect($post_hospital_id, $image_message);
-                            exit;
                         }
                         $msg = '이미지 등록에 실패했습니다.';
                         $msg_type = 'danger';
@@ -512,7 +504,6 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
                     if (is_file($path)) @unlink($path);
                 }
                 ht_redirect($post_hospital_id, '시술 이미지가 삭제되었습니다.');
-                exit;
             }
         }
 
@@ -587,8 +578,7 @@ if (!$ht_panel && !empty($_GET['msg'])) {
 }
 
 $assigned_treatments = [];
-$pending_treatments = [];
-$stats = ['total_assigned' => 0, 'pending' => 0, 'promoted' => 0];
+$stats = ['total_assigned' => 0, 'promoted' => 0];
 $selected_hospital_name = '';
 
 if ($hospital_id > 0) {
@@ -601,7 +591,6 @@ if ($hospital_id > 0) {
 
     $stat_sql = "SELECT
         COUNT(CASE WHEN status = 'active' THEN 1 END) AS total_assigned,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending,
         COUNT(CASE WHEN is_promoted = 1 AND status = 'active' THEN 1 END) AS promoted
         FROM gangnamunni_hospital_treatments WHERE hospital_id = ? AND is_active = 1";
     $stat_stmt = mysqli_prepare($connect, $stat_sql);
@@ -610,23 +599,9 @@ if ($hospital_id > 0) {
     $stat_r = mysqli_stmt_get_result($stat_stmt);
     if ($s = mysqli_fetch_assoc($stat_r)) {
         $stats['total_assigned'] = intval($s['total_assigned']);
-        $stats['pending'] = intval($s['pending']);
         $stats['promoted'] = intval($s['promoted']);
     }
     mysqli_stmt_close($stat_stmt);
-
-    $pend_sql = "SELECT ht.*, tm.name AS treatment_name, tm.hashtag, tc.name AS category_name
-        FROM gangnamunni_hospital_treatments ht
-        LEFT JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
-        LEFT JOIN gangnamunni_treatment_categories tc ON tm.category_id = tc.id
-        WHERE ht.hospital_id = ? AND ht.status = 'pending' AND ht.is_active = 1
-        ORDER BY ht.created_at DESC";
-    $pend_stmt = mysqli_prepare($connect, $pend_sql);
-    mysqli_stmt_bind_param($pend_stmt, 'i', $hospital_id);
-    mysqli_stmt_execute($pend_stmt);
-    $pend_r = mysqli_stmt_get_result($pend_stmt);
-    while ($row = mysqli_fetch_assoc($pend_r)) $pending_treatments[] = $row;
-    mysqli_stmt_close($pend_stmt);
 
     $assign_sql = "SELECT ht.*, tm.name AS treatment_name, tm.hashtag, tc.name AS category_name, tc.id AS cat_id
         FROM gangnamunni_hospital_treatments ht
@@ -693,20 +668,16 @@ if ($hospital_id > 0) {
 
 $global_stats = [];
 $top_hospitals = [];
-$global_pending_count = 0;
 if ($hospital_id <= 0 && $my_ids === null) {
     $gs_r = mysqli_query($connect, "SELECT
         COUNT(DISTINCT hospital_id) AS hospital_count,
         COUNT(*) AS total_assignments,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending_count,
         COUNT(CASE WHEN status = 'active' AND is_promoted = 1 THEN 1 END) AS promoted_count
         FROM gangnamunni_hospital_treatments");
     if ($gs_r) $global_stats = mysqli_fetch_assoc($gs_r);
-    $global_pending_count = intval($global_stats['pending_count'] ?? 0);
 
     $top_sql = "SELECT h.id, h.name, COUNT(ht.id) AS treatment_count,
-        COUNT(CASE WHEN ht.is_promoted = 1 THEN 1 END) AS promoted_count,
-        COUNT(CASE WHEN ht.status = 'pending' THEN 1 END) AS pending_count
+        COUNT(CASE WHEN ht.is_promoted = 1 THEN 1 END) AS promoted_count
         FROM gangnamunni_hospital_treatments ht
         JOIN gangnamunni_hospitals h ON ht.hospital_id = h.id
         WHERE ht.status = 'active'
@@ -920,60 +891,6 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
         </div>
     </div>
 
-    <?php if (false):  ?>
-    <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
-        <div class="card-header bg-warning bg-opacity-10">
-            <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>승인 대기 시술 (<?php echo count($pending_treatments); ?>건)</h6>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>시술명</th>
-                        <th>카테고리</th>
-                        <th class="text-center">해시태그</th>
-                        <th class="text-center">가격</th>
-                        <th class="text-center">등록자</th>
-                        <th class="text-center">신청일</th>
-                        <th class="text-center" style="width:200px;">관리</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($pending_treatments as $pt): ?>
-                    <tr>
-                        <td><strong><?php echo htmlspecialchars($pt['treatment_name'] ?? '(삭제됨)'); ?></strong></td>
-                        <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($pt['category_name'] ?? '-'); ?></span></td>
-                        <td class="text-center"><small class="text-muted"><?php echo htmlspecialchars($pt['hashtag'] ?? ''); ?></small></td>
-                        <td class="text-center"><span class="text-muted">-</span></td>
-                        <td class="text-center"><span class="badge bg-<?php echo $pt['registered_by'] === 'admin' ? 'primary' : 'success'; ?>"><?php echo $pt['registered_by'] === 'admin' ? '관리자' : '병원'; ?></span></td>
-                        <td class="text-center"><small><?php echo substr($pt['created_at'] ?? '', 0, 16); ?></small></td>
-                        <td class="text-center">
-                            <?php if ($is_platform_approver): ?>
-                            <!-- 승인 -->
-                            <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" class="d-inline">
-                                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                                <input type="hidden" name="action" value="approve">
-                                <input type="hidden" name="id" value="<?php echo intval($pt['id']); ?>">
-                                <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
-                                <button type="submit" class="btn btn-success btn-sm" title="승인"><i class="bi bi-check-lg"></i> 승인</button>
-                            </form>
-                            <!-- 거절 -->
-                            <button type="button" class="btn btn-danger btn-sm" title="거절"
-                                onclick="openRejectModal(<?php echo intval($pt['id']); ?>, '<?php echo htmlspecialchars(addslashes($pt['treatment_name'] ?? ''), ENT_QUOTES); ?>')">
-                                <i class="bi bi-x-lg"></i> 거절
-                            </button>
-                            <?php else: ?>
-                            <span class="text-muted small">최고관리자 검토 대기</span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <?php endif; ?>
-
     <!-- ===== 배정 시술 테이블 ===== -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
@@ -1164,79 +1081,6 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
         </div>
     </div>
 
-    <!-- ===== 승인 이력 섹션 ===== -->
-    <?php
-    $approval_logs = [];
-    if ($hospital_id > 0) {
-        $log_sql = "SELECT al.*, tm.name AS treatment_name, tm.hashtag
-            FROM gangnamunni_treatment_approval_log al
-            LEFT JOIN gangnamunni_treatment_master tm ON al.treatment_id = tm.id
-            WHERE al.hospital_id = ?
-            ORDER BY al.created_at DESC
-            LIMIT 50";
-        $log_stmt = mysqli_prepare($connect, $log_sql);
-        if ($log_stmt) {
-            mysqli_stmt_bind_param($log_stmt, 'i', $hospital_id);
-            mysqli_stmt_execute($log_stmt);
-            $log_r = mysqli_stmt_get_result($log_stmt);
-            while ($row = mysqli_fetch_assoc($log_r)) $approval_logs[] = $row;
-            mysqli_stmt_close($log_stmt);
-        }
-    }
-    if (false): 
-    ?>
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-transparent">
-            <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>승인 처리 이력 (최근 50건)</h6>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width:160px;">일시</th>
-                        <th>시술명</th>
-                        <th class="text-center" style="width:100px;">처리</th>
-                        <th class="text-center" style="width:120px;">이전 상태</th>
-                        <th class="text-center" style="width:120px;">변경 상태</th>
-                        <th>사유</th>
-                        <th class="text-center" style="width:100px;">처리자</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($approval_logs as $log):
-                        $action_badges = [
-                            'submitted' => '<span class="badge bg-info">제출</span>',
-                            'approved' => '<span class="badge bg-success">승인</span>',
-                            'rejected' => '<span class="badge bg-danger">거절</span>',
-                            'resubmitted' => '<span class="badge bg-warning text-dark">재제출</span>',
-                            'cancelled' => '<span class="badge bg-secondary">취소</span>',
-                        ];
-                        $status_labels = [
-                            'pending' => '<span class="badge bg-warning text-dark">대기</span>',
-                            'active' => '<span class="badge bg-success">활성</span>',
-                            'rejected' => '<span class="badge bg-danger">거절</span>',
-                        ];
-                    ?>
-                    <tr>
-                        <td><small><?php echo substr($log['created_at'] ?? '', 0, 19); ?></small></td>
-                        <td>
-                            <strong><?php echo htmlspecialchars($log['treatment_name'] ?? '(삭제됨)'); ?></strong>
-                            <?php if (!empty($log['hashtag'])): ?>
-                            <small class="text-primary ms-1"><?php echo htmlspecialchars($log['hashtag']); ?></small>
-                            <?php endif; ?>
-                        </td>
-                        <td class="text-center"><?php echo $action_badges[$log['action']] ?? htmlspecialchars($log['action']); ?></td>
-                        <td class="text-center"><?php echo $status_labels[$log['old_status'] ?? ''] ?? '<span class="text-muted">-</span>'; ?></td>
-                        <td class="text-center"><?php echo $status_labels[$log['new_status'] ?? ''] ?? htmlspecialchars($log['new_status'] ?? '-'); ?></td>
-                        <td><small class="text-muted"><?php echo htmlspecialchars(mb_substr($log['reason'] ?? '', 0, 50, 'UTF-8')); ?></small></td>
-                        <td class="text-center"><small><?php echo htmlspecialchars($log['admin_name'] ?? $log['hospital_user'] ?? '-'); ?></small></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <?php endif; ?>
 
 <?php endif; ?>
 </div>
@@ -1298,7 +1142,7 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
                     <input type="hidden" name="action" value="image_add">
                     <input type="hidden" name="id" id="ti_ht_id">
                     <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
-                    <div class="row g-2 align-items-end">
+                    <div class="row g-2 align-items-start">
                         <div class="col-md-5">
                             <label class="form-label fw-bold small mb-1">이미지 파일</label>
                             <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.gif,.webp" class="form-control form-control-sm">
@@ -1629,12 +1473,6 @@ function openPriceModal(id, name) {
     if (!list.length) list = [{dosage_value:'', dosage_unit:'회', regular_price:'', price:'', body_part:'', is_representative:0}];
     list.forEach(function(o){ addPriceRow(o.dosage_value, o.dosage_unit, o.regular_price, o.price, o.option_name, o.body_part, Number(o.is_representative) === 1); });
     new bootstrap.Modal(document.getElementById('priceModal')).show();
-}
-
-function openRejectModal(id, name) {
-    document.getElementById('reject_id').value = id;
-    document.getElementById('reject_treatment_name').textContent = name;
-    new bootstrap.Modal(document.getElementById('rejectModal')).show();
 }
 
 function filterCategory(e, catId) {

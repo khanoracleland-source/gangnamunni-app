@@ -14,10 +14,6 @@ if (($argv[1] ?? '') === '--redirect') {
     \PanelRedirectTest\ht_redirect(8438, 'Saved option', 'warning');
 }
 $template = substr($source, strpos($source, '$ht_form_action ='));
-// The approval history is disabled in the page; omit its database query in this fixture.
-$logStart = strpos($template, '    $approval_logs = [];');
-$logEnd = strpos($template, '    if (false):', $logStart);
-$template = substr_replace($template, '    $approval_logs = [];'."\n", $logStart, $logEnd - $logStart);
 function ht_price_won($price) { return (int)$price; }
 function expect_panel($condition, $message) {
     if (!$condition) throw new RuntimeException($message);
