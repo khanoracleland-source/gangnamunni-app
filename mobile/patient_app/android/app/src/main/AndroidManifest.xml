@@ -21,6 +21,8 @@
     <application
         android:label="서울미녀"
         android:name="${applicationName}"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:requestLegacyExternalStorage="true"
         tools:replace="android:label"
         android:icon="@mipmap/ic_launcher"

@@ -1,3 +1,6 @@
+import 'package:http/testing.dart';
+import 'package:http/http.dart' as http;
+import 'package:kivicare_patient/services/native_auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,7 +11,8 @@ void main() {
   const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
 
   for (final failedOperation in ['read', 'write']) {
-    testWidgets('storage $failedOperation failure allows retry without clearing tokens',
+    testWidgets(
+        'storage $failedOperation failure allows retry without clearing tokens',
         (tester) async {
       final calls = <String>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -24,17 +28,22 @@ void main() {
             .setMockMethodCallHandler(channel, null);
       });
 
-      await tester.pumpWidget(const MaterialApp(
-        home: AppAuthGateScreen(url: 'https://hms.seoulbeauty.app/hairwang/gangnamunni/'),
+      await tester.pumpWidget(MaterialApp(
+        home: AppAuthGateScreen(
+            url: 'https://hms.seoulbeauty.app/hairwang/gangnamunni/',
+            authService: NativeAuthService.testing(
+                client: MockClient((_) async => http.Response('', 500)))),
       ));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.widgetWithText(ElevatedButton, '다시 시도'), findsOneWidget);
-      final attempts = calls.where((method) => method == failedOperation).length;
+      final attempts =
+          calls.where((method) => method == failedOperation).length;
       await tester.tap(find.widgetWithText(ElevatedButton, '다시 시도'));
       await tester.pumpAndSettle();
-      expect(calls.where((method) => method == failedOperation).length, attempts + 1);
+      expect(calls.where((method) => method == failedOperation).length,
+          attempts + 1);
       expect(calls, isNot(contains('deleteAll')));
       expect(calls, isNot(contains('delete')));
       expect(tester.takeException(), isNull);

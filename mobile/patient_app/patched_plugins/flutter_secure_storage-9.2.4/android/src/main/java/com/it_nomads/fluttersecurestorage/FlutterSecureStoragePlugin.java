@@ -180,7 +180,9 @@ public class FlutterSecureStoragePlugin implements MethodCallHandler, FlutterPlu
                         break;
                 }
             } catch (FileNotFoundException e) {
-                Log.i("Creating sharedPrefs", e.getLocalizedMessage());
+                // Every MethodChannel call must complete; otherwise startup
+                // can spin forever waiting for a storage read/write.
+                handleException(e);
             } catch (Exception e) {
                 if (resetOnError) {
                     try {

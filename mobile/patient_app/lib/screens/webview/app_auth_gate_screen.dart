@@ -15,8 +15,10 @@ import 'startup_webview_screen.dart';
 class AppAuthGateScreen extends StatefulWidget {
   final String url;
   final String type;
+  final NativeAuthService? authService;
 
-  const AppAuthGateScreen({Key? key, required this.url, this.type = 'general'}) : super(key: key);
+  const AppAuthGateScreen(
+      {super.key, required this.url, this.type = 'general', this.authService});
 
   @override
   State<AppAuthGateScreen> createState() => _AppAuthGateScreenState();
@@ -27,6 +29,7 @@ class _AppAuthGateScreenState extends State<AppAuthGateScreen> {
   bool _showRetry = false;
   String? _deviceId;
   String? _sessionBridgeToken;
+  int _webViewGeneration = 0;
 
   @override
   void initState() {
@@ -38,33 +41,43 @@ class _AppAuthGateScreenState extends State<AppAuthGateScreen> {
     setState(() {
       _loading = true;
       _showRetry = false;
+      _webViewGeneration++;
     });
 
     try {
-      final deviceId = await NativeAuthService.instance.getOrCreateDeviceId();
-      final result = await NativeAuthService.instance.resolveAuthState();
+      final auth = widget.authService ?? NativeAuthService.instance;
+      final deviceId = await auth.getOrCreateDeviceId();
+      final result = await auth.resolveAuthState();
+      if (result.errorMessage != null) {
+        // Diagnostic only (auth_changed/verify_unavailable/refresh_invalid/...) —
+        // the status enum alone already drives every behavioral decision below.
+        debugPrint(
+            '[AppAuthGateScreen] resolveAuthState: ${result.status} (${result.errorMessage})');
+      }
 
-      if (result.status == NativeAuthStatus.needsLogin) {
-        // The native verdict is "logged out". If the WebView's own cookie jar
-        // still holds a legacy ck_mb_id/ck_auto/sb_sso_token, common.php's
-        // cookie-based auto-login would otherwise silently restore a session
-        // this screen just decided should not exist — the user would end up
-        // looking logged in despite the refresh token having been rejected.
-        try {
-          await WebViewCookieManager().clearCookies();
-        } catch (_) {
-          // Best effort — worst case the legacy cookie flow behaves as before.
-        }
+      if (result.status == NativeAuthStatus.needsLogin ||
+          result.status == NativeAuthStatus.valid) {
+        // A verified native account is authoritative. A stale PHPSESSID for
+        // another account would otherwise bypass the injected bridge token.
+        // Clear before restoring the verified account, or after rejection.
+        // noStoredSession and retry preserve the cookie-only fallback.
+        // If clearing fails, the outer catch shows retry rather than opening
+        // a rejected account through stale cookies.
+        await WebViewCookieManager().clearCookies();
       }
 
       if (!mounted) return;
 
       setState(() {
         _loading = false;
-        _deviceId = deviceId;
+        // Let old cookie-only installs restore their original device binding.
+        // The authenticated exchange then adopts that id into secure storage.
+        _deviceId =
+            result.status == NativeAuthStatus.noStoredSession ? null : deviceId;
         _showRetry = result.status == NativeAuthStatus.retry;
-        _sessionBridgeToken =
-            result.status == NativeAuthStatus.valid ? result.sessionBridgeToken : null;
+        _sessionBridgeToken = result.status == NativeAuthStatus.valid
+            ? result.sessionBridgeToken
+            : null;
       });
     } catch (_) {
       // Secure storage can fail before resolveAuthState handles errors.
@@ -94,14 +107,16 @@ class _AppAuthGateScreenState extends State<AppAuthGateScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey),
+                  const Icon(Icons.wifi_off_rounded,
+                      size: 48, color: Colors.grey),
                   const SizedBox(height: 16),
                   const Text(
                     '로그인 상태를 확인하지 못했습니다.\n잠시 후 다시 시도해주세요.',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
-                  ElevatedButton(onPressed: _resolve, child: const Text('다시 시도')),
+                  ElevatedButton(
+                      onPressed: _resolve, child: const Text('다시 시도')),
                 ],
               ),
             ),
@@ -113,10 +128,13 @@ class _AppAuthGateScreenState extends State<AppAuthGateScreen> {
     // needsLogin이든 valid든 결국 같은 WebView 화면이다 — 차이는 로그인된
     // 상태로 열리는지(sessionBridgeToken 주입) 여부뿐이다.
     return StartupWebViewScreen(
+      key: ValueKey(_webViewGeneration),
       url: widget.url,
       type: widget.type,
       deviceId: _deviceId,
       sessionBridgeToken: _sessionBridgeToken,
+      onAuthRetry: _resolve,
+      authService: widget.authService,
     );
   }
 }

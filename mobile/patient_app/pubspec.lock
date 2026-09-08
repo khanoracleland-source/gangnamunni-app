@@ -581,7 +581,7 @@ packages:
     source: sdk
     version: "0.0.0"
   flutter_native_splash:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       path: "patched_plugins/flutter_native_splash-2.4.4"
       relative: true
@@ -614,7 +614,7 @@ packages:
     source: hosted
     version: "2.0.33"
   flutter_secure_storage:
-    dependency: "direct overridden"
+    dependency: "direct main"
     description:
       path: "patched_plugins/flutter_secure_storage-9.2.4"
       relative: true

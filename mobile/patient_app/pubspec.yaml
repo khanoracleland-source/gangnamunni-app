@@ -15,6 +15,9 @@ dependencies:
   google_fonts: ^6.3.2
   html: ^0.15.6
   http: ^1.6.0
+  flutter_secure_storage: ^9.2.4
+  # This local plugin is registered by the Android engine in release builds.
+  flutter_native_splash: ^2.4.7
   intl: ^0.20.2
   cached_network_image: ^3.4.1
   url_launcher: ^6.3.2
@@ -128,7 +131,6 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
-  flutter_native_splash: ^2.4.7
 
 dependency_overrides:
   flutter_native_splash:

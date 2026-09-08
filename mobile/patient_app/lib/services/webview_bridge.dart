@@ -11,6 +11,7 @@ import '../configs.dart';
 import '../utils/app_common.dart';
 import 'deep_link_service.dart';
 import 'native_auth_service.dart';
+import 'package:nb_utils/nb_utils.dart' show toast;
 
 /// WebView <-> Flutter 양방향 통신 브릿지 (환자 앱)
 ///
@@ -79,6 +80,7 @@ class WebViewBridge {
 
   /// WebView 페이지 새로고침 콜백 (PullToRefresh 채널용)
   final VoidCallback? onRefreshRequested;
+  final NativeAuthService _auth;
 
   /// 토큰 요청 시 커스텀 핸들러 (null이면 기본 loginUserData.apiToken 사용)
   final Future<String> Function()? tokenProvider;
@@ -97,7 +99,8 @@ class WebViewBridge {
     this.onRefreshRequested,
     this.tokenProvider,
     this.onShareRequested,
-  });
+    NativeAuthService? authService,
+  }) : _auth = authService ?? NativeAuthService.instance;
 
   // -------------------------------------------------------------------
   // JavaScript 채널 생성
@@ -110,13 +113,13 @@ class WebViewBridge {
   /// final bridge = WebViewBridge(controller: controller);
   /// bridge.registerChannels();
   /// ```
-  void registerChannels() {
-    controller.addJavaScriptChannel(
+  Future<void> registerChannels() async {
+    await controller.addJavaScriptChannel(
       'FlutterBridge',
       onMessageReceived: _handleFlutterBridgeMessage,
     );
 
-    controller.addJavaScriptChannel(
+    await controller.addJavaScriptChannel(
       'PullToRefresh',
       onMessageReceived: (JavaScriptMessage message) {
         if (message.message == 'refresh') {
@@ -137,18 +140,16 @@ class WebViewBridge {
 
   /// FlutterBridge 채널로 수신된 JSON 메시지를 파싱하고 적절한 액션을 수행
   void _handleFlutterBridgeMessage(JavaScriptMessage message) async {
-    _log('FlutterBridge 메시지 수신: ${message.message}');
-
     Map<String, dynamic> data;
     try {
       data = jsonDecode(message.message) as Map<String, dynamic>;
     } catch (e) {
-      _log('JSON 파싱 실패: $e (원본: ${message.message})');
+      _log('Invalid bridge message');
       return;
     }
 
-    final String? action = data['action'] as String?;
-    if (action == null || action.isEmpty) {
+    final action = data['action'];
+    if (action is! String || action.isEmpty) {
       _log('action 필드가 없거나 비어 있음');
       return;
     }
@@ -234,13 +235,48 @@ class WebViewBridge {
       _log('authExchange 거부: 신뢰되지 않은 origin');
       return;
     }
-    final String? code = data['code'] as String?;
-    if (code == null || code.isEmpty) {
+    final code = data['code'];
+    if (code is! String || code.isEmpty) {
       _log('authExchange 액션에 code가 없음');
       return;
     }
-    final ok = await NativeAuthService.instance.exchangeCode(code);
+    final device = data['device_id'];
+    if (device != null && device is! String) return;
+    final ok = await _auth.exchangeCode(code, deviceId: device as String?);
     _log('authExchange 결과: $ok');
+    if (!ok) {
+      toast('로그인 유지 설정을 완료하지 못했습니다. 인터넷 연결을 확인한 후 새로고침해주세요.');
+    }
+  }
+
+  /// A login can finish outside the 60-second page-emission window. Recover
+  /// from the authenticated WebView on page completion instead of waiting
+  /// for another manual login. The server only returns a short-lived code.
+  Future<void> recoverNativeSession() async {
+    try {
+      if (!await _isFromTrustedOrigin() || await _auth.hasStoredSession) {
+        return;
+      }
+      final current = Uri.tryParse(await controller.currentUrl() ?? '');
+      if (current?.queryParameters.containsKey('app_logout') == true) return;
+      await controller.runJavaScript('''
+        (function() {
+          if (window.__nativeAuthBootstrapPending) return;
+          window.__nativeAuthBootstrapPending = true;
+          fetch('/hairwang/gangnamunni/api/app_auth_bootstrap.php', {
+            method: 'POST', credentials: 'same-origin', cache: 'no-store',
+            headers: {'X-Native-Auth': '1'}
+          }).then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+              if (data && data.success && data.code && window.FlutterBridge) {
+                FlutterBridge.postMessage(JSON.stringify({action: 'authExchange', code: data.code, device_id: data.device_id}));
+              }
+            }).catch(function() {}).finally(function() { window.__nativeAuthBootstrapPending = false; });
+        })();
+      ''');
+    } catch (_) {
+      _log('Native session recovery unavailable; next page can retry');
+    }
   }
 
   /// logout 액션: 웹 페이지에서 로그아웃했을 때 네이티브 토큰도 함께 폐기한다.
@@ -249,8 +285,13 @@ class WebViewBridge {
       _log('logout 거부: 신뢰되지 않은 origin');
       return;
     }
-    await NativeAuthService.instance.logout();
-    _log('네이티브 토큰 로그아웃 완료');
+    try {
+      await _auth.logout();
+      _log('네이티브 토큰 로그아웃 완료');
+    } catch (_) {
+      _log('Native logout could not be saved');
+      toast('로그아웃 상태를 저장하지 못했습니다. 다시 시도해주세요.');
+    }
   }
 
   // -------------------------------------------------------------------

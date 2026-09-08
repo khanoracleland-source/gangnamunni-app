@@ -33,7 +33,6 @@ public class FlutterSecureStorage {
     private SharedPreferences preferences;
     private StorageCipher storageCipher;
     private StorageCipherFactory storageCipherFactory;
-    private Boolean failedToUseEncryptedSharedPreferences = false;
 
     public FlutterSecureStorage(Context context, Map<String, Object> options) {
         this.options = options;
@@ -54,9 +53,6 @@ public class FlutterSecureStorage {
 
     @SuppressWarnings({"ConstantConditions"})
     private boolean getUseEncryptedSharedPreferences() {
-        if (failedToUseEncryptedSharedPreferences) {
-            return false;
-        }
         return options.containsKey("encryptedSharedPreferences") && options.get("encryptedSharedPreferences").equals("true") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M;
     }
 
@@ -114,7 +110,9 @@ public class FlutterSecureStorage {
             byte[] result = storageCipher.encrypt(value.getBytes(charset));
             editor.putString(key, Base64.encodeToString(result, 0));
         }
-        editor.apply();
+        // MethodRunner already runs on a worker thread. Do not acknowledge
+        // credentials until Android has committed them to disk.
+        if (!editor.commit()) throw new IllegalStateException("Secure storage commit failed");
     }
 
     public void delete(String key) {
@@ -122,7 +120,7 @@ public class FlutterSecureStorage {
 
         SharedPreferences.Editor editor = preferences.edit();
         editor.remove(key);
-        editor.apply();
+        if (!editor.commit()) throw new IllegalStateException("Secure storage delete failed");
     }
 
     public void deleteAll() {
@@ -133,7 +131,7 @@ public class FlutterSecureStorage {
         if (!getUseEncryptedSharedPreferences()) {
             storageCipherFactory.storeCurrentAlgorithms(editor);
         }
-        editor.apply();
+        if (!editor.commit()) throw new IllegalStateException("Secure storage clear failed");
     }
 
    protected void ensureOptions(){
@@ -170,9 +168,9 @@ public class FlutterSecureStorage {
                 preferences = initializeEncryptedSharedPreferencesManager(applicationContext);
                 checkAndMigrateToEncrypted(nonEncryptedPreferences, preferences);
             } catch (Exception e) {
-                Log.e(TAG, "EncryptedSharedPreferences initialization failed", e);
-                preferences = nonEncryptedPreferences;
-                failedToUseEncryptedSharedPreferences = true;
+                // A different preference store would look like a logged-out
+                // install and could overwrite recoverable credentials.
+                throw new IllegalStateException("Encrypted storage unavailable", e);
             }
         } else {
             preferences = nonEncryptedPreferences;
@@ -216,23 +214,29 @@ public class FlutterSecureStorage {
         }
     }
 
-    private void checkAndMigrateToEncrypted(SharedPreferences source, SharedPreferences target) {
-        try {
-            for (Map.Entry<String, ?> entry : source.getAll().entrySet()) {
-                Object v = entry.getValue();
-                String key = entry.getKey();
-                if (v instanceof String && key.contains(ELEMENT_PREFERENCES_KEY_PREFIX)) {
-                    final String decodedValue = decodeRawValue((String) v);
-                    target.edit().putString(key, (decodedValue)).apply();
-                    source.edit().remove(key).apply();
+    private void checkAndMigrateToEncrypted(SharedPreferences source, SharedPreferences target) throws Exception {
+        final SharedPreferences.Editor targetEditor = target.edit();
+        final SharedPreferences.Editor sourceEditor = source.edit();
+        boolean hasLegacyValues = false;
+        for (Map.Entry<String, ?> entry : source.getAll().entrySet()) {
+            String key = entry.getKey();
+            if (entry.getValue() instanceof String && key.startsWith(ELEMENT_PREFERENCES_KEY_PREFIX + "_")) {
+                hasLegacyValues = true;
+                // A retry after target commit must not overwrite newer values.
+                if (!target.contains(key)) {
+                    String decoded = decodeRawValue((String) entry.getValue());
+                    if (decoded == null) throw new IllegalStateException("Legacy value could not be decoded");
+                    targetEditor.putString(key, decoded);
                 }
+                sourceEditor.remove(key);
             }
-            final SharedPreferences.Editor sourceEditor = source.edit();
-            storageCipherFactory.removeCurrentAlgorithms(sourceEditor);
-            sourceEditor.apply();
-        } catch (Exception e) {
-            Log.e(TAG, "Data migration failed", e);
         }
+        if (!hasLegacyValues) return;
+        // Commit the whole destination before deleting ANY source credential.
+        // A process kill at either boundary can safely retry this migration.
+        if (!targetEditor.commit()) throw new IllegalStateException("Storage migration commit failed");
+        storageCipherFactory.removeCurrentAlgorithms(sourceEditor);
+        if (!sourceEditor.commit()) throw new IllegalStateException("Storage migration cleanup failed");
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)

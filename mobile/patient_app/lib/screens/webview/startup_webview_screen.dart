@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../services/native_auth_service.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:kivicare_patient/configs.dart';
@@ -25,14 +25,18 @@ class StartupWebViewScreen extends StatefulWidget {
   /// When present, it is injected as sb_sso_token before the first page load
   /// so the site opens already logged in — no login page, no cookie roulette.
   final String? sessionBridgeToken;
+  final VoidCallback? onAuthRetry;
+  final NativeAuthService? authService;
 
   const StartupWebViewScreen({
-    Key? key,
+    super.key,
     required this.url,
     this.type = 'general',
     this.deviceId,
     this.sessionBridgeToken,
-  }) : super(key: key);
+    this.onAuthRetry,
+    this.authService,
+  });
 
   @override
   State<StartupWebViewScreen> createState() => _StartupWebViewScreenState();
@@ -44,6 +48,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
   final WebViewCookieManager _cookieManager = WebViewCookieManager();
   bool _isLoading = true;
   bool _isRefreshing = false;
+  bool _loadFailed = false;
   String? _currentUrl;
   DateTime? _lastExitBackPressedAt;
 
@@ -106,8 +111,20 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
   }
 
   Future<void> _initializeWebView() async {
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted);
+    _controller = WebViewController();
+    try {
+      await _configureWebView();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadFailed = true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _configureWebView() async {
+    await _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
 
     // Tell the website that this request comes from the patient app. The
     // marker is deliberately not an auth token; it only lets the login page
@@ -139,7 +156,8 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     // A verified accessToken (or a fresh one from refreshToken) hands the
     // WebView an already-authenticated session — sso_auto_login.php promotes
     // this cookie to a real login on the very first page load.
-    if (widget.sessionBridgeToken != null && widget.sessionBridgeToken!.isNotEmpty) {
+    if (widget.sessionBridgeToken != null &&
+        widget.sessionBridgeToken!.isNotEmpty) {
       await _cookieManager.setCookie(
         WebViewCookie(
           name: 'sb_sso_token',
@@ -153,57 +171,66 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     // WebViewBridge 생성 및 채널 등록 (FlutterBridge + PullToRefresh)
     final bridge = WebViewBridge(
       controller: _controller,
+      authService: widget.authService,
       onRefreshRequested: _handlePullToRefresh,
     );
-    bridge.registerChannels();
+    await bridge.registerChannels();
 
     // NavigationDelegate (URL scheme 인터셉트 포함)
-    _controller
-      ..setNavigationDelegate(
-        bridge.createNavigationDelegate(
-          onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-              _currentUrl = url;
-            });
-          },
-          onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-              _isRefreshing = false;
-              _currentUrl = url;
-            });
-            // pull-to-refresh JS 주입
-            _controller.runJavaScript(_pullToRefreshJs);
-            // Register the current FCM token using the website's authenticated
-            // Kakao/Gnuboard session. The page also requests it through the
-            // bridge, but this direct call makes registration resilient to
-            // cached HTML and delayed JavaScript execution.
-            bridge.requestFcmTokenForWebsite();
-            // Login and remember-token cookies are commonly received during a
-            // redirect. Persist them immediately so Android "Close all" cannot
-            // discard the authenticated WebView state with the process RAM.
-            WebViewCookiePersistence.flush();
-            // 하단 네비게이션 바 숨김 CSS 주입
-            if (HIDE_WEBVIEW_BOTTOM_NAV) {
-              _controller.runJavaScript('''
+    await _controller.setNavigationDelegate(
+      bridge.createNavigationDelegate(
+        onPageStarted: (String url) {
+          if (!mounted) return;
+          setState(() {
+            _isLoading = true;
+            _currentUrl = url;
+          });
+        },
+        onPageFinished: (String url) {
+          if (!mounted || _loadFailed) return;
+          setState(() {
+            _isLoading = false;
+            _isRefreshing = false;
+            _currentUrl = url;
+          });
+          // pull-to-refresh JS 주입
+          _controller.runJavaScript(_pullToRefreshJs);
+          // Register the current FCM token using the website's authenticated
+          // Kakao/Gnuboard session. The page also requests it through the
+          // bridge, but this direct call makes registration resilient to
+          // cached HTML and delayed JavaScript execution.
+          bridge.requestFcmTokenForWebsite();
+          bridge.recoverNativeSession();
+          // Login and remember-token cookies are commonly received during a
+          // redirect. Persist them immediately so Android "Close all" cannot
+          // discard the authenticated WebView state with the process RAM.
+          WebViewCookiePersistence.flush();
+          // 하단 네비게이션 바 숨김 CSS 주입
+          if (HIDE_WEBVIEW_BOTTOM_NAV) {
+            _controller.runJavaScript('''
                 (function() {
                   var style = document.createElement('style');
                   style.innerHTML = '.bottom-nav, .mobile-nav, .mobile-bottom-nav, nav.fixed-bottom, .nav-bottom, footer.fixed-bottom, [class*="bottom-nav"], [class*="mobile-nav"], #bottom-nav, #mobile-nav { display: none !important; } body { padding-bottom: 0 !important; }';
                   document.head.appendChild(style);
                 })();
               ''');
+          }
+        },
+        onWebResourceError: (WebResourceError error) {
+          if (!mounted) return;
+          setState(() {
+            _isRefreshing = false;
+            if (error.isForMainFrame != false) {
+              _loadFailed = true;
+              _isLoading = false;
             }
-          },
-          onWebResourceError: (WebResourceError error) {
-            setState(() {
-              _isRefreshing = false;
-            });
-            toast('페이지 로딩 오류: ${error.description}');
-          },
-        ),
-      )
-      ..loadRequest(startupUri);
+          });
+          toast('페이지 로딩 오류: ${error.description}');
+        },
+      ),
+    );
+    if (!mounted) return;
+    await _controller.loadRequest(startupUri);
   }
 
   Future<void> _handlePullToRefresh() async {
@@ -277,6 +304,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       child: Scaffold(
         body: SafeArea(
           child: Stack(
+            fit: StackFit.expand,
             children: [
               WebViewWidget(controller: _controller),
               // 플로팅 새로고침 버튼 (상단 중앙) - 설정에 따라 표시
@@ -292,7 +320,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
@@ -322,6 +350,25 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
                     color: context.primaryColor,
                   ),
                 ),
+              if (_loadFailed)
+                Positioned.fill(
+                    child: ColoredBox(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Text('페이지를 불러오지 못했습니다. 다시 시도해주세요.'),
+                    ElevatedButton(
+                        onPressed: widget.onAuthRetry ??
+                            () {
+                              setState(() {
+                                _loadFailed = false;
+                                _isLoading = true;
+                              });
+                              _controller.reload();
+                            },
+                        child: const Text('다시 시도')),
+                  ])),
+                )),
               if (_isLoading && !_isRefreshing)
                 Center(
                   child: CircularProgressIndicator(),
