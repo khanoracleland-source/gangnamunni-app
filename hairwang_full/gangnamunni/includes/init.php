@@ -14,11 +14,15 @@ require_once dirname(__DIR__) . '/category_icons.php';
 require_once __DIR__ . '/figma_block_helper.php';
 if (!function_exists('term')) { require_once dirname(__DIR__) . '/includes/industry_terms.php'; }
 
-if (!isset($connect) || !$connect) {
+// Pages may close their connection before Gnuboard finishes rendering.
+// Never give them ownership of Gnuboard's shared connection.
+if (!isset($connect) || !$connect
+    || (isset($g5['connect_db']) && $connect === $g5['connect_db'])) {
     if (defined('G5_MYSQL_HOST')) {
         $connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
         if ($connect) {
             mysqli_set_charset($connect, 'utf8mb4');
+            mysqli_query($connect, "SET time_zone = '+09:00'");
         }
     }
 }
