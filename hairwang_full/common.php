@@ -174,6 +174,9 @@ if (file_exists($dbconfig_file)) {
 
     // mysql connect resource $g5 배열에 저장 - 명랑폐인님 제안
     $g5['connect_db'] = $connect_db;
+    // Remember-login and native SSO helpers use this legacy global. It must
+    // exist BEFORE automatic login and extend hooks, not only in page init.
+    $connect = $connect_db;
 
     sql_set_charset(G5_DB_CHARSET, $connect_db);
     if(defined('G5_MYSQL_SET_MODE') && G5_MYSQL_SET_MODE) sql_query("SET SESSION sql_mode = ''");

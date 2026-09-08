@@ -41,6 +41,30 @@ try {
     $b->query('SET SESSION innodb_lock_wait_timeout=1');
     $connect = $a; // production remember helpers use this global
     $device = str_repeat('a',64);
+    // PHP defaults to UTC in a standalone API while web config uses Seoul.
+    // Starting both connections at UTC reproduces a real deployment mismatch.
+    app_native_auth_configure_connection($a);
+    app_native_auth_configure_connection($b);
+    expect_auth(date_default_timezone_get() === 'Asia/Seoul', 'standalone API uses the web timezone');
+    $tzBridge = app_issue_session_bridge_token($a, 'timezone_member', $device);
+    $tzRow = $a->query("SELECT expires_at, TIMESTAMPDIFF(SECOND,NOW(),expires_at) AS remaining FROM sso_tokens WHERE g5_mb_id='timezone_member'")->fetch_assoc();
+    expect_auth(abs((int)$tzRow['remaining'] - 300) <= 2, 'SQL sees a five-minute bridge lifetime');
+    expect_auth(abs(strtotime($tzRow['expires_at']) - time() - 300) <= 2,
+        'web PHP sees the same five-minute bridge lifetime');
+    $_SESSION = ['app_exchange_window_until' => time() + 60];
+    $pageCode = app_session_exchange_code($a, 'page_member');
+    $nextPageCode = app_session_exchange_code($a, 'page_member');
+    expect_auth(strlen($pageCode) === 64 && $pageCode === $nextPageCode,
+        'page navigation reuses the same exchange code');
+    $count = $a->query("SELECT COUNT(*) AS n FROM sso_tokens WHERE g5_mb_id='page_member'")->fetch_assoc();
+    expect_auth((int)$count['n'] === 1, 'page navigation does not mint competing exchanges');
+    expect_auth(app_session_exchange_code($a, 'other_member') !== $pageCode,
+        'another account cannot reuse the previous account exchange');
+    $_SESSION['app_exchange_window_until'] = time() - 1;
+    expect_auth(app_session_exchange_code($a, 'other_member') === '', 'expired login window emits no code');
+    $_SESSION = ['app_exchange_window_until' => time() + 60];
+    expect_auth(app_session_exchange_code($a, 'page_member') !== $pageCode,
+        'fresh login gets a fresh exchange code');
     $code = app_issue_exchange_code($a, 'test_member');
     $a->begin_transaction();
     $claim = app_consume_exchange_code($a, $code, $device);

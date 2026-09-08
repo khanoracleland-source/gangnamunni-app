@@ -15,8 +15,8 @@
  *   - patient_app_access   : 단기(1시간) accessToken. 기기에 바인딩됨.
  *   - patient_app_remember : 기존 120일 refreshToken 메커니즘을 그대로 재사용.
  *
- * WebView 세션 복구는 기존 sso_bridge.php(sso_create_token, user_type='gnuboard')를
- * 그대로 사용한다 — sso_auto_login.php가 이미 이 쿠키를 세션으로 승격시켜준다.
+ * WebView recovery uses a device-bound patient_app_bridge token, consumed
+ * once by sso_auto_login.php. It is separate from the generic SSO channel.
  *
  * @created 2026-09-07
  */
@@ -39,9 +39,12 @@ function app_native_auth_ensure_config($connect) {
     global $config;
     static $loaded = false;
     if ($loaded || !$connect) return;
+    $result = mysqli_query($connect, 'SELECT * FROM g5_config LIMIT 1');
+    if (!$result) throw new RuntimeException('Auth configuration lookup failed');
+    $row = mysqli_fetch_assoc($result);
+    mysqli_free_result($result);
+    if (!$row) throw new RuntimeException('Auth configuration is missing');
     $loaded = true;
-
-    $row = mysqli_fetch_assoc(mysqli_query($connect, 'SELECT * FROM g5_config LIMIT 1'));
     if (!is_array($config)) $config = array();
     if ($row) $config += $row; // 이미 설정된 키는 덮어쓰지 않는다
 }
@@ -51,11 +54,42 @@ define('APP_EXCHANGE_CODE_LIFETIME', 90);         // 90초, 1회용
 define('APP_REFRESH_TOKEN_LIFETIME', 86400 * 120); // 120일 (기존 patient_app_lifetime과 동일)
 define('APP_SESSION_BRIDGE_LIFETIME', 300);       // 5분, 기기 바인딩 + 1회용
 
+/** Standalone APIs do not load config.php. Match the web bootstrap's clock
+ * and SQL DATETIME timezone before issuing or comparing any credential.
+ */
+function app_native_auth_configure_connection($connect) {
+    date_default_timezone_set('Asia/Seoul');
+    if (!defined('G5_SERVER_TIME')) define('G5_SERVER_TIME', time());
+    if (!mysqli_query($connect, "SET time_zone = '+09:00'")) {
+        throw new RuntimeException('Auth timezone initialization failed');
+    }
+}
+
 /**
  * 기기 식별자를 검증한다 (sb_app_device와 동일한 64자리 hex 규칙).
  */
 function app_native_auth_is_valid_device_id($device_id) {
     return is_string($device_id) && preg_match('/^[a-f0-9]{64}$/i', $device_id) === 1;
+}
+
+/** Reuse one code across page navigations in the same login window.
+ * Reusing the code makes lost-response retries idempotent and avoids
+ * unnecessary token issuance. Call before session shutdown to persist it.
+ */
+function app_session_exchange_code($connect, $mb_id) {
+    $until = (int)($_SESSION['app_exchange_window_until'] ?? 0);
+    if ($until <= time() || $mb_id === '') return '';
+    $cached = $_SESSION['app_native_exchange'] ?? null;
+    if (is_array($cached) && ($cached['mb_id'] ?? '') === $mb_id
+        && ($cached['window_until'] ?? 0) === $until) {
+        return $cached['code'];
+    }
+    $code = app_issue_exchange_code($connect, $mb_id);
+    if ($code !== '') {
+        $_SESSION['app_native_exchange'] = array(
+            'mb_id' => $mb_id, 'window_until' => $until, 'code' => $code);
+    }
+    return $code;
 }
 
 /**
@@ -134,11 +168,9 @@ function app_consume_exchange_code($connect, $raw_code, $device_id) {
         "UPDATE sso_tokens SET user_agent = ?
          WHERE token = ? AND user_type = 'patient_app_exchange' AND expires_at > NOW() AND user_agent IS NULL");
     if (!$claim) throw new RuntimeException('Exchange claim prepare failed');
-    if ($claim) {
-        mysqli_stmt_bind_param($claim, 'ss', $ua, $code_hash);
-        mysqli_stmt_execute($claim);
-        mysqli_stmt_close($claim);
-    }
+    mysqli_stmt_bind_param($claim, 'ss', $ua, $code_hash);
+    if (!mysqli_stmt_execute($claim)) throw new RuntimeException('Exchange claim failed');
+    mysqli_stmt_close($claim);
 
     // 방금 청구했든, 이전에 이미 이 기기가 청구해뒀든 — 이제 이 기기의
     // user_agent로 일치해야만 통과한다.
@@ -278,9 +310,9 @@ function app_verify_access_token($connect, $raw_token, $device_id, $for_update =
         "SELECT g5_mb_id FROM sso_tokens
          WHERE token = ? AND user_type = 'patient_app_access' AND user_agent = ? AND expires_at > NOW() LIMIT 1"
         . ($for_update ? ' FOR UPDATE' : ''));
-    if (!$stmt) return '';
+    if (!$stmt) throw new RuntimeException('Access lookup failed');
     mysqli_stmt_bind_param($stmt, 'ss', $token_hash, $ua);
-    mysqli_stmt_execute($stmt);
+    if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('Access lookup failed');
     $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
     mysqli_stmt_close($stmt);
 
@@ -345,10 +377,6 @@ function app_issue_session_bridge_token($connect, $mb_id, $device_id) {
     return $ok ? $raw_token : '';
 }
 
-/**
- * 이 기기의 네이티브 인증 토큰(accessToken + refreshToken)을 모두 폐기한다.
- * 로그아웃 시 secure storage 초기화, 웹 세션 파기와 함께 호출되어야 한다.
- */
 // Must run inside app_native_auth_transaction. Unlike login issuance, a
 // refresh may only UPDATE the presented credential; it must never INSERT a
 // replacement when a concurrent logout has removed it.
@@ -379,44 +407,20 @@ function app_renew_native_refresh_token($connect, $mb_id, $raw_token, $device_id
     return $raw_token;
 }
 
-/**
- * 새 로그인(교환)에서만 쓴다 — 이 기기에 남아있는, 아직 만료되지 않은 이전
- * refreshToken을 정리한다. 앱 재설치/secure storage 초기화 등으로 이전
- * 토큰이 명시적으로 로그아웃되지 않은 채 남아있으면, 새 교환이
- * create_remember_login_token()으로 새 행을 INSERT할 때 그 이전 행이
- * (만료 전이라) 정리 대상에서 빠져 같은 기기에 유효한 refreshToken이 두
- * 개 쌓일 수 있었다 — 보안 문제는 아니지만(둘 다 같은 계정+기기) 불필요한
- * 잔여 행이다. app_renew_native_refresh_token()이 다루는 갱신 경로에서는
- * 호출하면 안 된다 — 그건 바로 그 "이전" 토큰을 잠그고 갱신하는 경로다.
- */
-function app_discard_stale_refresh_token($connect, $mb_id, $device_id) {
-    if (!$connect || $mb_id === '' || !app_native_auth_is_valid_device_id($device_id)) return;
-
-    $ua = 'patient-app-device:' . hash('sha256', strtolower($device_id));
-    $del = mysqli_prepare($connect,
-        "DELETE FROM sso_tokens WHERE g5_mb_id = ? AND user_type = 'patient_app_remember' AND user_agent = ?");
-    if (!$del) return;
-    mysqli_stmt_bind_param($del, 'ss', $mb_id, $ua);
-    mysqli_stmt_execute($del);
-    mysqli_stmt_close($del);
-}
-
 function app_revoke_native_auth_tokens($connect, $mb_id, $device_id) {
     if (!$connect || $mb_id === '' || !app_native_auth_is_valid_device_id($device_id)) return;
 
     $ua = 'patient-app-device:' . hash('sha256', strtolower($device_id));
-    app_native_auth_transaction($connect, function () use ($connect, $mb_id, $device_id, $ua) {
+    app_native_auth_transaction($connect, function () use ($connect, $mb_id, $ua) {
         // 이 기기가 청구한 교환 코드(또는 아직 아무도 청구하지 않은, 최근 이
         // 계정으로 발급된 코드)도 함께 지운다 — 그렇지 않으면 로그아웃 직후에도
         // 남은 유효시간(최대 90초) 동안 같은 코드로 다시 로그인할 수 있다.
         $delExchange = mysqli_prepare($connect,
             "DELETE FROM sso_tokens WHERE g5_mb_id = ? AND user_type = 'patient_app_exchange' AND (user_agent = ? OR user_agent IS NULL)");
         if (!$delExchange) throw new RuntimeException('Exchange revocation failed');
-        if ($delExchange) {
-            mysqli_stmt_bind_param($delExchange, 'ss', $mb_id, $ua);
-            mysqli_stmt_execute($delExchange);
-            mysqli_stmt_close($delExchange);
-        }
+        mysqli_stmt_bind_param($delExchange, 'ss', $mb_id, $ua);
+        if (!mysqli_stmt_execute($delExchange)) throw new RuntimeException('Exchange revocation failed');
+        mysqli_stmt_close($delExchange);
 
         $refresh = mysqli_prepare($connect,
             "DELETE FROM sso_tokens WHERE g5_mb_id = ? AND user_type = 'patient_app_remember' AND user_agent = ?");
@@ -428,11 +432,9 @@ function app_revoke_native_auth_tokens($connect, $mb_id, $device_id) {
         $del = mysqli_prepare($connect,
             "DELETE FROM sso_tokens WHERE g5_mb_id = ? AND user_type IN ('patient_app_access', 'patient_app_bridge') AND user_agent = ?");
         if (!$del) throw new RuntimeException('Token revocation failed');
-        if ($del) {
-            mysqli_stmt_bind_param($del, 'ss', $mb_id, $ua);
-            mysqli_stmt_execute($del);
-            mysqli_stmt_close($del);
-        }
+        mysqli_stmt_bind_param($del, 'ss', $mb_id, $ua);
+        if (!mysqli_stmt_execute($del)) throw new RuntimeException('Token revocation failed');
+        mysqli_stmt_close($del);
 
     });
 }

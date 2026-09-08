@@ -26,63 +26,9 @@ function _sso_try_auto_login() {
     if (!is_string($token) || !preg_match('/^[A-Fa-f0-9]{64}$/', $token)) return;
     if (!$connect) return;
 
-    // 이 훅은 common.php 부트스트랩 중에 실행되므로, gangnamunni/includes/
-    // sso_auto_login.php의 (기기 검증이 있는) 버전보다 먼저 sb_sso_token을
-    // 소비해버릴 수 있었다 — 네이티브 앱의 기기 바인딩 1회용 브릿지 토큰이
-    // 여기서 그 검증을 완전히 건너뛰고 세션으로 승격될 수 있었다는 뜻이다.
-    // 아래는 그 토큰 타입에 한해 같은 기기 검증 + 원자적 1회 소비를 적용한다
-    // ('gnuboard' 등 다른 SSO 채널의 기존 동작은 그대로 유지한다).
-    //
-    // SELECT ... FOR UPDATE로 잠그고 같은 트랜잭션 안에서 즉시 삭제해야
-    // 두 요청이 동시에 같은 토큰을 제출해도 하나만 성공한다 — 세션을 먼저
-    // 만들고 나중에 지우면 그 사이의 창에서 양쪽 다 통과할 수 있다.
-    $g5_mb_id = null;
-    $is_native_bridge_token = false;
-    mysqli_begin_transaction($connect);
-    try {
-        $stmt = mysqli_prepare($connect,
-            "SELECT g5_mb_id, expires_at, user_type, user_agent FROM sso_tokens WHERE token = ? LIMIT 1 FOR UPDATE");
-        if (!$stmt) throw new RuntimeException('prepare failed: ' . mysqli_error($connect));
-        mysqli_stmt_bind_param($stmt, 's', $token);
-        mysqli_stmt_execute($stmt);
-        $sso = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-        mysqli_stmt_close($stmt);
-
-        if (!$sso || empty($sso['g5_mb_id']) || strtotime($sso['expires_at']) < time()) {
-            mysqli_rollback($connect);
-            return;
-        }
-
-        $is_native_bridge_token = $sso['user_type'] === 'patient_app_bridge';
-        if ($is_native_bridge_token) {
-            $device_id = $_COOKIE['sb_app_device'] ?? '';
-            $expected_ua = (is_string($device_id) && preg_match('/^[a-f0-9]{64}$/i', $device_id))
-                ? 'patient-app-device:' . hash('sha256', strtolower($device_id))
-                : null;
-            if ($expected_ua === null || !hash_equals((string)$sso['user_agent'], $expected_ua)) {
-                mysqli_rollback($connect);
-                return;
-            }
-
-            $del = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE token = ? AND user_type = 'patient_app_bridge'");
-            if (!$del) throw new RuntimeException('delete prepare failed: ' . mysqli_error($connect));
-            mysqli_stmt_bind_param($del, 's', $token);
-            mysqli_stmt_execute($del);
-            $affected = mysqli_stmt_affected_rows($del);
-            mysqli_stmt_close($del);
-            if ($affected !== 1) {
-                mysqli_rollback($connect);
-                return; // 다른 요청이 먼저 이 토큰을 소비했다
-            }
-        }
-
-        $g5_mb_id = $sso['g5_mb_id'];
-        mysqli_commit($connect);
-    } catch (Throwable $e) {
-        mysqli_rollback($connect);
-        error_log('[sso_auto_login.extend] token claim failed: ' . $e->getMessage());
-        return;
-    }
+    require_once dirname(__DIR__) . '/gangnamunni/includes/sso_session_token.php';
+    $g5_mb_id = sso_claim_session_token($connect, $token, $_COOKIE['sb_app_device'] ?? '');
+    if ($g5_mb_id === '') return;
 
     // 회원 조회는 트랜잭션 밖에서 — 잠글 필요가 없다.
     $mb = get_member($g5_mb_id);
@@ -126,16 +72,19 @@ function _sso_on_gnuboard_logout($link = '') {
     global $connect;
 
     $token = $_COOKIE['sb_sso_token'] ?? '';
-    if (empty($token)) return;
-    if (!$connect) return;
-
-    $stmt = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE token = ?");
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, 's', $token);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
+    try {
+        if ($connect && is_string($token) && preg_match('/^[a-f0-9]{64}$/i', $token)) {
+            $stmt = mysqli_prepare($connect,
+                "DELETE FROM sso_tokens WHERE token = ? AND user_type IN ('gnuboard', 'hms', 'admin', 'patient_app_bridge')");
+            if (!$stmt) throw new RuntimeException('SSO revocation prepare failed');
+            mysqli_stmt_bind_param($stmt, 's', $token);
+            if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('SSO revocation failed');
+            mysqli_stmt_close($stmt);
+        }
+    } catch (Throwable $e) {
+        error_log('[sso-session] logout failed: ' . get_class($e));
     }
-
+    // Cookie cleanup and the following logout hooks must still run on DB failure.
     setcookie('sb_sso_token', '', [
         'expires' => time() - 3600,
         'path' => '/',

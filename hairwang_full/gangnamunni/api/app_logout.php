@@ -1,38 +1,10 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['success' => false, 'error' => 'POST only']);
-    exit;
-}
-
-require_once __DIR__ . '/../../dbconfig.php';
-require_once __DIR__ . '/../includes/app_native_auth.php';
-$connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
-if (!$connect) { echo json_encode(['success' => false, 'error' => 'DB fail']); exit; }
-mysqli_set_charset($connect, 'utf8mb4');
-
-// app_native_auth_transaction()'s rollback safety net (used by
-// app_revoke_native_auth_tokens()) depends on mysqli throwing on error
-// (PHP 8.1+'s default) rather than silently returning false (pre-8.1, and
-// how Gnuboard's own sql_connect() sets it via MYSQLI_REPORT_OFF for the
-// shared $connect elsewhere). This endpoint owns its whole request, so
-// forcing it here makes that guarantee hold regardless of PHP version.
-//
-// This also means the legacy (non-transactional) cleanup below can now
-// throw where it previously just returned false silently — it is wrapped
-// so a DB hiccup there still lets cookie/session cleanup run and still
-// returns a response, instead of a bare fatal error.
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-
-$input = json_decode(file_get_contents('php://input'), true);
-if (!is_array($input)) $input = [];
+require_once __DIR__ . '/../includes/app_native_auth_http.php';
+$input = app_auth_http_input();
+$connect = null;
 
 try {
+    $connect = app_auth_open_connection();
     $token = '';
     $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (preg_match('/Bearer\s+(\S+)/', $auth, $m)) {
@@ -42,12 +14,11 @@ try {
         $token = $input['token'] ?? $_POST['token'] ?? $_GET['token'] ?? '';
     }
 
-    $native_mb_id = trim((string)($input['mb_id'] ?? ''));
-    $native_device_id = trim((string)($input['device_id'] ?? ''));
-    $native_access_token = trim((string)($input['access_token'] ?? ''));
-    $native_refresh_token = trim((string)($input['refresh_token'] ?? ''));
+    $native_mb_id = app_auth_input_string($input, 'mb_id');
+    $native_device_id = app_auth_input_string($input, 'device_id');
+    $native_access_token = app_auth_input_string($input, 'access_token');
+    $native_refresh_token = app_auth_input_string($input, 'refresh_token');
     if ($native_mb_id !== '' && app_native_auth_is_valid_device_id($native_device_id)) {
-        $native_mb_id = substr(preg_replace('/[^a-zA-Z0-9_]*/', '', $native_mb_id), 0, 20);
 
         $ownership_proven = false;
         if ($native_access_token !== '') {
@@ -66,38 +37,14 @@ try {
         }
     }
 
-    $deleted = false;
-
-    if (!empty($token)) {
-        $stmt = mysqli_prepare($connect, "SELECT g5_mb_id FROM sso_tokens WHERE token = ? LIMIT 1");
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 's', $token);
-            mysqli_stmt_execute($stmt);
-            $result = mysqli_stmt_get_result($stmt);
-            $sso = mysqli_fetch_assoc($result);
-            mysqli_stmt_close($stmt);
-
-            if ($sso && !empty($sso['g5_mb_id'])) {
-                $del = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE token = ?");
-                if ($del) {
-                    mysqli_stmt_bind_param($del, 's', $token);
-                    mysqli_stmt_execute($del);
-                    $deleted = (mysqli_affected_rows($connect) > 0);
-                    mysqli_stmt_close($del);
-                }
-
-            }
-        }
-
-        if (!$deleted) {
-            $del = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE token = ?");
-            if ($del) {
-                mysqli_stmt_bind_param($del, 's', $token);
-                mysqli_stmt_execute($del);
-                $deleted = (mysqli_affected_rows($connect) > 0);
-                mysqli_stmt_close($del);
-            }
-        }
+    // Legacy app_login.php issues a raw gnuboard SSO token. Native token
+    // hashes must never be accepted as raw bearer credentials here.
+    if (is_string($token) && preg_match('/^[a-f0-9]{64}$/i', $token)) {
+        $stmt = mysqli_prepare($connect,
+            "DELETE FROM sso_tokens WHERE token = ? AND user_type = 'gnuboard'");
+        mysqli_stmt_bind_param($stmt, 's', $token);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
     }
 
     $remember_cookie_name = md5('ck_auto');
@@ -119,6 +66,7 @@ try {
 } catch (Throwable $e) {
     // Best-effort cleanup below still runs regardless — a transient DB
     // error here must not stop the client's cookies/session from clearing.
+    http_response_code(503);
     error_log('[app-native-auth] logout cleanup failed: ' . get_class($e) . ': ' . $e->getMessage());
 }
 
@@ -145,9 +93,8 @@ foreach (['ck_mb_id', 'ck_auto'] as $cookie_name) {
     ]);
 }
 
-echo json_encode([
-    'success' => true,
-    'message' => '로그아웃 완료'
-]);
+echo json_encode(http_response_code() === 503
+    ? ['success' => false, 'error' => 'logout_unavailable']
+    : ['success' => true, 'message' => '로그아웃 완료']);
 
-mysqli_close($connect);
+if ($connect) mysqli_close($connect);

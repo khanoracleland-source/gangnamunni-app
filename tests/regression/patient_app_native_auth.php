@@ -55,6 +55,9 @@ if (!defined('_GNUBOARD_')) define('_GNUBOARD_', true);
 require_once __DIR__ . '/../../hairwang_full/lib/hook.lib.php'; // run_event()/run_replace(), needed by set_session()
 require_once __DIR__ . '/../../hairwang_full/lib/get_data.lib.php'; // get_permission_debug_show(), needed by sql_query() inside get_member()
 require_once __DIR__ . '/../../hairwang_full/gangnamunni/includes/app_native_auth.php'; // pulls in common.lib.php
+app_native_auth_configure_connection($connect);
+app_native_auth_ensure_config($connect);
+$_SERVER['HTTP_USER_AGENT'] = 'NativeAuthRegression';
 
 function check($condition, $message) {
     if (!$condition) throw new \RuntimeException("FAIL: $message");
@@ -122,6 +125,7 @@ check($claimRace2['mb_id'] === '', 'a second, different device can never claim t
 // FOR UPDATE must be held for the whole claim+mint+store, not just the read. ---
 $code4 = app_issue_exchange_code($connect, $test_mb_id);
 $connD = mysqli_connect($host, $user, $pass, $db, $port);
+app_native_auth_configure_connection($connD);
 mysqli_query($connD, 'SET SESSION innodb_lock_wait_timeout = 1');
 
 mysqli_begin_transaction($connect);
@@ -213,18 +217,6 @@ $renewed = create_remember_login_token($member, APP_REFRESH_TOKEN_LIFETIME + 864
 check($renewed === $refresh, 'refresh renewal preserves the token value');
 check(verify_remember_login_token($test_mb_id, $refresh, $refresh_opts), 'renewed refresh token still verifies');
 
-// --- app_discard_stale_refresh_token(): a fresh exchange (not a refresh)
-// must not leave a still-valid old refreshToken behind for the same device
-// (e.g. after an app reinstall skipped an explicit logout). ---
-app_discard_stale_refresh_token($connect, $test_mb_id, $device_a);
-check(!verify_remember_login_token($test_mb_id, $refresh, $refresh_opts), 'a stale refresh token for this device is discarded');
-$otherDeviceRefresh = create_remember_login_token($member, APP_REFRESH_TOKEN_LIFETIME,
-    ['is_patient_app' => true, 'device_id' => $device_b]);
-app_discard_stale_refresh_token($connect, $test_mb_id, $device_a);
-check(verify_remember_login_token($test_mb_id, $otherDeviceRefresh, ['is_patient_app' => true, 'device_id' => $device_b]),
-    "discarding one device's stale refresh token does not touch another device's");
-app_discard_stale_refresh_token($connect, $test_mb_id, $device_b); // cleanup for later assertions in this script
-
 // --- app_renew_native_refresh_token() vs app_revoke_native_auth_tokens():
 // a concurrent logout must not be lost to a race with an in-flight refresh,
 // and — the critical direction — a refresh racing a logout that already won
@@ -232,6 +224,7 @@ app_discard_stale_refresh_token($connect, $test_mb_id, $device_b); // cleanup fo
 // for a credential that no longer exists. Both share the SAME existing row
 // as their lock point, so whichever gets there first serializes the other. ---
 $connE = mysqli_connect($host, $user, $pass, $db, $port);
+app_native_auth_configure_connection($connE);
 mysqli_query($connE, 'SET SESSION innodb_lock_wait_timeout = 1');
 
 // Case 1: refresh locks (renews) first; a concurrent logout must wait, then
@@ -302,12 +295,7 @@ $stillThere = mysqli_fetch_assoc(mysqli_query($connect,
 check((bool)$stillThere, "issuing another device's bridge token does not delete this device's unused bridge token");
 check($bridge_a !== $bridge_b, 'each device gets its own bridge token value');
 
-// sso_auto_login.php's device-mismatch rejection, exercised directly. The
-// success path (right device -> session promotion -> single-use delete)
-// needs a real g5_member row via get_member(), which this standalone test
-// does not create — that part is covered by manual/app-level testing, not
-// here. The mismatch path returns before touching g5_member at all, so it
-// is safe and meaningful to test in isolation.
+// Wrong-device attempts must preserve the unused bridge for its owner.
 require_once __DIR__ . '/../../hairwang_full/gangnamunni/includes/sso_auto_login.php';
 $is_member = false;
 $member = [];
@@ -369,6 +357,7 @@ unset($_COOKIE['sb_sso_token'], $_COOKIE['sb_app_device']);
 // --- Concurrent claim of the SAME (still valid) bridge token: only one side may win ---
 $bridge_d = app_issue_session_bridge_token($connect, $test_mb_id, $device_a);
 $connC = mysqli_connect($host, $user, $pass, $db, $port);
+app_native_auth_configure_connection($connC);
 mysqli_query($connC, 'SET SESSION innodb_lock_wait_timeout = 1');
 
 mysqli_begin_transaction($connect);

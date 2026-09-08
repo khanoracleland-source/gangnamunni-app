@@ -13,41 +13,18 @@
  *
  * @created 2026-09-07
  */
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'POST only']);
-    exit;
-}
-
-require_once __DIR__ . '/../../dbconfig.php';
-require_once __DIR__ . '/../includes/app_native_auth.php';
-
-if (!defined('G5_SERVER_TIME')) define('G5_SERVER_TIME', time());
-
-$connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
-if (!$connect) { http_response_code(500); echo json_encode(['success' => false, 'error' => 'DB fail']); exit; }
-mysqli_set_charset($connect, 'utf8mb4');
-
-// Query failures must roll back and remain distinct from invalid credentials.
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-
-$input = json_decode(file_get_contents('php://input'), true);
-if (!is_array($input)) $input = $_POST;
+require_once __DIR__ . '/../includes/app_native_auth_http.php';
+$input = app_auth_http_input();
+$connect = null;
 
 $access_token = '';
 $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
 if (preg_match('/Bearer\s+(\S+)/', $auth, $m)) {
     $access_token = $m[1];
 } else {
-    $access_token = trim((string)($input['access_token'] ?? ''));
+    $access_token = app_auth_input_string($input, 'access_token');
 }
-$device_id = trim((string)($input['device_id'] ?? ''));
+$device_id = app_auth_input_string($input, 'device_id');
 
 if ($access_token === '' || !app_native_auth_is_valid_device_id($device_id)) {
     http_response_code(400);
@@ -56,23 +33,14 @@ if ($access_token === '' || !app_native_auth_is_valid_device_id($device_id)) {
 }
 
 try {
+    $connect = app_auth_open_connection();
     $response = app_native_auth_transaction($connect, function () use ($connect, $access_token, $device_id) {
         $mb_id = app_verify_access_token($connect, $access_token, $device_id, true);
         if ($mb_id === '') {
             throw new DomainException('access_token_invalid', 401);
         }
 
-        $stmt = mysqli_prepare($connect,
-            "SELECT mb_id, mb_name, mb_nick, mb_email, mb_hp, mb_level, mb_intercept_date, mb_leave_date, mb_email_certify
-             FROM g5_member WHERE mb_id = ? LIMIT 1");
-        mysqli_stmt_bind_param($stmt, 's', $mb_id);
-        mysqli_stmt_execute($stmt);
-        $member = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-        mysqli_stmt_close($stmt);
-
-        if (app_native_auth_member_is_blocked($member, $connect)) {
-            throw new DomainException('account_unavailable', 401);
-        }
+        $user = app_auth_member($connect, $mb_id);
 
         $bridge_token = app_issue_session_bridge_token($connect, $mb_id, $device_id);
         if ($bridge_token === '') {
@@ -82,17 +50,9 @@ try {
         return [
             'success' => true,
             'session_bridge_token' => $bridge_token,
-            'user' => [
-                'mb_id' => $member['mb_id'],
-                'name' => $member['mb_name'],
-                'nickname' => $member['mb_nick'],
-                'email' => $member['mb_email'],
-                'phone' => $member['mb_hp'],
-                'level' => (int)$member['mb_level'],
-            ],
+            'user' => $user,
         ];
     });
-    header('Cache-Control: no-store');
     echo json_encode($response, JSON_UNESCAPED_UNICODE);
 } catch (DomainException $e) {
     http_response_code(401);
@@ -103,4 +63,4 @@ try {
     echo json_encode(['success' => false, 'error' => 'verify_unavailable']);
 }
 
-mysqli_close($connect);
+if ($connect) mysqli_close($connect);

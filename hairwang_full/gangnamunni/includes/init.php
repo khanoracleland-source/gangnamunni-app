@@ -47,34 +47,28 @@ function _app_native_auth_response_is_non_html() {
     return false;
 }
 
-if (!empty($_SESSION['app_exchange_window_until']) && isset($connect) && $connect) {
-    register_shutdown_function(function () use ($connect) {
-        $until = (int)($_SESSION['app_exchange_window_until'] ?? 0);
-        if ($until <= 0) return;
-        if (time() >= $until) {
-            unset($_SESSION['app_exchange_window_until']);
-            return;
-        }
-        if (_app_native_auth_response_is_non_html()) return; // JSON/API 응답을 훼손하지 않는다
-
+if (!empty($_SESSION['app_exchange_window_until']) && isset($connect) && $connect
+    && !empty($is_member) && !empty($member['mb_id'])) {
+    // Persist the shared code before PHP's session shutdown handler runs.
+    // Only HTML emission is deferred until the response headers are known.
+    require_once __DIR__ . '/app_native_auth.php';
+    $app_exchange_code = '';
+    $app_exchange_mb_id = $member['mb_id'];
+    try {
+        $app_exchange_code = app_session_exchange_code($connect, $member['mb_id']);
+    } catch (Throwable $e) {
+        error_log('[app-native-auth] exchange code emission failed: ' . $e->getMessage());
+    }
+    register_shutdown_function(function () use ($app_exchange_code, $app_exchange_mb_id) {
+        if ($app_exchange_code === '' || _app_native_auth_response_is_non_html()
+            || http_response_code() >= 300 || !empty($_GET['app_logout'])) return;
         global $is_member, $member;
-        if (empty($is_member) || empty($member['mb_id'])) return;
-        if (!function_exists('app_issue_exchange_code')) {
-            $helper = __DIR__ . '/app_native_auth.php';
-            if (!file_exists($helper)) return;
-            require_once $helper;
-        }
-
-        try {
-            $code = app_issue_exchange_code($connect, $member['mb_id']);
-        } catch (Throwable $e) {
-            error_log('[app-native-auth] exchange code emission failed: ' . $e->getMessage());
-            return;
-        }
-        if ($code === '') return;
-
-        $escaped = htmlspecialchars($code, ENT_QUOTES);
-        echo "<script>(function(){if(window.FlutterBridge){FlutterBridge.postMessage(JSON.stringify({action:'authExchange',code:'" . $escaped . "'}));}})();</script>";
+        if (empty($is_member) || ($member['mb_id'] ?? '') !== $app_exchange_mb_id
+            || ($_SESSION['ss_mb_id'] ?? '') !== $app_exchange_mb_id) return;
+        $code = $app_exchange_code;
+        $message = json_encode(array('action' => 'authExchange', 'code' => $code,
+            'device_id' => $_COOKIE['sb_app_device'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        echo '<script>(function(){if(window.FlutterBridge){FlutterBridge.postMessage(JSON.stringify(' . $message . '));}})();</script>';
     });
 }
 

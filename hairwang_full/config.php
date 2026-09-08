@@ -11,6 +11,8 @@ include_once($g5_path['path'].'/version.php');   // 설정 파일
 
 // 기본 시간대 설정
 date_default_timezone_set("Asia/Seoul");
+// DATETIME token expiry is stored in the same timezone as PHP date().
+if (!defined('G5_TIMEZONE')) define('G5_TIMEZONE', '+09:00');
 
 /********************
     경로 상수
