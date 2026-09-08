@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/native_auth_service.dart';
+import '../../services/hospital_list_navigation.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
@@ -46,6 +47,9 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     with WidgetsBindingObserver {
   late final WebViewController _controller;
   final WebViewCookieManager _cookieManager = WebViewCookieManager();
+  final _hospitalNavigation =
+      HospitalListNavigation(Uri.parse(STARTUP_WEBVIEW_URL));
+  bool _returningToList = false;
   bool _isLoading = true;
   bool _isRefreshing = false;
   bool _loadFailed = false;
@@ -173,6 +177,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       controller: _controller,
       authService: widget.authService,
       onRefreshRequested: _handlePullToRefresh,
+      onHospitalListBack: _returnToHospitalList,
     );
     await bridge.registerChannels();
 
@@ -181,6 +186,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       bridge.createNavigationDelegate(
         onPageStarted: (String url) {
           if (!mounted) return;
+          _hospitalNavigation.pageStarted(url);
           setState(() {
             _isLoading = true;
             _currentUrl = url;
@@ -193,6 +199,9 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
             _isRefreshing = false;
             _currentUrl = url;
           });
+          if (_hospitalNavigation.returnUrl != null) {
+            _installHospitalHeaderBack();
+          }
           // pull-to-refresh JS 주입
           _controller.runJavaScript(_pullToRefreshJs);
           // Register the current FCM token using the website's authenticated
@@ -231,6 +240,42 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     );
     if (!mounted) return;
     await _controller.loadRequest(startupUri);
+  }
+
+  Future<void> _installHospitalHeaderBack() async {
+    try {
+      await _controller.runJavaScript(HospitalListNavigation.headerBackScript);
+    } catch (_) {
+      // A page may navigate away before injection; its next load retries.
+    }
+  }
+
+  Future<void> _returnToHospitalList() async {
+    if (_returningToList) return;
+    _returningToList = true;
+    try {
+      final current = Uri.tryParse(await _controller.currentUrl() ?? '');
+      final target = _hospitalNavigation.returnUrl;
+      if (!mounted ||
+          current == null ||
+          target == null ||
+          !_hospitalNavigation.isHospitalDetail(current)) {
+        return;
+      }
+      if (_hospitalNavigation.canReturnThroughHistory &&
+          await _controller.canGoBack()) {
+        // A direct list -> detail visit retains scroll position via history.
+        await _controller.goBack();
+      } else {
+        // Detail tabs create more history entries. Return to the exact list,
+        // including treatment, region and sort, instead of a bare list URL.
+        await _controller.loadRequest(target);
+      }
+    } catch (_) {
+      if (mounted) toast('목록으로 돌아가지 못했습니다. 다시 시도해주세요.');
+    } finally {
+      _returningToList = false;
+    }
   }
 
   Future<void> _handlePullToRefresh() async {

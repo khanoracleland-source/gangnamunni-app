@@ -80,6 +80,7 @@ class WebViewBridge {
 
   /// WebView 페이지 새로고침 콜백 (PullToRefresh 채널용)
   final VoidCallback? onRefreshRequested;
+  final Future<void> Function()? onHospitalListBack;
   final NativeAuthService _auth;
 
   /// 토큰 요청 시 커스텀 핸들러 (null이면 기본 loginUserData.apiToken 사용)
@@ -97,6 +98,7 @@ class WebViewBridge {
   WebViewBridge({
     required this.controller,
     this.onRefreshRequested,
+    this.onHospitalListBack,
     this.tokenProvider,
     this.onShareRequested,
     NativeAuthService? authService,
@@ -161,6 +163,12 @@ class WebViewBridge {
 
       case 'openWebView':
         _handleOpenWebView(data);
+        break;
+
+      case 'hospitalListBack':
+        if (await _isFromTrustedOrigin()) {
+          await onHospitalListBack?.call();
+        }
         break;
 
       case 'goBack':
