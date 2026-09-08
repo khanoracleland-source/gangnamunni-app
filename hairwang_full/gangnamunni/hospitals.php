@@ -5,6 +5,7 @@
  * ========================================
  */
 require_once __DIR__ . '/includes/init.php';
+$hospital_return_url = 'hospitals.php' . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '');
 if (file_exists(__DIR__ . '/includes/design_tokens.php')) { include_once __DIR__ . '/includes/design_tokens.php'; }
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 require_once __DIR__ . '/includes/recently_viewed.php';
@@ -582,7 +583,7 @@ foreach ($hospitals as $hospital):
     if ($__hi > 0 && $_infeed_enabled === '1' && $_infeed_interval > 0 && $__hi % $_infeed_interval === 0 && isset($_infeed_ads[$_ad_idx])):
         $_iad = $_infeed_ads[$_ad_idx];
 ?>
-        <a class="hospital-card ad-card" href="<?php echo !empty($_iad['hospital_id']) ? 'detail.php?id=' . (int)$_iad['hospital_id'] : htmlspecialchars($_iad['link_url'] ?? '#'); ?>" data-ad-id="<?php echo $_iad['id']; ?>">
+        <a class="hospital-card ad-card" href="<?php echo !empty($_iad['hospital_id']) ? 'detail.php?id=' . (int)$_iad['hospital_id'] . '&amp;return_url=' . rawurlencode($hospital_return_url) : htmlspecialchars($_iad['link_url'] ?? '#'); ?>" data-ad-id="<?php echo $_iad['id']; ?>">
                 <?php if (!empty($_iad['image_url'])): ?>
                 <img src="<?php echo htmlspecialchars($_iad['image_url']); ?>" class="hospital-image" alt="광고">
                 <?php else: ?>
@@ -607,7 +608,8 @@ foreach ($hospitals as $hospital):
     $__hi++;
 
     // 특정 시술로 필터링해서 들어온 경우, 상세 페이지에서도 그 시술 정보로 바로 이동
-    $_detail_url = 'detail.php?id=' . (int)$hospital['id'];
+    $_detail_url = 'detail.php?id=' . (int)$hospital['id']
+        . '&return_url=' . rawurlencode($hospital_return_url);
     if (!empty($effective_treatment) && $effective_treatment_id > 0) {
         $_detail_url .= '&treatment_id=' . $effective_treatment_id . '&treatment=' . urlencode($effective_treatment);
     }

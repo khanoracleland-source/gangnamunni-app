@@ -38,7 +38,12 @@ $consultation_csrf_token = $_SESSION['consultation_csrf_token'];
 
 $hospital_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $detail_from_wishlist = isset($_GET['from']) && $_GET['from'] === 'my_wishlist';
+require_once __DIR__ . '/includes/hospital_return_url.php';
+$detail_return_url = hospital_return_url($_GET['return_url'] ?? '');
 $detail_source_qs = $detail_from_wishlist ? '&from=my_wishlist' : '';
+if (!$detail_from_wishlist && $detail_return_url !== '') {
+    $detail_source_qs .= '&return_url=' . rawurlencode($detail_return_url);
+}
 
 // 시술/가격 데이터 로드
 $treatments = [];
@@ -1621,7 +1626,7 @@ if ($current_tab === 'reviews') {
     <div class="page-container">
     <!-- 페이지 헤더 -->
     <div class="header">
-        <a href="<?php echo $detail_from_wishlist ? 'my_wishlist.php' : 'hospitals.php'; ?>" id="detailBackBtn" class="back-btn"><i class="bi bi-chevron-left"></i></a>
+        <a href="<?php echo htmlspecialchars($detail_from_wishlist ? 'my_wishlist.php' : ($detail_return_url ?: 'hospitals.php'), ENT_QUOTES, 'UTF-8'); ?>" id="detailBackBtn" class="back-btn"><i class="bi bi-chevron-left"></i></a>
         <div class="hospital-name-header"><?php echo htmlspecialchars($hospital['name']); ?></div>
         <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
             <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
@@ -1637,6 +1642,7 @@ if ($current_tab === 'reviews') {
                 sessionStorage.setItem('hospitalListReturnUrl', document.referrer);
             }
         } catch (e) {}
+        var explicitReturn = <?php echo json_encode($detail_return_url, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         var backBtn = document.getElementById('detailBackBtn');
         if (backBtn) {
             backBtn.addEventListener('click', function (e) {
@@ -1644,6 +1650,11 @@ if ($current_tab === 'reviews') {
                 if (new URLSearchParams(window.location.search).get('from') === 'my_wishlist') {
                     e.preventDefault();
                     location.href = 'my_wishlist.php';
+                    return;
+                }
+                if (explicitReturn) {
+                    e.preventDefault();
+                    location.href = explicitReturn;
                     return;
                 }
                 // 목록에서 바로 진입(탭 이동 없음) → history.back()으로 스크롤 위치까지 보존
@@ -1657,7 +1668,16 @@ if ($current_tab === 'reviews') {
                 try { listUrl = sessionStorage.getItem('hospitalListReturnUrl'); } catch (e2) {}
                 if (listUrl) {
                     e.preventDefault();
-                    location.href = listUrl;
+                    try {
+                        var saved = new URL(listUrl, location.href);
+                        var expected = new URL('hospitals.php', location.href);
+                        if (saved.origin === expected.origin && saved.pathname === expected.pathname
+                            && !saved.username && !saved.password) {
+                            location.href = saved.href;
+                            return;
+                        }
+                    } catch (ignored) {}
+                    location.href = backBtn.href;
                 }
             });
         }
