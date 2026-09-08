@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($res) $member = mysqli_fetch_assoc($res);
     }
 
-    // ── 통합 저장 (하단 고정 '저장' 버튼) : 닉네임 + 이름 + 연락처 한 번에 ──
+    // ── 통합 저장 (프로필 '저장' 버튼) : 닉네임 + 이름 + 연락처 한 번에 ──
     if ($action === 'save_all') {
         $nick = trim($_POST['nick'] ?? '');
         $name = trim($_POST['mb_name'] ?? '');
@@ -265,30 +265,33 @@ if ($saved || $pw_saved || $email_saved) {
 }
 ?>
 <!DOCTYPE html><html lang="ko" data-bs-theme="light"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>프로필 수정 - 서울미녀</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();</script>
 <style>
-:root{--pri:#AE1932;}*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;background:var(--bs-body-bg,#f8f9fa);color:var(--bs-body-color);}
+:root{--pri:#AE1932;--profile-nav-height:77px;--profile-save-height:73px;}
+html{scroll-padding-bottom:calc(var(--profile-nav-height) + var(--profile-save-height) + 24px);}*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;background:var(--bs-body-bg,#f8f9fa);color:var(--bs-body-color,#202124);}
 .header{position:relative;padding:14px 16px;display:flex;align-items:center;border-bottom:1px solid var(--bs-border-color,#eee);background:var(--bs-body-bg,#fff);}
 .header .back{width:36px;height:36px;border:none;background:none;font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1));cursor:pointer;color:inherit;flex-shrink:0;}
 .header h1{position:absolute;left:50%;transform:translateX(-50%);font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;white-space:nowrap;}
-.form-area{padding:20px 16px 150px;}
-.field{margin-bottom:12px;background:#fff;padding:18px 14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);display:flex;align-items:center;gap:10px;}
+.form-area{padding:0 16px calc(var(--profile-nav-height) + var(--profile-save-height) + 24px);}
+.field{margin-bottom:10px;background:var(--bs-body-bg,#fff);padding:12px 14px;border:1px solid var(--bs-border-color,#e5e7eb);border-radius:12px;display:flex;align-items:center;gap:10px;}
 .field-content{flex:1;min-width:0;}
-.field label{display:block;font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;color:#000;margin-bottom:7px;}
-.field input{width:100%;padding:5px 0;border:none;font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));background:transparent;color:var(--bs-body-color);}
-.field input:focus{outline:none;}
+.field label{display:block;font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;color:inherit;margin-bottom:4px;}
+.field input{width:100%;min-height:36px;padding:5px 0;border:none;font-size:calc(16px * var(--fs-scale,1) * var(--fs-page,1));background:transparent;color:var(--bs-body-color,#202124);}
+.field:focus-within{border-color:var(--pri);}
+.field input:focus-visible{outline:2px solid var(--pri);outline-offset:3px;border-radius:3px;}
+button:focus-visible{outline:2px solid var(--pri);outline-offset:3px;}
+.field-content{overflow-wrap:anywhere;}
 .field-change-btn{flex-shrink:0;padding:6px 12px;background:none;border:none;font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;color:#AE1932;cursor:pointer;white-space:nowrap;}
 .save-btn{width:100%;padding:14px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;cursor:pointer;margin-top:8px;}
 .saved-msg{text-align:center;padding:10px;color:#22c55e;font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));}
-/* 하단 고정 저장 바 — bottom_nav(77px, z-index:9999) 바로 위 */
-.save-bar{position:fixed;bottom:77px;left:50%;transform:translateX(-50%);width:100%;max-width:640px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--bs-body-bg,#fff);border-top:1px solid var(--bs-border-color,#eee);z-index:9998;}
-.save-bar-btn{width:100%;padding:14px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;cursor:pointer;}
-.save-bar-btn:active{filter:brightness(0.95);}
-.avatar-area{text-align:center;padding:24px;}
+.save-bar{position:fixed;bottom:var(--profile-nav-height);left:50%;transform:translateX(-50%);width:100%;max-width:640px;padding:12px 16px;background:var(--bs-body-bg,#fff);border-top:1px solid var(--bs-border-color,#e5e7eb);z-index:9998;}
+.save-bar.without-nav{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));}
+.save-bar-btn{width:100%;min-height:48px;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;cursor:pointer;}
+.avatar-area{text-align:center;padding:20px;}
 .avatar-wrap{position:relative;width:80px;margin:0 auto 8px;cursor:pointer;}
 .avatar{width:80px;height:80px;border-radius:50%;background:#fff;border:2px solid #918f8f;display:flex;align-items:center;justify-content:center;font-size:calc(32px * var(--fs-scale,1) * var(--fs-page,1));color:var(--pri);overflow:hidden;}
 .avatar img{width:100%;height:100%;object-fit:cover;}
@@ -297,10 +300,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .section-title{font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;color:#888;padding:8px 0 6px;margin-bottom:4px;}
 .pw-error{color:#ef4444;font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));padding:6px 0 2px;}
 .pw-saved{color:#22c55e;font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));padding:6px 0 2px;}
+.password-panel{padding:14px;border:1px solid var(--bs-border-color,#e5e7eb);border-radius:12px;background:var(--bs-body-bg,#fff);}
+.password-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;}
+.password-heading h2{font-size:calc(16px * var(--fs-scale,1));}
+.password-help{margin:0 0 14px;font-size:calc(13px * var(--fs-scale,1));line-height:1.55;color:var(--bs-secondary-color,#666);overflow-wrap:anywhere;}
+#pw-section .field{padding:0;border:0;border-radius:0;margin-bottom:14px;}
+#pw-section input{border:1px solid var(--bs-border-color,#d1d5db);border-radius:8px;padding:10px;min-height:44px;}
+#pw-section .save-btn{margin-top:0;min-height:48px;}
 </style><?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
 <body>
-<div class="header"><button class="back" onclick="history.back()"><i class="bi bi-chevron-left"></i></button><h1>내 정보 수정</h1></div>
+<div class="header"><button aria-label="뒤로 가기" class="back" onclick="history.back()"><i class="bi bi-chevron-left"></i></button><h1>내 정보 수정</h1></div>
 <?php if ($saved): ?><div class="saved-msg"><i class="bi bi-check-circle"></i> 저장되었습니다</div><?php endif; ?>
 <?php if ($photo_upload_error): ?><div class="photo-error"><i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($photo_upload_error); ?></div><?php endif; ?>
 
@@ -323,29 +333,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 <div class="form-area">
 
     <!-- ── 2. 닉네임 폼 ── -->
-    <form method="post" id="f-nick">
+    <form method="post" id="f-nick" onsubmit="saveAll();return false;">
         <input type="hidden" name="action" value="nick">
         <div class="field">
             <div class="field-content">
-                <label>닉네임</label>
-                <input type="text" name="nick" id="nick-input" value="<?php echo htmlspecialchars($member['mb_nick'] ?? ''); ?>" placeholder="영문, 숫자, _ 만 입력" pattern="[a-zA-Z0-9_]+" oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')">
+                <label for="nick-input">닉네임</label>
+                <input type="text" name="nick" required id="nick-input" value="<?php echo htmlspecialchars($member['mb_nick'] ?? ''); ?>" placeholder="영문, 숫자, _ 만 입력" pattern="[a-zA-Z0-9_]+" oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')">
                 <?php if (!empty($nick_error)): ?><div class="pw-error" style="margin-top:4px;"><i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($nick_error); ?></div><?php endif; ?>
                 <?php if ($saved && $action === 'nick'): ?><div class="pw-saved" style="margin-top:4px;"><i class="bi bi-check-circle"></i> 닉네임이 변경되었습니다</div><?php endif; ?>
             </div>
-            <button type="submit" class="field-change-btn">변경</button>
         </div>
     </form>
 
     <!-- ── 이름 폼 ── -->
-    <form method="post" id="f-name">
+    <form method="post" id="f-name" onsubmit="saveAll();return false;">
         <input type="hidden" name="action" value="name">
         <div class="field">
             <div class="field-content">
-                <label>이름</label>
-                <input type="text" name="mb_name" value="<?php echo htmlspecialchars($member['mb_name'] ?? ''); ?>" placeholder="이름 입력">
+                <label for="mb_name">이름</label>
+                <input type="text" name="mb_name" required id="mb_name" value="<?php echo htmlspecialchars($member['mb_name'] ?? ''); ?>" placeholder="이름 입력">
                 <?php if (!empty($name_error)): ?><div class="pw-error" style="margin-top:4px;"><i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($name_error); ?></div><?php endif; ?>
             </div>
-            <button type="submit" class="field-change-btn">변경</button>
         </div>
     </form>
 
@@ -353,7 +361,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
     <div class="field" id="email-field">
         <div class="field-content">
             <label>이메일</label>
-            <span style="font-size:calc(15px * var(--fs-scale,1));color:var(--bs-body-color);"><?php echo htmlspecialchars($member['mb_email'] ?? ''); ?></span>
+            <span style="font-size:calc(15px * var(--fs-scale,1));color:var(--bs-body-color,#202124);"><?php echo htmlspecialchars($member['mb_email'] ?? ''); ?></span>
             <?php if ($email_saved): ?><div class="pw-saved" style="margin-top:4px;"><i class="bi bi-check-circle"></i> 이메일이 변경되었습니다</div><?php endif; ?>
         </div>
         <button type="button" class="field-change-btn" onclick="toggleEmailSection()">변경</button>
@@ -364,7 +372,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
                 <div class="pw-error" style="margin-bottom:8px;"><i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($email_error); ?></div>
             <?php endif; ?>
             <div class="field">
-                <div class="field-content"><label>새 이메일</label><input type="email" name="new_email" form="f-send-cert" value="<?php echo htmlspecialchars($_POST['new_email'] ?? ''); ?>" placeholder="새 이메일 입력" autocomplete="email"></div>
+                <div class="field-content"><label for="new_email">새 이메일</label><input type="email" name="new_email" id="new_email" form="f-send-cert" value="<?php echo htmlspecialchars($_POST['new_email'] ?? ''); ?>" placeholder="새 이메일 입력" autocomplete="email"></div>
                 <button type="submit" form="f-send-cert" class="field-change-btn">인증 받기</button>
             </div>
         </div>
@@ -373,22 +381,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
             <?php if (!empty($email_error) && $_ea === 'verify_email_cert'): ?>
                 <div class="pw-error" style="margin-bottom:8px;"><i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($email_error); ?></div>
             <?php endif; ?>
-            <div class="field"><div class="field-content"><label>인증 코드 (6자리)</label><input type="text" name="cert_code" form="f-verify-cert" maxlength="6" placeholder="123456" inputmode="numeric" autocomplete="one-time-code"></div></div>
+            <div class="field"><div class="field-content"><label for="cert_code">인증 코드 (6자리)</label><input type="text" name="cert_code" form="f-verify-cert" maxlength="6" placeholder="123456" inputmode="numeric" autocomplete="one-time-code" id="cert_code"></div></div>
             <button type="submit" form="f-verify-cert" class="save-btn">확인</button>
             <button type="button" onclick="document.getElementById('email-step1').style.display='block';document.getElementById('email-step2').style.display='none';" style="width:100%;margin-top:8px;margin-bottom:8px;padding:10px;background:none;border:1px solid #ddd;border-radius:12px;font-size:calc(13px * var(--fs-scale,1));color:#666;cursor:pointer;">이메일 다시 입력</button>
         </div>
     </div>
 
     <!-- ── 4. 휴대폰 폼 ── -->
-    <form method="post" id="f-hp">
+    <form method="post" id="f-hp" onsubmit="saveAll();return false;">
         <input type="hidden" name="action" value="hp">
         <div class="field">
             <div class="field-content">
-                <label>휴대폰 번호</label>
-                <input type="tel" name="hp" value="<?php echo htmlspecialchars($member['mb_hp'] ?? ''); ?>" placeholder="010-0000-0000">
+                <label for="hp">휴대폰 번호</label>
+                <input type="tel" name="hp" id="hp" value="<?php echo htmlspecialchars($member['mb_hp'] ?? ''); ?>" placeholder="010-0000-0000">
                 <?php if ($saved && $action === 'hp'): ?><div class="pw-saved" style="margin-top:4px;"><i class="bi bi-check-circle"></i> 저장되었습니다</div><?php endif; ?>
             </div>
-            <button type="submit" class="field-change-btn">변경</button>
         </div>
     </form>
 
@@ -399,16 +406,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
     </div>
     <form method="post" id="f-pw">
         <input type="hidden" name="action" value="pw">
-        <div id="pw-section" style="display:<?php echo ($pw_error||$pw_saved)?'block':'none'; ?>;">
+        <div id="pw-section" class="password-panel" style="display:<?php echo ($pw_error||$pw_saved)?'block':'none'; ?>;">
+            <div class="password-heading"><h2>비밀번호 변경</h2><button type="button" class="field-change-btn" onclick="togglePwSection()">닫기</button></div>
             <?php if ($pw_error): ?><div class="pw-error"><i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($pw_error); ?></div><?php endif; ?>
             <?php if ($pw_saved): ?><div class="pw-saved"><i class="bi bi-check-circle"></i> 비밀번호가 변경되었습니다</div><?php endif; ?>
-            <div style="margin:12px 2px 6px;font-size:calc(12px * var(--fs-scale,1));line-height:1.55;color:var(--bs-secondary-color,#777);">
+            <div class="password-help" id="password-help">
                 비밀번호를 재설정했다면 이메일로 받은 12자리 임시 비밀번호가 현재 비밀번호입니다.
             </div>
-            <div class="field"><div class="field-content"><label>현재 비밀번호</label><input type="password" name="current_pw" placeholder="기존 또는 이메일로 받은 임시 비밀번호" autocomplete="current-password" required></div></div>
-            <div class="field"><div class="field-content"><label>새 비밀번호</label><input type="password" name="new_pw" placeholder="6자 이상 입력" autocomplete="new-password" required minlength="6"></div></div>
-            <div class="field"><div class="field-content"><label>새 비밀번호 확인</label><input type="password" name="new_pw_confirm" placeholder="새 비밀번호 재입력" autocomplete="new-password" required minlength="6"></div></div>
-            <button type="submit" class="save-btn">확인</button>
+            <div class="field"><div class="field-content"><label for="current_pw">현재 비밀번호</label><input type="password" name="current_pw" placeholder="현재 비밀번호 입력" aria-describedby="password-help" autocomplete="current-password" required id="current_pw"></div></div>
+            <div class="field"><div class="field-content"><label for="new_pw">새 비밀번호</label><input type="password" name="new_pw" placeholder="6자 이상 입력" autocomplete="new-password" required minlength="6" id="new_pw"></div></div>
+            <div class="field"><div class="field-content"><label for="new_pw_confirm">새 비밀번호 확인</label><input type="password" name="new_pw_confirm" placeholder="새 비밀번호 재입력" autocomplete="new-password" required minlength="6" id="new_pw_confirm"></div></div>
+            <button type="submit" class="save-btn">비밀번호 변경</button>
         </div>
     </form>
 
@@ -426,28 +434,51 @@ function togglePwSection(){
     var open=s.style.display==='none';
     s.style.display=open?'block':'none';
     f.style.display=open?'none':'flex';
+    if(open) document.getElementById('current_pw').focus();
+    else f.querySelector('button').focus();
 }
 </script>
-<!-- 통합 저장 (닉네임/이름/연락처를 한 번에 저장) — 개별 '변경' 버튼도 그대로 동작 -->
+<!-- 통합 저장 (닉네임/이름/연락처를 한 번에 저장) -->
 <form id="f-save-all" method="post" style="display:none;">
     <input type="hidden" name="action" value="save_all">
     <input type="hidden" name="nick" id="sa-nick">
     <input type="hidden" name="mb_name" id="sa-name">
     <input type="hidden" name="hp" id="sa-hp">
 </form>
-<div class="save-bar">
-    <button type="button" class="save-bar-btn" onclick="saveAll()">저장</button>
-</div>
 <script>
 function saveAll(){
     var nick = document.querySelector('#f-nick [name="nick"]');
     var name = document.querySelector('#f-name [name="mb_name"]');
     var hp   = document.querySelector('#f-hp [name="hp"]');
+    if (!nick.reportValidity() || !name.reportValidity() || !hp.reportValidity()) return;
     document.getElementById('sa-nick').value = nick ? nick.value : '';
     document.getElementById('sa-name').value = name ? name.value : '';
     document.getElementById('sa-hp').value   = hp ? hp.value : '';
     document.getElementById('f-save-all').submit();
 }
 </script>
+<div class="save-bar">
+    <button type="button" class="save-bar-btn" onclick="saveAll()">프로필 저장</button>
+</div>
 <?php include_once __DIR__ . '/includes/bottom_nav.php'; ?>
+<script>
+(function(){
+    var root = document.documentElement;
+    var bar = document.querySelector('.save-bar');
+    var nav = document.getElementById('bottomNav');
+    function syncBottomSpacing(){
+        var navHeight = nav ? nav.getBoundingClientRect().height : 0;
+        bar.classList.toggle('without-nav', navHeight === 0);
+        root.style.setProperty('--profile-nav-height', navHeight + 'px');
+        root.style.setProperty('--profile-save-height', bar.getBoundingClientRect().height + 'px');
+    }
+    syncBottomSpacing();
+    if (window.ResizeObserver) {
+        var observer = new ResizeObserver(syncBottomSpacing);
+        observer.observe(bar);
+        if (nav) observer.observe(nav);
+    }
+    window.addEventListener('resize', syncBottomSpacing);
+})();
+</script>
 </body></html>
