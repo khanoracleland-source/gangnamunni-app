@@ -33,8 +33,7 @@ function admin_sidebar_menus(): array {
             ['url' => 'admin_personnel.php', 'label' => '인력 관리', 'icon' => 'bi-people', 'key' => 'personnel'],
             ['url' => 'admin_reviews.php', 'label' => term('review') . ' 관리', 'icon' => 'bi-chat-dots', 'key' => 'reviews'],
             ['url' => 'admin_hospital_images.php', 'label' => '병원 이미지 관리', 'icon' => 'bi-images', 'key' => 'hospital_images'],
-            // TEMPORARILY DISABLED: admin_ads.php (재활성화 시 아래 항목의 주석을 해제)
-            // ['url' => 'admin_ads.php', 'label' => '광고 관리', 'icon' => 'bi-megaphone', 'key' => 'ads'],
+            ['url' => 'admin_ads.php', 'label' => '광고 관리', 'icon' => 'bi-megaphone', 'key' => 'ads'],
             ['url' => 'admin_categories.php', 'label' => '카테고리 관리', 'icon' => 'bi-tags', 'key' => 'categories'],
             // TEMPORARILY DISABLED: admin_tips.php (재활성화 시 아래 항목의 주석을 해제)
             // ['url' => 'admin_tips.php', 'label' => '꿀팁 관리', 'icon' => 'bi-lightbulb', 'key' => 'tips'],

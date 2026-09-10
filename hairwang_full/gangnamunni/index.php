@@ -33,16 +33,14 @@ function home_safe_background($value) {
 $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_hospitals'");
 $table_exists = mysqli_num_rows($table_check) > 0;
 
-// 광고 배너 데이터 가져오기
+// Homepage banners use approval and independent visibility, not paid slot bookings.
 $ads = [];
 $ads_query = "SELECT a.* FROM gangnamunni_ads a
     WHERE a.status = 'approved'
-      AND EXISTS (
-          SELECT 1 FROM gangnamunni_ad_slot_bookings b
-          WHERE b.advertiser_id = a.advertiser_id
-            AND b.status = 'active'
-            AND b.start_date <= CURDATE()
-            AND (b.end_date IS NULL OR b.end_date >= CURDATE())
+      AND NOT EXISTS (
+          SELECT 1 FROM gangnamunni_settings s
+          WHERE s.setting_key = CONCAT('home_banner_enabled_', a.id)
+            AND s.setting_value = '0'
       )
     ORDER BY a.display_order ASC LIMIT 10";
 $ads_result = mysqli_query($connect, $ads_query);
@@ -286,6 +284,16 @@ textarea {
     width: 32px; height: 32px; border-radius: 50%;
     font-size: 20px; cursor: pointer; z-index: 5;
     display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+}
+.carousel-arrow:hover,
+.carousel-arrow:active,
+.carousel-arrow:focus,
+.carousel-arrow:focus-visible {
+    background: rgba(0,0,0,0.3);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transform: translateY(-50%);
 }
 .carousel-prev { left: 8px; }
 .carousel-next { right: 8px; }
@@ -406,6 +414,9 @@ function initCarouselIndex(carouselId) {
 
 // 페이지 로드 후 초기화
 document.addEventListener("DOMContentLoaded", function() {
+    initCarouselIndex("ads-carousel-top");
+    initCarouselAuto("ads-carousel-top", "' . $ad_auto_scroll_enabled . '", "' . $ad_auto_scroll_interval . '");
+    addSwipeSupport("ads-carousel-top");
     initCarouselIndex("ads-carousel");
     initCarouselIndex("promo-carousel");
     initCarouselAuto("ads-carousel", "' . $ad_auto_scroll_enabled . '", "' . $ad_auto_scroll_interval . '");
@@ -415,17 +426,16 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 ';
 
-// 공통 헤더 include
 
-// [Figma Sync - 2026-06-06] index 검색바 Figma #01 매칭 — CSS 오버라이드 추가
-// 원인 : 검색 input/지역선택 버튼이 Figma 디자인과 다름
-// 변경 : $page_css에 figma_sync_index.css 내용 append (PHP/HTML 무변경)
-// 원복 : 본 블록 3줄 삭제 또는 figma_sync_index.css 파일 삭제
 $_fs_css_file = __DIR__ . '/assets/css/figma_sync_index.css';
 if (file_exists($_fs_css_file)) { $page_css .= "
 " . file_get_contents($_fs_css_file); }
 
 $page_css .= '
+/* Reserve the fixed 77px bottom navigation plus a 20px reading gap. */
+.main-content {
+    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+}
 /* 홈 회사 정보 푸터 */
 .home-company-footer {
     margin: 40px -16px 0;
@@ -516,7 +526,7 @@ body.ae-active { padding-top:0 !important; }
         <?php else: ?>
 
         <!-- 광고: 지역선택 아래 (ad_home_after_search 설정) — 피그마 스타일: 흰 카드 -->
-        <?php if ($ad_home_after_search === '1' && !empty($ads)): ?>
+        <?php if ($ad_show_index === '1' && $ad_home_after_search === '1' && !empty($ads)): ?>
         <div class="carousel-section ae-wrap" id="ads-carousel-top" style="margin-bottom:8px;">
             <?php if (function_exists('ae')) ae('ad_settings', '광고 설정'); ?>
             <div class="carousel-container">
@@ -952,7 +962,7 @@ body.ae-active { padding-top:0 !important; }
         <?php endif; ?>
 
         <!-- 광고: 이벤트 아래 (ad_home_after_events 설정) -->
-        <?php if ($ad_home_after_events === '1' && !empty($ads)): ?>
+        <?php if ($ad_show_index === '1' && $ad_home_after_events === '1' && !empty($ads)): ?>
         <div class="carousel-section" id="ads-carousel-bottom" style="margin:16px 0;">
             <div class="carousel-container">
                 <button class="carousel-arrow carousel-prev" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel-bottom', -1)">‹</button>

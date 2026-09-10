@@ -24,7 +24,7 @@ require_admin_login();
 // TEMPORARY FEATURE GATE:
 // 광고 관리 페이지를 다시 열 때 true로 변경한다.
 // 이 가드는 POST/AJAX 처리보다 먼저 실행되므로 최고관리자를 포함한 모든 관리자의 변경 요청도 차단한다.
-$admin_ads_enabled = false;
+$admin_ads_enabled = true;
 if (!$admin_ads_enabled) {
     http_response_code(503);
     $admin_extra_css = '
@@ -80,7 +80,7 @@ function admin_ads_forbidden($message = '접근 권한이 없습니다.') {
 
 function admin_ads_is_global_action($action) {
     return in_array($action, [
-        'approve_ad', 'reject_ad', 'add_promo', 'update_promo',
+        'set_home_banner', 'approve_ad', 'reject_ad', 'add_promo', 'update_promo',
         'delete_promo', 'toggle_promo', 'bulk_delete_promos', 'update_scroll_settings'
     ], true);
 }
@@ -300,6 +300,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
         $message = '광고가 삭제되었습니다.';
     } else {
         $error = '삭제 실패: ' . mysqli_error($connect);
+    }
+}
+
+// Homepage placement is independent of paid advertising slots.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $posted_action === 'set_home_banner') {
+    $id = intval($_POST['ad_id'] ?? 0);
+    $enabled = (string)($_POST['home_enabled'] ?? '');
+    if (!$ad_id_in_scope($id)) admin_ads_forbidden();
+    $ad_result = mysqli_query($connect, "SELECT status FROM gangnamunni_ads WHERE id={$id}");
+    $ad_row = $ad_result ? mysqli_fetch_assoc($ad_result) : null;
+    if (!$ad_row || !in_array($enabled, ['0', '1'], true)) {
+        $error = '올바른 배너를 선택해주세요.';
+    } elseif ($enabled === '1' && $ad_row['status'] !== 'approved') {
+        $error = '승인된 광고만 메인 배너로 표시할 수 있습니다.';
+    } else {
+        require_once __DIR__ . '/includes/settings_helper.php';
+        if (updateSetting($connect, 'home_banner_enabled_' . $id, $enabled)) {
+            $message = $enabled === '1' ? '메인 배너가 표시됩니다.' : '메인 배너가 숨겨졌습니다.';
+        } else {
+            $error = '메인 배너 설정을 저장하지 못했습니다.';
+        }
     }
 }
 
@@ -564,6 +585,8 @@ $slot_exposure_select = "EXISTS(
 
 $ads_query = "
     SELECT a.*,
+        NOT EXISTS (SELECT 1 FROM gangnamunni_settings hs
+            WHERE hs.setting_key=CONCAT('home_banner_enabled_', a.id) AND hs.setting_value='0') AS home_enabled,
            {$payment_select}
            {$slot_exposure_select}
            adv.hospital_name as advertiser_name
@@ -673,6 +696,10 @@ include __DIR__ . '/includes/admin_header.php';
 <!--                  광고 배너 탭                                  -->
 <!-- ============================================================ -->
 
+<div class="alert alert-info py-2 small">
+    메인 배너는 승인 후 슬롯 예약 없이 표시됩니다. 각 광고의 메인 배너 표시/숨기기 버튼과 광고·디스플레이 설정에서 노출을 관리하세요.
+    유료 광고 슬롯의 활성 상태는 별도로 관리됩니다.
+</div>
 <!-- 승인 상태 필터 -->
 <div class="d-flex gap-2 mb-2 flex-wrap">
     <a href="?tab=ads" class="btn btn-sm <?php echo empty($status_filter) ? 'btn-primary' : 'btn-outline-secondary'; ?>">
@@ -907,6 +934,15 @@ include __DIR__ . '/includes/admin_header.php';
                         <button type="button" class="btn btn-danger btn-sm" title="거절" onclick="openRejectModal(<?php echo $ad['id']; ?>, '<?php echo htmlspecialchars($status_filter); ?>')"><i class="bi bi-x-lg"></i></button>
                     </div>
                     <?php endif; ?>
+                    <?php if ($is_super_admin && ($ad['status'] ?? '') === 'approved'): ?>
+                    <form method="POST" class="mb-1">
+                        <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="action" value="set_home_banner">
+                        <input type="hidden" name="ad_id" value="<?php echo (int)$ad['id']; ?>">
+                        <input type="hidden" name="home_enabled" value="<?php echo $ad['home_enabled'] ? '0' : '1'; ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-primary"><?php echo $ad['home_enabled'] ? '메인 배너 숨기기' : '메인 배너 표시'; ?></button>
+                    </form>
+                    <?php endif; ?>
                     <div class="btn-group btn-group-sm">
                         <a href="partner_wallet.php" class="btn btn-outline-success" title="광고 지갑">
                             <i class="bi bi-wallet2"></i>
@@ -1010,6 +1046,15 @@ include __DIR__ . '/includes/admin_header.php';
                         <form method="POST" action="admin_ads.php" class="d-inline"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="action" value="approve_ad"><input type="hidden" name="ad_id" value="<?php echo $ad['id']; ?>"><input type="hidden" name="current_status" value="<?php echo htmlspecialchars($status_filter); ?>"><button type="submit" class="btn btn-success btn-sm" title="승인" onclick="return confirm('승인하시겠습니까?')"><i class="bi bi-check-lg"></i></button></form>
                         <button type="button" class="btn btn-danger btn-sm" title="거절" onclick="openRejectModal(<?php echo $ad['id']; ?>, '<?php echo htmlspecialchars($status_filter); ?>')"><i class="bi bi-x-lg"></i></button>
                     </div>
+                    <?php endif; ?>
+                    <?php if ($is_super_admin && ($ad['status'] ?? '') === 'approved'): ?>
+                    <form method="POST" class="mb-1">
+                        <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_ads_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="action" value="set_home_banner">
+                        <input type="hidden" name="ad_id" value="<?php echo (int)$ad['id']; ?>">
+                        <input type="hidden" name="home_enabled" value="<?php echo $ad['home_enabled'] ? '0' : '1'; ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-primary"><?php echo $ad['home_enabled'] ? '메인 배너 숨기기' : '메인 배너 표시'; ?></button>
+                    </form>
                     <?php endif; ?>
                     <div class="btn-group btn-group-sm">
                         <a href="partner_wallet.php" class="btn btn-outline-success" title="광고 지갑">
