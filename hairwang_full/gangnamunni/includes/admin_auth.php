@@ -294,6 +294,8 @@ function require_admin_login($redirect = null) {
         header('Location: ' . $url);
         exit;
     }
+    require_once __DIR__ . '/admin_menu_navigation.php';
+    admin_enforce_menu_navigation();
 }
 
 /**

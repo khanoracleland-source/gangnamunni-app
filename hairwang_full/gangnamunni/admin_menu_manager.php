@@ -148,9 +148,9 @@ include __DIR__ . '/includes/admin_header.php';
     <div class="alert alert-warning small">
         <strong><i class="bi bi-exclamation-triangle-fill"></i> 중요 안내 (2026-06-19 정정):</strong><br>
         - 이 페이지의 저장 내용은 <code>gangnamunni_admin_menus</code> 테이블에 기록되지만,
-        <u>현재 좌측 사이드바는 이 테이블을 읽지 않고</u> <code>includes/admin_header.php</code>의 메뉴 정의를 사용합니다.
+        <u>현재 좌측 사이드바는 이 테이블을 읽지 않고</u> <code>includes/admin_menu_catalog.php</code>의 메뉴 정의를 사용합니다.
         따라서 <strong>여기서 재정렬·표시/숨김을 저장해도 실제 사이드바에는 자동 반영되지 않습니다</strong> (DB 연동 개발 예정).<br>
-        - 사이드바 메뉴를 실제로 바꾸려면 현재는 <code>includes/admin_header.php</code>의 <code>$admin_menus</code> 배열을 편집해야 합니다.
+        - 사이드바 메뉴를 실제로 바꾸려면 현재는 <code>includes/admin_menu_catalog.php</code>의 메뉴 배열을 편집해야 합니다.
     </div>
 
     <div class="row">
