@@ -1064,10 +1064,10 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
                     <div class="row g-2" id="treatmentList" style="max-height:400px; overflow-y:auto;">
                         <?php foreach ($available_treatments as $at): ?>
                         <div class="col-md-4 col-sm-6 treatment-item" data-cat="<?php echo intval($at['cat_id'] ?? 0); ?>">
-                            <div class="card card-body py-2 px-3">
-                                <div class="form-check">
+                            <label class="card card-body py-2 px-3" for="t_<?php echo intval($at['id']); ?>" style="cursor:pointer;">
+                                <span class="form-check d-block">
                                     <input class="form-check-input treatment-cb" type="checkbox" name="treatment_ids[]" value="<?php echo intval($at['id']); ?>" id="t_<?php echo intval($at['id']); ?>">
-                                    <label class="form-check-label" for="t_<?php echo intval($at['id']); ?>">
+                                    <span class="form-check-label">
                                         <strong><?php echo htmlspecialchars($at['name']); ?></strong>
                                         <?php if (!empty($at['hashtag'])): ?>
                                         <small class="text-primary d-block"><?php echo htmlspecialchars($at['hashtag']); ?></small>
@@ -1075,9 +1075,9 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
                                         <small class="text-muted">
                                             <?php echo htmlspecialchars($at['category_name'] ?? '미분류'); ?>
                                         </small>
-                                    </label>
-                                </div>
-                            </div>
+                                    </span>
+                                </span>
+                            </label>
                         </div>
                         <?php endforeach; ?>
                     </div>

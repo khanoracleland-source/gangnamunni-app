@@ -79,7 +79,8 @@
         container.setAttribute('aria-busy', 'true');
         var saved = false;
         try {
-            var response = await fetch(form.action, {
+            // A hidden input named "action" shadows the form.action URL in browsers.
+            var response = await fetch(form.getAttribute('action') || window.location.href, {
                 method: 'POST', body: body, credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });

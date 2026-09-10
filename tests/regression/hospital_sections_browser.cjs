@@ -15,6 +15,9 @@ const updatedPage = ${JSON.stringify(panel + images(2)).replace(/</g, '\\u003c')
 window.fetch = async (url, options = {}) => {
  if (options.method === 'POST') {
   posts++;
+  const expectedUrl = options.body.get('action') === 'add_hospital_images'
+   ? 'https://fixture.test/images' : 'https://fixture.test/treatments';
+  assert(String(url) === expectedUrl, 'POST URL was shadowed by the action input: ' + String(url));
   if (mode === 'network') throw Error('offline');
   if (mode === 'login') return {ok:true,redirected:true,headers:new Headers({'content-type':'text/html'})};
   return {ok:true,redirected:false,headers:new Headers({'content-type':'application/json'}),json:async()=>({ok:mode !== 'validation',message: mode === 'validation' ? 'Validation error' : 'Saved'})};

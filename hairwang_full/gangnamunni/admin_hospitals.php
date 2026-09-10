@@ -2366,7 +2366,7 @@ window.initAdminHospitalImages = function() {
 };
 window.initAdminHospitalImages();
 </script>
-<script src="assets/js/admin-hospital-sections.js"></script>
+<script src="assets/js/admin-hospital-sections.js?v=<?= filemtime(__DIR__ . '/assets/js/admin-hospital-sections.js') ?>"></script>
 <?php
 include __DIR__ . '/includes/admin_footer.php';
 ?>

@@ -14,6 +14,12 @@ test('AJAX section saves preserve unrelated drafts, handle failures and recover 
         // All requests are mocked by the fixture. No real uploads or navigation occur.
         beforeParse(window) {
             window.Headers = Headers;
+            // jsdom omits browser form named-property shadowing (input[name=action]).
+            const action = Object.getOwnPropertyDescriptor(window.HTMLFormElement.prototype, 'action');
+            Object.defineProperty(window.HTMLFormElement.prototype, 'action', {
+                ...action,
+                get() { return this.elements.namedItem('action') || action.get.call(this); }
+            });
             window.URL.createObjectURL = () => 'blob:fixture';
             window.URL.revokeObjectURL = () => {};
             // jsdom lacks inert and DataTransfer. Keep their DOM-facing state for these tests.
