@@ -1362,7 +1362,7 @@ function deleteTreatmentImage(htId, imageId) {
 }
 
 var HT_PRICES = <?php echo json_encode($ht_prices, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-var PRICE_UNITS = ['샷','cc','ml','kj','회','병','IU','기타'];
+var PRICE_UNITS = ['샷','cc','ml','kj','회','병','IU','라인','기타'];
 var BODY_PART_GROUPS = [
     {label:'얼굴 전체 및 헤어', items:['얼굴 전체 (풀페이스)','헤어라인','두피']},
     {label:'상안면부 (눈/이마 주변)', items:['이마','미간','눈가 (눈웃음 주름)','눈밑 (다크서클, 눈밑 꺼짐)','애교살','관자놀이']},

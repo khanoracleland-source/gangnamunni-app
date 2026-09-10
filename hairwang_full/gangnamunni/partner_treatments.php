@@ -613,6 +613,7 @@ include __DIR__ . '/includes/header.php';
                             <option value="회" <?php echo ($t['dosage_unit'] ?? '') === '회' ? 'selected' : ''; ?>>회</option>
                             <option value="병" <?php echo ($t['dosage_unit'] ?? '') === '병' ? 'selected' : ''; ?>>병</option>
                             <option value="IU" <?php echo ($t['dosage_unit'] ?? '') === 'IU' ? 'selected' : ''; ?>>IU</option>
+                            <option value="라인" <?php echo ($t['dosage_unit'] ?? '') === '라인' ? 'selected' : ''; ?>>라인</option>
                             <option value="기타" <?php echo ($t['dosage_unit'] ?? '') === '기타' ? 'selected' : ''; ?>>기타</option>
                         </select>
                         <button type="submit" class="pt-btn pt-btn-primary" style="padding:6px 12px;">저장</button>

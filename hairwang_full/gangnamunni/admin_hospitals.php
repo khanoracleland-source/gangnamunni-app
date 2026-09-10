@@ -781,6 +781,19 @@ $admin_extra_css = '
 .application-asset-preview img { width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
 .application-asset-missing { color: var(--bs-secondary-color); text-align: center; }
 
+.admin-section-toggle {
+    background-color: var(--bs-body-bg);
+    border-color: transparent;
+    border-bottom: 0 !important;
+    transition: background-color 0.2s;
+}
+
+.admin-section-toggle:hover,
+.admin-section-toggle:focus,
+.admin-section-toggle:active {
+    background-color: var(--bs-tertiary-bg) !important;
+}
+
 .category-badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
 .tag-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
 /* 병원 목록 테이블: 전화/카테고리처럼 길어질 수 있는 셀을 최대 2줄로 제한하고 넘치면 ... 처리.
@@ -878,7 +891,7 @@ $edit_json_list_value = static function ($raw) {
     <input type="hidden" name="hospital_id" value="<?php echo $hospital['id']; ?>">
 
     <div class="card mb-3">
-        <button class="card-header btn border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editBasicInfoSection" aria-controls="editBasicInfoSection" aria-expanded="false"><span><i class="bi bi-pencil me-1"></i> 기본 정보 수정</span><i class="bi bi-chevron-down"></i></button>
+        <button class="card-header btn admin-section-toggle border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editBasicInfoSection" aria-controls="editBasicInfoSection" aria-expanded="false"><span><i class="bi bi-pencil me-1"></i> 기본 정보 수정</span><i class="bi bi-chevron-down"></i></button>
         <div class="collapse" id="editBasicInfoSection"><div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
@@ -948,7 +961,7 @@ $edit_json_list_value = static function ($raw) {
     </div>
 
     <div class="card mb-3">
-        <button class="card-header btn border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editCategoriesSection" aria-controls="editCategoriesSection" aria-expanded="false"><span><i class="bi bi-tags me-1"></i> 카테고리 / 태그</span><i class="bi bi-chevron-down"></i></button>
+        <button class="card-header btn admin-section-toggle border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editCategoriesSection" aria-controls="editCategoriesSection" aria-expanded="false"><span><i class="bi bi-tags me-1"></i> 카테고리 / 태그</span><i class="bi bi-chevron-down"></i></button>
         <div class="collapse" id="editCategoriesSection"><div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
@@ -980,7 +993,7 @@ $edit_json_list_value = static function ($raw) {
     </div>
 
     <div class="card mb-3">
-        <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editBusinessHoursSection" aria-expanded="false">
+        <button class="card-header btn admin-section-toggle btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editBusinessHoursSection" aria-expanded="false">
             <span><i class="bi bi-clock me-1"></i><strong>영업시간 설정</strong></span><i class="bi bi-chevron-down"></i>
         </button>
         <div class="collapse" id="editBusinessHoursSection"><div class="card-body">
@@ -1128,6 +1141,7 @@ $edit_json_list_value = static function ($raw) {
         'lat_field'  => 'latitude',
         'lng_field'  => 'longitude',
         'addr_field' => 'address',
+        'header_class' => 'admin-section-toggle',
         'lat_value'  => $hospital['latitude'] ?? '',
         'lng_value'  => $hospital['longitude'] ?? '',
     ];
@@ -1137,7 +1151,7 @@ $edit_json_list_value = static function ($raw) {
 </form>
 
 <div class="card mt-3">
-    <button class="card-header btn border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editDocumentsSection" aria-controls="editDocumentsSection" aria-expanded="false"><span><i class="bi bi-file-earmark-check me-1"></i><strong>제출 서류</strong></span><i class="bi bi-chevron-down"></i></button>
+    <button class="card-header btn admin-section-toggle border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editDocumentsSection" aria-controls="editDocumentsSection" aria-expanded="false"><span><i class="bi bi-file-earmark-check me-1"></i><strong>제출 서류</strong></span><i class="bi bi-chevron-down"></i></button>
     <div class="collapse" id="editDocumentsSection"><div class="card-body">
         <div class="d-flex flex-wrap gap-2 mb-4">
             <?php foreach ([
@@ -1155,7 +1169,7 @@ $edit_json_list_value = static function ($raw) {
 </div>
 
 <div class="card mt-3">
-    <button class="card-header btn text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#editTreatmentsSection" aria-expanded="<?= isset($_GET['treatment_msg']) ? 'true' : 'false' ?>">
+    <button class="card-header btn admin-section-toggle text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#editTreatmentsSection" aria-expanded="<?= isset($_GET['treatment_msg']) ? 'true' : 'false' ?>">
         <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가 / 관리</strong></span>
         <i class="bi bi-chevron-down"></i>
     </button>
@@ -1165,7 +1179,7 @@ $edit_json_list_value = static function ($raw) {
 </div>
 
 <div class="card mt-3">
-    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editDoctorsSection" aria-expanded="false">
+    <button class="card-header btn admin-section-toggle btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editDoctorsSection" aria-expanded="false">
         <span><i class="bi bi-person-badge me-1"></i><strong>의사 추가</strong></span><span><span class="badge bg-secondary me-2"><?= count($application_doctors) ?>명</span><i class="bi bi-chevron-down"></i></span>
     </button>
     <div class="collapse" id="editDoctorsSection"><div class="card-body">
@@ -1501,7 +1515,7 @@ $application_assets = [
 
 <?php if (!$edit_mode): ?>
 <div class="card mb-3">
-    <button class="card-header btn text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#viewTreatmentsSection" aria-expanded="<?= isset($_GET['treatment_msg']) ? 'true' : 'false' ?>">
+    <button class="card-header btn admin-section-toggle text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#viewTreatmentsSection" aria-expanded="<?= isset($_GET['treatment_msg']) ? 'true' : 'false' ?>">
         <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가 / 관리</strong></span>
         <i class="bi bi-chevron-down"></i>
     </button>
@@ -1513,7 +1527,7 @@ $application_assets = [
 
 <?php if (!empty($hospital['applied_by'])): ?>
 <div class="card mb-3">
-    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewDoctorsSection" aria-expanded="false">
+    <button class="card-header btn admin-section-toggle btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewDoctorsSection" aria-expanded="false">
         <span><i class="bi bi-person-badge me-1"></i><strong>의사 추가</strong></span>
         <span><span class="badge bg-body-secondary text-body me-2"><?= count($application_doctors) ?>명</span><i class="bi bi-chevron-down"></i></span>
     </button>
@@ -1669,7 +1683,7 @@ $application_assets = [
 </div>
 
 <div class="card mb-3">
-    <button class="card-header btn btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewBusinessHoursSection" aria-expanded="false">
+    <button class="card-header btn admin-section-toggle btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewBusinessHoursSection" aria-expanded="false">
         <span><i class="bi bi-clock me-1"></i><strong>영업시간 설정</strong></span><i class="bi bi-chevron-down"></i>
     </button>
     <div class="collapse" id="viewBusinessHoursSection"><div class="card-body">
@@ -1699,7 +1713,7 @@ $application_assets = [
 </div>
 
 <div class="card mb-3">
-    <button class="card-header btn border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#viewCategoriesSection" aria-controls="viewCategoriesSection" aria-expanded="false"><span><i class="bi bi-tags me-1"></i> 카테고리 / 태그</span><i class="bi bi-chevron-down"></i></button>
+    <button class="card-header btn admin-section-toggle border-0 d-flex justify-content-between align-items-center text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#viewCategoriesSection" aria-controls="viewCategoriesSection" aria-expanded="false"><span><i class="bi bi-tags me-1"></i> 카테고리 / 태그</span><i class="bi bi-chevron-down"></i></button>
     <div class="collapse" id="viewCategoriesSection"><div class="card-body">
         <div class="row g-3">
             <div class="col-md-6">

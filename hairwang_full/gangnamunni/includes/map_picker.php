@@ -24,6 +24,8 @@ $pk_collapse_attr = htmlspecialchars($pk_collapse_id, ENT_QUOTES, 'UTF-8');
 $pk_lat_field  = $picker_config['lat_field'] ?? 'latitude';
 $pk_lng_field  = $picker_config['lng_field'] ?? 'longitude';
 $pk_addr_field = $picker_config['addr_field'] ?? 'address';
+$pk_header_class = trim('mp-card-head btn border-0 text-start w-100 ' . trim((string)($picker_config['header_class'] ?? '')));
+$pk_card_class = trim('mp-card mb-3 ' . trim((string)($picker_config['wrapper_class'] ?? '')));
 $pk_lat_val    = floatval($picker_config['lat_value'] ?? 0);
 $pk_lng_val    = floatval($picker_config['lng_value'] ?? 0);
 $pk_has_coords = ($pk_lat_val != 0 && $pk_lng_val != 0);
@@ -126,9 +128,9 @@ $pk_use_kakao = !empty($pk_kakao_key);
 @media (max-width: 575px) { .mp-search { flex-wrap: wrap; } .mp-btn { flex: 1; justify-content: center; padding: 10px; } }
 </style>
 
-<div class="mp-card mb-3">
+<div class="<?= htmlspecialchars($pk_card_class, ENT_QUOTES, 'UTF-8') ?>">
     <?php if ($pk_collapse_id !== ''): ?>
-    <button class="mp-card-head btn border-0 text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#<?= $pk_collapse_attr ?>" aria-controls="<?= $pk_collapse_attr ?>" aria-expanded="false">
+    <button class="<?= htmlspecialchars($pk_header_class, ENT_QUOTES, 'UTF-8') ?>" type="button" data-bs-toggle="collapse" data-bs-target="#<?= $pk_collapse_attr ?>" aria-controls="<?= $pk_collapse_attr ?>" aria-expanded="false">
     <?php else: ?>
     <div class="mp-card-head">
     <?php endif; ?>
