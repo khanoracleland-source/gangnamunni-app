@@ -7,11 +7,12 @@ set_error_handler(static function ($severity, $message, $file, $line) {
 $source = file_get_contents(__DIR__ . '/../../hairwang_full/gangnamunni/admin_hospital_treatments.php');
 if (($argv[1] ?? '') === '--redirect') {
     $_GET['hospital_panel'] = $argv[2] ?? '';
+    if (($argv[3] ?? '') === 'ajax') $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
     $start = strpos($source, 'function ht_redirect(');
     $end = strpos($source, 'function ht_execute_or_throw(', $start);
     // Capture the real redirect helper's Location header before its exit.
     eval('namespace PanelRedirectTest; function header($value) { echo $value; } '.substr($source, $start, $end - $start));
-    \PanelRedirectTest\ht_redirect(8438, 'Saved option', 'warning');
+    \PanelRedirectTest\ht_redirect(8438, 'Saved option', $argv[4] ?? 'warning');
 }
 $template = substr($source, strpos($source, '$ht_form_action ='));
 function ht_price_won($price) { return (int)$price; }
@@ -72,3 +73,13 @@ foreach (['edit', 'view', '', 'https://example.invalid'] as $mode) {
     expect_panel($result === $expected, 'Incorrect return location: '.$mode);
 }
 echo "PASS: edit/view redirects retain hospital, feedback and expanded section; standalone and invalid modes stay on the treatment page\n";
+
+foreach (['edit', 'view'] as $mode) {
+  foreach (['warning', 'danger', 'success'] as $type) {
+    $result = shell_exec(escapeshellarg(PHP_BINARY).' -n '.escapeshellarg(__FILE__).' --redirect '.escapeshellarg($mode).' ajax '.escapeshellarg($type));
+    expect_panel(strpos($result, 'Location:') === false, 'AJAX must not redirect');
+    $payload = json_decode(substr($result, strpos($result, '{')), true);
+    expect_panel($payload === ['ok' => $type === 'success', 'message' => 'Saved option', 'type' => $type], 'AJAX feedback must distinguish saved and invalid requests');
+  }
+}
+echo "PASS: AJAX panel responses return structured feedback without navigation\n";

@@ -235,6 +235,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'add_hospital_images' && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['ok' => $error === '', 'message' => $error !== '' ? $error : $message]);
+        exit;
+    }
+
     if ($action === 'add_hospital_doctors') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         $doctor_names = is_array($_POST['doctor_name'] ?? null) ? $_POST['doctor_name'] : [];
@@ -1205,7 +1211,7 @@ foreach ($hospital_images as $edit_image) {
 }
 $edit_detail_slots_remaining = max(0, 10 - $edit_detail_image_count);
 ?>
-<div class="card mt-3">
+<div class="card mt-3" id="adminHospitalImagesCard">
     <div class="card-header d-flex justify-content-between align-items-center">
         <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editHospitalImagesSection" aria-expanded="false">
             <i class="bi bi-images me-1"></i><strong>병원 이미지 추가</strong> <span class="badge bg-secondary ms-1"><?php echo count($hospital_images); ?>장</span> <i class="bi bi-chevron-down ms-2"></i>
@@ -1240,7 +1246,7 @@ $edit_detail_slots_remaining = max(0, 10 - $edit_detail_image_count);
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <i class="bi bi-images text-primary"></i>
                             <label class="form-label fw-semibold mb-0" for="adminInteriorImagesInput">내부 상세 이미지</label>
-                            <span class="badge bg-light text-dark border" id="adminInteriorImageCount"><?php echo $edit_detail_image_count; ?> / 10</span>
+                            <span class="badge bg-light text-dark border" id="adminInteriorImageCount" data-saved-count="<?php echo $edit_detail_image_count; ?>"><?php echo $edit_detail_image_count; ?> / 10</span>
                         </div>
                         <input type="file" name="admin_interior_images[]" id="adminInteriorImagesInput" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.webp" multiple <?php echo $edit_detail_slots_remaining === 0 ? 'disabled' : ''; ?>>
                         <div class="form-text">한 번에 여러 장 선택 가능 · 추가 가능 <?php echo $edit_detail_slots_remaining; ?>장 · JPG/PNG/WebP · 파일당 10MB 이하</div>
@@ -2284,7 +2290,7 @@ function bulkReject() {
     }
 })();
 
-(function() {
+window.initAdminHospitalImages = function() {
     var interiorInput = document.getElementById('adminInteriorImagesInput');
     var interiorPreview = document.getElementById('adminInteriorImagesPreview');
     var countLabel = document.getElementById('adminInteriorImageCount');
@@ -2292,7 +2298,7 @@ function bulkReject() {
     var mainPreview = document.getElementById('adminMainImagePreview');
     if (!countLabel) return;
 
-    var existingCount = <?php echo isset($edit_detail_image_count) ? (int)$edit_detail_image_count : 0; ?>;
+    var existingCount = Number(countLabel.dataset.savedCount || 0);
     var remainingCount = Math.max(0, 10 - existingCount);
 
     function renderMainPreview(input, target, maxBytes) {
@@ -2357,8 +2363,10 @@ function bulkReject() {
     if (mainInput && mainPreview) {
         mainInput.addEventListener('change', function() { renderMainPreview(mainInput, mainPreview, 5 * 1024 * 1024); });
     }
-})();
+};
+window.initAdminHospitalImages();
 </script>
+<script src="assets/js/admin-hospital-sections.js"></script>
 <?php
 include __DIR__ . '/includes/admin_footer.php';
 ?>

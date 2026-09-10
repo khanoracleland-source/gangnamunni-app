@@ -110,6 +110,12 @@ $can_manage_treatments = $is_super_admin
     || (!$is_hospital_account && in_array($treatment_mgmt_mode, ['admin_only', 'both'], true));
 
 function ht_redirect($hospital_id, $message, $type = 'success') {
+    if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest'
+        && in_array($_GET['hospital_panel'] ?? '', ['edit', 'view'], true)) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['ok' => $type === 'success', 'message' => $message, 'type' => $type]);
+        exit;
+    }
     $mode = (string)($_GET['hospital_panel'] ?? '');
     if (in_array($mode, ['edit', 'view'], true)) {
         $section = $mode === 'edit' ? 'editTreatmentsSection' : 'viewTreatmentsSection';
@@ -1190,6 +1196,7 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
     <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
 </form>
 
+<script type="application/json" id="hospitalTreatmentData"><?= json_encode(['images' => $ht_images, 'prices' => $ht_prices, 'isSuperAdmin' => $is_super_admin], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 <script>
 // Search only the hospitals already allowed by the server's hospital filter.
 (function () {
@@ -1283,7 +1290,7 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
     });
 })();
 
-var HT_IMAGES = <?php echo json_encode($ht_images, JSON_UNESCAPED_UNICODE); ?>;
+var HT_IMAGES = <?php echo json_encode($ht_images, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 var IS_SUPER_ADMIN = <?php echo $is_super_admin ? 'true' : 'false'; ?>;
 
 function tiEscape(s) {
@@ -1337,24 +1344,24 @@ function reviewTreatmentImage(htId, imageId, decision) {
     document.getElementById('ti_review_ht_id').value = htId;
     document.getElementById('ti_review_image_id').value = imageId;
     document.getElementById('ti_review_reason').value = reason;
-    document.getElementById('ti_review_form').submit();
+    document.getElementById('ti_review_form').requestSubmit();
 }
 
 function moveTreatmentImage(htId, imageId, direction) {
     document.getElementById('ti_move_ht_id').value = htId;
     document.getElementById('ti_move_image_id').value = imageId;
     document.getElementById('ti_move_direction').value = direction;
-    document.getElementById('ti_move_form').submit();
+    document.getElementById('ti_move_form').requestSubmit();
 }
 
 function deleteTreatmentImage(htId, imageId) {
     if (!confirm('이 이미지를 삭제하시겠습니까?')) return;
     document.getElementById('ti_del_ht_id').value = htId;
     document.getElementById('ti_del_image_id').value = imageId;
-    document.getElementById('ti_delete_form').submit();
+    document.getElementById('ti_delete_form').requestSubmit();
 }
 
-var HT_PRICES = <?php echo json_encode($ht_prices, JSON_UNESCAPED_UNICODE); ?>;
+var HT_PRICES = <?php echo json_encode($ht_prices, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 var PRICE_UNITS = ['샷','cc','ml','kj','회','병','IU','기타'];
 var BODY_PART_GROUPS = [
     {label:'얼굴 전체 및 헤어', items:['얼굴 전체 (풀페이스)','헤어라인','두피']},
