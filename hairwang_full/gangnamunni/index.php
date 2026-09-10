@@ -86,9 +86,9 @@ function getScrollSetting($connect, $key, $default) {
 }
 
 $ad_auto_scroll_enabled = getScrollSetting($connect, 'ad_auto_scroll_enabled', '1');
-$ad_auto_scroll_interval = getScrollSetting($connect, 'ad_auto_scroll_interval', '10000');
+$ad_auto_scroll_interval = 5000;
 $promo_auto_scroll_enabled = getScrollSetting($connect, 'promo_auto_scroll_enabled', '1');
-$promo_auto_scroll_interval = getScrollSetting($connect, 'promo_auto_scroll_interval', '10000');
+$promo_auto_scroll_interval = 5000;
 
 // 홈 광고 위치 설정 (관리자 대시보드에서 토글) — gangnamunni_settings 테이블
 $ad_home_after_search = '0';
@@ -278,29 +278,10 @@ textarea {
 .carousel-container { position: relative; overflow: hidden; border-radius: 0px; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
 .carousel-track { display: flex; transition: transform 0.4s ease; }
 .carousel-slide { min-width: 100%; flex-shrink: 0; }
-.carousel-arrow {
-    position: absolute; top: 50%; transform: translateY(-50%);
-    background: rgba(0,0,0,0.3); color: #fff; border: none;
-    width: 32px; height: 32px; border-radius: 50%;
-    font-size: 20px; cursor: pointer; z-index: 5;
-    display: flex; align-items: center; justify-content: center;
-    -webkit-tap-highlight-color: transparent;
-}
-.carousel-arrow:hover,
-.carousel-arrow:active,
-.carousel-arrow:focus,
-.carousel-arrow:focus-visible {
-    background: rgba(0,0,0,0.3);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    transform: translateY(-50%);
-}
-.carousel-prev { left: 8px; }
-.carousel-next { right: 8px; }
 .carousel-indicator {
     position: absolute; bottom: 8px; right: 12px;
     background: rgba(0,0,0,0.5); color: #fff;
-    padding: 2px 10px; border-radius: 10px; font-size: 12px;
+    padding: 1px 6px; border-radius: 6px; font-size: 8px; line-height: 1.4;
 }
 .promo-banner {
     display: flex; flex-direction: column; justify-content: center;
@@ -363,7 +344,7 @@ function initCarouselAuto(carouselId, enabled, interval) {
     if (!enabled || enabled === "0") return;
     var el = document.getElementById(carouselId);
     if (!el) return;
-    var ms = parseInt(interval) || 10000;
+    var ms = parseInt(interval) || 5000;
     var timer = setInterval(function() { carouselMove(carouselId, 1); }, ms);
     el.addEventListener("mouseenter", function() { clearInterval(timer); });
     el.addEventListener("mouseleave", function() { timer = setInterval(function() { carouselMove(carouselId, 1); }, ms); });
@@ -530,8 +511,6 @@ body.ae-active { padding-top:0 !important; }
         <div class="carousel-section ae-wrap" id="ads-carousel-top" style="margin-bottom:8px;">
             <?php if (function_exists('ae')) ae('ad_settings', '광고 설정'); ?>
             <div class="carousel-container">
-                <button class="carousel-arrow carousel-prev" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel-top', -1)">‹</button>
-                <button class="carousel-arrow carousel-next" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel-top', 1)">›</button>
                 <div class="carousel-track">
                     <?php foreach ($ads as $ad): ?>
                     <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
@@ -865,8 +844,6 @@ body.ae-active { padding-top:0 !important; }
         <div class="carousel-section ae-wrap" id="ads-carousel" style="background:var(--bs-body-bg, #fff);">
             <?php if (function_exists('ae')) ae('ad_settings', '광고 설정'); ?>
             <div class="carousel-container">
-                <button class="carousel-arrow carousel-prev" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel', -1)">‹</button>
-                <button class="carousel-arrow carousel-next" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel', 1)">›</button>
                 <div class="carousel-track">
                     <?php foreach ($ads as $ad): ?>
                     <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
@@ -894,8 +871,6 @@ body.ae-active { padding-top:0 !important; }
         <div class="carousel-section ae-wrap" id="promo-carousel">
             <?php if (function_exists('ae')) ae('promos', '프로모션 관리'); ?>
             <div class="carousel-container">
-                <button class="carousel-arrow carousel-prev" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('promo-carousel', -1)">‹</button>
-                <button class="carousel-arrow carousel-next" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('promo-carousel', 1)">›</button>
                 <div class="carousel-track">
                     <?php foreach ($promos as $promo): ?>
                     <a href="<?php echo htmlspecialchars(home_safe_link($promo['link_url']), ENT_QUOTES); ?>"
@@ -965,8 +940,6 @@ body.ae-active { padding-top:0 !important; }
         <?php if ($ad_show_index === '1' && $ad_home_after_events === '1' && !empty($ads)): ?>
         <div class="carousel-section" id="ads-carousel-bottom" style="margin:16px 0;">
             <div class="carousel-container">
-                <button class="carousel-arrow carousel-prev" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel-bottom', -1)">‹</button>
-                <button class="carousel-arrow carousel-next" onclick="event.stopPropagation(); event.preventDefault(); carouselMove('ads-carousel-bottom', 1)">›</button>
                 <div class="carousel-track">
                     <?php foreach ($ads as $ad): ?>
                     <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
