@@ -18,6 +18,7 @@
 
 // 기본값 설정
 if (!isset($page_title)) $page_title = function_exists('site_name') ? site_name() : site_name();
+if (!isset($page_title_only)) $page_title_only = false; // true면 "제목 | 사이트명" 대신 제목만 표시
 if (!isset($show_search)) $show_search = true;
 if (file_exists(__DIR__ . '/design_tokens.php')) { include_once __DIR__ . '/design_tokens.php'; }
 if (!isset($page_css)) $page_css = '';
@@ -47,7 +48,19 @@ if (isset($connect) && $connect && function_exists('loadThemeSettings')) {
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title><?php echo htmlspecialchars($page_title); ?> | <?php echo getTheme('site_name'); ?></title>
+    <title><?php echo htmlspecialchars($page_title); ?><?php echo $page_title_only ? '' : ' | ' . htmlspecialchars(getTheme('site_name')); ?></title>
+    <?php if (!empty($page_description)): ?>
+    <meta name="description" content="<?php echo htmlspecialchars($page_description, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php endif; ?>
+    <?php if (!empty($page_robots)): ?>
+    <meta name="robots" content="<?php echo htmlspecialchars($page_robots, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php endif; ?>
+    <?php if (!empty($page_canonical)): ?>
+    <link rel="canonical" href="<?php echo htmlspecialchars($page_canonical, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php endif; ?>
+    <?php if (!empty($page_naver_verification)): ?>
+    <meta name="naver-site-verification" content="<?php echo htmlspecialchars($page_naver_verification, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php endif; ?>
     <?php echo generateFaviconLinks(); ?>
     <?php echo generateGoogleFontsLink(); ?>
     <?php echo generateThemeCSS(); ?>
