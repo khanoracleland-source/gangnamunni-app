@@ -9,31 +9,39 @@
     <style>
     :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #171717; background: #fff; }
     * { box-sizing: border-box; }
-    body { margin: 0; }
+    body { margin: 0; --intro-header-height: 64px; }
+    .about-header { position: fixed; inset: 0 0 auto; z-index: 20; width: 100%; max-width: 640px; height: var(--intro-header-height); margin: 0 auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: #faf8f7; }
+    .about-brand img { display: block; width: 105px; height: auto; }
+    .about-share { display: flex; align-items: center; gap: 12px; border: 0; padding: 10px 0 10px 12px; background: transparent; color: #111; font: inherit; font-size: 20px; cursor: pointer; }
+    .about-share svg { width: 24px; height: 24px; }
+    .share-copy-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 30; background: #222; color: #fff; border-radius: 8px; padding: 12px 18px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .share-copy-toast.is-visible { opacity: 1; }
+    @media (max-width: 480px) { body { --intro-header-height: 56px; } .about-header { padding: 0 16px; } .about-brand img { width: 88px; } .about-share { font-size: 17px; } }
+
     button, a { -webkit-tap-highlight-color: transparent; }
     [hidden] { display: none !important; }
-    .introduction { max-width: 640px; margin: 0 auto; background: #fff; }
-    .intro-stage { position: relative; display: grid; place-items: center; height: 100vh; height: 100svh; min-height: 280px; overflow: hidden; background: #fff; }
-    .intro-video { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; background: #fff; }
+    .introduction { max-width: 640px; padding-top: var(--intro-header-height); margin: 0 auto; background: #fff; }
+    .intro-stage { position: relative; display: grid; place-items: center; height: calc(100vh - var(--intro-header-height)); height: calc(100svh - var(--intro-header-height)); min-height: 0; overflow: hidden; background: #fff; }
+    .intro-hero { position: absolute; inset: 0; display: grid; place-items: center; background: #faf8f7; overflow: hidden; }
+    .intro-hero img { position: absolute; left: 50%; top: 0; transform: translateX(-50%); display: block; width: auto; max-width: none; height: 100%; min-height: 0; }
+    .intro-stage.filtering-scroll { touch-action: pan-y pinch-zoom; }
+    #filtering-scene { display: block; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y pinch-zoom; }
+    #filtering-scene img { position: static; transform: none; width: 100%; height: auto; max-width: 100%; }
     :focus-visible { outline: 2px solid #ae1932; outline-offset: -2px; }
-    .intro-error { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 40px; background: #fff; text-align: center; line-height: 1.8; }
-    .intro-error h2 { color: #ae1932; font-size: 26px; }
-    .intro-error-detail { color: #888; font-size: 13px; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     /* Vertical gestures advance one scene; retain horizontal gestures and pinch zoom. */
     .intro-stage { touch-action: pan-x pinch-zoom; overscroll-behavior: contain; }
     .introduction.scroll-mode .intro-stage { touch-action: pan-y pinch-zoom; overscroll-behavior: auto; }
-    .booking-ending { width: min(100%, 68.7382svh); margin: 0 auto; }
+    .booking-ending { width: min(100%, calc((100svh - var(--intro-header-height)) * .687382)); margin: 0 auto; }
     .booking-ending-visual { position: relative; width: 100%; }
     .booking-ending-visual img { width: 100%; height: auto; display: block; }
     .google-play-link { position: absolute; left: 7.81%; top: 85.14%; width: 39.59%; height: 7.83%; border-radius: 8px; }
-    /* Native final scene: the bars and prices animate independently of the video. */
+    /* Price comparison animation. */
     .price-scene { position: absolute; inset: 0; display: grid; place-items: center; background: #fff; }
-    .price-scene:not([hidden]), .hospital-phone:not([hidden]) { animation: price-scene-enter 1500ms cubic-bezier(.22, .61, .36, 1) both; }
     .hospital-phone { position: absolute; inset: 0; display: grid; place-items: center; background: white; }
-    .phone-layout { position: relative; width: min(100%, 68.7382svh); aspect-ratio: 730 / 1062; container-type: inline-size; }
+    .phone-layout { position: relative; width: min(100%, calc((100svh - var(--intro-header-height)) * .687382)); aspect-ratio: 730 / 1062; container-type: inline-size; }
     .phone-heading { position: absolute; top: 4.8%; left: 0; width: 100%; margin: 0; text-align: center; font-size: 4.38cqw; line-height: 1.4; font-weight: 700; letter-spacing: -.03em; transition: opacity 800ms ease; }
-    .show-team .phone-heading { opacity: 0; }
+    .show-booking .phone-heading { opacity: 0; }
     .booking-heading { position: absolute; top: 1.2%; left: 0; width: 100%; margin: 0; text-align: center; font-size: 4.38cqw; line-height: 1.6; font-weight: 700; letter-spacing: -.03em; opacity: 0; transform: translateY(2cqw); transition: opacity 1500ms ease, transform 1500ms cubic-bezier(.22,.61,.36,1); }
     .booking-heading span { display: block; white-space: nowrap; }
     .show-booking .booking-heading { opacity: 1; transform: translateY(0); }
@@ -45,16 +53,21 @@
     #hospital-scene img { left: -41.058%; top: -23.3046%; }
     #hospital-team-scene img { left: -45.592%; top: -14.6732%; clip-path: inset(0 0 14.97% 0); }
     #hospital-booking-scene img { left: -41.5617%; top: -18.4957%; clip-path: inset(0 0 10.55% 0); }
-    .hospital-content:not(#hospital-scene):not([hidden]) { animation: price-scene-enter 1500ms cubic-bezier(.22,.61,.36,1) both; }
     @keyframes price-scene-enter {
         from { transform: translateY(100%); }
         to { transform: translateY(0); }
     }
+    @keyframes scene-return {
+        from { transform: translateY(-100%); }
+        to { transform: translateY(0); }
+    }
+    #intro-stage .scene-enter:not([hidden]) { z-index: 5; animation: price-scene-enter 1500ms cubic-bezier(.22,.61,.36,1) both; }
+    #intro-stage .scene-return:not([hidden]) { z-index: 5; animation: scene-return 1500ms cubic-bezier(.22,.61,.36,1) both; }
     @media (prefers-reduced-motion: reduce) {
-        .price-scene:not([hidden]), .hospital-phone:not([hidden]), .hospital-content:not(#hospital-scene):not([hidden]) { animation: none; }
+        #intro-stage .scene-enter:not([hidden]), #intro-stage .scene-return:not([hidden]) { animation: none; }
         .phone-heading, .booking-heading { transition: none; }
     }
-    .price-frame { width: min(100%, 64svh); aspect-ratio: 16 / 25; container-type: inline-size; display: flex; align-items: center; }
+    .price-frame { width: min(100%, calc((100svh - var(--intro-header-height)) * .64)); aspect-ratio: 16 / 25; container-type: inline-size; display: flex; align-items: center; }
     .price-content { width: 100%; padding: 0 8%; text-align: center; }
     .price-content h2 { margin: 0 0 5cqw; font-size: 4.6cqw; line-height: 1.5; font-weight: 700; letter-spacing: -.035em; white-space: nowrap; }
     .price-description, .price-note { margin: 0; font-size: 3.2cqw; line-height: 1.8; letter-spacing: -.035em; }
@@ -69,15 +82,23 @@
     </style>
 </head>
 <body>
+<header class="about-header">
+    <a class="about-brand" href="index.php" aria-label="서울미녀 홈"><img src="assets/images/logo_129.jpg" alt="서울미녀"></a>
+    <button type="button" class="about-share" id="pageShareCopyBtn" aria-label="공유하기"><span>공유하기</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M14 3h7v7M21 3 10 14M9 3H3v18h18v-6"/></svg></button>
+</header>
+<div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite"></div>
 <main class="introduction" aria-labelledby="intro-title">
     <h1 id="intro-title" class="sr-only">서울미녀 서비스 소개</h1>
-    <div class="intro-stage">
-        <video id="intro-video" class="intro-video" tabindex="0" muted playsinline preload="auto"
-               poster="assets/media/about-project-poster.jpg" aria-label="서울미녀 서비스 소개 애니메이션"
-               aria-describedby="intro-description">
-            <source src="assets/media/about-project.mp4" type="video/mp4">
-            <p>이 브라우저는 동영상 재생을 지원하지 않습니다. 아래 서비스 소개를 확인해주세요.</p>
-        </video>
+    <div id="intro-stage" class="intro-stage">
+        <section id="intro-hero" class="intro-hero" aria-label="서울미녀 미용시술 가격 비교 플랫폼">
+            <img src="assets/media/about-intro-hero.png?v=<?= (int)filemtime(__DIR__ . '/assets/media/about-intro-hero.png') ?>" width="778" height="1220" fetchpriority="high" alt="서울미녀. 피부과·성형외과 미용시술 가격 비교 플랫폼. 미용시술, 더 쉽고 합리적으로 비교.">
+        </section>
+        <section id="treatments-scene" class="intro-hero" aria-label="미용시술 정보와 시술 종류" hidden>
+            <img src="assets/media/about-treatments.png?v=<?= (int)filemtime(__DIR__ . '/assets/media/about-treatments.png') ?>" width="778" height="1098" alt="피부과·성형외과의 다양한 미용시술 정보를 한곳에서 확인하고. 리프팅, 보톡스, 필러 등 시술별 정보.">
+        </section>
+        <section id="filtering-scene" class="intro-hero" tabindex="-1" aria-label="시술별·지역별 검색과 가격 비교" hidden>
+            <img src="assets/media/about-filtering.png" width="546" height="1292" alt="시술별·지역별 검색하여 가장 합리적인 가격만 한눈에. 낮은가격, 평점, 인기, 후기 기준으로 병원과 시술을 비교하세요.">
+        </section>
         <section id="price-scene" class="price-scene" aria-labelledby="price-heading" tabindex="-1" hidden>
             <div class="price-frame">
                 <div class="price-content">
@@ -116,11 +137,6 @@
                 </div>
             </div>
         </section>
-        <div id="intro-error" class="intro-error" hidden>
-            <h2>서울미녀를 소개합니다</h2>
-            <p>시술별·지역별 미용시술 정보를 한곳에서 확인하고, 병원별 등록 가격을 비교해보세요.</p>
-            <p class="intro-error-detail">소개 영상을 불러오지 못했습니다. 페이지를 새로고침하여 다시 시도해주세요.</p>
-        </div>
     </div>
     <section id="booking-ending" class="booking-ending" aria-label="예약 신청 안내와 서울미녀 앱 소개" hidden>
         <div class="booking-ending-visual">
@@ -133,63 +149,40 @@
             <p>피부과·성형외과의 다양한 미용시술 정보를 한곳에서 확인하고, 시술별·지역별로 검색하여 가격을 비교할 수 있는 미용의료 정보 플랫폼이에요.</p>
             <h2>같은 시술, 가격은 어떻게 다를까요?</h2>
             <p>서울미녀는 시술과 지역을 기준으로 등록된 가격 정보를 손쉽게 비교할 수 있도록 구성했어요. 동일하거나 유사한 미용시술도 병원과 이벤트에 따라 다양한 가격으로 제공되고 있어요.</p>
-            <p>영상 속 가격과 병원 목록은 서비스 설명을 위한 예시입니다.</p>
+            <p>가격과 병원 목록은 서비스 설명을 위한 예시입니다.</p>
         </div>
     </div>
 </main>
 <script>
 (function () {
     'use strict';
-    var video = document.getElementById('intro-video');
     var stage = document.querySelector('.intro-stage');
-    var error = document.getElementById('intro-error');
     var priceScene = document.getElementById('price-scene');
     var hospitalPhone = document.getElementById('hospital-phone');
     var hospitalScenes = Array.from(document.querySelectorAll('.hospital-content'));
     var priceRows = Array.from(priceScene.querySelectorAll('.price-row'));
     var priceAnimation = null;
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    // Play through the headline and treatment card before waiting for the first swipe.
-    var stops = [7.5, 9.0, 10.8, 15.9];
+    // The remaining introduction starts with prices, followed by image scenes.
+    var firstHospitalScene = 4;
+    var imageScenes = Array.from(document.querySelectorAll('.intro-hero'));
     var scene = 0;
     var moving = false;
-    var resumeOnVisible = false;
-    var frameRequest = null;
+    var outgoingPanel = null;
+    var transitionDirection = 1;
     var touchStart = null;
     var wheelLocked = false;
     var wheelTimer;
     var scrollMode = false;
-    video.muted = true;
 
     function updateState() {
+        stage.classList.toggle('filtering-scroll', scene === 2);
         stage.dataset.scene = String(scene + 1);
         stage.dataset.playing = String(moving);
-        var totalScenes = stops.length + hospitalScenes.length;
+        var totalScenes = firstHospitalScene + hospitalScenes.length;
         var label = '서울미녀 소개 ' + (scene + 1) + '/' + totalScenes;
         if (scene < totalScenes - 1) label += '. 위로 밀면 다음 내용을 볼 수 있습니다.';
         stage.setAttribute('aria-label', label);
-        video.setAttribute('aria-label', label);
-    }
-    function cancelFrame() {
-        if (frameRequest !== null && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(frameRequest);
-        frameRequest = null;
-    }
-    function hold() {
-        moving = false;
-        cancelFrame();
-        video.pause();
-        // Keep the decoded frame when pausing forward playback. Only seek for a
-        // reduced-motion navigation, avoiding a blank seek frame.
-        if (Math.abs(video.currentTime - stops[scene]) > 0.15) {
-            video.currentTime = Math.min(stops[scene], video.duration || stops[scene]);
-        }
-        updateState();
-    }
-    function checkFrame() {
-        frameRequest = null;
-        if (!moving) return;
-        if (video.currentTime >= stops[scene]) { hold(); return; }
-        if (video.requestVideoFrameCallback) frameRequest = video.requestVideoFrameCallback(checkFrame);
     }
     function renderPrices(progress) {
         priceRows.forEach(function (row, index) {
@@ -200,20 +193,37 @@
             row.querySelector('.price-value').textContent = value.toLocaleString('ko-KR') + '원';
         });
     }
+    function completeReturn() {
+        if (outgoingPanel) outgoingPanel.hidden = true;
+        outgoingPanel = null;
+        stage.querySelectorAll('.scene-enter, .scene-return').forEach(function (panel) {
+            panel.classList.remove('scene-enter', 'scene-return');
+        });
+        if (scene < firstHospitalScene) hospitalPhone.hidden = true;
+        if (scene < imageScenes.length) priceScene.hidden = true;
+    }
+    function enterPanel(panel) {
+        panel.classList.remove('scene-enter', 'scene-return');
+        panel.hidden = false;
+        panel.classList.add(transitionDirection < 0 ? 'scene-return' : 'scene-enter');
+    }
+    function panelForScene(index) {
+        if (index < imageScenes.length) return imageScenes[index];
+        if (index < firstHospitalScene) return priceScene;
+        return hospitalScenes[index - firstHospitalScene];
+    }
     function finishPrices() {
+        completeReturn();
+        imageScenes.forEach(function (panel) { panel.hidden = true; });
+        document.getElementById('intro-hero').hidden = true;
         if (priceAnimation !== null) cancelAnimationFrame(priceAnimation);
         priceAnimation = null;
-        video.hidden = true;
         renderPrices(1);
         moving = false;
         updateState();
     }
     function showPrices() {
-        cancelFrame();
-        video.pause();
-        var hadFocus = document.activeElement === video;
-        priceScene.hidden = false;
-        if (hadFocus) priceScene.focus({ preventScroll: true });
+        enterPanel(priceScene);
         moving = true;
         updateState();
         renderPrices(0);
@@ -223,7 +233,6 @@
             if (started === null) started = now;
             // Let the final section slide into place before growing its prices.
             var elapsed = now - started;
-            if (elapsed >= 1500) video.hidden = true;
             var progress = Math.max(0, Math.min(1, (elapsed - 1500) / 1690));
             renderPrices(progress);
             if (progress < 1) priceAnimation = requestAnimationFrame(tick);
@@ -232,12 +241,13 @@
         priceAnimation = requestAnimationFrame(tick);
     }
     function finishHospital() {
+        completeReturn();
         priceScene.hidden = true;
         hospitalScenes.forEach(function (panel, index) {
-            panel.hidden = index !== scene - stops.length;
+            panel.hidden = index !== scene - firstHospitalScene;
         });
         moving = false;
-        if (scene === stops.length + hospitalScenes.length - 1) {
+        if (scene === firstHospitalScene + hospitalScenes.length - 1) {
             scrollMode = true;
             document.querySelector('.introduction').classList.add('scroll-mode');
             document.getElementById('booking-ending').hidden = false;
@@ -248,65 +258,102 @@
         updateState();
     }
     function showHospital() {
-        var hospitalScene = hospitalScenes[scene - stops.length];
-        var previousScene = scene === stops.length ? priceScene : hospitalScenes[scene - stops.length - 1];
-        hospitalPhone.hidden = false;
-        hospitalPhone.classList.toggle('show-team', scene > stops.length);
+        var hospitalScene = hospitalScenes[scene - firstHospitalScene];
+        var previousScene = scene === firstHospitalScene ? priceScene : hospitalScenes[scene - firstHospitalScene - 1];
+        var enteringPhone = hospitalPhone.hidden;
+        if (enteringPhone) enterPanel(hospitalPhone);
         var isBooking = hospitalScene.id === 'hospital-booking-scene';
         hospitalPhone.classList.toggle('show-booking', isBooking);
         hospitalPhone.querySelector('.booking-heading').setAttribute('aria-hidden', String(!isBooking));
-        hospitalPhone.querySelector('.phone-heading').setAttribute('aria-hidden', String(scene > stops.length));
-        hospitalScene.hidden = false;
+        hospitalPhone.querySelector('.phone-heading').setAttribute('aria-hidden', String(isBooking));
+        if (enteringPhone) hospitalScene.hidden = false;
+        else enterPanel(hospitalScene);
         if (previousScene.contains(document.activeElement)) hospitalScene.focus({ preventScroll: true });
         moving = true;
         updateState();
         if (reduceMotion.matches) finishHospital();
     }
     hospitalPhone.addEventListener('animationend', function (event) {
-        if (event.target === hospitalPhone && scene === stops.length) finishHospital();
+        if (event.target === hospitalPhone && scene === firstHospitalScene) finishHospital();
     });
     hospitalScenes.forEach(function (panel) {
         panel.addEventListener('animationend', function (event) {
-            if (event.target === panel && panel === hospitalScenes[scene - stops.length]) finishHospital();
+            if (event.target === panel && panel === hospitalScenes[scene - firstHospitalScene]) finishHospital();
         });
     });
-    async function playScene() {
-        if (scene >= stops.length) { showHospital(); return; }
-        if (scene === stops.length - 1) { showPrices(); return; }
-        if (reduceMotion.matches) { hold(); return; }
-        moving = true;
+    function finishImageScene() {
+        completeReturn();
+        imageScenes.forEach(function (panel, index) { panel.hidden = index !== scene; });
+        moving = false;
         updateState();
-        cancelFrame();
-        if (video.requestVideoFrameCallback) frameRequest = video.requestVideoFrameCallback(checkFrame);
-        try { await video.play(); }
-        catch (error) { moving = false; cancelFrame(); stage.dataset.playbackError = error.name; updateState(); }
+    }
+    imageScenes.forEach(function (panel, index) {
+        panel.addEventListener('animationend', function (event) {
+            if (event.target === panel && scene === index) finishImageScene();
+        });
+    });
+    function playScene() {
+        if (scene === 0 && !outgoingPanel) { imageScenes[0].hidden = false; updateState(); return; }
+        if (scene < imageScenes.length) {
+            enterPanel(imageScenes[scene]);
+            moving = true;
+            updateState();
+            if (reduceMotion.matches) finishImageScene();
+            return;
+        }
+        if (scene >= firstHospitalScene) showHospital();
+        else showPrices();
     }
     function navigate(direction) {
-        if (moving || !video.readyState || !error.hidden) return;
-        if (scene === stops.length + hospitalScenes.length - 1) return;
+        if (moving) return;
+        if (direction < 0 && scene > 0) {
+            outgoingPanel = panelForScene(scene);
+            scene--;
+            transitionDirection = -1;
+            playScene();
+            return;
+        }
+        if (scene === firstHospitalScene + hospitalScenes.length - 1) return;
         if (direction > 0) {
-            // A gesture also retries playback if the browser blocked the initial autoplay.
-            if (scene < stops.length - 1 && video.currentTime < stops[scene] - 0.1) { playScene(); return; }
+            outgoingPanel = panelForScene(scene);
+            transitionDirection = 1;
             scene++;
             playScene();
         }
     }
+    function filteringAtBottom() {
+        var panel = document.getElementById('filtering-scene');
+        return panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2;
+    }
+    function filteringAtTop() {
+        return document.getElementById('filtering-scene').scrollTop <= 2;
+    }
     stage.addEventListener('touchstart', function (event) {
         if (scrollMode) return;
-        touchStart = event.touches.length === 1 ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+        touchStart = event.touches.length === 1 ? { x: event.touches[0].clientX, y: event.touches[0].clientY, canAdvance: scene !== 2 || filteringAtBottom(), canGoBack: scene !== 2 || filteringAtTop() } : null;
     }, { passive: true });
     stage.addEventListener('touchend', function (event) {
         if (scrollMode) return;
         if (!touchStart || !event.changedTouches.length) return;
         var dx = event.changedTouches[0].clientX - touchStart.x;
         var dy = event.changedTouches[0].clientY - touchStart.y;
+        var canAdvance = touchStart.canAdvance;
+        var canGoBack = touchStart.canGoBack;
         touchStart = null;
+        if (dy < 0 && (!canAdvance || (scene === 2 && !filteringAtBottom()))) return;
+        if (dy > 0 && (!canGoBack || (scene === 2 && !filteringAtTop()))) return;
         if (Math.abs(dy) >= 40 && Math.abs(dy) > Math.abs(dx)) navigate(dy < 0 ? 1 : -1);
     }, { passive: true });
     stage.addEventListener('touchcancel', function () { touchStart = null; }, { passive: true });
     stage.addEventListener('wheel', function (event) {
         if (scrollMode) return;
         if (event.ctrlKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+        if (scene === 2 && ((event.deltaY < 0 && !filteringAtTop()) || (event.deltaY > 0 && !filteringAtBottom()))) {
+            wheelLocked = true;
+            clearTimeout(wheelTimer);
+            wheelTimer = setTimeout(function () { wheelLocked = false; }, 250);
+            return;
+        }
         event.preventDefault();
         clearTimeout(wheelTimer);
         wheelTimer = setTimeout(function () { wheelLocked = false; }, 250);
@@ -315,40 +362,78 @@
         navigate(event.deltaY > 0 ? 1 : -1);
     }, { passive: false });
     document.addEventListener('keydown', function (event) {
-        if (scrollMode) return;
+        if (scrollMode || (event.target.closest && event.target.closest('button, a, input, textarea, select'))) return;
         var direction = ['ArrowDown', 'PageDown', ' '].includes(event.key) ? 1
-            : 0;
+            : ['ArrowUp', 'PageUp'].includes(event.key) ? -1 : 0;
+        if (scene === 2 && ((direction > 0 && !filteringAtBottom()) || (direction < 0 && !filteringAtTop()))) {
+            event.preventDefault();
+            var panel = document.getElementById('filtering-scene');
+            panel.scrollBy({ top: direction * (['ArrowDown', 'ArrowUp'].includes(event.key) ? 40 : panel.clientHeight * .85) });
+            return;
+        }
         if (!direction || event.repeat) return;
         event.preventDefault();
         navigate(direction);
     });
-    video.addEventListener('timeupdate', function () {
-        if (scene < stops.length - 1 && moving && video.currentTime >= stops[scene]) hold();
-    });
-    video.addEventListener('ended', hold);
-    function showError() { moving = false; cancelFrame(); error.hidden = false; updateState(); }
-    video.addEventListener('error', showError);
-    video.querySelector('source').addEventListener('error', showError);
-    document.addEventListener('visibilitychange', function () {
-        if (scene >= stops.length - 1) return;
-        if (document.hidden) {
-            resumeOnVisible = moving;
-            video.pause();
-        } else if (resumeOnVisible) {
-            resumeOnVisible = false;
-            playScene();
-        }
-    });
     reduceMotion.addEventListener('change', function (event) {
-        if (event.matches && scene >= stops.length) finishHospital();
-        else if (event.matches && scene === stops.length - 1) finishPrices();
-        else if (event.matches && video.readyState) hold();
+        if (event.matches && scene < imageScenes.length) { finishImageScene(); return; }
+        if (event.matches && scene >= firstHospitalScene) finishHospital();
+        else if (event.matches && scene === firstHospitalScene - 1) finishPrices();
     });
     updateState();
-    if (video.error) showError();
-    else if (reduceMotion.matches && !video.readyState) video.addEventListener('loadedmetadata', hold, { once: true });
-    else playScene();
+    playScene();
 })();
+</script>
+<script>
+(function () {
+    var toastTimer = null;
+
+    function getShareText() {
+        return '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
+    }
+
+    function fallbackCopy(text) {
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        var copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return copied;
+    }
+
+    function showToast(message) {
+        var toast = document.getElementById('pageShareCopyToast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add('is-visible');
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(function () {
+            toast.classList.remove('is-visible');
+        }, 1800);
+    }
+
+    function copyShareText() {
+        var shareText = getShareText();
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(shareText).then(function () {
+                showToast('링크가 복사되었습니다.');
+            }).catch(function () {
+                showToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
+            });
+            return;
+        }
+        showToast(fallbackCopy(shareText) ? '링크가 복사되었습니다.' : '링크 복사에 실패했습니다.');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var button = document.getElementById('pageShareCopyBtn');
+        if (button) button.addEventListener('click', copyShareText);
+    });
+}());
 </script>
 </body>
 </html>

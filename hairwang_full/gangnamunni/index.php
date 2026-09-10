@@ -1019,8 +1019,6 @@ if (file_exists(__DIR__ . '/includes/footer.php')) {
 ?>
 
 <script>
-// [1차 검수 #2 - 2026-05-28] 새로고침 시 최상단 튐 수정
-// 브라우저 기본 스크롤 복원 동작 활성화 (새로고침 시 이전 위치 유지)
 if ('scrollRestoration' in history) {
     history.scrollRestoration = 'auto';
 }
