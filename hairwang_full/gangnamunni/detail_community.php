@@ -326,40 +326,6 @@ include __DIR__ . '/includes/header.php';
         </div>
         <?php endif; ?>
 
-        <!-- [1차 검수 #20 - 2026-05-28] 시술 후기 데이터 항목 노출 -->
-        <?php
-        // 시술 후기일 때 추가 데이터 (community 카테고리에 시술/평점 등이 있을 경우)
-        $is_review_post = (
-            ($post['category'] ?? '') === '시술후기' ||
-            !empty($post['treatment_category']) ||
-            !empty($post['rating'])
-        );
-        if ($is_review_post):
-        ?>
-        <div class="review-meta-section" style="background:var(--bs-tertiary-bg);border-radius:10px;padding:12px 16px;margin-bottom:20px;">
-            <?php if (!empty($post['treatment_category'])): ?>
-            <div style="margin-bottom:6px;"><strong>🏥 시술 카테고리</strong> : <?php echo htmlspecialchars($post['treatment_category']); ?></div>
-            <?php endif; ?>
-            <?php if (!empty($post['rating'])): ?>
-            <div style="margin-bottom:6px;"><strong>⭐ 평점</strong> : <?php echo str_repeat('★', intval($post['rating'])); ?><?php echo str_repeat('☆', 5 - intval($post['rating'])); ?> (<?php echo number_format(floatval($post['rating']), 1); ?>)</div>
-            <?php endif; ?>
-            <?php if (!empty($post['hospital_name'])): ?>
-            <div style="margin-bottom:6px;"><strong>🏥 시술 병원</strong> :
-                <?php if (!empty($post['hospital_id'])): ?>
-                <a href="detail.php?id=<?php echo intval($post['hospital_id']); ?>"><?php echo htmlspecialchars($post['hospital_name']); ?></a>
-                <?php else: ?>
-                <?php echo htmlspecialchars($post['hospital_name']); ?>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-            <div style="font-size:.85rem;color:var(--bs-secondary-color);">
-                👁 조회 <?php echo intval($post['view_count'] ?? 0); ?>
-                · ❤️ 좋아요 <?php echo intval($post['like_count'] ?? 0); ?>
-                · 💬 댓글 <?php echo intval($post['comment_count'] ?? $post['comments'] ?? 0); ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
         <div class="post-detail-meta">
             <span class="author-avatar" aria-hidden="true"><?php if (!empty($post['author_avatar'])): ?><img src="<?php echo htmlspecialchars($post['author_avatar'], ENT_QUOTES); ?>" alt=""><?php endif; ?></span>
             <span class="post-detail-author"><?php echo htmlspecialchars($post_author_display); ?></span>
