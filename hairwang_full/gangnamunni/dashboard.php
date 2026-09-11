@@ -59,7 +59,14 @@ if ($is_logged_in && $return_url !== 'dashboard.php' && (!empty($_GET['return'])
     exit;
 }
 if ($is_logged_in && $return_url === 'dashboard.php' && function_exists('is_hospital_role') && is_hospital_role()) {
-    header('Location: ' . hospital_admin_landing_page());
+    $landing_page = hospital_admin_landing_page();
+    if ($landing_page === null) {
+        http_response_code(403);
+        header('Content-Type: text/html; charset=UTF-8');
+        echo '<!DOCTYPE html><html lang="ko"><meta charset="UTF-8"><title>접근 가능한 메뉴 없음</title><p>접근 가능한 관리 메뉴가 없습니다. 관리자에게 문의해주세요.</p></html>';
+        exit;
+    }
+    header('Location: ' . $landing_page);
     exit;
 }
 

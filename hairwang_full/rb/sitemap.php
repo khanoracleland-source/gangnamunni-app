@@ -198,8 +198,11 @@ if (!rb_write_atomic($sitemap_file, $xml)) {
     echo json_encode(['success' => false, 'msg' => 'sitemap write failed']); exit;
 }
 
-// === robots 라인 구성 ===
-$robots = '';
+// robots.txt는 Cloudflare Managed Content로 직접 관리되므로 이 스크립트에서는 건드리지 않는다.
+$sitemap_url = G5_URL . '/sitemap.xml';
+
+// === robots 라인 구성 (비활성화됨, 위 이유 참고) ===
+/* $robots = '';
 $rb_seo_ok = false;
 $rb_row = null;
 
@@ -236,7 +239,7 @@ if ($rb_seo_ok) {
 $filePath = G5_PATH . '/robots.txt';
 if (!rb_write_atomic($filePath, $robots)) {
     echo json_encode(['success' => false, 'msg' => 'robots write failed']); exit;
-}
+} */
 
 // === 응답 ===
 echo json_encode([

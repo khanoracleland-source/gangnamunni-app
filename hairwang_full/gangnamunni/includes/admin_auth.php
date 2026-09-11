@@ -385,12 +385,14 @@ function admin_login_destination($return_url) {
     $page = basename(parse_url($return_url, PHP_URL_PATH) ?: 'dashboard.php');
     if ($page === 'dashboard.php'
         || ($page === 'partner_hospital.php' && !check_permission('partner_hospital'))) {
-        return hospital_admin_landing_page();
+        return hospital_admin_landing_page() ?? 'dashboard.php';
     }
     return $return_url;
 }
 
 function hospital_admin_landing_page() {
+    require_once __DIR__ . '/admin_menu_navigation.php';
+    $menus = admin_sidebar_menus();
     $pages = [
         'partner_hospital' => 'partner_hospital.php',
         'bookings' => 'admin_bookings.php',
@@ -400,11 +402,14 @@ function hospital_admin_landing_page() {
         'hospital_images' => 'admin_hospital_images.php',
     ];
     foreach ($pages as $permission => $url) {
-        if (check_permission($permission)) return $url;
+        if (check_permission($permission)
+            && admin_menu_contains_page($url, $menus, 'check_permission')) return $url;
     }
 
-    // 모든 로그인 관리자는 본인 프로필에 접근할 수 있다.
-    return 'admin_admins.php';
+    // A permitted but hidden profile page would redirect back to dashboard too.
+    if (check_permission('admin_accounts')
+        && admin_menu_contains_page('admin_admins.php', $menus, 'check_permission')) return 'admin_admins.php';
+    return null;
 }
 
 /**
