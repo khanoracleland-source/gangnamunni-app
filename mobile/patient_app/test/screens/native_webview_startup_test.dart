@@ -177,7 +177,7 @@ void main() {
   }
 
   testWidgets(
-      'app header arrow uses native history for a direct filtered-list visit',
+      'app header arrow loads the filtered list explicitly',
       (tester) async {
     await pumpReady(tester, const StartupWebViewScreen(url: url));
     visit(listUrl);
@@ -187,9 +187,19 @@ void main() {
     await tester.pump();
     expect(platform.scripts, contains(HospitalListNavigation.headerBackScript));
     await headerBack(tester);
-    expect(platform.events.where((e) => e == 'goBack').length, 1);
-    expect(platform.loadedUrls.length,
-        1); // Only startup; never a bare hospitals.php load.
+    expect(platform.events, isNot(contains('goBack')));
+    expect(platform.loadedUrls.last, Uri.parse(listUrl));
+  });
+  testWidgets('booking back to detail then header back returns to list', (tester) async {
+    await pumpReady(tester, const StartupWebViewScreen(url: url));
+    visit(listUrl);
+    visit(detailUrl);
+    visit(detailUrl.replaceFirst('detail.php', 'booking.php'));
+    visit(detailUrl);
+    platform.hasBackHistory = true;
+    await headerBack(tester);
+    expect(platform.loadedUrls.last, Uri.parse(listUrl));
+    expect(platform.events, isNot(contains('goBack')));
   });
   for (final tabs in [false, true]) {
     testWidgets(

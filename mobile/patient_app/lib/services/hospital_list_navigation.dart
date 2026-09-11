@@ -3,13 +3,14 @@
 class HospitalListNavigation {
   HospitalListNavigation(Uri website)
       : _listPage = website.resolve('hospitals.php'),
-        _detailPage = website.resolve('detail.php');
+        _detailPage = website.resolve('detail.php'),
+        _bookingPage = website.resolve('booking.php');
 
   final Uri _listPage;
   final Uri _detailPage;
+  final Uri _bookingPage;
   Uri? _current;
   Uri? _listUrl;
-  bool _directlyFromList = false;
 
   bool _samePage(Uri uri, Uri page) =>
       uri.scheme == page.scheme &&
@@ -23,30 +24,23 @@ class HospitalListNavigation {
       uri.queryParameters['from'] != 'my_wishlist';
 
   Uri? get returnUrl =>
-      _current != null && isHospitalDetail(_current!) ? _listUrl : null;
-
-  bool get canReturnThroughHistory => returnUrl != null && _directlyFromList;
+      _current != null && isHospitalDetail(_current!) ? (_listUrl ?? _listPage) : null;
 
   void pageStarted(String url) {
     final next = Uri.tryParse(url);
     if (next == null) {
       _current = null;
       _listUrl = null;
-      _directlyFromList = false;
       return;
     }
     if (_samePage(next, _listPage)) {
       // Preserve every query parameter, including future filters.
       _listUrl = next;
-      _directlyFromList = false;
-    } else if (isHospitalDetail(next)) {
-      if (next != _current) {
-        _directlyFromList = _current != null && _samePage(_current!, _listPage);
-      }
+    } else if (isHospitalDetail(next) || _samePage(next, _bookingPage)) {
+      // Booking belongs to the same visit. Keep list sorting on return to detail.
     } else {
       // Never reuse a previous search after visiting wishlist/home/etc.
       _listUrl = null;
-      _directlyFromList = false;
     }
     _current = next;
   }

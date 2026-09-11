@@ -223,15 +223,8 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
           !_hospitalNavigation.isHospitalDetail(current)) {
         return;
       }
-      if (_hospitalNavigation.canReturnThroughHistory &&
-          await _controller.canGoBack()) {
-        // A direct list -> detail visit retains scroll position via history.
-        await _controller.goBack();
-      } else {
-        // Detail tabs create more history entries. Return to the exact list,
-        // including treatment, region and sort, instead of a bare list URL.
-        await _controller.loadRequest(target);
-      }
+      // The previous history entry can be booking or another detail tab.
+      await _controller.loadRequest(target);
     } catch (_) {
       if (mounted) toast('목록으로 돌아가지 못했습니다. 다시 시도해주세요.');
     } finally {

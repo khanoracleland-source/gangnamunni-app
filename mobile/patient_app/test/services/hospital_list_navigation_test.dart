@@ -9,12 +9,11 @@ void main() {
   late HospitalListNavigation navigation;
   setUp(() => navigation = HospitalListNavigation(site));
 
-  test('detail reload retains direct-list history and every filter', () {
+  test('detail reload retains every filter', () {
     navigation.pageStarted(list.toString());
     navigation.pageStarted(detail.toString());
     navigation.pageStarted(detail.toString());
     expect(navigation.returnUrl, list);
-    expect(navigation.canReturnThroughHistory, isTrue);
   });
   test('switching detail tabs retains original list instead of previous tab',
       () {
@@ -22,7 +21,14 @@ void main() {
     navigation.pageStarted(detail.toString());
     navigation.pageStarted('$detail&tab=reviews');
     expect(navigation.returnUrl, list);
-    expect(navigation.canReturnThroughHistory, isFalse);
+  });
+  test('booking round trip retains list destination and sorting', () {
+    navigation.pageStarted(list.toString());
+    navigation.pageStarted(detail.toString());
+    navigation.pageStarted(site.resolve('booking.php?id=8216').toString());
+    expect(navigation.returnUrl, isNull);
+    navigation.pageStarted(detail.toString());
+    expect(navigation.returnUrl, list);
   });
   test('a new unfiltered list replaces a previous search', () {
     navigation.pageStarted(list.toString());
@@ -34,7 +40,7 @@ void main() {
   });
   test('a directly opened detail never reuses another WebView search', () {
     navigation.pageStarted(detail.toString());
-    expect(navigation.returnUrl, isNull);
+    expect(navigation.returnUrl, site.resolve('hospitals.php'));
   });
   for (final other in [
     site.resolve('my_wishlist.php'),
@@ -48,7 +54,7 @@ void main() {
       navigation.pageStarted(list.toString());
       navigation.pageStarted(other.toString());
       navigation.pageStarted(detail.toString());
-      expect(navigation.returnUrl, isNull);
+      expect(navigation.returnUrl, site.resolve('hospitals.php'));
     });
   }
 }

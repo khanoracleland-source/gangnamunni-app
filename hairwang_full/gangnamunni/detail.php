@@ -1636,13 +1636,6 @@ if ($current_tab === 'reviews') {
     <div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
     <script>
     (function () {
-        // 병원 목록에서 진입하면 그 전체 URL(정렬/시술/지역 포함)을 저장 —
-        // 상세 내 탭 이동으로 referrer가 detail.php로 바뀌어도 목록 복귀 상태를 유지한다.
-        try {
-            if (document.referrer.indexOf('hospitals.php') !== -1) {
-                sessionStorage.setItem('hospitalListReturnUrl', document.referrer);
-            }
-        } catch (e) {}
         var explicitReturn = <?php echo json_encode($detail_return_url, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         var backBtn = document.getElementById('detailBackBtn');
         if (backBtn) {
@@ -1658,28 +1651,16 @@ if ($current_tab === 'reviews') {
                     location.href = explicitReturn;
                     return;
                 }
-                // 목록에서 바로 진입(탭 이동 없음) → history.back()으로 스크롤 위치까지 보존
-                if (document.referrer.indexOf('hospitals.php') !== -1) {
-                    e.preventDefault();
-                    history.back();
-                    return;
-                }
-                // 탭 이동으로 referrer가 detail.php로 바뀐 경우 → 저장해둔 목록 URL로 복귀
-                var listUrl = null;
-                try { listUrl = sessionStorage.getItem('hospitalListReturnUrl'); } catch (e2) {}
-                if (listUrl) {
-                    e.preventDefault();
-                    try {
-                        var saved = new URL(listUrl, location.href);
-                        var expected = new URL('hospitals.php', location.href);
-                        if (saved.origin === expected.origin && saved.pathname === expected.pathname
-                            && !saved.username && !saved.password) {
-                            location.href = saved.href;
-                            return;
-                        }
-                    } catch (ignored) {}
-                    location.href = backBtn.href;
-                }
+                // Return to the list explicitly; booking may be the previous history entry.
+                e.preventDefault();
+                var target = new URL('hospitals.php', location.href);
+                try {
+                    var sort = localStorage.getItem('sb_selected_sort');
+                    if (['manual', 'price', 'rating', 'popular', 'review'].indexOf(sort) !== -1) {
+                        target.searchParams.set('sort', sort);
+                    }
+                } catch (ignored) {}
+                location.href = target.href;
             });
         }
 
