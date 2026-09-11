@@ -497,7 +497,8 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
             content_id: document.getElementById('rbReportContentId').value,
             reported_user_id: document.getElementById('rbReportUserId').value,
             reason: reason.value,
-            detail: document.getElementById('rbReportDetail').value.trim()
+            reason_detail: document.getElementById('rbReportDetail').value.trim(),
+            content_url: window.location.href
         };
 
         try {
@@ -510,7 +511,7 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
 
             var data = await response.json();
 
-            if (data.login_required) {
+            if (response.status === 401 || data.login_required) {
                 if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
                     window.location.href = 'auth/login.php?url=' + encodeURIComponent(window.location.href);
                 }
@@ -523,7 +524,7 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
                 closeReportModal();
                 showToast('신고가 접수되었습니다. 검토 후 조치하겠습니다.', 'success');
             } else {
-                showToast(data.message || '신고 처리 중 오류가 발생했습니다.', 'error');
+                showToast(data.error || data.message || '신고 처리 중 오류가 발생했습니다.', 'error');
                 btn.disabled = false;
             }
         } catch (err) {
@@ -578,7 +579,7 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
 
             var data = await response.json();
 
-            if (data.login_required) {
+            if (response.status === 401 || data.login_required) {
                 if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
                     window.location.href = 'auth/login.php?url=' + encodeURIComponent(window.location.href);
                 }
@@ -595,7 +596,7 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
                     window.location.reload();
                 }, 1200);
             } else {
-                showToast(data.message || '차단 처리 중 오류가 발생했습니다.', 'error');
+                showToast(data.error || data.message || '차단 처리 중 오류가 발생했습니다.', 'error');
                 btn.disabled = false;
                 btn.textContent = '차단하기';
             }

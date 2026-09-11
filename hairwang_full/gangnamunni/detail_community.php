@@ -1,19 +1,12 @@
 <?php
-/**
- * ========================================
- * 커뮤니티 게시글 상세 페이지
- * ========================================
- * community.php 에서 게시글 클릭 시 이동
- */
+
 
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/functions.php';
 
-// 변경: 웹 요청은 기존 값 유지, CLI 검증에서는 GET 기본값 사용. 영향 범위: POST 분기 조건의 경고 제거만 수행.
 $request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-// Unapproved posts must not be readable or accept interactions by direct URL.
 $requested_post_id = intval($request_method === 'POST' ? ($_POST['post_id'] ?? $_GET['id'] ?? 0) : ($_GET['id'] ?? 0));
 $visibility_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_community_posts WHERE id=? AND status='active'");
 mysqli_stmt_bind_param($visibility_stmt, 'i', $requested_post_id);
@@ -25,7 +18,13 @@ if (!$public_post) {
     exit('공개된 게시글을 찾을 수 없습니다.');
 }
 
-// 삭제 처리 (POST)
+if ($request_method === 'POST' && in_array($_POST['action'] ?? '', ['delete', 'comment_submit'], true)
+    && !validateCsrfToken((string)($_POST['csrf_token'] ?? ''))) {
+    http_response_code(403);
+    exit('요청이 만료되었습니다. 새로고침 후 다시 시도해주세요.');
+}
+
+
 if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
     $del_id = intval($_POST['post_id'] ?? 0);
     if ($del_id > 0 && is_gangnamunni_logged_in()) {
@@ -47,7 +46,6 @@ if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] ==
     exit;
 }
 
-// [1차 검수 #17 - 2026-05-28] 좋아요 토글 처리 (AJAX POST)
 if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_like') {
     header('Content-Type: application/json');
     if (!validateCsrfToken((string)($_POST['csrf_token'] ?? ''))) {
@@ -104,6 +102,7 @@ if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] ==
 if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] === 'comment_submit') {
     $c_post_id = intval($_POST['post_id'] ?? 0);
     $c_content = trim($_POST['content'] ?? '');
+    if (mb_strlen($c_content) > 500) { http_response_code(400); exit('댓글은 500자 이내로 입력해주세요.'); }
     if ($c_post_id > 0 && $c_content !== '' && is_gangnamunni_logged_in()) {
         $c_member = get_gangnamunni_member();
         $c_mb_id = $c_member['mb_id'] ?? '';
@@ -205,245 +204,94 @@ $page_title = '커뮤니티';
 $show_search = false;
 
 $page_css = '
-/* 커뮤니티 상세 페이지 스타일 */
-.page-header {
-    position: sticky;
-    top: 0;
-    margin: 0 -16px;
-    padding: 14px 16px;
-    background: var(--bs-body-bg, #fff);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    z-index: 99;
-}
-@media (max-width: 640px) {
-    .page-header { margin: 0 -12px; }
-}
-.back-btn {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background: none;
-    font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1));
-    color: inherit;
-    cursor: pointer;
-    text-decoration: none;
-}
-.global-nav-share {
-    width: 36px;
-    height: 36px;
-    margin-left: auto;
-    flex: 0 0 36px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    background: transparent;
-    color: var(--bs-body-color, #111);
-    font-size: 22px;
-    cursor: pointer;
-}
-.global-nav-share:hover,
-.global-nav-share:focus-visible {
-    color: var(--primary-color, #AE1932);
-}
-.share-copy-toast {
-    position: fixed;
-    left: 50%;
-    bottom: 84px;
-    z-index: 2000;
-    transform: translate(-50%, 12px);
-    padding: 10px 16px;
-    border-radius: 20px;
-    background: rgba(20, 20, 20, 0.9);
-    color: #fff;
-    font-size: 13px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.share-copy-toast.is-visible {
-    opacity: 1;
-    transform: translate(-50%, 0);
-}
-.page-title {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 60%;
-    text-align: center;
-    font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1));
-    font-weight: 700;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.post-detail-container {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 24px 16px;
-}
-.post-category-badge {
-    display: inline-block;
-    padding: 6px 14px;
-    background: #F0EFFF;
-    color: #5B5FC7;
-    font-size: 13px;
-    border-radius: 20px;
-    font-weight: 500;
-    margin-bottom: 16px;
-}
-.post-detail-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--bs-body-color, #222);
-    line-height: 1.4;
-    margin-bottom: 16px;
-}
-.post-detail-meta {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #F0F0F0;
-    margin-bottom: 24px;
-    font-size: 14px;
-    color: #888;
-}
-.post-detail-author {
-    color: #5B5FC7;
-    font-weight: 600;
-}
-.post-detail-content {
-    font-size: 16px;
-    line-height: 1.8;
-    color: var(--bs-body-color, #333);
-    white-space: pre-wrap;
-    margin-bottom: 32px;
-}
-.post-actions {
-    display: flex;
-    gap: 12px;
-    padding: 20px 0;
-    border-top: 1px solid #F0F0F0;
-    border-bottom: 1px solid #F0F0F0;
-    margin-bottom: 32px;
-}
-.post-action-btn {
-    flex: 1;
-    padding: 14px;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: center;
-}
-.btn-like {
-    background: #5B5FC7;
-    color: white;
-}
-.btn-like:hover {
-    background: #4A4EB5;
-}
-.btn-share {
-    background: #F5F5F5;
-    color: var(--bs-body-color, #333);
-}
-.btn-share:hover {
-    background: #E8E8E8;
-}
-
-/* 댓글 섹션 */
-.comments-section {
-    margin-bottom: 32px;
-}
-.comments-title {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: #222;
-}
-.comment-item {
-    padding: 16px 0;
-    border-bottom: 1px solid #F5F5F5;
-}
-.comment-author {
-    font-weight: 600;
-    color: #5B5FC7;
-    font-size: 14px;
-    margin-bottom: 6px;
-}
-.comment-text {
-    font-size: 15px;
-    color: #444;
-    line-height: 1.6;
-}
-.comment-time {
-    font-size: 12px;
-    color: #BBB;
-    margin-top: 6px;
-}
-.no-comments {
-    text-align: center;
-    padding: 40px 20px;
-    color: #999;
-    font-size: 14px;
-}
-
-/* 댓글 작성 폼 */
-.comment-form {
-    display: flex;
-    gap: 10px;
-    padding: 16px 0;
-}
-.comment-input {
-    flex: 1;
-    padding: 12px 16px;
-    border: 1px solid #E0E0E0;
-    border-radius: 10px;
-    font-size: 14px;
-    outline: none;
-}
-.comment-input:focus {
-    border-color: #5B5FC7;
-}
-.comment-submit {
-    padding: 12px 20px;
-    background: #5B5FC7;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-}
-.comment-submit:hover {
-    background: #4A4EB5;
-}
-
-/* 신고/차단 버튼 */
-.rv-report-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px; opacity: 0.5; transition: opacity 0.2s; vertical-align: middle; }
-.rv-report-btn:hover { opacity: 1; }
-.comment-author-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.comment-author-row .comment-author { margin-bottom: 0; }
-
+.main-content { padding: 0; }
+.page-header { position: relative; height: 62px; display: flex; align-items: center; justify-content: center; padding: 0 20px; background: var(--bs-body-bg, #fff); }
+.back-btn { position: absolute; left: 8px; width: 36px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 23px; color: inherit; text-decoration: none; }
+.page-title { font-size: 18px; font-weight: 600; }
+.post-detail-container { box-sizing: border-box; width: 100%; max-width: 640px; margin: 0 auto; padding: 8px 20px 170px; color: var(--bs-body-color, #000); }
+.post-category-badge { display: inline-block; padding: 2px 9px; background: #ffeeef; color: #b81739; font-size: 12px; margin-bottom: 14px; }
+.post-detail-title { font-size: 18px; font-weight: 600; line-height: 1.4; margin: 0 0 8px; }
+.post-detail-content { font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.post-detail-content.expanded { display: block; }
+.post-readmore-row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; font-size: 12px; }
+.post-readmore-row button { padding: 0; background: none; border: 0; color: inherit; cursor: pointer; }
+.post-readmore-row time { margin-left: auto; }
+.post-photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin-bottom: 14px; }
+.post-photo-grid a { display: block; aspect-ratio: 3 / 2; background: #d9d9d9; overflow: hidden; }
+.post-photo-grid a:only-child { grid-column: 1 / -1; aspect-ratio: 3 / 1; }
+.post-photo-grid img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.post-detail-meta { display: flex; align-items: center; gap: 7px; padding: 0 0 22px; border-bottom: 1px solid #ddd; margin-bottom: 0; min-width: 0; }
+.author-avatar { width: 35px; height: 35px; border-radius: 50%; background: #d9d9d9; flex-shrink: 0; overflow: hidden; }
+.author-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.post-detail-author { font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detail-stats { margin-left: auto; display: flex; align-items: center; gap: 28px; font-size: 12px; flex-shrink: 0; }
+.detail-stat { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: inherit; white-space: nowrap; }
+button.detail-stat { border: 0; padding: 0; background: transparent; font: inherit; cursor: pointer; }
+.detail-stat i { font-size: 23px; }
+.detail-stat.liked { color: #b81739; }
+.content-menu { position: relative; flex-shrink: 0; }
+.content-menu summary { list-style: none; cursor: pointer; min-width: 28px; height: 36px; display: flex; align-items: center; justify-content: flex-end; font-size: 22px; }
+.content-menu summary::-webkit-details-marker { display: none; }
+.content-menu-panel { position: absolute; right: 0; top: 35px; width: 145px; padding: 5px; z-index: 30; border: 1px solid #ddd; border-radius: 8px; background: var(--bs-body-bg, #fff); box-shadow: 0 4px 14px #0001; }
+.content-menu-panel button, .content-menu-panel a { display: block; width: 100%; border: 0; background: none; text-align: left; font: inherit; font-size: 14px; color: inherit; text-decoration: none; cursor: pointer; padding: 10px; }
+.content-menu-panel button:hover, .content-menu-panel a:hover { background: #ffeeef; color: #b81739; }
+.comments-title { font-size: 15px; font-weight: 500; padding: 15px 0; border-bottom: 1px solid #ddd; margin-bottom: 4px; }
+.comment-item { padding: 14px 0 9px; }
+.comment-author-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.comment-author { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comment-age { color: #aaa; font-size: 12px; white-space: nowrap; }
+.comment-date { margin-left: auto; font-size: 12px; white-space: nowrap; }
+.comment-text { margin: 8px 0 7px 40px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-tools { display: flex; align-items: center; gap: 20px; margin-left: 40px; }
+.comment-reply { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; font-size: 12px; color: inherit; cursor: pointer; }
+.comment-reply i { font-size: 16px; }
+/* Keep the composer above the shared navigation, even on short threads. */
+.comment-form { position: fixed; left: 50%; transform: translateX(-50%); bottom: var(--comment-bottom, 77px); box-sizing: border-box; width: 100%; max-width: 640px; margin: 0; display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--bs-body-bg, #fff); z-index: 1000; }
+.comment-input { box-sizing: border-box; flex: 1; min-width: 0; height: 40px; padding: 8px 14px; border: 1px solid #aaa; border-radius: 10px; font-size: 14px; color: inherit; background: var(--bs-body-bg, #fff); }
+.comment-input::placeholder { color: #aaa; }
+.comment-submit { border: 0; border-radius: 10px; height: 40px; padding: 0 23px; background: #b81739; color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
+.no-comments { text-align: center; color: #999; padding: 28px 0; font-size: 14px; }
+.post-detail-container :focus-visible, .back-btn:focus-visible { outline: 2px solid #b81739; outline-offset: 3px; }
+.share-copy-toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); padding: 10px 16px; border-radius: 20px; background: #222; color: #fff; opacity: 0; pointer-events: none; z-index: 10000; }
+.share-copy-toast.is-visible { opacity: 1; }
 @media (max-width: 480px) {
-    .post-detail-title { font-size: 20px; }
-    .post-detail-content { font-size: 15px; }
+    .detail-stats { gap: 12px; font-size: 11px; }
+    .detail-stat { gap: 4px; }
+    .detail-stat i { font-size: 20px; }
+    .post-detail-author { font-size: 13px; }
+    .comment-author { max-width: 105px; font-size: 13px; }
+    .comment-age, .comment-date { font-size: 10px; }
+    .comment-input { font-size: 16px; }
 }
+@media (max-width: 360px) { .detail-stats { gap: 8px; } .author-avatar { width: 30px; height: 30px; } .comment-author { max-width: 80px; } }
 ';
 
-// 신고/차단용 변수 준비
+// Escape JSON arguments for HTML event attributes as well as JavaScript.
+function community_js_arg($value) {
+    return htmlspecialchars(json_encode($value, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8');
+}
+function community_comment_age($date) {
+    $seconds = max(0, time() - (strtotime($date) ?: time()));
+    if ($seconds < 60) return '방금 전';
+    if ($seconds < 3600) return floor($seconds / 60) . '분 전';
+    if ($seconds < 86400) return floor($seconds / 3600) . '시간 전';
+    return floor($seconds / 86400) . '일 전';
+}
 $post_author_display = $post['author_name'] ?? $post['author'] ?? '익명';
-$post_author_raw = addslashes($post_author_display);
-$post_mb_id = addslashes($post['mb_id'] ?? '');
+$current_member = is_gangnamunni_logged_in() ? get_gangnamunni_member() : [];
+$is_author = !empty($current_member['mb_id']) && $current_member['mb_id'] === ($post['mb_id'] ?? '');
+$detail_csrf = generateCsrfToken();
+$post_liked = false;
+if (!empty($current_member['mb_id'])) {
+    $likes_table = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_community_likes'");
+    if ($likes_table && mysqli_num_rows($likes_table)) {
+        $liked_stmt = mysqli_prepare($connect, 'SELECT id FROM gangnamunni_community_likes WHERE post_id=? AND user_id=?');
+        mysqli_stmt_bind_param($liked_stmt, 'is', $post_id, $current_member['mb_id']);
+        mysqli_stmt_execute($liked_stmt);
+        $post_liked = (bool)mysqli_fetch_assoc(mysqli_stmt_get_result($liked_stmt));
+        mysqli_stmt_close($liked_stmt);
+    }
+}
 
 // 공통 헤더 include
 $hide_admin_inline_edit = true; // 이 페이지에선 관리자 인라인 편집 상단바(ae-topbar) 숨김
@@ -453,10 +301,7 @@ include __DIR__ . '/includes/header.php';
     <!-- 페이지 헤더 -->
     <div class="page-header">
         <a href="community.php" class="back-btn"><i class="bi bi-chevron-left"></i></a>
-        <div class="page-title">커뮤니티</div>
-        <button type="button" class="global-nav-share" id="pageShareCopyBtn" onclick="copyPageShareLink()" aria-label="공유하기" title="공유하기">
-            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-        </button>
+        <div class="page-title">커뮤니티 댓글</div>
     </div>
     <div class="share-copy-toast" id="pageShareCopyToast" role="status" aria-live="polite">링크가 복사되었습니다.</div>
 
@@ -467,37 +312,16 @@ include __DIR__ . '/includes/header.php';
         <!-- 제목 -->
         <h1 class="post-detail-title"><?php echo htmlspecialchars($post['title']); ?></h1>
 
-        <!-- 메타 정보 -->
-        <div class="post-detail-meta">
-            <span class="post-detail-author"><?php echo htmlspecialchars($post_author_display); ?></span>
-            <button class="rv-report-btn" onclick="openReportModal('community', <?php echo intval($post_id); ?>, '<?php echo $post_mb_id; ?>', '<?php echo $post_author_raw; ?>')" title="신고">&#9873;</button>
-            <?php if (!empty($post['mb_id'])): ?>
-            <button class="rv-report-btn" onclick="openBlockModal('<?php echo $post_mb_id; ?>', '<?php echo $post_author_raw; ?>')" title="차단">&#128683;</button>
-            <?php endif; ?>
-            <span>|</span>
-            <span><?php echo htmlspecialchars($post['time_ago'] ?? date('Y-m-d', strtotime($post['created_at']))); ?></span>
-            <?php if (isset($post['comments']) && $post['comments'] > 0): ?>
-            <span>|</span>
-            <span>댓글 <?php echo intval($post['comment_count'] ?? $post['comments'] ?? 0); ?></span>
-            <?php endif; ?>
+        <div class="post-detail-content" id="postContent"><?php echo htmlspecialchars($post['content'] ?? ''); ?></div>
+        <div class="post-readmore-row">
+            <button type="button" id="postReadMore" aria-expanded="false" aria-controls="postContent" onclick="var expanded=document.getElementById('postContent').classList.toggle('expanded');this.setAttribute('aria-expanded',expanded);this.textContent=expanded?'접기':'...더보기';">...더보기</button>
+            <time><?php echo date('y.m.d', strtotime($post['created_at'])); ?></time>
         </div>
-
-        <!-- [1차 검수 #19 - 2026-05-28] 레이아웃 순서 변경: 내용 → 이미지 → 좋아요/공유 -->
-        <!-- 내용 -->
-        <div class="post-detail-content"><?php echo nl2br(htmlspecialchars($post['content'] ?? $post['preview'] ?? '')); ?></div>
-
-        <?php
-        // 사진 갤러리 (액션 버튼 위로 이동)
-        $post_photos = [];
-        if (!empty($post['photos'])) {
-            $decoded_photos = json_decode($post['photos'], true);
-            if (is_array($decoded_photos)) $post_photos = $decoded_photos;
-        }
-        if (!empty($post_photos)):
-        ?>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;width:100vw;margin-left:calc(-50vw + 50%);margin-right:calc(-50vw + 50%);">
+        <?php $post_photos = json_decode($post['photos'] ?? '[]', true); if (is_array($post_photos) && $post_photos): ?>
+        <div class="post-photo-grid">
             <?php foreach ($post_photos as $photo_url): ?>
-            <img src="<?php echo htmlspecialchars($photo_url); ?>" alt="" style="width:100%;height:auto;display:block;cursor:pointer;" onclick="window.open(this.src)">
+            <?php if (!is_string($photo_url) || !preg_match('~^(?:/(?!/)|https?://)~i', $photo_url)) continue; ?>
+            <a href="<?php echo htmlspecialchars($photo_url, ENT_QUOTES); ?>" target="_blank" rel="noopener"><img src="<?php echo htmlspecialchars($photo_url, ENT_QUOTES); ?>" alt="게시글 첨부 사진" loading="lazy"></a>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
@@ -536,60 +360,53 @@ include __DIR__ . '/includes/header.php';
         </div>
         <?php endif; ?>
 
-        <!-- 액션 버튼 (사진 다음으로 이동) -->
-        <div class="post-actions">
-            <button type="button" class="post-action-btn btn-like" onclick="likePost(<?php echo $post_id; ?>)">
-                ❤️ 좋아요 <?php echo intval($post['like_count'] ?? 0); ?>
-            </button>
-            <button type="button" class="post-action-btn btn-share" onclick="sharePost()">
-                🔗 공유하기
-            </button>
+        <div class="post-detail-meta">
+            <span class="author-avatar" aria-hidden="true"><?php if (!empty($post['author_avatar'])): ?><img src="<?php echo htmlspecialchars($post['author_avatar'], ENT_QUOTES); ?>" alt=""><?php endif; ?></span>
+            <span class="post-detail-author"><?php echo htmlspecialchars($post_author_display); ?></span>
+            <div class="detail-stats">
+                <button type="button" class="detail-stat btn-like <?php echo $post_liked ? 'liked' : ''; ?>" aria-label="좋아요" aria-pressed="<?php echo $post_liked ? 'true' : 'false'; ?>" onclick="likePost(<?php echo $post_id; ?>)"><i class="bi <?php echo $post_liked ? 'bi-heart-fill' : 'bi-heart'; ?>"></i><span class="like-count"><?php echo number_format($post['like_count'] ?? 0); ?></span></button>
+                <a href="#comments" class="detail-stat" aria-label="댓글"><i class="bi bi-chat-square-text"></i><?php echo number_format(count($comments)); ?></a>
+                <span class="detail-stat" aria-label="조회수"><i class="bi bi-eye"></i><?php echo number_format($post['view_count'] ?? 0); ?></span>
+                <details class="content-menu"><summary aria-label="게시글 메뉴"><i class="bi bi-three-dots"></i></summary><div class="content-menu-panel">
+                    <button type="button" onclick="copyPageShareLink()">링크 복사</button>
+                    <?php if ($is_author): ?>
+                    <a href="community_write.php?id=<?php echo $post_id; ?>">수정</a>
+                    <form method="post" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                        <input type="hidden" name="action" value="delete"><input type="hidden" name="post_id" value="<?php echo $post_id; ?>"><input type="hidden" name="csrf_token" value="<?php echo $detail_csrf; ?>">
+                        <button type="submit">삭제</button>
+                    </form>
+                    <?php else: ?>
+                    <button type="button" onclick="openReportModal('community', <?php echo $post_id; ?>, <?php echo community_js_arg($post['mb_id'] ?? ''); ?>, <?php echo community_js_arg($post_author_display); ?>)">신고하기</button>
+                    <?php if (!empty($post['mb_id'])): ?><button type="button" onclick="openBlockModal(<?php echo community_js_arg($post['mb_id']); ?>, <?php echo community_js_arg($post_author_display); ?>)">사용자 차단</button><?php endif; ?>
+                    <?php endif; ?>
+                </div></details>
+            </div>
         </div>
-
-        <?php
-        // 작성자 본인만 수정/삭제 버튼 표시
-        $is_author = false;
-        if (is_gangnamunni_logged_in() && !empty($post['mb_id'])) {
-            $current_member = get_gangnamunni_member();
-            $is_author = (($current_member['mb_id'] ?? '') === $post['mb_id']);
-        }
-        if ($is_author):
-        ?>
-        <div style="display:flex;gap:10px;margin-bottom:24px;">
-            <a href="community_write.php?id=<?php echo $post_id; ?>" style="flex:1;padding:12px;text-align:center;background:var(--bs-tertiary-bg,#f5f5f5);border-radius:10px;text-decoration:none;color:var(--bs-body-color,#333);font-weight:600;font-size:14px;">
-                <i class="bi bi-pencil"></i> 수정
-            </a>
-            <form method="POST" style="flex:1;" onsubmit="return confirm('정말 삭제하시겠습니까?');">
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="post_id" value="<?php echo $post_id; ?>">
-                <button type="submit" style="width:100%;padding:12px;text-align:center;background:#FFF0F0;border:none;border-radius:10px;color:#CC0000;font-weight:600;font-size:14px;cursor:pointer;">
-                    <i class="bi bi-trash"></i> 삭제
-                </button>
-            </form>
-        </div>
-        <?php endif; ?>
 
         <!-- 댓글 섹션 -->
-        <div class="comments-section">
-            <div class="comments-title">댓글 <?php echo count($comments); ?>개</div>
+        <div class="comments-section" id="comments">
+            <div class="comments-title">댓글 <?php echo count($comments); ?></div>
 
             <?php if (!empty($comments)): ?>
                 <?php foreach ($comments as $comment):
                     $cmt_author = htmlspecialchars($comment['author'] ?? $comment['author_name'] ?? '익명');
-                    $cmt_author_raw = addslashes($comment['author'] ?? $comment['author_name'] ?? '익명');
-                    $cmt_mb_id = addslashes($comment['mb_id'] ?? '');
                     $cmt_id = intval($comment['id'] ?? 0);
                 ?>
                 <div class="comment-item">
                     <div class="comment-author-row">
-                        <div class="comment-author"><?php echo $cmt_author; ?></div>
-                        <button class="rv-report-btn" onclick="openReportModal('community_comment', <?php echo $cmt_id; ?>, '<?php echo $cmt_mb_id; ?>', '<?php echo $cmt_author_raw; ?>')" title="신고">&#9873;</button>
-                        <?php if (!empty($comment['mb_id'])): ?>
-                        <button class="rv-report-btn" onclick="openBlockModal('<?php echo $cmt_mb_id; ?>', '<?php echo $cmt_author_raw; ?>')" title="차단">&#128683;</button>
-                        <?php endif; ?>
+                        <span class="author-avatar" aria-hidden="true"></span>
+                        <span class="comment-author"><?php echo $cmt_author; ?></span>
+                        <span class="comment-age"><?php echo community_comment_age($comment['created_at']); ?></span>
+                        <time class="comment-date"><?php echo date('y.m.d', strtotime($comment['created_at'])); ?></time>
+                        <details class="content-menu"><summary aria-label="댓글 메뉴"><i class="bi bi-three-dots"></i></summary><div class="content-menu-panel">
+                            <button type="button" onclick="openReportModal('comment', <?php echo $cmt_id; ?>, <?php echo community_js_arg($comment['mb_id'] ?? ''); ?>, <?php echo community_js_arg($comment['author'] ?? $comment['author_name'] ?? '익명'); ?>)">신고하기</button>
+                            <?php if (!empty($comment['mb_id']) && ($comment['mb_id'] !== ($current_member['mb_id'] ?? ''))): ?>
+                            <button type="button" onclick="openBlockModal(<?php echo community_js_arg($comment['mb_id']); ?>, <?php echo community_js_arg($comment['author'] ?? $comment['author_name'] ?? '익명'); ?>)">사용자 차단</button>
+                            <?php endif; ?>
+                        </div></details>
                     </div>
-                    <div class="comment-text"><?php echo nl2br(htmlspecialchars($comment['content'])); ?></div>
-                    <div class="comment-time"><?php echo htmlspecialchars($comment['created_at']); ?></div>
+                    <div class="comment-text"><?php echo htmlspecialchars($comment['content']); ?></div>
+                    <div class="comment-tools"><button type="button" class="comment-reply" onclick="focusComment(<?php echo community_js_arg($comment['author'] ?? $comment['author_name'] ?? '익명'); ?>)"><i class="bi bi-chat-square-text"></i>댓글쓰기</button></div>
                 </div>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -600,13 +417,14 @@ include __DIR__ . '/includes/header.php';
             <?php if (is_gangnamunni_logged_in()): ?>
             <form method="POST" action="detail_community.php?id=<?php echo $post_id; ?>" class="comment-form" id="comment-form">
                 <input type="hidden" name="action" value="comment_submit">
+                <input type="hidden" name="csrf_token" value="<?php echo $detail_csrf; ?>">
                 <input type="hidden" name="post_id" value="<?php echo $post_id; ?>">
-                <input type="text" name="content" class="comment-input" placeholder="댓글을 입력하세요..." required maxlength="500">
+                <input type="text" name="content" class="comment-input" aria-label="댓글" placeholder="댓글을 입력하세요." required maxlength="500">
                 <button type="submit" class="comment-submit">등록</button>
             </form>
             <?php else: ?>
             <div class="comment-form" style="justify-content:center;">
-                <a href="auth/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/detail_community.php?id=' . $post_id); ?>" style="color:#5B5FC7; font-weight:600; text-decoration:none;">
+                <a href="auth/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/detail_community.php?id=' . $post_id); ?>" style="color:#b81739; font-weight:600; text-decoration:none;">
                     <i class="bi bi-box-arrow-in-right"></i> 로그인하고 댓글 작성하기
                 </a>
             </div>
@@ -616,12 +434,39 @@ include __DIR__ . '/includes/header.php';
 
 <?php
 $page_js = '
+var detailCsrf = ' . json_encode($detail_csrf) . ';
+// Follow the actual navigation height and the visible area above a mobile keyboard.
+(function() {
+    var composer = document.querySelector(".comment-form");
+    var nav = document.getElementById("bottomNav");
+    if (!composer) return;
+    function positionComposer() {
+        var navHeight = nav ? nav.getBoundingClientRect().height : 0;
+        var viewport = window.visualViewport;
+        var keyboardInset = viewport && viewport.scale === 1
+            ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+        composer.style.setProperty("--comment-bottom", Math.max(navHeight, keyboardInset) + "px");
+    }
+    positionComposer();
+    window.addEventListener("resize", positionComposer);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", positionComposer);
+        window.visualViewport.addEventListener("scroll", positionComposer);
+    }
+    if (nav && window.ResizeObserver) new ResizeObserver(positionComposer).observe(nav);
+})();
+function focusComment(author) {
+    var input = document.querySelector(".comment-input");
+    if (input) { input.value = "@" + author + " " + input.value; input.focus(); }
+    else { location.href = "auth/login.php?url=" + encodeURIComponent(location.href); }
+}
 // [1차 검수 #17,#18 - 2026-05-28] 좋아요 카운트 미반영 + (수정됨) 표시 버그 픽스
 // 기존: alert만 호출 -> DB 미반영 + button type 누락으로 form submit 발생 -> updated_at 변경 -> (수정됨)
 function likePost(postId) {
     var fd = new FormData();
     fd.append("action", "toggle_like");
     fd.append("post_id", postId);
+    fd.append("csrf_token", detailCsrf);
     fetch("detail_community.php?id=" + postId + "&_ajax=1", { method: "POST", body: fd })
         .then(function(r){ return r.json(); })
         .then(function(res) {
@@ -633,7 +478,7 @@ function likePost(postId) {
             }
             if (res && res.success) {
                 var btns = document.querySelectorAll(".btn-like");
-                btns.forEach(function(b){ b.innerHTML = "❤️ 좋아요 " + (res.count || 0); });
+                btns.forEach(function(b){ b.classList.toggle("liked", !!res.liked); b.setAttribute("aria-pressed", !!res.liked); b.querySelector("i").className = "bi " + (res.liked ? "bi-heart-fill" : "bi-heart"); b.querySelector(".like-count").textContent = Number(res.count || 0).toLocaleString("en-US"); });
             }
         })
         .catch(function(){ alert("좋아요 처리 중 오류가 발생했습니다."); });
@@ -691,7 +536,7 @@ function copyPageShareLink() {
 include __DIR__ . '/includes/report_block_modal.php';
 
 // 공통 푸터 include
-echo '<div style="height:70px;"></div>';
+
 include_once __DIR__ . '/includes/bottom_nav.php';
 include __DIR__ . '/includes/footer.php';
 
