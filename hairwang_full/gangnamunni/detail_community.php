@@ -4,6 +4,7 @@
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/community_comment_likes.php';
 
 $request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
@@ -16,6 +17,10 @@ mysqli_stmt_close($visibility_stmt);
 if (!$public_post) {
     http_response_code(404);
     exit('공개된 게시글을 찾을 수 없습니다.');
+}
+
+if ($request_method === 'POST' && ($_POST['action'] ?? '') === 'set_comment_like') {
+    community_comment_like_request($connect, $requested_post_id);
 }
 
 if ($request_method === 'POST' && in_array($_POST['action'] ?? '', ['delete', 'comment_submit'], true)
@@ -98,41 +103,9 @@ if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] ==
     exit;
 }
 
-// [1차 검수 #21 - 2026-05-28] 댓글 작성 처리 (POST)
-if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] === 'comment_submit') {
-    $c_post_id = intval($_POST['post_id'] ?? 0);
-    $c_content = trim($_POST['content'] ?? '');
-    if (mb_strlen($c_content) > 500) { http_response_code(400); exit('댓글은 500자 이내로 입력해주세요.'); }
-    if ($c_post_id > 0 && $c_content !== '' && is_gangnamunni_logged_in()) {
-        $c_member = get_gangnamunni_member();
-        $c_mb_id = $c_member['mb_id'] ?? '';
-        $c_author = $c_member['mb_nick'] ?? $c_member['mb_name'] ?? $c_mb_id;
-        if (!empty($c_mb_id)) {
-            // 테이블 보장
-            mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_community_comments (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                post_id INT NOT NULL,
-                mb_id VARCHAR(50) NOT NULL,
-                author VARCHAR(100) DEFAULT NULL,
-                content TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_post_id (post_id),
-                INDEX idx_mb_id (mb_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-            $c_stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_community_comments (post_id, mb_id, author, content) VALUES (?, ?, ?, ?)");
-            if ($c_stmt) {
-                mysqli_stmt_bind_param($c_stmt, 'isss', $c_post_id, $c_mb_id, $c_author, $c_content);
-                mysqli_stmt_execute($c_stmt);
-                mysqli_stmt_close($c_stmt);
-                // 게시글 댓글 수 증가 (DB 게시글인 경우)
-                mysqli_query($connect, "UPDATE gangnamunni_community_posts SET comment_count = comment_count + 1 WHERE id = $c_post_id");
-            }
-            header('Location: detail_community.php?id=' . $c_post_id . '#comments');
-            exit;
-        }
-    }
-    echo '<script>alert("댓글 작성에 실패했습니다. 로그인 후 다시 시도해주세요.");history.back();</script>';
-    exit;
+require_once __DIR__ . '/includes/community_comments.php';
+if ($request_method === 'POST' && ($_POST['action'] ?? '') === 'comment_submit') {
+    community_comment_submit($connect, $requested_post_id);
 }
 
 // 게시글 ID
@@ -185,7 +158,12 @@ if ($table_exists && isset($post['view_count'])) {
 $comments = [];
 $comments_table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_community_comments'");
 if ($comments_table_check && mysqli_num_rows($comments_table_check) > 0) {
-    $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_community_comments WHERE post_id = ? ORDER BY created_at ASC");
+    $thread_table = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_community_comment_threads'");
+    $has_threads = $thread_table && mysqli_num_rows($thread_table) > 0;
+    $sql = $has_threads
+        ? "SELECT c.*, COALESCE(t.parent_id, 0) AS parent_id FROM gangnamunni_community_comments c LEFT JOIN gangnamunni_community_comment_threads t ON t.comment_id=c.id WHERE c.post_id=? ORDER BY c.created_at ASC, c.id ASC"
+        : "SELECT c.*, 0 AS parent_id FROM gangnamunni_community_comments c WHERE c.post_id=? ORDER BY c.created_at ASC, c.id ASC";
+    $stmt = mysqli_prepare($connect, $sql);
     if ($stmt) {
         mysqli_stmt_bind_param($stmt, 'i', $post_id);
         mysqli_stmt_execute($stmt);
@@ -199,13 +177,16 @@ if ($comments_table_check && mysqli_num_rows($comments_table_check) > 0) {
     }
 }
 
+$comment_total = count($comments);
+$comments = community_comments_in_thread_order($comments);
+
 // 헤더 변수 설정
 $page_title = '커뮤니티';
 $show_search = false;
 
 $page_css = '
 .main-content { padding: 0; }
-.page-header { position: relative; height: 62px; display: flex; align-items: center; justify-content: center; padding: 0 20px; background: var(--bs-body-bg, #fff); }
+.page-header { position: relative; top: 0; height: 62px; display: flex; align-items: center; justify-content: center; padding: 0 20px; background: var(--bs-body-bg, #fff); }
 .back-btn { position: absolute; left: 8px; width: 36px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 23px; color: inherit; text-decoration: none; }
 .page-title { font-size: 18px; font-weight: 600; }
 .post-detail-container { box-sizing: border-box; width: 100%; max-width: 640px; margin: 0 auto; padding: 8px 20px 170px; color: var(--bs-body-color, #000); }
@@ -216,9 +197,9 @@ $page_css = '
 .post-readmore-row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; font-size: 12px; }
 .post-readmore-row button { padding: 0; background: none; border: 0; color: inherit; cursor: pointer; }
 .post-readmore-row time { margin-left: auto; }
-.post-photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin-bottom: 14px; }
-.post-photo-grid a { display: block; aspect-ratio: 3 / 2; background: #d9d9d9; overflow: hidden; }
-.post-photo-grid a:only-child { grid-column: 1 / -1; aspect-ratio: 3 / 1; }
+.post-photo-grid { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+.post-photo-grid a { display: block; aspect-ratio: 1 / 1; background: var(--bs-tertiary-bg, #f5f5f5); overflow: hidden; }
+.post-photo-grid a:only-child { width: 50%; grid-column: 1 / -1; border-radius: inherit; }
 .post-photo-grid img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .post-detail-meta { display: flex; align-items: center; gap: 7px; padding: 0 0 22px; border-bottom: 1px solid #ddd; margin-bottom: 0; min-width: 0; }
 .author-avatar { width: 35px; height: 35px; border-radius: 50%; background: #d9d9d9; flex-shrink: 0; overflow: hidden; }
@@ -229,12 +210,6 @@ $page_css = '
 button.detail-stat { border: 0; padding: 0; background: transparent; font: inherit; cursor: pointer; }
 .detail-stat i { font-size: 23px; }
 .detail-stat.liked { color: #b81739; }
-.content-menu { position: relative; flex-shrink: 0; }
-.content-menu summary { list-style: none; cursor: pointer; min-width: 28px; height: 36px; display: flex; align-items: center; justify-content: flex-end; font-size: 22px; }
-.content-menu summary::-webkit-details-marker { display: none; }
-.content-menu-panel { position: absolute; right: 0; top: 35px; width: 145px; padding: 5px; z-index: 30; border: 1px solid #ddd; border-radius: 8px; background: var(--bs-body-bg, #fff); box-shadow: 0 4px 14px #0001; }
-.content-menu-panel button, .content-menu-panel a { display: block; width: 100%; border: 0; background: none; text-align: left; font: inherit; font-size: 14px; color: inherit; text-decoration: none; cursor: pointer; padding: 10px; }
-.content-menu-panel button:hover, .content-menu-panel a:hover { background: #ffeeef; color: #b81739; }
 .comments-title { font-size: 15px; font-weight: 500; padding: 15px 0; border-bottom: 1px solid #ddd; margin-bottom: 4px; }
 .comment-item { padding: 14px 0 9px; }
 .comment-author-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -242,7 +217,19 @@ button.detail-stat { border: 0; padding: 0; background: transparent; font: inher
 .comment-age { color: #aaa; font-size: 12px; white-space: nowrap; }
 .comment-date { margin-left: auto; font-size: 12px; white-space: nowrap; }
 .comment-text { margin: 8px 0 7px 40px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-item { scroll-margin-top: 16px; }
+.comment-item.is-reply { margin-left: 40px; }
+.comment-item.is-reply .author-avatar { width: 25px; height: 25px; flex: 0 0 25px; }
+.comment-item.is-reply .comment-text, .comment-item.is-reply .comment-tools { margin-left: 31px; }
+.comment-reply-target { flex: 0 0 100%; display: flex; justify-content: space-between; align-items: center; color: #b81739; font-size: 12px; }
+.comment-reply-target[hidden] { display: none; }
+.comment-reply-target button { border: 0; background: transparent; color: inherit; padding: 6px; }
+.comment-form { flex-wrap: wrap; }
 .comment-tools { display: flex; align-items: center; gap: 20px; margin-left: 40px; }
+.comment-like { display: inline-flex; align-items: center; gap: 8px; padding: 2px 0; border: 0; background: none; color: inherit; font-size: 12px; cursor: pointer; }
+.comment-like i { font-size: 19px; }
+.comment-like.liked { color: #b81739; }
+.comment-like:disabled { opacity: .55; cursor: wait; }
 .comment-reply { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; font-size: 12px; color: inherit; cursor: pointer; }
 .comment-reply i { font-size: 16px; }
 /* Keep the composer above the shared navigation, even on short threads. */
@@ -252,6 +239,7 @@ button.detail-stat { border: 0; padding: 0; background: transparent; font: inher
 .comment-submit { border: 0; border-radius: 10px; height: 40px; padding: 0 23px; background: #b81739; color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
 .no-comments { text-align: center; color: #999; padding: 28px 0; font-size: 14px; }
 .post-detail-container :focus-visible, .back-btn:focus-visible { outline: 2px solid #b81739; outline-offset: 3px; }
+.post-detail-container .comment-input:focus { border-color: #aaa; outline: none; box-shadow: none; }
 .share-copy-toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); padding: 10px 16px; border-radius: 20px; background: #222; color: #fff; opacity: 0; pointer-events: none; z-index: 10000; }
 .share-copy-toast.is-visible { opacity: 1; }
 @media (max-width: 480px) {
@@ -281,6 +269,7 @@ $post_author_display = $post['author_name'] ?? $post['author'] ?? '익명';
 $current_member = is_gangnamunni_logged_in() ? get_gangnamunni_member() : [];
 $is_author = !empty($current_member['mb_id']) && $current_member['mb_id'] === ($post['mb_id'] ?? '');
 $detail_csrf = generateCsrfToken();
+$comment_likes = $comments ? community_comment_like_counts($connect, $post_id, (string)($current_member['mb_id'] ?? '')) : [];
 $post_liked = false;
 if (!empty($current_member['mb_id'])) {
     $likes_table = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_community_likes'");
@@ -314,7 +303,7 @@ include __DIR__ . '/includes/header.php';
 
         <div class="post-detail-content" id="postContent"><?php echo htmlspecialchars($post['content'] ?? ''); ?></div>
         <div class="post-readmore-row">
-            <button type="button" id="postReadMore" aria-expanded="false" aria-controls="postContent" onclick="var expanded=document.getElementById('postContent').classList.toggle('expanded');this.setAttribute('aria-expanded',expanded);this.textContent=expanded?'접기':'...더보기';">...더보기</button>
+            <button type="button" id="postReadMore" hidden aria-expanded="false" aria-controls="postContent">...더보기</button>
             <time><?php echo date('y.m.d', strtotime($post['created_at'])); ?></time>
         </div>
         <?php $post_photos = json_decode($post['photos'] ?? '[]', true); if (is_array($post_photos) && $post_photos): ?>
@@ -333,46 +322,51 @@ include __DIR__ . '/includes/header.php';
                 <button type="button" class="detail-stat btn-like <?php echo $post_liked ? 'liked' : ''; ?>" aria-label="좋아요" aria-pressed="<?php echo $post_liked ? 'true' : 'false'; ?>" onclick="likePost(<?php echo $post_id; ?>)"><i class="bi <?php echo $post_liked ? 'bi-heart-fill' : 'bi-heart'; ?>"></i><span class="like-count"><?php echo number_format($post['like_count'] ?? 0); ?></span></button>
                 <a href="#comments" class="detail-stat" aria-label="댓글"><i class="bi bi-chat-square-text"></i><?php echo number_format(count($comments)); ?></a>
                 <span class="detail-stat" aria-label="조회수"><i class="bi bi-eye"></i><?php echo number_format($post['view_count'] ?? 0); ?></span>
-                <details class="content-menu"><summary aria-label="게시글 메뉴"><i class="bi bi-three-dots"></i></summary><div class="content-menu-panel">
-                    <button type="button" onclick="copyPageShareLink()">링크 복사</button>
-                    <?php if ($is_author): ?>
-                    <a href="community_write.php?id=<?php echo $post_id; ?>">수정</a>
-                    <form method="post" onsubmit="return confirm('정말 삭제하시겠습니까?');">
-                        <input type="hidden" name="action" value="delete"><input type="hidden" name="post_id" value="<?php echo $post_id; ?>"><input type="hidden" name="csrf_token" value="<?php echo $detail_csrf; ?>">
-                        <button type="submit">삭제</button>
-                    </form>
-                    <?php else: ?>
-                    <button type="button" onclick="openReportModal('community', <?php echo $post_id; ?>, <?php echo community_js_arg($post['mb_id'] ?? ''); ?>, <?php echo community_js_arg($post_author_display); ?>)">신고하기</button>
-                    <?php if (!empty($post['mb_id'])): ?><button type="button" onclick="openBlockModal(<?php echo community_js_arg($post['mb_id']); ?>, <?php echo community_js_arg($post_author_display); ?>)">사용자 차단</button><?php endif; ?>
-                    <?php endif; ?>
-                </div></details>
+                <button type="button" class="community-more" aria-label="게시글 메뉴" aria-haspopup="dialog"
+                    data-id="<?php echo (int)$post_id; ?>" data-type="community"
+                    data-user="<?php echo htmlspecialchars($post['mb_id'] ?? '', ENT_QUOTES); ?>"
+                    data-author="<?php echo htmlspecialchars($post_author_display, ENT_QUOTES); ?>"
+                    data-url="detail_community.php?id=<?php echo (int)$post_id; ?>"
+                    data-owner="<?php echo $is_author ? 'true' : 'false'; ?>"
+                    data-csrf="<?php echo htmlspecialchars($detail_csrf, ENT_QUOTES); ?>"
+                    onclick="openCommunityActions(this)"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
             </div>
         </div>
 
         <!-- 댓글 섹션 -->
         <div class="comments-section" id="comments">
-            <div class="comments-title">댓글 <?php echo count($comments); ?></div>
+            <div class="comments-title">댓글 <?php echo $comment_total; ?></div>
 
             <?php if (!empty($comments)): ?>
                 <?php foreach ($comments as $comment):
                     $cmt_author = htmlspecialchars($comment['author'] ?? $comment['author_name'] ?? '익명');
                     $cmt_id = intval($comment['id'] ?? 0);
                 ?>
-                <div class="comment-item">
+                <div class="comment-item<?php echo !empty($comment['parent_id']) ? ' is-reply' : ''; ?>" id="comment-<?php echo $cmt_id; ?>">
                     <div class="comment-author-row">
                         <span class="author-avatar" aria-hidden="true"></span>
                         <span class="comment-author"><?php echo $cmt_author; ?></span>
                         <span class="comment-age"><?php echo community_comment_age($comment['created_at']); ?></span>
                         <time class="comment-date"><?php echo date('y.m.d', strtotime($comment['created_at'])); ?></time>
-                        <details class="content-menu"><summary aria-label="댓글 메뉴"><i class="bi bi-three-dots"></i></summary><div class="content-menu-panel">
-                            <button type="button" onclick="openReportModal('comment', <?php echo $cmt_id; ?>, <?php echo community_js_arg($comment['mb_id'] ?? ''); ?>, <?php echo community_js_arg($comment['author'] ?? $comment['author_name'] ?? '익명'); ?>)">신고하기</button>
-                            <?php if (!empty($comment['mb_id']) && ($comment['mb_id'] !== ($current_member['mb_id'] ?? ''))): ?>
-                            <button type="button" onclick="openBlockModal(<?php echo community_js_arg($comment['mb_id']); ?>, <?php echo community_js_arg($comment['author'] ?? $comment['author_name'] ?? '익명'); ?>)">사용자 차단</button>
-                            <?php endif; ?>
-                        </div></details>
+                        <button type="button" class="community-more" aria-label="댓글 메뉴" aria-haspopup="dialog"
+                            data-type="comment" data-id="<?php echo $cmt_id; ?>"
+                            data-user="<?php echo htmlspecialchars($comment['mb_id'] ?? '', ENT_QUOTES); ?>"
+                            data-author="<?php echo htmlspecialchars($comment['author'] ?? $comment['author_name'] ?? '익명', ENT_QUOTES); ?>"
+                            data-url="detail_community.php?id=<?php echo (int)$post_id; ?>#comment-<?php echo $cmt_id; ?>"
+                            onclick="openCommunityActions(this)"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
                     </div>
                     <div class="comment-text"><?php echo htmlspecialchars($comment['content']); ?></div>
-                    <div class="comment-tools"><button type="button" class="comment-reply" onclick="focusComment(<?php echo community_js_arg($comment['author'] ?? $comment['author_name'] ?? '익명'); ?>)"><i class="bi bi-chat-square-text"></i>댓글쓰기</button></div>
+                    <div class="comment-tools">
+                        <?php $comment_like = $comment_likes[$cmt_id] ?? ['liked' => false, 'count' => 0]; ?>
+                        <button type="button" class="comment-like <?php echo $comment_like['liked'] ? 'liked' : ''; ?>"
+                            aria-label="댓글 좋아요" aria-pressed="<?php echo $comment_like['liked'] ? 'true' : 'false'; ?>"
+                            onclick="toggleCommentLike(this, <?php echo $cmt_id; ?>)">
+                            <i class="bi <?php echo $comment_like['liked'] ? 'bi-heart-fill' : 'bi-heart'; ?>" aria-hidden="true"></i>
+                            <span class="comment-like-count"><?php echo (int)$comment_like['count'] > 0 ? number_format((int)$comment_like['count']) : ''; ?></span>
+                        </button>
+                        <?php if (empty($comment['parent_id'])): ?>
+                        <button type="button" class="comment-reply" onclick="focusComment(<?php echo $cmt_id; ?>, <?php echo community_js_arg($comment['author'] ?? $comment['author_name'] ?? '익명'); ?>)"><i class="bi bi-chat-square-text" aria-hidden="true"></i>댓글쓰기</button>
+                        <?php endif; ?></div>
                 </div>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -382,6 +376,8 @@ include __DIR__ . '/includes/header.php';
             <!-- [1차 검수 #21 - 2026-05-28] 댓글 작성 폼 -->
             <?php if (is_gangnamunni_logged_in()): ?>
             <form method="POST" action="detail_community.php?id=<?php echo $post_id; ?>" class="comment-form" id="comment-form">
+                <div class="comment-reply-target" id="comment-reply-target" hidden><span></span><button type="button" onclick="cancelCommentReply()" aria-label="답글 취소">취소</button></div>
+                <input type="hidden" name="parent_id" value="0" id="comment-parent-id">
                 <input type="hidden" name="action" value="comment_submit">
                 <input type="hidden" name="csrf_token" value="<?php echo $detail_csrf; ?>">
                 <input type="hidden" name="post_id" value="<?php echo $post_id; ?>">
@@ -401,6 +397,67 @@ include __DIR__ . '/includes/header.php';
 <?php
 $page_js = '
 var detailCsrf = ' . json_encode($detail_csrf) . ';
+async function toggleCommentLike(button, commentId) {
+    if (button.disabled) return;
+    button.disabled = true;
+    const data = new FormData();
+    data.append("action", "set_comment_like");
+    data.append("post_id", "' . (int)$post_id . '");
+    data.append("comment_id", commentId);
+    data.append("csrf_token", detailCsrf);
+    data.append("liked", button.getAttribute("aria-pressed") === "true" ? "0" : "1");
+    try {
+        const response = await fetch("detail_community.php?id=' . (int)$post_id . '", {method:"POST", body:data, credentials:"same-origin"});
+        const result = await response.json();
+        if (result.login_required) {
+            if (confirm("로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?")) location.href = "auth/login.php?url=" + encodeURIComponent(location.href);
+            return;
+        }
+        if (!response.ok || !result.success) throw new Error(result.message || "좋아요 처리에 실패했습니다.");
+        button.classList.toggle("liked", result.liked);
+        button.setAttribute("aria-pressed", String(result.liked));
+        button.querySelector("i").className = "bi " + (result.liked ? "bi-heart-fill" : "bi-heart");
+        button.querySelector(".comment-like-count").textContent = result.count ? Number(result.count).toLocaleString("en-US") : "";
+    } catch (error) {
+        showToast("좋아요 처리에 실패했습니다. 다시 시도해주세요.", "error");
+    } finally { button.disabled = false; }
+}
+
+// Show the toggle only when the rendered text exceeds the three-line preview.
+(function() {
+    var content = document.getElementById("postContent");
+    var button = document.getElementById("postReadMore");
+    if (!content || !button) return;
+    function setExpanded(expanded) {
+        content.classList.toggle("expanded", expanded);
+        button.setAttribute("aria-expanded", String(expanded));
+        button.textContent = expanded ? "접기" : "...더보기";
+    }
+    function updateReadMore() {
+        var expanded = content.classList.contains("expanded");
+        content.classList.remove("expanded");
+        var overflowing = content.scrollHeight > content.clientHeight + 1;
+        button.hidden = !overflowing;
+        setExpanded(overflowing && expanded);
+    }
+    button.addEventListener("click", function() {
+        setExpanded(!content.classList.contains("expanded"));
+    });
+    updateReadMore();
+    window.addEventListener("resize", updateReadMore);
+    if (document.fonts) document.fonts.ready.then(updateReadMore);
+    if (window.ResizeObserver) {
+        var previousWidth = content.getBoundingClientRect().width;
+        new ResizeObserver(function(entries) {
+            var width = entries[0].contentRect.width;
+            if (width !== previousWidth) {
+                previousWidth = width;
+                updateReadMore();
+            }
+        }).observe(content);
+    }
+})();
+
 // Follow the actual navigation height and the visible area above a mobile keyboard.
 (function() {
     var composer = document.querySelector(".comment-form");
@@ -412,6 +469,8 @@ var detailCsrf = ' . json_encode($detail_csrf) . ';
         var keyboardInset = viewport && viewport.scale === 1
             ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
         composer.style.setProperty("--comment-bottom", Math.max(navHeight, keyboardInset) + "px");
+        var container = document.querySelector(".post-detail-container");
+        if (container) container.style.paddingBottom = (navHeight + composer.offsetHeight + 24) + "px";
     }
     positionComposer();
     window.addEventListener("resize", positionComposer);
@@ -419,13 +478,37 @@ var detailCsrf = ' . json_encode($detail_csrf) . ';
         window.visualViewport.addEventListener("resize", positionComposer);
         window.visualViewport.addEventListener("scroll", positionComposer);
     }
+    if (window.ResizeObserver) new ResizeObserver(positionComposer).observe(composer);
     if (nav && window.ResizeObserver) new ResizeObserver(positionComposer).observe(nav);
 })();
-function focusComment(author) {
-    var input = document.querySelector(".comment-input");
-    if (input) { input.value = "@" + author + " " + input.value; input.focus(); }
-    else { location.href = "auth/login.php?url=" + encodeURIComponent(location.href); }
+function cancelCommentReply() {
+    document.getElementById("comment-parent-id").value = "0";
+    document.getElementById("comment-reply-target").hidden = true;
+    document.querySelector(".comment-input").placeholder = "댓글을 입력하세요.";
 }
+function focusComment(commentId, author) {
+    var input = document.querySelector(".comment-input");
+    if (input) {
+        document.getElementById("comment-parent-id").value = commentId;
+        var target = document.getElementById("comment-reply-target");
+        target.querySelector("span").textContent = author + "님에게 답글 작성 중";
+        target.hidden = false;
+        input.placeholder = "답글을 입력하세요.";
+        input.focus();
+    } else { location.href = "auth/login.php?url=" + encodeURIComponent(location.href); }
+}
+var commentForm = document.getElementById("comment-form");
+if (commentForm) commentForm.addEventListener("submit", function(event) {
+    var input = commentForm.querySelector(".comment-input");
+    if (!input.value.trim() || commentForm.dataset.submitting) { event.preventDefault(); return; }
+    commentForm.dataset.submitting = "true";
+    commentForm.querySelector(".comment-submit").disabled = true;
+});
+window.addEventListener("pageshow", function() {
+    if (!commentForm) return;
+    delete commentForm.dataset.submitting;
+    commentForm.querySelector(".comment-submit").disabled = false;
+});
 // [1차 검수 #17,#18 - 2026-05-28] 좋아요 카운트 미반영 + (수정됨) 표시 버그 픽스
 // 기존: alert만 호출 -> DB 미반영 + button type 누락으로 form submit 발생 -> updated_at 변경 -> (수정됨)
 function likePost(postId) {
@@ -500,6 +583,7 @@ function copyPageShareLink() {
 
 // 신고/차단 모달
 include __DIR__ . '/includes/report_block_modal.php';
+include_once __DIR__ . '/includes/community_action_sheet.php';
 
 // 공통 푸터 include
 
