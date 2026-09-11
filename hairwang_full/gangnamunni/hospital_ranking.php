@@ -20,6 +20,8 @@ if ($res) while ($r = mysqli_fetch_assoc($res)) $hospitals[] = $r;
 // mysqli_close moved to end
 ?>
 <!DOCTYPE html><html lang="ko" data-bs-theme="light"><head>
+    <?php require_once __DIR__ . "/seo.php"; echo generateSeoulbeautyCanonicalLink(); ?>
+    <?php require_once __DIR__ . "/theme_helper.php"; echo generateFaviconLinks(); ?>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>병원 랭킹 - 서울미녀</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">

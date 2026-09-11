@@ -16,6 +16,8 @@ $theme_attr = $dark_mode === 'light' ? 'light' : 'dark';
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="<?php echo $theme_attr; ?>">
 <head>
+    <?php require_once __DIR__ . "/seo.php"; echo generateSeoulbeautyCanonicalLink(); ?>
+    <?php require_once __DIR__ . "/theme_helper.php"; echo generateFaviconLinks(); ?>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo $page_title; ?></title>

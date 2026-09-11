@@ -327,6 +327,7 @@ $open_email = $login_error !== '';
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <meta name="robots" content="noindex, follow">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>로그인 | <?php echo htmlspecialchars($brand_name); ?></title>

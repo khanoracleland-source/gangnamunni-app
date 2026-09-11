@@ -55,6 +55,7 @@ if (isset($connect) && $connect && function_exists('loadThemeSettings')) {
     <?php if (!empty($page_robots)): ?>
     <meta name="robots" content="<?php echo htmlspecialchars($page_robots, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endif; ?>
+    <?php if (empty($page_canonical)) $page_canonical = seoulbeautyCanonicalUrl($_SERVER['REQUEST_URI'] ?? ''); ?>
     <?php if (!empty($page_canonical)): ?>
     <link rel="canonical" href="<?php echo htmlspecialchars($page_canonical, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endif; ?>

@@ -7,6 +7,7 @@
 
 // 테마 설정 전역 변수
 $THEME_SETTINGS = [];
+require_once __DIR__ . '/seo.php';
 
 // 디자인 토큰 헬퍼 로드
 if (file_exists(__DIR__ . '/includes/design_tokens.php')) {
@@ -229,16 +230,10 @@ function generateGoogleFontsLink() {
  * 파비콘 링크 생성
  */
 function generateFaviconLinks() {
-    $logo_path = getTheme('site_logo_path', 'assets/images/logo_128.png');
-    $base_path = dirname($logo_path);
-
-    $html = "<link rel=\"icon\" type=\"image/svg+xml\" href=\"{$base_path}/favicon.svg\">\n";
-    $html .= "<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"{$base_path}/favicon-32.png\">\n";
-    $html .= "<link rel=\"icon\" type=\"image/png\" sizes=\"16x16\" href=\"{$base_path}/favicon.png\">\n";
-    $html .= "<link rel=\"apple-touch-icon\" sizes=\"128x128\" href=\"{$base_path}/logo_128.png\">\n";
-    $html .= "<link rel=\"apple-touch-icon\" sizes=\"256x256\" href=\"{$base_path}/logo_256.png\">\n";
-
-    return $html;
+    $base = htmlspecialchars(defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/gangnamunni/', ENT_QUOTES, 'UTF-8');
+    return '<link rel="shortcut icon" type="image/x-icon" sizes="16x16" href="' . $base . 'favicon.ico">' . "\n"
+        . '<link rel="icon" type="image/png" sizes="1024x1024" href="' . $base . 'assets/images/favicon.png">' . "\n"
+        . '<link rel="apple-touch-icon" sizes="1024x1024" href="' . $base . 'assets/images/favicon.png">' . "\n";
 }
 
 /**
@@ -271,4 +266,3 @@ function generateFontScaleCSS() {
 ";
     return $css;
 }
-

@@ -31,10 +31,11 @@ if (!defined('CATEGORIES')) {
 if (!defined('SITE_DOMAIN')) define('SITE_DOMAIN', 'hms.seoulbeauty.app');
 $request_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
 $is_local_request = in_array($request_host, ['127.0.0.1', 'localhost', '::1'], true);
+$is_public_site_request = in_array($request_host, ['seoulbeauty.app', 'www.seoulbeauty.app'], true);
 if (!defined('SITE_BASE_PATH')) {
-    define('SITE_BASE_PATH', $is_local_request ? '/gangnamunni/' : '/hairwang/gangnamunni/');
+    define('SITE_BASE_PATH', ($is_local_request || $is_public_site_request) ? '/gangnamunni/' : '/hairwang/gangnamunni/');
 }
-if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://' . SITE_DOMAIN . SITE_BASE_PATH);
+if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://' . ($is_public_site_request ? 'seoulbeauty.app' : SITE_DOMAIN) . SITE_BASE_PATH);
 
 // 이미지 업로드 설정
 define('UPLOAD_MAX_SIZE', 10 * 1024 * 1024); // 10MB

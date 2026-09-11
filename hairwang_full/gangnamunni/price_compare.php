@@ -101,6 +101,8 @@ if ($min_price === PHP_INT_MAX) $min_price = 0;
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="light">
 <head>
+    <?php require_once __DIR__ . "/seo.php"; echo generateSeoulbeautyCanonicalLink(); ?>
+    <?php require_once __DIR__ . "/theme_helper.php"; echo generateFaviconLinks(); ?>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title><?php echo term('service', '시술'); ?> 가격 비교 - <?php echo site_name(); ?></title>

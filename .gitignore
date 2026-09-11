@@ -91,6 +91,11 @@ Thumbs.db
 
 # Development test files
 /test_headers.php
+/hairwang_full/gangnamunni/test_about_project.php
+
+# Python cache
+__pycache__/
+*.pyc
 
 # 기타 작업 폴더
 /site_get/
