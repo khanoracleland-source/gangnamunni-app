@@ -152,10 +152,6 @@ class ServiceListScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   physics: const AlwaysScrollableScrollPhysics(),
                   listAnimationType: ListAnimationType.FadeIn,
-                  onSwipeRefresh: () async {
-                    serviceListCont.page(1);
-                    return serviceListCont.getServiceList(showLoader: false);
-                  },
                   onNextPage: () async {
                     if (!serviceListCont.isLastPage.value) {
                       serviceListCont.page(serviceListCont.page.value + 1);

@@ -86,10 +86,6 @@ class ClinicGalleryListScreen extends StatelessWidget {
                   galleryListCont.getGalleryList();
                 }
               },
-              onSwipeRefresh: () async {
-                galleryListCont.page(1);
-                return galleryListCont.getGalleryList(showLoader: false);
-              },
             );
           },
         ),

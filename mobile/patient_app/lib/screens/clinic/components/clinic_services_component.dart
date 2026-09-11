@@ -58,10 +58,6 @@ class ClinicServicesComponent extends StatelessWidget {
                     clinicDetailCont.getServiceList();
                   }
                 },
-                onSwipeRefresh: () async {
-                  clinicDetailCont.servicesPage(1);
-                  return clinicDetailCont.getServiceList(showLoader: false);
-                },
               ).paddingSymmetric(horizontal: 16);
             },
           ),

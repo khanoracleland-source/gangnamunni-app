@@ -117,9 +117,6 @@ class QuickBookComponent extends StatelessWidget {
                               quickBookController.getServiceList();
                             }
                           },
-                          onSwipeRefresh: () async {
-                            quickBookController.currentPage.value = 1;
-                          },
                         ).expand(),
                       ),
                     ),

@@ -63,10 +63,6 @@ class AllEncountersScreen extends StatelessWidget {
                         allEncountersCont.getAllEncounters();
                       }
                     },
-                    onSwipeRefresh: () async {
-                      allEncountersCont.page(1);
-                      return allEncountersCont.getAllEncounters(showLoader: false);
-                    },
                     itemBuilder: (context, index) {
                       return InkWell(
                         onTap: () {

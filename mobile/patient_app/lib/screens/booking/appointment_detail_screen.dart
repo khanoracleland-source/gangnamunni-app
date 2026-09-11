@@ -41,429 +41,424 @@ class AppointmentDetail extends StatelessWidget {
       isLoading: appointmentDetailCont.isLoading,
       appBartitleText: "${locale.value.appointment} #${appointmentDetailCont.appointmentDetail.value.id}",
       appBarVerticalSize: Get.height * 0.12,
-      body: RefreshIndicator(
-        onRefresh: () {
-          return appointmentDetailCont.init(showLoader: false);
-        },
-        child: Obx(
-          () => SnapHelperWidget(
-            future: appointmentDetailCont.getAppointmentDetails.value,
-            errorBuilder: (error) {
-              return NoDataWidget(
-                title: error,
-                retryText: locale.value.reload,
-                imageWidget: const ErrorStateWidget(),
-                onRetry: () {
-                  appointmentDetailCont.init();
-                },
-              ).paddingSymmetric(horizontal: 16);
-            },
-            loadingWidget: const LoaderWidget(),
-            onSuccess: (appointmentDetailRes) {
-              return AnimatedScrollView(
-                listAnimationType: ListAnimationType.FadeIn,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 30),
-                children: [
-                  16.height,
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      ViewAllLabel(label: locale.value.appointmentDetail, isShowAll: false).flexible(),
-                      //  ViewAllLabel(label: locale.value.appointmentDetail, isShowAll: false),
-                      if (appointmentDetailCont.appointmentDetail.value.status.contains(BookingStatusConst.PENDING))
+      body: Obx(
+        () => SnapHelperWidget(
+          future: appointmentDetailCont.getAppointmentDetails.value,
+          errorBuilder: (error) {
+            return NoDataWidget(
+              title: error,
+              retryText: locale.value.reload,
+              imageWidget: const ErrorStateWidget(),
+              onRetry: () {
+                appointmentDetailCont.init();
+              },
+            ).paddingSymmetric(horizontal: 16);
+          },
+          loadingWidget: const LoaderWidget(),
+          onSuccess: (appointmentDetailRes) {
+            return AnimatedScrollView(
+              listAnimationType: ListAnimationType.FadeIn,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 30),
+              children: [
+                16.height,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    ViewAllLabel(label: locale.value.appointmentDetail, isShowAll: false).flexible(),
+                    //  ViewAllLabel(label: locale.value.appointmentDetail, isShowAll: false),
+                    if (appointmentDetailCont.appointmentDetail.value.status.contains(BookingStatusConst.PENDING))
 
-                        ///Reschedule Appointment
-                        SizedBox(
-                          height: 23,
-                          child: AppButton(
-                            text: locale.value.reschedule,
-                            padding: EdgeInsets.zero,
-                            textStyle: secondaryTextStyle(color: Colors.white),
-                            shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
-                            onTap: () {
-                              appointmentDetailCont.getTimeSlot();
-                              handleRescheduleClick(
-                                context: context,
-                                isLoading: appointmentDetailCont.isLoading,
-                                appointmentDetail: appointmentDetailCont.appointmentDetail,
-                                appointmentDetailCont: appointmentDetailCont,
-                              );
-                            },
-                          ),
-                        )
-                      else if (appointmentDetailCont.appointmentDetail.value.status.contains(BookingStatusConst.CHECKOUT))
+                      ///Reschedule Appointment
+                      SizedBox(
+                        height: 23,
+                        child: AppButton(
+                          text: locale.value.reschedule,
+                          padding: EdgeInsets.zero,
+                          textStyle: secondaryTextStyle(color: Colors.white),
+                          shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
+                          onTap: () {
+                            appointmentDetailCont.getTimeSlot();
+                            handleRescheduleClick(
+                              context: context,
+                              isLoading: appointmentDetailCont.isLoading,
+                              appointmentDetail: appointmentDetailCont.appointmentDetail,
+                              appointmentDetailCont: appointmentDetailCont,
+                            );
+                          },
+                        ),
+                      )
+                    else if (appointmentDetailCont.appointmentDetail.value.status.contains(BookingStatusConst.CHECKOUT))
 
-                        ///Invoice Download
-                        SizedBox(
-                          height: 23,
-                          child: AppButton(
-                            padding: EdgeInsets.zero,
-                            textStyle: secondaryTextStyle(color: Colors.white),
-                            shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
-                            onTap: () {
-                              appointmentDetailCont.getAppointmentInvoice();
-                            },
-                            child: Row(
-                              children: [
-                                const CachedImageWidget(
-                                  url: Assets.iconsIcDownload,
-                                  height: 14,
-                                  width: 14,
-                                  color: white,
-                                ),
-                                6.width,
-                                Text(locale.value.invoice, style: primaryTextStyle(size: 12, color: white)),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ).paddingSymmetric(horizontal: 16),
-                  Container(
-                    width: Get.width,
-                    padding: const EdgeInsets.all(16),
-                    decoration: boxDecorationDefault(color: context.cardColor),
-                    child: Column(
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("${locale.value.dateTime}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                6.height,
-                                Text(
-                                  "${appointmentDetailCont.appointmentDetail.value.appointmentDate.dateInYYYYMMDDFormat} at ${appointmentDetailCont.appointmentDetail.value.appointmentTime.format24HourtoAMPM}",
-                                  style: boldTextStyle(size: 12),
-                                ),
-                              ],
-                            ).expand(flex: 3),
-                            16.width,
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("${locale.value.serviceName}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                6.height,
-                                Text(appointmentDetailCont.appointmentDetail.value.serviceName, style: boldTextStyle(size: 12)),
-                              ],
-                            ).expand(flex: 2).visible(appointmentDetailCont.appointmentDetail.value.serviceName.isNotEmpty),
-                          ],
-                        ),
-                        commonDivider.paddingSymmetric(vertical: 16),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("${locale.value.doctor}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                6.height,
-                                Text(appointmentDetailCont.appointmentDetail.value.doctorName, style: boldTextStyle(size: 12)),
-                              ],
-                            ).expand(flex: 3),
-                            16.width,
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("${locale.value.clinicName}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                6.height,
-                                Text(appointmentDetailCont.appointmentDetail.value.clinicName, style: boldTextStyle(size: 12)),
-                              ],
-                            ).expand(flex: 2),
-                          ],
-                        ),
-                        if (appointmentDetailCont.appointmentDetail.value.bookForName.isNotEmpty) ...[
-                          commonDivider.paddingSymmetric(vertical: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      ///Invoice Download
+                      SizedBox(
+                        height: 23,
+                        child: AppButton(
+                          padding: EdgeInsets.zero,
+                          textStyle: secondaryTextStyle(color: Colors.white),
+                          shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
+                          onTap: () {
+                            appointmentDetailCont.getAppointmentInvoice();
+                          },
+                          child: Row(
                             children: [
-                              Text(
-                                locale.value.bookedForWithColon,
-                                style: secondaryTextStyle(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ).expand(flex: 3),
-                              16.width,
-                              TextIcon(
-                                edgeInsets: EdgeInsets.zero,
-                                prefix: CachedImageWidget(
-                                  url: appointmentDetailCont.appointmentDetail.value.booForImage,
-                                  height: 22,
-                                  width: 22,
-                                  fit: BoxFit.cover,
-                                  circle: true,
-                                ).onTap(() {
-                                  if (appointmentDetailCont.appointmentDetail.value.booForImage.isNotEmpty) {
-                                    ZoomImageScreen(
-                                      galleryImages: [appointmentDetailCont.appointmentDetail.value.booForImage],
-                                      index: 0,
-                                    ).launch(context);
-                                  }
-                                }),
-                                text: appointmentDetailCont.appointmentDetail.value.bookForName,
-                                expandedText: true,
-                                useMarquee: true,
-                                textStyle: boldTextStyle(size: 12),
-                              ).expand(flex: 2),
+                              const CachedImageWidget(
+                                url: Assets.iconsIcDownload,
+                                height: 14,
+                                width: 14,
+                                color: white,
+                              ),
+                              6.width,
+                              Text(locale.value.invoice, style: primaryTextStyle(size: 12, color: white)),
                             ],
                           ),
+                        ),
+                      ),
+                  ],
+                ).paddingSymmetric(horizontal: 16),
+                Container(
+                  width: Get.width,
+                  padding: const EdgeInsets.all(16),
+                  decoration: boxDecorationDefault(color: context.cardColor),
+                  child: Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("${locale.value.dateTime}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              6.height,
+                              Text(
+                                "${appointmentDetailCont.appointmentDetail.value.appointmentDate.dateInYYYYMMDDFormat} at ${appointmentDetailCont.appointmentDetail.value.appointmentTime.format24HourtoAMPM}",
+                                style: boldTextStyle(size: 12),
+                              ),
+                            ],
+                          ).expand(flex: 3),
+                          16.width,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("${locale.value.serviceName}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              6.height,
+                              Text(appointmentDetailCont.appointmentDetail.value.serviceName, style: boldTextStyle(size: 12)),
+                            ],
+                          ).expand(flex: 2).visible(appointmentDetailCont.appointmentDetail.value.serviceName.isNotEmpty),
                         ],
+                      ),
+                      commonDivider.paddingSymmetric(vertical: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("${locale.value.doctor}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              6.height,
+                              Text(appointmentDetailCont.appointmentDetail.value.doctorName, style: boldTextStyle(size: 12)),
+                            ],
+                          ).expand(flex: 3),
+                          16.width,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("${locale.value.clinicName}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              6.height,
+                              Text(appointmentDetailCont.appointmentDetail.value.clinicName, style: boldTextStyle(size: 12)),
+                            ],
+                          ).expand(flex: 2),
+                        ],
+                      ),
+                      if (appointmentDetailCont.appointmentDetail.value.bookForName.isNotEmpty) ...[
                         commonDivider.paddingSymmetric(vertical: 16),
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("${locale.value.appointmentStatus}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                6.height,
-                                Text(
-                                  getBookingStatus(status: appointmentDetailCont.appointmentDetail.value.status),
-                                  style: boldTextStyle(
-                                    size: 12,
-                                    color: getBookingStatusColor(status: appointmentDetailCont.appointmentDetail.value.status),
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              locale.value.bookedForWithColon,
+                              style: secondaryTextStyle(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ).expand(flex: 3),
                             16.width,
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("${locale.value.paymentStatus}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                6.height,
-                                Text(
-                                  getBookingPaymentStatus(status: appointmentDetailCont.appointmentDetail.value.paymentStatus),
-                                  style: boldTextStyle(
-                                    size: 12,
-                                    color: getPriceStatusColor(paymentStatus: appointmentDetailCont.appointmentDetail.value.paymentStatus),
-                                  ),
-                                ),
-                              ],
+                            TextIcon(
+                              edgeInsets: EdgeInsets.zero,
+                              prefix: CachedImageWidget(
+                                url: appointmentDetailCont.appointmentDetail.value.booForImage,
+                                height: 22,
+                                width: 22,
+                                fit: BoxFit.cover,
+                                circle: true,
+                              ).onTap(() {
+                                if (appointmentDetailCont.appointmentDetail.value.booForImage.isNotEmpty) {
+                                  ZoomImageScreen(
+                                    galleryImages: [appointmentDetailCont.appointmentDetail.value.booForImage],
+                                    index: 0,
+                                  ).launch(context);
+                                }
+                              }),
+                              text: appointmentDetailCont.appointmentDetail.value.bookForName,
+                              expandedText: true,
+                              useMarquee: true,
+                              textStyle: boldTextStyle(size: 12),
                             ).expand(flex: 2),
                           ],
                         ),
                       ],
-                    ),
-                  ).paddingSymmetric(horizontal: 16),
-                  if (appointmentDetailCont.appointmentDetail.value.medicalReport.isNotEmpty) ...[
-                    8.height,
-                    medicalReportWidget(),
-                  ],
-                  if (appointmentDetailCont.appointmentDetail.value.appointmentExtraInfo.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ViewAllLabel(label: locale.value.medicalHistory, isShowAll: false),
-                        Container(
-                          width: Get.width,
-                          padding: const EdgeInsets.all(16),
-                          decoration: boxDecorationDefault(color: context.cardColor),
-                          child: ReadMoreText(
-                            appointmentDetailCont.appointmentDetail.value.appointmentExtraInfo,
-                            trimMode: TrimMode.Line,
-                          ),
-                        ),
-                      ],
-                    ).paddingSymmetric(horizontal: 16),
+                      commonDivider.paddingSymmetric(vertical: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("${locale.value.appointmentStatus}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              6.height,
+                              Text(
+                                getBookingStatus(status: appointmentDetailCont.appointmentDetail.value.status),
+                                style: boldTextStyle(
+                                  size: 12,
+                                  color: getBookingStatusColor(status: appointmentDetailCont.appointmentDetail.value.status),
+                                ),
+                              ),
+                            ],
+                          ).expand(flex: 3),
+                          16.width,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("${locale.value.paymentStatus}:", style: secondaryTextStyle(size: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              6.height,
+                              Text(
+                                getBookingPaymentStatus(status: appointmentDetailCont.appointmentDetail.value.paymentStatus),
+                                style: boldTextStyle(
+                                  size: 12,
+                                  color: getPriceStatusColor(paymentStatus: appointmentDetailCont.appointmentDetail.value.paymentStatus),
+                                ),
+                              ),
+                            ],
+                          ).expand(flex: 2),
+                        ],
+                      ),
+                    ],
+                  ),
+                ).paddingSymmetric(horizontal: 16),
+                if (appointmentDetailCont.appointmentDetail.value.medicalReport.isNotEmpty) ...[
+                  8.height,
+                  medicalReportWidget(),
+                ],
+                if (appointmentDetailCont.appointmentDetail.value.appointmentExtraInfo.isNotEmpty)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      16.height,
-                      Text(locale.value.aboutService, style: boldTextStyle(size: Constants.labelTextSize)),
-                      8.height,
-                      ServiceInfoCardWidget(appointmentDet: appointmentDetailCont.appointmentDetail.value),
+                      ViewAllLabel(label: locale.value.medicalHistory, isShowAll: false),
+                      Container(
+                        width: Get.width,
+                        padding: const EdgeInsets.all(16),
+                        decoration: boxDecorationDefault(color: context.cardColor),
+                        child: ReadMoreText(
+                          appointmentDetailCont.appointmentDetail.value.appointmentExtraInfo,
+                          trimMode: TrimMode.Line,
+                        ),
+                      ),
                     ],
                   ).paddingSymmetric(horizontal: 16),
-                  if (!appointmentDetailCont.appointmentDetail.value.encounterId.isNegative && appointmentDetailCont.appointmentDetail.value.status.contains(BookingStatusConst.CHECKOUT))
-                    Column(
-                      children: [
-                        16.height,
-                        ViewAllLabel(
-                          label: locale.value.encounterDetail,
-                          trailingText: locale.value.view,
-                          onTap: () {
-                            Get.to(() => EncounterDetailScreen(), arguments: appointmentDetailCont.appointmentDetail.value.encounterId);
-                          },
-                        ).paddingOnly(left: 16, right: 8),
-                        Container(
-                          width: Get.width,
-                          padding: const EdgeInsets.all(16),
-                          decoration: boxDecorationDefault(color: context.cardColor),
-                          child: Column(
-                            children: [
-                              detailWidget(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                leadingWidget: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('${locale.value.doctorName}: ', style: secondaryTextStyle()),
-                                    Marquee(
-                                      child: Text(
-                                        appointmentDetailCont.appointmentDetail.value.doctorName,
-                                        style: boldTextStyle(size: 12),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ).expand(),
-                                  ],
-                                ).expand(flex: 3),
-                                trailingWidget: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                  decoration: boxDecorationDefault(
-                                    color: appointmentDetailCont.appointmentDetail.value.encounterStatus
-                                        ? isDarkMode.value
-                                            ? lightGreenColor.withValues(alpha: 0.1)
-                                            : lightGreenColor
-                                        : isDarkMode.value
-                                            ? lightSecondaryColor.withValues(alpha: 0.1)
-                                            : lightSecondaryColor,
-                                    borderRadius: radius(22),
-                                  ),
-                                  child: Text(
-                                    appointmentDetailCont.appointmentDetail.value.encounterStatus ? locale.value.active : locale.value.closed,
-                                    style: boldTextStyle(
-                                      size: 12,
-                                      color: appointmentDetailCont.appointmentDetail.value.encounterStatus ? completedStatusColor : pendingStatusColor,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    16.height,
+                    Text(locale.value.aboutService, style: boldTextStyle(size: Constants.labelTextSize)),
+                    8.height,
+                    ServiceInfoCardWidget(appointmentDet: appointmentDetailCont.appointmentDetail.value),
+                  ],
+                ).paddingSymmetric(horizontal: 16),
+                if (!appointmentDetailCont.appointmentDetail.value.encounterId.isNegative && appointmentDetailCont.appointmentDetail.value.status.contains(BookingStatusConst.CHECKOUT))
+                  Column(
+                    children: [
+                      16.height,
+                      ViewAllLabel(
+                        label: locale.value.encounterDetail,
+                        trailingText: locale.value.view,
+                        onTap: () {
+                          Get.to(() => EncounterDetailScreen(), arguments: appointmentDetailCont.appointmentDetail.value.encounterId);
+                        },
+                      ).paddingOnly(left: 16, right: 8),
+                      Container(
+                        width: Get.width,
+                        padding: const EdgeInsets.all(16),
+                        decoration: boxDecorationDefault(color: context.cardColor),
+                        child: Column(
+                          children: [
+                            detailWidget(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              leadingWidget: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('${locale.value.doctorName}: ', style: secondaryTextStyle()),
+                                  Marquee(
+                                    child: Text(
+                                      appointmentDetailCont.appointmentDetail.value.doctorName,
+                                      style: boldTextStyle(size: 12),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                  ).expand(),
+                                ],
+                              ).expand(flex: 3),
+                              trailingWidget: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                decoration: boxDecorationDefault(
+                                  color: appointmentDetailCont.appointmentDetail.value.encounterStatus
+                                      ? isDarkMode.value
+                                          ? lightGreenColor.withValues(alpha: 0.1)
+                                          : lightGreenColor
+                                      : isDarkMode.value
+                                          ? lightSecondaryColor.withValues(alpha: 0.1)
+                                          : lightSecondaryColor,
+                                  borderRadius: radius(22),
+                                ),
+                                child: Text(
+                                  appointmentDetailCont.appointmentDetail.value.encounterStatus ? locale.value.active : locale.value.closed,
+                                  style: boldTextStyle(
+                                    size: 12,
+                                    color: appointmentDetailCont.appointmentDetail.value.encounterStatus ? completedStatusColor : pendingStatusColor,
                                   ),
-                                ).paddingLeft(16),
-                              ),
+                                ),
+                              ).paddingLeft(16),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${locale.value.clinicName}: ', style: secondaryTextStyle()),
+                                Text(
+                                  appointmentDetailCont.appointmentDetail.value.clinicName,
+                                  style: boldTextStyle(size: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ).expand(),
+                              ],
+                            ),
+                            if (appointmentDetailCont.appointmentDetail.value.encounterDescription.isNotEmpty) ...[
+                              commonDivider.paddingSymmetric(vertical: 16),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('${locale.value.clinicName}: ', style: secondaryTextStyle()),
+                                  Text('${locale.value.description}: ', style: secondaryTextStyle()),
                                   Text(
-                                    appointmentDetailCont.appointmentDetail.value.clinicName,
-                                    style: boldTextStyle(size: 12),
+                                    appointmentDetailCont.appointmentDetail.value.encounterDescription,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ).expand(),
                                 ],
                               ),
-                              if (appointmentDetailCont.appointmentDetail.value.encounterDescription.isNotEmpty) ...[
-                                commonDivider.paddingSymmetric(vertical: 16),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('${locale.value.description}: ', style: secondaryTextStyle()),
-                                    Text(
-                                      appointmentDetailCont.appointmentDetail.value.encounterDescription,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ).expand(),
-                                  ],
-                                ),
-                              ],
                             ],
-                          ),
-                        ).paddingSymmetric(horizontal: 16),
-                      ],
-                    ),
-                  if (appointmentDetailCont.appointmentDetail.value.bedDetails.isNotEmpty) ...[
-                    16.height,
-                    Text(
-                      locale.value.bedDetails,
-                      style: boldTextStyle(size: Constants.labelTextSize),
-                    ).paddingSymmetric(horizontal: 16),
-                    8.height,
-                    ListView.builder(
-                      itemCount: appointmentDetailCont.appointmentDetail.value.bedDetails.length,
-                      shrinkWrap: true,
-                      padding: EdgeInsets.zero,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemBuilder: (context, index) {
-                        final bed = appointmentDetailCont.appointmentDetail.value.bedDetails[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: BedComponent(
-                            bedData: bed,
-                            isEncounterOpen: appointmentDetailCont.appointmentDetail.value.encounterStatus,
-                            patientId: appointmentDetailCont.appointmentDetail.value.userId,
-                            patientName: appointmentDetailCont.appointmentDetail.value.userName,
-                            encounterId: appointmentDetailCont.appointmentDetail.value.encounterId,
-                          ),
-                        );
-                      },
-                    ).paddingSymmetric(horizontal: 16),
-                  ],
-                  Obx(
-                    // () => reviewPart(context).paddingBottom(16).visible(!appointmentDetailCont.isLoading.value && appointmentDetailCont.appointmentDetail.value.status.toLowerCase().contains(StatusConst.checkOut.toLowerCase())),
-                    () => reviewPart(context).visible(
-                      !appointmentDetailCont.isLoading.value &&
-                          appointmentDetailCont.appointmentDetail.value.status.toLowerCase().contains(
-                                StatusConst.checkOut.toLowerCase(),
-                              ),
-                    ),
+                          ],
+                        ),
+                      ).paddingSymmetric(horizontal: 16),
+                    ],
                   ),
-                  paymentDetails(context),
-                  Obx(
-                    () => SizedBox(
-                      //// ADD THIS CONTAINER WITH WIDTH
-                      width: Get.width,
-                      child: payNowBtn(context).visible(
-                        (appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.pending) ||
-                                    appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.failed) ||
-                                    appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.ADVANCE_PAID)) &&
-                                appointmentDetailCont.appointmentDetail.value.status.toLowerCase().contains(StatusConst.checkIn.toLowerCase()) ||
-                            appointmentDetailCont.isAdvancePaymentFailed,
-                      ),
-                    ),
-                  ),
-                  if (appointmentDetailCont.appointmentDetail.value.status.contains(StatusConst.pending)) ...[
-                    24.height,
-                    Obx(
-                      () {
-                        return AppButton(
-                          color: appColorPrimary,
-                          height: 48,
-                          width: Get.width,
-                          padding: EdgeInsets.zero,
-                          shapeBorder: RoundedRectangleBorder(borderRadius: radius(defaultAppButtonRadius / 2)),
-                          onTap: () {
-                            Get.bottomSheet(
-                              isScrollControlled: true,
-                              Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                                ),
-                                child: CancellationsBookingChargeDialog(
-                                  appointmentData: appointmentDetailCont.appointmentDetail.value,
-                                  isDurationMode: checkTimeDifference(inputDateTime: DateTime.parse(appointmentDetailCont.appointmentDetail.value.appointmentDate.validate())),
-                                  loaderOnOFF: (p0) {
-                                    appointmentDetailCont.isLoading(p0);
-                                  },
-                                  onCancelBooking: () {
-                                    appointmentDetailCont.init();
-                                    try {
-                                      final AppointmentsController appointmentsController = Get.find();
-                                      appointmentsController.getAppointmentList();
-                                    } catch (e) {
-                                      log('onItemSelected Err: $e');
-                                    }
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                          text: locale.value.cancel,
-                          textStyle: appButtonTextStyleWhite,
-                        ).paddingSymmetric(horizontal: 16);
-                      },
-                    ),
-                  ],
+                if (appointmentDetailCont.appointmentDetail.value.bedDetails.isNotEmpty) ...[
+                  16.height,
+                  Text(
+                    locale.value.bedDetails,
+                    style: boldTextStyle(size: Constants.labelTextSize),
+                  ).paddingSymmetric(horizontal: 16),
+                  8.height,
+                  ListView.builder(
+                    itemCount: appointmentDetailCont.appointmentDetail.value.bedDetails.length,
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      final bed = appointmentDetailCont.appointmentDetail.value.bedDetails[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: BedComponent(
+                          bedData: bed,
+                          isEncounterOpen: appointmentDetailCont.appointmentDetail.value.encounterStatus,
+                          patientId: appointmentDetailCont.appointmentDetail.value.userId,
+                          patientName: appointmentDetailCont.appointmentDetail.value.userName,
+                          encounterId: appointmentDetailCont.appointmentDetail.value.encounterId,
+                        ),
+                      );
+                    },
+                  ).paddingSymmetric(horizontal: 16),
                 ],
-              );
-            },
-          ),
+                Obx(
+                  // () => reviewPart(context).paddingBottom(16).visible(!appointmentDetailCont.isLoading.value && appointmentDetailCont.appointmentDetail.value.status.toLowerCase().contains(StatusConst.checkOut.toLowerCase())),
+                  () => reviewPart(context).visible(
+                    !appointmentDetailCont.isLoading.value &&
+                        appointmentDetailCont.appointmentDetail.value.status.toLowerCase().contains(
+                              StatusConst.checkOut.toLowerCase(),
+                            ),
+                  ),
+                ),
+                paymentDetails(context),
+                Obx(
+                  () => SizedBox(
+                    //// ADD THIS CONTAINER WITH WIDTH
+                    width: Get.width,
+                    child: payNowBtn(context).visible(
+                      (appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.pending) ||
+                                  appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.failed) ||
+                                  appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.ADVANCE_PAID)) &&
+                              appointmentDetailCont.appointmentDetail.value.status.toLowerCase().contains(StatusConst.checkIn.toLowerCase()) ||
+                          appointmentDetailCont.isAdvancePaymentFailed,
+                    ),
+                  ),
+                ),
+                if (appointmentDetailCont.appointmentDetail.value.status.contains(StatusConst.pending)) ...[
+                  24.height,
+                  Obx(
+                    () {
+                      return AppButton(
+                        color: appColorPrimary,
+                        height: 48,
+                        width: Get.width,
+                        padding: EdgeInsets.zero,
+                        shapeBorder: RoundedRectangleBorder(borderRadius: radius(defaultAppButtonRadius / 2)),
+                        onTap: () {
+                          Get.bottomSheet(
+                            isScrollControlled: true,
+                            Padding(
+                              padding: EdgeInsets.only(
+                                bottom: MediaQuery.of(context).viewInsets.bottom,
+                              ),
+                              child: CancellationsBookingChargeDialog(
+                                appointmentData: appointmentDetailCont.appointmentDetail.value,
+                                isDurationMode: checkTimeDifference(inputDateTime: DateTime.parse(appointmentDetailCont.appointmentDetail.value.appointmentDate.validate())),
+                                loaderOnOFF: (p0) {
+                                  appointmentDetailCont.isLoading(p0);
+                                },
+                                onCancelBooking: () {
+                                  appointmentDetailCont.init();
+                                  try {
+                                    final AppointmentsController appointmentsController = Get.find();
+                                    appointmentsController.getAppointmentList();
+                                  } catch (e) {
+                                    log('onItemSelected Err: $e');
+                                  }
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        text: locale.value.cancel,
+                        textStyle: appButtonTextStyleWhite,
+                      ).paddingSymmetric(horizontal: 16);
+                    },
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
     );

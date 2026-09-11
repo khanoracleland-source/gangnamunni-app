@@ -20,54 +20,49 @@ class ClinicSessionComponent extends StatelessWidget {
       appBartitleText: locale.value.session,
       scaffoldBackgroundColor: context.scaffoldBackgroundColor,
       appBarVerticalSize: Get.height * 0.12,
-      body: RefreshIndicator(
-        onRefresh: () {
-          return clinicDetailCont.init(showLoader: false);
-        },
-        child: Obx(
-          () => AnimatedListView(
-            listAnimationType: ListAnimationType.FadeIn,
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
-            shrinkWrap: true,
-            itemCount: clinicDetailCont.clinicData.value.allClinicSession.length,
-            itemBuilder: (ctx, index) {
-              final AllClinicSession allClinicSessionData = clinicDetailCont.clinicData.value.allClinicSession[index];
+      body: Obx(
+        () => AnimatedListView(
+          listAnimationType: ListAnimationType.FadeIn,
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+          shrinkWrap: true,
+          itemCount: clinicDetailCont.clinicData.value.allClinicSession.length,
+          itemBuilder: (ctx, index) {
+            final AllClinicSession allClinicSessionData = clinicDetailCont.clinicData.value.allClinicSession[index];
 
-              return Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: boxDecorationDefault(color: context.cardColor, borderRadius: BorderRadius.circular(6)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
+            return Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: boxDecorationDefault(color: context.cardColor, borderRadius: BorderRadius.circular(6)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        allClinicSessionData.day.capitalize.toString(),
+                        style: primaryTextStyle(
+                          size: 12,
+                          weight: FontWeight.w500,
+                          color: allClinicSessionData.isHoliday ? dividerColor : null,
+                        ),
+                      ).expand(),
+                      if (allClinicSessionData.isHoliday)
                         Text(
-                          allClinicSessionData.day.capitalize.toString(),
+                          locale.value.clinicClosed,
                           style: primaryTextStyle(
                             size: 12,
                             weight: FontWeight.w500,
-                            color: allClinicSessionData.isHoliday ? dividerColor : null,
+                            color: dividerColor,
                           ),
-                        ).expand(),
-                        if (allClinicSessionData.isHoliday)
-                          Text(
-                            locale.value.clinicClosed,
-                            style: primaryTextStyle(
-                              size: 12,
-                              weight: FontWeight.w500,
-                              color: dividerColor,
-                            ),
-                          ),
-                      ],
-                    ),
-                    if (!allClinicSessionData.isHoliday) WeekTimeComponent(weekData: allClinicSessionData),
-                  ],
-                ),
-              );
-            },
-          ),
+                        ),
+                    ],
+                  ),
+                  if (!allClinicSessionData.isHoliday) WeekTimeComponent(weekData: allClinicSessionData),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

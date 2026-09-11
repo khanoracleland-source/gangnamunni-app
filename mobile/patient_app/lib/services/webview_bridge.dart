@@ -78,8 +78,6 @@ class WebViewBridge {
   /// WebView 컨트롤러 (Flutter -> WebView 통신에 필요)
   final WebViewController controller;
 
-  /// WebView 페이지 새로고침 콜백 (PullToRefresh 채널용)
-  final VoidCallback? onRefreshRequested;
   final Future<void> Function()? onHospitalListBack;
   final NativeAuthService _auth;
 
@@ -97,7 +95,6 @@ class WebViewBridge {
 
   WebViewBridge({
     required this.controller,
-    this.onRefreshRequested,
     this.onHospitalListBack,
     this.tokenProvider,
     this.onShareRequested,
@@ -119,20 +116,6 @@ class WebViewBridge {
     await controller.addJavaScriptChannel(
       'FlutterBridge',
       onMessageReceived: _handleFlutterBridgeMessage,
-    );
-
-    await controller.addJavaScriptChannel(
-      'PullToRefresh',
-      onMessageReceived: (JavaScriptMessage message) {
-        if (message.message == 'refresh') {
-          _log('PullToRefresh 요청 수신');
-          if (onRefreshRequested != null) {
-            onRefreshRequested!();
-          } else {
-            controller.reload();
-          }
-        }
-      },
     );
   }
 

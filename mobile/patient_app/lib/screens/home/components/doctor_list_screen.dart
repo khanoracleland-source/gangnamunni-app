@@ -136,10 +136,6 @@ class DoctorViewListScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   physics: const AlwaysScrollableScrollPhysics(),
                   listAnimationType: ListAnimationType.FadeIn,
-                  onSwipeRefresh: () async {
-                    doctorListCont.page(1);
-                    return doctorListCont.getDoctors(showLoader: false);
-                  },
                   onNextPage: () async {
                     if (!doctorListCont.isLastPage.value) {
                       doctorListCont.page(doctorListCont.page.value + 1);

@@ -62,10 +62,6 @@ class SystemServiceListScreen extends StatelessWidget {
                   systemServiceListCont.getSystemServiceList();
                 }
               },
-              onSwipeRefresh: () async {
-                systemServiceListCont.page(1);
-                return systemServiceListCont.getSystemServiceList(showLoader: false);
-              },
             );
           },
         ),

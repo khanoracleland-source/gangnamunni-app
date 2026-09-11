@@ -23,27 +23,22 @@ class PharmaViewAllMedsScreen extends StatelessWidget {
       isLoading: encounterDetailCont.isLoading,
       appBartitleText: locale.value.medicines,
       appBarVerticalSize: Get.height * 0.12,
-      body: RefreshIndicator(
-        onRefresh: () {
-          return encounterDetailCont.init(showLoader: false);
-        },
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              16.height,
-              Obx(
-                () => AnimatedWrap(
-                  runSpacing: 8,
-                  itemCount: encounterDetailCont.encounterDetail.value.prescriptions.length,
-                  itemBuilder: (ctx, index) {
-                    Prescriptions prescriptionsData = encounterDetailCont.encounterDetail.value.prescriptions[index];
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            16.height,
+            Obx(
+              () => AnimatedWrap(
+                runSpacing: 8,
+                itemCount: encounterDetailCont.encounterDetail.value.prescriptions.length,
+                itemBuilder: (ctx, index) {
+                  Prescriptions prescriptionsData = encounterDetailCont.encounterDetail.value.prescriptions[index];
 
-                    return MedicineCardWidget(prescriptionsData: prescriptionsData).paddingSymmetric(horizontal: 16);
-                  },
-                ),
+                  return MedicineCardWidget(prescriptionsData: prescriptionsData).paddingSymmetric(horizontal: 16);
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

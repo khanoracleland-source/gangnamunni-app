@@ -173,10 +173,6 @@ class NotificationScreen extends StatelessWidget {
                             });
                           }
                         },
-                        onSwipeRefresh: () async {
-                          notificationScreenController.page(1);
-                          return notificationScreenController.init();
-                        },
                       );
                     },
                   ),

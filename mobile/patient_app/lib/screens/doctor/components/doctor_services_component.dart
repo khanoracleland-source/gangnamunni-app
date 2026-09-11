@@ -46,10 +46,6 @@ class DoctorServicesComponent extends StatelessWidget {
               doctorDetailCont.getServiceList();
             }
           },
-          onSwipeRefresh: () async {
-            doctorDetailCont.servicesPage(1);
-            return doctorDetailCont.getServiceList(showLoader: false);
-          },
         ),
       ),
     );

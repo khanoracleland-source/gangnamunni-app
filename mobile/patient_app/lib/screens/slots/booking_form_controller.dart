@@ -445,10 +445,6 @@ class BookingFormController extends GetxController {
           getServiceList();
         }
       },
-      onSwipeRefresh: () async {
-        servicePage(1);
-        return getServiceList();
-      },
     );
   }
 }

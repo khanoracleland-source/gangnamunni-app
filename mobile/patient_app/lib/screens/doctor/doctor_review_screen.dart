@@ -64,10 +64,6 @@ class DoctorReviewScreen extends StatelessWidget {
                   doctorReviewCont.getDoctorReviewList();
                 }
               },
-              onSwipeRefresh: () async {
-                doctorReviewCont.page(1);
-                return doctorReviewCont.getDoctorReviewList(showLoader: false);
-              },
             );
           },
         ),

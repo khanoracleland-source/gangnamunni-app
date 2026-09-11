@@ -112,10 +112,6 @@ class FilterCategoryComponent extends StatelessWidget {
                             filterCont.getCategoryList();
                           }
                         },
-                        onSwipeRefresh: () async {
-                          filterCont.categoryPage(1);
-                          return filterCont.getCategoryList(showLoader: false);
-                        },
                       ),
                       if (filterCont.isCategoryLoading.isTrue) const LoaderWidget(),
                     ],

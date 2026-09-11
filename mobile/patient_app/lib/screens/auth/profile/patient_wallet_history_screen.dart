@@ -46,10 +46,6 @@ class PatientWalletHistory extends StatelessWidget {
                 subTitle: locale.value.oppsNoWalletDataFoundAtAMoment,
                 imageWidget: const EmptyStateWidget(),
               ).paddingSymmetric(horizontal: 32).visible(!walletHistoryCont.isLoading.value),
-              onSwipeRefresh: () async {
-                walletHistoryCont.historyPage(1);
-                return walletHistoryCont.getWalletHistory(showloader: false);
-              },
               onNextPage: () async {
                 if (!walletHistoryCont.isPatientLastPage.value) {
                   walletHistoryCont.historyPage++;

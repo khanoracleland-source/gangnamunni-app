@@ -58,10 +58,6 @@ class BedHistoryScreen extends StatelessWidget {
                 bedHistoryCont.getBedHistoryList();
               }
             },
-            onSwipeRefresh: () async {
-              bedHistoryCont.page(1);
-              return await bedHistoryCont.getBedHistoryList(showLoader: false);
-            },
             itemBuilder: (context, index) {
               return InkWell(
                 onTap: () {

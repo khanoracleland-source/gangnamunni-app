@@ -110,10 +110,6 @@ class FilterServiceComponent extends StatelessWidget {
                             filterCont.getClinicsList();
                           }
                         },
-                        onSwipeRefresh: () async {
-                          filterCont.clinicPage(1);
-                          return filterCont.getServicesList(showLoader: false);
-                        },
                       ),
                       if (filterCont.isServiceLoading.isTrue) const LoaderWidget(),
                     ],

@@ -166,10 +166,6 @@ class FilterClinicComponent extends StatelessWidget {
                             filterCont.getClinicsList();
                           }
                         },
-                        onSwipeRefresh: () async {
-                          filterCont.clinicPage(1);
-                          return filterCont.getClinicsList(showLoader: false);
-                        },
                       ),
                       if (filterCont.isClinicLoading.isTrue) const LoaderWidget(),
                     ],

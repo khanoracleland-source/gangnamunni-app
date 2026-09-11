@@ -102,10 +102,6 @@ class DoctorsListScreen extends StatelessWidget {
                       doctorsListCont.getDoctors();
                     }
                   },
-                  onSwipeRefresh: () async {
-                    doctorsListCont.page(1);
-                    return doctorsListCont.getDoctors(showLoader: false);
-                  },
                 ).paddingSymmetric(horizontal: 16);
               },
             ),

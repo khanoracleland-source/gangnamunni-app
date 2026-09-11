@@ -153,10 +153,6 @@ class FilterDoctor extends StatelessWidget {
                             filterCont.getDoctors();
                           }
                         },
-                        onSwipeRefresh: () async {
-                          filterCont.doctorPage(1);
-                          return filterCont.getDoctors();
-                        },
                       ),
                       if (filterCont.isDoctorLoading.isTrue) const LoaderWidget(),
                     ],

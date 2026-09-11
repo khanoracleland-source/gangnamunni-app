@@ -38,137 +38,132 @@ class ServiceDetailScreen extends StatelessWidget {
         isLoading: serviceDetailController.isLoading,
         appBartitleText: serviceDetailController.serviceData.value.name,
         appBarVerticalSize: Get.height * 0.12,
-        body: RefreshIndicator(
-          onRefresh: () {
-            return serviceDetailController.init(showLoader: false);
-          },
-          child: Obx(
-            () => SnapHelperWidget(
-              future: serviceDetailController.getServiceDetails.value,
-              errorBuilder: (error) {
-                return NoDataWidget(
-                  title: error,
-                  retryText: locale.value.reload,
-                  imageWidget: const ErrorStateWidget(),
-                  onRetry: () {
-                    serviceDetailController.init();
-                  },
-                ).paddingSymmetric(horizontal: 16);
-              },
-              loadingWidget: const LoaderWidget(),
-              onSuccess: (serviceDetailRes) {
-                return AnimatedScrollView(
-                  listAnimationType: ListAnimationType.FadeIn,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(top: 16, bottom: 80),
-                  children: [
-                    Hero(
-                      tag: serviceDetailController.serviceData.value.serviceImage.trim().isNotEmpty ? "${serviceDetailController.serviceData.value.id}${serviceDetailController.serviceData.value.serviceImage}" : UniqueKey(),
-                      child: CachedImageWidget(
-                        url: serviceDetailController.serviceData.value.serviceImage,
-                        fit: BoxFit.cover,
-                        width: Get.width,
-                        height: 230,
-                        radius: defaultRadius / 2,
-                      ),
-                    ).paddingSymmetric(horizontal: 16),
-                    16.height,
-                    Row(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              serviceDetailController.serviceData.value.name,
-                              style: boldTextStyle(size: 16),
-                            ),
-                            8.height,
-                            Row(
+        body: Obx(
+          () => SnapHelperWidget(
+            future: serviceDetailController.getServiceDetails.value,
+            errorBuilder: (error) {
+              return NoDataWidget(
+                title: error,
+                retryText: locale.value.reload,
+                imageWidget: const ErrorStateWidget(),
+                onRetry: () {
+                  serviceDetailController.init();
+                },
+              ).paddingSymmetric(horizontal: 16);
+            },
+            loadingWidget: const LoaderWidget(),
+            onSuccess: (serviceDetailRes) {
+              return AnimatedScrollView(
+                listAnimationType: ListAnimationType.FadeIn,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(top: 16, bottom: 80),
+                children: [
+                  Hero(
+                    tag: serviceDetailController.serviceData.value.serviceImage.trim().isNotEmpty ? "${serviceDetailController.serviceData.value.id}${serviceDetailController.serviceData.value.serviceImage}" : UniqueKey(),
+                    child: CachedImageWidget(
+                      url: serviceDetailController.serviceData.value.serviceImage,
+                      fit: BoxFit.cover,
+                      width: Get.width,
+                      height: 230,
+                      radius: defaultRadius / 2,
+                    ),
+                  ).paddingSymmetric(horizontal: 16),
+                  16.height,
+                  Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            serviceDetailController.serviceData.value.name,
+                            style: boldTextStyle(size: 16),
+                          ),
+                          8.height,
+                          Row(
+                            children: [
+                              Text('${locale.value.category} : ', style: secondaryTextStyle()),
+                              Text(
+                                serviceDetailController.serviceData.value.categoryName,
+                                style: boldTextStyle(size: 14, color: appColorSecondary),
+                              ),
+                            ],
+                          ),
+                          12.height,
+                          Marquee(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('${locale.value.category} : ', style: secondaryTextStyle()),
-                                Text(
-                                  serviceDetailController.serviceData.value.categoryName,
-                                  style: boldTextStyle(size: 14, color: appColorSecondary),
-                                ),
+                                // Main price: show discounted payableAmount when discount applied, else charges
+                                PriceWidget(
+                                  price: serviceDetailController.serviceData.value.isDiscount ? serviceDetailController.serviceData.value.payableAmount : serviceDetailController.serviceData.value.payableAmount,
+                                  size: 18,
+                                ).paddingRight(6),
+                                // Original price with strikethrough when discounted
+                                if (serviceDetailController.serviceData.value.isDiscount)
+                                  PriceWidget(
+                                    price: serviceDetailController.serviceData.value.isInclusiveTaxesAvailable ? serviceDetailController.serviceData.value.charges + serviceDetailController.serviceData.value.totalInclusiveTax : serviceDetailController.serviceData.value.charges,
+                                    isLineThroughEnabled: true,
+                                    size: 14,
+                                    color: textSecondaryColorGlobal,
+                                  ),
+                                // Discount indicator text/value
+                                if (serviceDetailController.serviceData.value.isDiscount)
+                                  if (serviceDetailController.serviceData.value.discountType == TaxType.PERCENTAGE)
+                                    Text(
+                                      '${serviceDetailController.serviceData.value.discountValue}%  ${locale.value.off}',
+                                      style: boldTextStyle(color: greenColor, size: 14),
+                                    ).paddingLeft(8)
+                                  else if (serviceDetailController.serviceData.value.discountType == TaxType.FIXED)
+                                    PriceWidget(
+                                      price: serviceDetailController.serviceData.value.discountValue,
+                                      color: greenColor,
+                                      size: 14,
+                                      isDiscountedPrice: true,
+                                    ).paddingLeft(6),
                               ],
                             ),
-                            12.height,
-                            Marquee(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  // Main price: show discounted payableAmount when discount applied, else charges
-                                  PriceWidget(
-                                    price: serviceDetailController.serviceData.value.isDiscount ? serviceDetailController.serviceData.value.payableAmount : serviceDetailController.serviceData.value.payableAmount,
-                                    size: 18,
-                                  ).paddingRight(6),
-                                  // Original price with strikethrough when discounted
-                                  if (serviceDetailController.serviceData.value.isDiscount)
-                                    PriceWidget(
-                                      price: serviceDetailController.serviceData.value.isInclusiveTaxesAvailable ? serviceDetailController.serviceData.value.charges + serviceDetailController.serviceData.value.totalInclusiveTax : serviceDetailController.serviceData.value.charges,
-                                      isLineThroughEnabled: true,
-                                      size: 14,
-                                      color: textSecondaryColorGlobal,
-                                    ),
-                                  // Discount indicator text/value
-                                  if (serviceDetailController.serviceData.value.isDiscount)
-                                    if (serviceDetailController.serviceData.value.discountType == TaxType.PERCENTAGE)
-                                      Text(
-                                        '${serviceDetailController.serviceData.value.discountValue}%  ${locale.value.off}',
-                                        style: boldTextStyle(color: greenColor, size: 14),
-                                      ).paddingLeft(8)
-                                    else if (serviceDetailController.serviceData.value.discountType == TaxType.FIXED)
-                                      PriceWidget(
-                                        price: serviceDetailController.serviceData.value.discountValue,
-                                        color: greenColor,
-                                        size: 14,
-                                        isDiscountedPrice: true,
-                                      ).paddingLeft(6),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ).flexible(),
-                      ],
-                    ).paddingSymmetric(horizontal: 16),
-                    if (serviceDetailController.serviceData.value.isInclusiveTaxesAvailable) ...[
-                      Text(locale.value.includesInclusiveTax, style: secondaryTextStyle(color: appColorSecondary, size: 12, fontStyle: FontStyle.italic)).paddingSymmetric(horizontal: 16),
+                          ),
+                        ],
+                      ).flexible(),
                     ],
-                    24.height,
-                    if (serviceDetailController.serviceData.value.description.isNotEmpty)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          serviceDetailController.serviceData.value.description,
-                          textAlign: TextAlign.justify,
-                          style: primaryTextStyle(size: 12, color: secondaryTextColor.withValues(alpha: 0.8)),
-                        ),
-                      ).paddingSymmetric(horizontal: 16),
-                    ServiceDetailClinicsComponent(
-                      serviceDetailController: serviceDetailController,
-                      onCardTap: (clinicData) {
-                        /// Store selected clinic in global variable
-                        if (clinicData.id == serviceDetailController.selectedClinic.value.id) {
-                          /// Deselect, If again tap on same clinic
-                          serviceDetailController.selectedClinic(Clinic(clinicSession: ClinicSession()));
-                          currentSelectedClinic(serviceDetailController.selectedClinic.value);
-                        } else {
-                          serviceDetailController.selectedClinic(clinicData);
-                          currentSelectedClinic(serviceDetailController.selectedClinic.value);
-                        }
-                      },
-                      onClickViewDetail: (clinicData) {
-                        /// Store selected clinic in global variable
-                        currentSelectedClinic(clinicData);
-                        Get.delete<ServiceListController>();
-                        Get.to(() => ClinicDetailScreen(), arguments: clinicData);
-                      },
-                    ),
-                    32.height,
+                  ).paddingSymmetric(horizontal: 16),
+                  if (serviceDetailController.serviceData.value.isInclusiveTaxesAvailable) ...[
+                    Text(locale.value.includesInclusiveTax, style: secondaryTextStyle(color: appColorSecondary, size: 12, fontStyle: FontStyle.italic)).paddingSymmetric(horizontal: 16),
                   ],
-                );
-              },
-            ),
+                  24.height,
+                  if (serviceDetailController.serviceData.value.description.isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        serviceDetailController.serviceData.value.description,
+                        textAlign: TextAlign.justify,
+                        style: primaryTextStyle(size: 12, color: secondaryTextColor.withValues(alpha: 0.8)),
+                      ),
+                    ).paddingSymmetric(horizontal: 16),
+                  ServiceDetailClinicsComponent(
+                    serviceDetailController: serviceDetailController,
+                    onCardTap: (clinicData) {
+                      /// Store selected clinic in global variable
+                      if (clinicData.id == serviceDetailController.selectedClinic.value.id) {
+                        /// Deselect, If again tap on same clinic
+                        serviceDetailController.selectedClinic(Clinic(clinicSession: ClinicSession()));
+                        currentSelectedClinic(serviceDetailController.selectedClinic.value);
+                      } else {
+                        serviceDetailController.selectedClinic(clinicData);
+                        currentSelectedClinic(serviceDetailController.selectedClinic.value);
+                      }
+                    },
+                    onClickViewDetail: (clinicData) {
+                      /// Store selected clinic in global variable
+                      currentSelectedClinic(clinicData);
+                      Get.delete<ServiceListController>();
+                      Get.to(() => ClinicDetailScreen(), arguments: clinicData);
+                    },
+                  ),
+                  32.height,
+                ],
+              );
+            },
           ),
         ),
         widgetsStackedOverBody: [

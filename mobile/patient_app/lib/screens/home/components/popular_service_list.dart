@@ -136,11 +136,6 @@ class PopularServiceListScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   physics: const AlwaysScrollableScrollPhysics(),
                   listAnimationType: ListAnimationType.FadeIn,
-                  onSwipeRefresh: () async {
-                    popularServiceCont.isPopular(1);
-                    popularServiceCont.page(1);
-                    return popularServiceCont.getServiceList(showLoader: false);
-                  },
                   onNextPage: () async {
                     if (!popularServiceCont.isLastPage.value) {
                       popularServiceCont.page(popularServiceCont.page.value + 1);

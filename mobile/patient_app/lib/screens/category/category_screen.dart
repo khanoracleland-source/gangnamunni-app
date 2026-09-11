@@ -48,10 +48,6 @@ class CategoryScreen extends StatelessWidget {
             }
 
             return AnimatedScrollView(
-              onSwipeRefresh: () async {
-                categoryListController.page(1);
-                return categoryListController.getCategoryList();
-              },
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               onNextPage: () {

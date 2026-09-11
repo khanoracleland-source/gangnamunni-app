@@ -188,10 +188,6 @@ class IncidentManagementListScreen extends StatelessWidget {
                     await controller.getIncidents();
                   }
                 },
-                onSwipeRefresh: () async {
-                  controller.incidencePage(1);
-                  return controller.getIncidents();
-                },
               ).paddingOnly(bottom: 10);
             },
           ),

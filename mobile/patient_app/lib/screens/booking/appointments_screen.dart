@@ -149,10 +149,6 @@ class AppointmentsScreen extends StatelessWidget {
                         appointmentsCont.getAppointmentList();
                       }
                     },
-                    onSwipeRefresh: () async {
-                      appointmentsCont.page(1);
-                      return appointmentsCont.getAppointmentList(showLoader: false);
-                    },
                   ).expand(),
                 ],
               ),

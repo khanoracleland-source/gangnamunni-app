@@ -52,10 +52,6 @@ class ClinicDoctorsComponent extends StatelessWidget {
                     clinicDetailCont.getDoctors();
                   }
                 },
-                onSwipeRefresh: () async {
-                  clinicDetailCont.doctorsPage(1);
-                  return clinicDetailCont.getDoctors();
-                },
               ).paddingSymmetric(horizontal: 16);
             },
           ),

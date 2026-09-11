@@ -135,10 +135,6 @@ class ClinicListComponent extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   physics: const AlwaysScrollableScrollPhysics(),
                   listAnimationType: ListAnimationType.FadeIn,
-                  onSwipeRefresh: () async {
-                    clinicListCont.page(1);
-                    return clinicListCont.getClinicList(showLoader: false);
-                  },
                   onNextPage: () async {
                     if (!clinicListCont.isLastPage.value) {
                       clinicListCont.page(clinicListCont.page.value + 1);

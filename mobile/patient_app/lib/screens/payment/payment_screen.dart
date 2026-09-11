@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
 
-import '../../api/auth_apis.dart';
 import '../../components/app_scaffold.dart';
 import '../../generated/assets.dart';
 import '../../main.dart';
@@ -11,7 +10,6 @@ import '../../utils/colors.dart';
 import '../../utils/common_base.dart';
 import '../../utils/constants.dart';
 import '../../utils/price_widget.dart';
-import '../dashboard/dashboard_controller.dart';
 import 'payment_controller.dart';
 
 class PaymentScreen extends StatelessWidget {
@@ -25,52 +23,46 @@ class PaymentScreen extends StatelessWidget {
       appBartitleText: locale.value.payment,
       isLoading: paymentController.isLoading,
       appBarVerticalSize: Get.height * 0.12,
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await AuthServiceApis.getUserWallet();
-          await getAppConfigurations();
-        },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 80),
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Obx(
-            () => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "* ${locale.value.noteForCashPaymentPurposesDontUseThePayNowBut}",
-                  style: secondaryTextStyle(color: appColorSecondary, size: 11, fontStyle: FontStyle.italic),
-                ).paddingTop(16).visible(paymentController.isFromBookingDetail && !paymentController.isAdvancePaymentFailed),
-                16.height,
-                Text(locale.value.choosePaymentMethod, style: primaryTextStyle(size: 18)),
-                8.height,
-                Text(locale.value.chooseOurConvenientPaymentOptionAndUnlockUnli, style: secondaryTextStyle()),
-                32.height,
-                cashAfterService(context).visible(isQuickBook).paddingOnly(bottom: 8),
-                Column(
-                  //spacing: 8,
-                  children: [
-                    if (!paymentController.bookingData.isOnlineService && !paymentController.isFromBookingDetail && !paymentController.bookingData.isEnableAdvancePayment) cashAfterService(context).paddingOnly(bottom: 8),
-                    walletPayment(context).paddingOnly(bottom: 8),
-                    stripePaymentWidget(context).paddingOnly(bottom: 8).visible(appConfigs.value.stripePay.stripePublickey.isNotEmpty && appConfigs.value.stripePay.stripeSecretkey.isNotEmpty),
-                    razorPaymentWidget(context).paddingOnly(bottom: 8).visible(appConfigs.value.razorPay.razorpaySecretkey.isNotEmpty),
-                    phonePayPaymentWidget(context)
-                        .visible(appConfigs.value.phonepe.phonepeAppId.isNotEmpty && appConfigs.value.phonepe.phonepeMerchantId.isNotEmpty && appConfigs.value.phonepe.phonepeSaltKey.isNotEmpty && appConfigs.value.phonepe.phonepeSaltIndex.isNotEmpty),
-                    payStackPaymentWidget(context).visible(appConfigs.value.paystackPay.paystackPublickey.isNotEmpty && appConfigs.value.paystackPay.paystackSecretkey.isNotEmpty).paddingOnly(bottom: 8),
-                    payPalPaymentWidget(context).visible(appConfigs.value.paypalPay.paypalClientid.isNotEmpty && appConfigs.value.paypalPay.paypalSecretkey.isNotEmpty).paddingOnly(bottom: 8),
-                    flutterWavePaymentWidget(context).visible(appConfigs.value.flutterwavePay.flutterwaveSecretkey.isNotEmpty && appConfigs.value.flutterwavePay.flutterwavePublickey.isNotEmpty).paddingOnly(bottom: 8),
-                    airtelMoneyPaymentWidget(context).visible(appConfigs.value.airtelMoney.airtelSecretkey.isNotEmpty && appConfigs.value.airtelMoney.airtelClientid.isNotEmpty).paddingOnly(bottom: 8),
-                    midtransPay(context).visible(appConfigs.value.midtransPay.midtransClientKey.isNotEmpty).paddingOnly(bottom: 8),
-                    sadadPay(context).visible(appConfigs.value.sadadPay.sadadSecretKey.isNotEmpty && appConfigs.value.sadadPay.sadadId.isNotEmpty && appConfigs.value.sadadPay.sadadDomain.isNotEmpty).paddingOnly(bottom: 8),
-                    cinetPay(context).visible(appConfigs.value.cinetPay.siteId.isNotEmpty && appConfigs.value.cinetPay.cinetPayAPIKey.isNotEmpty),
-                    inicisPaymentWidget(context).paddingOnly(bottom: 8),
-                  ],
-                ).visible(!isQuickBook),
-              ],
-            ).paddingSymmetric(horizontal: 16),
-          ),
-        ).makeRefreshable,
-      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 80),
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Obx(
+          () => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "* ${locale.value.noteForCashPaymentPurposesDontUseThePayNowBut}",
+                style: secondaryTextStyle(color: appColorSecondary, size: 11, fontStyle: FontStyle.italic),
+              ).paddingTop(16).visible(paymentController.isFromBookingDetail && !paymentController.isAdvancePaymentFailed),
+              16.height,
+              Text(locale.value.choosePaymentMethod, style: primaryTextStyle(size: 18)),
+              8.height,
+              Text(locale.value.chooseOurConvenientPaymentOptionAndUnlockUnli, style: secondaryTextStyle()),
+              32.height,
+              cashAfterService(context).visible(isQuickBook).paddingOnly(bottom: 8),
+              Column(
+                //spacing: 8,
+                children: [
+                  if (!paymentController.bookingData.isOnlineService && !paymentController.isFromBookingDetail && !paymentController.bookingData.isEnableAdvancePayment) cashAfterService(context).paddingOnly(bottom: 8),
+                  walletPayment(context).paddingOnly(bottom: 8),
+                  stripePaymentWidget(context).paddingOnly(bottom: 8).visible(appConfigs.value.stripePay.stripePublickey.isNotEmpty && appConfigs.value.stripePay.stripeSecretkey.isNotEmpty),
+                  razorPaymentWidget(context).paddingOnly(bottom: 8).visible(appConfigs.value.razorPay.razorpaySecretkey.isNotEmpty),
+                  phonePayPaymentWidget(context)
+                      .visible(appConfigs.value.phonepe.phonepeAppId.isNotEmpty && appConfigs.value.phonepe.phonepeMerchantId.isNotEmpty && appConfigs.value.phonepe.phonepeSaltKey.isNotEmpty && appConfigs.value.phonepe.phonepeSaltIndex.isNotEmpty),
+                  payStackPaymentWidget(context).visible(appConfigs.value.paystackPay.paystackPublickey.isNotEmpty && appConfigs.value.paystackPay.paystackSecretkey.isNotEmpty).paddingOnly(bottom: 8),
+                  payPalPaymentWidget(context).visible(appConfigs.value.paypalPay.paypalClientid.isNotEmpty && appConfigs.value.paypalPay.paypalSecretkey.isNotEmpty).paddingOnly(bottom: 8),
+                  flutterWavePaymentWidget(context).visible(appConfigs.value.flutterwavePay.flutterwaveSecretkey.isNotEmpty && appConfigs.value.flutterwavePay.flutterwavePublickey.isNotEmpty).paddingOnly(bottom: 8),
+                  airtelMoneyPaymentWidget(context).visible(appConfigs.value.airtelMoney.airtelSecretkey.isNotEmpty && appConfigs.value.airtelMoney.airtelClientid.isNotEmpty).paddingOnly(bottom: 8),
+                  midtransPay(context).visible(appConfigs.value.midtransPay.midtransClientKey.isNotEmpty).paddingOnly(bottom: 8),
+                  sadadPay(context).visible(appConfigs.value.sadadPay.sadadSecretKey.isNotEmpty && appConfigs.value.sadadPay.sadadId.isNotEmpty && appConfigs.value.sadadPay.sadadDomain.isNotEmpty).paddingOnly(bottom: 8),
+                  cinetPay(context).visible(appConfigs.value.cinetPay.siteId.isNotEmpty && appConfigs.value.cinetPay.cinetPayAPIKey.isNotEmpty),
+                  inicisPaymentWidget(context).paddingOnly(bottom: 8),
+                ],
+              ).visible(!isQuickBook),
+            ],
+          ).paddingSymmetric(horizontal: 16),
+        ),
+      ).makeRefreshable,
       widgetsStackedOverBody: [
         Positioned(
           bottom: 16,

@@ -51,45 +51,11 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       HospitalListNavigation(Uri.parse(STARTUP_WEBVIEW_URL));
   bool _returningToList = false;
   bool _isLoading = true;
-  bool _isRefreshing = false;
   bool _loadFailed = false;
   String? _currentUrl;
   DateTime? _lastExitBackPressedAt;
 
   static const Duration _exitConfirmationWindow = Duration(seconds: 2);
-
-  // 페이지 상단에서 아래로 당겨서 새로고침하는 JS (Android/iOS 호환)
-  static const String _pullToRefreshJs = '''
-(function() {
-  if (window._pullToRefreshInstalled) return;
-  window._pullToRefreshInstalled = true;
-  var startY = 0;
-  var pulling = false;
-  function getScrollTop() {
-    return window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-  }
-  document.addEventListener('touchstart', function(e) {
-    if (getScrollTop() <= 0) {
-      startY = e.touches[0].pageY;
-      pulling = true;
-    }
-  }, {passive: true});
-  document.addEventListener('touchmove', function(e) {
-    if (pulling && getScrollTop() <= 0) {
-      var dy = e.touches[0].pageY - startY;
-      if (dy > 100) {
-        pulling = false;
-        PullToRefresh.postMessage('refresh');
-      }
-    } else {
-      pulling = false;
-    }
-  }, {passive: true});
-  document.addEventListener('touchend', function() {
-    pulling = false;
-  }, {passive: true});
-})();
-''';
 
   @override
   void initState() {
@@ -172,11 +138,10 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       );
     }
 
-    // WebViewBridge 생성 및 채널 등록 (FlutterBridge + PullToRefresh)
+    // WebViewBridge 생성 및 채널 등록 (FlutterBridge)
     final bridge = WebViewBridge(
       controller: _controller,
       authService: widget.authService,
-      onRefreshRequested: _handlePullToRefresh,
       onHospitalListBack: _returnToHospitalList,
     );
     await bridge.registerChannels();
@@ -196,14 +161,11 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
           if (!mounted || _loadFailed) return;
           setState(() {
             _isLoading = false;
-            _isRefreshing = false;
             _currentUrl = url;
           });
           if (_hospitalNavigation.returnUrl != null) {
             _installHospitalHeaderBack();
           }
-          // pull-to-refresh JS 주입
-          _controller.runJavaScript(_pullToRefreshJs);
           // Register the current FCM token using the website's authenticated
           // Kakao/Gnuboard session. The page also requests it through the
           // bridge, but this direct call makes registration resilient to
@@ -228,7 +190,6 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
         onWebResourceError: (WebResourceError error) {
           if (!mounted) return;
           setState(() {
-            _isRefreshing = false;
             if (error.isForMainFrame != false) {
               _loadFailed = true;
               _isLoading = false;
@@ -276,14 +237,6 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     } finally {
       _returningToList = false;
     }
-  }
-
-  Future<void> _handlePullToRefresh() async {
-    if (_isRefreshing) return;
-    setState(() {
-      _isRefreshing = true;
-    });
-    await _controller.reload();
   }
 
   String _normalizedPath(Uri uri) {
@@ -384,17 +337,6 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
                     ),
                   ),
                 ),
-              // Pull-to-refresh 인디케이터
-              if (_isRefreshing)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: LinearProgressIndicator(
-                    backgroundColor: Colors.transparent,
-                    color: context.primaryColor,
-                  ),
-                ),
               if (_loadFailed)
                 Positioned.fill(
                     child: ColoredBox(
@@ -414,7 +356,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
                         child: const Text('다시 시도')),
                   ])),
                 )),
-              if (_isLoading && !_isRefreshing)
+              if (_isLoading)
                 Center(
                   child: CircularProgressIndicator(),
                 ),

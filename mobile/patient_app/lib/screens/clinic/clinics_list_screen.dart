@@ -102,10 +102,6 @@ class ClinicListScreen extends StatelessWidget {
                       clinicListCont.getClinicList();
                     }
                   },
-                  onSwipeRefresh: () async {
-                    clinicListCont.page(1);
-                    return clinicListCont.getClinicList(showLoader: false);
-                  },
                 );
               },
             ),

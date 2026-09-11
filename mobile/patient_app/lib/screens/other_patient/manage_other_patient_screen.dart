@@ -62,7 +62,6 @@ class ManageOtherPatientScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
                   physics: const AlwaysScrollableScrollPhysics(),
                   listAnimationType: ListAnimationType.FadeIn,
-                  onSwipeRefresh: managePatientController.onRefresh,
                   onNextPage: managePatientController.onNextPage,
                   emptyWidget: NoDataWidget(
                     title: locale.value.noPatientsFound,
