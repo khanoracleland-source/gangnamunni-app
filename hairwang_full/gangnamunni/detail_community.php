@@ -13,6 +13,18 @@ require_once __DIR__ . '/includes/functions.php';
 // 변경: 웹 요청은 기존 값 유지, CLI 검증에서는 GET 기본값 사용. 영향 범위: POST 분기 조건의 경고 제거만 수행.
 $request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+// Unapproved posts must not be readable or accept interactions by direct URL.
+$requested_post_id = intval($request_method === 'POST' ? ($_POST['post_id'] ?? $_GET['id'] ?? 0) : ($_GET['id'] ?? 0));
+$visibility_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_community_posts WHERE id=? AND status='active'");
+mysqli_stmt_bind_param($visibility_stmt, 'i', $requested_post_id);
+mysqli_stmt_execute($visibility_stmt);
+$public_post = mysqli_fetch_assoc(mysqli_stmt_get_result($visibility_stmt));
+mysqli_stmt_close($visibility_stmt);
+if (!$public_post) {
+    http_response_code(404);
+    exit('공개된 게시글을 찾을 수 없습니다.');
+}
+
 // 삭제 처리 (POST)
 if ($request_method === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
     $del_id = intval($_POST['post_id'] ?? 0);
@@ -140,7 +152,7 @@ $post = null;
 
 // DB에서 게시글 조회
 if ($table_exists) {
-    $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_community_posts WHERE id = ?");
+    $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_community_posts WHERE id = ? AND status='active'");
     if ($stmt) {
         mysqli_stmt_bind_param($stmt, 'i', $post_id);
         mysqli_stmt_execute($stmt);

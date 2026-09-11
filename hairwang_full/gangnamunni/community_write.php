@@ -11,6 +11,8 @@
  */
 
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/functions.php';
+$community_write_csrf = generateCsrfToken();
 
 // 로그인 필수
 require_login($_SERVER['REQUEST_URI']);
@@ -27,7 +29,7 @@ $edit_post = null;
 
 // 수정 모드: 기존 글 로드 + 작성자 확인
 if ($is_edit) {
-    $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_community_posts WHERE id=? AND status='active'");
+    $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_community_posts WHERE id=? AND status IN ('active','pending','rejected')");
     mysqli_stmt_bind_param($stmt, 'i', $edit_id);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
@@ -57,6 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $post_category = trim($_POST['category'] ?? '');
     $post_title = trim($_POST['title'] ?? '');
     $post_content = trim($_POST['content'] ?? '');
+
+    if (!validateCsrfToken((string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(403);
+        exit('요청이 만료되었습니다. 새로고침 후 다시 시도해주세요.');
+    }
 
     // 유효성 검사
     if (empty($post_title)) $errors[] = '제목을 입력해주세요.';
@@ -122,9 +129,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         if ($is_edit) {
             // UPDATE
-            $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_community_posts SET category=?, title=?, content=?, photos=? WHERE id=? AND mb_id=?");
+            $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_community_posts SET category=?, title=?, content=?, photos=?, status='pending' WHERE id=? AND mb_id=? AND status IN ('active','pending','rejected')");
             mysqli_stmt_bind_param($stmt, 'ssssis', $post_category, $post_title, $post_content, $photos_json, $edit_id, $mb_id);
-            if (mysqli_stmt_execute($stmt)) {
+            if (mysqli_stmt_execute($stmt) && mysqli_stmt_affected_rows($stmt) > 0) {
                 $success = true;
                 $redirect_id = $edit_id;
             } else {
@@ -133,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_close($stmt);
         } else {
             // INSERT
-            $stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_community_posts (mb_id, author_name, category, title, content, photos) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_community_posts (mb_id, author_name, category, title, content, photos, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
             mysqli_stmt_bind_param($stmt, 'ssssss', $mb_id, $mb_name, $post_category, $post_title, $post_content, $photos_json);
             if (mysqli_stmt_execute($stmt)) {
                 $success = true;
@@ -145,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($success) {
-            echo '<script>location.href="detail_community.php?id=' . intval($redirect_id) . '";</script>';
+            echo '<script>alert("게시글이 접수되었습니다. 관리자 검토 후 공개됩니다.");location.href="community.php";</script>';
             exit;
         }
     }
@@ -224,6 +231,7 @@ include __DIR__ . '/includes/header.php';
         <?php endif; ?>
 
         <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($community_write_csrf, ENT_QUOTES); ?>">
             <fieldset class="write-categories">
                 <legend>관심 있는 카테고리를 선택해주세요</legend>
                 <div class="category-options">
@@ -277,7 +285,7 @@ include __DIR__ . '/includes/header.php';
                 </div>
             </div>
 
-            <p class="write-policy">운영정책을 위반한 게시물은 삭제될 수 있습니다</p>
+            <p class="write-policy">작성 및 수정한 게시글은 관리자 검토 후 공개됩니다. 운영정책을 위반한 게시물은 반려될 수 있습니다</p>
             <button type="submit" class="btn-submit"><?php echo $is_edit ? '수정 완료' : '작성했어요'; ?></button>
         </form>
     </div>

@@ -32,9 +32,9 @@ if ($page_type === 'community') {
     if ($community_table_exists) {
         $escaped_cat = mysqli_real_escape_string($connect, $community_category);
         if (!empty($community_category)) {
-            $cq = "SELECT * FROM gangnamunni_community_posts WHERE category = '{$escaped_cat}' ORDER BY created_at DESC LIMIT 50";
+            $cq = "SELECT * FROM gangnamunni_community_posts WHERE status='active' AND category = '{$escaped_cat}' ORDER BY created_at DESC LIMIT 50";
         } else {
-            $cq = "SELECT * FROM gangnamunni_community_posts ORDER BY created_at DESC LIMIT 50";
+            $cq = "SELECT * FROM gangnamunni_community_posts WHERE status='active' ORDER BY created_at DESC LIMIT 50";
         }
         $cr = mysqli_query($connect, $cq);
         if ($cr) {

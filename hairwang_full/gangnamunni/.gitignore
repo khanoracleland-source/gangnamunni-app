@@ -18,9 +18,11 @@ vendor/
 # SQL data dumps
 *.sql
 sql_dumps/
-# Keep schema SQL files in sql/ folder
+# Keep schema SQL files in sql/ and migrations/ folders
 !sql/
 !sql/*.sql
+!migrations/
+!migrations/*.sql
 
 # Uploads (user-generated content)
 uploads/reviews/*

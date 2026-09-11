@@ -31,6 +31,7 @@ function admin_sidebar_menus(): array {
             ['url' => 'admin_hospital_locations.php', 'label' => '병원 노출 순서', 'icon' => 'bi-sort-numeric-down', 'key' => 'hospitals', 'active_key' => 'hospital_locations'],
             ['url' => 'admin_doctors.php', 'label' => term('doctor') . ' 관리', 'icon' => 'bi-person-badge', 'key' => 'doctors'],
             ['url' => 'admin_personnel.php', 'label' => '인력 관리', 'icon' => 'bi-people', 'key' => 'personnel'],
+            ['url' => 'admin_community_posts.php', 'label' => '커뮤니티 심사', 'icon' => 'bi-chat-square-text', 'key' => 'community_moderation'],
             ['url' => 'admin_reviews.php', 'label' => term('review') . ' 관리', 'icon' => 'bi-chat-dots', 'key' => 'reviews'],
             ['url' => 'admin_hospital_images.php', 'label' => '병원 이미지 관리', 'icon' => 'bi-images', 'key' => 'hospital_images'],
             ['url' => 'admin_ads.php', 'label' => '광고 관리', 'icon' => 'bi-megaphone', 'key' => 'ads'],
