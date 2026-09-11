@@ -10,7 +10,6 @@
  * DB: gangnamunni_blocked_users
  * @created 2026-03-17
  */
-session_start();
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
@@ -22,15 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once __DIR__ . '/dbconfig.php';
-
-$connect = @mysqli_connect($_DB_HOST, $_DB_USER, $_DB_PASSWORD, $_DB_NAME);
-if (!$connect) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'DB 연결 실패'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
-mysqli_set_charset($connect, 'utf8mb4');
+require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/user_blocking.php';
 
 // --- 공통 응답 헬퍼 ---
 function jsonSuccess($data = []) {
@@ -82,7 +74,6 @@ if ($method === 'POST') {
     $blocked_id   = trim($input['blocked_id'] ?? '');
     $blocked_name = trim($input['blocked_name'] ?? '');
     $reason       = trim($input['reason'] ?? '');
-
     // 필수값 검증
     if (empty($blocked_id)) {
         jsonError('차단할 사용자 ID(blocked_id)가 필요합니다.');
@@ -104,13 +95,16 @@ if ($method === 'POST') {
     }
     mysqli_stmt_bind_param($stmt, 'ssss', $blocker_id, $blocked_id, $blocked_name, $reason);
 
-    if (mysqli_stmt_execute($stmt)) {
+    mysqli_begin_transaction($connect);
+    try {
+        if (!mysqli_stmt_execute($stmt)) throw new RuntimeException('Block save failed');
         mysqli_stmt_close($stmt);
+        mysqli_commit($connect);
         jsonSuccess(['message' => '사용자를 차단했습니다']);
-    } else {
-        $err = mysqli_stmt_error($stmt);
-        mysqli_stmt_close($stmt);
-        jsonError('차단 처리 실패: ' . $err, 500);
+    } catch (Throwable $error) {
+        mysqli_rollback($connect);
+        error_log('Block settings save failed: ' . $error->getMessage());
+        jsonError('차단 설정을 저장하지 못했습니다. 다시 시도해주세요.', 500);
     }
 }
 
@@ -211,20 +205,7 @@ if ($method === 'GET') {
 
     // --- 차단된 사용자 ID 전체 목록 (피드 필터링용) ---
     if ($action === 'blocked_ids') {
-        $stmt = mysqli_prepare($connect,
-            "SELECT blocked_id FROM gangnamunni_blocked_users WHERE blocker_id = ?"
-        );
-        if (!$stmt) {
-            jsonError('SQL 준비 실패', 500);
-        }
-        mysqli_stmt_bind_param($stmt, 's', $blocker_id);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-        $ids = [];
-        while ($row = mysqli_fetch_assoc($result)) {
-            $ids[] = $row['blocked_id'];
-        }
-        mysqli_stmt_close($stmt);
+        $ids = community_blocked_ids($connect, $blocker_id);
 
         jsonSuccess(['blocked_ids' => $ids]);
     }

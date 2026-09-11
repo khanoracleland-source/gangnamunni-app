@@ -18,7 +18,9 @@ con = sqlite3.connect(':memory:')
 con.execute('CREATE TABLE gangnamunni_community_posts (id INTEGER PRIMARY KEY, mb_id TEXT, author_name TEXT, category TEXT, title TEXT, content TEXT, photos TEXT, status TEXT)')
 insert = query(write, 'INSERT INTO gangnamunni_community_posts')
 edit = query(write, 'UPDATE gangnamunni_community_posts SET category=')
-visible = query(detail, 'SELECT id FROM gangnamunni_community_posts WHERE')
+# The PHP query ends with a concatenated community_content_condition() call;
+# '1=1' is what it returns when nobody has blocked anybody (this test's scope).
+visible = query(detail, 'SELECT id FROM gangnamunni_community_posts WHERE') + '1=1'
 moderate = query(admin, 'UPDATE gangnamunni_community_posts SET status=')
 con.execute(insert, ('owner', 'Author', '일상', 'Title', 'Long enough content', None))
 assert con.execute(visible, (1,)).fetchone() is None, 'Pending post leaked'

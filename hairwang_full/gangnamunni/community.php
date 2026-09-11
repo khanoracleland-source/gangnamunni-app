@@ -11,6 +11,7 @@
  */
 
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/user_blocking.php';
 require_once __DIR__ . '/includes/functions.php';
 
 $community_csrf_token = generateCsrfToken();
@@ -63,7 +64,7 @@ $total_count = 0;
 if ($tab === 'review') {
     // 시술후기 탭 = 승인(published)된 병원 후기(hospital_reviews) 노출
     //  → review_write.php 로 작성 후 관리자 승인된 후기가 여기에 표시된다.
-    $rev_where = "r.is_active = 1 AND r.review_status = 'published'";
+    $rev_where = "r.is_active = 1 AND r.review_status = 'published' AND " . community_content_condition($connect, "r.user_id");
     $rev_types = '';
     $rev_vals = [];
     if ($keyword !== '') {
@@ -145,7 +146,7 @@ if ($tab === 'review') {
     }
 
     // WHERE 조건 구성
-    $where = "p.status='active'";
+    $where = "p.status='active' AND " . community_content_condition($connect, "p.mb_id");
     $bind_types = '';
     $bind_values = [];
 

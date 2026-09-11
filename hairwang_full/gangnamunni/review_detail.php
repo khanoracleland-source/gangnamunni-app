@@ -4,6 +4,7 @@
  * URL: review_detail.php?id=1
  */
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/user_blocking.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/db.php';
@@ -25,6 +26,7 @@ $review = $db->fetchOne(
     [$review_id]
 );
 
+if ($review && in_array((string)$review["user_id"], community_blocked_ids($connect, (string)($_SESSION["ss_mb_id"] ?? "")), true)) { $review = null; http_response_code(404); }
 if (!$review) {
     echo '<p style="text-align:center;padding:60px 20px;color:#999;">' . term('review', '후기') . '를 찾을 수 없습니다.</p>';
     exit;

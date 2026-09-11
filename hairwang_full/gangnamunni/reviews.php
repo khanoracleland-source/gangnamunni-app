@@ -12,6 +12,7 @@
 $init_loaded = false;
 if (file_exists(__DIR__ . '/includes/init.php')) {
     require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/user_blocking.php';
 require_once __DIR__ . '/includes/settings_helper.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
     $init_loaded = true;
@@ -83,7 +84,7 @@ $total_pages = 1;
 
 if ($reviews_table_exists) {
     // WHERE 절 구성
-    $where_clauses = ["r.is_active = 1"];
+    $where_clauses = ["r.is_active = 1", community_content_condition($connect, "r.user_id")];
     $bind_types = '';
     $bind_values = [];
 

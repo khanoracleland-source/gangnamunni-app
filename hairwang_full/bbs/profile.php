@@ -9,6 +9,9 @@ if (!$member['mb_open'] && $is_admin != 'super' && $member['mb_id'] != $mb_id)
 
 $mb_id = isset($mb_id) ? $mb_id : '';
 
+require_once G5_PATH.'/gangnamunni/includes/user_blocking.php';
+if (in_array((string)$mb_id, community_blocked_ids($g5['connect_db'], (string)$member['mb_id']), true)) alert_close('프로필을 볼 수 없습니다.');
+
 $mb = get_member($mb_id);
 
 if (!$mb['mb_id'])

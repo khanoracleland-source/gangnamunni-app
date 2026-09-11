@@ -16,6 +16,12 @@ $error_list  = array();
 $member_list = array('id'=>array(), 'nick'=>array());
 $me_memo = isset($_POST['me_memo']) ? preg_replace("#[\\\]+$#", "", substr(trim($_POST['me_memo']),0,65536)) : '';
 
+require_once G5_PATH.'/gangnamunni/includes/user_blocking.php';
+foreach ($recv_list as $recipient) {
+    $recipient = substr(preg_replace('/[^a-zA-Z0-9_]*/', '', $recipient), 0, 20);
+    if (community_message_blocked($g5['connect_db'], (string)$member['mb_id'], $recipient)) alert('이 회원에게 메시지를 보낼 수 없습니다.');
+}
+
 run_event('memo_form_update_before', $recv_list);
 
 for ($i=0; $i<count($recv_list); $i++) {

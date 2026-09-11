@@ -350,6 +350,22 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
         bottom: 90px;
     }
 }
+/* Block confirmation, matching the community action sheet. */
+#rbBlockOverlay { padding: 0; align-items: flex-end; bottom: var(--rb-block-nav-height, 77px); background: rgba(0,0,0,.15); }
+#rbBlockOverlay .rb-modal { max-width: 640px; border-radius: 0; box-shadow: none; max-height: 100%; background: #fff; color: #111; }
+.rb-block-handle { display: block; width: 50px; height: 5px; border-radius: 4px; background: #b81739; margin: 18px auto 24px; }
+#rbBlockOverlay .rb-modal-header { padding: 0 20px 20px; border: 0; }
+#rbBlockOverlay .rb-modal-title, #rbBlockOverlay .rb-block-name { color: #111; font-size: 18px; font-weight: 600; }
+#rbBlockOverlay .rb-modal-body { padding: 0 20px; }
+.rb-block-options { border: 0; padding: 0; margin: 0; min-width: 0; }
+.rb-block-option { display: flex; align-items: center; gap: 12px; min-height: 88px; padding: 8px 0; box-sizing: border-box; }
+.rb-block-option > i { font-size: 30px; flex: 0 0 32px; }
+.rb-block-option-text { flex: 1; min-width: 0; font-size: 14px; line-height: 1.6; }
+.rb-block-option-text strong { display: block; font-weight: 600; }
+#rbBlockOverlay .rb-modal-footer { max-width: 390px; margin: 20px auto 0; padding: 12px 20px 40px; border: 0; }
+#rbBlockOverlay .rb-btn { border-radius: 0; min-height: 50px; font-size: 18px; font-weight: 500; }
+#rbBlockOverlay .rb-btn-cancel { border: 1px solid #d7183d; color: #c31336; background: #fff; }
+#rbBlockOverlay .rb-btn-danger { background: #b81739; }
 </style>
 
 <!-- ===== 신고 모달 HTML ===== -->
@@ -405,26 +421,22 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
 <!-- ===== 차단 모달 HTML ===== -->
 <div class="rb-overlay" id="rbBlockOverlay" role="dialog" aria-modal="true" aria-labelledby="rbBlockTitle">
     <div class="rb-modal">
+        <span class="rb-block-handle" aria-hidden="true"></span>
         <div class="rb-modal-header">
-            <h3 class="rb-modal-title" id="rbBlockTitle">사용자 차단</h3>
-            <button type="button" class="rb-close-btn" onclick="closeBlockModal()" aria-label="닫기">&times;</button>
+            <h3 class="rb-modal-title" id="rbBlockTitle"><span id="rbBlockDisplayName"></span>님을 차단할까요?</h3>
         </div>
         <div class="rb-modal-body">
             <input type="hidden" id="rbBlockId">
             <input type="hidden" id="rbBlockName">
-
-            <p class="rb-block-msg"><span class="rb-block-name" id="rbBlockDisplayName"></span>님을 차단하시겠습니까?</p>
-            <div class="rb-block-info">
-                <ul>
-                    <li>이 사용자의 후기, 댓글, 질문이 더 이상 표시되지 않습니다</li>
-                    <li>이 사용자가 보낸 채팅 메시지가 숨겨집니다</li>
-                    <li>차단은 설정에서 언제든 해제할 수 있습니다</li>
-                </ul>
+            <div class="rb-block-options">
+                <div class="rb-block-option"><i class="bi bi-eye-slash" aria-hidden="true"></i><span class="rb-block-option-text"><strong>콘텐츠 비공개</strong>서로의 후기와 게시글, 프로필을 볼 수 없어요</span></div>
+                <div class="rb-block-option"><i class="bi bi-chat-square-text" aria-hidden="true"></i><span class="rb-block-option-text"><strong>메시지 불가</strong>차단된 사람은 회원님에게 직접 메시지를 보낼 수 없어요</span></div>
+                <div class="rb-block-option"><i class="bi bi-bell-slash" aria-hidden="true"></i><span class="rb-block-option-text"><strong>차단 사실 비공개</strong>상대방에게 차단 사실을 알리지 않아요</span></div>
             </div>
         </div>
         <div class="rb-modal-footer">
             <button type="button" class="rb-btn rb-btn-cancel" onclick="closeBlockModal()">취소</button>
-            <button type="button" class="rb-btn rb-btn-danger" id="rbBlockSubmitBtn" onclick="submitBlock()">차단하기</button>
+            <button type="button" class="rb-btn rb-btn-danger" id="rbBlockSubmitBtn" onclick="submitBlock()">차단</button>
         </div>
     </div>
 </div>
@@ -547,14 +559,22 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
         document.getElementById('rbBlockId').value = blockedId || '';
         document.getElementById('rbBlockName').value = blockedName || '';
         document.getElementById('rbBlockDisplayName').textContent = blockedName || '이 사용자';
-        document.getElementById('rbBlockSubmitBtn').disabled = false;
-        document.getElementById('rbBlockSubmitBtn').textContent = '차단하기';
+        document.getElementById('rbBlockSubmitBtn').disabled = blockSubmitting;
+        document.getElementById('rbBlockSubmitBtn').textContent = '차단';
+        var nav = document.getElementById('bottomNav');
+        document.getElementById('rbBlockOverlay').style.setProperty('--rb-block-nav-height', (nav ? nav.getBoundingClientRect().height : 0) + 'px');
 
+        blockReturnFocus = document.activeElement;
         showOverlay('rbBlockOverlay');
+        document.querySelector('#rbBlockOverlay .rb-btn-cancel').focus();
     };
 
+    var blockReturnFocus = null;
+    var blockSubmitting = false;
     window.closeBlockModal = function() {
+        if (blockSubmitting) return;
         hideOverlay('rbBlockOverlay');
+        if (blockReturnFocus && blockReturnFocus.isConnected) blockReturnFocus.focus();
     };
 
     /**
@@ -562,11 +582,14 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
      */
     window.submitBlock = async function() {
         var btn = document.getElementById('rbBlockSubmitBtn');
+        if (btn.disabled || blockSubmitting) return;
+        blockSubmitting = true;
         btn.disabled = true;
         btn.textContent = '처리 중...';
 
         var payload = {
-            blocked_id: document.getElementById('rbBlockId').value
+            blocked_id: document.getElementById('rbBlockId').value,
+            blocked_name: document.getElementById('rbBlockName').value
         };
 
         try {
@@ -584,29 +607,43 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
                     window.location.href = 'auth/login.php?url=' + encodeURIComponent(window.location.href);
                 }
                 btn.disabled = false;
-                btn.textContent = '차단하기';
+                btn.textContent = '차단';
                 return;
             }
 
             if (data.success) {
+                blockSubmitting = false;
                 closeBlockModal();
-                showToast('사용자를 차단했습니다. 해당 사용자의 콘텐츠가 숨겨집니다.', 'success');
-                // 차단 후 페이지 새로고침 (차단된 사용자 콘텐츠 숨김 적용)
-                setTimeout(function() {
-                    window.location.reload();
-                }, 1200);
+                if (typeof completeCommunityBlock === 'function') {
+                    completeCommunityBlock();
+                } else {
+                    showToast('차단이 완료되었어요.', 'success');
+                    setTimeout(function() { window.location.reload(); }, 1200);
+                }
             } else {
                 showToast(data.error || data.message || '차단 처리 중 오류가 발생했습니다.', 'error');
                 btn.disabled = false;
-                btn.textContent = '차단하기';
+                btn.textContent = '차단';
             }
         } catch (err) {
             console.error('Block submit error:', err);
             showToast('네트워크 오류가 발생했습니다. 다시 시도해주세요.', 'error');
             btn.disabled = false;
-            btn.textContent = '차단하기';
+            btn.textContent = '차단';
+        } finally {
+            blockSubmitting = false;
+            btn.disabled = false;
         }
     };
+
+    document.getElementById('rbBlockOverlay').addEventListener('keydown', function(event) {
+        if (event.key !== 'Tab') return;
+        var fields = Array.from(this.querySelectorAll('button')).filter(function(el) { return !el.disabled; });
+        if (!fields.length) return;
+        var first = fields[0], last = fields[fields.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
 
     // ========== 토스트 ==========
 

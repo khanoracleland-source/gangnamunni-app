@@ -3,13 +3,14 @@
 
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/user_blocking.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/community_comment_likes.php';
 
 $request_method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 $requested_post_id = intval($request_method === 'POST' ? ($_POST['post_id'] ?? $_GET['id'] ?? 0) : ($_GET['id'] ?? 0));
-$visibility_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_community_posts WHERE id=? AND status='active'");
+$visibility_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_community_posts WHERE id=? AND status='active' AND " . community_content_condition($connect, "mb_id"));
 mysqli_stmt_bind_param($visibility_stmt, 'i', $requested_post_id);
 mysqli_stmt_execute($visibility_stmt);
 $public_post = mysqli_fetch_assoc(mysqli_stmt_get_result($visibility_stmt));
@@ -177,6 +178,8 @@ if ($comments_table_check && mysqli_num_rows($comments_table_check) > 0) {
     }
 }
 
+$hidden_authors = community_blocked_ids($connect, (string)($_SESSION["ss_mb_id"] ?? ""));
+$comments = array_values(array_filter($comments, fn($comment) => !in_array((string)($comment["mb_id"] ?? ""), $hidden_authors, true)));
 $comment_total = count($comments);
 $comments = community_comments_in_thread_order($comments);
 
