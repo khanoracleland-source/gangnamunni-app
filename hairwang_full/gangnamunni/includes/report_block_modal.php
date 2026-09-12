@@ -351,29 +351,49 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
     }
 }
 /* Block confirmation, matching the community action sheet. */
-#rbBlockOverlay { padding: 0; align-items: flex-end; bottom: var(--rb-block-nav-height, 77px); background: rgba(0,0,0,.15); }
-#rbBlockOverlay .rb-modal { max-width: 640px; border-radius: 0; box-shadow: none; max-height: 100%; background: #fff; color: #111; }
+:is(#rbBlockOverlay, #rbReportOverlay) { padding: 0; align-items: flex-end; bottom: var(--rb-block-nav-height, 77px); background: rgba(0,0,0,.15); }
+:is(#rbBlockOverlay, #rbReportOverlay) .rb-modal { max-width: 640px; border-radius: 0; box-shadow: none; max-height: 100%; background: #fff; color: #111; }
 .rb-block-handle { display: block; width: 50px; height: 5px; border-radius: 4px; background: #b81739; margin: 18px auto 24px; }
-#rbBlockOverlay .rb-modal-header { padding: 0 20px 20px; border: 0; }
-#rbBlockOverlay .rb-modal-title, #rbBlockOverlay .rb-block-name { color: #111; font-size: 18px; font-weight: 600; }
-#rbBlockOverlay .rb-modal-body { padding: 0 20px; }
+:is(#rbBlockOverlay, #rbReportOverlay) .rb-modal-header { padding: 0 20px 20px; border: 0; }
+:is(#rbBlockOverlay, #rbReportOverlay) .rb-modal-title, :is(#rbBlockOverlay, #rbReportOverlay) .rb-block-name { color: #111; font-size: 18px; font-weight: 600; }
+:is(#rbBlockOverlay, #rbReportOverlay) .rb-modal-body { padding: 0 20px; }
 .rb-block-options { border: 0; padding: 0; margin: 0; min-width: 0; }
 .rb-block-option { display: flex; align-items: center; gap: 12px; min-height: 88px; padding: 8px 0; box-sizing: border-box; }
 .rb-block-option > i { font-size: 30px; flex: 0 0 32px; }
 .rb-block-option-text { flex: 1; min-width: 0; font-size: 14px; line-height: 1.6; }
 .rb-block-option-text strong { display: block; font-weight: 600; }
-#rbBlockOverlay .rb-modal-footer { max-width: 390px; margin: 20px auto 0; padding: 12px 20px 40px; border: 0; }
-#rbBlockOverlay .rb-btn { border-radius: 0; min-height: 50px; font-size: 18px; font-weight: 500; }
-#rbBlockOverlay .rb-btn-cancel { border: 1px solid #d7183d; color: #c31336; background: #fff; }
-#rbBlockOverlay .rb-btn-danger { background: #b81739; }
+:is(#rbBlockOverlay, #rbReportOverlay) .rb-modal-footer { max-width: 390px; margin: 20px auto 0; padding: 12px 20px 40px; border: 0; }
+:is(#rbBlockOverlay, #rbReportOverlay) .rb-btn { border-radius: 0; min-height: 50px; font-size: 18px; font-weight: 500; }
+:is(#rbBlockOverlay, #rbReportOverlay) .rb-btn-cancel { border: 1px solid #d7183d; color: #c31336; background: #fff; }
+:is(#rbBlockOverlay, #rbReportOverlay) .rb-btn-danger { background: #b81739; }
+/* Report layout follows the 640px-wide reference independently of block content. */
+#rbReportOverlay .rb-modal { box-sizing: border-box; width: 100%; max-width: 640px; border-radius: 0; padding: 0; background: #fff; color: #111; }
+#rbReportOverlay .rb-block-handle { width: 50px; height: 5px; margin: 18px auto 24px; }
+#rbReportOverlay .rb-modal-header { display: block; padding: 0 20px 18px; border: 0; }
+#rbReportOverlay .rb-modal-title { margin: 0; color: #111; font-size: 20px; font-weight: 600; line-height: 28px; }
+#rbReportOverlay .rb-modal-body { padding: 0 20px; }
+#rbReportOverlay .rb-reason-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0; }
+#rbReportOverlay .rb-reason-item { display: block; position: absolute; width: 1px; height: 1px; opacity: 0; }
+#rbReportOverlay .rb-reason-label { display: flex; align-items: center; gap: 9px; min-height: 51px; margin: 0; padding: 8px 0; box-sizing: border-box; border: 0; border-radius: 0; background: transparent; color: #111; font-size: 15px; line-height: 26px; font-weight: 400; }
+#rbReportOverlay .rb-reason-dot { position: relative; flex: 0 0 18px; width: 18px; height: 18px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 1px; background: #fff; }
+#rbReportOverlay .rb-reason-item:checked + label { color: #b81739; font-weight: 600; }
+#rbReportOverlay .rb-reason-item:checked + label .rb-reason-dot { border-color: #b81739; background: #b81739; }
+#rbReportOverlay .rb-reason-item:checked + label .rb-reason-dot::after { content: ""; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+#rbReportOverlay .rb-reason-item:focus-visible + label { outline: 2px solid #b81739; outline-offset: 2px; }
+#rbReportOverlay .rb-textarea[hidden] { display: none; }
+#rbReportOverlay .rb-modal-footer { box-sizing: border-box; display: flex; width: calc(100% - 40px); max-width: 350px; gap: 10px; margin: 10px auto 0; padding: 0 0 max(46px, env(safe-area-inset-bottom)); border: 0; }
+#rbReportOverlay .rb-btn { box-sizing: border-box; flex: 1 1 0; min-width: 0; height: 50px; padding: 0 12px; border-radius: 0; font-size: 18px; font-weight: 600; line-height: 1; }
+#rbReportOverlay .rb-btn-cancel { border: 1px solid #d7183d; background: #fff; color: #b81739; }
+#rbReportOverlay .rb-btn-danger { border: 1px solid #b81739; background: #b81739; color: #fff; }
 </style>
 
 <!-- ===== 신고 모달 HTML ===== -->
 <div class="rb-overlay" id="rbReportOverlay" role="dialog" aria-modal="true" aria-labelledby="rbReportTitle">
     <div class="rb-modal">
+        <span class="rb-block-handle" aria-hidden="true"></span>
         <div class="rb-modal-header">
-            <h3 class="rb-modal-title" id="rbReportTitle">콘텐츠 신고</h3>
-            <button type="button" class="rb-close-btn" onclick="closeReportModal()" aria-label="닫기">&times;</button>
+            <h3 class="rb-modal-title" id="rbReportTitle">신고하는 이유</h3>
+
         </div>
         <div class="rb-modal-body">
             <input type="hidden" id="rbReportContentType">
@@ -381,39 +401,26 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
             <input type="hidden" id="rbReportUserId">
             <input type="hidden" id="rbReportUserName">
 
-            <p style="font-size:14px;color:var(--bs-secondary-color, #666);margin:0 0 12px;">신고 사유를 선택해주세요.</p>
-
-            <div class="rb-reason-list" id="rbReasonList">
-                <input type="radio" name="rb_reason" value="spam" id="rbr_spam" class="rb-reason-item">
-                <label for="rbr_spam" class="rb-reason-label"><span class="rb-reason-dot"></span>스팸/광고</label>
-
-                <input type="radio" name="rb_reason" value="harassment" id="rbr_harassment" class="rb-reason-item">
-                <label for="rbr_harassment" class="rb-reason-label"><span class="rb-reason-dot"></span>괴롭힘/모욕</label>
-
-                <input type="radio" name="rb_reason" value="hate_speech" id="rbr_hate" class="rb-reason-item">
-                <label for="rbr_hate" class="rb-reason-label"><span class="rb-reason-dot"></span>혐오 발언</label>
-
-                <input type="radio" name="rb_reason" value="sexual" id="rbr_sexual" class="rb-reason-item">
-                <label for="rbr_sexual" class="rb-reason-label"><span class="rb-reason-dot"></span>성적 콘텐츠</label>
-
-                <input type="radio" name="rb_reason" value="violence" id="rbr_violence" class="rb-reason-item">
-                <label for="rbr_violence" class="rb-reason-label"><span class="rb-reason-dot"></span>폭력적 콘텐츠</label>
-
-                <input type="radio" name="rb_reason" value="misinformation" id="rbr_misinfo" class="rb-reason-item">
-                <label for="rbr_misinfo" class="rb-reason-label"><span class="rb-reason-dot"></span>허위 정보</label>
-
-                <input type="radio" name="rb_reason" value="copyright" id="rbr_copyright" class="rb-reason-item">
-                <label for="rbr_copyright" class="rb-reason-label"><span class="rb-reason-dot"></span>저작권 침해</label>
-
-                <input type="radio" name="rb_reason" value="other" id="rbr_other" class="rb-reason-item">
-                <label for="rbr_other" class="rb-reason-label"><span class="rb-reason-dot"></span>기타</label>
+            <div class="rb-reason-list" id="rbReasonList" role="group" aria-labelledby="rbReportTitle">
+                <input type="checkbox" name="rb_reason" value="spam" data-reason-label="영리성 홍보 목적" id="rbr_spam" class="rb-reason-item">
+                <label for="rbr_spam" class="rb-reason-label"><span class="rb-reason-dot" aria-hidden="true"></span>영리성 홍보 목적</label>
+                <input type="checkbox" name="rb_reason" value="sexual" data-reason-label="음란성/선정성" id="rbr_sexual" class="rb-reason-item">
+                <label for="rbr_sexual" class="rb-reason-label"><span class="rb-reason-dot" aria-hidden="true"></span>음란성/선정성</label>
+                <input type="checkbox" name="rb_reason" value="harassment" data-reason-label="욕설/인신공격" id="rbr_harassment" class="rb-reason-item">
+                <label for="rbr_harassment" class="rb-reason-label"><span class="rb-reason-dot" aria-hidden="true"></span>욕설/인신공격</label>
+                <input type="checkbox" name="rb_reason" value="privacy" data-reason-label="개인정보노출" id="rbr_privacy" class="rb-reason-item">
+                <label for="rbr_privacy" class="rb-reason-label"><span class="rb-reason-dot" aria-hidden="true"></span>개인정보노출</label>
+                <input type="checkbox" name="rb_reason" value="repeat" data-reason-label="같은 내용 반복게시" id="rbr_repeat" class="rb-reason-item">
+                <label for="rbr_repeat" class="rb-reason-label"><span class="rb-reason-dot" aria-hidden="true"></span>같은 내용 반복게시</label>
+                <input type="checkbox" name="rb_reason" value="other" data-reason-label="기타" id="rbr_other" class="rb-reason-item">
+                <label for="rbr_other" class="rb-reason-label"><span class="rb-reason-dot" aria-hidden="true"></span>기타</label>
             </div>
 
-            <textarea class="rb-textarea" id="rbReportDetail" placeholder="상세 설명을 입력해주세요 (선택)" maxlength="1000"></textarea>
+            <textarea class="rb-textarea" id="rbReportDetail" hidden aria-label="상세 신고 사유" placeholder="상세 설명을 입력해주세요 (선택)" maxlength="1000"></textarea>
         </div>
         <div class="rb-modal-footer">
             <button type="button" class="rb-btn rb-btn-cancel" onclick="closeReportModal()">취소</button>
-            <button type="button" class="rb-btn rb-btn-danger" id="rbReportSubmitBtn" onclick="submitReport()" disabled>신고하기</button>
+            <button type="button" class="rb-btn rb-btn-danger" id="rbReportSubmitBtn" onclick="submitReport()" disabled>확인</button>
         </div>
     </div>
 </div>
@@ -463,7 +470,9 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
      * @param {number|string} reportedUserId - 신고 대상 사용자 ID
      * @param {string} reportedUserName - 신고 대상 사용자 이름 (표시용)
      */
-    window.openReportModal = function(contentType, contentId, reportedUserId, reportedUserName) {
+    var reportContentUrl = window.location.href;
+    window.openReportModal = function(contentType, contentId, reportedUserId, reportedUserName, contentUrl) {
+        reportContentUrl = contentUrl ? new URL(contentUrl, window.location.href).href : window.location.href;
         document.getElementById('rbReportContentType').value = contentType || '';
         document.getElementById('rbReportContentId').value = contentId || '';
         document.getElementById('rbReportUserId').value = reportedUserId || '';
@@ -477,25 +486,34 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
         document.getElementById('rbReportDetail').value = '';
         document.getElementById('rbReportSubmitBtn').disabled = true;
 
+        document.getElementById('rbReportDetail').hidden = true;
+        document.getElementById('rbReportSubmitBtn').textContent = '확인';
+        var nav = document.getElementById('bottomNav');
+        document.getElementById('rbReportOverlay').style.setProperty('--rb-block-nav-height', (nav ? nav.getBoundingClientRect().height : 0) + 'px');
         showOverlay('rbReportOverlay');
+        document.getElementById('rbr_spam').focus({preventScroll:true});
     };
 
     window.closeReportModal = function() {
-        hideOverlay('rbReportOverlay');
+        if (reportSubmitting) return;
+        return hideOverlay('rbReportOverlay');
     };
 
     // 사유 선택 시 제출 버튼 활성화
     document.getElementById('rbReasonList').addEventListener('change', function() {
         var selected = document.querySelector('input[name="rb_reason"]:checked');
         document.getElementById('rbReportSubmitBtn').disabled = !selected;
+        document.getElementById('rbReportDetail').hidden = !document.getElementById('rbr_other').checked;
     });
 
     /**
      * 신고 제출
      */
+    var reportSubmitting = false;
     window.submitReport = async function() {
-        var reason = document.querySelector('input[name="rb_reason"]:checked');
-        if (!reason) {
+        if (reportSubmitting) return;
+        var reasons = Array.from(document.querySelectorAll('input[name="rb_reason"]:checked'));
+        if (!reasons.length) {
             showToast('신고 사유를 선택해주세요.', 'warning');
             return;
         }
@@ -503,14 +521,15 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
         var btn = document.getElementById('rbReportSubmitBtn');
         btn.disabled = true;
         btn.textContent = '처리 중...';
+        reportSubmitting = true;
 
         var payload = {
             content_type: document.getElementById('rbReportContentType').value,
             content_id: document.getElementById('rbReportContentId').value,
             reported_user_id: document.getElementById('rbReportUserId').value,
-            reason: reason.value,
-            reason_detail: document.getElementById('rbReportDetail').value.trim(),
-            content_url: window.location.href
+            reasons: reasons.map(function(reason) { return reason.value; }),
+            reason_detail: document.getElementById('rbr_other').checked ? document.getElementById('rbReportDetail').value.trim() : '',
+            content_url: reportContentUrl
         };
 
         try {
@@ -528,13 +547,18 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
                     window.location.href = 'auth/login.php?url=' + encodeURIComponent(window.location.href);
                 }
                 btn.disabled = false;
-                btn.textContent = '신고하기';
+                btn.textContent = '확인';
                 return;
             }
 
             if (data.success) {
-                closeReportModal();
-                showToast('신고가 접수되었습니다. 검토 후 조치하겠습니다.', 'success');
+                reportSubmitting = false;
+                await closeReportModal();
+                if (typeof showCommunityCopyToast === 'function') {
+                    showCommunityCopyToast('신고가 완료되었어요.');
+                } else {
+                    showToast('신고가 완료되었어요.', 'success');
+                }
             } else {
                 showToast(data.error || data.message || '신고 처리 중 오류가 발생했습니다.', 'error');
                 btn.disabled = false;
@@ -543,9 +567,11 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
             console.error('Report submit error:', err);
             showToast('네트워크 오류가 발생했습니다. 다시 시도해주세요.', 'error');
             btn.disabled = false;
+        } finally {
+            reportSubmitting = false;
         }
 
-        btn.textContent = '신고하기';
+        btn.textContent = '확인';
     };
 
     // ========== 차단 모달 ==========
@@ -645,6 +671,17 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
 
+    document.getElementById('rbReportOverlay').addEventListener('keydown', function(event) {
+        if (event.key !== 'Tab') return;
+        var fields = Array.from(this.querySelectorAll('input[name="rb_reason"]'));
+        var detail = document.getElementById('rbReportDetail');
+        if (!detail.hidden) fields.push(detail);
+        fields = fields.concat(Array.from(this.querySelectorAll('button')).filter(function(el) { return !el.disabled; }));
+        var first = fields[0], last = fields[fields.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
+
     // ========== 토스트 ==========
 
     var toastTimer = null;
@@ -689,7 +726,8 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
         // ESC 키로 닫기
         overlay._escHandler = function(e) {
             if (e.key === 'Escape') {
-                hideOverlay(id);
+                if (id === 'rbReportOverlay') closeReportModal();
+                else closeBlockModal();
             }
         };
         document.addEventListener('keydown', overlay._escHandler);
@@ -706,14 +744,14 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
         }
 
         // 애니메이션 완료 후 숨김
-        setTimeout(function() {
-            overlay.classList.remove('rb-visible');
-            // 열려있는 다른 모달이 없으면 스크롤 복원
-            var anyOpen = document.querySelector('.rb-overlay.rb-visible');
-            if (!anyOpen) {
-                document.body.style.overflow = '';
-            }
-        }, 250);
+        return new Promise(function(resolve) {
+            setTimeout(function() {
+                overlay.classList.remove('rb-visible');
+                var anyOpen = document.querySelector('.rb-overlay.rb-visible');
+                if (!anyOpen) document.body.style.overflow = '';
+                resolve();
+            }, 250);
+        });
     }
 
     // 오버레이 배경 클릭으로 닫기

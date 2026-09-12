@@ -83,6 +83,18 @@ if (!empty($_GET['app_logout'])) {
     });
 }
 
+// Recheck account restrictions for every request, not only password login.
+if (!empty($_SESSION['ss_mb_id']) && isset($connect) && $connect) {
+    $restriction_stmt = $connect->prepare('SELECT mb_intercept_date FROM g5_member WHERE mb_id=?');
+    $restriction_stmt->bind_param('s', $_SESSION['ss_mb_id']);
+    $restriction_stmt->execute();
+    $restriction_member = $restriction_stmt->get_result()->fetch_assoc();
+    $restriction_stmt->close();
+    if (!empty($restriction_member['mb_intercept_date']) && $restriction_member['mb_intercept_date'] <= date('Ymd')) {
+        unset($_SESSION['ss_mb_id']);
+        $member = []; $is_member = false;
+    }
+}
 function is_gangnamunni_logged_in() {
     global $is_member, $member;
     return isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];

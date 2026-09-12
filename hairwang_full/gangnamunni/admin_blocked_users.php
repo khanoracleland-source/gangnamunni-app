@@ -15,13 +15,17 @@ require_once __DIR__ . '/dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 
-$connect = mysqli_connect($_DB_HOST, $_DB_USER, $_DB_PASSWORD, $_DB_NAME);
+$connect = mysqli_connect($_DB_HOST, $_DB_USER, $_DB_PASSWORD, $_DB_NAME, (int)$_DB_PORT);
 if (!$connect) die('DB 연결 실패');
 mysqli_set_charset($connect, 'utf8mb4');
 
 $theme = loadThemeSettings($connect);
 require_admin_login();
 require_permission('manage_reports');
+require_once __DIR__ . '/includes/admin_ugc_actions.php';
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+ugc_schema($connect);
+if (empty($_SESSION['ugc_admin_csrf'])) $_SESSION['ugc_admin_csrf'] = bin2hex(random_bytes(32));
 
 // ===== 테이블 자동 생성 (최초 1회) =====
 $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_blocked_users'");
@@ -43,91 +47,29 @@ if ($table_check && mysqli_num_rows($table_check) === 0) {
 $msg = '';
 $msg_type = 'success';
 
-// ===== POST Actions =====
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    // viewer 역할은 변경 불가
-    $admin_role = $_SESSION['ad_admin_role'] ?? 'viewer';
-    if ($admin_role === 'viewer') {
-        $msg = '뷰어 역할은 차단 관리를 변경할 수 없습니다.';
-        $msg_type = 'danger';
-        goto skip_action;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    ugc_post_guard();
+    $tab = 'user';
+    try {
+        $connect->begin_transaction();
+        $action = $_POST['action'] ?? '';
+        if ($action === 'admin_block') {
+            $tab = 'admin';
+            ugc_restrict($connect,trim((string)($_POST['blocked_id'] ?? '')),'user_banned',trim((string)($_POST['reason'] ?? '')),(int)($_SESSION['ad_admin_id'] ?? 0));
+            $msg = '사용자가 차단되었습니다.';
+        } elseif ($action === 'unblock') {
+            $tab = ($_POST['return_tab'] ?? '') === 'admin' ? 'admin' : 'user';
+            ugc_unblock($connect,(int)($_POST['id'] ?? 0));
+            $msg = '차단이 해제되었습니다.';
+        } else throw new DomainException('잘못된 요청입니다.');
+        $connect->commit();
+    } catch (Throwable $e) {
+        $connect->rollback(); $msg_type='danger';
+        $msg = $e instanceof DomainException ? $e->getMessage() : '처리하지 못했습니다. 변경사항은 취소되었습니다.';
+        if (!$e instanceof DomainException) error_log('UGC block admin: '.$e->getMessage());
     }
-
-    $action = $_POST['action'];
-
-    // 관리자 직접 차단
-    if ($action === 'admin_block') {
-        $blocked_id = trim($_POST['blocked_id'] ?? '');
-        $blocked_name = trim($_POST['blocked_name'] ?? '');
-        $reason = trim($_POST['reason'] ?? '');
-
-        if ($blocked_id === '') {
-            $msg = '차단할 사용자 ID를 입력해주세요.';
-            $msg_type = 'danger';
-        } else {
-            // 이미 관리자가 차단했는지 중복 확인
-            $dup_stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_blocked_users WHERE blocker_id = 'ADMIN' AND blocked_id = ?");
-            if ($dup_stmt) {
-                mysqli_stmt_bind_param($dup_stmt, 's', $blocked_id);
-                mysqli_stmt_execute($dup_stmt);
-                $dup_result = mysqli_stmt_get_result($dup_stmt);
-                if ($dup_result && mysqli_num_rows($dup_result) > 0) {
-                    $msg = '이미 관리자가 차단한 사용자입니다.';
-                    $msg_type = 'warning';
-                    mysqli_stmt_close($dup_stmt);
-                } else {
-                    mysqli_stmt_close($dup_stmt);
-
-                    // blocked_name이 비어있으면 g5_member에서 조회 시도
-                    if ($blocked_name === '') {
-                        $name_stmt = mysqli_prepare($connect, "SELECT mb_nick FROM g5_member WHERE mb_id = ? LIMIT 1");
-                        if ($name_stmt) {
-                            mysqli_stmt_bind_param($name_stmt, 's', $blocked_id);
-                            mysqli_stmt_execute($name_stmt);
-                            $name_r = mysqli_stmt_get_result($name_stmt);
-                            if ($name_r && $name_row = mysqli_fetch_assoc($name_r)) {
-                                $blocked_name = $name_row['mb_nick'] ?? '';
-                            }
-                            mysqli_stmt_close($name_stmt);
-                        }
-                    }
-
-                    $ins_stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_blocked_users (blocker_id, blocked_id, blocked_name, reason) VALUES ('ADMIN', ?, ?, ?)");
-                    if ($ins_stmt) {
-                        mysqli_stmt_bind_param($ins_stmt, 'sss', $blocked_id, $blocked_name, $reason);
-                        if (mysqli_stmt_execute($ins_stmt)) {
-                            header('Location: admin_blocked_users.php?tab=admin&msg=' . urlencode('사용자가 차단되었습니다.'));
-                            exit;
-                        } else {
-                            $msg = '차단 처리 실패: ' . mysqli_error($connect);
-                            $msg_type = 'danger';
-                        }
-                        mysqli_stmt_close($ins_stmt);
-                    }
-                }
-            }
-        }
-    }
-
-    // 차단 해제
-    if ($action === 'unblock') {
-        $id = intval($_POST['id'] ?? 0);
-        if ($id > 0) {
-            $del_stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_blocked_users WHERE id = ?");
-            if ($del_stmt) {
-                mysqli_stmt_bind_param($del_stmt, 'i', $id);
-                mysqli_stmt_execute($del_stmt);
-                mysqli_stmt_close($del_stmt);
-            }
-            // 이전 탭 유지
-            $return_tab = $_POST['return_tab'] ?? 'user';
-            header('Location: admin_blocked_users.php?tab=' . urlencode($return_tab) . '&msg=' . urlencode('차단이 해제되었습니다.'));
-            exit;
-        }
-    }
+    header('Location: admin_blocked_users.php?'.http_build_query(['tab'=>$tab,'msg'=>$msg,'msg_type'=>$msg_type]),true,303); exit;
 }
-skip_action:
-
 // GET ?msg= 파라미터 처리
 if (!empty($_GET['msg'])) {
     $msg = $_GET['msg'];
@@ -149,8 +91,8 @@ $stat_user_blocks = 0;
 $stat_admin_blocks = 0;
 
 $sr = mysqli_query($connect, "SELECT
-    SUM(CASE WHEN blocker_id != 'ADMIN' THEN 1 ELSE 0 END) AS user_cnt,
-    SUM(CASE WHEN blocker_id = 'ADMIN' THEN 1 ELSE 0 END) AS admin_cnt
+    SUM(CASE WHEN BINARY blocker_id != 'ADMIN' THEN 1 ELSE 0 END) AS user_cnt,
+    SUM(CASE WHEN BINARY blocker_id = 'ADMIN' THEN 1 ELSE 0 END) AS admin_cnt
     FROM gangnamunni_blocked_users");
 if ($sr && $s = mysqli_fetch_assoc($sr)) {
     $stat_user_blocks = (int)($s['user_cnt'] ?? 0);
@@ -164,9 +106,9 @@ $bind_types = '';
 $bind_values = [];
 
 if ($current_tab === 'admin') {
-    $where_clauses[] = "blocker_id = 'ADMIN'";
+    $where_clauses[] = "BINARY blocker_id = 'ADMIN'";
 } else {
-    $where_clauses[] = "blocker_id != 'ADMIN'";
+    $where_clauses[] = "BINARY blocker_id != 'ADMIN'";
 }
 
 if ($search !== '') {
@@ -276,6 +218,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         <div class="card-body">
             <form method="post" onsubmit="return confirm('이 사용자를 차단하시겠습니까?');">
                 <input type="hidden" name="action" value="admin_block">
+<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['ugc_admin_csrf'], ENT_QUOTES); ?>">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-3">
                         <label class="form-label fw-bold">사용자 ID <span class="text-danger">*</span></label>
@@ -387,6 +330,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <form method="post" class="d-inline"
                                   onsubmit="return confirm('차단을 해제하시겠습니까?\n\n대상: <?php echo htmlspecialchars(addslashes($row['blocked_id'])); ?>');">
                                 <input type="hidden" name="action" value="unblock">
+<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['ugc_admin_csrf'], ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $row['id']; ?>">
                                 <input type="hidden" name="return_tab" value="<?php echo htmlspecialchars($current_tab); ?>">
                                 <button type="submit" class="btn btn-outline-warning btn-sm" title="차단 해제">

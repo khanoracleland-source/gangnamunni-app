@@ -394,6 +394,6 @@ document.getElementById('communityReportPost').addEventListener('click', async f
     const target = communityActionTarget;
     await closeCommunityActions();
     if (!communitySheetUserId) { communitySheetLoginPrompt(); return; }
-    openReportModal(target.type, target.id, target.user, target.author);
+    openReportModal(target.type, target.id, target.user, target.author, target.url);
 });
 </script>

@@ -24,8 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/dbconfig.php';
+require_once __DIR__ . '/includes/admin_ugc_actions.php';
+require_once __DIR__ . '/includes/report_reasons.php';
 
-$connect = @mysqli_connect($_DB_HOST, $_DB_USER, $_DB_PASSWORD, $_DB_NAME);
+$connect = @mysqli_connect($_DB_HOST, $_DB_USER, $_DB_PASSWORD, $_DB_NAME, (int)$_DB_PORT);
 if (!$connect) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'DB 연결 실패'], JSON_UNESCAPED_UNICODE);
@@ -85,7 +87,7 @@ if (!empty($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] =
 // Gnuboard 회원 세션 확인
 if ($reporter_id === 0 && !empty($_SESSION['ss_mb_id'])) {
     $mb_id_escaped = mysqli_real_escape_string($connect, $_SESSION['ss_mb_id']);
-    $mb_result = mysqli_query($connect, "SELECT mb_no, mb_nick, mb_name FROM g5_member WHERE mb_id='{$mb_id_escaped}' LIMIT 1");
+    $mb_result = mysqli_query($connect, "SELECT mb_no, mb_nick, mb_name FROM g5_member WHERE mb_id='{$mb_id_escaped}' AND (mb_intercept_date='' OR mb_intercept_date > DATE_FORMAT(NOW(), '%Y%m%d')) LIMIT 1");
     if ($mb_result && $mb_row = mysqli_fetch_assoc($mb_result)) {
         $reporter_id = (int)$mb_row['mb_no'];
         $reporter_name = $mb_row['mb_nick'] ?: $mb_row['mb_name'] ?: $_SESSION['ss_mb_id'];
@@ -127,10 +129,10 @@ function autoHideContent($connect, $content_type, $content_id, $threshold) {
             $hide_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_qna SET is_public = 0 WHERE id = ?");
             break;
         case 'community':
-            $hide_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_community_posts SET is_active = 0 WHERE id = ?");
+            $hide_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_community_posts SET status = 'deleted' WHERE id = ?");
             break;
         case 'chat':
-            $hide_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_chat_messages SET is_hidden = 1 WHERE id = ?");
+            $hide_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_chat_messages SET message = '[관리자에 의해 삭제된 메시지입니다.]' WHERE id = ?");
             break;
         default:
             // comment, tip, event 등은 자동 숨김 미지원 (관리자 수동 처리)
@@ -165,6 +167,11 @@ if ($method === 'POST' && $action === '') {
     $content_type = trim($input['content_type'] ?? '');
     $content_id = intval($input['content_id'] ?? 0);
     $reason = trim($input['reason'] ?? '');
+    $multiple_reason_detail = null;
+    if (array_key_exists('reasons', $input)) {
+        try { [$reason, $multiple_reason_detail] = ugc_encode_report_reasons($input['reasons'], $input['reason_detail'] ?? ''); }
+        catch (InvalidArgumentException $e) { jsonError($e->getMessage(),400); }
+    }
 
     if (!in_array($content_type, $valid_content_types)) {
         jsonError('유효하지 않은 콘텐츠 유형입니다. 허용: ' . implode(', ', $valid_content_types));
@@ -190,12 +197,23 @@ if ($method === 'POST' && $action === '') {
     mysqli_stmt_close($dup_stmt);
 
     // 선택 파라미터
-    $reason_detail = trim($input['reason_detail'] ?? '');
+    $reason_detail = $multiple_reason_detail ?? trim($input['reason_detail'] ?? '');
     $content_url = trim($input['content_url'] ?? '');
     $content_snippet = trim($input['content_snippet'] ?? '');
     $reported_user_id = !empty($input['reported_user_id']) ? intval($input['reported_user_id']) : null;
     $reported_user_name = trim($input['reported_user_name'] ?? '');
 
+    if (in_array($content_type, ['community','comment','review','qna','chat'], true)) {
+        try {
+            $source = ugc_content($connect,$content_type,$content_id);
+            $author = ugc_author($connect,$content_type,$source);
+            $reported_user_id = (int)$author['mb_no'];
+            $reported_user_name = $author['mb_nick'];
+            $content_snippet = $source['content'] ?? $source['message'] ?? '';
+        } catch (DomainException $e) {
+            jsonError($e->getMessage(),400);
+        }
+    }
     // content_snippet 길이 제한 (DB VARCHAR 500)
     if (mb_strlen($content_snippet) > 500) {
         $content_snippet = mb_substr($content_snippet, 0, 497) . '...';

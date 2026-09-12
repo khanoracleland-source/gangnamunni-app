@@ -16,7 +16,7 @@ require_once __DIR__ . '/dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 
-$connect = mysqli_connect($_DB_HOST, $_DB_USER, $_DB_PASSWORD, $_DB_NAME);
+$connect = mysqli_connect($_DB_HOST, $_DB_USER, $_DB_PASSWORD, $_DB_NAME, (int)$_DB_PORT);
 if (!$connect) die('DB 연결 실패');
 mysqli_set_charset($connect, 'utf8mb4');
 $theme = loadThemeSettings($connect);
@@ -24,6 +24,11 @@ $theme = loadThemeSettings($connect);
 // 로그인 + 권한 체크 (admin/super_admin만 접근)
 require_admin_login();
 require_permission('manage_reports');
+require_once __DIR__ . '/includes/admin_ugc_actions.php';
+require_once __DIR__ . '/includes/report_reasons.php';
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+ugc_schema($connect);
+if (empty($_SESSION['ugc_admin_csrf'])) $_SESSION['ugc_admin_csrf'] = bin2hex(random_bytes(32));
 
 // ===== 라벨 매핑 (한국어) =====
 $reason_labels = [
@@ -61,7 +66,7 @@ $action_labels = [
     'none'            => '없음',
     'warning'         => '경고',
     'content_removed' => '콘텐츠삭제',
-    'user_suspended'  => '정지',
+    'user_suspended'  => '정지 (해제 시까지)',
     'user_banned'     => '영구차단',
 ];
 
@@ -98,163 +103,31 @@ if ($table_check && mysqli_num_rows($table_check) === 0) {
     mysqli_query($connect, $create_sql);
 }
 
-// ===== POST 액션 처리 =====
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    $action = $_POST['action'];
-    $admin_id = intval($_SESSION['ad_admin_id'] ?? 0);
-
-    // --- 개별 처리: 해결 ---
-    if ($action === 'resolve') {
-        $report_id    = intval($_POST['report_id'] ?? 0);
-        $action_taken = $_POST['action_taken'] ?? 'warning';
-        $action_note  = trim($_POST['action_note'] ?? '');
-
-        // action_taken 허용값 검증
-        $allowed_actions = ['warning', 'content_removed', 'user_suspended', 'user_banned'];
-        if ($report_id > 0 && in_array($action_taken, $allowed_actions)) {
-            // 신고 레코드 업데이트
-            $stmt = mysqli_prepare($connect,
-                "UPDATE gangnamunni_content_reports
-                 SET status = 'resolved', action_taken = ?, action_note = ?, admin_id = ?, resolved_at = NOW()
-                 WHERE id = ? AND status IN ('pending', 'investigating')"
-            );
-            if ($stmt) {
-                mysqli_stmt_bind_param($stmt, 'ssii', $action_taken, $action_note, $admin_id, $report_id);
-                mysqli_stmt_execute($stmt);
-                $affected = mysqli_stmt_affected_rows($stmt);
-                mysqli_stmt_close($stmt);
-
-                // 콘텐츠 삭제 조치인 경우 — 원본 콘텐츠 비활성화
-                if ($action_taken === 'content_removed' && $affected > 0) {
-                    // 해당 신고의 콘텐츠 정보 조회
-                    $rpt_stmt = mysqli_prepare($connect, "SELECT content_type, content_id FROM gangnamunni_content_reports WHERE id = ?");
-                    if ($rpt_stmt) {
-                        mysqli_stmt_bind_param($rpt_stmt, 'i', $report_id);
-                        mysqli_stmt_execute($rpt_stmt);
-                        $rpt_res = mysqli_stmt_get_result($rpt_stmt);
-                        $rpt_row = mysqli_fetch_assoc($rpt_res);
-                        mysqli_stmt_close($rpt_stmt);
-
-                        if ($rpt_row) {
-                            $ct = $rpt_row['content_type'];
-                            $cid = intval($rpt_row['content_id']);
-
-                            // 콘텐츠 유형별 비활성화 테이블 매핑
-                            $deactivate_map = [
-                                'review'    => ['table' => 'hospital_reviews',            'col' => 'is_active'],
-                                'qna'       => ['table' => 'gangnamunni_qna',             'col' => 'is_active'],
-                                'community' => ['table' => 'gangnamunni_community',       'col' => 'is_active'],
-                                'comment'   => ['table' => 'gangnamunni_comments',        'col' => 'is_active'],
-                                'tip'       => ['table' => 'gangnamunni_tips',            'col' => 'is_active'],
-                                'event'     => ['table' => 'gangnamunni_events',          'col' => 'is_active'],
-                            ];
-
-                            if (isset($deactivate_map[$ct]) && $cid > 0) {
-                                $tbl = $deactivate_map[$ct]['table'];
-                                $col = $deactivate_map[$ct]['col'];
-                                // 안전한 테이블/컬럼명 (하드코딩 매핑이므로 injection 없음)
-                                $deact_sql = "UPDATE `{$tbl}` SET `{$col}` = 0 WHERE id = ?";
-                                $deact_stmt = mysqli_prepare($connect, $deact_sql);
-                                if ($deact_stmt) {
-                                    mysqli_stmt_bind_param($deact_stmt, 'i', $cid);
-                                    mysqli_stmt_execute($deact_stmt);
-                                    mysqli_stmt_close($deact_stmt);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 사용자 차단 조치인 경우 — 로그 기록 (향후 차단 테이블 확장 대비)
-                if ($action_taken === 'user_banned' && $affected > 0) {
-                    error_log("[admin_content_reports] User ban logged: report_id={$report_id}, admin_id={$admin_id}");
-                }
-
-                if ($affected > 0) {
-                    $msg = '신고 #' . $report_id . ' 처리가 완료되었습니다.';
-                    $msg_type = 'success';
-                } else {
-                    $msg = '이미 처리된 신고이거나 존재하지 않는 신고입니다.';
-                    $msg_type = 'warning';
-                }
-            }
-        } else {
-            $msg = '잘못된 요청입니다.';
-            $msg_type = 'danger';
-        }
+// All single and bulk actions use the same transaction and side effects.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    ugc_post_guard();
+    try {
+        $action = (string)($_POST['action'] ?? '');
+        if (!in_array($action, ['resolve','bulk_resolve','dismiss'], true)) throw new DomainException('잘못된 요청입니다.');
+        $ids = $action === 'bulk_resolve' ? ($_POST['report_ids'] ?? []) : [$_POST['report_id'] ?? 0];
+        if (!is_array($ids) || !$ids || count($ids)>100) throw new DomainException('1~100개의 신고를 선택해주세요.');
+        $ids = array_values(array_unique(array_map('intval',$ids))); sort($ids);
+        if (min($ids)<1) throw new DomainException('잘못된 신고 번호입니다.');
+        $taken = $action === 'dismiss' ? 'dismiss' : (string)($_POST[$action === 'bulk_resolve' ? 'bulk_action_taken' : 'action_taken'] ?? '');
+        $note = trim((string)($_POST[$action === 'bulk_resolve' ? 'bulk_action_note' : 'action_note'] ?? ''));
+        $connect->begin_transaction();
+        foreach ($ids as $id) ugc_resolve($connect,$id,$taken,$note,(int)($_SESSION['ad_admin_id'] ?? 0));
+        $connect->commit();
+        $msg = count($ids).'건의 신고 처리가 완료되었습니다.';
+    } catch (Throwable $e) {
+        $connect->rollback();
+        $msg_type='danger';
+        $msg = $e instanceof DomainException ? $e->getMessage() : '처리하지 못했습니다. 변경사항은 취소되었습니다.';
+        if (!$e instanceof DomainException) error_log('UGC admin: '.$e->getMessage());
     }
-
-    // --- 개별 처리: 기각 ---
-    if ($action === 'dismiss') {
-        $report_id = intval($_POST['report_id'] ?? 0);
-        if ($report_id > 0) {
-            $stmt = mysqli_prepare($connect,
-                "UPDATE gangnamunni_content_reports
-                 SET status = 'dismissed', admin_id = ?, resolved_at = NOW()
-                 WHERE id = ? AND status IN ('pending', 'investigating')"
-            );
-            if ($stmt) {
-                mysqli_stmt_bind_param($stmt, 'ii', $admin_id, $report_id);
-                mysqli_stmt_execute($stmt);
-                $affected = mysqli_stmt_affected_rows($stmt);
-                mysqli_stmt_close($stmt);
-
-                if ($affected > 0) {
-                    $msg = '신고 #' . $report_id . '이(가) 기각되었습니다.';
-                    $msg_type = 'info';
-                } else {
-                    $msg = '이미 처리된 신고이거나 존재하지 않는 신고입니다.';
-                    $msg_type = 'warning';
-                }
-            }
-        }
-    }
-
-    // --- 일괄 처리: 해결 ---
-    if ($action === 'bulk_resolve') {
-        $ids = $_POST['report_ids'] ?? [];
-        $bulk_action = $_POST['bulk_action_taken'] ?? 'warning';
-        $bulk_note   = trim($_POST['bulk_action_note'] ?? '');
-
-        $allowed_actions = ['warning', 'content_removed', 'user_suspended', 'user_banned'];
-        if (!empty($ids) && is_array($ids) && in_array($bulk_action, $allowed_actions)) {
-            $resolved_count = 0;
-            foreach ($ids as $rid) {
-                $rid = intval($rid);
-                if ($rid <= 0) continue;
-
-                $stmt = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_content_reports
-                     SET status = 'resolved', action_taken = ?, action_note = ?, admin_id = ?, resolved_at = NOW()
-                     WHERE id = ? AND status IN ('pending', 'investigating')"
-                );
-                if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, 'ssii', $bulk_action, $bulk_note, $admin_id, $rid);
-                    mysqli_stmt_execute($stmt);
-                    if (mysqli_stmt_affected_rows($stmt) > 0) $resolved_count++;
-                    mysqli_stmt_close($stmt);
-                }
-            }
-            $msg = $resolved_count . '건의 신고가 일괄 처리되었습니다.';
-            $msg_type = 'success';
-        } else {
-            $msg = '처리할 신고를 선택해주세요.';
-            $msg_type = 'warning';
-        }
-    }
-
-    // POST 후 리다이렉트 (PRG 패턴)
-    if ($msg) {
-        header('Location: admin_content_reports.php?msg=' . urlencode($msg) . '&msg_type=' . urlencode($msg_type)
-            . (isset($_GET['status']) ? '&status=' . urlencode($_GET['status']) : '')
-            . (isset($_GET['content_type']) ? '&content_type=' . urlencode($_GET['content_type']) : '')
-            . (isset($_GET['reason']) ? '&reason=' . urlencode($_GET['reason']) : '')
-            . (isset($_GET['page']) ? '&page=' . intval($_GET['page']) : '')
-        );
-        exit;
-    }
+    header('Location: admin_content_reports.php?'.http_build_query(array_merge(array_intersect_key($_GET,array_flip(['status','content_type','reason','page','q','date_from','date_to'])),['msg'=>$msg,'msg_type'=>$msg_type])),true,303);
+    exit;
 }
-
 // GET 메시지 처리
 if (isset($_GET['msg'])) {
     $msg = $_GET['msg'];
@@ -288,9 +161,14 @@ if ($filter_content_type !== '') {
     $bind_values[] = $filter_content_type;
 }
 if ($filter_reason !== '') {
-    $where_clauses[] = 'r.reason = ?';
-    $bind_types .= 's';
-    $bind_values[] = $filter_reason;
+    $reason_conditions = ['r.reason = ?'];
+    $bind_types .= 's'; $bind_values[] = $filter_reason;
+    foreach (ugc_report_reason_options() as $reason_id => $option) {
+        if ($option[1] !== $filter_reason) continue;
+        $reason_conditions[] = "JSON_CONTAINS(IF(JSON_VALID(r.reason_detail), r.reason_detail, '{}'), ?, '$.reasons')";
+        $bind_types .= 's'; $bind_values[] = json_encode($reason_id);
+    }
+    $where_clauses[] = '('.implode(' OR ', $reason_conditions).')';
 }
 if ($filter_date_from !== '') {
     $where_clauses[] = 'r.created_at >= ?';
@@ -623,7 +501,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <!-- 체크박스 -->
                     <td>
                         <?php if (in_array($rpt['status'], ['pending', 'investigating'])): ?>
-                        <input type="checkbox" class="form-check-input row-check" value="<?php echo intval($rpt['id']); ?>" onchange="updateBulkActions()">
+                        <input type="checkbox" class="form-check-input row-check" data-type="<?php echo htmlspecialchars($rpt['content_type'], ENT_QUOTES); ?>" value="<?php echo intval($rpt['id']); ?>" onchange="updateBulkActions()">
                         <?php endif; ?>
                     </td>
                     <!-- # -->
@@ -653,8 +531,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <div class="content-snippet" title="<?php echo htmlspecialchars($rpt['content_snippet'] ?? ''); ?>">
                             <?php echo htmlspecialchars(mb_substr($rpt['content_snippet'] ?? '-', 0, 40, 'UTF-8')); ?>
                         </div>
-                        <?php if (!empty($rpt['content_url'])): ?>
-                        <a href="<?php echo htmlspecialchars($rpt['content_url']); ?>" target="_blank" class="text-primary" style="font-size:11px;">
+                        <?php if (!empty($rpt['content_url']) && preg_match('~^(https?://|/(?!/))~i', $rpt['content_url'])): ?>
+                        <a href="<?php echo htmlspecialchars($rpt['content_url']); ?>" target="_blank" rel="noopener noreferrer" class="text-primary" style="font-size:11px;">
                             <i class="bi bi-box-arrow-up-right"></i> 보기
                         </a>
                         <?php endif; ?>
@@ -663,17 +541,16 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <td style="font-size:13px;"><?php echo htmlspecialchars($rpt['reporter_name'] ?: '(탈퇴)'); ?></td>
                     <!-- 피신고자 -->
                     <td style="font-size:13px;"><?php echo htmlspecialchars($rpt['reported_user_name'] ?: '(탈퇴)'); ?></td>
-                    <!-- 사유 -->
+                    <!-- All selected reasons, including legacy single-reason reports. -->
                     <td>
-                        <span class="badge bg-outline-secondary border" style="font-size:11px;">
-                            <?php echo $reason_labels[$rpt['reason']] ?? $rpt['reason']; ?>
-                        </span>
-                        <?php if (!empty($rpt['reason_detail'])): ?>
-                        <i class="bi bi-chat-left-text text-body-secondary" style="font-size:11px;cursor:pointer;"
-                           data-bs-toggle="tooltip" title="<?php echo htmlspecialchars(mb_substr($rpt['reason_detail'], 0, 100, 'UTF-8')); ?>"></i>
+                        <?php [$selected_reason_labels, $report_detail] = ugc_display_report_reasons($rpt, $reason_labels); ?>
+                        <?php foreach ($selected_reason_labels as $reason_label): ?>
+                        <span class="badge bg-light text-dark border d-inline-block mb-1" style="font-size:11px;"><?php echo htmlspecialchars($reason_label, ENT_QUOTES); ?></span>
+                        <?php endforeach; ?>
+                        <?php if ($report_detail !== ''): ?>
+                        <div style="font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;"><?php echo htmlspecialchars($report_detail, ENT_QUOTES); ?></div>
                         <?php endif; ?>
-                    </td>
-                    <!-- 접수일시 -->
+                    </td>                    <!-- 접수일시 -->
                     <td style="font-size:12px;">
                         <?php echo date('Y-m-d H:i', $created_ts); ?>
                     </td>
@@ -682,12 +559,13 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <?php if (in_array($rpt['status'], ['pending', 'investigating'])): ?>
                         <!-- 처리 버튼 -->
                         <button type="button" class="btn btn-sm btn-success" title="처리"
-                                onclick="openResolveModal(<?php echo intval($rpt['id']); ?>, '<?php echo htmlspecialchars(addslashes($rpt['content_snippet'] ?? ''), ENT_QUOTES); ?>')">
+                                data-snippet="<?php echo htmlspecialchars($rpt['content_snippet'] ?? '', ENT_QUOTES); ?>" data-type="<?php echo htmlspecialchars($rpt['content_type'], ENT_QUOTES); ?>" onclick="openResolveModal(<?php echo intval($rpt['id']); ?>, this.dataset.snippet, this.dataset.type)">
                             <i class="bi bi-check-lg"></i> 처리
                         </button>
                         <!-- 기각 버튼 -->
                         <form method="POST" class="d-inline" onsubmit="return confirm('신고 #<?php echo intval($rpt['id']); ?>을(를) 기각하시겠습니까?');">
                             <input type="hidden" name="action" value="dismiss">
+<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['ugc_admin_csrf'], ENT_QUOTES); ?>">
                             <input type="hidden" name="report_id" value="<?php echo intval($rpt['id']); ?>">
                             <?php
                             // 현재 필터를 hidden으로 전달
@@ -775,6 +653,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         <div class="modal-content">
             <form method="POST" id="resolveForm">
                 <input type="hidden" name="action" value="resolve">
+<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['ugc_admin_csrf'], ENT_QUOTES); ?>">
                 <input type="hidden" name="report_id" id="resolveReportId">
                 <?php
                 // 현재 필터를 hidden으로 전달
@@ -798,7 +677,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="action_taken" id="act_warning" value="warning" checked>
                                 <label class="form-check-label" for="act_warning">
-                                    <i class="bi bi-exclamation-triangle text-warning"></i> 경고
+                                    <i class="bi bi-exclamation-triangle text-warning"></i> 경고 기록
                                 </label>
                             </div>
                             <div class="form-check">
@@ -810,7 +689,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="action_taken" id="act_suspend" value="user_suspended">
                                 <label class="form-check-label" for="act_suspend">
-                                    <i class="bi bi-pause-circle text-info"></i> 사용자 정지
+                                    <i class="bi bi-pause-circle text-info"></i> 사용자 정지 (관리자 해제 시까지)
                                 </label>
                             </div>
                             <div class="form-check">
@@ -843,6 +722,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         <div class="modal-content">
             <form method="POST" id="bulkResolveForm">
                 <input type="hidden" name="action" value="bulk_resolve">
+<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['ugc_admin_csrf'], ENT_QUOTES); ?>">
                 <div id="bulkReportIdsContainer"></div>
                 <div class="modal-header">
                     <h5 class="modal-title"><i class="bi bi-check-all"></i> 일괄 처리</h5>
@@ -855,7 +735,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <select name="bulk_action_taken" class="form-select">
                             <option value="warning">경고</option>
                             <option value="content_removed">콘텐츠 삭제</option>
-                            <option value="user_suspended">사용자 정지</option>
+                            <option value="user_suspended">사용자 정지 (관리자 해제 시까지)</option>
                             <option value="user_banned">영구 차단</option>
                         </select>
                     </div>
@@ -876,9 +756,11 @@ require_once __DIR__ . '/includes/admin_header.php';
 <!-- ===== JavaScript ===== -->
 <script>
 // 처리 모달 열기
-function openResolveModal(reportId, snippet) {
+function openResolveModal(reportId, snippet, contentType) {
     document.getElementById('resolveReportId').value = reportId;
     document.getElementById('resolveSnippet').textContent = '신고 #' + reportId + ': ' + (snippet || '');
+    ['act_suspend','act_ban'].forEach(function(id) { document.getElementById(id).disabled = ['tip','event'].includes(contentType); });
+    document.querySelector('#resolveForm textarea').value = '';
     // 라디오 초기화
     document.getElementById('act_warning').checked = true;
     var modal = new bootstrap.Modal(document.getElementById('resolveModal'));
@@ -890,6 +772,9 @@ document.getElementById('bulkResolveModal').addEventListener('show.bs.modal', fu
     var container = document.getElementById('bulkReportIdsContainer');
     container.innerHTML = '';
     var checked = document.querySelectorAll('.row-check:checked');
+    var noMember = Array.from(checked).some(function(cb) { return ['tip','event'].includes(cb.dataset.type); });
+    document.querySelectorAll('[name=bulk_action_taken] option').forEach(function(option) { option.disabled = noMember && ['user_suspended','user_banned'].includes(option.value); });
+    document.querySelector('[name=bulk_action_taken]').value = 'warning';
     checked.forEach(function(cb) {
         var input = document.createElement('input');
         input.type = 'hidden';
@@ -953,7 +838,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 // 새 신고 감지 → 자동 리로드
-                if (data.pending > lastPending) {
+                if (data.pending > lastPending && !document.querySelector('.modal.show') && !document.querySelector('.row-check:checked')) {
                     window.location.reload();
                     return;
                 }

@@ -349,9 +349,9 @@ $escaped_category = mysqli_real_escape_string($connect, $category);
 // 꿀팁 데이터 가져오기
 $tips = [];
 if (!empty($category)) {
-    $query = "SELECT * FROM gangnamunni_tips WHERE category = '{$escaped_category}' ORDER BY created_at DESC LIMIT 50";
+    $query = "SELECT * FROM gangnamunni_tips WHERE is_active=1 AND category = '{$escaped_category}' ORDER BY created_at DESC LIMIT 50";
 } else {
-    $query = "SELECT * FROM gangnamunni_tips ORDER BY created_at DESC LIMIT 50";
+    $query = "SELECT * FROM gangnamunni_tips WHERE is_active=1 ORDER BY created_at DESC LIMIT 50";
 }
 
 $result = mysqli_query($connect, $query);
@@ -362,7 +362,7 @@ if ($result) {
 }
 
 // 카테고리 목록
-$categories_query = "SELECT DISTINCT category FROM gangnamunni_tips ORDER BY category";
+$categories_query = "SELECT DISTINCT category FROM gangnamunni_tips WHERE is_active=1 ORDER BY category";
 $categories_result = mysqli_query($connect, $categories_query);
 $categories = [];
 if ($categories_result) {

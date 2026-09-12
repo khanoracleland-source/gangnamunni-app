@@ -28,7 +28,7 @@ if ($tip_id <= 0) {
 }
 
 // 꿀팁 정보 조회
-$query = "SELECT * FROM gangnamunni_tips WHERE id = {$tip_id}";
+$query = "SELECT * FROM gangnamunni_tips WHERE is_active=1 AND id = {$tip_id}";
 $result = mysqli_query($connect, $query);
 
 if (!$result || mysqli_num_rows($result) == 0) {
@@ -41,7 +41,7 @@ $tip = mysqli_fetch_assoc($result);
 mysqli_query($connect, "UPDATE gangnamunni_tips SET views = views + 1 WHERE id = {$tip_id}");
 
 // 관련 꿀팁 (같은 카테고리)
-$related_query = "SELECT * FROM gangnamunni_tips WHERE category = '" . mysqli_real_escape_string($connect, $tip['category']) . "' AND id != {$tip_id} ORDER BY created_at DESC LIMIT 3";
+$related_query = "SELECT * FROM gangnamunni_tips WHERE is_active=1 AND category = '" . mysqli_real_escape_string($connect, $tip['category']) . "' AND id != {$tip_id} ORDER BY created_at DESC LIMIT 3";
 $related_result = mysqli_query($connect, $related_query);
 $related_tips = [];
 if ($related_result) {
