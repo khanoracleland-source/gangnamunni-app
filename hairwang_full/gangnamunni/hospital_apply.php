@@ -119,10 +119,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
     $contact_name = trim($_POST['contact_name'] ?? '');
     $contact_phone = trim($_POST['contact_phone'] ?? '');
     $address = trim($_POST['address'] ?? '');
-    $categories_raw = trim($_POST['categories'] ?? '');
-    $categories = !empty($categories_raw) ? json_encode(explode(',', $categories_raw), JSON_UNESCAPED_UNICODE) : '[]';
-    $treatment_tags_raw = trim($_POST['treatment_tags'] ?? '');
-    $treatment_tags = !empty($treatment_tags_raw) ? json_encode(explode(',', $treatment_tags_raw), JSON_UNESCAPED_UNICODE) : '[]';
+    // 시술 선택은 병원 카테고리/태그와 별개다. 신청 시 직접 입력받지 않는 값은 비워 둔다.
+    $categories = '[]';
+    $treatment_tags = '[]';
     $business_hours_data = normalizeHospitalApplyBusinessHours($_POST['business_hours'] ?? '');
     $business_hours = json_encode($business_hours_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $introduction = trim($_POST['introduction'] ?? '');
@@ -890,8 +889,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                             </div>
                         </div>
                         <div class="mt-2 d-grid gap-2 w-100" id="selectedTreatmentDetails"></div>
-                        <input type="hidden" name="treatment_tags" id="treatmentTagsInput">
-                        <input type="hidden" name="categories" id="categoriesInput">
                         </div>
                     </div>
                 </div>
@@ -1133,13 +1130,6 @@ function refreshSelectedTreatments() {
     });
     Object.keys(existing).forEach(function(id) { existing[id].remove(); });
     document.getElementById('selectedTreatmentCount').textContent = selected.length + '개 선택';
-    document.getElementById('categoriesInput').value = selected.map(function(cb) { return cb.dataset.name; }).join(',');
-    var categoryNames = [];
-    selected.forEach(function(cb) {
-        var filter = document.querySelector('.treatment-filter[data-cat="' + cb.dataset.category + '"]');
-        if (filter && categoryNames.indexOf(filter.textContent.trim()) === -1) categoryNames.push(filter.textContent.trim());
-    });
-    document.getElementById('treatmentTagsInput').value = categoryNames.join(',');
 }
 document.querySelectorAll('.application-treatment-check').forEach(function(checkbox) {
     checkbox.addEventListener('change', refreshSelectedTreatments);

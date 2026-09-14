@@ -285,7 +285,7 @@ $page_title = '내 예약';
         .header { height: 64px; padding: 0 16px; border-bottom: 0; background: #fff; }
         .header .back { font-size: 26px; }
         .header h1 { font-size: 18px; font-weight: 650; white-space: nowrap; }
-        .tabs { padding-top: 34px; background: #fff; border-bottom-color: #ccc; }
+        .tabs { background: #fff; border-bottom-color: #ccc; }
         .tab-btn { padding: 15px 8px 13px; font-size: 18px; font-weight: 500; color: #111; }
         .tab-btn.active { font-weight: 650; }
         .tab-count { margin-left: 3px; }
