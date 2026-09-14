@@ -1807,26 +1807,6 @@ $page_js = '
     buildTimeGrid();
     window.buildTimeGrid = buildTimeGrid; // 날짜 변경 시 재생성용(오늘 지난 시간 재평가)
 
-    var treatmentSheetScrollY = 0;
-    function lockTreatmentSheetBackground() {
-        treatmentSheetScrollY = window.scrollY || window.pageYOffset || 0;
-        document.body.style.position = "fixed";
-        document.body.style.top = "-" + treatmentSheetScrollY + "px";
-        document.body.style.left = "0";
-        document.body.style.right = "0";
-        document.body.style.width = "100%";
-        document.body.style.overflow = "hidden";
-    }
-    function unlockTreatmentSheetBackground() {
-        document.body.style.position = "";
-        document.body.style.top = "";
-        document.body.style.left = "";
-        document.body.style.right = "";
-        document.body.style.width = "";
-        document.body.style.overflow = "";
-        window.scrollTo(0, treatmentSheetScrollY);
-    }
-
     // 시술 선택 시트(옵션 변경)
     function openTreatmentSheet() {
         var s = document.getElementById("treatmentSheet");
@@ -1838,81 +1818,12 @@ $page_js = '
         s.querySelectorAll(".package-item").forEach(function(el) {
             markSheetItem(el, !!selectedPackage && parseInt(el.getAttribute("data-package-id"), 10) === selectedPackage.id);
         });
-        var panel = s.querySelector(".treatment-sheet");
-        if (panel) {
-            panel.classList.remove("is-closing", "is-dragging", "is-snapping", "is-opening");
-            panel.style.transform = "";
-            void panel.offsetWidth;
-            panel.classList.add("is-opening");
-            window.setTimeout(function() { panel.classList.remove("is-opening"); }, 220);
-        }
-        lockTreatmentSheetBackground();
-        s.classList.add("open");
+        window.bookingTreatmentMotion.open();
     }
     function closeTreatmentSheet() {
-        var s = document.getElementById("treatmentSheet");
-        if (!s || !s.classList.contains("open")) return;
-        var panel = s.querySelector(".treatment-sheet");
-        if (!panel) {
-            s.classList.remove("open");
-            unlockTreatmentSheetBackground();
-            return;
-        }
-        panel.classList.remove("is-dragging", "is-snapping", "is-opening");
-        panel.classList.add("is-closing");
-        // 드래그로 이미 내려간 위치가 있으면 0으로 되감지 않고 그 자리에서
-        // 이어서 화면 밖으로 미끄러지듯 닫는다 (되감김 방지).
-        requestAnimationFrame(function() {
-            panel.style.transform = "translateY(110%)";
-        });
-        window.setTimeout(function() {
-            s.classList.remove("open");
-            panel.classList.remove("is-closing");
-            panel.style.transform = "";
-            unlockTreatmentSheetBackground();
-        }, 220);
+        return window.bookingTreatmentMotion.close();
     }
 
-    (function() {
-        var overlay = document.getElementById("treatmentSheet");
-        if (!overlay) return;
-        var panel = overlay.querySelector(".treatment-sheet");
-        var handle = overlay.querySelector(".sheet-handle");
-        if (!panel || !handle) return;
-        var startY = 0, currentY = 0, startedAt = 0, dragging = false;
-
-        handle.addEventListener("pointerdown", function(e) {
-            if (!overlay.classList.contains("open")) return;
-            dragging = true; startY = e.clientY; currentY = 0; startedAt = Date.now();
-            panel.classList.remove("is-closing", "is-snapping", "is-opening");
-            panel.classList.add("is-dragging");
-            handle.setPointerCapture(e.pointerId);
-            e.preventDefault();
-        });
-        handle.addEventListener("pointermove", function(e) {
-            if (!dragging) return;
-            var delta = e.clientY - startY;
-            currentY = Math.max(0, delta);
-            panel.style.transform = "translateY(" + currentY + "px)";
-            e.preventDefault();
-        });
-        function finishDrag(e) {
-            if (!dragging) return;
-            dragging = false;
-            var velocity = currentY / Math.max(Date.now() - startedAt, 1);
-            panel.classList.remove("is-dragging");
-            if (currentY >= 90 || velocity > .65) {
-                closeTreatmentSheet();
-            } else {
-                panel.classList.add("is-snapping");
-                panel.style.transform = "translateY(0)";
-                window.setTimeout(function() { panel.classList.remove("is-snapping"); }, 220);
-            }
-            if (handle.hasPointerCapture && handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
-        }
-        handle.addEventListener("pointerup", finishDrag);
-        handle.addEventListener("pointercancel", finishDrag);
-    })();
     // 시트 카드의 선택 표시(테두리 강조)와 스크린리더 상태를 함께 갱신한다.
     function markSheetItem(el, on) {
         if (!el) return;
@@ -2186,10 +2097,7 @@ $page_js = '
             closeBookingConfirm();
             var bookingsLink = document.getElementById("successBookingsLink");
             if (bookingsLink && data.bookings_url) bookingsLink.href = data.bookings_url;
-            var successOverlay = document.getElementById("bookingSuccessOverlay");
-            successOverlay.classList.add("open");
-            successOverlay.setAttribute("aria-hidden", "false");
-            document.body.style.overflow = "hidden";
+            window.bookingSuccessMotion.open();
             lockSuccessScreen();
         } catch (error) {
             alert(error.message || "예약 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -2237,8 +2145,19 @@ $page_js = '
         history.pushState({ bookingSuccessLocked: true }, "", window.location.href);
         window.addEventListener("popstate", keepBookingSuccessOpen);
         var firstAction = overlay.querySelector(".success-action.primary");
-        if (firstAction) firstAction.focus();
+        if (firstAction) firstAction.focus({ preventScroll: true });
     }
+    function unlockSuccessScreen() {
+        successExitAllowed = true;
+        window.removeEventListener("popstate", keepBookingSuccessOpen);
+        successLockedElements.forEach(function(item) {
+            if (!item.el || !item.el.isConnected) return;
+            if (item.tabindex === null) item.el.removeAttribute("tabindex");
+            else item.el.setAttribute("tabindex", item.tabindex);
+        });
+        successLockedElements = [];
+    }
+    window.unlockSuccessScreen = unlockSuccessScreen;
     function keepBookingSuccessOpen() {
         if (successExitAllowed) return;
         var overlay = document.getElementById("bookingSuccessOverlay");
@@ -2529,9 +2448,10 @@ include __DIR__ . '/includes/header.php';
     </div>
 
     <!-- 2단계: 예약 요청 접수 완료 (아래에서 올라오는 바텀시트) -->
-    <div class="booking-success-overlay" id="bookingSuccessOverlay" aria-hidden="true">
-        <section class="booking-success-sheet" role="dialog" aria-modal="true" aria-labelledby="bookingSuccessTitle">
-            <div class="success-sheet-handle" aria-hidden="true"></div>
+    <div class="booking-success-overlay booking-motion-overlay" id="bookingSuccessOverlay" tabindex="-1" aria-hidden="true">
+        <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="bookingSuccessTitle">
+            <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
             <div class="success-check"><i class="bi bi-check-lg"></i></div>
             <h2 class="success-sheet-title" id="bookingSuccessTitle">예약 요청이 접수되었어요!</h2>
             <p class="success-sheet-desc">원하시는 일정으로<br>병원에 예약 가능 여부를 확인하고 있어요</p>
@@ -2543,7 +2463,8 @@ include __DIR__ . '/includes/header.php';
                     <div class="success-alert-copy">예약 진행 상황은 알림(푸시)으로 안내해드려요<br>알림을 허용해두시면 빠르게 확인하실 수 있어요</div>
                 </div>
             </div>
-            <div class="success-actions">
+            </div>
+            <div class="success-actions booking-motion-footer">
                 <a href="detail.php?id=<?php echo (int)$hospital_id; ?><?php echo $booking_from_wishlist ? '&from=my_wishlist' : ''; ?>" class="success-action primary">확인했어요</a>
                 <a href="my_bookings.php" class="success-action" id="successBookingsLink">내 예약 현황</a>
             </div>
@@ -2591,9 +2512,10 @@ include __DIR__ . '/includes/header.php';
     if ($preselected_sheet_item !== null) array_unshift($sheet_items, $preselected_sheet_item);
     $sheet_packages = $booking_packages;
     ?>
-    <div class="treatment-sheet-overlay" id="treatmentSheet" onclick="if(event.target===this)closeTreatmentSheet()">
-        <div class="treatment-sheet" role="dialog" aria-modal="true" aria-labelledby="treatmentSheetTitle">
-            <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="treatment-sheet-overlay booking-motion-overlay" id="treatmentSheet" tabindex="-1">
+        <div class="treatment-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="treatmentSheetTitle">
+            <button type="button" class="sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
             <h2 class="sheet-title" id="treatmentSheetTitle">옵션 선택</h2>
             <div class="sheet-list" role="group" aria-labelledby="treatmentSheetTitle">
                 <?php if (!empty($sheet_packages)): ?>
@@ -2655,7 +2577,8 @@ include __DIR__ . '/includes/header.php';
                 </button>
                 <?php endforeach; ?>
             </div>
-            <div class="sheet-footer">
+            </div>
+            <div class="sheet-footer booking-motion-footer">
                 <button type="button" class="sheet-confirm" onclick="closeTreatmentSheet()">선택 완료</button>
             </div>
         </div>
@@ -2663,6 +2586,8 @@ include __DIR__ . '/includes/header.php';
 
 
     <?php endif; ?>
+    <link rel="stylesheet" href="assets/css/booking-sheets.css">
+    <script src="assets/js/booking-sheets.js"></script>
 
 <?php
 // ========================================
