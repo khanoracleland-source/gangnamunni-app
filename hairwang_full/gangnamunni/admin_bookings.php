@@ -16,6 +16,32 @@ if (empty($_SESSION['admin_bookings_csrf'])) {
 }
 $admin_bookings_csrf = $_SESSION['admin_bookings_csrf'];
 
+$is_admin_bookings_ajax = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest'
+    || (isset($_POST['ajax']) && $_POST['ajax'] === '1');
+$admin_bookings_ajax_payload = [];
+function admin_bookings_json_response($success, $message, $type = 'success', array $payload = []) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(array_merge([
+        'success' => (bool)$success,
+        'message' => (string)$message,
+        'type' => (string)$type,
+    ], $payload), JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+function admin_booking_status_action_options($current_status, array $labels, $has_doctor = false) {
+    $flow_actions = [
+        'pending' => [['checking', '병원 확인 중']],
+        'hospital_checking' => $has_doctor ? [['confirm', '예약확정'], ['cancel', '예약취소']] : [['cancel', '예약취소']],
+        'confirmed' => [['complete', '시술완료']],
+    ];
+    $current_label = $labels[$current_status] ?? $current_status;
+    echo '<option value="" selected disabled>현재: ' . htmlspecialchars($current_label, ENT_QUOTES) . '</option>';
+    foreach ($flow_actions[$current_status] ?? [] as $option) {
+        echo '<option value="' . htmlspecialchars($option[0], ENT_QUOTES) . '">' . htmlspecialchars($option[1], ENT_QUOTES) . '</option>';
+    }
+}
+
 $_booking_schema_ok = true;
 foreach (['doctor_id', 'doctor_name'] as $_col) {
     try {
@@ -147,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'export_
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if (empty($_POST['admin_csrf']) || !hash_equals($admin_bookings_csrf, (string)$_POST['admin_csrf'])) {
+        if ($is_admin_bookings_ajax) admin_bookings_json_response(false, '요청이 만료되었습니다. 페이지를 새로고침해주세요.', 'danger');
         http_response_code(403);
         exit('요청이 만료되었습니다. 페이지를 새로고침해주세요.');
     }
@@ -158,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
     $id = intval($_POST['id'] ?? 0);
     $action = $_POST['action'];
-    $allowed = ['pending', 'checking', 'confirm', 'cancel', 'complete', 'noshow'];
+    $allowed = ['checking', 'confirm', 'cancel', 'complete'];
     $_act_hin = $booking_hosp_in;
     if ($id > 0 && $_act_hin !== null) {
         $_own_r = mysqli_query($connect, "SELECT 1 FROM gangnamunni_bookings WHERE id={$id} AND hospital_id IN (" . $_act_hin . ") LIMIT 1");
@@ -169,20 +196,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
     if ($id > 0 && in_array($action, $allowed)) {
-        $status_map = ['pending' => 'pending', 'checking' => 'hospital_checking', 'confirm' => 'confirmed', 'cancel' => 'cancelled', 'complete' => 'completed', 'noshow' => 'no_show'];
+        $status_map = ['checking' => 'hospital_checking', 'confirm' => 'confirmed', 'cancel' => 'cancelled', 'complete' => 'completed'];
         $new_status = $status_map[$action];
         $current_scope = $_act_hin !== null ? " AND hospital_id IN ({$_act_hin})" : '';
         $current_result = mysqli_query($connect,
-            "SELECT status FROM gangnamunni_bookings WHERE id={$id}{$current_scope} LIMIT 1");
+            "SELECT status, doctor_id, doctor_name FROM gangnamunni_bookings WHERE id={$id}{$current_scope} LIMIT 1");
         $current_row = $current_result ? mysqli_fetch_assoc($current_result) : null;
         $current_status = (string)($current_row['status'] ?? '');
-        $is_super_admin = ($admin_role === 'super_admin');
-        $is_hospital_admin = in_array($admin_role, ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin'], true);
-        $can_override_status = $is_super_admin || $is_hospital_admin;
+        $current_has_doctor = !empty($current_row['doctor_id']) || trim((string)($current_row['doctor_name'] ?? '')) !== '';
         $normal_transitions = [
-            'pending' => ['hospital_checking', 'cancelled'],
+            'pending' => ['hospital_checking'],
             'hospital_checking' => ['confirmed', 'cancelled'],
-            'confirmed' => ['completed', 'no_show'],
+            'confirmed' => ['completed'],
         ];
 
         if ($current_status === '' || $current_status === $new_status) {
@@ -190,8 +215,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $msg_type = 'warning';
             goto skip_action;
         }
-        if (!$can_override_status && !in_array($new_status, $normal_transitions[$current_status] ?? [], true)) {
-            $msg = '해당 예약 상태를 수정할 권한이 없습니다.';
+        if (!in_array($new_status, $normal_transitions[$current_status] ?? [], true)) {
+            $msg = '현재 단계에서 선택할 수 없는 예약 상태입니다.';
+            $msg_type = 'danger';
+            goto skip_action;
+        }
+        if ($new_status === 'confirmed' && !$current_has_doctor) {
+            $msg = '담당의사를 먼저 배정한 후 예약확정으로 변경할 수 있습니다.';
             $msg_type = 'danger';
             goto skip_action;
         }
@@ -356,6 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ? '예약 상태는 변경되었지만 HMS 동기화에 실패했습니다. 로그를 확인하고 재동기화해주세요.'
             : '예약 상태가 변경되었습니다.';
         $msg_type = $hms_sync_warning ? 'warning' : 'success';
+        $admin_bookings_ajax_payload = ['booking_id' => $id, 'status' => $new_status];
     }
 
     if ($id > 0 && $action === 'assign_doctor') {
@@ -371,6 +402,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id={$doctor_id}, doctor_name='{$dn}' WHERE id={$id}{$assign_scope}");
                 $msg = '담당의사가 배정되었습니다.';
                 $msg_type = 'success';
+                $admin_bookings_ajax_payload = ['booking_id' => $id, 'doctor_id' => $doctor_id, 'doctor_name' => $doc['name']];
             } else {
                 $msg = '선택한 의사가 해당 예약의 병원 소속이 아닙니다.';
                 $msg_type = 'danger';
@@ -380,10 +412,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id=NULL, doctor_name=NULL WHERE id={$id}{$assign_scope}");
             $msg = '담당의사 배정이 해제되었습니다.';
             $msg_type = 'success';
+            $admin_bookings_ajax_payload = ['booking_id' => $id, 'doctor_id' => 0, 'doctor_name' => ''];
         }
     }
 }
 skip_action:
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_admin_bookings_ajax) {
+    $response_success = isset($admin_bookings_ajax_payload['booking_id']) && !in_array(($msg_type ?? 'danger'), ['danger'], true);
+    admin_bookings_json_response($response_success, $msg ?? '', $msg_type ?? ($response_success ? 'success' : 'danger'), $admin_bookings_ajax_payload);
+}
 
 $is_super_admin_role = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
 $allowed_filter_statuses = ['pending', 'hospital_checking', 'confirmed', 'completed', 'cancelled', 'no_show'];
@@ -735,35 +772,29 @@ require_once __DIR__ . '/includes/admin_header.php';
                                         $group_badges = ['pending'=>'warning text-dark','hospital_checking'=>'secondary','confirmed'=>'success','completed'=>'info','cancelled'=>'danger','no_show'=>'secondary'];
                                         $group_labels = ['pending'=>'대기중','hospital_checking'=>'병원 확인 중','confirmed'=>'확정','completed'=>'완료','cancelled'=>'취소','no_show'=>'노쇼'];
                                     ?>
-                                    <tr>
+                                    <tr data-booking-id="<?php echo (int)$hospital_booking['id']; ?>">
                                         <td><strong><?php echo htmlspecialchars($hospital_booking['name']); ?></strong></td>
                                         <td><?php echo htmlspecialchars($hospital_booking['phone']); ?></td>
                                         <td><?php echo htmlspecialchars($hospital_booking['treatment']); ?></td>
                                         <td><?php echo htmlspecialchars($hospital_booking['booking_date']); ?></td>
                                         <td><?php echo htmlspecialchars(substr((string)$hospital_booking['booking_time'], 0, 5)); ?></td>
-                                        <td><span class="badge bg-<?php echo $group_badges[$group_status] ?? 'secondary'; ?>"><?php echo $group_labels[$group_status] ?? htmlspecialchars($group_status); ?></span></td>
+                                        <td><span class="badge bg-<?php echo $group_badges[$group_status] ?? 'secondary'; ?>" data-status-badge><?php echo $group_labels[$group_status] ?? htmlspecialchars($group_status); ?></span></td>
                                         <td>
-                                            <?php echo trim((string)$hospital_booking['doctor_name']) !== '' ? htmlspecialchars($hospital_booking['doctor_name']) : '<span class="text-muted">미배정</span>'; ?>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm ms-1" title="담당의사 배정"
-                                                    onclick="assignDoctor(<?php echo (int)$hospital_booking['id']; ?>, <?php echo $hospital_id; ?>, <?php echo (int)($hospital_booking['doctor_id'] ?? 0); ?>)">
+                                            <span data-doctor-display><?php echo trim((string)$hospital_booking['doctor_name']) !== '' ? htmlspecialchars($hospital_booking['doctor_name']) : '<span class="text-muted">미배정</span>'; ?></span>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm ms-1 js-assign-doctor-btn" title="담당의사 배정"
+                                                    data-booking-id="<?php echo (int)$hospital_booking['id']; ?>" data-hospital-id="<?php echo $hospital_id; ?>" data-current-doctor-id="<?php echo (int)($hospital_booking['doctor_id'] ?? 0); ?>" onclick="assignDoctorFromButton(this)">
                                                 <i class="bi bi-person-plus"></i>
                                             </button>
                                         </td>
                                         <td>
-                                            <form method="post" class="d-flex align-items-center gap-1" onsubmit="return confirm('예약 상태를 변경하시겠습니까?');">
+                                            <form method="post" class="d-flex align-items-center gap-1 js-admin-status-form">
                                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                                 <input type="hidden" name="id" value="<?php echo (int)$hospital_booking['id']; ?>">
                                                 <input type="hidden" name="open_hospital_id" value="<?php echo $hospital_id; ?>">
-                                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" required>
-                                                    <option value="" selected disabled>현재: <?php echo $group_labels[$group_status] ?? htmlspecialchars($group_status); ?></option>
-                                                    <?php if ($group_status !== 'pending'): ?><option value="pending">예약대기</option><?php endif; ?>
-                                                    <?php if ($group_status !== 'hospital_checking'): ?><option value="checking">병원 확인 중</option><?php endif; ?>
-                                                    <?php if ($group_status !== 'confirmed'): ?><option value="confirm">예약확정</option><?php endif; ?>
-                                                    <?php if ($group_status !== 'completed'): ?><option value="complete">시술완료</option><?php endif; ?>
-                                                    <?php if ($group_status !== 'no_show'): ?><option value="noshow">노쇼</option><?php endif; ?>
-                                                    <?php if ($group_status !== 'cancelled'): ?><option value="cancel">예약취소</option><?php endif; ?>
+                                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($group_status, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($group_status, ['cancelled', 'completed', 'no_show'], true) ? 'disabled' : 'required'; ?>>
+                                                    <?php admin_booking_status_action_options($group_status, $group_labels, !empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== ''); ?>
                                                 </select>
-                                                <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경"><i class="bi bi-arrow-repeat"></i></button>
+                                                <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경" <?php echo in_array($group_status, ['cancelled', 'completed', 'no_show'], true) ? 'disabled' : ''; ?>><i class="bi bi-arrow-repeat"></i></button>
                                             </form>
                                         </td>
                                     </tr>
@@ -814,7 +845,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     $is_hospital_admin = in_array(($_SESSION['ad_admin_role'] ?? ''), ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin'], true);
                     $can_override_status = $is_super_admin || $is_hospital_admin;
                     foreach ($bookings as $b): ?>
-                    <tr>
+                    <tr data-booking-id="<?php echo (int)$b['id']; ?>">
                         <td><?php echo $b['id']; ?></td>
                         <td><strong><?php echo htmlspecialchars($b['name']); ?></strong></td>
                         <td><?php echo htmlspecialchars($b['phone']); ?></td>
@@ -829,38 +860,33 @@ require_once __DIR__ . '/includes/admin_header.php';
                             $label_map = ['pending' => '대기중', 'hospital_checking' => '병원 확인 중', 'confirmed' => '확정', 'completed' => '완료', 'cancelled' => '취소', 'no_show' => '노쇼'];
                             $st = $b['status'] ?? 'pending';
                             ?>
-                            <span class="badge bg-<?php echo $badge_map[$st] ?? 'secondary'; ?>"><?php echo $label_map[$st] ?? $st; ?></span>
+                            <span class="badge bg-<?php echo $badge_map[$st] ?? 'secondary'; ?>" data-status-badge><?php echo $label_map[$st] ?? $st; ?></span>
                         </td>
                         <td>
                             <?php $dn = trim($b['doctor_name'] ?? ''); ?>
+                            <span data-doctor-display>
                             <?php if ($dn !== ''): ?>
                             <span class="badge bg-light text-dark border"><i class="bi bi-person-badge me-1"></i><?php echo htmlspecialchars($dn); ?></span>
                             <?php else: ?>
                             <span class="text-muted small">미배정</span>
                             <?php endif; ?>
+                            </span>
                             <?php if (!$is_viewer): ?>
-                            <button type="button" class="btn btn-outline-secondary btn-sm ms-1" title="담당의사 배정"
-                                    onclick="assignDoctor(<?php echo $b['id']; ?>, <?php echo (int)($b['hospital_id'] ?? 0); ?>, <?php echo (int)($b['doctor_id'] ?? 0); ?>)">
+                            <button type="button" class="btn btn-outline-secondary btn-sm ms-1 js-assign-doctor-btn" title="담당의사 배정"
+                                    data-booking-id="<?php echo (int)$b['id']; ?>" data-hospital-id="<?php echo (int)($b['hospital_id'] ?? 0); ?>" data-current-doctor-id="<?php echo (int)($b['doctor_id'] ?? 0); ?>" onclick="assignDoctorFromButton(this)">
                                 <i class="bi bi-person-plus"></i>
                             </button>
                             <?php endif; ?>
                         </td>
                         <td>
                             <?php if ($can_override_status): ?>
-                            <form method="post" class="d-flex align-items-center gap-1"
-                                  onsubmit="return confirm('예약 상태를 변경하시겠습니까?');">
+                            <form method="post" class="d-flex align-items-center gap-1 js-admin-status-form">
                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
-                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" required>
-                                    <option value="" selected disabled>현재: <?php echo $label_map[$st] ?? htmlspecialchars($st); ?></option>
-                                    <?php if ($st !== 'pending'): ?><option value="pending">예약대기</option><?php endif; ?>
-                                    <?php if ($st !== 'hospital_checking'): ?><option value="checking">병원 확인 중</option><?php endif; ?>
-                                    <?php if ($st !== 'confirmed'): ?><option value="confirm">예약확정</option><?php endif; ?>
-                                    <?php if ($st !== 'completed'): ?><option value="complete">시술완료</option><?php endif; ?>
-                                    <?php if ($st !== 'no_show'): ?><option value="noshow">노쇼</option><?php endif; ?>
-                                    <?php if ($st !== 'cancelled'): ?><option value="cancel">예약취소</option><?php endif; ?>
+                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($st, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($st, ['cancelled', 'completed', 'no_show'], true) ? 'disabled' : 'required'; ?>>
+                                    <?php admin_booking_status_action_options($st, $label_map, !empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== ''); ?>
                                 </select>
-                                <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경">
+                                <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경" <?php echo in_array($st, ['cancelled', 'completed', 'no_show'], true) ? 'disabled' : ''; ?>>
                                     <i class="bi bi-arrow-repeat"></i>
                                 </button>
                             </form>
@@ -873,7 +899,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                                 <input type="hidden" name="action" value="checking">
                                 <button class="btn btn-secondary btn-sm" title="병원 확인 중"><i class="bi bi-search"></i></button>
                             </form>
-                            <button class="btn btn-danger btn-sm" title="거절" onclick="cancelBooking(<?php echo $b['id']; ?>)"><i class="bi bi-x-lg"></i></button>
                             <?php elseif ($st === 'hospital_checking'): ?>
                             <form method="post" class="d-inline">
                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
@@ -888,12 +913,6 @@ require_once __DIR__ . '/includes/admin_header.php';
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
                                 <input type="hidden" name="action" value="complete">
                                 <button class="btn btn-info btn-sm text-white" title="완료"><i class="bi bi-check2-all"></i></button>
-                            </form>
-                            <form method="post" class="d-inline">
-                                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
-                                <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
-                                <input type="hidden" name="action" value="noshow">
-                                <button class="btn btn-secondary btn-sm" title="노쇼"><i class="bi bi-person-x"></i></button>
                             </form>
                             <?php else: ?>
                             <span class="text-muted small">-</span>
@@ -982,7 +1001,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 <div class="modal fade" id="assignDoctorModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post">
+            <form method="post" id="assignDoctorForm">
                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                 <div class="modal-header">
                     <h5 class="modal-title">담당의사 배정</h5>
@@ -1037,6 +1056,33 @@ function cancelBooking(id) {
     document.getElementById('cancel_id').value = id;
     new bootstrap.Modal(document.getElementById('cancelModal')).show();
 }
+const BOOKING_STATUS_LABELS = {
+    pending: '대기중', hospital_checking: '병원 확인 중', confirmed: '확정',
+    completed: '완료', cancelled: '취소', no_show: '노쇼'
+};
+const BOOKING_STATUS_BADGES = {
+    pending: 'warning text-dark', hospital_checking: 'secondary', confirmed: 'success',
+    completed: 'info', cancelled: 'danger', no_show: 'secondary'
+};
+function getBookingStatusFlowActions(status, hasDoctor) {
+    if (status === 'pending') return [['checking', '병원 확인 중']];
+    if (status === 'hospital_checking') return hasDoctor ? [['confirm', '예약확정'], ['cancel', '예약취소']] : [['cancel', '예약취소']];
+    if (status === 'confirmed') return [['complete', '시술완료']];
+    return [];
+}
+const BOOKING_ACTION_STATUS = {
+    checking: 'hospital_checking', confirm: 'confirmed', complete: 'completed', cancel: 'cancelled'
+};
+function escapeAdminHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[ch]));
+}
+function assignDoctorFromButton(button) {
+    assignDoctor(
+        parseInt(button.dataset.bookingId || '0', 10),
+        parseInt(button.dataset.hospitalId || '0', 10),
+        parseInt(button.dataset.currentDoctorId || '0', 10)
+    );
+}
 function assignDoctor(bookingId, hospitalId, currentDoctorId) {
     document.getElementById('assign_booking_id').value = bookingId;
     document.getElementById('assign_open_hospital_id').value = hospitalId;
@@ -1047,7 +1093,7 @@ function assignDoctor(bookingId, hospitalId, currentDoctorId) {
         const opt = document.createElement('option');
         opt.value = d.id;
         opt.textContent = d.name;
-        if (d.id === currentDoctorId) opt.selected = true;
+        if (parseInt(d.id, 10) === currentDoctorId) opt.selected = true;
         sel.appendChild(opt);
     });
     if (list.length === 0) {
@@ -1058,8 +1104,124 @@ function assignDoctor(bookingId, hospitalId, currentDoctorId) {
     }
     new bootstrap.Modal(document.getElementById('assignDoctorModal')).show();
 }
+function postAdminBookingForm(form) {
+    const fd = new FormData(form);
+    fd.append('ajax', '1');
+    return fetch(window.location.pathname + window.location.search, {
+        method: 'POST',
+        body: fd,
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    }).then(response => response.json());
+}
+function resetStatusSelect(select, status, hasDoctor) {
+    if (!select) return;
+    if (typeof hasDoctor === 'undefined') hasDoctor = select.dataset.hasDoctor === '1';
+    select.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.textContent = '현재: ' + (BOOKING_STATUS_LABELS[status] || status);
+    select.appendChild(placeholder);
+    const actions = getBookingStatusFlowActions(status, hasDoctor);
+    actions.forEach(([action, label]) => {
+        const opt = document.createElement('option');
+        opt.value = action;
+        opt.textContent = label;
+        select.appendChild(opt);
+    });
+    select.dataset.currentStatus = status;
+    select.dataset.hasDoctor = hasDoctor ? '1' : '0';
+    select.disabled = actions.length === 0;
+    select.required = actions.length > 0;
+    const submitButton = select.closest('form') && select.closest('form').querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = actions.length === 0;
+}
+function updateBookingStatusUI(bookingId, status) {
+    document.querySelectorAll('[data-booking-id="' + bookingId + '"]').forEach(row => {
+        const badge = row.querySelector('[data-status-badge]');
+        if (badge) {
+            badge.className = 'badge bg-' + (BOOKING_STATUS_BADGES[status] || 'secondary');
+            badge.textContent = BOOKING_STATUS_LABELS[status] || status;
+        }
+        resetStatusSelect(row.querySelector('select[name="action"]'), status);
+    });
+}
+function updateBookingDoctorUI(bookingId, doctorId, doctorName) {
+    document.querySelectorAll('[data-booking-id="' + bookingId + '"]').forEach(row => {
+        const display = row.querySelector('[data-doctor-display]');
+        if (display) {
+            display.innerHTML = doctorName
+                ? '<span class="badge bg-light text-dark border"><i class="bi bi-person-badge me-1"></i>' + escapeAdminHtml(doctorName) + '</span>'
+                : '<span class="text-muted small">미배정</span>';
+        }
+        row.querySelectorAll('.js-assign-doctor-btn').forEach(button => {
+            button.dataset.currentDoctorId = String(doctorId || 0);
+        });
+        const statusSelect = row.querySelector('select[name="action"]');
+        if (statusSelect && statusSelect.dataset.currentStatus === 'hospital_checking') {
+            resetStatusSelect(statusSelect, 'hospital_checking', Boolean(doctorId || doctorName));
+        } else if (statusSelect) {
+            statusSelect.dataset.hasDoctor = (doctorId || doctorName) ? '1' : '0';
+        }
+    });
+}
+function showAdminBookingMessage(message, type) {
+    if (!message) return;
+    const existing = document.querySelector('.admin-bookings-ajax-alert');
+    if (existing) existing.remove();
+    const container = document.querySelector('.container-fluid.py-4');
+    if (!container) { alert(message); return; }
+    const alertBox = document.createElement('div');
+    alertBox.className = 'alert alert-' + (type || 'success') + ' alert-dismissible fade show admin-bookings-ajax-alert';
+    alertBox.innerHTML = escapeAdminHtml(message) + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    container.prepend(alertBox);
+    window.setTimeout(() => {
+        const instance = bootstrap.Alert.getOrCreateInstance(alertBox);
+        if (instance) instance.close();
+    }, 2600);
+}
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+    document.querySelectorAll('.js-admin-status-form').forEach(form => {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const select = form.querySelector('select[name="action"]');
+            if (!select || !select.value) { select && select.reportValidity(); return; }
+            if (!confirm('예약 상태를 변경하시겠습니까?')) return;
+            const button = form.querySelector('button[type="submit"]');
+            if (button) button.disabled = true;
+            postAdminBookingForm(form).then(data => {
+                if (!data.success) throw new Error(data.message || '예약 상태 변경에 실패했습니다.');
+                updateBookingStatusUI(data.booking_id, data.status);
+                showAdminBookingMessage(data.message || '예약 상태가 변경되었습니다.', data.type || 'success');
+            }).catch(error => {
+                alert(error.message || '예약 상태 변경에 실패했습니다.');
+            }).finally(() => {
+                if (button) button.disabled = false;
+            });
+        });
+    });
+    const assignForm = document.getElementById('assignDoctorForm');
+    if (assignForm) {
+        assignForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const button = assignForm.querySelector('button[type="submit"]');
+            if (button) button.disabled = true;
+            postAdminBookingForm(assignForm).then(data => {
+                if (!data.success) throw new Error(data.message || '담당의사 배정에 실패했습니다.');
+                updateBookingDoctorUI(data.booking_id, data.doctor_id, data.doctor_name || '');
+                const modalEl = document.getElementById('assignDoctorModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                showAdminBookingMessage(data.message || '담당의사가 배정되었습니다.', data.type || 'success');
+            }).catch(error => {
+                alert(error.message || '담당의사 배정에 실패했습니다.');
+            }).finally(() => {
+                if (button) button.disabled = false;
+            });
+        });
+    }
 });
 </script>
 

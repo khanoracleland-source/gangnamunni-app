@@ -4,8 +4,10 @@
 'use strict';
 function createBookingSheet(overlay, onClose) {
     const panel = overlay.querySelector('.booking-motion-panel');
+    if (!panel) return {open:function(){}, close:function(){return Promise.resolve();}};
     const body = panel.querySelector('.booking-motion-body');
-    const footer = panel.querySelector('.booking-motion-footer');
+    const footer = panel.querySelector('.booking-motion-footer') || overlay.querySelector('.booking-motion-footer');
+    if (!body || !footer) return {open:function(){}, close:function(){return Promise.resolve();}};
     const backdrop = document.createElement('div');
     backdrop.className = 'booking-motion-backdrop';
     backdrop.setAttribute('aria-hidden', 'true');
@@ -260,10 +262,22 @@ function createBookingSheet(overlay, onClose) {
     if(window.visualViewport) {window.visualViewport.addEventListener('resize',resize); window.visualViewport.addEventListener('scroll',resize);}
     return {open,close};
 }
+function bindBookingMotionSheet(overlay, name, onClose) {
+    if (!overlay || overlay.__bookingMotion) return overlay ? overlay.__bookingMotion : null;
+    const motion = createBookingSheet(overlay, onClose);
+    overlay.__bookingMotion = motion;
+    if (name) window[name] = motion;
+    return motion;
+}
 const treatment = document.getElementById('treatmentSheet');
-if (treatment) window.bookingTreatmentMotion = createBookingSheet(treatment);
+bindBookingMotionSheet(treatment, 'bookingTreatmentMotion');
 const success = document.getElementById('bookingSuccessOverlay');
-if (success) window.bookingSuccessMotion = createBookingSheet(success, function () {
+bindBookingMotionSheet(success, 'bookingSuccessMotion', function () {
     if (window.unlockSuccessScreen) window.unlockSuccessScreen();
 });
+document.querySelectorAll('[data-booking-motion-sheet]').forEach(overlay => {
+    const name = overlay.getAttribute('data-booking-motion-name') || '';
+    bindBookingMotionSheet(overlay, name);
+});
+window.bindBookingMotionSheet = bindBookingMotionSheet;
 })();
