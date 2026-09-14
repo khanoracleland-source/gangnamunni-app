@@ -30,6 +30,7 @@ if (!$_booking_schema_ok) {
     http_response_code(503);
     exit('예약 스키마 업데이트가 필요합니다. 관리자에게 문의해주세요.');
 }
+@mysqli_query($connect, "ALTER TABLE gangnamunni_bookings MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending'");
 
 $booking_hospital_ids = get_strict_admin_hospital_ids($connect);
 $booking_hosp_in = $booking_hospital_ids === null
@@ -63,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'export_
     mysqli_stmt_execute($export_stmt);
     $export_result = mysqli_stmt_get_result($export_stmt);
     $export_rows = [];
-    $export_status_labels = ['pending'=>'대기중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'no_show'=>'노쇼'];
+    $export_status_labels = ['pending'=>'대기중', 'hospital_checking'=>'병원 확인 중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'no_show'=>'노쇼'];
     while ($export_row = mysqli_fetch_assoc($export_result)) {
         $export_row['status'] = $export_status_labels[$export_row['status']] ?? $export_row['status'];
         $export_rows[] = $export_row;
@@ -106,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'export_
                 status, doctor_name, price, memo, cancel_reason, created_at
          FROM gangnamunni_bookings WHERE {$monthly_where}
          ORDER BY hospital_name ASC, created_at DESC");
-    $monthly_status_labels = ['pending'=>'대기중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'no_show'=>'노쇼'];
+    $monthly_status_labels = ['pending'=>'대기중', 'hospital_checking'=>'병원 확인 중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'no_show'=>'노쇼'];
     $monthly_sheets = [];
     if ($monthly_result) {
         while ($monthly_row = mysqli_fetch_assoc($monthly_result)) {
@@ -157,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
     $id = intval($_POST['id'] ?? 0);
     $action = $_POST['action'];
-    $allowed = ['pending', 'confirm', 'cancel', 'complete', 'noshow'];
+    $allowed = ['pending', 'checking', 'confirm', 'cancel', 'complete', 'noshow'];
     $_act_hin = $booking_hosp_in;
     if ($id > 0 && $_act_hin !== null) {
         $_own_r = mysqli_query($connect, "SELECT 1 FROM gangnamunni_bookings WHERE id={$id} AND hospital_id IN (" . $_act_hin . ") LIMIT 1");
@@ -168,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
     if ($id > 0 && in_array($action, $allowed)) {
-        $status_map = ['pending' => 'pending', 'confirm' => 'confirmed', 'cancel' => 'cancelled', 'complete' => 'completed', 'noshow' => 'no_show'];
+        $status_map = ['pending' => 'pending', 'checking' => 'hospital_checking', 'confirm' => 'confirmed', 'cancel' => 'cancelled', 'complete' => 'completed', 'noshow' => 'no_show'];
         $new_status = $status_map[$action];
         $current_scope = $_act_hin !== null ? " AND hospital_id IN ({$_act_hin})" : '';
         $current_result = mysqli_query($connect,
@@ -179,7 +180,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $is_hospital_admin = in_array($admin_role, ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin'], true);
         $can_override_status = $is_super_admin || $is_hospital_admin;
         $normal_transitions = [
-            'pending' => ['confirmed', 'cancelled'],
+            'pending' => ['hospital_checking', 'cancelled'],
+            'hospital_checking' => ['confirmed', 'cancelled'],
             'confirmed' => ['completed', 'no_show'],
         ];
 
@@ -384,13 +386,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 skip_action:
 
 $is_super_admin_role = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
-$allowed_filter_statuses = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'];
+$allowed_filter_statuses = ['pending', 'hospital_checking', 'confirmed', 'completed', 'cancelled', 'no_show'];
 $filter_status = (string)($_GET['status'] ?? '');
 if (!in_array($filter_status, $allowed_filter_statuses, true)) $filter_status = '';
 $filter_date = trim((string)($_GET['date'] ?? ''));
 if ($filter_date !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filter_date)) $filter_date = '';
 $search = trim((string)($_GET['q'] ?? ''));
 $filter_hospital = $is_super_admin_role ? max(0, intval($_GET['hospital_id'] ?? 0)) : 0;
+$focus_booking_id = max(0, (int)($_GET['booking_id'] ?? 0));
 $show_all_hospitals = $is_super_admin_role && (($_GET['view'] ?? '') === 'all');
 $open_hospital_id = $is_super_admin_role ? max(0, (int)($_POST['open_hospital_id'] ?? 0)) : 0;
 $page = max(1, intval($_GET['page'] ?? 1));
@@ -403,6 +406,7 @@ if ($is_super_admin_role) {
         "SELECT h.id, h.name,
                 COUNT(b.id) AS booking_count,
                 SUM(CASE WHEN b.status='pending' THEN 1 ELSE 0 END) AS pending_count,
+                SUM(CASE WHEN b.status='hospital_checking' THEN 1 ELSE 0 END) AS checking_count,
                 SUM(CASE WHEN b.status='confirmed' THEN 1 ELSE 0 END) AS confirmed_count,
                 SUM(CASE WHEN b.status='completed' THEN 1 ELSE 0 END) AS completed_count,
                 SUM(CASE WHEN b.status='cancelled' THEN 1 ELSE 0 END) AS cancelled_count,
@@ -422,6 +426,16 @@ if ($is_super_admin_role) {
         $valid_hospital_ids = array_map('intval', array_column($hospital_options, 'id'));
         if (!in_array($filter_hospital, $valid_hospital_ids, true)) {
             $filter_hospital = 0;
+        }
+    }
+
+    if ($filter_hospital <= 0 && $focus_booking_id > 0) {
+        $focus_result = mysqli_query($connect, "SELECT hospital_id FROM gangnamunni_bookings WHERE id={$focus_booking_id} LIMIT 1");
+        $focus_row = $focus_result ? mysqli_fetch_assoc($focus_result) : null;
+        $focus_hospital_id = (int)($focus_row['hospital_id'] ?? 0);
+        $valid_hospital_ids = array_map('intval', array_column($hospital_options, 'id'));
+        if ($focus_hospital_id > 0 && in_array($focus_hospital_id, $valid_hospital_ids, true)) {
+            $filter_hospital = $focus_hospital_id;
         }
     }
 }
@@ -464,7 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'export_
     mysqli_stmt_execute($list_export_stmt);
     $list_export_result = mysqli_stmt_get_result($list_export_stmt);
     $list_export_rows = [];
-    $list_export_status_labels = ['pending'=>'대기중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'no_show'=>'노쇼'];
+    $list_export_status_labels = ['pending'=>'대기중', 'hospital_checking'=>'병원 확인 중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'no_show'=>'노쇼'];
     while ($list_export_row = mysqli_fetch_assoc($list_export_result)) {
         $list_export_row['status'] = $list_export_status_labels[$list_export_row['status']] ?? $list_export_row['status'];
         $list_export_rows[] = $list_export_row;
@@ -525,7 +539,7 @@ if ($_doc_hids) {
     }
 }
 
-$stats = ['total' => 0, 'pending' => 0, 'confirmed' => 0, 'cancelled' => 0, 'completed' => 0, 'today' => 0];
+$stats = ['total' => 0, 'pending' => 0, 'hospital_checking' => 0, 'confirmed' => 0, 'cancelled' => 0, 'completed' => 0, 'today' => 0];
 $stats_conditions = [];
 if ($hosp_in !== null) $stats_conditions[] = "hospital_id IN (" . $hosp_in . ")";
 if ($filter_hospital > 0) $stats_conditions[] = "hospital_id=" . $filter_hospital;
@@ -575,6 +589,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         $stat_cards = [
             ['전체', $stats['total'], 'bi-calendar-range', 'primary'],
             ['대기중', $stats['pending'], 'bi-clock', 'warning'],
+            ['확인중', $stats['hospital_checking'], 'bi-search', 'secondary'],
             ['확정', $stats['confirmed'], 'bi-check-circle', 'success'],
             ['완료', $stats['completed'], 'bi-check2-all', 'info'],
             ['취소', $stats['cancelled'], 'bi-x-circle', 'danger'],
@@ -618,6 +633,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <select name="status" class="form-select form-select-sm">
                         <option value="">전체 (<?php echo number_format((int)$stats['total']); ?>건)</option>
                         <option value="pending" <?php echo $filter_status === 'pending' ? 'selected' : ''; ?>>대기중 (<?php echo number_format((int)$stats['pending']); ?>건)</option>
+                        <option value="hospital_checking" <?php echo $filter_status === 'hospital_checking' ? 'selected' : ''; ?>>병원 확인 중 (<?php echo number_format((int)$stats['hospital_checking']); ?>건)</option>
                         <option value="confirmed" <?php echo $filter_status === 'confirmed' ? 'selected' : ''; ?>>확정 (<?php echo number_format((int)$stats['confirmed']); ?>건)</option>
                         <option value="completed" <?php echo $filter_status === 'completed' ? 'selected' : ''; ?>>완료 (<?php echo number_format((int)$stats['completed']); ?>건)</option>
                         <option value="cancelled" <?php echo $filter_status === 'cancelled' ? 'selected' : ''; ?>>취소 (<?php echo number_format((int)$stats['cancelled']); ?>건)</option>
@@ -688,6 +704,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <strong><i class="bi bi-hospital me-1 text-primary"></i><?php echo htmlspecialchars($hospital['name']); ?></strong>
                             <span class="badge bg-primary"><?php echo number_format((int)$hospital['booking_count']); ?>건</span>
                             <?php if ((int)$hospital['pending_count'] > 0): ?><span class="badge bg-warning text-dark">대기 <?php echo number_format((int)$hospital['pending_count']); ?></span><?php endif; ?>
+                            <?php if ((int)($hospital['checking_count'] ?? 0) > 0): ?><span class="badge bg-secondary">확인중 <?php echo number_format((int)$hospital['checking_count']); ?></span><?php endif; ?>
                             <?php if ((int)$hospital['today_count'] > 0): ?><span class="badge bg-dark">오늘 <?php echo number_format((int)$hospital['today_count']); ?></span><?php endif; ?>
                         </span>
                         <i class="bi bi-chevron-down booking-hospital-chevron"></i>
@@ -715,8 +732,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                                     <tbody>
                                     <?php foreach ($hospital_bookings as $hospital_booking):
                                         $group_status = (string)($hospital_booking['status'] ?? 'pending');
-                                        $group_badges = ['pending'=>'warning text-dark','confirmed'=>'success','completed'=>'info','cancelled'=>'danger','no_show'=>'secondary'];
-                                        $group_labels = ['pending'=>'대기중','confirmed'=>'확정','completed'=>'완료','cancelled'=>'취소','no_show'=>'노쇼'];
+                                        $group_badges = ['pending'=>'warning text-dark','hospital_checking'=>'secondary','confirmed'=>'success','completed'=>'info','cancelled'=>'danger','no_show'=>'secondary'];
+                                        $group_labels = ['pending'=>'대기중','hospital_checking'=>'병원 확인 중','confirmed'=>'확정','completed'=>'완료','cancelled'=>'취소','no_show'=>'노쇼'];
                                     ?>
                                     <tr>
                                         <td><strong><?php echo htmlspecialchars($hospital_booking['name']); ?></strong></td>
@@ -737,8 +754,10 @@ require_once __DIR__ . '/includes/admin_header.php';
                                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                                 <input type="hidden" name="id" value="<?php echo (int)$hospital_booking['id']; ?>">
                                                 <input type="hidden" name="open_hospital_id" value="<?php echo $hospital_id; ?>">
-                                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경">
+                                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" required>
+                                                    <option value="" selected disabled>현재: <?php echo $group_labels[$group_status] ?? htmlspecialchars($group_status); ?></option>
                                                     <?php if ($group_status !== 'pending'): ?><option value="pending">예약대기</option><?php endif; ?>
+                                                    <?php if ($group_status !== 'hospital_checking'): ?><option value="checking">병원 확인 중</option><?php endif; ?>
                                                     <?php if ($group_status !== 'confirmed'): ?><option value="confirm">예약확정</option><?php endif; ?>
                                                     <?php if ($group_status !== 'completed'): ?><option value="complete">시술완료</option><?php endif; ?>
                                                     <?php if ($group_status !== 'no_show'): ?><option value="noshow">노쇼</option><?php endif; ?>
@@ -806,8 +825,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td><?php echo render_photo_thumbnails($b['photo_urls'] ?? null, 36); ?></td>
                         <td>
                             <?php
-                            $badge_map = ['pending' => 'warning', 'confirmed' => 'success', 'completed' => 'info', 'cancelled' => 'danger', 'no_show' => 'secondary'];
-                            $label_map = ['pending' => '대기중', 'confirmed' => '확정', 'completed' => '완료', 'cancelled' => '취소', 'no_show' => '노쇼'];
+                            $badge_map = ['pending' => 'warning', 'hospital_checking' => 'secondary', 'confirmed' => 'success', 'completed' => 'info', 'cancelled' => 'danger', 'no_show' => 'secondary'];
+                            $label_map = ['pending' => '대기중', 'hospital_checking' => '병원 확인 중', 'confirmed' => '확정', 'completed' => '완료', 'cancelled' => '취소', 'no_show' => '노쇼'];
                             $st = $b['status'] ?? 'pending';
                             ?>
                             <span class="badge bg-<?php echo $badge_map[$st] ?? 'secondary'; ?>"><?php echo $label_map[$st] ?? $st; ?></span>
@@ -832,8 +851,10 @@ require_once __DIR__ . '/includes/admin_header.php';
                                   onsubmit="return confirm('예약 상태를 변경하시겠습니까?');">
                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
-                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경">
+                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" required>
+                                    <option value="" selected disabled>현재: <?php echo $label_map[$st] ?? htmlspecialchars($st); ?></option>
                                     <?php if ($st !== 'pending'): ?><option value="pending">예약대기</option><?php endif; ?>
+                                    <?php if ($st !== 'hospital_checking'): ?><option value="checking">병원 확인 중</option><?php endif; ?>
                                     <?php if ($st !== 'confirmed'): ?><option value="confirm">예약확정</option><?php endif; ?>
                                     <?php if ($st !== 'completed'): ?><option value="complete">시술완료</option><?php endif; ?>
                                     <?php if ($st !== 'no_show'): ?><option value="noshow">노쇼</option><?php endif; ?>
@@ -849,8 +870,16 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <form method="post" class="d-inline">
                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
+                                <input type="hidden" name="action" value="checking">
+                                <button class="btn btn-secondary btn-sm" title="병원 확인 중"><i class="bi bi-search"></i></button>
+                            </form>
+                            <button class="btn btn-danger btn-sm" title="거절" onclick="cancelBooking(<?php echo $b['id']; ?>)"><i class="bi bi-x-lg"></i></button>
+                            <?php elseif ($st === 'hospital_checking'): ?>
+                            <form method="post" class="d-inline">
+                                <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
+                                <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
                                 <input type="hidden" name="action" value="confirm">
-                                <button class="btn btn-success btn-sm" title="승인"><i class="bi bi-check-lg"></i></button>
+                                <button class="btn btn-success btn-sm" title="예약확정"><i class="bi bi-check-lg"></i></button>
                             </form>
                             <button class="btn btn-danger btn-sm" title="거절" onclick="cancelBooking(<?php echo $b['id']; ?>)"><i class="bi bi-x-lg"></i></button>
                             <?php elseif ($st === 'confirmed'): ?>

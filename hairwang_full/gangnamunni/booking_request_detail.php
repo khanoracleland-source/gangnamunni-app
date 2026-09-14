@@ -59,7 +59,7 @@ if ($payment_table && mysqli_num_rows($payment_table) > 0) {
     }
 }
 
-$is_active = in_array($bk['status'] ?? '', ['pending', 'confirmed'], true);
+$is_active = in_array($bk['status'] ?? '', ['pending', 'hospital_checking', 'confirmed'], true);
 $is_completed = ($bk['status'] ?? '') === 'completed';
 $completed_review = null;
 $completed_review_state = ['state' => 'none', 'label' => '후기작성하기'];
@@ -70,7 +70,7 @@ if ($is_completed) {
     $completed_review_state = bookingReviewState($completed_review);
 }
 $status_labels = [
-    'pending' => '예약대기', 'confirmed' => '예약확정', 'completed' => '시술완료',
+    'pending' => '예약대기', 'hospital_checking' => '병원 확인 중', 'confirmed' => '예약확정', 'completed' => '시술완료',
     'cancelled' => '예약취소', 'no_show' => '노쇼',
 ];
 $status_label = $status_labels[$bk['status'] ?? ''] ?? ($bk['status'] ?? '');

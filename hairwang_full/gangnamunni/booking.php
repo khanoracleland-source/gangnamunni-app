@@ -386,10 +386,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 @mysqli_query($connect, "ALTER TABLE gangnamunni_bookings {$_ddl}");
             }
         }
+        @mysqli_query($connect, "ALTER TABLE gangnamunni_bookings MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending'");
 
         $insert_query = "INSERT INTO gangnamunni_bookings
-                        (hospital_id, hospital_name, name, phone, mb_id, treatment, treatments_json, quantity, booking_date, booking_time, memo, price, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                        (hospital_id, hospital_name, name, phone, mb_id, treatment, treatments_json, quantity, booking_date, booking_time, memo, price, status, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())";
         $insert_stmt = mysqli_prepare($connect, $insert_query);
         $treatments_json_for_db = json_encode($treatments_arr, JSON_UNESCAPED_UNICODE);
         $price_for_db = $booking_price !== null ? (int)$booking_price : null;
@@ -409,7 +410,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             notifyAdmins($connect, 'booking',
                 '새 예약 접수',
                 htmlspecialchars($hospital['name']) . ' — ' . htmlspecialchars($name) . ' (' . $date . ' ' . $time . ')',
-                'admin_bookings.php',
+                'admin_bookings.php?booking_id=' . (int)$booking_id,
                 ['booking_id' => $booking_id, 'hospital_id' => $hospital_id]
             );
 

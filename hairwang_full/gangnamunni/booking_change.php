@@ -7,7 +7,7 @@ if ($booking_id <= 0) { header('Location: my_bookings.php'); exit; }
 $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_bookings WHERE id=? LIMIT 1");
 mysqli_stmt_bind_param($stmt, 'i', $booking_id); mysqli_stmt_execute($stmt);
 $bk = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt)); mysqli_stmt_close($stmt);
-if (!$bk || !in_array($bk['status'] ?? '', ['pending','confirmed'], true)) { header('Location: my_bookings.php'); exit; }
+if (!$bk || !in_array($bk['status'] ?? '', ['pending','hospital_checking','confirmed'], true)) { header('Location: my_bookings.php'); exit; }
 $logged_in = isset($is_member) && $is_member && !empty($member['mb_id']);
 $require_login = function_exists('getSettingValue') ? getSettingValue($connect,'booking_require_login','1') === '1' : true;
 $phone_auth = function_exists('getSettingValue') ? getSettingValue($connect,'booking_phone_auth','0') === '1' : false;

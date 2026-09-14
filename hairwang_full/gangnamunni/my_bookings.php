@@ -81,7 +81,7 @@ if ($is_user_logged_in && !empty($logged_mb_id)) {
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
         $bookings[] = $row;
-        if (in_array($row['status'], ['pending', 'confirmed']) && !$is_booking_time_passed($row)) {
+        if (in_array($row['status'], ['pending', 'hospital_checking', 'confirmed']) && !$is_booking_time_passed($row)) {
             $active_bookings[] = $row;
             $upcoming_bookings[] = $row;
         } elseif (in_array($row['status'], ['cancelled', 'no_show'])) {
@@ -107,7 +107,7 @@ if ($is_user_logged_in && !empty($logged_mb_id)) {
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
         $bookings[] = $row;
-        if (in_array($row['status'], ['pending', 'confirmed']) && !$is_booking_time_passed($row)) {
+        if (in_array($row['status'], ['pending', 'hospital_checking', 'confirmed']) && !$is_booking_time_passed($row)) {
             $active_bookings[] = $row;
             $upcoming_bookings[] = $row;
         } elseif (in_array($row['status'], ['cancelled', 'no_show'])) {
@@ -506,7 +506,7 @@ $page_title = '내 예약';
                 $_dd_text = $_dd > 0 ? 'D-' . $_dd : ($_dd === 0 ? 'D-0' : 'D+' . abs($_dd));
                 $_edits_left = max(0, 3 - (int)($bk['edit_count'] ?? 0));
                 $_booking_steps = ['예약 요청 접수', '병원 확인 중', '결제 대기', '예약 확정'];
-                $_booking_active_step = $bk['status'] === 'confirmed' ? 4 : 1;
+                $_booking_active_step = $bk['status'] === 'confirmed' ? 4 : (($bk['status'] ?? '') === 'hospital_checking' ? 2 : 1);
             ?>
             <div class="booking-card-top">
                 <span class="booking-card-date"><?php echo htmlspecialchars($_date_text); ?></span>

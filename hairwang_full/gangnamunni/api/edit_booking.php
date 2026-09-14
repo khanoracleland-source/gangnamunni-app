@@ -100,8 +100,8 @@ if ($_req_login && !$_phone_auth) {
     }
 }
 
-// 수정 가능 상태 체크 (pending, confirmed만)
-if (!in_array($booking['status'], ['pending', 'confirmed'])) {
+// 수정 가능 상태 체크 (pending, hospital_checking, confirmed만)
+if (!in_array($booking['status'], ['pending', 'hospital_checking', 'confirmed'])) {
     echo json_encode(['success' => false, 'message' => '수정할 수 없는 상태의 예약입니다.']);
     exit;
 }

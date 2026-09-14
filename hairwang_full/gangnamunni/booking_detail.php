@@ -66,9 +66,9 @@ $MAX_EDITS = 3;
 $edits_left = max(0, $MAX_EDITS - (int)($bk['edit_count'] ?? 0));
 
 // 상태 라벨
-$status_labels = ['pending' => '대기중', 'confirmed' => '확정', 'completed' => '완료', 'cancelled' => '취소완료', 'no_show' => '노쇼'];
+$status_labels = ['pending' => '대기중', 'hospital_checking' => '병원 확인 중', 'confirmed' => '확정', 'completed' => '완료', 'cancelled' => '취소완료', 'no_show' => '노쇼'];
 $status_label = $status_labels[$bk['status']] ?? $bk['status'];
-$is_active = in_array($bk['status'], ['pending', 'confirmed']); // 변경/취소 가능 상태
+$is_active = in_array($bk['status'], ['pending', 'hospital_checking', 'confirmed']); // 변경/취소 가능 상태
 
 // 시술완료(completed) → 후기 작성/상태 (예약당 1회)
 $is_completed = ($bk['status'] === 'completed');

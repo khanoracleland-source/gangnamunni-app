@@ -34,6 +34,9 @@ BEGIN
     ALTER TABLE gangnamunni_bookings
       ADD COLUMN edit_count INT NOT NULL DEFAULT 0;
   END IF;
+
+  ALTER TABLE gangnamunni_bookings
+    MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending';
 END//
 DELIMITER ;
 

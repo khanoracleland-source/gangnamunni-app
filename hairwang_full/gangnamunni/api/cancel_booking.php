@@ -84,7 +84,7 @@ mysqli_begin_transaction($connect);
 try {
     $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings
         SET status='cancelled', cancel_reason=?, cancelled_at=NOW(), updated_at=NOW()
-        WHERE id=? AND status IN ('pending','confirmed')");
+        WHERE id=? AND status IN ('pending','hospital_checking','confirmed')");
     if (!$stmt2) throw new RuntimeException('booking_update_prepare_failed');
     mysqli_stmt_bind_param($stmt2, 'si', $cancel_reason, $booking_id);
     $ok = mysqli_stmt_execute($stmt2);
