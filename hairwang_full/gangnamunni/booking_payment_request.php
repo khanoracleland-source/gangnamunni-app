@@ -51,8 +51,13 @@ $booking_id = max(0, (int)($_POST['booking_id'] ?? 0));
 if ($booking_id <= 0) bp_fail('잘못된 예약입니다.', 'INVALID_BOOKING');
 
 $provider = (string)($_POST['provider'] ?? '');
-if (!in_array($provider, ['kakaopay', 'tosspay'], true)) {
+if (!in_array($provider, ['bank', 'card', 'naverpay', 'kakaopay', 'tosspay'], true)) {
     bp_fail('지원하지 않는 결제 수단입니다.', 'UNSUPPORTED_PROVIDER');
+}
+
+$point_use = max(0, (int)($_POST['point_use'] ?? 0));
+if ($point_use > 0) {
+    bp_fail('포인트 차감 결제는 아직 구성되지 않았습니다. 포인트를 0원으로 변경한 뒤 결제해주세요.', 'POINT_PAYMENT_NOT_CONFIGURED', 503);
 }
 
 // 예약 소유권 확인
