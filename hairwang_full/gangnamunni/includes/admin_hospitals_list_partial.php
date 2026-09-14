@@ -1,5 +1,11 @@
 <?php
 ?>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3" role="status" aria-live="polite">
+    <span class="fw-semibold">검색 결과 <span class="text-primary"><?= number_format($total) ?></span>개 병원</span>
+    <?php if ($filter_treatment_id > 0): ?>
+    <span class="badge bg-primary-subtle text-primary-emphasis text-wrap">시술: <?= htmlspecialchars($selected_treatment_name ?: '선택한 시술 (현재 등록 없음)') ?></span>
+    <?php endif; ?>
+</div>
 <div id="bulkBar" class="alert alert-primary d-flex align-items-center gap-3 mb-2" style="display:none !important;">
     <span><strong id="bulkCount">0</strong>개 선택</span>
     <button type="button" class="btn btn-danger btn-sm" onclick="bulkDelete()"><i class="bi bi-trash me-1"></i>선택 삭제</button>
@@ -28,7 +34,7 @@
         </thead>
         <tbody>
             <?php if (empty($hospitals)): ?>
-            <tr><td colspan="12" class="empty-state"><i class="bi bi-building"></i>등록된 병원이 없습니다.</td></tr>
+            <tr><td colspan="12" class="empty-state"><i class="bi bi-building"></i><?= ($filter_treatment_id > 0 || $search !== '' || $filter_status !== 'all') ? '조건에 맞는 병원이 없습니다. 시술이나 검색 조건을 변경해 주세요.' : '등록된 병원이 없습니다.' ?></td></tr>
             <?php else: ?>
             <?php foreach ($hospitals as $h): ?>
             <tr>

@@ -659,6 +659,7 @@ if ($view_mode > 0) {
 
 $filter_status = $_GET['status'] ?? 'all';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$filter_treatment_id = max(0, (int)($_GET['treatment_id'] ?? 0));
 $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 20;
 if (!in_array($per_page, [10, 20, 50])) $per_page = 20;
 $page = max(1, intval($_GET['page'] ?? 1));
@@ -687,6 +688,34 @@ if (!empty($search)) {
     $search_param = "%{$search}%";
     $where_params = [$search_param, $search_param, $search_param, $search_param, $search_param];
     $where_types = 'sssss';
+}
+
+// Match actual active assignments, not free-text treatment tags. EXISTS avoids duplicates.
+if ($filter_treatment_id > 0) {
+    $where .= " AND EXISTS (SELECT 1 FROM gangnamunni_hospital_treatments ht
+        WHERE ht.hospital_id = gangnamunni_hospitals.id AND ht.treatment_id = ?
+        AND ht.is_active = 1 AND ht.status = 'active')";
+    $where_params[] = $filter_treatment_id;
+    $where_types .= 'i';
+}
+
+$treatment_options = [];
+$selected_treatment_name = '';
+if (!$view_mode) {
+    $treatment_scope = $my_in === null ? '' : ' AND ht.hospital_id IN (' . $my_in . ')';
+    $treatment_result = mysqli_query($connect, "SELECT tm.id, tm.name, tc.name AS category_name
+        FROM gangnamunni_treatment_master tm
+        LEFT JOIN gangnamunni_treatment_categories tc ON tc.id = tm.category_id
+        WHERE EXISTS (SELECT 1 FROM gangnamunni_hospital_treatments ht
+            JOIN gangnamunni_hospitals h ON h.id = ht.hospital_id
+            WHERE ht.treatment_id = tm.id AND ht.is_active = 1 AND ht.status = 'active'{$treatment_scope})
+        ORDER BY tc.sort_order, tc.id, tm.name, tm.id");
+    while ($treatment_result && $treatment_option = mysqli_fetch_assoc($treatment_result)) {
+        $treatment_options[$treatment_option['category_name'] ?: '기타'][] = $treatment_option;
+        if ((int)$treatment_option['id'] === $filter_treatment_id) {
+            $selected_treatment_name = $treatment_option['name'];
+        }
+    }
 }
 
 $stats = [
@@ -737,7 +766,7 @@ if (!$view_mode) {
 }
 
 function buildHospitalUrl($overrides = []) {
-    global $filter_status, $per_page, $search;
+    global $filter_status, $per_page, $search, $filter_treatment_id;
     $params = [
         'status' => $overrides['status'] ?? $filter_status,
         'per_page' => $overrides['per_page'] ?? $per_page,
@@ -745,6 +774,9 @@ function buildHospitalUrl($overrides = []) {
     ];
     if (!empty($overrides['search'] ?? $search)) {
         $params['search'] = $overrides['search'] ?? $search;
+    }
+    if (($overrides['treatment_id'] ?? $filter_treatment_id) > 0) {
+        $params['treatment_id'] = $overrides['treatment_id'] ?? $filter_treatment_id;
     }
     return '?' . http_build_query($params);
 }
@@ -1934,7 +1966,7 @@ $application_assets = [
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="bi bi-building"></i> <?php echo term('business'); ?> 관리</h5>
 
-    <a href="admin_hospital_wizard.php" class="btn btn-outline-primary btn-sm"><i class="bi bi-magic"></i> 마법사로 등록</a>
+    <a href="admin_hospital_wizard.php" class="btn btn-outline-primary btn-sm" style="display: none;"><i class="bi bi-magic"></i> 마법사로 등록</a>
 </div>
 
 <div class="row g-2 mb-3">
@@ -1981,42 +2013,46 @@ $application_assets = [
 </div>
 
 <div class="card mb-3">
-    <div class="card-body py-2">
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="fw-semibold small text-body-secondary me-1">상태</span>
-            <a href="<?php echo buildHospitalUrl(['status' => 'all']); ?>" data-status="all"
-               class="btn btn-sm hospital-status-link <?php echo $filter_status === 'all' ? 'btn-primary' : 'btn-outline-secondary'; ?>">전체</a>
-            <a href="<?php echo buildHospitalUrl(['status' => 'pending']); ?>" data-status="pending"
-               class="btn btn-sm hospital-status-link <?php echo $filter_status === 'pending' ? 'btn-warning' : 'btn-outline-secondary'; ?>">
-                대기
-                <?php if ($stats['pending'] > 0): ?>
-                <span class="badge bg-white text-warning ms-1"><?php echo $stats['pending']; ?></span>
-                <?php endif; ?>
-            </a>
-            <a href="<?php echo buildHospitalUrl(['status' => 'approved']); ?>" data-status="approved"
-               class="btn btn-sm hospital-status-link <?php echo $filter_status === 'approved' ? 'btn-success' : 'btn-outline-secondary'; ?>">승인</a>
-            <a href="<?php echo buildHospitalUrl(['status' => 'rejected']); ?>" data-status="rejected"
-               class="btn btn-sm hospital-status-link <?php echo $filter_status === 'rejected' ? 'btn-danger' : 'btn-outline-secondary'; ?>">반려</a>
-        </div>
-    </div>
-</div>
-
-<div class="admin-toolbar">
-    <form method="GET" class="d-flex gap-2 search-box flex-grow-1" style="max-width:400px;">
-        <input type="hidden" name="status" value="<?php echo htmlspecialchars($filter_status); ?>">
-        <input type="hidden" name="per_page" value="<?php echo $per_page; ?>">
-        <input type="search" name="search" class="form-control form-control-sm" placeholder="병원명, 주소, 전화, 이메일, 카테고리 검색..."
-               value="<?php echo htmlspecialchars($search); ?>">
-        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
-    </form>
-    <div class="d-flex align-items-center gap-2">
-        <label class="text-nowrap small text-body-secondary">행수</label>
-        <select class="form-select form-select-sm" style="width:80px;" onchange="changePerPage(this)">
-            <?php foreach ([10, 20, 50] as $n): ?>
-            <option value="<?php echo $n; ?>" <?php echo $per_page == $n ? 'selected' : ''; ?>><?php echo $n; ?></option>
-            <?php endforeach; ?>
-        </select>
-        <span class="text-body-secondary small">총 <?php echo number_format($total); ?>건</span>
+    <div class="card-body">
+        <form method="GET" id="hospitalFilterForm" class="row g-3 align-items-end">
+            <input type="hidden" name="status" value="<?php echo htmlspecialchars($filter_status); ?>">
+            <div class="col-12 col-md-5">
+                <label for="hospitalTreatmentFilter" class="form-label small fw-semibold"><i class="bi bi-clipboard2-pulse me-1"></i>시술로 병원 찾기</label>
+                <select name="treatment_id" id="hospitalTreatmentFilter" class="form-select" aria-describedby="hospitalTreatmentHelp">
+                    <option value="0">전체 시술</option>
+                    <?php if ($filter_treatment_id > 0 && $selected_treatment_name === ''): ?>
+                    <option value="<?= $filter_treatment_id ?>" selected>선택한 시술 (현재 등록 없음)</option>
+                    <?php endif; ?>
+                    <?php foreach ($treatment_options as $category_name => $options): ?>
+                    <optgroup label="<?= htmlspecialchars($category_name) ?>">
+                        <?php foreach ($options as $option): ?>
+                        <option value="<?= (int)$option['id'] ?>" <?= (int)$option['id'] === $filter_treatment_id ? 'selected' : '' ?>><?= htmlspecialchars($option['name']) ?></option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label for="hospitalSearch" class="form-label small fw-semibold">병원 검색</label>
+                <input type="search" id="hospitalSearch" name="search" class="form-control" placeholder="병원명, 주소, 전화, 이메일, 카테고리"
+                       value="<?= htmlspecialchars($search) ?>">
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-search me-1"></i>검색</button>
+                <a href="<?= htmlspecialchars(buildHospitalUrl(['status' => 'all', 'search' => '', 'treatment_id' => 0])) ?>" class="btn btn-outline-secondary">초기화</a>
+            </div>
+            <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                <div id="hospitalTreatmentHelp" class="small text-body-secondary">시술을 선택하면 해당 시술이 활성 등록된 병원만 바로 표시됩니다.</div>
+                <div class="d-flex align-items-center gap-2">
+                    <label for="hospitalPerPage" class="small text-body-secondary text-nowrap">표시 개수</label>
+                    <select name="per_page" id="hospitalPerPage" class="form-select form-select-sm" style="width:80px;">
+                        <?php foreach ([10, 20, 50] as $n): ?>
+                        <option value="<?= $n ?>" <?= $per_page === $n ? 'selected' : '' ?>><?= $n ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -2108,19 +2144,24 @@ function showImageModal(src) {
     var panel = document.getElementById('hospitalListPanel');
     if (!panel) return;
 
+    var filterForm = document.getElementById('hospitalFilterForm');
+    var requestId = 0;
     function loadListPage(url, pushState) {
+        var currentRequest = ++requestId;
         var ajaxUrl = url + (url.indexOf('?') > -1 ? '&' : '?') + 'ajax_list=1';
         panel.style.opacity = '0.5';
         fetch(ajaxUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function(res) { if (!res.ok) throw new Error('요청 실패'); return res.text(); })
             .then(function(html) {
+                if (currentRequest !== requestId) return;
                 panel.innerHTML = html;
+                syncStatusLinks(url);
                 panel.style.opacity = '';
                 if (pushState) history.pushState(null, '', url);
             })
             .catch(function() {
                 // AJAX 실패 시 일반 페이지 이동으로 대체(폴백)
-                window.location.href = url;
+                if (currentRequest === requestId) window.location.href = url;
             });
     }
 
@@ -2128,9 +2169,18 @@ function showImageModal(src) {
     // 페이지네이션과 동일하게 AJAX로 처리한다. 이 링크들은 목록 패널 바깥에 있으므로
     // 서버가 다시 그려주지 않는 활성 표시(하이라이트)를 직접 갱신해 준다.
     function syncStatusLinks(url) {
-        var status = new URL(url, location.href).searchParams.get('status') || 'all';
+        var params = new URL(url, location.href).searchParams;
+        var status = params.get('status') || 'all';
+        filterForm.elements.status.value = status;
+        filterForm.elements.search.value = params.get('search') || '';
+        filterForm.elements.treatment_id.value = params.get('treatment_id') || '0';
+        filterForm.elements.per_page.value = params.get('per_page') || '20';
         var solidClass = { all: 'btn-primary', pending: 'btn-warning', approved: 'btn-success', rejected: 'btn-danger' };
         document.querySelectorAll('.hospital-status-link').forEach(function(el) {
+            var linkParams = new URLSearchParams(params);
+            linkParams.set('status', el.dataset.status);
+            linkParams.set('page', '1');
+            el.href = '?' + linkParams.toString();
             var active = el.dataset.status === status;
             var card = el.querySelector('.hospital-stat-card');
             if (card) card.classList.toggle('active-filter', active);
@@ -2142,12 +2192,20 @@ function showImageModal(src) {
         });
     }
 
+    filterForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadListPage('?' + new URLSearchParams(new FormData(filterForm)).toString(), true);
+    });
+    filterForm.addEventListener('change', function(e) {
+        if (e.target.name === 'treatment_id' || e.target.name === 'per_page') filterForm.requestSubmit();
+    });
+
     document.addEventListener('click', function(e) {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         var link = e.target.closest('.pagination .page-link, .hospital-status-link');
         if (!link) return;
         e.preventDefault();
         var href = link.getAttribute('href');
-        if (link.classList.contains('hospital-status-link')) syncStatusLinks(href);
         loadListPage(href, true);
     });
 
