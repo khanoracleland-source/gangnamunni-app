@@ -96,25 +96,25 @@ function request_detail_date($date, $time) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title><?php echo $is_completed ? '시술완료 내역' : '예약 상세'; ?></title>
+<title><?php echo $is_active ? '예약 내용 확인' : ($is_completed ? '시술완료 내역' : '예약 상세'); ?></title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <style>
 :root { --primary:#AE1932; }
 * { box-sizing:border-box; margin:0; padding:0; }
 html { background:#3f3f3f; }
-body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:calc(84px + env(safe-area-inset-bottom, 0px)); background:#fff; color:#111; font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; }
-.request-header { height:64px; display:grid; grid-template-columns:44px 1fr 44px; align-items:center; padding:0 16px; }
-.request-back { width:44px; height:44px; border:0; background:none; font-size:27px; color:#111; cursor:pointer; }
-.request-title { text-align:center; font-size:18px; font-weight:650; letter-spacing:-.04em; white-space:nowrap; }
+body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; background:#fff; color:#111; font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; }
+.request-header { height:82px; display:grid; grid-template-columns:48px 1fr 48px; align-items:center; padding:0 20px; }
+.request-back { width:44px; height:44px; border:0; background:none; font-size:31px; color:#111; cursor:pointer; }
+.request-title { text-align:center; font-size:20px; font-weight:500; letter-spacing:-.04em; white-space:nowrap; }
 .request-body { padding:0 20px; }
-.status-badge { display:inline-flex; align-items:center; gap:28px; margin:22px 0 18px; padding:11px 16px; background:var(--primary); color:#fff; font-size:22px; font-weight:700; }
+.status-badge { display:inline-flex; align-items:center; gap:28px; margin:18px 0 22px; padding:12px 18px; background:var(--primary); color:#fff; font-size:22px; font-weight:700; }
 .status-badge.completed { padding:10px 16px; background:#f2f2f2; color:#111; font-size:22px; }
 .detail-list { border-bottom:1px solid #ddd; }
-.detail-row { min-height:76px; display:grid; grid-template-columns:150px minmax(0,1fr); align-items:center; border-top:1px solid #ddd; }
+.detail-row { min-height:64px; display:grid; grid-template-columns:118px minmax(0,1fr); align-items:center; border-top:1px solid #ddd; }
 .detail-row:first-child { border-top:0; }
 .detail-label { color:#aaa; font-size:18px; font-weight:600; }
 .detail-value { min-width:0; overflow:hidden; color:#111; font-size:18px; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
-.person-card { margin-top:20px; padding:22px 24px; background:#f3f3f3; display:grid; grid-template-columns:126px 1fr; row-gap:10px; }
+.person-card { margin-top:28px; padding:20px; background:#f3f3f3; display:grid; grid-template-columns:98px 1fr; row-gap:10px; }
 .person-label { color:#aaa; font-size:18px; font-weight:600; }
 .person-value { font-size:18px; font-weight:700; }
 .payment-section { margin-top:38px; }
@@ -123,13 +123,14 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:calc(84p
 .payment-label { color:#aaa; font-size:18px; font-weight:600; }
 .payment-value { color:#111; font-size:18px; font-weight:500; white-space:nowrap; }
 .payment-row.total .payment-value { font-weight:750; }
-.notice { margin-top:24px; padding:24px 28px; background:#fff1f3; }
+.notice { margin-top:22px; padding:36px 28px 28px; background:#fff1f3; }
 .notice-title { margin-bottom:10px; color:var(--primary); font-size:17px; font-weight:700; }
-.notice ul { padding-left:18px; font-size:13px; line-height:1.9; }
+.notice ul { padding-left:18px; font-size:14px; line-height:1.8; }
 .notice em { color:var(--primary); font-style:normal; }
 .detail-actions { max-width:430px; margin:40px auto 0; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .detail-action { height:56px; border:1px solid var(--primary); background:#fff; color:var(--primary); display:flex; align-items:center; justify-content:center; font-family:inherit; font-size:22px; font-weight:700; text-decoration:none; cursor:pointer; }
 .detail-action.primary { background:var(--primary); color:#fff; }
+.confirm-action { width:100%; height:52px; margin-top:22px; border:0; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:700; text-decoration:none; }
 .completed-page .request-body { padding-bottom:30px; }
 .completed-page .detail-actions { margin-top:38px; }
 .completed-page .detail-action { font-size:18px; }
@@ -157,10 +158,10 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:calc(84p
 }
 </style>
 </head>
-<body class="<?php echo $is_completed ? 'completed-page' : ''; ?>">
+<body class="<?php echo $is_active ? 'active-page' : ($is_completed ? 'completed-page' : ''); ?>">
 <header class="request-header">
     <button type="button" class="request-back" onclick="location.href='my_bookings.php'" aria-label="뒤로"><i class="bi bi-chevron-left"></i></button>
-    <h1 class="request-title"><?php echo $is_completed ? '시술완료 내역' : '예약 상세'; ?></h1>
+    <h1 class="request-title"><?php echo $is_active ? '예약 내용을 확인해보세요' : ($is_completed ? '시술완료 내역' : '예약 상세'); ?></h1>
     <span aria-hidden="true"></span>
 </header>
 <main class="request-body">
@@ -173,23 +174,33 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:calc(84p
         <div class="detail-row"><span class="detail-label">날짜/시간</span><span class="detail-value"><?php echo htmlspecialchars(request_detail_date($bk['booking_date'], $bk['booking_time'])); ?></span></div>
         <div class="detail-row"><span class="detail-label">선택시술</span><span class="detail-value"><?php echo htmlspecialchars($bk['treatment'] ?: '-'); ?></span></div>
         <div class="detail-row"><span class="detail-label">병원</span><span class="detail-value"><?php echo htmlspecialchars($bk['hospital_name'] ?: '-'); ?></span></div>
+        <?php if (!$is_active): ?>
         <div class="detail-row"><span class="detail-label">담당의사</span><span class="detail-value"><?php echo htmlspecialchars(trim($bk['doctor_name'] ?? '') ?: '-'); ?></span></div>
+        <?php endif; ?>
     </div>
     <div class="person-card">
         <span class="person-label">예약자</span><span class="person-value"><?php echo htmlspecialchars($bk['name'] ?: '-'); ?></span>
         <span class="person-label">연락처</span><span class="person-value"><?php echo htmlspecialchars($bk['phone'] ?: '-'); ?></span>
     </div>
+    <?php if ($is_active): ?>
+    <div class="notice">
+        <div class="notice-title">고객님 꼭 알아두세요!</div>
+        <ul>
+            <li>예약 가능 여부는 병원 상황에 따라 달라질 수 있어요</li>
+            <li>예약이 불가능한 경우, 상담원이 다른 일정으로 안내해드려요</li>
+            <li>예약 확정 전까지는 결제가 진행되지 않아요</li>
+            <li>결제는 예약이 가능하다고 확인된 후에 진행됩니다</li>
+            <li>예약 현황 / 예약 변경 / 취소는 <em>내 예약 결제내역</em>에서 직접 관리 할 수 있어요</li>
+        </ul>
+    </div>
+    <a class="confirm-action" href="my_bookings.php">확인했어요</a>
+    <?php else: ?>
     <section class="payment-section" aria-labelledby="paymentInfoTitle">
         <h2 class="payment-title" id="paymentInfoTitle">결제정보</h2>
         <div class="payment-row"><span class="payment-label">시술가격</span><span class="payment-value"><?php echo number_format($treatment_price); ?></span></div>
         <div class="payment-row total"><span class="payment-label">총 결제금액</span><span class="payment-value"><?php echo number_format($total_payment); ?></span></div>
     </section>
-    <?php if ($is_active): ?>
-    <div class="detail-actions">
-        <button type="button" class="detail-action primary" onclick="openChangeModal()">예약변경</button>
-        <button type="button" class="detail-action" onclick="openCancelModal()">예약취소</button>
-    </div>
-    <?php elseif ($is_completed): ?>
+    <?php if ($is_completed): ?>
     <div class="detail-actions">
         <a class="detail-action primary" href="booking.php?id=<?php echo (int)$bk['hospital_id']; ?>&amp;rebook=1&amp;source_booking_id=<?php echo $booking_id; ?>&amp;treatment=<?php echo urlencode((string)$bk['treatment']); ?>">다시예약</a>
         <?php if (($completed_review_state['state'] ?? 'none') === 'none'): ?>
@@ -202,6 +213,7 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:calc(84p
         <span class="detail-action" aria-disabled="true"><?php echo htmlspecialchars($completed_review_state['label'] ?? '후기 확인중'); ?></span>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
     <?php endif; ?>
 </main>
 <div class="change-modal" id="changeModal" aria-hidden="true" onclick="if(event.target===this) closeChangeModal()">
@@ -222,7 +234,6 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:calc(84p
         </div>
     </section>
 </div>
-<?php include __DIR__ . '/includes/bottom_nav.php'; ?>
 <script>
 function openChangeModal() {
     var modal = document.getElementById('changeModal');

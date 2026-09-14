@@ -351,24 +351,23 @@ $page_title = '내 예약';
         .push-tip-close { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 22px; cursor: pointer; }
 
         /* Figma: upcoming treatment tab */
-        #tab-active { padding: 17px 20px 0; background: #fff; }
-        .upcoming-booking { margin: 0; padding: 16px 0 24px; border-bottom: 1px solid #dedede; background: #fff; }
-        .upcoming-booking:first-of-type { padding-top: 0; }
-        .upcoming-booking + .upcoming-booking { padding-top: 24px; }
-        .upcoming-date-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:13px; }
-        .upcoming-date { font-size: 18px; font-weight: 650; line-height: 1.35; letter-spacing: -.45px; color: #111; }
-        .upcoming-status { flex-shrink:0; padding:4px 9px; border-radius:999px; font-size:12px; font-weight:700; }
-        .upcoming-status.pending { background:#fff3cd; color:#856404; }
-        .upcoming-status.confirmed { background:#d1e7dd; color:#0f5132; }
-        .upcoming-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(112px, 1fr); align-items: stretch; gap: 12px; }
-        .upcoming-summary { min-width: 0; min-height: 66px; padding: 12px 16px 11px 18px; display: flex; align-items: center; gap: 14px; background: var(--color-primary); color: #fff; text-decoration: none; }
-        .upcoming-copy { min-width: 0; flex: 1; }
-        .upcoming-treatment { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; line-height: 1.35; letter-spacing: 0; }
-        .upcoming-hospital { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; font-size: 13px; font-weight: 400; line-height: 1.35; color: #fff; }
-        .upcoming-dday { flex: 0 0 auto; font-size: 20px; font-weight: 700; white-space: nowrap; }
-        .upcoming-actions { display: flex; align-items: center; justify-content: space-around; gap: 12px; white-space: nowrap; }
-        .upcoming-action { padding: 10px 0; border: 0; background: transparent; color: #111; font: inherit; font-size: 18px; font-weight: 500; cursor: pointer; }
-        .upcoming-action:disabled { color: #aaa; cursor: not-allowed; }
+        #tab-active { padding: 20px 18px 4px; background: #f3f3f3; }
+        .upcoming-booking {
+            margin: 0 0 20px; padding: 28px 24px 28px; border: 0; background: #fff; cursor: pointer;
+        }
+        .upcoming-booking:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+        .upcoming-booking:first-of-type { padding-top: 28px; }
+        .upcoming-booking + .upcoming-booking { padding-top: 28px; }
+        .upcoming-booking .booking-card-top { margin-bottom: 20px; }
+        .upcoming-booking .booking-card-date { color: #111; }
+        .upcoming-booking .booking-detail-link { border-color: #df9aa6; color: #111; }
+        .upcoming-booking .booking-summary { gap: 20px; }
+        .upcoming-booking .booking-progress { margin: 34px 0 30px; }
+        .upcoming-booking .progress-step.done { color: #aaa; }
+        .upcoming-booking .progress-step.done::before,
+        .upcoming-booking .progress-step.done::after { background: var(--color-primary); }
+        .upcoming-booking .booking-card-actions { margin: 0; padding-top: 26px; }
+        .upcoming-booking .booking-card-action { min-height: 50px; }
 
         .modal-overlay.bottom-sheet-modal { align-items: flex-end; z-index: 12000; }
         .change-confirm-box {
@@ -436,10 +435,8 @@ $page_title = '내 예약';
             .cancel-reason-grid { gap:18px 14px; }
             .cancel-reason-option { font-size:14px; }
             #tab-active { padding-left: 14px; padding-right: 14px; }
-            .upcoming-row { gap: 10px; }
-            .upcoming-summary { padding-left: 14px; padding-right: 12px; gap: 10px; }
-            .upcoming-actions { gap: 8px; }
-            .upcoming-action { font-size: 18px; }
+            .upcoming-booking { padding-left: 16px; padding-right: 16px; }
+            .upcoming-booking .booking-card-actions { gap: 12px; }
         }
         /* 시술완료/완료 확인중 Figma 목록 */
         #tab-past.active { background:#fff; }
@@ -496,7 +493,7 @@ $page_title = '내 예약';
         </div>
         <?php else: ?>
         <?php foreach ($active_bookings as $bk): ?>
-        <article class="upcoming-booking" id="card-<?php echo $bk['id']; ?>" data-status="<?php echo htmlspecialchars($bk['status']); ?>" data-booking-date="<?php echo htmlspecialchars($bk['booking_date'], ENT_QUOTES); ?>" data-booking-time="<?php echo htmlspecialchars(substr($bk['booking_time'], 0, 5), ENT_QUOTES); ?>" data-edits-left="<?php echo max(0, 3 - (int)($bk['edit_count'] ?? 0)); ?>">
+        <article class="upcoming-booking" id="card-<?php echo $bk['id']; ?>" data-status="<?php echo htmlspecialchars($bk['status']); ?>" data-booking-date="<?php echo htmlspecialchars($bk['booking_date'], ENT_QUOTES); ?>" data-booking-time="<?php echo htmlspecialchars(substr($bk['booking_time'], 0, 5), ENT_QUOTES); ?>" data-edits-left="<?php echo max(0, 3 - (int)($bk['edit_count'] ?? 0)); ?>" data-detail-url="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>" role="link" tabindex="0" aria-label="예약 상세 보기">
             <?php
                 $_days_ko = ['일','월','화','수','목','금','토'];
                 $_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
@@ -508,25 +505,36 @@ $page_title = '내 예약';
                 $_dd = (int)(new DateTime('today'))->diff(new DateTime($bk['booking_date']))->format('%r%a');
                 $_dd_text = $_dd > 0 ? 'D-' . $_dd : ($_dd === 0 ? 'D-0' : 'D+' . abs($_dd));
                 $_edits_left = max(0, 3 - (int)($bk['edit_count'] ?? 0));
+                $_booking_steps = ['예약 요청 접수', '병원 확인 중', '결제 대기', '예약 확정'];
+                $_booking_active_step = $bk['status'] === 'confirmed' ? 4 : 1;
             ?>
-            <div class="upcoming-date-row">
-                <div class="upcoming-date"><?php echo htmlspecialchars($_date_text); ?></div>
-                <span class="upcoming-status <?php echo $bk['status'] === 'confirmed' ? 'confirmed' : 'pending'; ?>">
-                    <?php echo $bk['status'] === 'confirmed' ? '예약확정' : '예약대기'; ?>
-                </span>
+            <div class="booking-card-top">
+                <span class="booking-card-date"><?php echo htmlspecialchars($_date_text); ?></span>
+                <span class="booking-dday"><?php echo htmlspecialchars($_dd_text); ?></span>
+                <a class="booking-detail-link" href="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>">예약상세</a>
             </div>
-            <div class="upcoming-row">
-                <a class="upcoming-summary" href="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>" aria-label="예약 상세 보기">
-                    <span class="upcoming-copy">
-                        <span class="upcoming-treatment"><?php echo htmlspecialchars($bk['treatment'] ?: '선택 시술'); ?></span>
-                        <span class="upcoming-hospital"><?php echo htmlspecialchars($bk['hospital_name'] ?: '-'); ?></span>
-                    </span>
-                    <span class="upcoming-dday"><?php echo htmlspecialchars($_dd_text); ?></span>
-                </a>
-                <div class="upcoming-actions">
-                    <button type="button" class="upcoming-action" onclick="location.href='booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>'" <?php echo $_edits_left <= 0 ? 'disabled' : ''; ?>>예약변경</button>
-                    <button type="button" class="upcoming-action" onclick="openCancelModal(<?php echo (int)$bk['id']; ?>)">예약취소</button>
+            <div class="booking-summary">
+                <div class="booking-thumb">
+                    <?php if (!empty($bk['hospital_image'])): ?>
+                    <img src="<?php echo htmlspecialchars($bk['hospital_image']); ?>" alt="">
+                    <?php else: ?>
+                    SEOUL<br>BEAUTY
+                    <?php endif; ?>
                 </div>
+                <div class="booking-summary-copy">
+                    <div class="booking-treatment"><?php echo htmlspecialchars($bk['treatment'] ?: '선택 시술'); ?></div>
+                    <div class="booking-hospital"><?php echo htmlspecialchars($bk['hospital_name'] ?: '-'); ?></div>
+                    <div class="booking-price"><?php echo number_format((int)($bk['price'] ?? 0)); ?>원</div>
+                </div>
+            </div>
+            <div class="booking-progress" aria-label="예약 진행 상태">
+                <?php foreach ($_booking_steps as $_booking_i => $_booking_label): ?>
+                <div class="progress-step<?php echo ($_booking_i + 1) === $_booking_active_step ? ' active' : (($_booking_i + 1) < $_booking_active_step ? ' done' : ''); ?>"><?php echo $_booking_label; ?></div>
+                <?php endforeach; ?>
+            </div>
+            <div class="booking-card-actions">
+                <button type="button" class="booking-card-action primary" onclick="location.href='booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>'" <?php echo $_edits_left <= 0 ? 'disabled' : ''; ?>>예약변경</button>
+                <button type="button" class="booking-card-action" onclick="openCancelModal(<?php echo (int)$bk['id']; ?>)">예약취소</button>
             </div>
         </article>
         <?php endforeach; ?>
@@ -757,6 +765,24 @@ var requestedTab = new URLSearchParams(window.location.search).get('tab');
 if (requestedTab === 'completed' || requestedTab === 'cancelled') {
     switchTab(requestedTab);
 }
+
+document.querySelectorAll('.upcoming-booking[data-detail-url]').forEach(function(card) {
+    function goDetail() {
+        var url = card.getAttribute('data-detail-url');
+        if (url) location.href = url;
+    }
+    card.addEventListener('click', function(event) {
+        if (event.target.closest('a,button')) return;
+        goDetail();
+    });
+    card.addEventListener('keydown', function(event) {
+        if (event.target.closest('a,button')) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            goDetail();
+        }
+    });
+});
 
 // Detail page actions return here and continue through the existing,
 // CSRF-protected change/cancel modal flows.

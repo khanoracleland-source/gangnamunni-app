@@ -9,8 +9,10 @@
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/dev_mode_helper.php';
 require_once __DIR__ . '/includes/notification_helper.php';
+require_once __DIR__ . '/includes/hospital_return_url.php';
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 $booking_from_wishlist = isset($_GET['from']) && $_GET['from'] === 'my_wishlist';
+$booking_return_url = hospital_return_url($_GET['return_url'] ?? '');
 
 // 시술 가격은 변환 없이 원 단위 정수 그대로 사용한다.
 function booking_price_won($price) {
@@ -35,6 +37,7 @@ if (function_exists('getSettingValue')) {
         if (isset($_GET['treatment_id'])) $login_return_url .= '&treatment_id=' . max(0, (int)$_GET['treatment_id']);
         if (isset($_GET['option_id'])) $login_return_url .= '&option_id=' . max(0, (int)$_GET['option_id']);
         if (isset($_GET['treatment'])) $login_return_url .= '&treatment=' . urlencode(trim((string)$_GET['treatment']));
+        if ($booking_return_url !== '') $login_return_url .= '&return_url=' . rawurlencode($booking_return_url);
         if (isset($_GET['rebook']) && $_GET['rebook'] === '1') $login_return_url .= '&rebook=1';
         if (isset($_GET['source_booking_id'])) $login_return_url .= '&source_booking_id=' . max(0, (int)$_GET['source_booking_id']);
         if ($booking_from_wishlist) $login_return_url .= '&from=my_wishlist';
@@ -635,6 +638,7 @@ if ($preselected_booking_treatment !== null) {
             . '#matched-treatment';
     }
 }
+$booking_success_done_url = $booking_back_url;
 
 // 현재 병원에서 예약 가능한 패키지. 구성 시술이 모두 활성인 패키지만 노출한다.
 $booking_packages = [];
@@ -2138,7 +2142,7 @@ $page_js = '
         });
 
         overlay.querySelectorAll("a").forEach(function(link) {
-            link.addEventListener("click", function() { successExitAllowed = true; }, { once: true });
+            link.addEventListener("click", unlockSuccessScreen, { once: true });
         });
 
         // 모바일 하드웨어 Back/브라우저 Back도 완료 화면을 닫지 못하게 한다.
@@ -2465,7 +2469,7 @@ include __DIR__ . '/includes/header.php';
             </div>
             </div>
             <div class="success-actions booking-motion-footer">
-                <a href="detail.php?id=<?php echo (int)$hospital_id; ?><?php echo $booking_from_wishlist ? '&from=my_wishlist' : ''; ?>" class="success-action primary">확인했어요</a>
+                <a href="<?php echo htmlspecialchars($booking_success_done_url, ENT_QUOTES, 'UTF-8'); ?>" class="success-action primary">확인했어요</a>
                 <a href="my_bookings.php" class="success-action" id="successBookingsLink">내 예약 현황</a>
             </div>
         </section>
