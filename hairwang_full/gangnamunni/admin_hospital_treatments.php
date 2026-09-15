@@ -11,6 +11,7 @@ $admin_current = 'hospital_treatments';
 
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
+require_once __DIR__ . '/includes/treatment_units.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 
 if (!isset($connect) || !$connect) {
@@ -22,6 +23,7 @@ if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
 require_admin_login();
 require_permission('hospital_treatments');
+$price_units = treatment_units_list($connect);
 
 require_once __DIR__ . '/includes/hospital_filter.php';
 $my_ids = get_strict_admin_hospital_ids($connect);
@@ -1362,7 +1364,7 @@ function deleteTreatmentImage(htId, imageId) {
 }
 
 var HT_PRICES = <?php echo json_encode($ht_prices, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-var PRICE_UNITS = ['샷','cc','ml','kj','회','병','IU','라인','기타'];
+var PRICE_UNITS = <?php echo json_encode($price_units, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 var BODY_PART_GROUPS = [
     {label:'얼굴 전체 및 헤어', items:['얼굴 전체 (풀페이스)','헤어라인','두피']},
     {label:'상안면부 (눈/이마 주변)', items:['이마','미간','눈가 (눈웃음 주름)','눈밑 (다크서클, 눈밑 꺼짐)','애교살','관자놀이']},
@@ -1420,8 +1422,10 @@ function syncBodyParts(checkbox) {
 }
 
 function priceRowHtml(dv, du, regularPrice, pr, optionName, bodyPart, isRepresentative) {
-    var opts = PRICE_UNITS.map(function(u){
-        return '<option value="'+u+'"'+(u===du?' selected':'')+'>'+u+'</option>';
+    var units = PRICE_UNITS.slice();
+    if (du && units.indexOf(du) === -1) units.push(du);
+    var opts = '<option value="">단위 선택</option>' + units.map(function(u){
+        return '<option value="'+tiEscape(u)+'"'+(u===du?' selected':'')+'>'+tiEscape(u)+'</option>';
     }).join('');
     return '<div class="d-flex align-items-center mb-2 price-row" style="gap:8px;">' +
         '<div class="d-flex justify-content-center" style="width:32px;">' +
@@ -1431,7 +1435,7 @@ function priceRowHtml(dv, du, regularPrice, pr, optionName, bodyPart, isRepresen
         '<input type="hidden" name="body_part[]" class="body-part-value" value="'+tiEscape(bodyPart || '')+'">' +
         bodyPartPickerHtml(bodyPart) +
         '<input type="number" name="dosage_value[]" class="form-control form-control-sm" style="flex:1;" min="0.01" step="0.01" required placeholder="예: 100" value="'+(dv==null?'':dv)+'">' +
-        '<select name="dosage_unit[]" class="form-select form-select-sm" style="width:96px;">'+opts+'</select>' +
+        '<select name="dosage_unit[]" required class="form-select form-select-sm" style="width:96px;">'+opts+'</select>' +
         '<input type="number" name="regular_price[]" class="form-control form-control-sm" style="width:130px;" min="0" step="1" placeholder="선택" value="'+(Number(regularPrice)>0?priceToWon(regularPrice):'')+'">' +
         '<input type="number" name="price[]" class="form-control form-control-sm" style="width:130px;" min="0" step="1" placeholder="선택" value="'+(Number(pr)>0?priceToWon(pr):'')+'">' +
         '<button type="button" class="btn btn-outline-danger btn-sm price-del" style="width:34px;" onclick="removePriceRow(this)"><i class="bi bi-x-lg"></i></button>' +
@@ -1439,7 +1443,7 @@ function priceRowHtml(dv, du, regularPrice, pr, optionName, bodyPart, isRepresen
 }
 
 function addPriceRow(dv, du, regularPrice, pr, optionName, bodyPart, isRepresentative) {
-    document.getElementById('priceRows').insertAdjacentHTML('beforeend', priceRowHtml(dv, du || '회', regularPrice, pr, optionName, bodyPart, isRepresentative));
+    document.getElementById('priceRows').insertAdjacentHTML('beforeend', priceRowHtml(dv, du || (PRICE_UNITS.indexOf('회') !== -1 ? '회' : ''), regularPrice, pr, optionName, bodyPart, isRepresentative));
     refreshPriceDelButtons();
     refreshRepresentativeCheckboxes();
 }
@@ -1477,7 +1481,7 @@ function openPriceModal(id, name) {
     document.getElementById('price_treatment_name').textContent = name;
     document.getElementById('priceRows').innerHTML = '';
     var list = HT_PRICES[id] || [];
-    if (!list.length) list = [{dosage_value:'', dosage_unit:'회', regular_price:'', price:'', body_part:'', is_representative:0}];
+    if (!list.length) list = [{dosage_value:'', dosage_unit:(PRICE_UNITS.indexOf('회') !== -1 ? '회' : ''), regular_price:'', price:'', body_part:'', is_representative:0}];
     list.forEach(function(o){ addPriceRow(o.dosage_value, o.dosage_unit, o.regular_price, o.price, o.option_name, o.body_part, Number(o.is_representative) === 1); });
     new bootstrap.Modal(document.getElementById('priceModal')).show();
 }

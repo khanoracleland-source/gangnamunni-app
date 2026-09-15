@@ -12,6 +12,7 @@ session_start();
 
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
+require_once __DIR__ . '/includes/treatment_units.php';
 
 // DB 연결
 if (!isset($connect) || !$connect) {
@@ -21,6 +22,7 @@ if (!isset($connect) || !$connect) {
 if (!$connect) die('DB 연결 실패');
 
 loadThemeSettings($connect);
+$price_units = treatment_units_list($connect);
 
 // 관리자 여부 판별
 $is_admin = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true;
@@ -606,15 +608,9 @@ include __DIR__ . '/includes/header.php';
                         <input type="number" name="dosage_value" class="pt-price-input" style="width:70px;" value="<?php echo $t['dosage_value'] !== null ? htmlspecialchars(rtrim(rtrim(number_format((float)$t['dosage_value'], 2), '0'), '.')) : ''; ?>" placeholder="샷수/용량" min="0" step="0.01">
                         <select name="dosage_unit" class="pt-price-input" style="width:80px;">
                             <option value="">단위없음</option>
-                            <option value="샷" <?php echo ($t['dosage_unit'] ?? '') === '샷' ? 'selected' : ''; ?>>샷</option>
-                            <option value="cc" <?php echo ($t['dosage_unit'] ?? '') === 'cc' ? 'selected' : ''; ?>>cc</option>
-                            <option value="ml" <?php echo ($t['dosage_unit'] ?? '') === 'ml' ? 'selected' : ''; ?>>ml</option>
-                            <option value="kj" <?php echo ($t['dosage_unit'] ?? '') === 'kj' ? 'selected' : ''; ?>>kj</option>
-                            <option value="회" <?php echo ($t['dosage_unit'] ?? '') === '회' ? 'selected' : ''; ?>>회</option>
-                            <option value="병" <?php echo ($t['dosage_unit'] ?? '') === '병' ? 'selected' : ''; ?>>병</option>
-                            <option value="IU" <?php echo ($t['dosage_unit'] ?? '') === 'IU' ? 'selected' : ''; ?>>IU</option>
-                            <option value="라인" <?php echo ($t['dosage_unit'] ?? '') === '라인' ? 'selected' : ''; ?>>라인</option>
-                            <option value="기타" <?php echo ($t['dosage_unit'] ?? '') === '기타' ? 'selected' : ''; ?>>기타</option>
+                            <?php foreach (treatment_units_with_current($price_units, $t['dosage_unit'] ?? '') as $unit): ?>
+                            <option value="<?= htmlspecialchars($unit, ENT_QUOTES, 'UTF-8') ?>" <?= ($t['dosage_unit'] ?? '') === $unit ? 'selected' : '' ?>><?= htmlspecialchars($unit, ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
                         </select>
                         <button type="submit" class="pt-btn pt-btn-primary" style="padding:6px 12px;">저장</button>
                     </div>

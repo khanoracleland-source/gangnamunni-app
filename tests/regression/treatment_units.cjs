@@ -1,0 +1,32 @@
+// Exercise the actual option renderers without a database or browser session.
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const root = path.join(__dirname, '../../hairwang_full/gangnamunni');
+const admin = fs.readFileSync(path.join(root, 'admin_hospital_treatments.php'), 'utf8');
+const application = fs.readFileSync(path.join(root, 'hospital_apply.php'), 'utf8');
+function section(source, start, end) { return source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start))); }
+const context = vm.createContext({PRICE_UNITS: ['시린지', 'Box', '<b>"'], APPLICATION_PRICE_UNITS: ['시린지', 'Box', '<b>"'], bodyPartPickerHtml: () => '', priceToWon: value => value});
+vm.runInContext(section(admin, 'function tiEscape(', 'function openTreatmentImageModal('), context);
+vm.runInContext(section(admin, 'function priceRowHtml(', 'function addPriceRow('), context);
+vm.runInContext(section(application, 'function applicationEscape(', 'function updateApplicationPriceButtons('), context);
+let html = context.priceRowHtml(1, 'Box', 0, 0, '', '', false);
+assert.match(html, /value="Box" selected/);
+assert.match(html, /value="시린지"/);
+assert.ok(!html.includes('<b>'));
+assert.match(html, /&lt;b&gt;&quot;/);
+context.PRICE_UNITS = ['시린지'];
+html = context.priceRowHtml(1, 'Box', 0, 0, '', '', false);
+assert.match(html, /value="Box" selected/, 'Historical deleted unit must remain selected');
+assert.ok(!context.priceRowHtml(1, '', 0, 0, '', '', false).includes('value="Box"'));
+context.PRICE_UNITS = [];
+html = context.priceRowHtml(1, '', 0, 0, '', '', false);
+assert.match(html, /value="">단위 선택/);
+assert.ok(!html.includes('value="회"'));
+html = context.applicationPriceRowHtml(1);
+assert.match(html, /value="시린지"/);
+assert.match(html, /value="Box"/);
+assert.ok(!html.includes('<b>'));
+assert.match(admin, /var PRICE_UNITS = <\?php echo json_encode\(\$price_units/);
+console.log('PASS: shared units, historical selections, removed units, empty list and HTML escaping');

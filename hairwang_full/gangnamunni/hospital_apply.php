@@ -12,6 +12,7 @@ $admin_current = 'hospital_apply';
 require_once __DIR__ . '/dbconfig.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/theme_helper.php';
+require_once __DIR__ . '/includes/treatment_units.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/dev_mode_helper.php';
 require_once __DIR__ . '/includes/notification_helper.php';
@@ -23,6 +24,7 @@ mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
 require_admin_login();
+$price_units = treatment_units_list($connect);
 
 $message = '';
 $error = '';
@@ -1078,15 +1080,15 @@ document.querySelectorAll('.image-preview-input').forEach(function(input) {
     });
 });
 
-var APPLICATION_PRICE_UNITS = ['샷', 'cc', 'ml', 'kj', '회', '병', 'IU', '라인', '기타'];
+var APPLICATION_PRICE_UNITS = <?php echo json_encode($price_units, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 function applicationEscape(value) {
     return String(value || '').replace(/[&<>"']/g, function(char) {
         return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'}[char];
     });
 }
 function applicationPriceRowHtml(treatmentId) {
-    var units = APPLICATION_PRICE_UNITS.map(function(unit) {
-        return '<option value="' + unit + '"' + (unit === '회' ? ' selected' : '') + '>' + unit + '</option>';
+    var units = '<option value="">단위 선택</option>' + APPLICATION_PRICE_UNITS.map(function(unit) {
+        return '<option value="' + applicationEscape(unit) + '"' + (unit === '회' ? ' selected' : '') + '>' + applicationEscape(unit) + '</option>';
     }).join('');
     return '<div class="application-price-row">'
         + '<input type="text" name="treatment_option_name[' + treatmentId + '][]" class="form-control form-control-sm" maxlength="100" placeholder="옵션명 (예: 주름 100샷)">'

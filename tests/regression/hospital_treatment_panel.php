@@ -34,6 +34,7 @@ foreach (['edit', 'view'] as $mode) {
         $hospitals = [];
         $assigned_treatments = [['id' => 12, 'treatment_name' => 'Assigned treatment', 'is_promoted' => 0, 'registered_by' => 'admin']];
         $available_treatments = [['id' => 34, 'name' => 'Available treatment', 'cat_id' => 1, 'category_name' => 'Category']];
+        $price_units = ['샷', '회', '시린지', 'Box'];
         $ht_prices = [12 => [['option_name' => 'Option', 'body_part' => 'Face', 'dosage_value' => 100, 'dosage_unit' => 'shots', 'regular_price' => 20000, 'price' => 10000, 'is_representative' => 1]]];
         $ht_images = [];
         ob_start();
