@@ -167,6 +167,8 @@ $page_title = '내 예약';
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="light">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo $page_title; ?></title>
@@ -336,6 +338,7 @@ $page_title = '내 예약';
             font-size: 16px; font-weight: 700; cursor: pointer;
         }
         .booking-card-action.primary { background: var(--color-primary); color: #fff; }
+        .booking-card-actions.paid-actions { grid-template-columns: minmax(180px, 224px); justify-content: center; }
         .booking-card-action:disabled { opacity: .45; cursor: not-allowed; }
         .cancelled-card .booking-card-top { margin-bottom: 16px; }
         .cancelled-card .cancel-state { color: var(--color-primary); font-size: 15px; font-weight: 700; white-space: nowrap; }
@@ -547,14 +550,10 @@ $page_title = '내 예약';
                 <div class="progress-step<?php echo ($_booking_i + 1) === $_booking_active_step ? ' active' : (($_booking_i + 1) < $_booking_active_step ? ' done' : ''); ?>"><?php echo $_booking_label; ?></div>
                 <?php endforeach; ?>
             </div>
-            <div class="booking-card-actions">
-                <?php if (($bk['status'] ?? '') === 'confirmed'): ?>
-                <?php if ($_payment_state === 'paid'): ?>
-                <button type="button" class="booking-card-action primary" onclick="event.stopPropagation(); location.href='booking_payment.php?booking_id=<?php echo (int)$bk['id']; ?>'">결제완료</button>
-                <?php else: ?>
+            <div class="booking-card-actions<?php echo $_payment_state === 'paid' ? ' paid-actions' : ''; ?>">
+                <?php if (($bk['status'] ?? '') === 'confirmed' && $_payment_state !== 'paid'): ?>
                 <button type="button" class="booking-card-action primary" onclick="event.stopPropagation(); location.href='booking_payment.php?booking_id=<?php echo (int)$bk['id']; ?>'">결제하기</button>
-                <?php endif; ?>
-                <?php else: ?>
+                <?php elseif (($bk['status'] ?? '') !== 'confirmed'): ?>
                 <button type="button" class="booking-card-action primary" onclick="event.stopPropagation(); openChangeConfirm(<?php echo (int)$bk['id']; ?>, '<?php echo htmlspecialchars($bk['booking_date'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars(substr($bk['booking_time'], 0, 5), ENT_QUOTES); ?>', <?php echo $_edits_left; ?>)" <?php echo $_edits_left <= 0 ? 'disabled' : ''; ?>>예약변경</button>
                 <?php endif; ?>
                 <button type="button" class="booking-card-action" onclick="event.stopPropagation(); openCancelModal(<?php echo (int)$bk['id']; ?>)">예약취소</button>
