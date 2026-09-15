@@ -101,6 +101,8 @@ $page_title = term('booking', '예약') . ' 상세';
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="light">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo htmlspecialchars($page_title); ?></title>

@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>서울미녀 소개 | 서울미녀</title>
     <meta name="description" content="피부과·성형외과 미용시술 정보를 확인하고 시술별·지역별 가격을 비교하는 서울미녀 앱을 소개합니다.">
-    <link rel="icon" type="image/png" href="assets/images/favicon-32.png">
+
     <script>
         // Keep downward gestures available for normal page scrolling in the app.
         window._pullToRefreshInstalled = true;

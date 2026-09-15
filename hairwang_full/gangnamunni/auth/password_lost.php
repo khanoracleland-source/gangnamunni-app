@@ -192,6 +192,8 @@ $primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932')
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>비밀번호 찾기 | <?php echo htmlspecialchars($brand_name); ?></title>

@@ -13,6 +13,8 @@ header('Cache-Control: no-store');
 <!doctype html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>광고 결제 방식 변경</title>

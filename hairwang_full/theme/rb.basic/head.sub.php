@@ -34,6 +34,8 @@ header("Pragma: no-cache"); // HTTP/1.0
 <!doctype html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
 <!-- 푸시 알림 스크립트 -->
 <script src="<?php echo G5_JS_URL ?>/push_notification.js?ver=<?php echo G5_JS_VER ?>"></script>
 <meta charset="utf-8">
@@ -107,10 +109,7 @@ header("Pragma: no-cache"); // HTTP/1.0
 <!-- } -->
 
 <!-- ICO { -->
-<?php if(isset($seo['se_favicon']) && $seo['se_favicon']) { ?>
-<link rel="shortcut icon" href="<?php echo G5_URL ?>/data/seo/favicon?ver=<?php echo G5_TIME_YMDHIS ?>" type="image/x-icon">
-<link rel="icon" href="<?php echo G5_URL ?>/data/seo/favicon?ver=<?php echo G5_TIME_YMDHIS ?>" type="image/x-icon">
-<?php } ?>
+
 <link rel="manifest" href="/manifest.json">
 <!-- } -->
 

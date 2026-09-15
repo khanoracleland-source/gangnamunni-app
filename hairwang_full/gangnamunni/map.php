@@ -52,6 +52,8 @@ if (empty($kakao_api_key)) {
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="light">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>지도로 <?php echo term('business', '병원'); ?> 찾기 - <?php echo function_exists('site_name') ? site_name() : '서울미녀'; ?></title>

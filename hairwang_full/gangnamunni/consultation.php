@@ -173,6 +173,8 @@ $treatment_types = [
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo term('consultation', '상담'); ?> 신청 | <?php echo htmlspecialchars($site_name); ?></title>

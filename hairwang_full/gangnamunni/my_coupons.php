@@ -38,6 +38,8 @@ require_once __DIR__ . '/includes/global_nav.php';
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="light">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>내 쿠폰 — <?php echo htmlspecialchars(site_name()); ?></title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">

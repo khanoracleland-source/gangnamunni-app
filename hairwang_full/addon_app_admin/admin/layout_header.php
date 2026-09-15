@@ -14,6 +14,8 @@ $layout_site_name = addon_app_admin_get_config('site_name', 'HAIR WANG');
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($g5['title']) ? $g5['title'] : '앱 관리자'; ?> - <?php echo htmlspecialchars($layout_site_name); ?></title>

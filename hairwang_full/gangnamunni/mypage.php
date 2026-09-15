@@ -93,6 +93,8 @@ if (!preg_match('/^#[0-9a-fA-F]{6}$/', $primary_color)) $primary_color = '#AE193
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>마이페이지 — <?php echo htmlspecialchars(site_name()); ?></title>

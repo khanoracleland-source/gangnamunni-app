@@ -94,6 +94,8 @@ function request_detail_date($date, $time) {
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title><?php echo $is_active ? '예약 내용 확인' : ($is_completed ? '시술완료 내역' : '예약 상세'); ?></title>

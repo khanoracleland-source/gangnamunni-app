@@ -212,6 +212,8 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>병원 랭킹 | <?php echo htmlspecialchars($site_name); ?></title>

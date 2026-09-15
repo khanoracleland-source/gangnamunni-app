@@ -230,10 +230,8 @@ function generateGoogleFontsLink() {
  * 파비콘 링크 생성
  */
 function generateFaviconLinks() {
-    $base = htmlspecialchars(defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/gangnamunni/', ENT_QUOTES, 'UTF-8');
-    return '<link rel="shortcut icon" type="image/x-icon" sizes="16x16" href="' . $base . 'favicon.ico">' . "\n"
-        . '<link rel="icon" type="image/png" sizes="1024x1024" href="' . $base . 'assets/images/favicon.png">' . "\n"
-        . '<link rel="apple-touch-icon" sizes="1024x1024" href="' . $base . 'assets/images/favicon.png">' . "\n";
+    require_once dirname(__DIR__) . '/lib/site_favicon.php';
+    return seoulBeautyFaviconLinks();
 }
 
 /**

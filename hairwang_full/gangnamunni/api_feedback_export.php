@@ -59,7 +59,9 @@ if ($is_word) {
 }
 ?>
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8">
+<html><head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+<meta charset="UTF-8">
 <title><?= $title ?></title>
 <style>
 body { font-family: 'Malgun Gothic', sans-serif; font-size: 12px; color: #333; margin: 20px; }

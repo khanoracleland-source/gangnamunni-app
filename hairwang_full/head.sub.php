@@ -40,6 +40,8 @@ header("Pragma: no-cache"); // HTTP/1.0
 <!doctype html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
 <link rel="stylesheet" href="<?php echo G5_THEME_URL ?>/rb.css/member_level.css?v=<?php echo G5_CSS_VER ?>">
 <meta charset="utf-8">
 <?php

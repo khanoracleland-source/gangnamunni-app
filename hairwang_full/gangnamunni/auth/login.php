@@ -331,6 +331,7 @@ $open_email = $login_error !== '';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>로그인 | <?php echo htmlspecialchars($brand_name); ?></title>
+    <?php echo generateFaviconLinks(); ?>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <?php if ($recaptcha_enabled) { ?>
     <script src="https://www.google.com/recaptcha/api.js?render=<?php echo htmlspecialchars($recaptcha_site_key, ENT_QUOTES); ?>"></script>

@@ -160,6 +160,8 @@ $status_text = $status_labels[$status] ?? $status;
 ?><!doctype html>
 <html lang="ko">
 <head>
+<?php require_once __DIR__ . '/../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>결제를 진행해볼까요?</title>
