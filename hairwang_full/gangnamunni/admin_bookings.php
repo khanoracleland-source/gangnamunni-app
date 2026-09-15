@@ -478,13 +478,25 @@ if ($is_super_admin_role) {
 }
 $show_booking_list = !$is_super_admin_role || $filter_hospital > 0 || $show_all_hospitals;
 
+$booking_payments_table_exists = false;
+$_payment_table_check = mysqli_query($connect,
+    "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gangnamunni_platform_payments' LIMIT 1");
+$booking_payments_table_exists = $_payment_table_check && mysqli_num_rows($_payment_table_check) > 0;
+$booking_payment_select = $booking_payments_table_exists
+    ? "p.status AS payment_status, p.amount AS payment_amount, p.paid_at AS payment_paid_at"
+    : "NULL AS payment_status, NULL AS payment_amount, NULL AS payment_paid_at";
+$booking_payment_join = $booking_payments_table_exists
+    ? " LEFT JOIN gangnamunni_platform_payments p ON p.payment_type='booking' AND p.booking_id=b.id "
+    : " ";
+
 $bookings_by_hospital = [];
 if ($is_super_admin_role && !$show_booking_list) {
     $grouped_booking_result = mysqli_query($connect,
-        "SELECT id, hospital_id, name, phone, treatment, booking_date, booking_time, status, doctor_id, doctor_name
-         FROM gangnamunni_bookings
-         WHERE booking_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
-         ORDER BY hospital_id ASC, created_at DESC");
+        "SELECT b.id, b.hospital_id, b.name, b.phone, b.treatment, b.booking_date, b.booking_time, b.status, b.doctor_id, b.doctor_name,
+                " . $booking_payment_select . "
+         FROM gangnamunni_bookings b" . $booking_payment_join . "
+         WHERE b.booking_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+         ORDER BY b.hospital_id ASC, b.created_at DESC");
     if ($grouped_booking_result) {
         while ($grouped_booking = mysqli_fetch_assoc($grouped_booking_result)) {
             $bookings_by_hospital[(int)$grouped_booking['hospital_id']][] = $grouped_booking;
@@ -504,7 +516,7 @@ if ($filter_hospital > 0) {
 }
 
 $hosp_in = $booking_hosp_in;
-$hosp_and = ($hosp_in !== null) ? " AND hospital_id IN (" . $hosp_in . ")" : "";
+$hosp_and = ($hosp_in !== null) ? " AND b.hospital_id IN (" . $hosp_in . ")" : "";
 if ($hosp_and) $where .= $hosp_and;
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'export_list') {
@@ -559,7 +571,7 @@ if ($page > $total_pages) {
     $offset = ($page - 1) * $per_page;
 }
 
-$sql = "SELECT b.* FROM gangnamunni_bookings b WHERE " . $where . " ORDER BY b.created_at DESC LIMIT " . $per_page . " OFFSET " . $offset;
+$sql = "SELECT b.*, " . $booking_payment_select . " FROM gangnamunni_bookings b" . $booking_payment_join . " WHERE " . $where . " ORDER BY b.created_at DESC LIMIT " . $per_page . " OFFSET " . $offset;
 $result = mysqli_query($connect, $sql);
 $bookings = [];
 if ($result) while ($row = mysqli_fetch_assoc($result)) $bookings[] = $row;
@@ -599,6 +611,26 @@ $build_booking_url = static function (array $overrides = []) use ($filter_hospit
         return $value !== null && $value !== '';
     }));
 };
+
+function admin_booking_payment_badge(array $booking): string {
+    $payment_status = (string)($booking['payment_status'] ?? '');
+    $booking_status = (string)($booking['status'] ?? '');
+    if ($payment_status === 'paid') {
+        $paid_at = trim((string)($booking['payment_paid_at'] ?? ''));
+        $title = $paid_at !== '' ? ' title="' . htmlspecialchars($paid_at, ENT_QUOTES) . '"' : '';
+        return '<span class="badge bg-success"' . $title . '>결제완료</span>';
+    }
+    if ($payment_status === 'partially_refunded') {
+        return '<span class="badge bg-info text-dark">부분환불</span>';
+    }
+    if ($payment_status === 'refunded') {
+        return '<span class="badge bg-info text-dark">환불완료</span>';
+    }
+    if ($payment_status === 'pending' || $booking_status === 'confirmed') {
+        return '<span class="badge bg-warning text-dark">결제대기</span>';
+    }
+    return '<span class="text-muted small">-</span>';
+}
 
 require_once __DIR__ . '/includes/admin_header.php';
 ?>
@@ -765,7 +797,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php else: ?>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle mb-0">
-                                    <thead class="table-light"><tr><th>예약자</th><th>전화번호</th><th>시술</th><th>예약일</th><th>예약시간</th><th>상태</th><th>담당의사</th><th style="width:190px">관리</th></tr></thead>
+                                    <thead class="table-light"><tr><th>예약자</th><th>전화번호</th><th>시술</th><th>예약일</th><th>예약시간</th><th>상태</th><th>결제</th><th>담당의사</th><th style="width:190px">관리</th></tr></thead>
                                     <tbody>
                                     <?php foreach ($hospital_bookings as $hospital_booking):
                                         $group_status = (string)($hospital_booking['status'] ?? 'pending');
@@ -779,6 +811,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                                         <td><?php echo htmlspecialchars($hospital_booking['booking_date']); ?></td>
                                         <td><?php echo htmlspecialchars(substr((string)$hospital_booking['booking_time'], 0, 5)); ?></td>
                                         <td><span class="badge bg-<?php echo $group_badges[$group_status] ?? 'secondary'; ?>" data-status-badge><?php echo $group_labels[$group_status] ?? htmlspecialchars($group_status); ?></span></td>
+                                        <td><?php echo admin_booking_payment_badge($hospital_booking); ?></td>
                                         <td>
                                             <span data-doctor-display><?php echo trim((string)$hospital_booking['doctor_name']) !== '' ? htmlspecialchars($hospital_booking['doctor_name']) : '<span class="text-muted">미배정</span>'; ?></span>
                                             <button type="button" class="btn btn-outline-secondary btn-sm ms-1 js-assign-doctor-btn" title="담당의사 배정"
@@ -832,13 +865,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <th>예약시간</th>
                         <th>사진</th>
                         <th>상태</th>
+                        <th>결제</th>
                         <th>담당의사</th>
                         <th style="width:150px">관리</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($bookings)): ?>
-                    <tr><td colspan="11" class="text-center py-5 text-muted"><i class="bi bi-inbox" style="font-size:2rem;"></i><br>예약 내역이 없습니다.</td></tr>
+                    <tr><td colspan="12" class="text-center py-5 text-muted"><i class="bi bi-inbox" style="font-size:2rem;"></i><br>예약 내역이 없습니다.</td></tr>
                     <?php else:
                     $is_viewer = (($_SESSION['ad_admin_role'] ?? '') === 'viewer');
                     $is_super_admin = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
@@ -862,6 +896,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             ?>
                             <span class="badge bg-<?php echo $badge_map[$st] ?? 'secondary'; ?>" data-status-badge><?php echo $label_map[$st] ?? $st; ?></span>
                         </td>
+                        <td><?php echo admin_booking_payment_badge($b); ?></td>
                         <td>
                             <?php $dn = trim($b['doctor_name'] ?? ''); ?>
                             <span data-doctor-display>

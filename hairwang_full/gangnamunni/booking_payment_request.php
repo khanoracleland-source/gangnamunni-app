@@ -125,6 +125,7 @@ try {
         'merchant_uid' => $order['merchant_uid'],
         'amount'       => (int)$order['amount'],
         'booking_id'   => $booking_id,
+        'success_url'  => 'booking_payment_success.php?booking_id=' . $booking_id,
     ]);
     if (empty($session['redirect_url'])) {
         throw new RuntimeException('adapter returned no redirect_url');

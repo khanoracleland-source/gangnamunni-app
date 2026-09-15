@@ -177,42 +177,72 @@ a { color: inherit; text-decoration: none; }
 .bp-content { padding-bottom: 22px; }
 .bp-section { padding: 28px 28px 26px; background: #fff; }
 .bp-section + .bp-section { border-top: 10px solid #f3f3f3; }
-.bp-section-title { margin: 0 0 26px; font-size: 18px; font-weight: 800; letter-spacing: -.04em; }
+.bp-section-title { margin: 0 0 26px; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
 .bp-summary { display: grid; grid-template-columns: 108px 1fr; gap: 22px; align-items: start; margin-bottom: 28px; }
 .bp-logo { width: 108px; height: 108px; background: #d72f34; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .bp-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .bp-logo span { font-size: 18px; letter-spacing: .24em; margin-left: .24em; }
-.bp-hospital { font-size: 20px; line-height: 1.25; font-weight: 800; margin: 2px 0 8px; letter-spacing: -.04em; }
-.bp-address { font-size: 14px; line-height: 1.45; margin: 0 0 12px; color: #222; }
+.bp-hospital { font-size: 20px; line-height: 1.25; font-weight: 600; margin: 2px 0 8px; letter-spacing: -.04em; }
+.bp-address { font-size: 15px; line-height: 1.45; font-weight: 600; margin: 0 0 12px; color: #222; }
 .bp-address .bar { color: #aaa; padding: 0 10px; }
-.bp-treatment { font-size: 20px; line-height: 1.3; font-weight: 800; margin: 0 0 8px; letter-spacing: -.04em; }
-.bp-vat { color: #a9a9a9; font-size: 14px; margin-bottom: 2px; }
+.bp-treatment { font-size: 22px; line-height: 1.3; font-weight: 600; margin: 0 0 8px; letter-spacing: -.04em; }
+.bp-vat { color: #a9a9a9; font-size: 15px; font-weight: 600; margin-bottom: 2px; }
 .bp-vat .old { text-decoration: line-through; margin-left: 6px; }
-.bp-price { color: #d40000; font-size: 24px; font-weight: 900; letter-spacing: -.04em; }
-.bp-price small { color: #111; font-size: 14px; font-weight: 500; margin-left: 2px; }
+.bp-price { color: #d40000; font-size: 22px; font-weight: 600; letter-spacing: -.04em; }
+.bp-price small { color: #111; font-size: 15px; font-weight: 600; margin-left: 2px; }
 .bp-line { border: 0; border-top: 1px solid #ddd; margin: 0; }
 .bp-info-row { display: grid; grid-template-columns: 116px 1fr; gap: 16px; align-items: center; min-height: 66px; border-bottom: 1px solid #e1e1e1; }
-.bp-label { color: #b0b0b0; font-size: 16px; font-weight: 700; letter-spacing: -.04em; }
-.bp-value { color: #111; font-size: 18px; font-weight: 800; letter-spacing: -.04em; }
-.bp-red-note { color: #be1838; font-size: 14px; font-weight: 800; margin-top: 8px; }
-.bp-check-row { display: flex; align-items: center; gap: 10px; min-height: 64px; border-bottom: 1px solid #e1e1e1; font-size: 18px; font-weight: 800; }
+.bp-label { color: #b0b0b0; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
+.bp-value { color: #111; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
+.bp-red-note { color: #be1838; font-size: 15px; font-weight: 600; margin-top: 8px; }
+.bp-check-row { display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 0; font-size: 18px; font-weight: 600; }
 .bp-checkbox { width: 14px; height: 14px; accent-color: #df0000; }
-.bp-visitor-fields { display: none; padding-top: 10px; }
+.bp-visitor-fields { display: none; padding-top: 18px; }
 .bp-visitor-fields.active { display: block; }
-.bp-field { margin-bottom: 22px; }
-.bp-field label { display: block; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
-.bp-field input, .bp-message { width: 100%; height: 48px; border: 1px solid #d9d9d9; padding: 0 16px; font-size: 15px; outline: none; }
+.bp-field { margin-bottom: 28px; }
+.bp-field label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.bp-field input, .bp-message { width: 100%; height: 44px; border: 1px solid #d9d9d9; padding: 0 16px; font-size: 15px; outline: none; }
 .bp-field input:focus, .bp-message:focus { border-color: #be1838; }
 .bp-field input::placeholder, .bp-message::placeholder { color: #bbb; }
-.bp-visitor-confirm { display: block; min-width: 206px; height: 54px; border: 0; background: #be1838; color: #fff; font-size: 17px; font-weight: 800; margin: 8px auto 24px; }
+.bp-visitor-confirm { display: block; min-width: 190px; height: 48px; border: 0; background: #be1838; color: #fff; font-size: 18px; font-weight: 600; margin: 8px auto 30px; }
 .bp-visitor-summary { display: none; }
 .bp-visitor-summary.active { display: grid; }
 .bp-point-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 42px; border: 1px solid #d8d8d8; padding: 0 12px; }
-.bp-point-label { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
-.bp-point-input { flex: 1; border: 0; outline: none; text-align: right; font-size: 19px; font-weight: 900; min-width: 0; }
-.bp-point-max { border: 0; background: transparent; color: #be1838; font-size: 16px; font-weight: 800; padding: 0; white-space: nowrap; }
-.bp-point-help { margin-top: 12px; text-align: right; font-size: 13px; color: #111; }
-.bp-point-help strong { font-weight: 900; }
+.bp-point-label { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.bp-point-input { flex: 1; border: 0; outline: none; text-align: right; font-size: 18px; font-weight: 600; min-width: 0; }
+.bp-point-unit { font-size: 18px; font-weight: 600; }
+.bp-point-max { border: 0; background: transparent; color: #be1838; font-size: 18px; font-weight: 600; padding: 0; white-space: nowrap; }
+.bp-point-help { margin-top: 12px; text-align: right; font-size: 13px; font-weight: 600; color: #111; }
+.bp-point-help strong { font-weight: 600; }
+.bp-point-note { margin-top: 14px; color: #777; font-size: 13px; line-height: 1.55; font-weight: 600; }
+.bp-discount-section .bp-section-title { font-size: 18px; font-weight: 600; }
+.bp-discount-section .bp-point-label { font-size: 15px; font-weight: 600; }
+.bp-discount-section .bp-point-input,
+.bp-discount-section .bp-point-unit,
+.bp-discount-section .bp-point-max { font-size: 18px; font-weight: 600; }
+.bp-discount-section .bp-point-help,
+.bp-discount-section .bp-point-help strong,
+.bp-discount-section .bp-point-note { font-size: 13px; font-weight: 600; }
+.bp-payment-method-section .bp-section-title { font-size: 18px; font-weight: 600; }
+.bp-payment-method-section .bp-method { font-size: 18px; font-weight: 600; }
+.bp-payment-method-section .bp-installment { font-size: 15px; font-weight: 600; }
+.bp-amount-section .bp-section-title { font-size: 18px; font-weight: 600; }
+.bp-amount-section .bp-amount-row,
+.bp-amount-section .bp-amount-row .right,
+.bp-amount-section .bp-total-row .left,
+.bp-amount-section .bp-total-row .left small,
+.bp-amount-section .bp-total-row .right,
+.bp-amount-section .bp-discount-badge { font-size: 15px; font-weight: 600; }
+.bp-rules .bp-section-title { font-size: 18px; font-weight: 600; }
+.bp-rules .bp-rules-body,
+.bp-rules .bp-rules-body p,
+.bp-rules .bp-rules-body li,
+.bp-rules .bp-rules-body strong { font-size: 13px; font-weight: 600; }
+.bp-rules .bp-agree { font-size: 15px; font-weight: 600; }
+.bp-rules .bp-legal { font-size: 13px; font-weight: 600; }
+.bp-schedule-row { border-top: 1px solid #e1e1e1; border-bottom: 0; min-height: 84px; }
+.bp-schedule-row .bp-label, .bp-schedule-row .bp-value { font-size: 18px; font-weight: 600; }
+.bp-schedule-row .bp-red-note { font-size: 15px; font-weight: 600; }
 .bp-method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .bp-method { height: 76px; border: 1px solid #d8d8d8; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; letter-spacing: -.04em; }
 .bp-method.selected { border-color: #be1838; color: #111; }
@@ -241,22 +271,22 @@ a { color: inherit; text-decoration: none; }
 .bp-chevron { width:28px; height:28px; border:0; background:transparent; position:relative; }
 .bp-chevron::before { content:""; position:absolute; left:8px; top:10px; width:12px; height:12px; border-left:2px solid #111; border-top:2px solid #111; transform: rotate(45deg); }
 .bp-rules.collapsed .bp-chevron::before { top:5px; transform: rotate(225deg); }
-.bp-rules-body { background:#f5f5f5; padding:24px 30px; font-size:15px; line-height:1.85; }
+.bp-rules-body { background:#f5f5f5; padding:24px 30px; font-size:13px; line-height:1.85; font-weight:600; }
 .bp-rules.collapsed .bp-rules-body { display:none; }
 .bp-rules-body p { margin:0 0 18px; }
 .bp-rules-body ul { margin: 0 0 22px 18px; padding:0; }
 .bp-rules-body li { margin-bottom:8px; }
 .bp-rules-body strong { display:block; margin: 22px 0 10px; }
-.bp-agree { margin-top:18px; display:flex; align-items:center; gap:10px; font-size:16px; font-weight:800; }
-.bp-legal { color:#aaa; font-size:12px; line-height:1.8; margin-top:18px; }
+.bp-agree { margin-top:18px; display:flex; align-items:center; gap:10px; font-size:15px; font-weight:600; }
+.bp-legal { color:#aaa; font-size:13px; line-height:1.8; font-weight:600; margin-top:18px; }
 .bp-sticky { position: sticky; bottom: 0; background:#fff; border-top:1px solid #e3e3e3; padding: 18px 28px calc(18px + env(safe-area-inset-bottom)); }
 .bp-sticky-total { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:16px; }
-.bp-sticky-total .left { font-size:16px; font-weight:900; }
-.bp-sticky-total .left small { color:#555; font-size:13px; font-weight:500; margin-left:4px; }
+.bp-sticky-total .left { font-size:15px; font-weight:600; }
+.bp-sticky-total .left small { color:#555; font-size:15px; font-weight:600; margin-left:4px; }
 .bp-sticky-total .right { display:flex; align-items:baseline; gap:14px; }
 .bp-sticky-total .old { color:#b7b7b7; text-decoration:line-through; font-size:16px; }
-.bp-sticky-total .new { color:#be1838; font-size:22px; font-weight:900; }
-.bp-pay-btn { width:100%; height:56px; border:0; background:#be1838; color:#fff; font-size:18px; font-weight:900; }
+.bp-sticky-total .new { color:#be1838; font-size:20px; font-weight:600; }
+.bp-pay-btn { width:100%; height:56px; border:0; background:#be1838; color:#fff; font-size:18px; font-weight:600; }
 .bp-pay-btn:disabled { background:#ddd; color:#999; cursor:not-allowed; }
 .bp-alert { margin:0 28px 22px; padding:14px 16px; border-radius:0; font-size:14px; line-height:1.65; }
 .bp-alert.warn { background:#fff7e6; color:#8a5a00; border:1px solid #ffe1a6; }
@@ -271,10 +301,10 @@ a { color: inherit; text-decoration: none; }
     .bp-summary { grid-template-columns: 86px 1fr; gap: 18px; }
     .bp-logo { width: 86px; height: 86px; }
     .bp-logo span { font-size: 15px; }
-    .bp-hospital, .bp-treatment { font-size: 18px; }
-    .bp-price { font-size: 23px; }
+    .bp-hospital { font-size: 20px; }
+    .bp-treatment { font-size: 22px; }
+    .bp-price { font-size: 22px; }
     .bp-info-row { grid-template-columns: 96px 1fr; }
-    .bp-value { font-size: 16px; }
     .bp-method-grid { gap: 10px; }
     .bp-method { height: 58px; font-size: 15px; }
     .bp-npay { font-size: 20px; }
@@ -326,18 +356,18 @@ a { color: inherit; text-decoration: none; }
                 </div>
 
                 <label class="bp-check-row">
-                    <input type="checkbox" class="bp-checkbox" id="visitorToggle">
+                    <input type="checkbox" class="bp-checkbox" id="visitorToggle" checked>
                     <span>다른 사람이 방문해요</span>
                 </label>
 
-                <div class="bp-visitor-fields" id="visitorFields">
+                <div class="bp-visitor-fields active" id="visitorFields">
                     <div class="bp-field">
                         <label for="visitorName">방문자 성함이 어떻게 되시나요?</label>
                         <input type="text" id="visitorName" placeholder="방문자 이름을 입력해주세요" autocomplete="name">
                     </div>
                     <div class="bp-field">
                         <label for="visitorPhone">방문하실 분의 휴대폰 번호를 알려주세요</label>
-                        <input type="tel" id="visitorPhone" placeholder="병원과 연락 가능한 번호를 입력해주세요" autocomplete="tel">
+                        <input type="tel" id="visitorPhone" placeholder="010-0000-0000" autocomplete="tel" inputmode="numeric" maxlength="13" pattern="010-[0-9]{4}-[0-9]{4}">
                     </div>
                     <button type="button" class="bp-visitor-confirm" id="visitorConfirm">선택 완료</button>
                 </div>
@@ -347,7 +377,7 @@ a { color: inherit; text-decoration: none; }
                     <div class="bp-value" id="visitorSummaryText"></div>
                 </div>
 
-                <div class="bp-info-row">
+                <div class="bp-info-row bp-schedule-row">
                     <div class="bp-label">예약 일정</div>
                     <div>
                         <div class="bp-value"><?php echo bp_h($booking_datetime); ?></div>
@@ -366,18 +396,19 @@ a { color: inherit; text-decoration: none; }
                 <div class="bp-alert err"><?php echo bp_h($order_error ?: '결제 준비가 완료되지 않았습니다. 잠시 후 다시 시도하거나 병원에 문의해주세요.'); ?></div>
                 <a class="bp-status-link disabled" href="my_bookings.php">내 예약으로</a>
             <?php else: ?>
-                <section class="bp-section">
+                <section class="bp-section bp-discount-section">
                     <h2 class="bp-section-title">적용 가능한 할인을 확인해보세요</h2>
                     <div class="bp-point-label">포인트</div>
                     <div class="bp-point-box">
                         <input class="bp-point-input" id="pointInput" inputmode="numeric" value="0" aria-label="사용할 포인트">
-                        <span>원</span>
+                        <span class="bp-point-unit">P</span>
                         <button type="button" class="bp-point-max" id="pointMaxBtn">최대적용</button>
                     </div>
-                    <div class="bp-point-help">사용가능 <strong><?php echo bp_money($max_point_use); ?>원</strong> / 보유 <?php echo bp_money($point_balance); ?>원</div>
+                    <div class="bp-point-help">사용가능 <strong><?php echo bp_money($max_point_use); ?>P</strong> / 보유 <?php echo bp_money($point_balance); ?>P</div>
+                    <div class="bp-point-note">포인트는 서울미녀가 부담하는 적립금이며, 의료기관의 진료비 할인이 아닙니다.<br>현금 충전·출금·타인 양도는 불가합니다.</div>
                 </section>
 
-                <section class="bp-section">
+                <section class="bp-section bp-payment-method-section">
                     <h2 class="bp-section-title">어떤 결제 수단을 이용하시겠어요?</h2>
                     <div class="bp-method-grid" id="methodGrid">
                         <button type="button" class="bp-method selected" data-provider="bank">계좌이체</button>
@@ -389,7 +420,7 @@ a { color: inherit; text-decoration: none; }
                     <a class="bp-installment" href="javascript:void(0)">신용카드 무이자 할부 안내</a>
                 </section>
 
-                <section class="bp-section">
+                <section class="bp-section bp-amount-section">
                     <h2 class="bp-section-title">결제 금액을 확인해보세요</h2>
                     <div class="bp-amount-row"><div class="left">시술 금액</div><div class="right"><?php echo bp_money($display_amount); ?>원</div></div>
                     <div class="bp-amount-row muted"><div class="left">할인</div><div class="right"><span class="bp-discount-badge">0%</span> -0원</div></div>
@@ -414,8 +445,8 @@ a { color: inherit; text-decoration: none; }
                             <li>예약 확정일 기준 하루 전 17:00까지 서울미녀 앱에서 취소·환불 처리가 가능합니다.</li>
                             <li>예약결제 내역의 상세페이지에서 ‘결제 취소 하기’를 누르면 자동으로 100% 취소·환불 됩니다.</li>
                             <li>예약일에 방문이 어렵다면, 앱에서 예약 변경 또는 취소를 예약 확정일 하루 전 17:00까지 진행해주세요.</li>
-                            <li>취소 처리 시점에 따라 취소·환불 요청 이후에도 병원에서 내원 예약 안내를 위한 연락이 갈 수 있습니다.</li>
-                            <li>결제 취소 요청의 경우 고객센터 업무일 기준 3~5일 소요되며, 카드사로 취소 요청 전달 이후 신용카드사 정책에 따라 환불이 진행됩니다.</li>
+                            <li>취소 처리 시점에 따라 취소·환불 요청 이후에도 병원에서 내원 예약 안내를 위한 연락이 갈 수 있습니다. 내원 취소 의사를 병원에 전달해주시면 됩니다.</li>
+                            <li>결제 취소 요청의 경우 고객센터 업무일 기준 3~5일 소요되며, 카드사로 취소 요청 전달 이 후 신용카드사 정책에따라 환불이 진행됩니다.</li>
                         </ul>
                         <strong>취소·환불 신청 가능 기간 이후</strong>
                         <ul>
@@ -424,9 +455,9 @@ a { color: inherit; text-decoration: none; }
                         </ul>
                         <strong>유효기간에 따른 자동환불 정책</strong>
                         <ul>
-                            <li>서울미녀 앱을 통해 앱결제한 시술은 결제일로부터 120일 동안 유효합니다.</li>
-                            <li>예약을 확정일 하루 전 17:00까지 앱에서 취소 처리하지 못했거나, 그 이후에도 병원에 방문하여 시술을 받지 못한 경우 병원 정책에 따라 환불됩니다.</li>
-                            <li>패키지 상품 중 일부 사용 후 환불을 요청하는 경우 정상가를 제한 뒤 환불이 가능하며, 할인 금액 및 정상가 측정은 병원 정책에 따라 진행됩니다.</li>
+                            <li>서울미녀 앱을 통해 앱결제한 시술은 ‘결제일로부터 120일(이하 “유효기간”) 동안 유효합니다. 앱결제한 시술을 사용하지 않은 상태에서 유효기간이 경과하는 경우 결제하신 수단으로 자동 환불처리 되어, 시술을 받을 수 없으므로 유의하시기 바랍니다.</li>
+                            <li>예약을 확정일 하루 전 17:00까지 앱에서 취소 처리를 하지 못했거나, 그 이후에도 병원에 방문하여 시술을 받지 못한 경우 유효기간(120일)에 맞춰 100%전액 환불됩니다.</li>
+                            <li>패키지 상품 중 일부 사용한 후 환불을 요청하는 경우 정상가를 제한 후 환불이 가능하며, 할인 금액 및 정상가 측정은 서울미녀가 아닌 병원 정책에 따라 진행되므로 병원에 직접 문의가 필요합니다.</li>
                         </ul>
                     </div>
                     <label class="bp-agree"><input type="checkbox" class="bp-checkbox" id="termsAgree"> 위 내용을 모두 확인했어요</label>
@@ -478,6 +509,20 @@ a { color: inherit; text-decoration: none; }
         if (d.length === 10) return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
         return v;
     }
+    function normalizeVisitorPhone(v) {
+        var d = cleanNumber(v);
+        if (d === '') return '010-';
+        if (d.indexOf('010') !== 0) {
+            d = '010' + d.replace(/^0+/, '');
+        }
+        d = d.slice(0, 11);
+        if (d.length <= 3) return '010-';
+        if (d.length <= 7) return d.slice(0, 3) + '-' + d.slice(3);
+        return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+    }
+    function isValidVisitorPhone(v) {
+        return /^010-[0-9]{4}-[0-9]{4}$/.test(String(v || ''));
+    }
     function currentPointUse() {
         var input = document.getElementById('pointInput');
         if (!input) return 0;
@@ -511,25 +556,41 @@ a { color: inherit; text-decoration: none; }
     var visitorSummary = document.getElementById('visitorSummary');
     var visitorSummaryText = document.getElementById('visitorSummaryText');
     var visitorConfirm = document.getElementById('visitorConfirm');
+    var visitorPhoneInput = document.getElementById('visitorPhone');
     if (visitorToggle && visitorFields && visitorSummary) {
         visitorToggle.addEventListener('change', function() {
             visitorFields.classList.toggle('active', visitorToggle.checked);
             visitorSummary.classList.remove('active');
+            if (visitorToggle.checked && visitorPhoneInput && visitorPhoneInput.value.trim() === '') {
+                visitorPhoneInput.value = '010-';
+            }
             if (!visitorToggle.checked) {
                 document.getElementById('visitorName').value = '';
-                document.getElementById('visitorPhone').value = '';
+                if (visitorPhoneInput) visitorPhoneInput.value = '';
             }
+        });
+    }
+    if (visitorPhoneInput) {
+        visitorPhoneInput.addEventListener('focus', function() {
+            if (visitorPhoneInput.value.trim() === '') visitorPhoneInput.value = '010-';
+        });
+        visitorPhoneInput.addEventListener('input', function() {
+            visitorPhoneInput.value = normalizeVisitorPhone(visitorPhoneInput.value);
+        });
+        visitorPhoneInput.addEventListener('blur', function() {
+            if (visitorPhoneInput.value === '010-') visitorPhoneInput.value = '';
         });
     }
     if (visitorConfirm) {
         visitorConfirm.addEventListener('click', function() {
             var name = document.getElementById('visitorName').value.trim();
-            var phone = document.getElementById('visitorPhone').value.trim();
-            if (!name || !cleanNumber(phone)) {
-                showResult('방문자 이름과 휴대폰 번호를 입력해주세요.', 'warn');
+            var phone = visitorPhoneInput ? normalizeVisitorPhone(visitorPhoneInput.value) : '';
+            if (visitorPhoneInput) visitorPhoneInput.value = phone;
+            if (!name || !isValidVisitorPhone(phone)) {
+                showResult('방문자 이름과 010-0000-0000 형식의 휴대폰 번호를 입력해주세요.', 'warn');
                 return;
             }
-            visitorSummaryText.textContent = name + ' / ' + formatPhone(phone);
+            visitorSummaryText.textContent = name + ' / ' + phone;
             visitorSummary.classList.add('active');
             visitorFields.classList.remove('active');
         });
@@ -572,14 +633,11 @@ a { color: inherit; text-decoration: none; }
                 return;
             }
             payBtn.disabled = true;
-            payBtn.textContent = '결제 준비 중...';
+            payBtn.textContent = '결제 완료 처리 중...';
             var body = new URLSearchParams();
             body.set('booking_id', String(bookingId));
-            body.set('provider', selectedProvider);
-            body.set('point_use', String(currentPointUse()));
-            body.set('memo', document.getElementById('memo') ? document.getElementById('memo').value : '');
             body.set('csrf_token', csrfToken);
-            fetch('booking_payment_request.php', {
+            fetch('booking_payment_mock_complete.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: body.toString(),
@@ -588,10 +646,11 @@ a { color: inherit; text-decoration: none; }
                 return r.json().catch(function() { return {success: false, message: '서버 응답을 읽을 수 없습니다.'}; });
             }).then(function(d) {
                 if (d && d.success && d.redirect_url) { location.href = d.redirect_url; return; }
-                showResult((d && d.message) ? d.message : '결제를 시작할 수 없습니다.', 'warn');
+                showResult((d && d.message) ? d.message : '결제 완료 처리에 실패했습니다.', 'warn');
+                payBtn.disabled = false;
+                payBtn.textContent = '결제하기';
             }).catch(function() {
                 showResult('네트워크 오류가 발생했습니다.', 'err');
-            }).finally(function() {
                 payBtn.disabled = false;
                 payBtn.textContent = '결제하기';
             });
