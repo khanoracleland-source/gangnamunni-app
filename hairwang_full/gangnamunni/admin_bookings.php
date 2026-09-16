@@ -238,6 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $sql .= " AND hospital_id IN (" . $_act_hin . ")";
         }
         require_once __DIR__ . '/includes/points_ledger.php';
+        require_once __DIR__ . '/includes/booking_payment_access.php';
 
         $booking_row = null;
         mysqli_begin_transaction($connect);
@@ -272,7 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             try {
                 $bk_mb_no = points_member_no($connect, $booking_row['mb_id']);
                 if ($bk_mb_no > 0) {
-                    if ($new_status === 'confirmed') {
+                    if ($new_status === 'completed' && booking_has_real_payment($connect, $id)) {
                         points_earn_booking($connect, $bk_mb_no, $id, (int)($booking_row['price'] ?? 0));
                     } elseif ($new_status === 'cancelled') {
                         points_cancel_booking($connect, $bk_mb_no, $id);
@@ -482,9 +483,14 @@ $booking_payments_table_exists = false;
 $_payment_table_check = mysqli_query($connect,
     "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gangnamunni_platform_payments' LIMIT 1");
 $booking_payments_table_exists = $_payment_table_check && mysqli_num_rows($_payment_table_check) > 0;
+require_once __DIR__ . '/includes/booking_payment_access.php';
+$booking_preview_table_exists = $connect->query("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gangnamunni_booking_payment_previews'")->num_rows > 0;
 $booking_payment_select = $booking_payments_table_exists
-    ? "p.status AS payment_status, p.amount AS payment_amount, p.paid_at AS payment_paid_at"
+    ? "p.status AS payment_status, p.amount AS payment_amount, p.paid_at AS payment_paid_at, p.provider AS payment_provider"
     : "NULL AS payment_status, NULL AS payment_amount, NULL AS payment_paid_at";
+$booking_payment_select .= $booking_preview_table_exists
+    ? ", EXISTS(SELECT 1 FROM gangnamunni_booking_payment_previews pp WHERE pp.booking_id=b.id) AS payment_preview"
+    : ", 0 AS payment_preview";
 $booking_payment_join = $booking_payments_table_exists
     ? " LEFT JOIN gangnamunni_platform_payments p ON p.payment_type='booking' AND p.booking_id=b.id "
     : " ";
@@ -615,6 +621,9 @@ $build_booking_url = static function (array $overrides = []) use ($filter_hospit
 function admin_booking_payment_badge(array $booking): string {
     $payment_status = (string)($booking['payment_status'] ?? '');
     $booking_status = (string)($booking['status'] ?? '');
+    if (in_array($booking['payment_provider'] ?? '', ['mock_booking_payment','portone_test'], true)) {
+        return '<span class="badge bg-secondary">테스트 결제</span>';
+    }
     if ($payment_status === 'paid') {
         $paid_at = trim((string)($booking['payment_paid_at'] ?? ''));
         $title = $paid_at !== '' ? ' title="' . htmlspecialchars($paid_at, ENT_QUOTES) . '"' : '';
@@ -625,6 +634,9 @@ function admin_booking_payment_badge(array $booking): string {
     }
     if ($payment_status === 'refunded') {
         return '<span class="badge bg-info text-dark">환불완료</span>';
+    }
+    if (!empty($booking['payment_preview']) && $payment_status === 'pending') {
+        return '<span class="badge bg-secondary">결제 없이 진행</span>';
     }
     if ($payment_status === 'pending' || $booking_status === 'confirmed') {
         return '<span class="badge bg-warning text-dark">결제대기</span>';

@@ -20,6 +20,13 @@ if (empty($_SESSION['ad_admin_logged_in'])) {
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/cpv_helper.php';
+// Wallet changes are platform-finance operations, not a privilege of any logged-in admin.
+if (!check_permission('cpv_wallet') || !in_array($_SESSION['ad_admin_role'] ?? '', ['super_admin', 'admin'], true)) {
+    http_response_code(403);
+    echo json_encode(['error'=>'지갑 관리 권한이 없습니다.']);
+    exit;
+}
+
 
 // DB 연결
 $connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
@@ -202,6 +209,12 @@ if ($method === 'POST') {
         $input = $_POST;
     }
 
+    $csrf = (string)($_SESSION['wallet_csrf_token'] ?? '');
+    if ($csrf === '' || !hash_equals($csrf, (string)($input['csrf_token'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['error'=>'페이지를 새로고침해주세요.']);
+        exit;
+    }
     $action = $input['action'] ?? '';
     $hospital_id = intval($input['hospital_id'] ?? 0);
     $amount = intval($input['amount'] ?? 0);

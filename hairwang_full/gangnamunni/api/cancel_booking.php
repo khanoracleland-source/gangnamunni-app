@@ -49,27 +49,11 @@ if (!$booking) {
     exit;
 }
 
-// 전화번호 비교 (하이픈 제거 후)
-// [2026-06-15] 본인확인: 로그인필수 모드면 회원ID, 아니면 전화번호 (booking_require_login 설정)
-$_req_login = function_exists('getSettingValue') ? (getSettingValue($connect,'booking_require_login','1')==='1') : true;
-$_phone_auth = function_exists('getSettingValue') ? (getSettingValue($connect,'booking_phone_auth','0')==='1') : false;
-$_sess_mb_id = $_SESSION['ss_mb_id'] ?? '';
-if ($_req_login && !$_phone_auth) {
-    if (empty($_sess_mb_id) || empty($booking['mb_id']) || $_sess_mb_id !== $booking['mb_id']) {
-        echo json_encode(['success' => false, 'message' => '로그인 후 본인 예약만 취소할 수 있습니다.']);
-        exit;
-    }
-} else {
-    if (empty($phone)) {
-        echo json_encode(['success' => false, 'message' => '필수 항목을 입력해주세요.']);
-        exit;
-    }
-    $clean_phone = preg_replace('/[^0-9]/', '', $phone);
-    $clean_db_phone = preg_replace('/[^0-9]/', '', $booking['phone']);
-    if ($clean_phone !== $clean_db_phone) {
-        echo json_encode(['success' => false, 'message' => '본인 예약만 취소할 수 있습니다.']);
-        exit;
-    }
+require_once dirname(__DIR__) . '/includes/booking_payment_access.php';
+if (!booking_payment_owned($connect, $booking_id)) {
+    http_response_code(403);
+    echo json_encode(['success'=>false,'message'=>'본인 예약만 취소할 수 있습니다.']);
+    exit;
 }
 
 // 이미 취소/완료된 예약 체크

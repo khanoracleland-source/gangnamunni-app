@@ -61,14 +61,17 @@ function platform_payment_mark_verified(
     string $provider_event_id,
     int $verified_amount,
     string $payload_sha256,
-    string $source = 'server_query'
+    string $source = 'server_query',
+    ?int $provider_paid_at = null,
+    bool $manage_transaction = true
 ): bool {
-    if (!in_array($source, ['webhook', 'server_query'], true)
+    if (!in_array($provider, ['portone', 'portone_test'], true)
+        || !in_array($source, ['webhook', 'server_query'], true)
         || $provider === '' || $provider_transaction_id === ''
         || $provider_event_id === '' || !preg_match('/^[a-f0-9]{64}$/', $payload_sha256)) {
         throw new InvalidArgumentException('Invalid provider verification evidence.');
     }
-    mysqli_begin_transaction($db);
+    if ($manage_transaction) mysqli_begin_transaction($db);
     try {
         $stmt = mysqli_prepare($db,
             "SELECT id,amount,status,provider,provider_transaction_id,payment_type
@@ -89,26 +92,27 @@ function platform_payment_mark_verified(
                 || $payment['provider_transaction_id'] !== $provider_transaction_id) {
                 throw new RuntimeException('Conflicting verification evidence.');
             }
-            mysqli_commit($db);
+            if ($manage_transaction) mysqli_commit($db);
             return true;
         }
         if ($payment['status'] !== 'pending') throw new RuntimeException('Invalid payment state transition.');
 
         $payment_id = (int)$payment['id'];
+        $paid_at = gmdate('Y-m-d H:i:s', ($provider_paid_at ?? time()) + 9 * 3600);
         $event = mysqli_prepare($db,
             "INSERT INTO gangnamunni_payment_events
                 (payment_id,provider,provider_event_id,event_type,amount,payload_sha256,provider_occurred_at)
-             VALUES (?,?,?,'payment_verified',?,?,NOW())");
-        mysqli_stmt_bind_param($event, 'issis', $payment_id, $provider, $provider_event_id, $verified_amount, $payload_sha256);
+             VALUES (?,?,?,'payment_verified',?,?,?)");
+        mysqli_stmt_bind_param($event, 'ississ', $payment_id, $provider, $provider_event_id, $verified_amount, $payload_sha256, $paid_at);
         if (!mysqli_stmt_execute($event)) throw new RuntimeException(mysqli_stmt_error($event));
         mysqli_stmt_close($event);
 
         $update = mysqli_prepare($db,
             "UPDATE gangnamunni_platform_payments
              SET provider=?,provider_transaction_id=?,verified_amount=?,verified_at=NOW(),
-                 verification_source=?,status='paid',paid_at=NOW()
+                 verification_source=?,status='paid',paid_at=?
              WHERE id=? AND status='pending'");
-        mysqli_stmt_bind_param($update, 'ssisi', $provider, $provider_transaction_id, $verified_amount, $source, $payment_id);
+        mysqli_stmt_bind_param($update, 'ssissi', $provider, $provider_transaction_id, $verified_amount, $source, $paid_at, $payment_id);
         if (!mysqli_stmt_execute($update) || mysqli_stmt_affected_rows($update) !== 1) {
             throw new RuntimeException('Payment verification update failed.');
         }
@@ -121,10 +125,10 @@ function platform_payment_mark_verified(
         mysqli_stmt_bind_param($history, 'is', $payment_id, $provider);
         if (!mysqli_stmt_execute($history)) throw new RuntimeException(mysqli_stmt_error($history));
         mysqli_stmt_close($history);
-        mysqli_commit($db);
+        if ($manage_transaction) mysqli_commit($db);
         return true;
     } catch (Throwable $error) {
-        mysqli_rollback($db);
+        if ($manage_transaction) mysqli_rollback($db);
         throw $error;
     }
 }
@@ -135,13 +139,14 @@ function platform_payment_record_refund(
     string $provider,
     string $provider_event_id,
     int $refund_amount,
-    string $payload_sha256
+    string $payload_sha256,
+    bool $manage_transaction = true
 ): bool {
     if ($refund_amount <= 0 || $provider === '' || $provider_event_id === ''
         || !preg_match('/^[a-f0-9]{64}$/', $payload_sha256)) {
         throw new InvalidArgumentException('Invalid refund evidence.');
     }
-    mysqli_begin_transaction($db);
+    if ($manage_transaction) mysqli_begin_transaction($db);
     try {
         $stmt = mysqli_prepare($db,
             "SELECT amount,refunded_amount,status,provider,payment_type
@@ -181,10 +186,10 @@ function platform_payment_record_refund(
         mysqli_stmt_bind_param($history, 'isss', $payment_id, $old_status, $new_status, $provider);
         if (!mysqli_stmt_execute($history)) throw new RuntimeException(mysqli_stmt_error($history));
         mysqli_stmt_close($history);
-        mysqli_commit($db);
+        if ($manage_transaction) mysqli_commit($db);
         return true;
     } catch (Throwable $error) {
-        mysqli_rollback($db);
+        if ($manage_transaction) mysqli_rollback($db);
         throw $error;
     }
 }

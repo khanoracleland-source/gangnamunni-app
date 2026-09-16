@@ -137,12 +137,17 @@ if ($_pay_ids) {
     if ($_chk && mysqli_num_rows($_chk) > 0) {
         $_in = implode(',', array_map('intval', $_pay_ids));
         $_pr = mysqli_query($connect,
-            "SELECT booking_id, status, amount FROM gangnamunni_platform_payments
+            "SELECT booking_id, status, amount, provider FROM gangnamunni_platform_payments
              WHERE payment_type = 'booking' AND booking_id IN ({$_in})");
         if ($_pr) while ($_row = mysqli_fetch_assoc($_pr)) {
             $payment_map[(int)$_row['booking_id']] = $_row;
         }
     }
+}
+require_once __DIR__ . '/includes/booking_payment_access.php';
+$payment_previews = booking_payment_previews($connect, $_pay_ids);
+foreach ($payment_previews as $preview_id => $preview_row) {
+    if (($payment_map[$preview_id]['status'] ?? '') === 'pending') $payment_map[$preview_id]['status'] = 'preview';
 }
 /** 확정 예약의 결제 상태: 'paid' | 'payable' | '' (표시 안 함) */
 if (!function_exists('booking_payment_state')) {
@@ -150,9 +155,7 @@ if (!function_exists('booking_payment_state')) {
         if (($bk['status'] ?? '') !== 'confirmed') return '';
         $p = $map[(int)$bk['id']] ?? null;
         if (!$p) return '';
-        if (in_array($p['status'], ['paid', 'partially_refunded'], true)) return 'paid';
-        if ($p['status'] === 'pending' && (int)$p['amount'] > 0) return 'payable';
-        return '';
+        return booking_payment_display_state($p);
     }
 }
 
@@ -523,7 +526,11 @@ $page_title = '내 예약';
                 if (($bk['status'] ?? '') === 'hospital_checking') {
                     $_booking_active_step = 2;
                 } elseif (($bk['status'] ?? '') === 'confirmed') {
-                    $_booking_active_step = $_payment_state === 'paid' ? 4 : 3;
+                    $_booking_active_step = in_array($_payment_state, ['paid','partially_refunded','test_paid','preview'], true) ? 4 : 3;
+                    if ($_payment_state === 'preview') $_booking_steps[3] = '결제 없이 진행';
+                    if ($_payment_state === 'test_paid') $_booking_steps[3] = '테스트 결제';
+                    if ($_payment_state === 'refunded') $_booking_steps[2] = '환불 완료';
+                    if ($_payment_state === 'cancelled') $_booking_steps[2] = '결제 취소';
                 }
             ?>
             <div class="booking-card-top">
@@ -550,8 +557,8 @@ $page_title = '내 예약';
                 <div class="progress-step<?php echo ($_booking_i + 1) === $_booking_active_step ? ' active' : (($_booking_i + 1) < $_booking_active_step ? ' done' : ''); ?>"><?php echo $_booking_label; ?></div>
                 <?php endforeach; ?>
             </div>
-            <div class="booking-card-actions<?php echo $_payment_state === 'paid' ? ' paid-actions' : ''; ?>">
-                <?php if (($bk['status'] ?? '') === 'confirmed' && $_payment_state !== 'paid'): ?>
+            <div class="booking-card-actions<?php echo in_array($_payment_state, ['paid','partially_refunded','test_paid'], true) ? ' paid-actions' : ''; ?>">
+                <?php if (($bk['status'] ?? '') === 'confirmed' && in_array($_payment_state, ['payable','preview'], true)): ?>
                 <button type="button" class="booking-card-action primary" onclick="event.stopPropagation(); location.href='booking_payment.php?booking_id=<?php echo (int)$bk['id']; ?>'">결제하기</button>
                 <?php elseif (($bk['status'] ?? '') !== 'confirmed'): ?>
                 <button type="button" class="booking-card-action primary" onclick="event.stopPropagation(); openChangeConfirm(<?php echo (int)$bk['id']; ?>, '<?php echo htmlspecialchars($bk['booking_date'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars(substr($bk['booking_time'], 0, 5), ENT_QUOTES); ?>', <?php echo $_edits_left; ?>)" <?php echo $_edits_left <= 0 ? 'disabled' : ''; ?>>예약변경</button>
@@ -576,8 +583,9 @@ $page_title = '내 예약';
         ?>
         <?php if ($_is_cancelled = in_array($bk['status'], ['cancelled', 'no_show'], true)):
             $_cancel_payment = $payment_map[(int)$bk['id']] ?? null;
-            $_refund_complete = !$_cancel_payment || in_array($_cancel_payment['status'] ?? '', ['refunded', 'cancelled'], true);
-            $_cancel_steps = ['예약 취소 접수','병원 확인 중','취소·환불 대기','취소·환불 확정'];
+            $_no_charge = !$_cancel_payment || booking_payment_is_test($_cancel_payment['provider'] ?? null) || in_array($_cancel_payment['status'] ?? '', ['pending','preview','failed','cancelled'], true);
+            $_refund_complete = $_no_charge || ($_cancel_payment['status'] ?? '') === 'refunded';
+            $_cancel_steps = $_no_charge ? ['예약 취소 접수','병원 확인 중','취소 처리','예약 취소 완료'] : ['예약 취소 접수','병원 확인 중','환불 확인 중','환불 완료'];
             $_cancel_active = $_refund_complete ? 4 : 1;
             $_cancel_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
             $_cancel_days = ['일','월','화','수','목','금','토'];
@@ -587,7 +595,7 @@ $page_title = '내 예약';
         <div class="booking-card cancelled-card" data-status="<?php echo htmlspecialchars($bk['status']); ?>">
             <div class="booking-card-top">
                 <span class="booking-card-date"><?php echo date('Y.n.j', $_cancel_ts) . '(' . $_cancel_days[(int)date('w', $_cancel_ts)] . ') ' . ($_cancel_hour < 12 ? '오전 ' : '오후 ') . $_cancel_hour12 . ':' . date('i', $_cancel_ts); ?></span>
-                <?php if ($_refund_complete): ?><span class="cancel-state">취소·환불완료</span><?php endif; ?>
+                <?php if ($_refund_complete): ?><span class="cancel-state"><?php echo $_no_charge ? '예약취소 완료' : '환불완료'; ?></span><?php endif; ?>
                 <a class="booking-detail-link" href="booking_cancel_detail.php?booking_id=<?php echo (int)$bk['id']; ?>">예약상세</a>
             </div>
             <div class="booking-summary">

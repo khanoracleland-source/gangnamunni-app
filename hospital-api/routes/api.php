@@ -1057,14 +1057,12 @@ Route::prefix('community')->group(function () {
     Route::delete('/posts/{postId}/comments/{commentId}', [App\Http\Controllers\CommunityController::class, 'destroyComment']);
 });
 
-// Payment APIs
+// Retired duplicate PortOne ledger. Booking payments now use the canonical
+// gangnamunni payment service; do not expose the legacy unauthenticated controller.
 Route::prefix('payments')->group(function () {
-    Route::get('/', [App\Http\Controllers\PaymentController::class, 'index']);
-    Route::get('/{id}', [App\Http\Controllers\PaymentController::class, 'show']);
-    Route::post('/prepare', [App\Http\Controllers\PaymentController::class, 'prepare']);
-    Route::post('/callback', [App\Http\Controllers\PaymentController::class, 'callback']);
-    Route::post('/{id}/cancel', [App\Http\Controllers\PaymentController::class, 'cancel']);
-    Route::post('/{id}/refund', [App\Http\Controllers\PaymentController::class, 'refund']);
+    Route::any('/{legacyPath?}', function () {
+        return response()->json(['status' => false, 'message' => 'Legacy payment API retired. Use the booking payment flow.'], 410);
+    })->where('legacyPath', '.*');
 });
 
 // Notification APIs

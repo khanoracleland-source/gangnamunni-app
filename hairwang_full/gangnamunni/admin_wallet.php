@@ -26,6 +26,7 @@ if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
 require_admin_login();
 require_permission('cpv_wallet');
+if (empty($_SESSION['wallet_csrf_token'])) $_SESSION['wallet_csrf_token'] = bin2hex(random_bytes(32));
 
 // ===== 필터 & 검색 =====
 $search = $_GET['q'] ?? '';
@@ -454,6 +455,7 @@ function showAlert(msg, type) {
 }
 
 function apiCall(body) {
+    body.csrf_token = <?php echo json_encode($_SESSION['wallet_csrf_token']); ?>;
     return fetch('api_wallet.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},

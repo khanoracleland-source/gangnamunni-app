@@ -6,6 +6,7 @@
  * 금액은 URL/폼이 아니라 gangnamunni_platform_payments 주문에서만 읽는다.
  */
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/booking_payment_access.php';
 if (isset($connect) && $connect && file_exists(__DIR__ . '/includes/sso_auto_login.php')) {
     @include_once __DIR__ . '/includes/sso_auto_login.php';
 }
@@ -133,18 +134,26 @@ $amount = (int)($order['amount'] ?? ($booking['price'] ?? 0));
 $display_amount = max(0, $amount);
 $point_balance = 0;
 if ($is_user_logged_in && $logged_mb_id !== '' && function_exists('points_member_no') && function_exists('points_balance_safe')) {
-    $member_no = points_member_no($connect, $logged_mb_id);
-    if ($member_no > 0) $point_balance = max(0, (int)points_balance_safe($connect, $member_no));
+    try {
+        $member_no = points_member_no($connect, $logged_mb_id);
+        if ($member_no > 0) $point_balance = max(0, (int)points_balance_safe($connect, $member_no));
+    } catch (Throwable $e) {
+        error_log('[booking_payment] optional point balance unavailable');
+    }
 }
-$max_point_use = min($point_balance, $display_amount);
-$expected_points = (int)floor($display_amount * 0.01);
+$max_point_use = 0; // Point spending awaits an atomic reservation/refund integration.
+$expected_points = 0;
+$preview = booking_payment_previews($connect, [$booking_id]);
+$channels = booking_payment_channels();
+$live_available = booking_payment_checkout_ready();
+$preview_available = booking_payment_preview_enabled();
 
-$hospital_name = $booking['h_name'] ?: ($booking['hospital_name'] ?? '');
+$hospital_name = ($booking['h_name'] ?? '') ?: ($booking['hospital_name'] ?? '');
 $hospital_address = $booking['hospital_address'] ?? '';
 $hospital_area = bp_short_address($hospital_address);
-$treatment_name = $booking['treatment'] ?: '-';
-$booker_name = $booking['name'] ?: ($member['mb_name'] ?? '');
-$booker_phone = bp_phone($booking['phone'] ?: $owner_phone);
+$treatment_name = ($booking['treatment'] ?? '') ?: '-';
+$booker_name = ($booking['name'] ?? '') ?: ($member['mb_name'] ?? '');
+$booker_phone = bp_phone(($booking['phone'] ?? '') ?: $owner_phone);
 $booking_datetime = bp_korean_date($booking['booking_date'] ?? '', $booking['booking_time'] ?? '');
 $logo_url = trim((string)($booking['profile_image_url'] ?? ''));
 $status_labels = [
@@ -248,6 +257,10 @@ a { color: inherit; text-decoration: none; }
 .bp-method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .bp-method { height: 76px; border: 1px solid #d8d8d8; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; letter-spacing: -.04em; }
 .bp-method.selected { border-color: #be1838; color: #111; }
+.bp-method:disabled { color:#999; background:#fafafa; cursor:not-allowed; }
+.bp-method-notice { margin:0 0 20px; padding:14px 16px; background:#fff7e6; color:#805400; font-size:14px; line-height:1.65; }
+.bp-method-notice p { margin:0; }
+.bp-method-notice p + p { margin-top:6px; }
 .bp-npay { color: #1ec800; font-size: 25px; font-weight: 900; letter-spacing: -.07em; }
 .bp-npay .n { display:inline-flex; width: 24px; height: 24px; align-items:center; justify-content:center; border-radius:50%; background:#1ec800; color:#fff; font-size:17px; margin-right:4px; }
 .bp-kakao { display:inline-flex; align-items:center; justify-content:center; min-width: 80px; height: 30px; border-radius: 18px; background:#ffdf00; color:#111; font-size:22px; font-weight:900; letter-spacing:-.08em; }
@@ -280,6 +293,8 @@ a { color: inherit; text-decoration: none; }
 .bp-rules-body li { margin-bottom:8px; }
 .bp-rules-body strong { display:block; margin: 22px 0 10px; }
 .bp-agree { margin-top:18px; display:flex; align-items:center; gap:10px; font-size:15px; font-weight:600; }
+.bp-agree { scroll-margin-top:90px; scroll-margin-bottom:250px; }
+.bp-agreement-error { margin:10px 0 0; color:#be1838; font-size:14px; }
 .bp-legal { color:#aaa; font-size:13px; line-height:1.8; font-weight:600; margin-top:18px; }
 .bp-sticky { position: sticky; bottom: 0; background:#fff; border-top:1px solid #e3e3e3; padding: 18px 28px calc(18px + env(safe-area-inset-bottom)); }
 .bp-sticky-total { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:16px; }
@@ -290,6 +305,10 @@ a { color: inherit; text-decoration: none; }
 .bp-sticky-total .new { color:#be1838; font-size:20px; font-weight:600; }
 .bp-pay-btn { width:100%; height:56px; border:0; background:#be1838; color:#fff; font-size:18px; font-weight:600; }
 .bp-pay-btn:disabled { background:#ddd; color:#999; cursor:not-allowed; }
+.bp-preview-btn { width:100%; min-height:48px; margin-top:10px; border:1px solid #be1838; background:#fff; color:#be1838; font-size:16px; font-weight:600; }
+.bp-preview-btn.primary { margin-top:0; background:#be1838; color:#fff; }
+.bp-preview-btn:disabled { opacity:.55; cursor:wait; }
+.bp-checkout-note { margin:8px 0 0; color:#666; text-align:center; font-size:12px; line-height:1.5; }
 .bp-alert { margin:0 28px 22px; padding:14px 16px; border-radius:0; font-size:14px; line-height:1.65; }
 .bp-alert.warn { background:#fff7e6; color:#8a5a00; border:1px solid #ffe1a6; }
 .bp-alert.done { background:#e9f7ef; color:#1b6b3a; border:1px solid #bfe7ce; }
@@ -389,7 +408,10 @@ a { color: inherit; text-decoration: none; }
             </section>
 
             <?php if ($is_paid): ?>
-                <div class="bp-alert done">결제가 완료되었습니다.<?php if (!empty($order['paid_at'])): ?> <?php echo bp_h($order['paid_at']); ?><?php endif; ?></div>
+                <div class="bp-alert done"><?php echo booking_payment_is_test($order['provider'] ?? null) ? '테스트 결제가 완료되었습니다. 실제 결제가 아닙니다.' : '결제가 완료되었습니다.'; ?><?php if (!empty($order['paid_at'])): ?> <?php echo bp_h($order['paid_at']); ?><?php endif; ?></div>
+                <a class="bp-status-link" href="my_bookings.php">내 예약으로</a>
+            <?php elseif ($order && in_array($order_status, ['refunded','cancelled','failed'], true)): ?>
+                <div class="bp-alert warn"><?php echo $order_status === 'refunded' ? '환불이 완료된 결제입니다.' : '이 주문으로 결제를 진행할 수 없습니다.'; ?></div>
                 <a class="bp-status-link" href="my_bookings.php">내 예약으로</a>
             <?php elseif (!$is_confirmed): ?>
                 <div class="bp-alert warn">병원이 예약을 확정한 뒤에 결제할 수 있습니다. 확정되면 다시 결제를 진행해주세요.</div>
@@ -402,22 +424,30 @@ a { color: inherit; text-decoration: none; }
                     <h2 class="bp-section-title">적용 가능한 할인을 확인해보세요</h2>
                     <div class="bp-point-label">포인트</div>
                     <div class="bp-point-box">
-                        <input class="bp-point-input" id="pointInput" inputmode="numeric" value="0" aria-label="사용할 포인트">
+                        <input class="bp-point-input" id="pointInput" disabled inputmode="numeric" value="0" aria-label="사용할 포인트">
                         <span class="bp-point-unit">P</span>
-                        <button type="button" class="bp-point-max" id="pointMaxBtn">최대적용</button>
+                        <button type="button" class="bp-point-max" id="pointMaxBtn" disabled>최대적용</button>
                     </div>
                     <div class="bp-point-help">사용가능 <strong><?php echo bp_money($max_point_use); ?>P</strong> / 보유 <?php echo bp_money($point_balance); ?>P</div>
-                    <div class="bp-point-note">포인트는 서울미녀가 부담하는 적립금이며, 의료기관의 진료비 할인이 아닙니다.<br>현금 충전·출금·타인 양도는 불가합니다.</div>
+                    <div class="bp-point-note">포인트 사용 및 결제 적립은 준비 중입니다. 현재 결제 금액에는 적용되지 않습니다.</div>
                 </section>
 
                 <section class="bp-section bp-payment-method-section">
                     <h2 class="bp-section-title">어떤 결제 수단을 이용하시겠어요?</h2>
+                    <?php if (!$live_available): ?>
+                    <div class="bp-method-notice" id="paymentMethodNotice">
+                        <p>실제 결제는 준비 중입니다. 현재 결제 수단을 선택할 수 없습니다.</p>
+                        <?php if ($preview_available): ?>
+                        <p>결제 수단을 선택하지 않아도 아래 ‘결제 없이 계속하기’로 진행할 수 있어요.</p>
+                        <?php else: ?>
+                        <p>결제 관련 문의는 병원으로 연락해주세요.</p>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
                     <div class="bp-method-grid" id="methodGrid">
-                        <button type="button" class="bp-method selected" data-provider="bank">계좌이체</button>
-                        <button type="button" class="bp-method" data-provider="card">신용/체크카드</button>
-                        <button type="button" class="bp-method" data-provider="naverpay"><span class="bp-npay"><span class="n">N</span>pay</span></button>
-                        <button type="button" class="bp-method" data-provider="kakaopay"><span class="bp-kakao">pay</span></button>
-                        <button type="button" class="bp-method" data-provider="tosspay"><span class="bp-toss">toss pay</span></button>
+                        <?php foreach (['card'=>'신용/체크카드', 'bank'=>'계좌이체', 'naverpay'=>'네이버페이', 'kakaopay'=>'카카오페이', 'tosspay'=>'토스페이'] as $method => $label): ?>
+                        <button type="button" class="bp-method<?php echo $live_available && $method === array_key_first($channels) ? ' selected' : ''; ?>" data-provider="<?php echo bp_h($method); ?>" <?php echo !$live_available || !isset($channels[$method]) ? 'disabled' : ''; ?>><?php echo bp_h($label); ?></button>
+                        <?php endforeach; ?>
                     </div>
                     <a class="bp-installment" href="javascript:void(0)">신용카드 무이자 할부 안내</a>
                 </section>
@@ -442,27 +472,16 @@ a { color: inherit; text-decoration: none; }
                         <button type="button" class="bp-chevron" id="rulesToggle" aria-label="규정 접기"></button>
                     </div>
                     <div class="bp-rules-body">
-                        <p>서울미녀 취소 환불 규정으로 수정 해야합니다. (아래는 강남언니 예시)</p>
+                        <p>예약 취소와 결제 환불은 별도로 처리됩니다.</p>
                         <ul>
-                            <li>예약 확정일 기준 하루 전 17:00까지 서울미녀 앱에서 취소·환불 처리가 가능합니다.</li>
-                            <li>예약결제 내역의 상세페이지에서 ‘결제 취소 하기’를 누르면 자동으로 100% 취소·환불 됩니다.</li>
-                            <li>예약일에 방문이 어렵다면, 앱에서 예약 변경 또는 취소를 예약 확정일 하루 전 17:00까지 진행해주세요.</li>
-                            <li>취소 처리 시점에 따라 취소·환불 요청 이후에도 병원에서 내원 예약 안내를 위한 연락이 갈 수 있습니다. 내원 취소 의사를 병원에 전달해주시면 됩니다.</li>
-                            <li>결제 취소 요청의 경우 고객센터 업무일 기준 3~5일 소요되며, 카드사로 취소 요청 전달 이 후 신용카드사 정책에따라 환불이 진행됩니다.</li>
-                        </ul>
-                        <strong>취소·환불 신청 가능 기간 이후</strong>
-                        <ul>
-                            <li>예약 확정일 기준 하루 전 17:00 이후부터는 앱에서 취소·환불이 불가하며, 예약하신 병원으로 직접 문의하여 예약 변경 또는 취소·환불을 요청해야 합니다.</li>
-                            <li>병원은 앱결제 건에 대해서 취소 처리가 가능하며, 취소 요청 시 고객센터 업무일 기준 3~5일 내 환불이 진행됩니다.</li>
-                        </ul>
-                        <strong>유효기간에 따른 자동환불 정책</strong>
-                        <ul>
-                            <li>서울미녀 앱을 통해 앱결제한 시술은 ‘결제일로부터 120일(이하 “유효기간”) 동안 유효합니다. 앱결제한 시술을 사용하지 않은 상태에서 유효기간이 경과하는 경우 결제하신 수단으로 자동 환불처리 되어, 시술을 받을 수 없으므로 유의하시기 바랍니다.</li>
-                            <li>예약을 확정일 하루 전 17:00까지 앱에서 취소 처리를 하지 못했거나, 그 이후에도 병원에 방문하여 시술을 받지 못한 경우 유효기간(120일)에 맞춰 100%전액 환불됩니다.</li>
-                            <li>패키지 상품 중 일부 사용한 후 환불을 요청하는 경우 정상가를 제한 후 환불이 가능하며, 할인 금액 및 정상가 측정은 서울미녀가 아닌 병원 정책에 따라 진행되므로 병원에 직접 문의가 필요합니다.</li>
+                            <li>예약 변경·취소는 예약 내역에서 요청할 수 있습니다.</li>
+                            <li>이미 결제한 예약의 환불은 운영자가 결제 내역과 병원의 환불 조건을 확인한 후 처리합니다.</li>
+                            <li>실제 환불이 확인되면 결제 내역에 환불 금액과 상태가 반영됩니다.</li>
+                            <li>결제 없이 계속한 예약은 실제 청구가 없어 환불 대상 금액이 없습니다.</li>
                         </ul>
                     </div>
-                    <label class="bp-agree"><input type="checkbox" class="bp-checkbox" id="termsAgree"> 위 내용을 모두 확인했어요</label>
+                    <label class="bp-agree" id="termsAgreeRow"><input type="checkbox" class="bp-checkbox" id="termsAgree" aria-describedby="termsError"> 위 내용을 모두 확인했어요</label>
+                    <p class="bp-agreement-error" id="termsError" role="alert" hidden>취소 및 환불 규정을 확인하고 동의해주세요.</p>
                     <div class="bp-legal">
                         서비스 이용에 관한 개인정보 수집 동의<br>
                         개인정보 및 민감정보 수집 이용, 개인정보 제3자 제공 동의<br><br>
@@ -471,27 +490,36 @@ a { color: inherit; text-decoration: none; }
                     </div>
                 </section>
 
+                <?php if ($preview): ?><div class="bp-alert warn">결제 없이 계속한 예약입니다. 실제 결제 내역은 없습니다.</div><?php endif; ?>
                 <div id="payResult" class="bp-result"></div>
+                <button type="button" class="bp-visitor-confirm" id="checkPayBtn">이미 결제했다면 상태 확인</button>
 
                 <div class="bp-sticky">
                     <div class="bp-sticky-total">
                         <div class="left">총 결제 금액 <small>(VAT포함)</small></div>
                         <div class="right"><span class="old"><?php echo bp_money($display_amount); ?>원</span><span class="new" id="stickyTotal"><?php echo bp_money($display_amount); ?>원</span></div>
                     </div>
-                    <button type="button" class="bp-pay-btn" id="payBtn">결제하기</button>
+                    <?php if ($live_available || !$preview_available): ?>
+                    <button type="button" class="bp-pay-btn" id="payBtn" <?php echo $live_available ? '' : 'disabled'; ?>><?php echo $live_available ? '결제하기' : '온라인 결제 준비 중'; ?></button>
+                    <?php endif; ?>
+                    <?php if ($preview_available): ?>
+                    <button type="button" class="bp-preview-btn<?php echo $live_available ? '' : ' primary'; ?>" id="previewPayBtn">결제 없이 계속하기</button>
+                    <p class="bp-checkout-note">실제 청구 없이 진행하며, 결제·정산 내역에 포함되지 않습니다.</p>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         <?php endif; ?>
     </main>
 </div>
 
+<?php if ($live_available): ?><script src="https://cdn.iamport.kr/v1/iamport.js"></script><?php endif; ?>
 <script>
 (function() {
     var baseAmount = <?php echo (int)$display_amount; ?>;
     var maxPoint = <?php echo (int)$max_point_use; ?>;
     var bookingId = <?php echo (int)$booking_id; ?>;
     var csrfToken = <?php echo json_encode($_SESSION['csrf_token'] ?? '', JSON_UNESCAPED_UNICODE); ?>;
-    var selectedProvider = 'bank';
+    var selectedProvider = <?php echo json_encode(array_key_first($channels) ?: 'card'); ?>;
 
     function money(n) {
         n = Math.max(0, parseInt(n || 0, 10));
@@ -544,7 +572,7 @@ a { color: inherit; text-decoration: none; }
         if (pointUseSummary) pointUseSummary.textContent = '-' + money(used) + '원';
         if (totalSummary) totalSummary.textContent = money(total) + '원';
         if (stickyTotal) stickyTotal.textContent = money(total) + '원';
-        if (expected) expected.textContent = money(Math.floor(total * 0.01)) + ' P';
+        if (expected) expected.textContent = '준비 중';
     }
     function showResult(message, type) {
         var box = document.getElementById('payResult');
@@ -627,37 +655,74 @@ a { color: inherit; text-decoration: none; }
     }
 
     var payBtn = document.getElementById('payBtn');
-    if (payBtn) {
-        payBtn.addEventListener('click', function() {
-            var terms = document.getElementById('termsAgree');
-            if (terms && !terms.checked) {
-                showResult('취소 및 환불 규정을 확인해주세요.', 'warn');
-                return;
-            }
-            payBtn.disabled = true;
-            payBtn.textContent = '결제 완료 처리 중...';
-            var body = new URLSearchParams();
-            body.set('booking_id', String(bookingId));
-            body.set('csrf_token', csrfToken);
-            fetch('booking_payment_mock_complete.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: body.toString(),
-                credentials: 'same-origin'
-            }).then(function(r) {
-                return r.json().catch(function() { return {success: false, message: '서버 응답을 읽을 수 없습니다.'}; });
-            }).then(function(d) {
-                if (d && d.success && d.redirect_url) { location.href = d.redirect_url; return; }
-                showResult((d && d.message) ? d.message : '결제 완료 처리에 실패했습니다.', 'warn');
-                payBtn.disabled = false;
-                payBtn.textContent = '결제하기';
-            }).catch(function() {
-                showResult('네트워크 오류가 발생했습니다.', 'err');
-                payBtn.disabled = false;
-                payBtn.textContent = '결제하기';
-            });
-        });
+    var previewBtn = document.getElementById('previewPayBtn');
+    var checkBtn = document.getElementById('checkPayBtn');
+    var busy = false;
+    var liveAvailable = <?php echo $live_available ? 'true' : 'false'; ?>;
+    function setBusy(value) {
+        busy = value;
+        if (payBtn) payBtn.disabled = value || !liveAvailable;
+        if (previewBtn) previewBtn.disabled = value;
+        if (checkBtn) checkBtn.disabled = value;
     }
+    function post(url, data) {
+        var body = new URLSearchParams(Object.assign({booking_id:String(bookingId), csrf_token:csrfToken}, data));
+        return fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:body.toString(), credentials:'same-origin'}).then(function(r) { return r.json(); }).then(function(d) {
+                if (!d.success) throw new Error(d.message || '요청을 처리하지 못했습니다.');
+                return d;
+            });
+    }
+    function failed(error) {
+        showResult(error.message || '연결이 끊겼습니다. 다시 결제하기 전에 결제 상태를 확인해주세요.', 'warn');
+        setBusy(false);
+    }
+    function agreed() {
+        var terms = document.getElementById('termsAgree');
+        if (!terms || !terms.checked) {
+            var error = document.getElementById('termsError');
+            if (error) error.hidden = false;
+            if (terms) {
+                terms.setAttribute('aria-invalid', 'true');
+                terms.focus({preventScroll: true});
+                document.getElementById('termsAgreeRow').scrollIntoView({block:'center', behavior:'smooth'});
+            }
+            return false;
+        }
+        return true;
+    }
+    var termsAgree = document.getElementById('termsAgree');
+    if (termsAgree) termsAgree.addEventListener('change', function() {
+        if (termsAgree.checked) {
+            termsAgree.removeAttribute('aria-invalid');
+            document.getElementById('termsError').hidden = true;
+        }
+    });
+    function verify(imp) {
+        return post('booking_payment_verify.php', {imp_uid:imp || ''}).then(function(d) { location.href = d.redirect_url; });
+    }
+    if (payBtn) payBtn.addEventListener('click', function() {
+        if (busy || !agreed()) return;
+        setBusy(true);
+        post('booking_payment_request.php', {provider:selectedProvider, point_use:'0'}).then(function(d) {
+            if (!window.IMP) throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.');
+            window.IMP.init(d.imp_code);
+            window.IMP.request_pay(d.payment, function(result) {
+                if (result && result.imp_uid) verify(result.imp_uid).catch(failed);
+                else failed(new Error((result && result.error_msg) || '결제가 취소되었습니다.'));
+            });
+        }).catch(failed);
+    });
+    if (previewBtn) previewBtn.addEventListener('click', function() {
+        if (busy || !agreed()) return;
+        setBusy(true);
+        post('booking_payment_mock_complete.php', {}).then(function(d) { location.href = d.redirect_url; }).catch(failed);
+    });
+    if (checkBtn) checkBtn.addEventListener('click', function() {
+        if (busy) return;
+        setBusy(true);
+        verify('').catch(failed);
+    });
     updateTotals();
 })();
 </script>

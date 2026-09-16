@@ -101,7 +101,7 @@ $hospital_name = '';
 $period_end = date('Y-m-t', strtotime($to));
 
 if ($table_exists && ($is_super || !empty($scope_ids))) {
-    $base_where = "p.payment_type='booking' AND p.funds_recipient='hospital'
+    $base_where = "p.payment_type='booking' AND p.funds_recipient='hospital' AND p.provider NOT IN ('mock_booking_payment','portone_test')
                    AND p.status IN ('paid','partially_refunded','refunded')
                    AND p.paid_at >= ? AND p.paid_at < DATE_ADD(?, INTERVAL 1 DAY)";
     $base_types = 'ss';
@@ -212,6 +212,7 @@ if ($is_super && $selected_hospital === 0) {
 }
 
 require_once __DIR__ . '/includes/admin_header.php';
+if ($is_super) echo '<div class="px-4 pt-3"><a href="admin_booking_payments.php">예약 결제 조회·환불 관리</a></div>';
 ?>
 <style>
 .revenue-wrap{max-width:1280px;margin:auto}.revenue-num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}

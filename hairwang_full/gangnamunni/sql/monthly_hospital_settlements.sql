@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS gangnamunni_hospital_settlements (
     refunds BIGINT UNSIGNED NOT NULL DEFAULT 0,
     platform_fee BIGINT UNSIGNED NOT NULL DEFAULT 0,
     adjustments BIGINT NOT NULL DEFAULT 0,
+    carry_forward_amount BIGINT NOT NULL DEFAULT 0,
     payout_amount BIGINT UNSIGNED NOT NULL DEFAULT 0,
     status ENUM('draft','scheduled','processing','paid','failed','held') NOT NULL DEFAULT 'draft',
     payout_provider VARCHAR(30) DEFAULT NULL,

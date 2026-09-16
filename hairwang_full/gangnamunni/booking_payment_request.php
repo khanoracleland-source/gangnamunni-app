@@ -1,16 +1,5 @@
 <?php
-/**
- * 예약 결제 시작 요청 (booking_payment_request.php)
- *
- * 이 엔드포인트는 "결제창을 열어달라"는 요청만 받는다. 결제 완료 처리는 절대 하지 않는다.
- * paid 전이는 제공자 서버 검증을 거친 payment_core::platform_payment_mark_verified() 만 수행한다.
- *
- * 제공자 어댑터가 설치되기 전까지 fail-closed(503) 로 응답한다.
- * 어댑터 연동 시 이 파일에서 할 일:
- *   1) 주문(merchant_uid, amount)으로 제공자 결제창 세션 생성
- *   2) 성공 시 {"success":true,"redirect_url":"..."} 반환
- *   3) 완료 통지는 별도 웹훅에서 서명 검증 후 platform_payment_mark_verified() 호출
- */
+/** Prepare a server-priced PortOne V1 checkout. Never mark an order paid here. */
 require_once __DIR__ . '/includes/init.php';
 if (isset($connect) && $connect && file_exists(__DIR__ . '/includes/sso_auto_login.php')) {
     @include_once __DIR__ . '/includes/sso_auto_login.php';
@@ -83,7 +72,7 @@ if (($booking['status'] ?? '') !== 'confirmed') {
 
 // 주문 확인 — 금액은 원장에서만 읽는다(클라이언트가 보낸 금액은 신뢰하지 않는다)
 $ostmt = mysqli_prepare($connect,
-    "SELECT id, merchant_uid, amount, status
+    "SELECT id, merchant_uid, amount, status, patient_name, patient_phone
      FROM gangnamunni_platform_payments
      WHERE payment_type = 'booking' AND booking_id = ? LIMIT 1");
 if (!$ostmt) bp_fail('결제 원장이 설치되지 않았습니다.', 'LEDGER_NOT_INSTALLED', 503);
@@ -100,38 +89,27 @@ if ($order['status'] !== 'pending') {
     bp_fail('결제할 수 없는 주문 상태입니다.', 'INVALID_ORDER_STATE', 409);
 }
 
-// ── 제공자 어댑터 ─────────────────────────────────────────────────────
-// 어댑터가 설치되고 명시적으로 활성화되기 전까지는 결제를 시작하지 않는다.
-// 여기서 성공을 흉내내면 결제되지 않은 예약이 결제된 것처럼 보이게 된다.
-$adapter = __DIR__ . '/includes/payment_provider_' . $provider . '.php';
-$enabled = defined('G5_PG_PAYMENTS_ENABLED') && G5_PG_PAYMENTS_ENABLED === true;
-
-if (!$enabled || !file_exists($adapter)) {
-    error_log(sprintf('[booking_payment_request] provider not configured: %s (order %s)',
-        $provider, $order['merchant_uid']));
-    bp_fail('결제 제공자 연동이 아직 구성되지 않았습니다. 병원에 문의해주세요.',
-        'PAYMENT_PROVIDER_NOT_CONFIGURED', 503);
-}
-
-require_once $adapter;
-$fn = 'payment_provider_' . $provider . '_create_session';
-if (!function_exists($fn)) {
-    bp_fail('결제 제공자 어댑터가 올바르지 않습니다.', 'PROVIDER_ADAPTER_INVALID', 503);
-}
-
+require_once __DIR__ . '/includes/portone_client.php';
 try {
-    // 어댑터는 결제창 URL 만 돌려준다. 상태 변경은 웹훅 검증 후에만 일어난다.
-    $session = $fn($connect, [
-        'merchant_uid' => $order['merchant_uid'],
-        'amount'       => (int)$order['amount'],
-        'booking_id'   => $booking_id,
-        'success_url'  => 'booking_payment_success.php?booking_id=' . $booking_id,
-    ]);
-    if (empty($session['redirect_url'])) {
-        throw new RuntimeException('adapter returned no redirect_url');
-    }
-    echo json_encode(['success' => true, 'redirect_url' => $session['redirect_url']], JSON_UNESCAPED_UNICODE);
-} catch (\Throwable $e) {
+    if (!booking_payment_live_enabled()) throw new RuntimeException('Payments disabled.');
+    $channels = booking_payment_channels();
+    if (empty($channels[$provider])) throw new RuntimeException('Payment channel is not configured.');
+    $imp_code = booking_payment_setting('PORTONE_IMP_CODE');
+    if ($imp_code === '') throw new RuntimeException('Store is not configured.');
+    $base = booking_payment_base_url();
+    $client = new BookingPortOneClient();
+    $client->prepare($order['merchant_uid'], (int)$order['amount']);
+    $methods = ['card'=>'card', 'bank'=>'trans', 'naverpay'=>'naverpay', 'kakaopay'=>'kakaopay', 'tosspay'=>'tosspay'];
+    echo json_encode(['success'=>true, 'imp_code'=>$imp_code, 'payment'=>[
+        'channelKey'=>$channels[$provider], 'merchant_uid'=>$order['merchant_uid'],
+        'amount'=>(int)$order['amount'], 'currency'=>'KRW',
+        'buyer_name'=>$order['patient_name'], 'buyer_tel'=>$order['patient_phone'],
+        'buyer_email'=>(string)($member['mb_email'] ?? ''),
+        'pay_method'=>$methods[$provider], 'name'=>'예약 #' . $booking_id,
+        'm_redirect_url'=>$base . '/booking_payment_return.php?booking_id=' . $booking_id,
+        'notice_url'=>$base . '/payment/portone_webhook.php',
+    ]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+} catch (Throwable $e) {
     error_log('[booking_payment_request] ' . $e->getMessage());
-    bp_fail('결제를 시작하지 못했습니다. 잠시 후 다시 시도해주세요.', 'PROVIDER_SESSION_FAILED', 502);
+    bp_fail('현재 이 결제 수단을 이용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'PAYMENT_UNAVAILABLE', 503);
 }

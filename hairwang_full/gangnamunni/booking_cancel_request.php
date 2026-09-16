@@ -45,16 +45,16 @@ $cancel_reason = (string)$_SESSION['booking_cancel_reason'][$booking_id];
 $cancel_reason_parts = explode(': ', $cancel_reason, 2);
 $cancel_reason_choice = $cancel_reason_parts[0];
 $cancel_reason_custom = $cancel_reason_parts[1] ?? '';
-$amount = max(0, (int)($booking['price'] ?? 0));
+$amount = 0; // A booking price or preview is not money received.
 $payment_status = '';
 $table_check = mysqli_query($connect, "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gangnamunni_platform_payments' LIMIT 1");
 if ($table_check && mysqli_num_rows($table_check)) {
-    $pay_stmt = mysqli_prepare($connect, "SELECT amount,refunded_amount,status FROM gangnamunni_platform_payments WHERE payment_type='booking' AND booking_id=? LIMIT 1");
+    $pay_stmt = mysqli_prepare($connect, "SELECT amount,refunded_amount,status,provider FROM gangnamunni_platform_payments WHERE payment_type='booking' AND booking_id=? LIMIT 1");
     mysqli_stmt_bind_param($pay_stmt, 'i', $booking_id);
     mysqli_stmt_execute($pay_stmt);
     $payment = mysqli_fetch_assoc(mysqli_stmt_get_result($pay_stmt));
     mysqli_stmt_close($pay_stmt);
-    if ($payment) {
+    if ($payment && $payment['provider'] === 'portone' && in_array($payment['status'], ['paid','partially_refunded'], true)) {
         $amount = max(0, (int)$payment['amount'] - (int)$payment['refunded_amount']);
         $payment_status = (string)$payment['status'];
     }
@@ -119,19 +119,15 @@ function cancel_page_now() {
  <button type="button" class="agreement-title" onclick="openPolicyModal()"><span>취소 및 환불 규정을 확인해주세요</span><span class="chevron">⌄</span></button>
  <div class="agreement-box">방문 하루 전 오후 5시까지 앱에서 취소하면 100% 환불돼요<br>당일 취소는 병원에 직접 연락해 주세요<label class="agree"><input type="checkbox" id="cancelAgree">위 내용을 모두 확인하였으며, 취소에 동의해요</label></div>
  <p class="legal">서비스 이용에 관한 개인정보 수집 동의<br>서울미녀는 고객 편의를 위해 예약·앱에서 결제 기능을 제공하며, 위 내용에 동의합니다.</p>
- <div class="final-line"><span>환불 예정 금액</span><strong><?php echo number_format($refund_amount); ?>원</strong></div>
+ <div class="final-line"><span>환불 검토 대상 금액</span><strong><?php echo number_format($refund_amount); ?>원</strong></div>
  <button type="button" class="final-btn" id="finalCancelButton" onclick="finalizeCancel()">예약 취소 요청</button><p class="error" id="cancelError"></p>
 </main>
 <div class="policy-modal" id="policyModal" aria-hidden="true" onclick="if(event.target===this) closePolicyModal()">
  <section class="policy-dialog" role="dialog" aria-modal="true" aria-labelledby="policyTitle">
   <div class="policy-dialog-head"><h2 class="policy-dialog-title" id="policyTitle">취소 및 환불 규정을 확인해주세요</h2><button type="button" class="policy-close" onclick="closePolicyModal()" aria-label="닫기">⌃</button></div>
   <div class="policy-body">
-   <p>서울미녀 취소 환불 규정으로 수정 해야합니다. (아래는 강남언니 예시)</p>
-   <ul><li>예약 확정일 기준 하루 전 17:00까지 서울미녀 앱에서 취소·환불 처리가 가능합니다.</li><li>예약결제 내역의 상세페이지에서 ‘결제 취소 하기’를 누르면 자동으로 100% 취소·환불 됩니다.</li><li>예약일에 방문이 어렵다면, 앱에서 예약 변경 또는 취소를 예약 확정일 하루 전 17:00까지 진행해주세요.</li><li>취소 처리 시점에 따라 취소·환불 요청 이후에도 병원에서 내원 예약 안내를 위한 연락이 갈 수 있습니다. 내원 취소 의사를 병원에 전달해주세요.</li><li>결제 취소 요청의 경우 고객센터 업무일 기준 3~5일 소요되며, 카드사로 취소 요청 전달 이후 신용카드사 정책에 따라 환불이 진행됩니다.</li></ul>
-   <h3>취소·환불 신청 가능 기간 이후</h3>
-   <ul><li>예약 확정일 기준 하루 전 17:00 이후부터는 앱에서 취소·환불이 불가하며, 예약하신 병원으로 직접 문의하여 예약 변경 또는 취소·환불을 요청해야 합니다.</li><li>병원은 앱결제 건에 대해서 취소 처리가 가능하며, 취소 요청 시 고객센터 업무일 기준 3~5일 내 환불이 진행됩니다.</li></ul>
-   <h3>유효기간에 따른 자동환불 정책</h3>
-   <ul><li>서울미녀 앱을 통해 앱결제한 시술은 결제일로부터 120일(이하 “유효기간”) 동안 유효합니다. 유효기간이 경과하는 경우 결제하신 수단으로 자동 환불처리 됩니다.</li><li>예약을 확정일 하루 전 17:00까지 앱에서 취소 처리하지 못했거나, 그 이후에도 병원에 방문하여 시술을 받지 못한 경우 유효기간 만료일에 맞춰 100% 전액 환불됩니다.</li><li>패키지 상품 중 일부 사용한 후 환불을 요청하는 경우 정상가를 제한 후 환불이 가능하며, 할인 금액 및 정상가 측정은 병원 정책에 따라 진행되므로 병원에 직접 문의가 필요합니다.</li></ul>
+   <p>예약 취소와 결제 환불은 별도로 처리됩니다.</p>
+   <ul><li>운영자가 실제 결제 내역과 병원의 환불 조건을 확인한 후 환불합니다.</li><li>실제 환불이 확인되면 결제 내역에 반영됩니다.</li><li>결제 없이 계속한 예약에는 환불할 결제 금액이 없습니다.</li></ul>
   </div>
  </section>
 </div>

@@ -3,6 +3,7 @@
  * 예약 결제 완료 후 확정 안내 화면.
  */
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/booking_payment_access.php';
 if (isset($connect) && $connect && file_exists(__DIR__ . '/includes/sso_auto_login.php')) {
     @include_once __DIR__ . '/includes/sso_auto_login.php';
 }
@@ -70,6 +71,26 @@ if (!$booking) {
     $fatal = '예약을 찾을 수 없거나 접근 권한이 없습니다.';
 }
 
+$payment_title = '결제 확인 중';
+$payment_description = '결제가 아직 확인되지 않았습니다. 결제 화면에서 상태를 다시 확인해주세요.';
+if ($booking) {
+    try {
+        $order = booking_payment_order($connect, $booking_id);
+        $preview = booking_payment_previews($connect, [$booking_id]);
+        if ($order && in_array($order['status'], ['paid', 'partially_refunded'], true)) {
+            $test = booking_payment_is_test($order['provider']);
+            $payment_title = $test ? '테스트 결제 완료' : '결제가 완료되었어요!';
+            $payment_description = $test ? '테스트 결과이며 실제 결제·정산에 포함되지 않습니다.' : '결제가 확인되었습니다. 예약 내역에서 상세 정보를 확인하세요.';
+        } elseif ($order && $order['status'] === 'refunded') {
+            $payment_title = '환불 완료';
+            $payment_description = '환불된 결제입니다. 예약 내역을 확인해주세요.';
+        } elseif ($preview) {
+            $payment_title = '결제 없이 계속했어요';
+            $payment_description = '실제 결제는 이루어지지 않았으며 결제·정산 내역에 포함되지 않습니다.';
+        }
+    } catch (Throwable $e) { error_log('[payment_success] ' . $e->getMessage()); }
+}
+
 $hospital_name = $booking ? ($booking['h_name'] ?: ($booking['hospital_name'] ?? '')) : '';
 $treatment = $booking ? bps_truncate($booking['treatment'] ?? '-', 24) : '';
 $booking_date = $booking ? bps_date($booking['booking_date'] ?? '', $booking['booking_time'] ?? '') : '';
@@ -127,8 +148,8 @@ a { color: inherit; text-decoration: none; }
             <a class="bps-button" href="my_bookings.php">예약 내역 보기</a>
         <?php else: ?>
             <div class="bps-check" aria-hidden="true"></div>
-            <h1 class="bps-heading">예약이 확정되었어요!</h1>
-            <p class="bps-desc">결제가 완료되어 예약이 최종 확정되었습니다<br>예약 내역에서 상세 정보를 확인하세요</p>
+            <h1 class="bps-heading"><?php echo bps_h($payment_title); ?></h1>
+            <p class="bps-desc"><?php echo bps_h($payment_description); ?></p>
 
             <section class="bps-info" aria-label="예약 정보">
                 <h2 class="bps-info-title">예약 정보</h2>
@@ -139,6 +160,7 @@ a { color: inherit; text-decoration: none; }
                 <div class="bps-row"><div class="bps-label">예약번호</div><div class="bps-value"><?php echo bps_h($booking_no); ?></div></div>
             </section>
 
+            <a class="bps-button" href="booking_payment.php?booking_id=<?php echo $booking_id; ?>">결제 상태 확인</a>
             <a class="bps-button" href="my_bookings.php">예약 내역 보기</a>
         <?php endif; ?>
     </main>

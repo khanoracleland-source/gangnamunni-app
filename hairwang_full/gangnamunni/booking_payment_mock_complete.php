@@ -1,13 +1,14 @@
 <?php
 /**
  * 임시 예약 결제 완료 처리.
- * 실제 PG 연동 전까지 결제 버튼 UX 확인을 위해 서버 원장에 paid 상태를 기록한다.
+ * 금융 원장을 변경하지 않고 별도 테이블에 결제 없는 미리보기를 기록한다.
  */
 require_once __DIR__ . '/includes/init.php';
 if (isset($connect) && $connect && file_exists(__DIR__ . '/includes/sso_auto_login.php')) {
     @include_once __DIR__ . '/includes/sso_auto_login.php';
 }
 require_once __DIR__ . '/includes/payment_core.php';
+require_once __DIR__ . '/includes/booking_payment_access.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -84,27 +85,9 @@ try {
         bpm_fail('결제할 수 없는 주문 상태입니다.', 'INVALID_ORDER_STATE', 409);
     }
 
-    $provider = 'mock_booking_payment';
-    $transaction_id = 'MOCK_TX_' . $booking_id . '_' . date('YmdHis');
-    $event_id = 'MOCK_EVT_' . $booking_id . '_' . bin2hex(random_bytes(6));
-    $payload_hash = hash('sha256', json_encode([
-        'booking_id' => $booking_id,
-        'merchant_uid' => $order['merchant_uid'],
-        'amount' => (int)$order['amount'],
-        'transaction_id' => $transaction_id,
-        'created_at' => date('c'),
-    ], JSON_UNESCAPED_UNICODE));
-
-    platform_payment_mark_verified(
-        $connect,
-        (string)$order['merchant_uid'],
-        $provider,
-        $transaction_id,
-        $event_id,
-        (int)$order['amount'],
-        $payload_hash,
-        'server_query'
-    );
+    if (!booking_payment_preview_enabled()) bpm_fail('결제 없이 계속하기가 비활성화되었습니다.', 'PREVIEW_DISABLED', 403);
+    // Preview evidence lives outside the financial ledger. It cannot trigger payout.
+    booking_payment_record_preview($connect, $booking_id);
 
     echo json_encode(['success' => true, 'redirect_url' => 'booking_payment_success.php?booking_id=' . $booking_id], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
