@@ -324,6 +324,12 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
     $_td_sql = "
         SELECT ht.hospital_id, tm.name AS treatment_name, tm.description,
                ht.dosage_value, ht.dosage_unit,
+               (SELECT p.dosage_value FROM gangnamunni_hospital_treatment_prices p
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0
+                  ORDER BY {$hospital_price_option_order} LIMIT 1) AS display_dosage_value,
+               (SELECT p.dosage_unit FROM gangnamunni_hospital_treatment_prices p
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0
+                  ORDER BY {$hospital_price_option_order} LIMIT 1) AS display_dosage_unit,
                tm.avg_price_min AS default_min, tm.avg_price_max AS default_max,
                (SELECT p.price FROM gangnamunni_hospital_treatment_prices p
                   WHERE p.hospital_treatment_id = ht.id AND p.price > 0
@@ -359,8 +365,10 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
                 'desc' => $_td_row['description'],
                 'price_min' => $final_min,
                 'price_max' => $final_max,
-                'dosage_value' => $_td_row['dosage_value'] ?? null,
-                'dosage_unit' => $_td_row['dosage_unit'] ?? null,
+                'dosage_value' => $display_sale_price > 0
+                    ? ($_td_row['display_dosage_value'] ?? null) : ($_td_row['dosage_value'] ?? null),
+                'dosage_unit' => $display_sale_price > 0
+                    ? ($_td_row['display_dosage_unit'] ?? null) : ($_td_row['dosage_unit'] ?? null),
             ];
         }
     }
@@ -391,7 +399,9 @@ $page_css = '
     .tag-badge { display: inline-block; padding: 3px 10px; border: 1px solid currentColor; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
 
     .hospital-grid.list-view { grid-template-columns: 1fr; }
-    .hospital-grid.list-view .hospital-card { flex-direction: row; }
+    .hospital-grid.list-view .hospital-card { flex-direction: row; border-top: 1px solid #ddd; }
+    .hospital-grid.list-view .hospital-card:last-child { border-bottom: 1px solid #ddd; }
+    .card-wishlist { position: absolute; top: 8px; right: 8px; z-index: 3; }
     .hospital-grid.list-view .hospital-image { width: 100px; height: 100px; flex-shrink: 0; }
     .hospital-grid.list-view .card-link { display: flex; flex-direction: row; flex: 1; min-width: 0; }
     .hospital-grid.list-view .hospital-info { flex: 1; padding: 10px 12px; min-width: 0; }
@@ -415,6 +425,7 @@ $page_css = '
 .card-price { width: 100%; text-align: left; font-size: 22px; line-height: 1; }
 .card-price-num { font-size: 20px; font-weight: 700; color: #AE1932; line-height: 1; }
 .card-price-unit { font-size: 20px; font-weight: 400; color: #000000; }
+.card-price-sale { display: block; }
 .card-price-max { font-size: 22px; color: #858484; text-decoration: line-through; margin-right: 2px; }
 ';
 
@@ -563,7 +574,7 @@ foreach ($hospitals as $hospital):
              data-ad-slot-rank="<?php echo (int) $_slot_context['rank_position']; ?>"
              data-target-url="<?php echo htmlspecialchars($_detail_url, ENT_QUOTES, 'UTF-8'); ?>"
              <?php endif; ?>>
-            <div style="position:absolute;top:8px;right:8px;z-index:3;background:rgba(255,255,255,.9);border-radius:999px;">
+            <div class="card-wishlist">
                 <?php renderWishlistButton('hospital', (int)$hospital['id'], 'sm', 'star'); ?>
             </div>
             <div class="card-link">
@@ -592,8 +603,8 @@ foreach ($hospitals as $hospital):
                         <span class="addr-district"><?php echo htmlspecialchars($_dist); ?></span>
                         <span class="addr-sep"> | </span>
                         <?php endif; ?>
-                        <span class="addr-full"><?php echo htmlspecialchars(mb_substr($_a,0,20,'UTF-8')).(mb_strlen($_a,'UTF-8')>20?'...':''); ?></span>
-                        <span class="addr-short"><?php $_a=($hospital['address']??''); echo htmlspecialchars(mb_substr($_a,0,20,'UTF-8')).(mb_strlen($_a,'UTF-8')>20?'...':''); ?></span>
+                        <span class="addr-full"><?php echo htmlspecialchars($_a); ?></span>
+                        <span class="addr-short"><?php $_a=($hospital['address']??''); echo htmlspecialchars($_a); ?></span>
                     </div>
                     <?php
                     $_td = $hospital_treatment_descs[(int)$hospital['id']] ?? null;
@@ -603,7 +614,7 @@ foreach ($hospitals as $hospital):
                     $_price_won = $_price;
                     $_price_max_won = $_price_max;
                     $_dosage_label = '';
-                    if ($_td && $_td['dosage_value'] !== null && $_td['dosage_unit']) {
+                    if ($_td && (float)($_td['dosage_value'] ?? 0) > 0 && !empty($_td['dosage_unit'])) {
                         $_dosage_label = ' · ' . rtrim(rtrim(number_format((float)$_td['dosage_value'], 2), '0'), '.') . $_td['dosage_unit'];
                     }
                     if ($_tag_name || $_price > 0):
@@ -617,7 +628,7 @@ foreach ($hospitals as $hospital):
                             <?php if ($_price_max > 0): ?>
                             <span class="card-price-max"><?php echo number_format($_price_max_won); ?>원</span>
                             <?php endif; ?>
-                            <span class="card-price-num"><?php echo number_format($_price_won); ?></span><span class="card-price-unit">원~</span>
+                            <span class="card-price-sale"><span class="card-price-num"><?php echo number_format($_price_won); ?></span><span class="card-price-unit">원</span></span>
                         </span>
                         <?php endif; ?>
                     </div>
