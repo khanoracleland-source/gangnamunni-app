@@ -116,3 +116,6 @@ hairwang_full/gangnamunni/dbconfig.override.php
 hairwang_full/local-router.php
 # Downloaded mobile handover archives are local reference material only.
 /seoulbeauty-app-download/
+
+# Keep private handover notes out of Git.
+[Hh][Aa][Nn][Dd][Oo][Vv][Ee][Rr].[Mm][Dd]
