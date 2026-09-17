@@ -1035,25 +1035,41 @@ $edit_json_list_value = static function ($raw) {
                     <?php
                     $bh_data = json_decode($hospital['business_hours'] ?? '{}', true) ?: [];
                     $bh_days = ['월'=>'월요일','화'=>'화요일','수'=>'수요일','목'=>'목요일','금'=>'금요일','토'=>'토요일','일'=>'일요일'];
-                    $bh_statuses = ['normal'=>'정상진료','off'=>'휴무','construction'=>'공사중','temp_closed'=>'임시휴업'];
+                    $bh_statuses = ['normal'=>'정상진료','off'=>'휴무','construction'=>'공사중','temp_closed'=>'임시휴업','biweekly_even'=>'격주 진료 (짝수 주)','biweekly_odd'=>'격주 진료 (홀수 주)'];
                     ?>
                     <input type="hidden" name="business_hours" id="bhHiddenInput" value="<?php echo htmlspecialchars($hospital['business_hours'] ?? ''); ?>">
+                    <div class="text-body-secondary small mb-2">'격주 진료'는 매월 1일부터 새로 계산됩니다 — 해당 요일이 그 달의 몇 번째(1,3,5번째=짝수 주 / 2,4번째=홀수 주) 발생인지에 따라 운영 여부가 결정됩니다.</div>
+                    <div class="d-flex gap-2 align-items-center mb-2 flex-wrap" style="font-size:13px;">
+                        <span class="fw-semibold">표준 시간 일괄 적용</span>
+                        <input type="time" class="form-control form-control-sm" id="bhStandardStart" value="09:00" style="width:110px;">
+                        <span>~</span>
+                        <input type="time" class="form-control form-control-sm" id="bhStandardEnd" value="18:00" style="width:110px;">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="bhApplyStandardToAll()">전체 요일에 적용</button>
+                    </div>
                     <table class="table table-sm table-bordered mb-2" style="font-size:13px;">
-                        <thead><tr><th style="width:75px;">요일</th><th style="width:110px;">시작</th><th style="width:110px;">종료</th><th style="width:110px;">상태</th></tr></thead>
+                        <thead><tr><th style="width:75px;">요일</th><th style="width:110px;">시작</th><th style="width:110px;">종료</th><th style="width:170px;">상태</th></tr></thead>
                         <tbody>
                         <?php foreach ($bh_days as $bdk => $bdl):
                             $bval = $bh_data[$bdk] ?? '';
+                            $b_parity = '';
+                            if (preg_match('/^(.*)#biweekly:(even|odd)$/', $bval, $bp_match)) {
+                                $bval = $bp_match[1];
+                                $b_parity = $bp_match[2];
+                            }
                             $b_is_off = in_array($bval, ['휴무','공사중','임시휴업','']);
                             $b_status = 'normal';
                             if ($bval === '휴무') $b_status = 'off';
                             elseif ($bval === '공사중') $b_status = 'construction';
                             elseif ($bval === '임시휴업') $b_status = 'temp_closed';
+                            elseif ($b_parity !== '') $b_status = 'biweekly_'.$b_parity;
+                            $b_is_biweekly = ($b_status === 'biweekly_even' || $b_status === 'biweekly_odd');
                             $b_parts = (!$b_is_off && strpos($bval, '~') !== false) ? explode('~', $bval) : ['', ''];
+                            $b_time_disabled = $b_is_off && !$b_is_biweekly;
                         ?>
                         <tr>
                             <td class="fw-semibold"><?php echo $bdl; ?></td>
-                            <td><input type="time" class="form-control form-control-sm bh-start" data-day="<?php echo $bdk; ?>" value="<?php echo htmlspecialchars($b_parts[0]); ?>" <?php echo $b_is_off ? 'disabled' : ''; ?>></td>
-                            <td><input type="time" class="form-control form-control-sm bh-end" data-day="<?php echo $bdk; ?>" value="<?php echo htmlspecialchars($b_parts[1]); ?>" <?php echo $b_is_off ? 'disabled' : ''; ?>></td>
+                            <td><input type="time" class="form-control form-control-sm bh-start" data-day="<?php echo $bdk; ?>" value="<?php echo htmlspecialchars($b_parts[0]); ?>" <?php echo $b_time_disabled ? 'disabled' : ''; ?>></td>
+                            <td><input type="time" class="form-control form-control-sm bh-end" data-day="<?php echo $bdk; ?>" value="<?php echo htmlspecialchars($b_parts[1]); ?>" <?php echo $b_time_disabled ? 'disabled' : ''; ?>></td>
                             <td>
                                 <select class="form-select form-select-sm bh-status" data-day="<?php echo $bdk; ?>" onchange="bhToggle(this)">
                                     <?php foreach ($bh_statuses as $bsv => $bsl): ?>
@@ -1073,6 +1089,12 @@ $edit_json_list_value = static function ($raw) {
                         is_array($bh_data['special_closed_dates'] ?? null) ? $bh_data['special_closed_dates'] : [],
                         function($date) { return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date); }
                     ));
+                    $bh_special_open_dates = [];
+                    foreach ((is_array($bh_data['special_open_dates'] ?? null) ? $bh_data['special_open_dates'] : []) as $bh_open_date => $bh_open_range) {
+                        if (!is_string($bh_open_date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $bh_open_date)) continue;
+                        if (!preg_match('/^\d{1,2}:\d{2}~\d{1,2}:\d{2}$/', (string)$bh_open_range)) continue;
+                        $bh_special_open_dates[$bh_open_date] = $bh_open_range;
+                    }
                     ?>
                     <div class="d-flex align-items-center gap-2 mb-2" style="font-size:13px;">
                         <span class="fw-semibold" style="width:75px;">점심시간</span>
@@ -1091,6 +1113,17 @@ $edit_json_list_value = static function ($raw) {
                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="bhAddSpecialClosedDate()">추가</button>
                         </div>
                         <div id="bhSpecialClosedList" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+                    <div class="border rounded p-2 mb-2" style="font-size:13px;">
+                        <div class="fw-semibold mb-2">특별 근무일 (정기 휴무 요일 중 예외 근무, 예: 특정 토/일요일)</div>
+                        <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
+                            <input type="date" class="form-control form-control-sm" id="bhSpecialOpenDate" style="max-width:180px;" min="<?php echo date('Y-m-d'); ?>">
+                            <input type="time" class="form-control form-control-sm" id="bhSpecialOpenStart" style="width:110px;" value="09:00">
+                            <span>~</span>
+                            <input type="time" class="form-control form-control-sm" id="bhSpecialOpenEnd" style="width:110px;" value="18:00">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="bhAddSpecialOpenDate()">추가</button>
+                        </div>
+                        <div id="bhSpecialOpenList" class="d-flex flex-wrap gap-2"></div>
                     </div>
                     <script>
                     var bhSpecialClosedDates = <?php echo json_encode($bh_special_closed_dates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
@@ -1117,11 +1150,55 @@ $edit_json_list_value = static function ($raw) {
                             bhSpecialClosedDates.push(input.value); input.value = ''; bhRenderSpecialClosedDates();
                         }
                     }
+                    var bhSpecialOpenDates = <?php echo json_encode($bh_special_open_dates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+                    function bhRenderSpecialOpenDates() {
+                        var list = document.getElementById('bhSpecialOpenList');
+                        list.innerHTML = '';
+                        Object.keys(bhSpecialOpenDates).sort().forEach(function(date) {
+                            var badge = document.createElement('span');
+                            badge.className = 'badge text-bg-success d-inline-flex align-items-center gap-1';
+                            badge.textContent = date + ' (' + bhSpecialOpenDates[date] + ')';
+                            var remove = document.createElement('button');
+                            remove.type = 'button'; remove.className = 'btn-close btn-close-white';
+                            remove.style.fontSize = '8px'; remove.setAttribute('aria-label', '삭제');
+                            remove.onclick = function() {
+                                delete bhSpecialOpenDates[date];
+                                bhRenderSpecialOpenDates();
+                            };
+                            badge.appendChild(remove); list.appendChild(badge);
+                        });
+                    }
+                    function bhAddSpecialOpenDate() {
+                        var dateInput = document.getElementById('bhSpecialOpenDate');
+                        var startInput = document.getElementById('bhSpecialOpenStart');
+                        var endInput = document.getElementById('bhSpecialOpenEnd');
+                        if (dateInput.value && startInput.value && endInput.value && startInput.value < endInput.value) {
+                            bhSpecialOpenDates[dateInput.value] = startInput.value + '~' + endInput.value;
+                            dateInput.value = '';
+                            bhRenderSpecialOpenDates();
+                        }
+                    }
                     function bhToggle(sel) {
                         var tr = sel.closest('tr');
                         var inputs = tr.querySelectorAll('input[type=time]');
-                        var off = (sel.value !== 'normal');
+                        var isBiweekly = (sel.value === 'biweekly_even' || sel.value === 'biweekly_odd');
+                        var off = (sel.value !== 'normal' && !isBiweekly);
                         inputs.forEach(function(inp) { inp.disabled = off; if (off) inp.value = ''; });
+                    }
+                    function bhApplyStandardToAll() {
+                        var s = document.getElementById('bhStandardStart').value;
+                        var e = document.getElementById('bhStandardEnd').value;
+                        if (!s || !e || s >= e) return;
+                        document.querySelectorAll('.bh-status').forEach(function(sel) {
+                            // 이미 휴무/공사중/임시휴업/격주 진료로 지정된 요일은 그대로 두고,
+                            // '정상진료'인 요일에만 표준 시간을 적용한다.
+                            if (sel.value !== 'normal') return;
+                            var tr = sel.closest('tr');
+                            var startInp = tr.querySelector('.bh-start');
+                            var endInp = tr.querySelector('.bh-end');
+                            startInp.disabled = false; endInp.disabled = false;
+                            startInp.value = s; endInp.value = e;
+                        });
                     }
                     function bhToggleLunch() {
                         var noLunch = document.getElementById('bhNoLunch').checked;
@@ -1133,7 +1210,12 @@ $edit_json_list_value = static function ($raw) {
                         var statusMap = {'off':'휴무','construction':'공사중','temp_closed':'임시휴업'};
                         document.querySelectorAll('.bh-status').forEach(function(sel) {
                             var dk = sel.dataset.day;
-                            if (sel.value !== 'normal') {
+                            if (sel.value === 'biweekly_even' || sel.value === 'biweekly_odd') {
+                                var bs = document.querySelector('.bh-start[data-day="'+dk+'"]').value;
+                                var be = document.querySelector('.bh-end[data-day="'+dk+'"]').value;
+                                var parity = sel.value === 'biweekly_even' ? 'even' : 'odd';
+                                data[dk] = (bs && be) ? (bs+'~'+be+'#biweekly:'+parity) : '휴무';
+                            } else if (sel.value !== 'normal') {
                                 data[dk] = statusMap[sel.value] || '휴무';
                             } else {
                                 var s = document.querySelector('.bh-start[data-day="'+dk+'"]').value;
@@ -1150,9 +1232,11 @@ $edit_json_list_value = static function ($raw) {
                             if (ls && le) data['점심'] = ls+'~'+le;
                         }
                         data['special_closed_dates'] = bhSpecialClosedDates.slice().sort();
+                        data['special_open_dates'] = bhSpecialOpenDates;
                         document.getElementById('bhHiddenInput').value = JSON.stringify(data);
                     }
                     bhRenderSpecialClosedDates();
+                    bhRenderSpecialOpenDates();
                     var bhForm = document.getElementById('bhHiddenInput').closest('form');
                     if (bhForm) bhForm.addEventListener('submit', function() { bhCollectJSON(); });
                     </script>
@@ -1727,9 +1811,17 @@ $application_assets = [
                 <tbody>
                 <?php foreach (['월'=>'월요일','화'=>'화요일','수'=>'수요일','목'=>'목요일','금'=>'금요일','토'=>'토요일','일'=>'일요일'] as $hours_key => $hours_label):
                     $hours_value = trim((string)($detail_hours[$hours_key] ?? '휴무'));
-                    $hours_is_closed = in_array($hours_value, ['휴무', '공사중', '임시휴업', ''], true);
+                    $hours_biweekly_parity = '';
+                    if (preg_match('/^(.*)#biweekly:(even|odd)$/', $hours_value, $hours_bp_match)) {
+                        $hours_value = $hours_bp_match[1];
+                        $hours_biweekly_parity = $hours_bp_match[2];
+                    }
+                    $hours_is_closed = in_array($hours_value, ['휴무', '공사중', '임시휴업', ''], true) && $hours_biweekly_parity === '';
+                    $hours_status_label = $hours_biweekly_parity !== ''
+                        ? '격주 진료 (' . ($hours_biweekly_parity === 'even' ? '짝수 주' : '홀수 주') . ')'
+                        : '정상진료';
                 ?>
-                <tr><td class="fw-semibold"><?= $hours_label ?></td><td><?= $hours_is_closed ? '-' : htmlspecialchars($hours_value) ?></td><td><span class="badge <?= $hours_is_closed ? 'bg-secondary' : 'bg-success' ?>"><?= $hours_is_closed ? htmlspecialchars($hours_value ?: '휴무') : '정상진료' ?></span></td></tr>
+                <tr><td class="fw-semibold"><?= $hours_label ?></td><td><?= $hours_is_closed ? '-' : htmlspecialchars($hours_value) ?></td><td><span class="badge <?= $hours_is_closed ? 'bg-secondary' : 'bg-success' ?>"><?= $hours_is_closed ? htmlspecialchars($hours_value ?: '휴무') : htmlspecialchars($hours_status_label) ?></span></td></tr>
                 <?php endforeach; ?>
                 </tbody>
             </table>
@@ -1737,6 +1829,15 @@ $application_assets = [
         <div class="d-flex flex-wrap gap-4 small">
             <div><strong>점심시간:</strong> <?= !empty($detail_hours['no_lunch_break']) ? '없음' : htmlspecialchars($detail_hours['점심'] ?? '-') ?></div>
             <div><strong>임시 휴무일:</strong> <?= !empty($detail_hours['special_closed_dates']) ? htmlspecialchars(implode(', ', (array)$detail_hours['special_closed_dates'])) : '없음' ?></div>
+            <?php
+                $detail_special_open = is_array($detail_hours['special_open_dates'] ?? null) ? $detail_hours['special_open_dates'] : [];
+                $detail_special_open_labels = [];
+                foreach ($detail_special_open as $detail_open_date => $detail_open_range) {
+                    $detail_special_open_labels[] = $detail_open_date . ' (' . $detail_open_range . ')';
+                }
+                sort($detail_special_open_labels);
+            ?>
+            <div><strong>특별 근무일:</strong> <?= !empty($detail_special_open_labels) ? htmlspecialchars(implode(', ', $detail_special_open_labels)) : '없음' ?></div>
         </div>
         <?php else: ?>
         <div class="alert alert-secondary mb-0"><i class="bi bi-info-circle me-1"></i>등록된 영업시간 정보가 없습니다.</div>

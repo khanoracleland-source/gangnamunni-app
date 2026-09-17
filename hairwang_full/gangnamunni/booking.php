@@ -74,6 +74,18 @@ $booking_special_closed_dates = array_values(array_filter(
     static function($date) { return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date); }
 ));
 
+// 특별 근무일: 정기 휴무 요일(예: 토/일)이라도 관리자가 지정한 특정 날짜는 지정된 시간대에 예약을 허용한다.
+$booking_special_open_dates = [];
+foreach ((is_array($booking_business_hours['special_open_dates'] ?? null) ? $booking_business_hours['special_open_dates'] : []) as $booking_open_date => $booking_open_range) {
+    if (!is_string($booking_open_date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $booking_open_date)) continue;
+    if (!preg_match('/^(\d{1,2}):(\d{2})\s*[~\-]\s*(\d{1,2}):(\d{2})$/u', trim((string)$booking_open_range), $booking_open_match)) continue;
+    $booking_open_min = (int)$booking_open_match[1] * 60 + (int)$booking_open_match[2];
+    $booking_close_min = (int)$booking_open_match[3] * 60 + (int)$booking_open_match[4];
+    if ($booking_open_min < $booking_close_min) {
+        $booking_special_open_dates[$booking_open_date] = ['open' => $booking_open_min, 'close' => $booking_close_min];
+    }
+}
+
 // 관리자에서 저장한 요일별 운영시간을 예약 검증/시간 선택에서 공통 사용한다.
 // 크롤링 데이터의 officeHours(영문 요일) 형식도 기존 병원 호환을 위해 지원한다.
 $booking_day_keys = [0 => '일', 1 => '월', 2 => '화', 3 => '수', 4 => '목', 5 => '금', 6 => '토'];
@@ -90,11 +102,19 @@ foreach ($booking_day_keys as $booking_day_number => $booking_day_key) {
     }
     if ($booking_day_value !== null) $booking_has_weekly_hours = true;
     $booking_day_value = trim((string)($booking_day_value ?? ''));
+    // 격주 진료: '09:00~18:00#biweekly:even|odd' 형식 — 매월 1일 기준 해당 요일의 몇 번째
+    // 발생인지(0번째부터 시작)를 짝/홀수로 판정한다. 매월 1일에 새로 0부터 시작한다(연도 전체를
+    // 관통하는 ISO 주차가 아니라 월 단위로 리셋됨).
+    $booking_day_biweekly = null;
+    if (preg_match('/^(.*)#biweekly:(even|odd)$/', $booking_day_value, $booking_biweekly_match)) {
+        $booking_day_value = trim($booking_biweekly_match[1]);
+        $booking_day_biweekly = $booking_biweekly_match[2];
+    }
     if (preg_match('/^(\d{1,2}):(\d{2})\s*[~\-]\s*(\d{1,2}):(\d{2})$/u', $booking_day_value, $booking_hours_match)) {
         $booking_open_min = (int)$booking_hours_match[1] * 60 + (int)$booking_hours_match[2];
         $booking_close_min = (int)$booking_hours_match[3] * 60 + (int)$booking_hours_match[4];
         $booking_weekly_hours[$booking_day_number] = ($booking_open_min < $booking_close_min)
-            ? ['open' => $booking_open_min, 'close' => $booking_close_min]
+            ? ['open' => $booking_open_min, 'close' => $booking_close_min, 'biweekly' => $booking_day_biweekly]
             : null;
     } else {
         $booking_weekly_hours[$booking_day_number] = null;
@@ -213,7 +233,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $booking_error = '선택할 수 없는 예약 시간입니다.';
     } elseif (in_array($date, $booking_special_closed_dates, true)) {
         $booking_error = '선택한 날짜는 임시 휴무일입니다. 다른 날짜를 선택해주세요.';
+    } elseif (isset($booking_special_open_dates[$date])) {
+        // 특별 근무일: 정기 휴무 요일 여부와 무관하게 지정된 시간대만 확인한다.
+        if ($booking_time_min < $booking_special_open_dates[$date]['open'] || $booking_time_min >= $booking_special_open_dates[$date]['close']) {
+            $booking_error = '선택한 시간은 병원 진료시간이 아닙니다. 다른 시간을 선택해주세요.';
+        }
     } elseif ($booking_has_weekly_hours && empty($booking_weekly_hours[(int)$date_object->format('w')])) {
+        $booking_error = '선택한 날짜는 휴무일입니다. 다른 날짜를 선택해주세요.';
+    } elseif ($booking_has_weekly_hours
+        && !empty($booking_weekly_hours[(int)$date_object->format('w')]['biweekly'])
+        && $booking_weekly_hours[(int)$date_object->format('w')]['biweekly'] !== (intdiv((int)$date_object->format('j') - 1, 7) % 2 === 0 ? 'even' : 'odd')) {
+        // 격주 진료: 해당 요일이 이번 달의 짝/홀수 번째 발생일이 아니면 휴무 처리한다.
         $booking_error = '선택한 날짜는 휴무일입니다. 다른 날짜를 선택해주세요.';
     } elseif ($booking_has_weekly_hours
         && (($booking_selected_hours = $booking_weekly_hours[(int)$date_object->format('w')] ?? null) !== null)
@@ -1624,6 +1654,19 @@ $page_js = '
     var HAS_WEEKLY_HOURS = ' . ($booking_has_weekly_hours ? 'true' : 'false') . ';
     var WEEKLY_HOURS = ' . json_encode($booking_weekly_hours, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
     var SPECIAL_CLOSED_DATES = ' . json_encode($booking_special_closed_dates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+    var SPECIAL_OPEN_DATES = ' . json_encode($booking_special_open_dates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+
+    // 격주 진료 짝/홀수 판정: 매월 1일부터 리셋되는 "이번 달 몇 번째 발생인지"(0번째부터) 기준.
+    // 연도 전체를 관통하는 ISO 주차가 아니라, 달이 바뀌면 항상 0부터 다시 센다.
+    function monthOccurrenceParity(d) {
+        return (Math.floor((d.getDate() - 1) / 7) % 2 === 0) ? "even" : "odd";
+    }
+    // 격주 진료 요일이 해당 날짜의 짝/홀수 발생 순번과 맞지 않으면 null(휴무)로 취급한다.
+    function resolveDayHours(dayHours, d) {
+        if (!dayHours) return null;
+        if (dayHours.biweekly && dayHours.biweekly !== monthOccurrenceParity(d)) return null;
+        return dayHours;
+    }
 
     // 커스텀 날짜 선택 (월 → 날짜). hidden #bookingDate 에 YYYY-MM-DD 저장.
     function initDatePicker() {
@@ -1643,7 +1686,8 @@ $page_js = '
         while (cur < endDate) {
             // 관리자에서 휴무로 설정한 요일은 날짜 선택 목록에서 제외한다.
             var curValue = cur.getFullYear() + "-" + (cur.getMonth() + 1 < 10 ? "0" : "") + (cur.getMonth() + 1) + "-" + (cur.getDate() < 10 ? "0" : "") + cur.getDate();
-            if ((!HAS_WEEKLY_HOURS || WEEKLY_HOURS[cur.getDay()]) && SPECIAL_CLOSED_DATES.indexOf(curValue) < 0) dates.push(new Date(cur));
+            var curWeeklyOpen = !HAS_WEEKLY_HOURS || resolveDayHours(WEEKLY_HOURS[cur.getDay()], cur);
+            if ((curWeeklyOpen || SPECIAL_OPEN_DATES.hasOwnProperty(curValue)) && SPECIAL_CLOSED_DATES.indexOf(curValue) < 0) dates.push(new Date(cur));
             cur.setDate(cur.getDate() + 1);
         }
         var months = [];
@@ -1758,7 +1802,10 @@ $page_js = '
         var selDate = (document.getElementById("bookingDate") || {}).value || "";
         var isToday = (selDate === SERVER_TODAY);
         var selectedDay = selDate ? new Date(selDate + "T00:00:00").getDay() : -1;
-        var dayHours = HAS_WEEKLY_HOURS && selectedDay >= 0 ? WEEKLY_HOURS[selectedDay] : null;
+        var weeklyDayHours = HAS_WEEKLY_HOURS && selectedDay >= 0
+            ? resolveDayHours(WEEKLY_HOURS[selectedDay], new Date(selDate + "T00:00:00"))
+            : null;
+        var dayHours = SPECIAL_OPEN_DATES[selDate] || weeklyDayHours;
         // 날짜 변경 뒤 이전 날짜에서 고른 시간이 남지 않도록 먼저 초기화한다.
         sel.value = "";
         if (HAS_WEEKLY_HOURS && !dayHours) {
