@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * App\Models\SuperAdminCurrencySetting
@@ -35,6 +36,8 @@ class SuperAdminCurrencySetting extends Model
 
     protected $table = 'super_admin_currency_settings';
 
+    public const CACHE_KEY = 'super_admin_currency_settings_all';
+
     protected $hidden = ['created_at', 'updated_at'];
 
     protected $fillable = ['currency_name', 'currency_code', 'currency_icon'];
@@ -55,4 +58,10 @@ class SuperAdminCurrencySetting extends Model
         'currency_icon' => 'string',
         'currency_code' => 'string',
     ];
+
+    protected static function booted()
+    {
+        static::saved(fn () => Cache::forget(self::CACHE_KEY));
+        static::deleted(fn () => Cache::forget(self::CACHE_KEY));
+    }
 }

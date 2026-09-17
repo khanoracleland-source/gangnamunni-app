@@ -26,6 +26,7 @@ use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Spatie\MediaLibrary\Exceptions\FileCannotBeAdded\DiskDoesNotExist;
 use Spatie\MediaLibrary\Exceptions\FileCannotBeAdded\FileDoesNotExist;
 use Spatie\MediaLibrary\Exceptions\FileCannotBeAdded\FileIsTooBig;
@@ -146,9 +147,13 @@ function storeProfileImage($user, $image)
 
 function superAdminCurrency()
 {
-    $current_currency = SuperAdminSetting::where('key', '=', 'super_admin_currency')->first()->value;
-    $currency = SuperAdminCurrencySetting::where('currency_code', strtoupper($current_currency))->first();
-    $currencyIcon = $currency->currency_icon ?? 'inr';
+    $current_currency = getSuperAdminSettingKeyValue('super_admin_currency');
+
+    $currencies = Cache::remember(SuperAdminCurrencySetting::CACHE_KEY, 3600, function () {
+        return SuperAdminCurrencySetting::all()->keyBy('currency_code');
+    });
+
+    $currencyIcon = optional($currencies->get(strtoupper((string) $current_currency)))->currency_icon ?? 'inr';
 
     return $currencyIcon;
 }
@@ -646,9 +651,7 @@ function getCurrencies()
  */
 function getCurrencySymbol()
 {
-    $currenciesData = CurrencySetting::all();
-
-    return collect($currenciesData)->where(
+    return collect(getCachedCurrencySettings())->where(
         'currency_code',
         strtoupper(getCurrentCurrency())
     )->pluck('currency_icon')->first();
@@ -659,12 +662,22 @@ function getCurrencySymbol()
  */
 function getAPICurrencySymbol()
 {
-    $currenciesData = CurrencySetting::all();
-
-    return collect($currenciesData)->where(
+    return collect(getCachedCurrencySettings())->where(
         'currency_code',
         strtoupper(getAPICurrentCurrency())
     )->pluck('currency_icon')->first();
+}
+
+/**
+ * @return \Illuminate\Support\Collection
+ */
+function getCachedCurrencySettings()
+{
+    return Cache::remember(
+        CurrencySetting::CACHE_KEY_PREFIX.(tenant('id') ?? 'central'),
+        3600,
+        fn () => CurrencySetting::all()
+    );
 }
 
 /**
@@ -680,7 +693,11 @@ function getSettingValue()
  */
 function getSuperAdminSettingValue()
 {
-    return SuperAdminSetting::all()->keyBy('key');
+    return Cache::remember(
+        SuperAdminSetting::CACHE_KEY,
+        3600,
+        fn () => SuperAdminSetting::all()->keyBy('key')
+    );
 }
 
 /**
@@ -688,10 +705,7 @@ function getSuperAdminSettingValue()
  */
 function getSuperAdminSettingKeyValue($key)
 {
-    /** @var SuperAdminSetting $setting */
-    $setting = SuperAdminSetting::where('key', '=', $key)->value('value');
-
-    return $setting;
+    return optional(getSuperAdminSettingValue()->get($key))->value;
 }
 
 /**

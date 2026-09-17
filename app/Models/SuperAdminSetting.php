@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -69,10 +70,18 @@ class SuperAdminSetting extends Model implements HasMedia
 
     public $table = 'super_admin_settings';
 
+    public const CACHE_KEY = 'super_admin_settings_all';
+
     public $fillable = [
         'key',
         'value',
     ];
+
+    protected static function booted()
+    {
+        static::saved(fn () => Cache::forget(self::CACHE_KEY));
+        static::deleted(fn () => Cache::forget(self::CACHE_KEY));
+    }
 
     /**
      * The attributes that should be casted to native types.

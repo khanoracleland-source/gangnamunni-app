@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\PopulateTenantID;
 use Eloquent as Model;
+use Illuminate\Support\Facades\Cache;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
 /**
@@ -44,12 +45,22 @@ class CurrencySetting extends Model
 
     public $table = 'currency_settings';
 
+    public const CACHE_KEY_PREFIX = 'currency_settings_all_';
+
     public $fillable = [
         'id',
         'currency_name',
         'currency_code',
         'currency_icon',
     ];
+
+    protected static function booted()
+    {
+        $flush = fn (self $model) => Cache::forget(self::CACHE_KEY_PREFIX.($model->tenant_id ?? 'central'));
+
+        static::saved($flush);
+        static::deleted($flush);
+    }
 
     /**
      * The attributes that should be casted to native types.
