@@ -44,7 +44,7 @@ $tab_my_on = ($bottom_nav_settings['bottom_nav_my_enabled'] ?? '1') === '1';
 // 피그마 아이콘: 커스텀 이미지 사용 (assets/icons/)
 $icon_base = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
 $all_nav_items = [
-    ['url' => 'index.php', 'icon_img' => $icon_base . '/assets/icons/nav_home.png', 'label' => '홈', 'active' => $is_home, 'enabled' => $tab_home_on],
+    ['url' => (defined('SITE_BASE_PATH') ? SITE_BASE_PATH : 'index.php'), 'icon_img' => $icon_base . '/assets/icons/nav_home.png', 'label' => '홈', 'active' => $is_home, 'enabled' => $tab_home_on],
     ['url' => 'hospitals.php', 'icon_img' => $icon_base . '/assets/icons/nav_hospital.png', 'label' => term('business', '병원'), 'active' => $is_hospital, 'enabled' => $tab_hospital_on],
     ['url' => 'community.php', 'icon_img' => $icon_base . '/assets/icons/nav_community.png', 'label' => '커뮤니티', 'active' => $is_community, 'enabled' => $tab_community_on],
     ['url' => 'mypage.php', 'icon_img' => $icon_base . '/assets/icons/nav_mypage.png', 'label' => '마이페이지', 'active' => $is_my, 'enabled' => $tab_my_on],

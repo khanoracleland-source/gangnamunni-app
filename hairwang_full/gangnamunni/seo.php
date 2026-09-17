@@ -4,7 +4,7 @@ function seoulbeautyCanonicalUrl($uri) {
     $path = parse_url($uri, PHP_URL_PATH);
     if (!is_string($path) || !preg_match('~^/(?:hairwang/)?gangnamunni/(.*)$~', $path, $matches)) return null;
     $page = $matches[1];
-    $base = 'https://seoulbeauty.app/app/';
+    $base = 'https://seoulbeauty.app/';
     if ($page === '' || $page === 'index.php') return $base;
     parse_str(parse_url($uri, PHP_URL_QUERY) ?? '', $query);
     if (in_array($page, ['detail.php', 'doctor_detail.php', 'event_detail.php'], true)) {

@@ -10,6 +10,11 @@
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # 서울미녀(gangnamunni) - 실제 파일이 존재하면 /app 접두사 없이 내부적으로 서빙
+    # (주소창에는 노출되지 않음, 302/301 리다이렉트 아님 - Alias /app 를 통해 내부 처리)
+    RewriteCond %{DOCUMENT_ROOT}/../hairwang_full/gangnamunni%{REQUEST_URI} -f
+    RewriteRule ^(.*)$ /app/$1 [L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$

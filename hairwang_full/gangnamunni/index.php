@@ -112,7 +112,7 @@ $page_title = '서울미녀';
 $page_title_only = true;
 $page_description = '성형외과, 피부과, 미용 클리닉을 한눈에 비교하고 간편하게 예약하세요. 실제 시술 후기부터 병원 상세 정보까지 서울미녀 하나로 해결!';
 $page_robots = 'index, follow';
-$page_canonical = 'https://seoulbeauty.app/app/';
+$page_canonical = 'https://seoulbeauty.app/';
 $page_naver_verification = '88dfe744b0d0e8f22837c75ab7888863b44ac6c0';
 $show_search = true;
 if (file_exists(__DIR__ . '/includes/design_tokens.php')) { include_once __DIR__ . '/includes/design_tokens.php'; }

@@ -31,10 +31,10 @@ if (!defined('CATEGORIES')) {
 if (!defined('SITE_DOMAIN')) define('SITE_DOMAIN', 'hms.seoulbeauty.app');
 $request_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
 $is_local_request = in_array($request_host, ['127.0.0.1', 'localhost', '::1'], true);
-$is_public_site_request = in_array($request_host, ['seoulbeauty.app', 'www.seoulbeauty.app'], true);
+$is_public_site_request = in_array($request_host, ['seoulbeauty.app', 'www.seoulbeauty.app', 'hms.seoulbeauty.app'], true);
 if (!defined('SITE_BASE_PATH')) {
     // 공개 URL 세그먼트는 'app' (실제 디스크상의 폴더명은 여전히 'gangnamunni')
-    define('SITE_BASE_PATH', ($is_local_request || $is_public_site_request) ? '/app/' : '/hairwang/app/');
+    define('SITE_BASE_PATH', ($is_local_request || $is_public_site_request) ? '/' : '/hairwang/app/');
 }
 if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://' . ($is_public_site_request ? 'seoulbeauty.app' : SITE_DOMAIN) . SITE_BASE_PATH);
 
