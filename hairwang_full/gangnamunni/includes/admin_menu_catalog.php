@@ -119,6 +119,9 @@ function admin_sidebar_menus(): array {
 
         // TEMPORARILY DISABLED: AI / 자동화 group and all child pages.
 
+        // 인수인계 대시보드 — 사이드바에는 노출하지 않고 직접 URL로만 접근 (superadmin 전용)
+        ['url' => 'admin_handover.php', 'label' => '인수인계 대시보드', 'icon' => 'bi-clipboard-check', 'key' => 'handover_dashboard', 'hidden' => true],
+
         // ── 구분선: 시스템/관리자 영역 (하단) ──
         ['type' => 'divider'],
 

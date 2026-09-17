@@ -691,6 +691,8 @@ if (isset($connect) && $connect) {
                 echo '<li class="nav-item"><hr class="my-2 mx-3" style="border-color:var(--bs-border-color);opacity:0.3"></li>';
                 continue;
             }
+            // 사이드바 비노출 항목 (직접 URL 접근만 허용, 네비게이션 whitelist용)
+            if (!empty($menu['hidden'])) continue;
             // 권한 필터링 (그룹은 children 기반 필터링)
             if (function_exists('check_permission')) {
                 if (isset($menu['type']) && $menu['type'] === 'group') {
