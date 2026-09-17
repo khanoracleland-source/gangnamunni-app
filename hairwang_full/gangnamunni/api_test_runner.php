@@ -117,7 +117,7 @@ case 'run_ad_test':
     $at = isset($_POST['ad_title']) ? $_POST['ad_title'] : 'TC_Ad_'.date('YmdHis');
     // gangnamunni_ads: position 컬럼 없음
     $adid = 0;
-    if (mysqli_query($connect, "INSERT INTO gangnamunni_ads (advertiser_id,pricing_id,title,ad_type,image_url,link_url,start_date,end_date,is_active,impression_count,click_count,created_at,updated_at) VALUES ({$aid},{$pid},'".$esc($at)."','banner','/img/ad.jpg','/hairwang/gangnamunni/','{$now}',DATE_ADD('{$now}',INTERVAL 30 DAY),1,0,0,'{$now}','{$now}')")) {
+    if (mysqli_query($connect, "INSERT INTO gangnamunni_ads (advertiser_id,pricing_id,title,ad_type,image_url,link_url,start_date,end_date,is_active,impression_count,click_count,created_at,updated_at) VALUES ({$aid},{$pid},'".$esc($at)."','banner','/img/ad.jpg','/hairwang/app/','{$now}',DATE_ADD('{$now}',INTERVAL 30 DAY),1,0,0,'{$now}','{$now}')")) {
         $adid = mysqli_insert_id($connect);
         $tests[] = ['test'=>'Ad INSERT','status'=>'PASS','id'=>$adid];
     } else {

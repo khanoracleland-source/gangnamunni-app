@@ -65,7 +65,7 @@ function shareKakao(title, desc, url, img) {
         content: {
             title: title,
             description: desc || '',
-            imageUrl: img || '<?php echo (defined("SITE_FULL_URL") ? SITE_FULL_URL : "https://hms.seoulbeauty.app/hairwang/gangnamunni/"); ?>assets/images/seoul_beauty_logo.png',
+            imageUrl: img || '<?php echo (defined("SITE_FULL_URL") ? SITE_FULL_URL : "https://hms.seoulbeauty.app/hairwang/app/"); ?>assets/images/seoul_beauty_logo.png',
             link: { mobileWebUrl: url, webUrl: url }
         },
         buttons: [

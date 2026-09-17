@@ -15,7 +15,7 @@
  */
 
 define('MAINTENANCE_FILE', __DIR__ . '/.maintenance');
-define('MAINTENANCE_PAGE', '/hairwang/gangnamunni/maintenance.php');
+define('MAINTENANCE_PAGE', '/hairwang/app/maintenance.php');
 
 /**
  * 점검 모드 활성화 여부 확인

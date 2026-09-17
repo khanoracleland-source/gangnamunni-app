@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $target_path = $upload_dir . $new_name;
 
             if (move_uploaded_file($_FILES['photos']['tmp_name'][$i], $target_path)) {
-                $photo_urls[] = '/hairwang/gangnamunni/uploads/community/' . $new_name;
+                $photo_urls[] = '/hairwang/app/uploads/community/' . $new_name;
             } else {
                 $errors[] = '사진 저장에 실패했습니다. 다시 시도해주세요.';
             }

@@ -33,7 +33,7 @@ if (function_exists('getSettingValue')) {
     $_phone_auth    = getSettingValue($connect, 'booking_phone_auth', '0') === '1';
     $_is_member = function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in();
     if ($_require_login && !$_phone_auth && !$_is_member && !$is_admin) {
-        $login_return_url = '/hairwang/gangnamunni/booking.php?id=' . (isset($_GET['id']) ? intval($_GET['id']) : 0);
+        $login_return_url = '/hairwang/app/booking.php?id=' . (isset($_GET['id']) ? intval($_GET['id']) : 0);
         if (isset($_GET['treatment_id'])) $login_return_url .= '&treatment_id=' . max(0, (int)$_GET['treatment_id']);
         if (isset($_GET['option_id'])) $login_return_url .= '&option_id=' . max(0, (int)$_GET['option_id']);
         if (isset($_GET['treatment'])) $login_return_url .= '&treatment=' . urlencode(trim((string)$_GET['treatment']));

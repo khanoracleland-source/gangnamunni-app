@@ -9,7 +9,7 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
-$base_url = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/';
+$base_url = 'https://hms.seoulbeauty.app/hairwang/app/';
 
 // 관리자 세션 쿠키 획득
 function getAdminSession() {

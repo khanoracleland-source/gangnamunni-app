@@ -186,7 +186,7 @@ switch ($action) {
             $admin_id,
             '서울미녀 테스트 알림',
             '푸시 알림이 정상적으로 작동합니다! (' . date('Y-m-d H:i:s') . ')',
-            'https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php',
+            'https://hms.seoulbeauty.app/hairwang/app/dashboard.php',
             'bi-bell-fill'
         );
         echo json_encode(['success' => ($result['sent'] ?? 0) > 0, 'result' => $result]);

@@ -17,7 +17,7 @@ if (!$connect) die("MySQL 연결 실패: " . mysqli_connect_error());
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
-if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://hms.seoulbeauty.app/hairwang/gangnamunni/');
+if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://hms.seoulbeauty.app/hairwang/app/');
 
 require_admin_login();
 require_permission('hospitals');

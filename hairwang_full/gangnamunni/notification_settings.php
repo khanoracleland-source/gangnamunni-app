@@ -329,10 +329,10 @@ document.querySelectorAll('form input[type="checkbox"]').forEach(function(cb) {
 // logout.php 는 url 파라미터에 스킴/도메인이 있으면 "도메인 지정 불가" 로 거부하므로
 // 도메인을 뺀 경로만 전달한다(베이스 경로 유지). 앱 WebView 는 app=1 을 유지해야 정상 복귀한다.
 $is_app_mode   = isset($_GET['app']) && $_GET['app'] == '1';
-$logout_return = rtrim((string) parse_url(G5_URL, PHP_URL_PATH), '/') . '/gangnamunni/index.php' . ($is_app_mode ? '?app=1' : '');
+$logout_return = rtrim((string) parse_url(G5_URL, PHP_URL_PATH), '/') . '/app/index.php' . ($is_app_mode ? '?app=1' : '');
 $logout_url    = G5_BBS_URL . '/logout.php?url=' . urlencode($logout_return);
-$withdraw_url  = G5_URL . '/gangnamunni/withdraw.php';
-$withdraw_success_url = G5_URL . '/gangnamunni/index.php' . ($is_app_mode ? '?app=1' : '');
+$withdraw_url  = G5_URL . '/app/withdraw.php';
+$withdraw_success_url = G5_URL . '/app/index.php' . ($is_app_mode ? '?app=1' : '');
 // 바텀시트 문구용 — 로그인한 본인의 이름. 닉네임 > 이름 > 아이디 순으로 사용한다.
 $sheet_member  = function_exists('get_gangnamunni_member') ? get_gangnamunni_member() : ($member ?? []);
 $sheet_nick    = '';

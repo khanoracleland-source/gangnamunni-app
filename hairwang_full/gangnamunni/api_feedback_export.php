@@ -29,7 +29,7 @@ if ($format === 'csv') {
     $fp = fopen('php://output', 'w');
     fputcsv($fp, ['ID', '페이지', '페이지URL', '섹션', '유형', '우선순위', '내용', '스크린샷', '상태', '작성자', '개발자메모', '작성일']);
     foreach ($items as $fb) {
-        $ss_url = $fb['screenshot_url'] ? 'https://hms.seoulbeauty.app/hairwang/gangnamunni/' . $fb['screenshot_url'] : '';
+        $ss_url = $fb['screenshot_url'] ? 'https://hms.seoulbeauty.app/hairwang/app/' . $fb['screenshot_url'] : '';
         fputcsv($fp, [
             $fb['id'], $fb['page_id'], $fb['page_url'], $fb['section'],
             $fb['feedback_type'], $fb['priority'], $fb['content'],
@@ -121,7 +121,7 @@ h1 { font-size: 20px; border-bottom: 2px solid #AE1932; padding-bottom: 8px; }
         <?php if ($fb['section']): ?><div><strong>섹션:</strong> <?= htmlspecialchars($fb['section']) ?></div><?php endif; ?>
         <div style="margin-top:8px;white-space:pre-wrap;"><?= htmlspecialchars($fb['content']) ?></div>
         <?php if ($fb['screenshot_url']): ?>
-        <div><img src="https://hms.seoulbeauty.app/hairwang/gangnamunni/<?= htmlspecialchars($fb['screenshot_url']) ?>" alt="스크린샷"></div>
+        <div><img src="https://hms.seoulbeauty.app/hairwang/app/<?= htmlspecialchars($fb['screenshot_url']) ?>" alt="스크린샷"></div>
         <?php endif; ?>
         <?php if ($fb['dev_note']): ?>
         <div style="margin-top:8px;padding:8px;background:#e8f5e9;border-radius:4px;"><strong>개발자 메모:</strong> <?= htmlspecialchars($fb['dev_note']) ?></div>

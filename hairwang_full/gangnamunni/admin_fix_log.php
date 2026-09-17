@@ -54,7 +54,7 @@ $create_table_sql = "CREATE TABLE IF NOT EXISTS `gangnamunni_fix_log` (
 mysqli_query($connect, $create_table_sql);
 
 // 기본 URL 설정
-$base_url = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/';
+$base_url = 'https://hms.seoulbeauty.app/hairwang/app/';
 $capture_api_url = 'http://localhost:3100/api/book/capture-single';
 
 // 현재 관리자
@@ -692,7 +692,7 @@ include __DIR__ . '/includes/admin_header.php';
                     <!-- 대상 URL -->
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">대상 URL</label>
-                        <input type="text" class="form-control" id="editTargetUrl" placeholder="https://hms.seoulbeauty.app/hairwang/gangnamunni/...">
+                        <input type="text" class="form-control" id="editTargetUrl" placeholder="https://hms.seoulbeauty.app/hairwang/app/...">
                     </div>
                     <!-- 상태 -->
                     <div class="col-md-4">
@@ -822,7 +822,7 @@ include __DIR__ . '/includes/admin_header.php';
 $admin_extra_js = <<<'JSEOF'
 
 // ===== 상수/설정 =====
-var BASE_URL = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/';
+var BASE_URL = 'https://hms.seoulbeauty.app/hairwang/app/';
 var CATEGORY_LABELS = { bug_fix: '버그 수정', feature: '기능 추가', manual: '매뉴얼', improvement: '개선' };
 var STATUS_LABELS = { completed: '완료', in_progress: '진행 중', planned: '예정' };
 

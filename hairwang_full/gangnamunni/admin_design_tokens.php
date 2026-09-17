@@ -4,7 +4,7 @@ $admin_page_title = '디자인 토큰 관리';
 $admin_current = 'design_tokens';
 
 require_once __DIR__ . '/../dbconfig.php';
-if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://hms.seoulbeauty.app/hairwang/gangnamunni/');
+if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', 'https://hms.seoulbeauty.app/hairwang/app/');
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 

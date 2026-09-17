@@ -100,7 +100,7 @@ $available = IndustryPreset::getAvailablePresets();
 // 브랜딩 설정
 $branding = [
     'site_domain' => getSettingValue($connect, 'site_domain', 'hms.seoulbeauty.app'),
-    'site_base_path' => getSettingValue($connect, 'site_base_path', '/hairwang/gangnamunni/'),
+    'site_base_path' => getSettingValue($connect, 'site_base_path', '/hairwang/app/'),
     'app_name' => getSettingValue($connect, 'app_name', site_name()),
     'app_package_id' => getSettingValue($connect, 'app_package_id', 'com.celebhospital.patient'),
 ];
@@ -176,7 +176,7 @@ include __DIR__ . '/includes/admin_header.php';
             <?php
             $brand_fields = [
                 ['key'=>'site_domain',     'label'=>'도메인',        'placeholder'=>'hms.seoulbeauty.app',     'icon'=>'bi-globe2'],
-                ['key'=>'site_base_path',  'label'=>'URL 경로',     'placeholder'=>'/hairwang/gangnamunni/',   'icon'=>'bi-folder'],
+                ['key'=>'site_base_path',  'label'=>'URL 경로',     'placeholder'=>'/hairwang/app/',   'icon'=>'bi-folder'],
                 ['key'=>'app_name',        'label'=>'앱 이름',      'placeholder'=>'서울미녀',                  'icon'=>'bi-phone'],
                 ['key'=>'app_package_id',  'label'=>'앱 패키지 ID', 'placeholder'=>'com.celebhospital.patient', 'icon'=>'bi-box'],
             ];

@@ -145,7 +145,7 @@ include __DIR__ . '/includes/admin_header.php';
             <div class="col-md-6">
                 <label for="targetUrl" class="form-label fw-semibold">대상 URL <span class="text-danger">*</span></label>
                 <input type="url" id="targetUrl" class="form-control form-control-sm"
-                       placeholder="https://example.com/admin" value="https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php">
+                       placeholder="https://example.com/admin" value="https://hms.seoulbeauty.app/hairwang/app/dashboard.php">
             </div>
             <div class="col-md-3">
                 <label for="menuSelector" class="form-label fw-semibold">메뉴 셀렉터</label>
@@ -197,7 +197,7 @@ include __DIR__ . '/includes/admin_header.php';
                 <div class="col-md-4">
                     <label for="loginUrl" class="form-label fw-semibold">로그인 URL</label>
                     <input type="url" id="loginUrl" class="form-control form-control-sm"
-                           value="https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php">
+                           value="https://hms.seoulbeauty.app/hairwang/app/dashboard.php">
                 </div>
                 <div class="col-md-4">
                     <label for="loginUser" class="form-label fw-semibold">아이디</label>

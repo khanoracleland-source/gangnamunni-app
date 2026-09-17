@@ -489,7 +489,7 @@ include __DIR__ . '/includes/header.php';
     <?php if ($is_logged_in): ?>
     <a href="community_write.php" class="fab-write" title="글쓰기"><i class="bi bi-pencil-square"></i></a>
     <?php else: ?>
-    <button class="fab-write" title="글쓰기" onclick="alert('로그인이 필요합니다.'); location.href='auth/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/community.php'); ?>';"><i class="bi bi-pencil-square"></i></button>
+    <button class="fab-write" title="글쓰기" onclick="alert('로그인이 필요합니다.'); location.href='auth/login.php?url=<?php echo urlencode('/hairwang/app/community.php'); ?>';"><i class="bi bi-pencil-square"></i></button>
     <?php endif; ?>
 
 <?php include_once __DIR__ . '/includes/community_action_sheet.php'; ?>

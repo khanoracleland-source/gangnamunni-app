@@ -126,7 +126,7 @@ table.ss-tbl { width:100%; border-collapse:collapse; font-size:13.5px; }
       <thead><tr><th>폴더</th><th>용량</th><th>설명</th></tr></thead>
       <tbody>
       <tr><td><code>gangnamunni/</code></td><td class="ss-sz">3.1G</td>
-        <td><b>★★ 실제 서울미녀 페이지.</b> 환자(index/hospitals/detail/mypage…)·관리자(admin_*.php) PHP 260+개. <b>이번 인수인계의 핵심 작업 폴더</b>. 도메인: <code>/hairwang/gangnamunni/</code></td></tr>
+        <td><b>★★ 실제 서울미녀 페이지.</b> 환자(index/hospitals/detail/mypage…)·관리자(admin_*.php) PHP 260+개. <b>이번 인수인계의 핵심 작업 폴더</b>. 도메인: <code>/hairwang/app/</code> (디스크 폴더명은 여전히 gangnamunni)</td></tr>
       <tr><td><code>hairwang_app_source/</code></td><td class="ss-sz"><s>814M</s></td><td>✅ <b>2026-06-15 삭제됨</b>(구 hairwang3 앱·운영무관·260룰 주범). PC 백업: <code>_handover_from_server\hairwang_app_source_20260615.tar.gz</code>(249M) · 서버 압축본: <code>/root/_archive/</code>. 최신 앱소스는 <code>/var/www/html/seoulbeauty_app_source/</code>.</td></tr>
       <tr><td><code>adm/</code> · <code>bbs/</code> · <code>lib/</code> · <code>plugin/</code></td><td class="ss-sz">4.3M·732K·5.8M·86M</td><td>Gnuboard5 코어(관리/게시판/라이브러리/플러그인). <b>프레임워크 부분 — 함부로 수정 금지</b>.</td></tr>
       <tr><td><code>data/</code></td><td class="ss-sz">217M</td><td>Gnuboard 업로드 데이터(이미지 등). <b>사용자 콘텐츠</b> — 백업 필수.</td></tr>

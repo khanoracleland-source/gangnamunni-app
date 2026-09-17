@@ -2,10 +2,10 @@
 
 
 /**
- * 루트 접근 시 gangnamunni(서울미녀) 사이트로 리다이렉트
+ * 루트 접근 시 app(서울미녀, 실제 폴더명 gangnamunni) 사이트로 리다이렉트
  * 그누보드 관리자 페이지는 /adm 으로 직접 접근
  */
-header('Location: /gangnamunni/');
+header('Location: /app/');
 exit;
 
 // === 아래는 기존 그누보드 index.php (비활성화) ===

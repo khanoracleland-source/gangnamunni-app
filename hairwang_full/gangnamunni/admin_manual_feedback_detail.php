@@ -131,7 +131,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             <span class="text-muted small d-block mb-2"><i class="bi bi-images me-1"></i>첨부 이미지 (<?= count($img_list) ?>장)</span>
             <div class="d-flex flex-wrap gap-2">
               <?php foreach ($img_list as $img_rel): ?>
-              <?php $img_url = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/' . ltrim($img_rel, '/'); ?>
+              <?php $img_url = 'https://hms.seoulbeauty.app/hairwang/app/' . ltrim($img_rel, '/'); ?>
               <a href="<?= htmlspecialchars($img_url) ?>" target="_blank" title="클릭하면 원본 보기">
                 <img src="<?= htmlspecialchars($img_url) ?>"
                      class="rounded border"

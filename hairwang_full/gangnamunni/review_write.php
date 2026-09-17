@@ -436,7 +436,7 @@ $css_base = ($base_dir === '' || $base_dir === '/') ? '' : $base_dir;
 <head>
     <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <base href="<?php echo htmlspecialchars(defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/gangnamunni/', ENT_QUOTES, 'UTF-8'); ?>">
+    <base href="<?php echo htmlspecialchars(defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/app/', ENT_QUOTES, 'UTF-8'); ?>">
     <title><?php echo htmlspecialchars($page_title); ?><?php echo function_exists('getTheme') ? ' | ' . getTheme('site_name') : ''; ?></title>
     <?php if (function_exists('generateFaviconLinks')) echo generateFaviconLinks(); ?>
     <?php if (function_exists('generateGoogleFontsLink')) echo generateGoogleFontsLink(); ?>

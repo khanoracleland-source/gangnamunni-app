@@ -128,7 +128,7 @@ if (empty($rows)) {
 $gangnamunni_root = '/var/www/html/multi-hospital-management-system-saas-hospital'
                   . '/hms-saas-v5.8.0/hms-saas/hairwang_full/gangnamunni';
 $reports_dir      = $gangnamunni_root . '/manual/reports';
-$base_url         = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/manual/reports';
+$base_url         = 'https://hms.seoulbeauty.app/hairwang/app/manual/reports';
 
 // reports 디렉토리 생성
 if (!is_dir($reports_dir)) {

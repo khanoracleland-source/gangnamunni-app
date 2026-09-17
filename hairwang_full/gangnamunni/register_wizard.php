@@ -206,7 +206,7 @@ body{background:var(--bs-body-bg);padding-bottom:80px}
         </div>
 
         <div class="wz-actions">
-            <a href="/hairwang/gangnamunni/" class="btn-wz-home"><i class="bi bi-house-fill"></i> 홈 페이지로</a>
+            <a href="/hairwang/app/" class="btn-wz-home"><i class="bi bi-house-fill"></i> 홈 페이지로</a>
             <button class="btn-wz-next" onclick="wz.next()">관심분야 <i class="bi bi-arrow-right"></i></button>
         </div>
     </div>

@@ -81,7 +81,7 @@ require_once __DIR__ . '/includes/admin_header.php';
     <h4 class="mb-0"><i class="bi bi-chat-left-text me-2"></i>매뉴얼 수정요청 관리</h4>
     <div class="d-flex gap-2">
       <span class="badge bg-secondary"><?= number_format($total) ?> 건</span>
-      <a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/manual/index.html" target="_blank" class="btn btn-sm btn-outline-secondary">
+      <a href="https://hms.seoulbeauty.app/hairwang/app/manual/index.html" target="_blank" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-box-arrow-up-right me-1"></i>매뉴얼 페이지
       </a>
       <button class="btn btn-sm btn-success" onclick="mfBuildReportDone()">

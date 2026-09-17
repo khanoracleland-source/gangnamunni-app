@@ -158,8 +158,8 @@ if ($html) {
 
 <?php
 // API 경로 기준값 — 빈 문자열이면 '/api_...' 루트 절대경로가 되어 404 발생.
-// 앱이 /hairwang/gangnamunni/ 하위이므로 SITE_BASE_PATH(끝 슬래시 제거)를 기준으로 설정. (한글 주석)
-$api_base = rtrim(defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/gangnamunni/', '/');
+// 앱이 /hairwang/app/ 하위이므로 SITE_BASE_PATH(끝 슬래시 제거)를 기준으로 설정. (한글 주석)
+$api_base = rtrim(defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/app/', '/');
 ?>
 <script>window.API_BASE = <?= json_encode($api_base) ?>;</script>
 <div class="figma-compare-wrapper">

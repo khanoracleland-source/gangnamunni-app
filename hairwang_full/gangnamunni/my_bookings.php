@@ -27,7 +27,7 @@ if (function_exists('getSettingValue')) {
     $_require_login = getSettingValue($connect, 'booking_require_login', '1') === '1';
     $_phone_auth    = getSettingValue($connect, 'booking_phone_auth', '0') === '1';
     if ($_require_login && !$_phone_auth && !$is_user_logged_in) {
-        header('Location: auth/login.php?url=' . urlencode('/hairwang/gangnamunni/my_bookings.php'));
+        header('Location: auth/login.php?url=' . urlencode('/hairwang/app/my_bookings.php'));
         exit;
     }
 }

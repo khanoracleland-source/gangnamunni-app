@@ -7,7 +7,7 @@
  *   {
  *     "mcpServers": {
  *       "php-syntax": {
- *         "url": "https://hms.seoulbeauty.app/hairwang/gangnamunni/api_code_check_mcp.php",
+ *         "url": "https://hms.seoulbeauty.app/hairwang/app/api_code_check_mcp.php",
  *         "headers": { "X-CC-Key": "cc_key_sb2026_xK9mR3" }
  *       }
  *     }

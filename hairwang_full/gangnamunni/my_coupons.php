@@ -5,7 +5,7 @@
 require_once __DIR__ . '/includes/init.php';
 
 if (!is_gangnamunni_logged_in()) {
-    header('Location: auth/login.php?url=' . urlencode('/hairwang/gangnamunni/my_coupons.php'));
+    header('Location: auth/login.php?url=' . urlencode('/hairwang/app/my_coupons.php'));
     exit;
 }
 

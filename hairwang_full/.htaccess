@@ -15,21 +15,23 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
-#### 서울미녀(gangnamunni) 리다이렉트 #####
+#### 서울미녀(app, 실제 폴더명 gangnamunni) 리다이렉트 #####
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteBase /
-# 루트 접근 시 gangnamunni로 리다이렉트
+# 루트 접근 시 app으로 리다이렉트
 RewriteCond %{REQUEST_URI} ^/$
-RewriteRule ^$ /gangnamunni/ [R=302,L]
+RewriteRule ^$ /app/ [R=302,L]
 </IfModule>
 
 #### 그누보드5 rewrite BEGIN #####
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteBase /
-# gangnamunni 하위 경로 직접 접근 허용 (rewrite 제외)
+# gangnamunni 하위 경로 직접 접근 허용 (rewrite 제외, 기존 링크/모바일 앱 호환용으로 유지)
 RewriteRule ^gangnamunni/ - [L]
+# 공개 URL 세그먼트 /app/ -> 실제 폴더 gangnamunni/ 로 내부 rewrite (주소창에는 app만 노출)
+RewriteRule ^app/(.*)$ gangnamunni/$1 [L]
 
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d

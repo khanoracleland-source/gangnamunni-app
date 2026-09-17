@@ -112,7 +112,7 @@ body { background: var(--bs-body-bg); padding-bottom: 80px; }
 <body>
 <!-- 병원 배너 -->
 <div class="hospital-banner mx-2 mt-2">
-    <img src="<?= htmlspecialchars($hospital['main_image_url'] ?: '/hairwang/gangnamunni/img/default_hospital.jpg') ?>" alt="">
+    <img src="<?= htmlspecialchars($hospital['main_image_url'] ?: '/hairwang/app/img/default_hospital.jpg') ?>" alt="">
     <div class="overlay">
         <div style="font-size:18px;font-weight:700"><?= htmlspecialchars($hospital['name']) ?></div>
         <div style="font-size:12px;opacity:.8"><i class="bi bi-geo-alt"></i> <?= htmlspecialchars(mb_substr($hospital['address'] ?? '', 0, 30)) ?></div>

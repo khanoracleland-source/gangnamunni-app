@@ -12,7 +12,7 @@ register_shutdown_function(function() {
 });
 // 로그인 체크
 if (!is_gangnamunni_logged_in()) {
-    header('Location: auth/login.php?url=' . urlencode('/hairwang/gangnamunni/my_wishlist.php'));
+    header('Location: auth/login.php?url=' . urlencode('/hairwang/app/my_wishlist.php'));
     exit;
 }
 

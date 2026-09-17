@@ -762,7 +762,7 @@ function selectHospital(el) {
 
         // auto-fill link URL with hospital page
         if (!linkInput.value) {
-            linkInput.value = window.location.origin + '/hairwang/gangnamunni/hospital_detail.php?id=' + id;
+            linkInput.value = window.location.origin + '/hairwang/app/hospital_detail.php?id=' + id;
         }
     }
     hospitalDropdown.classList.remove('show');

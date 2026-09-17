@@ -29,7 +29,7 @@ $api_files = [];
 if (is_dir($api_dir)) {
     foreach (scandir($api_dir) as $f) {
         if (pathinfo($f, PATHINFO_EXTENSION)==='php')
-            $api_files[] = ['name'=>$f, 'path'=>'/gangnamunni/api/'.$f, 'size'=>filesize($api_dir.$f), 'modified'=>date('Y-m-d H:i', filemtime($api_dir.$f))];
+            $api_files[] = ['name'=>$f, 'path'=>'/app/api/'.$f, 'size'=>filesize($api_dir.$f), 'modified'=>date('Y-m-d H:i', filemtime($api_dir.$f))];
     }
 }
 
@@ -270,15 +270,15 @@ $adv_items = [
         <div class="card-header">📡 API 사용 예제</div>
         <div class="card-body">
             <div class="code-block"><span class="code-comment">// 병원 목록 조회</span>
-<span class="code-keyword">GET</span> <span class="code-string">/gangnamunni/api/list_hospitals.php</span>
+<span class="code-keyword">GET</span> <span class="code-string">/app/api/list_hospitals.php</span>
 <span class="code-keyword">Parameters:</span> page, limit, category
 
 <span class="code-comment">// 리뷰 저장</span>
-<span class="code-keyword">POST</span> <span class="code-string">/gangnamunni/api/save_review.php</span>
+<span class="code-keyword">POST</span> <span class="code-string">/app/api/save_review.php</span>
 <span class="code-keyword">Body:</span> { hospital_id, rating, content, images }
 
 <span class="code-comment">// 이미지 업로드</span>
-<span class="code-keyword">POST</span> <span class="code-string">/gangnamunni/api/upload_image.php</span>
+<span class="code-keyword">POST</span> <span class="code-string">/app/api/upload_image.php</span>
 <span class="code-keyword">Content-Type:</span> multipart/form-data</div>
         </div>
     </div>

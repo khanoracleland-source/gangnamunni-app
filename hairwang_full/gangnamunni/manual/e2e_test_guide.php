@@ -74,7 +74,7 @@ if ($_mc) {
     if ($_rq && $_rr = mysqli_fetch_assoc($_rq)) $_latest_run = $_rr['run_id'];
 }
 $SS = '../uploads/e2e_screenshots/' . $_latest_run;
-$BASE_URL = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/';
+$BASE_URL = 'https://hms.seoulbeauty.app/hairwang/app/';
 $ADMIN_URL = $BASE_URL;
 // [id, name, time, desc, url]
 $tests = [

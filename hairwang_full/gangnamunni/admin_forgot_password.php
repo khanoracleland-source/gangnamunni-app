@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
                                 </div>
                                 <p style="color:#e74c3c;">⚠ 로그인 후 반드시 비밀번호를 변경해주세요.</p>
                                 <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-                                <p style="color:#999;font-size:12px;">서울미녀 관리자 시스템<br>https://hms.seoulbeauty.app/hairwang/gangnamunni/</p>
+                                <p style="color:#999;font-size:12px;">서울미녀 관리자 시스템<br>https://hms.seoulbeauty.app/hairwang/app/</p>
                             </div>';
                             $send_result = mail_send(0, $admin['email'], '[서울미녀] 임시 비밀번호 발급', $email_body);
                             if (isset($send_result['success']) && $send_result['success']) {

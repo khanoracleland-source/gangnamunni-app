@@ -14,7 +14,7 @@ $is_social_member = $withdraw_social_result && mysqli_num_rows($withdraw_social_
 $page_title = term('member') . ' 탈퇴';
 $body_class = 'page-withdraw';
 include __DIR__ . '/includes/header.php';
-$withdraw_success_url = G5_URL . '/gangnamunni/index.php';
+$withdraw_success_url = G5_URL . '/app/index.php';
 ?>
 
 <style>

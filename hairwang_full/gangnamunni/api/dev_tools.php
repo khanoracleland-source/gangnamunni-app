@@ -63,7 +63,7 @@ case 'page_check':
     $pages = ['index.php','hospitals.php','events.php','reviews.php','tips.php','columns.php',
               'booking.php','dashboard.php','admin_hospitals.php','admin_events.php'];
     $results = [];
-    $base_url = 'http://localhost/hairwang/gangnamunni/';
+    $base_url = 'http://localhost/hairwang/app/';
     foreach ($pages as $pg) {
         $ch = curl_init($base_url . $pg);
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>5, CURLOPT_NOBODY=>true]);

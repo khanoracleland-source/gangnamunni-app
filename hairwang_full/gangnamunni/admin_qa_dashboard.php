@@ -33,7 +33,7 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('qa_dashboard');
 
-$base = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/';
+$base = 'https://hms.seoulbeauty.app/hairwang/app/';
 $admin_base = $base;
 
 // ===== 기능 목록 정의 =====
@@ -811,7 +811,7 @@ async function loadCaptures() {
                         <i class="bi bi-file-earmark me-1"></i>
                         <strong>${escHtml(item.page_name)}</strong>
                         <a href="${escHtml(item.page_url)}" target="_blank" class="text-muted ms-2 small">
-                            <i class="bi bi-box-arrow-up-right"></i> ${escHtml(item.page_url.replace('https://hms.seoulbeauty.app/hairwang/gangnamunni/', ''))}
+                            <i class="bi bi-box-arrow-up-right"></i> ${escHtml(item.page_url.replace('https://hms.seoulbeauty.app/hairwang/app/', ''))}
                         </a>
                     </div>
                     <div>${statusBadge(item.status)}</div>

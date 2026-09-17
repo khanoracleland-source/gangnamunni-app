@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/booking_payment_service.php';
 header('Cache-Control: no-store');
 $id = (int)($_GET['booking_id'] ?? 0);
 if (!booking_payment_owned($connect, $id)) {
-    header('Location: auth/login.php?url=' . urlencode('/gangnamunni/booking_payment.php?booking_id=' . $id));
+    header('Location: auth/login.php?url=' . urlencode('/app/booking_payment.php?booking_id=' . $id));
     exit;
 }
 try {

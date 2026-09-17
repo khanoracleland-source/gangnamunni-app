@@ -738,7 +738,7 @@ $du_result = trim(@shell_exec('du -sh ' . __DIR__ . ' 2>/dev/null') ?: 'N/A');
             <div class="card-body p-0">
                 <table class="table table-sm mb-0">
                     <tbody>
-                        <tr><td class="ps-3 text-muted" style="width:100px;">도메인</td><td><a href="https://hms.seoulbeauty.app/hairwang/gangnamunni/" target="_blank" class="text-decoration-none">hms.seoulbeauty.app <i class="bi bi-box-arrow-up-right" style="font-size:11px;"></i></a></td></tr>
+                        <tr><td class="ps-3 text-muted" style="width:100px;">도메인</td><td><a href="https://hms.seoulbeauty.app/hairwang/app/" target="_blank" class="text-decoration-none">hms.seoulbeauty.app <i class="bi bi-box-arrow-up-right" style="font-size:11px;"></i></a></td></tr>
                         <tr><td class="ps-3 text-muted">서버 IP</td><td><code>5.104.82.35</code></td></tr>
                         <tr><td class="ps-3 text-muted">DB</td><td><code>hms_saas</code> (MariaDB)</td></tr>
                         <tr><td class="ps-3 text-muted">CDN</td><td><span class="badge bg-warning text-dark">Cloudflare</span> Proxy</td></tr>

@@ -389,7 +389,7 @@ include __DIR__ . '/includes/header.php';
             </form>
             <?php else: ?>
             <div class="comment-form" style="justify-content:center;">
-                <a href="auth/login.php?url=<?php echo urlencode('/hairwang/gangnamunni/detail_community.php?id=' . $post_id); ?>" style="color:#b81739; font-weight:600; text-decoration:none;">
+                <a href="auth/login.php?url=<?php echo urlencode('/hairwang/app/detail_community.php?id=' . $post_id); ?>" style="color:#b81739; font-weight:600; text-decoration:none;">
                     <i class="bi bi-box-arrow-in-right"></i> 로그인하고 댓글 작성하기
                 </a>
             </div>

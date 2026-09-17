@@ -119,14 +119,14 @@ test('디렉토리 쓰기 권한', function() {
 });
 
 test('메인 페이지 접근', function() {
-    $ch = curl_init('https://hms.seoulbeauty.app/hairwang/gangnamunni/index.php');
+    $ch = curl_init('https://hms.seoulbeauty.app/hairwang/app/index.php');
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_FOLLOWLOCATION=>true, CURLOPT_TIMEOUT=>10, CURLOPT_SSL_VERIFYPEER=>false]);
     curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
     return $code === 200 ? ['success' => true, 'message' => "HTTP $code"] : ['success' => false, 'message' => "HTTP $code"];
 });
 
 test('대시보드 접근', function() {
-    $ch = curl_init('https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php');
+    $ch = curl_init('https://hms.seoulbeauty.app/hairwang/app/dashboard.php');
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_FOLLOWLOCATION=>true, CURLOPT_TIMEOUT=>10, CURLOPT_SSL_VERIFYPEER=>false]);
     $body = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
     return ($code === 200 && strpos($body, '서울미녀') !== false) ? ['success' => true, 'message' => "HTTP $code + 콘텐츠 확인"] : ['success' => false, 'message' => "HTTP $code"];

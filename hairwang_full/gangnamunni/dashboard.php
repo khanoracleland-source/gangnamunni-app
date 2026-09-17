@@ -281,7 +281,7 @@ $hms_opd_today = mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c
 
 <!-- 외부 사이트 바로가기 -->
 <div class="d-flex flex-wrap gap-2 mb-4">
-    <a href="/hairwang/gangnamunni/#" target="_blank" class="btn btn-primary btn-sm">
+    <a href="/hairwang/app/#" target="_blank" class="btn btn-primary btn-sm">
         <i class="bi bi-code-slash"></i> 개발 대시보드
     </a>
     <a href="/1/" target="_blank" class="btn btn-success btn-sm">

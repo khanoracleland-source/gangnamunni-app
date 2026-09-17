@@ -30,8 +30,8 @@ $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $m
 if (!$is_logged_in) {
     // 웹 방문자는 로그인 후 마이페이지로 돌아온다.
     if (!$is_app_mode) {
-        $login_return = G5_URL . '/gangnamunni/mypage.php';
-        header('Location: ' . G5_URL . '/gangnamunni/auth/login.php?url=' . urlencode($login_return));
+        $login_return = G5_URL . '/app/mypage.php';
+        header('Location: ' . G5_URL . '/app/auth/login.php?url=' . urlencode($login_return));
         exit;
     }
     // 7312fb73: 로그아웃 직후 WebView 재진입은 리다이렉트/JSON 오류 없이
@@ -330,8 +330,8 @@ body {
     <p style="font-size:16px;font-weight:600;color:var(--bs-body-color, #333);margin-bottom:8px;">로그인이 필요합니다</p>
     <p style="font-size:14px;color:#999;margin-bottom:24px;">로그인 후 마이페이지를 이용하실 수 있습니다.</p>
     <?php // 앱 WebView 에서는 로그인 후에도 app=1 로 돌아와야 앱 전용 레이아웃이 유지된다. (한글 주석)
-    $login_return = G5_URL . '/gangnamunni/mypage.php' . ($is_app_mode ? '?app=1' : ''); ?>
-    <a href="<?php echo G5_URL; ?>/gangnamunni/auth/login.php?url=<?php echo urlencode($login_return); ?>" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
+    $login_return = G5_URL . '/app/mypage.php' . ($is_app_mode ? '?app=1' : ''); ?>
+    <a href="<?php echo G5_URL; ?>/app/auth/login.php?url=<?php echo urlencode($login_return); ?>" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
     <div style="margin-top:12px;">
         <a href="<?php echo G5_BBS_URL; ?>/register.php" style="font-size:13px;color:#999;text-decoration:none;">아직 회원이 아니신가요? <span style="color:#AE1932;font-weight:600;">회원가입</span></a>
     </div>

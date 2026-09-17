@@ -211,11 +211,11 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
         </div>
         <div class="note" style="border-left-color:#0891b2;background:rgba(8,145,178,.10);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span>🔍 <b>플랫폼 동작 검증 리포트 (2026-06-12)</b> — 웹 14페이지 · Android 실기기(SM-N981N) · iOS 실기기(iPhone 18.4.1) 검증 · 스크린샷·동영상 포함</span>
-          <a class="openbtn" style="background:#0891b2;" href="https://hms.seoulbeauty.app/gangnamunni/handover_test_20260612/report.html" target="_blank">리포트 열기 ↗</a>
+          <a class="openbtn" style="background:#0891b2;" href="https://hms.seoulbeauty.app/app/handover_test_20260612/report.html" target="_blank">리포트 열기 ↗</a>
         </div>
         <div class="note" style="border-left-color:#7c3aed;background:rgba(124,58,237,.12);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span>🎨 <b>Figma ↔ 구현 화면 전체 비교 (12화면)</b> — 디자인/구현 양쪽 + 각 화면 라이브 이동 버튼</span>
-          <a class="openbtn" style="background:#7c3aed;" href="https://hms.seoulbeauty.app/gangnamunni/handover_test_20260612/compare.html" target="_blank">Figma 비교 열기 ↗</a>
+          <a class="openbtn" style="background:#7c3aed;" href="https://hms.seoulbeauty.app/app/handover_test_20260612/compare.html" target="_blank">Figma 비교 열기 ↗</a>
         </div>
         <div class="note" style="border-left-color:#16a34a;background:rgba(22,163,74,.10);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span>✅ <b>앱 안정화 (2026-06-18)</b> — iOS 실행 즉시 종료 + 첫 실행 검은화면/<code>MissingPluginException</code> 해결, 최신 소스 반영. 상세는 <b>iOS 앱</b> 메뉴 참조</span>
@@ -310,7 +310,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
           <tbody>
             <tr><th>서버</th><td>5.104.82.35 (Contabo · Rocky Linux 9.7 · 8core/23GB/800GB)</td></tr>
             <tr><th>웹 루트</th><td><code>/var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5.8.0/hms-saas/</code></td></tr>
-            <tr><th>도메인</th><td>https://hms.seoulbeauty.app (Cloudflare proxy) · 메인 https://seoulbeauty.app → /gangnamunni/</td></tr>
+            <tr><th>도메인</th><td>https://hms.seoulbeauty.app (Cloudflare proxy) · 메인 https://seoulbeauty.app → /app/</td></tr>
             <tr><th>vhost</th><td><code>/etc/httpd/conf.d/hms.seoulbeauty.app.conf</code> (Alias /hairwang → hairwang_full/)</td></tr>
             <tr><th>메일서버</th><td>Mailcow (Docker 18컨테이너) · mail.seoulbeauty.app · <code>/opt/mailcow-dockerized/</code></td></tr>
             <tr><th>배포 방식</th><td>SFTP 직접 배포 + <code>php -l</code> 구문 검증 (CI/CD 없음)</td></tr>
@@ -511,11 +511,11 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
         <div class="note">
           <div class="urlrow">
             <span>📊 <strong>ERD 다이어그램(HTML)</strong> — 핵심 60테이블 관계도 9개 + 440테이블 검색 카탈로그 (SVG·PDF 저장 가능)</span>
-            <a class="openbtn" href="https://hms.seoulbeauty.app/gangnamunni/handover_erd_20260612.html" target="_blank">ERD 열기 ↗</a>
+            <a class="openbtn" href="https://hms.seoulbeauty.app/app/handover_erd_20260612.html" target="_blank">ERD 열기 ↗</a>
           </div>
           <div class="urlrow" style="margin-top:8px;">
             <span>🗂 <strong>ERD 프로그램 import용 (DBML)</strong> — dbdiagram.io에 붙여넣기/import (440테이블·407관계)</span>
-            <a class="openbtn" href="https://hms.seoulbeauty.app/gangnamunni/hms_saas.dbml" target="_blank" download>DBML 다운로드 ↓</a>
+            <a class="openbtn" href="https://hms.seoulbeauty.app/app/hms_saas.dbml" target="_blank" download>DBML 다운로드 ↓</a>
           </div>
           <div class="urlrow" style="margin-top:8px;">
             <span>🛢 <strong>스키마 SQL</strong> — MySQL Workbench/DBeaver 역공학(Reverse Engineer)으로 ERD 생성</span>
@@ -542,8 +542,8 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
       <div class="card">
         <h2>관리자 메뉴 가이드 (사이드바 15+그룹)</h2>
         <div class="urlrow" style="margin:6px 0 10px; padding:10px 14px; background:var(--th-bg); border-radius:10px;">
-          <span style="font-size:13px;">관리자 대시보드 접속: <code>https://hms.seoulbeauty.app/gangnamunni/dashboard.php</code> → 로그인 → 좌측 사이드바 (그룹은 권한별 필터링)</span>
-          <a class="openbtn" href="https://hms.seoulbeauty.app/gangnamunni/dashboard.php" target="_blank">열기 ↗</a>
+          <span style="font-size:13px;">관리자 대시보드 접속: <code>https://hms.seoulbeauty.app/app/dashboard.php</code> → 로그인 → 좌측 사이드바 (그룹은 권한별 필터링)</span>
+          <a class="openbtn" href="https://hms.seoulbeauty.app/app/dashboard.php" target="_blank">열기 ↗</a>
         </div>
         <table>
           <thead><tr><th>그룹</th><th>주요 메뉴</th></tr></thead>
@@ -800,7 +800,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
         <table>
           <thead><tr><th>구분</th><th>주소</th><th>계정</th><th>비고</th></tr></thead>
           <tbody>
-            <tr><td>서울미녀 관리자</td><td><code>/hairwang/gangnamunni/dashboard.php</code></td><td><code>admin</code> / <code>admin123</code></td><td>super_admin (전체 권한)</td></tr>
+            <tr><td>서울미녀 관리자</td><td><code>/hairwang/app/dashboard.php</code></td><td><code>admin</code> / <code>admin123</code></td><td>super_admin (전체 권한)</td></tr>
             <tr><td>병원 테스트 계정</td><td>동일</td><td><code>hospital_test</code> / <code>hospital123</code></td><td>hospital_admin · 병원 id 8093</td></tr>
             <tr><td>HMS 관리자</td><td>https://hms.seoulbeauty.app</td><td><code>admin@hms.com</code> / <code>123456</code></td><td>Laravel 백오피스</td></tr>
             <tr><td>그누보드 관리자</td><td><code>/hairwang/adm/</code></td><td colspan="2">SSO 통합 — 서울미녀 관리자 로그인으로 접근</td></tr>
@@ -919,7 +919,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
         <h3>📅 향후 개발 목록 (마일스톤 Phase 2~5, 75건)</h3>
         <div class="note">상세 목록: 패키지 <code>04_docs/</code> 및 GitHub의 <code>_milestone_20260527_1차검수.md</code> · <code>_remaining_dev_tasks_20260612.html</code> 참고.
         Phase 2(15건) 병원리스트/탭 개선 → Phase 3(20건) UI/UX·예약 → Phase 4(17건) Figma 리뉴얼·GNB 개편·지도·카카오 → Phase 5(23건) 관리자·매뉴얼.</div>
-        <h3>🎨 Figma 매칭 잔여 (5건 — 기능은 정상 동작) <a class="openbtn" style="background:#7c3aed;font-size:11px;" href="https://hms.seoulbeauty.app/gangnamunni/handover_test_20260612/compare.html" target="_blank">Figma↔구현 12화면 비교 ↗</a></h3>
+        <h3>🎨 Figma 매칭 잔여 (5건 — 기능은 정상 동작) <a class="openbtn" style="background:#7c3aed;font-size:11px;" href="https://hms.seoulbeauty.app/app/handover_test_20260612/compare.html" target="_blank">Figma↔구현 12화면 비교 ↗</a></h3>
         <ul class="compact">
           <li>메인 카테고리 그리드 컬럼 수 (3 vs 4) — 협의</li>
           <li>메인 이벤트 섹션 형태 (배너 vs 카드 3개) — 협의</li>

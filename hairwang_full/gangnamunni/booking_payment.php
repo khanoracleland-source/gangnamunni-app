@@ -21,7 +21,7 @@ $owner_phone = $is_user_logged_in ? (string)($member['mb_hp'] ?? $session_phone)
 $owner_phone_digits = preg_replace('/[^0-9]/', '', $owner_phone);
 
 if (!$is_user_logged_in && $owner_phone_digits === '') {
-    header('Location: auth/login.php?url=' . urlencode('/gangnamunni/my_bookings.php'));
+    header('Location: auth/login.php?url=' . urlencode('/app/my_bookings.php'));
     exit;
 }
 

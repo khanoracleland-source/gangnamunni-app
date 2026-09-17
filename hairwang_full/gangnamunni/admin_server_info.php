@@ -79,7 +79,7 @@ $all_php_count = (int) @trim(shell_exec("find " . escapeshellarg($project_base) 
 $index_files = [
     ['path' => $project_base . '/public/index.php', 'label' => 'Laravel 진입점', 'url' => 'https://hms.seoulbeauty.app/', 'badge' => 'HMS', 'color' => '#FF2D20'],
     ['path' => $hw_base . '/index.php', 'label' => 'Gnuboard 진입점', 'url' => 'https://hms.seoulbeauty.app/hairwang/', 'badge' => 'Gnuboard', 'color' => '#f59e0b'],
-    ['path' => __DIR__ . '/index.php', 'label' => '서울미녀 메인 페이지', 'url' => 'https://hms.seoulbeauty.app/hairwang/gangnamunni/', 'badge' => '서울미녀', 'color' => '#AE1932'],
+    ['path' => __DIR__ . '/index.php', 'label' => '서울미녀 메인 페이지', 'url' => 'https://hms.seoulbeauty.app/hairwang/app/', 'badge' => '서울미녀', 'color' => '#AE1932'],
 ];
 foreach ($index_files as &$ifile) {
     $ifile['exists'] = file_exists($ifile['path']);
@@ -792,11 +792,11 @@ function fmt_bytes($b, $dec = 1) {
                     <?php
                     $domains = [
                         ['url' => 'https://hms.seoulbeauty.app/', 'desc' => 'HMS Laravel (메인)', 'target' => 'public/index.php', 'badge' => 'Laravel', 'color' => '#FF2D20'],
-                        ['url' => 'https://hms.seoulbeauty.app/hairwang/gangnamunni/', 'desc' => '서울미녀 메인', 'target' => 'gangnamunni/index.php', 'badge' => '서울미녀', 'color' => '#AE1932'],
-                        ['url' => 'https://hms.seoulbeauty.app/hairwang/gangnamunni/dashboard.php', 'desc' => '관리자 대시보드', 'target' => 'gangnamunni/dashboard.php', 'badge' => 'Admin', 'color' => '#7B1FA2'],
+                        ['url' => 'https://hms.seoulbeauty.app/hairwang/app/', 'desc' => '서울미녀 메인', 'target' => 'gangnamunni/index.php', 'badge' => '서울미녀', 'color' => '#AE1932'],
+                        ['url' => 'https://hms.seoulbeauty.app/hairwang/app/dashboard.php', 'desc' => '관리자 대시보드', 'target' => 'gangnamunni/dashboard.php', 'badge' => 'Admin', 'color' => '#7B1FA2'],
                         ['url' => 'https://hms.seoulbeauty.app/api/', 'desc' => 'HMS REST API', 'target' => 'localhost:8000/api', 'badge' => 'API', 'color' => '#2196F3'],
                         ['url' => 'https://mail.seoulbeauty.app/', 'desc' => '메일 관리 (Mailcow)', 'target' => 'Docker:8443', 'badge' => 'Mail', 'color' => '#4CAF50'],
-                        ['url' => 'https://hms.seoulbeauty.app/hairwang/gangnamunni/manual/', 'desc' => '자동 매뉴얼 15종', 'target' => 'gangnamunni/manual/', 'badge' => 'Docs', 'color' => '#FF9800'],
+                        ['url' => 'https://hms.seoulbeauty.app/hairwang/app/manual/', 'desc' => '자동 매뉴얼 15종', 'target' => 'gangnamunni/manual/', 'badge' => 'Docs', 'color' => '#FF9800'],
                     ];
                     foreach ($domains as $d): ?>
                     <div class="si-domain-row">

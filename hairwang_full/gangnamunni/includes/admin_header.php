@@ -635,12 +635,12 @@ if (!isset($admin_page_description) && isset($menu_descriptions[$admin_current])
             }
         }
         ?>
-        <a href="/hairwang/gangnamunni/dashboard.php?logout=1" class="btn btn-sm btn-outline-danger" title="로그아웃">
+        <a href="/hairwang/app/dashboard.php?logout=1" class="btn btn-sm btn-outline-danger" title="로그아웃">
             <i class="bi bi-box-arrow-right"></i>
         </a>
     </div>
     <div style="padding:0 12px 4px;">
-        <a href="/hairwang/gangnamunni/_archive/full_test_report_20260308.html" target="_blank"
+        <a href="/hairwang/app/_archive/full_test_report_20260308.html" target="_blank"
            style="display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:8px; font-size:12.5px; font-weight:700; color:#fff; text-decoration:none; background:linear-gradient(135deg,#0ea5e9,#06b6d4); transition:all 0.2s; box-shadow:0 2px 6px rgba(14,165,233,0.25);"
            onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
             <i class="bi bi-clipboard2-check" style="font-size:15px;"></i>
@@ -739,7 +739,7 @@ if (isset($connect) && $connect) {
                     ?>
                     <li class="nav-item">
                         <a class="nav-link py-1 <?php echo ($admin_current === ($child['active_key'] ?? $child['key'])) ? 'active' : ''; ?>"
-                           href="<?php echo (strpos($child['url'], 'http') === 0) ? $child['url'] : (defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/gangnamunni/') . $child['url']; ?>"<?php echo isset($child['target']) ? ' target="'.$child['target'].'"' : ''; ?>
+                           href="<?php echo (strpos($child['url'], 'http') === 0) ? $child['url'] : (defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/app/') . $child['url']; ?>"<?php echo isset($child['target']) ? ' target="'.$child['target'].'"' : ''; ?>
                            style="font-size:12px;">
                             <i class="bi <?php echo $child['icon']; ?>"></i>
                             <?php echo $child['label']; ?>
@@ -761,7 +761,7 @@ if (isset($connect) && $connect) {
         <?php else: ?>
         <li class="nav-item">
             <a class="nav-link <?php echo ($admin_current === $menu['key']) ? 'active' : ''; ?>"
-               href="<?php echo (strpos($menu['url'], 'http') === 0) ? $menu['url'] : (defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/gangnamunni/') . $menu['url']; ?>"<?php echo isset($menu['target']) ? ' target="'.$menu['target'].'"' : ''; ?>>
+               href="<?php echo (strpos($menu['url'], 'http') === 0) ? $menu['url'] : (defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/app/') . $menu['url']; ?>"<?php echo isset($menu['target']) ? ' target="'.$menu['target'].'"' : ''; ?>>
                 <i class="bi <?php echo $menu['icon']; ?>"></i>
                 <?php echo $menu['label']; ?>
             </a>
@@ -771,7 +771,7 @@ if (isset($connect) && $connect) {
 
     <!-- PG Test Report — 사이드바 스크롤 영역 최하단 (한글 주석) -->
     <div style="padding:8px 12px 4px;">
-        <a href="/hairwang/gangnamunni/pg_test_report_20260308.html" target="_blank"
+        <a href="/hairwang/app/pg_test_report_20260308.html" target="_blank"
            style="display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:8px; font-size:12.5px; font-weight:700; color:#fff; text-decoration:none; background:linear-gradient(135deg,#059669,#10b981); transition:all 0.2s; box-shadow:0 2px 6px rgba(5,150,105,0.25);"
            onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
             <i class="bi bi-credit-card-2-front" style="font-size:15px;"></i>
@@ -834,10 +834,10 @@ if (isset($connect) && $connect) {
             if (el.id) open.push(el.id);
         });
         var val = open.join(',');
-        document.cookie = 'sb_open_groups=' + val + ';path=/hairwang/gangnamunni/;max-age=86400';
+        document.cookie = 'sb_open_groups=' + val + ';path=/hairwang/app/;max-age=86400';
         document.cookie = 'sb_open_groups=' + val + ';path=/;max-age=86400';
         try { sessionStorage.setItem('sb_open_groups', val); } catch(e) {}
-        document.cookie = 'sb_ver=<?php echo $_sb_cookie_ver; ?>;path=/hairwang/gangnamunni/;max-age=86400';
+        document.cookie = 'sb_ver=<?php echo $_sb_cookie_ver; ?>;path=/hairwang/app/;max-age=86400';
         document.cookie = 'sb_ver=<?php echo $_sb_cookie_ver; ?>;path=/;max-age=86400';
         return open;
     }

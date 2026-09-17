@@ -122,7 +122,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             <div style="flex:0 0 auto; scroll-snap-align:start; text-align:center;">
                 <div style="width:200px; height:355px; border-radius:16px; overflow:hidden; border:2px solid var(--bs-border-color); box-shadow:0 4px 12px rgba(0,0,0,0.1); cursor:pointer; position:relative;"
                      onclick="openLightbox(this.querySelector('img').src)">
-                    <img src="/hairwang/gangnamunni/screenshots/store/<?= htmlspecialchars($ss['file']) ?>"
+                    <img src="/hairwang/app/screenshots/store/<?= htmlspecialchars($ss['file']) ?>"
                          style="width:100%; height:100%; object-fit:cover;" loading="lazy">
                 </div>
                 <div class="mt-2 text-body-secondary" style="font-size:12px; font-weight:600;"><?= htmlspecialchars($ss['label']) ?></div>
@@ -223,7 +223,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <div class="fw-bold">AAB 빌드 파일</div>
                             <div class="text-body-secondary" style="font-size:12px;"><?= $app['version'] ?> (versionCode 25)</div>
                         </div>
-                        <a href="/hairwang/gangnamunni/app_builds/android/<?= $current_app ?>/com.celebhospital.<?= $current_app ?>-v1.9.0-vc25.aab" download class="btn btn-sm btn-outline-primary ms-auto">
+                        <a href="/hairwang/app/app_builds/android/<?= $current_app ?>/com.celebhospital.<?= $current_app ?>-v1.9.0-vc25.aab" download class="btn btn-sm btn-outline-primary ms-auto">
                             <i class="bi bi-download me-1"></i>다운로드
                         </a>
                     </div>
@@ -240,7 +240,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         <h6 class="mb-0"><i class="bi bi-google me-2"></i>Google Play 스토어 페이지</h6>
     </div>
     <div class="card-body text-center p-4">
-        <img src="/hairwang/gangnamunni/screenshots/store/gplay_<?= $current_app ?>.png"
+        <img src="/hairwang/app/screenshots/store/gplay_<?= $current_app ?>.png"
              style="max-width:100%; border-radius:12px; border:1px solid var(--bs-border-color); box-shadow:0 4px 16px rgba(0,0,0,0.1); cursor:pointer;"
              onclick="openLightbox(this.src)" loading="lazy">
         <div class="mt-3">
