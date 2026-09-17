@@ -18,7 +18,7 @@ global $is_member, $config, $connect, $rb_builder, $g5;
 
 $bbs_url = defined('G5_BBS_URL') ? G5_BBS_URL : '/bbs';
 $g5_url  = defined('G5_URL') ? G5_URL : '';
-$home_url = $g5_url . '/app/index.php';
+$home_url = rtrim(SITE_BASE_PATH, '/') . '/index.php';
 $member_table = $g5['member_table'] ?? 'g5_member';
 
 // 회원가입 POST/AJAX CSRF 토큰
@@ -568,7 +568,7 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
 <body>
     <div class="login-wrap">
         <div class="login-top">
-            <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/app/auth/login.php" aria-label="뒤로">
+            <a href="<?php echo htmlspecialchars(rtrim(SITE_BASE_PATH, '/'), ENT_QUOTES); ?>/auth/login.php" aria-label="뒤로">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
                     <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
                 </svg>

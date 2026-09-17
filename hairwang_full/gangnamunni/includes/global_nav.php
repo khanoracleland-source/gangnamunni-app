@@ -32,9 +32,10 @@ $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $m
 // Gnuboard URL follows the current host: localhost in development, production domain on the server.
 $bbs_base_url = defined('G5_BBS_URL')
     ? rtrim(G5_BBS_URL, '/') . '/'
-    : ((defined('SITE_BASE_PATH') && SITE_BASE_PATH === '/app/') ? '/bbs/' : '/hairwang/bbs/');
-// 로그인은 서울미녀 전용 커스텀 로그인(app/auth/login.php, 실제 폴더명은 gangnamunni)으로 — bbs 베이스에서 app 로 치환(같은 호스트 규칙 유지)
-$login_url = str_replace('/bbs/', '/app/', $bbs_base_url) . 'auth/login.php';
+    : ((defined('SITE_BASE_PATH') && SITE_BASE_PATH === '/') ? '/bbs/' : '/hairwang/bbs/');
+// 로그인은 서울미녀 전용 커스텀 로그인(gangnamunni/auth/login.php)으로 — G5_BBS_URL은 /hairwang 가 고정으로
+// 포함되어 있어 bbs 치환 방식으로는 정리되지 않으므로, SITE_BASE_PATH를 기준으로 독립적으로 계산한다.
+$login_url = (defined('SITE_BASE_PATH') ? rtrim(SITE_BASE_PATH, '/') : '/hairwang/app') . '/auth/login.php';
 $register_url = $bbs_base_url . 'register.php';
 $mypage_url = $bbs_base_url . 'member_confirm.php';
 $logout_url = $bbs_base_url . 'logout.php';

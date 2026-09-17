@@ -21,7 +21,7 @@ global $is_member, $config, $connect, $rb_builder, $g5;
 
 $bbs_url = defined('G5_BBS_URL') ? G5_BBS_URL : '/bbs';
 $g5_url  = defined('G5_URL') ? G5_URL : '';
-$login_url = $g5_url . '/app/auth/login.php';
+$login_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php';
 $member_table = $g5['member_table'] ?? 'g5_member';
 
 function gnu_reset_rate_hit($scope, $value, $limit = 3, $window = 600) {
@@ -42,7 +42,7 @@ function gnu_reset_rate_hit($scope, $value, $limit = 3, $window = 600) {
 
 // 이미 로그인 상태면 홈으로
 if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
-    header('Location: ' . $g5_url . '/app/index.php');
+    header('Location: ' . rtrim(SITE_BASE_PATH, '/') . '/index.php');
     exit;
 }
 
@@ -265,7 +265,7 @@ $primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932')
             <div class="foot-links">
                 <a href="<?php echo htmlspecialchars($login_url, ENT_QUOTES); ?>">로그인</a>
                 <span class="sep">|</span>
-                <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/app/auth/register.php">회원가입</a>
+                <a href="<?php echo htmlspecialchars(rtrim(SITE_BASE_PATH, '/'), ENT_QUOTES); ?>/auth/register.php">회원가입</a>
             </div>
         </div>
     </div>

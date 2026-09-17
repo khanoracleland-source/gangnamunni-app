@@ -146,7 +146,7 @@ function gnu_safe_after_url($candidate, $fallback) {
     return $request_host !== '' && strtolower($parts['host']) === $request_host ? $candidate : $fallback;
 }
 
-$after_url = $g5_url . '/app/index.php';
+$after_url = rtrim(SITE_BASE_PATH, '/') . '/index.php';
 if (isset($_GET['url']) && $_GET['url'] !== '')  $after_url = gnu_safe_after_url($_GET['url'], $after_url);
 if (isset($_POST['url']) && $_POST['url'] !== '') $after_url = gnu_safe_after_url($_POST['url'], $after_url);
 
@@ -319,9 +319,9 @@ $apple_enabled = !empty($config['cf_social_login_use'])
     && !empty($config['cf_apple_key_id'])
     && !empty($config['cf_apple_bundle_id'])
     && !empty($config['cf_apple_key_file']);
-$kakao_url = $g5_url . '/app/auth/login.php?provider=kakao&url=' . urlencode($after_url);
-$google_url = $g5_url . '/app/auth/login.php?provider=google&url=' . urlencode($after_url);
-$apple_url = $g5_url . '/app/auth/login.php?provider=apple&url=' . urlencode($after_url);
+$kakao_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php?provider=kakao&url=' . urlencode($after_url);
+$google_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php?provider=google&url=' . urlencode($after_url);
+$apple_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php?provider=apple&url=' . urlencode($after_url);
 $open_email = $login_error !== '';
 ?>
 <!DOCTYPE html>
@@ -381,7 +381,7 @@ $open_email = $login_error !== '';
 <body>
     <div class="login-wrap">
         <div class="login-top">
-            <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/app/index.php" aria-label="홈으로">
+            <a href="<?php echo htmlspecialchars(rtrim(SITE_BASE_PATH, '/'), ENT_QUOTES); ?>/index.php" aria-label="홈으로">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
                     <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
                 </svg>
@@ -449,9 +449,9 @@ $open_email = $login_error !== '';
             </div>
 
             <div class="foot-links">
-                <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/app/auth/password_lost.php">계정 찾기</a>
+                <a href="<?php echo htmlspecialchars(rtrim(SITE_BASE_PATH, '/'), ENT_QUOTES); ?>/auth/password_lost.php">계정 찾기</a>
                 <span class="sep">|</span>
-                <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/app/qna.php">문의하기</a>
+                <a href="<?php echo htmlspecialchars(rtrim(SITE_BASE_PATH, '/'), ENT_QUOTES); ?>/qna.php">문의하기</a>
                 <span class="sep">|</span>
                 <a href="<?php echo htmlspecialchars($g5_url, ENT_QUOTES); ?>/bbs/register.php">회원가입</a>
             </div>
