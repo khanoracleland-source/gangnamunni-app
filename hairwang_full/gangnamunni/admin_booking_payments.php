@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $merchant = (string)($_POST['merchant_uid'] ?? '');
         if (($_POST['action'] ?? '') === 'sync') {
             $order = booking_payment_by_merchant($connect, $merchant);
-            booking_payment_sync($connect, $merchant, $order['provider_transaction_id']);
+            booking_payment_sync($connect, $merchant);
         } elseif (($_POST['action'] ?? '') === 'refund') {
             booking_payment_refund($connect, $merchant, (int)($_POST['amount'] ?? 0), trim((string)($_POST['reason'] ?? '')),
                 (string)($_POST['request_id'] ?? ''), (int)$_SESSION['ad_admin_id']);

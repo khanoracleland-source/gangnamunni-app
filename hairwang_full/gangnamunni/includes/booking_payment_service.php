@@ -32,20 +32,20 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
     if (!in_array($status, ['paid', 'cancelled', 'ready', 'failed'], true)) throw new RuntimeException('Unknown payment state.');
     // Failed attempts remain retryable. Never erase a verified payment on an old failure.
     if (in_array($status, ['ready', 'failed'], true)) return $order;
-    $cancelled = (int)($remote['cancel_amount'] ?? 0);
+    $cancelled = (int)($remote['cancelled_amount'] ?? 0);
     if ($status === 'cancelled' && $cancelled === 0) throw new RuntimeException('Cancellation total is missing.');
     $db->begin_transaction();
     try {
         $hash = hash('sha256', json_encode($remote, JSON_THROW_ON_ERROR));
         if ($order['status'] === 'pending') {
-            platform_payment_mark_verified($db, $order['merchant_uid'], $provider, $remote['imp_uid'],
-                'paid:' . $remote['imp_uid'], (int)$remote['amount'], $hash, $source, (int)$remote['paid_at'], false);
+            platform_payment_mark_verified($db, $order['merchant_uid'], $provider, $remote['transaction_id'],
+                'paid:' . $remote['transaction_id'], (int)$remote['amount'], $hash, $source, (int)$remote['paid_at'], false);
             $order = booking_payment_by_merchant($db, $order['merchant_uid']);
         }
         if ($cancelled < (int)$order['refunded_amount']) throw new RuntimeException('Provider refund total regressed.');
         if ($cancelled > (int)$order['refunded_amount']) {
             platform_payment_record_refund($db, (int)$order['id'], $provider,
-                'refund:' . $remote['imp_uid'] . ':' . $cancelled,
+                'refund:' . $remote['transaction_id'] . ':' . $cancelled,
                 $cancelled - (int)$order['refunded_amount'], $hash, false);
         }
         // A webhook/cron may confirm a refund whose HTTP response was lost.
@@ -61,15 +61,14 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
         throw $e;
     }
 }
-function booking_payment_sync(mysqli $db, string $merchant, ?string $imp, string $source = 'server_query', ?BookingPortOneClient $client = null): array {
+function booking_payment_sync(mysqli $db, string $merchant, string $source = 'server_query', ?BookingPortOneClient $client = null): array {
     $client = $client ?? new BookingPortOneClient();
-    return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $imp, $source, $client) {
+    return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $source, $client) {
         $order = booking_payment_by_merchant($db, $merchant);
         // Remote data is fetched AFTER acquiring the lock to avoid stale observations.
-        $lookup = $imp ?: ($order['provider_transaction_id'] ?? null);
-        $remote = $lookup ? $client->payment($lookup) : $client->find($merchant);
-        if ($lookup && ($remote['imp_uid'] ?? '') !== $lookup) throw new RuntimeException('Provider transaction ID mismatch.');
-        return booking_payment_apply_remote($db, $order, $remote, $source);
+        // V2 keys a payment by the id we issued, so a transaction id supplied by a
+        // browser redirect or webhook body is never used to decide what to fetch.
+        return booking_payment_apply_remote($db, $order, $client->payment($merchant), $source);
     });
 }
 function booking_payment_refund(mysqli $db, string $merchant, int $amount, string $reason, string $requestId, int $actorId, ?BookingPortOneClient $client = null): array {
@@ -88,7 +87,7 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
             throw new RuntimeException('Conflicting refund request ID.');
         }
         $before = (int)$order['refunded_amount'];
-        $remote = $client->payment($order['provider_transaction_id']);
+        $remote = $client->payment($merchant);
         $order = booking_payment_apply_remote($db, $order, $remote, 'server_query');
         if ($previous) {
             if ($previous['status'] === 'failed') throw new RuntimeException('This refund request was rejected. Use a new request after review.');
@@ -117,7 +116,7 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
         $save->bind_param('siiiis', $requestId, $order['id'], $amount, $before, $actorId, $reason);
         $save->execute(); // Persist intent before any remote side effect.
         try {
-            $client->cancel($order['provider_transaction_id'], $amount, $remaining, $reason);
+            $client->cancel($merchant, $amount, $remaining, $reason);
         } catch (BookingPortOneRejectedException $e) {
             // A valid PortOne error response confirms the request was rejected.
             // Transport errors and timeouts remain pending to prevent double refunds.
@@ -126,7 +125,7 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
             $failed->execute();
             throw $e;
         }
-        $result = booking_payment_apply_remote($db, $order, $client->payment($order['provider_transaction_id']), 'server_query');
+        $result = booking_payment_apply_remote($db, $order, $client->payment($merchant), 'server_query');
         if ((int)$result['refunded_amount'] !== $before + $amount) throw new RuntimeException('Refund confirmation pending.');
         $done = $db->prepare("UPDATE gangnamunni_payment_refund_requests SET status='succeeded',completed_at=NOW() WHERE request_id=?");
         $done->bind_param('s', $requestId);

@@ -13,7 +13,7 @@ $rows = $db->query("SELECT id,merchant_uid,provider_transaction_id FROM gangnamu
 $failed = 0;
 while ($row = $rows->fetch_assoc()) {
     $after = (int)$row['id'];
-    try { booking_payment_sync($db, $row['merchant_uid'], $row['provider_transaction_id']); }
+    try { booking_payment_sync($db, $row['merchant_uid']); }
     catch (Throwable $e) { $failed++; fwrite(STDERR, "Payment {$row['id']}: reconciliation unavailable.\n"); }
 }
 echo "Next cursor: $after; failures: $failed\n";

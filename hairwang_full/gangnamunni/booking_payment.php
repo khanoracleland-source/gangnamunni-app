@@ -21,7 +21,7 @@ $owner_phone = $is_user_logged_in ? (string)($member['mb_hp'] ?? $session_phone)
 $owner_phone_digits = preg_replace('/[^0-9]/', '', $owner_phone);
 
 if (!$is_user_logged_in && $owner_phone_digits === '') {
-    header('Location: auth/login.php?url=' . urlencode('/my_bookings.php'));
+    header('Location: auth/login.php?url=' . urlencode(rtrim(SITE_BASE_PATH, '/') . '/my_bookings.php'));
     exit;
 }
 
@@ -512,7 +512,7 @@ a { color: inherit; text-decoration: none; }
     </main>
 </div>
 
-<?php if ($live_available): ?><script src="https://cdn.iamport.kr/v1/iamport.js"></script><?php endif; ?>
+<?php if ($live_available): ?><script src="https://cdn.portone.io/v2/browser-sdk.js"></script><?php endif; ?>
 <script>
 (function() {
     var baseAmount = <?php echo (int)$display_amount; ?>;
@@ -698,18 +698,18 @@ a { color: inherit; text-decoration: none; }
             document.getElementById('termsError').hidden = true;
         }
     });
-    function verify(imp) {
-        return post('booking_payment_verify.php', {imp_uid:imp || ''}).then(function(d) { location.href = d.redirect_url; });
+    function verify() {
+        return post('booking_payment_verify.php', {}).then(function(d) { location.href = d.redirect_url; });
     }
     if (payBtn) payBtn.addEventListener('click', function() {
         if (busy || !agreed()) return;
         setBusy(true);
         post('booking_payment_request.php', {provider:selectedProvider, point_use:'0'}).then(function(d) {
-            if (!window.IMP) throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.');
-            window.IMP.init(d.imp_code);
-            window.IMP.request_pay(d.payment, function(result) {
-                if (result && result.imp_uid) verify(result.imp_uid).catch(failed);
-                else failed(new Error((result && result.error_msg) || '결제가 취소되었습니다.'));
+            if (!window.PortOne) throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.');
+            // A result carrying a code is a failure. Either way the server decides.
+            return window.PortOne.requestPayment(d.payment).then(function(result) {
+                if (result && result.code) throw new Error(result.message || '결제가 취소되었습니다.');
+                return verify();
             });
         }).catch(failed);
     });
@@ -721,7 +721,7 @@ a { color: inherit; text-decoration: none; }
     if (checkBtn) checkBtn.addEventListener('click', function() {
         if (busy) return;
         setBusy(true);
-        verify('').catch(failed);
+        verify().catch(failed);
     });
     updateTotals();
 })();

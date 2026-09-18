@@ -34,7 +34,7 @@ function booking_payment_is_test(?string $provider): bool {
 
 function booking_payment_checkout_ready(): bool {
     if (!booking_payment_live_enabled() || !booking_payment_channels()) return false;
-    foreach (['PORTONE_IMP_CODE','PORTONE_API_KEY','PORTONE_API_SECRET'] as $key) {
+    foreach (['PORTONE_STORE_ID','PORTONE_API_SECRET','PORTONE_WEBHOOK_SECRET'] as $key) {
         if (trim(booking_payment_setting($key)) === '') return false;
     }
     try { booking_payment_base_url(); } catch (Throwable $e) { return false; }

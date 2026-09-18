@@ -7,7 +7,7 @@ if (!booking_payment_owned($connect, $id)) booking_payment_json(['success'=>fals
 try {
     $order = booking_payment_order($connect, $id);
     if (!$order) throw new RuntimeException('Order not found.');
-    $order = booking_payment_sync($connect, $order['merchant_uid'], (string)($_POST['imp_uid'] ?? ''));
+    $order = booking_payment_sync($connect, $order['merchant_uid']);
     $paid = in_array($order['status'], ['paid', 'partially_refunded'], true);
     booking_payment_json(['success'=>$paid, 'status'=>$order['status'],
         'message'=>$paid ? '결제가 확인되었습니다.' : '결제가 아직 확인되지 않았습니다. 다시 확인해주세요.',

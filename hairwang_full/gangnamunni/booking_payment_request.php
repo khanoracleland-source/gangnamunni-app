@@ -94,21 +94,38 @@ try {
     if (!booking_payment_live_enabled()) throw new RuntimeException('Payments disabled.');
     $channels = booking_payment_channels();
     if (empty($channels[$provider])) throw new RuntimeException('Payment channel is not configured.');
-    $imp_code = booking_payment_setting('PORTONE_IMP_CODE');
-    if ($imp_code === '') throw new RuntimeException('Store is not configured.');
+    $store_id = booking_payment_setting('PORTONE_STORE_ID');
+    if ($store_id === '') throw new RuntimeException('Store is not configured.');
     $base = booking_payment_base_url();
     $client = new BookingPortOneClient();
+    // The canonical amount is registered server-side before the window opens.
     $client->prepare($order['merchant_uid'], (int)$order['amount']);
-    $methods = ['card'=>'card', 'bank'=>'trans', 'naverpay'=>'naverpay', 'kakaopay'=>'kakaopay', 'tosspay'=>'tosspay'];
-    echo json_encode(['success'=>true, 'imp_code'=>$imp_code, 'payment'=>[
-        'channelKey'=>$channels[$provider], 'merchant_uid'=>$order['merchant_uid'],
-        'amount'=>(int)$order['amount'], 'currency'=>'KRW',
-        'buyer_name'=>$order['patient_name'], 'buyer_tel'=>$order['patient_phone'],
-        'buyer_email'=>(string)($member['mb_email'] ?? ''),
-        'pay_method'=>$methods[$provider], 'name'=>'예약 #' . $booking_id,
-        'm_redirect_url'=>$base . '/booking_payment_return.php?booking_id=' . $booking_id,
-        'notice_url'=>$base . '/payment/portone_webhook.php',
-    ]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    // Easy-pay providers ride on EASY_PAY with a provider hint in V2.
+    $methods = ['card' => ['CARD', null], 'bank' => ['TRANSFER', null],
+        'naverpay' => ['EASY_PAY', 'NAVERPAY'], 'kakaopay' => ['EASY_PAY', 'KAKAOPAY'],
+        'tosspay' => ['EASY_PAY', 'TOSSPAY']];
+    [$pay_method, $easy_pay] = $methods[$provider];
+    $customer = array_filter([
+        'fullName' => (string)$order['patient_name'],
+        'phoneNumber' => (string)$order['patient_phone'],
+        'email' => (string)($member['mb_email'] ?? ''),
+    ], static function ($value) { return $value !== ''; });
+    $payment = [
+        'storeId' => $store_id,
+        'channelKey' => $channels[$provider],
+        // In V2 the id we issue IS the payment key; there is no second identifier.
+        'paymentId' => $order['merchant_uid'],
+        'orderName' => '예약 #' . $booking_id,
+        'totalAmount' => (int)$order['amount'],
+        'currency' => 'KRW',
+        'payMethod' => $pay_method,
+        'customer' => $customer,
+        'redirectUrl' => $base . '/booking_payment_return.php?booking_id=' . $booking_id,
+        'noticeUrls' => [$base . '/payment/portone_webhook.php'],
+    ];
+    if ($easy_pay !== null) $payment['easyPayProvider'] = $easy_pay;
+    echo json_encode(['success' => true, 'payment' => $payment],
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
     error_log('[booking_payment_request] ' . $e->getMessage());
     bp_fail('현재 이 결제 수단을 이용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'PAYMENT_UNAVAILABLE', 503);

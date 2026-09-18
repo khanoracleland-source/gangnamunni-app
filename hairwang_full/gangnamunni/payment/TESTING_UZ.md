@@ -100,9 +100,9 @@ Quyidagi qiymatlar namuna; kalitlar o‘rniga shaxsiy qiymatlaringiz yoziladi.
 G5_PG_PAYMENTS_ENABLED=1
 BOOKING_PAYMENT_PREVIEW_ENABLED=1
 PORTONE_SANDBOX=1
-BOOKING_PAYMENT_BASE_URL=https://YOUR-TEST-DOMAIN/gangnamunni
-PORTONE_IMP_CODE=YOUR-STORE-ID
-PORTONE_API_KEY=YOUR-API-KEY
+BOOKING_PAYMENT_BASE_URL=https://YOUR-TEST-DOMAIN
+PORTONE_STORE_ID=YOUR-STORE-ID
+PORTONE_WEBHOOK_SECRET=whsec_YOUR-WEBHOOK-SECRET
 PORTONE_API_SECRET=YOUR-API-SECRET
 PORTONE_CHANNEL_CARD=YOUR-TEST-CHANNEL-KEY
 ```
@@ -119,8 +119,24 @@ docker compose up -d --no-deps --force-recreate gangnamunni
 docker exec hms-saas-gangnamunni-1 php /var/www/html/hairwang_full/gangnamunni/payment/check.php
 ```
 
-Test domeni shu ilovaga tashqaridan HTTPS orqali yetib kelishi kerak. PortOne V1
-webhook manzili: `https://YOUR-TEST-DOMAIN/gangnamunni/payment/portone_webhook.php`.
+`BOOKING_PAYMENT_BASE_URL` — sayt joylashgan public HTTPS origin, oxirida yo‘l yoki
+slash bo‘lmasin (masalan `https://hms.seoulbeauty.app`). 2026-09-17 URL refaktoridan
+keyin sayt web root’dan xizmat qiladi; eski `/gangnamunni` va `/app` segmentlarini bu
+qiymatga yozmang — ular 404 beradi.
+
+Test domeni shu ilovaga tashqaridan HTTPS orqali yetib kelishi kerak. PortOne V2
+webhook manzili: `https://YOUR-TEST-DOMAIN/payment/portone_webhook.php`.
+Kalitlarni kiritishdan oldin manzil javob berishini tasdiqlang — bo‘sh POST webhook’ning
+o‘z tekshiruvigacha yetishi kerak, Laravel 404’iga emas:
+`curl -i -X POST https://YOUR-TEST-DOMAIN/payment/portone_webhook.php` → HTTP 400,
+tanasi `{"success":false}`. 404 kelsa base URL’da eski segment qolgan yoki rewrite yo‘q.
+`check.php` buni ushlay olmaydi: u faqat qiymat sintaksisini ko‘radi, manzil
+mavjudligini emas, shuning uchun noto‘g‘ri qiymatda ham `READY` deb yozadi.
+
+Lokal Compose muhiti public sayt bilan bir xil URL shakliga ega emas.
+`local-router.php` root’dan xizmat qilishni amalga oshirmaydi, shuning uchun
+`localhost:8002` da sahifalar `/gangnamunni/...` ostida qoladi — quyidagi lokal
+havolalar shuning uchun to‘g‘ri. Ularni `BOOKING_PAYMENT_BASE_URL` ga ko‘chirmang.
 `localhost` tashqi webhook uchun yetarli emas. Brauzerdagi mobil qaytish manzili
 ham `BOOKING_PAYMENT_BASE_URL` asosida tuziladi. Testni shu public domen orqali
 login qilib boshlang: localhostdagi sessiya boshqa domenga ko‘chmaydi.
@@ -165,7 +181,9 @@ anglatmaydi.
 | PortOne aniq rad etgan refund cheksiz `pending` qolardi. | Aniq API rad javobi `failed`; natijasi noma’lum timeout esa `pending` qoladi. |
 | Refund qilingan test to‘lovi preview yoki qayta to‘lanadigan buyurtma bo‘lib ko‘rinardi. | Yakuniy holatlar birinchi tekshiriladi, qayta to‘lash tugmalari yashiriladi. |
 | Sozlamalar to‘liq bo‘lmasa ham checkout yoqilishi mumkin edi. | Store, secret, API key, HTTPS URL va kanal borligi birga tekshiriladi. |
-| Noto‘g‘ri tranzaksiya javobi qabul qilinishi mumkin edi. | Javobdagi `imp_uid` aynan so‘ralgan tranzaksiyaga mos bo‘lishi shart. |
+| Noto‘g‘ri tranzaksiya javobi qabul qilinishi mumkin edi. | Javobdagi `id` aynan so‘ralgan `paymentId`ga mos bo‘lishi shart. |
+| Webhook imzosi tekshirilmasdi — istalgan kishi xabar yubora olardi. | V2 Standard Webhooks imzosi majburiy; imzosiz 401, secret sozlanmagan bo‘lsa 503. |
+| PG xatosi va aniq rad javobi bir xil ko‘rilardi. | `PG_PROVIDER`, `PAYMENT_ALREADY_CANCELLED`, `CANCELLABLE_AMOUNT_CONSISTENCY_BROKEN` endi `pending` qoladi — ikki marta qaytarish xavfi yo‘q. |
 | Ixtiyoriy ball tizimidagi xato checkoutni to‘xtatishi mumkin edi. | Ball balansini o‘qish xatosi to‘lov sahifasini yiqitmaydi. |
 
 Jonli ishga tushirishdan oldin PortOne sandbox orqali yuqoridagi to‘liq oqimni
@@ -176,6 +194,7 @@ hali yakunlanmagan. Oylik settlement skripti bankka pul o‘tkazmaydi.
 
 PortOne rasmiy manbalari:
 
-- [V1 to‘lov integratsiyasi](https://developers.portone.io/opi/ko/integration/start/v1/auth)
-- [V1 webhook](https://developers.portone.io/opi/ko/integration/webhook/readme-v1)
-- [V1 REST to‘lov API](https://developers.portone.io/api/rest-v1/payment)
+- [V2 checkout integratsiyasi](https://developers.portone.io/opi/ko/integration/start/v2/checkout)
+- [V2 webhook](https://developers.portone.io/opi/ko/integration/webhook/readme-v2)
+- [V2 REST to‘lov API](https://developers.portone.io/api/rest-v2/payment)
+- [Standard Webhooks](https://www.standardwebhooks.com/)

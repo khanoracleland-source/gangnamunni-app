@@ -41,7 +41,7 @@ try {
     $router= <<<'ROUTER'
 <?php
 if (!str_starts_with((string)getenv('PAYMENT_HTTP_DATABASE'),'codex_payment_http_')) { http_response_code(500); exit; }
-putenv('G5_PG_PAYMENTS_ENABLED=0'); putenv('PORTONE_API_KEY='); putenv('PORTONE_API_SECRET=');
+putenv('G5_PG_PAYMENTS_ENABLED=0'); putenv('PORTONE_STORE_ID='); putenv('PORTONE_API_SECRET='); putenv('PORTONE_WEBHOOK_SECRET=');
 putenv('PORTONE_CHANNEL_CARD='); putenv('BOOKING_PAYMENT_PREVIEW_ENABLED=1');
 if (($_SERVER['HTTP_X_FIXTURE_PREVIEW'] ?? '') === 'disabled') putenv('BOOKING_PAYMENT_PREVIEW_ENABLED=0');
 $dbname=getenv('PAYMENT_HTTP_DATABASE');

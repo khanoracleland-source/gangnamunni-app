@@ -6,7 +6,7 @@ require_once dirname(__DIR__).'/includes/booking_payment_config.php';
 echo 'Real checkout: '.(booking_payment_checkout_ready() ? 'READY' : 'NOT READY')."\n";
 echo 'Payment-free preview: '.(booking_payment_preview_enabled() ? 'ON' : 'OFF')."\n";
 echo 'Provider environment: '.(booking_payment_setting('PORTONE_SANDBOX','1') === '1' ? 'SANDBOX' : 'LIVE')."\n";
-foreach (['PORTONE_IMP_CODE','PORTONE_API_KEY','PORTONE_API_SECRET','BOOKING_PAYMENT_BASE_URL'] as $key) {
+foreach (['PORTONE_STORE_ID','PORTONE_API_SECRET','PORTONE_WEBHOOK_SECRET','BOOKING_PAYMENT_BASE_URL'] as $key) {
     echo $key.': '.(trim(booking_payment_setting($key)) === '' ? 'MISSING' : 'SET')."\n";
 }
 echo 'Configured methods: '.(implode(', ',array_keys(booking_payment_channels())) ?: 'NONE')."\n";

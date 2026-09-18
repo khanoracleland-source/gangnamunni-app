@@ -27,7 +27,7 @@ HTTP 410 and must not be used for new integrations.
 
 `booking_payment.php` has two explicit actions:
 
-- **결제하기** opens PortOne V1. The server pre-registers the canonical order
+- **결제하기** opens PortOne V2. The server pre-registers the canonical order
   amount; browser completion, mobile return and webhook all query PortOne before
   accepting the order identity, amount, currency, sandbox flag and transaction ID.
 - **결제 없이 계속하기** preserves the requested payment-free walkthrough. It
@@ -57,8 +57,11 @@ historical batches require operator review and must not be silently rewritten.
    `hairwang_full/dbconfig.php`. Deploy the shared
    `includes/booking_payment_db_config.php` alongside those entry points.
 3. Set runtime variables from the root `.env.example`:
-   `PORTONE_IMP_CODE`, `PORTONE_API_KEY`, `PORTONE_API_SECRET`,
-   `BOOKING_PAYMENT_BASE_URL` (the public HTTPS URL ending in `/gangnamunni`),
+   `PORTONE_STORE_ID`, `PORTONE_API_SECRET`, `PORTONE_WEBHOOK_SECRET`,
+   `BOOKING_PAYMENT_BASE_URL` (the canonical public HTTPS origin that serves the
+   booking pages, with no trailing path or slash, e.g. `https://hms.seoulbeauty.app`;
+   since the 2026-09-17 URL refactor the site is served from the web root and the
+   old `/gangnamunni` and `/app` segments must not appear in this value),
    `PORTONE_CHANNEL_CARD` and any additional contracted method's channel key.
    Easy-pay methods currently use KG Inicis hub `pay_method` values; configure
    compatible hub channels. Direct KakaoPay/NaverPay contracts need their own
@@ -69,12 +72,39 @@ historical batches require operator review and must not be silently rewritten.
    Enable checkout with `G5_PG_PAYMENTS_ENABLED=1`. An environment mismatch is
    rejected; test payments never become real revenue. Production requires live
    channels and `PORTONE_SANDBOX=0`.
-5. Register `/gangnamunni/payment/portone_webhook.php` as the V1 webhook in the
-   PortOne console. Use the canonical public base URL for mobile redirects.
+5. Register `/payment/portone_webhook.php` as the V2 webhook in the PortOne
+   console (webhook version `결제모듈 V2`) and issue a webhook secret for the
+   environment you are configuring. Every notification must carry a valid
+   Standard Webhooks signature: an unsigned or mis-signed request is refused
+   with 401, and a missing `PORTONE_WEBHOOK_SECRET` makes the endpoint answer
+   503 rather than trust an unauthenticated caller. PortOne's V2 webhook
+   source address is `52.78.5.241` if an IP filter is also wanted.
+   Use the canonical public base URL for mobile redirects.
+   Verify the endpoint answers before going further; an empty POST must reach
+   the webhook's own input guard, not a 404 from the Laravel front controller:
+   `curl -i -X POST https://<base-url>/payment/portone_webhook.php` returns
+   HTTP 400 with `{"success":false}`. A 404 means the base URL still carries a
+   stale path segment or the web rewrite is missing.
    The untrusted webhook body cannot mark a payment paid: the backend queries
    the authenticated PortOne API and compares the server-owned order.
 6. Restart/recreate the application service after changing runtime variables.
    The Compose gangnamunni service now forwards these variables explicitly.
+
+`booking_payment_base_url()` only validates syntax (HTTPS scheme, no userinfo,
+query or fragment). It cannot tell whether the address resolves, so a stale but
+well-formed value passes every check in this repository and `check.php` still
+prints `Real checkout: READY`. A wrong value fails silently and off-site: the
+card is charged, PortOne's notification 404s, and the order stays `pending`
+with nothing logged locally. Confirm the endpoint with the curl above instead
+of trusting the preflight alone.
+
+The public site and the local Compose environment do not share a URL shape.
+Production serves the booking pages from the web root through the rewrite in
+`public/.htaccess`. `hairwang_full/local-router.php` does not implement that
+rewrite, so on `localhost:8002` the pages stay under `/gangnamunni/...` and a
+root-form path returns 404. Local URLs in the testing guide are correct as
+written; do not copy them into `BOOKING_PAYMENT_BASE_URL`, which in any case
+requires a public HTTPS address PortOne can reach.
 
 Do not enable real charging until the operator has confirmed the merchant/PG
 contract, available payment methods, refund rules and settlement arrangements.
