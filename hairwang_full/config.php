@@ -57,6 +57,32 @@ www.sir.kr 과 sir.kr 도메인은 서로 다른 도메인으로 인식합니다
 */
 define('G5_COOKIE_DOMAIN',  '');
 
+/*
+소셜 로그인(plugin/social)의 HybridAuth 엔드포인트는 G5_HTTPS_DOMAIN 기준이라
+항상 hms.seoulbeauty.app 에서 열린다. 공개 사이트(seoulbeauty.app)에서 로그인을
+시작하면 세션 쿠키가 host-only 라서 그 호스트로 전달되지 않고, HybridAuth 가
+412 "You cannot access this page directly." 를 던진다.
+
+그래서 "세션 쿠키만" 서브도메인 공용으로 만든다. G5_COOKIE_DOMAIN(= set_cookie()
+기본 도메인)은 건드리지 않아 ck_* 등 나머지 쿠키의 동작은 그대로 유지된다.
+localhost/IP 접속에서는 도메인 쿠키가 거부되므로 빈 값으로 둔다.
+*/
+$g5_session_cookie_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+define('G5_SESSION_COOKIE_DOMAIN',
+    ($g5_session_cookie_host === 'seoulbeauty.app' || substr($g5_session_cookie_host, -16) === '.seoulbeauty.app')
+        ? '.seoulbeauty.app'
+        : '');
+
+/*
+공용 세션 쿠키는 기존 host-only 쿠키와 "이름이 반드시 달라야" 한다.
+이름이 같으면 브라우저는 (host-only / domain) 두 쿠키를 모두 보관하고 한 요청에
+둘 다 보내는데, PHP 는 Cookie 헤더의 "첫 번째" 값만 취한다(직접 확인함).
+RFC 6265 5.4 에 따라 먼저 만들어진 예전 쿠키가 앞에 오므로, 이름이 같으면
+새 공용 쿠키는 영구히 가려져 아무 효과가 없다. 이름을 분리하면 두 쿠키가
+서로 다른 키가 되어 어떤 값이 쓰일지에 대한 모호함 자체가 사라진다.
+*/
+define('G5_SHARED_SESSION_NAME', 'SBSESSID');
+
 define('G5_DBCONFIG_FILE',  'dbconfig.php');
 
 define('G5_ADMIN_DIR',      'adm');

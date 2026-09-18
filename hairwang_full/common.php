@@ -247,7 +247,11 @@ if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') {
     session_set_cookie_params(array('lifetime'=>0, 'path'=>'/', 'domain'=>'', 'secure'=>false, 'httponly'=>true, 'samesite'=>'Lax'));
 }
 
-ini_set("session.cookie_domain", G5_COOKIE_DOMAIN);
+// 세션 쿠키 도메인은 G5_SESSION_COOKIE_DOMAIN 이 우선한다(없으면 기존 동작).
+ini_set("session.cookie_domain",
+    (defined('G5_SESSION_COOKIE_DOMAIN') && G5_SESSION_COOKIE_DOMAIN)
+        ? G5_SESSION_COOKIE_DOMAIN
+        : G5_COOKIE_DOMAIN);
 
 function chrome_domain_session_name(){
     // 크롬90버전대부터 아래 도메인을 포함된 주소로 접속시 특정조건에서 세션이 생성 안되는 문제가 있을수 있다.
@@ -273,10 +277,54 @@ function chrome_domain_session_name(){
 
 chrome_domain_session_name();
 
+// ---------------------------------------------------------------------------
+// 서브도메인 공용 세션 쿠키로 전환 (seoulbeauty.app <-> hms.seoulbeauty.app)
+//
+//  - 쿠키 "이름"을 바꾸기 때문에 예전 쿠키와 겹치지 않는다. 따라서 어느 값이
+//    쓰일지 브라우저 전송 순서에 의존하지 않는다 -> 세션이 오락가락할 수 없다.
+//  - 공용 쿠키가 아직 없으면 예전 쿠키의 세션 ID 를 그대로 물려받는다.
+//    세션 파일은 서버에 그대로 있으므로 로그인 상태가 유지된다(재로그인 없음).
+//  - 예전 host-only 쿠키는 한 번 만료시켜 브라우저에서 정리한다.
+// ---------------------------------------------------------------------------
+if (defined('G5_SESSION_COOKIE_DOMAIN') && G5_SESSION_COOKIE_DOMAIN
+    && defined('G5_SHARED_SESSION_NAME') && G5_SHARED_SESSION_NAME
+    && session_status() === PHP_SESSION_NONE) {
+
+    $g5_legacy_session_name = (string) session_name();
+
+    if ($g5_legacy_session_name !== G5_SHARED_SESSION_NAME) {
+        @session_name(G5_SHARED_SESSION_NAME);
+
+        // 1) 공용 쿠키가 없고 예전 쿠키가 있으면 그 세션을 그대로 승계한다.
+        if (empty($_COOKIE[G5_SHARED_SESSION_NAME]) && !empty($_COOKIE[$g5_legacy_session_name])) {
+            $g5_legacy_sid = preg_replace('/[^A-Za-z0-9,\-]/', '', (string) $_COOKIE[$g5_legacy_session_name]);
+            if ($g5_legacy_sid !== '' && strlen($g5_legacy_sid) <= 128) {
+                @session_id($g5_legacy_sid);
+            }
+        }
+
+        // 2) 예전 host-only 쿠키 만료 (domain 을 비워야 host-only 쿠키에 매칭된다)
+        if (isset($_COOKIE[$g5_legacy_session_name]) && !headers_sent()) {
+            setcookie($g5_legacy_session_name, '', array(
+                'expires'  => time() - 3600,
+                'path'     => '/',
+                'domain'   => '',
+                'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ));
+        }
+    }
+}
+
 if( ! class_exists('XenoPostToForm') ){
     class XenoPostToForm
     {
         public static function g5_session_name(){
+            // 실제로 사용 중인 세션 이름을 그대로 돌려준다. (G5_SHARED_SESSION_NAME
+            // 으로 교체된 경우에도 Set-Cookie 재작성/POST 복구가 어긋나지 않는다.)
+            $current = (string) session_name();
+            if ($current !== '') return $current;
             return (defined('G5_SESSION_NAME') && G5_SESSION_NAME) ? G5_SESSION_NAME : 'PHPSESSID';
         }
 
