@@ -21,6 +21,7 @@ $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MY
 if (!$connect) die('DB error');
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
+require_once __DIR__ . '/includes/page_cache.php';
 
 // Phase5: SSO 토큰 자동 로그인 (앱 WebView에서 세션 없을 때)
 include_once __DIR__ . '/includes/sso_auto_login.php';
@@ -42,6 +43,7 @@ if (!$is_logged_in) {
     $mb_id = $member['mb_id'];
     $mb_no = $member['mb_no'] ?? 0; // 숫자 ID (wishlist/points/coupon용)
     $mb_nick = $member['mb_nick'] ?? $mb_id;
+    gangnamunni_page_cache(1800, 'private');
 }
 
 // 프로필 사진 확인
@@ -99,9 +101,6 @@ if (!preg_match('/^#[0-9a-fA-F]{6}$/', $primary_color)) $primary_color = '#AE193
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>마이페이지 — <?php echo htmlspecialchars(site_name()); ?></title>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">

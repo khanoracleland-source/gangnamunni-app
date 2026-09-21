@@ -23,6 +23,7 @@ if (!isset($show_search)) $show_search = true;
 if (file_exists(__DIR__ . '/design_tokens.php')) { include_once __DIR__ . '/design_tokens.php'; }
 if (!isset($page_css)) $page_css = '';
 if (!isset($page_css_file)) $page_css_file = '';
+if (!isset($page_no_cache)) $page_no_cache = false;
 
 // theme_helper가 로드되지 않았으면 로드
 if (!function_exists('getTheme')) {
@@ -45,9 +46,11 @@ if (isset($connect) && $connect && function_exists('loadThemeSettings')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <base href="<?php echo htmlspecialchars(defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/', ENT_QUOTES, 'UTF-8'); ?>">
+    <?php if (!empty($page_no_cache)): ?>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <?php endif; ?>
     <title><?php echo htmlspecialchars($page_title); ?><?php echo $page_title_only ? '' : ' | ' . htmlspecialchars(getTheme('site_name')); ?></title>
     <?php if (!empty($page_description)): ?>
     <meta name="description" content="<?php echo htmlspecialchars($page_description, ENT_QUOTES, 'UTF-8'); ?>">
@@ -93,6 +96,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
     <?php if (!empty($page_css_file)): ?>
     <link rel="stylesheet" href="<?php echo htmlspecialchars($page_css_file); ?>">
     <?php endif; ?>
+    <script src="assets/js/app-cache.js" defer></script>
 
     <?php if (!empty($page_css)): ?>
     <style>

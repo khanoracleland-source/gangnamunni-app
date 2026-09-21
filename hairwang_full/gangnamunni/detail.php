@@ -6,6 +6,8 @@
 
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/page_cache.php';
+gangnamunni_page_cache(900, is_gangnamunni_logged_in() ? 'private' : 'public');
 // 앱 모드 감지 (?app=1 파라미터)
 $is_app_mode = isset($_GET['app']) && $_GET['app'] == '1';
 require_once __DIR__ . '/includes/recently_viewed.php';

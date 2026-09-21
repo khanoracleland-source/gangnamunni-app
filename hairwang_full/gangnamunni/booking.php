@@ -7,6 +7,8 @@
 
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/page_cache.php';
+gangnamunni_page_cache(600, 'private');
 require_once __DIR__ . '/includes/dev_mode_helper.php';
 require_once __DIR__ . '/includes/notification_helper.php';
 require_once __DIR__ . '/includes/hospital_return_url.php';

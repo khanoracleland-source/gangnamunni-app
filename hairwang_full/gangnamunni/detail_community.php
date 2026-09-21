@@ -3,6 +3,8 @@
 
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/page_cache.php';
+gangnamunni_page_cache(300, is_gangnamunni_logged_in() ? 'private' : 'public');
 require_once __DIR__ . '/includes/user_blocking.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/community_comment_likes.php';

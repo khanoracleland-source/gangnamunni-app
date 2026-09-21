@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/page_cache.php';
+gangnamunni_page_cache(1800, is_gangnamunni_logged_in() ? 'private' : 'public');
 $hospital_return_url = 'hospitals.php' . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '');
 if (file_exists(__DIR__ . '/includes/design_tokens.php')) { include_once __DIR__ . '/includes/design_tokens.php'; }
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
@@ -536,7 +538,7 @@ foreach ($hospitals as $hospital):
 ?>
         <a class="hospital-card ad-card" href="<?php echo !empty($_iad['hospital_id']) ? 'detail.php?id=' . (int)$_iad['hospital_id'] . '&amp;return_url=' . rawurlencode($hospital_return_url) : htmlspecialchars($_iad['link_url'] ?? '#'); ?>" data-ad-id="<?php echo $_iad['id']; ?>">
                 <?php if (!empty($_iad['image_url'])): ?>
-                <img src="<?php echo htmlspecialchars($_iad['image_url']); ?>" class="hospital-image" alt="광고">
+                <img src="<?php echo htmlspecialchars($_iad['image_url']); ?>" class="hospital-image" alt="광고" loading="lazy" decoding="async">
                 <?php else: ?>
                 <div class="hospital-image" style="background:#D9D9D9;"></div>
                 <?php endif; ?>
@@ -589,6 +591,9 @@ foreach ($hospitals as $hospital):
                 <img src="<?php echo $img_src; ?>"
                      alt="<?php echo htmlspecialchars($hospital['name']); ?>"
                      class="hospital-image"
+                     loading="<?php echo $__hi <= 4 ? 'eager' : 'lazy'; ?>"
+                     decoding="async"
+                     <?php echo $__hi <= 2 ? 'fetchpriority="high"' : ''; ?>
                      onerror="this.onerror=null;this.src='<?php echo $placeholder; ?>'">
                 <?php
                 $ad_grade = $hospital['ad_grade'] ?? 'none';
