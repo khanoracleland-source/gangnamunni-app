@@ -95,7 +95,7 @@ $table_exists = !empty(revenue_query(
 $hospitals = [];
 $details = [];
 $treatments = [];
-$totals = ['bookings' => 0, 'payments' => 0, 'patients' => 0, 'gross' => 0, 'refunded' => 0, 'net' => 0];
+$totals = ['bookings' => 0, 'payments' => 0, 'cancelled_payment_amount' => 0, 'patients' => 0, 'gross' => 0, 'refunded' => 0, 'net' => 0];
 $booking_statuses = [];
 $hospital_name = '';
 $period_end = date('Y-m-t', strtotime($to));
@@ -133,6 +133,7 @@ if ($table_exists && ($is_super || !empty($scope_ids))) {
 
         $sum = revenue_query($connect,
             "SELECT COUNT(*) AS payments,
+                    COALESCE(SUM(CASE WHEN p.status='refunded' THEN p.amount ELSE 0 END),0) AS cancelled_payment_amount,
                     COUNT(DISTINCT COALESCE(NULLIF(p.patient_mb_id,''), CONCAT('phone:',p.patient_phone))) AS patients,
                     COALESCE(SUM(p.amount),0) AS gross,
                     COALESCE(SUM(p.refunded_amount),0) AS refunded,
@@ -167,7 +168,7 @@ if ($is_super && $selected_hospital === 0) {
         $hospitals = revenue_query($connect,
             "SELECT h.id AS hospital_id,h.name AS hospital_name,
                     COALESCE(b.bookings,0) AS bookings,
-                    COALESCE(p.payments,0) AS payments,COALESCE(p.patients,0) AS patients,
+                    COALESCE(p.payments,0) AS payments,COALESCE(p.cancelled_payment_amount,0) AS cancelled_payment_amount,COALESCE(p.patients,0) AS patients,
                     COALESCE(p.gross,0) AS gross,COALESCE(p.refunded,0) AS refunded,
                     COALESCE(p.net,0) AS net,p.last_paid_at
              FROM gangnamunni_hospitals h
@@ -179,11 +180,13 @@ if ($is_super && $selected_hospital === 0) {
              ) b ON b.hospital_id=h.id
              LEFT JOIN (
                 SELECT hospital_id,COUNT(*) AS payments,
+                       SUM(CASE WHEN status='refunded' THEN amount ELSE 0 END) AS cancelled_payment_amount,
                        COUNT(DISTINCT COALESCE(NULLIF(patient_mb_id,''),CONCAT('phone:',patient_phone))) AS patients,
                        SUM(amount) AS gross,SUM(refunded_amount) AS refunded,
                        SUM(amount-refunded_amount) AS net,MAX(paid_at) AS last_paid_at
                 FROM gangnamunni_platform_payments
                 WHERE payment_type='booking' AND funds_recipient='hospital'
+                  AND provider NOT IN ('mock_booking_payment','portone_test')
                   AND status IN ('paid','partially_refunded','refunded')
                   AND paid_at>=? AND paid_at<DATE_ADD(?,INTERVAL 1 DAY)
                 GROUP BY hospital_id
@@ -193,7 +196,7 @@ if ($is_super && $selected_hospital === 0) {
     } else {
         $hospitals = revenue_query($connect,
             "SELECT h.id AS hospital_id,h.name AS hospital_name,
-                    COALESCE(b.bookings,0) AS bookings,0 AS payments,0 AS patients,
+                    COALESCE(b.bookings,0) AS bookings,0 AS payments,0 AS cancelled_payment_amount,0 AS patients,
                     0 AS gross,0 AS refunded,0 AS net,NULL AS last_paid_at
              FROM gangnamunni_hospitals h
              LEFT JOIN (
@@ -205,7 +208,7 @@ if ($is_super && $selected_hospital === 0) {
              ORDER BY {$order_sql}",
             'ss', [$from, $to]);
     }
-    $totals = ['bookings' => 0, 'payments' => 0, 'patients' => 0, 'gross' => 0, 'refunded' => 0, 'net' => 0];
+    $totals = ['bookings' => 0, 'payments' => 0, 'cancelled_payment_amount' => 0, 'patients' => 0, 'gross' => 0, 'refunded' => 0, 'net' => 0];
     foreach ($hospitals as $row) {
         foreach (array_keys($totals) as $key) $totals[$key] += (int)$row[$key];
     }
@@ -276,7 +279,7 @@ if ($is_super) echo '<div class="px-4 pt-3"><a href="admin_booking_payments.php"
   <div class="row g-3 mb-3">
     <?php foreach ([
       ['예약 건수', number_format($totals['bookings'] ?? 0).'건', ''],
-      ['결제 건수', number_format($totals['payments']).'건', 'text-primary'],
+      ['취소 결제', number_format($totals['cancelled_payment_amount']).'원', 'text-primary'],
       ['환자 수', number_format($totals['patients']).'명', ''],
       ['순 결제액', number_format($totals['net']).'원', 'text-success']
     ] as $card): ?>

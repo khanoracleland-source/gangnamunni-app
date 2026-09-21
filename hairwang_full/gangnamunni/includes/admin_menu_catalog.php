@@ -4,6 +4,13 @@ function admin_sidebar_menus(): array {
     if (!function_exists('term')) require_once __DIR__ . '/industry_terms.php';
     $menus = [
 
+        // ━━ 주요 메뉴 ━━
+        ['type' => 'group', 'label' => '주요 메뉴', 'icon' => 'bi-star-fill', 'key' => 'important', 'children' => [
+            ['url' => 'admin_hospitals.php', 'label' => term('business') . ' 관리', 'icon' => 'bi-building', 'key' => 'hospitals'],
+            ['url' => 'admin_bookings.php', 'label' => '예약 관리', 'icon' => 'bi-calendar-check', 'key' => 'bookings'],
+            ['url' => 'admin_booking_revenue.php', 'label' => '예약 결제 매출', 'icon' => 'bi-cash-coin', 'key' => 'booking_revenue'],
+        ]],
+
         // ━━ 홈 ━━
         ['type' => 'group', 'label' => '대시보드', 'icon' => 'bi-speedometer2', 'key' => 'home_group', 'children' => [
             ['url' => 'dashboard.php', 'label' => '대시보드', 'icon' => 'bi-speedometer2', 'key' => 'dashboard'],
@@ -27,7 +34,6 @@ function admin_sidebar_menus(): array {
         ['type' => 'group', 'label' => '콘텐츠 관리', 'icon' => 'bi-collection', 'key' => 'content', 'children' => [
             ['url' => 'admin_content_hub.php', 'label' => '콘텐츠 허브', 'icon' => 'bi-collection-fill', 'key' => 'content_hub'],
             ['url' => 'admin_recommend.php', 'label' => '메인 추천 병원', 'icon' => 'bi-star', 'key' => 'recommend'],
-            ['url' => 'admin_hospitals.php', 'label' => term('business') . ' 관리', 'icon' => 'bi-building', 'key' => 'hospitals'],
             ['url' => 'admin_hospital_locations.php', 'label' => '병원 노출 순서', 'icon' => 'bi-sort-numeric-down', 'key' => 'hospitals', 'active_key' => 'hospital_locations'],
             ['url' => 'admin_doctors.php', 'label' => term('doctor') . ' 관리', 'icon' => 'bi-person-badge', 'key' => 'doctors'],
             ['url' => 'admin_personnel.php', 'label' => '인력 관리', 'icon' => 'bi-people', 'key' => 'personnel'],
@@ -56,7 +62,6 @@ function admin_sidebar_menus(): array {
             ['url' => 'admin_hospital_wizard.php', 'label' => '병원 등록 마법사', 'icon' => 'bi-building-add', 'key' => 'hospital_wizard'],
             // TEMPORARILY DISABLED: admin_ad_wizard.php (재활성화 시 아래 항목의 주석을 해제)
             // ['url' => 'admin_ad_wizard.php', 'label' => '광고 등록 마법사', 'icon' => 'bi-megaphone-fill', 'key' => 'ad_wizard'],
-            ['url' => 'admin_bookings.php', 'label' => '예약 관리', 'icon' => 'bi-calendar-check', 'key' => 'bookings'],
             ['url' => 'admin_consultations.php', 'label' => '상담 관리', 'icon' => 'bi-chat-dots-fill', 'key' => 'consultations'],
         ]],
         // 등록 관리 그룹
@@ -169,11 +174,6 @@ function admin_sidebar_menus(): array {
             ['url' => 'admin_cpv_rates.php', 'label' => 'CPV 단가 규칙 관리', 'icon' => 'bi-currency-dollar', 'key' => 'cpv_rates'],
             ['url' => 'admin_cpv_dashboard.php', 'label' => 'CPV 대시보드', 'icon' => 'bi-graph-up-arrow', 'key' => 'cpv_dashboard'],
             ['url' => 'admin_settlement.php', 'label' => 'CPV 정산 보고서', 'icon' => 'bi-file-earmark-bar-graph', 'key' => 'cpv_settlement'],
-        ]],
-
-        // 결제 관리 그룹
-        ['type' => 'group', 'label' => '결제 관리', 'icon' => 'bi-credit-card-2-front', 'key' => 'payment_group', 'children' => [
-            ['url' => 'admin_booking_revenue.php', 'label' => '예약 결제 매출', 'icon' => 'bi-cash-coin', 'key' => 'booking_revenue'],
         ]],
 
         ['type' => 'divider'],

@@ -8,6 +8,18 @@ $subscriptionPlanFeaturesId = subscriptionPlanFeaturesId();
 <div class="no-record text-center d-none">{{ __('messages.new_change.no_records_found') }}</div>
 
 @role('Admin')
+    {{-- Important Menu Section --}}
+    <li class="nav-item important-menu-section">
+        <a class="nav-link d-flex align-items-center py-3" href="javascript:void(0)">
+            <span class="aside-menu-icon pe-3">
+                <i class="fas fa-star"></i>
+            </span>
+            <span class="aside-menu-title fw-bold">
+                주요 메뉴
+            </span>
+        </a>
+    </li>
+
     {{-- Dashboard --}}
     <li class="nav-item {{ Request::is('dashboard*') ? 'active' : '' }}">
         <a class="nav-link  d-flex align-items-center py-3 " href="{{ route('dashboard') }}">
@@ -1567,6 +1579,18 @@ $subscriptionPlanFeaturesId = subscriptionPlanFeaturesId();
 
 {{-- Super Admin menu links --}}
 @role('Super Admin')
+    {{-- Important Menu Section --}}
+    <li class="nav-item important-menu-section">
+        <a class="nav-link d-flex align-items-center py-3" href="javascript:void(0)">
+            <span class="aside-menu-icon pe-3">
+                <i class="fas fa-star"></i>
+            </span>
+            <span class="aside-menu-title fw-bold">
+                주요 메뉴
+            </span>
+        </a>
+    </li>
+
     {{-- Super Admin Dashboard --}}
     <li class="nav-item {{ Request::is('super-admin/dashboard*') ? 'active' : '' }}" data-turbo="false">
         <a class="nav-link d-flex align-items-center py-3 " aria-current="page"

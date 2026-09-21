@@ -30,7 +30,7 @@ if (!function_exists('term')) {
 // 관리자 메뉴 목록 (기능별 그룹 + 구분선 정리)
 // 사이드바 열린 그룹 쿠키에서 읽기 (리플래시 방지)
 // 쿠키 버전 — 변경 시 이전 쿠키 무효화하여 전체 열림으로 리셋
-$_sb_cookie_ver = 'v10';
+$_sb_cookie_ver = 'v11';
 $_sb_open_groups = null; // null = 모든 그룹 열림
 if (isset($_COOKIE['sb_open_groups']) && isset($_COOKIE['sb_ver']) && $_COOKIE['sb_ver'] === $_sb_cookie_ver) {
     $_sb_open_groups = $_COOKIE['sb_open_groups'] !== '' ? explode(',', $_COOKIE['sb_open_groups']) : [];
