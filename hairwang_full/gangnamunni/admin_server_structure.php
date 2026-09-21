@@ -133,7 +133,7 @@ table.ss-tbl { width:100%; border-collapse:collapse; font-size:13.5px; }
       <tr><td><code>theme/</code> · <code>skin/</code> · <code>css/</code> · <code>js/</code></td><td class="ss-sz">38M·1.6M·560K·2.8M</td><td>디자인 테마·스킨·정적 리소스.</td></tr>
       <tr><td><code>api/</code> · <code>mobile/</code></td><td class="ss-sz">296K·2.5M</td><td>웹 API·모바일 웹뷰용 페이지.</td></tr>
       <tr><td><code>shop/</code></td><td class="ss-sz">3.1M</td><td>영카트(결제/상품) — PG 연동.</td></tr>
-      <tr><td><code>save_database/</code> · <code>db/</code> · <code>gangnamunni_backup_20260212/</code></td><td class="ss-sz">401M·70M·49M</td>
+      <tr><td><code>save_database/</code> · <code>db/</code> · <code></code></td><td class="ss-sz">401M·70M</td>
         <td><span class="ss-tag t-bak">백업</span> DB/소스 백업본. <b>인계 시 제외 가능</b>(용량만 차지).</td></tr>
       <tr><td><code>phpMyAdmin-5.2.2/</code></td><td class="ss-sz">67M</td><td>DB 관리 도구(중복 설치). 운영 무관.</td></tr>
       </tbody>

@@ -1,10 +1,4 @@
 <?php
-// ============================================================================
-// [인수인계 대시보드 - 2026-06-12] 클라이언트 인수인계용 통합 대시보드
-// 원인 : 6/12 긴급 인계 — 인수자가 로그인 후 인계 자료를 한 화면에서 확인 필요
-// 구성 : 좌측 섹션 메뉴 + 우측 내용 + 상단 주간/야간 토글 + 로그아웃
-// 접근 : 관리자 로그인 필수 (require_admin_login)
-// ============================================================================
 session_start();
 
 $admin_page_title = '인수인계 대시보드';
@@ -433,7 +427,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
           <tr><td><code>.../hms-saas/sql_dumps/</code></td><td>24M</td><td>DB 덤프 모음 (gangnamunni·hms_saas·hairwang 등 10개)</td></tr>
           <tr><td><code>.../hairwang_full/save_database/</code></td><td>401M</td><td>구 DB 백업 <span class="badge b-no">인계 제외 가능</span></td></tr>
           <tr><td><code>.../hairwang_full/db/</code></td><td>70M</td><td>Gnuboard DB 백업 (253파일)</td></tr>
-          <tr><td><code>.../hairwang_full/gangnamunni_backup_20260212/</code></td><td>49M</td><td>강남언니 2월 백업 <span class="badge b-no">제외 가능</span></td></tr>
+          <tr><td><code>DELETED</code></td><td>49M</td><td>강남언니 2월 백업 <span class="badge b-no">제외 가능</span></td></tr>
           <tr><td><code>.../hms-saas/database/hms_saas.sql</code></td><td>—</td><td>초기 스키마 SQL</td></tr>
         </table>
 
