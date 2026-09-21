@@ -1,7 +1,4 @@
--- Canonical Seoul Beauty ledger for patient booking payments.
--- Advertising uses gangnamunni_cpv_wallets + gangnamunni_ad_slot_bookings
--- and is intentionally excluded from this purchase ledger.
--- YoungCart/shop payments are intentionally outside this ledger.
+
 
 ALTER TABLE gangnamunni_advertisers
     ADD COLUMN IF NOT EXISTS hospital_id BIGINT UNSIGNED DEFAULT NULL AFTER id;
@@ -9,8 +6,6 @@ ALTER TABLE gangnamunni_advertisers
 ALTER TABLE gangnamunni_ads
     ADD COLUMN IF NOT EXISTS hospital_id BIGINT UNSIGNED DEFAULT NULL AFTER id;
 
--- Backfill only unambiguous legacy names. Ambiguous/unmatched rows intentionally
--- stay NULL and cannot enter the secured payment flow until manually resolved.
 UPDATE gangnamunni_advertisers adv
 JOIN (
     SELECT name,MIN(id) AS hospital_id
@@ -109,4 +104,19 @@ CREATE TABLE IF NOT EXISTS gangnamunni_payment_status_history (
     CONSTRAINT fk_payment_history_payment FOREIGN KEY (payment_id)
         REFERENCES gangnamunni_platform_payments(id)
         ON UPDATE RESTRICT ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS gangnamunni_refund_audit (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    booking_id BIGINT UNSIGNED NOT NULL,
+    payment_id BIGINT UNSIGNED NOT NULL,
+    amount BIGINT UNSIGNED NOT NULL,
+    actor_type ENUM('system','admin','webhook') NOT NULL,
+    actor_id BIGINT UNSIGNED DEFAULT NULL,
+    actor_name VARCHAR(191) NOT NULL DEFAULT '',
+    status ENUM('pending','completed','failed') NOT NULL DEFAULT 'completed',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_refund_audit_booking (booking_id,created_at),
+    KEY idx_refund_audit_payment (payment_id,created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

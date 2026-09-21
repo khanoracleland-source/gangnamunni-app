@@ -1,8 +1,5 @@
 <?php
-/**
- * 예약 취소 API
- * POST: { booking_id, phone, cancel_reason }
- */
+
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -10,8 +7,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// common.php를 거쳐야 그누보드의 실제 세션명(session_name)과 동일하게 세션을 읽을 수 있음
-// (dbconfig.php만 사용하면 커스텀 세션명 환경에서 로그인 세션을 못 찾는 문제 발생)
 require_once dirname(__DIR__) . '/includes/init.php';
 if (!function_exists('getSettingValue') && file_exists(dirname(__DIR__).'/includes/settings_helper.php')) require_once dirname(__DIR__).'/includes/settings_helper.php';
 if (!isset($connect) || !$connect) {
@@ -36,7 +31,6 @@ if ($booking_id <= 0) {
     exit;
 }
 
-// 예약 조회 + 전화번호 일치 확인
 $stmt = mysqli_prepare($connect, "SELECT id, phone, mb_id, status, hms_appointment_id, hospital_id FROM gangnamunni_bookings WHERE id = ?");
 mysqli_stmt_bind_param($stmt, 'i', $booking_id);
 mysqli_stmt_execute($stmt);
@@ -56,13 +50,11 @@ if (!booking_payment_owned($connect, $booking_id)) {
     exit;
 }
 
-// 이미 취소/완료된 예약 체크
 if (in_array($booking['status'], ['cancelled', 'completed', 'no_show'])) {
     echo json_encode(['success' => false, 'message' => '이미 ' . ($booking['status'] === 'cancelled' ? '취소' : '완료') . '된 예약입니다.']);
     exit;
 }
 
-// 예약 취소(핵심) + 로컬 HMS 상태를 하나의 DB transaction으로 원자 처리한다.
 require_once dirname(__DIR__) . '/includes/points_ledger.php';
 mysqli_begin_transaction($connect);
 try {
@@ -93,9 +85,31 @@ try {
     exit;
 }
 
-// 포인트 회수(#포인트제도): 취소가 커밋된 뒤 best-effort 로 처리한다.
-//   - 부가 기능이므로 실패해도 취소(핵심 작업)는 유지한다(로그만 기록).
-//   - autocommit 모드에서 실행되어 GET_LOCK 이 잔액 스냅샷을 정확히 직렬화한다.
+$refund_status = 'not_applicable';
+$refund_message = '';
+try {
+    $order = booking_payment_order($connect, $booking_id);
+    if ($order && in_array($order['provider'], ['portone', 'portone_test'], true)
+        && in_array($order['status'], ['paid', 'partially_refunded'], true)) {
+        $refund_status = 'not_refunded';
+        $refund_message = '예약이 취소되었습니다. 환불은 관리자 확인 후 처리됩니다.';
+    }
+} catch (Throwable $e) {
+    error_log('[cancel_booking] payment status lookup failed after cancel: ' . $e->getMessage());
+    $refund_status = 'review_required';
+    $refund_message = '예약은 취소되었으며, 환불 상태 확인이 필요합니다.';
+}
+
+try {
+    $refund_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET refund_status=?, updated_at=NOW() WHERE id=?");
+    if (!$refund_stmt) throw new RuntimeException('refund_status_prepare_failed');
+    mysqli_stmt_bind_param($refund_stmt, 'si', $refund_status, $booking_id);
+    if (!mysqli_stmt_execute($refund_stmt)) throw new RuntimeException('refund_status_update_failed');
+    mysqli_stmt_close($refund_stmt);
+} catch (Throwable $e) {
+    error_log('[cancel_booking] refund status update failed after cancel: ' . $e->getMessage());
+}
+
 if (!empty($booking['mb_id'])) {
     try {
         $member_no = points_member_no($connect, $booking['mb_id']);
@@ -106,4 +120,8 @@ if (!empty($booking['mb_id'])) {
 }
 
 mysqli_close($connect);
-echo json_encode(['success' => true, 'message' => '예약이 취소되었습니다.']);
+echo json_encode([
+    'success' => true,
+    'message' => $refund_message ?: '예약이 취소되었습니다.',
+    'refund_status' => $refund_status
+], JSON_UNESCAPED_UNICODE);

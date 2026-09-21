@@ -3,7 +3,6 @@ require_once __DIR__ . '/payment_core.php';
 require_once __DIR__ . '/booking_payment_access.php';
 require_once __DIR__ . '/portone_client.php';
 
-/** Serialize all provider observations for an order, including admin refunds. */
 function booking_payment_lock(mysqli $db, string $merchant, callable $work) {
     $key = 'payment:' . substr(hash('sha256', $merchant), 0, 48);
     $stmt = $db->prepare('SELECT GET_LOCK(?, 5) AS acquired');
@@ -25,18 +24,57 @@ function booking_payment_by_merchant(mysqli $db, string $merchant): array {
     if (!$order) throw new RuntimeException('Unknown order.');
     return $order;
 }
+
+function booking_payment_refund_audit(mysqli $db, array $order, int $amount, string $actorType, int $actorId, string $actorName, string $status = 'completed'): void {
+    $bookingId = (int)($order['booking_id'] ?? 0);
+    $paymentId = (int)($order['id'] ?? 0);
+    if ($bookingId <= 0 || $paymentId <= 0 || $amount <= 0) return;
+    try {
+        $stmt = $db->prepare("INSERT INTO gangnamunni_refund_audit
+                (booking_id,payment_id,amount,actor_type,actor_id,actor_name,status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)");
+        if (!$stmt) return;
+        $stmt->bind_param('iiisiss', $bookingId, $paymentId, $amount, $actorType, $actorId, $actorName, $status);
+        $stmt->execute();
+    } catch (Throwable $e) {
+        error_log('[booking_payment_refund_audit] insert failed: ' . $e->getMessage());
+    }
+}
+
 /** Call only inside booking_payment_lock, after fetching fresh provider data. */
 function booking_payment_apply_remote(mysqli $db, array $order, array $remote, string $source): array {
     $provider = booking_portone_validate($order, $remote);
     $status = $remote['status'] ?? '';
-    if (!in_array($status, ['paid', 'cancelled', 'ready', 'failed'], true)) throw new RuntimeException('Unknown payment state.');
-    // Failed attempts remain retryable. Never erase a verified payment on an old failure.
+    $validStates = ['ready', 'paid', 'failed', 'cancelled'];
+    if (!in_array($status, $validStates, true)) {
+        throw new RuntimeException('Unknown payment state: ' . $status);
+    }
+    $currentStatus = (string)($order['status'] ?? '');
+    $validTransitions = [
+        'pending' => ['ready', 'paid', 'failed', 'cancelled'],
+        'paid' => ['paid', 'cancelled'],
+        'partially_refunded' => ['paid', 'cancelled'],
+        'failed' => ['ready'],
+        'cancelled' => ['cancelled'],
+        'refunded' => ['cancelled'],
+    ];
+    $allowed = $validTransitions[$currentStatus] ?? [];
+    if (!in_array($status, $allowed, true)) {
+        throw new RuntimeException("Invalid transition {$currentStatus} -> {$status}");
+    }
     if (in_array($status, ['ready', 'failed'], true)) return $order;
     $cancelled = (int)($remote['cancelled_amount'] ?? 0);
     if ($status === 'cancelled' && $cancelled === 0) throw new RuntimeException('Cancellation total is missing.');
+    $hash = hash('sha256', json_encode($remote, JSON_THROW_ON_ERROR));
     $db->begin_transaction();
     try {
-        $hash = hash('sha256', json_encode($remote, JSON_THROW_ON_ERROR));
+        $existingEvent = $db->prepare("SELECT id FROM gangnamunni_payment_events WHERE payment_id=? AND payload_sha256=? LIMIT 1");
+        $existingEvent->bind_param('is', $order['id'], $hash);
+        $existingEvent->execute();
+        if ($existingEvent->get_result()->num_rows > 0) {
+            $db->commit();
+            return booking_payment_by_merchant($db, $order['merchant_uid']);
+        }
         if ($order['status'] === 'pending') {
             platform_payment_mark_verified($db, $order['merchant_uid'], $provider, $remote['transaction_id'],
                 'paid:' . $remote['transaction_id'], (int)$remote['amount'], $hash, $source, (int)$remote['paid_at'], false);
@@ -44,11 +82,14 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
         }
         if ($cancelled < (int)$order['refunded_amount']) throw new RuntimeException('Provider refund total regressed.');
         if ($cancelled > (int)$order['refunded_amount']) {
+            $refundDelta = $cancelled - (int)$order['refunded_amount'];
             platform_payment_record_refund($db, (int)$order['id'], $provider,
                 'refund:' . $remote['transaction_id'] . ':' . $cancelled,
-                $cancelled - (int)$order['refunded_amount'], $hash, false);
+                $refundDelta, $hash, false);
+            if ($source === 'webhook') {
+                booking_payment_refund_audit($db, $order, $refundDelta, 'webhook', 0, 'PortOne Webhook');
+            }
         }
-        // A webhook/cron may confirm a refund whose HTTP response was lost.
         $confirmed = $db->prepare("UPDATE gangnamunni_payment_refund_requests SET status='succeeded',completed_at=NOW()
             WHERE payment_id=? AND status='pending' AND refunded_before+amount<=?");
         $confirmed->bind_param('ii', $order['id'], $cancelled);
@@ -65,14 +106,11 @@ function booking_payment_sync(mysqli $db, string $merchant, string $source = 'se
     $client = $client ?? new BookingPortOneClient();
     return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $source, $client) {
         $order = booking_payment_by_merchant($db, $merchant);
-        // Remote data is fetched AFTER acquiring the lock to avoid stale observations.
-        // V2 keys a payment by the id we issued, so a transaction id supplied by a
-        // browser redirect or webhook body is never used to decide what to fetch.
         return booking_payment_apply_remote($db, $order, $client->payment($merchant), $source);
     });
 }
 function booking_payment_refund(mysqli $db, string $merchant, int $amount, string $reason, string $requestId, int $actorId, ?BookingPortOneClient $client = null): array {
-    if (!preg_match('/^[a-f0-9]{64}$/D', $requestId) || $actorId <= 0 || trim($reason) === '' || strlen($reason) > 500) throw new InvalidArgumentException('Invalid refund request.');
+    if (!preg_match('/^[a-f0-9]{64}$/D', $requestId) || $actorId < 0 || trim($reason) === '' || strlen($reason) > 500) throw new InvalidArgumentException('Invalid refund request.');
     $client = $client ?? new BookingPortOneClient();
     return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $amount, $reason, $requestId, $actorId, $client) {
         $order = booking_payment_by_merchant($db, $merchant);
@@ -83,8 +121,13 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
         $request->bind_param('s', $requestId);
         $request->execute();
         $previous = $request->get_result()->fetch_assoc();
-        if ($previous && ((int)$previous['payment_id'] !== (int)$order['id'] || (int)$previous['amount'] !== $amount)) {
-            throw new RuntimeException('Conflicting refund request ID.');
+        if ($previous) {
+            if ((int)$previous['payment_id'] !== (int)$order['id']) {
+                throw new RuntimeException('Refund ID conflict: payment mismatch.');
+            }
+            if ((int)$previous['amount'] !== $amount) {
+                throw new RuntimeException('Refund ID conflict: amount mismatch.');
+            }
         }
         $before = (int)$order['refunded_amount'];
         $remote = $client->payment($merchant);
@@ -105,21 +148,26 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
         $pending->execute();
         if ($pending->get_result()->num_rows) throw new RuntimeException('An earlier refund requires reconciliation.');
         if ((int)$order['refunded_amount'] !== $before) {
-            // A prior timed-out cancellation succeeded: sync it; do not send another refund.
             throw new RuntimeException('Refund state refreshed. Review the remaining amount before making a new request.');
         }
-        $remaining = (int)$order['amount'] - (int)$order['refunded_amount'];
-        if (!in_array($order['status'], ['paid', 'partially_refunded'], true) || $amount <= 0 || $amount > $remaining) {
-            throw new RuntimeException('Invalid refund amount or state.');
+        $orderAmount = (int)$order['amount'];
+        $refundedAmount = (int)$order['refunded_amount'];
+        if ($orderAmount <= 0) {
+            throw new RuntimeException('Invalid order amount in database.');
+        }
+        $remaining = $orderAmount - $refundedAmount;
+        if (!in_array($order['status'], ['paid', 'partially_refunded'], true)) {
+            throw new RuntimeException('Cannot refund order in ' . $order['status'] . ' status.');
+        }
+        if ($amount <= 0 || $amount > $remaining) {
+            throw new RuntimeException('Refund amount must be 1-' . $remaining);
         }
         $save = $db->prepare("INSERT INTO gangnamunni_payment_refund_requests (request_id,payment_id,amount,refunded_before,actor_id,reason) VALUES (?,?,?,?,?,?)");
         $save->bind_param('siiiis', $requestId, $order['id'], $amount, $before, $actorId, $reason);
-        $save->execute(); // Persist intent before any remote side effect.
+        $save->execute();
         try {
             $client->cancel($merchant, $amount, $remaining, $reason);
         } catch (BookingPortOneRejectedException $e) {
-            // A valid PortOne error response confirms the request was rejected.
-            // Transport errors and timeouts remain pending to prevent double refunds.
             $failed = $db->prepare("UPDATE gangnamunni_payment_refund_requests SET status='failed',completed_at=NOW() WHERE request_id=?");
             $failed->bind_param('s', $requestId);
             $failed->execute();
@@ -130,6 +178,7 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
         $done = $db->prepare("UPDATE gangnamunni_payment_refund_requests SET status='succeeded',completed_at=NOW() WHERE request_id=?");
         $done->bind_param('s', $requestId);
         $done->execute();
+        booking_payment_refund_audit($db, $result, $amount, $actorId > 0 ? 'admin' : 'system', $actorId, $actorId > 0 ? 'Admin (' . $actorId . ')' : 'System');
         return $result;
     });
 }

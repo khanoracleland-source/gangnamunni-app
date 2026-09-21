@@ -1,5 +1,4 @@
--- Booking schema migration — deploy once with a database administrator account.
--- Application/web requests never execute these ALTER statements.
+
 
 DROP PROCEDURE IF EXISTS gnu_bookings_upgrade;
 DELIMITER //
@@ -23,6 +22,16 @@ BEGIN
   ) THEN
     ALTER TABLE gangnamunni_bookings
       ADD COLUMN doctor_name VARCHAR(100) NULL AFTER doctor_id;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'gangnamunni_bookings'
+      AND column_name = 'refund_status'
+  ) THEN
+    ALTER TABLE gangnamunni_bookings
+      ADD COLUMN refund_status VARCHAR(20) NOT NULL DEFAULT 'not_applicable' AFTER status;
   END IF;
 
   IF NOT EXISTS (

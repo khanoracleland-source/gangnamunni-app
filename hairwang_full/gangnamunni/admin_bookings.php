@@ -29,12 +29,15 @@ function admin_bookings_json_response($success, $message, $type = 'success', arr
     exit;
 }
 
-function admin_booking_status_action_options($current_status, array $labels, $has_doctor = false) {
+function admin_booking_status_action_options($current_status, array $labels, $has_doctor = false, $payment_status = '', $remaining_refund = 0) {
     $flow_actions = [
         'pending' => [['checking', '병원 확인 중']],
         'hospital_checking' => $has_doctor ? [['confirm', '예약확정'], ['cancel', '예약취소']] : [['cancel', '예약취소']],
         'confirmed' => [['complete', '시술완료']],
     ];
+    if ($current_status === 'cancelled' && in_array($payment_status, ['paid', 'partially_refunded'], true) && (int)$remaining_refund > 0) {
+        $flow_actions['cancelled'] = [['refund', '수동 환불완료 (' . number_format((int)$remaining_refund) . '원)']];
+    }
     $current_label = $labels[$current_status] ?? $current_status;
     echo '<option value="" selected disabled>현재: ' . htmlspecialchars($current_label, ENT_QUOTES) . '</option>';
     foreach ($flow_actions[$current_status] ?? [] as $option) {
@@ -57,6 +60,21 @@ if (!$_booking_schema_ok) {
     exit('예약 스키마 업데이트가 필요합니다. 관리자에게 문의해주세요.');
 }
 @mysqli_query($connect, "ALTER TABLE gangnamunni_bookings MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending'");
+@mysqli_query($connect, "ALTER TABLE gangnamunni_bookings ADD COLUMN IF NOT EXISTS refund_status VARCHAR(20) NOT NULL DEFAULT 'not_applicable' AFTER status");
+@mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_refund_audit (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    booking_id BIGINT UNSIGNED NOT NULL,
+    payment_id BIGINT UNSIGNED NOT NULL,
+    amount BIGINT UNSIGNED NOT NULL,
+    actor_type ENUM('system','admin','webhook') NOT NULL,
+    actor_id BIGINT UNSIGNED DEFAULT NULL,
+    actor_name VARCHAR(191) NOT NULL DEFAULT '',
+    status ENUM('pending','completed','failed') NOT NULL DEFAULT 'completed',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_refund_audit_booking (booking_id,created_at),
+    KEY idx_refund_audit_payment (payment_id,created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 $booking_hospital_ids = get_strict_admin_hospital_ids($connect);
 $booking_hosp_in = $booking_hospital_ids === null
@@ -90,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'export_
     mysqli_stmt_execute($export_stmt);
     $export_result = mysqli_stmt_get_result($export_stmt);
     $export_rows = [];
-    $export_status_labels = ['pending'=>'대기중', 'hospital_checking'=>'병원 확인 중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'no_show'=>'노쇼'];
+    $export_status_labels = ['pending'=>'대기중', 'hospital_checking'=>'병원 확인 중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'refunded'=>'환불완료', 'no_show'=>'노쇼'];
     while ($export_row = mysqli_fetch_assoc($export_result)) {
         $export_row['status'] = $export_status_labels[$export_row['status']] ?? $export_row['status'];
         $export_rows[] = $export_row;
@@ -133,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'export_
                 status, doctor_name, price, memo, cancel_reason, created_at
          FROM gangnamunni_bookings WHERE {$monthly_where}
          ORDER BY hospital_name ASC, created_at DESC");
-    $monthly_status_labels = ['pending'=>'대기중', 'hospital_checking'=>'병원 확인 중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'no_show'=>'노쇼'];
+    $monthly_status_labels = ['pending'=>'대기중', 'hospital_checking'=>'병원 확인 중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'refunded'=>'환불완료', 'no_show'=>'노쇼'];
     $monthly_sheets = [];
     if ($monthly_result) {
         while ($monthly_row = mysqli_fetch_assoc($monthly_result)) {
@@ -185,7 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
     $id = intval($_POST['id'] ?? 0);
     $action = $_POST['action'];
-    $allowed = ['checking', 'confirm', 'cancel', 'complete'];
+    $allowed = ['checking', 'confirm', 'cancel', 'complete', 'refund'];
     $_act_hin = $booking_hosp_in;
     if ($id > 0 && $_act_hin !== null) {
         $_own_r = mysqli_query($connect, "SELECT 1 FROM gangnamunni_bookings WHERE id={$id} AND hospital_id IN (" . $_act_hin . ") LIMIT 1");
@@ -196,6 +214,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
     if ($id > 0 && in_array($action, $allowed)) {
+        if ($action === 'refund') {
+            require_once __DIR__ . '/includes/payment_core.php';
+            $current_scope = $_act_hin !== null ? " AND b.hospital_id IN ({$_act_hin})" : '';
+            $current_result = mysqli_query($connect,
+                "SELECT b.status AS booking_status, p.id AS payment_id, p.provider, p.status AS payment_status,
+                        p.amount, p.refunded_amount
+                 FROM gangnamunni_bookings b
+                 JOIN gangnamunni_platform_payments p ON p.payment_type='booking' AND p.booking_id=b.id
+                 WHERE b.id={$id}{$current_scope} LIMIT 1");
+            $row = $current_result ? mysqli_fetch_assoc($current_result) : null;
+            if (!$row || $row['booking_status'] !== 'cancelled'
+                || !in_array($row['provider'], ['portone', 'portone_test'], true)
+                || !in_array($row['payment_status'], ['paid', 'partially_refunded'], true)) {
+                $msg = '환불완료로 변경할 수 없는 상태입니다.';
+                $msg_type = 'danger';
+                goto skip_action;
+            }
+            $remaining_refund = (int)$row['amount'] - (int)$row['refunded_amount'];
+            if ($remaining_refund <= 0) {
+                $msg = '환불할 남은 금액이 없습니다.';
+                $msg_type = 'warning';
+                goto skip_action;
+            }
+            try {
+                platform_payment_record_refund(
+                    $connect,
+                    (int)$row['payment_id'],
+                    (string)$row['provider'],
+                    'admin_refund:' . $row['payment_id'] . ':' . $remaining_refund,
+                    $remaining_refund,
+                    hash('sha256', 'admin-refund:' . $id . ':' . $row['payment_id'] . ':' . $remaining_refund . ':' . ($_SESSION['ad_admin_id'] ?? 0))
+                );
+                $update_booking = mysqli_prepare($connect,
+                    "UPDATE gangnamunni_bookings SET status='refunded', refund_status='refunded', updated_at=NOW() WHERE id=?");
+                mysqli_stmt_bind_param($update_booking, 'i', $id);
+                if (!mysqli_stmt_execute($update_booking)) {
+                    throw new RuntimeException('Booking status update failed.');
+                }
+                mysqli_stmt_close($update_booking);
+
+                $audit = mysqli_prepare($connect,
+                    "INSERT INTO gangnamunni_refund_audit
+                        (booking_id,payment_id,amount,actor_type,actor_id,actor_name,status)
+                     VALUES (?, ?, ?, 'admin', ?, ?, 'completed')");
+                $actor_id = (int)($_SESSION['ad_admin_id'] ?? 0);
+                $actor_name = 'Admin (' . $actor_id . ')';
+                mysqli_stmt_bind_param($audit, 'iiiis', $id, $row['payment_id'], $remaining_refund, $actor_id, $actor_name);
+                if (!mysqli_stmt_execute($audit)) {
+                    throw new RuntimeException('Refund audit insert failed.');
+                }
+                mysqli_stmt_close($audit);
+                $msg = '수동 환불완료로 변경되었습니다.';
+                $msg_type = 'success';
+                if ($is_admin_bookings_ajax) {
+                    admin_bookings_json_response(true, $msg, $msg_type, [
+                        'booking_id' => $id,
+                        'status' => 'refunded',
+                        'reload' => true,
+                    ]);
+                }
+                goto skip_action;
+            } catch (Throwable $e) {
+                error_log('[admin_bookings] refund status update failed: ' . $e->getMessage());
+                $msg = '환불 상태 변경에 실패했습니다. 다시 시도해주세요.';
+                $msg_type = 'danger';
+                goto skip_action;
+            }
+        }
         $status_map = ['checking' => 'hospital_checking', 'confirm' => 'confirmed', 'cancel' => 'cancelled', 'complete' => 'completed'];
         $new_status = $status_map[$action];
         $current_scope = $_act_hin !== null ? " AND hospital_id IN ({$_act_hin})" : '';
@@ -424,7 +510,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_admin_bookings_ajax) {
 }
 
 $is_super_admin_role = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
-$allowed_filter_statuses = ['pending', 'hospital_checking', 'confirmed', 'completed', 'cancelled', 'no_show'];
+$allowed_filter_statuses = ['pending', 'hospital_checking', 'confirmed', 'completed', 'cancelled', 'refunded', 'no_show'];
 $filter_status = (string)($_GET['status'] ?? '');
 if (!in_array($filter_status, $allowed_filter_statuses, true)) $filter_status = '';
 $filter_date = trim((string)($_GET['date'] ?? ''));
@@ -486,8 +572,8 @@ $booking_payments_table_exists = $_payment_table_check && mysqli_num_rows($_paym
 require_once __DIR__ . '/includes/booking_payment_access.php';
 $booking_preview_table_exists = $connect->query("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gangnamunni_booking_payment_previews'")->num_rows > 0;
 $booking_payment_select = $booking_payments_table_exists
-    ? "p.status AS payment_status, p.amount AS payment_amount, p.paid_at AS payment_paid_at, p.provider AS payment_provider"
-    : "NULL AS payment_status, NULL AS payment_amount, NULL AS payment_paid_at";
+    ? "p.status AS payment_status, p.amount AS payment_amount, p.refunded_amount AS payment_refunded_amount, p.paid_at AS payment_paid_at, p.provider AS payment_provider"
+    : "NULL AS payment_status, NULL AS payment_amount, NULL AS payment_refunded_amount, NULL AS payment_paid_at, NULL AS payment_provider";
 $booking_payment_select .= $booking_preview_table_exists
     ? ", EXISTS(SELECT 1 FROM gangnamunni_booking_payment_previews pp WHERE pp.booking_id=b.id) AS payment_preview"
     : ", 0 AS payment_preview";
@@ -533,7 +619,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'export_
     mysqli_stmt_execute($list_export_stmt);
     $list_export_result = mysqli_stmt_get_result($list_export_stmt);
     $list_export_rows = [];
-    $list_export_status_labels = ['pending'=>'대기중', 'hospital_checking'=>'병원 확인 중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'no_show'=>'노쇼'];
+    $list_export_status_labels = ['pending'=>'대기중', 'hospital_checking'=>'병원 확인 중', 'confirmed'=>'확정', 'completed'=>'완료', 'cancelled'=>'취소', 'refunded'=>'환불완료', 'no_show'=>'노쇼'];
     while ($list_export_row = mysqli_fetch_assoc($list_export_result)) {
         $list_export_row['status'] = $list_export_status_labels[$list_export_row['status']] ?? $list_export_row['status'];
         $list_export_rows[] = $list_export_row;
@@ -594,7 +680,7 @@ if ($_doc_hids) {
     }
 }
 
-$stats = ['total' => 0, 'pending' => 0, 'hospital_checking' => 0, 'confirmed' => 0, 'cancelled' => 0, 'completed' => 0, 'today' => 0];
+$stats = ['total' => 0, 'pending' => 0, 'hospital_checking' => 0, 'confirmed' => 0, 'cancelled' => 0, 'refunded' => 0, 'completed' => 0, 'today' => 0];
 $stats_conditions = [];
 if ($hosp_in !== null) $stats_conditions[] = "hospital_id IN (" . $hosp_in . ")";
 if ($filter_hospital > 0) $stats_conditions[] = "hospital_id=" . $filter_hospital;
@@ -619,8 +705,20 @@ $build_booking_url = static function (array $overrides = []) use ($filter_hospit
 };
 
 function admin_booking_payment_badge(array $booking): string {
+    $refund_status = (string)($booking['refund_status'] ?? 'not_applicable');
     $payment_status = (string)($booking['payment_status'] ?? '');
     $booking_status = (string)($booking['status'] ?? '');
+    if ($refund_status === 'not_refunded') {
+        $remaining = max(0, (int)($booking['payment_amount'] ?? 0) - (int)($booking['payment_refunded_amount'] ?? 0));
+        $title = $remaining > 0 ? ' title="남은 환불: ' . number_format($remaining) . '원"' : '';
+        return '<span class="badge bg-warning text-dark"' . $title . '>환불 대기</span>';
+    }
+    if ($refund_status === 'refunded' || $payment_status === 'refunded' || $booking_status === 'refunded') {
+        return '<span class="badge bg-info text-dark">환불완료</span>';
+    }
+    if ($booking_status === 'cancelled' && in_array($payment_status, ['paid', 'partially_refunded'], true)) {
+        return '<span class="badge bg-warning text-dark">환불 대기</span>';
+    }
     if (in_array($booking['payment_provider'] ?? '', ['mock_booking_payment','portone_test'], true)) {
         return '<span class="badge bg-secondary">테스트 결제</span>';
     }
@@ -631,9 +729,6 @@ function admin_booking_payment_badge(array $booking): string {
     }
     if ($payment_status === 'partially_refunded') {
         return '<span class="badge bg-info text-dark">부분환불</span>';
-    }
-    if ($payment_status === 'refunded') {
-        return '<span class="badge bg-info text-dark">환불완료</span>';
     }
     if (!empty($booking['payment_preview']) && $payment_status === 'pending') {
         return '<span class="badge bg-secondary">결제 없이 진행</span>';
@@ -718,6 +813,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <option value="confirmed" <?php echo $filter_status === 'confirmed' ? 'selected' : ''; ?>>확정 (<?php echo number_format((int)$stats['confirmed']); ?>건)</option>
                         <option value="completed" <?php echo $filter_status === 'completed' ? 'selected' : ''; ?>>완료 (<?php echo number_format((int)$stats['completed']); ?>건)</option>
                         <option value="cancelled" <?php echo $filter_status === 'cancelled' ? 'selected' : ''; ?>>취소 (<?php echo number_format((int)$stats['cancelled']); ?>건)</option>
+                        <option value="refunded" <?php echo $filter_status === 'refunded' ? 'selected' : ''; ?>>환불완료 (<?php echo number_format((int)$stats['refunded']); ?>건)</option>
                         <option value="no_show" <?php echo $filter_status === 'no_show' ? 'selected' : ''; ?>>노쇼 (<?php echo number_format((int)($stats['no_show'] ?? 0)); ?>건)</option>
                     </select>
                 </div>
@@ -813,8 +909,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                                     <tbody>
                                     <?php foreach ($hospital_bookings as $hospital_booking):
                                         $group_status = (string)($hospital_booking['status'] ?? 'pending');
-                                        $group_badges = ['pending'=>'warning text-dark','hospital_checking'=>'secondary','confirmed'=>'success','completed'=>'info','cancelled'=>'danger','no_show'=>'secondary'];
-                                        $group_labels = ['pending'=>'대기중','hospital_checking'=>'병원 확인 중','confirmed'=>'확정','completed'=>'완료','cancelled'=>'취소','no_show'=>'노쇼'];
+                                        $group_badges = ['pending'=>'warning text-dark','hospital_checking'=>'secondary','confirmed'=>'success','completed'=>'info','cancelled'=>'danger','refunded'=>'info','no_show'=>'secondary'];
+                                        $group_labels = ['pending'=>'대기중','hospital_checking'=>'병원 확인 중','confirmed'=>'확정','completed'=>'완료','cancelled'=>'취소','refunded'=>'환불완료','no_show'=>'노쇼'];
                                     ?>
                                     <tr data-booking-id="<?php echo (int)$hospital_booking['id']; ?>">
                                         <td><strong><?php echo htmlspecialchars($hospital_booking['name']); ?></strong></td>
@@ -836,10 +932,12 @@ require_once __DIR__ . '/includes/admin_header.php';
                                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                                 <input type="hidden" name="id" value="<?php echo (int)$hospital_booking['id']; ?>">
                                                 <input type="hidden" name="open_hospital_id" value="<?php echo $hospital_id; ?>">
-                                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($group_status, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($group_status, ['cancelled', 'completed', 'no_show'], true) ? 'disabled' : 'required'; ?>>
-                                                    <?php admin_booking_status_action_options($group_status, $group_labels, !empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== ''); ?>
+                                                <?php $group_remaining_refund = max(0, (int)($hospital_booking['payment_amount'] ?? 0) - (int)($hospital_booking['payment_refunded_amount'] ?? 0)); ?>
+                                                <?php $group_can_refund = $group_status === 'cancelled' && in_array((string)($hospital_booking['payment_status'] ?? ''), ['paid', 'partially_refunded'], true) && $group_remaining_refund > 0; ?>
+                                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($group_status, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($group_status, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$group_can_refund ? 'disabled' : 'required'; ?>>
+                                                    <?php admin_booking_status_action_options($group_status, $group_labels, !empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== '', (string)($hospital_booking['payment_status'] ?? ''), $group_remaining_refund); ?>
                                                 </select>
-                                                <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경" <?php echo in_array($group_status, ['cancelled', 'completed', 'no_show'], true) ? 'disabled' : ''; ?>><i class="bi bi-arrow-repeat"></i></button>
+                                                <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경" <?php echo in_array($group_status, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$group_can_refund ? 'disabled' : ''; ?>><i class="bi bi-arrow-repeat"></i></button>
                                             </form>
                                         </td>
                                     </tr>
@@ -902,8 +1000,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td><?php echo render_photo_thumbnails($b['photo_urls'] ?? null, 36); ?></td>
                         <td>
                             <?php
-                            $badge_map = ['pending' => 'warning', 'hospital_checking' => 'secondary', 'confirmed' => 'success', 'completed' => 'info', 'cancelled' => 'danger', 'no_show' => 'secondary'];
-                            $label_map = ['pending' => '대기중', 'hospital_checking' => '병원 확인 중', 'confirmed' => '확정', 'completed' => '완료', 'cancelled' => '취소', 'no_show' => '노쇼'];
+                            $badge_map = ['pending' => 'warning', 'hospital_checking' => 'secondary', 'confirmed' => 'success', 'completed' => 'info', 'cancelled' => 'danger', 'refunded' => 'info', 'no_show' => 'secondary'];
+                            $label_map = ['pending' => '대기중', 'hospital_checking' => '병원 확인 중', 'confirmed' => '확정', 'completed' => '완료', 'cancelled' => '취소', 'refunded' => '환불완료', 'no_show' => '노쇼'];
                             $st = $b['status'] ?? 'pending';
                             ?>
                             <span class="badge bg-<?php echo $badge_map[$st] ?? 'secondary'; ?>" data-status-badge><?php echo $label_map[$st] ?? $st; ?></span>
@@ -930,10 +1028,12 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <form method="post" class="d-flex align-items-center gap-1 js-admin-status-form">
                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
-                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($st, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($st, ['cancelled', 'completed', 'no_show'], true) ? 'disabled' : 'required'; ?>>
-                                    <?php admin_booking_status_action_options($st, $label_map, !empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== ''); ?>
+                                <?php $remaining_refund = max(0, (int)($b['payment_amount'] ?? 0) - (int)($b['payment_refunded_amount'] ?? 0)); ?>
+                                <?php $can_refund = $st === 'cancelled' && in_array((string)($b['payment_status'] ?? ''), ['paid', 'partially_refunded'], true) && $remaining_refund > 0; ?>
+                                <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($st, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($st, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$can_refund ? 'disabled' : 'required'; ?>>
+                                    <?php admin_booking_status_action_options($st, $label_map, !empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== '', (string)($b['payment_status'] ?? ''), $remaining_refund); ?>
                                 </select>
-                                <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경" <?php echo in_array($st, ['cancelled', 'completed', 'no_show'], true) ? 'disabled' : ''; ?>>
+                                <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경" <?php echo in_array($st, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$can_refund ? 'disabled' : ''; ?>>
                                     <i class="bi bi-arrow-repeat"></i>
                                 </button>
                             </form>
@@ -1105,11 +1205,11 @@ function cancelBooking(id) {
 }
 const BOOKING_STATUS_LABELS = {
     pending: '대기중', hospital_checking: '병원 확인 중', confirmed: '확정',
-    completed: '완료', cancelled: '취소', no_show: '노쇼'
+    completed: '완료', cancelled: '취소', refunded: '환불완료', no_show: '노쇼'
 };
 const BOOKING_STATUS_BADGES = {
     pending: 'warning text-dark', hospital_checking: 'secondary', confirmed: 'success',
-    completed: 'info', cancelled: 'danger', no_show: 'secondary'
+    completed: 'info', cancelled: 'danger', refunded: 'info', no_show: 'secondary'
 };
 function getBookingStatusFlowActions(status, hasDoctor) {
     if (status === 'pending') return [['checking', '병원 확인 중']];
@@ -1240,6 +1340,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (button) button.disabled = true;
             postAdminBookingForm(form).then(data => {
                 if (!data.success) throw new Error(data.message || '예약 상태 변경에 실패했습니다.');
+                if (data.reload) {
+                    window.location.reload();
+                    return;
+                }
                 updateBookingStatusUI(data.booking_id, data.status);
                 showAdminBookingMessage(data.message || '예약 상태가 변경되었습니다.', data.type || 'success');
             }).catch(error => {

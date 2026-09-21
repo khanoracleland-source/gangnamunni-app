@@ -45,7 +45,7 @@ $cancel_reason = (string)$_SESSION['booking_cancel_reason'][$booking_id];
 $cancel_reason_parts = explode(': ', $cancel_reason, 2);
 $cancel_reason_choice = $cancel_reason_parts[0];
 $cancel_reason_custom = $cancel_reason_parts[1] ?? '';
-$amount = 0; // A booking price or preview is not money received.
+$amount = 0;
 $payment_status = '';
 $table_check = mysqli_query($connect, "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gangnamunni_platform_payments' LIMIT 1");
 if ($table_check && mysqli_num_rows($table_check)) {
@@ -114,10 +114,10 @@ function cancel_page_now() {
  <div class="money-row"><span class="label">취소날짜/시간</span><span class="value"><?php echo htmlspecialchars(cancel_page_now()); ?></span></div>
  <div class="money-row"><span class="label">취소 수수료</span><span class="value">0</span></div>
  <div class="money-row refund"><span>총 금액(취소/환불)</span><span class="value"><?php echo number_format($refund_amount); ?></span></div>
- <ul class="policy-notes"><li>신용카드 결제 예약 내역은 취소 즉시 카드 승인취소 처리됩니다.</li><li>카드사 승인취소 확인은 영업일 기준 3~5일이 소요될 수 있습니다.</li><li>정확한 환불기간은 해당 카드사로 문의해 주시기 바랍니다.</li></ul>
+ <ul class="policy-notes"><li>결제된 예약은 취소 후 관리자 확인을 거쳐 환불 처리됩니다.</li><li>환불 완료 전까지 관리자 화면에는 환불 안됨 상태로 표시됩니다.</li><li>정확한 환불기간은 해당 카드사로 문의해 주시기 바랍니다.</li></ul>
  <section class="warning"><h2>유의사항</h2><ul><li>예약이 확정된 후 취소 시, 병원 정책에 따라 위약금이 발생할 수 있어요</li><li>포인트 할인 / 이벤트가 적용된 예약은 취소 시 할인 금액이 환수될 수 있어요</li><li>당일 예약 또는 예약 시간 임박 시 취소가 제한될 수 있어요</li><li>예약 취소 후 재예약을 원하시면 다시 시술과 시간을 선택해 주세요</li></ul></section>
  <button type="button" class="agreement-title" onclick="openPolicyModal()"><span>취소 및 환불 규정을 확인해주세요</span><span class="chevron">⌄</span></button>
- <div class="agreement-box">방문 하루 전 오후 5시까지 앱에서 취소하면 100% 환불돼요<br>당일 취소는 병원에 직접 연락해 주세요<label class="agree"><input type="checkbox" id="cancelAgree">위 내용을 모두 확인하였으며, 취소에 동의해요</label></div>
+ <div class="agreement-box">결제된 예약은 취소 후 관리자 확인을 거쳐 환불 처리됩니다<br>당일 취소는 병원에 직접 연락해 주세요<label class="agree"><input type="checkbox" id="cancelAgree">위 내용을 모두 확인하였으며, 취소에 동의해요</label></div>
  <p class="legal">서비스 이용에 관한 개인정보 수집 동의<br>서울미녀는 고객 편의를 위해 예약·앱에서 결제 기능을 제공하며, 위 내용에 동의합니다.</p>
  <div class="final-line"><span>환불 검토 대상 금액</span><strong><?php echo number_format($refund_amount); ?>원</strong></div>
  <button type="button" class="final-btn" id="finalCancelButton" onclick="finalizeCancel()">예약 취소 요청</button><p class="error" id="cancelError"></p>
@@ -126,8 +126,8 @@ function cancel_page_now() {
  <section class="policy-dialog" role="dialog" aria-modal="true" aria-labelledby="policyTitle">
   <div class="policy-dialog-head"><h2 class="policy-dialog-title" id="policyTitle">취소 및 환불 규정을 확인해주세요</h2><button type="button" class="policy-close" onclick="closePolicyModal()" aria-label="닫기">⌃</button></div>
   <div class="policy-body">
-   <p>예약 취소와 결제 환불은 별도로 처리됩니다.</p>
-   <ul><li>운영자가 실제 결제 내역과 병원의 환불 조건을 확인한 후 환불합니다.</li><li>실제 환불이 확인되면 결제 내역에 반영됩니다.</li><li>결제 없이 계속한 예약에는 환불할 결제 금액이 없습니다.</li></ul>
+   <p>결제된 예약은 취소 완료 후 관리자 확인을 거쳐 환불 처리됩니다.</p>
+   <ul><li>환불 가능 금액은 실제 결제 내역 기준으로 계산됩니다.</li><li>환불 완료 전까지 관리자 화면에는 환불 안됨 상태로 표시됩니다.</li><li>결제 없이 계속한 예약에는 환불할 결제 금액이 없습니다.</li></ul>
   </div>
  </section>
 </div>
