@@ -217,18 +217,32 @@ if ($is_super) echo '<div class="px-4 pt-3"><a href="admin_booking_payments.php"
 <style>
 .revenue-wrap{max-width:1280px;margin:auto}.revenue-num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .revenue-link{cursor:pointer}.revenue-link:hover{background:var(--bs-primary-bg-subtle)}
+.revenue-head{display:flex;align-items:center;gap:12px;padding-bottom:18px;margin-bottom:22px;border-bottom:1px solid var(--bs-border-color)}
+.revenue-head-side{flex:0 0 150px}
+.revenue-head-main{flex:1 1 auto}
+/* The theme sets text-align on headings, so inheritance is not enough here. */
+.revenue-head-main h4{display:block;text-align:center;justify-content:center;font-weight:700;letter-spacing:-.01em}
+.revenue-head-main small{display:block;margin-top:5px;text-align:center;line-height:1.5}
+.revenue-head-main small .badge{margin-left:4px;vertical-align:baseline}
+@media (max-width:991.98px){.revenue-head{display:block;padding-bottom:14px;margin-bottom:18px}
+  .revenue-head-side{flex:none}
+  .revenue-head-main h4,.revenue-head-main small{text-align:left;justify-content:flex-start}
+  .revenue-head .revenue-back{margin-bottom:.75rem}}
 </style>
 <div class="revenue-wrap px-3 py-4">
-  <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-    <div>
+  <div class="revenue-head">
+    <div class="revenue-head-side">
+      <?php if ($is_super && $selected_hospital): ?>
+        <a class="revenue-back btn btn-sm btn-outline-secondary" href="?<?=htmlspecialchars(http_build_query(['from'=>$from,'to'=>$to,'sort'=>$sort]))?>"><i class="bi bi-arrow-left"></i> 병원 목록</a>
+      <?php endif; ?>
+    </div>
+    <div class="revenue-head-main">
       <h4 class="mb-1"><i class="bi bi-cash-coin"></i> 예약 결제 매출<?php if ($selected_hospital): ?> / <?=htmlspecialchars($hospital_name)?><?php endif; ?></h4>
       <small class="text-body-secondary">PG에서 검증 완료된 실제 결제만 집계합니다.
         <span class="badge <?=$is_super?'bg-danger':'bg-info'?>"><?=$is_super?'전체 병원':'소속 병원만'?></span>
       </small>
     </div>
-    <?php if ($is_super && $selected_hospital): ?>
-      <a class="btn btn-sm btn-outline-secondary" href="?<?=htmlspecialchars(http_build_query(['from'=>$from,'to'=>$to,'sort'=>$sort]))?>"><i class="bi bi-arrow-left"></i> 병원 목록</a>
-    <?php endif; ?>
+    <div class="revenue-head-side" aria-hidden="true"></div>
   </div>
 
   <?php if ($forbidden): ?><div class="alert alert-danger">다른 병원의 결제 정보에 접근할 수 없습니다.</div><?php endif; ?>
