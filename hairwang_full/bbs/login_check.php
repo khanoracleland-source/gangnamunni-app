@@ -37,11 +37,49 @@ if(function_exists('social_is_login_check')){
 
 $is_need_not_password = run_replace('login_check_need_not_password', $is_social_password_check, $mb_id, $mb_password, $mb, $is_social_login);
 
+$password_valid = isset($mb['mb_id']) && $mb['mb_id']
+    && login_password_check($mb, $mb_password, $mb['mb_password']);
+
+// password_lost.php sends a temporary password before the user clicks the
+// email confirmation link. Accept that pending password on first login and
+// promote it to the real password atomically.
+if (!$is_need_not_password && !$password_valid && !empty($mb['mb_lost_certify'])) {
+    $reset_value = (string)$mb['mb_lost_certify'];
+    $reset_parts = explode(' ', trim($reset_value), 3);
+    $pending_hash = '';
+
+    if (count($reset_parts) === 3
+        && strlen($reset_parts[0]) === 32 && ctype_xdigit($reset_parts[0])
+        && ctype_digit($reset_parts[1]) && time() <= (int)$reset_parts[1]) {
+        $pending_hash = $reset_parts[2];
+    } elseif (count($reset_parts) === 2
+        && strlen($reset_parts[0]) === 32 && ctype_xdigit($reset_parts[0])) {
+        $pending_hash = $reset_parts[1];
+    }
+
+    if ($pending_hash !== '' && check_password($mb_password, $pending_hash)) {
+        $escaped_mb_id = sql_real_escape_string($mb['mb_id']);
+        $escaped_password = sql_real_escape_string($pending_hash);
+        $escaped_certify = sql_real_escape_string($reset_value);
+        $sql = " update {$g5['member_table']}
+                    set mb_password = '{$escaped_password}', mb_lost_certify = ''
+                  where mb_id = '{$escaped_mb_id}' and mb_lost_certify = '{$escaped_certify}' ";
+        sql_query($sql);
+
+        $changed = sql_fetch(" select mb_password, mb_lost_certify from {$g5['member_table']} where mb_id = '{$escaped_mb_id}' ");
+        if (($changed['mb_password'] ?? '') === $pending_hash && empty($changed['mb_lost_certify'])) {
+            $mb['mb_password'] = $pending_hash;
+            $mb['mb_lost_certify'] = '';
+            $password_valid = true;
+        }
+    }
+}
+
 // $is_need_not_password 변수가 true 이면 패스워드를 체크하지 않습니다.
 // 가입된 회원이 아니다. 비밀번호가 틀리다. 라는 메세지를 따로 보여주지 않는 이유는
 // 회원아이디를 입력해 보고 맞으면 또 비밀번호를 입력해보는 경우를 방지하기 위해서입니다.
 // 불법사용자의 경우 회원아이디가 틀린지, 비밀번호가 틀린지를 알기까지는 많은 시간이 소요되기 때문입니다.
-if (!$is_need_not_password && (! (isset($mb['mb_id']) && $mb['mb_id']) || !login_password_check($mb, $mb_password, $mb['mb_password'])) ) {
+if (!$is_need_not_password && !$password_valid) {
 
     run_event('password_is_wrong', 'login', $mb);
 

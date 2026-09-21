@@ -1,15 +1,13 @@
 <?php
 include_once('./_common.php');
-include_once(G5_CAPTCHA_PATH.'/captcha.lib.php');
 
-if ($is_member) {
-    alert("이미 로그인중입니다.", G5_URL);
+$request_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+$is_public_site_request = in_array($request_host, ['seoulbeauty.app', 'www.seoulbeauty.app', 'hms.seoulbeauty.app'], true);
+$canonical_password_lost_url = $is_public_site_request
+    ? '/auth/password_lost.php'
+    : G5_URL.'/gangnamunni/auth/password_lost.php';
+if (function_exists('goto_url')) {
+    goto_url($canonical_password_lost_url);
 }
-
-$g5['title'] = '회원정보 찾기';
-include_once('./_head.sub.php');
-
-$action_url = G5_HTTPS_BBS_URL."/password_lost2.php";
-include_once($member_skin_path.'/password_lost.skin.php');
-
-include_once('./_tail.sub.php');
+header('Location: '.$canonical_password_lost_url, true, 302);
+exit;

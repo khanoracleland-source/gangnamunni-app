@@ -61,7 +61,7 @@ $redirect_url = !empty($url) ? $login_url : urlencode($AFTER_LOGIN_URL);
                         <label for="login_auto_login"> 자동로그인</label>
                     </div>
                     <div class="login_if_lpl">
-                        <a href="<?php echo G5_BBS_URL ?>/password_lost.php">아이디/비밀번호 찾기</a>
+                        <a href="/auth/password_lost.php">아이디/비밀번호 찾기</a>
                     </div>
                 </div>
             </li>

@@ -108,9 +108,11 @@ $recaptcha_request_host = strtolower(preg_replace('/:\\d+$/', '', (string)($_SER
 $recaptcha_is_local = in_array($recaptcha_request_host, ['127.0.0.1', 'localhost', '::1'], true);
 $recaptcha_enabled = !$recaptcha_is_local && $recaptcha_site_key !== '' && $recaptcha_secret !== '';
 if (!function_exists('gnu_verify_recaptcha')) {
-    function gnu_verify_recaptcha($secret, $token, $remote_ip = '', $expected_action = 'login', $expected_host = '') {
+    function gnu_verify_recaptcha($secret, $token, $remote_ip = '', $expected_action = 'login', $expected_hosts = []) {
         if ($secret === '') return 'skip';
         if ($token === '') return 'fail';
+        if (!is_array($expected_hosts)) $expected_hosts = [$expected_hosts];
+        $expected_hosts = array_values(array_filter(array_map('strtolower', $expected_hosts)));
         $post = http_build_query(['secret' => $secret, 'response' => $token, 'remoteip' => $remote_ip]);
         $body = false;
         if (function_exists('curl_init')) {
@@ -129,7 +131,7 @@ if (!function_exists('gnu_verify_recaptcha')) {
         if (empty($r['success'])) return 'fail';
         if (isset($r['score']) && $r['score'] < 0.5) return 'fail';
         if (($r['action'] ?? '') !== $expected_action) return 'fail';
-        if ($expected_host !== '' && strtolower($r['hostname'] ?? '') !== strtolower($expected_host)) return 'fail';
+        if (!empty($expected_hosts) && !in_array(strtolower($r['hostname'] ?? ''), $expected_hosts, true)) return 'fail';
         return 'pass';
     }
 }
@@ -184,13 +186,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
         $retry = max((int)$ip_rate['retry'], (int)$email_rate['retry'], (int)$account_rate['retry']);
         gnu_auth_log('rate_limited', $email, 'retry=' . $retry);
         $login_error = '로그인 시도가 너무 많습니다. ' . $retry . '초 후 다시 시도해주세요.';
-    } elseif ($recaptcha_enabled && gnu_verify_recaptcha($recaptcha_secret, $_POST['recaptcha_token'] ?? '', $request_ip, 'login', $recaptcha_request_host) === 'fail') {
-        gnu_login_rate_hit('ip', $request_ip, 10, 900, true);
-        gnu_login_rate_hit('ip_email', $request_ip . '|' . strtolower($email), 5, 900, true);
-        gnu_login_rate_hit('account', strtolower($email), 20, 3600, true);
-        gnu_auth_log('recaptcha_failed', $email);
-        $login_error = '자동 방지 확인에 실패했습니다. 잠시 후 다시 시도해주세요.';
     } else {
+        $recaptcha_result = $recaptcha_enabled && ($_POST['recaptcha_token'] ?? '') !== ''
+            ? gnu_verify_recaptcha($recaptcha_secret, $_POST['recaptcha_token'] ?? '', $request_ip, 'login', [
+            $recaptcha_request_host,
+            'seoulbeauty.app',
+            'www.seoulbeauty.app',
+            'hms.seoulbeauty.app',
+            ])
+            : ($recaptcha_enabled ? 'empty_token' : 'disabled');
+        if ($recaptcha_result === 'fail' || $recaptcha_result === 'empty_token') {
+            gnu_auth_log('recaptcha_soft_failed', $email, 'result=' . $recaptcha_result . '; host=' . $recaptcha_request_host);
+        }
+
         $mb_id_found = '';
         if ($stmt = mysqli_prepare($connect, "SELECT mb_id FROM {$member_table} WHERE LOWER(mb_email) = LOWER(?) LIMIT 1")) {
             mysqli_stmt_bind_param($stmt, 's', $email);
