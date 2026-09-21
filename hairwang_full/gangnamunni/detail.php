@@ -513,6 +513,7 @@ if ($current_tab === 'reviews') {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <script src="assets/js/app-cache.js" defer></script>
     <style>
         :root {
             --color-primary: #AE1932;
@@ -1089,6 +1090,56 @@ if ($current_tab === 'reviews') {
             color: var(--color-text-primary, #111);
             border-color: var(--color-primary, #c41432);
             box-shadow: 0 3px 12px rgba(0, 0, 0, .06);
+        }
+
+        .procedure-card.is-selected {
+            border-color: var(--color-primary, #c41432);
+            box-shadow: 0 3px 12px rgba(174, 25, 50, .12);
+        }
+
+        .procedure-inline-detail {
+            display: none;
+            margin-bottom: 16px;
+            padding: 18px 20px;
+            border: 1px solid var(--color-primary, #AE1932);
+            background: var(--color-bg-white, #fff);
+            scroll-margin-top: 130px;
+        }
+
+        .procedure-inline-detail.show {
+            display: block;
+        }
+
+        .procedure-inline-title {
+            margin: 0 0 14px;
+            font-size: 18px;
+            line-height: 1.4;
+            font-weight: 800;
+            color: var(--color-text-primary, #111);
+            word-break: keep-all;
+        }
+
+        .procedure-inline-desc {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--color-border, #eee);
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--color-text-secondary, #666);
+            white-space: pre-line;
+        }
+
+        .procedure-inline-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .procedure-inline-actions .btn {
+            display: block;
+            text-decoration: none;
+            padding: 12px;
+            border-radius: 0;
         }
 
         .procedure-name {
@@ -2206,6 +2257,7 @@ if ($current_tab === 'reviews') {
         <!-- 시술목록 탭 (URL 호환성을 위해 tab=events 유지) -->
         <div class="tab-pane <?php echo $current_tab === 'events' ? 'active' : ''; ?>" id="tab-events">
             <h3 id="eventsIntro" style="font-size: 18px; margin-bottom: 16px; scroll-margin-top: 130px;">시술목록</h3>
+            <div id="procedureInlineDetail" class="procedure-inline-detail" aria-live="polite"></div>
             <?php if (!empty($procedure_data)): ?>
             <div class="procedure-list">
                 <?php foreach ($procedure_data as $procedure): ?>
@@ -2217,8 +2269,24 @@ if ($current_tab === 'reviews') {
                     . '&treatment_id=' . (int)($procedure['treatment_id'] ?? 0)
                     . '&treatment=' . urlencode($procedure['name'] ?? '')
                     . $detail_source_qs;
+                $procedure_booking_url = 'booking.php?id=' . (int)$hospital_id
+                    . '&treatment_id=' . (int)($procedure['treatment_id'] ?? 0)
+                    . '&option_id=' . (int)($procedure['option_id'] ?? 0)
+                    . '&treatment=' . urlencode($procedure['name'] ?? '')
+                    . $detail_source_qs;
                 ?>
-                <a class="procedure-card" href="<?php echo htmlspecialchars($procedure_url, ENT_QUOTES, 'UTF-8'); ?>">
+                <a class="procedure-card"
+                   href="<?php echo htmlspecialchars($procedure_url, ENT_QUOTES, 'UTF-8'); ?>"
+                   data-procedure-card="1"
+                   data-treatment-id="<?php echo (int)($procedure['treatment_id'] ?? 0); ?>"
+                   data-option-id="<?php echo (int)($procedure['option_id'] ?? 0); ?>"
+                   data-name="<?php echo htmlspecialchars($procedure['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                   data-display-name="<?php echo htmlspecialchars($procedure['display_name'] ?? $procedure['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                   data-description="<?php echo htmlspecialchars($procedure['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                   data-price="<?php echo $procedure_price; ?>"
+                   data-regular-price="<?php echo $procedure_regular_price; ?>"
+                   data-discount-rate="<?php echo $procedure_discount_rate; ?>"
+                   data-booking-url="<?php echo htmlspecialchars($procedure_booking_url, ENT_QUOTES, 'UTF-8'); ?>">
                     <h4 class="procedure-name"><?php echo htmlspecialchars($procedure['display_name'] ?? $procedure['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?></h4>
                     <span class="procedure-vat">VAT 포함</span>
                     <?php if ($procedure_price > 0): ?>
@@ -2235,6 +2303,99 @@ if ($current_tab === 'reviews') {
                 </a>
                 <?php endforeach; ?>
             </div>
+
+            <script>
+            (function () {
+                var detailBox = document.getElementById('procedureInlineDetail');
+                if (!detailBox) return;
+
+                function escapeHtml(value) {
+                    return String(value || '').replace(/[&<>"']/g, function (char) {
+                        return ({
+                            '&': '&amp;',
+                            '<': '&lt;',
+                            '>': '&gt;',
+                            '"': '&quot;',
+                            "'": '&#039;'
+                        })[char];
+                    });
+                }
+
+                function money(value) {
+                    var number = parseInt(value || '0', 10);
+                    return number > 0 ? number.toLocaleString('ko-KR') : '';
+                }
+
+                function renderProcedure(card, shouldScroll) {
+                    var price = parseInt(card.dataset.price || '0', 10);
+                    var regularPrice = parseInt(card.dataset.regularPrice || '0', 10);
+                    var discountRate = parseInt(card.dataset.discountRate || '0', 10);
+                    var title = card.dataset.displayName || card.dataset.name || '';
+                    var desc = card.dataset.description || '등록된 시술 설명이 없습니다.';
+                    var bookingUrl = card.dataset.bookingUrl || '#';
+
+                    document.querySelectorAll('[data-procedure-card]').forEach(function (el) {
+                        el.classList.toggle('is-selected', el === card);
+                    });
+
+                    detailBox.innerHTML =
+                        '<h4 class="procedure-inline-title">' + escapeHtml(title) + '</h4>' +
+                        '<span class="procedure-vat">VAT 포함</span>' +
+                        '<div class="procedure-price-row">' +
+                            (discountRate > 0 ? '<span class="procedure-discount-rate">' + discountRate + '%</span>' : '') +
+                            (discountRate > 0 && regularPrice > 0 ? '<span class="procedure-regular-price">' + money(regularPrice) + '원</span>' : '') +
+                            (price > 0
+                                ? '<span class="procedure-price-value"><span class="procedure-price">' + money(price) + '</span><span class="procedure-price-unit">원</span></span>'
+                                : '<span class="procedure-price" style="font-size:18px;">가격 문의</span>') +
+                        '</div>' +
+                        '<div class="procedure-inline-desc">' + escapeHtml(desc) + '</div>' +
+                        '<div class="procedure-inline-actions">' +
+                            '<a class="btn btn-primary" href="' + escapeHtml(bookingUrl) + '">예약하기</a>' +
+                        '</div>';
+                    detailBox.classList.add('show');
+
+                    if (window.AppCache) {
+                        window.AppCache.set(
+                            'detail_<?php echo (int)$hospital_id; ?>_selected_procedure',
+                            {
+                                treatmentId: card.dataset.treatmentId || '',
+                                optionId: card.dataset.optionId || '',
+                                name: card.dataset.name || '',
+                                displayName: title,
+                                description: desc,
+                                price: price,
+                                regularPrice: regularPrice,
+                                discountRate: discountRate,
+                                bookingUrl: bookingUrl
+                            },
+                            900
+                        );
+                    }
+
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('treatment_id', card.dataset.treatmentId || '');
+                    url.searchParams.set('treatment', card.dataset.name || '');
+                    window.history.replaceState({}, '', url.toString());
+
+                    if (shouldScroll) {
+                        detailBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+
+                document.querySelectorAll('[data-procedure-card]').forEach(function (card) {
+                    card.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        renderProcedure(card, true);
+                    });
+                });
+
+                var initialTreatmentId = <?php echo json_encode((string)$matched_treatment_id); ?>;
+                if (initialTreatmentId && window.CSS && CSS.escape) {
+                    var initialCard = document.querySelector('[data-procedure-card][data-treatment-id="' + CSS.escape(initialTreatmentId) + '"]');
+                    if (initialCard) renderProcedure(initialCard, false);
+                }
+            })();
+            </script>
 
             <!-- 페이지네이션 -->
             <?php if ($procedure_count > $items_per_page): ?>
