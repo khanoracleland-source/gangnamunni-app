@@ -1,16 +1,108 @@
 <?php
 /** The sidebar and page navigation use the same menu definitions. */
+function admin_menu_default_favorite_keys(): array {
+    return ['hospitals', 'bookings', 'booking_revenue'];
+}
+
+function admin_menu_favorites_ensure_table($connect): void {
+    if (!$connect) return;
+    mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_admin_menu_favorites (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        admin_id INT NOT NULL,
+        menu_key VARCHAR(80) NOT NULL,
+        sort_order INT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_admin_menu (admin_id, menu_key),
+        KEY idx_admin_sort (admin_id, sort_order)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_admin_menu_favorite_state (
+        admin_id INT NOT NULL PRIMARY KEY,
+        initialized TINYINT(1) NOT NULL DEFAULT 1,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+function admin_menu_favorite_keys($connect = null, ?int $admin_id = null): array {
+    if (!$connect) return [];
+    $admin_id = $admin_id ?: (int)($_SESSION['ad_admin_id'] ?? 0);
+    if ($admin_id <= 0) return [];
+
+    admin_menu_favorites_ensure_table($connect);
+
+    $initialized = false;
+    $stmt = mysqli_prepare($connect, "SELECT initialized FROM gangnamunni_admin_menu_favorite_state WHERE admin_id = ? LIMIT 1");
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, 'i', $admin_id);
+        mysqli_stmt_execute($stmt);
+        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        mysqli_stmt_close($stmt);
+        $initialized = !empty($row);
+    }
+
+    if (!$initialized) {
+        $sort = 10;
+        foreach (admin_menu_default_favorite_keys() as $key) {
+            $stmt = mysqli_prepare($connect, "INSERT IGNORE INTO gangnamunni_admin_menu_favorites (admin_id, menu_key, sort_order) VALUES (?, ?, ?)");
+            if (!$stmt) continue;
+            mysqli_stmt_bind_param($stmt, 'isi', $admin_id, $key, $sort);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+            $sort += 10;
+        }
+        $stmt = mysqli_prepare($connect, "INSERT IGNORE INTO gangnamunni_admin_menu_favorite_state (admin_id, initialized) VALUES (?, 1)");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $admin_id);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+    }
+
+    $keys = [];
+    $stmt = mysqli_prepare($connect, "SELECT menu_key FROM gangnamunni_admin_menu_favorites WHERE admin_id = ? ORDER BY sort_order ASC, id ASC");
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, 'i', $admin_id);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        while ($row = mysqli_fetch_assoc($result)) {
+            $keys[] = (string)$row['menu_key'];
+        }
+        mysqli_stmt_close($stmt);
+    }
+
+    return $keys;
+}
+
+function admin_menu_find_items_by_keys(array $menus, array $favorite_keys): array {
+    $wanted = array_flip($favorite_keys);
+    $found = [];
+    foreach ($menus as $menu) {
+        if (!empty($menu['hidden'])) continue;
+        if (isset($menu['children']) && is_array($menu['children'])) {
+            foreach ($menu['children'] as $child) {
+                $key = (string)($child['key'] ?? '');
+                if ($key !== '' && isset($wanted[$key]) && !isset($found[$key])) {
+                    $found[$key] = $child;
+                }
+            }
+            continue;
+        }
+        $key = (string)($menu['key'] ?? '');
+        if ($key !== '' && isset($wanted[$key]) && !isset($found[$key])) {
+            $found[$key] = $menu;
+        }
+    }
+
+    $ordered = [];
+    foreach ($favorite_keys as $key) {
+        if (isset($found[$key])) $ordered[] = $found[$key];
+    }
+    return $ordered;
+}
+
 function admin_sidebar_menus(): array {
     if (!function_exists('term')) require_once __DIR__ . '/industry_terms.php';
     $menus = [
-
-        // ━━ 주요 메뉴 ━━
-        ['type' => 'group', 'label' => '주요 메뉴', 'icon' => 'bi-star-fill', 'key' => 'important', 'children' => [
-            ['url' => 'admin_hospitals.php', 'label' => term('business') . ' 관리', 'icon' => 'bi-building', 'key' => 'hospitals'],
-            ['url' => 'admin_bookings.php', 'label' => '예약 관리', 'icon' => 'bi-calendar-check', 'key' => 'bookings'],
-            ['url' => 'admin_booking_revenue.php', 'label' => '예약 결제 매출', 'icon' => 'bi-cash-coin', 'key' => 'booking_revenue'],
-        ]],
-
         // ━━ 홈 ━━
         ['type' => 'group', 'label' => '대시보드', 'icon' => 'bi-speedometer2', 'key' => 'home_group', 'children' => [
             ['url' => 'dashboard.php', 'label' => '대시보드', 'icon' => 'bi-speedometer2', 'key' => 'dashboard'],
@@ -34,6 +126,7 @@ function admin_sidebar_menus(): array {
         ['type' => 'group', 'label' => '콘텐츠 관리', 'icon' => 'bi-collection', 'key' => 'content', 'children' => [
             ['url' => 'admin_content_hub.php', 'label' => '콘텐츠 허브', 'icon' => 'bi-collection-fill', 'key' => 'content_hub'],
             ['url' => 'admin_recommend.php', 'label' => '메인 추천 병원', 'icon' => 'bi-star', 'key' => 'recommend'],
+            ['url' => 'admin_hospitals.php', 'label' => term('business') . ' 관리', 'icon' => 'bi-building', 'key' => 'hospitals'],
             ['url' => 'admin_hospital_locations.php', 'label' => '병원 노출 순서', 'icon' => 'bi-sort-numeric-down', 'key' => 'hospitals', 'active_key' => 'hospital_locations'],
             ['url' => 'admin_doctors.php', 'label' => term('doctor') . ' 관리', 'icon' => 'bi-person-badge', 'key' => 'doctors'],
             ['url' => 'admin_personnel.php', 'label' => '인력 관리', 'icon' => 'bi-people', 'key' => 'personnel'],
@@ -62,6 +155,7 @@ function admin_sidebar_menus(): array {
             ['url' => 'admin_hospital_wizard.php', 'label' => '병원 등록 마법사', 'icon' => 'bi-building-add', 'key' => 'hospital_wizard'],
             // TEMPORARILY DISABLED: admin_ad_wizard.php (재활성화 시 아래 항목의 주석을 해제)
             // ['url' => 'admin_ad_wizard.php', 'label' => '광고 등록 마법사', 'icon' => 'bi-megaphone-fill', 'key' => 'ad_wizard'],
+            ['url' => 'admin_bookings.php', 'label' => '예약 관리', 'icon' => 'bi-calendar-check', 'key' => 'bookings'],
             ['url' => 'admin_consultations.php', 'label' => '상담 관리', 'icon' => 'bi-chat-dots-fill', 'key' => 'consultations'],
         ]],
         // 등록 관리 그룹
@@ -176,6 +270,11 @@ function admin_sidebar_menus(): array {
             ['url' => 'admin_settlement.php', 'label' => 'CPV 정산 보고서', 'icon' => 'bi-file-earmark-bar-graph', 'key' => 'cpv_settlement'],
         ]],
 
+        // 결제 관리 그룹
+        ['type' => 'group', 'label' => '결제 관리', 'icon' => 'bi-credit-card-2-front', 'key' => 'payment_group', 'children' => [
+            ['url' => 'admin_booking_revenue.php', 'label' => '예약 결제 매출', 'icon' => 'bi-cash-coin', 'key' => 'booking_revenue'],
+        ]],
+
         ['type' => 'divider'],
 
         // 앱 다운로드 그룹
@@ -201,6 +300,20 @@ function admin_sidebar_menus(): array {
 
         // TEMPORARILY DISABLED: 진행사항 group.
     ];
+
+    global $connect;
+    $favorite_keys = admin_menu_favorite_keys($connect ?? null);
+    $favorite_items = admin_menu_find_items_by_keys($menus, $favorite_keys);
+    if (!empty($favorite_items)) {
+        array_unshift($menus, [
+            'type' => 'group',
+            'label' => '주요 메뉴',
+            'icon' => 'bi-star-fill',
+            'key' => 'important',
+            'favorite_group' => true,
+            'children' => $favorite_items,
+        ]);
+    }
 
     // 자동 테스트가 비활성화된 동안 관련 메뉴만 숨기고 다른 자동화 도구는 유지한다.
     if (strtolower(trim((string)getenv('AUTO_TEST_ENABLED'))) !== 'true') {

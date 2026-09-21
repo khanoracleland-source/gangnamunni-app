@@ -41,6 +41,7 @@ if (isset($_COOKIE['sb_open_groups']) && isset($_COOKIE['sb_ver']) && $_COOKIE['
 }
 
 $admin_menus = admin_sidebar_menus();
+$admin_favorite_menu_keys = admin_menu_favorite_keys($connect ?? null);
 
 // 메뉴별 기능 설명 (배너 + 메뉴 안내 페이지에서 공유)
 $menu_descriptions = [
@@ -214,6 +215,47 @@ if (!isset($admin_page_description) && isset($menu_descriptions[$admin_current])
             width: 20px;
             text-align: center;
             margin-right: 8px;
+        }
+
+        .admin-sidebar .admin-menu-row {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            margin: 2px 8px;
+        }
+
+        .admin-sidebar .admin-menu-row .nav-link {
+            flex: 1;
+            margin: 0;
+        }
+
+        .admin-sidebar .admin-menu-favorite {
+            width: 24px;
+            height: 24px;
+            border: 0;
+            background: transparent;
+            color: var(--bs-secondary-color);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            padding: 0;
+            flex: 0 0 24px;
+        }
+
+        .admin-sidebar .admin-menu-favorite:hover {
+            background: var(--bs-tertiary-bg);
+            color: #f59f00;
+        }
+
+        .admin-sidebar .admin-menu-favorite.is-favorite {
+            color: #f59f00;
+        }
+
+        .admin-sidebar .admin-menu-favorite i {
+            width: auto;
+            margin: 0;
+            font-size: 13px;
         }
 
         /* 메인 콘텐츠 */
@@ -698,7 +740,9 @@ if (isset($connect) && $connect) {
                 if (isset($menu['type']) && $menu['type'] === 'group') {
                     $has_child_perm = false;
                     foreach ($menu['children'] as $ch) {
-                        if (check_permission($ch['key'])) { $has_child_perm = true; break; }
+                        $child_key_for_perm = (string)($ch['key'] ?? '');
+                        if (empty($menu['favorite_group']) && in_array($child_key_for_perm, $admin_favorite_menu_keys, true)) continue;
+                        if (check_permission($child_key_for_perm)) { $has_child_perm = true; break; }
                     }
                     if (!$has_child_perm) continue;
                 } else {
@@ -736,23 +780,35 @@ if (isset($connect) && $connect) {
                 <ul class="nav flex-column ms-3">
                     <?php foreach ($menu['children'] as $child):
                         if (function_exists('check_permission') && !check_permission($child['key'])) continue;
+                        $child_key = (string)($child['key'] ?? '');
+                        $is_favorite = in_array($child_key, $admin_favorite_menu_keys, true);
+                        if (empty($menu['favorite_group']) && $is_favorite) continue;
                     ?>
                     <li class="nav-item">
-                        <a class="nav-link py-1 <?php echo ($admin_current === ($child['active_key'] ?? $child['key'])) ? 'active' : ''; ?>"
-                           href="<?php echo (strpos($child['url'], 'http') === 0) ? $child['url'] : (defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/app/') . $child['url']; ?>"<?php echo isset($child['target']) ? ' target="'.$child['target'].'"' : ''; ?>
-                           style="font-size:12px;">
-                            <i class="bi <?php echo $child['icon']; ?>"></i>
-                            <?php echo $child['label']; ?>
-                            <?php if ($child['key'] === 'bookings' && $sidebar_bookings_pending > 0): ?>
-                            <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_bookings_pending > 99 ? '99+' : $sidebar_bookings_pending; ?></span>
-                            <?php endif; ?>
-                            <?php if ($child['key'] === 'reviews' && $sidebar_reviews_pending > 0): ?>
-                            <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_reviews_pending > 99 ? '99+' : $sidebar_reviews_pending; ?></span>
-                            <?php endif; ?>
-                            <?php if (($child['url'] === 'admin_hospitals.php' || $child['key'] === 'hospital_pending') && $sidebar_hospitals_pending > 0): ?>
-                            <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_hospitals_pending > 99 ? '99+' : $sidebar_hospitals_pending; ?></span>
-                            <?php endif; ?>
-                        </a>
+                        <div class="admin-menu-row">
+                            <button type="button"
+                                    class="admin-menu-favorite <?php echo $is_favorite ? 'is-favorite' : ''; ?>"
+                                    data-menu-key="<?php echo htmlspecialchars($child_key, ENT_QUOTES); ?>"
+                                    title="<?php echo $is_favorite ? '주요 메뉴에서 제거' : '주요 메뉴에 추가'; ?>"
+                                    aria-label="<?php echo $is_favorite ? '주요 메뉴에서 제거' : '주요 메뉴에 추가'; ?>">
+                                <i class="bi <?php echo $is_favorite ? 'bi-star-fill' : 'bi-star'; ?>"></i>
+                            </button>
+                            <a class="nav-link py-1 <?php echo ($admin_current === ($child['active_key'] ?? $child['key'])) ? 'active' : ''; ?>"
+                               href="<?php echo (strpos($child['url'], 'http') === 0) ? $child['url'] : (defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/app/') . $child['url']; ?>"<?php echo isset($child['target']) ? ' target="'.$child['target'].'"' : ''; ?>
+                               style="font-size:12px;">
+                                <i class="bi <?php echo $child['icon']; ?>"></i>
+                                <?php echo $child['label']; ?>
+                                <?php if ($child['key'] === 'bookings' && $sidebar_bookings_pending > 0): ?>
+                                <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_bookings_pending > 99 ? '99+' : $sidebar_bookings_pending; ?></span>
+                                <?php endif; ?>
+                                <?php if ($child['key'] === 'reviews' && $sidebar_reviews_pending > 0): ?>
+                                <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_reviews_pending > 99 ? '99+' : $sidebar_reviews_pending; ?></span>
+                                <?php endif; ?>
+                                <?php if (($child['url'] === 'admin_hospitals.php' || $child['key'] === 'hospital_pending') && $sidebar_hospitals_pending > 0): ?>
+                                <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_hospitals_pending > 99 ? '99+' : $sidebar_hospitals_pending; ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </div>
                     </li>
                     <?php endforeach; ?>
                 </ul>
@@ -856,6 +912,30 @@ if (isset($connect) && $connect) {
     
     // 서브메뉴 전환은 admin_footer.php 의 SPA(fetch)가 담당.
     // 여기서 preventDefault + location.href 를 쓰면 전체 리로드·좌측 흔들림이 난다. (한글 주석)
+
+    document.querySelectorAll('.admin-menu-favorite').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var key = btn.getAttribute('data-menu-key') || '';
+            if (!key || btn.disabled) return;
+            btn.disabled = true;
+            fetch('<?php echo defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '/hairwang/app/'; ?>api_admin_menu_favorite.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({menu_key: key})
+            }).then(function(res) {
+                return res.json();
+            }).then(function(data) {
+                if (!data || !data.success) throw new Error((data && data.message) || 'failed');
+                window.location.reload();
+            }).catch(function() {
+                btn.disabled = false;
+                alert('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            });
+        });
+    });
 
     // 0.5초 후 collapse transition 을 켜던 코드는 제거함 — 그룹 펼침 시 좌측에 슬라이드 효과가 생겨 SPA 와 어긋남 (한글 주석)
 })();
