@@ -48,7 +48,7 @@ if (!$check || mysqli_num_rows($check) === 0) {
 }
 
 // ── 허용 타입 목록 ──────────────────────────────────────────
-$allowed_types = ['all', 'general', 'event', 'raffle', 'system', 'promotion'];
+$allowed_types = ['all', 'general', 'booking', 'event', 'raffle', 'system', 'promotion'];
 
 // ── 라우팅 ──────────────────────────────────────────────────
 $action = $_GET['action'] ?? $_POST['action'] ?? '';

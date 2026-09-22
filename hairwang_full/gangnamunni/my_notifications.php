@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
     if ($action === 'load') {
         $page = max(1, intval($_POST['page'] ?? 1));
         $type = $_POST['type'] ?? 'all';
-        $allowed_types = ['all', 'event', 'system', 'promotion'];
+        $allowed_types = ['all', 'booking', 'event', 'system', 'promotion'];
         if (!in_array($type, $allowed_types)) $type = 'all';
 
         $limit = 20;
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
 
 // --- 초기 데이터 로딩 ---
 $current_type = $_GET['type'] ?? 'all';
-$allowed_types = ['all', 'event', 'system', 'promotion'];
+$allowed_types = ['all', 'booking', 'event', 'system', 'promotion'];
 if (!in_array($current_type, $allowed_types)) $current_type = 'all';
 
 $notifications = [];
@@ -456,6 +456,7 @@ include __DIR__ . '/includes/header.php';
     <!-- 필터 탭 -->
     <div class="noti-tabs" id="notiTabs">
         <button class="noti-tab <?= $current_type === 'all' ? 'active' : '' ?>" data-type="all">전체</button>
+        <button class="noti-tab <?= $current_type === 'booking' ? 'active' : '' ?>" data-type="booking">예약</button>
         <button class="noti-tab <?= $current_type === 'event' ? 'active' : '' ?>" data-type="event">이벤트</button>
         <button class="noti-tab <?= $current_type === 'system' ? 'active' : '' ?>" data-type="system">시스템</button>
         <button class="noti-tab <?= $current_type === 'promotion' ? 'active' : '' ?>" data-type="promotion">프로모션</button>
@@ -603,6 +604,7 @@ include __DIR__ . '/includes/header.php';
     function getEmptyTitle(type) {
         var map = {
             'all': '알림이 없습니다',
+            'booking': '예약 알림이 없습니다',
             'event': '이벤트 알림이 없습니다',
             'system': '시스템 알림이 없습니다',
             'promotion': '프로모션 알림이 없습니다'

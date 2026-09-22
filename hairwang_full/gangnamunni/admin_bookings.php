@@ -9,6 +9,7 @@ require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/hospital_filter.php'; 
 require_once __DIR__ . '/includes/photo_upload_helper.php';
+require_once __DIR__ . '/includes/booking_notifications.php';
 require_admin_login();
 require_permission('bookings');
 if (empty($_SESSION['admin_bookings_csrf'])) {
@@ -27,6 +28,28 @@ function admin_bookings_json_response($success, $message, $type = 'success', arr
         'type' => (string)$type,
     ], $payload), JSON_UNESCAPED_UNICODE);
     exit;
+}
+
+function admin_booking_log_notification_result($context, array $result) {
+    $reason = $result['reason'] ?? null;
+    $missingRecipient = trim((string)($result['member_id'] ?? '')) === '';
+    $pushFailed = (int)($result['push_failed'] ?? 0) > 0;
+    $inAppFailed = array_key_exists('in_app_created', $result) && $result['in_app_created'] === false
+        && $reason !== 'booking_notifications_disabled';
+
+    if (!$missingRecipient && !$pushFailed && !$inAppFailed && $reason === null) {
+        return;
+    }
+
+    error_log(
+        '[admin_bookings] notification result context=' . $context
+        . ', member_id=' . (string)($result['member_id'] ?? '')
+        . ', reason=' . (string)($reason ?? '')
+        . ', in_app=' . (int)($result['in_app_created'] ?? 0)
+        . ', push_sent=' . (int)($result['push_sent'] ?? 0)
+        . ', push_failed=' . (int)($result['push_failed'] ?? 0)
+        . ', push_error=' . (string)($result['push_error'] ?? '')
+    );
 }
 
 function admin_booking_status_action_options($current_status, array $labels, $has_doctor = false, $payment_status = '', $remaining_refund = 0) {
@@ -265,6 +288,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     throw new RuntimeException('Refund audit insert failed.');
                 }
                 mysqli_stmt_close($audit);
+                $refund_booking = booking_notification_fetch_booking_by_id($connect, $id);
+                if ($refund_booking) {
+                    try {
+                        $notify_result = notify_booking_member($connect, $refund_booking, 'refunded');
+                        admin_booking_log_notification_result('refunded:' . $id, $notify_result);
+                    } catch (Throwable $e) {
+                        error_log('[admin_bookings] refund notification failed: ' . $e->getMessage());
+                    }
+                }
                 $msg = '수동 환불완료로 변경되었습니다.';
                 $msg_type = 'success';
                 if ($is_admin_bookings_ajax) {
@@ -409,61 +441,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             } 
         }
 
-        $patient_member_id = trim((string)($booking_row['mb_id'] ?? ''));
-        if ($new_status === 'confirmed' && $booking_row && $patient_member_id === '') {
-            $patient_phone = preg_replace('/[^0-9]/', '', (string)($booking_row['phone'] ?? ''));
-            $member_table = $g5['member_table'] ?? 'g5_member';
-            if ($patient_phone !== '' && preg_match('/^[A-Za-z0-9_]+$/', $member_table)) {
-                $member_stmt = mysqli_prepare($connect,
-                    "SELECT mb_id FROM {$member_table} WHERE REPLACE(REPLACE(mb_hp, '-', ''), ' ', '') = ? LIMIT 1");
-                if ($member_stmt) {
-                    mysqli_stmt_bind_param($member_stmt, 's', $patient_phone);
-                    mysqli_stmt_execute($member_stmt);
-                    $member_row = mysqli_fetch_assoc(mysqli_stmt_get_result($member_stmt));
-                    mysqli_stmt_close($member_stmt);
-                    $patient_member_id = trim((string)($member_row['mb_id'] ?? ''));
-                }
-            }
-        }
-        if ($new_status === 'confirmed' && $booking_row && $patient_member_id !== '') {
+        if ($booking_row && in_array($new_status, ['hospital_checking', 'confirmed', 'completed', 'cancelled'], true)) {
             try {
-                require_once __DIR__ . '/includes/user_notifications.php';
-                require_once __DIR__ . '/includes/admin_fcm.php';
-
-                $notification_title = '예약이 확정되었습니다';
-                $notification_body = trim(
-                    ($booking_row['hospital_name'] ?? '') . ' · '
-                    . ($booking_row['booking_date'] ?? '') . ' '
-                    . substr((string)($booking_row['booking_time'] ?? ''), 0, 5)
-                );
-                $notification_link = SITE_FULL_URL . 'my_appointments.php';
-
-                create_user_notification(
-                    $connect,
-                    $patient_member_id,
-                    'general',
-                    $notification_title,
-                    $notification_body,
-                    $notification_link
-                );
-
-                $patient_push_result = send_push_to_members(
-                    $connect,
-                    [$patient_member_id],
-                    $notification_title,
-                    $notification_body,
-                    $notification_link
-                );
-
-                error_log(
-                    '[admin_bookings] patient approval push: booking_id=' . $id
-                    . ', member_id=' . $patient_member_id
-                    . ', sent=' . (int)($patient_push_result['sent'] ?? 0)
-                    . ', failed=' . (int)($patient_push_result['failed'] ?? 0)
-                );
+                $notify_result = notify_booking_member($connect, $booking_row, $new_status);
+                admin_booking_log_notification_result($new_status . ':' . $id, $notify_result);
             } catch (Throwable $e) {
                 error_log(
-                    '[admin_bookings] patient notification failed (booking already confirmed): '
+                    '[admin_bookings] booking notification failed (booking already committed): '
                     . $e->getMessage()
                 );
             }
@@ -487,6 +471,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $dn = mysqli_real_escape_string($connect, $doc['name']);
                 $assign_scope = $_act_hin !== null ? " AND hospital_id IN ({$_act_hin})" : '';
                 mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id={$doctor_id}, doctor_name='{$dn}' WHERE id={$id}{$assign_scope}");
+                if (mysqli_affected_rows($connect) > 0) {
+                    $notify_booking = booking_notification_fetch_booking_by_id($connect, $id);
+                    if ($notify_booking) {
+                        try {
+                            $notify_result = notify_booking_member($connect, $notify_booking, 'doctor_assigned', ['doctor_name' => $doc['name']]);
+                            admin_booking_log_notification_result('doctor_assigned:' . $id, $notify_result);
+                        } catch (Throwable $e) {
+                            error_log('[admin_bookings] doctor assignment notification failed: ' . $e->getMessage());
+                        }
+                    }
+                }
                 $msg = '담당의사가 배정되었습니다.';
                 $msg_type = 'success';
                 $admin_bookings_ajax_payload = ['booking_id' => $id, 'doctor_id' => $doctor_id, 'doctor_name' => $doc['name']];
@@ -497,6 +492,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         } else {
             $assign_scope = $_act_hin !== null ? " AND hospital_id IN ({$_act_hin})" : '';
             mysqli_query($connect, "UPDATE gangnamunni_bookings SET doctor_id=NULL, doctor_name=NULL WHERE id={$id}{$assign_scope}");
+            if (mysqli_affected_rows($connect) > 0) {
+                $notify_booking = booking_notification_fetch_booking_by_id($connect, $id);
+                if ($notify_booking) {
+                    try {
+                        $notify_result = notify_booking_member($connect, $notify_booking, 'doctor_unassigned');
+                        admin_booking_log_notification_result('doctor_unassigned:' . $id, $notify_result);
+                    } catch (Throwable $e) {
+                        error_log('[admin_bookings] doctor unassignment notification failed: ' . $e->getMessage());
+                    }
+                }
+            }
             $msg = '담당의사 배정이 해제되었습니다.';
             $msg_type = 'success';
             $admin_bookings_ajax_payload = ['booking_id' => $id, 'doctor_id' => 0, 'doctor_name' => ''];

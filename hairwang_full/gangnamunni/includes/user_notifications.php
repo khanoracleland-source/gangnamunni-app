@@ -8,6 +8,7 @@
 // 사용자 알림 타입 정의
 $USER_NOTIFICATION_TYPES = [
     'general'   => ['label' => '일반 알림',   'icon' => 'bi-bell',           'color' => '#6c757d'],
+    'booking'   => ['label' => '예약 알림',   'icon' => 'bi-calendar-check', 'color' => '#AE1932'],
     'event'     => ['label' => '이벤트',      'icon' => 'bi-calendar-event', 'color' => '#AE1932'],
     'raffle'    => ['label' => '응모/추첨',   'icon' => 'bi-gift',           'color' => '#198754'],
     'system'    => ['label' => '시스템',      'icon' => 'bi-gear',           'color' => '#0d6efd'],
