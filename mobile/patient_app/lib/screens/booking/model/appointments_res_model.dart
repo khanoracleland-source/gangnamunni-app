@@ -20,7 +20,10 @@ class AppointmentListRes {
   factory AppointmentListRes.fromJson(Map<String, dynamic> json) {
     return AppointmentListRes(
       status: json['status'] is bool ? json['status'] : false,
-      data: json['data'] is List ? List<AppointmentData>.from(json['data'].map((x) => AppointmentData.fromJson(x))) : [],
+      data: json['data'] is List
+          ? List<AppointmentData>.from(
+              json['data'].map((x) => AppointmentData.fromJson(x)))
+          : [],
       message: json['message'] is String ? json['message'] : "",
     );
   }
@@ -220,7 +223,8 @@ class AppointmentData {
     return AppointmentData(
       id: json['id'] is int ? json['id'] : -1,
       status: json['status'] is String ? json['status'] : "",
-      startDateTime: json['start_date_time'] is String ? json['start_date_time'] : "",
+      startDateTime:
+          json['start_date_time'] is String ? json['start_date_time'] : "",
       userId: json['user_id'] is int ? json['user_id'] : -1,
       userName: json['user_name'] is String ? json['user_name'] : "",
       userImage: json['user_image'] is String ? json['user_image'] : "",
@@ -231,36 +235,69 @@ class AppointmentData {
       doctorId: json['doctor_id'] is int ? json['doctor_id'] : -1,
       doctorName: json['doctor_name'] is String ? json['doctor_name'] : "",
       doctorImage: json['doctor_image'] is String ? json['doctor_image'] : "",
-      doctorMobile: json['doctor_mobile'] is String ? json['doctor_mobile'] : "",
+      doctorMobile:
+          json['doctor_mobile'] is String ? json['doctor_mobile'] : "",
       doctorPhone: json['doctor_phone'] is String ? json['doctor_phone'] : "",
-      appointmentDate: json['appointment_date'] is String ? json['appointment_date'] : "",
-      appointmentTime: json['appointment_time'] is String ? json['appointment_time'] : "",
+      appointmentDate:
+          json['appointment_date'] is String ? json['appointment_date'] : "",
+      appointmentTime:
+          json['appointment_time'] is String ? json['appointment_time'] : "",
       endTime: json['end_time'] is String ? json['end_time'] : "",
       duration: json['duration'] is int ? json['duration'] : -1,
       serviceId: json['service_id'] is int ? json['service_id'] : -1,
       serviceName: json['service_name'] is String ? json['service_name'] : "",
       serviceType: json['service_type'] is String ? json['service_type'] : "",
-      isVideoConsultancy: json['is_video_consultancy'] is bool ? json['is_video_consultancy'] : json['is_video_consultancy'] == 1,
-      serviceImage: json['service_image'] is String ? json['service_image'] : "",
-      categoryName: json['category_name'] is String ? json['category_name'] : "",
-      appointmentExtraInfo: json['appointment_extra_info'] is String ? json['appointment_extra_info'] : "",
+      isVideoConsultancy: json['is_video_consultancy'] is bool
+          ? json['is_video_consultancy']
+          : json['is_video_consultancy'] == 1,
+      serviceImage:
+          json['service_image'] is String ? json['service_image'] : "",
+      categoryName:
+          json['category_name'] is String ? json['category_name'] : "",
+      appointmentExtraInfo: json['appointment_extra_info'] is String
+          ? json['appointment_extra_info']
+          : "",
       totalAmount: json['total_amount'] is num ? json['total_amount'] : 0,
       servicePrice: json['service_price'] is num ? json['service_price'] : 0,
-      discountType: json['discount_type'] is String ? json['discount_type'] : "",
-      discountValue: json['discount_value'] is num ? json['discount_value'] : 0.0,
-      discountAmount: json['discount_amount'] is num ? json['discount_amount'] : 0,
+      discountType:
+          json['discount_type'] is String ? json['discount_type'] : "",
+      discountValue:
+          json['discount_value'] is num ? json['discount_value'] : 0.0,
+      discountAmount:
+          json['discount_amount'] is num ? json['discount_amount'] : 0,
       subtotal: json['subtotal'] is num ? json['subtotal'] : 0,
       serviceTotal: json['service_total'] is num ? json['service_total'] : 0,
-      billingFinalDiscountType: json['billing_final_discount_type'] is String ? json['billing_final_discount_type'] : "",
-      enableFinalBillingDiscount: json['enable_final_billing_discount'] is bool ? json['enable_final_billing_discount'] : json['enable_final_billing_discount'] == 1,
-      billingFinalDiscountValue: json['billing_final_discount_value'] is num ? json['billing_final_discount_value'] : 0,
-      billingFinalDiscountAmount: json['billing_final_discount_amount'] is num ? json['billing_final_discount_amount'] : 0,
+      billingFinalDiscountType: json['billing_final_discount_type'] is String
+          ? json['billing_final_discount_type']
+          : "",
+      enableFinalBillingDiscount: json['enable_final_billing_discount'] is bool
+          ? json['enable_final_billing_discount']
+          : json['enable_final_billing_discount'] == 1,
+      billingFinalDiscountValue: json['billing_final_discount_value'] is num
+          ? json['billing_final_discount_value']
+          : 0,
+      billingFinalDiscountAmount: json['billing_final_discount_amount'] is num
+          ? json['billing_final_discount_amount']
+          : 0,
       paymentStatus: () {
-        final int payStatus = json['payment_status'] is int ? json['payment_status'] : 0;
+        final rawPaymentStatus = json['payment_status'];
+        if (rawPaymentStatus is String &&
+            rawPaymentStatus.isNotEmpty &&
+            int.tryParse(rawPaymentStatus) == null) {
+          return rawPaymentStatus;
+        }
+        final int payStatus = rawPaymentStatus is int
+            ? rawPaymentStatus
+            : int.tryParse(rawPaymentStatus?.toString() ?? '') ?? 0;
         final bool isCancelled = json['status'] == BookingStatusConst.CANCELLED;
-        final bool isAdvanceEnabled = json['is_enable_advance_payment'] == 1 || json['is_enable_advance_payment'] == true;
-        final int advanceStatus = json['advance_payment_status'] is int ? json['advance_payment_status'] : 0;
-        final num remainingAmount = json['remaining_payable_amount'] is num ? json['remaining_payable_amount'] : 0;
+        final bool isAdvanceEnabled = json['is_enable_advance_payment'] == 1 ||
+            json['is_enable_advance_payment'] == true;
+        final int advanceStatus = json['advance_payment_status'] is int
+            ? json['advance_payment_status']
+            : 0;
+        final num remainingAmount = json['remaining_payable_amount'] is num
+            ? json['remaining_payable_amount']
+            : 0;
 
         if (isCancelled) {
           if (payStatus == 1) return PaymentStatus.REFUNDED;
@@ -276,30 +313,57 @@ class AppointmentData {
             return PaymentStatus.ADVANCE_PAID;
           }
           if (payStatus == 1) {
-            return PaymentStatus.ADVANCE_PAID; // advance + full payment (treated as advance paid complete)
+            return PaymentStatus
+                .ADVANCE_PAID; // advance + full payment (treated as advance paid complete)
           }
         }
         if (payStatus == 0) return PaymentStatus.pending;
         return PaymentStatus.failed;
       }(),
-      isEnableAdvancePayment: json['is_enable_advance_payment'] is bool ? json['is_enable_advance_payment'] : json['is_enable_advance_payment'] == 1,
-      advancePaymentAmount: json['advance_payment_amount'] is num ? json['advance_payment_amount'] : 0,
-      advancePaymentStatus: json['advance_payment_status'] is int ? json['advance_payment_status'] : 0,
-      advancePaidAmount: json['advance_paid_amount'] is num ? json['advance_paid_amount'] : 0,
-      remainingPayableAmount: json['remaining_payable_amount'] is num ? json['remaining_payable_amount'] : 0,
+      isEnableAdvancePayment: json['is_enable_advance_payment'] is bool
+          ? json['is_enable_advance_payment']
+          : json['is_enable_advance_payment'] == 1,
+      advancePaymentAmount: json['advance_payment_amount'] is num
+          ? json['advance_payment_amount']
+          : 0,
+      advancePaymentStatus: json['advance_payment_status'] is int
+          ? json['advance_payment_status']
+          : 0,
+      advancePaidAmount:
+          json['advance_paid_amount'] is num ? json['advance_paid_amount'] : 0,
+      remainingPayableAmount: json['remaining_payable_amount'] is num
+          ? json['remaining_payable_amount']
+          : 0,
       googleLink: json['google_link'] is String ? json['google_link'] : "",
       zoomLink: json['zoom_link'] is String ? json['zoom_link'] : "",
-      medicalReport: json['medical_report'] is List ? List<MedicalReport>.from(json['medical_report'].map((x) => MedicalReport.fromJson(x))) : [],
+      medicalReport: json['medical_report'] is List
+          ? List<MedicalReport>.from(
+              json['medical_report'].map((x) => MedicalReport.fromJson(x)))
+          : [],
       encounterId: json['encounter_id'] is int ? json['encounter_id'] : -1,
-      encounterDescription: json['encounter_description'] is String ? json['encounter_description'] : "",
-      encounterStatus: json['encounter_status'] is bool ? json['encounter_status'] : json['encounter_status'] == 1,
-      exclusiveTaxList: json['tax_data'] is List ? List<TaxPercentage>.from(json['tax_data'].map((x) => TaxPercentage.fromJson(x))) : [],
+      encounterDescription: json['encounter_description'] is String
+          ? json['encounter_description']
+          : "",
+      encounterStatus: json['encounter_status'] is bool
+          ? json['encounter_status']
+          : json['encounter_status'] == 1,
+      exclusiveTaxList: json['tax_data'] is List
+          ? List<TaxPercentage>.from(
+              json['tax_data'].map((x) => TaxPercentage.fromJson(x)))
+          : [],
       totalExclusiveTax: json['total_tax'] is num ? json['total_tax'] : 0,
-      totalInclusiveTax: json['total_inclusive_tax'] is num ? json['total_inclusive_tax'] : 0,
-      billingItems: json['billing_items'] is List ? List<BillingItem>.from(json['billing_items'].map((x) => BillingItem.fromJson(x))) : [],
-      reviews: json['reviews'] is Map ? DoctorReviewData.fromJson(json['reviews']) : null,
+      totalInclusiveTax:
+          json['total_inclusive_tax'] is num ? json['total_inclusive_tax'] : 0,
+      billingItems: json['billing_items'] is List
+          ? List<BillingItem>.from(
+              json['billing_items'].map((x) => BillingItem.fromJson(x)))
+          : [],
+      reviews: json['reviews'] is Map
+          ? DoctorReviewData.fromJson(json['reviews'])
+          : null,
       bookForName: json['book_for_name'] is String ? json['book_for_name'] : "",
-      booForImage: json['book_for_image'] is String ? json['book_for_image'] : "",
+      booForImage:
+          json['book_for_image'] is String ? json['book_for_image'] : "",
       createdBy: json['created_by'] is int ? json['created_by'] : -1,
       updatedBy: json['updated_by'] is int ? json['updated_by'] : -1,
       deletedBy: json['deleted_by'] is int ? json['deleted_by'] : -1,
@@ -307,20 +371,34 @@ class AppointmentData {
       updatedAt: json['updated_at'] is String ? json['updated_at'] : "",
       deletedAt: json['deleted_at'] is String ? json['deleted_at'] : "",
       serviceAmount: json['service_amount'] is num ? json['service_amount'] : 0,
-      cancellationCharges: json['cancellation_charge'] is num ? json['cancellation_charge'] : 0,
-      cancellationChargeAmount: json['cancellation_charge_amount'] is num ? json['cancellation_charge_amount'] : 0,
-      cancellationType: json['cancellation_type'] is String ? json['cancellation_type'] : '',
+      cancellationCharges:
+          json['cancellation_charge'] is num ? json['cancellation_charge'] : 0,
+      cancellationChargeAmount: json['cancellation_charge_amount'] is num
+          ? json['cancellation_charge_amount']
+          : 0,
+      cancellationType:
+          json['cancellation_type'] is String ? json['cancellation_type'] : '',
       reason: json['reason'] is String ? json['reason'] : "",
       refundAmount: json['refund_amount'] is num ? json['refund_amount'] : 0,
-      refundStatus: json['refund_status'] is String ? json['refund_status'] : "",
-      durationDiff: json['duration_diff'] is String ? json['duration_diff'] : "",
-      bedAllocation: json['bed_allocation'] is List ? List<dynamic>.from(json['bed_allocation']) : [],
+      refundStatus:
+          json['refund_status'] is String ? json['refund_status'] : "",
+      durationDiff:
+          json['duration_diff'] is String ? json['duration_diff'] : "",
+      bedAllocation: json['bed_allocation'] is List
+          ? List<dynamic>.from(json['bed_allocation'])
+          : [],
       bedPrice: json['bed_price'] is num ? json['bed_price'] : 0,
       bedTypeName: json['bed_type_name'] is String ? json['bed_type_name'] : "",
       bed: json['bed'] is String ? json['bed'] : "",
-      isBedPricePaid: json['is_bed_price_paid'] is bool ? json['is_bed_price_paid'] : json['is_bed_price_paid'] == 1,
-      bedDetails: json['bed_details'] is List ? List<BedDetails>.from(json['bed_details'].map((x) => BedDetails.fromJson(x))) : [],
-      finalTotalAmount: json['final_total_amount'] is num ? json['final_total_amount'] : 0,
+      isBedPricePaid: json['is_bed_price_paid'] is bool
+          ? json['is_bed_price_paid']
+          : json['is_bed_price_paid'] == 1,
+      bedDetails: json['bed_details'] is List
+          ? List<BedDetails>.from(
+              json['bed_details'].map((x) => BedDetails.fromJson(x)))
+          : [],
+      finalTotalAmount:
+          json['final_total_amount'] is num ? json['final_total_amount'] : 0,
     );
   }
 
@@ -379,8 +457,10 @@ class AppointmentData {
       'total_inclusive_tax': totalInclusiveTax,
       'tax_data': exclusiveTaxList.map((e) => e.toJson()).toList(),
       'billing_items': billingItems.map((e) => e.toJson()).toList(),
+      if (reviews != null) 'reviews': reviews!.toJson(),
       if (reviews != null) 'customer_review': reviews!.toJson(),
       'book_for_name': bookForName,
+      'book_for_image': booForImage,
       'book_for_Image': booForImage,
       'created_by': createdBy,
       'updated_by': updatedBy,
@@ -401,7 +481,7 @@ class AppointmentData {
       'bed_type_name': bedTypeName,
       'bed': bed,
       'is_bed_price_paid': isBedPricePaid,
-      'final_total_amount' : finalTotalAmount,
+      'final_total_amount': finalTotalAmount,
     };
   }
 }
@@ -432,7 +512,7 @@ class BedDetails {
   factory BedDetails.fromJson(Map<String, dynamic> json) {
     return BedDetails(
       bedAllocationId:
-      json['bed_allocation_id'] is int ? json['bed_allocation_id'] : -1,
+          json['bed_allocation_id'] is int ? json['bed_allocation_id'] : -1,
       bedId: json['bed_id'] is int ? json['bed_id'] : -1,
       bedTypeId: json['bed_type_id'] is int ? json['bed_type_id'] : -1,
       bedName: json['bed_name'] is String ? json['bed_name'] : "",
@@ -440,7 +520,7 @@ class BedDetails {
       charge: json['charge'] is int ? json['charge'] : -1,
       assignDate: json['assign_date'] is String ? json['assign_date'] : "",
       dischargeDate:
-      json['discharge_date'] is String ? json['discharge_date'] : "",
+          json['discharge_date'] is String ? json['discharge_date'] : "",
       perDayCharge: json['per_day_charge'] is int ? json['per_day_charge'] : -1,
     );
   }

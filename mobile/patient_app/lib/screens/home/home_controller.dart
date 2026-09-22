@@ -5,16 +5,48 @@ import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
 
 import '../../api/home_apis.dart';
+import '../../services/app_cache_service.dart';
+import '../../services/cache_first_controller.dart';
+import '../../utils/api_end_points.dart';
 import '../../utils/app_common.dart';
+import '../../utils/local_storage.dart';
 import '../dashboard/dashboard_controller.dart';
 import 'model/dashboard_res_model.dart';
 
-class HomeController extends GetxController {
-  RxBool isLoading = false.obs;
-  RxBool isRefresh = false.obs;
+class HomeController extends CacheFirstController<DashboardRes> {
+  HomeController(
+      {AppCacheService? cache, Future<DashboardRes> Function()? loader})
+      : super(
+          cache: cache ?? AppCacheService(localStorage),
+          cacheKey: () => AppCacheService.buildKey(
+            endpoint: APIEndPoints.getDashboard,
+            queryParameters: {
+              if (isLoggedIn.value) 'user_id': loginUserData.value.id,
+            },
+          ),
+          load: () async {
+            final response = await (loader ?? HomeServiceApis.getDashboard)();
+            if (!response.status) {
+              throw StateError(response.message.isEmpty
+                  ? '데이터를 불러오지 못했습니다.'
+                  : response.message);
+            }
+            return response;
+          },
+          decode: (json) {
+            if (json['status'] != true || json['data'] is! Map) {
+              throw const FormatException('Invalid dashboard cache');
+            }
+            return DashboardRes.fromJson(json);
+          },
+          encode: (response) => response.toJson(),
+          ttl: AppCacheService.dashboardTtl,
+          maxStale: AppCacheService.dashboardMaxStale,
+        );
+
+  Worker? _scopeWorker;
   late PackageInfoData info;
   TextEditingController searchCont = TextEditingController();
-  Rx<Future<DashboardRes>> getDashboardDetailFuture = Future(() => DashboardRes(data: DashboardData())).obs;
   Rx<DashboardData> dashboardData = DashboardData().obs;
   PageController pageController = PageController();
   RxInt currentPage = 0.obs;
@@ -24,9 +56,13 @@ class HomeController extends GetxController {
   RxInt sliderCurrentPage = 0.obs;
 
   @override
-  void onReady() {
+  void onInit() {
+    super.onInit();
+    _scopeWorker = everAll(
+      [isLoggedIn, loginUserData, selectedLanguageCode],
+      (_) => getDashboardDetail(),
+    );
     init();
-    super.onReady();
   }
 
   Future<void> init() async {
@@ -37,24 +73,27 @@ class HomeController extends GetxController {
 
   ///Get ChooseService List
   Future<void> getDashboardDetail({bool isFromSwipeRefresh = false}) async {
-    if (!isFromSwipeRefresh) {
-      isLoading(true);
-    }
-    getAppConfigurations();
-    await getDashboardDetailFuture(
-      HomeServiceApis.getDashboard(),
-    ).then((value) {
-      handleDashboardRes(value);
-    }).whenComplete(() => isLoading(false));
+    unawaited(getAppConfigurations());
+    await refresh();
+  }
+
+  @override
+  void onData(DashboardRes? data) {
+    handleDashboardRes(data ?? DashboardRes(data: DashboardData()));
   }
 
   void handleDashboardRes(DashboardRes value) {
-    debugPrint('NEARBYCLINIC.LENGTH: ${dashboardData.value.nearByClinic.length}');
-    debugPrint('VALUE.DATA: ${value.data.nearByClinic.length}');
     dashboardData(value.data);
     unreadNotificationCount(value.data.unReadCount);
-    debugPrint('After NEARBYCLINIC.LENGTH: ${dashboardData.value.nearByClinic.length}');
-    //More Logic....
+  }
+
+  @override
+  void onClose() {
+    _scopeWorker?.dispose();
+    searchCont.dispose();
+    pageController.dispose();
+    sliderPageController.dispose();
+    super.onClose();
   }
 
 /*  Future<void> _checkAndShowDialog(BuildContext context, bool isAutoUpdateOn) async {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../services/native_auth_service.dart';
 import '../../services/hospital_list_navigation.dart';
@@ -51,6 +53,9 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       HospitalListNavigation(Uri.parse(STARTUP_WEBVIEW_URL));
   bool _returningToList = false;
   bool _isLoading = true;
+  bool _hasRenderedPage = false;
+  bool _showLoadingIndicator = false;
+  Timer? _loadingIndicatorTimer;
   bool _loadFailed = false;
   String? _currentUrl;
   DateTime? _lastExitBackPressedAt;
@@ -68,6 +73,17 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       statusBarIconBrightness: Brightness.dark,
     ));
     _initializeWebView();
+    _scheduleLoadingIndicator();
+  }
+
+  // Fast HTTP-cache hits should finish without flashing a spinner. Once a
+  // page has rendered, navigation uses a small, non-blocking progress bar.
+  void _scheduleLoadingIndicator() {
+    _loadingIndicatorTimer?.cancel();
+    _loadingIndicatorTimer = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted || !_isLoading || _loadFailed) return;
+      setState(() => _showLoadingIndicator = true);
+    });
   }
 
   @override
@@ -154,13 +170,19 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
           _hospitalNavigation.pageStarted(url);
           setState(() {
             _isLoading = true;
+            _loadFailed = false;
+            _showLoadingIndicator = false;
             _currentUrl = url;
           });
+          _scheduleLoadingIndicator();
         },
         onPageFinished: (String url) {
           if (!mounted || _loadFailed) return;
+          _loadingIndicatorTimer?.cancel();
           setState(() {
             _isLoading = false;
+            _hasRenderedPage = true;
+            _showLoadingIndicator = false;
             _currentUrl = url;
           });
           if (_hospitalNavigation.returnUrl != null) {
@@ -188,14 +210,13 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
           }
         },
         onWebResourceError: (WebResourceError error) {
-          if (!mounted) return;
+          if (!mounted || error.isForMainFrame == false) return;
+          _loadingIndicatorTimer?.cancel();
           setState(() {
-            if (error.isForMainFrame != false) {
-              _loadFailed = true;
-              _isLoading = false;
-            }
+            _loadFailed = true;
+            _isLoading = false;
+            _showLoadingIndicator = false;
           });
-          toast('페이지 로딩 오류: ${error.description}');
         },
       ),
     );
@@ -278,6 +299,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
 
   @override
   void dispose() {
+    _loadingIndicatorTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     WebViewCookiePersistence.flush();
     super.dispose();
@@ -343,15 +365,26 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
                               setState(() {
                                 _loadFailed = false;
                                 _isLoading = true;
+                                _showLoadingIndicator = false;
                               });
+                              _scheduleLoadingIndicator();
                               _controller.reload();
                             },
                         child: const Text('다시 시도')),
                   ])),
                 )),
-              if (_isLoading)
-                Center(
-                  child: CircularProgressIndicator(),
+              if (_isLoading && _showLoadingIndicator && !_hasRenderedPage)
+                const IgnorePointer(
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              if (_isLoading && _showLoadingIndicator && _hasRenderedPage)
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
                 ),
             ],
           ),

@@ -14,7 +14,9 @@ class ClinicsRes {
   factory ClinicsRes.fromJson(Map<String, dynamic> json) {
     return ClinicsRes(
       status: json['status'] is bool ? json['status'] : false,
-      data: json['data'] is List ? List<Clinic>.from(json['data'].map((x) => Clinic.fromJson(x))) : [],
+      data: json['data'] is List
+          ? List<Clinic>.from(json['data'].map((x) => Clinic.fromJson(x)))
+          : [],
       message: json['message'] is String ? json['message'] : "",
     );
   }
@@ -42,7 +44,9 @@ class PopularClinicListRes {
   factory PopularClinicListRes.fromJson(Map<String, dynamic> json) {
     return PopularClinicListRes(
       status: json['status'] is bool ? json['status'] : false,
-      data: json['data'] != null ? PopularClinicData.fromJson(json['data']['perfect_clinics'] ?? {}) : null,
+      data: json['data'] != null
+          ? PopularClinicData.fromJson(json['data']['perfect_clinics'] ?? {})
+          : null,
       message: json['message'] is String ? json['message'] : "",
     );
   }
@@ -189,9 +193,12 @@ class Clinic {
       name: json['name'] is String ? json['name'] : "",
       email: json['email'] is String ? json['email'] : "",
       description: json['description'] is String ? json['description'] : "",
-      systemServiceCategory: json['system_service_category'] is String ? json['system_service_category'] : "",
+      systemServiceCategory: json['system_service_category'] is String
+          ? json['system_service_category']
+          : "",
       specialty: json['specialty'] is String ? json['specialty'] : "",
-      contactNumber: json['contact_number'] is String ? json['contact_number'] : "",
+      contactNumber:
+          json['contact_number'] is String ? json['contact_number'] : "",
       countryId: json['country_id'] is int ? json['country_id'] : -1,
       stateId: json['state_id'] is int ? json['state_id'] : -1,
       cityId: json['city_id'] is int ? json['city_id'] : -1,
@@ -205,7 +212,9 @@ class Clinic {
       distance: json['distance'],
       distanceFormate: json['distance_formate'],
       status: json['status'] is int ? json['status'] : -1,
-      clinicImage: json['clinic_image'] is String ? json['clinic_image'] : "",
+      clinicImage: json['clinic_image'] is String
+          ? json['clinic_image']
+          : (json['service_image'] is String ? json['service_image'] : ""),
       createdBy: json['created_by'] is int ? json['created_by'] : -1,
       updatedBy: json['updated_by'] is int ? json['updated_by'] : -1,
       deletedBy: json['deleted_by'] is int ? json['deleted_by'] : -1,
@@ -214,15 +223,28 @@ class Clinic {
       deletedAt: json['deleted_at'] is String ? json['deleted_at'] : "",
       timeSlot: json['time_slot'],
       vendorId: json['vendor_id'] is int ? json['vendor_id'] : -1,
-      clinicSession: json['clinic_session'] is Map ? ClinicSession.fromJson(json['clinic_session']) : ClinicSession(),
-      allClinicSession: json['all_clinic_session'] is List ? List<AllClinicSession>.from(json['all_clinic_session'].map((x) => AllClinicSession.fromJson(x))) : [],
-      clinicStatus: json['clinic_status'] is String ? json['clinic_status'] : "",
+      clinicSession: json['clinic_session'] is Map
+          ? ClinicSession.fromJson(json['clinic_session'])
+          : ClinicSession(),
+      allClinicSession: json['all_clinic_session'] is List
+          ? List<AllClinicSession>.from(json['all_clinic_session']
+              .map((x) => AllClinicSession.fromJson(x)))
+          : [],
+      clinicStatus:
+          json['clinic_status'] is String ? json['clinic_status'] : "",
       totalServices: json['total_services'] is int ? json['total_services'] : 0,
       totalDoctors: json['total_doctors'] is int ? json['total_doctors'] : 0,
-      totalAppointment: json['total_appointments'] is int ? json['total_appointments'] : 0,
-      satisfactionPercentage: json['satisfaction_percentage'] is int ? json['satisfaction_percentage'] : 0,
-      totalVerifiedDoctor: json['total_doctors'] is int ? json['total_doctors'] : 0,
-      totalGalleryImages: json['total_gallery_images'] is int ? json['total_gallery_images'] : 0,
+      totalAppointment:
+          json['total_appointments'] is int ? json['total_appointments'] : 0,
+      satisfactionPercentage: json['satisfaction_percentage'] is int
+          ? json['satisfaction_percentage']
+          : 0,
+      totalVerifiedDoctor: json['total_verified_doctor'] is int
+          ? json['total_verified_doctor']
+          : (json['total_doctors'] is int ? json['total_doctors'] : 0),
+      totalGalleryImages: json['total_gallery_images'] is int
+          ? json['total_gallery_images']
+          : 0,
       clinicId: json['clinic_id'] is int ? json['clinic_id'] : -1,
       doctorId: json['doctor_id'] is int ? json['doctor_id'] : -1,
     );
@@ -251,6 +273,7 @@ class Clinic {
       'distance': distance,
       'distance_formate': distanceFormate,
       'status': status,
+      'clinic_image': clinicImage,
       'service_image': clinicImage,
       'created_by': createdBy,
       'updated_by': updatedBy,
@@ -266,6 +289,9 @@ class Clinic {
       'total_services': totalServices,
       'total_doctors': totalDoctors,
       'total_gallery_images': totalGalleryImages,
+      'total_appointments': totalAppointment,
+      'satisfaction_percentage': satisfactionPercentage,
+      'total_verified_doctor': totalVerifiedDoctor,
       'clinic_id': clinicId,
       'doctor_id': doctorId,
     };

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:kivicare_patient/components/loader_widget.dart';
 
 import '../../components/app_scaffold.dart';
 import '../../main.dart';
@@ -17,7 +16,6 @@ import 'components/slider_component.dart';
 import '../doctor/components/popular_doctor_component.dart';
 import 'components/upcoming_appointment_components.dart';
 import 'home_controller.dart';
-import 'model/dashboard_res_model.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
@@ -33,21 +31,21 @@ class HomeScreen extends StatelessWidget {
       appBarVerticalSize: Get.height * 0.14,
       appBarChild: const GreetingsComponent(),
       body: Obx(
-        () => SnapHelperWidget(
-          future: homeScreenController.getDashboardDetailFuture.value,
-          initialData: homeScreenController.dashboardData.value.categories.isEmpty ? null : DashboardRes(data: homeScreenController.dashboardData.value),
-          errorBuilder: (error) {
+        () {
+          if (!homeScreenController.hasData) {
+            final error = homeScreenController.loadError.value;
+            if (error == null || homeScreenController.isLoading.value) {
+              return const SizedBox.shrink();
+            }
             return NoDataWidget(
               title: error,
               retryText: locale.value.reload,
               imageWidget: const ErrorStateWidget(),
               onRetry: () {
-                homeScreenController.init();
+                homeScreenController.getDashboardDetail();
               },
             ).paddingSymmetric(horizontal: 16);
-          },
-          loadingWidget: homeScreenController.isLoading.value ? const Offstage() : const LoaderWidget(),
-          onSuccess: (dashboardData) {
+          }
             return SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 90),
               physics: const AlwaysScrollableScrollPhysics(),
@@ -65,8 +63,7 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             );
-          },
-        ),
+        },
       ),
     );
   }
