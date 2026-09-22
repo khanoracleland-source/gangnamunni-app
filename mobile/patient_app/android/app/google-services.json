@@ -12,7 +12,12 @@
           "package_name": "com.celebhospital"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "397157172970-872e3ui58frp1uc9g9i0kohok5keurq5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDA9QnuEK1ynGHJizAjSAbg3PC23u8MCCc"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "397157172970-872e3ui58frp1uc9g9i0kohok5keurq5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "397157172970-ba1nenuve43ldf6prc74qog69ulivdjo.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.celebhospital"
+              }
+            }
+          ]
         }
       }
     },
@@ -31,7 +48,12 @@
           "package_name": "com.celebhospital.admin"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "397157172970-872e3ui58frp1uc9g9i0kohok5keurq5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDA9QnuEK1ynGHJizAjSAbg3PC23u8MCCc"
@@ -39,7 +61,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "397157172970-872e3ui58frp1uc9g9i0kohok5keurq5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "397157172970-ba1nenuve43ldf6prc74qog69ulivdjo.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.celebhospital"
+              }
+            }
+          ]
         }
       }
     },
@@ -50,7 +84,12 @@
           "package_name": "com.celebhospital.patient"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "397157172970-872e3ui58frp1uc9g9i0kohok5keurq5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDA9QnuEK1ynGHJizAjSAbg3PC23u8MCCc"
@@ -58,7 +97,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "397157172970-872e3ui58frp1uc9g9i0kohok5keurq5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "397157172970-ba1nenuve43ldf6prc74qog69ulivdjo.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.celebhospital"
+              }
+            }
+          ]
         }
       }
     }
