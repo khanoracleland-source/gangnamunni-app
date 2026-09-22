@@ -32,6 +32,7 @@ class AppointmentsController extends GetxController {
       Future(() => RxList<AppointmentData>()).obs;
   RxList<AppointmentData> appointments = RxList();
   String? _freshRequestKey;
+  String? _freshRequestScope;
   Future<RxList<AppointmentData>>? _freshRequest;
   int _requestGeneration = 0;
 
@@ -83,10 +84,11 @@ class AppointmentsController extends GetxController {
     String status = "",
     bool forceRefresh = false,
   }) async {
+    if (isClosed) return;
     final request = _AppointmentListRequest(
       page: page.value,
       perPage: Constants.perPageItem,
-      filterByStatus: selectedTab.value.name!.toLowerCase(),
+      filterByStatus: selectedTab.value.type.name,
       search: search.trim(),
       lastDate: lastDate.value,
       firstDate: firstDate.value,
@@ -195,6 +197,8 @@ class AppointmentsController extends GetxController {
 
     final generation = ++_requestGeneration;
     _freshRequestKey = cacheKey;
+    _freshRequestScope =
+        AppCacheService.buildKey(endpoint: APIEndPoints.getAppointments);
     if (showLoader) {
       isLoading(true);
     }
@@ -212,7 +216,9 @@ class AppointmentsController extends GetxController {
   bool _isCurrentRequest(String cacheKey, int generation) {
     return !isClosed &&
         generation == _requestGeneration &&
-        _freshRequestKey == cacheKey;
+        _freshRequestKey == cacheKey &&
+        _freshRequestScope ==
+            AppCacheService.buildKey(endpoint: APIEndPoints.getAppointments);
   }
 
   Future<RxList<AppointmentData>> _fetchFreshAppointmentList({
@@ -225,7 +231,7 @@ class AppointmentsController extends GetxController {
 
     try {
       final targetAppointments =
-          request.page == 1 ? <AppointmentData>[] : appointments;
+          request.page == 1 ? <AppointmentData>[] : _allAppointments.toList();
       final freshAppointments = await CoreServiceApis.getAppointmentList(
         filterByStatus: request.filterByStatus,
         lastDate: request.lastDate,
@@ -250,12 +256,11 @@ class AppointmentsController extends GetxController {
       }
 
       if (request.page == 1) {
-        appointments.assignAll(freshAppointments);
         unawaited(
           _cache.write(
             cacheKey,
             _encodeAppointmentList(
-              data: appointments,
+              data: freshAppointments,
               isLastPage: freshIsLastPage,
             ),
             ttl: AppCacheService.appointmentsTtl,
@@ -264,8 +269,7 @@ class AppointmentsController extends GetxController {
         );
       }
       isLastPage(freshIsLastPage);
-      _allAppointments.clear();
-      _allAppointments.addAll(appointments);
+      _allAppointments.assignAll(freshAppointments);
       _applyLocalFilters();
       return appointments;
     } catch (e) {
@@ -281,6 +285,7 @@ class AppointmentsController extends GetxController {
         isLoading(false);
         _freshRequest = null;
         _freshRequestKey = null;
+        _freshRequestScope = null;
       }
     }
   }
@@ -339,36 +344,43 @@ class AppointmentsController extends GetxController {
 
   // Public API for UI to set filters and apply
   void setClinicFilter(int clinicId) {
+    page(1); // BUG FIX #2: Reset page when filter changes
     filterClinicId(clinicId);
     _applyLocalFilters();
   }
 
   void setDoctorFilter(int doctorId) {
+    page(1); // BUG FIX #2: Reset page when filter changes
     filterDoctorId(doctorId);
     _applyLocalFilters();
   }
 
   void setDateFilter(String date) {
+    page(1); // BUG FIX #2: Reset page when filter changes
     filterDate(date);
     _applyLocalFilters();
   }
 
   void setServiceFilter(String name) {
+    page(1); // BUG FIX #2: Reset page when filter changes
     filterService(name);
     _applyLocalFilters();
   }
 
   void setCategoryFilter(String name) {
+    page(1); // BUG FIX #2: Reset page when filter changes
     filterCategory(name);
     _applyLocalFilters();
   }
 
   void setConsultationTypeFilter(String type) {
+    page(1); // BUG FIX #2: Reset page when filter changes
     filterConsultationType(type);
     _applyLocalFilters();
   }
 
   void setPaymentStatusFilter(String status) {
+    page(1); // BUG FIX #2: Reset page when filter changes
     filterPaymentStatus(status);
     _applyLocalFilters();
   }
@@ -412,6 +424,12 @@ class AppointmentsController extends GetxController {
   @override
   void onClose() {
     _requestGeneration++;
+    // BUG FIX #3 & #5: Clear RxList in onClose to prevent memory leak
+    appointments.clear();
+    _allAppointments.clear();
+    _freshRequest = null;
+    _freshRequestKey = null;
+    _freshRequestScope = null;
     super.onClose();
   }
 }

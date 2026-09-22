@@ -522,6 +522,8 @@ class FilterController extends GetxController {
       doctorConte.getDoctors();
     } else if (type == 'clinic') {
       final ClinicListController clinicCont = Get.find();
+      // BUG FIX #1: Reset page BEFORE changing filters
+      clinicCont.page(1);
       clinicCont.clinicId(selectedClinicData.value.id);
       clinicCont.service(selectedServiceData.value);
 
@@ -529,32 +531,25 @@ class FilterController extends GetxController {
       clinicCont.priceMax(maximumPrice.value > 0 ? maximumPrice.value.toString() : "");
       applyFilterCount();
       Get.back(result: actualCategoryFilterCount.value);
-      clinicCont.page(1);
       clinicCont.getClinicList();
     } else if (type == 'appointments') {
       // Handle appointments filtering
       try {
         final AppointmentsController appointmentsCont = Get.find();
 
-        // Apply clinic filter
-        if (selectedClinicData.value.id > 0) {
-          appointmentsCont.setClinicFilter(selectedClinicData.value.id);
-        }
+        // BUG FIX #1: Reset page BEFORE applying filters
+        appointmentsCont.page(1);
 
-        // Apply service filter
-        if (selectedServiceData.value.id > 0) {
-          appointmentsCont.setServiceFilter(selectedServiceData.value.name);
-        }
-
-        // Apply category filter
-        if (selectedCategoryData.value.id > 0) {
-          appointmentsCont.setCategoryFilter(selectedCategoryData.value.name);
-        }
-
-        // Apply consultation type filter
-        if (selectedServiceType.value.isNotEmpty) {
-          appointmentsCont.setConsultationTypeFilter(selectedServiceType.value);
-        }
+        // Filter the complete server dataset, not just locally loaded pages.
+        appointmentsCont.clearFilters();
+        appointmentsCont.clinicId(selectedClinicData.value.id);
+        appointmentsCont.selectedServiceId(selectedServiceData.value.id);
+        appointmentsCont.selectedCategory(selectedCategoryData.value);
+        appointmentsCont.consolationType(selectedServiceType.value);
+        appointmentsCont.doctorId(-1);
+        appointmentsCont.firstDate('');
+        appointmentsCont.lastDate('');
+        appointmentsCont.paymentStatus('');
 
         // Apply price filter
         if (minimumPrice.value > 0 || maximumPrice.value < 5000) {
@@ -566,7 +561,6 @@ class FilterController extends GetxController {
         Get.back(result: actualServiceFilterCount.value);
 
         // Refresh the appointments list with applied filters
-        appointmentsCont.page(1);
         appointmentsCont.getAppointmentList();
       } catch (e) {
         log('Error applying appointments filter: $e');
@@ -574,6 +568,7 @@ class FilterController extends GetxController {
       }
     } else if (type == 'appointment') {
       final AppointmentsController appointmentsCont = Get.find();
+      appointmentsCont.clearFilters();
       appointmentsCont.selectedCategory(selectedCategoryData.value);
       appointmentsCont.doctorId(selectedDoctorDate.value.doctorId);
       appointmentsCont.firstDate(selectedFirstDate.value);
@@ -593,7 +588,17 @@ class FilterController extends GetxController {
 
   @override
   void onClose() {
+    // BUG FIX #6: Close all streams and dispose controllers
     searchClinicStream.close();
+    searchServiceStream.close();
+    searchCategoryStream.close();
+    searchClinicCont.dispose();
+    searchServiceCont.dispose();
+    searchCategoryCont.dispose();
+    scrollServiceController.dispose();
+    _scrollCategoryController.dispose();
+    selectedFirstDateCont.dispose();
+    selectedLastDateCont.dispose();
     super.onClose();
   }
 }

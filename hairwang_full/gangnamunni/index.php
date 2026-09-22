@@ -12,6 +12,16 @@
 // 초기화 (그누보드 세션 + DB 연결)
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/page_cache.php';
+require_once __DIR__ . '/includes/user_content_cache.php';
+if (($_SERVER['HTTP_X_SB_CONTENT'] ?? '') === 'treatments') {
+    user_content_cache_reply(function () use ($connect) {
+        $tc_table_mode = 'excel';
+        $result = mysqli_query($connect, "SELECT setting_value FROM gangnamunni_settings WHERE setting_key='tc_table_mode' LIMIT 1");
+        if (!$result) throw new RuntimeException('Treatment settings unavailable');
+        if ($row = mysqli_fetch_assoc($result)) $tc_table_mode = $row['setting_value'];
+        require __DIR__ . '/includes/treatment_list_content.php';
+    });
+}
 gangnamunni_page_cache(3600, is_gangnamunni_logged_in() ? 'private' : 'public');
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 
@@ -539,91 +549,12 @@ body.ae-active { padding-top:0 !important; }
         <div class="ae-wrap" style="position:relative;">
             <?php if (function_exists('ae')) ae('treatments', '시술 관리'); ?>
         <?php
-        // DB에서 대분류 + 중분류 동적 조회
-        $treatment_categories = [];
-        $tc_sql = "SELECT c.id, c.name AS cat_name, GROUP_CONCAT(m.name ORDER BY m.sort_order ASC, m.popularity_score DESC, m.id ASC SEPARATOR '||') AS treatments
-            FROM gangnamunni_treatment_categories c
-            LEFT JOIN gangnamunni_treatment_master m ON m.category_id = c.id AND m.is_active = 1
-            WHERE c.is_active = 1
-            GROUP BY c.id, c.name, c.sort_order
-            ORDER BY c.sort_order ASC, c.id ASC";
-        $tc_r = mysqli_query($connect, $tc_sql);
-        if ($tc_r) {
-            while ($tc = mysqli_fetch_assoc($tc_r)) {
-                $subs = $tc['treatments'] ? explode('||', $tc['treatments']) : [];
-                $treatment_categories[$tc['cat_name']] = $subs;
-            }
+        if (user_content_cache_enabled()) {
+            user_content_cache_mount('treatments');
+        } else {
+            require __DIR__ . '/includes/treatment_list_content.php';
         }
         ?>
-        <div class="tc-table-wrap" style="overflow:hidden; width:100%; margin:0 auto; margin-bottom:15px;">
-        <?php if ($tc_table_mode === 'row'): ?>
-        <!-- 모드B: 행별 독립 스크롤 -->
-        <div class="tc-table tc-mode-row" style="background:var(--bs-body-bg, #fff);border-radius:0;overflow:hidden;border:1px solid #D5D5D5;">
-            <?php foreach ($treatment_categories as $major => $subs): ?>
-            <div class="tc-row" style="display:flex;border-bottom:1px solid #D5D5D5;">
-                <div class="tc-major"><?php echo htmlspecialchars($major); ?></div>
-                <div class="tc-subs-wrap">
-                    <button class="tc-arrow tc-arrow-l" onclick="tcRowScroll(this,-1)" aria-label="왼쪽">‹</button>
-                    <div class="tc-subs">
-                        <?php foreach ($subs as $sub): ?>
-                        <a href="hospitals.php?treatment=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
-                        <?php endforeach; ?>
-                    </div>
-                    <button class="tc-arrow tc-arrow-r" onclick="tcRowScroll(this,1)" aria-label="오른쪽">›</button>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php elseif ($tc_table_mode === 'hybrid'): ?>
-        <!-- 모드C: 하이브리드 — 대분류 고정 + 각 행 독립 스크롤 -->
-        <div class="tc-table tc-mode-hybrid" style="background:var(--bs-body-bg, #fff);border-radius:0;overflow:hidden;border:1px solid #D5D5D5;">
-            <?php foreach ($treatment_categories as $major => $subs): ?>
-            <div class="tc-row" style="display:flex;border-bottom:1px solid #D5D5D5;">
-                <div class="tc-major tc-major-sticky"><?php echo htmlspecialchars($major); ?></div>
-                <div class="tc-subs-wrap">
-                    <button class="tc-arrow tc-arrow-l" onclick="tcRowScroll(this,-1)" aria-label="왼쪽">‹</button>
-                    <div class="tc-subs">
-                        <?php foreach ($subs as $sub): ?>
-                        <a href="hospitals.php?treatment=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
-                        <?php endforeach; ?>
-                    </div>
-                    <button class="tc-arrow tc-arrow-r" onclick="tcRowScroll(this,1)" aria-label="오른쪽">›</button>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php else: ?>
-        <!-- 패널형: 좌측 1/3 대분류 + 우측 2/3 시술 2열 -->
-        <div class="tc-panel-wrap">
-            <div class="tc-nav-only" id="tcNavOnly">
-                <?php $pi = 0; foreach ($treatment_categories as $major => $subs): ?>
-                <div class="tc-nav-item<?php echo $pi === 0 ? ' active' : ''; ?>"
-                     onclick="tcNavSelect(this, <?php echo $pi; ?>)"
-                ><?php echo htmlspecialchars($major); ?></div>
-                <?php $pi++; endforeach; ?>
-            </div>
-            <div class="tc-panel-right" id="tcPanelRight">
-                <?php $pi = 0; foreach ($treatment_categories as $major => $subs): ?>
-                <div class="tc-panel-body<?php echo $pi === 0 ? ' tc-panel-body-active' : ''; ?>" id="tcBody<?php echo $pi; ?>">
-                    <?php foreach ($subs as $sub): ?>
-                    <a href="hospitals.php?treatment=<?php echo urlencode($sub); ?>" class="tc-chip"><?php echo htmlspecialchars($sub); ?></a>
-                    <?php endforeach; ?>
-                </div>
-                <?php $pi++; endforeach; ?>
-                <div class="tc-below-divider" id="tcBelowDivider"></div>
-                <div class="tc-below-wrap" id="tcBelowWrap">
-                    <?php $pi = 0; foreach ($treatment_categories as $major => $subs): ?>
-                    <div class="tc-below-group" id="tcBelow<?php echo $pi; ?>" style="display:none">
-                        <?php foreach ($subs as $sub): ?>
-                        <span class="tc-chip tc-chip-faded"><?php echo htmlspecialchars($sub); ?></span>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php $pi++; endforeach; ?>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-        </div>
 
         <style>
         /* ===== 시술 카테고리 테이블 공통 ===== */
@@ -802,7 +733,11 @@ body.ae-active { padding-top:0 !important; }
                 var subs = wrap.querySelector('.tc-subs');
                 if (subs) subs.scrollBy({ left: dir * 150, behavior: 'smooth' });
             };
-            document.querySelectorAll('.tc-subs').forEach(function(el) {
+            var boundTreatmentRows = new WeakSet();
+            function bindTreatmentRows() {
+              document.querySelectorAll('.tc-subs').forEach(function(el) {
+                if (boundTreatmentRows.has(el)) return;
+                boundTreatmentRows.add(el);
                 el.addEventListener('scroll', function() {
                     if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 5) {
                         el.classList.add('tc-scrolled-end');
@@ -810,7 +745,8 @@ body.ae-active { padding-top:0 !important; }
                         el.classList.remove('tc-scrolled-end');
                     }
                 });
-            });
+              });
+            }
 
             window.tcNavSelect = function(el, idx) {
                 document.querySelectorAll('.tc-nav-item').forEach(function(x) { x.classList.remove('active'); });
@@ -835,8 +771,13 @@ body.ae-active { padding-top:0 !important; }
                     right.style.setProperty('--tc-panel-offset', Math.max(0, el.offsetTop - rightTopPadding) + 'px');
                 }
             };
-            var _initNav = document.querySelector('.tc-nav-item.active');
-            if (_initNav) tcNavSelect(_initNav, 0);
+            function initCachedTreatments() {
+                bindTreatmentRows();
+                var nav = document.querySelector('.tc-nav-item.active');
+                if (nav) tcNavSelect(nav, 0);
+            }
+            initCachedTreatments();
+            document.addEventListener('sb:content-updated', initCachedTreatments);
         })();
         </script>
         </div><!-- /ae-wrap 시술 카테고리 -->

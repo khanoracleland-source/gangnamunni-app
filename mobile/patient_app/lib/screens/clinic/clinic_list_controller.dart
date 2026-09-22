@@ -34,6 +34,7 @@ class ClinicListController extends GetxController {
   RxBool isSearchClinicText = false.obs;
   StreamController<String> searchClinicStream = StreamController<String>();
   final _scrollController = ScrollController();
+  StreamSubscription<String>? _searchSubscription;
   RxBool isSearchText = false.obs;
   RxInt isPopular = (-1).obs;
   RxString serviceType = "".obs;
@@ -48,7 +49,12 @@ class ClinicListController extends GetxController {
   void onInit() {
     _scrollController.addListener(
         () => Get.context != null ? hideKeyboard(Get.context) : null);
-    searchClinicStream.stream.debounce(const Duration(seconds: 1)).listen((s) {
+    _searchSubscription = searchClinicStream.stream
+        .debounce(const Duration(seconds: 1))
+        .listen((s) {
+      if (isClosed) return;
+      // BUG FIX #1: Reset page to 1 when search changes
+      page(1);
       getClinicList();
     });
     if (Get.arguments is ServiceElement) {
@@ -65,6 +71,7 @@ class ClinicListController extends GetxController {
   }
 
   Future<void> getClinicList({bool showLoader = true}) async {
+    if (isClosed) return;
     final request = _ClinicListRequest(
       page: page.value,
       serviceId: service.value.id,
@@ -178,20 +185,10 @@ class ClinicListController extends GetxController {
   }
 
   bool _isCurrentRequest(String cacheKey, int generation) {
+    // BUG FIX #2: Use stored key instead of rebuilding to avoid race conditions
     return !isClosed &&
         generation == _requestGeneration &&
-        cacheKey ==
-            _clinicCacheKey(
-              _ClinicListRequest(
-                page: page.value,
-                serviceId: service.value.id,
-                search: searchClinicCont.text.trim(),
-                servicePriceMin: priceMin.value,
-                servicePriceMax: priceMax.value,
-                clinicId: clinicId.value,
-                isPopular: isPopular.value,
-              ),
-            );
+        cacheKey == _freshRequestKey;
   }
 
   Future<RxList<Clinic>> _fetchFreshClinicList({
@@ -203,7 +200,7 @@ class ClinicListController extends GetxController {
     bool freshIsLastPage = isLastPage.value;
 
     try {
-      final targetClinics = request.page == 1 ? <Clinic>[] : clinics;
+      final targetClinics = request.page == 1 ? <Clinic>[] : clinics.toList();
       final freshClinics = await CoreServiceApis.getClinics(
         page: request.page,
         perPage: _clinicPerPage,
@@ -223,8 +220,8 @@ class ClinicListController extends GetxController {
         return clinics;
       }
 
+      clinics.assignAll(freshClinics);
       if (request.page == 1) {
-        clinics.assignAll(freshClinics);
         unawaited(
           _clinicCache.write(
             cacheKey,
@@ -257,10 +254,13 @@ class ClinicListController extends GetxController {
   @override
   void onClose() {
     _requestGeneration++;
-    searchClinicStream.close();
-    if (Get.context != null) {
-      _scrollController.removeListener(() => hideKeyboard(Get.context));
-    }
+    _searchSubscription?.cancel();
+    _searchSubscription = null;
+    unawaited(searchClinicStream.close());
+    searchClinicCont.dispose();
+    _scrollController.dispose();
+    _freshRequest = null;
+    _freshRequestKey = null;
     super.onClose();
   }
 }

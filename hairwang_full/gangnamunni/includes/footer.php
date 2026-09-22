@@ -69,6 +69,9 @@ if ($_lp_admin) {
         document.querySelectorAll('[data-ad-id]').forEach(function(el) {
             observer.observe(el);
         });
+        document.addEventListener('sb:content-updated', function(event) {
+            event.detail.root.querySelectorAll('[data-ad-id]').forEach(function(el) { observer.observe(el); });
+        });
     } else {
         document.querySelectorAll('[data-ad-id]').forEach(function(el) {
             trackImpression(el.getAttribute('data-ad-id'));
@@ -142,6 +145,9 @@ if ($_lp_admin) {
             });
         }, { threshold: [0, 0.5] });
         elements.forEach(function(element) { observer.observe(element); });
+        document.addEventListener('sb:content-updated', function(event) {
+            event.detail.root.querySelectorAll('[data-ad-slot-booking]').forEach(function(element) { observer.observe(element); });
+        });
     } else {
         elements.forEach(scheduleImpression);
     }

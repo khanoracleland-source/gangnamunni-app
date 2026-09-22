@@ -58,16 +58,21 @@ class HomeController extends CacheFirstController<DashboardRes> {
   @override
   void onInit() {
     super.onInit();
+    // BUG FIX #1: Don't call init() here - everAll will trigger on login changes
+    // Only set up watcher for future changes
     _scopeWorker = everAll(
       [isLoggedIn, loginUserData, selectedLanguageCode],
       (_) => getDashboardDetail(),
     );
+    // Initial load only
     init();
   }
 
   Future<void> init() async {
-    getDashboardDetail();
+    // BUG FIX #1: This is called once on init, getDashboardDetail() called via refresh()
+    // which is already done in getDashboardDetail() → refresh()
     info = await getPackageInfo();
+    getDashboardDetail();
     // _checkAndShowDialog(getContext, getValueFromLocal(AutoUpdateConst.isAutoUpdateOn) ?? false);
   }
 

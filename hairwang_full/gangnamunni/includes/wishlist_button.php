@@ -80,8 +80,8 @@ function toggleWishlist(type, targetId, btn) {
 }
 
 // 페이지 로드 시 찜 상태 체크
-document.addEventListener('DOMContentLoaded', function() {
-    var btns = document.querySelectorAll('.wishlist-btn');
+function hydrateWishlist(root) {
+    var btns = (root || document).querySelectorAll('.wishlist-btn');
     btns.forEach(function(btn) {
         var type = btn.getAttribute('data-type');
         var id = btn.getAttribute('data-id');
@@ -96,7 +96,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(function() {});
         }
     });
-});
+}
+document.addEventListener('DOMContentLoaded', function() { hydrateWishlist(document); });
+document.addEventListener('sb:content-updated', function(event) { hydrateWishlist(event.detail.root); });
 </script>
     <?php
 }

@@ -35,6 +35,8 @@ class ClinicDetailController extends GetxController {
   String? _detailRequestKey;
   Future<ClinicDetailModel>? _detailRequest;
   int _detailGeneration = 0;
+  int _servicesGeneration = 0;
+  int _doctorsGeneration = 0;
 
   //Services
   Rx<Future<RxList<ServiceElement>>> serviceListFuture =
@@ -64,6 +66,11 @@ class ClinicDetailController extends GetxController {
 
   ///Get Clinic Detail
   Future<void> init({bool showLoader = true, bool forceRefresh = false}) async {
+    if (isClosed) return;
+    // BUG FIX #3: Reset pages when clinic ID changes
+    servicesPage(1);
+    doctorsPage(1);
+
     final clinicId = clinicData.value.id;
     if (clinicId.isNegative) {
       return;
@@ -108,7 +115,7 @@ class ClinicDetailController extends GetxController {
     getClinicDetail(freshRequest);
     await freshRequest.catchError((e) {
       log('ClinicDetail getClinicDetail err ==> $e');
-      isLoading(false);
+      if (!isClosed) isLoading(false);
       return ClinicDetailModel(data: clinicData.value);
     });
   }
@@ -149,7 +156,12 @@ class ClinicDetailController extends GetxController {
   bool _isCurrentClinicDetail(String cacheKey, int generation) {
     return !isClosed &&
         generation == _detailGeneration &&
-        _detailRequestKey == cacheKey;
+        _detailRequestKey == cacheKey &&
+        cacheKey ==
+            AppCacheService.buildKey(
+              endpoint: APIEndPoints.getClinicDetails,
+              queryParameters: {'clinic_id': clinicData.value.id},
+            );
   }
 
   Future<ClinicDetailModel> _fetchFreshClinicDetail({
@@ -199,40 +211,62 @@ class ClinicDetailController extends GetxController {
   }
 
   Future<void> getServiceList({bool showLoader = true}) async {
+    if (isClosed) return;
+    final generation = ++_servicesGeneration;
+    final clinicId = clinicData.value.id;
+    bool isCurrent() =>
+        !isClosed &&
+        generation == _servicesGeneration &&
+        clinicData.value.id == clinicId;
+    var lastPage = isServicesLastPage.value;
     if (showLoader) {
       isServicesLoading(true);
     }
     await serviceListFuture(
       CoreServiceApis.getServiceList(
         page: servicesPage.value,
-        serviceList: serviceList,
-        clinicId: clinicData.value.id,
+        serviceList: serviceList.toList(),
+        clinicId: clinicId,
         lastPageCallBack: (p0) {
-          isServicesLastPage(p0);
+          lastPage = p0;
         },
       ),
     ).then((value) {
+      if (!isCurrent()) return;
+      serviceList.assignAll(value);
+      isServicesLastPage(lastPage);
       log('value.length ==> ${value.length}');
       // Load all services to get accurate count
       getAllServicesForCount();
     }).catchError((e) {
       log('Clinic detail getServiceList err ==> $e');
-    }).whenComplete(() => isServicesLoading(false));
+    }).whenComplete(() {
+      if (isCurrent()) isServicesLoading(false);
+    });
   }
 
   /// Load all services for counting active services
   Future<void> getAllServicesForCount() async {
+    if (isClosed) return;
+    final generation = _servicesGeneration;
+    final clinicId = clinicData.value.id;
+    bool isCurrent() =>
+        !isClosed &&
+        generation == _servicesGeneration &&
+        clinicData.value.id == clinicId;
     try {
       final RxList<ServiceElement> allServicesList = RxList();
       await CoreServiceApis.getServiceList(
         serviceList: allServicesList,
-        clinicId: clinicData.value.id,
+        clinicId: clinicId,
         allServices: 'all',
         lastPageCallBack: (p0) {},
       );
+      if (!isCurrent()) return;
       activeServicesCount(
           allServicesList.where((service) => service.status == 1).length);
     } catch (e) {
+      if (!isCurrent()) return;
       log('Error loading all services for count: $e');
       activeServicesCount(
           serviceList.where((service) => service.status == 1).length);
@@ -241,46 +275,76 @@ class ClinicDetailController extends GetxController {
 
   /// Load all doctors for counting active doctors
   Future<void> getAllDoctorsForCount() async {
+    if (isClosed) return;
+    final generation = _doctorsGeneration;
+    final clinicId = clinicData.value.id;
+    bool isCurrent() =>
+        !isClosed &&
+        generation == _doctorsGeneration &&
+        clinicData.value.id == clinicId;
     try {
       final RxList<Doctor> allDoctorsList = RxList();
       await CoreServiceApis.getDoctors(
         perPage: 1000,
         doctors: allDoctorsList,
-        clinicId: clinicData.value.id,
+        clinicId: clinicId,
         lastPageCallBack: (p0) {},
       );
+      if (!isCurrent()) return;
       activeDoctorsCount(
           allDoctorsList.where((doctor) => doctor.status == 1).length);
     } catch (e) {
+      if (!isCurrent()) return;
       activeDoctorsCount(doctors.where((doctor) => doctor.status == 1).length);
     }
   }
 
   Future<void> getDoctors({bool showLoader = true}) async {
+    if (isClosed) return;
+    final generation = ++_doctorsGeneration;
+    final clinicId = clinicData.value.id;
+    bool isCurrent() =>
+        !isClosed &&
+        generation == _doctorsGeneration &&
+        clinicData.value.id == clinicId;
+    var lastPage = isDoctorsLastPage.value;
     if (showLoader) {
       isDoctorsLoading(true);
     }
     await doctorsFuture(
       CoreServiceApis.getDoctors(
         page: doctorsPage.value,
-        doctors: doctors,
-        clinicId: clinicData.value.id,
+        doctors: doctors.toList(),
+        clinicId: clinicId,
         lastPageCallBack: (p0) {
-          isDoctorsLastPage(p0);
+          lastPage = p0;
         },
       ),
     ).then((value) {
+      if (!isCurrent()) return;
+      doctors.assignAll(value);
+      isDoctorsLastPage(lastPage);
       log('value.length ==> ${value.length}');
       // Load all doctors to get accurate count
       getAllDoctorsForCount();
     }).catchError((e) {
       log("getDoctors error $e");
-    }).whenComplete(() => isDoctorsLoading(false));
+    }).whenComplete(() {
+      if (isCurrent()) isDoctorsLoading(false);
+    });
   }
 
   @override
   void onClose() {
     _detailGeneration++;
+    _servicesGeneration++;
+    _doctorsGeneration++;
+    // BUG FIX #6: Clear large objects in onClose to prevent memory leak
+    clinicData.value = Clinic(clinicSession: ClinicSession());
+    serviceList.clear();
+    doctors.clear();
+    _detailRequest = null;
+    _detailRequestKey = null;
     super.onClose();
   }
 }

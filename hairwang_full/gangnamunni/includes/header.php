@@ -96,7 +96,20 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
     <?php if (!empty($page_css_file)): ?>
     <link rel="stylesheet" href="<?php echo htmlspecialchars($page_css_file); ?>">
     <?php endif; ?>
-    <script src="assets/js/app-cache.js" defer></script>
+    <script src="assets/js/user-cache-core.js?v=2" defer></script>
+    <script src="assets/js/user-content-cache.js?v=2" defer></script>
+    <style>
+    [data-user-cache] { position: relative; min-height: 100px; }
+    [data-cache-status] { text-align: center; font-size: 14px; padding: 8px 16px; }
+    [data-cache-status]:empty { display: none; }
+    [data-cache-refresh] { display: block; width: 36px; height: 36px; margin: 8px auto; border: 1px solid #ddd; border-radius: 4px; background: #fff; color: #333; font-size: 24px; cursor: pointer; }
+    [data-cache-refresh][hidden] { display: none; }
+    [data-cache-refresh]:disabled { opacity: .45; }
+    [data-user-cache][aria-busy="true"] [data-cache-content]:empty { min-height: 160px; }
+    [data-user-cache][aria-busy="true"][data-cache-cold="true"] [data-cache-content]:empty::after { content: ''; display: block; position: absolute; top: 60px; left: calc(50% - 18px); width: 36px; height: 36px; border: 3px solid #ddd; border-top-color: #AE1932; border-radius: 50%; animation: user-cache-spin .8s linear infinite; }
+    @keyframes user-cache-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { [data-user-cache] [data-cache-content]:empty::after { animation: none !important; } }
+    </style>
 
     <?php if (!empty($page_css)): ?>
     <style>

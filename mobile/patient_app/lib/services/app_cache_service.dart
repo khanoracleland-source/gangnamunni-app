@@ -75,10 +75,25 @@ class AppCacheService {
     try {
       final raw = storage.read<dynamic>('$prefix$key');
       if (raw == null) return null;
+
+      // BUG FIX #4: Null check if raw is not a Map (corrupted cache)
+      if (raw is! Map) {
+        unawaited(remove(key));
+        return null;
+      }
+
       final entry = Map<String, dynamic>.from(raw as Map);
-      final savedAt = entry['savedAt'] as int;
-      final freshUntil = entry['freshUntil'] as int;
-      final staleUntil = entry['staleUntil'] as int;
+      // BUG FIX #4: Handle missing timestamp fields with nullsafety
+      final savedAt = (entry['savedAt'] as int?) ?? 0;
+      final freshUntil = (entry['freshUntil'] as int?) ?? 0;
+      final staleUntil = (entry['staleUntil'] as int?) ?? 0;
+
+      // BUG FIX #4: Validate timestamp logic
+      if (freshUntil <= savedAt || staleUntil <= freshUntil) {
+        unawaited(remove(key));
+        return null;
+      }
+
       final now = _now().millisecondsSinceEpoch;
       if (now < savedAt ||
           freshUntil < savedAt ||
@@ -95,6 +110,22 @@ class AppCacheService {
       // A corrupt entry or an old model must never prevent a network load.
       unawaited(remove(key));
       return null;
+    }
+  }
+
+  /// CRITICAL FIX: Clear all user-specific cache on login/logout
+  static Future<void> clearAllUserCache(GetStorage storage) async {
+    try {
+      final keys = storage.getKeys();
+      final keysToDelete = keys
+          .where((k) => k.startsWith(prefix))
+          .toList();
+
+      for (final key in keysToDelete) {
+        await storage.remove(key);
+      }
+    } catch (e) {
+      debugPrint('Cache clear error: $e');
     }
   }
 
