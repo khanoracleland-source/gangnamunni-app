@@ -42,134 +42,29 @@ if ($is_ajax) {
     require_once __DIR__ . '/theme_helper.php';
     if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
     loadThemeSettings($connect);
-    require_once __DIR__ . '/includes/user_notifications.php';
-    require_once __DIR__ . '/includes/admin_fcm.php';
-
-    // 발송 이력 테이블 자동 생성
-    mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_notification_sends (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        admin_id INT NOT NULL,
-        admin_username VARCHAR(50),
-        target_type VARCHAR(50),
-        target_count INT DEFAULT 0,
-        notification_type VARCHAR(50),
-        title VARCHAR(255),
-        message TEXT,
-        link VARCHAR(500),
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    require_once __DIR__ . '/includes/member_notification_service.php';
+    member_notification_ensure_tables($connect);
 
     header('Content-Type: application/json; charset=utf-8');
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
-    // --- 대상 회원 목록 조회 함수 ---
-    function get_target_members($connect, $target, $event_id = 0, $member_id = '', $member_ids = []) {
-        $members = [];
-
-        switch ($target) {
-            case 'all':
-                $result = mysqli_query($connect, "SELECT mb_id FROM g5_member WHERE mb_level > 1");
-                while ($row = mysqli_fetch_assoc($result)) {
-                    $members[] = $row['mb_id'];
-                }
-                break;
-
-            case 'recent_7days':
-                $result = mysqli_query($connect, "SELECT mb_id FROM g5_member WHERE mb_level > 1 AND mb_datetime > DATE_SUB(NOW(), INTERVAL 7 DAY)");
-                while ($row = mysqli_fetch_assoc($result)) {
-                    $members[] = $row['mb_id'];
-                }
-                break;
-
-            case 'event_entrants':
-                // member_id 컬럼 존재 여부 체크
-                $col_check = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_event_entries LIKE 'member_id'");
-                if ($col_check && mysqli_num_rows($col_check) > 0) {
-                    $result = mysqli_query($connect, "SELECT DISTINCT member_id FROM gangnamunni_event_entries WHERE member_id IS NOT NULL AND member_id != ''");
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        $members[] = $row['member_id'];
-                    }
-                } else {
-                    // fallback: user_email -> g5_member mb_email 매핑
-                    $result = mysqli_query($connect, "SELECT DISTINCT e.user_email, m.mb_id FROM gangnamunni_event_entries e INNER JOIN g5_member m ON e.user_email = m.mb_email WHERE e.user_email IS NOT NULL AND e.user_email != ''");
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        $members[] = $row['mb_id'];
-                    }
-                }
-                break;
-
-            case 'specific_event':
-                if ($event_id > 0) {
-                    $col_check = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_event_entries LIKE 'member_id'");
-                    if ($col_check && mysqli_num_rows($col_check) > 0) {
-                        $stmt = mysqli_prepare($connect, "SELECT DISTINCT member_id FROM gangnamunni_event_entries WHERE event_id = ? AND member_id IS NOT NULL AND member_id != ''");
-                        mysqli_stmt_bind_param($stmt, 'i', $event_id);
-                        mysqli_stmt_execute($stmt);
-                        $result = mysqli_stmt_get_result($stmt);
-                        while ($row = mysqli_fetch_assoc($result)) {
-                            $members[] = $row['member_id'];
-                        }
-                        mysqli_stmt_close($stmt);
-                    } else {
-                        $stmt = mysqli_prepare($connect, "SELECT DISTINCT e.user_email, m.mb_id FROM gangnamunni_event_entries e INNER JOIN g5_member m ON e.user_email = m.mb_email WHERE e.event_id = ? AND e.user_email IS NOT NULL AND e.user_email != ''");
-                        mysqli_stmt_bind_param($stmt, 'i', $event_id);
-                        mysqli_stmt_execute($stmt);
-                        $result = mysqli_stmt_get_result($stmt);
-                        while ($row = mysqli_fetch_assoc($result)) {
-                            $members[] = $row['mb_id'];
-                        }
-                        mysqli_stmt_close($stmt);
-                    }
-                }
-                break;
-
-            case 'individual':
-                if (!empty($member_id)) {
-                    // 회원 존재 확인
-                    $stmt = mysqli_prepare($connect, "SELECT mb_id FROM g5_member WHERE mb_id = ?");
-                    mysqli_stmt_bind_param($stmt, 's', $member_id);
-                    mysqli_stmt_execute($stmt);
-                    $result = mysqli_stmt_get_result($stmt);
-                    if ($row = mysqli_fetch_assoc($result)) {
-                        $members[] = $row['mb_id'];
-                    }
-                    mysqli_stmt_close($stmt);
-                }
-                break;
-
-            case 'selected':
-                if (!is_array($member_ids)) {
-                    $member_ids = [$member_ids];
-                }
-                $member_ids = array_values(array_unique(array_filter(array_map('trim', $member_ids))));
-                if (!empty($member_ids)) {
-                    $escaped = array_map(
-                        static fn ($id) => "'" . mysqli_real_escape_string($connect, $id) . "'",
-                        $member_ids
-                    );
-                    $result = mysqli_query(
-                        $connect,
-                        "SELECT mb_id FROM g5_member WHERE mb_level > 1 AND mb_id IN (" . implode(',', $escaped) . ")"
-                    );
-                    while ($result && $row = mysqli_fetch_assoc($result)) {
-                        $members[] = $row['mb_id'];
-                    }
-                }
-                break;
-        }
-
-        return array_unique($members);
-    }
-
     // --- action=preview: 대상 인원 수 반환 ---
     if ($action === 'preview') {
+        $csrf = (string)($_POST['admin_csrf'] ?? '');
+        $session_csrf = (string)($_SESSION['admin_send_notification_csrf'] ?? '');
+        if ($session_csrf === '' || !hash_equals($session_csrf, $csrf)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => '요청이 만료되었습니다. 페이지를 새로고침해주세요.']);
+            exit;
+        }
+
         $target = $_POST['target'] ?? 'all';
         $event_id = intval($_POST['event_id'] ?? 0);
         $member_id = trim($_POST['member_id'] ?? '');
         $member_ids = $_POST['member_ids'] ?? [];
+        $type = $_POST['type'] ?? 'general';
 
-        $members = get_target_members($connect, $target, $event_id, $member_id, $member_ids);
-        echo json_encode(['success' => true, 'count' => count($members)]);
+        echo json_encode(member_notification_preview($connect, $target, $event_id, $member_id, $member_ids, $type));
         exit;
     }
 
@@ -184,29 +79,6 @@ if ($is_ajax) {
         $message = trim($_POST['message'] ?? '');
         $link = trim($_POST['link'] ?? '');
 
-        // 유효성 검사
-        if (empty($title)) {
-            echo json_encode(['success' => false, 'error' => '제목을 입력해 주세요.']);
-            exit;
-        }
-        if (mb_strlen($title) > 200 || mb_strlen($message) > 1000) {
-            echo json_encode(['success' => false, 'error' => '제목 또는 내용이 너무 깁니다.']);
-            exit;
-        }
-        if ($link !== '') {
-            $scheme = strtolower((string)parse_url($link, PHP_URL_SCHEME));
-            if (!in_array($scheme, ['http', 'https'], true)) {
-                echo json_encode(['success' => false, 'error' => '링크는 http/https 주소만 사용할 수 있습니다.']);
-                exit;
-            }
-        }
-
-        // 허용된 알림 유형만
-        $allowed_types = ['general', 'event', 'promotion', 'system'];
-        if (!in_array($type, $allowed_types)) {
-            $type = 'general';
-        }
-
         $csrf = (string)($_POST['admin_csrf'] ?? '');
         $session_csrf = (string)($_SESSION['admin_send_notification_csrf'] ?? '');
         if ($session_csrf === '' || !hash_equals($session_csrf, $csrf)) {
@@ -215,78 +87,19 @@ if ($is_ajax) {
             exit;
         }
 
-        $members = get_target_members($connect, $target, $event_id, $member_id_input, $member_ids_input);
-
-        if (empty($members)) {
-            echo json_encode(['success' => false, 'error' => '발송 대상이 없습니다.']);
-            exit;
-        }
-
-        // 일괄 알림 생성
-        $sent_count = create_user_notifications_batch(
-            $connect,
-            $members,
-            $type,
-            $title,
-            !empty($message) ? $message : null,
-            !empty($link) ? $link : null
-        );
-
-        // Send directly to registered device tokens. A topic send can return
-        // HTTP 200 even when the topic has no subscribers, which made Admin
-        // report success without delivering anything to a phone.
-        if ($target === 'all') {
-            $push_result = send_push_to_members(
-                $connect,
-                null,
-                $title,
-                !empty($message) ? $message : $title,
-                !empty($link) ? $link : null
-            );
-        } else {
-            $push_result = send_push_to_members(
-                $connect,
-                $members,
-                $title,
-                !empty($message) ? $message : $title,
-                !empty($link) ? $link : null
-            );
-        }
-
-        // 발송 이력 기록
-        $admin_id = intval($_SESSION['ad_admin_id'] ?? 0);
-        $admin_username = $_SESSION['ad_admin_user'] ?? '';
-        $target_label_map = [
-            'all' => '전체 회원',
-            'recent_7days' => '최근 7일 가입자',
-            'event_entrants' => '이벤트 응모자(전체)',
-            'specific_event' => '특정 이벤트(#' . $event_id . ')',
-            'individual' => '개별(' . $member_id_input . ')',
-            'selected' => '선택 회원(' . count($members) . '명)',
-        ];
-        $target_label = $target_label_map[$target] ?? $target;
-
-        $stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_notification_sends (admin_id, admin_username, target_type, target_count, notification_type, title, message, link) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        mysqli_stmt_bind_param($stmt, 'ississss', $admin_id, $admin_username, $target_label, $sent_count, $type, $title, $message, $link);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-
-        $push_failed = (int)($push_result['failed'] ?? 0);
-        $push_error = trim((string)($push_result['error'] ?? ''));
-        $push_warning = $push_failed > 0 || $push_error !== '';
-
-        echo json_encode([
-            'success' => true,
-            'sent' => $sent_count,
-            'push_sent' => (int)($push_result['sent'] ?? 0),
-            'push_failed' => $push_failed,
-            'push_success' => !$push_warning,
-            'push_error' => $push_error,
-            'message' => $sent_count . '명에게 알림 저장, 푸시 '
-                . (int)($push_result['sent'] ?? 0) . '건 성공, '
-                . $push_failed . '건 실패'
-                . ($push_error !== '' ? ' (' . $push_error . ')' : '')
-        ]);
+        echo json_encode(member_notification_send($connect, [
+            'target' => $target,
+            'event_id' => $event_id,
+            'member_id' => $member_id_input,
+            'member_ids' => $member_ids_input,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'link' => $link,
+        ], [
+            'id' => intval($_SESSION['ad_admin_id'] ?? 0),
+            'username' => $_SESSION['ad_admin_user'] ?? '',
+        ]));
         exit;
     }
 
@@ -460,7 +273,9 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
                         <label for="notifType" class="form-label fw-semibold"><i class="bi bi-tag me-1"></i>알림 유형</label>
                         <select class="form-select" id="notifType" name="type">
                             <option value="general">일반 알림</option>
+                            <option value="booking">예약 알림</option>
                             <option value="event">이벤트</option>
+                            <option value="raffle">응모/추첨</option>
                             <option value="promotion">프로모션</option>
                             <option value="system">시스템</option>
                         </select>
@@ -483,6 +298,7 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
                     <div class="mb-3">
                         <label for="notifLink" class="form-label fw-semibold"><i class="bi bi-link-45deg me-1"></i>링크</label>
                         <input type="url" class="form-control" id="notifLink" name="link" placeholder="알림 클릭 시 이동할 URL (선택사항)">
+                        <div class="form-text">서울미녀 도메인 링크만 사용할 수 있습니다.</div>
                     </div>
 
                     <!-- 버튼 -->
@@ -587,7 +403,9 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
     // 알림 유형 정보
     var typeInfo = {
         general:   { label: '일반 알림',  icon: 'bi-bell',           color: '#6c757d', bg: 'bg-secondary' },
+        booking:   { label: '예약 알림',  icon: 'bi-calendar-check', color: '#AE1932', bg: 'bg-danger'    },
         event:     { label: '이벤트',     icon: 'bi-calendar-event', color: '#AE1932', bg: 'bg-warning'   },
+        raffle:    { label: '응모/추첨',  icon: 'bi-gift',           color: '#198754', bg: 'bg-success'   },
         promotion: { label: '프로모션',   icon: 'bi-megaphone',      color: '#dc3545', bg: 'bg-danger'    },
         system:    { label: '시스템',     icon: 'bi-gear',           color: '#0d6efd', bg: 'bg-primary'   }
     };
@@ -678,8 +496,12 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
     }
 
     // 미리보기 렌더링
-    function renderPreview(data, count) {
+    function renderPreview(data, preview) {
         var ti = typeInfo[data.type] || typeInfo.general;
+        var inAppCount = preview.in_app_count || preview.count || 0;
+        var resolvedCount = preview.resolved_count || inAppCount;
+        var pushTokenCount = preview.push_token_count || 0;
+        var pushMemberCount = preview.push_member_count || 0;
         var html = '';
         html += '<div class="border rounded p-3" style="background:var(--bs-tertiary-bg);">';
         html += '  <div class="d-flex align-items-start gap-2">';
@@ -699,11 +521,13 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
         html += '    </div>';
         html += '  </div>';
         html += '</div>';
-        html += '<div class="text-center mt-2">';
-        html += '  <span class="badge bg-info text-dark" style="font-size:12px;"><i class="bi bi-people me-1"></i>' + count + '명에게 발송됩니다</span>';
+        html += '<div class="text-center mt-2 d-flex flex-wrap justify-content-center gap-1">';
+        html += '  <span class="badge bg-info text-dark" style="font-size:12px;"><i class="bi bi-people me-1"></i>대상 ' + resolvedCount + '명</span>';
+        html += '  <span class="badge bg-success" style="font-size:12px;"><i class="bi bi-bell me-1"></i>인앱 ' + inAppCount + '명</span>';
+        html += '  <span class="badge bg-primary" style="font-size:12px;"><i class="bi bi-phone me-1"></i>푸시 ' + pushMemberCount + '명/' + pushTokenCount + '기기</span>';
         html += '</div>';
         previewArea.innerHTML = html;
-        previewCount.textContent = '대상: ' + count + '명';
+        previewCount.textContent = '대상: ' + inAppCount + '명';
     }
 
     // HTML 이스케이프
@@ -745,7 +569,7 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
             previewBtn.innerHTML = '<i class="bi bi-eye me-1"></i>미리보기';
 
             if (res.success) {
-                renderPreview(data, res.count);
+                renderPreview(data, res);
             } else {
                 showToast(res.error || '조회 실패', false);
             }
@@ -798,7 +622,11 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
                 return;
             }
 
-            var confirmed = confirm(previewRes.count + '명에게 알림을 발송하시겠습니까?\n\n제목: ' + data.title);
+            var confirmed = confirm(
+                previewRes.count + '명에게 인앱 알림을 저장하고, '
+                + (previewRes.push_token_count || 0) + '개 기기에 푸시를 발송하시겠습니까?\n\n제목: '
+                + data.title
+            );
             if (!confirmed) {
                 sendBtn.disabled = false;
                 sendBtn.innerHTML = '<i class="bi bi-send me-1"></i>발송하기';

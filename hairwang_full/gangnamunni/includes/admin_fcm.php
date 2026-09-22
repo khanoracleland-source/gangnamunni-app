@@ -589,8 +589,9 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
     if (mysqli_num_rows($tokenResult) === 0) {
         return [
             'sent' => 0,
-            'failed' => 1,
-            'error' => 'No active device tokens are registered',
+            'failed' => 0,
+            'skipped' => true,
+            'reason' => 'No active device tokens are registered',
         ];
     }
 
@@ -602,6 +603,10 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
 
     $sent = 0;
     $failed = 0;
+    $deactivated = 0;
+    $firstError = '';
+    $firstErrorCode = '';
+    $firstHttpCode = 0;
     $data = ['type' => 'member_notification'];
     if ($link) {
         $data['url'] = $link;
@@ -626,14 +631,29 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
         $failed++;
         $httpCode = $result['http_code'] ?? 0;
         $response = $result['response'] ?? [];
+        $errorMessage = $response['error']['message'] ?? 'FCM send failed';
+        $errorStatus = $response['error']['status'] ?? '';
         $errorCode = $response['error']['details'][0]['errorCode'] ?? '';
 
-        if ($httpCode === 404 || $errorCode === 'UNREGISTERED') {
+        if ($firstError === '') {
+            $firstError = $errorMessage;
+            $firstErrorCode = $errorCode ?: $errorStatus;
+            $firstHttpCode = (int)$httpCode;
+        }
+
+        if ($httpCode === 404 || in_array($errorCode, [
+            'UNREGISTERED',
+            'SENDER_ID_MISMATCH',
+            'InvalidRegistration',
+            'NotRegistered',
+            'MismatchSenderId',
+        ], true)) {
             $stmt = mysqli_prepare($connect, 'UPDATE g5_push_tokens SET pt_use = 0 WHERE pt_token = ?');
             if ($stmt) {
                 mysqli_stmt_bind_param($stmt, 's', $row['pt_token']);
                 mysqli_stmt_execute($stmt);
                 mysqli_stmt_close($stmt);
+                $deactivated++;
             }
         }
     }
@@ -641,6 +661,10 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
     return [
         'sent' => $sent,
         'failed' => $failed,
+        'deactivated' => $deactivated,
+        'error' => $firstError,
+        'error_code' => $firstErrorCode,
+        'http_code' => $firstHttpCode,
         'api' => 'v1',
         'recipient_filter' => $memberIds,
     ];

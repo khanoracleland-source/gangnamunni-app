@@ -12,7 +12,7 @@ $social_login_result = mysqli_query(
 );
 $social_login_profile = $social_login_result ? mysqli_fetch_assoc($social_login_result) : null;
 $is_social_member = !empty($social_login_profile);
-$editable_fields = ['noti_general','noti_message','noti_booking','noti_push','mkt_push','mkt_sms','mkt_email','mkt_night_push'];
+$editable_fields = ['noti_general','noti_message','noti_booking','noti_event','noti_promo','noti_push','mkt_push','mkt_sms','mkt_email','mkt_night_push'];
 
 @mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_notification_settings (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -33,6 +33,10 @@ $editable_fields = ['noti_general','noti_message','noti_booking','noti_push','mk
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 @mysqli_query($connect, "ALTER TABLE gangnamunni_notification_settings
   ADD COLUMN IF NOT EXISTS noti_booking TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS noti_event TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS noti_promo TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS noti_general TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS noti_message TINYINT(1) NOT NULL DEFAULT 1,
   ADD COLUMN IF NOT EXISTS noti_push TINYINT(1) NOT NULL DEFAULT 1");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -230,8 +234,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     echo json_encode(['ok' => (bool)$ok, 'field' => $field, 'value' => $value]); exit;
 }
 
-$settings = ['noti_general'=>1,'noti_message'=>1,'noti_booking'=>1,'noti_push'=>1,'mkt_push'=>0,'mkt_sms'=>0,'mkt_email'=>0,'mkt_night_push'=>0];
-$stmt_get = mysqli_prepare($connect, "SELECT noti_general,noti_message,noti_booking,noti_push,mkt_push,mkt_sms,mkt_email,mkt_night_push FROM gangnamunni_notification_settings WHERE member_id=?");
+$settings = ['noti_general'=>1,'noti_message'=>1,'noti_booking'=>1,'noti_event'=>1,'noti_promo'=>1,'noti_push'=>1,'mkt_push'=>0,'mkt_sms'=>0,'mkt_email'=>0,'mkt_night_push'=>0];
+$stmt_get = mysqli_prepare($connect, "SELECT noti_general,noti_message,noti_booking,noti_event,noti_promo,noti_push,mkt_push,mkt_sms,mkt_email,mkt_night_push FROM gangnamunni_notification_settings WHERE member_id=?");
 if ($stmt_get) {
     mysqli_stmt_bind_param($stmt_get, 's', $member_id);
     mysqli_stmt_execute($stmt_get);
@@ -290,6 +294,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
         <label class="toggle"><input type="checkbox" name="noti_booking" value="1" <?php echo ($settings['noti_booking'] ?? 1) ? 'checked' : ''; ?>><span class="slider"></span></label>
     </div>
     <div class="setting-item">
+        <div><label>이벤트/추첨 알림</label></div>
+        <label class="toggle"><input type="checkbox" name="noti_event" value="1" <?php echo ($settings['noti_event'] ?? 1) ? 'checked' : ''; ?>><span class="slider"></span></label>
+    </div>
+    <div class="setting-item">
+        <div><label>프로모션 알림</label></div>
+        <label class="toggle"><input type="checkbox" name="noti_promo" value="1" <?php echo ($settings['noti_promo'] ?? 1) ? 'checked' : ''; ?>><span class="slider"></span></label>
+    </div>
+    <div class="setting-item">
         <div><label>푸시 알림</label></div>
         <label class="toggle"><input type="checkbox" name="noti_push" value="1" <?php echo ($settings['noti_push'] ?? 1) ? 'checked' : ''; ?>><span class="slider"></span></label>
     </div>
@@ -303,7 +315,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
     <div class="section-label">마케팅 정보 수신</div>
     <div class="setting-item">
         <div><label>푸시</label></div>
-        <label class="toggle"><input type="checkbox" name="mkt_push" value="1" <?php echo ($settings['mkt_push'] ?? 1) ? 'checked' : ''; ?>><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" name="mkt_push" value="1" <?php echo ($settings['mkt_push'] ?? 0) ? 'checked' : ''; ?>><span class="slider"></span></label>
     </div>
     <div class="setting-item">
         <div><label>SMS</label></div>
