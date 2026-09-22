@@ -37,8 +37,8 @@ if (!defined('FCM_ENABLED_SETTING')) {
     define('FCM_ENABLED_SETTING', 'fcm_enabled');
 }
 if (!defined('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC')) {
-    // Must match AppConfig.DEFAULT_FCM_TOPIC in the Android application.
-    define('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC', 'news_test');
+    // Must match ANDROID_BROADCAST_TOPIC in the Flutter patient app.
+    define('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC', 'seoulbeauty_android_all');
 }
 
 /**
@@ -212,7 +212,35 @@ function base64url_encode($data) {
 /**
  * FCM HTTP v1 API로 전송
  */
-function send_fcm_v1($project_id, $access_token, $token, $title, $body, $data = []) {
+function normalize_fcm_platform($platform) {
+    $platform = strtolower(trim((string)$platform));
+    return in_array($platform, ['android', 'ios', 'web'], true) ? $platform : 'android';
+}
+
+function fcm_response_error_message(array $response) {
+    return (string)($response['error']['message'] ?? 'FCM send failed');
+}
+
+function fcm_response_error_status(array $response) {
+    return (string)($response['error']['status'] ?? '');
+}
+
+function fcm_response_error_code(array $response) {
+    return (string)($response['error']['details'][0]['errorCode'] ?? '');
+}
+
+function fcm_is_apns_auth_error($httpCode, array $response) {
+    $message = fcm_response_error_message($response);
+    $status = fcm_response_error_status($response);
+    $code = fcm_response_error_code($response);
+
+    return (int)$httpCode === 401
+        && ($status === 'THIRD_PARTY_AUTH_ERROR'
+            || $code === 'THIRD_PARTY_AUTH_ERROR'
+            || stripos($message, 'APNs credential') !== false);
+}
+
+function send_fcm_v1($project_id, $access_token, $token, $title, $body, $data = [], $platform = '') {
     return send_fcm_v1_target(
         $project_id,
         $access_token,
@@ -220,14 +248,15 @@ function send_fcm_v1($project_id, $access_token, $token, $title, $body, $data = 
         $token,
         $title,
         $body,
-        $data
+        $data,
+        $platform
     );
 }
 
 /**
  * FCM HTTP v1 API로 topic에 전송
  */
-function send_fcm_v1_topic($project_id, $access_token, $topic, $title, $body, $data = []) {
+function send_fcm_v1_topic($project_id, $access_token, $topic, $title, $body, $data = [], $platform = 'android') {
     return send_fcm_v1_target(
         $project_id,
         $access_token,
@@ -235,7 +264,8 @@ function send_fcm_v1_topic($project_id, $access_token, $topic, $title, $body, $d
         $topic,
         $title,
         $body,
-        $data
+        $data,
+        $platform
     );
 }
 
@@ -249,13 +279,15 @@ function send_fcm_v1_target(
     $target,
     $title,
     $body,
-    $data = []
+    $data = [],
+    $platform = ''
 ) {
     if (!in_array($target_type, ['token', 'topic'], true) || trim((string)$target) === '') {
         return ['success' => false, 'http_code' => 0, 'response' => ['error' => 'Invalid FCM target']];
     }
 
     $url = 'https://fcm.googleapis.com/v1/projects/' . $project_id . '/messages:send';
+    $platform = normalize_fcm_platform($platform);
 
     $message = [
         'message' => [
@@ -264,23 +296,27 @@ function send_fcm_v1_target(
                 'title' => $title,
                 'body' => $body,
             ],
-            'android' => [
-                'priority' => 'high',
-                'notification' => [
-                    'sound' => 'default',
-                    'channel_id' => 'notification',
-                ],
-            ],
-            'apns' => [
-                'payload' => [
-                    'aps' => [
-                        'sound' => 'default',
-                        'badge' => 1,
-                    ],
-                ],
-            ],
         ],
     ];
+
+    if ($platform === 'android') {
+        $message['message']['android'] = [
+            'priority' => 'high',
+            'notification' => [
+                'sound' => 'default',
+                'channel_id' => 'notification',
+            ],
+        ];
+    } elseif ($platform === 'ios') {
+        $message['message']['apns'] = [
+            'payload' => [
+                'aps' => [
+                    'sound' => 'default',
+                    'badge' => 1,
+                ],
+            ],
+        ];
+    }
 
     if (!empty($data)) {
         // FCM data 필드는 모든 값이 문자열이어야 함
@@ -356,7 +392,8 @@ function send_push_to_android_broadcast($connect, $title, $body, $link = null) {
         SEOULBEAUTY_ANDROID_BROADCAST_TOPIC,
         $title,
         $body,
-        $data
+        $data,
+        'android'
     );
 
     return [
@@ -506,7 +543,7 @@ function send_push_notification($connect, $admin_id, $title, $body, $link = null
         $token = $t['fcm_token'];
 
         if ($use_v1) {
-            $result = send_fcm_v1($project_id, $access_token, $token, $title, $body, $data);
+            $result = send_fcm_v1($project_id, $access_token, $token, $title, $body, $data, $t['platform'] ?? '');
         } else {
             $result = send_fcm_legacy($server_key, $token, $title, $body, $data);
         }
@@ -561,7 +598,7 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
         ];
     }
 
-    $sql = "SELECT DISTINCT pt_token, mb_id
+    $sql = "SELECT DISTINCT pt_token, mb_id, pt_platform
             FROM g5_push_tokens
             WHERE pt_use = 1 AND pt_token <> ''";
 
@@ -604,6 +641,8 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
     $sent = 0;
     $failed = 0;
     $deactivated = 0;
+    $iosAuthSkipped = 0;
+    $iosAuthBroken = false;
     $firstError = '';
     $firstErrorCode = '';
     $firstHttpCode = 0;
@@ -614,13 +653,20 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
     }
 
     while ($row = mysqli_fetch_assoc($tokenResult)) {
+        $platform = normalize_fcm_platform($row['pt_platform'] ?? '');
+        if ($platform === 'ios' && $iosAuthBroken) {
+            $iosAuthSkipped++;
+            continue;
+        }
+
         $result = send_fcm_v1(
             $projectId,
             $accessToken,
             $row['pt_token'],
             $title,
             $body,
-            $data
+            $data,
+            $platform
         );
 
         if ($result['success']) {
@@ -631,14 +677,22 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
         $failed++;
         $httpCode = $result['http_code'] ?? 0;
         $response = $result['response'] ?? [];
-        $errorMessage = $response['error']['message'] ?? 'FCM send failed';
-        $errorStatus = $response['error']['status'] ?? '';
-        $errorCode = $response['error']['details'][0]['errorCode'] ?? '';
+        $errorMessage = fcm_response_error_message($response);
+        $errorStatus = fcm_response_error_status($response);
+        $errorCode = fcm_response_error_code($response);
+        $isApnsAuthError = $platform === 'ios' && fcm_is_apns_auth_error($httpCode, $response);
 
         if ($firstError === '') {
-            $firstError = $errorMessage;
+            $firstError = $isApnsAuthError
+                ? 'iOS APNs credential is invalid in Firebase. Upload/fix the APNs key for the iOS app, then retry.'
+                : $errorMessage;
             $firstErrorCode = $errorCode ?: $errorStatus;
             $firstHttpCode = (int)$httpCode;
+        }
+
+        if ($isApnsAuthError) {
+            $iosAuthBroken = true;
+            continue;
         }
 
         if ($httpCode === 404 || in_array($errorCode, [
@@ -662,6 +716,7 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
         'sent' => $sent,
         'failed' => $failed,
         'deactivated' => $deactivated,
+        'ios_auth_skipped' => $iosAuthSkipped,
         'error' => $firstError,
         'error_code' => $firstErrorCode,
         'http_code' => $firstHttpCode,

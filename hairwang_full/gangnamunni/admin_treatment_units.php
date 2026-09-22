@@ -56,7 +56,8 @@ if ($ready) {
     try {
         $result = mysqli_query($connect, 'SELECT id, name FROM gangnamunni_treatment_units WHERE is_active = 1 ORDER BY id');
         if (!$result) throw new RuntimeException('단위 조회 실패');
-        $units = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        // 영문(abc) → 한글(ㄱㄴㄷ) 순으로 정렬해 보여준다.
+        $units = treatment_units_sort_rows(mysqli_fetch_all($result, MYSQLI_ASSOC));
     } catch (Throwable $e) {
         $ready = false;
         $error = '단위 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';

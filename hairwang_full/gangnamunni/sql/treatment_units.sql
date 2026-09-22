@@ -6,4 +6,4 @@ CREATE TABLE IF NOT EXISTS gangnamunni_treatment_units (
     UNIQUE KEY uq_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 INSERT IGNORE INTO gangnamunni_treatment_units (name) VALUES
-('샷'), ('cc'), ('ml'), ('kj'), ('회'), ('병'), ('IU'), ('라인'), ('시린지'), ('Box'), ('기타');
+('Box'), ('cc'), ('IU'), ('kj'), ('ml'), ('기타'), ('라인'), ('병'), ('샷'), ('시린지'), ('회');

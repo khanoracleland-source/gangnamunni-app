@@ -139,7 +139,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     token: token,
-                    platform: 'android'
+                    platform: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios' : 'android'
                 })
             }).catch(function () {
                 // A later page load retries the token saved in localStorage.

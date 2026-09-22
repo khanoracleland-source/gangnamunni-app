@@ -1365,6 +1365,23 @@ function deleteTreatmentImage(htId, imageId) {
 
 var HT_PRICES = <?php echo json_encode($ht_prices, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 var PRICE_UNITS = <?php echo json_encode($price_units, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+// 단위 정렬: 영문(abc)이 먼저, 그다음 한글(ㄱㄴㄷ) 순. (PHP treatment_units_compare 와 동일 규칙)
+function unitSortGroup(value) {
+    var code = String(value || '').charCodeAt(0) || 0;
+    var isHangul = (code >= 0x1100 && code <= 0x11FF)
+        || (code >= 0x3130 && code <= 0x318F)
+        || (code >= 0xAC00 && code <= 0xD7A3);
+    return isHangul ? 1 : 0;
+}
+
+function sortUnits(list) {
+    return list.slice().sort(function(a, b) {
+        var groupA = unitSortGroup(a), groupB = unitSortGroup(b);
+        if (groupA !== groupB) return groupA - groupB;
+        return String(a).localeCompare(String(b), 'ko');
+    });
+}
+
 var BODY_PART_GROUPS = [
     {label:'얼굴 전체 및 헤어', items:['얼굴 전체 (풀페이스)','헤어라인','두피']},
     {label:'상안면부 (눈/이마 주변)', items:['이마','미간','눈가 (눈웃음 주름)','눈밑 (다크서클, 눈밑 꺼짐)','애교살','관자놀이']},
@@ -1424,6 +1441,7 @@ function syncBodyParts(checkbox) {
 function priceRowHtml(dv, du, regularPrice, pr, optionName, bodyPart, isRepresentative) {
     var units = PRICE_UNITS.slice();
     if (du && units.indexOf(du) === -1) units.push(du);
+    units = sortUnits(units);
     var opts = '<option value="">단위 선택</option>' + units.map(function(u){
         return '<option value="'+tiEscape(u)+'"'+(u===du?' selected':'')+'>'+tiEscape(u)+'</option>';
     }).join('');

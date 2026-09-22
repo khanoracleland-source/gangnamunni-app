@@ -40,14 +40,14 @@ $token = trim((string) (
     ?? ''
 ));
 
-if ($token === '' || strlen($token) < 32 || strlen($token) > 255) {
+if ($token === '' || strlen($token) < 32 || strlen($token) > 500) {
     http_response_code(422);
     echo json_encode(['success' => false, 'message' => 'Invalid FCM token']);
     exit;
 }
 
 $platform = strtolower(trim((string) ($input['platform'] ?? $input['app'] ?? 'android')));
-if ($platform !== 'android') {
+if (!in_array($platform, ['android', 'ios', 'web'], true)) {
     $platform = 'android';
 }
 
@@ -60,8 +60,11 @@ if (isset($member['mb_id']) && is_string($member['mb_id'])) {
 $deviceInfo = json_encode([
     'device_id' => trim((string) ($input['device_id'] ?? $input['uuid'] ?? '')),
     'app_version' => trim((string) ($input['app_version'] ?? $input['version'] ?? '')),
+    'platform' => $platform,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+@mysqli_query($connect, "ALTER TABLE g5_push_tokens MODIFY pt_token VARCHAR(500) NOT NULL");
 
 $stmt = mysqli_prepare(
     $connect,

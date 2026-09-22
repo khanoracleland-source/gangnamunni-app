@@ -479,6 +479,23 @@ function member_notification_send($connect, array $input, array $adminContext = 
         );
     }
 
+    if ($target === 'all') {
+        $androidBroadcastResult = send_push_to_android_broadcast(
+            $connect,
+            $title,
+            $message !== '' ? $message : $title,
+            $link !== '' ? $link : null
+        );
+        $pushResult['sent'] = (int)($pushResult['sent'] ?? 0) + (int)($androidBroadcastResult['sent'] ?? 0);
+        $pushResult['failed'] = (int)($pushResult['failed'] ?? 0) + (int)($androidBroadcastResult['failed'] ?? 0);
+        if (empty($pushResult['error']) && !empty($androidBroadcastResult['error'])) {
+            $pushResult['error'] = $androidBroadcastResult['error'];
+            $pushResult['error_code'] = $androidBroadcastResult['error_code'] ?? '';
+            $pushResult['http_code'] = $androidBroadcastResult['http_code'] ?? 0;
+        }
+        $pushResult['android_broadcast'] = $androidBroadcastResult;
+    }
+
     $pushSent = (int)($pushResult['sent'] ?? 0);
     $pushFailed = (int)($pushResult['failed'] ?? 0);
     $pushError = trim((string)($pushResult['error'] ?? $pushResult['reason'] ?? ''));
