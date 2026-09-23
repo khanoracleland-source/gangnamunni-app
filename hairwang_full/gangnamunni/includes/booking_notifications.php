@@ -29,7 +29,14 @@ function booking_notification_ensure_send_log_table($connect) {
     @mysqli_query($connect, "ALTER TABLE gangnamunni_notification_sends
         ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 0,
         ADD COLUMN IF NOT EXISTS notification_type VARCHAR(50),
-        ADD COLUMN IF NOT EXISTS link VARCHAR(500)");
+        ADD COLUMN IF NOT EXISTS link VARCHAR(500),
+        ADD COLUMN IF NOT EXISTS resolved_count INT DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS in_app_count INT DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS push_sent INT DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS push_failed INT DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS push_skipped INT DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS push_error TEXT,
+        ADD COLUMN IF NOT EXISTS push_details LONGTEXT");
 }
 
 function booking_notification_fetch_booking_by_id($connect, $bookingId) {
@@ -178,7 +185,7 @@ function booking_notification_payload(array $booking, $event, array $context = [
     ];
 }
 
-function booking_notification_log_send($connect, $memberId, $event, $title, $body, $link, array $result) {
+function booking_notification_log_send($connect, array $booking, $memberId, $event, $title, $body, $link, array $result) {
     booking_notification_ensure_send_log_table($connect);
 
     $adminId = (int)($_SESSION['ad_admin_id'] ?? 0);
@@ -186,27 +193,40 @@ function booking_notification_log_send($connect, $memberId, $event, $title, $bod
     $targetType = 'booking:' . $memberId;
     $targetCount = $memberId !== '' ? 1 : 0;
     $notificationType = 'booking_' . $event;
+    $pushSent = (int)($result['push_sent'] ?? 0);
+    $pushFailed = (int)($result['push_failed'] ?? 0);
+    $pushSkipped = !empty($result['push_skipped']) ? 1 : 0;
+    $pushError = (string)($result['push_error'] ?? '');
+    $pushDetails = json_encode([
+        'booking_id' => (int)($booking['id'] ?? 0),
+        'event' => $event,
+        'member_id' => $memberId,
+        'in_app_created' => !empty($result['in_app_created']),
+        'push_sent' => $pushSent,
+        'push_failed' => $pushFailed,
+        'push_skipped' => !empty($result['push_skipped']),
+        'push_error' => $pushError,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
     $stmt = mysqli_prepare(
         $connect,
         "INSERT INTO gangnamunni_notification_sends
-            (admin_id, admin_username, target_type, target_count, notification_type, title, message, link)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            (admin_id, admin_username, target_type, target_count, notification_type, title, message, link,
+             resolved_count, in_app_count, push_sent, push_failed, push_skipped, push_error, push_details)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     if (!$stmt) return;
 
     $message = $body;
-    $pushSent = (int)($result['push_sent'] ?? 0);
-    $pushFailed = (int)($result['push_failed'] ?? 0);
-    if (!empty($result['push_error'])) {
-        $message .= "\n[push_error] " . $result['push_error'];
+    if ($pushError !== '') {
+        $message .= "\n[push_error] " . $pushError;
     } else {
         $message .= "\n[push] sent={$pushSent}, failed={$pushFailed}";
     }
 
     mysqli_stmt_bind_param(
         $stmt,
-        'ississss',
+        'ississssiiiiiss',
         $adminId,
         $adminUsername,
         $targetType,
@@ -214,7 +234,14 @@ function booking_notification_log_send($connect, $memberId, $event, $title, $bod
         $notificationType,
         $title,
         $message,
-        $link
+        $link,
+        $targetCount,
+        !empty($result['in_app_created']) ? 1 : 0,
+        $pushSent,
+        $pushFailed,
+        $pushSkipped,
+        $pushError,
+        $pushDetails
     );
     mysqli_stmt_execute($stmt);
     mysqli_stmt_close($stmt);
@@ -272,6 +299,7 @@ function notify_booking_member($connect, array $booking, $event, array $context 
 
     booking_notification_log_send(
         $connect,
+        $booking,
         $memberId,
         $event,
         $payload['title'],

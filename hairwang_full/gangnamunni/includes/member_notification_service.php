@@ -76,7 +76,8 @@ function member_notification_ensure_tables($connect) {
         ADD COLUMN IF NOT EXISTS push_sent INT DEFAULT 0,
         ADD COLUMN IF NOT EXISTS push_failed INT DEFAULT 0,
         ADD COLUMN IF NOT EXISTS push_skipped INT DEFAULT 0,
-        ADD COLUMN IF NOT EXISTS push_error TEXT");
+        ADD COLUMN IF NOT EXISTS push_error TEXT,
+        ADD COLUMN IF NOT EXISTS push_details LONGTEXT");
 
     @mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_notification_settings (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -400,14 +401,19 @@ function member_notification_log_send($connect, array $logData) {
         $connect,
         "INSERT INTO gangnamunni_notification_sends
             (admin_id, admin_username, target_type, target_count, notification_type, title, message, link,
-             resolved_count, in_app_count, push_sent, push_failed, push_skipped, push_error)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             resolved_count, in_app_count, push_sent, push_failed, push_skipped, push_error, push_details)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     if (!$stmt) return false;
 
+    $pushDetails = $logData['push_details'] ?? '';
+    if (is_array($pushDetails)) {
+        $pushDetails = json_encode($pushDetails, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     mysqli_stmt_bind_param(
         $stmt,
-        'ississssiiiiis',
+        'ississssiiiiiss',
         $logData['admin_id'],
         $logData['admin_username'],
         $logData['target_type'],
@@ -421,7 +427,8 @@ function member_notification_log_send($connect, array $logData) {
         $logData['push_sent'],
         $logData['push_failed'],
         $logData['push_skipped'],
-        $logData['push_error']
+        $logData['push_error'],
+        $pushDetails
     );
     $ok = mysqli_stmt_execute($stmt);
     mysqli_stmt_close($stmt);
@@ -511,6 +518,30 @@ function member_notification_send($connect, array $input, array $adminContext = 
         $pushError .= ' [' . trim($pushErrorCode . ' HTTP ' . ($pushHttpCode ?: '')) . ']';
     }
     $pushSkipped = (int)$filtered['skipped_push'];
+    $androidBroadcast = $pushResult['android_broadcast'] ?? null;
+    $androidTopicSent = is_array($androidBroadcast) ? (int)($androidBroadcast['sent'] ?? 0) : 0;
+    $androidTopicFailed = is_array($androidBroadcast) ? (int)($androidBroadcast['failed'] ?? 0) : 0;
+    $directSent = max(0, $pushSent - $androidTopicSent);
+    $directFailed = max(0, $pushFailed - $androidTopicFailed);
+    $pushDetails = [
+        'target' => $target,
+        'resolved_users' => count($members),
+        'in_app_saved' => $inAppCount,
+        'push_enabled_users' => count($filtered['push']),
+        'push_skipped_users' => $pushSkipped,
+        'direct' => [
+            'sent' => $directSent,
+            'failed' => $directFailed,
+            'platform_stats' => $pushResult['platform_stats'] ?? [],
+        ],
+        'android_topic' => $androidBroadcast ? [
+            'sent' => $androidTopicSent,
+            'failed' => $androidTopicFailed,
+            'topic' => $androidBroadcast['topic'] ?? '',
+            'error' => $androidBroadcast['error'] ?? '',
+        ] : null,
+        'error' => $pushError,
+    ];
 
     $targetLabel = member_notification_target_label($target, $eventId, $memberId, $members);
     member_notification_log_send($connect, [
@@ -528,13 +559,12 @@ function member_notification_send($connect, array $input, array $adminContext = 
         'push_failed' => $pushFailed,
         'push_skipped' => $pushSkipped,
         'push_error' => $pushError,
+        'push_details' => $pushDetails,
     ]);
 
     $pushWarning = $pushFailed > 0 || (!empty($filtered['push']) && $pushSent === 0);
     $platformSummary = '';
     if ($target === 'all') {
-        $androidTopicSent = (int)($pushResult['android_broadcast']['sent'] ?? 0);
-        $directSent = max(0, $pushSent - $androidTopicSent);
         $platformSummary = ' (Android topic '
             . $androidTopicSent . '건'
             . ($directSent > 0 ? ', iOS/web direct ' . $directSent . '건' : '')
@@ -548,6 +578,7 @@ function member_notification_send($connect, array $input, array $adminContext = 
         'push_sent' => $pushSent,
         'push_failed' => $pushFailed,
         'push_skipped' => $pushSkipped,
+        'push_details' => $pushDetails,
         'push_success' => !$pushWarning,
         'push_error' => $pushError,
         'message' => $inAppCount . '명에게 알림 저장, 푸시 '

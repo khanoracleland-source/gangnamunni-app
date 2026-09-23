@@ -1,6 +1,6 @@
 <?php
 /**
- * 알림 센터 - 전체 알림 관리 페이지
+ * Admin Center Alert - 관리자 내부 알림 관리 페이지
  * Bootstrap 5.3 + 주간/야간 모드
  * @created 2026-02-26
  */
@@ -201,7 +201,7 @@ while ($row = mysqli_fetch_assoc($stats_res)) {
 mysqli_stmt_close($stmt);
 
 // ===== 페이지 설정 =====
-$admin_page_title = '알림 센터';
+$admin_page_title = 'Admin Center Alert';
 $admin_current = 'notifications';
 
 // 페이지별 추가 CSS

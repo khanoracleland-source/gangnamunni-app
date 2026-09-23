@@ -6,7 +6,10 @@
  */
 
 // ===== AJAX 요청은 HTML 렌더링 전에 처리 =====
-$is_ajax = (isset($_POST['action']) || (isset($_GET['action']) && $_GET['action'] === 'history'));
+$is_ajax = (
+    isset($_POST['action'])
+    || (isset($_GET['action']) && in_array($_GET['action'], ['history', 'token_diagnostics'], true))
+);
 
 if ($is_ajax) {
     // AJAX: 세션 + DB만 로드 (HTML 렌더링 안함)
@@ -121,6 +124,118 @@ if ($is_ajax) {
         exit;
     }
 
+    // action=token_diagnostics (GET)
+    if ($action === 'token_diagnostics') {
+        $one = static function ($sql) use ($connect) {
+            $res = mysqli_query($connect, $sql);
+            return $res ? (mysqli_fetch_assoc($res) ?: []) : [];
+        };
+        $all = static function ($sql) use ($connect) {
+            $res = mysqli_query($connect, $sql);
+            $rows = [];
+            if ($res) {
+                while ($row = mysqli_fetch_assoc($res)) $rows[] = $row;
+            }
+            return $rows;
+        };
+        $deviceIdFromInfo = static function ($deviceInfo) {
+            $decoded = json_decode((string)$deviceInfo, true);
+            if (is_array($decoded) && isset($decoded['device_id'])) {
+                return trim((string)$decoded['device_id']);
+            }
+            if (preg_match('/"device_id"\s*:\s*"([^"]+)"/', (string)$deviceInfo, $matches)) {
+                return trim((string)$matches[1]);
+            }
+            return '';
+        };
+
+        $summary = $one("
+            SELECT
+                COUNT(*) AS total_tokens,
+                SUM(pt_use = 1) AS active_tokens,
+                SUM(pt_use = 1 AND pt_platform = 'android') AS active_android,
+                SUM(pt_use = 1 AND pt_platform = 'ios') AS active_ios,
+                SUM(pt_use = 1 AND pt_platform = 'web') AS active_web,
+                SUM(pt_use = 1 AND (mb_id IS NULL OR mb_id = '')) AS active_empty_member,
+                SUM(pt_use = 1 AND pt_platform = 'android'
+                    AND (pt_device_info LIKE '%iPhone%' OR pt_device_info LIKE '%iPad%' OR pt_device_info LIKE '%iPod%')) AS ios_marked_android
+            FROM g5_push_tokens
+        ");
+        $eligible = $one("
+            SELECT COUNT(*) AS cnt
+            FROM g5_push_tokens t
+            INNER JOIN g5_member m ON m.mb_id = t.mb_id
+            WHERE t.pt_use = 1
+              AND t.pt_token <> ''
+              AND m.mb_id IS NOT NULL
+              AND m.mb_id <> ''
+              AND (t.pt_platform = 'ios'
+                   OR t.pt_device_info LIKE '%iPhone%'
+                   OR t.pt_device_info LIKE '%iPad%'
+                   OR t.pt_device_info LIKE '%iPod%')
+        ");
+        $activeRows = $all("
+            SELECT pt_id, mb_id, pt_platform, pt_device_info, pt_datetime
+            FROM g5_push_tokens
+            WHERE pt_use = 1
+              AND mb_id IS NOT NULL
+              AND mb_id <> ''
+            ORDER BY pt_datetime DESC, pt_id DESC
+            LIMIT 2000
+        ");
+        $duplicateBuckets = [];
+        foreach ($activeRows as $row) {
+            $deviceId = $deviceIdFromInfo($row['pt_device_info'] ?? '');
+            if ($deviceId === '') continue;
+            $key = $row['mb_id'] . "\n" . $row['pt_platform'] . "\n" . $deviceId;
+            if (!isset($duplicateBuckets[$key])) {
+                $duplicateBuckets[$key] = [
+                    'mb_id' => $row['mb_id'],
+                    'pt_platform' => $row['pt_platform'],
+                    'device_id' => $deviceId,
+                    'cnt' => 0,
+                    'last_seen' => $row['pt_datetime'],
+                ];
+            }
+            $duplicateBuckets[$key]['cnt']++;
+        }
+        $duplicates = array_values(array_filter($duplicateBuckets, static function ($row) {
+            return (int)$row['cnt'] > 1;
+        }));
+        usort($duplicates, static function ($a, $b) {
+            return ((int)$b['cnt'] <=> (int)$a['cnt']) ?: strcmp((string)$b['last_seen'], (string)$a['last_seen']);
+        });
+        $duplicates = array_slice($duplicates, 0, 10);
+
+        $multiDevices = $all("
+            SELECT mb_id, pt_platform, COUNT(*) AS cnt, MAX(pt_datetime) AS last_seen
+            FROM g5_push_tokens
+            WHERE pt_use = 1
+              AND mb_id IS NOT NULL
+              AND mb_id <> ''
+            GROUP BY mb_id, pt_platform
+            HAVING cnt > 1
+            ORDER BY cnt DESC, last_seen DESC
+            LIMIT 10
+        ");
+        $recent = $all("
+            SELECT mb_id, pt_platform, pt_use, LEFT(pt_token, 18) AS token_start, pt_datetime, pt_device_info
+            FROM g5_push_tokens
+            ORDER BY pt_datetime DESC
+            LIMIT 8
+        ");
+
+        echo json_encode([
+            'success' => true,
+            'summary' => $summary,
+            'ios_eligible' => (int)($eligible['cnt'] ?? 0),
+            'duplicates' => $duplicates,
+            'multi_devices' => $multiDevices,
+            'recent' => $recent,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     echo json_encode(['success' => false, 'error' => '알 수 없는 요청입니다.']);
     exit;
 }
@@ -131,9 +246,9 @@ if (empty($_SESSION['admin_send_notification_csrf'])) {
     $_SESSION['admin_send_notification_csrf'] = bin2hex(random_bytes(32));
 }
 $admin_send_notification_csrf = $_SESSION['admin_send_notification_csrf'];
-$admin_page_title = '알림 보내기';
+$admin_page_title = 'User Push / Broadcast';
 $admin_current = 'send_notification';
-$admin_page_description = '회원에게 알림을 발송합니다. 전체/그룹/개별 대상을 선택하여 알림을 보낼 수 있습니다.';
+$admin_page_description = '회원 앱 푸시와 인앱 알림을 발송하고, Android topic/iOS direct token 상태를 확인합니다.';
 
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
@@ -190,7 +305,7 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
                 <i class="bi bi-send text-primary"></i>
-                <strong>알림 발송</strong>
+                <strong>User Push / In-app 발송</strong>
             </div>
             <div class="card-body">
                 <form id="notifForm" autocomplete="off">
@@ -334,11 +449,27 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
             </div>
         </div>
 
+        <!-- 토큰 진단 카드 -->
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-activity text-success"></i>
+                <strong>Token Diagnostics</strong>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" id="refreshDiagnosticsBtn" title="새로고침">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            <div class="card-body" id="tokenDiagnosticsBody">
+                <div class="text-center text-body-secondary py-3" style="font-size:13px;">
+                    <i class="bi bi-hourglass-split"></i> 로딩 중...
+                </div>
+            </div>
+        </div>
+
         <!-- 발송 이력 카드 -->
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
                 <i class="bi bi-clock-history text-warning"></i>
-                <strong>발송 이력</strong>
+                <strong>Delivery Log</strong>
                 <button class="btn btn-sm btn-outline-secondary ms-auto" id="refreshHistoryBtn" title="새로고침">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
@@ -351,12 +482,14 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
                                 <th style="width:130px;">날짜</th>
                                 <th>대상</th>
                                 <th>제목</th>
-                                <th style="width:70px;" class="text-end">발송 수</th>
+                                <th style="width:95px;" class="text-end">인앱</th>
+                                <th style="width:95px;" class="text-end">푸시</th>
+                                <th style="width:180px;">상세</th>
                             </tr>
                         </thead>
                         <tbody id="historyBody">
                             <tr>
-                                <td colspan="4" class="text-center text-body-secondary py-3">
+                                <td colspan="6" class="text-center text-body-secondary py-3">
                                     <i class="bi bi-hourglass-split"></i> 로딩 중...
                                 </td>
                             </tr>
@@ -390,6 +523,8 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
     var previewCount = document.getElementById('previewCount');
     var historyBody = document.getElementById('historyBody');
     var refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
+    var tokenDiagnosticsBody = document.getElementById('tokenDiagnosticsBody');
+    var refreshDiagnosticsBtn = document.getElementById('refreshDiagnosticsBtn');
     var eventSelectWrap = document.getElementById('eventSelectWrap');
     var memberIdWrap = document.getElementById('memberIdWrap');
     var memberSelectWrap = document.getElementById('memberSelectWrap');
@@ -537,6 +672,35 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
         return div.innerHTML;
     }
 
+    function safeInt(value) {
+        var n = parseInt(value, 10);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function parsePushDetails(item) {
+        if (!item || !item.push_details) return {};
+        try {
+            return JSON.parse(item.push_details);
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function renderPlatformStats(stats) {
+        if (!stats || typeof stats !== 'object') return '-';
+        var parts = [];
+        Object.keys(stats).forEach(function(platform) {
+            var row = stats[platform] || {};
+            var tokens = safeInt(row.tokens);
+            var sent = safeInt(row.sent);
+            var failed = safeInt(row.failed);
+            if (tokens > 0 || sent > 0 || failed > 0) {
+                parts.push(platform + ' ' + sent + '/' + tokens + (failed > 0 ? ' 실패 ' + failed : ''));
+            }
+        });
+        return parts.length ? parts.join(', ') : '-';
+    }
+
     // 미리보기 버튼
     previewBtn.addEventListener('click', function() {
         var data = getFormData();
@@ -659,8 +823,9 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
 
             if (res.success) {
                 showToast(res.message, res.push_success !== false);
-                // 이력 새로고침
+                // 이력/진단 새로고침
                 loadHistory();
+                loadDiagnostics();
                 // 미리보기 업데이트
                 previewCount.textContent = '대상: -명';
                 previewArea.innerHTML = '<div class="text-center py-3"><i class="bi bi-check-circle text-success d-block mb-2" style="font-size:32px;"></i><span class="text-success fw-semibold">' + res.sent + '명 발송 완료</span></div>';
@@ -681,7 +846,7 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
         .then(parseJsonResponse)
         .then(function(res) {
             if (!res.success || !res.data || res.data.length === 0) {
-                historyBody.innerHTML = '<tr><td colspan="4" class="text-center text-body-secondary py-3"><i class="bi bi-inbox"></i> 발송 이력이 없습니다</td></tr>';
+                historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-body-secondary py-3"><i class="bi bi-inbox"></i> 발송 이력이 없습니다</td></tr>';
                 return;
             }
 
@@ -689,17 +854,87 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
             res.data.forEach(function(item) {
                 var dt = item.created_at ? item.created_at.substring(0, 16).replace('T', ' ') : '-';
                 var ti = typeInfo[item.notification_type] || typeInfo.general;
+                var details = parsePushDetails(item);
+                var direct = details.direct || {};
+                var topic = details.android_topic || null;
+                var detailParts = [];
+                if (topic) {
+                    detailParts.push('Android topic ' + safeInt(topic.sent) + '/' + (safeInt(topic.sent) + safeInt(topic.failed)));
+                }
+                if (direct.platform_stats) {
+                    detailParts.push(renderPlatformStats(direct.platform_stats));
+                }
+                if (item.push_error) {
+                    detailParts.push('오류: ' + item.push_error);
+                }
+                var detailText = detailParts.filter(Boolean).join(' · ') || '-';
                 html += '<tr>';
                 html += '<td class="text-body-secondary" style="font-size:12px;">' + escapeHtml(dt) + '</td>';
                 html += '<td><span class="badge ' + ti.bg + ' bg-opacity-75" style="font-size:10px;">' + escapeHtml(item.target_type || '-') + '</span></td>';
                 html += '<td class="text-truncate" style="max-width:200px;" title="' + escapeHtml(item.title || '') + '">' + escapeHtml(item.title || '-') + '</td>';
-                html += '<td class="text-end fw-semibold">' + (item.target_count || 0) + '</td>';
+                html += '<td class="text-end">' + safeInt(item.in_app_count || item.target_count) + '/' + safeInt(item.resolved_count || item.target_count) + '</td>';
+                html += '<td class="text-end"><span class="' + (safeInt(item.push_failed) > 0 ? 'text-danger' : 'text-success') + '">' + safeInt(item.push_sent) + '</span>';
+                if (safeInt(item.push_failed) > 0) html += ' <span class="text-danger">-' + safeInt(item.push_failed) + '</span>';
+                html += '</td>';
+                html += '<td class="text-truncate text-body-secondary" style="max-width:180px;font-size:12px;" title="' + escapeHtml(detailText) + '">' + escapeHtml(detailText) + '</td>';
                 html += '</tr>';
             });
             historyBody.innerHTML = html;
         })
         .catch(function() {
-            historyBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3"><i class="bi bi-exclamation-triangle"></i> 이력 로드 실패</td></tr>';
+            historyBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3"><i class="bi bi-exclamation-triangle"></i> 이력 로드 실패</td></tr>';
+        });
+    }
+
+    function diagBox(label, value, icon, color) {
+        return '<div class="col-6 col-md-3">'
+            + '<div class="border rounded p-2 h-100">'
+            + '<div class="text-body-secondary" style="font-size:11px;"><i class="bi ' + icon + ' me-1 text-' + color + '"></i>' + label + '</div>'
+            + '<div class="fw-bold" style="font-size:20px;">' + value + '</div>'
+            + '</div></div>';
+    }
+
+    function issueBadge(label, value, isDanger) {
+        return '<span class="badge ' + (isDanger ? 'bg-danger' : 'bg-success') + ' bg-opacity-75">'
+            + escapeHtml(label) + ': ' + value + '</span>';
+    }
+
+    function renderDiagnostics(data) {
+        var s = data.summary || {};
+        var duplicateCount = data.duplicates ? data.duplicates.length : 0;
+        var multiDeviceCount = data.multi_devices ? data.multi_devices.length : 0;
+        var html = '';
+        html += '<div class="row g-2">';
+        html += diagBox('전체 active', safeInt(s.active_tokens), 'bi-phone', 'primary');
+        html += diagBox('Android', safeInt(s.active_android), 'bi-android2', 'success');
+        html += diagBox('iOS', safeInt(s.active_ios), 'bi-apple', 'dark');
+        html += diagBox('iOS eligible', safeInt(data.ios_eligible), 'bi-check2-circle', safeInt(data.ios_eligible) > 0 ? 'success' : 'danger');
+        html += '</div>';
+        html += '<div class="d-flex flex-wrap gap-2 mt-3">';
+        html += issueBadge('빈 mb_id active', safeInt(s.active_empty_member), safeInt(s.active_empty_member) > 0);
+        html += issueBadge('iPhone인데 android 저장', safeInt(s.ios_marked_android), safeInt(s.ios_marked_android) > 0);
+        html += issueBadge('동일 device_id 중복', duplicateCount, duplicateCount > 0);
+        html += issueBadge('multi-device user/platform', multiDeviceCount, false);
+        html += '</div>';
+        if (duplicateCount > 0) {
+            html += '<div class="mt-3 small text-body-secondary">';
+            html += '<div class="fw-semibold text-body mb-1">동일 device_id 중복 active token 상위</div>';
+            data.duplicates.slice(0, 4).forEach(function(row) {
+                html += '<div>' + escapeHtml(row.mb_id || '-') + ' · ' + escapeHtml(row.pt_platform || '-') + ' · ' + safeInt(row.cnt) + '개</div>';
+            });
+            html += '</div>';
+        }
+        tokenDiagnosticsBody.innerHTML = html;
+    }
+
+    function loadDiagnostics() {
+        fetch(endpointUrl + '?action=token_diagnostics')
+        .then(parseJsonResponse)
+        .then(function(res) {
+            if (res.success) renderDiagnostics(res);
+        })
+        .catch(function() {
+            tokenDiagnosticsBody.innerHTML = '<div class="text-center text-danger py-3"><i class="bi bi-exclamation-triangle"></i> 진단 로드 실패</div>';
         });
     }
 
@@ -711,8 +946,16 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
         setTimeout(function() { icon.className = 'bi bi-arrow-clockwise'; }, 800);
     });
 
-    // 페이지 로드 시 이력 자동 로드
+    refreshDiagnosticsBtn.addEventListener('click', function() {
+        var icon = this.querySelector('i');
+        icon.className = 'bi bi-arrow-clockwise spinner-border spinner-border-sm';
+        loadDiagnostics();
+        setTimeout(function() { icon.className = 'bi bi-arrow-clockwise'; }, 800);
+    });
+
+    // 페이지 로드 시 이력/진단 자동 로드
     loadHistory();
+    loadDiagnostics();
 
 })();
 </script>

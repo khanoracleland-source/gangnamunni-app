@@ -80,6 +80,36 @@ if ($is_active && !empty($bk['booking_date'])) {
     $dday = $diff > 0 ? 'D-' . $diff : ($diff === 0 ? 'D-0' : 'D+' . abs($diff));
 }
 
+$notification_history = [];
+$log_table = mysqli_query($connect,
+    "SELECT 1 FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gangnamunni_notification_sends' LIMIT 1");
+if ($log_table && mysqli_num_rows($log_table) > 0) {
+    $memberIdForLog = (string)($bk['mb_id'] ?? '');
+    $linkNeedle = '%booking_id=' . $booking_id . '%';
+    $detailsNeedle = '%\"booking_id\":' . $booking_id . '%';
+    $targetNeedle = $memberIdForLog !== '' ? 'booking:' . $memberIdForLog : '__none__';
+    $noti_stmt = mysqli_prepare(
+        $connect,
+        "SELECT created_at, notification_type, title, message, link,
+                in_app_count, push_sent, push_failed, push_skipped, push_error, push_details
+         FROM gangnamunni_notification_sends
+         WHERE notification_type LIKE 'booking_%'
+           AND (link LIKE ? OR push_details LIKE ? OR target_type = ?)
+         ORDER BY created_at DESC
+         LIMIT 8"
+    );
+    if ($noti_stmt) {
+        mysqli_stmt_bind_param($noti_stmt, 'sss', $linkNeedle, $detailsNeedle, $targetNeedle);
+        mysqli_stmt_execute($noti_stmt);
+        $noti_result = mysqli_stmt_get_result($noti_stmt);
+        while ($row = mysqli_fetch_assoc($noti_result)) {
+            $notification_history[] = $row;
+        }
+        mysqli_stmt_close($noti_stmt);
+    }
+}
+
 function request_detail_date($date, $time) {
     if (!$date || !$time) return '-';
     $days = ['일','월','화','수','목','금','토'];
@@ -129,6 +159,17 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
 .notice-title { margin-bottom:10px; color:var(--primary); font-size:17px; font-weight:700; }
 .notice ul { padding-left:18px; font-size:14px; line-height:1.8; }
 .notice em { color:var(--primary); font-style:normal; }
+.notification-audit { margin-top:28px; padding:20px; border:1px solid #e4e4e4; background:#fafafa; }
+.notification-audit-title { margin-bottom:14px; font-size:18px; font-weight:750; letter-spacing:-.035em; }
+.notification-audit-list { display:grid; gap:12px; }
+.notification-audit-item { padding:14px; background:#fff; border:1px solid #eee; }
+.notification-audit-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; color:#777; font-size:12px; }
+.notification-audit-name { color:#111; font-size:14px; font-weight:750; }
+.notification-audit-body { color:#555; font-size:13px; line-height:1.45; white-space:pre-wrap; }
+.notification-audit-state { margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; }
+.notification-audit-badge { display:inline-flex; align-items:center; padding:4px 7px; border-radius:999px; background:#eee; color:#555; font-size:11px; font-weight:700; }
+.notification-audit-badge.ok { background:#e8f6ee; color:#16834a; }
+.notification-audit-badge.fail { background:#fdecef; color:#b4233b; }
 .detail-actions { max-width:430px; margin:40px auto 0; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .detail-action { height:56px; border:1px solid var(--primary); background:#fff; color:var(--primary); display:flex; align-items:center; justify-content:center; font-family:inherit; font-size:22px; font-weight:700; text-decoration:none; cursor:pointer; }
 .detail-action.primary { background:var(--primary); color:#fff; }
@@ -184,6 +225,41 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
         <span class="person-label">예약자</span><span class="person-value"><?php echo htmlspecialchars($bk['name'] ?: '-'); ?></span>
         <span class="person-label">연락처</span><span class="person-value"><?php echo htmlspecialchars($bk['phone'] ?: '-'); ?></span>
     </div>
+    <?php if (!empty($notification_history)): ?>
+    <section class="notification-audit" aria-labelledby="notificationAuditTitle">
+        <h2 class="notification-audit-title" id="notificationAuditTitle">알림 이력</h2>
+        <div class="notification-audit-list">
+            <?php foreach ($notification_history as $noti): ?>
+            <?php
+                $details = json_decode((string)($noti['push_details'] ?? ''), true);
+                $event = is_array($details) ? trim((string)($details['event'] ?? '')) : '';
+                $pushSent = (int)($noti['push_sent'] ?? 0);
+                $pushFailed = (int)($noti['push_failed'] ?? 0);
+                $pushSkipped = (int)($noti['push_skipped'] ?? 0);
+                $sentAt = trim((string)($noti['created_at'] ?? ''));
+                $sentAtLabel = $sentAt !== '' ? date('Y.m.d H:i', strtotime($sentAt)) : '-';
+                $bodyText = preg_replace('/\n\[push(?:_error)?\].*$/s', '', (string)($noti['message'] ?? ''));
+            ?>
+            <article class="notification-audit-item">
+                <div class="notification-audit-meta">
+                    <span><?php echo htmlspecialchars($sentAtLabel); ?></span>
+                    <?php if ($event !== ''): ?><span><?php echo htmlspecialchars($event); ?></span><?php endif; ?>
+                </div>
+                <div class="notification-audit-name"><?php echo htmlspecialchars($noti['title'] ?: '-'); ?></div>
+                <?php if (trim($bodyText) !== ''): ?>
+                <div class="notification-audit-body"><?php echo htmlspecialchars(trim($bodyText)); ?></div>
+                <?php endif; ?>
+                <div class="notification-audit-state">
+                    <span class="notification-audit-badge ok">인앱 <?php echo (int)($noti['in_app_count'] ?? 0); ?></span>
+                    <?php if ($pushSent > 0): ?><span class="notification-audit-badge ok">푸시 성공 <?php echo $pushSent; ?></span><?php endif; ?>
+                    <?php if ($pushFailed > 0): ?><span class="notification-audit-badge fail">푸시 실패 <?php echo $pushFailed; ?></span><?php endif; ?>
+                    <?php if ($pushSkipped > 0): ?><span class="notification-audit-badge">푸시 제외</span><?php endif; ?>
+                </div>
+            </article>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    <?php endif; ?>
     <?php if ($is_active): ?>
     <div class="notice">
         <div class="notice-title">고객님 꼭 알아두세요!</div>

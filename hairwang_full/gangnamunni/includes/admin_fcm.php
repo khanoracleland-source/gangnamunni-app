@@ -702,6 +702,7 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null,
     $deactivated = 0;
     $iosAuthSkipped = 0;
     $iosAuthBroken = false;
+    $platformStats = [];
     $firstError = '';
     $firstErrorCode = '';
     $firstHttpCode = 0;
@@ -713,8 +714,13 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null,
 
     while ($row = mysqli_fetch_assoc($tokenResult)) {
         $platform = infer_fcm_platform($row['pt_platform'] ?? '', $row['pt_device_info'] ?? '');
+        if (!isset($platformStats[$platform])) {
+            $platformStats[$platform] = ['tokens' => 0, 'sent' => 0, 'failed' => 0, 'deactivated' => 0, 'skipped' => 0];
+        }
+        $platformStats[$platform]['tokens']++;
         if ($platform === 'ios' && $iosAuthBroken) {
             $iosAuthSkipped++;
+            $platformStats[$platform]['skipped']++;
             continue;
         }
 
@@ -730,10 +736,12 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null,
 
         if ($result['success']) {
             $sent++;
+            $platformStats[$platform]['sent']++;
             continue;
         }
 
         $failed++;
+        $platformStats[$platform]['failed']++;
         $httpCode = $result['http_code'] ?? 0;
         $response = $result['response'] ?? [];
         $errorMessage = fcm_response_error_message($response);
@@ -767,6 +775,7 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null,
                 mysqli_stmt_execute($stmt);
                 mysqli_stmt_close($stmt);
                 $deactivated++;
+                $platformStats[$platform]['deactivated']++;
             }
         }
     }
@@ -776,6 +785,7 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null,
         'failed' => $failed,
         'deactivated' => $deactivated,
         'ios_auth_skipped' => $iosAuthSkipped,
+        'platform_stats' => $platformStats,
         'error' => $firstError,
         'error_code' => $firstErrorCode,
         'http_code' => $firstHttpCode,
