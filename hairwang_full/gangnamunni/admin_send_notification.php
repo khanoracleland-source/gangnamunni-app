@@ -618,7 +618,13 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
             if (!previewRes.success || previewRes.count === 0) {
                 sendBtn.disabled = false;
                 sendBtn.innerHTML = '<i class="bi bi-send me-1"></i>발송하기';
-                showToast('발송 대상이 없습니다.', false);
+                var detail = previewRes && previewRes.success
+                    ? ' (resolved ' + (previewRes.resolved_count || 0)
+                        + ', push ' + (previewRes.push_member_count || 0)
+                        + '명/' + (previewRes.push_token_count || 0) + '기기'
+                        + ', skipped ' + (previewRes.skipped_in_app || 0) + ')'
+                    : '';
+                showToast((previewRes.error || '발송 대상이 없습니다.') + detail, false);
                 return;
             }
 
