@@ -246,7 +246,7 @@ function admin_sidebar_menus(): array {
             ['url' => 'admin_hospital_suspension.php', 'label' => '병원 정지/요금 관리', 'icon' => 'bi-pause-circle', 'key' => 'admins'],
             ['url' => 'admin_grade_permissions.php', 'label' => '등급별 기능 관리', 'icon' => 'bi-shield-check', 'key' => 'grade_permissions'],
             ['url' => 'admin_notifications.php', 'label' => 'Admin Center Alert', 'icon' => 'bi-bell', 'key' => 'notifications'],
-            ['url' => 'admin_send_notification.php', 'label' => 'User Push / Broadcast', 'icon' => 'bi-send', 'key' => 'send_notification'],
+            ['url' => 'admin_send_notification.php', 'label' => '회원 푸시 발송', 'icon' => 'bi-send', 'key' => 'send_notification'],
         ]],
 
         // ── 구분선: 도움말 영역 (최하단) ──

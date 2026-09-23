@@ -50,7 +50,7 @@ $_admin_edit_urls = [
     'community'        => ['url' => 'admin_community.php',          'label' => '커뮤니티 관리',   'icon' => 'bi-people'],
     'bookings'         => ['url' => 'admin_bookings.php',           'label' => '예약 관리',       'icon' => 'bi-calendar-check'],
     'members'          => ['url' => 'admin_members.php',            'label' => '회원 관리',       'icon' => 'bi-person'],
-    'notifications'    => ['url' => 'admin_send_notification.php',  'label' => 'User Push 관리',  'icon' => 'bi-bell'],
+    'notifications'    => ['url' => 'admin_send_notification.php',  'label' => '회원 푸시 관리',  'icon' => 'bi-bell'],
     'dashboard'        => ['url' => 'dashboard.php',                'label' => '관리자 대시보드',  'icon' => 'bi-speedometer2'],
     'settings'         => ['url' => 'admin_ad_settings.php',        'label' => '사이트 설정',     'icon' => 'bi-gear'],
     'header'           => ['url' => 'admin_theme.php',              'label' => '헤더 설정',       'icon' => 'bi-window-sidebar'],

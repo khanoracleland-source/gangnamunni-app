@@ -246,7 +246,7 @@ if (empty($_SESSION['admin_send_notification_csrf'])) {
     $_SESSION['admin_send_notification_csrf'] = bin2hex(random_bytes(32));
 }
 $admin_send_notification_csrf = $_SESSION['admin_send_notification_csrf'];
-$admin_page_title = 'User Push / Broadcast';
+$admin_page_title = '회원 푸시 발송';
 $admin_current = 'send_notification';
 $admin_page_description = '회원 앱 푸시와 인앱 알림을 발송하고, Android topic/iOS direct token 상태를 확인합니다.';
 
@@ -305,7 +305,7 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
                 <i class="bi bi-send text-primary"></i>
-                <strong>User Push / In-app 발송</strong>
+                <strong>회원 푸시 / 인앱 발송</strong>
             </div>
             <div class="card-body">
                 <form id="notifForm" autocomplete="off">
