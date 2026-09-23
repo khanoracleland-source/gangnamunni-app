@@ -173,7 +173,7 @@ $push_member_result = mysqli_query(
             COUNT(DISTINCT t.pt_id) AS token_count
      FROM g5_member m
      INNER JOIN g5_push_tokens t ON t.mb_id = m.mb_id AND t.pt_use = 1
-     WHERE m.mb_level > 1
+     WHERE m.mb_id IS NOT NULL AND m.mb_id <> ''
      GROUP BY m.mb_id, m.mb_nick, m.mb_name
      ORDER BY MAX(t.pt_datetime) DESC
      LIMIT 500"

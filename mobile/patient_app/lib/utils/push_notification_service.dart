@@ -271,6 +271,12 @@ class PushNotificationService {
         NotificationData.fromJson(message.data);
     log("===============${FirebaseTopicConst.notificationDataKey}===============\n${notificationData.toJson()}");
     if (isForeGround) {
+      if (Platform.isIOS && message.notification != null) {
+        // iOS already shows foreground notification payloads via
+        // setForegroundNotificationPresentationOptions. Showing a local
+        // notification here would duplicate the banner.
+        return;
+      }
       final title = message.notification?.title ??
           message.data['title']?.toString() ??
           'New notification';

@@ -156,15 +156,6 @@ function member_notification_resolve_recipients($connect, $target, $eventId = 0,
 
     switch ($target) {
         case 'all':
-            $members = member_notification_fetch_column_values(
-                $connect,
-                "SELECT mb_id FROM g5_member WHERE mb_level > 1"
-            );
-            if (!empty($members)) return $members;
-
-            // Some imported/member-only Gnuboard rows can have mb_level = 1.
-            // Treat "all members" as all non-empty member ids when the stricter
-            // legacy level filter finds nothing.
             return member_notification_fetch_column_values(
                 $connect,
                 "SELECT mb_id FROM g5_member WHERE mb_id IS NOT NULL AND mb_id <> ''"
@@ -173,7 +164,9 @@ function member_notification_resolve_recipients($connect, $target, $eventId = 0,
         case 'recent_7days':
             return member_notification_fetch_column_values(
                 $connect,
-                "SELECT mb_id FROM g5_member WHERE mb_level > 1 AND mb_datetime > DATE_SUB(NOW(), INTERVAL 7 DAY)"
+                "SELECT mb_id FROM g5_member
+                 WHERE mb_id IS NOT NULL AND mb_id <> ''
+                   AND mb_datetime > DATE_SUB(NOW(), INTERVAL 7 DAY)"
             );
 
         case 'event_entrants':
@@ -226,7 +219,9 @@ function member_notification_resolve_recipients($connect, $target, $eventId = 0,
             $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
             return member_notification_fetch_column_values(
                 $connect,
-                "SELECT mb_id FROM g5_member WHERE mb_level > 1 AND mb_id IN ({$placeholders})",
+                "SELECT mb_id FROM g5_member
+                 WHERE mb_id IS NOT NULL AND mb_id <> ''
+                   AND mb_id IN ({$placeholders})",
                 str_repeat('s', count($memberIds)),
                 $memberIds
             );

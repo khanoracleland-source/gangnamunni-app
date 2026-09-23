@@ -57,14 +57,44 @@ if (isset($member['mb_id']) && is_string($member['mb_id'])) {
     $memberId = trim($member['mb_id']);
 }
 
+$deviceId = trim((string) ($input['device_id'] ?? $input['uuid'] ?? ''));
 $deviceInfo = json_encode([
-    'device_id' => trim((string) ($input['device_id'] ?? $input['uuid'] ?? '')),
+    'device_id' => $deviceId,
     'app_version' => trim((string) ($input['app_version'] ?? $input['version'] ?? '')),
     'platform' => $platform,
     'user_agent' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 @mysqli_query($connect, "ALTER TABLE g5_push_tokens MODIFY pt_token VARCHAR(500) NOT NULL");
+
+if ($deviceId !== '') {
+    $escapedDeviceId = mysqli_real_escape_string($connect, $deviceId);
+    $escapedToken = mysqli_real_escape_string($connect, $token);
+    @mysqli_query(
+        $connect,
+        "UPDATE g5_push_tokens
+         SET pt_use = 0
+         WHERE pt_token <> '{$escapedToken}'
+           AND pt_device_info LIKE '%\"device_id\":\"{$escapedDeviceId}\"%'"
+    );
+}
+
+if ($memberId !== '') {
+    $escapedMemberId = mysqli_real_escape_string($connect, $memberId);
+    $escapedPlatform = mysqli_real_escape_string($connect, $platform);
+    $escapedToken = mysqli_real_escape_string($connect, $token);
+    @mysqli_query(
+        $connect,
+        "UPDATE g5_push_tokens
+         SET pt_use = 0
+         WHERE pt_token <> '{$escapedToken}'
+           AND mb_id = '{$escapedMemberId}'
+           AND pt_platform = '{$escapedPlatform}'
+           AND (pt_device_info IS NULL
+                OR pt_device_info = ''
+                OR pt_device_info LIKE '%\"device_id\":\"\"%')"
+    );
+}
 
 $stmt = mysqli_prepare(
     $connect,

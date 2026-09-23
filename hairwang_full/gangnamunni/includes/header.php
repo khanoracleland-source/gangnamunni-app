@@ -122,7 +122,22 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
         'use strict';
 
         var tokenStorageKey = 'seoulbeauty_fcm_token';
+        var deviceStorageKey = 'seoulbeauty_fcm_device_id';
         var registerUrl = <?php echo json_encode(SITE_BASE_PATH . 'push_fcm/get_android_regid.php', JSON_UNESCAPED_SLASHES); ?>;
+
+        function getDeviceId() {
+            try {
+                var existing = localStorage.getItem(deviceStorageKey);
+                if (existing) return existing;
+                var generated = (window.crypto && crypto.randomUUID)
+                    ? crypto.randomUUID()
+                    : String(Date.now()) + '-' + Math.random().toString(16).slice(2);
+                localStorage.setItem(deviceStorageKey, generated);
+                return generated;
+            } catch (e) {
+                return '';
+            }
+        }
 
         function registerFcmToken(token) {
             if (typeof token !== 'string' || token.length < 32) return;
@@ -139,7 +154,8 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     token: token,
-                    platform: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios' : 'android'
+                    platform: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios' : 'android',
+                    device_id: getDeviceId()
                 })
             }).catch(function () {
                 // A later page load retries the token saved in localStorage.
