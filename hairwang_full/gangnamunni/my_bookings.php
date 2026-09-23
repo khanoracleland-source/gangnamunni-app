@@ -795,7 +795,7 @@ function switchTab(tab) {
 }
 
 var requestedTab = new URLSearchParams(window.location.search).get('tab');
-if (requestedTab === 'completed' || requestedTab === 'cancelled') {
+if (requestedTab === 'active' || requestedTab === 'completed' || requestedTab === 'cancelled') {
     switchTab(requestedTab);
 }
 

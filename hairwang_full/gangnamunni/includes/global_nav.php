@@ -28,6 +28,21 @@ if (file_exists(dirname(__DIR__).'/gangnamunni/includes/sso_auto_login.php') || 
 
 // 로그인 상태 확인 (그누보드 변수 사용)
 $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
+$nav_unread_notifications = 0;
+if ($is_logged_in && isset($connect) && $connect) {
+    $table_check = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_user_notifications'");
+    if ($table_check && mysqli_num_rows($table_check) > 0) {
+        $stmt = @mysqli_prepare($connect, "SELECT COUNT(*) AS cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0");
+        if ($stmt) {
+            $member_id = (string)$member['mb_id'];
+            mysqli_stmt_bind_param($stmt, 's', $member_id);
+            mysqli_stmt_execute($stmt);
+            $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+            $nav_unread_notifications = (int)($row['cnt'] ?? 0);
+            mysqli_stmt_close($stmt);
+        }
+    }
+}
 
 // Gnuboard URL follows the current host: localhost in development, production domain on the server.
 $bbs_base_url = defined('G5_BBS_URL')
@@ -154,11 +169,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
     color: var(--bs-body-color, #111);
     font-size: 25px;
     cursor: pointer;
+    position: relative;
 }
 
 .global-nav-share:hover,
-.global-nav-share:focus-visible {
+.global-nav-share:focus-visible,
+.global-nav-share.active {
     color: var(--primary-color, #AE1932);
+}
+
+.global-nav-notification-dot {
+    position: absolute;
+    top: 11px;
+    right: 11px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #AE1932;
+    border: 1.5px solid #fff;
 }
 
 .share-copy-toast {
@@ -377,6 +405,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
             <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
         </button>
+        <a href="my_notifications.php" class="global-nav-share <?php echo ($current_page === 'my_notifications.php') ? 'active' : ''; ?>" aria-label="알림" title="알림">
+            <i class="bi bi-bell" aria-hidden="true"></i>
+            <?php if ($nav_unread_notifications > 0): ?>
+            <span class="global-nav-notification-dot" aria-hidden="true"></span>
+            <?php endif; ?>
+        </a>
         <?php if (!$is_logged_in): ?>
         <a href="<?php echo htmlspecialchars($login_url); ?>" class="login-btn">로그인 / <?= term('member') ?>가입</a>
         <?php endif; ?>
