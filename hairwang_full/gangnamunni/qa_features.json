@@ -1693,16 +1693,6 @@
       ]
     },
     {
-      "id": "API18",
-      "name": "FCM API",
-      "file": "admin_fcm_api.php",
-      "priority": "medium",
-      "checks": [
-        "토큰 등록",
-        "푸시 발송"
-      ]
-    },
-    {
       "id": "API19",
       "name": "Ad Tracking",
       "file": "api_ad_tracking.php",
