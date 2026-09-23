@@ -25,9 +25,6 @@ if(defined('_INDEX_')) { // index에서만 실행
 
 include_once(G5_PATH.'/rb/rb.mod/alarm/alarm.php'); // 실시간 알림
 ?>
-<!-- 푸시 알림 스크립트 -->
-<script src="<?php echo G5_JS_URL ?>/push_notification.js?ver=<?php echo G5_JS_VER ?>"></script>
-
     <?php 
 
     if (isset($rb_core['layout_hd']) && $rb_core['layout_hd'] == "") {
@@ -149,4 +146,3 @@ include_once(G5_PATH.'/rb/rb.mod/alarm/alarm.php'); // 실시간 알림
         <?php } ?>
         
         <?php if (!defined("_INDEX_")) { ?><h2 id="container_title"><?php echo get_head_title($g5['title']); ?></h2><?php } ?>
-

@@ -36,8 +36,6 @@ header("Pragma: no-cache"); // HTTP/1.0
 <head>
 <?php require_once __DIR__ . '/../../lib/site_favicon.php'; echo seoulBeautyFaviconLinks(); ?>
 
-<!-- 푸시 알림 스크립트 -->
-<script src="<?php echo G5_JS_URL ?>/push_notification.js?ver=<?php echo G5_JS_VER ?>"></script>
 <meta charset="utf-8">
 
 <!-- viewport { -->
@@ -156,13 +154,6 @@ const g5_sca       = "<?php echo isset($sca)?$sca:''; ?>";               // 쇼�
 const g5_editor    = "<?php echo ($config['cf_editor'] && $board['bo_use_dhtml_editor'])?$config['cf_editor']:''; ?>";  // 에디터 종류
 const g5_cookie_domain = "<?php echo G5_COOKIE_DOMAIN ?>";  // 쿠키 도메인
 
-// ============================================
-// ✅ 추가: 회원 ID 변수 (FCM 토큰 저장용)
-// ============================================
-// 목적: push_notification.js에서 사용자 식별을 위해 필요
-// 세션에서 추출한 회원 ID (로그인 상태에서만 값 존재)
-const g5_member_id = "<?php echo isset($member['mb_id'])?$member['mb_id']:''; ?>";
-
 <?php if (defined('G5_USE_SHOP') && G5_USE_SHOP) { ?>
 const g5_theme_shop_url = "<?php echo G5_THEME_SHOP_URL; ?>";
 const g5_shop_url = "<?php echo G5_SHOP_URL; ?>";
@@ -170,106 +161,8 @@ const g5_shop_url = "<?php echo G5_SHOP_URL; ?>";
 <?php if(defined('G5_IS_ADMIN')) { ?>
 const g5_admin_url = "<?php echo G5_ADMIN_URL; ?>";
 <?php } ?>
-
-// ============================================
-// ✅ 추가: 앱 연동 - FCM 토큰 브리지
-// ============================================
-// 목적: Android/iOS 네이티브 앱에서 FCM 토큰을 웹뷰로 전달받기 위한 브리지 함수
-// 작동 방식:
-//   1. 앱 실행 시 DOMContentLoaded 이벤트에서 네이티브에 토큰 요청
-//   2. 네이티브 앱이 onTokenReceived() 콜백 호출
-//   3. 웹뷰에서 receiveFCMToken()으로 토큰 처리
-// 참고: push_notification.js의 receiveFCMToken() 함수와 연동
-
-/**
- * 네이티브 앱 → 웹뷰 공통 콜백 함수
- *
- * @param {string} token - FCM 토큰 (152자 이상의 문자열)
- * @description
- *   - Android: Android.requestToken() 호출 후 이 함수가 콜백됨
- *   - iOS: webkit.messageHandlers.invokeAction.postMessage('getToken') 호출 후 콜백됨
- *   - 토큰을 받으면 push_notification.js의 receiveFCMToken()에 전달
- */
-function onTokenReceived(token) {
-    // 토큰이 없으면 종료
-    if (!token) {
-        console.warn('[앱 브리지] 토큰이 비어있습니다');
-        return;
-    }
-
-    console.log('[앱 브리지] FCM Token 수신:', token.substring(0, 20) + '...');
-
-    // push_notification.js의 receiveFCMToken() 함수 호출
-    // 이 함수가 실제 토큰 저장 로직을 처리함
-    if (window.receiveFCMToken) {
-        console.log('[앱 브리지] receiveFCMToken() 함수 호출');
-        window.receiveFCMToken(token);
-    } else {
-        // receiveFCMToken이 아직 로드되지 않은 경우 (극히 드문 경우)
-        // localStorage에만 임시 저장
-        console.warn('[앱 브리지] receiveFCMToken 함수 아직 로드 안됨');
-        console.warn('[앱 브리지] localStorage에만 임시 저장');
-        localStorage.setItem('fcm_token', token);
-    }
-}
-
-/**
- * 페이지 로드 완료 후 네이티브 앱에 토큰 요청
- *
- * @description
- *   - DOM 로드가 완료되면 자동으로 실행
- *   - Android와 iOS의 브리지 존재 여부를 확인 후 토큰 요청
- *   - 웹 브라우저에서는 브리지가 없으므로 아무 동작 안함 (정상)
- */
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('[앱 브리지] DOMContentLoaded - 네이티브 앱 토큰 요청 시작');
-
-    // ----------------------------------------
-    // Android 브리지 확인 및 토큰 요청
-    // ----------------------------------------
-    // Android WebView에서 addJavascriptInterface()로 주입된 'Android' 객체 확인
-    if (window.Android && typeof Android.requestToken === 'function') {
-        console.log('[앱 브리지] ✅ Android 브리지 감지됨');
-        console.log('[앱 브리지] Android.requestToken() 호출');
-
-        try {
-            Android.requestToken();  // 네이티브에 토큰 요청
-        } catch (e) {
-            console.error('[앱 브리지] Android.requestToken() 호출 실패:', e);
-        }
-    } else {
-        console.log('[앱 브리지] ❌ Android 브리지 없음 (웹 브라우저이거나 iOS 앱)');
-    }
-
-    // ----------------------------------------
-    // iOS 브리지 확인 및 토큰 요청
-    // ----------------------------------------
-    // iOS WKWebView에서 제공하는 webkit.messageHandlers 확인
-    if (
-        window.webkit &&
-        window.webkit.messageHandlers &&
-        window.webkit.messageHandlers.invokeAction
-    ) {
-        console.log('[앱 브리지] ✅ iOS 브리지 감지됨');
-        console.log('[앱 브리지] webkit.messageHandlers.invokeAction.postMessage("getToken") 호출');
-
-        try {
-            window.webkit.messageHandlers.invokeAction.postMessage('getToken');  // 네이티브에 토큰 요청
-        } catch (e) {
-            console.error('[앱 브리지] iOS 토큰 요청 실패:', e);
-        }
-    } else {
-        console.log('[앱 브리지] ❌ iOS 브리지 없음 (웹 브라우저이거나 Android 앱)');
-    }
-
-    // ----------------------------------------
-    // 웹 브라우저 감지
-    // ----------------------------------------
-    if (!window.Android && !window.webkit) {
-        console.log('[앱 브리지] 💻 웹 브라우저에서 접속 (네이티브 앱 아님)');
-    }
-});
 </script>
+<script src="<?php echo G5_JS_URL ?>/push_notification.js?ver=<?php echo G5_JS_VER ?>"></script>
 
 <?php
 if (isset($rb_core) && isset($rb_core['font'])) {

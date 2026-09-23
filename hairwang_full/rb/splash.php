@@ -137,17 +137,6 @@ if ($is_app) {
 // 앱에서는 3초 고정, 웹에서는 설정값 사용
 $display_duration = $is_app ? 3 : (int)$splash['sp_duration'];
 
-// Firebase 설정 가져오기 (관리자에서 설정한 값들)
-$fcm_config = array(
-    'apiKey' => $config['cf_fcm_api_key'] ?? '',
-    'authDomain' => $config['cf_fcm_auth_domain'] ?? '',
-    'projectId' => $config['cf_fcm_project_id'] ?? '',
-    'storageBucket' => $config['cf_fcm_storage_bucket'] ?? '',
-    'messagingSenderId' => $config['cf_fcm_sender_id'] ?? '',
-    'appId' => $config['cf_fcm_app_id'] ?? '',
-    'measurementId' => $config['cf_fcm_measurement_id'] ?? '',
-    'vapidKey' => $config['cf_fcm_vapid_key'] ?? ''
-);
 ?>
 <!DOCTYPE html>
 <html lang="ko">
@@ -362,56 +351,12 @@ html, body {
         <button class="skip_button" onclick="skipToday()">오늘 하루 보지 않기</button>
     </div>
     <?php } ?>
-    
-    <!-- FCM 알림 권한 요청 UI -->
-    <div class="fcm-permission-ui" id="fcmPermissionUI">
-        <h3>알림 권한 요청</h3>
-        <p>새로운 소식과 이벤트 알림을 받으시겠습니까?</p>
-        <button onclick="requestFCMPermission()">허용</button>
-        <button class="deny" onclick="denyFCMPermission()">나중에</button>
-    </div>
 </div>
-
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
 
 <script>
 var duration = <?php echo $display_duration; ?>;
 var countdown = duration;
 var timer;
-var fcmToken = null;
-
-// Firebase 설정
-const firebaseConfig = {
-    apiKey: "<?php echo $fcm_config['apiKey']; ?>",
-    authDomain: "<?php echo $fcm_config['authDomain']; ?>",
-    projectId: "<?php echo $fcm_config['projectId']; ?>",
-    storageBucket: "<?php echo $fcm_config['storageBucket']; ?>",
-    messagingSenderId: "<?php echo $fcm_config['messagingSenderId']; ?>",
-    appId: "<?php echo $fcm_config['appId']; ?>",
-    measurementId: "<?php echo $fcm_config['measurementId']; ?>"
-};
-
-// Firebase 초기화
-if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-    firebase.initializeApp(firebaseConfig);
-    
-    // Messaging 인스턴스 가져오기
-    const messaging = firebase.messaging();
-    
-    // 서비스 워커 등록
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/firebase-messaging-sw.php', { scope: '/' })
-            .then(function(registration) {
-                console.log('Service Worker 등록 성공:', registration);
-                messaging.useServiceWorker(registration);
-            })
-            .catch(function(err) {
-                console.log('Service Worker 등록 실패:', err);
-            });
-    }
-}
 
 // 콘텐츠 로드 완료 시
 window.onload = function() {
@@ -428,10 +373,7 @@ window.onload = function() {
 function showContent() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('splashContent').style.display = 'block';
-    
-    // FCM 권한 확인 및 UI 표시
-    checkFCMPermission();
-    
+
     updateCountdown();
     timer = setInterval(function() {
         countdown--;
@@ -441,115 +383,6 @@ function showContent() {
             closeSplash();
         }
     }, 1000);
-}
-
-// FCM 권한 확인
-function checkFCMPermission() {
-    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-        return;
-    }
-    
-    // 웹에서만 권한 요청 (앱은 별도 처리)
-    if (!<?php echo $is_app ? 'true' : 'false'; ?> && 'Notification' in window) {
-        // 이미 권한이 있는지 확인
-        if (Notification.permission === 'default') {
-            // 권한이 없으면 UI 표시
-            setTimeout(function() {
-                document.getElementById('fcmPermissionUI').style.display = 'block';
-            }, 1000);
-        } else if (Notification.permission === 'granted') {
-            // 이미 권한이 있으면 토큰 가져오기
-            getFCMToken();
-        }
-    }
-}
-
-// FCM 권한 요청
-function requestFCMPermission() {
-    document.getElementById('fcmPermissionUI').style.display = 'none';
-    
-    Notification.requestPermission().then(function(permission) {
-        if (permission === 'granted') {
-            console.log('알림 권한이 허용되었습니다.');
-            getFCMToken();
-        } else {
-            console.log('알림 권한이 거부되었습니다.');
-        }
-    });
-}
-
-// FCM 권한 거부
-function denyFCMPermission() {
-    document.getElementById('fcmPermissionUI').style.display = 'none';
-    setCookie('fcm_permission_denied', '1', 7); // 7일간 다시 묻지 않음
-}
-
-// FCM 토큰 가져오기
-function getFCMToken() {
-    const messaging = firebase.messaging();
-    
-    navigator.serviceWorker.ready.then(function(registration) {
-        return messaging.getToken({
-            vapidKey: "<?php echo $fcm_config['vapidKey']; ?>",
-            serviceWorkerRegistration: registration
-        });
-    }).then(function(currentToken) {
-        if (currentToken) {
-            console.log('FCM 토큰을 받았습니다.');
-            fcmToken = currentToken;
-            
-            // 서버에 토큰 저장
-            saveFCMToken(currentToken);
-            
-        } else {
-            console.log('토큰을 가져올 수 없습니다.');
-        }
-    }).catch(function(err) {
-        console.log('토큰 가져오기 실패:', err);
-    });
-    
-    // 포그라운드 메시지 수신
-    messaging.onMessage(function(payload) {
-        console.log('메시지 수신:', payload);
-        
-        // 브라우저 알림 표시
-        if (Notification.permission === 'granted') {
-            const payloadNotification = payload.notification || {};
-            const payloadData = payload.data || {};
-            const notificationTitle = payloadNotification.title || payloadData.title || '새로운 알림';
-            const notificationOptions = {
-                body: payloadNotification.body || payloadData.message || payloadData.body || '',
-                icon: payloadNotification.icon || payloadData.icon || '/favicon.ico',
-                click_action: payloadData.click_action || payloadData.url || '/'
-            };
-            
-            const notification = new Notification(notificationTitle, notificationOptions);
-            
-            notification.onclick = function(event) {
-                event.preventDefault();
-                window.open(notificationOptions.click_action, '_blank');
-                notification.close();
-            };
-        }
-    });
-}
-
-// FCM 토큰을 서버에 저장
-function saveFCMToken(token) {
-    fetch('<?php echo G5_BBS_URL; ?>/ajax.push_token.php', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({token: token, platform: 'web'})
-    }).then(function(response) {
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        return response.json();
-    }).then(function(result) {
-        if (!result.success) throw new Error(result.message || 'Token save failed');
-        console.log('토큰 저장 완료');
-    }).catch(function(error) {
-        console.error('토큰 저장 실패:', error.message);
-    });
 }
 
 function updateCountdown() {
