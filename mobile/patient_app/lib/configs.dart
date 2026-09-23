@@ -11,6 +11,10 @@ const APP_NAME = '서울미녀';
 /// Every Android installation subscribes to this topic, including guests.
 /// Keep this value in sync with SEOULBEAUTY_ANDROID_BROADCAST_TOPIC on PHP.
 const ANDROID_BROADCAST_TOPIC = 'seoulbeauty_android_all';
+
+/// Every iOS installation subscribes to this topic, including guests.
+/// Keep this value in sync with SEOULBEAUTY_IOS_BROADCAST_TOPIC on PHP.
+const IOS_BROADCAST_TOPIC = 'seoulbeauty_ios_all';
 const APP_LOGO_URL = '$DOMAIN_URL/img/logo/mini_logo.png';
 const DEFAULT_LANGUAGE = 'ko';
 // Firebase 콘솔 > 프로젝트 설정 > 웹 API 키에서 가져오기

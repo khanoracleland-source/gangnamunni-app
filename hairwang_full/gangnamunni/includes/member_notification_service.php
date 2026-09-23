@@ -479,16 +479,18 @@ function member_notification_send($connect, array $input, array $adminContext = 
 
     $pushResult = ['sent' => 0, 'failed' => 0, 'reason' => 'No push recipients'];
     if (!empty($filtered['push'])) {
+        $directPushPlatforms = $target === 'all' ? ['ios', 'web'] : null;
         $pushResult = send_push_to_members(
             $connect,
             $filtered['push'],
             $title,
             $message !== '' ? $message : $title,
-            $link !== '' ? $link : null
+            $link !== '' ? $link : null,
+            $directPushPlatforms
         );
     }
 
-    if ($target === 'all') {
+    if ($target === 'all' && !empty($filtered['push'])) {
         $androidBroadcastResult = send_push_to_android_broadcast(
             $connect,
             $title,
@@ -534,6 +536,15 @@ function member_notification_send($connect, array $input, array $adminContext = 
     ]);
 
     $pushWarning = $pushFailed > 0 || (!empty($filtered['push']) && $pushSent === 0);
+    $platformSummary = '';
+    if ($target === 'all') {
+        $androidTopicSent = (int)($pushResult['android_broadcast']['sent'] ?? 0);
+        $directSent = max(0, $pushSent - $androidTopicSent);
+        $platformSummary = ' (Android topic '
+            . $androidTopicSent . '건'
+            . ($directSent > 0 ? ', iOS/web direct ' . $directSent . '건' : '')
+            . ')';
+    }
     return [
         'success' => true,
         'sent' => $inAppCount,
@@ -547,6 +558,7 @@ function member_notification_send($connect, array $input, array $adminContext = 
         'message' => $inAppCount . '명에게 알림 저장, 푸시 '
             . $pushSent . '건 성공, '
             . $pushFailed . '건 실패'
+            . $platformSummary
             . ($pushSkipped > 0 ? ', 설정 제외 ' . $pushSkipped . '명' : '')
             . ($pushError !== '' ? ' (' . $pushError . ')' : ''),
     ];

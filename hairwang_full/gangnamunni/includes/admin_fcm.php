@@ -40,6 +40,10 @@ if (!defined('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC')) {
     // Must match ANDROID_BROADCAST_TOPIC in the Flutter patient app.
     define('SEOULBEAUTY_ANDROID_BROADCAST_TOPIC', 'seoulbeauty_android_all');
 }
+if (!defined('SEOULBEAUTY_IOS_BROADCAST_TOPIC')) {
+    // Must match IOS_BROADCAST_TOPIC in the Flutter patient app.
+    define('SEOULBEAUTY_IOS_BROADCAST_TOPIC', 'seoulbeauty_ios_all');
+}
 
 /**
  * Load and validate the Firebase service account used by the Android app.
@@ -217,6 +221,19 @@ function normalize_fcm_platform($platform) {
     return in_array($platform, ['android', 'ios', 'web'], true) ? $platform : 'android';
 }
 
+function infer_fcm_platform($platform, $deviceInfo = '') {
+    $platform = normalize_fcm_platform($platform);
+    $deviceInfo = strtolower((string)$deviceInfo);
+
+    if (strpos($deviceInfo, 'iphone') !== false ||
+        strpos($deviceInfo, 'ipad') !== false ||
+        strpos($deviceInfo, 'ipod') !== false) {
+        return 'ios';
+    }
+
+    return $platform;
+}
+
 function fcm_response_error_message(array $response) {
     return (string)($response['error']['message'] ?? 'FCM send failed');
 }
@@ -360,10 +377,8 @@ function send_fcm_v1_target(
     ];
 }
 
-/**
- * Send one broadcast request to all Android installations subscribed to topic.
- */
-function send_push_to_android_broadcast($connect, $title, $body, $link = null) {
+function send_push_to_platform_broadcast($connect, $platform, $topic, $title, $body, $link = null) {
+    $platform = normalize_fcm_platform($platform);
     if (!is_fcm_enabled($connect)) {
         return [
             'sent' => 0,
@@ -389,11 +404,11 @@ function send_push_to_android_broadcast($connect, $title, $body, $link = null) {
     $result = send_fcm_v1_topic(
         $projectId,
         $accessToken,
-        SEOULBEAUTY_ANDROID_BROADCAST_TOPIC,
+        $topic,
         $title,
         $body,
         $data,
-        'android'
+        $platform
     );
 
     return [
@@ -403,9 +418,38 @@ function send_push_to_android_broadcast($connect, $title, $body, $link = null) {
             ($result['response']['error']['message'] ?? 'FCM topic send failed'),
         'api' => 'v1',
         'mode' => 'topic',
-        'topic' => SEOULBEAUTY_ANDROID_BROADCAST_TOPIC,
+        'platform' => $platform,
+        'topic' => $topic,
         'response' => $result['response'] ?? null,
     ];
+}
+
+/**
+ * Send one broadcast request to all Android installations subscribed to topic.
+ */
+function send_push_to_android_broadcast($connect, $title, $body, $link = null) {
+    return send_push_to_platform_broadcast(
+        $connect,
+        'android',
+        SEOULBEAUTY_ANDROID_BROADCAST_TOPIC,
+        $title,
+        $body,
+        $link
+    );
+}
+
+/**
+ * Send one broadcast request to all iOS installations subscribed to topic.
+ */
+function send_push_to_ios_broadcast($connect, $title, $body, $link = null) {
+    return send_push_to_platform_broadcast(
+        $connect,
+        'ios',
+        SEOULBEAUTY_IOS_BROADCAST_TOPIC,
+        $title,
+        $body,
+        $link
+    );
 }
 
 /**
@@ -587,7 +631,7 @@ function send_push_notification($connect, $admin_id, $title, $body, $link = null
  *
  * Passing null as $memberIds sends to every active token.
  */
-function send_push_to_members($connect, $memberIds, $title, $body, $link = null) {
+function send_push_to_members($connect, $memberIds, $title, $body, $link = null, $platforms = null) {
     if (!is_fcm_enabled($connect)) {
         return [
             'sent' => 0,
@@ -598,7 +642,7 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
         ];
     }
 
-    $sql = "SELECT DISTINCT pt_token, mb_id, pt_platform
+    $sql = "SELECT DISTINCT pt_token, mb_id, pt_platform, pt_device_info
             FROM g5_push_tokens
             WHERE pt_use = 1 AND pt_token <> ''";
 
@@ -616,6 +660,21 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
             $memberIds
         );
         $sql .= ' AND mb_id IN (' . implode(',', $escapedIds) . ')';
+    }
+
+    if (is_array($platforms)) {
+        $platforms = array_values(array_unique(array_filter(array_map('normalize_fcm_platform', $platforms))));
+        if (!empty($platforms)) {
+            $escapedPlatforms = array_map(
+                static fn ($platform) => "'" . mysqli_real_escape_string($connect, $platform) . "'",
+                $platforms
+            );
+            $sql .= ' AND (pt_platform IN (' . implode(',', $escapedPlatforms) . ')';
+            if (in_array('ios', $platforms, true)) {
+                $sql .= " OR pt_device_info LIKE '%iPhone%' OR pt_device_info LIKE '%iPad%' OR pt_device_info LIKE '%iPod%'";
+            }
+            $sql .= ')';
+        }
     }
 
     $tokenResult = mysqli_query($connect, $sql);
@@ -653,7 +712,7 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null)
     }
 
     while ($row = mysqli_fetch_assoc($tokenResult)) {
-        $platform = normalize_fcm_platform($row['pt_platform'] ?? '');
+        $platform = infer_fcm_platform($row['pt_platform'] ?? '', $row['pt_device_info'] ?? '');
         if ($platform === 'ios' && $iosAuthBroken) {
             $iosAuthSkipped++;
             continue;

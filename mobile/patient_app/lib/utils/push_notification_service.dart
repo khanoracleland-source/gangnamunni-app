@@ -48,11 +48,24 @@ class PushNotificationService {
   }
 
   Future<void> _subscribeToBroadcastTopic() async {
-    if (!Platform.isAndroid) return;
+    final topic = Platform.isAndroid
+        ? ANDROID_BROADCAST_TOPIC
+        : Platform.isIOS
+            ? IOS_BROADCAST_TOPIC
+            : '';
+
+    if (topic.isEmpty) return;
 
     try {
-      await FirebaseMessaging.instance.subscribeToTopic(appNameTopic);
-      log("${FirebaseTopicConst.topicSubscribed}$appNameTopic");
+      if (Platform.isIOS) {
+        String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        for (var attempt = 0; attempt < 3 && apnsToken == null; attempt++) {
+          await Future.delayed(const Duration(seconds: 1));
+          apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        }
+      }
+      await FirebaseMessaging.instance.subscribeToTopic(topic);
+      log("${FirebaseTopicConst.topicSubscribed}$topic");
     } catch (error) {
       log('FCM broadcast topic subscription error: $error');
     }
