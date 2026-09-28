@@ -64,10 +64,13 @@ class SplashScreenController extends GetxController {
   }
 
   void navigationLogic() {
+    final pendingWebViewUrl =
+        PushNotificationService.consumePendingStartupWebViewUrl();
+
     // Check if WebView should be shown on startup
     if (SHOW_WEBVIEW_ON_STARTUP) {
       Get.offAll(() => AppAuthGateScreen(
-            url: STARTUP_WEBVIEW_URL,
+            url: pendingWebViewUrl ?? STARTUP_WEBVIEW_URL,
             type: STARTUP_WEBVIEW_TYPE,
           ));
       return;

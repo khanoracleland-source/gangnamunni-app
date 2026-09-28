@@ -66,6 +66,10 @@ function booking_notification_detail_link(array $booking, $event) {
     $id = (int)($booking['id'] ?? 0);
     if ($id <= 0) return $base . 'my_bookings.php';
 
+    if (in_array($event, ['hospital_checking', 'doctor_assigned', 'confirmed'], true)) {
+        return $base . 'my_bookings.php';
+    }
+
     if ($event === 'reschedule_required') {
         $hospitalId = (int)($booking['hospital_id'] ?? 0);
         $treatment = urlencode((string)($booking['treatment'] ?? ''));
@@ -287,7 +291,13 @@ function notify_booking_member($connect, array $booking, $event, array $context 
             [$memberId],
             $payload['title'],
             $payload['body'],
-            $payload['link']
+            $payload['link'],
+            null,
+            [
+                'type' => 'booking_notification',
+                'booking_event' => $event,
+                'booking_id' => (int)($booking['id'] ?? 0),
+            ]
         );
         $result['push_sent'] = (int)($pushResult['sent'] ?? 0);
         $result['push_failed'] = (int)($pushResult['failed'] ?? 0);

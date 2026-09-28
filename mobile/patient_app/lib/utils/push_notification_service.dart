@@ -21,6 +21,8 @@ import 'common_base.dart';
 import 'constants.dart';
 
 class PushNotificationService {
+  static String? _pendingStartupWebViewUrl;
+
 // It is assumed that all messages contain a data field with the key 'type'
   String _hospitalApiUrl(String endpoint) {
     final baseUrl = HOSPITAL_API_BASE_URL.endsWith('/')
@@ -216,9 +218,63 @@ class PushNotificationService {
     });
   }
 
+  static String? consumePendingStartupWebViewUrl() {
+    final url = _pendingStartupWebViewUrl;
+    _pendingStartupWebViewUrl = null;
+    return url;
+  }
+
+  String _bookingListUrl() {
+    final bookingListUrl =
+        Uri.parse(STARTUP_WEBVIEW_URL).resolve('my_bookings.php');
+    return bookingListUrl.toString();
+  }
+
+  Uri _bookingListDeepLink() {
+    final bookingListUrl = _bookingListUrl();
+    return Uri.parse(
+      'wellness://webview?url=${Uri.encodeComponent(bookingListUrl)}',
+    );
+  }
+
+  bool _isBookingListNotification(RemoteMessage message) {
+    final title = (message.notification?.title ??
+            message.data['title']?.toString() ??
+            '')
+        .trim();
+    const bookingStatusTitles = {
+      '예약 요청을 확인 중입니다',
+      '담당의사가 배정되었습니다',
+      '예약이 확정되었습니다',
+    };
+    if (bookingStatusTitles.contains(title)) return true;
+
+    final type = message.data['type']?.toString() ?? '';
+    if (type == 'booking_notification') return true;
+
+    final bookingEvent = message.data['booking_event']?.toString() ?? '';
+    const bookingListEvents = {
+      'hospital_checking',
+      'doctor_assigned',
+      'confirmed',
+    };
+    if (bookingListEvents.contains(bookingEvent)) return true;
+
+    final url = message.data['webview_url']?.toString() ??
+        message.data['url']?.toString() ??
+        '';
+    return url.contains('my_bookings.php');
+  }
+
   void handleNotificationClick(RemoteMessage message,
       {bool isForeGround = false}) {
     printLogsNotificationData(message);
+
+    if (!isForeGround && _isBookingListNotification(message)) {
+      _pendingStartupWebViewUrl = _bookingListUrl();
+      DeepLinkService.instance.handleDeepLink(_bookingListDeepLink());
+      return;
+    }
 
     // 딥링크 처리: deep_link 필드가 있으면 DeepLinkService로 라우팅
     if (message.data.containsKey('deep_link')) {

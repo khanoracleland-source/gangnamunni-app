@@ -631,7 +631,7 @@ function send_push_notification($connect, $admin_id, $title, $body, $link = null
  *
  * Passing null as $memberIds sends to every active token.
  */
-function send_push_to_members($connect, $memberIds, $title, $body, $link = null, $platforms = null) {
+function send_push_to_members($connect, $memberIds, $title, $body, $link = null, $platforms = null, $extraData = []) {
     if (!is_fcm_enabled($connect)) {
         return [
             'sent' => 0,
@@ -707,6 +707,13 @@ function send_push_to_members($connect, $memberIds, $title, $body, $link = null,
     $firstErrorCode = '';
     $firstHttpCode = 0;
     $data = ['type' => 'member_notification'];
+    if (is_array($extraData) && !empty($extraData)) {
+        foreach ($extraData as $key => $value) {
+            if (is_string($key) && $key !== '') {
+                $data[$key] = $value;
+            }
+        }
+    }
     if ($link) {
         $data['url'] = $link;
         $data['webview_url'] = $link;

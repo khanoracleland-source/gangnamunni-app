@@ -1017,12 +1017,6 @@ $page_css = '
         border-bottom: 1px solid var(--bs-border-color, #eee);
     }
     .date-selector::-webkit-scrollbar { display: none; }
-    .date-selector-tail {
-        flex: 0 0 calc(100% - 46px);
-        width: 0;
-        height: 1px;
-        pointer-events: none;
-    }
     .date-chip {
         flex-shrink: 0;
         display: flex;
@@ -1752,13 +1746,6 @@ $page_js = '
                 };
                 dateSel.appendChild(chip);
             });
-            // 다음 달의 날짜가 적어도 그 달 첫 날짜를 항상 왼쪽 끝까지 이동할 수 있게 한다.
-            if (months.length > 1) {
-                var tail = document.createElement("span");
-                tail.className = "date-selector-tail";
-                tail.setAttribute("aria-hidden", "true");
-                dateSel.appendChild(tail);
-            }
         }
         function scrollToMonth(monthKey) {
             var target = dateSel.querySelector(".date-chip[data-month=\"" + monthKey + "\"]");
