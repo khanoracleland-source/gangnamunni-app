@@ -551,6 +551,29 @@ if ($current_tab === 'reviews') {
             line-height: 1.6;
         }
 
+        html {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        a,
+        button,
+        input,
+        textarea,
+        select,
+        [role="button"],
+        .btn,
+        .modal-btn,
+        .tab-item {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        a:focus:not(:focus-visible),
+        button:focus:not(:focus-visible),
+        [role="button"]:focus:not(:focus-visible) {
+            outline: none;
+        }
+
         /* PC 중앙 정렬 컨테이너 */
         .page-container {
             max-width: 640px;
@@ -1036,6 +1059,17 @@ if ($current_tab === 'reviews') {
             transition: all 0.2s;
             text-decoration: none;
             display: block;
+            user-select: none;
+        }
+
+        .tab-item:active {
+            background: rgba(174, 25, 50, 0.06);
+            color: var(--color-primary);
+        }
+
+        .tab-item:focus-visible {
+            outline: 2px solid rgba(174, 25, 50, 0.28);
+            outline-offset: -2px;
         }
 
         .tab-item.active {
@@ -1431,6 +1465,21 @@ if ($current_tab === 'reviews') {
             cursor: pointer;
             border: none;
             transition: all 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .btn:active,
+        .modal-btn:active,
+        .global-nav-share:active,
+        .back-btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn[aria-busy="true"],
+        .modal-btn:disabled {
+            cursor: wait;
+            opacity: 0.78;
         }
 
         .btn-outline {
@@ -1482,9 +1531,10 @@ if ($current_tab === 'reviews') {
             right: 0;
             bottom: 0;
             background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
+            z-index: 10020;
             align-items: center;
             justify-content: center;
+            padding: 20px 16px;
         }
 
         .consultation-modal.show {
@@ -1497,6 +1547,18 @@ if ($current_tab === 'reviews') {
             padding: 24px;
             max-width: 400px;
             width: 90%;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            transform: translateY(8px);
+            transition: transform 0.18s ease;
+        }
+
+        .consultation-modal.show .modal-content {
+            transform: translateY(0);
+        }
+
+        body.consultation-modal-open {
+            overflow: hidden;
         }
 
         .modal-header {
@@ -1689,6 +1751,8 @@ if ($current_tab === 'reviews') {
             return copied;
         }
 
+        window.detailFallbackCopy = fallbackCopy;
+
         function showShareToast(message) {
             var toast = document.getElementById('pageShareCopyToast');
             if (!toast) return;
@@ -1699,6 +1763,8 @@ if ($current_tab === 'reviews') {
                 toast.classList.remove('is-visible');
             }, 1800);
         }
+
+        window.showDetailToast = showShareToast;
 
         if (shareBtn) {
             shareBtn.addEventListener('click', function () {
@@ -2590,12 +2656,18 @@ if ($current_tab === 'reviews') {
         // 의사 상담
         function openDoctorConsult() {
             document.getElementById('consultType').value = 'doctor';
-            document.getElementById('consultModal').classList.add('show');
+            const modal = document.getElementById('consultModal');
+            modal.classList.add('show');
+            document.body.classList.add('consultation-modal-open');
+            window.setTimeout(function() {
+                modal.querySelector('input[name="name"]')?.focus();
+            }, 80);
         }
 
         // 상담 모달 닫기
         function closeConsultModal() {
             document.getElementById('consultModal').classList.remove('show');
+            document.body.classList.remove('consultation-modal-open');
         }
 
         // 시술 상세 이미지 확대/축소 (100% ~ 400%)
@@ -2828,7 +2900,8 @@ if ($current_tab === 'reviews') {
 
             // 사진 있을 때 동의 체크 검증
             if (selectedPhotos.length > 0 && !document.getElementById('photoConsent').checked) {
-                alert('사진 첨부 시 동의가 필요합니다.');
+                window.showDetailToast?.('사진 첨부 시 동의가 필요합니다.');
+                document.getElementById('photoConsent').focus();
                 return;
             }
 
@@ -2843,7 +2916,14 @@ if ($current_tab === 'reviews') {
 
             const submitBtn = e.target.querySelector('.modal-btn-submit');
             submitBtn.disabled = true;
+            submitBtn.setAttribute('aria-busy', 'true');
             submitBtn.textContent = '전송중...';
+
+            const resetSubmitButton = function() {
+                submitBtn.disabled = false;
+                submitBtn.removeAttribute('aria-busy');
+                submitBtn.textContent = '신청하기';
+            };
 
             fetch('consultation_submit.php', {
                 method: 'POST',
@@ -2851,25 +2931,23 @@ if ($current_tab === 'reviews') {
             })
             .then(response => response.json())
             .then(data => {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '신청하기';
+                resetSubmitButton();
                 if (data.success) {
                     const csrfInput = e.target.querySelector('input[name="csrf_token"]');
                     if (csrfInput && data.csrf_token) csrfInput.value = data.csrf_token;
-                    alert('<?php echo term('consultation', '상담'); ?> 신청이 완료되었습니다. 빠른 시일 내에 연락드리겠습니다.');
                     closeConsultModal();
                     e.target.reset();
                     selectedPhotos = [];
                     renderPhotoGrid();
+                    window.showDetailToast?.('<?php echo term('consultation', '상담'); ?> 신청이 완료되었습니다.');
                 } else {
-                    alert(data.message || '<?php echo term('consultation', '상담'); ?> 신청 중 오류가 발생했습니다. 다시 시도해주세요.');
+                    window.showDetailToast?.(data.message || '<?php echo term('consultation', '상담'); ?> 신청 중 오류가 발생했습니다.');
                 }
             })
             .catch(error => {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '신청하기';
+                resetSubmitButton();
                 console.error('Consultation error:', error);
-                alert('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.');
+                window.showDetailToast?.('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.');
             });
         }
 
@@ -2891,9 +2969,9 @@ if ($current_tab === 'reviews') {
                 setTimeout(function() { btn.innerHTML = original; btn.style.color = ''; }, 1500);
             };
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(addr).then(done).catch(function() { fallbackCopy(addr, done); });
+                navigator.clipboard.writeText(addr).then(done).catch(function() { window.detailFallbackCopy?.(addr, done); });
             } else {
-                fallbackCopy(addr, done);
+                window.detailFallbackCopy?.(addr, done);
             }
         }
         function toggleBusinessHours() {
