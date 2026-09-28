@@ -166,6 +166,11 @@ foreach ($past_bookings as $_pb) { if (($_pb['status'] ?? '') === 'completed') $
 $review_map = getBookingReviewsMap($connect, $completed_ids);
 
 $page_title = '내 예약';
+$back_url = 'mypage.php';
+if (($_GET['from'] ?? '') === 'notifications') {
+    $return_to = (string)($_GET['return_to'] ?? 'my_notifications.php');
+    $back_url = preg_match('/^my_notifications\.php(?:\?.*)?$/', $return_to) ? $return_to : 'my_notifications.php';
+}
 ?>
 <!DOCTYPE html>
 <html lang="ko" data-bs-theme="light">
@@ -474,7 +479,7 @@ $page_title = '내 예약';
 </head>
 <body>
 <div class="header">
-    <button class="back" onclick="location.href='mypage.php'"><i class="bi bi-chevron-left"></i></button>
+    <button class="back" onclick="location.href='<?= htmlspecialchars($back_url, ENT_QUOTES) ?>'"><i class="bi bi-chevron-left"></i></button>
     <h1>내 예약/결제 내역</h1>
     <button type="button" class="global-nav-share" id="pageShareCopyBtn" aria-label="공유하기" title="공유하기">
         <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>

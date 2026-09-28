@@ -10,6 +10,119 @@ require_login();
 $me = get_gangnamunni_member();
 $member_id = $me['mb_id'];
 
+function notification_filter_types($filter) {
+    $groups = [
+        'all' => [],
+        'booking' => ['booking', 'payment'],
+        'review' => ['review'],
+        'benefit' => ['event', 'raffle', 'system', 'promotion', 'general', 'point', 'coupon', 'benefit'],
+    ];
+
+    return $groups[$filter] ?? [];
+}
+
+function notification_filter_where($filter, &$params, &$types) {
+    $filter_types = notification_filter_types($filter);
+    if ($filter === 'all' || empty($filter_types)) {
+        return '';
+    }
+
+    $placeholders = implode(',', array_fill(0, count($filter_types), '?'));
+    foreach ($filter_types as $type) {
+        $params[] = $type;
+        $types .= 's';
+    }
+
+    return " AND type IN ({$placeholders})";
+}
+
+function notification_bind_params($stmt, $types, array $params) {
+    $refs = [$types];
+    foreach ($params as $key => $value) {
+        $refs[] = &$params[$key];
+    }
+    return call_user_func_array('mysqli_stmt_bind_param', array_merge([$stmt], $refs));
+}
+
+function notification_page_items($connect, $member_id, $page = 1, $limit = 20, $filter = 'all') {
+    $offset = ($page - 1) * $limit;
+    $params = [$member_id];
+    $types = 's';
+    $where = notification_filter_where($filter, $params, $types);
+    $params[] = $limit;
+    $params[] = $offset;
+    $types .= 'ii';
+
+    $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_user_notifications WHERE member_id = ?{$where} ORDER BY created_at DESC LIMIT ? OFFSET ?");
+    if (!$stmt) return [];
+    notification_bind_params($stmt, $types, $params);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $notifications = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $notifications[] = $row;
+    }
+    mysqli_stmt_close($stmt);
+    return $notifications;
+}
+
+function notification_page_count($connect, $member_id, $filter = 'all') {
+    $params = [$member_id];
+    $types = 's';
+    $where = notification_filter_where($filter, $params, $types);
+    $stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ?{$where}");
+    if (!$stmt) return 0;
+    notification_bind_params($stmt, $types, $params);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt)->fetch_assoc();
+    mysqli_stmt_close($stmt);
+    return intval($result['cnt'] ?? 0);
+}
+
+function notification_display_icon($n, $fallback_icon) {
+    $type = $n['type'] ?? '';
+    $title = (string)($n['title'] ?? '');
+    $message = (string)($n['message'] ?? '');
+    $text = $title . ' ' . $message;
+
+    if ($type === 'booking' && preg_match('/결제|입금|환불/u', $text)) return 'payment';
+    if ($type === 'booking' && preg_match('/내일|오늘|리마인드|Reminder/i', $text)) return 'clock';
+    if ($type === 'booking') return 'calendar';
+    if ($type === 'review') return 'review';
+    if (preg_match('/포인트|이벤트|혜택|쿠폰|소멸|발급/u', $text)) return 'gift';
+    if (in_array($type, ['raffle', 'event', 'promotion', 'point', 'coupon', 'benefit'], true)) return 'gift';
+    if ($type === 'system' || $type === 'general') return 'bell';
+
+    $fallback_map = [
+        'bi-credit-card' => 'payment',
+        'bi-clock' => 'clock',
+        'bi-pencil-square' => 'review',
+        'bi-gift' => 'gift',
+        'bi-bell' => 'bell',
+        'bi-calendar-check' => 'calendar',
+    ];
+    return $fallback_map[$fallback_icon] ?? 'bell';
+}
+
+function notification_icon_src($icon) {
+    $icons = [
+        'calendar' => 'assets/icons/notifications/booking.svg',
+        'payment' => 'assets/icons/notifications/payment.svg',
+        'clock' => 'assets/icons/notifications/clock.svg',
+        'gift' => 'assets/icons/notifications/gift.svg',
+        'review' => 'assets/icons/notifications/review.svg',
+        'bell' => 'assets/icons/notifications/bell.svg',
+    ];
+
+    return $icons[$icon] ?? $icons['bell'];
+}
+
+function notification_time_label($datetime) {
+    $label = user_time_ago($datetime);
+    if ($label === '방금') return '지금';
+    return str_replace(['분전', '시간전', '일전'], ['분 전', '시간 전', '일 전'], $label);
+}
+
 // --- AJAX 엔드포인트: 알림 읽음 처리 ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -52,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
     if ($action === 'load') {
         $page = max(1, intval($_POST['page'] ?? 1));
         $type = $_POST['type'] ?? 'all';
-        $allowed_types = ['all', 'booking', 'event', 'raffle', 'system', 'promotion'];
+        $allowed_types = ['all', 'booking', 'review', 'benefit'];
         if (!in_array($type, $allowed_types)) $type = 'all';
 
         $limit = 20;
@@ -62,8 +175,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
         // 테이블 존재 확인
         $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_user_notifications'");
         if ($table_check && mysqli_num_rows($table_check) > 0) {
-            $notifications = get_user_notifications($connect, $member_id, $page, $limit, $type);
-            $total = get_user_notification_count($connect, $member_id, $type);
+            $notifications = notification_page_items($connect, $member_id, $page, $limit, $type);
+            $total = notification_page_count($connect, $member_id, $type);
         }
 
         $has_more = ($page * $limit) < $total;
@@ -89,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
 
 // --- 초기 데이터 로딩 ---
 $current_type = $_GET['type'] ?? 'all';
-$allowed_types = ['all', 'booking', 'event', 'raffle', 'system', 'promotion'];
+$allowed_types = ['all', 'booking', 'review', 'benefit'];
 if (!in_array($current_type, $allowed_types)) $current_type = 'all';
 
 $notifications = [];
@@ -101,8 +214,8 @@ $table_exists = false;
 $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_user_notifications'");
 if ($table_check && mysqli_num_rows($table_check) > 0) {
     $table_exists = true;
-    $notifications = get_user_notifications($connect, $member_id, 1, 20, $current_type);
-    $total_count = get_user_notification_count($connect, $member_id, $current_type);
+    $notifications = notification_page_items($connect, $member_id, 1, 20, $current_type);
+    $total_count = notification_page_count($connect, $member_id, $current_type);
     $unread_count = get_user_unread_count($connect, $member_id);
 }
 
@@ -185,43 +298,35 @@ function render_notification_item($n) {
     $type_info = $USER_NOTIFICATION_TYPES[$n['type']] ?? $USER_NOTIFICATION_TYPES['general'];
     $is_unread = intval($n['is_read'] ?? 0) === 0;
     $bg_class = $is_unread ? 'noti-unread' : 'noti-read';
-    $icon = htmlspecialchars($n['icon'] ?? $type_info['icon']);
-    $color = $type_info['color'];
+    $icon_src = htmlspecialchars(notification_icon_src(notification_display_icon($n, $n['icon'] ?? $type_info['icon'])), ENT_QUOTES);
     $title = htmlspecialchars($n['title'] ?? '');
     $message = htmlspecialchars($n['message'] ?? '');
-    $time = user_time_ago($n['created_at']);
+    $time = notification_time_label($n['created_at']);
     $link = htmlspecialchars($n['link'] ?? '');
     $open_url = notification_booking_target_url($n);
     $open_url_attr = htmlspecialchars($open_url, ENT_QUOTES);
     $open_area_class = 'noti-open-area' . ($open_url !== '' ? ' is-clickable' : '');
-    $open_area_attrs = $open_url !== '' ? ' role="button" tabindex="0" aria-label="예약 알림 보기"' : '';
+    $open_area_attrs = $open_url !== '' ? ' role="button" tabindex="0" aria-label="알림 보기"' : '';
     $id = intval($n['id']);
-    $type_label = $type_info['label'];
-
-    $unread_dot = $is_unread ? '<span class="noti-dot"></span>' : '';
 
     return <<<HTML
-<div class="noti-item {$bg_class}" data-id="{$id}" data-link="{$link}" data-open-url="{$open_url_attr}">
+<article class="noti-item {$bg_class}" data-id="{$id}" data-link="{$link}" data-open-url="{$open_url_attr}">
     <div class="{$open_area_class}"{$open_area_attrs}>
-        <div class="noti-icon-wrap" style="background:{$color}20">
-            <i class="bi {$icon}" style="color:{$color}"></i>
+        <div class="noti-icon-wrap" aria-hidden="true">
+            <img class="noti-svg-icon" src="{$icon_src}" alt="" loading="lazy" decoding="async">
         </div>
         <div class="noti-content">
             <div class="noti-title-row">
                 <span class="noti-title">{$title}</span>
-                {$unread_dot}
             </div>
             <p class="noti-message">{$message}</p>
-            <div class="noti-meta">
-                <span class="noti-type-badge" style="color:{$color};background:{$color}15">{$type_label}</span>
-                <span class="noti-time">{$time}</span>
-            </div>
+        </div>
+        <div class="noti-side">
+            <span class="noti-time">{$time}</span>
+            <span class="noti-dot"></span>
         </div>
     </div>
-    <button type="button" class="noti-delete-btn" aria-label="알림 삭제" title="삭제">
-        <i class="bi bi-x-lg" aria-hidden="true"></i>
-    </button>
-</div>
+</article>
 HTML;
 }
 
@@ -232,340 +337,386 @@ $hide_global_nav = true;
 $bottom_nav_active = 'home';
 
 $page_css = <<<'CSS'
-/* Temporary notification page shell. Keep this light until the full redesign. */
 *{box-sizing:border-box}
-html{background:#3f3f3f}
+html{background:#3f3f3f;-webkit-tap-highlight-color:transparent}
 body{
-    font-family:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    background:#f3f3f3;
     min-height:100vh;
-    -webkit-font-smoothing:antialiased;
+    background:#eeeeee;
     color:#111;
+    font-family:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+}
+button{font:inherit}
+button,a,[role="button"]{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+
+.main-content{
+    padding:0!important;
+    background:#eeeeee!important;
 }
 
 .noti-wrapper{
+    --noti-primary:#AE1932;
+    --noti-bg:#eeeeee;
+    --noti-border:#eeeeee;
+    width:100%;
     max-width:640px;
-    margin:0 auto;
     min-height:calc(100vh - 77px);
+    margin:0 auto;
     padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px));
-    background:#f3f3f3;
+    background:var(--noti-bg);
 }
 
-/* 페이지 헤더 */
 .noti-header{
     position:sticky;
     top:0;
     z-index:100;
+    width:100%;
     background:#fff;
-    border-bottom:1px solid #eeeeee;
-    padding:10px 16px;
 }
 .noti-header-row{
-    display:flex;
+    position:relative;
+    min-height:72px;
+    display:grid;
+    grid-template-columns:48px 1fr 48px;
     align-items:center;
-    min-height:44px;
-    gap:10px;
+    padding:8px 20px 4px;
 }
 .noti-back{
-    width:40px;height:40px;
-    border-radius:50%;
-    border:none;
-    background:transparent;
-    display:flex;align-items:center;justify-content:center;
-    font-size:22px;color:#111;
-    cursor:pointer;
-    flex-shrink:0;
-}
-.noti-back:hover{background:#f5f5f5}
-.noti-page-title{
-    font-size:21px;
-    font-weight:800;
-    color:#000;
-    flex:1;
-    letter-spacing:-.02em;
-}
-.noti-badge{
-    display:inline-flex;
+    width:44px;
+    height:44px;
+    display:flex;
     align-items:center;
     justify-content:center;
-    background:#AE1932;
+    border:0;
+    border-radius:50%;
+    background:transparent;
+    color:#111;
+    font-size:31px;
+    cursor:pointer;
+}
+.noti-back:active{transform:scale(.98)}
+.noti-page-title{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    color:#111;
+    font-size:21px;
+    font-weight:700;
+    letter-spacing:0;
+}
+.noti-badge{
+    display:none;
+    min-width:22px;
+    height:22px;
+    align-items:center;
+    justify-content:center;
+    padding:0 7px;
+    border-radius:999px;
+    background:var(--noti-primary);
     color:#fff;
     font-size:11px;
-    font-weight:600;
-    min-width:20px;
-    height:20px;
-    padding:0 6px;
-    border-radius:10px;
-    margin-left:6px;
+    font-weight:800;
+    line-height:1;
 }
-.noti-read-all-btn{
-    border:1px solid #eeeeee;
-    background:#fff;
-    color:#AE1932;
-    font-size:12px;
-    font-weight:700;
-    cursor:pointer;
-    white-space:nowrap;
-    padding:8px 11px;
-    border-radius:999px;
-}
-.noti-read-all-btn:hover{background:#fff7f8}
-.noti-read-all-btn:disabled{color:#bbb;cursor:default;background:#f7f7f7}
+.noti-read-all-btn{display:none}
 
-/* 필터 탭 */
 .noti-tabs{
-    display:flex;
-    gap:8px;
-    overflow-x:auto;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-    padding:12px 16px 10px;
-    background:#fff;
-    border-bottom:1px solid #eeeeee;
     position:sticky;
-    top:65px;
-    z-index:99;
+    top:72px;
+    z-index:90;
+    width:100%;
+    display:flex;
+    overflow:hidden;
+    border-bottom:1px solid #cfcfcf;
+    background:#fff;
+    scrollbar-width:none;
 }
 .noti-tabs::-webkit-scrollbar{display:none}
 .noti-tab{
-    flex:0 0 auto;
-    text-align:center;
-    padding:8px 13px;
-    border-radius:999px;
-    font-size:13px;
-    font-weight:700;
-    color:#777;
-    cursor:pointer;
-    border:1px solid #eeeeee;
-    background:#fff;
     position:relative;
-    transition:color .2s;
-}
-.noti-tab:hover{color:var(--bs-secondary-color, #666)}
-.noti-tab.active{
-    color:#fff;
-    background:#AE1932;
-    border-color:#AE1932;
-}
-
-/* 알림 리스트 */
-.noti-list{
-    padding:14px 0 0;
-}
-.noti-item{
-    display:flex;
-    align-items:flex-start;
-    gap:8px;
-    margin:0 0 10px;
-    padding:0;
-    border:1px solid #eeeeee;
+    z-index:1;
+    flex:1 1 0;
+    min-width:0;
+    min-height:60px;
+    padding:0 4px;
+    border:0;
     border-radius:0;
     background:#fff;
-    transition:background .15s;
+    color:#111;
+    font-size:18px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
 }
-.noti-item:hover{background:#fafafa}
-.noti-open-area:active{background:var(--bs-tertiary-bg, #f5f5f5)}
+.noti-tab.active{
+    border-color:transparent;
+    background:#fff;
+    color:var(--noti-primary);
+    box-shadow:none;
+}
+.noti-tab-indicator{
+    position:absolute;
+    bottom:0;
+    left:0;
+    z-index:2;
+    height:2px;
+    width:0;
+    background:var(--noti-primary);
+    transform:translateX(0);
+    transition:transform .28s cubic-bezier(.22, .61, .36, 1), width .28s cubic-bezier(.22, .61, .36, 1);
+    pointer-events:none;
+}
+.noti-tab:active{transform:scale(.98)}
+.noti-tab:focus-visible,
+.noti-back:focus-visible,
+.noti-read-all-btn:focus-visible,
+.noti-open-area.is-clickable:focus-visible,
+.noti-delete-btn:focus-visible,
+.noti-load-more:focus-visible{
+    outline:2px solid rgba(174,25,50,.35);
+    outline-offset:2px;
+}
 
-.noti-unread{border-color:#f2d9de;background:#fffafa}
-.noti-unread:hover{background:#fff5f6}
-.noti-read{background:var(--bs-body-bg, #fff)}
-.noti-open-area{
-    flex:1;
-    min-width:0;
+.noti-list{
+    display:grid;
+    gap:14px;
+    padding:22px 14px 54px;
+    background:var(--noti-bg);
+}
+.noti-item{
+    position:relative;
     display:flex;
-    align-items:flex-start;
-    gap:12px;
-    padding:16px 0 16px 16px;
+    align-items:stretch;
+    min-height:76px;
+    overflow:visible;
+    border:0;
+    border-radius:0;
+    background:#fff;
+    box-shadow:none;
+    transition:background .16s ease, border-color .16s ease, transform .16s ease;
+}
+.noti-item:active{transform:scale(.995)}
+.noti-unread{
+    border-color:transparent;
+    background:#fff;
+}
+.noti-open-area{
+    width:100%;
+    min-width:0;
+    display:grid;
+    grid-template-columns:34px minmax(0, 1fr) 58px;
+    align-items:center;
+    column-gap:14px;
+    padding:17px 16px 17px 22px;
 }
 .noti-open-area.is-clickable{cursor:pointer}
-.noti-open-area.is-clickable:focus-visible{
-    outline:2px solid #AE1932;
-    outline-offset:-2px;
-}
-
+.noti-open-area.is-clickable:active{background:#fafafa}
 .noti-icon-wrap{
-    width:42px;height:42px;
-    border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    font-size:19px;
-    flex-shrink:0;
+    width:34px;
+    height:42px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:0;
+    color:var(--noti-primary);
+    font-size:26px;
 }
-.noti-content{
-    flex:1;
-    min-width:0;
+.noti-svg-icon{
+    display:block;
+    width:32px;
+    height:32px;
+    object-fit:contain;
 }
+.noti-content{flex:1;min-width:0}
 .noti-title-row{
     display:flex;
     align-items:center;
-    gap:6px;
-    margin-bottom:2px;
+    gap:7px;
+    min-width:0;
+    margin:0 0 4px;
 }
 .noti-title{
-    font-size:15px;
-    font-weight:750;
-    color:#111;
+    min-width:0;
+    flex:1;
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
-    flex:1;
-    min-width:0;
+    color:#111;
+    font-size:15px;
+    font-weight:800;
 }
 .noti-dot{
-    width:8px;height:8px;
+    flex:0 0 8px;
+    width:8px;
+    height:8px;
     border-radius:50%;
-    background:#AE1932;
-    flex-shrink:0;
+    background:var(--noti-primary);
+}
+.noti-read .noti-dot{
+    background:#b5b5b5;
+}
+.noti-unread .noti-dot{
+    background:var(--noti-primary);
 }
 .noti-message{
-    font-size:13px;
-    color:#666;
-    line-height:1.55;
-    margin:3px 0 8px 0;
-    display:-webkit-box;
-    -webkit-line-clamp:2;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
-}
-.noti-meta{
-    display:flex;
-    align-items:center;
-    gap:8px;
-}
-.noti-type-badge{
+    display:block;
+    margin:4px 0 0;
+    color:#111;
     font-size:11px;
-    font-weight:600;
-    padding:2px 7px;
-    border-radius:999px;
+    line-height:1.45;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.noti-side{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    justify-content:flex-start;
+    align-self:stretch;
+    padding-top:0;
 }
 .noti-time{
-    font-size:11px;
+    max-width:58px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
     color:#aaa;
+    font-size:11px;
+    line-height:1;
 }
+.noti-side .noti-dot{margin-top:14px}
 .noti-delete-btn{
-    width:48px;
-    min-height:74px;
-    align-self:stretch;
-    flex:0 0 48px;
+    position:absolute;
+    right:6px;
+    bottom:6px;
+    width:34px;
+    height:34px;
+    min-height:0;
     display:flex;
     align-items:center;
     justify-content:center;
     margin:0;
     border:0;
-    border-radius:0;
+    border-radius:50%;
     background:transparent;
-    color:#b5b5b5;
-    font-size:13px;
+    color:#cfcfcf;
+    font-size:14px;
     cursor:pointer;
+    opacity:0;
+    transition:opacity .14s ease, background .14s ease, color .14s ease;
 }
-.noti-delete-btn:hover,
+.noti-item:hover .noti-delete-btn,
 .noti-delete-btn:focus-visible{
-    background:#f5f5f5;
-    color:#AE1932;
+    opacity:1;
 }
 .noti-delete-btn:active{
-    background:#eee;
-    color:#AE1932;
+    background:#fff1f3;
+    color:var(--noti-primary);
 }
-.noti-delete-btn:disabled{
-    opacity:.45;
-    cursor:default;
-}
+.noti-delete-btn:disabled{opacity:.45;cursor:default}
 
-/* 더 보기 버튼 */
 .noti-load-more{
     display:block;
-    width:100%;
-    margin:10px 0 24px;
-    padding:13px;
-    border:1px solid #eeeeee;
+    width:calc(100% - 36px);
+    max-width:604px;
+    min-height:48px;
+    margin:12px auto 24px;
+    border:1px solid #e8e8e8;
     border-radius:0;
     background:#fff;
     color:#333;
     font-size:14px;
-    font-weight:600;
+    font-weight:800;
     cursor:pointer;
-    transition:all .2s;
-    text-align:center;
 }
-.noti-load-more:hover{
-    background:#f0f0f0;
-    border-color:#ddd;
-    color:var(--bs-body-color, #333);
-}
-.noti-load-more:disabled{
-    cursor:default;
-    color:#ccc;
-}
+.noti-load-more:active{background:#f6f6f6;transform:scale(.995)}
+.noti-load-more:disabled{color:#bbb;cursor:default}
 
-/* 빈 상태 */
 .noti-empty{
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    margin:14px 0 0;
-    padding:64px 16px;
-    text-align:center;
+    min-height:320px;
+    padding:48px 18px;
+    border:1px solid #ededed;
+    border-radius:0;
     background:#fff;
-    border:1px solid #eeeeee;
+    text-align:center;
 }
 .noti-empty-icon{
-    font-size:56px;
-    color:#ddd;
-    margin-bottom:16px;
+    width:72px;
+    height:72px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:18px;
+    border-radius:50%;
+    background:#f7f7f7;
+    color:#cfcfcf;
+    font-size:34px;
 }
 .noti-empty-title{
-    font-size:16px;
-    font-weight:600;
-    color:#999;
     margin-bottom:6px;
+    color:#555;
+    font-size:16px;
+    font-weight:850;
 }
 .noti-empty-desc{
+    color:#aaa;
     font-size:13px;
-    color:#bbb;
 }
 
-/* 로딩 스피너 */
 .noti-spinner{
     display:flex;
+    align-items:center;
     justify-content:center;
-    padding:24px;
+    min-height:220px;
 }
 .noti-spinner::after{
-    content:'';
-    width:28px;height:28px;
-    border:3px solid #f0f0f0;
-    border-top-color:#AE1932;
+    content:"";
+    width:30px;
+    height:30px;
+    border:3px solid #ececec;
+    border-top-color:var(--noti-primary);
     border-radius:50%;
-    animation:noti-spin .6s linear infinite;
+    animation:noti-spin .7s linear infinite;
 }
 @keyframes noti-spin{to{transform:rotate(360deg)}}
 
-/* 토스트 메시지 */
 .noti-toast{
     position:fixed;
-    bottom:96px;
     left:50%;
-    transform:translateX(-50%) translateY(80px);
-    background:#333;
+    bottom:calc(92px + env(safe-area-inset-bottom, 0px));
+    z-index:9999;
+    max-width:calc(100% - 40px);
+    transform:translateX(-50%) translateY(72px);
+    padding:11px 18px;
+    border-radius:999px;
+    background:rgba(25,25,25,.92);
     color:#fff;
     font-size:13px;
-    font-weight:500;
-    padding:10px 20px;
-    border-radius:999px;
-    z-index:9999;
+    font-weight:700;
     opacity:0;
-    transition:all .3s ease;
     pointer-events:none;
+    transition:opacity .22s ease, transform .22s ease;
 }
 .noti-toast.show{
     opacity:1;
     transform:translateX(-50%) translateY(0);
 }
 
-/* 반응형 */
-@media(max-width:640px){
-    .noti-wrapper{box-shadow:none}
+@media(max-width:380px){
+    .noti-tab{font-size:16px}
+    .noti-list{padding-left:12px;padding-right:12px}
+    .noti-open-area{grid-template-columns:32px minmax(0, 1fr) 52px;padding-left:18px;padding-right:14px;column-gap:12px}
+    .noti-time{max-width:52px}
+}
+@media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none!important;transition:none!important}
 }
 CSS;
 
@@ -578,11 +729,11 @@ include __DIR__ . '/includes/header.php';
     <!-- 페이지 헤더 -->
     <div class="noti-header">
         <div class="noti-header-row">
-            <button class="noti-back" onclick="history.back()" aria-label="뒤로가기">
-                <i class="bi bi-arrow-left"></i>
+            <button type="button" class="noti-back" onclick="history.back()" aria-label="뒤로가기">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
             </button>
             <span class="noti-page-title">
-                내 알림
+                알림
                 <?php if ($unread_count > 0): ?>
                     <span class="noti-badge" id="unreadBadge"><?= $unread_count > 99 ? '99+' : $unread_count ?></span>
                 <?php endif; ?>
@@ -596,13 +747,12 @@ include __DIR__ . '/includes/header.php';
     </div>
 
     <!-- 필터 탭 -->
-    <div class="noti-tabs" id="notiTabs">
+    <div class="noti-tabs" id="notiTabs" role="tablist" aria-label="알림 필터">
         <button class="noti-tab <?= $current_type === 'all' ? 'active' : '' ?>" data-type="all">전체</button>
-        <button class="noti-tab <?= $current_type === 'booking' ? 'active' : '' ?>" data-type="booking">예약</button>
-        <button class="noti-tab <?= $current_type === 'event' ? 'active' : '' ?>" data-type="event">이벤트</button>
-        <button class="noti-tab <?= $current_type === 'raffle' ? 'active' : '' ?>" data-type="raffle">응모</button>
-        <button class="noti-tab <?= $current_type === 'system' ? 'active' : '' ?>" data-type="system">시스템</button>
-        <button class="noti-tab <?= $current_type === 'promotion' ? 'active' : '' ?>" data-type="promotion">프로모션</button>
+        <button class="noti-tab <?= $current_type === 'booking' ? 'active' : '' ?>" data-type="booking">예약 · 결제</button>
+        <button class="noti-tab <?= $current_type === 'review' ? 'active' : '' ?>" data-type="review">후기</button>
+        <button class="noti-tab <?= $current_type === 'benefit' ? 'active' : '' ?>" data-type="benefit">혜택 · 기타</button>
+        <span class="noti-tab-indicator" id="notiTabIndicator" aria-hidden="true"></span>
     </div>
 
     <!-- 알림 리스트 -->
@@ -649,8 +799,39 @@ include __DIR__ . '/includes/header.php';
     var loadMoreBtn = document.getElementById('loadMoreBtn');
     var readAllBtn = document.getElementById('readAllBtn');
     var unreadBadge = document.getElementById('unreadBadge');
+    var unreadSummaryNumber = document.getElementById('unreadSummaryNumber');
     var notiToast = document.getElementById('notiToast');
     var tabs = document.querySelectorAll('.noti-tab');
+    var tabIndicator = document.getElementById('notiTabIndicator');
+
+    tabs.forEach(function(tab) {
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
+    });
+
+    function moveTabIndicator(animate) {
+        if (!tabIndicator) return;
+        var activeTab = document.querySelector('.noti-tab.active');
+        if (!activeTab) return;
+
+        if (!animate) {
+            tabIndicator.style.transition = 'none';
+        }
+
+        tabIndicator.style.width = activeTab.offsetWidth + 'px';
+        tabIndicator.style.transform = 'translateX(' + activeTab.offsetLeft + 'px)';
+
+        if (!animate) {
+            requestAnimationFrame(function() {
+                tabIndicator.style.transition = '';
+            });
+        }
+    }
+
+    moveTabIndicator(false);
+    window.addEventListener('resize', function() {
+        moveTabIndicator(false);
+    });
 
     // --- 탭 전환 ---
     tabs.forEach(function(tab) {
@@ -667,8 +848,11 @@ include __DIR__ . '/includes/header.php';
 
         // 탭 활성 상태 변경
         tabs.forEach(function(t) {
-            t.classList.toggle('active', t.getAttribute('data-type') === type);
+            var active = t.getAttribute('data-type') === type;
+            t.classList.toggle('active', active);
+            t.setAttribute('aria-selected', active ? 'true' : 'false');
         });
+        moveTabIndicator(true);
 
         // 리스트 로딩 표시
         notiList.innerHTML = '<div class="noti-spinner"></div>';
@@ -747,11 +931,9 @@ include __DIR__ . '/includes/header.php';
     function getEmptyTitle(type) {
         var map = {
             'all': '알림이 없습니다',
-            'booking': '예약 알림이 없습니다',
-            'event': '이벤트 알림이 없습니다',
-            'raffle': '응모 알림이 없습니다',
-            'system': '시스템 알림이 없습니다',
-            'promotion': '프로모션 알림이 없습니다'
+            'booking': '예약 · 결제 알림이 없습니다',
+            'review': '후기 알림이 없습니다',
+            'benefit': '혜택 · 기타 알림이 없습니다'
         };
         return map[type] || '알림이 없습니다';
     }
@@ -872,8 +1054,6 @@ include __DIR__ . '/includes/header.php';
             // 즉시 시각적으로 읽음 처리
             el.classList.remove('noti-unread');
             el.classList.add('noti-read');
-            var dot = el.querySelector('.noti-dot');
-            if (dot) dot.remove();
 
             // 카운트 갱신
             unreadCount = Math.max(0, unreadCount - 1);
@@ -890,9 +1070,24 @@ include __DIR__ . '/includes/header.php';
 
         // 링크가 있으면 이동
         if (link) {
+            link = addNotificationReturnParams(link);
             setTimeout(function() {
                 location.href = link;
             }, 100);
+        }
+    }
+
+    function addNotificationReturnParams(link) {
+        try {
+            var url = new URL(link, location.href);
+            if (url.origin !== location.origin) return link;
+
+            url.searchParams.set('from', 'notifications');
+            url.searchParams.set('return_to', 'my_notifications.php' + location.search);
+
+            return url.pathname.split('/').pop() + url.search + url.hash;
+        } catch (e) {
+            return link;
         }
     }
 
@@ -913,8 +1108,6 @@ include __DIR__ . '/includes/header.php';
                 unreadItems.forEach(function(item) {
                     item.classList.remove('noti-unread');
                     item.classList.add('noti-read');
-                    var dot = item.querySelector('.noti-dot');
-                    if (dot) dot.remove();
                 });
 
                 unreadCount = 0;
@@ -948,6 +1141,10 @@ include __DIR__ . '/includes/header.php';
         } else {
             if (unreadBadge) unreadBadge.style.display = 'none';
             if (readAllBtn) readAllBtn.disabled = true;
+        }
+        if (unreadSummaryNumber) {
+            unreadSummaryNumber.textContent = String(unreadCount);
+            unreadSummaryNumber.parentElement?.setAttribute('aria-label', '읽지 않은 알림 ' + unreadCount + '개');
         }
     }
 
