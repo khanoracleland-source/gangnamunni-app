@@ -11,6 +11,11 @@ analyzer:
     unnecessary_new: warning
     camel_case_types: warning
     must_be_immutable: ignore
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
 
 include: package:flutter_lints/flutter.yaml
 
