@@ -24,7 +24,9 @@
         .about-share svg { width: 1em; height: 1em; }
         .about-layout { position: relative; }
         .about-layout > svg { display: block; width: 100%; height: auto; }
-        .google-play-link { position: absolute; left: 11.3%; top: 98.12%; width: 35.4%; height: .95%; border-radius: 5px; }
+        .google-play-link, .app-store-link { position: absolute; top: 98.12%; width: 35.4%; height: .95%; border-radius: 5px; }
+        .google-play-link { left: 11.3%; }
+        .app-store-link { left: 53.3%; }
         :focus-visible { outline: 3px solid #ae1932; outline-offset: 3px; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
         .share-copy-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 30; background: #222; color: #fff; border-radius: 8px; padding: 12px 18px; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -47,6 +49,7 @@
                 <image href="assets/media/about-project-layout.jpg?v=<?= (int)filemtime(__DIR__ . '/assets/media/about-project-layout.jpg') ?>" width="640" height="7942" />
             </svg>
             <a class="google-play-link" href="https://play.google.com/store/apps/details?id=com.celebhospital.patient&amp;pcampaignid=web_share" target="_blank" rel="noopener noreferrer" aria-label="Google Play에서 서울미녀 앱 다운로드"></a>
+            <a class="app-store-link" href="https://apps.apple.com/kr/app/서울미녀/id6805706423" target="_blank" rel="noopener noreferrer" aria-label="App Store에서 서울미녀 앱 다운로드"></a>
         </div>
     </main>
 </div>
