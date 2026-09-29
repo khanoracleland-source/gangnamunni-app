@@ -27,35 +27,16 @@ function get_hospital_filter() {
 }
 
 /**
- * 현재 관리자가 관리하는 병원 ID 목록 (다병원 지원)
- * 규칙: 병원.email == 관리자 로그인(username/email) 인 모든 병원.
- *  - super_admin        → null (전체 접근)
- *  - 이메일 매칭 병원 있음 → 해당 병원 id 배열 (한 관리자가 여러 병원 소유 가능)
- *  - 매칭 없음 + 단일 hospital_id 세션값 있음 → [그 id]
- *  - 매칭 없음 + 없음     → null (병원 소속 없는 플랫폼 관리자 = 전체)
+ * 현재 관리자가 관리하는 병원 ID 목록
+ * 규칙: 관리자 관리(admin_admins.php)에서 지정한 hospital_id 만 사용한다. (이메일 매칭 없음)
+ *  - 플랫폼 역할(super_admin/admin/editor/viewer) → null (전체 접근, 호출 페이지에서 별도 제한 가능)
+ *  - 병원 역할 → [hospital_id], 미배정이면 빈 배열(접근 0건, fail closed)
  * @return array|null  병원 id 배열 또는 null(전체)
  */
 function get_hospital_filter_ids($connect) {
     $role = $_SESSION['ad_admin_role'] ?? '';
     if (in_array($role, ['super_admin', 'admin', 'editor', 'viewer'], true)) return null;
 
-    $login = trim($_SESSION['ad_admin_user'] ?? '');
-    $mail  = trim($_SESSION['ad_admin_email'] ?? '');
-    $ids = [];
-    if ($connect && ($login !== '' || $mail !== '')) {
-        $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email = ? OR email = ?");
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'ss', $login, $mail);
-            mysqli_stmt_execute($stmt);
-            $r = mysqli_stmt_get_result($stmt);
-            while ($row = mysqli_fetch_assoc($r)) $ids[] = (int)$row['id'];
-            mysqli_stmt_close($stmt);
-        }
-    }
-    if (!empty($ids)) return array_values(array_unique($ids));
-
-    // 이메일 매칭 병원 없음 → 세션 단일 hospital_id 있으면 그것.
-    // 병원 역할인데 유효한 소속이 없으면 빈 배열(접근 0건)로 fail closed.
     $hid = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
     return $hid > 0 ? [$hid] : [];
 }
@@ -71,51 +52,26 @@ function get_strict_admin_hospital_ids($connect) {
         return null;
     }
 
-    $ids = [];
-    $login = trim((string)($_SESSION['ad_admin_user'] ?? ''));
-    $mail = trim((string)($_SESSION['ad_admin_email'] ?? ''));
-    if ($connect && ($login !== '' || $mail !== '')) {
-        $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email = ? OR email = ?");
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'ss', $login, $mail);
-            mysqli_stmt_execute($stmt);
-            $result = mysqli_stmt_get_result($stmt);
-            while ($row = mysqli_fetch_assoc($result)) {
-                $ids[] = (int)$row['id'];
-            }
-            mysqli_stmt_close($stmt);
-        }
-    }
-
+    // 관리자 관리에서 지정한 hospital_id 만 사용한다. (이메일 매칭 없음)
     $hospital_id = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
-    if ($hospital_id > 0) {
-        $ids[] = $hospital_id;
-    }
-
-    return array_values(array_unique(array_filter($ids)));
+    return $hospital_id > 0 ? [$hospital_id] : [];
 }
 
 /**
- * 역할 예외 없이 현재 관리자에게 실제 배정된 병원만 반환한다.
- * super_admin 포함: 배정이 없으면 빈 배열(fail closed).
+ * 현재 관리자에게 배정된 병원 목록 (이벤트·광고 신청 등 병원 단위 작업용)
+ *  - super_admin → 전체 병원 (최고관리자는 모든 병원을 대신 관리할 수 있다)
+ *  - 그 외 → 관리자 관리에서 지정한 hospital_id 1곳, 미배정이면 빈 배열(fail closed)
+ * 이메일 매칭은 사용하지 않는다.
  */
 function get_assigned_admin_hospital_ids($connect) {
-    $ids = [];
-    $login = trim((string)($_SESSION['ad_admin_user'] ?? ''));
-    $mail = trim((string)($_SESSION['ad_admin_email'] ?? ''));
-    if ($connect && ($login !== '' || $mail !== '')) {
-        $stmt = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email=? OR email=?");
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'ss', $login, $mail);
-            mysqli_stmt_execute($stmt);
-            $result = mysqli_stmt_get_result($stmt);
-            while ($row = mysqli_fetch_assoc($result)) $ids[] = (int)$row['id'];
-            mysqli_stmt_close($stmt);
-        }
+    if (($_SESSION['ad_admin_role'] ?? '') === 'super_admin') {
+        $ids = [];
+        $r = $connect ? mysqli_query($connect, "SELECT id FROM gangnamunni_hospitals") : false;
+        if ($r) while ($row = mysqli_fetch_assoc($r)) $ids[] = (int)$row['id'];
+        return $ids;
     }
     $hospital_id = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
-    if ($hospital_id > 0) $ids[] = $hospital_id;
-    return array_values(array_unique(array_filter($ids)));
+    return $hospital_id > 0 ? [$hospital_id] : [];
 }
 
 /**

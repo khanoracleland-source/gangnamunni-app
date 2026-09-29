@@ -54,24 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// 최고관리자를 포함한 모든 관리자: 자신에게 배정된 병원만 허용
+// 최고관리자는 전체 병원, 그 외 관리자는 관리자 관리에서 지정한 병원만 허용 (이메일 매칭 없음)
 function event_assigned_hospital_ids($connect) {
-    $ids = [];
-    $login = trim((string)($_SESSION['ad_admin_user'] ?? ''));
-    $mail = trim((string)($_SESSION['ad_admin_email'] ?? ''));
-    if ($login !== '' || $mail !== '') {
-        $st = mysqli_prepare($connect, "SELECT id FROM gangnamunni_hospitals WHERE email=? OR email=?");
-        if ($st) {
-            mysqli_stmt_bind_param($st, 'ss', $login, $mail);
-            mysqli_stmt_execute($st);
-            $rs = mysqli_stmt_get_result($st);
-            while ($row = mysqli_fetch_assoc($rs)) $ids[] = (int)$row['id'];
-            mysqli_stmt_close($st);
-        }
-    }
-    $session_hid = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
-    if ($session_hid > 0) $ids[] = $session_hid;
-    return array_values(array_unique(array_filter($ids)));
+    return get_assigned_admin_hospital_ids($connect);
 }
 $event_hospital_ids = event_assigned_hospital_ids($connect);
 $event_hospital_in = empty($event_hospital_ids) ? '0' : implode(',', $event_hospital_ids);

@@ -102,7 +102,7 @@ function admin_set_session($admin, $connect = null) {
     // 세션에 관리자 정보 저장
     $_SESSION['ad_admin_logged_in'] = true;
     $_SESSION['ad_admin_user'] = $admin['username'];
-    $_SESSION['ad_admin_email'] = $admin['email'] ?? ''; // 병원 email 매칭(다병원 소속 판별)용
+    $_SESSION['ad_admin_email'] = $admin['email'] ?? '';
     $_SESSION['ad_admin_id'] = $admin['id'];
     $_SESSION['ad_admin_name'] = $admin['name'];
     $_SESSION['ad_admin_role'] = $admin['role'];
@@ -112,40 +112,8 @@ function admin_set_session($admin, $connect = null) {
     $_SESSION['ad_admin_hospital_name'] = $admin['hospital_name'] ?? '';
     $_SESSION['partner_hospital_id'] = $admin['hospital_id'] ?? null;
 
-    // 병원 관리자는 병원 명의(email)로 가입하므로, 로그인 아이디가 어떤 병원의
-    // email 과 일치하면 그 병원 소속으로 간주하고 기존 hospital_id 를 교정한다.
-    if ($connect && in_array(($admin['role'] ?? ''), ['hospital_super_admin', 'hospital_admin'], true)) {
-        $login = trim($admin['username'] ?? '');
-        $mail  = trim($admin['email'] ?? '');
-        if ($login !== '' || $mail !== '') {
-            $hstmt = mysqli_prepare($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE email = ? OR email = ? ORDER BY id LIMIT 1");
-            if ($hstmt) {
-                mysqli_stmt_bind_param($hstmt, 'ss', $login, $mail);
-                mysqli_stmt_execute($hstmt);
-                $hrow = mysqli_fetch_assoc(mysqli_stmt_get_result($hstmt));
-                mysqli_stmt_close($hstmt);
-                if ($hrow && !empty($hrow['id'])) {
-                    $matched_hid = (int)$hrow['id'];
-                    $_SESSION['ad_admin_hospital_id'] = $matched_hid;
-                    $_SESSION['ad_admin_hospital_name'] = $hrow['name'];
-                    $_SESSION['partner_hospital_id'] = $matched_hid;
-                    // 기존 hospital_id 가 다르면 DB 도 교정해 영속화 (다음부터 조회·리포트에 반영)
-                    if ((int)($admin['hospital_id'] ?? 0) !== $matched_hid) {
-                        try {
-                            $upd = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET hospital_id = ?, hospital_name = ? WHERE id = ?");
-                            if ($upd) {
-                                mysqli_stmt_bind_param($upd, 'isi', $matched_hid, $hrow['name'], $admin['id']);
-                                mysqli_stmt_execute($upd);
-                                mysqli_stmt_close($upd);
-                            }
-                        } catch (Throwable $e) {
-                            error_log('[admin_set_session] hospital_id 교정 실패: ' . $e->getMessage());
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // 병원 소속은 관리자 관리(admin_admins.php)에서 지정한 hospital_id 만 사용한다.
+    // (이전에는 로그인 아이디/이메일과 같은 email 의 병원으로 hospital_id 를 덮어썼으나 제거함)
 
     // 마지막 로그인 시간 업데이트
     if ($connect) {
