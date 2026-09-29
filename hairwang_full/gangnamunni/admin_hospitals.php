@@ -1284,49 +1284,6 @@ $edit_json_list_value = static function ($raw) {
     </div></div>
 </div>
 
-<div class="card mt-3">
-    <button class="card-header btn admin-section-toggle text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#editTreatmentsSection" aria-expanded="<?= isset($_GET['treatment_msg']) ? 'true' : 'false' ?>">
-        <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가 / 관리</strong></span>
-        <i class="bi bi-chevron-down"></i>
-    </button>
-    <div class="collapse<?= isset($_GET['treatment_msg']) ? ' show' : '' ?>" id="editTreatmentsSection">
-        <div class="card-body p-0"><?= $hospital_treatment_panel ?></div>
-    </div>
-</div>
-
-<div class="card mt-3">
-    <button class="card-header btn admin-section-toggle btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editDoctorsSection" aria-expanded="false">
-        <span><i class="bi bi-person-badge me-1"></i><strong>의사 추가</strong></span><span><span class="badge bg-secondary me-2"><?= count($application_doctors) ?>명</span><i class="bi bi-chevron-down"></i></span>
-    </button>
-    <div class="collapse" id="editDoctorsSection"><div class="card-body">
-        <form method="POST" action="?view=<?php echo (int)$hospital['id']; ?>&amp;edit=1" enctype="multipart/form-data" id="adminHospitalDoctorForm">
-            <input type="hidden" name="action" value="add_hospital_doctors">
-            <input type="hidden" name="hospital_id" value="<?php echo (int)$hospital['id']; ?>">
-            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_hospitals_csrf, ENT_QUOTES, 'UTF-8'); ?>">
-            <div class="form-text mb-3">해당 병원에 소속된 의사를 추가합니다. 여러 명을 입력한 후 한 번에 저장할 수 있습니다.</div>
-            <div id="adminDoctorRows"></div>
-            <div class="d-flex flex-wrap justify-content-between gap-2">
-                <button type="button" class="btn btn-outline-primary btn-sm" id="addAdminDoctorButton"><i class="bi bi-plus-circle me-1"></i>다른 의사 추가</button>
-                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>의사 저장</button>
-            </div>
-        </form>
-
-        <?php if (!empty($application_doctors)): ?>
-        <hr class="my-4">
-        <div class="small fw-semibold mb-2">등록된 의사</div>
-        <div class="row g-2">
-            <?php foreach ($application_doctors as $edit_doctor): ?>
-            <div class="col-md-6"><div class="border rounded p-3 h-100 d-flex gap-3">
-                <?php if (!empty($edit_doctor['photo_url'])): ?><img src="<?= htmlspecialchars($edit_doctor['photo_url']) ?>" class="rounded border" style="width:72px;height:88px;object-fit:cover" alt=""><?php endif; ?>
-                <div><strong><?= htmlspecialchars($edit_doctor['name']) ?></strong><div class="small text-primary"><?= htmlspecialchars($edit_doctor['specialty'] ?? '') ?: '전문 분야 미입력' ?></div><div class="small">경력 <?= (int)($edit_doctor['experience'] ?? 0) ?>년</div><?php if (!empty($edit_doctor['qualification'])): ?><div class="small mt-1"><?= nl2br(htmlspecialchars($edit_doctor['qualification'])) ?></div><?php endif; ?><?php if (!empty($edit_doctor['bio'])): ?><div class="small text-body-secondary mt-1"><?= nl2br(htmlspecialchars($edit_doctor['bio'])) ?></div><?php endif; ?></div>
-            </div></div>
-            <?php endforeach; ?>
-        </div>
-        <?php else: ?><div class="text-body-secondary small mt-4">등록된 의료진이 없습니다.</div><?php endif; ?>
-    </div></div>
-</div>
-
-
 <?php
 $edit_main_image_url = (string)($hospital['main_image_url'] ?? '');
 $edit_detail_image_count = 0;
@@ -1407,6 +1364,48 @@ $edit_detail_slots_remaining = max(0, 10 - $edit_detail_image_count);
         <p class="text-muted mb-0">등록된 이미지가 없습니다. <strong>"이미지 관리"</strong> 버튼으로 추가하세요.</p>
         <?php endif; ?>
     </div></div>
+</div>
+
+<div class="card mt-3">
+    <button class="card-header btn admin-section-toggle btn-light border-0 d-flex justify-content-between align-items-center text-start" type="button" data-bs-toggle="collapse" data-bs-target="#editDoctorsSection" aria-expanded="false">
+        <span><i class="bi bi-person-badge me-1"></i><strong>의사 추가</strong></span><span><span class="badge bg-secondary me-2"><?= count($application_doctors) ?>명</span><i class="bi bi-chevron-down"></i></span>
+    </button>
+    <div class="collapse" id="editDoctorsSection"><div class="card-body">
+        <form method="POST" action="?view=<?php echo (int)$hospital['id']; ?>&amp;edit=1" enctype="multipart/form-data" id="adminHospitalDoctorForm">
+            <input type="hidden" name="action" value="add_hospital_doctors">
+            <input type="hidden" name="hospital_id" value="<?php echo (int)$hospital['id']; ?>">
+            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_hospitals_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+            <div class="form-text mb-3">해당 병원에 소속된 의사를 추가합니다. 여러 명을 입력한 후 한 번에 저장할 수 있습니다.</div>
+            <div id="adminDoctorRows"></div>
+            <div class="d-flex flex-wrap justify-content-between gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addAdminDoctorButton"><i class="bi bi-plus-circle me-1"></i>다른 의사 추가</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>의사 저장</button>
+            </div>
+        </form>
+
+        <?php if (!empty($application_doctors)): ?>
+        <hr class="my-4">
+        <div class="small fw-semibold mb-2">등록된 의사</div>
+        <div class="row g-2">
+            <?php foreach ($application_doctors as $edit_doctor): ?>
+            <div class="col-md-6"><div class="border rounded p-3 h-100 d-flex gap-3">
+                <?php if (!empty($edit_doctor['photo_url'])): ?><img src="<?= htmlspecialchars($edit_doctor['photo_url']) ?>" class="rounded border" style="width:72px;height:88px;object-fit:cover" alt=""><?php endif; ?>
+                <div><strong><?= htmlspecialchars($edit_doctor['name']) ?></strong><div class="small text-primary"><?= htmlspecialchars($edit_doctor['specialty'] ?? '') ?: '전문 분야 미입력' ?></div><div class="small">경력 <?= (int)($edit_doctor['experience'] ?? 0) ?>년</div><?php if (!empty($edit_doctor['qualification'])): ?><div class="small mt-1"><?= nl2br(htmlspecialchars($edit_doctor['qualification'])) ?></div><?php endif; ?><?php if (!empty($edit_doctor['bio'])): ?><div class="small text-body-secondary mt-1"><?= nl2br(htmlspecialchars($edit_doctor['bio'])) ?></div><?php endif; ?></div>
+            </div></div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?><div class="text-body-secondary small mt-4">등록된 의료진이 없습니다.</div><?php endif; ?>
+    </div></div>
+</div>
+
+<div class="card mt-3">
+    <button class="card-header btn admin-section-toggle text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#editTreatmentsSection" aria-expanded="<?= isset($_GET['treatment_msg']) ? 'true' : 'false' ?>">
+        <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가 / 관리</strong></span>
+        <i class="bi bi-chevron-down"></i>
+    </button>
+    <div class="collapse<?= isset($_GET['treatment_msg']) ? ' show' : '' ?>" id="editTreatmentsSection">
+        <div class="card-body p-0"><?= $hospital_treatment_panel ?></div>
+    </div>
 </div>
 
 
@@ -1629,17 +1628,40 @@ $application_assets = [
 </div>
 <?php endif; ?>
 
-<?php if (!$edit_mode): ?>
 <div class="card mb-3">
-    <button class="card-header btn admin-section-toggle text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#viewTreatmentsSection" aria-expanded="<?= isset($_GET['treatment_msg']) ? 'true' : 'false' ?>">
-        <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가 / 관리</strong></span>
-        <i class="bi bi-chevron-down"></i>
-    </button>
-    <div class="collapse<?= isset($_GET['treatment_msg']) ? ' show' : '' ?>" id="viewTreatmentsSection">
-        <div class="card-body p-0"><?= $hospital_treatment_panel ?></div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewHospitalImagesSection" aria-expanded="false">
+            <i class="bi bi-images me-1"></i><strong>병원 이미지 추가</strong> <span class="badge bg-body-secondary text-body ms-1"><?php echo count($hospital_images); ?>장</span> <i class="bi bi-chevron-down ms-2"></i>
+        </button>
+        <a href="admin_hospital_images.php?hospital_id=<?= (int)$hospital['id'] ?>" class="btn btn-outline-primary btn-sm">이미지 관리</a>
     </div>
+    <div class="collapse" id="viewHospitalImagesSection"><div class="card-body">
+        <?php if (!empty($hospital_images)): ?>
+        <div class="row g-2">
+            <?php foreach ($hospital_images as $img): ?>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="card h-100">
+                    <img src="<?php echo htmlspecialchars($img['image_url']); ?>"
+                         class="card-img-top" style="height:150px;object-fit:cover;cursor:pointer;"
+                         alt="<?php echo htmlspecialchars($img['image_type'] ?? ''); ?>"
+                         onclick="showImageModal('<?php echo htmlspecialchars($img['image_url']); ?>')">
+                    <div class="card-body p-2 text-center">
+                        <small class="text-body-secondary">
+                            <?php echo htmlspecialchars($img['image_type'] ?? '-'); ?>
+                            <?php if (isset($img['sort_order'])): ?>
+                                <span class="badge bg-body-secondary text-body">#<?php echo $img['sort_order']; ?></span>
+                            <?php endif; ?>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <div class="text-body-secondary small">등록된 병원 이미지가 없습니다.</div>
+        <?php endif; ?>
+    </div></div>
 </div>
-<?php endif; ?>
 
 <?php if (!empty($hospital['applied_by'])): ?>
 <div class="card mb-3">
@@ -1671,6 +1693,18 @@ $application_assets = [
         <div class="alert alert-secondary py-2 mb-0 small"><i class="bi bi-info-circle me-1"></i>신청서에 등록된 의료진이 없습니다.</div>
         <?php endif; ?>
     </div></div>
+</div>
+<?php endif; ?>
+
+<?php if (!$edit_mode): ?>
+<div class="card mb-3">
+    <button class="card-header btn admin-section-toggle text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#viewTreatmentsSection" aria-expanded="<?= isset($_GET['treatment_msg']) ? 'true' : 'false' ?>">
+        <span><i class="bi bi-clipboard2-pulse me-1"></i><strong>시술 추가 / 관리</strong></span>
+        <i class="bi bi-chevron-down"></i>
+    </button>
+    <div class="collapse<?= isset($_GET['treatment_msg']) ? ' show' : '' ?>" id="viewTreatmentsSection">
+        <div class="card-body p-0"><?= $hospital_treatment_panel ?></div>
+    </div>
 </div>
 <?php endif; ?>
 
@@ -1940,41 +1974,6 @@ $application_assets = [
     </div>
 </div>
 <?php endif; ?>
-
-<div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <button class="btn btn-link text-body text-decoration-none p-0 flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#viewHospitalImagesSection" aria-expanded="false">
-            <i class="bi bi-images me-1"></i><strong>병원 이미지 추가</strong> <span class="badge bg-body-secondary text-body ms-1"><?php echo count($hospital_images); ?>장</span> <i class="bi bi-chevron-down ms-2"></i>
-        </button>
-        <a href="admin_hospital_images.php?hospital_id=<?= (int)$hospital['id'] ?>" class="btn btn-outline-primary btn-sm">이미지 관리</a>
-    </div>
-    <div class="collapse" id="viewHospitalImagesSection"><div class="card-body">
-        <?php if (!empty($hospital_images)): ?>
-        <div class="row g-2">
-            <?php foreach ($hospital_images as $img): ?>
-            <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100">
-                    <img src="<?php echo htmlspecialchars($img['image_url']); ?>"
-                         class="card-img-top" style="height:150px;object-fit:cover;cursor:pointer;"
-                         alt="<?php echo htmlspecialchars($img['image_type'] ?? ''); ?>"
-                         onclick="showImageModal('<?php echo htmlspecialchars($img['image_url']); ?>')">
-                    <div class="card-body p-2 text-center">
-                        <small class="text-body-secondary">
-                            <?php echo htmlspecialchars($img['image_type'] ?? '-'); ?>
-                            <?php if (isset($img['sort_order'])): ?>
-                                <span class="badge bg-body-secondary text-body">#<?php echo $img['sort_order']; ?></span>
-                            <?php endif; ?>
-                        </small>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php else: ?>
-        <div class="text-body-secondary small">등록된 병원 이미지가 없습니다.</div>
-        <?php endif; ?>
-    </div></div>
-</div>
 
 <div class="card mb-3">
     <div class="card-body">

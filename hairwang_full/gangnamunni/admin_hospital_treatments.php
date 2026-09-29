@@ -993,7 +993,7 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
                         <th class="text-center" style="width:80px;">프로모션</th>
                         <th style="width:150px;">비고</th>
                         <th class="text-center" style="width:80px;">등록자</th>
-                        <th class="text-center" style="width:100px;">상세 이미지</th>
+                        <th class="text-center" style="width:170px;">상세 이미지</th>
                         <th class="text-center" style="width:140px;">관리</th>
                     </tr>
                 </thead>
@@ -1057,8 +1057,7 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
                                 class="btn btn-sm <?php echo $img_cnt ? 'btn-outline-success' : 'btn-outline-secondary'; ?>"
                                 title="시술 상세페이지 이미지 관리"
                                 onclick="openTreatmentImageModal(<?php echo intval($at['id']); ?>, <?php echo htmlspecialchars(json_encode($at['treatment_name'] ?? '', JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>)">
-                                <i class="bi bi-images"></i>
-                                <span class="ms-1"><?php echo $img_cnt; ?></span>
+                                <span class="text-nowrap">+ 상세 이미지 추가</span><?php if ($img_cnt > 0): ?> <span class="badge bg-success ms-1"><?php echo $img_cnt; ?></span><?php endif; ?>
                             </button>
                             <?php if ($pending_img_cnt > 0): ?><span class="badge bg-warning text-dark ms-1"><?php echo $pending_img_cnt; ?> 검수</span><?php endif; ?>
                         </td>
