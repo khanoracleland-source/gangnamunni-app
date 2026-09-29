@@ -188,31 +188,29 @@ body {
 
 /* 광고 배너 */
 .advertisement-section {
-    padding: 20px 22px;
+    position: relative;
     margin: 0 20px 16px;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: block;
+    background: #ead1cc;
+    overflow: hidden;
 }
-.ad-subtitle {
-    font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1));
-    color: #000;
-    font-weight: 400;
+.advertisement-section img {
+    display: block;
+    width: 100%;
+    height: auto;
 }
-.ad-label {
-    font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1));
-    font-weight: 700;
-    color: #000;
-    display: inline-block;
-    padding: 5px 0;
-    align-self: flex-start;
+.advertisement-click-link {
+    position: absolute;
+    left: 52.3%;
+    top: 39%;
+    width: 12.2%;
+    height: 22%;
+    border-radius: 999px;
+    -webkit-tap-highlight-color: transparent;
 }
-.ad-title {
-    font-size: calc(19px * var(--fs-scale,1) * var(--fs-page,1));
-    font-weight: 700;
-    color: #000;
-    margin-top: 2px;
+.advertisement-click-link:focus-visible {
+    outline: 2px solid #AE1932;
+    outline-offset: 2px;
 }
 
 /* 메뉴 배지 */
@@ -287,9 +285,8 @@ body {
 </div>
 
 <div class="advertisement-section">
-    <div class="ad-subtitle">상담부터 시술 결과까지, 오직 고객 후기로만</div>
-    <div class="ad-label">고객들이 선택!</div>
-    <div class="ad-title"><?php echo (int)date('n'); ?>월 고객평가 우수병원</div>
+    <img src="assets/media/mypage-app-intro-banner.jpg?v=<?php echo (int)filemtime(__DIR__ . '/assets/media/mypage-app-intro-banner.jpg'); ?>" alt="미용시술, 시술별 한눈에 병원선택. 원하는 시술, 서울미녀에서 최저가로 찾아보세요.">
+    <a class="advertisement-click-link" href="about_project.php" aria-label="서울미녀 앱 소개 페이지로 이동"></a>
 </div>
 
 <!-- 섹션: 커뮤니티 -->
