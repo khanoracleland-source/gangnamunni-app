@@ -9,7 +9,7 @@ function expect_menu($condition, $message) {
 $allow = static function ($key) { return true; };
 $deny = static function ($key) { return false; };
 $menus = admin_sidebar_menus();
-expect_menu(!admin_menu_contains_page('admin_hospital_treatments.php', $menus, $allow), 'Hidden treatment page is navigable');
+expect_menu(admin_menu_contains_page('admin_hospital_treatments.php', $menus, $allow), 'Hospital treatment/image review page must be in the menu');
 expect_menu(admin_menu_contains_page('admin_hospitals.php', $menus, $allow), 'Hospital page is blocked');
 expect_menu(!admin_menu_contains_page('admin_hospitals.php', $menus, $deny), 'Invisible permission-filtered menu is navigable');
 expect_menu(admin_menu_contains_page('admin_hospitals.php', [['url' => 'admin_hospitals.php?tab=pending', 'key' => 'hospitals']], $allow), 'Query-string menu not matched');

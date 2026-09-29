@@ -696,6 +696,38 @@ if ($hospital_id <= 0 && $my_ids === null) {
     if ($top_r) while ($row = mysqli_fetch_assoc($top_r)) $top_hospitals[] = $row;
 }
 
+// 병원이 등록한 상세페이지 이미지 중 검수 대기 목록 (최고관리자 전용, 병원 미선택 화면)
+$pending_reviews = [];
+$pending_review_total = 0;
+if ($hospital_id <= 0 && $is_super_admin && !$ht_panel) {
+    $pr_r = mysqli_query($connect, "SELECT i.hospital_id, h.name AS hospital_name, i.hospital_treatment_id AS ht_id,
+            tm.name AS treatment_name, COUNT(*) AS pending_count, MIN(i.created_at) AS first_requested_at
+        FROM gangnamunni_hospital_treatment_images i
+        JOIN gangnamunni_hospital_treatments ht ON ht.id = i.hospital_treatment_id
+        JOIN gangnamunni_hospitals h ON h.id = i.hospital_id
+        LEFT JOIN gangnamunni_treatment_master tm ON tm.id = i.treatment_id
+        WHERE i.approval_status = 'pending' AND ht.status = 'active' AND ht.is_active = 1
+        GROUP BY i.hospital_id, h.name, i.hospital_treatment_id, tm.name
+        ORDER BY first_requested_at ASC
+        LIMIT 200");
+    if ($pr_r) while ($row = mysqli_fetch_assoc($pr_r)) {
+        $pending_reviews[] = $row;
+        $pending_review_total += intval($row['pending_count']);
+    }
+}
+
+// 검수 목록에서 이동한 경우 해당 시술의 이미지 창을 바로 연다
+$review_open = null;
+$review_ht_id = intval($_GET['review_ht'] ?? 0);
+if ($review_ht_id > 0 && !$ht_panel) {
+    foreach ($assigned_treatments as $at_row) {
+        if (intval($at_row['id']) === $review_ht_id) {
+            $review_open = ['id' => $review_ht_id, 'name' => (string)($at_row['treatment_name'] ?? '')];
+            break;
+        }
+    }
+}
+
 $ht_form_action = 'admin_hospital_treatments.php?hospital_id=' . $hospital_id
     . ($ht_return_mode !== '' ? '&hospital_panel=' . $ht_return_mode : '');
 if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
@@ -804,6 +836,48 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
 
 <?php if ($hospital_id <= 0): ?>
     <!-- ===== 병원 미선택: 전체 요약 ===== -->
+
+    <?php if ($is_super_admin): ?>
+    <!-- 상세페이지 이미지 검수 대기 (병원 등록분) -->
+    <div class="card border-0 shadow-sm mb-4 <?php echo ($pending_review_total ?? 0) > 0 ? 'border-start border-warning border-4' : ''; ?>" id="pendingReviewSection">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-hourglass-split me-2 text-warning"></i>상세 이미지 검수 대기</h6>
+            <span class="badge <?php echo ($pending_review_total ?? 0) > 0 ? 'bg-warning text-dark' : 'bg-secondary'; ?>"><?php echo number_format($pending_review_total ?? 0); ?>건</span>
+        </div>
+        <?php if (empty($pending_reviews)): ?>
+        <div class="card-body text-muted small"><i class="bi bi-check2-circle me-1 text-success"></i>검수 대기 중인 이미지가 없습니다.</div>
+        <?php else: ?>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>병원</th>
+                        <th>시술</th>
+                        <th class="text-center" style="width:90px;">대기</th>
+                        <th style="width:150px;">최초 요청</th>
+                        <th style="width:110px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach (($pending_reviews ?? []) as $pr): ?>
+                    <tr>
+                        <td><strong><?php echo htmlspecialchars($pr['hospital_name']); ?></strong> <small class="text-muted">#<?php echo intval($pr['hospital_id']); ?></small></td>
+                        <td><?php echo htmlspecialchars($pr['treatment_name'] ?? '(삭제된 시술)'); ?></td>
+                        <td class="text-center"><span class="badge bg-warning text-dark"><?php echo intval($pr['pending_count']); ?>장</span></td>
+                        <td><small class="text-muted"><?php echo $pr['first_requested_at'] ? date('Y-m-d H:i', strtotime($pr['first_requested_at'])) : '-'; ?></small></td>
+                        <td>
+                            <a class="btn btn-warning btn-sm" href="admin_hospital_treatments.php?hospital_id=<?php echo intval($pr['hospital_id']); ?>&amp;review_ht=<?php echo intval($pr['ht_id']); ?>">
+                                <i class="bi bi-search me-1"></i>검수하기
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
     <div class="alert alert-info">
         <i class="bi bi-info-circle-fill me-2"></i>병원을 선택하면 해당 병원의 시술 배정을 관리할 수 있습니다.
     </div>
@@ -1517,6 +1591,12 @@ function filterCategory(e, catId) {
     });
     document.getElementById('selectAll').checked = false;
 }
+
+<?php if (!empty($review_open)): ?>
+window.addEventListener('load', function() {
+    openTreatmentImageModal(<?php echo intval($review_open['id']); ?>, <?php echo json_encode($review_open['name'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>);
+});
+<?php endif; ?>
 
 function toggleSelectAll(el) {
     document.querySelectorAll('.treatment-item').forEach(function(item) {

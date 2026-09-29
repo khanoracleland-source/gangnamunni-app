@@ -171,6 +171,7 @@ function admin_sidebar_menus(): array {
         ['type' => 'group', 'label' => term('service', '시술') . ' 관리', 'icon' => 'bi-heart-pulse', 'key' => 'treatment_mgmt', 'children' => [
             ['url' => 'admin_treatment_units.php', 'label' => '단위 관리', 'icon' => 'bi-rulers', 'key' => 'treatment_units'],
             ['url' => 'admin_treatments.php', 'label' => '시술 마스터 관리', 'icon' => 'bi-scissors', 'key' => 'treatment_master'],
+            ['url' => 'admin_hospital_treatments.php', 'label' => '병원별 시술 배정 · 이미지 검수', 'icon' => 'bi-building-check', 'key' => 'hospital_treatments'],
             ['url' => 'admin_doctor_treatments.php', 'label' => '의사별 시술 전문도', 'icon' => 'bi-person-badge', 'key' => 'doctor_treatments'],
             ['url' => 'admin_treatment_packages.php', 'label' => '시술 패키지 관리', 'icon' => 'bi-box-seam', 'key' => 'treatment_packages'],
         ]],
