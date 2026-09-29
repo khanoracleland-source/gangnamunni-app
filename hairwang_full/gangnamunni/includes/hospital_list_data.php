@@ -12,6 +12,7 @@ if ($_representative_col_result && mysqli_num_rows($_representative_col_result) 
 $hospital_price_option_order = $hospital_representative_price_column
     ? 'p.is_representative DESC, p.price ASC, p.sort_order ASC, p.id ASC'
     : 'p.price ASC, p.sort_order ASC, p.id ASC';
+$hospital_lowest_price_option_order = 'p.price ASC, p.sort_order ASC, p.id ASC';
 
 $wishlist_table_exists = false;
 $_wishlist_table_result = @mysqli_query(
@@ -82,7 +83,7 @@ $hospital_display_order_column = false;
 $_hospital_order_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospitals LIKE 'display_order'");
 if ($_hospital_order_col && mysqli_num_rows($_hospital_order_col) > 0) $hospital_display_order_column = true;
 
-$sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'manual';
+$sort = isset($_GET['sort']) ? trim($_GET['sort']) : ($effective_treatment_id > 0 ? 'price' : 'manual');
 $allowed_sorts = ['manual', 'price', 'rating', 'popular', 'review'];
 if (!in_array($sort, $allowed_sorts, true)) $sort = 'manual';
 switch($sort) {
@@ -100,7 +101,7 @@ switch($sort) {
                     WHERE sht.hospital_id = gangnamunni_hospitals.id
                       AND sht.treatment_id = {$effective_treatment_id}
                       AND sht.status = 'active' AND sht.is_active = 1
-                    ORDER BY " . ($hospital_representative_price_column ? "tp.is_representative DESC, " : "") . "tp.price ASC, tp.sort_order ASC, tp.id ASC
+                    ORDER BY tp.price ASC, tp.sort_order ASC, tp.id ASC
                     LIMIT 1
                 ), 0),
                 NULLIF((
@@ -260,7 +261,7 @@ if (!empty($effective_treatment)) {
         }
     }
 
-    if (!empty($slot_hospital_ranks)) {
+    if (!empty($slot_hospital_ranks) && $sort !== 'price') {
         $_slot_id_list = implode(',', array_keys($slot_hospital_ranks));
         $_slot_h_r = mysqli_query($connect, "SELECT * FROM gangnamunni_hospitals WHERE id IN ({$_slot_id_list}) AND is_active=1 AND COALESCE(is_demo,0)=0 AND (status='approved' OR status IS NULL)");
         $_slot_h_rows = [];
@@ -310,6 +311,9 @@ if (!empty($hospitals)) {
 
 $hospital_treatment_descs = [];
 if (!empty($hospitals) && !empty($effective_treatment)) {
+    $hospital_display_price_option_order = $sort === 'price'
+        ? $hospital_lowest_price_option_order
+        : $hospital_price_option_order;
     $h_ids = array_column($hospitals, 'id');
     $h_ids_str = implode(',', array_map('intval', $h_ids));
     $_td_sql = "
@@ -317,17 +321,17 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
                ht.dosage_value, ht.dosage_unit,
                (SELECT p.dosage_value FROM gangnamunni_hospital_treatment_prices p
                   WHERE p.hospital_treatment_id = ht.id AND p.price > 0
-                  ORDER BY {$hospital_price_option_order} LIMIT 1) AS display_dosage_value,
+                  ORDER BY {$hospital_display_price_option_order} LIMIT 1) AS display_dosage_value,
                (SELECT p.dosage_unit FROM gangnamunni_hospital_treatment_prices p
                   WHERE p.hospital_treatment_id = ht.id AND p.price > 0
-                  ORDER BY {$hospital_price_option_order} LIMIT 1) AS display_dosage_unit,
+                  ORDER BY {$hospital_display_price_option_order} LIMIT 1) AS display_dosage_unit,
                tm.avg_price_min AS default_min, tm.avg_price_max AS default_max,
                (SELECT p.price FROM gangnamunni_hospital_treatment_prices p
                   WHERE p.hospital_treatment_id = ht.id AND p.price > 0
-                  ORDER BY {$hospital_price_option_order} LIMIT 1) AS display_sale_price,
+                  ORDER BY {$hospital_display_price_option_order} LIMIT 1) AS display_sale_price,
                (SELECT " . ($hospital_regular_price_column ? "p.regular_price" : "p.price") . " FROM gangnamunni_hospital_treatment_prices p
                   WHERE p.hospital_treatment_id = ht.id AND p.price > 0
-                  ORDER BY {$hospital_price_option_order} LIMIT 1) AS display_regular_price
+                  ORDER BY {$hospital_display_price_option_order} LIMIT 1) AS display_regular_price
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
         WHERE ht.hospital_id IN ({$h_ids_str})

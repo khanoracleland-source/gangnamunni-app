@@ -22,11 +22,16 @@ if (($_SERVER['HTTP_X_SB_CONTENT'] ?? '') === 'hospitals') {
 $use_content_cache = user_content_cache_enabled();
 if (!$use_content_cache) {
     require __DIR__ . '/includes/hospital_list_data.php';
+    $should_default_price_sort = !isset($_GET['sort']) && !empty($effective_treatment_id);
 } else {
     $keyword = trim((string)($_GET['q'] ?? ''));
     $category = trim((string)($_GET['category'] ?? ''));
     $treatment = trim((string)($_GET['treatment'] ?? ''));
-    $sort = (string)($_GET['sort'] ?? 'manual');
+    $resolved_keyword_treatment = $treatment === '' && $keyword !== ''
+        ? adSlotResolveTreatment($connect, $keyword)
+        : null;
+    $should_default_price_sort = $treatment !== '' || !empty($resolved_keyword_treatment);
+    $sort = (string)($_GET['sort'] ?? ($should_default_price_sort ? 'price' : 'manual'));
     if (!in_array($sort, ['manual', 'price', 'rating', 'popular', 'review'], true)) $sort = 'manual';
     $s = [];
     $style_q = mysqli_query($connect, "SELECT setting_key, setting_value FROM gangnamunni_settings WHERE setting_group='hospital_view_style'");
@@ -120,6 +125,10 @@ include __DIR__ . '/includes/header.php';
         var sortParam = urlParams.get('sort');
         if (sortParam) {
             localStorage.setItem('sb_selected_sort', sortParam);
+        } else if (<?php echo $should_default_price_sort ? 'true' : 'false'; ?>) {
+            url.searchParams.set('sort', 'price');
+            localStorage.setItem('sb_selected_sort', 'price');
+            needsRedirect = true;
         }
 
         if (needsRedirect) {
