@@ -43,6 +43,5 @@ function user_content_cache_mount($name) {
     echo '<section data-user-cache="' . $name . '" data-cache-scope="' . $scope . '">'
         . '<div data-cache-content></div>'
         . '<div data-cache-status role="status" aria-live="polite"></div>'
-        . '<button type="button" data-cache-refresh aria-label="새로고침" title="새로고침" hidden>&#8635;</button>'
         . '<noscript><a href="' . $fallback . '">목록 보기</a></noscript></section>';
 }

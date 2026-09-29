@@ -10,7 +10,6 @@
         var scope = section.dataset.cacheScope;
         var content = section.querySelector('[data-cache-content]');
         var status = section.querySelector('[data-cache-status]');
-        var button = section.querySelector('[data-cache-refresh]');
         var key = UserContentCache.keyFor(scope, name, location.href, document.documentElement.lang);
         var visibleHtml = null;
         var pending = null;
@@ -24,7 +23,6 @@
         }
         function refresh() {
             if (pending) return pending;
-            button.disabled = true;
             section.setAttribute('aria-busy', 'true');
             section.setAttribute('data-cache-cold', visibleHtml === null ? 'true' : 'false');
             status.textContent = visibleHtml === null ? '불러오는 중...' : '';
@@ -57,15 +55,12 @@
                     : '새로고침하지 못했습니다. 저장된 목록을 표시합니다.';
             }).finally(function () {
                 pending = null;
-                button.disabled = false;
                 section.setAttribute('aria-busy', 'false');
             });
             return pending;
         }
         var saved = cache.read(key);
         if (saved) show(saved.html);
-        button.hidden = false;
-        button.addEventListener('click', refresh);
         refresh();
         window.addEventListener('online', refresh);
         window.addEventListener('pageshow', function (event) { if (event.persisted) refresh(); });
