@@ -1210,7 +1210,7 @@ if ($current_tab === 'reviews') {
         }
 
         .matched-option-name {
-            margin-bottom: 22px;
+            margin-bottom: 14px;
             font-size: 16px;
             line-height: 1.4;
             font-weight: 700;
@@ -1220,8 +1220,14 @@ if ($current_tab === 'reviews') {
 
         .matched-option-card .procedure-price-row {
             justify-content: flex-end;
-            margin-top: auto;
+            margin-top: 0;
             gap: 18px;
+            text-align: right;
+        }
+
+        .matched-option-card .procedure-vat {
+            margin-top: auto;
+            margin-bottom: 6px;
             text-align: right;
         }
 
@@ -1244,7 +1250,7 @@ if ($current_tab === 'reviews') {
             .procedure-price, .procedure-price-unit { font-size: 22px; }
             .procedure-regular-price { font-size: 14px; }
             .matched-option-card { min-height: 112px; padding: 18px 20px 16px; }
-            .matched-option-name { font-size: 15px; margin-bottom: 18px; }
+            .matched-option-name { font-size: 15px; margin-bottom: 12px; }
             .matched-option-card .procedure-price-row { gap: 14px; }
             .matched-option-card .procedure-price { font-size: 22px; }
             .matched-option-card .procedure-price-unit,
@@ -2032,6 +2038,7 @@ if ($current_tab === 'reviews') {
                     <div class="matched-option-name">
                         <?php echo htmlspecialchars($matched_option['display_name'], ENT_QUOTES, 'UTF-8'); ?>
                     </div>
+                    <span class="procedure-vat">부가세 포함</span>
                     <div class="procedure-price-row">
                         <?php if ($matched_discount_rate > 0): ?>
                             <span class="procedure-regular-price"><?php echo number_format($matched_regular_price); ?>원</span>
@@ -2286,7 +2293,7 @@ if ($current_tab === 'reviews') {
                 ?>
                 <a class="procedure-card" href="<?php echo htmlspecialchars($procedure_url, ENT_QUOTES, 'UTF-8'); ?>">
                     <h4 class="procedure-name"><?php echo htmlspecialchars($procedure['display_name'] ?? $procedure['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?></h4>
-                    <span class="procedure-vat">VAT 포함</span>
+                    <span class="procedure-vat">부가세 포함</span>
                     <?php if ($procedure_price > 0): ?>
                     <div class="procedure-price-row">
                         <?php if ($procedure_discount_rate > 0): ?>
