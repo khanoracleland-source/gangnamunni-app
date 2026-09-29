@@ -6,14 +6,27 @@
 session_start();
 
 require_once __DIR__ . '/../dbconfig.php';
+require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/functions.php';
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB,
     G5_MYSQL_PORT);
 if (!$connect) die('DB connection failed');
 mysqli_set_charset($connect, 'utf8mb4');
 
-// 병원 ID: 쿼리 파라미터 또는 세션
-$hospital_id = intval($_GET['hospital_id'] ?? $_SESSION['partner_hospital_id'] ?? 0);
+// 로그인 + 권한: 병원 관리자(partner_settings) 또는 지갑 관리 권한이 있는 플랫폼 관리자
+require_admin_login();
+if (!check_permission('partner_settings') && !check_permission('cpv_wallet')) {
+    require_permission('partner_settings'); // 403 출력 후 종료
+}
+
+// 병원 ID: 전체 범위 관리자는 쿼리 파라미터 허용, 그 외는 배정된 병원으로 고정
+$scoped_hospital_id = admin_scoped_hospital_id();
+if ($scoped_hospital_id === null) {
+    $hospital_id = intval($_GET['hospital_id'] ?? $_SESSION['partner_hospital_id'] ?? 0);
+} else {
+    $hospital_id = $scoped_hospital_id;
+}
 if ($hospital_id <= 0) {
     die('<div style="text-align:center;padding:60px 20px;font-family:sans-serif;"><h3>접근 오류</h3><p>병원 정보를 확인할 수 없습니다.</p></div>');
 }
@@ -58,7 +71,10 @@ $message = '';
 $error = '';
 
 // ── POST 저장 처리 ──────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])
+    && !validateCsrfToken($_POST['csrf_token'] ?? '')) {
+    $error = '요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
     $daily_cap       = intval($_POST['daily_cap'] ?? 50000);
     $alert_threshold = intval($_POST['alert_threshold'] ?? 10000);
     $auto_pause      = isset($_POST['auto_pause']) ? 1 : 0;
@@ -212,6 +228,7 @@ $balance = (float) $wallet['balance'];
     <!-- 설정 폼 -->
     <form method="POST">
         <input type="hidden" name="save_settings" value="1">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCsrfToken()) ?>">
 
         <!-- 일일 예산 한도 슬라이더 -->
         <div class="card mb-3">

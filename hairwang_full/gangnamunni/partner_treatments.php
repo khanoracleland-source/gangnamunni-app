@@ -13,6 +13,7 @@ session_start();
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/treatment_units.php';
+require_once __DIR__ . '/includes/admin_auth.php';
 
 // DB 연결
 if (!isset($connect) || !$connect) {
@@ -24,14 +25,18 @@ if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
 $price_units = treatment_units_list($connect);
 
-// 관리자 여부 판별
-$is_admin = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true;
+// 관리자 여부 판별: 전체 병원 범위를 가진 플랫폼 관리자(최고관리자 포함)만 관리자 권한을 갖는다.
+// 병원 계정(및 병원이 배정된 관리자)은 항상 자기 병원으로 고정된다.
+$scoped_hospital_id = admin_scoped_hospital_id();
+$is_admin = check_admin_login() && $scoped_hospital_id === null;
 
-// 병원 ID 결정: 관리자는 GET 파라미터 허용, 일반 파트너는 세션만
+// 병원 ID 결정: 전체 범위 관리자는 GET 파라미터 허용, 그 외는 배정된 병원만
 $hospital_id = 0;
 if ($is_admin && isset($_GET['hospital_id']) && intval($_GET['hospital_id']) > 0) {
     $hospital_id = intval($_GET['hospital_id']);
-} else {
+} elseif ($scoped_hospital_id !== null && $scoped_hospital_id > 0) {
+    $hospital_id = $scoped_hospital_id;
+} elseif ($is_admin) {
     $hospital_id = intval($_SESSION['ad_admin_hospital_id'] ?? 0);
 }
 

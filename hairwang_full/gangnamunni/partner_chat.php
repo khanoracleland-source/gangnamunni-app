@@ -11,7 +11,11 @@ if (!isset($connect) || !$connect) {
 }
 if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
-check_admin_login();
+require_admin_login();
+
+// 병원 범위: null = 전체(최고관리자 등), >0 = 해당 병원만, -1 = 접근 불가
+$chat_scope_hid = admin_scoped_hospital_id();
+$chat_scope_sql = $chat_scope_hid === null ? '' : ' WHERE r.hospital_id = ' . (int)$chat_scope_hid;
 
 // 채팅방 목록
 $rooms = [];
@@ -20,11 +24,18 @@ $sql = "SELECT r.*, h.name as hospital_name,
         (SELECT COUNT(*) FROM gangnamunni_chat_messages WHERE room_id=r.id AND sender_type='patient' AND is_read=0) as unread
         FROM gangnamunni_chat_rooms r
         LEFT JOIN gangnamunni_hospitals h ON r.hospital_id=h.id
+        {$chat_scope_sql}
         ORDER BY r.updated_at DESC";
 $res = mysqli_query($connect, $sql);
 if ($res) while ($row = mysqli_fetch_assoc($res)) $rooms[] = $row;
 
 $room_id = intval($_GET['room_id'] ?? 0);
+// 범위 밖 채팅방은 열람/전송 불가
+if ($room_id > 0 && $chat_scope_hid !== null) {
+    $room_ok = false;
+    foreach ($rooms as $r) { if ((int)$r['id'] === $room_id) { $room_ok = true; break; } }
+    if (!$room_ok) $room_id = 0;
+}
 $messages = [];
 if ($room_id > 0) {
     // 메시지 읽음 처리
