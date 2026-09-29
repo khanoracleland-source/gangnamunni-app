@@ -32,6 +32,9 @@ function admin_menu_navigation_is_page(array $server, bool $has_admin_layout = f
 
 function admin_enforce_menu_navigation(bool $has_admin_layout = false): void {
     if (!admin_menu_navigation_is_page($_SERVER, $has_admin_layout)) return;
+    // 최고관리자는 사이드바에 없는 페이지도 직접 URL로 접근할 수 있다.
+    // (런타임 비활성 페이지는 temporarily_disabled_pages.php가 별도로 차단한다.)
+    if (!empty($_SESSION['ad_admin_logged_in']) && ($_SESSION['ad_admin_role'] ?? '') === 'super_admin') return;
     $page = basename((string)$_SERVER['SCRIPT_NAME']);
     if (admin_menu_contains_page($page, admin_sidebar_menus(), 'check_permission')) return;
     header('Location: dashboard.php', true, 302);

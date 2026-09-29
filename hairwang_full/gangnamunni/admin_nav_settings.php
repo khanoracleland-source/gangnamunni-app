@@ -15,6 +15,7 @@ if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 require_admin_login();
+require_permission('nav_settings');
 
 // 저장 처리
 $save_msg = '';

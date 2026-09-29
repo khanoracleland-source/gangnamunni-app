@@ -4,6 +4,8 @@
  * 부관리자 CRUD + 세부 권한 지정 + 알림 수신 설정
  * Bootstrap 5.3 + 주간/야간 모드
  * @updated 2026-02-26 권한 체크박스 + 알림 설정 추가
+ * @updated 2026-09-29 관리자 ↔ 병원 배정(hospital_id)
+ * @updated 2026-09-29 역할을 최고관리자/병원 관리자 2종으로 단순화, 개별(커스텀) 페이지 권한 제거
  */
 
 session_start();
@@ -26,12 +28,13 @@ $is_super_admin = ($current_admin['role'] === 'super_admin');
 $can_edit_own_profile = check_admin_login();
 
 // 최고관리자는 전체 관리, 일반 관리자는 본인 프로필만 관리할 수 있다.
-if (!$can_edit_own_profile) {
+// 병원 계정(병원 관리자 등)은 이 페이지에 접근할 수 없다.
+if (!$can_edit_own_profile || is_hospital_role()) {
     http_response_code(403);
     echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>권한 없음</title>';
     echo '<style>body{font-family:sans-serif;text-align:center;padding:80px 20px;background:#f5f7fa;}h2{color:#333;margin-bottom:12px;}p{color:#666;}a{color:#667eea;}</style></head><body>';
     echo '<h2>접근 권한이 없습니다</h2>';
-    echo '<p>로그인한 관리자만 접근할 수 있습니다.</p>';
+    echo '<p>이 페이지에 접근할 수 있는 권한이 없습니다.</p>';
     echo '<a href="dashboard.php">대시보드로 돌아가기</a>';
     echo '</body></html>';
     exit;
@@ -45,46 +48,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCsrfToken($_POST['csrf_tok
     $error = '요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.';
 }
 
-// === 전체 페이지 권한 키 목록 ===
-$ALL_PAGE_PERMISSIONS = [
-    'dashboard' => '대시보드',
-    'menu_guide' => '메뉴 안내',
-    'hospitals' => '병원 관리',
-    'reviews' => '후기 관리',
-    'review_wizard' => '후기 검수',
-    'hospital_images' => '병원 이미지',
-    'ads' => '광고 관리',
-    'categories' => '카테고리',
-    'hospital_wizard' => '병원 등록',
-    'ad_wizard' => '광고 신청',
-    'nurse_wizard' => '간호사 등록',
-    'pharmacist_wizard' => '약사 등록',
-    'patient_wizard' => '환자 등록',
-    'staff_wizard' => '직원 등록',
-    'medicine_wizard' => '의약품 등록',
-    'appointment_wizard' => '예약 등록',
-    'excel_import' => '엑셀 등록',
-    'excel_export' => '데이터 다운로드',
-    'members' => '회원 관리',
-    'admin_mail' => '메일함',
-    'mail_templates' => '상용구',
-    'mail_signatures' => '서명 관리',
-    'mail_accounts' => '계정 설정',
-    'ai_settings' => 'AI 설정',
-    'auto_test' => '자동 테스트',
-    'auto_test_v2' => '자동 테스트 v2',
-    'theme' => '테마 설정',
-    'theme_advanced' => '고급 테마',
-    'nav_settings' => '네비게이션',
-    'editor_settings' => '에디터 설정',
-    'maintenance' => '점검 모드',
-    'upgrade' => '확장 계획',
-    'admins' => '관리자 관리',
-    'wizard_guide' => '마법사 가이드',
-    'auto_manual' => '자동 매뉴얼',
-    'screenshot_book' => '스크린샷 매뉴얼',
-];
-
 // permissions JSON 파싱 헬퍼
 function parse_permissions($perms_json) {
     $perms = json_decode($perms_json ?? '{}', true);
@@ -92,20 +55,15 @@ function parse_permissions($perms_json) {
     return $perms;
 }
 
-// permissions JSON 빌드
+// permissions JSON 빌드 — 개별 페이지 권한은 사용하지 않고 알림 수신 설정만 저장한다.
+// (페이지 접근 권한은 역할 기본값으로만 결정된다.)
 function build_permissions_json($post_data) {
-    global $ALL_PAGE_PERMISSIONS, $NOTIFICATION_TYPES;
+    global $NOTIFICATION_TYPES;
     $perms = [];
-
-    // 페이지 권한 (커스텀 모드일 때만)
-    if (!empty($post_data['custom_pages'])) {
-        $pages = $post_data['pages'] ?? [];
-        $valid_pages = array_keys($ALL_PAGE_PERMISSIONS);
-        $perms['pages'] = array_values(array_intersect($pages, $valid_pages));
-    }
 
     // 알림 수신 설정
     $notifs = $post_data['notifications'] ?? [];
+    if (!is_array($notifs)) $notifs = [];
     $valid_notifs = array_keys($NOTIFICATION_TYPES);
     $perms['notifications'] = array_values(array_intersect($notifs, $valid_notifs));
 
@@ -145,6 +103,85 @@ function admin_email_taken($connect, $email, $exclude_id = 0) {
     return false;
 }
 
+// === 역할 / 병원 배정 ===
+// admin_admins.php에서 지정 가능한 역할은 2종뿐이다.
+// - super_admin    : 모든 기능, 전체 병원
+// - hospital_admin : 소속 병원 1곳, 병원 관리자 기본 권한
+$ASSIGNABLE_ROLES = ['super_admin', 'hospital_admin'];
+$HOSPITAL_ROLES = $ADMIN_ROLE_GROUPS['hospital'];
+
+/**
+ * 역할에 맞는 병원 배정을 검증한다.
+ * - super_admin: 병원 배정 없음 (항상 전체 접근) → null
+ * - 병원 관리자(병원 역할): 병원 필수
+ * @return array [hospital_id|null, hospital_name|null, error|null]
+ */
+function resolve_admin_hospital($connect, $role, $hospital_id) {
+    global $HOSPITAL_ROLES;
+    $hospital_id = (int)$hospital_id;
+
+    if ($role === 'super_admin') return [null, null, null];
+    if ($hospital_id <= 0) {
+        if (in_array($role, $HOSPITAL_ROLES, true)) {
+            return [null, null, '병원 관리자는 소속 병원을 반드시 선택해야 합니다.'];
+        }
+        return [null, null, null];
+    }
+
+    $stmt = mysqli_prepare($connect, "SELECT id, name FROM gangnamunni_hospitals WHERE id = ? LIMIT 1");
+    if (!$stmt) return [null, null, '병원 정보를 확인할 수 없습니다.'];
+    mysqli_stmt_bind_param($stmt, 'i', $hospital_id);
+    mysqli_stmt_execute($stmt);
+    $hospital = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+    mysqli_stmt_close($stmt);
+
+    if (!$hospital) return [null, null, '선택한 병원을 찾을 수 없습니다.'];
+    return [(int)$hospital['id'], $hospital['name'], null];
+}
+
+// 병원 선택 목록 (최고관리자 화면에서만 사용)
+$hospital_options = [];
+if ($is_super_admin) {
+    $h_res = mysqli_query($connect, "SELECT id, name FROM gangnamunni_hospitals ORDER BY name ASC, id ASC");
+    if ($h_res) {
+        while ($h = mysqli_fetch_assoc($h_res)) $hospital_options[] = $h;
+    }
+}
+
+// 역할 선택 <option> 렌더링 — 최고관리자 / 병원 관리자 2종만 표시한다.
+// 그 외(과거) 역할의 계정은 병원 관리자를 기본 선택으로 보여준다 (최고관리자로 잘못 승격되지 않도록).
+function render_role_options($selected) {
+    global $ASSIGNABLE_ROLES;
+    if (!in_array($selected, $ASSIGNABLE_ROLES, true)) $selected = 'hospital_admin';
+    $html = '';
+    foreach ($ASSIGNABLE_ROLES as $r) {
+        $html .= '<option value="' . htmlspecialchars($r) . '"' . ($r === $selected ? ' selected' : '') . '>'
+               . htmlspecialchars(get_role_label($r)) . '</option>';
+    }
+    return $html;
+}
+
+// 병원 선택 <select> 렌더링
+function render_hospital_select($selected_id, $select_id) {
+    global $hospital_options;
+    $selected_id = (int)$selected_id;
+    $html = '<select name="hospital_id" id="' . $select_id . '" class="form-select form-select-sm">';
+    $html .= '<option value="">— 병원 선택 —</option>';
+    $found = false;
+    foreach ($hospital_options as $h) {
+        $is_sel = ((int)$h['id'] === $selected_id);
+        if ($is_sel) $found = true;
+        $html .= '<option value="' . (int)$h['id'] . '"' . ($is_sel ? ' selected' : '') . '>'
+               . htmlspecialchars($h['name']) . ' (#' . (int)$h['id'] . ')</option>';
+    }
+    if ($selected_id > 0 && !$found) {
+        // 삭제된 병원에 연결된 계정: 현재 값을 표시만 한다 (저장 시 검증에서 거부됨)
+        $html .= '<option value="' . $selected_id . '" selected>삭제된 병원 #' . $selected_id . '</option>';
+    }
+    $html .= '</select>';
+    return $html;
+}
+
 // === POST 처리 ===
 
 // 관리자 추가
@@ -157,7 +194,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
     $name = trim($_POST['name'] ?? '');
     $email = strtolower(trim($_POST['email'] ?? ''));
     $phone = trim($_POST['phone'] ?? '');
-    $role = $_POST['role'] ?? 'editor';
+    $role = $_POST['role'] ?? 'hospital_admin';
+    if (!in_array($role, $ASSIGNABLE_ROLES, true)) $role = 'hospital_admin';
+    [$add_hospital_id, $add_hospital_name, $hospital_error] = resolve_admin_hospital($connect, $role, $_POST['hospital_id'] ?? 0);
 
     if (!empty($error)) {
         // 상단에서 확인한 권한/CSRF 오류를 유지한다.
@@ -171,6 +210,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
         $error = '이메일 형식이 올바르지 않습니다.';
     } elseif (admin_email_taken($connect, $email)) {
         $error = '이미 다른 사용자가 사용 중인 이메일입니다.';
+    } elseif ($hospital_error) {
+        $error = $hospital_error;
     } else {
         $check = mysqli_prepare($connect, "SELECT id FROM gangnamunni_admins WHERE username = ?");
         mysqli_stmt_bind_param($check, 's', $username);
@@ -182,18 +223,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
             $error = '이미 존재하는 아이디입니다.';
         } else {
             $hashed = password_hash($password, PASSWORD_DEFAULT);
-            $valid_roles = ['super_admin', 'admin', 'editor', 'viewer'];
-            if (!in_array($role, $valid_roles)) $role = 'editor';
-
             $perms_json = build_permissions_json($_POST);
+            $parent_admin_id = (int)$current_admin['id'];
 
-            $stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_admins (username, password, name, email, phone, role, permissions) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            mysqli_stmt_bind_param($stmt, 'sssssss', $username, $hashed, $name, $email, $phone, $role, $perms_json);
+            $stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_admins (username, password, name, email, phone, role, hospital_id, hospital_name, parent_admin_id, permissions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            mysqli_stmt_bind_param($stmt, 'ssssssisis', $username, $hashed, $name, $email, $phone, $role, $add_hospital_id, $add_hospital_name, $parent_admin_id, $perms_json);
             if (mysqli_stmt_execute($stmt)) {
                 $new_id = mysqli_insert_id($connect);
-                $message = "관리자 '{$name}'이(가) 추가되었습니다.";
+                $message = "관리자 '{$name}'이(가) 추가되었습니다." . ($add_hospital_name ? " (병원: {$add_hospital_name})" : '');
                 // 알림 생성
-                create_notification($connect, 'admin_created', "새 관리자 등록: {$name}", "역할: " . get_role_label($role), 'admin_admins.php');
+                $notif_body = "역할: " . get_role_label($role) . ($add_hospital_name ? " / 병원: {$add_hospital_name}" : '');
+                create_notification($connect, 'admin_created', "새 관리자 등록: {$name}", $notif_body, 'admin_admins.php');
             } else {
                 $error = '추가 실패: ' . mysqli_error($connect);
             }
@@ -212,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
     $new_password = $_POST['new_password'] ?? '';
     $current_password = $_POST['current_password'] ?? '';
 
-    $target_stmt = mysqli_prepare($connect, "SELECT role, permissions, password, email FROM gangnamunni_admins WHERE id = ? LIMIT 1");
+    $target_stmt = mysqli_prepare($connect, "SELECT role, permissions, password, email, hospital_id, hospital_name FROM gangnamunni_admins WHERE id = ? LIMIT 1");
     mysqli_stmt_bind_param($target_stmt, 'i', $edit_id);
     mysqli_stmt_execute($target_stmt);
     $target_admin = mysqli_fetch_assoc(mysqli_stmt_get_result($target_stmt));
@@ -237,14 +277,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
     } elseif (admin_email_taken($connect, $email, $edit_id)) {
         $error = '이미 다른 사용자가 사용 중인 이메일입니다.';
     } else {
+        $edit_hospital_id = $target_admin['hospital_id'] !== null ? (int)$target_admin['hospital_id'] : null;
+        $edit_hospital_name = $target_admin['hospital_name'];
         if ($is_super_admin) {
-            $valid_roles = ['super_admin', 'admin', 'editor', 'viewer'];
-            if (!in_array($role, $valid_roles, true)) $role = $target_admin['role'];
+            // 역할은 최고관리자 / 병원 관리자 중 하나만 저장할 수 있다.
+            if (!in_array($role, $ASSIGNABLE_ROLES, true)) {
+                $error = '역할은 최고관리자 또는 병원 관리자만 선택할 수 있습니다.';
+            }
+            // 개별 페이지 권한은 저장하지 않는다 (기존 커스텀 권한도 이 저장으로 제거된다).
             $perms_json = build_permissions_json($_POST);
+            [$edit_hospital_id, $edit_hospital_name, $hospital_error] = resolve_admin_hospital($connect, $role, $_POST['hospital_id'] ?? 0);
+            if ($hospital_error && empty($error)) $error = $hospital_error;
         } else {
             // 일반 관리자의 임의 role/permissions POST 변조를 무시한다.
             $role = $target_admin['role'];
-            $own_perms = parse_permissions($target_admin['permissions']);
+            $own_perms = [];
             $posted_notifs = $_POST['notifications'] ?? [];
             $own_perms['notifications'] = array_values(array_intersect(
                 is_array($posted_notifs) ? $posted_notifs : [],
@@ -253,7 +300,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
             $perms_json = json_encode($own_perms, JSON_UNESCAPED_UNICODE);
         }
 
-        if ($edit_id == $current_admin['id'] && $role !== $current_admin['role']) {
+        if (!empty($error)) {
+            // 병원 배정 검증 오류를 유지한다.
+        } elseif ($edit_id == $current_admin['id'] && $role !== $current_admin['role']) {
             $error = '자신의 역할은 변경할 수 없습니다.';
         } else {
             if (!empty($new_password)) {
@@ -261,12 +310,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
                     $error = '비밀번호는 6자 이상이어야 합니다.';
                 } else {
                     $hashed = password_hash($new_password, PASSWORD_DEFAULT);
-                    $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET name=?, email=?, phone=?, role=?, password=?, permissions=? WHERE id=?");
-                    mysqli_stmt_bind_param($stmt, 'ssssssi', $name, $email, $phone, $role, $hashed, $perms_json, $edit_id);
+                    $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET name=?, email=?, phone=?, role=?, hospital_id=?, hospital_name=?, password=?, permissions=? WHERE id=?");
+                    mysqli_stmt_bind_param($stmt, 'ssssisssi', $name, $email, $phone, $role, $edit_hospital_id, $edit_hospital_name, $hashed, $perms_json, $edit_id);
                 }
             } else {
-                $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET name=?, email=?, phone=?, role=?, permissions=? WHERE id=?");
-                mysqli_stmt_bind_param($stmt, 'sssssi', $name, $email, $phone, $role, $perms_json, $edit_id);
+                $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET name=?, email=?, phone=?, role=?, hospital_id=?, hospital_name=?, permissions=? WHERE id=?");
+                mysqli_stmt_bind_param($stmt, 'ssssissi', $name, $email, $phone, $role, $edit_hospital_id, $edit_hospital_name, $perms_json, $edit_id);
             }
 
             if (empty($error)) {
@@ -276,6 +325,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
                         $_SESSION['ad_admin_name'] = $name;
                         $_SESSION['ad_admin_email'] = $email;
                         $_SESSION['ad_admin_permissions'] = json_decode($perms_json, true) ?: [];
+                        $_SESSION['ad_admin_hospital_id'] = $edit_hospital_id;
+                        $_SESSION['ad_admin_hospital_name'] = $edit_hospital_name ?? '';
+                        $_SESSION['partner_hospital_id'] = $edit_hospital_id;
                     }
                 } else {
                     $error = '수정 실패: ' . mysqli_error($connect);
@@ -370,11 +422,9 @@ $admin_extra_css = '
 .role-admin { background: #0d6efd; color: #fff; }
 .role-editor { background: #198754; color: #fff; }
 .role-viewer { background: #6c757d; color: #fff; }
+.role-hospital_super_admin { background: #b02a37; color: #fff; }
+.role-hospital_admin { background: #fd7e14; color: #fff; }
 .admin-form .form-label { font-weight: 600; font-size: 13px; }
-.perm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 4px; }
-.perm-grid label { font-size: 12px; padding: 4px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
-.perm-grid label:hover { background: var(--bs-tertiary-bg); }
-.perm-grid input[type="checkbox"] { margin: 0; }
 .notif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px; }
 .notif-grid label { font-size: 12px; padding: 4px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
 .notif-grid label:hover { background: var(--bs-tertiary-bg); }
@@ -446,14 +496,16 @@ include __DIR__ . '/includes/admin_header.php';
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">역할</label>
-                    <select name="role" class="form-select form-select-sm">
-                        <option value="editor">에디터</option>
-                        <option value="admin">관리자</option>
-                        <option value="viewer">뷰어</option>
-                        <?php if ($current_admin['role'] === 'super_admin'): ?>
-                        <option value="super_admin">최고관리자</option>
-                        <?php endif; ?>
+                    <select name="role" class="form-select form-select-sm" id="addRoleSelect">
+                        <?php $add_role = ($_POST['action'] ?? '') === 'add' ? ($_POST['role'] ?? '') : '';
+                              if (!in_array($add_role, $ASSIGNABLE_ROLES, true)) $add_role = 'hospital_admin'; ?>
+                        <?= render_role_options($add_role) ?>
                     </select>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">소속 병원 <span class="text-danger d-none" id="addHospitalRequired">*</span></label>
+                    <?= render_hospital_select(($_POST['action'] ?? '') === 'add' ? ($_POST['hospital_id'] ?? 0) : 0, 'addHospitalSelect') ?>
+                    <div class="form-text" id="addHospitalHelp"></div>
                 </div>
             </div>
 
@@ -489,13 +541,9 @@ include __DIR__ . '/includes/admin_header.php';
 
 <?php if ($edit_admin):
     $ea_role = $edit_admin['role'];
-    $ea_has_custom = !empty($edit_perms['pages']);
-    $ea_pages = $edit_perms['pages'] ?? [];
     $ea_notifs = $edit_perms['notifications'] ?? null;
     // null이면 기본값 사용
     if ($ea_notifs === null) $ea_notifs = $DEFAULT_NOTIFICATIONS;
-    // 역할 기본 페이지 권한
-    $role_default_pages = $ADMIN_ROLE_PERMISSIONS[$ea_role] ?? [];
 ?>
 <!-- 수정 폼 -->
 <div class="card mb-3 border-primary">
@@ -541,56 +589,27 @@ include __DIR__ . '/includes/admin_header.php';
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">역할</label>
-                    <select name="role" class="form-select form-select-sm" id="editRoleSelect"
-                            <?= ($edit_admin['id'] == $current_admin['id']) ? 'disabled' : '' ?>>
-                        <option value="editor" <?= $ea_role === 'editor' ? 'selected' : '' ?>>에디터</option>
-                        <option value="admin" <?= $ea_role === 'admin' ? 'selected' : '' ?>>관리자</option>
-                        <option value="viewer" <?= $ea_role === 'viewer' ? 'selected' : '' ?>>뷰어</option>
-                        <?php if ($current_admin['role'] === 'super_admin'): ?>
-                        <option value="super_admin" <?= $ea_role === 'super_admin' ? 'selected' : '' ?>>최고관리자</option>
-                        <?php endif; ?>
+                    <?php if ($edit_admin['id'] == $current_admin['id'] || !$is_super_admin): ?>
+                    <!-- 본인 계정/일반 관리자: 역할 변경 불가 (현재 역할 표시만) -->
+                    <input type="text" class="form-control form-control-sm" value="<?= htmlspecialchars(get_role_label($ea_role)) ?>" disabled>
+                    <input type="hidden" name="role" id="editRoleSelect" value="<?= htmlspecialchars($ea_role) ?>">
+                    <?php else: ?>
+                    <select name="role" class="form-select form-select-sm" id="editRoleSelect">
+                        <?= render_role_options($ea_role) ?>
                     </select>
-                    <?php if ($edit_admin['id'] == $current_admin['id']): ?>
-                    <input type="hidden" name="role" value="<?= $ea_role ?>">
+                    <?php endif; ?>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">소속 병원 <span class="text-danger d-none" id="editHospitalRequired">*</span></label>
+                    <?php if ($is_super_admin): ?>
+                    <?= render_hospital_select($edit_admin['hospital_id'] ?? 0, 'editHospitalSelect') ?>
+                    <div class="form-text" id="editHospitalHelp"></div>
+                    <?php else: ?>
+                    <input type="text" class="form-control form-control-sm" disabled
+                           value="<?= htmlspecialchars($edit_admin['hospital_name'] ?: '배정 없음') ?>">
                     <?php endif; ?>
                 </div>
             </div>
-
-            <?php if ($is_super_admin): ?>
-            <!-- 페이지 접근 권한 -->
-            <div class="perm-section">
-                <div class="perm-section-title"><i class="bi bi-shield-check me-1"></i> 페이지 접근 권한</div>
-                <div class="mb-2">
-                    <label class="form-check form-check-inline" style="font-size:13px;">
-                        <input class="form-check-input" type="radio" name="custom_pages" value="" id="useRoleDefault"
-                            <?= !$ea_has_custom ? 'checked' : '' ?> onchange="togglePageGrid(false)">
-                        역할 기본값 사용
-                    </label>
-                    <label class="form-check form-check-inline" style="font-size:13px;">
-                        <input class="form-check-input" type="radio" name="custom_pages" value="1" id="useCustomPages"
-                            <?= $ea_has_custom ? 'checked' : '' ?> onchange="togglePageGrid(true)">
-                        커스텀 권한 설정
-                    </label>
-                    <span class="select-btns ms-2" id="pageSelectBtns" style="<?= $ea_has_custom ? '' : 'display:none;' ?>">
-                        <a onclick="toggleCheckboxes('editAdminForm', 'pages[]', true)">전체선택</a>
-                        <a onclick="toggleCheckboxes('editAdminForm', 'pages[]', false)">전체해제</a>
-                    </span>
-                </div>
-                <div class="perm-grid" id="pageGrid" style="<?= $ea_has_custom ? '' : 'opacity:0.4;pointer-events:none;' ?>">
-                    <?php foreach ($ALL_PAGE_PERMISSIONS as $pkey => $plabel):
-                        // 커스텀이면 커스텀 값, 아니면 역할 기본값
-                        $is_checked = $ea_has_custom
-                            ? in_array($pkey, $ea_pages)
-                            : (in_array('*', $role_default_pages) || in_array($pkey, $role_default_pages));
-                    ?>
-                    <label>
-                        <input type="checkbox" name="pages[]" value="<?= $pkey ?>" <?= $is_checked ? 'checked' : '' ?>>
-                        <?= $plabel ?>
-                    </label>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            <?php endif; ?>
 
             <!-- 알림 수신 설정 -->
             <div class="perm-section">
@@ -622,56 +641,23 @@ include __DIR__ . '/includes/admin_header.php';
 <?php endif; ?>
 
 <?php if ($is_super_admin): ?>
-<!-- 역할별 기본 권한 안내 -->
+<!-- 역할 안내 -->
 <div class="card mb-3">
-    <div class="card-header"><i class="bi bi-shield-check me-1"></i> 역할별 기본 권한</div>
+    <div class="card-header"><i class="bi bi-shield-check me-1"></i> 역할 안내</div>
     <div class="card-body p-2">
         <table class="table table-sm mb-0" style="font-size:12px;">
-            <thead>
-                <tr>
-                    <th>역할</th>
-                    <th>대시보드</th>
-                    <th>후기</th>
-                    <th>광고</th>
-                    <th>등록마법사</th>
-                    <th>메일</th>
-                    <th>AI</th>
-                    <th>테마</th>
-                    <th>회원</th>
-                    <th>관리자</th>
-                </tr>
-            </thead>
             <tbody>
                 <tr>
-                    <td><span class="role-badge role-super_admin">최고관리자</span></td>
-                    <td colspan="9" class="text-center text-success fw-bold">모든 권한</td>
-                </tr>
-                <?php
-                $summary_keys = ['dashboard','reviews','ads','hospital_wizard','admin_mail','ai_settings','theme','members','admins'];
-                $admin_perms = $ADMIN_ROLE_PERMISSIONS['admin'];
-                $editor_perms = $ADMIN_ROLE_PERMISSIONS['editor'];
-                ?>
-                <tr>
-                    <td><span class="role-badge role-admin">관리자</span></td>
-                    <?php foreach($summary_keys as $p): ?>
-                    <td class="text-center"><?= in_array($p, $admin_perms) ? '<i class="bi bi-check text-success"></i>' : '<i class="bi bi-x text-danger"></i>' ?></td>
-                    <?php endforeach; ?>
+                    <td style="width:140px;"><span class="role-badge role-super_admin">최고관리자</span></td>
+                    <td>모든 기능에 접근하며 전체 병원을 관리합니다. 병원에 배정되지 않습니다.</td>
                 </tr>
                 <tr>
-                    <td><span class="role-badge role-editor">에디터</span></td>
-                    <?php foreach($summary_keys as $p): ?>
-                    <td class="text-center"><?= in_array($p, $editor_perms) ? '<i class="bi bi-check text-success"></i>' : '<i class="bi bi-x text-danger"></i>' ?></td>
-                    <?php endforeach; ?>
-                </tr>
-                <tr>
-                    <td><span class="role-badge role-viewer">뷰어</span></td>
-                    <?php foreach($summary_keys as $p): ?>
-                    <td class="text-center"><?= $p === 'dashboard' ? '<i class="bi bi-check text-success"></i>' : '<i class="bi bi-x text-danger"></i>' ?></td>
-                    <?php endforeach; ?>
+                    <td><span class="role-badge role-hospital_admin">병원 관리자</span></td>
+                    <td>선택한 병원 1곳의 데이터만 관리합니다. 접근 가능한 기능은 병원 관리자 기본 권한으로 고정됩니다.</td>
                 </tr>
             </tbody>
         </table>
-        <small class="text-body-secondary d-block mt-1 px-2">* 수정 화면에서 관리자별 커스텀 권한을 설정할 수 있습니다.</small>
+        <small class="text-body-secondary d-block mt-1 px-2">* 관리자별 개별 권한 추가/제외 기능은 제공하지 않습니다.</small>
     </div>
 </div>
 
@@ -688,7 +674,7 @@ include __DIR__ . '/includes/admin_header.php';
                     <th>아이디</th>
                     <th>이름</th>
                     <th>역할</th>
-                    <th>권한</th>
+                    <th>소속 병원</th>
                     <th>알림</th>
                     <th>상태</th>
                     <th>마지막 로그인</th>
@@ -703,7 +689,6 @@ include __DIR__ . '/includes/admin_header.php';
                     $a_perms = parse_permissions($admin['permissions']);
                     $a_notifs = $a_perms['notifications'] ?? null;
                     $notif_count = is_array($a_notifs) ? count($a_notifs) : count($DEFAULT_NOTIFICATIONS);
-                    $has_custom_pages = !empty($a_perms['pages']);
                 ?>
                 <tr class="<?= !$admin['is_active'] ? 'table-secondary' : '' ?>">
                     <td><?= $admin['id'] ?></td>
@@ -712,14 +697,16 @@ include __DIR__ . '/includes/admin_header.php';
                         <?= ($admin['id'] == $current_admin['id']) ? '<span class="badge bg-info ms-1">나</span>' : '' ?>
                     </td>
                     <td><?= htmlspecialchars($admin['name']) ?></td>
-                    <td><span class="role-badge role-<?= $admin['role'] ?>"><?= get_role_label($admin['role']) ?></span></td>
+                    <td><span class="role-badge role-<?= htmlspecialchars($admin['role']) ?>"><?= htmlspecialchars(get_role_label($admin['role'])) ?></span></td>
                     <td>
-                        <?php if ($admin['role'] === 'super_admin'): ?>
-                            <span class="badge bg-danger">전체</span>
-                        <?php elseif ($has_custom_pages): ?>
-                            <span class="badge bg-warning text-dark">커스텀 <?= count($a_perms['pages']) ?>개</span>
+                        <?php if (!empty($admin['hospital_id'])): ?>
+                            <span class="badge bg-light text-dark border" title="병원 #<?= (int)$admin['hospital_id'] ?>">
+                                <i class="bi bi-hospital me-1"></i><?= htmlspecialchars($admin['hospital_name'] ?: ('#' . (int)$admin['hospital_id'])) ?>
+                            </span>
+                        <?php elseif (in_array($admin['role'], $HOSPITAL_ROLES, true)): ?>
+                            <span class="badge bg-danger-subtle text-danger border border-danger">미배정</span>
                         <?php else: ?>
-                            <span class="badge bg-secondary">기본값</span>
+                            <span class="text-muted">전체</span>
                         <?php endif; ?>
                     </td>
                     <td><span class="badge bg-info"><?= $notif_count ?>종</span></td>
@@ -772,20 +759,35 @@ include __DIR__ . '/includes/admin_header.php';
 <?php endif; ?>
 
 <script>
-// 페이지 권한 그리드 토글
-function togglePageGrid(custom) {
-    var grid = document.getElementById('pageGrid');
-    var btns = document.getElementById('pageSelectBtns');
-    if (custom) {
-        grid.style.opacity = '1';
-        grid.style.pointerEvents = 'auto';
-        if (btns) btns.style.display = '';
+// 역할에 따라 병원 선택 필수/비활성 처리
+var HOSPITAL_ROLES = <?= json_encode($HOSPITAL_ROLES) ?>;
+function syncHospitalField(prefix) {
+    var roleSel = document.getElementById(prefix + 'RoleSelect');
+    var hospSel = document.getElementById(prefix + 'HospitalSelect');
+    if (!roleSel || !hospSel) return;
+    var role = roleSel.value;
+    var req = document.getElementById(prefix + 'HospitalRequired');
+    var help = document.getElementById(prefix + 'HospitalHelp');
+    var isHospitalRole = HOSPITAL_ROLES.indexOf(role) !== -1;
+
+    if (role === 'super_admin') {
+        hospSel.value = '';
+        hospSel.disabled = true;
+        hospSel.required = false;
+        if (help) help.textContent = '최고관리자는 병원에 배정되지 않고 전체 병원에 접근합니다.';
     } else {
-        grid.style.opacity = '0.4';
-        grid.style.pointerEvents = 'none';
-        if (btns) btns.style.display = 'none';
+        hospSel.disabled = false;
+        hospSel.required = isHospitalRole;
+        if (help) help.textContent = '병원 관리자는 선택한 병원의 데이터만 관리할 수 있습니다.';
     }
+    if (req) req.classList.toggle('d-none', !isHospitalRole);
 }
+['add', 'edit'].forEach(function(prefix) {
+    var roleSel = document.getElementById(prefix + 'RoleSelect');
+    if (!roleSel) return;
+    roleSel.addEventListener('change', function() { syncHospitalField(prefix); });
+    syncHospitalField(prefix);
+});
 
 // 체크박스 전체선택/해제
 function toggleCheckboxes(formId, name, checked) {

@@ -5,7 +5,7 @@ function term($key, $default = null) { return $default ?? $key; }
 function expect_landing($ok, $message) {
     if (!$ok) throw new RuntimeException($message);
 }
-foreach (['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'] as $role) {
+foreach (['hospital_super_admin', 'hospital_admin'] as $role) {
     foreach ([[], ['pages' => ['partner_hospital']], ['pages' => ['reviews']], ['pages' => ['nothing']]] as $permissions) {
         $_SESSION = ['ad_admin_logged_in' => true, 'ad_admin_role' => $role, 'ad_admin_permissions' => $permissions];
         $landing = hospital_admin_landing_page();
@@ -17,4 +17,4 @@ foreach (['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospi
 }
 $_SESSION = ['ad_admin_logged_in' => true, 'ad_admin_role' => 'super_admin'];
 expect_landing(admin_login_destination('dashboard.php') === 'dashboard.php', 'Platform dashboard changed');
-echo "PASS: 16 hospital role/permission combinations and platform dashboard\n";
+echo "PASS: 8 hospital role/permission combinations and platform dashboard\n";

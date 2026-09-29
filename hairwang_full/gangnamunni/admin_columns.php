@@ -14,6 +14,7 @@ if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 require_admin_login();
+require_permission('columns');
 
 $action = isset($_GET['action']) ? $_GET['action'] : (isset($_GET['id']) ? 'edit' : 'list');
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;

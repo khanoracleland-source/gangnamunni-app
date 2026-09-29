@@ -242,7 +242,6 @@ function admin_sidebar_menus(): array {
         // 관리자 관리 (최하단)
         ['type' => 'group', 'label' => '관리자 / 알림', 'icon' => 'bi-shield-lock', 'key' => 'admin_notify_group', 'children' => [
             ['url' => 'admin_admins.php', 'label' => '관리자 관리', 'icon' => 'bi-shield-lock', 'key' => 'admin_accounts'],
-            ['url' => 'admin_hospital_admins.php', 'label' => '병원 부관리자 관리', 'icon' => 'bi-person-lock', 'key' => 'admins'],
             ['url' => 'admin_hospital_suspension.php', 'label' => '병원 정지/요금 관리', 'icon' => 'bi-pause-circle', 'key' => 'admins'],
             ['url' => 'admin_grade_permissions.php', 'label' => '등급별 기능 관리', 'icon' => 'bi-shield-check', 'key' => 'grade_permissions'],
             ['url' => 'admin_notifications.php', 'label' => 'Admin Center Alert', 'icon' => 'bi-bell', 'key' => 'notifications'],

@@ -194,7 +194,7 @@ const tests = {
     async R1(page) {
         await page.goto(BASE + '/admin_admins.php', { waitUntil: 'networkidle', timeout: 15000 });
         const html = await page.content();
-        const roles = ['super_admin', 'admin', 'editor', 'viewer', 'staff', 'hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'];
+        const roles = ['super_admin', 'admin', 'editor', 'viewer', 'hospital_super_admin', 'hospital_admin'];
         let found = 0;
         roles.forEach(r => { if (html.includes(r)) found++; });
         if (found < 5) throw new Error('역할 ' + found + '개만 발견 (9개 필요)');

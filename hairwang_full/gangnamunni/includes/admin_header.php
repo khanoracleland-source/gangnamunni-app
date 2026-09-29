@@ -113,7 +113,6 @@ $menu_descriptions = [
     'send_notification' => '회원에게 알림을 발송합니다. 전체/그룹/개별 대상 선택 가능.',
     'wizard_guide' => '등록 마법사 7종의 사용법 가이드를 확인합니다.',
     'hospital_suspension' => 'Hospital suspension and payment management.',
-    'hospital_admins' => 'Manage hospital admin and sub-admin accounts.',
     'ipd' => '입원 ' . term('client', '환자') . ' 관리 및 퇴원 처리를 합니다.',
     'beds' => '병상 현황 조회 및 배정을 관리합니다.',
     'bills' => '진료비 청구 및 결제를 관리합니다.',
@@ -627,7 +626,9 @@ if (!isset($admin_page_description) && isset($menu_descriptions[$admin_current])
                 </div>
                 <div class="border-top text-center py-2 d-flex justify-content-center gap-3">
                     <a href="admin_notifications.php" style="font-size:12px;text-decoration:none;font-weight:600;">전체 알림 보기 &rarr;</a>
+                    <?php if (!function_exists('check_permission') || check_permission('admin_accounts')): ?>
                     <a href="admin_admins.php#notif-settings" style="font-size:12px;text-decoration:none;">알림 수신 설정 &rarr;</a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

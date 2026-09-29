@@ -231,7 +231,7 @@ function notify_treatment_approval($connect, $hospital_treatment_id, $action, $a
         if ($admin_col_check && mysqli_num_rows($admin_col_check) > 0) {
             $adm_stmt = mysqli_prepare($connect,
                 "SELECT id FROM gangnamunni_admins
-                 WHERE hospital_id = ? AND is_active = 1 AND role IN ('hospital_admin','hospital_sub_admin')
+                 WHERE hospital_id = ? AND is_active = 1 AND role IN ('hospital_super_admin','hospital_admin')
                  ORDER BY id ASC LIMIT 1");
             if ($adm_stmt) {
                 mysqli_stmt_bind_param($adm_stmt, 'i', $hospital_id);

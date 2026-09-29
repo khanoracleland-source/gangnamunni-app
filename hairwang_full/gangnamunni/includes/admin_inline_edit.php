@@ -73,7 +73,7 @@ function ae($key, $label = '', $icon = '') {
 
     // 병원 관리자는 자기 병원 관련 메뉴만 표시
     $role = $_SESSION['ad_admin_role'] ?? '';
-    if (in_array($role, ['hospital_admin', 'hospital_sub_admin'])) {
+    if (in_array($role, ['hospital_super_admin', 'hospital_admin'], true)) {
         $hospital_allowed = ['hospitals','treatments','reviews','events','bookings','notifications'];
         if (!in_array($key, $hospital_allowed)) return;
     }
@@ -141,7 +141,7 @@ body.ae-active { padding-top: 30px !important; }
 <div class="ae-topbar">
     <?php
     $ae_role = $_SESSION['ad_admin_role'] ?? '';
-    $ae_is_hospital = in_array($ae_role, ['hospital_admin', 'hospital_sub_admin']);
+    $ae_is_hospital = in_array($ae_role, ['hospital_super_admin', 'hospital_admin'], true);
     $ae_hospital_name = $_SESSION['ad_admin_hospital_name'] ?? '';
     ?>
     <strong><i class="bi bi-gear-fill"></i> <?php echo $ae_is_hospital ? '병원 Admin' : 'Admin'; ?></strong>

@@ -7,20 +7,18 @@
  * @created 2026-02-11
  */
 
-// 역할별 기본 권한 — 9역할 (플랫폼 5 + 병원 4)
+// 역할별 기본 권한 — 6역할 (플랫폼 4 + 병원 2)
+// 병원 부관리자(hospital_sub_admin)·병원 직원(hospital_staff)·직원(staff) 역할은 2026-09-29 제거됨
 $ADMIN_ROLE_PERMISSIONS = [
     // === 플랫폼 역할 ===
     'super_admin' => ['*'],
     'admin' => ['treatment_units', 'community_moderation', 'dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'reviews', 'bookings', 'categories', 'ads', 'ad_slot_manage', 'navigation', 'theme', 'theme_advanced', 'design_mode', 'settings', 'maintenance', 'upgrade', 'members', 'membership', 'faq', 'qna', 'rankings', 'doctor_treatments', 'treatment_packages', 'excel_import', 'excel_export', 'medicines', 'nurses', 'patients', 'pharmacists', 'staffs', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'admin_mail', 'mail_templates', 'mail_signatures', 'mail_accounts', 'editor_settings', 'review_wizard', 'approval_queue', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events', 'event_entries', 'cpv_settings', 'cpv_wallet', 'cpv_rates', 'cpv_dashboard', 'cpv_settlement', 'dev_ref_cpv', 'dev_ref_confirm', 'dev_ref_qa', 'dev_ref_cpv_qa', 'dev_ref_payment', 'manage_reports', 'grade_permissions', 'admin_manage', 'admin_accounts', 'hospital_landing', 'hospital_apply', 'hospital_apply_status', 'hospital_pending', 'hospital_process', 'hospital_guide', 'site_settings_main', 'booking_revenue'],
     'editor' => ['community_moderation', 'dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'reviews', 'bookings', 'categories', 'ads', 'navigation', 'auto_manual', 'auto_test', 'auto_test_v2', 'hospital_wizard', 'ad_wizard', 'wizard', 'site_settings', 'nav_settings', 'review_wizard', 'screenshot_book', 'wizard_guide', 'menu_guide', 'gnuboard_admin', 'notifications', 'fix_log', 'doctors', 'tips', 'events'],
     'viewer' => ['dashboard', 'hospital_images'],
-    'staff' => ['dashboard', 'hospitals', 'hospital_images', 'reviews', 'bookings', 'notifications', 'members'],
 
     // === 병원 역할 (hospital_id 기반 격리) ===
-    'hospital_super_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'ads', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_admins', 'hospital_stats', 'booking_revenue'],
-    'hospital_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'ads', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_admins', 'booking_revenue'],
-    'hospital_sub_admin' => ['dashboard', 'hospitals', 'hospital_images', 'doctors', 'reviews', 'bookings', 'partner_treatments', 'notifications'],
-    'hospital_staff' => ['dashboard', 'hospital_images', 'bookings', 'reviews', 'notifications'],
+    'hospital_super_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'ads', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_stats', 'booking_revenue'],
+    'hospital_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'ads', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'booking_revenue'],
 ];
 
 $ADMIN_ROLE_LABELS = [
@@ -28,17 +26,14 @@ $ADMIN_ROLE_LABELS = [
     'admin' => '관리자',
     'editor' => '에디터',
     'viewer' => '뷰어',
-    'staff' => '직원',
     'hospital_super_admin' => '병원 최고관리자',
     'hospital_admin' => '병원 관리자',
-    'hospital_sub_admin' => '병원 부관리자',
-    'hospital_staff' => '병원 직원',
 ];
 
 // 역할 그룹 분류
 $ADMIN_ROLE_GROUPS = [
-    'platform' => ['super_admin', 'admin', 'editor', 'viewer', 'staff'],
-    'hospital' => ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'],
+    'platform' => ['super_admin', 'admin', 'editor', 'viewer'],
+    'hospital' => ['hospital_super_admin', 'hospital_admin'],
 ];
 
 /**
@@ -71,14 +66,38 @@ function check_grade_permission($feature_key, $hospital_id = null) {
  */
 function is_hospital_role() {
     $role = $_SESSION['ad_admin_role'] ?? '';
-    return in_array($role, ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff']);
+    return in_array($role, ['hospital_super_admin', 'hospital_admin'], true);
+}
+
+/**
+ * 현재 관리자가 최고관리자인지 (모든 기능 무제한)
+ */
+function is_super_admin() {
+    return check_admin_login() && (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
+}
+
+/**
+ * 현재 관리자가 접근할 수 있는 병원 범위
+ * @return int|null  null = 전체 병원(최고관리자, 병원 미배정 플랫폼 관리자)
+ *                   >0   = 해당 병원만
+ *                   -1   = 소속 병원이 없는 병원 계정 / 미로그인 (fail-closed)
+ */
+function admin_scoped_hospital_id() {
+    if (!check_admin_login()) return -1;
+    if (($_SESSION['ad_admin_role'] ?? '') === 'super_admin') return null;
+    $hid = (int)($_SESSION['ad_admin_hospital_id'] ?? 0);
+    if ($hid > 0) return $hid;
+    return is_hospital_role() ? -1 : null;
 }
 
 /**
  * 관리자 세션 저장
  */
 function admin_set_session($admin, $connect = null) {
+    global $ADMIN_ROLE_PERMISSIONS;
     if (!$admin || empty($admin['id'])) return false;
+    // 제거된 역할(부관리자·직원 등)이나 알 수 없는 역할의 계정은 로그인할 수 없다.
+    if (!isset($ADMIN_ROLE_PERMISSIONS[$admin['role'] ?? ''])) return false;
 
     // 세션에 관리자 정보 저장
     $_SESSION['ad_admin_logged_in'] = true;
@@ -95,7 +114,7 @@ function admin_set_session($admin, $connect = null) {
 
     // 병원 관리자는 병원 명의(email)로 가입하므로, 로그인 아이디가 어떤 병원의
     // email 과 일치하면 그 병원 소속으로 간주하고 기존 hospital_id 를 교정한다.
-    if ($connect && in_array(($admin['role'] ?? ''), ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'], true)) {
+    if ($connect && in_array(($admin['role'] ?? ''), ['hospital_super_admin', 'hospital_admin'], true)) {
         $login = trim($admin['username'] ?? '');
         $mail  = trim($admin['email'] ?? '');
         if ($login !== '' || $mail !== '') {
@@ -250,7 +269,7 @@ function admin_login_from_sso($connect) {
             "SELECT *
                FROM gangnamunni_admins
               WHERE is_active = 1
-                AND role IN ('hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff')
+                AND role IN ('hospital_super_admin', 'hospital_admin')
                 AND (username = ? OR email = ? OR username = ?)
               LIMIT 1"
         );
@@ -274,7 +293,14 @@ function admin_login_from_sso($connect) {
  * 로그인 상태 확인
  */
 function check_admin_login() {
-    return isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true;
+    global $ADMIN_ROLE_PERMISSIONS;
+    if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !== true) return false;
+    // 제거된 역할로 이미 로그인된 세션은 무효화한다.
+    if (is_array($ADMIN_ROLE_PERMISSIONS) && !isset($ADMIN_ROLE_PERMISSIONS[$_SESSION['ad_admin_role'] ?? ''])) {
+        unset($_SESSION['ad_admin_logged_in'], $_SESSION['ad_admin_role'], $_SESSION['ad_admin_id']);
+        return false;
+    }
+    return true;
 }
 
 /**
@@ -315,10 +341,15 @@ function get_current_admin() {
 
 /**
  * 권한 체크
- * 커스텀 pages 설정이 있으면 DB 값 우선, 없으면 역할 기본값
+ * 역할 기본값으로만 판단한다 (개별 커스텀 권한 없음)
  */
 function check_permission($permission) {
     global $ADMIN_ROLE_PERMISSIONS;
+
+    // 최고관리자는 예외 없이 모든 기능에 접근한다.
+    if (check_admin_login() && (($_SESSION['ad_admin_role'] ?? '') === 'super_admin')) {
+        return true;
+    }
 
     // 관리자/편집자의 예약 페이지 접근은 허용하되, 실제 조회/생성 범위는
     // admin_bookings.php와 admin_appointment_wizard.php에서 소유 병원으로 fail-closed 제한한다.
@@ -339,8 +370,9 @@ function check_permission($permission) {
 
     // 일반 관리자도 관리자 계정 페이지에서 본인 프로필을 수정할 수 있다.
     // 다른 계정에 대한 CRUD 권한은 admin_admins.php에서 super_admin으로 별도 검증한다.
+    // 단, 병원 계정(병원 관리자 등)은 관리자 관리 페이지에 접근할 수 없다.
     if ($permission === 'admin_accounts' && check_admin_login()) {
-        return true;
+        return !is_hospital_role();
     }
 
     // 카테고리 관리는 플랫폼 전체에 영향을 주므로 최고관리자만 허용한다.
@@ -366,13 +398,8 @@ function check_permission($permission) {
     // super_admin은 무조건 전체 권한
     if (in_array('*', $role_perms)) return true;
 
-    // DB에 커스텀 pages가 있으면 그것만 사용
-    $extra = $_SESSION['ad_admin_permissions'] ?? [];
-    if (is_array($extra) && !empty($extra['pages'])) {
-        return in_array($permission, $extra['pages']);
-    }
-
-    // 커스텀 없으면 역할 기본값
+    // 관리자별 개별(커스텀) 페이지 권한은 사용하지 않는다. 권한은 역할 기본값으로만 결정된다.
+    // (permissions JSON의 'pages' 값은 과거 데이터이며 무시된다.)
     return in_array($permission, $role_perms);
 }
 

@@ -15,10 +15,12 @@
  * hospital_admin은 해당 hospital_id
  */
 function get_hospital_filter() {
+    // 최고관리자는 병원 소속과 무관하게 항상 전체 접근
+    if (($_SESSION['ad_admin_role'] ?? '') === 'super_admin') return null;
     if (isset($_SESSION['ad_admin_hospital_id']) && $_SESSION['ad_admin_hospital_id']) {
         return (int)$_SESSION['ad_admin_hospital_id'];
     }
-    if (in_array($_SESSION['ad_admin_role'] ?? '', ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'], true)) {
+    if (in_array($_SESSION['ad_admin_role'] ?? '', ['hospital_super_admin', 'hospital_admin'], true)) {
         return -1; // hospital account without a valid tenant must never fall back to global access
     }
     return null;
@@ -35,7 +37,7 @@ function get_hospital_filter() {
  */
 function get_hospital_filter_ids($connect) {
     $role = $_SESSION['ad_admin_role'] ?? '';
-    if (in_array($role, ['super_admin', 'admin', 'editor', 'viewer', 'staff'], true)) return null;
+    if (in_array($role, ['super_admin', 'admin', 'editor', 'viewer'], true)) return null;
 
     $login = trim($_SESSION['ad_admin_user'] ?? '');
     $mail  = trim($_SESSION['ad_admin_email'] ?? '');

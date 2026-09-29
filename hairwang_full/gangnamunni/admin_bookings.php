@@ -992,7 +992,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     <?php else:
                     $is_viewer = (($_SESSION['ad_admin_role'] ?? '') === 'viewer');
                     $is_super_admin = (($_SESSION['ad_admin_role'] ?? '') === 'super_admin');
-                    $is_hospital_admin = in_array(($_SESSION['ad_admin_role'] ?? ''), ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin'], true);
+                    $is_hospital_admin = in_array(($_SESSION['ad_admin_role'] ?? ''), ['hospital_super_admin', 'hospital_admin'], true);
                     $can_override_status = $is_super_admin || $is_hospital_admin;
                     foreach ($bookings as $b): ?>
                     <tr data-booking-id="<?php echo (int)$b['id']; ?>">

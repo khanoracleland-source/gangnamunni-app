@@ -106,7 +106,7 @@ if ($set_r) while ($s = mysqli_fetch_assoc($set_r)) {
 }
 $admin_role = (string)($_SESSION['ad_admin_role'] ?? '');
 $is_super_admin = ($admin_role === 'super_admin');
-$is_hospital_account = in_array($admin_role, ['hospital_super_admin', 'hospital_admin', 'hospital_sub_admin', 'hospital_staff'], true);
+$is_hospital_account = in_array($admin_role, ['hospital_super_admin', 'hospital_admin'], true);
 $can_manage_treatments = $is_super_admin
     || ($is_hospital_account && in_array($treatment_mgmt_mode, ['hospital_only', 'both'], true))
     || (!$is_hospital_account && in_array($treatment_mgmt_mode, ['admin_only', 'both'], true));
