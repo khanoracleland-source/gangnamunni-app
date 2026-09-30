@@ -307,7 +307,7 @@ body {
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="faq.php" class="menu-row">
-        <span class="menu-row-text">공지사항</span>
+        <span class="menu-row-text">자주 묻는 질문</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
 </div>
@@ -339,7 +339,7 @@ body {
     </a>
     <a href="faq.php" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-megaphone"></i></span>
-        <span class="menu-row-text">FAQ</span>
+        <span class="menu-row-text">자주 묻는 질문</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
 </div>

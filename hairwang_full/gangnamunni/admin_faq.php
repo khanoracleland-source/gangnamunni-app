@@ -24,8 +24,9 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('faq');
 
-// 카테고리 목록
-$faq_categories = ['일반', '예약', '결제', '회원', '이벤트', '후기', '시술', '기타'];
+// 카테고리 목록 (사용자 FAQ 탭과 동일한 기준 + DB 에 남아있는 레거시 카테고리)
+require_once __DIR__ . '/includes/faq_categories.php';
+$faq_categories = gangnamunni_faq_categories($connect);
 
 $msg = '';
 $msg_type = 'success';
@@ -302,9 +303,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td>
                             <?php
                             $cat_colors = [
-                                '일반' => 'secondary', '예약' => 'primary', '결제' => 'success',
-                                '회원' => 'info', '이벤트' => 'warning', '후기' => 'danger',
-                                '시술' => 'dark', '기타' => 'secondary'
+                                '결제' => 'success', '계정' => 'info', '예약' => 'primary',
+                                '일반' => 'secondary', '포인트' => 'warning', '후기' => 'danger'
                             ];
                             $cc = $cat_colors[$faq['category']] ?? 'secondary';
                             ?>
