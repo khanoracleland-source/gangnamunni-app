@@ -201,11 +201,7 @@ body {
 }
 .advertisement-click-link {
     position: absolute;
-    left: 52.3%;
-    top: 39%;
-    width: 12.2%;
-    height: 22%;
-    border-radius: 999px;
+    inset: 0;
     -webkit-tap-highlight-color: transparent;
 }
 .advertisement-click-link:focus-visible {
