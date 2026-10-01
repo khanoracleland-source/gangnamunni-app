@@ -64,11 +64,6 @@ dependencies:
   image_picker: ^1.2.1
   country_picker: ^2.0.27
 
-  # Google Map
-  google_maps_flutter: ^2.14.0
-  geolocator: ^14.0.2
-  geocoding: ^4.0.0
-
   # Payment
   flutter_stripe: ^12.1.1
   # razorpay_flutter: ^1.4.0  # 인도 전용 결제 제거 (dSYM 에러 원인)
@@ -137,10 +132,6 @@ dependency_overrides:
     path: patched_plugins/flutter_native_splash-2.4.4
   flutter_secure_storage:
     path: patched_plugins/flutter_secure_storage-9.2.4
-  geocoding_android:
-    path: patched_plugins/geocoding_android-4.0.1
-  geolocator_android:
-    path: patched_plugins/geolocator_android-5.0.2
   uni_links:
     path: patched_plugins/uni_links-0.5.1
 

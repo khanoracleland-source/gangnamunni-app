@@ -215,14 +215,6 @@ abstract class BaseLanguage {
 
   String get doYouWantToClearAllNotification;
 
-  String get locationPermissionDenied;
-
-  String get enableLocation;
-
-  String get permissionDeniedPermanently;
-
-  String get chooseYourLocation;
-
   String get setAddress;
 
   String get sorryUserCannotSignin;

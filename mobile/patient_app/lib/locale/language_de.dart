@@ -320,18 +320,6 @@ class LanguageDe extends BaseLanguage {
   String get doYouWantToClearAllNotification => 'Möchten Sie die Benachrichtigung klären?';
 
   @override
-  String get locationPermissionDenied => 'Standortgenehmigung abgelehnt';
-
-  @override
-  String get enableLocation => 'aktiviere Standort';
-
-  @override
-  String get permissionDeniedPermanently => 'Erlaubnis dauerhaft abgelehnt';
-
-  @override
-  String get chooseYourLocation => 'Wähle deinen Standort';
-
-  @override
   String get setAddress => 'Adresse festlegen';
 
   @override

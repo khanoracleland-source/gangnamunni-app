@@ -320,18 +320,6 @@ class LanguageHi extends BaseLanguage {
   String get doYouWantToClearAllNotification => 'क्या आप अधिसूचना को स्पष्ट करना चाहते हैं';
 
   @override
-  String get locationPermissionDenied => 'स्थान की अनुमति से वंचित';
-
-  @override
-  String get enableLocation => 'स्थान सक्षम करें';
-
-  @override
-  String get permissionDeniedPermanently => 'अनुमति ने स्थायी रूप से इनकार किया';
-
-  @override
-  String get chooseYourLocation => 'अपना स्थान चुनें';
-
-  @override
   String get setAddress => 'सेट पता';
 
   @override

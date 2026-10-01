@@ -320,18 +320,6 @@ class LanguageKo extends BaseLanguage {
   String get doYouWantToClearAllNotification => '모든 알림을 삭제하시겠습니까';
 
   @override
-  String get locationPermissionDenied => '위치 권한이 거부되었습니다';
-
-  @override
-  String get enableLocation => '위치 활성화';
-
-  @override
-  String get permissionDeniedPermanently => "권한이 영구적으로 거부되었습니다";
-
-  @override
-  String get chooseYourLocation => "위치 선택";
-
-  @override
   String get setAddress => "주소 설정";
 
   @override

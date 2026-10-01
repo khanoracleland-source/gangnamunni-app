@@ -320,18 +320,6 @@ class LanguageEn extends BaseLanguage {
   String get doYouWantToClearAllNotification => 'Do you want to clearall notification';
 
   @override
-  String get locationPermissionDenied => 'location permission denied';
-
-  @override
-  String get enableLocation => 'enable location';
-
-  @override
-  String get permissionDeniedPermanently => "permission denied permanently";
-
-  @override
-  String get chooseYourLocation => "Choose Your Location";
-
-  @override
   String get setAddress => "Set Address";
 
   @override

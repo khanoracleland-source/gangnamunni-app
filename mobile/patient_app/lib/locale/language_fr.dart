@@ -320,18 +320,6 @@ class LanguageFr extends BaseLanguage {
   String get doYouWantToClearAllNotification => 'Voulez-vous la notification de clairs';
 
   @override
-  String get locationPermissionDenied => 'Permission de localisation refusée';
-
-  @override
-  String get enableLocation => 'location disponible';
-
-  @override
-  String get permissionDeniedPermanently => 'autorisation refusée en permanence';
-
-  @override
-  String get chooseYourLocation => 'Choisissez votre emplacement';
-
-  @override
   String get setAddress => 'Adresse définie';
 
   @override

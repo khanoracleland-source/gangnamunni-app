@@ -320,18 +320,6 @@ class LanguageAr extends BaseLanguage {
   String get doYouWantToClearAllNotification => 'هل تريد إلغاء الإخطار';
 
   @override
-  String get locationPermissionDenied => 'تم رفض إذن الموقع';
-
-  @override
-  String get enableLocation => 'تمكن موقع';
-
-  @override
-  String get permissionDeniedPermanently => 'تم رفض الإذن بشكل دائم';
-
-  @override
-  String get chooseYourLocation => 'اختر موقعك';
-
-  @override
   String get setAddress => 'تعيين العنوان';
 
   @override
