@@ -448,12 +448,9 @@ if ($success) $active_tab = 'apply';
         <div class="row g-3 mb-4">
             <div class="col-md-8">
                 <label class="form-label fw-semibold">병원 주소 <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <div class="flex-grow-1 position-relative">
-                        <input type="text" name="address" id="addressInput" class="form-control" required maxlength="500" placeholder="주소를 입력하세요 (예: 강남구 테헤란로)" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>" autocomplete="off">
-                        <div id="addrSuggest" class="list-group position-absolute w-100 shadow-sm" style="z-index:999;max-height:200px;overflow-y:auto;display:none;"></div>
-                    </div>
-                    <button type="button" class="btn btn-primary" id="btnGetGPS" title="현재 GPS 위치로 주소 자동 입력"><i class="bi bi-crosshair me-1"></i>현재 위치</button>
+                <div class="position-relative">
+                    <input type="text" name="address" id="addressInput" class="form-control" required maxlength="500" placeholder="주소를 입력하세요 (예: 강남구 테헤란로)" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>" autocomplete="off">
+                    <div id="addrSuggest" class="list-group position-absolute w-100 shadow-sm" style="z-index:999;max-height:200px;overflow-y:auto;display:none;"></div>
                 </div>
                 <input type="hidden" name="latitude" id="latInput" value="<?= htmlspecialchars($_POST['latitude'] ?? '37.5665') ?>">
                 <input type="hidden" name="longitude" id="lngInput" value="<?= htmlspecialchars($_POST['longitude'] ?? '126.9780') ?>">
@@ -697,56 +694,6 @@ document.querySelector('[data-bs-target="#tabApply"]')?.addEventListener('shown.
     setTimeout(function() {
         if (map) { map.relayout(); map.setCenter(new kakao.maps.LatLng(initLat, initLng)); }
     }, 200);
-});
-
-// ===== GPS 현재 위치 =====
-document.getElementById('btnGetGPS')?.addEventListener('click', function() {
-    console.log('[RegDash] GPS 현재 위치 요청');
-    var btn = this;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-    if (!navigator.geolocation) {
-        alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-crosshair"></i>';
-        return;
-    }
-
-    navigator.geolocation.getCurrentPosition(function(pos) {
-        var lat = pos.coords.latitude;
-        var lng = pos.coords.longitude;
-        document.getElementById('latInput').value = lat.toFixed(8);
-        document.getElementById('lngInput').value = lng.toFixed(8);
-        initLat = lat; initLng = lng;
-        console.log('[RegDash] GPS 성공:', lat.toFixed(6), lng.toFixed(6));
-
-        if (map && marker) {
-            var p = new kakao.maps.LatLng(lat, lng);
-            map.setCenter(p);
-            marker.setPosition(p);
-        }
-
-        // 좌표 → 주소 역지오코딩
-        if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.services) {
-            var geocoder = new kakao.maps.services.Geocoder();
-            geocoder.coord2Address(lng, lat, function(result, status) {
-                if (status === kakao.maps.services.Status.OK && result[0]) {
-                    var addr = result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
-                    document.getElementById('addressInput').value = addr;
-                    console.log('[RegDash] 역지오코딩:', addr);
-                }
-            });
-        }
-
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-crosshair"></i>';
-    }, function(err) {
-        console.warn('[RegDash] GPS 실패:', err.message);
-        alert('위치를 가져올 수 없습니다: ' + err.message);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-crosshair"></i>';
-    }, { enableHighAccuracy: true, timeout: 10000 });
 });
 
 // ===== 주소 자동완성 + 좌표 변환 =====

@@ -97,19 +97,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     max-width: 640px; margin: 0 auto;
 }
 
-/* 현위치 버튼 */
-.location-btn {
-    position: fixed; bottom: 180px; right: calc(50% - 300px);
-    z-index: 50; width: 44px; height: 44px;
-    background: var(--bs-body-bg, #fff); border: 1px solid var(--bs-border-color, #ddd);
-    border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: calc(20px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--primary);
-}
-@media (max-width: 640px) {
-    .location-btn { right: 16px; }
-}
-
 /* 하단 병원 카드 슬라이더 */
 .bottom-cards {
     position: fixed; bottom: 0; left: 0; right: 0;
@@ -178,10 +165,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <div class="hospital-count" id="hospital-count"></div>
 
-<button class="location-btn" id="my-location-btn" title="현재 위치">
-    <i class="bi bi-crosshair"></i>
-</button>
-
 <div class="bottom-cards" id="bottom-cards" style="display:none;">
     <div class="cards-scroll" id="cards-scroll"></div>
 </div>
@@ -233,14 +216,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
         renderMarkers(hospitals);
         updateCount(hospitals.length);
-
-        // 현위치 시도
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(pos) {
-                var loc = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-                map.setCenter(loc);
-            }, function() {}, {timeout: 5000});
-        }
     }
 
     function renderMarkers(list) {
@@ -389,21 +364,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 }
             });
             map.setBounds(bounds);
-        }
-    });
-
-    // 현위치 버튼
-    document.getElementById('my-location-btn').addEventListener('click', function() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(pos) {
-                var loc = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-                map.setCenter(loc);
-                map.setLevel(4);
-            }, function() {
-                alert('위치 정보를 가져올 수 없습니다.');
-            });
-        } else {
-            alert('이 브라우저에서는 위치 기능을 지원하지 않습니다.');
         }
     });
 

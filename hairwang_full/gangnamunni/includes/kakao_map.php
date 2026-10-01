@@ -6,7 +6,6 @@
  *
  * v2 추가 기능:
  * - 전체보기 (풀스크린)
- * - 내 위치 ~ 병원 거리 표시
  * - 네비 앱 딥링크 (카카오맵/네이버지도/티맵) + 미설치 시 스토어 이동
  * - 확대/축소 컨트롤
  *
@@ -105,24 +104,6 @@ $display_lng = $has_coords ? $map_lng : 126.978;
 }
 .km-fullscreen-btn:hover { background: #f0f0f0; }
 
-/* 내 위치 버튼 */
-.km-myloc-btn {
-    position: absolute; bottom: 8px; right: 8px; z-index: 2;
-    width: 32px; height: 32px; border-radius: 4px;
-    background: var(--bs-body-bg, #fff); border: 1px solid #ccc; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-}
-.km-myloc-btn:hover { background: #f0f0f0; }
-
-/* 거리 표시 */
-.km-distance {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 12px; color: var(--color-primary, #AE1932);
-    background: rgba(174,25,50,0.08); padding: 2px 8px; border-radius: 10px;
-    margin-left: 8px;
-}
-
 /* 주소 + 버튼 */
 .km-address { margin-top: 8px; font-size: 13px; color: var(--color-text-secondary, #666); display: flex; align-items: flex-start; gap: 4px; flex-wrap: wrap; }
 .km-address-copy {
@@ -166,13 +147,11 @@ $display_lng = $has_coords ? $map_lng : 126.978;
     <?php if ($map_show_title): ?>
     <div class="km-title">
         📍 오시는 길
-        <span class="km-distance" id="kmDist_<?php echo $map_id; ?>" style="display:none;"></span>
     </div>
     <?php endif; ?>
     <div class="km-map-wrap">
         <div class="km-container" id="<?php echo $map_id; ?>" style="width:100%;height:<?php echo $map_height; ?>;"></div>
         <button type="button" class="km-fullscreen-btn" onclick="kmOpenFull('<?php echo $map_id; ?>')" title="전체보기">⛶</button>
-        <button type="button" class="km-myloc-btn" onclick="kmShowMyLoc('<?php echo $map_id; ?>')" title="내 위치">📍</button>
     </div>
 </div>
 
@@ -209,7 +188,6 @@ $display_lng = $has_coords ? $map_lng : 126.978;
         if (nm) { var iw = new kakao.maps.InfoWindow({ content: '<div style="padding:5px 10px;font-size:12px;white-space:nowrap;">'+nm+'</div>' }); iw.open(map, mk); }
         setTimeout(function(){ map.relayout(); }, 300);
         window['_kmMap_' + id] = { map: map, lat: y, lng: x };
-        setTimeout(function(){ if (typeof kmCalcDistance === "function") kmCalcDistance(id, y, x); }, 0);
     }
     // 주소 지오코딩 → 실패 시 키워드 검색 → 그래도 실패면 저장 좌표로 폴백
     function geocodeThenInit() {
@@ -253,7 +231,6 @@ $display_lng = $has_coords ? $map_lng : 126.978;
             iw.open(map, mk);
         }
         window['_kmMap_' + id] = { map: map, lat: y, lng: x, google: true };
-        setTimeout(function(){ if (typeof kmCalcDistance === "function") kmCalcDistance(id, y, x); }, 0);
     }
 
     function waitGoogle(cb) {
@@ -305,7 +282,6 @@ $display_lng = $has_coords ? $map_lng : 126.978;
         if (nm) mk.bindPopup('<b>' + nm + '</b>').openPopup();
         setTimeout(function(){ map.invalidateSize(); }, 300);
         window['_kmMap_' + id] = { map: map, lat: y, lng: x, leaflet: true };
-        setTimeout(function(){ if (typeof kmCalcDistance === "function") kmCalcDistance(id, y, x); }, 0);
     }
 
     function osmGeocodeThenInit() {
@@ -334,45 +310,9 @@ $display_lng = $has_coords ? $map_lng : 126.978;
 </script>
 <?php endif; ?>
 
-<!-- 공통 JS (거리계산, 전체보기, 네비 딥링크) -->
+<!-- 공통 JS (전체보기, 네비 딥링크) -->
 <?php if (empty($GLOBALS['_km_common_js_loaded'])): $GLOBALS['_km_common_js_loaded'] = true; ?>
 <script>
-// 거리 계산 (Haversine)
-function kmCalcDistance(mapId, destLat, destLng) {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(function(pos) {
-        var R = 6371;
-        var dLat = (destLat - pos.coords.latitude) * Math.PI / 180;
-        var dLon = (destLng - pos.coords.longitude) * Math.PI / 180;
-        var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(pos.coords.latitude * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        var d = R * c;
-        var distEl = document.getElementById('kmDist_' + mapId);
-        if (distEl) {
-            distEl.textContent = d < 1 ? '📍 ' + Math.round(d * 1000) + 'm' : '📍 ' + d.toFixed(1) + 'km';
-            distEl.style.display = 'inline-flex';
-        }
-    }, function() {}, { timeout: 5000, maximumAge: 300000 });
-}
-
-// 내 위치 표시
-function kmShowMyLoc(mapId) {
-    if (!navigator.geolocation) { alert('위치 서비스를 사용할 수 없습니다.'); return; }
-    navigator.geolocation.getCurrentPosition(function(pos) {
-        var data = window['_kmMap_' + mapId];
-        if (!data) return;
-        if (data.leaflet && data.map) {
-            L.circle([pos.coords.latitude, pos.coords.longitude], { radius: 50, color: '#4285f4', fillOpacity: 0.3 }).addTo(data.map);
-            L.marker([pos.coords.latitude, pos.coords.longitude], {
-                icon: L.divIcon({ className: '', html: '<div style="width:14px;height:14px;background:#4285f4;border:2px solid white;border-radius:50%;box-shadow:0 0 6px rgba(66,133,244,0.5);"></div>', iconSize: [14,14], iconAnchor: [7,7] })
-            }).addTo(data.map);
-            data.map.fitBounds([[pos.coords.latitude, pos.coords.longitude], [data.lat, data.lng]], { padding: [40,40] });
-        }
-    }, function() { alert('위치를 가져올 수 없습니다. 브라우저 위치 권한을 확인하세요.'); }, { timeout: 10000 });
-}
-
 // 전체보기
 function kmOpenFull(mapId) {
     var data = window['_kmMap_' + mapId];

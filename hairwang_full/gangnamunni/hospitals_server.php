@@ -293,7 +293,6 @@ foreach ($hospitals as $hospital):
                         <i class="bi bi-geo-alt" style="font-size:11px;"></i>
                         <span class="addr-full"><?php echo htmlspecialchars($hospital['address'] ?? ''); ?></span>
                         <span class="addr-short"><?php echo htmlspecialchars(mb_substr($hospital['address'] ?? '', 0, 30)); ?>...</span>
-                        <span class="km-card-dist" style="display:none;margin-left:4px;font-size:11px;color:#AE1932;"></span>
                     </div>
                     <?php if ($has_rating): ?>
                     <div class="rating-section">
@@ -366,28 +365,6 @@ document.addEventListener("DOMContentLoaded", function() {
         b.classList.remove("active");
         if (b.getAttribute("data-region") === cr) b.classList.add("active");
     });
-
-    // 거리 계산 (위치 권한 있을 때만)
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(pos) {
-            var myLat = pos.coords.latitude, myLng = pos.coords.longitude;
-            document.querySelectorAll('.hospital-card[data-lat]').forEach(function(card) {
-                var lat = parseFloat(card.dataset.lat), lng = parseFloat(card.dataset.lng);
-                if (!lat || !lng) return;
-                var R = 6371;
-                var dLat = (lat - myLat) * Math.PI / 180;
-                var dLon = (lng - myLng) * Math.PI / 180;
-                var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(myLat*Math.PI/180)*Math.cos(lat*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
-                var d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                card.dataset.distance = d;
-                var distEl = card.querySelector('.km-card-dist');
-                if (distEl) {
-                    distEl.textContent = d < 1 ? Math.round(d*1000) + 'm' : d.toFixed(1) + 'km';
-                    distEl.style.display = 'inline';
-                }
-            });
-        }, function() {}, { timeout: 5000, maximumAge: 300000 });
-    }
 });
 </script>
 
