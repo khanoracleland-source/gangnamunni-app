@@ -897,6 +897,9 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </form>
                 </div>
                 <div class="col-md-7 text-end">
+                    <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#createModal">
+                        <i class="bi bi-plus-lg me-1"></i>시술 등록
+                    </button>
                     <div class="btn-group btn-group-sm" id="bulkActions" style="display:none;">
                         <button type="button" class="btn btn-outline-success" onclick="bulkToggle(1)">
                             <i class="bi bi-eye me-1"></i>활성화
@@ -1070,7 +1073,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <select name="category_id" class="form-select" required>
                                 <option value="">선택하세요</option>
                                 <?php foreach ($categories as $cid => $cat): ?>
-                                <option value="<?php echo $cid; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                                <option value="<?php echo $cid; ?>"<?php echo ($filter_category > 0 && $filter_category == $cid) ? ' selected' : ''; ?>><?php echo htmlspecialchars($cat['name']); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
