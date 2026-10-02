@@ -1,7 +1,7 @@
 name: kivicare_patient
 description: A new Flutter project.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-version: 2.0.5+42
+version: 2.0.6+43
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -137,6 +137,11 @@ dependency_overrides:
 
 # The following section is specific to Flutter packages.
 flutter:
+
+  # This project still relies on patched plugins that are distributed through
+  # CocoaPods and are not compatible with Flutter's automatic SwiftPM migration.
+  config:
+    enable-swift-package-manager: false
 
   uses-material-design: true
 
