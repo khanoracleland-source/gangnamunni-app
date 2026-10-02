@@ -52,24 +52,18 @@ $show_search = true;
 
 $page_css = '
     .results-header { margin-bottom: 16px; }
-    .results-header h1 { font-size: 20px; margin-bottom: 8px; }
     .search-filter-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; color: #000; font-size: 12px; padding: 4px 10px; border: 1px solid #AE1932 }
     .search-filter-chip .chip-remove { cursor: pointer; font-size: 15px; line-height: 1; font-weight: 700; opacity: 0.9; }
     .search-filter-chip .chip-remove:hover { opacity: 1; }
 
     .hospital-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: 100%; padding-inline: 16px; margin-bottom: 40px; box-sizing: border-box; }
     .hospital-card { background: var(--bs-body-bg, #fff); border-radius: 0px; overflow: hidden; box-shadow: none; position: relative; display: flex; flex-direction: column; }
-    .hospital-card:hover { }
     .card-link { cursor: pointer; flex: 1; }
     .hospital-image { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #D9D9D9; display: block; }
     .hospital-info { padding: 12px 16px 6px; }
     .hospital-name { font-size: 16px; font-weight: 500; margin-bottom: 4px; color: var(--bs-body-color, #000000); }
     .hospital-address { font-size: 14px; font-weight: 400; color: var(--bs-body-color, #000000); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hospital-address * { font-size: 14px; }
-
-    .badge-group { display: flex; gap: 6px; margin-top: 6px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 4px; scrollbar-width: none; }
-    .badge-group::-webkit-scrollbar { display: none; }
-    .tag-badge { display: inline-block; padding: 3px 10px; border: 1px solid currentColor; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
 
     .hospital-grid.list-view { grid-template-columns: 1fr; }
     .hospital-grid.list-view .hospital-card { flex-direction: row; border-top: 1px solid #ddd; }
@@ -79,13 +73,11 @@ $page_css = '
     .hospital-grid.list-view .card-link { display: flex; flex-direction: row; flex: 1; min-width: 0; }
     .hospital-grid.list-view .hospital-info { flex: 1; padding: 10px 12px; min-width: 0; }
     .hospital-grid.list-view .hospital-name { font-size: ' . $list_name . 'px; }
-    .hospital-grid.list-view .tag-badge { font-size: ' . $list_tag_s . 'px; color: ' . $list_tag_c . '; border-color: ' . $list_tag_c . '; }
 
     .addr-full { display: none; }
     .addr-short { display: inline; }
     .no-result { text-align: center; padding: 80px 20px; color: var(--bs-secondary-color, #999); }
     .ad-card { text-decoration: none !important; }
-    .ad-badge { position: absolute; top: 8px; right: 8px; background: #2E75B6; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; z-index: 5; }
     .grade-badge { position: absolute; top: 8px; left: 8px; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; z-index: 5; line-height: 1.4; }
     .grade-badge-sa { background: #DC3545; color: #fff; }
 
@@ -101,8 +93,6 @@ $page_css = '
 .card-price-sale { display: block; }
 .card-price-max { font-size: 22px; color: #858484; text-decoration: line-through; margin-right: 2px; }
 ';
-
-$page_js = '';
 
 $_fs_css_file = __DIR__ . '/assets/css/figma_sync_index.css';
 if (file_exists($_fs_css_file)) { $page_css .= "\n" . file_get_contents($_fs_css_file); }
@@ -166,19 +156,45 @@ include __DIR__ . '/includes/header.php';
     </div>
 
     <?php if (!empty($effective_treatment_id) && !empty($dosage_options)): ?>
+    <?php
+    // 단위별 그룹: ['cc' => [opt, opt...], '샷' => [...]]
+    $_dosage_groups = [];
+    foreach ($dosage_options as $_dopt) { $_dosage_groups[$_dopt['unit']][] = $_dopt; }
+    ?>
     <div style="padding: 0 16px; margin-bottom: 10px;">
         <div id="dosageChips" role="group" aria-label="용량 선택">
-            <button type="button" onclick="setDosage('')" class="dosage-chip<?php echo empty($selected_dosage) ? ' active' : ''; ?>">전체</button>
-            <?php foreach ($dosage_options as $_dopt): ?>
-            <button type="button" onclick="setDosage(<?php echo htmlspecialchars(json_encode($_dopt['label'], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>)" class="dosage-chip<?php echo (!empty($selected_dosage) && $selected_dosage['label'] === $_dopt['label']) ? ' active' : ''; ?>"><?php echo htmlspecialchars($_dopt['label']); ?></button>
+            <?php $_gi = 0; foreach ($_dosage_groups as $_unit => $_opts): $_gi++;
+                $_group_open = !empty($selected_dosage) && $selected_dosage['unit'] === $_unit; ?>
+            <div class="dosage-group<?php echo $_group_open ? ' open' : ''; ?>" id="dosageGroup<?php echo $_gi; ?>">
+                <button type="button" class="dosage-unit-btn" aria-expanded="<?php echo $_group_open ? 'true' : 'false'; ?>" aria-controls="dosageGroup<?php echo $_gi; ?>" data-has-selected="<?php echo $_group_open ? '1' : '0'; ?>" onclick="toggleDosageUnit(this)">
+                    <span class="dosage-unit-label"><?php echo htmlspecialchars($_unit); ?></span><span class="dosage-all-label">전체</span><i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </button>
+                <?php foreach ($_opts as $_ci => $_dopt):
+                    $_is_active = !empty($selected_dosage) && $selected_dosage['label'] === $_dopt['label']; ?>
+                <button type="button" style="--i:<?php echo $_ci; ?>" tabindex="<?php echo $_group_open ? '0' : '-1'; ?>" onclick="setDosage(<?php echo $_is_active ? "''" : htmlspecialchars(json_encode($_dopt['label'], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>)" class="dosage-chip<?php echo $_is_active ? ' active' : ''; ?>" aria-pressed="<?php echo $_is_active ? 'true' : 'false'; ?>"><?php echo htmlspecialchars($_dopt['label']); ?></button>
+                <?php endforeach; ?>
+            </div>
             <?php endforeach; ?>
         </div>
         <style>
-        #dosageChips { display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+        #dosageChips { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 0; }
         #dosageChips::-webkit-scrollbar { display:none; }
-        .dosage-chip { padding:4px 12px; border:1px solid transparent; border-radius:20px; background:transparent; font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1)); color:#666; cursor:pointer; white-space:nowrap; line-height:1.3; }
+        .dosage-group { display:flex; align-items:center; flex-shrink:0; }
+        .dosage-unit-btn { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border:1px solid #AAAAAA; border-radius:20px; background:var(--bs-body-bg, #fff); color:#000; font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:600; line-height:1.3; cursor:pointer; white-space:nowrap; transition:border-color .2s; }
+        .dosage-unit-btn i { font-size:12px; transition:transform .3s ease; }
+        .dosage-group.open .dosage-unit-btn { border-color:#000; }
+        .dosage-all-label { display:none; }
+        .dosage-group.open .dosage-unit-label { display:none; }
+        .dosage-group.open .dosage-all-label { display:inline; }
+        .dosage-group.touched .dosage-unit-btn span { animation:dosageLabelIn .25s ease; }
+        @keyframes dosageLabelIn { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
+        .dosage-group.open .dosage-unit-btn i { transform:rotate(180deg); }
+        .dosage-chip { flex-shrink:0; max-width:0; margin-left:0; padding:4px 0; border:1px solid transparent; border-radius:20px; background:transparent; font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1)); color:#666; cursor:pointer; white-space:nowrap; line-height:1.3; overflow:hidden; opacity:0; transform:translateX(-12px); pointer-events:none;
+            transition:max-width .3s ease, padding .3s ease, margin .3s ease, opacity .2s ease, transform .3s ease; transition-delay:0s; }
+        .dosage-group.open .dosage-chip { max-width:120px; margin-left:6px; padding:4px 12px; opacity:1; transform:translateX(0); pointer-events:auto; transition-delay:calc(var(--i, 0) * 40ms); }
         .dosage-chip.active { border-color:#000; color:#000; font-weight:600; background:var(--bs-body-bg, #fff); }
         .dosage-chip:hover:not(.active) { color:#000; }
+        @media (prefers-reduced-motion: reduce) { .dosage-chip, .dosage-unit-btn i { transition:none !important; } .dosage-unit-btn span { animation:none !important; } }
         </style>
     </div>
     <?php endif; ?>
@@ -209,7 +225,7 @@ if ($use_content_cache) {
 ?>
 
 <script>
-// URL의 dosage가 현재 시술의 유효한 용량이 아니면 URL에서 제거 (UI '전체'와 URL 일치)
+// URL의 dosage가 현재 시술의 유효한 용량이 아니면 URL에서 제거 (UI와 URL 일치)
 (function() {
     var u = new URL(window.location.href);
     if (u.searchParams.has('dosage') && <?php echo empty($selected_dosage) ? 'true' : 'false'; ?>) {
@@ -217,6 +233,19 @@ if ($use_content_cache) {
         history.replaceState(null, '', u.pathname + u.search + u.hash);
     }
 })();
+function toggleDosageUnit(btn) {
+    var group = btn.parentNode;
+    // 열린 상태의 '전체' 클릭: 선택된 용량이 있으면 해제(전체 보기), 없으면 접기
+    if (group.classList.contains('open') && btn.getAttribute('data-has-selected') === '1') {
+        setDosage('');
+        return;
+    }
+    var open = !group.classList.contains('open');
+    group.classList.add('touched');
+    group.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    group.querySelectorAll('.dosage-chip').forEach(function(c) { c.tabIndex = open ? 0 : -1; });
+}
 function setDosage(val) {
     var url = new URL(window.location);
     if (val) url.searchParams.set('dosage', val); else url.searchParams.delete('dosage');
