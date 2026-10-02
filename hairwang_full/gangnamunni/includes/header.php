@@ -355,7 +355,10 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
         var onTarget = location.pathname.indexOf(target) !== -1;
         var url = onTarget ? new URL(location.href) : new URL(target, location.href);
         if (regions.length > 0) url.searchParams.set('region', regions.join(',')); else url.searchParams.delete('region');
+        var oldKeyword = url.searchParams.get('q') || '';
         if (keyword) url.searchParams.set('q', keyword); else url.searchParams.delete('q');
+        // 검색어가 바뀌면 이전 시술의 용량(dosage) 필터는 의미가 없으므로 제거
+        if (keyword !== oldKeyword) url.searchParams.delete('dosage');
         url.searchParams.delete('page'); // 검색/필터 변경 시 페이지네이션 초기화
         location.href = url.pathname + url.search;
     }

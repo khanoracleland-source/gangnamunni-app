@@ -76,6 +76,12 @@ if ($effective_treatment_id <= 0 && $effective_treatment !== '') {
         $effective_treatment_id = intval($effective_treatment_id);
     }
 }
+require_once __DIR__ . '/hospital_dosage_filter.php';
+$dosage_options = hospital_dosage_options($connect, $effective_treatment_id);
+$selected_dosage = hospital_dosage_selected($dosage_options, $_GET['dosage'] ?? '');
+$dosage_cond_tp = hospital_dosage_sql_condition($connect, $selected_dosage, 'tp');
+$dosage_cond_p = hospital_dosage_sql_condition($connect, $selected_dosage, 'p');
+
 $region = isset($_GET['region']) ? trim($_GET['region']) : '';
 $region_list = array_filter(array_map('trim', explode(',', $region)));
 
@@ -97,7 +103,7 @@ switch($sort) {
                     SELECT tp.price
                     FROM gangnamunni_hospital_treatments sht
                     INNER JOIN gangnamunni_hospital_treatment_prices tp
-                        ON tp.hospital_treatment_id = sht.id AND tp.price > 0
+                        ON tp.hospital_treatment_id = sht.id AND tp.price > 0{$dosage_cond_tp}
                     WHERE sht.hospital_id = gangnamunni_hospitals.id
                       AND sht.treatment_id = {$effective_treatment_id}
                       AND sht.status = 'active' AND sht.is_active = 1
@@ -160,6 +166,14 @@ if (!empty($keyword)) {
     )";
 }
 if (!empty($category)) { $base_where .= " AND treatment_tags LIKE '%{$escaped_category}%'"; }
+if ($selected_dosage && $effective_treatment_id > 0) {
+    $base_where .= " AND id IN (
+        SELECT ht.hospital_id
+        FROM gangnamunni_hospital_treatments ht
+        INNER JOIN gangnamunni_hospital_treatment_prices p ON p.hospital_treatment_id = ht.id AND p.price > 0{$dosage_cond_p}
+        WHERE ht.treatment_id = {$effective_treatment_id} AND ht.status = 'active' AND ht.is_active = 1
+    )";
+}
 if (!empty($treatment)) {
     $base_where .= " AND id IN (
         SELECT ht.hospital_id FROM gangnamunni_hospital_treatments ht
@@ -263,7 +277,15 @@ if (!empty($effective_treatment)) {
 
     if (!empty($slot_hospital_ranks) && $sort !== 'price') {
         $_slot_id_list = implode(',', array_keys($slot_hospital_ranks));
-        $_slot_h_r = mysqli_query($connect, "SELECT * FROM gangnamunni_hospitals WHERE id IN ({$_slot_id_list}) AND is_active=1 AND COALESCE(is_demo,0)=0 AND (status='approved' OR status IS NULL)");
+        $_slot_dosage_where = '';
+        if ($selected_dosage) {
+            $_slot_dosage_where = " AND id IN (
+                SELECT ht.hospital_id FROM gangnamunni_hospital_treatments ht
+                INNER JOIN gangnamunni_hospital_treatment_prices p ON p.hospital_treatment_id = ht.id AND p.price > 0{$dosage_cond_p}
+                WHERE ht.treatment_id = {$treatment_id_for_slot} AND ht.status = 'active' AND ht.is_active = 1
+            )";
+        }
+        $_slot_h_r = mysqli_query($connect, "SELECT * FROM gangnamunni_hospitals WHERE id IN ({$_slot_id_list}) AND is_active=1 AND COALESCE(is_demo,0)=0 AND (status='approved' OR status IS NULL){$_slot_dosage_where}");
         $_slot_h_rows = [];
         if ($_slot_h_r) { while ($_slot_h_row = mysqli_fetch_assoc($_slot_h_r)) { $_slot_h_rows[(int)$_slot_h_row['id']] = $_slot_h_row; } }
 
@@ -320,17 +342,17 @@ if (!empty($hospitals) && !empty($effective_treatment)) {
         SELECT ht.hospital_id, tm.name AS treatment_name, tm.description,
                ht.dosage_value, ht.dosage_unit,
                (SELECT p.dosage_value FROM gangnamunni_hospital_treatment_prices p
-                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0{$dosage_cond_p}
                   ORDER BY {$hospital_display_price_option_order} LIMIT 1) AS display_dosage_value,
                (SELECT p.dosage_unit FROM gangnamunni_hospital_treatment_prices p
-                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0{$dosage_cond_p}
                   ORDER BY {$hospital_display_price_option_order} LIMIT 1) AS display_dosage_unit,
                tm.avg_price_min AS default_min, tm.avg_price_max AS default_max,
                (SELECT p.price FROM gangnamunni_hospital_treatment_prices p
-                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0{$dosage_cond_p}
                   ORDER BY {$hospital_display_price_option_order} LIMIT 1) AS display_sale_price,
                (SELECT " . ($hospital_regular_price_column ? "p.regular_price" : "p.price") . " FROM gangnamunni_hospital_treatment_prices p
-                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0
+                  WHERE p.hospital_treatment_id = ht.id AND p.price > 0{$dosage_cond_p}
                   ORDER BY {$hospital_display_price_option_order} LIMIT 1) AS display_regular_price
         FROM gangnamunni_hospital_treatments ht
         INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id

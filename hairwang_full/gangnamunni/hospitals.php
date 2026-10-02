@@ -31,6 +31,12 @@ if (!$use_content_cache) {
         ? adSlotResolveTreatment($connect, $keyword)
         : null;
     $should_default_price_sort = $treatment !== '' || !empty($resolved_keyword_treatment);
+    require_once __DIR__ . '/includes/hospital_dosage_filter.php';
+    $effective_treatment_id = $resolved_keyword_treatment
+        ? (int)$resolved_keyword_treatment['id']
+        : hospital_dosage_resolve_treatment_id($connect, $treatment);
+    $dosage_options = hospital_dosage_options($connect, $effective_treatment_id);
+    $selected_dosage = hospital_dosage_selected($dosage_options, $_GET['dosage'] ?? '');
     $sort = (string)($_GET['sort'] ?? ($should_default_price_sort ? 'price' : 'manual'));
     if (!in_array($sort, ['manual', 'price', 'rating', 'popular', 'review'], true)) $sort = 'manual';
     $s = [];
@@ -159,6 +165,24 @@ include __DIR__ . '/includes/header.php';
         </style>
     </div>
 
+    <?php if (!empty($effective_treatment_id) && !empty($dosage_options)): ?>
+    <div style="padding: 0 16px; margin-bottom: 10px;">
+        <div id="dosageChips" role="group" aria-label="용량 선택">
+            <button type="button" onclick="setDosage('')" class="dosage-chip<?php echo empty($selected_dosage) ? ' active' : ''; ?>">전체</button>
+            <?php foreach ($dosage_options as $_dopt): ?>
+            <button type="button" onclick="setDosage(<?php echo htmlspecialchars(json_encode($_dopt['label'], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>)" class="dosage-chip<?php echo (!empty($selected_dosage) && $selected_dosage['label'] === $_dopt['label']) ? ' active' : ''; ?>"><?php echo htmlspecialchars($_dopt['label']); ?></button>
+            <?php endforeach; ?>
+        </div>
+        <style>
+        #dosageChips { display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+        #dosageChips::-webkit-scrollbar { display:none; }
+        .dosage-chip { padding:4px 12px; border:1px solid transparent; border-radius:20px; background:transparent; font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1)); color:#666; cursor:pointer; white-space:nowrap; line-height:1.3; }
+        .dosage-chip.active { border-color:#000; color:#000; font-weight:600; background:var(--bs-body-bg, #fff); }
+        .dosage-chip:hover:not(.active) { color:#000; }
+        </style>
+    </div>
+    <?php endif; ?>
+
     <div class="results-header" style="padding: 0 16px;">
         <?php if (!empty($category)): ?>
         <span class="search-filter-chip"><?php echo htmlspecialchars($category); ?><span class="chip-remove" onclick="removeSearchParam('category')" role="button" aria-label="필터 제거">&times;</span></span>
@@ -171,6 +195,7 @@ include __DIR__ . '/includes/header.php';
     function removeSearchParam(name) {
         var u = new URL(window.location.href);
         u.searchParams.delete(name);
+        if (name === 'treatment' || name === 'q') u.searchParams.delete('dosage');
         window.location.href = u.pathname + u.search;
     }
     </script>
@@ -184,6 +209,19 @@ if ($use_content_cache) {
 ?>
 
 <script>
+// URL의 dosage가 현재 시술의 유효한 용량이 아니면 URL에서 제거 (UI '전체'와 URL 일치)
+(function() {
+    var u = new URL(window.location.href);
+    if (u.searchParams.has('dosage') && <?php echo empty($selected_dosage) ? 'true' : 'false'; ?>) {
+        u.searchParams.delete('dosage');
+        history.replaceState(null, '', u.pathname + u.search + u.hash);
+    }
+})();
+function setDosage(val) {
+    var url = new URL(window.location);
+    if (val) url.searchParams.set('dosage', val); else url.searchParams.delete('dosage');
+    window.location = url;
+}
 function setSort(val) {
     var url = new URL(window.location);
     url.searchParams.set('sort', val);
