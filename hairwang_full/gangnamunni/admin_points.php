@@ -64,6 +64,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: admin_points.php?msg=settings'); exit;
     }
 
+    // 포인트 제도 v2 설정 저장
+    if ($act === 'save_v2' && points_v2_schema_ready($connect)) {
+        $sw = ['v2_policy_enabled', 'v2_expire_job_enabled', 'v2_point_use_enabled', 'v2_progress_enabled', 'v2_first_review_enabled'];
+        $nums = ['v2_expire_days', 'v2_monthly_cap', 'v2_review_photo_point', 'v2_review_receipt_point', 'v2_review_first_point',
+            'v2_first_yearly_cap', 'v2_progress_procedure_point', 'v2_progress_surgery_point', 'v2_progress_procedure_entries',
+            'v2_progress_surgery_entries', 'v2_progress_resubmit_days', 'v2_pay_tier1_under', 'v2_pay_tier1_point',
+            'v2_pay_tier2_under', 'v2_pay_tier2_point', 'v2_pay_tier3_point', 'v2_point_use_min_pay', 'v2_hold_ttl_minutes'];
+        $pairs = [];
+        foreach ($sw as $k) $pairs[$k] = isset($_POST[$k]) ? '1' : '0';
+        foreach ($nums as $k) if (isset($_POST[$k])) $pairs[$k] = (string)max(0, (int)$_POST[$k]);
+        $hol = array_filter(array_map('trim', explode(',', (string)($_POST['v2_holidays'] ?? ''))), fn($d) => preg_match('/^\d{4}-\d{2}-\d{2}$/', $d));
+        $pairs['v2_holidays'] = implode(',', $hol);
+        // 소멸·결제 사용은 lot 재구성(lots_ready=1) 전에는 켤 수 없다
+        if ((int)points_setting($connect, 'lots_ready', '0') !== 1) { $pairs['v2_expire_job_enabled'] = '0'; $pairs['v2_point_use_enabled'] = '0'; }
+        points_save_settings($connect, $pairs);
+        header('Location: admin_points.php?msg=settings#v2'); exit;
+    }
+
     // 데모 포인트 데이터 생성 (원장 경유)
     if ($act === 'generate_demo' && isDevMode($connect)) {
         $demo_members = [1, 3, 15, 16, 17]; // g5_member.mb_no
@@ -181,6 +199,62 @@ require_once __DIR__ . '/includes/admin_header.php';
     </form>
 </div></div>
 
+<?php if (points_v2_schema_ready($connect)):
+    $v2 = $pset; $v2v = function ($k, $d) use ($v2) { return htmlspecialchars((string)($v2[$k] ?? $d), ENT_QUOTES); };
+    $lots_ready = (int)($v2['lots_ready'] ?? 0) === 1; ?>
+<!-- 포인트 제도 v2 (#포인트제도 v2) -->
+<div class="card mb-4" id="v2"><div class="card-body">
+    <h6 class="mb-1"><i class="bi bi-toggles me-1"></i>포인트 제도 v2 <small class="text-body-secondary">— 기능별 스위치(기본 꺼짐)</small></h6>
+    <div class="small text-body-secondary mb-3">
+        적립 단위(lot) 재구성: <?php echo $lots_ready ? '<span class="badge bg-success">완료</span>' : '<span class="badge bg-warning text-dark">필요</span> 서버에서 <code>php gangnamunni/tools/points_v2_backfill.php</code> 실행 후 소멸·결제 사용을 켤 수 있습니다.'; ?>
+        · 일일 크론: <code>cron_points_daily.php</code> (00:10 권장)
+        <?php if ((int)($v2['enabled'] ?? 0) !== 1): ?> · <span class="text-danger">상단 '제도 사용'이 꺼져 있으면 v2 기능도 모두 꺼집니다.</span><?php endif; ?>
+    </div>
+    <form method="post">
+        <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_points_csrf, ENT_QUOTES); ?>">
+        <input type="hidden" name="action" value="save_v2">
+        <div class="row g-2 mb-3">
+        <?php foreach ([
+            'v2_policy_enabled' => ['v2 적립 규칙', '후기 유형별·결제 금액 구간 적립, 90일 기한, 삭제 시 회수'],
+            'v2_first_review_enabled' => ['첫 후기 일괄 적립', '매주 화요일(공휴일이면 익영업일) 크론'],
+            'v2_progress_enabled' => ['경과 후기', '사용자 화면 노출'],
+            'v2_expire_job_enabled' => ['자동 소멸', '기한 지난 포인트 소멸(크론)'],
+            'v2_point_use_enabled' => ['결제 시 포인트 사용', 'PortOne 결제 금액에서 차감'],
+        ] as $k => [$label, $desc]):
+            $locked = in_array($k, ['v2_expire_job_enabled', 'v2_point_use_enabled'], true) && !$lots_ready; ?>
+            <div class="col-md-4 col-lg"><div class="border rounded p-2 h-100">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="<?php echo $k; ?>" value="1" id="<?php echo $k; ?>" <?php echo ((int)($v2[$k] ?? 0) === 1) ? 'checked' : ''; ?> <?php echo $locked ? 'disabled' : ''; ?>>
+                    <label class="form-check-label fw-semibold" for="<?php echo $k; ?>"><?php echo $label; ?></label>
+                </div>
+                <div class="small text-body-secondary"><?php echo $desc; ?><?php echo $locked ? ' · lot 재구성 필요' : ''; ?></div>
+            </div></div>
+        <?php endforeach; ?>
+        </div>
+        <div class="row g-2">
+        <?php foreach ([
+            'v2_expire_days' => ['사용 기한(일)', 90], 'v2_monthly_cap' => ['유형별 월 한도(회)', 3],
+            'v2_review_photo_point' => ['일반 후기(전·후) P', 3000], 'v2_review_receipt_point' => ['영수증 인증 P', 3000],
+            'v2_review_first_point' => ['첫 후기 P', 10000], 'v2_first_yearly_cap' => ['첫 후기 1년 한도(건)', 5],
+            'v2_progress_procedure_point' => ['경과(시술) P', 6000], 'v2_progress_surgery_point' => ['경과(수술) P', 15000],
+            'v2_progress_procedure_entries' => ['경과(시술) 필요 회수', 3], 'v2_progress_surgery_entries' => ['경과(수술) 필요 회수', 10],
+            'v2_progress_resubmit_days' => ['반려 후 수정 가능(일)', 30],
+            'v2_pay_tier1_under' => ['결제 구간1 미만(원)', 50000], 'v2_pay_tier1_point' => ['구간1 적립 P', 3000],
+            'v2_pay_tier2_under' => ['결제 구간2 미만(원)', 100000], 'v2_pay_tier2_point' => ['구간2 적립 P', 5000],
+            'v2_pay_tier3_point' => ['그 이상 적립 P', 10000],
+            'v2_point_use_min_pay' => ['포인트 사용 시 최소 결제(원)', 1000], 'v2_hold_ttl_minutes' => ['미결제 포인트 복구(분)', 60],
+        ] as $k => [$label, $def]): ?>
+            <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-1"><?php echo $label; ?></label>
+                <input type="number" min="0" class="form-control form-control-sm" name="<?php echo $k; ?>" value="<?php echo $v2v($k, $def); ?>"></div>
+        <?php endforeach; ?>
+            <div class="col-12 col-lg-6"><label class="form-label small mb-1">공휴일(첫 후기 일괄 적립 순연, YYYY-MM-DD 쉼표 구분)</label>
+                <input type="text" class="form-control form-control-sm" name="v2_holidays" value="<?php echo $v2v('v2_holidays', ''); ?>" placeholder="2026-12-25,2027-01-01"></div>
+            <div class="col-12 col-lg-2 d-flex align-items-end"><button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-save me-1"></i>v2 설정 저장</button></div>
+        </div>
+    </form>
+</div></div>
+<?php endif; ?>
+
 <div class="row mb-4">
 <div class="col-md-4">
     <div class="card"><div class="card-body text-center">
@@ -201,7 +275,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             <td><?php echo $h['id']; ?></td>
             <td><?php echo htmlspecialchars($h['member_id']); ?></td>
             <?php
-                $type_labels = ['earn'=>'적립','use'=>'사용','refund'=>'환불복구','expire'=>'만료','admin_add'=>'관리자적립','admin_sub'=>'관리자차감','earn_cancel'=>'적립취소','admin'=>'적립'];
+                $type_labels = ['earn'=>'적립','use'=>'사용','refund'=>'환불복구','expire'=>'소멸','admin_add'=>'관리자적립','admin_sub'=>'관리자차감','earn_cancel'=>'적립취소','admin'=>'적립'];
                 $is_cr = points_is_credit($h['type']);
             ?>
             <td><span class="badge <?php echo $is_cr?'bg-success':'bg-danger'; ?>"><?php echo $type_labels[$h['type']] ?? htmlspecialchars($h['type']); ?></span></td>
