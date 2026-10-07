@@ -2,6 +2,7 @@
 require_once __DIR__ . '/payment_core.php';
 require_once __DIR__ . '/booking_payment_access.php';
 require_once __DIR__ . '/portone_client.php';
+require_once __DIR__ . '/points_checkout.php';
 
 function booking_payment_lock(mysqli $db, string $merchant, callable $work) {
     $key = 'payment:' . substr(hash('sha256', $merchant), 0, 48);
@@ -95,6 +96,8 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
         $confirmed->bind_param('ii', $order['id'], $cancelled);
         $confirmed->execute();
         $result = booking_payment_by_merchant($db, $order['merchant_uid']);
+        // 포인트 결제(#포인트제도 v2): 결제 완료 → 홀드 확정, 전액 취소 → 사용 포인트 복구(같은 트랜잭션)
+        points_checkout_after_sync($db, $result);
         $db->commit();
         return $result;
     } catch (Throwable $e) {

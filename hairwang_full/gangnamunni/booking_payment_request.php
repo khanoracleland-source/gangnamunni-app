@@ -45,7 +45,9 @@ if (!in_array($provider, ['bank', 'card', 'naverpay', 'kakaopay', 'tosspay'], tr
 }
 
 $point_use = max(0, (int)($_POST['point_use'] ?? 0));
-if ($point_use > 0) {
+// 포인트 결제(#포인트제도 v2): 스위치(v2_point_use_enabled)가 꺼져 있으면 기존처럼 거부한다.
+require_once __DIR__ . '/includes/points_checkout.php';
+if ($point_use > 0 && !points_checkout_ready($connect)) {
     bp_fail('포인트 차감 결제는 아직 구성되지 않았습니다. 포인트를 0원으로 변경한 뒤 결제해주세요.', 'POINT_PAYMENT_NOT_CONFIGURED', 503);
 }
 
@@ -72,7 +74,7 @@ if (($booking['status'] ?? '') !== 'confirmed') {
 
 // 주문 확인 — 금액은 원장에서만 읽는다(클라이언트가 보낸 금액은 신뢰하지 않는다)
 $ostmt = mysqli_prepare($connect,
-    "SELECT id, merchant_uid, amount, status, patient_name, patient_phone
+    "SELECT *
      FROM gangnamunni_platform_payments
      WHERE payment_type = 'booking' AND booking_id = ? LIMIT 1");
 if (!$ostmt) bp_fail('결제 원장이 설치되지 않았습니다.', 'LEDGER_NOT_INSTALLED', 503);
@@ -90,6 +92,33 @@ if ($order['status'] !== 'pending') {
 }
 
 require_once __DIR__ . '/includes/portone_client.php';
+
+// 포인트 적용/변경/해제 — 결제 잠금 안에서, PortOne 에 결제가 진행 중이지 않을 때만 금액을 바꾼다.
+if (points_v2_schema_ready($connect) && ($point_use > 0 || (int)($order['points_used'] ?? 0) > 0)) {
+    require_once __DIR__ . '/includes/booking_payment_service.php';
+    $pt_member_no = $is_user_logged_in ? points_member_no($connect, $logged_mb_id) : 0;
+    try {
+        $order = booking_payment_lock($connect, (string)$order['merchant_uid'], function () use ($connect, $order, $pt_member_no, $point_use) {
+            $fresh = booking_payment_by_merchant($connect, (string)$order['merchant_uid']);
+            if (($fresh['status'] ?? '') !== 'pending') throw new RuntimeException('결제할 수 없는 주문 상태입니다.');
+            try {
+                $remote = (new BookingPortOneClient())->payment((string)$fresh['merchant_uid']);
+                if (!in_array($remote['raw_status'] ?? '', ['READY', 'FAILED'], true)) {
+                    throw new RuntimeException('진행 중인 결제가 있어 포인트를 변경할 수 없습니다. 결제 상태를 먼저 확인해주세요.');
+                }
+            } catch (BookingPortOneRejectedException $e) {
+                // 아직 PortOne 에 결제 건이 없음(PAYMENT_NOT_FOUND) → 변경 가능
+            }
+            points_checkout_apply($connect, $fresh, $pt_member_no, $point_use);
+            return booking_payment_by_merchant($connect, (string)$order['merchant_uid']);
+        });
+    } catch (Throwable $e) {
+        error_log('[booking_payment_request] point apply: ' . $e->getMessage());
+        $msg = preg_match('/[가-힣]/u', $e->getMessage()) ? $e->getMessage() : '포인트를 적용하지 못했습니다. 잠시 후 다시 시도해주세요.';
+        bp_fail($msg, 'POINT_APPLY_FAILED', 409);
+    }
+}
+
 try {
     if (!booking_payment_live_enabled()) throw new RuntimeException('Payments disabled.');
     $channels = booking_payment_channels();

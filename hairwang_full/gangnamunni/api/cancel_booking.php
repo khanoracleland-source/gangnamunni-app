@@ -110,6 +110,14 @@ try {
     error_log('[cancel_booking] refund status update failed after cancel: ' . $e->getMessage());
 }
 
+// 포인트 결제(#포인트제도 v2): 결제 전 취소 → 결제에 걸어 둔 포인트 복구
+try {
+    require_once dirname(__DIR__) . '/includes/points_checkout.php';
+    points_checkout_release_for_booking($connect, $booking_id, '예약 취소 포인트 복구');
+} catch (\Throwable $e) {
+    error_log('[cancel_booking] point hold release failed: ' . $e->getMessage());
+}
+
 if (!empty($booking['mb_id'])) {
     try {
         $member_no = points_member_no($connect, $booking['mb_id']);

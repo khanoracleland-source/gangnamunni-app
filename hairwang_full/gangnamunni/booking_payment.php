@@ -99,7 +99,7 @@ if ($fatal === '') {
 
 if ($ledger_ready) {
     $ostmt = mysqli_prepare($connect,
-        "SELECT id, merchant_uid, amount, refunded_amount, status, paid_at, provider
+        "SELECT *
          FROM gangnamunni_platform_payments
          WHERE payment_type = 'booking' AND booking_id = ? LIMIT 1");
     mysqli_stmt_bind_param($ostmt, 'i', $booking_id);
@@ -112,7 +112,7 @@ if ($ledger_ready) {
             require_once __DIR__ . '/includes/payment_core.php';
             platform_payment_create_booking($connect, $booking_id);
             $ostmt = mysqli_prepare($connect,
-                "SELECT id, merchant_uid, amount, refunded_amount, status, paid_at, provider
+                "SELECT *
                  FROM gangnamunni_platform_payments
                  WHERE payment_type = 'booking' AND booking_id = ? LIMIT 1");
             mysqli_stmt_bind_param($ostmt, 'i', $booking_id);
@@ -131,7 +131,11 @@ $is_confirmed = ($status === 'confirmed');
 $order_status = $order['status'] ?? '';
 $is_paid = in_array($order_status, ['paid', 'partially_refunded'], true);
 $amount = (int)($order['amount'] ?? ($booking['price'] ?? 0));
-$display_amount = max(0, $amount);
+// 포인트 결제(#포인트제도 v2): 화면 기준 금액은 포인트 차감 전 총액(gross)
+$points_applied = (int)($order['points_used'] ?? 0);
+$gross_amount = (int)($order['gross_amount'] ?? 0);
+if ($gross_amount <= 0) $gross_amount = $amount + $points_applied;
+$display_amount = max(0, $gross_amount);
 $point_balance = 0;
 if ($is_user_logged_in && $logged_mb_id !== '' && function_exists('points_member_no') && function_exists('points_balance_safe')) {
     try {
@@ -141,8 +145,25 @@ if ($is_user_logged_in && $logged_mb_id !== '' && function_exists('points_member
         error_log('[booking_payment] optional point balance unavailable');
     }
 }
-$max_point_use = 0; // Point spending awaits an atomic reservation/refund integration.
+$max_point_use = 0;
 $expected_points = 0;
+$point_use_ready = false;
+$point_policy_v2 = false;
+if (file_exists(__DIR__ . '/includes/points_checkout.php')) {
+    require_once __DIR__ . '/includes/points_checkout.php';
+    require_once __DIR__ . '/includes/points_policy_engine.php';
+    try {
+        $point_policy_v2 = points_v2_on($connect, 'v2_policy_enabled');
+        if ($point_policy_v2) $expected_points = points_v2_payment_tier_point($connect, $display_amount);
+        $point_use_ready = $is_user_logged_in && !$is_paid && $order_status === 'pending' && points_checkout_ready($connect);
+        if ($point_use_ready && !empty($member_no)) {
+            $max_point_use = points_checkout_max($connect, $member_no, $display_amount, $points_applied);
+        }
+    } catch (Throwable $e) {
+        error_log('[booking_payment] point v2 unavailable: ' . $e->getMessage());
+        $point_use_ready = false; $max_point_use = 0;
+    }
+}
 $preview = booking_payment_previews($connect, [$booking_id]);
 $channels = booking_payment_channels();
 $live_available = booking_payment_checkout_ready();
@@ -424,12 +445,16 @@ a { color: inherit; text-decoration: none; }
                     <h2 class="bp-section-title">적용 가능한 할인을 확인해보세요</h2>
                     <div class="bp-point-label">포인트</div>
                     <div class="bp-point-box">
-                        <input class="bp-point-input" id="pointInput" disabled inputmode="numeric" value="0" aria-label="사용할 포인트">
+                        <input class="bp-point-input" id="pointInput" <?php echo ($point_use_ready && $max_point_use > 0) ? '' : 'disabled'; ?> inputmode="numeric" value="<?php echo bp_money($point_use_ready ? $points_applied : 0); ?>" aria-label="사용할 포인트">
                         <span class="bp-point-unit">P</span>
-                        <button type="button" class="bp-point-max" id="pointMaxBtn" disabled>최대적용</button>
+                        <button type="button" class="bp-point-max" id="pointMaxBtn" <?php echo ($point_use_ready && $max_point_use > 0) ? '' : 'disabled'; ?>>최대적용</button>
                     </div>
                     <div class="bp-point-help">사용가능 <strong><?php echo bp_money($max_point_use); ?>P</strong> / 보유 <?php echo bp_money($point_balance); ?>P</div>
+                    <?php if ($point_use_ready): ?>
+                    <div class="bp-point-note">1P = 1원으로 사용되며, 최소 <?php echo bp_money(points_v2_int($connect, 'v2_point_use_min_pay', 1000)); ?>원은 결제해야 합니다. 결제를 취소하면 사용한 포인트는 복구됩니다.</div>
+                    <?php else: ?>
                     <div class="bp-point-note">포인트 사용 및 결제 적립은 준비 중입니다. 현재 결제 금액에는 적용되지 않습니다.</div>
+                    <?php endif; ?>
                 </section>
 
                 <section class="bp-section bp-payment-method-section">
@@ -517,6 +542,7 @@ a { color: inherit; text-decoration: none; }
 (function() {
     var baseAmount = <?php echo (int)$display_amount; ?>;
     var maxPoint = <?php echo (int)$max_point_use; ?>;
+    var expectedPoints = <?php echo (int)$expected_points; ?>;
     var bookingId = <?php echo (int)$booking_id; ?>;
     var csrfToken = <?php echo json_encode($_SESSION['csrf_token'] ?? '', JSON_UNESCAPED_UNICODE); ?>;
     var selectedProvider = <?php echo json_encode(array_key_first($channels) ?: 'card'); ?>;
@@ -572,7 +598,7 @@ a { color: inherit; text-decoration: none; }
         if (pointUseSummary) pointUseSummary.textContent = '-' + money(used) + '원';
         if (totalSummary) totalSummary.textContent = money(total) + '원';
         if (stickyTotal) stickyTotal.textContent = money(total) + '원';
-        if (expected) expected.textContent = '준비 중';
+        if (expected) expected.textContent = expectedPoints > 0 ? money(expectedPoints) + ' P' : '준비 중';
     }
     function showResult(message, type) {
         var box = document.getElementById('payResult');
@@ -704,7 +730,7 @@ a { color: inherit; text-decoration: none; }
     if (payBtn) payBtn.addEventListener('click', function() {
         if (busy || !agreed()) return;
         setBusy(true);
-        post('booking_payment_request.php', {provider:selectedProvider, point_use:'0'}).then(function(d) {
+        post('booking_payment_request.php', {provider:selectedProvider, point_use:String(currentPointUse())}).then(function(d) {
             if (!window.PortOne) throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.');
             // A result carrying a code is a failure. Either way the server decides.
             return window.PortOne.requestPayment(d.payment).then(function(result) {

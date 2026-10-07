@@ -392,10 +392,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $bk_mb_no = points_member_no($connect, $booking_row['mb_id']);
                 if ($bk_mb_no > 0) {
                     if ($new_status === 'completed' && booking_has_real_payment($connect, $id)) {
-                        points_earn_booking($connect, $bk_mb_no, $id, (int)($booking_row['price'] ?? 0));
+                        // 포인트 제도 v2: 결제 금액 구간별 적립(시술이용권 첫 사용 = 병원 시술 완료 처리)
+                        require_once __DIR__ . '/includes/points_policy_engine.php';
+                        if (points_v2_on($connect, 'v2_policy_enabled')) {
+                            points_v2_earn_booking($connect, $bk_mb_no, $id, (int)($booking_row['price'] ?? 0));
+                        } else {
+                            points_earn_booking($connect, $bk_mb_no, $id, (int)($booking_row['price'] ?? 0));
+                        }
                     } elseif ($new_status === 'cancelled') {
                         points_cancel_booking($connect, $bk_mb_no, $id);
                     }
+                }
+                if ($new_status === 'cancelled') {
+                    // 포인트 결제 v2: 결제 전 취소 → 결제에 걸어 둔 포인트 복구
+                    require_once __DIR__ . '/includes/points_checkout.php';
+                    points_checkout_release_for_booking($connect, $id, '예약 취소 포인트 복구');
                 }
             } catch (\Throwable $e) {
                 error_log('[admin_bookings] point processing failed (booking already committed): ' . $e->getMessage());
