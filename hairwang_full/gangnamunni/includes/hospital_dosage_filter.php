@@ -66,6 +66,8 @@ if (!function_exists('hospital_dosage_selected')) {
     function hospital_dosage_selected($options, $raw) {
         $raw = trim((string)$raw);
         if ($raw === '') return null;
+        // 용량이 1개뿐이면 칩을 숨기므로 필터도 적용하지 않음 (URL에서도 제거됨)
+        if (count($options) <= 1) return null;
         foreach ($options as $o) {
             if ($o['label'] === $raw) return $o;
         }

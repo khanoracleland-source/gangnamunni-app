@@ -169,7 +169,7 @@ include __DIR__ . '/includes/header.php';
         </style>
     </div>
 
-    <?php if (!empty($effective_treatment_id) && !empty($dosage_options)): ?>
+    <?php if (!empty($effective_treatment_id) && count($dosage_options) > 1): /* 용량 1개뿐이면 선택할 의미가 없으므로 숨김 */ ?>
     <?php
     // 단위별 그룹: ['cc' => [opt, opt...], '샷' => [...]]
     $_dosage_groups = [];
@@ -179,9 +179,9 @@ include __DIR__ . '/includes/header.php';
         <div id="dosageChips" role="group" aria-label="용량 선택">
             <?php $_gi = 0; foreach ($_dosage_groups as $_unit => $_opts): $_gi++;
                 $_group_open = !empty($selected_dosage) && $selected_dosage['unit'] === $_unit; ?>
-            <div class="dosage-group<?php echo $_group_open ? ' open' : ''; ?>" id="dosageGroup<?php echo $_gi; ?>">
+            <div class="dosage-group<?php echo $_group_open ? ' open has-selected' : ''; ?>" id="dosageGroup<?php echo $_gi; ?>">
                 <button type="button" class="dosage-unit-btn" aria-expanded="<?php echo $_group_open ? 'true' : 'false'; ?>" aria-controls="dosageGroup<?php echo $_gi; ?>" data-has-selected="<?php echo $_group_open ? '1' : '0'; ?>" onclick="toggleDosageUnit(this)">
-                    <span class="dosage-unit-label"><?php echo htmlspecialchars($_unit); ?></span><span class="dosage-all-label">전체</span><i class="bi bi-chevron-right" aria-hidden="true"></i>
+                    <span class="dosage-unit-label"><?php echo htmlspecialchars($_group_open ? $selected_dosage['label'] : $_unit); ?></span><span class="dosage-all-label">전체</span><i class="bi bi-chevron-right" aria-hidden="true"></i>
                 </button>
                 <?php foreach ($_opts as $_ci => $_dopt):
                     $_is_active = !empty($selected_dosage) && $selected_dosage['label'] === $_dopt['label']; ?>
@@ -198,6 +198,7 @@ include __DIR__ . '/includes/header.php';
         .dosage-unit-btn i { font-size:12px; transition:transform .3s ease; }
         .dosage-group.open .dosage-unit-btn { border-color:#000; }
         .dosage-all-label { display:none; }
+        .dosage-group.has-selected .dosage-unit-btn { border-color:#000; }
         .dosage-group.open .dosage-unit-label { display:none; }
         .dosage-group.open .dosage-all-label { display:inline; }
         .dosage-group.touched .dosage-unit-btn span { animation:dosageLabelIn .25s ease; }
@@ -255,10 +256,28 @@ function toggleDosageUnit(btn) {
         return;
     }
     var open = !group.classList.contains('open');
+    // 아코디언: 하나의 단위를 열면 다른 단위는 접기 (선택된 용량 필터는 그대로 유지)
+    if (open) {
+        document.querySelectorAll('#dosageChips .dosage-group.open').forEach(function(other) {
+            if (other === group) return;
+            other.classList.add('touched');
+            other.classList.remove('open');
+            var ob = other.querySelector('.dosage-unit-btn');
+            if (ob) ob.setAttribute('aria-expanded', 'false');
+            other.querySelectorAll('.dosage-chip').forEach(function(c) { c.tabIndex = -1; });
+        });
+    }
     group.classList.add('touched');
     group.classList.toggle('open', open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     group.querySelectorAll('.dosage-chip').forEach(function(c) { c.tabIndex = open ? 0 : -1; });
+    if (open) {
+        // 열린 단위가 화면 밖이면 가로 스크롤로 맞춤
+        var box = document.getElementById('dosageChips');
+        if (box && box.scrollWidth > box.clientWidth) {
+            setTimeout(function() { box.scrollTo({ left: Math.max(0, group.offsetLeft - box.offsetLeft - 4), behavior: 'smooth' }); }, 50);
+        }
+    }
 }
 function setDosage(val) {
     var url = new URL(window.location);
