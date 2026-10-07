@@ -114,8 +114,8 @@ button{font-family:inherit;}
 /* 요약 */
 .summary{padding:28px 24px 26px;}
 .summary .cap{font-size:calc(15px * var(--fs));font-weight:500;}
-.summary .bal{margin-top:6px;color:var(--pri);font-size:calc(36px * var(--fs));font-weight:700;line-height:1.2;letter-spacing:-.5px;}
-.summary .bal small{font-size:.6em;font-weight:500;margin-left:4px;}
+.summary .bal{margin-top:6px;color:var(--pri);font-size:36px;font-weight:700;line-height:1.2;letter-spacing:-.5px;}
+.summary .bal small{font-size:22px;font-weight:500;margin-left:4px;}
 .exp{margin-top:34px;display:flex;justify-content:space-between;font-size:calc(15px * var(--fs));font-weight:500;}
 .boxes{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .box{border:1px solid var(--line);padding:22px 20px;}

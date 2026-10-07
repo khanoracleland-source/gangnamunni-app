@@ -74,6 +74,17 @@ $page_css = '
     .hospital-grid.list-view .hospital-info { flex: 1; padding: 10px 12px; min-width: 0; }
     .hospital-grid.list-view .hospital-name { font-size: ' . $list_name . 'px; }
 
+    /* 리스트 카드: 썸네일을 카드 안쪽(좌우 여백)에 테두리 있는 정사각형으로 배치 */
+    .hospital-grid.list-view { gap: 0; padding-inline: 20px; }
+    .hospital-grid.list-view .hospital-card { align-items: flex-start; padding: 22px 0; border-top: 1px solid #ddd; overflow: visible; }
+    .hospital-grid.list-view .card-link { align-items: flex-start; }
+    .hospital-grid.list-view .hospital-image { width: 100px; height: 100px; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid #c8c8c8; box-sizing: border-box; background: #fff; }
+    .hospital-grid.list-view .hospital-info { padding: 0 36px 0 16px; }
+    .hospital-grid.list-view .hospital-name { font-weight: 500; line-height: 1.35; margin-bottom: 6px; }
+    .hospital-grid.list-view .card-wishlist { top: 20px; right: 0; }
+    .hospital-grid.list-view .grade-badge { top: 26px; left: 4px; }
+    .hospital-grid.list-view .addr-sep { color: #c8c8c8; margin: 0 6px; }
+
     .addr-full { display: none; }
     .addr-short { display: inline; }
     .no-result { text-align: center; padding: 80px 20px; color: var(--bs-secondary-color, #999); }
