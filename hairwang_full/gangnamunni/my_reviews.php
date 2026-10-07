@@ -28,6 +28,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
         mysqli_stmt_bind_param($stmt, 'is', $rid, $member_id);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
+        // 포인트 제도 v2: 삭제한 후기로 적립된 포인트 회수
+        if ($deleted_review) {
+            require_once __DIR__ . '/includes/points_policy_engine.php';
+            points_v2_on_review_removed($connect, $rid, '후기 삭제 회수');
+        }
         if (!empty($deleted_review['is_active'])) {
             $hid = (int)$deleted_review['hospital_id'];
             mysqli_query($connect, "UPDATE gangnamunni_hospitals SET
@@ -139,6 +144,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;width:10
 <div class="filter-tabs">
     <a href="?tab=writable" class="filter-tab <?php echo $tab === 'writable' ? 'active' : ''; ?>">작성가능</a>
     <a href="?tab=done" class="filter-tab <?php echo $tab === 'done' ? 'active' : ''; ?>">작성완료</a>
+    <?php
+    // 포인트 제도 v2: 경과 후기(기능 스위치가 켜져 있을 때만 노출)
+    require_once __DIR__ . '/includes/points_policy_engine.php';
+    if (points_v2_on($connect, 'v2_progress_enabled')): ?>
+    <a href="my_progress_reviews.php" class="filter-tab">경과 후기</a>
+    <?php endif; ?>
 </div>
 
 <main class="review-list">

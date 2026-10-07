@@ -36,6 +36,10 @@ $db->execute(
     [$review_id]
 );
 
+// 포인트 제도 v2: 삭제한 후기로 적립된 포인트 회수
+require_once dirname(__DIR__) . '/includes/points_policy_engine.php';
+points_v2_on_review_removed(null, $review_id, '후기 삭제 회수');
+
 // 병원 review_count/rating 업데이트
 $hospital_id = $review['hospital_id'];
 $db->execute(

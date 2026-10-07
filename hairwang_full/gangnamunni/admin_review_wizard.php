@@ -164,8 +164,12 @@ if (isset($_POST['ajax_action'])) {
                 echo json_encode(['success' => true, 'message' => count($ids) . '건 승인']);
             } elseif ($bulk === 'reject') {
                 $db->execute("UPDATE hospital_reviews SET is_active = 0, review_status = 'published', updated_at = NOW() WHERE id IN ({$placeholders})", $ids);
+                require_once __DIR__ . '/includes/points_policy_engine.php';
+                foreach ($ids as $_rid) points_v2_on_review_removed($connect ?? null, (int)$_rid, '후기 거부 회수');
                 echo json_encode(['success' => true, 'message' => count($ids) . '건 거부']);
             } elseif ($bulk === 'delete') {
+                require_once __DIR__ . '/includes/points_policy_engine.php';
+                foreach ($ids as $_rid) points_v2_on_review_removed($connect ?? null, (int)$_rid, '후기 삭제 회수');
                 $db->execute("DELETE FROM review_images WHERE review_id IN ({$placeholders})", $ids);
                 $db->execute("DELETE FROM hospital_reviews WHERE id IN ({$placeholders})", $ids);
                 echo json_encode(['success' => true, 'message' => count($ids) . '건 삭제']);

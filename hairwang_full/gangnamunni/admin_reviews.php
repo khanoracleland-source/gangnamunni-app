@@ -169,9 +169,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ai_ve
 
 // ===== 후기 포인트/통계 헬퍼(#포인트제도) =====
 require_once __DIR__ . '/includes/points_ledger.php';
+require_once __DIR__ . '/includes/points_policy_engine.php';
+// 포인트 제도 v2: 관리자가 승인 시 적립 유형(일반 전·후 사진 / 영수증 인증 / 없음)을 선택
+$points_v2_reviews = points_v2_on($connect, 'v2_policy_enabled');
+$points_v2_notes = [];
 
 /** 후기 승인 적립(멱등). 관리자 개별 입력액 우선, 없으면 기본 설정액. 반환: 실제 지급액(0=미지급). */
 function reviews_award_point($connect, $review, $rid, $override_amount = null) {
+    global $points_v2_reviews, $points_v2_notes;
+    if ($points_v2_reviews) {
+        $cat = (string)($_POST['point_category'] ?? 'none');
+        $r = points_v2_review_award($connect, $review, $rid, $cat);
+        if ($r['message'] !== '' && $cat !== 'none') $points_v2_notes[] = '#' . (int)$rid . ' ' . $r['message'];
+        return (int)$r['amount'];
+    }
     if (!points_kind_enabled($connect, 'review')) return 0;
     $pt = ($override_amount !== null && $override_amount !== '') ? (int)$override_amount : (int)points_setting($connect, 'review_default_point', '0');
     $mb_no = points_member_no($connect, $review['user_id'] ?? '');
@@ -183,6 +194,8 @@ function reviews_award_point($connect, $review, $rid, $override_amount = null) {
 /** 후기 거부/삭제 시 이전 승인 적립을 회수(멱등). */
 function reviews_revoke_point($connect, $rid) {
     // 제도가 나중에 비활성화되어도 과거에 지급된 포인트는 반드시 회수한다.
+    // v2 스키마가 있으면 유형별(전·후 사진/영수증/첫 후기) 적립까지 모두 회수(멱등).
+    if (points_v2_schema_ready($connect)) { points_v2_review_revoke_all($connect, (int)$rid); return; }
     points_revoke_earn($connect, 'review', (int)$rid, '후기 거부/삭제 회수');
 }
 
@@ -215,7 +228,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk_
             if (empty($r['is_active']) && reviews_award_point($connect, $r, (int)$r['id']) > 0) $awarded++;
         }
         reviews_recalc_hospital($db, $hids);
-        $message = count($ids) . "개 후기가 승인되었습니다." . ($awarded > 0 ? " ({$awarded}건 적립)" : "");
+        $message = count($ids) . "개 후기가 승인되었습니다." . ($awarded > 0 ? " ({$awarded}건 적립)" : "")
+            . (!empty($points_v2_notes) ? ' / 적립 제외: ' . implode(', ', $points_v2_notes) : '');
     }
 }
 
@@ -274,6 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
             if (!$was_published) {
                 $pt = reviews_award_point($connect, $review, $rid, $_POST['point_amount'] ?? null);
                 if ($pt > 0) $message .= " ({$pt}P 지급)";
+                if (!empty($points_v2_notes)) $message .= ' / 적립 제외: ' . implode(', ', $points_v2_notes);
             }
         } else {
             $db->execute("UPDATE hospital_reviews SET review_status = 'published', is_active = 0, updated_at = NOW() WHERE id = ?", [$rid]);
@@ -469,6 +484,9 @@ include __DIR__ . '/includes/admin_header.php';
 <!-- 페이지 헤더 -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="mb-0"><i class="bi bi-chat-dots"></i> 후기 관리</h5>
+    <?php if (points_v2_schema_ready($connect)): ?>
+    <a class="btn btn-outline-primary btn-sm" href="admin_progress_reviews.php"><i class="bi bi-journal-text"></i> 경과 후기 검수</a>
+    <?php endif; ?>
 </div>
 
 <!-- 알림 메시지 -->
@@ -589,6 +607,23 @@ include __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
+<?php if ($points_v2_reviews): ?>
+<!-- 포인트 제도 v2: 승인 시 적립 유형 선택 -->
+<div class="modal fade" id="pointCategoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content">
+    <div class="modal-header"><h6 class="modal-title">후기 승인 · 적립 유형</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="form-check mb-2"><input class="form-check-input" type="radio" name="pc_cat" id="pc_photo" value="photo" checked><label class="form-check-label" for="pc_photo">일반 후기(전·후 사진) <b><?php echo number_format(points_v2_int($connect, 'v2_review_photo_point', 3000)); ?>P</b></label></div>
+      <div class="form-check mb-2"><input class="form-check-input" type="radio" name="pc_cat" id="pc_receipt" value="receipt"><label class="form-check-label" for="pc_receipt">영수증 인증 후기 <b><?php echo number_format(points_v2_int($connect, 'v2_review_receipt_point', 3000)); ?>P</b></label></div>
+      <div class="form-check"><input class="form-check-input" type="radio" name="pc_cat" id="pc_none" value="none"><label class="form-check-label" for="pc_none">적립 없음</label></div>
+      <div class="small text-body-secondary mt-2">유형별 월 <?php echo (int)points_v2_int($connect, 'v2_monthly_cap', 3); ?>회 한도는 자동 확인됩니다. 첫 후기 적립은 매주 화요일 일괄 처리됩니다.</div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+      <button type="button" class="btn btn-success btn-sm" onclick="var d=document.getElementById('pointCategoryModal');var c=d.querySelector('input[name=pc_cat]:checked');adminAction(parseInt(d.dataset.reviewId,10),'approve',c?c.value:'none');">승인</button></div>
+  </div></div>
+</div>
+<?php endif; ?>
+
 <!-- 일괄 작업 바 -->
 <div id="bulkActions" class="alert alert-info py-2 align-items-center gap-2 mb-2" style="display:none;">
     <span><strong id="selectedCount">0</strong>개 선택</span>
@@ -596,6 +631,13 @@ include __DIR__ . '/includes/admin_header.php';
         <form method="POST" class="d-inline" onsubmit="return bulkSubmit(this, '선택한 후기를 승인하시겠습니까?')">
             <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_reviews_csrf, ENT_QUOTES); ?>">
             <input type="hidden" name="action" value="bulk_approve">
+            <?php if ($points_v2_reviews): ?>
+            <select name="point_category" class="form-select form-select-sm d-inline-block w-auto" title="적립 유형">
+                <option value="none">적립 없음</option>
+                <option value="photo">일반 후기(전·후 사진) <?php echo number_format(points_v2_int($connect, 'v2_review_photo_point', 3000)); ?>P</option>
+                <option value="receipt">영수증 인증 <?php echo number_format(points_v2_int($connect, 'v2_review_receipt_point', 3000)); ?>P</option>
+            </select>
+            <?php endif; ?>
             <span class="bulk-ids-container"></span>
             <button class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> 승인</button>
         </form>
@@ -879,6 +921,7 @@ include __DIR__ . '/includes/admin_header.php';
 $reviewsJson = json_encode($reviews, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 $reviewsCsrfJson = json_encode($admin_reviews_csrf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 $reviewsCsrfHtml = htmlspecialchars($admin_reviews_csrf, ENT_QUOTES, 'UTF-8');
+$pointsV2Js = $points_v2_reviews ? 'true' : 'false';
 
 $admin_extra_js = <<<JSBLOCK
 // 후기 데이터 캐시
@@ -1055,9 +1098,16 @@ function modalAction(action) {
 // 후기 승인/거부 API 호출
 // 개별 승인/거부 — 페이지로 POST 제출(강남언니 관리자 세션 인증 사용).
 // 기존 api/admin/approve_review.php 는 그누보드 회원세션 기준이라 관리자 세션과 불일치했음.
-function adminAction(reviewId, action) {
+var POINTS_V2 = {$pointsV2Js};
+function adminAction(reviewId, action, category) {
+    if (action === 'approve' && POINTS_V2 && category === undefined) {
+        var dlg = document.getElementById('pointCategoryModal');
+        dlg.dataset.reviewId = reviewId;
+        bootstrap.Modal.getOrCreateInstance(dlg).show();
+        return;
+    }
     var msg = action === 'approve' ? '이 후기를 승인하시겠습니까?' : '이 후기를 거부하시겠습니까?';
-    if (!confirm(msg)) return;
+    if (category === undefined && !confirm(msg)) return;
 
     var f = document.createElement('form');
     f.method = 'POST';
@@ -1065,7 +1115,8 @@ function adminAction(reviewId, action) {
     f.innerHTML =
         '<input type="hidden" name="admin_csrf" value="{$reviewsCsrfHtml}">' +
         '<input type="hidden" name="action" value="' + (action === 'approve' ? 'approve_one' : 'reject_one') + '">' +
-        '<input type="hidden" name="review_id" value="' + parseInt(reviewId, 10) + '">';
+        '<input type="hidden" name="review_id" value="' + parseInt(reviewId, 10) + '">' +
+        (category ? '<input type="hidden" name="point_category" value="' + String(category).replace(/[^a-z]/g, '') + '">' : '');
     document.body.appendChild(f);
     f.submit();
 }
