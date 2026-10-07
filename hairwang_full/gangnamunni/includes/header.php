@@ -207,7 +207,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
 ?>
     <!-- 피그마 디자인 검색바 + 지역 필터 (640px 컨테이너 내) -->
     <div class="header-search-wrap">
-        <input type="text" id="csb-keyword" class="hospital-search-input" value="<?php echo htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES); ?>" placeholder="<?php echo function_exists('dt') ? htmlspecialchars(dt('fd_search_placeholder','시술, 주소를 검색해보세요')) : '시술, 주소를 검색해보세요'; ?>">
+        <input type="text" id="csb-keyword" class="hospital-search-input" value="<?php echo htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES); ?>" placeholder="<?php echo function_exists('dt') ? htmlspecialchars(dt('fd_search_placeholder','시술, 병원 이름을 검색해보세요')) : '시술, 병원 이름을 검색해보세요'; ?>">
         <button id="regionToggleBtn" class="hospital-search-btn" onclick="toggleRegionPanel()">
             <i class="bi bi-geo-alt"></i> 지역 선택
         </button>

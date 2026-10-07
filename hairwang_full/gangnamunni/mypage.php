@@ -261,13 +261,16 @@ body {
         <?php endif; ?>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
-    <?php // 포인트(#포인트제도) — 상단 포인트/쿠폰 박스를 걷어내고 예약과 같은 메뉴 행으로 노출한다. ?>
+    <?php // 포인트(#포인트제도) — 상단 포인트/쿠폰 박스를 걷어내고 예약과 같은 메뉴 행으로 노출한다.
+    require_once __DIR__ . '/includes/points_pause.php';
+    if (!POINTS_MENU_HIDDEN): // 일시 중지: includes/points_pause.php ?>
     <a href="my_points.php" class="menu-row">
         <span class="menu-row-icon"><span class="menu-icon-point" aria-hidden="true">P</span></span>
         <span class="menu-row-text">포인트</span>
         <span class="menu-row-badge"><?php echo number_format($point_balance); ?>P</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
+    <?php endif; ?>
     <a href="my_wishlist.php" class="menu-row">
         <span class="menu-row-icon"><i class="bi bi-star"></i></span>
         <span class="menu-row-text"><?php echo term('business', '병원'); ?> 찜</span>

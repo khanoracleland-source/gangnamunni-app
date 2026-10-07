@@ -391,7 +391,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             try {
                 $bk_mb_no = points_member_no($connect, $booking_row['mb_id']);
                 if ($bk_mb_no > 0) {
-                    if ($new_status === 'completed' && booking_has_real_payment($connect, $id)) {
+                    require_once __DIR__ . '/includes/points_pause.php';
+                    if ($new_status === 'completed' && !POINTS_ADMIN_GRANT_PAUSED && booking_has_real_payment($connect, $id)) {
                         // 포인트 제도 v2: 결제 금액 구간별 적립(시술이용권 첫 사용 = 병원 시술 완료 처리)
                         require_once __DIR__ . '/includes/points_policy_engine.php';
                         if (points_v2_on($connect, 'v2_policy_enabled')) {

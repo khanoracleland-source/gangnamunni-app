@@ -171,12 +171,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ai_ve
 require_once __DIR__ . '/includes/points_ledger.php';
 require_once __DIR__ . '/includes/points_policy_engine.php';
 // 포인트 제도 v2: 관리자가 승인 시 적립 유형(일반 전·후 사진 / 영수증 인증 / 없음)을 선택
-$points_v2_reviews = points_v2_on($connect, 'v2_policy_enabled');
+require_once __DIR__ . '/includes/points_pause.php';
+$points_v2_reviews = !POINTS_ADMIN_GRANT_PAUSED && points_v2_on($connect, 'v2_policy_enabled');
 $points_v2_notes = [];
 
 /** 후기 승인 적립(멱등). 관리자 개별 입력액 우선, 없으면 기본 설정액. 반환: 실제 지급액(0=미지급). */
 function reviews_award_point($connect, $review, $rid, $override_amount = null) {
     global $points_v2_reviews, $points_v2_notes;
+    require_once __DIR__ . '/includes/points_pause.php';
+    if (POINTS_ADMIN_GRANT_PAUSED) return 0; // 포인트 지급 일시 중지
     if ($points_v2_reviews) {
         $cat = (string)($_POST['point_category'] ?? 'none');
         $r = points_v2_review_award($connect, $review, $rid, $cat);

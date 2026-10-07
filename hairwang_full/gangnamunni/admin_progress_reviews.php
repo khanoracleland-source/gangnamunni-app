@@ -41,7 +41,8 @@ if ($schema_ok && $_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($act === 'approve') {
         if ($pr['status'] !== 'submitted') $error = '검수 대기 상태가 아닙니다.';
         else {
-            $award = points_v2_progress_award($connect, $pr);
+            require_once __DIR__ . '/includes/points_pause.php';
+            $award = POINTS_ADMIN_GRANT_PAUSED ? ['amount' => 0, 'message' => '포인트 지급 일시 중지'] : points_v2_progress_award($connect, $pr);
             $u = mysqli_prepare($connect, "UPDATE gangnamunni_progress_reviews SET status='approved', reviewed_at=NOW(), reviewed_by=?, awarded_point=? WHERE id=? AND status='submitted'");
             mysqli_stmt_bind_param($u, 'sii', $admin_name, $award['amount'], $pid);
             mysqli_stmt_execute($u);

@@ -4,6 +4,10 @@
  */
 require_once __DIR__ . '/includes/init.php';
 
+// 포인트 메뉴 일시 중지(includes/points_pause.php): 주소로 직접 들어와도 마이페이지로 돌려보낸다.
+require_once __DIR__ . '/includes/points_pause.php';
+if (POINTS_MENU_HIDDEN) { header('Location: mypage.php'); exit; }
+
 if (!is_gangnamunni_logged_in()) {
     header('Location: auth/login.php?url=' . urlencode('/hairwang/app/my_points.php'));
     exit;

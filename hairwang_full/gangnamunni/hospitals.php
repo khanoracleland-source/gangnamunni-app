@@ -84,6 +84,9 @@ $page_css = '
     .hospital-grid.list-view .card-wishlist { top: 20px; right: 0; }
     .hospital-grid.list-view .grade-badge { top: 26px; left: 4px; }
     .hospital-grid.list-view .addr-sep { color: #c8c8c8; margin: 0 6px; }
+    .hospital-grid.list-view { grid-template-columns: minmax(0, 1fr); }
+    .hospital-grid.list-view .hospital-card { min-width: 0; }
+    .hospital-grid.list-view .hospital-address { white-space: normal; overflow: visible; text-overflow: clip; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.45; }
 
     .addr-full { display: none; }
     .addr-short { display: inline; }

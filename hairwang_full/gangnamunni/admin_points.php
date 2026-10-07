@@ -49,6 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $act = $_POST['action'] ?? '';
 
+    // 포인트 지급 일시 중지(includes/points_pause.php): 수동 지급/차감·데모 생성 차단
+    require_once __DIR__ . '/includes/points_pause.php';
+    if (POINTS_ADMIN_GRANT_PAUSED && !in_array($act, ['save_settings', 'save_v2'], true)) {
+        header('Location: admin_points.php?msg=paused'); exit;
+    }
+
     // 포인트 지급 기준 설정 저장
     if ($act === 'save_settings') {
         points_save_settings($connect, [
@@ -147,11 +153,15 @@ require_once __DIR__ . '/includes/admin_header.php';
 <?php endif; ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="mb-0">포인트 관리</h4>
+    <?php require_once __DIR__ . '/includes/points_pause.php'; if (POINTS_ADMIN_GRANT_PAUSED): ?>
+    <span class="badge bg-secondary"><i class="bi bi-pause-circle"></i> 포인트 지급 일시 중지</span>
+    <?php else: ?>
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#grantModal"><i class="bi bi-plus-lg"></i> 포인트 지급/차감</button>
+    <?php endif; ?>
 </div>
 <?php if (!empty($_GET['msg'])):
-    $msg_map = ['ok'=>'포인트가 처리되었습니다.','settings'=>'지급 기준 설정이 저장되었습니다.','demo_created'=>'데모 데이터가 생성되었습니다.','nomember'=>'해당 회원을 찾을 수 없습니다.','insufficient'=>'차감 금액이 보유 잔액을 초과합니다.','fail'=>'처리에 실패했습니다.'];
-    $is_err = in_array($_GET['msg'], ['nomember','fail','insufficient'], true);
+    $msg_map = ['paused'=>'포인트 지급이 일시 중지되어 있습니다.','ok'=>'포인트가 처리되었습니다.','settings'=>'지급 기준 설정이 저장되었습니다.','demo_created'=>'데모 데이터가 생성되었습니다.','nomember'=>'해당 회원을 찾을 수 없습니다.','insufficient'=>'차감 금액이 보유 잔액을 초과합니다.','fail'=>'처리에 실패했습니다.'];
+    $is_err = in_array($_GET['msg'], ['nomember','fail','insufficient','paused'], true);
 ?><div class="alert <?php echo $is_err?'alert-danger':'alert-success'; ?> alert-dismissible fade show"><?php echo htmlspecialchars($msg_map[$_GET['msg']] ?? '처리 완료'); ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>
 
 <!-- 포인트 지급 기준 설정 (#포인트제도) -->
