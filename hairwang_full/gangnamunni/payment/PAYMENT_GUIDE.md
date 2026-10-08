@@ -47,7 +47,7 @@ HTTP 410 and must not be used for new integrations.
   packages. iOS opens schemes with `UIApplication.open`, so no
   `LSApplicationQueriesSchemes` entries are needed. Only allow-listed payment schemes are
   opened; anything else stays blocked. Inside the app (`window.FlutterBridge`), card
-  checkouts pass the top-level `appScheme: 'wellness://payment'` so the 페이북/ISP app returns
+  checkouts pass `card.appScheme: 'wellness://payment'` (SDK `CardPaymentRequest`) so the 페이북/ISP app returns
   to the app; the app treats `wellness://payment` as a no-op and the WebView continues. Toss notes that `webview_flutter_android` above
   3.16.0 fails to launch some card apps; the app currently resolves 4.10.x, so test card
   apps on a real Android device before release and pin the version if a card app fails.
