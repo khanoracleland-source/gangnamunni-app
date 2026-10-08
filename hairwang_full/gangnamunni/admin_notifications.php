@@ -25,6 +25,23 @@ if (isset($_GET['logout'])) { session_destroy(); header('Location: dashboard.php
 
 $admin_id = intval($_SESSION['ad_admin_id']);
 $message = '';
+
+// CSRF 토큰 (다른 관리자 페이지와 같은 세션 키 사용)
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$notif_csrf = $_SESSION['csrf_token'];
+
+/**
+ * 알림 링크는 사이트 내부 상대 경로만 허용 (외부 URL·스킴·프로토콜 상대 URL 로의 오픈 리다이렉트 방지)
+ */
+function admin_notification_safe_link($link) {
+    $link = trim((string) $link);
+    if ($link === '' || $link === '#') return null;
+    if (preg_match('/[\x00-\x1F\x7F\\\\]/', $link)) return null;
+    if (preg_match('#^[a-z][a-z0-9+.\-]*:#i', $link) || strpos($link, '//') === 0) return null;
+    return $link;
+}
 $error = '';
 
 // ===== 탭별 알림 유형 그룹 =====
@@ -37,6 +54,10 @@ $TAB_GROUPS = [
 
 // ===== POST 액션 처리 =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!hash_equals($notif_csrf, (string) ($_POST['csrf_token'] ?? ''))) {
+        http_response_code(403);
+        exit('CSRF 토큰 오류. 페이지를 새로고침하세요.');
+    }
     $action = $_POST['action'] ?? '';
 
     // 탭별 모두 읽음
@@ -77,12 +98,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($nid > 0) {
             mark_notification_read($connect, $nid, $admin_id);
         }
-        // 링크가 있으면 리다이렉트
-        $link = $_POST['link'] ?? '';
-        if (!empty($link) && $link !== '#') {
+        // 링크가 있으면 리다이렉트 — 폼 값이 아니라 DB 에 저장된 본인 알림의 링크만 사용
+        $link = null;
+        if ($nid > 0) {
+            $lstmt = mysqli_prepare($connect, "SELECT link FROM gangnamunni_notifications WHERE id = ? AND admin_id = ?");
+            if ($lstmt) {
+                mysqli_stmt_bind_param($lstmt, 'ii', $nid, $admin_id);
+                mysqli_stmt_execute($lstmt);
+                $lrow = mysqli_fetch_assoc(mysqli_stmt_get_result($lstmt));
+                mysqli_stmt_close($lstmt);
+                $link = admin_notification_safe_link($lrow['link'] ?? '');
+            }
+        }
+        if ($link !== null) {
             header('Location: ' . $link);
             exit;
         }
+        header('Location: admin_notifications.php');
+        exit;
     }
 
     // POST 후 리다이렉트 (PRG 패턴)
@@ -385,6 +418,7 @@ require_once __DIR__ . '/includes/admin_header.php';
         <div class="card h-100">
             <div class="card-body d-flex flex-column justify-content-center gap-2 py-2">
                 <form method="post" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($notif_csrf); ?>">
                     <input type="hidden" name="action" value="mark_tab_read">
                     <input type="hidden" name="tab" value="<?php echo htmlspecialchars($current_tab); ?>">
                     <button type="submit" class="btn btn-outline-primary btn-sm w-100" onclick="return confirm('현재 탭의 알림을 모두 읽음 처리하시겠습니까?')">
@@ -392,6 +426,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                     </button>
                 </form>
                 <form method="post" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($notif_csrf); ?>">
                     <input type="hidden" name="action" value="delete_old_read">
                     <input type="hidden" name="days" value="30">
                     <button type="submit" class="btn btn-outline-danger btn-sm w-100" onclick="return confirm('30일 이상 된 읽은 알림을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')">
@@ -484,6 +519,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             $link = $notif['link'] ?: '#';
         ?>
         <form method="post" class="d-inline" style="display:contents;">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($notif_csrf); ?>">
             <input type="hidden" name="action" value="mark_read">
             <input type="hidden" name="nid" value="<?php echo $notif['id']; ?>">
             <input type="hidden" name="link" value="<?php echo htmlspecialchars($link); ?>">
