@@ -1,4 +1,6 @@
 <?php
+// CLI 전용 스크립트 — 웹 요청은 404
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 /**
  * 휴지통 자동 정리 크론잡
  * 매일 실행: 설정 기간 지난 메일 영구 삭제

@@ -1,4 +1,6 @@
 <?php
+// CLI 전용 스크립트 — 웹 요청은 404
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 /**
  * 회원 양방향 자동 동기화 크론 스크립트
  *

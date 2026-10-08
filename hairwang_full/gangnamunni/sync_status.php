@@ -11,10 +11,17 @@ header('Content-Type: application/json; charset=utf-8');
 
 $action = $_GET['action'] ?? 'status';
 
-// 관리자 세션 확인
-session_start();
-if (!isset($_SESSION['admin_logged_in']) || !$_SESSION['admin_logged_in']) {
+// 관리자 세션 확인 (super_admin 전용)
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+require_once __DIR__ . '/includes/admin_auth.php';
+if (!is_super_admin()) {
+    http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+    exit;
+}
+if ($action === 'run_sync' && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'POST only']);
     exit;
 }
 

@@ -1,4 +1,6 @@
 <?php
+// CLI 전용 스크립트 — 웹 요청은 404
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 /**
  * hospital_type <-> gangnamunni_categories bidirectional sync
  * - HMS hospital_type add/update -> gangnamunni_categories reflect

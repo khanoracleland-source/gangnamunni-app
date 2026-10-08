@@ -1,0 +1,7 @@
+# sync/ 는 CLI 전용 (설정·로그 포함) — 웹 접근 전면 차단
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Deny from all
+</IfModule>
