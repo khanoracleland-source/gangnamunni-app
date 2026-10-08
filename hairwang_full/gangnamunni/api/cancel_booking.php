@@ -89,7 +89,7 @@ $refund_status = 'not_applicable';
 $refund_message = '';
 try {
     $order = booking_payment_order($connect, $booking_id);
-    if ($order && in_array($order['provider'], ['portone', 'portone_test'], true)
+    if ($order && booking_payment_is_pg($order['provider'])
         && in_array($order['status'], ['paid', 'partially_refunded'], true)) {
         $refund_status = 'not_refunded';
         $refund_message = '예약이 취소되었습니다. 환불은 관리자 확인 후 처리됩니다.';

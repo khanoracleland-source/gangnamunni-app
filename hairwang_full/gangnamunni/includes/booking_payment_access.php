@@ -47,7 +47,7 @@ function booking_payment_previews(mysqli $db, array $ids): array {
 
 function booking_has_real_payment(mysqli $db, int $id): bool {
     $order = booking_payment_order($db, $id);
-    return $order && $order['provider'] === 'portone' && $order['status'] === 'paid';
+    return $order && booking_payment_is_live_pg($order['provider']) && $order['status'] === 'paid';
 }
 
 function booking_payment_record_preview(mysqli $db, int $id): void {

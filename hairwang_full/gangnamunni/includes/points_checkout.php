@@ -154,11 +154,15 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
         $order = booking_payment_order($connect, (int)$booking_id);
         if (!$order || ($order['status'] ?? '') !== 'pending' || !points_checkout_active_hold($connect, (int)$order['id'])) return false;
         $merchant = (string)$order['merchant_uid'];
-        return booking_payment_lock($connect, $merchant, function () use ($connect, $merchant, $reason) {
-            try {
-                booking_payment_apply_remote($connect, booking_payment_by_merchant($connect, $merchant),
-                    (new BookingPortOneClient())->payment($merchant), 'server_query');
-            } catch (BookingPortOneRejectedException $e) {
+        $gateway = booking_payment_gateway();
+        return booking_payment_lock($connect, $merchant, function () use ($connect, $merchant, $reason, $gateway) {
+            // PG가 연결돼 있으면 최신 결제 상태를 먼저 반영한다. 연결 전에는 외부 결제 건이 없다.
+            if ($gateway) {
+                try {
+                    booking_payment_apply_remote($connect, booking_payment_by_merchant($connect, $merchant),
+                        $gateway->payment($merchant), 'server_query', $gateway->provider());
+                } catch (BookingPaymentRejectedException $e) {
+                }
             }
             $fresh = booking_payment_by_merchant($connect, $merchant);
             return ($fresh['status'] ?? '') === 'pending' ? points_checkout_release($connect, (int)$fresh['id'], $reason) : false;

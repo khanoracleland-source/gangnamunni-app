@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/booking_payment_config.php';
 if (!function_exists('getSettingValue') && file_exists(__DIR__ . '/includes/settings_helper.php')) {
     require_once __DIR__ . '/includes/settings_helper.php';
 }
@@ -54,7 +55,7 @@ if ($table_check && mysqli_num_rows($table_check)) {
     mysqli_stmt_execute($pay_stmt);
     $payment = mysqli_fetch_assoc(mysqli_stmt_get_result($pay_stmt));
     mysqli_stmt_close($pay_stmt);
-    if ($payment && $payment['provider'] === 'portone' && in_array($payment['status'], ['paid','partially_refunded'], true)) {
+    if ($payment && booking_payment_is_pg($payment['provider']) && in_array($payment['status'], ['paid','partially_refunded'], true)) {
         $amount = max(0, (int)$payment['amount'] - (int)$payment['refunded_amount']);
         $payment_status = (string)$payment['status'];
     }

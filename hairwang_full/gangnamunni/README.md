@@ -10,7 +10,7 @@
 - 🏥 병원 검색 및 정보 제공
 - ⭐ 실시간 리뷰 시스템
 - 📅 온라인 상담 예약
-- 💳 광고 결제 시스템 (PortOne PG)
+- 💳 결제 시스템 (PG 연동 준비 중 — Toss Payments 예정)
 - 🤖 AI 광고 자동 생성 (GPT-4 + DALL-E)
 - 🧪 A/B 테스트 시스템
 - 📱 Flutter 모바일 앱
@@ -41,7 +41,7 @@
    - 서울미녀 → HMS: 상담 신청 (5분마다)
    - 문서: [sync/README.md](sync/README.md)
 
-3. **광고 결제 시스템 (PortOne)**
+3. **결제 시스템 (PG 연동 준비 중)**
    - 4가지 광고 상품 (배너/프리미엄 × 1/3개월)
    - 서버사이드 금액 검증
    - 환불 처리
@@ -75,7 +75,7 @@
 - **Frontend**: Tailwind CSS, Vanilla JS, Quill.js
 - **Mobile**: Flutter 3.x
 - **Database**: MariaDB 10.6
-- **APIs**: OpenAI (GPT-4, DALL-E), PortOne PG
+- **APIs**: OpenAI (GPT-4, DALL-E)
 - **Infra**: Rocky Linux 9.7, Apache 2.4, Cloudflare
 
 ## 📂 주요 파일 구조
@@ -92,7 +92,6 @@ gangnamunni/
 ├── ai/                        # AI 시스템
 │   └── openai_config.php
 ├── payment/                   # 결제 시스템
-│   ├── portone_config.php
 │   ├── ad_payment.php       # 폐기된 패키지 결제 (HTTP 410)
 │   └── payment_callback.php # PG 미연동 시 fail-closed
 ├── sync/                      # DB 동기화
@@ -132,13 +131,13 @@ cd ../../../deploy/
 ## 📝 문서
 
 - [배포 시나리오](../deploy/DEPLOYMENT_SCENARIO.md) - 개발/운영 분리, 배포 워크플로우
-- [결제 가이드](payment/PAYMENT_GUIDE.md) - PortOne 결제 통합
+- [결제 가이드](payment/PAYMENT_GUIDE.md) - 예약 결제·정산 구조
 - [AI 에디터 가이드](ai/AI_EDITOR_README.md) - GPT-4, DALL-E 사용법
 - [DB 동기화 가이드](sync/README.md) - HMS ↔ 서울미녀 동기화
 
 ## 🔐 보안 주의사항
 
-1. **API 키 관리** - `portone_config.php`, `openai_config.php`에서 실제 키로 교체
+1. **API 키 관리** - PG 키는 서버 설정(`data/dbconfig.php`)에만 두고, `openai_config.php`에서 실제 키로 교체
 2. **테스트 모드** - 프로덕션 배포 시 `TEST_MODE = false` 설정
 3. **로그인 정보** - 기본 계정(admin/admin123) 변경 권장
 

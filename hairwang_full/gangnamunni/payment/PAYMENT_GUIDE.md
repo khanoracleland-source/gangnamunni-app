@@ -27,16 +27,22 @@ HTTP 410 and must not be used for new integrations.
 
 `booking_payment.php` has two explicit actions:
 
-- **결제하기** opens PortOne V2. The server pre-registers the canonical order
-  amount; browser completion, mobile return and webhook all query PortOne before
-  accepting the order identity, amount, currency, sandbox flag and transaction ID.
+- **결제하기** opens the PG checkout. **No PG is connected right now**: the PortOne
+  integration was removed on 2026-10-08 (it never processed a payment) and Toss
+  Payments is the next integration. Until then `booking_payment_checkout_ready()`
+  is false and the button reads "온라인 결제 준비 중". A PG plugs in by implementing
+  `BookingPaymentGateway` in `includes/booking_payment_gateway.php`; browser
+  completion, mobile return and webhook must all query the PG before accepting the
+  order identity, amount, currency and transaction ID.
 - **결제 없이 계속하기** preserves the requested payment-free walkthrough. It
   records only `gangnamunni_booking_payment_previews`, leaving the financial
   order pending. It is available to the booking owner by default during rollout.
   Set `BOOKING_PAYMENT_PREVIEW_ENABLED=0` to disable it on both client and server.
   This is never an automatic fallback when a real payment fails.
 
-Sandbox transactions use `provider=portone_test`. Those and historical
+Provider values live in one place: `booking_payment_pg_providers()` and
+`booking_payment_test_providers()` in `includes/booking_payment_config.php`.
+Sandbox transactions (`toss_test`, legacy `portone_test`) and historical
 `mock_booking_payment` records are excluded from booking revenue and new
 settlement items. Existing draft/scheduled batches containing historical test
 payments are placed on hold when the monthly job processes them; already closed
@@ -57,36 +63,17 @@ historical batches require operator review and must not be silently rewritten.
    `hairwang_full/dbconfig.php`. Deploy the shared
    `includes/booking_payment_db_config.php` alongside those entry points.
 3. Set runtime variables from the root `.env.example`:
-   `PORTONE_STORE_ID`, `PORTONE_API_SECRET`, `PORTONE_WEBHOOK_SECRET`,
    `BOOKING_PAYMENT_BASE_URL` (the canonical public HTTPS origin that serves the
    booking pages, with no trailing path or slash, e.g. `https://hms.seoulbeauty.app`;
    since the 2026-09-17 URL refactor the site is served from the web root and the
-   old `/gangnamunni` and `/app` segments must not appear in this value),
-   `PORTONE_CHANNEL_CARD` and any additional contracted method's channel key.
-   Easy-pay methods currently use KG Inicis hub `pay_method` values; configure
-   compatible hub channels. Direct KakaoPay/NaverPay contracts need their own
-   provider-specific request fields and are not interchangeable with hub channels.
-   No key belongs in HTML or source control. Only the public store/channel IDs
-   are returned to the browser.
-4. Keep `PORTONE_SANDBOX=1` while testing and use a matching test channel.
-   Enable checkout with `G5_PG_PAYMENTS_ENABLED=1`. An environment mismatch is
-   rejected; test payments never become real revenue. Production requires live
-   channels and `PORTONE_SANDBOX=0`.
-5. Register `/payment/portone_webhook.php` as the V2 webhook in the PortOne
-   console (webhook version `결제모듈 V2`) and issue a webhook secret for the
-   environment you are configuring. Every notification must carry a valid
-   Standard Webhooks signature: an unsigned or mis-signed request is refused
-   with 401, and a missing `PORTONE_WEBHOOK_SECRET` makes the endpoint answer
-   503 rather than trust an unauthenticated caller. PortOne's V2 webhook
-   source address is `52.78.5.241` if an IP filter is also wanted.
-   Use the canonical public base URL for mobile redirects.
-   Verify the endpoint answers before going further; an empty POST must reach
-   the webhook's own input guard, not a 404 from the Laravel front controller:
-   `curl -i -X POST https://<base-url>/payment/portone_webhook.php` returns
-   HTTP 400 with `{"success":false}`. A 404 means the base URL still carries a
-   stale path segment or the web rewrite is missing.
-   The untrusted webhook body cannot mark a payment paid: the backend queries
-   the authenticated PortOne API and compares the server-owned order.
+   old `/gangnamunni` and `/app` segments must not appear in this value) and
+   `BOOKING_PAYMENT_METHODS` (comma list of contracted methods:
+   `card,bank,naverpay,kakaopay,tosspay`). PG credentials are added with the PG
+   integration. No secret key belongs in HTML or source control.
+4. Enable checkout with `G5_PG_PAYMENTS_ENABLED=1` only after a PG is connected.
+5. Register the PG webhook URL in the PG console once the PG integration exists.
+   The untrusted webhook body must never mark a payment paid: the backend queries
+   the authenticated PG API and compares the server-owned order.
 6. Restart/recreate the application service after changing runtime variables.
    The Compose gangnamunni service now forwards these variables explicitly.
 
@@ -94,7 +81,7 @@ historical batches require operator review and must not be silently rewritten.
 query or fragment). It cannot tell whether the address resolves, so a stale but
 well-formed value passes every check in this repository and `check.php` still
 prints `Real checkout: READY`. A wrong value fails silently and off-site: the
-card is charged, PortOne's notification 404s, and the order stays `pending`
+card is charged, the PG notification 404s, and the order stays `pending`
 with nothing logged locally. Confirm the endpoint with the curl above instead
 of trusting the preflight alone.
 
@@ -104,7 +91,7 @@ Production serves the booking pages from the web root through the rewrite in
 rewrite, so on `localhost:8002` the pages stay under `/gangnamunni/...` and a
 root-form path returns 404. Local URLs in the testing guide are correct as
 written; do not copy them into `BOOKING_PAYMENT_BASE_URL`, which in any case
-requires a public HTTPS address PortOne can reach.
+requires a public HTTPS address the PG can reach.
 
 Do not enable real charging until the operator has confirmed the merchant/PG
 contract, available payment methods, refund rules and settlement arrangements.
@@ -115,11 +102,11 @@ changed by this code change.
 
 The platform super administrator can use `admin_booking_payments.php`, linked
 from booking revenue, to re-query and refund a payment. Partial refunds preserve
-remaining balance. Each refund has a persisted request ID and uses PortOne's
-remaining-balance checksum. Repeating the same request does not cancel twice.
+remaining balance. Each refund has a persisted request ID (passed to the PG as an
+idempotency key) and is checked against a fresh remaining balance under the lock. Repeating the same request does not cancel twice.
 Ambiguous timeout results remain pending until a fresh query/webhook confirms
 what happened. A well-formed, successful HTTP response containing an explicit
-PortOne API rejection marks the request `failed`; after reviewing the rejection,
+PG API rejection marks the request `failed`; after reviewing the rejection,
 the operator may submit a new request ID. A failed request ID cannot be reused.
 Transport errors, invalid responses and timeouts remain pending; never delete a
 pending intent merely because an HTTP request timed out.
@@ -161,8 +148,7 @@ Clients still using those legacy URLs need to move to the booking checkout.
 
 ### Validation
 
-See [the Uzbek testing guide](TESTING_UZ.md) for manual steps, sandbox setup and
-expected results. Run these commands against the local Compose environment:
+Run these commands against the local Compose environment:
 
 ```sh
 docker exec hms-saas-gangnamunni-1 php /var/www/html/hairwang_full/gangnamunni/payment/check.php
@@ -173,11 +159,11 @@ docker exec hms-saas-gangnamunni-1 php /var/www/html/tests/payments/config.php
 ```
 
 The regression suite creates and removes a random isolated database, injects
-simulated PortOne responses, and makes no live provider request. The HTTP suite
+a fake in-memory PG gateway, and makes no live provider request. The HTTP suite
 uses the actual endpoint source with isolated database/identity fixtures; it does
 not test the real login flow. The smoke suite checks unauthenticated guards using
 the running application's real bootstrap. Neither suite proves the external PG
-checkout, mobile redirect or PortOne webhook delivery works; those need sandbox
+checkout, mobile redirect or PG webhook delivery works; those need sandbox
 testing with configured credentials and a publicly reachable HTTPS URL.
 
 The preflight prints configuration presence and schema readiness without secret
@@ -185,8 +171,3 @@ values. Its exit code reports database/schema readiness; inspect `Real checkout`
 separately. `--render` on the regression suite additionally writes a synthetic
 checkout fixture for browser inspection; remove
 `hairwang_full/gangnamunni/payment-fixture-preview.html` after inspection.
-
-Official integration references:
-- https://developers.portone.io/opi/ko/integration/start/v1/auth
-- https://developers.portone.io/opi/ko/integration/webhook/readme-v1
-- https://developers.portone.io/api/rest-v1/payment

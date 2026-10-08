@@ -1,5 +1,5 @@
 <?php
-// Mobile redirects are untrusted; query PortOne with the owner's server-side order.
+// Mobile redirects are untrusted; query the PG with the owner's server-side order.
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/booking_payment_service.php';
 header('Cache-Control: no-store');

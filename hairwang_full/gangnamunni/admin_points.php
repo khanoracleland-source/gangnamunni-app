@@ -229,7 +229,7 @@ require_once __DIR__ . '/includes/admin_header.php';
             'v2_first_review_enabled' => ['첫 후기 일괄 적립', '매주 화요일(공휴일이면 익영업일) 크론'],
             'v2_progress_enabled' => ['경과 후기', '사용자 화면 노출'],
             'v2_expire_job_enabled' => ['자동 소멸', '기한 지난 포인트 소멸(크론)'],
-            'v2_point_use_enabled' => ['결제 시 포인트 사용', 'PortOne 결제 금액에서 차감'],
+            'v2_point_use_enabled' => ['결제 시 포인트 사용', 'PG 결제 금액에서 차감'],
         ] as $k => [$label, $desc]):
             $locked = in_array($k, ['v2_expire_job_enabled', 'v2_point_use_enabled'], true) && !$lots_ready; ?>
             <div class="col-md-4 col-lg"><div class="border rounded p-2 h-100">

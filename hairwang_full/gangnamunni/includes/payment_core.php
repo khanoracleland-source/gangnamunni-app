@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/booking_payment_config.php';
 /**
  * Canonical Seoul Beauty payment service.
  * Controllers must never update financial statuses directly.
@@ -65,7 +66,7 @@ function platform_payment_mark_verified(
     ?int $provider_paid_at = null,
     bool $manage_transaction = true
 ): bool {
-    if (!in_array($provider, ['portone', 'portone_test'], true)
+    if (!booking_payment_is_pg($provider)
         || !in_array($source, ['webhook', 'server_query'], true)
         || $provider === '' || $provider_transaction_id === ''
         || $provider_event_id === '' || !preg_match('/^[a-f0-9]{64}$/', $payload_sha256)) {

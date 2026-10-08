@@ -1,5 +1,5 @@
 <?php
-/** Prepare a server-priced PortOne V1 checkout. Never mark an order paid here. */
+/** Prepare a server-priced PG checkout. Never mark an order paid here. */
 require_once __DIR__ . '/includes/init.php';
 if (isset($connect) && $connect && file_exists(__DIR__ . '/includes/sso_auto_login.php')) {
     @include_once __DIR__ . '/includes/sso_auto_login.php';
@@ -91,9 +91,13 @@ if ($order['status'] !== 'pending') {
     bp_fail('결제할 수 없는 주문 상태입니다.', 'INVALID_ORDER_STATE', 409);
 }
 
-require_once __DIR__ . '/includes/portone_client.php';
+require_once __DIR__ . '/includes/booking_payment_config.php';
+// 결제가 불가능하면 포인트 홀드 등 어떤 상태도 바꾸기 전에 멈춘다.
+if (!booking_payment_checkout_ready() || !isset(booking_payment_methods()[$provider])) {
+    bp_fail('현재 이 결제 수단을 이용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'PAYMENT_UNAVAILABLE', 503);
+}
 
-// 포인트 적용/변경/해제 — 결제 잠금 안에서, PortOne 에 결제가 진행 중이지 않을 때만 금액을 바꾼다.
+// 포인트 적용/변경/해제 — 결제 잠금 안에서, PG 에 결제가 진행 중이지 않을 때만 금액을 바꾼다.
 if (points_v2_schema_ready($connect) && ($point_use > 0 || (int)($order['points_used'] ?? 0) > 0)) {
     require_once __DIR__ . '/includes/booking_payment_service.php';
     $pt_member_no = $is_user_logged_in ? points_member_no($connect, $logged_mb_id) : 0;
@@ -101,13 +105,16 @@ if (points_v2_schema_ready($connect) && ($point_use > 0 || (int)($order['points_
         $order = booking_payment_lock($connect, (string)$order['merchant_uid'], function () use ($connect, $order, $pt_member_no, $point_use) {
             $fresh = booking_payment_by_merchant($connect, (string)$order['merchant_uid']);
             if (($fresh['status'] ?? '') !== 'pending') throw new RuntimeException('결제할 수 없는 주문 상태입니다.');
-            try {
-                $remote = (new BookingPortOneClient())->payment((string)$fresh['merchant_uid']);
-                if (!in_array($remote['raw_status'] ?? '', ['READY', 'FAILED'], true)) {
-                    throw new RuntimeException('진행 중인 결제가 있어 포인트를 변경할 수 없습니다. 결제 상태를 먼저 확인해주세요.');
+            $gateway = booking_payment_gateway();
+            if ($gateway) {
+                try {
+                    $remote = $gateway->payment((string)$fresh['merchant_uid']);
+                    if (!in_array($remote['status'] ?? '', ['ready', 'failed'], true)) {
+                        throw new RuntimeException('진행 중인 결제가 있어 포인트를 변경할 수 없습니다. 결제 상태를 먼저 확인해주세요.');
+                    }
+                } catch (BookingPaymentRejectedException $e) {
+                    // 아직 PG 에 결제 건이 없음 → 변경 가능
                 }
-            } catch (BookingPortOneRejectedException $e) {
-                // 아직 PortOne 에 결제 건이 없음(PAYMENT_NOT_FOUND) → 변경 가능
             }
             points_checkout_apply($connect, $fresh, $pt_member_no, $point_use);
             return booking_payment_by_merchant($connect, (string)$order['merchant_uid']);
@@ -119,43 +126,5 @@ if (points_v2_schema_ready($connect) && ($point_use > 0 || (int)($order['points_
     }
 }
 
-try {
-    if (!booking_payment_live_enabled()) throw new RuntimeException('Payments disabled.');
-    $channels = booking_payment_channels();
-    if (empty($channels[$provider])) throw new RuntimeException('Payment channel is not configured.');
-    $store_id = booking_payment_setting('PORTONE_STORE_ID');
-    if ($store_id === '') throw new RuntimeException('Store is not configured.');
-    $base = booking_payment_base_url();
-    $client = new BookingPortOneClient();
-    // The canonical amount is registered server-side before the window opens.
-    $client->prepare($order['merchant_uid'], (int)$order['amount']);
-    // Easy-pay providers ride on EASY_PAY with a provider hint in V2.
-    $methods = ['card' => ['CARD', null], 'bank' => ['TRANSFER', null],
-        'naverpay' => ['EASY_PAY', 'NAVERPAY'], 'kakaopay' => ['EASY_PAY', 'KAKAOPAY'],
-        'tosspay' => ['EASY_PAY', 'TOSSPAY']];
-    [$pay_method, $easy_pay] = $methods[$provider];
-    $customer = array_filter([
-        'fullName' => (string)$order['patient_name'],
-        'phoneNumber' => (string)$order['patient_phone'],
-        'email' => (string)($member['mb_email'] ?? ''),
-    ], static function ($value) { return $value !== ''; });
-    $payment = [
-        'storeId' => $store_id,
-        'channelKey' => $channels[$provider],
-        // In V2 the id we issue IS the payment key; there is no second identifier.
-        'paymentId' => $order['merchant_uid'],
-        'orderName' => '예약 #' . $booking_id,
-        'totalAmount' => (int)$order['amount'],
-        'currency' => 'KRW',
-        'payMethod' => $pay_method,
-        'customer' => $customer,
-        'redirectUrl' => $base . '/booking_payment_return.php?booking_id=' . $booking_id,
-        'noticeUrls' => [$base . '/payment/portone_webhook.php'],
-    ];
-    if ($easy_pay !== null) $payment['easyPayProvider'] = $easy_pay;
-    echo json_encode(['success' => true, 'payment' => $payment],
-        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-} catch (Throwable $e) {
-    error_log('[booking_payment_request] ' . $e->getMessage());
-    bp_fail('현재 이 결제 수단을 이용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'PAYMENT_UNAVAILABLE', 503);
-}
+// PG 결제창 파라미터는 PG 연동(Toss Payments) 단계에서 여기서 만든다.
+bp_fail('현재 온라인 결제를 준비 중입니다. 잠시 후 다시 시도해주세요.', 'PAYMENT_UNAVAILABLE', 503);

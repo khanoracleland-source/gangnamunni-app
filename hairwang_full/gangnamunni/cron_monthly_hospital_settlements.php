@@ -12,6 +12,8 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/includes/booking_payment_db_config.php';
+require_once __DIR__ . '/includes/booking_payment_config.php';
+$test_providers_sql = booking_payment_sql_list(booking_payment_test_providers());
 date_default_timezone_set('Asia/Seoul');
 
 $today = date('Y-m-d');
@@ -47,14 +49,14 @@ $hospitals = mysqli_prepare($db,
     "SELECT DISTINCT hospital_id FROM (
         SELECT p.hospital_id
         FROM gangnamunni_platform_payments p
-        WHERE p.payment_type='booking' AND p.funds_recipient='hospital' AND p.provider NOT IN ('mock_booking_payment','portone_test')
+        WHERE p.payment_type='booking' AND p.funds_recipient='hospital' AND p.provider NOT IN (" . $test_providers_sql . ")
           AND p.status IN ('paid','partially_refunded','refunded')
           AND p.paid_at>=? AND p.paid_at<DATE_ADD(?,INTERVAL 1 DAY)
         UNION
         SELECT p.hospital_id
         FROM gangnamunni_payment_events e
         JOIN gangnamunni_platform_payments p ON p.id=e.payment_id
-        WHERE e.event_type='refund_verified' AND p.provider NOT IN ('mock_booking_payment','portone_test')
+        WHERE e.event_type='refund_verified' AND p.provider NOT IN (" . $test_providers_sql . ")
           AND e.received_at>=? AND e.received_at<DATE_ADD(?,INTERVAL 1 DAY)
         UNION
         SELECT hospital_id FROM gangnamunni_hospital_settlements
@@ -89,7 +91,7 @@ while ($row = mysqli_fetch_assoc($hospital_rows)) {
 
         $tainted = $db->query("SELECT 1 FROM gangnamunni_hospital_settlement_items i
             JOIN gangnamunni_platform_payments p ON i.source_type='booking_payment' AND i.source_id=p.id
-            WHERE i.settlement_id=" . (int)$settlement_id . " AND p.provider IN ('mock_booking_payment','portone_test') LIMIT 1");
+            WHERE i.settlement_id=" . (int)$settlement_id . " AND p.provider IN (" . $test_providers_sql . ") LIMIT 1");
         if ($tainted->num_rows) {
             $db->query("UPDATE gangnamunni_hospital_settlements SET status='held',failure_reason='Historical test payments require review' WHERE id=" . (int)$settlement_id);
             mysqli_commit($db);
@@ -102,7 +104,7 @@ while ($row = mysqli_fetch_assoc($hospital_rows)) {
              SELECT ?, 'booking_payment', p.id, p.amount,
                     CONCAT('Booking #',p.booking_id,' / ',p.treatment_name), p.paid_at
              FROM gangnamunni_platform_payments p
-             WHERE p.hospital_id=? AND p.payment_type='booking' AND p.funds_recipient='hospital' AND p.provider NOT IN ('mock_booking_payment','portone_test')
+             WHERE p.hospital_id=? AND p.payment_type='booking' AND p.funds_recipient='hospital' AND p.provider NOT IN (" . $test_providers_sql . ")
                AND p.status IN ('paid','partially_refunded','refunded')
                AND p.paid_at >= ? AND p.paid_at < DATE_ADD(?, INTERVAL 1 DAY)
              ON DUPLICATE KEY UPDATE id=gangnamunni_hospital_settlement_items.id");
@@ -117,7 +119,7 @@ while ($row = mysqli_fetch_assoc($hospital_rows)) {
                     CONCAT('Refund for payment #',p.id),e.received_at
              FROM gangnamunni_payment_events e
              JOIN gangnamunni_platform_payments p ON p.id=e.payment_id
-             WHERE p.hospital_id=? AND e.event_type='refund_verified' AND p.provider NOT IN ('mock_booking_payment','portone_test')
+             WHERE p.hospital_id=? AND e.event_type='refund_verified' AND p.provider NOT IN (" . $test_providers_sql . ")
                AND e.received_at>=? AND e.received_at<DATE_ADD(?,INTERVAL 1 DAY)
              ON DUPLICATE KEY UPDATE id=gangnamunni_hospital_settlement_items.id");
         mysqli_stmt_bind_param($refunds, 'iiss', $settlement_id, $hospital_id, $period_start, $period_end);

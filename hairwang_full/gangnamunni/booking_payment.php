@@ -165,7 +165,7 @@ if (file_exists(__DIR__ . '/includes/points_checkout.php')) {
     }
 }
 $preview = booking_payment_previews($connect, [$booking_id]);
-$channels = booking_payment_channels();
+$channels = booking_payment_methods();
 $live_available = booking_payment_checkout_ready();
 $preview_available = booking_payment_preview_enabled();
 
@@ -537,7 +537,6 @@ a { color: inherit; text-decoration: none; }
     </main>
 </div>
 
-<?php if ($live_available): ?><script src="https://cdn.portone.io/v2/browser-sdk.js"></script><?php endif; ?>
 <script>
 (function() {
     var baseAmount = <?php echo (int)$display_amount; ?>;
@@ -730,13 +729,9 @@ a { color: inherit; text-decoration: none; }
     if (payBtn) payBtn.addEventListener('click', function() {
         if (busy || !agreed()) return;
         setBusy(true);
-        post('booking_payment_request.php', {provider:selectedProvider, point_use:String(currentPointUse())}).then(function(d) {
-            if (!window.PortOne) throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.');
-            // A result carrying a code is a failure. Either way the server decides.
-            return window.PortOne.requestPayment(d.payment).then(function(result) {
-                if (result && result.code) throw new Error(result.message || '결제가 취소되었습니다.');
-                return verify();
-            });
+        // PG 결제창 호출은 PG 연동(Toss Payments) 단계에서 붙인다. 지금은 서버가 503 으로 거절한다.
+        post('booking_payment_request.php', {provider:selectedProvider, point_use:String(currentPointUse())}).then(function() {
+            throw new Error('온라인 결제를 준비 중입니다.');
         }).catch(failed);
     });
     if (previewBtn) previewBtn.addEventListener('click', function() {

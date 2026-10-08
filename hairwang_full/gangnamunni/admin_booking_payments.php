@@ -39,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 $rows = $connect->query("SELECT p.*, b.status AS booking_status FROM gangnamunni_platform_payments p LEFT JOIN gangnamunni_bookings b ON b.id=p.booking_id WHERE p.payment_type='booking' ORDER BY p.id DESC LIMIT 100");
+/** @param mixed $value */
 function payment_admin_h($value)
 {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -115,10 +116,10 @@ function payment_admin_h($value)
                         <td><?= payment_admin_h($row['provider'] ?: '결제 대기') ?> / <?= payment_admin_h($row['status']) ?></td>
                         <td><?= number_format($row['amount']) ?> / <?= number_format($row['refunded_amount']) ?>원</td>
                         <td>
-                            <?php if (!$row['provider'] || in_array($row['provider'], ['portone', 'portone_test'], true)): ?>
+                            <?php if (!$row['provider'] || booking_payment_is_pg($row['provider'])): ?>
                                 <form method="post"><input type="hidden" name="csrf_token" value="<?= payment_admin_h($_SESSION['csrf_token']) ?>"><input type="hidden" name="merchant_uid" value="<?= payment_admin_h($row['merchant_uid']) ?>"><button name="action" value="sync">상태 조회</button></form>
                             <?php endif; ?>
-                            <?php if (in_array($row['provider'], ['portone', 'portone_test'], true) && in_array($row['status'], ['paid', 'partially_refunded'], true)): ?>
+                            <?php if (booking_payment_is_pg($row['provider']) && in_array($row['status'], ['paid', 'partially_refunded'], true)): ?>
                                 <form method="post" onsubmit="return confirm('입력한 금액을 환불하시겠습니까?')">
                                     <input type="hidden" name="csrf_token" value="<?= payment_admin_h($_SESSION['csrf_token']) ?>"><input type="hidden" name="merchant_uid" value="<?= payment_admin_h($row['merchant_uid']) ?>"><input type="hidden" name="request_id" value="<?= bin2hex(random_bytes(32)) ?>">
                                     <input aria-label="환불 금액" name="amount" type="number" min="1" max="<?= (int)$row['amount'] - (int)$row['refunded_amount'] ?>" required placeholder="환불 금액">

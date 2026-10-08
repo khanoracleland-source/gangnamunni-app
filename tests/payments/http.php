@@ -41,8 +41,7 @@ try {
     $router= <<<'ROUTER'
 <?php
 if (!str_starts_with((string)getenv('PAYMENT_HTTP_DATABASE'),'codex_payment_http_')) { http_response_code(500); exit; }
-putenv('G5_PG_PAYMENTS_ENABLED=0'); putenv('PORTONE_STORE_ID='); putenv('PORTONE_API_SECRET='); putenv('PORTONE_WEBHOOK_SECRET=');
-putenv('PORTONE_CHANNEL_CARD='); putenv('BOOKING_PAYMENT_PREVIEW_ENABLED=1');
+putenv('G5_PG_PAYMENTS_ENABLED=0'); putenv('BOOKING_PAYMENT_METHODS='); putenv('BOOKING_PAYMENT_PREVIEW_ENABLED=1');
 if (($_SERVER['HTTP_X_FIXTURE_PREVIEW'] ?? '') === 'disabled') putenv('BOOKING_PAYMENT_PREVIEW_ENABLED=0');
 $dbname=getenv('PAYMENT_HTTP_DATABASE');
 foreach (['HOST','USER','PASSWORD','PORT'] as $key) define('G5_MYSQL_'.$key,getenv('G5_MYSQL_'.$key));
@@ -114,7 +113,7 @@ ROUTER;
     check_http($code===404 && !str_contains($body,'Warning:'),'unknown booking renders clean 404');
     [$code,$body]=$request('booking_payment.php?booking_id=1');
     check_http($code===200 && str_contains($body,'id="previewPayBtn"') && !str_contains($body,'id="payBtn"') && str_contains($body,'id="paymentMethodNotice"'),'unconfigured checkout explains unavailable methods and offers preview');
-    $db->query("UPDATE gangnamunni_platform_payments SET status='refunded',provider='portone_test',provider_transaction_id='imp_fixture',verified_amount=amount,verified_at=NOW(),verification_source='server_query',paid_at=NOW(),refunded_amount=amount,refunded_at=NOW()");
+    $db->query("UPDATE gangnamunni_platform_payments SET status='refunded',provider='toss_test',provider_transaction_id='tx_fixture',verified_amount=amount,verified_at=NOW(),verification_source='server_query',paid_at=NOW(),refunded_amount=amount,refunded_at=NOW()");
     [$code,$body]=$request('booking_payment.php?booking_id=1');
     check_http($code===200 && str_contains($body,'환불이 완료된 결제입니다.') && !str_contains($body,'id="payBtn"') && !str_contains($body,'id="previewPayBtn"'),'refunded checkout offers neither recharging nor bypass');
     [$code,$body]=$request('booking_payment_success.php?booking_id=1');

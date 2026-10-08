@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/booking_payment_config.php';
 if (!function_exists('getSettingValue') && file_exists(__DIR__ . '/includes/settings_helper.php')) require_once __DIR__ . '/includes/settings_helper.php';
 global $is_member, $member;
 $booking_id = (int)($_GET['booking_id'] ?? 0);
@@ -15,7 +16,7 @@ else { $my_phone=preg_replace('/[^0-9]/','',(string)($member['mb_hp']??($_SESSIO
 if (!$is_owner) { header('Location: my_bookings.php?tab=cancelled'); exit; }
 $refund_complete = true;
 $check = mysqli_query($connect, "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gangnamunni_platform_payments' LIMIT 1");
-if ($check && mysqli_num_rows($check)) { $ps=mysqli_prepare($connect,"SELECT status,provider FROM gangnamunni_platform_payments WHERE payment_type='booking' AND booking_id=? LIMIT 1"); mysqli_stmt_bind_param($ps,'i',$booking_id); mysqli_stmt_execute($ps); $payment=mysqli_fetch_assoc(mysqli_stmt_get_result($ps)); mysqli_stmt_close($ps); if($payment)$refund_complete=(in_array($payment['status'],['pending','failed','refunded','cancelled'],true) || in_array($payment['provider'],['mock_booking_payment','portone_test'],true)); }
+if ($check && mysqli_num_rows($check)) { $ps=mysqli_prepare($connect,"SELECT status,provider FROM gangnamunni_platform_payments WHERE payment_type='booking' AND booking_id=? LIMIT 1"); mysqli_stmt_bind_param($ps,'i',$booking_id); mysqli_stmt_execute($ps); $payment=mysqli_fetch_assoc(mysqli_stmt_get_result($ps)); mysqli_stmt_close($ps); if($payment)$refund_complete=(in_array($payment['status'],['pending','failed','refunded','cancelled'],true) || booking_payment_is_test($payment['provider'])); }
 function cancel_detail_date($date,$time){$d=['일','월','화','수','목','금','토'];$ts=strtotime($date.' '.$time);$h=(int)date('G',$ts);return date('n월 j일',$ts).' ('.$d[(int)date('w',$ts)].') '.($h<12?'오전 ':'오후 ').($h%12?:12).':'.date('i',$ts);}
 ?>
 <!doctype html><html lang="ko"><head>

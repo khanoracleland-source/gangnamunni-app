@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/payment_core.php';
 require_once __DIR__ . '/booking_payment_access.php';
-require_once __DIR__ . '/portone_client.php';
+require_once __DIR__ . '/booking_payment_gateway.php';
 require_once __DIR__ . '/points_checkout.php';
 
 function booking_payment_lock(mysqli $db, string $merchant, callable $work) {
@@ -42,9 +42,41 @@ function booking_payment_refund_audit(mysqli $db, array $order, int $amount, str
     }
 }
 
+/**
+ * PG 응답(정규화된 형태)을 원장과 대조한다. 회귀 테스트에서도 쓰는 순수 함수.
+ * 실결제/샌드박스 구분은 PG 클라이언트가 provider() 로 정한다(예: toss / toss_test).
+ */
+function booking_payment_validate(array $order, array $remote, string $provider): string {
+    if (!booking_payment_is_pg($provider)) throw new RuntimeException('Unknown payment gateway provider.');
+    if (($remote['payment_id'] ?? '') !== $order['merchant_uid']
+        || !is_int($remote['amount'] ?? null) || $remote['amount'] !== (int)$order['amount']
+        || ($remote['currency'] ?? '') !== 'KRW') {
+        throw new RuntimeException('Payment identity, amount or currency mismatch.');
+    }
+    if (in_array($remote['status'] ?? '', ['paid', 'cancelled'], true)) {
+        // Transaction identity and time only carry meaning once money exists.
+        if (!is_string($remote['transaction_id'] ?? null) || $remote['transaction_id'] === '') {
+            throw new RuntimeException('Missing provider transaction ID.');
+        }
+        if (!is_int($remote['paid_at'] ?? null) || $remote['paid_at'] <= 0 || $remote['paid_at'] > time() + 300) {
+            throw new RuntimeException('Invalid provider payment time.');
+        }
+    }
+    // A verified order keeps its original transaction and environment.
+    if (!empty($order['provider_transaction_id'])
+        && ($order['provider_transaction_id'] !== ($remote['transaction_id'] ?? null) || $order['provider'] !== $provider)) {
+        throw new RuntimeException('Conflicting payment transaction.');
+    }
+    $cancelled = $remote['cancelled_amount'] ?? 0;
+    if (!is_int($cancelled) || $cancelled < 0 || $cancelled > (int)$order['amount']) {
+        throw new RuntimeException('Invalid refund total.');
+    }
+    return $provider;
+}
+
 /** Call only inside booking_payment_lock, after fetching fresh provider data. */
-function booking_payment_apply_remote(mysqli $db, array $order, array $remote, string $source): array {
-    $provider = booking_portone_validate($order, $remote);
+function booking_payment_apply_remote(mysqli $db, array $order, array $remote, string $source, string $provider): array {
+    $provider = booking_payment_validate($order, $remote, $provider);
     $status = $remote['status'] ?? '';
     $validStates = ['ready', 'paid', 'failed', 'cancelled'];
     if (!in_array($status, $validStates, true)) {
@@ -88,7 +120,7 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
                 'refund:' . $remote['transaction_id'] . ':' . $cancelled,
                 $refundDelta, $hash, false);
             if ($source === 'webhook') {
-                booking_payment_refund_audit($db, $order, $refundDelta, 'webhook', 0, 'PortOne Webhook');
+                booking_payment_refund_audit($db, $order, $refundDelta, 'webhook', 0, 'PG Webhook');
             }
         }
         $confirmed = $db->prepare("UPDATE gangnamunni_payment_refund_requests SET status='succeeded',completed_at=NOW()
@@ -105,20 +137,23 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
         throw $e;
     }
 }
-function booking_payment_sync(mysqli $db, string $merchant, string $source = 'server_query', ?BookingPortOneClient $client = null): array {
-    $client = $client ?? new BookingPortOneClient();
-    return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $source, $client) {
+function booking_payment_sync(mysqli $db, string $merchant, string $source = 'server_query', ?BookingPaymentGateway $gateway = null): array {
+    $gateway = $gateway ?? booking_payment_gateway();
+    // No PG connected: no payment can exist outside our ledger, so the ledger is the answer.
+    if (!$gateway) return booking_payment_by_merchant($db, $merchant);
+    return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $source, $gateway) {
         $order = booking_payment_by_merchant($db, $merchant);
-        return booking_payment_apply_remote($db, $order, $client->payment($merchant), $source);
+        return booking_payment_apply_remote($db, $order, $gateway->payment($merchant), $source, $gateway->provider());
     });
 }
-function booking_payment_refund(mysqli $db, string $merchant, int $amount, string $reason, string $requestId, int $actorId, ?BookingPortOneClient $client = null): array {
+function booking_payment_refund(mysqli $db, string $merchant, int $amount, string $reason, string $requestId, int $actorId, ?BookingPaymentGateway $gateway = null): array {
     if (!preg_match('/^[a-f0-9]{64}$/D', $requestId) || $actorId < 0 || trim($reason) === '' || strlen($reason) > 500) throw new InvalidArgumentException('Invalid refund request.');
-    $client = $client ?? new BookingPortOneClient();
-    return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $amount, $reason, $requestId, $actorId, $client) {
+    $gateway = $gateway ?? booking_payment_require_gateway();
+    $provider = $gateway->provider();
+    return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $amount, $reason, $requestId, $actorId, $gateway, $provider) {
         $order = booking_payment_by_merchant($db, $merchant);
-        if (!in_array($order['provider'], ['portone', 'portone_test'], true) || empty($order['provider_transaction_id'])) {
-            throw new RuntimeException('Only verified PortOne payments can be refunded.');
+        if (!booking_payment_is_pg($order['provider']) || empty($order['provider_transaction_id'])) {
+            throw new RuntimeException('Only verified PG payments can be refunded.');
         }
         $request = $db->prepare("SELECT * FROM gangnamunni_payment_refund_requests WHERE request_id=?");
         $request->bind_param('s', $requestId);
@@ -133,8 +168,8 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
             }
         }
         $before = (int)$order['refunded_amount'];
-        $remote = $client->payment($merchant);
-        $order = booking_payment_apply_remote($db, $order, $remote, 'server_query');
+        $remote = $gateway->payment($merchant);
+        $order = booking_payment_apply_remote($db, $order, $remote, 'server_query', $provider);
         if ($previous) {
             if ($previous['status'] === 'failed') throw new RuntimeException('This refund request was rejected. Use a new request after review.');
             if ($previous['status'] === 'succeeded') return $order;
@@ -169,14 +204,14 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
         $save->bind_param('siiiis', $requestId, $order['id'], $amount, $before, $actorId, $reason);
         $save->execute();
         try {
-            $client->cancel($merchant, $amount, $remaining, $reason);
-        } catch (BookingPortOneRejectedException $e) {
+            $gateway->cancel($merchant, (string)$order['provider_transaction_id'], $amount, $remaining, $reason, $requestId);
+        } catch (BookingPaymentRejectedException $e) {
             $failed = $db->prepare("UPDATE gangnamunni_payment_refund_requests SET status='failed',completed_at=NOW() WHERE request_id=?");
             $failed->bind_param('s', $requestId);
             $failed->execute();
             throw $e;
         }
-        $result = booking_payment_apply_remote($db, $order, $client->payment($merchant), 'server_query');
+        $result = booking_payment_apply_remote($db, $order, $gateway->payment($merchant), 'server_query', $provider);
         if ((int)$result['refunded_amount'] !== $before + $amount) throw new RuntimeException('Refund confirmation pending.');
         $done = $db->prepare("UPDATE gangnamunni_payment_refund_requests SET status='succeeded',completed_at=NOW() WHERE request_id=?");
         $done->bind_param('s', $requestId);

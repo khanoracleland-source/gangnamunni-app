@@ -12,7 +12,6 @@ $cases = [
     ['booking_payment_mock_complete.php','POST','',403],
     ['booking_payment_request.php','POST','',403],
     ['booking_payment_verify.php','POST','',403],
-    ['payment/portone_webhook.php','POST','{}',400],
     ['api_wallet.php','GET',null,401],
     ['admin_booking_payments.php','GET',null,403],
 ];

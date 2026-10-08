@@ -8,6 +8,7 @@ $admin_current = 'bookings';
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_once __DIR__ . '/includes/hospital_filter.php'; 
+require_once __DIR__ . '/includes/booking_payment_config.php';
 require_once __DIR__ . '/includes/photo_upload_helper.php';
 require_once __DIR__ . '/includes/booking_notifications.php';
 require_admin_login();
@@ -248,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                  WHERE b.id={$id}{$current_scope} LIMIT 1");
             $row = $current_result ? mysqli_fetch_assoc($current_result) : null;
             if (!$row || $row['booking_status'] !== 'cancelled'
-                || !in_array($row['provider'], ['portone', 'portone_test'], true)
+                || !booking_payment_is_pg($row['provider'])
                 || !in_array($row['payment_status'], ['paid', 'partially_refunded'], true)) {
                 $msg = '환불완료로 변경할 수 없는 상태입니다.';
                 $msg_type = 'danger';
@@ -737,7 +738,7 @@ function admin_booking_payment_badge(array $booking): string {
     if ($booking_status === 'cancelled' && in_array($payment_status, ['paid', 'partially_refunded'], true)) {
         return '<span class="badge bg-warning text-dark">환불 대기</span>';
     }
-    if (in_array($booking['payment_provider'] ?? '', ['mock_booking_payment','portone_test'], true)) {
+    if (booking_payment_is_test($booking['payment_provider'] ?? null)) {
         return '<span class="badge bg-secondary">테스트 결제</span>';
     }
     if ($payment_status === 'paid') {
