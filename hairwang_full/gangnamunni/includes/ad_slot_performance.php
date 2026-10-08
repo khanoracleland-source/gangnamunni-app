@@ -86,14 +86,9 @@ function adSlotGetSetting($connect, $key, $default = null)
 
 function adSlotVisitorIp()
 {
-    if (! empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-        return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
-    }
-    if (! empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        return trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
-    }
-
-    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    // 위조 가능한 프록시 헤더는 신뢰 프록시 경유 시에만 사용 (includes/client_ip.php)
+    require_once __DIR__ . '/client_ip.php';
+    return seoulbeauty_client_ip();
 }
 
 function adSlotVisitorId()

@@ -10,22 +10,15 @@
  */
 
 require_once __DIR__ . '/cpv_helper.php';
+require_once __DIR__ . '/client_ip.php';
 
 /**
  * 방문자 IP 주소 추출
- * Cloudflare / 리버스 프록시 환경 대응
+ * 프록시 헤더(CF-Connecting-IP, X-Forwarded-For)는 실제 프록시에서 온 요청일 때만 신뢰한다.
+ * (클라이언트가 헤더를 위조해 중복/일일 한도 검사를 우회하고 병원 지갑을 소진시키는 것을 방지)
  */
 function getCpvVisitorIp() {
-    // Cloudflare
-    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-        return $_SERVER['HTTP_CF_CONNECTING_IP'];
-    }
-    // X-Forwarded-For (첫 번째 IP만 사용)
-    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-        return trim($ips[0]);
-    }
-    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    return seoulbeauty_client_ip();
 }
 
 /**
