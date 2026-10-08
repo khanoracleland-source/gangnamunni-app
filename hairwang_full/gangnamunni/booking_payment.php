@@ -751,7 +751,7 @@ a { color: inherit; text-decoration: none; }
         setBusy(true);
         // 서버가 금액·주문번호를 정하고, Toss 결제창은 successUrl/failUrl 로 돌아온다.
         // 실제 승인은 booking_payment_toss_success.php 에서 서버가 한다.
-        post('booking_payment_request.php', {provider:selectedProvider, point_use:String(currentPointUse())}).then(function(d) {
+        post('booking_payment_request.php', {provider:selectedProvider, point_use:String(currentPointUse()), in_app: window.FlutterBridge ? '1' : ''}).then(function(d) {
             if (typeof window.TossPayments !== 'function') throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.');
             var payment = window.TossPayments(d.payment.clientKey).payment({customerKey: window.TossPayments.ANONYMOUS});
             return payment.requestPayment(d.payment.request);

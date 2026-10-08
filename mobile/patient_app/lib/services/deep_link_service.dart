@@ -243,6 +243,12 @@ class DeepLinkService {
         _handleOAuthCallback(pathSegments, queryParameters);
         break;
 
+      case 'payment':
+        // 토스페이먼츠 appScheme(wellness://payment): 페이북/ISP 앱에서 결제를 마치고
+        // 앱으로 돌아온 것뿐이다. 결제는 웹뷰 안에서 계속 진행되므로 화면을 바꾸지 않는다.
+        debugPrint('[DeepLinkService] 결제 앱에서 복귀');
+        break;
+
       default:
         debugPrint('[DeepLinkService] 알 수 없는 경로: $host');
         toast('지원하지 않는 딥링크입니다.');

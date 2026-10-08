@@ -162,6 +162,9 @@ try {
         $request['card'] = isset($easyPay[$provider])
             ? ['flowMode' => 'DIRECT', 'easyPay' => $easyPay[$provider]]
             : ['flowMode' => 'DEFAULT', 'useEscrow' => false, 'useCardPoint' => false, 'useAppCardOnly' => false];
+        // 환자 앱 웹뷰: 페이북/ISP 앱에서 결제 후 우리 앱으로 돌아오게 한다(토스 SDK appScheme, 카드 결제만).
+        // 앱은 wellness://payment 를 받으면 아무 화면도 바꾸지 않고 웹뷰를 그대로 둔다.
+        if (($_POST['in_app'] ?? '') === '1') $request['appScheme'] = 'wellness://payment';
     }
     echo json_encode(['success' => true, 'payment' => [
         'clientKey' => booking_payment_client_key(),

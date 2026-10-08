@@ -168,6 +168,8 @@
                 <data android:scheme="wellness" android:host="profile" />
                 <data android:scheme="wellness" android:host="settings" />
                 <data android:scheme="wellness" android:host="webview" />
+                <!-- 토스페이먼츠 appScheme: 페이북/ISP 앱에서 결제 후 앱으로 복귀 -->
+                <data android:scheme="wellness" android:host="payment" />
             </intent-filter>
 
             <!-- iOS 호환용 kivicare:// 스킴 -->
