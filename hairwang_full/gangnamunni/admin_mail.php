@@ -364,6 +364,7 @@ $admin_extra_css = <<<'CSSEOF'
 .mail-view-body { flex: 1; padding: 20px; overflow-y: auto; font-size: 14px; line-height: 1.7; }
 .mail-view-body pre { white-space: pre-wrap; font-family: inherit; margin: 0; }
 .mail-view-body img { max-width: 100%; height: auto; }
+.mail-html-frame { display: block; width: 100%; min-height: 120px; border: 0; background: #fff; border-radius: 4px; }
 .mail-view-attachments { padding: 12px 20px; border-top: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
 
 /* 답장/작성 모달 - 1.5배 크게 */
@@ -1243,7 +1244,8 @@ function renderMailView(data) {
     // 본문
     html += '<div class="mail-view-body">';
     if (data.body_html) {
-        html += '<div class="mail-html-body">' + data.body_html + '</div>';
+        // 외부 발신자 HTML 은 스크립트가 실행되지 않는 sandbox iframe 안에서만 렌더링한다.
+        html += '<iframe class="mail-html-frame" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" title="메일 본문"></iframe>';
     } else if (data.body_text) {
         html += '<pre>' + escHtml(data.body_text) + '</pre>';
     } else {
@@ -1259,6 +1261,9 @@ function renderMailView(data) {
     html += '</div></div>';
 
     document.getElementById('mailContent').innerHTML = html;
+    if (data.body_html) {
+        mountMailHtmlFrame(document.querySelector('#mailContent .mail-html-frame'), data.body_html);
+    }
 }
 
 // ===== 답장/전달 =====
@@ -1353,7 +1358,16 @@ function setQuotedOriginal(html) {
         return;
     }
     document.getElementById('composeQuotedHtml').value = html;
-    document.getElementById('quotedContent').innerHTML = html;
+    // 인용 원본(외부 HTML 포함)도 sandbox iframe 으로만 표시한다. 전송용 원본은 composeQuotedHtml 에 그대로 둔다.
+    var quotedBox = document.getElementById('quotedContent');
+    quotedBox.textContent = '';
+    var quotedFrame = document.createElement('iframe');
+    quotedFrame.className = 'mail-html-frame';
+    quotedFrame.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
+    quotedFrame.setAttribute('referrerpolicy', 'no-referrer');
+    quotedFrame.title = '원본 메일';
+    quotedBox.appendChild(quotedFrame);
+    mountMailHtmlFrame(quotedFrame, html);
     document.getElementById('quotedOriginal').style.display = 'block';
     // 기본으로 펼침
     document.getElementById('quotedContent').style.display = 'block';
@@ -1650,9 +1664,28 @@ function escHtml(s) {
     return d.innerHTML;
 }
 function stripHtml(html) {
-    var tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
+    // DOMParser 문서는 스크립트·이벤트 핸들러를 실행하지 않는다 (detached div 의 innerHTML 은 img onerror 등이 실행됨).
+    if (!html) return '';
+    var doc = new DOMParser().parseFromString(String(html), 'text/html');
+    return (doc.body && doc.body.textContent) || '';
+}
+// 신뢰할 수 없는 메일 HTML 을 sandbox iframe(allow-scripts 없음)에 넣고 높이를 내용에 맞춘다.
+function mountMailHtmlFrame(frame, bodyHtml) {
+    if (!frame) return;
+    var head = '<meta charset="utf-8">'
+        + '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: https:; style-src \'unsafe-inline\'; font-src data: https:">'
+        + '<meta name="referrer" content="no-referrer">'
+        + '<base target="_blank">'
+        + '<style>html,body{margin:0;padding:0;background:#fff;color:#212529;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;line-height:1.7;word-break:break-word;}img{max-width:100%;height:auto;}</style>';
+    var fit = function () {
+        try {
+            var d = frame.contentDocument;
+            if (d && d.documentElement) frame.style.height = (d.documentElement.scrollHeight + 4) + 'px';
+        } catch (e) {}
+    };
+    frame.addEventListener('load', fit);
+    window.addEventListener('resize', fit);
+    frame.srcdoc = '<!doctype html><html><head>' + head + '</head><body>' + String(bodyHtml) + '</body></html>';
 }
 function formatDate(dateStr) {
     if (!dateStr) return '';

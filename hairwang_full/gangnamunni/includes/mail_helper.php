@@ -6,18 +6,41 @@
  * @created 2026-02-11
  */
 
+// 메일 계정 비밀번호는 코드에 두지 않는다 — gangnamunni/.env 또는 환경변수에서 읽는다.
+//   MAIL_ADMIN_PASSWORD=...   (admin@seoulbeauty.app)
+//   MAIL_INFO_PASSWORD=...    (info@seoulbeauty.app)
+if (!function_exists('gnu_load_env')) {
+    // .env 파서 (login.php / sms_helper.php 와 동일 규칙: # / ; 주석, KEY=VALUE)
+    function gnu_load_env($file) {
+        $out = [];
+        if (!is_readable($file)) return $out;
+        foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#' || $line[0] === ';') continue;
+            $pos = strpos($line, '=');
+            if ($pos === false) continue;
+            $out[trim(substr($line, 0, $pos))] = trim(trim(substr($line, $pos + 1)), "\"'");
+        }
+        return $out;
+    }
+}
+$_mail_env = gnu_load_env(dirname(__DIR__) . '/.env');
+$_mail_secret = function ($key) use ($_mail_env) {
+    return (string) ($_mail_env[$key] ?? (getenv($key) ?: ''));
+};
+
 // 메일 계정 기본 설정
 $_MAIL_ACCOUNTS_DEFAULT = [
     [
         'email' => 'admin@seoulbeauty.app',
-        'password' => 'SeoulB3auty!2026',
+        'password' => $_mail_secret('MAIL_ADMIN_PASSWORD'),
         'name' => 'Seoul Beauty Admin',
         'label' => '관리자',
         'color' => '#3b82f6',
     ],
     [
         'email' => 'info@seoulbeauty.app',
-        'password' => 'SeoulB3auty!2026',
+        'password' => $_mail_secret('MAIL_INFO_PASSWORD'),
         'name' => 'Seoul Beauty Info',
         'label' => '문의',
         'color' => '#10b981',
@@ -46,6 +69,7 @@ foreach ($_MAIL_ACCOUNTS_DEFAULT as $i => &$_acc) {
 unset($_acc);
 
 define('MAIL_ACCOUNTS', $_MAIL_ACCOUNTS_DEFAULT);
+unset($_mail_env, $_mail_secret);
 
 define('MAIL_IMAP_HOST', '{mail.seoulbeauty.app:993/imap/ssl/novalidate-cert}');
 define('MAIL_SMTP_HOST', 'mail.seoulbeauty.app');
