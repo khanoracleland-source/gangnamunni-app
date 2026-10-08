@@ -7,10 +7,11 @@ require_once dirname(__DIR__) . '/includes/init.php';
 require_once dirname(__DIR__) . '/includes/functions.php';
 
 // 파라미터
-$mode = isset($_GET['mode']) ? $_GET['mode'] : 'create';
+$mode = (($_GET['mode'] ?? '') === 'edit') ? 'edit' : 'create'; // 허용 값만 사용 (JS 문자열에 출력됨)
 $hospital_id = isset($_GET['hospital_id']) ? intval($_GET['hospital_id']) : 0;
 $review_id = isset($_GET['review_id']) ? intval($_GET['review_id']) : 0;
-$user_id = isset($_GET['user_id']) ? sanitizeInput($_GET['user_id']) : '';
+// 작성자는 URL 파라미터가 아니라 로그인 세션으로만 판단한다 (?user_id= 로 타인 행세 불가)
+$user_id = (string) ($_SESSION['ss_mb_id'] ?? '');
 
 // 병원 정보 조회
 $hospital = null;
@@ -33,6 +34,16 @@ if ($mode === 'edit' && $review_id > 0 && isset($connect) && $connect) {
     $result = mysqli_stmt_get_result($stmt);
     $review = mysqli_fetch_assoc($result);
     mysqli_stmt_close($stmt);
+
+    // 본인 후기(또는 관리자)만 수정 화면에서 불러올 수 있다 — 저장 API(requireOwnership)와 동일한 규칙.
+    $editor_mb_level = (int) ($member['mb_level'] ?? ($_SESSION['ss_mb_level'] ?? 0));
+    if ($review && !(
+        ($user_id !== '' && hash_equals((string) ($review['user_id'] ?? ''), $user_id))
+        || $editor_mb_level >= 10
+    )) {
+        http_response_code(403);
+        exit('권한이 없습니다.');
+    }
 
     if ($review) {
         $stmt = mysqli_prepare($connect, "SELECT * FROM review_images WHERE review_id = ? ORDER BY image_order ASC");
@@ -161,19 +172,19 @@ $base_url = rtrim(str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME']
     <script>
         // 설정
         const CONFIG = {
-            mode: '<?php echo $mode; ?>',
+            mode: <?php echo json_encode($mode, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
             hospitalId: <?php echo $hospital_id; ?>,
             reviewId: <?php echo $review_id; ?>,
-            userId: '<?php echo addslashes($user_id); ?>',
-            csrfToken: '<?php echo $csrf_token; ?>',
-            baseUrl: '<?php echo $base_url; ?>',
+            userId: <?php echo json_encode($user_id, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+            csrfToken: <?php echo json_encode((string) $csrf_token, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+            baseUrl: <?php echo json_encode($base_url, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
             maxImages: 10,
             autosaveInterval: 30000
         };
 
         // 기존 후기 데이터 (수정 모드)
-        const existingReview = <?php echo json_encode($review, JSON_UNESCAPED_UNICODE) ?: 'null'; ?>;
-        const existingImages = <?php echo json_encode($review_images, JSON_UNESCAPED_UNICODE) ?: '[]'; ?>;
+        const existingReview = <?php echo json_encode($review, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?: 'null'; ?>;
+        const existingImages = <?php echo json_encode($review_images, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?: '[]'; ?>;
     </script>
     <script src="assets/editor.js"></script>
 
