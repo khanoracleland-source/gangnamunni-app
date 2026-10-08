@@ -11,6 +11,7 @@ import '../configs.dart';
 import '../utils/app_common.dart';
 import 'deep_link_service.dart';
 import 'native_auth_service.dart';
+import 'payment_app_launcher.dart';
 import 'package:nb_utils/nb_utils.dart' show toast;
 
 /// WebView <-> Flutter 양방향 통신 브릿지 (환자 앱)
@@ -515,6 +516,21 @@ class WebViewBridge {
           _log('커스텀 스킴 URL 가로챔: ${request.url}');
           DeepLinkService.instance.handleDeepLinkFromString(request.url);
           return NavigationDecision.prevent;
+        }
+
+        // 결제(토스페이먼츠) 중 카드사·간편결제·은행 앱 호출은 외부 앱으로 연다.
+        // 허용 목록에 있는 결제 앱만 해당하며, 그 외 스킴은 아래에서 계속 차단한다.
+        // 카카오 로그인 intent(kakaokompassauth/kakaolink)는 기존 처리를 그대로 쓴다.
+        final bool kakaoLoginIntent = scheme == 'intent' &&
+            (request.url.contains('scheme=kakaokompassauth') ||
+                request.url.contains('scheme=kakaolink'));
+        if (!kakaoLoginIntent) {
+          final PaymentAppLink? paymentLink = PaymentAppLauncher.parse(request.url);
+          if (paymentLink != null) {
+            _log('결제 앱 호출: ${paymentLink.appUrl}');
+            await PaymentAppLauncher.launch(paymentLink);
+            return NavigationDecision.prevent;
+          }
         }
 
         // intent:// 스킴 차단 (Android에서 앱 인텐트)
