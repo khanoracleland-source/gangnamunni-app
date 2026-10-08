@@ -70,7 +70,9 @@ Thumbs.db
 /hairwang_full/gangnamunni_backup_*/
 
 # gangnamunni 제외
-/hairwang_full/gangnamunni/uploads/
+/hairwang_full/gangnamunni/uploads/*
+# 업로드 디렉토리의 실행 차단 규칙은 저장소에서 관리
+!/hairwang_full/gangnamunni/uploads/.htaccess
 /hairwang_full/gangnamunni/node_modules/
 /hairwang_full/gangnamunni/screenshots/
 /hairwang_full/gangnamunni/figma/

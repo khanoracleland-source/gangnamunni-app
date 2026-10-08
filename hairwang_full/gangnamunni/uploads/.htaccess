@@ -1,0 +1,28 @@
+# 업로드 디렉토리 — 사용자가 올린 파일은 절대 서버 측 코드로 실행되지 않아야 한다.
+Options -Indexes -ExecCGI
+
+# PHP 등 스크립트 확장자는 요청 자체를 거부 (mod_php / PHP-FPM 모두 해당)
+<FilesMatch "(?i)\.(php[0-9]?|phtml|phar|pht|phps|inc|cgi|pl|py|rb|sh|bash|shtml|asp|aspx|jsp|htaccess|htpasswd)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>
+RemoveHandler .php .phtml .phar .pht .php3 .php4 .php5 .php7 .php8 .cgi .pl .py .shtml
+RemoveType .php .phtml .phar .pht .php3 .php4 .php5 .php7 .php8
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    # SVG/HTML/XML 을 직접 열어도 스크립트가 실행되지 않도록 sandbox
+    <FilesMatch "(?i)\.(svgz?|html?|xhtml|xml)$">
+        Header always set Content-Security-Policy "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox"
+    </FilesMatch>
+</IfModule>

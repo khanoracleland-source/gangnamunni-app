@@ -1,0 +1,16 @@
+# 카테고리 아이콘(SVG) — 직접 열어도 스크립트가 실행되지 않도록 sandbox, PHP 등 실행 금지
+Options -Indexes -ExecCGI
+<FilesMatch "(?i)\.(php[0-9]?|phtml|phar|pht|cgi|pl|py|shtml)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    <FilesMatch "(?i)\.svgz?$">
+        Header always set Content-Security-Policy "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox"
+    </FilesMatch>
+</IfModule>
