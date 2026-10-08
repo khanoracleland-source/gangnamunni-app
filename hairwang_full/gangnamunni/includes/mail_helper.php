@@ -627,7 +627,20 @@ function mail_format_size($bytes) {
  * @param string $references     References 헤더 (답장 스레딩)
  * @return array ['success'=>true] 또는 ['error'=>'message']
  */
+/**
+ * 메일 헤더 값 정리: CR/LF/NUL 제거 (헤더 인젝션 방지 — 추가 헤더·수신자·본문 삽입 차단)
+ */
+function mail_header_value($value) {
+    return trim(preg_replace('/[\r\n\0]+/', ' ', (string) $value));
+}
+
 function mail_send($account_index, $to, $subject, $body_html, $cc = '', $in_reply_to = '', $references = '', $attachments = []) {
+    // 헤더에 그대로 들어가는 값은 줄바꿈을 제거한다 (Subject 는 아래에서 base64 인코딩됨)
+    $to = mail_header_value($to);
+    $cc = mail_header_value($cc);
+    $in_reply_to = mail_header_value($in_reply_to);
+    $references = mail_header_value($references);
+
     $accounts = MAIL_ACCOUNTS;
     if (!isset($accounts[$account_index])) {
         return ['error' => '유효하지 않은 계정 인덱스입니다.'];
@@ -706,7 +719,10 @@ function mail_send($account_index, $to, $subject, $body_html, $cc = '', $in_repl
         foreach ($attachments as $att) {
             if (!isset($att['path']) || !file_exists($att['path'])) continue;
             $att_name = $att['name'] ?? basename($att['path']);
-            $att_type = $att['type'] ?? 'application/octet-stream';
+            $att_type = (string) ($att['type'] ?? 'application/octet-stream');
+            if (!preg_match('#^[a-z0-9][a-z0-9!\#$&^_.+-]{0,63}/[a-z0-9][a-z0-9!\#$&^_.+-]{0,126}$#i', $att_type)) {
+                $att_type = 'application/octet-stream'; // 클라이언트가 보낸 MIME 타입은 형식이 맞을 때만 사용
+            }
             $att_data = @file_get_contents($att['path']);
             if ($att_data === false) continue;
 
