@@ -48,12 +48,17 @@ function booking_payment_refund_audit(mysqli $db, array $order, int $amount, str
  */
 function booking_payment_validate(array $order, array $remote, string $provider): string {
     if (!booking_payment_is_pg($provider)) throw new RuntimeException('Unknown payment gateway provider.');
-    if (($remote['payment_id'] ?? '') !== $order['merchant_uid']
-        || !is_int($remote['amount'] ?? null) || $remote['amount'] !== (int)$order['amount']
-        || ($remote['currency'] ?? '') !== 'KRW') {
-        throw new RuntimeException('Payment identity, amount or currency mismatch.');
+    if (($remote['payment_id'] ?? '') !== $order['merchant_uid']) {
+        throw new RuntimeException('Payment identity mismatch.');
     }
-    if (in_array($remote['status'] ?? '', ['paid', 'cancelled'], true)) {
+    $settled = in_array($remote['status'] ?? '', ['paid', 'cancelled'], true);
+    // Unsettled attempts (not yet confirmed, expired) move no money, so an amount that
+    // differs from the ledger (e.g. points changed between attempts) is not an error.
+    if ($settled && (!is_int($remote['amount'] ?? null) || $remote['amount'] !== (int)$order['amount']
+        || ($remote['currency'] ?? '') !== 'KRW')) {
+        throw new RuntimeException('Payment amount or currency mismatch.');
+    }
+    if ($settled) {
         // Transaction identity and time only carry meaning once money exists.
         if (!is_string($remote['transaction_id'] ?? null) || $remote['transaction_id'] === '') {
             throw new RuntimeException('Missing provider transaction ID.');
@@ -219,4 +224,81 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
         booking_payment_refund_audit($db, $result, $amount, $actorId > 0 ? 'admin' : 'system', $actorId, $actorId > 0 ? 'Admin (' . $actorId . ')' : 'System');
         return $result;
     });
+}
+
+/**
+ * 2단계 결제의 서버 승인(성공 URL 에서 호출).
+ *
+ * 승인 직전에 잠금 안에서 원장·예약·포인트를 다시 확인한다. 하나라도 어긋나면 승인하지 않으며,
+ * 이 경우 돈은 빠져나가지 않고 PG 의 결제 건은 만료된다(사용자는 다시 결제하면 된다).
+ *
+ * @return array{outcome:string, reason:string, order:array}
+ *   outcome: paid(승인·반영 완료) | refused(우리가 승인 거부) | rejected(PG/카드사 거절) | pending(결과 확인 중)
+ */
+function booking_payment_confirm(mysqli $db, string $merchant, string $paymentKey, int $amount, ?BookingPaymentGateway $gateway = null): array {
+    $gateway = $gateway ?? booking_payment_require_gateway();
+    $provider = $gateway->provider();
+    return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $paymentKey, $amount, $gateway, $provider) {
+        $order = booking_payment_by_merchant($db, $merchant);
+        // Toss 가이드: 승인 전에 성공 URL 의 paymentKey·orderId·amount 를 서버에 저장한다.
+        booking_payment_attempt_save($db, $order, $provider, $paymentKey, $amount, 'received', null);
+        $result = function (string $outcome, string $reason, array $order) use ($db, $provider, $paymentKey, $amount): array {
+            booking_payment_attempt_save($db, $order, $provider, $paymentKey, $amount, $outcome, $reason);
+            return ['outcome' => $outcome, 'reason' => $reason, 'order' => $order];
+        };
+        if (in_array($order['status'], ['paid', 'partially_refunded'], true)
+            && hash_equals((string)$order['provider_transaction_id'], $paymentKey)) {
+            return $result('paid', 'ALREADY_CONFIRMED', $order);   // 새로고침 등 재진입
+        }
+        if ($order['status'] !== 'pending') return $result('refused', 'ORDER_STATE', $order);
+        if ($amount !== (int)$order['amount'] || $amount <= 0) return $result('refused', 'AMOUNT_MISMATCH', $order);
+        $stmt = $db->prepare('SELECT status FROM gangnamunni_bookings WHERE id=?');
+        $bookingId = (int)$order['booking_id'];
+        $stmt->bind_param('i', $bookingId);
+        $stmt->execute();
+        $booking = $stmt->get_result()->fetch_assoc();
+        if (!$booking || ($booking['status'] ?? '') !== 'confirmed') return $result('refused', 'BOOKING_NOT_CONFIRMED', $order);
+        $pointsUsed = (int)($order['points_used'] ?? 0);
+        if ($pointsUsed > 0) {
+            $hold = function_exists('points_checkout_active_hold') ? points_checkout_active_hold($db, (int)$order['id']) : null;
+            if (!$hold || ($hold['status'] ?? '') !== 'held' || (int)$hold['points'] !== $pointsUsed) {
+                return $result('refused', 'POINT_HOLD_EXPIRED', $order);
+            }
+        }
+        try {
+            $remote = $gateway->confirm($merchant, $paymentKey, $amount);
+        } catch (BookingPaymentRejectedException $e) {
+            return $result('rejected', $e->getMessage(), $order);
+        } catch (Throwable $e) {
+            // Outcome unknown (timeout, PG error, already processed): ask the PG what happened.
+            error_log('[booking_payment_confirm] ' . $e->getMessage());
+            try {
+                $remote = $gateway->payment($merchant);
+            } catch (Throwable $e2) {
+                error_log('[booking_payment_confirm] re-query: ' . $e2->getMessage());
+                return $result('pending', 'UNRESOLVED', $order);
+            }
+        }
+        if (($remote['transaction_id'] ?? null) !== null && $remote['transaction_id'] !== $paymentKey
+            && ($remote['status'] ?? '') !== 'ready') {
+            error_log('[booking_payment_confirm] PG returned a different paymentKey for ' . $merchant);
+        }
+        $order = booking_payment_apply_remote($db, $order, $remote, 'server_query', $provider);
+        if (in_array($order['status'], ['paid', 'partially_refunded'], true)) return $result('paid', 'CONFIRMED', $order);
+        return $result('pending', (string)($remote['raw_status'] ?? 'UNKNOWN'), $order);
+    });
+}
+
+/** 승인 시도 기록(gangnamunni_payment_attempts). 같은 paymentKey 는 한 행을 갱신한다. */
+function booking_payment_attempt_save(mysqli $db, array $order, string $provider, string $paymentKey, int $amount, string $outcome, ?string $reason): void {
+    $paymentId = (int)$order['id'];
+    $merchant = (string)$order['merchant_uid'];
+    $amount = max(0, $amount);
+    $reason = $reason !== null ? substr($reason, 0, 100) : null;
+    $stmt = $db->prepare("INSERT INTO gangnamunni_payment_attempts
+            (payment_id, merchant_uid, provider, pg_payment_key, amount, outcome, reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE outcome = VALUES(outcome), reason = VALUES(reason)");
+    $stmt->bind_param('isssiss', $paymentId, $merchant, $provider, $paymentKey, $amount, $outcome, $reason);
+    $stmt->execute();
 }

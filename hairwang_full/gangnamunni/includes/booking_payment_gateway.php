@@ -2,9 +2,9 @@
 /**
  * PG(결제대행사) 연결 지점.
  *
- * PortOne 연동은 2026-10-08 제거되었다. 다음 PG(Toss Payments)는 이 인터페이스를
- * 구현한 클라이언트를 booking_payment_gateway() 에서 반환하기만 하면 된다.
- * 원장·상태 전이·잠금·환불 멱등성(booking_payment_service.php)은 PG와 무관하다.
+ * PortOne 연동은 2026-10-08 제거되었고 Toss Payments(includes/toss_client.php)가
+ * 이 인터페이스를 구현한다. 원장·상태 전이·잠금·환불 멱등성(booking_payment_service.php)은
+ * PG와 무관하다. 서버 설정 TOSS_CLIENT_KEY / TOSS_SECRET_KEY 가 짝으로 있을 때만 연결된다.
  *
  * PG가 연결되지 않은 동안:
  *  - booking_payment_checkout_ready() 는 false → 결제 화면은 "온라인 결제 준비 중",
@@ -32,15 +32,36 @@ interface BookingPaymentGateway {
     public function payment(string $merchantUid): array;
 
     /**
+     * 2단계 결제의 서버 승인. 브라우저 인증이 끝난 결제를 확정하고 정규화된 결과를 돌려준다.
+     * 명확한 거절은 BookingPaymentRejectedException(메시지 = PG 오류 코드).
+     */
+    public function confirm(string $merchantUid, string $paymentKey, int $amount): array;
+
+    /**
      * 부분/전체 환불. $remaining 은 잠금 안에서 방금 조회한 환불 가능 잔액,
      * $requestId 는 멱등키로 쓴다. 명확한 거절은 BookingPaymentRejectedException.
      */
     public function cancel(string $merchantUid, string $transactionId, int $amount, int $remaining, string $reason, string $requestId): array;
 }
 
-/** 현재 연결된 PG. 없으면 null. */
+/** 현재 연결된 PG. 키가 없거나 짝이 맞지 않으면 null(결제 비활성). */
 function booking_payment_gateway(): ?BookingPaymentGateway {
-    return null;
+    require_once __DIR__ . '/booking_payment_config.php';
+    require_once __DIR__ . '/toss_client.php';
+    $client = trim(booking_payment_setting('TOSS_CLIENT_KEY'));
+    $secret = trim(booking_payment_setting('TOSS_SECRET_KEY'));
+    if ($client === '' && $secret === '') return null;
+    if (!BookingTossClient::keysPair($client, $secret)) {
+        static $warned = false;
+        if (!$warned) { error_log('[booking_payment_gateway] TOSS_CLIENT_KEY/TOSS_SECRET_KEY are not a valid test/live API 개별 연동 pair.'); $warned = true; }
+        return null;
+    }
+    return new BookingTossClient($secret);
+}
+
+/** 브라우저 SDK 에 넘길 클라이언트 키(공개 값). PG 미연결이면 ''. */
+function booking_payment_client_key(): string {
+    return booking_payment_gateway() ? trim(booking_payment_setting('TOSS_CLIENT_KEY')) : '';
 }
 
 function booking_payment_require_gateway(): BookingPaymentGateway {

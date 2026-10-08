@@ -18,9 +18,13 @@ function rejects(callable $work, string $label): void {
  * gateway client must produce; PG-specific HTTP/webhook tests belong with that client.
  */
 final class FakeGateway implements BookingPaymentGateway {
-    private $provider; private $payment; private $cancel;
-    public function __construct(string $provider, callable $payment, ?callable $cancel = null) {
-        $this->provider = $provider; $this->payment = $payment; $this->cancel = $cancel;
+    private $provider; private $payment; private $cancel; private $confirm;
+    public function __construct(string $provider, callable $payment, ?callable $cancel = null, ?callable $confirm = null) {
+        $this->provider = $provider; $this->payment = $payment; $this->cancel = $cancel; $this->confirm = $confirm;
+    }
+    public function confirm(string $merchantUid, string $paymentKey, int $amount): array {
+        if (!$this->confirm) throw new RuntimeException('confirm not supported');
+        return ($this->confirm)($merchantUid, $paymentKey, $amount);
     }
     public function provider(): string { return $this->provider; }
     public function payment(string $merchantUid): array { return ($this->payment)($merchantUid); }
@@ -30,7 +34,75 @@ final class FakeGateway implements BookingPaymentGateway {
     }
 }
 
-expect(booking_payment_gateway() === null, 'no PG is connected after PortOne removal');
+expect(booking_payment_gateway() === null, 'no PG is connected without Toss keys');
+// Toss keys: only a same-environment API 개별 연동 pair connects the gateway.
+putenv('TOSS_CLIENT_KEY=test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq'); putenv('TOSS_SECRET_KEY=test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R');
+expect(booking_payment_gateway() instanceof BookingTossClient && booking_payment_gateway()->provider() === 'toss_test', 'test key pair connects Toss as sandbox');
+expect(booking_payment_client_key() === 'test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq', 'client key exposed only when gateway is connected');
+putenv('TOSS_SECRET_KEY=live_sk_fixture123');
+expect(booking_payment_gateway() === null, 'test client key with live secret key is refused');
+putenv('TOSS_CLIENT_KEY=test_gck_docs_fixture'); putenv('TOSS_SECRET_KEY=test_gsk_docs_fixture');
+expect(booking_payment_gateway() === null, 'payment widget keys are refused for API 개별 연동');
+putenv('TOSS_CLIENT_KEY=live_ck_fixture123'); putenv('TOSS_SECRET_KEY=live_sk_fixture123');
+expect(booking_payment_gateway()->provider() === 'toss', 'live key pair is a live provider');
+putenv('TOSS_CLIENT_KEY='); putenv('TOSS_SECRET_KEY=');
+expect(booking_payment_gateway() === null && booking_payment_client_key() === '', 'removing keys disconnects the gateway');
+
+// Toss client against a scripted transport.
+$tossOrder = ['merchant_uid'=>'BK_fixture','amount'=>100000,'provider'=>null,'provider_transaction_id'=>null];
+$tossPayment = function (array $over = []) {
+    return array_replace(['paymentKey'=>'tgen_fixture','orderId'=>'BK_fixture','status'=>'DONE','totalAmount'=>100000,
+        'balanceAmount'=>100000,'currency'=>'KRW','method'=>'카드','approvedAt'=>'2026-10-01T10:00:00+09:00'], $over);
+};
+$calls = [];
+$toss = function (int $status, $body) use (&$calls) {
+    return new BookingTossClient('test_sk_fixture', function ($m, $p, $b, $h) use ($status, $body, &$calls) {
+        $calls[] = [$m, $p, $b, $h];
+        return [$status, is_string($body) ? $body : json_encode($body)];
+    });
+};
+$n = $toss(200, $tossPayment())->payment('BK_fixture');
+expect($n['status']==='paid' && $n['amount']===100000 && $n['cancelled_amount']===0 && $n['transaction_id']==='tgen_fixture'
+    && $n['paid_at']===strtotime('2026-10-01T10:00:00+09:00'), 'DONE normalizes to paid with amount, key and approval time');
+[$m, $p, $b, $h] = end($calls);
+expect($m==='GET' && $p==='/v1/payments/orders/BK_fixture', 'payment is looked up by our order id');
+expect(in_array('Authorization: Basic ' . base64_encode('test_sk_fixture:'), $h, true), 'Basic auth uses base64(secret + colon)');
+$n = $toss(200, $tossPayment(['status'=>'PARTIAL_CANCELED','balanceAmount'=>70000]))->payment('BK_fixture');
+expect($n['status']==='paid' && $n['cancelled_amount']===30000, 'partial cancel keeps paid with refunded total');
+$n = $toss(200, $tossPayment(['status'=>'CANCELED','balanceAmount'=>0]))->payment('BK_fixture');
+expect($n['status']==='cancelled' && $n['cancelled_amount']===100000, 'full cancel normalizes to cancelled');
+foreach (['READY'=>'ready','IN_PROGRESS'=>'ready','WAITING_FOR_DEPOSIT'=>'ready','ABORTED'=>'failed','EXPIRED'=>'failed'] as $raw=>$state) {
+    expect($toss(200, $tossPayment(['status'=>$raw]))->payment('BK_fixture')['status']===$state, 'Toss ' . $raw . ' maps to ' . $state);
+}
+rejects(fn()=>$toss(200, $tossPayment(['status'=>'WHO_KNOWS']))->payment('BK_fixture'), 'unknown Toss status rejected');
+$n = $toss(404, ['code'=>'NOT_FOUND_PAYMENT','message'=>'x'])->payment('BK_fixture');
+expect($n['status']==='ready' && $n['raw_status']==='NOT_FOUND' && $n['amount']===null, 'never-started order is ready, not an error');
+expect(booking_payment_validate($tossOrder, $n, 'toss_test')==='toss_test', 'never-started order passes validation');
+rejects(fn()=>$toss(200, '<html>bad gateway</html>')->payment('BK_fixture'), 'malformed Toss response rejected');
+rejects(fn()=>$toss(503, '{}')->payment('BK_fixture'), 'HTTP failure rejected');
+$toss(200, $tossPayment())->payment('BK_../evil');
+expect(end($calls)[1]==='/v1/payments/orders/BK_..%2Fevil', 'order id is URL-encoded into the path');
+$toss(200, $tossPayment())->confirm('BK_fixture', 'tgen_fixture', 100000);
+[$m, $p, $b, $h] = end($calls);
+expect($m==='POST' && $p==='/v1/payments/confirm' && $b===['paymentKey'=>'tgen_fixture','orderId'=>'BK_fixture','amount'=>100000], 'confirm sends paymentKey, orderId, amount');
+expect((bool)preg_grep('/^Idempotency-Key: confirm_BK_fixture_[a-f0-9]{64}$/', $h), 'confirm is idempotent per paymentKey');
+$toss(200, $tossPayment(['status'=>'PARTIAL_CANCELED','balanceAmount'=>90000]))->cancel('BK_fixture','tgen_fixture',10000,100000,'fixture',str_repeat('a',64));
+[$m, $p, $b, $h] = end($calls);
+expect($p==='/v1/payments/tgen_fixture/cancel' && $b===['cancelReason'=>'fixture','cancelAmount'=>10000]
+    && in_array('Idempotency-Key: refund_' . str_repeat('a',64), $h, true), 'refund cancels by paymentKey with request id as idempotency key');
+rejects(fn()=>$toss(200, $tossPayment())->cancel('BK_fixture','tgen_fixture',2,1,'x',str_repeat('a',64)), 'over-refund rejected before Toss call');
+foreach (['REJECT_CARD_COMPANY'=>true,'INVALID_REQUEST'=>true,'NOT_CANCELABLE_AMOUNT'=>true,'UNAUTHORIZED_KEY'=>true,
+          'ALREADY_PROCESSED_PAYMENT'=>false,'PROVIDER_ERROR'=>false,'ALREADY_CANCELED_PAYMENT'=>false,'FORBIDDEN_CONSECUTIVE_REQUEST'=>false] as $code=>$definitive) {
+    try { $toss(in_array($code,['UNAUTHORIZED_KEY'],true)?401:($code==='NOT_CANCELABLE_AMOUNT'||$code==='FORBIDDEN_CONSECUTIVE_REQUEST'||$code==='REJECT_CARD_COMPANY'?403:400), ['code'=>$code,'message'=>'x'])
+            ->confirm('BK_fixture','tgen_fixture',100000); $thrown = null; }
+    catch (Throwable $e) { $thrown = $e; }
+    expect($thrown instanceof BookingPaymentRejectedException === $definitive && $thrown !== null,
+        ($definitive ? 'definitive' : 'unresolved') . ' Toss error classified: ' . $code);
+}
+try { $toss(500, ['code'=>'FAILED_INTERNAL_SYSTEM_PROCESSING'])->confirm('BK_fixture','tgen_fixture',100000); $thrown=null; } catch (Throwable $e) { $thrown=$e; }
+expect($thrown !== null && !($thrown instanceof BookingPaymentRejectedException), 'Toss 5xx leaves the outcome unresolved');
+expect(booking_payment_validate($tossOrder, ['payment_id'=>'BK_fixture','status'=>'ready','amount'=>90000,'currency'=>'KRW','cancelled_amount'=>0], 'toss_test')==='toss_test',
+    'unconfirmed attempt with an older amount is not an error');
 $order = ['merchant_uid'=>'BK_fixture', 'amount'=>100000, 'provider'=>null, 'provider_transaction_id'=>null];
 $remote = ['payment_id'=>'BK_fixture','transaction_id'=>'tx_fixture','amount'=>100000,'currency'=>'KRW',
     'status'=>'paid','cancelled_amount'=>0,'paid_at'=>time()-86400];
@@ -72,6 +144,7 @@ try {
     $schema = file_get_contents(__DIR__ . '/../../hairwang_full/gangnamunni/sql/platform_payments_schema.sql');
     $schema = substr($schema, strpos($schema, 'CREATE TABLE IF NOT EXISTS gangnamunni_platform_payments'));
     $schema .= file_get_contents(__DIR__ . '/../../hairwang_full/gangnamunni/sql/booking_payment_previews.sql');
+    $schema .= file_get_contents(__DIR__ . '/../../hairwang_full/gangnamunni/sql/payment_attempts.sql');
     foreach (explode(';', $schema) as $sql) if (trim($sql) !== '') $db->query($sql);
     $db->query("CREATE TABLE gangnamunni_bookings (id BIGINT PRIMARY KEY, hospital_id BIGINT, hospital_name VARCHAR(255),mb_id VARCHAR(100),name VARCHAR(100),phone VARCHAR(30),treatment VARCHAR(255),price INT,status VARCHAR(30))");
     $db->query("INSERT INTO gangnamunni_bookings VALUES (1,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed'),(2,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
@@ -175,6 +248,53 @@ try {
     expect($request['status'] === 'failed', 'definitive refund rejection does not remain pending forever');
     $retry = booking_payment_refund($db,$fourth['merchant_uid'],1000,'corrected request',str_repeat('f',64),1,$client);
     expect((int)$retry['refunded_amount']===1000, 'new refund can follow a definite rejection');
+
+    // Two-phase confirm (Toss success URL).
+    $db->query("INSERT INTO gangnamunni_bookings VALUES (6,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
+    $sixth = platform_payment_create_booking($db,6)['merchant_uid'];
+    $confirmCalls = 0; $confirmMode = 'ok';
+    $tossState = ['status'=>'ready'];
+    $confirmGateway = new FakeGateway('toss_test', function($m) use (&$tossState) {
+        if ($tossState['status'] === 'ready') return ['payment_id'=>$m,'transaction_id'=>'tgen_six','status'=>'ready','raw_status'=>'IN_PROGRESS','amount'=>100000,'cancelled_amount'=>0,'currency'=>'KRW','paid_at'=>null];
+        if ($tossState['status'] === 'error') throw new RuntimeException('Toss down');
+        return ['payment_id'=>$m,'transaction_id'=>'tgen_six','status'=>'paid','raw_status'=>'DONE','amount'=>100000,'cancelled_amount'=>0,'currency'=>'KRW','paid_at'=>time()-60];
+    }, null, function($m,$key,$amount) use (&$confirmCalls,&$confirmMode,&$tossState) {
+        $confirmCalls++;
+        if ($confirmMode === 'reject') throw new BookingPaymentRejectedException('REJECT_CARD_COMPANY');
+        if ($confirmMode === 'timeout') { $tossState['status'] = 'paid'; throw new RuntimeException('timeout after approval'); }
+        if ($confirmMode === 'dead') { $tossState['status'] = 'error'; throw new RuntimeException('Toss down'); }
+        $tossState['status'] = 'paid';
+        return ['payment_id'=>$m,'transaction_id'=>$key,'status'=>'paid','raw_status'=>'DONE','amount'=>$amount,'cancelled_amount'=>0,'currency'=>'KRW','paid_at'=>time()-60];
+    });
+    $r = booking_payment_confirm($db,$sixth,'tgen_six',90000,$confirmGateway);
+    expect($r['outcome']==='refused' && $r['reason']==='AMOUNT_MISMATCH' && $confirmCalls===0, 'amount mismatch is never sent to the PG');
+    $db->query("UPDATE gangnamunni_bookings SET status='cancelled' WHERE id=6");
+    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    expect($r['outcome']==='refused' && $r['reason']==='BOOKING_NOT_CONFIRMED' && $confirmCalls===0, 'cancelled booking is never charged');
+    $db->query("UPDATE gangnamunni_bookings SET status='confirmed' WHERE id=6");
+    $db->query("ALTER TABLE gangnamunni_platform_payments ADD COLUMN points_used INT NOT NULL DEFAULT 0");   // point v2 migration column
+    $db->query("UPDATE gangnamunni_platform_payments SET points_used=1000 WHERE merchant_uid='" . $db->real_escape_string($sixth) . "'");
+    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    expect($r['outcome']==='refused' && $r['reason']==='POINT_HOLD_EXPIRED' && $confirmCalls===0, 'expired point hold blocks the charge');
+    $db->query("UPDATE gangnamunni_platform_payments SET points_used=0 WHERE merchant_uid='" . $db->real_escape_string($sixth) . "'");
+    $confirmMode = 'reject';
+    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    expect($r['outcome']==='rejected' && $r['reason']==='REJECT_CARD_COMPANY' && booking_payment_order($db,6)['status']==='pending', 'card rejection leaves the order payable');
+    $confirmMode = 'dead';
+    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    expect($r['outcome']==='pending' && booking_payment_order($db,6)['status']==='pending', 'unreachable PG reports pending, never failed or paid');
+    $confirmMode = 'timeout'; $tossState['status'] = 'ready';
+    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    expect($r['outcome']==='paid' && booking_payment_order($db,6)['status']==='paid', 'approval that timed out is recovered by re-query');
+    $callsBefore = $confirmCalls;
+    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    expect($r['outcome']==='paid' && $r['reason']==='ALREADY_CONFIRMED' && $confirmCalls===$callsBefore, 'success page refresh does not confirm twice');
+    $r = booking_payment_confirm($db,$sixth,'tgen_other',100000,$confirmGateway);
+    expect($r['outcome']==='refused' && $confirmCalls===$callsBefore, 'a second paymentKey cannot be confirmed on a paid order');
+    $attempts = [];
+    $rows = $db->query("SELECT pg_payment_key,outcome,reason FROM gangnamunni_payment_attempts WHERE merchant_uid='" . $db->real_escape_string($sixth) . "' ORDER BY id");
+    while ($row = $rows->fetch_assoc()) $attempts[$row['pg_payment_key']] = $row['outcome'] . ':' . $row['reason'];
+    expect($attempts === ['tgen_six'=>'paid:ALREADY_CONFIRMED','tgen_other'=>'refused:ORDER_STATE'], 'every success-URL return is stored with its outcome (Toss guide)');
 
     // Settlement runs against this throwaway database, never the application DB.
     $schema = file_get_contents(__DIR__ . '/../../hairwang_full/gangnamunni/sql/monthly_hospital_settlements.sql');

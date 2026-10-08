@@ -22,6 +22,7 @@ try {
     $schema = file_get_contents($root.'/sql/platform_payments_schema.sql');
     $schema = substr($schema,strpos($schema,'CREATE TABLE IF NOT EXISTS gangnamunni_platform_payments'));
     $schema .= file_get_contents($root.'/sql/booking_payment_previews.sql');
+    $schema .= file_get_contents($root.'/sql/payment_attempts.sql');
     foreach(explode(';',$schema) as $sql) if(trim($sql)!=='') $db->query($sql);
     $db->query("CREATE TABLE gangnamunni_bookings (id BIGINT PRIMARY KEY,hospital_id BIGINT,hospital_name VARCHAR(255),mb_id VARCHAR(100),name VARCHAR(100),phone VARCHAR(30),treatment VARCHAR(255),price INT,status VARCHAR(30),booking_date DATE,booking_time TIME)");
     $db->query("CREATE TABLE gangnamunni_hospitals (id BIGINT PRIMARY KEY,name VARCHAR(255),profile_image_url VARCHAR(255),address VARCHAR(255))");
@@ -43,6 +44,13 @@ try {
 if (!str_starts_with((string)getenv('PAYMENT_HTTP_DATABASE'),'codex_payment_http_')) { http_response_code(500); exit; }
 putenv('G5_PG_PAYMENTS_ENABLED=0'); putenv('BOOKING_PAYMENT_METHODS='); putenv('BOOKING_PAYMENT_PREVIEW_ENABLED=1');
 if (($_SERVER['HTTP_X_FIXTURE_PREVIEW'] ?? '') === 'disabled') putenv('BOOKING_PAYMENT_PREVIEW_ENABLED=0');
+putenv('TOSS_CLIENT_KEY='); putenv('TOSS_SECRET_KEY=');
+if (($_SERVER['HTTP_X_FIXTURE_TOSS'] ?? '') === 'on') {
+    // Toss docs' public test keys; no request leaves the fixture (checkout payload only).
+    putenv('G5_PG_PAYMENTS_ENABLED=1'); putenv('BOOKING_PAYMENT_METHODS=card,bank,tosspay');
+    putenv('BOOKING_PAYMENT_BASE_URL=https://fixture.invalid');
+    putenv('TOSS_CLIENT_KEY=test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq'); putenv('TOSS_SECRET_KEY=test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R');
+}
 $dbname=getenv('PAYMENT_HTTP_DATABASE');
 foreach (['HOST','USER','PASSWORD','PORT'] as $key) define('G5_MYSQL_'.$key,getenv('G5_MYSQL_'.$key));
 define('G5_MYSQL_DB',$dbname);
@@ -109,6 +117,26 @@ ROUTER;
     check_http($code===200 && str_contains($body,'결제 없이 계속했어요'),'preview success is explicitly unpaid');
     [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'card']);
     check_http($code===503 && $data['code']==='PAYMENT_UNAVAILABLE','unconfigured checkout fails without pretending payment');
+    $toss=['X-Fixture-Toss: on'];
+    $orderRow=$db->query("SELECT merchant_uid,amount FROM gangnamunni_platform_payments WHERE booking_id=1")->fetch_assoc();
+    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'card'],'owner',$toss);
+    $req=$data['payment']['request'] ?? [];
+    check_http($code===200 && ($data['payment']['clientKey'] ?? '')==='test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq'
+        && $req['method']==='CARD' && $req['card']['flowMode']==='DEFAULT'
+        && $req['amount']===['currency'=>'KRW','value'=>(int)$orderRow['amount']] && $req['orderId']===$orderRow['merchant_uid']
+        && $req['successUrl']==='https://fixture.invalid/booking_payment_toss_success.php'
+        && $req['failUrl']==='https://fixture.invalid/booking_payment_toss_fail.php','Toss card checkout uses ledger amount and order id');
+    check_http(!str_contains($body,'test_sk_'),'secret key never reaches the browser');
+    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'tosspay'],'owner',$toss);
+    check_http($code===200 && $data['payment']['request']['card']===['flowMode'=>'DIRECT','easyPay'=>'TOSSPAY'],'easy pay opens the provider directly');
+    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'bank'],'owner',$toss);
+    check_http($code===200 && $data['payment']['request']['method']==='TRANSFER','bank transfer maps to TRANSFER');
+    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'naverpay'],'owner',$toss);
+    check_http($code===503 && $data['code']==='PAYMENT_UNAVAILABLE','method not enabled in settings is refused');
+    [$code,$body]=$request('booking_payment.php?booking_id=1','GET',[],'owner',$toss);
+    check_http($code===200 && str_contains($body,'https://js.tosspayments.com/v2/standard') && preg_match('/id="payBtn"(?![^>]*disabled)/',$body)===1,'connected checkout loads Toss SDK and enables payment');
+    [$code,$body]=$request('booking_payment.php?booking_id=1&pay_error=REJECT_CARD_COMPANY%3Cscript%3E','GET',[],'owner',$toss);
+    check_http($code===200 && str_contains($body,'카드사에서 결제를 거절했습니다') && !str_contains($body,'<script>REJECT'),'PG error code shown as fixed text only');
     [$code,$body]=$request('booking_payment.php?booking_id=999');
     check_http($code===404 && !str_contains($body,'Warning:'),'unknown booking renders clean 404');
     [$code,$body]=$request('booking_payment.php?booking_id=1');

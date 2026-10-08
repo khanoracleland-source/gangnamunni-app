@@ -27,13 +27,28 @@ HTTP 410 and must not be used for new integrations.
 
 `booking_payment.php` has two explicit actions:
 
-- **결제하기** opens the PG checkout. **No PG is connected right now**: the PortOne
-  integration was removed on 2026-10-08 (it never processed a payment) and Toss
-  Payments is the next integration. Until then `booking_payment_checkout_ready()`
-  is false and the button reads "온라인 결제 준비 중". A PG plugs in by implementing
-  `BookingPaymentGateway` in `includes/booking_payment_gateway.php`; browser
-  completion, mobile return and webhook must all query the PG before accepting the
-  order identity, amount, currency and transaction ID.
+- **결제하기** opens the Toss Payments checkout (PortOne was removed on 2026-10-08;
+  it never processed a payment). Payment is two-phase: the browser authenticates in
+  the Toss window and returns to `booking_payment_toss_success.php`, where the server
+  calls `POST /v1/payments/confirm` **only after** re-checking, under the payment lock,
+  that the order is still pending, the amount equals the ledger, the booking is still
+  `confirmed` and any point hold is still active. If any check fails nothing is charged
+  and the Toss attempt expires. Mobile/PC return, the "상태 확인" button, the webhook and
+  the reconcile cron all re-query Toss before touching the ledger.
+  Every success-URL return (`paymentKey`, `orderId`, `amount`) is stored in
+  `gangnamunni_payment_attempts` before confirm, as the Toss guide requires, together
+  with its outcome. The `orderId` is the order's `merchant_uid`; Toss only refuses an
+  orderId that was already approved or cancelled (`DUPLICATED_ORDER_ID`), so a buyer can
+  retry the same order after a cancelled or failed attempt.
+- **Mobile app (WebView).** The patient app loads these pages in `webview_flutter`.
+  Following the Toss WebView guide, `mobile/patient_app/lib/services/payment_app_launcher.dart`
+  converts card/easy-pay `intent:` URLs to app schemes and opens payment apps externally
+  (Play Store fallback by package); the Android manifest `<queries>` lists the same
+  packages. iOS opens schemes with `UIApplication.open`, so no
+  `LSApplicationQueriesSchemes` entries are needed. Only allow-listed payment schemes are
+  opened; anything else stays blocked. Toss notes that `webview_flutter_android` above
+  3.16.0 fails to launch some card apps; the app currently resolves 4.10.x, so test card
+  apps on a real Android device before release and pin the version if a card app fails.
 - **결제 없이 계속하기** preserves the requested payment-free walkthrough. It
   records only `gangnamunni_booking_payment_previews`, leaving the financial
   order pending. It is available to the booking owner by default during rollout.
@@ -52,7 +67,7 @@ historical batches require operator review and must not be silently rewritten.
 
 1. Install the canonical payment and settlement schemas first if absent.
 2. Run `php hairwang_full/gangnamunni/payment/migrate.php` once (safe to rerun).
-   This adds the preview/refund-request tables and settlement carry-forward column,
+   This adds the preview/refund-request/payment-attempt tables and settlement carry-forward column,
    and upgrades refund-request status to include definitive provider failures.
    The supplied legacy baseline SQL uses MariaDB-specific `ADD ... IF NOT EXISTS`;
    do not blindly run those legacy ALTER statements on MySQL 8. The new CLI
@@ -62,18 +77,18 @@ historical batches require operator review and must not be silently rewritten.
    starting a session. Only installations without that web config fall back to
    `hairwang_full/dbconfig.php`. Deploy the shared
    `includes/booking_payment_db_config.php` alongside those entry points.
-3. Set runtime variables from the root `.env.example`:
-   `BOOKING_PAYMENT_BASE_URL` (the canonical public HTTPS origin that serves the
-   booking pages, with no trailing path or slash, e.g. `https://hms.seoulbeauty.app`;
-   since the 2026-09-17 URL refactor the site is served from the web root and the
-   old `/gangnamunni` and `/app` segments must not appear in this value) and
-   `BOOKING_PAYMENT_METHODS` (comma list of contracted methods:
-   `card,bank,naverpay,kakaopay,tosspay`). PG credentials are added with the PG
-   integration. No secret key belongs in HTML or source control.
-4. Enable checkout with `G5_PG_PAYMENTS_ENABLED=1` only after a PG is connected.
-5. Register the PG webhook URL in the PG console once the PG integration exists.
-   The untrusted webhook body must never mark a payment paid: the backend queries
-   the authenticated PG API and compares the server-owned order.
+3. Set runtime variables (server: `hairwang_full/data/dbconfig.php`; local: `.env`):
+   `TOSS_CLIENT_KEY` / `TOSS_SECRET_KEY` — 개발자센터 > API 개별 연동 키 (`test_ck_`/`test_sk_`
+   or `live_ck_`/`live_sk_`; widget `gck`/`gsk` keys are refused). Both must be set and
+   from the same environment; the secret prefix decides `provider` = `toss_test` / `toss`.
+   `BOOKING_PAYMENT_BASE_URL` (canonical public HTTPS origin, no trailing path or slash,
+   e.g. `https://hms.seoulbeauty.app`) and `BOOKING_PAYMENT_METHODS` (contracted methods:
+   `card,bank,naverpay,kakaopay,tosspay`; easy-pay methods open with `flowMode: DIRECT`).
+   Only the client key reaches the browser.
+4. Enable checkout with `G5_PG_PAYMENTS_ENABLED=1`.
+5. Register `<BOOKING_PAYMENT_BASE_URL>/payment/toss_webhook.php` in 개발자센터 > 웹훅
+   (`PAYMENT_STATUS_CHANGED`). Toss payment webhooks are unsigned, so the body is only a
+   signal: the endpoint re-queries the authenticated API via `booking_payment_sync()`.
 6. Restart/recreate the application service after changing runtime variables.
    The Compose gangnamunni service now forwards these variables explicitly.
 

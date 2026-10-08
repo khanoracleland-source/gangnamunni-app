@@ -12,6 +12,10 @@ $cases = [
     ['booking_payment_mock_complete.php','POST','',403],
     ['booking_payment_request.php','POST','',403],
     ['booking_payment_verify.php','POST','',403],
+    ['booking_payment_toss_success.php','GET',null,302],
+    ['booking_payment_toss_fail.php','GET',null,302],
+    ['payment/toss_webhook.php','GET',null,405],
+    ['payment/toss_webhook.php','POST','{}',200],
     ['api_wallet.php','GET',null,401],
     ['admin_booking_payments.php','GET',null,403],
 ];

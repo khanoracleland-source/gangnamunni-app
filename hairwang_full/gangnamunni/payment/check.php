@@ -7,13 +7,22 @@ echo 'Real checkout: '.(booking_payment_checkout_ready() ? 'READY' : 'NOT READY'
 echo 'Payment-free preview: '.(booking_payment_preview_enabled() ? 'ON' : 'OFF')."\n";
 $gateway = booking_payment_gateway();
 echo 'Payment gateway: '.($gateway ? $gateway->provider() : 'NOT CONNECTED')."\n";
-foreach (['BOOKING_PAYMENT_BASE_URL'] as $key) {
+foreach (['TOSS_CLIENT_KEY','TOSS_SECRET_KEY','BOOKING_PAYMENT_BASE_URL'] as $key) {
     echo $key.': '.(trim(booking_payment_setting($key)) === '' ? 'MISSING' : 'SET')."\n";
+}
+if ($gateway) {
+    // Read-only probe: an order id that never exists must come back as "not started".
+    try {
+        $probe = $gateway->payment('BK_preflight_probe_' . date('YmdHis'));
+        echo 'Toss API: '.(($probe['raw_status'] ?? '') === 'NOT_FOUND' ? 'OK (auth + network)' : 'UNEXPECTED RESPONSE')."\n";
+    } catch (Throwable $e) {
+        echo 'Toss API: FAILED ('.$e->getMessage().")\n";
+    }
 }
 echo 'Configured methods: '.(implode(', ',array_keys(booking_payment_methods())) ?: 'NONE')."\n";
 try {
     $db = new mysqli(G5_MYSQL_HOST,G5_MYSQL_USER,G5_MYSQL_PASSWORD,G5_MYSQL_DB,defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
-    $required=['gangnamunni_platform_payments','gangnamunni_payment_events','gangnamunni_payment_status_history','gangnamunni_booking_payment_previews','gangnamunni_payment_refund_requests','gangnamunni_hospital_settlements','gangnamunni_hospital_settlement_items'];
+    $required=['gangnamunni_platform_payments','gangnamunni_payment_events','gangnamunni_payment_status_history','gangnamunni_booking_payment_previews','gangnamunni_payment_refund_requests','gangnamunni_payment_attempts','gangnamunni_hospital_settlements','gangnamunni_hospital_settlement_items'];
     $missing=false;
     foreach($required as $table) {
         $stmt=$db->prepare('SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
