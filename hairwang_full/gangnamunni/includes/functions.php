@@ -40,62 +40,131 @@ function sanitizeInput($str) {
 }
 
 /**
- * HTML 에디터 콘텐츠 정리 (허용된 태그 + 속성 화이트리스트)
+ * HTML 에디터(Quill) 콘텐츠 정리 — DOM 기반 화이트리스트
+ *
+ * 정규식 치환 대신 HTML 을 파싱해서 허용된 태그·속성만 남긴다.
+ *  - 허용 태그 외 요소는 내용만 남기고 태그 제거, script/style/iframe/svg 등은 내용째 제거
+ *  - 속성은 태그별 화이트리스트만 유지 (on*, style 등 나머지는 모두 제거)
+ *  - href/src 는 http(s)://, / (사이트 상대), href 는 # 까지만 허용
+ *  - class 는 Quill 서식 클래스(ql-*)만 허용
+ * DOM 확장이 없으면 HTML 을 버리고 텍스트로만 반환한다 (fail-safe).
  */
 function sanitizeHtml($html) {
-    if (is_null($html) || trim($html) === '') return '';
+    if (is_null($html) || trim((string) $html) === '') return '';
+    $html = (string) $html;
 
-    // 허용 태그
-    $allowed = '<p><br><strong><em><u><s><ul><ol><li><h1><h2><h3><blockquote><a><img><span>';
-    $html = strip_tags($html, $allowed);
+    if (!class_exists('DOMDocument')) {
+        return nl2br(htmlspecialchars(strip_tags($html), ENT_QUOTES, 'UTF-8'));
+    }
 
-    // 위험한 속성 제거 (on* 이벤트 핸들러 - 멀티라인 대응)
-    $html = preg_replace('/\bon\w+\s*=\s*["\'][^"\']*["\']/si', '', $html);
-    $html = preg_replace('/\bon\w+\s*=\s*[^\s>]+/si', '', $html);
+    $doc = new DOMDocument('1.0', 'UTF-8');
+    $prevErrors = libxml_use_internal_errors(true);
+    $doc->loadHTML(
+        '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' . $html . '</body></html>',
+        LIBXML_NONET
+    );
+    libxml_clear_errors();
+    libxml_use_internal_errors($prevErrors);
 
-    // style 속성 완전 제거 (CSS expression/url() XSS 방지)
-    $html = preg_replace('/\bstyle\s*=\s*["\'][^"\']*["\']/si', '', $html);
-    $html = preg_replace('/\bstyle\s*=\s*[^\s>]+/si', '', $html);
+    $body = $doc->getElementsByTagName('body')->item(0);
+    if (!$body) return '';
+    _sanitize_html_children($body);
 
-    // 위험한 프로토콜 차단 (javascript:, data:, vbscript:)
-    $html = preg_replace('/\bhref\s*=\s*["\']?\s*(javascript|data|vbscript)\s*:/si', 'href="#', $html);
-    $html = preg_replace('/\bsrc\s*=\s*["\']?\s*(javascript|data|vbscript)\s*:/si', 'src="', $html);
+    $out = '';
+    foreach (iterator_to_array($body->childNodes) as $child) {
+        $out .= $doc->saveHTML($child);
+    }
+    return $out;
+}
 
-    // 허용된 속성만 남기기 (href, src, alt, class, target)
-    // <a> 태그: href, target, class만 허용
-    $html = preg_replace_callback('/<a\b([^>]*)>/si', function($m) {
-        $attrs = '';
-        if (preg_match('/\bhref\s*=\s*"([^"]*)"/i', $m[1], $h)) {
-            $href = $h[1];
-            // http/https/#만 허용
-            if (preg_match('/^(https?:\/\/|#|\/)/i', $href)) {
-                $attrs .= ' href="' . htmlspecialchars($href, ENT_QUOTES, 'UTF-8') . '"';
-            } else {
-                $attrs .= ' href="#"';
+/** sanitizeHtml() 내부용: 허용 URL 여부 */
+function _sanitize_html_url($url, $allowFragment) {
+    $url = trim((string) $url);
+    // 스킴 판별 전에 제어문자·공백 제거 (java\tscript: 등 우회 차단)
+    $probe = preg_replace('/[\x00-\x20\x7F]+/', '', $url);
+    if ($probe === '') return null;
+    if (preg_match('#^https?://#i', $probe)) return $url;
+    if ($probe[0] === '/' ) return $url;
+    if ($allowFragment && $probe[0] === '#') return $url;
+    return null;
+}
+
+/** sanitizeHtml() 내부용: 노드 트리 재귀 정리 */
+function _sanitize_html_children(DOMNode $parent) {
+    static $allowedTags = [
+        'p' => 1, 'br' => 1, 'strong' => 1, 'em' => 1, 'u' => 1, 's' => 1,
+        'ul' => 1, 'ol' => 1, 'li' => 1, 'h1' => 1, 'h2' => 1, 'h3' => 1,
+        'blockquote' => 1, 'a' => 1, 'img' => 1, 'span' => 1,
+    ];
+    static $dropWithContent = [
+        'script' => 1, 'style' => 1, 'iframe' => 1, 'frame' => 1, 'frameset' => 1,
+        'object' => 1, 'embed' => 1, 'applet' => 1, 'svg' => 1, 'math' => 1,
+        'template' => 1, 'noscript' => 1, 'textarea' => 1, 'select' => 1,
+        'title' => 1, 'head' => 1, 'meta' => 1, 'link' => 1, 'base' => 1, 'form' => 1,
+    ];
+
+    foreach (iterator_to_array($parent->childNodes) as $node) {
+        if ($node->nodeType === XML_TEXT_NODE) continue;
+
+        if ($node->nodeType !== XML_ELEMENT_NODE) {
+            $parent->removeChild($node); // 주석, CDATA, PI 등
+            continue;
+        }
+
+        $tag = strtolower($node->nodeName);
+        if (isset($dropWithContent[$tag])) {
+            $parent->removeChild($node);
+            continue;
+        }
+
+        _sanitize_html_children($node);
+
+        if (!isset($allowedTags[$tag])) {
+            // 허용되지 않은 태그: 정리된 자식만 남기고 태그 제거
+            while ($node->firstChild) {
+                $parent->insertBefore($node->firstChild, $node);
             }
+            $parent->removeChild($node);
+            continue;
         }
-        if (preg_match('/\btarget\s*=\s*"(_blank|_self)"/i', $m[1], $t)) {
-            $attrs .= ' target="' . $t[1] . '" rel="noopener noreferrer"';
-        }
-        return '<a' . $attrs . '>';
-    }, $html);
 
-    // <img> 태그: src, alt, class만 허용
-    $html = preg_replace_callback('/<img\b([^>]*)>/si', function($m) {
-        $attrs = '';
-        if (preg_match('/\bsrc\s*=\s*"([^"]*)"/i', $m[1], $s)) {
-            $src = $s[1];
-            if (preg_match('/^(https?:\/\/|\/)/i', $src)) {
-                $attrs .= ' src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '"';
+        $keep = [];
+        $class = $node->getAttribute('class');
+        if ($class !== '') {
+            $classes = array_filter(preg_split('/\s+/', $class), function ($c) {
+                return (bool) preg_match('/^ql-[a-z0-9-]{1,40}$/', $c);
+            });
+            if ($classes) $keep['class'] = implode(' ', $classes);
+        }
+        if ($tag === 'a') {
+            $href = _sanitize_html_url($node->getAttribute('href'), true);
+            $keep['href'] = $href !== null ? $href : '#';
+            $target = strtolower($node->getAttribute('target'));
+            if ($target === '_blank' || $target === '_self') {
+                $keep['target'] = $target;
+                $keep['rel'] = 'noopener noreferrer';
             }
+        } elseif ($tag === 'img') {
+            $src = _sanitize_html_url($node->getAttribute('src'), false);
+            if ($src === null) {
+                $parent->removeChild($node);
+                continue;
+            }
+            $keep['src'] = $src;
+            $alt = $node->getAttribute('alt');
+            if ($alt !== '') $keep['alt'] = $alt;
+        } elseif ($tag === 'li') {
+            $list = $node->getAttribute('data-list');
+            if (in_array($list, ['bullet', 'ordered', 'checked', 'unchecked'], true)) $keep['data-list'] = $list;
         }
-        if (preg_match('/\balt\s*=\s*"([^"]*)"/i', $m[1], $a)) {
-            $attrs .= ' alt="' . htmlspecialchars($a[1], ENT_QUOTES, 'UTF-8') . '"';
-        }
-        return '<img' . $attrs . '>';
-    }, $html);
 
-    return $html;
+        foreach (iterator_to_array($node->attributes) as $attr) {
+            $node->removeAttribute($attr->nodeName);
+        }
+        foreach ($keep as $name => $value) {
+            $node->setAttribute($name, $value);
+        }
+    }
 }
 
 /**

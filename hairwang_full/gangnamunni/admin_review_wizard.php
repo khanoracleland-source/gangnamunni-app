@@ -281,6 +281,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 .pagination-bar { display: flex; justify-content: center; gap: 4px; margin-top: 16px; }
 .pagination-bar button { width: 32px; height: 32px; border: 1px solid var(--bs-border-color); border-radius: 6px; background: var(--bs-body-bg); cursor: pointer; font-size: 13px; }
 .pagination-bar button.active { background: #AE1932; color: #fff; border-color: #AE1932; }
+.rw-content-frame { display:block; width:100%; min-height:80px; border:0; background:#fff; border-radius:6px; }
 </style>
 
 <div class="container-fluid p-4">
@@ -378,7 +379,7 @@ function loadReviews(page) {
     fetch(window.location.href, { method: 'POST', body: fd })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (!data.success) { document.getElementById('reviewList').innerHTML = '<p class="text-muted text-center py-4">' + data.message + '</p>'; return; }
+            if (!data.success) { document.getElementById('reviewList').innerHTML = '<p class="text-muted text-center py-4">' + rwEsc(data.message) + '</p>'; return; }
             renderReviews(data.reviews);
             renderPagination(data.page, data.pages, data.total);
         });
@@ -399,20 +400,20 @@ function renderReviews(reviews) {
         html += '<input type="checkbox" class="form-check-input mt-1" value="' + r.id + '" ' + checked + ' onchange="toggleSelect(' + r.id + ', this.checked)">';
         html += '<div class="flex-grow-1 min-w-0">';
         html += '<div class="d-flex justify-content-between align-items-center mb-1">';
-        html += '<strong class="text-truncate">' + (r.title || '(제목 없음)') + '</strong>';
+        html += '<strong class="text-truncate">' + rwEsc(r.title || '(제목 없음)') + '</strong>';
         html += '<span class="status-badge ' + statusClass + '">' + statusText + '</span>';
         html += '</div>';
         html += '<div class="review-meta">';
-        html += '<span>' + (r.user_name || '익명') + '</span>';
-        html += '<span>' + (r.hospital_name || '') + '</span>';
-        if (r.ai_score !== null) html += '<span class="ai-badge ' + aiClass + '">AI ' + r.ai_score + '점</span>';
-        html += '<span>' + (r.rating ? r.rating + '점' : '') + '</span>';
-        html += '<span>' + (r.created_at || '') + '</span>';
+        html += '<span>' + rwEsc(r.user_name || '익명') + '</span>';
+        html += '<span>' + rwEsc(r.hospital_name || '') + '</span>';
+        if (r.ai_score !== null) html += '<span class="ai-badge ' + aiClass + '">AI ' + rwEsc(r.ai_score) + '점</span>';
+        html += '<span>' + (r.rating ? rwEsc(r.rating) + '점' : '') + '</span>';
+        html += '<span>' + rwEsc(r.created_at || '') + '</span>';
         html += '</div>';
-        html += '<div class="review-content-preview">' + (r.content || '').substring(0, 150) + '</div>';
+        html += '<div class="review-content-preview">' + rwEsc(rwText(r.content).substring(0, 150)) + '</div>';
         if (r.thumb_list && r.thumb_list.length) {
             html += '<div class="review-thumbs">';
-            r.thumb_list.forEach(function(url) { html += '<img src="' + url + '" alt="">'; });
+            r.thumb_list.forEach(function(url) { html += '<img src="' + rwEsc(rwUrl(url)) + '" alt="">'; });
             html += '</div>';
         }
         html += '<div class="review-actions mt-2">';
@@ -534,8 +535,8 @@ function showDetail(id) {
             html += '<h4 class="mb-0">후기 상세 #' + r.id + '</h4>';
             html += '<button class="btn-close" onclick="closeDetail()"></button>';
             html += '</div>';
-            html += '<div class="mb-3"><strong>' + (r.title || '(제목 없음)') + '</strong></div>';
-            html += '<div class="review-meta mb-2"><span>작성자: ' + (r.user_name||'익명') + '</span><span>병원: ' + (r.hospital_name||'') + '</span><span>작성일: ' + (r.created_at||'') + '</span></div>';
+            html += '<div class="mb-3"><strong>' + rwEsc(r.title || '(제목 없음)') + '</strong></div>';
+            html += '<div class="review-meta mb-2"><span>작성자: ' + rwEsc(r.user_name||'익명') + '</span><span>병원: ' + rwEsc(r.hospital_name||'') + '</span><span>작성일: ' + rwEsc(r.created_at||'') + '</span></div>';
             // 다축 별점
             var axes = [{k:'rating_result',l:'시술결과'},{k:'rating_consultation',l:'상담'},{k:'rating_facility',l:'시설'},{k:'rating_wait',l:'대기'},{k:'rating_cost',l:'가격'},{k:'rating_recovery',l:'회복'}];
             html += '<div class="rating-bars mb-3">';
@@ -543,23 +544,28 @@ function showDetail(id) {
                 var val = parseInt(r[ax.k]) || 0;
                 html += '<div class="bar-item"><span class="bar-label">' + ax.l + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (val*20) + '%"></div></div><span class="bar-value">' + val + '</span></div>';
             });
-            html += '<div class="bar-item"><span class="bar-label fw-bold">종합</span><div class="bar-track"><div class="bar-fill" style="width:' + ((r.rating||0)*20) + '%;background:#AE1932"></div></div><span class="bar-value fw-bold">' + (r.rating||0) + '</span></div>';
+            html += '<div class="bar-item"><span class="bar-label fw-bold">종합</span><div class="bar-track"><div class="bar-fill" style="width:' + ((Number(r.rating)||0)*20) + '%;background:#AE1932"></div></div><span class="bar-value fw-bold">' + (Number(r.rating)||0) + '</span></div>';
             html += '</div>';
             // 시술 정보
             if (r.doctor_name || r.procedure_date || r.procedure_cost) {
                 html += '<div class="mb-3 p-2 bg-light rounded">';
-                if (r.doctor_name) html += '<span class="me-3">의사: ' + r.doctor_name + '</span>';
-                if (r.procedure_date) html += '<span class="me-3">시술일: ' + r.procedure_date + '</span>';
+                if (r.doctor_name) html += '<span class="me-3">의사: ' + rwEsc(r.doctor_name) + '</span>';
+                if (r.procedure_date) html += '<span class="me-3">시술일: ' + rwEsc(r.procedure_date) + '</span>';
                 if (r.procedure_cost) html += '<span>비용: ' + parseInt(r.procedure_cost).toLocaleString() + '원</span>';
                 html += '</div>';
             }
-            html += '<div class="mb-3" style="font-size:14px;line-height:1.8;">' + (r.editor_content || r.content || '') + '</div>';
+            // 환자 작성 본문: 리치 텍스트는 스크립트가 실행되지 않는 sandbox iframe, 일반 텍스트는 이스케이프.
+            if (r.editor_content) {
+                html += '<iframe class="rw-content-frame mb-3" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" title="후기 본문"></iframe>';
+            } else {
+                html += '<div class="mb-3" style="font-size:14px;line-height:1.8;white-space:pre-wrap;">' + rwEsc(r.content || '') + '</div>';
+            }
             // 이미지
             if (r.images && r.images.length) {
                 html += '<div class="d-flex flex-wrap gap-2 mb-3">';
                 r.images.forEach(function(img) {
                     var badge = img.photo_category === 'before' ? 'Before' : (img.photo_category === 'after' ? 'After' : '');
-                    html += '<div class="position-relative"><img src="' + img.image_url + '" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;" onclick="window.open(this.src)">';
+                    html += '<div class="position-relative"><img src="' + rwEsc(rwUrl(img.image_url)) + '" style="width:80px;height:80px;object-fit:cover;border-radius:8px;cursor:pointer;" onclick="window.open(this.src)">';
                     if (badge) html += '<span class="position-absolute bottom-0 start-0 px-1" style="font-size:9px;background:rgba(0,0,0,0.6);color:#fff;border-radius:0 0 0 8px;">' + badge + '</span>';
                     html += '</div>';
                 });
@@ -570,7 +576,7 @@ function showDetail(id) {
                 html += '<h6>AI 검수 이력</h6><table class="table table-sm table-bordered"><thead><tr><th>점수</th><th>결과</th><th>메시지</th><th>일시</th></tr></thead><tbody>';
                 r.ai_logs.forEach(function(log) {
                     var cls = log.passed == 1 ? 'text-success' : 'text-danger';
-                    html += '<tr><td class="' + cls + ' fw-bold">' + log.score + '</td><td>' + (log.passed == 1 ? '통과' : '주의') + '</td><td>' + (log.messages||[]).join(', ') + '</td><td>' + (log.checked_at||'') + '</td></tr>';
+                    html += '<tr><td class="' + cls + ' fw-bold">' + rwEsc(log.score) + '</td><td>' + (log.passed == 1 ? '통과' : '주의') + '</td><td>' + rwEsc((Array.isArray(log.messages) ? log.messages : []).join(', ')) + '</td><td>' + rwEsc(log.checked_at||'') + '</td></tr>';
                 });
                 html += '</tbody></table>';
             }
@@ -582,8 +588,39 @@ function showDetail(id) {
             html += '<button class="btn btn-outline-secondary btn-sm ms-auto" onclick="closeDetail()">닫기</button>';
             html += '</div>';
             document.getElementById('detailPanel').innerHTML = html;
+            if (r.editor_content) rwMountFrame(document.querySelector('#detailPanel .rw-content-frame'), r.editor_content);
             document.getElementById('detailModal').classList.add('show');
         });
+}
+
+// ===== 출력 이스케이프 (후기 필드는 환자가 작성한 신뢰할 수 없는 값) =====
+function rwEsc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c];
+    });
+}
+function rwText(html) {
+    if (!html) return '';
+    var doc = new DOMParser().parseFromString(String(html), 'text/html');
+    return (doc.body && doc.body.textContent) || '';
+}
+function rwUrl(u) {
+    u = String(u || '').trim();
+    // 스킴이 있으면 http(s)만 허용 (javascript:, data: 등 차단). 상대 경로는 그대로.
+    if (/^[a-z][a-z0-9+.\-]*:/i.test(u) && !/^https?:/i.test(u)) return '';
+    return u;
+}
+function rwMountFrame(frame, bodyHtml) {
+    if (!frame) return;
+    var head = '<meta charset="utf-8">'
+        + '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\' data: https:; style-src \'unsafe-inline\'; font-src data: https:">'
+        + '<base href="' + rwEsc(location.href) + '" target="_blank">'
+        + '<style>html,body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;line-height:1.8;color:#212529;background:#fff;word-break:break-word;}img{max-width:100%;height:auto;}</style>';
+    var fit = function () {
+        try { var d = frame.contentDocument; if (d && d.documentElement) frame.style.height = (d.documentElement.scrollHeight + 4) + 'px'; } catch (e) {}
+    };
+    frame.addEventListener('load', fit);
+    frame.srcdoc = '<!doctype html><html><head>' + head + '</head><body>' + String(bodyHtml) + '</body></html>';
 }
 
 function closeDetail() { document.getElementById('detailModal').classList.remove('show'); }

@@ -253,7 +253,7 @@ $csrf_token = generateCsrfToken();
 
         <div class="review-body">
             <?php if (!empty($review['editor_content']) && $review['editor_type'] === 'quill'): ?>
-            <?php echo $review['editor_content']; ?>
+            <?php echo sanitizeHtml($review['editor_content']); // 저장 시점 정화와 별개로 출력 시점에도 정화 ?>
             <?php else: ?>
             <?php echo nl2br(htmlspecialchars($review['content'])); ?>
             <?php endif; ?>
