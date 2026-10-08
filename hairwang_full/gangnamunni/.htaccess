@@ -16,10 +16,10 @@ RewriteCond %{HTTP_HOST} !^localhost [NC]
 RewriteCond %{HTTP_HOST} !^127\.0\.0\.1 [NC]
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# dbconfig.php 직접 접근 차단
-<Files "dbconfig.php">
+# dbconfig*.php (dbconfig.php, dbconfig.override*.php) 직접 접근 차단
+<FilesMatch "^dbconfig.*\.php$">
     Deny from all
-</Files>
+</FilesMatch>
 
 # dotfile(.env, .gitignore, .git 등) 직접 접근 차단 — 시크릿 유출 방지
 <FilesMatch "^\.">

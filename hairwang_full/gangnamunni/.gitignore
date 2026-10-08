@@ -1,6 +1,8 @@
 # DB config (contains passwords)
 dbconfig.php
 ../dbconfig.php
+# Runtime DB override (created on the server only)
+dbconfig.override.php
 
 # Logs
 *.log
