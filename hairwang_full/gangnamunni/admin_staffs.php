@@ -124,7 +124,7 @@ include __DIR__ . '/includes/admin_header.php';
             <input type="search" name="search" class="form-control form-control-sm" style="max-width:300px;" placeholder="이름, 이메일, 전화번호 검색..." value="<?php echo htmlspecialchars($search); ?>">
             <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
             <?php if ($search): ?>
-            <a href="admin_staffs.php?type=<?php echo $filter_type; ?>" class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></a>
+            <a href="admin_staffs.php?type=<?php echo urlencode($filter_type); ?>" class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></a>
             <?php endif; ?>
         </form>
     </div>
@@ -180,7 +180,7 @@ include __DIR__ . '/includes/admin_header.php';
         <nav><ul class="pagination pagination-sm justify-content-center mb-0">
             <?php for ($i = 1; $i <= $total_pages; $i++): ?>
             <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                <a class="page-link" href="?page=<?php echo $i; ?>&type=<?php echo $filter_type; ?>&search=<?php echo urlencode($search); ?>"><?php echo $i; ?></a>
+                <a class="page-link" href="?page=<?php echo $i; ?>&type=<?php echo urlencode($filter_type); ?>&search=<?php echo urlencode($search); ?>"><?php echo $i; ?></a>
             </li>
             <?php endfor; ?>
         </ul></nav>

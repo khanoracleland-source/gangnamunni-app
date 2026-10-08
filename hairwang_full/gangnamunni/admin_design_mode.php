@@ -111,7 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save'
 
 // GET ?msg=
 if (!empty($_GET['msg'])) {
-    $msg = $_GET['msg'];
+    // URL 로 전달된 메시지는 텍스트로만 출력 (반사형 XSS 방지)
+    $msg = htmlspecialchars((string) $_GET['msg'], ENT_QUOTES, 'UTF-8');
 }
 
 // ===== 현재 설정 로드 =====
