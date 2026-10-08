@@ -35,7 +35,7 @@ class PaymentAppLauncher {
     'v3mobileplusweb', 'tauthlink', 'ktauthexternalcall', 'upluscorporation',
   };
 
-  /// Android intent 에 실려 오는 결제 앱 패키지. AndroidManifest 의 <queries> 와 같은 목록.
+  /// Android intent 에 실려 오는 결제 앱 패키지. AndroidManifest 의 `<queries>` 와 같은 목록.
   static const Set<String> packages = {
     'viva.republica.toss', 'com.kakao.talk', 'com.kakaopay.app', 'com.nhn.android.search',
     'com.nhnent.payapp', 'com.samsung.android.spay', 'net.ib.android.smcard', 'com.lotte.lpay',
