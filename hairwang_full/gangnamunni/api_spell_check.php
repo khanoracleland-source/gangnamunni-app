@@ -6,10 +6,16 @@
  * @created 2026-04-06
  */
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
+
+// 관리자 전용: 인증 없이 열려 있으면 누구나 플랫폼 AI 키로 무제한 호출할 수 있다 (비용 남용).
+// 교차 출처 호출도 허용하지 않는다 (CORS * 제거).
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+require_once __DIR__ . '/includes/admin_auth.php';
+if (!check_admin_login()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => '관리자 로그인이 필요합니다']);
+    exit;
+}
 
 require_once __DIR__ . '/dbconfig.php';
 require_once __DIR__ . '/includes/ai_proxy.php';
