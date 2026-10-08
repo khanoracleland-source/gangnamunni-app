@@ -505,7 +505,10 @@ class WebViewBridge {
     return NavigationDelegate(
       onPageStarted: onPageStarted,
       onPageFinished: onPageFinished,
-      onWebResourceError: onWebResourceError,
+      onWebResourceError: (WebResourceError error) {
+        _launchPaymentAppFromSubframeError(error);
+        onWebResourceError?.call(error);
+      },
       onNavigationRequest: (NavigationRequest request) async {
         final Uri uri = Uri.parse(request.url);
         final String scheme = uri.scheme.toLowerCase();
@@ -573,6 +576,38 @@ class WebViewBridge {
         return NavigationDecision.prevent;
       },
     );
+  }
+
+  /// iframe 안에서 시작된 결제 앱 호출 처리.
+  ///
+  /// webview_flutter_android 3.16.1 이후(현재 4.x)는 iframe(서브 프레임) 이동을
+  /// onNavigationRequest 로 넘기지 않는다(android_webview_controller `_handleNavigation`
+  /// 의 `if (!isForMainFrame ...) return;`). 카드사 안심클릭 iframe 이 `intent://` 등으로
+  /// 앱을 부르면 WebView 가 그 URL 을 직접 열려다 ERR_UNKNOWN_URL_SCHEME 로 실패하고,
+  /// 우리는 onWebResourceError(url 포함)로만 알게 된다. 토스 웹뷰 가이드가
+  /// "webview_flutter_android 3.16.0 이하"를 요구하는 이유가 이것이며, 버전을 내리는 대신
+  /// 여기서 같은 결제 앱 허용 목록으로 외부 앱을 연다.
+  String? _lastSubframeAppUrl;
+  DateTime? _lastSubframeAppAt;
+
+  void _launchPaymentAppFromSubframeError(WebResourceError error) {
+    // 메인 프레임 이동은 onNavigationRequest 가 이미 처리했다.
+    if (error.isForMainFrame == true) return;
+    final String? url = error.url;
+    if (url == null || url.isEmpty) return;
+    final PaymentAppLink? link = PaymentAppLauncher.parse(url);
+    if (link == null) return;
+    // 같은 오류가 연달아 보고되는 경우 앱을 두 번 열지 않는다.
+    final DateTime now = DateTime.now();
+    if (_lastSubframeAppUrl == url &&
+        _lastSubframeAppAt != null &&
+        now.difference(_lastSubframeAppAt!) < const Duration(seconds: 3)) {
+      return;
+    }
+    _lastSubframeAppUrl = url;
+    _lastSubframeAppAt = now;
+    _log('iframe 결제 앱 호출: ${link.appUrl}');
+    PaymentAppLauncher.launch(link);
   }
 
   // -------------------------------------------------------------------

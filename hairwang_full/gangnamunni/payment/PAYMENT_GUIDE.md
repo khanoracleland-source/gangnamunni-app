@@ -48,9 +48,14 @@ HTTP 410 and must not be used for new integrations.
   `LSApplicationQueriesSchemes` entries are needed. Only allow-listed payment schemes are
   opened; anything else stays blocked. Inside the app (`window.FlutterBridge`), card
   checkouts pass `card.appScheme: 'wellness://payment'` (SDK `CardPaymentRequest`) so the 페이북/ISP app returns
-  to the app; the app treats `wellness://payment` as a no-op and the WebView continues. Toss notes that `webview_flutter_android` above
-  3.16.0 fails to launch some card apps; the app currently resolves 4.10.x, so test card
-  apps on a real Android device before release and pin the version if a card app fails.
+  to the app; the app treats `wellness://payment` as a no-op and the WebView continues. Toss requires `webview_flutter_android` ≤ 3.16.0 because from 3.16.1 the plugin
+  no longer passes iframe (sub-frame) navigations to `onNavigationRequest`
+  (`_handleNavigation` returns early when `!isForMainFrame`), so a card company's
+  안심클릭 iframe calling `intent://` never reaches the app. Instead of downgrading
+  (incompatible with `webview_flutter` 4.13 / Flutter 3.35), `WebViewBridge` catches the
+  resulting sub-frame `onWebResourceError` (it carries the URL) and opens the same
+  allow-listed payment app. Verify on a real Android device with ISP/페이북, 현대, 신한, KB
+  app cards and Toss/Kakao/Naver Pay before release.
 - **결제 없이 계속하기** preserves the requested payment-free walkthrough. It
   records only `gangnamunni_booking_payment_previews`, leaving the financial
   order pending. It is available to the booking owner by default during rollout.
