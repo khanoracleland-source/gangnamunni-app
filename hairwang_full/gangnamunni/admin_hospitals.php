@@ -1271,11 +1271,11 @@ $edit_json_list_value = static function ($raw) {
     <div class="collapse" id="editDocumentsSection"><div class="card-body">
         <div class="d-flex flex-wrap gap-2 mb-4">
             <?php foreach ([
-                ['사업자등록증', $hospital['cert_business'] ?? ''],
-                ['의료기관개설허가증', $hospital['cert_medical'] ?? ''],
+                ['사업자등록증', $hospital['cert_business'] ?? '', 'business'],
+                ['의료기관개설허가증', $hospital['cert_medical'] ?? '', 'medical'],
             ] as $edit_asset): ?>
                 <?php if (!empty($edit_asset[1])): ?>
-                <a href="<?= htmlspecialchars($edit_asset[1]) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm"><i class="bi bi-box-arrow-up-right me-1"></i><?= htmlspecialchars($edit_asset[0]) ?></a>
+                <a href="<?= htmlspecialchars('hospital_document.php?' . http_build_query(['hospital_id' => (int) $hospital['id'], 'doc' => $edit_asset[2]])) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm"><i class="bi bi-box-arrow-up-right me-1"></i><?= htmlspecialchars($edit_asset[0]) ?></a>
                 <?php else: ?>
                 <span class="btn btn-outline-secondary btn-sm disabled"><?= htmlspecialchars($edit_asset[0]) ?> 미제출</span>
                 <?php endif; ?>
@@ -1565,8 +1565,8 @@ $field_labels_map = ['name'=>'병원명','owner_name'=>'대표자명','business_
 <?php if (!empty($hospital['applied_by'])): ?>
 <?php
 $application_assets = [
-    ['label' => '사업자등록증', '상세' => '필수 서류', 'path' => (string)($hospital['cert_business'] ?? ''), 'required' => true, 'icon' => 'bi-file-earmark-text'],
-    ['label' => '의료기관개설허가증', '상세' => '필수 서류', 'path' => (string)($hospital['cert_medical'] ?? ''), 'required' => true, 'icon' => 'bi-file-earmark-medical'],
+    ['label' => '사업자등록증', '상세' => '필수 서류', 'path' => (string)($hospital['cert_business'] ?? ''), 'doc' => 'business', 'required' => true, 'icon' => 'bi-file-earmark-text'],
+    ['label' => '의료기관개설허가증', '상세' => '필수 서류', 'path' => (string)($hospital['cert_medical'] ?? ''), 'doc' => 'medical', 'required' => true, 'icon' => 'bi-file-earmark-medical'],
 ];
 ?>
 <div class="card mb-3">
@@ -1580,6 +1580,8 @@ $application_assets = [
                 $asset_path = trim($asset['path']);
                 $asset_ext = strtolower(pathinfo((string)(parse_url($asset_path, PHP_URL_PATH) ?? ''), PATHINFO_EXTENSION));
                 $is_pdf = $asset_ext === 'pdf';
+                // 서류 원본은 직접 URL 이 막혀 있으므로 관리자 전용 열람 스크립트로 연다
+                $asset_url = 'hospital_document.php?' . http_build_query(['hospital_id' => (int) $hospital['id'], 'doc' => $asset['doc']]);
             ?>
             <div class="col-md-6">
                 <div class="application-asset">
@@ -1603,8 +1605,8 @@ $application_assets = [
                                 <div class="mt-2 fw-semibold">PDF 문서</div>
                             </div>
                         <?php elseif ($asset_path !== ''): ?>
-                            <img src="<?= htmlspecialchars($asset_path) ?>" alt="<?= htmlspecialchars($asset['label']) ?>"
-                                 onclick='showImageModal(<?= json_encode($asset_path, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                            <img src="<?= htmlspecialchars($asset_url) ?>" alt="<?= htmlspecialchars($asset['label']) ?>"
+                                 onclick='showImageModal(<?= json_encode($asset_url, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'>
                         <?php else: ?>
                             <div class="application-asset-missing p-3">
                                 <i class="bi bi-image-alt" style="font-size:2.5rem"></i>
@@ -1614,10 +1616,10 @@ $application_assets = [
                     </div>
                     <?php if ($asset_path !== ''): ?>
                     <div class="p-3 border-top d-flex gap-2">
-                        <a href="<?= htmlspecialchars($asset_path) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm flex-fill">
+                        <a href="<?= htmlspecialchars($asset_url) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm flex-fill">
                             <i class="bi bi-box-arrow-up-right me-1"></i>원본 열기
                         </a>
-                        <a href="<?= htmlspecialchars($asset_path) ?>" download class="btn btn-outline-secondary btn-sm" title="다운로드"><i class="bi bi-download"></i></a>
+                        <a href="<?= htmlspecialchars($asset_url . '&download=1') ?>" class="btn btn-outline-secondary btn-sm" title="다운로드"><i class="bi bi-download"></i></a>
                     </div>
                     <?php endif; ?>
                 </div>

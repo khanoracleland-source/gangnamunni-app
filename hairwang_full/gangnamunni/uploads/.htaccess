@@ -19,6 +19,17 @@ RemoveType .php .phtml .phar .pht .php3 .php4 .php5 .php7 .php8
     php_flag engine off
 </IfModule>
 
+# 병원 입점 신청 서류(사업자등록증·의료기관개설허가증)는 직접 URL 열람 금지
+# → 관리자 전용 hospital_document.php 를 통해서만 제공
+<FilesMatch "^cert_(business|medical)_">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     # SVG/HTML/XML 을 직접 열어도 스크립트가 실행되지 않도록 sandbox
