@@ -6,6 +6,10 @@
 
 /**
  * JSON 응답 출력 후 종료
+ *
+ * @param mixed $data json_encode 가능한 응답 본문
+ * @param int $statusCode HTTP 상태 코드
+ * @return never
  */
 function jsonResponse($data, $statusCode = 200) {
     http_response_code($statusCode);
@@ -16,6 +20,10 @@ function jsonResponse($data, $statusCode = 200) {
 
 /**
  * JSON 에러 응답
+ *
+ * @param string $message
+ * @param int $statusCode
+ * @return never
  */
 function jsonError($message, $statusCode = 400) {
     jsonResponse(['success' => false, 'message' => $message], $statusCode);
@@ -23,6 +31,10 @@ function jsonError($message, $statusCode = 400) {
 
 /**
  * JSON 성공 응답
+ *
+ * @param array $data 응답에 병합할 추가 필드
+ * @param string $message
+ * @return never
  */
 function jsonSuccess($data = [], $message = 'OK') {
     $response = array_merge(['success' => true, 'message' => $message], $data);
@@ -31,6 +43,9 @@ function jsonSuccess($data = [], $message = 'OK') {
 
 /**
  * XSS 방지용 문자열 정리
+ *
+ * @param string|null $str
+ * @return string
  */
 function sanitizeInput($str) {
     if (is_null($str)) return '';
@@ -48,6 +63,9 @@ function sanitizeInput($str) {
  *  - href/src 는 http(s)://, / (사이트 상대), href 는 # 까지만 허용
  *  - class 는 Quill 서식 클래스(ql-*)만 허용
  * DOM 확장이 없으면 HTML 을 버리고 텍스트로만 반환한다 (fail-safe).
+ *
+ * @param string|null $html 정리할 HTML
+ * @return string
  */
 function sanitizeHtml($html) {
     if (is_null($html) || trim((string) $html) === '') return '';
@@ -77,7 +95,13 @@ function sanitizeHtml($html) {
     return $out;
 }
 
-/** sanitizeHtml() 내부용: 허용 URL 여부 */
+/**
+ * sanitizeHtml() 내부용: 허용 URL 여부
+ *
+ * @param mixed $url
+ * @param bool $allowFragment true 면 '#' 앵커 허용(href 용)
+ * @return string|null 허용되면 URL, 아니면 null
+ */
 function _sanitize_html_url($url, $allowFragment) {
     $url = trim((string) $url);
     // 스킴 판별 전에 제어문자·공백 제거 (java\tscript: 등 우회 차단)
@@ -111,6 +135,7 @@ function _sanitize_html_children(DOMNode $parent) {
             continue;
         }
 
+        /** @var DOMElement $node nodeType 검사로 요소 노드임이 보장된다 */
         $tag = strtolower($node->nodeName);
         if (isset($dropWithContent[$tag])) {
             $parent->removeChild($node);
@@ -181,6 +206,10 @@ function getJsonBody() {
 
 /**
  * 이미지 파일 유효성 검사
+ *
+ * @param array $file $_FILES 항목
+ * @param int $maxSize 최대 크기(바이트)
+ * @return string[] 오류 메시지 목록(비어 있으면 통과)
  */
 function validateImageFile($file, $maxSize = 10485760) {
     $errors = [];
@@ -229,6 +258,9 @@ function validateImageFile($file, $maxSize = 10485760) {
 
 /**
  * 유니크 파일명 생성
+ *
+ * @param string $extension 확장자(점 제외)
+ * @return string
  */
 function generateUniqueFilename($extension) {
     return date('Ymd_His') . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
@@ -236,6 +268,11 @@ function generateUniqueFilename($extension) {
 
 /**
  * 이미지 리사이즈 (최대 너비 기준)
+ *
+ * @param string $sourcePath 원본 이미지 경로
+ * @param string $destPath 저장할 경로
+ * @param int $maxWidth 최대 너비(px)
+ * @return bool
  */
 function resizeImage($sourcePath, $destPath, $maxWidth = 1920) {
     $info = getimagesize($sourcePath);
@@ -288,6 +325,11 @@ function resizeImage($sourcePath, $destPath, $maxWidth = 1920) {
 
 /**
  * 썸네일 생성
+ *
+ * @param string $sourcePath 원본 이미지 경로
+ * @param string $destPath 저장할 경로
+ * @param int $thumbWidth 썸네일 너비(px)
+ * @return bool
  */
 function createThumbnail($sourcePath, $destPath, $thumbWidth = 300) {
     return resizeImage($sourcePath, $destPath, $thumbWidth);
@@ -295,6 +337,9 @@ function createThumbnail($sourcePath, $destPath, $thumbWidth = 300) {
 
 /**
  * EXIF 회전 보정
+ *
+ * @param string $filePath 보정할 JPEG 경로(제자리 덮어쓰기)
+ * @return void
  */
 function fixExifOrientation($filePath) {
     if (!function_exists('exif_read_data')) return;
@@ -321,6 +366,11 @@ function fixExifOrientation($filePath) {
 
 /**
  * WebP 변환
+ *
+ * @param string $sourcePath 원본 이미지 경로
+ * @param string $destPath 저장할 경로
+ * @param int $quality 품질(0-100)
+ * @return bool
  */
 function convertToWebp($sourcePath, $destPath, $quality = 80) {
     $info = getimagesize($sourcePath);
@@ -345,6 +395,11 @@ function convertToWebp($sourcePath, $destPath, $quality = 80) {
 
 /**
  * Rate Limiting (IP 기반, 파일 저장)
+ *
+ * @param string $identifier 제한 대상 식별자(예: IP)
+ * @param int $maxRequests 허용 요청 수
+ * @param int $windowSeconds 시간 창(초)
+ * @return bool 허용되면 true, 초과하면 false
  */
 function checkRateLimit($identifier, $maxRequests = 60, $windowSeconds = 60) {
     $rateLimitDir = dirname(__DIR__) . '/uploads/.ratelimit';
@@ -389,6 +444,9 @@ function generateCsrfToken() {
 
 /**
  * CSRF 토큰 검증
+ *
+ * @param string $token 요청으로 받은 토큰
+ * @return bool
  */
 function validateCsrfToken($token) {
     if (session_status() === PHP_SESSION_NONE) {
@@ -462,6 +520,9 @@ function unlinkKakaoAccountForWithdrawal($kakaoUserId = '') {
 
 /**
  * 날짜 포맷 (상대 시간)
+ *
+ * @param string $datetime strtotime 이 해석할 수 있는 날짜 문자열
+ * @return string
  */
 function formatRelativeTime($datetime) {
     $now = time();
@@ -476,6 +537,16 @@ function formatRelativeTime($datetime) {
     return date('Y.m.d', $ts);
 }
 
+/**
+ * 포인트 적립 (gangnamunni_points 에 earn 행 추가)
+ *
+ * @param mysqli $connect
+ * @param string|int $member_id
+ * @param int $amount 적립 포인트(0 이하면 무시)
+ * @param string $reason
+ * @param string $reference
+ * @return bool
+ */
 function earnPoints($connect, $member_id, $amount, $reason = '', $reference = '') {
     if (!$member_id || $amount <= 0) return false;
     $esc = mysqli_real_escape_string($connect, $member_id);
