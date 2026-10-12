@@ -59,8 +59,9 @@ function admin_booking_status_action_options($current_status, array $labels, $ha
         'hospital_checking' => $has_doctor ? [['confirm', '예약확정'], ['cancel', '예약취소']] : [['cancel', '예약취소']],
         'confirmed' => [['complete', '시술완료']],
     ];
+    // 고객이 취소한 결제 예약: 승인하면 남은 결제 금액 전액을 Toss 로 환불한다.
     if ($current_status === 'cancelled' && in_array($payment_status, ['paid', 'partially_refunded'], true) && (int)$remaining_refund > 0) {
-        $flow_actions['cancelled'] = [['refund', '수동 환불완료 (' . number_format((int)$remaining_refund) . '원)']];
+        $flow_actions['cancelled'] = [['refund', '환불 승인 (' . number_format((int)$remaining_refund) . '원)']];
     }
     $current_label = $labels[$current_status] ?? $current_status;
     echo '<option value="" selected disabled>현재: ' . htmlspecialchars($current_label, ENT_QUOTES) . '</option>';
@@ -239,10 +240,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
     if ($id > 0 && in_array($action, $allowed)) {
         if ($action === 'refund') {
-            require_once __DIR__ . '/includes/payment_core.php';
+            // 환불 승인: 고객이 취소한 결제 예약에 대해 병원/최고 관리자가 승인하면 남은 결제 금액 전액을
+            // Toss 에 실제로 취소 요청한다(booking_payment_refund: 잠금·멱등키·PG 재조회).
+            // 원장 반영 시 booking_payment_apply_remote 가 예약 refund_status/status 와 고객 알림을 맞춘다.
+            require_once __DIR__ . '/includes/booking_payment_service.php';
             $current_scope = $_act_hin !== null ? " AND b.hospital_id IN ({$_act_hin})" : '';
             $current_result = mysqli_query($connect,
-                "SELECT b.status AS booking_status, p.id AS payment_id, p.provider, p.status AS payment_status,
+                "SELECT b.status AS booking_status, p.merchant_uid, p.provider, p.status AS payment_status,
                         p.amount, p.refunded_amount
                  FROM gangnamunni_bookings b
                  JOIN gangnamunni_platform_payments p ON p.payment_type='booking' AND p.booking_id=b.id
@@ -251,7 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (!$row || $row['booking_status'] !== 'cancelled'
                 || !booking_payment_is_pg($row['provider'])
                 || !in_array($row['payment_status'], ['paid', 'partially_refunded'], true)) {
-                $msg = '환불완료로 변경할 수 없는 상태입니다.';
+                $msg = '환불을 승인할 수 없는 상태입니다. 페이지를 새로고침해주세요.';
                 $msg_type = 'danger';
                 goto skip_action;
             }
@@ -261,59 +265,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $msg_type = 'warning';
                 goto skip_action;
             }
-            try {
-                platform_payment_record_refund(
-                    $connect,
-                    (int)$row['payment_id'],
-                    (string)$row['provider'],
-                    'admin_refund:' . $row['payment_id'] . ':' . $remaining_refund,
-                    $remaining_refund,
-                    hash('sha256', 'admin-refund:' . $id . ':' . $row['payment_id'] . ':' . $remaining_refund . ':' . ($_SESSION['ad_admin_id'] ?? 0))
-                );
-                $update_booking = mysqli_prepare($connect,
-                    "UPDATE gangnamunni_bookings SET status='refunded', refund_status='refunded', updated_at=NOW() WHERE id=?");
-                mysqli_stmt_bind_param($update_booking, 'i', $id);
-                if (!mysqli_stmt_execute($update_booking)) {
-                    throw new RuntimeException('Booking status update failed.');
-                }
-                mysqli_stmt_close($update_booking);
-
-                $audit = mysqli_prepare($connect,
-                    "INSERT INTO gangnamunni_refund_audit
-                        (booking_id,payment_id,amount,actor_type,actor_id,actor_name,status)
-                     VALUES (?, ?, ?, 'admin', ?, ?, 'completed')");
-                $actor_id = (int)($_SESSION['ad_admin_id'] ?? 0);
-                $actor_name = 'Admin (' . $actor_id . ')';
-                mysqli_stmt_bind_param($audit, 'iiiis', $id, $row['payment_id'], $remaining_refund, $actor_id, $actor_name);
-                if (!mysqli_stmt_execute($audit)) {
-                    throw new RuntimeException('Refund audit insert failed.');
-                }
-                mysqli_stmt_close($audit);
-                $refund_booking = booking_notification_fetch_booking_by_id($connect, $id);
-                if ($refund_booking) {
-                    try {
-                        $notify_result = notify_booking_member($connect, $refund_booking, 'refunded');
-                        admin_booking_log_notification_result('refunded:' . $id, $notify_result);
-                    } catch (Throwable $e) {
-                        error_log('[admin_bookings] refund notification failed: ' . $e->getMessage());
-                    }
-                }
-                $msg = '수동 환불완료로 변경되었습니다.';
-                $msg_type = 'success';
-                if ($is_admin_bookings_ajax) {
-                    admin_bookings_json_response(true, $msg, $msg_type, [
-                        'booking_id' => $id,
-                        'status' => 'refunded',
-                        'reload' => true,
-                    ]);
-                }
-                goto skip_action;
-            } catch (Throwable $e) {
-                error_log('[admin_bookings] refund status update failed: ' . $e->getMessage());
-                $msg = '환불 상태 변경에 실패했습니다. 다시 시도해주세요.';
+            // 폼을 열 때 만든 요청 ID: 같은 폼을 두 번 보내도 환불은 한 번만 실행된다.
+            $refund_request_id = (string)($_POST['refund_request_id'] ?? '');
+            if (!preg_match('/^[a-f0-9]{64}$/D', $refund_request_id)) {
+                $msg = '요청이 만료되었습니다. 페이지를 새로고침해주세요.';
                 $msg_type = 'danger';
                 goto skip_action;
             }
+            try {
+                booking_payment_refund(
+                    $connect,
+                    (string)$row['merchant_uid'],
+                    $remaining_refund,
+                    '예약 취소 환불 승인 (예약 #' . $id . ')',
+                    $refund_request_id,
+                    (int)($_SESSION['ad_admin_id'] ?? 0)
+                );
+                $msg = number_format($remaining_refund) . '원 환불이 완료되었습니다.';
+                $msg_type = 'success';
+                $admin_bookings_ajax_payload = ['booking_id' => $id, 'status' => 'refunded', 'reload' => true];
+            } catch (BookingPaymentRejectedException $e) {
+                error_log('[admin_bookings] refund rejected by PG: booking_id=' . $id . ' code=' . $e->getMessage());
+                $msg = 'Toss 가 환불을 거절했습니다 (' . preg_replace('/[^A-Z_]/', '', $e->getMessage()) . '). 페이지를 새로고침한 뒤 확인해주세요.';
+                $msg_type = 'danger';
+            } catch (BookingPaymentGatewayUnavailableException $e) {
+                $msg = '결제 연동이 설정되지 않아 환불할 수 없습니다.';
+                $msg_type = 'danger';
+            } catch (Throwable $e) {
+                // 결과 미확정(통신 오류·처리 중): 다시 누르지 말고 상태 조회로 확인한다. 중복 환불은 요청 ID 로 차단된다.
+                error_log('[admin_bookings] refund unresolved: booking_id=' . $id . ' ' . $e->getMessage());
+                $msg = '환불 결과를 확인하고 있습니다. 잠시 후 새로고침해 상태를 확인해주세요.';
+                $msg_type = 'danger';
+            }
+            goto skip_action;
         }
         $status_map = ['checking' => 'hospital_checking', 'confirm' => 'confirmed', 'cancel' => 'cancelled', 'complete' => 'completed'];
         $new_status = $status_map[$action];
@@ -952,7 +936,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                                                 <input type="hidden" name="id" value="<?php echo (int)$hospital_booking['id']; ?>">
                                                 <input type="hidden" name="open_hospital_id" value="<?php echo $hospital_id; ?>">
                                                 <?php $group_remaining_refund = max(0, (int)($hospital_booking['payment_amount'] ?? 0) - (int)($hospital_booking['payment_refunded_amount'] ?? 0)); ?>
-                                                <?php $group_can_refund = $group_status === 'cancelled' && in_array((string)($hospital_booking['payment_status'] ?? ''), ['paid', 'partially_refunded'], true) && $group_remaining_refund > 0; ?>
+                                                <?php $group_can_refund = false; ?>
                                                 <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($group_status, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($group_status, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$group_can_refund ? 'disabled' : 'required'; ?>>
                                                     <?php admin_booking_status_action_options($group_status, $group_labels, !empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== '', (string)($hospital_booking['payment_status'] ?? ''), $group_remaining_refund); ?>
                                                 </select>
@@ -1048,7 +1032,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
                                 <?php $remaining_refund = max(0, (int)($b['payment_amount'] ?? 0) - (int)($b['payment_refunded_amount'] ?? 0)); ?>
-                                <?php $can_refund = $st === 'cancelled' && in_array((string)($b['payment_status'] ?? ''), ['paid', 'partially_refunded'], true) && $remaining_refund > 0; ?>
+                                <?php $can_refund = false; ?>
                                 <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($st, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($st, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$can_refund ? 'disabled' : 'required'; ?>>
                                     <?php admin_booking_status_action_options($st, $label_map, !empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== '', (string)($b['payment_status'] ?? ''), $remaining_refund); ?>
                                 </select>

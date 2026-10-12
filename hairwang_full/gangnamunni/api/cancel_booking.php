@@ -56,8 +56,21 @@ if (in_array($booking['status'], ['cancelled', 'completed', 'no_show'])) {
 }
 
 require_once dirname(__DIR__) . '/includes/points_ledger.php';
-mysqli_begin_transaction($connect);
+require_once dirname(__DIR__) . '/includes/booking_payment_service.php';
+// 결제 승인(booking_payment_confirm)과 같은 잠금 안에서 취소한다: 승인 중이면 끝날 때까지 기다리고,
+// 취소가 먼저면 승인은 BOOKING_NOT_CONFIRMED 로 거부되어 돈이 빠져나가지 않는다.
 try {
+  booking_payment_lock_for_booking($connect, $booking_id, function () use ($connect, $booking_id, &$booking) {
+    $cur = mysqli_prepare($connect, "SELECT status FROM gangnamunni_bookings WHERE id = ?");
+    mysqli_stmt_bind_param($cur, 'i', $booking_id);
+    mysqli_stmt_execute($cur);
+    $cur_row = mysqli_fetch_assoc(mysqli_stmt_get_result($cur));
+    mysqli_stmt_close($cur);
+    if (!$cur_row || !in_array($cur_row['status'], ['pending', 'hospital_checking', 'confirmed'], true)) {
+        throw new RuntimeException('booking_not_cancellable');
+    }
+    mysqli_begin_transaction($connect);
+    try {
     $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings
         SET status='cancelled', cancel_reason=?, cancelled_at=NOW(), updated_at=NOW()
         WHERE id=? AND status IN ('pending','hospital_checking','confirmed')");
@@ -78,8 +91,16 @@ try {
     }
 
     mysqli_commit($connect);
+    } catch (Throwable $e) {
+        mysqli_rollback($connect);
+        throw $e;
+    }
+  });
 } catch (Throwable $e) {
-    mysqli_rollback($connect);
+    if ($e->getMessage() === 'booking_not_cancellable') {
+        echo json_encode(['success' => false, 'message' => '이미 처리된 예약입니다. 페이지를 새로고침해주세요.']);
+        exit;
+    }
     error_log('[cancel_booking] atomic cancel failed: ' . $e->getMessage());
     echo json_encode(['success' => false, 'message' => '취소 처리 중 오류가 발생했습니다. 다시 시도해주세요.']);
     exit;

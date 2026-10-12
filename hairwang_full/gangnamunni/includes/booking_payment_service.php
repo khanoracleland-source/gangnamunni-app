@@ -17,6 +17,15 @@ function booking_payment_lock(mysqli $db, string $merchant, callable $work) {
         $stmt->execute();
     }
 }
+/**
+ * 예약 취소처럼 결제 승인(booking_payment_confirm)과 겹칠 수 있는 작업을 같은 결제 잠금 안에서 실행한다.
+ * 결제 건이 없으면 잠금 없이 바로 실행한다.
+ */
+function booking_payment_lock_for_booking(mysqli $db, int $bookingId, callable $work) {
+    $order = booking_payment_order($db, $bookingId);
+    if (!$order || empty($order['merchant_uid'])) return $work();
+    return booking_payment_lock($db, (string)$order['merchant_uid'], $work);
+}
 function booking_payment_by_merchant(mysqli $db, string $merchant): array {
     $stmt = $db->prepare("SELECT * FROM gangnamunni_platform_payments WHERE merchant_uid=? AND payment_type='booking'");
     $stmt->bind_param('s', $merchant);
@@ -104,6 +113,7 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
     $cancelled = (int)($remote['cancelled_amount'] ?? 0);
     if ($status === 'cancelled' && $cancelled === 0) throw new RuntimeException('Cancellation total is missing.');
     $hash = hash('sha256', json_encode($remote, JSON_THROW_ON_ERROR));
+    $notifyRefundedBookingId = 0;
     $db->begin_transaction();
     try {
         $existingEvent = $db->prepare("SELECT id FROM gangnamunni_payment_events WHERE payment_id=? AND payload_sha256=? LIMIT 1");
@@ -135,12 +145,34 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
         $result = booking_payment_by_merchant($db, $order['merchant_uid']);
         // 포인트 결제(#포인트제도 v2): 결제 완료 → 홀드 확정, 전액 취소 → 사용 포인트 복구(같은 트랜잭션)
         points_checkout_after_sync($db, $result);
+        // 전액 환불이 원장에 반영되면 예약도 같은 트랜잭션에서 환불완료로 맞춘다(관리자 환불·Toss 콘솔 환불·웹훅 공통).
+        // 예약 status 는 취소 상태일 때만 'refunded' 로 바꾸고, refund_status 는 항상 맞춘다.
+        if (($result['status'] ?? '') === 'refunded' && (int)($result['booking_id'] ?? 0) > 0) {
+            $bookingId = (int)$result['booking_id'];
+            $sync = $db->prepare("UPDATE gangnamunni_bookings
+                SET status=IF(status='cancelled','refunded',status), refund_status='refunded', updated_at=NOW()
+                WHERE id=? AND refund_status<>'refunded'");
+            $sync->bind_param('i', $bookingId);
+            if (!$sync->execute()) throw new RuntimeException('Booking refund status sync failed.');
+            if ($sync->affected_rows === 1) $notifyRefundedBookingId = $bookingId;
+            $sync->close();
+        }
         $db->commit();
-        return $result;
     } catch (Throwable $e) {
         $db->rollback();
         throw $e;
     }
+    // 알림은 커밋 후 한 번만(실패해도 환불 처리에는 영향 없음).
+    if ($notifyRefundedBookingId > 0) {
+        try {
+            require_once __DIR__ . '/booking_notifications.php';
+            $booking = booking_notification_fetch_booking_by_id($db, $notifyRefundedBookingId);
+            if ($booking) notify_booking_member($db, $booking, 'refunded');
+        } catch (Throwable $e) {
+            error_log('[booking_payment_apply_remote] refund notification failed: ' . $e->getMessage());
+        }
+    }
+    return $result;
 }
 function booking_payment_sync(mysqli $db, string $merchant, string $source = 'server_query', ?BookingPaymentGateway $gateway = null): array {
     $gateway = $gateway ?? booking_payment_gateway();
