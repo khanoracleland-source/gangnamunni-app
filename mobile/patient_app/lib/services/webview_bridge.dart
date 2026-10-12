@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -510,7 +511,20 @@ class WebViewBridge {
         onWebResourceError?.call(error);
       },
       onNavigationRequest: (NavigationRequest request) async {
-        final Uri uri = Uri.parse(request.url);
+        // 카드사 앱 URL 은 형식이 깨져 있을 수 있어 Uri.parse 가 FormatException 을 던질 수 있다.
+        final Uri? parsedUri = Uri.tryParse(request.url);
+        if (parsedUri == null) {
+          // 파싱 불가 URL: 결제 앱 링크(문자열 기반 판별)만 허용하고, 그 외는 차단한다.
+          final PaymentAppLink? rawLink = PaymentAppLauncher.parse(request.url);
+          if (rawLink != null) {
+            _log('결제 앱 호출(비표준 URL): ${rawLink.appUrl}');
+            await _openPaymentApp(rawLink);
+          } else {
+            _log('잘못된 URL 차단: ${request.url}');
+          }
+          return NavigationDecision.prevent;
+        }
+        final Uri uri = parsedUri;
         final String scheme = uri.scheme.toLowerCase();
 
         // 커스텀 스킴 감지: 딥링크로 처리
@@ -531,7 +545,7 @@ class WebViewBridge {
           final PaymentAppLink? paymentLink = PaymentAppLauncher.parse(request.url);
           if (paymentLink != null) {
             _log('결제 앱 호출: ${paymentLink.appUrl}');
-            await PaymentAppLauncher.launch(paymentLink);
+            await _openPaymentApp(paymentLink);
             return NavigationDecision.prevent;
           }
         }
@@ -569,13 +583,32 @@ class WebViewBridge {
           } catch (e) {
             _log('KakaoTalk custom scheme launch failed: $e');
           }
+          return NavigationDecision.prevent;
         }
 
         // 그 외 알 수 없는 스킴은 차단
         _log('알 수 없는 스킴 차단: $scheme (${request.url})');
+        // 차단된 앱 스킴이 사용자에게 무반응으로 보이지 않도록 알린다. 일반 링크(tel/mailto/sms 등)와
+        // 내부 스킴은 제외하고, 문구는 결제에 한정하지 않는다.
+        const silentSchemes = {'about', 'data', 'blob', 'file', 'tel', 'mailto', 'sms', 'smsto'};
+        if (scheme.isNotEmpty && !silentSchemes.contains(scheme)) {
+          toast('앱을 열 수 없습니다.');
+        }
         return NavigationDecision.prevent;
       },
     );
+  }
+
+  /// 결제 앱을 열고, 열지 못하면(iOS 에서 앱 미설치 등) 사용자에게 알린다.
+  /// Android 는 [PaymentAppLauncher.launch] 가 Play 스토어로 보내므로 스토어도 못 연 경우에만 알린다.
+  Future<void> _openPaymentApp(PaymentAppLink link) async {
+    final bool opened = await PaymentAppLauncher.launch(link);
+    if (!opened) {
+      _log('결제 앱 실행 실패: ${link.appUrl}');
+      toast(defaultTargetPlatform == TargetPlatform.iOS
+          ? '결제 앱이 설치되어 있지 않습니다. App Store에서 앱을 설치한 뒤 다시 시도해주세요.'
+          : '결제 앱을 열 수 없습니다. 앱 설치 후 다시 시도해주세요.');
+    }
   }
 
   /// iframe 안에서 시작된 결제 앱 호출 처리.
@@ -607,7 +640,7 @@ class WebViewBridge {
     _lastSubframeAppUrl = url;
     _lastSubframeAppAt = now;
     _log('iframe 결제 앱 호출: ${link.appUrl}');
-    PaymentAppLauncher.launch(link);
+    _openPaymentApp(link);
   }
 
   // -------------------------------------------------------------------
