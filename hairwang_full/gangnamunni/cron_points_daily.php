@@ -31,7 +31,7 @@ $res = $connect->query("SELECT h.booking_id FROM gangnamunni_point_payment_holds
     ORDER BY h.id LIMIT 200");
 $released = 0;
 while ($res && ($row = $res->fetch_assoc())) {
-    try { if (points_checkout_release_for_booking($connect, (int)$row['booking_id'], '결제 미완료 포인트 복구')) $released++; }
+    try { if (points_checkout_release_for_booking($connect, (int)$row['booking_id'], '결제 미완료 포인트 복구', true)) $released++; }
     catch (Throwable $e) { $fail++; fwrite(STDERR, "hold booking {$row['booking_id']}: " . $e->getMessage() . "\n"); }
 }
 echo "holds released: $released\n";

@@ -57,6 +57,14 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
             if ($point_use > $max) throw new RuntimeException('사용 가능한 포인트는 최대 ' . number_format($max) . 'P 입니다.');
         }
         if ($held === $point_use) {
+            // 같은 포인트로 "결제하기"를 다시 누른 경우: 방치 홀드 cron(created_at 기준)이 결제 진행 중에 풀지 않도록 시각을 갱신한다.
+            if ($hold && $hold['status'] === 'held') {
+                $touch = mysqli_prepare($connect, "UPDATE gangnamunni_point_payment_holds SET created_at = NOW() WHERE id = ? AND status = 'held'");
+                $hid = (int)$hold['id'];
+                mysqli_stmt_bind_param($touch, 'i', $hid);
+                mysqli_stmt_execute($touch);
+                mysqli_stmt_close($touch);
+            }
             return ['amount' => $gross - $held, 'gross' => $gross, 'points' => $held];
         }
 
@@ -148,19 +156,26 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
     }
 
    
-    function points_checkout_release_for_booking($connect, $booking_id, $reason = '예약 취소 포인트 복구') {
+    /**
+     * @param bool $keepIfInProgress true 면 Toss 가 IN_PROGRESS(카드 인증 중·승인 전)일 때 홀드를 풀지 않는다.
+     *   방치 홀드 cron 용: 결제창이 열려 있는 동안 풀면 승인 단계에서 POINT_HOLD_EXPIRED 로 거부된다.
+     *   예약 취소는 false(기본): 취소되면 승인이 어차피 거부되므로 바로 복구한다.
+     */
+    function points_checkout_release_for_booking($connect, $booking_id, $reason = '예약 취소 포인트 복구', $keepIfInProgress = false) {
         if (!points_v2_schema_ready($connect)) return false;
         require_once __DIR__ . '/booking_payment_service.php';
         $order = booking_payment_order($connect, (int)$booking_id);
         if (!$order || ($order['status'] ?? '') !== 'pending' || !points_checkout_active_hold($connect, (int)$order['id'])) return false;
         $merchant = (string)$order['merchant_uid'];
         $gateway = booking_payment_gateway();
-        return booking_payment_lock($connect, $merchant, function () use ($connect, $merchant, $reason, $gateway) {
+        return booking_payment_lock($connect, $merchant, function () use ($connect, $merchant, $reason, $gateway, $keepIfInProgress) {
             // PG가 연결돼 있으면 최신 결제 상태를 먼저 반영한다. 연결 전에는 외부 결제 건이 없다.
             if ($gateway) {
                 try {
+                    $remote = $gateway->payment($merchant);
+                    if ($keepIfInProgress && ($remote['raw_status'] ?? '') === 'IN_PROGRESS') return false;
                     booking_payment_apply_remote($connect, booking_payment_by_merchant($connect, $merchant),
-                        $gateway->payment($merchant), 'server_query', $gateway->provider());
+                        $remote, 'server_query', $gateway->provider());
                 } catch (BookingPaymentRejectedException $e) {
                 }
             }
