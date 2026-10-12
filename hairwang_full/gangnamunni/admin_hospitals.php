@@ -51,6 +51,15 @@ $error = '';
 $current_admin = get_current_admin();
 
 
+/**
+ * @param array $file $_FILES 항목
+ * @param int|string $hospital_id
+ * @param array $allowed_mimes
+ * @param array $allowed_extensions
+ * @param int $max_bytes 허용 최대 파일 크기(바이트)
+ * @param string $prefix 저장 파일명 접두사
+ * @return array|null 성공 시 저장 정보, 업로드 없음 null, 실패 시 ['error' => 메시지]
+ */
 function admin_hospital_store_image(array $file, $hospital_id, array $allowed_mimes, array $allowed_extensions, $max_bytes, $prefix) {
     $upload_error = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
     if ($upload_error === UPLOAD_ERR_NO_FILE) return null;
@@ -765,6 +774,10 @@ if (!$view_mode) {
     mysqli_stmt_close($list_stmt);
 }
 
+/**
+ * @param array $overrides status|per_page|page|search|treatment_id 덮어쓰기
+ * @return string
+ */
 function buildHospitalUrl($overrides = []) {
     global $filter_status, $per_page, $search, $filter_treatment_id;
     $params = [
@@ -781,6 +794,10 @@ function buildHospitalUrl($overrides = []) {
     return '?' . http_build_query($params);
 }
 
+/**
+ * @param string $status pending|approved|rejected
+ * @return string
+ */
 function statusBadge($status) {
     $map = [
         'pending'  => ['bg-warning text-dark', '대기'],
