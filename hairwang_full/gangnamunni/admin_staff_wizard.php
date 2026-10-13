@@ -16,10 +16,12 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_permission('staffs');
-
+require_once __DIR__ . '/includes/hospital_filter.php';
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
+// tenant 격리: super_admin 만 모든 병원(tenant), 그 외에는 소속 병원과 연결된 tenant 에만 등록 가능
+$allowed_tenant_ids = get_admin_allowed_tenant_ids($connect);
 loadThemeSettings($connect);
 
 $esc = function($v) use ($connect) { return mysqli_real_escape_string($connect, $v); };
@@ -64,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // 병원(tenants) 목록
     if ($action === 'load_hospitals') {
         $hospitals = [];
-        $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants ORDER BY hospital_name");
+        $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants WHERE " . admin_tenant_scope_sql($connect, $allowed_tenant_ids, 'id') . " ORDER BY hospital_name");
         while ($row = mysqli_fetch_assoc($r)) $hospitals[] = $row;
         echo json_encode(['success' => true, 'data' => $hospitals]);
         exit;
@@ -103,7 +105,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $gender     = intval($data['gender'] ?? 1);
             $dob        = $esc($data['dob'] ?? '');
             $photo      = $esc($data['photo'] ?? '');
-            $tenantId   = intval($data['tenant_id'] ?? 0);
+            // tenant id 는 문자열(UUID) — 이전 intval() 은 잘못된 tenant 로 저장했다. 범위·존재 여부 검증.
+            [$tenantOk, $tenantIdRaw] = admin_validate_tenant_id($connect, $allowed_tenant_ids, $data['tenant_id'] ?? '');
+            if (!$tenantOk) {
+                throw new Exception('선택한 병원에 등록할 권한이 없습니다.');
+            }
+            $tenantId   = $tenantIdRaw !== null ? mysqli_real_escape_string($connect, $tenantIdRaw) : '';
             $qualification = $esc($data['qualification'] ?? '');
             $address1   = $esc($data['address1'] ?? '');
             $address2   = $esc($data['address2'] ?? '');
@@ -121,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     owner_type, tenant_id, email_verified_at, created_at, updated_at, status, language)
                     VALUES ('{$firstName}', '{$lastName}', '{$email}', '{$phone}', {$gender},
                     " . ($dob ? "'{$dob}'" : "NULL") . ",
-                    '{$password}', {$deptId}, '{$ownerType}', {$tenantId}, '{$now}', '{$now}', '{$now}', 1, 'ko')";
+                    '{$password}', {$deptId}, '{$ownerType}', " . ($tenantId !== '' ? "'{$tenantId}'" : "NULL") . ", '{$now}', '{$now}', '{$now}', 1, 'ko')";
             mysqli_query($connect, $sql);
             if (mysqli_error($connect)) throw new Exception('users INSERT 실패: ' . mysqli_error($connect));
             $userId = mysqli_insert_id($connect);
@@ -135,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // 2) 직종 테이블 INSERT
             $sql2 = "INSERT INTO {$tableName} (user_id, tenant_id, qualification, created_at, updated_at)
-                     VALUES ({$userId}, {$tenantId}, '{$qualification}', '{$now}', '{$now}')";
+                     VALUES ({$userId}, " . ($tenantId !== '' ? "'{$tenantId}'" : "NULL") . ", '{$qualification}', '{$now}', '{$now}')";
             mysqli_query($connect, $sql2);
             if (mysqli_error($connect)) throw new Exception("{$tableName} INSERT 실패: " . mysqli_error($connect));
             $ownerId = mysqli_insert_id($connect);

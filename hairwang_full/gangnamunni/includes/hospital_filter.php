@@ -58,6 +58,72 @@ function get_strict_admin_hospital_ids($connect) {
 }
 
 /**
+ * 현재 관리자가 접근할 수 있는 HMS tenant ID 목록 (인력·직원 등 HMS 테이블 격리용)
+ * admin_personnel.php 와 같은 규칙: super_admin 은 null(전체), 그 외는 소속 병원의
+ * gangnamunni_hospitals.hms_hospital_id + (구형) gangnamunni_hospital_mapping.hms_tenant_id.
+ * 매핑이 없으면 빈 배열 → 아무것도 보이지 않음 (fail-closed)
+ *
+ * @return array|null  tenant id 문자열 배열, super_admin 은 null
+ */
+function get_admin_allowed_tenant_ids($connect) {
+    $hospital_ids = get_strict_admin_hospital_ids($connect);
+    if ($hospital_ids === null) return null;
+    $tenant_ids = [];
+    if (!empty($hospital_ids) && $connect) {
+        $list = implode(',', array_map('intval', $hospital_ids));
+        $queries = [
+            "SELECT hms_hospital_id AS tenant_id FROM gangnamunni_hospitals
+              WHERE id IN ({$list}) AND hms_hospital_id IS NOT NULL AND hms_hospital_id <> ''",
+            // 구형 매핑 테이블 (없는 환경도 있음)
+            "SELECT hms_tenant_id AS tenant_id FROM gangnamunni_hospital_mapping
+              WHERE hospital_id IN ({$list}) AND hms_tenant_id IS NOT NULL AND hms_tenant_id <> ''",
+        ];
+        foreach ($queries as $sql) {
+            try {
+                $r = mysqli_query($connect, $sql);
+                while ($r && $row = mysqli_fetch_assoc($r)) $tenant_ids[] = (string)$row['tenant_id'];
+            } catch (Throwable $e) {
+                // 테이블이 없으면 건너뜀 — 결과가 비면 fail-closed
+            }
+        }
+    }
+    return array_values(array_unique($tenant_ids));
+}
+
+/**
+ * tenant 범위 SQL 조건. $allowed 가 null 이면 '1=1', 비어 있으면 '1=0'.
+ * @param string $column  예: 'e.tenant_id'
+ */
+function admin_tenant_scope_sql($connect, $allowed, $column) {
+    if ($allowed === null) return '1=1';
+    if (empty($allowed)) return '1=0';
+    $quoted = array_map(function ($t) use ($connect) {
+        return "'" . mysqli_real_escape_string($connect, (string)$t) . "'";
+    }, $allowed);
+    return $column . ' IN (' . implode(',', $quoted) . ')';
+}
+
+/**
+ * 등록 마법사 등에서 넘어온 tenant_id 검증: 존재하는 tenant 이고 현재 관리자 범위 안이어야 한다.
+ * super_admin 은 빈 값(미지정)도 허용, 그 외 관리자는 반드시 소속 tenant 를 지정해야 한다.
+ * @return array [bool ok, string|null tenant_id]
+ */
+function admin_validate_tenant_id($connect, $allowed, $tenant_id) {
+    $tenant_id = trim((string)$tenant_id);
+    if ($tenant_id === '' || $tenant_id === '0') {
+        return [$allowed === null, null];
+    }
+    if ($allowed !== null && !in_array($tenant_id, $allowed, true)) return [false, null];
+    $stmt = mysqli_prepare($connect, "SELECT id FROM tenants WHERE id = ? LIMIT 1");
+    if (!$stmt) return [false, null];
+    mysqli_stmt_bind_param($stmt, 's', $tenant_id);
+    mysqli_stmt_execute($stmt);
+    $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+    mysqli_stmt_close($stmt);
+    return $row ? [true, (string)$row['id']] : [false, null];
+}
+
+/**
  * 현재 관리자에게 배정된 병원 목록 (이벤트·광고 신청 등 병원 단위 작업용)
  *  - super_admin → 전체 병원 (최고관리자는 모든 병원을 대신 관리할 수 있다)
  *  - 그 외 → 관리자 관리에서 지정한 hospital_id 1곳, 미배정이면 빈 배열(fail closed)

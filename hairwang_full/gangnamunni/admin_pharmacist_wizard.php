@@ -18,10 +18,12 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_permission('pharmacists');
-
+require_once __DIR__ . '/includes/hospital_filter.php';
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
+// tenant 격리: super_admin 만 모든 병원(tenant), 그 외에는 소속 병원과 연결된 tenant 에만 등록 가능
+$allowed_tenant_ids = get_admin_allowed_tenant_ids($connect);
 loadThemeSettings($connect);
 $esc = function($v) use ($connect) { return mysqli_real_escape_string($connect, $v); };
 
@@ -62,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($action === 'load_hospitals') {
         $hospitals = [];
-        $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants ORDER BY hospital_name");
+        $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants WHERE " . admin_tenant_scope_sql($connect, $allowed_tenant_ids, 'id') . " ORDER BY hospital_name");
         while ($row = mysqli_fetch_assoc($r)) $hospitals[] = $row;
         echo json_encode(['success' => true, 'hospitals' => $hospitals]);
         exit;
@@ -84,7 +86,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $dob        = $esc($data['dob'] ?? '');
             $bloodGroup = $esc($data['blood_group'] ?? '');
             $photo      = $esc($data['photo'] ?? '');
-            $tenantId   = intval($data['tenant_id'] ?? 0);
+            // tenant id 는 문자열(UUID) — 이전 intval() 은 잘못된 tenant 로 저장했다. 범위·존재 여부 검증.
+            [$tenantOk, $tenantIdRaw] = admin_validate_tenant_id($connect, $allowed_tenant_ids, $data['tenant_id'] ?? '');
+            if (!$tenantOk) {
+                throw new Exception('선택한 병원에 등록할 권한이 없습니다.');
+            }
+            $tenantId   = $tenantIdRaw !== null ? mysqli_real_escape_string($connect, $tenantIdRaw) : '';
             $licenseNo  = $esc($data['license_no'] ?? '');
             $qualification = $esc($data['qualification'] ?? '');
             $description   = $esc($data['description'] ?? '');

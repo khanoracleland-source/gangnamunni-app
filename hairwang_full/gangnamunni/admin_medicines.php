@@ -22,12 +22,29 @@ loadThemeSettings($connect);
 
 require_admin_login();
 require_permission('medicines');
+require_once __DIR__ . '/includes/hospital_filter.php';
+
+// tenant 격리: super_admin 만 전체, 그 외에는 소속 병원과 연결된 HMS tenant 의 의약품만
+$allowed_tenant_ids = get_admin_allowed_tenant_ids($connect);
+$tenant_scope = admin_tenant_scope_sql($connect, $allowed_tenant_ids, 'm.tenant_id');
+$tenant_scope_plain = admin_tenant_scope_sql($connect, $allowed_tenant_ids, 'tenant_id');
+
+if (empty($_SESSION['admin_medicines_csrf'])) $_SESSION['admin_medicines_csrf'] = bin2hex(random_bytes(32));
+$page_csrf = $_SESSION['admin_medicines_csrf'];
 
 // 삭제
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+    if (!hash_equals($page_csrf, (string)($_POST['admin_csrf'] ?? ''))) {
+        http_response_code(403);
+        exit('요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.');
+    }
     $id = intval($_POST['id'] ?? 0);
     if ($id > 0) {
-        mysqli_query($connect, "DELETE FROM medicines WHERE id = $id");
+        mysqli_query($connect, "DELETE FROM medicines WHERE id = $id AND $tenant_scope_plain");
+        if (mysqli_affected_rows($connect) !== 1) {
+            http_response_code(403);
+            exit('이 의약품을 삭제할 권한이 없습니다.');
+        }
     }
     header('Location: admin_medicines.php');
     exit;
@@ -40,7 +57,7 @@ $page = max(1, intval($_GET['page'] ?? 1));
 $per_page = 20;
 $offset = ($page - 1) * $per_page;
 
-$where = '1=1';
+$where = $tenant_scope;
 if (!empty($search)) {
     $s = mysqli_real_escape_string($connect, $search);
     $where .= " AND (m.name LIKE '%$s%' OR m.salt_composition LIKE '%$s%' OR m.description LIKE '%$s%')";
@@ -51,11 +68,11 @@ if ($filter_category > 0) {
 
 // 통계
 $stats = ['total' => 0, 'low_stock' => 0, 'categories' => 0];
-$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM medicines");
+$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM medicines WHERE $tenant_scope_plain");
 if ($sr) $stats['total'] = (int)mysqli_fetch_assoc($sr)['c'];
-$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM medicines WHERE available_quantity < 10");
+$sr = mysqli_query($connect, "SELECT COUNT(*) as c FROM medicines WHERE available_quantity < 10 AND $tenant_scope_plain");
 if ($sr) $stats['low_stock'] = (int)mysqli_fetch_assoc($sr)['c'];
-$sr = mysqli_query($connect, "SELECT COUNT(DISTINCT category_id) as c FROM medicines WHERE category_id IS NOT NULL");
+$sr = mysqli_query($connect, "SELECT COUNT(DISTINCT category_id) as c FROM medicines WHERE category_id IS NOT NULL AND $tenant_scope_plain");
 if ($sr) $stats['categories'] = (int)mysqli_fetch_assoc($sr)['c'];
 
 // 카테고리 목록
@@ -167,6 +184,7 @@ include __DIR__ . '/includes/admin_header.php';
                     <td>
                         <form method="POST" class="d-inline">
                             <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($page_csrf, ENT_QUOTES); ?>">
                             <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
                             <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('삭제하시겠습니까?')"><i class="bi bi-trash"></i></button>
                         </form>

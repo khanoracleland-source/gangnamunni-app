@@ -19,10 +19,12 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_permission('medicines');
-
+require_once __DIR__ . '/includes/hospital_filter.php';
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die("DB 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
+// tenant 격리: super_admin 만 모든 병원(tenant), 그 외에는 소속 병원과 연결된 tenant 에만 조회·등록
+$allowed_tenant_ids = get_admin_allowed_tenant_ids($connect);
 loadThemeSettings($connect);
 
 $esc = function($v) use ($connect) { return mysqli_real_escape_string($connect, $v); };
@@ -34,9 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     // 카테고리 로드
     if ($action === 'load_categories') {
-        $tenantId = intval($_POST['tenant_id'] ?? 0);
+        [$tOk, $tId] = admin_validate_tenant_id($connect, $allowed_tenant_ids, $_POST['tenant_id'] ?? '');
         $cats = [];
-        $where = $tenantId ? "WHERE tenant_id = {$tenantId}" : "";
+        $where = !$tOk ? "WHERE 1=0" : ($tId !== null ? "WHERE tenant_id = '" . mysqli_real_escape_string($connect, $tId) . "'" : "");
         $r = mysqli_query($connect, "SELECT id, name FROM categories {$where} ORDER BY name");
         while ($row = mysqli_fetch_assoc($r)) $cats[] = $row;
         echo json_encode(['success' => true, 'data' => $cats]);
@@ -45,9 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     // 브랜드 로드
     if ($action === 'load_brands') {
-        $tenantId = intval($_POST['tenant_id'] ?? 0);
+        [$tOk, $tId] = admin_validate_tenant_id($connect, $allowed_tenant_ids, $_POST['tenant_id'] ?? '');
         $brands = [];
-        $where = $tenantId ? "WHERE tenant_id = {$tenantId}" : "";
+        $where = !$tOk ? "WHERE 1=0" : ($tId !== null ? "WHERE tenant_id = '" . mysqli_real_escape_string($connect, $tId) . "'" : "");
         $r = mysqli_query($connect, "SELECT id, name FROM brands {$where} ORDER BY name");
         while ($row = mysqli_fetch_assoc($r)) $brands[] = $row;
         echo json_encode(['success' => true, 'data' => $brands]);
@@ -57,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // 병원(tenants) 목록
     if ($action === 'load_hospitals') {
         $hospitals = [];
-        $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants ORDER BY hospital_name");
+        $r = mysqli_query($connect, "SELECT id, hospital_name FROM tenants WHERE " . admin_tenant_scope_sql($connect, $allowed_tenant_ids, 'id') . " ORDER BY hospital_name");
         while ($row = mysqli_fetch_assoc($r)) $hospitals[] = $row;
         echo json_encode(['success' => true, 'data' => $hospitals]);
         exit;
@@ -97,11 +99,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         mysqli_begin_transaction($connect);
         try {
-            $tenantId  = intval($data['tenant_id'] ?? 0);
+            // tenant id 는 문자열(UUID) — 범위·존재 여부 검증 후 사용 (이전 intval() 은 잘못된 tenant 로 저장)
+            [$tenantOk, $tenantIdRaw] = admin_validate_tenant_id($connect, $allowed_tenant_ids, $data['tenant_id'] ?? '');
+            if (!$tenantOk) throw new Exception('선택한 병원에 등록할 권한이 없습니다.');
+            $tenantId  = $tenantIdRaw !== null ? "'" . mysqli_real_escape_string($connect, $tenantIdRaw) . "'" : 'NULL';
+            // tenant 미지정은 super_admin 만 가능 → 그 경우 기존 동작대로 제한하지 않음
+            $tenantCond = $tenantIdRaw !== null ? "tenant_id = {$tenantId}" : '1=1';
             $now       = date('Y-m-d H:i:s');
 
             // 1) 카테고리 - 신규 입력이면 INSERT
             $categoryId = intval($data['category_id'] ?? 0);
+            // 기존 카테고리/브랜드는 같은 tenant 소속만 허용
+            if ($categoryId > 0) {
+                $chk = mysqli_query($connect, "SELECT 1 FROM categories WHERE id = {$categoryId} AND {$tenantCond} LIMIT 1");
+                if (!$chk || mysqli_num_rows($chk) === 0) throw new Exception('선택한 카테고리를 사용할 수 없습니다.');
+            }
             if ($categoryId === 0 && !empty($data['category_name'])) {
                 $catName = $esc($data['category_name']);
                 mysqli_query($connect, "INSERT INTO categories (name, tenant_id, created_at, updated_at) VALUES ('{$catName}', {$tenantId}, '{$now}', '{$now}')");
@@ -111,6 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // 2) 브랜드 - 신규 입력이면 INSERT
             $brandId = intval($data['brand_id'] ?? 0);
+            if ($brandId > 0) {
+                $chk = mysqli_query($connect, "SELECT 1 FROM brands WHERE id = {$brandId} AND {$tenantCond} LIMIT 1");
+                if (!$chk || mysqli_num_rows($chk) === 0) throw new Exception('선택한 브랜드를 사용할 수 없습니다.');
+            }
             if ($brandId === 0 && !empty($data['brand_name'])) {
                 $brandName = $esc($data['brand_name']);
                 mysqli_query($connect, "INSERT INTO brands (name, tenant_id, created_at, updated_at) VALUES ('{$brandName}', {$tenantId}, '{$now}', '{$now}')");

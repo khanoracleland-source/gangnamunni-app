@@ -19,6 +19,11 @@ loadThemeSettings($connect);
 
 require_admin_login();
 require_permission('staffs');
+require_once __DIR__ . '/includes/hospital_filter.php';
+
+// tenant 격리: super_admin 만 전체, 그 외에는 소속 병원과 연결된 HMS tenant 의 직원만
+$allowed_tenant_ids = get_admin_allowed_tenant_ids($connect);
+$tenant_scope = admin_tenant_scope_sql($connect, $allowed_tenant_ids, 'e.tenant_id');
 
 // 직원 유형별 테이블
 $staff_types = [
@@ -38,7 +43,7 @@ $offset = ($page - 1) * $per_page;
 $stats = [];
 $grand_total = 0;
 foreach ($staff_types as $key => $info) {
-    $cr = mysqli_query($connect, "SELECT COUNT(*) as c FROM {$info['table']}");
+    $cr = mysqli_query($connect, "SELECT COUNT(*) as c FROM {$info['table']} e WHERE {$tenant_scope}");
     $cnt = $cr ? (int)mysqli_fetch_assoc($cr)['c'] : 0;
     $stats[$key] = $cnt;
     $grand_total += $cnt;
@@ -58,10 +63,10 @@ $union_parts = [];
 foreach ($tables as $key => $info) {
     $tbl = $info['table'];
     $lbl = $info['label'];
-    $where = '1=1';
+    $where = $tenant_scope;
     if (!empty($search)) {
         $s = mysqli_real_escape_string($connect, $search);
-        $where = "(u.first_name LIKE '%$s%' OR u.last_name LIKE '%$s%' OR u.email LIKE '%$s%' OR u.phone LIKE '%$s%')";
+        $where .= " AND (u.first_name LIKE '%$s%' OR u.last_name LIKE '%$s%' OR u.email LIKE '%$s%' OR u.phone LIKE '%$s%')";
     }
     $union_parts[] = "SELECT e.id, e.user_id, '' AS qualification, e.created_at, u.first_name, u.last_name, u.email, u.phone, u.gender, u.status as user_status, '$lbl' as staff_type FROM $tbl e JOIN users u ON e.user_id = u.id WHERE $where";
 }

@@ -19,16 +19,33 @@ loadThemeSettings($connect);
 
 require_admin_login();
 require_permission('nurses');
+require_once __DIR__ . '/includes/hospital_filter.php';
+
+// tenant 격리: super_admin 만 전체, 그 외에는 소속 병원과 연결된 HMS tenant 의 인력만 (admin_personnel.php 와 동일)
+$allowed_tenant_ids = get_admin_allowed_tenant_ids($connect);
+$tenant_scope = admin_tenant_scope_sql($connect, $allowed_tenant_ids, 'e.tenant_id');
+$tenant_scope_plain = admin_tenant_scope_sql($connect, $allowed_tenant_ids, 'tenant_id');
+
+if (empty($_SESSION['admin_nurses_csrf'])) $_SESSION['admin_nurses_csrf'] = bin2hex(random_bytes(32));
+$page_csrf = $_SESSION['admin_nurses_csrf'];
 
 // 삭제 처리
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+    if (!hash_equals($page_csrf, (string)($_POST['admin_csrf'] ?? ''))) {
+        http_response_code(403);
+        exit('요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.');
+    }
     $id = intval($_POST['id'] ?? 0);
     if ($id > 0) {
-        // 엔티티 테이블에서 user_id 가져오기
-        $r = mysqli_query($connect, "SELECT user_id FROM nurses WHERE id = $id");
-        if ($r && $row = mysqli_fetch_assoc($r)) {
+        // 엔티티 테이블에서 user_id 가져오기 (소속 tenant 범위 안에서만)
+        $r = mysqli_query($connect, "SELECT user_id FROM nurses WHERE id = $id AND $tenant_scope_plain");
+        if (!$r || mysqli_num_rows($r) === 0) {
+            http_response_code(403);
+            exit('이 인력을 삭제할 권한이 없습니다.');
+        }
+        if ($row = mysqli_fetch_assoc($r)) {
             $uid = (int)$row['user_id'];
-            mysqli_query($connect, "DELETE FROM nurses WHERE id = $id");
+            mysqli_query($connect, "DELETE FROM nurses WHERE id = $id AND $tenant_scope_plain");
             // users 테이블에서도 삭제 (선택적)
             // mysqli_query($connect, "DELETE FROM users WHERE id = $uid");
         }
@@ -43,7 +60,7 @@ $page = max(1, intval($_GET['page'] ?? 1));
 $per_page = 20;
 $offset = ($page - 1) * $per_page;
 
-$where = '1=1';
+$where = $tenant_scope;
 if (!empty($search)) {
     $s = mysqli_real_escape_string($connect, $search);
     $where .= " AND (u.first_name LIKE '%$s%' OR u.last_name LIKE '%$s%' OR u.email LIKE '%$s%' OR u.phone LIKE '%$s%')";
@@ -145,6 +162,7 @@ include __DIR__ . '/includes/admin_header.php';
                     <td>
                         <form method="POST" class="d-inline">
                             <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($page_csrf, ENT_QUOTES); ?>">
                             <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
                             <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('삭제하시겠습니까?')" title="삭제"><i class="bi bi-trash"></i></button>
                         </form>
