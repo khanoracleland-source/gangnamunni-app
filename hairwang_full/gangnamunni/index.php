@@ -46,21 +46,9 @@ $table_check = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_hospitals'"
 $table_exists = mysqli_num_rows($table_check) > 0;
 
 // Homepage banners use approval and independent visibility, not paid slot bookings.
-$ads = [];
-$ads_query = "SELECT a.* FROM gangnamunni_ads a
-    WHERE a.status = 'approved'
-      AND NOT EXISTS (
-          SELECT 1 FROM gangnamunni_settings s
-          WHERE s.setting_key = CONCAT('home_banner_enabled_', a.id)
-            AND s.setting_value = '0'
-      )
-    ORDER BY a.display_order ASC LIMIT 10";
-$ads_result = mysqli_query($connect, $ads_query);
-if ($ads_result) {
-    while ($row = mysqli_fetch_assoc($ads_result)) {
-        $ads[] = $row;
-    }
-}
+// index.php 와 mypage.php 가 같은 광고 목록을 쓰도록 공용 파일에서 가져온다.
+require_once __DIR__ . '/includes/home_ad_carousel.php';
+$ads = home_banner_ads($connect);
 
 // 프로모션 배너 데이터 가져오기
 $promos = [];
@@ -290,11 +278,6 @@ textarea {
 .carousel-container { position: relative; overflow: hidden; border-radius: 0px; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
 .carousel-track { display: flex; transition: transform 0.4s ease; }
 .carousel-slide { min-width: 100%; flex-shrink: 0; }
-.carousel-indicator {
-    position: absolute; bottom: 8px; right: 12px;
-    background: rgba(0,0,0,0.5); color: #fff;
-    padding: 1px 6px; border-radius: 6px; font-size: 8px; line-height: 1.4;
-}
 .promo-banner {
     display: flex; flex-direction: column; justify-content: center;
     padding: 24px 28px; border-radius: 0px; min-height: 120px;
@@ -348,7 +331,8 @@ function carouselMove(carouselId, dir) {
     track.setAttribute("data-index", idx);
 
     track.style.transform = "translateX(-" + (idx * 100) + "%)";
-    el.querySelector(".carousel-current").textContent = (idx + 1);
+    var cur = el.querySelector(".carousel-current"); // indikator olib tashlangan; topilmasa tashlab ketiladi
+    if (cur) cur.textContent = (idx + 1);
 }
 
 // 캐러셀 자동 스크롤
@@ -524,23 +508,8 @@ body.ae-active { padding-top:0 !important; }
             <?php if (function_exists('ae')) ae('ad_settings', '광고 설정'); ?>
             <div class="carousel-container">
                 <div class="carousel-track">
-                    <?php foreach ($ads as $ad): ?>
-                    <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
-                        <?php if (!empty($ad['image_url']) && file_exists(__DIR__ . '/' . $ad['image_url'])): ?>
-                        <div style="border-radius:0px;overflow:hidden;border:1px solid var(--bs-border-color, #eee);">
-                            <img src="<?php echo htmlspecialchars($ad['image_url']); ?>" alt="<?php echo htmlspecialchars($ad['title']); ?>" style="width:100%;height:auto;object-fit:cover;">
-                        </div>
-                        <?php else: ?>
-                        <div style="background:var(--bs-tertiary-bg, #f8f8f8);border-radius:0px;padding:20px 16px;color:var(--bs-body-color, #333);min-height:100px;position:relative;border:1px solid var(--bs-border-color, #eee);">
-                            <span style="position:absolute;top:10px;right:12px;background:#e0e0e0;color:var(--bs-secondary-color, #666);font-size:12px;font-weight:400;color:#000000;padding:2px 6px;border-radius:4px;">AD</span>
-                            <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:#222;"><?php echo htmlspecialchars($ad['title']); ?></div>
-                            <?php if (!empty($ad['subtitle'])): ?><div style="font-size:12px;color:var(--bs-secondary-color, #666);line-height:1.4;"><?php echo htmlspecialchars($ad['subtitle']); ?></div><?php endif; ?>
-                        </div>
-                        <?php endif; ?>
-                    </a>
-                    <?php endforeach; ?>
+<?php home_ad_slides($ads); ?>
                 </div>
-                <div class="carousel-indicator"><span class="carousel-current">1</span> / <?php echo count($ads); ?></div>
             </div>
         </div>
         <?php endif; ?>
@@ -788,23 +757,8 @@ body.ae-active { padding-top:0 !important; }
             <?php if (function_exists('ae')) ae('ad_settings', '광고 설정'); ?>
             <div class="carousel-container">
                 <div class="carousel-track">
-                    <?php foreach ($ads as $ad): ?>
-                    <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
-                        <?php if (!empty($ad['image_url']) && file_exists(__DIR__ . '/' . $ad['image_url'])): ?>
-                        <div style="border-radius:0px;overflow:hidden;border:1px solid var(--bs-border-color, #eee);">
-                            <img src="<?php echo htmlspecialchars($ad['image_url']); ?>" alt="<?php echo htmlspecialchars($ad['title']); ?>" style="width:100%;height:auto;object-fit:cover;">
-                        </div>
-                        <?php else: ?>
-                        <div style="background:var(--bs-tertiary-bg, #f8f8f8);border-radius:0px;padding:20px 16px;color:var(--bs-body-color, #333);min-height:100px;position:relative;border:1px solid var(--bs-border-color, #eee);">
-                            <span style="position:absolute;top:10px;right:12px;background:#e0e0e0;color:var(--bs-secondary-color, #666);font-size:12px;font-weight:400;color:#000000;padding:2px 6px;border-radius:4px;">AD</span>
-                            <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:#222;"><?php echo htmlspecialchars($ad['title']); ?></div>
-                            <?php if (!empty($ad['subtitle'])): ?><div style="font-size:12px;color:var(--bs-secondary-color, #666);line-height:1.4;"><?php echo htmlspecialchars($ad['subtitle']); ?></div><?php endif; ?>
-                        </div>
-                        <?php endif; ?>
-                    </a>
-                    <?php endforeach; ?>
+<?php home_ad_slides($ads); ?>
                 </div>
-                <div class="carousel-indicator"><span class="carousel-current">1</span> / <?php echo count($ads); ?></div>
             </div>
         </div>
         <?php endif; ?>
@@ -825,7 +779,6 @@ body.ae-active { padding-top:0 !important; }
                     </a>
                     <?php endforeach; ?>
                 </div>
-                <div class="carousel-indicator"><span class="carousel-current">1</span> / <?php echo count($promos); ?></div>
             </div>
         </div>
         <?php endif; ?>
@@ -884,23 +837,8 @@ body.ae-active { padding-top:0 !important; }
         <div class="carousel-section" id="ads-carousel-bottom" style="margin:16px 0;">
             <div class="carousel-container">
                 <div class="carousel-track">
-                    <?php foreach ($ads as $ad): ?>
-                    <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
-                        <?php if (!empty($ad['image_url']) && file_exists(__DIR__ . '/' . $ad['image_url'])): ?>
-                        <div style="border-radius:0px;overflow:hidden;border:1px solid var(--bs-border-color, #eee);">
-                            <img src="<?php echo htmlspecialchars($ad['image_url']); ?>" alt="<?php echo htmlspecialchars($ad['title']); ?>" style="width:100%;height:auto;object-fit:cover;">
-                        </div>
-                        <?php else: ?>
-                        <div style="background:var(--bs-tertiary-bg, #f8f8f8);border-radius:0px;padding:20px 16px;color:var(--bs-body-color, #333);min-height:100px;position:relative;border:1px solid var(--bs-border-color, #eee);">
-                            <span style="position:absolute;top:10px;right:12px;background:#e0e0e0;color:var(--bs-secondary-color, #666);font-size:12px;font-weight:400;color:#000000;padding:2px 6px;border-radius:4px;">AD</span>
-                            <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:#222;"><?php echo htmlspecialchars($ad['title']); ?></div>
-                            <?php if (!empty($ad['subtitle'])): ?><div style="font-size:12px;color:var(--bs-secondary-color, #666);line-height:1.4;"><?php echo htmlspecialchars($ad['subtitle']); ?></div><?php endif; ?>
-                        </div>
-                        <?php endif; ?>
-                    </a>
-                    <?php endforeach; ?>
+<?php home_ad_slides($ads); ?>
                 </div>
-                <div class="carousel-indicator"><span class="carousel-current">1</span> / <?php echo count($ads); ?></div>
             </div>
         </div>
         <?php endif; ?>

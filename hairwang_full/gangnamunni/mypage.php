@@ -191,22 +191,33 @@ body {
     position: relative;
     margin: 0 20px 16px;
     display: block;
-    background: #ead1cc;
     overflow: hidden;
 }
-.advertisement-section img {
+/* 캐러셀 슬라이드를 기존 고정 배너(600×132)와 같은 비율로 맞춘다 */
+#mypage-ads-carousel .carousel-slide {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+#mypage-ads-carousel .carousel-slide > div { width: 100%; }
+#mypage-ads-carousel .carousel-slide > div {
+    aspect-ratio: 600 / 132;
+    min-height: 0 !important;
+    box-sizing: border-box;
+}
+#mypage-ads-carousel .carousel-slide img {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100% !important;
+    object-fit: cover;
 }
-.advertisement-click-link {
-    position: absolute;
-    inset: 0;
-    -webkit-tap-highlight-color: transparent;
-}
-.advertisement-click-link:focus-visible {
-    outline: 2px solid #AE1932;
-    outline-offset: 2px;
+#mypage-ads-carousel .carousel-slide > div:not(:has(img)) {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 10px 16px !important;
+    overflow: hidden;
 }
 
 /* 메뉴 배지 */
@@ -283,10 +294,15 @@ body {
     </a>
 </div>
 
-<div class="advertisement-section">
-    <img src="assets/media/mypage-app-intro-banner.jpg?v=<?php echo (int)filemtime(__DIR__ . '/assets/media/mypage-app-intro-banner.jpg'); ?>" alt="미용시술, 시술별 한눈에 병원선택. 원하는 시술, 서울미녀에서 최저가로 찾아보세요.">
-    <a class="advertisement-click-link" href="about_project1.php" aria-label="서울미녀 이용 가이드 페이지로 이동"></a>
-</div>
+<?php
+// 홈(index.php)과 같은 광고 캐러셀 — 관리자에서 광고를 추가/숨기면 여기에도 그대로 반영된다.
+require_once __DIR__ . '/includes/home_ad_carousel.php';
+ob_start();
+$_mypage_has_ads = render_home_ad_carousel($connect, 'mypage-ads-carousel', 'margin-bottom:0;');
+$_mypage_ads_html = ob_get_clean();
+if ($_mypage_has_ads): ?>
+<div class="advertisement-section"><?php echo $_mypage_ads_html; ?></div>
+<?php endif; ?>
 
 <!-- 섹션: 커뮤니티 -->
 <div class="menu-section">
