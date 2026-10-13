@@ -72,6 +72,11 @@ function _hms_auto_sync($mb_no) {
  */
 function _hms_sync_password($mb_no, $connect, $sync_data) {
     if (empty($sync_data['hms_user_id'])) return;
+    // 환자 전용 HMS 계정에만 비밀번호를 동기화한다 (직원/관리자 계정 비밀번호 덮어쓰기 방지)
+    if (!function_exists('hms_user_is_patient_only') || !hms_user_is_patient_only($sync_data['hms_user_id'], $connect)) {
+        error_log('[hms_sync] mb_no=' . intval($mb_no) . ' → HMS user #' . intval($sync_data['hms_user_id']) . ' 는 환자 전용 계정이 아니어서 비밀번호 동기화 생략');
+        return;
+    }
 
     $mb = mysqli_fetch_assoc(mysqli_query($connect,
         "SELECT mb_password FROM g5_member WHERE mb_no = " . intval($mb_no)));
@@ -100,11 +105,16 @@ function _sso_create_on_login($mb) {
     }
 
     // member_sync에서 hms_user_id 조회
+    // 정상 연결(synced)된 환자 전용 HMS 계정만 SSO 에 싣는다. 그 외에는 그누보드 전용 토큰.
     $hms_user_id = null;
     $sync = mysqli_fetch_assoc(mysqli_query($connect,
-        "SELECT hms_user_id FROM member_sync WHERE mb_no = " . intval($mb['mb_no'])));
-    if ($sync) {
-        $hms_user_id = $sync['hms_user_id'];
+        "SELECT hms_user_id, sync_status FROM member_sync WHERE mb_no = " . intval($mb['mb_no'])));
+    if ($sync && !empty($sync['hms_user_id']) && $sync['sync_status'] === 'synced') {
+        $sync_file = G5_PATH . '/gangnamunni/includes/member_sync.php';
+        if (!function_exists('hms_user_is_patient_only') && file_exists($sync_file)) include_once($sync_file);
+        if (function_exists('hms_user_is_patient_only') && hms_user_is_patient_only($sync['hms_user_id'], $connect)) {
+            $hms_user_id = (int)$sync['hms_user_id'];
+        }
     }
 
     sso_create_token($connect, 'gnuboard', $mb['mb_id'], $hms_user_id);

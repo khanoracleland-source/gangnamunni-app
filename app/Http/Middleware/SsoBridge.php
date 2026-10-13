@@ -35,9 +35,27 @@ class SsoBridge
 
         // HMS 사용자 조회 및 자동 로그인
         $user = User::find($sso->hms_user_id);
-        if ($user && $user->status) {
-            Auth::login($user);
+        if (!$user || !$user->status) {
+            return $next($request);
         }
+
+        // HMS 에서 직접 로그인해 발급된 토큰(user_type=hms)만 그 사용자 그대로 복원한다.
+        // 그누보드(사이트) 쪽에서 발급된 토큰은 member_sync 로 정상 연결된 "환자 전용" 계정만 허용한다.
+        // (이메일 충돌로 잘못 연결된 매핑을 통해 최고관리자·직원 계정에 로그인되는 것을 막는다.)
+        if ($sso->user_type !== 'hms') {
+            $linked = !empty($sso->g5_mb_id) && DB::table('member_sync')
+                ->where('mb_id', $sso->g5_mb_id)
+                ->where('hms_user_id', $user->id)
+                ->where('sync_status', 'synced')
+                ->exists();
+            $patientOnly = $user->owner_type === \App\Models\Patient::class
+                && !$user->roles()->where('name', '!=', 'Patient')->exists();
+            if (!$linked || !$patientOnly) {
+                return $next($request);
+            }
+        }
+
+        Auth::login($user);
 
         return $next($request);
     }

@@ -22,6 +22,51 @@ function get_sync_status($mb_no, $connect) {
 }
 
 /**
+ * HMS 사용자가 "환자 전용" 계정인지 (회원 동기화·비밀번호 동기화·SSO 연결을 허용해도 되는 계정인지)
+ * - users.owner_type 이 Patient 이고
+ * - Patient 외의 역할(Super Admin, Admin, Doctor ...)이 하나도 없어야 한다.
+ * 직원/관리자 계정은 어떤 경우에도 그누보드 회원과 연결되거나 덮어써지면 안 된다.
+ */
+function hms_user_is_patient_only($user_id, $connect) {
+    $user_id = (int)$user_id;
+    if ($user_id <= 0) return false;
+    $patient_type = 'App\\Models\\Patient';
+    $stmt = mysqli_prepare($connect, "SELECT owner_type FROM users WHERE id = ? LIMIT 1");
+    if (!$stmt) return false;
+    mysqli_stmt_bind_param($stmt, 'i', $user_id);
+    mysqli_stmt_execute($stmt);
+    $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+    mysqli_stmt_close($stmt);
+    if (!$row || (string)$row['owner_type'] !== $patient_type) return false;
+
+    $has_roles = mysqli_query($connect, "SHOW TABLES LIKE 'model_has_roles'");
+    if ($has_roles && mysqli_num_rows($has_roles) > 0) {
+        $user_model = 'App\\Models\\User';
+        $stmt = mysqli_prepare($connect,
+            "SELECT COUNT(*) AS c FROM model_has_roles mr JOIN roles r ON r.id = mr.role_id
+              WHERE mr.model_id = ? AND mr.model_type = ? AND r.name <> 'Patient'");
+        if (!$stmt) return false;
+        mysqli_stmt_bind_param($stmt, 'is', $user_id, $user_model);
+        mysqli_stmt_execute($stmt);
+        $c = (int)(mysqli_fetch_assoc(mysqli_stmt_get_result($stmt))['c'] ?? 1);
+        mysqli_stmt_close($stmt);
+        if ($c > 0) return false;
+    }
+    return true;
+}
+
+/** 동기화 실패를 member_sync 에 기록 (HMS 사용자 연결 없이) */
+function _member_sync_mark_error($mb_no, $mb_id, $connect, $message) {
+    $stmt = mysqli_prepare($connect,
+        "INSERT INTO member_sync (mb_no, mb_id, sync_status, error_message) VALUES (?, ?, 'error', ?)
+         ON DUPLICATE KEY UPDATE sync_status='error', error_message=?, updated_at=NOW()");
+    if (!$stmt) return;
+    mysqli_stmt_bind_param($stmt, 'isss', $mb_no, $mb_id, $message, $message);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+}
+
+/**
  * 전체 동기화 통계
  */
 function get_sync_stats($connect) {
@@ -71,20 +116,30 @@ function sync_member_to_hms($mb_no, $connect, $tenant_id = null) {
         $email = $member['mb_id'] . '@seoulbeauty.app'; // 자동 생성
     }
 
-    // 4. HMS users 테이블에 이미 같은 이메일이 있는지 확인
+    // 4. 연결할 HMS 사용자 결정
+    //    이메일이 같다는 이유만으로 기존 HMS 사용자에 연결하지 않는다.
+    //    (그누보드 가입 시 이메일 소유 확인이 없으므로, 다른 사람 — 최고관리자 포함 — 의 이메일로 가입하면
+    //     그 HMS 계정의 프로필·username·비밀번호를 덮어쓰고 SSO 로 그 계정에 로그인할 수 있었다.)
     $hms_user_id = null;
     if ($existing && $existing['hms_user_id']) {
-        $hms_user_id = $existing['hms_user_id'];
+        $hms_user_id = (int)$existing['hms_user_id'];
+        // 기존 매핑이라도 환자 전용 계정이 아니면 절대 덮어쓰지 않는다 (과거 잘못 연결된 매핑 방어)
+        if (!hms_user_is_patient_only($hms_user_id, $connect)) {
+            error_log("[member_sync] mb_no={$mb_no} 매핑된 HMS user #{$hms_user_id} 가 환자 전용 계정이 아니어서 동기화 거부");
+            _member_sync_mark_error($mb_no, $member['mb_id'], $connect, 'hms_user_not_patient: 관리자 확인 필요');
+            return ['success' => false, 'message' => '연결된 HMS 계정이 환자 계정이 아닙니다. 관리자 확인이 필요합니다.'];
+        }
     } else {
-        // 이메일로 기존 사용자 검색
-        $stmt = mysqli_prepare($connect, "SELECT id FROM users WHERE email = ?");
+        $stmt = mysqli_prepare($connect, "SELECT id FROM users WHERE email = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, 's', $email);
         mysqli_stmt_execute($stmt);
-        $r = mysqli_stmt_get_result($stmt);
-        $existing_user = mysqli_fetch_assoc($r);
+        $existing_user = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
         mysqli_stmt_close($stmt);
         if ($existing_user) {
-            $hms_user_id = $existing_user['id'];
+            // 같은 이메일의 HMS 사용자가 이미 있음 → 자동 연결하지 않고 관리자 확인 대기
+            error_log("[member_sync] mb_no={$mb_no} 이메일이 기존 HMS user #{$existing_user['id']} 와 같아 자동 연결하지 않음");
+            _member_sync_mark_error($mb_no, $member['mb_id'], $connect, 'email_conflict: 같은 이메일의 HMS 계정이 이미 있어 자동 연결하지 않음');
+            return ['success' => false, 'message' => '같은 이메일의 HMS 계정이 이미 있어 자동 연결하지 않았습니다.'];
         }
     }
 
@@ -194,6 +249,10 @@ function sync_patient_to_gnuboard($hms_user_id, $connect) {
     if (!$user) {
         return ['success' => false, 'message' => 'HMS 사용자를 찾을 수 없습니다.'];
     }
+    // 직원/관리자 HMS 계정은 그누보드 회원으로 만들거나 연결하지 않는다.
+    if (!hms_user_is_patient_only($hms_user_id, $connect)) {
+        return ['success' => false, 'message' => '환자 전용 HMS 계정만 동기화할 수 있습니다.'];
+    }
 
     // 기존 매핑 확인
     $existing = mysqli_fetch_assoc(mysqli_query($connect,
@@ -229,9 +288,16 @@ function sync_patient_to_gnuboard($hms_user_id, $connect) {
         $check = mysqli_fetch_assoc(mysqli_query($connect,
             "SELECT mb_no FROM g5_member WHERE mb_id = '" . mysqli_real_escape_string($connect, $mb_id) . "'"));
         if ($check) {
-            // 이미 존재하면 매핑만 생성
-            $mb_no = $check['mb_no'];
-        } else {
+            // 같은 아이디의 그누보드 회원이 이미 있어도 그 회원에 연결하지 않는다
+            // (연결되면 이후 동기화가 그 회원의 이메일·전화번호를 덮어써 계정 탈취로 이어질 수 있다).
+            $mb_id = 'hms_' . (int)$hms_user_id;
+            $check2 = mysqli_fetch_assoc(mysqli_query($connect,
+                "SELECT mb_no FROM g5_member WHERE mb_id = '" . mysqli_real_escape_string($connect, $mb_id) . "'"));
+            if ($check2) {
+                return ['success' => false, 'message' => '같은 아이디의 회원이 이미 있어 자동 연결하지 않았습니다.'];
+            }
+        }
+        if (!$mb_no) {
             $hms_password = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
             $stmt = mysqli_prepare($connect,
                 "INSERT INTO g5_member (mb_id, mb_password, mb_name, mb_nick, mb_email, mb_hp, mb_sex, mb_level, mb_datetime, mb_ip)
@@ -249,7 +315,7 @@ function sync_patient_to_gnuboard($hms_user_id, $connect) {
         $patient = mysqli_fetch_assoc(mysqli_query($connect,
             "SELECT id FROM patients WHERE user_id = " . intval($hms_user_id)));
         $patient_id = $patient ? $patient['id'] : null;
-        $mb_id_val = $user['username'] ?: 'hms_' . $hms_user_id;
+        $mb_id_val = $existing ? $existing['mb_id'] : $mb_id;
 
         if ($existing) {
             $stmt = mysqli_prepare($connect,
