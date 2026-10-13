@@ -208,14 +208,25 @@ $stats['hospitals'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COU
 $stats['reviews'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM hospital_reviews"))['c'];
 $stats['events'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_events"))['c'];
 $stats['ads'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_ads WHERE is_active = 1"))['c'];
-$stats['consultations_today'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_consultations WHERE created_at >= CURDATE() AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"))['c'];
+// 상담(환자 이름·전화번호)은 상담 권한이 있는 관리자에게, 소속 병원 범위로만 보여준다.
+// super_admin 만 전체, 그 외에는 admin_consultations.php 와 같은 strict 범위 (미배정 → 0건).
+require_once __DIR__ . '/includes/hospital_filter.php';
+if (check_permission('consultations')) {
+    $dash_consult_ids = get_strict_admin_hospital_ids($connect);
+    $dash_consult_scope = $dash_consult_ids === null
+        ? ''
+        : ' AND hospital_id IN (' . (empty($dash_consult_ids) ? '0' : implode(',', array_map('intval', $dash_consult_ids))) . ')';
+} else {
+    $dash_consult_scope = ' AND 1=0';
+}
+$stats['consultations_today'] = (int)mysqli_fetch_assoc(mysqli_query($connect, "SELECT COUNT(*) as c FROM gangnamunni_consultations WHERE created_at >= CURDATE() AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY){$dash_consult_scope}"))['c'];
 
 $recent_reviews = [];
 $result = mysqli_query($connect, "SELECT hr.*, gh.name as hospital_name FROM hospital_reviews hr LEFT JOIN gangnamunni_hospitals gh ON hr.hospital_id = gh.id ORDER BY hr.created_at DESC LIMIT 5");
 if ($result) { while ($row = mysqli_fetch_assoc($result)) { $recent_reviews[] = $row; } }
 
 $recent_consultations = [];
-$result = mysqli_query($connect, "SELECT * FROM gangnamunni_consultations ORDER BY created_at DESC LIMIT 5");
+$result = mysqli_query($connect, "SELECT * FROM gangnamunni_consultations WHERE 1=1{$dash_consult_scope} ORDER BY created_at DESC LIMIT 5");
 if ($result) { while ($row = mysqli_fetch_assoc($result)) { $recent_consultations[] = $row; } }
 
 $db_size = round(mysqli_fetch_assoc(mysqli_query($connect, "SELECT SUM(data_length + index_length)/1024/1024 AS s FROM information_schema.TABLES WHERE table_schema = '" . G5_MYSQL_DB . "'"))['s'], 2);

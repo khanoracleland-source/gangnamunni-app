@@ -30,6 +30,12 @@ RemoveType .php .phtml .phar .pht .php3 .php4 .php5 .php7 .php8
     </IfModule>
 </FilesMatch>
 
+# 상담 첨부 사진(환자 얼굴·피부 사진 등)은 직접 URL 열람 금지
+# → 관리자 전용 consultation_photo.php 를 통해서만 제공 (병원 범위 검사)
+<If "%{REQUEST_URI} =~ m#/uploads/consultations/#">
+    Require all denied
+</If>
+
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     # SVG/HTML/XML 을 직접 열어도 스크립트가 실행되지 않도록 sandbox

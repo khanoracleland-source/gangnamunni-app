@@ -11,6 +11,7 @@ $admin_current = 'consultations';
 require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
+require_once __DIR__ . '/includes/hospital_filter.php';
 
 // DB 연결
 if (!isset($connect) || !$connect) {
@@ -23,6 +24,19 @@ loadThemeSettings($connect);
 require_admin_login();
 require_permission('consultations');
 
+// 병원 범위 (fail-closed): super_admin 만 전체, 그 외 관리자는 관리자 관리에서 지정된 소속 병원만.
+// 미배정 병원 계정은 '0' → 어떤 상담도 조회/변경할 수 없다.
+$consult_hospital_ids = get_strict_admin_hospital_ids($connect);
+$consult_hosp_in = $consult_hospital_ids === null
+    ? null
+    : (empty($consult_hospital_ids) ? '0' : implode(',', array_map('intval', $consult_hospital_ids)));
+$consult_scope = $consult_hosp_in !== null ? " AND hospital_id IN ({$consult_hosp_in})" : '';
+
+if (empty($_SESSION['admin_consultations_csrf'])) {
+    $_SESSION['admin_consultations_csrf'] = bin2hex(random_bytes(32));
+}
+$admin_consultations_csrf = $_SESSION['admin_consultations_csrf'];
+
 // ===== Action: 상태 변경 (viewer 역할은 불가) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // viewer 역할은 상태 변경 불가
@@ -32,12 +46,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $msg_type = 'danger';
         goto skip_consult_action;
     }
+    if (empty($_POST['admin_csrf']) || !hash_equals($admin_consultations_csrf, (string)$_POST['admin_csrf'])) {
+        $msg = '요청이 만료되었습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.';
+        $msg_type = 'danger';
+        goto skip_consult_action;
+    }
     $id = intval($_POST['id'] ?? 0);
     $action = $_POST['action'];
     $status_map = ['approve' => 'approved', 'complete' => 'completed', 'reject' => 'rejected'];
     if ($id > 0 && isset($status_map[$action])) {
+        // 다른 병원의 상담은 존재 여부도 드러내지 않고 거부
+        $own_r = mysqli_query($connect, "SELECT 1 FROM gangnamunni_consultations WHERE id = {$id}{$consult_scope} LIMIT 1");
+        if (!$own_r || mysqli_num_rows($own_r) === 0) {
+            $msg = '해당 상담에 대한 권한이 없습니다.';
+            $msg_type = 'danger';
+            goto skip_consult_action;
+        }
         $new_status = $status_map[$action];
-        $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_consultations SET status = ? WHERE id = ?");
+        $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_consultations SET status = ? WHERE id = ?{$consult_scope}");
         $status_changed = false;
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, 'si', $new_status, $id);
@@ -47,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $msg = '상담 상태가 변경되었습니다.';
         if ($new_status === 'approved' && $status_changed) {
             try {
-                $consult_result = mysqli_query($connect, "SELECT * FROM gangnamunni_consultations WHERE id = {$id} LIMIT 1");
+                $consult_result = mysqli_query($connect, "SELECT * FROM gangnamunni_consultations WHERE id = {$id}{$consult_scope} LIMIT 1");
                 $consultation_row = $consult_result ? mysqli_fetch_assoc($consult_result) : null;
                 $patient_phone = preg_replace('/[^0-9]/', '', (string)($consultation_row['phone'] ?? $consultation_row['patient_phone'] ?? ''));
                 $member_table = (defined('G5_TABLE_PREFIX') ? G5_TABLE_PREFIX : 'g5_') . 'member';
@@ -92,6 +118,9 @@ $offset = ($page - 1) * $per_page;
 
 // 동적 WHERE 절 구성 (prepared statement 사용)
 $where_clauses = ["1=1"];
+if ($consult_hosp_in !== null) {
+    $where_clauses[] = "hospital_id IN ({$consult_hosp_in})";
+}
 $bind_types = '';
 $bind_values = [];
 
@@ -137,7 +166,7 @@ mysqli_stmt_close($stmt_d);
 
 // Stats
 $stats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'completed' => 0, 'rejected' => 0];
-$sr = mysqli_query($connect, "SELECT status, COUNT(*) as cnt FROM gangnamunni_consultations GROUP BY status");
+$sr = mysqli_query($connect, "SELECT status, COUNT(*) as cnt FROM gangnamunni_consultations WHERE 1=1{$consult_scope} GROUP BY status");
 if ($sr) while ($s = mysqli_fetch_assoc($sr)) { $stats[$s['status']] = $s['cnt']; $stats['total'] += $s['cnt']; }
 
 require_once __DIR__ . '/includes/admin_header.php';
@@ -208,13 +237,19 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td><strong><?php echo htmlspecialchars($c['name'] ?? ''); ?></strong></td>
                         <td><?php echo htmlspecialchars($c['phone'] ?? ''); ?></td>
                         <td><?php echo htmlspecialchars($c['consultation_type'] ?? $c['treatment_type'] ?? ''); ?></td>
-                        <td><span title="<?php echo htmlspecialchars($c['message'] ?? ''); ?>"><?php echo mb_substr($c['message'] ?? '', 0, 30) . (mb_strlen($c['message'] ?? '') > 30 ? '...' : ''); ?></span></td>
+                        <td><span title="<?php echo htmlspecialchars($c['message'] ?? ''); ?>"><?php echo htmlspecialchars(mb_substr($c['message'] ?? '', 0, 30) . (mb_strlen($c['message'] ?? '') > 30 ? '...' : '')); ?></span></td>
                         <td>
                             <?php
                             $photos = !empty($c['photo_urls']) ? json_decode($c['photo_urls'], true) : [];
-                            if (!empty($photos)):
+                            $photos = is_array($photos) ? array_values($photos) : [];
+                            // 사진은 직접 URL 이 아니라 권한을 검사하는 consultation_photo.php 를 통해서만 연다.
+                            $photo_links = [];
+                            foreach ($photos as $pi => $_unused) {
+                                $photo_links[] = 'consultation_photo.php?id=' . (int)$c['id'] . '&i=' . (int)$pi;
+                            }
+                            if (!empty($photo_links)):
                             ?>
-                            <a href="#" onclick="showPhotos(<?php echo htmlspecialchars(json_encode($photos)); ?>); return false;" class="text-primary" title="첨부 사진 보기">
+                            <a href="#" onclick="showPhotos(<?php echo htmlspecialchars(json_encode($photo_links), ENT_QUOTES); ?>); return false;" class="text-primary" title="첨부 사진 보기">
                                 <i class="bi bi-image"></i> <?php echo count($photos); ?>
                             </a>
                             <?php else: ?>
@@ -235,10 +270,10 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php if ($is_viewer): ?>
                             <span class="text-muted small">보기 전용</span>
                             <?php elseif ($st === 'pending'): ?>
-                            <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="action" value="approve"><button class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i></button></form>
-                            <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="action" value="reject"><button class="btn btn-danger btn-sm"><i class="bi bi-x-lg"></i></button></form>
+                            <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_consultations_csrf, ENT_QUOTES); ?>"><input type="hidden" name="action" value="approve"><button class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i></button></form>
+                            <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_consultations_csrf, ENT_QUOTES); ?>"><input type="hidden" name="action" value="reject"><button class="btn btn-danger btn-sm"><i class="bi bi-x-lg"></i></button></form>
                             <?php elseif ($st === 'approved'): ?>
-                            <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="action" value="complete"><button class="btn btn-info btn-sm text-white"><i class="bi bi-check2-all"></i></button></form>
+                            <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_consultations_csrf, ENT_QUOTES); ?>"><input type="hidden" name="action" value="complete"><button class="btn btn-info btn-sm text-white"><i class="bi bi-check2-all"></i></button></form>
                             <?php else: ?>
                             <span class="text-muted">-</span>
                             <?php endif; ?>
@@ -279,12 +314,23 @@ require_once __DIR__ . '/includes/admin_header.php';
 <script>
 function showPhotos(photos) {
     var body = document.getElementById('photoModalBody');
-    var html = '<div class="d-flex flex-wrap gap-2 justify-content-center">';
+    body.textContent = '';
+    var wrap = document.createElement('div');
+    wrap.className = 'd-flex flex-wrap gap-2 justify-content-center';
     photos.forEach(function(url) {
-        html += '<a href="' + url + '" target="_blank"><img src="' + url + '" style="max-width:280px;max-height:280px;border-radius:8px;object-fit:cover;cursor:zoom-in;" class="shadow-sm"></a>';
+        if (typeof url !== 'string' || url.indexOf('consultation_photo.php?') !== 0) return;
+        var a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        var img = document.createElement('img');
+        img.src = url;
+        img.className = 'shadow-sm';
+        img.style.cssText = 'max-width:280px;max-height:280px;border-radius:8px;object-fit:cover;cursor:zoom-in;';
+        a.appendChild(img);
+        wrap.appendChild(a);
     });
-    html += '</div>';
-    body.innerHTML = html;
+    body.appendChild(wrap);
     new bootstrap.Modal(document.getElementById('photoModal')).show();
 }
 </script>
