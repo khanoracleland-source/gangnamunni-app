@@ -5,9 +5,14 @@
  *
  *  - home_banner_ads($connect)      : 표시할 광고 목록 (index.php 와 동일한 쿼리)
  *  - home_ad_show_index($connect)   : 관리자 "메인 배너 표시" 설정 (ad_show_index)
- *  - home_ad_slides($ads)           : .carousel-track 안의 슬라이드 마크업
+ *  - home_ad_slides($ads, $page)    : .carousel-track 안의 슬라이드 마크업
+ *                                     $page = 'index' → image_url, 'mypage' → mypage_image_url (없으면 image_url)
  *  - render_home_ad_carousel(...)   : 섹션 + CSS/JS 까지 한 번에 출력 (mypage.php 용)
+ *
+ * 페이지별 이미지는 admin_ads.php 광고 추가/수정 폼에서 관리한다.
  */
+
+require_once __DIR__ . '/ad_banner_images.php';
 
 if (!function_exists('home_safe_link')) {
     function home_safe_link($url, $fallback = '#') {
@@ -51,13 +56,17 @@ if (!function_exists('home_ad_show_index')) {
 }
 
 if (!function_exists('home_ad_slides')) {
-    function home_ad_slides(array $ads) {
+    function home_ad_slides(array $ads, $page = 'index') {
         $base = dirname(__DIR__); // gangnamunni/
-        foreach ($ads as $ad): ?>
+        foreach ($ads as $ad):
+            $img = ad_banner_image_for_page($ad, $page);
+            // 전용 이미지 파일이 사라졌으면 메인 이미지로 대체
+            if ($page !== 'index' && $img !== '' && !file_exists($base . '/' . $img)) $img = (string)($ad['image_url'] ?? '');
+        ?>
                     <a href="<?php echo htmlspecialchars(home_safe_link($ad['link_url']), ENT_QUOTES); ?>" class="carousel-slide ad-item" data-ad-id="<?php echo (int)$ad['id']; ?>" style="text-decoration:none;">
-                        <?php if (!empty($ad['image_url']) && file_exists($base . '/' . $ad['image_url'])): ?>
+                        <?php if ($img !== '' && file_exists($base . '/' . $img)): ?>
                         <div style="border-radius:0px;overflow:hidden;border:1px solid var(--bs-border-color, #eee);">
-                            <img src="<?php echo htmlspecialchars($ad['image_url']); ?>" alt="<?php echo htmlspecialchars($ad['title']); ?>" style="width:100%;height:auto;object-fit:cover;">
+                            <img src="<?php echo htmlspecialchars($img); ?>" alt="<?php echo htmlspecialchars($ad['title']); ?>" style="width:100%;height:auto;object-fit:cover;">
                         </div>
                         <?php else: ?>
                         <div style="background:var(--bs-tertiary-bg, #f8f8f8);border-radius:0px;padding:20px 16px;color:var(--bs-body-color, #333);min-height:100px;position:relative;border:1px solid var(--bs-border-color, #eee);">
@@ -76,7 +85,7 @@ if (!function_exists('render_home_ad_carousel')) {
      * index.php 와 같은 광고/같은 표시 설정으로 캐러셀을 출력한다.
      * 광고가 없거나 관리자에서 메인 배너를 끄면 아무것도 출력하지 않는다.
      */
-    function render_home_ad_carousel($connect, $carousel_id = 'mypage-ads-carousel', $section_style = '') {
+    function render_home_ad_carousel($connect, $carousel_id = 'mypage-ads-carousel', $section_style = '', $page = 'mypage') {
         if (home_ad_show_index($connect) !== '1') return false;
         $ads = home_banner_ads($connect);
         if (empty($ads)) return false;
@@ -131,7 +140,7 @@ if (!function_exists('render_home_ad_carousel')) {
         <div class="carousel-section" id="<?php echo htmlspecialchars($carousel_id, ENT_QUOTES); ?>"<?php echo $section_style !== '' ? ' style="' . htmlspecialchars($section_style, ENT_QUOTES) . '"' : ''; ?>>
             <div class="carousel-container">
                 <div class="carousel-track">
-<?php home_ad_slides($ads); ?>
+<?php home_ad_slides($ads, $page); ?>
                 </div>
             </div>
         </div>

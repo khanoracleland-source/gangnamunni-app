@@ -295,10 +295,10 @@ body {
 </div>
 
 <?php
-// 홈(index.php)과 같은 광고 캐러셀 — 관리자에서 광고를 추가/숨기면 여기에도 그대로 반영된다.
+// 홈(index.php)과 같은 광고 캐러셀 — 이미지는 마이페이지 전용(mypage_image_url)을 우선 사용한다.
 require_once __DIR__ . '/includes/home_ad_carousel.php';
 ob_start();
-$_mypage_has_ads = render_home_ad_carousel($connect, 'mypage-ads-carousel', 'margin-bottom:0;');
+$_mypage_has_ads = render_home_ad_carousel($connect, 'mypage-ads-carousel', 'margin-bottom:0;', 'mypage');
 $_mypage_ads_html = ob_get_clean();
 if ($_mypage_has_ads): ?>
 <div class="advertisement-section"><?php echo $_mypage_ads_html; ?></div>

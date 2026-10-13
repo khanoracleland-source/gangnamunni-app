@@ -193,6 +193,23 @@ function handleAdImageUpload($file_key = 'image_file') {
     return ['error' => '파일 저장에 실패했습니다'];
 }
 
+// 마이페이지 전용 배너 이미지 (mypage_image_url) — 비어 있으면 mypage.php 도 image_url 사용
+require_once __DIR__ . '/includes/ad_banner_images.php';
+$mypage_image_enabled = ad_banner_ensure_schema($connect);
+
+/**
+ * 마이페이지 이미지 입력값 결정: 파일 업로드 > URL 입력란. 빈 값이면 NULL(메인 이미지 사용).
+ * @return array ['value' => string|null] | ['error' => string]
+ */
+function resolveMypageImage($file_key) {
+    $up = handleAdImageUpload($file_key);
+    if ($up && isset($up['error'])) return ['error' => '마이페이지 이미지: ' . $up['error']];
+    $url = ($up && isset($up['url'])) ? $up['url'] : trim((string)($_POST['mypage_image_url'] ?? ''));
+    if ($url === '') return ['value' => null];
+    if (!admin_ads_valid_url($url)) return ['error' => '올바른 마이페이지 이미지 URL을 입력해주세요.'];
+    return ['value' => $url];
+}
+
 // 광고 추가
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_ad'])) {
     $raw_title = trim((string)($_POST['title'] ?? ''));
@@ -210,6 +227,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_ad'])) {
     if (!admin_ads_valid_url($image_url)) $error = '올바른 이미지 URL을 입력해주세요.';
     if (!admin_ads_valid_url($raw_link_url)) $error = '올바른 링크 URL을 입력해주세요.';
     $image_url = mysqli_real_escape_string($connect, $image_url);
+    $mypage_sql = 'NULL';
+    if ($mypage_image_enabled) {
+        $my = resolveMypageImage('mypage_image_file');
+        if (isset($my['error'])) $error = $my['error'];
+        elseif ($my['value'] !== null) $mypage_sql = "'" . mysqli_real_escape_string($connect, $my['value']) . "'";
+    }
     $link_url = mysqli_real_escape_string($connect, $raw_link_url);
     $display_order = intval($_POST['display_order']);
     $ad_type = (string)($_POST['ad_type'] ?? 'banner');
@@ -244,8 +267,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_ad'])) {
     }
 
     if ($error === '') {
-        mysqli_query($connect, "INSERT INTO gangnamunni_ads (hospital_id, title, subtitle, image_url, link_url, display_order, ad_type, advertiser_id, pricing_id, is_active, status)
-                               VALUES ({$ad_hospital_id}, '{$title}', '{$subtitle}', '{$image_url}', '{$link_url}', {$display_order}, '{$ad_type}', {$advertiser_id}, {$pricing_id}, 0, 'pending')");
+        $mypage_col = $mypage_image_enabled ? ', mypage_image_url' : '';
+        $mypage_val = $mypage_image_enabled ? ", {$mypage_sql}" : '';
+        mysqli_query($connect, "INSERT INTO gangnamunni_ads (hospital_id, title, subtitle, image_url{$mypage_col}, link_url, display_order, ad_type, advertiser_id, pricing_id, is_active, status)
+                               VALUES ({$ad_hospital_id}, '{$title}', '{$subtitle}', '{$image_url}'{$mypage_val}, '{$link_url}', {$display_order}, '{$ad_type}', {$advertiser_id}, {$pricing_id}, 0, 'pending')");
 
         $ad_id = mysqli_insert_id($connect);
         $message = '광고 소재가 추가되었습니다. 승인 및 슬롯 배정 후 노출됩니다.';
@@ -280,12 +305,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     $ad_type = (string)($_POST['ad_type'] ?? 'banner');
     if (!in_array($ad_type, ['banner', 'premium', 'vip'], true)) $ad_type = 'banner';
     $ad_type = mysqli_real_escape_string($connect, $ad_type);
+    $mypage_set = '';
+    $old_mypage = '';
+    $new_mypage = null;
+    if ($mypage_image_enabled) {
+        $my = resolveMypageImage('edit_mypage_image_file');
+        if (isset($my['error'])) {
+            $error = $my['error'];
+        } else {
+            $new_mypage = $my['value'];
+            $mypage_set = ", mypage_image_url=" . ($new_mypage === null ? 'NULL' : "'" . mysqli_real_escape_string($connect, $new_mypage) . "'");
+            $om = mysqli_query($connect, "SELECT mypage_image_url FROM gangnamunni_ads WHERE id={$id}");
+            if ($om && ($omr = mysqli_fetch_assoc($om))) $old_mypage = (string)($omr['mypage_image_url'] ?? '');
+        }
+    }
     $review_reset = $is_super_admin ? '' : ", status='pending', is_active=0, reviewed_by=NULL, reviewed_at=NULL, reject_reason=NULL";
     $sql = sprintf(
-        "UPDATE gangnamunni_ads SET title='%s', subtitle='%s', image_url='%s', link_url='%s', display_order=%d, ad_type='%s'%s WHERE id=%d",
-        $title, $subtitle, $image_url, $link_url, $display_order, $ad_type, $review_reset, $id
+        "UPDATE gangnamunni_ads SET title='%s', subtitle='%s', image_url='%s'%s, link_url='%s', display_order=%d, ad_type='%s'%s WHERE id=%d",
+        $title, $subtitle, $image_url, $mypage_set, $link_url, $display_order, $ad_type, $review_reset, $id
     );
     if ($error === '' && mysqli_query($connect, $sql)) {
+        // 교체/삭제된 마이페이지 이미지 파일 정리 (다른 광고가 쓰지 않을 때만)
+        if ($old_mypage !== '' && $old_mypage !== (string)$new_mypage) ad_banner_delete_if_unused($connect, $old_mypage);
         $message = '광고가 수정되었습니다.';
     } elseif ($error === '') {
         $error = '수정 실패: ' . mysqli_error($connect);
@@ -864,6 +905,12 @@ include __DIR__ . '/includes/admin_header.php';
                     <?php else: ?>
                     <span class="text-body-secondary">-</span>
                     <?php endif; ?>
+                    <?php if (!empty($ad['mypage_image_url'])): ?>
+                    <div class="mt-1" title="마이페이지 이미지">
+                        <img src="<?php echo htmlspecialchars($ad['mypage_image_url']); ?>" alt="" style="width:80px;aspect-ratio:600/132;object-fit:cover;border-radius:3px;border:1px solid var(--bs-border-color);display:block;">
+                        <span class="badge bg-info-subtle text-info-emphasis" style="font-size:9px;">MY</span>
+                    </div>
+                    <?php endif; ?>
                 </td>
                 <td style="min-width:180px;max-width:250px;white-space:normal;">
                     <strong style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"><?php echo htmlspecialchars($ad['title']); ?></strong>
@@ -976,6 +1023,12 @@ include __DIR__ . '/includes/admin_header.php';
                          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2780%27 height=%2750%27%3E%3Crect fill=%27%23dee2e6%27 width=%2780%27 height=%2750%27 rx=%274%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 fill=%27%23999%27 text-anchor=%27middle%27 dy=%27.3em%27 font-size=%2711%27%3Eno img%3C/text%3E%3C/svg%3E'">
                     <?php else: ?>
                     <span class="text-body-secondary">-</span>
+                    <?php endif; ?>
+                    <?php if (!empty($ad['mypage_image_url'])): ?>
+                    <div class="mt-1" title="마이페이지 이미지">
+                        <img src="<?php echo htmlspecialchars($ad['mypage_image_url']); ?>" alt="" style="width:80px;aspect-ratio:600/132;object-fit:cover;border-radius:3px;border:1px solid var(--bs-border-color);display:block;">
+                        <span class="badge bg-info-subtle text-info-emphasis" style="font-size:9px;">MY</span>
+                    </div>
                     <?php endif; ?>
                 </td>
                 <td style="min-width:180px;max-width:250px;white-space:normal;">
@@ -1338,6 +1391,14 @@ include __DIR__ . '/includes/admin_header.php';
                                 <strong>권장 사이즈</strong> : 배너 1200x300px / 프리미엄 600x600px / VIP 1200x400px (최대 5MB)
                             </div>
                             <img id="addImgPreview" src="" class="mt-1 rounded border" style="max-width:200px;max-height:100px;display:none;">
+                            <?php if ($mypage_image_enabled): ?>
+                            <hr class="my-2">
+                            <label class="form-label mb-1">마이페이지 이미지 <small class="text-muted">(선택 — 비우면 위 메인 이미지 사용)</small></label>
+                            <input type="text" name="mypage_image_url" class="form-control form-control-sm mb-1" placeholder="이미지 URL 직접 입력 (선택)">
+                            <input type="file" name="mypage_image_file" class="form-control form-control-sm" accept="image/*" onchange="previewAdImage(this, 'addMypageImgPreview')">
+                            <div class="form-text text-muted"><i class="bi bi-info-circle"></i> mypage.php 배너 비율 600×132 (예: 1200×264px) 권장, 최대 5MB</div>
+                            <img id="addMypageImgPreview" src="" class="mt-1 rounded border" style="width:200px;aspect-ratio:600/132;object-fit:cover;display:none;">
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-6 mb-3">
                             <!-- [관리자 #6 - 2026-05-28] 랜딩 URL 등록 방법 매뉴얼 강화 -->
@@ -1429,6 +1490,14 @@ include __DIR__ . '/includes/admin_header.php';
                             <input type="file" name="edit_image_file" class="form-control form-control-sm" accept="image/*" onchange="previewAdImage(this, 'editImgPreview')">
                             <div class="form-text text-muted"><i class="bi bi-info-circle"></i> 새 파일 업로드시 기존 이미지 대체 (최대 5MB)</div>
                             <img id="editImgPreview" src="" class="mt-1 rounded border" style="max-width:200px;max-height:100px;display:none;">
+                            <?php if ($mypage_image_enabled): ?>
+                            <hr class="my-2">
+                            <label class="form-label mb-1">마이페이지 이미지 <small class="text-muted">(비우면 메인 이미지 사용)</small></label>
+                            <input type="text" name="mypage_image_url" id="editAd_mypage_image_url" class="form-control form-control-sm mb-1" placeholder="비어 있음 — 메인 이미지 사용">
+                            <input type="file" name="edit_mypage_image_file" class="form-control form-control-sm" accept="image/*" onchange="previewAdImage(this, 'editMypageImgPreview')">
+                            <div class="form-text text-muted"><i class="bi bi-info-circle"></i> 600×132 비율 권장. 입력란을 비우고 저장하면 메인 이미지로 돌아갑니다.</div>
+                            <img id="editMypageImgPreview" src="" class="mt-1 rounded border" style="width:200px;aspect-ratio:600/132;object-fit:cover;display:none;">
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">링크 URL</label>
@@ -1605,6 +1674,17 @@ function editAd(ad) {
     document.getElementById("editAd_title").value = ad.title || "";
     document.getElementById("editAd_subtitle").value = ad.subtitle || "";
     document.getElementById("editAd_image_url").value = ad.image_url || "";
+    var myInput = document.getElementById("editAd_mypage_image_url");
+    if (myInput) {
+        myInput.value = ad.mypage_image_url || "";
+        var myPrev = document.getElementById("editMypageImgPreview");
+        var myFile = document.querySelector("#editAdForm input[name=edit_mypage_image_file]");
+        if (myFile) myFile.value = "";
+        if (myPrev) {
+            myPrev.src = ad.mypage_image_url || "";
+            myPrev.style.display = ad.mypage_image_url ? "block" : "none";
+        }
+    }
     document.getElementById("editAd_link_url").value = ad.link_url || "";
     document.getElementById("editAd_display_order").value = ad.display_order || 0;
     document.getElementById("editAd_ad_type").value = ad.ad_type || "banner";
