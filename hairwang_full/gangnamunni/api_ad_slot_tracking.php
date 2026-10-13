@@ -41,6 +41,7 @@ $result = adSlotProcessEvent($connect, [
     'keyword' => $_POST['keyword'] ?? '',
     'page_url' => $_POST['page_url'] ?? '',
     'target_url' => $_POST['target_url'] ?? '',
+    'token' => $_POST['token'] ?? '',
     'user_agent' => $userAgent,
 ]);
 

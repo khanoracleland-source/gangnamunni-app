@@ -122,6 +122,90 @@ function adSlotIsBot($userAgent)
     return (bool) preg_match('/bot|crawl|spider|slurp|headless|preview/i', (string) $userAgent);
 }
 
+/** 노출/클릭 토큰 유효 시간(초) — 목록을 띄운 뒤 이 시간 안의 노출·클릭만 과금 대상 */
+const AD_SLOT_TOKEN_TTL = 1800;
+
+/**
+ * 광고 추적 토큰 서명 키. env AD_SLOT_TRACKING_SECRET(32자 이상) 우선,
+ * 없으면 data/session/ad-slot-tracking-secret 파일을 1회 생성해 사용 (여러 웹 서버면 env 로 통일할 것).
+ */
+function adSlotTrackingSecret()
+{
+    static $secret = null;
+    if ($secret !== null) {
+        return $secret;
+    }
+    $env = trim((string) getenv('AD_SLOT_TRACKING_SECRET'));
+    if (strlen($env) >= 32) {
+        return $secret = $env;
+    }
+    $dir = dirname(__DIR__, 2) . '/data/session';
+    $path = $dir . '/ad-slot-tracking-secret';
+    if (! is_dir($dir)) {
+        @mkdir($dir, 0700, true);
+    }
+    if (! is_file($path)) {
+        $handle = @fopen($path, 'x');
+        if ($handle) {
+            fwrite($handle, bin2hex(random_bytes(32)));
+            fclose($handle);
+            @chmod($path, 0600);
+        }
+    }
+    $value = trim((string) @file_get_contents($path));
+    if (strlen($value) < 32) {
+        throw new RuntimeException('ad_slot_tracking_secret_unavailable');
+    }
+
+    return $secret = $value;
+}
+
+function adSlotTokenSignature($bookingId, $issuedAt, $ipHash)
+{
+    $raw = hash_hmac('sha256', 'ad-slot-v1|' . (int) $bookingId . '|' . (int) $issuedAt . '|' . $ipHash, adSlotTrackingSecret(), true);
+
+    return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+}
+
+/**
+ * 서버가 광고 카드를 실제로 렌더링할 때 발급하는 토큰 (booking + 발급 시각 + 방문자 IP 에 서명).
+ * 토큰이 없거나 위조/만료/다른 IP 이면 과금하지 않는다 → 임의 booking_id 로 직접 API 를 두드려도 과금 불가.
+ * @return string  실패 시 '' (광고 표시는 그대로, 과금 이벤트만 거부됨)
+ */
+function adSlotIssueToken($bookingId)
+{
+    try {
+        $issuedAt = time();
+        $ipHash = hash('sha256', adSlotVisitorIp());
+
+        return (int) $bookingId . '.' . $issuedAt . '.' . adSlotTokenSignature($bookingId, $issuedAt, $ipHash);
+    } catch (Throwable $e) {
+        error_log('[ad-slot] token issue failed: ' . $e->getMessage());
+
+        return '';
+    }
+}
+
+function adSlotVerifyToken($token, $bookingId, $ipHash)
+{
+    if (! is_string($token) || ! preg_match('/^(\d{1,10})\.(\d{10})\.([A-Za-z0-9_-]{43})$/', $token, $m)) {
+        return false;
+    }
+    if ((int) $m[1] !== (int) $bookingId) {
+        return false;
+    }
+    $issuedAt = (int) $m[2];
+    $now = time();
+    if ($issuedAt > $now + 60 || $issuedAt < $now - AD_SLOT_TOKEN_TTL) {
+        return false;
+    }
+    try {
+        return hash_equals(adSlotTokenSignature($bookingId, $issuedAt, $ipHash), $m[3]);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 function adSlotProcessEvent($connect, array $input)
 {
     $eventType = ($input['event_type'] ?? '') === 'click' ? 'click' : 'impression';
@@ -135,10 +219,18 @@ function adSlotProcessEvent($connect, array $input)
     $targetUrl = mb_substr((string) ($input['target_url'] ?? ''), 0, 2000, 'UTF-8');
     $userAgent = mb_substr((string) ($input['user_agent'] ?? ''), 0, 500, 'UTF-8');
     $visitorIpHash = hash('sha256', adSlotVisitorIp());
+
+    // 서버가 렌더링한 광고 카드의 서명 토큰이 있어야만 이벤트로 인정 (임의 booking_id 직접 호출 차단)
+    if (! adSlotVerifyToken($input['token'] ?? '', $bookingId, $visitorIpHash)) {
+        return ['success' => true, 'charged' => false, 'reason' => 'invalid_token'];
+    }
+
+    // 쿠키(ad_slot_vid)는 클라이언트가 생략하거나 임의 값으로 바꿀 수 있으므로 중복 판정에 쓰지 않는다.
+    // (이전에는 쿠키 없는 요청마다 새 방문자 ID 가 생겨 같은 IP 에서 무제한 과금됐다.)
     $visitorIdHash = hash('sha256', adSlotVisitorId());
-    $dedupeSeconds = $eventType === 'click' ? 300 : 300;
+    $dedupeSeconds = 300;
     $timeBucket = (int) floor(time() / $dedupeSeconds);
-    $eventKey = hash('sha256', implode('|', [$bookingId, $eventType, $visitorIdHash, $visitorIpHash, $timeBucket]));
+    $eventKey = hash('sha256', implode('|', [$bookingId, $eventType, $visitorIpHash, $timeBucket]));
 
     mysqli_begin_transaction($connect);
 
@@ -274,7 +366,23 @@ function adSlotProcessEvent($connect, array $input)
                 $wallet = $walletResult ? mysqli_fetch_assoc($walletResult) : null;
                 mysqli_stmt_close($stmt);
 
-                if (! $wallet) {
+                // 같은 IP 가 같은 병원에 하루 과금될 수 있는 횟수 제한 (IP 단위 반복 과금 방지)
+                $ipDailyLimit = max(1, (int) adSlotGetSetting($connect, 'ad_slot_ip_daily_charge_limit', '3'));
+                $stmt = mysqli_prepare($connect, "
+                    SELECT COUNT(*) AS c
+                    FROM gangnamunni_ad_slot_events
+                    WHERE hospital_id = ? AND visitor_ip_hash = ? AND event_type = ? AND is_charged = 1
+                      AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY
+                ");
+                mysqli_stmt_bind_param($stmt, 'iss', $hospitalId, $visitorIpHash, $eventType);
+                mysqli_stmt_execute($stmt);
+                $ipCountResult = mysqli_stmt_get_result($stmt);
+                $ipChargedToday = (int) (($ipCountResult ? mysqli_fetch_assoc($ipCountResult) : null)['c'] ?? 0);
+                mysqli_stmt_close($stmt);
+
+                if ($ipChargedToday >= $ipDailyLimit) {
+                    $skipReason = 'ip_daily_limit';
+                } elseif (! $wallet) {
                     $skipReason = 'wallet_missing';
                 } elseif (! (int) $wallet['is_active'] || (int) $wallet['is_paused']) {
                     $skipReason = 'wallet_inactive';

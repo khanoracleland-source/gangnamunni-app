@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/ad_slot_performance.php'; /* adSlotIssueToken() */ ?>
     <?php if (!empty($hospitals)): ?>
 <?php
 $_infeed_enabled = getSettingValue($connect, 'ad_show_hospitals_infeed', '1');
@@ -64,6 +65,7 @@ foreach ($hospitals as $hospital):
              style="cursor:pointer;"
              <?php if ($_slot_context): ?>
              data-ad-slot-booking="<?php echo (int) $_slot_context['booking_id']; ?>"
+             data-ad-slot-token="<?php echo htmlspecialchars(adSlotIssueToken((int) $_slot_context['booking_id']), ENT_QUOTES, 'UTF-8'); ?>"
              data-ad-slot-keyword="<?php echo htmlspecialchars($keyword !== '' ? $keyword : $effective_treatment, ENT_QUOTES, 'UTF-8'); ?>"
              data-ad-slot-rank="<?php echo (int) $_slot_context['rank_position']; ?>"
              data-target-url="<?php echo htmlspecialchars($_detail_url, ENT_QUOTES, 'UTF-8'); ?>"

@@ -103,6 +103,7 @@ if ($_lp_admin) {
         var fd = new FormData();
         fd.append('action', action);
         fd.append('booking_id', bookingId);
+        fd.append('token', element.getAttribute('data-ad-slot-token') || '');
         fd.append('keyword', element.getAttribute('data-ad-slot-keyword') || '');
         fd.append('page_url', location.href);
         fd.append('target_url', targetUrl || '');
@@ -116,11 +117,13 @@ if ($_lp_admin) {
 
     function scheduleImpression(element) {
         var bookingId = element.getAttribute('data-ad-slot-booking');
-        if (!bookingId || impressed[bookingId] || impressionTimers.has(element)) return;
+        // 캐시된 목록이 새 목록(새 토큰)으로 교체될 수 있으므로 booking+토큰 단위로 1회
+        var impressionKey = bookingId + ':' + (element.getAttribute('data-ad-slot-token') || '');
+        if (!bookingId || impressed[impressionKey] || impressionTimers.has(element)) return;
 
         var timer = setTimeout(function() {
             impressionTimers.delete(element);
-            impressed[bookingId] = true;
+            impressed[impressionKey] = true;
             sendSlotEvent('impression', element, '');
         }, 1000);
         impressionTimers.set(element, timer);
