@@ -32,7 +32,8 @@ RemoveType .php .phtml .phar .pht .php3 .php4 .php5 .php7 .php8
 
 # 상담 첨부 사진(환자 얼굴·피부 사진 등)은 직접 URL 열람 금지
 # → 관리자 전용 consultation_photo.php 를 통해서만 제공 (병원 범위 검사)
-<If "%{REQUEST_URI} =~ m#/uploads/consultations/#">
+# 경과 후기 사진(시술·수술 경과)도 동일 → progress_photo.php (작성자 본인 / 병원 범위 관리자)
+<If "%{REQUEST_URI} =~ m#/uploads/(consultations|progress)/#">
     Require all denied
 </If>
 

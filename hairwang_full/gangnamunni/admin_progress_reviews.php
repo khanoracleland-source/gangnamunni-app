@@ -19,6 +19,16 @@ require_admin_login();
 require_permission('reviews');
 require_once __DIR__ . '/includes/points_policy_engine.php';
 require_once __DIR__ . '/includes/photo_upload_helper.php';
+require_once __DIR__ . '/includes/hospital_filter.php';
+
+// 병원 범위 (fail-closed, admin_reviews.php 와 동일): super_admin 만 전체,
+// 그 외 관리자는 관리자 관리에서 지정한 소속 병원의 경과 후기만 조회/승인/반려. 미배정 → 0건.
+$pr_hospital_ids = get_strict_admin_hospital_ids($connect);
+$pr_hosp_in = $pr_hospital_ids === null
+    ? null
+    : (empty($pr_hospital_ids) ? '0' : implode(',', array_map('intval', $pr_hospital_ids)));
+$pr_scope = $pr_hosp_in !== null ? " AND hospital_id IN ({$pr_hosp_in})" : '';
+$pr_scope_p = $pr_hosp_in !== null ? " AND p.hospital_id IN ({$pr_hosp_in})" : '';
 
 if (empty($_SESSION['admin_progress_csrf'])) $_SESSION['admin_progress_csrf'] = bin2hex(random_bytes(32));
 $csrf = $_SESSION['admin_progress_csrf'];
@@ -31,7 +41,7 @@ if ($schema_ok && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($csrf, (string)($_POST['admin_csrf'] ?? ''))) { http_response_code(403); exit('요청이 만료되었습니다.'); }
     $pid = (int)($_POST['progress_id'] ?? 0);
     $act = (string)($_POST['action'] ?? '');
-    $st = mysqli_prepare($connect, "SELECT * FROM gangnamunni_progress_reviews WHERE id = ? LIMIT 1");
+    $st = mysqli_prepare($connect, "SELECT * FROM gangnamunni_progress_reviews WHERE id = ?{$pr_scope} LIMIT 1");
     mysqli_stmt_bind_param($st, 'i', $pid);
     mysqli_stmt_execute($st);
     $pr = mysqli_fetch_assoc(mysqli_stmt_get_result($st));
@@ -43,7 +53,7 @@ if ($schema_ok && $_SERVER['REQUEST_METHOD'] === 'POST') {
         else {
             require_once __DIR__ . '/includes/points_pause.php';
             $award = POINTS_ADMIN_GRANT_PAUSED ? ['amount' => 0, 'message' => '포인트 지급 일시 중지'] : points_v2_progress_award($connect, $pr);
-            $u = mysqli_prepare($connect, "UPDATE gangnamunni_progress_reviews SET status='approved', reviewed_at=NOW(), reviewed_by=?, awarded_point=? WHERE id=? AND status='submitted'");
+            $u = mysqli_prepare($connect, "UPDATE gangnamunni_progress_reviews SET status='approved', reviewed_at=NOW(), reviewed_by=?, awarded_point=? WHERE id=? AND status='submitted'{$pr_scope}");
             mysqli_stmt_bind_param($u, 'sii', $admin_name, $award['amount'], $pid);
             mysqli_stmt_execute($u);
             mysqli_stmt_close($u);
@@ -55,7 +65,7 @@ if ($schema_ok && $_SERVER['REQUEST_METHOD'] === 'POST') {
         elseif (!in_array($pr['status'], ['submitted', 'approved'], true)) $error = '반려할 수 없는 상태입니다.';
         else {
             if ($pr['status'] === 'approved') points_revoke_earn($connect, 'progress', $pid, '경과 후기 반려 회수');
-            $u = mysqli_prepare($connect, "UPDATE gangnamunni_progress_reviews SET status='rejected', reviewed_at=NOW(), reviewed_by=?, reject_reason=? WHERE id=?");
+            $u = mysqli_prepare($connect, "UPDATE gangnamunni_progress_reviews SET status='rejected', reviewed_at=NOW(), reviewed_by=?, reject_reason=? WHERE id=?{$pr_scope}");
             mysqli_stmt_bind_param($u, 'ssi', $admin_name, $reason, $pid);
             mysqli_stmt_execute($u);
             mysqli_stmt_close($u);
@@ -67,14 +77,14 @@ if ($schema_ok && $_SERVER['REQUEST_METHOD'] === 'POST') {
 $filter = in_array($_GET['status'] ?? '', ['writing','submitted','approved','rejected','deleted'], true) ? $_GET['status'] : 'submitted';
 $rows = []; $counts = [];
 if ($schema_ok) {
-    $r = mysqli_query($connect, "SELECT status, COUNT(*) c FROM gangnamunni_progress_reviews GROUP BY status");
+    $r = mysqli_query($connect, "SELECT status, COUNT(*) c FROM gangnamunni_progress_reviews WHERE 1=1{$pr_scope} GROUP BY status");
     while ($r && ($x = mysqli_fetch_assoc($r))) $counts[$x['status']] = (int)$x['c'];
     $st = mysqli_prepare($connect, "SELECT p.*, h.name AS hospital_name, m.mb_nick,
             (SELECT COUNT(*) FROM gangnamunni_progress_entries e WHERE e.progress_id = p.id) AS entry_count
         FROM gangnamunni_progress_reviews p
         LEFT JOIN gangnamunni_hospitals h ON h.id = p.hospital_id
         LEFT JOIN g5_member m ON m.mb_no = p.member_id
-        WHERE p.status = ? ORDER BY COALESCE(p.submitted_at, p.created_at) ASC LIMIT 200");
+        WHERE p.status = ?{$pr_scope_p} ORDER BY COALESCE(p.submitted_at, p.created_at) ASC LIMIT 200");
     mysqli_stmt_bind_param($st, 's', $filter);
     mysqli_stmt_execute($st);
     $res = mysqli_stmt_get_result($st);
@@ -155,7 +165,9 @@ require_once __DIR__ . '/includes/admin_header.php';
         <div class="border-top pt-2 mt-2 small">
             <b><?php echo ($i + 1); ?>회차</b> · <?php echo apr_h($e['entry_date']); ?>
             <div class="mt-1" style="white-space:pre-wrap"><?php echo apr_h($e['content']); ?></div>
-            <?php foreach (get_photo_urls($e['photo_urls'] ?? '') as $u): ?><a href="<?php echo apr_h($u); ?>" target="_blank" rel="noopener"><img src="<?php echo apr_h($u); ?>" style="width:72px;height:72px;object-fit:cover" class="me-1 mt-1 border"></a><?php endforeach; ?>
+            <?php foreach (array_keys(array_values(get_photo_urls($e['photo_urls'] ?? ''))) as $pi):
+                // 직접 URL 대신 권한(병원 범위)을 검사하는 progress_photo.php 로만 연다.
+                $u = 'progress_photo.php?for=admin&entry=' . (int)$e['id'] . '&i=' . (int)$pi; ?><a href="<?php echo apr_h($u); ?>" target="_blank" rel="noopener"><img src="<?php echo apr_h($u); ?>" style="width:72px;height:72px;object-fit:cover" class="me-1 mt-1 border"></a><?php endforeach; ?>
         </div>
     <?php endforeach; ?>
     </details>

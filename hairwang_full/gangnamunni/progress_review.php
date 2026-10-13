@@ -132,7 +132,7 @@ pr_page_open($p['title'], 'my_progress_reviews.php');
             <div class="d"><?php echo ($i + 1); ?>회차 · <?php echo pr_h(date('Y.m.d', strtotime($e['entry_date']))); ?>
                 <?php if (!empty($p['procedure_date'])): ?> (D+<?php echo max(0, (int)floor((strtotime($e['entry_date']) - strtotime($p['procedure_date'])) / 86400)); ?>)<?php endif; ?></div>
             <div class="c"><?php echo pr_h($e['content']); ?></div>
-            <?php if (!empty($photos)): ?><div class="ph"><?php foreach ($photos as $u): ?><img src="<?php echo pr_h($u); ?>" alt="경과 사진" loading="lazy"><?php endforeach; ?></div><?php endif; ?>
+            <?php if (!empty($photos)): ?><div class="ph"><?php foreach (array_keys(array_values($photos)) as $pi): $u = 'progress_photo.php?entry=' . (int)$e['id'] . '&i=' . (int)$pi; ?><img src="<?php echo pr_h($u); ?>" alt="경과 사진" loading="lazy"><?php endforeach; ?></div><?php endif; ?>
             <?php if ($editable): ?>
             <form method="post" onsubmit="return confirm('이 경과를 삭제할까요?')" style="margin-top:8px">
                 <input type="hidden" name="csrf_token" value="<?php echo pr_h($csrf); ?>"><input type="hidden" name="id" value="<?php echo (int)$id; ?>">
