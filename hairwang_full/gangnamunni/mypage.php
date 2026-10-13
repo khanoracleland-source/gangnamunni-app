@@ -285,7 +285,7 @@ body {
 
 <div class="advertisement-section">
     <img src="assets/media/mypage-app-intro-banner.jpg?v=<?php echo (int)filemtime(__DIR__ . '/assets/media/mypage-app-intro-banner.jpg'); ?>" alt="미용시술, 시술별 한눈에 병원선택. 원하는 시술, 서울미녀에서 최저가로 찾아보세요.">
-    <a class="advertisement-click-link" href="about_project.php" aria-label="서울미녀 앱 소개 페이지로 이동"></a>
+    <a class="advertisement-click-link" href="about_project1.php" aria-label="서울미녀 이용 가이드 페이지로 이동"></a>
 </div>
 
 <!-- 섹션: 커뮤니티 -->
