@@ -50,11 +50,12 @@ try {
         [$user_id, $member['mb_nick'], $member['mb_email'], $reason]
     );
 
-    // 2. 병원 관계자 계정도 함께 완전 삭제한다(플랫폼 관리자 제외).
-    if (!empty($member['mb_email'])) {
+    // 2. 이 회원에 명시적으로 연결(g5_mb_id)된 병원 관계자 계정만 함께 삭제한다(플랫폼 관리자 제외).
+    //    이메일/아이디 일치만으로 지우면 병원 이메일로 가입한 회원이 탈퇴해 병원 관리자 계정을 지울 수 있다.
+    if ($db->fetchOne("SHOW COLUMNS FROM gangnamunni_admins LIKE 'g5_mb_id'")) {
         $db->execute(
-            "DELETE FROM gangnamunni_admins WHERE (username = ? OR email = ?) AND role IN ('hospital_super_admin','hospital_admin','hospital_sub_admin','hospital_staff')",
-            [$member['mb_email'], $member['mb_email']]
+            "DELETE FROM gangnamunni_admins WHERE g5_mb_id = ? AND role IN ('hospital_super_admin','hospital_admin','hospital_sub_admin','hospital_staff')",
+            [$user_id]
         );
     }
 

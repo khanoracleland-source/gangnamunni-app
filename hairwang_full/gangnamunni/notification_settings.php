@@ -163,10 +163,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!mysqli_stmt_execute($social_delete_stmt)) throw new RuntimeException(mysqli_stmt_error($social_delete_stmt));
             mysqli_stmt_close($social_delete_stmt);
 
-            if (!empty($member_row['mb_email'])) {
+            // 병원 관계자 계정은 이 회원에 명시적으로 연결(g5_mb_id)된 경우에만 함께 삭제한다.
+            // (이메일/아이디가 같다는 이유만으로 지우면, 병원 이메일로 가입한 회원이 탈퇴해 병원 관리자 계정을 지울 수 있다.)
+            $link_col = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_admins LIKE 'g5_mb_id'");
+            if ($link_col && mysqli_num_rows($link_col) > 0) {
                 $admin_stmt = mysqli_prepare($connect,
-                    "DELETE FROM gangnamunni_admins WHERE (username = ? OR email = ?) AND role IN ('hospital_super_admin','hospital_admin','hospital_sub_admin','hospital_staff')");
-                mysqli_stmt_bind_param($admin_stmt, 'ss', $member_row['mb_email'], $member_row['mb_email']);
+                    "DELETE FROM gangnamunni_admins WHERE g5_mb_id = ? AND role IN ('hospital_super_admin','hospital_admin','hospital_sub_admin','hospital_staff')");
+                mysqli_stmt_bind_param($admin_stmt, 's', $member_row['mb_id']);
                 if (!mysqli_stmt_execute($admin_stmt)) throw new RuntimeException(mysqli_stmt_error($admin_stmt));
                 mysqli_stmt_close($admin_stmt);
             }

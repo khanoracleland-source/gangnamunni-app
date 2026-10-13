@@ -78,6 +78,14 @@ function provision_hospital_accounts($connect, $hospital_info) {
     // ② gangnamunni_admins — username 또는 email로 기존 계정을 찾는다.
     // 이메일은 관리자 전체에서 유일해야 하므로 이메일이 이미 연결된 계정이
     // 있으면 새 계정을 만들지 않고 해당 계정을 재사용한다.
+    // SSO 연결(g5_mb_id)은 이번 승인에서 새로 만든 회원에게만 건다. 같은 이메일로 이미 가입된 회원은
+    // 이메일 소유가 확인되지 않았으므로(누구나 병원 이메일로 먼저 가입 가능) 자동 연결하지 않는다.
+    // → 필요하면 최고관리자가 관리자 관리에서 직접 연결한다.
+    $link_mb_id = ($g5_account_created && function_exists('admin_sso_link_ready') && admin_sso_link_ready($connect)) ? $mb_id : null;
+    if (!$g5_account_created) {
+        error_log('[provision] 기존 회원(mb_id=' . $mb_id . ')이 병원 이메일과 같아 SSO 자동 연결을 하지 않음 — hospital_id=' . $hospital_id);
+    }
+
     $chk_a = mysqli_prepare($connect, "SELECT id FROM gangnamunni_admins WHERE username=? OR LOWER(email)=LOWER(?) ORDER BY (LOWER(email) = LOWER(?)) DESC LIMIT 1");
     mysqli_stmt_bind_param($chk_a, 'sss', $h_email, $h_email, $h_email);
     mysqli_stmt_execute($chk_a);
@@ -91,6 +99,7 @@ function provision_hospital_accounts($connect, $hospital_info) {
             error_log('[provision] gangnamunni_admins INSERT 실패: ' . mysqli_error($connect));
         } else {
             $admin_account_created = true;
+            $linked_admin_id = (int)mysqli_insert_id($connect);
         }
         mysqli_stmt_close($stmt_adm);
     } else {
@@ -100,6 +109,17 @@ function provision_hospital_accounts($connect, $hospital_info) {
         mysqli_stmt_bind_param($upd_a, 'ssisi', $h_email, $h_contact_phone, $hospital_id, $h_name, $ex_a['id']);
         mysqli_stmt_execute($upd_a);
         mysqli_stmt_close($upd_a);
+        $linked_admin_id = (int)$ex_a['id'];
+    }
+
+    // 새로 만든 회원을 관리자 계정에 연결 (이미 다른 회원이 연결된 계정은 덮어쓰지 않음)
+    if ($link_mb_id !== null && !empty($linked_admin_id)) {
+        $lnk = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET g5_mb_id=? WHERE id=? AND g5_mb_id IS NULL");
+        if ($lnk) {
+            mysqli_stmt_bind_param($lnk, 'si', $link_mb_id, $linked_admin_id);
+            if (!mysqli_stmt_execute($lnk)) error_log('[provision] g5_mb_id 연결 실패: ' . mysqli_error($connect));
+            mysqli_stmt_close($lnk);
+        }
     }
 
     // ③ sso_tokens — SSO 토큰 생성 (로그인 준비)

@@ -205,7 +205,24 @@ function admin_login($username, $password, $connect) {
 }
 
 /**
+ * gangnamunni_admins.g5_mb_id (관리자 ↔ 그누보드 회원 명시적 연결) 컬럼 존재 여부
+ * 마이그레이션: sql/admin_sso_member_link.sql
+ */
+function admin_sso_link_ready($connect) {
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    try {
+        $r = $connect ? mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_admins LIKE 'g5_mb_id'") : false;
+        $ready = $r && mysqli_num_rows($r) > 0;
+    } catch (Throwable $e) {
+        $ready = false;
+    }
+    return $ready;
+}
+
+/**
  * Gnuboard SSO 토큰으로 병원 관리자 세션 자동 생성
+ * 관리자 관리에서 명시적으로 연결(g5_mb_id)된 회원만 해당 관리자로 로그인된다.
  */
 function admin_login_from_sso($connect) {
     if (check_admin_login()) return true;
@@ -230,25 +247,33 @@ function admin_login_from_sso($connect) {
 
         if (!$sso || empty($sso['g5_mb_id'])) return false;
 
-        $g5_mb_id = $sso['g5_mb_id'];
-        $email = $sso['mb_email'] ?? '';
+        $g5_mb_id = (string)$sso['g5_mb_id'];
+
+        // 관리자 ↔ 회원 연결은 gangnamunni_admins.g5_mb_id 로만 판단한다.
+        // (이전에는 회원 mb_id/이메일이 관리자 username/email 과 같기만 하면 그 관리자로 로그인되어,
+        //  관리자 아이디나 이메일로 가입한 일반 회원이 병원 관리자 세션을 얻을 수 있었다.)
+        // 컬럼이 없거나(마이그레이션 전) 연결되지 않은 계정은 SSO 로그인 불가 — 비밀번호 로그인만 가능.
+        if (!admin_sso_link_ready($connect)) return false;
 
         $stmt = mysqli_prepare($connect,
             "SELECT *
                FROM gangnamunni_admins
               WHERE is_active = 1
                 AND role IN ('hospital_super_admin', 'hospital_admin')
-                AND (username = ? OR email = ? OR username = ?)
-              LIMIT 1"
+                AND g5_mb_id = ?
+              LIMIT 2"
         );
         if (!$stmt) return false;
 
-        mysqli_stmt_bind_param($stmt, 'sss', $g5_mb_id, $email, $email);
+        mysqli_stmt_bind_param($stmt, 's', $g5_mb_id);
         mysqli_stmt_execute($stmt);
-        $admin = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        $res = mysqli_stmt_get_result($stmt);
+        $admin = mysqli_fetch_assoc($res);
+        $ambiguous = $admin && mysqli_fetch_assoc($res);
         mysqli_stmt_close($stmt);
 
-        if (!$admin) return false;
+        // 정확히 하나의 계정에 대소문자까지 같은 값으로 연결된 경우만 허용 (fail-closed)
+        if (!$admin || $ambiguous || !hash_equals((string)$admin['g5_mb_id'], (string)$g5_mb_id)) return false;
 
         return admin_set_session($admin, $connect);
     } catch (Throwable $e) {

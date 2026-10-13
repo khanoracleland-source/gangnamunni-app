@@ -318,9 +318,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
                 mysqli_stmt_bind_param($stmt, 'ssssissi', $name, $email, $phone, $role, $edit_hospital_id, $edit_hospital_name, $perms_json, $edit_id);
             }
 
+            // SSO 연결 회원 (최고관리자만, 마이그레이션 후에만)
+            $link_value = null; $link_change = false;
+            if (empty($error) && $is_super_admin && admin_sso_link_ready($connect) && array_key_exists('g5_mb_id', $_POST)) {
+                $link_input = trim((string)$_POST['g5_mb_id']);
+                $link_change = true;
+                if ($link_input !== '') {
+                    $lm = mysqli_prepare($connect, "SELECT mb_id FROM g5_member WHERE mb_id = ? LIMIT 1");
+                    mysqli_stmt_bind_param($lm, 's', $link_input);
+                    mysqli_stmt_execute($lm);
+                    $lm_row = mysqli_fetch_assoc(mysqli_stmt_get_result($lm));
+                    mysqli_stmt_close($lm);
+                    if (!$lm_row) {
+                        $error = 'SSO 연결 회원 아이디가 존재하지 않습니다.';
+                    } else {
+                        $link_value = (string)$lm_row['mb_id']; // DB 의 정확한 표기로 저장
+                        $ld = mysqli_prepare($connect, "SELECT id FROM gangnamunni_admins WHERE g5_mb_id = ? AND id <> ? LIMIT 1");
+                        mysqli_stmt_bind_param($ld, 'si', $link_value, $edit_id);
+                        mysqli_stmt_execute($ld);
+                        $ld_row = mysqli_fetch_assoc(mysqli_stmt_get_result($ld));
+                        mysqli_stmt_close($ld);
+                        if ($ld_row) $error = '이 회원은 이미 다른 관리자 계정(#' . (int)$ld_row['id'] . ')에 연결되어 있습니다.';
+                    }
+                }
+            }
+
             if (empty($error)) {
                 if (mysqli_stmt_execute($stmt)) {
                     $message = "관리자 정보가 수정되었습니다.";
+                    if ($link_change) {
+                        $lu = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET g5_mb_id = ? WHERE id = ?");
+                        mysqli_stmt_bind_param($lu, 'si', $link_value, $edit_id);
+                        if (!mysqli_stmt_execute($lu)) $message .= ' (SSO 연결 저장 실패: ' . mysqli_error($connect) . ')';
+                        mysqli_stmt_close($lu);
+                    }
                     if ($edit_id == $current_admin['id']) {
                         $_SESSION['ad_admin_name'] = $name;
                         $_SESSION['ad_admin_email'] = $email;
@@ -609,6 +640,14 @@ include __DIR__ . '/includes/admin_header.php';
                            value="<?= htmlspecialchars($edit_admin['hospital_name'] ?: '배정 없음') ?>">
                     <?php endif; ?>
                 </div>
+                <?php if ($is_super_admin && admin_sso_link_ready($connect)): ?>
+                <div class="col-md-4">
+                    <label class="form-label">SSO 연결 회원 아이디</label>
+                    <input type="text" name="g5_mb_id" class="form-control form-control-sm" maxlength="20"
+                           value="<?= htmlspecialchars($edit_admin['g5_mb_id'] ?? '') ?>" placeholder="연결 안 함">
+                    <div class="form-text">이 회원으로 사이트에 로그인하면 이 관리자 계정으로 자동 로그인됩니다. 본인 확인된 회원만 연결하세요.</div>
+                </div>
+                <?php endif; ?>
             </div>
 
             <!-- 알림 수신 설정 -->

@@ -60,8 +60,10 @@ function member_cleanup_relations($connect, $mb_no, $mb_id, $mb_email) {
     mysqli_query($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = '{$mb_id_e}'");
 
     // 3) 병원관계자 관리자 계정 제거(플랫폼 관리자는 건드리지 않음)
-    if ($email_e !== '') {
-        mysqli_query($connect, "DELETE FROM gangnamunni_admins WHERE (username = '{$email_e}' OR email = '{$email_e}') AND role IN ('hospital_super_admin','hospital_admin','hospital_sub_admin','hospital_staff')");
+    //    이 회원에 명시적으로 연결(g5_mb_id)된 계정만 — 이메일/아이디 일치만으로는 지우지 않는다.
+    $link_col = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_admins LIKE 'g5_mb_id'");
+    if ($link_col && mysqli_num_rows($link_col) > 0) {
+        mysqli_query($connect, "DELETE FROM gangnamunni_admins WHERE g5_mb_id = '{$mb_id_e}' AND role IN ('hospital_super_admin','hospital_admin','hospital_sub_admin','hospital_staff')");
     }
 }
 

@@ -52,7 +52,10 @@ function ugc_restrict(mysqli $db, string $id, string $type, string $reason, int 
     if (!$m) throw new DomainException('존재하지 않는 회원입니다.');
     if ((int)$m['mb_level'] >= 10 || $id === ($_SESSION['ss_mb_id'] ?? '')) throw new DomainException('관리자 또는 본인 계정은 차단할 수 없습니다.');
     if ($db->query("SHOW TABLES LIKE 'gangnamunni_admins'")->num_rows) {
-        $a = ugc_query($db, 'SELECT id FROM gangnamunni_admins WHERE is_active=1 AND (username=? OR email=?) LIMIT 1','ss',[$id,$m['mb_email']])->get_result()->fetch_assoc();
+        // 연결 컬럼이 있으면 명시적 연결(g5_mb_id)만 관리자로 본다 — 관리자 이메일로 가입해 차단을 피하는 것을 막는다.
+        $a = $db->query("SHOW COLUMNS FROM gangnamunni_admins LIKE 'g5_mb_id'")->num_rows
+            ? ugc_query($db, 'SELECT id FROM gangnamunni_admins WHERE is_active=1 AND g5_mb_id=? LIMIT 1','s',[$id])->get_result()->fetch_assoc()
+            : ugc_query($db, 'SELECT id FROM gangnamunni_admins WHERE is_active=1 AND (username=? OR email=?) LIMIT 1','ss',[$id,$m['mb_email']])->get_result()->fetch_assoc();
         if ($a) throw new DomainException('관리자 계정은 이 화면에서 차단할 수 없습니다.');
     }
     $existing = ugc_query($db, 'SELECT * FROM gangnamunni_admin_restrictions WHERE mb_id=? FOR UPDATE', 's', [$id])->get_result()->fetch_assoc();
