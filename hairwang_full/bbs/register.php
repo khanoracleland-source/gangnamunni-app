@@ -6,8 +6,9 @@ if ($is_member) {
     goto_url(G5_URL);
 }
 
-// 병원관계자 가입 선택은 임시 비활성. 다시 필요하면 true로 변경한다.
-$show_hospital_registration = false;
+// 회원유형 선택(일반회원 / 병원관계자) 화면 노출 여부. false 면 선택 화면 없이 일반 이메일 가입으로 바로 이동한다.
+// 병원관계자 선택 시 hospital_apply_public.php(병원 등록 신청)로 이동한다.
+$show_hospital_registration = true;
 
 // 일반 회원가입은 커스텀 이메일 페이지로 바로 이동한다.
 // 약관 보기는 아래의 순수 read-only 화면을 사용한다.

@@ -515,7 +515,7 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
         :root { --primary: <?php echo htmlspecialchars($primary, ENT_QUOTES); ?>; --join-primary: #b61235; --join-active: #2b0000; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; background: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; color: #050505; }
-        .login-wrap { width: 100%; max-width: 430px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; padding: 64px 34px 34px; }
+        .login-wrap { width: 100%; max-width: 430px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; padding: 20px 34px 34px; }
         .login-top { flex: 0 0 auto; }
         .login-top a { color: #050505; text-decoration: none; display: inline-flex; align-items: center; width: 28px; height: 28px; }
         .login-top svg { width: 24px; height: 24px; }
@@ -552,7 +552,7 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
         .foot { text-align: center; margin-top: auto; padding: 80px 0 0px; font-size: 24px; line-height: 1.2; color: #050505; }
         .foot a { color: #050505; font-weight: 800; text-decoration: none; margin-left: 22px; }
         @media (max-width: 430px) {
-            .login-wrap { max-width: none; padding: 44px 24px 24px; }
+            .login-wrap { max-width: none; padding: 20px 24px 24px; }
             .login-hero { padding: 34px 0 28px; }
             .login-hero .t { font-size: 28px; }
             form.reg { gap: 34px; }
@@ -568,7 +568,7 @@ $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
 <body>
     <div class="login-wrap">
         <div class="login-top">
-            <a href="<?php echo htmlspecialchars(rtrim(SITE_BASE_PATH, '/'), ENT_QUOTES); ?>/auth/login.php" aria-label="뒤로">
+            <a href="<?php echo htmlspecialchars($bbs_url, ENT_QUOTES); ?>/register.php" aria-label="뒤로">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
                     <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
                 </svg>
