@@ -1,6 +1,26 @@
 RedirectMatch 403 (?i)/\.(history|git|snapshots|stfolder)(/|$)
 RedirectMatch 403 /data/cache/apple_oauth/.*
 
+# 일회용/진단 스크립트·백업 파일 웹 접근 차단 (서버에 남아 있어도 실행되지 않도록)
+<FilesMatch "^(reset_admin_pw|reset_pw|test_db_connection|test10|check_member_table|g4_import_run|yc4_import_run)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>
+# (앱 서명키 zip, DB 덤프 등 — app.apk 배포는 유지)
+<FilesMatch "(?i)\.(sql|zip|tar|gz|bak|jks|keystore|p12|pem)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>
+RedirectMatch 403 (?i)/phpMyAdmin
+
 # Auth/session cookielar HTTP orqali uzatilmasligi uchun production trafikni HTTPSga majburlash.
 <IfModule mod_rewrite.c>
 RewriteEngine On
