@@ -113,6 +113,51 @@ function _sanitize_html_url($url, $allowFragment) {
     return null;
 }
 
+/**
+ * 사용자 입력으로 받은 이미지 URL 정리 — XSS 유발 URL 차단
+ *
+ * 허용: http(s):// 절대 URL, 사이트 상대 경로(/uploads/..., uploads/...)
+ * 차단: javascript:/data:/vbscript: 등 모든 기타 스킴, 프로토콜 상대(//host),
+ *       경로 탈출(..), 따옴표·꺾쇠·백틱·역슬래시·공백·제어문자
+ *       (인라인 이벤트 핸들러 안의 JS 문자열 탈출 방지 — htmlspecialchars 로는 막히지 않는다)
+ *
+ * @param mixed $url
+ * @return string 안전하면 URL, 아니면 ''
+ */
+function sanitizeImageUrl($url) {
+    if (!is_string($url)) return '';
+    $url = trim($url);
+    if ($url === '' || strlen($url) > 500) return '';
+    // 공백·제어문자 + 속성/JS 문자열 탈출 문자
+    if (preg_match('/[\s\x00-\x1F\x7F"\'<>`\\\\]/', $url)) return '';
+    if (strpos($url, '..') !== false) return '';
+    // 프로토콜 상대 URL(//evil.com)
+    if (substr($url, 0, 2) === '//') return '';
+    // http(s) 절대 URL
+    if (preg_match('#^https?://[^/?\#]+#i', $url)) return $url;
+    // 스킴이 남아 있으면 차단 (javascript:, data:, vbscript: ...)
+    if (preg_match('#^[A-Za-z][A-Za-z0-9+.\-]*:#', $url)) return '';
+    // 사이트 상대 경로
+    if (preg_match('#^/?[A-Za-z0-9][A-Za-z0-9/_.\-~%?&=+]*$#', $url)) return $url;
+    return '';
+}
+
+/**
+ * 이미지 URL 배열 정리 — 안전하지 않은 항목은 버린다.
+ *
+ * @param mixed $urls
+ * @return array
+ */
+function sanitizeImageUrlList($urls) {
+    if (!is_array($urls)) return [];
+    $out = [];
+    foreach ($urls as $u) {
+        $clean = sanitizeImageUrl($u);
+        if ($clean !== '') $out[] = $clean;
+    }
+    return $out;
+}
+
 /** sanitizeHtml() 내부용: 노드 트리 재귀 정리 */
 function _sanitize_html_children(DOMNode $parent) {
     static $allowedTags = [

@@ -39,8 +39,9 @@ if (mb_strlen(strip_tags($content)) < 10) {
 }
 
 // 이미지 배열 유효성 검사
-if (!is_array($images)) $images = [];
-$images = array_slice($images, 0, 10); // 최대 10개
+// 클라이언트가 보낸 URL 은 그대로 신뢰하지 않는다 — 업로드 경로/http(s) 이외
+// (javascript:, data:, 따옴표 주입 등)는 버린다. 저장형 XSS 차단.
+$images = array_slice(sanitizeImageUrlList($images), 0, 10); // 최대 10개
 
 $db = Database::getInstance();
 

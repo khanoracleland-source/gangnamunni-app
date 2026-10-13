@@ -2374,9 +2374,17 @@ if ($current_tab === 'reviews') {
                         $thumb_class = $img_count === 1 ? 'thumbs-1' : ($img_count === 2 ? 'thumbs-2' : 'thumbs-3plus');
                     ?>
                     <div class="post-thumbs <?php echo $thumb_class; ?>" onclick="event.stopPropagation();">
-                        <?php foreach ($review_imgs as $ri): ?>
-                        <div class="thumb-item" onclick="event.stopPropagation(); window.open('<?php echo htmlspecialchars($ri['image_url']); ?>', '_blank')">
-                            <img src="<?php echo htmlspecialchars($ri['thumbnail_url'] ?: $ri['image_url']); ?>" alt="<?php echo term('review', '후기'); ?> 이미지" loading="lazy">
+                        <?php foreach ($review_imgs as $ri):
+                            // 저장 시점과 별개로 출력 시점에도 URL 정화 (기존 데이터 방어)
+                            $ri_url = sanitizeImageUrl($ri['image_url'] ?? '');
+                            $ri_thumb = sanitizeImageUrl($ri['thumbnail_url'] ?? '');
+                            $ri_src = $ri_thumb !== '' ? $ri_thumb : $ri_url;
+                            if ($ri_src === '') continue;
+                        ?>
+                        <?php /* URL 은 data 속성으로만 전달한다 — 인라인 핸들러 안에 넣으면
+                                 htmlspecialchars 로도 JS 문자열 탈출을 막을 수 없다 */ ?>
+                        <div class="thumb-item" data-img-url="<?php echo htmlspecialchars($ri_url, ENT_QUOTES, 'UTF-8'); ?>" onclick="event.stopPropagation(); if (this.dataset.imgUrl) window.open(this.dataset.imgUrl, '_blank', 'noopener');">
+                            <img src="<?php echo htmlspecialchars($ri_src, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo term('review', '후기'); ?> 이미지" loading="lazy">
                         </div>
                         <?php endforeach; ?>
                     </div>

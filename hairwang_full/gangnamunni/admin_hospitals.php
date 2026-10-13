@@ -1663,7 +1663,8 @@ $application_assets = [
                     <img src="<?php echo htmlspecialchars($img['image_url']); ?>"
                          class="card-img-top" style="height:150px;object-fit:cover;cursor:pointer;"
                          alt="<?php echo htmlspecialchars($img['image_type'] ?? ''); ?>"
-                         onclick="showImageModal('<?php echo htmlspecialchars($img['image_url']); ?>')">
+                         <?php /* URL 을 인라인 핸들러 문자열에 넣지 않는다 (JS 탈출 방지) */ ?>
+                         onclick="showImageModal(this.getAttribute('src'))">
                     <div class="card-body p-2 text-center">
                         <small class="text-body-secondary">
                             <?php echo htmlspecialchars($img['image_type'] ?? '-'); ?>

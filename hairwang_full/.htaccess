@@ -11,6 +11,17 @@ RedirectMatch 403 /data/cache/apple_oauth/.*
     </IfModule>
 </FilesMatch>
 # (앱 서명키 zip, DB 덤프 등 — app.apk 배포는 유지)
+# 편집기·배포 과정에서 남은 소스 사본 차단 — .php.tmp.* 처럼 .php 로 끝나지 않는
+# 사본은 Apache 가 PHP 로 실행하지 않고 평문으로 내보낸다(소스 유출).
+<FilesMatch "(?i)(\.tmp\.[0-9.]+|\.(bak|save|old|orig|rej|swp|swo)|~)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
 <FilesMatch "(?i)\.(sql|zip|tar|gz|bak|jks|keystore|p12|pem)$">
     <IfModule mod_authz_core.c>
         Require all denied

@@ -931,6 +931,16 @@ $admin_extra_js = <<<JSBLOCK
 var reviewData = {$reviewsJson};
 
 // 후기 상세보기
+// 업로드 경로/http(s) 이외의 URL(javascript:, data: ...)은 링크·이미지에 쓰지 않는다
+function arSafeImageUrl(u) {
+    if (typeof u !== 'string') return '';
+    u = u.trim();
+    if (u === '' || u.indexOf('//') === 0) return '';
+    if (/^https?:\/\//i.test(u)) return u;
+    if (/^[a-z][a-z0-9+.\-]*:/i.test(u)) return '';
+    return u;
+}
+
 function viewReview(reviewId) {
     var review = reviewData.find(function(r) { return r.id == reviewId; });
     if (!review) return;
@@ -970,12 +980,15 @@ function viewReview(reviewId) {
     var imagesEl = document.getElementById('view_images');
     imagesEl.innerHTML = '';
     (review.images || []).forEach(function(img) {
+        // javascript:/data: URL 이 href 로 들어가면 클릭 시 실행된다 — 스킴 검사 후 사용
+        var safeUrl = arSafeImageUrl(img.image_url);
+        if (!safeUrl) return;
         var link = document.createElement('a');
-        link.href = img.image_url;
+        link.href = safeUrl;
         link.target = '_blank';
         link.rel = 'noopener';
         var image = document.createElement('img');
-        image.src = img.image_url;
+        image.src = safeUrl;
         image.alt = img.photo_category || 'review image';
         image.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;';
         link.appendChild(image);

@@ -420,8 +420,11 @@ include __DIR__ . '/includes/header.php';
                         ?>
                         <div class="post-thumbs <?php echo $grid_class; ?>">
                             <?php for ($pi = 0; $pi < $show_count; $pi++): ?>
+                            <?php $photo_src = sanitizeImageUrl($photos[$pi] ?? ''); ?>
                             <div class="thumb-item">
-                                <img src="<?php echo htmlspecialchars($photos[$pi]); ?>" alt="" loading="lazy">
+                                <?php if ($photo_src !== ''): ?>
+                                <img src="<?php echo htmlspecialchars($photo_src, ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy">
+                                <?php endif; ?>
                             </div>
                             <?php endfor; ?>
                         </div>

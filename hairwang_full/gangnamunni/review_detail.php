@@ -264,9 +264,17 @@ $csrf_token = generateCsrfToken();
             $thumb_class = $img_count === 1 ? 'thumbs-1' : ($img_count === 2 ? 'thumbs-2' : 'thumbs-3plus');
         ?>
         <div class="post-thumbs <?php echo $thumb_class; ?>">
-            <?php foreach ($images as $img): ?>
-            <div class="thumb-item" onclick="showImage('<?php echo htmlspecialchars($img['image_url']); ?>')">
-                <img src="<?php echo htmlspecialchars($img['thumbnail_url'] ?: $img['image_url']); ?>"
+            <?php foreach ($images as $img):
+                // 저장 시점과 별개로 출력 시점에도 URL 정화 (기존 데이터 방어)
+                $img_url = sanitizeImageUrl($img['image_url'] ?? '');
+                $img_thumb = sanitizeImageUrl($img['thumbnail_url'] ?? '');
+                $img_src = $img_thumb !== '' ? $img_thumb : $img_url;
+                if ($img_src === '') continue;
+            ?>
+            <?php /* URL 은 data 속성으로만 전달한다 — 인라인 핸들러 안에 넣으면
+                     htmlspecialchars 로도 JS 문자열 탈출을 막을 수 없다 */ ?>
+            <div class="thumb-item" data-img-url="<?php echo htmlspecialchars($img_url, ENT_QUOTES, 'UTF-8'); ?>" onclick="showImage(this.dataset.imgUrl)">
+                <img src="<?php echo htmlspecialchars($img_src, ENT_QUOTES, 'UTF-8'); ?>"
                      alt="<?php echo term('review', '후기'); ?> 이미지" loading="lazy">
             </div>
             <?php endforeach; ?>
@@ -342,8 +350,20 @@ const REVIEW_ID = <?php echo $review_id; ?>;
 const USER_ID = '<?php echo addslashes($current_user_id); ?>';
 const BASE_URL = '<?php echo $base_url; ?>';
 
+// 업로드 경로/http(s) 이외의 URL(javascript:, data: ...)은 무시한다
+function rdSafeImageUrl(u) {
+    if (typeof u !== 'string') return '';
+    u = u.trim();
+    if (u === '' || u.indexOf('//') === 0) return '';
+    if (/^https?:\/\//i.test(u)) return u;
+    if (/^[a-z][a-z0-9+.\-]*:/i.test(u)) return '';
+    return u;
+}
+
 function showImage(url) {
-    document.getElementById('imgModalSrc').src = url;
+    var safe = rdSafeImageUrl(url);
+    if (!safe) return;
+    document.getElementById('imgModalSrc').src = safe;
     document.getElementById('imgModal').classList.add('show');
 }
 

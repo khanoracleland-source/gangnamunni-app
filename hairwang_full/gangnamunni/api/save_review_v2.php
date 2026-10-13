@@ -76,8 +76,18 @@ if (mb_strlen(strip_tags($content)) < $min_len) {
 }
 
 // 이미지 (카테고리 포함)
-$images = $body['images'] ?? [];
-if (!is_array($images)) $images = [];
+// 클라이언트가 보낸 URL 은 그대로 신뢰하지 않는다 — 업로드 경로/http(s) 이외
+// (javascript:, data:, 따옴표 주입 등)는 버린다. 저장형 XSS 차단.
+$images_raw = $body['images'] ?? [];
+if (!is_array($images_raw)) $images_raw = [];
+$images = [];
+foreach ($images_raw as $_img) {
+    $_url = sanitizeImageUrl(is_array($_img) ? ($_img['url'] ?? '') : $_img);
+    if ($_url === '') continue;
+    $_cat = is_array($_img) ? ($_img['category'] ?? 'general') : 'general';
+    if (!in_array($_cat, ['before', 'after', 'general'], true)) $_cat = 'general';
+    $images[] = ['url' => $_url, 'category' => $_cat];
+}
 $images = array_slice($images, 0, 20); // before 5 + after 5 + general 10
 
 $db = Database::getInstance();
@@ -206,10 +216,10 @@ try {
     // 이미지 저장 (카테고리 포함)
         }
     foreach ($images as $idx => $img) {
-        $img_url = is_array($img) ? ($img['url'] ?? '') : $img;
-        $category = is_array($img) ? ($img['category'] ?? 'general') : 'general';
-        if (empty($img_url)) continue;
-        if (!in_array($category, ['before', 'after', 'general'])) $category = 'general';
+        // $images 는 위에서 sanitizeImageUrl() 로 정규화된 ['url','category'] 배열이다
+        $img_url = $img['url'];
+        $category = $img['category'];
+        if ($img_url === '') continue;
         $db->execute(
             "INSERT INTO review_images (review_id, image_url, photo_category, image_order, created_at)
              VALUES (?, ?, ?, ?, NOW())",
