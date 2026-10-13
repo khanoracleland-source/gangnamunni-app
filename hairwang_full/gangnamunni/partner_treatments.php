@@ -28,7 +28,16 @@ $price_units = treatment_units_list($connect);
 // 관리자 여부 판별: 전체 병원 범위를 가진 플랫폼 관리자(최고관리자 포함)만 관리자 권한을 갖는다.
 // 병원 계정(및 병원이 배정된 관리자)은 항상 자기 병원으로 고정된다.
 $scoped_hospital_id = admin_scoped_hospital_id();
-$is_admin = check_admin_login() && $scoped_hospital_id === null;
+// 전체 병원 관리 권한은 최고관리자만. (이전에는 병원 미배정 viewer·editor 등도 "전체 범위"로 간주되어
+// ?hospital_id= 로 아무 병원의 시술·가격을 추가/수정/삭제할 수 있었다.)
+$is_admin = check_admin_login() && ($_SESSION['ad_admin_role'] ?? '') === 'super_admin';
+if (check_admin_login() && !$is_admin && !check_permission('partner_treatments')) {
+    http_response_code(403);
+    exit('시술 관리에 접근할 권한이 없습니다.');
+}
+if (!$is_admin && $scoped_hospital_id === null) {
+    $scoped_hospital_id = -1; // 병원 계정이 아닌데 전체 범위가 되는 경우 차단 (fail-closed)
+}
 
 // 병원 ID 결정: 전체 범위 관리자는 GET 파라미터 허용, 그 외는 배정된 병원만
 $hospital_id = 0;

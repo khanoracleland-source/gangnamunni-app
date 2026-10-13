@@ -12,10 +12,24 @@ if (!isset($connect) || !$connect) {
 if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
 require_admin_login();
+require_once __DIR__ . '/includes/hospital_filter.php';
 
-// 병원 범위: null = 전체(최고관리자 등), >0 = 해당 병원만, -1 = 접근 불가
-$chat_scope_hid = admin_scoped_hospital_id();
-$chat_scope_sql = $chat_scope_hid === null ? '' : ' WHERE r.hospital_id = ' . (int)$chat_scope_hid;
+// 접근: 최고관리자 + 병원 계정만. (이전에는 로그인만 확인해 viewer·editor 등 모든 관리자가
+// 소속 병원이 없다는 이유로 "전체" 범위가 되어 모든 환자 채팅을 읽고 병원 이름으로 답장할 수 있었다.)
+$chat_role = $_SESSION['ad_admin_role'] ?? '';
+if ($chat_role !== 'super_admin' && !is_hospital_role()) {
+    http_response_code(403);
+    exit('채팅 상담에 접근할 권한이 없습니다.');
+}
+
+// 병원 범위 (fail-closed): super_admin 만 전체, 병원 계정은 소속 병원만, 미배정이면 0건
+$chat_hospital_ids = get_strict_admin_hospital_ids($connect);
+$chat_scope_sql = $chat_hospital_ids === null
+    ? ''
+    : ' WHERE r.hospital_id IN (' . (empty($chat_hospital_ids) ? '0' : implode(',', array_map('intval', $chat_hospital_ids))) . ')';
+
+if (empty($_SESSION['partner_chat_csrf'])) $_SESSION['partner_chat_csrf'] = bin2hex(random_bytes(32));
+$chat_csrf = $_SESSION['partner_chat_csrf'];
 
 // 채팅방 목록
 $rooms = [];
@@ -31,7 +45,7 @@ if ($res) while ($row = mysqli_fetch_assoc($res)) $rooms[] = $row;
 
 $room_id = intval($_GET['room_id'] ?? 0);
 // 범위 밖 채팅방은 열람/전송 불가
-if ($room_id > 0 && $chat_scope_hid !== null) {
+if ($room_id > 0 && $chat_hospital_ids !== null) {
     $room_ok = false;
     foreach ($rooms as $r) { if ((int)$r['id'] === $room_id) { $room_ok = true; break; } }
     if (!$room_ok) $room_id = 0;
@@ -46,6 +60,10 @@ if ($room_id > 0) {
 
 // POST: 메시지 전송
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $room_id > 0) {
+    if (!hash_equals($chat_csrf, (string)($_POST['chat_csrf'] ?? ''))) {
+        http_response_code(403);
+        exit('요청이 만료되었습니다. 페이지를 새로고침한 후 다시 시도해주세요.');
+    }
     $msg = trim($_POST['message'] ?? '');
     if ($msg) {
         $stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_chat_messages (room_id, sender_type, sender_id, message) VALUES (?, 'hospital', ?, ?)");
@@ -79,7 +97,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 <div class="chat-layout">
     <div class="chat-sidebar">
         <?php foreach ($rooms as $r): ?>
-        <a href="partner_chat.php?room_id=<?php echo $r['id']; ?>" class="chat-room <?php echo $room_id==$r['id']?'active':''; ?>">
+        <a href="partner_chat.php?room_id=<?php echo (int)$r['id']; ?>" class="chat-room <?php echo $room_id==$r['id']?'active':''; ?>">
             <div class="d-flex justify-content-between"><strong style="font-size:13px;"><?php echo htmlspecialchars($r['hospital_name'] ?? '병원 #'.$r['hospital_id']); ?></strong>
             <?php if ($r['unread'] > 0): ?><span class="unread-badge"><?php echo $r['unread']; ?></span><?php endif; ?></div>
             <div style="font-size:11px;color:var(--bs-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?php echo htmlspecialchars($r['last_msg'] ?? ''); ?></div>
@@ -92,12 +110,13 @@ require_once __DIR__ . '/includes/admin_header.php';
         <?php if ($room_id > 0): ?>
         <div class="chat-msgs" id="chatMsgs">
             <?php foreach ($messages as $m): ?>
-            <div class="chat-bubble <?php echo $m['sender_type']; ?>"><?php echo nl2br(htmlspecialchars($m['message'])); ?>
+            <div class="chat-bubble <?php echo htmlspecialchars(preg_replace('/[^a-z_]/', '', (string)$m['sender_type']), ENT_QUOTES); ?>"><?php echo nl2br(htmlspecialchars($m['message'])); ?>
                 <div style="font-size:10px;opacity:0.7;margin-top:2px;"><?php echo $m['created_at']; ?></div>
             </div>
             <?php endforeach; ?>
         </div>
         <form method="post" class="chat-input-area">
+            <input type="hidden" name="chat_csrf" value="<?php echo htmlspecialchars($chat_csrf, ENT_QUOTES); ?>">
             <input type="text" name="message" class="form-control" placeholder="답변을 입력하세요..." required autofocus>
             <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i></button>
         </form>
