@@ -97,6 +97,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $action = $_POST['action'] ?? '';
 
+    // 입점 심사(승인·반려)는 최고관리자 전용 — 승인 시 병원 계정이 발급되고 플랫폼에 병원이 추가된다.
+    // 심사 화면은 admin_requested_hospitals.php 이며, 여기서는 그 처리 로직만 공유한다.
+    if (in_array($action, ['approve', 'reject', 'bulk_approve', 'bulk_reject'], true) && !is_super_admin()) {
+        http_response_code(403);
+        exit('입점 승인·반려는 최고관리자만 할 수 있습니다.');
+    }
+
     if ($action === 'add_hospital_images') {
         $hospital_id = intval($_POST['hospital_id'] ?? 0);
         $uploaded_files = [];
@@ -609,6 +616,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // 입점 신청 심사 페이지에서 넘어온 승인·반려는 그 페이지로 되돌려 보낸다.
+    if (($_POST['return_to'] ?? '') === 'admin_requested_hospitals.php') {
+        $rt_qs = [];
+        if (!empty($_POST['return_status'])) $rt_qs['status'] = (string)$_POST['return_status'];
+        if (!empty($_POST['return_q']))      $rt_qs['q']      = (string)$_POST['return_q'];
+        if (!empty($message)) $rt_qs['msg'] = $message;
+        if (!empty($error))   $rt_qs['err'] = $error;
+        header('Location: admin_requested_hospitals.php' . ($rt_qs ? '?' . http_build_query($rt_qs) : ''));
+        exit;
+    }
+
     if (!empty($message) && isset($_GET['view'])) {
         $view_id = intval($_GET['view']);
         $edit_flag = isset($_GET['edit']) ? '&edit=1' : '';
@@ -684,13 +702,11 @@ if ($my_in !== null) {
     $stat_scope = ' AND id IN (' . $my_in . ')';
 }
 
-if ($filter_status === 'pending') {
-    $where .= " AND status = 'pending'";
-} elseif ($filter_status === 'approved') {
-    $where .= " AND status = 'approved'";
-} elseif ($filter_status === 'rejected') {
-    $where .= " AND status = 'rejected'";
-}
+// 이 페이지는 승인 완료된 병원만 다룬다.
+// 대기(pending)·반려(rejected) 입점 신청은 admin_requested_hospitals.php 에서 심사하고,
+// 승인된 뒤에야 아래 목록에 나타난다. (?status= 로 우회해 대기 병원을 보는 것도 막는다)
+$filter_status = 'approved';
+$where .= " AND status = 'approved'";
 
 if (!empty($search)) {
     $where .= ' AND (name LIKE ? OR address LIKE ? OR phone LIKE ? OR email LIKE ? OR categories LIKE ?)';
@@ -2090,42 +2106,32 @@ $application_assets = [
 </div>
 
 <div class="row g-2 mb-3">
-    <div class="col-6 col-md-3">
-        <a href="<?php echo buildHospitalUrl(['status' => 'all']); ?>" class="text-decoration-none hospital-status-link" data-status="all">
-            <div class="card text-center hospital-stat-card <?php echo $filter_status === 'all' ? 'active-filter' : ''; ?>">
-                <div class="card-body py-3">
-                    <div class="fs-4 fw-bold text-primary"><?php echo number_format($stats['total']); ?></div>
-                    <div class="small text-body-secondary">전체</div>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-6 col-md-3">
-        <a href="<?php echo buildHospitalUrl(['status' => 'pending']); ?>" class="text-decoration-none hospital-status-link" data-status="pending">
-            <div class="card text-center hospital-stat-card <?php echo $filter_status === 'pending' ? 'active-filter' : ''; ?>">
-                <div class="card-body py-3">
-                    <div class="fs-4 fw-bold text-warning"><?php echo number_format($stats['pending']); ?></div>
-                    <div class="small text-body-secondary">대기</div>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-6 col-md-3">
+    <div class="col-12 col-md-4">
         <a href="<?php echo buildHospitalUrl(['status' => 'approved']); ?>" class="text-decoration-none hospital-status-link" data-status="approved">
-            <div class="card text-center hospital-stat-card <?php echo $filter_status === 'approved' ? 'active-filter' : ''; ?>">
+            <div class="card text-center hospital-stat-card active-filter">
                 <div class="card-body py-3">
                     <div class="fs-4 fw-bold text-success"><?php echo number_format($stats['approved']); ?></div>
-                    <div class="small text-body-secondary">승인</div>
+                    <div class="small text-body-secondary">승인 병원</div>
                 </div>
             </div>
         </a>
     </div>
-    <div class="col-6 col-md-3">
-        <a href="<?php echo buildHospitalUrl(['status' => 'rejected']); ?>" class="text-decoration-none hospital-status-link" data-status="rejected">
-            <div class="card text-center hospital-stat-card <?php echo $filter_status === 'rejected' ? 'active-filter' : ''; ?>">
+    <div class="col-6 col-md-4">
+        <a href="admin_requested_hospitals.php" class="text-decoration-none">
+            <div class="card text-center hospital-stat-card">
+                <div class="card-body py-3">
+                    <div class="fs-4 fw-bold text-warning"><?php echo number_format($stats['pending']); ?></div>
+                    <div class="small text-body-secondary">대기 신청 <i class="bi bi-arrow-right-short"></i></div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4">
+        <a href="admin_requested_hospitals.php?status=rejected" class="text-decoration-none">
+            <div class="card text-center hospital-stat-card">
                 <div class="card-body py-3">
                     <div class="fs-4 fw-bold text-danger"><?php echo number_format($stats['rejected']); ?></div>
-                    <div class="small text-body-secondary">반려</div>
+                    <div class="small text-body-secondary">반려 <i class="bi bi-arrow-right-short"></i></div>
                 </div>
             </div>
         </a>

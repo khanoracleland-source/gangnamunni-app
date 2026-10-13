@@ -127,6 +127,7 @@ function admin_sidebar_menus(): array {
             ['url' => 'admin_content_hub.php', 'label' => '콘텐츠 허브', 'icon' => 'bi-collection-fill', 'key' => 'content_hub'],
             ['url' => 'admin_recommend.php', 'label' => '메인 추천 병원', 'icon' => 'bi-star', 'key' => 'recommend'],
             ['url' => 'admin_hospitals.php', 'label' => term('business') . ' 관리', 'icon' => 'bi-building', 'key' => 'hospitals'],
+            ['url' => 'admin_requested_hospitals.php', 'label' => '입점 신청 병원', 'icon' => 'bi-inbox', 'key' => 'hospital_request_review', 'active_key' => 'requested_hospitals'], // 최고관리자 전용 키
             ['url' => 'admin_hospital_locations.php', 'label' => '병원 노출 순서', 'icon' => 'bi-sort-numeric-down', 'key' => 'hospitals', 'active_key' => 'hospital_locations'],
             ['url' => 'admin_doctors.php', 'label' => term('doctor') . ' 관리', 'icon' => 'bi-person-badge', 'key' => 'doctors'],
             ['url' => 'admin_personnel.php', 'label' => '인력 관리', 'icon' => 'bi-people', 'key' => 'personnel'],

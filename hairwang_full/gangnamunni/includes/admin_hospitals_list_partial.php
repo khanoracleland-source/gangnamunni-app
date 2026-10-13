@@ -9,8 +9,8 @@
 <div id="bulkBar" class="alert alert-primary d-flex align-items-center gap-3 mb-2" style="display:none !important;">
     <span><strong id="bulkCount">0</strong>개 선택</span>
     <button type="button" class="btn btn-danger btn-sm" onclick="bulkDelete()"><i class="bi bi-trash me-1"></i>선택 삭제</button>
-    <button type="button" class="btn btn-success btn-sm" onclick="bulkApprove()"><i class="bi bi-check-lg me-1"></i>선택 승인</button>
-    <button type="button" class="btn btn-warning btn-sm" onclick="bulkReject()"><i class="bi bi-x-lg me-1"></i>선택 반려</button>
+    <?php /* 승인·반려는 admin_requested_hospitals.php(대기 신청)에서 처리한다.
+             이 목록에는 이미 승인된 병원만 있으므로 일괄 승인·반려 버튼은 숨긴다. */ ?>
     <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" onclick="uncheckAll()"><i class="bi bi-x me-1"></i>선택 해제</button>
 </div>
 
@@ -34,7 +34,7 @@
         </thead>
         <tbody>
             <?php if (empty($hospitals)): ?>
-            <tr><td colspan="12" class="empty-state"><i class="bi bi-building"></i><?= ($filter_treatment_id > 0 || $search !== '' || $filter_status !== 'all') ? '조건에 맞는 병원이 없습니다. 시술이나 검색 조건을 변경해 주세요.' : '등록된 병원이 없습니다.' ?></td></tr>
+            <tr><td colspan="12" class="empty-state"><i class="bi bi-building"></i><?= ($filter_treatment_id > 0 || $search !== '' || !in_array($filter_status, ['all', 'approved'], true)) ? '조건에 맞는 병원이 없습니다. 시술이나 검색 조건을 변경해 주세요.' : '등록된 병원이 없습니다.' ?></td></tr>
             <?php else: ?>
             <?php foreach ($hospitals as $h): ?>
             <tr>
