@@ -11,7 +11,7 @@ header('Pragma: no-cache');
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>이용 가이드 | 서울미녀</title>
-    <meta name="guide-build" content="2026-10-13 10:15">
+    <meta name="guide-build" content="2026-10-13 10:35">
     <meta name="description" content="피부과·성형외과 미용시술 가격을 병원별로 한눈에 비교하는 서울미녀 이용 가이드입니다.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,6 +21,9 @@ header('Pragma: no-cache');
         :root {
             --brand: #AE1932;
             --brand-deep: #AE1932; /* barcha qizil ranglar bir xil */
+            /* xabarcha uchi: yumaloq uchli, asosiy qism bilan 1px ustma-ust — orada chiziq qolmaydi */
+            --tail-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Cpath d='M0 10 6.4 1.6Q8-.5 9.6 1.6L16 10Z' fill='%23AE1932'/%3E%3C/svg%3E");
+            --tail-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Cpath d='M0 0 6.4 8.4Q8 10.5 9.6 8.4L16 0Z' fill='%23AE1932'/%3E%3C/svg%3E");
             --brand-soft: #f6dfe3;
             --ink: #111;
             --text: #333;
@@ -82,9 +85,9 @@ header('Pragma: no-cache');
         .bar-track { height: 5px; border-radius: 3px; background: var(--brand-soft); overflow: hidden; }
         .bar-fill { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--brand-deep); }
         .bar-value { min-width: 64px; text-align: right; color: #222; font-variant-numeric: tabular-nums; }
-        .compare-badge { position: absolute; right: -2px; top: calc(100% + 18px); padding: 10px 16px; border-radius: 8px; white-space: nowrap; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
+        .compare-badge { position: absolute; right: -2px; top: calc(100% + 18px); padding: 10px 16px; border-radius: 8px; white-space: nowrap; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; }
 
-        .compare-badge::before { content: ""; position: absolute; right: 22px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: var(--brand); }
+        .compare-badge::before { content: ""; position: absolute; right: 22px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
         .mock-note { margin: 0 0 24px; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); line-height: 1.6; color: var(--text); }
 
         .hosp-list { list-style: none; margin: 0; padding: 0; text-align: left; }
@@ -107,8 +110,8 @@ header('Pragma: no-cache');
         .login-brand img { display: block; width: 210px; max-width: 60%; height: auto; }
         .login-brand span { font-size: 14px; letter-spacing: .42em; margin-right: -.42em; color: #222; font-family: "Helvetica Neue", Arial, sans-serif; }
         .login-box { position: relative; margin-top: 92px; border: 2px solid var(--brand-deep); border-radius: 10px; padding: 10px; }
-        .login-badge { position: absolute; left: 10px; bottom: calc(100% + 18px); padding: 9px 16px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .login-badge::after { content: ""; position: absolute; left: 30px; top: 100%; border: 8px solid transparent; border-bottom: 0; border-top-color: var(--brand); }
+        .login-badge { position: absolute; left: 10px; bottom: calc(100% + 18px); padding: 9px 16px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; }
+        .login-badge::after { content: ""; position: absolute; left: 30px; top: calc(100% - 1px); width: 16px; height: 10px; background: var(--tail-down) center / 100% 100% no-repeat; }
         .login-btns { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
         .lb { display: flex; align-items: center; justify-content: center; gap: 12px; height: 43px; font-size: clamp(13px, calc(3.6 * var(--vw, 1vw)), 15px); font-weight: 700; }
         .lb svg { width: 20px; height: 20px; flex: none; }
@@ -150,8 +153,8 @@ header('Pragma: no-cache');
         .cat-box { border: 2px solid var(--brand-deep); border-radius: 10px; padding: 4px 0; background: #fff; }
         .cat-items { display: grid; grid-template-columns: 1fr 1fr; margin: 0; padding: 0; list-style: none; text-align: center; }
         .cat-items li { height: 34.7px; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; color: #111; }
-        .cat-badge { position: absolute; left: 50%; top: calc(100% + 18px); transform: translateX(-50%); padding: 9px 14px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .cat-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: var(--brand); }
+        .cat-badge { position: absolute; left: 50%; top: calc(100% + 18px); transform: translateX(-50%); padding: 9px 14px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; }
+        .cat-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
         .a-fade { --a: lg-fade .5s ease-out .05s; }
         .a-side { --a: cat-side .35s ease-out calc(.15s + var(--i) * .035s); }
         .a-item { --a: lg-rise .4s cubic-bezier(.2,.7,.2,1) calc(.95s + var(--i) * .05s); }
@@ -182,8 +185,8 @@ header('Pragma: no-cache');
         .rg-group li i { flex: none; position: relative; width: 9px; height: 9px; border: 1px solid #c8c8c8; border-radius: 1px; }
         .rg-group li.rg-on i::after { content: ""; position: absolute; inset: -1px; border-radius: 1px; background: var(--brand) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='m2 5 2 2 4-4' fill='none' stroke='%23fff' stroke-width='1.5'/%3E%3C/svg%3E") center/100% no-repeat; }
         .rg-group li.rg-on { color: var(--brand); }
-        .rg-badge { position: absolute; left: -2px; top: calc(100% + 16px); padding: 9px 14px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .rg-badge::before { content: ""; position: absolute; left: 22px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: var(--brand); }
+        .rg-badge { position: absolute; left: -2px; top: calc(100% + 16px); padding: 9px 14px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; }
+        .rg-badge::before { content: ""; position: absolute; left: 22px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
         .rg-filter { display: flex; align-items: center; gap: 6px; height: 30px; border: 1px solid #ddd; padding-left: 8px; margin-bottom: 26px; font-size: 10px; }
         .rg-reset { display: flex; align-items: center; gap: 4px; margin-right: 6px; color: #333; }
         .rg-reset svg { width: 12px; height: 12px; }
@@ -225,8 +228,8 @@ header('Pragma: no-cache');
         .sort-box .rg-sort { justify-content: space-between; gap: 8px; margin: 0; }
         .sort-box .rg-sort span { height: 34px; padding: 0 10px; font-size: clamp(13px, calc(3.6 * var(--vw, 1vw)), 16px); border-radius: 4px; gap: 6px; }
         .sort-box .rg-sort svg { width: 20px; height: 20px; }
-        .sort-badge { position: absolute; left: -2px; top: calc(100% + 18px); padding: 9px 16px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .sort-badge::before { content: ""; position: absolute; left: 78px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: var(--brand); }
+        .sort-badge { position: absolute; left: -2px; top: calc(100% + 18px); padding: 9px 16px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; }
+        .sort-badge::before { content: ""; position: absolute; left: 78px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
         /* animatsiya: tanlangan saralash 낮은가격 → 평점 → 인기 → 후기 bo'ylab aylanadi */
         .is-active .mock-sort .a-badge { animation: lg-pop .5s cubic-bezier(.3,1.6,.5,1) 1.2s both, lg-bob 2.4s ease-in-out 1.8s infinite; transform-origin: 78px 0; }
         .is-active .sort-box .rg-sort span { animation: sort-cycle 4.8s steps(1, end) calc(2.4s + var(--s) * 1.2s) infinite; }
@@ -249,8 +252,8 @@ header('Pragma: no-cache');
         .ct-tabs span { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #222; box-shadow: inset 0 -1px 0 #ddd; } /* har tabning o'z chizig'i: kasr pikselsiz, aniq */
         .ct-tabs span:first-child { color: var(--brand); }
         .ct-ink { position: absolute; z-index: 1; left: 0; bottom: 0; width: 25%; height: 2px; background: var(--brand); will-change: transform; backface-visibility: hidden; transform: translate3d(0,0,0); } /* faol tab chizig'i: tablar bo'ylab silliq sirpanadi */
-        .ct-badge { position: absolute; z-index: 3; left: -2px; top: calc(100% + 14px); padding: 9px 16px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.3); }
-        .ct-badge::before { content: ""; position: absolute; left: 52px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: var(--brand); }
+        .ct-badge { position: absolute; z-index: 3; left: -2px; top: calc(100% + 14px); padding: 9px 16px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; }
+        .ct-badge::before { content: ""; position: absolute; left: 52px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
         .ct-photo { display: block; width: 100%; height: auto; aspect-ratio: 380 / 126; object-fit: cover; }
         .ct-info p { margin: 0; }
         .ct-name { display: flex; justify-content: space-between; align-items: center; margin-top: 14px !important; font-size: 10px; color: #111; }
@@ -330,8 +333,8 @@ header('Pragma: no-cache');
         .tm-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px 28px; }
         .tm-slots span { height: 25px; display: grid; place-items: center; border: 1px solid #e3e3e3; font-size: 11px; color: #111; }
         .tm-slots span.is-pick { border-color: var(--brand); color: var(--brand); }
-        .tm-badge { position: absolute; right: -2px; bottom: calc(100% + 18px); padding: 9px 26px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .tm-badge::after { content: ""; position: absolute; right: 52px; top: 100%; border: 8px solid transparent; border-bottom: 0; border-top-color: var(--brand); }
+        .tm-badge { position: absolute; right: -2px; bottom: calc(100% + 18px); padding: 9px 26px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; }
+        .tm-badge::after { content: ""; position: absolute; right: 52px; top: calc(100% - 1px); width: 16px; height: 10px; background: var(--tail-down) center / 100% 100% no-repeat; }
         .tm-submit { display: grid; place-items: center; height: 36px; margin-top: 20px; background: var(--brand); color: #fff; font-size: 11px; }
         /* animatsiya: 28-sana tanlanadi → 10:30 tanlanadi → 예약하기 bosiladi */
         .is-active .tm-dates span.is-today::before { animation: lg-pop .35s cubic-bezier(.3,1.6,.5,1) 1s both; }
@@ -361,8 +364,8 @@ header('Pragma: no-cache');
         .dn-p-t { font-size: 8.5px; line-height: 1.75; color: #111; }
         .dn-note { margin-top: 16px; padding: 16px 10px 12px; background: #fff; }
         .dn-n-h { margin-bottom: 6px !important; font-size: 11px; color: var(--brand); }
-        .dn-badge { position: absolute; right: -10px; bottom: calc(100% + 14px); padding: 9px 22px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .dn-badge::after { content: ""; position: absolute; right: 52px; top: 100%; border: 8px solid transparent; border-bottom: 0; border-top-color: var(--brand); }
+        .dn-badge { position: absolute; right: -10px; bottom: calc(100% + 14px); padding: 9px 22px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; }
+        .dn-badge::after { content: ""; position: absolute; right: 52px; top: calc(100% - 1px); width: 16px; height: 10px; background: var(--tail-down) center / 100% 100% no-repeat; }
         .dn-btns { display: flex; justify-content: center; gap: 16px; margin: 28px 0 0; }
         .dn-btns span { width: 156px; max-width: 45%; height: 38px; display: grid; place-items: center; border: 1px solid var(--brand); color: var(--brand); font-size: 11px; }
         .dn-btns span.is-fill { background: var(--brand); color: #fff; }
@@ -405,8 +408,8 @@ header('Pragma: no-cache');
         .nt-app span { font-weight: 400; font-size: 10.5px; color: #555; }
         .nt-title { margin: 4px 0 6px !important; font-size: 12.5px; font-weight: 700; color: #111; }
         .nt-text { font-size: 10px; line-height: 1.75; color: #222; }
-        .nt-badge { position: absolute; z-index: 3; left: 50%; top: calc(100% + 32px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .nt-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: var(--brand); }
+        .nt-badge { position: absolute; z-index: 3; left: 50%; top: calc(100% + 32px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; }
+        .nt-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
         /* animatsiya: bildirishnomalar tepadan birin-ketin keladi, oxirgisi ajratiladi va bosiladi */
         .is-active .nt { animation: nt-in .5s cubic-bezier(.2,.8,.2,1) calc(.4s + var(--i) * .6s) both; }
         .is-active .nt:not(.is-pay) .nt-icon, .is-active .nt:not(.is-pay) .nt-body { animation: nt-dim .4s ease-out calc(1s + var(--i) * .6s) both; }
@@ -438,8 +441,8 @@ header('Pragma: no-cache');
         .py-toss { display: inline-flex; align-items: center; color: #2b2f45; font-size: 19px; font-weight: 800; letter-spacing: -.06em; }
         .py-toss::before { content: ""; width: 19px; height: 19px; margin-right: 4px; border-radius: 50%; background: linear-gradient(135deg, #1258ff 50%, #20a7ff 51%); }
         .py-toss em { margin-left: 4px; font-style: normal; font-weight: 500; color: #4e5968; }
-        .py-badge { position: absolute; z-index: 3; left: 50%; top: calc(100% + 28px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .py-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: var(--brand); }
+        .py-badge { position: absolute; z-index: 3; left: 50%; top: calc(100% + 28px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; }
+        .py-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
         .py-inst { display: flex; align-items: center; gap: 4px; margin: 12px 0 0 14px; font-size: 10px; color: #333; }
         .py-inst svg { width: 12px; height: 12px; }
         .py-rest { margin: 18px -12px 0; padding: 40px 26px 0; border-top: 7px solid #eee; }
@@ -485,8 +488,8 @@ header('Pragma: no-cache');
         .bk-panel dd { margin: 0; }
         .bk-btn-box { position: relative; margin: 12px 50px 0; padding: 38px 0; border: 2px solid var(--brand-deep); border-radius: 10px; }
         .bk-btn { display: grid; place-items: center; height: 46px; margin: 0 auto; width: 66%; border: 1px solid var(--brand); color: var(--brand); font-size: 13px; }
-        .bk-badge { position: absolute; left: 50%; top: calc(100% + 22px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .bk-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: var(--brand); }
+        .bk-badge { position: absolute; left: 50%; top: calc(100% + 22px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; }
+        .bk-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
         .mock-booked .a-fade { --a: lg-fade .5s ease-out .9s; }
         .mock-booked .a-box { --a: lg-box .45s ease-out 1.2s; }
         .mock-booked .a-item { --a: lg-rise .4s ease-out calc(1.4s + var(--i) * .1s); }
@@ -532,8 +535,8 @@ header('Pragma: no-cache');
         .rv-cta { display: grid; place-items: center; height: 31px; background: #fbeeee; color: var(--brand); font-size: 9.5px; }
         .rv-cta-wrap.is-pick { z-index: 2; }
         .rv-cta-wrap.is-pick::after { content: ""; position: absolute; inset: -11px -12px -10px -12px; border: 2px solid var(--brand-deep); border-radius: 10px; pointer-events: none; }
-        .rv-badge { position: absolute; z-index: 3; left: 50%; top: calc(100% + 26px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; box-shadow: 0 4px 10px rgba(174,25,50,.25); }
-        .rv-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: var(--brand); }
+        .rv-badge { position: absolute; z-index: 3; left: 50%; top: calc(100% + 26px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 17px); font-weight: 700; white-space: nowrap; }
+        .rv-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
         .mock-review .a-item { --a: lg-rise .45s ease-out calc(.5s + var(--i) * .2s); }
         .mock-review .rv-cta-wrap.is-pick::after { opacity: 0; }
         .is-active .mock-review .rv-cta-wrap.is-pick::after { animation: ct-ring .4s cubic-bezier(.3,1.6,.5,1) 1.3s both; }
