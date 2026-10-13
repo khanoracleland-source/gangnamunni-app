@@ -17,8 +17,8 @@ $ADMIN_ROLE_PERMISSIONS = [
     'viewer' => ['dashboard', 'hospital_images'],
 
     // === 병원 역할 (hospital_id 기반 격리) ===
-    'hospital_super_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'ads', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_stats', 'booking_revenue'],
-    'hospital_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'treatments', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'ads', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'booking_revenue'],
+    'hospital_super_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'ads', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'hospital_stats', 'booking_revenue'],
+    'hospital_admin' => ['dashboard', 'hospitals', 'hospital_images', 'hospital_treatments', 'hospital_news', 'doctor_treatments', 'treatment_packages', 'doctors', 'nurses', 'patients', 'pharmacists', 'staffs', 'medicines', 'reviews', 'bookings', 'consultations', 'events', 'event_entries', 'notifications', 'tips', 'categories', 'ads', 'partner_hospital', 'partner_treatments', 'partner_wallet', 'partner_settings', 'partner_ai_settings', 'booking_revenue'],
 ];
 
 $ADMIN_ROLE_LABELS = [
@@ -430,6 +430,20 @@ function hospital_admin_landing_page() {
     if (check_permission('admin_accounts')
         && admin_menu_contains_page('admin_admins.php', $menus, 'check_permission')) return 'admin_admins.php';
     return null;
+}
+
+/**
+ * 플랫폼 전역 데이터(시술 마스터, 광고 단가, 광고주, 추천 병원 등) 관리 페이지 가드.
+ * 병원 계정은 역할 권한(ads, hospitals 등)이 있어도 전역 데이터는 변경할 수 없다 → 403.
+ * (메뉴 이동 제한은 GET 만 막으므로 POST 직접 호출로 전역 데이터를 바꾸거나 지울 수 있었다.)
+ */
+function require_platform_admin_page() {
+    if (!check_admin_login() || is_hospital_role()) {
+        http_response_code(403);
+        header('Content-Type: text/html; charset=UTF-8');
+        echo '<!DOCTYPE html><html lang="ko"><meta charset="UTF-8"><title>권한 없음</title><p>플랫폼 관리자만 접근할 수 있는 페이지입니다.</p></html>';
+        exit;
+    }
 }
 
 /**

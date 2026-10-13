@@ -26,6 +26,7 @@ mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 require_admin_login();
 require_permission('hospitals');
+require_platform_admin_page(); // 추천 병원은 플랫폼 전용 — 병원 계정 차단
 
 // 추천 병원 관리는 플랫폼(super_admin/admin) 전용 — editor 는 차단.
 //   editor 는 admin_hospitals.php 등에서 본인 병원만 관리하며, '추천' 노출 결정은 플랫폼 권한이다.

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/theme_helper.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_permission('ads');
+require_platform_admin_page(); // 광고 단가는 전역 데이터 — 병원 계정 차단
 
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) die('MySQL 연결 실패');

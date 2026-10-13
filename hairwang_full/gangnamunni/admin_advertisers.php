@@ -12,6 +12,7 @@ $admin_current = 'advertisers';
 
 require_once __DIR__ . '/includes/admin_auth.php';
 require_permission('ads');
+require_platform_admin_page(); // 광고주 목록(연락처 포함)은 전역 데이터 — 병원 계정 차단
 
 require_once __DIR__ . '/../dbconfig.php';
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);

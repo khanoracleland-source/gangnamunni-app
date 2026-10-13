@@ -25,6 +25,12 @@ if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
 require_admin_login();
 require_permission('treatments');
+// 시술 마스터는 모든 병원이 공유하는 전역 카탈로그 → 최고관리자 전용 (병원 계정은 partner_treatments.php 에서 자기 병원 시술만 관리)
+if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
+    require_platform_admin_page();
+    http_response_code(403);
+    exit('시술 마스터는 최고관리자만 관리할 수 있습니다.');
+}
 $treatment_image_schema_ready = hti_ensure_schema($connect);
 
 // CSRF 토큰 생성
