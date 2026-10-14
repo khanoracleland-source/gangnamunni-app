@@ -1,5 +1,4 @@
 <?php
-// Ilova WebView eski nusxani ko'rsatmasligi uchun sahifa keshlanmaydi.
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 ?>
@@ -67,8 +66,11 @@ header('Pragma: no-cache');
         .guide-dots i { width: 9px; height: 9px; background: #d4d4d4; }
         .guide-dots i + i { margin-left: 34px; position: relative; }
         .guide-dots i + i::before { content: ""; position: absolute; right: 13px; top: 4px; width: 26px; height: 1px; background: #cfcfcf; }
-        /* Qizil belgi: swipe paytida chiziq bo'ylab silliq sirpanadi (--p = slayd ichidagi kasr holat) */
-        .guide-dots b { position: absolute; left: 0; top: 50%; width: 9px; height: 9px; margin-top: -5px; background: var(--brand-deep); transform: translate3d(calc(var(--p, 0) * 43px), 0, 0); will-change: transform; }
+        .guide-dots .dr-win { position: absolute; left: 0; top: 0; bottom: 0; overflow: hidden; width: calc(var(--p, 0) * 43px + 9px); transition: width .55s cubic-bezier(.4, 0, .2, 1); }
+        .guide-dots .dr-live { position: absolute; left: 0; top: 0; bottom: 0; display: flex; align-items: center; width: max-content; }
+        .guide-dots .dr-live i { background: var(--brand-deep); }
+        .guide-dots .dr-live i + i::before { background: var(--brand-deep); }
+        .guide-dots.no-anim .dr-win { transition: none; }
 
         .slide-title { margin: 0 20px 18px; font-size: clamp(21px, calc(5.8 * var(--vw, 1vw)), 27px); font-weight: 800; letter-spacing: -.02em; line-height: 1.35; }
         .slide-lead { margin: 0 20px; font-size: clamp(16px, calc(4.4 * var(--vw, 1vw)), 20px); line-height: 1.6; color: var(--text); }
@@ -1116,26 +1118,39 @@ header('Pragma: no-cache');
         if (group.length < 2) { dots.style.visibility = 'hidden'; dots.innerHTML = '<i></i>'; return; }
         var rail = document.createElement('span');
         rail.className = 'dots-rail';
-        rail.innerHTML = group.map(function () { return '<i></i>'; }).join('') + '<b></b>';
+        var cells = group.map(function () { return '<i></i>'; }).join('');
+        rail.innerHTML = cells + '<span class="dr-win"><span class="dr-live">' + cells + '</span></span>';
         dots.innerHTML = '';
         dots.appendChild(rail);
-        dotMarks.push({ marker: rail.querySelector('b'), start: slides.indexOf(group[0]), len: group.length });
+        dotMarks.push({ rail: rail, start: slides.indexOf(group[0]), len: group.length });
     });
 
-    // Qizil belgini scroll holatiga qarab surish - swipe bilan bir vaqtda silliq harakatlanadi
-    var dotsTick = 0;
-    function updateDots() {
+    // Qizil belgi: slayd to'liq ochilgandan keyin keyingi kvadratchaga sirpanib o'tadi
+    function updateDots(instant) {
         if (!track.clientWidth) return;
-        var pos = track.scrollLeft / track.clientWidth;
+        var idx = Math.round(track.scrollLeft / track.clientWidth);
         dotMarks.forEach(function (d) {
-            var p = Math.max(0, Math.min(d.len - 1, pos - d.start));
-            d.marker.style.setProperty('--p', Math.round(p * 1000) / 1000);
+            var p = Math.max(0, Math.min(d.len - 1, idx - d.start));
+            if (instant || reduceMotion) {
+                d.rail.parentNode.classList.add('no-anim');
+                d.rail.style.setProperty('--p', p);
+                void d.rail.offsetWidth;
+                d.rail.parentNode.classList.remove('no-anim');
+            } else {
+                d.rail.style.setProperty('--p', p);
+            }
         });
     }
+
+    // scroll to'xtaganini aniqlash (scrollend bo'lmasa - debounce)
+    var settleTimer = 0;
+    var hasScrollEnd = 'onscrollend' in window;
     function queueDots() {
-        if (dotsTick) return;
-        dotsTick = requestAnimationFrame(function () { dotsTick = 0; updateDots(); });
+        if (hasScrollEnd) return;
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(function () { updateDots(false); }, 110);
     }
+    if (hasScrollEnd) track.addEventListener('scrollend', function () { updateDots(false); });
 
     function goTo(index) {
         track.scrollTo({ left: index * track.clientWidth, behavior: reduceMotion ? 'auto' : 'smooth' });
@@ -1240,14 +1255,14 @@ header('Pragma: no-cache');
         });
         guideEl.style.setProperty('--hdr', document.querySelector('.guide-top').offsetHeight + 'px'); // qatlam sarlavha ostidan boshlanadi
         if (current >= 0) track.scrollLeft = current * track.clientWidth;
-        updateDots();
+        updateDots(true);
     }
     fitToScreen();
     window.addEventListener('resize', fitToScreen);
     window.addEventListener('orientationchange', function () { setTimeout(fitToScreen, 200); });
 
     setActive(0);
-    updateDots();
+    updateDots(true);
 }());
 </script>
 </body>

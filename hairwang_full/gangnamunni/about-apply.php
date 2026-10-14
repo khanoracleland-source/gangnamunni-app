@@ -204,6 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+/** @param mixed $v */
 function apply_h($v)
 {
     return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
