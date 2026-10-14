@@ -289,7 +289,7 @@ function apply_h($v)
             color: #333;
             background: transparent;
             font: inherit;
-            font-size: clamp(12px, 3.1vw, 20px);
+            font-size: clamp(12px, 5.1vw, 33px);
             cursor: pointer;
         }
 
@@ -385,7 +385,7 @@ function apply_h($v)
         .apply-eyebrow {
             margin: 0 0 clamp(14px, max(3.4vw, 1.9vh), 26px);
             color: var(--brand);
-            font-size: clamp(12px, max(3vw, 1.7vh), 20px);
+            font-size: clamp(17px, calc(max(3vw, 1.7vh) + 5px), 25px);
             font-weight: 500;
             letter-spacing: .42em;
         }
@@ -406,6 +406,36 @@ function apply_h($v)
             line-height: 1.85;
         }
 
+        /* pastga swipe qilishni bildiruvchi dumaloq belgi (hero, o'ng tomon) */
+        .scroll-hint {
+            align-self: flex-end;
+            flex: none;
+            display: grid;
+            place-items: center;
+            width: clamp(34px, 9vw, 52px);
+            height: clamp(34px, 9vw, 52px);
+            margin: 0 0 clamp(14px, 3.6vw, 24px);
+            border: 1.5px solid rgba(174, 25, 50, .3);
+            border-radius: 50%;
+            color: var(--brand);
+            background: #fff;
+            animation: hint-bob 1.8s ease-in-out infinite;
+        }
+
+        .scroll-hint svg {
+            width: 52%;
+            height: 52%;
+        }
+
+        @keyframes hint-bob {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(6px); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .scroll-hint { animation: none; }
+        }
+
         /* ---------- Qizil lenta: 입점비 0원 ---------- */
         .apply-offer {
             background: var(--brand);
@@ -416,13 +446,13 @@ function apply_h($v)
 
         .apply-offer-top {
             margin: 0 0 clamp(10px, max(2.6vw, 1.5vh), 20px);
-            font-size: clamp(13px, max(3.4vw, 2.1vh), 24px);
+            font-size: clamp(18px, calc(max(3.4vw, 2.1vh) + 5px), 29px);
             font-weight: 500;
         }
 
         .apply-offer-main {
             margin: 0 0 clamp(10px, max(2.6vw, 1.5vh), 20px);
-            font-size: clamp(34px, max(9.2vw, 5.6vh), 68px);
+            font-size: clamp(39px, calc(max(9.2vw, 5.6vh) + 5px), 73px);
             font-weight: 900;
             letter-spacing: -.03em;
             line-height: 1.1;
@@ -430,22 +460,27 @@ function apply_h($v)
 
         .apply-offer-sub {
             margin: 0;
-            font-size: clamp(13px, max(3.4vw, 2.1vh), 24px);
+            font-size: clamp(18px, calc(max(3.4vw, 2.1vh) + 5px), 29px);
             font-weight: 500;
         }
 
 
         /* ---------- WHY SEOUL BEAUTY ---------- */
         .apply-why {
-            padding: clamp(42px, 11vw, 72px) clamp(20px, 5.6vw, 36px) clamp(34px, 9vw, 58px);
+            padding: clamp(28px, 7vw, 52px) clamp(20px, 5.6vw, 36px) clamp(26px, 6.5vw, 46px);
         }
 
         .apply-h2 {
-            margin: 0 0 clamp(28px, 7.4vw, 50px);
-            font-size: clamp(24px, 6.4vw, 41px);
+            margin: 0 0 clamp(18px, 4.6vw, 34px);
+            font-size: clamp(29px, calc(6.4vw + 5px), 46px);
             font-weight: 800;
             line-height: 1.34;
             letter-spacing: -.03em;
+        }
+
+        /* WHY sarlavhasi +5px siz, asl o'lchamda */
+        #apply-why-title {
+            font-size: clamp(24px, 6.4vw, 41px);
         }
 
         .why-list {
@@ -454,23 +489,23 @@ function apply_h($v)
             padding: 0;
             display: flex;
             flex-direction: column;
-            gap: clamp(12px, 3.2vw, 20px);
+            gap: clamp(9px, 2.4vw, 16px);
         }
 
         .why-card {
             display: flex;
             align-items: center;
-            gap: clamp(14px, 3.6vw, 24px);
+            gap: clamp(11px, 2.9vw, 19px);
             background: #fcfafa;
             border: 1px solid #f0eaea;
             border-radius: clamp(14px, 3.6vw, 22px);
-            padding: clamp(18px, 4.6vw, 30px) clamp(16px, 4.2vw, 28px);
+            padding: clamp(13px, 3.4vw, 23px) clamp(14px, 3.8vw, 25px);
         }
 
         .why-icon {
             flex: none;
-            width: clamp(44px, 11.4vw, 72px);
-            height: clamp(44px, 11.4vw, 72px);
+            width: clamp(38px, 9.6vw, 62px);
+            height: clamp(38px, 9.6vw, 62px);
             border-radius: 50%;
             background: #f8e7ea;
             color: var(--brand);
@@ -490,7 +525,7 @@ function apply_h($v)
 
         .why-title {
             margin: 0 0 clamp(5px, 1.4vw, 10px);
-            font-size: clamp(14px, 3.7vw, 24px);
+            font-size: clamp(19px, calc(3.7vw + 5px), 29px);
             font-weight: 700;
             letter-spacing: -.02em;
         }
@@ -498,8 +533,8 @@ function apply_h($v)
         .why-desc {
             margin: 0;
             color: var(--text);
-            font-size: clamp(12px, 3.1vw, 20px);
-            line-height: 1.7;
+            font-size: clamp(17px, calc(3.1vw + 5px), 25px);
+            line-height: 1.55;
         }
 
 
@@ -828,24 +863,24 @@ function apply_h($v)
 
         /* ---------- CHECKLIST ---------- */
         .apply-check {
-            padding: clamp(42px, 11vw, 72px) clamp(20px, 5.6vw, 36px) clamp(40px, 10vw, 66px);
+            padding: clamp(24px, 6vw, 44px) clamp(20px, 5.6vw, 36px) clamp(24px, 6vw, 44px);
         }
 
         .check-card {
             background: #fff;
             border: 1px solid #ececec;
             border-radius: clamp(16px, 4.2vw, 26px);
-            padding: clamp(20px, 5.2vw, 34px) clamp(18px, 4.6vw, 30px) clamp(18px, 4.6vw, 30px);
+            padding: clamp(15px, 3.9vw, 26px) clamp(16px, 4.2vw, 27px) clamp(15px, 3.9vw, 26px);
             box-shadow: 0 1px 2px rgba(0, 0, 0, .02);
         }
 
         .check-card+.check-card {
-            margin-top: clamp(16px, 4.2vw, 26px);
+            margin-top: clamp(11px, 2.9vw, 19px);
         }
 
         .check-title {
-            margin: 0 0 clamp(14px, 3.6vw, 24px);
-            font-size: clamp(16px, 4.2vw, 27px);
+            margin: 0 0 clamp(10px, 2.6vw, 18px);
+            font-size: clamp(21px, calc(4.2vw + 5px), 32px);
             font-weight: 800;
             letter-spacing: -.02em;
         }
@@ -856,14 +891,14 @@ function apply_h($v)
             padding: 0;
             display: flex;
             flex-direction: column;
-            gap: clamp(10px, 2.6vw, 17px);
+            gap: clamp(6px, 1.6vw, 11px);
         }
 
         .check-list li {
             position: relative;
             padding-left: clamp(19px, 4.8vw, 30px);
-            font-size: clamp(13.5px, 3.5vw, 22px);
-            line-height: 1.5;
+            font-size: clamp(18.5px, calc(3.5vw + 5px), 27px);
+            line-height: 1.45;
             color: var(--ink);
         }
 
@@ -888,9 +923,9 @@ function apply_h($v)
         .asset-grid li {
             background: #f4f3f3;
             border-radius: clamp(7px, 1.8vw, 11px);
-            padding: clamp(11px, 2.9vw, 19px) clamp(8px, 2vw, 14px);
+            padding: clamp(9px, 2.3vw, 15px) clamp(8px, 2vw, 14px);
             text-align: center;
-            font-size: clamp(13px, 3.4vw, 21px);
+            font-size: clamp(18px, calc(3.4vw + 5px), 26px);
             line-height: 1.4;
             color: var(--ink);
         }
@@ -898,7 +933,7 @@ function apply_h($v)
         .check-note {
             display: flex;
             gap: clamp(6px, 1.6vw, 11px);
-            margin: clamp(16px, 4.2vw, 26px) 0 0;
+            margin: clamp(9px, 2.3vw, 15px) 0 0;
             color: var(--brand);
             font-size: clamp(12px, 3.1vw, 19px);
             line-height: 1.65;
@@ -911,10 +946,11 @@ function apply_h($v)
         /* ---------- PROCESS (timeline) ---------- */
         .apply-process {
             background: #f4f3f3;
-            padding: clamp(42px, 11vw, 72px) clamp(20px, 5.6vw, 36px) clamp(46px, 12vw, 78px);
-            --dot: clamp(13px, 3.3vw, 21px);
-            --gap: clamp(34px, 9vw, 58px);
-            --dot-top: calc((clamp(15px, 3.9vw, 25px) * 1.4 - var(--dot)) / 2);
+            padding: clamp(28px, 7vw, 52px) clamp(20px, 5.6vw, 36px) clamp(28px, 7vw, 52px);
+            --dot: clamp(14px, 3.5vw, 22px);
+            --gap: clamp(24px, 6.4vw, 44px);
+            /* nuqta sarlavha qatorining markaziga tushsin (sarlavha o'lchami bilan bir xil formula) */
+            --dot-top: calc((clamp(20px, calc(3.9vw + 5px), 30px) * 1.4 - var(--dot)) / 2);
         }
 
         .step-list {
@@ -956,7 +992,7 @@ function apply_h($v)
         .step-title {
             margin: 0 0 clamp(5px, 1.4vw, 10px);
             color: var(--brand);
-            font-size: clamp(15px, 3.9vw, 25px);
+            font-size: clamp(20px, calc(3.9vw + 5px), 30px);
             font-weight: 700;
             letter-spacing: -.02em;
             line-height: 1.4;
@@ -965,7 +1001,7 @@ function apply_h($v)
         .step-desc {
             margin: 0;
             color: #3a3a3a;
-            font-size: clamp(12.5px, 3.2vw, 21px);
+            font-size: clamp(17.5px, calc(3.2vw + 5px), 26px);
             line-height: 1.7;
         }
 
@@ -1455,6 +1491,17 @@ function apply_h($v)
 
         @media (max-height: 740px) {
             .apply-why, .apply-process, .apply-check, .apply-form-sec { padding-top: 22px; padding-bottom: 22px; }
+            .page--hero .apply-hero { padding-top: clamp(14px, 3.5vh, 30px); padding-bottom: clamp(12px, 3vh, 26px); }
+            /* kichik ekranda matn +5px emas, +1px — bo'lim bitta ekranga sig'sin */
+            .apply-eyebrow { font-size: clamp(13px, calc(3vw + 1px), 21px); }
+            .apply-h2      { font-size: clamp(25px, calc(6.4vw + 1px), 42px); }
+            .why-title     { font-size: clamp(15px, calc(3.7vw + 1px), 25px); }
+            .why-desc      { font-size: clamp(13px, calc(3.1vw + 1px), 21px); }
+            .step-title    { font-size: clamp(16px, calc(3.9vw + 1px), 26px); }
+            .step-desc     { font-size: clamp(13.5px, calc(3.2vw + 1px), 22px); }
+            .check-title   { font-size: clamp(17px, calc(4.2vw + 1px), 28px); }
+            .check-list li { font-size: clamp(14.5px, calc(3.5vw + 1px), 23px); }
+            .asset-grid li { font-size: clamp(14px, calc(3.4vw + 1px), 22px); }
             .apply-h2 { margin-bottom: 18px; }
             .why-list { gap: 9px; }
             .why-card { padding: 12px 14px; }
@@ -1575,9 +1622,10 @@ function apply_h($v)
                             </svg></button>
                     </header>
                     <div class="apply-hero">
+                    <span class="scroll-hint" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
                     <p class="apply-eyebrow reveal">FOR CLINICS</p>
                     <h1 id="apply-title" class="apply-title reveal">우리 병원 시술을<br>찾는 고객과<br>바로 연결하세요</h1>
-                    <p class="apply-lead reveal">피부과·성형외과 미용시술 가격 비교 플랫폼<br>서울미녀에 병원을 등록하고, 시술·지역으로 병원을 찾는 고객을 만나보세요.</p>
+                    <p class="apply-lead reveal">피부과·성형외과 미용시술 가격 비교 플랫폼 서울미녀에 병원을 등록하고, 시술·지역으로 병원을 찾는 고객을 만나보세요.</p>
                     </div>
 
                     <!-- 2) 입점비 0원 -->

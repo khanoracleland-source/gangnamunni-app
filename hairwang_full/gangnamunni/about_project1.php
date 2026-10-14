@@ -488,8 +488,8 @@ header('Pragma: no-cache');
         .bk-panel dd { margin: 0; }
         .bk-btn-box { position: relative; margin: 12px 50px 0; padding: 38px 0; border: 2px solid var(--brand-deep); border-radius: 10px; }
         .bk-btn { display: grid; place-items: center; height: 46px; margin: 0 auto; width: 66%; border: 1px solid var(--brand); color: var(--brand); font-size: 13px; }
-        .bk-badge { position: absolute; left: 50%; top: calc(100% + 22px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; }
-        .bk-badge::before { content: ""; position: absolute; left: 50%; margin-left: -8px; top: -9px; width: 16px; height: 10px; background: var(--tail-up) center / 100% 100% no-repeat; }
+        .bk-badge { position: absolute; left: 50%; top: auto; bottom: calc(100% - 4px); transform: translateX(-50%); padding: 9px 18px; border-radius: 8px; background: var(--brand); color: #fff; font-size: clamp(14px, calc(3.8 * var(--vw, 1vw)), 16px); font-weight: 700; white-space: nowrap; }
+        .bk-badge::after { content: ""; position: absolute; left: 50%; margin-left: -8px; top: calc(100% - 1px); width: 16px; height: 10px; background: var(--tail-down) center / 100% 100% no-repeat; }
         .mock-booked .a-fade { --a: lg-fade .5s ease-out .9s; }
         .mock-booked .a-box { --a: lg-box .45s ease-out 1.2s; }
         .mock-booked .a-item { --a: lg-rise .4s ease-out calc(1.4s + var(--i) * .1s); }

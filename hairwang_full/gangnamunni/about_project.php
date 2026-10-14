@@ -20,7 +20,7 @@
         .about-header { height: auto; aspect-ratio: 640 / 70; display: flex; align-items: center; justify-content: space-between; padding: 0 3.2%; background: #faf8f7; }
         .about-brand { width: 19%; min-width: 72px; max-width: 128px; display: block; }
         .about-brand img { display: block; width: 100%; height: auto; }
-        .about-share { display: flex; align-items: center; gap: 6px; border: 0; padding: 6px 0 6px 10px; color: #333; background: transparent; font: inherit; font-size: clamp(12px, 3.1vw, 20px); cursor: pointer; }
+        .about-share { display: flex; align-items: center; gap: 6px; border: 0; padding: 6px 0 6px 10px; color: #333; background: transparent; font: inherit; font-size: clamp(12px, 5.1vw, 33px); cursor: pointer; }
         .about-share svg { width: 1em; height: 1em; }
         .about-layout { position: relative; }
         .about-layout > svg { display: block; width: 100%; height: auto; }
