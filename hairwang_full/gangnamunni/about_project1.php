@@ -63,10 +63,12 @@ header('Pragma: no-cache');
 
 
         .guide-dots { display: flex; align-items: center; justify-content: center; margin-bottom: 38px; }
+        .guide-dots .dots-rail { position: relative; display: flex; align-items: center; }
         .guide-dots i { width: 9px; height: 9px; background: #d4d4d4; }
-        .guide-dots i.is-on { background: var(--brand-deep); }
         .guide-dots i + i { margin-left: 34px; position: relative; }
         .guide-dots i + i::before { content: ""; position: absolute; right: 13px; top: 4px; width: 26px; height: 1px; background: #cfcfcf; }
+        /* Qizil belgi: swipe paytida chiziq bo'ylab silliq sirpanadi (--p = slayd ichidagi kasr holat) */
+        .guide-dots b { position: absolute; left: 0; top: 50%; width: 9px; height: 9px; margin-top: -5px; background: var(--brand-deep); transform: translate3d(calc(var(--p, 0) * 43px), 0, 0); will-change: transform; }
 
         .slide-title { margin: 0 20px 18px; font-size: clamp(21px, calc(5.8 * var(--vw, 1vw)), 27px); font-weight: 800; letter-spacing: -.02em; line-height: 1.35; }
         .slide-lead { margin: 0 20px; font-size: clamp(16px, calc(4.4 * var(--vw, 1vw)), 20px); line-height: 1.6; color: var(--text); }
@@ -1106,13 +1108,34 @@ header('Pragma: no-cache');
     var current = -1;
 
     // Har bir slayd uchun o'z tabidagi nuqtalarni chizish
+    var dotMarks = [];
     slides.forEach(function (slide) {
         var group = slides.filter(function (s) { return s.dataset.tab === slide.dataset.tab; });
         var dots = slide.querySelector('.guide-dots');
         if (!dots) return;
         if (group.length < 2) { dots.style.visibility = 'hidden'; dots.innerHTML = '<i></i>'; return; }
-        dots.innerHTML = group.map(function (s) { return '<i' + (s === slide ? ' class="is-on"' : '') + '></i>'; }).join('');
+        var rail = document.createElement('span');
+        rail.className = 'dots-rail';
+        rail.innerHTML = group.map(function () { return '<i></i>'; }).join('') + '<b></b>';
+        dots.innerHTML = '';
+        dots.appendChild(rail);
+        dotMarks.push({ marker: rail.querySelector('b'), start: slides.indexOf(group[0]), len: group.length });
     });
+
+    // Qizil belgini scroll holatiga qarab surish - swipe bilan bir vaqtda silliq harakatlanadi
+    var dotsTick = 0;
+    function updateDots() {
+        if (!track.clientWidth) return;
+        var pos = track.scrollLeft / track.clientWidth;
+        dotMarks.forEach(function (d) {
+            var p = Math.max(0, Math.min(d.len - 1, pos - d.start));
+            d.marker.style.setProperty('--p', Math.round(p * 1000) / 1000);
+        });
+    }
+    function queueDots() {
+        if (dotsTick) return;
+        dotsTick = requestAnimationFrame(function () { dotsTick = 0; updateDots(); });
+    }
 
     function goTo(index) {
         track.scrollTo({ left: index * track.clientWidth, behavior: reduceMotion ? 'auto' : 'smooth' });
@@ -1141,6 +1164,7 @@ header('Pragma: no-cache');
     });
 
     track.addEventListener('scroll', function () {
+        queueDots();
         setActive(Math.round(track.scrollLeft / track.clientWidth));
     }, { passive: true });
 
@@ -1216,12 +1240,14 @@ header('Pragma: no-cache');
         });
         guideEl.style.setProperty('--hdr', document.querySelector('.guide-top').offsetHeight + 'px'); // qatlam sarlavha ostidan boshlanadi
         if (current >= 0) track.scrollLeft = current * track.clientWidth;
+        updateDots();
     }
     fitToScreen();
     window.addEventListener('resize', fitToScreen);
     window.addEventListener('orientationchange', function () { setTimeout(fitToScreen, 200); });
 
     setActive(0);
+    updateDots();
 }());
 </script>
 </body>
