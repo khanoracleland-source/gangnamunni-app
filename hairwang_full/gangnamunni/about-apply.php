@@ -266,8 +266,11 @@ function apply_h($v)
             background: #faf8f7;
         }
 
+        /* 로고는 헤더 폭에 비례해 커진다 (작은 폰 70px ~ 큰 화면 128px) */
         .about-brand {
-            width: 14%;
+            width: 19%;
+            min-width: 72px;
+            max-width: 128px;
             display: block;
         }
 
@@ -286,7 +289,7 @@ function apply_h($v)
             color: #333;
             background: transparent;
             font: inherit;
-            font-size: clamp(11px, 2.8vw, 18px);
+            font-size: clamp(12px, 3.1vw, 20px);
             cursor: pointer;
         }
 
@@ -336,12 +339,15 @@ function apply_h($v)
            시안 비율: 히어로 텍스트는 위에서 약 8% 지점, 빨간 띠는 화면 아래 약 30%. */
         .page--hero { padding: 0; }
         .page--hero .about-header { flex: none; }
+        /* 히어로 텍스트는 남는 공간의 가운데보다 살짝 위에 놓인다.
+           (16 Pro Max 처럼 긴 화면에서 텍스트 아래 여백만 커지지 않도록) */
         .page--hero .apply-hero {
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
-            padding-top: clamp(24px, 8vh, 80px);
+            justify-content: center;
+            padding-top: clamp(20px, 5vh, 56px);
+            padding-bottom: clamp(18px, 4vh, 48px);
         }
         .page--hero .apply-offer {
             flex: none;
@@ -352,8 +358,19 @@ function apply_h($v)
             justify-content: center;
         }
 
+        /* 세로로 짧은 화면(가로 모드 등)에서는 빨간 띠가 화면을 잡아먹지 않게 */
+        @media (max-height: 560px) {
+            .page--hero .apply-offer { min-height: 0; }
+            .page--hero .apply-hero { padding-top: clamp(16px, 5vh, 40px); padding-bottom: clamp(14px, 4vh, 32px); }
+        }
+
         /* 내용이 화면보다 길면 섹션이 늘어나고 평소처럼 스크롤된다 */
-        .apply-why, .apply-process, .apply-check { padding-top: clamp(36px, 9vw, 60px); padding-bottom: clamp(36px, 9vw, 60px); }
+        .apply-why, .apply-process, .apply-check {
+            padding-top: clamp(36px, 9vw, 60px);
+            padding-bottom: clamp(36px, 9vw, 60px);
+            /* 내용이 화면보다 짧으면 세로 가운데 정렬 — 아래에 큰 여백이 남지 않는다 */
+            justify-content: center;
+        }
         .apply-form-sec { justify-content: flex-start; }
 
         @media (prefers-reduced-motion: reduce) {
@@ -366,16 +383,16 @@ function apply_h($v)
         }
 
         .apply-eyebrow {
-            margin: 0 0 clamp(14px, 3.4vw, 22px);
+            margin: 0 0 clamp(14px, max(3.4vw, 1.9vh), 26px);
             color: var(--brand);
-            font-size: clamp(12px, 3vw, 19px);
+            font-size: clamp(12px, max(3vw, 1.7vh), 20px);
             font-weight: 500;
             letter-spacing: .42em;
         }
 
         .apply-title {
-            margin: 0 0 clamp(22px, 5.6vw, 36px);
-            font-size: clamp(26px, 7vw, 45px);
+            margin: 0 0 clamp(22px, max(5.6vw, 3.1vh), 44px);
+            font-size: clamp(26px, max(7vw, 4.6vh), 52px);
             font-weight: 800;
             line-height: 1.32;
             letter-spacing: -.03em;
@@ -384,7 +401,7 @@ function apply_h($v)
         .apply-lead {
             margin: 0;
             color: var(--text);
-            font-size: clamp(13px, 3.4vw, 22px);
+            font-size: clamp(13px, max(3.4vw, 2.1vh), 24px);
             font-weight: 400;
             line-height: 1.85;
         }
@@ -398,14 +415,14 @@ function apply_h($v)
         }
 
         .apply-offer-top {
-            margin: 0 0 clamp(10px, 2.6vw, 18px);
-            font-size: clamp(13px, 3.4vw, 22px);
+            margin: 0 0 clamp(10px, max(2.6vw, 1.5vh), 20px);
+            font-size: clamp(13px, max(3.4vw, 2.1vh), 24px);
             font-weight: 500;
         }
 
         .apply-offer-main {
-            margin: 0 0 clamp(10px, 2.6vw, 18px);
-            font-size: clamp(34px, 9.2vw, 60px);
+            margin: 0 0 clamp(10px, max(2.6vw, 1.5vh), 20px);
+            font-size: clamp(34px, max(9.2vw, 5.6vh), 68px);
             font-weight: 900;
             letter-spacing: -.03em;
             line-height: 1.1;
@@ -413,7 +430,7 @@ function apply_h($v)
 
         .apply-offer-sub {
             margin: 0;
-            font-size: clamp(13px, 3.4vw, 22px);
+            font-size: clamp(13px, max(3.4vw, 2.1vh), 24px);
             font-weight: 500;
         }
 
@@ -1560,7 +1577,7 @@ function apply_h($v)
                     <div class="apply-hero">
                     <p class="apply-eyebrow reveal">FOR CLINICS</p>
                     <h1 id="apply-title" class="apply-title reveal">우리 병원 시술을<br>찾는 고객과<br>바로 연결하세요</h1>
-                    <p class="apply-lead reveal">피부과·성형외과 미용시술 가격 비교 플랫폼<br>서울미녀에 병원을 등록하고, 시술·지역으로 병원을 찾는<br>고객을 만나보세요.</p>
+                    <p class="apply-lead reveal">피부과·성형외과 미용시술 가격 비교 플랫폼<br>서울미녀에 병원을 등록하고, 시술·지역으로 병원을 찾는 고객을 만나보세요.</p>
                     </div>
 
                     <!-- 2) 입점비 0원 -->
