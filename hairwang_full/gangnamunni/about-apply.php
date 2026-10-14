@@ -150,6 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $full_address = trim($old['sido'] . ' ' . $old['address_detail']);
+                // categories ustuni JSON massiv bo'lishi shart (jadvalda json_valid CHECK bor).
+                // "피부과·성형외과" kabi qoʻshma tanlov ikkita elementga boʻlinadi.
+                $category_list = array_values(array_filter(array_map('trim', explode('·', $old['department'])), function ($v) { return $v !== ''; }));
+                $categories_json = json_encode($category_list, JSON_UNESCAPED_UNICODE);
                 $applied_by   = 'about_' . $client_ip . '_' . time();
                 // 문의 내용은 심사 화면(admin_requested_hospitals.php)에서 바로 보이도록 description 에 담는다.
                 $description  = $old['memo'];
@@ -168,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $old['email'],
                         $old['manager'],
                         $full_address,
-                        $old['department'],
+                        $categories_json,
                         $description,
                         $applied_by
                     );
@@ -263,7 +267,7 @@ function apply_h($v)
             align-items: center;
             justify-content: space-between;
             padding: 0 3.2%;
-            background: #faf8f7;
+            background: #ffffff;
         }
 
         /* 로고는 헤더 폭에 비례해 커진다 (작은 폰 70px ~ 큰 화면 128px) */
@@ -309,7 +313,9 @@ function apply_h($v)
             height: 100dvh;
             overflow-y: scroll;
             scroll-behavior: smooth;
-            scroll-snap-type: y mandatory;
+            /* mandatory emas, proximity: oxirgi (신청서) bo'limi ekrandan baland,
+               mandatory bo'lganda iOS uni pastga yetganda majburan yuqoriga tortib yuboradi */
+            scroll-snap-type: none; /* snap yo'q — oddiy, erkin skroll */
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
         }
@@ -322,8 +328,7 @@ function apply_h($v)
                 휠·터치가 부모로 전달되지 않고 페이지 전체가 멈춰버린다) */
             min-height: 100vh;
             min-height: 100dvh;
-            scroll-snap-align: start;
-            scroll-snap-stop: always; /* 한 번에 두 화면씩 넘어가지 않게 */
+            /* snap o'chirilgan: bo'limlar oddiy skroll bilan ketma-ket ochiladi */
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
@@ -351,8 +356,8 @@ function apply_h($v)
         }
         .page--hero .apply-offer {
             flex: none;
-            min-height: 30vh;
-            min-height: 30dvh;
+            min-height: 55vh;
+            min-height: 55dvh;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -371,7 +376,14 @@ function apply_h($v)
             /* 내용이 화면보다 짧으면 세로 가운데 정렬 — 아래에 큰 여백이 남지 않는다 */
             justify-content: center;
         }
+        /* uzun forma bo'limi snap nuqtasi bo'lmasin — ichida erkin skroll qilinadi */
         .apply-form-sec { justify-content: flex-start; }
+
+        /* CHECKLIST bo'limi to'liq ekran emas, 75dvh */
+        .apply-check {
+            min-height: 75vh;
+            min-height: 75dvh;
+        }
 
         @media (prefers-reduced-motion: reduce) {
             .about-page { scroll-behavior: auto; }
@@ -390,8 +402,18 @@ function apply_h($v)
             letter-spacing: .42em;
         }
 
-        .apply-title {
+        /* sarlavha va qo'l ishorasi bir qatorda: qo'l o'ngda, pastki chekkaga tekislangan */
+        .apply-title-row {
+            display: flex;
+            align-items: flex-end;
+            gap: clamp(8px, 2.4vw, 18px);
             margin: 0 0 clamp(22px, max(5.6vw, 3.1vh), 44px);
+        }
+
+        .apply-title {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin: 0;
             font-size: clamp(26px, max(7vw, 4.6vh), 52px);
             font-weight: 800;
             line-height: 1.32;
@@ -406,30 +428,34 @@ function apply_h($v)
             line-height: 1.85;
         }
 
-        /* pastga swipe qilishni bildiruvchi dumaloq belgi (hero, o'ng tomon) */
+        /* Pastga surish ishorasi: about_project1.php dagi qo'l rasmi.
+           Harakat vertikal: pastdan yuqoriga ko'tariladi, yuqorida so'nadi va
+           yana pastdan paydo bo'ladi (orqaga tushib kelmaydi).
+           Rasm atrofidagi bo'sh joy kesilgan — shuning uchun konteyner overflow: hidden. */
         .scroll-hint {
             align-self: flex-end;
-            flex: none;
-            display: grid;
-            place-items: center;
-            width: clamp(34px, 9vw, 52px);
-            height: clamp(34px, 9vw, 52px);
-            margin: 0 0 clamp(14px, 3.6vw, 24px);
-            border: 1.5px solid rgba(174, 25, 50, .3);
-            border-radius: 50%;
-            color: var(--brand);
-            background: #fff;
-            animation: hint-bob 1.8s ease-in-out infinite;
+            flex: 0 0 auto;
+            display: block;
+            width: clamp(32px, 8.2vw, 48px);
+            margin: 0 0 clamp(4px, 1.2vw, 10px) 0;
+            animation: hint-swipe-up 2.4s linear infinite;
         }
 
-        .scroll-hint svg {
-            width: 52%;
-            height: 52%;
+        .scroll-hint img {
+            display: block;
+            width: 100%;
+            height: auto;
+            transform: rotate(-15deg);
         }
 
-        @keyframes hint-bob {
-            0%, 100% { transform: translateY(0); }
-            50%      { transform: translateY(6px); }
+        @keyframes hint-swipe-up {
+            /* har bir segmentga ease-in-out alohida qo'llanmasligi uchun linear:
+               aks holda qo'l o'rtada sekinlashib "to'xtaganday" ko'rinadi */
+            0%        { transform: translateY(12px); opacity: 0; animation-timing-function: ease-out; }
+            12%       { transform: translateY(6px); opacity: 1; animation-timing-function: linear; }
+            78%       { transform: translateY(-88px); opacity: 1; animation-timing-function: linear; }
+            92%       { transform: translateY(-112px); opacity: 0; }
+            93%, 100% { transform: translateY(12px); opacity: 0; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -444,6 +470,25 @@ function apply_h($v)
             padding: clamp(28px, 7.4vw, 48px) clamp(20px, 5.6vw, 36px) clamp(30px, 8vw, 52px);
         }
 
+        /* lead matni qizil lenta ichida — oq rangda */
+        .apply-offer .apply-lead {
+            color: #fff;
+            margin: 0 0 clamp(18px, 4.6vw, 32px);
+        }
+
+        /* oq, yumaloq karta: ichidagi matn brend rangida */
+        .offer-card {
+            background: #fff;
+            color: var(--brand);
+            border-radius: clamp(22px, 6.5vw, 44px);
+            padding: clamp(20px, 5.4vw, 36px) clamp(16px, 4.4vw, 30px) clamp(22px, 5.8vw, 38px);
+            margin: 0 clamp(0px, 1.6vw, 14px);
+        }
+
+        .apply-offer-main .offer-free {
+            color: var(--brand);
+        }
+
         .apply-offer-top {
             margin: 0 0 clamp(10px, max(2.6vw, 1.5vh), 20px);
             font-size: clamp(18px, calc(max(3.4vw, 2.1vh) + 5px), 29px);
@@ -451,6 +496,7 @@ function apply_h($v)
         }
 
         .apply-offer-main {
+            color: #1a1a1a;
             margin: 0 0 clamp(10px, max(2.6vw, 1.5vh), 20px);
             font-size: clamp(39px, calc(max(9.2vw, 5.6vh) + 5px), 73px);
             font-weight: 900;
@@ -1605,7 +1651,7 @@ function apply_h($v)
                     <h2 class="done-h2" id="done-prep-title">미리 준비하면 더 빨라요</h2>
                     <ul class="check-list">
                         <li>사업자등록증</li>
-                        <li>의료기관 개설신고증명서 (또는 개설허가증)</li>
+                        <li>의료기관 개설신고증명서<br>(또는 개설허가증)</li>
                         <li>정산용 통장 사본</li>
                     </ul>
                     <a class="submit-btn done-btn" href="index.php">확인했어요</a>
@@ -1622,17 +1668,21 @@ function apply_h($v)
                             </svg></button>
                     </header>
                     <div class="apply-hero">
-                    <span class="scroll-hint" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
                     <p class="apply-eyebrow reveal">FOR CLINICS</p>
-                    <h1 id="apply-title" class="apply-title reveal">우리 병원 시술을<br>찾는 고객과<br>바로 연결하세요</h1>
-                    <p class="apply-lead reveal">피부과·성형외과 미용시술 가격 비교 플랫폼 서울미녀에 병원을 등록하고, 시술·지역으로 병원을 찾는 고객을 만나보세요.</p>
+                    <div class="apply-title-row">
+                        <h1 id="apply-title" class="apply-title reveal">우리 병원 시술을<br>찾는 고객과<br>바로 연결하세요</h1>
+                        <span class="scroll-hint" aria-hidden="true"><img src="assets/media/about-apply-hand.png?v=<?= (int)@filemtime(__DIR__ . '/assets/media/about-apply-hand.png') ?>" alt="" width="184" height="268"></span>
+                    </div>
                     </div>
 
                     <!-- 2) 입점비 0원 -->
                     <div class="apply-offer" aria-label="입점비 혜택 안내">
-                    <p class="apply-offer-top reveal">지금 신청하면</p>
-                    <p class="apply-offer-main reveal">입점비 0원</p>
-                    <p class="apply-offer-sub reveal">2027년 6월까지 입점비 없이 시작하세요</p>
+                    <p class="apply-lead reveal">피부과·성형외과 미용시술 가격 비교 플랫폼 서울미녀에 병원을 등록하고, 시술·지역으로 병원을 찾는 고객을 만나보세요.</p>
+                    <div class="offer-card">
+                        <p class="apply-offer-top reveal">지금 신청하면</p>
+                        <p class="apply-offer-main reveal">입점비 <span class="offer-free">0원</span></p>
+                        <p class="apply-offer-sub reveal">2027년 6월까지 입점비 없이 시작하세요</p>
+                    </div>
                     </div>
                 </section>
 
@@ -1734,7 +1784,7 @@ function apply_h($v)
                         <h3 class="check-title">계약 서류</h3>
                         <ul class="check-list">
                             <li>사업자등록증</li>
-                            <li>의료기관 개설신고증명서 (또는 개설허가증)</li>
+                            <li>의료기관 개설신고증명서<br>(또는 개설허가증)</li>
                             <li>정산용 통장 사본</li>
                         </ul>
                         <p class="check-note"><span aria-hidden="true">※</span>세부 서류는 상담 시 다시 안내드려요.</p>
@@ -2190,8 +2240,10 @@ function apply_h($v)
                         return fail('이메일을 정확히 입력해 주세요. 승인 시 이 주소로 관리자 계정이 발급돼요.', email);
                     }
 
-                    var agree = form.elements['privacy_agree'];
-                    if (!agree.checked) {
+                    // form.elements[] bir nechta element bo'lsa RadioNodeList qaytaradi (.checked = undefined),
+                    // shuning uchun to'g'ridan-to'g'ri input ni olamiz
+                    var agree = form.querySelector('input[name="privacy_agree"]');
+                    if (!agree || !agree.checked) {
                         e.preventDefault();
                         return fail('개인정보 수집·이용에 동의해 주세요.', agree);
                     }
