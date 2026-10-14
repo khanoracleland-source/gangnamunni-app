@@ -395,7 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <strong>반려 사유:</strong><br>" . nl2br(htmlspecialchars($reject_reason)) . "
                         </div>
                         <p>서류를 보완하신 후 재신청 가능합니다.</p>
-                        <p><a href='" . SITE_FULL_URL . "hospital_apply.php'>재신청하기</a></p>
+                        <p><a href='" . SITE_FULL_URL . "about-apply.php'>재신청하기</a></p>
                         <p>감사합니다.<br>서울미녀 팀</p>";
                     try {
                         $reject_mail = mail_send(0, $reject_info['email'], '[서울미녀] 병원 등록 신청 반려 안내', $reject_body);
@@ -406,7 +406,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 notifyAdmins($connect, 'hospital_reject',
                     '병원 신청 반려',
                     htmlspecialchars($reject_info['name'] ?? '') . ' — ' . mb_substr($reject_reason, 0, 50),
-                    'admin_hospitals.php'
+                    'admin_requested_hospitals.php?status=rejected'
                 );
             } else {
                 $error = '반려 처리 실패: ' . mysqli_error($connect);

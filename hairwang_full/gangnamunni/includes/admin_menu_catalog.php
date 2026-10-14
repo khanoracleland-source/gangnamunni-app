@@ -116,7 +116,6 @@ function admin_sidebar_menus(): array {
         ['type' => 'group', 'label' => '병원 등록', 'icon' => 'bi-hospital', 'key' => 'hospital_register', 'children' => [
             ['url' => 'hospital_apply.php', 'label' => '병원 등록 신청', 'icon' => 'bi-pencil-square', 'key' => 'hospital_apply'],
             ['url' => 'hospital_apply_status.php', 'label' => '내 신청 현황', 'icon' => 'bi-clock-history', 'key' => 'hospital_apply_status'],
-            ['url' => 'admin_hospitals.php?tab=pending', 'label' => '신청 목록 (관리자)', 'icon' => 'bi-list-check', 'key' => 'hospital_pending'],
         ]],
 
         // ── 구분선: 콘텐츠/데이터 영역 ──

@@ -805,7 +805,8 @@ if (isset($connect) && $connect) {
                                 <?php if ($child['key'] === 'reviews' && $sidebar_reviews_pending > 0): ?>
                                 <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_reviews_pending > 99 ? '99+' : $sidebar_reviews_pending; ?></span>
                                 <?php endif; ?>
-                                <?php if (($child['url'] === 'admin_hospitals.php' || $child['key'] === 'hospital_pending') && $sidebar_hospitals_pending > 0): ?>
+                                <?php /* 입점 신청 배지는 심사 화면(admin_requested_hospitals.php)에만 — 병원 관리 메뉴에는 띄우지 않는다 */ ?>
+                                <?php if ($child['key'] === 'hospital_request_review' && $sidebar_hospitals_pending > 0): ?>
                                 <span class="badge rounded-pill bg-danger ms-1" style="font-size:10px;"><?php echo $sidebar_hospitals_pending > 99 ? '99+' : $sidebar_hospitals_pending; ?></span>
                                 <?php endif; ?>
                             </a>

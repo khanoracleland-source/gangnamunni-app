@@ -139,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
                             require_once __DIR__ . '/includes/mail_helper.php';
                             @mail_send(0, 'admin@seoulbeauty.app', '[서울미녀] 새 병원 등록 신청 - '.$name,
-                                "<h2>새 병원 등록 신청</h2><p>병원: ".htmlspecialchars($name)."</p><p>대표: ".htmlspecialchars($owner_name)."</p><p>이메일: ".htmlspecialchars($email)."</p><p><a href='".SITE_FULL_URL."admin_hospitals.php?tab=pending'>확인</a></p>");
+                                "<h2>새 병원 등록 신청</h2><p>병원: ".htmlspecialchars($name)."</p><p>대표: ".htmlspecialchars($owner_name)."</p><p>이메일: ".htmlspecialchars($email)."</p><p><a href='".SITE_FULL_URL."admin_requested_hospitals.php'>확인</a></p>");
                             if (!empty($email)) {
                                 @mail_send(0, $email, '[서울미녀] 병원 등록 신청 접수 확인',
                                     "<h2>신청 접수 완료</h2><p>".htmlspecialchars($name)." 입점 신청이 접수되었습니다.</p><p>1~3 영업일 내 결과를 안내드립니다.</p>");

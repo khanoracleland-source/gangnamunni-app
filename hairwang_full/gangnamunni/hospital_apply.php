@@ -388,7 +388,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($hospital_apply_csrf, 
                         notifyAdmins($connect, 'hospital_apply',
                             '새 병원 등록 신청',
                             htmlspecialchars($name) . ' (신청번호 #' . $new_id . ')',
-                            'admin_hospitals.php?status=pending',
+                            'admin_requested_hospitals.php',
                             ['hospital_id' => $new_id, 'hospital_name' => $name]
                         );
                     } catch (\Throwable $e) {

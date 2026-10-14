@@ -242,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                                 <p><strong>사업자번호:</strong> " . htmlspecialchars($business_number) . "</p>
                                 <p><strong>이메일:</strong> " . htmlspecialchars($email) . "</p>
                                 <p><strong>담당자:</strong> " . htmlspecialchars($contact_name) . " / " . htmlspecialchars($contact_phone) . "</p>
-                                <p><a href='" . SITE_FULL_URL . "admin_hospitals.php?tab=pending'>신청 목록 확인</a></p>";
+                                <p><a href='" . SITE_FULL_URL . "admin_requested_hospitals.php'>신청 목록 확인</a></p>";
                             try {
                                 $ares = mail_send(0, 'admin@seoulbeauty.app', '[서울미녀] 새 병원 등록 신청 - ' . $name, $admin_body);
                                 if (!(is_array($ares) ? !empty($ares['success']) : $ares)) error_log('[hospital_apply] 관리자 알림 메일 실패');
@@ -266,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $apply_enabled && !$rate_limited) {
                         notifyAdmins($connect, 'hospital_apply',
                             '새 병원 등록 신청 (공개)',
                             htmlspecialchars($name) . ' (신청번호 #' . $new_id . ')',
-                            'admin_hospitals.php?tab=pending',
+                            'admin_requested_hospitals.php',
                             ['hospital_id' => $new_id]
                         );
                     } else {
