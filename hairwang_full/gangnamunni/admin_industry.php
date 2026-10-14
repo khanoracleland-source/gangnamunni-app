@@ -28,10 +28,27 @@ $current_preset = industry_id();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json; charset=utf-8');
 
+    /**
+     * 프리셋 ID 검증 (경로 조작 방지)
+     * - 파일명 문자만 허용 + 실제 존재하는 프리셋 화이트리스트와 대조
+     * @return string|null 유효한 ID, 아니면 null
+     */
+    $validate_preset_id = function ($raw) {
+        $id = basename(trim((string)$raw));
+        if ($id === '' || !preg_match('/^[a-z0-9_-]{1,64}$/i', $id)) {
+            return null;
+        }
+        foreach (IndustryPreset::getAvailablePresets() as $p) {
+            if ($p['id'] === $id) {
+                return $id;
+            }
+        }
+        return null;
+    };
+
     if ($_POST['action'] === 'change_industry') {
-        $new_id = trim($_POST['preset_id'] ?? '');
-        $presets_dir = __DIR__ . '/includes/presets/';
-        if (!file_exists($presets_dir . $new_id . '.json')) {
+        $new_id = $validate_preset_id($_POST['preset_id'] ?? '');
+        if ($new_id === null) {
             echo json_encode(['success' => false, 'error' => '프리셋 없음']);
             exit;
         }
@@ -81,9 +98,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($_POST['action'] === 'preview_preset') {
-        $pid = trim($_POST['preset_id'] ?? '');
+        $pid = $validate_preset_id($_POST['preset_id'] ?? '');
+        if ($pid === null) {
+            echo json_encode(['error' => 'not found']);
+            exit;
+        }
         $file = __DIR__ . '/includes/presets/' . $pid . '.json';
-        if (file_exists($file)) {
+        if (is_file($file)) {
             echo file_get_contents($file);
         } else {
             echo json_encode(['error' => 'not found']);

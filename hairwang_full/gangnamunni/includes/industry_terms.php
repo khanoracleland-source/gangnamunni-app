@@ -58,6 +58,12 @@ class IndustryPreset {
             $this->presetId = 'medical_beauty';
         }
 
+        // 경로 조작 방지: 프리셋 ID는 파일명 문자만 허용
+        if (!preg_match('/^[a-z0-9_-]{1,64}$/i', (string)$this->presetId)) {
+            error_log("[IndustryPreset] 잘못된 프리셋 ID 차단: {$this->presetId}");
+            $this->presetId = 'medical_beauty';
+        }
+
         $presetFile = __DIR__ . '/presets/' . $this->presetId . '.json';
 
         if (file_exists($presetFile)) {
