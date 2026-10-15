@@ -9,6 +9,10 @@ session_start();
 $admin_page_title = '계정 설정';
 $admin_current = 'mail_accounts';
 
+// DB 상수를 관리자 검사보다 먼저 올린다 — check_admin_login() 이 cred_epoch
+// (비밀번호 변경 시 세션 폐기)를 조회할 수 있어야 한다. 아래쪽의
+// require_once 는 그대로 두되 두 번 로드되지 않는다(require_once).
+require_once __DIR__ . '/../dbconfig.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 require_admin_login();
 require_permission('mail_accounts');

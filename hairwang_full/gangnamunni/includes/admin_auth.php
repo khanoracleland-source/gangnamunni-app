@@ -109,7 +109,7 @@ function admin_set_session($admin, $connect = null) {
     // 이 세션이 어느 비밀번호 세대에 속하는지 기록한다(check_admin_login 검사용).
     $_SESSION['ad_cred_epoch'] = array_key_exists('cred_epoch', $admin)
         ? (int) $admin['cred_epoch']
-        : admin_cred_epoch($admin['id'], $connect);
+        : (int) (admin_cred_epoch($admin['id'], $connect) ?? 0);
     $_SESSION['ad_admin_name'] = $admin['name'];
     $_SESSION['ad_admin_role'] = $admin['role'];
     $_SESSION['ad_admin_permissions'] = json_decode($admin['permissions'] ?? '{}', true) ?: [];
@@ -306,26 +306,55 @@ function admin_cred_epoch($admin_id, $connect = null) {
     static $cache = array();
 
     $admin_id = (int) $admin_id;
-    if ($admin_id <= 0) return 0;
+    if ($admin_id <= 0) return null;
     if (array_key_exists($admin_id, $cache)) return $cache[$admin_id];
 
     if (!$connect) $connect = isset($GLOBALS['connect']) ? $GLOBALS['connect'] : null;
-    if (!$connect) return 0;
 
-    $epoch = 0;
+    // 상당수 관리자 페이지는 $connect 를 만들기 *전에* require_admin_login() 을
+    // 부른다(admin_mail.php, admin_categories.php, api_spell_check.php …).
+    // 그 때마다 검사를 건너뛰면 비밀번호가 바뀐 세션이 그 페이지들에서는
+    // 그대로 통과한다 — 그래서 dbconfig 상수가 있으면 요청당 한 번 자체
+    // 연결을 만들어 쓴다(그누보드/페이지 쪽 연결은 건드리지 않는다).
+    if (!$connect && defined('G5_MYSQL_HOST')) {
+        static $own = null;
+        if ($own === null) {
+            try {
+                $own = mysqli_connect(
+                    G5_MYSQL_HOST,
+                    defined('G5_MYSQL_USER') ? G5_MYSQL_USER : '',
+                    defined('G5_MYSQL_PASSWORD') ? G5_MYSQL_PASSWORD : '',
+                    defined('G5_MYSQL_DB') ? G5_MYSQL_DB : '',
+                    defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306
+                ) ?: false;
+            } catch (Throwable $e) {
+                $own = false;
+            }
+        }
+        if ($own) $connect = $own;
+    }
+
+    // 끝까지 연결이 없으면 "모름"(null) — 0 을 돌려주면 epoch 가 1 이상인
+    // 관리자의 멀쩡한 세션이 끊긴다. 모를 때는 검사를 건너뛴다(캐시에도 담지 않는다).
+    if (!$connect) return null;
+
+    $epoch = null;
     try {
         $stmt = mysqli_prepare($connect, "SELECT cred_epoch FROM gangnamunni_admins WHERE id = ? LIMIT 1");
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, 'i', $admin_id);
             if (mysqli_stmt_execute($stmt)) {
                 $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+                // 계정이 사라진 경우도 "모름"으로 두고 기존 역할 검사에 맡긴다.
                 if ($row) $epoch = (int) $row['cred_epoch'];
             }
             mysqli_stmt_close($stmt);
         }
     } catch (Throwable $e) {
-        return 0; // cred_epoch 컬럼 미적용
+        return null; // cred_epoch 컬럼 미적용(마이그레이션 전)
     }
+
+    if ($epoch === null) return null;
 
     $cache[$admin_id] = $epoch;
     return $epoch;
@@ -369,10 +398,12 @@ function check_admin_login() {
     // 이 세션이 만들어진 뒤 비밀번호가 바뀌었다면(임시 비밀번호 발급 포함)
     // 기기가 어디든 세션을 끊는다. 한 번도 바뀐 적 없으면 0 == 0 이므로
     // 기존 세션은 그대로 유지된다.
-    if (!empty($_SESSION['ad_admin_id'])
-        && (int) ($_SESSION['ad_cred_epoch'] ?? 0) !== admin_cred_epoch($_SESSION['ad_admin_id'])) {
-        unset($_SESSION['ad_admin_logged_in'], $_SESSION['ad_admin_role'], $_SESSION['ad_admin_id'], $_SESSION['ad_cred_epoch']);
-        return false;
+    if (!empty($_SESSION['ad_admin_id'])) {
+        $current_epoch = admin_cred_epoch($_SESSION['ad_admin_id']);
+        if ($current_epoch !== null && (int) ($_SESSION['ad_cred_epoch'] ?? 0) !== $current_epoch) {
+            unset($_SESSION['ad_admin_logged_in'], $_SESSION['ad_admin_role'], $_SESSION['ad_admin_id'], $_SESSION['ad_cred_epoch']);
+            return false;
+        }
     }
     return true;
 }

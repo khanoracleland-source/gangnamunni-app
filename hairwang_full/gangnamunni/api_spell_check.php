@@ -10,6 +10,10 @@ header('Content-Type: application/json; charset=utf-8');
 // 관리자 전용: 인증 없이 열려 있으면 누구나 플랫폼 AI 키로 무제한 호출할 수 있다 (비용 남용).
 // 교차 출처 호출도 허용하지 않는다 (CORS * 제거).
 if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+// DB 상수를 관리자 검사보다 먼저 올린다 — check_admin_login() 이 cred_epoch
+// (비밀번호 변경 시 세션 폐기)를 조회할 수 있어야 한다. 아래쪽의
+// require_once 는 그대로 두되 두 번 로드되지 않는다(require_once).
+require_once __DIR__ . '/dbconfig.php';
 require_once __DIR__ . '/includes/admin_auth.php';
 if (!check_admin_login()) {
     http_response_code(403);
