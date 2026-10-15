@@ -30,6 +30,25 @@ require_once __DIR__ . '/../includes/ai_proxy.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+// 이 엔드포인트는 회원 세션만으로 플랫폼 AI 키를 쓴다 — callAI() 는 hospital_id
+// 가 없으면 지갑 차감도, 호출자 단위 한도도 적용하지 않으므로(병원 지갑 로직만
+// 존재) 여기서 직접 막아야 한다. 막지 않으면 회원 한 명이 플랫폼 비용으로
+// 사실상 무제한 LLM 프록시를 쓸 수 있다. api_spell_check.php 와 같은 방침.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'error' => 'POST 요청만 가능합니다']);
+    exit;
+}
+
+$isAdminCaller = !empty($_SESSION['ad_admin_logged_in']);
+$callerId = $isAdminCaller
+    ? 'admin:' . (string)($_SESSION['ad_admin_id'] ?? 'unknown')
+    : 'member:' . (string)($_SESSION['ss_mb_id'] ?? 'unknown');
+
+// 입력 길이 상한 — 출력 토큰은 max_tokens 로 묶여 있지만 입력 토큰은
+// 호출자가 정하므로, 상한이 없으면 요청 한 번의 비용도 무제한이 된다.
+define('AI_SUGGEST_MAX_CONTENT', 2000);
+define('AI_SUGGEST_MAX_TITLE', 200);
+
 $action = $_POST['action'] ?? '';
 
 switch ($action) {
@@ -46,6 +65,13 @@ switch ($action) {
             echo json_encode(['success' => true, 'suggestions' => [], 'message' => '내용이 너무 짧습니다']);
             break;
         }
+        if (mb_strlen($content) > AI_SUGGEST_MAX_CONTENT || mb_strlen($title) > AI_SUGGEST_MAX_TITLE) {
+            echo json_encode([
+                'success' => false,
+                'error' => '내용은 ' . AI_SUGGEST_MAX_CONTENT . '자, 제목은 ' . AI_SUGGEST_MAX_TITLE . '자 이하만 분석할 수 있습니다',
+            ]);
+            break;
+        }
 
         // AI 활성화 체크
         $settingKey = $context === 'ad' ? 'ai_content_suggest' : 'ai_content_suggest';
@@ -58,6 +84,20 @@ switch ($action) {
                 'success' => true,
                 'suggestions' => $suggestions,
                 'method' => 'rule',
+            ]);
+            break;
+        }
+
+        // 한도 초과 시에는 LLM 을 부르지 않고 규칙 기반으로 내려준다 —
+        // 사용자 화면은 그대로 동작하고 플랫폼 비용은 발생하지 않는다.
+        $quota = aiCheckCallerQuota($callerId, $isAdminCaller);
+        if (!$quota['allowed']) {
+            echo json_encode([
+                'success' => true,
+                'suggestions' => getRuleBasedSuggestions($content, $context),
+                'method' => 'rule_rate_limited',
+                'rate_limited' => true,
+                'retry_after' => $quota['retry'],
             ]);
             break;
         }
@@ -111,10 +151,29 @@ switch ($action) {
             echo json_encode(['success' => true, 'completion' => '']);
             break;
         }
+        if (mb_strlen($content) > AI_SUGGEST_MAX_CONTENT) {
+            echo json_encode([
+                'success' => false,
+                'error' => '내용은 ' . AI_SUGGEST_MAX_CONTENT . '자 이하만 가능합니다',
+            ]);
+            break;
+        }
 
         $enabled = aiIsEnabled($connect, 'ai_content_suggest');
         if (!$enabled) {
             echo json_encode(['success' => true, 'completion' => '', 'method' => 'disabled']);
+            break;
+        }
+
+        $quota = aiCheckCallerQuota($callerId, $isAdminCaller);
+        if (!$quota['allowed']) {
+            echo json_encode([
+                'success' => true,
+                'completion' => '',
+                'method' => 'rate_limited',
+                'rate_limited' => true,
+                'retry_after' => $quota['retry'],
+            ]);
             break;
         }
 

@@ -233,6 +233,104 @@ function aiLogUsage(mysqli $conn, array $params): void
     mysqli_query($conn, $sql);
 }
 
+/**
+ * ────────────────────────────────────────────────────────────────────────
+ * 호출자 단위 사용량 제한 (2026-10-15)
+ *
+ * callAI() 자체에는 호출자 단위 한도가 없다. 비용 통제는 hospital_id 가
+ * 주어진 경우의 병원 지갑 차감(ai_cost_from_wallet)뿐이고, hospital_id 없이
+ * 부르는 엔드포인트는 전부 플랫폼 키로 무료·무제한이 된다. 회원이 접근할 수
+ * 있는 엔드포인트(api/ai_suggest.php)가 여기에 해당했다.
+ *
+ * gnu_login_rate_hit()(auth/login.php)과 같은 파일 락 방식. 저장 위치는
+ * 웹에서 차단된 data/ 하위이며, 1% 확률로 하루 지난 파일을 청소한다.
+ *
+ * @param string $scope  제한 종류 (member / ip / action 등)
+ * @param string $value  식별자 (mb_id, IP …)
+ * @param int    $limit  $window 초 동안 허용 횟수
+ * @param int    $window 초 단위 창 크기
+ * @param bool   $record false 면 세지 않고 현재 상태만 확인
+ * @return array ['allowed'=>bool, 'retry'=>int]  retry = 몇 초 뒤 재시도 가능
+ */
+function aiRateHit(string $scope, string $value, int $limit, int $window, bool $record = true): array
+{
+    $base = defined('G5_DATA_PATH') ? G5_DATA_PATH : __DIR__ . '/../data';
+    if (!is_dir($base)) $base = sys_get_temp_dir();
+    $dir = $base . '/cache/ai_rate';
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        // 디렉터리를 만들 수 없으면 fail-closed — 무제한 호출보다 거부가 안전하다.
+        return ['allowed' => false, 'retry' => 60];
+    }
+
+    $path = $dir . '/' . hash('sha256', $scope . '|' . strtolower($value)) . '.json';
+    $fp = @fopen($path, 'c+');
+    if (!$fp || !flock($fp, LOCK_EX)) {
+        if ($fp) fclose($fp);
+        return ['allowed' => false, 'retry' => 60];
+    }
+
+    $data = json_decode(stream_get_contents($fp) ?: '', true);
+    $now = time();
+    $hits = is_array($data['hits'] ?? null) ? $data['hits'] : [];
+    $hits = array_values(array_filter($hits, function ($ts) use ($now, $window) {
+        return (int)$ts > $now - $window;
+    }));
+
+    $retry = count($hits) >= $limit ? max(1, $window - ($now - (int)$hits[0])) : 0;
+    if (!$retry && $record) $hits[] = $now;
+
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, json_encode(['hits' => $hits]));
+    fflush($fp);
+    flock($fp, LOCK_UN);
+    fclose($fp);
+
+    if (random_int(1, 100) === 1) {
+        foreach (glob($dir . '/*.json') ?: [] as $old) {
+            if (@filemtime($old) < $now - 86400) @unlink($old);
+        }
+    }
+
+    return ['allowed' => $retry === 0, 'retry' => $retry];
+}
+
+/**
+ * 회원/관리자용 AI 엔드포인트의 표준 한도 검사.
+ * 분당 버스트 + 일간 총량을 호출자별로, 그리고 IP별로(다중 계정 대비) 함께 본다.
+ *
+ * @return array ['allowed'=>bool, 'retry'=>int, 'reason'=>string]
+ */
+function aiCheckCallerQuota(string $callerId, bool $isAdmin = false): array
+{
+    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    $perMinute = $isAdmin ? 60 : 10;
+    $perDay    = $isAdmin ? 1000 : 100;
+
+    $checks = [
+        ['caller_min', $callerId, $perMinute, 60,    'burst'],
+        ['caller_day', $callerId, $perDay,    86400, 'daily'],
+        // 계정을 여러 개 만들어 돌리는 경우까지 덮는다.
+        ['ip_min',     $ip,       30,         60,    'ip_burst'],
+        ['ip_day',     $ip,       300,        86400, 'ip_daily'],
+    ];
+
+    // 먼저 전부 확인만 한다 — 한 곳이라도 막히면 다른 카운터를 올리지 않는다.
+    foreach ($checks as $c) {
+        if ($c[1] === '') continue;
+        $state = aiRateHit($c[0], $c[1], $c[2], $c[3], false);
+        if (!$state['allowed']) {
+            return ['allowed' => false, 'retry' => $state['retry'], 'reason' => $c[4]];
+        }
+    }
+    foreach ($checks as $c) {
+        if ($c[1] === '') continue;
+        aiRateHit($c[0], $c[1], $c[2], $c[3], true);
+    }
+
+    return ['allowed' => true, 'retry' => 0, 'reason' => ''];
+}
+
 // ========================================================================
 // AI 호출 메인 함수
 // ========================================================================
