@@ -1,6 +1,8 @@
 <?php
 include_once('./_common.php');
 
+/** @var array $g5 그누보드 전역 설정(common.php 에서 정의) */
+
 $mb_id = isset($_SESSION['ss_cert_mb_id']) ? trim(get_session('ss_cert_mb_id')) : '';
 $mb_dupinfo = isset($_SESSION['ss_cert_dupinfo']) ? trim(get_session('ss_cert_dupinfo')) : '';
 
@@ -24,6 +26,11 @@ if ($mb_password != $mb_password_re)
 $sql_password = "mb_password = '".get_encrypt_string($mb_password)."' ";
 
 sql_query("update {$g5['member_table']} set {$sql_password} where mb_id = '{$mb_id}' AND mb_dupinfo = '{$mb_dupinfo}'");
+
+// 비밀번호가 바뀌었으니 예전 자격증명을 모두 폐기한다.
+if (function_exists('revoke_all_auth_credentials_for')) {
+    revoke_all_auth_credentials_for($mb_id);
+}
 
 set_session('ss_cert_mb_id', '');
 set_session('ss_cert_dupinfo', '');

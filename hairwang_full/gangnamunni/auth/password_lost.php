@@ -24,6 +24,12 @@ $g5_url  = defined('G5_URL') ? G5_URL : '';
 $login_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php';
 $member_table = $g5['member_table'] ?? 'g5_member';
 
+/**
+ * @param mixed $scope
+ * @param mixed $value
+ * @param int $limit
+ * @param int $window
+ */
 function gnu_reset_rate_hit($scope, $value, $limit = 3, $window = 600) {
     $base = defined('G5_DATA_PATH') ? G5_DATA_PATH : sys_get_temp_dir();
     $dir = $base . '/cache/password_reset_rate';
@@ -56,6 +62,9 @@ $done = false;      // 처리 완료(성공 메시지 노출) 여부
 $error = '';
 $request_id = '';
 
+/**
+ * @param int $length
+ */
 function gnu_secure_temporary_password($length = 12) {
     $groups = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%*-_'];
     $chars = [];
@@ -163,6 +172,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if (is_array($result) && !empty($result['success'])) {
                     mysqli_commit($connect);
+                    // 임시 비밀번호가 실제로 저장/발송된 뒤에만 폐기한다(롤백된
+                    // 경우에는 비밀번호가 그대로이므로 끊을 이유가 없다).
+                    if (function_exists('revoke_all_auth_credentials_for')) {
+                        revoke_all_auth_credentials_for($mb['mb_id']);
+                    }
                     error_log('[password_lost][' . $request_id . '] SMTP 접수 완료');
                 } else {
                     mysqli_rollback($connect);

@@ -1,6 +1,14 @@
 <?php
 include_once('./_common.php');
 
+/**
+ * common.php 가 정의하는 전역 변수 (IDE 정적 분석용 선언)
+ * @var array  $config
+ * @var string $url
+ * @var string $member_skin_path
+ * @var int    $patient_app_lifetime
+ */
+
 $g5['title'] = "로그인 검사";
 
 $mb_id       = isset($_POST['mb_id']) ? trim($_POST['mb_id']) : '';
@@ -71,6 +79,11 @@ if (!$is_need_not_password && !$password_valid && !empty($mb['mb_lost_certify'])
             $mb['mb_password'] = $pending_hash;
             $mb['mb_lost_certify'] = '';
             $password_valid = true;
+            // 비밀번호가 교체됐으므로, 아래에서 새 세션/remember 토큰을 만들기
+            // 전에 예전 자격증명을 모두 폐기한다.
+            if (function_exists('revoke_all_auth_credentials_for')) {
+                revoke_all_auth_credentials_for($mb['mb_id']);
+            }
         }
     }
 }

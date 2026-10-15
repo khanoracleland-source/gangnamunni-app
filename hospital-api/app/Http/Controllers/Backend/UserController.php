@@ -19,6 +19,16 @@ class UserController extends Controller
 {
     // use Authorizable;
 
+    public string $module_title;
+
+    public string $module_name;
+
+    public string $module_path;
+
+    public string $module_icon;
+
+    public string $module_model;
+
     public function __construct()
     {
         // Page Title
@@ -47,17 +57,18 @@ class UserController extends Controller
      * Remove the specified resource from storage.
      *
      * @param  int  $id
-     * @return Response
+     * @return \Illuminate\Http\JsonResponse
      */
     public function destroy($id)
     {
+        /** @var \App\Models\User $user */
         $user = auth()->user();
 
         $user->status = 0;
 
         $user->save();
 
-        event(new UserUpdated($$module_name_singular));
+        event(new UserUpdated($user));
 
         return response()->json(['message' => 'Account has been deactivated!']);
     }
@@ -65,13 +76,16 @@ class UserController extends Controller
     /**
      * Resend Email Confirmation Code to User.
      *
-     * @param [type] $hashid [description]
-     * @return [type] [description]
+     * @param  int  $id
+     * @return \Illuminate\Http\RedirectResponse|null
      */
     public function emailConfirmationResend($id)
     {
-        if ($id != auth()->user()->id) {
-            if (auth()->user()->hasAnyRole(['admin'])) {
+        /** @var \App\Models\User $authUser */
+        $authUser = auth()->user();
+
+        if ($id != $authUser->id) {
+            if ($authUser->hasAnyRole(['admin'])) {
                 // Log::info(auth()->user()->name.' ('.auth()->user()->id.') - User Requested for Email Verification.');
             } else {
                 // Log::warning(auth()->user()->name.' ('.auth()->user()->id.') - User trying to confirm another users email.');
@@ -193,7 +207,9 @@ class UserController extends Controller
     // web_player_id update
     public function update_player_id(Request $request)
     {
-        auth()->user()->update_player_id($request->player_id);
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        $user->update_player_id($request->player_id);
 
         return response()->json(['data' => $request->player_id, 'message' => 'Update Web Player ID', 'status' => true]);
     }
@@ -263,6 +279,11 @@ class UserController extends Controller
         $request_data['password'] = Hash::make($request_data['new_password']);
 
         $data->update($request_data);
+
+        // 비밀번호가 바뀌었으면 이 계정의 모든 Sanctum 토큰을 폐기한다. 그렇지
+        // 않으면 유출된 옛 비밀번호로 발급받은 토큰이 그대로 살아 있어 비밀번호
+        // 변경이 아무 효과가 없다. (현재 기기도 포함 — 다시 로그인해야 한다.)
+        $data->tokens()->delete();
 
         $message = __('messages.password_update');
 

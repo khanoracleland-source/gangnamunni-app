@@ -177,7 +177,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_stmt_bind_param($ps, 'ss', $new_hash, $member_id);
                 mysqli_stmt_execute($ps);
                 mysqli_stmt_close($ps);
+
+                // HMS(Laravel) 쪽 비밀번호도 함께 바꾼다. 여기서 빠뜨리면 사이트
+                // 비밀번호만 바뀌고 HMS API(/api/login)는 옛 비밀번호로 계속
+                // 로그인된다 — 바꾼 의미가 없다.
+                if (function_exists('sync_hms_password_by_mapping')) {
+                    sync_hms_password_by_mapping($connect, $member_id, $new_pw);
+                }
+
+                // 비밀번호가 바뀌었으므로 기존 자격증명을 전부 폐기한다 —
+                // remember 쿠키, 앱 리프레시/액세스/브릿지 토큰, SSO 토큰,
+                // 다른 기기의 세션, HMS API 토큰, 미사용 임시 비밀번호.
+                // 이 기기도 포함해 모두 끊고 새 비밀번호로 다시 로그인하게 한다.
+                if (function_exists('revoke_all_auth_credentials_for')) {
+                    revoke_all_auth_credentials_for($member_id);
+                }
+
                 $pw_saved = true;
+                header('Location: auth/login.php?pw_changed=1');
+                exit;
             }
         }
     }

@@ -28,6 +28,12 @@ function get_hook_class(){
     return null;
 }
 
+/**
+ * @param string $tag
+ * @param callable $func
+ * @param int $priority
+ * @param int $args
+ */
 function add_event($tag, $func, $priority=G5_HOOK_DEFAULT_PRIORITY, $args=0){
 
     if( $hook = get_hook_class() ){
@@ -35,7 +41,13 @@ function add_event($tag, $func, $priority=G5_HOOK_DEFAULT_PRIORITY, $args=0){
     }
 }
 
-function run_event($tag, $arg = ''){
+/**
+ * @param string $tag
+ * @param mixed $arg
+ * @param mixed ...$more
+ * @return void
+ */
+function run_event($tag, $arg = '', ...$more){
 
     if( $hook = get_hook_class() ){
 
@@ -55,7 +67,7 @@ function run_event($tag, $arg = ''){
           $args[] = $arg;
         }
 
-        $numArgs = func_num_args();
+        $numArgs = count(func_get_args());
 
         for ($a = 2; $a < $numArgs; $a++) {
           $args[] = func_get_arg($a);
@@ -65,6 +77,12 @@ function run_event($tag, $arg = ''){
     }
 }
 
+/**
+ * @param string $tag
+ * @param callable $func
+ * @param int $priority
+ * @param int $args
+ */
 function add_replace($tag, $func, $priority=G5_HOOK_DEFAULT_PRIORITY, $args=1){
 
     if( $hook = get_hook_class() ){
@@ -74,7 +92,13 @@ function add_replace($tag, $func, $priority=G5_HOOK_DEFAULT_PRIORITY, $args=1){
     return null;
 }
 
-function run_replace($tag, $arg = ''){
+/**
+ * @param string $tag
+ * @param mixed $arg
+ * @param mixed ...$more
+ * @return mixed
+ */
+function run_replace($tag, $arg = '', ...$more){
 
     if( $hook = get_hook_class() ){
 
@@ -94,7 +118,7 @@ function run_replace($tag, $arg = ''){
           $args[] = $arg;
         }
 
-        $numArgs = func_num_args();
+        $numArgs = count(func_get_args());
 
         for ($a = 2; $a < $numArgs; $a++) {
           $args[] = func_get_arg($a);
@@ -106,6 +130,11 @@ function run_replace($tag, $arg = ''){
     return null;
 }
 
+/**
+ * @param string $tag
+ * @param callable $func
+ * @param int $priority
+ */
 function delete_event($tag, $func, $priority=G5_HOOK_DEFAULT_PRIORITY){
 
     if( $hook = get_hook_class() ){
@@ -115,6 +144,11 @@ function delete_event($tag, $func, $priority=G5_HOOK_DEFAULT_PRIORITY){
     return null;
 }
 
+/**
+ * @param string $tag
+ * @param callable $func
+ * @param int $priority
+ */
 function delete_replace($tag, $func, $priority=G5_HOOK_DEFAULT_PRIORITY){
 
     if( $hook = get_hook_class() ){
@@ -124,6 +158,10 @@ function delete_replace($tag, $func, $priority=G5_HOOK_DEFAULT_PRIORITY){
     return null;
 }
 
+/**
+ * @param string $type
+ * @param mixed $is_callback
+ */
 function get_hook_datas($type='', $is_callback=''){
     if( $hook = get_hook_class() ){
         return $hook->get_properties($type, $is_callback);

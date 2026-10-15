@@ -52,6 +52,13 @@ if (empty($_SESSION['login_csrf_token'])) {
 }
 $login_csrf_token = $_SESSION['login_csrf_token'];
 
+/**
+ * @param mixed $scope
+ * @param mixed $value
+ * @param mixed $limit
+ * @param mixed $window
+ * @param bool $record
+ */
 function gnu_login_rate_hit($scope, $value, $limit, $window, $record = true) {
     $base = defined('G5_DATA_PATH') ? G5_DATA_PATH : sys_get_temp_dir();
     $dir = $base . '/cache/login_rate';
@@ -80,6 +87,11 @@ function gnu_login_rate_hit($scope, $value, $limit, $window, $record = true) {
     return ['allowed' => $retry === 0, 'retry' => $retry];
 }
 
+/**
+ * @param mixed $event
+ * @param string $email
+ * @param string $details
+ */
 function gnu_auth_log($event, $email = '', $details = '') {
     $account = $email === '' ? '-' : substr(hash('sha256', strtolower(trim($email))), 0, 16);
     $ip = preg_replace('/[^0-9a-fA-F:.]/', '', (string)($_SERVER['REMOTE_ADDR'] ?? ''));
@@ -88,6 +100,9 @@ function gnu_auth_log($event, $email = '', $details = '') {
 }
 
 if (!function_exists('gnu_load_env')) {
+    /**
+     * @param mixed $file
+     */
     function gnu_load_env($file) {
         $out = [];
         if (!is_readable($file)) return $out;
@@ -108,6 +123,13 @@ $recaptcha_request_host = strtolower(preg_replace('/:\\d+$/', '', (string)($_SER
 $recaptcha_is_local = in_array($recaptcha_request_host, ['127.0.0.1', 'localhost', '::1'], true);
 $recaptcha_enabled = !$recaptcha_is_local && $recaptcha_site_key !== '' && $recaptcha_secret !== '';
 if (!function_exists('gnu_verify_recaptcha')) {
+    /**
+     * @param mixed $secret
+     * @param mixed $token
+     * @param string $remote_ip
+     * @param string $expected_action
+     * @param array $expected_hosts
+     */
     function gnu_verify_recaptcha($secret, $token, $remote_ip = '', $expected_action = 'login', $expected_hosts = []) {
         if ($secret === '') return 'skip';
         if ($token === '') return 'fail';
@@ -136,6 +158,10 @@ if (!function_exists('gnu_verify_recaptcha')) {
     }
 }
 
+/**
+ * @param mixed $candidate
+ * @param mixed $fallback
+ */
 function gnu_safe_after_url($candidate, $fallback) {
     $candidate = trim((string)$candidate);
     if ($candidate === '' || strpos($candidate, '\\') !== false || preg_match('/[\x00-\x1F\x7F]/', $candidate)) return $fallback;
@@ -158,6 +184,10 @@ if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
 }
 
 $login_error = '';
+// profile_edit.php 에서 비밀번호를 바꾸면 모든 기기에서 로그아웃된 뒤 여기로 온다.
+$login_notice = (($_GET['pw_changed'] ?? '') === '1')
+    ? '비밀번호가 변경되었습니다. 보안을 위해 모든 기기에서 로그아웃되었습니다. 새 비밀번호로 다시 로그인해주세요.'
+    : '';
 $is_patient_app = isset($_COOKIE['sb_patient_app']) && hash_equals('1', (string)$_COOKIE['sb_patient_app']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email') {
@@ -242,6 +272,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
                     if ($password_valid) {
                         $login_mb['mb_password'] = $pending_hash;
                         $login_mb['mb_lost_certify'] = '';
+                        // 비밀번호가 여기서 교체됐다 — 아래에서 새 세션을 만들기
+                        // *전에* 예전 자격증명(remember/앱 토큰/SSO/다른 기기 세션)을
+                        // 모두 폐기한다.
+                        if (function_exists('revoke_all_auth_credentials_for')) {
+                            revoke_all_auth_credentials_for($mb_id_found);
+                        }
                         gnu_auth_log('password_reset_activated_on_login', $email);
                     }
                 }
@@ -278,7 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['mode'] ?? '') === 'email')
             if (function_exists('update_auth_session_token')) update_auth_session_token($login_mb['mb_datetime']);
 
             if ($auto_login) {
-                $remember_lifetime = $is_patient_app ? $patient_app_lifetime : 86400 * 31;
+                $remember_lifetime = $is_patient_app ? ($patient_app_lifetime ?? 86400 * 120) : 86400 * 31;
                 $remember_token = function_exists('create_remember_login_token')
                     ? create_remember_login_token($login_mb, $remember_lifetime)
                     : '';
@@ -330,7 +366,7 @@ $apple_enabled = !empty($config['cf_social_login_use'])
 $kakao_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php?provider=kakao&url=' . urlencode($after_url);
 $google_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php?provider=google&url=' . urlencode($after_url);
 $apple_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php?provider=apple&url=' . urlencode($after_url);
-$open_email = $login_error !== '';
+$open_email = $login_error !== '' || $login_notice !== '';
 ?>
 <!DOCTYPE html>
 <html lang="ko">
@@ -373,6 +409,7 @@ $open_email = $login_error !== '';
         .row-between label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #666; cursor: pointer; }
         .row-between a { font-size: 13px; color: #999; text-decoration: none; }
         .err { background: #fdecef; color: #c0293f; font-size: 13px; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+        .notice { background: #eef7f0; color: #1f7a45; font-size: 13px; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; line-height: 1.5; }
         .foot-links { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 80px; }
         .foot-links a { font-size: 14px; font-weight: 600; color: #666; text-decoration: none; }
         .foot-links a:active { color: #000; }
@@ -426,6 +463,9 @@ $open_email = $login_error !== '';
             </button>
             <div class="email-panel <?php echo $open_email ? 'open' : ''; ?>" id="emailPanel">
                 <div class="email-inner">
+                    <?php if ($login_notice): ?>
+                    <div class="notice"><?php echo htmlspecialchars($login_notice); ?></div>
+                    <?php endif; ?>
                     <?php if ($login_error): ?>
                     <div class="err"><?php echo htmlspecialchars($login_error); ?></div>
                     <?php endif; ?>

@@ -4,6 +4,16 @@ require_once "./_common.php";
 require_once G5_LIB_PATH . "/register.lib.php";
 require_once G5_LIB_PATH . '/thumbnail.lib.php';
 
+/**
+ * common.php 가 정의하는 전역 변수 (IDE 정적 분석용 선언)
+ * @var string $w 작성/수정 구분 (요청값에서 추출)
+ * @var array  $g5
+ * @var array  $config
+ * @var array  $member
+ * @var array  $auth
+ * @var string $is_admin
+ */
+
 if ($w == 'u') {
    check_demo();
 }
@@ -95,6 +105,7 @@ $mb_bank = isset($_POST['mb_bank']) ? clean_xss_tags($_POST['mb_bank'], 1, 1) : 
 // ======================================================
 // 수정 모드일 때 회원 유형 처리 (데이터 유실 방지)
 // ======================================================
+$original_mb = array();
 if ($w == 'u') {
    $original_mb = get_member($mb_id);
    
@@ -278,6 +289,12 @@ if ($w == '') {
                     {$sql_certify}
              where mb_id = '{$mb_id}' ";
    sql_query($sql);
+
+   // 비밀번호를 실제로 바꾼 경우에만, 그 회원의 예전 자격증명을 모두 폐기한다.
+   // 관리자가 자기 비밀번호를 바꾼 경우에는 관리자 세션도 함께 끊긴다(의도된 동작).
+   if ($sql_password !== '' && function_exists('revoke_all_auth_credentials_for')) {
+       revoke_all_auth_credentials_for($mb_id);
+   }
 } else {
    alert('제대로 된 값이 넘어오지 않았습니다.');
 }
@@ -511,5 +528,5 @@ if (function_exists('get_admin_captcha_by')) {
 
 run_event('admin_member_form_update', $w, $mb_id);
 
-goto_url('./member_form.php?' . $qstr . '&amp;w=u&amp;mb_id=' . $mb_id, false);
+goto_url('./member_form.php?' . $qstr . '&amp;w=u&amp;mb_id=' . $mb_id);
 ?>

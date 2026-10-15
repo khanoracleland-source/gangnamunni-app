@@ -1,6 +1,8 @@
 <?php
 include_once('./_common.php');
 
+/** @var array $g5 그누보드 전역 설정(common.php 에서 정의) */
+
 // 봇의 메일 링크 크롤링을 방지합니다.
 if(function_exists('check_mail_bot')){ check_mail_bot($_SERVER['REMOTE_ADDR']); }
 
@@ -40,6 +42,12 @@ if (hash_equals($stored_nonce, $mb_nonce) && ($expires_at === null || time() <= 
         mysqli_stmt_close($pw);
     }
     if (!$changed) die("Error");
+
+    // 비밀번호가 바뀌었으니 예전 자격증명(remember/앱 토큰/SSO/다른 기기 세션/
+    // HMS API 토큰)을 모두 폐기한다.
+    if (function_exists('revoke_all_auth_credentials_for')) {
+        revoke_all_auth_credentials_for($mb['mb_id']);
+    }
 
     run_event('password_lost_certify_after', $mb, $mb_nonce);
 

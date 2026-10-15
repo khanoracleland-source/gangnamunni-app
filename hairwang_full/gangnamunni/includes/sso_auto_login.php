@@ -1,6 +1,9 @@
 <?php
 
 
+/**
+ * @param mixed $connect
+ */
 function sso_try_auto_login($connect) {
     global $is_member, $member;
 
@@ -49,6 +52,10 @@ function sso_try_auto_login($connect) {
         set_session('ss_mb_id', $mb['mb_id']);
     } else {
         $_SESSION['ss_mb_id'] = $mb['mb_id'];
+        // set_session() 이 없는 경로이므로 자격증명 epoch 를 직접 묶는다.
+        $_SESSION['ss_cred_epoch'] = function_exists('auth_credential_epoch')
+            ? (string) auth_credential_epoch($mb, $connect)
+            : '0';
     }
     if (function_exists('generate_mb_key')) {
         generate_mb_key($mb);

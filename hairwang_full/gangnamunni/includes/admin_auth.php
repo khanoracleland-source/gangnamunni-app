@@ -92,6 +92,8 @@ function admin_scoped_hospital_id() {
 
 /**
  * 관리자 세션 저장
+ * @param mixed $admin
+ * @param mixed $connect
  */
 function admin_set_session($admin, $connect = null) {
     global $ADMIN_ROLE_PERMISSIONS;
@@ -104,6 +106,10 @@ function admin_set_session($admin, $connect = null) {
     $_SESSION['ad_admin_user'] = $admin['username'];
     $_SESSION['ad_admin_email'] = $admin['email'] ?? '';
     $_SESSION['ad_admin_id'] = $admin['id'];
+    // 이 세션이 어느 비밀번호 세대에 속하는지 기록한다(check_admin_login 검사용).
+    $_SESSION['ad_cred_epoch'] = array_key_exists('cred_epoch', $admin)
+        ? (int) $admin['cred_epoch']
+        : admin_cred_epoch($admin['id'], $connect);
     $_SESSION['ad_admin_name'] = $admin['name'];
     $_SESSION['ad_admin_role'] = $admin['role'];
     $_SESSION['ad_admin_permissions'] = json_decode($admin['permissions'] ?? '{}', true) ?: [];
@@ -136,6 +142,8 @@ function admin_set_session($admin, $connect = null) {
 /**
  * 관리자 계정 조회
  * username/email 및 연결된 Gnuboard mb_id 입력을 허용한다.
+ * @param mixed $login
+ * @param mixed $connect
  */
 function admin_find_by_login($login, $connect) {
     $login = trim($login);
@@ -188,6 +196,9 @@ function admin_find_by_login($login, $connect) {
 
 /**
  * 관리자 로그인 처리
+ * @param mixed $username
+ * @param mixed $password
+ * @param mixed $connect
  */
 function admin_login($username, $password, $connect) {
     try {
@@ -207,6 +218,7 @@ function admin_login($username, $password, $connect) {
 /**
  * gangnamunni_admins.g5_mb_id (관리자 ↔ 그누보드 회원 명시적 연결) 컬럼 존재 여부
  * 마이그레이션: sql/admin_sso_member_link.sql
+ * @param mixed $connect
  */
 function admin_sso_link_ready($connect) {
     static $ready = null;
@@ -223,6 +235,7 @@ function admin_sso_link_ready($connect) {
 /**
  * Gnuboard SSO 토큰으로 병원 관리자 세션 자동 생성
  * 관리자 관리에서 명시적으로 연결(g5_mb_id)된 회원만 해당 관리자로 로그인된다.
+ * @param mixed $connect
  */
 function admin_login_from_sso($connect) {
     if (check_admin_login()) return true;
@@ -283,6 +296,66 @@ function admin_login_from_sso($connect) {
 }
 
 /**
+ * 관리자 계정의 자격증명 epoch. 비밀번호가 바뀌면 +1 되고, 이전 epoch 를 들고
+ * 있는 모든 관리자 세션(다른 기기 포함)이 check_admin_login() 에서 끊긴다.
+ * 컬럼이 아직 없는 환경(마이그레이션 전)에서는 항상 0 → 검사가 사실상 비활성.
+ * @param mixed $admin_id
+ * @param mixed $connect
+ */
+function admin_cred_epoch($admin_id, $connect = null) {
+    static $cache = array();
+
+    $admin_id = (int) $admin_id;
+    if ($admin_id <= 0) return 0;
+    if (array_key_exists($admin_id, $cache)) return $cache[$admin_id];
+
+    if (!$connect) $connect = isset($GLOBALS['connect']) ? $GLOBALS['connect'] : null;
+    if (!$connect) return 0;
+
+    $epoch = 0;
+    try {
+        $stmt = mysqli_prepare($connect, "SELECT cred_epoch FROM gangnamunni_admins WHERE id = ? LIMIT 1");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $admin_id);
+            if (mysqli_stmt_execute($stmt)) {
+                $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+                if ($row) $epoch = (int) $row['cred_epoch'];
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (Throwable $e) {
+        return 0; // cred_epoch 컬럼 미적용
+    }
+
+    $cache[$admin_id] = $epoch;
+    return $epoch;
+}
+
+/**
+ * 관리자 비밀번호가 바뀌었을 때 그 계정의 모든 세션을 무효화한다.
+ * @param mixed $connect
+ * @param mixed $admin_id
+ */
+function admin_revoke_sessions($connect, $admin_id) {
+    $admin_id = (int) $admin_id;
+    if (!$connect || $admin_id <= 0) return false;
+
+    try {
+        $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET cred_epoch = cred_epoch + 1 WHERE id = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $admin_id);
+            $ok = mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+            if ($ok) return true;
+        }
+    } catch (Throwable $e) {
+    }
+
+    error_log('[admin-revoke-sessions] cred_epoch 갱신 실패 — 마이그레이션 미적용? admin_id=' . $admin_id);
+    return false;
+}
+
+/**
  * 로그인 상태 확인
  */
 function check_admin_login() {
@@ -293,11 +366,20 @@ function check_admin_login() {
         unset($_SESSION['ad_admin_logged_in'], $_SESSION['ad_admin_role'], $_SESSION['ad_admin_id']);
         return false;
     }
+    // 이 세션이 만들어진 뒤 비밀번호가 바뀌었다면(임시 비밀번호 발급 포함)
+    // 기기가 어디든 세션을 끊는다. 한 번도 바뀐 적 없으면 0 == 0 이므로
+    // 기존 세션은 그대로 유지된다.
+    if (!empty($_SESSION['ad_admin_id'])
+        && (int) ($_SESSION['ad_cred_epoch'] ?? 0) !== admin_cred_epoch($_SESSION['ad_admin_id'])) {
+        unset($_SESSION['ad_admin_logged_in'], $_SESSION['ad_admin_role'], $_SESSION['ad_admin_id'], $_SESSION['ad_cred_epoch']);
+        return false;
+    }
     return true;
 }
 
 /**
  * 로그인 필수 (미로그인시 대시보드로 리다이렉트)
+ * @param mixed $redirect
  */
 function require_admin_login($redirect = null) {
     if (!check_admin_login()) {
@@ -335,6 +417,7 @@ function get_current_admin() {
 /**
  * 권한 체크
  * 역할 기본값으로만 판단한다 (개별 커스텀 권한 없음)
+ * @param mixed $permission
  */
 function check_permission($permission) {
     global $ADMIN_ROLE_PERMISSIONS;
@@ -399,6 +482,7 @@ function check_permission($permission) {
 /**
  * 병원 계정의 첫 화면. 역할 기본값뿐 아니라 개별 pages 설정도 반영한다.
  * 플랫폼 대시보드로 되돌리지 않아 병원 계정의 리다이렉트 반복을 방지한다.
+ * @param mixed $return_url
  */
 function admin_login_destination($return_url) {
     if (!is_hospital_role()) return $return_url;
@@ -448,6 +532,7 @@ function require_platform_admin_page() {
 
 /**
  * 권한 필수 체크
+ * @param mixed $permission
  */
 function require_permission($permission) {
     if (!check_permission($permission)) {
@@ -465,6 +550,7 @@ function require_permission($permission) {
 
 /**
  * 역할 라벨
+ * @param mixed $role
  */
 function get_role_label($role) {
     global $ADMIN_ROLE_LABELS;

@@ -159,6 +159,7 @@ class AuthController extends Controller
             }
         }
         if (Auth::attempt(['email' => request('email'), 'password' => request('password')])) {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
 
             Artisan::call('cache:clear');
@@ -287,7 +288,7 @@ class AuthController extends Controller
                 unset($input['identity_token']);
                 $request->merge(['email' => $input['email']]);
             } catch (\Throwable $exception) {
-                report($exception);
+                app(\Illuminate\Contracts\Debug\ExceptionHandler::class)->report($exception);
                 return response()->json([
                     'status' => false,
                     'message' => 'Apple login verification failed. Please try again.',
@@ -472,6 +473,7 @@ class AuthController extends Controller
         }
 
         // User is logged in, proceed with the logout process
+        /** @var \App\Models\User $user */
         $user = Auth::guard('sanctum')->user();
 
         // Revoke all tokens associated with the user
@@ -510,9 +512,18 @@ class AuthController extends Controller
 
     public function changePassword(Request $request)
     {
+        // 이전에는 $request->id 로 대상 계정을 고를 수 있었다 — 로그인한 사용자가
+        // 남의 id 를 넘기면, 아래 else 분기에서 old_password 검증 없이 그 계정의
+        // API 토큰을 발급받을 수 있었다(계정 탈취). 대상은 항상 인증된 본인이다.
+        /** @var \App\Models\User|null $user */
         $user = \Auth::user();
-        $user_id = !empty($request->id) ? $request->id : $user->id;
-        $user = User::where('id', $user_id)->first();
+        if ($user == null) {
+            return response()->json([
+                'status' => false,
+                'message' => __('messages.user_notfound'),
+            ], 401);
+        }
+        $user = User::where('id', $user->id)->first();
         if ($user == '') {
             return response()->json([
                 'status' => false,
@@ -540,6 +551,9 @@ class AuthController extends Controller
                 'password' => Hash::make($request->new_password),
             ])->save();
 
+            // 예전 비밀번호로 발급된 토큰은 모두 폐기하고 새 토큰 하나만 남긴다.
+            $user->tokens()->delete();
+
             $success['api_token'] = $user->createToken(setting('app_name'))->plainTextToken;
             $success['name'] = $user->name;
 
@@ -549,15 +563,11 @@ class AuthController extends Controller
                 'message' => __('messages.pass_successfull'),
             ], 200);
         } else {
-            $success['api_token'] = $user->createToken(setting('app_name'))->plainTextToken;
-            $success['name'] = $user->name;
-            $message = __('messages.valid_password');
-
+            // old_password 가 틀렸다 — 토큰을 발급하면 안 된다(이전에는 발급했다).
             return response()->json([
-                'status' => true,
-                'data' => $success,
-                'message' => __('messages.pass_successfull'),
-            ], 200);
+                'status' => false,
+                'message' => __('messages.valid_password'),
+            ], 403);
         }
     }
 

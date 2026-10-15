@@ -80,6 +80,11 @@ if (!isset($_SERVER['SERVER_ADDR'])) {
 }
 
 // multi-dimensional array에 사용자지정 함수적용
+/**
+ * @param callable $fn
+ * @param mixed $array
+ * @return mixed
+ */
 function array_map_deep($fn, $array)
 {
     if(is_array($array)) {
@@ -99,6 +104,10 @@ function array_map_deep($fn, $array)
 
 
 // SQL Injection 대응 문자열 필터링
+/**
+ * @param string $str
+ * @return string
+ */
 function sql_escape_string($str)
 {
     if(defined('G5_ESCAPE_PATTERN') && defined('G5_ESCAPE_REPLACE')) {
@@ -340,6 +349,9 @@ if( ! class_exists('XenoPostToForm') ){
             return !isset($_COOKIE[$cookie_session_name]) && count($_POST) && ((isset($_SERVER['HTTP_REFERER']) && !preg_match('~^https://'.preg_quote($_SERVER['HTTP_HOST'], '~').'/~', $_SERVER['HTTP_REFERER']) || ! isset($_SERVER['HTTP_REFERER']) ));
         }
 
+        /**
+         * @param array $posts
+         */
         public static function submit($posts) {
             echo '<html><head><meta charset="UTF-8"></head><body>';
             echo '<form id="f" name="f" method="post">';
@@ -351,6 +363,10 @@ if( ! class_exists('XenoPostToForm') ){
             exit;
         }
 
+        /**
+         * @param array $posts
+         * @return string
+         */
         public static function makeInputArray($posts) {
             $res = array();
             foreach($posts as $k => $v) {
@@ -359,6 +375,11 @@ if( ! class_exists('XenoPostToForm') ){
             return implode('', $res);
         }
 
+        /**
+         * @param string $k
+         * @param array|string $v
+         * @return string
+         */
         private static function makeInputArray_($k, $v) {
             if(is_array($v)) {
                 $res = array();
@@ -639,6 +660,10 @@ if (isset($_SESSION['ss_mb_id']) && $_SESSION['ss_mb_id']) { // 로그인중이�
     if( ($member['mb_intercept_date'] && $member['mb_intercept_date'] <= date("Ymd", G5_SERVER_TIME)) 
         || ($member['mb_leave_date'] && $member['mb_leave_date'] <= date("Ymd", G5_SERVER_TIME))
         || (function_exists('check_auth_session_token') && !check_auth_session_token($member['mb_datetime'])) 
+        // 이 세션이 만들어진 뒤 비밀번호가 바뀌었다면(= 자격증명 epoch 가 올라갔다면)
+        // 기기가 어디든 세션을 끊는다. 세션은 서버에서 열거할 수 없으므로,
+        // 폐기는 g5_member.mb_cred_epoch 를 올리고 여기서 비교하는 방식으로 한다.
+        || (function_exists('auth_credential_epoch_is_stale') && auth_credential_epoch_is_stale($member))
         ) {
         set_session('ss_mb_id', '');
         $member = array();

@@ -49,6 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validateCsrfToken($_POST['csrf_tok
 }
 
 // permissions JSON 파싱 헬퍼
+/**
+ * @param mixed $perms_json
+ */
 function parse_permissions($perms_json) {
     $perms = json_decode($perms_json ?? '{}', true);
     if (!is_array($perms)) $perms = [];
@@ -57,6 +60,9 @@ function parse_permissions($perms_json) {
 
 // permissions JSON 빌드 — 개별 페이지 권한은 사용하지 않고 알림 수신 설정만 저장한다.
 // (페이지 접근 권한은 역할 기본값으로만 결정된다.)
+/**
+ * @param mixed $post_data
+ */
 function build_permissions_json($post_data) {
     global $NOTIFICATION_TYPES;
     $perms = [];
@@ -73,6 +79,11 @@ function build_permissions_json($post_data) {
 // 이메일이 다른 관리자와 중복되는지 확인한다.
 // 이메일은 로그인 식별자(username 또는 email)로 쓰이므로, 중복되면 이메일 로그인이
 // 어느 계정으로 매칭될지 모호해진다(admin_find_by_login 은 LIMIT 1). 그래서 유일해야 한다.
+/**
+ * @param mixed $connect
+ * @param mixed $email
+ * @param int $exclude_id
+ */
 function admin_email_taken($connect, $email, $exclude_id = 0) {
     if ($email === '') return false;
 
@@ -115,6 +126,9 @@ $HOSPITAL_ROLES = $ADMIN_ROLE_GROUPS['hospital'];
  * - super_admin: 병원 배정 없음 (항상 전체 접근) → null
  * - 병원 관리자(병원 역할): 병원 필수
  * @return array [hospital_id|null, hospital_name|null, error|null]
+ * @param mixed $connect
+ * @param mixed $role
+ * @param mixed $hospital_id
  */
 function resolve_admin_hospital($connect, $role, $hospital_id) {
     global $HOSPITAL_ROLES;
@@ -150,6 +164,9 @@ if ($is_super_admin) {
 
 // 역할 선택 <option> 렌더링 — 최고관리자 / 병원 관리자 2종만 표시한다.
 // 그 외(과거) 역할의 계정은 병원 관리자를 기본 선택으로 보여준다 (최고관리자로 잘못 승격되지 않도록).
+/**
+ * @param mixed $selected
+ */
 function render_role_options($selected) {
     global $ASSIGNABLE_ROLES;
     if (!in_array($selected, $ASSIGNABLE_ROLES, true)) $selected = 'hospital_admin';
@@ -162,6 +179,10 @@ function render_role_options($selected) {
 }
 
 // 병원 선택 <select> 렌더링
+/**
+ * @param mixed $selected_id
+ * @param mixed $select_id
+ */
 function render_hospital_select($selected_id, $select_id) {
     global $hospital_options;
     $selected_id = (int)$selected_id;
@@ -305,11 +326,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
         } elseif ($edit_id == $current_admin['id'] && $role !== $current_admin['role']) {
             $error = '자신의 역할은 변경할 수 없습니다.';
         } else {
+            $stmt = null;
+            $password_changed = false;
             if (!empty($new_password)) {
                 if (strlen($new_password) < 6) {
                     $error = '비밀번호는 6자 이상이어야 합니다.';
                 } else {
                     $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+                    $password_changed = true;
                     $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET name=?, email=?, phone=?, role=?, hospital_id=?, hospital_name=?, password=?, permissions=? WHERE id=?");
                     mysqli_stmt_bind_param($stmt, 'ssssisssi', $name, $email, $phone, $role, $edit_hospital_id, $edit_hospital_name, $hashed, $perms_json, $edit_id);
                 }
@@ -346,6 +370,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
             if (empty($error)) {
                 if (mysqli_stmt_execute($stmt)) {
                     $message = "관리자 정보가 수정되었습니다.";
+                    // 비밀번호를 바꾼 경우에만 그 계정의 기존 세션을 전부 무효화한다
+                    // (자기 비밀번호를 바꿨다면 본인도 다시 로그인해야 한다).
+                    if ($password_changed && function_exists('admin_revoke_sessions')) {
+                        admin_revoke_sessions($connect, $edit_id);
+                        if ($edit_id == $current_admin['id']) {
+                            $message .= ' 비밀번호가 바뀌었으므로 모든 기기에서 다시 로그인해야 합니다.';
+                        }
+                    }
                     if ($link_change) {
                         $lu = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET g5_mb_id = ? WHERE id = ?");
                         mysqli_stmt_bind_param($lu, 'si', $link_value, $edit_id);

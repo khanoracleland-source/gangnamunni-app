@@ -16,6 +16,13 @@ function get_microtime()
 }
 
 
+/**
+ * @param mixed $write_pages
+ * @param mixed $cur_page
+ * @param mixed $total_page
+ * @param mixed $url
+ * @param string $add
+ */
 function get_paging($write_pages, $cur_page, $total_page, $url, $add="")
 {
     $url = preg_replace('#(&amp;)?page=[0-9]*#', '', $url);
@@ -55,6 +62,10 @@ function get_paging($write_pages, $cur_page, $total_page, $url, $add="")
         return "";
 }
 
+/**
+ * @param mixed $paging_html
+ * @param mixed $insert_html
+ */
 function page_insertbefore($paging_html, $insert_html)
 {
     if(!$paging_html)
@@ -63,6 +74,10 @@ function page_insertbefore($paging_html, $insert_html)
     return preg_replace("/^(<nav[^>]+><span[^>]+>)/", '$1'.$insert_html.PHP_EOL, $paging_html);
 }
 
+/**
+ * @param mixed $paging_html
+ * @param mixed $insert_html
+ */
 function page_insertafter($paging_html, $insert_html)
 {
     if(!$paging_html)
@@ -76,6 +91,9 @@ function page_insertafter($paging_html, $insert_html)
     return preg_replace("#(</span></nav>)$#", $php_eol.$insert_html.'$1', $paging_html);
 }
 
+/**
+ * @param mixed $var
+ */
 function print_r2($var)
 {
     ob_start();
@@ -87,6 +105,9 @@ function print_r2($var)
 }
 
 
+/**
+ * @param mixed $url
+ */
 function goto_url($url)
 {
     run_event('goto_url', $url);
@@ -111,6 +132,10 @@ function goto_url($url)
 }
 
 
+/**
+ * @param mixed $session_name
+ * @param mixed $value
+ */
 function set_session($session_name, $value)
 {
 	global $g5;
@@ -129,15 +154,41 @@ function set_session($session_name, $value)
     if (PHP_VERSION < '5.3.0')
         session_register($session_name);
     $$session_name = $_SESSION[$session_name] = $value;
+
+    // 로그인 세션이 만들어질 때마다 그 시점의 자격증명 epoch 를 세션에 함께 묶는다.
+    // 비밀번호가 바뀌면 revoke_all_auth_credentials() 가 epoch 를 +1 하므로,
+    // 이전 epoch 를 들고 있는 다른 기기의 세션은 common.php 에서 전부 무효가 된다.
+    // 모든 로그인 경로(bbs/login_check, gangnamunni/auth/login, 자동로그인,
+    // SSO, 소셜, adm 회원 로그인…)가 이 한 지점을 지나므로 여기서 처리한다.
+    if ($session_name === 'ss_mb_id') {
+        if ($value === '' || $value === null) {
+            unset($_SESSION['ss_cred_epoch']);
+        } elseif (function_exists('auth_credential_epoch')) {
+            $_SESSION['ss_cred_epoch'] = (string) auth_credential_epoch($value);
+        }
+    }
 }
 
 
+/**
+ * @param mixed $session_name
+ */
 function get_session($session_name)
 {
     return isset($_SESSION[$session_name]) ? $_SESSION[$session_name] : '';
 }
 
 
+/**
+ * @param mixed $cookie_name
+ * @param mixed $value
+ * @param mixed $expire
+ * @param mixed $domain
+ * @param string $path
+ * @param bool $secure
+ * @param bool $httponly
+ * @param string $samesite
+ */
 function set_cookie($cookie_name, $value, $expire, $path='/', $domain=G5_COOKIE_DOMAIN, $secure=false, $httponly=true, $samesite='Lax')
 {
     global $g5;
@@ -158,6 +209,11 @@ function set_cookie($cookie_name, $value, $expire, $path='/', $domain=G5_COOKIE_
     ));
 }
 
+/**
+ * @param mixed $event
+ * @param string $mb_id
+ * @param array $details
+ */
 function remember_login_diagnostic($event, $mb_id='', $details=array())
 {
     $safe_event = preg_replace('/[^a-z0-9_-]/i', '', (string)$event);
@@ -173,6 +229,11 @@ function remember_login_diagnostic($event, $mb_id='', $details=array())
         . ($parts ? '; ' . implode('; ', $parts) : ''));
 }
 
+/**
+ * @param mixed $member
+ * @param int $lifetime
+ * @param array $options
+ */
 function create_remember_login_token($member, $lifetime=2678400, $options=array())
 {
     global $connect;
@@ -249,6 +310,11 @@ function create_remember_login_token($member, $lifetime=2678400, $options=array(
     return $raw_token;
 }
 
+/**
+ * @param mixed $mb_id
+ * @param mixed $raw_token
+ * @param array $options
+ */
 function verify_remember_login_token($mb_id, $raw_token, $options=array())
 {
     global $connect;
@@ -305,6 +371,10 @@ function verify_remember_login_token($mb_id, $raw_token, $options=array())
     return $valid;
 }
 
+/**
+ * @param mixed $mb_id
+ * @param array $options
+ */
 function revoke_remember_login_token($mb_id, $options=array())
 {
     global $connect;
@@ -341,6 +411,276 @@ function revoke_remember_login_token($mb_id, $options=array())
 }
 
 
+/**
+ * ───────────────────────────────────────────────────────────────────────────
+ * 비밀번호 변경 시 자격증명 일괄 폐기 (2026-10-15)
+ *
+ * 이전에는 비밀번호를 바꿔도 아래가 모두 그대로 살아 있어서, 유출된 비밀번호로
+ * 이미 들어온 침입자가 비밀번호 변경 후에도 계정을 계속 쓸 수 있었다.
+ *   - sso_tokens 전체 : web_remember / patient_app_remember(앱 리프레시) /
+ *     patient_app_access / patient_app_bridge / patient_app_exchange /
+ *     gnuboard / hms / admin
+ *   - 다른 기기의 PHP 세션 — common.php 의 check_auth_session_token() 은
+ *     mb_datetime(가입일시) 기반이라 비밀번호 변경과 아무 관계가 없었다.
+ *   - HMS(Laravel) Sanctum personal_access_tokens
+ *   - mb_lost_certify 에 남아 있는, 아직 쓰지 않은 임시 비밀번호
+ *
+ * 서버에서 다른 기기의 세션을 열거할 수는 없으므로 g5_member.mb_cred_epoch 를
+ * 쓴다. 세션이 만들어질 때(set_session('ss_mb_id', ...)) 그 시점의 epoch 를
+ * 세션에 복사해 두고, common.php 가 매 요청마다 회원 레코드의 epoch 와 비교한다.
+ * 폐기할 때 epoch 를 +1 하면 이전 값을 들고 있는 모든 세션이 즉시 무효가 된다.
+ *
+ * 아직 한 번도 폐기된 적 없는 계정은 epoch=0 이고, 이 기능 배포 전에 만들어진
+ * 세션도 ss_cred_epoch 미설정 → 0 으로 읽히므로 배포 시점의 대량 로그아웃은
+ * 일어나지 않는다. 마이그레이션(sql/auth_credential_epoch_20261015.sql)을
+ * 적용하기 전이라면 비교 자체를 건너뛴다.
+ * ───────────────────────────────────────────────────────────────────────────
+ * @param mixed $member_or_mb_id
+ * @param mixed $connect
+ */
+function auth_credential_epoch($member_or_mb_id, $connect = null)
+{
+    global $g5;
+
+    if (is_array($member_or_mb_id)) {
+        if (array_key_exists('mb_cred_epoch', $member_or_mb_id)) {
+            return (int) $member_or_mb_id['mb_cred_epoch'];
+        }
+        $mb_id = isset($member_or_mb_id['mb_id']) ? (string) $member_or_mb_id['mb_id'] : '';
+    } else {
+        $mb_id = (string) $member_or_mb_id;
+    }
+    if ($mb_id === '' || preg_match('/[^0-9a-z_]/i', $mb_id)) return 0;
+
+    if (!$connect) {
+        $connect = isset($g5['connect_db']) && $g5['connect_db']
+            ? $g5['connect_db']
+            : (isset($GLOBALS['connect']) ? $GLOBALS['connect'] : null);
+    }
+    if (!$connect) return 0;
+
+    $member_table = (isset($g5['member_table']) && $g5['member_table']) ? $g5['member_table'] : 'g5_member';
+    $epoch = 0;
+    try {
+        $stmt = mysqli_prepare($connect, "SELECT mb_cred_epoch FROM {$member_table} WHERE mb_id = ? LIMIT 1");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 's', $mb_id);
+            if (mysqli_stmt_execute($stmt)) {
+                $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+                if ($row) $epoch = (int) $row['mb_cred_epoch'];
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (Throwable $e) {
+        // mb_cred_epoch 컬럼이 아직 없는 환경 — 0 으로 둔다(비교도 건너뛴다).
+    }
+
+    return $epoch;
+}
+
+/**
+ * 이 세션이 비밀번호 변경 이전에 만들어진 것인지 — common.php 에서 검사한다.
+ * @param mixed $member
+ */
+function auth_credential_epoch_is_stale($member)
+{
+    if (empty($member['mb_id'])) return false;
+    // 마이그레이션 전(컬럼 없음)에는 비교하지 않는다.
+    if (!array_key_exists('mb_cred_epoch', $member)) return false;
+
+    return (int) get_session('ss_cred_epoch') !== (int) $member['mb_cred_epoch'];
+}
+
+/**
+ * HMS(Laravel) 쪽 Sanctum 토큰 폐기. 같은 DB 안의 member_sync 매핑을 쓴다.
+ * @param mixed $connect
+ * @param mixed $mb_id
+ */
+function revoke_hms_api_tokens($connect, $mb_id)
+{
+    if (!$connect || !is_string($mb_id) || $mb_id === '') return;
+
+    $hms_user_id = 0;
+    try {
+        $stmt = mysqli_prepare($connect,
+            "SELECT hms_user_id FROM member_sync WHERE mb_id = ? AND hms_user_id IS NOT NULL ORDER BY hms_user_id DESC LIMIT 1");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 's', $mb_id);
+            if (mysqli_stmt_execute($stmt)) {
+                $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+                if ($row) $hms_user_id = (int) $row['hms_user_id'];
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (Throwable $e) {
+        return; // member_sync 가 없는 설치 — 폐기할 HMS 토큰도 없다.
+    }
+    if ($hms_user_id <= 0) return;
+
+    try {
+        // tokenable_type 은 바인딩으로 넘긴다 — SQL 리터럴 안에 쓰면 PHP 와 MySQL
+        // 양쪽에서 백슬래시가 한 번씩 더 벗겨져 'AppModelsUser' 와 비교되기 쉽다.
+        $tokenable_type = 'App\\Models\\User';
+        $stmt = mysqli_prepare($connect,
+            "DELETE FROM personal_access_tokens WHERE tokenable_type = ? AND tokenable_id = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'si', $tokenable_type, $hms_user_id);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+    } catch (Throwable $e) {
+        error_log('[revoke-credentials] personal_access_tokens 삭제 실패: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 비밀번호가 바뀐(또는 초기화된) 회원의 모든 자격증명을 폐기한다.
+ * 비밀번호를 UPDATE 한 바로 뒤에, 새 세션/새 remember 토큰을 만들기 *전에* 부른다.
+ *
+ * @param array $options  keep_current_session=true 면 이 요청의 세션/쿠키는 건드리지 않는다
+ *                        (관리자가 다른 회원의 비밀번호를 초기화하는 경우).
+ * @param mixed $connect
+ * @param mixed $mb_id
+ */
+function revoke_all_auth_credentials($connect, $mb_id, $options = array())
+{
+    global $g5;
+
+    if (!$connect || !is_string($mb_id) || $mb_id === '' || preg_match('/[^0-9a-z_]/i', $mb_id)) return false;
+    $member_table = (isset($g5['member_table']) && $g5['member_table']) ? $g5['member_table'] : 'g5_member';
+
+    // 1) epoch +1 → 모든 기기의 PHP 세션 무효화. 미사용 임시 비밀번호도 함께 제거한다
+    //    (초기화 메일을 먼저 받아둔 침입자가 그 임시 비밀번호로 로그인하지 못하도록).
+    $epoch_ok = false;
+    try {
+        $stmt = mysqli_prepare($connect,
+            "UPDATE {$member_table} SET mb_cred_epoch = mb_cred_epoch + 1, mb_lost_certify = '' WHERE mb_id = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 's', $mb_id);
+            $epoch_ok = mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+    } catch (Throwable $e) {
+        $epoch_ok = false;
+    }
+    if (!$epoch_ok) {
+        error_log('[revoke-credentials] mb_cred_epoch 갱신 실패 — 마이그레이션 미적용? mb_id=' . $mb_id);
+        try {
+            $stmt = mysqli_prepare($connect, "UPDATE {$member_table} SET mb_lost_certify = '' WHERE mb_id = ?");
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, 's', $mb_id);
+                mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
+            }
+        } catch (Throwable $e) {
+        }
+    }
+
+    // 2) sso_tokens 전체 — remember / 앱 리프레시 / access / bridge / exchange / SSO 채널
+    try {
+        $stmt = mysqli_prepare($connect, "DELETE FROM sso_tokens WHERE g5_mb_id = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 's', $mb_id);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+    } catch (Throwable $e) {
+        error_log('[revoke-credentials] sso_tokens 삭제 실패: ' . $e->getMessage());
+    }
+
+    // 3) HMS(Laravel) API 토큰
+    revoke_hms_api_tokens($connect, $mb_id);
+
+    // 4) 이 요청이 같은 회원의 것이면 현재 세션과 쿠키도 정리한다.
+    if (empty($options['keep_current_session'])) {
+        $current = (string) get_session('ss_mb_id');
+        if ($current !== '' && strcasecmp($current, $mb_id) === 0) {
+            $_SESSION['ss_mb_id'] = '';
+            unset($_SESSION['ss_cred_epoch'], $_SESSION['ss_mb_key'], $_SESSION['ss_mb_token_key']);
+            if (function_exists('set_cookie')) {
+                set_cookie('ck_mb_id', '', 0);
+                set_cookie('ck_auto', '', 0);
+            }
+            if (!headers_sent()) setcookie('sb_sso_token', '', time() - 3600, '/');
+            unset($_COOKIE['sb_sso_token']);
+        }
+    }
+
+    return true;
+}
+
+/**
+ * revoke_all_auth_credentials() 의 편의 래퍼 — 호출부마다 어떤 연결 변수를
+ * 쓰는지(그누보드 $g5['connect_db'] / gangnamunni 자체 $connect) 신경쓰지 않도록
+ * 현재 요청에서 살아있는 연결을 알아서 고른다.
+ * @param mixed $mb_id
+ * @param array $options
+ */
+function revoke_all_auth_credentials_for($mb_id, $options = array())
+{
+    global $g5;
+
+    $connect = (isset($GLOBALS['connect']) && $GLOBALS['connect'])
+        ? $GLOBALS['connect']
+        : ((isset($g5['connect_db']) && $g5['connect_db']) ? $g5['connect_db'] : null);
+
+    if (!$connect) {
+        error_log('[revoke-credentials] DB 연결을 찾지 못해 폐기를 건너뜀 mb_id=' . $mb_id);
+        return false;
+    }
+
+    return revoke_all_auth_credentials($connect, $mb_id, $options);
+}
+
+/**
+ * HMS(Laravel) users.password 동기화 — member_sync 매핑으로만 찾는다.
+ * 이메일로 users 를 찾아 덮어쓰면 같은 이메일을 쓰는 직원/관리자 계정의
+ * 비밀번호를 바꿔버릴 수 있다(2026-10-13 hms-email-account-takeover 참고).
+ * @param mixed $connect
+ * @param mixed $mb_id
+ * @param mixed $plain_password
+ */
+function sync_hms_password_by_mapping($connect, $mb_id, $plain_password)
+{
+    if (!$connect || !is_string($mb_id) || $mb_id === '' || $plain_password === '') return false;
+
+    $hms_user_id = 0;
+    try {
+        $stmt = mysqli_prepare($connect,
+            "SELECT hms_user_id FROM member_sync WHERE mb_id = ? AND hms_user_id IS NOT NULL AND sync_status = 'synced' LIMIT 1");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 's', $mb_id);
+            if (mysqli_stmt_execute($stmt)) {
+                $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+                if ($row) $hms_user_id = (int) $row['hms_user_id'];
+            }
+            mysqli_stmt_close($stmt);
+        }
+    } catch (Throwable $e) {
+        return false;
+    }
+    if ($hms_user_id <= 0) return false;
+
+    try {
+        $hash = password_hash($plain_password, PASSWORD_BCRYPT);
+        $stmt = mysqli_prepare($connect, "UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'si', $hash, $hms_user_id);
+            $ok = mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+            return (bool) $ok;
+        }
+    } catch (Throwable $e) {
+        error_log('[sync-hms-password] 실패: ' . $e->getMessage());
+    }
+
+    return false;
+}
+
+
+/**
+ * @param mixed $cookie_name
+ */
 function get_cookie($cookie_name)
 {
     $cookie = md5($cookie_name);
@@ -351,6 +691,12 @@ function get_cookie($cookie_name)
 }
 
 
+/**
+ * @param string $msg
+ * @param string $url
+ * @param bool $error
+ * @param bool $post
+ */
 function alert($msg='', $url='', $error=true, $post=false)
 {
     global $g5, $config, $member, $is_member, $is_admin, $board;
@@ -372,6 +718,10 @@ function alert($msg='', $url='', $error=true, $post=false)
 }
 
 
+/**
+ * @param mixed $msg
+ * @param bool $error
+ */
 function alert_close($msg, $error=true)
 {
     global $g5, $config, $member, $is_member, $is_admin, $board;
@@ -388,6 +738,12 @@ function alert_close($msg, $error=true)
     exit;
 }
 
+/**
+ * @param mixed $msg
+ * @param string $url1
+ * @param string $url2
+ * @param string $url3
+ */
 function confirm($msg, $url1='', $url2='', $url3='')
 {
     global $g5, $config, $member, $is_member, $is_admin, $board;
@@ -421,6 +777,9 @@ function confirm($msg, $url1='', $url2='', $url3='')
 }
 
 
+/**
+ * @param mixed $str
+ */
 function url_auto_link($str)
 {
     global $g5;
@@ -436,6 +795,10 @@ function url_auto_link($str)
 }
 
 
+/**
+ * @param mixed $url
+ * @param string $protocol
+ */
 function set_http($url, $protocol="http://")
 {
     if (!trim($url)) return;
@@ -447,6 +810,9 @@ function set_http($url, $protocol="http://")
 }
 
 
+/**
+ * @param mixed $size
+ */
 function get_filesize($size)
 {
     if ($size >= 1048576) {
@@ -459,6 +825,11 @@ function get_filesize($size)
     return $size;
 }
 
+/**
+ * @param mixed $bo_table
+ * @param mixed $wr_id
+ * @param int $timeoutSeconds
+ */
 function download_file_nonce_key($bo_table, $wr_id, $timeoutSeconds=7200)
 {
     $secret = get_token_encryption_key(sha1($bo_table.session_id().$wr_id));
@@ -469,6 +840,11 @@ function download_file_nonce_key($bo_table, $wr_id, $timeoutSeconds=7200)
     return $nonce;
 }
 
+/**
+ * @param mixed $nonce
+ * @param mixed $bo_table
+ * @param mixed $wr_id
+ */
 function download_file_nonce_is_valid($nonce, $bo_table, $wr_id)
 {
     if (! is_string($nonce)) return false;
@@ -482,6 +858,10 @@ function download_file_nonce_is_valid($nonce, $bo_table, $wr_id)
     return true;
 }
 
+/**
+ * @param mixed $bo_table
+ * @param mixed $wr_id
+ */
 function get_file($bo_table, $wr_id)
 {
     global $g5, $qstr, $board;
@@ -517,6 +897,9 @@ function get_file($bo_table, $wr_id)
 }
 
 
+/**
+ * @param mixed $dir
+ */
 function get_dirsize($dir)
 {
     $size = 0;
@@ -531,6 +914,12 @@ function get_dirsize($dir)
 }
 
 
+/**
+ * @param mixed $write_row
+ * @param mixed $board
+ * @param mixed $skin_url
+ * @param int $subject_len
+ */
 function get_list($write_row, $board, $skin_url, $subject_len=40)
 {
     global $g5, $config, $g5_object;
@@ -638,12 +1027,21 @@ function get_list($write_row, $board, $skin_url, $subject_len=40)
     return $list;
 }
 
+/**
+ * @param mixed $write_row
+ * @param mixed $board
+ * @param mixed $skin_url
+ */
 function get_view($write_row, $board, $skin_url)
 {
     return get_list($write_row, $board, $skin_url, 255);
 }
 
 
+/**
+ * @param mixed $stx
+ * @param mixed $str
+ */
 function search_font($stx, $str)
 {
     global $config;
@@ -671,11 +1069,21 @@ function search_font($stx, $str)
 }
 
 
+/**
+ * @param mixed $subject
+ * @param mixed $len
+ * @param string $suffix
+ */
 function conv_subject($subject, $len, $suffix='')
 {
     return get_text(cut_str($subject, $len, $suffix));
 }
 
+/**
+ * @param mixed $content
+ * @param mixed $html
+ * @param bool $filter
+ */
 function conv_content($content, $html, $filter=true)
 {
     global $config, $board;
@@ -719,6 +1127,9 @@ function conv_content($content, $html, $filter=true)
     return $content;
 }
 
+/**
+ * @param string $type
+ */
 function check_html_link_nofollow($type=''){
     return true;
 }
@@ -784,6 +1195,12 @@ function html_purifier($html)
 }
 
 
+/**
+ * @param mixed $search_ca_name
+ * @param mixed $search_field
+ * @param mixed $search_text
+ * @param string $search_operator
+ */
 function get_sql_search($search_ca_name, $search_field, $search_text, $search_operator='and')
 {
     global $g5;
@@ -874,6 +1291,11 @@ function get_sql_search($search_ca_name, $search_field, $search_text, $search_op
     return $str;
 }
 
+/**
+ * @param mixed $write_table
+ * @param mixed $wr_id
+ * @param bool $is_cache
+ */
 function get_write($write_table, $wr_id, $is_cache=false)
 {
     global $g5, $g5_object;
@@ -892,6 +1314,9 @@ function get_write($write_table, $wr_id, $is_cache=false)
     return $write;
 }
 
+/**
+ * @param mixed $table
+ */
 function get_next_num($table)
 {
     $sql = " select min(wr_num) as min_wr_num from $table ";
@@ -900,6 +1325,10 @@ function get_next_num($table)
 }
 
 
+/**
+ * @param mixed $gr_id
+ * @param bool $is_cache
+ */
 function get_group($gr_id, $is_cache=false)
 {
     global $g5;
@@ -961,6 +1390,11 @@ function get_member($mb_id, $fields = '*', $is_cache = false)
 }
 
 
+/**
+ * @param mixed $col
+ * @param string $query_string
+ * @param string $flag
+ */
 function subject_sort_link($col, $query_string='', $flag='asc')
 {
     global $sst, $sod, $sfl, $stx, $page, $sca;
@@ -1006,6 +1440,10 @@ function subject_sort_link($col, $query_string='', $flag='asc')
 }
 
 
+/**
+ * @param string $admin
+ * @param string $fields
+ */
 function get_admin($admin='super', $fields='*')
 {
     global $config, $group, $board;
@@ -1030,6 +1468,9 @@ function get_admin($admin='super', $fields='*')
 }
 
 
+/**
+ * @param mixed $mb_id
+ */
 function is_admin($mb_id)
 {
     global $config, $group, $board;
@@ -1050,6 +1491,10 @@ function is_admin($mb_id)
 }
 
 
+/**
+ * @param string $bo_table
+ * @param string $ca_name
+ */
 function get_category_option($bo_table='', $ca_name='')
 {
     global $g5, $board, $is_admin;
@@ -1071,6 +1516,11 @@ function get_category_option($bo_table='', $ca_name='')
 }
 
 
+/**
+ * @param mixed $name
+ * @param string $selected
+ * @param string $event
+ */
 function get_group_select($name, $selected='', $event='')
 {
     global $g5, $is_admin, $member;
@@ -1093,6 +1543,11 @@ function get_group_select($name, $selected='', $event='')
 }
 
 
+/**
+ * @param mixed $value
+ * @param mixed $selected
+ * @param string $text
+ */
 function option_selected($value, $selected, $text='')
 {
     if (!$text) $text = $value;
@@ -1103,6 +1558,11 @@ function option_selected($value, $selected, $text='')
 }
 
 
+/**
+ * @param mixed $name
+ * @param string $selected
+ * @param string $event
+ */
 function get_yn_select($name, $selected='1', $event='')
 {
     $str = "<select name=\"$name\" $event>\n";
@@ -1118,6 +1578,15 @@ function get_yn_select($name, $selected='1', $event='')
 }
 
 
+/**
+ * @param mixed $mb_id
+ * @param mixed $point
+ * @param string $content
+ * @param string $rel_table
+ * @param string $rel_id
+ * @param string $rel_action
+ * @param int $expire
+ */
 function insert_point($mb_id, $point, $content='', $rel_table='', $rel_id='', $rel_action='', $expire=0)
 {
     global $config;
@@ -1185,6 +1654,11 @@ function insert_point($mb_id, $point, $content='', $rel_table='', $rel_id='', $r
     return 1;
 }
 
+/**
+ * @param mixed $mb_id
+ * @param mixed $point
+ * @param string $po_id
+ */
 function insert_use_point($mb_id, $point, $po_id='')
 {
     global $g5, $config;
@@ -1225,6 +1699,10 @@ function insert_use_point($mb_id, $point, $po_id='')
     }
 }
 
+/**
+ * @param mixed $mb_id
+ * @param mixed $point
+ */
 function delete_use_point($mb_id, $point)
 {
     global $g5, $config;
@@ -1268,6 +1746,10 @@ function delete_use_point($mb_id, $point)
     }
 }
 
+/**
+ * @param mixed $mb_id
+ * @param mixed $point
+ */
 function delete_expire_point($mb_id, $point)
 {
     global $g5, $config;
@@ -1309,6 +1791,9 @@ function delete_expire_point($mb_id, $point)
     }
 }
 
+/**
+ * @param mixed $mb_id
+ */
 function get_point_sum($mb_id)
 {
     global $g5, $config;
@@ -1362,6 +1847,9 @@ function get_point_sum($mb_id)
     return $row['sum_po_point'];
 }
 
+/**
+ * @param mixed $mb_id
+ */
 function get_expire_point($mb_id)
 {
     global $g5, $config;
@@ -1380,6 +1868,12 @@ function get_expire_point($mb_id)
     return $row['sum_point'];
 }
 
+/**
+ * @param mixed $mb_id
+ * @param mixed $rel_table
+ * @param mixed $rel_id
+ * @param mixed $rel_action
+ */
 function delete_point($mb_id, $rel_table, $rel_id, $rel_action)
 {
     global $g5;
@@ -1432,6 +1926,12 @@ function delete_point($mb_id, $rel_table, $rel_id, $rel_action)
     return $result;
 }
 
+/**
+ * @param mixed $mb_id
+ * @param string $name
+ * @param string $email
+ * @param string $homepage
+ */
 function get_sideview($mb_id, $name='', $email='', $homepage='')
 {
     global $config;
@@ -1597,6 +2097,12 @@ function get_sideview($mb_id, $name='', $email='', $homepage='')
     return $str;
 }
 
+/**
+ * @param mixed $file
+ * @param mixed $width
+ * @param mixed $height
+ * @param string $content
+ */
 function view_file_link($file, $width, $height, $content='')
 {
     global $config, $board;
@@ -1630,6 +2136,11 @@ function view_file_link($file, $width, $height, $content='')
 }
 
 
+/**
+ * @param mixed $view
+ * @param mixed $number
+ * @param mixed $attribute
+ */
 function view_image($view, $number, $attribute)
 {
     if ($view['file'][$number]['view'])
@@ -1639,6 +2150,11 @@ function view_image($view, $number, $attribute)
 }
 
 
+/**
+ * @param mixed $str
+ * @param mixed $len
+ * @param string $suffix
+ */
 function cut_str($str, $len, $suffix="…")
 {
     $arr_str = preg_split("//u", $str, -1, PREG_SPLIT_NO_EMPTY);
@@ -1656,6 +2172,11 @@ function cut_str($str, $len, $suffix="…")
 }
 
 
+/**
+ * @param mixed $str
+ * @param int $html
+ * @param bool $restore
+ */
 function get_text($str, $html=0, $restore=false)
 {
     $source[] = "<";
@@ -1683,11 +2204,20 @@ function get_text($str, $html=0, $restore=false)
 }
 
 
+/**
+ * @param mixed $str
+ */
 function html_symbol($str)
 {
     return $str ? preg_replace("/\&([a-z0-9]{1,20}|\#[0-9]{0,3});/i", "&#038;\\1;", $str) : "";
 }
 
+/**
+ * @param mixed $host
+ * @param mixed $user
+ * @param mixed $pass
+ * @param mixed $db
+ */
 function sql_connect($host, $user, $pass, $db=G5_MYSQL_DB)
 {
     global $g5;
@@ -1710,6 +2240,10 @@ function sql_connect($host, $user, $pass, $db=G5_MYSQL_DB)
 }
 
 
+/**
+ * @param mixed $db
+ * @param mixed $connect
+ */
 function sql_select_db($db, $connect)
 {
     global $g5;
@@ -1721,6 +2255,10 @@ function sql_select_db($db, $connect)
 }
 
 
+/**
+ * @param mixed $charset
+ * @param mixed $link
+ */
 function sql_set_charset($charset, $link=null)
 {
     global $g5;
@@ -1734,6 +2272,10 @@ function sql_set_charset($charset, $link=null)
         mysql_query(" set names {$charset} ", $link);
 }
 
+/**
+ * @param mixed $result
+ * @param int $offset
+ */
 function sql_data_seek($result, $offset=0)
 {
     if ( ! $result ) return;
@@ -1744,6 +2286,11 @@ function sql_data_seek($result, $offset=0)
         mysql_data_seek($result, $offset);
 }
 
+/**
+ * @param mixed $sql
+ * @param mixed $error
+ * @param mixed $link
+ */
 function sql_query($sql, $error=G5_DISPLAY_SQL_ERROR, $link=null)
 {
     global $g5, $g5_debug;
@@ -1844,6 +2391,11 @@ function sql_query($sql, $error=G5_DISPLAY_SQL_ERROR, $link=null)
 }
 
 
+/**
+ * @param mixed $sql
+ * @param mixed $error
+ * @param mixed $link
+ */
 function sql_fetch($sql, $error=G5_DISPLAY_SQL_ERROR, $link=null)
 {
     global $g5;
@@ -1857,6 +2409,9 @@ function sql_fetch($sql, $error=G5_DISPLAY_SQL_ERROR, $link=null)
 }
 
 
+/**
+ * @param mixed $result
+ */
 function sql_fetch_array($result)
 {
     if( ! $result) return array();
@@ -1874,12 +2429,17 @@ function sql_fetch_array($result)
 }
 
 
+/**
+ * @param mixed $result
+ */
 function sql_free_result($result)
 {
     if(!is_resource($result)) return;
 
-    if(function_exists('mysqli_free_result') && G5_MYSQLI_USE)
+    if(function_exists('mysqli_free_result') && G5_MYSQLI_USE) {
+        /** @var \mysqli_result $result */
         return mysqli_free_result($result);
+    }
     else
         return mysql_free_result($result);
 }
@@ -1904,6 +2464,9 @@ function sql_password($value)
 }
 
 
+/**
+ * @param mixed $link
+ */
 function sql_insert_id($link=null)
 {
     global $g5;
@@ -1918,6 +2481,9 @@ function sql_insert_id($link=null)
 }
 
 
+/**
+ * @param mixed $result
+ */
 function sql_num_rows($result)
 {
     if(function_exists('mysqli_num_rows') && G5_MYSQLI_USE)
@@ -1927,6 +2493,10 @@ function sql_num_rows($result)
 }
 
 
+/**
+ * @param mixed $table
+ * @param mixed $link
+ */
 function sql_field_names($table, $link=null)
 {
     global $g5;
@@ -1957,6 +2527,9 @@ function sql_field_names($table, $link=null)
 }
 
 
+/**
+ * @param mixed $link
+ */
 function sql_error_info($link=null)
 {
     global $g5;
@@ -1972,6 +2545,10 @@ function sql_error_info($link=null)
 }
 
 
+/**
+ * @param mixed $table
+ * @param string $crlf
+ */
 function get_table_define($table, $crlf="\n")
 {
     global $g5;
@@ -2003,6 +2580,7 @@ function get_table_define($table, $crlf="\n")
 
     $sql = 'SHOW KEYS FROM ' . $table;
     $result = sql_query($sql);
+    $index = array();
     while ($row = sql_fetch_array($result))
     {
         $kname    = $row['Key_name'];
@@ -2046,6 +2624,9 @@ function get_table_define($table, $crlf="\n")
 }
 
 // 리퍼러 체크
+/**
+ * @param string $url
+ */
 function referer_check($url='')
 {
     /*
@@ -2061,6 +2642,10 @@ function referer_check($url='')
 }
 
 
+/**
+ * @param mixed $date
+ * @param int $full
+ */
 function get_yoil($date, $full=0)
 {
     $arr_yoil = array ('일', '월', '화', '수', '목', '금', '토');
@@ -2074,6 +2659,10 @@ function get_yoil($date, $full=0)
 }
 
 
+/**
+ * @param mixed $date
+ * @param string $name
+ */
 function date_select($date, $name='')
 {
     global $g5;
@@ -2118,6 +2707,10 @@ function date_select($date, $name='')
     return $s;
 }
 
+/**
+ * @param mixed $time
+ * @param string $name
+ */
 function time_select($time, $name="")
 {
     preg_match("/([0-9]{2}):([0-9]{2}):([0-9]{2})/", $time, $m);
@@ -2164,6 +2757,10 @@ function check_demo()
 }
 
 
+/**
+ * @param mixed $str
+ * @param mixed $options
+ */
 function check_string($str, $options)
 {
     global $g5;
@@ -2210,6 +2807,9 @@ function check_string($str, $options)
 }
 
 
+/**
+ * @param mixed $hangul
+ */
 function cut_hangul_last($hangul)
 {
     global $g5;
@@ -2225,6 +2825,9 @@ function cut_hangul_last($hangul)
 }
 
 
+/**
+ * @param mixed $sql
+ */
 function explain($sql)
 {
     if (preg_match("/^(select)/i", trim($sql))) {
@@ -2236,6 +2839,9 @@ function explain($sql)
     }
 }
 
+/**
+ * @param mixed $code
+ */
 function bad_tag_convert($code)
 {
     global $view;
@@ -2248,10 +2854,16 @@ function bad_tag_convert($code)
     return preg_replace("/\<([\/]?)(script|iframe|form)([^\>]*)\>?/i", "&lt;$1$2$3&gt;", $code);
 }
 
+/**
+ * @param mixed $matches
+ */
 function _callback_bad_tag_convert($matches){
     return "<div class=\"embedx\">보안문제로 인하여 관리자 아이디로는 embed 또는 object 태그를 볼 수 없습니다. 확인하시려면 관리권한이 없는 다른 아이디로 접속하세요.</div>";
 }
 
+/**
+ * @param mixed $string
+ */
 function normalize_utf8_string($string) {
     if (G5_DB_CHARSET === 'utf8mb4' || !function_exists('mb_ord')) {
         return $string;
@@ -2262,6 +2874,9 @@ function normalize_utf8_string($string) {
     return $normalized;
 }
 
+/**
+ * @param mixed $matches
+ */
 function _callback_normalizeString($matches){
     $charCode = mb_ord($matches[0], 'UTF-8');
     return chr(($charCode - 0x1D400) % 26 + ord('A'));
@@ -2336,6 +2951,9 @@ function generate_mb_key($member)
     set_session('ss_mb_key', $mb_key);
 }
 
+/**
+ * @param mixed $str
+ */
 function is_utf8($str)
 {
     $len = strlen($str);
@@ -2359,6 +2977,11 @@ function is_utf8($str)
     return true;
 }
 
+/**
+ * @param mixed $str
+ * @param mixed $size
+ * @param string $suffix
+ */
 function utf8_strcut( $str, $size, $suffix='...' )
 {
     if( function_exists('mb_strlen') && function_exists('mb_substr') ){
@@ -2387,6 +3010,11 @@ function utf8_strcut( $str, $size, $suffix='...' )
     return $str;
 }
 
+/**
+ * @param mixed $from_charset
+ * @param mixed $to_charset
+ * @param mixed $str
+ */
 function convert_charset($from_charset, $to_charset, $str)
 {
 
@@ -2399,6 +3027,10 @@ function convert_charset($from_charset, $to_charset, $str)
 }
 
 
+/**
+ * @param mixed $str
+ * @param mixed $link
+ */
 function sql_real_escape_string($str, $link=null)
 {
     global $g5;
@@ -2413,6 +3045,9 @@ function sql_real_escape_string($str, $link=null)
     return mysql_real_escape_string($str, $link);
 }
 
+/**
+ * @param mixed $field
+ */
 function escape_trim($field)
 {
     $str = call_user_func(G5_ESCAPE_FUNCTION, $field);
@@ -2420,12 +3055,18 @@ function escape_trim($field)
 }
 
 
+/**
+ * @param mixed $field
+ */
 function is_checked($field)
 {
     return !empty($_POST[$field]);
 }
 
 
+/**
+ * @param string $ip
+ */
 function abs_ip2long($ip='')
 {
     $ip = $ip ? $ip : $_SERVER['REMOTE_ADDR'];
@@ -2433,6 +3074,10 @@ function abs_ip2long($ip='')
 }
 
 
+/**
+ * @param mixed $field
+ * @param mixed $value
+ */
 function get_selected($field, $value)
 {
     if( is_int($value) ){
@@ -2443,6 +3088,10 @@ function get_selected($field, $value)
 }
 
 
+/**
+ * @param mixed $field
+ * @param mixed $value
+ */
 function get_checked($field, $value)
 {
     if( is_int($value) ){
@@ -2466,6 +3115,7 @@ function get_uniqid()
     global $g5;
 
     sql_query(" LOCK TABLE {$g5['uniqid_table']} WRITE ");
+    $key = '';
     while (1) {
         $key = date('YmdHis', time()) . str_pad((int)((float)microtime()*100), 2, "0", STR_PAD_LEFT);
 
@@ -2480,18 +3130,27 @@ function get_uniqid()
 }
 
 
+/**
+ * @param mixed $str
+ */
 function iconv_utf8($str)
 {
     return iconv('euc-kr', 'utf-8', $str);
 }
 
 
+/**
+ * @param mixed $str
+ */
 function iconv_euckr($str)
 {
     return iconv('utf-8', 'euc-kr', $str);
 }
 
 
+/**
+ * @param mixed $device
+ */
 function check_device($device)
 {
     global $is_admin;
@@ -2521,6 +3180,10 @@ function delete_cache_latest($bo_table)
     g5_delete_cache_by_prefix('latest-' . $bo_table . '-');
 }
 
+/**
+ * @param mixed $bo_table
+ * @param mixed $file
+ */
 function delete_board_thumbnail($bo_table, $file)
 {
     if(!$bo_table || !$file)
@@ -2534,6 +3197,10 @@ function delete_board_thumbnail($bo_table, $file)
     }
 }
 
+/**
+ * @param mixed $contents
+ * @param bool $view
+ */
 function get_editor_image($contents, $view=true)
 {
     if(!$contents)
@@ -2548,6 +3215,9 @@ function get_editor_image($contents, $view=true)
     return $matchs;
 }
 
+/**
+ * @param mixed $contents
+ */
 function delete_editor_thumbnail($contents)
 {
     if(!$contents)
@@ -2576,6 +3246,9 @@ function delete_editor_thumbnail($contents)
     run_event('delete_editor_thumbnail_after', $contents, $matchs);
 }
 
+/**
+ * @param mixed $file
+ */
 function delete_qa_thumbnail($file)
 {
     if(!$file)
@@ -2589,6 +3262,10 @@ function delete_qa_thumbnail($file)
     }
 }
 
+/**
+ * @param mixed $skin_path
+ * @param string $dir
+ */
 function get_skin_stylesheet($skin_path, $dir='')
 {
     if(!$skin_path)
@@ -2629,6 +3306,10 @@ function get_skin_stylesheet($skin_path, $dir='')
     return $str;
 }
 
+/**
+ * @param mixed $skin_path
+ * @param string $dir
+ */
 function get_skin_javascript($skin_path, $dir='')
 {
     if(!$skin_path)
@@ -2691,12 +3372,20 @@ function html_end()
     return get_html_process_cls()->run();
 }
 
+/**
+ * @param mixed $stylesheet
+ * @param int $order
+ */
 function add_stylesheet($stylesheet, $order=0)
 {
     if(trim($stylesheet))
         get_html_process_cls()->merge_stylesheet($stylesheet, $order);
 }
 
+/**
+ * @param mixed $javascript
+ * @param int $order
+ */
 function add_javascript($javascript, $order=0)
 {
     if(trim($javascript))
@@ -2710,6 +3399,9 @@ class html_process {
     protected static $css = array();
     protected static $js  = array();
 
+    /**
+     * @param string $id
+     */
     public static function getInstance($id = '0')
     {
         self::$id = $id;
@@ -2720,6 +3412,10 @@ class html_process {
         return self::$instances[self::$id] = new $calledClass;
     }
 
+    /**
+     * @param mixed $stylesheet
+     * @param mixed $order
+     */
     public static function merge_stylesheet($stylesheet, $order)
     {
         $links = self::$css;
@@ -2736,6 +3432,10 @@ class html_process {
             self::$css[] = array($order, $stylesheet);
     }
 
+    /**
+     * @param mixed $javascript
+     * @param mixed $order
+     */
     public static function merge_javascript($javascript, $order)
     {
         $scripts = self::$js;
@@ -2781,6 +3481,7 @@ class html_process {
         $links = self::$css;
 
         if(!empty($links)) {
+            $index = array();
             foreach ($links as $key => $row) {
                 $order[$key] = $row[0];
                 $index[$key] = $key;
@@ -2809,6 +3510,7 @@ class html_process {
         unset($index);
 
         if(!empty($scripts)) {
+            $index = array();
             foreach ($scripts as $key => $row) {
                 $order[$key] = $row[0];
                 $index[$key] = $key;
@@ -2864,6 +3566,9 @@ class html_process {
     }
 }
 
+/**
+ * @param mixed $hp
+ */
 function hyphen_hp_number($hp)
 {
     $hp = preg_replace("/[^0-9]/", "", $hp);
@@ -2871,6 +3576,9 @@ function hyphen_hp_number($hp)
 }
 
 
+/**
+ * @param string $url
+ */
 function login_url($url='')
 {
     if (!$url) $url = G5_URL;
@@ -2879,6 +3587,10 @@ function login_url($url='')
 }
 
 
+/**
+ * @param mixed $dir
+ * @param bool $https
+ */
 function https_url($dir, $https=true)
 {
     if ($https) {
@@ -2899,6 +3611,11 @@ function https_url($dir, $https=true)
 }
 
 
+/**
+ * @param mixed $bo_notice
+ * @param mixed $wr_id
+ * @param bool $insert
+ */
 function board_notice($bo_notice, $wr_id, $insert=false)
 {
     $notice_array = explode(",", trim($bo_notice));
@@ -2922,6 +3639,9 @@ function board_notice($bo_notice, $wr_id, $insert=false)
 }
 
 
+/**
+ * @param mixed $longUrl
+ */
 function googl_short_url($longUrl)
 {
     global $config;
@@ -2930,6 +3650,9 @@ function googl_short_url($longUrl)
 }
 
 
+/**
+ * @param mixed $mb_id
+ */
 function autosave_count($mb_id)
 {
     global $g5;
@@ -2942,6 +3665,11 @@ function autosave_count($mb_id)
     }
 }
 
+/**
+ * @param mixed $mb_id
+ * @param mixed $company
+ * @param mixed $method
+ */
 function insert_cert_history($mb_id, $company, $method)
 {
     global $g5;
@@ -2956,6 +3684,13 @@ function insert_cert_history($mb_id, $company, $method)
     sql_query($sql);
 }
 
+/**
+ * @param mixed $mb_id
+ * @param mixed $name
+ * @param mixed $hp
+ * @param mixed $birth
+ * @param mixed $type
+ */
 function insert_member_cert_history($mb_id, $name, $hp, $birth, $type)
 {
     global $g5;
@@ -2988,6 +3723,10 @@ function insert_member_cert_history($mb_id, $name, $hp, $birth, $type)
     sql_query($sql);
 }
 
+/**
+ * @param mixed $mb_id
+ * @param mixed $type
+ */
 function certify_count_check($mb_id, $type)
 {
     global $g5, $config;
@@ -3010,6 +3749,8 @@ function certify_count_check($mb_id, $type)
 
     $row = sql_fetch($sql);
 
+    $cert = '';
+
     switch($type) {
         case 'simple' :
             $cert = '간편인증';
@@ -3028,6 +3769,10 @@ function certify_count_check($mb_id, $type)
         alert_close('오늘 '.$cert.' 본인확인을 '.$row['cnt'].'회 이용하셔서 더 이상 이용할 수 없습니다.');
 }
 
+/**
+ * @param string $fld
+ * @param bool $is_cache
+ */
 function get_qa_config($fld='*', $is_cache=false)
 {
     global $g5;
@@ -3045,8 +3790,15 @@ function get_qa_config($fld='*', $is_cache=false)
 }
 
 if (!function_exists("get_sock")) {
+    /**
+     * @param mixed $url
+     * @param int $timeout
+     */
     function get_sock($url, $timeout=30)
     {
+        $host = '';
+        $get  = '';
+
         if (preg_match("/http:\/\/([a-zA-Z0-9_\-\.]+)([^<]*)/", $url, $res))
         {
             $host = $res[1];
@@ -3082,6 +3834,10 @@ if (!function_exists("get_sock")) {
     }
 }
 
+/**
+ * @param mixed $exe
+ * @param mixed $type
+ */
 function module_exec_check($exe, $type)
 {
     $error = '';
@@ -3170,6 +3926,12 @@ function module_exec_check($exe, $type)
     return $error;
 }
 
+/**
+ * @param mixed $addr1
+ * @param mixed $addr2
+ * @param mixed $addr3
+ * @param mixed $addr4
+ */
 function print_address($addr1, $addr2, $addr3, $addr4)
 {
     $address = get_text(trim($addr1));
@@ -3207,6 +3969,9 @@ function check_input_vars()
     }
 }
 
+/**
+ * @param mixed $str
+ */
 function htmlspecialchars2($str)
 {
     $trans = array("\"" => "&#034;", "'" => "&#039;", "<"=>"&#060;", ">"=>"&#062;");
@@ -3214,6 +3979,11 @@ function htmlspecialchars2($str)
     return $str;
 }
 
+/**
+ * @param mixed $format
+ * @param mixed $date
+ * @param string $add
+ */
 function conv_date_format($format, $date, $add='')
 {
     if($add)
@@ -3224,6 +3994,9 @@ function conv_date_format($format, $date, $add='')
     return date($format, $timestamp);
 }
 
+/**
+ * @param mixed $stx
+ */
 function get_search_string($stx)
 {
     $stx_pattern = array();
@@ -3243,6 +4016,13 @@ function get_search_string($stx)
     return $stx;
 }
 
+/**
+ * @param mixed $str
+ * @param int $check_entities
+ * @param int $is_remove_tags
+ * @param int $cur_str_len
+ * @param int $is_trim_both
+ */
 function clean_xss_tags($str, $check_entities=0, $is_remove_tags=0, $cur_str_len=0, $is_trim_both=1)
 {
     if( $is_trim_both ) {
@@ -3279,6 +4059,9 @@ function clean_xss_tags($str, $check_entities=0, $is_remove_tags=0, $cur_str_len
     return $str;
 }
 
+/**
+ * @param mixed $str
+ */
 function clean_xss_attributes($str)
 {
     $xss_attributes_string = 'onAbort|onActivate|onAttribute|onAfterPrint|onAfterScriptExecute|onAfterUpdate|onAnimationCancel|onAnimationEnd|onAnimationIteration|onAnimationStart|onAriaRequest|onAutoComplete|onAutoCompleteError|onAuxClick|onBeforeActivate|onBeforeCopy|onBeforeCut|onBeforeDeactivate|onBeforeEditFocus|onBeforePaste|onBeforePrint|onBeforeScriptExecute|onBeforeUnload|onBeforeUpdate|onBegin|onBlur|onBounce|onCancel|onCanPlay|onCanPlayThrough|onCellChange|onChange|onClick|onClose|onCommand|onCompassNeedsCalibration|onContextMenu|onControlSelect|onCopy|onCueChange|onCut|onDataAvailable|onDataSetChanged|onDataSetComplete|onDblClick|onDeactivate|onDeviceLight|onDeviceMotion|onDeviceOrientation|onDeviceProximity|onDrag|onDragDrop|onDragEnd|onDragEnter|onDragLeave|onDragOver|onDragStart|onDrop|onDurationChange|onEmptied|onEnd|onEnded|onError|onErrorUpdate|onExit|onFilterChange|onFinish|onFocus|onFocusIn|onFocusOut|onFormChange|onFormInput|onFullScreenChange|onFullScreenError|onGotPointerCapture|onHashChange|onHelp|onInput|onInvalid|onKeyDown|onKeyPress|onKeyUp|onLanguageChange|onLayoutComplete|onLoad|onLoadedData|onLoadedMetaData|onLoadStart|onLoseCapture|onLostPointerCapture|onMediaComplete|onMediaError|onMessage|onMouseDown|onMouseEnter|onMouseLeave|onMouseMove|onMouseOut|onMouseOver|onMouseUp|onMouseWheel|onMove|onMoveEnd|onMoveStart|onMozFullScreenChange|onMozFullScreenError|onMozPointerLockChange|onMozPointerLockError|onMsContentZoom|onMsFullScreenChange|onMsFullScreenError|onMsGestureChange|onMsGestureDoubleTap|onMsGestureEnd|onMsGestureHold|onMsGestureStart|onMsGestureTap|onMsGotPointerCapture|onMsInertiaStart|onMsLostPointerCapture|onMsManipulationStateChanged|onMsPointerCancel|onMsPointerDown|onMsPointerEnter|onMsPointerLeave|onMsPointerMove|onMsPointerOut|onMsPointerOver|onMsPointerUp|onMsSiteModeJumpListItemRemoved|onMsThumbnailClick|onOffline|onOnline|onOutOfSync|onPage|onPageHide|onPageShow|onPaste|onPause|onPlay|onPlaying|onPointerCancel|onPointerDown|onPointerEnter|onPointerLeave|onPointerLockChange|onPointerLockError|onPointerMove|onPointerOut|onPointerOver|onPointerUp|onPopState|onProgress|onPropertyChange|onqt_error|onRateChange|onReadyStateChange|onReceived|onRepeat|onReset|onResize|onResizeEnd|onResizeStart|onResume|onReverse|onRowDelete|onRowEnter|onRowExit|onRowInserted|onRowsDelete|onRowsEnter|onRowsExit|onRowsInserted|onScroll|onSearch|onSeek|onSeeked|onSeeking|onSelect|onSelectionChange|onSelectStart|onStalled|onStorage|onStorageCommit|onStart|onStop|onShow|onSyncRestored|onSubmit|onSuspend|onSynchRestored|onTimeError|onTimeUpdate|onTimer|onTrackChange|onTransitionEnd|onToggle|onTouchCancel|onTouchEnd|onTouchLeave|onTouchMove|onTouchStart|onTransitionCancel|onTransitionEnd|onUnload|onURLFlip|onUserProximity|onVolumeChange|onWaiting|onWebKitAnimationEnd|onWebKitAnimationIteration|onWebKitAnimationStart|onWebKitFullScreenChange|onWebKitFullScreenError|onWebKitTransitionEnd|onWheel';
@@ -3309,6 +4092,9 @@ function clean_xss_attributes($str)
     return $str;
 }
 
+/**
+ * @param mixed $path
+ */
 function clean_relative_paths($path){
     $path_len = strlen($path);
 
@@ -3325,6 +4111,9 @@ function clean_relative_paths($path){
     return $path;
 }
 
+/**
+ * @param mixed $str
+ */
 function conv_unescape_nl($str)
 {
     $search = array('\\r', '\r', '\\n', '\n');
@@ -3333,6 +4122,9 @@ function conv_unescape_nl($str)
     return str_replace($search, $replace, $str);
 }
 
+/**
+ * @param mixed $mb_id
+ */
 function member_delete($mb_id)
 {
     global $config;
@@ -3379,6 +4171,9 @@ function member_delete($mb_id)
     run_event('member_delete_after', $mb_id);
 }
 
+/**
+ * @param mixed $email
+ */
 function get_email_address($email)
 {
     preg_match("/[0-9a-z._-]+@[a-z0-9._-]{4,}/i", $email, $matches);
@@ -3386,6 +4181,9 @@ function get_email_address($email)
     return isset($matches[0]) ? $matches[0] : '';
 }
 
+/**
+ * @param mixed $name
+ */
 function get_safe_filename($name)
 {
     $pattern = '/["\'<>=#&!%\\\\(\)\*\+\?]/';
@@ -3394,6 +4192,9 @@ function get_safe_filename($name)
     return $name;
 }
 
+/**
+ * @param mixed $name
+ */
 function replace_filename($name)
 {
     @session_start();
@@ -3408,6 +4209,10 @@ function replace_filename($name)
     return $return_filename;
 }
 
+/**
+ * @param mixed $id
+ * @param mixed $pass
+ */
 function get_icode_userinfo($id, $pass)
 {
     $res = get_sock('http://www.icodekorea.com/res/userinfo.php?userid='.$id.'&userpw='.$pass, 2);
@@ -3422,6 +4227,10 @@ function get_icode_userinfo($id, $pass)
     return $userinfo;
 }
 
+/**
+ * @param mixed $field
+ * @param mixed $str
+ */
 function insert_popular($field, $str)
 {
     global $g5;
@@ -3432,6 +4241,9 @@ function insert_popular($field, $str)
     }
 }
 
+/**
+ * @param mixed $str
+ */
 function get_encrypt_string($str)
 {
     if(defined('G5_STRING_ENCRYPT_FUNCTION') && G5_STRING_ENCRYPT_FUNCTION) {
@@ -3443,6 +4255,10 @@ function get_encrypt_string($str)
     return $encrypt;
 }
 
+/**
+ * @param mixed $pass
+ * @param mixed $hash
+ */
 function check_password($pass, $hash)
 {
     if(defined('G5_STRING_ENCRYPT_FUNCTION') && G5_STRING_ENCRYPT_FUNCTION === 'create_hash') {
@@ -3454,6 +4270,11 @@ function check_password($pass, $hash)
     return ($password === $hash);
 }
 
+/**
+ * @param mixed $mb
+ * @param mixed $pass
+ * @param mixed $hash
+ */
 function login_password_check($mb, $pass, $hash)
 {
     global $g5;
@@ -3481,6 +4302,9 @@ function login_password_check($mb, $pass, $hash)
     return check_password($pass, $hash);
 }
 
+/**
+ * @param mixed $url
+ */
 function safe_filter_url_host($url) {
 
     $regex = run_replace('safe_filter_url_regex', '\\', $url);
@@ -3488,6 +4312,12 @@ function safe_filter_url_host($url) {
     return $regex ? preg_replace('#'. preg_quote($regex, '#') .'#iu', '', $url) : '';
 }
 
+/**
+ * @param mixed $url
+ * @param mixed $return_url
+ * @param string $msg
+ * @param bool $is_redirect
+ */
 function check_url_host($url, $msg='', $return_url=G5_URL, $is_redirect=false)
 {
     if(!$msg)
@@ -3554,6 +4384,10 @@ function check_url_host($url, $msg='', $return_url=G5_URL, $is_redirect=false)
     }
 }
 
+/**
+ * @param mixed $query
+ * @param bool $amp
+ */
 function clean_query_string($query, $amp=true)
 {
     $qstr = trim($query);
@@ -3642,6 +4476,10 @@ function clean_query_string($query, $amp=true)
     return $str;
 }
 
+/**
+ * @param mixed $params
+ * @param string $url
+ */
 function get_params_merge_url($params, $url=''){
     $str_url = $url ? $url : G5_URL;
     $p = @parse_url($str_url);
@@ -3690,6 +4528,10 @@ function get_device_change_url()
     return get_params_merge_url($q);
 }
 
+/**
+ * @param mixed $dir
+ * @param mixed $skin
+ */
 function get_skin_path($dir, $skin)
 {
     global $config;
@@ -3716,6 +4558,10 @@ function get_skin_path($dir, $skin)
     return $skin_path;
 }
 
+/**
+ * @param mixed $dir
+ * @param mixed $skin
+ */
 function get_skin_url($dir, $skin)
 {
     $skin_path = get_skin_path($dir, $skin);
@@ -3723,6 +4569,9 @@ function get_skin_url($dir, $skin)
     return str_replace(G5_PATH, G5_URL, $skin_path);
 }
 
+/**
+ * @param mixed $callback
+ */
 function check_vaild_callback($callback){
    $_callback = preg_replace('/[^0-9]/','', $callback);
 
@@ -3742,9 +4591,14 @@ function check_vaild_callback($callback){
 
 class str_encrypt
 {
+    /** @var mixed */
     var $salt;
+    /** @var mixed */
     var $length;
 
+    /**
+     * @param string $salt
+     */
     function __construct($salt='')
     {
         if(!$salt)
@@ -3755,6 +4609,9 @@ class str_encrypt
         $this->length = strlen($this->salt);
     }
 
+    /**
+     * @param mixed $str
+     */
     function encrypt($str)
     {
         $length = strlen($str);
@@ -3770,6 +4627,9 @@ class str_encrypt
         return strtr(base64_encode($result) , '+/=', '._-');
     }
 
+    /**
+     * @param mixed $str
+     */
     function decrypt($str) {
         $result = '';
         $str    = base64_decode(strtr($str, '._-', '+/='));
@@ -3786,6 +4646,9 @@ class str_encrypt
     }
 }
 
+/**
+ * @param mixed $bo_table
+ */
 function get_write_token($bo_table)
 {
     $token = md5(uniqid(rand(), true));
@@ -3795,6 +4658,9 @@ function get_write_token($bo_table)
 }
 
 
+/**
+ * @param mixed $bo_table
+ */
 function check_write_token($bo_table)
 {
     if(!$bo_table)
@@ -3809,6 +4675,13 @@ function check_write_token($bo_table)
     return true;
 }
 
+/**
+ * @param string $mb_id
+ * @param string $width
+ * @param string $height
+ * @param string $alt
+ * @param string $title
+ */
 function get_member_profile_img($mb_id='', $width='', $height='', $alt='profile_image', $title=''){
     global $member;
 
@@ -3859,6 +4732,9 @@ function get_member_profile_img($mb_id='', $width='', $height='', $alt='profile_
     return '';
 }
 
+/**
+ * @param mixed $title
+ */
 function get_head_title($title){
     global $g5;
 
@@ -3869,6 +4745,9 @@ function get_head_title($title){
     return $title;
 }
 
+/**
+ * @param string $is_type
+ */
 function is_sms_send($is_type=''){
     global $config;
 
@@ -3910,6 +4789,10 @@ function is_use_email_certify(){
     return $config['cf_use_email_certify'];
 }
 
+/**
+ * @param mixed $str
+ * @param string $str_case
+ */
 function safe_replace_regex($str, $str_case=''){
 
     if($str_case === 'time'){
@@ -3930,6 +4813,9 @@ function get_real_client_ip(){
     return preg_replace('/[^0-9.]/', '', $real_ip);
 }
 
+/**
+ * @param string $ip
+ */
 function check_mail_bot($ip=''){
     $check_ips = array('211.249.40.');
     $bot_message = 'bot 으로 판단되어 중지합니다.';
@@ -3948,6 +4834,10 @@ function check_mail_bot($ip=''){
     }
 }
 
+/**
+ * @param mixed $func
+ * @param array $args
+ */
 function get_call_func_cache($func, $args=array()){
 
     static $cache = array();
@@ -3969,6 +4859,10 @@ function get_call_func_cache($func, $args=array()){
     return $result;
 }
 
+/**
+ * @param string $path
+ * @param string $is_input
+ */
 function is_include_path_check($path='', $is_input='')
 {
     if( $path ){
@@ -4044,6 +4938,9 @@ function is_include_path_check($path='', $is_input='')
     return true;
 }
 
+/**
+ * @param mixed $url
+ */
 function is_inicis_url_return($url){
     $url_data = parse_url($url);
 
@@ -4053,6 +4950,9 @@ function is_inicis_url_return($url){
     return '';
 }
 
+/**
+ * @param string $str
+ */
 function check_auth_session_token($str=''){
     if (get_session('ss_mb_token_key') === get_token_encryption_key($str)) {
         return true;
@@ -4060,16 +4960,25 @@ function check_auth_session_token($str=''){
     return false;
 }
 
+/**
+ * @param string $str
+ */
 function update_auth_session_token($str=''){
     set_session('ss_mb_token_key', get_token_encryption_key($str));
 }
 
+/**
+ * @param string $str
+ */
 function get_token_encryption_key($str=''){
     $token = G5_TABLE_PREFIX.(defined('G5_SHOP_TABLE_PREFIX') ? G5_SHOP_TABLE_PREFIX : '').(defined('G5_TOKEN_ENCRYPTION_KEY') ? G5_TOKEN_ENCRYPTION_KEY : '').$str;
 
     return md5($token);
 }
 
+/**
+ * @param int $length
+ */
 function get_random_token_string($length=6)
 {
     if(function_exists('random_bytes')){
@@ -4082,10 +4991,17 @@ function get_random_token_string($length=6)
     return bin2hex($output);
 }
 
+/**
+ * @param mixed $path
+ */
 function filter_input_include_path($path){
     return str_replace('//', '/', strip_tags($path));
 }
 
+/**
+ * @param mixed $option
+ * @param array $arr
+ */
 function option_array_checked($option, $arr=array()){
     $checked = '';
 
@@ -4099,6 +5015,9 @@ function option_array_checked($option, $arr=array()){
 
     return $checked;
 }
+/**
+ * @param mixed $mb_level
+ */
 function get_member_level_icon($mb_level) {
     global $g5;
     
@@ -4111,6 +5030,9 @@ function get_member_level_icon($mb_level) {
     return '';
 }
 
+/**
+ * @param mixed $mb_id
+ */
 function get_member_level_img($mb_id) {
     global $g5;
     
@@ -4129,6 +5051,9 @@ function get_member_level_img($mb_id) {
     return '';
 }
 
+/**
+ * @param mixed $mb_level
+ */
 function get_member_level_name($mb_level) {
     $level_names = array(
         1 => '비회원',
@@ -4146,6 +5071,11 @@ function get_member_level_name($mb_level) {
     return isset($level_names[$mb_level]) ? $level_names[$mb_level] : '레벨'.$mb_level;
 }
 
+/**
+ * @param mixed $name
+ * @param mixed $mb_id
+ * @param string $mb_level
+ */
 function get_text_with_member_level($name, $mb_id, $mb_level='') {
     global $g5, $config, $board;
     

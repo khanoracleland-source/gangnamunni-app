@@ -49,6 +49,10 @@ class NewPasswordController extends Controller
                     'remember_token' => Str::random(60),
                 ])->save();
 
+                // 재설정 전에 발급된 API 토큰은 모두 폐기한다 — 그렇지 않으면
+                // 계정을 되찾아도 침입자의 토큰이 계속 유효하다.
+                $user->tokens()->delete();
+
                 event(new PasswordReset($user));
             }
         );

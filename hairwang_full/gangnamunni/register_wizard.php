@@ -47,6 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regis
         session_start();
         $_SESSION['ss_mb_id'] = $mb_id;
         $_SESSION['ss_mb_no'] = $mbNo;
+        // 방금 만든 계정이라 epoch 는 0 이지만, set_session() 을 쓰지 않는
+        // 경로이므로 common.php 의 epoch 검사에 맞춰 명시적으로 넣어둔다.
+        $_SESSION['ss_cred_epoch'] = '0';
 
         echo json_encode(['success' => true, 'message' => '가입이 완료되었습니다!', 'mb_id' => $mb_id]);
     } catch (Exception $e) {

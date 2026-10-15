@@ -85,6 +85,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
                 if ($update_stmt) {
                     mysqli_stmt_bind_param($update_stmt, 'si', $hashed, $admin['id']);
                     if (mysqli_stmt_execute($update_stmt)) {
+                        // 비밀번호가 바뀌었으니 이 관리자의 기존 세션은 모두
+                        // 무효화한다(cred_epoch +1 → check_admin_login 에서 끊김).
+                        try {
+                            if ($epoch_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_admins SET cred_epoch = cred_epoch + 1 WHERE id = ?")) {
+                                mysqli_stmt_bind_param($epoch_stmt, 'i', $admin['id']);
+                                mysqli_stmt_execute($epoch_stmt);
+                                mysqli_stmt_close($epoch_stmt);
+                            }
+                        } catch (Throwable $e) {
+                            error_log('[admin_forgot_password] cred_epoch 갱신 실패 — 마이그레이션 미적용? admin_id=' . $admin['id']);
+                        }
                         // SMTP email sending
                         $email_sent = false;
                         $email_error = '';

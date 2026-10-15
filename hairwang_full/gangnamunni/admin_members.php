@@ -43,6 +43,10 @@ $error = '';
  * 그리고 병원관계자면 gangnamunni_admins 에 흩어져 있어, g5_member 만 지우면
  * 병원 관리자 계정이 남아 로그인되거나 HMS 재동기화로 회원이 되살아난다.
  * HMS users 는 삭제(진료/예약 데이터 FK) 대신 비활성화(status=0)하고 매핑을 끊는다.
+ * @param mixed $connect
+ * @param mixed $mb_no
+ * @param mixed $mb_id
+ * @param mixed $mb_email
  */
 function member_cleanup_relations($connect, $mb_no, $mb_id, $mb_email) {
     $mb_no    = (int) $mb_no;
@@ -163,6 +167,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset
                         mysqli_stmt_close($hms_stmt);
                     }
                 }
+            }
+        }
+
+        // 초기화된 회원의 기존 자격증명을 모두 폐기한다. 관리자 본인 세션은
+        // 유지해야 하므로 keep_current_session 을 쓴다(대상이 관리자 자신이
+        // 아닌 한 영향도 없다).
+        if ($g5_ok && function_exists('revoke_all_auth_credentials_for')) {
+            $target_q = mysqli_query($connect, "SELECT mb_id FROM g5_member WHERE mb_no = {$mb_no}");
+            $target_row = $target_q ? mysqli_fetch_assoc($target_q) : null;
+            if (!empty($target_row['mb_id'])) {
+                revoke_all_auth_credentials_for($target_row['mb_id'], ['keep_current_session' => true]);
             }
         }
 
@@ -652,10 +667,21 @@ include __DIR__ . '/includes/admin_header.php';
                     <th style="width:36px"><input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleSelectAll(this.checked)"></th>
                     <?php
                     $sort_params = array_filter(['search' => $search, 'level' => $filter_level, 'status' => $filter_status, 'per_page' => $per_page]);
+                    /**
+                     * @param mixed $col
+                     * @param mixed $currentSort
+                     * @param mixed $currentOrder
+                     * @param mixed $params
+                     */
                     function sortUrl($col, $currentSort, $currentOrder, $params) {
                         $newOrder = ($currentSort === $col && $currentOrder === 'DESC') ? 'asc' : 'desc';
                         return '?' . http_build_query(array_merge($params, ['sort' => $col, 'order' => $newOrder, 'page' => 1]));
                     }
+                    /**
+                     * @param mixed $col
+                     * @param mixed $currentSort
+                     * @param mixed $currentOrder
+                     */
                     function sortIcon($col, $currentSort, $currentOrder) {
                         if ($currentSort !== $col) return '';
                         return $currentOrder === 'ASC' ? ' <i class="bi bi-caret-up-fill"></i>' : ' <i class="bi bi-caret-down-fill"></i>';
