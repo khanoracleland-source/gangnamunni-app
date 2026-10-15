@@ -7,6 +7,7 @@
 // 이 상수가 정의되지 않으면 각각의 개별 페이지는 별도로 실행될 수 없음
 define('_GNUBOARD_', true);
 
+/** @var array $g5_path common.php 가 이 파일을 불러오기 전에 만들어 둔다 */
 include_once($g5_path['path'].'/version.php');   // 설정 파일
 
 // 기본 시간대 설정
@@ -216,7 +217,30 @@ define('G5_MOBILE_AGENT',   'phone|samsung|lgtel|mobile|[^A]skt|nokia|blackberry
 define('G5_SMTP',      'localhost');
 define('G5_SMTP_PORT', '587');
 define('G5_SMTP_USER', 'admin@seoulbeauty.app');
-define('G5_SMTP_PASS', 'SeoulB3auty!2026');
+// SMTP 비밀번호는 소스에 두지 않는다 — 환경변수, 없으면 gangnamunni/.env 의
+// MAIL_ADMIN_PASSWORD 에서 읽는다(.env 는 .gitignore 에 있고 웹에서도 차단됨).
+// 이전에는 이 자리에 평문 비밀번호가 있었고, 그 값이 git 이력과 인수인계/도움말
+// 페이지에 함께 퍼져 있었다.
+$_g5_smtp_pass = getenv('G5_SMTP_PASS') ?: (getenv('MAIL_ADMIN_PASSWORD') ?: '');
+if ($_g5_smtp_pass === '') {
+    $_g5_env_file = __DIR__ . '/gangnamunni/.env';
+    if (is_readable($_g5_env_file)) {
+        foreach (file($_g5_env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $_g5_line) {
+            if (strpos(ltrim($_g5_line), '#') === 0 || strpos($_g5_line, '=') === false) continue;
+            list($_g5_k, $_g5_v) = explode('=', $_g5_line, 2);
+            if (trim($_g5_k) === 'MAIL_ADMIN_PASSWORD') {
+                $_g5_smtp_pass = trim($_g5_v, " \t\"'");
+                break;
+            }
+        }
+    }
+    unset($_g5_env_file, $_g5_line, $_g5_k, $_g5_v);
+}
+if ($_g5_smtp_pass === '') {
+    error_log('[config] G5_SMTP_PASS 를 환경변수/.env 에서 찾지 못했습니다 — 메일 발송이 실패합니다.');
+}
+define('G5_SMTP_PASS', $_g5_smtp_pass);
+unset($_g5_smtp_pass);
 
 
 /********************

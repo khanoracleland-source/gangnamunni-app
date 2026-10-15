@@ -12,7 +12,13 @@ if (!$connect) die("MySQL 연결 실패");
 mysqli_set_charset($connect, 'utf8mb4');
 loadThemeSettings($connect);
 
+// 이 페이지는 플랫폼 메일 관리자 계정 정보를 다룬다 — check_admin_login() 만으로는
+// editor/viewer 는 물론 **병원 관리자**까지 볼 수 있었다. 최고관리자로 제한한다.
 if (!check_admin_login()) { header('Location: dashboard.php'); exit; }
+if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
+    http_response_code(403);
+    exit('최고관리자만 접근할 수 있습니다.');
+}
 
 $admin_page_title = '메일 도움말';
 $admin_current = 'mailserver';
@@ -45,7 +51,7 @@ include __DIR__ . '/includes/admin_header.php';
             </div>
             <div class="d-flex align-items-start mb-2">
                 <span class="step-number">2</span>
-                <span>아이디: <code>admin@seoulbeauty.app</code> / 비밀번호: <code>SeoulB3auty!2026</code> 입력</span>
+                <span>아이디: <code>admin@seoulbeauty.app</code> / 비밀번호: <span class="text-body-secondary">서버의 <code>gangnamunni/.env</code> → <code>MAIL_ADMIN_PASSWORD</code></span> 입력</span>
             </div>
             <div class="d-flex align-items-start mb-2">
                 <span class="step-number">3</span>
@@ -71,7 +77,7 @@ include __DIR__ . '/includes/admin_header.php';
                             <tr><td class="fw-semibold">포트</td><td><code>993</code></td></tr>
                             <tr><td class="fw-semibold">보안</td><td><code>SSL/TLS</code></td></tr>
                             <tr><td class="fw-semibold">아이디</td><td><code>admin@seoulbeauty.app</code></td></tr>
-                            <tr><td class="fw-semibold">비밀번호</td><td><code>SeoulB3auty!2026</code></td></tr>
+                            <tr><td class="fw-semibold">비밀번호</td><td><span class="text-body-secondary">서버의 <code>gangnamunni/.env</code> → <code>MAIL_ADMIN_PASSWORD</code></span></td></tr>
                         </table>
                     </div>
                 </div>
@@ -83,7 +89,7 @@ include __DIR__ . '/includes/admin_header.php';
                             <tr><td class="fw-semibold">포트</td><td><code>587</code></td></tr>
                             <tr><td class="fw-semibold">보안</td><td><code>STARTTLS</code></td></tr>
                             <tr><td class="fw-semibold">아이디</td><td><code>admin@seoulbeauty.app</code></td></tr>
-                            <tr><td class="fw-semibold">비밀번호</td><td><code>SeoulB3auty!2026</code></td></tr>
+                            <tr><td class="fw-semibold">비밀번호</td><td><span class="text-body-secondary">서버의 <code>gangnamunni/.env</code> → <code>MAIL_ADMIN_PASSWORD</code></span></td></tr>
                         </table>
                     </div>
                 </div>

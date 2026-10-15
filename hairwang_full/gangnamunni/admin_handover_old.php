@@ -20,6 +20,12 @@ mysqli_set_charset($connect, 'utf8mb4');
 
 if (function_exists('loadThemeSettings')) loadThemeSettings($connect);
 if (function_exists('require_admin_login')) require_admin_login();
+// 인수인계 문서에는 플랫폼 전체의 계정/서버 접속 정보가 모여 있다. 이전에는
+// 로그인한 아무 관리자(병원 관리자·editor·viewer 포함)가 직접 URL 로 열 수 있었다.
+if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
+    http_response_code(403);
+    exit('최고관리자만 접근할 수 있습니다.');
+}
 
 $admin_name = $_SESSION['ad_admin_name'] ?? $_SESSION['ad_admin_id'] ?? '관리자';
 mysqli_close($connect);
@@ -778,7 +784,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
             <tr><td>병원 테스트 계정</td><td>동일</td><td><code>hospital_test</code> / <code>hospital123</code></td><td>hospital_admin · 병원 id 8093</td></tr>
             <tr><td>HMS 관리자</td><td>https://hms.seoulbeauty.app</td><td><code>admin@hms.com</code> / <code>123456</code></td><td>Laravel 백오피스</td></tr>
             <tr><td>그누보드 관리자</td><td><code>/hairwang/adm/</code></td><td colspan="2">SSO 통합 — 서울미녀 관리자 로그인으로 접근</td></tr>
-            <tr><td>메일 관리자</td><td>https://mail.seoulbeauty.app</td><td><code>admin@seoulbeauty.app</code> / <code>SeoulB3auty!2026</code></td><td>Mailcow 관리 콘솔</td></tr>
+            <tr><td>메일 관리자</td><td>https://mail.seoulbeauty.app</td><td><code>admin@seoulbeauty.app</code> / <span class="text-body-secondary">서버의 <code>gangnamunni/.env</code> → <code>MAIL_ADMIN_PASSWORD</code></span></td><td>Mailcow 관리 콘솔</td></tr>
             <tr><td>GitHub</td><td>github.com/appdosa1004-cyber/site_get</td><td colspan="2">아이디 회신 시 Collaborator 초대</td></tr>
           </tbody>
         </table>
@@ -817,7 +823,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
         <h3>📧 메일서버 (Mailcow · Docker)</h3>
         <table>
           <tbody>
-            <tr><th>관리 콘솔</th><td>https://mail.seoulbeauty.app · <code>admin@seoulbeauty.app</code> / <code>SeoulB3auty!2026</code></td></tr>
+            <tr><th>관리 콘솔</th><td>https://mail.seoulbeauty.app · <code>admin@seoulbeauty.app</code> / <span class="text-body-secondary">서버의 <code>gangnamunni/.env</code> → <code>MAIL_ADMIN_PASSWORD</code></span></td></tr>
             <tr><th>위치</th><td>contabo1 <code>/opt/mailcow-dockerized/</code> (Docker 18컨테이너)</td></tr>
           </tbody>
         </table>
