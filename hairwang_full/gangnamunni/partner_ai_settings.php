@@ -8,6 +8,7 @@ enforce_temporarily_disabled_admin_page(__FILE__);
  * 모바일 친화적 레이아웃
  */
 session_start();
+require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 
 require_once __DIR__ . '/../dbconfig.php';
 

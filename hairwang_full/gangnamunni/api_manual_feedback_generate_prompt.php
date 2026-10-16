@@ -9,6 +9,7 @@ if (!defined('G5_MYSQL_PASSWORD')) { require_once __DIR__ . '/dbconfig.php'; }
 header('Content-Type: application/json; charset=utf-8');
 
 if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 if (empty($_SESSION['ad_admin_logged_in'])) {
     http_response_code(401);
     echo json_encode(['success'=>false,'error'=>'로그인 필요']);

@@ -10,6 +10,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 // 관리자 인증
 session_start();
+require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 $is_admin = !empty($_SESSION['ad_admin_logged_in']) || !empty($_SESSION['admin_logged_in']);
 if (!$is_admin) {
     // 관리자 세션 확인 보강: 기존 admin 체크 파일이 있으면 사용

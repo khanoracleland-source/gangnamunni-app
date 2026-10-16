@@ -1,6 +1,7 @@
 <?php
 // [인수인계 정비] 개발용 페이지 - 관리자 권한 없으면 접근 차단
 @session_start();
+require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 if (empty($_SESSION['ad_admin_logged_in'])) {
     http_response_code(403);
     die('접근 권한이 없습니다.');

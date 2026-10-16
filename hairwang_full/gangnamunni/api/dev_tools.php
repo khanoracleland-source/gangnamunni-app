@@ -7,6 +7,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 // Auth
 session_start();
+require_once dirname(__DIR__) . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 $is_admin = !empty($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true;
 if (!$is_admin) { http_response_code(403); echo json_encode(['error'=>'Unauthorized']); exit; }
 

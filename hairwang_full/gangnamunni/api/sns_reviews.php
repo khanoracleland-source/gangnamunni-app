@@ -3,6 +3,7 @@
  * SNS 심사 관리 API
  */
 session_start();
+require_once dirname(__DIR__) . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 header('Content-Type: application/json; charset=utf-8');
 
 if (empty($_SESSION['ad_admin_logged_in'])) {

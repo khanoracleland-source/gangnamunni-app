@@ -8,6 +8,7 @@
  * @created 2026-02-26
  */
 session_start();
+require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 header('Content-Type: application/json; charset=utf-8');
 
 // 로그인 체크

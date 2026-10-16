@@ -21,6 +21,7 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
         session_name('PHPSESSID');
         session_id($_COOKIE['PHPSESSID']);
         session_start();
+        require_once __DIR__ . '/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
         if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] === true) {
             $_is_admin_on_front = true;
         }
@@ -29,6 +30,7 @@ if (isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged_in'] ==
         session_name($orig_name);
         if ($orig_id) { session_id($orig_id); }
         session_start();
+        require_once __DIR__ . '/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
     }
 }
 

@@ -17,6 +17,7 @@ require_once __DIR__ . '/includes/admin_auth.php';
 if (function_exists('require_admin_login')) {
     // 비로그인 시 JSON 에러 반환 (AJAX 엔드포인트이므로 리다이렉트 대신)
     @session_start();
+    require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
     if (empty($_SESSION['ad_admin_logged_in'])) {
         echo json_encode(['success' => false, 'message' => '권한이 없습니다.']);
         exit;

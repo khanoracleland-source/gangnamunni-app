@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 
 $admin_page_title = '인수인계 대시보드';
 $admin_current = 'handover_dashboard';

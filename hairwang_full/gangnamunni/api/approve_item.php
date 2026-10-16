@@ -6,6 +6,7 @@
  * 대시보드 승인 대기 큐 + 관리 페이지에서 AJAX 호출
  */
 session_start();
+require_once dirname(__DIR__) . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !== true) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => '로그인 필요']);

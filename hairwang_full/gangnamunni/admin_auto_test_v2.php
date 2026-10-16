@@ -7,6 +7,7 @@ enforce_temporarily_disabled_admin_page(__FILE__);
  * 플러그인 기반 확장 가능한 테스트 시스템
  */
 session_start();
+require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !== true) {
     header('Location: dashboard.php');
     exit;

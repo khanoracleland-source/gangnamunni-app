@@ -9,6 +9,7 @@
  * - action=card_html   : 리뷰어 프로필 카드 HTML
  */
 session_start();
+require_once dirname(__DIR__) . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 
 require_once __DIR__ . '/../includes/reviewer_stats.php';
 

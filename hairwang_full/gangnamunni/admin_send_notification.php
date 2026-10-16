@@ -14,6 +14,7 @@ $is_ajax = (
 if ($is_ajax) {
     // AJAX: 세션 + DB만 로드 (HTML 렌더링 안함)
     session_start();
+    require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
     if (empty($_SESSION['ad_admin_logged_in'])) {
         header('Content-Type: application/json; charset=utf-8');
         http_response_code(401);
@@ -242,6 +243,7 @@ if ($is_ajax) {
 
 // ===== 일반 페이지 렌더링 =====
 session_start();
+require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 if (empty($_SESSION['admin_send_notification_csrf'])) {
     $_SESSION['admin_send_notification_csrf'] = bin2hex(random_bytes(32));
 }

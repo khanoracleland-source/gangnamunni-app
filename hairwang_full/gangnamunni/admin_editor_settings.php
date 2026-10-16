@@ -4,6 +4,7 @@
  * 후기 에디터 옵션 관리 (카메라전용, AI검수, 자동승인 등)
  */
 session_start();
+require_once __DIR__ . '/includes/admin_session_guard.php'; sb_admin_session_guard(); // 삭제·비활성·역할변경 관리자 세션 차단
 if (!isset($_SESSION['ad_admin_logged_in']) || $_SESSION['ad_admin_logged_in'] !== true) {
     header('Location: dashboard.php');
     exit;
