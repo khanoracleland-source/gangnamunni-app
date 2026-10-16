@@ -6,7 +6,8 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
     define('POINTS_CHECKOUT_LOADED', 1);
 
     /** @param \mysqli $connect */
-    function points_checkout_ready($connect) {
+    function points_checkout_ready($connect)
+    {
         return points_v2_on($connect, 'v2_point_use_enabled');
     }
 
@@ -14,7 +15,8 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
      * @param \mysqli    $connect
      * @param int|string $payment_id
      */
-    function points_checkout_active_hold($connect, $payment_id) {
+    function points_checkout_active_hold($connect, $payment_id)
+    {
         if (!points_v2_schema_ready($connect)) return null;
         $st = mysqli_prepare($connect, "SELECT * FROM gangnamunni_point_payment_holds
             WHERE payment_id = ? AND status IN ('held','captured') ORDER BY id DESC LIMIT 1");
@@ -33,7 +35,8 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
      * @param int|string $gross
      * @param int|string $already_held
      */
-    function points_checkout_max($connect, $member_no, $gross, $already_held = 0) {
+    function points_checkout_max($connect, $member_no, $gross, $already_held = 0)
+    {
         $bal = max(0, (int)points_balance_safe($connect, $member_no)) + max(0, (int)$already_held);
         $cap = max(0, (int)$gross - points_v2_int($connect, 'v2_point_use_min_pay', 1000));
         return max(0, min($bal, $cap));
@@ -43,7 +46,8 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
      * @param \mysqli    $connect
      * @param int|string $payment_id
      */
-    function points_checkout_order_reset($connect, $payment_id) {
+    function points_checkout_order_reset($connect, $payment_id)
+    {
         $st = mysqli_prepare($connect, "UPDATE gangnamunni_platform_payments
             SET amount = COALESCE(gross_amount, amount), points_used = 0
             WHERE id = ? AND status = 'pending'");
@@ -53,13 +57,14 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
         mysqli_stmt_close($st);
     }
 
- 
+
     /**
      * @param \mysqli    $connect
      * @param int|string $member_no
      * @param int|string $point_use
      */
-    function points_checkout_apply($connect, array $order, $member_no, $point_use) {
+    function points_checkout_apply($connect, array $order, $member_no, $point_use)
+    {
         $point_use = max(0, (int)$point_use);
         $member_no = (int)$member_no;
         if (($order['status'] ?? '') !== 'pending') throw new RuntimeException('결제할 수 없는 주문 상태입니다.');
@@ -124,7 +129,9 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
             }
             $use_pid = (int)$r['point_id'];
             $u = mysqli_prepare($connect, "UPDATE gangnamunni_point_payment_holds SET use_point_id = ? WHERE id = ?");
-            mysqli_stmt_bind_param($u, 'ii', $use_pid, $hold_id); mysqli_stmt_execute($u); mysqli_stmt_close($u);
+            mysqli_stmt_bind_param($u, 'ii', $use_pid, $hold_id);
+            mysqli_stmt_execute($u);
+            mysqli_stmt_close($u);
 
             $amount = $gross - $point_use;
             $st = mysqli_prepare($connect, "UPDATE gangnamunni_platform_payments SET gross_amount = ?, points_used = ?, amount = ? WHERE id = ? AND status = 'pending'");
@@ -147,12 +154,22 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
      * @param string     $reason
      * @param string     $final_status
      */
-    function points_checkout_release_hold($connect, array $hold, $reason, $final_status = 'released') {
+    function points_checkout_release_hold($connect, array $hold, $reason, $final_status = 'released')
+    {
         $hold_id = (int)$hold['id'];
         $r = ['ok' => true, 'skipped' => true];
         if ((int)$hold['points'] > 0 && !empty($hold['use_point_id'])) {
-            $r = points_txn($connect, (int)$hold['member_id'], 'refund', (int)$hold['points'], $reason, 'point_hold', $hold_id, null,
-                ['restore_from' => (int)$hold['use_point_id']]);
+            $r = points_txn(
+                $connect,
+                (int)$hold['member_id'],
+                'refund',
+                (int)$hold['points'],
+                $reason,
+                'point_hold',
+                $hold_id,
+                null,
+                ['restore_from' => (int)$hold['use_point_id']]
+            );
             if (empty($r['ok'])) throw new RuntimeException('포인트 복구에 실패했습니다.');
         }
         $rp = (int)($r['point_id'] ?? 0) ?: null;
@@ -168,7 +185,8 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
      * @param int|string $payment_id
      * @param string     $reason
      */
-    function points_checkout_release($connect, $payment_id, $reason = '결제 미완료 포인트 복구') {
+    function points_checkout_release($connect, $payment_id, $reason = '결제 미완료 포인트 복구')
+    {
         $hold = points_checkout_active_hold($connect, $payment_id);
         if (!$hold || $hold['status'] !== 'held') return false;
         // 홀드 해제와 주문 금액 원복은 한 묶음이어야 한다 — 사이에서 끊기면
@@ -190,7 +208,8 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
      * @param \mysqli    $connect
      * @param int|string $payment_id
      */
-    function points_checkout_capture($connect, $payment_id) {
+    function points_checkout_capture($connect, $payment_id)
+    {
         if (!points_v2_schema_ready($connect)) return;
         $pid = (int)$payment_id;
 
@@ -233,7 +252,8 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
     /**
      * @param \mysqli    $connect
      */
-    function points_checkout_restore_on_refund($connect, array $order) {
+    function points_checkout_restore_on_refund($connect, array $order)
+    {
         if (($order['status'] ?? '') !== 'refunded') return false;
         $hold = points_checkout_active_hold($connect, (int)$order['id']);
         if (!$hold) return false;
@@ -244,14 +264,15 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
     /**
      * @param \mysqli    $connect
      */
-    function points_checkout_after_sync($connect, array $order) {
+    function points_checkout_after_sync($connect, array $order)
+    {
         if (!points_v2_schema_ready($connect)) return;
         $status = (string)($order['status'] ?? '');
         if (in_array($status, ['paid', 'partially_refunded'], true)) points_checkout_capture($connect, (int)$order['id']);
         if ($status === 'refunded') points_checkout_restore_on_refund($connect, $order);
     }
 
-   
+
     /**
      * @param \mysqli    $connect
      * @param int|string $booking_id
@@ -260,7 +281,8 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
      *   방치 홀드 cron 용: 결제창이 열려 있는 동안 풀면 승인 단계에서 POINT_HOLD_EXPIRED 로 거부된다.
      *   예약 취소는 false(기본): 취소되면 승인이 어차피 거부되므로 바로 복구한다.
      */
-    function points_checkout_release_for_booking($connect, $booking_id, $reason = '예약 취소 포인트 복구', $keepIfInProgress = false) {
+    function points_checkout_release_for_booking($connect, $booking_id, $reason = '예약 취소 포인트 복구', $keepIfInProgress = false)
+    {
         if (!points_v2_schema_ready($connect)) return false;
         require_once __DIR__ . '/booking_payment_service.php';
         $order = booking_payment_order($connect, (int)$booking_id);
@@ -273,8 +295,13 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
                 try {
                     $remote = $gateway->payment($merchant);
                     if ($keepIfInProgress && ($remote['raw_status'] ?? '') === 'IN_PROGRESS') return false;
-                    booking_payment_apply_remote($connect, booking_payment_by_merchant($connect, $merchant),
-                        $remote, 'server_query', $gateway->provider());
+                    booking_payment_apply_remote(
+                        $connect,
+                        booking_payment_by_merchant($connect, $merchant),
+                        $remote,
+                        'server_query',
+                        $gateway->provider()
+                    );
                 } catch (BookingPaymentRejectedException $e) {
                 }
             }
