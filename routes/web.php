@@ -143,11 +143,6 @@ use App\Http\Controllers\HospitalReviewController;
 use App\Models\PathologyParameter;
 use Illuminate\Support\Facades\Auth;
 
-Route::get('/users/creates', function () {
-    return view('users.new_create');
-});
-
-Route::get('hms-logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index']);
 
 // Routes for Landing Page starts
 Route::prefix('h/{username}')->group(function () {
@@ -1632,6 +1627,8 @@ Route::middleware('auth', 'verified', 'xss', 'multi_tenant', 'checkUserStatus')-
 // super admin routes
 Route::prefix('super-admin')->middleware('auth', 'verified', 'xss', 'role:Super Admin', 'checkUserStatus', 'check_impersonate')->group(function () {
     Route::get('dashboard', [HomeController::class, 'superAdminDashboard'])->name('super.admin.dashboard');
+    // Application log viewer: Super Admin only (was public at /hms-logs)
+    Route::get('hms-logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index'])->name('super.admin.logs');
     Route::resource('admins', AdminController::class);
     Route::get('/impersonate/{user}', [UserController::class, 'impersonate'])->name('impersonate');
     Route::get('income-chart', [HomeController::class, 'incomeChart'])->name('super.admin.income.chart');
@@ -1753,68 +1750,15 @@ Route::prefix('super-admin')->middleware('auth', 'verified', 'xss', 'role:Super 
 
 Route::get('/set-language', [Web\WebController::class, 'setLanguage'])->name('set-language');
 // Impersonate Logout
-Route::get('/users/impersonate-logout', [UserController::class, 'userImpersonateLogout'])->name('impersonate.userLogout');
+Route::get('/users/impersonate-logout', [UserController::class, 'userImpersonateLogout'])->middleware('auth')->name('impersonate.userLogout');
 
-// upgrade to v7.0.0
-Route::get('/upgrade-to-v7-0-0', function () {
-    Artisan::call('db:seed', ['--class' => 'FrontSettingTableSeeder', '--force' => true]);
-});
-
-// new appointment migration
-Route::get('/upgrade-to-v8-0-0', function () {
-    Artisan::call('migrate',
-        [
-            '--force' => true,
-            '--path' => 'database/migrations/2021_06_07_104022_change_patient_foreign_key_type_in_appointments_table.php',
-        ]);
-    Artisan::call('migrate',
-        [
-            '--force' => true,
-            '--path' => 'database/migrations/2021_06_08_073918_change_department_foreign_key_in_appointments_table.php',
-        ]);
-    Artisan::call('migrate',
-        [
-            '--force' => true,
-            '--path' => 'database/migrations/2021_06_21_082754_update_amount_datatype_in_bills_table.php',
-        ]);
-    Artisan::call('migrate',
-        [
-            '--force' => true,
-            '--path' => 'database/migrations/2021_06_21_082845_update_amount_datatype_in_bill_items_table.php',
-        ]);
-});
-
-Route::get('/upgrade-to-v8-1-0', function () {
-    Artisan::call('migrate',
-        [
-            '--force' => true,
-            '--path' => 'database/migrations/2021_05_10_000000_add_uuid_to_failed_jobs_table.php',
-        ]);
-    Artisan::call('migrate',
-        [
-            '--force' => true,
-            '--path' => 'database/migrations/2021_05_29_103036_add_conversions_disk_column_in_media_table.php',
-        ]);
-});
-// upgrade to v9.2.0
-Route::get('/upgrade-to-v9-2-0', function () {
-    Artisan::call('db:seed', ['--class' => 'FrontSettingHomeTableSeeder', '--force' => true]);
-    Artisan::call('db:seed', ['--class' => 'FrontServiceSeeder', '--force' => true]);
-    Artisan::call('db:seed', ['--class' => 'AddDoctorFrontSettingTableSeeder', '--force' => true]);
-    Artisan::call('db:seed', ['--class' => 'AddSocialSettingTableSeeder', '--force' => true]);
-    Artisan::call('db:seed', ['--class' => 'AddHomePageBoxContentSeeder', '--force' => true]);
-    Artisan::call('db:seed', ['--class' => 'AddAppointmentFrontSettingTableSeeder', '--force' => true]);
-});
-
-Route::get('/upgrade-to-v1-1-1', function () {
-    Artisan::call('db:seed', ['--class' => 'AddFieldSubscriptionPlanFeaturesTableSeeder', '--force' => true]);
-});
+// Web-triggered upgrade/seed routes removed (2026-10-16): they ran Artisan migrate/db:seed
+// without authentication. Run migrations from the deploy script / CLI instead.
 
 Route::get('qr-scan', function () {
     return view('qr');
 });
 
-include 'upgrade.php';
 
 //include "new_web.php";
 
