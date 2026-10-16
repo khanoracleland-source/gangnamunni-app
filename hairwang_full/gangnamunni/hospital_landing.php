@@ -46,111 +46,12 @@ $category_list = defined('CATEGORIES') ? CATEGORIES : ['코','눈','지방흡입
 $message = ''; $error = ''; $success = false;
 $client_ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'apply') {
-    // 스팸 체크
-    if (!empty($_POST['website_url_hp'])) {
-        $success = true; $message = '신청이 접수되었습니다.';
-    } else {
-        $name = trim($_POST['hospital_name'] ?? '');
-        $owner_name = trim($_POST['owner_name'] ?? '');
-        $business_number = trim($_POST['business_number'] ?? '');
-        $phone = trim($_POST['phone'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $contact_name = trim($_POST['contact_name'] ?? '');
-        $contact_phone = trim($_POST['contact_phone'] ?? '');
-        $address = trim($_POST['address'] ?? '');
-        $latitude = floatval($_POST['latitude'] ?? 0);
-        $longitude = floatval($_POST['longitude'] ?? 0);
-        // categories → JSON 배열 (DB에 json_valid 제약 있음)
-        $categories_raw = trim($_POST['categories'] ?? '');
-        $categories = !empty($categories_raw) ? json_encode(explode(',', $categories_raw), JSON_UNESCAPED_UNICODE) : '[]';
-        $treatment_tags_raw = trim($_POST['treatment_tags'] ?? '');
-        $treatment_tags = !empty($treatment_tags_raw) ? json_encode(explode(',', $treatment_tags_raw), JSON_UNESCAPED_UNICODE) : '[]';
-        $business_hours = trim($_POST['business_hours'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $website = trim($_POST['website'] ?? '');
-        $sns_url = trim($_POST['sns_url'] ?? '');
-        $agree_terms = isset($_POST['agree_terms']);
-        $agree_privacy = isset($_POST['agree_privacy']);
-
-        if (empty($name) || empty($owner_name) || empty($business_number) || empty($phone) || empty($email) || empty($contact_name) || empty($contact_phone) || empty($address)) {
-            $error = '필수 항목을 모두 입력해 주세요.';
-        } elseif (!$agree_terms || !$agree_privacy) {
-            $error = '필수 약관에 동의해 주세요.';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = '올바른 이메일 주소를 입력해 주세요.';
-        } else {
-            $applied_by = 'public_' . $client_ip . '_' . time();
-            $upload_dir = __DIR__ . '/uploads/hospital_apply/' . md5($applied_by) . '/';
-            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-
-            $cert_business_path = ''; $cert_medical_path = ''; $profile_image_path = '';
-
-            // 사업자등록증
-            if (!empty($_FILES['cert_business']['name']) && $_FILES['cert_business']['error'] === UPLOAD_ERR_OK) {
-                $ext = strtolower(pathinfo($_FILES['cert_business']['name'], PATHINFO_EXTENSION));
-                if (in_array($ext, ['jpg','jpeg','png','pdf']) && $_FILES['cert_business']['size'] <= 5*1024*1024) {
-                    $fname = 'cert_business_' . time() . '.' . $ext;
-                    if (move_uploaded_file($_FILES['cert_business']['tmp_name'], $upload_dir . $fname))
-                        $cert_business_path = 'uploads/hospital_apply/' . md5($applied_by) . '/' . $fname;
-                } else { $error = '사업자등록증: JPG/PNG/PDF, 5MB 이하만 가능합니다.'; }
-            } else { $error = '사업자등록증은 필수 서류입니다.'; }
-
-            // 의료기관 허가증
-            if (empty($error)) {
-                if (!empty($_FILES['cert_medical']['name']) && $_FILES['cert_medical']['error'] === UPLOAD_ERR_OK) {
-                    $ext = strtolower(pathinfo($_FILES['cert_medical']['name'], PATHINFO_EXTENSION));
-                    if (in_array($ext, ['jpg','jpeg','png','pdf']) && $_FILES['cert_medical']['size'] <= 5*1024*1024) {
-                        $fname = 'cert_medical_' . time() . '.' . $ext;
-                        if (move_uploaded_file($_FILES['cert_medical']['tmp_name'], $upload_dir . $fname))
-                            $cert_medical_path = 'uploads/hospital_apply/' . md5($applied_by) . '/' . $fname;
-                    } else { $error = '의료기관 허가증: JPG/PNG/PDF, 5MB 이하만 가능합니다.'; }
-                } else { $error = '의료기관 개설허가증은 필수 서류입니다.'; }
-            }
-
-            // 대표 이미지 (선택)
-            if (empty($error) && !empty($_FILES['profile_image']['name']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
-                $ext = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
-                if (in_array($ext, ['jpg','jpeg','png']) && $_FILES['profile_image']['size'] <= 5*1024*1024) {
-                    $fname = 'profile_' . time() . '.' . $ext;
-                    if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $upload_dir . $fname))
-                        $profile_image_path = 'uploads/hospital_apply/' . md5($applied_by) . '/' . $fname;
-                }
-            }
-
-            // DB INSERT
-            if (empty($error)) {
-                $stmt = mysqli_prepare($connect,
-                    "INSERT INTO gangnamunni_hospitals (name, owner_name, business_number, phone, email, contact_name, contact_phone, address, latitude, longitude, categories, treatment_tags, business_hours, description, website, sns_url, profile_image_url, cert_business, cert_medical, applied_by, applied_at, status, is_active, ad_grade, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending', 0, 'none', NOW())"
-                );
-                if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, 'ssssssssddssssssssss',
-                        $name, $owner_name, $business_number, $phone, $email,
-                        $contact_name, $contact_phone, $address, $latitude, $longitude,
-                        $categories, $treatment_tags, $business_hours, $description,
-                        $website, $sns_url, $profile_image_path,
-                        $cert_business_path, $cert_medical_path, $applied_by
-                    );
-                    if (mysqli_stmt_execute($stmt)) {
-                        $new_id = mysqli_insert_id($connect);
-                        $success = true;
-                        $message = "병원 등록 신청이 접수되었습니다. (신청번호: #{$new_id})";
-                        // 이메일 알림
-                        if (file_exists(__DIR__ . '/includes/mail_helper.php')) {
-                            require_once __DIR__ . '/includes/mail_helper.php';
-                            @mail_send(0, 'admin@seoulbeauty.app', '[서울미녀] 새 병원 등록 신청 - '.$name,
-                                "<h2>새 병원 등록 신청</h2><p>병원: ".htmlspecialchars($name)."</p><p>대표: ".htmlspecialchars($owner_name)."</p><p>이메일: ".htmlspecialchars($email)."</p><p><a href='".SITE_FULL_URL."admin_requested_hospitals.php'>확인</a></p>");
-                            if (!empty($email)) {
-                                @mail_send(0, $email, '[서울미녀] 병원 등록 신청 접수 확인',
-                                    "<h2>신청 접수 완료</h2><p>".htmlspecialchars($name)." 입점 신청이 접수되었습니다.</p><p>1~3 영업일 내 결과를 안내드립니다.</p>");
-                            }
-                        }
-                    } else { $error = '저장 실패: ' . mysqli_error($connect); }
-                    mysqli_stmt_close($stmt);
-                }
-            }
-        }
-    }
+// 등록 신청은 hospital_apply_public.php 에서만 받는다.
+// (이 페이지의 예전 신청 처리기는 CSRF·이메일 OTP·IP 속도제한·중복검사 없이
+//  인증서 업로드 + DB INSERT + 임의 주소로 메일 발송까지 수행했다.)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'apply') {
+    header('Location: hospital_apply_public.php', true, 303);
+    exit;
 }
 
 // 신청 현황 조회 (이메일 기반)
@@ -379,171 +280,12 @@ if ($success) $active_tab = 'apply';
 <!-- ==================== 탭 2: 등록 신청 ==================== -->
 <div class="tab-pane fade <?= $active_tab === 'apply' ? 'show active' : '' ?>" id="tabApply">
 
-    <?php if ($success): ?>
     <div class="text-center py-5">
-        <i class="bi bi-check-circle text-success" style="font-size: 5rem;"></i>
-        <h3 class="fw-bold mt-3">신청이 접수되었습니다!</h3>
-        <p class="text-muted fs-5"><?= htmlspecialchars($message) ?></p>
-        <p class="text-muted">심사 결과는 1~3 영업일 내에 이메일로 안내드립니다.</p>
-        <button class="btn btn-outline-primary mt-2" onclick="document.querySelector('[data-bs-target=\'#tabStatus\']').click();">
-            <i class="bi bi-clock-history me-1"></i>신청 현황 확인
-        </button>
+        <i class="bi bi-shield-check text-primary" style="font-size: 4rem;"></i>
+        <h3 class="fw-bold mt-3"><?= htmlspecialchars(term('business', '병원')) ?> 등록 신청</h3>
+        <p class="text-muted">이메일 인증 후 신청서를 작성합니다. 사업자등록증·의료기관 개설허가증을 준비해 주세요.</p>
+        <a href="hospital_apply_public.php" class="btn btn-primary btn-lg px-5 mt-2"><i class="bi bi-pencil-square me-2"></i>신청서 작성하기</a>
     </div>
-    <?php else: ?>
-
-    <?php if ($error): ?>
-    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i><?= htmlspecialchars($error) ?></div>
-    <?php endif; ?>
-
-    <form method="POST" enctype="multipart/form-data" id="applyForm">
-        <input type="hidden" name="action" value="apply">
-        <input type="text" name="website_url_hp" class="hp-field" tabindex="-1" autocomplete="off">
-
-        <!-- 타 플랫폼 등록 확인 안내 -->
-        <div class="alert alert-info alert-dismissible fade show py-2 mb-4" role="alert">
-            <small><i class="bi bi-info-circle me-1"></i>이미 강남언니/바비톡/여신티켓에 등록된 병원이라면, 병원명 입력 시 해당 플랫폼 검색 링크가 표시됩니다. 클릭하여 기존 정보를 참고하세요.</small>
-            <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" style="padding:0.5rem;"></button>
-        </div>
-
-        <!-- 기본 정보 -->
-        <h5 class="section-title"><i class="bi bi-building me-2"></i>기본 정보</h5>
-        <div class="row g-3 mb-4">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">병원명 <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" name="hospital_name" id="hospitalNameInput" class="form-control" required maxlength="255" value="<?= htmlspecialchars($_POST['hospital_name'] ?? '') ?>" autocomplete="off" placeholder="병원명을 입력하세요">
-                    <button type="button" class="btn btn-outline-secondary" id="btnPlatformSearch" title="타 플랫폼에서 검색"><i class="bi bi-search me-1"></i>플랫폼 검색</button>
-                </div>
-                <div id="platformCheck" class="mt-2" style="display:none;"></div>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">대표자명 <span class="text-danger">*</span></label>
-                <input type="text" name="owner_name" class="form-control" required maxlength="100" value="<?= htmlspecialchars($_POST['owner_name'] ?? '') ?>">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">사업자등록번호 <span class="text-danger">*</span></label>
-                <input type="text" name="business_number" class="form-control" required maxlength="20" placeholder="000-00-00000" value="<?= htmlspecialchars($_POST['business_number'] ?? '') ?>">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">병원 전화번호 <span class="text-danger">*</span></label>
-                <input type="tel" name="phone" class="form-control" required maxlength="50" value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">병원 이메일 <span class="text-danger">*</span></label>
-                <input type="email" name="email" class="form-control" required maxlength="191" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
-                <div class="form-text">심사 결과 + 관리자 계정이 이 이메일로 발송됩니다.</div>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-semibold">담당자명 <span class="text-danger">*</span></label>
-                <input type="text" name="contact_name" class="form-control" required maxlength="100" value="<?= htmlspecialchars($_POST['contact_name'] ?? '') ?>">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-semibold">담당자 전화 <span class="text-danger">*</span></label>
-                <input type="tel" name="contact_phone" class="form-control" required maxlength="20" value="<?= htmlspecialchars($_POST['contact_phone'] ?? '') ?>">
-            </div>
-        </div>
-
-        <!-- 주소 + 지도 -->
-        <h5 class="section-title"><i class="bi bi-geo-alt me-2"></i>병원 위치</h5>
-        <div class="row g-3 mb-4">
-            <div class="col-md-8">
-                <label class="form-label fw-semibold">병원 주소 <span class="text-danger">*</span></label>
-                <div class="position-relative">
-                    <input type="text" name="address" id="addressInput" class="form-control" required maxlength="500" placeholder="주소를 입력하세요 (예: 강남구 테헤란로)" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>" autocomplete="off">
-                    <div id="addrSuggest" class="list-group position-absolute w-100 shadow-sm" style="z-index:999;max-height:200px;overflow-y:auto;display:none;"></div>
-                </div>
-                <input type="hidden" name="latitude" id="latInput" value="<?= htmlspecialchars($_POST['latitude'] ?? '37.5665') ?>">
-                <input type="hidden" name="longitude" id="lngInput" value="<?= htmlspecialchars($_POST['longitude'] ?? '126.9780') ?>">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label fw-semibold">상세 주소</label>
-                <input type="text" name="address_detail" class="form-control" placeholder="층, 호수" value="<?= htmlspecialchars($_POST['address_detail'] ?? '') ?>">
-            </div>
-            <div class="col-12">
-                <div id="kakaoMap"></div>
-                <small class="text-muted mt-1 d-block"><i class="bi bi-hand-index me-1"></i>지도에서 마커를 드래그하거나 클릭하여 정확한 위치를 지정하세요.</small>
-            </div>
-        </div>
-
-        <!-- 병원 정보 -->
-        <h5 class="section-title"><i class="bi bi-clipboard me-2"></i>병원 정보</h5>
-        <div class="row g-3 mb-4">
-            <div class="col-12">
-                <label class="form-label fw-semibold">진료과목</label>
-                <div class="d-flex flex-wrap gap-2">
-                    <?php foreach ($category_list as $cat): ?>
-                    <div class="form-check">
-                        <input class="form-check-input cat-check" type="checkbox" value="<?= htmlspecialchars($cat) ?>" id="cat_<?= md5($cat) ?>">
-                        <label class="form-check-label" for="cat_<?= md5($cat) ?>"><?= htmlspecialchars($cat) ?></label>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <input type="hidden" name="categories" id="categoriesInput">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">주요 시술 (콤마 구분)</label>
-                <input type="text" name="treatment_tags" class="form-control" placeholder="코성형, 눈성형" value="<?= htmlspecialchars($_POST['treatment_tags'] ?? '') ?>">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">영업시간</label>
-                <input type="text" name="business_hours" class="form-control" placeholder="평일 10:00~19:00" value="<?= htmlspecialchars($_POST['business_hours'] ?? '') ?>">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">홈페이지</label>
-                <input type="url" name="website" class="form-control" placeholder="https://" value="<?= htmlspecialchars($_POST['website'] ?? '') ?>">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold">SNS</label>
-                <input type="text" name="sns_url" class="form-control" placeholder="https://instagram.com/..." value="<?= htmlspecialchars($_POST['sns_url'] ?? '') ?>">
-            </div>
-            <div class="col-12">
-                <label class="form-label fw-semibold">병원 소개</label>
-                <textarea name="description" class="form-control" rows="3" maxlength="2000"><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
-            </div>
-        </div>
-
-        <!-- 서류 -->
-        <h5 class="section-title"><i class="bi bi-cloud-upload me-2"></i>서류 업로드</h5>
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <label class="form-label fw-semibold">사업자등록증 <span class="text-danger">*</span></label>
-                <input type="file" name="cert_business" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
-                <div class="form-text">JPG/PNG/PDF, 5MB</div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label fw-semibold">의료기관 허가증 <span class="text-danger">*</span></label>
-                <input type="file" name="cert_medical" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
-                <div class="form-text">JPG/PNG/PDF, 5MB</div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label fw-semibold">대표 이미지</label>
-                <input type="file" name="profile_image" class="form-control" accept=".jpg,.jpeg,.png">
-                <div class="form-text">선택, JPG/PNG</div>
-            </div>
-        </div>
-
-        <!-- 약관 -->
-        <h5 class="section-title"><i class="bi bi-shield-check me-2"></i>약관 동의</h5>
-        <div class="mb-4">
-            <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" name="agree_terms" id="agreeTerms" required>
-                <label class="form-check-label" for="agreeTerms"><span class="badge bg-danger me-1">필수</span> 병원 입점 약관 동의</label>
-            </div>
-            <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" name="agree_privacy" id="agreePrivacy" required>
-                <label class="form-check-label" for="agreePrivacy"><span class="badge bg-danger me-1">필수</span> 개인정보 수집/이용 동의</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="agree_marketing" id="agreeMarketing">
-                <label class="form-check-label" for="agreeMarketing"><span class="badge bg-secondary me-1">선택</span> 마케팅 수신 동의</label>
-            </div>
-        </div>
-
-        <div class="text-center">
-            <button type="submit" class="btn btn-primary btn-lg px-5"><i class="bi bi-send me-2"></i>신청서 제출</button>
-        </div>
-    </form>
-    <?php endif; ?>
 </div>
 
 <!-- ==================== 탭 3: 신청 현황 ==================== -->
@@ -645,10 +387,11 @@ themeBtn.addEventListener('click', function() {
 
 // ===== 카카오맵 =====
 var map, marker;
-var initLat = parseFloat(document.getElementById('latInput').value) || 37.5665;
-var initLng = parseFloat(document.getElementById('lngInput').value) || 126.9780;
+var initLat = parseFloat(document.getElementById('latInput')?.value) || 37.5665;
+var initLng = parseFloat(document.getElementById('lngInput')?.value) || 126.9780;
 
 function initMap() {
+    if (!document.getElementById('kakaoMap')) return; // 신청 폼은 hospital_apply_public.php 로 이동
     if (typeof kakao === 'undefined' || !kakao.maps) {
         console.warn('[RegDash] 카카오맵 SDK 미로드');
         document.getElementById('kakaoMap').innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-geo-alt" style="font-size:2rem;"></i><p>지도를 불러올 수 없습니다.</p></div>';

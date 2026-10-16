@@ -2,6 +2,8 @@ RedirectMatch 403 (?i)/\.(history|git|snapshots|stfolder)(/|$)
 RedirectMatch 403 /data/cache/apple_oauth/.*
 # 백업 폴더(_bak_*) — 옛 소스·설정(DB 비밀번호 포함) 사본이 들어 있다
 RedirectMatch 403 (?i)/_bak[^/]*(/|$)
+# .env 등 비밀 설정 dotfile 차단 (new_http_v1_mars/.env 가 평문으로 노출됐던 사례)
+RedirectMatch 403 (?i)/\.(env|env\..*|htpasswd|my\.cnf|npmrc|git-credentials)$
 
 # 일회용/진단 스크립트·백업 파일 웹 접근 차단 (서버에 남아 있어도 실행되지 않도록)
 <FilesMatch "^(reset_admin_pw|reset_pw|test_db_connection|test10|check_member_table|g4_import_run|yc4_import_run)\.php$">
