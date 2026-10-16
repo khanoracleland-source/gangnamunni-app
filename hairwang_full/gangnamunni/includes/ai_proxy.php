@@ -68,7 +68,17 @@ function aiGetEncryptionSecret(): string
         }
     }
 
-    // 설정이 없으면 랜덤 시크릿 생성 후 파일에 저장 (소유자만 읽기)
+    // 설정이 없을 때 새 시크릿을 만들면 기존 암호문이 전부 복호화 불가가 된다.
+    // (2026-10-16 사고: git rm --cached 후 서버 pull 로 ai_config.json 이 삭제되자
+    //  여기서 새 시크릿이 조용히 생성돼 모든 AI 키가 깨졌다.)
+    // → 암호화된 키가 DB 에 하나라도 있으면 생성하지 않고 실패시킨다(호출부는 복호화 실패로 처리).
+    if (aiHasEncryptedKeys()) {
+        error_log('[ai_proxy] encryption secret missing (' . $configFile . ') but encrypted keys exist — NOT generating a new secret. Restore the file or set AI_ENCRYPTION_SECRET.');
+        $secret = '';
+        return $secret;
+    }
+
+    // 키가 하나도 없는 신규 설치에서만 랜덤 시크릿 생성 후 파일에 저장 (소유자만 읽기)
     $dataDir = dirname($configFile);
     if (!is_dir($dataDir)) {
         @mkdir($dataDir, 0750, true);
@@ -79,6 +89,29 @@ function aiGetEncryptionSecret(): string
     umask($old);
     @chmod($configFile, 0600);
     return $secret;
+}
+
+/** DB 에 암호화된 AI 키가 하나라도 있는지 (확인 불가면 true — 안전한 쪽) */
+function aiHasEncryptedKeys(): bool
+{
+    $conn = $GLOBALS['connect'] ?? null;
+    if (!($conn instanceof mysqli)) return true;
+    $queries = [
+        "SELECT 1 FROM gangnamunni_ai_keys WHERE api_key_encrypted IS NOT NULL AND api_key_encrypted <> '' LIMIT 1",
+        "SELECT 1 FROM gangnamunni_hospitals WHERE ai_own_api_key IS NOT NULL AND ai_own_api_key <> '' LIMIT 1",
+    ];
+    $checked = 0;
+    foreach ($queries as $q) {
+        try {
+            $r = @mysqli_query($conn, $q);
+        } catch (Throwable $e) {
+            continue; // 테이블/컬럼 없음
+        }
+        if ($r === false) continue;
+        $checked++;
+        if (mysqli_num_rows($r) > 0) return true;
+    }
+    return false;
 }
 
 /** 지정한 시크릿으로 암호화 (AES-256-CBC, IV 앞붙임 base64) */
@@ -111,7 +144,9 @@ function aiDecryptWithSecret(string $encryptedBase64, string $secret): ?string
  */
 function aiEncryptKey(string $plainKey): string
 {
-    return aiEncryptWithSecret($plainKey, aiGetEncryptionSecret());
+    $secret = aiGetEncryptionSecret();
+    if ($secret === '') throw new RuntimeException('AI encryption secret is not configured');
+    return aiEncryptWithSecret($plainKey, $secret);
 }
 
 /**
@@ -119,7 +154,9 @@ function aiEncryptKey(string $plainKey): string
  */
 function aiDecryptKey(string $encryptedBase64): ?string
 {
-    return aiDecryptWithSecret($encryptedBase64, aiGetEncryptionSecret());
+    $secret = aiGetEncryptionSecret();
+    if ($secret === '') return null;
+    return aiDecryptWithSecret($encryptedBase64, $secret);
 }
 
 /**

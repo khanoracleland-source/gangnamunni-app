@@ -34,6 +34,10 @@ if (!$dry && $target === '') {
 }
 
 $oldSecret = aiGetEncryptionSecret();
+if ($oldSecret === '') {
+    fwrite(STDERR, "현재 시크릿을 찾을 수 없습니다(" . aiConfigFilePath() . "). 기존 파일을 복구한 뒤 다시 실행하세요.\n");
+    exit(1);
+}
 $newSecret = bin2hex(random_bytes(32));
 
 // API 키는 출력 가능한 ASCII. CBC 는 무결성 검증이 없어 잘못된 키로도 가끔 "복호화"되므로 형태까지 확인한다.
