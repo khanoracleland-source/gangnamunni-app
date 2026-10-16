@@ -437,8 +437,9 @@ Route::prefix('auth')->group(function () {
             ], 401);
         }
 
-        // Generate session token
-        $token = bin2hex(random_bytes(32));
+        // Issue a real Sanctum personal access token (verified by auth:sanctum)
+        // $user is a stdClass from DB::table(), so load the Eloquent model that has HasApiTokens
+        $token = \App\Models\User::findOrFail($user->id)->createToken('patient-app')->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -459,7 +460,7 @@ Route::prefix('auth')->group(function () {
 
     // Get current user
     Route::get('/me', function (Request $request) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
 
         if (!$userId) {
             return response()->json([
@@ -509,11 +510,12 @@ Route::prefix('auth')->group(function () {
             ],
             'using_kivicare' => false
         ]);
-    });
+    })->middleware('auth:sanctum');
 
     // Logout
     Route::post('/logout', function (Request $request) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
+        $request->user()->currentAccessToken()?->delete();
         $useKivicare = SettingsHelper::useKivicare($userId);
 
         if ($useKivicare) {
@@ -528,17 +530,17 @@ Route::prefix('auth')->group(function () {
             'success' => true,
             'message' => '로그아웃되었습니다.'
         ]);
-    });
+    })->middleware('auth:sanctum');
 });
 
 // ============================================
 // Booking APIs (WITH KIVICARE SUPPORT)
 // ============================================
-Route::prefix('bookings')->group(function () {
+Route::prefix('bookings')->middleware('auth:sanctum')->group(function () {
 
     // Get user bookings
     Route::get('/', function (Request $request) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
 
         if (!$userId) {
             return response()->json([
@@ -599,7 +601,7 @@ Route::prefix('bookings')->group(function () {
 
     // Create booking
     Route::post('/', function (Request $request) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
 
         if (!$userId) {
             return response()->json([
@@ -684,7 +686,7 @@ Route::prefix('bookings')->group(function () {
 
     // Cancel booking
     Route::put('/{id}/cancel', function (Request $request, $id) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
         $useKivicare = SettingsHelper::useKivicare($userId);
 
         if ($useKivicare) {
@@ -742,11 +744,11 @@ Route::prefix('bookings')->group(function () {
 });
 
 // Favorites APIs (No Kivicare equivalent - always use new system)
-Route::prefix('favorites')->group(function () {
+Route::prefix('favorites')->middleware('auth:sanctum')->group(function () {
 
     // Get user favorites
     Route::get('/', function (Request $request) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
 
         if (!$userId) {
             return response()->json([
@@ -770,7 +772,7 @@ Route::prefix('favorites')->group(function () {
 
     // Add favorite
     Route::post('/', function (Request $request) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
         $hospitalId = $request->input('hospital_id');
 
         if (!$userId || !$hospitalId) {
@@ -807,7 +809,7 @@ Route::prefix('favorites')->group(function () {
 
     // Remove favorite
     Route::delete('/{hospitalId}', function (Request $request, $hospitalId) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
 
         if (!$userId) {
             return response()->json([
@@ -836,7 +838,7 @@ Route::prefix('favorites')->group(function () {
 
     // Check if favorited
     Route::get('/check/{hospitalId}', function (Request $request, $hospitalId) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
 
         if (!$userId) {
             return response()->json([
@@ -858,11 +860,11 @@ Route::prefix('favorites')->group(function () {
 });
 
 // Reviews APIs (No Kivicare equivalent - always use new system)
-Route::prefix('reviews')->group(function () {
+Route::prefix('reviews')->middleware('auth:sanctum')->group(function () {
 
     // Create review
     Route::post('/', function (Request $request) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
         $hospitalId = $request->input('hospital_id');
         $rating = $request->input('rating');
         $comment = $request->input('comment');
@@ -922,7 +924,7 @@ Route::prefix('reviews')->group(function () {
 
     // Update review
     Route::put('/{id}', function (Request $request, $id) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
         $rating = $request->input('rating');
         $comment = $request->input('comment');
 
@@ -954,7 +956,7 @@ Route::prefix('reviews')->group(function () {
 
     // Delete review
     Route::delete('/{id}', function (Request $request, $id) {
-        $userId = $request->input('user_id');
+        $userId = $request->user()->id;
 
         $deleted = DB::table('hospital_reviews')
             ->where('id', $id)
@@ -1040,21 +1042,21 @@ Route::post('/upload/image', function (Request $request) {
             'message' => 'Failed to upload image: ' . $e->getMessage()
         ], 500);
     }
-});
+})->middleware('auth:sanctum');
 
 // Community APIs
 Route::prefix('community')->group(function () {
     // Posts
     Route::get('/posts', [App\Http\Controllers\CommunityController::class, 'index']);
     Route::get('/posts/{id}', [App\Http\Controllers\CommunityController::class, 'show']);
-    Route::post('/posts', [App\Http\Controllers\CommunityController::class, 'store']);
-    Route::put('/posts/{id}', [App\Http\Controllers\CommunityController::class, 'update']);
-    Route::delete('/posts/{id}', [App\Http\Controllers\CommunityController::class, 'destroy']);
+    Route::post('/posts', [App\Http\Controllers\CommunityController::class, 'store'])->middleware('auth:sanctum');
+    Route::put('/posts/{id}', [App\Http\Controllers\CommunityController::class, 'update'])->middleware('auth:sanctum');
+    Route::delete('/posts/{id}', [App\Http\Controllers\CommunityController::class, 'destroy'])->middleware('auth:sanctum');
 
     // Comments
     Route::get('/posts/{postId}/comments', [App\Http\Controllers\CommunityController::class, 'getComments']);
-    Route::post('/posts/{postId}/comments', [App\Http\Controllers\CommunityController::class, 'storeComment']);
-    Route::delete('/posts/{postId}/comments/{commentId}', [App\Http\Controllers\CommunityController::class, 'destroyComment']);
+    Route::post('/posts/{postId}/comments', [App\Http\Controllers\CommunityController::class, 'storeComment'])->middleware('auth:sanctum');
+    Route::delete('/posts/{postId}/comments/{commentId}', [App\Http\Controllers\CommunityController::class, 'destroyComment'])->middleware('auth:sanctum');
 });
 
 // Retired duplicate PortOne ledger. Booking payments now use the canonical

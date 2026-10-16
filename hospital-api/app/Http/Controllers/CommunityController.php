@@ -48,7 +48,6 @@ class CommunityController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|integer',
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'category' => 'nullable|string|max:50',
@@ -60,7 +59,7 @@ class CommunityController extends Controller
 
         try {
             $postId = DB::table('community_posts')->insertGetId([
-                'user_id' => $request->user_id,
+                'user_id' => $request->user()->id,
                 'title' => $request->title,
                 'content' => $request->content,
                 'category' => $request->category ?? 'general',
@@ -118,7 +117,6 @@ class CommunityController extends Controller
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|integer',
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'category' => 'nullable|string|max:50',
@@ -136,7 +134,7 @@ class CommunityController extends Controller
             }
 
             // Check if user owns the post
-            if ($post->user_id != $request->user_id) {
+            if ($post->user_id != $request->user()->id) {
                 return $this->sendError('게시글 수정 권한이 없습니다.', [], 403);
             }
 
@@ -172,7 +170,7 @@ class CommunityController extends Controller
             }
 
             // Check if user owns the post
-            if ($post->user_id != $request->input('user_id')) {
+            if ($post->user_id != $request->user()->id) {
                 return $this->sendError('게시글 삭제 권한이 없습니다.', [], 403);
             }
 
@@ -214,7 +212,6 @@ class CommunityController extends Controller
     public function storeComment(Request $request, $postId)
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|integer',
             'content' => 'required|string',
         ]);
 
@@ -231,7 +228,7 @@ class CommunityController extends Controller
 
             $commentId = DB::table('community_comments')->insertGetId([
                 'post_id' => $postId,
-                'user_id' => $request->user_id,
+                'user_id' => $request->user()->id,
                 'content' => $request->content,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -263,7 +260,7 @@ class CommunityController extends Controller
             }
 
             // Check if user owns the comment
-            if ($comment->user_id != $request->input('user_id')) {
+            if ($comment->user_id != $request->user()->id) {
                 return $this->sendError('댓글 삭제 권한이 없습니다.', [], 403);
             }
 
