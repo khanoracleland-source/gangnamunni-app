@@ -25,8 +25,20 @@ require_once __DIR__ . '/includes/settings_helper.php';
 $current_preset = industry_id();
 
 // AJAX 저장
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json; charset=utf-8');
+
+    // CSRF 검증 — 업종 변경·브랜딩 저장은 사이트 전역 설정을 바꾼다
+    $posted_csrf = (string)($_POST['csrf_token'] ?? '');
+    if ($posted_csrf === '' || !hash_equals((string)$_SESSION['csrf_token'], $posted_csrf)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'CSRF 토큰이 유효하지 않습니다. 페이지를 새로고침하세요.']);
+        exit;
+    }
 
     /**
      * 프리셋 ID 검증 (경로 조작 방지)
@@ -53,25 +65,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
-        // DB에 저장
-        updateSetting($connect, 'industry_preset', $new_id);
-
-        // dbconfig.php에 INDUSTRY_PRESET 상수 업데이트 (있으면)
-        $dbconfig_path = __DIR__ . '/../dbconfig.php';
-        if (file_exists($dbconfig_path) && is_writable($dbconfig_path)) {
-            $content = file_get_contents($dbconfig_path);
-            if (strpos($content, 'INDUSTRY_PRESET') !== false) {
-                $content = preg_replace(
-                    "/define\s*\(\s*'INDUSTRY_PRESET'\s*,\s*'[^']*'\s*\)/",
-                    "define('INDUSTRY_PRESET', '{$new_id}')",
-                    $content
-                );
-            } else {
-                // 상수 없으면 추가
-                $content = rtrim($content) . "\ndefine('INDUSTRY_PRESET', '{$new_id}');\n";
-            }
-            file_put_contents($dbconfig_path, $content);
+        // 활성 프리셋 저장 — 평문 데이터 파일(includes/presets/active_preset.txt)에만 쓴다.
+        // 예전에는 dbconfig.php(실행되는 PHP + DB 비밀번호)를 정규식으로 다시 써서
+        // 입력이 PHP 코드로 주입되거나, preg_replace 실패(null) 시 설정 파일이 통째로 비는 위험이 있었다.
+        if (!IndustryPreset::saveActivePresetId($new_id)) {
+            error_log('[admin_industry] active preset file write failed');
+            echo json_encode(['success' => false, 'error' => '업종 설정 파일을 저장할 수 없습니다. (includes/presets 쓰기 권한 확인)']);
+            exit;
         }
+
+        // DB에 저장 (기록용)
+        updateSetting($connect, 'industry_preset', $new_id);
 
         // 프리셋 로드 → 테마 색상 자동 변경
         IndustryPreset::getInstance()->load($new_id);
@@ -238,14 +242,15 @@ include __DIR__ . '/includes/admin_header.php';
 </div>
 
 <script>
-var currentPreset = '<?php echo $current_preset; ?>';
+var currentPreset = <?php echo json_encode($current_preset); ?>;
+var industryCsrf = <?php echo json_encode($_SESSION['csrf_token']); ?>;
 
 function selectPreset(id) {
     // 미리보기 로드
     fetch('admin_industry.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'action=preview_preset&preset_id=' + encodeURIComponent(id)
+        body: 'csrf_token=' + encodeURIComponent(industryCsrf) + '&action=preview_preset&preset_id=' + encodeURIComponent(id)
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -285,13 +290,15 @@ document.querySelectorAll('.preset-card').forEach(function(card) {
         fetch('admin_industry.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'action=change_industry&preset_id=' + encodeURIComponent(id)
+            body: 'csrf_token=' + encodeURIComponent(industryCsrf) + '&action=change_industry&preset_id=' + encodeURIComponent(id)
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
             if (d.success) {
                 alert('업종이 "' + d.display_name + '"으로 변경되었습니다.');
                 location.reload();
+            } else {
+                alert(d.error || '업종 변경에 실패했습니다.');
             }
         });
     });
@@ -317,7 +324,7 @@ function saveBrand(el) {
     fetch('admin_industry.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'action=save_branding&' + key + '=' + encodeURIComponent(el.value)
+        body: 'csrf_token=' + encodeURIComponent(industryCsrf) + '&action=save_branding&' + key + '=' + encodeURIComponent(el.value)
     })
     .then(function(r) { return r.json(); })
     .then(function(d) {

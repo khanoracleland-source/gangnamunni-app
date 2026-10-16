@@ -44,3 +44,7 @@ nul
 # AI 키 암호화 시크릿 (2026-10-16: 저장소에 커밋돼 노출됐던 파일 — 서버에서만 보관)
 data/ai_config.json
 data/ai_config.json.*
+
+# Active industry preset (runtime state written by admin_industry.php)
+includes/presets/active_preset.txt
+includes/presets/*.tmp

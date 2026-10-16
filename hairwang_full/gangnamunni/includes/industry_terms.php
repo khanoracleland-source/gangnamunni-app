@@ -47,11 +47,14 @@ class IndustryPreset {
 
         // 프리셋 ID 결정 우선순위:
         // 1. 직접 지정된 값
-        // 2. dbconfig.php의 INDUSTRY_PRESET 상수
-        // 3. DB의 site_settings 테이블
+        // 2. 관리자 화면(admin_industry.php)에서 저장한 활성 프리셋 데이터 파일 (presets/active_preset.txt)
+        // 3. dbconfig.php의 INDUSTRY_PRESET 상수 (초기값 — 웹에서 더 이상 수정하지 않음)
         // 4. 기본값 'medical_beauty'
+        $activeId = ($presetId === null) ? self::readActivePresetId() : null;
         if ($presetId !== null) {
             $this->presetId = $presetId;
+        } elseif ($activeId !== null) {
+            $this->presetId = $activeId;
         } elseif (defined('INDUSTRY_PRESET')) {
             $this->presetId = INDUSTRY_PRESET;
         } else {
@@ -227,6 +230,39 @@ class IndustryPreset {
     public function getAll() {
         $this->ensureLoaded();
         return $this->preset;
+    }
+
+    /** 활성 프리셋 ID 를 담는 평문 데이터 파일 (실행되는 PHP 가 아님) */
+    private static function activePresetFile() {
+        return __DIR__ . '/presets/active_preset.txt';
+    }
+
+    /**
+     * 저장된 활성 프리셋 ID (없거나 형식이 잘못되면 null)
+     */
+    public static function readActivePresetId() {
+        $file = self::activePresetFile();
+        if (!is_file($file)) return null;
+        $id = trim((string)@file_get_contents($file, false, null, 0, 128));
+        if (!preg_match('/^[a-z0-9_-]{1,64}$/i', $id)) return null;
+        if (!is_file(__DIR__ . '/presets/' . $id . '.json')) return null;
+        return $id;
+    }
+
+    /**
+     * 활성 프리셋 ID 저장 — 임시 파일에 쓴 뒤 rename 으로 원자적 교체.
+     * dbconfig.php(실행 코드·DB 비밀번호)를 웹에서 다시 쓰지 않기 위한 대체 저장소.
+     * @return bool
+     */
+    public static function saveActivePresetId($id) {
+        $id = (string)$id;
+        if (!preg_match('/^[a-z0-9_-]{1,64}$/i', $id)) return false;
+        if (!is_file(__DIR__ . '/presets/' . $id . '.json')) return false;
+        $file = self::activePresetFile();
+        $tmp = $file . '.' . bin2hex(random_bytes(6)) . '.tmp';
+        if (@file_put_contents($tmp, $id . "\n", LOCK_EX) === false) return false;
+        if (!@rename($tmp, $file)) { @unlink($tmp); return false; }
+        return true;
     }
 
     /**
