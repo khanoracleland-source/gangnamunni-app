@@ -22,6 +22,21 @@ class DocumentAPIController extends AppBaseController
         $this->documentRepository = $documentRepo;
     }
 
+    /**
+     * Document lookup bound to the caller's tenant and, for patients, to their own patient record.
+     * The Sanctum API group never initializes tenancy, so the BelongsToTenant global scope is
+     * inert here and every by-id lookup must scope explicitly.
+     */
+    private function findScopedDocument(int|string $id): ?Document
+    {
+        $query = Document::where('id', $id)->where('tenant_id', getLoggedInUser()->tenant_id);
+        if (getLoggedinPatient()) {
+            $query->where('patient_id', getLoggedInUser()->owner_id);
+        }
+
+        return $query->first();
+    }
+
     public function index(): \Illuminate\Http\JsonResponse
     {
         if (! getLoggedinPatient()) {
@@ -60,7 +75,7 @@ class DocumentAPIController extends AppBaseController
         return $this->sendSuccess(__('messages.ipd_patient_timeline.document').' '.__('messages.common.saved_successfully'));
     }
 
-    public function update(Request $request, $id): \Illuminate\Http\JsonResponse
+    public function update(Request $request, int|string $id): \Illuminate\Http\JsonResponse
     {
         $input = $request->all();
         $request->validate([
@@ -69,29 +84,21 @@ class DocumentAPIController extends AppBaseController
         ]);
         if (getLoggedinPatient()) {
             $input['patient_id'] = getLoggedInUser()->owner_id;
-            $documents = Document::where('id', $id)->where('patient_id', getLoggedInUser()->owner_id)->first();
-            if (! $documents) {
-                return $this->sendError(__('messages.ipd_patient_timeline.document').' '.__('messages.common.not_found'));
-            }
-            $this->documentRepository->updateDocument($input, $id);
-        } else {
-            $documents = Document::where('id', $id)->first();
-            $this->documentRepository->updateDocument($input, $id);
         }
+        // Callers may not re-home a document into another tenant.
+        unset($input['tenant_id']);
+        $documents = $this->findScopedDocument($id);
         if (! $documents) {
             return $this->sendError(__('messages.ipd_patient_timeline.document').' '.__('messages.common.not_found'));
         }
+        $this->documentRepository->updateDocument($input, $id);
 
         return $this->sendSuccess(__('messages.ipd_patient_timeline.document').' '.__('messages.common.updated_successfully'));
     }
 
-    public function destroy($id): \Illuminate\Http\JsonResponse
+    public function destroy(int|string $id): \Illuminate\Http\JsonResponse
     {
-        if (getLoggedinPatient()) {
-            $documents = Document::where('id', $id)->where('patient_id', getLoggedInUser()->owner_id)->first();
-        } else {
-            $documents = Document::where('id', $id)->first();
-        }
+        $documents = $this->findScopedDocument($id);
 
         if (! $documents) {
             return $this->sendError(__('messages.ipd_patient_timeline.document').' '.__('messages.common.not_found'));
@@ -101,13 +108,16 @@ class DocumentAPIController extends AppBaseController
         return $this->sendSuccess(__('messages.ipd_patient_timeline.document').' '.__('messages.common.deleted_successfully'));
     }
 
-    public function downloadDocs($id): \Illuminate\Http\JsonResponse
+    public function downloadDocs(int|string $id): \Illuminate\Http\JsonResponse
     {
-        $document = Document::where('id', $id)->first();
+        $document = $this->findScopedDocument($id);
         if (! $document) {
             return $this->sendError(__('messages.ipd_patient_timeline.document').' '.__('messages.common.not_found'));
         }
-        $documentMedia = $document->media[0];
+        $documentMedia = $document->media[0] ?? null;
+        if (! $documentMedia) {
+            return $this->sendError(__('messages.ipd_patient_timeline.document').' '.__('messages.common.not_found'));
+        }
 
         $url = $documentMedia->getUrl();
 
@@ -138,7 +148,7 @@ class DocumentAPIController extends AppBaseController
         return $this->sendResponse($data, 'Document Retrieved Successfully');
     }
 
-    public function edit($id): \Illuminate\Http\JsonResponse
+    public function edit(int|string $id): \Illuminate\Http\JsonResponse
     {
         if (getLoggedinPatient()) {
             $document = Document::where('id', $id)->where('patient_id', getLoggedInUser()->owner_id)->where('tenant_id',getLoggedInUser()->tenant_id)->first();
