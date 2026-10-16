@@ -31,11 +31,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $action = $_POST['action'] ?? '';
 $ad_id = intval($_POST['ad_id'] ?? 0);
-$page_url = mysqli_real_escape_string($connect, $_POST['page_url'] ?? '');
-$target_url = mysqli_real_escape_string($connect, $_POST['target_url'] ?? '');
-$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-$ua = mysqli_real_escape_string($connect, substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500));
-$sid = session_id() ?: (isset($_COOKIE['PHPSESSID']) ? $_COOKIE['PHPSESSID'] : '');
+// 모든 값은 prepared statement 로 바인딩한다 (문자열 보간 금지).
+// 예전에는 session_start() 없이 $_COOKIE['PHPSESSID'] 원문을 쿼리에 그대로 넣어
+// 인증 없이 SQL 인젝션이 가능했다.
+$page_url = mb_substr((string)($_POST['page_url'] ?? ''), 0, 1000);
+$target_url = mb_substr((string)($_POST['target_url'] ?? ''), 0, 1000);
+$ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+$ua = mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
+$sid_raw = (string)($_COOKIE[session_name()] ?? '');
+// PHP 세션 ID 형식(영숫자·,-)만 기록, 그 외는 버린다
+$sid = preg_match('/^[A-Za-z0-9,-]{1,128}$/', $sid_raw) ? $sid_raw : '';
 
 if ($ad_id <= 0) {
     echo json_encode(['success' => false, 'error' => 'Invalid ad_id']);
@@ -51,32 +56,60 @@ foreach ($bot_patterns as $bot) {
     }
 }
 
+function ad_tracking_bump($connect, $column, $ad_id) {
+    // $column 은 아래 두 값 중 하나로만 호출된다(화이트리스트)
+    if (!in_array($column, ['impression_count', 'click_count'], true)) return;
+    $st = mysqli_prepare($connect, "UPDATE gangnamunni_ads SET {$column} = {$column} + 1 WHERE id = ?");
+    if ($st) { mysqli_stmt_bind_param($st, 'i', $ad_id); mysqli_stmt_execute($st); mysqli_stmt_close($st); }
+}
+
 if ($action === 'impression') {
-    // 같은 세션/IP에서 같은 광고를 5분 내 중복 노출 카운트 방지
-    $check = mysqli_query($connect,
+    // 같은 IP에서 같은 광고를 5분 내 중복 노출 카운트 방지
+    $dup = false;
+    $check = mysqli_prepare($connect,
         "SELECT id FROM gangnamunni_ad_impressions
-         WHERE ad_id = {$ad_id} AND ip_address = '{$ip}'
+         WHERE ad_id = ? AND ip_address = ?
          AND created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE) LIMIT 1"
     );
-    if ($check && mysqli_num_rows($check) > 0) {
+    if ($check) {
+        mysqli_stmt_bind_param($check, 'is', $ad_id, $ip);
+        mysqli_stmt_execute($check);
+        $dup = (bool) mysqli_fetch_assoc(mysqli_stmt_get_result($check));
+        mysqli_stmt_close($check);
+    }
+    if ($dup) {
         echo json_encode(['success' => true, 'duplicate' => true]);
         exit;
     }
 
-    $sql = "INSERT INTO gangnamunni_ad_impressions (ad_id, page_url, ip_address, user_agent, session_id)
-            VALUES ({$ad_id}, '{$page_url}', '{$ip}', '{$ua}', '{$sid}')";
-    if (mysqli_query($connect, $sql)) {
+    $ok = false;
+    $st = mysqli_prepare($connect,
+        "INSERT INTO gangnamunni_ad_impressions (ad_id, page_url, ip_address, user_agent, session_id)
+         VALUES (?, ?, ?, ?, ?)");
+    if ($st) {
+        mysqli_stmt_bind_param($st, 'issss', $ad_id, $page_url, $ip, $ua, $sid);
+        $ok = mysqli_stmt_execute($st);
+        mysqli_stmt_close($st);
+    }
+    if ($ok) {
         // 캐시 카운터 업데이트
-        mysqli_query($connect, "UPDATE gangnamunni_ads SET impression_count = impression_count + 1 WHERE id = {$ad_id}");
+        ad_tracking_bump($connect, 'impression_count', $ad_id);
         echo json_encode(['success' => true, 'action' => 'impression', 'ad_id' => $ad_id]);
     } else {
         echo json_encode(['success' => false, 'error' => 'Insert failed']);
     }
 } elseif ($action === 'click') {
-    $sql = "INSERT INTO gangnamunni_ad_clicks (ad_id, page_url, target_url, ip_address, user_agent, session_id)
-            VALUES ({$ad_id}, '{$page_url}', '{$target_url}', '{$ip}', '{$ua}', '{$sid}')";
-    if (mysqli_query($connect, $sql)) {
-        mysqli_query($connect, "UPDATE gangnamunni_ads SET click_count = click_count + 1 WHERE id = {$ad_id}");
+    $ok = false;
+    $st = mysqli_prepare($connect,
+        "INSERT INTO gangnamunni_ad_clicks (ad_id, page_url, target_url, ip_address, user_agent, session_id)
+         VALUES (?, ?, ?, ?, ?, ?)");
+    if ($st) {
+        mysqli_stmt_bind_param($st, 'isssss', $ad_id, $page_url, $target_url, $ip, $ua, $sid);
+        $ok = mysqli_stmt_execute($st);
+        mysqli_stmt_close($st);
+    }
+    if ($ok) {
+        ad_tracking_bump($connect, 'click_count', $ad_id);
         echo json_encode(['success' => true, 'action' => 'click', 'ad_id' => $ad_id]);
     } else {
         echo json_encode(['success' => false, 'error' => 'Insert failed']);
