@@ -13,7 +13,7 @@ if (!$connect) jsonError('DB 연결 실패', 500);
 mysqli_set_charset($connect, 'utf8mb4');
 
 $q = trim($_GET['q'] ?? '');
-$limit = min(intval($_GET['limit'] ?? 10), 20);
+$limit = max(1, min(intval($_GET['limit'] ?? 10), 20));
 $type = $_GET['type'] ?? ''; // hospital, treatment, doctor, '' (all)
 
 if (mb_strlen($q) < 1) {
@@ -27,8 +27,9 @@ $results = [];
 if (!$type || $type === 'hospital') {
     $stmt = mysqli_prepare($connect,
         "SELECT id, name, address, rating, review_count, main_image_url
-         FROM gangnamunni_hospitals
-         WHERE name LIKE ? OR address LIKE ?
+         FROM gangnamunni_hospitals h
+         WHERE (h.name LIKE ? OR h.address LIKE ?)
+           AND h.is_active = 1 AND COALESCE(h.is_demo, 0) = 0 AND (h.status = 'approved' OR h.status IS NULL)
          ORDER BY rating DESC
          LIMIT ?");
     if ($stmt) {
@@ -57,8 +58,9 @@ if (!$type || $type === 'treatment') {
         "SELECT t.id, t.name, t.category, t.price, t.discount_price, h.name as hospital_name, h.id as hospital_id
          FROM gangnamunni_treatments t
          JOIN gangnamunni_hospitals h ON t.hospital_id = h.id
-         WHERE t.name LIKE ? OR t.category LIKE ?
-         AND t.is_active = 1
+         WHERE (t.name LIKE ? OR t.category LIKE ?)
+           AND t.is_active = 1
+           AND h.is_active = 1 AND COALESCE(h.is_demo, 0) = 0 AND (h.status = 'approved' OR h.status IS NULL)
          ORDER BY t.is_popular DESC, t.name
          LIMIT ?");
     if ($stmt2) {
@@ -91,7 +93,8 @@ if (!$type || $type === 'doctor') {
         "SELECT d.id, d.name, d.specialty, d.experience, d.photo_url, h.name as hospital_name
          FROM gangnamunni_doctors d
          LEFT JOIN gangnamunni_hospitals h ON d.hospital_id = h.id
-         WHERE d.name LIKE ? OR d.specialty LIKE ?
+         WHERE (d.name LIKE ? OR d.specialty LIKE ?)
+           AND (d.hospital_id IS NULL OR h.id IS NULL OR (h.is_active = 1 AND COALESCE(h.is_demo, 0) = 0 AND (h.status = 'approved' OR h.status IS NULL)))
          ORDER BY d.experience DESC
          LIMIT ?");
     if ($stmt3) {
