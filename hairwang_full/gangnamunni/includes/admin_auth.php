@@ -102,6 +102,17 @@ function admin_set_session($admin, $connect = null) {
     // 제거된 역할(부관리자·직원 등)이나 알 수 없는 역할의 계정은 로그인할 수 없다.
     if (!isset($ADMIN_ROLE_PERMISSIONS[$admin['role'] ?? ''])) return false;
 
+    // 세션 고정(session fixation) 방지: 권한이 올라가는 시점에 세션 ID 를 새로 발급한다.
+    // 로그인 전 공격자가 심어 둔 세션 ID 가 그대로 관리자 세션이 되지 않도록,
+    // 새 ID 발급에 실패하면 로그인 자체를 거부한다(fail-closed). 기존 세션 데이터(그누보드 회원 로그인 등)는 유지된다.
+    if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+    if (session_status() !== PHP_SESSION_ACTIVE || !session_regenerate_id(true)) {
+        error_log('[admin_set_session] session_regenerate_id failed; admin login refused');
+        return false;
+    }
+    // 로그인 전에 발급(노출)된 CSRF 토큰도 폐기 — 다음 generateCsrfToken() 호출 시 새로 생성된다.
+    unset($_SESSION['csrf_token']);
+
     // 세션에 관리자 정보 저장
     $_SESSION['ad_admin_logged_in'] = true;
     $_SESSION['ad_admin_user'] = $admin['username'];
