@@ -178,6 +178,28 @@ function getCpvDailySpent($connect, $hospital_id) {
 }
 
 /**
+ * 지갑 행 잠금 (트랜잭션 안에서만 호출)
+ * 같은 병원에 대한 CPV 과금 요청을 직렬화해, 잠금 이후의 중복/한도 재검사가
+ * 먼저 커밋된 요청의 로그를 반드시 보도록 한다.
+ *
+ * @return array|null 잠긴 지갑 행
+ */
+function lockCpvWallet($connect, $hospital_id) {
+    $stmt = mysqli_prepare($connect,
+        "SELECT * FROM gangnamunni_cpv_wallets WHERE hospital_id = ? LIMIT 1 FOR UPDATE"
+    );
+    if (!$stmt) return null;
+
+    mysqli_stmt_bind_param($stmt, 'i', $hospital_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $wallet = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+
+    return $wallet ?: null;
+}
+
+/**
  * 지갑 잔액 차감
  * SELECT ... FOR UPDATE 로 동시성 제어
  *
@@ -442,6 +464,41 @@ function processCpvView($hospital_id, $page_type, $target_id, $page_url, $keywor
     mysqli_begin_transaction($connect);
 
     try {
+        // 동시성: 위(330행~)의 중복·한도 검사는 잠금 없이 수행되는 사전 필터라서,
+        // 같은 방문자의 동시 요청 두 개가 모두 통과해 이중 과금될 수 있었다.
+        // 지갑 행을 FOR UPDATE 로 잠가 같은 병원의 과금을 직렬화한 뒤 다시 검사한다.
+        // (잠금 획득 전에는 이 트랜잭션에서 일반 SELECT 를 하지 않으므로, 재검사 스냅샷은
+        //  잠금 이후 시점 = 앞선 요청의 커밋된 로그가 보이는 시점에 만들어진다.)
+        $locked_wallet = lockCpvWallet($connect, $hospital_id);
+        $recheck_reason = null;
+        if (!$locked_wallet) {
+            $recheck_reason = 'no_wallet';
+        } elseif (checkCpvDuplicate($connect, $hospital_id, $page_type, $target_id, $visitor_ip, $visitor_cookie)) {
+            $recheck_reason = 'duplicate';
+        } elseif (checkCpvDailyLimit($connect, $hospital_id, $visitor_ip, $visitor_cookie)) {
+            $recheck_reason = 'daily_limit';
+        } elseif (empty($locked_wallet['is_active'])) {
+            $recheck_reason = 'inactive';
+        } elseif (!empty($locked_wallet['is_paused'])) {
+            $recheck_reason = 'paused';
+        } elseif ((int) $locked_wallet['daily_cap'] > 0
+            && getCpvDailySpent($connect, $hospital_id) >= (int) $locked_wallet['daily_cap']) {
+            $recheck_reason = 'daily_cap';
+        }
+
+        if ($recheck_reason !== null) {
+            mysqli_rollback($connect);
+
+            $logged_rate = in_array($recheck_reason, ['no_wallet', 'duplicate', 'daily_limit', 'inactive', 'paused'], true) ? 0 : $cpv_rate;
+            logCpvView($connect, $hospital_id, $page_type, $target_id, $visitor_ip,
+                $visitor_session, $visitor_cookie, $user_agent, $keyword,
+                $procedure_type, $logged_rate, 0, $recheck_reason, $page_url);
+
+            $result['success'] = true;
+            $result['reason'] = $recheck_reason;
+            return $result;
+        }
+
         // 잔액 차감 (동시성 안전: balance >= amount 조건 포함)
         if (!deductCpvWallet($connect, $hospital_id, $cpv_rate)) {
             mysqli_rollback($connect);
