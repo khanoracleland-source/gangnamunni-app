@@ -10,9 +10,7 @@
 
 if (!isset($cpv_page_type) || !isset($cpv_target_id) || $cpv_target_id <= 0) return;
 
-// keyword/procedure는 페이지에서 선택적으로 설정
-$cpv_keyword = isset($cpv_keyword) ? $cpv_keyword : '';
-$cpv_procedure = isset($cpv_procedure) ? $cpv_procedure : '';
+// keyword/procedure_type 은 단가 가중치에 쓰이므로 브라우저에서 보내지 않는다 (서버에서 산출).
 ?>
 <script>
 (function() {
@@ -30,9 +28,7 @@ $cpv_procedure = isset($cpv_procedure) ? $cpv_procedure : '';
         var data = {
             page_type: <?php echo json_encode($cpv_page_type); ?>,
             target_id: <?php echo json_encode((string)$cpv_target_id); ?>,
-            page_url: location.href,
-            keyword: <?php echo json_encode($cpv_keyword); ?>,
-            procedure_type: <?php echo json_encode($cpv_procedure); ?>
+            page_url: location.href
         };
 
         // Beacon API 우선 (페이지 이탈 시에도 전송 보장)

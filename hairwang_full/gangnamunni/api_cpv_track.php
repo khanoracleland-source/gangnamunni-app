@@ -3,7 +3,8 @@
  * CPV 추적 API 엔드포인트
  *
  * 프론트엔드 JavaScript에서 페이지 로드 시 호출합니다.
- * POST JSON: {page_type, target_id, page_url, keyword, procedure_type}
+ * POST JSON: {page_type, target_id, page_url}
+ * (keyword, procedure_type 를 보내도 무시 — 단가 가중치는 클라이언트가 정할 수 없다)
  *
  * 퍼블릭 엔드포인트 — 세션 불필요, 방문자 브라우저에서 직접 호출
  */
@@ -57,8 +58,11 @@ if (!$input || empty($input['page_type']) || empty($input['target_id'])) {
 $page_type      = trim($input['page_type']);
 $target_id      = trim($input['target_id']);
 $page_url       = isset($input['page_url']) ? trim($input['page_url']) : '';
-$keyword        = isset($input['keyword']) ? trim($input['keyword']) : null;
-$procedure_type = isset($input['procedure_type']) ? trim($input['procedure_type']) : null;
+// keyword / procedure_type 는 CPV 단가 가중치(weight_keyword_* / weight_proc_*)를 결정한다.
+// 방문자 브라우저가 보낸 값을 쓰면 누구나 가장 비싼 배수를 골라 경쟁 병원 지갑을 소진시킬 수 있으므로
+// 클라이언트 입력은 받지 않는다. (가중치가 필요하면 서버에서 target 데이터로 산출해야 함)
+$keyword        = null;
+$procedure_type = null;
 
 // --- page_type 유효성 검사 ---
 $allowed_types = ['hospital', 'doctor', 'review', 'event', 'treatment', 'column'];

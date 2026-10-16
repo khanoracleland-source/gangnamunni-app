@@ -59,16 +59,15 @@ function calculateCpvRate($hospital_id, $keyword = null, $procedure_type = null,
     $base = (float) getCpvSetting('base_cpv_rate', 200);
     $rate = $base;
 
-    // 키워드 가중치
-    if (isCpvEnabled('keyword_pricing_enabled') && $keyword) {
-        $weight_key = 'weight_keyword_' . $keyword;
-        $rate *= (float) getCpvSetting($weight_key, 1.0);
+    // 키워드 가중치 — 호출자는 서버에서 정한 값만 넘겨야 한다(방문자 입력 금지).
+    // 설정 키 접미사로 쓰이므로 형식도 제한한다.
+    if (isCpvEnabled('keyword_pricing_enabled') && is_string($keyword) && preg_match('/^[a-z0-9_]{1,32}$/', $keyword)) {
+        $rate *= cpvClampWeight(getCpvSetting('weight_keyword_' . $keyword, 1.0));
     }
 
-    // 시술 가중치
-    if (isCpvEnabled('procedure_pricing_enabled') && $procedure_type) {
-        $weight_key = 'weight_proc_' . $procedure_type;
-        $rate *= (float) getCpvSetting($weight_key, 1.0);
+    // 시술 가중치 — 키워드와 동일한 규칙
+    if (isCpvEnabled('procedure_pricing_enabled') && is_string($procedure_type) && preg_match('/^[a-z0-9_]{1,32}$/', $procedure_type)) {
+        $rate *= cpvClampWeight(getCpvSetting('weight_proc_' . $procedure_type, 1.0));
     }
 
     // 이벤트 가중치
@@ -97,6 +96,14 @@ function calculateCpvRate($hospital_id, $keyword = null, $procedure_type = null,
     if ($rounding === 'ceil') return (int) ceil($rate);
     if ($rounding === 'floor') return (int) floor($rate);
     return (int) round($rate);
+}
+
+/**
+ * 가중치 배수 정규화 — 관리자 설정 범위(0.1~10)를 벗어난 값/비숫자는 보정
+ */
+function cpvClampWeight($value) {
+    if (!is_numeric($value)) return 1.0;
+    return max(0.1, min(10.0, (float) $value));
 }
 
 /**
