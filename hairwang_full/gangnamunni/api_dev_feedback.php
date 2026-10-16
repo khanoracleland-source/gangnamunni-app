@@ -7,10 +7,15 @@
  * - GET ?action=prompt: 미처리 피드백 → Claude 프롬프트 생성
  */
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 
+// 관리자 전용 개발 도구다 — 패널은 isDevMode 일 때 admin_footer 에서만 렌더되고,
+// submitted_by 도 관리자 세션에서 가져온다. 이전에는 인증이 전혀 없고
+// 'Access-Control-Allow-Origin: *' 까지 붙어 있어 누구나:
+//   - 전체 피드백(내부 페이지 URL·개발자 메모 포함)을 읽고,
+//   - 임의의 content 를 저장하고(관리자 화면에서 실행되는 stored XSS),
+//   - 임의의 id 의 status/dev_note 를 바꾸거나 삭제하고,
+//   - uploads/feedback/ 에 파일을 쓸 수 있었다.
+// CORS 와일드카드는 쓰지 않는다(api/.htaccess 방침) — 호출부는 같은 오리진이다.
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 require_once __DIR__ . '/../dbconfig.php';
@@ -18,6 +23,15 @@ require_once __DIR__ . '/../dbconfig.php';
 $connect = mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, G5_MYSQL_PORT);
 if (!$connect) { echo json_encode(['success' => false, 'message' => 'DB 연결 실패']); exit; }
 mysqli_set_charset($connect, 'utf8mb4');
+
+// 연결을 먼저 만든 뒤에 인증을 확인한다(check_admin_login 이 cred_epoch 를 조회한다).
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+require_once __DIR__ . '/includes/admin_auth.php';
+if (!check_admin_login()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => '관리자 로그인이 필요합니다']);
+    exit;
+}
 
 // 테이블 자동 생성
 mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_dev_feedback (
@@ -173,6 +187,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Base64 디코딩
         $parts = explode(',', $screenshot_data, 2);
         $img_data = base64_decode($parts[1] ?? '');
+        if ($img_data !== '' && strlen($img_data) > 8 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'message' => '스크린샷이 너무 큽니다 (8MB 이하)']);
+            exit;
+        }
         if ($img_data && strlen($img_data) > 100) {
             $ext = (strpos($parts[0], 'png') !== false) ? 'png' : 'jpg';
             $fname = 'fb_' . date('Ymd_His') . '_' . substr(md5(uniqid()), 0, 6) . '.' . $ext;

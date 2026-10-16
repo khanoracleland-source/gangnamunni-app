@@ -226,16 +226,28 @@ $fb_submitted_by = $_SESSION['ad_admin_user'] ?? $_SESSION['ad_admin_name'] ?? '
                 const typeIcons = { bug:'bug', improve:'arrow-up-circle', feature:'plus-circle', question:'question-circle', other:'three-dots' };
                 const statusColors = { open:'warning', in_progress:'info', done:'success', rejected:'secondary' };
 
+                // 피드백 내용은 외부 입력이다. 예전에는 fb.content 와 fb.screenshot_url 을
+                // 그대로 innerHTML 에 이어붙여서, 저장된 값이 관리자 화면에서 실행됐다
+                // (stored XSS — api_dev_feedback.php 는 인증도 없었다).
+                const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g,
+                    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                // 스크린샷은 서버가 uploads/feedback/ 아래에 만든 파일명만 허용한다
+                // (javascript: 같은 스킴이나 속성 탈출을 아예 받지 않는다).
+                const safeShot = u => (typeof u === 'string'
+                    && /^uploads\/feedback\/[A-Za-z0-9_-]+\.(png|jpe?g)$/.test(u)) ? u : '';
+
                 list.innerHTML = res.data.map(fb => {
                     const icon = typeIcons[fb.feedback_type] || 'chat';
                     const color = statusColors[fb.status] || 'secondary';
-                    const date = fb.created_at ? fb.created_at.substring(5, 16) : '';
-                    const ssThumb = fb.screenshot_url ? '<img src="' + fb.screenshot_url + '" style="max-width:60px;max-height:40px;border-radius:4px;margin-top:4px;" onclick="showModal(this)">' : '';
+                    const date = fb.created_at ? esc(String(fb.created_at).substring(5, 16)) : '';
+                    const body = String(fb.content == null ? '' : fb.content);
+                    const shot = safeShot(fb.screenshot_url);
+                    const ssThumb = shot ? '<img src="' + esc(shot) + '" style="max-width:60px;max-height:40px;border-radius:4px;margin-top:4px;" onclick="showModal(this)">' : '';
                     return '<div class="d-flex align-items-start gap-2 py-1 border-bottom">' +
                         '<i class="bi bi-' + icon + ' text-' + color + ' mt-1"></i>' +
-                        '<div class="flex-grow-1"><div>' + fb.content.substring(0,80) + (fb.content.length>80?'...':'') + '</div>' +
+                        '<div class="flex-grow-1"><div>' + esc(body.substring(0,80)) + (body.length>80?'...':'') + '</div>' +
                         ssThumb +
-                        '<small class="text-muted">' + date + ' | <span class="badge bg-' + color + '">' + fb.status + '</span></small></div></div>';
+                        '<small class="text-muted">' + date + ' | <span class="badge bg-' + color + '">' + esc(fb.status) + '</span></small></div></div>';
                 }).join('');
             }
         }).catch(() => {});
