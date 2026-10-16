@@ -1,11 +1,10 @@
 <?php
 // CPV 기능 확인서 - 저장/조회/삭제 API + 추가 개발사항
+// 플랫폼 관리자 전용 — 예전에는 인증 없이 + CORS * 로 누구나 조회/수정/삭제할 수 있었다.
+// 같은 출처의 cpv_feature_confirm.html 에서만 호출하므로 CORS 헤더는 두지 않는다.
+session_start();
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
+header('Cache-Control: no-store');
 
 require_once __DIR__ . '/../dbconfig.php';
 
@@ -13,6 +12,27 @@ $connect = @mysqli_connect(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_M
     defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
 if (!$connect) { echo json_encode(['success'=>false,'message'=>'DB 연결 실패']); exit; }
 mysqli_set_charset($connect, 'utf8mb4');
+
+require_once __DIR__ . '/includes/admin_auth.php';
+if (!check_admin_login() || is_hospital_role()) {
+    http_response_code(401);
+    echo json_encode(['success'=>false,'message'=>'관리자 로그인이 필요합니다.']);
+    exit;
+}
+
+// CSRF: 상태 변경 요청은 JSON 본문만 허용 (교차 출처 form/text-plain 요청은 preflight 없이 이 헤더를 보낼 수 없다)
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if (in_array($method, ['POST', 'DELETE'], true)) {
+    $ctype = strtolower(trim(explode(';', (string)($_SERVER['CONTENT_TYPE'] ?? ''))[0]));
+    $origin = (string)($_SERVER['HTTP_ORIGIN'] ?? '');
+    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+    $origin_ok = $origin === '' || parse_url($origin, PHP_URL_HOST) . (parse_url($origin, PHP_URL_PORT) ? ':' . parse_url($origin, PHP_URL_PORT) : '') === $host;
+    if ($ctype !== 'application/json' || !$origin_ok) {
+        http_response_code(403);
+        echo json_encode(['success'=>false,'message'=>'허용되지 않은 요청입니다.']);
+        exit;
+    }
+}
 
 // 테이블 자동 생성
 mysqli_query($connect, "CREATE TABLE IF NOT EXISTS gangnamunni_cpv_confirmations (
