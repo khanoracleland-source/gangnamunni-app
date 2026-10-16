@@ -32,57 +32,69 @@ if (!isset($connect) || !$connect) {
 }
 
 /**
- * 암호화 시크릿 키 (운영 환경에서는 반드시 변경!)
- * data/ai_config.json 또는 editor_settings 테이블에서 로드 가능
+ * 암호화 시크릿 키
+ *
+ * 우선순위 (2026-10-16 — data/ai_config.json 이 git 에 커밋되어 시크릿이 노출됐던 문제 대응):
+ *   1) 환경변수 AI_ENCRYPTION_SECRET (32자 이상)
+ *   2) 환경변수 AI_CONFIG_FILE 이 가리키는 JSON 파일 (웹루트/저장소 밖 권장)
+ *   3) data/ai_config.json (.gitignore 대상 — 저장소에 올리지 말 것)
+ * 시크릿 교체: php gangnamunni/tools/ai_rotate_secret.php --dry-run → 실행
  */
+function aiConfigFilePath(): string
+{
+    $custom = getenv('AI_CONFIG_FILE');
+    if (is_string($custom) && $custom !== '') return $custom;
+    return __DIR__ . '/../data/ai_config.json';
+}
+
 function aiGetEncryptionSecret(): string
 {
     static $secret = null;
     if ($secret !== null) return $secret;
 
-    // data/ai_config.json에서 로드 시도
-    $configFile = __DIR__ . '/../data/ai_config.json';
+    $env = getenv('AI_ENCRYPTION_SECRET');
+    if (!is_string($env) || $env === '') $env = (string)($_SERVER['AI_ENCRYPTION_SECRET'] ?? '');
+    if (strlen($env) >= 32) {
+        $secret = $env;
+        return $secret;
+    }
+
+    $configFile = aiConfigFilePath();
     if (file_exists($configFile)) {
-        $cfg = json_decode(file_get_contents($configFile), true);
-        if (!empty($cfg['encryption_secret'])) {
+        $cfg = json_decode((string)file_get_contents($configFile), true);
+        if (!empty($cfg['encryption_secret']) && is_string($cfg['encryption_secret'])) {
             $secret = $cfg['encryption_secret'];
             return $secret;
         }
     }
 
-    // data/ai_config.json 없으면 랜덤 시크릿 생성 후 파일에 저장
-    $dataDir = __DIR__ . '/../data';
+    // 설정이 없으면 랜덤 시크릿 생성 후 파일에 저장 (소유자만 읽기)
+    $dataDir = dirname($configFile);
     if (!is_dir($dataDir)) {
         @mkdir($dataDir, 0750, true);
     }
     $secret = bin2hex(random_bytes(32));
-    @file_put_contents($configFile, json_encode(['encryption_secret' => $secret], JSON_PRETTY_PRINT));
+    $old = umask(0077);
+    @file_put_contents($configFile, json_encode(['encryption_secret' => $secret], JSON_PRETTY_PRINT), LOCK_EX);
+    umask($old);
+    @chmod($configFile, 0600);
     return $secret;
 }
 
-/**
- * API 키 암호화 (AES-256-CBC)
- */
-function aiEncryptKey(string $plainKey): string
+/** 지정한 시크릿으로 암호화 (AES-256-CBC, IV 앞붙임 base64) */
+function aiEncryptWithSecret(string $plainKey, string $secret): string
 {
     $method = 'aes-256-cbc';
-    $secret = aiGetEncryptionSecret();
     $key = hash('sha256', $secret, true);
-    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($method));
-
+    $iv = random_bytes(openssl_cipher_iv_length($method));
     $encrypted = openssl_encrypt($plainKey, $method, $key, OPENSSL_RAW_DATA, $iv);
-
-    // IV + ciphertext를 합쳐서 base64
     return base64_encode($iv . $encrypted);
 }
 
-/**
- * API 키 복호화
- */
-function aiDecryptKey(string $encryptedBase64): ?string
+/** 지정한 시크릿으로 복호화. 실패 시 null */
+function aiDecryptWithSecret(string $encryptedBase64, string $secret): ?string
 {
     $method = 'aes-256-cbc';
-    $secret = aiGetEncryptionSecret();
     $key = hash('sha256', $secret, true);
     $ivLen = openssl_cipher_iv_length($method);
 
@@ -90,13 +102,24 @@ function aiDecryptKey(string $encryptedBase64): ?string
     if ($raw === false || strlen($raw) <= $ivLen) {
         return null;
     }
-
-    $iv = substr($raw, 0, $ivLen);
-    $cipherText = substr($raw, $ivLen);
-
-    $decrypted = openssl_decrypt($cipherText, $method, $key, OPENSSL_RAW_DATA, $iv);
-
+    $decrypted = openssl_decrypt(substr($raw, $ivLen), $method, $key, OPENSSL_RAW_DATA, substr($raw, 0, $ivLen));
     return ($decrypted !== false) ? $decrypted : null;
+}
+
+/**
+ * API 키 암호화 (AES-256-CBC)
+ */
+function aiEncryptKey(string $plainKey): string
+{
+    return aiEncryptWithSecret($plainKey, aiGetEncryptionSecret());
+}
+
+/**
+ * API 키 복호화
+ */
+function aiDecryptKey(string $encryptedBase64): ?string
+{
+    return aiDecryptWithSecret($encryptedBase64, aiGetEncryptionSecret());
 }
 
 /**
