@@ -366,8 +366,27 @@ function callAI(string $actionType, string $prompt, array $options = []): array
     $ownApiKey = null;
     $chargeWallet = false;
 
-    if ($hospitalId > 0 && function_exists('getHospitalAiSettings')) {
-        $hospitalAi = getHospitalAiSettings($hospitalId);
+    if ($hospitalId > 0) {
+        // getHospitalAiSettings()/chargeAiFromWallet() 는 cpv_helper.php 에 있다.
+        // 예전에는 function_exists() 로만 확인해서, 이 헬퍼를 include 하지 않은 호출부
+        // (api_ai_review.php, api_spell_check.php, ai_*_checker.php …)에서는 병원의
+        // ai_enabled=0 설정과 지갑 차감이 통째로 건너뛰어지고 플랫폼 키로 무료 호출됐다.
+        if (!function_exists('getHospitalAiSettings')) {
+            $cpvHelper = __DIR__ . '/cpv_helper.php';
+            if (is_file($cpvHelper)) require_once $cpvHelper;
+        }
+        $hospitalAi = function_exists('getHospitalAiSettings') ? getHospitalAiSettings($hospitalId) : null;
+        // 설정을 읽지 못하면(헬퍼 없음 / DB 오류 / 없는 병원) fail-closed — 병원 비용으로 무단 호출 금지.
+        if (!is_array($hospitalAi)) {
+            error_log('[callAI] hospital AI settings unavailable; hospital_id=' . $hospitalId . '; action=' . $actionType);
+            return [
+                'success' => false,
+                'content' => '',
+                'tokens'  => ['input' => 0, 'output' => 0],
+                'model'   => $model,
+                'error'   => '병원 AI 설정을 확인할 수 없습니다.',
+            ];
+        }
         if ($hospitalAi) {
             // 병원 AI 비활성이면 거부
             if (empty($hospitalAi['ai_enabled']) || $hospitalAi['ai_enabled'] !== '1') {
@@ -398,7 +417,16 @@ function callAI(string $actionType, string $prompt, array $options = []): array
     }
 
     // 플랫폼 키 사용 + 지갑 차감 필요 시 잔액 사전 체크
-    if ($chargeWallet && function_exists('chargeAiFromWallet')) {
+    if ($chargeWallet && !function_exists('chargeAiFromWallet')) {
+        return [
+            'success' => false,
+            'content' => '',
+            'tokens'  => ['input' => 0, 'output' => 0],
+            'model'   => $model,
+            'error'   => 'AI 비용 차감 모듈을 불러올 수 없습니다.',
+        ];
+    }
+    if ($chargeWallet) {
         $chargeResult = chargeAiFromWallet($hospitalId, $actionType);
         if (!$chargeResult['success']) {
             return [
