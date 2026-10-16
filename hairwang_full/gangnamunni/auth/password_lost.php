@@ -118,7 +118,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Gnuboard va HMS turli password hash formatlaridan foydalanadi.
                 $change_password = gnu_secure_temporary_password(12);
                 $gnuboard_hash = get_encrypt_string($change_password);
-                $hms_hash = password_hash($change_password, PASSWORD_BCRYPT);
                 $brand = $config['cf_title'] ?? '서울미녀';
                 $subject = '[' . $brand . '] 비밀번호 재설정 안내';
                 $body = "<div style='font-family:sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;max-width:560px'>"
@@ -139,10 +138,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     mysqli_stmt_close($up);
                 }
 
-                if ($password_saved && ($hms = mysqli_prepare($connect, "UPDATE users SET password = ?, updated_at = NOW() WHERE LOWER(email) = LOWER(?)"))) {
-                    mysqli_stmt_bind_param($hms, 'ss', $hms_hash, $mb['mb_email']);
-                    mysqli_stmt_execute($hms);
-                    mysqli_stmt_close($hms);
+                // HMS parolini faqat member_sync orqali shu a'zoga bog'langan bemor yozuvida
+                // yangilaymiz (profile_edit.php bilan bir xil yo'l). Ilgari bu yerda email bo'yicha
+                // xom UPDATE bo'lib, o'sha email'li HMS xodim/Super Admin parolini ham almashtirardi.
+                if ($password_saved && function_exists('sync_hms_password_by_mapping')) {
+                    sync_hms_password_by_mapping($connect, $mb['mb_id'], $change_password);
                 }
 
                 $result = $password_saved && function_exists('mail_send')
