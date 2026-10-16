@@ -562,6 +562,37 @@ function admin_logout() {
     ];
     setcookie('hms_auto_test_v1', '', $auto_test_cookie_options + ['path' => '/auto-manual-api/api/auto-test']);
     setcookie('hms_auto_test_v2', '', $auto_test_cookie_options + ['path' => '/auto-test-v2-api/api/v2']);
+
+    // SSO 토큰도 폐기한다. 세션만 지우면 dashboard.php 의 admin_login_from_sso() 가
+    // 남아 있는 sb_sso_token 으로 즉시 관리자 세션을 다시 만들어 로그아웃이 무력화된다.
+    // (그누보드 로그아웃 _sso_on_gnuboard_logout 과 같은 범위의 토큰 유형을 지운다.)
+    $sso_token = $_COOKIE['sb_sso_token'] ?? '';
+    if (is_string($sso_token) && preg_match('/^[a-f0-9]{64}$/i', $sso_token)) {
+        try {
+            $db = function_exists('sb_admin_db') ? sb_admin_db() : null;
+            $stmt = $db ? mysqli_prepare($db,
+                "DELETE FROM sso_tokens WHERE token = ? AND user_type IN ('gnuboard', 'hms', 'admin', 'patient_app_bridge')") : false;
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, 's', $sso_token);
+                mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
+            } else {
+                error_log('[admin_logout] SSO token revoke skipped: no DB');
+            }
+        } catch (Throwable $e) {
+            error_log('[admin_logout] SSO token revoke failed: ' . get_class($e));
+        }
+    }
+    // DB 실패와 무관하게 쿠키는 항상 지운다 → 이 브라우저에서 SSO 자동 재로그인 불가
+    setcookie('sb_sso_token', '', [
+        'expires' => time() - 3600,
+        'path' => '/',
+        'secure' => true, // 발급 시(app_login 등)와 같은 속성이어야 덮어써진다
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    unset($_COOKIE['sb_sso_token']);
+
     $_SESSION = [];
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();
