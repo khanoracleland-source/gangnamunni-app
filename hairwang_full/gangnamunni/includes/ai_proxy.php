@@ -61,11 +61,17 @@ function aiGetEncryptionSecret(): string
 
     $configFile = aiConfigFilePath();
     if (file_exists($configFile)) {
-        $cfg = json_decode((string)file_get_contents($configFile), true);
+        $raw = is_readable($configFile) ? @file_get_contents($configFile) : false;
+        $cfg = is_string($raw) ? json_decode($raw, true) : null;
         if (!empty($cfg['encryption_secret']) && is_string($cfg['encryption_secret'])) {
             $secret = $cfg['encryption_secret'];
             return $secret;
         }
+        // 파일은 있는데 읽을 수 없거나(권한) 형식이 깨졌으면 절대 새로 만들지 않는다.
+        // 예전에는 여기서 요청마다 임시 시크릿을 만들어(파일 쓰기도 실패) 저장된 키가 영구히 복호화 불가가 됐다.
+        error_log('[ai_proxy] encryption secret file exists but is unreadable/invalid: ' . $configFile . ' (check owner/permissions for the PHP user)');
+        $secret = '';
+        return $secret;
     }
 
     // 설정이 없을 때 새 시크릿을 만들면 기존 암호문이 전부 복호화 불가가 된다.
@@ -85,8 +91,14 @@ function aiGetEncryptionSecret(): string
     }
     $secret = bin2hex(random_bytes(32));
     $old = umask(0077);
-    @file_put_contents($configFile, json_encode(['encryption_secret' => $secret], JSON_PRETTY_PRINT), LOCK_EX);
+    $written = @file_put_contents($configFile, json_encode(['encryption_secret' => $secret], JSON_PRETTY_PRINT), LOCK_EX);
     umask($old);
+    if ($written === false) {
+        // 저장 못 한 시크릿으로 암호화하면 다음 요청부터 복호화 불가 → 사용하지 않는다.
+        error_log('[ai_proxy] cannot write encryption secret file: ' . $configFile);
+        $secret = '';
+        return $secret;
+    }
     @chmod($configFile, 0600);
     return $secret;
 }
