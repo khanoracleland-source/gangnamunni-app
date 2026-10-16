@@ -1005,9 +1005,15 @@ Route::post('/upload/image', function (Request $request) {
             ], 400);
         }
 
-        // Check mime type
-        $allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (!in_array($file->getMimeType(), $allowedMimes)) {
+        // Check mime type (content-sniffed) and derive the stored extension from it,
+        // never from the client-supplied filename (a GIF/PHP polyglot named x.php
+        // would otherwise be written as img_*.php into the web root).
+        $allowedMimes = [
+            'image/jpeg' => 'jpg', 'image/jpg' => 'jpg', 'image/png' => 'png',
+            'image/gif' => 'gif', 'image/webp' => 'webp',
+        ];
+        $mime = $file->getMimeType();
+        if (!isset($allowedMimes[$mime])) {
             return response()->json([
                 'success' => false,
                 'message' => '지원하지 않는 이미지 형식입니다.'
@@ -1020,8 +1026,8 @@ Route::post('/upload/image', function (Request $request) {
             mkdir($uploadPath, 0755, true);
         }
 
-        // Generate unique filename
-        $extension = $file->getClientOriginalExtension();
+        // Generate unique filename with the MIME-derived extension
+        $extension = $allowedMimes[$mime];
         $filename = uniqid('img_') . '_' . time() . '.' . $extension;
 
         // Move file
