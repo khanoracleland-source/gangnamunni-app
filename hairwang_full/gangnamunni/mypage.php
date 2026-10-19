@@ -137,7 +137,7 @@ body {
 /* 프로필 섹션 */
 .profile-section {
     display:flex; align-items:center; gap:14px;
-    min-height:88px; margin:26px 20px 16px; padding:18px 22px; background:var(--card-bg); cursor:pointer;
+    min-height:88px; margin:26px 10px 16px; padding:18px 22px; background:var(--card-bg); cursor:pointer;
     text-decoration:none; color:inherit;
 }
 .profile-section:hover { background:#fafafa; }
@@ -152,7 +152,7 @@ body {
 .profile-arrow { color:#000; font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
 /* 메뉴 섹션 */
-.menu-section { background:var(--card-bg); border-radius:0; margin:0 20px 16px; padding:18px 22px 8px; }
+.menu-section { background:var(--card-bg); border-radius:0; margin:0 10px 16px; padding:18px 22px 8px; }
 .menu-section.compact-section { padding-top:5px; padding-bottom:5px; }
 .menu-section-title {
     width:100%; padding:0 0 3px; font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:600; color:#999; letter-spacing:-.02em;
@@ -189,7 +189,7 @@ body {
 /* 광고 배너 */
 .advertisement-section {
     position: relative;
-    margin: 0 20px 16px;
+    margin: 0 10px 16px;
     display: block;
     overflow: hidden;
 }
@@ -229,7 +229,7 @@ body {
 }
 
 @media (max-width:380px) {
-    .profile-section, .menu-section, .advertisement-section { margin-left:14px; margin-right:14px; }
+    .profile-section, .menu-section, .advertisement-section { margin-left:10px; margin-right:10px; }
     .menu-section { padding-left:18px; padding-right:18px; }
     .menu-row { gap:11px; }
     .menu-row-text { font-size:calc(16px * var(--fs-scale,1) * var(--fs-page,1)); }
