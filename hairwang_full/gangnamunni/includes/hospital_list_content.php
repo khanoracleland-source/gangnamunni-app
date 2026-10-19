@@ -1,4 +1,4 @@
-<?php require_once __DIR__ . '/ad_slot_performance.php'; /* adSlotIssueToken() */ ?>
+<?php /** @var mysqli $connect */ /** @var string $hospital_return_url */ /** @var int $effective_treatment_id */ /** @var string $keyword */ /** @var string $effective_treatment */ require_once __DIR__ . '/ad_slot_performance.php'; /* adSlotIssueToken() */ ?>
     <?php if (!empty($hospitals)): ?>
 <?php
 $_infeed_enabled = getSettingValue($connect, 'ad_show_hospitals_infeed', '1');
@@ -89,11 +89,6 @@ foreach ($hospitals as $hospital):
                      decoding="async"
                      <?php echo $__hi <= 2 ? 'fetchpriority="high"' : ''; ?>
                      onerror="this.onerror=null;this.src='<?php echo $placeholder; ?>'">
-                <?php
-                $ad_grade = $hospital['ad_grade'] ?? 'none';
-                if ($_slot_context || in_array($ad_grade, ['S', 'A'])): ?>
-                <span class="grade-badge grade-badge-sa">AD</span>
-                <?php endif; ?>
                 <div class="hospital-info">
                     <div class="hospital-name"><?php echo htmlspecialchars($hospital['name']); ?></div>
                     <?php $_a=($hospital['address']??''); $_dist = extract_addr_district($_a); ?>
