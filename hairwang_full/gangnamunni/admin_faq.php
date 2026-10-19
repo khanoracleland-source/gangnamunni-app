@@ -23,6 +23,12 @@ if (!$connect) die('DB 연결 실패');
 loadThemeSettings($connect);
 require_admin_login();
 require_permission('faq');
+// FAQ는 최고관리자(super_admin)만 관리 가능
+if (!is_super_admin()) {
+    http_response_code(403);
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>권한 없음</title></head><body style="font-family:sans-serif;text-align:center;padding:80px 20px;"><h2>접근 권한이 없습니다</h2><p>FAQ는 최고관리자만 관리할 수 있습니다.</p><a href="dashboard.php">대시보드로 돌아가기</a></body></html>';
+    exit;
+}
 
 // 카테고리 목록 (사용자 FAQ 탭과 동일한 기준 + DB 에 남아있는 레거시 카테고리)
 require_once __DIR__ . '/includes/faq_categories.php';
