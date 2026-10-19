@@ -463,7 +463,7 @@ function apply_h($v)
             .scroll-hint { animation: none; }
         }
 
-        /* ---------- Qizil lenta: 입점비 0원 ---------- */
+        /* ---------- Qizil lenta: 모든 광고비 0원 ---------- */
         .apply-offer {
             background: var(--brand);
             color: #fff;
@@ -499,7 +499,7 @@ function apply_h($v)
         .apply-offer-main {
             color: #1a1a1a;
             margin: 0 0 clamp(10px, max(2.6vw, 1.5vh), 20px);
-            font-size: clamp(39px, calc(max(9.2vw, 5.6vh) + 5px), 73px);
+            font-size: clamp(30px, calc(max(6.9vw, 4.2vh) + 5px), 56px);
             font-weight: 900;
             letter-spacing: -.03em;
             line-height: 1.1;
@@ -1676,12 +1676,12 @@ function apply_h($v)
                     </div>
                     </div>
 
-                    <!-- 2) 입점비 0원 -->
-                    <div class="apply-offer" aria-label="입점비 혜택 안내">
+                    <!-- 2) 모든 광고비 0원 -->
+                    <div class="apply-offer" aria-label="광고비 혜택 안내">
                     <p class="apply-lead reveal">피부과·성형외과 미용시술 가격 비교 플랫폼 서울미녀에 병원을 등록하고, 시술·지역으로 병원을 찾는 고객을 만나보세요.</p>
                     <div class="offer-card">
                         <p class="apply-offer-top reveal">지금 신청하면</p>
-                        <p class="apply-offer-main reveal">입점비 <span class="offer-free">0원</span></p>
+                        <p class="apply-offer-main reveal">모든 광고비 <span class="offer-free">0원</span></p>
                         <p class="apply-offer-sub reveal">2027년 6월까지 입점비 없이 시작하세요</p>
                     </div>
                     </div>
