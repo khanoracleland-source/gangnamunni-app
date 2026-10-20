@@ -262,11 +262,28 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
             overlay.style.top = rect.bottom + 'px';
             panel.style.display = 'block';
             overlay.style.display = 'block';
+            document.documentElement.classList.add('region-lock');
         }
     }
+    // 05-02: 지역 그룹을 하나의 4열 그리드로 합친다(그룹 경계에서 줄이 끊기지 않게)
+    (function(){
+        var grids = document.querySelectorAll('#regionPanel .region-grid');
+        for (var i = 1; i < grids.length; i++) {
+            while (grids[i].firstChild) grids[0].appendChild(grids[i].firstChild);
+            grids[i].parentNode.removeChild(grids[i]);
+        }
+    })();
+    (function(){
+        var ov = document.getElementById('regionOverlay');
+        var stop = function(e){ e.preventDefault(); };
+        ov.addEventListener('wheel', stop, {passive:false});
+        ov.addEventListener('touchmove', stop, {passive:false});
+        document.getElementById('regionPanel').addEventListener('touchmove', function(e){ e.stopPropagation(); }, {passive:true});
+    })();
     function closeRegionPanel() {
         document.getElementById('regionPanel').style.display = 'none';
         document.getElementById('regionOverlay').style.display = 'none';
+        document.documentElement.classList.remove('region-lock');
     }
 
     // localStorage로 선택 저장/복원

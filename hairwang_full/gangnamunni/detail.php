@@ -1692,16 +1692,19 @@ if ($current_tab === 'reviews') {
     
 
         /* ===== 04-01~04-04 design sync ===== */
-        .tab-menu{border-bottom:1px solid #ECE9EA;gap:0}
-        .tab-menu .tab-btn,.tab-menu a,.tab-menu button{font-size:18px;font-weight:600;color:#9A9395;background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:14px 0;flex:1;text-align:center}
-        .tab-menu .active{color:#1A1718;border-bottom-color:#1A1718;background:none}
+        .tab-menu{border-bottom:1px solid #DCD6D8;gap:0}
+        .tab-menu .tab-item{font-size:18px;font-weight:400;color:#1A1718;background:none;border:0;border-bottom:2px solid transparent;border-radius:0;height:46px;padding:0;display:flex;align-items:center;justify-content:center;flex:1;margin-bottom:-1px}
+        .tab-menu .tab-item.active{color:#AC1830;font-weight:700;border-bottom-color:#AC1830;background:none}
         .tab-pane h3[id$="Intro"]{font-size:21px!important;font-weight:700;color:#1A1718;margin:20px 0 12px!important}
         .doctor-list{display:flex;flex-direction:column;gap:0}
-        .doctor-card{display:flex;gap:14px;padding:16px 0;border:0;border-bottom:1px solid #ECE9EA;border-radius:0;background:#fff;box-shadow:none}
-        .doctor-card .doctor-photo{width:72px;height:72px;border-radius:50%;background:#F4F2F3;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
-        .doctor-card .doctor-name{font-size:19px;font-weight:700;color:#1A1718;margin:0}
-        .doc-specialty{font-size:16px;color:#6B6466;margin-top:2px}
-        .doc-treat-row span{background:#FBEFF1!important;color:#AC1830!important;font-size:15px!important;border-radius:4px!important}
+        .doctor-card{display:flex;align-items:center;gap:18px;padding:16px;margin:0 0 10px;border:1px solid #DCD6D8;border-radius:0;background:#fff;box-shadow:none}
+        .doctor-card .doctor-photo{width:64px;height:64px;border-radius:50%;background:#F4F2F3;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+        .doctor-card .doctor-photo img{border-radius:50%!important}
+        .doctor-card .doctor-info{display:flex;flex-direction:column;gap:6px}
+        .doctor-card .doctor-name{font-size:18px;font-weight:500;color:#1A1718;margin:0}
+        .doc-specialty{display:flex;align-items:center;gap:5px;font-size:15px;color:#AC1830}
+        .doc-treat-row{margin-top:0!important;flex-wrap:wrap!important;gap:6px!important}
+        .doc-treat-row span{background:#F1EFEF!important;color:#1A1718!important;font-size:14px!important;font-weight:500;border-radius:0!important;padding:3px 7px!important}
         .procedure-list{display:flex;flex-direction:column}
         .procedure-card{display:flex;gap:12px;padding:16px 0;border:0;border-bottom:1px solid #ECE9EA;border-radius:0;background:#fff;box-shadow:none;text-decoration:none}
         .procedure-thumb{width:64px;height:84px;background:#F4F2F3;border-radius:6px;flex-shrink:0}
@@ -1742,7 +1745,7 @@ if ($current_tab === 'reviews') {
         .post-author-name{font-size:18px}
         .post-stat-group{font-size:16px}
         .post-stat-group .stat i{font-size:21px}
-        .doc-treat-row span{font-size:15px!important}
+        .doc-treat-row span{font-size:14px!important}
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
@@ -2275,7 +2278,7 @@ if ($current_tab === 'reviews') {
                             <?php endif; ?>
                         </h3>
                         <?php if (!empty($doctor['specialty'])): ?>
-                        <div class="doc-specialty"><?php echo htmlspecialchars($doctor['specialty']); ?></div>
+                        <div class="doc-specialty"><i class="bi bi-file-medical"></i><?php echo htmlspecialchars($doctor['specialty']); ?></div>
                         <?php endif; ?>
                         <?php
                         // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
@@ -2361,7 +2364,6 @@ if ($current_tab === 'reviews') {
                     $_prc = (int)($hospital['review_count'] ?? 0);
                     ?>
                 <a class="procedure-card" href="<?php echo htmlspecialchars($procedure_url, ENT_QUOTES, 'UTF-8'); ?>">
-                    <div class="procedure-thumb"></div>
                     <div class="procedure-body">
                         <div class="pc-title-row">
                             <h4 class="procedure-name"><?php echo htmlspecialchars($_pn_show, ENT_QUOTES, 'UTF-8'); ?></h4>
@@ -2526,7 +2528,7 @@ if ($current_tab === 'reviews') {
                             <?php endif; ?>
                         </h3>
                         <?php if (!empty($doctor['specialty'])): ?>
-                        <div class="doc-specialty"><?php echo htmlspecialchars($doctor['specialty']); ?></div>
+                        <div class="doc-specialty"><i class="bi bi-file-medical"></i><?php echo htmlspecialchars($doctor['specialty']); ?></div>
                         <?php endif; ?>
                         <?php
                         // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
