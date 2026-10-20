@@ -26,7 +26,8 @@ require_once __DIR__ . '/includes/page_cache.php';
 // Phase5: SSO 토큰 자동 로그인 (앱 WebView에서 세션 없을 때)
 include_once __DIR__ . '/includes/sso_auto_login.php';
 
-// 로그인 체크
+// 로그인 체크 ($member, $is_member 는 Gnuboard common.php 에서 설정됨)
+/** @var array $member */
 $is_logged_in = isset($is_member) && $is_member && isset($member['mb_id']) && $member['mb_id'];
 
 if (!$is_logged_in) {
@@ -127,12 +128,13 @@ body {
     display:flex; align-items:center; justify-content:space-between;
     height:62px; padding:0 20px; background:var(--card-bg); border-bottom:0;
 }
-.page-header-title { font-size:calc(21px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:800; color:#000; letter-spacing:-.5px; }
+.page-header-title { font-size:calc(21px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; color:#000; letter-spacing:-.5px; }
 .page-header .settings-btn {
     width:40px; height:40px; display:flex; align-items:center; justify-content:center;
     border-radius:50%; background:transparent; border:none; cursor:pointer; color:#aaa; font-size:calc(29px * var(--fs-scale,1) * var(--fs-page,1));
     text-decoration:none;
 }
+.page-header .settings-btn img { display:block; width:clamp(30px, 8.5vw, 35px); height:clamp(30px, 8.5vw, 35px); object-fit:contain; }
 .page-header .settings-btn:hover { background:var(--bs-tertiary-bg, #f5f5f5); }
 /* 프로필 섹션 */
 .profile-section {
@@ -147,7 +149,7 @@ body {
     font-size:calc(22px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; color:#fff; flex-shrink:0;
 }
 .profile-info-wrap { flex:1; min-width:0; }
-.profile-name { font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:750; color:#000; }
+.profile-name { font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; color:#000; }
 .profile-sub { font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color:#999; margin-top:2px; }
 .profile-arrow { color:#000; font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
@@ -155,7 +157,7 @@ body {
 .menu-section { background:var(--card-bg); border-radius:0; margin:0 10px 16px; padding:18px 22px 8px; }
 .menu-section.compact-section { padding-top:5px; padding-bottom:5px; }
 .menu-section-title {
-    width:100%; padding:0 0 3px; font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:600; color:#999; letter-spacing:-.02em;
+    width:100%; padding:0 0 3px; font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; color:#999; letter-spacing:-.02em;
 }
 .menu-row {
     display:flex; align-items:center; gap:14px;
@@ -164,26 +166,11 @@ body {
 }
 .menu-row:hover { background:#fafafa; }
 .menu-row-icon {
-    width:28px; height:32px; display:flex; align-items:center; justify-content:center;
+    min-width:clamp(26px, 7.3vw, 30px); height:32px; display:flex; align-items:center; justify-content:center;
     font-size:calc(25px * var(--fs-scale,1) * var(--fs-page,1)); color:#111; flex-shrink:0;
 }
-.menu-icon-point {
-    width:27px; height:27px; border:1.6px solid #111; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-family:Arial,sans-serif; font-size:18px; font-weight:500; line-height:1;
-}
-.menu-icon-review {
-    position:relative; width:25px; height:22px; border:1.6px solid #111; border-radius:4px;
-}
-.menu-icon-review::before {
-    content:""; position:absolute; left:5px; top:6px; width:11px; height:1.5px;
-    background:#111; box-shadow:0 5px 0 #111;
-}
-.menu-icon-review::after {
-    content:""; position:absolute; left:5px; bottom:-5px; width:7px; height:7px;
-    border-left:1.6px solid #111; transform:skewY(-38deg); background:#fff;
-}
-.menu-row-text { flex:1; font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:650; letter-spacing:-.35px; }
+.menu-row-icon img { display:block; width:clamp(26px, 7.3vw, 30px); height:clamp(26px, 7.3vw, 30px); object-fit:contain; }
+.menu-row-text { flex:1; font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; letter-spacing:-.35px; }
 .menu-row-arrow { color:#000; font-weight:900; font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
 /* 광고 배너 */
@@ -224,7 +211,7 @@ body {
 /* 배지는 알약 배경 없이 텍스트만 — padding/border-radius 는 배경이 없으면 의미가 없어
    함께 제거하고, 화살표와의 간격만 margin 으로 유지한다. */
 .menu-row-badge {
-    font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; color: var(--pri, #AE1932);
+    font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: var(--pri, #AE1932);
     margin-right: 2px; white-space:nowrap;
 }
 
@@ -242,7 +229,7 @@ body {
 <!-- 페이지 헤더: "마이페이지" + 설정 아이콘 -->
 <div class="page-header">
     <span class="page-header-title">마이페이지</span>
-    <a href="notification_settings.php" class="settings-btn" title="설정" aria-label="설정"><i class="bi bi-gear"></i></a>
+    <a href="notification_settings.php" class="settings-btn" title="설정" aria-label="설정"><img src="assets/icons/icon-mypage-settings.png" alt="" aria-hidden="true"></a>
 </div>
 
 <?php if ($is_logged_in): ?>
@@ -265,10 +252,10 @@ body {
 <div class="menu-section">
     <div class="menu-section-title"><?php echo term('business', '병원'); ?> 이용</div>
     <a href="my_bookings.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-calendar-check"></i></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-booking.png" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">내 <?php echo term('booking', '예약'); ?> / 결제 내역</span>
         <?php if ($booking_count > 0): ?>
-        <span class="menu-row-badge"><?php echo number_format($booking_count); ?>건</span>
+        <span class="menu-row-badge"><?php echo term('booking', '예약'); ?> <?php echo number_format($booking_count); ?>건</span>
         <?php endif; ?>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
@@ -276,19 +263,19 @@ body {
     require_once __DIR__ . '/includes/points_pause.php';
     if (!POINTS_MENU_HIDDEN): // 일시 중지: includes/points_pause.php ?>
     <a href="my_points.php" class="menu-row">
-        <span class="menu-row-icon"><span class="menu-icon-point" aria-hidden="true">P</span></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-point.png" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">포인트</span>
         <span class="menu-row-badge"><?php echo number_format($point_balance); ?>P</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <?php endif; ?>
     <a href="my_wishlist.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-star"></i></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-wishlist.png" alt="" aria-hidden="true"></span>
         <span class="menu-row-text"><?php echo term('business', '병원'); ?> 찜</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_reviews.php" class="menu-row">
-        <span class="menu-row-icon"><span class="menu-icon-review" aria-hidden="true"></span></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-review.png" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">내가 작성한 <?php echo term('review', '후기'); ?></span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
@@ -308,12 +295,12 @@ if ($_mypage_has_ads): ?>
 <div class="menu-section">
     <div class="menu-section-title">커뮤니티</div>
     <a href="community.php?my=1" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-pencil-square"></i></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-community.png" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">MY 커뮤니티 글</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_wishlist.php?type=community" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-heart"></i></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-like.png" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">MY 좋아요 목록</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
