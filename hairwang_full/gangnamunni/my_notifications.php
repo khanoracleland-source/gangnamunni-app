@@ -14,7 +14,7 @@ function notification_filter_types($filter) {
     $groups = [
         'all' => [],
         'booking' => ['booking', 'payment'],
-        'review' => ['review'],
+        'review' => ['review', 'community', 'comment'],
         'benefit' => ['event', 'raffle', 'system', 'promotion', 'general', 'point', 'coupon', 'benefit'],
     ];
 
@@ -118,9 +118,17 @@ function notification_icon_src($icon) {
 }
 
 function notification_time_label($datetime) {
-    $label = user_time_ago($datetime);
-    if ($label === '방금') return '지금';
-    return str_replace(['분전', '시간전', '일전'], ['분 전', '시간 전', '일 전'], $label);
+    // Claude 디자인 03-15: 방금 / N분 전 / N시간 전 / 어제 / N일 전 / MM.DD
+    $ts = strtotime((string)$datetime);
+    if (!$ts) return '';
+    $diff = time() - $ts;
+    if ($diff < 60) return '방금';
+    if ($diff < 3600) return floor($diff / 60) . '분 전';
+    if ($diff < 86400 && date('Y-m-d', $ts) === date('Y-m-d')) return floor($diff / 3600) . '시간 전';
+    $days = (int)floor((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', $ts))) / 86400);
+    if ($days <= 1) return $days === 1 ? '어제' : floor($diff / 3600) . '시간 전';
+    if ($days < 7) return $days . '일 전';
+    return date('m.d', $ts);
 }
 
 // --- AJAX 엔드포인트: 알림 읽음 처리 ---
@@ -318,12 +326,10 @@ function render_notification_item($n) {
         <div class="noti-content">
             <div class="noti-title-row">
                 <span class="noti-title">{$title}</span>
+                <span class="noti-dot"></span>
+                <span class="noti-time">{$time}</span>
             </div>
             <p class="noti-message">{$message}</p>
-        </div>
-        <div class="noti-side">
-            <span class="noti-time">{$time}</span>
-            <span class="noti-dot"></span>
         </div>
     </div>
 </article>
@@ -718,6 +724,43 @@ button,a,[role="button"]{touch-action:manipulation;-webkit-tap-highlight-color:t
 @media(prefers-reduced-motion:reduce){
     *,*::before,*::after{animation:none!important;transition:none!important}
 }
+/* ===== Claude 디자인 03-15 ~ 03-17: 알림함 ===== */
+html{background:#3f3f3f}
+body{background:#fff}
+.main-content{background:#fff!important}
+.noti-wrapper{--noti-bg:#fff;background:#fff;letter-spacing:-0.01em;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.noti-header{background:#fff}
+.noti-header-row{min-height:52px;height:52px;grid-template-columns:44px 1fr 64px;padding:0 8px}
+.noti-back{width:44px;height:44px;border-radius:0;color:#1A1718;font-size:0}
+.noti-page-title{font-size:17px;font-weight:500;color:#1A1718}
+.noti-badge{display:none!important}
+.noti-read-all-btn{display:flex!important;align-items:center;justify-content:flex-end;width:64px;height:44px;padding:0 8px 0 0;border:0;background:none;font-size:13px;color:#6B6466;cursor:pointer;white-space:nowrap}
+.noti-read-all-btn:disabled{opacity:1;cursor:default}
+.noti-tabs{top:52px;gap:8px;padding:6px 20px 12px;overflow-x:auto;border-bottom:1px solid #ECE9EA;background:#fff}
+.noti-tab-indicator{display:none}
+.noti-tab{flex:0 0 auto;min-height:0;height:32px;padding:0 14px;border:1px solid #DCD6D8;border-radius:16px;background:#fff;color:#1A1718;font-size:14px;font-weight:400}
+.noti-tab.active{border-color:#1A1718;background:#1A1718;color:#fff;font-weight:400}
+.noti-list{display:block;gap:0;padding:0;background:#fff}
+.noti-item{display:block;min-height:0;border-bottom:1px solid #ECE9EA;background:#fff}
+.noti-item.noti-unread{background:#FFF8F9}
+.noti-open-area{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;grid-template-columns:none}
+.noti-icon-wrap{flex:0 0 40px;width:40px;height:40px;border-radius:20px;background:#FBEFF1}
+.noti-svg-icon{width:20px;height:20px}
+.noti-content{flex:1;min-width:0}
+.noti-title-row{display:flex;align-items:center;gap:6px;margin:0;font-size:12px;color:#6B6466}
+.noti-title{flex:0 1 auto;font-size:12px;font-weight:400;color:#6B6466}
+.noti-dot{flex:0 0 6px;width:6px;height:6px;border-radius:3px;background:#AC1830}
+.noti-read .noti-dot{display:none}
+.noti-time{margin-left:auto;max-width:none;font-size:12px;line-height:1.4;color:#9A9395}
+.noti-message{margin:4px 0 0;font-size:14px;line-height:1.55;color:#1A1718;white-space:normal;overflow:visible;text-overflow:clip}
+.noti-side{display:none}
+.noti-delete-btn{right:12px;bottom:8px}
+.noti-load-more{width:calc(100% - 40px);margin:16px 20px 24px;border:1px solid #DCD6D8;border-radius:4px;font-weight:500;color:#1A1718}
+.noti-empty{min-height:0;padding:120px 32px 40px;border:0;background:#fff}
+.noti-empty-icon{width:72px;height:72px;margin-bottom:18px;background:#FBEFF1;color:#AC1830}
+.noti-empty-title{margin:0;font-size:18px;font-weight:700;color:#1A1718}
+.noti-empty-desc{margin-top:8px;font-size:14px;line-height:1.6;color:#6B6466}
+
 CSS;
 
 $page_js = '';
@@ -730,7 +773,7 @@ include __DIR__ . '/includes/header.php';
     <div class="noti-header">
         <div class="noti-header-row">
             <button type="button" class="noti-back" onclick="history.back()" aria-label="뒤로가기">
-                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
             </button>
             <span class="noti-page-title">
                 알림
@@ -750,8 +793,8 @@ include __DIR__ . '/includes/header.php';
     <div class="noti-tabs" id="notiTabs" role="tablist" aria-label="알림 필터">
         <button class="noti-tab <?= $current_type === 'all' ? 'active' : '' ?>" data-type="all">전체</button>
         <button class="noti-tab <?= $current_type === 'booking' ? 'active' : '' ?>" data-type="booking">예약 · 결제</button>
-        <button class="noti-tab <?= $current_type === 'review' ? 'active' : '' ?>" data-type="review">후기</button>
-        <button class="noti-tab <?= $current_type === 'benefit' ? 'active' : '' ?>" data-type="benefit">혜택 · 기타</button>
+        <button class="noti-tab <?= $current_type === 'review' ? 'active' : '' ?>" data-type="review">커뮤니티</button>
+        <button class="noti-tab <?= $current_type === 'benefit' ? 'active' : '' ?>" data-type="benefit">혜택</button>
         <span class="noti-tab-indicator" id="notiTabIndicator" aria-hidden="true"></span>
     </div>
 
@@ -759,9 +802,9 @@ include __DIR__ . '/includes/header.php';
     <div class="noti-list" id="notiList">
         <?php if (empty($notifications)): ?>
             <div class="noti-empty" id="emptyState">
-                <div class="noti-empty-icon"><i class="bi bi-bell-slash"></i></div>
-                <div class="noti-empty-title">알림이 없습니다</div>
-                <div class="noti-empty-desc">새로운 알림이 오면 여기에 표시됩니다.</div>
+                <div class="noti-empty-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#AC1830" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></div>
+                <div class="noti-empty-title">새로운 알림이 없어요</div>
+                <div class="noti-empty-desc">예약 · 결제 진행 상황을<br>이곳에서 알려드릴게요</div>
             </div>
         <?php else: ?>
             <?php foreach ($notifications as $n): ?>
@@ -903,9 +946,9 @@ include __DIR__ . '/includes/header.php';
                 } else {
                     notiList.innerHTML =
                         '<div class="noti-empty" id="emptyState">' +
-                        '<div class="noti-empty-icon"><i class="bi bi-bell-slash"></i></div>' +
+                        '<div class="noti-empty-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#AC1830" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></div>' +
                         '<div class="noti-empty-title">' + getEmptyTitle(type) + '</div>' +
-                        '<div class="noti-empty-desc">새로운 알림이 오면 여기에 표시됩니다.</div>' +
+                        '<div class="noti-empty-desc">예약 · 결제 진행 상황을<br>이곳에서 알려드릴게요</div>' +
                         '</div>';
                 }
             }
@@ -929,13 +972,7 @@ include __DIR__ . '/includes/header.php';
     }
 
     function getEmptyTitle(type) {
-        var map = {
-            'all': '알림이 없습니다',
-            'booking': '예약 · 결제 알림이 없습니다',
-            'review': '후기 알림이 없습니다',
-            'benefit': '혜택 · 기타 알림이 없습니다'
-        };
-        return map[type] || '알림이 없습니다';
+        return '새로운 알림이 없어요';
     }
 
     // --- 더 보기 ---
@@ -1031,9 +1068,9 @@ include __DIR__ . '/includes/header.php';
             if (!notiList.querySelector('.noti-item')) {
                 notiList.innerHTML =
                     '<div class="noti-empty" id="emptyState">' +
-                    '<div class="noti-empty-icon"><i class="bi bi-bell-slash"></i></div>' +
+                    '<div class="noti-empty-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#AC1830" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></div>' +
                     '<div class="noti-empty-title">' + getEmptyTitle(currentType) + '</div>' +
-                    '<div class="noti-empty-desc">새로운 알림이 오면 여기에 표시됩니다.</div>' +
+                    '<div class="noti-empty-desc">예약 · 결제 진행 상황을<br>이곳에서 알려드릴게요</div>' +
                     '</div>';
                 removeLoadMoreBtn();
             }
