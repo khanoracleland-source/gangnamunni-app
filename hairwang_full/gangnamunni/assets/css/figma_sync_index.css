@@ -73,7 +73,8 @@
     letter-spacing: 0;
     line-height: 1;
 }
-#regionToggleBtn.has-region { background: #AC1830 !important; }
+/* 디자인: 지역을 선택해도 알약 색(#2A1416)은 변하지 않음 */
+#regionToggleBtn.has-region { background: #2A1416 !important; }
 #regionToggleBtn .pin-ico {
     width: 20px;
     height: 20px;
