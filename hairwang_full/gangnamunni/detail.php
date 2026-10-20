@@ -1811,6 +1811,25 @@ if ($current_tab === 'reviews') {
         .consultation-modal .modal-content.cm-sheet{padding-bottom:calc(72px + env(safe-area-inset-bottom))!important;touch-action:pan-y}
         .cm-footer{position:absolute;left:0;right:0;bottom:0;z-index:2;background:#fff;padding:12px 20px max(12px,env(safe-area-inset-bottom));box-sizing:border-box}
         .cm-footer .cm-submit{margin-top:0}
+
+        /* 05-06 완료 화면 */
+        .consultation-modal.is-done form.cm-body{display:none!important}
+        .consultation-modal .cm-ok{display:none}
+        .consultation-modal.is-done .cm-ok{display:flex}
+        .consultation-modal.is-done .modal-btn-submit:not(.cm-ok){display:none}
+        .cm-done{padding:16px 20px 4px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+        .cm-done[hidden]{display:none}
+        .cm-done-title{font-size:20px;font-weight:700;line-height:1.45}
+        .cm-done-msg{font-size:15px;line-height:1.6;color:#4A4446}
+        .cm-done-phone{align-self:stretch;margin-top:4px;padding:12px 14px;background:#F7F5F5;display:flex;align-items:center;gap:10px;font-size:14px;text-align:left}
+        .cm-done-phone-t{flex:1}.cm-done-phone-t b{font-weight:700}
+        .cm-done-phone-t em{display:block;font-style:normal;font-size:12px;color:#6B6466;margin-top:2px}
+        .cm-done-save{height:32px;padding:0 12px;border:1px solid #AC1830;background:#fff;color:#AC1830;font-size:13px;font-weight:700;cursor:pointer}
+        .cm-done-note{margin-top:2px;font-size:12px;color:#6B6466}
+        .cm-done-note a{color:#1A1718;text-decoration:underline}
+        /* 토스트가 모달 뒤에 가려지던 문제 */
+        .share-copy-toast{z-index:10100!important}
+        .consultation-modal.show ~ .share-copy-toast,.share-copy-toast.show{bottom:96px}
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
@@ -2691,6 +2710,16 @@ if ($current_tab === 'reviews') {
         if ($_n !== '' && !in_array($_n, $cm_chips_treat, true)) $cm_chips_treat[] = $_n;
         if (count($cm_chips_treat) >= 8) break;
     }
+    if (empty($cm_chips_treat) && !empty($hospital_id)) {
+        $_cmq = $connect->prepare("SELECT DISTINCT tm.name FROM gangnamunni_hospital_treatments ht INNER JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1 AND tm.is_active = 1 ORDER BY tm.name LIMIT 8");
+        if ($_cmq) {
+            $_cmq->bind_param('i', $hospital_id);
+            $_cmq->execute();
+            $_cmr = $_cmq->get_result();
+            while ($_cmrow = $_cmr->fetch_assoc()) { $cm_chips_treat[] = $_cmrow['name']; }
+            $_cmq->close();
+        }
+    }
     $cm_chips_treat[] = '기타';
     $cm_addr = (string)($hospital['address'] ?? '');
     $cm_dist = '';
@@ -2718,7 +2747,7 @@ if ($current_tab === 'reviews') {
 
                 <div class="cm-label">관심 시술 <em>*</em></div>
                 <div class="cm-chips" data-group="treat">
-                    <?php foreach ($cm_chips_treat as $_c): ?><button type="button" class="cm-chip" data-v="<?php echo htmlspecialchars($_c, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($_c); ?></button><?php endforeach; ?>
+                    <?php foreach ($cm_chips_treat as $_ci => $_c): ?><button type="button" class="cm-chip<?php echo $_ci === 0 ? ' on' : ''; ?>" data-v="<?php echo htmlspecialchars($_c, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($_c); ?></button><?php endforeach; ?>
                 </div>
 
                 <div class="cm-label">상담 방법 <em>*</em></div>
@@ -2763,8 +2792,20 @@ if ($current_tab === 'reviews') {
                 <label class="cm-agree"><input type="checkbox" id="cmAgree"><span class="cm-box"></span><span class="cm-agree-t"><em>(필수)</em> 개인정보 병원 제공 동의</span><a href="privacy_policy.php" target="_blank" rel="noopener" class="cm-view" onclick="event.stopPropagation()">보기</a></label>
 
             </form>
+            <div class="cm-done" id="cmDone" hidden>
+                <svg class="cm-done-ico" width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#AC1830" stroke-width="2.5"/><path d="M14 25l7 7 13-14" stroke="#AC1830" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <div class="cm-done-title"><?php echo term('consultation', '상담'); ?> 신청이 완료되었어요</div>
+                <div class="cm-done-msg"><?php echo htmlspecialchars($hospital['name'] ?? ''); ?>에서 확인 후<br><span id="cmDoneWhen">연락드려요</span></div>
+                <?php if ($cm_phone !== ''): ?>
+                <div class="cm-done-phone">
+                    <span class="cm-done-phone-t">연락 번호 <b><?php echo htmlspecialchars($cm_phone); ?></b><em>모르는 번호 차단 중이면 저장해주세요</em></span>
+                    <button type="button" class="cm-done-save" onclick="cmSaveContact()">번호 저장</button>
+                </div>
+                <?php endif; ?>
+                <div class="cm-done-note">연락이 닿지 않으면 앱 알림과 <a href="mypage.php">마이페이지 &gt; 상담 내역</a>에서 알려드려요</div>
+            </div>
         </div>
-        <div class="cm-footer"><button type="submit" form="consultForm" class="modal-btn-submit cm-submit">신청하기</button></div>
+        <div class="cm-footer"><button type="submit" form="consultForm" class="modal-btn-submit cm-submit">신청하기</button><button type="button" class="cm-submit cm-ok" onclick="closeConsultModal()">확인</button></div>
         </div>
     </div>
 
@@ -2876,6 +2917,7 @@ if ($current_tab === 'reviews') {
             if (_sh) { _sh.style.transition = ''; _sh.style.transform = ''; }
             const _ft = modal.querySelector('.cm-footer'); if (_ft) { _ft.style.transition = ''; _ft.style.transform = ''; }
             modal.style.transition = ''; modal.style.background = ''; delete modal.dataset.closing;
+            modal.classList.remove('is-done'); const _dn = document.getElementById('cmDone'); if (_dn) _dn.hidden = true;
             modal.classList.add('show');
             document.body.classList.add('consultation-modal-open');
             window.setTimeout(function() {
@@ -2884,6 +2926,27 @@ if ($current_tab === 'reviews') {
         }
 
         // 상담 모달 닫기
+        // 05-06 상담 신청 완료 화면 (같은 시트 안에서 내용 교체)
+        function cmShowDone(method, time) {
+            const modal = document.getElementById('consultModal');
+            const way = method === '카카오톡 채널' ? '카카오톡 채널로' : (method === '방문 상담' ? '방문 상담 일정으로' : '전화로');
+            const when = time === '언제든 괜찮아요' ? '편하신 시간에' : time + ' 시간에';
+            document.getElementById('cmDoneWhen').textContent = when + ' ' + way + ' 연락드려요';
+            document.getElementById('cmDone').hidden = false;
+            modal.classList.add('is-done');
+            modal.querySelector('.cm-sheet').scrollTop = 0;
+        }
+        function cmSaveContact() {
+            const name = <?php echo json_encode((string)($hospital['name'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
+            const tel = <?php echo json_encode($cm_phone, JSON_UNESCAPED_UNICODE); ?>;
+            const vcf = 'BEGIN:VCARD\nVERSION:3.0\nFN:' + name + '\nORG:' + name + '\nTEL;TYPE=WORK,VOICE:' + tel + '\nEND:VCARD\n';
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([vcf], {type: 'text/vcard'}));
+            a.download = name + '.vcf';
+            document.body.appendChild(a); a.click(); a.remove();
+            window.showDetailToast?.('연락처 파일을 내려받았어요. 열어서 저장해주세요.');
+        }
+
         function closeConsultModal() {
             const modal = document.getElementById('consultModal');
             const sheet = modal.querySelector('.cm-sheet');
@@ -3260,12 +3323,11 @@ if ($current_tab === 'reviews') {
                 if (data.success) {
                     const csrfInput = e.target.querySelector('input[name="csrf_token"]');
                     if (csrfInput && data.csrf_token) csrfInput.value = data.csrf_token;
-                    closeConsultModal();
+                    cmShowDone(cmMethod, cmTime);
                     e.target.reset();
-                    document.querySelectorAll('#consultForm .cm-chips[data-group="treat"] .cm-chip').forEach(function(c){ c.classList.remove('on'); });
+                    document.querySelectorAll('#consultForm .cm-chips[data-group="treat"] .cm-chip').forEach(function(c, i){ c.classList.toggle('on', i === 0); });
                     selectedPhotos = [];
                     renderPhotoGrid();
-                    window.showDetailToast?.('<?php echo term('consultation', '상담'); ?> 신청이 완료되었습니다.');
                 } else {
                     window.showDetailToast?.(data.message || '<?php echo term('consultation', '상담'); ?> 신청 중 오류가 발생했습니다.');
                 }
