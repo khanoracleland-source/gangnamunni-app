@@ -206,7 +206,11 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
     $region_storage_key = $region_storage_key ?? 'sb_selected_regions';
 ?>
     <!-- 피그마 디자인 검색바 + 지역 필터 (640px 컨테이너 내) -->
-    <div class="header-search-wrap">
+    <?php $_sr_mode = (trim((string)($_GET['q'] ?? '')) !== '' && basename($_SERVER['SCRIPT_NAME'] ?? '') === 'hospitals.php'); ?>
+    <div class="header-search-wrap<?php echo $_sr_mode ? ' is-results' : ''; ?>">
+        <?php if ($_sr_mode): ?>
+        <a href="index.php" class="sr-back" aria-label="뒤로 가기" onclick="if (document.referrer && history.length > 1) { history.back(); return false; }"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></a>
+        <?php endif; ?>
         <input type="text" id="csb-keyword" class="hospital-search-input" value="<?php echo htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES); ?>" placeholder="<?php echo function_exists('dt') ? htmlspecialchars(dt('fd_search_placeholder','시술, 병원 이름을 검색해보세요')) : '시술, 병원 이름을 검색해보세요'; ?>">
         <button id="regionToggleBtn" class="hospital-search-btn" onclick="toggleRegionPanel()">
             <svg class="pin-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z"/><circle cx="12" cy="9.7" r="2.6"/></svg>지역 선택
@@ -317,7 +321,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
             checked.forEach(function(cb) {
                 var tag = document.createElement('span');
                 tag.className = 'region-tag';
-                tag.innerHTML = cb.value + ' <span onclick="uncheckRegion(\'' + cb.value + '\')" style="cursor:pointer;">&times;</span>';
+                tag.innerHTML = cb.value + '<span onclick="uncheckRegion(\'' + cb.value + '\')" style="cursor:pointer;display:inline-flex;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B6466" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M6 6l12 12M18 6L6 18"/></svg></span>';
                 barTags.appendChild(tag);
             });
             bar.style.display = 'flex';
@@ -327,7 +331,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
         // 버튼 스타일
         var btn = document.getElementById('regionToggleBtn');
         if (checked.length > 0) {
-            btn.innerHTML = '<svg class="pin-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z"/><circle cx="12" cy="9.7" r="2.6"/></svg>지역 ' + checked.length + '개';
+            btn.innerHTML = '<svg class="pin-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z"/><circle cx="12" cy="9.7" r="2.6"/></svg>' + (checked.length > 1 ? checked[0].value + ' 외 ' + (checked.length - 1) : checked[0].value);
             btn.classList.add('has-region');
         } else {
             btn.innerHTML = '<svg class="pin-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z"/><circle cx="12" cy="9.7" r="2.6"/></svg>지역 선택';
@@ -348,6 +352,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
         document.querySelectorAll('.region-cb:checked').forEach(function(cb) { regions.push(cb.value); });
         saveRegionsToStorage();
         var keyword = document.getElementById('csb-keyword').value.trim();
+        if (keyword && window.sbAddRecentSearch) sbAddRecentSearch(keyword);
         // 이미 대상 페이지면 기존 필터(category/treatment/sort/tab 등)를 유지, 아니면 새로 이동
         var target = '<?php echo $search_target_page; ?>';
         var onTarget = location.pathname.indexOf(target) !== -1;
@@ -367,6 +372,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
     // 페이지 로드 시 저장된 지역 복원
     loadRegionsFromStorage();
     </script>
+    <?php include __DIR__ . '/search_overlay.php'; ?>
     <?php endif; ?>
 
     <!-- 메인 콘텐츠 영역 (640px 중앙 정렬) -->

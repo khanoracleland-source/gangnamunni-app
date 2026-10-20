@@ -49,6 +49,8 @@ if (!$use_content_cache) {
 
 $page_title = term('business');
 $show_search = true; 
+// Claude 디자인 03-09: 검색 결과 화면에는 글로벌 네비게이션(로고 줄)이 없고 뒤로가기+검색어 바가 맨 위
+if (trim((string)($_GET['q'] ?? '')) !== '') { $hide_global_nav = true; }
 
 $page_css = '
     .results-header { margin-bottom: 16px; }
@@ -113,6 +115,22 @@ if (file_exists($_fs_css_file)) { $page_css .= "\n" . file_get_contents($_fs_css
 
 include __DIR__ . '/includes/header.php';
 ?>
+<?php
+// 병원 이름 검색 결과 (hid=병원ID) — Claude 디자인 03-12/03-13
+if (isset($_GET['hid']) && (int)$_GET['hid'] > 0) {
+    ob_start();
+    $__hsv = include __DIR__ . '/includes/hospital_search_view.php';
+    $__hsv_html = ob_get_clean();
+    if ($__hsv === true) {
+        echo $__hsv_html;
+        echo '<div style="height:70px;"></div>';
+        include_once __DIR__ . '/includes/bottom_nav.php';
+        include __DIR__ . '/includes/footer.php';
+        mysqli_close($connect);
+        exit;
+    }
+}
+?>
     <script>
     (function() {
         var urlParams = new URLSearchParams(window.location.search);
@@ -147,6 +165,16 @@ include __DIR__ . '/includes/header.php';
     })();
     </script>
 
+    <?php if (!empty($effective_treatment_id) && count($dosage_options) > 1): /* 용량 1개뿐이면 선택할 의미가 없으므로 숨김 */ ?>
+    <div class="sr-dosage" id="dosageChips" role="group" aria-label="용량 선택">
+        <span class="sr-dosage-t">용량</span>
+        <button type="button" class="sr-chip<?php echo empty($selected_dosage) ? ' active' : ''; ?>" onclick="setDosage('')">전체</button>
+        <?php foreach ($dosage_options as $_dopt):
+            $_is_active = !empty($selected_dosage) && $selected_dosage['label'] === $_dopt['label']; ?>
+        <button type="button" class="sr-chip<?php echo $_is_active ? ' active' : ''; ?>" onclick="setDosage(<?php echo htmlspecialchars(json_encode($_dopt['label'], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>)"><?php echo htmlspecialchars($_dopt['label']); ?></button>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
     <div style="padding: 0 16px; margin-bottom: 8px; display: flex; justify-content: flex-start; align-items: center; gap: 8px;">
         <div id="sortChips" style="display:flex; gap:6px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
             <button onclick="setSort('price')" class="sort-chip<?php echo $sort==='price' ? ' active' : ''; ?>"><img src="assets/icons/categories/<?php echo $sort==='price' ? 'low_price_2.svg' : 'low_price_1.png'; ?>" class="sort-chip-icon"> 낮은가격</button>
@@ -169,51 +197,6 @@ include __DIR__ . '/includes/header.php';
         }
         </style>
     </div>
-
-    <?php if (!empty($effective_treatment_id) && count($dosage_options) > 1): /* 용량 1개뿐이면 선택할 의미가 없으므로 숨김 */ ?>
-    <?php
-    // 단위별 그룹: ['cc' => [opt, opt...], '샷' => [...]]
-    $_dosage_groups = [];
-    foreach ($dosage_options as $_dopt) { $_dosage_groups[$_dopt['unit']][] = $_dopt; }
-    ?>
-    <div style="padding: 0 16px; margin-bottom: 10px;">
-        <div id="dosageChips" role="group" aria-label="용량 선택">
-            <?php $_gi = 0; foreach ($_dosage_groups as $_unit => $_opts): $_gi++;
-                $_group_open = !empty($selected_dosage) && $selected_dosage['unit'] === $_unit; ?>
-            <div class="dosage-group<?php echo $_group_open ? ' open has-selected' : ''; ?>" id="dosageGroup<?php echo $_gi; ?>">
-                <button type="button" class="dosage-unit-btn" aria-expanded="<?php echo $_group_open ? 'true' : 'false'; ?>" aria-controls="dosageGroup<?php echo $_gi; ?>" data-has-selected="<?php echo $_group_open ? '1' : '0'; ?>" onclick="toggleDosageUnit(this)">
-                    <span class="dosage-unit-label"><?php echo htmlspecialchars($_group_open ? $selected_dosage['label'] : $_unit); ?></span><span class="dosage-all-label">전체</span><i class="bi bi-chevron-right" aria-hidden="true"></i>
-                </button>
-                <?php foreach ($_opts as $_ci => $_dopt):
-                    $_is_active = !empty($selected_dosage) && $selected_dosage['label'] === $_dopt['label']; ?>
-                <button type="button" style="--i:<?php echo $_ci; ?>" tabindex="<?php echo $_group_open ? '0' : '-1'; ?>" onclick="setDosage(<?php echo $_is_active ? "''" : htmlspecialchars(json_encode($_dopt['label'], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>)" class="dosage-chip<?php echo $_is_active ? ' active' : ''; ?>" aria-pressed="<?php echo $_is_active ? 'true' : 'false'; ?>"><?php echo htmlspecialchars($_dopt['label']); ?></button>
-                <?php endforeach; ?>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <style>
-        #dosageChips { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 0; }
-        #dosageChips::-webkit-scrollbar { display:none; }
-        .dosage-group { display:flex; align-items:center; flex-shrink:0; }
-        .dosage-unit-btn { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border:1px solid #AAAAAA; border-radius:20px; background:var(--bs-body-bg, #fff); color:#000; font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:600; line-height:1.3; cursor:pointer; white-space:nowrap; transition:border-color .2s; }
-        .dosage-unit-btn i { font-size:12px; transition:transform .3s ease; }
-        .dosage-group.open .dosage-unit-btn { border-color:#000; }
-        .dosage-all-label { display:none; }
-        .dosage-group.has-selected .dosage-unit-btn { border-color:#000; }
-        .dosage-group.open .dosage-unit-label { display:none; }
-        .dosage-group.open .dosage-all-label { display:inline; }
-        .dosage-group.touched .dosage-unit-btn span { animation:dosageLabelIn .25s ease; }
-        @keyframes dosageLabelIn { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
-        .dosage-group.open .dosage-unit-btn i { transform:rotate(180deg); }
-        .dosage-chip { flex-shrink:0; max-width:0; margin-left:0; padding:4px 0; border:1px solid transparent; border-radius:20px; background:transparent; font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1)); color:#666; cursor:pointer; white-space:nowrap; line-height:1.3; overflow:hidden; opacity:0; transform:translateX(-12px); pointer-events:none;
-            transition:max-width .3s ease, padding .3s ease, margin .3s ease, opacity .2s ease, transform .3s ease; transition-delay:0s; }
-        .dosage-group.open .dosage-chip { max-width:120px; margin-left:6px; padding:4px 12px; opacity:1; transform:translateX(0); pointer-events:auto; transition-delay:calc(var(--i, 0) * 40ms); }
-        .dosage-chip.active { border-color:#000; color:#000; font-weight:600; background:var(--bs-body-bg, #fff); }
-        .dosage-chip:hover:not(.active) { color:#000; }
-        @media (prefers-reduced-motion: reduce) { .dosage-chip, .dosage-unit-btn i { transition:none !important; } .dosage-unit-btn span { animation:none !important; } }
-        </style>
-    </div>
-    <?php endif; ?>
 
     <div class="results-header" style="padding: 0 16px;">
         <?php if (!empty($category)): ?>
@@ -279,6 +262,12 @@ function toggleDosageUnit(btn) {
             setTimeout(function() { box.scrollTo({ left: Math.max(0, group.offsetLeft - box.offsetLeft - 4), behavior: 'smooth' }); }, 50);
         }
     }
+}
+function srResetFilters() {
+    try { localStorage.removeItem('sb_selected_regions'); } catch(e) {}
+    var u = new URL(window.location);
+    u.searchParams.delete('region'); u.searchParams.delete('dosage');
+    window.location = u;
 }
 function setDosage(val) {
     var url = new URL(window.location);
