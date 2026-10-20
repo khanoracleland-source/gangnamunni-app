@@ -1830,6 +1830,15 @@ if ($current_tab === 'reviews') {
         /* 토스트가 모달 뒤에 가려지던 문제 */
         .share-copy-toast{z-index:10100!important}
         .consultation-modal.show ~ .share-copy-toast,.share-copy-toast.show{bottom:96px}
+
+        /* 05-07 카카오톡 채널 안내 */
+        .cm-kk-wrap{display:none;flex-direction:column;gap:8px}
+        .consultation-modal.is-kakao .cm-ok{display:none}
+        .consultation-modal.is-kakao .cm-kk-wrap{display:flex}
+        .consultation-modal.is-kakao .modal-content.cm-sheet{padding-bottom:calc(144px + env(safe-area-inset-bottom))!important}
+        .cm-kk{height:52px;display:flex;align-items:center;justify-content:center;gap:8px;background:#FEE500;color:#191919;font-size:16px;font-weight:700;border:0;cursor:pointer}
+        .cm-later{background:#fff!important;color:#AC1830!important;border:1px solid #AC1830!important;margin-top:0!important}
+        .cm-kakao[hidden]{display:none}
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
@@ -2727,6 +2736,8 @@ if ($current_tab === 'reviews') {
         if ($_ap !== '' && mb_substr($_ap, -1, 1, 'UTF-8') === '구') { $cm_dist = mb_substr($_ap, 0, -1, 'UTF-8'); break; }
     }
     $cm_phone = trim((string)($hospital['phone'] ?? ''));
+    $cm_kakao = trim((string)($hospital['kakao_channel_url'] ?? $hospital['kakao_url'] ?? ''));
+    if (!preg_match('#^https?://#i', $cm_kakao)) $cm_kakao = '';
     ?>
     <div class="consultation-modal" id="consultModal">
         <div class="cm-wrap">
@@ -2804,8 +2815,15 @@ if ($current_tab === 'reviews') {
                 <?php endif; ?>
                 <div class="cm-done-note">연락이 닿지 않으면 앱 알림과 <a href="mypage.php">마이페이지 &gt; 상담 내역</a>에서 알려드려요</div>
             </div>
+            <div class="cm-done cm-kakao" id="cmKakao" hidden>
+                <svg class="cm-done-ico" width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#AC1830" stroke-width="2.5"/><path d="M14 25l7 7 13-14" stroke="#AC1830" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <div class="cm-done-title">카카오톡 채널에서<br>상담을 시작해주세요</div>
+                <div class="cm-done-msg">병원이 먼저 카톡을 보낼 수 없어요.<br>채널로 이동해 대화를 시작하면 답변해드려요</div>
+                <div class="cm-done-note" style="margin-top:14px">진행 상황은 <a href="mypage.php">마이페이지 &gt; 상담 내역</a>에서 알려드려요</div>
+            </div>
         </div>
-        <div class="cm-footer"><button type="submit" form="consultForm" class="modal-btn-submit cm-submit">신청하기</button><button type="button" class="cm-submit cm-ok" onclick="closeConsultModal()">확인</button></div>
+        <div class="cm-footer"><button type="submit" form="consultForm" class="modal-btn-submit cm-submit">신청하기</button><button type="button" class="cm-submit cm-ok" onclick="cmOk()">확인</button>
+            <div class="cm-kk-wrap"><button type="button" class="cm-kk" onclick="cmOpenKakao()"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="#191919" d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.3 4.7 6.7l-1 3.6c-.1.3.2.5.5.3l4.2-2.8c.5.1 1 .1 1.6.1 5.5 0 10-3.5 10-7.9S17.5 3 12 3z"/></svg>카카오톡 채널 열기</button><button type="button" class="cm-submit cm-later" onclick="closeConsultModal()">나중에 할게요</button></div></div>
         </div>
     </div>
 
@@ -2917,7 +2935,7 @@ if ($current_tab === 'reviews') {
             if (_sh) { _sh.style.transition = ''; _sh.style.transform = ''; }
             const _ft = modal.querySelector('.cm-footer'); if (_ft) { _ft.style.transition = ''; _ft.style.transform = ''; }
             modal.style.transition = ''; modal.style.background = ''; delete modal.dataset.closing;
-            modal.classList.remove('is-done'); const _dn = document.getElementById('cmDone'); if (_dn) _dn.hidden = true;
+            modal.classList.remove('is-done'); modal.classList.remove('is-kakao'); const _kk = document.getElementById('cmKakao'); if (_kk) _kk.hidden = true; window.__cmMethod = ''; const _dn = document.getElementById('cmDone'); if (_dn) _dn.hidden = true;
             modal.classList.add('show');
             document.body.classList.add('consultation-modal-open');
             window.setTimeout(function() {
@@ -2927,8 +2945,12 @@ if ($current_tab === 'reviews') {
 
         // 상담 모달 닫기
         // 05-06 상담 신청 완료 화면 (같은 시트 안에서 내용 교체)
+        window.__cmMethod = '';
+        const CM_KAKAO_URL = <?php echo json_encode($cm_kakao, JSON_UNESCAPED_SLASHES); ?>;
         function cmShowDone(method, time) {
             const modal = document.getElementById('consultModal');
+            window.__cmMethod = method;
+            modal.classList.remove('is-kakao'); document.getElementById('cmKakao').hidden = true;
             const way = method === '카카오톡 채널' ? '카카오톡 채널로' : (method === '방문 상담' ? '방문 상담 일정으로' : '전화로');
             const when = time === '언제든 괜찮아요' ? '편하신 시간에' : time + ' 시간에';
             document.getElementById('cmDoneWhen').textContent = when + ' ' + way + ' 연락드려요';
@@ -2945,6 +2967,23 @@ if ($current_tab === 'reviews') {
             a.download = name + '.vcf';
             document.body.appendChild(a); a.click(); a.remove();
             window.showDetailToast?.('연락처 파일을 내려받았어요. 열어서 저장해주세요.');
+        }
+
+        // 05-07: 카카오톡 채널 안내 (상담 방법이 카카오톡 채널일 때 확인 → 이어서 표시)
+        function cmOk() {
+            const modal = document.getElementById('consultModal');
+            if (!modal.classList.contains('is-kakao')) {
+                document.getElementById('cmDone').hidden = true;
+                document.getElementById('cmKakao').hidden = false;
+                modal.classList.add('is-kakao');
+                modal.querySelector('.cm-sheet').scrollTop = 0;
+                return;
+            }
+            closeConsultModal();
+        }
+        function cmOpenKakao() {
+            if (!CM_KAKAO_URL) { window.showDetailToast?.('병원의 카카오톡 채널 정보가 아직 등록되지 않았어요.'); return; }
+            window.open(CM_KAKAO_URL, '_blank', 'noopener');
         }
 
         function closeConsultModal() {
