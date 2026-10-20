@@ -462,9 +462,9 @@ if ($current_tab === 'doctors' || $current_tab === 'home') {
         $doctor_order_sql = ($display_order_exists && mysqli_num_rows($display_order_exists) > 0)
             ? "CASE WHEN display_order IS NULL THEN 1 ELSE 0 END ASC, display_order ASC, name COLLATE utf8mb4_unicode_ci ASC, id ASC"
             : "name COLLATE utf8mb4_unicode_ci ASC, id ASC";
-        $doc_stmt = mysqli_prepare($connect, "SELECT id, name as doctor_name, experience, bio as description, qualification, photo_url, status, schedule FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' ORDER BY {$doctor_order_sql} LIMIT 20");
+        $doc_stmt = mysqli_prepare($connect, "SELECT id, name as doctor_name, specialty, experience, bio as description, qualification, photo_url, status, schedule FROM gangnamunni_doctors WHERE hospital_id = ? AND status = 'active' ORDER BY {$doctor_order_sql} LIMIT 20");
     } else {
-        $doc_stmt = mysqli_prepare($connect, "SELECT id, doctor_name, description, NULL as experience, NULL as qualification, NULL as photo_url, 'active' as status, NULL as schedule FROM crawled_doctors WHERE hospital_id = ? ORDER BY id ASC LIMIT 20");
+        $doc_stmt = mysqli_prepare($connect, "SELECT id, doctor_name, specialty, description, NULL as experience, NULL as qualification, NULL as photo_url, 'active' as status, NULL as schedule FROM crawled_doctors WHERE hospital_id = ? ORDER BY id ASC LIMIT 20");
     }
     if ($doc_stmt) {
         mysqli_stmt_bind_param($doc_stmt, 'i', $hospital_id);
@@ -1690,6 +1690,59 @@ if ($current_tab === 'reviews') {
             flex-shrink: 0;
         }
     
+
+        /* ===== 04-01~04-04 design sync ===== */
+        .tab-menu{border-bottom:1px solid #ECE9EA;gap:0}
+        .tab-menu .tab-btn,.tab-menu a,.tab-menu button{font-size:18px;font-weight:600;color:#9A9395;background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:14px 0;flex:1;text-align:center}
+        .tab-menu .active{color:#1A1718;border-bottom-color:#1A1718;background:none}
+        .tab-pane h3[id$="Intro"]{font-size:21px!important;font-weight:700;color:#1A1718;margin:20px 0 12px!important}
+        .doctor-list{display:flex;flex-direction:column;gap:0}
+        .doctor-card{display:flex;gap:14px;padding:16px 0;border:0;border-bottom:1px solid #ECE9EA;border-radius:0;background:#fff;box-shadow:none}
+        .doctor-card .doctor-photo{width:72px;height:72px;border-radius:50%;background:#F4F2F3;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+        .doctor-card .doctor-name{font-size:19px;font-weight:700;color:#1A1718;margin:0}
+        .doc-specialty{font-size:16px;color:#6B6466;margin-top:2px}
+        .doc-treat-row span{background:#FBEFF1!important;color:#AC1830!important;font-size:15px!important;border-radius:4px!important}
+        .procedure-list{display:flex;flex-direction:column}
+        .procedure-card{display:flex;gap:12px;padding:16px 0;border:0;border-bottom:1px solid #ECE9EA;border-radius:0;background:#fff;box-shadow:none;text-decoration:none}
+        .procedure-thumb{width:64px;height:84px;background:#F4F2F3;border-radius:6px;flex-shrink:0}
+        .procedure-body{flex:1;min-width:0}
+        .procedure-card .procedure-name{font-size:18px;font-weight:600;color:#1A1718;margin:0 0 4px}
+        .procedure-addr{font-size:15px;color:#9A9395;margin-bottom:6px}
+        .procedure-vat{font-size:14px;color:#9A9395;margin-left:6px;display:inline}
+        .procedure-discount-rate,.procedure-card .procedure-price,.procedure-price-unit{color:#AC1830}
+        .procedure-regular-price{color:#9A9395;text-decoration:line-through;font-size:15px}
+        .rv-stars{color:#AC1830;font-size:17px;margin-bottom:6px}.rv-stars b{color:#1A1718;margin-left:4px}
+        .review-card-area .tag{background:#FBEFF1;color:#AC1830;border-radius:4px}
+        .review-card-area{border-bottom:1px solid #ECE9EA}
+
+        /* 04-03 card exact */
+        #tab-events h3#eventsIntro{font-size:18px!important;font-weight:700;margin:20px 0 4px!important}
+        #tab-events .procedure-card{display:flex;gap:12px;padding:14px 0;margin:0}
+        #tab-events .procedure-thumb{width:64px;height:84px;background:#DAD7D8;border-radius:0;flex-shrink:0}
+        #tab-events .procedure-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+        .pc-title-row{display:flex;align-items:flex-start;gap:6px}
+        .pc-title-row .procedure-name{flex:1;font-size:17px;font-weight:500;line-height:1.4;margin:0;color:#1A1718}
+        .pc-wish{flex-shrink:0;line-height:0}.pc-wish .wishlist-btn{padding:0!important}
+        .pc-addr{font-size:14px;color:#4A4446;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .pc-sep{color:#CFC8CB}
+        .pc-meta{display:flex;gap:10px;font-size:13px;color:#1A1718}
+        .pc-meta span{display:flex;align-items:center;gap:2px}.pc-meta i{font-style:normal;color:#9A9395}
+        .pc-vat{text-align:right;font-size:13px;color:#9A9395;margin-top:2px}
+        #tab-events .procedure-price-row{display:flex;align-items:baseline;justify-content:flex-end;gap:8px;margin:0}
+        #tab-events .procedure-discount-rate{font-size:18px;font-weight:700;color:#AC1830}
+        #tab-events .procedure-regular-price{font-size:13px;color:#9A9395;text-decoration:line-through}
+        #tab-events .procedure-price-value{display:inline-flex;align-items:baseline}
+        #tab-events .procedure-price{font-size:20px;font-weight:700;color:#AC1830}
+        #tab-events .procedure-price-unit{font-size:14px;font-weight:400;color:#1A1718;margin-left:1px}
+
+        /* 04 font +6 (review tab) */
+        .review-card-area .tag{font-size:16px}
+        .review-card-area .review-title{font-size:21px}
+        .review-card-area .review-body{font-size:18px}
+        .post-author-name{font-size:18px}
+        .post-stat-group{font-size:16px}
+        .post-stat-group .stat i{font-size:21px}
+        .doc-treat-row span{font-size:15px!important}
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
@@ -2221,6 +2274,9 @@ if ($current_tab === 'reviews') {
                             <span style="font-size:11px;color:#ef4444;font-weight:400;margin-left:6px;"><?php echo $doc_status_label; ?></span>
                             <?php endif; ?>
                         </h3>
+                        <?php if (!empty($doctor['specialty'])): ?>
+                        <div class="doc-specialty"><?php echo htmlspecialchars($doctor['specialty']); ?></div>
+                        <?php endif; ?>
                         <?php
                         // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
                         $doc_treat_names = [];
@@ -2291,20 +2347,48 @@ if ($current_tab === 'reviews') {
                     . '&treatment=' . urlencode($procedure['name'] ?? '')
                     . $detail_source_qs;
                 ?>
+                <?php
+                    $_pn = (string)($procedure['display_name'] ?? $procedure['name'] ?? '');
+                    $_pp = preg_split('/\s*[\/|]\s*/u', $_pn);
+                    if (count($_pp) > 1) {
+                        $_last = '';
+                        foreach (array_reverse($_pp) as $_x) { if (preg_match('/\d/', $_x)) { $_last = $_x; break; } }
+                        $_pn_show = trim($_pp[0]) . ($_last !== '' && $_last !== $_pp[0] ? ' ' . trim($_last) : '');
+                    } else { $_pn_show = $_pn; }
+                    $_pa = (string)($hospital['address'] ?? '');
+                    $_pd = function_exists('extract_addr_district') ? extract_addr_district($_pa) : '';
+                    $_prt = (float)($hospital['rating'] ?? 0);
+                    $_prc = (int)($hospital['review_count'] ?? 0);
+                    ?>
                 <a class="procedure-card" href="<?php echo htmlspecialchars($procedure_url, ENT_QUOTES, 'UTF-8'); ?>">
-                    <h4 class="procedure-name"><?php echo htmlspecialchars($procedure['display_name'] ?? $procedure['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?></h4>
-                    <span class="procedure-vat">부가세 포함</span>
-                    <?php if ($procedure_price > 0): ?>
-                    <div class="procedure-price-row">
-                        <?php if ($procedure_discount_rate > 0): ?>
-                            <span class="procedure-discount-rate"><?php echo $procedure_discount_rate; ?>%</span>
-                            <span class="procedure-regular-price"><?php echo number_format($procedure_regular_price); ?>원</span>
+                    <div class="procedure-thumb"></div>
+                    <div class="procedure-body">
+                        <div class="pc-title-row">
+                            <h4 class="procedure-name"><?php echo htmlspecialchars($_pn_show, ENT_QUOTES, 'UTF-8'); ?></h4>
+                            <span class="pc-wish"><?php renderWishlistButton('hospital', (int)$hospital_id, 'sm', 'star'); ?></span>
+                        </div>
+                        <?php if ($_pa !== ''): ?>
+                        <div class="pc-addr"><?php if ($_pd !== ''): ?><?php echo htmlspecialchars($_pd); ?> <span class="pc-sep">|</span> <?php endif; ?><?php echo htmlspecialchars($_pa); ?></div>
                         <?php endif; ?>
-                        <span class="procedure-price-value"><span class="procedure-price"><?php echo number_format($procedure_price); ?></span><span class="procedure-price-unit">원</span></span>
+                        <div class="pc-meta">
+                            <?php if ($_prt > 0): ?><span><img src="assets/icons/categories/rating_2.svg" alt="" width="12" height="12"><b><?php echo number_format($_prt, 1); ?></b><i>(<?php echo number_format($_prc); ?>)</i></span><?php endif; ?>
+                            <?php if (!empty($reviews_count)): ?><span>병원후기<i>(<?php echo number_format((int)$reviews_count); ?>)</i></span><?php endif; ?>
+                            <?php if ($_prt >= 4.8): ?><span>인기병원</span><?php endif; ?>
+                        </div>
+                        <?php if ($procedure_price > 0): ?>
+                        <div class="pc-vat">VAT 포함</div>
+                        <div class="procedure-price-row">
+                            <?php if ($procedure_discount_rate > 0): ?>
+                                <span class="procedure-discount-rate"><?php echo $procedure_discount_rate; ?>%</span>
+                                <span class="procedure-regular-price"><?php echo number_format($procedure_regular_price); ?>원</span>
+                            <?php endif; ?>
+                            <span class="procedure-price-value"><span class="procedure-price"><?php echo number_format($procedure_price); ?></span><span class="procedure-price-unit">원</span></span>
+                        </div>
+                        <?php else: ?>
+                        <div class="pc-vat">&nbsp;</div>
+                        <div class="procedure-price-row"><span class="procedure-price-value"><span class="procedure-price" style="font-size:18px;">가격 문의</span></span></div>
+                        <?php endif; ?>
                     </div>
-                    <?php else: ?>
-                    <div class="procedure-price" style="font-size:18px;">가격 문의</div>
-                    <?php endif; ?>
                 </a>
                 <?php endforeach; ?>
             </div>
@@ -2351,6 +2435,9 @@ if ($current_tab === 'reviews') {
                 }
                 ?>
                 <div class="review-card-area" onclick="location.href='review_detail.php?id=<?php echo intval($review['id']); ?>'" style="cursor:pointer;">
+                    <?php if (!empty($review['rating'])): $_rt=(int)round($review['rating']); ?>
+                    <div class="rv-stars"><?php echo str_repeat('★',$_rt).str_repeat('☆',max(0,5-$_rt)); ?> <b><?php echo number_format((float)$review['rating'],1); ?></b></div>
+                    <?php endif; ?>
                     <?php if (!empty($review['treatments'])): ?>
                     <?php foreach (explode(',', $review['treatments']) as $t): ?>
                     <span class="tag"><?php echo htmlspecialchars(trim($t)); ?></span>
@@ -2438,6 +2525,9 @@ if ($current_tab === 'reviews') {
                             <span style="font-size:11px;color:#ef4444;font-weight:400;margin-left:6px;"><?php echo $doc_status_label; ?></span>
                             <?php endif; ?>
                         </h3>
+                        <?php if (!empty($doctor['specialty'])): ?>
+                        <div class="doc-specialty"><?php echo htmlspecialchars($doctor['specialty']); ?></div>
+                        <?php endif; ?>
                         <?php
                         // 이 의사가 시술하는 항목: doctor_treatments → 병원 시술 → 기본값(임시)
                         $doc_treat_names = [];

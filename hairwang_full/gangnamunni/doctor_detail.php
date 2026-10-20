@@ -88,240 +88,6 @@ $bio_lines = doctor_detail_lines($doctor['bio'] ?? '');
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo $page_title; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --color-primary: #c81935;
-            --color-bg: #ffffff;
-            --color-page: #404040;
-            --color-bg-light: #f4f4f4;
-            --color-text: #111111;
-            --color-text-secondary: #6f6f6f;
-            --color-border: #dedede;
-        }
-        [data-bs-theme="dark"] {
-            --color-bg: #202124;
-            --color-page: #121212;
-            --color-bg-light: #303134;
-            --color-text: #f2f2f2;
-            --color-text-secondary: #b7b7b7;
-            --color-border: #464646;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            min-height: 100vh;
-            padding: 8px 20px 20px;
-            font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: var(--color-page);
-            color: var(--color-text);
-        }
-        .container {
-            width: 100%;
-            max-width: 1030px;
-            min-height: calc(100vh - 28px);
-            margin: 0 auto;
-            background: var(--color-bg);
-            border: 0;
-            box-shadow: none;
-        }
-        .detail-header {
-            position: relative;
-            height: 95px;
-            padding: 0 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--color-bg);
-        }
-        .back-btn {
-            position: absolute;
-            left: 24px;
-            width: 46px;
-            height: 46px;
-            border: 0;
-            background: transparent;
-            color: var(--color-text);
-            font-size: 38px;
-            line-height: 1;
-            cursor: pointer;
-        }
-        .doctor-name-header {
-            max-width: 75%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            text-align: center;
-            font-size: clamp(24px, 2.4vw, 34px);
-            font-weight: 600;
-            letter-spacing: -.03em;
-        }
-        .profile-header {
-            display: flex;
-            align-items: center;
-            gap: 40px;
-            min-height: 212px;
-            margin: 0 32px;
-            padding: 18px 0 30px;
-            border-bottom: 1px solid var(--color-border);
-        }
-        .profile-photo {
-            width: 160px;
-            height: 160px;
-            border-radius: 50%;
-            background: var(--color-bg-light);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 76px;
-            flex-shrink: 0;
-            border: 1px solid var(--color-border);
-            overflow: hidden;
-        }
-        .profile-photo img { width: 100%; height: 100%; object-fit: cover; }
-        .profile-info { flex: 1; min-width: 0; }
-        .profile-name {
-            margin-bottom: 20px;
-            color: var(--color-text);
-            font-size: clamp(27px, 3vw, 35px);
-            font-weight: 700;
-            letter-spacing: -.04em;
-        }
-        .profile-specialty {
-            display: flex;
-            align-items: center;
-            gap: 13px;
-            color: var(--color-primary);
-            font-size: clamp(18px, 2vw, 24px);
-            font-weight: 600;
-        }
-        .profile-specialty i { font-size: 34px; font-weight: 400; }
-        .section {
-            margin: 0 32px;
-            padding: 36px 0;
-            border-bottom: 1px solid var(--color-border);
-        }
-        .section:last-child { border-bottom: 0; }
-        .section-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 22px;
-            font-size: clamp(24px, 2.5vw, 32px);
-            font-weight: 700;
-            letter-spacing: -.04em;
-        }
-        .treatment-chips { display: flex; flex-wrap: wrap; gap: 12px 20px; }
-        .treatment-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            padding: 10px 13px;
-            background: var(--color-bg-light);
-            color: var(--color-text);
-            font-size: clamp(16px, 1.7vw, 21px);
-            font-weight: 600;
-        }
-        .treatment-chip.expert { background: var(--color-bg-light); color: var(--color-text); }
-        .treatment-chip .chip-count { font-size: .72em; opacity: .75; }
-        .bio-list { list-style: none; padding: 0 10px; }
-        .bio-list li {
-            position: relative;
-            padding-left: 27px;
-            margin-bottom: 18px;
-            color: var(--color-text);
-            font-size: clamp(17px, 1.8vw, 22px);
-            line-height: 1.55;
-        }
-        .bio-list li:last-child { margin-bottom: 0; }
-        .bio-list li::before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            top: -.05em;
-            color: var(--color-text);
-            font-size: 1.25em;
-        }
-        .hospital-card { position: relative; overflow: hidden; }
-        .hospital-card-link {
-            display: flex;
-            align-items: center;
-            min-height: 160px;
-            text-decoration: none;
-            color: inherit;
-            cursor: pointer;
-        }
-        .hospital-wishlist { display: inline-flex; align-items: center; }
-        .hospital-rating {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: clamp(15px, 1.55vw, 20px);
-        }
-        .hospital-rating img { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; }
-        .hospital-rating .rating-score { font-weight: 700; color: var(--color-text); }
-        .hospital-rating .review-count { color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 4px; }
-        .hospital-card-img {
-            position: relative;
-            width: 160px;
-            height: 160px;
-            flex-shrink: 0;
-            background: var(--color-bg-light);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            border: 1px solid var(--color-border);
-        }
-        .hospital-card-img img { width: 100%; height: 100%; object-fit: cover; }
-        .hospital-card-info { flex: 1; min-width: 0; padding: 8px 28px; }
-        .hospital-card-name {
-            margin-bottom: 14px;
-            font-size: clamp(23px, 2.4vw, 31px);
-            font-weight: 700;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .hospital-card-addr {
-            margin-bottom: 18px;
-            color: var(--color-text-secondary);
-            font-size: clamp(15px, 1.55vw, 20px);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .hospital-card-addr:last-child { margin-bottom: 0; }
-        .hospital-meta { display:flex; align-items:center; flex-wrap:wrap; gap:14px 26px; }
-        .popular-hospital { display:inline-flex; align-items:center; gap:7px; color:#202020; font-size:clamp(14px,1.4vw,18px); font-weight:600; }
-        .popular-hospital i { color:#ff9f1a; font-size:1.35em; }
-        @media (max-width: 700px) {
-            body { padding: 0; }
-            .container { min-height: 100vh; border: 0; box-shadow: none; }
-            .detail-header { height: 68px; padding: 0 16px; }
-            .back-btn { left: 8px; width: 44px; height: 44px; font-size: 30px; }
-            .doctor-name-header { max-width: 72%; font-size: 20px; }
-            .profile-header {
-                gap: 20px;
-                min-height: 0;
-                margin: 0 20px;
-                padding: 28px 0 32px;
-            }
-            .profile-photo { width: 112px; height: 112px; font-size: 48px; }
-            .profile-name { margin-bottom: 14px; font-size: 25px; }
-            .profile-specialty { gap: 8px; font-size: 17px; }
-            .profile-specialty i { font-size: 26px; }
-            .section { margin: 0 20px; padding: 28px 0; border-bottom-width: 1px; }
-            .section-title { margin-bottom: 18px; font-size: 24px; }
-            .treatment-chip { padding: 8px 10px; font-size: 16px; }
-            .bio-list { padding: 0; }
-            .bio-list li { padding-left: 20px; margin-bottom: 14px; font-size: 16px; }
-            .hospital-card-link { min-height: 110px; align-items: stretch; }
-            .hospital-card-img { width: 112px; height: 112px; }
-            .hospital-card-info { padding: 8px 14px; }
-            .hospital-card-name { margin-bottom: 8px; font-size: 20px; }
-            .hospital-card-addr { margin-bottom: 9px; font-size: 13px; white-space: normal; line-height: 1.35; }
-            .hospital-rating { gap: 6px; font-size: 14px; }
-            .hospital-rating img { width: 25px; height: 25px; }
-            .hospital-wishlist { right: 4px; bottom: 4px; }
-        }
-    </style>
     <script>
         // 다크모드 anti-flash
         (function(){
@@ -330,117 +96,107 @@ $bio_lines = doctor_detail_lines($doctor['bio'] ?? '');
         })();
     </script>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
+<style>
+:root{--ink:#1A1718;--g700:#4A4446;--g400:#9A9395;--line:#ECE9EA;--pri:#AC1830}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Pretendard,'Noto Sans KR',-apple-system,sans-serif;background:#fff;color:var(--ink);letter-spacing:-0.01em}
+a{color:inherit;text-decoration:none}
+.container{max-width:640px;margin:0 auto;padding-bottom:83px;background:#fff;min-height:100vh}
+.dd-bar{height:52px;display:flex;align-items:center;padding:0 8px}
+.dd-back{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:none;border:0;color:var(--ink);cursor:pointer}
+.dd-title{flex:1;text-align:center;font-size:20px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dd-sp{width:44px}
+.dd-profile{margin:0 20px;padding:8px 0 18px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line)}
+.dd-photo{width:72px;height:72px;border-radius:50%;background:#F4F2F3;object-fit:cover;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:32px}
+.dd-photo img{width:100%;height:100%;object-fit:cover}
+.dd-pinfo{display:flex;flex-direction:column;gap:6px}
+.dd-name{font-size:20px;font-weight:700}
+.dd-spec{display:flex;align-items:center;gap:5px;font-size:15px;color:var(--pri)}
+.dd-sec{margin:0 20px;padding:18px 0;border-bottom:1px solid var(--line)}
+.dd-h{font-size:18px;font-weight:700;margin-bottom:10px}
+.dd-chips{display:flex;gap:6px;flex-wrap:wrap}
+.dd-chip{padding:3px 7px;background:#F1EFEF;font-size:14px;font-weight:500}
+.dd-list{margin:0 20px;padding:18px 0 18px 16px;border-bottom:1px solid var(--line);font-size:16px;line-height:2;color:var(--g700)}
+.dd-hh{padding:20px 20px 12px;font-size:18px;font-weight:700}
+.dd-hosp{margin:0 20px;display:flex;gap:12px}
+.dd-himg{width:62px;height:62px;border:1px solid var(--line);flex-shrink:0;background:#F4F2F3;object-fit:cover;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.dd-himg img{width:100%;height:100%;object-fit:cover}
+.dd-hinfo{min-width:0;display:flex;flex-direction:column;gap:4px}
+.dd-hname{font-size:19px;font-weight:700}
+.dd-haddr{font-size:15px;color:var(--g700)}
+.dd-sep{color:#CFC8CB}
+.dd-hmeta{display:flex;gap:12px;font-size:14px;align-items:center}
+.dd-hmeta span{display:flex;align-items:center;gap:3px}
+.dd-hmeta i{font-style:normal;color:var(--g400)}
+</style>
 </head>
 <body>
-<div class="container" style="position:relative;">
-    <!-- 상단 헤더 (detail.php 스타일) -->
-    <div class="detail-header">
-        <button class="back-btn" onclick="history.back()"><i class="bi bi-chevron-left"></i></button>
-        <div class="doctor-name-header"><?php echo htmlspecialchars($doctor['name']); ?></div>
+<div class="container">
+    <div class="dd-bar">
+        <button class="dd-back" onclick="history.back()" aria-label="뒤로 가기"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="dd-title"><?php echo htmlspecialchars($doctor['name']); ?></div>
+        <div class="dd-sp"></div>
     </div>
 
-    <!-- 프로필 헤더 -->
-    <div class="profile-header divider-80">
-        <div class="profile-photo">
-            <?php if (!empty($doctor['photo_url'])): ?>
-            <img src="<?php echo htmlspecialchars($doctor['photo_url']); ?>" alt="<?php echo htmlspecialchars($doctor['name']); ?>">
-            <?php else: ?>
-            👨‍⚕️
-            <?php endif; ?>
+    <div class="dd-profile">
+        <div class="dd-photo">
+            <?php if (!empty($doctor['photo_url'])): ?><img src="<?php echo htmlspecialchars($doctor['photo_url']); ?>" alt="<?php echo htmlspecialchars($doctor['name']); ?>"><?php else: ?>👨‍⚕️<?php endif; ?>
         </div>
-        <div class="profile-info">
-            <div class="profile-name"><?php echo htmlspecialchars($doctor['name']); ?></div>
+        <div class="dd-pinfo">
+            <div class="dd-name"><?php echo htmlspecialchars($doctor['name']); ?></div>
             <?php if (trim($doctor['specialty'] ?? '') !== ''): ?>
-            <div class="profile-specialty"><i class="bi bi-file-medical"></i><?php echo htmlspecialchars(trim($doctor['specialty'])); ?></div>
+            <div class="dd-spec"><i class="bi bi-file-medical"></i><?php echo htmlspecialchars(trim($doctor['specialty'])); ?></div>
             <?php endif; ?>
         </div>
     </div>
 
-    <!-- 주요 진료분야 -->
     <?php if (!empty($doctor_treatments)): ?>
-    <div class="section divider-80">
-        <div class="section-title"> 주요 진료분야</div>
-        <div class="treatment-chips">
+    <div class="dd-sec">
+        <div class="dd-h">주요 진료분야</div>
+        <div class="dd-chips">
             <?php foreach ($doctor_treatments as $dt): ?>
-            <span class="treatment-chip <?php echo ($dt['speciality_level'] ?? '') === 'expert' ? 'expert' : ''; ?>">
-                <?php echo htmlspecialchars($dt['treatment_name']); ?>
-                <?php if (!empty($dt['case_count']) && $dt['case_count'] > 0): ?>
-                <span class="chip-count"><?php echo number_format($dt['case_count']); ?>건</span>
-                <?php endif; ?>
-            </span>
+            <span class="dd-chip"><?php echo htmlspecialchars($dt['treatment_name']); ?></span>
             <?php endforeach; ?>
         </div>
     </div>
     <?php endif; ?>
 
-    <!-- 자격 및 소속 학회 -->
     <?php if (!empty($qualification_lines)): ?>
-    <div class="section divider-80">
-        <div class="section-title">자격 및 소속 학회</div>
-        <ul class="bio-list">
-            <?php foreach ($qualification_lines as $qualification_line): ?>
-            <li><?php echo htmlspecialchars($qualification_line); ?></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
+    <ul class="dd-list">
+        <?php foreach ($qualification_lines as $l): ?><li><?php echo htmlspecialchars($l); ?></li><?php endforeach; ?>
+    </ul>
     <?php endif; ?>
 
-    <!-- 소개 및 약력 -->
     <?php if (!empty($bio_lines)): ?>
-    <div class="section divider-80">
-        <div class="section-title">소개 및 약력</div>
-        <ul class="bio-list">
-            <?php foreach ($bio_lines as $bio_line): ?>
-            <li><?php echo htmlspecialchars($bio_line); ?></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
+    <ul class="dd-list">
+        <?php foreach ($bio_lines as $l): ?><li><?php echo htmlspecialchars($l); ?></li><?php endforeach; ?>
+    </ul>
     <?php endif; ?>
 
-   
-
-    <!-- 소속 병원 -->
     <?php if (!empty($doctor['hospital_name'])): ?>
     <?php
-    // 주소에서 '구'로 끝나는 토큰(자치구) 추출 — 예: "서울 강남구 …" → "강남구"
     $hospital_gu = '';
     foreach (preg_split('/\s+/', trim($doctor['hospital_address'] ?? '')) as $_ap) {
         if ($_ap !== '' && mb_substr($_ap, -1) === '구') { $hospital_gu = $_ap; break; }
     }
     ?>
-    <div class="section">
-        <div class="section-title"> 소속 <?php echo term("business"); ?></div>
-        <div class="hospital-card">
-            <a href="detail.php?id=<?php echo $doctor['hospital_id']; ?>" class="hospital-card-link">
-                <div class="hospital-card-img">
-                    <?php if (!empty($doctor['hospital_image'])): ?>
-                    <img src="<?php echo htmlspecialchars($doctor['hospital_image'] ?? ''); ?>" alt=""
-                        onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'130\'%3E%3Crect fill=\'%23f5f5f5\' width=\'120\' height=\'130\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' fill=\'%23999\' text-anchor=\'middle\' dominant-baseline=\'middle\' font-size=\'14\'%3E병원%3C/text%3E%3C/svg%3E'">
-                    <?php else: ?>
-                    <i class="bi bi-hospital" style="font-size:44px;color:var(--color-text-secondary);"></i>
-                    <?php endif; ?>
-                </div>
-                <div class="hospital-card-info">
-                    <div class="hospital-card-name"><?php echo htmlspecialchars($doctor['hospital_name']); ?></div>
-                    <?php if (!empty($doctor['hospital_address'])): ?>
-                    <div class="hospital-card-addr"><?php if (!empty($hospital_gu)): ?><strong style="color:var(--color-text-secondary,#666); font-weight:600;"><?php echo htmlspecialchars($hospital_gu); ?></strong> | <?php endif; ?><?php echo htmlspecialchars($doctor['hospital_address']); ?></div>
-                    <?php endif; ?>
-                    <div class="hospital-meta">
-                        <div class="hospital-rating">
-                            <span class="hospital-wishlist"><?php renderWishlistButton('hospital', (int)$doctor['hospital_id'], 'sm', 'star'); ?></span>
-                            <span class="rating-score"><?php echo number_format(!empty($doctor['hospital_rating']) ? $doctor['hospital_rating'] : 0, 1); ?></span>
-                            <span class="review-count">(<?php echo number_format((int)($doctor['hospital_review_count'] ?? 0)); ?>)</span>
-                        </div>
-                        <?php if (!empty($doctor['hospital_ad_grade']) && $doctor['hospital_ad_grade'] !== 'none'): ?>
-                        <span class="popular-hospital"><i class="bi bi-trophy"></i>인기병원</span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </a>
+    <div class="dd-hh">소속 병원</div>
+    <a class="dd-hosp" href="detail.php?id=<?php echo (int)$doctor['hospital_id']; ?>">
+        <div class="dd-himg"><?php if (!empty($doctor['hospital_image'])): ?><img src="<?php echo htmlspecialchars($doctor['hospital_image']); ?>" alt=""><?php endif; ?></div>
+        <div class="dd-hinfo">
+            <div class="dd-hname"><?php echo htmlspecialchars($doctor['hospital_name']); ?></div>
+            <?php if (!empty($doctor['hospital_address'])): ?>
+            <div class="dd-haddr"><?php if ($hospital_gu !== ''): ?><?php echo htmlspecialchars(mb_substr($hospital_gu, 0, -1)); ?> <span class="dd-sep">|</span> <?php endif; ?><?php echo htmlspecialchars($doctor['hospital_address']); ?></div>
+            <?php endif; ?>
+            <div class="dd-hmeta">
+                <span><img src="assets/icons/categories/rating_2.svg" alt="" width="13" height="13"><b><?php echo number_format(!empty($doctor['hospital_rating']) ? (float)$doctor['hospital_rating'] : 0, 1); ?></b><i>(<?php echo number_format((int)($doctor['hospital_review_count'] ?? 0)); ?>)</i></span>
+                <?php if (!empty($doctor['hospital_ad_grade']) && $doctor['hospital_ad_grade'] !== 'none'): ?><span style="font-weight:500">인기병원</span><?php endif; ?>
+            </div>
         </div>
-    </div>
+    </a>
     <?php endif; ?>
 </div>
 
+<?php $bottom_nav_active = 'hospital'; include __DIR__ . '/includes/bottom_nav.php'; ?>
 </body>
 </html>
