@@ -1748,7 +1748,7 @@ if ($current_tab === 'reviews') {
         .doc-treat-row span{font-size:14px!important}
 
         /* ===== 05-05 상담 신청서 바텀시트 ===== */
-        .consultation-modal{align-items:flex-end!important;justify-content:center;padding:0!important;background:rgba(26,23,24,.45)!important}
+        .consultation-modal{align-items:flex-end!important;justify-content:center;padding:0!important;background:rgba(26,23,24,.45)}
         .consultation-modal .modal-content.cm-sheet{width:100%!important;max-width:640px;max-height:92vh;border-radius:16px 16px 0 0!important;padding:0 0 34px!important;transform:translateY(40px);transition:transform .22s ease;overflow-y:auto;overscroll-behavior:contain}
         .consultation-modal.show .modal-content.cm-sheet{transform:translateY(0)}
         .cm-handle{width:100%;height:28px;position:relative;touch-action:none;cursor:grab}
@@ -2938,25 +2938,51 @@ if ($current_tab === 'reviews') {
             modal.classList.remove('is-done'); modal.classList.remove('is-kakao'); const _kk = document.getElementById('cmKakao'); if (_kk) _kk.hidden = true; window.__cmMethod = ''; const _dn = document.getElementById('cmDone'); if (_dn) _dn.hidden = true;
             modal.classList.add('show');
             document.body.classList.add('consultation-modal-open');
-            window.setTimeout(function() {
-                modal.querySelector('input[name="name"]')?.focus();
-            }, 80);
+            if (!cmReduced()) {
+                cmRise(modal);
+                modal.animate([{backgroundColor: 'rgba(26,23,24,0)'}, {backgroundColor: 'rgba(26,23,24,.45)'}], {duration: 300, easing: 'ease-out'});
+            }
+            if (!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) {
+                window.setTimeout(function() { modal.querySelector('input[name="name"]')?.focus(); }, 80);
+            }
         }
 
         // 상담 모달 닫기
         // 05-06 상담 신청 완료 화면 (같은 시트 안에서 내용 교체)
+        // 시트 전환: 현재 시트가 아래로 내려가며 닫히고, 다음 시트가 아래에서 올라온다
+        function cmReduced() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+        function cmRise(modal) {
+            if (cmReduced()) return;
+            const wrap = modal.querySelector('.cm-wrap');
+            wrap.animate([{transform: 'translateY(100%)'}, {transform: 'translateY(0)'}], {duration: 380, easing: 'cubic-bezier(.22,1,.36,1)'});
+        }
+        function cmSwap(apply) {
+            const modal = document.getElementById('consultModal');
+            const wrap = modal.querySelector('.cm-wrap');
+            if (cmReduced() || modal.dataset.swapping === '1') { apply(); return; }
+            modal.dataset.swapping = '1';
+            const down = wrap.animate([{transform: 'translateY(0)'}, {transform: 'translateY(100%)'}], {duration: 230, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards'});
+            down.onfinish = function() {
+                apply();
+                wrap.querySelector('.cm-sheet').scrollTop = 0;
+                const up = wrap.animate([{transform: 'translateY(100%)'}, {transform: 'translateY(0)'}], {duration: 380, easing: 'cubic-bezier(.22,1,.36,1)'});
+                down.cancel();
+                up.onfinish = function() { delete modal.dataset.swapping; };
+            };
+        }
         window.__cmMethod = '';
         const CM_KAKAO_URL = <?php echo json_encode($cm_kakao, JSON_UNESCAPED_SLASHES); ?>;
         function cmShowDone(method, time) {
             const modal = document.getElementById('consultModal');
             window.__cmMethod = method;
-            modal.classList.remove('is-kakao'); document.getElementById('cmKakao').hidden = true;
             const way = method === '카카오톡 채널' ? '카카오톡 채널로' : (method === '방문 상담' ? '방문 상담 일정으로' : '전화로');
             const when = time === '언제든 괜찮아요' ? '편하신 시간에' : time + ' 시간에';
-            document.getElementById('cmDoneWhen').textContent = when + ' ' + way + ' 연락드려요';
-            document.getElementById('cmDone').hidden = false;
-            modal.classList.add('is-done');
-            modal.querySelector('.cm-sheet').scrollTop = 0;
+            cmSwap(function() {
+                modal.classList.remove('is-kakao'); document.getElementById('cmKakao').hidden = true;
+                document.getElementById('cmDoneWhen').textContent = when + ' ' + way + ' 연락드려요';
+                document.getElementById('cmDone').hidden = false;
+                modal.classList.add('is-done');
+            });
         }
         function cmSaveContact() {
             const name = <?php echo json_encode((string)($hospital['name'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
@@ -2973,10 +2999,11 @@ if ($current_tab === 'reviews') {
         function cmOk() {
             const modal = document.getElementById('consultModal');
             if (!modal.classList.contains('is-kakao')) {
-                document.getElementById('cmDone').hidden = true;
-                document.getElementById('cmKakao').hidden = false;
-                modal.classList.add('is-kakao');
-                modal.querySelector('.cm-sheet').scrollTop = 0;
+                cmSwap(function() {
+                    document.getElementById('cmDone').hidden = true;
+                    document.getElementById('cmKakao').hidden = false;
+                    modal.classList.add('is-kakao');
+                });
                 return;
             }
             closeConsultModal();
