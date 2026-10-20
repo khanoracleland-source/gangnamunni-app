@@ -309,6 +309,11 @@ textarea {
 [data-bs-theme="dark"] .post-stat-group { color: var(--bs-body-color, #ccc); }
 .post-stat-group .stat { display: inline-flex; align-items: center; gap: 3px; }
 .post-stat-group .stat i { font-size: 20px; }
+.post-stat-group .stat .stat-icon { display:block; width:clamp(21px, 6vw, 25px); height:clamp(21px, 6vw, 25px); object-fit:contain; }
+/* 좋아요: 기본은 Figma 빈 하트 이미지, 좋아요 시(.liked)에만 빨간 채운 하트 */
+.post-stat-group .stat-like .heart-icon { display:none; }
+.post-stat-group .stat-like.liked .heart-img { display:none; }
+.post-stat-group .stat-like.liked .heart-icon { display:inline-block; }
 /* 기본(미좋아요) 하트는 중립색(빈 하트), 좋아요 시에만 빨강(.stat-like.liked) */
 .post-stat-group .heart-icon { color: inherit; }
 .post-author-name { font-size: 15px; font-weight: 400; color: #000000; }
@@ -438,9 +443,9 @@ include __DIR__ . '/includes/header.php';
                             <span class="post-author-name"><?php echo $author; ?></span>
                             <div class="post-stat-group">
                                 <?php $__is_review = !empty($post['detail_link']); $__liked = isset($liked_set[(int)$post['id']]); ?>
-                                <span class="stat stat-like <?php echo $__liked ? 'liked' : ''; ?>" role="button" onclick="event.stopPropagation(); cmToggleLike(this, <?php echo intval($post['id']); ?>, <?php echo $__is_review ? 'true' : 'false'; ?>);"><i class="bi <?php echo $__liked ? 'bi-heart-fill' : 'bi-heart'; ?> heart-icon"></i> <span class="like-cnt"><?php echo intval($post['like_count'] ?? 0); ?></span></span>
-                                <span class="stat"><i class="bi bi-chat-square-text"></i> <?php echo intval($post['comment_count'] ?? 0); ?></span>
-                                <span class="stat"><i class="bi bi-eye"></i> <?php echo intval($post['view_count'] ?? 0); ?></span>
+                                <span class="stat stat-like <?php echo $__liked ? 'liked' : ''; ?>" role="button" onclick="event.stopPropagation(); cmToggleLike(this, <?php echo intval($post['id']); ?>, <?php echo $__is_review ? 'true' : 'false'; ?>);"><img src="assets/icons/icon-community-like.png" class="stat-icon heart-img" alt=""><i class="bi bi-heart-fill heart-icon"></i> <span class="like-cnt"><?php echo intval($post['like_count'] ?? 0); ?></span></span>
+                                <span class="stat"><img src="assets/icons/icon-community-comment.png" class="stat-icon" alt=""> <?php echo intval($post['comment_count'] ?? 0); ?></span>
+                                <span class="stat"><img src="assets/icons/icon-community-view.png" class="stat-icon" alt=""> <?php echo intval($post['view_count'] ?? 0); ?></span>
                                 <button type="button" class="community-more" aria-label="게시글 메뉴" aria-haspopup="dialog"
                                     data-id="<?php echo (int)$post['id']; ?>"
                                     data-type="<?php echo $__is_review ? 'review' : 'community'; ?>"
