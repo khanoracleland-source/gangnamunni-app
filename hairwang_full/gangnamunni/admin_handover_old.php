@@ -95,7 +95,7 @@ body { margin:0; font-family:'Pretendard','Noto Sans KR',-apple-system,sans-seri
   font-size:14px; border-left:3px solid transparent;
 }
 .sidebar a:hover { background:rgba(255,255,255,.06); color:#fff; }
-.sidebar a.active { background:rgba(174,25,50,.25); color:#fff; border-left-color:var(--side-active); font-weight:600; }
+.sidebar a.active { background:rgba(172, 24, 48,.25); color:#fff; border-left-color:var(--side-active); font-weight:600; }
 .content { margin-left:230px; flex:1; padding:24px clamp(20px, 3vw, 48px) 80px; max-width:1600px; width:100%; }
 @media (min-width:1900px){ .content{ max-width:none; padding-right:clamp(48px, 6vw, 140px); } }
 .section { display:none; }
@@ -353,7 +353,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
     <!-- ━━━ 서버 폴더 구조 ━━━ -->
     <section class="section" id="sec-serverdir">
       <div class="sd-tabs" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-        <button class="sd-tab active" onclick="sdTab(this,'sd-structure')" style="padding:9px 18px;border:1px solid var(--border);background:var(--side-active,#ae1932);color:#fff;border-radius:8px;cursor:pointer;font-weight:600;">📂 폴더 구조</button>
+        <button class="sd-tab active" onclick="sdTab(this,'sd-structure')" style="padding:9px 18px;border:1px solid var(--border);background:var(--side-active,#AC1830);color:#fff;border-radius:8px;cursor:pointer;font-weight:600;">📂 폴더 구조</button>
         <button class="sd-tab" onclick="sdTab(this,'sd-backups')" style="padding:9px 18px;border:1px solid var(--border);background:transparent;color:inherit;border-radius:8px;cursor:pointer;font-weight:600;">💾 백업 폴더 / 파일</button>
       </div>
       <div class="sd-pane" id="sd-structure">
@@ -1233,7 +1233,7 @@ function sdTab(btn, paneId){
     b.style.background = 'transparent'; b.style.color = 'inherit';
   });
   btn.classList.add('active');
-  btn.style.background = getComputedStyle(document.documentElement).getPropertyValue('--side-active') || '#ae1932';
+  btn.style.background = getComputedStyle(document.documentElement).getPropertyValue('--side-active') || '#AC1830';
   btn.style.color = '#fff';
   sec.querySelectorAll('.sd-pane').forEach(function(p){ p.style.display = 'none'; });
   var pane = document.getElementById(paneId);

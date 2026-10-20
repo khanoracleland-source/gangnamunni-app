@@ -91,7 +91,7 @@ if (!empty($items)) {
 (function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();
 </script>
 <style>
-:root { --primary: #AE1932; --bg: #fff; --card: #fff; --text: #111; --text-muted: #777; --border: #dedede; }
+:root { --primary: #AC1830; --bg: #fff; --card: #fff; --text: #111; --text-muted: #777; --border: #dedede; }
 [data-bs-theme="dark"] { --bg: #1a1a1a; --card: #2d2d2d; --text: #e5e5e5; --text-muted: #999; --border: #444; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { background:#3f3f3f; }

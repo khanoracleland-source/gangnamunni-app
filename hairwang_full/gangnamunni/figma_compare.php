@@ -76,7 +76,7 @@ if ($html) {
   padding: 18px 20px !important;
 }
 .figma-compare-wrapper header h1 {
-  -webkit-text-fill-color: #ae1932 !important;
+  -webkit-text-fill-color: #AC1830 !important;
   background: none !important;
   font-size: 20px !important;
   margin: 0 0 6px !important;

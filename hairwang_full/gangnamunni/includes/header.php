@@ -103,7 +103,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
     [data-cache-status] { text-align: center; font-size: 14px; padding: 8px 16px; }
     [data-cache-status]:empty { display: none; }
     [data-user-cache][aria-busy="true"] [data-cache-content]:empty { min-height: 160px; }
-    [data-user-cache][aria-busy="true"][data-cache-cold="true"] [data-cache-content]:empty::after { content: ''; display: block; position: absolute; top: 60px; left: calc(50% - 18px); width: 36px; height: 36px; border: 3px solid #ddd; border-top-color: #AE1932; border-radius: 50%; animation: user-cache-spin .8s linear infinite; }
+    [data-user-cache][aria-busy="true"][data-cache-cold="true"] [data-cache-content]:empty::after { content: ''; display: block; position: absolute; top: 60px; left: calc(50% - 18px); width: 36px; height: 36px; border: 3px solid #ddd; border-top-color: #AC1830; border-radius: 50%; animation: user-cache-spin .8s linear infinite; }
     @keyframes user-cache-spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) { [data-user-cache] [data-cache-content]:empty::after { animation: none !important; } }
     </style>
@@ -328,7 +328,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
         var btn = document.getElementById('regionToggleBtn');
         if (checked.length > 0) {
             btn.innerHTML = '<i class="bi bi-geo-alt" style="color:#fff;margin-right:4px;"></i>지역 ' + checked.length + '개';
-            btn.style.background = '#AE1932';
+            btn.style.background = '#AC1830';
             btn.style.color = '#fff';
         } else {
             btn.innerHTML = '<i class="bi bi-geo-alt" style="color:#fff;margin-right:4px;"></i>지역 선택';

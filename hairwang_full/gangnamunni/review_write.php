@@ -485,12 +485,12 @@ body{margin:0;background:#3f3f3f;color:#111;}
 .writable-card .wc-address,.writable-card .wc-meta{font-size:15px;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;}
 .rw-form-group { margin-bottom: 22px; }
 .rw-label { display: block; font-size:15px; font-weight:600; color:#111; margin-bottom:10px; }
-.rw-required{color:#AE1932;}
+.rw-required{color:#AC1830;}
 .rw-input, .rw-select, .rw-textarea {
     width: 100%; padding: 12px 14px; border: 1px solid #ddd; border-radius:0;background:#fff;
     font-size:14px; box-sizing: border-box; transition: border-color 0.2s;
 }
-.rw-input:focus, .rw-select:focus, .rw-textarea:focus { border-color: var(--primary-color, #AE1932); outline: none; }
+.rw-input:focus, .rw-select:focus, .rw-textarea:focus { border-color: var(--primary-color, #AC1830); outline: none; }
 .rw-textarea { min-height: 190px; resize: vertical; }
 .rw-rating { display: flex; gap: 8px; flex-direction: row-reverse; justify-content: center; }
 .rw-rating input { display: none; }
@@ -498,7 +498,7 @@ body{margin:0;background:#3f3f3f;color:#111;}
 .rw-rating label:hover, .rw-rating label:hover ~ label,
 .rw-rating input:checked ~ label { color: #FFB800; }
 .rw-submit {
-    width:100%;height:52px;padding:0;background:#AE1932;color:#fff;
+    width:100%;height:52px;padding:0;background:#AC1830;color:#fff;
     border:0;border-radius:0;font-size:18px;font-weight:700;cursor:pointer;
 }
 .rw-submit:hover { opacity: 0.9; }
@@ -512,10 +512,10 @@ body{margin:0;background:#3f3f3f;color:#111;}
     font-size:12px;
     cursor: default; font-family: inherit;
 }
-.rw-tchip.selected { background:#FFEEEE;color:#AE1932; }
+.rw-tchip.selected { background:#FFEEEE;color:#AC1830; }
 .rw-divider { border-bottom:1px solid #d2cfcf;padding-bottom:20px; }
 .rw-doctor-head{display:flex;align-items:center;justify-content:space-between;gap:16px;}
-.rw-doctor-search{width:112px;height:34px;border:0;background:#AE1932;color:#fff;font-size:13px;cursor:pointer;}
+.rw-doctor-search{width:112px;height:34px;border:0;background:#AC1830;color:#fff;font-size:13px;cursor:pointer;}
 .rw-doctor-row{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:15px;}
 .rw-selected-doctor{display:none;width:max-content;max-width:100%;margin-top:8px;padding:5px 9px;border:1px solid #e5a8b1;border-radius:4px;color:#222;font-size:13px;align-items:center;gap:8px;}
 .rw-selected-doctor.visible{display:flex;}
@@ -525,20 +525,20 @@ body{margin:0;background:#3f3f3f;color:#111;}
 .rw-doctor-modal.open{display:flex;}
 .rw-doctor-sheet{width:100%;max-width:640px;max-height:92vh;padding:16px 20px 20px;background:#fff;display:flex;flex-direction:column;transform:translateY(0);transition:transform .25s ease;will-change:transform;}
 .rw-doctor-sheet.dragging{transition:none;}
-.rw-doctor-handle{width:48px;height:5px;margin:0 auto 18px;border-radius:4px;background:#AE1932;flex:none;cursor:grab;touch-action:none;}
+.rw-doctor-handle{width:48px;height:5px;margin:0 auto 18px;border-radius:4px;background:#AC1830;flex:none;cursor:grab;touch-action:none;}
 .rw-doctor-handle:active{cursor:grabbing;}
 .rw-doctor-sheet h2{font-size:21px;margin:0 0 22px;font-weight:700;}
 .rw-doctor-list{max-height:504px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:y proximity;display:flex;flex-direction:column;gap:18px;padding-bottom:18px;}
 .rw-doctor-card{width:100%;height:150px;flex:0 0 150px;padding:22px;border:3px solid #f1f1f1;background:#fff;display:flex;align-items:center;gap:28px;text-align:left;cursor:pointer;font:inherit;color:#111;}
 .rw-doctor-card{scroll-snap-align:start;}
-.rw-doctor-card.selected{border-color:#AE1932;}
+.rw-doctor-card.selected{border-color:#AC1830;}
 .rw-doctor-photo{width:104px;height:104px;flex:0 0 104px;border-radius:50%;object-fit:cover;background:#ddd;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:34px;overflow:hidden;}
 .rw-doctor-copy{min-width:0;flex:1;}
 .rw-doctor-card-name{display:block;font-size:17px;font-weight:700;margin-bottom:10px;}
-.rw-doctor-specialty{display:block;font-size:14px;color:#AE1932;margin-bottom:24px;}
+.rw-doctor-specialty{display:block;font-size:14px;color:#AC1830;margin-bottom:24px;}
 .rw-doctor-tags{display:flex;flex-wrap:wrap;gap:8px 14px;}
 .rw-doctor-tag{padding:4px 8px;background:#f4f4f4;font-size:13px;}
-.rw-doctor-confirm{width:100%;height:52px;flex:none;border:0;background:#AE1932;color:#fff;font-size:18px;font-weight:700;cursor:pointer;}
+.rw-doctor-confirm{width:100%;height:52px;flex:none;border:0;background:#AC1830;color:#fff;font-size:18px;font-weight:700;cursor:pointer;}
 .rw-doctor-confirm:disabled{opacity:.45;cursor:not-allowed;}
 .rw-doctor-empty{padding:50px 20px;text-align:center;color:#888;border:1px solid #eee;}
 .rw-counter{text-align:right;margin-top:5px;font-size:11px;color:#aaa;}
@@ -702,7 +702,7 @@ body{margin:0;background:#3f3f3f;color:#111;}
         <div class="rw-form-group" style="margin-top:16px;">
             <label style="display:flex; align-items:flex-start; gap:8px; font-size:13px; cursor:pointer;">
                 <input type="checkbox" name="agree_guidelines" id="agreeGuidelines" required style="margin-top:3px;">
-                <span><a href="community_guidelines.php" target="_blank" style="color:#AE1932; text-decoration:underline;">커뮤니티 가이드라인</a>을 읽었으며, 허위·광고·욕설 등 부적절한 콘텐츠 작성 시 삭제 및 계정 제재에 동의합니다.</span>
+                <span><a href="community_guidelines.php" target="_blank" style="color:#AC1830; text-decoration:underline;">커뮤니티 가이드라인</a>을 읽었으며, 허위·광고·욕설 등 부적절한 콘텐츠 작성 시 삭제 및 계정 제재에 동의합니다.</span>
             </label>
         </div>
 

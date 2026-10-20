@@ -26,7 +26,7 @@ mysqli_set_charset($connect, 'utf8mb4');
 echo "<!DOCTYPE html>";
 echo "<html><head><meta charset='UTF-8'><title>DB 확인</title>";
 echo "<style>body{font-family:sans-serif;padding:40px;background:#f5f5f5;}";
-echo "h1{color:#AE1932;} pre{background:#fff;padding:20px;border-radius:8px;overflow:auto;}</style></head><body>";
+echo "h1{color:#AC1830;} pre{background:#fff;padding:20px;border-radius:8px;overflow:auto;}</style></head><body>";
 
 echo "<h1>🔍 서울미녀 데이터베이스 확인</h1>";
 
@@ -50,7 +50,7 @@ $count_result = mysqli_query($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_
 $count_row = mysqli_fetch_assoc($count_result);
 $total_count = $count_row['cnt'];
 
-echo "<p>총 <strong style='color:#AE1932;font-size:24px;'>{$total_count}</strong>개의 병원 데이터가 있습니다.</p>";
+echo "<p>총 <strong style='color:#AC1830;font-size:24px;'>{$total_count}</strong>개의 병원 데이터가 있습니다.</p>";
 
 if ($total_count == 0) {
     echo "<p style='color:red;'>⚠️ 데이터가 비어 있습니다. SQL import를 다시 확인해주세요.</p>";
@@ -63,7 +63,7 @@ $sample_result = mysqli_query($connect, $sample_query);
 
 if ($sample_result && mysqli_num_rows($sample_result) > 0) {
     echo "<table style='width:100%;background:white;border-collapse:collapse;'>";
-    echo "<tr style='background:#AE1932;color:white;'>";
+    echo "<tr style='background:#AC1830;color:white;'>";
     echo "<th style='padding:12px;text-align:left;'>ID</th>";
     echo "<th style='padding:12px;text-align:left;'>병원명</th>";
     echo "<th style='padding:12px;text-align:left;'>평점</th>";
@@ -107,7 +107,7 @@ if ($tips_table_exists) {
     $tips_count_row = mysqli_fetch_assoc($tips_count_result);
     $tips_total_count = $tips_count_row['cnt'];
 
-    echo "<p>총 <strong style='color:#AE1932;font-size:24px;'>{$tips_total_count}</strong>개의 꿀팁 데이터가 있습니다.</p>";
+    echo "<p>총 <strong style='color:#AC1830;font-size:24px;'>{$tips_total_count}</strong>개의 꿀팁 데이터가 있습니다.</p>";
 
     if ($tips_total_count > 0) {
         echo "<h3>꿀팁 샘플 데이터 (상위 3개)</h3>";
@@ -116,7 +116,7 @@ if ($tips_table_exists) {
 
         if ($tips_sample_result && mysqli_num_rows($tips_sample_result) > 0) {
             echo "<table style='width:100%;background:white;border-collapse:collapse;'>";
-            echo "<tr style='background:#AE1932;color:white;'>";
+            echo "<tr style='background:#AC1830;color:white;'>";
             echo "<th style='padding:12px;text-align:left;'>ID</th>";
             echo "<th style='padding:12px;text-align:left;'>제목</th>";
             echo "<th style='padding:12px;text-align:left;'>카테고리</th>";
@@ -150,13 +150,13 @@ if ($total_count > 0) {
     if ($tips_table_exists && isset($tips_total_count)) {
         echo "<p>💡 꿀팁 데이터: <strong>{$tips_total_count}</strong>개</p>";
     }
-    echo "<p><a href='index.php' style='display:inline-block;margin-top:10px;padding:12px 24px;background:#AE1932;color:white;text-decoration:none;border-radius:8px;'>서울미녀 페이지로 이동</a></p>";
+    echo "<p><a href='index.php' style='display:inline-block;margin-top:10px;padding:12px 24px;background:#AC1830;color:white;text-decoration:none;border-radius:8px;'>서울미녀 페이지로 이동</a></p>";
     echo "</div>";
 } else {
     echo "<div style='background:#fff3cd;color:#856404;padding:20px;border-radius:8px;border-left:4px solid #ffc107;'>";
     echo "<h3>⚠️ 데이터가 없습니다</h3>";
     echo "<p>SQL 파일을 import 해주세요:</p>";
-    echo "<p><a href='import_data.php' style='display:inline-block;margin-top:10px;padding:12px 24px;background:#AE1932;color:white;text-decoration:none;border-radius:8px;'>자동 Import 실행</a></p>";
+    echo "<p><a href='import_data.php' style='display:inline-block;margin-top:10px;padding:12px 24px;background:#AC1830;color:white;text-decoration:none;border-radius:8px;'>자동 Import 실행</a></p>";
     echo "</div>";
 }
 

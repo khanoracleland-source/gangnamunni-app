@@ -355,7 +355,7 @@ button,a,[role="button"]{touch-action:manipulation;-webkit-tap-highlight-color:t
 }
 
 .noti-wrapper{
-    --noti-primary:#AE1932;
+    --noti-primary:#AC1830;
     --noti-bg:#eeeeee;
     --noti-border:#eeeeee;
     width:100%;
@@ -475,7 +475,7 @@ button,a,[role="button"]{touch-action:manipulation;-webkit-tap-highlight-color:t
 .noti-open-area.is-clickable:focus-visible,
 .noti-delete-btn:focus-visible,
 .noti-load-more:focus-visible{
-    outline:2px solid rgba(174,25,50,.35);
+    outline:2px solid rgba(172, 24, 48,.35);
     outline-offset:2px;
 }
 

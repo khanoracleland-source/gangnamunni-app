@@ -130,12 +130,12 @@ $_tsu_uid = 'tsu_' . mt_rand(10000, 99999);
     line-height: 1.4;
 }
 .tsu-chip-label input[type="checkbox"]:checked + .tsu-chip-text {
-    background: var(--primary-color, #AE1932);
+    background: var(--primary-color, #AC1830);
     color: #fff;
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
 }
 .tsu-chip-label:hover .tsu-chip-text {
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
 }
 .tsu-loading {
     text-align: center;
@@ -148,7 +148,7 @@ $_tsu_uid = 'tsu_' . mt_rand(10000, 99999);
     width: 18px;
     height: 18px;
     border: 2px solid #ddd;
-    border-top-color: var(--primary-color, #AE1932);
+    border-top-color: var(--primary-color, #AC1830);
     border-radius: 50%;
     animation: tsu-spin 0.6s linear infinite;
     vertical-align: middle;
@@ -162,7 +162,7 @@ $_tsu_uid = 'tsu_' . mt_rand(10000, 99999);
 [data-bs-theme="dark"] .tsu-cat-label { color: #999; }
 [data-bs-theme="dark"] .tsu-chip-text { background: #2a2a2a; color: #ccc; border-color: #444; }
 [data-bs-theme="dark"] .tsu-chip-label input[type="checkbox"]:checked + .tsu-chip-text {
-    background: var(--primary-color, #AE1932); color: #fff;
+    background: var(--primary-color, #AC1830); color: #fff;
 }
 
 /* 모바일 */

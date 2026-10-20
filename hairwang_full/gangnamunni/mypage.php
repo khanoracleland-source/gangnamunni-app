@@ -91,8 +91,8 @@ endif; // $is_logged_in
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
 // 글로벌 네비게이션은 넣지 않는다 — 이 페이지는 자체 "마이페이지" 헤더를 쓴다.
 // (global_nav.php 가 정의하는 변수에 의존하는 코드는 없다: $is_logged_in 은 위에서 직접 판정)
-$primary_color = getTheme('primary_color', '#AE1932');
-if (!preg_match('/^#[0-9a-fA-F]{6}$/', $primary_color)) $primary_color = '#AE1932';
+$primary_color = getTheme('primary_color', '#AC1830');
+if (!preg_match('/^#[0-9a-fA-F]{6}$/', $primary_color)) $primary_color = '#AC1830';
 ?>
 <!DOCTYPE html>
 <html lang="ko">
@@ -211,7 +211,7 @@ body {
 /* 배지는 알약 배경 없이 텍스트만 — padding/border-radius 는 배경이 없으면 의미가 없어
    함께 제거하고, 화살표와의 간격만 margin 으로 유지한다. */
 .menu-row-badge {
-    font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: var(--pri, #AE1932);
+    font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: var(--pri, #AC1830);
     margin-right: 2px; white-space:nowrap;
 }
 
@@ -330,9 +330,9 @@ if ($_mypage_has_ads): ?>
     <p style="font-size:14px;color:#999;margin-bottom:24px;">로그인 후 마이페이지를 이용하실 수 있습니다.</p>
     <?php // 앱 WebView 에서는 로그인 후에도 app=1 로 돌아와야 앱 전용 레이아웃이 유지된다. (한글 주석)
     $login_return = rtrim(SITE_BASE_PATH, '/') . '/mypage.php' . ($is_app_mode ? '?app=1' : ''); ?>
-    <a href="<?php echo rtrim(SITE_BASE_PATH, '/'); ?>/auth/login.php?url=<?php echo urlencode($login_return); ?>" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
+    <a href="<?php echo rtrim(SITE_BASE_PATH, '/'); ?>/auth/login.php?url=<?php echo urlencode($login_return); ?>" style="display:inline-block;padding:14px 48px;background:#AC1830;color:#fff;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;">로그인</a>
     <div style="margin-top:12px;">
-        <a href="<?php echo G5_BBS_URL; ?>/register.php" style="font-size:13px;color:#999;text-decoration:none;">아직 회원이 아니신가요? <span style="color:#AE1932;font-weight:600;">회원가입</span></a>
+        <a href="<?php echo G5_BBS_URL; ?>/register.php" style="font-size:13px;color:#999;text-decoration:none;">아직 회원이 아니신가요? <span style="color:#AC1830;font-weight:600;">회원가입</span></a>
     </div>
 </div>
 

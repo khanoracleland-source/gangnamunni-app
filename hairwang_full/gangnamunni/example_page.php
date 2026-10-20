@@ -77,7 +77,7 @@ include __DIR__ . '/includes/header_common.php';
     <div class="example-box">
         <div class="example-title">🎨 CSS 변수 사용 가능</div>
         <div class="example-text">
-            --color-primary: #AE1932 (메인 색상)<br>
+            --color-primary: #AC1830 (메인 색상)<br>
             --color-text-primary: #333333<br>
             --color-bg-white: #ffffff<br>
             --color-bg-light: #f8f8f8<br>

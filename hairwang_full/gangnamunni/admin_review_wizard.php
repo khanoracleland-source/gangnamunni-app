@@ -238,7 +238,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 <style>
 .review-card { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: all 0.2s; }
 .review-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-.review-card.selected { border-color: #AE1932; background: #faf5ff; }
+.review-card.selected { border-color: #AC1830; background: #faf5ff; }
 .review-meta { font-size: 12px; color: #999; display: flex; gap: 12px; flex-wrap: wrap; }
 .review-content-preview { font-size: 14px; color: var(--bs-body-color); margin: 8px 0; max-height: 60px; overflow: hidden; }
 .ai-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
@@ -253,10 +253,10 @@ require_once __DIR__ . '/includes/admin_header.php';
 .review-thumbs img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; }
 .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .filter-tab { padding: 6px 16px; border: 1px solid var(--bs-border-color); border-radius: 20px; background: var(--bs-body-bg); cursor: pointer; font-size: 13px; transition: all 0.2s; }
-.filter-tab.active { background: #AE1932; color: #fff; border-color: #AE1932; }
+.filter-tab.active { background: #AC1830; color: #fff; border-color: #AC1830; }
 .filter-tab .count { background: rgba(0,0,0,0.1); padding: 1px 6px; border-radius: 10px; font-size: 11px; margin-left: 4px; }
 .filter-tab.active .count { background: rgba(255,255,255,0.3); }
-.bulk-bar { display: none; padding: 12px 16px; background: #AE1932; color: #fff; border-radius: 8px; margin-bottom: 12px; align-items: center; gap: 12px; }
+.bulk-bar { display: none; padding: 12px 16px; background: #AC1830; color: #fff; border-radius: 8px; margin-bottom: 12px; align-items: center; gap: 12px; }
 .bulk-bar.show { display: flex; }
 .bulk-bar button { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 4px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
 .bulk-bar button:hover { background: rgba(255,255,255,0.3); }
@@ -280,7 +280,7 @@ require_once __DIR__ . '/includes/admin_header.php';
 .rating-bars .bar-value { width: 24px; text-align: right; font-weight: 600; color: var(--bs-body-color); }
 .pagination-bar { display: flex; justify-content: center; gap: 4px; margin-top: 16px; }
 .pagination-bar button { width: 32px; height: 32px; border: 1px solid var(--bs-border-color); border-radius: 6px; background: var(--bs-body-bg); cursor: pointer; font-size: 13px; }
-.pagination-bar button.active { background: #AE1932; color: #fff; border-color: #AE1932; }
+.pagination-bar button.active { background: #AC1830; color: #fff; border-color: #AC1830; }
 .rw-content-frame { display:block; width:100%; min-height:80px; border:0; background:#fff; border-radius:6px; }
 </style>
 
@@ -544,7 +544,7 @@ function showDetail(id) {
                 var val = parseInt(r[ax.k]) || 0;
                 html += '<div class="bar-item"><span class="bar-label">' + ax.l + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (val*20) + '%"></div></div><span class="bar-value">' + val + '</span></div>';
             });
-            html += '<div class="bar-item"><span class="bar-label fw-bold">종합</span><div class="bar-track"><div class="bar-fill" style="width:' + ((Number(r.rating)||0)*20) + '%;background:#AE1932"></div></div><span class="bar-value fw-bold">' + (Number(r.rating)||0) + '</span></div>';
+            html += '<div class="bar-item"><span class="bar-label fw-bold">종합</span><div class="bar-track"><div class="bar-fill" style="width:' + ((Number(r.rating)||0)*20) + '%;background:#AC1830"></div></div><span class="bar-value fw-bold">' + (Number(r.rating)||0) + '</span></div>';
             html += '</div>';
             // 시술 정보
             if (r.doctor_name || r.procedure_date || r.procedure_cost) {

@@ -131,7 +131,7 @@ function request_detail_date($date, $time) {
 <title><?php echo $is_active ? '예약 내용 확인' : ($is_completed ? '시술완료 내역' : '예약 상세'); ?></title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <style>
-:root { --primary:#AE1932; }
+:root { --primary:#AC1830; }
 * { box-sizing:border-box; margin:0; padding:0; }
 html { background:#3f3f3f; }
 body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; background:#fff; color:#111; font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; }

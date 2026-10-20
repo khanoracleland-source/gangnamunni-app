@@ -62,7 +62,7 @@ if (empty($kakao_api_key)) {
 (function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();
 </script>
 <style>
-:root { --primary: #AE1932; }
+:root { --primary: #AC1830; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bs-body-bg, #fff); color: var(--bs-body-color, #1a1a1a); }
 
@@ -196,7 +196,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             disableClickZoom: true,
             styles: [{
                 width: '44px', height: '44px',
-                background: 'var(--primary, #AE1932)',
+                background: 'var(--primary, #AC1830)',
                 borderRadius: '50%',
                 color: '#fff',
                 textAlign: 'center',

@@ -64,7 +64,7 @@ $pk_use_kakao = !empty($pk_kakao_key);
     padding: 14px 16px; border-bottom: 1px solid #f1f3f5;
     font-weight: 700; font-size: 15px; color: #1f2937;
 }
-.mp-card-head .bi { color: #AE1932; font-size: 17px; }
+.mp-card-head .bi { color: #AC1830; font-size: 17px; }
 .mp-provider-badge {
     margin-left: auto; font-size: 11px; font-weight: 600;
     padding: 3px 10px; border-radius: 999px; letter-spacing: .2px;
@@ -80,7 +80,7 @@ $pk_use_kakao = !empty($pk_kakao_key);
     background: #f7f8fa; border: 1px solid #e9ecef; border-radius: 10px;
     padding: 0 12px; transition: border-color .15s, box-shadow .15s;
 }
-.mp-search-box:focus-within { border-color: #AE1932; box-shadow: 0 0 0 3px rgba(174,25,50,.08); background: #fff; }
+.mp-search-box:focus-within { border-color: #AC1830; box-shadow: 0 0 0 3px rgba(172, 24, 48,.08); background: #fff; }
 .mp-search-box .bi { color: #98a2b3; font-size: 15px; }
 .mp-search-box input { flex: 1; border: 0; background: transparent; padding: 11px 0; font-size: 14px; outline: none; }
 .mp-btn {
@@ -89,7 +89,7 @@ $pk_use_kakao = !empty($pk_kakao_key);
     cursor: pointer; transition: filter .15s;
 }
 .mp-btn:hover { filter: brightness(.95); }
-.mp-btn-primary { background: #AE1932; color: #fff; }
+.mp-btn-primary { background: #AC1830; color: #fff; }
 .mp-btn-ghost { background: #f2f4f7; color: #344054; }
 .mp-hint { font-size: 12.5px; color: #98a2b3; display: flex; align-items: center; gap: 5px; margin-bottom: 12px; }
 
@@ -122,7 +122,7 @@ $pk_use_kakao = !empty($pk_kakao_key);
 .mp-coord-field { flex: 1; }
 .mp-coord-field label { font-size: 12px; font-weight: 600; color: #667085; margin-bottom: 5px; display: block; }
 .mp-coord-input-wrap { display: flex; align-items: center; gap: 6px; background: #f7f8fa; border: 1px solid #e9ecef; border-radius: 10px; padding: 0 12px; transition: border-color .15s, box-shadow .15s; }
-.mp-coord-input-wrap:focus-within { border-color: #AE1932; box-shadow: 0 0 0 3px rgba(174,25,50,.08); background: #fff; }
+.mp-coord-input-wrap:focus-within { border-color: #AC1830; box-shadow: 0 0 0 3px rgba(172, 24, 48,.08); background: #fff; }
 .mp-coord-input-wrap .bi { color: #98a2b3; font-size: 13px; }
 .mp-coord-input-wrap input { flex: 1; border: 0; background: transparent; padding: 10px 0; font-size: 14px; outline: none; font-variant-numeric: tabular-nums; }
 @media (max-width: 575px) { .mp-search { flex-wrap: wrap; } .mp-btn { flex: 1; justify-content: center; padding: 10px; } }

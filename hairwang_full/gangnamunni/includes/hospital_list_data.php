@@ -137,7 +137,7 @@ $sv = function($key, $default) use ($s) { return $s[$key] ?? $default; };
 
 $list_name   = $sv('hv_list_name_size', '15');
 $list_tag_s  = $sv('hv_list_tag_size', '11');
-$list_tag_c  = $sv('hv_list_tag_color', '#AE1932');
+$list_tag_c  = $sv('hv_list_tag_color', '#AC1830');
 
 $hospitals = [];
 $base_where = "

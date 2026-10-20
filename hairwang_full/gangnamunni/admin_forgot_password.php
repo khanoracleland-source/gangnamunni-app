@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['find_password'])) {
                             require_once __DIR__ . '/includes/mail_helper.php';
                             $email_body = '
                             <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:20px;">
-                                <h2 style="color:#AE1932;">서울미녀 관리자 임시 비밀번호</h2>
+                                <h2 style="color:#AC1830;">서울미녀 관리자 임시 비밀번호</h2>
                                 <p>안녕하세요, <strong>' . htmlspecialchars($admin['name']) . '</strong>님.</p>
                                 <p>임시 비밀번호가 발급되었습니다.</p>
                                 <div style="background:#f5f5f5;padding:15px;border-radius:8px;margin:15px 0;text-align:center;">

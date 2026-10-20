@@ -148,7 +148,7 @@ $page_css = '
 }
 .events-section .section-more {
     font-size: 13px;
-    color: #AE1932;
+    color: #AC1830;
     text-decoration: none;
     font-weight: 500;
 }
@@ -180,7 +180,7 @@ $page_css = '
 .event-card-mini .card-img {
     width: 200px;
     height: 140px;
-    background: linear-gradient(135deg, #AE1932, #D4455A);
+    background: linear-gradient(135deg, #AC1830, #D4455A);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -197,7 +197,7 @@ $page_css = '
     position: absolute;
     top: 8px;
     left: 8px;
-    background: #AE1932;
+    background: #AC1830;
     color: white;
     padding: 3px 10px;
     border-radius: 12px;
@@ -208,7 +208,7 @@ $page_css = '
     position: absolute;
     top: 8px;
     right: 8px;
-    background: #AE1932;
+    background: #AC1830;
     color: white;
     padding: 3px 10px;
     border-radius: 12px;
@@ -220,7 +220,7 @@ $page_css = '
 }
 .event-card-mini .card-cat {
     font-size: 11px;
-    color: #AE1932;
+    color: #AC1830;
     font-weight: 600;
     margin-bottom: 4px;
 }
@@ -253,7 +253,7 @@ $page_css = '
 .event-card-mini .card-price .discount {
     font-size: 15px;
     font-weight: 700;
-    color: #AE1932;
+    color: #AC1830;
 }
 .event-card-mini .card-date {
     font-size: 11px;
@@ -278,7 +278,7 @@ $page_css = '
 }
 .raffle-section .section-more {
     font-size: 13px;
-    color: #AE1932;
+    color: #AC1830;
     text-decoration: none;
     font-weight: 500;
 }
@@ -304,7 +304,7 @@ $page_css = '
 .raffle-card .raffle-img {
     width: 100%;
     height: 120px;
-    background: linear-gradient(135deg, #AE1932, #A78BFA);
+    background: linear-gradient(135deg, #AC1830, #A78BFA);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -326,7 +326,7 @@ $page_css = '
     font-size: 11px;
     font-weight: 700;
     color: white;
-    background: #AE1932;
+    background: #AC1830;
 }
 .raffle-card .raffle-dday {
     position: absolute;
@@ -355,7 +355,7 @@ $page_css = '
 }
 .raffle-card .raffle-prize {
     font-size: 12px;
-    color: #AE1932;
+    color: #AC1830;
     font-weight: 600;
     margin-bottom: 6px;
 }
@@ -372,7 +372,7 @@ $page_css = '
     font-size: 12px;
     font-weight: 700;
     color: white;
-    background: #AE1932;
+    background: #AC1830;
     padding: 4px 12px;
     border-radius: 12px;
 }

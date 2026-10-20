@@ -92,7 +92,7 @@ function gnu_send_cert_mail($to_email, $code) {
     $subject = '[서울미녀] 회원가입 이메일 인증 코드';
     $body    = "<div style='font-family:sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7'>"
              . "회원가입 인증 코드입니다.<br><br>"
-             . "<div style='font-size:28px;font-weight:800;letter-spacing:4px;color:#AE1932'>{$code}</div><br>"
+             . "<div style='font-size:28px;font-weight:800;letter-spacing:4px;color:#AC1830'>{$code}</div><br>"
              . "10분 이내에 입력해주세요."
              . "</div>";
     // 계정 인덱스 0 = admin@seoulbeauty.app
@@ -498,7 +498,7 @@ if (!empty($rb_builder['bu_logo_pc'])) {
     $logo_src = $_theme_url . '/rb.img/logos/pc.png?ver=' . $_logo_ver;
 }
 $brand_name = function_exists('getTheme') ? getTheme('site_name', '서울미녀') : '서울미녀';
-$primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932') : '#AE1932';
+$primary    = function_exists('getTheme') ? getTheme('primary_color', '#AC1830') : '#AC1830';
 // 오류 시 재입력을 위해 값 유지
 $old_email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES);
 ?>

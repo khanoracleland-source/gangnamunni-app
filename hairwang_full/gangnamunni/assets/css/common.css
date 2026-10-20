@@ -317,11 +317,11 @@ body {
 #regionPanel label:has(.region-cb:checked),
 #hRegionPanel label:has(.h-region-cb:checked),
 #cRegionPanel label:has(.c-region-cb:checked) {
-    color: #AE1932; font-weight: 600;
+    color: #AC1830; font-weight: 600;
 }
 
 #regionPanel .region-cb, #hRegionPanel .h-region-cb, #cRegionPanel .c-region-cb {
-    accent-color: #AE1932; width: 16px; height: 16px;
+    accent-color: #AC1830; width: 16px; height: 16px;
 }
 
 #regionPanel .region-btn-wrap, #hRegionPanel .region-btn-wrap, #cRegionPanel .region-btn-wrap {
@@ -336,7 +336,7 @@ body {
 #regionPanel .region-tag, #hRegionPanel .region-tag, #cRegionPanel .region-tag,
 .region-active-bar .region-tag, .region-tag {
     display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
-    border: 1px solid #AE1932; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500;
+    border: 1px solid #AC1830; color: #000; border-radius: 3px; font-size: 12px; font-weight: 500;
 }
 
 #regionPanel .btn-reset, #hRegionPanel .btn-reset, #cRegionPanel .btn-reset {
@@ -344,7 +344,7 @@ body {
 }
 
 #regionPanel .btn-apply, #hRegionPanel .btn-apply, #cRegionPanel .btn-apply {
-    flex-shrink: 0; padding: 8px; background: #AE1932; color: #fff;
+    flex-shrink: 0; padding: 8px; background: #AC1830; color: #fff;
     font-size: 15px; font-weight: 500; cursor: pointer; height: 40px; width: 120px; border: none;
 }
 

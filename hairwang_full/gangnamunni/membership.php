@@ -28,7 +28,7 @@ if ($__ml_cnt === 0) {
         ['브론즈', 0, 'bi-shield', '#cd7f32', '기본 혜택, 후기 작성 포인트 적립', 0],
         ['실버', 1000, 'bi-shield-fill', '#c0c0c0', '5% 할인 쿠폰 매월 지급, 우선 예약', 5],
         ['골드', 5000, 'bi-trophy', '#ffd700', '10% 할인, 무료 상담, VIP 이벤트 초대', 10],
-        ['다이아몬드', 20000, 'bi-gem', '#AE1932', '15% 할인, 전용 상담사, 무료 시술 쿠폰', 15],
+        ['다이아몬드', 20000, 'bi-gem', '#AC1830', '15% 할인, 전용 상담사, 무료 시술 쿠폰', 15],
     ];
     foreach ($levels as $i => $l) {
         $stmt = mysqli_prepare($connect, "INSERT INTO gangnamunni_membership_levels (name,min_points,icon,color,benefits,discount_rate,sort_order) VALUES (?,?,?,?,?,?,?)");
@@ -60,12 +60,12 @@ if ($member_id) {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();</script>
 <style>
-:root{--pri:#AE1932;}*{margin:0;padding:0;box-sizing:border-box;}
+:root{--pri:#AC1830;}*{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;background:var(--bs-body-bg,#f8f9fa);color:var(--bs-body-color);}
 .header{padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bs-border-color,#eee);background:var(--bs-body-bg,#fff);}
 .header .back{width:36px;height:36px;border:none;background:none;font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1));cursor:pointer;color:inherit;}
 .header h1{font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;}
-.my-level{padding:24px 16px;text-align:center;background:linear-gradient(135deg,#AE1932,#a855f7);color:#fff;margin:16px;border-radius:16px;}
+.my-level{padding:24px 16px;text-align:center;background:linear-gradient(135deg,#AC1830,#a855f7);color:#fff;margin:16px;border-radius:16px;}
 .my-level .icon{font-size:calc(40px * var(--fs-scale,1) * var(--fs-page,1));margin-bottom:8px;}
 .my-level .name{font-size:calc(22px * var(--fs-scale,1) * var(--fs-page,1));font-weight:800;}
 .my-level .pts{font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));opacity:0.85;margin-top:4px;}

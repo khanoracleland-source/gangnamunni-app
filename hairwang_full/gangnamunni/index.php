@@ -38,7 +38,7 @@ function home_safe_background($value) {
     $value = trim((string)$value);
     if (preg_match('/^#[0-9a-f]{3,8}$/i', $value)) return $value;
     if (preg_match('/^(?:linear|radial)-gradient\([a-z0-9#%.,()\s-]+\)$/i', $value)) return $value;
-    return 'linear-gradient(135deg, #AE1932, #D4455A)';
+    return 'linear-gradient(135deg, #AC1830, #D4455A)';
 }
 
 // 서울미녀 병원 데이터 테이블 존재 확인
@@ -177,7 +177,7 @@ textarea {
 .event-card-mini .card-img {
     width: 200px;
     height: 140px;
-    background: linear-gradient(135deg, #AE1932, #D4455A);
+    background: linear-gradient(135deg, #AC1830, #D4455A);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -194,7 +194,7 @@ textarea {
     position: absolute;
     top: 8px;
     left: 8px;
-    background: #AE1932;
+    background: #AC1830;
     color: white;
     padding: 3px 10px;
     border-radius: 12px;
@@ -205,7 +205,7 @@ textarea {
     position: absolute;
     top: 8px;
     right: 8px;
-    background: #AE1932;
+    background: #AC1830;
     color: white;
     padding: 3px 10px;
     border-radius: 12px;
@@ -255,7 +255,7 @@ textarea {
 .event-card-mini .card-price .discount {
     font-size: 14px;
     font-weight: 700;
-    color: #AE1932;
+    color: #AC1830;
 }
 .event-card-mini .card-date {
     font-size: 11px;
@@ -535,7 +535,7 @@ body.ae-active { padding-top:0 !important; }
             font-size: calc(15px * var(--cat-scale,1) * var(--cat-font,1)); font-weight: 600; white-space: nowrap; transition: all 0.2s;
             border: 1px solid transparent;
         }
-        .tc-chip:hover { background: #FFE0E0; color: #AE1932; border-color: #AE1932; }
+        .tc-chip:hover { background: #FFE0E0; color: #AC1830; border-color: #AC1830; }
 
         .tc-table .tc-row:last-child { border-bottom: none; }
 
@@ -687,7 +687,7 @@ body.ae-active { padding-top:0 !important; }
         .tc-nav-item:last-child { border-bottom: none; }
         .tc-nav-item.active {
             background: var(--bs-body-bg, #fff);
-            color: #AE1932;
+            color: #AC1830;
             font-weight: 700;
             border-left: none;
         }
@@ -877,7 +877,7 @@ if (!empty($_SESSION['reg_welcome_point'])):
     unset($_SESSION['reg_welcome_point']);
 ?>
 <div id="welcomePointToast" style="position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:9999;
-     background:linear-gradient(135deg,#AE1932,#d4354a);color:#fff;padding:14px 22px;border-radius:14px;
+     background:linear-gradient(135deg,#AC1830,#d4354a);color:#fff;padding:14px 22px;border-radius:14px;
      box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:700;font-size:15px;white-space:nowrap;
      display:flex;align-items:center;gap:8px;opacity:0;transition:opacity .3s;">
     <i class="bi bi-coin" style="font-size:20px;"></i>

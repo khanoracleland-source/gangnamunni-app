@@ -231,7 +231,7 @@ function apply_h($v)
     </script>
     <style>
         :root {
-            --brand: #AE1932;
+            --brand: #AC1830;
             --ink: #171717;
             --text: #444;
             --muted: #8a8a8a;
@@ -649,7 +649,7 @@ function apply_h($v)
         .input:focus {
             outline: 0;
             border-color: var(--brand);
-            box-shadow: 0 0 0 3px rgba(174, 25, 50, .1);
+            box-shadow: 0 0 0 3px rgba(172, 24, 48, .1);
         }
 
         .input.mt-sm {

@@ -74,10 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($q && mysqli_affected_rows($connect) > 0) $updated++;
         }
         // theme_settings도 기본값으로
-        mysqli_query($connect, "UPDATE gangnamunni_theme_settings SET setting_value='#AE1932' WHERE setting_key='primary_color'");
+        mysqli_query($connect, "UPDATE gangnamunni_theme_settings SET setting_value='#AC1830' WHERE setting_key='primary_color'");
         mysqli_query($connect, "UPDATE gangnamunni_theme_settings SET setting_value='#8A1428' WHERE setting_key='secondary_color'");
-        mysqli_query($connect, "UPDATE gangnamunni_theme_settings SET setting_value='#AE1932' WHERE setting_key='login_button_bg'");
-        mysqli_query($connect, "UPDATE gangnamunni_theme_settings SET setting_value='#AE1932' WHERE setting_key='link_color'");
+        mysqli_query($connect, "UPDATE gangnamunni_theme_settings SET setting_value='#AC1830' WHERE setting_key='login_button_bg'");
+        mysqli_query($connect, "UPDATE gangnamunni_theme_settings SET setting_value='#AC1830' WHERE setting_key='link_color'");
         $msg = "{$updated}개 설정이 피그마 기본값으로 복원되었습니다.";
         $msg_type = 'warning';
     }

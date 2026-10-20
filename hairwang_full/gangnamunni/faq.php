@@ -54,7 +54,7 @@ if (!isset($grouped[$active_cat])) $active_cat = $categories[0];
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();</script>
 <style>
-:root{--pri:#AE1932;--faq-line:#E5E5E5;--faq-gap:#F2F2F2;}
+:root{--pri:#AC1830;--faq-line:#E5E5E5;--faq-gap:#F2F2F2;}
 [data-bs-theme="dark"]{--faq-line:#333;--faq-gap:#1c1c1c;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;background:var(--bs-body-bg,#fff);color:var(--bs-body-color,#111);padding-bottom:80px;}

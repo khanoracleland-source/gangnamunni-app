@@ -55,7 +55,7 @@
     .intro-stage.filtering-scroll { touch-action: pan-y pinch-zoom; }
     #filtering-scene { display: block; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y pinch-zoom; }
     #filtering-scene img { position: static; transform: none; width: 100%; height: auto; max-width: 100%; }
-    :focus-visible { outline: 2px solid #ae1932; outline-offset: -2px; }
+    :focus-visible { outline: 2px solid #AC1830; outline-offset: -2px; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     /* Vertical gestures advance one scene; retain horizontal gestures and pinch zoom. */
     .intro-stage { touch-action: pan-x pinch-zoom; overscroll-behavior: contain; }
@@ -105,7 +105,7 @@
     .price-label { color: #999; font-size: 2.2cqw; }
     .price-value { font-size: 2.2cqw; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .price-track { display: block; height: 1cqw; min-height: 3px; background: #fbd4df; border-radius: 99px; overflow: hidden; }
-    .price-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: #ae1932; }
+    .price-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: #AC1830; }
     </style>
 </head>
 <body>

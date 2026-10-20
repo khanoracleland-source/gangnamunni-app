@@ -172,7 +172,7 @@ function getCpvSettingCategories() {
         'phase2' => ['label' => 'CPV 과금 엔진', 'icon' => 'bi-cpu', 'color' => '#dc2626'],
         'phase3' => ['label' => '단가 정책', 'icon' => 'bi-currency-dollar', 'color' => '#ea580c'],
         'phase4' => ['label' => '예산 관리', 'icon' => 'bi-piggy-bank', 'color' => '#16a34a'],
-        'phase5' => ['label' => '충전 상품 & 대시보드', 'icon' => 'bi-graph-up-arrow', 'color' => '#AE1932'],
+        'phase5' => ['label' => '충전 상품 & 대시보드', 'icon' => 'bi-graph-up-arrow', 'color' => '#AC1830'],
         'phase7' => ['label' => 'AI 과금 설정', 'icon' => 'bi-robot', 'color' => '#0891b2'],
     ];
 }

@@ -163,9 +163,9 @@ $_tc_uid = 'tc_' . $_tc_hospital_id . '_' . mt_rand(1000, 9999);
     line-height: 1.4;
 }
 .treatment-chips .tc-chip:hover {
-    background: var(--primary-color, #AE1932);
+    background: var(--primary-color, #AC1830);
     color: #fff;
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
     text-decoration: none;
 }
 .treatment-chips .tc-chip:hover .tc-score-badge {
@@ -173,7 +173,7 @@ $_tc_uid = 'tc_' . $_tc_hospital_id . '_' . mt_rand(1000, 9999);
     color: #fff;
 }
 .treatment-chips .tc-chip.tc-promoted {
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
     background: rgba(211, 47, 47, 0.06);
 }
 .treatment-chips .tc-score-badge {
@@ -182,7 +182,7 @@ $_tc_uid = 'tc_' . $_tc_hospital_id . '_' . mt_rand(1000, 9999);
     gap: 2px;
     padding: 1px 6px;
     border-radius: 10px;
-    background: var(--primary-color, #AE1932);
+    background: var(--primary-color, #AC1830);
     color: #fff;
     font-size: 11px;
     font-weight: 600;
@@ -197,10 +197,10 @@ $_tc_uid = 'tc_' . $_tc_hospital_id . '_' . mt_rand(1000, 9999);
     padding: 6px 14px;
     border-radius: 20px;
     background: transparent;
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
     font-size: 13px;
     font-weight: 600;
-    border: 1px dashed var(--primary-color, #AE1932);
+    border: 1px dashed var(--primary-color, #AC1830);
     cursor: pointer;
     transition: all 0.2s ease;
 }

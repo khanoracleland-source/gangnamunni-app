@@ -29,24 +29,24 @@ if ($style_q) { while ($sr = mysqli_fetch_assoc($style_q)) $s[$sr['setting_key']
 $sv = function($key, $default) use ($s) { return $s[$key] ?? $default; };
 
 // 스타일 변수
-$seoul_btn   = $sv('hv_seoul_btn_color', '#AE1932');
+$seoul_btn   = $sv('hv_seoul_btn_color', '#AC1830');
 $seoul_btxt  = $sv('hv_seoul_btn_text', '#ffffff');
 $seoul_name  = $sv('hv_seoul_name_size', '18');
 $seoul_addr  = $sv('hv_seoul_addr_size', '13');
 $seoul_tag_s = $sv('hv_seoul_tag_size', '12');
-$seoul_tag_c = $sv('hv_seoul_tag_color', '#AE1932');
+$seoul_tag_c = $sv('hv_seoul_tag_color', '#AC1830');
 $seoul_cta   = $sv('hv_seoul_cta_size', '14');
-$card_btn    = $sv('hv_card_btn_color', '#AE1932');
+$card_btn    = $sv('hv_card_btn_color', '#AC1830');
 $card_btxt   = $sv('hv_card_btn_text', '#ffffff');
 $card_name   = $sv('hv_card_name_size', '15');
 $card_tag_s  = $sv('hv_card_tag_size', '11');
-$card_tag_c  = $sv('hv_card_tag_color', '#AE1932');
+$card_tag_c  = $sv('hv_card_tag_color', '#AC1830');
 $card_cta    = $sv('hv_card_cta_size', '13');
-$list_btn    = $sv('hv_list_btn_color', '#AE1932');
+$list_btn    = $sv('hv_list_btn_color', '#AC1830');
 $list_btxt   = $sv('hv_list_btn_text', '#ffffff');
 $list_name   = $sv('hv_list_name_size', '15');
 $list_tag_s  = $sv('hv_list_tag_size', '11');
-$list_tag_c  = $sv('hv_list_tag_color', '#AE1932');
+$list_tag_c  = $sv('hv_list_tag_color', '#AC1830');
 $list_cta    = $sv('hv_list_cta_size', '12');
 
 // 병원 검색
@@ -70,11 +70,11 @@ $page_css = '
     .back-btn { font-size: 24px; cursor: pointer; text-decoration: none; color: inherit; }
     .search-bar { flex: 1; }
     .search-input { width: 100%; padding: 10px 16px; border: 1px solid #E0E0E0; border-radius: 8px; font-size: 14px; background: var(--bs-tertiary-bg, #F5F5F5); color: inherit; }
-    .search-input:focus { outline: none; border-color: #AE1932; }
+    .search-input:focus { outline: none; border-color: #AC1830; }
     .results-header { margin-bottom: 16px; }
     .results-header h1 { font-size: 20px; margin-bottom: 8px; }
     .search-count { color: var(--bs-secondary-color, #666); font-size: 14px; }
-    .search-keyword { color: #AE1932; font-weight: bold; }
+    .search-keyword { color: #AC1830; font-weight: bold; }
 
     /* 그리드 */
     .hospital-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 40px; }
@@ -86,7 +86,7 @@ $page_css = '
     .hospital-name { font-weight: 700; margin-bottom: 4px; color: var(--bs-body-color, #000); }
     .hospital-address { font-size: 12px; color: var(--bs-secondary-color, #999); margin-bottom: 6px; }
     .rating-section { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-    .rating-score { font-weight: 700; color: #AE1932; }
+    .rating-score { font-weight: 700; color: #AC1830; }
     .review-count { font-size: 12px; color: var(--bs-secondary-color, #666); }
 
     /* 태그 - 가로 스크롤 */
@@ -106,15 +106,15 @@ $page_css = '
     .filter-section { border-bottom: 1px solid var(--bs-border-color, #F5F5F5); padding: 12px 16px; display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
     .filter-section::-webkit-scrollbar { display: none; }
     .filter-btn { padding: 8px 16px; border: 1px solid var(--bs-border-color, #E0E0E0); border-radius: 20px; background: var(--bs-body-bg, #fff); color: var(--bs-secondary-color, #666); font-size: 14px; cursor: pointer; transition: all 0.3s; white-space: nowrap; }
-    .filter-btn:hover { border-color: #AE1932; color: #AE1932; }
-    .filter-btn.active { background: #AE1932; color: white; border-color: #AE1932; }
+    .filter-btn:hover { border-color: #AC1830; color: #AC1830; }
+    .filter-btn.active { background: #AC1830; color: white; border-color: #AC1830; }
     .region-btn { display: inline-block; padding: 6px 14px; border: 1px solid var(--bs-border-color, #e0e0e0); border-radius: 20px; background: var(--bs-body-bg, #fff); color: var(--bs-secondary-color, #666); font-size: 13px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-    .region-btn:hover { border-color: #AE1932; color: #AE1932; }
-    .region-btn.active { background: #AE1932; color: #fff; border-color: #AE1932; }
+    .region-btn:hover { border-color: #AC1830; color: #AC1830; }
+    .region-btn.active { background: #AC1830; color: #fff; border-color: #AC1830; }
     .view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
     .view-btn { flex: 1; padding: 10px; border: 1px solid var(--bs-border-color, #E0E0E0); border-radius: 8px; background: var(--bs-body-bg, #fff); color: var(--bs-secondary-color, #666); font-size: 13px; cursor: pointer; transition: all 0.3s; text-align: center; }
-    .view-btn:hover { border-color: #AE1932; color: #AE1932; }
-    .view-btn.active { background: #AE1932; color: white; border-color: #AE1932; }
+    .view-btn:hover { border-color: #AC1830; color: #AC1830; }
+    .view-btn.active { background: #AC1830; color: white; border-color: #AC1830; }
 
     /* === 카드형 (DB 스타일) === */
     .hospital-grid:not(.list-view):not(.seoul-view) .hospital-name { font-size: ' . $card_name . 'px; }
@@ -200,7 +200,7 @@ include __DIR__ . '/includes/header.php';
         <h1><span class="search-keyword">'<?php echo htmlspecialchars($keyword); ?>'</span> 검색 결과</h1>
         <?php endif; ?>
         <?php if (!empty($category)): ?>
-        <span style="display:inline-block;background:#AE1932;color:#fff;font-size:13px;padding:4px 12px;border-radius:12px;"><?php echo htmlspecialchars($category); ?></span>
+        <span style="display:inline-block;background:#AC1830;color:#fff;font-size:13px;padding:4px 12px;border-radius:12px;"><?php echo htmlspecialchars($category); ?></span>
         <?php endif; ?>
         <p class="search-count">총 <strong><?php echo count($hospitals); ?></strong>개 병원</p>
     </div>
@@ -250,7 +250,7 @@ foreach ($hospitals as $hospital):
             <?php if (!empty($_iad['image_url'])): ?>
             <img src="<?php echo htmlspecialchars($_iad['image_url']); ?>" class="hospital-image" alt="광고">
             <?php else: ?>
-            <div class="hospital-image" style="background:linear-gradient(135deg,#AE1932,#6bb5ff);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:bold;"><?php echo htmlspecialchars($_iad['title']); ?></div>
+            <div class="hospital-image" style="background:linear-gradient(135deg,#AC1830,#6bb5ff);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:bold;"><?php echo htmlspecialchars($_iad['title']); ?></div>
             <?php endif; ?>
             <div class="hospital-info">
                 <div class="hospital-name"><?php echo htmlspecialchars($_iad['title']); ?></div>

@@ -160,12 +160,12 @@ $page_css = '
 
 .search-form input:focus {
     outline: none;
-    border-color: #AE1932;
+    border-color: #AC1830;
 }
 
 .search-form button {
     padding: 12px 24px;
-    background: #AE1932;
+    background: #AC1830;
     color: white;
     border: none;
     border-radius: 8px;
@@ -193,7 +193,7 @@ $page_css = '
     padding: 16px;
     margin-bottom: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border-left: 4px solid #AE1932;
+    border-left: 4px solid #AC1830;
 }
 
 .appointment-header {

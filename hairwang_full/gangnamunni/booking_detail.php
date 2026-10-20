@@ -108,7 +108,7 @@ $page_title = term('booking', '예약') . ' 상세';
     <title><?php echo htmlspecialchars($page_title); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
-        :root { --color-primary:#AE1932; --color-bg:#fff; --color-bg-light:#f8f9fa; --color-text:#222; --color-text-secondary:#666; --color-border:#eee; }
+        :root { --color-primary:#AC1830; --color-bg:#fff; --color-bg-light:#f8f9fa; --color-text:#222; --color-text-secondary:#666; --color-border:#eee; }
         [data-bs-theme="dark"] { --color-bg:#1a1a2e; --color-bg-light:#16213e; --color-text:#e0e0e0; --color-text-secondary:#aaa; --color-border:#333; }
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--color-bg); color:var(--color-text); padding-bottom:97px; }

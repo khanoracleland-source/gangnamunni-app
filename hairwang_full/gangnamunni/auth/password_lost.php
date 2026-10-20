@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       . htmlspecialchars($mb['mb_name']) . "님, 비밀번호 재설정을 요청하셨습니다.<br><br>"
                       . "아래 임시 비밀번호로 바로 로그인해주세요.<br><br>"
                       . "<div style='padding:16px 20px;background:#f7f7f7;border-radius:8px'>"
-                      . "임시 비밀번호 : <strong style='font-size:20px;color:#AE1932;letter-spacing:2px'>" . $change_password . "</strong></div><br>"
+                      . "임시 비밀번호 : <strong style='font-size:20px;color:#AC1830;letter-spacing:2px'>" . $change_password . "</strong></div><br>"
                       . "<span style='font-size:13px;color:#999'>로그인 후 계정 설정에서 비밀번호를 다시 변경해주세요.</span>"
                       . "</div>";
 
@@ -201,7 +201,7 @@ if (!empty($rb_builder['bu_logo_pc'])) {
     $logo_src = $_theme_url . '/rb.img/logos/pc.png?ver=' . $_logo_ver;
 }
 $brand_name = function_exists('getTheme') ? getTheme('site_name', '서울미녀') : '서울미녀';
-$primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932') : '#AE1932';
+$primary    = function_exists('getTheme') ? getTheme('primary_color', '#AC1830') : '#AC1830';
 ?>
 <!DOCTYPE html>
 <html lang="ko">

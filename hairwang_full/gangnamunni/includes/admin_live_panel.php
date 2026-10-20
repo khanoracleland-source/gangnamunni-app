@@ -37,13 +37,13 @@ if (!function_exists('_lpGetAI')) {
 }
 
 $_colors = [
-    ['key'=>'primary_color','label'=>'메인 컬러','default'=>'#AE1932'],
+    ['key'=>'primary_color','label'=>'메인 컬러','default'=>'#AC1830'],
     ['key'=>'secondary_color','label'=>'보조 컬러','default'=>'#8A1428'],
     ['key'=>'background_color','label'=>'배경 컬러','default'=>'#FFFFFF'],
     ['key'=>'text_color','label'=>'글자 컬러','default'=>'#000000'],
     ['key'=>'border_color','label'=>'테두리 컬러','default'=>'#E5E7EB'],
-    ['key'=>'link_color','label'=>'링크 컬러','default'=>'#AE1932'],
-    ['key'=>'login_button_bg','label'=>'로그인 버튼','default'=>'#AE1932'],
+    ['key'=>'link_color','label'=>'링크 컬러','default'=>'#AC1830'],
+    ['key'=>'login_button_bg','label'=>'로그인 버튼','default'=>'#AC1830'],
 ];
 $_ranges = [
     ['key'=>'border_radius','label'=>'모서리 둥글기','default'=>'12','min'=>'0','max'=>'30','unit'=>'px'],
@@ -213,7 +213,7 @@ body.lp-active .live-panel-toggle{left:356px}
     <div class="lp-sub-label"><?= $group['group'] ?></div>
     <?php foreach ($group['items'] as $si): ?>
     <?php if ($si['type'] === 'color'): ?>
-    <div class="lp-row"><label><?= $si['label'] ?></label><div class="lp-color-wrap"><input type="color" data-key="<?= $si['key'] ?>" data-table="settings" value="<?= _lpGetSetting($connect,$si['key'],'#AE1932') ?>"><span class="lp-color-val"><?= _lpGetSetting($connect,$si['key'],'#AE1932') ?></span></div></div>
+    <div class="lp-row"><label><?= $si['label'] ?></label><div class="lp-color-wrap"><input type="color" data-key="<?= $si['key'] ?>" data-table="settings" value="<?= _lpGetSetting($connect,$si['key'],'#AC1830') ?>"><span class="lp-color-val"><?= _lpGetSetting($connect,$si['key'],'#AC1830') ?></span></div></div>
     <?php else: ?>
     <div class="lp-row"><label><?= $si['label'] ?></label><div class="lp-range-wrap"><input type="range" data-key="<?= $si['key'] ?>" data-table="settings" data-unit="px" min="10" max="24" value="<?= _lpGetSetting($connect,$si['key'],'14') ?>"><span class="lp-range-val"><?= _lpGetSetting($connect,$si['key'],'14') ?>px</span></div></div>
     <?php endif; ?>

@@ -348,7 +348,7 @@ if (!empty($rb_builder['bu_logo_pc'])) {
     $logo_src = $_theme_url . '/rb.img/logos/pc.png?ver=' . $_logo_ver;
 }
 $brand_name = function_exists('getTheme') ? getTheme('site_name', '서울미녀') : '서울미녀';
-$primary    = function_exists('getTheme') ? getTheme('primary_color', '#AE1932') : '#AE1932';
+$primary    = function_exists('getTheme') ? getTheme('primary_color', '#AC1830') : '#AC1830';
 $social_services = array_map('strtolower', array_map('trim', explode(',', (string)($config['cf_social_servicelist'] ?? ''))));
 $kakao_enabled = !empty($config['cf_social_login_use'])
     && in_array('kakao', $social_services, true)

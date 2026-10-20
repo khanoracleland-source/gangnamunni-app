@@ -75,7 +75,7 @@ include __DIR__ . '/includes/admin_header.php';
             <?php endif; ?>
 
             <div class="card mb-4">
-                <div class="card-header" style="background: var(--primary-color, #AE1932); color: #fff;">
+                <div class="card-header" style="background: var(--primary-color, #AC1830); color: #fff;">
                     <h5 class="mb-0"><i class="bi bi-toggles me-2"></i>하단 네비게이션 탭 ON/OFF</h5>
                 </div>
                 <div class="card-body">
@@ -88,7 +88,7 @@ include __DIR__ . '/includes/admin_header.php';
                         <?php $is_on = ($nav_settings[$tab['key']] ?? '1') === '1'; ?>
                         <div class="d-flex align-items-center justify-content-between py-3 border-bottom">
                             <div class="d-flex align-items-center gap-3">
-                                <span style="width:40px;height:40px;border-radius:10px;background:var(--bs-tertiary-bg, #f0f0f0);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--primary-color, #AE1932);">
+                                <span style="width:40px;height:40px;border-radius:10px;background:var(--bs-tertiary-bg, #f0f0f0);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--primary-color, #AC1830);">
                                     <i class="bi <?php echo $tab['icon']; ?>"></i>
                                 </span>
                                 <div>
@@ -137,7 +137,7 @@ function updatePreview() {
         var cb = document.getElementById(tab.key);
         if (cb && cb.checked) {
             count++;
-            html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--primary-color, #AE1932);font-size:10px;gap:2px;">' +
+            html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--primary-color, #AC1830);font-size:10px;gap:2px;">' +
                 '<i class="bi ' + tab.icon + '" style="font-size:20px;"></i>' +
                 '<span>' + tab.label + '</span></div>';
         }

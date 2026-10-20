@@ -18,11 +18,11 @@ header('Pragma: no-cache');
     <script>window._pullToRefreshInstalled = true;</script>
     <style>
         :root {
-            --brand: #AE1932;
-            --brand-deep: #AE1932; /* barcha qizil ranglar bir xil */
+            --brand: #AC1830;
+            --brand-deep: #AC1830; /* barcha qizil ranglar bir xil */
             /* xabarcha uchi: yumaloq uchli, asosiy qism bilan 1px ustma-ust — orada chiziq qolmaydi */
-            --tail-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Cpath d='M0 10 6.4 1.6Q8-.5 9.6 1.6L16 10Z' fill='%23AE1932'/%3E%3C/svg%3E");
-            --tail-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Cpath d='M0 0 6.4 8.4Q8 10.5 9.6 8.4L16 0Z' fill='%23AE1932'/%3E%3C/svg%3E");
+            --tail-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Cpath d='M0 10 6.4 1.6Q8-.5 9.6 1.6L16 10Z' fill='%23AC1830'/%3E%3C/svg%3E");
+            --tail-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Cpath d='M0 0 6.4 8.4Q8 10.5 9.6 8.4L16 0Z' fill='%23AC1830'/%3E%3C/svg%3E");
             --brand-soft: #f6dfe3;
             --ink: #111;
             --text: #333;
@@ -384,7 +384,7 @@ header('Pragma: no-cache');
         .is-active .dn-note { animation: dn-glow 2.4s ease-in-out 2.6s infinite; }
         @keyframes dn-up { from { transform: translateY(70%); } to { transform: none; } }
         @keyframes dn-draw { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
-        @keyframes dn-glow { 0%, 70%, 100% { box-shadow: none; } 82% { box-shadow: 0 0 0 3px rgba(174,25,50,.25); } }
+        @keyframes dn-glow { 0%, 70%, 100% { box-shadow: none; } 82% { box-shadow: 0 0 0 3px rgba(172, 24, 48,.25); } }
         @media (max-width: 480px) {
             .tm-sec { padding-left: 16px; padding-right: 16px; }
             .tm-box { margin: 14px -8px 0; padding: 8px; }
@@ -926,7 +926,7 @@ header('Pragma: no-cache');
                 </div>
                 <div class="dn-sheet">
                     <i class="dn-handle"></i>
-                    <svg class="dn-check" viewBox="0 0 44 44"><circle cx="22" cy="22" r="21" fill="#AE1932"/><path d="m12.5 22.5 6.5 6.5 13-14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="dn-check" viewBox="0 0 44 44"><circle cx="22" cy="22" r="21" fill="#AC1830"/><path d="m12.5 22.5 6.5 6.5 13-14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <h3 class="dn-title">예약 요청이 접수되었어요!</h3>
                     <p class="dn-text anim a-fade3">원하시는 날짜와 시간으로 예약을 요청했어요<br>병원에 예약 가능 여부를 확인하고 있어요</p>
                     <div class="dn-box anim a-box">

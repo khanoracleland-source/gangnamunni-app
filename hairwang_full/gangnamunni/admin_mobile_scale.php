@@ -152,8 +152,8 @@ body.ms-has-dirty .ms-dirty{display:inline}
       </div>
 
       <!-- 일률 적용 -->
-      <div class="card mb-3" style="border:2px solid var(--bs-primary,#ae1932)">
-        <div class="card-header fw-bold" style="background:rgba(174,25,50,.08)"><i class="bi bi-lightning-charge"></i> 일률 적용 — 선택 대상에 값 한 번에</div>
+      <div class="card mb-3" style="border:2px solid var(--bs-primary,#AC1830)">
+        <div class="card-header fw-bold" style="background:rgba(172, 24, 48,.08)"><i class="bi bi-lightning-charge"></i> 일률 적용 — 선택 대상에 값 한 번에</div>
         <div class="card-body">
           <div class="row g-2 align-items-end">
             <div class="col-6 col-md-2">

@@ -53,7 +53,7 @@ $page_css = '
 .back-btn { font-size: 24px; text-decoration: none; color: #000; }
 .filter-tabs { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; white-space: nowrap; }
 .filter-tab { padding: 6px 16px; border: 1px solid #e0e0e0; border-radius: 20px; background: #fff; color: #666; font-size: 13px; cursor: pointer; text-decoration: none; }
-.filter-tab.active { background: #AE1932; color: #fff; border-color: #AE1932; }
+.filter-tab.active { background: #AC1830; color: #fff; border-color: #AC1830; }
 .news-section { padding: 0 16px 16px; }
 .news-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
 .news-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }

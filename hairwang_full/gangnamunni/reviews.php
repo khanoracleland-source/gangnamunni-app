@@ -313,7 +313,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     .rv-header .brand {
         font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1));
         font-weight: 800;
-        color: #AE1932;
+        color: #AC1830;
     }
     .rv-header .header-actions {
         display: flex;
@@ -355,7 +355,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
 
     .rv-write-btn {
         display: inline-block;
-        background: var(--primary-color, #AE1932);
+        background: var(--primary-color, #AC1830);
         color: #fff;
         padding: 8px 16px;
         border-radius: 8px;
@@ -405,9 +405,9 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     .rv-cat-tab:hover { background: var(--bs-tertiary-bg, #f5f5f5); color: var(--bs-body-color, #333); }
 
     .rv-cat-tab.active {
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
-        border-color: #AE1932;
+        border-color: #AC1830;
     }
 
     /* ===== 정렬 & 검색 바 ===== */
@@ -437,10 +437,10 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         cursor: pointer;
         transition: all 0.2s;
     }
-    .rv-sort-btn:hover { color: #AE1932; }
+    .rv-sort-btn:hover { color: #AC1830; }
     .rv-sort-btn.active {
         background: #FFF0E8;
-        color: #AE1932;
+        color: #AC1830;
     }
 
     .rv-result-count {
@@ -472,8 +472,8 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         color: var(--bs-body-color, #333);
     }
     .rv-search-input:focus {
-        border-color: #AE1932;
-        box-shadow: 0 0 0 3px rgba(174,25,50,0.1);
+        border-color: #AC1830;
+        box-shadow: 0 0 0 3px rgba(172, 24, 48,0.1);
         background: var(--bs-body-bg, #fff);
     }
     .rv-search-input::placeholder { color: #bbb; }
@@ -482,7 +482,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         padding: 10px 16px;
         border-radius: 10px;
         border: none;
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
         font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1));
         font-weight: 600;
@@ -537,7 +537,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         width: 38px;
         height: 38px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #AE1932, #FF8A50);
+        background: linear-gradient(135deg, #AC1830, #FF8A50);
         color: #fff;
         display: flex;
         align-items: center;
@@ -563,7 +563,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         align-items: center;
         gap: 3px;
     }
-    .rv-hospital-link:hover { color: #AE1932; }
+    .rv-hospital-link:hover { color: #AC1830; }
     .rv-card-date {
         font-size: calc(11px * var(--fs-scale,1) * var(--fs-page,1));
         color: #bbb;
@@ -648,7 +648,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         color: #fff;
     }
     .rv-ba-label.before { background: rgba(0,0,0,0.5); }
-    .rv-ba-label.after { background: #AE1932; }
+    .rv-ba-label.after { background: #AC1830; }
 
     /* ===== 빈 상태 ===== */
     .rv-empty {
@@ -675,7 +675,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     .rv-empty .btn-reset {
         display: inline-block;
         padding: 10px 24px;
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
         border-radius: 10px;
         font-weight: 600;
@@ -702,9 +702,9 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         transition: all 0.2s;
     }
     .rv-load-more .btn-more:hover {
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
-        border-color: #AE1932;
+        border-color: #AC1830;
     }
 
     /* ===== 페이지네이션 ===== */
@@ -731,11 +731,11 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         transition: all 0.2s;
         padding: 0 8px;
     }
-    .rv-pagination .pg-btn:hover { background: #FFF0E8; color: #AE1932; border-color: #AE1932; }
+    .rv-pagination .pg-btn:hover { background: #FFF0E8; color: #AC1830; border-color: #AC1830; }
     .rv-pagination .pg-btn.active {
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
-        border-color: #AE1932;
+        border-color: #AC1830;
     }
     .rv-pagination .pg-btn.disabled {
         opacity: 0.4;
@@ -765,7 +765,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         gap: 4px;
         padding: 3px 10px;
         background: #FFF0E8;
-        color: #AE1932;
+        color: #AC1830;
         font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1));
         font-weight: 600;
         border-radius: 6px;

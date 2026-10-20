@@ -44,7 +44,7 @@ if (!$use_content_cache) {
     if ($style_q) { while ($sr = mysqli_fetch_assoc($style_q)) $s[$sr['setting_key']] = $sr['setting_value']; }
     $list_name = $s['hv_list_name_size'] ?? '15';
     $list_tag_s = $s['hv_list_tag_size'] ?? '11';
-    $list_tag_c = $s['hv_list_tag_color'] ?? '#AE1932';
+    $list_tag_c = $s['hv_list_tag_color'] ?? '#AC1830';
 }
 
 $page_title = term('business');
@@ -52,7 +52,7 @@ $show_search = true;
 
 $page_css = '
     .results-header { margin-bottom: 16px; }
-    .search-filter-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; color: #000; font-size: 12px; padding: 4px 10px; border: 1px solid #AE1932 }
+    .search-filter-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; color: #000; font-size: 12px; padding: 4px 10px; border: 1px solid #AC1830 }
     .search-filter-chip .chip-remove { cursor: pointer; font-size: 15px; line-height: 1; font-weight: 700; opacity: 0.9; }
     .search-filter-chip .chip-remove:hover { opacity: 1; }
 
@@ -102,7 +102,7 @@ $page_css = '
 .card-tag-price { display: flex; flex-direction: column; gap: 0; margin-top: 6px; }
 .card-tag-item { font-size: 18px; font-weight: 700; color: #000; padding: 2px 0; text-align: left; }
 .card-price { width: 100%; text-align: left; font-size: 22px; line-height: 1; }
-.card-price-num { font-size: 20px; font-weight: 700; color: #AE1932; line-height: 1; }
+.card-price-num { font-size: 20px; font-weight: 700; color: #AC1830; line-height: 1; }
 .card-price-unit { font-size: 20px; font-weight: 400; color: #000000; }
 .card-price-sale { display: block; }
 .card-price-max { font-size: 22px; color: #858484; text-decoration: line-through; margin-right: 2px; }

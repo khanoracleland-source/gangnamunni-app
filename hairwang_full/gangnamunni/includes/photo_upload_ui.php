@@ -38,7 +38,7 @@ $show_consent = $photo_config['show_consent'] ?? true;
     background: var(--color-bg-light, #f8f9fa);
     flex-shrink: 0;
 }
-.pu-slot.filled { border-style: solid; border-color: var(--color-primary, #AE1932); }
+.pu-slot.filled { border-style: solid; border-color: var(--color-primary, #AC1830); }
 .pu-slot img { width: 100%; height: 100%; object-fit: cover; }
 .pu-slot .pu-add { font-size: 24px; color: var(--color-text-secondary, #999); }
 .pu-slot .pu-remove {

@@ -71,7 +71,7 @@ $page_css = '
 
 .search-input-page:focus {
     outline: none;
-    border-color: #AE1932;
+    border-color: #AC1830;
 }
 
 /* 검색 결과 헤더 */
@@ -90,7 +90,7 @@ $page_css = '
 }
 
 .search-keyword {
-    color: #AE1932;
+    color: #AC1830;
     font-weight: bold;
 }
 
@@ -112,9 +112,9 @@ $page_css = '
 }
 
 .view-btn.active {
-    background: #AE1932;
+    background: #AC1830;
     color: #FFFFFF;
-    border-color: #AE1932;
+    border-color: #AC1830;
 }
 
 /* 병원 카드 그리드 */
@@ -176,7 +176,7 @@ $page_css = '
 .rating-score {
     font-size: 18px;
     font-weight: bold;
-    color: #AE1932;
+    color: #AC1830;
 }
 
 .review-count {
@@ -194,7 +194,7 @@ $page_css = '
 .badge {
     padding: 4px 8px;
     background: #FFF3E0;
-    color: #AE1932;
+    color: #AC1830;
     font-size: 11px;
     border-radius: 4px;
 }

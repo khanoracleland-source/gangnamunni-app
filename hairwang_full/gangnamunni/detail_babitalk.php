@@ -328,8 +328,8 @@ $current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'home';
         }
 
         .tab-item.active {
-            color: #AE1932;
-            border-bottom-color: #AE1932;
+            color: #AC1830;
+            border-bottom-color: #AC1830;
         }
 
         .tab-count {
@@ -388,7 +388,7 @@ $current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'home';
         }
 
         .btn-primary {
-            background: #AE1932;
+            background: #AC1830;
             color: white;
         }
 

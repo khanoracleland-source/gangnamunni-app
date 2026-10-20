@@ -274,7 +274,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     .rk-header .brand {
         font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1));
         font-weight: 800;
-        color: #AE1932;
+        color: #AC1830;
     }
     .rk-header .header-actions {
         display: flex;
@@ -339,11 +339,11 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         transition: all 0.2s;
         white-space: nowrap;
     }
-    .rk-filter-btn:hover { border-color: #AE1932; color: #AE1932; }
+    .rk-filter-btn:hover { border-color: #AC1830; color: #AC1830; }
     .rk-filter-btn.active {
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
-        border-color: #AE1932;
+        border-color: #AC1830;
     }
 
     /* ===== 카테고리 탭 ===== */
@@ -378,11 +378,11 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         transition: all 0.2s;
         flex-shrink: 0;
     }
-    .rk-cat-tab:hover { border-color: #AE1932; color: #AE1932; }
+    .rk-cat-tab:hover { border-color: #AC1830; color: #AC1830; }
     .rk-cat-tab.active {
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
-        border-color: #AE1932;
+        border-color: #AC1830;
     }
 
     /* ===== 랭킹 카드 ===== */
@@ -446,7 +446,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     }
     .rk-card-name .featured-badge {
         display: inline-block;
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
         font-size: calc(10px * var(--fs-scale,1) * var(--fs-page,1));
         font-weight: 600;
@@ -490,7 +490,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     }
     .rk-score-bar-fill {
         height: 100%;
-        background: linear-gradient(90deg, #AE1932, #FF8A50);
+        background: linear-gradient(90deg, #AC1830, #FF8A50);
         border-radius: 2px;
         transition: width 0.6s ease;
     }
@@ -547,11 +547,11 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
         text-decoration: none;
         transition: all 0.2s;
     }
-    .rk-page-btn:hover { border-color: #AE1932; color: #AE1932; }
+    .rk-page-btn:hover { border-color: #AC1830; color: #AC1830; }
     .rk-page-btn.active {
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
-        border-color: #AE1932;
+        border-color: #AC1830;
     }
     .rk-page-btn.disabled {
         opacity: 0.4;
@@ -577,10 +577,10 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     html[data-bs-theme="dark"] .rk-page-title h1 { color: #eee; }
     html[data-bs-theme="dark"] .rk-filters { background: #16213e; border-color: #2a2a4a; }
     html[data-bs-theme="dark"] .rk-filter-btn { background: #1a1a2e; border-color: #2a2a4a; color: #aaa; }
-    html[data-bs-theme="dark"] .rk-filter-btn.active { background: #AE1932; color: #fff; border-color: #AE1932; }
+    html[data-bs-theme="dark"] .rk-filter-btn.active { background: #AC1830; color: #fff; border-color: #AC1830; }
     html[data-bs-theme="dark"] .rk-cat-wrap { background: #16213e; border-color: #2a2a4a; }
     html[data-bs-theme="dark"] .rk-cat-tab { background: #1a1a2e; border-color: #2a2a4a; color: #aaa; }
-    html[data-bs-theme="dark"] .rk-cat-tab.active { background: #AE1932; color: #fff; border-color: #AE1932; }
+    html[data-bs-theme="dark"] .rk-cat-tab.active { background: #AC1830; color: #fff; border-color: #AC1830; }
     html[data-bs-theme="dark"] .rk-card { background: #16213e; }
     html[data-bs-theme="dark"] .rk-card:hover { background: #1e2a4a; }
     html[data-bs-theme="dark"] .rk-card-name { color: #eee; }
@@ -589,7 +589,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     html[data-bs-theme="dark"] .rk-rank-badge { background: #2a2a4a; color: #aaa; }
     html[data-bs-theme="dark"] .rk-score-bar { background: #2a2a4a; }
     html[data-bs-theme="dark"] .rk-page-btn { background: #16213e; border-color: #2a2a4a; color: #aaa; }
-    html[data-bs-theme="dark"] .rk-page-btn.active { background: #AE1932; color: #fff; border-color: #AE1932; }
+    html[data-bs-theme="dark"] .rk-page-btn.active { background: #AC1830; color: #fff; border-color: #AC1830; }
     html[data-bs-theme="dark"] .rk-footer { background: #16213e; border-color: #2a2a4a; }
     html[data-bs-theme="dark"] .rk-empty h3 { color: #ccc; }
 

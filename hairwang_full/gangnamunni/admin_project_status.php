@@ -734,8 +734,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var items = document.querySelectorAll('[data-date]');
             items.forEach(function(el) {
                 if (el.dataset.date === selectedDate) {
-                    el.style.background = 'rgba(174,25,50,0.1)';
-                    el.style.borderLeft = '4px solid #AE1932';
+                    el.style.background = 'rgba(172, 24, 48,0.1)';
+                    el.style.borderLeft = '4px solid #AC1830';
                     el.scrollIntoView({behavior:'smooth', block:'center'});
                 }
             });

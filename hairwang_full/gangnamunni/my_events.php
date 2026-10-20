@@ -103,9 +103,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'He
 /* ── 탭 바 ── */
 .tab-bar{display:flex;border-bottom:2px solid #e5e5e5;margin-bottom:16px;position:sticky;top:0;background:var(--bs-tertiary-bg, #f5f5f5);z-index:10;padding-top:8px}
 .tab-btn{flex:1;text-align:center;padding:12px 0 10px;font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;color:#888;background:none;border:none;cursor:pointer;position:relative;transition:color .2s}
-.tab-btn.active{color:#AE1932}
+.tab-btn.active{color:#AC1830}
 .tab-btn::after{content:'';position:absolute;bottom:-2px;left:20%;right:20%;height:3px;border-radius:3px 3px 0 0;background:transparent;transition:background .2s,left .2s,right .2s}
-.tab-btn.active::after{background:#AE1932;left:10%;right:10%}
+.tab-btn.active::after{background:#AC1830;left:10%;right:10%}
 
 /* ── 탭 콘텐츠 ── */
 .tab-content{display:none;animation:fadeUp .25s ease}
@@ -131,14 +131,14 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'He
 /* ── 가격 ── */
 .ev-price{display:flex;align-items:center;gap:6px;margin-top:4px}
 .ev-price .original{font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));color:#aaa;text-decoration:line-through}
-.ev-price .discount{font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:800;color:#AE1932}
-.ev-price .rate{font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;color:#AE1932;background:rgba(174,25,50,.08);padding:2px 6px;border-radius:4px}
+.ev-price .discount{font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:800;color:#AC1830}
+.ev-price .rate{font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;color:#AC1830;background:rgba(172, 24, 48,.08);padding:2px 6px;border-radius:4px}
 
 /* ── 카테고리 태그 ── */
-.ev-category{display:inline-block;font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;color:#AE1932;background:rgba(174,25,50,.07);padding:2px 8px;border-radius:4px;margin-bottom:4px}
+.ev-category{display:inline-block;font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;color:#AC1830;background:rgba(172, 24, 48,.07);padding:2px 8px;border-radius:4px;margin-bottom:4px}
 
 /* ── 래플 정보 ── */
-.ev-raffle{font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1));color:#AE1932;margin-top:4px;display:flex;align-items:center;gap:4px}
+.ev-raffle{font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1));color:#AC1830;margin-top:4px;display:flex;align-items:center;gap:4px}
 .ev-raffle svg{flex-shrink:0}
 
 /* ── 기간 ── */
@@ -359,7 +359,7 @@ include __DIR__ . '/includes/header.php';
                         <span><?php echo $period_text; ?></span>
                     <?php endif; ?>
                     <?php if ($dday_text): ?>
-                        <span style="color:#AE1932;font-weight:700"><?php echo $dday_text; ?></span>
+                        <span style="color:#AC1830;font-weight:700"><?php echo $dday_text; ?></span>
                     <?php endif; ?>
                 </p>
                 <?php if ($ev_has_raffle && $ev_raffle_prize): ?>

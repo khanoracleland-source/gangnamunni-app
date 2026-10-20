@@ -99,15 +99,15 @@ if ($tab_count === 0) return;
     filter: grayscale(100%) brightness(0.7);
 }
 .bottom-nav-item.active {
-    color: #ae1932;
+    color: #AC1830;
     font-weight: 700;
 }
 .bottom-nav-item.active .nav-icon {
-    /* Active: 피그마 빨간색 (#ae1932) 색조 적용 */
+    /* Active: 피그마 빨간색 (#AC1830) 색조 적용 */
     filter: brightness(0) saturate(100%) invert(15%) sepia(80%) saturate(3500%) hue-rotate(340deg) brightness(80%) contrast(100%);
 }
 .bottom-nav-item:hover {
-    color: #ae1932;
+    color: #AC1830;
 }
 .bottom-nav-item:hover .nav-icon {
     filter: brightness(0) saturate(100%) invert(15%) sepia(80%) saturate(3500%) hue-rotate(340deg) brightness(80%) contrast(100%);
@@ -116,7 +116,7 @@ if ($tab_count === 0) return;
     position: absolute;
     top: 8px;
     right: calc(50% - 16px);
-    background: var(--color-primary, #AE1932);
+    background: var(--color-primary, #AC1830);
     color: #fff;
     font-size: 9px;
     font-weight: 700;

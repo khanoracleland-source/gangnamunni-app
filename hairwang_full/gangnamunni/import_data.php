@@ -28,7 +28,7 @@ mysqli_set_charset($connect, 'utf8mb4');
 echo "<!DOCTYPE html>";
 echo "<html><head><meta charset='UTF-8'><title>데이터 Import</title>";
 echo "<style>body{font-family:sans-serif;padding:40px;background:#f5f5f5;max-width:800px;margin:0 auto;}";
-echo "h1{color:#AE1932;} .log{background:#000;color:#0f0;padding:20px;border-radius:8px;font-family:monospace;white-space:pre-wrap;margin:20px 0;}</style></head><body>";
+echo "h1{color:#AC1830;} .log{background:#000;color:#0f0;padding:20px;border-radius:8px;font-family:monospace;white-space:pre-wrap;margin:20px 0;}</style></head><body>";
 
 echo "<h1>📥 강남언니 데이터 Import</h1>";
 
@@ -136,14 +136,14 @@ if ($hospitals_count > 0 || $tips_count > 0) {
     echo "<h2>✅ Import 성공!</h2>";
     echo "<p style='font-size:18px;'>";
     if ($hospitals_count > 0) {
-        echo "🏥 병원 데이터: <strong style='font-size:24px;color:#AE1932;'>{$hospitals_count}</strong>개<br>";
+        echo "🏥 병원 데이터: <strong style='font-size:24px;color:#AC1830;'>{$hospitals_count}</strong>개<br>";
     }
     if ($tips_count > 0) {
-        echo "💡 꿀팁 데이터: <strong style='font-size:24px;color:#AE1932;'>{$tips_count}</strong>개<br>";
+        echo "💡 꿀팁 데이터: <strong style='font-size:24px;color:#AC1830;'>{$tips_count}</strong>개<br>";
     }
     echo "</p>";
     echo "<p>총 <strong>{$total_query_count}</strong>개의 쿼리가 실행되었습니다.</p>";
-    echo "<p><a href='index.php' style='display:inline-block;margin-top:10px;padding:15px 30px;background:#AE1932;color:white;text-decoration:none;border-radius:8px;font-size:18px;'>강남언니 페이지 보기 →</a></p>";
+    echo "<p><a href='index.php' style='display:inline-block;margin-top:10px;padding:15px 30px;background:#AC1830;color:white;text-decoration:none;border-radius:8px;font-size:18px;'>강남언니 페이지 보기 →</a></p>";
     echo "</div>";
 } else {
     echo "<p style='color:red;'>데이터 확인 실패: 데이터가 없습니다.</p>";

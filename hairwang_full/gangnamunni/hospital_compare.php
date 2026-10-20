@@ -59,7 +59,7 @@ $compare_items = [
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();</script>
 <style>
-:root { --primary: #AE1932; --bg: #f8f9fa; --card: #fff; --text: #1a1a1a; --muted: #888; --border: #eee; }
+:root { --primary: #AC1830; --bg: #f8f9fa; --card: #fff; --text: #1a1a1a; --muted: #888; --border: #eee; }
 [data-bs-theme="dark"] { --bg: #1a1a1a; --card: #2d2d2d; --text: #e5e5e5; --muted: #999; --border: #444; }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); max-width:640px; margin:0 auto; padding-bottom:80px; }

@@ -33,7 +33,7 @@ if (!function_exists('term')) require_once __DIR__ . '/includes/industry_terms.p
 <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();</script>
 <style>
 :root{
-  --pri:#AE1932;
+  --pri:#AC1830;
   --bg:#fff;--line:#e2e2e2;--text:#111;--sub:#333;--muted:#9a9a9a;
   --fs:calc(var(--fs-scale,1) * var(--fs-page,1));
 }

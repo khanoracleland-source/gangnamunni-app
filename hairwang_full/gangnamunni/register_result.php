@@ -18,7 +18,7 @@ include __DIR__ . '/includes/header.php';
         서울미녀에 오신 것을 환영합니다.<br>
         지금 바로 다양한 서비스를 이용해보세요.
     </p>
-    <a href="index.php" style="display:inline-block;padding:14px 48px;background:#AE1932;color:#fff;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;transition:background 0.2s;">
+    <a href="index.php" style="display:inline-block;padding:14px 48px;background:#AC1830;color:#fff;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;transition:background 0.2s;">
         메인으로
     </a>
 </div>

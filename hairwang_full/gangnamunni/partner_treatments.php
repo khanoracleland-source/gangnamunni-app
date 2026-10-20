@@ -329,7 +329,7 @@ include __DIR__ . '/includes/header.php';
 .pt-container { max-width: 640px; margin: 0 auto; padding: 0 16px 100px; }
 .pt-hospital-badge {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 14px; background: #FFF0F0; color: #AE1932;
+    padding: 6px 14px; background: #FFF0F0; color: #AC1830;
     border-radius: 20px; font-size: 13px; font-weight: 600;
     margin-bottom: 12px;
 }
@@ -351,14 +351,14 @@ include __DIR__ . '/includes/header.php';
     border-bottom: 2px solid transparent; margin-bottom: -2px;
     transition: all 0.2s;
 }
-.pt-tab.active { color: #AE1932; border-bottom-color: #AE1932; font-weight: 700; }
+.pt-tab.active { color: #AC1830; border-bottom-color: #AC1830; font-weight: 700; }
 .pt-tab .badge-count {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 18px; height: 18px; padding: 0 5px;
     background: #eee; color: var(--bs-secondary-color, #666); border-radius: 9px;
     font-size: 11px; font-weight: 600; margin-left: 4px;
 }
-.pt-tab.active .badge-count { background: #AE1932; color: #fff; }
+.pt-tab.active .badge-count { background: #AC1830; color: #fff; }
 
 /* 시술 카드 */
 .pt-card {
@@ -372,7 +372,7 @@ include __DIR__ . '/includes/header.php';
 }
 .pt-card-title { font-size: 15px; font-weight: 600; color: #222; }
 .pt-card-hashtag {
-    font-size: 12px; color: #AE1932; background: #FFF0F0;
+    font-size: 12px; color: #AC1830; background: #FFF0F0;
     padding: 2px 8px; border-radius: 10px; white-space: nowrap;
 }
 .pt-card-meta {
@@ -396,7 +396,7 @@ include __DIR__ . '/includes/header.php';
 .pt-btn-edit:hover { background: #e0e0e0; }
 .pt-btn-del { background: var(--bs-body-bg, #fff); color: #e53935; border: 1px solid #ffcdd2; }
 .pt-btn-del:hover { background: #ffebee; }
-.pt-btn-primary { background: #AE1932; color: #fff; }
+.pt-btn-primary { background: #AC1830; color: #fff; }
 .pt-btn-primary:hover { background: #B71C1C; }
 .pt-btn-primary:disabled { background: #ccc; color: #999; cursor: not-allowed; }
 
@@ -429,7 +429,7 @@ include __DIR__ . '/includes/header.php';
     font-weight: 500; background: var(--bs-tertiary-bg, #f5f5f5); color: var(--bs-secondary-color, #666);
     border: none; cursor: pointer; transition: all 0.15s;
 }
-.pt-cat-btn.active { background: #AE1932; color: #fff; }
+.pt-cat-btn.active { background: #AC1830; color: #fff; }
 
 /* 체크박스 그리드 */
 .pt-check-grid { display: flex; flex-direction: column; gap: 8px; }
@@ -438,8 +438,8 @@ include __DIR__ . '/includes/header.php';
     padding: 10px 12px; background: #fafafa; border-radius: 10px;
     border: 1px solid var(--bs-border-color, #f0f0f0); cursor: pointer; transition: all 0.15s;
 }
-.pt-check-item:hover { border-color: #AE1932; background: #FFF8F8; }
-.pt-check-item input[type="checkbox"] { accent-color: #AE1932; width: 18px; height: 18px; flex-shrink: 0; }
+.pt-check-item:hover { border-color: #AC1830; background: #FFF8F8; }
+.pt-check-item input[type="checkbox"] { accent-color: #AC1830; width: 18px; height: 18px; flex-shrink: 0; }
 .pt-check-info { flex: 1; }
 .pt-check-name { font-size: 14px; font-weight: 500; color: var(--bs-body-color, #333); }
 .pt-check-sub { font-size: 11px; color: #999; margin-top: 2px; }
@@ -452,7 +452,7 @@ include __DIR__ . '/includes/header.php';
     width: 90px; padding: 6px 8px; border: 1px solid #ddd;
     border-radius: 6px; font-size: 13px; text-align: right;
 }
-.pt-price-input:focus { border-color: #AE1932; outline: none; }
+.pt-price-input:focus { border-color: #AC1830; outline: none; }
 
 /* 플래시 메시지 */
 .pt-flash {
@@ -482,7 +482,7 @@ include __DIR__ . '/includes/header.php';
 .pt-select-bar {
     position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
     width: calc(100% - 32px); max-width: 608px;
-    background: #AE1932; color: #fff; border-radius: 12px;
+    background: #AC1830; color: #fff; border-radius: 12px;
     padding: 12px 16px; display: none; align-items: center;
     justify-content: space-between; box-shadow: 0 4px 16px rgba(211,47,47,0.3);
     z-index: 50;
@@ -490,7 +490,7 @@ include __DIR__ . '/includes/header.php';
 .pt-select-bar.show { display: flex; }
 .pt-select-count { font-size: 14px; font-weight: 600; }
 .pt-select-submit {
-    padding: 8px 20px; background: var(--bs-body-bg, #fff); color: #AE1932;
+    padding: 8px 20px; background: var(--bs-body-bg, #fff); color: #AC1830;
     border: none; border-radius: 8px; font-size: 13px;
     font-weight: 700; cursor: pointer;
 }
@@ -718,7 +718,7 @@ include __DIR__ . '/includes/header.php';
                             <div class="pt-check-name">
                                 <?php echo htmlspecialchars($at['name']); ?>
                                 <?php if (!empty($at['hashtag'])): ?>
-                                    <span style="color:#AE1932;font-size:11px;">#<?php echo htmlspecialchars($at['hashtag']); ?></span>
+                                    <span style="color:#AC1830;font-size:11px;">#<?php echo htmlspecialchars($at['hashtag']); ?></span>
                                 <?php endif; ?>
                             </div>
                             <div class="pt-check-sub">

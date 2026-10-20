@@ -56,8 +56,8 @@ function renderBeforeAfterGallery($hospital_id, $connect, $treatment_id = null) 
                     <?php endif; ?>
                     <span style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.6);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">BEFORE</span>
                 </div>
-                <div style="width:2px;background:var(--bs-primary,#AE1932);position:relative;">
-                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;background:var(--bs-primary,#AE1932);border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:1;">
+                <div style="width:2px;background:var(--bs-primary,#AC1830);position:relative;">
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;background:var(--bs-primary,#AC1830);border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:1;">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </div>
                 </div>
@@ -67,7 +67,7 @@ function renderBeforeAfterGallery($hospital_id, $connect, $treatment_id = null) 
                     <?php else: ?>
                     <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#999;">After</div>
                     <?php endif; ?>
-                    <span style="position:absolute;top:8px;right:8px;background:var(--bs-primary,#AE1932);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">AFTER</span>
+                    <span style="position:absolute;top:8px;right:8px;background:var(--bs-primary,#AC1830);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">AFTER</span>
                 </div>
             </div>
             <div style="padding:10px 12px;">

@@ -65,7 +65,7 @@ function pr_page_open($title, $back = 'my_reviews.php') {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();</script>
 <style>
-:root{--pri:#AE1932;--bg:#fff;--band:#f2f2f2;--line:#e5e5e5;--line-2:#cfcfcf;--text:#111;--sub:#444;--muted:#9a9a9a;--fs:calc(var(--fs-scale,1) * var(--fs-page,1));}
+:root{--pri:#AC1830;--bg:#fff;--band:#f2f2f2;--line:#e5e5e5;--line-2:#cfcfcf;--text:#111;--sub:#444;--muted:#9a9a9a;--fs:calc(var(--fs-scale,1) * var(--fs-page,1));}
 [data-bs-theme="dark"]{--pri:#e0566c;--bg:#16181b;--band:#0d0e10;--line:#2c2f34;--line-2:#3a3e44;--text:#ececec;--sub:#c4c4c4;--muted:#8a8f96;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;max-width:640px;margin:0 auto;background:var(--bg);color:var(--text);padding-bottom:96px;-webkit-font-smoothing:antialiased;letter-spacing:-.2px;word-break:keep-all;overflow-wrap:anywhere;}

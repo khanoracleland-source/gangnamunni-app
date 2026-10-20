@@ -283,7 +283,7 @@ var phaseLabels = {
     phase2: {label: 'CPV \uacfc\uae08 \uc5d4\uc9c4', icon: 'bi-cpu', color: '#dc2626'},
     phase3: {label: '\ub2e8\uac00 \uc815\ucc45', icon: 'bi-currency-dollar', color: '#ea580c'},
     phase4: {label: '\uc608\uc0b0 \uad00\ub9ac', icon: 'bi-piggy-bank', color: '#16a34a'},
-    phase5: {label: '\ucda9\uc804 \uc0c1\ud488 & \ub300\uc2dc\ubcf4\ub4dc', icon: 'bi-graph-up-arrow', color: '#AE1932'},
+    phase5: {label: '\ucda9\uc804 \uc0c1\ud488 & \ub300\uc2dc\ubcf4\ub4dc', icon: 'bi-graph-up-arrow', color: '#AC1830'},
     phase7: {label: 'AI \uacfc\uae08 \uc124\uc815', icon: 'bi-robot', color: '#0891b2'}
 };
 var phaseOrder = ['phase6','phase1','phase2','phase3','phase4','phase5','phase7'];

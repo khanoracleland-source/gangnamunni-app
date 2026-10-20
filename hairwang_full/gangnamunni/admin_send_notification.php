@@ -423,7 +423,7 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
                         <button type="button" class="btn btn-outline-secondary flex-fill" id="previewBtn">
                             <i class="bi bi-eye me-1"></i>미리보기
                         </button>
-                        <button type="button" class="btn btn-primary flex-fill" id="sendBtn" style="background:#AE1932;border-color:#AE1932;">
+                        <button type="button" class="btn btn-primary flex-fill" id="sendBtn" style="background:#AC1830;border-color:#AC1830;">
                             <i class="bi bi-send me-1"></i>발송하기
                         </button>
                     </div>
@@ -540,8 +540,8 @@ while ($push_member_result && $row = mysqli_fetch_assoc($push_member_result)) {
     // 알림 유형 정보
     var typeInfo = {
         general:   { label: '일반 알림',  icon: 'bi-bell',           color: '#6c757d', bg: 'bg-secondary' },
-        booking:   { label: '예약 알림',  icon: 'bi-calendar-check', color: '#AE1932', bg: 'bg-danger'    },
-        event:     { label: '이벤트',     icon: 'bi-calendar-event', color: '#AE1932', bg: 'bg-warning'   },
+        booking:   { label: '예약 알림',  icon: 'bi-calendar-check', color: '#AC1830', bg: 'bg-danger'    },
+        event:     { label: '이벤트',     icon: 'bi-calendar-event', color: '#AC1830', bg: 'bg-warning'   },
         raffle:    { label: '응모/추첨',  icon: 'bi-gift',           color: '#198754', bg: 'bg-success'   },
         promotion: { label: '프로모션',   icon: 'bi-megaphone',      color: '#dc3545', bg: 'bg-danger'    },
         system:    { label: '시스템',     icon: 'bi-gear',           color: '#0d6efd', bg: 'bg-primary'   }

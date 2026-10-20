@@ -65,7 +65,7 @@ if ($is_word) {
 <title><?= $title ?></title>
 <style>
 body { font-family: 'Malgun Gothic', sans-serif; font-size: 12px; color: #333; margin: 20px; }
-h1 { font-size: 20px; border-bottom: 2px solid #AE1932; padding-bottom: 8px; }
+h1 { font-size: 20px; border-bottom: 2px solid #AC1830; padding-bottom: 8px; }
 .summary { display: flex; gap: 20px; margin: 15px 0; }
 .summary-item { text-align: center; padding: 10px 20px; border: 1px solid #ddd; border-radius: 8px; }
 .summary-num { font-size: 24px; font-weight: bold; }
@@ -96,7 +96,7 @@ h1 { font-size: 20px; border-bottom: 2px solid #AE1932; padding-bottom: 8px; }
 
 <?php if (!$is_word): ?>
 <div class="no-print" style="margin:10px 0;">
-    <button onclick="window.print()" style="padding:8px 20px;background:#AE1932;color:#fff;border:none;border-radius:6px;cursor:pointer;">PDF로 저장 (Ctrl+P)</button>
+    <button onclick="window.print()" style="padding:8px 20px;background:#AC1830;color:#fff;border:none;border-radius:6px;cursor:pointer;">PDF로 저장 (Ctrl+P)</button>
 </div>
 <?php endif; ?>
 

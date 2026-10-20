@@ -39,7 +39,7 @@ function loadThemeSettings($connect) {
 
     // 기본값 설정 — 업종 프리셋 연동
     $_th_site_name = (function_exists('site_name') && class_exists('IndustryPreset')) ? IndustryPreset::getInstance()->getDisplayName() : '서울미녀';
-    $_th_primary = (function_exists('industry_config') ? industry_config('default_theme.primary_color', '#AE1932') : '#AE1932');
+    $_th_primary = (function_exists('industry_config') ? industry_config('default_theme.primary_color', '#AC1830') : '#AC1830');
     $_th_accent = (function_exists('industry_config') ? industry_config('default_theme.accent_color', '#8A1428') : '#8A1428');
     $defaults = [
         'site_name' => $_th_site_name,
@@ -51,7 +51,7 @@ function loadThemeSettings($connect) {
         'background_color' => '#FFFFFF',
         'border_color' => '#F5F5F5',
         'button_text_color' => '#FFFFFF',
-        'link_color' => '#AE1932',
+        'link_color' => '#AC1830',
         'link_hover_color' => '#8A1428',
         'font_korean' => 'Noto Sans KR',
         'font_english' => 'Roboto',
@@ -71,7 +71,7 @@ function loadThemeSettings($connect) {
         'spacing_small' => '8px',
         'spacing_medium' => '16px',
         'spacing_large' => '24px',
-        'login_button_bg' => '#AE1932',
+        'login_button_bg' => '#AC1830',
         'login_button_text' => '#FFFFFF'
     ];
 
@@ -105,14 +105,14 @@ function generateThemeCSS() {
 
     $css = "<style>\n";
     $css .= ":root {\n";
-    $css .= "    --primary-color: " . getTheme('primary_color', '#AE1932') . ";\n";
+    $css .= "    --primary-color: " . getTheme('primary_color', '#AC1830') . ";\n";
     $css .= "    --secondary-color: " . getTheme('secondary_color', '#8A1428') . ";\n";
     $css .= "    --text-color: " . getTheme('text_color', '#000000') . ";\n";
     $css .= "    --text-secondary-color: " . getTheme('text_secondary_color', '#666666') . ";\n";
     $css .= "    --background-color: " . getTheme('background_color', '#FFFFFF') . ";\n";
     $css .= "    --border-color: " . getTheme('border_color', '#F5F5F5') . ";\n";
     $css .= "    --button-text-color: " . getTheme('button_text_color', '#FFFFFF') . ";\n";
-    $css .= "    --link-color: " . getTheme('link_color', '#AE1932') . ";\n";
+    $css .= "    --link-color: " . getTheme('link_color', '#AC1830') . ";\n";
     $css .= "    --link-hover-color: " . getTheme('link_hover_color', '#8A1428') . ";\n";
     $css .= "    --border-radius: " . getTheme('border_radius', '12px') . ";\n";
     $css .= "    --card-shadow: " . getTheme('card_shadow', '0 2px 8px rgba(0,0,0,0.08)') . ";\n";
@@ -124,7 +124,7 @@ function generateThemeCSS() {
     $css .= "    --font-size-small: " . getTheme('font_size_small', '12px') . ";\n";
     $css .= "    --font-weight-normal: " . getTheme('font_weight_normal', '400') . ";\n";
     $css .= "    --font-weight-bold: " . getTheme('font_weight_bold', '700') . ";\n";
-    $css .= "    --login-button-bg: " . getTheme('login_button_bg', '#AE1932') . ";\n";
+    $css .= "    --login-button-bg: " . getTheme('login_button_bg', '#AC1830') . ";\n";
     $css .= "    --login-button-text: " . getTheme('login_button_text', '#FFFFFF') . ";\n";
     // 피그마 디자인 토큰 (DB에서 관리, admin_design_tokens.php)
     $css .= "    --color-inactive: " . getDesignToken('fd_inactive_color', '#AAAAAA') . ";\n";
@@ -135,7 +135,7 @@ function generateThemeCSS() {
     $css .= "    --color-header-bg: " . getDesignToken('fd_header_bg_color', '#F1F1F1') . ";\n";
     $css .= "    --color-border-light: " . getDesignToken('fd_border_light_color', '#D5D5D5') . ";\n";
     $css .= "    --color-dark: " . getDesignToken('fd_dark_color', '#1A0000') . ";\n";
-    $css .= "    --color-community-tab-active: " . getDesignToken('fd_community_tab_active', '#AE1932') . ";\n";
+    $css .= "    --color-community-tab-active: " . getDesignToken('fd_community_tab_active', '#AC1830') . ";\n";
     $css .= "    --color-community-tab-inactive: " . getDesignToken('fd_community_tab_inactive', '#F1F1F1') . ";\n";
     // ===== [폰트 스케일 시스템 2026-06-16] 기기/페이지 보정 + 시맨틱 토큰 =====
     $css .= "    --fs-os: " . getTheme('fs_os_scale', '1') . ";

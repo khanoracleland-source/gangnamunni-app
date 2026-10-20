@@ -109,7 +109,7 @@ if ($min_price === PHP_INT_MAX) $min_price = 0;
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();</script>
 <style>
-:root { --primary: #AE1932; --bg: #f8f9fa; --card: #fff; --text: #1a1a1a; --muted: #888; --border: #eee; }
+:root { --primary: #AC1830; --bg: #f8f9fa; --card: #fff; --text: #1a1a1a; --muted: #888; --border: #eee; }
 [data-bs-theme="dark"] { --bg: #1a1a1a; --card: #2d2d2d; --text: #e5e5e5; --muted: #999; --border: #444; }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); max-width:640px; margin:0 auto; padding-bottom:80px; }
@@ -126,7 +126,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .sort-tab { padding:6px 14px; border-radius:16px; border:1px solid var(--border); background:var(--card); color:var(--muted); font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1)); cursor:pointer; text-decoration:none; }
 .sort-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
 
-.stats-bar { padding:12px 16px; background:linear-gradient(135deg, #AE193211, #AE193205); display:flex; justify-content:space-around; text-align:center; }
+.stats-bar { padding:12px 16px; background:linear-gradient(135deg, #AC183011, #AC183005); display:flex; justify-content:space-around; text-align:center; }
 .stat-item .stat-label { font-size:calc(11px * var(--fs-scale,1) * var(--fs-page,1)); color:var(--muted); }
 .stat-item .stat-value { font-size:calc(16px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; color:var(--primary); }
 

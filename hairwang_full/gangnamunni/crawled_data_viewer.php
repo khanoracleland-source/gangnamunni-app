@@ -138,7 +138,7 @@ $offset = ($page - 1) * $per_page;
         .stat-number {
             font-size: 32px;
             font-weight: bold;
-            color: #AE1932;
+            color: #AC1830;
             margin-bottom: 8px;
         }
 
@@ -229,7 +229,7 @@ $offset = ($page - 1) * $per_page;
 
         .filter-btn {
             padding: 10px 20px;
-            background: #AE1932;
+            background: #AC1830;
             color: white;
             border: none;
             border-radius: 8px;
@@ -259,9 +259,9 @@ $offset = ($page - 1) * $per_page;
         }
 
         .tab-btn.active {
-            background: #AE1932;
+            background: #AC1830;
             color: white;
-            border-color: #AE1932;
+            border-color: #AC1830;
         }
 
         /* 데이터 테이블 */
@@ -321,9 +321,9 @@ $offset = ($page - 1) * $per_page;
         }
 
         .page-btn.active {
-            background: #AE1932;
+            background: #AC1830;
             color: white;
-            border-color: #AE1932;
+            border-color: #AC1830;
         }
 
         @media (max-width: 768px) {

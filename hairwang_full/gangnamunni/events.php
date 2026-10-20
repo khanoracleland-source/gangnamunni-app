@@ -97,11 +97,11 @@ $page_css = '
     cursor: pointer;
 }
 .filter-tab.active {
-    background: #AE1932;
+    background: #AC1830;
     color: white;
 }
 .filter-tab.raffle.active {
-    background: #AE1932;
+    background: #AC1830;
 }
 
 /* 카테고리 필터 */
@@ -126,9 +126,9 @@ $page_css = '
 }
 
 .filter-btn.active {
-    background: #AE1932;
+    background: #AC1830;
     color: white;
-    border-color: #AE1932;
+    border-color: #AC1830;
 }
 
 /* 이벤트 그리드 */
@@ -179,7 +179,7 @@ $page_css = '
     position: absolute;
     top: 12px;
     right: 12px;
-    background: #AE1932;
+    background: #AC1830;
     color: white;
     padding: 6px 12px;
     border-radius: 20px;
@@ -190,7 +190,7 @@ $page_css = '
     position: absolute;
     top: 12px;
     left: 12px;
-    background: #AE1932;
+    background: #AC1830;
     color: white;
     padding: 6px 12px;
     border-radius: 20px;
@@ -204,7 +204,7 @@ $page_css = '
 
 .event-category {
     font-size: 12px;
-    color: #AE1932;
+    color: #AC1830;
     font-weight: 600;
     margin-bottom: 8px;
 }
@@ -246,13 +246,13 @@ $page_css = '
 .discount-price {
     font-size: 18px;
     font-weight: bold;
-    color: #AE1932;
+    color: #AC1830;
 }
 
 .discount-rate {
     font-size: 14px;
     font-weight: bold;
-    color: #AE1932;
+    color: #AC1830;
 }
 .event-date {
     font-size: 11px;

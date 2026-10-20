@@ -33,16 +33,16 @@ $HMS = '/var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5
 .ss-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--bs-secondary-color); margin-bottom:8px; }
 .ss-legend span { display:inline-flex; align-items:center; gap:4px; }
 .dot { width:12px; height:12px; border-radius:3px; display:inline-block; }
-.d-core{background:#16a34a}.d-web{background:#ae1932}.d-app{background:#0891b2}.d-fw{background:#6366f1}.d-data{background:#d97706}.d-bak{background:#9ca3af}
+.d-core{background:#16a34a}.d-web{background:#AC1830}.d-app{background:#0891b2}.d-fw{background:#6366f1}.d-data{background:#d97706}.d-bak{background:#9ca3af}
 table.ss-tbl { width:100%; border-collapse:collapse; font-size:13.5px; }
 .ss-tbl th, .ss-tbl td { text-align:left; padding:9px 11px; border-bottom:1px solid var(--bs-border-color); vertical-align:top; }
 .ss-tbl th { background:var(--bs-tertiary-bg); white-space:nowrap; }
 .ss-tbl code { background:var(--bs-tertiary-bg); padding:2px 7px; border-radius:5px; font-size:12.5px; color:#be185d; white-space:nowrap; }
 .ss-tag { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; color:#fff; white-space:nowrap; }
-.t-core{background:#16a34a}.t-web{background:#ae1932}.t-app{background:#0891b2}.t-fw{background:#6366f1}.t-data{background:#d97706}.t-bak{background:#9ca3af}
+.t-core{background:#16a34a}.t-web{background:#AC1830}.t-app{background:#0891b2}.t-fw{background:#6366f1}.t-data{background:#d97706}.t-bak{background:#9ca3af}
 .ss-sz { font-family:ui-monospace,monospace; color:var(--bs-secondary-color); font-size:12px; }
 .ss-tree { font-family:ui-monospace,Menlo,monospace; font-size:13px; line-height:1.7; background:var(--bs-tertiary-bg); padding:16px 18px; border-radius:10px; overflow-x:auto; }
-.ss-tree .c1{color:#16a34a;font-weight:700}.ss-tree .c2{color:#ae1932;font-weight:700}.ss-tree .c3{color:#0891b2}.ss-tree .c4{color:#9ca3af}
+.ss-tree .c1{color:#16a34a;font-weight:700}.ss-tree .c2{color:#AC1830;font-weight:700}.ss-tree .c3{color:#0891b2}.ss-tree .c4{color:#9ca3af}
 .ss-note { background:#fff7ed; border-left:4px solid #d97706; padding:12px 15px; border-radius:0 8px 8px 0; font-size:13px; margin:10px 0; }
 [data-bs-theme="dark"] .ss-note{ background:#2d2416; }
 </style>

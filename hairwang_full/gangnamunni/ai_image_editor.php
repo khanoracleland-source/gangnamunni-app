@@ -337,8 +337,8 @@ $admin_extra_css = '
 <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
 <style>
 :root {
-    --primary: #AE1932;
-    --purple: #AE1932;
+    --primary: #AC1830;
+    --purple: #AC1830;
     --dark: #1a1a1a;
     --gray: #6b7280;
     --light: #f3f4f6;
@@ -1277,7 +1277,7 @@ include __DIR__ . '/includes/admin_header.php';
             <h4>선택 객체</h4>
             <div class="prop-row">
                 <label>색상</label>
-                <input type="color" id="propFill" value="#AE1932" onchange="updateProp('fill', this.value)">
+                <input type="color" id="propFill" value="#AC1830" onchange="updateProp('fill', this.value)">
             </div>
             <div class="prop-row">
                 <label>테두리</label>
@@ -1329,10 +1329,10 @@ include __DIR__ . '/includes/admin_header.php';
         <div class="props-section">
             <h4>빠른 배지</h4>
             <div class="badge-presets">
-                <div class="badge-preset" style="background:#AE1932;color:white;" onclick="addBadge('할인')">할인</div>
+                <div class="badge-preset" style="background:#AC1830;color:white;" onclick="addBadge('할인')">할인</div>
                 <div class="badge-preset" style="background:#EF4444;color:white;" onclick="addBadge('HOT')">HOT</div>
                 <div class="badge-preset" style="background:#10B981;color:white;" onclick="addBadge('NEW')">NEW</div>
-                <div class="badge-preset" style="background:#AE1932;color:white;" onclick="addBadge('응모')">응모</div>
+                <div class="badge-preset" style="background:#AC1830;color:white;" onclick="addBadge('응모')">응모</div>
                 <div class="badge-preset" style="background:#F59E0B;color:white;" onclick="addBadge('추천')">추천</div>
                 <div class="badge-preset" style="background:#3B82F6;color:white;" onclick="addBadge('무료')">무료</div>
                 <div class="badge-preset" style="background:#1a1a1a;color:white;" onclick="addBadge('BEST')">BEST</div>
@@ -1425,7 +1425,7 @@ include __DIR__ . '/includes/admin_header.php';
         </div>
         <div class="modal-actions">
             <button onclick="closeModal('aiModal')">취소</button>
-            <button onclick="aiEnhancePrompt()" style="background:#AE1932;color:white;border-color:#AE1932;">
+            <button onclick="aiEnhancePrompt()" style="background:#AC1830;color:white;border-color:#AC1830;">
                 <i class="fas fa-language"></i> 프롬프트 보정
             </button>
             <button class="btn-primary" onclick="generateAiImage()">
@@ -1648,7 +1648,7 @@ function addText() {
         top: canvas.height / 2 - 20,
         fontSize: 36,
         fontFamily: 'Arial',
-        fill: '#AE1932',
+        fill: '#AC1830',
         fontWeight: 'bold',
         shadow: 'rgba(0,0,0,0.3) 2px 2px 4px',
         padding: 8
@@ -1667,7 +1667,7 @@ function addRect() {
         width: 150,
         height: 100,
         fill: 'transparent',
-        stroke: '#AE1932',
+        stroke: '#AC1830',
         strokeWidth: 3,
         rx: 10,
         ry: 10
@@ -1685,7 +1685,7 @@ function addCircle() {
         top: canvas.height / 2 - 50,
         radius: 50,
         fill: 'transparent',
-        stroke: '#AE1932',
+        stroke: '#AC1830',
         strokeWidth: 3
     });
     canvas.add(circle);
@@ -1710,10 +1710,10 @@ function addBadge(text) {
     if (!canvas) { initCanvas(1024, 1024); }
 
     var colors = {
-        '할인': { bg: '#AE1932', fg: '#fff' },
+        '할인': { bg: '#AC1830', fg: '#fff' },
         'HOT': { bg: '#EF4444', fg: '#fff' },
         'NEW': { bg: '#10B981', fg: '#fff' },
-        '응모': { bg: '#AE1932', fg: '#fff' },
+        '응모': { bg: '#AC1830', fg: '#fff' },
         '추천': { bg: '#F59E0B', fg: '#fff' },
         '무료': { bg: '#3B82F6', fg: '#fff' },
         'BEST': { bg: '#1a1a1a', fg: '#fff' },
@@ -1721,7 +1721,7 @@ function addBadge(text) {
         '이벤트': { bg: '#059669', fg: '#fff' }
     };
 
-    var c = colors[text] || { bg: '#AE1932', fg: '#fff' };
+    var c = colors[text] || { bg: '#AC1830', fg: '#fff' };
     var displayText = text;
     if (text === '할인') displayText = '20% 할인';
 
@@ -1761,7 +1761,7 @@ function toggleDrawing() {
     btn.classList.toggle('active', canvas.isDrawingMode);
     if (canvas.isDrawingMode) {
         canvas.freeDrawingBrush.width = 3;
-        canvas.freeDrawingBrush.color = '#AE1932';
+        canvas.freeDrawingBrush.color = '#AC1830';
     }
 }
 
@@ -1824,7 +1824,7 @@ function onObjectSelected(e) {
         document.getElementById('textProps').style.display = 'none';
     }
 
-    document.getElementById('propFill').value = rgbToHex(obj.fill) || '#AE1932';
+    document.getElementById('propFill').value = rgbToHex(obj.fill) || '#AC1830';
     document.getElementById('propStroke').value = rgbToHex(obj.stroke) || '#000000';
     document.getElementById('propStrokeWidth').value = obj.strokeWidth || 0;
     document.getElementById('propOpacity').value = Math.round((obj.opacity || 1) * 100);
@@ -2126,7 +2126,7 @@ function addCopyToCanvas(el) {
         top: canvas.height / 2 - 20,
         fontSize: 32,
         fontFamily: 'Noto Sans KR, Arial',
-        fill: '#AE1932',
+        fill: '#AC1830',
         fontWeight: 'bold',
         shadow: 'rgba(0,0,0,0.3) 2px 2px 4px',
         padding: 8

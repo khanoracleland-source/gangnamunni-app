@@ -122,7 +122,7 @@ $page_css = '
         display: inline-block;
         padding: 6px 12px;
         background: #FFF3E0;
-        color: #AE1932;
+        color: #AC1830;
         font-size: 13px;
         border-radius: 6px;
         font-weight: 500;
@@ -156,7 +156,7 @@ $page_css = '
     }
 
     .btn-like {
-        background: #AE1932;
+        background: #AC1830;
         color: white;
     }
 

@@ -45,7 +45,7 @@ if (!$event) {
 .not-found-wrap .nf-icon{font-size:72px;color:#ccc;margin-bottom:16px}
 .not-found-wrap h2{font-size:20px;font-weight:700;margin-bottom:8px;color:var(--bs-body-color, #333)}
 .not-found-wrap p{color:#888;font-size:14px;margin-bottom:24px}
-.not-found-wrap .btn-back{display:inline-block;padding:10px 28px;background:#AE1932;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px}
+.not-found-wrap .btn-back{display:inline-block;padding:10px 28px;background:#AC1830;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px}
 .not-found-wrap .btn-back:hover{background:#8A1428}
 CSS;
     $page_js = '';
@@ -126,7 +126,7 @@ $category_colors = [
     '지방흡입' => '#EAB543', '가슴' => '#FD7272', '치아' => '#58B19F',
     '탈모' => '#8B5CF6', '레이저' => '#06D6A0', '제모' => '#FFB8B8',
 ];
-$cat_color = $category_colors[$event['category'] ?? ''] ?? '#AE1932';
+$cat_color = $category_colors[$event['category'] ?? ''] ?? '#AC1830';
 
 // --- 응모 유형 라벨 ---
 $raffle_type_labels = [
@@ -177,7 +177,7 @@ body{background:var(--bs-tertiary-bg, #f5f5f5);margin:0;padding:0;font-family:-a
 .ev-thumbs{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;background:var(--bs-body-bg, #fff);-webkit-overflow-scrolling:touch}
 .ev-thumbs::-webkit-scrollbar{display:none}
 .ev-thumbs .thumb{width:64px;height:64px;border-radius:8px;object-fit:cover;border:2px solid transparent;cursor:pointer;flex-shrink:0;opacity:.7;transition:all .2s}
-.ev-thumbs .thumb.active{border-color:#AE1932;opacity:1}
+.ev-thumbs .thumb.active{border-color:#AC1830;opacity:1}
 .ev-thumbs .thumb:hover{opacity:1}
 
 /* 콘텐츠 영역 */
@@ -192,14 +192,14 @@ body{background:var(--bs-tertiary-bg, #f5f5f5);margin:0;padding:0;font-family:-a
 .ev-price-section .price-label{font-size:12px;color:#999;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .ev-price-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .ev-price-original{font-size:16px;color:#aaa;text-decoration:line-through}
-.ev-price-discount{font-size:28px;font-weight:800;color:#AE1932}
-.ev-price-rate{display:inline-block;padding:4px 10px;background:#AE1932;color:#fff;font-size:13px;font-weight:700;border-radius:6px}
+.ev-price-discount{font-size:28px;font-weight:800;color:#AC1830}
+.ev-price-rate{display:inline-block;padding:4px 10px;background:#AC1830;color:#fff;font-size:13px;font-weight:700;border-radius:6px}
 .ev-price-unit{font-size:14px;color:var(--bs-secondary-color, #666);margin-left:2px}
 
 /* 기간 */
 .ev-period{background:var(--bs-body-bg, #fff);padding:16px;margin-bottom:8px}
 .ev-period-row{display:flex;align-items:center;gap:10px;font-size:14px;color:#444}
-.ev-period-row .period-icon{font-size:20px;color:#AE1932;flex-shrink:0}
+.ev-period-row .period-icon{font-size:20px;color:#AC1830;flex-shrink:0}
 .ev-period-row .period-dates{flex:1}
 .ev-period-row .period-status{font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px}
 .ev-period-row .status-active{background:#e8f5e9;color:#2e7d32}
@@ -215,24 +215,24 @@ body{background:var(--bs-tertiary-bg, #f5f5f5);margin:0;padding:0;font-family:-a
 .ev-raffle .raffle-info-card .info-label{font-size:11px;color:#999;margin-bottom:4px;font-weight:600}
 .ev-raffle .raffle-info-card .info-value{font-size:15px;font-weight:700;color:var(--bs-body-color, #333)}
 .ev-raffle .raffle-prize-box{background:linear-gradient(135deg,#FFF5F0,#FFF0E8);border:1px solid #FFD4C0;border-radius:12px;padding:16px;margin-bottom:16px}
-.ev-raffle .raffle-prize-box .prize-title{font-size:13px;font-weight:700;color:#AE1932;margin-bottom:6px}
+.ev-raffle .raffle-prize-box .prize-title{font-size:13px;font-weight:700;color:#AC1830;margin-bottom:6px}
 .ev-raffle .raffle-prize-box .prize-content{font-size:14px;color:var(--bs-body-color, #333);line-height:1.6}
 .ev-raffle .raffle-type-desc{font-size:13px;color:var(--bs-secondary-color, #666);background:var(--bs-tertiary-bg, #f8f8f8);padding:12px 14px;border-radius:8px;margin-bottom:16px;line-height:1.5}
 .ev-raffle .raffle-progress{margin-bottom:16px}
 .ev-raffle .raffle-progress .progress-bar-wrap{height:8px;background:#eee;border-radius:4px;overflow:hidden;margin-bottom:6px}
-.ev-raffle .raffle-progress .progress-fill{height:100%;background:linear-gradient(90deg,#AE1932,#FF8A50);border-radius:4px;transition:width .5s}
+.ev-raffle .raffle-progress .progress-fill{height:100%;background:linear-gradient(90deg,#AC1830,#FF8A50);border-radius:4px;transition:width .5s}
 .ev-raffle .raffle-progress .progress-text{display:flex;justify-content:space-between;font-size:12px;color:#888}
 
 /* 응모 폼 */
 .ev-raffle-form{border-top:1px solid var(--bs-border-color, #eee);padding-top:16px}
 .ev-raffle-form .form-group{margin-bottom:14px}
 .ev-raffle-form .form-label{display:block;font-size:13px;font-weight:600;color:var(--bs-body-color, #333);margin-bottom:6px}
-.ev-raffle-form .form-label .required{color:#AE1932;margin-left:2px}
+.ev-raffle-form .form-label .required{color:#AC1830;margin-left:2px}
 .ev-raffle-form .form-input{width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:10px;font-size:14px;outline:none;transition:border-color .2s;background:var(--bs-body-bg, #fff);-webkit-appearance:none}
-.ev-raffle-form .form-input:focus{border-color:#AE1932;box-shadow:0 0 0 3px rgba(174,25,50,.1)}
+.ev-raffle-form .form-input:focus{border-color:#AC1830;box-shadow:0 0 0 3px rgba(172, 24, 48,.1)}
 .ev-raffle-form .form-input::placeholder{color:#bbb}
-.ev-raffle-form .btn-submit{width:100%;padding:14px;background:#AE1932;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:4px}
-.ev-raffle-form .btn-submit:hover{background:#8A1428;transform:translateY(-1px);box-shadow:0 4px 12px rgba(174,25,50,.3)}
+.ev-raffle-form .btn-submit{width:100%;padding:14px;background:#AC1830;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:4px}
+.ev-raffle-form .btn-submit:hover{background:#8A1428;transform:translateY(-1px);box-shadow:0 4px 12px rgba(172, 24, 48,.3)}
 .ev-raffle-form .btn-submit:active{transform:translateY(0)}
 .ev-raffle-form .btn-submit:disabled{background:#ccc;cursor:not-allowed;transform:none;box-shadow:none}
 .ev-raffle-form .btn-submit.loading{position:relative;color:transparent}
@@ -251,7 +251,7 @@ body{background:var(--bs-tertiary-bg, #f5f5f5);margin:0;padding:0;font-family:-a
 .ev-hospital{background:var(--bs-body-bg, #fff);padding:16px;margin-bottom:8px}
 .ev-hospital a{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--bs-body-color, #333);padding:10px 14px;background:var(--bs-tertiary-bg, #f8f8f8);border-radius:12px;transition:background .2s}
 .ev-hospital a:hover{background:#f0f0f0}
-.ev-hospital .hosp-icon{width:40px;height:40px;border-radius:50%;background:#AE1932;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.ev-hospital .hosp-icon{width:40px;height:40px;border-radius:50%;background:#AC1830;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .ev-hospital .hosp-name{font-size:14px;font-weight:600;color:var(--bs-body-color, #333)}
 .ev-hospital .hosp-arrow{margin-left:auto;color:#999;font-size:18px}
 

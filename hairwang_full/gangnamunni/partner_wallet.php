@@ -172,7 +172,7 @@ $charge_products = getCpvChargeProducts();
             background: linear-gradient(135deg, #4c5ec7 0%, #5c3a82 100%);
         }
         .wallet-balance-card {
-            background: linear-gradient(135deg, #2563eb 0%, #AE1932 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #AC1830 100%);
             color: #fff;
             border-radius: 16px;
             padding: 32px 24px;

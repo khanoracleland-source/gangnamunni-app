@@ -65,7 +65,7 @@ if (!isset($THEME_SETTINGS) || empty($THEME_SETTINGS)) {
 
 $site_name = getTheme('site_name', site_name());
 $site_logo_path = 'assets/images/logo_129.jpg';
-$login_btn_bg = getTheme('login_button_bg', '#AE1932');
+$login_btn_bg = getTheme('login_button_bg', '#AC1830');
 $login_btn_text = getTheme('login_button_text', '#FFFFFF');
 
 // 현재 페이지 파악 (활성 메뉴 표시용)
@@ -102,7 +102,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     align-items: center;
     gap: 4px;
     text-decoration: none;
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
     font-weight: 700;
     font-size: 14px;
     flex-shrink: 0;
@@ -140,13 +140,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
 }
 
 .global-nav-item:hover {
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
 }
 
 .global-nav-item.active {
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
     font-weight: 700;
-    border-bottom: 2px solid var(--primary-color, #AE1932);
+    border-bottom: 2px solid var(--primary-color, #AC1830);
 }
 
 /* 로그인 버튼 */
@@ -175,7 +175,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 .global-nav-share:hover,
 .global-nav-share:focus-visible,
 .global-nav-share.active {
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
 }
 
 .global-nav-notification-dot {
@@ -185,7 +185,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #AE1932;
+    background: #AC1830;
     border: 1.5px solid #fff;
 }
 
@@ -242,7 +242,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 }
 
 .register-btn:hover {
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
 }
 
 /* 로그인된 사용자 영역 */
@@ -270,7 +270,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 }
 
 .user-menu-link:hover {
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
 }
 
 .user-menu-divider {

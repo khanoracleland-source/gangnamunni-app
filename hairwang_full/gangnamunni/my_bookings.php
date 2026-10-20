@@ -184,7 +184,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
     <link rel="stylesheet" href="assets/css/booking-sheets.css">
     <style>
         :root {
-            --color-primary: #AE1932;
+            --color-primary: #AC1830;
             --color-bg: #ffffff;
             --color-bg-light: #f8f9fa;
             --color-text: #222;
@@ -206,7 +206,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
         .header .back{width:36px;height:36px;border:none;background:none;font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1));cursor:pointer;color:inherit;}
         .header h1{position:absolute;left:50%;transform:translateX(-50%);font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;}
         .global-nav-share{width:36px;height:36px;margin-left:auto;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--color-text,#111);font-size:22px;cursor:pointer;}
-        .global-nav-share:hover,.global-nav-share:focus-visible{color:var(--color-primary,#AE1932);}
+        .global-nav-share:hover,.global-nav-share:focus-visible{color:var(--color-primary,#AC1830);}
         .share-copy-toast{position:fixed;left:50%;bottom:84px;z-index:2000;transform:translate(-50%,12px);padding:10px 16px;border-radius:20px;background:rgba(20,20,20,.9);color:#fff;font-size:13px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;}
         .share-copy-toast.is-visible{opacity:1;transform:translate(-50%,0);}
 
@@ -236,7 +236,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
         .status-no_show { background: #f3f4f6; color: #6b7280; }
 
         .booking-detail-row { display: flex; width: 100%; min-width: 0; align-items: center; gap: 8px; }
-        .booking-detail { display: flex; align-items: center; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: #fff; line-height: 1.8; background: #AE1932; width: 60%; min-width: 0; }
+        .booking-detail { display: flex; align-items: center; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: #fff; line-height: 1.8; background: #AC1830; width: 60%; min-width: 0; }
         /* 시술완료/예약취소: detail-1(위)·detail-2(아래) 세로 배치 */
         .booking-detail.bd-stacked { flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 12px; }
         /* 시술완료: 회색 배경 + 어두운 글자 */
@@ -259,7 +259,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
         .detail-btns { display: flex; flex-direction: column; gap: 6px; flex: 1; }
         .detail-btn { padding: 8px 4px; border-radius: 6px; font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; text-align: center; border: none; background: var(--color-bg); color: var(--color-text); flex: 1; text-decoration: none; display: block; }
         /* 결제(#예약결제): 확정 후 결제 대기 = 강조, 결제 완료 = 비활성 표기 */
-        .detail-btn-pay { background: #AE1932; color: #fff; }
+        .detail-btn-pay { background: #AC1830; color: #fff; }
         .detail-btn-pay:hover { background: #822327; color: #fff; }
         .detail-btn-paid { background: #F2F2F2; color: #BBBBBB; cursor: default; }
         @media (max-width: 399px) { .detail-btns { flex-direction: column; } }
@@ -267,10 +267,10 @@ if (($_GET['from'] ?? '') === 'notifications') {
 
         .booking-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); }
         .action-btn { flex: 1; padding: 8px; border-radius: 6px; font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; text-align: center; border: 1px solid var(--color-border); background: var(--color-bg-light); color: var(--color-text); }
-        .action-btn.cancel { color: var(--color-primary, #AE1932); border-color: #fecaca; }
+        .action-btn.cancel { color: var(--color-primary, #AC1830); border-color: #fecaca; }
         .action-btn.edit { color: var(--color-primary); border-color: #fed7aa; }
 
-        .cancel-reason { font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--color-primary, #AE1932); margin-top: 8px; padding: 6px 10px; background: #fef2f2; border-radius: 6px; }
+        .cancel-reason { font-size: calc(12px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--color-primary, #AC1830); margin-top: 8px; padding: 6px 10px; background: #fef2f2; border-radius: 6px; }
 
         /* 빈 상태 */
         .empty-state { text-align: center; padding: 60px 20px; color: var(--color-text-secondary); }
@@ -286,7 +286,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
         .modal-btn { flex: 1; padding: 10px; font-size: calc(14px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 600; cursor: pointer; border: none; }
         .modal-btn-cancel { background: var(--color-bg-light); color: var(--color-text); border: 1px solid var(--color-border); }
         .modal-btn-confirm { background: var(--color-primary); color: white; }
-        .modal-btn-danger { background: var(--color-primary, #AE1932); color: white; }
+        .modal-btn-danger { background: var(--color-primary, #AC1830); color: white; }
         .action-btn.hospital { color: #2563eb; border-color: #bfdbfe; text-decoration: none; }
 
         /* Screenshot reference: 예약/결제 내역 */

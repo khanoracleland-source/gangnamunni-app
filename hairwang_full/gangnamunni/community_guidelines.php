@@ -22,7 +22,7 @@ $theme_attr = $dark_mode === 'light' ? 'light' : 'dark';
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo $page_title; ?></title>
 <style>
-:root { --bg: #0f0f0f; --card: #1a1a1a; --text: #e0e0e0; --muted: #888; --border: #333; --primary: #AE1932; --danger: #ef4444; --success: #16a34a; --warning: #f59e0b; }
+:root { --bg: #0f0f0f; --card: #1a1a1a; --text: #e0e0e0; --muted: #888; --border: #333; --primary: #AC1830; --danger: #ef4444; --success: #16a34a; --warning: #f59e0b; }
 [data-bs-theme="light"] { --bg: #f8f9fa; --card: #fff; --text: #212529; --muted: #6c757d; --border: #dee2e6; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
@@ -53,7 +53,7 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
 .how-to { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin: 16px 0; }
 .how-to h3 { font-size: calc(16px * var(--fs-scale,1) * var(--fs-page,1)); margin-bottom: 12px; }
 .how-step { display: flex; gap: 12px; margin-bottom: 12px; }
-.how-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(174,25,50,0.12); display: flex; align-items: center; justify-content: center; font-size: calc(16px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink: 0; }
+.how-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(172, 24, 48,0.12); display: flex; align-items: center; justify-content: center; font-size: calc(16px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink: 0; }
 .how-text { font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); }
 .how-text strong { display: block; margin-bottom: 2px; }
 .info-box { background: rgba(139,92,246,0.1); border: 1px solid var(--primary); border-radius: 8px; padding: 16px; margin: 16px 0; }

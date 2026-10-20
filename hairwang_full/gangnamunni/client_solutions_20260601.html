@@ -9,7 +9,7 @@
 <style>
  body{font-family:'Noto Sans KR',sans-serif;line-height:1.6;}
  .container{max-width:1180px;}
- .hero{background:linear-gradient(135deg,#AE1932 0%,#e0566f 100%);color:#fff;padding:26px;border-radius:14px;margin-bottom:20px;box-shadow:0 4px 18px rgba(174,25,50,.25);}
+ .hero{background:linear-gradient(135deg,#AC1830 0%,#e0566f 100%);color:#fff;padding:26px;border-radius:14px;margin-bottom:20px;box-shadow:0 4px 18px rgba(172, 24, 48,.25);}
  .hero h1{font-weight:800;margin:0;font-size:1.5rem;}
  .answer{background:linear-gradient(135deg,#198754,#20c997);color:#fff;padding:18px 20px;border-radius:12px;margin-bottom:18px;}
  .answer a{color:#fff;text-decoration:underline;font-weight:700;}
@@ -22,14 +22,14 @@
  .filters button{margin:2px;}
  .sec-title{margin-top:26px;padding-bottom:8px;border-bottom:2px solid var(--bs-border-color);font-weight:700;font-size:1.15rem;}
  .sec-cnt{font-size:.85rem;color:var(--bs-secondary-color);font-weight:500;}
- .issue-card{background:var(--bs-tertiary-bg);border-radius:10px;padding:14px 16px;margin-bottom:12px;border-left:5px solid #AE1932;}
+ .issue-card{background:var(--bs-tertiary-bg);border-radius:10px;padding:14px 16px;margin-bottom:12px;border-left:5px solid #AC1830;}
  .ic-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
- .ic-id{background:#AE1932;color:#fff;padding:2px 9px;border-radius:5px;font-family:monospace;font-weight:700;font-size:.78rem;}
+ .ic-id{background:#AC1830;color:#fff;padding:2px 9px;border-radius:5px;font-family:monospace;font-weight:700;font-size:.78rem;}
  .ic-area{font-size:.78rem;color:var(--bs-secondary-color);} .ic-sheet{font-size:.74rem;color:#888;margin-left:auto;}
  .ic-screen{font-weight:700;margin-bottom:6px;}
  .ic-issue{font-size:.92rem;margin-bottom:8px;}
  .ic-row{display:flex;gap:10px;font-size:.86rem;margin-top:5px;}
- .ic-k{flex:0 0 64px;font-weight:700;color:#AE1932;} .ic-v{flex:1;color:var(--bs-body-color);}
+ .ic-k{flex:0 0 64px;font-weight:700;color:#AC1830;} .ic-v{flex:1;color:var(--bs-body-color);}
  .mono{font-family:monospace;font-size:.8rem;word-break:break-all;}
  .theme-toggle{position:fixed;top:14px;right:14px;z-index:1000;}
  .codex-box{background:var(--bs-tertiary-bg);border:2px solid #6610f2;border-radius:12px;padding:16px;margin:20px 0;}
@@ -778,9 +778,9 @@
   <div class="ic-screen">공통 UI/UX</div>
   <div class="ic-issue"><b>지적</b> Figma 신규 디자인/레이아웃 반영 (가능 여부 답변 우선)</div>
   <div class="ic-row"><span class="ic-k">원인</span><span class="ic-v">Figma 기반 디자인 토큰 시스템이 이미 구축되어 있었으나 클라이언트에 '반영 가능 여부'가 미통보된 상태였음</span></div>
-  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. includes/design_mode_helper.php가 gangnamunni_settings.dm_mode 값으로 디자인 모드를 결정(figma/extended/custom). 기본값 'figma'에서는 추가 컴포넌트를 숨기고 Figma 원본 레이아웃만 노출. fd_* 60+ 디자인 토큰(fd_primary_color #AE1932, fd_search_placeholder, fd_section_*_title, fd_bottom_nav_* 등)을 admin_design_mode.php / admin_design_tokens.php에서 CRUD. 신규 디자인 추가 반영은 dm_mode 토큰 추가 + 해당 토큰을 프론트 템플릿에서 getTheme()/getSettingValue()로 출력하면 됨. 전체 리뉴얼 vs 부분 반영 범위만 사전 확정하면 즉시 적용 가능.</span></div>
+  <div class="ic-row"><span class="ic-k">해결방법</span><span class="ic-v">이미 구현됨. includes/design_mode_helper.php가 gangnamunni_settings.dm_mode 값으로 디자인 모드를 결정(figma/extended/custom). 기본값 'figma'에서는 추가 컴포넌트를 숨기고 Figma 원본 레이아웃만 노출. fd_* 60+ 디자인 토큰(fd_primary_color #AC1830, fd_search_placeholder, fd_section_*_title, fd_bottom_nav_* 등)을 admin_design_mode.php / admin_design_tokens.php에서 CRUD. 신규 디자인 추가 반영은 dm_mode 토큰 추가 + 해당 토큰을 프론트 템플릿에서 getTheme()/getSettingValue()로 출력하면 됨. 전체 리뉴얼 vs 부분 반영 범위만 사전 확정하면 즉시 적용 가능.</span></div>
   <div class="ic-row"><span class="ic-k">파일</span><span class="ic-v mono">_server_files/includes/design_mode_helper.php; _server_files/includes/design_tokens.php; _server_files/admin_design_mode.php (17KB); _server_files/admin_design_tokens.php (19KB)</span></div>
-  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">design_mode_helper.php getSettingValue($connect,'dm_mode','figma') 확인. dm_mode='figma' + fd_* 토큰 활성. index.php/hospitals.php/community.php가 #AE1932 + Noto Sans 토큰으로 렌더 (HTTP 200)</span></div>
+  <div class="ic-row"><span class="ic-k">검증</span><span class="ic-v">design_mode_helper.php getSettingValue($connect,'dm_mode','figma') 확인. dm_mode='figma' + fd_* 토큰 활성. index.php/hospitals.php/community.php가 #AC1830 + Noto Sans 토큰으로 렌더 (HTTP 200)</span></div>
 </div>
 <div class="issue-card" data-status="resolved" data-area="site">
   <div class="ic-head">

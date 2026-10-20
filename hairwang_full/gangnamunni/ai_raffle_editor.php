@@ -449,7 +449,7 @@ function renderHistory(raffles) {
     raffles.forEach(function(r) {
         var thumb = r.image_url ? '<img src="' + r.image_url + '" class="thumb-img" onerror="this.style.display=\'none\'">' : '<span class="text-body-secondary">-</span>';
         var typeMap = { random: '랜덤', first_come: '선착순', quiz: '퀴즈' };
-        var typeBadge = '<span class="badge bg-purple badge-type" style="background:#AE1932;">' + (typeMap[r.raffle_type] || r.raffle_type) + '</span>';
+        var typeBadge = '<span class="badge bg-purple badge-type" style="background:#AC1830;">' + (typeMap[r.raffle_type] || r.raffle_type) + '</span>';
         var prize = escH((r.raffle_prize || '').substring(0, 20));
         var entries = (r.entry_count || 0) + '/' + (r.max_entries || '∞');
         var statusBadge = r.is_active == 1 ? '<span class="badge bg-success">활성</span>' : '<span class="badge bg-outline-secondary border">비활성</span>';

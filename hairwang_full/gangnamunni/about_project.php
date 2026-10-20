@@ -27,7 +27,7 @@
         .google-play-link, .app-store-link { position: absolute; top: 98.12%; width: 35.4%; height: .95%; border-radius: 5px; }
         .google-play-link { left: 11.3%; }
         .app-store-link { left: 53.3%; }
-        :focus-visible { outline: 3px solid #ae1932; outline-offset: 3px; }
+        :focus-visible { outline: 3px solid #AC1830; outline-offset: 3px; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
         .share-copy-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 30; background: #222; color: #fff; border-radius: 8px; padding: 12px 18px; opacity: 0; pointer-events: none; transition: opacity .2s; }
         .share-copy-toast.is-visible { opacity: 1; }

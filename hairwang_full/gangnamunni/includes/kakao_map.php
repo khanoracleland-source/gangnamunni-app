@@ -107,7 +107,7 @@ $display_lng = $has_coords ? $map_lng : 126.978;
 /* 주소 + 버튼 */
 .km-address { margin-top: 8px; font-size: 13px; color: var(--color-text-secondary, #666); display: flex; align-items: flex-start; gap: 4px; flex-wrap: wrap; }
 .km-address-copy {
-    margin-left: auto; font-size: 12px; color: var(--color-primary, #AE1932);
+    margin-left: auto; font-size: 12px; color: var(--color-primary, #AC1830);
     cursor: pointer; white-space: nowrap; border: none; background: none; text-decoration: underline;
 }
 
@@ -118,7 +118,7 @@ $display_lng = $has_coords ? $map_lng : 126.978;
     background: var(--color-bg-light, #f8f9fa); font-size: 11px; text-align: center;
     cursor: pointer; text-decoration: none; color: inherit; white-space: nowrap;
 }
-.km-navi-btn:hover { border-color: var(--color-primary, #AE1932); }
+.km-navi-btn:hover { border-color: var(--color-primary, #AC1830); }
 .km-navi-btn i { display: block; font-size: 16px; margin-bottom: 2px; }
 
 /* 전체보기 오버레이 */

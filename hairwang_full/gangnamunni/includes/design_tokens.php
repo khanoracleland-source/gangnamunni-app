@@ -38,7 +38,7 @@ function getDesignToken($key, $default = '') {
 function getDesignTokenDefaults() {
     return [
         // 색상
-        'fd_primary_color'        => ['#AE1932', 'color', '메인 브랜드 색상'],
+        'fd_primary_color'        => ['#AC1830', 'color', '메인 브랜드 색상'],
         'fd_primary_light'        => ['#FFEBEE', 'color', '메인 색상 밝은 버전'],
         'fd_primary_dark'         => ['#8A1428', 'color', '메인 색상 어두운 버전'],
         'fd_inactive_color'       => ['#AAAAAA', 'color', '비활성 아이콘/텍스트'],
@@ -49,11 +49,11 @@ function getDesignTokenDefaults() {
         'fd_header_bg_color'      => ['#F1F1F1', 'color', '헤더/테이블 배경'],
         'fd_border_light_color'   => ['#D5D5D5', 'color', '테이블/구분선 색상'],
         'fd_dark_color'           => ['#1A0000', 'color', '검색바/버튼 진한색'],
-        'fd_login_btn_bg'         => ['#AE1932', 'color', '로그인 버튼 배경'],
+        'fd_login_btn_bg'         => ['#AC1830', 'color', '로그인 버튼 배경'],
         'fd_region_btn_bg'        => ['#1A0000', 'color', '지역선택 버튼 배경'],
-        'fd_bottom_nav_active'    => ['#AE1932', 'color', '하단 네비 활성 색상'],
-        'fd_hospital_price_color' => ['#AE1932', 'color', '병원 가격 강조 색상'],
-        'fd_community_tab_active' => ['#AE1932', 'color', '커뮤니티 활성 탭 배경'],
+        'fd_bottom_nav_active'    => ['#AC1830', 'color', '하단 네비 활성 색상'],
+        'fd_hospital_price_color' => ['#AC1830', 'color', '병원 가격 강조 색상'],
+        'fd_community_tab_active' => ['#AC1830', 'color', '커뮤니티 활성 탭 배경'],
         'fd_community_tab_inactive' => ['#F1F1F1', 'color', '커뮤니티 비활성 탭 배경'],
 
         // 텍스트

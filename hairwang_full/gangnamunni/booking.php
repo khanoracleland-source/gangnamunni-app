@@ -931,8 +931,8 @@ $page_css = '
 
     .btn-primary-outline {
         background: var(--bs-body-bg, #fff);
-        color: #AE1932;
-        border: 1px solid #AE1932;
+        color: #AC1830;
+        border: 1px solid #AC1830;
     }
 
     .btn-primary-outline:hover {
@@ -999,7 +999,7 @@ $page_css = '
     }
     .rebook-method { display:flex; flex-direction:column; gap:7px; margin-top:14px; }
     .rebook-method strong { font-size:15px; }
-    .rebook-method span { color:#AE1932; font-size:13px; }
+    .rebook-method span { color:#AC1830; font-size:13px; }
     .booking-form.rebooking { padding-top:22px; }
     .booking-form.rebooking .section-head-title,
     .booking-form.rebooking .form-label.date-select-label { font-size:18px; }
@@ -1040,7 +1040,7 @@ $page_css = '
         transition: background 0.15s, color 0.15s;
     }
     .date-chip:hover .dc-day { background: #f2f2f2; }
-    .date-chip.active .dc-day { background: var(--color-primary, #AE1932); color: #fff; }
+    .date-chip.active .dc-day { background: var(--color-primary, #AC1830); color: #fff; }
     /* 오늘 라벨 (날짜 아래) */
     .date-chip .dc-today { font-size: 12px; font-weight: 600; color: #aaaaaa; margin-top: -1px; }
 
@@ -1064,8 +1064,8 @@ $page_css = '
         white-space: nowrap;
     }
     .time-slot.active {
-        color: #AE1932;
-        border-color: #AE1932;
+        color: #AC1830;
+        border-color: #AC1830;
     }
     /* HMS 스케줄: 예약됨/지난 시간 — 흐리게, 클릭 불가 */
     .time-slot.disabled {
@@ -1086,7 +1086,7 @@ $page_css = '
 
     .form-label.required::after {
         content: " *";
-        color: #AE1932;
+        color: #AC1830;
     }
 
     .form-input,
@@ -1104,7 +1104,7 @@ $page_css = '
     .form-select:focus,
     .form-textarea:focus {
         outline: none;
-        border-color: #AE1932;
+        border-color: #AC1830;
     }
 
     .form-textarea {
@@ -1135,7 +1135,7 @@ $page_css = '
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
         font-size: 13px;
         font-weight: 600;
@@ -1171,7 +1171,7 @@ $page_css = '
         cursor: pointer;
         padding: 0 2px;
     }
-    .st-remove:hover { color: #AE1932; }
+    .st-remove:hover { color: #AC1830; }
     .selected-treatment .st-name { font-weight: 700; color: #1f2937; }
     .selected-treatment .st-price { font-size: 13px; font-weight: 600; color: #1A1A1A; }
     /* 수량 스테퍼 */
@@ -1193,7 +1193,7 @@ $page_css = '
         border: none;
         background: var(--bs-body-bg, #fff);
         font-size: 18px; line-height: 1;
-        color: #AE1932;
+        color: #AC1830;
         cursor: pointer;
     }
     .qty-btn:hover { background: #faf0f2; }
@@ -1232,7 +1232,7 @@ $page_css = '
     /* 상단 손잡이 + 제목 */
     .sheet-handle {
         width: 52px; height: 4px; border-radius: 2px;
-        background: #AE1932;
+        background: #AC1830;
         margin: 6px auto 18px;
         flex-shrink: 0;
     }
@@ -1258,7 +1258,7 @@ $page_css = '
     .sheet-choice-divider::before, .sheet-choice-divider::after {
         content: ""; flex: 1; height: 1px; background: #e8e8e8;
     }
-    .package-item { background: rgba(174, 25, 50, .025); }
+    .package-item { background: rgba(172, 24, 48, .025); }
     .detail-option-list { display:grid; gap:10px; width:100%; margin-top:2px; }
     .detail-option-item {
         display:grid;
@@ -1275,15 +1275,15 @@ $page_css = '
     }
     .detail-option-item:hover { border-color:#c9cdd3; }
     .detail-option-item.is-selected {
-        border-color:#ae1932;
+        border-color:#AC1830;
         background:#fff8f9;
-        box-shadow:0 0 0 1px rgba(174,25,50,.06);
+        box-shadow:0 0 0 1px rgba(172, 24, 48,.06);
     }
     .detail-option-item input {
         width:18px;
         height:18px;
         margin:0;
-        accent-color:#ae1932;
+        accent-color:#AC1830;
     }
     .detail-option-copy { min-width:0; display:flex; align-items:baseline; gap:6px; }
     .detail-option-name { color:#20242b; font-size:15px; font-weight:600; }
@@ -1304,8 +1304,8 @@ $page_css = '
     }
     .sheet-item:hover { border-color: #BDBDBD; }
     .sheet-item.selected {
-        border-color: #AE1932;
-        box-shadow: inset 0 0 0 1px #AE1932;
+        border-color: #AC1830;
+        box-shadow: inset 0 0 0 1px #AC1830;
     }
     .sheet-item-name {
         display: block;
@@ -1327,7 +1327,7 @@ $page_css = '
     /* 정가/할인율은 할인 데이터가 있을 때만 출력된다 */
     .price-was { font-size: 12px; color: #9A9A9A; text-decoration: line-through; }
     .price-off { font-size: 14px; font-weight: 700; color: #1A1A1A; }
-    .price-now { font-size: 17px; font-weight: 700; color: #AE1932; }
+    .price-now { font-size: 17px; font-weight: 700; color: #AC1830; }
     .price-now .price-unit { font-size: 14px; }
 
     /* 시트 하단 선택 완료 버튼 */
@@ -1340,7 +1340,7 @@ $page_css = '
         padding: 16px;
         border: none;
         border-radius: 10px;
-        background: #AE1932;
+        background: #AC1830;
         color: #fff;
         font-size: 16px;
         font-weight: 600;
@@ -1366,7 +1366,7 @@ $page_css = '
     .btn-submit {
         width: 100%;
         padding: 16px;
-        background: #AE1932;
+        background: #AC1830;
         color: white;
         font-size: 16px;
         font-weight: bold;
@@ -1590,7 +1590,7 @@ $page_css = '
     }
 
     .info-value a {
-        color: #AE1932;
+        color: #AC1830;
         text-decoration: none;
     }
 
@@ -1618,7 +1618,7 @@ $page_css = '
     .sheet-handle::before {
         content: ""; position: absolute; left: 50%; top: 10px;
         width: 34px; height: 4px; transform: translateX(-50%);
-        border-radius: 2px; background: #AE1932;
+        border-radius: 2px; background: #AC1830;
     }
     .sheet-handle:active { cursor: grabbing; }
     .treatment-sheet.is-opening { animation: sheetUp 0.22s ease-out; }
@@ -1634,7 +1634,7 @@ $page_css = '
     }
     .sheet-section-title, .sheet-choice-divider { display: none; }
     .sheet-item { padding: 13px 10px; border-radius: 3px; background: #fff; }
-    .sheet-item.selected { border: 2px solid #AE1932; box-shadow: none; padding: 12px 9px; }
+    .sheet-item.selected { border: 2px solid #AC1830; box-shadow: none; padding: 12px 9px; }
     .sheet-item-name { margin-bottom: 8px; font-size: 14px; line-height: 1.45; }
     .sheet-item-desc { font-size: 12px; }
     .sheet-item-price { gap: 8px; }

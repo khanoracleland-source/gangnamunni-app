@@ -54,11 +54,11 @@ $nav_items = [
     line-height: 1;
 }
 .bottom-nav-item.active {
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
     font-weight: 700;
 }
 .bottom-nav-item:hover {
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
 }
 .bottom-nav-item .nav-badge {
     position: absolute;

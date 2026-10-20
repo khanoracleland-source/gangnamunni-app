@@ -45,7 +45,7 @@ $theme_attr = $dark_mode === 'light' ? 'light' : 'dark';
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo $page_title; ?></title>
 <style>
-:root { --bg: #0f0f0f; --card: #1a1a1a; --text: #e0e0e0; --muted: #888; --border: #333; --primary: #AE1932; --danger: #ef4444; --success: #16a34a; --warning: #f59e0b; }
+:root { --bg: #0f0f0f; --card: #1a1a1a; --text: #e0e0e0; --muted: #888; --border: #333; --primary: #AC1830; --danger: #ef4444; --success: #16a34a; --warning: #f59e0b; }
 [data-bs-theme="light"] { --bg: #f8f9fa; --card: #fff; --text: #212529; --muted: #6c757d; --border: #dee2e6; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }

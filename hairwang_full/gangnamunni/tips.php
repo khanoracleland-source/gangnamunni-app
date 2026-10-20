@@ -423,9 +423,9 @@ $page_css = '
 }
 
 .filter-btn.active {
-    background: #AE1932;
+    background: #AC1830;
     color: white;
-    border-color: #AE1932;
+    border-color: #AC1830;
 }
 
 /* 뷰 전환 버튼 */
@@ -445,9 +445,9 @@ $page_css = '
     transition: all 0.3s;
 }
 .view-btn.active {
-    background: #AE1932;
+    background: #AC1830;
     color: white;
-    border-color: #AE1932;
+    border-color: #AC1830;
 }
 
 /* 꿀팁 그리드 */

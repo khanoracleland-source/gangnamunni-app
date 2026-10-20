@@ -239,14 +239,14 @@ $_tf_uid = 'tf_' . mt_rand(1000, 9999);
     line-height: 1.4;
 }
 .tf-cat-tab:hover {
-    border-color: var(--primary-color, #AE1932);
-    color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
+    color: var(--primary-color, #AC1830);
     text-decoration: none;
 }
 .tf-cat-tab.tf-active {
-    background: var(--primary-color, #AE1932);
+    background: var(--primary-color, #AC1830);
     color: #fff;
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
     font-weight: 600;
 }
 .tf-cat-tab.tf-active:hover {
@@ -287,14 +287,14 @@ $_tf_uid = 'tf_' . mt_rand(1000, 9999);
     line-height: 1.4;
 }
 .tf-chip:hover {
-    border-color: var(--primary-color, #AE1932);
-    color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
+    color: var(--primary-color, #AC1830);
     text-decoration: none;
 }
 .tf-chip.tf-active {
-    background: var(--primary-color, #AE1932);
+    background: var(--primary-color, #AC1830);
     color: #fff;
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
     font-weight: 600;
 }
 .tf-chip.tf-active:hover {
@@ -314,7 +314,7 @@ $_tf_uid = 'tf_' . mt_rand(1000, 9999);
     padding: 6px 14px;
     border-radius: 20px;
     background: rgba(211, 47, 47, 0.08);
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
     font-size: 13px;
     font-weight: 600;
 }
@@ -325,7 +325,7 @@ $_tf_uid = 'tf_' . mt_rand(1000, 9999);
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background: var(--primary-color, #AE1932);
+    background: var(--primary-color, #AC1830);
     color: #fff;
     font-size: 12px;
     line-height: 1;
@@ -345,9 +345,9 @@ $_tf_uid = 'tf_' . mt_rand(1000, 9999);
     color: #bbb;
 }
 [data-bs-theme="dark"] .tf-cat-tab.tf-active {
-    background: var(--primary-color, #AE1932);
+    background: var(--primary-color, #AC1830);
     color: #fff;
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
 }
 [data-bs-theme="dark"] .tf-chip {
     border-color: #444;
@@ -355,9 +355,9 @@ $_tf_uid = 'tf_' . mt_rand(1000, 9999);
     color: #ccc;
 }
 [data-bs-theme="dark"] .tf-chip.tf-active {
-    background: var(--primary-color, #AE1932);
+    background: var(--primary-color, #AC1830);
     color: #fff;
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
 }
 [data-bs-theme="dark"] .tf-selected-label {
     background: rgba(211, 47, 47, 0.15);

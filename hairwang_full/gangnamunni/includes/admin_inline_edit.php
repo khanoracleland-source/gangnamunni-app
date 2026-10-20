@@ -102,7 +102,7 @@ if ($_is_admin_on_front && empty($GLOBALS['_ae_css_loaded'])):
     font-size: 11px;
     font-weight: 600;
     color: #fff;
-    background: rgba(174,25,50,0.85);
+    background: rgba(172, 24, 48,0.85);
     border-radius: 4px;
     text-decoration: none;
     white-space: nowrap;
@@ -115,7 +115,7 @@ if ($_is_admin_on_front && empty($GLOBALS['_ae_css_loaded'])):
     backdrop-filter: blur(4px);
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
-.ae-btn:hover { background: rgba(174,25,50,1); color: #fff; }
+.ae-btn:hover { background: rgba(172, 24, 48,1); color: #fff; }
 .ae-wrap { position: relative; }
 .ae-wrap:hover .ae-btn { opacity: 1; }
 /* 관리자 바 */

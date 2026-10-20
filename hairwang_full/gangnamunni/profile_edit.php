@@ -290,7 +290,7 @@ if ($saved || $pw_saved || $email_saved) {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-bs-theme','dark');})();</script>
 <style>
-:root{--pri:#AE1932;--profile-nav-height:77px;--profile-save-height:73px;}
+:root{--pri:#AC1830;--profile-nav-height:77px;--profile-save-height:73px;}
 html{scroll-padding-bottom:calc(var(--profile-nav-height) + var(--profile-save-height) + 24px);}*{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;background:var(--bs-body-bg,#f8f9fa);color:var(--bs-body-color,#202124);}
 .header{position:relative;padding:14px 16px;display:flex;align-items:center;border-bottom:1px solid var(--bs-border-color,#eee);background:var(--bs-body-bg,#fff);}
@@ -305,7 +305,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-widt
 .field input:focus-visible{outline:2px solid var(--pri);outline-offset:3px;border-radius:3px;}
 button:focus-visible{outline:2px solid var(--pri);outline-offset:3px;}
 .field-content{overflow-wrap:anywhere;}
-.field-change-btn{flex-shrink:0;padding:6px 12px;background:none;border:none;font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;color:#AE1932;cursor:pointer;white-space:nowrap;}
+.field-change-btn{flex-shrink:0;padding:6px 12px;background:none;border:none;font-size:calc(12px * var(--fs-scale,1) * var(--fs-page,1));font-weight:700;color:#AC1830;cursor:pointer;white-space:nowrap;}
 .save-btn{width:100%;padding:14px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:calc(15px * var(--fs-scale,1) * var(--fs-page,1));font-weight:600;cursor:pointer;margin-top:8px;}
 .saved-msg{text-align:center;padding:10px;color:#22c55e;font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1));}
 .save-bar{position:fixed;bottom:var(--profile-nav-height);left:50%;transform:translateX(-50%);width:100%;max-width:640px;padding:12px 16px;background:var(--bs-body-bg,#fff);border-top:1px solid var(--bs-border-color,#e5e7eb);z-index:9998;}

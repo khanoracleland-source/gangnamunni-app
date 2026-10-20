@@ -22,7 +22,7 @@ $header_title = $header_title ?? '';
 
     <style>
         :root {
-            --color-primary: #AE1932;
+            --color-primary: #AC1830;
             --color-primary-light: #FFEBEE;
             --color-primary-dark: #B71C1C;
             --color-text-primary: #333333;

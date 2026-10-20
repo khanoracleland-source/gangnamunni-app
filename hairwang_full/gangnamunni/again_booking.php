@@ -39,7 +39,7 @@ $page_title = '다시 예약';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         :root {
-            --color-primary: #AE1932;
+            --color-primary: #AC1830;
             --color-bg: #ffffff;
             --color-bg-light: #f8f9fa;
             --color-text: #222;
@@ -86,7 +86,7 @@ $page_title = '다시 예약';
         .cancel-reason-box { margin-top: 10px; padding: 10px 12px; background: #fef2f2; border-radius: 8px; font-size: 13px; color: #991b1b; }
         .refund-notice { margin: 20px auto; width: 90%; background: var(--color-bg-light); border-radius: 10px; padding: 16px; }
         .refund-notice p { font-size: 12px; color: var(--color-text-secondary); line-height: 1.8; }
-        .btn-rebook { display: block; width: 90%; margin: 24px auto; padding: 16px; background: #AE1932; color: #fff; font-size: 17px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; text-align: center; text-decoration: none; }
+        .btn-rebook { display: block; width: 90%; margin: 24px auto; padding: 16px; background: #AC1830; color: #fff; font-size: 17px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; text-align: center; text-decoration: none; }
     </style>
     <script>
         (function(){

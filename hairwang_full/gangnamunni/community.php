@@ -275,17 +275,17 @@ textarea {
 /* 3탭 — Figma: filled style, 200px equal thirds, 40px height */
 .community-tabs { display: flex; background: var(--bs-body-bg, #fff); position: sticky; top: 0; z-index: 10; }
 .community-tabs a { flex: 1; text-align: center; height: 40px; line-height: 40px; padding: 0; font-size: 18px; font-weight: 500; color: #000000; background: transparent; text-decoration: none; border-bottom: 2px solid #AAAAAA; transition: color 0.2s, border-color 0.2s; }
-.community-tabs a.active { color: #AE1932; background: transparent; font-weight: 500; border-bottom: 2px solid #AE1932; }
+.community-tabs a.active { color: #AC1830; background: transparent; font-weight: 500; border-bottom: 2px solid #AC1830; }
 [data-bs-theme="dark"] .community-tabs a { background: transparent; color: #ccc; border-bottom: 2px solid #AAAAAA; }
-[data-bs-theme="dark"] .community-tabs a.active { background: transparent; color: #AE1932; border-bottom: 2px solid #AE1932; }
+[data-bs-theme="dark"] .community-tabs a.active { background: transparent; color: #AC1830; border-bottom: 2px solid #AC1830; }
 
 /* 게시글 카드 */
 .post-list { list-style: none; padding: 0; margin: 0; }
 .post-item { padding: 16px; border-bottom: 1px solid var(--bs-border-color, #e0e0e0); }
 .post-item > div { display: flex; gap: 14px; }
 .post-content-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.post-cat-tag { display: inline-block; padding: 2px 8px; background: #FFEEEE; color: #AE1932; font-size: 13px; font-weight: 500; border-radius: 4px; margin-bottom: 6px; align-self: flex-start; }
-[data-bs-theme="dark"] .post-cat-tag { background: #FFEEEE; color: #AE1932; }
+.post-cat-tag { display: inline-block; padding: 2px 8px; background: #FFEEEE; color: #AC1830; font-size: 13px; font-weight: 500; border-radius: 4px; margin-bottom: 6px; align-self: flex-start; }
+[data-bs-theme="dark"] .post-cat-tag { background: #FFEEEE; color: #AC1830; }
 .post-title { font-size: 18px; font-weight: 500; color: #000000; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.4; }
 [data-bs-theme="dark"] .post-title { color: var(--bs-body-color, #eee); }
 .post-preview { font-size: 15px; font-weight: 400; color: #000000; line-height: 1.5; margin-bottom: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -319,8 +319,8 @@ textarea {
 .post-author-name { font-size: 15px; font-weight: 400; color: #000000; }
 [data-bs-theme="dark"] .post-author-name { color: var(--bs-body-color, #ddd); }
 
-/* FAB — Figma: 100x60 pill, bg #AE1932, icon 40x40 */
-.fab-write { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); max-width: 100px; height: 60px; border-radius: 50px; background: #d81233; color: #fff; border: none; box-shadow: 0 4px 12px rgba(174,25,50,0.4); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; z-index: 100; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; white-space: nowrap; }
+/* FAB — Figma: 100x60 pill, bg #AC1830, icon 40x40 */
+.fab-write { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); max-width: 100px; height: 60px; border-radius: 50px; background: #d81233; color: #fff; border: none; box-shadow: 0 4px 12px rgba(172, 24, 48,0.4); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; z-index: 100; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; white-space: nowrap; }
 .fab-write i { font-size: 30px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
 
 /* 빈 상태 */
@@ -330,7 +330,7 @@ textarea {
 /* 페이지네이션 */
 .pagination-wrap { display: flex; justify-content: center; gap: 6px; padding: 24px 0 40px; }
 .pagination-wrap a, .pagination-wrap span { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; font-size: 14px; text-decoration: none; border: 1px solid var(--bs-border-color, #e0e0e0); color: var(--bs-body-color, #333); background: var(--bs-body-bg, #fff); }
-.pagination-wrap span.current { background: #AE1932; color: #fff; border-color: #AE1932; }
+.pagination-wrap span.current { background: #AC1830; color: #fff; border-color: #AC1830; }
 
 /* 게시글 수 */
 .post-count-bar { font-size: 13px; color: var(--bs-secondary-color, #888); padding: 10px 16px 0; }
@@ -506,7 +506,7 @@ include __DIR__ . '/includes/header.php';
 <style>
 .stat-like { cursor: pointer; user-select: none; }
 .stat-like:hover .heart-icon { opacity: 0.75; }
-.stat-like.liked, .stat-like.liked .heart-icon { color: #AE1932; font-weight: 700; }
+.stat-like.liked, .stat-like.liked .heart-icon { color: #AC1830; font-weight: 700; }
 </style>
 <script>
 // 목록에서 바로 좋아요 토글 — 커뮤니티 글(detail_community.php) / 시술후기(api/like_review.php) 분기

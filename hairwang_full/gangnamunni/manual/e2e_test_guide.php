@@ -29,7 +29,7 @@
 .test-ss:hover{transform:scale(1.02)}
 .ss-error-placeholder{width:100%;max-width:600px;border:2px dashed var(--sb-border);border-radius:8px;margin:8px 0;padding:20px;text-align:center;color:var(--sb-text-muted);font-size:13px;background:var(--sb-bg-alt);}
 .flow-step{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px}
-.flow-num{width:36px;height:36px;border-radius:50%;background:#AE1932;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.flow-num{width:36px;height:36px;border-radius:50%;background:#AC1830;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .cat-title{font-size:18px;font-weight:700;margin:24px 0 12px;padding:8px 0;border-bottom:2px solid var(--sb-primary)}
 .modal-img{max-width:100%;border-radius:8px}
 </style>

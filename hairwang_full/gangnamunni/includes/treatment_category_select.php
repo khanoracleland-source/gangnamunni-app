@@ -48,7 +48,7 @@ if (!empty($_tcs_categories)):
         ?>
         <a href="<?php echo htmlspecialchars($cat_select_target); ?>?<?php echo $cat_select_param; ?>=<?php echo urlencode($cat['category']); ?>"
            style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--card, #fff);border:1px solid var(--border, #eee);border-radius:12px;text-decoration:none;color:var(--text, #1a1a1a);transition:all 0.2s;">
-            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#AE193218,#AE193208);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--primary, #AE1932);flex-shrink:0;">
+            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#AC183018,#AC183008);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--primary, #AC1830);flex-shrink:0;">
                 <i class="bi <?php echo $icon; ?>"></i>
             </div>
             <div>
@@ -71,12 +71,12 @@ if (!empty($_tcs_categories)):
     <?php foreach ($_tcs_popular as $idx => $pop): ?>
     <a href="<?php echo htmlspecialchars($cat_select_target); ?>?treatment=<?php echo urlencode($pop['name']); ?>&<?php echo $cat_select_param; ?>=<?php echo urlencode($pop['category']); ?>"
        style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border, #eee);text-decoration:none;color:var(--text, #1a1a1a);">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary, #AE1932);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;"><?php echo $idx + 1; ?></div>
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary, #AC1830);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;"><?php echo $idx + 1; ?></div>
         <div style="flex:1;">
             <span style="font-size:14px;font-weight:500;"><?php echo htmlspecialchars($pop['name']); ?></span>
             <span style="font-size:12px;color:var(--muted, #888);margin-left:6px;"><?php echo htmlspecialchars($pop['category']); ?></span>
         </div>
-        <div style="font-size:14px;font-weight:700;color:var(--primary, #AE1932);"><?php echo number_format($pop['min_price']); ?>원~</div>
+        <div style="font-size:14px;font-weight:700;color:var(--primary, #AC1830);"><?php echo number_format($pop['min_price']); ?>원~</div>
     </a>
     <?php endforeach; ?>
     <?php endif; ?>

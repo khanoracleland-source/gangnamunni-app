@@ -170,7 +170,7 @@ $page_css = '
 }
 .events-section .section-more {
     font-size: 13px;
-    color: #AE1932;
+    color: #AC1830;
     text-decoration: none;
     font-weight: 500;
 }
@@ -199,7 +199,7 @@ $page_css = '
 .event-card-mini .card-img {
     width: 200px;
     height: 140px;
-    background: linear-gradient(135deg, #AE1932, #D4455A);
+    background: linear-gradient(135deg, #AC1830, #D4455A);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -216,7 +216,7 @@ $page_css = '
     position: absolute;
     top: 8px;
     left: 8px;
-    background: #AE1932;
+    background: #AC1830;
     color: white;
     padding: 3px 10px;
     border-radius: 12px;
@@ -227,7 +227,7 @@ $page_css = '
     position: absolute;
     top: 8px;
     right: 8px;
-    background: #AE1932;
+    background: #AC1830;
     color: white;
     padding: 3px 10px;
     border-radius: 12px;
@@ -299,7 +299,7 @@ $page_css = '
 }
 .raffle-section .section-more {
     font-size: 13px;
-    color: #AE1932;
+    color: #AC1830;
     text-decoration: none;
     font-weight: 500;
 }
@@ -322,7 +322,7 @@ $page_css = '
 .raffle-card .raffle-img {
     width: 100%;
     height: 120px;
-    background: linear-gradient(135deg, #AE1932, #D4354E);
+    background: linear-gradient(135deg, #AC1830, #D4354E);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -344,7 +344,7 @@ $page_css = '
     font-size: 11px;
     font-weight: 700;
     color: white;
-    background: #AE1932;
+    background: #AC1830;
 }
 .raffle-card .raffle-dday {
     position: absolute;
@@ -373,7 +373,7 @@ $page_css = '
 }
 .raffle-card .raffle-prize {
     font-size: 12px;
-    color: #AE1932;
+    color: #AC1830;
     font-weight: 600;
     margin-bottom: 6px;
 }
@@ -390,7 +390,7 @@ $page_css = '
     font-size: 12px;
     font-weight: 700;
     color: white;
-    background: #AE1932;
+    background: #AC1830;
     padding: 4px 12px;
     border-radius: 12px;
 }
@@ -703,7 +703,7 @@ include __DIR__ . '/includes/header.php';
 <!-- ===== [STAGING] Figma 디자인 토큰 정밀 적용 (디자인 only · 백엔드 불변) ===== -->
 <style id="figma-redesign-tokens">
 :root{
-  --sb-primary:#ae1932; --sb-inactive:#aaaaaa; --sb-subtitle:#888888;
+  --sb-primary:#AC1830; --sb-inactive:#aaaaaa; --sb-subtitle:#888888;
   --sb-strike:#a9a9a9; --sb-placeholder:#cacaca; --sb-region:#222222; --sb-card:#f8f8f8;
 }
 /* 폰트 — Figma 실측: Noto Sans KR */
@@ -738,9 +738,9 @@ a[href*="login"].btn, .login-btn, .header-login, .btn-join{ background:var(--sb-
 .category-section{ display:none !important; }           /* 관심있는 시술 아이콘그리드 — 토글 추가 대상 */
 .tips-section{ display:none !important; }               /* 꿀팁 섹션 — 토글 추가 대상 (Figma 홈에 없음) */
 /* 이벤트 카드 — Figma: 카드 배경/배지/가격 정밀 */
-.event-card-mini .card-badge{ background:#ae1932 !important; color:#fff !important; }
+.event-card-mini .card-badge{ background:#AC1830 !important; color:#fff !important; }
 .event-card-mini .card-price .original{ color:#a9a9a9 !important; text-decoration:line-through !important; }
-.event-card-mini .card-price .discount{ color:#ae1932 !important; font-weight:700 !important; }
+.event-card-mini .card-price .discount{ color:#AC1830 !important; font-weight:700 !important; }
 .events-section .section-title{ font-size:18px !important; font-weight:700 !important; }
 </style>
         <?php if (!$table_exists): ?>
@@ -884,7 +884,7 @@ a[href*="login"].btn, .login-btn, .header-login, .btn-join{ background:var(--sb-
             font-size: 15px; font-weight: 400; white-space: nowrap; transition: all 0.2s;
             border: 1px solid transparent;
         }
-        .tc-chip:hover { background: #FFE0E0; color: #AE1932; border-color: #AE1932; }
+        .tc-chip:hover { background: #FFE0E0; color: #AC1830; border-color: #AC1830; }
 
         .tc-table .tc-row:last-child { border-bottom: none; }
 
@@ -1408,7 +1408,7 @@ a[href*="login"].btn, .login-btn, .header-login, .btn-join{ background:var(--sb-
             <i class="bi bi-trophy" style="font-size:22px;color:#f59e0b;display:block;margin-bottom:4px;"></i><span style="font-size:11px;">랭킹</span>
         </a>
         <a href="treatments.php" style="text-align:center;padding:12px 4px;background:var(--bs-body-bg,#fff);border-radius:12px;border:1px solid var(--bs-border-color,#eee);text-decoration:none;color:inherit;">
-            <i class="bi bi-grid-3x3-gap" style="font-size:22px;color:#AE1932;display:block;margin-bottom:4px;"></i><span style="font-size:11px;">시술</span>
+            <i class="bi bi-grid-3x3-gap" style="font-size:22px;color:#AC1830;display:block;margin-bottom:4px;"></i><span style="font-size:11px;">시술</span>
         </a>
         <a href="event_calendar.php" style="text-align:center;padding:12px 4px;background:var(--bs-body-bg,#fff);border-radius:12px;border:1px solid var(--bs-border-color,#eee);text-decoration:none;color:inherit;">
             <i class="bi bi-calendar-event" style="font-size:22px;color:#22c55e;display:block;margin-bottom:4px;"></i><span style="font-size:11px;">캘린더</span>
@@ -1423,7 +1423,7 @@ a[href*="login"].btn, .login-btn, .header-login, .btn-join{ background:var(--sb-
 <div class="recommend-section ae-wrap" id="recommend-section" style="display:none;padding:0 16px;max-width:640px;margin:16px auto;">
     <?php if (function_exists('ae')) ae('hospitals', '병원 관리'); ?>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h2 style="font-size:17px;font-weight:700;margin:0;"><i class="bi bi-stars" style="color:#AE1932;"></i> 맞춤 추천</h2>
+        <h2 style="font-size:17px;font-weight:700;margin:0;"><i class="bi bi-stars" style="color:#AC1830;"></i> 맞춤 추천</h2>
         <a href="hospitals.php" style="font-size:12px;color:var(--bs-secondary-color,#888);text-decoration:none;">더보기 &gt;</a>
     </div>
     <div id="recommend-list" style="display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;"></div>

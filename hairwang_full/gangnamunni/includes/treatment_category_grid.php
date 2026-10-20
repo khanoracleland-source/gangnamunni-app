@@ -115,7 +115,7 @@ $_tcg_default_icons = [
     align-items: center;
 }
 .tcg-card:hover {
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
     box-shadow: 0 4px 16px rgba(211, 47, 47, 0.1);
     transform: translateY(-2px);
 }
@@ -142,7 +142,7 @@ $_tcg_default_icons = [
     align-items: center;
     justify-content: center;
     font-size: 22px;
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
     flex-shrink: 0;
 }
 .tcg-cat-name {
@@ -173,20 +173,20 @@ $_tcg_default_icons = [
     line-height: 1.4;
 }
 .tcg-tag:hover {
-    background: var(--primary-color, #AE1932);
+    background: var(--primary-color, #AC1830);
     color: #fff;
-    border-color: var(--primary-color, #AE1932);
+    border-color: var(--primary-color, #AC1830);
     text-decoration: none;
 }
 .tcg-tag-more {
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
     background: transparent;
     border-color: transparent;
     font-weight: 600;
 }
 .tcg-tag-more:hover {
     background: rgba(211, 47, 47, 0.06);
-    color: var(--primary-color, #AE1932);
+    color: var(--primary-color, #AC1830);
     border-color: transparent;
 }
 

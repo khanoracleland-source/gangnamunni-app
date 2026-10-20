@@ -515,7 +515,7 @@ if ($current_tab === 'reviews') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         :root {
-            --color-primary: #AE1932;
+            --color-primary: #AC1830;
             --color-primary-light: #fce4ec;
             --color-primary-dark: #8A1428;
             --color-text-primary: #333333;
@@ -628,7 +628,7 @@ if ($current_tab === 'reviews') {
 
         .global-nav-share:hover,
         .global-nav-share:focus-visible {
-            color: var(--color-primary, #AE1932);
+            color: var(--color-primary, #AC1830);
         }
 
         .share-copy-toast {
@@ -1063,12 +1063,12 @@ if ($current_tab === 'reviews') {
         }
 
         .tab-item:active {
-            background: rgba(174, 25, 50, 0.06);
+            background: rgba(172, 24, 48, 0.06);
             color: var(--color-primary);
         }
 
         .tab-item:focus-visible {
-            outline: 2px solid rgba(174, 25, 50, 0.28);
+            outline: 2px solid rgba(172, 24, 48, 0.28);
             outline-offset: -2px;
         }
 
@@ -1177,7 +1177,7 @@ if ($current_tab === 'reviews') {
         }
 
         .procedure-discount-rate {
-            color: var(--color-primary, #AE1932);
+            color: var(--color-primary, #AC1830);
             font-size: 22px;
             line-height: 1.25;
             font-weight: 800;
@@ -1205,7 +1205,7 @@ if ($current_tab === 'reviews') {
 
         .matched-option-card:hover {
             color: inherit;
-            border-color: var(--color-primary, #AE1932);
+            border-color: var(--color-primary, #AC1830);
             box-shadow: 0 3px 12px rgba(0, 0, 0, .06);
         }
 
@@ -1335,7 +1335,7 @@ if ($current_tab === 'reviews') {
 
         /* 후기 카드 — review_detail.php .review-card-area 와 동일 구성 */
         .review-card-area { padding: 16px 0; border-bottom: 1px solid var(--color-border, #e0e0e0); }
-        .review-card-area .tag { display: inline-block; margin: 5px 4px 5px 0; padding: 3px 8px; background: #FFEEEE; color: #AE1932; border-radius: 4px; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; }
+        .review-card-area .tag { display: inline-block; margin: 5px 4px 5px 0; padding: 3px 8px; background: #FFEEEE; color: #AC1830; border-radius: 4px; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; }
         .review-card-area .review-title { font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: var(--color-text-primary, #000); margin: 6px 0 4px; line-height: 1.4; }
         .review-card-area .review-body { font-size: calc(15px * var(--fs-scale,1) * var(--fs-page,1)); line-height: 1.8; color: var(--color-text-primary); }
         .review-card-area .review-body p { margin-bottom: 8px; }
@@ -1353,7 +1353,7 @@ if ($current_tab === 'reviews') {
         .post-stat-group { display: inline-flex; align-items: center; gap: 20px; font-size: calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color: var(--color-text-primary, #000); margin-left: auto; }
         .post-stat-group .stat { display: inline-flex; align-items: center; gap: 3px; }
         .post-stat-group .stat i { font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); }
-        .post-stat-group .heart-icon { color: #AE1932; }
+        .post-stat-group .heart-icon { color: #AC1830; }
 
         /* 의사 탭 */
         .doctor-list {
@@ -1962,7 +1962,7 @@ if ($current_tab === 'reviews') {
             <span class="info-icon" style="margin-right:0;"><i class="bi bi-calendar2-check"></i></span>
             <div class="info-content">
                 <div style="display: flex; align-items: center;">
-                    <strong><?php if ($is_open_now): ?><span style="color:var(--color-primary,#AE1932);font-weight:700;">진료중</span> <?php endif; ?><?php echo htmlspecialchars($business_hours_text); ?> <span style="font-weight:400;color:var(--color-text-muted,#999);font-size:0.9em;">(공휴일/일요일 휴무)</span></strong>
+                    <strong><?php if ($is_open_now): ?><span style="color:var(--color-primary,#AC1830);font-weight:700;">진료중</span> <?php endif; ?><?php echo htmlspecialchars($business_hours_text); ?> <span style="font-weight:400;color:var(--color-text-muted,#999);font-size:0.9em;">(공휴일/일요일 휴무)</span></strong>
                     <button class="hours-toggle-btn" style="margin-left:4px;" type="button">
                         <span class="hours-toggle-icon" id="hoursToggleIcon"><i class="bi bi-chevron-down"></i></span>
                     </button>
@@ -2252,7 +2252,7 @@ if ($current_tab === 'reviews') {
             </div>
             <?php if ($doctors_count > 2): ?>
             <div style="text-align:center;margin-top:12px;">
-                <a href="?id=<?php echo $hospital_id; ?>&tab=doctors<?php echo $detail_source_qs; ?>" style="font-size:13px;color:var(--color-primary,#AE1932);text-decoration:none;"><?= term("staff", "의료진") ?> 전체 보기 →</a>
+                <a href="?id=<?php echo $hospital_id; ?>&tab=doctors<?php echo $detail_source_qs; ?>" style="font-size:13px;color:var(--color-primary,#AC1830);text-decoration:none;"><?= term("staff", "의료진") ?> 전체 보기 →</a>
             </div>
             <?php endif; ?>
             <script>
@@ -2980,7 +2980,7 @@ if ($current_tab === 'reviews') {
             const done = function() {
                 const original = btn.innerHTML;
                 btn.innerHTML = '복사됨';
-                btn.style.color = 'var(--color-primary, #AE1932)';
+                btn.style.color = 'var(--color-primary, #AC1830)';
                 setTimeout(function() { btn.innerHTML = original; btn.style.color = ''; }, 1500);
             };
             if (navigator.clipboard && navigator.clipboard.writeText) {
