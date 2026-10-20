@@ -1746,6 +1746,71 @@ if ($current_tab === 'reviews') {
         .post-stat-group{font-size:16px}
         .post-stat-group .stat i{font-size:21px}
         .doc-treat-row span{font-size:14px!important}
+
+        /* ===== 05-05 상담 신청서 바텀시트 ===== */
+        .consultation-modal{align-items:flex-end!important;justify-content:center;padding:0!important;background:rgba(26,23,24,.45)!important}
+        .consultation-modal .modal-content.cm-sheet{width:100%!important;max-width:640px;max-height:92vh;border-radius:16px 16px 0 0!important;padding:0 0 34px!important;transform:translateY(40px);transition:transform .22s ease;overflow-y:auto;overscroll-behavior:contain}
+        .consultation-modal.show .modal-content.cm-sheet{transform:translateY(0)}
+        .cm-handle{width:100%;height:28px;position:relative;touch-action:none;cursor:grab}
+        .cm-handle::before{content:"";position:absolute;left:50%;top:10px;width:40px;height:4px;margin-left:-20px;border-radius:2px;background:#AC1830}
+        .cm-handle:active{cursor:grabbing}
+        .cm-grab{touch-action:none}
+        .consultation-modal .cm-sheet{touch-action:pan-y}
+        .cm-body{padding:18px 20px 0;color:#1A1718}
+        .cm-title{font-size:19px;font-weight:700}
+        .cm-sub{font-size:13px;color:#4A4446;margin-top:6px}
+        .cm-hosp{margin-top:14px;padding:12px 14px;background:#F7F5F5;display:flex;align-items:center;gap:8px;font-size:14px}
+        .cm-hosp i{color:#AC1830;font-size:16px}.cm-hosp b{font-weight:700}.cm-hosp span{color:#6B6466;font-size:12px}
+        .cm-label{padding:16px 0 8px;font-size:13px;font-weight:700}
+        .cm-label em{font-style:normal;color:#AC1830}.cm-opt{font-weight:400;color:#9A9395}
+        .cm-chips{display:flex;flex-wrap:wrap;gap:6px}
+        .cm-chip{height:32px;padding:0 12px;display:flex;align-items:center;border-radius:16px;font-size:13px;white-space:nowrap;border:1px solid #DCD6D8;color:#1A1718;background:#fff;cursor:pointer}
+        .cm-chip.on{border-color:#AC1830;color:#AC1830;background:#FBEFF1;font-weight:700}
+        .cm-note{margin-top:8px;font-size:12px;line-height:1.6;color:#6B6466}
+        .cm-row{display:flex;gap:8px}
+        .cm-input{height:44px;box-sizing:border-box;border:1px solid #DCD6D8;border-radius:0;padding:0 12px;font-size:14px;flex:1;min-width:0;background:#fff;color:#1A1718}
+        .cm-input.cm-name{flex:0 0 110px}
+        .cm-textarea{width:100%;height:64px;box-sizing:border-box;border:1px solid #DCD6D8;border-radius:0;padding:10px 12px;font-size:13px;resize:none;background:#fff;color:#1A1718;font-family:inherit}
+        .cm-input:focus,.cm-textarea:focus{outline:none;border-color:#1A1718}
+        .cm-agree{display:flex;align-items:center;gap:8px;padding:14px 0 0;font-size:13px;cursor:pointer}
+        .cm-agree input{position:absolute;opacity:0;pointer-events:none}
+        .cm-box{width:18px;height:18px;box-sizing:border-box;border:1px solid #CFC8CB;border-radius:2px;flex-shrink:0;background:#fff center/13px no-repeat}
+        .cm-agree input:checked + .cm-box{background-color:#AC1830;border-color:#AC1830;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")}
+        .cm-agree-t{flex:1}.cm-agree-t em{font-style:normal;color:#AC1830}
+        .cm-view{font-size:12px;color:#6B6466;text-decoration:underline}
+        .cm-submit{display:flex;align-items:center;justify-content:center;width:100%;height:52px;margin-top:16px;border:1px solid #AC1830;border-radius:4px;background:#AC1830;color:#fff;font-size:16px;font-weight:500;cursor:pointer}
+        .cm-submit:disabled{opacity:.6}
+        .cm-cancel{display:block;margin:10px auto 0;background:none;border:0;color:#6B6466;font-size:13px;padding:6px 12px;cursor:pointer}
+
+        /* compact: 한 화면에 모두 표시 */
+        .consultation-modal .modal-content.cm-sheet{max-height:100dvh;padding-bottom:max(12px,env(safe-area-inset-bottom))!important}
+        .cm-handle{height:24px}.cm-handle::before{top:8px}
+        .cm-body{padding:4px 20px 0}
+        .cm-title{display:flex;align-items:center;justify-content:space-between;font-size:18px;line-height:1.3}
+        .cm-x{background:none;border:0;font-size:26px;line-height:1;color:#6B6466;padding:0 2px;cursor:pointer}
+        .cm-sub{font-size:12px;margin-top:2px}
+        .cm-hosp{margin-top:10px;padding:9px 12px;font-size:13px}
+        .cm-label{padding:10px 0 6px;font-size:12px}
+        .cm-chip{height:30px;padding:0 11px;font-size:12px}
+        .cm-chips{gap:5px}
+        .cm-note{margin-top:4px;font-size:11px;line-height:1.45}
+        .cm-input{height:40px}
+        .cm-msgrow{display:flex;gap:8px;align-items:stretch}
+        .cm-textarea{flex:1;height:44px!important;padding:8px 10px;min-width:0}
+        .cm-photo{margin:0!important}
+        .cm-photo .photo-grid{gap:6px;height:100%}
+        .cm-photo .photo-slot{width:44px;height:44px;border-width:1px;border-radius:4px}
+        .cm-photo .photo-slot .add-icon{font-size:18px}
+        .cm-agree{padding-top:10px}
+        .consent-row{margin:8px 0 0;font-size:11px}
+        .cm-submit{height:48px;margin-top:12px}
+        @media (max-height:700px){.cm-hosp{display:none}.cm-sub{display:none}.cm-note{display:none}}
+
+        /* 푸터 분리: 신청하기 버튼은 시트와 따로 움직인다 */
+        .cm-wrap{position:relative;width:100%;max-width:640px;display:flex;flex-direction:column;max-height:100dvh}
+        .consultation-modal .modal-content.cm-sheet{padding-bottom:calc(72px + env(safe-area-inset-bottom))!important;touch-action:pan-y}
+        .cm-footer{position:absolute;left:0;right:0;bottom:0;z-index:2;background:#fff;padding:12px 20px max(12px,env(safe-area-inset-bottom));box-sizing:border-box}
+        .cm-footer .cm-submit{margin-top:0}
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
 </head>
@@ -2618,11 +2683,27 @@ if ($current_tab === 'reviews') {
         </a>
     </div>
 
-    <!-- 상담 신청 모달 -->
+    <!-- 상담 신청 모달 (05-05 바텀시트) -->
+    <?php
+    $cm_chips_treat = [];
+    foreach ($treatments as $_t) {
+        $_n = trim((string)($_t['name'] ?? ''));
+        if ($_n !== '' && !in_array($_n, $cm_chips_treat, true)) $cm_chips_treat[] = $_n;
+        if (count($cm_chips_treat) >= 8) break;
+    }
+    $cm_chips_treat[] = '기타';
+    $cm_addr = (string)($hospital['address'] ?? '');
+    $cm_dist = '';
+    foreach (preg_split('/\s+/u', trim($cm_addr)) as $_ap) {
+        if ($_ap !== '' && mb_substr($_ap, -1, 1, 'UTF-8') === '구') { $cm_dist = mb_substr($_ap, 0, -1, 'UTF-8'); break; }
+    }
+    $cm_phone = trim((string)($hospital['phone'] ?? ''));
+    ?>
     <div class="consultation-modal" id="consultModal">
-        <div class="modal-content">
-            <div class="modal-header"><?= term("consultation") ?> 신청</div>
-            <form id="consultForm" onsubmit="submitConsultation(event)">
+        <div class="cm-wrap">
+        <div class="modal-content cm-sheet">
+            <div class="cm-handle"></div>
+            <form id="consultForm" onsubmit="submitConsultation(event)" class="cm-body">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($consultation_csrf_token, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
                 <input type="hidden" name="type" id="consultType" value="doctor">
@@ -2631,32 +2712,59 @@ if ($current_tab === 'reviews') {
                 $auto_name = !empty($logged_member['mb_name']) ? htmlspecialchars($logged_member['mb_name']) : '';
                 $auto_phone = !empty($logged_member['mb_hp']) ? htmlspecialchars($logged_member['mb_hp']) : '';
                 ?>
-                <input type="text" name="name" class="modal-input" placeholder="이름" value="<?php echo $auto_name; ?>" required>
-                <input type="tel" name="phone" class="modal-input" placeholder="연락처" value="<?php echo $auto_phone; ?>" required>
-                <textarea name="message" class="modal-textarea" placeholder="<?php echo term('consultation', '상담'); ?> 내용을 입력해주세요"></textarea>
+                <div class="cm-title cm-grab"><span><?php echo term('consultation', '상담'); ?> 신청서</span></div>
+                <div class="cm-sub cm-grab">신청하면 병원에서 확인 후 연락드려요</div>
+                <div class="cm-hosp"><i class="bi bi-hospital"></i><b><?php echo htmlspecialchars($hospital['name'] ?? ''); ?></b><?php if ($cm_dist !== ''): ?><span><?php echo htmlspecialchars($cm_dist); ?></span><?php endif; ?></div>
 
-                <!-- 사진 첨부 -->
-                <div class="photo-upload-section">
-                    <span class="photo-upload-label">📷 사진 첨부 (선택, 최대 3장)</span>
-                    <input type="file" id="photoInput" accept="image/*" multiple style="display:none;" onchange="handlePhotoSelect(this)">
-                    <div class="photo-grid" id="photoGrid">
-                        <div class="photo-slot" id="addPhotoSlot" onclick="document.getElementById('photoInput').click()">
-                            <span class="add-icon">+</span>
+                <div class="cm-label">관심 시술 <em>*</em></div>
+                <div class="cm-chips" data-group="treat">
+                    <?php foreach ($cm_chips_treat as $_c): ?><button type="button" class="cm-chip" data-v="<?php echo htmlspecialchars($_c, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($_c); ?></button><?php endforeach; ?>
+                </div>
+
+                <div class="cm-label">상담 방법 <em>*</em></div>
+                <div class="cm-chips" data-group="method">
+                    <button type="button" class="cm-chip on" data-v="전화 상담">전화 상담</button>
+                    <button type="button" class="cm-chip" data-v="카카오톡 채널">카카오톡 채널</button>
+                    <button type="button" class="cm-chip" data-v="방문 상담">방문 상담</button>
+                </div>
+                <div class="cm-note"><?php echo $cm_phone !== '' ? '병원 번호(' . htmlspecialchars($cm_phone) . ')로 전화드려요. ' : '병원에서 전화드려요. '; ?>모르는 번호 · 스팸 차단 중이면 번호를 저장해주세요</div>
+
+                <div class="cm-label">연락 가능한 시간 <em>*</em></div>
+                <div class="cm-chips" data-group="time">
+                    <button type="button" class="cm-chip" data-v="오전">오전</button>
+                    <button type="button" class="cm-chip on" data-v="오후">오후</button>
+                    <button type="button" class="cm-chip" data-v="저녁">저녁</button>
+                    <button type="button" class="cm-chip" data-v="언제든 괜찮아요">언제든 괜찮아요</button>
+                </div>
+
+                <div class="cm-label">이름 · 연락처 <em>*</em></div>
+                <div class="cm-row">
+                    <input type="text" name="name" class="cm-input cm-name" placeholder="이름" value="<?php echo $auto_name; ?>" required>
+                    <input type="tel" name="phone" class="cm-input" placeholder="연락처" value="<?php echo $auto_phone; ?>" required>
+                </div>
+
+                <div class="cm-label"><?php echo term('consultation', '상담'); ?> 내용 <span class="cm-opt">(선택)</span></div>
+                <div class="cm-msgrow">
+                    <textarea name="message" class="cm-textarea" placeholder="궁금한 점이나 원하는 부위를 적어주세요"></textarea>
+                    <div class="photo-upload-section cm-photo">
+                        <input type="file" id="photoInput" accept="image/*" multiple style="display:none;" onchange="handlePhotoSelect(this)">
+                        <div class="photo-grid" id="photoGrid">
+                            <div class="photo-slot" id="addPhotoSlot" onclick="document.getElementById('photoInput').click()" title="사진 첨부 (선택, 최대 3장)">
+                                <span class="add-icon">📷</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- 동의 (사진 첨부 시 표시) -->
                 <div class="consent-row" id="consentRow" style="display:none;">
                     <input type="checkbox" name="photo_consent" id="photoConsent" value="1">
                     <label for="photoConsent">상담 참고용 사진을 첨부합니다. 제공된 사진은 상담 목적으로만 사용되며, 상담 완료 후 30일 이내에 삭제됩니다.</label>
                 </div>
 
-                <div class="modal-buttons">
-                    <button type="button" class="modal-btn modal-btn-cancel" onclick="closeConsultModal()">취소</button>
-                    <button type="submit" class="modal-btn modal-btn-submit">신청하기</button>
-                </div>
+                <label class="cm-agree"><input type="checkbox" id="cmAgree"><span class="cm-box"></span><span class="cm-agree-t"><em>(필수)</em> 개인정보 병원 제공 동의</span><a href="privacy_policy.php" target="_blank" rel="noopener" class="cm-view" onclick="event.stopPropagation()">보기</a></label>
+
             </form>
+        </div>
+        <div class="cm-footer"><button type="submit" form="consultForm" class="modal-btn-submit cm-submit">신청하기</button></div>
         </div>
     </div>
 
@@ -2764,6 +2872,10 @@ if ($current_tab === 'reviews') {
         function openDoctorConsult() {
             document.getElementById('consultType').value = 'doctor';
             const modal = document.getElementById('consultModal');
+            const _sh = modal.querySelector('.cm-sheet');
+            if (_sh) { _sh.style.transition = ''; _sh.style.transform = ''; }
+            const _ft = modal.querySelector('.cm-footer'); if (_ft) { _ft.style.transition = ''; _ft.style.transform = ''; }
+            modal.style.transition = ''; modal.style.background = ''; delete modal.dataset.closing;
             modal.classList.add('show');
             document.body.classList.add('consultation-modal-open');
             window.setTimeout(function() {
@@ -2773,9 +2885,106 @@ if ($current_tab === 'reviews') {
 
         // 상담 모달 닫기
         function closeConsultModal() {
-            document.getElementById('consultModal').classList.remove('show');
-            document.body.classList.remove('consultation-modal-open');
+            const modal = document.getElementById('consultModal');
+            const sheet = modal.querySelector('.cm-sheet');
+            const foot = modal.querySelector('.cm-footer');
+            if (!modal.classList.contains('show') || modal.dataset.closing === '1') return;
+            modal.dataset.closing = '1';
+            const H = sheet.offsetHeight, F = foot.offsetHeight;
+            const cur = (new DOMMatrixReadOnly(getComputedStyle(sheet).transform)).m42 || 0;
+            const fcur = (new DOMMatrixReadOnly(getComputedStyle(foot).transform)).m42 || 0;
+            const target = H + 20, ms = 240;
+            sheet.style.transition = 'none';
+            sheet.animate([{transform: 'translateY(' + cur + 'px)'}, {transform: 'translateY(' + target + 'px)'}], {duration: ms, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards'});
+            // 푸터(신청하기)는 시트 윗면이 푸터에 닿을 때까지 제자리에 있다가 함께 내려간다
+            const contact = Math.max(0, H - F);
+            const hold = Math.max(0, Math.min(.99, (contact - cur) / Math.max(1, target - cur)));
+            foot.animate([{transform: 'translateY(' + fcur + 'px)', offset: 0}, {transform: 'translateY(' + fcur + 'px)', offset: hold}, {transform: 'translateY(' + (F + 20) + 'px)', offset: 1}], {duration: ms, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards'});
+            modal.style.transition = 'background ' + ms + 'ms ease';
+            modal.style.background = 'rgba(26,23,24,0)';
+            window.setTimeout(function() {
+                modal.classList.remove('show');
+                document.body.classList.remove('consultation-modal-open');
+                sheet.getAnimations().forEach(function(a) { a.cancel(); });
+                foot.getAnimations().forEach(function(a) { a.cancel(); });
+                sheet.style.transition = ''; sheet.style.transform = '';
+                foot.style.transition = ''; foot.style.transform = '';
+                modal.style.transition = ''; modal.style.background = '';
+                delete modal.dataset.closing;
+            }, ms + 20);
         }
+
+        // 05-05: 시트를 아래로 끌어 닫기 (community 시트와 동일: 푸터 버튼은 시트가 닿을 때까지 고정)
+        (function() {
+            const modal = document.getElementById('consultModal');
+            if (!modal) return;
+            const wrap = modal.querySelector('.cm-wrap');
+            const sheet = modal.querySelector('.cm-sheet');
+            const foot = modal.querySelector('.cm-footer');
+            let d = null;
+            function moveTo(dy) {
+                sheet.style.transform = 'translateY(' + dy + 'px)';
+                foot.style.transform = 'translateY(' + Math.max(0, dy - (d.h - d.f)) + 'px)';
+                modal.style.background = 'rgba(26,23,24,' + (0.45 * Math.max(0, 1 - dy / d.h)) + ')';
+            }
+            function begin(y, t) {
+                d = {y0: y, last: y, t: t, v: 0, dy: 0, h: sheet.offsetHeight, f: foot.offsetHeight, active: false};
+            }
+            function track(y, t) {
+                if (!d.active) {
+                    if (y - d.y0 <= 4 || sheet.scrollTop > 0) return false;
+                    d.active = true; d.y0 = y;
+                    sheet.style.transition = 'none'; foot.style.transition = 'none'; modal.style.transition = 'none';
+                    return true;
+                }
+                const dd = Math.max(0, y - d.y0);
+                d.v = (y - d.last) / Math.max(1, t - d.t);
+                d.last = y; d.t = t; d.dy = dd;
+                moveTo(dd);
+                return true;
+            }
+            function finish() {
+                const x = d; d = null;
+                if (!x || !x.active) return;
+                if (x.dy > x.h * 0.25 || (x.dy > 8 && x.v > 0.8)) {
+                    closeConsultModal();
+                } else {
+                    sheet.style.transition = 'transform .2s ease';
+                    foot.style.transition = 'transform .2s ease';
+                    modal.style.transition = 'background .2s ease';
+                    sheet.style.transform = 'translateY(0)'; foot.style.transform = 'translateY(0)';
+                    modal.style.background = '';
+                    window.setTimeout(function() { sheet.style.transition = ''; sheet.style.transform = ''; foot.style.transition = ''; foot.style.transform = ''; modal.style.transition = ''; }, 210);
+                }
+            }
+            wrap.addEventListener('touchstart', function(e) {
+                if (modal.dataset.closing === '1' || e.touches.length !== 1) { d = null; return; }
+                begin(e.touches[0].clientY, e.timeStamp);
+            }, {passive: true});
+            wrap.addEventListener('touchmove', function(e) {
+                if (!d) return;
+                if (track(e.touches[0].clientY, e.timeStamp) && e.cancelable) e.preventDefault();
+            }, {passive: false});
+            wrap.addEventListener('touchend', finish);
+            wrap.addEventListener('touchcancel', finish);
+            wrap.addEventListener('pointerdown', function(e) {
+                if (e.pointerType === 'touch' || !e.isPrimary || e.button !== 0 || modal.dataset.closing === '1') return;
+                if (!e.target.closest('.cm-handle, .cm-grab')) return;
+                begin(e.clientY, e.timeStamp); d.mouse = e.pointerId;
+                wrap.setPointerCapture(e.pointerId);
+            });
+            wrap.addEventListener('pointermove', function(e) {
+                if (!d || d.mouse !== e.pointerId) return;
+                track(e.clientY, e.timeStamp);
+            });
+            function pend(e) {
+                if (!d || d.mouse !== e.pointerId) return;
+                try { wrap.releasePointerCapture(e.pointerId); } catch (_) {}
+                finish();
+            }
+            wrap.addEventListener('pointerup', pend);
+            wrap.addEventListener('pointercancel', pend);
+        })();
 
         // 시술 상세 이미지 확대/축소 (100% ~ 400%)
         let treatmentImageZoom = 1;
@@ -3012,7 +3221,16 @@ if ($current_tab === 'reviews') {
                 return;
             }
 
+            // 05-05: 선택 칩 검증 + 메시지 합성 (서버 필드는 그대로 유지)
+            const cmPick = function(g) { const on = document.querySelector('#consultForm .cm-chips[data-group="' + g + '"] .cm-chip.on'); return on ? on.dataset.v : ''; };
+            const cmTreat = cmPick('treat'), cmMethod = cmPick('method'), cmTime = cmPick('time');
+            if (!cmTreat) { window.showDetailToast?.('관심 시술을 선택해주세요.'); return; }
+            if (!cmMethod || !cmTime) { window.showDetailToast?.('상담 방법과 연락 가능한 시간을 선택해주세요.'); return; }
+            if (!document.getElementById('cmAgree').checked) { window.showDetailToast?.('개인정보 병원 제공 동의가 필요합니다.'); return; }
+
             const formData = new FormData(e.target);
+            const cmUserMsg = (formData.get('message') || '').toString().trim();
+            formData.set('message', '[관심 시술] ' + cmTreat + '\n[상담 방법] ' + cmMethod + '\n[연락 가능 시간] ' + cmTime + (cmUserMsg ? '\n\n' + cmUserMsg : ''));
             // 사진 blob 추가
             selectedPhotos.forEach(function(p, i) {
                 formData.append('photos[]', p.blob, 'photo_' + i + '.jpg');
@@ -3021,7 +3239,7 @@ if ($current_tab === 'reviews') {
                 formData.set('photo_consent', '1');
             }
 
-            const submitBtn = e.target.querySelector('.modal-btn-submit');
+            const submitBtn = document.querySelector('#consultModal .modal-btn-submit');
             submitBtn.disabled = true;
             submitBtn.setAttribute('aria-busy', 'true');
             submitBtn.textContent = '전송중...';
@@ -3044,6 +3262,7 @@ if ($current_tab === 'reviews') {
                     if (csrfInput && data.csrf_token) csrfInput.value = data.csrf_token;
                     closeConsultModal();
                     e.target.reset();
+                    document.querySelectorAll('#consultForm .cm-chips[data-group="treat"] .cm-chip').forEach(function(c){ c.classList.remove('on'); });
                     selectedPhotos = [];
                     renderPhotoGrid();
                     window.showDetailToast?.('<?php echo term('consultation', '상담'); ?> 신청이 완료되었습니다.');
@@ -3057,6 +3276,15 @@ if ($current_tab === 'reviews') {
                 window.showDetailToast?.('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.');
             });
         }
+
+        // 05-05 칩 단일 선택
+        document.querySelectorAll('#consultForm .cm-chips').forEach(function(g) {
+            g.addEventListener('click', function(ev) {
+                const c = ev.target.closest('.cm-chip'); if (!c) return;
+                g.querySelectorAll('.cm-chip').forEach(function(x) { x.classList.remove('on'); });
+                c.classList.add('on');
+            });
+        });
 
         // 모달 외부 클릭시 닫기
         document.getElementById('consultModal')?.addEventListener('click', function(e) {

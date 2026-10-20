@@ -177,7 +177,9 @@ if (isset($_GET['hid']) && (int)$_GET['hid'] > 0) {
     <?php endif; ?>
     <div style="padding: 0 16px; margin-bottom: 8px; display: flex; justify-content: flex-start; align-items: center; gap: 8px;">
         <div id="sortChips" style="display:flex; gap:6px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+            <?php if (!empty($effective_treatment_id)): /* 시술 기준 정렬일 때만 낮은가격 노출 */ ?>
             <button onclick="setSort('price')" class="sort-chip<?php echo $sort==='price' ? ' active' : ''; ?>"><img src="assets/icons/categories/<?php echo $sort==='price' ? 'low_price_2.svg' : 'low_price_1.png'; ?>" class="sort-chip-icon"> 낮은가격</button>
+            <?php endif; ?>
             <button onclick="setSort('rating')" class="sort-chip<?php echo $sort==='rating' ? ' active' : ''; ?>"><img src="assets/icons/categories/<?php echo $sort==='rating' ? 'rating_2.svg' : 'rating_1.png'; ?>" class="sort-chip-icon"> 평점</button>
             <button onclick="setSort('popular')" class="sort-chip<?php echo $sort==='popular' ? ' active' : ''; ?>"><i class="bi bi-trophy"></i> 인기</button>
             <button onclick="setSort('review')" class="sort-chip<?php echo $sort==='review' ? ' active' : ''; ?>"><img src="assets/icons/icon-mypage-review.png" class="sort-chip-icon<?php echo $sort==='review' ? '' : ' sort-chip-icon-dim'; ?>" alt=""> <?php echo term('review', '후기'); ?></button>
