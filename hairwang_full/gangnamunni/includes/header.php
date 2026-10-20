@@ -209,7 +209,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
     <div class="header-search-wrap">
         <input type="text" id="csb-keyword" class="hospital-search-input" value="<?php echo htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES); ?>" placeholder="<?php echo function_exists('dt') ? htmlspecialchars(dt('fd_search_placeholder','시술, 병원 이름을 검색해보세요')) : '시술, 병원 이름을 검색해보세요'; ?>">
         <button id="regionToggleBtn" class="hospital-search-btn" onclick="toggleRegionPanel()">
-            <i class="bi bi-geo-alt"></i> 지역 선택
+            <svg class="pin-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z"/><circle cx="12" cy="9.7" r="2.6"/></svg>지역 선택
         </button>
     </div>
 
@@ -327,13 +327,11 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
         // 버튼 스타일
         var btn = document.getElementById('regionToggleBtn');
         if (checked.length > 0) {
-            btn.innerHTML = '<i class="bi bi-geo-alt" style="color:#fff;margin-right:4px;"></i>지역 ' + checked.length + '개';
-            btn.style.background = '#AC1830';
-            btn.style.color = '#fff';
+            btn.innerHTML = '<svg class="pin-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z"/><circle cx="12" cy="9.7" r="2.6"/></svg>지역 ' + checked.length + '개';
+            btn.classList.add('has-region');
         } else {
-            btn.innerHTML = '<i class="bi bi-geo-alt" style="color:#fff;margin-right:4px;"></i>지역 선택';
-            btn.style.background = '#1A0000';
-            btn.style.color = '#fff';
+            btn.innerHTML = '<svg class="pin-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z"/><circle cx="12" cy="9.7" r="2.6"/></svg>지역 선택';
+            btn.classList.remove('has-region');
         }
     }
     function uncheckRegion(val) {

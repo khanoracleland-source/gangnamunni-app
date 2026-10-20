@@ -19,24 +19,66 @@
     font-weight: 400 !important;
 }
 
-/* 지역 선택 버튼 — 검정 알약, 작은 사이즈 (Figma: #222) */
-#regionToggleBtn {
-    padding: 10px 20px !important;
-    background: #000000 !important;
-    border: 2px solid #000000 !important;
-    border-radius: 40px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    height: auto !important;
+/* ===== 검색바 — Claude 디자인(AppGuide / App05_01) 수치 그대로 =====
+ * 행: 높이 48, 하단선 1.5px #1A1718 / placeholder 14px #9A9395
+ * 버튼: 높이 40, 패딩 0 16 0 12, gap 8, 반경 20, 15px 700, #2A1416, 아이콘 20px */
+.header-search-wrap {
+    position: relative;
+    align-items: center !important;
+    height: 48px;
+    margin: 4px auto 15px !important;
+    padding: 0 20px !important;
+    gap: 8px;
+    box-sizing: border-box;
 }
-#regionToggleBtn i {
-    font-size: 14px !important;
+.header-search-wrap::after {
+    content: "";
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 0;
+    height: 1.5px;
+    background: #1A1718;
 }
-
-/* 검색 placeholder 텍스트를 지역 선택 버튼 텍스트와 같은 줄에 맞춤
-   (wrap 이 flex-end 라 input 텍스트를 아래로 내려 버튼 중앙과 정렬) */
 .header-search-wrap .hospital-search-input {
-    padding: 18px 14px 2px 0 !important;
+    height: 48px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    font-size: 14px !important;
+    font-weight: 400;
+    color: #1A1718;
+}
+.header-search-wrap .hospital-search-input::placeholder {
+    color: #9A9395 !important;
+    font-size: 14px !important;
+    font-weight: 400;
+}
+#regionToggleBtn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto !important;
+    flex: 0 0 auto !important;
+    height: 40px !important;
+    padding: 0 16px 0 12px !important;
+    margin-bottom: -1px;
+    background: #2A1416 !important;
+    border: 0 !important;
+    border-radius: 20px !important;
+    color: #fff !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0;
+    line-height: 1;
+}
+#regionToggleBtn.has-region { background: #AC1830 !important; }
+#regionToggleBtn .pin-ico {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    display: block;
 }
 
 /* 지역 선택 패널 — 2026-08-05 reference screenshot */
