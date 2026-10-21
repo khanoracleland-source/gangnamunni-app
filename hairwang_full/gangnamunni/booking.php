@@ -469,6 +469,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // [05-13] 같은 병원에 같은 시술의 진행 중인 예약이 이미 있으면 알린다.
+        // 진행 중 = 접수·병원 확인 중·확정 이면서 아직 지나지 않은 예약. 사용자가 "새로 예약"을 고르면
+        // confirm_duplicate=1 로 다시 보내므로 이 확인만 건너뛴다(연령 제한은 건너뛰지 않는다).
+        if ($booking_error === '' && $booking_mb_id !== '' && ($_POST['confirm_duplicate'] ?? '') !== '1') {
+            $dup_names = array_values(array_unique(array_filter(array_map(static function ($t) {
+                return trim((string)($t['name'] ?? ''));
+            }, $treatments_arr))));
+            $dup_stmt = !empty($dup_names) ? mysqli_prepare($connect,
+                "SELECT id, treatment, treatments_json, booking_date, booking_time, status
+                 FROM gangnamunni_bookings
+                 WHERE mb_id = ? AND hospital_id = ? AND status IN ('pending','hospital_checking','confirmed')
+                   AND booking_date >= CURDATE()
+                 ORDER BY booking_date ASC, booking_time ASC LIMIT 30") : false;
+            if ($dup_stmt) {
+                mysqli_stmt_bind_param($dup_stmt, 'si', $booking_mb_id, $hospital_id);
+                mysqli_stmt_execute($dup_stmt);
+                $dup_res = mysqli_stmt_get_result($dup_stmt);
+                while ($dup_res && ($dup_row = $dup_res->fetch_assoc())) {
+                    $dup_ts = strtotime(trim($dup_row['booking_date'] . ' ' . $dup_row['booking_time']));
+                    if ($dup_ts !== false && $dup_ts <= time()) continue; // 이미 지난 예약
+                    $existing_names = [];
+                    $existing_items = json_decode((string)($dup_row['treatments_json'] ?? ''), true);
+                    if (is_array($existing_items)) {
+                        foreach ($existing_items as $ei) { if (is_array($ei) && !empty($ei['name'])) $existing_names[] = trim((string)$ei['name']); }
+                    }
+                    $same = !empty(array_intersect($dup_names, $existing_names));
+                    if (!$same && empty($existing_names)) { // 예전 형식(요약 문자열만 있는 예약)
+                        foreach ($dup_names as $dn) { if ($dn !== '' && mb_strpos((string)$dup_row['treatment'], $dn) !== false) { $same = true; break; } }
+                    }
+                    if (!$same) continue;
+                    $dup_weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+                    $dup_h = (int)date('G', $dup_ts); $dup_m = date('i', $dup_ts);
+                    $dup_status_labels = ['pending' => '예약 요청 접수', 'hospital_checking' => '병원 확인 중', 'confirmed' => '확정'];
+                    $booking_error = '이미 예약된 시술이 있어요.';
+                    $booking_error_code = 'duplicate_booking';
+                    $booking_error_meta = ['existing' => [
+                        'id' => (int)$dup_row['id'],
+                        'treatment' => mb_substr((string)$dup_row['treatment'], 0, 100),
+                        'hospital_name' => (string)($hospital['name'] ?? ''),
+                        'schedule' => date('n월 j일', $dup_ts) . ' (' . $dup_weekdays[(int)date('w', $dup_ts)] . ') '
+                            . ($dup_h < 12 ? '오전' : '오후') . ' ' . ($dup_h % 12 ?: 12) . ':' . $dup_m,
+                        'status' => $dup_status_labels[$dup_row['status']] ?? '',
+                    ]];
+                    break;
+                }
+                mysqli_stmt_close($dup_stmt);
+            }
+        }
+
+        // 사전 확인 요청(확인 화면을 열기 전): 제한에 걸리지 않으면 저장 없이 통과만 알린다.
+        if ($booking_error === '' && $is_ajax_booking && ($_POST['precheck'] ?? '') === '1') {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['success' => true, 'precheck' => true]);
+            exit;
+        }
+
         if ($booking_error === '') {
         // [예약 저장 안정화] 재설계(다중 시술/수량)로 추가된 컬럼이 없는 DB(운영 등)에서도
         // INSERT 가 'Unknown column' 으로 실패하지 않도록, 없으면 즉시 추가 (idempotent).
@@ -1559,6 +1615,9 @@ $page_css = '
     }
     .success-action.primary { background: #BE1935; color: #fff; }
     button.success-action { font-family: inherit; cursor: pointer; }
+    .dup-booking-card { margin: 0 0 8px; padding: 16px; background: #fff1f3; border-radius: 8px; text-align: left; }
+    .dup-booking-name { font-size: 15px; font-weight: 700; color: #111; word-break: keep-all; }
+    .dup-booking-when { margin-top: 6px; font-size: 13px; color: #BE1935; font-weight: 600; }
 
     @media (max-width: 380px) {
         .booking-confirm-page { padding-left: 16px; padding-right: 16px; }
@@ -2184,6 +2243,8 @@ $page_js = '
         document.body.style.overflow = "hidden";
     }
     function closeBookingConfirm() {
+        var dupFlag = document.getElementById("confirmDuplicate");
+        if (dupFlag) dupFlag.value = "";
         var overlay = document.getElementById("bookingConfirmOverlay");
         overlay.classList.remove("open");
         overlay.setAttribute("aria-hidden", "true");
@@ -2204,6 +2265,13 @@ $page_js = '
                 headers: { "X-Requested-With": "XMLHttpRequest" }
             });
             var data = await response.json();
+            if (data && data.code === "duplicate_booking" && data.existing) {
+                closeBookingConfirm();
+                button.disabled = false;
+                button.textContent = "확인했어요";
+                openDuplicateSheet(data.existing);
+                return;
+            }
             if (data && (data.code === "age_restricted" || data.code === "age_unknown")) {
                 closeBookingConfirm();
                 button.disabled = false;
@@ -2224,6 +2292,44 @@ $page_js = '
             button.textContent = "확인했어요";
         }
     }
+    // [05-13] 확인 화면을 열기 전에 서버에 사전 확인(같은 시술 중복 예약·연령 제한)을 한다.
+    // 네트워크 오류 등으로 확인하지 못해도 확인 화면은 연다(최종 접수 때 서버가 다시 검증한다).
+    var precheckBusy = false;
+    async function precheckThenConfirm() {
+        if (precheckBusy) return;
+        precheckBusy = true;
+        try {
+            var form = document.getElementById("bookingForm");
+            var fd = new FormData(form);
+            fd.set("precheck", "1");
+            var response = await fetch(form.getAttribute("action") || window.location.href, {
+                method: "POST", body: fd, credentials: "same-origin",
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            var data = await response.json();
+            if (data && data.code === "duplicate_booking" && data.existing) { openDuplicateSheet(data.existing); return; }
+            if (data && (data.code === "age_restricted" || data.code === "age_unknown")) {
+                openAgeRestrictedSheet(parseInt(data.min_age, 10) || 0, data.code === "age_unknown");
+                return;
+            }
+        } catch (e) {
+        } finally {
+            precheckBusy = false;
+        }
+        openBookingConfirm();
+    }
+    function openDuplicateSheet(existing) {
+        document.getElementById("dupTreatment").textContent = (existing.treatment || "") + (existing.hospital_name ? " · " + existing.hospital_name : "");
+        document.getElementById("dupSchedule").textContent = (existing.schedule || "") + (existing.status ? " · " + existing.status : "");
+        document.getElementById("dupChangeLink").setAttribute("href", "booking_change.php?booking_id=" + (parseInt(existing.id, 10) || 0));
+        if (window.bookingDuplicateMotion) window.bookingDuplicateMotion.open();
+    }
+    function bookAnyway() {
+        document.getElementById("confirmDuplicate").value = "1";
+        var done = function() { openBookingConfirm(); };
+        if (window.bookingDuplicateMotion) window.bookingDuplicateMotion.close().then(done); else done();
+    }
+    window.bookAnyway = bookAnyway;
     function openAgeRestrictedSheet(minAge, unknownAge) {
         var title = document.getElementById("ageRestrictedTitle");
         var desc = document.getElementById("ageRestrictedDesc");
@@ -2330,7 +2436,7 @@ $page_js = '
                 openAgeRestrictedSheet(ageLimit, MEMBER_AGE === null);
                 return false;
             }
-            openBookingConfirm();
+            precheckThenConfirm();
             return false;
         });
     }
@@ -2485,6 +2591,7 @@ include __DIR__ . '/includes/header.php';
     <form method="POST" class="booking-form<?php echo $is_rebooking ? ' rebooking' : ''; ?>" id="bookingForm">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
         <input type="hidden" name="response_mode" value="ajax">
+        <input type="hidden" name="confirm_duplicate" id="confirmDuplicate" value="">
         <!-- 예약하기 헤더 + 옵션 변경(시술 선택 시트) -->
         <div class="form-group head-group">
             <div class="section-head-row">
@@ -2612,6 +2719,26 @@ include __DIR__ . '/includes/header.php';
             <div class="success-actions booking-motion-footer">
                 <a href="<?php echo htmlspecialchars($booking_success_done_url, ENT_QUOTES, 'UTF-8'); ?>" class="success-action primary">확인했어요</a>
                 <a href="my_bookings.php" class="success-action" id="successBookingsLink">내 예약 현황</a>
+            </div>
+        </section>
+    </div>
+
+    <!-- [05-13] 이미 예약된 시술 안내 시트 -->
+    <div class="booking-success-overlay booking-motion-overlay" id="duplicateBookingOverlay" tabindex="-1" aria-hidden="true"
+         data-booking-motion-sheet data-booking-motion-name="bookingDuplicateMotion">
+        <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="duplicateBookingTitle">
+            <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
+            <h2 class="success-sheet-title" id="duplicateBookingTitle">이미 예약된 시술이 있어요</h2>
+            <p class="success-sheet-desc">같은 시술을 한 번 더 예약하시려면<br>“새로 예약”을 선택해 주세요.</p>
+            <div class="dup-booking-card">
+                <div class="dup-booking-name" id="dupTreatment"></div>
+                <div class="dup-booking-when" id="dupSchedule"></div>
+            </div>
+            </div>
+            <div class="success-actions booking-motion-footer">
+                <button type="button" class="success-action primary" onclick="bookAnyway()">새로 예약</button>
+                <a href="my_bookings.php" id="dupChangeLink" class="success-action">기존 예약 변경</a>
             </div>
         </section>
     </div>
