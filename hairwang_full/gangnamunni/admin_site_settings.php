@@ -72,11 +72,14 @@ require_once __DIR__ . '/includes/admin_header.php';
             ['rolling_banner_count', '롤링 배너 수', 'number', '표시할 배너 수'],
             ['rolling_banner_speed', '롤링 속도 (ms)', 'number', '자동 전환 속도'],
             ['booking_require_login', '예약 로그인 필수', 'toggle', '예약/예약조회 시 로그인 필수 (피그마 설계 기본 ON)'],
+            ['noshow_block_count', '노쇼 예약 제한 횟수', 'number', '최근 기간 동안 방문하지 않은(노쇼) 예약이 이 횟수 이상이면 새 예약을 막습니다. 0 = 사용 안 함 (기본 3)'],
+            ['noshow_block_months', '노쇼 집계 기간 (개월)', 'number', '위 횟수를 세는 최근 개월 수. 가장 오래된 노쇼가 이 기간을 벗어나면 다시 예약할 수 있습니다. (기본 3)'],
+            ['noshow_count_cancel', '직접 취소도 노쇼로 집계', 'toggle', 'ON 시 회원이 직접 취소한 예약(환불 포함)도 위 횟수에 포함합니다. 병원·관리자 취소와 결제 전 자동 취소는 제외 (기본 ON)'],
             ['booking_phone_auth', '전화번호 인증 허용', 'toggle', 'ON 시 비로그인도 전화번호로 예약/조회 가능 (기본 OFF)'],
         ];
         foreach ($general_items as $item):
             $key = $item[0]; $label = $item[1]; $type = $item[2]; $desc = $item[3];
-            $val = sv($key, '');
+            $val = sv($key, $key === 'noshow_count_cancel' ? '1' : (in_array($key, ['noshow_block_count', 'noshow_block_months'], true) ? '3' : ''));
         ?>
         <div class="row align-items-center mb-3 border-bottom pb-3">
             <div class="col-md-4">

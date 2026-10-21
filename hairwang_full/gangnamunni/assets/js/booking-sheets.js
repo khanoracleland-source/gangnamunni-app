@@ -176,7 +176,7 @@ function createBookingSheet(overlay, onClose) {
         event.stopPropagation();
         close();
     });
-    panel.addEventListener('pointerdown', event => {
+    const onPointerDown = event => {
         if (closing || pointer || !event.isPrimary || event.button !== 0) return;
         stopAnimation();
         pointer = {id:event.pointerId, start:event.clientY, last:event.clientY, y, height:maxHeight-y,
@@ -189,8 +189,11 @@ function createBookingSheet(overlay, onClose) {
             panel.setPointerCapture(event.pointerId);
             event.preventDefault();
         }
-    });
-    panel.addEventListener('pointermove', event => {
+    };
+    // The footer lives outside the panel (moved into the stage), so it needs the same listeners to be a drag surface.
+    panel.addEventListener('pointerdown', onPointerDown);
+    footer.addEventListener('pointerdown', onPointerDown);
+    const onPointerMove = event => {
         if (!pointer || pointer.id !== event.pointerId) return;
         const delta = event.clientY-pointer.start;
         if (!pointer.moved && Math.abs(delta)<4) return;
@@ -219,7 +222,9 @@ function createBookingSheet(overlay, onClose) {
         backdrop.style.opacity = String(backdropOpacity*Math.min(1,Math.max(0,(maxHeight-y)/pointer.height)));
         pointer.samples.push({y:event.clientY,t:event.timeStamp});
         while (pointer.samples.length > 2 && event.timeStamp-pointer.samples[1].t>100) pointer.samples.shift();
-    }, {passive:false});
+    };
+    panel.addEventListener('pointermove', onPointerMove, {passive:false});
+    footer.addEventListener('pointermove', onPointerMove, {passive:false});
     function finish(event) {
         if (!pointer || pointer.id!==event.pointerId) return;
         const drag = pointer;
@@ -239,14 +244,18 @@ function createBookingSheet(overlay, onClose) {
     }
     panel.addEventListener('pointerup', finish);
     panel.addEventListener('pointercancel', finish);
+    footer.addEventListener('pointerup', finish);
+    footer.addEventListener('pointercancel', finish);
     panel.addEventListener('lostpointercapture', event => {
         // Ignore capture changes bubbling from the handle or an action button.
         if (event.target !== panel) return;
         if (pointer && !panel.hasPointerCapture(pointer.id)) finish(event);
     });
-    panel.addEventListener('click', event => {
+    const onClickCapture = event => {
         if (suppressClick) {event.preventDefault();event.stopImmediatePropagation();suppressClick=false;}
-    }, true);
+    };
+    panel.addEventListener('click', onClickCapture, true);
+    footer.addEventListener('click', onClickCapture, true);
     overlay.querySelector('.booking-motion-handle').addEventListener('keydown', event => {
         if (!closing && event.key === 'ArrowDown') {event.preventDefault(); close();}
     });

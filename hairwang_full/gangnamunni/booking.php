@@ -30,6 +30,7 @@ $is_admin = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged
 // [2026-06-15] 예약 로그인 필수 (관리 대시보드 booking_require_login 설정으로 ON/OFF, 기본 ON)
 //   booking_phone_auth=1 이면 비로그인 전화번호 예약도 허용 (다른 채널 대비)
 if (!function_exists('getSettingValue') && file_exists(__DIR__ . '/includes/settings_helper.php')) { require_once __DIR__ . '/includes/settings_helper.php'; }
+require_once __DIR__ . '/includes/booking_noshow_policy.php';
 if (function_exists('getSettingValue')) {
     $_require_login = getSettingValue($connect, 'booking_require_login', '1') === '1';
     $_phone_auth    = getSettingValue($connect, 'booking_phone_auth', '0') === '1';
@@ -252,6 +253,8 @@ function booking_revisit_status($connect, $mb_id, $hospital_id, array $names) {
     }
     return $out;
 }
+
+// [05-17] 노쇼·잦은 취소 제한은 includes/booking_noshow_policy.php 의 booking_noshow_status() 를 사용한다.
 
 // 로그인 회원의 만 나이. 생년월일이 없거나 형식이 올바르지 않으면 null (판단 불가 → 막지 않음).
 function booking_member_age($member) {
@@ -592,6 +595,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 예약 전 확인(위에서부터 차례로). 하나라도 걸리면 접수하지 않고 코드를 돌려준다.
         //  1) [05-14] 다른 병원에 같은 시술의 진행 중인 예약 → 불가(우회 불가)
         //  2) [05-16] 재시술 간격이 "필수"인 시술의 간격 미충족 → 불가(우회 불가)
+        //  0) [05-17] 최근 노쇼 누적 → 예약 불가(우회 없음)
         //  3) [05-13] 같은 병원에 같은 시술의 진행 중인 예약 → 경고("새로 예약"으로 우회: confirm_duplicate=1)
         //  4) [05-15] 재시술 "권장" 간격 미충족 → 경고("그래도 예약"으로 우회: confirm_revisit=1)
         if ($booking_error === '' && $booking_mb_id !== '') {
@@ -601,7 +605,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $revisit = $booking_has_revisit ? booking_revisit_status($connect, $booking_mb_id, $hospital_id, $dup_names)
                                             : ['strict' => null, 'warn' => null];
             $other_existing = booking_find_active_same_treatment($connect, $booking_mb_id, $hospital_id, $dup_names, false);
-            if ($other_existing) {
+            $noshow = booking_noshow_status($connect, $booking_mb_id);
+            if ($noshow) {
+                $booking_error = '지금은 예약할 수 없어요.';
+                $booking_error_code = 'noshow_blocked';
+                $booking_error_meta = ['noshow' => $noshow];
+            } elseif ($other_existing) {
                 $booking_error = '다른 병원에 같은 시술 예약이 있어요.';
                 $booking_error_code = 'other_hospital_duplicate';
                 $booking_error_meta = ['existing' => $other_existing];
@@ -1716,6 +1725,7 @@ $page_css = '
     .success-alert-title { color: #BE1935; font-weight: 700; margin-bottom: 9px; }
     .success-alert-copy { font-size: 14px; line-height: 1.75; }
     .success-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 28px; }
+    #noshowOverlay .success-actions { grid-template-columns: 1fr; }
     .success-action {
         height: 52px; border: 1px solid #BE1935; background: #fff; color: #BE1935;
         display: flex; align-items: center; justify-content: center; text-decoration: none;
@@ -2376,6 +2386,13 @@ $page_js = '
                 headers: { "X-Requested-With": "XMLHttpRequest" }
             });
             var data = await response.json();
+            if (data && data.code === "noshow_blocked" && data.noshow) {
+                closeBookingConfirm();
+                button.disabled = false;
+                button.textContent = "확인했어요";
+                openNoshowSheet(data.noshow);
+                return;
+            }
             if (data && (data.code === "revisit_blocked" || data.code === "revisit_warning") && data.revisit) {
                 closeBookingConfirm();
                 button.disabled = false;
@@ -2425,6 +2442,7 @@ $page_js = '
                 headers: { "X-Requested-With": "XMLHttpRequest" }
             });
             var data = await response.json();
+            if (data && data.code === "noshow_blocked" && data.noshow) { openNoshowSheet(data.noshow); return; }
             if (data && data.code === "duplicate_booking" && data.existing) { openDuplicateSheet(data.existing); return; }
             if (data && data.code === "other_hospital_duplicate" && data.existing) { openOtherHospitalSheet(data.existing); return; }
             if (data && data.code === "revisit_blocked" && data.revisit) { openRevisitSheet(data.revisit, true); return; }
@@ -2492,6 +2510,32 @@ $page_js = '
         if (window.bookingRevisitMotion) window.bookingRevisitMotion.close().then(done); else done();
     }
     window.revisitProceed = revisitProceed;
+    function openNoshowSheet(info) {
+        var desc = document.getElementById("noshowDesc");
+        var list = document.getElementById("noshowList");
+        desc.innerHTML = "";
+        desc.appendChild(document.createTextNode("최근 " + (parseInt(info.months, 10) || 3) + "개월 동안 " + (info.has_cancel ? "방문하지 않았거나 취소한" : "방문하지 않은") + " 예약이 " + (parseInt(info.count, 10) || 0) + "회 있어요."));
+        desc.appendChild(document.createElement("br"));
+        desc.appendChild(document.createTextNode((info.available_from || "") + "부터 다시 예약할 수 있어요."));
+        list.innerHTML = "";
+        (info.items || []).forEach(function (it) {
+            var card = document.createElement("div");
+            card.className = "dup-booking-card";
+            var badges = document.createElement("div");
+            badges.className = "dup-booking-badges";
+            var badge = document.createElement("span");
+            badge.className = "dup-badge on";
+            badge.textContent = it.kind === "cancel" ? "취소" : "미방문";
+            badges.appendChild(badge);
+            var name = document.createElement("div");
+            name.className = "dup-booking-name";
+            name.textContent = (it.when || "") + (it.hospital ? " · " + it.hospital : "");
+            card.appendChild(badges);
+            card.appendChild(name);
+            list.appendChild(card);
+        });
+        if (window.bookingNoshowMotion) window.bookingNoshowMotion.open();
+    }
     function openAgeRestrictedSheet(minAge, unknownAge) {
         var title = document.getElementById("ageRestrictedTitle");
         var desc = document.getElementById("ageRestrictedDesc");
@@ -2946,6 +2990,22 @@ include __DIR__ . '/includes/header.php';
         </section>
     </div>
 
+    <!-- [05-17] 노쇼 누적으로 예약 불가 안내 시트 -->
+    <div class="booking-success-overlay booking-motion-overlay" id="noshowOverlay" tabindex="-1" aria-hidden="true"
+         data-booking-motion-sheet data-booking-motion-name="bookingNoshowMotion">
+        <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="noshowTitle">
+            <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
+            <h2 class="success-sheet-title" id="noshowTitle">지금은 예약할 수 없어요</h2>
+            <p class="success-sheet-desc" id="noshowDesc"></p>
+            <div id="noshowList"></div>
+            </div>
+            <div class="success-actions booking-motion-footer">
+                <button type="button" class="success-action primary" onclick="window.bookingNoshowMotion && window.bookingNoshowMotion.close()">확인했어요</button>
+            </div>
+        </section>
+    </div>
+
     <!-- [05-12] 나이 제한 시술 안내 시트 -->
     <div class="booking-success-overlay booking-motion-overlay" id="ageRestrictedOverlay" tabindex="-1" aria-hidden="true"
          data-booking-motion-sheet data-booking-motion-name="bookingAgeMotion">
@@ -3078,8 +3138,8 @@ include __DIR__ . '/includes/header.php';
 
 
     <?php endif; ?>
-    <link rel="stylesheet" href="assets/css/booking-sheets.css">
-    <script src="assets/js/booking-sheets.js"></script>
+    <link rel="stylesheet" href="assets/css/booking-sheets.css?v=<?php echo (int)@filemtime(__DIR__ . '/assets/css/booking-sheets.css'); ?>">
+    <script src="assets/js/booking-sheets.js?v=<?php echo (int)@filemtime(__DIR__ . '/assets/js/booking-sheets.js'); ?>"></script>
 
 <?php
 // ========================================

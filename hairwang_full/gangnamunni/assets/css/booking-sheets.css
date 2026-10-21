@@ -6,7 +6,7 @@
 .booking-motion-handle { display: block; position: relative; width: 100%; height: 38px; margin: 0; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; user-select: none; }
 .booking-motion-handle::before { content: ""; position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 50px; height: 5px; border-radius: 4px; background: #b81739; }
 .booking-motion-handle:active { cursor: grabbing; }
-.booking-motion-body { box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; padding: 0 max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left)); }
+.booking-motion-body { box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; touch-action: none; padding: 0 max(20px, env(safe-area-inset-right)) 20px max(20px, env(safe-area-inset-left)); }
 .booking-motion-body .sheet-list { max-height: none; overflow: visible; touch-action: none; margin-bottom: 0; }
-.booking-motion-footer { position: absolute; bottom: 0; left: 0; right: 0; box-sizing: border-box; width: 100%; max-width: 640px; margin: 0 auto; padding: 14px 20px max(20px, env(safe-area-inset-bottom)); background: var(--bs-body-bg, #fff); pointer-events: auto; will-change: transform; }
+.booking-motion-footer { position: absolute; bottom: 0; left: 0; right: 0; box-sizing: border-box; width: 100%; max-width: 640px; margin: 0 auto; padding: 14px 20px max(20px, env(safe-area-inset-bottom)); background: var(--bs-body-bg, #fff); pointer-events: auto; touch-action: none; will-change: transform; }
 .booking-motion-handle:focus-visible { outline: 2px solid #b81739; outline-offset: -3px; }

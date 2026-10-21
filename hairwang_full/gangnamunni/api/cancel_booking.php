@@ -59,8 +59,11 @@ require_once dirname(__DIR__) . '/includes/points_ledger.php';
 require_once dirname(__DIR__) . '/includes/booking_payment_service.php';
 // 결제 승인(booking_payment_confirm)과 같은 잠금 안에서 취소한다: 승인 중이면 끝날 때까지 기다리고,
 // 취소가 먼저면 승인은 BOOKING_NOT_CONFIRMED 로 거부되어 돈이 빠져나가지 않는다.
+// [05-17] 회원이 직접 취소했음을 기록한다(노쇼·잦은 취소 제한 집계용). 컬럼은 sql/booking_cancelled_by_20261021.sql 로 추가한다.
+$cancelled_by_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE 'cancelled_by'");
+$cancelled_by_sql = ($cancelled_by_col && mysqli_num_rows($cancelled_by_col) > 0) ? ", cancelled_by='member'" : '';
 try {
-  booking_payment_lock_for_booking($connect, $booking_id, function () use ($connect, $booking_id, &$booking) {
+  booking_payment_lock_for_booking($connect, $booking_id, function () use ($connect, $booking_id, &$booking, $cancelled_by_sql) {
     $cur = mysqli_prepare($connect, "SELECT status FROM gangnamunni_bookings WHERE id = ?");
     mysqli_stmt_bind_param($cur, 'i', $booking_id);
     mysqli_stmt_execute($cur);
@@ -72,7 +75,7 @@ try {
     mysqli_begin_transaction($connect);
     try {
     $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings
-        SET status='cancelled', cancel_reason=?, cancelled_at=NOW(), updated_at=NOW()
+        SET status='cancelled', cancel_reason=?, cancelled_at=NOW(), updated_at=NOW(){$cancelled_by_sql}
         WHERE id=? AND status IN ('pending','hospital_checking','confirmed')");
     if (!$stmt2) throw new RuntimeException('booking_update_prepare_failed');
     mysqli_stmt_bind_param($stmt2, 'si', $cancel_reason, $booking_id);

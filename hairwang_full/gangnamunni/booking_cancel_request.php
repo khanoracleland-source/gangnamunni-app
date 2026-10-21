@@ -4,6 +4,7 @@ require_once __DIR__ . '/includes/booking_payment_config.php';
 if (!function_exists('getSettingValue') && file_exists(__DIR__ . '/includes/settings_helper.php')) {
     require_once __DIR__ . '/includes/settings_helper.php';
 }
+require_once __DIR__ . '/includes/booking_noshow_policy.php';
 global $is_member, $member;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -61,6 +62,8 @@ if ($table_check && mysqli_num_rows($table_check)) {
     }
 }
 $refund_amount = $amount;
+// [05-17] 이번 취소로 노쇼·취소 누적 제한에 걸리거나 가까워지면 최종 요청 전에 모달로 알린다.
+$cancel_warn = booking_noshow_cancel_preview($connect, (string)($booking['mb_id'] ?? ''));
 $csrf = (string)$_SESSION['my_bookings_csrf'];
 
 function cancel_page_date($date, $time) {
@@ -84,7 +87,7 @@ function cancel_page_now() {
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>예약 취소 요청</title>
 <style>
-:root{--color-primary:#b61935;--color-bg:#fff;--color-text:#111;--color-inactive:#aaa}*{box-sizing:border-box}html{background:#414141}body{margin:0 auto;max-width:640px;min-height:100vh;padding-bottom:92px;background:#f3f3f3;color:#111;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}.sheet{background:#fff}.reason-section{padding:16px 28px 42px;text-align:center}.handle{width:48px;height:5px;margin:0 auto 54px;border-radius:3px;background:var(--color-primary)}h1{margin:0;font-size:24px;letter-spacing:-.045em}.reason-sub{margin:18px 0 32px;font-size:17px;font-weight:650}.reason-grid{max-width:430px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:24px 42px;text-align:left}.reason{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:650}.reason input{appearance:none;width:16px;height:16px;margin:0;border:1px solid #ccc}.reason input:checked{border-color:#d40020;background:#d40020}.reason input:checked:after{content:'✓';display:block;color:#fff;font-size:12px;line-height:14px;text-align:center}.reason-custom{width:100%;max-width:430px;height:54px;margin-top:22px;padding:0 16px;border:1px solid #ddd;font-size:15px}.content{margin-top:10px;padding:40px 28px 30px;background:#fff}.rows{border-bottom:1px solid #ddd}.row{min-height:64px;display:grid;grid-template-columns:120px minmax(0,1fr);align-items:center;border-top:1px solid #ddd}.row:first-child{border-top:0}.label{color:#aaa;font-size:17px;font-weight:650}.value{overflow:hidden;font-size:17px;font-weight:650;white-space:nowrap;text-overflow:ellipsis}.person{margin:24px 0 38px;padding:20px 24px;display:grid;grid-template-columns:100px 1fr;gap:10px;background:#f4f4f4}.section-title{margin:30px 0 14px;font-size:20px}.money-row{min-height:58px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ddd}.money-row .value{font-weight:500}.money-row.total .value{font-weight:750}.money-row.refund .value{color:var(--color-primary);font-weight:750}.policy-notes{margin:18px 0 38px;padding-left:16px;color:#aaa;font-size:11px;line-height:1.9}.warning{padding:26px;background:#fff0f2}.warning h2{margin:0 0 10px;color:var(--color-primary);font-size:17px}.warning ul{margin:0;padding-left:18px;font-size:13px;line-height:1.85}.agreement-title{width:100%;margin-top:34px;padding:0 0 12px;border:0;background:none;display:flex;align-items:center;justify-content:space-between;color:#111;font:inherit;font-size:16px;font-weight:700;text-align:left;cursor:pointer}.agreement-title .chevron{font-size:24px;line-height:1;transition:transform .2s}.agreement-box{margin-top:2px;padding:22px;border:1px solid #ddd;font-size:13px;line-height:1.8}.agree{display:flex;align-items:center;gap:9px;margin-top:20px;font-weight:650}.agree input{accent-color:#d40020}.legal{margin:20px 0;color:#aaa;font-size:10px;line-height:1.7}.final-line{padding-top:18px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:15px;font-weight:700}.final-line strong{color:var(--color-primary);font-size:18px}.final-btn{display:block;width:220px;height:54px;margin:18px auto 0;border:0;background:var(--color-primary);color:#fff;font-size:17px;font-weight:700}.final-btn:disabled{opacity:.55}.error{display:none;margin-top:12px;color:var(--color-primary);text-align:center;font-size:13px}.policy-modal{display:none;position:fixed;inset:0;z-index:20000;padding:8vh 20px;background:rgba(0,0,0,.62);align-items:flex-start;justify-content:center;overflow:auto}.policy-modal.active{display:flex}.policy-dialog{width:100%;max-width:600px;padding:40px 38px;background:#fff}.policy-dialog-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.policy-dialog-title{font-size:19px;font-weight:750}.policy-close{width:38px;height:38px;border:0;background:none;font-size:28px;cursor:pointer}.policy-body{padding:24px;background:#f5f5f5;font-size:13px;line-height:1.75}.policy-body p{margin:0 0 18px}.policy-body ul{margin:0 0 20px;padding-left:20px}.policy-body li{margin-bottom:10px}.policy-body h3{margin:22px 0 10px;font-size:14px}
+:root{--color-primary:#b61935;--color-bg:#fff;--color-text:#111;--color-inactive:#aaa}*{box-sizing:border-box}html{background:#414141}body{margin:0 auto;max-width:640px;min-height:100vh;padding-bottom:92px;background:#f3f3f3;color:#111;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}.sheet{background:#fff}.reason-section{padding:16px 28px 42px;text-align:center}.handle{width:48px;height:5px;margin:0 auto 54px;border-radius:3px;background:var(--color-primary)}h1{margin:0;font-size:24px;letter-spacing:-.045em}.reason-sub{margin:18px 0 32px;font-size:17px;font-weight:650}.reason-grid{max-width:430px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:24px 42px;text-align:left}.reason{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:650}.reason input{appearance:none;width:16px;height:16px;margin:0;border:1px solid #ccc}.reason input:checked{border-color:#d40020;background:#d40020}.reason input:checked:after{content:'✓';display:block;color:#fff;font-size:12px;line-height:14px;text-align:center}.reason-custom{width:100%;max-width:430px;height:54px;margin-top:22px;padding:0 16px;border:1px solid #ddd;font-size:15px}.content{margin-top:10px;padding:40px 28px 30px;background:#fff}.rows{border-bottom:1px solid #ddd}.row{min-height:64px;display:grid;grid-template-columns:120px minmax(0,1fr);align-items:center;border-top:1px solid #ddd}.row:first-child{border-top:0}.label{color:#aaa;font-size:17px;font-weight:650}.value{overflow:hidden;font-size:17px;font-weight:650;white-space:nowrap;text-overflow:ellipsis}.person{margin:24px 0 38px;padding:20px 24px;display:grid;grid-template-columns:100px 1fr;gap:10px;background:#f4f4f4}.section-title{margin:30px 0 14px;font-size:20px}.money-row{min-height:58px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ddd}.money-row .value{font-weight:500}.money-row.total .value{font-weight:750}.money-row.refund .value{color:var(--color-primary);font-weight:750}.policy-notes{margin:18px 0 38px;padding-left:16px;color:#aaa;font-size:11px;line-height:1.9}.warning{padding:26px;background:#fff0f2}.warning h2{margin:0 0 10px;color:var(--color-primary);font-size:17px}.warning ul{margin:0;padding-left:18px;font-size:13px;line-height:1.85}.agreement-title{width:100%;margin-top:34px;padding:0 0 12px;border:0;background:none;display:flex;align-items:center;justify-content:space-between;color:#111;font:inherit;font-size:16px;font-weight:700;text-align:left;cursor:pointer}.agreement-title .chevron{font-size:24px;line-height:1;transition:transform .2s}.agreement-box{margin-top:2px;padding:22px;border:1px solid #ddd;font-size:13px;line-height:1.8}.agree{display:flex;align-items:center;gap:9px;margin-top:20px;font-weight:650}.agree input{accent-color:#d40020}.legal{margin:20px 0;color:#aaa;font-size:10px;line-height:1.7}.final-line{padding-top:18px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:15px;font-weight:700}.final-line strong{color:var(--color-primary);font-size:18px}.final-btn{display:block;width:220px;height:54px;margin:18px auto 0;border:0;background:var(--color-primary);color:#fff;font-size:17px;font-weight:700}.final-btn:disabled{opacity:.55}.error{display:none;margin-top:12px;color:var(--color-primary);text-align:center;font-size:13px}.warn-modal{display:none;position:fixed;inset:0;z-index:21000;background:rgba(0,0,0,.62);align-items:flex-end;justify-content:center}.warn-modal.active{display:flex}.warn-sheet{width:100%;max-width:640px;padding:34px 28px 28px;background:#fff;border-radius:16px 16px 0 0;text-align:center}.warn-icon{width:44px;height:44px;margin:0 auto 14px;border-radius:50%;background:#fff0f2;color:var(--color-primary);font-size:26px;font-weight:800;line-height:44px}.warn-title{margin:0 0 10px;font-size:20px;font-weight:750;letter-spacing:-.04em;line-height:1.4}.warn-desc{margin:0 0 24px;font-size:14px;line-height:1.7;color:#444}.warn-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.warn-btn{height:52px;border:1px solid var(--color-primary);background:#fff;color:var(--color-primary);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}.warn-btn.primary{background:var(--color-primary);color:#fff}.policy-modal{display:none;position:fixed;inset:0;z-index:20000;padding:8vh 20px;background:rgba(0,0,0,.62);align-items:flex-start;justify-content:center;overflow:auto}.policy-modal.active{display:flex}.policy-dialog{width:100%;max-width:600px;padding:40px 38px;background:#fff}.policy-dialog-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.policy-dialog-title{font-size:19px;font-weight:750}.policy-close{width:38px;height:38px;border:0;background:none;font-size:28px;cursor:pointer}.policy-body{padding:24px;background:#f5f5f5;font-size:13px;line-height:1.75}.policy-body p{margin:0 0 18px}.policy-body ul{margin:0 0 20px;padding-left:20px}.policy-body li{margin-bottom:10px}.policy-body h3{margin:22px 0 10px;font-size:14px}
 @media(max-width:420px){.reason-section,.content{padding-left:20px;padding-right:20px}.handle{margin-bottom:44px}h1{font-size:21px}.reason-sub{font-size:15px}.reason-grid{gap:20px 18px}.reason{font-size:15px}.row{grid-template-columns:100px minmax(0,1fr)}.label,.value{font-size:15px}}
 @media(max-width:420px){.policy-modal{padding:20px 12px 92px}.policy-dialog{padding:26px 18px}.policy-dialog-title{font-size:17px}.policy-body{padding:20px 16px;font-size:12px}}
 </style>
@@ -123,6 +126,19 @@ function cancel_page_now() {
  <div class="final-line"><span>환불 검토 대상 금액</span><strong><?php echo number_format($refund_amount); ?>원</strong></div>
  <button type="button" class="final-btn" id="finalCancelButton" onclick="finalizeCancel()">예약 취소 요청</button><p class="error" id="cancelError"></p>
 </main>
+<?php if ($cancel_warn): ?>
+<div class="warn-modal" id="cancelWarnModal" aria-hidden="true">
+ <section class="warn-sheet" role="dialog" aria-modal="true" aria-labelledby="cancelWarnTitle">
+  <div class="warn-icon">!</div>
+  <h2 class="warn-title" id="cancelWarnTitle"></h2>
+  <p class="warn-desc" id="cancelWarnDesc"></p>
+  <div class="warn-actions">
+   <button type="button" class="warn-btn" onclick="confirmCancelWarn()">계속 취소</button>
+   <button type="button" class="warn-btn primary" onclick="closeCancelWarn()">돌아가기</button>
+  </div>
+ </section>
+</div>
+<?php endif; ?>
 <div class="policy-modal" id="policyModal" aria-hidden="true" onclick="if(event.target===this) closePolicyModal()">
  <section class="policy-dialog" role="dialog" aria-modal="true" aria-labelledby="policyTitle">
   <div class="policy-dialog-head"><h2 class="policy-dialog-title" id="policyTitle">취소 및 환불 규정을 확인해주세요</h2><button type="button" class="policy-close" onclick="closePolicyModal()" aria-label="닫기">⌃</button></div>
@@ -136,9 +152,29 @@ function cancel_page_now() {
 <script>
 function openPolicyModal(){var modal=document.getElementById('policyModal');modal.classList.add('active');modal.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}
 function closePolicyModal(){var modal=document.getElementById('policyModal');modal.classList.remove('active');modal.setAttribute('aria-hidden','true');document.body.style.overflow=''}
+var CANCEL_WARN=<?php echo json_encode($cancel_warn, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>, cancelWarnAck=false;
+function openCancelWarn(){
+ var w=CANCEL_WARN, m=document.getElementById('cancelWarnModal'); if(!w||!m) return false;
+ var months=parseInt(w.months,10)||3, after=parseInt(w.after,10)||0, limit=parseInt(w.limit,10)||3;
+ var title, desc;
+ if(w.will_block){
+  title='이번 취소로 예약이 제한돼요';
+  desc='최근 '+months+'개월 동안 방문하지 않았거나 취소한 예약이 '+after+'회가 돼요. '+(w.available_from||'')+'부터 다시 예약할 수 있어요.';
+ } else {
+  title='취소 횟수를 확인해 주세요';
+  desc='최근 '+months+'개월 동안 방문하지 않았거나 취소한 예약이 '+after+'회가 돼요. '+limit+'회가 되면 일정 기간 새 예약을 할 수 없어요. 일정만 바꾸실 거라면 취소 대신 예약 변경을 이용해 주세요.';
+ }
+ document.getElementById('cancelWarnTitle').textContent=title;
+ document.getElementById('cancelWarnDesc').textContent=desc;
+ m.classList.add('active');m.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
+ return true;
+}
+function closeCancelWarn(){var m=document.getElementById('cancelWarnModal');if(!m) return;m.classList.remove('active');m.setAttribute('aria-hidden','true');document.body.style.overflow=''}
+function confirmCancelWarn(){cancelWarnAck=true;closeCancelWarn();finalizeCancel()}
 function finalizeCancel(){
  var agree=document.getElementById('cancelAgree'), error=document.getElementById('cancelError'), button=document.getElementById('finalCancelButton');
  if(!agree.checked){error.textContent='취소 및 환불 규정에 동의해주세요.';error.style.display='block';return}
+ if(CANCEL_WARN && !cancelWarnAck){error.style.display='none';openCancelWarn();return}
  error.style.display='none';button.disabled=true;button.textContent='요청 중...';
  var customReason=document.getElementById('cancelReasonCustom').value.trim();
  var cancelReason=<?php echo json_encode($cancel_reason_choice); ?>;

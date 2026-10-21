@@ -181,7 +181,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo $page_title; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/booking-sheets.css">
+    <link rel="stylesheet" href="assets/css/booking-sheets.css?v=<?php echo (int)@filemtime(__DIR__ . '/assets/css/booking-sheets.css'); ?>">
     <style>
         :root {
             --color-primary: #AC1830;
@@ -733,7 +733,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
     </div>
 </div>
 
-<script src="assets/js/booking-sheets.js"></script>
+<script src="assets/js/booking-sheets.js?v=<?php echo (int)@filemtime(__DIR__ . '/assets/js/booking-sheets.js'); ?>"></script>
 <script>
 var searchPhone = <?php echo json_encode($search_phone, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 var pendingBookingChange = null;
