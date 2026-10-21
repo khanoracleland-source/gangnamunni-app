@@ -190,6 +190,52 @@ function booking_member_age($member) {
     return $birth->diff($today)->y;
 }
 
+// [05-13/05-14] 회원의 진행 중(접수·병원 확인 중·확정, 아직 지나지 않은) 예약 중 선택한 시술과 같은 시술이 담긴 것을 찾는다.
+// $same_hospital=true 면 해당 병원 안에서, false 면 다른 병원들에서 찾는다. 없으면 null.
+function booking_find_active_same_treatment($connect, $mb_id, $hospital_id, array $names, $same_hospital) {
+    if ($mb_id === '' || empty($names)) return null;
+    $op = $same_hospital ? '=' : '<>';
+    $stmt = mysqli_prepare($connect,
+        "SELECT id, hospital_name, treatment, treatments_json, booking_date, booking_time, status
+         FROM gangnamunni_bookings
+         WHERE mb_id = ? AND hospital_id {$op} ? AND status IN ('pending','hospital_checking','confirmed')
+           AND booking_date >= CURDATE()
+         ORDER BY booking_date ASC, booking_time ASC LIMIT 50");
+    if (!$stmt) return null;
+    mysqli_stmt_bind_param($stmt, 'si', $mb_id, $hospital_id);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    $found = null;
+    while ($res && ($row = $res->fetch_assoc())) {
+        $ts = strtotime(trim($row['booking_date'] . ' ' . $row['booking_time']));
+        if ($ts !== false && $ts <= time()) continue; // 이미 지난 예약
+        $existing_names = [];
+        $items = json_decode((string)($row['treatments_json'] ?? ''), true);
+        if (is_array($items)) {
+            foreach ($items as $it) { if (is_array($it) && !empty($it['name'])) $existing_names[] = trim((string)$it['name']); }
+        }
+        $same = !empty(array_intersect($names, $existing_names));
+        if (!$same && empty($existing_names)) { // 예전 형식(요약 문자열만 있는 예약)
+            foreach ($names as $n) { if ($n !== '' && mb_strpos((string)$row['treatment'], $n) !== false) { $same = true; break; } }
+        }
+        if (!$same) continue;
+        $weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+        $h = (int)date('G', $ts);
+        $labels = ['pending' => '예약 요청 접수', 'hospital_checking' => '병원 확인 중', 'confirmed' => '예약 확정'];
+        $found = [
+            'id' => (int)$row['id'],
+            'treatment' => mb_substr((string)$row['treatment'], 0, 100),
+            'hospital_name' => (string)($row['hospital_name'] ?? ''),
+            'schedule' => date('n월 j일', $ts) . ' (' . $weekdays[(int)date('w', $ts)] . ') '
+                . ($h < 12 ? '오전' : '오후') . ' ' . ($h % 12 ?: 12) . ':' . date('i', $ts),
+            'status' => $labels[$row['status']] ?? '',
+        ];
+        break;
+    }
+    mysqli_stmt_close($stmt);
+    return $found;
+}
+
 // 예약 처리
 $booking_submitted = false;
 $booking_error = '';
@@ -469,52 +515,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // [05-13] 같은 병원에 같은 시술의 진행 중인 예약이 이미 있으면 알린다.
-        // 진행 중 = 접수·병원 확인 중·확정 이면서 아직 지나지 않은 예약. 사용자가 "새로 예약"을 고르면
-        // confirm_duplicate=1 로 다시 보내므로 이 확인만 건너뛴다(연령 제한은 건너뛰지 않는다).
-        if ($booking_error === '' && $booking_mb_id !== '' && ($_POST['confirm_duplicate'] ?? '') !== '1') {
+        // [05-14] 다른 병원에 같은 시술의 진행 중인 예약이 있으면 접수하지 않는다(우회 불가).
+        // [05-13] 같은 병원에 같은 시술의 진행 중인 예약이 있으면 알린다. 사용자가 "새로 예약"을 고르면
+        //         confirm_duplicate=1 로 다시 보내므로 이 확인만 건너뛴다(다른 병원 제한·연령 제한은 건너뛰지 않는다).
+        if ($booking_error === '' && $booking_mb_id !== '') {
             $dup_names = array_values(array_unique(array_filter(array_map(static function ($t) {
                 return trim((string)($t['name'] ?? ''));
             }, $treatments_arr))));
-            $dup_stmt = !empty($dup_names) ? mysqli_prepare($connect,
-                "SELECT id, treatment, treatments_json, booking_date, booking_time, status
-                 FROM gangnamunni_bookings
-                 WHERE mb_id = ? AND hospital_id = ? AND status IN ('pending','hospital_checking','confirmed')
-                   AND booking_date >= CURDATE()
-                 ORDER BY booking_date ASC, booking_time ASC LIMIT 30") : false;
-            if ($dup_stmt) {
-                mysqli_stmt_bind_param($dup_stmt, 'si', $booking_mb_id, $hospital_id);
-                mysqli_stmt_execute($dup_stmt);
-                $dup_res = mysqli_stmt_get_result($dup_stmt);
-                while ($dup_res && ($dup_row = $dup_res->fetch_assoc())) {
-                    $dup_ts = strtotime(trim($dup_row['booking_date'] . ' ' . $dup_row['booking_time']));
-                    if ($dup_ts !== false && $dup_ts <= time()) continue; // 이미 지난 예약
-                    $existing_names = [];
-                    $existing_items = json_decode((string)($dup_row['treatments_json'] ?? ''), true);
-                    if (is_array($existing_items)) {
-                        foreach ($existing_items as $ei) { if (is_array($ei) && !empty($ei['name'])) $existing_names[] = trim((string)$ei['name']); }
-                    }
-                    $same = !empty(array_intersect($dup_names, $existing_names));
-                    if (!$same && empty($existing_names)) { // 예전 형식(요약 문자열만 있는 예약)
-                        foreach ($dup_names as $dn) { if ($dn !== '' && mb_strpos((string)$dup_row['treatment'], $dn) !== false) { $same = true; break; } }
-                    }
-                    if (!$same) continue;
-                    $dup_weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-                    $dup_h = (int)date('G', $dup_ts); $dup_m = date('i', $dup_ts);
-                    $dup_status_labels = ['pending' => '예약 요청 접수', 'hospital_checking' => '병원 확인 중', 'confirmed' => '확정'];
+            $other_existing = booking_find_active_same_treatment($connect, $booking_mb_id, $hospital_id, $dup_names, false);
+            if ($other_existing) {
+                $booking_error = '다른 병원에 같은 시술 예약이 있어요.';
+                $booking_error_code = 'other_hospital_duplicate';
+                $booking_error_meta = ['existing' => $other_existing];
+            } elseif (($_POST['confirm_duplicate'] ?? '') !== '1') {
+                $same_existing = booking_find_active_same_treatment($connect, $booking_mb_id, $hospital_id, $dup_names, true);
+                if ($same_existing) {
                     $booking_error = '이미 예약된 시술이 있어요.';
                     $booking_error_code = 'duplicate_booking';
-                    $booking_error_meta = ['existing' => [
-                        'id' => (int)$dup_row['id'],
-                        'treatment' => mb_substr((string)$dup_row['treatment'], 0, 100),
-                        'hospital_name' => (string)($hospital['name'] ?? ''),
-                        'schedule' => date('n월 j일', $dup_ts) . ' (' . $dup_weekdays[(int)date('w', $dup_ts)] . ') '
-                            . ($dup_h < 12 ? '오전' : '오후') . ' ' . ($dup_h % 12 ?: 12) . ':' . $dup_m,
-                        'status' => $dup_status_labels[$dup_row['status']] ?? '',
-                    ]];
-                    break;
+                    $booking_error_meta = ['existing' => $same_existing];
                 }
-                mysqli_stmt_close($dup_stmt);
             }
         }
 
@@ -1616,6 +1635,9 @@ $page_css = '
     .success-action.primary { background: #BE1935; color: #fff; }
     button.success-action { font-family: inherit; cursor: pointer; }
     .dup-booking-card { margin: 0 0 8px; padding: 16px; background: #fff1f3; border-radius: 8px; text-align: left; }
+    .dup-booking-badges { display: flex; gap: 6px; margin-bottom: 8px; }
+    .dup-badge { padding: 2px 8px; border-radius: 10px; background: #fff; border: 1px solid #ddd; font-size: 12px; font-weight: 600; color: #666; }
+    .dup-badge.on { border-color: #BE1935; color: #BE1935; }
     .dup-booking-name { font-size: 15px; font-weight: 700; color: #111; word-break: keep-all; }
     .dup-booking-when { margin-top: 6px; font-size: 13px; color: #BE1935; font-weight: 600; }
 
@@ -2265,11 +2287,11 @@ $page_js = '
                 headers: { "X-Requested-With": "XMLHttpRequest" }
             });
             var data = await response.json();
-            if (data && data.code === "duplicate_booking" && data.existing) {
+            if (data && (data.code === "duplicate_booking" || data.code === "other_hospital_duplicate") && data.existing) {
                 closeBookingConfirm();
                 button.disabled = false;
                 button.textContent = "확인했어요";
-                openDuplicateSheet(data.existing);
+                if (data.code === "duplicate_booking") openDuplicateSheet(data.existing); else openOtherHospitalSheet(data.existing);
                 return;
             }
             if (data && (data.code === "age_restricted" || data.code === "age_unknown")) {
@@ -2308,6 +2330,7 @@ $page_js = '
             });
             var data = await response.json();
             if (data && data.code === "duplicate_booking" && data.existing) { openDuplicateSheet(data.existing); return; }
+            if (data && data.code === "other_hospital_duplicate" && data.existing) { openOtherHospitalSheet(data.existing); return; }
             if (data && (data.code === "age_restricted" || data.code === "age_unknown")) {
                 openAgeRestrictedSheet(parseInt(data.min_age, 10) || 0, data.code === "age_unknown");
                 return;
@@ -2323,6 +2346,13 @@ $page_js = '
         document.getElementById("dupSchedule").textContent = (existing.schedule || "") + (existing.status ? " · " + existing.status : "");
         document.getElementById("dupChangeLink").setAttribute("href", "booking_change.php?booking_id=" + (parseInt(existing.id, 10) || 0));
         if (window.bookingDuplicateMotion) window.bookingDuplicateMotion.open();
+    }
+    function openOtherHospitalSheet(existing) {
+        document.getElementById("otherStatus").textContent = existing.status || "";
+        document.getElementById("otherTreatment").textContent = (existing.treatment || "") + (existing.hospital_name ? " · " + existing.hospital_name : "");
+        document.getElementById("otherSchedule").textContent = existing.schedule || "";
+        document.getElementById("otherViewLink").setAttribute("href", "booking_detail.php?booking_id=" + (parseInt(existing.id, 10) || 0));
+        if (window.bookingOtherHospitalMotion) window.bookingOtherHospitalMotion.open();
     }
     function bookAnyway() {
         document.getElementById("confirmDuplicate").value = "1";
@@ -2739,6 +2769,27 @@ include __DIR__ . '/includes/header.php';
             <div class="success-actions booking-motion-footer">
                 <button type="button" class="success-action primary" onclick="bookAnyway()">새로 예약</button>
                 <a href="my_bookings.php" id="dupChangeLink" class="success-action">기존 예약 변경</a>
+            </div>
+        </section>
+    </div>
+
+    <!-- [05-14] 다른 병원에 같은 시술 예약이 있는 경우 안내 시트(예약 불가) -->
+    <div class="booking-success-overlay booking-motion-overlay" id="otherHospitalOverlay" tabindex="-1" aria-hidden="true"
+         data-booking-motion-sheet data-booking-motion-name="bookingOtherHospitalMotion">
+        <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="otherHospitalTitle">
+            <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
+            <h2 class="success-sheet-title" id="otherHospitalTitle">다른 병원에 같은 시술<br>예약이 있어요</h2>
+            <p class="success-sheet-desc">같은 시술은 한 번에 한 병원만 예약할 수 있어요.<br>기존 예약을 취소한 뒤 다시 예약해주세요.</p>
+            <div class="dup-booking-card">
+                <div class="dup-booking-badges"><span class="dup-badge on" id="otherStatus"></span><span class="dup-badge">다른 병원</span></div>
+                <div class="dup-booking-name" id="otherTreatment"></div>
+                <div class="dup-booking-when" id="otherSchedule"></div>
+            </div>
+            </div>
+            <div class="success-actions booking-motion-footer">
+                <button type="button" class="success-action primary" onclick="window.bookingOtherHospitalMotion && window.bookingOtherHospitalMotion.close()">확인했어요</button>
+                <a href="my_bookings.php" id="otherViewLink" class="success-action">기존 예약 보기</a>
             </div>
         </section>
     </div>
