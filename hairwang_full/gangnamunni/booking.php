@@ -170,9 +170,31 @@ $booking_body_part_column = false;
 $booking_body_part_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'body_part'");
 if ($booking_body_part_col && mysqli_num_rows($booking_body_part_col) > 0) $booking_body_part_column = true;
 
+// [05-12] 시술별 최소 연령(만 나이). NULL/0 이면 제한 없음.
+// 컬럼은 sql/hospital_treatment_min_age_20261021.sql 로 추가한다(요청 중 DDL 실행 안 함).
+// 컬럼이 없으면 연령 제한을 적용할 수 없으므로 로그를 남기고 기능만 건너뛴다.
+$booking_age_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatments LIKE 'min_age'");
+$booking_has_min_age = $booking_age_col && mysqli_num_rows($booking_age_col) > 0;
+if (!$booking_has_min_age) {
+    error_log('[booking] gangnamunni_hospital_treatments.min_age 컬럼이 없어 연령 제한이 적용되지 않습니다. sql/hospital_treatment_min_age_20261021.sql 을 실행하세요.');
+}
+
+// 로그인 회원의 만 나이. 생년월일이 없거나 형식이 올바르지 않으면 null (판단 불가 → 막지 않음).
+function booking_member_age($member) {
+    $digits = preg_replace('/\D+/', '', (string)($member['mb_birth'] ?? ''));
+    if (strlen($digits) !== 8 || $digits === '00000000') return null;
+    $birth = DateTimeImmutable::createFromFormat('!Ymd', $digits);
+    if (!$birth || $birth->format('Ymd') !== $digits) return null;
+    $today = new DateTimeImmutable('today');
+    if ($birth > $today) return null;
+    return $birth->diff($today)->y;
+}
+
 // 예약 처리
 $booking_submitted = false;
 $booking_error = '';
+$booking_error_code = '';
+$booking_error_meta = [];
 $hms_appointment_id = null;  // HMS 예약 번호 (실시간 연동 시)
 $hms_api_success = false;    // HMS API 전송 성공 여부
 $is_ajax_booking = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['response_mode'] ?? '') === 'ajax';
@@ -404,6 +426,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // treatment 컬럼(varchar 100)엔 요약(쉼표 이름) 저장 — 초과 시 잘라냄
         $treatment = mb_substr($treatment, 0, 100);
 
+        // [05-12] 나이 제한 시술: 선택한 시술 중 최소 연령이 있는 것이 있으면
+        //  - 생년월일을 알 수 없으면(비회원·전화 인증·생년월일 미등록) 접수하지 않고(age_unknown),
+        //  - 회원 나이가 최소 연령에 못 미치면 접수하지 않는다(age_restricted).
+        if ($booking_error === '' && $booking_has_min_age) {
+            $age_member_age = (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in())
+                ? booking_member_age(get_gangnamunni_member()) : null;
+            $age_names = array_values(array_unique(array_filter(array_map(static function ($t) {
+                return trim((string)($t['name'] ?? ''));
+            }, $treatments_arr))));
+            if (!empty($age_names)) {
+                $age_in = implode(',', array_fill(0, count($age_names), '?'));
+                $age_stmt = mysqli_prepare($connect,
+                    "SELECT MAX(ht.min_age) AS max_min_age
+                     FROM gangnamunni_hospital_treatments ht
+                     JOIN gangnamunni_treatment_master tm ON ht.treatment_id = tm.id
+                     WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1
+                       AND ht.min_age IS NOT NULL AND ht.min_age > 0 AND tm.name IN ({$age_in})");
+                if (!$age_stmt) {
+                    // 검증을 수행할 수 없으면 통과시키지 않는다.
+                    error_log('[booking] 연령 제한 조회 준비 실패: ' . mysqli_error($connect));
+                    $booking_error = '예약 가능 여부를 확인하지 못했어요. 잠시 후 다시 시도해주세요.';
+                } else {
+                    $age_types = 'i' . str_repeat('s', count($age_names));
+                    $age_params = array_merge([$hospital_id], $age_names);
+                    mysqli_stmt_bind_param($age_stmt, $age_types, ...$age_params);
+                    mysqli_stmt_execute($age_stmt);
+                    $age_res = mysqli_stmt_get_result($age_stmt);
+                    $age_row = ($age_res instanceof mysqli_result) ? $age_res->fetch_assoc() : null;
+                    mysqli_stmt_close($age_stmt);
+                    $age_required = (int)($age_row['max_min_age'] ?? 0);
+                    if ($age_required > 0 && $age_member_age === null) {
+                        $booking_error = '나이 제한이 있는 시술이라 생년월일 등록이 필요해요.';
+                        $booking_error_code = 'age_unknown';
+                        $booking_error_meta = ['min_age' => $age_required];
+                    } elseif ($age_required > 0 && $age_member_age < $age_required) {
+                        $booking_error = '만 ' . $age_required . '세 미만은 이 시술을 앱에서 예약할 수 없어요.';
+                        $booking_error_code = 'age_restricted';
+                        $booking_error_meta = ['min_age' => $age_required];
+                    }
+                }
+            }
+        }
+
         if ($booking_error === '') {
         // [예약 저장 안정화] 재설계(다중 시술/수량)로 추가된 컬럼이 없는 DB(운영 등)에서도
         // INSERT 가 'Unknown column' 으로 실패하지 않도록, 없으면 즉시 추가 (idempotent).
@@ -554,8 +619,9 @@ if ($is_ajax_booking && !$booking_submitted) {
     http_response_code(422);
     echo json_encode([
         'success' => false,
+        'code' => $booking_error_code,
         'message' => $booking_error !== '' ? $booking_error : term('booking', '예약') . ' 요청을 처리하지 못했습니다.',
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    ] + $booking_error_meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -575,7 +641,7 @@ $treatment_tags = json_decode($hospital['treatment_tags'] ?? '[]', true);
 // gangnamunni_hospital_treatment_prices) 로드 → 예약 시술 선택/가격 연동.
 // 옵션 가격(샷수/용량)이 있으면 그 MIN~MAX, 없으면 배정 행의 price_min/max 사용.
 $booking_treatments = [];
-$bt_sql = "SELECT ht.id AS hospital_treatment_id, tm.id AS treatment_id, tm.name AS name, ht.price_min, ht.price_max,
+$bt_sql = "SELECT ht.id AS hospital_treatment_id, tm.id AS treatment_id, tm.name AS name, ht.price_min, ht.price_max, " . ($booking_has_min_age ? "ht.min_age" : "NULL AS min_age") . ",
              (SELECT MIN(p.price) FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_min,
              (SELECT MAX(p.price) FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0) AS opt_max
            FROM gangnamunni_hospital_treatments ht
@@ -595,6 +661,7 @@ if ($bt_stmt = mysqli_prepare($connect, $bt_sql)) {
             'name' => $row['name'],
             'price_min' => $pmin,
             'price_max' => $pmax,
+            'min_age' => (int)($row['min_age'] ?? 0),
         ];
     }
     mysqli_stmt_close($bt_stmt);
@@ -1491,6 +1558,7 @@ $page_css = '
         font-size: 16px; font-weight: 700;
     }
     .success-action.primary { background: #BE1935; color: #fff; }
+    button.success-action { font-family: inherit; cursor: pointer; }
 
     @media (max-width: 380px) {
         .booking-confirm-page { padding-left: 16px; padding-right: 16px; }
@@ -1777,6 +1845,7 @@ $page_js = '
 
     // [오늘 지난 시간 픽스] 서버(KST) 기준 오늘 날짜/현재시각(자정 이후 분) — 지난 시간대 비활성용
     var SERVER_TODAY = "' . date('Y-m-d') . '";
+    var MEMBER_AGE = ' . (($__ma = booking_member_age($booking_member)) === null ? 'null' : (int)$__ma) . ';
     var SERVER_NOW_MIN = ' . (date('G') * 60 + (int)date('i')) . ';
     var LUNCH_START_MIN = ' . ($booking_lunch_start_min === null ? 'null' : (int)$booking_lunch_start_min) . ';
     var LUNCH_END_MIN = ' . ($booking_lunch_end_min === null ? 'null' : (int)$booking_lunch_end_min) . ';
@@ -1904,6 +1973,7 @@ $page_js = '
             }
             selectedTreatments.push({
                 name: name, price: price, qty: 1, options: options,
+                min_age: parseInt(btn.getAttribute("data-min-age") || "0", 10) || 0,
                 option_id: options.length === 1 ? parseInt(options[0].id, 10) : 0,
                 option_name: options.length === 1 ? options[0].name : ""
             });
@@ -2046,6 +2116,7 @@ $page_js = '
             name: initialTreatmentName,
             price: matchedButton.getAttribute("data-price") || "",
             qty: 1,
+            min_age: parseInt(matchedButton.getAttribute("data-min-age") || "0", 10) || 0,
             options: JSON.parse(matchedButton.getAttribute("data-options") || "[]")
         });
         var initial = selectedTreatments[0];
@@ -2133,6 +2204,13 @@ $page_js = '
                 headers: { "X-Requested-With": "XMLHttpRequest" }
             });
             var data = await response.json();
+            if (data && (data.code === "age_restricted" || data.code === "age_unknown")) {
+                closeBookingConfirm();
+                button.disabled = false;
+                button.textContent = "확인했어요";
+                openAgeRestrictedSheet(parseInt(data.min_age, 10) || 0, data.code === "age_unknown");
+                return;
+            }
             if (!response.ok || !data.success) throw new Error(data.message || "예약 요청을 처리하지 못했습니다.");
 
             closeBookingConfirm();
@@ -2145,6 +2223,23 @@ $page_js = '
             button.disabled = false;
             button.textContent = "확인했어요";
         }
+    }
+    function openAgeRestrictedSheet(minAge, unknownAge) {
+        var title = document.getElementById("ageRestrictedTitle");
+        var desc = document.getElementById("ageRestrictedDesc");
+        var link = document.getElementById("ageRestrictedLink");
+        if (unknownAge) {
+            title.innerHTML = "나이 제한이 있는 시술이에요<br>생년월일 등록이 필요해요";
+            desc.innerHTML = (minAge > 0 ? "만 " + minAge + "세 이상만 앱에서 예약할 수 있어요.<br>" : "") + "내 정보에서 생년월일을 등록해주세요.";
+            link.textContent = "생년월일 등록";
+            link.setAttribute("href", "profile_edit.php");
+        } else {
+            title.innerHTML = (minAge > 0 ? "만 " + minAge + "세 미만은" : "이 시술은") + "<br>이 시술을 앱에서 예약할 수 없어요";
+            desc.innerHTML = "병원 기준에 따라 보호자와 함께<br>병원에서 직접 상담을 받아주세요.";
+            link.textContent = "병원에 문의하기";
+            link.setAttribute("href", link.getAttribute("data-contact-href") || "#");
+        }
+        if (window.bookingAgeMotion) window.bookingAgeMotion.open();
     }
     window.closeBookingConfirm = closeBookingConfirm;
     window.submitConfirmedBooking = submitConfirmedBooking;
@@ -2224,6 +2319,15 @@ $page_js = '
             var timeSel = document.getElementById("timeSelect");
             if (timeSel && !timeSel.value) {
                 alert("시간을 선택해주세요.");
+                return false;
+            }
+            // [05-12] 나이 제한 시술이면 확인 화면 대신 안내 시트를 보여준다 (서버에서도 다시 검증).
+            var ageLimit = 0;
+            selectedTreatments.forEach(function(t) {
+                if ((t.min_age || 0) > ageLimit && (MEMBER_AGE === null || t.min_age > MEMBER_AGE)) ageLimit = t.min_age;
+            });
+            if (ageLimit > 0) {
+                openAgeRestrictedSheet(ageLimit, MEMBER_AGE === null);
                 return false;
             }
             openBookingConfirm();
@@ -2512,6 +2616,22 @@ include __DIR__ . '/includes/header.php';
         </section>
     </div>
 
+    <!-- [05-12] 나이 제한 시술 안내 시트 -->
+    <div class="booking-success-overlay booking-motion-overlay" id="ageRestrictedOverlay" tabindex="-1" aria-hidden="true"
+         data-booking-motion-sheet data-booking-motion-name="bookingAgeMotion">
+        <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="ageRestrictedTitle">
+            <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
+            <h2 class="success-sheet-title" id="ageRestrictedTitle">만 19세 미만은<br>이 시술을 앱에서 예약할 수 없어요</h2>
+            <p class="success-sheet-desc" id="ageRestrictedDesc">병원 기준에 따라 보호자와 함께<br>병원에서 직접 상담을 받아주세요.</p>
+            </div>
+            <div class="success-actions booking-motion-footer">
+                <button type="button" class="success-action primary" onclick="window.bookingAgeMotion && window.bookingAgeMotion.close()">확인했어요</button>
+                <a href="detail.php?id=<?php echo (int)$hospital_id; ?>" data-contact-href="detail.php?id=<?php echo (int)$hospital_id; ?>" id="ageRestrictedLink" class="success-action">병원에 문의하기</a>
+            </div>
+        </section>
+    </div>
+
     <!-- 시술 선택 시트 (옵션 변경) -->
     <?php
     // 시트에 표시할 시술 목록 구성 (신 시스템 우선 → 태그 → 기본값)
@@ -2527,7 +2647,7 @@ include __DIR__ . '/includes/header.php';
                     ? number_format($bt_min_won) . '~' . number_format($bt_max_won) . '원'
                     : number_format($bt_min_won) . '원';
             }
-            $sheet_items[] = ['name' => $bt['name'], 'price' => $pl, 'options' => $bt['options'] ?? []];
+            $sheet_items[] = ['name' => $bt['name'], 'price' => $pl, 'options' => $bt['options'] ?? [], 'min_age' => (int)($bt['min_age'] ?? 0)];
         }
     } elseif (!empty($treatment_tags) && is_array($treatment_tags)) {
         foreach (array_slice($treatment_tags, 0, 20) as $tag) {
@@ -2589,6 +2709,7 @@ include __DIR__ . '/includes/header.php';
                         data-name="<?php echo htmlspecialchars($it['name'], ENT_QUOTES); ?>"
                         data-price="<?php echo htmlspecialchars($it['price'], ENT_QUOTES); ?>"
                         data-options="<?php echo htmlspecialchars(json_encode($it['options'] ?? [], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>"
+                        data-min-age="<?php echo (int)($it['min_age'] ?? 0); ?>"
                         aria-pressed="false"
                         onclick="pickTreatment(this)">
                     <span class="sheet-item-name"><?php echo htmlspecialchars($it['name']); ?></span>

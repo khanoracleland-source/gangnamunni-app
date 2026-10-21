@@ -203,6 +203,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
         $mb_email = trim($_POST['mb_email'] ?? '');
         $mb_hp = trim($_POST['mb_hp'] ?? '');
         $mb_birth = trim($_POST['mb_birth'] ?? '');
+        // 생년월일은 연령 제한 예약에 쓰이므로 가입·프로필과 같은 Ymd(8자리)로 정규화해 저장한다.
+        // 기존 저장값과 같으면(옛 형식 포함) 그대로 둔다.
+        $birth_invalid = false;
+        if ($mb_birth !== '') {
+            $cur_q = mysqli_prepare($connect, "SELECT mb_birth FROM g5_member WHERE mb_no=?");
+            $cur_birth = null;
+            if ($cur_q) {
+                mysqli_stmt_bind_param($cur_q, 'i', $mb_no);
+                mysqli_stmt_execute($cur_q);
+                mysqli_stmt_bind_result($cur_q, $cur_birth);
+                mysqli_stmt_fetch($cur_q);
+                mysqli_stmt_close($cur_q);
+            }
+            if ($mb_birth !== (string)$cur_birth) {
+                $bd = preg_replace('/\D+/', '', $mb_birth);
+                $bo = strlen($bd) === 8 ? DateTimeImmutable::createFromFormat('!Ymd', $bd) : false;
+                if ($bo && $bo->format('Ymd') === $bd && $bo <= new DateTimeImmutable('today') && $bo >= new DateTimeImmutable('today -120 years')) {
+                    $mb_birth = $bd;
+                } else {
+                    $birth_invalid = true;
+                }
+            }
+        }
         $mb_sex = in_array($_POST['mb_sex'] ?? '', ['M', 'F', '']) ? $_POST['mb_sex'] : '';
         $mb_addr1 = trim($_POST['mb_addr1'] ?? '');
         $mb_addr2 = trim($_POST['mb_addr2'] ?? '');
@@ -213,7 +236,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
         mysqli_stmt_store_result($dup_stmt);
         $email_exists = mysqli_stmt_num_rows($dup_stmt) > 0;
         mysqli_stmt_close($dup_stmt);
-        if ($email_exists) {
+        if ($birth_invalid) {
+            $error = '생년월일 형식이 올바르지 않습니다. (예: 1990-01-31)';
+        } elseif ($email_exists) {
             $error = '이미 다른 회원이 사용 중인 이메일입니다.';
         } else {
         $stmt = mysqli_prepare($connect,

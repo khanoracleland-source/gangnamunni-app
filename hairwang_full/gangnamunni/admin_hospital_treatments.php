@@ -163,12 +163,12 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
         $msg_type = 'danger';
     } else {
 
-        $known_actions = ['assign', 'remove', 'update_price', 'toggle_promoted', 'image_add', 'image_delete', 'image_move', 'image_approve', 'image_reject'];
+        $known_actions = ['assign', 'remove', 'update_price', 'toggle_promoted', 'set_min_age', 'image_add', 'image_delete', 'image_move', 'image_approve', 'image_reject'];
         if (!in_array($action, $known_actions, true)) ht_redirect($post_hospital_id, '지원하지 않는 요청입니다.', 'danger');
         if (in_array($action, ['image_approve', 'image_reject'], true) && !$is_super_admin) {
             ht_redirect($post_hospital_id, '시술 이미지 검수는 최고관리자만 처리할 수 있습니다.', 'danger');
         }
-        if (in_array($action, ['assign', 'remove', 'update_price', 'toggle_promoted', 'image_add', 'image_delete', 'image_move'], true) && !$can_manage_treatments) {
+        if (in_array($action, ['assign', 'remove', 'update_price', 'toggle_promoted', 'set_min_age', 'image_add', 'image_delete', 'image_move'], true) && !$can_manage_treatments) {
             ht_redirect($post_hospital_id, '현재 시술 관리 설정에서는 이 작업을 수행할 수 없습니다.', 'danger');
         }
 
@@ -400,6 +400,28 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
                 }
                 ht_redirect($post_hospital_id, '가격이 수정되었습니다.');
             }
+        }
+
+        if ($action === 'set_min_age') {
+            // 예약 가능 최소 만 나이. 비우거나 0 이면 제한 없음(NULL).
+            $id = intval($_POST['id'] ?? 0);
+            $raw_age = trim((string)($_POST['min_age'] ?? ''));
+            if ($id <= 0 || $post_hospital_id <= 0) ht_redirect($post_hospital_id, '잘못된 요청입니다.', 'danger');
+            if ($raw_age !== '' && !preg_match('/^\d{1,3}$/', $raw_age)) ht_redirect($post_hospital_id, '나이는 숫자로 입력해주세요.', 'danger');
+            $age_val = ($raw_age === '' || (int)$raw_age === 0) ? null : min(120, (int)$raw_age);
+            // 컬럼은 sql/hospital_treatment_min_age_20261021.sql 로 추가한다(요청 중 DDL 실행 안 함).
+            $col_chk = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatments LIKE 'min_age'");
+            if (!$col_chk || mysqli_num_rows($col_chk) === 0) {
+                ht_redirect($post_hospital_id, '나이 제한 컬럼이 아직 없습니다. sql/hospital_treatment_min_age_20261021.sql 을 먼저 실행해주세요.', 'danger');
+            }
+            $ok = false;
+            $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_hospital_treatments SET min_age = ?, updated_at = NOW() WHERE id = ? AND hospital_id = ?");
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, 'iii', $age_val, $id, $post_hospital_id);
+                $ok = mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
+            }
+            ht_redirect($post_hospital_id, $ok ? ($age_val === null ? '나이 제한이 해제되었습니다.' : '예약 가능 최소 나이가 만 ' . $age_val . '세로 설정되었습니다.') : '저장하지 못했습니다.', $ok ? 'success' : 'danger');
         }
 
         if ($action === 'toggle_promoted') {
@@ -1067,6 +1089,17 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
                                 onclick="openPriceModal(<?php echo intval($at['id']); ?>, '<?php echo htmlspecialchars(addslashes($at['treatment_name'] ?? ''), ENT_QUOTES); ?>')">
                                 <i class="bi bi-pencil"></i>
                             </button>
+                            <!-- 예약 가능 최소 나이 (비우면 제한 없음) -->
+                            <?php if ($can_manage_treatments): ?>
+                            <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" class="d-inline-flex align-items-center gap-1 me-1">
+                                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                                <input type="hidden" name="action" value="set_min_age">
+                                <input type="hidden" name="id" value="<?php echo intval($at['id']); ?>">
+                                <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
+                                <input type="number" name="min_age" min="0" max="120" inputmode="numeric" class="form-control form-control-sm" style="width:64px;" placeholder="만나이" title="예약 가능 최소 만 나이 (비우면 제한 없음)" value="<?php echo !empty($at['min_age']) ? (int)$at['min_age'] : ''; ?>">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm" title="나이 제한 저장"><i class="bi bi-person-lock"></i></button>
+                            </form>
+                            <?php endif; ?>
                             <!-- 배정 해제 -->
                             <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" class="d-inline" onsubmit="return confirm('이 시술 배정을 해제하시겠습니까?');">
                                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
