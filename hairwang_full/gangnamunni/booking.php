@@ -179,6 +179,80 @@ if (!$booking_has_min_age) {
     error_log('[booking] gangnamunni_hospital_treatments.min_age 컬럼이 없어 연령 제한이 적용되지 않습니다. sql/hospital_treatment_min_age_20261021.sql 을 실행하세요.');
 }
 
+// [05-15/05-16] 시술별 재시술 간격(일)과 필수 여부는 시술 마스터(admin_treatments.php)에서 관리한다. 컬럼은 sql/treatment_master_revisit_20261021.sql 로 추가한다.
+$booking_revisit_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_treatment_master LIKE 'revisit_days'");
+$booking_has_revisit = $booking_revisit_col && mysqli_num_rows($booking_revisit_col) > 0;
+if (!$booking_has_revisit) {
+    error_log('[booking] gangnamunni_treatment_master.revisit_days 컬럼이 없어 재시술 간격 확인이 적용되지 않습니다. sql/treatment_master_revisit_20261021.sql 을 실행하세요.');
+}
+
+// 재시술 간격 표기: 30의 배수면 "N개월", 아니면 "N일".
+function booking_interval_label($days) {
+    $days = (int)$days;
+    return ($days > 0 && $days % 30 === 0) ? ($days / 30) . '개월' : $days . '일';
+}
+
+// [05-15/05-16] 선택한 시술의 재시술 간격 규칙과 회원의 마지막 완료 시술일을 비교한다.
+// 반환: ['strict' => 예약 불가 정보|null, 'warn' => 권장 시기 아님 정보|null]
+function booking_revisit_status($connect, $mb_id, $hospital_id, array $names) {
+    $out = ['strict' => null, 'warn' => null];
+    if ($mb_id === '' || empty($names)) return $out;
+    $in = implode(',', array_fill(0, count($names), '?'));
+    $stmt = mysqli_prepare($connect,
+        "SELECT tm.name AS name, tm.revisit_days, tm.revisit_strict
+         FROM gangnamunni_treatment_master tm
+         WHERE tm.revisit_days IS NOT NULL AND tm.revisit_days > 0 AND tm.name IN ({$in})");
+    if (!$stmt) return $out;
+    mysqli_stmt_bind_param($stmt, str_repeat('s', count($names)), ...$names);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    $rules = [];
+    while ($res && ($r = $res->fetch_assoc())) $rules[$r['name']] = ['days' => (int)$r['revisit_days'], 'strict' => (int)$r['revisit_strict'] === 1];
+    mysqli_stmt_close($stmt);
+    if (empty($rules)) return $out;
+
+    // 회원의 완료된 예약에서 시술별 마지막 시술일(어느 병원이든)
+    $stmt2 = mysqli_prepare($connect,
+        "SELECT booking_date, treatment, treatments_json FROM gangnamunni_bookings
+         WHERE mb_id = ? AND status = 'completed' AND booking_date <= CURDATE()
+         ORDER BY booking_date DESC LIMIT 300");
+    if (!$stmt2) return $out;
+    mysqli_stmt_bind_param($stmt2, 's', $mb_id);
+    mysqli_stmt_execute($stmt2);
+    $res2 = mysqli_stmt_get_result($stmt2);
+    $last = [];
+    while ($res2 && ($row = $res2->fetch_assoc())) {
+        $row_names = [];
+        $items = json_decode((string)($row['treatments_json'] ?? ''), true);
+        if (is_array($items)) foreach ($items as $it) { if (is_array($it) && !empty($it['name'])) $row_names[] = trim((string)$it['name']); }
+        foreach ($rules as $n => $_) {
+            if (isset($last[$n])) continue;
+            $hit = in_array($n, $row_names, true) || (empty($row_names) && $n !== '' && mb_strpos((string)$row['treatment'], $n) !== false);
+            if ($hit) $last[$n] = $row['booking_date'];
+        }
+    }
+    mysqli_stmt_close($stmt2);
+
+    $today = new DateTimeImmutable('today');
+    $strict_latest = null;
+    foreach ($rules as $n => $rule) {
+        if (!isset($last[$n])) continue;
+        $ld = DateTimeImmutable::createFromFormat('!Y-m-d', (string)$last[$n]);
+        if (!$ld) continue;
+        $since = (int)$ld->diff($today)->days;
+        if ($since >= $rule['days']) continue;
+        $avail = $ld->modify('+' . $rule['days'] . ' days');
+        $info = ['treatment' => $n, 'interval_label' => booking_interval_label($rule['days']),
+                 'days_since' => $since, 'available_from' => $avail->format('n월 j일')];
+        if ($rule['strict']) {
+            if ($strict_latest === null || $avail > $strict_latest) { $strict_latest = $avail; $out['strict'] = $info; }
+        } elseif ($out['warn'] === null) {
+            $out['warn'] = $info;
+        }
+    }
+    return $out;
+}
+
 // 로그인 회원의 만 나이. 생년월일이 없거나 형식이 올바르지 않으면 null (판단 불가 → 막지 않음).
 function booking_member_age($member) {
     $digits = preg_replace('/\D+/', '', (string)($member['mb_birth'] ?? ''));
@@ -515,24 +589,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // [05-14] 다른 병원에 같은 시술의 진행 중인 예약이 있으면 접수하지 않는다(우회 불가).
-        // [05-13] 같은 병원에 같은 시술의 진행 중인 예약이 있으면 알린다. 사용자가 "새로 예약"을 고르면
-        //         confirm_duplicate=1 로 다시 보내므로 이 확인만 건너뛴다(다른 병원 제한·연령 제한은 건너뛰지 않는다).
+        // 예약 전 확인(위에서부터 차례로). 하나라도 걸리면 접수하지 않고 코드를 돌려준다.
+        //  1) [05-14] 다른 병원에 같은 시술의 진행 중인 예약 → 불가(우회 불가)
+        //  2) [05-16] 재시술 간격이 "필수"인 시술의 간격 미충족 → 불가(우회 불가)
+        //  3) [05-13] 같은 병원에 같은 시술의 진행 중인 예약 → 경고("새로 예약"으로 우회: confirm_duplicate=1)
+        //  4) [05-15] 재시술 "권장" 간격 미충족 → 경고("그래도 예약"으로 우회: confirm_revisit=1)
         if ($booking_error === '' && $booking_mb_id !== '') {
             $dup_names = array_values(array_unique(array_filter(array_map(static function ($t) {
                 return trim((string)($t['name'] ?? ''));
             }, $treatments_arr))));
+            $revisit = $booking_has_revisit ? booking_revisit_status($connect, $booking_mb_id, $hospital_id, $dup_names)
+                                            : ['strict' => null, 'warn' => null];
             $other_existing = booking_find_active_same_treatment($connect, $booking_mb_id, $hospital_id, $dup_names, false);
             if ($other_existing) {
                 $booking_error = '다른 병원에 같은 시술 예약이 있어요.';
                 $booking_error_code = 'other_hospital_duplicate';
                 $booking_error_meta = ['existing' => $other_existing];
-            } elseif (($_POST['confirm_duplicate'] ?? '') !== '1') {
-                $same_existing = booking_find_active_same_treatment($connect, $booking_mb_id, $hospital_id, $dup_names, true);
-                if ($same_existing) {
-                    $booking_error = '이미 예약된 시술이 있어요.';
-                    $booking_error_code = 'duplicate_booking';
-                    $booking_error_meta = ['existing' => $same_existing];
+            } elseif ($revisit['strict']) {
+                $booking_error = '아직 예약할 수 없어요.';
+                $booking_error_code = 'revisit_blocked';
+                $booking_error_meta = ['revisit' => $revisit['strict']];
+            } else {
+                if (($_POST['confirm_duplicate'] ?? '') !== '1') {
+                    $same_existing = booking_find_active_same_treatment($connect, $booking_mb_id, $hospital_id, $dup_names, true);
+                    if ($same_existing) {
+                        $booking_error = '이미 예약된 시술이 있어요.';
+                        $booking_error_code = 'duplicate_booking';
+                        $booking_error_meta = ['existing' => $same_existing];
+                    }
+                }
+                if ($booking_error === '' && $revisit['warn'] && ($_POST['confirm_revisit'] ?? '') !== '1') {
+                    $booking_error = '아직 재시술 권장 시기가 아니에요.';
+                    $booking_error_code = 'revisit_warning';
+                    $booking_error_meta = ['revisit' => $revisit['warn']];
                 }
             }
         }
@@ -2287,6 +2376,13 @@ $page_js = '
                 headers: { "X-Requested-With": "XMLHttpRequest" }
             });
             var data = await response.json();
+            if (data && (data.code === "revisit_blocked" || data.code === "revisit_warning") && data.revisit) {
+                closeBookingConfirm();
+                button.disabled = false;
+                button.textContent = "확인했어요";
+                openRevisitSheet(data.revisit, data.code === "revisit_blocked");
+                return;
+            }
             if (data && (data.code === "duplicate_booking" || data.code === "other_hospital_duplicate") && data.existing) {
                 closeBookingConfirm();
                 button.disabled = false;
@@ -2331,6 +2427,8 @@ $page_js = '
             var data = await response.json();
             if (data && data.code === "duplicate_booking" && data.existing) { openDuplicateSheet(data.existing); return; }
             if (data && data.code === "other_hospital_duplicate" && data.existing) { openOtherHospitalSheet(data.existing); return; }
+            if (data && data.code === "revisit_blocked" && data.revisit) { openRevisitSheet(data.revisit, true); return; }
+            if (data && data.code === "revisit_warning" && data.revisit) { openRevisitSheet(data.revisit, false); return; }
             if (data && (data.code === "age_restricted" || data.code === "age_unknown")) {
                 openAgeRestrictedSheet(parseInt(data.min_age, 10) || 0, data.code === "age_unknown");
                 return;
@@ -2356,10 +2454,44 @@ $page_js = '
     }
     function bookAnyway() {
         document.getElementById("confirmDuplicate").value = "1";
-        var done = function() { openBookingConfirm(); };
+        var done = function() { precheckThenConfirm(); }; // 다음 확인(재시술 권장 등)이 남았는지 다시 본다
         if (window.bookingDuplicateMotion) window.bookingDuplicateMotion.close().then(done); else done();
     }
     window.bookAnyway = bookAnyway;
+    // [05-15/05-16] 재시술 간격 안내. blocked=true 면 예약 불가(확인 버튼만), false 면 권장 시기 아님(취소 / 그래도 예약).
+    function koTopic(word) {
+        var c = word ? word.charCodeAt(word.length - 1) : 0;
+        if (c >= 0xAC00 && c <= 0xD7A3) return word + (((c - 0xAC00) % 28) ? "은" : "는");
+        return word + "은(는)";
+    }
+    function openRevisitSheet(info, blocked) {
+        var title = document.getElementById("revisitTitle");
+        var desc = document.getElementById("revisitDesc");
+        var actions = document.getElementById("revisitActions");
+        var proceed = document.getElementById("revisitProceed");
+        var cancel = document.getElementById("revisitCancel");
+        var interval = info.interval_label || "";
+        if (blocked) {
+            title.textContent = "아직 예약할 수 없어요";
+            desc.innerHTML = "이 시술은 안전을 위해 최소 " + interval + " 간격이 필요해요.<br>" + (info.available_from || "") + "부터 예약할 수 있어요.";
+            proceed.style.display = "none";
+            cancel.textContent = "확인했어요";
+            actions.style.gridTemplateColumns = "1fr";
+        } else {
+            title.textContent = "아직 재시술 권장 시기가 아니에요";
+            desc.innerHTML = koTopic(info.treatment || "이 시술") + " " + interval + " 이상 간격을 권장해요.<br>마지막 시술일로부터 " + (parseInt(info.days_since, 10) || 0) + "일 지났습니다.";
+            proceed.style.display = "";
+            cancel.textContent = "취소";
+            actions.style.gridTemplateColumns = "";
+        }
+        if (window.bookingRevisitMotion) window.bookingRevisitMotion.open();
+    }
+    function revisitProceed() {
+        document.getElementById("confirmRevisit").value = "1";
+        var done = function() { precheckThenConfirm(); };
+        if (window.bookingRevisitMotion) window.bookingRevisitMotion.close().then(done); else done();
+    }
+    window.revisitProceed = revisitProceed;
     function openAgeRestrictedSheet(minAge, unknownAge) {
         var title = document.getElementById("ageRestrictedTitle");
         var desc = document.getElementById("ageRestrictedDesc");
@@ -2466,6 +2598,9 @@ $page_js = '
                 openAgeRestrictedSheet(ageLimit, MEMBER_AGE === null);
                 return false;
             }
+            // 새로 누른 예약 신청이므로 이전에 고른 "새로 예약/그래도 예약"은 초기화한다.
+            document.getElementById("confirmDuplicate").value = "";
+            document.getElementById("confirmRevisit").value = "";
             precheckThenConfirm();
             return false;
         });
@@ -2622,6 +2757,7 @@ include __DIR__ . '/includes/header.php';
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
         <input type="hidden" name="response_mode" value="ajax">
         <input type="hidden" name="confirm_duplicate" id="confirmDuplicate" value="">
+        <input type="hidden" name="confirm_revisit" id="confirmRevisit" value="">
         <!-- 예약하기 헤더 + 옵션 변경(시술 선택 시트) -->
         <div class="form-group head-group">
             <div class="section-head-row">
@@ -2769,6 +2905,22 @@ include __DIR__ . '/includes/header.php';
             <div class="success-actions booking-motion-footer">
                 <button type="button" class="success-action primary" onclick="bookAnyway()">새로 예약</button>
                 <a href="my_bookings.php" id="dupChangeLink" class="success-action">기존 예약 변경</a>
+            </div>
+        </section>
+    </div>
+
+    <!-- [05-15/05-16] 재시술 간격 안내 시트 (권장: 취소/그래도 예약, 필수: 확인했어요) -->
+    <div class="booking-success-overlay booking-motion-overlay" id="revisitOverlay" tabindex="-1" aria-hidden="true"
+         data-booking-motion-sheet data-booking-motion-name="bookingRevisitMotion">
+        <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="revisitTitle">
+            <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
+            <h2 class="success-sheet-title" id="revisitTitle">아직 재시술 권장 시기가 아니에요</h2>
+            <p class="success-sheet-desc" id="revisitDesc"></p>
+            </div>
+            <div class="success-actions booking-motion-footer" id="revisitActions">
+                <button type="button" class="success-action" id="revisitCancel" onclick="window.bookingRevisitMotion && window.bookingRevisitMotion.close()">취소</button>
+                <button type="button" class="success-action primary" id="revisitProceed" onclick="revisitProceed()">그래도 예약</button>
             </div>
         </section>
     </div>

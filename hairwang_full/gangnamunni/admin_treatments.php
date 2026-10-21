@@ -33,6 +33,29 @@ if (($_SESSION['ad_admin_role'] ?? '') !== 'super_admin') {
 }
 $treatment_image_schema_ready = hti_ensure_schema($connect);
 
+// [05-15/05-16] 재시술 간격(일)과 필수 여부는 시술 마스터에서 관리한다. 컬럼은 sql/treatment_master_revisit_20261021.sql 로 추가한다.
+function tm_revisit_column_exists($connect) {
+    $r = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_treatment_master LIKE 'revisit_days'");
+    return $r && mysqli_num_rows($r) > 0;
+}
+// 입력 정규화: 비우거나 0 = 제한 없음(NULL). 1~3650일. 잘못된 값이면 false.
+function tm_parse_revisit($raw_days, $strict_flag) {
+    $raw_days = trim((string)$raw_days);
+    if ($raw_days !== '' && !preg_match('/^\d{1,4}$/', $raw_days)) return false;
+    $days = ($raw_days === '' || (int)$raw_days === 0) ? null : min(3650, (int)$raw_days);
+    return ['days' => $days, 'strict' => ($days !== null && (string)$strict_flag === '1') ? 1 : 0];
+}
+function tm_save_revisit($connect, $id, array $rv) {
+    if ($id <= 0 || !tm_revisit_column_exists($connect)) return false;
+    $stmt = mysqli_prepare($connect, "UPDATE gangnamunni_treatment_master SET revisit_days = ?, revisit_strict = ? WHERE id = ?");
+    if (!$stmt) return false;
+    mysqli_stmt_bind_param($stmt, 'iii', $rv['days'], $rv['strict'], $id);
+    $ok = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    return $ok;
+}
+
+
 // CSRF 토큰 생성
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -99,12 +122,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $anesthesia_type = trim($_POST['anesthesia_type'] ?? 'none');
             if (!array_key_exists($anesthesia_type, $anesthesia_types)) $anesthesia_type = 'none';
             $repeat_cycle_months = intval($_POST['repeat_cycle_months'] ?? 0);
+            $revisit = tm_parse_revisit($_POST['revisit_days'] ?? '', $_POST['revisit_strict'] ?? '');
             $precautions = trim($_POST['precautions'] ?? '');
             $avg_price_min = intval($_POST['avg_price_min'] ?? 0);
             $avg_price_max = intval($_POST['avg_price_max'] ?? 0);
             $default_image_url = trim($_POST['default_image_url'] ?? '');
             $default_upload = hti_handle_upload('default_image');
-            if (is_array($default_upload) && isset($default_upload['error'])) {
+            if ($revisit === false) {
+                $msg = '재시술 간격은 일 단위 숫자(0~3650)로 입력해주세요.';
+                $msg_type = 'danger';
+            } elseif (is_array($default_upload) && isset($default_upload['error'])) {
                 $msg = $default_upload['error'];
                 $msg_type = 'danger';
             } elseif (is_array($default_upload) && !empty($default_upload['url'])) {
@@ -149,7 +176,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $avg_price_min, $avg_price_max, $created_by
                     );
                     if (mysqli_stmt_execute($stmt)) {
-                        header('Location: admin_treatments.php?msg=' . urlencode('시술이 등록되었습니다.'));
+                        $new_id = (int)mysqli_insert_id($connect);
+                        $rv_note = '';
+                        if ($revisit['days'] !== null && !tm_save_revisit($connect, $new_id, $revisit)) {
+                            $rv_note = ' (재시술 간격은 저장되지 않았습니다. sql/treatment_master_revisit_20261021.sql 을 먼저 실행해주세요.)';
+                        }
+                        header('Location: admin_treatments.php?msg=' . urlencode('시술이 등록되었습니다.' . $rv_note));
                         exit;
                     } else {
                         $msg = '시술 등록 실패: ' . mysqli_error($connect);
@@ -173,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $anesthesia_type = trim($_POST['anesthesia_type'] ?? 'none');
             if (!array_key_exists($anesthesia_type, $anesthesia_types)) $anesthesia_type = 'none';
             $repeat_cycle_months = intval($_POST['repeat_cycle_months'] ?? 0);
+            $revisit = tm_parse_revisit($_POST['revisit_days'] ?? '', $_POST['revisit_strict'] ?? '');
             $precautions = trim($_POST['precautions'] ?? '');
             $avg_price_min = intval($_POST['avg_price_min'] ?? 0);
             $avg_price_max = intval($_POST['avg_price_max'] ?? 0);
@@ -212,6 +245,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $msg_type = 'danger';
             }
 
+            if ($revisit === false) {
+                $msg = '재시술 간격은 일 단위 숫자(0~3650)로 입력해주세요.';
+                $msg_type = 'danger';
+            }
             if ($msg_type === 'danger') {
                 // The upload validation message is already set.
             } elseif ($id <= 0 || $name === '' || $category_id <= 0) {
@@ -240,7 +277,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $avg_price_min, $avg_price_max, $id
                     );
                     if (mysqli_stmt_execute($stmt)) {
-                        header('Location: admin_treatments.php?msg=' . urlencode('시술이 수정되었습니다.'));
+                        $rv_note = '';
+                        if (tm_revisit_column_exists($connect)) {
+                            if (!tm_save_revisit($connect, $id, $revisit)) $rv_note = ' (재시술 간격 저장에 실패했습니다.)';
+                        } elseif ($revisit['days'] !== null) {
+                            $rv_note = ' (재시술 간격은 저장되지 않았습니다. sql/treatment_master_revisit_20261021.sql 을 먼저 실행해주세요.)';
+                        }
+                        header('Location: admin_treatments.php?msg=' . urlencode('시술이 수정되었습니다.' . $rv_note));
                         exit;
                     }
                     throw new RuntimeException(mysqli_stmt_error($stmt));
@@ -1125,9 +1168,18 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <div class="col-md-3">
                             <label class="form-label fw-bold">반복 주기 (개월)</label>
                             <input type="number" name="repeat_cycle_months" class="form-control" value="0" min="0">
-                            <div class="form-text">0이면 반복 불필요</div>
+                            <div class="form-text">0이면 반복 불필요 (안내용)</div>
                         </div>
-                        <div class="col-md-3"></div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">재시술 간격 (일)</label>
+                            <div class="input-group">
+                                <input type="number" name="revisit_days" class="form-control" min="0" max="3650" inputmode="numeric" placeholder="예: 90">
+                                <span class="input-group-text bg-white">
+                                    <label class="mb-0 d-flex align-items-center gap-1"><input type="checkbox" name="revisit_strict" value="1" class="form-check-input mt-0"> 필수</label>
+                                </span>
+                            </div>
+                            <div class="form-text">비우거나 0이면 제한 없음. 이 기간 전에 다시 예약하면 안내가 표시됩니다. <b>필수</b>를 체크하면 기간이 지나기 전에는 예약할 수 없고, 해제하면 권장(&quot;그래도 예약&quot; 가능)입니다.</div>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">최소 가격 (만원)</label>
                             <input type="number" name="avg_price_min" class="form-control" value="0" min="0" step="1">
@@ -1222,7 +1274,16 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <label class="form-label fw-bold">반복 주기 (개월)</label>
                             <input type="number" name="repeat_cycle_months" id="edit_repeat_cycle_months" class="form-control" min="0">
                         </div>
-                        <div class="col-md-3"></div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">재시술 간격 (일)</label>
+                            <div class="input-group">
+                                <input type="number" name="revisit_days" id="edit_revisit_days" class="form-control" min="0" max="3650" inputmode="numeric" placeholder="예: 90">
+                                <span class="input-group-text bg-white">
+                                    <label class="mb-0 d-flex align-items-center gap-1"><input type="checkbox" name="revisit_strict" id="edit_revisit_strict" value="1" class="form-check-input mt-0"> 필수</label>
+                                </span>
+                            </div>
+                            <div class="form-text">비우거나 0이면 제한 없음. 이 기간 전에 다시 예약하면 안내가 표시됩니다. <b>필수</b>를 체크하면 기간이 지나기 전에는 예약할 수 없고, 해제하면 권장(&quot;그래도 예약&quot; 가능)입니다.</div>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">최소 가격 (만원)</label>
                             <input type="number" name="avg_price_min" id="edit_avg_price_min" class="form-control" min="0" step="1">
@@ -1374,6 +1435,8 @@ function openEditModal(t) {
     document.getElementById('edit_recovery_days').value = t.recovery_days || 0;
     document.getElementById('edit_anesthesia_type').value = t.anesthesia_type || 'none';
     document.getElementById('edit_repeat_cycle_months').value = t.repeat_cycle_months || 0;
+    document.getElementById('edit_revisit_days').value = t.revisit_days ? t.revisit_days : '';
+    document.getElementById('edit_revisit_strict').checked = String(t.revisit_strict) === '1';
     document.getElementById('edit_avg_price_min').value = t.avg_price_min || 0;
     document.getElementById('edit_avg_price_max').value = t.avg_price_max || 0;
     document.getElementById('edit_precautions').value = t.precautions || '';
