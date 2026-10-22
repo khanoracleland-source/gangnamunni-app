@@ -24,7 +24,7 @@ $value = trim($_POST['value'] ?? '');
 $allowed = [
     'cat_scale_pc_enabled', 'cat_scale_pc_factor', 'cat_scale_pc_adjust', 'cat_scale_pc_font', 'cat_scale_pc_pad', 'cat_scale_pc_chip', 'cat_scale_android_enabled', 'cat_scale_android_factor', 'cat_scale_android_adjust', 'cat_scale_android_font', 'cat_scale_android_pad', 'cat_scale_android_chip', 'cat_scale_ios_enabled', 'cat_scale_ios_factor', 'cat_scale_ios_adjust', 'cat_scale_ios_font', 'cat_scale_ios_pad', 'cat_scale_ios_chip',
 
-    'booking_require_login', 'booking_phone_auth', 'noshow_block_count', 'noshow_block_months', 'noshow_count_cancel',
+    'booking_require_login', 'booking_phone_auth', 'noshow_block_count', 'noshow_block_months', 'noshow_count_cancel', 'payment_deadline_hours',
     'ad_show_index','ad_home_after_search','ad_home_after_events','promo_show_index',
     'ad_auto_scroll','ad_auto_scroll_speed','ad_infeed_interval',
     'ad_show_hospitals','ad_show_hospitals_infeed',
@@ -36,7 +36,7 @@ $allowed = [
 ];
 
 // [05-17] 노쇼 제한 설정은 0(사용 안 함)~50회 / 0~36개월의 정수만 허용한다.
-$numeric_ranges = ['noshow_block_count' => [0, 50], 'noshow_block_months' => [0, 36], 'noshow_count_cancel' => [0, 1]];
+$numeric_ranges = ['noshow_block_count' => [0, 50], 'noshow_block_months' => [0, 36], 'noshow_count_cancel' => [0, 1], 'payment_deadline_hours' => [1, 168]];
 if (isset($numeric_ranges[$key])) {
     if (!preg_match('/^\d{1,3}$/', $value) || (int)$value < $numeric_ranges[$key][0] || (int)$value > $numeric_ranges[$key][1]) {
         echo json_encode(['success' => false, 'error' => 'Invalid value']);

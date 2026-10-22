@@ -336,6 +336,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         } elseif ($current_status === 'cancelled') {
             $sql .= ", cancel_reason=NULL, cancelled_at=NULL";
         }
+        // [05-37] 결제 기한의 시작점: 확정으로 바뀌는 순간을 기록한다(컬럼이 있을 때만).
+        if ($new_status === 'confirmed' && $current_status !== 'confirmed') {
+            $_ca = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE 'confirmed_at'");
+            if ($_ca && mysqli_num_rows($_ca) > 0) $sql .= ", confirmed_at=NOW(), expire_notice_seen_at=NULL";
+        }
         $sql .= " WHERE id=" . $id;
         if ($_act_hin !== null) {
             $sql .= " AND hospital_id IN (" . $_act_hin . ")";

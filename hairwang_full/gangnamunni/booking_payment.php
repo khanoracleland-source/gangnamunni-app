@@ -197,6 +197,16 @@ if ($pay_error !== '') {
     $pay_notice = $pay_notices[$pay_error] ?? '결제가 승인되지 않았습니다. 청구된 금액은 없으니 다시 시도하거나 다른 결제 수단을 이용해주세요.';
 }
 $preview_available = booking_payment_preview_enabled();
+// 05-36 결제 실패 시트: 청구가 없었음이 확실한 실패 코드만 사용한다(UNRESOLVED/취소는 기존 안내 유지).
+$fail_reasons = [
+    'REJECT_CARD_COMPANY' => '카드사 승인 거절',
+    'PAY_PROCESS_ABORTED' => '결제 중단',
+    'NOT_FOUND_PAYMENT_SESSION' => '결제 시간 초과',
+    'AMOUNT_MISMATCH' => '결제 금액 변경',
+    'POINT_HOLD_EXPIRED' => '포인트 적용 시간 초과',
+];
+$fail_sheet = array_key_exists($pay_error, $fail_reasons);
+$fail_reason = $fail_reasons[$pay_error] ?? '결제 승인 실패';
 
 $hospital_name = ($booking['h_name'] ?? '') ?: ($booking['hospital_name'] ?? '');
 $hospital_address = $booking['hospital_address'] ?? '';
@@ -215,6 +225,8 @@ $status_labels = [
     'no_show' => '노쇼',
 ];
 $status_text = $status_labels[$status] ?? $status;
+$fail_sheet_show = $fail_sheet && $fatal === '' && !$is_paid && $is_confirmed && $ledger_ready && !$order_error && $order
+    && !in_array($order_status, ['refunded','cancelled','failed'], true);
 
 ?><!doctype html>
 <html lang="ko">
@@ -462,6 +474,22 @@ html body .bp-page .bp-method img { height: 21px; }
 .cs-error { margin:0; color:#AC1830; font-size:15px; }
 .cs-foot { margin-top:auto; padding-top:16px; }
 .cs-done { width:100%; height:52px; border:1px solid #AC1830; border-radius:4px; background:#AC1830; color:#fff; font-size:19px; font-weight:500; }
+
+/* 05-36 결제 실패 시트 (시안 글자 +3px, 브랜드 #AC1830) */
+.fs-overlay { position:fixed; inset:0; z-index:110; }
+.fs-dim { position:absolute; inset:0; background:rgba(26,23,24,.45); }
+.fs-panel { position:absolute; left:0; right:0; bottom:0; max-width:640px; margin:0 auto; background:#fff; border-radius:16px 16px 0 0; padding-bottom:calc(34px + env(safe-area-inset-bottom)); }
+.fs-handle { width:40px; height:4px; border-radius:2px; background:#AC1830; margin:10px auto 0; }
+.fs-body { padding:28px 20px 8px; display:flex; flex-direction:column; gap:14px; }
+.fs-icon { width:48px; height:48px; margin:0 auto; border-radius:50%; background:#AC1830; color:#fff; font-size:28px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.fs-title { font-size:23px; font-weight:700; line-height:1.45; text-align:center; color:#1A1718; }
+.fs-desc { font-size:18px; line-height:1.6; color:#4A4446; text-align:center; }
+.fs-info { margin-top:4px; padding:14px 16px; background:#F4F2F3; display:flex; flex-direction:column; gap:8px; font-size:16px; }
+.fs-info > div { display:flex; }
+.fs-info span:first-child { width:76px; flex-shrink:0; color:#9A9395; }
+.fs-actions { margin-top:14px; display:flex; gap:10px; }
+.fs-btn { flex:1 1 0; height:52px; border-radius:4px; border:1px solid #AC1830; background:#fff; color:#AC1830; font-size:19px; font-weight:500; }
+.fs-btn.primary { background:#AC1830; color:#fff; }
 </style>
 </head>
 <body>
@@ -625,7 +653,7 @@ html body .bp-page .bp-method img { height: 21px; }
                 </section>
 
                 <?php if ($preview): ?><div class="bp-alert warn">결제 없이 계속한 예약입니다. 실제 결제 내역은 없습니다.</div><?php endif; ?>
-                <?php if ($pay_notice !== ''): ?><div class="bp-alert warn" role="alert"><?php echo bp_h($pay_notice); ?></div><?php endif; ?>
+                <?php if ($pay_notice !== '' && !$fail_sheet_show): ?><div class="bp-alert warn" role="alert"><?php echo bp_h($pay_notice); ?></div><?php endif; ?>
                 <div id="payResult" class="bp-result"></div>
                 <button type="button" class="bp-visitor-confirm" id="checkPayBtn">이미 결제했다면 상태 확인</button>
 
@@ -844,6 +872,25 @@ html body .bp-page .bp-method img { height: 21px; }
     })();
     <?php endif; ?>
 
+
+    <?php if ($fail_sheet_show): ?>
+    (function() {
+        var sheet = document.getElementById('failSheet');
+        if (!sheet) return;
+        function close() { sheet.hidden = true; sheet.style.display = 'none'; }
+        document.getElementById('failDim').addEventListener('click', close);
+        document.getElementById('failOther').addEventListener('click', function() {
+            close();
+            var m = document.getElementById('methodGrid');
+            if (m) m.scrollIntoView({block:'center', behavior:'smooth'});
+        });
+        document.getElementById('failRetry').addEventListener('click', function() {
+            close();
+            var pb = document.getElementById('payBtn');
+            if (pb && !pb.disabled) { pb.scrollIntoView({block:'center', behavior:'smooth'}); }
+        });
+    })();
+    <?php endif; ?>
     var rulesToggle = document.getElementById('rulesToggle');
     if (rulesToggle) {
         rulesToggle.addEventListener('click', function() {
@@ -943,6 +990,25 @@ html body .bp-page .bp-method img { height: 21px; }
             <div class="cs-insts" id="csInsts" hidden></div>
             <p class="cs-error" id="csError" role="alert" hidden>카드사와 할부를 모두 선택해 주세요.</p>
             <div class="cs-foot"><button type="button" class="cs-done" id="csDone">선택 완료</button></div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($fail_sheet_show): ?>
+<div class="fs-overlay" id="failSheet" role="dialog" aria-modal="true" aria-labelledby="failTitle">
+    <div class="fs-dim" id="failDim"></div>
+    <div class="fs-panel">
+        <div class="fs-handle"></div>
+        <div class="fs-body">
+            <div class="fs-icon" aria-hidden="true">!</div>
+            <div class="fs-title" id="failTitle">결제가 완료되지 않았어요</div>
+            <div class="fs-desc">결제 금액은 빠져나가지 않았어요.<br>다른 결제 수단으로 다시 시도해주세요.</div>
+            <div class="fs-info"><div><span>실패 사유</span><span><?php echo bp_h($fail_reason); ?></span></div></div>
+            <div class="fs-actions">
+                <button type="button" class="fs-btn" id="failOther">다른 결제 수단</button>
+                <button type="button" class="fs-btn primary" id="failRetry">다시 결제하기</button>
+            </div>
         </div>
     </div>
 </div>

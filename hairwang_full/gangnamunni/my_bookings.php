@@ -37,6 +37,21 @@ if (empty($_SESSION['my_bookings_csrf'])) {
 }
 $my_bookings_csrf = $_SESSION['my_bookings_csrf'];
 
+// [05-37] 결제 기한 자동 취소 안내를 확인했다고 기록한다(본인의 system 취소 건만).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'expire_seen') {
+    header('Content-Type: application/json; charset=utf-8');
+    $ok = false;
+    $tok = (string)($_POST['csrf_token'] ?? '');
+    $bid = (int)($_POST['booking_id'] ?? 0);
+    if ($tok !== '' && hash_equals($my_bookings_csrf, $tok) && $bid > 0 && $logged_mb_id !== '') {
+        $st = @mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET expire_notice_seen_at = NOW()
+            WHERE id = ? AND mb_id = ? AND cancelled_by = 'system' AND expire_notice_seen_at IS NULL");
+        if ($st) { mysqli_stmt_bind_param($st, 'is', $bid, $logged_mb_id); $ok = mysqli_stmt_execute($st); mysqli_stmt_close($st); }
+    }
+    echo json_encode(['success' => $ok]);
+    exit;
+}
+
 $auto_phone = '';
 if (!empty($logged_member['mb_hp'])) {
     $auto_phone = $logged_member['mb_hp'];
@@ -164,6 +179,16 @@ require_once __DIR__ . '/includes/review_booking.php';
 $completed_ids = [];
 foreach ($past_bookings as $_pb) { if (($_pb['status'] ?? '') === 'completed') $completed_ids[] = (int)$_pb['id']; }
 $review_map = getBookingReviewsMap($connect, $completed_ids);
+
+// [05-37] 아직 확인하지 않은 결제 기한 자동 취소 안내(최근 30일, 가장 최근 1건)
+$expired_notice = null;
+foreach ($cancelled_bookings as $_cb) {
+    if (($_cb['cancelled_by'] ?? '') === 'system' && empty($_cb['expire_notice_seen_at'])
+        && !empty($_cb['cancelled_at']) && strtotime($_cb['cancelled_at']) >= strtotime('-30 days')) {
+        $expired_notice = $_cb;
+        break;
+    }
+}
 
 $page_title = '내 예약';
 $back_url = 'mypage.php';
@@ -470,6 +495,20 @@ if (($_GET['from'] ?? '') === 'notifications') {
         #tab-past .past-procedure-card .detail-btns { width:auto; min-width:0; flex:initial; flex-direction:row; align-items:center; justify-content:space-evenly; gap:4px; }
         #tab-past .past-procedure-card .detail-btn { flex:0 1 auto; padding:10px 4px; border-radius:0; font-size:18px; font-weight:500; white-space:nowrap; }
         @media(max-width:420px){#tab-past .past-procedure-card{padding-left:0;padding-right:0}#tab-past .past-procedure-card .booking-date,.completion-state{font-size:16px}#tab-past .past-procedure-card .booking-detail-row{grid-template-columns:minmax(0,1.75fr) minmax(124px,1fr)}#tab-past .past-procedure-card .booking-detail{width:auto;padding:10px 12px}#tab-past .past-procedure-card .detail-btns{width:auto;min-width:124px;flex-basis:auto;gap:0;overflow:hidden}#tab-past .past-procedure-card .detail-btn{min-width:0;padding:10px 1px;font-size:13px;letter-spacing:-.04em}}
+
+        /* 05-37 결제 기한 만료 안내 시트 (시안 글자 +3px) */
+        .ex-overlay { position:fixed; inset:0; z-index:12000; }
+        .ex-overlay[hidden] { display:none; }
+        .ex-dim { position:absolute; inset:0; background:rgba(26,23,24,.45); }
+        .ex-panel { position:absolute; left:0; right:0; bottom:0; max-width:640px; margin:0 auto; background:#fff; border-radius:16px 16px 0 0; padding-bottom:calc(34px + env(safe-area-inset-bottom)); }
+        .ex-handle { width:40px; height:4px; border-radius:2px; background:#AC1830; margin:10px auto 0; }
+        .ex-body { padding:28px 20px 8px; display:flex; flex-direction:column; gap:14px; }
+        .ex-icon { width:48px; height:48px; margin:0 auto; border-radius:50%; background:#AC1830; color:#fff; font-size:28px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+        .ex-title { font-size:23px; font-weight:700; line-height:1.45; text-align:center; color:#1A1718; }
+        .ex-desc { font-size:18px; line-height:1.6; color:#4A4446; text-align:center; }
+        .ex-actions { margin-top:14px; display:flex; gap:10px; }
+        .ex-btn { flex:1 1 0; height:52px; border-radius:4px; border:1px solid #AC1830; background:#fff; color:#AC1830; font-size:19px; font-weight:500; display:flex; align-items:center; justify-content:center; text-decoration:none; font-family:inherit; }
+        .ex-btn.primary { background:#AC1830; color:#fff; }
     </style>
     <script>
         (function(){
@@ -1000,5 +1039,40 @@ function submitEdit() {
 </script>
 
 <?php include __DIR__ . '/includes/bottom_nav.php'; ?>
+<?php if ($expired_notice): ?>
+<div class="ex-overlay" id="expireNotice" role="dialog" aria-modal="true" aria-labelledby="expireTitle">
+    <div class="ex-dim" id="expireDim"></div>
+    <div class="ex-panel">
+        <div class="ex-handle"></div>
+        <div class="ex-body">
+            <div class="ex-icon" aria-hidden="true">!</div>
+            <div class="ex-title" id="expireTitle">결제 기한이 지나<br>예약이 취소되었어요</div>
+            <div class="ex-desc">병원 확인 후 <?php echo max(1, min(168, (int)getSettingValue($connect, 'payment_deadline_hours', '24') ?: 24)); ?>시간 안에 결제하지 않으면<br>예약이 자동으로 취소돼요. 다시 예약해주세요.</div>
+            <div class="ex-actions">
+                <button type="button" class="ex-btn" id="expireOk">확인했어요</button>
+                <a class="ex-btn primary" id="expireRebook" href="booking.php?id=<?php echo (int)$expired_notice['hospital_id']; ?>&amp;rebook=1&amp;source_booking_id=<?php echo (int)$expired_notice['id']; ?>&amp;treatment=<?php echo urlencode((string)$expired_notice['treatment']); ?>">다시 예약하기</a>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var overlay = document.getElementById('expireNotice');
+    if (!overlay) return;
+    var bookingId = <?php echo (int)$expired_notice['id']; ?>;
+    function markSeen() {
+        var fd = new FormData();
+        fd.append('action', 'expire_seen');
+        fd.append('csrf_token', <?php echo json_encode($my_bookings_csrf); ?>);
+        fd.append('booking_id', String(bookingId));
+        return fetch('my_bookings.php', {method:'POST', body:fd, credentials:'same-origin', keepalive:true}).catch(function() {});
+    }
+    function close() { overlay.hidden = true; }
+    document.getElementById('expireOk').addEventListener('click', function() { markSeen(); close(); });
+    document.getElementById('expireDim').addEventListener('click', function() { markSeen(); close(); });
+    document.getElementById('expireRebook').addEventListener('click', function() { markSeen(); });
+})();
+</script>
+<?php endif; ?>
 </body>
 </html>
