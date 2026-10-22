@@ -17,7 +17,11 @@ $booking_from_wishlist = isset($_GET['from']) && $_GET['from'] === 'my_wishlist'
 $booking_return_url = hospital_return_url($_GET['return_url'] ?? '');
 
 // 시술 가격은 변환 없이 원 단위 정수 그대로 사용한다.
-function booking_price_won($price) {
+/**
+ * @param int|float|string|null $price DB 에서 읽은 원 단위 가격(문자열 또는 숫자)
+ * @return int
+ */
+function booking_price_won($price): int {
     return intval($price);
 }
 
@@ -53,6 +57,10 @@ if (function_exists('getSettingValue')) {
 $hospital_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $is_rebooking = isset($_GET['rebook']) && $_GET['rebook'] === '1';
 $source_booking_id = max(0, (int)($_GET['source_booking_id'] ?? 0));
+// [05-42] 예약 변경 모드: booking_change.php 가 $change_booking 을 채운 뒤 이 파일을 include 한다.
+if (!isset($change_booking) || !is_array($change_booking)) { $change_booking = []; }
+$is_changing = !empty($change_booking['id']);
+if ($is_changing) { $is_rebooking = true; }
 
 if ($hospital_id <= 0) {
     header('Location: index.php');
@@ -188,14 +196,25 @@ if (!$booking_has_revisit) {
 }
 
 // 재시술 간격 표기: 30의 배수면 "N개월", 아니면 "N일".
-function booking_interval_label($days) {
+/**
+ * @param int|string $days 재시술 간격(일)
+ * @return string
+ */
+function booking_interval_label($days): string {
     $days = (int)$days;
     return ($days > 0 && $days % 30 === 0) ? ($days / 30) . '개월' : $days . '일';
 }
 
 // [05-15/05-16] 선택한 시술의 재시술 간격 규칙과 회원의 마지막 완료 시술일을 비교한다.
 // 반환: ['strict' => 예약 불가 정보|null, 'warn' => 권장 시기 아님 정보|null]
-function booking_revisit_status($connect, $mb_id, $hospital_id, array $names) {
+/**
+ * @param \mysqli $connect
+ * @param string  $mb_id
+ * @param int     $hospital_id
+ * @param string[] $names 선택한 시술명 목록
+ * @return array{strict: array|null, warn: array|null}
+ */
+function booking_revisit_status($connect, $mb_id, $hospital_id, array $names): array {
     $out = ['strict' => null, 'warn' => null];
     if ($mb_id === '' || empty($names)) return $out;
     $in = implode(',', array_fill(0, count($names), '?'));
@@ -257,7 +276,11 @@ function booking_revisit_status($connect, $mb_id, $hospital_id, array $names) {
 // [05-17] 노쇼·잦은 취소 제한은 includes/booking_noshow_policy.php 의 booking_noshow_status() 를 사용한다.
 
 // 로그인 회원의 만 나이. 생년월일이 없거나 형식이 올바르지 않으면 null (판단 불가 → 막지 않음).
-function booking_member_age($member) {
+/**
+ * @param array|null $member 회원 정보(mb_birth 포함)
+ * @return int|null
+ */
+function booking_member_age($member): ?int {
     $digits = preg_replace('/\D+/', '', (string)($member['mb_birth'] ?? ''));
     if (strlen($digits) !== 8 || $digits === '00000000') return null;
     $birth = DateTimeImmutable::createFromFormat('!Ymd', $digits);
@@ -269,7 +292,15 @@ function booking_member_age($member) {
 
 // [05-13/05-14] 회원의 진행 중(접수·병원 확인 중·확정, 아직 지나지 않은) 예약 중 선택한 시술과 같은 시술이 담긴 것을 찾는다.
 // $same_hospital=true 면 해당 병원 안에서, false 면 다른 병원들에서 찾는다. 없으면 null.
-function booking_find_active_same_treatment($connect, $mb_id, $hospital_id, array $names, $same_hospital) {
+/**
+ * @param \mysqli $connect
+ * @param string  $mb_id
+ * @param int     $hospital_id
+ * @param string[] $names 선택한 시술명 목록
+ * @param bool    $same_hospital
+ * @return array|null
+ */
+function booking_find_active_same_treatment($connect, $mb_id, $hospital_id, array $names, $same_hospital): ?array {
     if ($mb_id === '' || empty($names)) return null;
     $op = $same_hospital ? '=' : '<>';
     $stmt = mysqli_prepare($connect,
@@ -891,6 +922,17 @@ foreach ($booking_treatments as $bookable_treatment) {
                 break;
             }
         }
+        // [05-42] 예약 변경: 기존 예약의 옵션명으로 세부 옵션도 미리 선택
+        if ($is_changing && $preselected_booking_option_id === 0 && !empty($change_booking['option_name'])) {
+            // 저장 시 옵션명(raw)을 쓰고, 옵션명이 비면 용량을 쓴다 — 표시용 name 에는 '(부위)' 가 붙을 수 있어 세 가지 모두 비교
+            foreach ($bookable_treatment['options'] as $bookable_option) {
+                $_cands = [(string)($bookable_option['option_name'] ?? ''), (string)$bookable_option['name'], (string)($bookable_option['dosage'] ?? '')];
+                if (in_array($change_booking['option_name'], array_map('trim', $_cands), true)) {
+                    $preselected_booking_option_id = (int)$bookable_option['id'];
+                    break;
+                }
+            }
+        }
         break;
     }
 }
@@ -903,6 +945,9 @@ if ($booking_from_wishlist) {
 }
 if ($is_rebooking && $source_booking_id > 0) {
     $booking_back_url = 'booking_request_detail.php?booking_id=' . $source_booking_id;
+}
+if ($is_changing) {
+    $booking_back_url = 'my_bookings.php';
 }
 if ($preselected_booking_treatment !== null) {
     if (!$is_rebooking) {
@@ -2020,6 +2065,11 @@ $page_js = '
 
         renderMonths();
         renderDates();
+        // [05-42] 예약 변경: 선택된 날짜 칩이 보이도록 스크롤
+        var activeChip = dateSel.querySelector(".date-chip.active");
+        if (activeChip && hidden.value !== fmt(dates[0] || today)) {
+            dateSel.scrollTo({ left: Math.max(0, activeChip.getBoundingClientRect().left - dateSel.getBoundingClientRect().left + dateSel.scrollLeft - 8), behavior: "auto" });
+        }
     }
     initDatePicker();
 
@@ -2095,6 +2145,19 @@ $page_js = '
         }
     }
     buildTimeGrid();
+    // [05-42] 예약 변경: 들어오면 기존 예약의 날짜(서버가 hidden 에 채움)와 시간이 이미 선택돼 있어야 한다.
+    var CHANGE_MODE = ' . ($is_changing ? 'true' : 'false') . ';
+    var CHANGE_BOOKING = ' . ($is_changing ? json_encode(['id' => (int)$change_booking['id'], 'time' => $change_booking['time'], 'phone' => $change_booking['phone'], 'csrf' => $_SESSION['my_bookings_csrf'] ?? ''], JSON_UNESCAPED_UNICODE) : 'null') . ';
+    function selectChangeTime() {
+        if (!CHANGE_MODE) return;
+        var grid = document.getElementById("timeGrid");
+        if (!grid) return;
+        var slots = grid.querySelectorAll(".time-slot:not(.disabled)");
+        for (var i = 0; i < slots.length; i++) {
+            if ((slots[i].textContent || "").trim() === CHANGE_BOOKING.time) { slots[i].click(); break; }
+        }
+    }
+    selectChangeTime();
     window.buildTimeGrid = buildTimeGrid; // 날짜 변경 시 재생성용(오늘 지난 시간 재평가)
 
     // 시술 선택 시트(옵션 변경)
@@ -2614,13 +2677,47 @@ $page_js = '
         }
     }
 
+    // [05-42] 예약 변경: 시술 선택 초기 상태 기억(변경했을 때만 new_treatment 전송)
+    var changeOrigTreatment = "";
+    document.addEventListener("DOMContentLoaded", function() {
+        var ti = document.getElementById("treatmentInput");
+        changeOrigTreatment = ti ? ti.value : "";
+    });
+    var changeSubmitting = false;
+    function submitBookingChange(treatment) {
+        if (changeSubmitting) return;
+        changeSubmitting = true;
+        var btn = document.querySelector(".btn-submit[type=submit]");
+        if (btn) btn.disabled = true;
+        var fd = new FormData();
+        fd.append("csrf_token", CHANGE_BOOKING.csrf);
+        fd.append("booking_id", CHANGE_BOOKING.id);
+        fd.append("phone", CHANGE_BOOKING.phone || "");
+        fd.append("new_date", document.getElementById("bookingDate").value);
+        fd.append("new_time", document.getElementById("timeSelect").value);
+        if (treatment && treatment !== changeOrigTreatment) fd.append("new_treatment", treatment);
+        fetch("api/edit_booking.php", { method: "POST", body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                alert(data.message || (data.success ? "예약이 변경되었습니다." : "변경 처리 중 오류가 발생했습니다."));
+                if (data.success) { window.location.replace("my_bookings.php"); return; }
+                changeSubmitting = false;
+                if (btn) btn.disabled = false;
+            })
+            .catch(function() {
+                alert("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+                changeSubmitting = false;
+                if (btn) btn.disabled = false;
+            });
+    }
+
     // 폼 유효성 검사 후 서버 제출 대신 최종 확인 화면을 먼저 연다.
     var bookingForm = document.getElementById("bookingForm");
     if (bookingForm) {
         bookingForm.addEventListener("submit", function(e) {
             e.preventDefault();
             var treatment = document.getElementById("treatmentInput").value;
-            if (!treatment) {
+            if (!treatment && !CHANGE_MODE) {
                 alert("' . term('service', '시술') . '을 선택해주세요.");
                 return false;
             }
@@ -2633,6 +2730,7 @@ $page_js = '
                 alert("시간을 선택해주세요.");
                 return false;
             }
+            if (CHANGE_MODE) { submitBookingChange(treatment); return false; }
             // [05-12] 나이 제한 시술이면 확인 화면 대신 안내 시트를 보여준다 (서버에서도 다시 검증).
             var ageLimit = 0;
             selectedTreatments.forEach(function(t) {
@@ -2734,7 +2832,7 @@ include __DIR__ . '/includes/header.php';
     <!-- 페이지 헤더 -->
     <div class="page-header">
             <a href="<?php echo htmlspecialchars($booking_back_url, ENT_QUOTES, 'UTF-8'); ?>" class="back-btn" aria-label="뒤로"><i class="bi bi-chevron-left"></i></a>
-            <div class="page-title"><?php echo $is_rebooking ? '예약 선택' : term('booking', '예약') . '하기'; ?></div>
+            <div class="page-title"><?php echo $is_changing ? '예약 변경' : ($is_rebooking ? '예약 선택' : term('booking', '예약') . '하기'); ?></div>
     </div>
 
     <!-- 병원 이미지 슬라이더 -->
@@ -2823,7 +2921,7 @@ include __DIR__ . '/includes/header.php';
         </div>
         <div class="form-group">
             <label class="form-label date-select-label"><?php echo $is_rebooking ? '언제 방문하시겠어요?' : '날짜 선택'; ?></label>
-            <input type="hidden" name="date" id="bookingDate" value="<?php echo date('Y-m-d'); ?>">
+            <input type="hidden" name="date" id="bookingDate" value="<?php echo $is_changing ? htmlspecialchars($change_booking['date'], ENT_QUOTES, 'UTF-8') : date('Y-m-d'); ?>">
             <div class="month-selector" id="monthSelector"></div>
             <div class="date-selector" id="dateSelector"></div>
         </div>
@@ -2851,7 +2949,7 @@ include __DIR__ . '/includes/header.php';
 
         <!-- 제출 버튼 -->
         <div class="submit-section">
-            <button type="submit" class="btn-submit"><?php echo $is_rebooking ? '예약할게요!' : term('booking', '예약') . ' 신청하기'; ?></button>
+            <button type="submit" class="btn-submit"><?php echo $is_changing ? '예약하기' : ($is_rebooking ? '예약할게요!' : term('booking', '예약') . ' 신청하기'); ?></button>
         </div>
     </form>
 

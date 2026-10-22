@@ -164,9 +164,14 @@ $payment_previews = booking_payment_previews($connect, $_pay_ids);
 foreach ($payment_previews as $preview_id => $preview_row) {
     if (($payment_map[$preview_id]['status'] ?? '') === 'pending') $payment_map[$preview_id]['status'] = 'preview';
 }
-/** 확정 예약의 결제 상태: 'paid' | 'payable' | '' (표시 안 함) */
 if (!function_exists('booking_payment_state')) {
-    function booking_payment_state($bk, $map) {
+    /**
+     * 확정 예약의 결제 상태: 'paid' | 'payable' | '' (표시 안 함)
+     * @param array $bk  예약 행(id, status 포함)
+     * @param array $map 예약 ID => 결제 행
+     * @return string
+     */
+    function booking_payment_state(array $bk, array $map): string {
         if (($bk['status'] ?? '') !== 'confirmed') return '';
         $p = $map[(int)$bk['id']] ?? null;
         if (!$p) return '';
@@ -426,11 +431,11 @@ if (($_GET['from'] ?? '') === 'notifications') {
             width: 54px; height: 54px; margin: 34px auto 28px; border-radius: 50%; background: var(--color-primary);
             color: #fff; display: flex; align-items: center; justify-content: center; font-size: 31px; font-weight: 300;
         }
-        .change-confirm-title { font-size: 23px; font-weight: 750; line-height: 1.45; letter-spacing: -.04em; }
-        .change-confirm-sub { margin-top: 18px; font-size: 16px; font-weight: 650; }
+        .change-confirm-title { font-size: 23px; font-weight: 700; line-height: 1.45; letter-spacing: -.04em; }
+        .change-confirm-sub { margin-top: 14px; font-size: 18px; font-weight: 400; color: #4A4446; }
         .change-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 48px; }
         .change-confirm-actions.booking-motion-footer { margin-top: 0; }
-        .change-confirm-btn { height: 52px; border: 1px solid var(--color-primary); background: #fff; color: var(--color-primary); font-size: 16px; font-weight: 700; cursor: pointer; }
+        .change-confirm-btn { height: 52px; border: 1px solid var(--color-primary); border-radius: 4px; background: #fff; color: var(--color-primary); font-size: 19px; font-weight: 500; cursor: pointer; }
         .change-confirm-btn.primary { background: var(--color-primary); color: #fff; }
 
         /* 예약 취소 사유 바텀시트 */
@@ -967,7 +972,8 @@ function continueBookingChange() {
     if (!pendingBookingChange) return;
     var change = pendingBookingChange;
     Promise.resolve(closeModal('changeConfirmModal')).then(function () {
-        openEditModal(change.id, change.date, change.time);
+        // [05-42] 예약 변경 전용 페이지로 이동 (기존 날짜/시간이 선택된 상태로 열린다)
+        window.location.href = 'booking_change.php?booking_id=' + encodeURIComponent(change.id);
     });
 }
 
