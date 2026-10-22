@@ -151,7 +151,7 @@ body {
     font-size:calc(22px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; color:#fff; flex-shrink:0;
 }
 .profile-info-wrap { flex:1; min-width:0; }
-.profile-name { font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; color:#000; }
+.profile-name { font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:700; color:#000; }
 .profile-sub { font-size:calc(13px * var(--fs-scale,1) * var(--fs-page,1)); color:#999; margin-top:2px; }
 .profile-arrow { color:#000; font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
@@ -159,7 +159,7 @@ body {
 .menu-section { background:var(--card-bg); border-radius:0; margin:0 10px 16px; padding:18px 22px 8px; }
 .menu-section.compact-section { padding-top:5px; padding-bottom:5px; }
 .menu-section-title {
-    width:100%; padding:0 0 3px; font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; color:#999; letter-spacing:-.02em;
+    width:100%; padding:0 0 3px; font-size:calc(16px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; color:#999; letter-spacing:-.02em;
 }
 .menu-row {
     display:flex; align-items:center; gap:14px;
@@ -172,7 +172,7 @@ body {
     font-size:calc(25px * var(--fs-scale,1) * var(--fs-page,1)); color:#111; flex-shrink:0;
 }
 .menu-row-icon img { display:block; width:clamp(26px, 7.3vw, 30px); height:clamp(26px, 7.3vw, 30px); object-fit:contain; }
-.menu-row-text { flex:1; font-size:calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; letter-spacing:-.35px; }
+.menu-row-text { flex:1; font-size:calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight:500; letter-spacing:-.35px; }
 .menu-row-arrow { color:#000; font-weight:900; font-size:calc(20px * var(--fs-scale,1) * var(--fs-page,1)); flex-shrink:0; }
 
 /* 광고 배너 */
@@ -213,7 +213,7 @@ body {
 /* 배지는 알약 배경 없이 텍스트만 — padding/border-radius 는 배경이 없으면 의미가 없어
    함께 제거하고, 화살표와의 간격만 margin 으로 유지한다. */
 .menu-row-badge {
-    font-size: calc(17px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: var(--pri, #AC1830);
+    font-size: calc(18px * var(--fs-scale,1) * var(--fs-page,1)); font-weight: 500; color: var(--pri, #AC1830);
     margin-right: 2px; white-space:nowrap;
 }
 
@@ -231,7 +231,7 @@ body {
 <!-- 페이지 헤더: "마이페이지" + 설정 아이콘 -->
 <div class="page-header">
     <span class="page-header-title">마이페이지</span>
-    <a href="notification_settings.php" class="settings-btn" title="설정" aria-label="설정"><img src="assets/icons/icon-mypage-settings.png" alt="" aria-hidden="true"></a>
+    <a href="notification_settings.php" class="settings-btn" title="설정" aria-label="설정"><img src="assets/icons/icon-mypage-settings.png?v=<?php echo (int)@filemtime(__DIR__ . '/assets/icons/icon-mypage-settings.png'); ?>" alt="" aria-hidden="true"></a>
 </div>
 
 <?php if ($is_logged_in): ?>
@@ -254,7 +254,7 @@ body {
 <div class="menu-section">
     <div class="menu-section-title"><?php echo term('business', '병원'); ?> 이용</div>
     <a href="my_bookings.php" class="menu-row">
-        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-booking.png" alt="" aria-hidden="true"></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-booking.png?v=<?php echo (int)@filemtime(__DIR__ . '/assets/icons/icon-mypage-booking.png'); ?>" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">내 <?php echo term('booking', '예약'); ?> / 결제 내역</span>
         <?php if ($booking_count > 0): ?>
         <span class="menu-row-badge"><?php echo term('booking', '예약'); ?> <?php echo number_format($booking_count); ?>건</span>
@@ -265,19 +265,19 @@ body {
     require_once __DIR__ . '/includes/points_pause.php';
     if (!POINTS_MENU_HIDDEN): // 일시 중지: includes/points_pause.php ?>
     <a href="my_points.php" class="menu-row">
-        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-point.png" alt="" aria-hidden="true"></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-point.png?v=<?php echo (int)@filemtime(__DIR__ . '/assets/icons/icon-mypage-point.png'); ?>" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">포인트</span>
         <span class="menu-row-badge"><?php echo number_format($point_balance); ?>P</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <?php endif; ?>
     <a href="my_wishlist.php" class="menu-row">
-        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-wishlist.png" alt="" aria-hidden="true"></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-wishlist.png?v=<?php echo (int)@filemtime(__DIR__ . '/assets/icons/icon-mypage-wishlist.png'); ?>" alt="" aria-hidden="true"></span>
         <span class="menu-row-text"><?php echo term('business', '병원'); ?> 찜</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_reviews.php" class="menu-row">
-        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-review.png" alt="" aria-hidden="true"></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-review.png?v=<?php echo (int)@filemtime(__DIR__ . '/assets/icons/icon-mypage-review.png'); ?>" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">내가 작성한 <?php echo term('review', '후기'); ?></span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
@@ -297,12 +297,12 @@ if ($_mypage_has_ads): ?>
 <div class="menu-section">
     <div class="menu-section-title">커뮤니티</div>
     <a href="community.php?my=1" class="menu-row">
-        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-community.png" alt="" aria-hidden="true"></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-community.png?v=<?php echo (int)@filemtime(__DIR__ . '/assets/icons/icon-mypage-community.png'); ?>" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">MY 커뮤니티 글</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_wishlist.php?type=community" class="menu-row">
-        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-like.png" alt="" aria-hidden="true"></span>
+        <span class="menu-row-icon"><img src="assets/icons/icon-mypage-like.png?v=<?php echo (int)@filemtime(__DIR__ . '/assets/icons/icon-mypage-like.png'); ?>" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">MY 좋아요 목록</span>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>

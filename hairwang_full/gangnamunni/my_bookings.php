@@ -608,7 +608,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
             ?>
             <div class="booking-card-top">
                 <span class="booking-card-date"><?php echo htmlspecialchars($_date_text); ?></span>
-                <span class="booking-dday"><?php echo (($bk['status'] ?? '') === 'confirmed' && in_array($_payment_state, ['payable','preview'], true)) ? '결제 대기 · ' : ''; ?><?php echo htmlspecialchars($_dd_text); ?></span>
+                <span class="booking-dday"><?php echo (($bk['status'] ?? '') === 'confirmed' && in_array($_payment_state, ['payable','preview'], true)) ? '결제 대기 · ' : '시술예정 '; ?><?php echo htmlspecialchars($_dd_text); ?></span>
                 <a class="booking-detail-link" href="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>">예약상세</a>
             </div>
             <div class="booking-summary">

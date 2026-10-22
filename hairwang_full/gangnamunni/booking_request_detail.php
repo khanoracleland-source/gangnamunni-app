@@ -303,7 +303,7 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
         </div>
     </section>
     <?php endif; ?>
-    <?php if ($is_active): ?>
+    <?php if ($is_active && ($bk['status'] ?? '') === 'confirmed'): // 05-40: 요청 단계(대기·병원 확인 중)에는 금액 요약을 숨긴다 ?>
     <section class="pay-sum" aria-labelledby="paySumTitle">
         <h2 class="pay-sum-title" id="paySumTitle">결제 금액을 확인해보세요</h2>
         <div class="pay-sum-row"><span class="pay-sum-grow">시술 금액</span><b><?php echo number_format($sum_gross); ?>원</b></div>
@@ -312,6 +312,8 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
         <div class="pay-sum-row total"><span class="pay-sum-grow">총 결제 금액 <small>(VAT포함)</small></span><b><?php echo number_format($sum_final); ?>원</b></div>
         <div class="pay-sum-row"><span class="pay-sum-grow">예상 적립 포인트</span><b><?php echo $sum_expected === null ? '준비 중' : number_format($sum_expected) . ' P'; ?></b></div>
     </section>
+    <?php endif; ?>
+    <?php if ($is_active): ?>
     <div class="notice">
         <div class="notice-title">고객님 꼭 알아두세요!</div>
         <ul>
