@@ -1,4 +1,6 @@
 <?php
+// Turbo Drive (new app versions only): injects the Turbo tags into <head>. See includes/turbo_boot.php
+if (is_file(__DIR__ . '/includes/turbo_boot.php')) { require_once __DIR__ . '/includes/turbo_boot.php'; sb_turbo_boot(); }
 /**
  * ========================================
  * 서울미녀 스타일 꿀팁 상세 페이지

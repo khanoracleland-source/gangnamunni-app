@@ -131,6 +131,19 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       ),
     );
 
+    // This app version understands the website's in-page (Turbo) navigation: the
+    // site reports each one with a {action: 'pageChanged'} bridge message, which
+    // _handleTurboPageChanged handles. Older app versions never send this cookie,
+    // so the website keeps normal full-page loads for them. Not a credential.
+    await _cookieManager.setCookie(
+      WebViewCookie(
+        name: 'sb_turbo_bridge',
+        value: '1',
+        domain: startupUri.host,
+        path: '/',
+      ),
+    );
+
     // Pin the server's device binding to the same id NativeAuthService uses,
     // instead of letting the server mint one and the WebView cookie jar be
     // the only place it's remembered.

@@ -346,9 +346,9 @@ $csrf_token = generateCsrfToken();
 </div>
 
 <script>
-const REVIEW_ID = <?php echo $review_id; ?>;
-const USER_ID = '<?php echo addslashes($current_user_id); ?>';
-const BASE_URL = '<?php echo $base_url; ?>';
+var   REVIEW_ID = <?php echo $review_id; ?>;
+var   USER_ID = '<?php echo addslashes($current_user_id); ?>';
+var   BASE_URL = '<?php echo $base_url; ?>';
 
 // 업로드 경로/http(s) 이외의 URL(javascript:, data: ...)은 무시한다
 function rdSafeImageUrl(u) {
@@ -416,7 +416,7 @@ async function submitComment() {
 }
 
 // Enter 키로 댓글 등록
-const commentInput = document.getElementById('commentInput');
+var   commentInput = document.getElementById('commentInput');
 if (commentInput) commentInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') submitComment();
 });

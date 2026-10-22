@@ -1,4 +1,6 @@
 <?php
+// Turbo Drive (new app versions only): injects the Turbo tags into <head>. See includes/turbo_boot.php
+if (is_file(__DIR__ . '/includes/turbo_boot.php')) { require_once __DIR__ . '/includes/turbo_boot.php'; sb_turbo_boot(); }
 /**
  * 서울미녀 통합 마이페이지
  * Figma 디자인 기반 메뉴 구조 (2026-03-25)

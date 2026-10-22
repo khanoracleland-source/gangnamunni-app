@@ -147,11 +147,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .empty-state i { font-size:calc(48px * var(--fs-scale,1) * var(--fs-page,1)); display:block; margin-bottom:12px; }
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
-<?php $turbo_pilot = empty($_GET['noturbo']); // Turbo pilot kill switch: ?noturbo=1 ?>
-<?php if ($turbo_pilot): ?>
-<script src="assets/js/vendor/turbo-7.3.0.es2017-umd.js" defer></script>
-<script src="assets/js/turbo-pilot.js?v=2" defer></script>
-<?php endif; ?>
+<?php $turbo_pilot = function_exists('sb_turbo_active') && sb_turbo_active(); // Turbo is injected by includes/turbo_boot.php ?>
 </head>
 <body>
 

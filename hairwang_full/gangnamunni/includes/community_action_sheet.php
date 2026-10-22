@@ -60,17 +60,17 @@ a.community-sheet-action { text-decoration: none; }
     </div>
 </dialog>
 <script>
-const communitySheetUserId = <?php echo json_encode(function_exists('get_gangnamunni_member_id') ? (get_gangnamunni_member_id() ?? '') : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+var   communitySheetUserId = <?php echo json_encode(function_exists('get_gangnamunni_member_id') ? (get_gangnamunni_member_id() ?? '') : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
 function communitySheetLoginPrompt() {
     if (confirm('로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) location.href = 'auth/login.php?url=' + encodeURIComponent(location.href);
 }
-const communityActionSheet = document.getElementById('communityActionSheet');
-const communitySheetPanel = communityActionSheet.querySelector('.community-sheet-panel');
-const communitySheetBackdrop = communityActionSheet.querySelector('.community-sheet-backdrop');
-const communitySheetBody = communityActionSheet.querySelector('.community-sheet-body');
-const communitySheetFooter = communityActionSheet.querySelector('.community-sheet-footer');
-let communityActionTarget = null;
-const communityMotion = (() => {
+var   communityActionSheet = document.getElementById('communityActionSheet');
+var   communitySheetPanel = communityActionSheet.querySelector('.community-sheet-panel');
+var   communitySheetBackdrop = communityActionSheet.querySelector('.community-sheet-backdrop');
+var   communitySheetBody = communityActionSheet.querySelector('.community-sheet-body');
+var   communitySheetFooter = communityActionSheet.querySelector('.community-sheet-footer');
+var communityActionTarget = null;
+var   communityMotion = (() => {
     const backdropOpacity = .15;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     let screenHeight = 0, maxHeight = 0, y = 0;
@@ -322,8 +322,8 @@ const communityMotion = (() => {
 })();
 function openCommunityActions(button) { communityMotion.open(button); }
 function closeCommunityActions() { return communityMotion.close(); }
-const communityCopyToast = document.getElementById('communityCopyToast');
-let communityCopyToastTimer;
+var   communityCopyToast = document.getElementById('communityCopyToast');
+var communityCopyToastTimer;
 function hideCommunityCopyToast() {
     clearTimeout(communityCopyToastTimer);
     communityCopyToast.hidden = true;

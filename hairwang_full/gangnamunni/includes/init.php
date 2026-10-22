@@ -1,4 +1,6 @@
 <?php
+// Turbo Drive (new app versions only): injects the Turbo tags into <head>. See includes/turbo_boot.php
+if (is_file(__DIR__ . '/turbo_boot.php')) { require_once __DIR__ . '/turbo_boot.php'; sb_turbo_boot(); }
 
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 if (!isset($_SERVER['REMOTE_ADDR'])) $_SERVER['REMOTE_ADDR'] = '127.0.0.1';

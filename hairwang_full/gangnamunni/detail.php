@@ -2840,14 +2840,14 @@ if ($current_tab === 'reviews') {
 
     <script>
         // 이미지 갤러리 (터치 스와이프 + 자동 슬라이드)
-        const gallery = document.getElementById('imageGallery');
-        const currentIndexEl = document.getElementById('currentIndex');
-        const galleryContainer = document.getElementById('galleryContainer');
+        var   gallery = document.getElementById('imageGallery');
+        var   currentIndexEl = document.getElementById('currentIndex');
+        var   galleryContainer = document.getElementById('galleryContainer');
 
-        let currentIndex = 0;
-        let totalImages = <?php echo count($hospital_images); ?>;
-        let autoSlideTimer = null;
-        let touchStartX = 0, touchEndX = 0, touchStartY = 0, isDragging = false;
+        var currentIndex = 0;
+        var totalImages = <?php echo count($hospital_images); ?>;
+        var autoSlideTimer = null;
+        var touchStartX = 0, touchEndX = 0, touchStartY = 0, isDragging = false;
 
         function navigateGallery(direction) {
             currentIndex += direction;
@@ -2971,7 +2971,7 @@ if ($current_tab === 'reviews') {
             };
         }
         window.__cmMethod = '';
-        const CM_KAKAO_URL = <?php echo json_encode($cm_kakao, JSON_UNESCAPED_SLASHES); ?>;
+        var   CM_KAKAO_URL = <?php echo json_encode($cm_kakao, JSON_UNESCAPED_SLASHES); ?>;
         function cmShowDone(method, time) {
             const modal = document.getElementById('consultModal');
             window.__cmMethod = method;
@@ -3116,16 +3116,16 @@ if ($current_tab === 'reviews') {
         })();
 
         // 시술 상세 이미지 확대/축소 (100% ~ 400%)
-        let treatmentImageZoom = 1;
-        let treatmentImageBaseWidth = 0;
-        let treatmentTouchMode = '';
-        let treatmentTouchStartDistance = 0;
-        let treatmentTouchStartZoom = 1;
-        let treatmentTouchStartX = 0;
-        let treatmentTouchStartY = 0;
-        let treatmentTouchStartScrollLeft = 0;
-        let treatmentTouchStartScrollTop = 0;
-        let treatmentImageGestureMoved = false;
+        var treatmentImageZoom = 1;
+        var treatmentImageBaseWidth = 0;
+        var treatmentTouchMode = '';
+        var treatmentTouchStartDistance = 0;
+        var treatmentTouchStartZoom = 1;
+        var treatmentTouchStartX = 0;
+        var treatmentTouchStartY = 0;
+        var treatmentTouchStartScrollLeft = 0;
+        var treatmentTouchStartScrollTop = 0;
+        var treatmentImageGestureMoved = false;
 
         function openTreatmentImageModal(sourceImage) {
             const modal = document.getElementById('treatmentImageModal');
@@ -3211,7 +3211,7 @@ if ($current_tab === 'reviews') {
             return Math.hypot(dx, dy);
         }
 
-        const treatmentImageModal = document.getElementById('treatmentImageModal');
+        var   treatmentImageModal = document.getElementById('treatmentImageModal');
         treatmentImageModal?.addEventListener('touchstart', function(event) {
             if (event.target.closest('.treatment-image-modal-close, .treatment-image-zoom-controls')) return;
             treatmentImageGestureMoved = false;
@@ -3272,10 +3272,10 @@ if ($current_tab === 'reviews') {
         });
 
         // === 사진 첨부 ===
-        let selectedPhotos = []; // {file, dataUrl}
-        const MAX_PHOTOS = 3;
-        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-        const MAX_DIM = 1280; // 리사이즈 최대 px
+        var selectedPhotos = []; // {file, dataUrl}
+        var   MAX_PHOTOS = 3;
+        var   MAX_SIZE = 5 * 1024 * 1024; // 5MB
+        var   MAX_DIM = 1280; // 리사이즈 최대 px
 
         function handlePhotoSelect(input) {
             const files = Array.from(input.files);
