@@ -176,6 +176,8 @@ if (file_exists(__DIR__ . '/includes/points_checkout.php')) {
 $preview = booking_payment_previews($connect, [$booking_id]);
 $channels = booking_payment_methods();
 $live_available = booking_payment_checkout_ready();
+// 카드사·할부 시트(05-29~33)는 결제창 연동 전까지 ?cardsheet=1 미리보기에서만 노출한다.
+$cardsheet_preview = (($_GET['cardsheet'] ?? '') === '1');
 // Toss 성공/실패 URL 에서 돌아왔을 때의 안내. 코드만 받고 문구는 서버가 정한다.
 $pay_notice = '';
 $pay_error = preg_replace('/[^A-Z_]/', '', (string)($_GET['pay_error'] ?? ''));
@@ -431,6 +433,35 @@ html body .bp-page .bp-schedule-row .bp-label, html body .bp-page .bp-schedule-r
 html body .bp-page .bp-schedule-row .bp-label { font-size: 17px; }
 html body .bp-page .bp-schedule-row .bp-red-note { font-size: 15px; }
 html body .bp-page .bp-method img { height: 21px; }
+
+/* 05-29~05-33 카드사·할부 선택 시트 (시안 글자 +3px, 브랜드 #AC1830) */
+.bp-card-pick { display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:14px; padding:0 14px; height:48px; border:1px solid #DCD6D8; background:#F4F2F3; color:#1A1718; font-size:17px; font-weight:500; text-align:left; }
+.bp-card-pick[hidden] { display:none; }
+.bp-card-pick-edit { color:#AC1830; font-size:15px; }
+.cs-overlay { position:fixed; inset:0; z-index:100; }
+.cs-overlay[hidden] { display:none; }
+.cs-dim { position:absolute; inset:0; background:rgba(26,23,24,.45); }
+.cs-panel { position:absolute; left:0; right:0; bottom:0; max-width:640px; margin:0 auto; background:#fff; border-radius:16px 16px 0 0; padding-bottom:calc(34px + env(safe-area-inset-bottom)); max-height:92vh; display:flex; flex-direction:column; }
+.cs-handle { width:40px; height:4px; border-radius:2px; background:#AC1830; margin:10px auto 0; flex-shrink:0; }
+.cs-body { padding:18px 20px 0; display:flex; flex-direction:column; gap:8px; overflow-y:auto; min-height:min(520px, 80vh); }
+.cs-title { font-size:18px; font-weight:500; margin-bottom:6px; color:#1A1718; }
+.cs-select { height:48px; box-sizing:border-box; padding:0 14px; display:flex; align-items:center; background:#F1EFEF; border:1px solid #F1EFEF; font-size:18px; color:#1A1718; font-weight:500; cursor:pointer; flex-shrink:0; }
+.cs-select.open { border-color:#AC1830; }
+.cs-select span { flex-grow:1; }
+.cs-select .cs-placeholder { color:#9A9395; font-weight:400; }
+.cs-chev { width:18px; height:18px; flex-shrink:0; position:relative; }
+.cs-chev::before { content:""; position:absolute; left:4px; top:3px; width:8px; height:8px; border-right:1.8px solid #1A1718; border-bottom:1.8px solid #1A1718; transform:rotate(45deg); }
+.cs-select.open .cs-chev::before { top:6px; transform:rotate(225deg); }
+.cs-companies { background:#F1EFEF; padding:6px 0; display:grid; grid-template-columns:repeat(4, 1fr); margin-top:-8px; }
+.cs-companies[hidden], .cs-insts[hidden], .cs-select[hidden], .cs-error[hidden] { display:none; }
+.cs-companies button, .cs-insts button { border:0; background:transparent; height:40px; font-size:17px; color:#1A1718; display:flex; align-items:center; justify-content:center; }
+.cs-companies button { white-space:nowrap; letter-spacing:-.06em; font-size:16px; padding:0 2px; }
+.cs-companies button.on, .cs-insts button.on { color:#AC1830; font-weight:700; }
+.cs-insts { background:#F1EFEF; padding:6px 0; display:flex; flex-direction:column; margin-top:-8px; }
+.cs-insts button { justify-content:flex-start; padding:0 14px; }
+.cs-error { margin:0; color:#AC1830; font-size:15px; }
+.cs-foot { margin-top:auto; padding-top:16px; }
+.cs-done { width:100%; height:52px; border:1px solid #AC1830; border-radius:4px; background:#AC1830; color:#fff; font-size:19px; font-weight:500; }
 </style>
 </head>
 <body>
@@ -548,9 +579,10 @@ html body .bp-page .bp-method img { height: 21px; }
                     <?php endif; ?>
                     <div class="bp-method-grid" id="methodGrid">
                         <?php foreach (['bank'=>'계좌이체', 'card'=>'신용/체크카드', 'naverpay'=>'네이버페이', 'kakaopay'=>'카카오페이', 'tosspay'=>'토스페이'] as $method => $label): ?>
-                        <button type="button" class="bp-method<?php echo $live_available && $method === (isset($channels['card']) ? 'card' : array_key_first($channels)) ? ' selected' : ''; ?>" data-provider="<?php echo bp_h($method); ?>" <?php echo !$live_available || !isset($channels[$method]) ? 'disabled' : ''; ?>><?php echo bp_h($label); ?></button>
+                        <button type="button" class="bp-method<?php echo $live_available && $method === (isset($channels['card']) ? 'card' : array_key_first($channels)) ? ' selected' : ''; ?>" data-provider="<?php echo bp_h($method); ?>" <?php echo (!$live_available || !isset($channels[$method])) && !($method === 'card' && $cardsheet_preview) ? 'disabled' : ''; ?>><?php echo bp_h($label); ?></button>
                         <?php endforeach; ?>
                     </div>
+                    <?php if ($cardsheet_preview): ?><button type="button" class="bp-card-pick" id="cardPick" hidden><span id="cardPickText"></span><span class="bp-card-pick-edit">변경</span></button><?php endif; ?>
                     <a class="bp-installment" href="javascript:void(0)">신용카드 무이자 할부 안내</a>
                 </section>
 
@@ -751,6 +783,67 @@ html body .bp-page .bp-method img { height: 21px; }
         });
     });
 
+
+    <?php if ($cardsheet_preview): ?>
+    // 카드사·할부 선택 (미리보기 전용: 결제창 연동 없음)
+    (function() {
+        var companies = ['신한','현대','삼성','롯데','토스뱅크','하나','국민','비씨','농협','우리','카카오뱅크','케이뱅크','기업','씨티','새마을','우체국','신협','광주은행','전북','산업','제주','저축'];
+        var insts = ['일시불','2개월 무이자','3개월 무이자','4개월 무이자','5개월 무이자','6개월','7개월','8개월','9개월','10개월','11개월','12개월'];
+        var sheet = document.getElementById('cardSheet');
+        if (!sheet) return;
+        var cRow = document.getElementById('csCompanyRow'), cText = document.getElementById('csCompanyText'), cList = document.getElementById('csCompanies');
+        var iRow = document.getElementById('csInstRow'), iText = document.getElementById('csInstText'), iList = document.getElementById('csInsts');
+        var err = document.getElementById('csError'), pick = document.getElementById('cardPick'), pickText = document.getElementById('cardPickText');
+        var draft = {company:'', inst:''}, saved = {company:'', inst:''};
+        function fill(box, items, key, onPick) {
+            box.innerHTML = '';
+            items.forEach(function(name) {
+                var b = document.createElement('button');
+                b.type = 'button'; b.textContent = name;
+                b.addEventListener('click', function() { draft[key] = name; onPick(); });
+                box.appendChild(b);
+            });
+        }
+        function mark(box, val) { Array.prototype.forEach.call(box.children, function(b) { b.classList.toggle('on', b.textContent === val); }); }
+        function render() {
+            cText.textContent = draft.company || '카드사 선택';
+            cText.className = draft.company ? '' : 'cs-placeholder';
+            iText.textContent = draft.inst || '할부 선택';
+            iText.className = draft.inst ? '' : 'cs-placeholder';
+            iRow.hidden = !draft.company;
+            mark(cList, draft.company); mark(iList, draft.inst);
+            err.hidden = true;
+        }
+        function toggle(row, list, other, otherList) {
+            var open = list.hidden;
+            list.hidden = !open; row.classList.toggle('open', open);
+            if (open && other) { otherList.hidden = true; other.classList.remove('open'); }
+        }
+        fill(cList, companies, 'company', function() { cList.hidden = true; cRow.classList.remove('open'); render(); });
+        fill(iList, insts, 'inst', function() { iList.hidden = true; iRow.classList.remove('open'); render(); });
+        cRow.addEventListener('click', function() { toggle(cRow, cList, iRow, iList); });
+        iRow.addEventListener('click', function() { toggle(iRow, iList, cRow, cList); });
+        function open() {
+            draft = {company: saved.company, inst: saved.inst};
+            cList.hidden = iList.hidden = true; cRow.classList.remove('open'); iRow.classList.remove('open');
+            render(); sheet.hidden = false;
+        }
+        function close() { sheet.hidden = true; }
+        document.getElementById('cardSheetDim').addEventListener('click', close);
+        document.getElementById('csDone').addEventListener('click', function() {
+            if (!draft.company || !draft.inst) { err.hidden = false; return; }
+            saved = {company: draft.company, inst: draft.inst};
+            pickText.textContent = saved.company + ' · ' + saved.inst;
+            pick.hidden = false;
+            close();
+        });
+        pick.addEventListener('click', open);
+        document.querySelectorAll('.bp-method[data-provider="card"]').forEach(function(btn) {
+            btn.addEventListener('click', open);
+        });
+    })();
+    <?php endif; ?>
+
     var rulesToggle = document.getElementById('rulesToggle');
     if (rulesToggle) {
         rulesToggle.addEventListener('click', function() {
@@ -836,5 +929,23 @@ html body .bp-page .bp-method img { height: 21px; }
     updateTotals();
 })();
 </script>
+
+<?php if ($cardsheet_preview): ?>
+<div class="cs-overlay" id="cardSheet" hidden>
+    <div class="cs-dim" id="cardSheetDim"></div>
+    <div class="cs-panel" role="dialog" aria-modal="true" aria-label="카드사·할부 선택">
+        <div class="cs-handle"></div>
+        <div class="cs-body">
+            <div class="cs-title">카드사·할부를 선택해 주세요</div>
+            <div class="cs-select" id="csCompanyRow" role="button" tabindex="0"><span id="csCompanyText" class="cs-placeholder">카드사 선택</span><i class="cs-chev"></i></div>
+            <div class="cs-companies" id="csCompanies" hidden></div>
+            <div class="cs-select" id="csInstRow" role="button" tabindex="0" hidden><span id="csInstText" class="cs-placeholder">할부 선택</span><i class="cs-chev"></i></div>
+            <div class="cs-insts" id="csInsts" hidden></div>
+            <p class="cs-error" id="csError" role="alert" hidden>카드사와 할부를 모두 선택해 주세요.</p>
+            <div class="cs-foot"><button type="button" class="cs-done" id="csDone">선택 완료</button></div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 </body>
 </html>
