@@ -29,15 +29,23 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+/** @param mixed $value */
 function bp_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
+/** @param mixed $amount */
 function bp_money($amount) { return number_format(max(0, (int)$amount)); }
+/** @param mixed $value */
 function bp_digits($value) { return preg_replace('/[^0-9]/', '', (string)$value); }
+/** @param mixed $value */
 function bp_phone($value) {
     $d = bp_digits($value);
     if (strlen($d) === 11) return substr($d, 0, 3) . '-' . substr($d, 3, 4) . '-' . substr($d, 7);
     if (strlen($d) === 10) return substr($d, 0, 3) . '-' . substr($d, 3, 3) . '-' . substr($d, 6);
     return (string)$value;
 }
+/**
+ * @param mixed $date
+ * @param mixed $time
+ */
 function bp_korean_date($date, $time) {
     $ts = strtotime(trim((string)$date . ' ' . (string)$time));
     if (!$ts) return trim((string)$date . ' ' . substr((string)$time, 0, 5));
@@ -49,6 +57,7 @@ function bp_korean_date($date, $time) {
     if ($display_hour === 0) $display_hour = 12;
     return date('n월 j일', $ts) . ' (' . $week . ') ' . $ampm . ' ' . $display_hour . ':' . $minute;
 }
+/** @param mixed $address */
 function bp_short_address($address) {
     $address = trim((string)$address);
     if ($address === '') return '';
@@ -476,7 +485,7 @@ html body .bp-page .bp-method img { height: 21px; }
                     </div>
                     <div class="bp-field">
                         <label for="visitorPhone">방문하실 분의 휴대폰 번호를 알려주세요</label>
-                        <input type="tel" id="visitorPhone" placeholder="010-0000-0000" autocomplete="tel" inputmode="numeric" maxlength="13" pattern="010-[0-9]{4}-[0-9]{4}">
+                        <input type="tel" id="visitorPhone" placeholder="병원과 연락 가능한 번호를 입력해주세요" autocomplete="tel" inputmode="numeric" maxlength="13" pattern="010-[0-9]{4}-[0-9]{4}">
                     </div>
                     <button type="button" class="bp-visitor-confirm" id="visitorConfirm">선택 완료</button>
                 </div>
