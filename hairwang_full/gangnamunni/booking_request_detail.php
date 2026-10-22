@@ -60,6 +60,35 @@ if ($payment_table && mysqli_num_rows($payment_table) > 0) {
 }
 
 $is_active = in_array($bk['status'] ?? '', ['pending', 'hospital_checking', 'confirmed'], true);
+
+// 05-35 결제 금액 요약: 포인트 차감 전 총액(gross), 사용 포인트, 예상 적립 포인트
+$sum_gross = $treatment_price;
+$sum_points = 0;
+$sum_final = $treatment_price;
+$sum_expected = null; // null = 준비 중
+$sum_stmt = @mysqli_prepare($connect,
+    "SELECT amount, points_used, gross_amount FROM gangnamunni_platform_payments
+     WHERE payment_type = 'booking' AND booking_id = ? LIMIT 1");
+if ($sum_stmt) {
+    mysqli_stmt_bind_param($sum_stmt, 'i', $booking_id);
+    if (mysqli_stmt_execute($sum_stmt)) {
+        $sum_row = mysqli_fetch_assoc(mysqli_stmt_get_result($sum_stmt));
+        if ($sum_row) {
+            $sum_points = max(0, (int)($sum_row['points_used'] ?? 0));
+            $sum_final = max(0, (int)($sum_row['amount'] ?? 0));
+            $sum_gross = max(0, (int)($sum_row['gross_amount'] ?? 0));
+            if ($sum_gross <= 0) $sum_gross = $sum_final + $sum_points;
+        }
+    }
+    mysqli_stmt_close($sum_stmt);
+}
+if ($is_active && file_exists(__DIR__ . '/includes/points_policy_engine.php')) {
+    try {
+        require_once __DIR__ . '/includes/points_checkout.php';
+        require_once __DIR__ . '/includes/points_policy_engine.php';
+        if (points_v2_on($connect, 'v2_policy_enabled')) $sum_expected = (int)points_v2_payment_tier_point($connect, $sum_gross);
+    } catch (Throwable $e) { error_log('[request_detail] expected points unavailable'); }
+}
 $is_completed = ($bk['status'] ?? '') === 'completed';
 $completed_review = null;
 $completed_review_state = ['state' => 'none', 'label' => '후기작성하기'];
@@ -139,15 +168,15 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
 .request-back { width:44px; height:44px; border:0; background:none; font-size:31px; color:#111; cursor:pointer; }
 .request-title { text-align:center; font-size:20px; font-weight:500; letter-spacing:-.04em; white-space:nowrap; }
 .request-body { padding:0 20px; }
-.status-badge { display:inline-flex; align-items:center; gap:28px; margin:18px 0 22px; padding:12px 18px; background:var(--primary); color:#fff; font-size:22px; font-weight:700; }
+.status-badge { display:inline-flex; align-items:center; gap:28px; margin:18px 0 22px; padding:12px 18px; background:var(--primary); color:#fff; font-size:20px; font-weight:700; }
 .status-badge.completed { padding:10px 16px; background:#f2f2f2; color:#111; font-size:22px; }
 .detail-list { border-bottom:1px solid #ddd; }
 .detail-row { min-height:64px; display:grid; grid-template-columns:118px minmax(0,1fr); align-items:center; border-top:1px solid #ddd; }
 .detail-row:first-child { border-top:0; }
-.detail-label { color:#aaa; font-size:18px; font-weight:600; }
+.detail-label { color:#9A9395; font-size:17px; font-weight:600; }
 .detail-value { min-width:0; overflow:hidden; color:#111; font-size:18px; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
-.person-card { margin-top:28px; padding:20px; background:#f3f3f3; display:grid; grid-template-columns:98px 1fr; row-gap:10px; }
-.person-label { color:#aaa; font-size:18px; font-weight:600; }
+.person-card { margin-top:28px; padding:20px; background:#F1EFEF; display:grid; grid-template-columns:98px 1fr; row-gap:10px; }
+.person-label { color:#9A9395; font-size:17px; font-weight:600; }
 .person-value { font-size:18px; font-weight:700; }
 .payment-section { margin-top:38px; }
 .payment-title { margin-bottom:12px; font-size:22px; font-weight:700; letter-spacing:-.04em; }
@@ -155,9 +184,9 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
 .payment-label { color:#aaa; font-size:18px; font-weight:600; }
 .payment-value { color:#111; font-size:18px; font-weight:500; white-space:nowrap; }
 .payment-row.total .payment-value { font-weight:750; }
-.notice { margin-top:22px; padding:36px 28px 28px; background:#fff1f3; }
-.notice-title { margin-bottom:10px; color:var(--primary); font-size:17px; font-weight:700; }
-.notice ul { padding-left:18px; font-size:14px; line-height:1.8; }
+.notice { margin-top:22px; padding:36px 28px 28px; background:#FBEFF1; }
+.notice-title { margin-bottom:10px; color:var(--primary); font-size:18px; font-weight:700; }
+.notice ul { padding-left:18px; font-size:16px; line-height:1.7; }
 .notice em { color:var(--primary); font-style:normal; }
 .notification-audit { margin-top:28px; padding:20px; border:1px solid #e4e4e4; background:#fafafa; }
 .notification-audit-title { margin-bottom:14px; font-size:18px; font-weight:750; letter-spacing:-.035em; }
@@ -173,7 +202,7 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
 .detail-actions { max-width:430px; margin:40px auto 0; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .detail-action { height:56px; border:1px solid var(--primary); background:#fff; color:var(--primary); display:flex; align-items:center; justify-content:center; font-family:inherit; font-size:22px; font-weight:700; text-decoration:none; cursor:pointer; }
 .detail-action.primary { background:var(--primary); color:#fff; }
-.confirm-action { width:100%; height:52px; margin-top:22px; border:0; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:700; text-decoration:none; }
+.confirm-action { width:100%; height:52px; margin-top:22px; border:0; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:500; text-decoration:none; }
 .completed-page .request-body { padding-bottom:30px; }
 .completed-page .detail-actions { margin-top:38px; }
 .completed-page .detail-action { font-size:18px; }
@@ -187,6 +216,20 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
 .change-modal-actions { margin-top:36px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .change-modal-btn { height:58px; border:1px solid var(--primary); background:#fff; color:var(--primary); font-size:18px; font-weight:700; cursor:pointer; }
 .change-modal-btn.primary { background:var(--primary); color:#fff; }
+
+.pay-sum { margin:22px -20px 0; padding:24px 20px 0; border-top:8px solid #F4F2F3; }
+.pay-sum-title { margin:0 0 12px; font-size:19px; font-weight:700; letter-spacing:-.04em; }
+.pay-sum-row { display:flex; align-items:center; margin-top:9px; font-size:16px; color:#111; }
+.pay-sum-row b { font-weight:500; }
+.pay-sum-row.muted { color:#4A4446; }
+.pay-sum-grow { flex-grow:1; }
+.pay-sum-badge { padding:1px 6px; margin-right:8px; background:#FBEFF1; color:#AC1830; font-size:14px; }
+.pay-sum-dim { color:#9A9395; }
+.pay-sum-row.total { margin-top:12px; padding-top:12px; border-top:1px solid #ECE9EA; }
+.pay-sum-row.total .pay-sum-grow { font-weight:700; font-size:17px; }
+.pay-sum-row.total small { font-size:14px; font-weight:400; color:#6B6466; }
+.pay-sum-row.total b { font-size:20px; color:#AC1830; font-weight:700; }
+.pay-sum + .notice { margin-top:24px; }
 @media (max-width:380px) {
     .request-body { padding-left:16px; padding-right:16px; }
     .detail-row { grid-template-columns:118px minmax(0,1fr); }
@@ -261,6 +304,14 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
     </section>
     <?php endif; ?>
     <?php if ($is_active): ?>
+    <section class="pay-sum" aria-labelledby="paySumTitle">
+        <h2 class="pay-sum-title" id="paySumTitle">결제 금액을 확인해보세요</h2>
+        <div class="pay-sum-row"><span class="pay-sum-grow">시술 금액</span><b><?php echo number_format($sum_gross); ?>원</b></div>
+        <div class="pay-sum-row muted"><span class="pay-sum-grow">· 할인</span><span class="pay-sum-badge">0%</span><span class="pay-sum-dim">-0원</span></div>
+        <div class="pay-sum-row muted"><span class="pay-sum-grow">· 포인트 사용 금액</span><span class="pay-sum-dim">-<?php echo number_format($sum_points); ?>원</span></div>
+        <div class="pay-sum-row total"><span class="pay-sum-grow">총 결제 금액 <small>(VAT포함)</small></span><b><?php echo number_format($sum_final); ?>원</b></div>
+        <div class="pay-sum-row"><span class="pay-sum-grow">예상 적립 포인트</span><b><?php echo $sum_expected === null ? '준비 중' : number_format($sum_expected) . ' P'; ?></b></div>
+    </section>
     <div class="notice">
         <div class="notice-title">고객님 꼭 알아두세요!</div>
         <ul>

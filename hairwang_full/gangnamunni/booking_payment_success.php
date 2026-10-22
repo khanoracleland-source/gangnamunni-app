@@ -71,6 +71,7 @@ if (!$booking) {
     $fatal = '예약을 찾을 수 없거나 접근 권한이 없습니다.';
 }
 
+$is_paid_final = false;
 $payment_title = '결제 확인 중';
 $payment_description = '결제가 아직 확인되지 않았습니다. 결제 화면에서 상태를 다시 확인해주세요.';
 if ($booking) {
@@ -79,8 +80,9 @@ if ($booking) {
         $preview = booking_payment_previews($connect, [$booking_id]);
         if ($order && in_array($order['status'], ['paid', 'partially_refunded'], true)) {
             $test = booking_payment_is_test($order['provider']);
-            $payment_title = $test ? '테스트 결제 완료' : '결제가 완료되었어요!';
-            $payment_description = $test ? '테스트 결과이며 실제 결제·정산에 포함되지 않습니다.' : '결제가 확인되었습니다. 예약 내역에서 상세 정보를 확인하세요.';
+            $is_paid_final = true;
+            $payment_title = $test ? '테스트 결제 완료' : '예약이 확정되었어요!';
+            $payment_description = $test ? '테스트 결과이며 실제 결제·정산에 포함되지 않습니다.' : "결제가 완료되어 예약이 최종 확정되었습니다\n예약 내역에서 상세 정보를 확인하세요";
         } elseif ($order && $order['status'] === 'refunded') {
             $payment_title = '환불 완료';
             $payment_description = '환불된 결제입니다. 예약 내역을 확인해주세요.';
@@ -115,16 +117,16 @@ a { color: inherit; text-decoration: none; }
 .bps-back::before { content:""; position:absolute; left:8px; top:5px; width:16px; height:16px; border-left:2px solid #111; border-bottom:2px solid #111; transform:rotate(45deg); }
 .bps-title { font-size:20px; font-weight:500; letter-spacing:-.04em; }
 .bps-main { padding: 12px 28px 0; text-align:center; }
-.bps-check { width:58px; height:58px; margin:0 auto 22px; border-radius:50%; background:#be1838; position:relative; }
+.bps-check { width:58px; height:58px; margin:0 auto 22px; border-radius:50%; background:#AC1830; position:relative; }
 .bps-check::after { content:""; position:absolute; left:17px; top:14px; width:25px; height:15px; border-left:4px solid #fff; border-bottom:4px solid #fff; transform:rotate(-45deg); }
 .bps-heading { margin:0 0 22px; font-size:24px; line-height:1.25; font-weight:700; letter-spacing:-.05em; }
 .bps-desc { margin:0; font-size:18px; line-height:1.65; font-weight:600; letter-spacing:-.04em; }
-.bps-info { width:100%; max-width:420px; margin:48px auto 20px; background:#fff1f3; padding:28px 30px; text-align:left; }
+.bps-info { width:100%; max-width:420px; margin:48px auto 20px; background:#FBEFF1; padding:28px 30px; text-align:left; }
 .bps-info-title { margin:0 0 24px; font-size:18px; font-weight:700; letter-spacing:-.04em; }
-.bps-row { display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:start; font-size:15px; line-height:1.45; margin-top:18px; font-weight:600; }
-.bps-label { color:#111; }
+.bps-row { display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:start; font-size:16px; line-height:1.45; margin-top:18px; font-weight:600; }
+.bps-label { color:#4A4446; }
 .bps-value { color:#111; min-width:0; }
-.bps-button { display:inline-flex; align-items:center; justify-content:center; width:218px; height:54px; border:1px solid #be1838; color:#be1838; background:#fff; font-size:18px; font-weight:600; letter-spacing:-.04em; }
+.bps-button { display:inline-flex; align-items:center; justify-content:center; width:218px; height:54px; border:1px solid #AC1830; color:#AC1830; background:#fff; font-size:19px; font-weight:600; letter-spacing:-.04em; }
 .bps-alert { max-width:420px; margin:40px auto; padding:18px; background:#fdecec; color:#9b1c1c; font-size:15px; line-height:1.6; text-align:left; }
 @media (max-width:420px) {
     .bps-header { height:64px; }
@@ -149,7 +151,7 @@ a { color: inherit; text-decoration: none; }
         <?php else: ?>
             <div class="bps-check" aria-hidden="true"></div>
             <h1 class="bps-heading"><?php echo bps_h($payment_title); ?></h1>
-            <p class="bps-desc"><?php echo bps_h($payment_description); ?></p>
+            <p class="bps-desc"><?php echo nl2br(bps_h($payment_description)); ?></p>
 
             <section class="bps-info" aria-label="예약 정보">
                 <h2 class="bps-info-title">예약 정보</h2>
@@ -160,7 +162,7 @@ a { color: inherit; text-decoration: none; }
                 <div class="bps-row"><div class="bps-label">예약번호</div><div class="bps-value"><?php echo bps_h($booking_no); ?></div></div>
             </section>
 
-            <a class="bps-button" href="booking_payment.php?booking_id=<?php echo $booking_id; ?>">결제 상태 확인</a>
+            <?php if (!$is_paid_final): ?><a class="bps-button" href="booking_payment.php?booking_id=<?php echo $booking_id; ?>">결제 상태 확인</a><?php endif; ?>
             <a class="bps-button" href="my_bookings.php">예약 내역 보기</a>
         <?php endif; ?>
     </main>
