@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p ${PORT:-3200}",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 127.0.0.1 -p ${PORT:-3200}",
     "lint": "eslint"
   },
   "dependencies": {
@@ -21,5 +21,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.9"
   }
 }
