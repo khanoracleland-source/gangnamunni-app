@@ -1,0 +1,9 @@
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--bg); border-top: 1px solid var(--line);
+}
+.item { display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); }
+.active { color: var(--fg); font-weight: 600; }
