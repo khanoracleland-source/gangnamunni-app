@@ -309,6 +309,8 @@ if (($_GET['from'] ?? '') === 'notifications') {
         .booking-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
         .booking-card-date { font-size: 17px; font-weight: 650; letter-spacing: -.35px; }
         .booking-dday { color: var(--color-primary); font-size: 16px; font-weight: 650; }
+        .push-hint { display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 18px; padding: 14px 16px; background: #f7f7f7; border-radius: 8px; color: #333; text-decoration: none; font-size: 13px; line-height: 1.5; }
+        .push-hint small { display: block; margin-top: 2px; color: #888; font-size: 12px; }
         .booking-detail-link {
             margin-left: auto; padding: 6px 10px; border: 1px solid #df9aa6; border-radius: 6px;
             color: #111; text-decoration: none; font-size: 13px; white-space: nowrap;
@@ -504,6 +506,33 @@ if (($_GET['from'] ?? '') === 'notifications') {
         <button class="tab-btn" onclick="switchTab('cancelled')">예약취소</button>
     </div>
 
+    <?php
+    $show_push_hint = false;
+    if (!empty($active_bookings) && !empty($logged_mb_id)) {
+        $show_push_hint = true;
+        $_pt = @mysqli_prepare($connect, "SELECT COUNT(*) FROM g5_push_tokens WHERE mb_id = ? AND pt_use = 1");
+        $_has_token = false;
+        if ($_pt) {
+            mysqli_stmt_bind_param($_pt, 's', $logged_mb_id);
+            mysqli_stmt_execute($_pt);
+            mysqli_stmt_bind_result($_pt, $_cnt);
+            mysqli_stmt_fetch($_pt);
+            mysqli_stmt_close($_pt);
+            $_has_token = ((int)$_cnt > 0);
+        }
+        $_prefs = ['noti_booking'=>1,'noti_push'=>1];
+        $_ps = @mysqli_prepare($connect, "SELECT noti_booking, noti_push FROM gangnamunni_notification_settings WHERE member_id = ? LIMIT 1");
+        if ($_ps) {
+            mysqli_stmt_bind_param($_ps, 's', $logged_mb_id);
+            if (mysqli_stmt_execute($_ps)) {
+                $_pr = mysqli_fetch_assoc(mysqli_stmt_get_result($_ps));
+                if ($_pr) $_prefs = ['noti_booking'=>(int)$_pr['noti_booking'], 'noti_push'=>(int)$_pr['noti_push']];
+            }
+            mysqli_stmt_close($_ps);
+        }
+        if ($_has_token && (int)$_prefs['noti_booking'] === 1 && (int)$_prefs['noti_push'] === 1) $show_push_hint = false;
+    }
+    ?>
     <!-- 진행중 -->
     <div class="tab-content active" id="tab-active">
         <?php if (empty($active_bookings)): ?>
@@ -540,7 +569,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
             ?>
             <div class="booking-card-top">
                 <span class="booking-card-date"><?php echo htmlspecialchars($_date_text); ?></span>
-                <span class="booking-dday"><?php echo htmlspecialchars($_dd_text); ?></span>
+                <span class="booking-dday"><?php echo (($bk['status'] ?? '') === 'confirmed' && in_array($_payment_state, ['payable','preview'], true)) ? '결제 대기 · ' : ''; ?><?php echo htmlspecialchars($_dd_text); ?></span>
                 <a class="booking-detail-link" href="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>">예약상세</a>
             </div>
             <div class="booking-summary">
@@ -572,6 +601,12 @@ if (($_GET['from'] ?? '') === 'notifications') {
             </div>
         </article>
         <?php endforeach; ?>
+        <?php if ($show_push_hint): ?>
+        <a class="push-hint" href="notification_settings.php">
+            <span class="push-hint-ico" aria-hidden="true">🔔</span>
+            <span class="push-hint-copy">기기 알림을 켜면 예약현황을 푸시로도 알려드려요<small>마이페이지 &gt; 설정 &gt; 알림 설정에서 예약 알림·푸시 알림을 켜주세요</small></span>
+        </a>
+        <?php endif; ?>
         <?php endif; ?>
     </div>
 
