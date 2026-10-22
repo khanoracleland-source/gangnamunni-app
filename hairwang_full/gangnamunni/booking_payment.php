@@ -229,7 +229,7 @@ a { color: inherit; text-decoration: none; }
 .bp-section + .bp-section { border-top: 10px solid #f3f3f3; }
 .bp-section-title { margin: 0 0 26px; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
 .bp-summary { display: grid; grid-template-columns: 108px 1fr; gap: 22px; align-items: start; margin-bottom: 28px; }
-.bp-logo { width: 108px; height: 108px; background: #d72f34; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.bp-logo { width: 108px; height: 108px; background: #AC1830; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .bp-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .bp-logo span { font-size: 18px; letter-spacing: .24em; margin-left: .24em; }
 .bp-hospital { font-size: 20px; line-height: 1.25; font-weight: 600; margin: 2px 0 8px; letter-spacing: -.04em; }
@@ -238,30 +238,30 @@ a { color: inherit; text-decoration: none; }
 .bp-treatment { font-size: 22px; line-height: 1.3; font-weight: 600; margin: 0 0 8px; letter-spacing: -.04em; }
 .bp-vat { color: #a9a9a9; font-size: 15px; font-weight: 600; margin-bottom: 2px; }
 .bp-vat .old { text-decoration: line-through; margin-left: 6px; }
-.bp-price { color: #d40000; font-size: 22px; font-weight: 600; letter-spacing: -.04em; }
+.bp-price { color: #AC1830; font-size: 22px; font-weight: 600; letter-spacing: -.04em; }
 .bp-price small { color: #111; font-size: 15px; font-weight: 600; margin-left: 2px; }
 .bp-line { border: 0; border-top: 1px solid #ddd; margin: 0; }
 .bp-info-row { display: grid; grid-template-columns: 116px 1fr; gap: 16px; align-items: center; min-height: 66px; border-bottom: 1px solid #e1e1e1; }
 .bp-label { color: #b0b0b0; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
 .bp-value { color: #111; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
-.bp-red-note { color: #be1838; font-size: 15px; font-weight: 600; margin-top: 8px; }
+.bp-red-note { color: #AC1830; font-size: 15px; font-weight: 600; margin-top: 8px; }
 .bp-check-row { display: flex; align-items: center; gap: 10px; min-height: 58px; border-bottom: 0; font-size: 18px; font-weight: 600; }
-.bp-checkbox { width: 14px; height: 14px; accent-color: #df0000; }
+.bp-checkbox { width: 14px; height: 14px; accent-color: #AC1830; }
 .bp-visitor-fields { display: none; padding-top: 18px; }
 .bp-visitor-fields.active { display: block; }
 .bp-field { margin-bottom: 28px; }
 .bp-field label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 10px; }
 .bp-field input, .bp-message { width: 100%; height: 44px; border: 1px solid #d9d9d9; padding: 0 16px; font-size: 15px; outline: none; }
-.bp-field input:focus, .bp-message:focus { border-color: #be1838; }
+.bp-field input:focus, .bp-message:focus { border-color: #AC1830; }
 .bp-field input::placeholder, .bp-message::placeholder { color: #bbb; }
-.bp-visitor-confirm { display: block; min-width: 190px; height: 48px; border: 0; background: #be1838; color: #fff; font-size: 18px; font-weight: 600; margin: 8px auto 30px; }
+.bp-visitor-confirm { display: block; min-width: 190px; height: 48px; border: 0; background: #AC1830; color: #fff; font-size: 18px; font-weight: 600; margin: 8px auto 30px; }
 .bp-visitor-summary { display: none; }
 .bp-visitor-summary.active { display: grid; }
 .bp-point-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 42px; border: 1px solid #d8d8d8; padding: 0 12px; }
 .bp-point-label { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
 .bp-point-input { flex: 1; border: 0; outline: none; text-align: right; font-size: 18px; font-weight: 600; min-width: 0; }
 .bp-point-unit { font-size: 18px; font-weight: 600; }
-.bp-point-max { border: 0; background: transparent; color: #be1838; font-size: 18px; font-weight: 600; padding: 0; white-space: nowrap; }
+.bp-point-max { border: 0; background: transparent; color: #AC1830; font-size: 18px; font-weight: 600; padding: 0; white-space: nowrap; }
 .bp-point-help { margin-top: 12px; text-align: right; font-size: 13px; font-weight: 600; color: #111; }
 .bp-point-help strong { font-weight: 600; }
 .bp-point-note { margin-top: 14px; color: #777; font-size: 13px; line-height: 1.55; font-weight: 600; }
@@ -295,7 +295,7 @@ a { color: inherit; text-decoration: none; }
 .bp-schedule-row .bp-red-note { font-size: 15px; font-weight: 600; }
 .bp-method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .bp-method { height: 76px; border: 1px solid #d8d8d8; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; letter-spacing: -.04em; }
-.bp-method.selected { border-color: #be1838; color: #111; }
+.bp-method.selected { border-color: #AC1830; color: #111; }
 .bp-method:disabled { color:#999; background:#fafafa; cursor:not-allowed; }
 .bp-method-notice { margin:0 0 20px; padding:14px 16px; background:#fff7e6; color:#805400; font-size:14px; line-height:1.65; }
 .bp-method-notice p { margin:0; }
@@ -314,11 +314,11 @@ a { color: inherit; text-decoration: none; }
 .bp-amount-row.muted .left { padding-left: 14px; position: relative; }
 .bp-amount-row.muted .left::before { content:"•"; position:absolute; left:0; top:0; }
 .bp-amount-row.muted .right { color:#b5b5b5; font-weight:500; }
-.bp-discount-badge { display:inline-block; color:#be1838; background:#fff0f2; padding:2px 10px; margin-right:8px; font-size:13px; }
+.bp-discount-badge { display:inline-block; color:#AC1830; background:#FBEFF1; padding:2px 10px; margin-right:8px; font-size:13px; }
 .bp-total-row { border-top:1px solid #d7d7d7; margin-top:12px; padding-top:12px; display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
 .bp-total-row .left { font-size:17px; font-weight:900; }
 .bp-total-row .left small { font-size:13px; color:#555; font-weight:500; margin-left:4px; }
-.bp-total-row .right { color:#be1838; font-size:19px; font-weight:900; }
+.bp-total-row .right { color:#AC1830; font-size:19px; font-weight:900; }
 .bp-message { min-height: 84px; padding: 13px 16px; resize: vertical; line-height: 1.5; }
 .bp-rules-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
 .bp-rules-head .bp-section-title { margin:0; }
@@ -333,7 +333,7 @@ a { color: inherit; text-decoration: none; }
 .bp-rules-body strong { display:block; margin: 22px 0 10px; }
 .bp-agree { margin-top:18px; display:flex; align-items:center; gap:10px; font-size:15px; font-weight:600; }
 .bp-agree { scroll-margin-top:90px; scroll-margin-bottom:250px; }
-.bp-agreement-error { margin:10px 0 0; color:#be1838; font-size:14px; }
+.bp-agreement-error { margin:10px 0 0; color:#AC1830; font-size:14px; }
 .bp-legal { color:#aaa; font-size:13px; line-height:1.8; font-weight:600; margin-top:18px; }
 .bp-sticky { position: sticky; bottom: 0; background:#fff; border-top:1px solid #e3e3e3; padding: 18px 28px calc(18px + env(safe-area-inset-bottom)); }
 .bp-sticky-total { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:16px; }
@@ -341,18 +341,18 @@ a { color: inherit; text-decoration: none; }
 .bp-sticky-total .left small { color:#555; font-size:15px; font-weight:600; margin-left:4px; }
 .bp-sticky-total .right { display:flex; align-items:baseline; gap:14px; }
 .bp-sticky-total .old { color:#b7b7b7; text-decoration:line-through; font-size:16px; }
-.bp-sticky-total .new { color:#be1838; font-size:20px; font-weight:600; }
-.bp-pay-btn { width:100%; height:56px; border:0; background:#be1838; color:#fff; font-size:18px; font-weight:600; }
+.bp-sticky-total .new { color:#AC1830; font-size:20px; font-weight:600; }
+.bp-pay-btn { width:100%; height:56px; border:0; background:#AC1830; color:#fff; font-size:18px; font-weight:600; }
 .bp-pay-btn:disabled { background:#ddd; color:#999; cursor:not-allowed; }
-.bp-preview-btn { width:100%; min-height:48px; margin-top:10px; border:1px solid #be1838; background:#fff; color:#be1838; font-size:16px; font-weight:600; }
-.bp-preview-btn.primary { margin-top:0; background:#be1838; color:#fff; }
+.bp-preview-btn { width:100%; min-height:48px; margin-top:10px; border:1px solid #AC1830; background:#fff; color:#AC1830; font-size:16px; font-weight:600; }
+.bp-preview-btn.primary { margin-top:0; background:#AC1830; color:#fff; }
 .bp-preview-btn:disabled { opacity:.55; cursor:wait; }
 .bp-checkout-note { margin:8px 0 0; color:#666; text-align:center; font-size:12px; line-height:1.5; }
 .bp-alert { margin:0 28px 22px; padding:14px 16px; border-radius:0; font-size:14px; line-height:1.65; }
 .bp-alert.warn { background:#fff7e6; color:#8a5a00; border:1px solid #ffe1a6; }
 .bp-alert.done { background:#e9f7ef; color:#1b6b3a; border:1px solid #bfe7ce; }
 .bp-alert.err { background:#fdecec; color:#9b1c1c; border:1px solid #f7c7c7; }
-.bp-status-link { display:block; margin: 12px 28px 28px; height:54px; line-height:54px; text-align:center; background:#be1838; color:#fff; font-weight:900; }
+.bp-status-link { display:block; margin: 12px 28px 28px; height:54px; line-height:54px; text-align:center; background:#AC1830; color:#fff; font-weight:900; }
 .bp-status-link.disabled { background:#eee; color:#999; }
 .bp-result { margin: 12px 28px 0; }
 @media (max-width: 420px) {
@@ -373,6 +373,55 @@ a { color: inherit; text-decoration: none; }
     .bp-rules-body { padding: 20px 18px; }
     .bp-sticky { padding-left: 20px; padding-right: 20px; }
 }
+/* 05-26 시안 글자 크기 + 3px */
+html body .bp-page .bp-title { font-size: 20px; }
+html body .bp-page .bp-section-title { font-size: 19px; }
+html body .bp-page .bp-hospital { font-size: 19px; }
+html body .bp-page .bp-address { font-size: 15px; }
+html body .bp-page .bp-treatment { font-size: 19px; }
+html body .bp-page .bp-vat { font-size: 15px; }
+html body .bp-page .bp-price { font-size: 21px; }
+html body .bp-page .bp-price small { font-size: 15px; }
+html body .bp-page .bp-logo span { font-size: 15px; }
+html body .bp-page .bp-label { font-size: 17px; }
+html body .bp-page .bp-value { font-size: 18px; }
+html body .bp-page .bp-check-row { font-size: 18px; }
+html body .bp-page .bp-field label { font-size: 16px; }
+html body .bp-page .bp-field input,
+html body .bp-page .bp-message { font-size: 16px; }
+html body .bp-page .bp-visitor-confirm { font-size: 18px; }
+html body .bp-page .bp-red-note { font-size: 15px; }
+html body .bp-page .bp-point-label { font-size: 16px; }
+html body .bp-page .bp-point-input,
+html body .bp-page .bp-point-unit,
+html body .bp-page .bp-point-max { font-size: 18px; }
+html body .bp-page .bp-point-help,
+html body .bp-page .bp-point-help strong,
+html body .bp-page .bp-point-note { font-size: 14px; }
+html body .bp-page .bp-method { font-size: 17px; }
+html body .bp-page .bp-installment { font-size: 15px; }
+html body .bp-page .bp-amount-row,
+html body .bp-page .bp-amount-row .right,
+html body .bp-page .bp-total-row .left { font-size: 16px; }
+html body .bp-page .bp-discount-badge { font-size: 14px; }
+html body .bp-page .bp-total-row .left small { font-size: 14px; }
+html body .bp-page .bp-total-row .right { font-size: 20px; }
+html body .bp-page .bp-rules-body,
+html body .bp-page .bp-rules-body p,
+html body .bp-page .bp-rules-body li,
+html body .bp-page .bp-rules-body strong { font-size: 16px; }
+html body .bp-page .bp-agree { font-size: 16px; }
+html body .bp-page .bp-legal { font-size: 14px; }
+html body .bp-page .bp-sticky-total .left { font-size: 16px; }
+html body .bp-page .bp-sticky-total .left small { font-size: 14px; }
+html body .bp-page .bp-sticky-total .old { font-size: 15px; }
+html body .bp-page .bp-sticky-total .new { font-size: 22px; }
+html body .bp-page .bp-pay-btn { font-size: 19px; }
+html body .bp-page .bp-preview-btn { font-size: 17px; }
+html body .bp-page .bp-schedule-row .bp-label, html body .bp-page .bp-schedule-row .bp-value { font-size: 18px; }
+html body .bp-page .bp-schedule-row .bp-label { font-size: 17px; }
+html body .bp-page .bp-schedule-row .bp-red-note { font-size: 15px; }
+html body .bp-page .bp-method img { height: 21px; }
 </style>
 </head>
 <body>
@@ -468,6 +517,7 @@ a { color: inherit; text-decoration: none; }
                         <button type="button" class="bp-point-max" id="pointMaxBtn" <?php echo ($point_use_ready && $max_point_use > 0) ? '' : 'disabled'; ?>>최대적용</button>
                     </div>
                     <div class="bp-point-help">사용가능 <strong><?php echo bp_money($max_point_use); ?>P</strong> / 보유 <?php echo bp_money($point_balance); ?>P</div>
+                    <div class="bp-point-note">포인트는 서울미녀가 부담하는 적립금이며, 의료기관의 진료비 할인이 아닙니다.<br>현금 충전·출금·타인 양도는 불가합니다.</div>
                     <?php if ($point_use_ready): ?>
                     <div class="bp-point-note">1P = 1원으로 사용되며, 최소 <?php echo bp_money(points_v2_int($connect, 'v2_point_use_min_pay', 1000)); ?>원은 결제해야 합니다. 결제를 취소하면 사용한 포인트는 복구됩니다.</div>
                     <?php else: ?>
@@ -488,8 +538,8 @@ a { color: inherit; text-decoration: none; }
                     </div>
                     <?php endif; ?>
                     <div class="bp-method-grid" id="methodGrid">
-                        <?php foreach (['card'=>'신용/체크카드', 'bank'=>'계좌이체', 'naverpay'=>'네이버페이', 'kakaopay'=>'카카오페이', 'tosspay'=>'토스페이'] as $method => $label): ?>
-                        <button type="button" class="bp-method<?php echo $live_available && $method === array_key_first($channels) ? ' selected' : ''; ?>" data-provider="<?php echo bp_h($method); ?>" <?php echo !$live_available || !isset($channels[$method]) ? 'disabled' : ''; ?>><?php echo bp_h($label); ?></button>
+                        <?php foreach (['bank'=>'계좌이체', 'card'=>'신용/체크카드', 'naverpay'=>'네이버페이', 'kakaopay'=>'카카오페이', 'tosspay'=>'토스페이'] as $method => $label): ?>
+                        <button type="button" class="bp-method<?php echo $live_available && $method === (isset($channels['card']) ? 'card' : array_key_first($channels)) ? ' selected' : ''; ?>" data-provider="<?php echo bp_h($method); ?>" <?php echo !$live_available || !isset($channels[$method]) ? 'disabled' : ''; ?>><?php echo bp_h($label); ?></button>
                         <?php endforeach; ?>
                     </div>
                     <a class="bp-installment" href="javascript:void(0)">신용카드 무이자 할부 안내</a>
@@ -564,7 +614,7 @@ a { color: inherit; text-decoration: none; }
     var expectedPoints = <?php echo (int)$expected_points; ?>;
     var bookingId = <?php echo (int)$booking_id; ?>;
     var csrfToken = <?php echo json_encode($_SESSION['csrf_token'] ?? '', JSON_UNESCAPED_UNICODE); ?>;
-    var selectedProvider = <?php echo json_encode(array_key_first($channels) ?: 'card'); ?>;
+    var selectedProvider = <?php echo json_encode(isset($channels['card']) ? 'card' : (array_key_first($channels) ?: 'card')); ?>;
 
     function money(n) {
         n = Math.max(0, parseInt(n || 0, 10));
