@@ -59,6 +59,12 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
   bool _loadFailed = false;
   String? _currentUrl;
   DateTime? _lastExitBackPressedAt;
+  WebViewBridge? _bridge;
+  DateTime? _lastTurboHousekeepingAt;
+
+  /// Session recovery and cookie flush are cheap but not free; a Turbo visit
+  /// can happen many times per minute, so they run at most this often.
+  static const Duration _turboHousekeepingInterval = Duration(seconds: 30);
 
   static const Duration _exitConfirmationWindow = Duration(seconds: 2);
 
@@ -159,7 +165,9 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       controller: _controller,
       authService: widget.authService,
       onHospitalListBack: _returnToHospitalList,
+      onPageChanged: _handleTurboPageChanged,
     );
+    _bridge = bridge;
     await bridge.registerChannels();
 
     // NavigationDelegate (URL scheme 인터셉트 포함)
@@ -229,6 +237,33 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       await _controller.runJavaScript(HospitalListNavigation.headerBackScript);
     } catch (_) {
       // A page may navigate away before injection; its next load retries.
+    }
+  }
+
+  /// The website finished a Turbo navigation (no real page load happened).
+  ///
+  /// Only the per-navigation work from onPageStarted/onPageFinished is repeated:
+  /// URL bookkeeping and the hospital-detail back button (its DOM node was just
+  /// replaced). FCM token registration is deliberately NOT repeated: the website
+  /// registers it on full loads, and Turbo-enabled pages never log a user in.
+  /// Session recovery and cookie flush are throttled.
+  Future<void> _handleTurboPageChanged() async {
+    if (!mounted || _loadFailed) return;
+    final url = await _controller.currentUrl();
+    if (!mounted || url == null) return;
+
+    _hospitalNavigation.pageStarted(url);
+    setState(() => _currentUrl = url);
+    if (_hospitalNavigation.returnUrl != null) {
+      _installHospitalHeaderBack();
+    }
+
+    final now = DateTime.now();
+    final last = _lastTurboHousekeepingAt;
+    if (last == null || now.difference(last) >= _turboHousekeepingInterval) {
+      _lastTurboHousekeepingAt = now;
+      _bridge?.recoverNativeSession();
+      WebViewCookiePersistence.flush();
     }
   }
 

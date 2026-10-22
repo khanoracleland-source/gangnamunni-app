@@ -81,6 +81,11 @@ class WebViewBridge {
   final WebViewController controller;
 
   final Future<void> Function()? onHospitalListBack;
+
+  /// Fired when the website finished a Turbo (in-page) navigation. A Turbo visit
+  /// never triggers NavigationDelegate.onPageStarted/onPageFinished, so the page
+  /// reports it through the bridge instead. Never use it to show a loading UI.
+  final Future<void> Function()? onPageChanged;
   final NativeAuthService _auth;
 
   /// 토큰 요청 시 커스텀 핸들러 (null이면 기본 loginUserData.apiToken 사용)
@@ -98,6 +103,7 @@ class WebViewBridge {
   WebViewBridge({
     required this.controller,
     this.onHospitalListBack,
+    this.onPageChanged,
     this.tokenProvider,
     this.onShareRequested,
     NativeAuthService? authService,
@@ -153,6 +159,14 @@ class WebViewBridge {
       case 'hospitalListBack':
         if (await _isFromTrustedOrigin()) {
           await onHospitalListBack?.call();
+        }
+        break;
+
+      case 'pageChanged':
+        // Same trust rule as the other state-touching actions: payment / Kakao
+        // OAuth pages share this channel and must not be able to trigger it.
+        if (await _isFromTrustedOrigin()) {
+          await onPageChanged?.call();
         }
         break;
 

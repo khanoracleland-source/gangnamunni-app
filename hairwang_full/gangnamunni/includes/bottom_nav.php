@@ -181,7 +181,9 @@ foreach ($nav_items as $item) {
     });
 
     // BFCache 복원 시 active 상태 보정
-    window.addEventListener('pageshow', function(e) {
+    // Turbo re-runs this inline script on every render: keep a single listener.
+    if (window.__sbBottomNavPageshow) window.removeEventListener('pageshow', window.__sbBottomNavPageshow);
+    window.__sbBottomNavPageshow = function(e) {
         if (e.persisted) {
             var page = nav.getAttribute('data-active-url') || location.pathname.split('/').pop() || 'index.php';
             nav.querySelectorAll('.bottom-nav-item').forEach(function(el) {
@@ -191,6 +193,7 @@ foreach ($nav_items as $item) {
             var content = document.querySelector('.main-content') || document.querySelector('.container');
             if (content) { content.style.opacity = '1'; }
         }
-    });
+    };
+    window.addEventListener('pageshow', window.__sbBottomNavPageshow);
 })();
 </script>

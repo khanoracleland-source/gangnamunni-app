@@ -147,6 +147,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .empty-state i { font-size:calc(48px * var(--fs-scale,1) * var(--fs-page,1)); display:block; margin-bottom:12px; }
 </style>
 <?php if (function_exists('generateFontScaleCSS')) echo generateFontScaleCSS(); ?>
+<?php $turbo_pilot = empty($_GET['noturbo']); // Turbo pilot kill switch: ?noturbo=1 ?>
+<?php if ($turbo_pilot): ?>
+<script src="assets/js/vendor/turbo-7.3.0.es2017-umd.js" defer></script>
+<script src="assets/js/turbo-pilot.js?v=2" defer></script>
+<?php endif; ?>
 </head>
 <body>
 
@@ -156,16 +161,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <div class="filter-section">
-    <form method="GET" action="price_compare.php">
+    <form method="GET" action="price_compare.php"<?php echo $turbo_pilot ? ' data-turbo="true"' : ''; ?>>
     <div class="filter-row">
-        <select name="category" class="filter-select" onchange="this.form.submit()">
+        <select name="category" class="filter-select" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
             <option value="">카테고리 선택</option>
             <?php foreach ($categories as $cat): ?>
             <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo $category === $cat ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat); ?></option>
             <?php endforeach; ?>
         </select>
         <?php if ($treatment_names): ?>
-        <select name="treatment" class="filter-select" onchange="this.form.submit()">
+        <select name="treatment" class="filter-select" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
             <option value="">전체 <?php echo term('service', '시술'); ?></option>
             <?php foreach ($treatment_names as $tn): ?>
             <option value="<?php echo htmlspecialchars($tn); ?>" <?php echo $treatment === $tn ? 'selected' : ''; ?>><?php echo htmlspecialchars($tn); ?></option>
@@ -178,7 +183,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <?php if ($comparisons): ?>
-<div class="sort-tabs">
+<div class="sort-tabs"<?php echo $turbo_pilot ? ' data-turbo="true"' : ''; ?>>
     <a href="?category=<?php echo urlencode($category); ?>&treatment=<?php echo urlencode($treatment); ?>&sort=price" class="sort-tab <?php echo $sort==='price'?'active':''; ?>">가격순</a>
     <a href="?category=<?php echo urlencode($category); ?>&treatment=<?php echo urlencode($treatment); ?>&sort=rating" class="sort-tab <?php echo $sort==='rating'?'active':''; ?>">평점순</a>
     <a href="?category=<?php echo urlencode($category); ?>&treatment=<?php echo urlencode($treatment); ?>&sort=reviews" class="sort-tab <?php echo $sort==='reviews'?'active':''; ?>"><?php echo term('review', '후기'); ?>순</a>
@@ -231,6 +236,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 $cat_select_target = 'price_compare.php';
 $cat_select_title = term('service', '시술') . ' 카테고리';
 $cat_select_show_popular = true;
+$cat_select_turbo = $turbo_pilot;
 include __DIR__ . '/includes/treatment_category_select.php';
 ?>
 <?php endif; ?>

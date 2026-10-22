@@ -16,6 +16,8 @@ desktop.ini
 # Dependencies
 node_modules/
 vendor/
+# Self-hosted front-end libs (Turbo) must ship with the site
+!assets/js/vendor/
 
 # SQL data dumps
 *.sql

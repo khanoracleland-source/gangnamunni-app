@@ -46,7 +46,7 @@ if (!empty($_tcs_categories)):
         <?php foreach ($_tcs_categories as $cat):
             $icon = $_tcs_icons[$cat['category']] ?? 'bi-tag';
         ?>
-        <a href="<?php echo htmlspecialchars($cat_select_target); ?>?<?php echo $cat_select_param; ?>=<?php echo urlencode($cat['category']); ?>"
+        <a<?php echo !empty($cat_select_turbo) ? ' data-turbo="true"' : ''; ?> href="<?php echo htmlspecialchars($cat_select_target); ?>?<?php echo $cat_select_param; ?>=<?php echo urlencode($cat['category']); ?>"
            style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--card, #fff);border:1px solid var(--border, #eee);border-radius:12px;text-decoration:none;color:var(--text, #1a1a1a);transition:all 0.2s;">
             <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#AC183018,#AC183008);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--primary, #AC1830);flex-shrink:0;">
                 <i class="bi <?php echo $icon; ?>"></i>
@@ -69,7 +69,7 @@ if (!empty($_tcs_categories)):
     <?php if ($_tcs_popular): ?>
     <h3 style="font-size:16px;font-weight:700;margin:24px 0 12px;">인기 <?php echo term('service', '시술'); ?> TOP 5</h3>
     <?php foreach ($_tcs_popular as $idx => $pop): ?>
-    <a href="<?php echo htmlspecialchars($cat_select_target); ?>?treatment=<?php echo urlencode($pop['name']); ?>&<?php echo $cat_select_param; ?>=<?php echo urlencode($pop['category']); ?>"
+    <a<?php echo !empty($cat_select_turbo) ? ' data-turbo="true"' : ''; ?> href="<?php echo htmlspecialchars($cat_select_target); ?>?treatment=<?php echo urlencode($pop['name']); ?>&<?php echo $cat_select_param; ?>=<?php echo urlencode($pop['category']); ?>"
        style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border, #eee);text-decoration:none;color:var(--text, #1a1a1a);">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--primary, #AC1830);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;"><?php echo $idx + 1; ?></div>
         <div style="flex:1;">
