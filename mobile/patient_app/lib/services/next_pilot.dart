@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:kivicare_patient/configs.dart';
 
 /// Next.js pilot (hospital list/detail at `/next/…`).
@@ -21,6 +22,8 @@ class NextPilot {
   /// such URLs stay on PHP (returns null).
   static const Set<String> _listParams = {'q', 'category', 'treatment', 'region', 'sort'};
 
+  static final Set<String> _listPaths = {'/hospitals.php', _site.resolve('hospitals.php').path};
+
   static bool _sameOrigin(Uri a, Uri b) =>
       a.scheme == 'https' &&
       a.host.toLowerCase() == b.host.toLowerCase() &&
@@ -30,9 +33,16 @@ class NextPilot {
   /// Returns the Next.js URL to load instead of [uri], or null to leave it.
   static Uri? rewrite(Uri uri) {
     if (!enabled) return null;
+    final result = _rewrite(uri);
+    debugPrint('[NextPilot] nav ${uri.host}${uri.path} -> ${result?.path ?? 'keep'}');
+    return result;
+  }
+
+  static Uri? _rewrite(Uri uri) {
     if (!_sameOrigin(uri, _site)) return null;
-    final listPage = _site.resolve('hospitals.php');
-    if (uri.path != listPage.path) return null;
+    // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
+    // list is served as /hospitals.php; accept the legacy path too.
+    if (!_listPaths.contains(uri.path)) return null;
     final q = uri.queryParameters;
     if (q.keys.any((k) => !_listParams.contains(k) && k != 'app')) return null;
     final kept = <String, String>{

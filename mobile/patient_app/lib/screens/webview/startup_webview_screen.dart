@@ -147,6 +147,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
 
     // Next.js pilot test build: the website then keeps hospitals.php links as real
     // navigations (no Turbo), so NextPilot.rewrite can send them to /next/hospitals.
+    debugPrint('[NextPilot] enabled=${NextPilot.enabled}');
     if (NextPilot.enabled) {
       await _cookieManager.setCookie(
         WebViewCookie(

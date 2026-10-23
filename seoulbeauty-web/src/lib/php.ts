@@ -3,13 +3,13 @@ import { useSyncExternalStore } from "react";
 
 /**
  * Where the PHP site lives relative to the current origin.
- * - seoulbeauty.app        → "/"                      (public site)
- * - hms.seoulbeauty.app    → "/hairwang/gangnamunni/" (the Flutter app's trusted host)
+ * Default "/" for every host (seoulbeauty.app and the app's hms.seoulbeauty.app).
+ * Override per host with NEXT_PUBLIC_PHP_PATHS='{"host":"/path/"}' if that ever changes.
  * Same-origin links keep the WebView on its trusted host and keep PHP session cookies.
  */
-const PHP_PATHS: Record<string, string> = JSON.parse(
-  process.env.NEXT_PUBLIC_PHP_PATHS || '{"hms.seoulbeauty.app":"/hairwang/gangnamunni/"}',
-);
+// Both hosts serve the PHP site at the root (the app's /hairwang/gangnamunni/ start URL
+// redirects to "/"), so no override is needed by default.
+const PHP_PATHS: Record<string, string> = JSON.parse(process.env.NEXT_PUBLIC_PHP_PATHS || "{}");
 
 export function phpBase(host: string): string {
   return PHP_PATHS[host.toLowerCase()] ?? "/";
