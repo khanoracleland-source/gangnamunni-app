@@ -516,6 +516,9 @@ class WebViewBridge {
     void Function(String url)? onPageFinished,
     void Function(WebResourceError error)? onWebResourceError,
     List<String> additionalSchemes = const [],
+    /// Optional same-origin http(s) rewrite (Next.js pilot). Returning a Uri
+    /// cancels the request and loads that Uri instead.
+    Uri? Function(Uri uri)? rewriteHttp,
   }) {
     return NavigationDelegate(
       onPageStarted: onPageStarted,
@@ -585,6 +588,12 @@ class WebViewBridge {
 
         // http/https는 정상 로드
         if (scheme == 'http' || scheme == 'https') {
+          final Uri? rewritten = rewriteHttp?.call(uri);
+          if (rewritten != null && rewritten != uri) {
+            _log('Next.js pilot rewrite: ${uri.path} -> ${rewritten.path}');
+            await controller.loadRequest(rewritten);
+            return NavigationDecision.prevent;
+          }
           return NavigationDecision.navigate;
         }
 

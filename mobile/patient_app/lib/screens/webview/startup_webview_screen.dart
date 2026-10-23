@@ -8,6 +8,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:kivicare_patient/configs.dart';
 import 'package:kivicare_patient/services/webview_bridge.dart';
+import 'package:kivicare_patient/services/next_pilot.dart';
 import 'package:kivicare_patient/services/webview_cookie_persistence.dart';
 
 /// 앱 시작 시 보여지는 WebView 화면
@@ -186,6 +187,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     // NavigationDelegate (URL scheme 인터셉트 포함)
     await _controller.setNavigationDelegate(
       bridge.createNavigationDelegate(
+        rewriteHttp: NextPilot.rewrite,
         onPageStarted: (String url) {
           if (!mounted) return;
           _hospitalNavigation.pageStarted(url);
@@ -293,7 +295,9 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
         return;
       }
       // The previous history entry can be booking or another detail tab.
-      await _controller.loadRequest(target);
+      // loadRequest from Dart skips onNavigationRequest on Android, so apply
+      // the Next.js pilot rewrite here as well.
+      await _controller.loadRequest(NextPilot.rewrite(target) ?? target);
     } catch (_) {
       if (mounted) toast('목록으로 돌아가지 못했습니다. 다시 시도해주세요.');
     } finally {

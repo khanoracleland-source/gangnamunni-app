@@ -2,28 +2,30 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./BottomNav.module.css";
+import { phpUrl, usePhpBase } from "@/lib/php";
 
-const PHP = process.env.NEXT_PUBLIC_ASSET_BASE || "";
-
-// Pilot: only "병원" lives in Next.js. The other tabs still go to the PHP pages (full load).
+// Pilot: only "병원" lives in Next.js. The other tabs go to the PHP pages on the
+// same origin (full load), so the app stays on its trusted host.
 const items = [
-  { href: `${PHP}/index.php`, label: "홈", external: true },
-  { href: "/hospitals", label: "병원", external: false },
-  { href: `${PHP}/community.php`, label: "커뮤니티", external: true },
-  { href: `${PHP}/mypage.php`, label: "마이", external: true },
-];
+  { php: "index.php", label: "홈" },
+  { next: "/hospitals", label: "병원" },
+  { php: "community.php", label: "커뮤니티" },
+  { php: "mypage.php", label: "마이" },
+] as const;
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const php = usePhpBase();
   return (
     <nav className={styles.nav} aria-label="하단 메뉴">
       {items.map((it) => {
-        const active = !it.external && pathname.startsWith(it.href);
-        const cls = `${styles.item} ${active ? styles.active : ""}`;
-        return it.external ? (
-          <a key={it.label} href={it.href} className={cls}>{it.label}</a>
-        ) : (
-          <Link key={it.label} href={it.href} className={cls} aria-current={active ? "page" : undefined}>{it.label}</Link>
+        if ("php" in it) {
+          return <a key={it.label} href={phpUrl(php, it.php)} className={styles.item}>{it.label}</a>;
+        }
+        const active = pathname.startsWith(it.next);
+        return (
+          <Link key={it.label} href={it.next} className={`${styles.item} ${active ? styles.active : ""}`}
+            aria-current={active ? "page" : undefined}>{it.label}</Link>
         );
       })}
     </nav>
