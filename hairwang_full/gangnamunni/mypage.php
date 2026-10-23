@@ -88,6 +88,17 @@ if ($_bk_stmt = mysqli_prepare($connect,
     mysqli_stmt_close($_bk_stmt);
 }
 
+// 상담 건수 — "상담 내역" 행 배지 (gangnamunni_consultations.mb_id, sql/consultation_member_20261023.sql)
+$consult_count = 0;
+$_cc = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_consultations LIKE 'mb_id'");
+if ($_cc && mysqli_num_rows($_cc) > 0 && ($_cs = mysqli_prepare($connect, "SELECT COUNT(*) AS c FROM gangnamunni_consultations WHERE mb_id = ?"))) {
+    mysqli_stmt_bind_param($_cs, 's', $mb_id);
+    mysqli_stmt_execute($_cs);
+    $_cr = mysqli_fetch_assoc(mysqli_stmt_get_result($_cs));
+    $consult_count = (int)($_cr['c'] ?? 0);
+    mysqli_stmt_close($_cs);
+}
+
 endif; // $is_logged_in
 
 if (!function_exists('term')) { require_once __DIR__ . '/includes/industry_terms.php'; }
@@ -279,6 +290,14 @@ body {
     <a href="my_reviews.php" class="menu-row">
         <span class="menu-row-icon"><img src="assets/icons/icon-mypage-review.png?v=<?php echo (int)@filemtime(__DIR__ . '/assets/icons/icon-mypage-review.png'); ?>" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">내가 작성한 <?php echo term('review', '후기'); ?></span>
+        <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
+    </a>
+    <a href="my_consultations.php" class="menu-row">
+        <span class="menu-row-icon"><i class="bi bi-chat-dots" style="font-size:26px;color:#AC1830;line-height:1;"></i></span>
+        <span class="menu-row-text">상담 내역</span>
+        <?php if ($consult_count > 0): ?>
+        <span class="menu-row-badge"><?php echo number_format($consult_count); ?>건</span>
+        <?php endif; ?>
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
 </div>

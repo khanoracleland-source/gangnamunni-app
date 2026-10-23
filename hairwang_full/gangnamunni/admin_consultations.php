@@ -53,8 +53,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
     $id = intval($_POST['id'] ?? 0);
     $action = $_POST['action'];
-    $status_map = ['approve' => 'approved', 'complete' => 'completed', 'reject' => 'rejected'];
-    if ($id > 0 && isset($status_map[$action])) {
+    $status_map = ['approve' => 'approved', 'complete' => 'completed', 'reject' => 'rejected', 'contact_failed' => 'contact_failed'];
+    // [07-41] 병원 메시지 저장 (고객 상담 상세에 노출)
+    if ($id > 0 && $action === 'hospital_message') {
+        $own_m = mysqli_query($connect, "SELECT 1 FROM gangnamunni_consultations WHERE id = {$id}{$consult_scope} LIMIT 1");
+        $hm = trim((string)($_POST['hospital_message'] ?? ''));
+        if (!$own_m || mysqli_num_rows($own_m) === 0) {
+            $msg = '해당 상담에 대한 권한이 없습니다.'; $msg_type = 'danger';
+        } elseif (mb_strlen($hm) > 1000) {
+            $msg = '메시지는 1000자 이내로 입력해주세요.'; $msg_type = 'danger';
+        } else {
+            $hm_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_consultations LIKE 'hospital_message'");
+            if (!$hm_col || mysqli_num_rows($hm_col) === 0) {
+                $msg = '먼저 sql/consultation_history_20261023.sql 을 실행해주세요.'; $msg_type = 'danger';
+            } else {
+                $hm_stmt = mysqli_prepare($connect, "UPDATE gangnamunni_consultations SET hospital_message = ?, hospital_message_at = IF(? = '', NULL, NOW()) WHERE id = ?{$consult_scope}");
+                if ($hm_stmt) {
+                    mysqli_stmt_bind_param($hm_stmt, 'ssi', $hm, $hm, $id);
+                    mysqli_stmt_execute($hm_stmt);
+                    mysqli_stmt_close($hm_stmt);
+                }
+                $msg = '병원 메시지가 저장되었습니다.'; $msg_type = 'success';
+            }
+        }
+    } elseif ($id > 0 && isset($status_map[$action])) {
         // 다른 병원의 상담은 존재 여부도 드러내지 않고 거부
         $own_r = mysqli_query($connect, "SELECT 1 FROM gangnamunni_consultations WHERE id = {$id}{$consult_scope} LIMIT 1");
         if (!$own_r || mysqli_num_rows($own_r) === 0) {
@@ -71,6 +93,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             mysqli_stmt_close($stmt);
         }
         $msg = '상담 상태가 변경되었습니다.';
+        // [07-41] 진행 기록(타임라인) + 연락 실패 알림
+        if ($status_changed && in_array($new_status, ['contact_failed', 'completed'], true)) {
+            $ev_tbl = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_consultation_events'");
+            if ($ev_tbl && mysqli_num_rows($ev_tbl) > 0 && ($ev = mysqli_prepare($connect, "INSERT INTO gangnamunni_consultation_events (consultation_id, kind) VALUES (?, ?)"))) {
+                $ev_kind = $new_status === 'completed' ? 'completed' : 'no_answer';
+                mysqli_stmt_bind_param($ev, 'is', $id, $ev_kind);
+                mysqli_stmt_execute($ev);
+                mysqli_stmt_close($ev);
+            }
+            if ($new_status === 'contact_failed') {
+                try {
+                    $mc_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_consultations LIKE 'mb_id'");
+                    if ($mc_col && mysqli_num_rows($mc_col) > 0) {
+                        $nr = mysqli_query($connect, "SELECT mb_id, hospital_name FROM gangnamunni_consultations WHERE id = {$id}{$consult_scope} LIMIT 1");
+                        $nrow = $nr ? mysqli_fetch_assoc($nr) : null;
+                        if ($nrow && trim((string)$nrow['mb_id']) !== '') {
+                            require_once __DIR__ . '/includes/user_notifications.php';
+                            require_once __DIR__ . '/includes/admin_fcm.php';
+                            $nt = '병원에서 연락드렸지만 받지 않으셨어요';
+                            $nb = trim((string)$nrow['hospital_name']) . ' · 편한 시간을 골라 다시 요청해주세요.';
+                            $nl = (defined('SITE_FULL_URL') ? SITE_FULL_URL : '') . 'my_consultations.php';
+                            create_user_notification($connect, $nrow['mb_id'], 'general', $nt, $nb, $nl);
+                            send_push_to_members($connect, [$nrow['mb_id']], $nt, $nb, $nl);
+                        }
+                    }
+                } catch (Throwable $e) {
+                    error_log('[admin_consultations] contact_failed notification failed: ' . $e->getMessage());
+                }
+            }
+        }
         if ($new_status === 'approved' && $status_changed) {
             try {
                 $consult_result = mysqli_query($connect, "SELECT * FROM gangnamunni_consultations WHERE id = {$id}{$consult_scope} LIMIT 1");
@@ -210,6 +262,7 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <option value="approved" <?php echo $filter_status === 'approved' ? 'selected' : ''; ?>>승인</option>
                         <option value="completed" <?php echo $filter_status === 'completed' ? 'selected' : ''; ?>>완료</option>
                         <option value="rejected" <?php echo $filter_status === 'rejected' ? 'selected' : ''; ?>>거절</option>
+                        <option value="contact_failed" <?php echo $filter_status === 'contact_failed' ? 'selected' : ''; ?>>연락 실패</option>
                     </select>
                 </div>
                 <div class="col-md-5">
@@ -258,8 +311,8 @@ require_once __DIR__ . '/includes/admin_header.php';
                         </td>
                         <td>
                             <?php
-                            $badge = ['pending'=>'warning','approved'=>'success','completed'=>'info','rejected'=>'danger'];
-                            $lbl = ['pending'=>'대기중','approved'=>'승인','completed'=>'완료','rejected'=>'거절'];
+                            $badge = ['pending'=>'warning','approved'=>'success','completed'=>'info','rejected'=>'danger','contact_failed'=>'dark'];
+                            $lbl = ['pending'=>'대기중','approved'=>'승인','completed'=>'완료','rejected'=>'거절','contact_failed'=>'연락 실패'];
                             $st = $c['status'] ?? 'pending';
                             ?>
                             <span class="badge bg-<?php echo $badge[$st] ?? 'secondary'; ?>"><?php echo $lbl[$st] ?? $st; ?></span>
@@ -272,8 +325,14 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php elseif ($st === 'pending'): ?>
                             <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_consultations_csrf, ENT_QUOTES); ?>"><input type="hidden" name="action" value="approve"><button class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i></button></form>
                             <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_consultations_csrf, ENT_QUOTES); ?>"><input type="hidden" name="action" value="reject"><button class="btn btn-danger btn-sm"><i class="bi bi-x-lg"></i></button></form>
+                            <button type="button" class="btn btn-outline-dark btn-sm" title="연락 실패 기록 (받지 않음)" onclick="if(confirm('연락이 닿지 않았음으로 기록하고 고객에게 알림을 보낼까요?')) document.getElementById('cf_<?php echo (int)$c['id']; ?>').submit();"><i class="bi bi-telephone-x"></i></button>
+                            <form method="post" class="d-none" id="cf_<?php echo (int)$c['id']; ?>"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_consultations_csrf, ENT_QUOTES); ?>"><input type="hidden" name="action" value="contact_failed"></form>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" title="고객에게 보이는 병원 메시지" onclick="openHospitalMessage(<?php echo (int)$c['id']; ?>, this)" data-msg="<?php echo htmlspecialchars((string)($c['hospital_message'] ?? ''), ENT_QUOTES); ?>"><i class="bi bi-chat-left-text"></i></button>
                             <?php elseif ($st === 'approved'): ?>
                             <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_consultations_csrf, ENT_QUOTES); ?>"><input type="hidden" name="action" value="complete"><button class="btn btn-info btn-sm text-white"><i class="bi bi-check2-all"></i></button></form>
+                            <?php elseif ($st === 'contact_failed'): ?>
+                            <form method="post" class="d-inline"><input type="hidden" name="id" value="<?php echo $c['id']; ?>"><input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_consultations_csrf, ENT_QUOTES); ?>"><input type="hidden" name="action" value="complete"><button class="btn btn-info btn-sm text-white" title="상담 완료"><i class="bi bi-check2-all"></i></button></form>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" title="고객에게 보이는 병원 메시지" onclick="openHospitalMessage(<?php echo (int)$c['id']; ?>, this)" data-msg="<?php echo htmlspecialchars((string)($c['hospital_message'] ?? ''), ENT_QUOTES); ?>"><i class="bi bi-chat-left-text"></i></button>
                             <?php else: ?>
                             <span class="text-muted">-</span>
                             <?php endif; ?>
@@ -297,6 +356,29 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
+<!-- [07-41] 병원 메시지 모달 -->
+<div class="modal fade" id="hmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" class="modal-content">
+            <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_consultations_csrf, ENT_QUOTES); ?>">
+            <input type="hidden" name="action" value="hospital_message">
+            <input type="hidden" name="id" id="hmId" value="">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-chat-left-text me-2"></i>고객에게 보이는 병원 메시지</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea name="hospital_message" id="hmText" class="form-control" rows="5" maxlength="1000" placeholder="예) 두 번 연락드렸지만 연결되지 않았어요. 편한 시간을 알려주시면 다시 연락드릴게요."></textarea>
+                <div class="form-text">고객의 마이페이지 &gt; 상담 내역 상세에 표시됩니다. 비우고 저장하면 삭제됩니다.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                <button type="submit" class="btn btn-primary">저장</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- 사진 라이트박스 모달 -->
 <div class="modal fade" id="photoModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -312,6 +394,11 @@ require_once __DIR__ . '/includes/admin_header.php';
 </div>
 
 <script>
+function openHospitalMessage(id, btn) {
+    document.getElementById('hmId').value = id;
+    document.getElementById('hmText').value = btn.dataset.msg || '';
+    new bootstrap.Modal(document.getElementById('hmModal')).show();
+}
 function showPhotos(photos) {
     var body = document.getElementById('photoModalBody');
     body.textContent = '';

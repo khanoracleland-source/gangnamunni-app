@@ -119,6 +119,17 @@ if (!mysqli_stmt_execute($stmt)) {
 $consultation_id = mysqli_insert_id($connect);
 mysqli_stmt_close($stmt);
 
+// 마이페이지 상담 내역용: 로그인한 회원이면 신청을 회원과 연결한다(컬럼이 없으면 건너뜀).
+if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in() && !empty($member['mb_id'])) {
+    $mc = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_consultations LIKE 'mb_id'");
+    if ($mc && mysqli_num_rows($mc) > 0 && ($ms = mysqli_prepare($connect, "UPDATE gangnamunni_consultations SET mb_id = ? WHERE id = ?"))) {
+        $consult_mb = (string)$member['mb_id'];
+        mysqli_stmt_bind_param($ms, 'si', $consult_mb, $consultation_id);
+        mysqli_stmt_execute($ms);
+        mysqli_stmt_close($ms);
+    }
+}
+
 // === 사진 업로드 처리 ===
 $uploaded_photos = [];
 if (!empty($_FILES['photos']) && !empty($_FILES['photos']['name'][0])) {
