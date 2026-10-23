@@ -31,7 +31,7 @@ if ($booking_id <= 0) {
     exit;
 }
 
-$stmt = mysqli_prepare($connect, "SELECT id, phone, mb_id, status, hms_appointment_id, hospital_id FROM gangnamunni_bookings WHERE id = ?");
+$stmt = mysqli_prepare($connect, "SELECT id, phone, mb_id, status, hms_appointment_id, hospital_id, booking_date FROM gangnamunni_bookings WHERE id = ?");
 mysqli_stmt_bind_param($stmt, 'i', $booking_id);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
@@ -57,6 +57,7 @@ if (in_array($booking['status'], ['cancelled', 'completed', 'no_show'])) {
 
 require_once dirname(__DIR__) . '/includes/points_ledger.php';
 require_once dirname(__DIR__) . '/includes/booking_payment_service.php';
+require_once dirname(__DIR__) . '/includes/booking_cancel_window.php';
 // 결제 승인(booking_payment_confirm)과 같은 잠금 안에서 취소한다: 승인 중이면 끝날 때까지 기다리고,
 // 취소가 먼저면 승인은 BOOKING_NOT_CONFIRMED 로 거부되어 돈이 빠져나가지 않는다.
 // [05-17] 회원이 직접 취소했음을 기록한다(노쇼·잦은 취소 제한 집계용). 컬럼은 sql/booking_cancelled_by_20261021.sql 로 추가한다.
@@ -71,6 +72,10 @@ try {
     mysqli_stmt_close($cur);
     if (!$cur_row || !in_array($cur_row['status'], ['pending', 'hospital_checking', 'confirmed'], true)) {
         throw new RuntimeException('booking_not_cancellable');
+    }
+    // [05-48] 결제된 예약은 방문 하루 전 17:00 이후 앱에서 취소할 수 없다(병원에 직접 문의).
+    if (booking_cancel_window_closed($connect, $booking_id, (string)($booking['booking_date'] ?? ''))) {
+        throw new RuntimeException('cancel_window_closed');
     }
     mysqli_begin_transaction($connect);
     try {
@@ -102,6 +107,10 @@ try {
 } catch (Throwable $e) {
     if ($e->getMessage() === 'booking_not_cancellable') {
         echo json_encode(['success' => false, 'message' => '이미 처리된 예약입니다. 페이지를 새로고침해주세요.']);
+        exit;
+    }
+    if ($e->getMessage() === 'cancel_window_closed') {
+        echo json_encode(['success' => false, 'message' => '방문 하루 전 오후 5시가 지나 앱에서 취소할 수 없어요. 병원에 직접 문의해 주세요.']);
         exit;
     }
     error_log('[cancel_booking] atomic cancel failed: ' . $e->getMessage());

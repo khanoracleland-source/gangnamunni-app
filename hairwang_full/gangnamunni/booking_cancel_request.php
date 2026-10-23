@@ -5,6 +5,7 @@ if (!function_exists('getSettingValue') && file_exists(__DIR__ . '/includes/sett
     require_once __DIR__ . '/includes/settings_helper.php';
 }
 require_once __DIR__ . '/includes/booking_noshow_policy.php';
+require_once __DIR__ . '/includes/booking_cancel_window.php';
 global $is_member, $member;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -62,6 +63,8 @@ if ($table_check && mysqli_num_rows($table_check)) {
     }
 }
 $refund_amount = $amount;
+// [05-48] 결제된 예약은 방문 하루 전 17:00 이후 앱에서 취소할 수 없다(병원에 직접 문의).
+$window_closed = booking_cancel_window_closed($connect, $booking_id, (string)($booking['booking_date'] ?? ''));
 // [05-17] 이번 취소로 노쇼·취소 누적 제한에 걸리거나 가까워지면 최종 요청 전에 모달로 알린다.
 $cancel_warn = booking_noshow_cancel_preview($connect, (string)($booking['mb_id'] ?? ''));
 $csrf = (string)$_SESSION['my_bookings_csrf'];
@@ -128,6 +131,7 @@ h1{margin:24px 0 0;font-size:23px;font-weight:700;letter-spacing:-.04em;line-hei
 .agreement-title{width:calc(100% - 40px);margin:22px 20px 0;padding:0 0 12px;border:0;background:none;display:flex;align-items:center;justify-content:space-between;color:#1A1718;font:inherit;font-size:19px;font-weight:700;text-align:left;cursor:pointer}
 .agreement-title .chevron{font-size:24px;line-height:1;transition:transform .2s}
 .agreement-box{margin:0 20px;padding:16px;border:1px solid #DCD6D8;font-size:16px;line-height:1.7;color:#4A4446}
+.closed-note{display:block;color:#AC1830;font-weight:700}
 .agree{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:16px;font-weight:500;color:#1A1718}
 .agree input{appearance:none;-webkit-appearance:none;width:18px;height:18px;margin:0;border:0;flex-shrink:0;background:url(assets/icons/icon-radio-off.png?v=1) center/contain no-repeat}
 .agree input:checked{background-image:url(assets/icons/icon-radio-on.png?v=1)}
@@ -171,7 +175,7 @@ h1{margin:24px 0 0;font-size:23px;font-weight:700;letter-spacing:-.04em;line-hei
  <ul class="policy-notes"><li>결제된 예약은 취소 후 관리자 확인을 거쳐 환불 처리됩니다.</li><li>환불 완료 전까지 관리자 화면에는 환불 안됨 상태로 표시됩니다.</li><li>정확한 환불기간은 해당 카드사로 문의해 주시기 바랍니다.</li></ul>
  <section class="warning"><h2>고객님 꼭 알아두세요!</h2><ul><li>예약이 확정된 후 취소 시, 병원 정책에 따라 위약금이 발생할 수 있어요</li><li>포인트 할인 / 이벤트가 적용된 예약은 취소 시 할인 금액이 환수될 수 있어요</li><li>당일 예약 또는 예약 시간 임박 시 취소가 제한될 수 있어요</li><li>예약 취소 후 재예약을 원하시면 다시 시술과 시간을 선택해 주세요</li></ul></section>
  <button type="button" class="agreement-title" onclick="openPolicyModal()"><span>취소 및 환불 규정을 확인해주세요</span><span class="chevron">⌄</span></button>
- <div class="agreement-box">결제된 예약은 취소 후 관리자 확인을 거쳐 환불 처리됩니다<br>당일 취소는 병원에 직접 연락해 주세요<label class="agree"><input type="checkbox" id="cancelAgree">위 내용을 모두 확인하였으며, 취소에 동의해요</label></div>
+ <div class="agreement-box"><?php if ($window_closed): ?><strong class="closed-note">방문 하루 전 오후 5시가 지나 앱에서 취소할 수 없어요. 병원에 직접 문의해 주세요.</strong><?php else: ?>방문 하루 전 오후 5시까지 앱에서 취소하면 100% 환불 대상이에요 (환불은 관리자 확인 후 처리돼요)<br>당일 취소는 병원에 직접 연락해 주세요<?php endif; ?><label class="agree"><input type="checkbox" id="cancelAgree">위 내용을 모두 확인하였으며, 취소에 동의해요</label></div>
  <p class="legal">서비스 이용에 관한 개인정보 수집 동의<br>서울미녀는 고객 편의를 위해 예약·앱에서 결제 기능을 제공하며, 위 내용에 동의합니다.</p>
  <div class="final-line"><span>환불 검토 대상 금액</span><strong><?php echo number_format($refund_amount); ?>원</strong></div>
  <button type="button" class="final-btn" id="finalCancelButton" onclick="finalizeCancel()">예약 취소 요청</button><p class="error" id="cancelError"></p>
@@ -222,6 +226,7 @@ function openCancelWarn(){
 function closeCancelWarn(){var m=document.getElementById('cancelWarnModal');if(!m) return;m.classList.remove('active');m.setAttribute('aria-hidden','true');document.body.style.overflow=''}
 function confirmCancelWarn(){cancelWarnAck=true;closeCancelWarn();finalizeCancel()}
 function finalizeCancel(){
+ if(<?php echo $window_closed ? 'true' : 'false'; ?>){var e0=document.getElementById('cancelError');e0.textContent='방문 하루 전 오후 5시가 지나 앱에서 취소할 수 없어요. 병원에 직접 문의해 주세요.';e0.style.display='block';return}
  var agree=document.getElementById('cancelAgree'), error=document.getElementById('cancelError'), button=document.getElementById('finalCancelButton');
  if(!agree.checked){error.textContent='취소 및 환불 규정에 동의해주세요.';error.style.display='block';return}
  if(CANCEL_WARN && !cancelWarnAck){error.style.display='none';openCancelWarn();return}

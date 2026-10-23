@@ -16,7 +16,7 @@ else { $my_phone=preg_replace('/[^0-9]/','',(string)($member['mb_hp']??($_SESSIO
 if (!$is_owner) { header('Location: my_bookings.php?tab=cancelled'); exit; }
 $refund_complete = true;
 $check = mysqli_query($connect, "SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gangnamunni_platform_payments' LIMIT 1");
-if ($check && mysqli_num_rows($check)) { $ps=mysqli_prepare($connect,"SELECT status,provider FROM gangnamunni_platform_payments WHERE payment_type='booking' AND booking_id=? LIMIT 1"); mysqli_stmt_bind_param($ps,'i',$booking_id); mysqli_stmt_execute($ps); $payment=mysqli_fetch_assoc(mysqli_stmt_get_result($ps)); mysqli_stmt_close($ps); if($payment)$refund_complete=(in_array($payment['status'],['pending','failed','refunded','cancelled'],true) || booking_payment_is_test($payment['provider'])); }
+if ($check && mysqli_num_rows($check)) { $ps=mysqli_prepare($connect,"SELECT status,provider,amount,refunded_amount FROM gangnamunni_platform_payments WHERE payment_type='booking' AND booking_id=? LIMIT 1"); mysqli_stmt_bind_param($ps,'i',$booking_id); mysqli_stmt_execute($ps); $payment=mysqli_fetch_assoc(mysqli_stmt_get_result($ps)); mysqli_stmt_close($ps); if($payment)$refund_complete=(in_array($payment['status'],['pending','failed','refunded','cancelled'],true) || booking_payment_is_test($payment['provider'])); }
 function cancel_detail_date($date,$time){$d=['일','월','화','수','목','금','토'];$ts=strtotime($date.' '.$time);$h=(int)date('G',$ts);return date('n월 j일',$ts).' ('.$d[(int)date('w',$ts)].') '.($h<12?'오전 ':'오후 ').($h%12?:12).':'.date('i',$ts);}
 ?>
 <!doctype html><html lang="ko"><head>
@@ -39,10 +39,41 @@ body{max-width:640px;min-height:100vh;margin:0 auto;background:#fff;color:#1A171
 .value.reason{color:#AC1830;font-weight:500}
 .foot{margin-top:auto;padding:16px 20px max(34px,env(safe-area-inset-bottom))}
 .confirm{display:flex;align-items:center;justify-content:center;width:100%;height:52px;border:1px solid #AC1830;border-radius:4px;background:#AC1830;color:#fff;font-size:19px;font-weight:500;font-family:inherit;cursor:pointer}
+.sec-title{margin:0;padding:24px 20px 4px;font-size:20px;font-weight:700}.sec-title.second{padding-top:18px}
+.mrows{padding:0 20px}.mrow{display:flex;align-items:center;justify-content:space-between;padding:9px 0}
+.mrow .ml{flex-grow:1;font-size:17px;color:#9A9395}.mrow .mv{font-size:18px;color:#1A1718}
+.mrow.total{border-top:1px solid #ECE9EA;margin-top:4px}.mrow.total .ml{color:#1A1718;font-weight:700}.mrow.total .mv{font-weight:700}.mrow .mv.refund{color:#AC1830}
+.notes{margin:6px 0 0;padding-left:16px;font-size:14px;line-height:1.6;color:#9A9395}
+.warn{margin:24px 20px 0;padding:18px;background:#FBEFF1}.warn h3{margin:0 0 8px;font-size:18px;font-weight:700;color:#AC1830}.warn ul{margin:0;padding-left:16px;font-size:16px;line-height:1.7}
+.legal{margin:14px 20px 0;font-size:14px;line-height:1.6;color:#9A9395}
 @media(max-width:380px){.label{width:68px}}
 </style></head><body><header class="header"><button class="back" onclick="location.href='my_bookings.php?tab=cancelled'" aria-label="뒤로"><i class="bi bi-chevron-left"></i></button><div class="title">취소·환불 내역을 확인해보세요</div><span></span></header><main class="content"><?php
 // [05-51] 취소 주체: 병원 취소(cancelled_by='hospital')와 결제 기한 자동 취소('system')는 사유를 함께 보여준다.
 $cancel_by = (string)($booking['cancelled_by'] ?? '');
 $badge_text = $cancel_by === 'hospital' ? '병원 취소' : ($cancel_by === 'system' ? '자동 취소' : ($refund_complete ? '취소 완료' : '취소 접수'));
 $show_reason = in_array($cancel_by, ['hospital', 'system'], true) && trim((string)($booking['cancel_reason'] ?? '')) !== '';
-?><div class="badge"><?php echo htmlspecialchars($badge_text); ?></div><div class="rows"><div class="row"><span class="label">예약번호</span><span class="value"><?php echo $booking_id; ?></span></div><div class="row"><span class="label">날짜/시간</span><span class="value"><?php echo htmlspecialchars(cancel_detail_date($booking['booking_date'],$booking['booking_time'])); ?></span></div><div class="row"><span class="label">선택시술</span><span class="value"><?php echo htmlspecialchars($booking['treatment']?:'-'); ?></span></div><?php if ($show_reason): ?><div class="row"><span class="label">취소사유</span><span class="value reason"><?php echo htmlspecialchars((string)$booking['cancel_reason']); ?></span></div><?php endif; ?><div class="row"><span class="label">병원</span><span class="value"><?php echo htmlspecialchars($booking['hospital_name']?:'-'); ?></span></div></div><div class="person"><span class="label">예약자</span><span class="value"><?php echo htmlspecialchars($booking['name']?:'-'); ?></span><span class="label">연락처</span><span class="value"><?php echo htmlspecialchars($booking['phone']?:'-'); ?></span></div></main><div class="foot"><button class="confirm" onclick="location.href='my_bookings.php?tab=cancelled'">확인했어요</button></div></body></html>
+?><div class="badge"><?php echo htmlspecialchars($badge_text); ?></div><div class="rows"><div class="row"><span class="label">예약번호</span><span class="value"><?php echo $booking_id; ?></span></div><div class="row"><span class="label">날짜/시간</span><span class="value"><?php echo htmlspecialchars(cancel_detail_date($booking['booking_date'],$booking['booking_time'])); ?></span></div><div class="row"><span class="label">선택시술</span><span class="value"><?php echo htmlspecialchars($booking['treatment']?:'-'); ?></span></div><?php if ($show_reason): ?><div class="row"><span class="label">취소사유</span><span class="value reason"><?php echo htmlspecialchars((string)$booking['cancel_reason']); ?></span></div><?php endif; ?><div class="row"><span class="label">병원</span><span class="value"><?php echo htmlspecialchars($booking['hospital_name']?:'-'); ?></span></div></div><div class="person"><span class="label">예약자</span><span class="value"><?php echo htmlspecialchars($booking['name']?:'-'); ?></span><span class="label">연락처</span><span class="value"><?php echo htmlspecialchars($booking['phone']?:'-'); ?></span></div><?php
+// [05-52] 결제된 예약만 결제·환불 정보를 보여준다(결제 없이 취소된 예약에는 해당 없음).
+$paid_view = !empty($payment) && booking_payment_is_pg($payment['provider'] ?? null) && in_array($payment['status'] ?? '', ['paid','partially_refunded','refunded'], true);
+if ($paid_view):
+    $pay_total = (int)$payment['amount'];
+    $refunded = (int)$payment['refunded_amount'];
+    $cancel_ts = strtotime((string)($booking['cancelled_at'] ?? ''));
+?>
+<h2 class="sec-title">결제 금액을 확인해보세요</h2>
+<div class="mrows">
+    <div class="mrow"><span class="ml">시술가격</span><span class="mv"><?php echo number_format((int)($booking['price'] ?? 0)); ?></span></div>
+    <div class="mrow total"><span class="ml">총 결제금액</span><span class="mv"><?php echo number_format($pay_total); ?></span></div>
+</div>
+<h2 class="sec-title second">취소/환불 정보를 확인해보세요</h2>
+<div class="mrows">
+    <?php if ($cancel_ts): ?><div class="mrow"><span class="ml">취소날짜/시간</span><span class="mv"><?php echo htmlspecialchars(cancel_detail_date(date('Y-m-d', $cancel_ts), date('H:i:s', $cancel_ts))); ?></span></div><?php endif; ?>
+    <div class="mrow"><span class="ml">취소 수수료</span><span class="mv">0</span></div>
+    <div class="mrow total"><span class="ml">총 금액(취소/환불)</span><span class="mv refund"><?php echo $refunded > 0 ? number_format($refunded) : '환불 확인 중'; ?></span></div>
+    <ul class="notes"><li>결제된 예약은 취소 후 관리자 확인을 거쳐 환불 처리됩니다.</li><li>환불이 완료되면 이 화면과 결제 내역에 환불 금액이 반영됩니다.</li><li>정확한 환불기간은 해당 카드사로 문의해 주시기 바랍니다.</li></ul>
+</div>
+<div class="warn"><h3>고객님 꼭 알아두세요!</h3><ul><li>예약이 확정된 후 취소 시, 병원 정책에 따라 위약금이 발생할 수 있어요</li><li>포인트 할인 / 이벤트가 적용된 예약은 취소 시 할인 금액이 환수될 수 있어요</li><li>당일 예약 또는 예약 시간 임박 시 취소가 제한될 수 있어요</li><li>예약 취소 후 재예약을 원하시면 다시 시술과 시간을 선택해 주세요</li></ul></div>
+<p class="legal">서비스 이용에 관한 개인정보 수집 동의<br>개인정보 및 민감정보 수집 이용, 개인정보 제3자 제공 동의</p>
+<p class="legal">서울미녀는 고객 편의를 위해 예약·앱에서 결제 기능을 제공하며, 이 기능에 대해 의료기관으로부터 대가를 받지 않습니다. 거래의 당사자는 고객과 병원이며, 서울미녀는 이를 중개하지 않습니다.</p>
+<?php endif; ?>
+</main><div class="foot"><button class="confirm" onclick="location.href='my_bookings.php?tab=cancelled'">확인했어요</button></div></body></html>
