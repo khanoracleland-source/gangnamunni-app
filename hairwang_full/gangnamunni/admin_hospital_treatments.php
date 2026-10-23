@@ -163,12 +163,12 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
         $msg_type = 'danger';
     } else {
 
-        $known_actions = ['assign', 'remove', 'update_price', 'toggle_promoted', 'set_min_age', 'image_add', 'image_delete', 'image_move', 'image_approve', 'image_reject'];
+        $known_actions = ['assign', 'remove', 'update_price', 'toggle_promoted', 'set_min_age', 'save_questions', 'image_add', 'image_delete', 'image_move', 'image_approve', 'image_reject'];
         if (!in_array($action, $known_actions, true)) ht_redirect($post_hospital_id, '지원하지 않는 요청입니다.', 'danger');
         if (in_array($action, ['image_approve', 'image_reject'], true) && !$is_super_admin) {
             ht_redirect($post_hospital_id, '시술 이미지 검수는 최고관리자만 처리할 수 있습니다.', 'danger');
         }
-        if (in_array($action, ['assign', 'remove', 'update_price', 'toggle_promoted', 'set_min_age', 'image_add', 'image_delete', 'image_move'], true) && !$can_manage_treatments) {
+        if (in_array($action, ['assign', 'remove', 'update_price', 'toggle_promoted', 'set_min_age', 'save_questions', 'image_add', 'image_delete', 'image_move'], true) && !$can_manage_treatments) {
             ht_redirect($post_hospital_id, '현재 시술 관리 설정에서는 이 작업을 수행할 수 없습니다.', 'danger');
         }
 
@@ -400,6 +400,54 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
                 }
                 ht_redirect($post_hospital_id, '가격이 수정되었습니다.');
             }
+        }
+
+        if ($action === 'save_questions') {
+            // [05-19] 이 병원 시술의 "시술 전 확인" 질문(예/아니오)을 제출된 목록으로 교체한다. 모두 선택 사항이며 비우면 질문이 없어진다.
+            $id = intval($_POST['id'] ?? 0);
+            if ($id <= 0 || $post_hospital_id <= 0) ht_redirect($post_hospital_id, '잘못된 요청입니다.', 'danger');
+            $tq = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_questions'");
+            if (!$tq || mysqli_num_rows($tq) === 0) {
+                ht_redirect($post_hospital_id, '질문 테이블이 아직 없습니다. sql/treatment_questions_20261023.sql 을 먼저 실행해주세요.', 'danger');
+            }
+            $own = mysqli_prepare($connect, "SELECT COUNT(*) FROM gangnamunni_hospital_treatments WHERE id = ? AND hospital_id = ?");
+            $own_cnt = 0;
+            if ($own) {
+                mysqli_stmt_bind_param($own, 'ii', $id, $post_hospital_id);
+                mysqli_stmt_execute($own);
+                mysqli_stmt_bind_result($own, $own_cnt);
+                mysqli_stmt_fetch($own);
+                mysqli_stmt_close($own);
+            }
+            if ((int)$own_cnt !== 1) ht_redirect($post_hospital_id, '접근 권한이 없습니다.', 'danger');
+            $qs = [];
+            foreach ((array)($_POST['questions'] ?? []) as $raw_q) {
+                $q = trim(preg_replace('/\s+/u', ' ', (string)$raw_q));
+                if ($q === '') continue;
+                $q = mb_substr($q, 0, 200);
+                if (!in_array($q, $qs, true)) $qs[] = $q;
+                if (count($qs) >= 10) break;
+            }
+            $ok = true;
+            mysqli_begin_transaction($connect);
+            try {
+                $del = mysqli_prepare($connect, "DELETE FROM gangnamunni_treatment_questions WHERE hospital_treatment_id = ?");
+                mysqli_stmt_bind_param($del, 'i', $id);
+                if (!mysqli_stmt_execute($del)) throw new RuntimeException('delete failed');
+                mysqli_stmt_close($del);
+                $ins = mysqli_prepare($connect, "INSERT INTO gangnamunni_treatment_questions (hospital_treatment_id, question, sort_order) VALUES (?, ?, ?)");
+                foreach ($qs as $i => $q) {
+                    mysqli_stmt_bind_param($ins, 'isi', $id, $q, $i);
+                    if (!mysqli_stmt_execute($ins)) throw new RuntimeException('insert failed');
+                }
+                mysqli_stmt_close($ins);
+                mysqli_commit($connect);
+            } catch (Throwable $e) {
+                mysqli_rollback($connect);
+                error_log('[admin_hospital_treatments] save_questions failed: ' . $e->getMessage());
+                $ok = false;
+            }
+            ht_redirect($post_hospital_id, $ok ? (count($qs) ? '시술 전 확인 질문 ' . count($qs) . '개가 저장되었습니다.' : '시술 전 확인 질문이 모두 삭제되었습니다.') : '질문을 저장하지 못했습니다.', $ok ? 'success' : 'danger');
         }
 
         if ($action === 'set_min_age') {
@@ -645,6 +693,19 @@ if ($hospital_id > 0) {
     $assign_r = mysqli_stmt_get_result($assign_stmt);
     while ($row = mysqli_fetch_assoc($assign_r)) $assigned_treatments[] = $row;
     mysqli_stmt_close($assign_stmt);
+}
+
+// [05-19] 시술별 "시술 전 확인" 질문 (배정 ID => 질문 목록)
+$tq_ready = false;
+$tq_map = [];
+if ($hospital_id > 0 && !empty($assigned_treatments)) {
+    $tq_chk = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_questions'");
+    $tq_ready = $tq_chk && mysqli_num_rows($tq_chk) > 0;
+    if ($tq_ready) {
+        $tq_ids = implode(',', array_map(static function ($r) { return (int)$r['id']; }, $assigned_treatments));
+        $tq_r = mysqli_query($connect, "SELECT hospital_treatment_id, question FROM gangnamunni_treatment_questions WHERE hospital_treatment_id IN ({$tq_ids}) ORDER BY sort_order, id");
+        while ($tq_r && ($tq_row = $tq_r->fetch_assoc())) { $tq_map[(int)$tq_row['hospital_treatment_id']][] = (string)$tq_row['question']; }
+    }
 }
 
 $ht_prices = [];
@@ -1084,6 +1145,12 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
                             <?php if ($pending_img_cnt > 0): ?><span class="badge bg-warning text-dark ms-1"><?php echo $pending_img_cnt; ?> 검수</span><?php endif; ?>
                         </td>
                         <td class="text-center">
+                            <!-- [05-19] 시술 전 확인 질문 -->
+                            <?php $tq_cnt = count($tq_map[(int)$at['id']] ?? []); ?>
+                            <button type="button" class="btn btn-sm <?php echo $tq_cnt ? 'btn-info text-white' : 'btn-outline-info'; ?>" title="시술 전 확인 질문"
+                                onclick="openQuestionModal(<?php echo intval($at['id']); ?>, <?php echo htmlspecialchars(json_encode($at['treatment_name'] ?? '', JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>)">
+                                <i class="bi bi-clipboard2-check"></i><?php if ($tq_cnt): ?> <span class="badge bg-white text-info ms-1"><?php echo $tq_cnt; ?></span><?php endif; ?>
+                            </button>
                             <!-- 가격 수정 -->
                             <button class="btn btn-outline-primary btn-sm" title="가격 수정"
                                 onclick="openPriceModal(<?php echo intval($at['id']); ?>, '<?php echo htmlspecialchars(addslashes($at['treatment_name'] ?? ''), ENT_QUOTES); ?>')">
@@ -1279,6 +1346,77 @@ if (!$ht_panel) require_once __DIR__ . '/includes/admin_header.php';
         </div>
     </div>
 </div>
+
+<!-- [05-19] 시술 전 확인 질문 모달 -->
+<div class="modal fade" id="questionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" id="questionForm">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                <input type="hidden" name="action" value="save_questions">
+                <input type="hidden" name="hospital_id" value="<?php echo $hospital_id; ?>">
+                <input type="hidden" name="id" id="q_ht_id">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-clipboard2-check me-2"></i>시술 전 확인 질문 <small class="text-muted fw-normal ms-1" id="q_treatment_name"></small></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <?php if (!$tq_ready): ?>
+                    <div class="alert alert-warning mb-0 small">질문 테이블이 아직 없습니다. <code>sql/treatment_questions_20261023.sql</code> 을 먼저 실행해주세요.</div>
+                    <?php else: ?>
+                    <p class="text-muted small mb-3">고객이 이 시술을 예약하기 전에 보여줄 <b>예 / 아니오</b> 질문을 적어주세요. 질문은 모두 선택 사항이며, 고객은 답하지 않고 넘어갈 수도 있습니다. 답변은 예약 목록에서 확인할 수 있습니다.</p>
+                    <div id="q_list" class="d-flex flex-column gap-2"></div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-3" id="q_add_btn" onclick="addQuestionRow('')"><i class="bi bi-plus-lg me-1"></i>질문 추가</button>
+                    <span class="text-muted small ms-2" id="q_hint">최대 10개</span>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <?php if ($tq_ready): ?><button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>저장</button><?php endif; ?>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+window.HT_QUESTIONS = <?php echo json_encode((object)$tq_map, JSON_UNESCAPED_UNICODE); ?>;
+function addQuestionRow(text) {
+    var list = document.getElementById('q_list');
+    if (!list || list.children.length >= 10) return;
+    var row = document.createElement('div');
+    row.className = 'input-group';
+    var input = document.createElement('input');
+    input.type = 'text'; input.name = 'questions[]'; input.maxLength = 200;
+    input.className = 'form-control'; input.placeholder = '예) 임신 중이거나 수유 중이에요'; input.value = text || '';
+    var del = document.createElement('button');
+    del.type = 'button'; del.className = 'btn btn-outline-danger'; del.title = '삭제';
+    del.innerHTML = '<i class="bi bi-x-lg"></i>';
+    del.onclick = function() { row.remove(); questionRefresh(); };
+    row.appendChild(input); row.appendChild(del);
+    list.appendChild(row);
+    questionRefresh();
+    if (!text) input.focus();
+}
+function questionRefresh() {
+    var list = document.getElementById('q_list');
+    if (!list) return;
+    var add = document.getElementById('q_add_btn');
+    if (add) add.disabled = list.children.length >= 10;
+}
+function openQuestionModal(htId, name) {
+    document.getElementById('q_ht_id').value = htId;
+    document.getElementById('q_treatment_name').textContent = name ? '· ' + name : '';
+    var list = document.getElementById('q_list');
+    if (list) {
+        list.innerHTML = '';
+        ((window.HT_QUESTIONS && window.HT_QUESTIONS[htId]) || []).forEach(function(q) { addQuestionRow(q); });
+        if (!list.children.length) addQuestionRow('');
+        var first = list.querySelector('input');
+        if (first && !first.value) first.blur();
+    }
+    new bootstrap.Modal(document.getElementById('questionModal')).show();
+}
+</script>
 
 <form method="post" action="<?= htmlspecialchars($ht_form_action, ENT_QUOTES, 'UTF-8') ?>" id="ti_delete_form" class="d-none">
     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">

@@ -676,6 +676,20 @@ $result = mysqli_query($connect, $sql);
 $bookings = [];
 if ($result) while ($row = mysqli_fetch_assoc($result)) $bookings[] = $row;
 
+// [05-19] 시술 전 확인 답변 (답한 예약에만 버튼 표시)
+$pre_answers_by_booking = [];
+$_pa_ids = [];
+foreach ($bookings as $_b) { $_pa_ids[(int)$_b['id']] = true; }
+foreach ($bookings_by_hospital as $_hbs) { foreach ($_hbs as $_hb) { if (isset($_hb['id'])) $_pa_ids[(int)$_hb['id']] = true; } }
+$_pa_tbl = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_booking_answers'");
+if ($_pa_ids && $_pa_tbl && mysqli_num_rows($_pa_tbl) > 0) {
+    $_pa_list = implode(',', array_keys($_pa_ids));
+    $_pa_res = mysqli_query($connect, "SELECT booking_id, question, answer FROM gangnamunni_booking_answers WHERE booking_id IN ({$_pa_list}) ORDER BY id ASC");
+    if ($_pa_res) while ($_pa = mysqli_fetch_assoc($_pa_res)) {
+        $pre_answers_by_booking[(int)$_pa['booking_id']][] = ['q' => $_pa['question'], 'a' => (int)$_pa['answer']];
+    }
+}
+
 $doctors_by_hospital = [];
 $_doc_hids = [];
 foreach ($bookings as $_b) { $_hid = (int)($_b['hospital_id'] ?? 0); if ($_hid > 0) $_doc_hids[$_hid] = true; }
@@ -1075,6 +1089,13 @@ require_once __DIR__ . '/includes/admin_header.php';
                             <?php if ($b['memo']): ?>
                             <button class="btn btn-outline-secondary btn-sm" title="메모" data-bs-toggle="tooltip" data-bs-title="<?php echo htmlspecialchars($b['memo']); ?>"><i class="bi bi-chat-text"></i></button>
                             <?php endif; ?>
+                            <?php if (!empty($pre_answers_by_booking[(int)$b['id']])): ?>
+                            <button type="button" class="btn btn-outline-info btn-sm" title="시술 전 확인 답변"
+                                    onclick="showPreAnswers(this)"
+                                    data-answers="<?php echo htmlspecialchars(json_encode($pre_answers_by_booking[(int)$b['id']], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>">
+                                <i class="bi bi-clipboard2-check"></i>
+                            </button>
+                            <?php endif; ?>
                             <?php if (in_array($st, ['cancelled', 'no_show'], true) && trim($b['cancel_reason'] ?? '') !== ''): ?>
                             <button type="button" class="btn btn-outline-danger btn-sm" title="취소 사유 보기"
                                     onclick="showCancelReason(this)"
@@ -1183,6 +1204,20 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
+<!-- 시술 전 확인 답변 모달 -->
+<div class="modal fade" id="preAnswersModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-clipboard2-check text-info me-2"></i>시술 전 확인 답변</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body"><ul class="list-group list-group-flush" id="preAnswersList"></ul></div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button></div>
+        </div>
+    </div>
+</div>
+
 <!-- 취소 사유 보기 모달 -->
 <div class="modal fade" id="cancelReasonModal" tabindex="-1">
     <div class="modal-dialog">
@@ -1203,6 +1238,25 @@ require_once __DIR__ . '/includes/admin_header.php';
 
 <script>
 const DOCTORS_BY_HOSPITAL = <?php echo json_encode($doctors_by_hospital, JSON_UNESCAPED_UNICODE); ?>;
+function showPreAnswers(btn) {
+    var list = document.getElementById('preAnswersList');
+    list.innerHTML = '';
+    var items = [];
+    try { items = JSON.parse(btn.dataset.answers || '[]'); } catch (e) {}
+    items.forEach(function(it) {
+        var li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-start gap-3 px-0';
+        var q = document.createElement('span');
+        q.style.wordBreak = 'break-word';
+        q.textContent = it.q;
+        var a = document.createElement('span');
+        a.className = 'badge flex-shrink-0 ' + (it.a === 1 ? 'bg-danger' : 'bg-secondary');
+        a.textContent = it.a === 1 ? '예' : '아니오';
+        li.appendChild(q); li.appendChild(a);
+        list.appendChild(li);
+    });
+    new bootstrap.Modal(document.getElementById('preAnswersModal')).show();
+}
 function showCancelReason(btn) {
     document.getElementById('cancelReasonText').textContent = btn.dataset.reason || '(사유 없음)';
     new bootstrap.Modal(document.getElementById('cancelReasonModal')).show();

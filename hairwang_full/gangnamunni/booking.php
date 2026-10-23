@@ -721,6 +721,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_close($insert_stmt);
             $booking_submitted = true;
 
+            // [05-19] 시술 전 확인 답변 저장: 이 병원에 실제로 등록된 질문과 일치하는 답만, 답한 문항만 저장한다(실패해도 예약은 유지).
+            try {
+                $pre_raw = json_decode((string)($_POST['pre_answers'] ?? '[]'), true);
+                $ba_tbl = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_booking_answers'");
+                if (is_array($pre_raw) && $pre_raw && $ba_tbl && mysqli_num_rows($ba_tbl) > 0) {
+                    $valid_q = [];
+                    $vq = mysqli_prepare($connect, "SELECT q.question FROM gangnamunni_treatment_questions q JOIN gangnamunni_hospital_treatments ht ON ht.id = q.hospital_treatment_id WHERE ht.hospital_id = ?");
+                    if ($vq) {
+                        mysqli_stmt_bind_param($vq, 'i', $hospital_id);
+                        mysqli_stmt_execute($vq);
+                        $vr = mysqli_stmt_get_result($vq);
+                        while ($vr && ($vrow = $vr->fetch_assoc())) $valid_q[(string)$vrow['question']] = true;
+                        mysqli_stmt_close($vq);
+                    }
+                    $ba = mysqli_prepare($connect, "INSERT INTO gangnamunni_booking_answers (booking_id, question, answer) VALUES (?, ?, ?)");
+                    if ($ba) {
+                        $seen = [];
+                        foreach (array_slice($pre_raw, 0, 30) as $pa) {
+                            $pq = (string)($pa['q'] ?? '');
+                            $pv = $pa['a'] ?? null;
+                            if (!isset($valid_q[$pq]) || isset($seen[$pq]) || ($pv !== 0 && $pv !== 1)) continue;
+                            $seen[$pq] = true;
+                            $pv_int = (int)$pv;
+                            mysqli_stmt_bind_param($ba, 'isi', $booking_id, $pq, $pv_int);
+                            mysqli_stmt_execute($ba);
+                        }
+                        mysqli_stmt_close($ba);
+                    }
+                }
+            } catch (Throwable $e) {
+                error_log('[booking] pre_answers save failed: ' . $e->getMessage());
+            }
+
             // 관리자 FCM + 인앱 알림
             notifyAdmins($connect, 'booking',
                 '새 예약 접수',
@@ -883,6 +916,22 @@ if ($bt_stmt = mysqli_prepare($connect, $bt_sql)) {
         ];
     }
     mysqli_stmt_close($bt_stmt);
+}
+
+// [05-19] 시술 전 확인 질문(시술 이름 => 질문 목록). 병원이 시술별로 직접 적은 예/아니오 질문이며 모두 선택 사항이다.
+$pre_questions = [];
+$pq_tbl = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_questions'");
+if ($pq_tbl && mysqli_num_rows($pq_tbl) > 0 && !$is_changing) {
+    if ($pq_stmt = mysqli_prepare($connect, "SELECT tm.name, q.question FROM gangnamunni_treatment_questions q
+            JOIN gangnamunni_hospital_treatments ht ON ht.id = q.hospital_treatment_id
+            JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
+            WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1 ORDER BY q.sort_order, q.id")) {
+        mysqli_stmt_bind_param($pq_stmt, 'i', $hospital_id);
+        mysqli_stmt_execute($pq_stmt);
+        $pq_res = mysqli_stmt_get_result($pq_stmt);
+        while ($pq_res && ($pq_row = $pq_res->fetch_assoc())) { $pre_questions[(string)$pq_row['name']][] = (string)$pq_row['question']; }
+        mysqli_stmt_close($pq_stmt);
+    }
 }
 
 // 각 시술의 선택 가능한 세부 옵션. 2개 이상일 때 예약 화면에서 반드시 하나를 고른다.
@@ -1791,6 +1840,33 @@ $page_css = '
     .success-alert-title { color: #BE1935; font-weight: 700; margin-bottom: 9px; }
     .success-alert-copy { font-size: 14px; line-height: 1.75; }
     .success-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 28px; }
+    /* [05-19] 시술 전 확인 (전체 화면, 반응형, 폰트 = 디자인 +3px) */
+    #preCheckPage { position: fixed; inset: 0; z-index: 12500; display: none; flex-direction: column; background: #fff; color: #1A1718; letter-spacing: -.01em; }
+    #preCheckPage.open { display: flex; }
+    #preCheckPage .pc-wrap { width: 100%; max-width: 640px; margin: 0 auto; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+    #preCheckPage .pc-head { height: 52px; flex-shrink: 0; padding: 0 8px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; }
+    #preCheckPage .pc-back { width: 44px; height: 44px; border: 0; background: none; display: flex; align-items: center; justify-content: center; color: #1A1718; cursor: pointer; }
+    #preCheckPage .pc-head-title { text-align: center; font-size: 20px; font-weight: 500; white-space: nowrap; }
+    #preCheckPage .pc-scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 20px 20px; }
+    #preCheckPage .pc-title { font-size: 22px; font-weight: 700; line-height: 1.4; letter-spacing: -.04em; }
+    #preCheckPage .pc-desc { margin-top: 6px; font-size: 16px; line-height: 1.6; color: #4A4446; }
+    #preCheckPage .pc-list { margin-top: 12px; }
+    #preCheckPage .pc-item { padding: 14px 0; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #ECE9EA; }
+    #preCheckPage .pc-q { flex-grow: 1; min-width: 0; font-size: 17px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
+    #preCheckPage .pc-btns { display: flex; gap: 6px; flex-shrink: 0; }
+    #preCheckPage .pc-btn { width: 60px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1px solid #DCD6D8; background: #fff; color: #4A4446; font-size: 16px; font-family: inherit; cursor: pointer; }
+    #preCheckPage .pc-btn.on { border-color: #AC1830; background: #FBEFF1; color: #AC1830; }
+    #preCheckPage .pc-truth { margin-top: 16px; display: flex; align-items: center; gap: 8px; font-size: 16px; cursor: pointer; border: 0; background: none; padding: 0; font-family: inherit; color: inherit; text-align: left; }
+    #preCheckPage .pc-truth i { width: 20px; height: 20px; flex-shrink: 0; background: url(assets/icons/icon-radio-off.png?v=1) center/contain no-repeat; }
+    #preCheckPage .pc-truth.on i { background-image: url(assets/icons/icon-radio-on.png?v=1); }
+    #preCheckPage .pc-foot { flex-shrink: 0; padding: 16px 20px max(34px, env(safe-area-inset-bottom)); background: #fff; }
+    #preCheckPage .pc-next { width: 100%; height: 52px; border: 1px solid #AC1830; border-radius: 4px; background: #AC1830; color: #fff; font-size: 19px; font-weight: 500; font-family: inherit; cursor: pointer; }
+    @media (max-width: 360px) {
+        #preCheckPage .pc-item { flex-wrap: wrap; }
+        #preCheckPage .pc-q { flex-basis: 100%; }
+        #preCheckPage .pc-btns { width: 100%; }
+        #preCheckPage .pc-btn { flex: 1 1 0; width: auto; }
+    }
     /* [05-18] 같은 날 함께 예약하기 어려운 시술 시트 */
     #conflictOverlay .booking-motion-panel { border-radius: 16px 16px 0 0; }
     #conflictOverlay .booking-motion-handle::before { top: 10px; width: 40px; height: 4px; border-radius: 2px; background: #AC1830; }
@@ -2577,6 +2653,7 @@ $page_js = '
         } finally {
             precheckBusy = false;
         }
+        if (typeof openPreCheckIfNeeded === "function" && openPreCheckIfNeeded()) return;
         openBookingConfirm();
     }
     function openDuplicateSheet(existing) {
@@ -2669,6 +2746,78 @@ $page_js = '
     }
     // [05-18] 함께 예약하기 어려운 시술 안내: "하나 빼기" = 시술 선택 시트를 열어 직접 고르게 하고,
     //   "날짜 나누기" = 겹치는 시술 중 첫 번째만 이번 예약에 남기고 나머지는 다른 날짜에 따로 예약하도록 안내한다.
+    // [05-19] 시술 전 확인: 선택한 시술에 병원이 적어 둔 질문이 있으면 확인 화면 전에 한 번 보여준다.
+    //   모두 선택 사항이다. 답하지 않고 "다음"을 눌러도 되고, 답한 문항만 서버로 보낸다.
+    var PRE_QUESTIONS = ' . json_encode((object)$pre_questions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+    var preAnswers = {};
+    var preAskedKey = null;
+    function preQuestionList() {
+        var out = [];
+        selectedTreatments.forEach(function(t) {
+            (PRE_QUESTIONS[t.name] || []).forEach(function(q) { if (out.indexOf(q) < 0) out.push(q); });
+        });
+        return out;
+    }
+    function openPreCheckIfNeeded() {
+        if (CHANGE_MODE) return false;
+        var qs = preQuestionList();
+        if (!qs.length) { document.getElementById("preAnswers").value = "[]"; return false; }
+        var key = JSON.stringify(qs);
+        if (preAskedKey === key) return false;
+        var list = document.getElementById("preCheckList");
+        list.innerHTML = "";
+        qs.forEach(function(q) {
+            var row = document.createElement("div");
+            row.className = "pc-item";
+            var text = document.createElement("span");
+            text.className = "pc-q";
+            text.textContent = q;
+            var btns = document.createElement("div");
+            btns.className = "pc-btns";
+            var yes = document.createElement("button");
+            var no = document.createElement("button");
+            yes.type = no.type = "button";
+            yes.className = no.className = "pc-btn";
+            yes.textContent = "예";
+            no.textContent = "아니오";
+            var paint = function() {
+                yes.classList.toggle("on", preAnswers[q] === 1);
+                no.classList.toggle("on", preAnswers[q] === 0);
+            };
+            // 같은 버튼을 다시 누르면 선택이 해제된다(답하지 않음).
+            yes.onclick = function() { if (preAnswers[q] === 1) delete preAnswers[q]; else preAnswers[q] = 1; paint(); };
+            no.onclick = function() { if (preAnswers[q] === 0) delete preAnswers[q]; else preAnswers[q] = 0; paint(); };
+            paint();
+            btns.appendChild(yes);
+            btns.appendChild(no);
+            row.appendChild(text);
+            row.appendChild(btns);
+            list.appendChild(row);
+        });
+        var page = document.getElementById("preCheckPage");
+        page.classList.add("open");
+        page.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        return true;
+    }
+    function closePreCheckPage() {
+        var page = document.getElementById("preCheckPage");
+        page.classList.remove("open");
+        page.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    }
+    function preCheckBack() { closePreCheckPage(); }
+    function preCheckNext() {
+        var qs = preQuestionList();
+        var out = [];
+        qs.forEach(function(q) { if (preAnswers[q] === 0 || preAnswers[q] === 1) out.push({ q: q, a: preAnswers[q] }); });
+        document.getElementById("preAnswers").value = JSON.stringify(out);
+        preAskedKey = JSON.stringify(qs);
+        closePreCheckPage();
+        openBookingConfirm();
+    }
+    window.preCheckBack = preCheckBack;
+    window.preCheckNext = preCheckNext;
     var conflictNames = [];
     var conflictPairs = [];
     function conflictsWith(a, b) {
@@ -3032,6 +3181,7 @@ include __DIR__ . '/includes/header.php';
         <input type="hidden" name="response_mode" value="ajax">
         <input type="hidden" name="confirm_duplicate" id="confirmDuplicate" value="">
         <input type="hidden" name="confirm_revisit" id="confirmRevisit" value="">
+        <input type="hidden" name="pre_answers" id="preAnswers" value="[]">
         <!-- 예약하기 헤더 + 옵션 변경(시술 선택 시트) -->
         <div class="form-group head-group">
             <div class="section-head-row">
@@ -3084,6 +3234,24 @@ include __DIR__ . '/includes/header.php';
             <button type="submit" class="btn-submit"><?php echo $is_changing ? '예약하기' : ($is_rebooking ? '예약할게요!' : term('booking', '예약') . ' 신청하기'); ?></button>
         </div>
     </form>
+
+    <!-- [05-19] 시술 전 확인 (선택 사항: 답하지 않고 "다음"으로 넘어갈 수 있다) -->
+    <div id="preCheckPage" role="dialog" aria-modal="true" aria-labelledby="preCheckTitle" aria-hidden="true">
+        <div class="pc-wrap">
+            <div class="pc-head">
+                <button type="button" class="pc-back" aria-label="뒤로 가기" onclick="preCheckBack()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+                <div class="pc-head-title">시술 전 확인</div>
+                <span></span>
+            </div>
+            <div class="pc-scroll">
+                <h2 class="pc-title" id="preCheckTitle">시술 전에 몇 가지만 확인할게요</h2>
+                <p class="pc-desc">답변은 병원 의료진에게만 전달돼요.<br>해당하는 항목이 있으면 의료진 상담 후 예약할 수 있어요.<br>답하기 어려우면 그대로 다음으로 넘어가도 괜찮아요.</p>
+                <div class="pc-list" id="preCheckList"></div>
+                <button type="button" class="pc-truth" id="preCheckTruth" onclick="this.classList.toggle('on')"><i aria-hidden="true"></i><span>위 내용을 사실대로 답했어요</span></button>
+            </div>
+            <div class="pc-foot"><button type="button" class="pc-next" onclick="preCheckNext()">다음</button></div>
+        </div>
+    </div>
 
     <!-- 1단계: 예약 내용 최종 확인 -->
     <div class="booking-confirm-overlay" id="bookingConfirmOverlay" aria-hidden="true">
