@@ -28,6 +28,8 @@ export interface Doctor {
   description: string | null;
   qualification: string | null;
   photoUrl: string | null;
+  /** gangnamunni_doctor_treatments names (detail.php shows these as tags; empty => caller falls back). */
+  treatments: string[];
 }
 
 interface Flags {
@@ -165,14 +167,33 @@ export class HospitalContentService {
       )) as any;
       list = c;
     }
+    const ids = list.map((r) => Number(r.id));
+    const byDoctor = new Map<number, string[]>();
+    if (ids.length && rows.length) {
+      // Only real (gangnamunni_doctors) ids have doctor_treatments rows.
+      const [dt] = (await this.db.query(
+        `SELECT dt.doctor_id, tm.name FROM gangnamunni_doctor_treatments dt
+         JOIN gangnamunni_treatment_master tm ON tm.id = dt.treatment_id
+         WHERE dt.doctor_id IN (${ids.map(() => '?').join(',')}) AND tm.is_active = 1 ORDER BY dt.doctor_id, tm.name`,
+        ids,
+      )) as any;
+      for (const r of dt as any[]) {
+        const k = Number(r.doctor_id);
+        if (!byDoctor.has(k)) byDoctor.set(k, []);
+        byDoctor.get(k)!.push(String(r.name));
+      }
+    }
+    // Empty strings / 0 come from the import; treat them as "not provided" like the PHP (!empty()).
+    const txt = (v: unknown) => (v === null || v === undefined || String(v).trim() === '' || String(v) === '0' ? null : String(v));
     return list.map((r) => ({
       id: Number(r.id),
       name: r.name,
-      specialty: r.specialty ?? null,
-      experience: r.experience ?? null,
-      description: r.description ?? null,
-      qualification: r.qualification ?? null,
-      photoUrl: r.photo_url ?? null,
+      specialty: txt(r.specialty),
+      experience: txt(r.experience),
+      description: txt(r.description),
+      qualification: txt(r.qualification),
+      photoUrl: txt(r.photo_url),
+      treatments: byDoctor.get(Number(r.id)) ?? [],
     }));
   }
 

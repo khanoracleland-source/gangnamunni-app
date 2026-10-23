@@ -26,6 +26,6 @@
 .hours dd { margin: 0; }
 .todayRow { font-weight: 600; }
 .empty { text-align: center; padding: 80px 20px; color: #999; }
-.cta { position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); display: flex; gap: 8px; padding: 10px 16px; background: var(--bg); border-top: 1px solid var(--line); z-index: 40; }
+.cta { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 640px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); display: flex; gap: 8px; padding: 10px 16px; background: var(--bg); border-top: 1px solid var(--line); z-index: 40; }
 .ctaPrimary { flex: 1; text-align: center; padding: 12px; border: 1px solid var(--accent); color: var(--accent); font-weight: 700; font-size: 15px; }
 .ctaSecondary { flex: 0 0 auto; padding: 12px 18px; border: 1px solid var(--line); font-size: 15px; }

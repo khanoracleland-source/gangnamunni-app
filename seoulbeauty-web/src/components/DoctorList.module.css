@@ -7,5 +7,7 @@
 .spec { font-size: 13px; color: var(--accent); font-weight: 500; }
 .sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
 .desc { font-size: 14px; white-space: pre-line; margin: 6px 0 0; }
+.tags { display: flex; gap: 5px; flex-wrap: nowrap; overflow: hidden; margin-top: 8px; }
+.tagChip { font-size: 11px; background: #f2f2f2; border-radius: 4px; padding: 3px 8px; white-space: nowrap; flex: 0 0 auto; }
 .muted { color: #999; font-size: 14px; padding: 12px 0; }
 .sk { height: 80px; }

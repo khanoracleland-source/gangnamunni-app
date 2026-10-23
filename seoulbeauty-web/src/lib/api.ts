@@ -58,6 +58,7 @@ export interface Doctor {
   description: string | null;
   qualification: string | null;
   photoUrl: string | null;
+  treatments: string[];
 }
 
 export interface Review {

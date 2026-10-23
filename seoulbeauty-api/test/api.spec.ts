@@ -30,7 +30,8 @@ describe('HTTP API (mock DB)', () => {
         { hospital_treatment_id: 2, is_promoted: 0, treatment_id: 30, name: '필러', description: 'd', id: 13, option_name: '', body_part: '', dosage_value: 0, dosage_unit: '', regular_price: 0, price: 200000 },
       ]];
       if (sql.includes('FROM gangnamunni_doctors')) return [[]];
-      if (sql.includes('FROM crawled_doctors')) return [[{ id: 7, name: '김의사', specialty: '피부과', description: null }]];
+      if (sql.includes('FROM gangnamunni_doctor_treatments')) return [[]];
+      if (sql.includes('FROM crawled_doctors')) return [[{ id: 7, name: '김의사', specialty: '피부과', description: '', experience: 0 }]];
       if (sql.includes('FROM hospital_images') && sql.includes("image_type <> 'logo'")) return [[{ image_url: 'uploads/h3/in1.jpg' }, { image_url: 'uploads/h3/main.png' }, { image_url: '/uploads/h3/logo.png' }]];
       if (sql.includes('FROM hospital_images') && sql.includes("image_type = 'logo'")) return [[{ image_url: 'uploads/h3/logo.png' }]];
       if (sql.includes('FROM hospital_images')) return [[{ hospital_id: 3, image_url: 'uploads/h3/logo.png', image_type: 'logo' }, { hospital_id: 3, image_url: 'uploads/h3/main.png', image_type: 'main' }]];
@@ -101,7 +102,7 @@ describe('HTTP API (mock DB)', () => {
     expect(t.body.items[0].options.map((o: any) => o.displayName)).toEqual(['주름 보톡스 · 50U', '주름 보톡스 · 100U']);
     expect(t.body.items[0].options[0].discountRate).toBe(20);
     const d = await request(app.getHttpServer()).get('/v1/hospitals/3/doctors').expect(200);
-    expect(d.body.items).toEqual([{ id: 7, name: '김의사', specialty: '피부과', experience: null, description: null, qualification: null, photoUrl: null }]);
+    expect(d.body.items).toEqual([{ id: 7, name: '김의사', specialty: '피부과', experience: null, description: null, qualification: null, photoUrl: null, treatments: [] }]);
     await request(app.getHttpServer()).get('/v1/hospitals/99/treatments').expect(404);
   });
 
