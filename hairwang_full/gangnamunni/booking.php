@@ -35,6 +35,7 @@ $is_admin = isset($_SESSION['ad_admin_logged_in']) && $_SESSION['ad_admin_logged
 //   booking_phone_auth=1 이면 비로그인 전화번호 예약도 허용 (다른 채널 대비)
 if (!function_exists('getSettingValue') && file_exists(__DIR__ . '/includes/settings_helper.php')) { require_once __DIR__ . '/includes/settings_helper.php'; }
 require_once __DIR__ . '/includes/booking_noshow_policy.php';
+require_once __DIR__ . '/includes/booking_treatment_conflicts.php';
 if (function_exists('getSettingValue')) {
     $_require_login = getSettingValue($connect, 'booking_require_login', '1') === '1';
     $_phone_auth    = getSettingValue($connect, 'booking_phone_auth', '0') === '1';
@@ -666,6 +667,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // [05-18] 관리자가 "같은 날 함께 예약하기 어렵다"고 지정한 시술 조합이면 막는다(하나 빼기 / 날짜 나누기 안내).
+        if ($booking_error === '' && count($treatments_arr) > 1) {
+            $conflict_names = booking_treatment_conflict_names($connect, array_values(array_unique(array_filter(array_map(static function ($t) {
+                return trim((string)($t['name'] ?? ''));
+            }, $treatments_arr)))));
+            if (count($conflict_names) > 1) {
+                $booking_error = '같은 날 함께 예약하기 어려운 시술이 있어요.';
+                $booking_error_code = 'treatment_conflict';
+                $booking_error_meta = ['conflict' => ['names' => $conflict_names]];
+            }
+        }
+
         // 사전 확인 요청(확인 화면을 열기 전): 제한에 걸리지 않으면 저장 없이 통과만 알린다.
         if ($booking_error === '' && $is_ajax_booking && ($_POST['precheck'] ?? '') === '1') {
             header('Content-Type: application/json; charset=UTF-8');
@@ -957,6 +970,13 @@ if ($preselected_booking_treatment !== null) {
     }
 }
 $booking_success_done_url = $booking_back_url;
+
+// [05-17] 노쇼·잦은 취소로 예약이 제한된 회원은 예약 화면에 들어오자마자 안내 시트를 본다(서버에서도 제출 시 다시 막는다).
+$noshow_page_block = null;
+$noshow_page_mb = (string)($_SESSION['ss_mb_id'] ?? '');
+if (!$is_changing && $noshow_page_mb !== '' && function_exists('booking_noshow_status')) {
+    try { $noshow_page_block = booking_noshow_status($connect, $noshow_page_mb); } catch (Throwable $e) { $noshow_page_block = null; }
+}
 
 // 현재 병원에서 예약 가능한 패키지. 구성 시술이 모두 활성인 패키지만 노출한다.
 $booking_packages = [];
@@ -1770,7 +1790,37 @@ $page_css = '
     .success-alert-title { color: #BE1935; font-weight: 700; margin-bottom: 9px; }
     .success-alert-copy { font-size: 14px; line-height: 1.75; }
     .success-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 28px; }
-    #noshowOverlay .success-actions { grid-template-columns: 1fr; }
+    /* [05-18] 같은 날 함께 예약하기 어려운 시술 시트 */
+    #conflictOverlay .booking-motion-panel { border-radius: 16px 16px 0 0; }
+    #conflictOverlay .booking-motion-handle::before { top: 10px; width: 40px; height: 4px; border-radius: 2px; background: #AC1830; }
+    #conflictOverlay .booking-motion-handle { height: 24px; }
+    #conflictOverlay .booking-motion-body { padding: 18px 20px 8px; }
+    #conflictOverlay .ns-icon { display: block; width: 48px; height: 48px; margin: 0 auto 14px; object-fit: contain; }
+    #conflictOverlay .success-sheet-title { font-size: 23px; font-weight: 700; line-height: 1.45; }
+    #conflictOverlay .success-sheet-desc { margin: 14px 0 0; font-size: 18px; line-height: 1.6; color: #4A4446; }
+    #conflictList { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; }
+    #conflictList .cf-row { min-height: 46px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1px solid #DCD6D8; font-size: 17px; text-align: left; }
+    #conflictList .cf-row img { width: 18px; height: 18px; flex-shrink: 0; object-fit: contain; }
+    #conflictOverlay .booking-motion-footer { padding: 14px 20px max(34px, env(safe-area-inset-bottom)); }
+    #conflictOverlay .success-actions { display: flex; gap: 10px; margin-top: 0; }
+    #conflictOverlay .success-action { flex: 1 1 0; height: 52px; border-radius: 4px; border-color: #AC1830; background: #fff; color: #AC1830; font-size: 19px; font-weight: 500; }
+    #conflictOverlay .success-action.primary { background: #AC1830; color: #fff; }
+    .split-hint { margin-top: 8px; padding: 10px 12px; background: #FBEFF1; color: #AC1830; font-size: 16px; line-height: 1.5; }
+    #noshowOverlay .success-actions { display: flex; justify-content: center; }
+    /* [05-17] 예약 불가 시트: 디자인(폰트 +3px, #AC1830) */
+    #noshowOverlay .booking-motion-panel { border-radius: 16px 16px 0 0; }
+    #noshowOverlay .booking-motion-handle::before { top: 10px; width: 40px; height: 4px; border-radius: 2px; background: #AC1830; }
+    #noshowOverlay .booking-motion-handle { height: 24px; }
+    #noshowOverlay .booking-motion-body { padding: 18px 20px 8px; }
+    #noshowOverlay .ns-icon { display: block; width: 48px; height: 48px; margin: 0 auto 14px; object-fit: contain; }
+    #noshowOverlay .success-sheet-title { font-size: 23px; font-weight: 700; line-height: 1.45; }
+    #noshowOverlay .success-sheet-desc { margin: 14px 0 0; font-size: 18px; line-height: 1.6; color: #4A4446; }
+    #noshowList { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; }
+    #noshowList .ns-row { min-height: 48px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1px solid #DCD6D8; font-size: 18px; color: #1A1718; }
+    #noshowList .ns-row span:first-child { flex-grow: 1; min-width: 0; letter-spacing: -.04em; }
+    #noshowList .ns-row .ns-tag { flex-shrink: 0; color: #AC1830; font-weight: 500; }
+    #noshowOverlay .booking-motion-footer { padding: 14px 20px max(34px, env(safe-area-inset-bottom)); }
+    #noshowOverlay .success-action { flex: none; width: 180px; height: 52px; border-radius: 4px; border-color: #AC1830; background: #AC1830; color: #fff; font-size: 19px; font-weight: 500; }
     .success-action {
         height: 52px; border: 1px solid #BE1935; background: #fff; color: #BE1935;
         display: flex; align-items: center; justify-content: center; text-decoration: none;
@@ -2456,6 +2506,13 @@ $page_js = '
                 openNoshowSheet(data.noshow);
                 return;
             }
+            if (data && data.code === "treatment_conflict" && data.conflict) {
+                closeBookingConfirm();
+                button.disabled = false;
+                button.textContent = "확인했어요";
+                openConflictSheet(data.conflict);
+                return;
+            }
             if (data && (data.code === "revisit_blocked" || data.code === "revisit_warning") && data.revisit) {
                 closeBookingConfirm();
                 button.disabled = false;
@@ -2506,6 +2563,7 @@ $page_js = '
             });
             var data = await response.json();
             if (data && data.code === "noshow_blocked" && data.noshow) { openNoshowSheet(data.noshow); return; }
+            if (data && data.code === "treatment_conflict" && data.conflict) { openConflictSheet(data.conflict); return; }
             if (data && data.code === "duplicate_booking" && data.existing) { openDuplicateSheet(data.existing); return; }
             if (data && data.code === "other_hospital_duplicate" && data.existing) { openOtherHospitalSheet(data.existing); return; }
             if (data && data.code === "revisit_blocked" && data.revisit) { openRevisitSheet(data.revisit, true); return; }
@@ -2582,23 +2640,80 @@ $page_js = '
         desc.appendChild(document.createTextNode((info.available_from || "") + "부터 다시 예약할 수 있어요."));
         list.innerHTML = "";
         (info.items || []).forEach(function (it) {
-            var card = document.createElement("div");
-            card.className = "dup-booking-card";
-            var badges = document.createElement("div");
-            badges.className = "dup-booking-badges";
-            var badge = document.createElement("span");
-            badge.className = "dup-badge on";
-            badge.textContent = it.kind === "cancel" ? "취소" : "미방문";
-            badges.appendChild(badge);
-            var name = document.createElement("div");
-            name.className = "dup-booking-name";
+            var row = document.createElement("div");
+            row.className = "ns-row";
+            var name = document.createElement("span");
             name.textContent = (it.when || "") + (it.hospital ? " · " + it.hospital : "");
-            card.appendChild(badges);
-            card.appendChild(name);
-            list.appendChild(card);
+            var tag = document.createElement("span");
+            tag.className = "ns-tag";
+            tag.textContent = it.kind === "cancel" ? "취소" : "미방문";
+            row.appendChild(name);
+            row.appendChild(tag);
+            list.appendChild(row);
         });
         if (window.bookingNoshowMotion) window.bookingNoshowMotion.open();
     }
+    // [05-17] 예약 화면에 들어오자마자 제한 안내를 띄우고, 확인하면 이전 화면으로 돌아간다.
+    var NOSHOW_PAGE_BLOCK = ' . json_encode($noshow_page_block, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+    var NOSHOW_BACK_URL = ' . json_encode($booking_back_url, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+    function noshowConfirm() {
+        var go = function() { if (NOSHOW_PAGE_BLOCK) location.href = NOSHOW_BACK_URL; };
+        if (window.bookingNoshowMotion) window.bookingNoshowMotion.close().then(go); else go();
+    }
+    window.noshowConfirm = noshowConfirm;
+    if (NOSHOW_PAGE_BLOCK) {
+        var showNoshowOnLoad = function() { openNoshowSheet(NOSHOW_PAGE_BLOCK); };
+        if (document.readyState === "complete") setTimeout(showNoshowOnLoad, 0);
+        else window.addEventListener("load", function() { setTimeout(showNoshowOnLoad, 0); });
+    }
+    // [05-18] 함께 예약하기 어려운 시술 안내: "하나 빼기" = 시술 선택 시트를 열어 직접 고르게 하고,
+    //   "날짜 나누기" = 겹치는 시술 중 첫 번째만 이번 예약에 남기고 나머지는 다른 날짜에 따로 예약하도록 안내한다.
+    var conflictNames = [];
+    function openConflictSheet(info) {
+        conflictNames = (info && info.names) ? info.names.slice() : [];
+        var list = document.getElementById("conflictList");
+        list.innerHTML = "";
+        conflictNames.forEach(function(n) {
+            var row = document.createElement("div");
+            row.className = "cf-row";
+            var img = document.createElement("img");
+            img.src = "assets/icons/icon-booking-blocked.png?v=1";
+            img.alt = "";
+            var t = document.createElement("span");
+            t.style.flexGrow = "1";
+            t.textContent = n;
+            row.appendChild(img);
+            row.appendChild(t);
+            list.appendChild(row);
+        });
+        if (window.bookingConflictMotion) window.bookingConflictMotion.open();
+    }
+    function closeConflictSheet() {
+        return window.bookingConflictMotion ? window.bookingConflictMotion.close() : Promise.resolve();
+    }
+    function conflictPickOne() {
+        closeConflictSheet().then(function() { openTreatmentSheet(); });
+    }
+    function conflictSplitDates() {
+        var names = conflictNames.slice();
+        closeConflictSheet().then(function() {
+            var keep = names[0];
+            var removed = names.slice(1);
+            removed.forEach(function(n) { removeTreatment(n); });
+            var hint = document.getElementById("splitHint");
+            if (!hint) {
+                hint = document.createElement("div");
+                hint.id = "splitHint";
+                hint.className = "split-hint";
+                var disp = document.getElementById("selectedTreatmentDisplay");
+                disp.parentNode.insertBefore(hint, disp.nextSibling);
+            }
+            hint.textContent = "\"" + removed.join("\", \"") + "\" 시술은 다른 날짜로 따로 예약해주세요. 이번 예약은 \"" + keep + "\" 으로 진행돼요.";
+            if (window.updateSubmitState) window.updateSubmitState();
+        });
+    }
+    window.conflictPickOne = conflictPickOne;
+    window.conflictSplitDates = conflictSplitDates;
     function openAgeRestrictedSheet(minAge, unknownAge) {
         var title = document.getElementById("ageRestrictedTitle");
         var desc = document.getElementById("ageRestrictedDesc");
@@ -3089,18 +3204,37 @@ include __DIR__ . '/includes/header.php';
         </section>
     </div>
 
+    <!-- [05-18] 같은 날 함께 예약하기 어려운 시술 안내 시트 -->
+    <div class="booking-success-overlay booking-motion-overlay" id="conflictOverlay" tabindex="-1" aria-hidden="true"
+         data-booking-motion-sheet data-booking-motion-name="bookingConflictMotion">
+        <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="conflictTitle">
+            <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
+            <img class="ns-icon" src="assets/icons/icon-booking-blocked.png?v=1" alt="">
+            <h2 class="success-sheet-title" id="conflictTitle">같은 날 함께 예약하기<br>어려운 시술이 있어요</h2>
+            <p class="success-sheet-desc">병원 기준에 따라 한 가지만 예약하거나<br>날짜를 나눠서 예약해주세요.</p>
+            <div id="conflictList"></div>
+            </div>
+            <div class="success-actions booking-motion-footer">
+                <button type="button" class="success-action" onclick="conflictPickOne()">하나 빼기</button>
+                <button type="button" class="success-action primary" onclick="conflictSplitDates()">날짜 나누기</button>
+            </div>
+        </section>
+    </div>
+
     <!-- [05-17] 노쇼 누적으로 예약 불가 안내 시트 -->
     <div class="booking-success-overlay booking-motion-overlay" id="noshowOverlay" tabindex="-1" aria-hidden="true"
          data-booking-motion-sheet data-booking-motion-name="bookingNoshowMotion">
         <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="noshowTitle">
             <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
             <div class="booking-motion-body">
+            <img class="ns-icon" src="assets/icons/icon-booking-blocked.png?v=1" alt="">
             <h2 class="success-sheet-title" id="noshowTitle">지금은 예약할 수 없어요</h2>
             <p class="success-sheet-desc" id="noshowDesc"></p>
             <div id="noshowList"></div>
             </div>
             <div class="success-actions booking-motion-footer">
-                <button type="button" class="success-action primary" onclick="window.bookingNoshowMotion && window.bookingNoshowMotion.close()">확인했어요</button>
+                <button type="button" class="success-action primary" onclick="noshowConfirm()">확인했어요</button>
             </div>
         </section>
     </div>

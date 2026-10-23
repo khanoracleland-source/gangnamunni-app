@@ -111,6 +111,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
+        // [05-18] 같은 날 함께 예약하기 어려운 시술 조합 추가/삭제 (전체 병원 공통)
+        if ($action === 'conflict_add' || $action === 'conflict_delete') {
+            $tbl_chk = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_conflicts'");
+            if (!$tbl_chk || mysqli_num_rows($tbl_chk) === 0) {
+                header('Location: admin_treatments.php?tab=conflicts&msg=' . urlencode('조합 테이블이 아직 없습니다. sql/treatment_conflicts_20261023.sql 을 먼저 실행해주세요.') . '&msg_type=danger');
+                exit;
+            }
+            if ($action === 'conflict_delete') {
+                $cid = intval($_POST['conflict_id'] ?? 0);
+                if ($cid > 0) {
+                    $stmt = mysqli_prepare($connect, "DELETE FROM gangnamunni_treatment_conflicts WHERE id = ?");
+                    if ($stmt) { mysqli_stmt_bind_param($stmt, 'i', $cid); mysqli_stmt_execute($stmt); mysqli_stmt_close($stmt); }
+                }
+                header('Location: admin_treatments.php?tab=conflicts&msg=' . urlencode('조합이 삭제되었습니다.'));
+                exit;
+            }
+            $a = intval($_POST['tm_a'] ?? 0);
+            $b = intval($_POST['tm_b'] ?? 0);
+            if ($a <= 0 || $b <= 0 || $a === $b) {
+                header('Location: admin_treatments.php?tab=conflicts&msg=' . urlencode('서로 다른 두 시술을 선택해주세요.') . '&msg_type=danger');
+                exit;
+            }
+            if ($a > $b) { $tmp = $a; $a = $b; $b = $tmp; }
+            $exists = 0;
+            $chk = mysqli_prepare($connect, "SELECT COUNT(*) FROM gangnamunni_treatment_master WHERE id IN (?, ?)");
+            if ($chk) {
+                mysqli_stmt_bind_param($chk, 'ii', $a, $b);
+                mysqli_stmt_execute($chk);
+                mysqli_stmt_bind_result($chk, $exists);
+                mysqli_stmt_fetch($chk);
+                mysqli_stmt_close($chk);
+            }
+            if ((int)$exists !== 2) {
+                header('Location: admin_treatments.php?tab=conflicts&msg=' . urlencode('존재하지 않는 시술입니다.') . '&msg_type=danger');
+                exit;
+            }
+            $stmt = mysqli_prepare($connect, "INSERT IGNORE INTO gangnamunni_treatment_conflicts (tm_a_id, tm_b_id) VALUES (?, ?)");
+            if ($stmt) { mysqli_stmt_bind_param($stmt, 'ii', $a, $b); mysqli_stmt_execute($stmt); mysqli_stmt_close($stmt); }
+            header('Location: admin_treatments.php?tab=conflicts&msg=' . urlencode('함께 예약 불가 조합이 추가되었습니다.'));
+            exit;
+        }
+
         // 시술 등록
         if ($action === 'create') {
             $category_id = intval($_POST['category_id'] ?? 0);
@@ -527,7 +569,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // GET ?msg= 파라미터 처리
 if (!empty($_GET['msg'])) {
     $msg = $_GET['msg'];
-    $msg_type = 'success';
+    $msg_type = (($_GET['msg_type'] ?? '') === 'danger') ? 'danger' : 'success';
 }
 
 // ===== 필터 =====
@@ -641,10 +683,73 @@ require_once __DIR__ . '/includes/admin_header.php';
             <a href="admin_treatments.php?tab=categories" class="btn btn-<?php echo $current_tab === 'categories' ? 'primary' : 'outline-primary'; ?>">
                 <i class="bi bi-folder me-1"></i>대분류 (카테고리)
             </a>
+            <a href="admin_treatments.php?tab=conflicts" class="btn btn-<?php echo $current_tab === 'conflicts' ? 'primary' : 'outline-primary'; ?>">
+                <i class="bi bi-slash-circle me-1"></i>함께 예약 불가
+            </a>
         </div>
     </div>
 
-    <?php if ($current_tab === 'categories'): ?>
+    <?php if ($current_tab === 'conflicts'): ?>
+    <?php
+        // [05-18] 같은 날 함께 예약하기 어려운 시술 조합
+        $conflict_ready = false; $conflict_pairs = []; $conflict_masters = [];
+        $ct = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_conflicts'");
+        $conflict_ready = $ct && mysqli_num_rows($ct) > 0;
+        $mr = mysqli_query($connect, "SELECT id, name FROM gangnamunni_treatment_master WHERE is_active = 1 ORDER BY name ASC");
+        while ($mr && ($m = $mr->fetch_assoc())) { $conflict_masters[(int)$m['id']] = (string)$m['name']; }
+        if ($conflict_ready) {
+            $cr = mysqli_query($connect, "SELECT c.id, a.name AS a_name, b.name AS b_name FROM gangnamunni_treatment_conflicts c
+                LEFT JOIN gangnamunni_treatment_master a ON a.id = c.tm_a_id LEFT JOIN gangnamunni_treatment_master b ON b.id = c.tm_b_id ORDER BY c.id DESC");
+            while ($cr && ($c = $cr->fetch_assoc())) { $conflict_pairs[] = $c; }
+        }
+    ?>
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white"><h6 class="mb-0"><i class="bi bi-slash-circle me-2"></i>같은 날 함께 예약 불가 시술 조합 (<?php echo count($conflict_pairs); ?>건)</h6></div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">서로 가까워서 한날 함께 시술하기 어려운 시술을 한 쌍씩 등록하세요. 모든 병원에 공통으로 적용되며, 고객이 앱에서 이 조합을 한 번에 예약하려고 하면 "같은 날 함께 예약하기 어려운 시술이 있어요" 안내가 나오고 하나를 빼거나 날짜를 나눠 예약하도록 안내합니다.</p>
+            <?php if (!$conflict_ready): ?>
+                <div class="alert alert-warning mb-0">조합 테이블이 아직 없습니다. <code>sql/treatment_conflicts_20261023.sql</code> 을 먼저 실행해주세요.</div>
+            <?php else: ?>
+            <form method="post" class="row g-2 align-items-center mb-3">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                <input type="hidden" name="action" value="conflict_add">
+                <div class="col-md-5">
+                    <select name="tm_a" class="form-select form-select-sm" required>
+                        <option value="">시술 선택</option>
+                        <?php foreach ($conflict_masters as $mid => $mname): ?><option value="<?php echo (int)$mid; ?>"><?php echo htmlspecialchars($mname, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-auto text-muted">+</div>
+                <div class="col-md-5">
+                    <select name="tm_b" class="form-select form-select-sm" required>
+                        <option value="">시술 선택</option>
+                        <?php foreach ($conflict_masters as $mid => $mname): ?><option value="<?php echo (int)$mid; ?>"><?php echo htmlspecialchars($mname, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary">조합 추가</button></div>
+            </form>
+            <?php if (empty($conflict_pairs)): ?>
+                <div class="text-muted small">등록된 조합이 없습니다.</div>
+            <?php else: ?>
+            <ul class="list-group">
+                <?php foreach ($conflict_pairs as $cp_row): ?>
+                <li class="list-group-item d-flex align-items-center">
+                    <span class="flex-grow-1"><?php echo htmlspecialchars((string)($cp_row['a_name'] ?? '(삭제된 시술)'), ENT_QUOTES, 'UTF-8'); ?> <span class="text-muted">+</span> <?php echo htmlspecialchars((string)($cp_row['b_name'] ?? '(삭제된 시술)'), ENT_QUOTES, 'UTF-8'); ?></span>
+                    <form method="post" onsubmit="return confirm('이 조합을 삭제할까요?')">
+                        <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                        <input type="hidden" name="action" value="conflict_delete">
+                        <input type="hidden" name="conflict_id" value="<?php echo (int)$cp_row['id']; ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+                    </form>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+            <?php endif; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <?php elseif ($current_tab === 'categories'): ?>
 
     <!-- 적용 페이지 바로가기 -->
     <div class="alert alert-info d-flex align-items-center flex-wrap gap-2 py-2 mb-3">
