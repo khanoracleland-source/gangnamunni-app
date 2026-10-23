@@ -333,8 +333,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($action === 'cancel') {
             $reason = mysqli_real_escape_string($connect, $_POST['cancel_reason'] ?? '');
             $sql .= ", cancel_reason='" . $reason . "', cancelled_at=NOW()";
+            // [05-51] 병원(관리자)이 취소했음을 기록한다. 고객 화면에 "병원 취소"로 표시되며 노쇼·잦은 취소 집계에는 포함되지 않는다.
+            $_cb = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE 'cancelled_by'");
+            if ($_cb && mysqli_num_rows($_cb) > 0) $sql .= ", cancelled_by='hospital'";
         } elseif ($current_status === 'cancelled') {
             $sql .= ", cancel_reason=NULL, cancelled_at=NULL";
+            $_cb = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE 'cancelled_by'");
+            if ($_cb && mysqli_num_rows($_cb) > 0) $sql .= ", cancelled_by=NULL";
         }
         // [05-37] 결제 기한의 시작점: 확정으로 바뀌는 순간을 기록한다(컬럼이 있을 때만).
         if ($new_status === 'confirmed' && $current_status !== 'confirmed') {
