@@ -551,6 +551,40 @@ if (($_GET['from'] ?? '') === 'notifications') {
             #tab-active .upcoming-booking .progress-step { font-size: 13px; }
             #tab-active .push-hint { margin-left: 12px; margin-right: 12px; }
         }
+
+        /* [05-49] 예약취소 탭 카드 (디자인 + 폰트 3px, 색 #AC1830) */
+        #tab-past.active.cancel-view { padding: 10px 0 4px; background: #F4F2F3; }
+        #tab-past .cancelled-card { margin: 0 20px 10px; padding: 12px 16px 14px; background: #fff; border: 0; }
+        #tab-past .cancelled-card .booking-card-top { margin: 0; gap: 8px; min-height: 28px; }
+        #tab-past .cancelled-card .cancel-chip {
+            height: 28px; padding: 0 9px; display: inline-flex; align-items: center; border-radius: 3px;
+            background: #FBEFF1; color: #AC1830; font-size: 16px; font-weight: 700; white-space: nowrap;
+        }
+        #tab-past .cancelled-card .cancel-chip.done { background: #EFECED; color: #4A4446; }
+        #tab-past .cancelled-card .booking-detail-link {
+            margin-left: auto; height: 28px; padding: 0 12px; display: inline-flex; align-items: center;
+            border: 1px solid #AC1830; border-radius: 14px; color: #1A1718; font-size: 15px; white-space: nowrap;
+        }
+        #tab-past .cancelled-card .booking-card-date { margin-top: 6px; font-size: 18px; font-weight: 500; color: #1A1718; white-space: nowrap; }
+        #tab-past .cancelled-card .booking-summary { gap: 12px; margin-top: 10px; align-items: center; }
+        #tab-past .cancelled-card .booking-thumb { width: 52px; height: 52px; flex: 0 0 52px; }
+        #tab-past .cancelled-card .booking-treatment { font-size: 16px; font-weight: 500; }
+        #tab-past .cancelled-card .booking-hospital { font-size: 14px; color: #6B6466; margin-top: 2px; }
+        #tab-past .cancelled-card .booking-price { margin-top: 4px; font-size: 18px; font-weight: 500; }
+        #tab-past .cancelled-card .booking-progress { margin: 0 -8px; padding: 10px 0 8px; border-bottom: 1px solid #ECE9EA; }
+        #tab-past .cancelled-card .progress-step { padding-top: 17px; font-size: 15px; letter-spacing: -.03em; white-space: nowrap; color: #C9C3C5; font-weight: 400; }
+        #tab-past .cancelled-card .progress-step::before { width: 9px; height: 9px; background: #D9D5D6; }
+        #tab-past .cancelled-card .progress-step::after { top: 4px; left: calc(50% + 11px); width: calc(100% - 22px); background: #D9D5D6; }
+        #tab-past .cancelled-card .progress-step.done::before, #tab-past .cancelled-card .progress-step.active::before { background: #AC1830; }
+        #tab-past .cancelled-card .progress-step.done::after { background: #AC1830; }
+        #tab-past .cancelled-card .progress-step.active::after { background: #D9D5D6; }
+        #tab-past .cancelled-card .progress-step.active { color: #1A1718; font-weight: 700; }
+        #tab-past .cancelled-card .booking-card-actions { display: flex; justify-content: center; padding-top: 12px; border-top: 0; margin: 0; }
+        #tab-past .cancelled-card .booking-card-action { flex: 0 0 160px; width: 160px; min-height: 42px; height: 42px; border-radius: 4px; font-size: 19px; font-weight: 500; }
+        @media (max-width: 380px) {
+            #tab-past .cancelled-card { margin-left: 12px; margin-right: 12px; }
+            #tab-past .cancelled-card .progress-step { font-size: 13px; }
+        }
     </style>
     <script>
         (function(){
@@ -710,7 +744,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
             $_cancel_payment = $payment_map[(int)$bk['id']] ?? null;
             $_no_charge = !$_cancel_payment || booking_payment_is_test($_cancel_payment['provider'] ?? null) || in_array($_cancel_payment['status'] ?? '', ['pending','preview','failed','cancelled'], true);
             $_refund_complete = $_no_charge || ($_cancel_payment['status'] ?? '') === 'refunded';
-            $_cancel_steps = $_no_charge ? ['예약 취소 접수','병원 확인 중','취소 처리','예약 취소 완료'] : ['예약 취소 접수','병원 확인 중','환불 확인 중','환불 완료'];
+            $_cancel_steps = $_no_charge ? ['예약 취소 접수','병원 확인 중','취소 처리','예약 취소 완료'] : ['예약 취소 접수','병원 확인 중','환불 대기','환불 완료'];
             $_cancel_active = $_refund_complete ? 4 : 1;
             $_cancel_ts = strtotime($bk['booking_date'] . ' ' . $bk['booking_time']);
             $_cancel_days = ['일','월','화','수','목','금','토'];
@@ -719,10 +753,10 @@ if (($_GET['from'] ?? '') === 'notifications') {
         ?>
         <div class="booking-card cancelled-card" data-status="<?php echo htmlspecialchars($bk['status']); ?>">
             <div class="booking-card-top">
-                <span class="booking-card-date"><?php echo date('Y.n.j', $_cancel_ts) . '(' . $_cancel_days[(int)date('w', $_cancel_ts)] . ') ' . ($_cancel_hour < 12 ? '오전 ' : '오후 ') . $_cancel_hour12 . ':' . date('i', $_cancel_ts); ?></span>
-                <?php if ($_refund_complete): ?><span class="cancel-state"><?php echo $_no_charge ? '예약취소 완료' : '환불완료'; ?></span><?php endif; ?>
+                <span class="cancel-chip<?php echo $_refund_complete ? ' done' : ''; ?>"><?php echo $_refund_complete ? ($_no_charge ? '예약 취소 완료' : '취소·환불 완료') : '취소 접수'; ?></span>
                 <a class="booking-detail-link" href="booking_cancel_detail.php?booking_id=<?php echo (int)$bk['id']; ?>">예약상세</a>
             </div>
+            <div class="booking-card-date"><?php echo date('Y.n.j', $_cancel_ts) . '(' . $_cancel_days[(int)date('w', $_cancel_ts)] . ') ' . ($_cancel_hour < 12 ? '오전 ' : '오후 ') . $_cancel_hour12 . ':' . date('i', $_cancel_ts); ?></div>
             <div class="booking-summary">
                 <div class="booking-thumb"><?php if (!empty($bk['hospital_image'])): ?><img src="<?php echo htmlspecialchars($bk['hospital_image']); ?>" alt=""><?php else: ?>SEOUL<br>BEAUTY<?php endif; ?></div>
                 <div class="booking-summary-copy"><div class="booking-treatment"><?php echo htmlspecialchars($bk['treatment'] ?: '-'); ?></div><div class="booking-hospital"><?php echo htmlspecialchars($bk['hospital_name'] ?: '-'); ?></div><div class="booking-price"><?php echo number_format((int)($bk['price'] ?? 0)); ?>원</div></div>
@@ -905,6 +939,7 @@ function switchTab(tab) {
     var pastEl = document.getElementById('tab-past');
     if (pastEl) {
         pastEl.classList.toggle('active', tab==='completed' || tab==='cancelled');
+        pastEl.classList.toggle('cancel-view', tab==='cancelled');
         // 카드별 status로 필터링
         pastEl.querySelectorAll('.booking-card').forEach(function(card){
             var status = card.getAttribute('data-status') || '';
