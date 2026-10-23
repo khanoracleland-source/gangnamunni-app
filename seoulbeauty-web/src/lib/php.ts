@@ -16,9 +16,13 @@ export function phpBase(host: string): string {
 }
 
 const noop = () => () => {};
-/** "/" during SSR/hydration (the server does not know the host), then the real host's base. */
+const clientHost = () => window.location.host;
+const serverHost = () => "";
+
+/** Host-dependent, so SSR renders "/" and the client re-renders with the real host (no effect/setState). */
 export function usePhpBase(): string {
-  return useSyncExternalStore(noop, () => phpBase(window.location.host), () => "/");
+  const host = useSyncExternalStore(noop, clientHost, serverHost);
+  return host ? phpBase(host) : "/";
 }
 
 export function phpUrl(base: string, page: string): string {
