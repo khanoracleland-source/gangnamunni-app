@@ -325,6 +325,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         } elseif ($revisit['days'] !== null) {
                             $rv_note = ' (재시술 간격은 저장되지 않았습니다. sql/treatment_master_revisit_20261021.sql 을 먼저 실행해주세요.)';
                         }
+                        // [05-18] 같은 날 함께 예약 불가 시술: 이 시술의 조합을 제출된 목록으로 교체한다(양방향으로 저장).
+                        if (($_POST['conflict_field'] ?? '') === '1') {
+                            $ct_chk = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_conflicts'");
+                            if ($ct_chk && mysqli_num_rows($ct_chk) > 0) {
+                                $picked = [];
+                                foreach ((array)($_POST['conflict_with'] ?? []) as $raw_c) {
+                                    $cid_c = intval($raw_c);
+                                    if ($cid_c > 0 && $cid_c !== $id) $picked[$cid_c] = true;
+                                }
+                                $picked = array_keys($picked);
+                                // 모달 목록에는 활성(is_active=1) 시술만 나온다. 비활성 시술과의 기존 조합은 건드리지 않도록
+                                // 선택값 검증과 삭제 범위를 모두 활성 시술로 한정한다.
+                                $active_ids = [];
+                                $ar = mysqli_query($connect, "SELECT id FROM gangnamunni_treatment_master WHERE is_active = 1");
+                                while ($ar && ($arow = $ar->fetch_assoc())) $active_ids[(int)$arow['id']] = true;
+                                $picked = array_values(array_filter($picked, static function ($pid) use ($active_ids) { return isset($active_ids[$pid]); }));
+                                $active_list = $active_ids ? implode(',', array_keys($active_ids)) : '0';
+                                $okc = mysqli_query($connect, "DELETE FROM gangnamunni_treatment_conflicts
+                                    WHERE (tm_a_id = " . (int)$id . " AND tm_b_id IN ({$active_list}))
+                                       OR (tm_b_id = " . (int)$id . " AND tm_a_id IN ({$active_list}))");
+                                foreach ($picked as $pid) {
+                                    $lo = min($id, $pid); $hi = max($id, $pid);
+                                    $okc = $okc && mysqli_query($connect, "INSERT IGNORE INTO gangnamunni_treatment_conflicts (tm_a_id, tm_b_id) VALUES ({$lo}, {$hi})");
+                                }
+                                if (!$okc) $rv_note .= ' (함께 예약 불가 시술 저장에 실패했습니다.)';
+                            } elseif (!empty($_POST['conflict_with'])) {
+                                $rv_note .= ' (함께 예약 불가 시술은 저장되지 않았습니다. sql/treatment_conflicts_20261023.sql 을 먼저 실행해주세요.)';
+                            }
+                        }
                         header('Location: admin_treatments.php?msg=' . urlencode('시술이 수정되었습니다.' . $rv_note));
                         exit;
                     }
@@ -653,6 +682,22 @@ if ($cat_all_r) while ($ac = mysqli_fetch_assoc($cat_all_r)) $all_categories[] =
 
 // 현재 탭
 $current_tab = trim($_GET['tab'] ?? 'treatments');
+
+// [05-18] 수정 모달의 "같은 날 함께 예약 불가 시술" 용 데이터 (시술 ID => 함께 못 하는 시술 ID 목록)
+$tm_conflict_ready = false; $tm_conflict_map = []; $tm_conflict_masters = [];
+$tm_ct = mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_treatment_conflicts'");
+$tm_conflict_ready = $tm_ct && mysqli_num_rows($tm_ct) > 0;
+if ($current_tab === 'treatments') {
+    $tm_mr = mysqli_query($connect, "SELECT id, name FROM gangnamunni_treatment_master WHERE is_active = 1 ORDER BY name ASC");
+    while ($tm_mr && ($tm_m = $tm_mr->fetch_assoc())) { $tm_conflict_masters[] = ['id' => (int)$tm_m['id'], 'name' => (string)$tm_m['name']]; }
+    if ($tm_conflict_ready) {
+        $tm_cr = mysqli_query($connect, "SELECT tm_a_id, tm_b_id FROM gangnamunni_treatment_conflicts");
+        while ($tm_cr && ($tm_c = $tm_cr->fetch_assoc())) {
+            $tm_conflict_map[(int)$tm_c['tm_a_id']][] = (int)$tm_c['tm_b_id'];
+            $tm_conflict_map[(int)$tm_c['tm_b_id']][] = (int)$tm_c['tm_a_id'];
+        }
+    }
+}
 
 // 전체 별칭 맵 (JSON으로 JS에 전달)
 $all_aliases = [];
@@ -1308,6 +1353,24 @@ require_once __DIR__ . '/includes/admin_header.php';
     </div>
 </div>
 
+<style>
+.cf-panel { border: 1px solid #dee2e6; border-radius: .75rem; background: #fafbfc; padding: .75rem; }
+.cf-search { position: relative; margin-bottom: .6rem; }
+.cf-search > i { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: #8a94a0; font-size: .85rem; pointer-events: none; }
+.cf-search > input { padding-left: 2.1rem; border-radius: 2rem; background: #fff; }
+.cf-chips { display: flex; flex-wrap: wrap; gap: .4rem; max-height: 168px; overflow-y: auto; padding: 2px; }
+.cf-chip { position: relative; display: inline-flex; align-items: center; gap: .35rem; margin: 0; padding: .32rem .8rem; border: 1px solid #d5dae0; border-radius: 2rem; background: #fff; color: #3b4450; font-size: .85rem; line-height: 1.3; cursor: pointer; user-select: none; transition: background .12s, border-color .12s, color .12s; }
+.cf-chip:hover { border-color: #9aa5b1; background: #f4f6f8; }
+.cf-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.cf-chip .cf-check { display: none; font-size: .8rem; }
+.cf-chip:has(input:checked) { background: #fdecef; border-color: #ac1830; color: #ac1830; font-weight: 600; }
+.cf-chip:has(input:checked) .cf-check { display: inline-flex; }
+/* 선택된 시술은 맨 앞으로, 선택을 풀면 원래(이름순) 자리로 돌아간다 */
+.cf-chip:has(input:checked) { order: -1; }
+.cf-chip:has(input:focus-visible) { box-shadow: 0 0 0 .2rem rgba(172, 24, 48, .2); }
+.cf-empty { padding: .6rem; text-align: center; color: #8a94a0; font-size: .85rem; }
+</style>
+
 <!-- 수정 모달 -->
 <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -1396,6 +1459,34 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <div class="col-md-6">
                             <label class="form-label fw-bold">최대 가격 (만원)</label>
                             <input type="number" name="avg_price_max" id="edit_avg_price_max" class="form-control" min="0" step="1">
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <label class="form-label fw-bold mb-0">같은 날 함께 예약 불가 시술</label>
+                                <span class="badge rounded-pill text-bg-light border" id="edit_conflict_count">0개 선택</span>
+                            </div>
+                            <?php if ($tm_conflict_ready): ?>
+                            <input type="hidden" name="conflict_field" value="1">
+                            <div class="cf-panel">
+                                <div class="cf-search">
+                                    <i class="bi bi-search"></i>
+                                    <input type="text" id="edit_conflict_search" class="form-control form-control-sm" placeholder="시술 이름 검색" autocomplete="off">
+                                </div>
+                                <div class="cf-chips" id="edit_conflict_box">
+                                    <?php foreach ($tm_conflict_masters as $cm): ?>
+                                    <label class="cf-chip" data-tm-id="<?php echo (int)$cm['id']; ?>" data-name="<?php echo htmlspecialchars(mb_strtolower($cm['name']), ENT_QUOTES, 'UTF-8'); ?>">
+                                        <input type="checkbox" name="conflict_with[]" value="<?php echo (int)$cm['id']; ?>">
+                                        <span class="cf-check"><i class="bi bi-slash-circle"></i></span>
+                                        <span><?php echo htmlspecialchars($cm['name'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <div class="cf-empty" id="edit_conflict_empty" style="display:none;">검색 결과가 없습니다.</div>
+                            </div>
+                            <div class="form-text"><i class="bi bi-info-circle me-1"></i>선택한 시술과는 같은 날 함께 예약할 수 없습니다. 상대 시술에도 자동으로 반영됩니다(양방향).</div>
+                            <?php else: ?>
+                            <div class="alert alert-warning py-2 mb-0 small">조합 테이블이 아직 없습니다. <code>sql/treatment_conflicts_20261023.sql</code> 을 먼저 실행해주세요.</div>
+                            <?php endif; ?>
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-bold">주의사항</label>
@@ -1512,6 +1603,31 @@ function autoHashtag(input, targetId) {
 }
 
 // 수정 모달 열기
+window.TM_CONFLICTS = <?php echo json_encode((object)$tm_conflict_map); ?>;
+// 함께 예약 불가 시술: 검색 필터 + 선택 개수 표시
+function cfRefresh() {
+    var box = document.getElementById('edit_conflict_box');
+    if (!box) return;
+    var q = ((document.getElementById('edit_conflict_search') || {}).value || '').trim().toLowerCase();
+    var visible = 0, checked = 0;
+    box.querySelectorAll('label[data-tm-id]').forEach(function(lb) {
+        var isSelf = lb.dataset.self === '1';
+        var match = !q || (lb.getAttribute('data-name') || '').indexOf(q) !== -1;
+        lb.style.display = (!isSelf && match) ? '' : 'none';
+        if (!isSelf && match) visible++;
+        if (!isSelf && lb.querySelector('input').checked) checked++;
+    });
+    var cnt = document.getElementById('edit_conflict_count');
+    if (cnt) cnt.textContent = checked + '개 선택';
+    var empty = document.getElementById('edit_conflict_empty');
+    if (empty) empty.style.display = visible ? 'none' : '';
+}
+document.addEventListener('DOMContentLoaded', function() {
+    var box = document.getElementById('edit_conflict_box');
+    var search = document.getElementById('edit_conflict_search');
+    if (box) box.addEventListener('change', cfRefresh);
+    if (search) search.addEventListener('input', cfRefresh);
+});
 function openEditModal(t) {
     document.getElementById('edit_id').value = t.id;
     document.getElementById('edit_category_id').value = t.category_id;
@@ -1545,6 +1661,20 @@ function openEditModal(t) {
     document.getElementById('edit_avg_price_min').value = t.avg_price_min || 0;
     document.getElementById('edit_avg_price_max').value = t.avg_price_max || 0;
     document.getElementById('edit_precautions').value = t.precautions || '';
+    // [05-18] 함께 예약 불가 시술 체크 상태 (자기 자신은 숨김)
+    var cbox = document.getElementById('edit_conflict_box');
+    if (cbox) {
+        var picked = (window.TM_CONFLICTS && window.TM_CONFLICTS[t.id]) || [];
+        var csearch = document.getElementById('edit_conflict_search');
+        if (csearch) csearch.value = '';
+        cbox.querySelectorAll('label[data-tm-id]').forEach(function(lb) {
+            var tid = parseInt(lb.getAttribute('data-tm-id'), 10);
+            lb.dataset.self = (tid === parseInt(t.id, 10)) ? '1' : '';
+            lb.querySelector('input').checked = picked.indexOf(tid) !== -1;
+        });
+        cfRefresh();
+        cbox.scrollTop = 0;
+    }
     new bootstrap.Modal(document.getElementById('editModal')).show();
 }
 

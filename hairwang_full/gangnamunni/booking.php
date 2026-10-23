@@ -669,13 +669,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // [05-18] 관리자가 "같은 날 함께 예약하기 어렵다"고 지정한 시술 조합이면 막는다(하나 빼기 / 날짜 나누기 안내).
         if ($booking_error === '' && count($treatments_arr) > 1) {
+            $conflict_pairs = [];
             $conflict_names = booking_treatment_conflict_names($connect, array_values(array_unique(array_filter(array_map(static function ($t) {
                 return trim((string)($t['name'] ?? ''));
-            }, $treatments_arr)))));
+            }, $treatments_arr)))), $conflict_pairs);
             if (count($conflict_names) > 1) {
                 $booking_error = '같은 날 함께 예약하기 어려운 시술이 있어요.';
                 $booking_error_code = 'treatment_conflict';
-                $booking_error_meta = ['conflict' => ['names' => $conflict_names]];
+                $booking_error_meta = ['conflict' => ['names' => $conflict_names, 'pairs' => $conflict_pairs]];
             }
         }
 
@@ -2669,8 +2670,17 @@ $page_js = '
     // [05-18] 함께 예약하기 어려운 시술 안내: "하나 빼기" = 시술 선택 시트를 열어 직접 고르게 하고,
     //   "날짜 나누기" = 겹치는 시술 중 첫 번째만 이번 예약에 남기고 나머지는 다른 날짜에 따로 예약하도록 안내한다.
     var conflictNames = [];
+    var conflictPairs = [];
+    function conflictsWith(a, b) {
+        for (var i = 0; i < conflictPairs.length; i++) {
+            var p = conflictPairs[i];
+            if ((p[0] === a && p[1] === b) || (p[0] === b && p[1] === a)) return true;
+        }
+        return false;
+    }
     function openConflictSheet(info) {
         conflictNames = (info && info.names) ? info.names.slice() : [];
+        conflictPairs = (info && info.pairs) ? info.pairs : [];
         var list = document.getElementById("conflictList");
         list.innerHTML = "";
         conflictNames.forEach(function(n) {
@@ -2697,8 +2707,14 @@ $page_js = '
     function conflictSplitDates() {
         var names = conflictNames.slice();
         closeConflictSheet().then(function() {
-            var keep = names[0];
-            var removed = names.slice(1);
+            // 먼저 고른 시술부터 남기고, 이미 남긴 시술과 서로 충돌하는 시술만 이번 예약에서 뺀다.
+            var kept = [];
+            var removed = [];
+            names.forEach(function(n) {
+                var clash = kept.some(function(k) { return conflictsWith(k, n); });
+                if (clash) removed.push(n); else kept.push(n);
+            });
+            var keep = kept.join(", ");
             removed.forEach(function(n) { removeTreatment(n); });
             var hint = document.getElementById("splitHint");
             if (!hint) {
