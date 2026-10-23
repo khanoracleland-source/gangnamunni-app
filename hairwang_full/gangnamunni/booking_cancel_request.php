@@ -86,10 +86,60 @@ function cancel_page_now() {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>예약 취소 요청</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{--color-primary:#b61935;--color-bg:#fff;--color-text:#111;--color-inactive:#aaa}*{box-sizing:border-box}html{background:#414141}body{margin:0 auto;max-width:640px;min-height:100vh;padding-bottom:92px;background:#f3f3f3;color:#111;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}.sheet{background:#fff}.reason-section{padding:16px 28px 42px;text-align:center}.handle{width:48px;height:5px;margin:0 auto 54px;border-radius:3px;background:var(--color-primary)}h1{margin:0;font-size:24px;letter-spacing:-.045em}.reason-sub{margin:18px 0 32px;font-size:17px;font-weight:650}.reason-grid{max-width:430px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:24px 42px;text-align:left}.reason{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:650}.reason input{appearance:none;width:16px;height:16px;margin:0;border:1px solid #ccc}.reason input:checked{border-color:#d40020;background:#d40020}.reason input:checked:after{content:'✓';display:block;color:#fff;font-size:12px;line-height:14px;text-align:center}.reason-custom{width:100%;max-width:430px;height:54px;margin-top:22px;padding:0 16px;border:1px solid #ddd;font-size:15px}.content{margin-top:10px;padding:40px 28px 30px;background:#fff}.rows{border-bottom:1px solid #ddd}.row{min-height:64px;display:grid;grid-template-columns:120px minmax(0,1fr);align-items:center;border-top:1px solid #ddd}.row:first-child{border-top:0}.label{color:#aaa;font-size:17px;font-weight:650}.value{overflow:hidden;font-size:17px;font-weight:650;white-space:nowrap;text-overflow:ellipsis}.person{margin:24px 0 38px;padding:20px 24px;display:grid;grid-template-columns:100px 1fr;gap:10px;background:#f4f4f4}.section-title{margin:30px 0 14px;font-size:20px}.money-row{min-height:58px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ddd}.money-row .value{font-weight:500}.money-row.total .value{font-weight:750}.money-row.refund .value{color:var(--color-primary);font-weight:750}.policy-notes{margin:18px 0 38px;padding-left:16px;color:#aaa;font-size:11px;line-height:1.9}.warning{padding:26px;background:#fff0f2}.warning h2{margin:0 0 10px;color:var(--color-primary);font-size:17px}.warning ul{margin:0;padding-left:18px;font-size:13px;line-height:1.85}.agreement-title{width:100%;margin-top:34px;padding:0 0 12px;border:0;background:none;display:flex;align-items:center;justify-content:space-between;color:#111;font:inherit;font-size:16px;font-weight:700;text-align:left;cursor:pointer}.agreement-title .chevron{font-size:24px;line-height:1;transition:transform .2s}.agreement-box{margin-top:2px;padding:22px;border:1px solid #ddd;font-size:13px;line-height:1.8}.agree{display:flex;align-items:center;gap:9px;margin-top:20px;font-weight:650}.agree input{accent-color:#d40020}.legal{margin:20px 0;color:#aaa;font-size:10px;line-height:1.7}.final-line{padding-top:18px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:15px;font-weight:700}.final-line strong{color:var(--color-primary);font-size:18px}.final-btn{display:block;width:220px;height:54px;margin:18px auto 0;border:0;background:var(--color-primary);color:#fff;font-size:17px;font-weight:700}.final-btn:disabled{opacity:.55}.error{display:none;margin-top:12px;color:var(--color-primary);text-align:center;font-size:13px}.warn-modal{display:none;position:fixed;inset:0;z-index:21000;background:rgba(0,0,0,.62);align-items:flex-end;justify-content:center}.warn-modal.active{display:flex}.warn-sheet{width:100%;max-width:640px;padding:34px 28px 28px;background:#fff;border-radius:16px 16px 0 0;text-align:center}.warn-icon{width:44px;height:44px;margin:0 auto 14px;border-radius:50%;background:#fff0f2;color:var(--color-primary);font-size:26px;font-weight:800;line-height:44px}.warn-title{margin:0 0 10px;font-size:20px;font-weight:750;letter-spacing:-.04em;line-height:1.4}.warn-desc{margin:0 0 24px;font-size:14px;line-height:1.7;color:#444}.warn-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.warn-btn{height:52px;border:1px solid var(--color-primary);background:#fff;color:var(--color-primary);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}.warn-btn.primary{background:var(--color-primary);color:#fff}.policy-modal{display:none;position:fixed;inset:0;z-index:20000;padding:8vh 20px;background:rgba(0,0,0,.62);align-items:flex-start;justify-content:center;overflow:auto}.policy-modal.active{display:flex}.policy-dialog{width:100%;max-width:600px;padding:40px 38px;background:#fff}.policy-dialog-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.policy-dialog-title{font-size:19px;font-weight:750}.policy-close{width:38px;height:38px;border:0;background:none;font-size:28px;cursor:pointer}.policy-body{padding:24px;background:#f5f5f5;font-size:13px;line-height:1.75}.policy-body p{margin:0 0 18px}.policy-body ul{margin:0 0 20px;padding-left:20px}.policy-body li{margin-bottom:10px}.policy-body h3{margin:22px 0 10px;font-size:14px}
-@media(max-width:420px){.reason-section,.content{padding-left:20px;padding-right:20px}.handle{margin-bottom:44px}h1{font-size:21px}.reason-sub{font-size:15px}.reason-grid{gap:20px 18px}.reason{font-size:15px}.row{grid-template-columns:100px minmax(0,1fr)}.label,.value{font-size:15px}}
-@media(max-width:420px){.policy-modal{padding:20px 12px 92px}.policy-dialog{padding:26px 18px}.policy-dialog-title{font-size:17px}.policy-body{padding:20px 16px;font-size:12px}}
+:root{--color-primary:#AC1830;--color-bg:#fff;--color-text:#1A1718;--color-inactive:#aaa}*{box-sizing:border-box}
+html{background:#414141}
+body{margin:0 auto;max-width:640px;min-height:100vh;padding-bottom:92px;background:#fff;color:#1A1718;letter-spacing:-.01em;font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+/* 05-48 (폰트 = 디자인 +3px) */
+.sheet{background:#fff;border-radius:16px 16px 0 0}
+.reason-section{padding:10px 20px 26px;text-align:center}
+.handle{width:40px;height:4px;margin:0 auto;border-radius:2px;background:#AC1830}
+h1{margin:24px 0 0;font-size:23px;font-weight:700;letter-spacing:-.04em;line-height:1.4}
+.reason-sub{margin:6px 0 0;font-size:17px;font-weight:400;color:#4A4446}
+.reason-grid{max-width:430px;margin:22px auto 0;padding:0 24px;display:grid;grid-template-columns:1fr 1fr;row-gap:16px;column-gap:12px;text-align:left}
+.reason{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:500;white-space:nowrap;letter-spacing:-.04em}
+.reason input{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin:0;border:0;border-radius:0;flex-shrink:0;background:url(assets/icons/icon-radio-off.png?v=1) center/contain no-repeat}
+.reason input:checked{background-image:url(assets/icons/icon-radio-on.png?v=1)}
+.reason-custom{display:block;width:calc(100% - 40px);max-width:430px;height:46px;margin:14px auto 0;padding:0 12px;border:1px solid #DCD6D8;border-radius:0;font-size:16px;font-family:inherit;color:#1A1718}
+.reason-custom::placeholder{color:#9A9395}
+.content{margin-top:8px;padding:6px 0 30px;background:#fff;border-top:8px solid #F4F2F3}
+.rows{margin:0 20px}
+.row{display:flex;gap:16px;padding:14px 0;border-top:0;border-bottom:1px solid #ECE9EA;align-items:center}
+.row:last-child{border-bottom:0}
+.label{width:76px;flex-shrink:0;color:#9A9395;font-size:17px;font-weight:400}
+.value{flex-grow:1;min-width:0;overflow:hidden;font-size:18px;font-weight:400;white-space:nowrap;text-overflow:ellipsis}
+.person{margin:6px 20px 0;padding:14px 16px;display:grid;grid-template-columns:60px 1fr;gap:8px 16px;background:#F1EFEF;align-items:center}
+.person .value{font-weight:700}
+.section-title{margin:0;padding:24px 20px 4px;font-size:20px;font-weight:700}
+.money-row{display:flex;align-items:center;justify-content:space-between;padding:9px 20px;border-bottom:0}
+.money-row .label{width:auto;flex-grow:1;font-size:17px}
+.money-row .value{flex-grow:0;font-size:18px;font-weight:400;color:#1A1718}
+.money-row.total{border-top:1px solid #ECE9EA;margin:0 20px;padding-left:0;padding-right:0}
+.money-row.total .label{color:#1A1718;font-weight:700}
+.money-row.total .value{font-weight:700}
+.money-row.refund{border-top:1px solid #ECE9EA;margin:4px 20px 0;padding-left:0;padding-right:0;font-size:17px;font-weight:700}
+.money-row.refund .value{color:#AC1830;font-weight:700}
+.policy-notes{margin:6px 20px 0;padding-left:16px;color:#9A9395;font-size:14px;line-height:1.6}
+.warning{margin:24px 20px 0;padding:18px;background:#FBEFF1}
+.warning h2{margin:0 0 8px;color:#AC1830;font-size:18px;font-weight:700}
+.warning ul{margin:0;padding-left:16px;font-size:16px;line-height:1.7;color:#1A1718}
+.agreement-title{width:calc(100% - 40px);margin:22px 20px 0;padding:0 0 12px;border:0;background:none;display:flex;align-items:center;justify-content:space-between;color:#1A1718;font:inherit;font-size:19px;font-weight:700;text-align:left;cursor:pointer}
+.agreement-title .chevron{font-size:24px;line-height:1;transition:transform .2s}
+.agreement-box{margin:0 20px;padding:16px;border:1px solid #DCD6D8;font-size:16px;line-height:1.7;color:#4A4446}
+.agree{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:16px;font-weight:500;color:#1A1718}
+.agree input{appearance:none;-webkit-appearance:none;width:18px;height:18px;margin:0;border:0;flex-shrink:0;background:url(assets/icons/icon-radio-off.png?v=1) center/contain no-repeat}
+.agree input:checked{background-image:url(assets/icons/icon-radio-on.png?v=1)}
+.legal{margin:14px 20px 0;color:#9A9395;font-size:14px;line-height:1.6}
+.final-line{margin:18px 20px 0;padding-top:16px;border-top:1px solid #ECE9EA;display:flex;align-items:baseline;justify-content:space-between;font-size:16px;font-weight:700}
+.final-line strong{color:#AC1830;font-size:22px}
+.final-btn{display:block;width:180px;height:52px;margin:14px auto 0;border:1px solid #AC1830;border-radius:4px;background:#AC1830;color:#fff;font-size:19px;font-weight:500;font-family:inherit;cursor:pointer}
+.final-btn:disabled{opacity:.55}
+.error{display:none;margin-top:12px;color:#AC1830;text-align:center;font-size:16px}
+.warn-modal{display:none;position:fixed;inset:0;z-index:21000;background:rgba(0,0,0,.62);align-items:flex-end;justify-content:center}.warn-modal.active{display:flex}.warn-sheet{width:100%;max-width:640px;padding:34px 28px 28px;background:#fff;border-radius:16px 16px 0 0;text-align:center}.warn-icon{width:44px;height:44px;margin:0 auto 14px;border-radius:50%;background:#fff0f2;color:var(--color-primary);font-size:26px;font-weight:800;line-height:44px}.warn-title{margin:0 0 10px;font-size:20px;font-weight:750;letter-spacing:-.04em;line-height:1.4}.warn-desc{margin:0 0 24px;font-size:14px;line-height:1.7;color:#444}.warn-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.warn-btn{height:52px;border:1px solid var(--color-primary);background:#fff;color:var(--color-primary);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}.warn-btn.primary{background:var(--color-primary);color:#fff}.policy-modal{display:none;position:fixed;inset:0;z-index:20000;padding:8vh 20px;background:rgba(0,0,0,.62);align-items:flex-start;justify-content:center;overflow:auto}.policy-modal.active{display:flex}.policy-dialog{width:100%;max-width:600px;padding:40px 38px;background:#fff}.policy-dialog-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.policy-dialog-title{font-size:19px;font-weight:750}.policy-close{width:38px;height:38px;border:0;background:none;font-size:28px;cursor:pointer}.policy-body{padding:24px;background:#f5f5f5;font-size:13px;line-height:1.75}.policy-body p{margin:0 0 18px}.policy-body ul{margin:0 0 20px;padding-left:20px}.policy-body li{margin-bottom:10px}.policy-body h3{margin:22px 0 10px;font-size:14px}
+
+@media(max-width:420px){.reason-grid{padding:0 8px}.label{width:68px}.policy-modal{padding:20px 12px 92px}.policy-dialog{padding:26px 18px}.policy-dialog-title{font-size:17px}.policy-body{padding:20px 16px;font-size:12px}}
 </style>
 </head>
 <body>
@@ -111,15 +161,15 @@ function cancel_page_now() {
   <div class="row"><span class="label">담당의사</span><span class="value"><?php echo htmlspecialchars($booking['doctor_name'] ?: '-'); ?></span></div>
  </div>
  <div class="person"><span class="label">예약자</span><span class="value"><?php echo htmlspecialchars($booking['name'] ?: '-'); ?></span><span class="label">연락처</span><span class="value"><?php echo htmlspecialchars($booking['phone'] ?: '-'); ?></span></div>
- <h2 class="section-title">결제정보</h2>
+ <h2 class="section-title">결제 금액을 확인해보세요</h2>
  <div class="money-row"><span class="label">시술가격</span><span class="value"><?php echo number_format($amount); ?></span></div>
  <div class="money-row total"><span class="label">총 결제금액</span><span class="value"><?php echo number_format($amount); ?></span></div>
- <h2 class="section-title">취소/환불 정보</h2>
+ <h2 class="section-title">취소/환불 정보를 확인해보세요</h2>
  <div class="money-row"><span class="label">취소날짜/시간</span><span class="value"><?php echo htmlspecialchars(cancel_page_now()); ?></span></div>
  <div class="money-row"><span class="label">취소 수수료</span><span class="value">0</span></div>
  <div class="money-row refund"><span>총 금액(취소/환불)</span><span class="value"><?php echo number_format($refund_amount); ?></span></div>
  <ul class="policy-notes"><li>결제된 예약은 취소 후 관리자 확인을 거쳐 환불 처리됩니다.</li><li>환불 완료 전까지 관리자 화면에는 환불 안됨 상태로 표시됩니다.</li><li>정확한 환불기간은 해당 카드사로 문의해 주시기 바랍니다.</li></ul>
- <section class="warning"><h2>유의사항</h2><ul><li>예약이 확정된 후 취소 시, 병원 정책에 따라 위약금이 발생할 수 있어요</li><li>포인트 할인 / 이벤트가 적용된 예약은 취소 시 할인 금액이 환수될 수 있어요</li><li>당일 예약 또는 예약 시간 임박 시 취소가 제한될 수 있어요</li><li>예약 취소 후 재예약을 원하시면 다시 시술과 시간을 선택해 주세요</li></ul></section>
+ <section class="warning"><h2>고객님 꼭 알아두세요!</h2><ul><li>예약이 확정된 후 취소 시, 병원 정책에 따라 위약금이 발생할 수 있어요</li><li>포인트 할인 / 이벤트가 적용된 예약은 취소 시 할인 금액이 환수될 수 있어요</li><li>당일 예약 또는 예약 시간 임박 시 취소가 제한될 수 있어요</li><li>예약 취소 후 재예약을 원하시면 다시 시술과 시간을 선택해 주세요</li></ul></section>
  <button type="button" class="agreement-title" onclick="openPolicyModal()"><span>취소 및 환불 규정을 확인해주세요</span><span class="chevron">⌄</span></button>
  <div class="agreement-box">결제된 예약은 취소 후 관리자 확인을 거쳐 환불 처리됩니다<br>당일 취소는 병원에 직접 연락해 주세요<label class="agree"><input type="checkbox" id="cancelAgree">위 내용을 모두 확인하였으며, 취소에 동의해요</label></div>
  <p class="legal">서비스 이용에 관한 개인정보 수집 동의<br>서울미녀는 고객 편의를 위해 예약·앱에서 결제 기능을 제공하며, 위 내용에 동의합니다.</p>
