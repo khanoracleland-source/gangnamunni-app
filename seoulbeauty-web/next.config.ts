@@ -4,8 +4,11 @@ import path from "node:path";
 // NestJS API (seoulbeauty-api). Server-side fetches hit it directly; the browser goes
 // through the same-origin /api/* rewrite so no CORS and no exposed port.
 const API_BASE = process.env.API_BASE || "http://127.0.0.1:3110";
+// Mounted under https://seoulbeauty.app/next/ by Apache (the PHP site owns "/").
+const BASE_PATH = process.env.NEXT_BASE_PATH ?? "/next";
 
 const nextConfig: NextConfig = {
+  basePath: BASE_PATH,
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,

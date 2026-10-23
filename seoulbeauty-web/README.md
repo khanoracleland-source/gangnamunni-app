@@ -8,10 +8,11 @@ paint instantly and refresh in the background. Detail data is prefetched on touc
 ```
 cp .env.example .env     # API_BASE, NEXT_PUBLIC_ASSET_BASE, PORT
 npm ci
-npm run dev              # http://localhost:3000/hospitals
+npm run dev              # http://localhost:3200/next/hospitals
 npm run build && npm start
 ```
-Routes: `/hospitals?q=&treatment=&category=&region=&sort=` and `/hospitals/[id]`.
-`/api/*` is rewritten to the NestJS API (same origin, no CORS).
+Served under basePath `/next` (Apache `ProxyPass /next/` → 127.0.0.1:3200, see `deploy/`).
+Routes: `/next/hospitals?q=&treatment=&category=&region=&sort=` and `/next/hospitals/[id]`.
+`/next/api/*` is rewritten to the NestJS API (same origin, no CORS; the site's own `/api` is Laravel).
 
 Other bottom-nav tabs still link to the PHP pages (full load) during the pilot.

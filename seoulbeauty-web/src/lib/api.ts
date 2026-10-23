@@ -69,7 +69,7 @@ export class ApiError extends Error {
 /** Server: direct to the API. Browser: same-origin /api (see next.config.ts rewrites). */
 function base(): string {
   if (typeof window === "undefined") return process.env.API_BASE || "http://127.0.0.1:3110";
-  return "/api";
+  return `${process.env.NEXT_PUBLIC_BASE_PATH ?? "/next"}/api`; // same-origin, rewritten in next.config.ts
 }
 
 /** AbortSignal.timeout() is missing in older WebViews (iOS < 16, Chrome < 103): fall back to a manual timer. */

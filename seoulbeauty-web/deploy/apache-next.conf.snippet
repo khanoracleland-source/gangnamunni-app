@@ -1,0 +1,5 @@
+# Add INSIDE BOTH <VirtualHost *:80> and <VirtualHost *:443> blocks of
+# /etc/httpd/conf.d/hms.seoulbeauty.app.conf, ABOVE the existing "ProxyPass /api" lines.
+# Next.js pilot: https://seoulbeauty.app/next/  ->  127.0.0.1:3200 (basePath=/next)
+ProxyPass        /next/ http://127.0.0.1:3200/next/ retry=0 timeout=30
+ProxyPassReverse /next/ http://127.0.0.1:3200/next/
