@@ -315,24 +315,55 @@ document.querySelectorAll(".nav-item").forEach(function(item) {
     });
 });
 
-// 캐러셀 이동
+// 캐러셀 이동 (무한 루프: 마지막 → 첫 슬라이드도 같은 방향으로 이동)
 function carouselMove(carouselId, dir) {
     var el = document.getElementById(carouselId);
     if (!el) return;
     var track = el.querySelector(".carousel-track");
-    var slides = track.querySelectorAll(".carousel-slide");
-    var total = slides.length;
-    if (total === 0) return;
+    if (!track) return;
+    var real = track.querySelectorAll(".carousel-slide:not(.carousel-clone)").length;
+    if (real < 2) return;
+    if (track.getAttribute("data-busy") === "1") return;
 
     var idx = parseInt(track.getAttribute("data-index") || "0");
-    idx += dir;
-    if (idx < 0) idx = total - 1;
-    if (idx >= total) idx = 0;
-    track.setAttribute("data-index", idx);
+    var DUR = 400;
+    var setCur = function(i) {
+        var cur = el.querySelector(".carousel-current");
+        if (cur) cur.textContent = ((i % real) + 1);
+    };
 
-    track.style.transform = "translateX(-" + (idx * 100) + "%)";
-    var cur = el.querySelector(".carousel-current"); // indikator olib tashlangan; topilmasa tashlab ketiladi
-    if (cur) cur.textContent = (idx + 1);
+    track.setAttribute("data-busy", "1");
+    setTimeout(function() { track.setAttribute("data-busy", "0"); }, DUR + 30);
+
+    if (dir > 0) {
+        idx += 1; // idx === real: oxirgi slayddan keyin nusxa (clone) korinadi
+        track.style.transition = "";
+        track.style.transform = "translateX(-" + (idx * 100) + "%)";
+        setCur(idx);
+        if (idx >= real) {
+            setTimeout(function() {
+                track.style.transition = "none";
+                track.style.transform = "translateX(0%)";
+                track.setAttribute("data-index", "0");
+                void track.offsetWidth;
+                track.style.transition = "";
+            }, DUR);
+            return;
+        }
+    } else {
+        if (idx <= 0) {
+            // birinchidan orqaga: avval jimgina clone ornida turamiz, keyin oxirgi slaydga suramiz
+            track.style.transition = "none";
+            track.style.transform = "translateX(-" + (real * 100) + "%)";
+            void track.offsetWidth;
+            track.style.transition = "";
+            idx = real;
+        }
+        idx -= 1;
+        track.style.transform = "translateX(-" + (idx * 100) + "%)";
+        setCur(idx);
+    }
+    track.setAttribute("data-index", idx);
 }
 
 // 캐러셀 자동 스크롤
@@ -382,7 +413,17 @@ function initCarouselIndex(carouselId) {
     if (!el) return;
     var track = el.querySelector(".carousel-track");
     if (track) {
+        var first = track.querySelector(".carousel-slide:not(.carousel-clone)");
+        var cnt = track.querySelectorAll(".carousel-slide:not(.carousel-clone)").length;
+        if (first && cnt > 1 && !track.querySelector(".carousel-clone")) {
+            var clone = first.cloneNode(true);
+            clone.classList.add("carousel-clone");
+            clone.setAttribute("aria-hidden", "true");
+            clone.setAttribute("tabindex", "-1");
+            track.appendChild(clone);
+        }
         track.setAttribute("data-index", "0");
+        track.setAttribute("data-busy", "0");
         track.style.transform = "translateX(0%)";
     }
     var ind = el.querySelector(".carousel-current");
