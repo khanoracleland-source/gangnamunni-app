@@ -128,15 +128,61 @@ if (!empty($edit_reason)) {
 }
 
 // 수정 처리 (변경 성공 시 edit_count +1)
-if ($treatment_changed) {
-    $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET booking_date=?, booking_time=?, treatment=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW() WHERE id=?");
-    mysqli_stmt_bind_param($stmt2, 'ssssi', $new_date, $new_time, $new_treatment, $memo_addition, $booking_id);
-} else {
-    $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET booking_date=?, booking_time=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW() WHERE id=?");
-    mysqli_stmt_bind_param($stmt2, 'sssi', $new_date, $new_time, $memo_addition, $booking_id);
+// [05-43] 확정된 예약(결제 전)을 변경하면 병원이 새 일정을 다시 확인해야 하므로 "병원 확인 중"으로 되돌린다.
+//   이미 결제된 예약은 일정이 어긋나므로 여기서 변경할 수 없다. 결제 승인과 겹치지 않게 같은 결제 잠금 안에서 처리한다.
+require_once dirname(__DIR__) . '/includes/booking_payment_access.php';
+require_once dirname(__DIR__) . '/includes/points_ledger.php';
+require_once dirname(__DIR__) . '/includes/booking_payment_service.php';
+$was_confirmed = false;
+$ok = false;
+try {
+    booking_payment_lock_for_booking($connect, $booking_id, function () use ($connect, $booking_id, $treatment_changed, $new_date, $new_time, $new_treatment, $memo_addition, &$was_confirmed, &$ok) {
+        $cur = mysqli_prepare($connect, "SELECT status FROM gangnamunni_bookings WHERE id = ?");
+        mysqli_stmt_bind_param($cur, 'i', $booking_id);
+        mysqli_stmt_execute($cur);
+        $cur_row = mysqli_fetch_assoc(mysqli_stmt_get_result($cur));
+        mysqli_stmt_close($cur);
+        if (!$cur_row || !in_array($cur_row['status'], ['pending', 'hospital_checking', 'confirmed'], true)) {
+            throw new RuntimeException('booking_not_editable');
+        }
+        $order = booking_payment_order($connect, $booking_id);
+        if ($order && in_array($order['status'], ['paid', 'partially_refunded'], true)) {
+            throw new RuntimeException('booking_paid');
+        }
+        $was_confirmed = ($cur_row['status'] === 'confirmed');
+        $status_sql = "status=IF(status='confirmed','hospital_checking',status), ";
+        if ($treatment_changed) {
+            $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET {$status_sql}booking_date=?, booking_time=?, treatment=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW() WHERE id=? AND status IN ('pending','hospital_checking','confirmed')");
+            mysqli_stmt_bind_param($stmt2, 'ssssi', $new_date, $new_time, $new_treatment, $memo_addition, $booking_id);
+        } else {
+            $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET {$status_sql}booking_date=?, booking_time=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW() WHERE id=? AND status IN ('pending','hospital_checking','confirmed')");
+            mysqli_stmt_bind_param($stmt2, 'sssi', $new_date, $new_time, $memo_addition, $booking_id);
+        }
+        $ok = mysqli_stmt_execute($stmt2) && mysqli_stmt_affected_rows($stmt2) === 1;
+        mysqli_stmt_close($stmt2);
+    });
+} catch (Throwable $e) {
+    if ($e->getMessage() === 'booking_paid') {
+        echo json_encode(['success' => false, 'message' => '이미 결제된 예약은 일정을 변경할 수 없어요. 취소 후 다시 예약해주세요.']);
+        exit;
+    }
+    if ($e->getMessage() === 'booking_not_editable') {
+        echo json_encode(['success' => false, 'message' => '수정할 수 없는 상태의 예약입니다.']);
+        exit;
+    }
+    error_log('[edit_booking] update failed: ' . $e->getMessage());
+    $ok = false;
 }
-$ok = mysqli_stmt_execute($stmt2);
-mysqli_stmt_close($stmt2);
+
+// 결제 전 확정 예약을 되돌렸으면 결제에 걸어 둔 포인트를 복구한다(재확정 후 결제 화면에서 다시 사용).
+if ($ok && $was_confirmed) {
+    try {
+        require_once dirname(__DIR__) . '/includes/points_checkout.php';
+        points_checkout_release_for_booking($connect, $booking_id, '예약 변경 포인트 복구');
+    } catch (\Throwable $e) {
+        error_log('[edit_booking] point hold release failed: ' . $e->getMessage());
+    }
+}
 
 if (!$ok) {
     echo json_encode(['success' => false, 'message' => '수정 처리 중 오류가 발생했습니다.']);

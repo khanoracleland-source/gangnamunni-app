@@ -2699,8 +2699,9 @@ $page_js = '
         fetch("api/edit_booking.php", { method: "POST", body: fd })
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                alert(data.message || (data.success ? "예약이 변경되었습니다." : "변경 처리 중 오류가 발생했습니다."));
-                if (data.success) { window.location.replace("my_bookings.php"); return; }
+                // [05-43] 성공하면 "예약 변경 요청이 접수되었어요" 시트가 있는 예약 확인 화면으로 이동
+                if (data.success) { window.location.replace("booking_request_detail.php?booking_id=" + CHANGE_BOOKING.id + "&changed=1"); return; }
+                alert(data.message || "변경 처리 중 오류가 발생했습니다.");
                 changeSubmitting = false;
                 if (btn) btn.disabled = false;
             })

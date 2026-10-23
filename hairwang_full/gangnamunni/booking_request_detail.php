@@ -230,6 +230,24 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
 .pay-sum-row.total small { font-size:14px; font-weight:400; color:#6B6466; }
 .pay-sum-row.total b { font-size:20px; color:#AC1830; font-weight:700; }
 .pay-sum + .notice { margin-top:24px; }
+
+/* 05-43 예약 변경 요청 접수 시트 */
+.chg-dim { position:fixed; inset:0; z-index:12000; background:rgba(26,23,24,.45); display:flex; align-items:flex-end; justify-content:center; }
+.chg-sheet { width:100%; max-width:640px; padding:10px 0 calc(34px + env(safe-area-inset-bottom,0px)); background:#fff; border-radius:16px 16px 0 0; animation:chgUp .32s cubic-bezier(.32,.72,0,1); }
+@keyframes chgUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+.chg-handle { width:40px; height:4px; border-radius:2px; background:#AC1830; margin:0 auto; }
+.chg-body { padding:28px 20px 8px; text-align:center; }
+.chg-icon { width:48px; height:48px; display:block; margin:0 auto 14px; object-fit:contain; }
+.chg-title { font-size:23px; font-weight:700; line-height:1.45; letter-spacing:-.04em; }
+.chg-desc { margin-top:14px; font-size:18px; line-height:1.6; color:#4A4446; }
+.chg-eta { margin-top:18px; padding:18px 16px 16px; background:#FBEFF1; }
+.chg-eta b { display:block; font-size:18px; font-weight:700; }
+.chg-eta p { margin-top:4px; font-size:16px; line-height:1.6; color:#4A4446; }
+.chg-noti { margin-top:12px; padding:14px 10px; background:#fff; }
+.chg-noti b { color:#AC1830; }
+.chg-actions { display:flex; gap:10px; margin-top:14px; }
+.chg-btn { flex:1 1 0; height:52px; box-sizing:border-box; display:flex; align-items:center; justify-content:center; border:1px solid #AC1830; border-radius:4px; background:#fff; color:#AC1830; font-size:19px; font-weight:500; text-decoration:none; }
+.chg-btn.primary { background:#AC1830; color:#fff; }
 @media (max-width:380px) {
     .request-body { padding-left:16px; padding-right:16px; }
     .detail-row { grid-template-columns:118px minmax(0,1fr); }
@@ -365,6 +383,28 @@ body { max-width:640px; min-height:100vh; margin:0 auto; padding-bottom:24px; ba
         </div>
     </section>
 </div>
+<?php if ($is_active && ($_GET['changed'] ?? '') === '1'): // 05-43 ?>
+<div class="chg-dim" id="chgSheet" role="dialog" aria-modal="true" aria-labelledby="chgTitle">
+    <section class="chg-sheet">
+        <div class="chg-handle" aria-hidden="true"></div>
+        <div class="chg-body">
+            <img class="chg-icon" src="assets/icons/icon-change-requested.png?v=1" alt="">
+            <div class="chg-title" id="chgTitle">예약 변경 요청이 접수되었어요!</div>
+            <div class="chg-desc">원하시는 일정으로<br>병원에 예약 가능 여부를 확인하고 있어요</div>
+            <div class="chg-eta">
+                <b>예상 확인 시간</b>
+                <p>평균 1~3시간 이내<br>(병원 상황에 따라 달라질 수 있어요)</p>
+                <div class="chg-noti"><b>알림을 꼭 확인해주세요!</b><p>예약 진행 상황은 알림(푸시)으로 안내해드려요<br>알림을 허용해두시면 빠르게 확인하실 수 있어요</p></div>
+            </div>
+            <div class="chg-actions">
+                <a class="chg-btn primary" href="my_bookings.php">확인했어요</a>
+                <a class="chg-btn" href="my_bookings.php">내 예약 현황</a>
+            </div>
+        </div>
+    </section>
+</div>
+<script>try { history.replaceState(null, '', location.pathname + '?booking_id=<?php echo (int)$bk['id']; ?>'); } catch (e) {}</script>
+<?php endif; ?>
 <script>
 function openChangeModal() {
     var modal = document.getElementById('changeModal');

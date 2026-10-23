@@ -438,35 +438,33 @@ if (($_GET['from'] ?? '') === 'notifications') {
         .change-confirm-btn { height: 52px; border: 1px solid var(--color-primary); border-radius: 4px; background: #fff; color: var(--color-primary); font-size: 19px; font-weight: 500; cursor: pointer; }
         .change-confirm-btn.primary { background: var(--color-primary); color: #fff; }
 
-        /* 예약 취소 사유 바텀시트 */
+        /* 예약 취소 사유 바텀시트 (05-44, 폰트 = 디자인 +3px) */
         .modal-overlay.cancel-sheet-modal { align-items:flex-end; z-index:12000; }
         .cancel-sheet {
-            width:100%; max-width:640px; padding:14px 28px calc(28px + env(safe-area-inset-bottom,0px));
-            background:#fff; text-align:center; animation:bookingModalUp .32s cubic-bezier(.32,.72,0,1);
+            width:100%; max-width:640px; padding:10px 0 calc(34px + env(safe-area-inset-bottom,0px));
+            background:#fff; text-align:center; border-radius:16px 16px 0 0; animation:bookingModalUp .32s cubic-bezier(.32,.72,0,1);
         }
-        .cancel-sheet-handle { width:48px; height:5px; border-radius:3px; background:var(--color-primary); margin:0 auto 48px; }
-        .cancel-sheet-title { font-size:23px; font-weight:750; line-height:1.4; letter-spacing:-.04em; }
-        .cancel-sheet-sub { margin-top:14px; font-size:15px; font-weight:600; }
+        .cancel-sheet-handle { width:40px; height:4px; border-radius:2px; background:#AC1830; margin:0 auto; }
+        .cancel-sheet-title { margin:24px 20px 0; font-size:23px; font-weight:700; line-height:1.4; letter-spacing:-.04em; }
+        .cancel-sheet-sub { margin-top:6px; font-size:17px; font-weight:400; color:#4A4446; }
         .cancel-reason-grid {
-            max-width:430px; margin:30px auto 18px; display:grid; grid-template-columns:1fr 1fr;
-            gap:20px 36px; text-align:left;
+            padding:22px 40px 0; margin:0; display:grid; grid-template-columns:1fr 1fr;
+            row-gap:16px; column-gap:8px; text-align:left;
         }
-        .cancel-reason-option { display:flex; align-items:center; gap:10px; font-size:16px; cursor:pointer; }
+        .cancel-reason-option { display:flex; align-items:center; gap:8px; font-size:18px; font-weight:500; white-space:nowrap; letter-spacing:-.04em; cursor:pointer; }
         .cancel-reason-option input {
-            appearance:none; -webkit-appearance:none; width:16px; height:16px; margin:0;
-            border:1px solid #d2d2d2; background:#fff; display:grid; place-content:center;
+            appearance:none; -webkit-appearance:none; width:20px; height:20px; margin:0; flex-shrink:0; border:0; border-radius:0;
+            background:url(assets/icons/icon-radio-off.png?v=1) center/contain no-repeat;
         }
-        .cancel-reason-option input::before { content:""; width:8px; height:8px; transform:scale(0); background:#fff; }
-        .cancel-reason-option input:checked { border-color:#d6001c; background:#d6001c; }
-        .cancel-reason-option input:checked::before { transform:scale(1); clip-path:polygon(14% 44%,0 65%,41% 100%,100% 20%,80% 0,38% 62%); }
+        .cancel-reason-option input:checked { background-image:url(assets/icons/icon-radio-on.png?v=1); }
         .cancel-custom-reason {
-            width:100%; max-width:430px; height:52px; margin:0 auto; padding:0 16px;
-            border:1px solid #d8d8d8; background:#fff; font-size:14px;
+            display:block; width:calc(100% - 80px); height:46px; margin:14px 40px 0; padding:0 12px; box-sizing:border-box;
+            border:1px solid #DCD6D8; border-radius:0; background:#fff; font-size:16px; color:#1A1718;
         }
-        .cancel-custom-reason::placeholder { color:#bbb; }
+        .cancel-custom-reason::placeholder { color:#9A9395; }
         .cancel-request-btn {
-            width:220px; height:54px; margin-top:26px; border:0; background:var(--color-primary);
-            color:#fff; font-size:16px; font-weight:700; cursor:pointer;
+            width:180px; height:52px; margin-top:22px; border:1px solid #AC1830; border-radius:4px; background:#AC1830;
+            color:#fff; font-size:19px; font-weight:500; cursor:pointer;
         }
         .cancel-request-btn:disabled { opacity:.55; cursor:wait; }
 
@@ -483,9 +481,8 @@ if (($_GET['from'] ?? '') === 'notifications') {
             .cancelled-card .booking-card-date { font-size: 14px; }
             .cancelled-card .cancel-state { font-size: 12px; }
             .cancelled-card .booking-detail-link { padding-left: 6px; padding-right: 6px; font-size: 12px; }
-            .cancel-sheet { padding-left:20px; padding-right:20px; }
-            .cancel-reason-grid { gap:18px 14px; }
-            .cancel-reason-option { font-size:14px; }
+            .cancel-reason-grid { padding-left:28px; padding-right:28px; }
+            .cancel-custom-reason { width:calc(100% - 56px); margin-left:28px; margin-right:28px; }
             #tab-active { padding-left: 14px; padding-right: 14px; }
             .upcoming-booking { padding-left: 16px; padding-right: 16px; }
             .upcoming-booking .booking-card-actions { gap: 12px; }
