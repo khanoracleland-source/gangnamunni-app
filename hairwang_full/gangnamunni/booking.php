@@ -1867,6 +1867,30 @@ $page_css = '
         #preCheckPage .pc-btns { width: 100%; }
         #preCheckPage .pc-btn { flex: 1 1 0; width: auto; }
     }
+    /* [05-20] 의료진 상담 안내 / [05-21] 시술 전 확인 동의 시트 */
+    #medConsultOverlay .booking-motion-panel, #consentOverlay .booking-motion-panel { border-radius: 16px 16px 0 0; }
+    #medConsultOverlay .booking-motion-handle::before, #consentOverlay .booking-motion-handle::before { top: 10px; width: 40px; height: 4px; border-radius: 2px; background: #AC1830; }
+    #medConsultOverlay .booking-motion-handle, #consentOverlay .booking-motion-handle { height: 24px; }
+    #medConsultOverlay .booking-motion-body, #consentOverlay .booking-motion-body { padding: 18px 20px 8px; }
+    #medConsultOverlay .ns-icon { display: block; width: 48px; height: 48px; margin: 0 auto 14px; object-fit: contain; }
+    #medConsultOverlay .success-sheet-title, #consentOverlay .success-sheet-title { font-size: 22px; font-weight: 700; line-height: 1.45; }
+    #medConsultOverlay .success-sheet-desc { margin: 12px 0 0; font-size: 17px; line-height: 1.6; color: #4A4446; }
+    #medConsultOverlay .mc-label { margin-top: 16px; font-size: 15px; font-weight: 700; color: #AC1830; }
+    #medConsultOverlay .mc-item { margin-top: 8px; padding: 12px 14px; background: #FBEFF1; border-radius: 4px; font-size: 17px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
+    #consentOverlay .cs-list { margin-top: 12px; display: flex; flex-direction: column; gap: 16px; }
+    #consentOverlay .cs-row { display: flex; align-items: flex-start; gap: 8px; font-size: 16px; line-height: 1.5; color: #4A4446; border: 0; background: none; padding: 0; width: 100%; text-align: left; font-family: inherit; cursor: pointer; }
+    #consentOverlay .cs-row i { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; background: url(assets/icons/icon-radio-off.png?v=1) center/contain no-repeat; }
+    #consentOverlay .cs-row.on i { background-image: url(assets/icons/icon-radio-on.png?v=1); }
+    #consentOverlay .cs-row.all { font-size: 18px; font-weight: 700; color: #1A1718; }
+    #consentOverlay .cs-req { color: #AC1830; }
+    #consentOverlay .cs-view { flex-shrink: 0; margin-left: auto; font-size: 16px; color: #1A1718; text-decoration: underline; background: none; border: 0; padding: 0; font-family: inherit; cursor: pointer; }
+    #consentOverlay .cs-note { display: none; margin: 10px 0 0 28px; font-size: 15px; line-height: 1.6; color: #4A4446; }
+    #consentOverlay .cs-note.open { display: block; }
+    #medConsultOverlay .booking-motion-footer, #consentOverlay .booking-motion-footer { padding: 14px 20px max(34px, env(safe-area-inset-bottom)); }
+    #medConsultOverlay .success-actions, #consentOverlay .success-actions { display: flex; gap: 10px; margin-top: 0; }
+    #medConsultOverlay .success-action, #consentOverlay .success-action { flex: 1 1 0; height: 52px; border-radius: 4px; border-color: #AC1830; background: #fff; color: #AC1830; font-size: 19px; font-weight: 500; }
+    #medConsultOverlay .success-action.primary, #consentOverlay .success-action.primary { background: #AC1830; color: #fff; }
+    #consentOverlay .success-action.primary:disabled { opacity: .4; cursor: not-allowed; }
     /* [05-18] 같은 날 함께 예약하기 어려운 시술 시트 */
     #conflictOverlay .booking-motion-panel { border-radius: 16px 16px 0 0; }
     #conflictOverlay .booking-motion-handle::before { top: 10px; width: 40px; height: 4px; border-radius: 2px; background: #AC1830; }
@@ -2654,6 +2678,7 @@ $page_js = '
             precheckBusy = false;
         }
         if (typeof openPreCheckIfNeeded === "function" && openPreCheckIfNeeded()) return;
+        if (typeof afterPreCheck === "function") { afterPreCheck(); return; }
         openBookingConfirm();
     }
     function openDuplicateSheet(existing) {
@@ -2814,8 +2839,62 @@ $page_js = '
         document.getElementById("preAnswers").value = JSON.stringify(out);
         preAskedKey = JSON.stringify(qs);
         closePreCheckPage();
-        openBookingConfirm();
+        // [05-20] 하나라도 "예"로 답했으면 의료진 상담 안내를 먼저 보여준다.
+        var flagged = out.filter(function(x) { return x.a === 1; });
+        if (flagged.length) { openMedConsult(flagged); return; }
+        afterPreCheck();
     }
+    function openMedConsult(flagged) {
+        var list = document.getElementById("medConsultList");
+        list.innerHTML = "";
+        flagged.forEach(function(x) {
+            var d = document.createElement("div");
+            d.className = "mc-item";
+            d.textContent = x.q;
+            list.appendChild(d);
+        });
+        if (window.bookingMedConsultMotion) window.bookingMedConsultMotion.open();
+    }
+    function closeMedConsult() { return window.bookingMedConsultMotion ? window.bookingMedConsultMotion.close() : Promise.resolve(); }
+    function medConsultOther() {
+        preAskedKey = null;
+        closeMedConsult().then(function() { openTreatmentSheet(); });
+    }
+    // "예"로 답한 경우는 의료진 상담 신청이므로, "해당 없음"을 전제로 한 05-21 동의는 건너뛰고 바로 확인 단계로 간다.
+    function medConsultProceed() { closeMedConsult().then(openBookingConfirm); }
+    window.medConsultOther = medConsultOther;
+    window.medConsultProceed = medConsultProceed;
+    // [05-21] 시술 전 확인 동의 (예약 1회당 한 번)
+    var consentDone = false;
+    function afterPreCheck() {
+        if (CHANGE_MODE || consentDone) { openBookingConfirm(); return; }
+        var rows = document.querySelectorAll("#consentOverlay .cs-row");
+        rows.forEach(function(r) { r.classList.remove("on"); });
+        document.getElementById("consentGo").disabled = true;
+        if (window.bookingConsentMotion) window.bookingConsentMotion.open(); else openBookingConfirm();
+    }
+    function consentSync() {
+        var items = document.querySelectorAll("#consentOverlay .cs-item");
+        var all = true;
+        items.forEach(function(r) { if (!r.classList.contains("on")) all = false; });
+        document.getElementById("consentAll").classList.toggle("on", all);
+        document.getElementById("consentGo").disabled = !all;
+    }
+    function consentToggle(el) { el.classList.toggle("on"); consentSync(); }
+    function consentToggleAll() {
+        var on = !document.getElementById("consentAll").classList.contains("on");
+        document.querySelectorAll("#consentOverlay .cs-item").forEach(function(r) { r.classList.toggle("on", on); });
+        consentSync();
+    }
+    function consentProceed() {
+        if (document.getElementById("consentGo").disabled) return;
+        consentDone = true;
+        var done = window.bookingConsentMotion ? window.bookingConsentMotion.close() : Promise.resolve();
+        done.then(openBookingConfirm);
+    }
+    window.consentToggle = consentToggle;
+    window.consentToggleAll = consentToggleAll;
+    window.consentProceed = consentProceed;
     window.preCheckBack = preCheckBack;
     window.preCheckNext = preCheckNext;
     var conflictNames = [];
@@ -3402,6 +3481,51 @@ include __DIR__ . '/includes/header.php';
             <div class="success-actions booking-motion-footer">
                 <button type="button" class="success-action" onclick="conflictPickOne()">하나 빼기</button>
                 <button type="button" class="success-action primary" onclick="conflictSplitDates()">날짜 나누기</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- [05-20] 의료진 상담 후 예약 안내 시트 -->
+    <div class="booking-success-overlay booking-motion-overlay" id="medConsultOverlay" tabindex="-1" aria-hidden="true"
+         data-booking-motion-sheet data-booking-motion-name="bookingMedConsultMotion">
+        <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="medConsultTitle">
+            <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
+            <img class="ns-icon" src="assets/icons/icon-booking-blocked.png?v=1" alt="">
+            <h2 class="success-sheet-title" id="medConsultTitle">의료진 상담 후<br>예약할 수 있어요</h2>
+            <p class="success-sheet-desc">답변 내용을 병원에 먼저 전달할게요.<br>상담 후 병원에서 예약 가능 여부를 알려드려요.</p>
+            <div class="mc-label">해당 항목</div>
+            <div id="medConsultList"></div>
+            </div>
+            <div class="success-actions booking-motion-footer">
+                <button type="button" class="success-action" onclick="medConsultOther()">다른 시술 보기</button>
+                <button type="button" class="success-action primary" onclick="medConsultProceed()">상담 신청하기</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- [05-21] 시술 전 확인 동의 시트 -->
+    <div class="booking-success-overlay booking-motion-overlay" id="consentOverlay" tabindex="-1" aria-hidden="true"
+         data-booking-motion-sheet data-booking-motion-name="bookingConsentMotion">
+        <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+            <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
+            <div class="booking-motion-body">
+            <h2 class="success-sheet-title" id="consentTitle">시술 전 확인해 주세요</h2>
+            <div class="cs-list">
+                <button type="button" class="cs-row all" id="consentAll" onclick="consentToggleAll()"><i aria-hidden="true"></i><span>전체동의</span></button>
+                <button type="button" class="cs-row cs-item" onclick="consentToggle(this)"><i aria-hidden="true"></i><span>임신·수유 중이 아니며, 최근 2주 내 관련 시술을 받지 않았습니다. <span class="cs-req">(필수)</span></span></button>
+                <button type="button" class="cs-row cs-item" onclick="consentToggle(this)"><i aria-hidden="true"></i><span>복용 중인 약물·알레르기를 상담 시 알리겠습니다. <span class="cs-req">(필수)</span></span></button>
+                <div>
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <button type="button" class="cs-row cs-item" onclick="consentToggle(this)"><i aria-hidden="true"></i><span>시술 전후 주의사항을 확인했습니다. <span class="cs-req">(필수)</span></span></button>
+                        <button type="button" class="cs-view" onclick="document.getElementById('consentNote').classList.toggle('open')">보기</button>
+                    </div>
+                    <p class="cs-note" id="consentNote">시술 전후 주의사항은 상담 시 병원에서 자세히 안내해 드려요.</p>
+                </div>
+            </div>
+            </div>
+            <div class="success-actions booking-motion-footer">
+                <button type="button" class="success-action primary" id="consentGo" disabled onclick="consentProceed()">동의하고 예약하기</button>
             </div>
         </section>
     </div>
