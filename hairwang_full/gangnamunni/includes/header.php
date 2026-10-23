@@ -97,7 +97,7 @@ if (empty($hide_admin_inline_edit) && isset($_SESSION['ad_admin_logged_in']) && 
     <link rel="stylesheet" href="<?php echo htmlspecialchars($page_css_file); ?>">
     <?php endif; ?>
     <script src="assets/js/user-cache-core.js?v=2" defer></script>
-    <script src="assets/js/user-content-cache.js?v=3" defer></script>
+    <script src="assets/js/user-content-cache.js?v=4" defer></script>
     <style>
     [data-user-cache] { position: relative; min-height: 100px; }
     [data-cache-status] { text-align: center; font-size: 14px; padding: 8px 16px; }

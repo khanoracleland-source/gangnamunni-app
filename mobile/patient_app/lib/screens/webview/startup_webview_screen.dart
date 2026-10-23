@@ -145,6 +145,19 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       ),
     );
 
+    // Next.js pilot test build: the website then keeps hospitals.php links as real
+    // navigations (no Turbo), so NextPilot.rewrite can send them to /next/hospitals.
+    if (NextPilot.enabled) {
+      await _cookieManager.setCookie(
+        WebViewCookie(
+          name: 'sb_next_pilot',
+          value: '1',
+          domain: startupUri.host,
+          path: '/',
+        ),
+      );
+    }
+
     // Pin the server's device binding to the same id NativeAuthService uses,
     // instead of letting the server mint one and the WebView cookie jar be
     // the only place it's remembered.

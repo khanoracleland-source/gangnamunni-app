@@ -4,9 +4,14 @@
     var storage;
     try { storage = window.localStorage; } catch (_) { storage = null; }
     var cache = UserContentCache.createCache(storage);
+    // Runs once per page load (head, defer) AND after every Turbo in-page visit: the new
+    // <body> carries fresh, unmounted [data-user-cache] sections.
+    function mountAll() {
     document.querySelectorAll('[data-user-cache]').forEach(function (section) {
         var name = section.dataset.userCache;
         if (['hospitals', 'treatments'].indexOf(name) === -1) return;
+        if (section.dataset.cacheMounted === '1') return;
+        section.dataset.cacheMounted = '1';
         var scope = section.dataset.cacheScope;
         var content = section.querySelector('[data-cache-content]');
         var status = section.querySelector('[data-cache-status]');
@@ -62,7 +67,20 @@
         var saved = cache.read(key);
         if (saved) show(saved.html);
         refresh();
-        window.addEventListener('online', refresh);
-        window.addEventListener('pageshow', function (event) { if (event.persisted) refresh(); });
+        function onOnline() { if (section.isConnected) refresh(); }
+        function onPageShow(event) { if (event.persisted && section.isConnected) refresh(); }
+        window.addEventListener('online', onOnline);
+        window.addEventListener('pageshow', onPageShow);
+        // Drop this section's window listeners once Turbo has replaced the body
+        // (at turbo:before-render the old body is still attached, so check after render).
+        document.addEventListener('turbo:render', function cleanup() {
+            if (section.isConnected) return;
+            window.removeEventListener('online', onOnline);
+            window.removeEventListener('pageshow', onPageShow);
+            document.removeEventListener('turbo:render', cleanup);
+        });
     });
+    }
+    mountAll();
+    document.addEventListener('turbo:load', mountAll);
 })();
