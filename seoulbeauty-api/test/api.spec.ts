@@ -6,7 +6,7 @@ import { HospitalsModule } from '../src/hospitals/hospitals.module';
 import { HealthController } from '../src/health/health.controller';
 
 const hospitalRow = {
-  id: 3, name: 'A Clinic', address: 'Seoul Gangnam-gu', rating: '4.50', review_count: 12, min_price: 10000,
+  id: 3, name: 'A Clinic', address: 'Seoul Gangnam-gu', main_image_url: 'uploads/h3/main.png', rating: '4.50', review_count: 12, min_price: 10000,
   categories: '["skin"]', badges: null, treatment_tags: '["botox","filler"]', subway_names: 'bad json',
   business_hours: '{"mon":"9-18"}', active_general_consultation: 1, wishlist_count: 2, latitude: '37.5', longitude: '127.0',
 };
@@ -21,10 +21,20 @@ describe('HTTP API (mock DB)', () => {
       if (sql.includes('information_schema')) return [[{ 1: 1 }]];
       if (sql.includes('FROM gangnamunni_hospitals h WHERE h.id = ?')) return [values![0] === 3 ? [{ 1: 1 }] : []];
       if (sql.includes('COUNT(*) AS total')) return [[{ total: 1 }]];
-      if (sql.includes('FROM hospital_images')) return [[{ hospital_id: 3, image_url: 'uploads/h3/logo.png', image_type: 'logo' }, { hospital_id: 3, image_url: 'uploads/h3/main.png', image_type: 'main' }]];
-      if (sql.includes('FROM hospital_reviews')) return [[{ id: 1, hospital_id: 3, user_name: 'u', rating: 5, images: '["a.jpg"]', treatments: 'x, y', created_at: '2026-01-01 09:00:00' }]];
       if (sql.includes('FROM gangnamunni_hospitals h') && sql.includes('h.id = ?')) return [values![0] === 3 ? [hospitalRow] : []];
       if (sql.includes('FROM gangnamunni_hospitals h')) return [[hospitalRow]];
+      if (sql.includes('FROM hospital_features')) return [[{ feature_icon: '🅿', feature_label: '주차' }]];
+      if (sql.includes('FROM gangnamunni_hospital_treatments ht')) return [[
+        { hospital_treatment_id: 1, is_promoted: 1, treatment_id: 20, name: '주름 보톡스', description: null, id: 11, option_name: '', body_part: '', dosage_value: 50, dosage_unit: 'U', regular_price: 100000, price: 80000 },
+        { hospital_treatment_id: 1, is_promoted: 1, treatment_id: 20, name: '주름 보톡스', description: null, id: 12, option_name: '', body_part: '', dosage_value: 100, dosage_unit: 'U', regular_price: 0, price: 150000 },
+        { hospital_treatment_id: 2, is_promoted: 0, treatment_id: 30, name: '필러', description: 'd', id: 13, option_name: '', body_part: '', dosage_value: 0, dosage_unit: '', regular_price: 0, price: 200000 },
+      ]];
+      if (sql.includes('FROM gangnamunni_doctors')) return [[]];
+      if (sql.includes('FROM crawled_doctors')) return [[{ id: 7, name: '김의사', specialty: '피부과', description: null }]];
+      if (sql.includes('FROM hospital_images') && sql.includes("image_type <> 'logo'")) return [[{ image_url: 'uploads/h3/in1.jpg' }, { image_url: 'uploads/h3/main.png' }, { image_url: '/uploads/h3/logo.png' }]];
+      if (sql.includes('FROM hospital_images') && sql.includes("image_type = 'logo'")) return [[{ image_url: 'uploads/h3/logo.png' }]];
+      if (sql.includes('FROM hospital_images')) return [[{ hospital_id: 3, image_url: 'uploads/h3/logo.png', image_type: 'logo' }, { hospital_id: 3, image_url: 'uploads/h3/main.png', image_type: 'main' }]];
+      if (sql.includes('FROM hospital_reviews')) return [[{ id: 1, hospital_id: 3, user_name: 'u', rating: 5, images: '["a.jpg"]', treatments: 'x, y', created_at: '2026-01-01 09:00:00' }]];
       return [[]];
     }),
   };
@@ -55,7 +65,9 @@ describe('HTTP API (mock DB)', () => {
   });
 
   it('detail 200/404', async () => {
-    await request(app.getHttpServer()).get('/v1/hospitals/3').expect(200);
+    const d = await request(app.getHttpServer()).get('/v1/hospitals/3').expect(200);
+    expect(d.body.features).toEqual([{ icon: '🅿', label: '주차' }]);
+    expect(d.body.images).toEqual(['uploads/h3/in1.jpg']); // main image and logo (matched by path) excluded
     await request(app.getHttpServer()).get('/v1/hospitals/99').expect(404);
   });
 
@@ -80,6 +92,17 @@ describe('HTTP API (mock DB)', () => {
     const d = toHospitalDto({ ...hospitalRow, show_rating: 0 });
     expect(d.rating).toBeNull();
     expect(d.showRating).toBe(false);
+  });
+
+  it('treatments grouped per treatment, doctors fall back to crawled', async () => {
+    const t = await request(app.getHttpServer()).get('/v1/hospitals/3/treatments').expect(200);
+    expect(t.body.items).toHaveLength(2);
+    expect(t.body.items[0]).toMatchObject({ treatmentId: 20, promoted: true });
+    expect(t.body.items[0].options.map((o: any) => o.displayName)).toEqual(['주름 보톡스 · 50U', '주름 보톡스 · 100U']);
+    expect(t.body.items[0].options[0].discountRate).toBe(20);
+    const d = await request(app.getHttpServer()).get('/v1/hospitals/3/doctors').expect(200);
+    expect(d.body.items).toEqual([{ id: 7, name: '김의사', specialty: '피부과', experience: null, description: null, qualification: null, photoUrl: null }]);
+    await request(app.getHttpServer()).get('/v1/hospitals/99/treatments').expect(404);
   });
 
   it('health ok', async () => {

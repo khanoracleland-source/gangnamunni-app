@@ -4,10 +4,19 @@ import { idParam, intParam, str } from '../common/parse';
 import { HOSPITAL_SORTS, HospitalSort } from './hospital-query';
 import { HospitalsService } from './hospitals.service';
 import { ReviewsService } from '../reviews/reviews.service';
+import { HospitalContentService } from './hospital-content.service';
 
 @Controller('v1/hospitals')
 export class HospitalsController {
-  constructor(private readonly hospitals: HospitalsService, private readonly reviews: ReviewsService) {}
+  constructor(
+    private readonly hospitals: HospitalsService,
+    private readonly reviews: ReviewsService,
+    private readonly content: HospitalContentService,
+  ) {}
+
+  private cache(res: Response) {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+  }
 
   @Get()
   async list(@Query() qs: Record<string, unknown>, @Res({ passthrough: true }) res: Response) {
@@ -37,8 +46,28 @@ export class HospitalsController {
 
   @Get(':id')
   async detail(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
-    return this.hospitals.detail(idParam(id));
+    this.cache(res);
+    const hid = idParam(id);
+    const h = await this.hospitals.detail(hid); // 404 for hidden/demo/unapproved
+    const [images, features] = await Promise.all([this.content.images(hid, h.mainImageUrl, h.profileImageUrl), this.content.features(hid)]);
+    return { ...h, images, features };
+  }
+
+  /** 시술목록: active treatments with sale prices, grouped per treatment. */
+  @Get(':id/treatments')
+  async treatments(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+    this.cache(res);
+    const hid = idParam(id);
+    await this.hospitals.detail(hid); // visibility gate
+    return { items: await this.content.treatments(hid) };
+  }
+
+  @Get(':id/doctors')
+  async doctors(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+    this.cache(res);
+    const hid = idParam(id);
+    await this.hospitals.detail(hid);
+    return { items: await this.content.doctors(hid) };
   }
 
   @Get(':id/reviews')

@@ -38,8 +38,14 @@ class NextPilot {
     return result;
   }
 
+  static final Set<String> _detailPaths = {'/detail.php', _site.resolve('detail.php').path};
+
+  /// detail.php?tab= values the Next.js detail understands (PHP "events" = 시술목록).
+  static const Set<String> _detailTabs = {'home', 'events', 'reviews', 'doctors'};
+
   static Uri? _rewrite(Uri uri) {
     if (!_sameOrigin(uri, _site)) return null;
+    if (_detailPaths.contains(uri.path)) return _rewriteDetail(uri);
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
     if (!_listPaths.contains(uri.path)) return null;
@@ -55,6 +61,25 @@ class NextPilot {
       port: _site.hasPort ? _site.port : null,
       path: '$basePath/hospitals',
       queryParameters: kept.isEmpty ? null : kept,
+    );
+  }
+
+  /// detail.php?id=N[&tab=][&from=my_wishlist][&app=] -> /next/hospitals/N[?tab=].
+  /// Any other parameter (treatment context, page, ...) keeps the PHP page.
+  static Uri? _rewriteDetail(Uri uri) {
+    final q = uri.queryParameters;
+    final id = int.tryParse(q['id'] ?? '');
+    if (id == null || id <= 0) return null;
+    const allowed = {'id', 'tab', 'from', 'app'};
+    if (q.keys.any((k) => !allowed.contains(k))) return null;
+    final tab = q['tab'];
+    if (tab != null && tab.isNotEmpty && !_detailTabs.contains(tab)) return null;
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/hospitals/$id',
+      queryParameters: (tab == null || tab.isEmpty || tab == 'home') ? null : {'tab': tab},
     );
   }
 
