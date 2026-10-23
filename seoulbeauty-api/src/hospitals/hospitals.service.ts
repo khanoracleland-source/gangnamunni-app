@@ -25,6 +25,8 @@ export interface HospitalDto {
   consultation: { phone: boolean; chat: boolean; general: boolean };
   wishlistCount: number;
   showRating: boolean;
+  /** Same priority as PHP hospital_list_content.php: hospital_images main > main_image_url > hospital_images logo > profile_image_url */
+  thumbnailUrl: string | null;
 }
 
 const num = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : Number(v));
@@ -66,6 +68,7 @@ export function toHospitalDto(r: Record<string, any>): HospitalDto {
       general: !!r.active_general_consultation,
     },
     wishlistCount: Number(r.wishlist_count ?? 0),
+    thumbnailUrl: r.__main_img || r.main_image_url || r.__logo_img || r.profile_image_url || null,
   };
 }
 
@@ -92,6 +95,30 @@ export class HospitalsService {
     return this.flags;
   }
 
+  /** hospital_images (is_active, image_type main/logo), first by sort_order — mirrors hospital_list_data.php. */
+  private async attachImages(rows: Record<string, any>[]): Promise<void> {
+    const ids = rows.map((r) => Number(r.id)).filter((n) => Number.isInteger(n) && n > 0);
+    if (!ids.length) return;
+    const [imgs] = (await this.db.query(
+      `SELECT hospital_id, image_url, image_type FROM hospital_images
+       WHERE hospital_id IN (${ids.map(() => '?').join(',')}) AND is_active = 1 AND image_type IN ('main','logo')
+       ORDER BY hospital_id ASC, sort_order ASC, id ASC`,
+      ids,
+    )) as any;
+    const main = new Map<number, string>();
+    const logo = new Map<number, string>();
+    for (const i of imgs as any[]) {
+      const hid = Number(i.hospital_id);
+      if (!i.image_url) continue;
+      if (i.image_type === 'main' && !main.has(hid)) main.set(hid, i.image_url);
+      if (i.image_type === 'logo' && !logo.has(hid)) logo.set(hid, i.image_url);
+    }
+    for (const r of rows) {
+      r.__main_img = main.get(Number(r.id)) ?? null;
+      r.__logo_img = logo.get(Number(r.id)) ?? null;
+    }
+  }
+
   async list(p: Omit<HospitalListParams, 'treatmentId'>) {
     let treatmentId = 0;
     if (p.treatment) {
@@ -107,6 +134,7 @@ export class HospitalsService {
       this.db.query(q.sql, q.values),
       this.db.query(q.countSql, q.countValues),
     ])) as any;
+    await this.attachImages(rows);
     return {
       items: (rows as any[]).map(toHospitalDto),
       total: Number(cnt[0]?.total ?? 0),
@@ -134,6 +162,7 @@ export class HospitalsService {
       [id],
     )) as any;
     if (!rows[0]) throw new NotFoundException('hospital not found');
+    await this.attachImages(rows);
     return toHospitalDto(rows[0]);
   }
 }

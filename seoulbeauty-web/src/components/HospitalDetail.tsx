@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { api, assetUrl, formatWon, qk, type Hospital } from "@/lib/api";
+import { api, assetUrl, formatWon, PLACEHOLDER, qk, type Hospital } from "@/lib/api";
 import ReviewList from "./ReviewList";
 import styles from "./HospitalDetail.module.css";
 
@@ -23,7 +23,7 @@ export default function HospitalDetail({ id, initial }: { id: number; initial?: 
     );
   }
 
-  const hero = assetUrl(h.mainImageUrl || h.profileImageUrl);
+  const hero = assetUrl(h.thumbnailUrl || h.mainImageUrl || h.profileImageUrl) || PLACEHOLDER;
   const price = formatWon(h.minPrice);
   const hours = h.businessHours && typeof h.businessHours === "object"
     ? DAYS.filter((d) => typeof h.businessHours![d] === "string").map((d) => [d, h.businessHours![d] as string] as const)
@@ -36,13 +36,9 @@ export default function HospitalDetail({ id, initial }: { id: number; initial?: 
         <button onClick={back} className={styles.back} aria-label="뒤로">‹</button>
         <h1 className={styles.title}>{h.name}</h1>
       </header>
-      {hero ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={hero} alt="" className={styles.hero}
-          onError={(e) => { e.currentTarget.removeAttribute("src"); e.currentTarget.classList.add(styles.heroEmpty); }} />
-      ) : (
-        <div className={`${styles.hero} ${styles.heroEmpty}`} aria-hidden />
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={hero} alt="" className={styles.hero}
+        onError={(e) => { if (e.currentTarget.src !== PLACEHOLDER) e.currentTarget.src = PLACEHOLDER; }} />
       <section className={styles.body}>
         <div className={styles.meta}>
           {h.showRating && h.rating != null && h.rating > 0 && <span>★ {h.rating.toFixed(1)}</span>}

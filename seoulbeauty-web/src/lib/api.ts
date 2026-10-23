@@ -25,6 +25,7 @@ export interface Hospital {
   businessHours: Record<string, unknown> | null;
   consultation: { phone: boolean; chat: boolean; general: boolean };
   wishlistCount: number;
+  thumbnailUrl: string | null;
 }
 
 export interface Review {
@@ -115,6 +116,9 @@ export function assetUrl(path: string | null | undefined): string | null {
   if (/^(https?:)?\/\//.test(path) || path.startsWith("data:")) return path;
   return `${ASSET_BASE}/${path.replace(/^\/+/, "")}`;
 }
+
+/** Same placeholder the PHP list uses. */
+export const PLACEHOLDER = `${ASSET_BASE}/assets/images/seoul_beauty_hospital_placeholder.jpeg`;
 
 export function formatWon(n: number | null | undefined): string | null {
   return n && n > 0 ? `${n.toLocaleString("ko-KR")}원` : null;

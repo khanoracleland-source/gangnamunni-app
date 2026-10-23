@@ -21,6 +21,7 @@ describe('HTTP API (mock DB)', () => {
       if (sql.includes('information_schema')) return [[{ 1: 1 }]];
       if (sql.includes('FROM gangnamunni_hospitals h WHERE h.id = ?')) return [values![0] === 3 ? [{ 1: 1 }] : []];
       if (sql.includes('COUNT(*) AS total')) return [[{ total: 1 }]];
+      if (sql.includes('FROM hospital_images')) return [[{ hospital_id: 3, image_url: 'uploads/h3/logo.png', image_type: 'logo' }, { hospital_id: 3, image_url: 'uploads/h3/main.png', image_type: 'main' }]];
       if (sql.includes('FROM hospital_reviews')) return [[{ id: 1, hospital_id: 3, user_name: 'u', rating: 5, images: '["a.jpg"]', treatments: 'x, y', created_at: '2026-01-01 09:00:00' }]];
       if (sql.includes('FROM gangnamunni_hospitals h') && sql.includes('h.id = ?')) return [values![0] === 3 ? [hospitalRow] : []];
       if (sql.includes('FROM gangnamunni_hospitals h')) return [[hospitalRow]];
@@ -43,6 +44,7 @@ describe('HTTP API (mock DB)', () => {
     expect(r.body.total).toBe(1);
     expect(r.body.items[0]).toMatchObject({ id: 3, rating: 4.5, treatmentTags: ['botox', 'filler'], subwayNames: [], businessHours: { mon: '9-18' } });
     expect(r.body.items[0].raw_data).toBeUndefined();
+    expect(r.body.items[0].thumbnailUrl).toBe('uploads/h3/main.png'); // hospital_images main wins
     expect(r.headers['cache-control']).toContain('s-maxage');
   });
 
