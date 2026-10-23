@@ -511,6 +511,46 @@ if (($_GET['from'] ?? '') === 'notifications') {
         .ex-actions { margin-top:14px; display:flex; gap:10px; }
         .ex-btn { flex:1 1 0; height:52px; border-radius:4px; border:1px solid #AC1830; background:#fff; color:#AC1830; font-size:19px; font-weight:500; display:flex; align-items:center; justify-content:center; text-decoration:none; font-family:inherit; }
         .ex-btn.primary { background:#AC1830; color:#fff; }
+
+        /* [05-47] 시술예정 카드 (디자인 + 폰트 3px, 색 #AC1830) */
+        #tab-active { padding: 10px 0 4px; background: #F4F2F3; }
+        #tab-active .upcoming-booking { margin: 0 20px 10px; padding: 12px 16px 14px; }
+        #tab-active .upcoming-booking:first-of-type, #tab-active .upcoming-booking + .upcoming-booking { padding-top: 12px; }
+        #tab-active .upcoming-booking .booking-card-top { margin: 0; gap: 8px; min-height: 28px; }
+        #tab-active .upcoming-booking .booking-dday {
+            height: 28px; padding: 0 9px; display: inline-flex; align-items: center; border-radius: 3px;
+            background: #FBEFF1; color: #AC1830; font-size: 16px; font-weight: 700; white-space: nowrap;
+        }
+        #tab-active .upcoming-booking .booking-detail-link {
+            margin-left: auto; height: 28px; padding: 0 12px; display: inline-flex; align-items: center;
+            border: 1px solid #AC1830; border-radius: 14px; color: #1A1718; font-size: 15px; white-space: nowrap;
+        }
+        #tab-active .upcoming-booking .booking-card-date { margin-top: 6px; font-size: 18px; font-weight: 500; color: #1A1718; white-space: nowrap; }
+        #tab-active .upcoming-booking .booking-summary { gap: 12px; margin-top: 10px; align-items: center; }
+        #tab-active .upcoming-booking .booking-thumb { width: 52px; height: 52px; flex: 0 0 52px; }
+        #tab-active .upcoming-booking .booking-treatment { font-size: 16px; font-weight: 500; }
+        #tab-active .upcoming-booking .booking-hospital { font-size: 14px; color: #6B6466; margin-top: 2px; }
+        #tab-active .upcoming-booking .booking-price { margin-top: 4px; font-size: 18px; font-weight: 500; }
+        #tab-active .upcoming-booking .booking-progress { margin: 0 -8px; padding: 10px 0 8px; border-bottom: 1px solid #ECE9EA; }
+        #tab-active .upcoming-booking .progress-step { padding-top: 17px; font-size: 15px; letter-spacing: -.03em; white-space: nowrap; color: #C9C3C5; font-weight: 400; }
+        #tab-active .upcoming-booking .progress-step::before { width: 9px; height: 9px; background: #DCD6D8; }
+        #tab-active .upcoming-booking .progress-step::after { top: 4px; left: calc(50% + 11px); width: calc(100% - 22px); background: #DCD6D8; }
+        #tab-active .upcoming-booking .progress-step.done::before, #tab-active .upcoming-booking .progress-step.active::before { background: #AC1830; }
+        #tab-active .upcoming-booking .progress-step.done::after { background: #AC1830; }
+        #tab-active .upcoming-booking .progress-step.active::after { background: #DCD6D8; }
+        #tab-active .upcoming-booking .progress-step.active { color: #1A1718; font-weight: 700; }
+        #tab-active .upcoming-booking .booking-card-actions { display: flex; justify-content: center; gap: 8px; padding-top: 12px; border-top: 0; margin: 0; }
+        #tab-active .upcoming-booking .booking-card-action { flex: 0 0 160px; width: 160px; min-height: 42px; height: 42px; border-radius: 4px; font-size: 19px; font-weight: 500; }
+        #tab-active .push-hint {
+            margin: 0 20px 12px; padding: 12px 14px; border: 1px solid #AC1830; border-radius: 18px; background: #fff;
+            color: #1A1718; font-size: 15px; line-height: 1.6; letter-spacing: -.03em; align-items: center;
+        }
+        #tab-active .push-hint small { margin-top: 0; color: #1A1718; font-size: 15px; }
+        @media (max-width: 380px) {
+            #tab-active .upcoming-booking { margin-left: 12px; margin-right: 12px; }
+            #tab-active .upcoming-booking .progress-step { font-size: 13px; }
+            #tab-active .push-hint { margin-left: 12px; margin-right: 12px; }
+        }
     </style>
     <script>
         (function(){
@@ -608,11 +648,15 @@ if (($_GET['from'] ?? '') === 'notifications') {
                     if ($_payment_state === 'cancelled') $_booking_steps[2] = '결제 취소';
                 }
             ?>
+            <?php
+                // [05-47] 상태 배지: 진행 단계 이름 · D-n (예: 예약 확정 · D-3)
+                $_chip_state = ($_booking_active_step === 4) ? '예약 확정' : ($_booking_active_step === 3 ? '결제 대기' : ($_booking_active_step === 2 ? '병원 확인 중' : '예약 요청 접수'));
+            ?>
             <div class="booking-card-top">
-                <span class="booking-card-date"><?php echo htmlspecialchars($_date_text); ?></span>
-                <span class="booking-dday"><?php echo (($bk['status'] ?? '') === 'confirmed' && in_array($_payment_state, ['payable','preview'], true)) ? '결제 대기 · ' : '시술예정 '; ?><?php echo htmlspecialchars($_dd_text); ?></span>
+                <span class="booking-dday"><?php echo htmlspecialchars($_chip_state . ' · ' . $_dd_text); ?></span>
                 <a class="booking-detail-link" href="booking_request_detail.php?booking_id=<?php echo (int)$bk['id']; ?>">예약상세</a>
             </div>
+            <div class="booking-card-date"><?php echo htmlspecialchars($_date_text); ?></div>
             <div class="booking-summary">
                 <div class="booking-thumb">
                     <?php if (!empty($bk['hospital_image'])): ?>
