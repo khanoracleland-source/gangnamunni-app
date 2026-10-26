@@ -10,6 +10,7 @@ export class MeController {
   me(@Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('Vary', 'Cookie');
+    // phone is for the member's own forms; never echo it to anonymous callers.
     return req.session;
   }
 }

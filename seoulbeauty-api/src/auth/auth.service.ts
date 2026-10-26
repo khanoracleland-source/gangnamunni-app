@@ -3,9 +3,12 @@ import { createHash } from 'node:crypto';
 
 export interface SessionUser {
   id: string;
+  /** g5_member.mb_no — used as gangnamunni_wishlist.member_id */
+  no: number;
   name: string;
   nickname: string;
   level: number;
+  phone: string;
 }
 export interface Session {
   loggedIn: boolean;

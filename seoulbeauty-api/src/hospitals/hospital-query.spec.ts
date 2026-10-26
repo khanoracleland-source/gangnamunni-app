@@ -22,6 +22,12 @@ describe('buildHospitalListQuery', () => {
     }
   });
 
+  it('member: wishlisted EXISTS placeholder comes first', () => {
+    const q = buildHospitalListQuery({ ...base, q: 'x', memberNo: 42 }, flags);
+    expect(q.sql.indexOf('mw.member_id = ?')).toBeLessThan(q.sql.indexOf('h.name LIKE ?'));
+    expect(q.values[0]).toBe(42);
+    expect(count(q.sql)).toBe(q.values.length);
+  });
   it('escapes LIKE wildcards', () => {
     const q = buildHospitalListQuery({ ...base, q: '50%_off' }, flags);
     expect(q.values[0]).toBe('%50\\%\\_off%');

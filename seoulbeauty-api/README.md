@@ -2,17 +2,21 @@
 
 Existing MariaDB (`gangnamunni`) -> JSON for the future Next.js frontend. PHP keeps running on the same DB.
 
-## Endpoints (v1, GET only)
+## Endpoints (v1)
 | Path | Notes |
 |---|---|
 | `/health` | DB ping |
 | `/v1/hospitals` | `q, category, treatment, region(a,b), sort(manual\|price\|rating\|popular\|review), limit(1-100), offset` |
 | `/v1/hospitals/:id` | detail |
 | `/v1/hospitals/:id/reviews` | only `is_active=1 AND review_status='published'` |
+| `/v1/hospitals/:id/treatments`, `/doctors` | detail.php 시술목록 / 의료진 |
+| `/v1/me` | login state (PHP session via `api/session_me.php`) |
+| `POST /v1/wishlist/toggle`, `GET /v1/wishlist/hospitals/:id` | writes `gangnamunni_wishlist` |
+| `POST /v1/consultations` | writes `gangnamunni_consultations` |
 
 ## Run
 ```
-cp .env.example .env   # use a SELECT-only DB user; Node >= 22.9 loads it via --env-file-if-exists
+cp .env.example .env   # DB user: SELECT + limited writes (deploy/README.md); Node >= 22.9 loads .env via --env-file-if-exists
 npm ci && npm run build && npm start
 # with systemd/pm2 you may instead provide the env vars directly
 npm test

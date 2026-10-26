@@ -1,4 +1,5 @@
-import { BadRequestException, Controller, Get, Param, Query, Res } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { AuthGuard, AuthedRequest } from '../auth/auth.guard';
 import type { Response } from 'express';
 import { idParam, intParam, str } from '../common/parse';
 import { HOSPITAL_SORTS, HospitalSort } from './hospital-query';
@@ -19,7 +20,8 @@ export class HospitalsController {
   }
 
   @Get()
-  async list(@Query() qs: Record<string, unknown>, @Res({ passthrough: true }) res: Response) {
+  @UseGuards(AuthGuard)
+  async list(@Query() qs: Record<string, unknown>, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
     const treatment = str(qs.treatment);
     const sortRaw = str(qs.sort, 20);
     if (sortRaw && !HOSPITAL_SORTS.includes(sortRaw as HospitalSort)) {
@@ -31,9 +33,12 @@ export class HospitalsController {
       .map((s) => s.trim())
       .filter(Boolean)
       .slice(0, 10);
-    // Public, not user-specific data: let the Next.js/CDN layer cache it briefly.
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+    const memberNo = req.session.loggedIn ? req.session.user?.no : undefined;
+    // Anonymous responses are public and cacheable; a member's response carries `wishlisted`.
+    res.setHeader('Cache-Control', memberNo ? 'private, no-store' : 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+    res.setHeader('Vary', 'Cookie');
     return this.hospitals.list({
+      memberNo,
       q: str(qs.q),
       category: str(qs.category),
       treatment,

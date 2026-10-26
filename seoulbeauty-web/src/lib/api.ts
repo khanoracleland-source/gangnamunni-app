@@ -26,6 +26,7 @@ export interface Hospital {
   consultation: { phone: boolean; chat: boolean; general: boolean };
   wishlistCount: number;
   thumbnailUrl: string | null;
+  wishlisted: boolean;
 }
 
 export interface HospitalDetail extends Hospital {
@@ -114,20 +115,48 @@ function timeoutSignal(ms: number): AbortSignal | undefined {
   return ctrl.signal;
 }
 
-async function get<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+/** Server Components pass the incoming request's Cookie header so SSR sees the member's state (wishlist). */
+export type ServerCtx = { cookie?: string };
+
+async function get<T>(path: string, params?: Record<string, string | number | undefined>, ctx?: ServerCtx): Promise<T> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params || {})) if (v !== undefined && v !== "") qs.set(k, String(v));
   const query = qs.toString(); // not `qs.size`: unsupported before Chrome 113 / Safari 17
   const url = `${base()}${path}${query ? `?${query}` : ""}`;
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (ctx?.cookie) headers.cookie = ctx.cookie;
   // same-origin: the PHP session cookie travels with /next/api/* so the API can ask PHP who is logged in
-  const res = await fetch(url, { headers: { accept: "application/json" }, credentials: "same-origin", signal: timeoutSignal(8000) });
+  const res = await fetch(url, { headers, credentials: "same-origin", signal: timeoutSignal(8000) });
   if (!res.ok) throw new ApiError(res.status, `${res.status} ${path}`);
   return (await res.json()) as T;
 }
 
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const url = `${base()}${path}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+    signal: timeoutSignal(10000),
+  });
+  if (!res.ok) {
+    let msg = `${res.status} ${path}`;
+    try { const j = await res.json(); if (j?.message) msg = String(j.message); } catch { /* keep */ }
+    throw new ApiError(res.status, msg);
+  }
+  return (await res.json()) as T;
+}
+
+export interface WishlistState { wishlisted: boolean; count: number }
+export interface ConsultationInput { hospitalId: number; type: "general" | "doctor" | "kakao"; name: string; phone: string; message: string }
+
 export const api = {
-  me: () => get<{ loggedIn: boolean; user: { id: string; name: string; nickname: string; level: number } | null }>("/v1/me"),
-  hospitals: (p: HospitalListParams = {}) => get<Page<Hospital>>("/v1/hospitals", { ...p, limit: p.limit ?? 20 }),
+  wishlist: (id: number) => get<WishlistState>(`/v1/wishlist/hospitals/${id}`),
+  toggleWishlist: (id: number) => post<WishlistState & { message: string }>("/v1/wishlist/toggle", { type: "hospital", targetId: id }),
+  consult: (input: ConsultationInput) => post<{ success: boolean; id: number; message: string }>("/v1/consultations", input),
+  me: () => get<{ loggedIn: boolean; user: { id: string; no: number; name: string; nickname: string; level: number; phone: string } | null }>("/v1/me"),
+  hospitals: (p: HospitalListParams = {}, ctx?: ServerCtx) => get<Page<Hospital>>("/v1/hospitals", { ...p, limit: p.limit ?? 20 }, ctx),
   hospital: (id: number) => get<HospitalDetail>(`/v1/hospitals/${id}`),
   treatments: (id: number) => get<{ items: HospitalTreatment[] }>(`/v1/hospitals/${id}/treatments`),
   doctors: (id: number) => get<{ items: Doctor[] }>(`/v1/hospitals/${id}/doctors`),
@@ -141,6 +170,7 @@ export const qk = {
   reviews: (id: number) => ["reviews", id] as const,
   treatments: (id: number) => ["treatments", id] as const,
   doctors: (id: number) => ["doctors", id] as const,
+  wishlist: (id: number) => ["wishlist", id] as const,
 };
 
 export type DetailTab = "home" | "treatments" | "reviews" | "doctors";

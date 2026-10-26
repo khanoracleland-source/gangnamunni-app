@@ -5,6 +5,8 @@ import { DB } from '../src/db/db.module';
 import { HospitalsModule } from '../src/hospitals/hospitals.module';
 import { HealthController } from '../src/health/health.controller';
 import { AuthService } from '../src/auth/auth.service';
+import { AuthGuard } from '../src/auth/auth.guard';
+import { Global, Module } from '@nestjs/common';
 
 const hospitalRow = {
   id: 3, name: 'A Clinic', address: 'Seoul Gangnam-gu', main_image_url: 'uploads/h3/main.png', rating: '4.50', review_count: 12, min_price: 10000,
@@ -42,7 +44,9 @@ describe('HTTP API (mock DB)', () => {
   };
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [HospitalsModule], controllers: [HealthController], providers: [{ provide: AuthService, useValue: { ping: async () => true } }] })
+    const authStub = { ping: async () => true, fromCookie: async () => ({ loggedIn: false, user: null }) };
+    @Global() @Module({ providers: [{ provide: AuthService, useValue: authStub }, AuthGuard], exports: [AuthService, AuthGuard] }) class TestAuthModule {}
+    const mod = await Test.createTestingModule({ imports: [TestAuthModule, HospitalsModule], controllers: [HealthController] })
       .useMocker((t) => (t === DB ? db : undefined))
       .overrideProvider(DB).useValue(db)
       .compile();

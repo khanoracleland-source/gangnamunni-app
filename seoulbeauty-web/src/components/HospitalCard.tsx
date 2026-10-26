@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, assetUrl, formatWon, PLACEHOLDER, qk, type Hospital } from "@/lib/api";
+import WishlistButton from "./WishlistButton";
 import styles from "./HospitalCard.module.css";
 
 export default function HospitalCard({ h }: { h: Hospital }) {
@@ -26,6 +27,7 @@ export default function HospitalCard({ h }: { h: Hospital }) {
         onError={(e) => { if (e.currentTarget.src !== PLACEHOLDER) e.currentTarget.src = PLACEHOLDER; }} />
       <div className={styles.info}>
         <div className={styles.name}>{h.name}</div>
+        <div className={styles.wish}><WishlistButton hospitalId={h.id} initial={{ wishlisted: h.wishlisted, count: h.wishlistCount }} /></div>
         {h.address && <div className={styles.addr}>{h.address}</div>}
         <div className={styles.meta}>
           {h.showRating && h.rating != null && h.rating > 0 && (

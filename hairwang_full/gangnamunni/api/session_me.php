@@ -38,10 +38,13 @@ if (function_exists('is_gangnamunni_logged_in') && is_gangnamunni_logged_in()) {
         'loggedIn' => true,
         'user' => [
             'id' => (string)($m['mb_id'] ?? ''),
+            // Numeric member no: gangnamunni_wishlist.member_id uses this, not mb_id.
+            'no' => (int)($m['mb_no'] ?? 0),
             'name' => (string)($m['mb_name'] ?? ''),
             'nickname' => (string)($m['mb_nick'] ?? ''),
             'level' => (int)($m['mb_level'] ?? 0),
-            // Enough for the UI; no email/phone over this channel.
+            // Prefill for forms the member fills in themselves (상담 신청); no email.
+            'phone' => (string)($m['mb_hp'] ?? ''),
         ],
     ];
 }

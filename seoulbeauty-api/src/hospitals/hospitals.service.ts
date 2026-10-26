@@ -27,6 +27,8 @@ export interface HospitalDto {
   showRating: boolean;
   /** Same priority as PHP hospital_list_content.php: hospital_images main > main_image_url > hospital_images logo > profile_image_url */
   thumbnailUrl: string | null;
+  /** only meaningful for a logged-in caller; false otherwise */
+  wishlisted: boolean;
 }
 
 const num = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : Number(v));
@@ -69,6 +71,7 @@ export function toHospitalDto(r: Record<string, any>): HospitalDto {
     },
     wishlistCount: Number(r.wishlist_count ?? 0),
     thumbnailUrl: r.__main_img || r.main_image_url || r.__logo_img || r.profile_image_url || null,
+    wishlisted: !!Number(r.wishlisted ?? 0),
   };
 }
 

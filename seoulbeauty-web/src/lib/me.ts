@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { api, ApiError } from "./api";
 import { phpUrl, usePhpBase } from "./php";
 
-export interface SessionUser { id: string; name: string; nickname: string; level: number }
+export interface SessionUser { id: string; no: number; name: string; nickname: string; level: number; phone: string }
 export interface Session { loggedIn: boolean; user: SessionUser | null }
 
 export const meKey = ["me"] as const;

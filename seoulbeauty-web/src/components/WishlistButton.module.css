@@ -1,0 +1,6 @@
+.btn { display: inline-flex; align-items: center; gap: 4px; color: #aaa; line-height: 1; }
+.btn.on { color: #AC1830; }
+.sm { font-size: 20px; padding: 4px; }
+.lg { font-size: 24px; padding: 6px 8px; }
+.count { font-size: 13px; color: var(--muted); }
+.btn:disabled { opacity: .6; }

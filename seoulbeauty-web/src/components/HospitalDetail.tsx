@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, assetUrl, formatWon, PLACEHOLDER, qk, type DetailTab, type HospitalDetail as Detail } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import ReviewList from "./ReviewList";
+import WishlistButton from "./WishlistButton";
+import ConsultSheet from "./ConsultSheet";
 import TreatmentList from "./TreatmentList";
 import DoctorList from "./DoctorList";
 import styles from "./HospitalDetail.module.css";
@@ -17,6 +19,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home" }: { i
   const qc = useQueryClient();
   const php = usePhpBase();
   const [tab, setTab] = useState<DetailTab>(initialTab);
+  const [consultOpen, setConsultOpen] = useState(false);
   const { data: h, isError, refetch } = useQuery({
     queryKey: qk.hospital(id),
     queryFn: () => api.hospital(id),
@@ -55,6 +58,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home" }: { i
       <header className={styles.top}>
         <button onClick={back} className={styles.back} aria-label="뒤로">‹</button>
         <h1 className={styles.title}>{h.name}</h1>
+        <WishlistButton hospitalId={h.id} size="lg" initialCount={h.wishlistCount} />
       </header>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={hero} alt="" className={styles.hero}
@@ -127,11 +131,13 @@ export default function HospitalDetail({ id, initial, initialTab = "home" }: { i
         {tab === "doctors" && <DoctorList hospitalId={id} />}
       </section>
 
-      {/* Booking still lives in PHP (same origin keeps the app's session). 상담 신청 modal: not ported yet. */}
+      {/* Booking still lives in PHP (same origin keeps the app's session). */}
       <div className={styles.cta}>
         {h.phone && <a href={`tel:${h.phone.replace(/[^\d+]/g, "")}`} className={styles.ctaSecondary}>전화</a>}
+        <button type="button" className={styles.ctaSecondary} onClick={() => setConsultOpen(true)}>상담 신청</button>
         <a href={phpUrl(php, `booking.php?id=${id}`)} className={styles.ctaPrimary}>예약하기</a>
       </div>
+      <ConsultSheet hospital={h} open={consultOpen} onClose={() => setConsultOpen(false)} />
     </article>
   );
 }

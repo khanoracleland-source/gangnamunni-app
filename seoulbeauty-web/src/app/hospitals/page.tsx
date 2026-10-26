@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { api, normalize, type HospitalListParams, type HospitalSort } from "@/lib/api";
 import HospitalList from "@/components/HospitalList";
@@ -18,9 +19,11 @@ function toParams(sp: Record<string, string | string[] | undefined>): HospitalLi
 /** Reads searchParams (runtime API) and fetches the first page on the server for a full first paint. */
 async function ListWithData({ searchParams }: { searchParams: SP }) {
   const params = toParams(await searchParams);
+  // Forward the session cookie so the first paint already knows the member's wishlist marks.
+  const cookie = (await cookies()).toString();
   let initial;
   try {
-    initial = await api.hospitals(normalize(params));
+    initial = await api.hospitals(normalize(params), { cookie });
   } catch {
     initial = undefined; // the client component will retry and show an error state
   }

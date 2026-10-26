@@ -4,6 +4,8 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DbModule } from './db/db.module';
 import { HospitalsModule } from './hospitals/hospitals.module';
 import { AuthModule } from './auth/auth.module';
+import { WishlistModule } from './wishlist/wishlist.module';
+import { ConsultationsModule } from './consultations/consultations.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -13,6 +15,8 @@ import { HealthController } from './health/health.controller';
     DbModule,
     AuthModule,
     HospitalsModule,
+    WishlistModule,
+    ConsultationsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

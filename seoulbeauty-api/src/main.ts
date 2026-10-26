@@ -5,6 +5,8 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const origins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+  // Browser writes come same-origin through the Next.js /next/api proxy; CORS stays GET-only on purpose
+  // (a cross-site POST with X-Requested-With needs a preflight, which this refuses).
   app.enableCors({ origin: origins.length ? origins : false, methods: ['GET'], maxAge: 600 });
   const ex = app.getHttpAdapter().getInstance();
   ex.disable('x-powered-by');

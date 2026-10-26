@@ -12,6 +12,8 @@ export interface HospitalListParams {
   sort: HospitalSort;
   limit: number;
   offset: number;
+  /** mb_no of the logged-in member → adds `wishlisted` per row (0 = anonymous) */
+  memberNo?: number;
 }
 
 export interface SchemaFlags {
@@ -122,11 +124,14 @@ export function buildHospitalListQuery(p: HospitalListParams, f: SchemaFlags): B
     h.active_phone_consultation, h.active_chat_consultation, h.active_general_consultation,
     ${f.hasShowRating ? 'h.show_rating' : '1'} AS show_rating`;
 
+  const mine = p.memberNo
+    ? "EXISTS(SELECT 1 FROM gangnamunni_wishlist mw WHERE mw.member_id = ? AND mw.target_type = 'hospital' AND mw.target_id = h.id)"
+    : '0';
   return {
-    sql: `SELECT ${cols}, ${wishlist} AS wishlist_count
+    sql: `SELECT ${cols}, ${wishlist} AS wishlist_count, ${mine} AS wishlisted
           FROM gangnamunni_hospitals h ${whereSql}
           ORDER BY ${order} LIMIT ? OFFSET ?`,
-    values: [...wv, ...orderValues, p.limit, p.offset],
+    values: [...(p.memberNo ? [p.memberNo] : []), ...wv, ...orderValues, p.limit, p.offset],
     countSql: `SELECT COUNT(*) AS total FROM gangnamunni_hospitals h ${whereSql}`,
     countValues: wv,
   };

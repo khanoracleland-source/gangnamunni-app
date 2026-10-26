@@ -1,7 +1,7 @@
 .root { padding-bottom: 64px; }
 .top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
 .back { width: 40px; height: 40px; font-size: 28px; line-height: 1; }
-.title { font-size: 17px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title { flex: 1; min-width: 0; font-size: 17px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hero { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #d9d9d9; }
 .body { padding: 14px 20px; }
 .meta { display: flex; gap: 12px; font-size: 14px; color: var(--muted); flex-wrap: wrap; margin-bottom: 8px; }
