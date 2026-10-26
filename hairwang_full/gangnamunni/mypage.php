@@ -66,6 +66,7 @@ if ($is_logged_in) {
 
 // 로그인 상태에서 실제 화면에 표시하는 포인트만 조회한다.
 $booking_count = 0;
+$consult_count = 0;
 if ($is_logged_in):
 // 포인트 잔액 — 원장(#포인트제도) 스냅샷 사용 (member_id는 INT = mb_no)
 // 스키마 미설치 등으로 원장을 못 써도 마이페이지가 죽지 않도록 안전 조회 사용.
@@ -89,7 +90,6 @@ if ($_bk_stmt = mysqli_prepare($connect,
 }
 
 // 상담 건수 — "상담 내역" 행 배지 (gangnamunni_consultations.mb_id, sql/consultation_member_20261023.sql)
-$consult_count = 0;
 $_cc = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_consultations LIKE 'mb_id'");
 if ($_cc && mysqli_num_rows($_cc) > 0 && ($_cs = mysqli_prepare($connect, "SELECT COUNT(*) AS c FROM gangnamunni_consultations WHERE mb_id = ?"))) {
     mysqli_stmt_bind_param($_cs, 's', $mb_id);
@@ -293,7 +293,7 @@ body {
         <span class="menu-row-arrow"><i class="bi bi-chevron-right"></i></span>
     </a>
     <a href="my_consultations.php" class="menu-row">
-        <span class="menu-row-icon"><i class="bi bi-chat-dots" style="font-size:26px;color:#AC1830;line-height:1;"></i></span>
+        <span class="menu-row-icon"><?php $_ci = ($consult_count > 0) ? 'icon-mypage-consult-active.png' : 'icon-mypage-consult.png'; ?><img src="assets/icons/<?php echo $_ci; ?>?v=<?php echo (int)@filemtime(__DIR__ . '/assets/icons/' . $_ci); ?>" alt="" aria-hidden="true"></span>
         <span class="menu-row-text">상담 내역</span>
         <?php if ($consult_count > 0): ?>
         <span class="menu-row-badge"><?php echo number_format($consult_count); ?>건</span>
