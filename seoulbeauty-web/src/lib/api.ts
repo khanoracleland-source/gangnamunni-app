@@ -119,12 +119,14 @@ async function get<T>(path: string, params?: Record<string, string | number | un
   for (const [k, v] of Object.entries(params || {})) if (v !== undefined && v !== "") qs.set(k, String(v));
   const query = qs.toString(); // not `qs.size`: unsupported before Chrome 113 / Safari 17
   const url = `${base()}${path}${query ? `?${query}` : ""}`;
-  const res = await fetch(url, { headers: { accept: "application/json" }, signal: timeoutSignal(8000) });
+  // same-origin: the PHP session cookie travels with /next/api/* so the API can ask PHP who is logged in
+  const res = await fetch(url, { headers: { accept: "application/json" }, credentials: "same-origin", signal: timeoutSignal(8000) });
   if (!res.ok) throw new ApiError(res.status, `${res.status} ${path}`);
   return (await res.json()) as T;
 }
 
 export const api = {
+  me: () => get<{ loggedIn: boolean; user: { id: string; name: string; nickname: string; level: number } | null }>("/v1/me"),
   hospitals: (p: HospitalListParams = {}) => get<Page<Hospital>>("/v1/hospitals", { ...p, limit: p.limit ?? 20 }),
   hospital: (id: number) => get<HospitalDetail>(`/v1/hospitals/${id}`),
   treatments: (id: number) => get<{ items: HospitalTreatment[] }>(`/v1/hospitals/${id}/treatments`),

@@ -4,6 +4,7 @@ import request from 'supertest';
 import { DB } from '../src/db/db.module';
 import { HospitalsModule } from '../src/hospitals/hospitals.module';
 import { HealthController } from '../src/health/health.controller';
+import { AuthService } from '../src/auth/auth.service';
 
 const hospitalRow = {
   id: 3, name: 'A Clinic', address: 'Seoul Gangnam-gu', main_image_url: 'uploads/h3/main.png', rating: '4.50', review_count: 12, min_price: 10000,
@@ -41,7 +42,7 @@ describe('HTTP API (mock DB)', () => {
   };
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [HospitalsModule], controllers: [HealthController] })
+    const mod = await Test.createTestingModule({ imports: [HospitalsModule], controllers: [HealthController], providers: [{ provide: AuthService, useValue: { ping: async () => true } }] })
       .useMocker((t) => (t === DB ? db : undefined))
       .overrideProvider(DB).useValue(db)
       .compile();
@@ -107,7 +108,7 @@ describe('HTTP API (mock DB)', () => {
   });
 
   it('health ok', async () => {
-    await request(app.getHttpServer()).get('/health').expect(200);
+    await request(app.getHttpServer()).get('/health').expect(200).expect({ status: 'ok', phpSession: 'ok' });
   });
 });
 
