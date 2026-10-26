@@ -213,7 +213,7 @@ $page_title = '다시 예약';
 
     </div>
 
-    <a href="booking.php?id=<?php echo (int)$hospital_id; ?>&amp;rebook=1<?php if ($prev_booking): ?>&amp;source_booking_id=<?php echo (int)$prev_booking['id']; ?>&amp;treatment=<?php echo urlencode((string)$prev_booking['treatment']); ?><?php endif; ?>" class="btn-rebook">다시예약</a>
+    <a href="booking.php?id=<?php echo (int)$hospital_id; ?>&amp;rebook=1&amp;via=again<?php if ($prev_booking): ?>&amp;source_booking_id=<?php echo (int)$prev_booking['id']; ?>&amp;treatment=<?php echo urlencode((string)$prev_booking['treatment']); ?><?php endif; ?>" class="btn-rebook">다시예약</a>
 
     </div>
 

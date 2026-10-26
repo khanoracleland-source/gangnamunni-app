@@ -47,6 +47,7 @@ if (function_exists('getSettingValue')) {
         if (isset($_GET['treatment'])) $login_return_url .= '&treatment=' . urlencode(trim((string)$_GET['treatment']));
         if ($booking_return_url !== '') $login_return_url .= '&return_url=' . rawurlencode($booking_return_url);
         if (isset($_GET['rebook']) && $_GET['rebook'] === '1') $login_return_url .= '&rebook=1';
+        if (isset($_GET['via']) && $_GET['via'] === 'again') $login_return_url .= '&via=again';
         if (isset($_GET['source_booking_id'])) $login_return_url .= '&source_booking_id=' . max(0, (int)$_GET['source_booking_id']);
         if ($booking_from_wishlist) $login_return_url .= '&from=my_wishlist';
         header('Location: auth/login.php?url=' . urlencode($login_return_url));
@@ -1361,6 +1362,29 @@ $page_css = '
     .booking-form.rebooking .form-group { padding:0 4px 28px; margin:0 0 8px; border-bottom:8px solid #f4f4f4; }
     .booking-form.rebooking .form-group:last-of-type { border-bottom:0; }
     .booking-form.rebooking .submit-section { padding:0 4px 18px; }
+    /* [05-54] 다시 예약 — 디자인 시안(+3px) */
+    .booking-form.rebooking .form-group { border-bottom-color:#F4F2F3; }
+    .booking-form.rebooking .section-head-title,
+    .booking-form.rebooking .form-label.date-select-label { font-size:21px; }
+    .booking-form.rebooking .st-name { font-size:18px; font-weight:400; color:#1A1718; }
+    .booking-form.rebooking .st-price { font-size:18px; font-weight:500; color:#1A1718; }
+    .booking-form.rebooking .st-remove { color:#1A1718; font-size:22px; }
+    .booking-form.rebooking .month-selector { gap:18px; margin:6px 0 10px; }
+    .booking-form.rebooking .month-item { font-size:18px; color:#9A9395; }
+    .booking-form.rebooking .month-item.active { color:#1A1718; font-weight:700; }
+    .booking-form.rebooking .date-selector { gap:0; padding:12px 0 10px; border-color:#ECE9EA; }
+    .booking-form.rebooking .date-chip { width:calc(100% / 7); }
+    .booking-form.rebooking .date-chip .dc-wd { font-size:15px; color:#9A9395; }
+    .booking-form.rebooking .date-chip .dc-day { width:34px; height:34px; font-size:18px; font-weight:400; color:#1A1718; }
+    .booking-form.rebooking .date-chip.active .dc-day { font-weight:700; color:#fff; }
+    .booking-form.rebooking .date-chip .dc-today { font-size:14px; font-weight:400; color:#9A9395; }
+    .booking-form.rebooking .rebook-method strong { font-size:17px; font-weight:500; }
+    .booking-form.rebooking .rebook-method span { font-size:15px; }
+    .booking-form.rebooking .time-grid { margin-top:14px; }
+    .booking-form.rebooking .time-slot { display:flex; align-items:center; justify-content:center; height:40px; padding:0; border-color:#DCD6D8; color:#1A1718; font-size:17px; font-weight:400; }
+    .booking-form.rebooking .time-slot.active { border-color:#AC1830; color:#AC1830; }
+    .booking-form.rebooking .time-slot.disabled { color:#B5AEB0; background:#F7F5F6; border-color:#EEE9EB; font-size:15px; }
+    .booking-form.rebooking .btn-submit { height:52px; padding:0; border-radius:4px; font-size:19px; font-weight:500; }
 
     .date-selector {
         display: flex;
@@ -3192,7 +3216,7 @@ include __DIR__ . '/includes/header.php';
     <!-- 페이지 헤더 -->
     <div class="page-header">
             <a href="<?php echo htmlspecialchars($booking_back_url, ENT_QUOTES, 'UTF-8'); ?>" class="back-btn" aria-label="뒤로"><i class="bi bi-chevron-left"></i></a>
-            <div class="page-title"><?php echo $is_changing ? '예약 변경' : ($is_rebooking ? '예약 선택' : term('booking', '예약') . '하기'); ?></div>
+            <div class="page-title"><?php echo $is_changing ? '예약 변경' : ($is_rebooking ? ((isset($_GET['via']) && $_GET['via'] === 'again') ? '예약 선택' : '다시 예약') : term('booking', '예약') . '하기'); ?></div>
     </div>
 
     <!-- 병원 이미지 슬라이더 -->
@@ -3310,7 +3334,7 @@ include __DIR__ . '/includes/header.php';
 
         <!-- 제출 버튼 -->
         <div class="submit-section">
-            <button type="submit" class="btn-submit"><?php echo $is_changing ? '예약하기' : ($is_rebooking ? '예약할게요!' : term('booking', '예약') . ' 신청하기'); ?></button>
+            <button type="submit" class="btn-submit"><?php echo $is_changing ? '예약하기' : ($is_rebooking ? '예약하기' : term('booking', '예약') . ' 신청하기'); ?></button>
         </div>
     </form>
 
