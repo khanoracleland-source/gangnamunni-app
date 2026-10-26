@@ -1799,7 +1799,7 @@ $page_css = '
     .confirm-page-title { font-size: 19px; font-weight: 600; letter-spacing: -.04em; }
     .booking-state-badge {
         display: inline-flex; align-items: center; gap: 24px; margin: 18px 0 24px;
-        padding: 10px 16px; background: #BE1935; color: #fff; font-size:18px; font-weight: 700;
+        padding: 10px 16px; background: #AC1830; color: #fff; font-size:18px; font-weight: 700;
     }
     .confirm-info-list { border-bottom: 1px solid #ddd; }
     .confirm-info-row {
@@ -1821,24 +1821,43 @@ $page_css = '
         border: 1px solid #ccc; border-radius: 4px; background: #fff;
         color: #111; font: inherit; font-weight: 700; box-sizing: border-box;
     }
-    .confirm-phone-input:focus { border-color: #BE1935; outline: 2px solid rgba(190,25,53,.12); }
-    .confirm-phone-input[aria-invalid="true"] { border-color: #BE1935; }
-    .confirm-phone-error { display: none; margin-top: 5px; color: #BE1935; font-size: 12px; font-weight: 600; }
+    .confirm-phone-input:focus { border-color: #AC1830; outline: 2px solid rgba(172,24,48,.12); }
+    .confirm-phone-input[aria-invalid="true"] { border-color: #AC1830; }
+    .confirm-phone-error { display: none; margin-top: 5px; color: #AC1830; font-size: 12px; font-weight: 600; }
     .confirm-phone-error.show { display: block; }
     .confirm-phone-help {
         grid-column: 2; margin-top: -6px; color: #777;
         font-size: 12px; line-height: 1.55; word-break: keep-all;
     }
-    .confirm-phone-help a { color: #BE1935; font-weight: 700; text-decoration: underline; }
+    .confirm-phone-help a { color: #AC1830; font-weight: 700; text-decoration: underline; }
     .confirm-notice { background: #fff1f3; padding: 24px 24px 20px; margin-bottom: 20px; }
-    .confirm-notice-title { color: #BE1935; font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .confirm-notice-title { color: #AC1830; font-size: 16px; font-weight: 700; margin-bottom: 10px; }
     .confirm-notice ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.85; }
-    .confirm-notice em { color: #BE1935; font-style: normal; }
+    .confirm-notice em { color: #AC1830; font-style: normal; }
     .confirm-submit {
-        width: 100%; height: 54px; border: 0; background: #BE1935; color: #fff;
+        width: 100%; height: 54px; border: 0; background: #AC1830; color: #fff;
         font-size: 17px; font-weight: 700; cursor: pointer;
     }
     .confirm-submit:disabled { opacity: .55; cursor: not-allowed; }
+    /* [05-55] 이대로 예약을 진행할까요? — 디자인 시안(+3px) */
+    .booking-confirm-page { display:flex; flex-direction:column; }
+    .confirm-page-head { height:56px; }
+    .confirm-page-title { font-size:20px; font-weight:500; letter-spacing:-.03em; color:#1A1718; }
+    .booking-state-badge { gap:0; margin:10px 0 6px; padding:0; background:none; font-size:20px; }
+    .booking-state-badge span { height:38px; padding:0 13px; display:flex; align-items:center; background:#AC1830; color:#fff; font-weight:700; }
+    .booking-state-badge span + span { border-left:1px solid rgba(255,255,255,.35); }
+    .confirm-info-list { border-bottom:0; }
+    .confirm-info-row { min-height:0; padding:14px 0; grid-template-columns:80px minmax(0,1fr); gap:16px; border-top:0; border-bottom:1px solid #ECE9EA; font-size:18px; }
+    .confirm-info-row:last-child { border-bottom:0; }
+    .confirm-label { color:#9A9395; font-size:17px; font-weight:400; }
+    .confirm-value { font-size:18px; font-weight:400; color:#1A1718; }
+    .confirm-person { margin:6px 0 0; padding:14px 16px; background:#F1EFEF; grid-template-columns:64px 1fr; row-gap:8px; column-gap:16px; align-items:center; font-size:18px; }
+    .confirm-person-label { color:#9A9395; font-size:17px; font-weight:400; }
+    .confirm-person-value { font-size:18px; font-weight:700; }
+    .confirm-notice { margin:20px 0 20px; padding:18px; background:#FBEFF1; }
+    .confirm-notice-title { font-size:18px; margin-bottom:8px; }
+    .confirm-notice ul { padding-left:18px; font-size:16px; line-height:1.7; }
+    .confirm-submit { margin-top:auto; height:52px; border-radius:4px; font-size:19px; font-weight:500; flex-shrink:0; }
 
     /* 접수 완료 바텀시트 */
     .booking-success-overlay { align-items: flex-end; background: rgba(0,0,0,.58); }
@@ -1952,6 +1971,24 @@ $page_css = '
         font-size: 16px; font-weight: 700;
     }
     .success-action.primary { background: #BE1935; color: #fff; }
+    /* [05-56] 예약 요청 접수 시트 — 디자인 시안(+3px) */
+    #bookingSuccessOverlay .booking-motion-panel { border-radius: 16px 16px 0 0; }
+    #bookingSuccessOverlay .booking-motion-handle::before { top: 10px; width: 40px; height: 4px; border-radius: 2px; background: #AC1830; }
+    #bookingSuccessOverlay .booking-motion-handle { height: 24px; }
+    #bookingSuccessOverlay .booking-motion-body { padding: 18px 20px 8px; }
+    #bookingSuccessOverlay .ns-icon { display: block; width: 48px; height: 48px; margin: 0 auto 14px; object-fit: contain; }
+    #bookingSuccessOverlay .success-sheet-title { font-size: 23px; font-weight: 700; line-height: 1.45; }
+    #bookingSuccessOverlay .success-sheet-desc { margin: 14px 0 0; font-size: 18px; line-height: 1.6; color: #4A4446; }
+    #bookingSuccessOverlay .success-wait-box { margin-top: 18px; padding: 18px 16px 16px; background: #FBEFF1; }
+    #bookingSuccessOverlay .success-wait-title { font-size: 18px; font-weight: 700; color: #1A1718; }
+    #bookingSuccessOverlay .success-wait-time { margin: 4px 0 12px; font-size: 16px; line-height: 1.6; color: #4A4446; }
+    #bookingSuccessOverlay .success-alert-box { padding: 14px 10px; background: #fff; }
+    #bookingSuccessOverlay .success-alert-title { margin-bottom: 4px; font-size: 18px; color: #AC1830; }
+    #bookingSuccessOverlay .success-alert-copy { font-size: 16px; line-height: 1.6; color: #4A4446; }
+    #bookingSuccessOverlay .booking-motion-footer { padding: 14px 20px max(34px, env(safe-area-inset-bottom)); }
+    #bookingSuccessOverlay .success-actions { display: flex; gap: 10px; margin-top: 0; }
+    #bookingSuccessOverlay .success-action { flex: 1 1 0; height: 52px; border-radius: 4px; border-color: #AC1830; background: #fff; color: #AC1830; font-size: 19px; font-weight: 500; }
+    #bookingSuccessOverlay .success-action.primary { background: #AC1830; color: #fff; }
     button.success-action { font-family: inherit; cursor: pointer; }
     .dup-booking-card { margin: 0 0 8px; padding: 16px; background: #fff1f3; border-radius: 8px; text-align: left; }
     .dup-booking-badges { display: flex; gap: 6px; margin-bottom: 8px; }
@@ -3403,6 +3440,8 @@ include __DIR__ . '/includes/header.php';
                 <ul>
                     <li>예약 가능 여부는 병원 상황에 따라 달라질 수 있어요</li>
                     <li>예약이 불가능한 경우, 상담원이 다른 일정으로 안내해드려요</li>
+                    <li>예약 확정 전까지는 결제가 진행되지 않아요</li>
+                    <li>결제는 예약이 가능하다고 확인된 후에 진행됩니다</li>
                     <li>예약 현황 / 예약 변경 / 취소는 <em>내 예약 결제내역</em>에서 직접 관리할 수 있어요</li>
                 </ul>
             </div>
@@ -3415,7 +3454,7 @@ include __DIR__ . '/includes/header.php';
         <section class="booking-success-sheet booking-motion-panel" role="dialog" aria-modal="true" aria-labelledby="bookingSuccessTitle">
             <button type="button" class="success-sheet-handle booking-motion-handle" aria-label="아래로 드래그하거나 아래 방향키로 닫기"></button>
             <div class="booking-motion-body">
-            <div class="success-check"><i class="bi bi-check-lg"></i></div>
+            <img class="ns-icon" src="assets/icons/icon-booking-success.png?v=1" alt="">
             <h2 class="success-sheet-title" id="bookingSuccessTitle">예약 요청이 접수되었어요!</h2>
             <p class="success-sheet-desc">원하시는 일정으로<br>병원에 예약 가능 여부를 확인하고 있어요</p>
             <div class="success-wait-box">
