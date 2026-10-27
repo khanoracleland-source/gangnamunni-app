@@ -151,11 +151,34 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 export interface WishlistState { wishlisted: boolean; count: number }
 export interface ConsultationInput { hospitalId: number; type: "general" | "doctor" | "kakao"; name: string; phone: string; message: string }
 
+export interface HomeAd { id: number; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string }
+export interface HomePromo { id: number; title: string; subtitle: string | null; background: string; icon: string | null; linkUrl: string }
+export interface HomeEvent {
+  id: number; title: string; category: string | null; imageUrl: string | null; hospitalId: number | null;
+  hospitalName: string | null; hospitalAddress: string | null; originalPrice: number | null; discountPrice: number | null;
+  discountRate: number | null; hasRaffle: boolean; endDate: string | null;
+}
+export interface HomeCategory { id: number; name: string; treatments: string[] }
+export interface HomeData {
+  ads: HomeAd[]; promos: HomePromo[]; events: HomeEvent[]; categories: HomeCategory[];
+  settings: { adShowIndex: boolean; adAfterSearch: boolean; adAfterEvents: boolean; promoShowIndex: boolean; tableMode: "excel" | "row" | "hybrid"; adAutoScroll: boolean; promoAutoScroll: boolean; blocks: { promos: boolean; events: boolean } };
+  regions: string[][];
+  popularKeywords: string[];
+}
+
+/** PHP search_suggest.php (autocomplete; stays in PHP — dosage/hid links are PHP-only). */
+export interface SearchSuggest {
+  treatments: { name: string; href: string; hint?: string }[];
+  hospitals: { id: number; name: string; district: string; address: string; href: string }[];
+  offered: { treatment: string; items: { id: number; name: string; district: string; address: string; price: number; href: string }[] };
+}
+
 export const api = {
+  home: (ctx?: ServerCtx) => get<HomeData>("/v1/home", undefined, ctx),
   wishlist: (id: number) => get<WishlistState>(`/v1/wishlist/hospitals/${id}`),
   toggleWishlist: (id: number) => post<WishlistState & { message: string }>("/v1/wishlist/toggle", { type: "hospital", targetId: id }),
   consult: (input: ConsultationInput) => post<{ success: boolean; id: number; message: string }>("/v1/consultations", input),
-  me: () => get<{ loggedIn: boolean; user: { id: string; no: number; name: string; nickname: string; level: number; phone: string } | null }>("/v1/me"),
+  me: () => get<{ loggedIn: boolean; user: { id: string; no: number; name: string; nickname: string; level: number; phone: string } | null; unreadNotifications: number }>("/v1/me"),
   hospitals: (p: HospitalListParams = {}, ctx?: ServerCtx) => get<Page<Hospital>>("/v1/hospitals", { ...p, limit: p.limit ?? 20 }, ctx),
   hospital: (id: number) => get<HospitalDetail>(`/v1/hospitals/${id}`),
   treatments: (id: number) => get<{ items: HospitalTreatment[] }>(`/v1/hospitals/${id}/treatments`),
@@ -171,6 +194,7 @@ export const qk = {
   treatments: (id: number) => ["treatments", id] as const,
   doctors: (id: number) => ["doctors", id] as const,
   wishlist: (id: number) => ["wishlist", id] as const,
+  home: ["home"] as const,
 };
 
 export type DetailTab = "home" | "treatments" | "reviews" | "doctors";

@@ -5,7 +5,7 @@ import { api, ApiError } from "./api";
 import { phpUrl, usePhpBase } from "./php";
 
 export interface SessionUser { id: string; no: number; name: string; nickname: string; level: number; phone: string }
-export interface Session { loggedIn: boolean; user: SessionUser | null }
+export interface Session { loggedIn: boolean; user: SessionUser | null; unreadNotifications?: number }
 
 export const meKey = ["me"] as const;
 
@@ -41,7 +41,7 @@ export function useRequireLogin() {
         return await action();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) {
-          qc.setQueryData(meKey, { loggedIn: false, user: null });
+          qc.setQueryData(meKey, { loggedIn: false, user: null, unreadNotifications: 0 });
           window.location.assign(loginUrl());
           return undefined;
         }

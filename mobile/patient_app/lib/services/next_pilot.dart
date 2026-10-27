@@ -43,8 +43,14 @@ class NextPilot {
   /// detail.php?tab= values the Next.js detail understands (PHP "events" = 시술목록).
   static const Set<String> _detailTabs = {'home', 'events', 'reviews', 'doctors'};
 
+  /// PHP home: site root, /index.php, and the legacy start path (server redirects it to "/").
+  static final Set<String> _homePaths = {
+    '/', '/index.php', _site.path, _site.resolve('index.php').path,
+  };
+
   static Uri? _rewrite(Uri uri) {
     if (!_sameOrigin(uri, _site)) return null;
+    if (_homePaths.contains(uri.path)) return _rewriteHome(uri);
     if (_detailPaths.contains(uri.path)) return _rewriteDetail(uri);
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
@@ -82,6 +88,16 @@ class NextPilot {
       queryParameters: (tab == null || tab.isEmpty || tab == 'home') ? null : {'tab': tab},
     );
   }
+
+  /// index.php[?app=patient] -> /next/ (any other parameter keeps the PHP page).
+  static Uri? _rewriteHome(Uri uri) {
+    if (uri.queryParameters.keys.any((k) => k != 'app')) return null;
+    return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/');
+  }
+
+  /// Next.js home — the app's root page for the hardware back button.
+  static bool isHomePage(Uri uri) =>
+      enabled && _sameOrigin(uri, _site) && (uri.path == basePath || uri.path == '$basePath/');
 
   /// True for pages rendered by the Next.js app (list or detail).
   static bool isNextPage(Uri uri) =>

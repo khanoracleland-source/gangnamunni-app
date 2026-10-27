@@ -1,0 +1,15 @@
+.table { border: 1px solid #d5d5d5; background: var(--bg); }
+.row { display: flex; border-bottom: 1px solid #d5d5d5; }
+.row:last-child { border-bottom: 0; }
+.major { flex: 0 0 84px; padding: 10px 8px; font-size: 13px; font-weight: 700; background: #f7f7f7; display: flex; align-items: center; }
+.majorSticky { position: sticky; left: 0; z-index: 1; }
+.subs { flex: 1; display: flex; gap: 6px; overflow-x: auto; padding: 8px; scrollbar-width: none; }
+.subs::-webkit-scrollbar { display: none; }
+.chip { flex: 0 0 auto; font-size: 13px; padding: 5px 10px; border: 1px solid #ddd; border-radius: 14px; white-space: nowrap; }
+.panel { display: flex; border: 1px solid #d5d5d5; background: var(--bg); min-height: 220px; }
+.nav { flex: 0 0 33%; background: #f7f7f7; display: flex; flex-direction: column; }
+.navItem { text-align: left; padding: 12px 10px; font-size: 14px; color: var(--muted); border-bottom: 1px solid #e5e5e5; }
+.navOn { background: var(--bg); color: var(--fg); font-weight: 700; }
+.grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; align-content: start; }
+.cell { padding: 11px 10px; font-size: 13px; border-bottom: 1px solid #eee; border-right: 1px solid #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.none { grid-column: 1 / -1; padding: 20px; color: var(--muted); font-size: 13px; }

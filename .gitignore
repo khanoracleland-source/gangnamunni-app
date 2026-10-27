@@ -128,3 +128,7 @@ hairwang_full/local-router.php
 # 유출 의심 키 격리 폴더 (절대 커밋 금지)
 _secrets_quarantine/
 .claude_tmp/
+
+# 루트의 임시 스크래치/배포 아카이브
+/.*.tgz
+/.*.tsx

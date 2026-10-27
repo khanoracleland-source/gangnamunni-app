@@ -4,13 +4,13 @@ import { usePathname } from "next/navigation";
 import styles from "./BottomNav.module.css";
 import { phpUrl, usePhpBase } from "@/lib/php";
 
-// Pilot: only "병원" lives in Next.js. The other tabs go to the PHP pages on the
+// Pilot: 홈 and 병원 live in Next.js. The other tabs go to the PHP pages on the
 // same origin (full load), so the app stays on its trusted host.
 const items = [
-  { php: "index.php", label: "홈" },
+  { next: "/", label: "홈" },
   { next: "/hospitals", label: "병원" },
   { php: "community.php", label: "커뮤니티" },
-  { php: "mypage.php", label: "마이" },
+  { php: "mypage.php", label: "마이페이지" },
 ] as const;
 
 export default function BottomNav() {
@@ -22,7 +22,7 @@ export default function BottomNav() {
         if ("php" in it) {
           return <a key={it.label} href={phpUrl(php, it.php)} className={styles.item}>{it.label}</a>;
         }
-        const active = pathname.startsWith(it.next);
+        const active = it.next === "/" ? pathname === "/" : pathname.startsWith(it.next);
         return (
           <Link key={it.label} href={it.next} className={`${styles.item} ${active ? styles.active : ""}`}
             aria-current={active ? "page" : undefined}>{it.label}</Link>

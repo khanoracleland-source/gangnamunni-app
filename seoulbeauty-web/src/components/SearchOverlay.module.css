@@ -1,0 +1,49 @@
+.overlay { position: fixed; inset: 0; z-index: 100000; background: #fff; overflow-y: auto; color: #1A1718; letter-spacing: -0.01em; }
+.inner { max-width: 640px; margin: 0 auto; }
+.bar { height: 52px; padding: 0 16px 0 8px; display: flex; align-items: center; gap: 4px; margin-top: 12px; }
+.back { width: 40px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #1A1718; padding: 0; }
+.field { flex: 1; min-width: 0; height: 42px; box-sizing: border-box; border-bottom: 1.5px solid #1A1718; display: flex; align-items: center; gap: 8px; }
+.input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 15px; color: #1A1718; padding: 0; -webkit-appearance: none; }
+.input::placeholder { color: #9A9395; }
+.input::-webkit-search-cancel-button { display: none; }
+.clr { width: 18px; height: 18px; flex: 0 0 18px; border-radius: 9px; background: #C9C3C5; color: #fff; border: 0; padding: 3px; display: flex; align-items: center; justify-content: center; }
+.region { height: 36px; padding: 0 14px 0 10px; margin-bottom: -1px; display: inline-flex; align-items: center; gap: 6px; background: #2A1416; color: #fff; border: 0; border-radius: 18px; font-size: 14px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.region svg { width: 18px; height: 18px; display: block; flex-shrink: 0; }
+.head { padding: 18px 20px 10px; display: flex; align-items: center; }
+.head2 { padding: 20px 20px 6px; display: flex; align-items: baseline; }
+.t { flex: 1; font-size: 16px; font-weight: 700; }
+.d { font-size: 12px; color: #9A9395; }
+.clear { font-size: 13px; color: #6B6466; background: none; border: 0; padding: 0; }
+.chips { padding: 0 20px 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { height: 32px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #DCD6D8; border-radius: 16px; font-size: 14px; background: #fff; color: #1A1718; cursor: pointer; }
+.chipX { display: inline-flex; color: #9A9395; }
+.chipX svg { width: 12px; height: 12px; display: block; }
+.empty { padding: 0 20px 22px; font-size: 13px; color: #9A9395; }
+.gap { height: 8px; background: #F4F2F3; }
+.rank { padding: 0 20px 40px; }
+.rank button { width: 100%; height: 44px; display: flex; align-items: center; gap: 14px; border: 0; border-bottom: 1px solid #ECE9EA; background: none; text-align: left; font-size: 15px; color: #1A1718; padding: 0; }
+.n { width: 18px; font-weight: 700; color: #6B6466; }
+.top .n { color: #AC1830; }
+.suggest { padding-bottom: 40px; }
+.sgT { padding: 16px 20px 4px; font-size: 13px; font-weight: 700; color: #6B6466; }
+.row { margin: 0 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #ECE9EA; text-decoration: none; color: #1A1718; font-size: 15px; }
+.row b { color: #AC1830; font-weight: 700; }
+.tr { height: 48px; }
+.hp { padding: 10px 0; }
+.ico { width: 18px; height: 18px; flex: 0 0 18px; }
+.hint { margin-left: auto; font-size: 12px; color: #9A9395; flex-shrink: 0; }
+.logoBox { width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid #ECE9EA; display: flex; align-items: center; justify-content: center; }
+.grow { flex: 1; min-width: 0; }
+.block { display: block; }
+.sub { display: block; font-size: 12px; color: #6B6466; margin-top: 2px; }
+.price { font-size: 14px; font-weight: 700; color: #AC1830; flex: 0 0 auto; }
+.price small { font-size: 11px; font-weight: 400; color: #1A1718; }
+.note { padding: 14px 20px; font-size: 12px; line-height: 1.6; color: #9A9395; }
+.noneBox { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 90px 32px 30px; }
+.noneIco { width: 72px; height: 72px; border-radius: 36px; background: #FBEFF1; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+.noneT { font-size: 18px; font-weight: 700; }
+.noneS { font-size: 14px; line-height: 1.6; color: #6B6466; margin-top: 8px; }
+.sugg { padding: 0 20px; }
+.suggT { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+.suggC { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggC button { height: 32px; padding: 0 12px; border: 1px solid #DCD6D8; border-radius: 16px; font-size: 14px; background: #fff; color: #1A1718; }

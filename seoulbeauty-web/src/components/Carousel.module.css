@@ -1,0 +1,7 @@
+.wrap { position: relative; }
+.track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.track::-webkit-scrollbar { display: none; }
+.slide { flex: 0 0 100%; scroll-snap-align: start; }
+.dots { display: flex; justify-content: center; gap: 5px; margin-top: 6px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: #ddd; }
+.dotOn { background: var(--accent); }

@@ -258,7 +258,9 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       ),
     );
     if (!mounted) return;
-    await _controller.loadRequest(startupUri);
+    // Pilot: open the Next.js home directly (loadRequest from Dart bypasses the navigation
+    // delegate on Android, so the rewrite has to happen here).
+    await _controller.loadRequest(NextPilot.rewrite(startupUri) ?? startupUri);
   }
 
   Future<void> _installHospitalHeaderBack() async {
@@ -334,8 +336,12 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     final startupUri = Uri.tryParse(widget.url);
     if (uri == null || startupUri == null) return false;
 
-    return uri.host.toLowerCase() == startupUri.host.toLowerCase() &&
-        _normalizedPath(uri) == _normalizedPath(startupUri);
+    if (NextPilot.isHomePage(uri)) return true;
+    if (uri.host.toLowerCase() != startupUri.host.toLowerCase()) return false;
+    final path = _normalizedPath(uri);
+    // The start URL (/hairwang/gangnamunni/) is redirected by the server to the site root,
+    // so "/" (and /index.php) is the real home page too.
+    return path == _normalizedPath(startupUri) || path.isEmpty;
   }
 
   Future<void> _handleBackPressed() async {
