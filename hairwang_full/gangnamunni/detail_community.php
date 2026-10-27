@@ -257,6 +257,59 @@ button.detail-stat { border: 0; padding: 0; background: transparent; font: inher
     .comment-input { font-size: 16px; }
 }
 @media (max-width: 360px) { .detail-stats { gap: 8px; } .author-avatar { width: 30px; height: 30px; } .comment-author { max-width: 80px; } }
+/* [06-03] 커뮤니티 댓글 — 디자인 시안(+3px) */
+.page-header { height: 52px; }
+.page-title { font-size: 20px; font-weight: 500; color: #1A1718; }
+.post-detail-container { padding-top: 6px; }
+.post-category-badge { padding: 2px 6px; background: #FBEFF1; color: #AC1830; font-size: 14px; margin-bottom: 8px; }
+.post-detail-title { font-size: 18px; font-weight: 700; color: #1A1718; margin-bottom: 6px; }
+.post-detail-content { font-size: 15px; line-height: 1.6; color: #1A1718; }
+.post-readmore-row { margin: 6px 0; font-size: 13px; color: #9A9395; }
+.post-photo-grid { gap: 0; border-radius: 0; background: #DAD7D8; margin-bottom: 8px; }
+.post-photo-grid a { aspect-ratio: auto; height: 118px; }
+.post-photo-grid a:only-child { width: 100%; }
+.post-detail-meta { gap: 6px; padding: 4px 0 12px; border-bottom-color: #ECE9EA; }
+.author-avatar { width: 26px; height: 26px; background: #DCD8D9; }
+.post-detail-author { font-size: 15px; color: #1A1718; }
+.detail-stats { gap: 16px; font-size: 14px; }
+.detail-stat { gap: 5px; }
+.post-detail-container i.bi-heart, .post-detail-container i.bi-heart-fill,
+.post-detail-container i.bi-chat-square-text, .post-detail-container i.bi-eye { display: inline-block; width: 21px; height: 21px; font-size: 0; line-height: 0; background: center / contain no-repeat; flex-shrink: 0; }
+.post-detail-container i.bi-heart::before, .post-detail-container i.bi-heart-fill::before,
+.post-detail-container i.bi-chat-square-text::before, .post-detail-container i.bi-eye::before { content: none; }
+.post-detail-container i.bi-heart { background-image: url(assets/icons/icon-community-heart.png?v=1); }
+.post-detail-container i.bi-heart-fill { background-image: url(assets/icons/icon-community-heart-on.png?v=1); }
+.post-detail-container i.bi-chat-square-text { background-image: url(assets/icons/icon-community-comment.png?v=1); }
+.post-detail-container i.bi-eye { background-image: url(assets/icons/icon-community-view.png?v=1); }
+.detail-stat.liked, .comment-like.liked { color: inherit; }
+.comments-title { font-size: 17px; font-weight: 700; padding: 12px 0 4px; border-bottom: 0; margin-bottom: 0; }
+.comment-item { padding: 10px 0; }
+.comment-item .author-avatar { width: 26px; height: 26px; flex: 0 0 26px; }
+.comment-author-row { gap: 6px; }
+.comment-author { font-size: 16px; font-weight: 500; max-width: 140px; }
+.comment-age { font-size: 14px; color: #9A9395; }
+.comment-date { font-size: 14px; color: #4A4446; }
+.comment-text { margin: 6px 0 6px 32px; font-size: 15px; line-height: 1.6; }
+.comment-tools { margin-left: 32px; gap: 16px; }
+.comment-like, .comment-reply { font-size: 15px; gap: 5px; }
+.post-detail-container .comment-like i, .post-detail-container .comment-reply i { width: 19px; height: 19px; }
+.comment-item.is-reply { margin-left: 32px; }
+.comment-item.is-reply .author-avatar { width: 26px; height: 26px; flex: 0 0 26px; }
+.comment-item.is-reply .comment-text, .comment-item.is-reply .comment-tools { margin-left: 32px; }
+.comment-reply-target { color: #AC1830; font-size: 14px; }
+.comment-form { gap: 8px; padding: 10px 20px; border-top: 1px solid #ECE9EA; }
+.comment-input { height: 40px; padding: 0 12px; border: 1px solid #CFC8CB; border-radius: 4px; font-size: 16px; }
+.comment-input::placeholder { color: #9A9395; }
+.comment-submit { width: 56px; height: 40px; padding: 0; border-radius: 4px; background: #AC1830; font-size: 17px; font-weight: 700; }
+.post-detail-container :focus-visible, .back-btn:focus-visible { outline-color: #AC1830; }
+@media (max-width: 480px) {
+    .detail-stats { gap: 16px; font-size: 14px; }
+    .detail-stat { gap: 5px; }
+    .detail-stat i { font-size: 0; }
+    .post-detail-author { font-size: 15px; }
+    .comment-author { max-width: 120px; font-size: 16px; }
+    .comment-age, .comment-date { font-size: 14px; }
+}
 ';
 
 // Escape JSON arguments for HTML event attributes as well as JavaScript.
@@ -391,7 +444,7 @@ include __DIR__ . '/includes/header.php';
             </form>
             <?php else: ?>
             <div class="comment-form" style="justify-content:center;">
-                <a href="auth/login.php?url=<?php echo urlencode('/hairwang/app/detail_community.php?id=' . $post_id); ?>" style="color:#b81739; font-weight:600; text-decoration:none;">
+                <a href="auth/login.php?url=<?php echo urlencode('/hairwang/app/detail_community.php?id=' . $post_id); ?>" style="color:#AC1830; font-weight:600; text-decoration:none;">
                     <i class="bi bi-box-arrow-in-right"></i> 로그인하고 댓글 작성하기
                 </a>
             </div>
