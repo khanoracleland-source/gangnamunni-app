@@ -27,7 +27,7 @@ export class HospitalsController {
     if (sortRaw && !HOSPITAL_SORTS.includes(sortRaw as HospitalSort)) {
       throw new BadRequestException(`sort must be one of ${HOSPITAL_SORTS.join(', ')}`);
     }
-    const sort = (sortRaw || (treatment ? 'price' : 'manual')) as HospitalSort;
+    const sort = sortRaw as HospitalSort | ''; // '' -> service default (price when a treatment is effective)
     const regions = str(qs.region, 300)
       .split(',')
       .map((s) => s.trim())
@@ -42,6 +42,7 @@ export class HospitalsController {
       q: str(qs.q),
       category: str(qs.category),
       treatment,
+      dosage: str(qs.dosage, 30),
       regions,
       sort,
       limit: intParam(qs.limit, 20, 1, 100, 'limit'),
@@ -65,6 +66,15 @@ export class HospitalsController {
     const hid = idParam(id);
     await this.hospitals.detail(hid); // visibility gate
     return { items: await this.content.treatments(hid) };
+  }
+
+  /** hospitals.php?hid= view: the hospital's treatments with cheapest prices + category chips. */
+  @Get(':id/search-view')
+  async searchView(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+    this.cache(res);
+    const hid = idParam(id);
+    const h = await this.hospitals.detail(hid);
+    return { hospital: h, ...(await this.content.searchView(hid)) };
   }
 
   @Get(':id/doctors')

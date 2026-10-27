@@ -27,6 +27,33 @@ export interface Hospital {
   wishlistCount: number;
   thumbnailUrl: string | null;
   wishlisted: boolean;
+  /** price line for the effective treatment of the current search (null otherwise) */
+  treatment: TreatmentLine | null;
+  /** paid keyword slot pinned by the API (tracking token comes from PHP api/ad_slot_tokens.php) */
+  adSlot: { bookingId: number; rank: number } | null;
+}
+
+export interface TreatmentLine {
+  name: string; desc: string | null; priceMin: number; priceMax: number; dosageValue: number | null; dosageUnit: string | null;
+}
+
+export interface InfeedAd { id: number; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string; hospitalId: number | null }
+
+/** GET /v1/hospitals — list page plus the search context the PHP list computes server-side. */
+export interface HospitalPage extends Page<Hospital> {
+  sort: HospitalSort;
+  effectiveTreatment: { id: number; name: string } | null;
+  dosageOptions: string[];
+  dosage: string | null;
+  infeed: { interval: number; ads: InfeedAd[] } | null;
+}
+
+/** GET /v1/hospitals/:id/search-view — hospitals.php?hid= */
+export interface SearchView {
+  hospital: Hospital;
+  total: number;
+  categories: { id: number; name: string; count: number }[];
+  treatments: { id: number; name: string; categoryId: number | null; price: number; dosageValue: number | null; dosageUnit: string | null }[];
 }
 
 export interface HospitalDetail extends Hospital {
@@ -90,7 +117,9 @@ export interface HospitalListParams {
   category?: string;
   treatment?: string;
   region?: string;
-  sort?: HospitalSort;
+  dosage?: string;
+  /** empty = server default (price when a treatment is effective, else manual) */
+  sort?: HospitalSort | "";
   limit?: number;
   offset?: number;
 }
@@ -166,7 +195,7 @@ export interface HomeData {
   popularKeywords: string[];
 }
 
-/** PHP search_suggest.php (autocomplete; stays in PHP — dosage/hid links are PHP-only). */
+/** GET /v1/search/suggest (port of search_suggest.php); hrefs are PHP-style `hospitals.php?...`, mapped to Next routes in SearchOverlay. */
 export interface SearchSuggest {
   treatments: { name: string; href: string; hint?: string }[];
   hospitals: { id: number; name: string; district: string; address: string; href: string }[];
@@ -179,7 +208,9 @@ export const api = {
   toggleWishlist: (id: number) => post<WishlistState & { message: string }>("/v1/wishlist/toggle", { type: "hospital", targetId: id }),
   consult: (input: ConsultationInput) => post<{ success: boolean; id: number; message: string }>("/v1/consultations", input),
   me: () => get<{ loggedIn: boolean; user: { id: string; no: number; name: string; nickname: string; level: number; phone: string } | null; unreadNotifications: number }>("/v1/me"),
-  hospitals: (p: HospitalListParams = {}, ctx?: ServerCtx) => get<Page<Hospital>>("/v1/hospitals", { ...p, limit: p.limit ?? 20 }, ctx),
+  hospitals: (p: HospitalListParams = {}, ctx?: ServerCtx) => get<HospitalPage>("/v1/hospitals", { ...p, limit: p.limit ?? 20 }, ctx),
+  searchView: (id: number, ctx?: ServerCtx) => get<SearchView>(`/v1/hospitals/${id}/search-view`, undefined, ctx),
+  suggest: (q: string) => get<SearchSuggest>("/v1/search/suggest", { q }),
   hospital: (id: number) => get<HospitalDetail>(`/v1/hospitals/${id}`),
   treatments: (id: number) => get<{ items: HospitalTreatment[] }>(`/v1/hospitals/${id}/treatments`),
   doctors: (id: number) => get<{ items: Doctor[] }>(`/v1/hospitals/${id}/doctors`),
@@ -190,6 +221,7 @@ export const api = {
 export const qk = {
   hospitals: (p: HospitalListParams) => ["hospitals", normalize(p)] as const,
   hospital: (id: number) => ["hospital", id] as const,
+  searchView: (id: number) => ["searchView", id] as const,
   reviews: (id: number) => ["reviews", id] as const,
   treatments: (id: number) => ["treatments", id] as const,
   doctors: (id: number) => ["doctors", id] as const,
@@ -206,9 +238,10 @@ export function toDetailTab(v: string | undefined): DetailTab {
   return "home";
 }
 
-export function normalize(p: HospitalListParams): Required<Pick<HospitalListParams, "q" | "category" | "treatment" | "region" | "sort">> {
-  const sort = HOSPITAL_SORTS.includes(p.sort as HospitalSort) ? (p.sort as HospitalSort) : p.treatment ? "price" : "manual";
-  return { q: p.q || "", category: p.category || "", treatment: p.treatment || "", region: p.region || "", sort };
+export function normalize(p: HospitalListParams): Required<Pick<HospitalListParams, "q" | "category" | "treatment" | "region" | "dosage" | "sort">> {
+  // Unknown/absent sort -> "" so the API applies PHP's default (price when a treatment is effective).
+  const sort = HOSPITAL_SORTS.includes(p.sort as HospitalSort) ? (p.sort as HospitalSort) : "";
+  return { q: p.q || "", category: p.category || "", treatment: p.treatment || "", region: p.region || "", dosage: p.dosage || "", sort };
 }
 
 const ASSET_BASE = (process.env.NEXT_PUBLIC_ASSET_BASE || "").replace(/\/$/, "");

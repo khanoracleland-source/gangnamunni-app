@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { DB } from '../src/db/db.module';
 import { HospitalsModule } from '../src/hospitals/hospitals.module';
+import { SearchModule } from '../src/search/search.module';
 import { HealthController } from '../src/health/health.controller';
 import { AuthService } from '../src/auth/auth.service';
 import { AuthGuard } from '../src/auth/auth.guard';
@@ -46,7 +47,7 @@ describe('HTTP API (mock DB)', () => {
   beforeAll(async () => {
     const authStub = { ping: async () => true, fromCookie: async () => ({ loggedIn: false, user: null }) };
     @Global() @Module({ providers: [{ provide: AuthService, useValue: authStub }, AuthGuard], exports: [AuthService, AuthGuard] }) class TestAuthModule {}
-    const mod = await Test.createTestingModule({ imports: [TestAuthModule, HospitalsModule], controllers: [HealthController] })
+    const mod = await Test.createTestingModule({ imports: [TestAuthModule, SearchModule, HospitalsModule], controllers: [HealthController] })
       .useMocker((t) => (t === DB ? db : undefined))
       .overrideProvider(DB).useValue(db)
       .compile();
@@ -130,8 +131,9 @@ describe('flags probe retry', () => {
         return [[]];
       }),
     };
-    const svc = new HospitalsService(db as any);
-    const params = { q: '', category: '', treatment: '', regions: [], sort: 'manual' as const, limit: 1, offset: 0 };
+    const { SearchService } = await import('../src/search/search.service');
+    const svc = new HospitalsService(db as any, new SearchService(db as any));
+    const params = { q: '', category: '', treatment: '', dosage: '', regions: [], sort: 'manual' as const, limit: 1, offset: 0 };
     await expect(svc.list(params)).rejects.toThrow('down');
     fail = false;
     await svc.list(params);

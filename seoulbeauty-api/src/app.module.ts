@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { ConsultationsModule } from './consultations/consultations.module';
 import { HomeModule } from './home/home.module';
+import { SearchModule } from './search/search.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -19,6 +20,7 @@ import { HealthController } from './health/health.controller';
     WishlistModule,
     ConsultationsModule,
     HomeModule,
+    SearchModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

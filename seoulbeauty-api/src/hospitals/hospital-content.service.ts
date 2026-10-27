@@ -218,6 +218,42 @@ export class HospitalContentService {
       .filter((u) => u && u !== mainImageUrl && !imageUrlKeys(u).some((k) => logoKeys.has(k)));
   }
 
+  /**
+   * includes/hospital_search_view.php (hospitals.php?hid=): every active treatment of the hospital with its
+   * cheapest option, plus the category chips. Sorted cheapest first (no price last), then by name.
+   */
+  async searchView(hid: number) {
+    const [rows] = (await this.db.query(
+      `SELECT tm.id AS tmid, tm.name, tm.category_id, tc.name AS cat_name,
+              (SELECT p.price FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0 ORDER BY p.price ASC LIMIT 1) AS price,
+              (SELECT p.dosage_value FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0 ORDER BY p.price ASC LIMIT 1) AS dv,
+              (SELECT p.dosage_unit FROM gangnamunni_hospital_treatment_prices p WHERE p.hospital_treatment_id = ht.id AND p.price > 0 ORDER BY p.price ASC LIMIT 1) AS du
+       FROM gangnamunni_hospital_treatments ht
+       INNER JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id AND tm.is_active = 1
+       LEFT JOIN gangnamunni_treatment_categories tc ON tc.id = tm.category_id
+       WHERE ht.hospital_id = ? AND ht.status = 'active' AND ht.is_active = 1`,
+      [hid],
+    )) as any;
+    const cats = new Map<number, { id: number; name: string; count: number }>();
+    const treatments = (rows as any[]).map((r) => {
+      const cid = Number(r.category_id ?? 0);
+      if (cid) {
+        const c = cats.get(cid) ?? { id: cid, name: String(r.cat_name ?? ''), count: 0 };
+        c.count++;
+        cats.set(cid, c);
+      }
+      const dv = Number(r.dv ?? 0);
+      const du = String(r.du ?? '').trim();
+      return { id: Number(r.tmid), name: String(r.name), categoryId: cid || null, price: Number(r.price ?? 0), dosageValue: dv > 0 ? dv : null, dosageUnit: du || null };
+    });
+    treatments.sort((a, b) => {
+      const pa = a.price || Number.MAX_SAFE_INTEGER;
+      const pb = b.price || Number.MAX_SAFE_INTEGER;
+      return pa - pb || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    });
+    return { total: treatments.length, categories: [...cats.values()], treatments };
+  }
+
   async features(hospitalId: number): Promise<{ icon: string; label: string }[]> {
     const [rows] = (await this.db.query(
       `SELECT feature_icon, feature_label FROM hospital_features WHERE hospital_id = ? AND is_active = 1 ORDER BY sort_order ASC LIMIT 20`,

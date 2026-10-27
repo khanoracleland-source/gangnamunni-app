@@ -1,0 +1,28 @@
+.card { margin: 12px 20px 4px; padding: 14px; border: 1px solid #DCD6D8; display: flex; align-items: center; gap: 12px; color: #1A1718; text-decoration: none; }
+.card img { width: 56px; height: 56px; object-fit: cover; border: 1px solid #ECE9EA; flex: 0 0 56px; background: #fff; }
+.cardBody { flex: 1; min-width: 0; }
+.nm { font-size: 16px; font-weight: 700; }
+.ad { font-size: 12px; color: #4A4446; margin-top: 3px; }
+.ad i { font-style: normal; color: #CFC8CB; margin: 0 4px; }
+.rt { font-size: 11px; margin-top: 4px; }
+.go { font-size: 12px; color: #4A4446; display: flex; align-items: center; flex: 0 0 auto; }
+.t { padding: 14px 20px 8px; font-size: 15px; font-weight: 700; }
+.t span { color: var(--accent); }
+.cats { display: flex; gap: 6px; padding: 0 20px 10px; overflow-x: auto; scrollbar-width: none; }
+.cats::-webkit-scrollbar { display: none; }
+.chip { flex: 0 0 auto; height: 30px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 15px; font-size: 13px; color: #1A1718; text-decoration: none; }
+.on { border-color: var(--accent); color: var(--accent); background: #FBEFF1; font-weight: 700; }
+.sorts { padding: 0 20px 14px; display: flex; gap: 8px; border-bottom: 1px solid #ECE9EA; }
+.sort { padding: 5px 10px; border: 1px solid #AAAAAA; border-radius: 5px; font-size: 14px; color: #AAAAAA; text-decoration: none; }
+.sortOn { color: #000; border-color: #000; font-weight: 600; }
+.row { margin: 0 20px; padding: 14px 0; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #ECE9EA; color: inherit; text-decoration: none; }
+.b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.n { font-size: 16px; font-weight: 500; }
+.p { display: flex; align-items: baseline; gap: 8px; }
+.p b { font-size: 18px; font-weight: 700; color: var(--accent); }
+.p b small { font-size: 12px; font-weight: 400; color: #1A1718; }
+.p em { font-style: normal; font-size: 12px; color: #6B6466; }
+.none { padding: 70px 32px; text-align: center; }
+.noneT { font-size: 18px; font-weight: 700; }
+.empty { text-align: center; padding: 80px 20px; color: #999; }
+.link { color: var(--accent); text-decoration: underline; }

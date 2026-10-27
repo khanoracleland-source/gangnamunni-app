@@ -18,9 +18,9 @@ class NextPilot {
 
   static final Uri _site = Uri.parse(STARTUP_WEBVIEW_URL);
 
-  /// Filters the Next.js list understands. `dosage`/`hid` are PHP-only, so
-  /// such URLs stay on PHP (returns null).
-  static const Set<String> _listParams = {'q', 'category', 'treatment', 'region', 'sort'};
+  /// Filters the Next.js list understands (day 9: dosage filter and the
+  /// hospital search view `hid`/`tcat` too). Anything else stays on PHP.
+  static const Set<String> _listParams = {'q', 'category', 'treatment', 'region', 'sort', 'dosage', 'hid', 'tcat'};
 
   static final Set<String> _listPaths = {'/hospitals.php', _site.resolve('hospitals.php').path};
 

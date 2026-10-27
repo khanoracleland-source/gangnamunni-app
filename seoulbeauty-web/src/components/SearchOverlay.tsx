@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import type { SearchSuggest } from "@/lib/api";
+import { api, type SearchSuggest } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import styles from "./SearchOverlay.module.css";
 
@@ -40,13 +40,13 @@ function Highlight({ text, q }: { text: string; q: string }) {
   return <>{text.slice(0, i)}<b>{text.slice(i, i + q.length)}</b>{text.slice(i + q.length)}</>;
 }
 
-/** PHP hrefs: plain `hospitals.php?q=X` works in Next; dosage/hid variants stay in PHP (Flutter leaves those too). */
+/** Suggest hrefs are PHP-style; `hospitals.php?q|dosage|hid` is served by the Next list, anything else stays in PHP. */
+const NEXT_LIST_PARAMS = new Set(["q", "dosage", "hid", "treatment", "region", "sort", "category"]);
 function mapHref(php: string, href: string): { href: string; next: boolean } {
-  const m = /^hospitals\.php\?(.*)$/.exec(href);
+  const m = /^hospitals\.php(?:\?(.*))?$/.exec(href);
   if (m) {
-    const p = new URLSearchParams(m[1]);
-    const keys = [...p.keys()];
-    if (keys.length === 1 && keys[0] === "q") return { href: `/hospitals?q=${encodeURIComponent(p.get("q") || "")}`, next: true };
+    const p = new URLSearchParams(m[1] || "");
+    if ([...p.keys()].every((k) => NEXT_LIST_PARAMS.has(k))) return { href: `/hospitals${p.toString() ? `?${p}` : ""}`, next: true };
   }
   return { href: phpUrl(php, href), next: false };
 }
@@ -77,13 +77,12 @@ function Body({ initial, regionLabel, popular, onClose, onSubmit, onRegion }: { 
     if (!term) return;
     const ctrl = new AbortController();
     const t = setTimeout(() => {
-      fetch(phpUrl(php, `search_suggest.php?q=${encodeURIComponent(term)}`), { credentials: "same-origin", signal: ctrl.signal })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d: SearchSuggest | null) => { if (d) setSugg({ q: term, data: d }); })
+      api.suggest(term)
+        .then((d: SearchSuggest) => { if (!ctrl.signal.aborted) setSugg({ q: term, data: d }); })
         .catch(() => { /* ignore */ });
     }, 160);
     return () => { clearTimeout(t); ctrl.abort(); };
-  }, [q, php]);
+  }, [q]);
 
   const submit = (w: string) => { w = w.trim(); if (!w) { onClose(); return; } addRecentSearch(w); onSubmit(w); };
   const today = new Date();
@@ -142,15 +141,15 @@ function Body({ initial, regionLabel, popular, onClose, onSubmit, onRegion }: { 
               <>
                 {d.treatments.length > 0 && <div className={styles.sgT}>시술</div>}
                 {d.treatments.map((t, i) => (
-                  <SmartLink key={`${t.name}-${i}`} className={`${styles.row} ${styles.tr}`} to={mapHref(php, t.href)} onClick={() => addRecentSearch(q.trim())}>{ICO_T}<span><Highlight text={t.name} q={q.trim()} /></span>{t.hint && <span className={styles.hint}>{t.hint}</span>}</SmartLink>
+                  <SmartLink key={`${t.name}-${i}`} className={`${styles.row} ${styles.tr}`} to={mapHref(php, t.href)} onClick={() => { addRecentSearch(q.trim()); onClose(); }}>{ICO_T}<span><Highlight text={t.name} q={q.trim()} /></span>{t.hint && <span className={styles.hint}>{t.hint}</span>}</SmartLink>
                 ))}
                 {d.hospitals.length > 0 && <div className={styles.sgT}>병원</div>}
                 {d.hospitals.map((h) => (
-                  <SmartLink key={h.id} className={`${styles.row} ${styles.hp}`} to={{ href: `/hospitals/${h.id}`, next: true }} onClick={() => addRecentSearch(h.name)}>{ICO_H}<span className={styles.grow}><span className={styles.block}><Highlight text={h.name} q={q.trim()} /></span><span className={styles.sub}>{(h.district ? `${h.district} · ` : "") + h.address}</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9395" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 16px" }}><path d="M9 5l7 7-7 7" /></svg></SmartLink>
+                  <SmartLink key={h.id} className={`${styles.row} ${styles.hp}`} to={mapHref(php, h.href)} onClick={() => { addRecentSearch(h.name); onClose(); }}>{ICO_H}<span className={styles.grow}><span className={styles.block}><Highlight text={h.name} q={q.trim()} /></span><span className={styles.sub}>{(h.district ? `${h.district} · ` : "") + h.address}</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9395" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 16px" }}><path d="M9 5l7 7-7 7" /></svg></SmartLink>
                 ))}
                 {d.offered?.items?.length > 0 && <div className={styles.sgT}>{d.offered.treatment} 시술 병원</div>}
                 {d.offered?.items?.map((x) => (
-                  <SmartLink key={x.id} className={`${styles.row} ${styles.hp}`} to={mapHref(php, x.href)} onClick={() => addRecentSearch(d.offered.treatment)}>{ICO_H}<span className={styles.grow}><span className={styles.block}>{x.name}</span><span className={styles.sub}>{(x.district ? `${x.district} · ` : "") + x.address}</span></span><span className={styles.price}>{Number(x.price).toLocaleString()}<small>원~</small></span></SmartLink>
+                  <SmartLink key={x.id} className={`${styles.row} ${styles.hp}`} to={mapHref(php, x.href)} onClick={() => { addRecentSearch(d.offered.treatment); onClose(); }}>{ICO_H}<span className={styles.grow}><span className={styles.block}>{x.name}</span><span className={styles.sub}>{(x.district ? `${x.district} · ` : "") + x.address}</span></span><span className={styles.price}>{Number(x.price).toLocaleString()}<small>원~</small></span></SmartLink>
                 ))}
                 <div className={styles.note}>시술을 고르면 병원별 가격이, 병원을 고르면 그 병원의 시술이 보여요</div>
               </>

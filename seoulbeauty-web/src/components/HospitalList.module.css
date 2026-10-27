@@ -11,3 +11,30 @@
 .grid > :last-child { border-bottom: 1px solid var(--line); }
 .empty { text-align: center; padding: 80px 20px; color: #999; }
 .retry { color: var(--accent); text-decoration: underline; margin-left: 6px; }
+/* hospitals.php dosage chips (figma_sync_index.css .sr-dosage / .sr-chip) */
+.dosage { display: flex; align-items: center; gap: 6px; padding: 8px 20px 10px; overflow-x: auto; scrollbar-width: none; }
+.dosage::-webkit-scrollbar { display: none; }
+.dosageT { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: #4A4446; margin-right: 4px; }
+.srChip { flex: 0 0 auto; height: 30px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 15px; font-size: 13px; color: #1A1718; text-decoration: none; background: var(--bg); }
+.srChipActive { border-color: var(--accent); color: var(--accent); background: #FBEFF1; font-weight: 700; }
+.filter b { font-weight: 700; margin-left: 2px; }
+/* in-feed ad card (hospital_list_content.php .ad-card) */
+.adCard { position: relative; display: flex; gap: 16px; padding: 22px 0; border-top: 1px solid var(--line); align-items: flex-start; text-decoration: none; color: inherit; }
+.adThumb { width: 100px; height: 100px; flex: 0 0 100px; object-fit: cover; border: 1px solid #c8c8c8; background: #fff; }
+.adThumbEmpty { background: #D9D9D9; border-color: #D9D9D9; }
+.adBadge { position: absolute; top: 28px; left: 6px; background: #000; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
+.adInfo { flex: 1; min-width: 0; }
+.adTitle { font-size: 16px; font-weight: 500; line-height: 1.35; margin-bottom: 6px; }
+.adAddr { font-size: 13px; color: #4A4446; }
+.district { color: #1A1718; }
+.sep { color: #CFC8CB; }
+/* empty states (03-11 / 03-14) */
+.srEmpty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 70px 32px 30px; }
+.srEmptyIco { width: 72px; height: 72px; border-radius: 50%; background: #FBEFF1; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+.srEmptyTitle { font-size: 18px; font-weight: 700; color: #1A1718; }
+.srEmptySub { font-size: 14px; line-height: 1.6; color: #6B6466; margin-top: 8px; }
+.srEmptyBtn { margin-top: 22px; width: 180px; height: 44px; border: 1px solid #1A1718; border-radius: 4px; background: #fff; color: #1A1718; font-size: 15px; font-weight: 500; }
+.srSugg { padding: 0 20px 30px; }
+.srSuggT { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #1A1718; }
+.srSuggChips { display: flex; flex-wrap: wrap; gap: 8px; }
+.srSuggChip { height: 32px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 16px; font-size: 14px; color: #1A1718; text-decoration: none; }
