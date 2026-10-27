@@ -210,6 +210,44 @@ body { padding-bottom: 0; }
     .write-container textarea { min-height: 204px; }
     .write-container input[type="text"], .write-container textarea { font-size: 16px; }
 }
+/* [06-02/06-15] 글쓰기·수정 — 디자인 시안(+3px) */
+.write-header { min-height: 52px; margin-bottom: 0; }
+.write-header h1 { font-size: 20px; font-weight: 500; color: #1A1718; }
+.write-categories { border-bottom-color: #ECE9EA; padding: 0 0 18px; margin: 0 0 6px; }
+.write-categories legend { font-size: 18px; font-weight: 700; margin-bottom: 12px; padding-top: 10px; }
+.category-options { grid-template-columns: repeat(4, auto); justify-content: space-between; column-gap: 8px; row-gap: 14px; }
+.category-option { gap: 6px; font-size: 15px; }
+.category-option input { width: 18px; height: 18px; flex: 0 0 18px; border: 0; border-radius: 0; background: url(assets/icons/icon-radio-off.png?v=1) center/contain no-repeat; }
+.category-option input:checked { background: url(assets/icons/icon-radio-on.png?v=1) center/contain no-repeat; border: 0; }
+.category-option input:checked::after { content: none; }
+.write-container .form-group { margin-bottom: 8px; }
+.write-container .form-group > label { font-size: 16px; font-weight: 700; margin: 12px 0 8px; }
+.required-mark { color: #AC1830; }
+.write-container input[type="text"], .write-container textarea { border-color: #DCD6D8; font-size: 16px; padding: 12px; }
+.write-container input[type="text"] { height: 46px; }
+.write-container textarea { min-height: 130px; }
+.write-container input::placeholder, .write-container textarea::placeholder { color: #9A9395; }
+.write-container :focus-visible { outline-color: #AC1830; }
+.char-count { font-size: 14px; color: #9A9395; margin-top: 6px; }
+.write-container .photo-group { margin-top: 10px; margin-bottom: 0; }
+.photo-upload { gap: 10px; }
+.photo-preview, .photo-add-btn { width: 78px; height: 78px; }
+.photo-add-btn { border-color: #BDB6B8; gap: 4px; font-size: 14px; color: #9A9395; }
+.photo-add-btn img { width: 22px; height: 22px; display: block; object-fit: contain; }
+.photo-add-btn:hover { border-color: #AC1830; }
+.write-policy { font-size: 14px; color: #9A9395; margin: 14px 0 24px; }
+.write-container .btn-submit { min-height: 52px; height: 52px; padding: 0; background: #AC1830; border-radius: 4px; font-size: 19px; font-weight: 500; }
+.write-container .btn-submit:hover { background: #8A1428; }
+@media (max-width: 370px) {
+    .category-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 371px) and (max-width: 480px) {
+    .category-options { grid-template-columns: repeat(4, auto); gap: 14px 8px; }
+    .category-option { font-size: 15px; }
+    .write-categories legend { font-size: 18px; }
+    .write-header h1 { font-size: 20px; }
+    .write-container input[type="text"], .write-container textarea { font-size: 16px; }
+}
 ';
 
 $page_js = '';
@@ -277,7 +315,7 @@ include __DIR__ . '/includes/header.php';
                     ?>
                     <?php for ($slot = 0; $slot < 2; $slot++): ?>
                     <button type="button" class="photo-add-btn" aria-label="사진 추가" onclick="document.getElementById('photoInput').click()">
-                        <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="14" cy="14" r="12"/><path d="M14 6v16M6 14h16"/></svg>
+                        <img src="assets/icons/icon-photo-add.png?v=1" alt="">
                         <span><?php echo $slot === 0 ? '사진 추가' : '0 / 4'; ?></span>
                     </button>
                     <?php endfor; ?>

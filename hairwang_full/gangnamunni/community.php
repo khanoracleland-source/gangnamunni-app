@@ -343,6 +343,31 @@ textarea {
     .post-title { font-size: 16px; }
     .community-tabs a { font-size: 16px; }
 }
+
+/* [06-01] 커뮤니티 목록 — 디자인 시안(+3px) */
+.community-section-title { font-size: 20px; padding: 18px 20px 8px; color: #1A1718; }
+.community-tabs { margin: 0 20px; border-bottom: 1px solid #CFC8CB; }
+.community-tabs a, .community-tabs a:hover { font-size: 17px; font-weight: 400; color: #1A1718; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.community-tabs a.active { color: #AC1830; border-bottom-color: #AC1830; font-weight: 400; }
+.post-count-bar { display: none; }
+.post-item { margin: 0 20px; padding: 14px 0 12px; border-bottom: 1px solid #CFC8CB; }
+.post-cat-tag { padding: 2px 6px; background: #FBEFF1; border-radius: 0; font-size: 14px; font-weight: 400; margin-bottom: 6px; }
+.post-title { font-size: 18px; font-weight: 700; color: #1A1718; margin-bottom: 6px; }
+.post-preview { font-size: 15px; line-height: 1.6; color: #1A1718; -webkit-line-clamp: 3; }
+.post-readmore-row { margin: 6px 0 6px; }
+.post-readmore, .post-readmore-time { font-size: 13px; color: #9A9395; }
+.post-thumbs { gap: 0; border-radius: 0; margin-bottom: 8px; background: #DAD7D8; }
+.post-thumbs.thumbs-1 { grid-template-columns: 1fr; max-width: 100%; }
+.post-thumbs .thumb-item { aspect-ratio: auto; height: 118px; }
+.post-author-row { gap: 6px; margin-top: 4px; }
+.post-avatar { width: 26px; height: 26px; background: #DCD8D9; }
+.post-author-name { font-size: 15px; color: #1A1718; }
+.post-stat-group { gap: 16px; font-size: 14px; color: #1A1718; }
+.post-stat-group .stat { gap: 5px; }
+.post-stat-group .stat .stat-icon { width: 21px; height: 21px; }
+.post-stat-group .community-more { color: #1A1718; }
+.fab-write { bottom: 96px; width: 62px; max-width: 62px; height: 38px; padding: 0; border-radius: 19px; background: #AC1830; box-shadow: none; }
+.fab-write img { width: 22px; height: 22px; display: block; object-fit: contain; }
 ';
 
 $page_js = '
@@ -399,7 +424,7 @@ include __DIR__ . '/includes/header.php';
                     if (is_array($decoded)) $photos = $decoded;
                 }
                 $content_plain = strip_tags($post['content'] ?? '');
-                $preview = mb_substr($content_plain, 0, 50);
+                $preview = mb_substr($content_plain, 0, 90);
                 $link = !empty($post['detail_link']) ? $post['detail_link'] : (($post['id'] > 0) ? 'detail_community.php?id=' . $post['id'] : '#');
                 $time_text = community_time_display($post['created_at'] ?? '', $post['updated_at'] ?? null);
                 $author = htmlspecialchars($post['author_name'] ?? '익명');
@@ -408,7 +433,7 @@ include __DIR__ . '/includes/header.php';
                     <div class="post-content-area">
                         <span class="post-cat-tag"><?php echo htmlspecialchars($post['category']); ?></span>
                         <div class="post-title"><?php echo htmlspecialchars($post['title']); ?></div>
-                        <?php $is_long = mb_strlen($content_plain) > 50; ?>
+                        <?php $is_long = mb_strlen($content_plain) > 90; ?>
                         <div class="post-preview"><?php echo htmlspecialchars($preview); ?></div>
                         <div class="post-readmore-row">
                             <?php if ($is_long): ?>
@@ -497,9 +522,9 @@ include __DIR__ . '/includes/header.php';
 
     <!-- FAB 글쓰기 버튼 (Figma: 100x60 pill) -->
     <?php if ($is_logged_in): ?>
-    <a href="community_write.php" class="fab-write" title="글쓰기"><i class="bi bi-pencil-square"></i></a>
+    <a href="community_write.php" class="fab-write" title="글쓰기"><img src="assets/icons/icon-community-write.png?v=1" alt=""></a>
     <?php else: ?>
-    <button class="fab-write" title="글쓰기" onclick="alert('로그인이 필요합니다.'); location.href='auth/login.php?url=<?php echo urlencode('/hairwang/app/community.php'); ?>';"><i class="bi bi-pencil-square"></i></button>
+    <button class="fab-write" title="글쓰기" onclick="alert('로그인이 필요합니다.'); location.href='auth/login.php?url=<?php echo urlencode('/hairwang/app/community.php'); ?>';"><img src="assets/icons/icon-community-write.png?v=1" alt=""></button>
     <?php endif; ?>
 
 <?php include_once __DIR__ . '/includes/community_action_sheet.php'; ?>
