@@ -368,6 +368,20 @@ textarea {
 .post-stat-group .community-more { color: #1A1718; }
 .fab-write { bottom: 96px; width: 62px; max-width: 62px; height: 38px; padding: 0; border-radius: 19px; background: #AC1830; box-shadow: none; }
 .fab-write img { width: 22px; height: 22px; display: block; object-fit: contain; }
+.post-item > div { gap: 0; } /* 카드 내부 간격은 각 요소의 margin으로만 (디자인 6px) */
+/* 작성자 이름은 한 줄(말줄임), 통계는 촘촘하게 / 사진 1장은 한 칸(절반 폭)만 차지 */
+.post-author-row { min-width: 0; }
+.post-author-name { flex: 1 1 auto; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.post-stat-group { flex: 0 0 auto; margin-left: 0; gap: 12px; font-size: 13px; }
+.post-stat-group .stat { gap: 4px; }
+.post-stat-group .stat .stat-icon, .post-stat-group .stat-like .heart-icon { width: 20px; height: 20px; }
+.post-thumbs.thumbs-1 { grid-template-columns: 1fr 1fr; max-width: 100%; background: none; }
+.post-thumbs.thumbs-1 .thumb-item { grid-column: 1; background: #DAD7D8; }
+/* 카드 안 요소 사이 간격: 디자인처럼 촘촘하게 (기존 gap:14px 제거) */
+.post-item > div.post-content-area { gap: 0; }
+.post-readmore-row { margin: 6px 0; }
+.post-author-row { margin-top: 6px; min-height: 26px; }
+.post-stat-group .community-more { padding: 0; margin: 0; width: 20px; height: 20px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; }
 ';
 
 $page_js = '
@@ -532,7 +546,15 @@ include __DIR__ . '/includes/header.php';
 .stat-like { cursor: pointer; user-select: none; }
 .stat-like:hover .heart-icon { opacity: 0.75; }
 .stat-like.liked, .stat-like.liked .heart-icon { color: #AC1830; font-weight: 700; }
+/* [06-04] 좋아요한 하트 = 디자인의 채운 빨간 하트 이미지 */
+.post-stat-group .stat-like .heart-icon { width: 20px; height: 20px; font-size: 0; line-height: 0; background: url(assets/icons/icon-community-heart-on.png?v=1) center / contain no-repeat; }
+.post-stat-group .stat-like .heart-icon::before { content: none; }
+.post-stat-group .stat-like .heart-img { content: url(assets/icons/icon-community-heart.png?v=1); }
+/* [06-04/06-05] 좋아요 토스트 */
+.cm-toast { position: fixed; left: 20px; right: 20px; bottom: 148px; margin: 0 auto; max-width: 600px; height: 44px; box-sizing: border-box; padding: 0 16px 0 18px; border: 1px solid #AC1830; border-radius: 22px; background: #fff; color: #1A1718; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 500; box-shadow: 0 4px 12px rgba(26,23,24,.10); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 11000; }
+.cm-toast.show { opacity: 1; }
 </style>
+<div class="cm-toast" id="cmToast" role="status" aria-live="polite"></div>
 <script>
 // 목록에서 바로 좋아요 토글 — 커뮤니티 글(detail_community.php) / 시술후기(api/like_review.php) 분기
 var CM_USER_ID = <?php echo json_encode(function_exists('get_gangnamunni_member_id') ? (get_gangnamunni_member_id() ?? '') : ''); ?>;
@@ -549,6 +571,16 @@ function cmApplyLikeState(el, liked, count) {
     el.classList.toggle('liked', !!liked);
     var icon = el.querySelector('i.heart-icon');
     if (icon) icon.className = 'bi ' + (liked ? 'bi-heart-fill' : 'bi-heart') + ' heart-icon';
+    cmToast(liked ? '좋아요 반영되었습니다.' : '좋아요 취소되었습니다.');
+}
+var cmToastTimer = null;
+function cmToast(msg) {
+    var t = document.getElementById('cmToast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(cmToastTimer);
+    cmToastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2000);
 }
 function cmToggleLike(el, id, isReview) {
     if (!CM_USER_ID) { cmLoginPrompt(); return; }

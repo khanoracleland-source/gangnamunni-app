@@ -238,12 +238,15 @@ body { padding-bottom: 0; }
 .write-policy { font-size: 14px; color: #9A9395; margin: 14px 0 24px; }
 .write-container .btn-submit { min-height: 52px; height: 52px; padding: 0; background: #AC1830; border-radius: 4px; font-size: 19px; font-weight: 500; }
 .write-container .btn-submit:hover { background: #8A1428; }
+.category-option { font-size: 14px; gap: 5px; }
+.category-option input { width: 16px; height: 16px; flex: 0 0 16px; }
+.category-options { column-gap: 6px; }
 @media (max-width: 370px) {
     .category-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 371px) and (max-width: 480px) {
-    .category-options { grid-template-columns: repeat(4, auto); gap: 14px 8px; }
-    .category-option { font-size: 15px; }
+    .category-options { grid-template-columns: repeat(4, auto); gap: 14px 6px; }
+    .category-option { font-size: 14px; }
     .write-categories legend { font-size: 18px; }
     .write-header h1 { font-size: 20px; }
     .write-container input[type="text"], .write-container textarea { font-size: 16px; }

@@ -303,10 +303,13 @@ button.detail-stat { border: 0; padding: 0; background: transparent; font: inher
 .comment-submit { width: 56px; height: 40px; padding: 0; border-radius: 4px; background: #AC1830; font-size: 17px; font-weight: 700; }
 .post-detail-container :focus-visible, .back-btn:focus-visible { outline-color: #AC1830; }
 @media (max-width: 480px) {
-    .detail-stats { gap: 16px; font-size: 14px; }
+    .detail-stats { gap: 12px; font-size: 13px; }
+    .post-detail-author { font-size: 14px; }
+    .post-photo-grid a:only-child { width: 50%; }
+    .post-photo-grid { background: none; }
+    .post-photo-grid a { background: #DAD7D8; }
     .detail-stat { gap: 5px; }
     .detail-stat i { font-size: 0; }
-    .post-detail-author { font-size: 15px; }
     .comment-author { max-width: 120px; font-size: 16px; }
     .comment-age, .comment-date { font-size: 14px; }
 }
