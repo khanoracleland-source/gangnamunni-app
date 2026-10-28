@@ -2,26 +2,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./BottomNav.module.css";
-import { phpUrl, usePhpBase } from "@/lib/php";
 
-// Pilot: 홈, 병원 and 커뮤니티 live in Next.js. The other tabs go to the PHP pages on the
+// Pilot: 홈, 병원, 커뮤니티 and 마이페이지 live in Next.js. The other tabs go to the PHP pages on the
 // same origin (full load), so the app stays on its trusted host.
 const items = [
   { next: "/", label: "홈" },
   { next: "/hospitals", label: "병원" },
   { next: "/community", label: "커뮤니티" },
-  { php: "mypage.php", label: "마이페이지" },
+  { next: "/mypage", label: "마이페이지" },
 ] as const;
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const php = usePhpBase();
   return (
     <nav className={styles.nav} aria-label="하단 메뉴">
       {items.map((it) => {
-        if ("php" in it) {
-          return <a key={it.label} href={phpUrl(php, it.php)} className={styles.item}>{it.label}</a>;
-        }
         const active = it.next === "/" ? pathname === "/" : pathname.startsWith(it.next);
         return (
           <Link key={it.label} href={it.next} className={`${styles.item} ${active ? styles.active : ""}`}

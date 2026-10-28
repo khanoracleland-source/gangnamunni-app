@@ -57,6 +57,10 @@ class NextPilot {
     if (_communityPaths.contains(uri.path)) return _rewriteCommunity(uri);
     if (_communityDetailPaths.contains(uri.path)) return _rewriteCommunityDetail(uri);
     if (_communityWritePaths.contains(uri.path)) return _rewriteCommunityWrite(uri);
+    if (_mypagePaths.contains(uri.path)) return _rewriteMine(uri, 'mypage', const {}, const {});
+    if (_myWishlistPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/wishlist', const {}, const {});
+    if (_myReviewsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/reviews', const {'tab'}, const {'tab': {'writable', 'done'}});
+    if (_myConsultationsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/consultations', const {}, const {});
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
     if (!_listPaths.contains(uri.path)) return null;
@@ -132,6 +136,10 @@ class NextPilot {
   }
 
   static final Set<String> _communityPaths = {'/community.php', _site.resolve('community.php').path};
+  static final Set<String> _mypagePaths = {'/mypage.php', _site.resolve('mypage.php').path};
+  static final Set<String> _myWishlistPaths = {'/my_wishlist.php', _site.resolve('my_wishlist.php').path};
+  static final Set<String> _myReviewsPaths = {'/my_reviews.php', _site.resolve('my_reviews.php').path};
+  static final Set<String> _myConsultationsPaths = {'/my_consultations.php', _site.resolve('my_consultations.php').path};
   static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};
   static final Set<String> _communityDetailPaths = {'/detail_community.php', _site.resolve('detail_community.php').path};
 
@@ -153,6 +161,28 @@ class NextPilot {
       host: _site.host,
       port: _site.hasPort ? _site.port : null,
       path: '$basePath/community',
+      queryParameters: kept.isEmpty ? null : kept,
+    );
+  }
+
+  /// mypage.php, my_wishlist.php, my_reviews.php[?tab=], my_consultations.php [&app=] -> /next/mypage[/...].
+  /// Any other parameter keeps the PHP page (e.g. my_wishlist.php?type=community, `php=1` escape hatch).
+  static Uri? _rewriteMine(Uri uri, String path, Set<String> params, Map<String, Set<String>> values) {
+    final q = uri.queryParameters;
+    if (q.keys.any((k) => k != 'app' && !params.contains(k))) return null;
+    final kept = <String, String>{};
+    for (final k in params) {
+      final v = q[k] ?? '';
+      if (v.isEmpty) continue;
+      if (!(values[k]?.contains(v) ?? false)) return null;
+      // the default tab (writable) is the bare URL
+      if (!(k == 'tab' && v == 'writable')) kept[k] = v;
+    }
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/$path',
       queryParameters: kept.isEmpty ? null : kept,
     );
   }

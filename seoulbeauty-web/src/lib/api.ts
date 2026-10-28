@@ -179,6 +179,22 @@ async function send<T>(method: "POST" | "PUT" | "DELETE", path: string, body?: u
 }
 const post = <T,>(path: string, body: unknown) => send<T>("POST", path, body);
 
+/** /v1/mypage* — 마이페이지 (member only) */
+export interface MypageAd { id: number; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string }
+export interface MypageSummary {
+  nickname: string; avatarUrl: string | null; bookingCount: number; consultCount: number;
+  points: { visible: boolean; balance: number }; ads: { show: boolean; autoScroll: boolean; items: MypageAd[] };
+}
+export interface MyWishlistItem { id: number; hospitalId: number; name: string; available: boolean; imageUrl: string | null; district: string; address: string }
+export interface MyConsultation {
+  id: number; hospitalId: number; hospitalName: string; type: string; typeLabel: string; status: string;
+  statusLabel: string; statusTone: "danger" | "muted" | "dark"; dateLabel: string; hospitalPhone: string | null;
+}
+export interface MyWritableReview { bookingId: number; hospitalId: number; hospitalName: string; treatment: string; imageUrl: string | null; district: string; address: string; doctorName: string | null; bookingDate: string }
+export interface MyDoneReview {
+  id: number; hospitalId: number; hospitalName: string; imageUrl: string | null; rating: number; ratingValue: number; treatment: string;
+  district: string; address: string; doctorName: string | null; bookingDate: string; pending: boolean;
+}
 export interface WishlistState { wishlisted: boolean; count: number }
 export interface ConsultationInput { hospitalId: number; type: "general" | "doctor" | "kakao"; name: string; phone: string; message: string }
 
@@ -256,6 +272,10 @@ export interface SearchSuggest {
 export const api = {
   home: (ctx?: ServerCtx) => get<HomeData>("/v1/home", undefined, ctx),
   wishlist: (id: number) => get<WishlistState>(`/v1/wishlist/hospitals/${id}`),
+  mypage: (ctx?: ServerCtx) => get<MypageSummary>("/v1/mypage", undefined, ctx),
+  myWishlist: (ctx?: ServerCtx) => get<{ items: MyWishlistItem[] }>("/v1/mypage/wishlist", undefined, ctx),
+  myConsultations: (ctx?: ServerCtx) => get<{ items: MyConsultation[]; anyPhone: string | null }>("/v1/mypage/consultations", undefined, ctx),
+  myReviews: (ctx?: ServerCtx) => get<{ writable: MyWritableReview[]; done: MyDoneReview[] }>("/v1/mypage/reviews", undefined, ctx),
   toggleWishlist: (id: number) => post<WishlistState & { message: string }>("/v1/wishlist/toggle", { type: "hospital", targetId: id }),
   consult: (input: ConsultationInput) => post<{ success: boolean; id: number; message: string }>("/v1/consultations", input),
   me: () => get<{ loggedIn: boolean; user: { id: string; no: number; name: string; nickname: string; level: number; phone: string } | null; unreadNotifications: number }>("/v1/me"),
@@ -295,6 +315,10 @@ export const qk = {
   treatments: (id: number) => ["treatments", id] as const,
   doctors: (id: number) => ["doctors", id] as const,
   wishlist: (id: number) => ["wishlist", id] as const,
+  mypage: ["mypage"] as const,
+  myWishlist: ["mypage", "wishlist"] as const,
+  myConsultations: ["mypage", "consultations"] as const,
+  myReviews: ["mypage", "reviews"] as const,
   home: ["home"] as const,
   events: (category: string, raffle: boolean) => ["events", category, raffle] as const,
   event: (id: number) => ["event", id] as const,

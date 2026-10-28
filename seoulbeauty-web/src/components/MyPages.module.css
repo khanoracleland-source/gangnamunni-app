@@ -1,0 +1,78 @@
+/* Functional skeleton for the 마이페이지 pages: the final design will replace these values. */
+.wrap { box-sizing: border-box; max-width: 640px; margin: 0 auto; padding-bottom: 100px; color: #1A1718; }
+.head { position: relative; height: 56px; display: flex; align-items: center; justify-content: center; background: #fff; }
+.headTitle { font-size: 20px; font-weight: 600; }
+.headSide { position: absolute; right: 12px; top: 8px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+.back { position: absolute; left: 8px; width: 40px; height: 44px; font-size: 22px; color: inherit; }
+.empty { padding: 70px 20px; text-align: center; color: #777; line-height: 1.7; }
+.retry { color: #AC1830; text-decoration: underline; }
+.profile { display: flex; align-items: center; gap: 14px; margin: 12px 10px; padding: 18px 22px; background: #fff; color: inherit; text-decoration: none; }
+.avatar { width: 52px; height: 52px; border-radius: 50%; background: #D9D9D9; color: #fff; font-weight: 700; font-size: 22px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex: 0 0 52px; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pname { flex: 1; min-width: 0; font-size: 18px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.section { margin: 0 10px 12px; padding: 14px 22px 4px; background: #fff; }
+.sectionTight { padding-top: 2px; padding-bottom: 2px; }
+.sectionTitle { font-size: 15px; color: #999; padding-bottom: 2px; }
+.row { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 12px 0; color: inherit; text-decoration: none; }
+.rowIcon { width: 30px; height: 30px; flex: 0 0 30px; display: flex; align-items: center; justify-content: center; }
+.rowIcon img { width: 28px; height: 28px; object-fit: contain; display: block; }
+.rowText { flex: 1; font-size: 17px; font-weight: 500; }
+.badge { font-size: 17px; font-weight: 500; color: #AC1830; white-space: nowrap; }
+.arrow { font-size: 18px; font-weight: 700; }
+.ads { margin: 0 10px 12px; overflow: hidden; }
+.ad { display: block; flex: 0 0 100%; width: 100%; aspect-ratio: 600 / 132; color: inherit; text-decoration: none; overflow: hidden; background: #f8f8f8; }
+.adImg { display: block; width: 100%; height: 100%; object-fit: cover; }
+.adText { height: 100%; box-sizing: border-box; padding: 10px 16px; display: flex; flex-direction: column; justify-content: center; }
+.adTitle { font-size: 15px; font-weight: 700; }
+.adSub { font-size: 12px; color: #666; margin-top: 3px; }
+.login { padding: 60px 20px; text-align: center; background: #fff; }
+.loginTitle { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.loginText { font-size: 14px; color: #999; margin-bottom: 24px; }
+.loginBtn { display: inline-block; padding: 14px 48px; background: #AC1830; color: #fff; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; }
+/* wishlist */
+.grid { display: grid; gap: 16px; padding: 4px 16px 24px; }
+.hcard { position: relative; display: flex; background: #fff; overflow: hidden; }
+.hcardOff { opacity: 0.72; }
+.hcardOff .himg { filter: grayscale(1); }
+.hlink { display: flex; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.himg { width: 100px; height: 100px; flex: 0 0 100px; object-fit: cover; background: #d9d9d9; display: block; }
+.hinfo { flex: 1; min-width: 0; padding: 10px 44px 10px 12px; }
+.hname { font-size: 15px; font-weight: 500; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.haddr { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hdistrict { font-weight: 600; }
+.hsep { color: #aaa; margin: 0 5px; }
+.hoff { color: #999; font-size: 14px; font-weight: 600; margin-top: 8px; }
+.star { position: absolute; top: 8px; right: 8px; padding: 4px; font-size: 20px; line-height: 1; color: #AC1830; background: rgba(255, 255, 255, 0.9); border-radius: 999px; }
+/* tabs + review cards */
+.tabs { display: flex; margin: 0 20px; border-bottom: 1px solid #cfcfcf; }
+.tab { flex: 1; height: 52px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 500; color: #111; border-bottom: 2px solid transparent; }
+.tabOn { color: #AC1830; border-bottom-color: #AC1830; }
+.rlist { padding: 0 20px; }
+.rcard { display: flex; gap: 16px; padding: 28px 0 32px; border-bottom: 1px solid #d7d7d7; }
+.rimg { width: 110px; height: 148px; flex: 0 0 110px; object-fit: cover; background: #d9d9d9; display: block; }
+.rcopy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.rhosp { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rtreat { font-size: 18px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rmeta { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stars { color: #f6a12a; letter-spacing: 1px; margin-right: 4px; }
+.ractions { display: flex; gap: 10px; margin-top: auto; }
+.rbtn { flex: 1; height: 40px; display: flex; align-items: center; justify-content: center; border: 1px solid #bbb; background: #fff; color: #111; font-size: 14px; text-decoration: none; }
+.rbtnPri { border-color: #AC1830; color: #AC1830; }
+.rbtnPending { border: 0; background: #fff0f1; color: #AC1830; }
+/* consultations */
+.cwrap { background: #F4F2F3; min-height: calc(100vh - 56px); padding: 10px 0 30px; display: flex; flex-direction: column; gap: 10px; }
+.ccard { margin: 0 16px; padding: 16px; background: #fff; }
+.ctop { display: flex; align-items: center; gap: 8px; }
+.chip { height: 28px; padding: 0 9px; display: inline-flex; align-items: center; font-size: 15px; font-weight: 700; }
+.chipDanger { background: #AC1830; color: #fff; }
+.chipMuted { background: #EFECED; color: #4A4446; }
+.chipDark { background: #2A1416; color: #fff; }
+.cdate { margin-left: auto; font-size: 15px; color: #9A9395; }
+.cname { margin-top: 10px; font-size: 19px; font-weight: 700; overflow-wrap: anywhere; }
+.csub { margin-top: 3px; font-size: 16px; color: #4A4446; }
+.cbox { margin-top: 12px; padding: 12px; background: #FBEFF1; font-size: 16px; line-height: 1.6; }
+.chint { margin-top: 10px; font-size: 16px; color: #6B6466; }
+.cactions { display: flex; gap: 8px; margin-top: 14px; }
+.cbtn { flex: 1; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid #AC1830; color: #AC1830; background: #fff; border-radius: 4px; font-size: 17px; text-decoration: none; }
+.cbtnPri { background: #AC1830; color: #fff; }
+.notice { margin: 4px 16px 0; padding: 12px 14px; font-size: 15px; line-height: 1.6; color: #4A4446; background: #fff; }
