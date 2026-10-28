@@ -67,6 +67,7 @@ class NextPilot {
     if (_reviewDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'reviews');
     if (_qnaPaths.contains(uri.path)) return _rewriteMine(uri, 'qna', const {}, const {});
     if (_faqPaths.contains(uri.path)) return _rewriteFaq(uri);
+    if (_notificationsPaths.contains(uri.path)) return _rewriteNotifications(uri);
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
     if (!_listPaths.contains(uri.path)) return null;
@@ -155,6 +156,7 @@ class NextPilot {
   static final Set<String> _myConsultationDetailPaths = {'/my_consultation_detail.php', _site.resolve('my_consultation_detail.php').path};
   static final Set<String> _reviewDetailPaths = {'/review_detail.php', _site.resolve('review_detail.php').path};
   static final Set<String> _qnaPaths = {'/qna.php', _site.resolve('qna.php').path};
+  static final Set<String> _notificationsPaths = {'/my_notifications.php', _site.resolve('my_notifications.php').path};
   static final Set<String> _faqPaths = {'/faq.php', _site.resolve('faq.php').path};
   static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};
   static final Set<String> _communityDetailPaths = {'/detail_community.php', _site.resolve('detail_community.php').path};
@@ -229,6 +231,21 @@ class NextPilot {
       port: _site.hasPort ? _site.port : null,
       path: '$basePath/mypage/bookings',
       queryParameters: (tab.isEmpty || tab == 'active') ? null : {'tab': tab},
+    );
+  }
+
+  /// my_notifications.php[?type=all|booking|review|benefit][&app=] -> /next/mypage/notifications[?type=] (`from=`, `return_to=` etc. keep the PHP page).
+  static Uri? _rewriteNotifications(Uri uri) {
+    final q = uri.queryParameters;
+    if (q.keys.any((k) => k != 'type' && k != 'app')) return null;
+    final type = q['type'] ?? '';
+    if (type.isNotEmpty && !const {'all', 'booking', 'review', 'benefit'}.contains(type)) return null;
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/mypage/notifications',
+      queryParameters: (type.isEmpty || type == 'all') ? null : {'type': type},
     );
   }
 

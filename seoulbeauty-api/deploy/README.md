@@ -48,6 +48,9 @@ GRANT INSERT ON hms_saas.gangnamunni_consultation_events TO 'sb_api_ro'@'localho
 -- 내 예약: 결제 기한 자동 취소 안내를 확인함으로 표시 (POST /v1/mypage/bookings/:id/expire-seen)
 GRANT UPDATE (expire_notice_seen_at) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'127.0.0.1';
 GRANT UPDATE (expire_notice_seen_at) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'localhost';
+-- 내 알림 (read / read-all / delete)
+GRANT UPDATE (is_read), DELETE ON hms_saas.gangnamunni_user_notifications TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (is_read), DELETE ON hms_saas.gangnamunni_user_notifications TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 SHOW GRANTS FOR 'sb_api_ro'@'127.0.0.1';
 ```

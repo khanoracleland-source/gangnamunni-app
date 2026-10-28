@@ -302,6 +302,11 @@ export interface SearchSuggest {
   offered: { treatment: string; items: { id: number; name: string; district: string; address: string; price: number; href: string }[] };
 }
 
+export type NotiIcon = "calendar" | "payment" | "clock" | "gift" | "review" | "bell";
+export type NotiFilter = "all" | "booking" | "review" | "benefit";
+export interface MyNotification { id: number; type: string; title: string; message: string; isRead: boolean; icon: NotiIcon; time: string; openUrl: string }
+export interface MyNotificationsPage { items: MyNotification[]; total: number; page: number; hasMore: boolean; unread: number }
+
 export const api = {
   home: (ctx?: ServerCtx) => get<HomeData>("/v1/home", undefined, ctx),
   wishlist: (id: number) => get<WishlistState>(`/v1/wishlist/hospitals/${id}`),
@@ -311,6 +316,10 @@ export const api = {
   myBookings: (ctx?: ServerCtx) => get<MyBookingsData>("/v1/mypage/bookings", undefined, ctx),
   bookingDetail: (id: number, ctx?: ServerCtx) => get<BookingDetail>(`/v1/mypage/bookings/${id}`, undefined, ctx),
   bookingExpireSeen: (id: number) => post<{ success: boolean }>(`/v1/mypage/bookings/${id}/expire-seen`, {}),
+  myNotifications: (type: NotiFilter, page: number, ctx?: ServerCtx) => get<MyNotificationsPage>("/v1/mypage/notifications", { type: type === "all" ? undefined : type, page: page > 1 ? page : undefined }, ctx),
+  notificationRead: (id: number) => post<{ success: boolean }>(`/v1/mypage/notifications/${id}/read`, {}),
+  notificationsReadAll: () => post<{ success: boolean }>("/v1/mypage/notifications/read-all", {}),
+  notificationDelete: (id: number) => send<{ success: boolean }>("DELETE", `/v1/mypage/notifications/${id}`),
   faq: (ctx?: ServerCtx) => get<FaqData>("/v1/faq", undefined, ctx),
   consultation: (id: number, ctx?: ServerCtx) => get<ConsultationDetail>(`/v1/mypage/consultations/${id}`, undefined, ctx),
   rerequestConsultation: (id: number, slot: string) => post<{ success: boolean }>(`/v1/mypage/consultations/${id}/rerequest`, { slot }),
@@ -360,6 +369,7 @@ export const qk = {
   myConsultations: ["mypage", "consultations"] as const,
   myReviews: ["mypage", "reviews"] as const,
   faq: ["faq"] as const,
+  myNotifications: (type: string) => ["mypage", "notifications", type] as const,
   myBookings: ["mypage", "bookings"] as const,
   bookingDetail: (id: number) => ["mypage", "booking", id] as const,
   consultation: (id: number) => ["mypage", "consultation", id] as const,

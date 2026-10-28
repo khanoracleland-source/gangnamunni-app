@@ -136,3 +136,23 @@
 .bdTag { display: inline-block; margin: 6px 6px 0 0; padding: 2px 8px; border-radius: 10px; background: #EFECED; font-size: 12px; }
 .bdTagFail { background: #FBEFF1; color: #AC1830; }
 .bdFoot { padding: 24px 20px 34px; display: flex; gap: 10px; }
+
+/* 알림 (my_notifications) */
+.ntBar { display: flex; align-items: center; background: #fff; border-bottom: 1px solid #eee; padding-right: 8px; }
+.ntReadAll { flex: 0 0 auto; height: 34px; padding: 0 10px; font-size: 13px; color: #AC1830; display: inline-flex; align-items: center; }
+.ntReadAll:disabled { color: #bbb; }
+.ntList { background: #F4F2F3; min-height: calc(100vh - 110px); }
+.ntItem { position: relative; display: flex; align-items: flex-start; background: #fff; border-bottom: 1px solid #f0eded; }
+.ntUnread { background: #FFF6F7; }
+.ntOpen { flex: 1; min-width: 0; display: flex; gap: 12px; padding: 16px 0 16px 16px; }
+.ntClickable { cursor: pointer; }
+.ntIcon { width: 40px; height: 40px; flex: 0 0 40px; object-fit: contain; }
+.ntBody { flex: 1; min-width: 0; }
+.ntTitleRow { display: flex; align-items: center; gap: 6px; }
+.ntTitle { font-size: 15px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntDot { width: 6px; height: 6px; border-radius: 50%; background: #AC1830; flex: 0 0 6px; }
+.ntTime { margin-left: auto; font-size: 12px; color: #999; white-space: nowrap; }
+.ntMsg { margin-top: 4px; font-size: 14px; color: #666; line-height: 1.5; word-break: keep-all; }
+.ntDel { flex: 0 0 40px; width: 40px; height: 40px; font-size: 20px; color: #bbb; }
+.ntMore { display: block; width: calc(100% - 32px); margin: 16px; height: 44px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 15px; color: #444; }
+.ntToast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: rgba(26, 23, 24, .92); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 14px; z-index: 60; }
