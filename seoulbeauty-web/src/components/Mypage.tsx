@@ -41,8 +41,8 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
   };
   const support = (
     <div className={`${styles.section} ${styles.sectionTight}`}>
-      {row("qna.php", null, "고객센터")}
-      {row("faq.php", null, "자주 묻는 질문")}
+      {row("/qna", null, "고객센터", undefined, true)}
+      {row("/faq", null, "자주 묻는 질문", undefined, true)}
     </div>
   );
 

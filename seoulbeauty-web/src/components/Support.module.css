@@ -1,0 +1,91 @@
+/* Functional skeleton for faq / qna / consultation detail / review detail (ported from the PHP pages' CSS); the final design will replace these values. */
+.wrap { box-sizing: border-box; max-width: 640px; margin: 0 auto; min-height: 100vh; padding-bottom: 90px; background: #fff; color: #1A1718; }
+.head { position: sticky; top: 0; z-index: 10; height: 56px; display: flex; align-items: center; justify-content: center; background: #fff; }
+.back { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border: 0; background: none; font-size: 22px; color: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.title { font-size: 18px; font-weight: 500; }
+.empty { padding: 60px 20px; text-align: center; color: #777; line-height: 1.7; }
+.retry { color: #AC1830; text-decoration: underline; }
+
+/* faq */
+.tabs { display: flex; gap: 8px; padding: 12px 16px 8px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: 1 0 auto; min-width: 52px; height: 30px; padding: 0 10px; border: 1px solid #BDBDBD; border-radius: 6px; background: #fff; color: #9E9E9E; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.tabOn { border-color: #AC1830; color: #AC1830; }
+.panel { border-bottom: 12px solid #F2F2F2; }
+.fitem { margin: 0 16px; border-bottom: 1px solid #E5E5E5; }
+.fitem:last-child { border-bottom: none; }
+.fq { width: 100%; min-height: 68px; padding: 16px 8px 16px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; font-size: 15px; font-weight: 500; line-height: 1.4; }
+.chev { flex-shrink: 0; color: #C8C8C8; font-size: 16px; transition: transform .2s; }
+.chevOpen { transform: rotate(180deg); }
+.fa { margin: 0 0 16px; padding: 14px 16px; border-radius: 8px; background: #F7F7F7; font-size: 14px; line-height: 1.7; color: #555; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fempty { padding: 60px 16px; text-align: center; color: #999; font-size: 14px; }
+
+/* qna */
+.qnaEmpty { padding: 60px 20px; text-align: center; color: #777; line-height: 1.7; }
+.qnaIcon { display: block; margin-bottom: 12px; font-size: 48px; }
+.qnaTitle { display: block; margin-bottom: 8px; color: #1A1718; }
+
+/* consultation detail */
+.chip { height: 28px; padding: 0 9px; display: inline-flex; align-items: center; font-size: 15px; font-weight: 700; }
+.chipDanger { background: #AC1830; color: #fff; }
+.chipMuted { background: #EFECED; color: #4A4446; }
+.chipDark { background: #2A1416; color: #fff; }
+.ctop { padding: 8px 20px 0; }
+.cname { font-size: 21px; font-weight: 700; margin-top: 10px; word-break: break-word; }
+.csub { font-size: 16px; color: #4A4446; margin-top: 4px; word-break: break-word; }
+.err { margin: 14px 20px 0; padding: 10px 12px; background: #FBEFF1; color: #AC1830; font-size: 16px; }
+.timeline { margin: 18px 20px 0; padding: 16px; border: 1px solid #DCD6D8; display: flex; flex-direction: column; gap: 12px; }
+.tl { display: flex; gap: 10px; font-size: 16px; }
+.dot { width: 10px; height: 10px; border-radius: 5px; background: #AC1830; flex-shrink: 0; margin-top: 7px; }
+.tlOff .dot { background: #DCD6D8; }
+.tl b { font-weight: 700; }
+.tlOff b { font-weight: 500; }
+.tl small { display: block; font-size: 15px; color: #6B6466; margin-top: 2px; }
+.sec { padding: 20px 20px 8px; font-size: 17px; font-weight: 700; }
+.msg { margin: 0 20px; padding: 14px; background: #FBEFF1; font-size: 16px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+.msg small { display: block; font-size: 14px; color: #6B6466; margin-top: 6px; }
+.slots { padding: 0 20px; display: flex; flex-wrap: wrap; gap: 6px; }
+.slot { height: 38px; padding: 0 14px; display: flex; align-items: center; border-radius: 19px; font-size: 16px; border: 1px solid #DCD6D8; background: #fff; color: #1A1718; cursor: pointer; }
+.slotOn { border-color: #AC1830; color: #AC1830; background: #FBEFF1; font-weight: 700; }
+.slotRo { cursor: default; }
+.foot { padding: 24px 20px 34px; display: flex; gap: 10px; }
+.btn { flex: 1 1 0; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 19px; font-weight: 500; background: #fff; color: #AC1830; border: 1px solid #AC1830; cursor: pointer; text-align: center; text-decoration: none; }
+.btnPri { background: #AC1830; color: #fff; }
+.btn:disabled { opacity: .6; cursor: default; }
+
+/* review detail */
+.rcard { padding: 24px 20px 28px; border-bottom: 1px solid #ddd; }
+.tag { display: inline-block; margin: 0 6px 10px 0; padding: 3px 9px; background: #FFEEEE; color: #AC1830; font-size: 12px; font-weight: 500; }
+.rating { display: flex; align-items: center; gap: 5px; margin-bottom: 12px; }
+.stars { display: inline-flex; gap: 1px; color: #f59e0b; font-size: 16px; line-height: 1; }
+.starOff { color: #d9d9d9; }
+.score { font-size: 12px; font-weight: 600; color: #111; }
+.rtitle { margin-bottom: 8px; font-size: 17px; font-weight: 700; line-height: 1.4; }
+.rbody { font-size: 14px; line-height: 1.5; color: #111; white-space: pre-wrap; overflow-wrap: anywhere; }
+.thumbs { width: 100%; display: grid; margin-top: 26px; overflow: hidden; cursor: pointer; }
+.thumbs1 { grid-template-columns: 1fr; }
+.thumbs2 { grid-template-columns: 1fr 1fr; }
+.thumbs3 { grid-template-columns: repeat(2, 1fr); }
+.thumb { position: relative; aspect-ratio: 1.55 / 1; overflow: hidden; background: #f5f5f5; padding: 0; border: 0; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.meta { display: flex; align-items: center; gap: 8px; margin-top: 16px; min-height: 42px; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: #ddd; overflow: hidden; flex-shrink: 0; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.author { font-size: 13px; color: #000; }
+.stats { display: inline-flex; align-items: center; gap: 34px; font-size: 12px; color: #000; margin-left: auto; }
+.stat { display: inline-flex; align-items: center; gap: 3px; background: none; border: 0; padding: 0; font-size: inherit; color: inherit; }
+.stat img { width: 20px; height: 20px; }
+.liked { color: #AC1830; font-weight: 700; }
+.hosp { margin: 0 20px; padding: 38px 0; display: flex; gap: 18px; color: inherit; text-decoration: none; border-bottom: 1px solid #ddd; }
+.hthumb { width: 96px; height: 96px; flex-shrink: 0; object-fit: cover; background: #d9d9d9; }
+.hinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.hname { font-size: 17px; font-weight: 700; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.haddr { margin-top: 6px; font-size: 13px; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrate { margin-top: 8px; display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; }
+.hrate img { width: 14px; height: 14px; object-fit: contain; }
+.edit { display: flex; align-items: center; justify-content: center; height: 50px; margin: 38px 20px 0; border: 1px solid #AC1830; color: #AC1830; font-size: 15px; font-weight: 500; text-decoration: none; }
+.modal { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.9); display: flex; align-items: center; justify-content: center; }
+.modal img { max-width: 95vw; max-height: 95vh; object-fit: contain; }
+.modalClose { position: absolute; top: 16px; right: 16px; background: none; border: 0; color: #fff; font-size: 32px; cursor: pointer; }
+.toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); padding: 10px 16px; background: rgba(0,0,0,.8); color: #fff; font-size: 14px; border-radius: 20px; z-index: 1100; }
+@media (max-width: 420px) { .stats { gap: 16px; } .hthumb { width: 82px; height: 82px; } .rcard { padding-left: 16px; padding-right: 16px; } .hosp { margin-left: 16px; margin-right: 16px; } }

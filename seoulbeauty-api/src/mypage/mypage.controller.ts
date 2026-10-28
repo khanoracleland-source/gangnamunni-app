@@ -1,6 +1,8 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthedRequest, RequireAuthGuard } from '../auth/auth.guard';
+import { SameOriginGuard } from '../common/same-origin.guard';
+import { idParam } from '../common/parse';
 import { MemberCtx, MypageService } from './mypage.service';
 
 function member(req: AuthedRequest): MemberCtx {
@@ -22,6 +24,13 @@ export class MypageController {
 
   @Get('consultations')
   consultations(@Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.mypage.consultations(member(req)); }
+
+  @Get('consultations/:id')
+  consultation(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.mypage.consultation(member(req), idParam(id)); }
+
+  @Post('consultations/:id/rerequest')
+  @UseGuards(SameOriginGuard)
+  rerequest(@Param('id') id: string, @Body() body: { slot?: unknown }, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.mypage.rerequest(member(req), idParam(id), body?.slot); }
 
   @Get('reviews')
   reviews(@Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.mypage.reviews(member(req)); }

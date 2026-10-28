@@ -11,6 +11,8 @@ import { SearchModule } from './search/search.module';
 import { EventsModule } from './events/events.module';
 import { CommunityModule } from './community/community.module';
 import { MypageModule } from './mypage/mypage.module';
+import { FaqModule } from './faq/faq.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -27,6 +29,8 @@ import { HealthController } from './health/health.controller';
     EventsModule,
     CommunityModule,
     MypageModule,
+    FaqModule,
+    ReviewsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

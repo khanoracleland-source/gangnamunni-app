@@ -61,6 +61,10 @@ class NextPilot {
     if (_myWishlistPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/wishlist', const {}, const {});
     if (_myReviewsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/reviews', const {'tab'}, const {'tab': {'writable', 'done'}});
     if (_myConsultationsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/consultations', const {}, const {});
+    if (_myConsultationDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'mypage/consultations');
+    if (_reviewDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'reviews');
+    if (_qnaPaths.contains(uri.path)) return _rewriteMine(uri, 'qna', const {}, const {});
+    if (_faqPaths.contains(uri.path)) return _rewriteFaq(uri);
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
     if (!_listPaths.contains(uri.path)) return null;
@@ -140,6 +144,10 @@ class NextPilot {
   static final Set<String> _myWishlistPaths = {'/my_wishlist.php', _site.resolve('my_wishlist.php').path};
   static final Set<String> _myReviewsPaths = {'/my_reviews.php', _site.resolve('my_reviews.php').path};
   static final Set<String> _myConsultationsPaths = {'/my_consultations.php', _site.resolve('my_consultations.php').path};
+  static final Set<String> _myConsultationDetailPaths = {'/my_consultation_detail.php', _site.resolve('my_consultation_detail.php').path};
+  static final Set<String> _reviewDetailPaths = {'/review_detail.php', _site.resolve('review_detail.php').path};
+  static final Set<String> _qnaPaths = {'/qna.php', _site.resolve('qna.php').path};
+  static final Set<String> _faqPaths = {'/faq.php', _site.resolve('faq.php').path};
   static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};
   static final Set<String> _communityDetailPaths = {'/detail_community.php', _site.resolve('detail_community.php').path};
 
@@ -184,6 +192,35 @@ class NextPilot {
       port: _site.hasPort ? _site.port : null,
       path: '$basePath/$path',
       queryParameters: kept.isEmpty ? null : kept,
+    );
+  }
+
+  /// my_consultation_detail.php?id=N, review_detail.php?id=N [&app=] -> `/next/<prefix>/N` (any other parameter keeps the PHP page).
+  static Uri? _rewriteIdPage(Uri uri, String prefix) {
+    final q = uri.queryParameters;
+    final id = int.tryParse(q['id'] ?? '');
+    if (id == null || id <= 0) return null;
+    if (q.keys.any((k) => k != 'id' && k != 'app')) return null;
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/$prefix/$id',
+    );
+  }
+
+  /// faq.php[?cat=][&app=] -> /next/faq[?cat=] (any other parameter keeps the PHP page).
+  static Uri? _rewriteFaq(Uri uri) {
+    final q = uri.queryParameters;
+    if (q.keys.any((k) => k != 'cat' && k != 'app')) return null;
+    final cat = q['cat'] ?? '';
+    if (cat.length > 50) return null;
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/faq',
+      queryParameters: cat.isEmpty ? null : {'cat': cat},
     );
   }
 

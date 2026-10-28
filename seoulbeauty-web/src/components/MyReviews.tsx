@@ -68,7 +68,7 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
                     <div className={styles.ractions}>
                       {r.pending ? <span className={`${styles.rbtn} ${styles.rbtnPending}`}>승인 대기중</span> : (
                         <>
-                          <a className={`${styles.rbtn} ${styles.rbtnPri}`} href={phpUrl(php, `review_detail.php?id=${r.id}`)}>보기</a>
+                          <Link className={`${styles.rbtn} ${styles.rbtnPri}`} href={`/reviews/${r.id}`}>보기</Link>
                           {/* Deleting (with point reversal and the hospital rating recount) stays in the PHP list. */}
                           <a className={styles.rbtn} href={phpUrl(php, "my_reviews.php?tab=done&php=1")}>삭제</a>
                         </>

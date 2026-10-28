@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, assetUrl, qk, type CommunityItem, type CommunityList as Data, type CommunityListParams, type CommunityTab } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import { useLoginUrl, useMe, useRequireLogin } from "@/lib/me";
 import ContentActions from "./ContentActions";
 import { timeDisplay, num } from "@/lib/community";
@@ -29,7 +28,6 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
-  const php = usePhpBase();
   const qc = useQueryClient();
   const me = useMe();
   const loginUrl = useLoginUrl();
@@ -77,10 +75,9 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
     void requireLogin(() => like.mutateAsync(it)).catch(() => say("좋아요 처리 중 오류가 발생했습니다."));
   };
 
-  const detailHref = (it: CommunityItem) => (it.kind === "review" ? phpUrl(php, `review_detail.php?id=${it.id}`) : `/community/${it.id}`);
+  const detailHref = (it: CommunityItem) => (it.kind === "review" ? `/reviews/${it.id}` : `/community/${it.id}`);
   const go = (it: CommunityItem) => {
-    if (it.kind === "review") window.location.assign(detailHref(it));
-    else router.push(detailHref(it));
+    router.push(detailHref(it));
   };
   const regionStr = params.region;
   const tabHref = (t: CommunityTab) => pageHref({ tab: t, category: "", region: regionStr, q: "" }, 1);
@@ -115,9 +112,7 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
                   onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button")) go(it); }}>
                   <div className={styles.content}>
                     <span className={styles.tag}>{it.category}</span>
-                    {it.kind === "review"
-                      ? <a href={href} className={styles.ptitle}>{it.title}</a>
-                      : <Link href={href} className={styles.ptitle}>{it.title}</Link>}
+                    <Link href={href} className={styles.ptitle}>{it.title}</Link>
                     <div className={`${styles.preview} ${expanded ? styles.expanded : ""}`}>{expanded && it.fullText ? it.fullText : it.preview}</div>
                     <div className={styles.readRow}>
                       {it.fullText ? (

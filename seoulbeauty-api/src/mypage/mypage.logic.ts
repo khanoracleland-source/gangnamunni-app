@@ -50,3 +50,24 @@ export function dotDate(d: unknown): string {
 export function telDigits(phone: unknown): string {
   return String(phone ?? '').replace(/[^0-9+]/g, '');
 }
+
+/** consult_slot_labels(): callback time slots (key -> label). */
+export const CONSULT_SLOTS: Record<string, string> = { am: '오전', pm: '오후', eve: '저녁', any: '언제든 괜찮아요' };
+
+/** Timeline labels of gangnamunni_consultation_events.kind ("completed" is the fixed last line). */
+export const CONSULT_EVENT_LABELS: Record<string, string> = { no_answer: '병원 연락 · 받지 않음', rerequest: '다시 요청' };
+
+/** consult_dt(): "10.20 (화) 오후 2:02" from a 'YYYY-MM-DD HH:MM:SS' string (KST wall clock, no time-zone maths). */
+export function consultDt(v: unknown): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(String(v ?? ''));
+  if (!m) return '';
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]), h = Number(m[4]);
+  const w = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(y, mo - 1, d)).getUTCDay()];
+  return `${m[2]}.${m[3]} (${w}) ${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${m[5]}`;
+}
+
+/** consult_safe_url(): http(s) only, anything else becomes ''. */
+export function safeHttpUrl(u: unknown): string {
+  const t = String(u ?? '').trim();
+  return /^https?:\/\//i.test(t) ? t : '';
+}

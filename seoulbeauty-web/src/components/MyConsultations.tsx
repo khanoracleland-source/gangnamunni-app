@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, qk, type MyConsultation } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
@@ -8,7 +9,7 @@ import styles from "./MyPages.module.css";
 
 const CHIP = { danger: styles.chipDanger, muted: styles.chipMuted, dark: styles.chipDark } as const;
 
-/** my_consultations.php: the member's consultation requests (latest 100). Detail / re-request stay in PHP. */
+/** my_consultations.php: the member's consultation requests (latest 100). */
 export default function MyConsultations({ initial, anon }: { initial?: { items: MyConsultation[]; anyPhone: string | null }; anon?: boolean }) {
   const php = usePhpBase();
   const { data, error, refetch } = useQuery({ queryKey: qk.myConsultations, queryFn: () => api.myConsultations(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
@@ -25,10 +26,10 @@ export default function MyConsultations({ initial, anon }: { initial?: { items: 
           ) : (
             <>
               {data.items.map((it) => {
-                const detail = phpUrl(php, `my_consultation_detail.php?id=${it.id}`);
+                const detail = `/mypage/consultations/${it.id}`;
                 return (
                   <div key={it.id} className={styles.ccard}>
-                    <a href={detail} style={{ display: "block", color: "inherit", textDecoration: "none" }}>
+                    <Link href={detail} style={{ display: "block", color: "inherit", textDecoration: "none" }}>
                       <div className={styles.ctop}>
                         <span className={`${styles.chip} ${CHIP[it.statusTone]}`}>{it.statusLabel}</span>
                         <span className={styles.cdate}>{it.dateLabel} 신청</span>
@@ -37,10 +38,10 @@ export default function MyConsultations({ initial, anon }: { initial?: { items: 
                       <div className={styles.csub}>{it.typeLabel}</div>
                       {it.status === "contact_failed" && <div className={styles.cbox}>병원에서 연락드렸지만 받지 않으셨어요.<br />편한 시간을 골라 다시 요청해주세요.</div>}
                       {it.status === "pending" && it.type === "kakao" && <div className={styles.chint}>카카오톡 채널에서 대화를 시작하면 병원이 답변해드려요</div>}
-                    </a>
+                    </Link>
                     {it.status === "contact_failed" && (
                       <div className={styles.cactions}>
-                        <a className={`${styles.cbtn} ${styles.cbtnPri}`} href={detail}>다시 요청</a>
+                        <Link className={`${styles.cbtn} ${styles.cbtnPri}`} href={detail}>다시 요청</Link>
                         {it.hospitalPhone && <a className={styles.cbtn} href={`tel:${it.hospitalPhone}`}>병원에 전화</a>}
                       </div>
                     )}

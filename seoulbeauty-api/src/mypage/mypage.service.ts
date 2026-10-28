@@ -1,9 +1,9 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { DB, Db } from '../db/db.module';
 import { safeLink } from '../home/home.service';
-import { addressShort, consultStatus, consultTypeLabel, dotDate, profileFileId, reviewDistrict, StatusTone, telDigits, wishlistDistrict } from './mypage.logic';
+import { addressShort, CONSULT_EVENT_LABELS, CONSULT_SLOTS, consultDt, consultStatus, consultTypeLabel, dotDate, profileFileId, reviewDistrict, safeHttpUrl, StatusTone, telDigits, wishlistDistrict } from './mypage.logic';
 
 export interface MemberCtx { id: string; no: number; nickname: string; phone: string }
 export interface MypageAd { id: number; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string }
@@ -150,6 +150,62 @@ export class MypageService {
     });
     const anyPhone = rows.map((r) => s(r.h_phone).trim()).find((p) => p !== '') ?? '';
     return { items, anyPhone: anyPhone || null };
+  }
+
+  /** my_consultation_detail.php: one of the member's own consultations (anybody else's is a 404). */
+  async consultation(m: MemberCtx, id: number) {
+    // kakao_channel_url may not exist in every environment: try with it, then without (like the PHP page).
+    let row: any;
+    for (const col of [', h.kakao_channel_url AS h_kakao_channel_url', '']) {
+      try {
+        const [r] = (await this.db.query(
+          `SELECT c.*, h.phone AS h_phone${col} FROM gangnamunni_consultations c LEFT JOIN gangnamunni_hospitals h ON h.id = c.hospital_id
+           WHERE c.id = ? AND c.mb_id = ? LIMIT 1`, [id, m.id])) as any;
+        row = (r as any[])[0];
+        break;
+      } catch (e) { this.log.warn(`consultation detail (${col ? 'kakao' : 'plain'}): ${(e as Error).message}`); }
+    }
+    if (!row) throw new NotFoundException('상담을 찾을 수 없습니다.');
+    const events = await this.safe('consultation events', async () => {
+      const [r] = (await this.db.query('SELECT kind, created_at FROM gangnamunni_consultation_events WHERE consultation_id = ? ORDER BY id ASC', [id])) as any;
+      return r as any[];
+    }, [] as any[]);
+    const st = s(row.status) || 'pending';
+    const v = consultStatus(st);
+    const slot = s(row.callback_slot);
+    const slotLabel = CONSULT_SLOTS[slot] ?? null;
+    const sub = consultTypeLabel(row.consultation_type) + (slotLabel && slot !== 'any' ? ` · ${slotLabel}` : '') + ` · ${s(row.name).trim()} ${s(row.phone).trim()}`;
+    const doneAt = [...events].reverse().find((e) => s(e.kind) === 'completed');
+    const phone = s(row.h_phone).trim();
+    const kakao = safeHttpUrl(row.h_kakao_channel_url);
+    const msgAt = consultDt(row.hospital_message_at).replace(/^\d\d\.\d\d \(.\) /u, '');
+    return {
+      id: n(row.id), hospitalId: n(row.hospital_id), hospitalName: s(row.hospital_name), status: st, statusLabel: v.label, statusTone: v.tone as StatusTone,
+      type: s(row.consultation_type), sub: sub.trim(), createdLabel: consultDt(row.created_at),
+      events: events.filter((e) => s(e.kind) !== 'completed' && CONSULT_EVENT_LABELS[s(e.kind)]).map((e) => ({ label: CONSULT_EVENT_LABELS[s(e.kind)], at: consultDt(e.created_at) })),
+      completed: st === 'completed', completedAt: st === 'completed' ? consultDt(doneAt?.created_at) : '',
+      hospitalMessage: s(row.hospital_message).trim() ? { text: s(row.hospital_message), meta: `${s(row.hospital_name)} · ${msgAt}` } : null,
+      slot: slotLabel ? slot : '', canRerequest: st === 'contact_failed', showSlots: st === 'contact_failed' || slot !== '',
+      slots: Object.entries(CONSULT_SLOTS).map(([key, label]) => ({ key, label })),
+      hospitalPhone: phone ? telDigits(phone) : null,
+      kakaoUrl: st !== 'contact_failed' && st !== 'completed' && s(row.consultation_type) === 'kakao' && kakao ? kakao : null,
+    };
+  }
+
+  /** my_consultation_detail.php POST: only from contact_failed, with a callback slot. The UPDATE re-checks the state. */
+  async rerequest(m: MemberCtx, id: number, slotRaw: unknown) {
+    const slot = typeof slotRaw === 'string' ? slotRaw : '';
+    if (!Object.prototype.hasOwnProperty.call(CONSULT_SLOTS, slot)) throw new BadRequestException('다시 연락받을 시간을 선택해주세요.');
+    const [own] = (await this.db.query('SELECT status FROM gangnamunni_consultations WHERE id = ? AND mb_id = ? LIMIT 1', [id, m.id])) as any;
+    if (!(own as any[]).length) throw new NotFoundException('상담을 찾을 수 없습니다.');
+    if (s((own as any[])[0].status) !== 'contact_failed') throw new BadRequestException('지금은 다시 요청할 수 없는 상태예요.');
+    const [res] = (await this.db.query(
+      "UPDATE gangnamunni_consultations SET status = 'pending', callback_slot = ? WHERE id = ? AND mb_id = ? AND status = 'contact_failed'", [slot, id, m.id])) as any;
+    if (n((res as any)?.affectedRows) === 1) {
+      await this.safe('rerequest event', () => this.db.query("INSERT INTO gangnamunni_consultation_events (consultation_id, kind) VALUES (?, 'rerequest')", [id]), null);
+      return { success: true as const };
+    }
+    throw new BadRequestException('지금은 다시 요청할 수 없는 상태예요.');
   }
 
   /** my_reviews.php: reviews still writable (completed bookings without one) and the member's own reviews. */
