@@ -1,0 +1,46 @@
+/* 경과 후기 (progress_review_common.php styles, functional skeleton). */
+.wrap { box-sizing: border-box; max-width: 640px; margin: 0 auto; padding: 0 0 calc(var(--nav-h, 64px) + 40px); color: #1A1718; }
+.sec { padding: 8px 20px 20px; }
+.band { height: 12px; background: #f2f2f2; }
+.alert { margin-top: 12px; padding: 12px 14px; background: #f2f2f2; font-size: 13.5px; line-height: 1.6; }
+.alert a { color: #AC1830; }
+.err { color: #AC1830; }
+.empty { text-align: center; padding: 64px 20px; color: #9a9a9a; font-size: 14px; }
+.card { display: block; border: 1px solid #e5e5e5; padding: 16px; margin-top: 12px; text-decoration: none; color: inherit; }
+.cardT { margin-top: 8px; font-size: 16px; font-weight: 500; }
+.cardM { margin-top: 6px; font-size: 13px; color: #9a9a9a; }
+.tag { display: inline-flex; align-items: center; height: 24px; padding: 0 6px; border: 1px solid #cfcfcf; color: #9a9a9a; font-size: 12px; margin-right: 6px; }
+.tagPri { border-color: #AC1830; color: #AC1830; }
+.bar { height: 6px; background: #f2f2f2; margin-top: 10px; }
+.bar i { display: block; height: 100%; background: #AC1830; }
+.h2 { font-size: 16px; font-weight: 700; margin: 12px 0 0; }
+.field { margin-top: 16px; }
+.field label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.field input, .field select, .field textarea { width: 100%; box-sizing: border-box; border: 1px solid #cfcfcf; background: #fff; padding: 12px; font: inherit; font-size: 15px; border-radius: 0; }
+.field textarea { min-height: 120px; resize: vertical; }
+.help { margin-top: 6px; font-size: 12.5px; color: #444; line-height: 1.6; }
+.check { display: flex; gap: 6px; align-items: center; margin-top: 8px; font-size: 14px; }
+.check input { width: auto; }
+.btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 50px; margin-top: 20px; border: 1px solid #AC1830; background: #AC1830; color: #fff; font-size: 16px; font-weight: 500; }
+.btnLine { background: #fff; color: #AC1830; }
+.btn:disabled { opacity: .45; }
+.meta { margin-top: 10px; font-size: 14px; color: #444; }
+.count { margin-top: 14px; font-size: 15px; font-weight: 500; }
+.entry { border-top: 1px solid #e5e5e5; padding: 16px 0; }
+.entryD { font-size: 13px; color: #9a9a9a; }
+.entryC { margin-top: 8px; font-size: 15px; line-height: 1.7; white-space: pre-wrap; }
+.ph { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.ph img { width: 84px; height: 84px; object-fit: cover; border: 1px solid #e5e5e5; }
+.linkBtn { margin-top: 8px; border: 0; background: none; color: #9a9a9a; font-size: 12.5px; cursor: pointer; }
+.del { display: block; margin: 0 auto; border: 0; background: none; color: #9a9a9a; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.picks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.thumb { position: relative; width: 72px; height: 72px; background: #e5e5e5; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0, 0, 0, .6); color: #fff; line-height: 22px; }
+.modal { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 70; }
+.modalBox { width: 100%; max-width: 640px; box-sizing: border-box; background: #fff; border-radius: 16px 16px 0 0; padding: 24px 16px calc(20px + env(safe-area-inset-bottom)); }
+.modalBox h2 { margin: 0 0 8px; font-size: 18px; text-align: center; }
+.modalBox p { margin: 0 0 20px; font-size: 14px; color: #777; text-align: center; }
+.modalGhost { display: block; width: 100%; height: 44px; margin-top: 8px; font-size: 15px; color: #666; }
+.modalDanger { display: block; width: 100%; height: 48px; margin-top: 8px; border-radius: 8px; background: #d93025; color: #fff; font-size: 16px; font-weight: 700; }
+.toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: rgba(26, 23, 24, .92); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 14px; z-index: 60; }

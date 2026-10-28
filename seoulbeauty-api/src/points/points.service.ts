@@ -22,16 +22,26 @@ export class PointsService {
     return out;
   }
 
-  /** points_v2_on('v2_policy_enabled'): schema v3+, points on, v2 policy on. */
-  async v2PolicyOn(): Promise<boolean> {
-    try {
-      const s = await this.settings(this.db);
-      return n(s.schema_version) >= POINTS_SCHEMA_VERSION && n(s.v2_schema_version) >= 1 && n(s.enabled) === 1 && n(s.v2_policy_enabled) === 1;
-    } catch (err) {
-      this.log.warn(`point settings unreadable: ${(err as Error).message}`);
-      return false;
-    }
+  /** All point settings (skey -> sval); {} when the table is missing. */
+  async allSettings(): Promise<Record<string, string>> {
+    try { return await this.settings(this.db); } catch (err) { this.log.warn(`point settings unreadable: ${(err as Error).message}`); return {}; }
   }
+
+  /** points_v2_on(key): schema v3+, points on, v2 policy on, then the key itself (lots_ready extra for the two job keys). */
+  static v2On(s: Record<string, string>, key: string): boolean {
+    if (n(s.schema_version) < POINTS_SCHEMA_VERSION || n(s.v2_schema_version) < 1 || n(s.enabled) !== 1) return false;
+    if (key !== 'v2_policy_enabled' && n(s.v2_policy_enabled) !== 1) return false;
+    if ((key === 'v2_expire_job_enabled' || key === 'v2_point_use_enabled') && n(s.lots_ready) !== 1) return false;
+    return n(s[key]) === 1;
+  }
+
+  /** points_v2_int(): integer setting with a default. */
+  static int(s: Record<string, string>, key: string, def: number): number {
+    const v = s[key];
+    return v === undefined || v === '' || !Number.isFinite(Number(v)) ? def : Math.trunc(Number(v));
+  }
+
+  async v2PolicyOn(): Promise<boolean> { return PointsService.v2On(await this.allSettings(), 'v2_policy_enabled'); }
 
   /** points_v2_review_revoke_all(): one revoke per reference type; each failure is logged on its own. */
   async revokeReviewEarnings(reviewId: number, reason = '후기 삭제 회수'): Promise<void> {
@@ -43,13 +53,13 @@ export class PointsService {
 
   /** points_revoke_earn(): finds the earn row for (ref_type, ref_id) and books an earn_cancel for the same amount. */
   async revokeEarn(refType: string, refId: number, reason: string): Promise<'revoked' | 'skipped' | 'failed'> {
-    if (!this.db.getConnection) { this.log.error('point ledger needs a pool connection'); return 'failed'; }
     const [rows] = (await this.db.query("SELECT id, member_id, amount FROM gangnamunni_points WHERE reference_type = ? AND reference_id = ? AND type = 'earn' LIMIT 1", [refType, refId])) as any;
     const earn = (rows as any[])[0];
     if (!earn) return 'skipped';
     const memberNo = n(earn.member_id);
     const amount = n(earn.amount);
     if (memberNo <= 0 || amount <= 0) return 'skipped';
+    if (!this.db.getConnection) { this.log.error('point ledger needs a pool connection'); return 'failed'; }
 
     const conn = await this.db.getConnection();
     const lock = `pts_${memberNo}`;

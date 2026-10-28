@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, Logger, NotFoundException } fr
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { DB, Db } from '../db/db.module';
+import { PointsService } from '../points/points.service';
 import { safeLink } from '../home/home.service';
 import { addressShort, CONSULT_EVENT_LABELS, CONSULT_SLOTS, consultDt, consultStatus, consultTypeLabel, dotDate, profileFileId, reviewDistrict, safeHttpUrl, StatusTone, telDigits, wishlistDistrict } from './mypage.logic';
 
@@ -19,7 +20,7 @@ const s = (v: unknown) => (v == null ? '' : String(v));
 @Injectable()
 export class MypageService {
   private readonly log = new Logger(MypageService.name);
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(@Inject(DB) private readonly db: Db, private readonly points: PointsService) {}
 
   /** Query that may hit a table/column the prod DB does not have yet: log it and use the fallback. */
   private async safe<T>(label: string, run: () => Promise<T>, fallback: T): Promise<T> {
@@ -210,7 +211,8 @@ export class MypageService {
 
   /** my_reviews.php: reviews still writable (completed bookings without one) and the member's own reviews. */
   async reviews(m: MemberCtx) {
-    const [done, writable] = await Promise.all([
+    const [pointSettings, done, writable] = await Promise.all([
+      this.points.allSettings(),
       this.safe('my reviews', async () => {
         const [r] = (await this.db.query(
           `SELECT r.id, r.hospital_id, r.rating, r.treatments, r.doctor_name, r.review_status, r.is_active,
@@ -235,6 +237,8 @@ export class MypageService {
       }, [] as any[]),
     ]);
     return {
+      // my_reviews.php shows the 경과 후기 tab only while points v2 progress is on
+      progressEnabled: PointsService.v2On(pointSettings, 'v2_progress_enabled'),
       writable: writable.map((w) => ({
         bookingId: n(w.id), hospitalId: n(w.hospital_id), hospitalName: s(w.hospital_name), treatment: s(w.treatment),
         imageUrl: w.main_image_url ? s(w.main_image_url) : null, district: reviewDistrict(w.address), address: s(w.address),

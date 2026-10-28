@@ -133,7 +133,11 @@ export class ApiError extends Error {
 /** Server: direct to the API. Browser: same-origin /api (see next.config.ts rewrites). */
 function base(): string {
   if (typeof window === "undefined") return process.env.API_BASE || "http://127.0.0.1:3110";
-  return `${process.env.NEXT_PUBLIC_BASE_PATH ?? "/next"}/api`; // same-origin, rewritten in next.config.ts
+  return browserApiBase();
+}
+/** Browser-side API prefix (same-origin, rewritten in next.config.ts) — also for <img src> of API-served files. */
+export function browserApiBase(): string {
+  return `${process.env.NEXT_PUBLIC_BASE_PATH ?? "/next"}/api`;
 }
 
 /** AbortSignal.timeout() is missing in older WebViews (iOS < 16, Chrome < 103): fall back to a manual timer. */
@@ -297,6 +301,21 @@ export interface ReviewForm {
   limits: { photoSlots: number; photoBytes: number; titleMax: number; contentMin: number; contentMax: number };
 }
 export interface ReviewFormQuery { booking_id?: number; hospital_id?: number; id?: number; return_url?: string }
+export interface ProgressCard {
+  id: number; title: string; kind: "procedure" | "surgery"; kindLabel: string; status: string; statusLabel: string;
+  hospitalName: string; treatment: string; procedureDate: string; entryCount: number; need: number; percent: number;
+}
+/** GET /v1/mypage/progress — my_progress_reviews.php (포인트제도 v2; `enabled:false` while the switch is off) */
+export type ProgressList = { enabled: false } | {
+  enabled: true; rules: { procedure: { need: number; point: number }; surgery: { need: number; point: number } }; today: string;
+  bookings: { id: number; label: string }[]; items: ProgressCard[];
+};
+export interface ProgressEntry { id: number; round: number; date: string; dateLabel: string; dPlus: number | null; content: string; photos: string[] }
+/** GET /v1/mypage/progress/:id — progress_review.php */
+export type ProgressDetail = { enabled: false } | (ProgressCard & {
+  enabled: true; rejectReason: string; awardedPoint: number; editable: boolean; resubmitDays: number; today: string;
+  limits: { entryMin: number; entryMax: number; photos: number; photoBytes: number }; entries: ProgressEntry[];
+});
 export interface BlockedUser { id: number; name: string; createdAt: string }
 export interface CommunityListParams { tab?: string; category?: string; region?: string; q?: string; page?: number }
 /** GET /v1/community/:id — detail_community.php */
@@ -340,6 +359,13 @@ export const api = {
   reviewForm: (q: ReviewFormQuery, ctx?: ServerCtx) => get<ReviewForm>("/v1/mypage/review-form", { ...q }, ctx),
   saveReview: (form: FormData) => send<{ success: boolean; id: number; already?: boolean; photoError?: boolean; message: string }>("POST", "/v1/mypage/reviews", form, 60000),
   deleteReview: (id: number) => send<{ success: boolean; deleted: boolean }>("DELETE", `/v1/mypage/reviews/${id}`),
+  myProgress: (ctx?: ServerCtx) => get<ProgressList>("/v1/mypage/progress", undefined, ctx),
+  createProgress: (body: { booking_id: number; kind: string; treatment_name: string; procedure_date: string; title: string }) => post<{ success: boolean; id: number }>("/v1/mypage/progress", body),
+  progressDetail: (id: number, ctx?: ServerCtx) => get<ProgressDetail>(`/v1/mypage/progress/${id}`, undefined, ctx),
+  addProgressEntry: (id: number, form: FormData) => send<{ success: boolean; id: number; photoError?: boolean }>("POST", `/v1/mypage/progress/${id}/entries`, form, 60000),
+  deleteProgressEntry: (id: number, entryId: number) => send<{ success: boolean }>("DELETE", `/v1/mypage/progress/${id}/entries/${entryId}`),
+  submitProgress: (id: number) => post<{ success: boolean; message: string }>(`/v1/mypage/progress/${id}/submit`, {}),
+  deleteProgress: (id: number) => send<{ success: boolean }>("DELETE", `/v1/mypage/progress/${id}`),
   saveProfile: (form: FormData) => send<{ success: boolean; photoError: string | null; photoUrl: string | null }>("POST", "/v1/mypage/profile", form, 30000),
   notificationSettings: (ctx?: ServerCtx) => get<{ settings: NotificationSettings }>("/v1/mypage/notification-settings", undefined, ctx),
   setNotificationSetting: (field: SettingKey, value: boolean) => post<{ success: boolean }>("/v1/mypage/notification-settings", { field, value: value ? "1" : "0" }),
@@ -347,7 +373,7 @@ export const api = {
   consultation: (id: number, ctx?: ServerCtx) => get<ConsultationDetail>(`/v1/mypage/consultations/${id}`, undefined, ctx),
   rerequestConsultation: (id: number, slot: string) => post<{ success: boolean }>(`/v1/mypage/consultations/${id}/rerequest`, { slot }),
   reviewDetail: (id: number, ctx?: ServerCtx) => get<ReviewDetail>(`/v1/reviews/${id}`, undefined, ctx),
-  myReviews: (ctx?: ServerCtx) => get<{ writable: MyWritableReview[]; done: MyDoneReview[] }>("/v1/mypage/reviews", undefined, ctx),
+  myReviews: (ctx?: ServerCtx) => get<{ progressEnabled: boolean; writable: MyWritableReview[]; done: MyDoneReview[] }>("/v1/mypage/reviews", undefined, ctx),
   toggleWishlist: (id: number) => post<WishlistState & { message: string }>("/v1/wishlist/toggle", { type: "hospital", targetId: id }),
   consult: (input: ConsultationInput) => post<{ success: boolean; id: number; message: string }>("/v1/consultations", input),
   me: () => get<{ loggedIn: boolean; user: { id: string; no: number; name: string; nickname: string; level: number; phone: string } | null; unreadNotifications: number }>("/v1/me"),
@@ -391,6 +417,8 @@ export const qk = {
   myWishlist: ["mypage", "wishlist"] as const,
   myConsultations: ["mypage", "consultations"] as const,
   myReviews: ["mypage", "reviews"] as const,
+  myProgress: ["mypage", "progress"] as const,
+  progress: (id: number) => ["mypage", "progress", id] as const,
   faq: ["faq"] as const,
   myProfile: ["mypage", "profile"] as const,
   notificationSettings: ["mypage", "notification-settings"] as const,

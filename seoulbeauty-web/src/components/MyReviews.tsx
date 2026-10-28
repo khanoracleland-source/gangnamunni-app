@@ -8,7 +8,7 @@ import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
 import styles from "./MyPages.module.css";
 
-type Data = { writable: MyWritableReview[]; done: MyDoneReview[] };
+type Data = { progressEnabled: boolean; writable: MyWritableReview[]; done: MyDoneReview[] };
 
 const Meta = ({ r }: { r: { district: string; address: string; doctorName: string | null; bookingDate: string } }) => (
   <>
@@ -54,6 +54,7 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
           <div className={styles.tabs}>
             <Link href="/mypage/reviews" replace className={`${styles.tab} ${tab === "writable" ? styles.tabOn : ""}`}>작성가능</Link>
             <Link href="/mypage/reviews?tab=done" replace className={`${styles.tab} ${tab === "done" ? styles.tabOn : ""}`}>작성완료</Link>
+            {data?.progressEnabled && <Link href="/mypage/progress" className={styles.tab}>경과 후기</Link>}
           </div>
           {!data ? (
             <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>

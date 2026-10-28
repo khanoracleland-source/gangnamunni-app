@@ -84,6 +84,11 @@ GRANT UPDATE (remaining) ON hms_saas.gangnamunni_point_lots TO 'sb_api_ro'@'127.
 GRANT UPDATE (remaining) ON hms_saas.gangnamunni_point_lots TO 'sb_api_ro'@'localhost';
 GRANT INSERT ON hms_saas.gangnamunni_point_lot_allocs TO 'sb_api_ro'@'127.0.0.1';
 GRANT INSERT ON hms_saas.gangnamunni_point_lot_allocs TO 'sb_api_ro'@'localhost';
+-- 경과 후기 (포인트제도 v2; /v1/mypage/progress*) — the feature stays off until v2_progress_enabled is on
+GRANT INSERT, UPDATE (status, submitted_at, reject_reason) ON hms_saas.gangnamunni_progress_reviews TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT, UPDATE (status, submitted_at, reject_reason) ON hms_saas.gangnamunni_progress_reviews TO 'sb_api_ro'@'localhost';
+GRANT INSERT, DELETE, UPDATE (photo_urls, photo_consent) ON hms_saas.gangnamunni_progress_entries TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT, DELETE, UPDATE (photo_urls, photo_consent) ON hms_saas.gangnamunni_progress_entries TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 SHOW GRANTS FOR 'sb_api_ro'@'127.0.0.1';
 ```
@@ -91,6 +96,7 @@ Every new writing endpoint must add its table here (and nothing broader).
 
 Review photos and admin push also need files/dirs (not SQL):
 - `uploads/reviews` (= `REVIEW_UPLOAD_DIR`): `chgrp sbapi` + `chmod 2775`, and add it to the `ReadWritePaths=` drop-in (`ProtectSystem=strict`).
+- `uploads/progress` (= `PROGRESS_UPLOAD_DIR`): same as `uploads/reviews` (`chgrp sbapi`, `chmod 2775`, `ReadWritePaths=`).
 - Firebase service account JSON (= `FCM_SERVICE_ACCOUNT_PATH`): `chgrp sbapi`, `chmod 640`. Its `project_id` must equal `FCM_EXPECTED_PROJECT_ID`.
 
 ## Service
