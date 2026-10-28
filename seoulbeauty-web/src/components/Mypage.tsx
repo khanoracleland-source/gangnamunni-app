@@ -50,9 +50,9 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
     <div className={styles.wrap} ref={rootRef}>
       <div className={styles.head}>
         <span className={styles.headTitle}>마이페이지</span>
-        {!loggedOut && <a href={phpUrl(php, "notification_settings.php")} className={styles.headSide} aria-label="설정">
+        {!loggedOut && <Link href="/mypage/settings" className={styles.headSide} aria-label="설정">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={ICON("icon-mypage-settings")} alt="" width={30} height={30} /></a>}
+          <img src={ICON("icon-mypage-settings")} alt="" width={30} height={30} /></Link>}
       </div>
 
       {loggedOut ? (
@@ -66,7 +66,7 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
         </div>
       ) : (
         <>
-          <a href={phpUrl(php, "profile_edit.php")} className={styles.profile}>
+          <Link href="/mypage/profile" className={styles.profile}>
             <span className={styles.avatar}>
               {data.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -75,7 +75,7 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
             </span>
             <span className={styles.pname}>{data.nickname}</span>
             {ARROW}
-          </a>
+          </Link>
 
           <div className={styles.section}>
             <div className={styles.sectionTitle}>병원 이용</div>

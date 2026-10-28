@@ -48,6 +48,11 @@ export class AuthService {
     return h;
   }
 
+  /** Drop the cached session of this cookie (after the member's own data changed, e.g. the nickname). */
+  forget(cookie: string | undefined): void {
+    if (cookie && cookie.trim()) this.cache.delete(createHash('sha256').update(cookie).digest('hex'));
+  }
+
   /** `fresh` skips the cache (use before security-sensitive writes). */
   async fromCookie(cookie: string | undefined, fresh = false): Promise<Session> {
     if (!cookie || !cookie.trim()) return { loggedIn: false, user: null };

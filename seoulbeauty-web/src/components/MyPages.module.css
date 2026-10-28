@@ -156,3 +156,39 @@
 .ntDel { flex: 0 0 40px; width: 40px; height: 40px; font-size: 20px; color: #bbb; }
 .ntMore { display: block; width: calc(100% - 32px); margin: 16px; height: 44px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 15px; color: #444; }
 .ntToast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: rgba(26, 23, 24, .92); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 14px; z-index: 60; }
+
+/* 내 정보 수정 (profile_edit) */
+.pfAvatarArea { display: flex; justify-content: center; padding: 20px 0 8px; background: #fff; }
+.pfAvatarWrap { position: relative; width: 96px; height: 96px; cursor: pointer; }
+.pfAvatar { display: block; width: 96px; height: 96px; border-radius: 50%; background: #D9D9D9; overflow: hidden; }
+.pfAvatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pfAvatarBtn { position: absolute; right: 0; bottom: 0; width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.pfFile { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.pfForm { background: #fff; padding: 0 16px 160px; }
+.pfField { padding: 14px 0; border-bottom: 1px solid #f0eded; }
+.pfField label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; }
+.pfField input { width: 100%; box-sizing: border-box; border: 0; padding: 4px 0; font-size: 16px; background: transparent; color: inherit; outline: none; }
+.pfRow { display: flex; align-items: center; justify-content: space-between; font-size: 16px; }
+.pfChange { font-size: 13px; color: #AC1830; border: 1px solid #AC1830; border-radius: 14px; padding: 4px 12px; text-decoration: none; }
+.pfErr { margin-top: 4px; font-size: 13px; color: #d93025; }
+.pfBar { position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); padding: 10px 16px; background: #fff; border-top: 1px solid #eee; max-width: 640px; margin: 0 auto; z-index: 40; }
+.pfSave { display: block; width: 100%; height: 48px; border-radius: 8px; background: #AC1830; color: #fff; font-size: 16px; font-weight: 700; }
+.pfSave:disabled { opacity: .6; }
+.pfDiscard { display: block; width: 100%; height: 44px; margin-top: 8px; font-size: 15px; color: #666; }
+.pfModal { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 70; }
+.pfModalBox { width: 100%; max-width: 640px; box-sizing: border-box; background: #fff; border-radius: 16px 16px 0 0; padding: 24px 16px calc(20px + env(safe-area-inset-bottom)); }
+.pfModalBox h2 { margin: 0 0 8px; font-size: 18px; text-align: center; }
+.pfModalBox p { margin: 0 0 20px; font-size: 14px; color: #777; text-align: center; }
+.pfModalBox h2 + button { margin-top: 20px; }
+
+/* 알림 설정 (notification_settings) */
+.stSection { background: #fff; margin: 0 0 10px; padding: 4px 16px 4px; }
+.stLabel { font-size: 13px; color: #999; padding: 14px 0 6px; }
+.stItem { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 52px; font-size: 16px; border-bottom: 1px solid #f4f2f3; background: transparent; color: inherit; text-align: left; }
+.stItem:last-child { border-bottom: 0; }
+.stLink { text-decoration: none; }
+.stSwitch { appearance: none; -webkit-appearance: none; position: relative; width: 46px; height: 26px; border-radius: 13px; background: #ccc; transition: background .15s; flex: 0 0 46px; cursor: pointer; }
+.stSwitch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.stSwitch:checked { background: #AC1830; }
+.stSwitch:checked::after { transform: translateX(20px); }
+.stSwitch:disabled { opacity: .6; }

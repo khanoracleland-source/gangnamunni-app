@@ -51,6 +51,20 @@ GRANT UPDATE (expire_notice_seen_at) ON hms_saas.gangnamunni_bookings TO 'sb_api
 -- 내 알림 (read / read-all / delete)
 GRANT UPDATE (is_read), DELETE ON hms_saas.gangnamunni_user_notifications TO 'sb_api_ro'@'127.0.0.1';
 GRANT UPDATE (is_read), DELETE ON hms_saas.gangnamunni_user_notifications TO 'sb_api_ro'@'localhost';
+-- 내 정보 수정 (POST /v1/mypage/profile): only these four member columns
+GRANT UPDATE (mb_nick, mb_name, mb_hp, mb_birth) ON hms_saas.g5_member TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (mb_nick, mb_name, mb_hp, mb_birth) ON hms_saas.g5_member TO 'sb_api_ro'@'localhost';
+-- 생년월일 변경 이력 (PHP creates it on the first birth change; create it here too so the 30-day limit works from day one)
+CREATE TABLE IF NOT EXISTS hms_saas.gangnamunni_member_birth_log (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, mb_id VARCHAR(60) NOT NULL,
+  old_birth VARCHAR(10) NOT NULL DEFAULT '', new_birth VARCHAR(10) NOT NULL,
+  ip VARCHAR(45) NOT NULL DEFAULT '', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id), KEY idx_mb_created (mb_id, created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+GRANT INSERT ON hms_saas.gangnamunni_member_birth_log TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_member_birth_log TO 'sb_api_ro'@'localhost';
+-- 알림 설정 (POST /v1/mypage/notification-settings): one toggle per request
+GRANT INSERT (member_id), UPDATE (noti_general, noti_booking, noti_event, noti_promo, noti_push, noti_message, mkt_push, mkt_sms, mkt_email, mkt_night_push) ON hms_saas.gangnamunni_notification_settings TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT (member_id), UPDATE (noti_general, noti_booking, noti_event, noti_promo, noti_push, noti_message, mkt_push, mkt_sms, mkt_email, mkt_night_push) ON hms_saas.gangnamunni_notification_settings TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 SHOW GRANTS FOR 'sb_api_ro'@'127.0.0.1';
 ```

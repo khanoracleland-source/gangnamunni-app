@@ -125,7 +125,7 @@ export interface HospitalListParams {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public field?: string) {
     super(message);
   }
 }
@@ -172,8 +172,9 @@ async function send<T>(method: "POST" | "PUT" | "DELETE", path: string, body?: u
   });
   if (!res.ok) {
     let msg = `${res.status} ${path}`;
-    try { const j = await res.json(); if (j?.message) msg = String(j.message); } catch { /* keep */ }
-    throw new ApiError(res.status, msg);
+    let field: string | undefined;
+    try { const j = await res.json(); if (j?.message) msg = String(j.message); if (typeof j?.field === "string") field = j.field; } catch { /* keep */ }
+    throw new ApiError(res.status, msg, field);
   }
   return (await res.json()) as T;
 }
@@ -307,6 +308,11 @@ export type NotiFilter = "all" | "booking" | "review" | "benefit";
 export interface MyNotification { id: number; type: string; title: string; message: string; isRead: boolean; icon: NotiIcon; time: string; openUrl: string }
 export interface MyNotificationsPage { items: MyNotification[]; total: number; page: number; hasMore: boolean; unread: number }
 
+export interface MyProfile { nick: string; name: string; hp: string; birth: string; email: string; photoUrl: string | null; birthChangeDays: number }
+export const SETTING_KEYS = ["noti_general", "noti_booking", "noti_event", "noti_promo", "noti_push", "noti_message", "mkt_push", "mkt_sms", "mkt_email", "mkt_night_push"] as const;
+export type SettingKey = (typeof SETTING_KEYS)[number];
+export type NotificationSettings = Record<SettingKey, number>;
+
 export const api = {
   home: (ctx?: ServerCtx) => get<HomeData>("/v1/home", undefined, ctx),
   wishlist: (id: number) => get<WishlistState>(`/v1/wishlist/hospitals/${id}`),
@@ -320,6 +326,10 @@ export const api = {
   notificationRead: (id: number) => post<{ success: boolean }>(`/v1/mypage/notifications/${id}/read`, {}),
   notificationsReadAll: () => post<{ success: boolean }>("/v1/mypage/notifications/read-all", {}),
   notificationDelete: (id: number) => send<{ success: boolean }>("DELETE", `/v1/mypage/notifications/${id}`),
+  myProfile: (ctx?: ServerCtx) => get<MyProfile>("/v1/mypage/profile", undefined, ctx),
+  saveProfile: (form: FormData) => send<{ success: boolean; photoError: string | null; photoUrl: string | null }>("POST", "/v1/mypage/profile", form, 30000),
+  notificationSettings: (ctx?: ServerCtx) => get<{ settings: NotificationSettings }>("/v1/mypage/notification-settings", undefined, ctx),
+  setNotificationSetting: (field: SettingKey, value: boolean) => post<{ success: boolean }>("/v1/mypage/notification-settings", { field, value: value ? "1" : "0" }),
   faq: (ctx?: ServerCtx) => get<FaqData>("/v1/faq", undefined, ctx),
   consultation: (id: number, ctx?: ServerCtx) => get<ConsultationDetail>(`/v1/mypage/consultations/${id}`, undefined, ctx),
   rerequestConsultation: (id: number, slot: string) => post<{ success: boolean }>(`/v1/mypage/consultations/${id}/rerequest`, { slot }),
@@ -369,6 +379,8 @@ export const qk = {
   myConsultations: ["mypage", "consultations"] as const,
   myReviews: ["mypage", "reviews"] as const,
   faq: ["faq"] as const,
+  myProfile: ["mypage", "profile"] as const,
+  notificationSettings: ["mypage", "notification-settings"] as const,
   myNotifications: (type: string) => ["mypage", "notifications", type] as const,
   myBookings: ["mypage", "bookings"] as const,
   bookingDetail: (id: number) => ["mypage", "booking", id] as const,

@@ -19,7 +19,7 @@
  * Called from includes/init.php (and explicitly from the few listed pages that do not load it).
  */
 
-if (!defined('SB_TURBO_VERSION')) define('SB_TURBO_VERSION', 10);
+if (!defined('SB_TURBO_VERSION')) define('SB_TURBO_VERSION', 11);
 
 if (!function_exists('sb_turbo_pages')) {
 
@@ -29,7 +29,7 @@ if (!function_exists('sb_turbo_pages')) {
         // detail, events, community and mypage (+ wishlist/reviews/consultations) are served by Next.js, so links to them must be real navigations (the app
         // rewrites them to /next/, /next/hospitals[/id], /next/events[/id], /next/community[/id], /next/mypage[/wishlist|reviews|consultations]), never in-page Turbo visits.
         if ((isset($_COOKIE['sb_next_pilot']) ? $_COOKIE['sb_next_pilot'] : '') === '1') {
-            $pages = array_values(array_diff($pages, array('index.php', 'hospitals.php', 'detail.php', 'events.php', 'event_detail.php', 'community.php', 'detail_community.php', 'mypage.php', 'my_wishlist.php', 'my_reviews.php', 'my_consultations.php', 'my_consultation_detail.php', 'review_detail.php', 'qna.php', 'faq.php', 'my_bookings.php', 'booking_request_detail.php', 'booking_cancel_detail.php', 'my_notifications.php')));
+            $pages = array_values(array_diff($pages, array('index.php', 'hospitals.php', 'detail.php', 'events.php', 'event_detail.php', 'community.php', 'detail_community.php', 'mypage.php', 'my_wishlist.php', 'my_reviews.php', 'my_consultations.php', 'my_consultation_detail.php', 'review_detail.php', 'qna.php', 'faq.php', 'my_bookings.php', 'booking_request_detail.php', 'booking_cancel_detail.php', 'my_notifications.php', 'profile_edit.php', 'notification_settings.php')));
         }
         return $pages;
     }

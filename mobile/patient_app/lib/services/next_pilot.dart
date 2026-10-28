@@ -68,6 +68,8 @@ class NextPilot {
     if (_qnaPaths.contains(uri.path)) return _rewriteMine(uri, 'qna', const {}, const {});
     if (_faqPaths.contains(uri.path)) return _rewriteFaq(uri);
     if (_notificationsPaths.contains(uri.path)) return _rewriteNotifications(uri);
+    if (_profilePaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/profile', const {}, const {});
+    if (_settingsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/settings', const {}, const {});
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
     if (!_listPaths.contains(uri.path)) return null;
@@ -156,6 +158,8 @@ class NextPilot {
   static final Set<String> _myConsultationDetailPaths = {'/my_consultation_detail.php', _site.resolve('my_consultation_detail.php').path};
   static final Set<String> _reviewDetailPaths = {'/review_detail.php', _site.resolve('review_detail.php').path};
   static final Set<String> _qnaPaths = {'/qna.php', _site.resolve('qna.php').path};
+  static final Set<String> _profilePaths = {'/profile_edit.php', _site.resolve('profile_edit.php').path};
+  static final Set<String> _settingsPaths = {'/notification_settings.php', _site.resolve('notification_settings.php').path};
   static final Set<String> _notificationsPaths = {'/my_notifications.php', _site.resolve('my_notifications.php').path};
   static final Set<String> _faqPaths = {'/faq.php', _site.resolve('faq.php').path};
   static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};

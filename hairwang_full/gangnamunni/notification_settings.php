@@ -465,6 +465,8 @@ if ($sheet_nick === '') $sheet_nick = '회원';
             }
         });
     });
+    // The Next.js settings page links here (#withdraw): only open the confirmation sheet; nothing is deleted until the user confirms.
+    if (location.hash === '#withdraw') document.getElementById('btnWithdraw').click();
 })();
 </script>
 </body></html>
