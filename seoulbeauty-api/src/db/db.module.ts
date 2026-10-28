@@ -3,6 +3,9 @@ import * as mysql from 'mysql2/promise';
 
 export const DB = Symbol('DB');
 export type Db = Pick<mysql.Pool, 'query'>;
+/** A pool that can also hand out a dedicated connection (needed for GET_LOCK, which is connection-scoped). */
+export type DbPool = Db & Partial<Pick<mysql.Pool, 'getConnection'>>;
+export type DbConn = Pick<mysql.PoolConnection, 'query' | 'release'>;
 
 @Global()
 @Module({

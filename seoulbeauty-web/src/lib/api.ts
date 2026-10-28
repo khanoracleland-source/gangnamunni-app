@@ -339,6 +339,7 @@ export const api = {
   myProfile: (ctx?: ServerCtx) => get<MyProfile>("/v1/mypage/profile", undefined, ctx),
   reviewForm: (q: ReviewFormQuery, ctx?: ServerCtx) => get<ReviewForm>("/v1/mypage/review-form", { ...q }, ctx),
   saveReview: (form: FormData) => send<{ success: boolean; id: number; already?: boolean; photoError?: boolean; message: string }>("POST", "/v1/mypage/reviews", form, 60000),
+  deleteReview: (id: number) => send<{ success: boolean; deleted: boolean }>("DELETE", `/v1/mypage/reviews/${id}`),
   saveProfile: (form: FormData) => send<{ success: boolean; photoError: string | null; photoUrl: string | null }>("POST", "/v1/mypage/profile", form, 30000),
   notificationSettings: (ctx?: ServerCtx) => get<{ settings: NotificationSettings }>("/v1/mypage/notification-settings", undefined, ctx),
   setNotificationSetting: (field: SettingKey, value: boolean) => post<{ success: boolean }>("/v1/mypage/notification-settings", { field, value: value ? "1" : "0" }),

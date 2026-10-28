@@ -175,6 +175,8 @@
 .pfSave { display: block; width: 100%; height: 48px; border-radius: 8px; background: #AC1830; color: #fff; font-size: 16px; font-weight: 700; }
 .pfSave:disabled { opacity: .6; }
 .pfDiscard { display: block; width: 100%; height: 44px; margin-top: 8px; font-size: 15px; color: #666; }
+.pfDanger { display: block; width: 100%; height: 48px; margin-top: 8px; border-radius: 8px; background: #d93025; color: #fff; font-size: 16px; font-weight: 700; }
+.pfDanger:disabled, .pfDiscard:disabled { opacity: .6; }
 .pfModal { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 70; }
 .pfModalBox { width: 100%; max-width: 640px; box-sizing: border-box; background: #fff; border-radius: 16px 16px 0 0; padding: 24px 16px calc(20px + env(safe-area-inset-bottom)); }
 .pfModalBox h2 { margin: 0 0 8px; font-size: 18px; text-align: center; }

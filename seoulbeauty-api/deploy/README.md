@@ -77,6 +77,13 @@ GRANT INSERT ON hms_saas.gangnamunni_notification_sends TO 'sb_api_ro'@'127.0.0.
 GRANT INSERT ON hms_saas.gangnamunni_notification_sends TO 'sb_api_ro'@'localhost';
 GRANT UPDATE (is_active) ON hms_saas.gangnamunni_admin_fcm_tokens TO 'sb_api_ro'@'127.0.0.1';
 GRANT UPDATE (is_active) ON hms_saas.gangnamunni_admin_fcm_tokens TO 'sb_api_ro'@'localhost';
+-- 후기 삭제 (DELETE /v1/mypage/reviews/:id): soft delete + 포인트 회수 (earn_cancel row, lots consumed) — only when v2 policy is on
+GRANT INSERT ON hms_saas.gangnamunni_points TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_points TO 'sb_api_ro'@'localhost';
+GRANT UPDATE (remaining) ON hms_saas.gangnamunni_point_lots TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (remaining) ON hms_saas.gangnamunni_point_lots TO 'sb_api_ro'@'localhost';
+GRANT INSERT ON hms_saas.gangnamunni_point_lot_allocs TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_point_lot_allocs TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 SHOW GRANTS FOR 'sb_api_ro'@'127.0.0.1';
 ```

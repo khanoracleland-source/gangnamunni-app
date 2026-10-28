@@ -1,9 +1,9 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type MyDoneReview, type MyWritableReview } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
 import styles from "./MyPages.module.css";
@@ -17,12 +17,31 @@ const Meta = ({ r }: { r: { district: string; address: string; doctorName: strin
   </>
 );
 
-/** my_reviews.php: 작성가능 (completed bookings without a review) / 작성완료. Writing and deleting stay in PHP for now. */
+/** my_reviews.php: 작성가능 (completed bookings without a review) / 작성완료, with the delete sheet. */
 export default function MyReviews({ initial, anon }: { initial?: Data; anon?: boolean }) {
-  const php = usePhpBase();
+  const qc = useQueryClient();
+  const [confirm, setConfirm] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState("");
   const tab = useSearchParams().get("tab") === "done" ? "done" : "writable";
   const { data, error, refetch } = useQuery({ queryKey: qk.myReviews, queryFn: () => api.myReviews(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
+  const remove = async () => {
+    if (confirm === null || busy) return;
+    setBusy(true);
+    try {
+      await api.deleteReview(confirm);
+      setConfirm(null);
+      void qc.invalidateQueries({ queryKey: qk.mypage });
+      await refetch();
+    } catch (err) {
+      setToast(err instanceof ApiError && err.status === 404 ? "이미 삭제된 후기예요." : "삭제하지 못했습니다. 다시 시도해주세요.");
+      setConfirm(null);
+      window.setTimeout(() => setToast(""), 2500);
+    } finally {
+      setBusy(false);
+    }
+  };
   const thumb = (src: string | null) => (src
     // eslint-disable-next-line @next/next/no-img-element
     ? <img className={styles.rimg} src={assetUrl(src) ?? ""} alt="" />
@@ -69,8 +88,7 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
                       {r.pending ? <span className={`${styles.rbtn} ${styles.rbtnPending}`}>승인 대기중</span> : (
                         <>
                           <Link className={`${styles.rbtn} ${styles.rbtnPri}`} href={`/reviews/${r.id}`}>보기</Link>
-                          {/* Deleting (with point reversal and the hospital rating recount) stays in the PHP list. */}
-                          <a className={styles.rbtn} href={phpUrl(php, "my_reviews.php?tab=done&php=1")}>삭제</a>
+                          <button type="button" className={styles.rbtn} onClick={() => setConfirm(r.id)}>삭제</button>
                         </>
                       )}
                     </div>
@@ -80,6 +98,17 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
             </div>
           )}
         </>
+      )}
+      {toast && <div className={styles.ntToast} role="status">{toast}</div>}
+      {confirm !== null && (
+        <div className={styles.pfModal} role="presentation" onClick={() => !busy && setConfirm(null)}>
+          <div className={styles.pfModalBox} role="dialog" aria-modal="true" aria-labelledby="rv-del" onClick={(e) => e.stopPropagation()}>
+            <h2 id="rv-del">후기를 삭제할까요?</h2>
+            <p>삭제한 후기는 다시 복구할 수 없어요.</p>
+            <button type="button" className={styles.pfDiscard} disabled={busy} onClick={() => setConfirm(null)}>취소</button>
+            <button type="button" className={styles.pfDanger} disabled={busy} onClick={remove}>{busy ? "삭제 중…" : "삭제할게요"}</button>
+          </div>
+        </div>
       )}
     </div>
   );

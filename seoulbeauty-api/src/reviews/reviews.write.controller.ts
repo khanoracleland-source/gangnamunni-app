@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, Query, Req, Res, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req, Res, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { AuthedRequest, RequireAuthGuard } from '../auth/auth.guard';
 import { SameOriginGuard } from '../common/same-origin.guard';
-import { intParam } from '../common/parse';
+import { idParam, intParam } from '../common/parse';
 import { REVIEW_PHOTO_MAX_BYTES, REVIEW_PHOTO_SLOTS } from './reviews.write.logic';
 import { Member, PhotoFiles, ReviewsWriteService } from './reviews.write.service';
 
@@ -39,5 +39,12 @@ export class ReviewsWriteController {
   create(@Body() body: Record<string, unknown>, @UploadedFiles() files: PhotoFiles, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
     nocache(res);
     return this.write.submit(member(req), body ?? {}, files ?? {});
+  }
+
+  @Delete('reviews/:id')
+  @UseGuards(SameOriginGuard)
+  remove(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
+    nocache(res);
+    return this.write.remove(member(req), idParam(id));
   }
 }

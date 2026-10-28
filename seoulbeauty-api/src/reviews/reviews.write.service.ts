@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { DB, Db } from '../db/db.module';
 import { AdminNotifyService } from '../admin-notify/admin-notify.service';
+import { PointsService } from '../points/points.service';
 import { sniffImage } from '../community/community.write.logic';
 import {
   CONTENT_MAX, CONTENT_MIN, orderDoctors, originalName, parseDoctorIds, photoName, REVIEW_PHOTO_MAX_BYTES, REVIEW_PHOTO_SLOTS, safeBackUrl,
@@ -37,7 +38,7 @@ export async function recountHospital(db: Db, hospitalId: number) {
 export class ReviewsWriteService {
   private readonly log = new Logger(ReviewsWriteService.name);
   private attempts = new Map<string, number[]>();
-  constructor(@Inject(DB) private readonly db: Db, private readonly notify: AdminNotifyService) {}
+  constructor(@Inject(DB) private readonly db: Db, private readonly notify: AdminNotifyService, private readonly points: PointsService) {}
 
   private rateLimit(key: string, max: number) {
     const now = Date.now();
@@ -286,5 +287,24 @@ export class ReviewsWriteService {
       success: true, id: reviewId, ...(okB && okA ? {} : { photoError: true }),
       message: edit ? '후기가 수정되었습니다. 관리자 승인 후 다시 공개됩니다.' : '후기가 등록되었습니다. 관리자 승인 후 공개됩니다.',
     };
+  }
+
+  /** my_reviews.php (POST action=delete): soft delete of the member's own review, then the point reversal and the hospital recount. */
+  async remove(m: Member, id: number): Promise<{ success: true; deleted: boolean }> {
+    const [rows] = (await this.db.query('SELECT hospital_id, is_active FROM hospital_reviews WHERE id = ? AND user_id = ? LIMIT 1', [id, m.id])) as any;
+    const r = (rows as any[])[0];
+    if (!r) throw new NotFoundException('후기를 찾을 수 없습니다.');
+    try {
+      await this.db.query("UPDATE hospital_reviews SET is_active = 0, review_status = 'deleted' WHERE id = ? AND user_id = ?", [id, m.id]);
+    } catch (e) {
+      this.log.error(`review delete failed: ${(e as Error).message}`);
+      throw new InternalServerErrorException('삭제 중 오류가 발생했습니다.');
+    }
+    // Derived data after the fact: each step logs its own failure and never undoes the delete (PHP behaves the same).
+    await this.points.revokeReviewEarnings(id, '후기 삭제 회수');
+    if (n(r.is_active) === 1) {
+      await recountHospital(this.db, n(r.hospital_id)).catch((e) => this.log.error(`hospital ${n(r.hospital_id)} recount failed: ${(e as Error).message}`));
+    }
+    return { success: true, deleted: true };
   }
 }
