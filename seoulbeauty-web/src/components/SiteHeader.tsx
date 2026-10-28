@@ -15,20 +15,22 @@ import styles from "./SiteHeader.module.css";
  * mode "results" = hospitals.php?q= (03-09): no logo row, back arrow + keyword bar on top.
  */
 
-const REGION_KEY = "sb_selected_regions"; // same localStorage key as the PHP header
-function readRegionsRaw(): string { try { return localStorage.getItem(REGION_KEY) || "[]"; } catch { return "[]"; } }
+export const REGION_KEY = "sb_selected_regions"; // same localStorage key as the PHP header
+/** community.php keeps its own selection (`$region_storage_key`), separate from the hospital list. */
+export const COMMUNITY_REGION_KEY = "sb_community_regions";
+function readRegionsRaw(key: string): string { try { return localStorage.getItem(key) || "[]"; } catch { return "[]"; } }
 const listeners = new Set<() => void>();
 function subscribeRegions(cb: () => void) { listeners.add(cb); return () => { listeners.delete(cb); }; }
-export function writeRegions(r: string[]) {
-  try { localStorage.setItem(REGION_KEY, JSON.stringify(r)); } catch { /* ignore */ }
+export function writeRegions(r: string[], key: string = REGION_KEY) {
+  try { localStorage.setItem(key, JSON.stringify(r)); } catch { /* ignore */ }
   listeners.forEach((cb) => cb());
 }
 export function parseRegions(raw: string): string[] {
   try { const v = JSON.parse(raw); return Array.isArray(v) ? v.map(String) : []; } catch { return []; }
 }
 /** Regions the viewer saved on a previous visit ("[]" during SSR). */
-export function useSavedRegions(): string[] {
-  return parseRegions(useSyncExternalStore(subscribeRegions, readRegionsRaw, () => "[]"));
+export function useSavedRegions(key: string = REGION_KEY): string[] {
+  return parseRegions(useSyncExternalStore(subscribeRegions, () => readRegionsRaw(key), () => "[]"));
 }
 
 const PIN = <svg className={styles.pin} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z" /><circle cx="12" cy="9.7" r="2.6" /></svg>;
@@ -50,7 +52,8 @@ async function copyShareText(): Promise<boolean> {
 }
 
 /** showSearch=false is header.php's `$show_search = false` (events pages): logo row only, no search bar / region bar. */
-export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showSearch = true }: { mode?: "nav" | "results"; q?: string; home?: HomeData; showSearch?: boolean }) {
+/** target="community" is `$search_target_page = 'community.php'`: search and region apply to /community and use its own region storage. */
+export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showSearch = true, target = "hospitals" }: { mode?: "nav" | "results"; q?: string; home?: HomeData; showSearch?: boolean; target?: "hospitals" | "community" }) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -63,7 +66,8 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
   const [toast, setToast] = useState("");
   const [logoBroken, setLogoBroken] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const regions = useSavedRegions();
+  const regionKey = target === "community" ? COMMUNITY_REGION_KEY : REGION_KEY;
+  const regions = useSavedRegions(regionKey);
   // Region groups + popular keywords come with the home payload (cached 60 s; shared with the home page).
   const homeQ = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: home, staleTime: 60_000, enabled: !!home || pickerOpen || searchOpen });
 
@@ -75,7 +79,8 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
 
   /** header.php applyRegionFilter(): on the list page keep the other filters; keyword change drops dosage; page resets. */
   const apply = (keyword: string, regs: string[]) => {
-    const onList = pathname === "/hospitals";
+    const listPath = target === "community" ? "/community" : "/hospitals";
+    const onList = pathname === listPath;
     const u = new URLSearchParams(onList ? sp.toString() : "");
     const oldKeyword = u.get("q") || "";
     if (regs.length) u.set("region", regs.join(",")); else u.delete("region");
@@ -83,10 +88,10 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
     if (keyword !== oldKeyword) { u.delete("dosage"); u.delete("hid"); u.delete("tcat"); }
     u.delete("page");
     if (keyword) addRecentSearch(keyword);
-    router.push(`/hospitals${u.toString() ? `?${u}` : ""}`);
+    router.push(`${listPath}${u.toString() ? `?${u}` : ""}`);
   };
   const chooseRegions = (r: string[]) => {
-    writeRegions(r);
+    writeRegions(r, regionKey);
     setPickerOpen(false);
     apply(q.trim(), r);
   };

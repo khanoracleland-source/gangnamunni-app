@@ -4,12 +4,12 @@ import { usePathname } from "next/navigation";
 import styles from "./BottomNav.module.css";
 import { phpUrl, usePhpBase } from "@/lib/php";
 
-// Pilot: 홈 and 병원 live in Next.js. The other tabs go to the PHP pages on the
+// Pilot: 홈, 병원 and 커뮤니티 live in Next.js. The other tabs go to the PHP pages on the
 // same origin (full load), so the app stays on its trusted host.
 const items = [
   { next: "/", label: "홈" },
   { next: "/hospitals", label: "병원" },
-  { php: "community.php", label: "커뮤니티" },
+  { next: "/community", label: "커뮤니티" },
   { php: "mypage.php", label: "마이페이지" },
 ] as const;
 

@@ -18,6 +18,17 @@ GRANT INSERT ON hms_saas.gangnamunni_user_notifications TO 'sb_api_ro'@'127.0.0.
 GRANT INSERT ON hms_saas.gangnamunni_user_notifications TO 'sb_api_ro'@'localhost';
 GRANT INSERT ON hms_saas.gangnamunni_notifications TO 'sb_api_ro'@'127.0.0.1';
 GRANT INSERT ON hms_saas.gangnamunni_notifications TO 'sb_api_ro'@'localhost';
+-- 커뮤니티: 글 좋아요/댓글/댓글 좋아요 (POST /v1/community/:id/like|comments|comments/:cid/like) + 조회수. posts 는 카운터 3개 컬럼만 UPDATE
+GRANT INSERT, DELETE ON hms_saas.gangnamunni_community_likes TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT, DELETE ON hms_saas.gangnamunni_community_likes TO 'sb_api_ro'@'localhost';
+GRANT INSERT, DELETE ON hms_saas.gangnamunni_community_comment_likes TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT, DELETE ON hms_saas.gangnamunni_community_comment_likes TO 'sb_api_ro'@'localhost';
+GRANT INSERT ON hms_saas.gangnamunni_community_comments TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_community_comments TO 'sb_api_ro'@'localhost';
+GRANT INSERT ON hms_saas.gangnamunni_community_comment_threads TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_community_comment_threads TO 'sb_api_ro'@'localhost';
+GRANT UPDATE (like_count, comment_count, view_count) ON hms_saas.gangnamunni_community_posts TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (like_count, comment_count, view_count) ON hms_saas.gangnamunni_community_posts TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 SHOW GRANTS FOR 'sb_api_ro'@'127.0.0.1';
 ```

@@ -219,6 +219,25 @@ export interface EventDetail {
 }
 export interface EventEntryInput { name: string; phone: string; email: string }
 
+/** GET /v1/community — community.php (tabs latest | popular | review) */
+export type CommunityTab = "latest" | "popular" | "review";
+export interface CommunityItem {
+  id: number; kind: "post" | "review"; category: string; title: string; preview: string; fullText: string | null;
+  createdAt: string; updatedAt: string | null; authorName: string; authorAvatar: string | null; photos: string[];
+  likeCount: number; commentCount: number; viewCount: number; liked: boolean;
+}
+export interface CommunityList {
+  tab: CommunityTab; category: string; regions: string[]; q: string;
+  page: number; perPage: number; total: number; totalPages: number; items: CommunityItem[];
+}
+export interface CommunityListParams { tab?: string; category?: string; region?: string; q?: string; page?: number }
+/** GET /v1/community/:id — detail_community.php */
+export interface CommunityComment { id: number; parentId: number; authorName: string; content: string; createdAt: string; likeCount: number; liked: boolean }
+export interface CommunityPost {
+  id: number; category: string; title: string; content: string; createdAt: string; authorName: string; authorAvatar: string | null; photos: string[];
+  likeCount: number; commentCount: number; viewCount: number; liked: boolean; isAuthor: boolean; comments: CommunityComment[];
+}
+
 /** GET /v1/search/suggest (port of search_suggest.php); hrefs are PHP-style `hospitals.php?...`, mapped to Next routes in SearchOverlay. */
 export interface SearchSuggest {
   treatments: { name: string; href: string; hint?: string }[];
@@ -237,6 +256,12 @@ export const api = {
   events: (p: { category?: string; filter?: string } = {}, ctx?: ServerCtx) => get<EventList>("/v1/events", p, ctx),
   event: (id: number, ctx?: ServerCtx) => get<EventDetail>(`/v1/events/${id}`, undefined, ctx),
   enterEvent: (id: number, input: EventEntryInput) => post<{ success: boolean; entryId: number; message: string }>(`/v1/events/${id}/entries`, input),
+  community: (p: CommunityListParams = {}, ctx?: ServerCtx) => get<CommunityList>("/v1/community", { tab: p.tab, category: p.category, region: p.region, q: p.q, page: p.page && p.page > 1 ? p.page : undefined }, ctx),
+  /** `view: true` only for the server render of the page (counts one view, like PHP). */
+  communityPost: (id: number, o: { view?: boolean } = {}, ctx?: ServerCtx) => get<CommunityPost>(`/v1/community/${id}`, o.view ? { view: 1 } : undefined, ctx),
+  toggleCommunityLike: (id: number) => post<{ success: boolean; liked: boolean; count: number }>(`/v1/community/${id}/like`, {}),
+  addCommunityComment: (id: number, content: string, parentId: number) => post<{ success: boolean; id: number }>(`/v1/community/${id}/comments`, { content, parentId }),
+  setCommunityCommentLike: (id: number, commentId: number, liked: boolean) => post<{ success: boolean; liked: boolean; count: number }>(`/v1/community/${id}/comments/${commentId}/like`, { liked }),
   suggest: (q: string) => get<SearchSuggest>("/v1/search/suggest", { q }),
   hospital: (id: number) => get<HospitalDetail>(`/v1/hospitals/${id}`),
   treatments: (id: number) => get<{ items: HospitalTreatment[] }>(`/v1/hospitals/${id}/treatments`),
@@ -256,6 +281,8 @@ export const qk = {
   home: ["home"] as const,
   events: (category: string, raffle: boolean) => ["events", category, raffle] as const,
   event: (id: number) => ["event", id] as const,
+  community: (p: CommunityListParams) => ["community", p.tab || "latest", p.category || "", p.region || "", p.q || "", p.page || 1] as const,
+  communityPost: (id: number) => ["communityPost", id] as const,
 };
 
 export type DetailTab = "home" | "treatments" | "reviews" | "doctors";

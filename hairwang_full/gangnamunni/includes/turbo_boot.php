@@ -19,17 +19,17 @@
  * Called from includes/init.php (and explicitly from the few listed pages that do not load it).
  */
 
-if (!defined('SB_TURBO_VERSION')) define('SB_TURBO_VERSION', 5);
+if (!defined('SB_TURBO_VERSION')) define('SB_TURBO_VERSION', 6);
 
 if (!function_exists('sb_turbo_pages')) {
 
     function sb_turbo_pages() {
         $pages = sb_turbo_all_pages();
         // Next.js pilot (patient app test build sets sb_next_pilot=1): home, hospital list,
-        // detail and events are served by Next.js, so links to them must be real navigations (the app
-        // rewrites them to /next/, /next/hospitals[/id], /next/events[/id]), never in-page Turbo visits.
+        // detail, events and community are served by Next.js, so links to them must be real navigations (the app
+        // rewrites them to /next/, /next/hospitals[/id], /next/events[/id], /next/community[/id]), never in-page Turbo visits.
         if ((isset($_COOKIE['sb_next_pilot']) ? $_COOKIE['sb_next_pilot'] : '') === '1') {
-            $pages = array_values(array_diff($pages, array('index.php', 'hospitals.php', 'detail.php', 'events.php', 'event_detail.php')));
+            $pages = array_values(array_diff($pages, array('index.php', 'hospitals.php', 'detail.php', 'events.php', 'event_detail.php', 'community.php', 'detail_community.php')));
         }
         return $pages;
     }

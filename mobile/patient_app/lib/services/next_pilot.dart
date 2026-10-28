@@ -54,6 +54,8 @@ class NextPilot {
     if (_detailPaths.contains(uri.path)) return _rewriteDetail(uri);
     if (_eventsPaths.contains(uri.path)) return _rewriteEvents(uri);
     if (_eventDetailPaths.contains(uri.path)) return _rewriteEventDetail(uri);
+    if (_communityPaths.contains(uri.path)) return _rewriteCommunity(uri);
+    if (_communityDetailPaths.contains(uri.path)) return _rewriteCommunityDetail(uri);
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
     if (!_listPaths.contains(uri.path)) return null;
@@ -125,6 +127,46 @@ class NextPilot {
       host: _site.host,
       port: _site.hasPort ? _site.port : null,
       path: '$basePath/events/$id',
+    );
+  }
+
+  static final Set<String> _communityPaths = {'/community.php', _site.resolve('community.php').path};
+  static final Set<String> _communityDetailPaths = {'/detail_community.php', _site.resolve('detail_community.php').path};
+
+  /// community.php[?tab=][&category=][&region=][&q=][&page=][&app=] -> /next/community (any other parameter keeps the PHP page).
+  static Uri? _rewriteCommunity(Uri uri) {
+    final q = uri.queryParameters;
+    const allowed = {'tab', 'category', 'region', 'q', 'page', 'app'};
+    if (q.keys.any((k) => !allowed.contains(k))) return null;
+    final tab = q['tab'];
+    if (tab != null && tab.isNotEmpty && !const {'latest', 'popular', 'review'}.contains(tab)) return null;
+    final page = q['page'];
+    if (page != null && page.isNotEmpty && (int.tryParse(page) ?? 0) < 1) return null;
+    final kept = <String, String>{
+      for (final k in const ['tab', 'category', 'region', 'q', 'page'])
+        if ((q[k] ?? '').isNotEmpty && !(k == 'tab' && q[k] == 'latest') && !(k == 'page' && q[k] == '1')) k: q[k]!,
+    };
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/community',
+      queryParameters: kept.isEmpty ? null : kept,
+    );
+  }
+
+  /// detail_community.php?id=N[&app=] -> /next/community/N. Any other parameter keeps the PHP page — the
+  /// Next page links its "⋯" menu to `detail_community.php?id=N&php=1` to reach the PHP report/block/delete sheet.
+  static Uri? _rewriteCommunityDetail(Uri uri) {
+    final q = uri.queryParameters;
+    final id = int.tryParse(q['id'] ?? '');
+    if (id == null || id <= 0) return null;
+    if (q.keys.any((k) => k != 'id' && k != 'app')) return null;
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/community/$id',
     );
   }
 
