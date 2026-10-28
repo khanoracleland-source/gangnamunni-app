@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:kivicare_patient/configs.dart';
 
-/// Next.js pilot (hospital list/detail at `/next/…`).
+/// Next.js pilot (home, hospitals, events at `/next/…`).
 ///
 /// Enabled only with `--dart-define=NEXT_PILOT_HOSPITALS=true`; release builds
 /// keep the PHP pages. When enabled, any in-app navigation to the PHP hospital
@@ -52,6 +52,8 @@ class NextPilot {
     if (!_sameOrigin(uri, _site)) return null;
     if (_homePaths.contains(uri.path)) return _rewriteHome(uri);
     if (_detailPaths.contains(uri.path)) return _rewriteDetail(uri);
+    if (_eventsPaths.contains(uri.path)) return _rewriteEvents(uri);
+    if (_eventDetailPaths.contains(uri.path)) return _rewriteEventDetail(uri);
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
     if (!_listPaths.contains(uri.path)) return null;
@@ -89,6 +91,43 @@ class NextPilot {
     );
   }
 
+  static final Set<String> _eventsPaths = {'/events.php', _site.resolve('events.php').path};
+  static final Set<String> _eventDetailPaths = {'/event_detail.php', _site.resolve('event_detail.php').path};
+
+  /// events.php[?category=][&filter=raffle][&app=] -> /next/events (any other parameter keeps the PHP page).
+  static Uri? _rewriteEvents(Uri uri) {
+    final q = uri.queryParameters;
+    const allowed = {'category', 'filter', 'app'};
+    if (q.keys.any((k) => !allowed.contains(k))) return null;
+    final filter = q['filter'];
+    if (filter != null && filter.isNotEmpty && filter != 'raffle') return null;
+    final kept = <String, String>{
+      if ((q['category'] ?? '').isNotEmpty) 'category': q['category']!,
+      if (filter == 'raffle') 'filter': 'raffle',
+    };
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/events',
+      queryParameters: kept.isEmpty ? null : kept,
+    );
+  }
+
+  /// event_detail.php?id=N[&app=] -> /next/events/N (any other parameter keeps the PHP page).
+  static Uri? _rewriteEventDetail(Uri uri) {
+    final q = uri.queryParameters;
+    final id = int.tryParse(q['id'] ?? '');
+    if (id == null || id <= 0) return null;
+    if (q.keys.any((k) => k != 'id' && k != 'app')) return null;
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/events/$id',
+    );
+  }
+
   /// index.php[?app=patient] -> /next/ (any other parameter keeps the PHP page).
   static Uri? _rewriteHome(Uri uri) {
     if (uri.queryParameters.keys.any((k) => k != 'app')) return null;
@@ -99,7 +138,7 @@ class NextPilot {
   static bool isHomePage(Uri uri) =>
       enabled && _sameOrigin(uri, _site) && (uri.path == basePath || uri.path == '$basePath/');
 
-  /// True for pages rendered by the Next.js app (list or detail).
+  /// True for pages rendered by the Next.js app (hospitals, events, home).
   static bool isNextPage(Uri uri) =>
       _sameOrigin(uri, _site) && uri.path.startsWith('$basePath/');
 }

@@ -70,12 +70,12 @@ export default function Home({ initial }: { initial?: HomeData }) {
 
       {events.length > 0 && settings.blocks.events && (
         <section className={styles.section}>
-          <div className={styles.sectionHead}><div className={styles.sectionTitle}>이벤트</div><a href={phpUrl(php, "events.php")} className={styles.more} aria-label="이벤트 더보기">›</a></div>
+          <div className={styles.sectionHead}><div className={styles.sectionTitle}>이벤트</div><Link href="/events" className={styles.more} aria-label="이벤트 더보기">›</Link></div>
           <div className={styles.eventsScroll}>
             {events.map((ev) => {
               const img = assetUrl(ev.imageUrl);
               return (
-                <a key={ev.id} href={phpUrl(php, `event_detail.php?id=${ev.id}`)} className={styles.event}>
+                <Link key={ev.id} href={`/events/${ev.id}`} className={styles.event}>
                   <div className={styles.eventImg}>
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -95,7 +95,7 @@ export default function Home({ initial }: { initial?: HomeData }) {
                       </div>
                     )}
                   </div>
-                </a>
+                </Link>
               );
             })}
           </div>

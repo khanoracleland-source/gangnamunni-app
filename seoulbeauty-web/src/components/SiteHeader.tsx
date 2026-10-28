@@ -49,7 +49,8 @@ async function copyShareText(): Promise<boolean> {
   } catch { return false; }
 }
 
-export default function SiteHeader({ mode = "nav", q: initialQ = "", home }: { mode?: "nav" | "results"; q?: string; home?: HomeData }) {
+/** showSearch=false is header.php's `$show_search = false` (events pages): logo row only, no search bar / region bar. */
+export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showSearch = true }: { mode?: "nav" | "results"; q?: string; home?: HomeData; showSearch?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -122,30 +123,34 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home }: { m
       )}
       {toast && <div className={styles.toast} role="status" aria-live="polite">{toast}</div>}
 
-      <div className={styles.searchWrap}>
-        <div className={`${styles.searchRow} ${mode === "results" ? styles.results : ""}`} role="search">
-          {mode === "results" && (
-            <button type="button" className={styles.back} aria-label="뒤로 가기" onClick={back}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
-            </button>
-          )}
-          {/* header.php: the field is readonly and opens the search overlay (search_overlay.php). */}
-          <input className={styles.search} type="text" readOnly placeholder="시술, 병원 이름을 검색해보세요" value={q} onClick={() => setSearchOpen(true)} onFocus={() => setSearchOpen(true)} aria-label="검색" />
-          <button type="button" className={`${styles.regionBtn} ${regions.length ? styles.hasRegion : ""}`} onClick={() => setPickerOpen(true)}>{PIN}{regionLabel}</button>
-        </div>
-        <RegionPicker open={pickerOpen && groups.length > 0} groups={groups} selected={regions} onClose={() => setPickerOpen(false)} onApply={chooseRegions} />
-      </div>
-      {regions.length > 0 && (
-        <div className={styles.regionBar}>
-          <button type="button" className={styles.resetBar} onClick={() => chooseRegions([])}>↺ 초기화</button>
-          <div className={styles.regionTags}>
-            {regions.map((r) => <span key={r} className={styles.regionTag}>{r}<span role="button" aria-label={`${r} 제거`} onClick={() => chooseRegions(regions.filter((x) => x !== r))}>×</span></span>)}
+      {showSearch && (
+        <>
+          <div className={styles.searchWrap}>
+            <div className={`${styles.searchRow} ${mode === "results" ? styles.results : ""}`} role="search">
+              {mode === "results" && (
+                <button type="button" className={styles.back} aria-label="뒤로 가기" onClick={back}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
+                </button>
+              )}
+              {/* header.php: the field is readonly and opens the search overlay (search_overlay.php). */}
+              <input className={styles.search} type="text" readOnly placeholder="시술, 병원 이름을 검색해보세요" value={q} onClick={() => setSearchOpen(true)} onFocus={() => setSearchOpen(true)} aria-label="검색" />
+              <button type="button" className={`${styles.regionBtn} ${regions.length ? styles.hasRegion : ""}`} onClick={() => setPickerOpen(true)}>{PIN}{regionLabel}</button>
+            </div>
+            <RegionPicker open={pickerOpen && groups.length > 0} groups={groups} selected={regions} onClose={() => setPickerOpen(false)} onApply={chooseRegions} />
           </div>
-        </div>
+          {regions.length > 0 && (
+            <div className={styles.regionBar}>
+              <button type="button" className={styles.resetBar} onClick={() => chooseRegions([])}>↺ 초기화</button>
+              <div className={styles.regionTags}>
+                {regions.map((r) => <span key={r} className={styles.regionTag}>{r}<span role="button" aria-label={`${r} 제거`} onClick={() => chooseRegions(regions.filter((x) => x !== r))}>×</span></span>)}
+              </div>
+            </div>
+          )}
+          <SearchOverlay open={searchOpen} initial={q} regionLabel={regionLabel} popular={popular} onClose={() => setSearchOpen(false)}
+            onSubmit={(w) => { setQ(w); setSearchOpen(false); apply(w, regions); }}
+            onRegion={(w) => { setQ(w); setSearchOpen(false); setPickerOpen(true); }} />
+        </>
       )}
-      <SearchOverlay open={searchOpen} initial={q} regionLabel={regionLabel} popular={popular} onClose={() => setSearchOpen(false)}
-        onSubmit={(w) => { setQ(w); setSearchOpen(false); apply(w, regions); }}
-        onRegion={(w) => { setQ(w); setSearchOpen(false); setPickerOpen(true); }} />
     </>
   );
 }

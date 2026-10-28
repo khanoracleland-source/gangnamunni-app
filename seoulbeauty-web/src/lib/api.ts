@@ -195,6 +195,30 @@ export interface HomeData {
   popularKeywords: string[];
 }
 
+/** GET /v1/events — events.php (+ the page banner from includes/ad_banner.php) */
+export interface EventSummary {
+  id: number; title: string; subtitle: string | null; category: string | null; imageUrl: string | null;
+  hospitalId: number | null; hospitalName: string | null;
+  originalPrice: number | null; discountPrice: number | null; discountRate: number | null;
+  hasRaffle: boolean; endDate: string | null;
+}
+export interface PageAd { id: number; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string }
+export interface EventList { items: EventSummary[]; categories: string[]; category: string; raffleOnly: boolean; ads: PageAd[]; adAutoScroll: boolean }
+export interface RaffleInfo {
+  type: string; typeLabel: string; typeIcon: string; typeDesc: string;
+  winnerCount: number; entryCount: number; maxEntries: number; endDate: string | null; prize: string | null;
+  closed: boolean; closedReason: "period" | "full" | null; entered: boolean;
+}
+/** GET /v1/events/:id — event_detail.php */
+export interface EventDetail {
+  id: number; title: string; subtitle: string | null; description: string | null;
+  imageUrl: string | null; images: { imageUrl: string; caption: string | null }[];
+  category: string | null; categoryColor: string; hospitalId: number | null; hospitalName: string | null;
+  originalPrice: number; discountPrice: number; discountRate: number;
+  startDate: string | null; endDate: string | null; ended: boolean; raffle: RaffleInfo | null;
+}
+export interface EventEntryInput { name: string; phone: string; email: string }
+
 /** GET /v1/search/suggest (port of search_suggest.php); hrefs are PHP-style `hospitals.php?...`, mapped to Next routes in SearchOverlay. */
 export interface SearchSuggest {
   treatments: { name: string; href: string; hint?: string }[];
@@ -210,6 +234,9 @@ export const api = {
   me: () => get<{ loggedIn: boolean; user: { id: string; no: number; name: string; nickname: string; level: number; phone: string } | null; unreadNotifications: number }>("/v1/me"),
   hospitals: (p: HospitalListParams = {}, ctx?: ServerCtx) => get<HospitalPage>("/v1/hospitals", { ...p, limit: p.limit ?? 20 }, ctx),
   searchView: (id: number, ctx?: ServerCtx) => get<SearchView>(`/v1/hospitals/${id}/search-view`, undefined, ctx),
+  events: (p: { category?: string; filter?: string } = {}, ctx?: ServerCtx) => get<EventList>("/v1/events", p, ctx),
+  event: (id: number, ctx?: ServerCtx) => get<EventDetail>(`/v1/events/${id}`, undefined, ctx),
+  enterEvent: (id: number, input: EventEntryInput) => post<{ success: boolean; entryId: number; message: string }>(`/v1/events/${id}/entries`, input),
   suggest: (q: string) => get<SearchSuggest>("/v1/search/suggest", { q }),
   hospital: (id: number) => get<HospitalDetail>(`/v1/hospitals/${id}`),
   treatments: (id: number) => get<{ items: HospitalTreatment[] }>(`/v1/hospitals/${id}/treatments`),
@@ -227,6 +254,8 @@ export const qk = {
   doctors: (id: number) => ["doctors", id] as const,
   wishlist: (id: number) => ["wishlist", id] as const,
   home: ["home"] as const,
+  events: (category: string, raffle: boolean) => ["events", category, raffle] as const,
+  event: (id: number) => ["event", id] as const,
 };
 
 export type DetailTab = "home" | "treatments" | "reviews" | "doctors";

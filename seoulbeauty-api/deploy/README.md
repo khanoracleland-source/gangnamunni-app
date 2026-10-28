@@ -11,6 +11,13 @@ GRANT INSERT, DELETE ON hms_saas.gangnamunni_wishlist TO 'sb_api_ro'@'localhost'
 -- 상담 신청 (POST /v1/consultations)
 GRANT INSERT, UPDATE ON hms_saas.gangnamunni_consultations TO 'sb_api_ro'@'127.0.0.1';
 GRANT INSERT, UPDATE ON hms_saas.gangnamunni_consultations TO 'sb_api_ro'@'localhost';
+-- 이벤트 응모 (POST /v1/events/:id/entries) + 응모 알림(회원/관리자 인앱 행; FCM 푸시는 포팅 안 됨)
+GRANT INSERT ON hms_saas.gangnamunni_event_entries TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_event_entries TO 'sb_api_ro'@'localhost';
+GRANT INSERT ON hms_saas.gangnamunni_user_notifications TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_user_notifications TO 'sb_api_ro'@'localhost';
+GRANT INSERT ON hms_saas.gangnamunni_notifications TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_notifications TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 SHOW GRANTS FOR 'sb_api_ro'@'127.0.0.1';
 ```

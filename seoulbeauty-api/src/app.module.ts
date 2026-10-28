@@ -8,6 +8,7 @@ import { WishlistModule } from './wishlist/wishlist.module';
 import { ConsultationsModule } from './consultations/consultations.module';
 import { HomeModule } from './home/home.module';
 import { SearchModule } from './search/search.module';
+import { EventsModule } from './events/events.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -21,6 +22,7 @@ import { HealthController } from './health/health.controller';
     ConsultationsModule,
     HomeModule,
     SearchModule,
+    EventsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
