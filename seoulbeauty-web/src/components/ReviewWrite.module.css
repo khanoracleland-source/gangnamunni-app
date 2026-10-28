@@ -1,0 +1,60 @@
+/* Functional skeleton: the final design will replace these values. */
+.wrap { box-sizing: border-box; max-width: 640px; margin: 0 auto; padding: 0 20px calc(var(--nav-h, 64px) + 48px); color: #1A1718; }
+.head { position: relative; height: 52px; display: flex; align-items: center; justify-content: center; }
+.back { position: absolute; left: -12px; width: 36px; height: 44px; font-size: 23px; color: inherit; }
+.title { font-size: 20px; font-weight: 500; }
+.empty { padding: 60px 20px; text-align: center; }
+.card { display: flex; gap: 12px; padding: 12px 0 16px; border-bottom: 1px solid #EDEBEC; }
+.cardImg { width: 72px; height: 72px; object-fit: cover; background: #DAD7D8; flex: none; }
+.cardInfo { min-width: 0; }
+.cardName { font-size: 16px; font-weight: 600; }
+.cardTreat { font-size: 14px; color: #AC1830; margin-top: 2px; }
+.cardMeta { font-size: 13px; color: #6B6567; margin-top: 2px; }
+.sec { padding: 16px 0 4px; }
+.label { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.req { color: #AC1830; margin-left: 2px; }
+.note { font-size: 13px; color: #9A9395; margin: 6px 0; }
+.rowHead { display: flex; align-items: center; justify-content: space-between; }
+.rowHead .label { margin-bottom: 0; }
+.search { padding: 6px 12px; border: 1px solid #DAD7D8; font-size: 13px; background: #fff; }
+.chips, .picked { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.chip { padding: 6px 12px; border: 1px solid #DAD7D8; border-radius: 16px; font-size: 13px; color: #6B6567; }
+.chipOn { border-color: #AC1830; color: #AC1830; font-weight: 600; }
+.pchip { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; background: #F6EEF0; color: #AC1830; border-radius: 16px; font-size: 13px; }
+.pchip button { color: inherit; font-size: 16px; line-height: 1; }
+.check { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0; font-size: 13px; cursor: pointer; }
+.check input { margin-top: 3px; }
+.check a { color: #AC1830; text-decoration: underline; }
+.agree { margin-top: 20px; }
+.stars { display: flex; gap: 4px; }
+.star, .starOn { font-size: 34px; line-height: 1; color: #DAD7D8; }
+.starOn { color: #F5A623; }
+.field { display: block; width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #DAD7D8; font: inherit; font-size: 15px; background: #fff; }
+.area { min-height: 180px; resize: vertical; }
+.counter { text-align: right; font-size: 12px; color: #9A9395; margin-top: 4px; }
+.pgroup { margin-bottom: 12px; }
+.plabel { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.photos { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.thumb { position: relative; width: 84px; height: 84px; background: #DAD7D8; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; line-height: 22px; }
+.add { width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; text-align: center; border: 1px dashed #9A9395; color: #6B6567; font-size: 13px; cursor: pointer; }
+.cap { font-size: 12px; color: #9A9395; }
+.error { color: #AC1830; font-size: 14px; margin: 8px 0; }
+.submit { width: 100%; padding: 14px 0; background: #AC1830; color: #fff; font-size: 16px; font-weight: 600; margin-top: 8px; }
+.submit:disabled { opacity: 0.6; }
+.modal { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, 0.45); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { width: 100%; max-width: 640px; max-height: 80vh; display: flex; flex-direction: column; background: #fff; border-radius: 16px 16px 0 0; padding: 20px 20px calc(16px + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.sheet h2 { font-size: 18px; font-weight: 600; margin: 0 0 12px; }
+.dlist { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.dempty { padding: 32px 0; text-align: center; color: #6B6567; font-size: 14px; }
+.dcard { display: flex; gap: 12px; align-items: center; text-align: left; padding: 10px; border: 1px solid #DAD7D8; background: #fff; }
+.dcardOn { border-color: #AC1830; background: #FBF4F5; }
+.dphoto { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; background: #DAD7D8; flex: none; }
+.dphoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dcopy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dname { font-size: 15px; font-weight: 600; }
+.dspec { font-size: 12px; color: #6B6567; }
+.dtags { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11px; color: #AC1830; }
+.dconfirm { margin-top: 12px; width: 100%; padding: 14px 0; background: #AC1830; color: #fff; font-size: 16px; font-weight: 600; }
+.dconfirm:disabled { background: #DAD7D8; }

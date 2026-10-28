@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type ReviewDetail as Detail } from "@/lib/api";
 import { useRequireLogin } from "@/lib/me";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import SupportHeader from "./SupportHeader";
 import styles from "./Support.module.css";
 
@@ -13,7 +12,6 @@ const num = (n: number) => n.toLocaleString("ko-KR");
 
 /** review_detail.php: one review (text, photos, like), the hospital card and — for the author — the edit link (still PHP). */
 export default function ReviewDetail({ id, initial }: { id: number; initial?: Detail }) {
-  const php = usePhpBase();
   const qc = useQueryClient();
   const requireLogin = useRequireLogin();
   const { data, error, refetch } = useQuery({ queryKey: qk.reviewDetail(id), queryFn: () => api.reviewDetail(id), initialData: initial, staleTime: 15_000, retry: false });
@@ -97,7 +95,7 @@ export default function ReviewDetail({ id, initial }: { id: number; initial?: De
           )}
 
           {data.isMine && (
-            <a className={styles.edit} href={phpUrl(php, `review_write.php?id=${data.id}&return_url=${encodeURIComponent(`review_detail.php?id=${data.id}`)}`)}>수정하기</a>
+            <Link className={styles.edit} href={`/mypage/reviews/write?id=${data.id}`}>수정하기</Link>
           )}
         </>
       )}

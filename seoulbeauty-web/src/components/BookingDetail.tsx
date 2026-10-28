@@ -102,8 +102,8 @@ function Request({ d }: { d: BookingRequestDetail }) {
           {d.isCompleted && (
             <div className={styles.bdFoot}>
               <a className={`${support.btn} ${support.btnPri}`} href={phpUrl(php, `booking.php?id=${d.hospitalId}&rebook=1&source_booking_id=${d.id}&treatment=${encodeURIComponent(d.treatment === "-" ? "" : d.treatment)}`)}>다시예약</a>
-              {d.review?.state === "none" && <a className={support.btn} href={phpUrl(php, `review_write.php?booking_id=${d.id}`)}>후기작성하기</a>}
-              {d.review?.state === "rejected" && d.review.reviewId && <a className={support.btn} href={phpUrl(php, `review_write.php?id=${d.review.reviewId}`)}>후기 다시 작성</a>}
+              {d.review?.state === "none" && <Link className={support.btn} href={`/mypage/reviews/write?booking_id=${d.id}`}>후기작성하기</Link>}
+              {d.review?.state === "rejected" && d.review.reviewId && <Link className={support.btn} href={`/mypage/reviews/write?id=${d.review.reviewId}`}>후기 다시 작성</Link>}
               {d.review?.state === "published" && d.review.reviewId && <Link className={support.btn} href={`/reviews/${d.review.reviewId}`}>후기보기</Link>}
               {d.review?.state === "pending" && <span className={support.btn} aria-disabled="true" style={{ opacity: 0.6 }}>{d.review.label}</span>}
             </div>

@@ -48,14 +48,14 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
                       <div className={styles.rhosp}>{w.hospitalName}</div>
                       <div className={styles.rtreat}>{w.treatment}</div>
                       <Meta r={w} />
-                      <div className={styles.ractions}><a className={`${styles.rbtn} ${styles.rbtnPri}`} href={phpUrl(php, `review_write.php?hospital_id=${w.hospitalId}&booking_id=${w.bookingId}`)}>후기를 작성해볼까요?</a></div>
+                      <div className={styles.ractions}><Link className={`${styles.rbtn} ${styles.rbtnPri}`} href={`/mypage/reviews/write?hospital_id=${w.hospitalId}&booking_id=${w.bookingId}`}>후기를 작성해볼까요?</Link></div>
                     </div>
                   </div>
                 ))}
               </div>
             )
           ) : data.done.length === 0 ? (
-            <div className={styles.empty}>작성한 후기가 없습니다<br /><a className={styles.retry} href={phpUrl(php, "review_write.php")}>후기 작성하기</a></div>
+            <div className={styles.empty}>작성한 후기가 없습니다<br /><Link className={styles.retry} href="/mypage/reviews/write">후기 작성하기</Link></div>
           ) : (
             <div className={styles.rlist}>
               {data.done.map((r) => (

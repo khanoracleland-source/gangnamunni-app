@@ -70,6 +70,7 @@ class NextPilot {
     if (_notificationsPaths.contains(uri.path)) return _rewriteNotifications(uri);
     if (_profilePaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/profile', const {}, const {});
     if (_settingsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/settings', const {}, const {});
+    if (_reviewWritePaths.contains(uri.path)) return _rewriteReviewWrite(uri);
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
     if (!_listPaths.contains(uri.path)) return null;
@@ -160,6 +161,7 @@ class NextPilot {
   static final Set<String> _qnaPaths = {'/qna.php', _site.resolve('qna.php').path};
   static final Set<String> _profilePaths = {'/profile_edit.php', _site.resolve('profile_edit.php').path};
   static final Set<String> _settingsPaths = {'/notification_settings.php', _site.resolve('notification_settings.php').path};
+  static final Set<String> _reviewWritePaths = {'/review_write.php', _site.resolve('review_write.php').path};
   static final Set<String> _notificationsPaths = {'/my_notifications.php', _site.resolve('my_notifications.php').path};
   static final Set<String> _faqPaths = {'/faq.php', _site.resolve('faq.php').path};
   static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};
@@ -235,6 +237,27 @@ class NextPilot {
       port: _site.hasPort ? _site.port : null,
       path: '$basePath/mypage/bookings',
       queryParameters: (tab.isEmpty || tab == 'active') ? null : {'tab': tab},
+    );
+  }
+
+  /// review_write.php[?booking_id=N][&hospital_id=N][&id=N][&return_url=][&app=] -> /next/mypage/reviews/write (ids kept; the page goes back with history, so return_url is dropped).
+  static Uri? _rewriteReviewWrite(Uri uri) {
+    final q = uri.queryParameters;
+    if (q.keys.any((k) => !const {'booking_id', 'hospital_id', 'id', 'return_url', 'app'}.contains(k))) return null;
+    final kept = <String, String>{};
+    for (final k in const ['booking_id', 'hospital_id', 'id']) {
+      final raw = q[k] ?? '';
+      if (raw.isEmpty) continue;
+      final n = int.tryParse(raw);
+      if (n == null || n <= 0) return null;
+      kept[k] = '$n';
+    }
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/mypage/reviews/write',
+      queryParameters: kept.isEmpty ? null : kept,
     );
   }
 

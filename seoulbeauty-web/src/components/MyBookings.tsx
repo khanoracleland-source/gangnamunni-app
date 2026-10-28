@@ -97,9 +97,9 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
                 <Summary b={b} />
                 <div className={styles.bkActions}>
                   <a className={`${styles.bkBtn} ${styles.bkBtnPri}`} href={rebook(b)}>다시예약</a>
-                  {b.review?.state === "none" && <a className={styles.bkBtn} href={phpUrl(php, `review_write.php?booking_id=${b.id}&return_url=${encodeURIComponent("my_bookings.php?tab=completed")}`)}>후기작성</a>}
+                  {b.review?.state === "none" && <Link className={styles.bkBtn} href={`/mypage/reviews/write?booking_id=${b.id}`}>후기작성</Link>}
                   {b.review?.state === "published" && b.review.reviewId && <Link className={styles.bkBtn} href={`/reviews/${b.review.reviewId}`}>{b.review.label}</Link>}
-                  {b.review?.state === "rejected" && b.review.reviewId && <a className={styles.bkBtn} href={phpUrl(php, `review_write.php?id=${b.review.reviewId}&return_url=${encodeURIComponent("my_bookings.php?tab=completed")}`)}>후기 다시 작성</a>}
+                  {b.review?.state === "rejected" && b.review.reviewId && <Link className={styles.bkBtn} href={`/mypage/reviews/write?id=${b.review.reviewId}`}>후기 다시 작성</Link>}
                   {b.review?.state === "pending" && <span className={`${styles.bkBtn} ${styles.bkBtnOff}`} aria-disabled="true">{b.review.label}</span>}
                 </div>
               </article>

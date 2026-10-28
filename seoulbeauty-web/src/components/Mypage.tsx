@@ -109,8 +109,8 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
 
           <div className={styles.section}>
             <div className={styles.sectionTitle}>커뮤니티</div>
-            {row("community.php?my=1&php=1", "icon-mypage-community", "MY 커뮤니티 글")}
-            {row("my_wishlist.php?type=community", "icon-mypage-like", "MY 좋아요 목록")}
+            {row("/community", "icon-mypage-community", "MY 커뮤니티 글", undefined, true)}
+            {row("/mypage/wishlist", "icon-mypage-like", "MY 좋아요 목록", undefined, true)}
           </div>
           {support}
         </>

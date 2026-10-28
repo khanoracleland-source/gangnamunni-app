@@ -65,10 +65,26 @@ GRANT INSERT ON hms_saas.gangnamunni_member_birth_log TO 'sb_api_ro'@'localhost'
 -- 알림 설정 (POST /v1/mypage/notification-settings): one toggle per request
 GRANT INSERT (member_id), UPDATE (noti_general, noti_booking, noti_event, noti_promo, noti_push, noti_message, mkt_push, mkt_sms, mkt_email, mkt_night_push) ON hms_saas.gangnamunni_notification_settings TO 'sb_api_ro'@'127.0.0.1';
 GRANT INSERT (member_id), UPDATE (noti_general, noti_booking, noti_event, noti_promo, noti_push, noti_message, mkt_push, mkt_sms, mkt_email, mkt_night_push) ON hms_saas.gangnamunni_notification_settings TO 'sb_api_ro'@'localhost';
+-- 후기 작성/수정 (POST /v1/mypage/reviews)
+GRANT INSERT, UPDATE (hospital_id, title, content, rating, treatments, doctor_id, doctor_name, review_status, is_active, updated_at) ON hms_saas.hospital_reviews TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT, UPDATE (hospital_id, title, content, rating, treatments, doctor_id, doctor_name, review_status, is_active, updated_at) ON hms_saas.hospital_reviews TO 'sb_api_ro'@'localhost';
+GRANT INSERT, DELETE ON hms_saas.review_images TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT, DELETE ON hms_saas.review_images TO 'sb_api_ro'@'localhost';
+GRANT UPDATE (review_count, rating) ON hms_saas.gangnamunni_hospitals TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (review_count, rating) ON hms_saas.gangnamunni_hospitals TO 'sb_api_ro'@'localhost';
+-- 관리자 알림 (new review): send log + dead FCM tokens switched off (gangnamunni_user_notifications INSERT is granted above)
+GRANT INSERT ON hms_saas.gangnamunni_notification_sends TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_notification_sends TO 'sb_api_ro'@'localhost';
+GRANT UPDATE (is_active) ON hms_saas.gangnamunni_admin_fcm_tokens TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (is_active) ON hms_saas.gangnamunni_admin_fcm_tokens TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 SHOW GRANTS FOR 'sb_api_ro'@'127.0.0.1';
 ```
 Every new writing endpoint must add its table here (and nothing broader).
+
+Review photos and admin push also need files/dirs (not SQL):
+- `uploads/reviews` (= `REVIEW_UPLOAD_DIR`): `chgrp sbapi` + `chmod 2775`, and add it to the `ReadWritePaths=` drop-in (`ProtectSystem=strict`).
+- Firebase service account JSON (= `FCM_SERVICE_ACCOUNT_PATH`): `chgrp sbapi`, `chmod 640`. Its `project_id` must equal `FCM_EXPECTED_PROJECT_ID`.
 
 ## Service
 Run once as root, from the `seoulbeauty-api/` directory:

@@ -287,6 +287,16 @@ export interface CommunityForm {
   categories: string[]; maxPhotos: number; maxPhotoBytes: number;
   post: { id: number; category: string; title: string; content: string; photos: string[] } | null;
 }
+export interface ReviewFormDoctor { id: number; name: string; specialty: string; photoUrl: string | null; tags: string[] }
+/** GET /v1/mypage/review-form — review_write.php */
+export interface ReviewForm {
+  mode: "create" | "edit"; hospitalId: number; bookingId: number; editId: number; backUrl: string;
+  card: { name: string; address: string; imageUrl: string | null; treatment: string; doctorName: string; bookingDate: string } | null;
+  treatments: string[]; selectedTreatment: string; doctors: ReviewFormDoctor[]; selectedDoctorIds: number[]; doctorUnknown: boolean;
+  review: { rating: number; title: string; content: string } | null;
+  limits: { photoSlots: number; photoBytes: number; titleMax: number; contentMin: number; contentMax: number };
+}
+export interface ReviewFormQuery { booking_id?: number; hospital_id?: number; id?: number; return_url?: string }
 export interface BlockedUser { id: number; name: string; createdAt: string }
 export interface CommunityListParams { tab?: string; category?: string; region?: string; q?: string; page?: number }
 /** GET /v1/community/:id — detail_community.php */
@@ -327,6 +337,8 @@ export const api = {
   notificationsReadAll: () => post<{ success: boolean }>("/v1/mypage/notifications/read-all", {}),
   notificationDelete: (id: number) => send<{ success: boolean }>("DELETE", `/v1/mypage/notifications/${id}`),
   myProfile: (ctx?: ServerCtx) => get<MyProfile>("/v1/mypage/profile", undefined, ctx),
+  reviewForm: (q: ReviewFormQuery, ctx?: ServerCtx) => get<ReviewForm>("/v1/mypage/review-form", { ...q }, ctx),
+  saveReview: (form: FormData) => send<{ success: boolean; id: number; already?: boolean; photoError?: boolean; message: string }>("POST", "/v1/mypage/reviews", form, 60000),
   saveProfile: (form: FormData) => send<{ success: boolean; photoError: string | null; photoUrl: string | null }>("POST", "/v1/mypage/profile", form, 30000),
   notificationSettings: (ctx?: ServerCtx) => get<{ settings: NotificationSettings }>("/v1/mypage/notification-settings", undefined, ctx),
   setNotificationSetting: (field: SettingKey, value: boolean) => post<{ success: boolean }>("/v1/mypage/notification-settings", { field, value: value ? "1" : "0" }),
