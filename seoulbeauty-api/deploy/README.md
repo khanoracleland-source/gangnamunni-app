@@ -29,6 +29,19 @@ GRANT INSERT ON hms_saas.gangnamunni_community_comment_threads TO 'sb_api_ro'@'1
 GRANT INSERT ON hms_saas.gangnamunni_community_comment_threads TO 'sb_api_ro'@'localhost';
 GRANT UPDATE (like_count, comment_count, view_count) ON hms_saas.gangnamunni_community_posts TO 'sb_api_ro'@'127.0.0.1';
 GRANT UPDATE (like_count, comment_count, view_count) ON hms_saas.gangnamunni_community_posts TO 'sb_api_ro'@'localhost';
+-- 커뮤니티 쓰기: 글 작성/수정/삭제(소프트), 신고, 차단, 후기 좋아요 (POST/PUT/DELETE /v1/community..., /reports, /blocks, /reviews/:id/like)
+GRANT INSERT ON hms_saas.gangnamunni_community_posts TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_community_posts TO 'sb_api_ro'@'localhost';
+GRANT UPDATE (category, title, content, photos, status) ON hms_saas.gangnamunni_community_posts TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (category, title, content, photos, status) ON hms_saas.gangnamunni_community_posts TO 'sb_api_ro'@'localhost';
+GRANT INSERT ON hms_saas.gangnamunni_content_reports TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_content_reports TO 'sb_api_ro'@'localhost';
+GRANT INSERT, DELETE ON hms_saas.gangnamunni_blocked_users TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT, DELETE ON hms_saas.gangnamunni_blocked_users TO 'sb_api_ro'@'localhost';
+GRANT INSERT, DELETE ON hms_saas.review_likes TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT, DELETE ON hms_saas.review_likes TO 'sb_api_ro'@'localhost';
+GRANT UPDATE (like_count) ON hms_saas.hospital_reviews TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (like_count) ON hms_saas.hospital_reviews TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 SHOW GRANTS FOR 'sb_api_ro'@'127.0.0.1';
 ```

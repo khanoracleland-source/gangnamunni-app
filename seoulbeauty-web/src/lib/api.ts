@@ -160,14 +160,15 @@ async function get<T>(path: string, params?: Record<string, string | number | un
   return (await res.json()) as T;
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function send<T>(method: "POST" | "PUT" | "DELETE", path: string, body?: unknown, ms = 10000): Promise<T> {
   const url = `${base()}${path}`;
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  const headers: Record<string, string> = { accept: "application/json", "X-Requested-With": "XMLHttpRequest" };
+  if (!isForm) headers["content-type"] = "application/json"; // multipart: the browser sets the boundary
   const res = await fetch(url, {
-    method: "POST",
-    headers: { accept: "application/json", "content-type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-    credentials: "same-origin",
-    body: JSON.stringify(body),
-    signal: timeoutSignal(10000),
+    method, headers, credentials: "same-origin",
+    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
+    signal: timeoutSignal(ms),
   });
   if (!res.ok) {
     let msg = `${res.status} ${path}`;
@@ -176,6 +177,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   }
   return (await res.json()) as T;
 }
+const post = <T,>(path: string, body: unknown) => send<T>("POST", path, body);
 
 export interface WishlistState { wishlisted: boolean; count: number }
 export interface ConsultationInput { hospitalId: number; type: "general" | "doctor" | "kakao"; name: string; phone: string; message: string }
@@ -224,15 +226,21 @@ export type CommunityTab = "latest" | "popular" | "review";
 export interface CommunityItem {
   id: number; kind: "post" | "review"; category: string; title: string; preview: string; fullText: string | null;
   createdAt: string; updatedAt: string | null; authorName: string; authorAvatar: string | null; photos: string[];
-  likeCount: number; commentCount: number; viewCount: number; liked: boolean;
+  likeCount: number; commentCount: number; viewCount: number; liked: boolean; isMine: boolean;
 }
 export interface CommunityList {
   tab: CommunityTab; category: string; regions: string[]; q: string;
   page: number; perPage: number; total: number; totalPages: number; items: CommunityItem[];
 }
+export type ContentType = "community" | "comment" | "review";
+export interface CommunityForm {
+  categories: string[]; maxPhotos: number; maxPhotoBytes: number;
+  post: { id: number; category: string; title: string; content: string; photos: string[] } | null;
+}
+export interface BlockedUser { id: number; name: string; createdAt: string }
 export interface CommunityListParams { tab?: string; category?: string; region?: string; q?: string; page?: number }
 /** GET /v1/community/:id — detail_community.php */
-export interface CommunityComment { id: number; parentId: number; authorName: string; content: string; createdAt: string; likeCount: number; liked: boolean }
+export interface CommunityComment { id: number; parentId: number; authorName: string; content: string; createdAt: string; likeCount: number; liked: boolean; isMine: boolean }
 export interface CommunityPost {
   id: number; category: string; title: string; content: string; createdAt: string; authorName: string; authorAvatar: string | null; photos: string[];
   likeCount: number; commentCount: number; viewCount: number; liked: boolean; isAuthor: boolean; comments: CommunityComment[];
@@ -261,6 +269,15 @@ export const api = {
   communityPost: (id: number, o: { view?: boolean } = {}, ctx?: ServerCtx) => get<CommunityPost>(`/v1/community/${id}`, o.view ? { view: 1 } : undefined, ctx),
   toggleCommunityLike: (id: number) => post<{ success: boolean; liked: boolean; count: number }>(`/v1/community/${id}/like`, {}),
   addCommunityComment: (id: number, content: string, parentId: number) => post<{ success: boolean; id: number }>(`/v1/community/${id}/comments`, { content, parentId }),
+  communityForm: (id?: number, ctx?: ServerCtx) => get<CommunityForm>("/v1/community/form", id ? { id } : undefined, ctx),
+  saveCommunityPost: (id: number | null, form: FormData) => send<{ success: boolean; id: number; message: string }>(id ? "PUT" : "POST", id ? `/v1/community/${id}` : "/v1/community", form, 60000),
+  deleteCommunityPost: (id: number) => send<{ success: boolean }>("DELETE", `/v1/community/${id}`),
+  reportContent: (contentType: ContentType, contentId: number, reasons: string[], reasonDetail: string) =>
+    post<{ success: boolean; message: string }>("/v1/community/reports", { contentType, contentId, reasons, reasonDetail }),
+  blockAuthor: (contentType: ContentType, contentId: number) => post<{ success: boolean; message: string }>("/v1/community/blocks", { contentType, contentId }),
+  blockedUsers: () => get<{ items: BlockedUser[] }>("/v1/community/blocks"),
+  unblockUser: (rowId: number) => send<{ success: boolean }>("DELETE", `/v1/community/blocks/${rowId}`),
+  toggleReviewLike: (id: number) => post<{ success: boolean; liked: boolean; count: number }>(`/v1/community/reviews/${id}/like`, {}),
   setCommunityCommentLike: (id: number, commentId: number, liked: boolean) => post<{ success: boolean; liked: boolean; count: number }>(`/v1/community/${id}/comments/${commentId}/like`, { liked }),
   suggest: (q: string) => get<SearchSuggest>("/v1/search/suggest", { q }),
   hospital: (id: number) => get<HospitalDetail>(`/v1/hospitals/${id}`),

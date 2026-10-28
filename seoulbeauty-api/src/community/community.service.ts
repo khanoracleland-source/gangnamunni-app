@@ -11,14 +11,14 @@ export interface CommunityItem {
   id: number; kind: 'post' | 'review'; category: string; title: string;
   preview: string; fullText: string | null; createdAt: string; updatedAt: string | null;
   authorName: string; authorAvatar: string | null; photos: string[];
-  likeCount: number; commentCount: number; viewCount: number; liked: boolean;
+  likeCount: number; commentCount: number; viewCount: number; liked: boolean; isMine: boolean;
 }
 export interface CommunityList {
   tab: CommunityTab; category: string; regions: string[]; q: string;
   page: number; perPage: number; total: number; totalPages: number; items: CommunityItem[];
 }
 export interface CommunityComment {
-  id: number; parentId: number; authorName: string; content: string; createdAt: string; likeCount: number; liked: boolean;
+  id: number; parentId: number; authorName: string; content: string; createdAt: string; likeCount: number; liked: boolean; isMine: boolean;
 }
 export interface CommunityPost {
   id: number; category: string; title: string; content: string; createdAt: string;
@@ -67,7 +67,7 @@ export class CommunityService {
       const [[cnt], [rows]] = (await Promise.all([
         this.db.query(`SELECT COUNT(*) AS cnt FROM hospital_reviews r WHERE ${where.join(' AND ')}`, vals),
         this.db.query(
-          `SELECT r.id, r.title, r.content, r.created_at, r.updated_at, r.user_name AS author_name, r.user_avatar AS author_avatar,
+          `SELECT r.id, r.user_id, r.title, r.content, r.created_at, r.updated_at, r.user_name AS author_name, r.user_avatar AS author_avatar,
                   r.like_count, r.comment_count, r.view_count, r.rating, r.photo_urls AS photos
              FROM hospital_reviews r WHERE ${where.join(' AND ')} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
           [...vals, COMMUNITY_PER_PAGE, offset]),
@@ -93,7 +93,7 @@ export class CommunityService {
           id: n(r.id), kind: 'review' as const, category: `⭐ ${n(r.rating).toFixed(1)} 시술후기`, title: s(r.title),
           preview, fullText, createdAt: s(r.created_at), updatedAt: r.updated_at ? s(r.updated_at) : null,
           authorName: s(r.author_name) || '익명', authorAvatar: r.author_avatar ? s(r.author_avatar) : null, photos: photos.slice(0, 2),
-          likeCount: n(r.like_count), commentCount: n(r.comment_count), viewCount: n(r.view_count), liked: liked.has(n(r.id)),
+          likeCount: n(r.like_count), commentCount: n(r.comment_count), viewCount: n(r.view_count), liked: liked.has(n(r.id)), isMine: !!viewer && s(r.user_id) === viewer,
         };
       });
     } else {
@@ -124,7 +124,7 @@ export class CommunityService {
           createdAt: s(r.created_at), updatedAt: r.updated_at ? s(r.updated_at) : null,
           authorName: s(r.author_name) || '익명', authorAvatar: r.author_avatar ? s(r.author_avatar) : null,
           photos: listPhotos(r.photos).slice(0, 2),
-          likeCount: n(r.like_count), commentCount: n(r.comment_count), viewCount: n(r.view_count), liked: liked.has(n(r.id)),
+          likeCount: n(r.like_count), commentCount: n(r.comment_count), viewCount: n(r.view_count), liked: liked.has(n(r.id)), isMine: !!viewer && s(r.mb_id) === viewer,
         };
       });
     }
@@ -212,6 +212,7 @@ export class CommunityService {
       comments: ordered.map((c) => ({
         id: n(c.id), parentId: n(c.parent_id), authorName: s(c.author) || '익명', content: s(c.content), createdAt: s(c.created_at),
         likeCount: likes.get(n(c.id))?.count ?? 0, liked: likes.get(n(c.id))?.liked ?? false,
+        isMine: !!viewer && s(c.mb_id) === viewer.id,
       })),
     };
   }

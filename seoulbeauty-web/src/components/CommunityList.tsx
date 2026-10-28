@@ -6,12 +6,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, assetUrl, qk, type CommunityItem, type CommunityList as Data, type CommunityListParams, type CommunityTab } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import { useLoginUrl, useMe, useRequireLogin } from "@/lib/me";
+import ContentActions from "./ContentActions";
 import { timeDisplay, num } from "@/lib/community";
 import { COMMUNITY_REGION_KEY, writeRegions } from "./SiteHeader";
 import styles from "./CommunityList.module.css";
 
 const ICON = (name: string) => assetUrl(`assets/icons/${name}.png?v=1`) ?? "";
-const DOTS = <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>;
 
 function pageHref(p: { tab: CommunityTab; category: string; region: string; q: string }, page: number): string {
   const u = new URLSearchParams();
@@ -66,15 +66,15 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
   }, [params.region, pathname, router, sp]);
 
   const like = useMutation({
-    mutationFn: (id: number) => api.toggleCommunityLike(id),
-    onSuccess: (r, id) => {
-      qc.setQueryData<Data>(key, (p) => p && { ...p, items: p.items.map((i) => (i.kind === "post" && i.id === id ? { ...i, liked: r.liked, likeCount: r.count } : i)) });
+    mutationFn: (it: CommunityItem) => (it.kind === "review" ? api.toggleReviewLike(it.id) : api.toggleCommunityLike(it.id)),
+    onSuccess: (r, it) => {
+      qc.setQueryData<Data>(key, (p) => p && { ...p, items: p.items.map((i) => (i.kind === it.kind && i.id === it.id ? { ...i, liked: r.liked, likeCount: r.count } : i)) });
       say(r.liked ? "좋아요 반영되었습니다." : "좋아요 취소되었습니다.");
     },
   });
   const toggleLike = (it: CommunityItem) => {
-    if (it.kind !== "post" || like.isPending) return;
-    void requireLogin(() => like.mutateAsync(it.id)).catch(() => say("좋아요 처리 중 오류가 발생했습니다."));
+    if (like.isPending) return;
+    void requireLogin(() => like.mutateAsync(it)).catch(() => say("좋아요 처리 중 오류가 발생했습니다."));
   };
 
   const detailHref = (it: CommunityItem) => (it.kind === "review" ? phpUrl(php, `review_detail.php?id=${it.id}`) : `/community/${it.id}`);
@@ -145,10 +145,9 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
                       </div>
                       <span className={styles.aname}>{it.authorName}</span>
                       <div className={styles.stats}>
-                        <span className={`${styles.stat} ${it.kind === "post" ? styles.like : styles.likeStatic} ${it.liked ? styles.liked : ""}`}
-                          role={it.kind === "post" ? "button" : undefined} aria-pressed={it.kind === "post" ? it.liked : undefined}
-                          aria-label={it.kind === "post" ? "좋아요" : undefined}
-                          onClick={it.kind === "post" ? (e) => { e.stopPropagation(); toggleLike(it); } : undefined}>
+                        <span className={`${styles.stat} ${styles.like} ${it.liked ? styles.liked : ""}`}
+                          role="button" aria-pressed={it.liked} aria-label="좋아요"
+                          onClick={(e) => { e.stopPropagation(); toggleLike(it); }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={ICON(it.liked ? "icon-community-heart-on" : "icon-community-heart")} alt="" />
                           <span>{num(it.likeCount)}</span>
@@ -157,9 +156,8 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
                         <span className={styles.stat}><img src={ICON("icon-community-comment")} alt="" />{num(it.commentCount)}</span>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <span className={styles.stat}><img src={ICON("icon-community-view")} alt="" />{num(it.viewCount)}</span>
-                        {/* The report / block / edit / delete sheet still lives on the PHP pages. */}
-                        <a className={styles.more} aria-label="게시글 메뉴 (신고·차단)" title="신고·차단"
-                          href={phpUrl(php, it.kind === "review" ? `review_detail.php?id=${it.id}` : `detail_community.php?id=${it.id}&php=1`)}>{DOTS}</a>
+                        <ContentActions type={it.kind === "review" ? "review" : "community"} id={it.id} isMine={it.isMine} authorName={it.authorName} className={styles.more}
+                          onDone={(w) => say(w === "deleted" ? "게시글이 삭제되었습니다." : w === "blocked" ? "사용자를 차단했습니다." : "신고가 접수되었습니다.")} />
                       </div>
                     </div>
                   </div>
@@ -178,12 +176,11 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
         </>
       )}
 
-      {/* Writing a post stays in PHP (photo upload + admin review flow). */}
       {me.data?.loggedIn ? (
-        <a href={phpUrl(php, "community_write.php")} className={styles.fab} title="글쓰기" aria-label="글쓰기">
+        <Link href="/community/write" className={styles.fab} title="글쓰기" aria-label="글쓰기">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={ICON("icon-community-write")} alt="" />
-        </a>
+        </Link>
       ) : (
         <a href={loginUrl()} className={styles.fab} title="글쓰기" aria-label="글쓰기 (로그인 필요)">
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -56,6 +56,7 @@ class NextPilot {
     if (_eventDetailPaths.contains(uri.path)) return _rewriteEventDetail(uri);
     if (_communityPaths.contains(uri.path)) return _rewriteCommunity(uri);
     if (_communityDetailPaths.contains(uri.path)) return _rewriteCommunityDetail(uri);
+    if (_communityWritePaths.contains(uri.path)) return _rewriteCommunityWrite(uri);
     // The startup URL (/hairwang/gangnamunni/) redirects to the site root, so the
     // list is served as /hospitals.php; accept the legacy path too.
     if (!_listPaths.contains(uri.path)) return null;
@@ -131,6 +132,7 @@ class NextPilot {
   }
 
   static final Set<String> _communityPaths = {'/community.php', _site.resolve('community.php').path};
+  static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};
   static final Set<String> _communityDetailPaths = {'/detail_community.php', _site.resolve('detail_community.php').path};
 
   /// community.php[?tab=][&category=][&region=][&q=][&page=][&app=] -> /next/community (any other parameter keeps the PHP page).
@@ -155,8 +157,23 @@ class NextPilot {
     );
   }
 
-  /// detail_community.php?id=N[&app=] -> /next/community/N. Any other parameter keeps the PHP page — the
-  /// Next page links its "⋯" menu to `detail_community.php?id=N&php=1` to reach the PHP report/block/delete sheet.
+  /// community_write.php[?id=N][&app=] -> /next/community/write[?id=N] (any other parameter keeps the PHP page).
+  static Uri? _rewriteCommunityWrite(Uri uri) {
+    final q = uri.queryParameters;
+    if (q.keys.any((k) => k != 'id' && k != 'app')) return null;
+    final idRaw = q['id'] ?? '';
+    final id = int.tryParse(idRaw);
+    if (idRaw.isNotEmpty && (id == null || id <= 0)) return null;
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/community/write',
+      queryParameters: idRaw.isEmpty ? null : {'id': idRaw},
+    );
+  }
+
+  /// detail_community.php?id=N[&app=] -> /next/community/N. Any other parameter keeps the PHP page (`&php=1` escape hatch).
   static Uri? _rewriteCommunityDetail(Uri uri) {
     final q = uri.queryParameters;
     final id = int.tryParse(q['id'] ?? '');

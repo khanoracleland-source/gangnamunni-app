@@ -3,19 +3,17 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type CommunityPost } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import { useLoginUrl, useMe, useRequireLogin } from "@/lib/me";
 import { commentAge, num, shortDate } from "@/lib/community";
+import ContentActions from "./ContentActions";
 import styles from "./CommunityDetail.module.css";
 
 const ICON = (name: string) => assetUrl(`assets/icons/${name}.png?v=1`) ?? "";
-const DOTS = <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>;
 
 /** detail_community.php: post, nested comments (one reply level), post + comment likes, comment form. */
 export default function CommunityDetail({ id, initial }: { id: number; initial?: CommunityPost }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const php = usePhpBase();
   const me = useMe();
   const loginUrl = useLoginUrl();
   const requireLogin = useRequireLogin();
@@ -127,7 +125,8 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
       .catch((err) => say(errMsg(err, "댓글을 저장하지 못했습니다. 다시 시도해주세요.")));
   };
   const reply = (cid: number, name: string) => { setReplyTo({ id: cid, name }); inputRef.current?.focus(); };
-  const detailPhp = phpUrl(php, `detail_community.php?id=${post.id}&php=1`);
+  // deleted or blocked: the post is no longer shown to this viewer, go back to the list
+  const afterAction = (w: "deleted" | "blocked" | "reported") => { if (w === "reported") say("신고가 접수되었습니다."); else router.push("/community"); };
 
   return (
     <>
@@ -174,8 +173,7 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
             </a>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <span className={styles.stat} aria-label="조회수"><img src={ICON("icon-community-view")} alt="" />{num(post.viewCount)}</span>
-            {/* Report / block / edit / delete live in the PHP page's action sheet. */}
-            <a className={styles.more} href={detailPhp} aria-label="게시글 메뉴 (신고·차단·수정·삭제)" title="신고·차단·수정·삭제">{DOTS}</a>
+            <ContentActions type="community" id={post.id} isMine={post.isAuthor} authorName={post.authorName} className={styles.more} onDone={afterAction} />
           </div>
         </div>
 
@@ -197,6 +195,7 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={ICON(c.liked ? "icon-community-heart-on" : "icon-community-heart")} alt="" />{c.likeCount > 0 ? num(c.likeCount) : ""}
                 </button>
+                <ContentActions type="comment" id={c.id} isMine={c.isMine} authorName={c.authorName} className={styles.cbtn} onDone={(w) => (w === "blocked" ? afterAction(w) : say("신고가 접수되었습니다."))} />
                 {!c.parentId && (
                   <button type="button" className={styles.cbtn} onClick={() => reply(c.id, c.authorName)}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}

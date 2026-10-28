@@ -1,0 +1,17 @@
+/* Functional skeleton: the final design will replace these values. */
+.wrap { box-sizing: border-box; max-width: 640px; margin: 0 auto; padding: 0 20px 40px; color: #1A1718; }
+.head { position: relative; height: 52px; display: flex; align-items: center; justify-content: center; }
+.back { position: absolute; left: -12px; width: 36px; height: 44px; font-size: 23px; color: inherit; }
+.title { font-size: 20px; font-weight: 500; }
+.field { display: block; width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 12px; border: 1px solid #DAD7D8; font: inherit; font-size: 15px; background: #fff; }
+.area { min-height: 220px; resize: vertical; }
+.photos { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.thumb { position: relative; width: 84px; height: 84px; background: #DAD7D8; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; line-height: 22px; }
+.add { width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; border: 1px dashed #9A9395; color: #6B6567; font-size: 14px; cursor: pointer; }
+.hint { font-size: 13px; color: #9A9395; margin-bottom: 12px; }
+.error { color: #AC1830; font-size: 14px; margin-bottom: 12px; }
+.submit { width: 100%; padding: 14px 0; background: #AC1830; color: #fff; font-size: 16px; font-weight: 600; }
+.submit:disabled { opacity: 0.6; }
+.empty { padding: 60px 20px; text-align: center; }
