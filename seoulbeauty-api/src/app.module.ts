@@ -11,6 +11,7 @@ import { SearchModule } from './search/search.module';
 import { EventsModule } from './events/events.module';
 import { CommunityModule } from './community/community.module';
 import { MypageModule } from './mypage/mypage.module';
+import { BookingsModule } from './bookings/bookings.module';
 import { FaqModule } from './faq/faq.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { HealthController } from './health/health.controller';
@@ -30,6 +31,7 @@ import { HealthController } from './health/health.controller';
     CommunityModule,
     MypageModule,
     FaqModule,
+    BookingsModule,
     ReviewsModule,
   ],
   controllers: [HealthController],

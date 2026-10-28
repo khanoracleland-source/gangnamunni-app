@@ -61,6 +61,8 @@ class NextPilot {
     if (_myWishlistPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/wishlist', const {}, const {});
     if (_myReviewsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/reviews', const {'tab'}, const {'tab': {'writable', 'done'}});
     if (_myConsultationsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/consultations', const {}, const {});
+    if (_myBookingsPaths.contains(uri.path)) return _rewriteBookings(uri);
+    if (_bookingDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'mypage/bookings', idParam: 'booking_id');
     if (_myConsultationDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'mypage/consultations');
     if (_reviewDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'reviews');
     if (_qnaPaths.contains(uri.path)) return _rewriteMine(uri, 'qna', const {}, const {});
@@ -144,6 +146,12 @@ class NextPilot {
   static final Set<String> _myWishlistPaths = {'/my_wishlist.php', _site.resolve('my_wishlist.php').path};
   static final Set<String> _myReviewsPaths = {'/my_reviews.php', _site.resolve('my_reviews.php').path};
   static final Set<String> _myConsultationsPaths = {'/my_consultations.php', _site.resolve('my_consultations.php').path};
+  static final Set<String> _myBookingsPaths = {'/my_bookings.php', _site.resolve('my_bookings.php').path};
+  // booking_request_detail.php (active/completed) and booking_cancel_detail.php (cancelled) share one Next page.
+  static final Set<String> _bookingDetailPaths = {
+    '/booking_request_detail.php', _site.resolve('booking_request_detail.php').path,
+    '/booking_cancel_detail.php', _site.resolve('booking_cancel_detail.php').path,
+  };
   static final Set<String> _myConsultationDetailPaths = {'/my_consultation_detail.php', _site.resolve('my_consultation_detail.php').path};
   static final Set<String> _reviewDetailPaths = {'/review_detail.php', _site.resolve('review_detail.php').path};
   static final Set<String> _qnaPaths = {'/qna.php', _site.resolve('qna.php').path};
@@ -196,16 +204,31 @@ class NextPilot {
   }
 
   /// my_consultation_detail.php?id=N, review_detail.php?id=N [&app=] -> `/next/<prefix>/N` (any other parameter keeps the PHP page).
-  static Uri? _rewriteIdPage(Uri uri, String prefix) {
+  static Uri? _rewriteIdPage(Uri uri, String prefix, {String idParam = 'id'}) {
     final q = uri.queryParameters;
-    final id = int.tryParse(q['id'] ?? '');
+    final id = int.tryParse(q[idParam] ?? '');
     if (id == null || id <= 0) return null;
-    if (q.keys.any((k) => k != 'id' && k != 'app')) return null;
+    if (q.keys.any((k) => k != idParam && k != 'app')) return null;
     return Uri(
       scheme: _site.scheme,
       host: _site.host,
       port: _site.hasPort ? _site.port : null,
       path: '$basePath/$prefix/$id',
+    );
+  }
+
+  /// my_bookings.php[?tab=active|completed|cancelled][&app=] -> /next/mypage/bookings[?tab=] (`action=`, `from=` etc. keep the PHP page).
+  static Uri? _rewriteBookings(Uri uri) {
+    final q = uri.queryParameters;
+    if (q.keys.any((k) => k != 'tab' && k != 'app')) return null;
+    final tab = q['tab'] ?? '';
+    if (tab.isNotEmpty && !const {'active', 'completed', 'cancelled'}.contains(tab)) return null;
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/mypage/bookings',
+      queryParameters: (tab.isEmpty || tab == 'active') ? null : {'tab': tab},
     );
   }
 

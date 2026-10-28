@@ -186,6 +186,26 @@ export interface MypageSummary {
   points: { visible: boolean; balance: number }; ads: { show: boolean; autoScroll: boolean; items: MypageAd[] };
 }
 export interface MyWishlistItem { id: number; hospitalId: number; name: string; available: boolean; imageUrl: string | null; district: string; address: string }
+export interface BookingBase { id: number; hospitalId: number; hospitalName: string; imageUrl: string | null; treatment: string; price: number; dateText: string; status: string }
+export interface UpcomingBooking extends BookingBase { chip: string; steps: string[]; activeStep: number; action: "pay" | "change" | null; editsLeft: number; paid: boolean }
+export interface CompletedBooking extends BookingBase { isDone: boolean; chip: string; review: { state: "none" | "pending" | "published" | "rejected"; label: string; reviewId: number | null } | null }
+export interface CancelledBooking extends BookingBase { chip: string; refundComplete: boolean; steps: string[]; activeStep: number }
+export interface MyBookingsData {
+  upcoming: UpcomingBooking[]; completed: CompletedBooking[]; cancelled: CancelledBooking[]; showPushHint: boolean;
+  expiredNotice: { bookingId: number; hospitalId: number; treatment: string; deadlineHours: number } | null;
+}
+export interface BookingNotification { at: string; event: string | null; title: string; body: string; inApp: number; pushSent: number; pushFailed: number; pushSkipped: boolean }
+interface BookingDetailBase { id: number; hospitalId: number; hospitalName: string; treatment: string; bookerName: string; phone: string; dateText: string; price: number; status: string }
+export interface BookingRequestDetail extends BookingDetailBase {
+  kind: "request"; statusLabel: string; isActive: boolean; isCompleted: boolean; dday: string; doctorName: string | null; treatmentPrice: number; totalPayment: number;
+  summary: { gross: number; points: number; final: number; expectedPoints: number | null } | null;
+  review: { state: "none" | "pending" | "published" | "rejected"; label: string; reviewId: number | null } | null;
+  notifications: BookingNotification[];
+}
+export interface BookingCancelDetail extends BookingDetailBase {
+  kind: "cancelled"; badge: string; reason: string | null; paid: { total: number; cancelledAt: string | null; refunded: number | null } | null;
+}
+export type BookingDetail = BookingRequestDetail | BookingCancelDetail;
 export interface FaqData { categories: string[]; items: { id: number; category: string; question: string; answer: string }[] }
 export interface ConsultationDetail {
   id: number; hospitalId: number; hospitalName: string; status: string; statusLabel: string; statusTone: "danger" | "muted" | "dark"; type: string;
@@ -288,6 +308,9 @@ export const api = {
   mypage: (ctx?: ServerCtx) => get<MypageSummary>("/v1/mypage", undefined, ctx),
   myWishlist: (ctx?: ServerCtx) => get<{ items: MyWishlistItem[] }>("/v1/mypage/wishlist", undefined, ctx),
   myConsultations: (ctx?: ServerCtx) => get<{ items: MyConsultation[]; anyPhone: string | null }>("/v1/mypage/consultations", undefined, ctx),
+  myBookings: (ctx?: ServerCtx) => get<MyBookingsData>("/v1/mypage/bookings", undefined, ctx),
+  bookingDetail: (id: number, ctx?: ServerCtx) => get<BookingDetail>(`/v1/mypage/bookings/${id}`, undefined, ctx),
+  bookingExpireSeen: (id: number) => post<{ success: boolean }>(`/v1/mypage/bookings/${id}/expire-seen`, {}),
   faq: (ctx?: ServerCtx) => get<FaqData>("/v1/faq", undefined, ctx),
   consultation: (id: number, ctx?: ServerCtx) => get<ConsultationDetail>(`/v1/mypage/consultations/${id}`, undefined, ctx),
   rerequestConsultation: (id: number, slot: string) => post<{ success: boolean }>(`/v1/mypage/consultations/${id}/rerequest`, { slot }),
@@ -337,6 +360,8 @@ export const qk = {
   myConsultations: ["mypage", "consultations"] as const,
   myReviews: ["mypage", "reviews"] as const,
   faq: ["faq"] as const,
+  myBookings: ["mypage", "bookings"] as const,
+  bookingDetail: (id: number) => ["mypage", "booking", id] as const,
   consultation: (id: number) => ["mypage", "consultation", id] as const,
   reviewDetail: (id: number) => ["reviewDetail", id] as const,
   home: ["home"] as const,
