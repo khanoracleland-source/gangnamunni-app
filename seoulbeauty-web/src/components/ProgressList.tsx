@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, type ProgressCard, type ProgressList as Data } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
 import my from "./MyPages.module.css";
@@ -25,7 +24,6 @@ export function Card({ p }: { p: ProgressCard }) {
 export default function ProgressList({ initial, anon }: { initial?: Data; anon?: boolean }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const php = usePhpBase();
   const { data, error, refetch } = useQuery({ queryKey: qk.myProgress, queryFn: () => api.myProgress(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const [bookingId, setBookingId] = useState(0);
@@ -62,7 +60,7 @@ export default function ProgressList({ initial, anon }: { initial?: Data; anon?:
             <div className={styles.alert}>
               시술 후기는 경과를 <b>{data.rules.procedure.need}회</b> 이상, 수술 후기는 <b>{data.rules.surgery.need}회</b> 이상 기록하고 작성 완료하면
               검수 후 <b>{data.rules.procedure.point.toLocaleString("ko-KR")}P / {data.rules.surgery.point.toLocaleString("ko-KR")}P</b>가 적립됩니다.{" "}
-              <a href={phpUrl(php, "my_points_policy_detail.php?type=progress")}>자세히</a>
+              <Link href="/points-policy/progress">자세히</Link>
             </div>
             {data.items.length === 0 ? <div className={styles.empty}><p>아직 작성한 경과 후기가 없습니다.</p></div> : data.items.map((p) => <Card key={p.id} p={p} />)}
           </div>

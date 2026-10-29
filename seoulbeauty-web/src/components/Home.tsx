@@ -116,9 +116,9 @@ export default function Home({ initial }: { initial?: HomeData }) {
         <p>고객센터 E-mail: <a href="mailto:info@seoulbeauty.app">info@seoulbeauty.app</a></p>
         <nav className={styles.companyLinks} aria-label="회사 정책 및 고객센터">
           <a className={styles.linkStrong} href={phpUrl(php, "qna.php")}>고객센터 문의하기</a>
-          <a href={phpUrl(php, "terms_of_service.php")}>이용약관</a>
-          <a href={phpUrl(php, "terms_of_service.php")}>위치기반서비스 이용약관</a>
-          <a className={styles.linkStrong} href={phpUrl(php, "privacy_policy.php")}>개인정보처리방침</a>
+          <Link href="/terms">이용약관</Link>
+          <Link href="/terms">위치기반서비스 이용약관</Link>
+          <Link className={styles.linkStrong} href="/privacy">개인정보처리방침</Link>
         </nav>
         <div className={styles.notice}>
           <p>셀럽몰 주식회사는 통신판매의 당사자가 아니므로,</p>

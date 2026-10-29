@@ -53,7 +53,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
           <section className={styles.stSection}>
             <div className={styles.stLabel}>서비스 안내</div>
             <Link className={`${styles.stItem} ${styles.stLink}`} href="/qna"><span style={{ color: "#AC1830" }}>제휴 및 광고문의</span></Link>
-            <a className={`${styles.stItem} ${styles.stLink}`} href={phpUrl(php, "bbs/register.php?view=terms")}><span>이용약관 및 개인정보처리 방침</span></a>
+            <Link className={`${styles.stItem} ${styles.stLink}`} href="/register-terms"><span>이용약관 및 개인정보처리 방침</span></Link>
           </section>
           {!data ? (
             <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>

@@ -184,6 +184,9 @@ async function send<T>(method: "POST" | "PUT" | "DELETE", path: string, body?: u
 }
 const post = <T,>(path: string, body: unknown) => send<T>("POST", path, body);
 
+/** GET /v1/legal/register-terms — bbs/register.php?view=terms */
+export interface RegisterTermsData { terms: string; privacy: string }
+
 /** /v1/mypage* — 마이페이지 (member only) */
 export interface MypageAd { id: number; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string }
 export interface MypageSummary {
@@ -370,6 +373,9 @@ export const api = {
   notificationSettings: (ctx?: ServerCtx) => get<{ settings: NotificationSettings }>("/v1/mypage/notification-settings", undefined, ctx),
   setNotificationSetting: (field: SettingKey, value: boolean) => post<{ success: boolean }>("/v1/mypage/notification-settings", { field, value: value ? "1" : "0" }),
   faq: (ctx?: ServerCtx) => get<FaqData>("/v1/faq", undefined, ctx),
+  registerTerms: (ctx?: ServerCtx) => get<RegisterTermsData>("/v1/legal/register-terms", undefined, ctx),
+  pointsPolicy: (ctx?: ServerCtx) => get<{ visible: boolean }>("/v1/legal/points-policy", undefined, ctx),
+  agreeTerms: () => post<{ success: boolean }>("/v1/legal/agree", {}),
   consultation: (id: number, ctx?: ServerCtx) => get<ConsultationDetail>(`/v1/mypage/consultations/${id}`, undefined, ctx),
   rerequestConsultation: (id: number, slot: string) => post<{ success: boolean }>(`/v1/mypage/consultations/${id}/rerequest`, { slot }),
   reviewDetail: (id: number, ctx?: ServerCtx) => get<ReviewDetail>(`/v1/reviews/${id}`, undefined, ctx),
@@ -420,6 +426,7 @@ export const qk = {
   myProgress: ["mypage", "progress"] as const,
   progress: (id: number) => ["mypage", "progress", id] as const,
   faq: ["faq"] as const,
+  registerTerms: ["legal", "register-terms"] as const,
   myProfile: ["mypage", "profile"] as const,
   notificationSettings: ["mypage", "notification-settings"] as const,
   myNotifications: (type: string) => ["mypage", "notifications", type] as const,

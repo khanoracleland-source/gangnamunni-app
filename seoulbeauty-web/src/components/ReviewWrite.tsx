@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk } from "@/lib/api";
 import type { ReviewForm } from "@/lib/api";
 import { useLoginUrl, useMe } from "@/lib/me";
 import { shrinkImage } from "@/lib/image";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import styles from "./ReviewWrite.module.css";
 
 const UNKNOWN = "담당 의사 모름";
@@ -42,7 +42,6 @@ type Pick = { file: File; url: string };
 function Editor({ data }: { data: ReviewForm }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const php = usePhpBase();
   const edit = data.mode === "edit";
   const [ids, setIds] = useState<number[]>(data.selectedDoctorIds);
   const [unknown, setUnknown] = useState(data.doctorUnknown);
@@ -230,7 +229,7 @@ function Editor({ data }: { data: ReviewForm }) {
 
       <label className={`${styles.check} ${styles.agree}`}>
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-        <span><a href={phpUrl(php, "community_guidelines.php")} target="_blank" rel="noreferrer">커뮤니티 가이드라인</a>을 읽었으며, 허위·광고·욕설 등 부적절한 콘텐츠 작성 시 삭제 및 계정 제재에 동의합니다.</span>
+        <span><Link href="/community-guidelines" target="_blank" rel="noreferrer">커뮤니티 가이드라인</Link>을 읽었으며, 허위·광고·욕설 등 부적절한 콘텐츠 작성 시 삭제 및 계정 제재에 동의합니다.</span>
       </label>
       <p className={styles.note}>등록된 후기는 관리자 승인 후 공개됩니다.</p>
       {error && <div className={styles.error} role="alert">{error}</div>}

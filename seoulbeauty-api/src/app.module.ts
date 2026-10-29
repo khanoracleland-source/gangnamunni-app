@@ -17,6 +17,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { FaqModule } from './faq/faq.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { ProgressModule } from './progress/progress.module';
+import { LegalModule } from './legal/legal.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -39,6 +40,7 @@ import { HealthController } from './health/health.controller';
     AccountModule,
     ReviewsModule,
     ProgressModule,
+    LegalModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

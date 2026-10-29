@@ -71,6 +71,11 @@ class NextPilot {
     if (_notificationsPaths.contains(uri.path)) return _rewriteNotifications(uri);
     if (_profilePaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/profile', const {}, const {});
     if (_settingsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/settings', const {}, const {});
+    if (_termsPaths.contains(uri.path)) return _rewriteMine(uri, 'terms', const {}, const {});
+    if (_privacyPaths.contains(uri.path)) return _rewriteMine(uri, 'privacy', const {}, const {});
+    if (_guidelinesPaths.contains(uri.path)) return _rewriteMine(uri, 'community-guidelines', const {}, const {});
+    if (_registerTermsPaths.contains(uri.path)) return _rewriteRegisterTerms(uri);
+    if (_pointsPolicyPaths.contains(uri.path)) return _rewritePointsPolicy(uri);
     if (_reviewWritePaths.contains(uri.path)) return _rewriteReviewWrite(uri);
     if (_progressListPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/progress', const {}, const {});
     if (_progressDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'mypage/progress');
@@ -169,6 +174,28 @@ class NextPilot {
   static final Set<String> _progressDetailPaths = {'/progress_review.php', _site.resolve('progress_review.php').path};
   static final Set<String> _notificationsPaths = {'/my_notifications.php', _site.resolve('my_notifications.php').path};
   static final Set<String> _faqPaths = {'/faq.php', _site.resolve('faq.php').path};
+  static final Set<String> _termsPaths = {'/terms_of_service.php', _site.resolve('terms_of_service.php').path};
+  static final Set<String> _privacyPaths = {'/privacy_policy.php', _site.resolve('privacy_policy.php').path};
+  static final Set<String> _guidelinesPaths = {'/community_guidelines.php', _site.resolve('community_guidelines.php').path};
+  static final Set<String> _registerTermsPaths = {'/bbs/register.php'};
+  static final Set<String> _pointsPolicyPaths = {'/my_points_policy_detail.php', _site.resolve('my_points_policy_detail.php').path};
+
+  /// Earn types the Next.js points policy page knows (includes/points_policy_content.php).
+  static const Set<String> _pointsTypes = {'progress', 'photo', 'receipt', 'first', 'payment'};
+
+  /// bbs/register.php?view=terms[&app=] -> /next/register-terms. Without view=terms it is the sign-up page (stays PHP).
+  static Uri? _rewriteRegisterTerms(Uri uri) {
+    final q = uri.queryParameters;
+    if (q['view'] != 'terms' || q.keys.any((k) => k != 'view' && k != 'app')) return null;
+    return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/register-terms');
+  }
+
+  /// my_points_policy_detail.php?type=X[&app=] -> /next/points-policy/X (unknown type keeps the PHP page).
+  static Uri? _rewritePointsPolicy(Uri uri) {
+    final q = uri.queryParameters;
+    if (!_pointsTypes.contains(q['type']) || q.keys.any((k) => k != 'type' && k != 'app')) return null;
+    return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/points-policy/${q['type']}');
+  }
   static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};
   static final Set<String> _communityDetailPaths = {'/detail_community.php', _site.resolve('detail_community.php').path};
 

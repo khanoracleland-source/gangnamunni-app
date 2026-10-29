@@ -89,6 +89,9 @@ GRANT INSERT, UPDATE (status, submitted_at, reject_reason) ON hms_saas.gangnamun
 GRANT INSERT, UPDATE (status, submitted_at, reject_reason) ON hms_saas.gangnamunni_progress_reviews TO 'sb_api_ro'@'localhost';
 GRANT INSERT, DELETE, UPDATE (photo_urls, photo_consent) ON hms_saas.gangnamunni_progress_entries TO 'sb_api_ro'@'127.0.0.1';
 GRANT INSERT, DELETE, UPDATE (photo_urls, photo_consent) ON hms_saas.gangnamunni_progress_entries TO 'sb_api_ro'@'localhost';
+-- 약관 동의 (POST /v1/legal/agree)
+GRANT INSERT ON hms_saas.gangnamunni_user_agreements TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_user_agreements TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 SHOW GRANTS FOR 'sb_api_ro'@'127.0.0.1';
 ```
