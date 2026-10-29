@@ -1,9 +1,9 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, type ConsultationDetail as Detail } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import LoginPrompt from "./LoginPrompt";
 import SupportHeader from "./SupportHeader";
 import styles from "./Support.module.css";
@@ -28,7 +28,6 @@ export default function ConsultationDetail({ id, initial, anon }: { id: number; 
 }
 
 function Body({ d }: { d: Detail }) {
-  const php = usePhpBase();
   const router = useRouter();
   const qc = useQueryClient();
   const [slot, setSlot] = useState(d.slot);
@@ -90,7 +89,7 @@ function Body({ d }: { d: Detail }) {
         {d.canRerequest ? (
           <button type="submit" className={`${styles.btn} ${styles.btnPri}`} disabled={rerequest.isPending}>다시 요청</button>
         ) : d.completed ? (
-          <a className={`${styles.btn} ${styles.btnPri}`} href={phpUrl(php, `booking.php?id=${d.hospitalId}`)}>예약하기</a>
+          <Link className={`${styles.btn} ${styles.btnPri}`} href={`/booking?id=${d.hospitalId}`}>예약하기</Link>
         ) : d.kakaoUrl ? (
           <a className={`${styles.btn} ${styles.btnPri}`} href={d.kakaoUrl} target="_blank" rel="noopener noreferrer">카카오톡 채널 열기</a>
         ) : null}

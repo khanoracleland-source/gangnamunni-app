@@ -131,3 +131,12 @@ After each `git pull`:
 npm ci && npm run build && systemctl restart seoulbeauty-api
 stat -c '%a' .env   # must still be 640
 ```
+-- 예약하기 (POST /v1/booking, /v1/booking/precheck): the booking row, the answers to the clinic's questions, the HMS appointment id
+GRANT INSERT (hospital_id, hospital_name, name, phone, mb_id, treatment, treatments_json, quantity, booking_date, booking_time, memo, price, status, created_at) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT (hospital_id, hospital_name, name, phone, mb_id, treatment, treatments_json, quantity, booking_date, booking_time, memo, price, status, created_at) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'localhost';
+GRANT UPDATE (hms_appointment_id) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (hms_appointment_id) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'localhost';
+GRANT INSERT (booking_id, question, answer) ON hms_saas.gangnamunni_booking_answers TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT (booking_id, question, answer) ON hms_saas.gangnamunni_booking_answers TO 'sb_api_ro'@'localhost';
+-- Also add to seoulbeauty-api/.env (same values as hairwang_full/gangnamunni/includes/infyhms_api.php): HMS_API_URL=http://127.0.0.1:8000/api/external  HMS_API_KEY=<the key in infyhms_api.php>
+-- (without them the booking is still saved; it is just not sent to HMS and the log says so)

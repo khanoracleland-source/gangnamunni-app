@@ -77,6 +77,7 @@ class NextPilot {
     if (_guidelinesPaths.contains(uri.path)) return _rewriteMine(uri, 'community-guidelines', const {}, const {});
     if (_registerTermsPaths.contains(uri.path)) return _rewriteRegisterTerms(uri);
     if (_pointsPolicyPaths.contains(uri.path)) return _rewritePointsPolicy(uri);
+    if (_bookingPaths.contains(uri.path)) return _rewriteBooking(uri);
     if (_reviewWritePaths.contains(uri.path)) return _rewriteReviewWrite(uri);
     if (_progressListPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/progress', const {}, const {});
     if (_progressDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'mypage/progress');
@@ -197,6 +198,22 @@ class NextPilot {
     final q = uri.queryParameters;
     if (!_pointsTypes.contains(q['type']) || q.keys.any((k) => k != 'type' && k != 'app')) return null;
     return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/points-policy/${q['type']}');
+  }
+  static final Set<String> _bookingPaths = {'/booking.php', _site.resolve('booking.php').path};
+  static const Set<String> _bookingParams = {'id', 'treatment_id', 'option_id', 'treatment', 'rebook', 'via', 'source_booking_id', 'from', 'return_url'};
+
+  /// booking.php?id=N[&treatment_id=][&option_id=][&treatment=][&rebook=1][&via=again][&source_booking_id=][&from=][&return_url=][&app=] -> /next/booking?…
+  /// (`from`/`return_url` only shape the back link and are dropped; a change (`change_booking`) or any other parameter keeps the PHP page).
+  static Uri? _rewriteBooking(Uri uri) {
+    final q = uri.queryParameters;
+    final id = int.tryParse(q['id'] ?? '');
+    if (id == null || id <= 0) return null;
+    if (q.keys.any((k) => !_bookingParams.contains(k) && k != 'app')) return null;
+    final kept = <String, String>{
+      for (final e in q.entries)
+        if (_bookingParams.contains(e.key) && e.key != 'from' && e.key != 'return_url' && e.value.isNotEmpty) e.key: e.value,
+    };
+    return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/booking', queryParameters: kept);
   }
   static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};
   static final Set<String> _communityDetailPaths = {'/detail_community.php', _site.resolve('detail_community.php').path};

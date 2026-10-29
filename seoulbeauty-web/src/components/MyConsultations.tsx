@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, qk, type MyConsultation } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
 import styles from "./MyPages.module.css";
@@ -11,7 +10,6 @@ const CHIP = { danger: styles.chipDanger, muted: styles.chipMuted, dark: styles.
 
 /** my_consultations.php: the member's consultation requests (latest 100). */
 export default function MyConsultations({ initial, anon }: { initial?: { items: MyConsultation[]; anyPhone: string | null }; anon?: boolean }) {
-  const php = usePhpBase();
   const { data, error, refetch } = useQuery({ queryKey: qk.myConsultations, queryFn: () => api.myConsultations(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   return (
@@ -45,7 +43,7 @@ export default function MyConsultations({ initial, anon }: { initial?: { items: 
                         {it.hospitalPhone && <a className={styles.cbtn} href={`tel:${it.hospitalPhone}`}>병원에 전화</a>}
                       </div>
                     )}
-                    {it.status === "completed" && <div className={styles.cactions}><a className={styles.cbtn} href={phpUrl(php, `booking.php?id=${it.hospitalId}`)}>예약하기</a></div>}
+                    {it.status === "completed" && <div className={styles.cactions}><Link className={styles.cbtn} href={`/booking?id=${it.hospitalId}`}>예약하기</Link></div>}
                   </div>
                 );
               })}

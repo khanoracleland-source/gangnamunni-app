@@ -125,7 +125,7 @@ export interface HospitalListParams {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string, public field?: string) {
+  constructor(public status: number, message: string, public field?: string, public body?: Record<string, unknown>) {
     super(message);
   }
 }
@@ -177,12 +177,41 @@ async function send<T>(method: "POST" | "PUT" | "DELETE", path: string, body?: u
   if (!res.ok) {
     let msg = `${res.status} ${path}`;
     let field: string | undefined;
-    try { const j = await res.json(); if (j?.message) msg = String(j.message); if (typeof j?.field === "string") field = j.field; } catch { /* keep */ }
-    throw new ApiError(res.status, msg, field);
+    let body: Record<string, unknown> | undefined;
+    try { const j = await res.json(); body = j && typeof j === "object" ? (j as Record<string, unknown>) : undefined; if (j?.message) msg = String(j.message); if (typeof j?.field === "string") field = j.field; } catch { /* keep */ }
+    throw new ApiError(res.status, msg, field, body);
   }
   return (await res.json()) as T;
 }
 const post = <T,>(path: string, body: unknown) => send<T>("POST", path, body);
+
+/** GET /v1/booking/context/:id — everything booking.php rendered. */
+export interface BookingDayHours { open: number; close: number; biweekly: "even" | "odd" | null }
+export interface BookingHours {
+  weekly: (BookingDayHours | null)[]; hasWeekly: boolean; specialClosed: string[]; specialOpen: Record<string, { open: number; close: number }>;
+  noLunch: boolean; lunchStartMin: number | null; lunchEndMin: number | null;
+}
+export interface BookingOption { id: number; name: string; option_name: string; body_part: string; dosage: string; price: number }
+export interface BookingTreatment { hospital_treatment_id: number; treatment_id: number; name: string; price_min: number; price_max: number; min_age: number; options: BookingOption[] }
+export interface BookingPackage { id: number; name: string; description: string; package_price: number; original_price: number; item_names: string }
+export interface NoshowInfo { count: number; months: number; available_from: string; has_cancel: boolean; items: { when: string; hospital: string; kind: "no_show" | "cancel" }[] }
+export interface BookingContext {
+  hospital: { id: number; name: string; image: string; images: string[] };
+  now: string; hours: BookingHours; treatments: BookingTreatment[]; packages: BookingPackage[]; preQuestions: Record<string, string[]>;
+  member: { loggedIn: boolean; name: string; phone: string; hasSavedPhone: boolean; age: number | null };
+  noshow: NoshowInfo | null;
+}
+export interface BookingChosen { name: string; option_id: number }
+export interface BookingRequest {
+  hospital_id: number; name?: string; phone: string; date: string; time: string; selection_type: "treatments" | "package"; package_id: number;
+  treatments: BookingChosen[]; pre_answers: string; confirm_duplicate?: string; confirm_revisit?: string;
+}
+export interface ExistingBooking { id: number; treatment: string; hospital_name: string; schedule: string; status: string }
+export interface RevisitInfo { treatment: string; interval_label: string; days_since: number; available_from: string }
+export type BookingRefusal =
+  | { code: "noshow_blocked"; noshow: NoshowInfo } | { code: "treatment_conflict"; conflict: { names: string[]; pairs: string[][] } }
+  | { code: "duplicate_booking" | "other_hospital_duplicate"; existing: ExistingBooking } | { code: "revisit_blocked" | "revisit_warning"; revisit: RevisitInfo }
+  | { code: "age_restricted" | "age_unknown"; min_age: number };
 
 /** GET /v1/legal/register-terms — bbs/register.php?view=terms */
 export interface RegisterTermsData { terms: string; privacy: string }
@@ -375,6 +404,9 @@ export const api = {
   faq: (ctx?: ServerCtx) => get<FaqData>("/v1/faq", undefined, ctx),
   registerTerms: (ctx?: ServerCtx) => get<RegisterTermsData>("/v1/legal/register-terms", undefined, ctx),
   pointsPolicy: (ctx?: ServerCtx) => get<{ visible: boolean }>("/v1/legal/points-policy", undefined, ctx),
+  bookingContext: (id: number, ctx?: ServerCtx) => get<BookingContext>(`/v1/booking/context/${id}`, undefined, ctx),
+  bookingPrecheck: (b: BookingRequest) => send<{ success: boolean; precheck: boolean }>("POST", "/v1/booking/precheck", b, 30000),
+  bookingCreate: (b: BookingRequest) => send<{ success: boolean; booking_id: number; hms_appointment_id: number | null; detail_url: string }>("POST", "/v1/booking", b, 60000),
   agreeTerms: () => post<{ success: boolean }>("/v1/legal/agree", {}),
   changePassword: (b: { current_pw: string; new_pw: string; new_pw_confirm: string }) => send<{ success: boolean; message: string }>("POST", "/v1/account/password", b, 30000),
   sendEmailCode: (new_email: string) => send<{ success: boolean; email: string; expiresIn: number }>("POST", "/v1/account/email/send", { new_email }, 30000),
@@ -416,6 +448,7 @@ export const api = {
 
 /** Query keys shared by server prefetch and client hooks (React Query). */
 export const qk = {
+  bookingContext: (id: number) => ["booking-context", id] as const,
   hospitals: (p: HospitalListParams) => ["hospitals", normalize(p)] as const,
   hospital: (id: number) => ["hospital", id] as const,
   searchView: (id: number) => ["searchView", id] as const,

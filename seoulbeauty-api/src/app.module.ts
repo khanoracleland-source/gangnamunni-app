@@ -18,6 +18,7 @@ import { FaqModule } from './faq/faq.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { ProgressModule } from './progress/progress.module';
 import { LegalModule } from './legal/legal.module';
+import { BookingModule } from './booking/booking.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -41,6 +42,7 @@ import { HealthController } from './health/health.controller';
     ReviewsModule,
     ProgressModule,
     LegalModule,
+    BookingModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

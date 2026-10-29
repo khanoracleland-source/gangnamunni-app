@@ -49,7 +49,7 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
   const tab: Tab = raw === "completed" || raw === "cancelled" ? raw : "active";
   const { data, error, refetch } = useQuery({ queryKey: qk.myBookings, queryFn: () => api.myBookings(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
-  const rebook = (b: BookingBase) => phpUrl(php, `booking.php?id=${b.hospitalId}&rebook=1&source_booking_id=${b.id}&treatment=${encodeURIComponent(b.treatment)}`);
+  const rebook = (b: BookingBase) => `/booking?id=${b.hospitalId}&rebook=1&source_booking_id=${b.id}&treatment=${encodeURIComponent(b.treatment)}`;
   const total = data ? data.upcoming.length + data.completed.length + data.cancelled.length : 0;
 
   return (
@@ -123,7 +123,7 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
               </a>
             )}
           </div>
-          {data.expiredNotice && <ExpiredSheet n={data.expiredNotice} rebookHref={phpUrl(php, `booking.php?id=${data.expiredNotice.hospitalId}&rebook=1&source_booking_id=${data.expiredNotice.bookingId}&treatment=${encodeURIComponent(data.expiredNotice.treatment)}`)} />}
+          {data.expiredNotice && <ExpiredSheet n={data.expiredNotice} rebookHref={`/booking?id=${data.expiredNotice.hospitalId}&rebook=1&source_booking_id=${data.expiredNotice.bookingId}&treatment=${encodeURIComponent(data.expiredNotice.treatment)}`} />}
         </>
       )}
     </div>

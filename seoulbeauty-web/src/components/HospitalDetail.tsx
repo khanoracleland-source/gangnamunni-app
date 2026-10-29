@@ -1,9 +1,9 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, assetUrl, formatWon, PLACEHOLDER, qk, type DetailTab, type HospitalDetail as Detail } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import ReviewList from "./ReviewList";
 import WishlistButton from "./WishlistButton";
 import ConsultSheet from "./ConsultSheet";
@@ -17,7 +17,6 @@ const TAB_LABEL: Record<DetailTab, string> = { home: "홈", treatments: "시술�
 export default function HospitalDetail({ id, initial, initialTab = "home" }: { id: number; initial?: Detail; initialTab?: DetailTab }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const php = usePhpBase();
   const [tab, setTab] = useState<DetailTab>(initialTab);
   const [consultOpen, setConsultOpen] = useState(false);
   const { data: h, isError, refetch } = useQuery({
@@ -135,7 +134,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home" }: { i
       <div className={styles.cta}>
         {h.phone && <a href={`tel:${h.phone.replace(/[^\d+]/g, "")}`} className={styles.ctaSecondary}>전화</a>}
         <button type="button" className={styles.ctaSecondary} onClick={() => setConsultOpen(true)}>상담 신청</button>
-        <a href={phpUrl(php, `booking.php?id=${id}`)} className={styles.ctaPrimary}>예약하기</a>
+        <Link href={`/booking?id=${id}`} className={styles.ctaPrimary}>예약하기</Link>
       </div>
       <ConsultSheet hospital={h} open={consultOpen} onClose={() => setConsultOpen(false)} />
     </article>

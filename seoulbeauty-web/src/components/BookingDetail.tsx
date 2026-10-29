@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, qk, type BookingCancelDetail, type BookingDetail as Detail, type BookingRequestDetail } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import LoginPrompt from "./LoginPrompt";
 import SupportHeader from "./SupportHeader";
 import support from "./Support.module.css";
@@ -32,7 +31,6 @@ export default function BookingDetail({ id, initial, anon }: { id: number; initi
 }
 
 function Request({ d }: { d: BookingRequestDetail }) {
-  const php = usePhpBase();
   return (
     <>
       <div className={`${styles.bdBadge} ${d.isCompleted ? styles.bdBadgeDone : ""}`}>
@@ -101,7 +99,7 @@ function Request({ d }: { d: BookingRequestDetail }) {
           </section>
           {d.isCompleted && (
             <div className={styles.bdFoot}>
-              <a className={`${support.btn} ${support.btnPri}`} href={phpUrl(php, `booking.php?id=${d.hospitalId}&rebook=1&source_booking_id=${d.id}&treatment=${encodeURIComponent(d.treatment === "-" ? "" : d.treatment)}`)}>다시예약</a>
+              <Link className={`${support.btn} ${support.btnPri}`} href={`/booking?id=${d.hospitalId}&rebook=1&source_booking_id=${d.id}&treatment=${encodeURIComponent(d.treatment === "-" ? "" : d.treatment)}`}>다시예약</Link>
               {d.review?.state === "none" && <Link className={support.btn} href={`/mypage/reviews/write?booking_id=${d.id}`}>후기작성하기</Link>}
               {d.review?.state === "rejected" && d.review.reviewId && <Link className={support.btn} href={`/mypage/reviews/write?id=${d.review.reviewId}`}>후기 다시 작성</Link>}
               {d.review?.state === "published" && d.review.reviewId && <Link className={support.btn} href={`/reviews/${d.review.reviewId}`}>후기보기</Link>}

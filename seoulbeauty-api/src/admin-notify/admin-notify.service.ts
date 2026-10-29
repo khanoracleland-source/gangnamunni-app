@@ -3,6 +3,9 @@ import { DB, Db } from '../db/db.module';
 import { escapeHtml, shouldReceive } from './admin-notify.logic';
 import { FcmClient } from './fcm.client';
 
+/** The types notifyAdmins() is called with here that have an icon in $USER_NOTIFICATION_TYPES (includes/user_notifications.php). */
+const ADMIN_ICONS: Record<string, string> = { booking: 'bi-calendar-check' };
+
 /**
  * notifyAdmins() (includes/notification_helper.php): in-app notification for every admin, FCM push for the admins
  * subscribed to the type, then a row in the send log. Best effort: each step logs and never throws, so a notification
@@ -28,9 +31,9 @@ export class AdminNotifyService {
       const [rows] = (await this.db.query("SELECT id FROM gangnamunni_admins WHERE role IN ('super_admin','admin','editor')")) as any;
       for (const a of rows as any[]) {
         try {
-          // $USER_NOTIFICATION_TYPES has no 'review' entry, so the icon is the default bell.
+          // $USER_NOTIFICATION_TYPES icon; 'review' has no entry, so it gets the default bell.
           await this.db.query('INSERT INTO gangnamunni_user_notifications (member_id, type, title, message, link, icon) VALUES (?, ?, ?, ?, ?, ?)',
-            [String(a.id), type, title, message, link, 'bi-bell']);
+            [String(a.id), type, title, message, link, ADMIN_ICONS[type] ?? 'bi-bell']);
         } catch (err) { this.log.error(`admin in-app notification failed: ${(err as Error).message}`); }
       }
     } catch (err) { this.log.error(`admin list failed: ${(err as Error).message}`); }
@@ -60,5 +63,10 @@ export class AdminNotifyService {
   /** The "새 후기 등록" notice for a newly created review (hospital name and nickname escaped like the PHP page did). */
   async reviewCreated(hospitalName: string, userName: string, rating: number): Promise<void> {
     await this.notifyAdmins('review', '새 후기 등록', `${escapeHtml(hospitalName)} — ${escapeHtml(userName)} (★${rating})`, 'admin_reviews.php');
+  }
+
+  /** The "새 예약 접수" notice for a newly created booking (booking.php: name and hospital escaped, link to the admin booking). */
+  async bookingCreated(bookingId: number, hospitalName: string, name: string, date: string, time: string): Promise<void> {
+    await this.notifyAdmins('booking', '새 예약 접수', `${escapeHtml(hospitalName)} — ${escapeHtml(name)} (${date} ${time})`, `admin_bookings.php?booking_id=${bookingId}`);
   }
 }

@@ -88,7 +88,6 @@ void main() {
     expect(to(php('booking_request_detail.php?booking_id=4')), '/next/mypage/bookings/4');
     expect(to(php('booking_cancel_detail.php?booking_id=4')), '/next/mypage/bookings/4');
     expect(to(php('booking_detail.php?booking_id=4&new=1')), isNull);
-    expect(to(php('booking.php?id=8216')), isNull);
     expect(to(php('booking_payment.php?booking_id=4')), isNull);
   });
 
@@ -117,6 +116,16 @@ void main() {
     }
     expect(NextPilot.isNextPage(Uri.parse('$host/next/community/3')), isTrue);
     expect(NextPilot.isNextPage(Uri.parse('$host/community.php')), isFalse);
+  });
+
+  test('booking', () {
+    expect(to(php('booking.php?id=7')), '/next/booking?id=7');
+    expect(to(php('booking.php?id=7&treatment_id=11&option_id=101&treatment=%EB%B3%B4%ED%86%A1%EC%8A%A4')), '/next/booking?id=7&treatment_id=11&option_id=101&treatment=%EB%B3%B4%ED%86%A1%EC%8A%A4');
+    expect(to(php('booking.php?id=7&rebook=1&via=again&source_booking_id=3')), '/next/booking?id=7&rebook=1&via=again&source_booking_id=3');
+    expect(to(legacy('booking.php?id=7&from=my_wishlist&app=1')), '/next/booking?id=7');
+    expect(to(php('booking.php')), isNull);
+    expect(to(php('booking.php?id=0')), isNull);
+    expect(to(php('booking.php?id=7&change=1')), isNull);
   });
 
   test('legal pages', () {
