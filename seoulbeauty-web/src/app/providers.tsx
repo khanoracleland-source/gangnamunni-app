@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { notifyPageChanged } from "@/lib/bridge";
+import { announceLogoutFromUrl, notifyPageChanged } from "@/lib/bridge";
 
 /**
  * In-memory cache = the "Redux store": a page visited once renders instantly from cache on
@@ -29,12 +29,19 @@ function PageChangeNotifier() {
   return null;
 }
 
+/** Landing after a logout from the app: hand the logout to the native side once. */
+function LogoutAnnouncer() {
+  useEffect(() => { announceLogoutFromUrl(); }, []);
+  return null;
+}
+
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(makeClient);
   return (
     <QueryClientProvider client={client}>
       <Suspense fallback={null}>
         <PageChangeNotifier />
+        <LogoutAnnouncer />
       </Suspense>
       {children}
     </QueryClientProvider>

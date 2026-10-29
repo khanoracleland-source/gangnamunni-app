@@ -14,7 +14,7 @@ const NOTI: [SettingKey, string][] = [
 const MKT: [SettingKey, string][] = [["mkt_push", "푸시"], ["mkt_sms", "SMS"], ["mkt_email", "이메일"], ["mkt_night_push", "야간 푸시 (오후 9시 - 오전 8시)"]];
 type Data = { settings: NotificationSettings };
 
-/** notification_settings.php: the ten toggles and 로그아웃. 회원 탈퇴 (Kakao unlink + data removal) stays in PHP. */
+/** notification_settings.php: the ten toggles and 로그아웃 (PHP ends the session, then lands on /next/ and tells the app). 회원 탈퇴 (Kakao unlink + data removal) stays in PHP. */
 export default function MySettings({ initial, anon }: { initial?: Data; anon?: boolean }) {
   const php = usePhpBase();
   const qc = useQueryClient();
@@ -74,7 +74,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
         <div className={styles.pfModal} role="presentation" onClick={() => setSheet(false)}>
           <div className={styles.pfModalBox} role="dialog" aria-modal="true" aria-labelledby="st-logout" onClick={(e) => e.stopPropagation()}>
             <h2 id="st-logout">잠시 로그아웃하시겠어요?</h2>
-            <button type="button" className={styles.pfSave} onClick={() => window.location.assign(phpUrl(php, "bbs/logout.php?url=%2Findex.php"))}>로그아웃</button>
+            <button type="button" className={styles.pfSave} onClick={() => window.location.assign(phpUrl(php, "bbs/logout.php?url=%2Fnext%2F"))}>로그아웃</button>
             <button type="button" className={styles.pfDiscard} onClick={() => setSheet(false)}>아니오</button>
           </div>
         </div>
