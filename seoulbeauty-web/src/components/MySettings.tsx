@@ -14,7 +14,7 @@ const NOTI: [SettingKey, string][] = [
 const MKT: [SettingKey, string][] = [["mkt_push", "푸시"], ["mkt_sms", "SMS"], ["mkt_email", "이메일"], ["mkt_night_push", "야간 푸시 (오후 9시 - 오전 8시)"]];
 type Data = { settings: NotificationSettings };
 
-/** notification_settings.php: the ten toggles and 로그아웃 (PHP ends the session, then lands on /next/ and tells the app). 회원 탈퇴 (Kakao unlink + data removal) stays in PHP. */
+/** notification_settings.php: the ten toggles and 로그아웃 (PHP ends the session, then lands on /next/ and tells the app). 회원 탈퇴 has its own page; the session end itself is PHP. */
 export default function MySettings({ initial, anon }: { initial?: Data; anon?: boolean }) {
   const php = usePhpBase();
   const qc = useQueryClient();
@@ -64,7 +64,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
               <section className={styles.stSection}>
                 <div className={styles.stLabel}>계정 관리</div>
                 <button type="button" className={`${styles.stItem} ${styles.stLink}`} onClick={() => setSheet(true)}><span>로그아웃</span><span aria-hidden="true">›</span></button>
-                <a className={`${styles.stItem} ${styles.stLink}`} style={{ color: "#AC1830" }} href={phpUrl(php, "notification_settings.php?php=1#withdraw")}><span>회원 탈퇴</span><span aria-hidden="true">›</span></a>
+                <Link className={`${styles.stItem} ${styles.stLink}`} style={{ color: "#AC1830" }} href="/mypage/withdraw"><span>회원 탈퇴</span><span aria-hidden="true">›</span></Link>
               </section>
             </>
           )}

@@ -45,6 +45,13 @@ export class AccountService {
     return null;
   }
 
+  private async isSocial(mbId: string): Promise<boolean> {
+    try {
+      const [rows] = (await this.db.query('SELECT 1 FROM g5_member_social_profiles WHERE mb_id = ? LIMIT 1', [mbId])) as any;
+      return Array.isArray(rows) && rows.length > 0;
+    } catch (e) { this.log.error(`social lookup: ${(e as Error).message}`); return false; }
+  }
+
   private async member(mbId: string) {
     const [rows] = (await this.db.query('SELECT mb_nick, mb_name, mb_hp, mb_birth, mb_email FROM g5_member WHERE mb_id = ? LIMIT 1', [mbId])) as any;
     const r = (rows as any[])[0];
@@ -52,10 +59,10 @@ export class AccountService {
     return r;
   }
 
-  /** profile_edit.php (GET): the editable fields; email and password change stay in PHP. */
+  /** profile_edit.php (GET): the editable fields. `social`: a social-login member has no service password to change. */
   async profile(mbId: string) {
-    const [m, photoUrl] = await Promise.all([this.member(mbId), this.avatar(mbId)]);
-    return { nick: s(m.mb_nick), name: s(m.mb_name), hp: s(m.mb_hp), birth: birthToInput(m.mb_birth), email: s(m.mb_email), photoUrl, birthChangeDays: BIRTH_CHANGE_DAYS };
+    const [m, photoUrl, social] = await Promise.all([this.member(mbId), this.avatar(mbId), this.isSocial(mbId)]);
+    return { nick: s(m.mb_nick), name: s(m.mb_name), hp: s(m.mb_hp), birth: birthToInput(m.mb_birth), email: s(m.mb_email), photoUrl, birthChangeDays: BIRTH_CHANGE_DAYS, social };
   }
 
   /** profile_edit.php action=save_all: validate everything first, save the member row, then the photo. */

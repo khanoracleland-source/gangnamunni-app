@@ -340,7 +340,7 @@ export type NotiFilter = "all" | "booking" | "review" | "benefit";
 export interface MyNotification { id: number; type: string; title: string; message: string; isRead: boolean; icon: NotiIcon; time: string; openUrl: string }
 export interface MyNotificationsPage { items: MyNotification[]; total: number; page: number; hasMore: boolean; unread: number }
 
-export interface MyProfile { nick: string; name: string; hp: string; birth: string; email: string; photoUrl: string | null; birthChangeDays: number }
+export interface MyProfile { nick: string; name: string; hp: string; birth: string; email: string; photoUrl: string | null; birthChangeDays: number; /** social-login member: no service password */ social?: boolean }
 export const SETTING_KEYS = ["noti_general", "noti_booking", "noti_event", "noti_promo", "noti_push", "noti_message", "mkt_push", "mkt_sms", "mkt_email", "mkt_night_push"] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 export type NotificationSettings = Record<SettingKey, number>;
@@ -376,6 +376,10 @@ export const api = {
   registerTerms: (ctx?: ServerCtx) => get<RegisterTermsData>("/v1/legal/register-terms", undefined, ctx),
   pointsPolicy: (ctx?: ServerCtx) => get<{ visible: boolean }>("/v1/legal/points-policy", undefined, ctx),
   agreeTerms: () => post<{ success: boolean }>("/v1/legal/agree", {}),
+  changePassword: (b: { current_pw: string; new_pw: string; new_pw_confirm: string }) => send<{ success: boolean; message: string }>("POST", "/v1/account/password", b, 30000),
+  sendEmailCode: (new_email: string) => send<{ success: boolean; email: string; expiresIn: number }>("POST", "/v1/account/email/send", { new_email }, 30000),
+  verifyEmailCode: (code: string) => send<{ success: boolean; email: string }>("POST", "/v1/account/email/verify", { code }, 30000),
+  withdraw: (b: { reason: string; detail: string; password: string }) => send<{ success: boolean; message: string }>("POST", "/v1/account/withdraw", b, 60000),
   consultation: (id: number, ctx?: ServerCtx) => get<ConsultationDetail>(`/v1/mypage/consultations/${id}`, undefined, ctx),
   rerequestConsultation: (id: number, slot: string) => post<{ success: boolean }>(`/v1/mypage/consultations/${id}/rerequest`, { slot }),
   reviewDetail: (id: number, ctx?: ServerCtx) => get<ReviewDetail>(`/v1/reviews/${id}`, undefined, ctx),

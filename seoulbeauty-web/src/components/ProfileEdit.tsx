@@ -4,14 +4,13 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type MyProfile } from "@/lib/api";
 import { meKey } from "@/lib/me";
-import { phpUrl, usePhpBase } from "@/lib/php";
+import Link from "next/link";
 import LoginPrompt from "./LoginPrompt";
 import styles from "./MyPages.module.css";
 
 type Err = { field: string; message: string } | null;
 
 function Form({ data }: { data: MyProfile }) {
-  const php = usePhpBase();
   const router = useRouter();
   const qc = useQueryClient();
   const [nick, setNick] = useState(data.nick);
@@ -97,17 +96,19 @@ function Form({ data }: { data: MyProfile }) {
         </div>
         <div className={styles.pfField}>
           <label>이메일</label>
-          <div className={styles.pfRow}><span>{data.email || "-"}</span><a className={styles.pfChange} href={phpUrl(php, "profile_edit.php?php=1")}>변경</a></div>
+          <div className={styles.pfRow}><span>{data.email || "-"}</span><Link className={styles.pfChange} href="/mypage/profile/email">변경</Link></div>
         </div>
         <div className={styles.pfField}>
           <label htmlFor="pf-hp">휴대폰 번호</label>
           <input id="pf-hp" type="tel" value={hp} onChange={(e) => setHp(e.target.value)} placeholder="010-0000-0000" maxLength={20} />
           {fieldErr("hp")}
         </div>
-        <div className={styles.pfField}>
-          <label>비밀번호</label>
-          <div className={styles.pfRow}><span>••••••••</span><a className={styles.pfChange} href={phpUrl(php, "profile_edit.php?php=1")}>변경</a></div>
-        </div>
+        {!data.social && (
+          <div className={styles.pfField}>
+            <label>비밀번호</label>
+            <div className={styles.pfRow}><span>••••••••</span><Link className={styles.pfChange} href="/mypage/profile/password">변경</Link></div>
+          </div>
+        )}
       </div>
       <div className={styles.pfBar}><button type="button" className={styles.pfSave} onClick={save} disabled={saving}>{saving ? "저장 중…" : "프로필 저장"}</button></div>
       {leave && (
@@ -124,7 +125,7 @@ function Form({ data }: { data: MyProfile }) {
   );
 }
 
-/** profile_edit.php: nickname, name, birth date, phone and photo. Changing the email or password stays in PHP (links). */
+/** profile_edit.php: nickname, name, birth date, phone and photo. Email and password changes have their own pages. */
 export default function ProfileEdit({ initial, anon }: { initial?: MyProfile; anon?: boolean }) {
   const { data, error, refetch } = useQuery({ queryKey: qk.myProfile, queryFn: () => api.myProfile(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);

@@ -120,6 +120,8 @@ void main() {
   });
 
   test('legal pages', () {
+    expect(to(php('withdraw.php')), '/next/mypage/withdraw');
+    expect(to(php('withdraw.php?x=1')), isNull);
     expect(to(php('terms_of_service.php')), '/next/terms');
     expect(to(legacy('privacy_policy.php?app=1')), '/next/privacy');
     expect(to(php('community_guidelines.php')), '/next/community-guidelines');

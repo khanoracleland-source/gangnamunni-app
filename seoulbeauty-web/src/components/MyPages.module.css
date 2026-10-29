@@ -194,3 +194,17 @@
 .stSwitch:checked { background: #AC1830; }
 .stSwitch:checked::after { transform: translateX(20px); }
 .stSwitch:disabled { opacity: .6; }
+
+/* 계정: 이메일 / 비밀번호 / 회원 탈퇴 */
+.acNote { margin: 12px 16px 0; font-size: 13px; line-height: 1.6; color: #777; }
+.acOk { margin: 12px 16px 0; padding: 10px 12px; border-radius: 8px; background: #EAF6EE; color: #16603A; font-size: 14px; }
+.acTimer { font-size: 13px; color: #AC1830; }
+.acLink { display: block; width: 100%; height: 44px; margin-top: 8px; font-size: 14px; color: #666; text-decoration: underline; }
+.acWarn { margin: 16px 16px 0; padding: 14px 16px; border: 1px solid #fed7d7; border-radius: 12px; background: #fff5f5; }
+.acWarn h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #e53e3e; }
+.acWarn ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.8; color: #666; }
+.pfField select, .pfField textarea { width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; font-size: 15px; background: #fff; color: inherit; outline: none; font-family: inherit; }
+.pfField textarea { min-height: 80px; resize: vertical; }
+.pfCheck { display: flex; align-items: flex-start; gap: 8px; padding: 14px 0; font-size: 14px; color: #444; }
+.pfCheck input { width: 18px; height: 18px; margin-top: 2px; flex: 0 0 18px; }
+.acBar { padding: 16px; }

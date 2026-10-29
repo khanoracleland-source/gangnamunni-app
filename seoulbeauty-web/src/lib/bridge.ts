@@ -21,10 +21,15 @@ export function notifyPageChanged(): void {
  */
 export function announceLogoutFromUrl(search: string = typeof window !== "undefined" ? window.location.search : ""): boolean {
   if (!new URLSearchParams(search).get("app_logout")) return false;
+  announceLogout();
+  return true;
+}
+
+/** Tell the app to drop its native credentials (the server side has just ended the member's session or account). */
+export function announceLogout(): void {
   try {
     window.FlutterBridge?.postMessage(JSON.stringify({ action: "logout" }));
   } catch {
     /* not inside the app */
   }
-  return true;
 }

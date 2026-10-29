@@ -71,6 +71,7 @@ class NextPilot {
     if (_notificationsPaths.contains(uri.path)) return _rewriteNotifications(uri);
     if (_profilePaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/profile', const {}, const {});
     if (_settingsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/settings', const {}, const {});
+    if (_withdrawPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/withdraw', const {}, const {});
     if (_termsPaths.contains(uri.path)) return _rewriteMine(uri, 'terms', const {}, const {});
     if (_privacyPaths.contains(uri.path)) return _rewriteMine(uri, 'privacy', const {}, const {});
     if (_guidelinesPaths.contains(uri.path)) return _rewriteMine(uri, 'community-guidelines', const {}, const {});
@@ -174,6 +175,7 @@ class NextPilot {
   static final Set<String> _progressDetailPaths = {'/progress_review.php', _site.resolve('progress_review.php').path};
   static final Set<String> _notificationsPaths = {'/my_notifications.php', _site.resolve('my_notifications.php').path};
   static final Set<String> _faqPaths = {'/faq.php', _site.resolve('faq.php').path};
+  static final Set<String> _withdrawPaths = {'/withdraw.php', _site.resolve('withdraw.php').path};
   static final Set<String> _termsPaths = {'/terms_of_service.php', _site.resolve('terms_of_service.php').path};
   static final Set<String> _privacyPaths = {'/privacy_policy.php', _site.resolve('privacy_policy.php').path};
   static final Set<String> _guidelinesPaths = {'/community_guidelines.php', _site.resolve('community_guidelines.php').path};
