@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, qk, type BookingContext, type BookingOption, type BookingPackage, type BookingRefusal, type BookingRequest, type NoshowInfo } from "@/lib/api";
+import { api, ApiError, qk, type BookingChangeInfo, type BookingContext, type BookingOption, type BookingPackage, type BookingRefusal, type BookingRequest, type NoshowInfo } from "@/lib/api";
 import { bookableDays, dday, formatDateTime, koTopic, parseDay, priceRange, timeSlots, won, WEEKDAYS } from "@/lib/booking";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import LoginPrompt from "./LoginPrompt";
@@ -11,14 +11,21 @@ import styles from "./Booking.module.css";
 
 export interface BookingParams {
   id: number; treatmentId: number; optionId: number; treatmentName: string; rebook: boolean; via: string; sourceId: number;
+  /** booking_change.php: the booking being rescheduled (its hospital and treatment come from the API). */
+  change?: number;
 }
 
 /** 예약하기 (booking.php): choose treatments, a day and a time, answer the clinic's questions, confirm. */
 export default function Booking(p: BookingParams) {
-  const { data, error, refetch } = useQuery({ queryKey: qk.bookingContext(p.id), queryFn: () => api.bookingContext(p.id), staleTime: 0, gcTime: 0, retry: false, refetchOnReconnect: false, refetchOnWindowFocus: false }); // a refetch (reconnect, app back to foreground) must not reset what the member chose
-  const title = p.rebook ? (p.via === "again" ? "예약 선택" : "다시 예약") : "예약하기";
-  const back = p.rebook && p.sourceId > 0 ? `/mypage/bookings/${p.sourceId}` : `/hospitals/${p.id}`;
-  const loggedOut = error instanceof ApiError && error.status === 401;
+  const changeId = p.change ?? 0;
+  const info = useQuery({ queryKey: qk.bookingChangeInfo(changeId), queryFn: () => api.bookingChangeInfo(changeId), enabled: changeId > 0, staleTime: 0, gcTime: 0, retry: false, refetchOnReconnect: false, refetchOnWindowFocus: false });
+  const hospitalId = changeId ? info.data?.hospitalId ?? 0 : p.id;
+  const { data, error, refetch } = useQuery({ queryKey: qk.bookingContext(hospitalId), queryFn: () => api.bookingContext(hospitalId), enabled: hospitalId > 0, staleTime: 0, gcTime: 0, retry: false, refetchOnReconnect: false, refetchOnWindowFocus: false }); // a refetch (reconnect, app back to foreground) must not reset what the member chose
+  const title = changeId ? "예약 변경" : p.rebook ? (p.via === "again" ? "예약 선택" : "다시 예약") : "예약하기";
+  const back = changeId ? "/mypage/bookings" : p.rebook && p.sourceId > 0 ? `/mypage/bookings/${p.sourceId}` : `/hospitals/${p.id}`;
+  const err = info.error ?? error;
+  const loggedOut = err instanceof ApiError && err.status === 401;
+  const params: BookingParams = changeId && info.data ? { ...p, id: info.data.hospitalId, treatmentName: info.data.treatment, rebook: true } : p;
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
@@ -26,9 +33,10 @@ export default function Booking(p: BookingParams) {
         <span className={styles.title}>{title}</span>
       </div>
       {loggedOut ? <LoginPrompt text="로그인하면 예약할 수 있습니다." />
+        : info.error instanceof ApiError && (info.error.status === 404 || info.error.status === 409) ? <div className={styles.empty}>변경할 수 없는 예약입니다. <Link className={styles.retry} href="/mypage/bookings">내 예약으로</Link></div>
         : error instanceof ApiError && error.status === 404 ? <div className={styles.empty}>병원 정보를 찾을 수 없습니다.</div>
-        : !data ? <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
-        : <BookingForm ctx={data} p={p} back={back} />}
+        : !data || (changeId > 0 && !info.data) ? <div className={styles.empty}>{err ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => { void info.refetch(); void refetch(); }}>다시 시도</button></> : "불러오는 중…"}</div>
+        : <BookingForm ctx={data} p={params} back={back} change={changeId ? info.data : undefined} />}
     </div>
   );
 }
@@ -36,7 +44,7 @@ export default function Booking(p: BookingParams) {
 interface Picked { name: string; range: string; min_age: number; options: BookingOption[]; option_id: number }
 type Stage = null | "pre" | "med" | "consent" | "confirm" | "success";
 
-function BookingForm({ ctx, p, back }: { ctx: BookingContext; p: BookingParams; back: string }) {
+function BookingForm({ ctx, p, back, change }: { ctx: BookingContext; p: BookingParams; back: string; change?: BookingChangeInfo }) {
   const router = useRouter();
   const php = usePhpBase();
   const today = ctx.now.slice(0, 10);
@@ -46,13 +54,15 @@ function BookingForm({ ctx, p, back }: { ctx: BookingContext; p: BookingParams; 
   const initial = (): Picked[] => {
     const t = ctx.treatments.find((x) => (p.treatmentId > 0 ? x.treatment_id === p.treatmentId : p.treatmentName !== "" && x.name === p.treatmentName));
     if (!t) return [];
-    const byId = t.options.find((o) => o.id === p.optionId);
+    // booking_change.php: the saved "시술명 · 옵션명" picks the option by its name, display name or dosage
+    const byName = change?.optionName ? t.options.find((o) => [o.option_name, o.name, o.dosage].map((v) => v.trim()).includes(change.optionName)) : undefined;
+    const byId = byName ?? t.options.find((o) => o.id === p.optionId);
     return [{ name: t.name, range: priceRange(t.price_min, t.price_max), min_age: t.min_age, options: t.options, option_id: byId ? byId.id : t.options.length === 1 ? t.options[0].id : 0 }];
   };
   const [picked, setPicked] = useState<Picked[]>(initial);
   const [pkg, setPkg] = useState<BookingPackage | null>(null);
-  const [date, setDate] = useState(days.includes(today) ? today : days[0] ?? today);
-  const [time, setTime] = useState("");
+  const [date, setDate] = useState(change && days.includes(change.date) ? change.date : days.includes(today) ? today : days[0] ?? today);
+  const [time, setTime] = useState(change?.time ?? "");
   const [sheet, setSheet] = useState(false);
   const [stage, setStage] = useState<Stage>(null);
   const [refusal, setRefusal] = useState<BookingRefusal | null>(null);
@@ -65,7 +75,9 @@ function BookingForm({ ctx, p, back }: { ctx: BookingContext; p: BookingParams; 
   const [name, setName] = useState(ctx.member.name);
   const [showErr, setShowErr] = useState(false);
   const [confirmErr, setConfirmErr] = useState("");
-  const [noshowOpen, setNoshowOpen] = useState<NoshowInfo | null>(ctx.noshow);
+  const [noshowOpen, setNoshowOpen] = useState<NoshowInfo | null>(change ? null : ctx.noshow);
+  /** booking_change.php: new_treatment is sent only when the chosen names differ from what was chosen on entry (no package on entry). */
+  const [origNames] = useState(() => (change ? picked.map((t) => t.name).join(", ") : null));
   const flags = useRef({ dup: false, rev: false });
   const asked = useRef<string | null>(null);
   const consented = useRef(false);
@@ -130,12 +142,26 @@ function BookingForm({ ctx, p, back }: { ctx: BookingContext; p: BookingParams; 
     afterPrecheck();
   };
 
+  const namesText = (pkg ? `[패키지] ${pkg.name}${picked.length ? ", " : ""}` : "") + picked.map((t) => t.name).join(", ");
+  const submitChange = async () => {
+    if (!change || busy) return;
+    setBusy(true); setMessage("");
+    try {
+      await api.bookingChange(change.id, { date, time, ...(namesText && namesText !== origNames ? { treatment: namesText } : {}) });
+      router.replace(`/mypage/bookings/${change.id}?changed=1`);
+      return;
+    } catch (e) {
+      setMessage(e instanceof ApiError && e.status === 401 ? "로그인이 필요합니다. 다시 로그인해주세요." : e instanceof Error && e.message && !/^\d{3} /.test(e.message) ? e.message : "변경 처리 중 오류가 발생했습니다.");
+    }
+    setBusy(false);
+  };
   const submit = () => {
-    if (!ready) {
-      setMessage(!hasChoice ? "시술 또는 패키지를 선택해주세요." : !optionsReady ? "시술의 세부 옵션을 선택해주세요." : !date ? "날짜를 선택해주세요." : "시간을 선택해주세요.");
+    if (change ? !date || !time || !optionsReady : !ready) {
+      setMessage(!change && !hasChoice ? "시술 또는 패키지를 선택해주세요." : !optionsReady ? "시술의 세부 옵션을 선택해주세요." : !date ? "날짜를 선택해주세요." : "시간을 선택해주세요.");
       return;
     }
     setMessage("");
+    if (change) { void submitChange(); return; }
     void precheckThenConfirm();
   };
 
@@ -166,7 +192,7 @@ function BookingForm({ ctx, p, back }: { ctx: BookingContext; p: BookingParams; 
 
   return (
     <>
-      {ctx.hospital.images.length > 0 && !p.rebook && (
+      {ctx.hospital.images.length > 0 && !p.rebook && !change && (
         <div className={styles.images}>
           <div className={styles.imagesScroll}>
             {ctx.hospital.images.map((src, i) => <div key={i} className={styles.image} style={{ backgroundImage: `url("${src}")` }} />)}
@@ -252,7 +278,7 @@ function BookingForm({ ctx, p, back }: { ctx: BookingContext; p: BookingParams; 
         </div>
 
         <div className={styles.submit}>
-          <button type="submit" className={`${styles.submitBtn} ${ready ? "" : styles.incomplete}`} disabled={busy}>예약 신청하기</button>
+          <button type="submit" className={`${styles.submitBtn} ${(change ? date && time && optionsReady : ready) ? "" : styles.incomplete}`} disabled={busy}>{change ? "예약하기" : "예약 신청하기"}</button>
         </div>
       </form>
 

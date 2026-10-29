@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type BookingBase, type MyBookingsData } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
@@ -45,10 +45,16 @@ function Progress({ steps, active, title }: { steps: string[]; active: number; t
 /** my_bookings.php: 시술예정 / 시술완료 / 예약취소. Paying, changing and cancelling stay in PHP (links). */
 export default function MyBookings({ initial, anon }: { initial?: MyBookingsData; anon?: boolean }) {
   const php = usePhpBase();
-  const raw = useSearchParams().get("tab");
+  const sp = useSearchParams();
+  const raw = sp.get("tab");
+  // my_bookings.php?action=cancel&booking_id=N (push / PHP links): open the reason sheet for that booking right away
+  const askedCancel = sp.get("action") === "cancel" ? Number(sp.get("booking_id")) : 0;
   const tab: Tab = raw === "completed" || raw === "cancelled" ? raw : "active";
   const { data, error, refetch } = useQuery({ queryKey: qk.myBookings, queryFn: () => api.myBookings(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
+  const router = useRouter();
+  const [changing, setChanging] = useState<{ id: number; left: number } | null>(null);
+  const [cancelling, setCancelling] = useState<number | null>(Number.isInteger(askedCancel) && askedCancel > 0 ? askedCancel : null);
   const rebook = (b: BookingBase) => `/booking?id=${b.hospitalId}&rebook=1&source_booking_id=${b.id}&treatment=${encodeURIComponent(b.treatment)}`;
   const total = data ? data.upcoming.length + data.completed.length + data.cancelled.length : 0;
 
@@ -81,9 +87,9 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
                 <div className={styles.bkActions}>
                   {b.action === "pay" && <a className={`${styles.bkBtn} ${styles.bkBtnPri}`} href={phpUrl(php, `booking_payment.php?booking_id=${b.id}`)}>결제하기</a>}
                   {b.action === "change" && (b.editsLeft > 0
-                    ? <a className={`${styles.bkBtn} ${styles.bkBtnPri}`} href={phpUrl(php, `my_bookings.php?action=change&booking_id=${b.id}`)}>예약변경</a>
+                    ? <button type="button" className={`${styles.bkBtn} ${styles.bkBtnPri}`} onClick={() => setChanging({ id: b.id, left: b.editsLeft })}>예약변경</button>
                     : <span className={`${styles.bkBtn} ${styles.bkBtnPri} ${styles.bkBtnOff}`} aria-disabled="true">예약변경</span>)}
-                  <a className={styles.bkBtn} href={phpUrl(php, `my_bookings.php?action=cancel&booking_id=${b.id}`)}>예약취소</a>
+                  <button type="button" className={styles.bkBtn} onClick={() => setCancelling(b.id)}>예약취소</button>
                 </div>
               </article>
             )))}
@@ -123,9 +129,52 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
               </a>
             )}
           </div>
+          {changing && <ChangeConfirmSheet left={changing.left} onClose={() => setChanging(null)} onGo={() => router.push(`/booking?change=${changing.id}`)} />}
+          {cancelling && <CancelReasonSheet onClose={() => setCancelling(null)} onGo={(reason) => router.push(`/mypage/bookings/${cancelling}/cancel?reason=${encodeURIComponent(reason)}`)} />}
           {data.expiredNotice && <ExpiredSheet n={data.expiredNotice} rebookHref={`/booking?id=${data.expiredNotice.hospitalId}&rebook=1&source_booking_id=${data.expiredNotice.bookingId}&treatment=${encodeURIComponent(data.expiredNotice.treatment)}`} />}
         </>
       )}
+    </div>
+  );
+}
+
+export const CANCEL_REASONS = ["일정 변경", "개인 사정", "다른 병원 예약", "금액 / 시술 변경", "기타"];
+
+/** my_bookings.php cancelModal: the reason, then the cancel request page. */
+function CancelReasonSheet({ onClose, onGo }: { onClose: () => void; onGo: (reason: string) => void }) {
+  const [choice, setChoice] = useState(CANCEL_REASONS[0]);
+  const [custom, setCustom] = useState("");
+  return (
+    <div className={styles.bkDim} role="dialog" aria-modal="true" aria-labelledby="bkCancelTitle" onClick={onClose}>
+      <div className={`${styles.bkSheet} ${styles.bkSheetLeft}`} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.bkHandle} aria-hidden="true" />
+        <div className={styles.bkSheetTitle} id="bkCancelTitle">예약을 취소하시는 이유가 있으신가요?</div>
+        <div className={styles.bkSheetDesc}>보다 나은 서비스를 위해 의견을 들려주세요</div>
+        <div className={styles.bkReasons}>
+          {CANCEL_REASONS.map((r) => (
+            <label key={r} className={styles.bkReason}><input type="radio" name="cancel_reason" checked={choice === r} onChange={() => setChoice(r)} /><span>{r}</span></label>
+          ))}
+        </div>
+        <input className={styles.bkReasonInput} type="text" maxLength={255} placeholder="직접 입력할게요 (선택)" value={custom} onChange={(e) => setCustom(e.target.value)} />
+        <button type="button" className={`${styles.bkBtn} ${styles.bkBtnPri} ${styles.bkBtnWide}`} onClick={() => onGo(custom.trim() ? `${choice}: ${custom.trim()}` : choice)}>예약 취소 요청</button>
+      </div>
+    </div>
+  );
+}
+
+/** my_bookings.php changeConfirmModal. */
+function ChangeConfirmSheet({ left, onClose, onGo }: { left: number; onClose: () => void; onGo: () => void }) {
+  return (
+    <div className={styles.bkDim} role="dialog" aria-modal="true" aria-labelledby="bkChangeTitle" onClick={onClose}>
+      <div className={styles.bkSheet} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.bkSheetIcon} aria-hidden="true">!</div>
+        <div className={styles.bkSheetTitle} id="bkChangeTitle">병원의 예약 현황에 따라<br />일정 변경이 불가할 수도 있어요</div>
+        <div className={styles.bkSheetDesc}>변경하시겠어요? (변경 가능 {left}회 남음)</div>
+        <div className={styles.bkSheetActions}>
+          <button type="button" className={`${styles.bkBtn} ${styles.bkBtnPri}`} onClick={onClose}>취소</button>
+          <button type="button" className={styles.bkBtn} onClick={onGo}>변경</button>
+        </div>
+      </div>
     </div>
   );
 }

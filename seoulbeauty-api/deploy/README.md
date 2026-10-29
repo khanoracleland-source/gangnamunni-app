@@ -140,3 +140,9 @@ GRANT INSERT (booking_id, question, answer) ON hms_saas.gangnamunni_booking_answ
 GRANT INSERT (booking_id, question, answer) ON hms_saas.gangnamunni_booking_answers TO 'sb_api_ro'@'localhost';
 -- Also add to seoulbeauty-api/.env (same values as hairwang_full/gangnamunni/includes/infyhms_api.php): HMS_API_URL=http://127.0.0.1:8000/api/external  HMS_API_KEY=<the key in infyhms_api.php>
 -- (without them the booking is still saved; it is just not sent to HMS and the log says so)
+-- 예약 취소 / 변경 (POST /v1/mypage/bookings/:id/cancel, /:id/change): the booking row, the HMS appointment, a pending order's point hold
+GRANT UPDATE (status, cancel_reason, cancelled_at, cancelled_by, updated_at, refund_status, booking_date, booking_time, treatment, edit_count, memo) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (status, cancel_reason, cancelled_at, cancelled_by, updated_at, refund_status, booking_date, booking_time, treatment, edit_count, memo) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'localhost';
+GRANT SELECT, UPDATE (is_completed, updated_at, opd_date) ON hms_saas.appointments TO 'sb_api_ro'@'127.0.0.1';
+GRANT SELECT, UPDATE (is_completed, updated_at, opd_date) ON hms_saas.appointments TO 'sb_api_ro'@'localhost';
+-- (only once sql/points_v2.sql exists) GRANT UPDATE (status) ON hms_saas.gangnamunni_point_payment_holds ...; GRANT UPDATE (amount, points_used) ON hms_saas.gangnamunni_platform_payments ...

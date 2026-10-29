@@ -78,6 +78,9 @@ class NextPilot {
     if (_registerTermsPaths.contains(uri.path)) return _rewriteRegisterTerms(uri);
     if (_pointsPolicyPaths.contains(uri.path)) return _rewritePointsPolicy(uri);
     if (_bookingPaths.contains(uri.path)) return _rewriteBooking(uri);
+    if (_bookingChangePaths.contains(uri.path)) return _rewriteBookingChange(uri);
+    if (_cancelRequestPaths.contains(uri.path)) return _rewriteCancelRequest(uri);
+    if (_cancelCompletePaths.contains(uri.path)) return _rewriteCancelComplete(uri);
     if (_reviewWritePaths.contains(uri.path)) return _rewriteReviewWrite(uri);
     if (_progressListPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/progress', const {}, const {});
     if (_progressDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'mypage/progress');
@@ -215,6 +218,37 @@ class NextPilot {
     };
     return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/booking', queryParameters: kept);
   }
+  static final Set<String> _bookingChangePaths = {'/booking_change.php', _site.resolve('booking_change.php').path};
+  static final Set<String> _cancelRequestPaths = {'/booking_cancel_request.php', _site.resolve('booking_cancel_request.php').path};
+  static final Set<String> _cancelCompletePaths = {'/booking_cancel_complete.php', _site.resolve('booking_cancel_complete.php').path};
+
+  static int? _bookingIdOf(Uri uri) {
+    final q = uri.queryParameters;
+    final id = int.tryParse(q['booking_id'] ?? '');
+    if (id == null || id <= 0 || q.keys.any((k) => k != 'booking_id' && k != 'app')) return null;
+    return id;
+  }
+
+  /// booking_change.php?booking_id=N[&app=] -> /next/booking?change=N
+  static Uri? _rewriteBookingChange(Uri uri) {
+    final id = _bookingIdOf(uri);
+    if (id == null) return null;
+    return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/booking', queryParameters: {'change': '$id'});
+  }
+
+  /// booking_cancel_request.php?booking_id=N -> /next/mypage/bookings (the reason sheet starts the Next.js flow; PHP kept it in the session).
+  static Uri? _rewriteCancelRequest(Uri uri) {
+    final id = _bookingIdOf(uri);
+    if (id == null) return null;
+    return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/mypage/bookings');
+  }
+
+  /// booking_cancel_complete.php?booking_id=N -> /next/mypage/bookings/N/cancel/done
+  static Uri? _rewriteCancelComplete(Uri uri) {
+    final id = _bookingIdOf(uri);
+    if (id == null) return null;
+    return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/mypage/bookings/$id/cancel/done');
+  }
   static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};
   static final Set<String> _communityDetailPaths = {'/detail_community.php', _site.resolve('detail_community.php').path};
 
@@ -276,9 +310,18 @@ class NextPilot {
     );
   }
 
-  /// my_bookings.php[?tab=active|completed|cancelled][&app=] -> /next/mypage/bookings[?tab=] (`action=`, `from=` etc. keep the PHP page).
+  /// my_bookings.php[?tab=active|completed|cancelled][&app=] -> /next/mypage/bookings[?tab=]; `action=change|cancel&booking_id=` handled below; `from=` etc. keep the PHP page.
   static Uri? _rewriteBookings(Uri uri) {
     final q = uri.queryParameters;
+    // my_bookings.php?action=change|cancel&booking_id=N: the change confirmation / cancel reason sheet for that booking.
+    final action = q['action'] ?? '';
+    if (action.isNotEmpty) {
+      final id = int.tryParse(q['booking_id'] ?? '');
+      if (id == null || id <= 0 || q.keys.any((k) => !const {'action', 'booking_id', 'tab', 'app'}.contains(k))) return null;
+      if (action == 'change') return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/booking', queryParameters: {'change': '$id'});
+      if (action != 'cancel') return null;
+      return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/mypage/bookings', queryParameters: {'action': 'cancel', 'booking_id': '$id'});
+    }
     if (q.keys.any((k) => k != 'tab' && k != 'app')) return null;
     final tab = q['tab'] ?? '';
     if (tab.isNotEmpty && !const {'active', 'completed', 'cancelled'}.contains(tab)) return null;

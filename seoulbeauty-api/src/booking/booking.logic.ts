@@ -222,3 +222,25 @@ export function noshowStatus(limit: number, months: number, withCancel: boolean,
   });
   return { count: rows.length, months, available_from: monthDay(avail), has_cancel: hasCancel || withCancel, items };
 }
+
+/** booking_noshow_cancel_preview(): what one more member cancellation would mean. null = nothing to warn about yet. */
+export function noshowCancelPreview(limit: number, months: number, withCancel: boolean, rows: NoshowRow[], today = kstNow().slice(0, 10)) {
+  if (!withCancel) return null;
+  const after = rows.length + 1;
+  if (limit < 2 || after < limit - 1) return null;
+  const out = { limit, months, before: rows.length, after, will_block: after >= limit, available_from: '' };
+  if (out.will_block) {
+    const events = [{ ev: today }, ...rows.map((r) => ({ ev: String(r.ev).slice(0, 10) }))];
+    const avail = noshowAvailableFrom(events[limit - 1].ev, months);
+    if (!avail) return null;
+    out.available_from = monthDay(avail);
+  }
+  return out;
+}
+
+/** booking_cancel_deadline_ts(): the day before the visit at 17:00 (KST wall clock 'YYYY-MM-DD HH:MM:SS'). */
+export function cancelDeadline(bookingDate: string): string | null {
+  const d = String(bookingDate).slice(0, 10);
+  if (!validDate(d)) return null;
+  return `${addDays(d, -1)} 17:00:00`;
+}

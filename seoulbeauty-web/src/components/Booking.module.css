@@ -149,3 +149,45 @@
 @keyframes up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .sheet, .overlay { animation-duration: .01ms; } }
+
+/* cancel request / done pages */
+.doneBody { padding: 30px 20px; display: flex; flex-direction: column; gap: 12px; }
+.doneTitle { font-size: 22px; font-weight: 700; text-align: center; margin: 0; line-height: 1.4; }
+.cxSheet { padding: 10px 20px 26px; text-align: center; }
+.cxTitle { margin: 24px 0 0; font-size: 22px; font-weight: 700; line-height: 1.4; letter-spacing: -.04em; }
+.cxSub { margin: 6px 0 0; font-size: 16px; color: #4A4446; }
+.cxReasons { max-width: 430px; margin: 22px auto 0; padding: 0 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 12px; text-align: left; }
+.cxReason { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 500; white-space: nowrap; color: #4A4446; }
+.cxReason input { width: 18px; height: 18px; margin: 0; accent-color: #AC1830; }
+.cxCustom { display: block; width: calc(100% - 40px); max-width: 430px; height: 46px; margin: 14px auto 0; padding: 0 12px; border: 1px solid #DCD6D8; font-size: 15px; font-family: inherit; box-sizing: border-box; }
+.cxContent { margin-top: 8px; padding: 6px 0 30px; border-top: 8px solid #F4F2F3; }
+.cxRows { margin: 0 20px; }
+.cxRow { display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid #ECE9EA; align-items: center; font-size: 17px; }
+.cxRow:last-child { border-bottom: 0; }
+.cxLabel { width: 76px; flex-shrink: 0; color: #9A9395; }
+.cxValue { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cxPerson { margin: 6px 20px 0; padding: 14px 16px; display: grid; grid-template-columns: 60px 1fr; gap: 8px 16px; background: #F1EFEF; align-items: center; font-size: 16px; }
+.cxPerson b { font-weight: 700; }
+.cxSec { margin: 0; padding: 24px 20px 4px; font-size: 19px; font-weight: 700; }
+.money { display: flex; align-items: center; justify-content: space-between; padding: 9px 20px; font-size: 16px; }
+.money span:first-child { color: #9A9395; }
+.moneyTotal { margin: 0 20px; padding-left: 0; padding-right: 0; border-top: 1px solid #ECE9EA; font-weight: 700; }
+.moneyTotal span:first-child { color: #1A1718; }
+.moneyRefund { margin: 4px 20px 0; padding-left: 0; padding-right: 0; border-top: 1px solid #ECE9EA; font-weight: 700; }
+.moneyRefund span:last-child { color: #AC1830; }
+.cxWarn { margin: 24px 20px 0; padding: 18px; background: #FBEFF1; }
+.cxWarn h2 { margin: 0 0 8px; color: #AC1830; font-size: 17px; }
+.cxWarn ul { margin: 0; padding-left: 16px; font-size: 15px; line-height: 1.7; }
+.cxAgreeTitle { width: calc(100% - 40px); margin: 22px 20px 0; padding: 0 0 12px; border: 0; background: none; display: flex; align-items: center; justify-content: space-between; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; }
+.cxAgreeBox { margin: 0 20px; padding: 16px; border: 1px solid #DCD6D8; font-size: 15px; line-height: 1.7; color: #4A4446; }
+.cxClosed { display: block; color: #AC1830; font-weight: 700; }
+.cxAgree { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 15px; font-weight: 500; color: #1A1718; }
+.cxAgree input { width: 18px; height: 18px; margin: 0; accent-color: #AC1830; }
+.cxLegal { margin: 14px 20px 0; color: #9A9395; font-size: 13px; line-height: 1.6; }
+.cxFinal { margin: 18px 20px 0; padding-top: 16px; border-top: 1px solid #ECE9EA; display: flex; align-items: baseline; justify-content: space-between; font-size: 15px; font-weight: 700; }
+.cxFinal strong { color: #AC1830; font-size: 21px; }
+.cxBtn { display: block; width: 180px; height: 52px; margin: 14px auto 0; border: 1px solid #AC1830; border-radius: 4px; background: #AC1830; color: #fff; font-size: 18px; font-weight: 500; font-family: inherit; cursor: pointer; }
+.cxBtn:disabled { opacity: .55; }
+.cxErr { margin: 12px 20px 0; color: #AC1830; text-align: center; font-size: 15px; }
+.policyBody { font-size: 14px; line-height: 1.7; color: #333; }
+.policyBody ul { padding-left: 18px; margin: 8px 0 0; }

@@ -139,7 +139,8 @@ export class BookingService {
     return out;
   }
 
-  private async noshow(mbId: string) {
+  /** booking_noshow_collect(): the policy numbers and the member's recent no-show / own-cancel rows (newest first). null = policy off. */
+  async noshowCollect(mbId: string): Promise<{ limit: number; months: number; withCancel: boolean; rows: NoshowRow[] } | null> {
     if (!mbId) return null;
     const limit = Math.min(n(await this.setting('noshow_block_count', '3')), 50);
     const months = Math.min(n(await this.setting('noshow_block_months', '3')), 36);
@@ -155,8 +156,13 @@ export class BookingService {
       const list: NoshowRow[] = (rows as any[]).map((r) => ({
         booking_date: dateStr(r.booking_date), booking_time: s(r.booking_time), hospital_name: s(r.hospital_name), status: s(r.status), ev: dateStr(r.ev),
       }));
-      return noshowStatus(limit, months, withCancel, list);
+      return { limit, months, withCancel, rows: list };
     } catch (e) { this.log.error(`noshow: ${(e as Error).message}`); return null; }
+  }
+
+  private async noshow(mbId: string) {
+    const c = await this.noshowCollect(mbId);
+    return c ? noshowStatus(c.limit, c.months, c.withCancel, c.rows) : null;
   }
 
   /** GET: everything the booking screen needs. 401 when the site requires a login and there is none. */
@@ -421,4 +427,4 @@ export class BookingService {
 }
 
 const isOne = (v: unknown) => v === '1' || v === 1 || v === true;
-const dateStr = (v: unknown) => (v instanceof Date ? new Date(v.getTime() + 9 * 3600_000).toISOString().slice(0, 10) : s(v).slice(0, 10));
+export const dateStr = (v: unknown) => (v instanceof Date ? new Date(v.getTime() + 9 * 3600_000).toISOString().slice(0, 10) : s(v).slice(0, 10));

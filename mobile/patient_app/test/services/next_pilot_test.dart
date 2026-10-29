@@ -84,7 +84,6 @@ void main() {
     expect(to(php('my_bookings.php')), '/next/mypage/bookings');
     expect(to(php('my_bookings.php?tab=active')), '/next/mypage/bookings');
     expect(to(php('my_bookings.php?tab=completed')), '/next/mypage/bookings?tab=completed');
-    expect(to(php('my_bookings.php?action=cancel&booking_id=4')), isNull); // change/cancel flows stay PHP
     expect(to(php('booking_request_detail.php?booking_id=4')), '/next/mypage/bookings/4');
     expect(to(php('booking_cancel_detail.php?booking_id=4')), '/next/mypage/bookings/4');
     expect(to(php('booking_detail.php?booking_id=4&new=1')), isNull);
@@ -126,6 +125,17 @@ void main() {
     expect(to(php('booking.php')), isNull);
     expect(to(php('booking.php?id=0')), isNull);
     expect(to(php('booking.php?id=7&change=1')), isNull);
+  });
+
+  test('booking change / cancel', () {
+    expect(to(php('my_bookings.php?action=change&booking_id=7')), '/next/booking?change=7');
+    expect(to(php('my_bookings.php?action=cancel&booking_id=7')), '/next/mypage/bookings?action=cancel&booking_id=7');
+    expect(to(php('my_bookings.php?action=pay&booking_id=7')), isNull);
+    expect(to(php('booking_change.php?booking_id=7')), '/next/booking?change=7');
+    expect(to(php('booking_change.php')), isNull);
+    expect(to(php('booking_change.php?booking_id=7&x=1')), isNull);
+    expect(to(php('booking_cancel_request.php?booking_id=7')), '/next/mypage/bookings');
+    expect(to(legacy('booking_cancel_complete.php?booking_id=7&app=1')), '/next/mypage/bookings/7/cancel/done');
   });
 
   test('legal pages', () {

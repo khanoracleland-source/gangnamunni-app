@@ -213,6 +213,14 @@ export type BookingRefusal =
   | { code: "duplicate_booking" | "other_hospital_duplicate"; existing: ExistingBooking } | { code: "revisit_blocked" | "revisit_warning"; revisit: RevisitInfo }
   | { code: "age_restricted" | "age_unknown"; min_age: number };
 
+/** 예약 취소 / 변경 (booking_cancel_request.php, booking_change.php) */
+export interface CancelWarn { limit: number; months: number; before: number; after: number; will_block: boolean; available_from: string }
+export interface BookingCancelInfo {
+  id: number; dateText: string; treatment: string; hospitalName: string; doctorName: string; bookerName: string; phone: string;
+  amount: number; refund: number; paymentStatus: string; windowClosed: boolean; cancelWarn: CancelWarn | null; now: string; reasons: string[];
+}
+export interface BookingChangeInfo { id: number; hospitalId: number; date: string; time: string; treatment: string; optionName: string; phone: string; editsLeft: number; treatmentText: string }
+
 /** GET /v1/legal/register-terms — bbs/register.php?view=terms */
 export interface RegisterTermsData { terms: string; privacy: string }
 
@@ -404,6 +412,10 @@ export const api = {
   faq: (ctx?: ServerCtx) => get<FaqData>("/v1/faq", undefined, ctx),
   registerTerms: (ctx?: ServerCtx) => get<RegisterTermsData>("/v1/legal/register-terms", undefined, ctx),
   pointsPolicy: (ctx?: ServerCtx) => get<{ visible: boolean }>("/v1/legal/points-policy", undefined, ctx),
+  bookingCancelInfo: (id: number) => get<BookingCancelInfo>(`/v1/mypage/bookings/${id}/cancel-info`),
+  bookingCancel: (id: number, reason: string) => send<{ success: boolean; message: string; refund_status: string }>("POST", `/v1/mypage/bookings/${id}/cancel`, { reason }, 30000),
+  bookingChangeInfo: (id: number) => get<BookingChangeInfo>(`/v1/mypage/bookings/${id}/change-info`),
+  bookingChange: (id: number, b: { date: string; time: string; treatment?: string }) => send<{ success: boolean; message: string; edits_left: number }>("POST", `/v1/mypage/bookings/${id}/change`, b, 30000),
   bookingContext: (id: number, ctx?: ServerCtx) => get<BookingContext>(`/v1/booking/context/${id}`, undefined, ctx),
   bookingPrecheck: (b: BookingRequest) => send<{ success: boolean; precheck: boolean }>("POST", "/v1/booking/precheck", b, 30000),
   bookingCreate: (b: BookingRequest) => send<{ success: boolean; booking_id: number; hms_appointment_id: number | null; detail_url: string }>("POST", "/v1/booking", b, 60000),
@@ -449,6 +461,8 @@ export const api = {
 /** Query keys shared by server prefetch and client hooks (React Query). */
 export const qk = {
   bookingContext: (id: number) => ["booking-context", id] as const,
+  bookingCancelInfo: (id: number) => ["booking-cancel-info", id] as const,
+  bookingChangeInfo: (id: number) => ["booking-change-info", id] as const,
   hospitals: (p: HospitalListParams) => ["hospitals", normalize(p)] as const,
   hospital: (id: number) => ["hospital", id] as const,
   searchView: (id: number) => ["searchView", id] as const,
