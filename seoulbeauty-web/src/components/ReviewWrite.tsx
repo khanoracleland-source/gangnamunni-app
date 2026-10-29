@@ -58,6 +58,7 @@ function Editor({ data }: { data: ReviewForm }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const live = useRef<Pick[]>([]);
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   useEffect(() => { live.current = [...before, ...after]; }, [before, after]);
   useEffect(() => () => live.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
 
@@ -132,7 +133,11 @@ function Editor({ data }: { data: ReviewForm }) {
           </div>
         ))}
         {cur.length < photoSlots && (
-          <label className={styles.add}>＋ 사진 추가<input type="file" aria-label={name} accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden onChange={addPicks(cur, set)} /></label>
+          <>
+            {/* Button + ref, not a label: Android WebView opens the chooser twice for label-wrapped inputs. */}
+            <button type="button" className={styles.add} aria-label={name} onClick={() => fileRefs.current[name]?.click()}>＋ 사진 추가</button>
+            <input ref={(el) => { fileRefs.current[name] = el; }} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden onChange={addPicks(cur, set)} />
+          </>
         )}
         <span className={styles.cap}>{cur.length} / {photoSlots}</span>
       </div>

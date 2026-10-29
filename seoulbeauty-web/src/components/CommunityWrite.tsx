@@ -39,6 +39,7 @@ function Editor({ id, data }: { id: number | null; data: CommunityForm }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const live = useRef<Pick[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => { live.current = picks; }, [picks]);
   useEffect(() => () => live.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
 
@@ -101,7 +102,11 @@ function Editor({ id, data }: { id: number | null; data: CommunityForm }) {
           </div>
         ))}
         {slots - picks.length > 0 && (
-          <label className={styles.add}>＋ 사진<input type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden onChange={onPick} /></label>
+          <>
+            {/* Button + ref, not a label: Android WebView opens the chooser twice for label-wrapped inputs. */}
+            <button type="button" className={styles.add} onClick={() => fileRef.current?.click()}>＋ 사진</button>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden onChange={onPick} />
+          </>
         )}
       </div>
       <div className={styles.hint}>사진 최대 {data.maxPhotos}장, 장당 5MB. 등록 후 관리자 검토를 거쳐 공개됩니다.</div>

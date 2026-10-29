@@ -10,6 +10,7 @@ import 'package:kivicare_patient/configs.dart';
 import 'package:kivicare_patient/services/webview_bridge.dart';
 import 'package:kivicare_patient/services/next_pilot.dart';
 import 'package:kivicare_patient/services/webview_cookie_persistence.dart';
+import 'package:kivicare_patient/services/webview_file_chooser.dart';
 
 /// 앱 시작 시 보여지는 WebView 화면
 /// configs.dart의 SHOW_WEBVIEW_ON_STARTUP = true 일 때 실행됨
@@ -118,6 +119,8 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
 
   Future<void> _configureWebView() async {
     await _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+    // Photo inputs on the website (review / community / profile) need this on Android.
+    WebViewFileChooser.install(_controller);
 
     // Tell the website that this request comes from the patient app. The
     // marker is deliberately not an auth token; it only lets the login page

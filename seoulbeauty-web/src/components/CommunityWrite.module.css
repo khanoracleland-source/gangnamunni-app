@@ -9,7 +9,7 @@
 .thumb { position: relative; width: 84px; height: 84px; background: #DAD7D8; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .thumb button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; line-height: 22px; }
-.add { width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; border: 1px dashed #9A9395; color: #6B6567; font-size: 14px; cursor: pointer; }
+.add { width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; border: 1px dashed #9A9395; color: #6B6567; font: inherit; font-size: 14px; cursor: pointer; background: #fff; padding: 0; }
 .hint { font-size: 13px; color: #9A9395; margin-bottom: 12px; }
 .error { color: #AC1830; font-size: 14px; margin-bottom: 12px; }
 .submit { width: 100%; padding: 14px 0; background: #AC1830; color: #fff; font-size: 16px; font-weight: 600; }

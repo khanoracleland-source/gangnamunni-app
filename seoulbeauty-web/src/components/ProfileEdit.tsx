@@ -68,14 +68,16 @@ function Form({ data }: { data: MyProfile }) {
       </div>
       {err && (err.field === "form" || err.field === "photo") && <div className={styles.pfErr} role="alert" style={{ margin: "12px 16px" }}>{err.message}</div>}
       <div className={styles.pfAvatarArea}>
-        <label className={styles.pfAvatarWrap}>
+        {/* A div, not a label: the overlay input already receives the tap; a label would re-dispatch the
+            click to the input and Android WebView then opens the file chooser twice (first pick lost). */}
+        <div className={styles.pfAvatarWrap}>
           <span className={styles.pfAvatar}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {shown ? <img src={shown} alt="프로필" /> : null}
           </span>
           <span className={styles.pfAvatarBtn} aria-hidden="true">✎</span>
           <input type="file" accept="image/*" className={styles.pfFile} aria-label="프로필 사진 변경" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
-        </label>
+        </div>
       </div>
       <div className={styles.pfForm}>
         <div className={styles.pfField}>
