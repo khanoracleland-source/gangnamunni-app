@@ -13,6 +13,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'
 // This endpoint deliberately sends no Access-Control-Allow-Origin header.
 require_once __DIR__ . '/../includes/init.php';
 require_once __DIR__ . '/../includes/app_native_auth.php';
+// Gnuboard common.php resets Content-Type to text/html; restore JSON so init.php's
+// shutdown hook does not append its <script> and the WebView can parse the body.
+header('Content-Type: application/json; charset=utf-8');
 if (empty($is_member) || empty($member['mb_id'])
     || ($_COOKIE['sb_patient_app'] ?? '') !== '1'
     || !app_native_auth_is_valid_device_id($_COOKIE['sb_app_device'] ?? '')) {

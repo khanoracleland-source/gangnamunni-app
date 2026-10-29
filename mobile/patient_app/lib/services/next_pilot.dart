@@ -1,17 +1,18 @@
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:kivicare_patient/configs.dart';
 
-/// Next.js pilot (home, hospitals, events at `/next/…`).
+/// Next.js pages (`/next/…`): home, hospitals, events, community, mypage.
 ///
-/// Enabled only with `--dart-define=NEXT_PILOT_HOSPITALS=true`; release builds
-/// keep the PHP pages. When enabled, any in-app navigation to the PHP hospital
-/// list (`hospitals.php`) on the trusted host is redirected to the Next.js list
-/// with the same filters, so no PHP template has to change for the test.
+/// On by default since 2.0.8 (day 13). `--dart-define=NEXT_PILOT_HOSPITALS=false`
+/// builds an app that keeps every PHP page (emergency fallback). When on, any
+/// in-app navigation to a PHP page that has a Next.js counterpart on the trusted
+/// host is redirected there with the same parameters; a parameter the Next.js
+/// page does not understand (and the `php=1` escape hatch) keeps the PHP page.
 class NextPilot {
   NextPilot._();
 
   static const bool enabled =
-      bool.fromEnvironment('NEXT_PILOT_HOSPITALS', defaultValue: false);
+      bool.fromEnvironment('NEXT_PILOT_HOSPITALS', defaultValue: true);
 
   /// Apache serves the Next.js app under this prefix on the same host.
   static const String basePath = '/next';

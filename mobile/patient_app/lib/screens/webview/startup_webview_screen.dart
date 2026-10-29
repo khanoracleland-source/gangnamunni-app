@@ -260,7 +260,20 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     if (!mounted) return;
     // Pilot: open the Next.js home directly (loadRequest from Dart bypasses the navigation
     // delegate on Android, so the rewrite has to happen here).
-    await _controller.loadRequest(NextPilot.rewrite(startupUri) ?? startupUri);
+    final target = NextPilot.rewrite(startupUri) ?? startupUri;
+    final hasBridgeToken = widget.sessionBridgeToken?.isNotEmpty == true;
+    if (hasBridgeToken && target != startupUri) {
+      // The one-time sb_sso_token becomes a real session cookie only on a PHP request
+      // made by this WebView; a Next.js page never runs PHP. Land on PHP once and let it
+      // redirect (302) to the Next.js target, so the session cookie is in this cookie jar.
+      final land = startupUri.resolve('app_session_land.php').replace(
+        queryParameters: {'url': target.hasQuery ? '${target.path}?${target.query}' : target.path},
+      );
+      debugPrint('[NextPilot] session landing -> ${target.path}');
+      await _controller.loadRequest(land);
+    } else {
+      await _controller.loadRequest(target);
+    }
   }
 
   Future<void> _installHospitalHeaderBack() async {

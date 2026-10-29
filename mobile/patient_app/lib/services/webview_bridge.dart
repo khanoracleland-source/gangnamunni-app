@@ -198,6 +198,11 @@ class WebViewBridge {
         await _handleNativeLogout();
         break;
 
+      case 'authBootstrap':
+        // Diagnostic only: the result of the session-recovery call on this page.
+        _log('authBootstrap status=${data['status']} ok=${data['ok']} error=${data['error'] ?? ''}');
+        break;
+
       default:
         _log('알 수 없는 action: $action');
         break;
@@ -261,24 +266,29 @@ class WebViewBridge {
   /// for another manual login. The server only returns a short-lived code.
   Future<void> recoverNativeSession() async {
     try {
-      if (!await _isFromTrustedOrigin() || await _auth.hasStoredSession) {
-        return;
-      }
+      final trusted = await _isFromTrustedOrigin();
+      final stored = await _auth.hasStoredSession;
       final current = Uri.tryParse(await controller.currentUrl() ?? '');
+      _log('native session recovery: trusted=$trusted stored=$stored path=${current?.path}');
+      if (!trusted || stored) return;
       if (current?.queryParameters.containsKey('app_logout') == true) return;
       await controller.runJavaScript('''
         (function() {
           if (window.__nativeAuthBootstrapPending) return;
           window.__nativeAuthBootstrapPending = true;
+          var status = 0;
           fetch('/hairwang/gangnamunni/api/app_auth_bootstrap.php', {
             method: 'POST', credentials: 'same-origin', cache: 'no-store',
             headers: {'X-Native-Auth': '1'}
-          }).then(function(r) { return r.ok ? r.json() : null; })
+          }).then(function(r) { status = r.status; return r.ok ? r.json() : null; })
             .then(function(data) {
+              if (window.FlutterBridge) FlutterBridge.postMessage(JSON.stringify({action: 'authBootstrap', status: status, ok: !!(data && data.success)}));
               if (data && data.success && data.code && window.FlutterBridge) {
                 FlutterBridge.postMessage(JSON.stringify({action: 'authExchange', code: data.code, device_id: data.device_id}));
               }
-            }).catch(function() {}).finally(function() { window.__nativeAuthBootstrapPending = false; });
+            }).catch(function(e) {
+              if (window.FlutterBridge) FlutterBridge.postMessage(JSON.stringify({action: 'authBootstrap', status: status, error: String(e)}));
+            }).finally(function() { window.__nativeAuthBootstrapPending = false; });
         })();
       ''');
     } catch (_) {
