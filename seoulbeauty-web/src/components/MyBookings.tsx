@@ -85,7 +85,7 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
                 <Summary b={b} />
                 <Progress steps={b.steps} active={b.activeStep} title="예약 진행 상태" />
                 <div className={styles.bkActions}>
-                  {b.action === "pay" && <a className={`${styles.bkBtn} ${styles.bkBtnPri}`} href={phpUrl(php, `booking_payment.php?booking_id=${b.id}`)}>결제하기</a>}
+                  {b.action === "pay" && <Link className={`${styles.bkBtn} ${styles.bkBtnPri}`} href={`/mypage/bookings/${b.id}/payment`}>결제하기</Link>}
                   {b.action === "change" && (b.editsLeft > 0
                     ? <button type="button" className={`${styles.bkBtn} ${styles.bkBtnPri}`} onClick={() => setChanging({ id: b.id, left: b.editsLeft })}>예약변경</button>
                     : <span className={`${styles.bkBtn} ${styles.bkBtnPri} ${styles.bkBtnOff}`} aria-disabled="true">예약변경</span>)}

@@ -5,17 +5,18 @@ import { idParam } from '../common/parse';
 import { SameOriginGuard } from '../common/same-origin.guard';
 import { BookingMember, BookingsService } from './bookings.service';
 import { BookingManageService } from './booking-manage.service';
+import { BookingPaymentService } from './booking-payment.service';
 
 function member(req: AuthedRequest): BookingMember {
   const u = req.session!.user!;
-  return { id: u.id, phone: u.phone || '' };
+  return { id: u.id, phone: u.phone || '', name: u.name || '' };
 }
 
-/** 내 예약 (list, detail, cancel, change). Paying stays in PHP. Everything is the member's own: never cached. */
+/** 내 예약 (list, detail, cancel, change, payment without PG). The live Toss checkout stays in PHP. Everything is the member's own: never cached. */
 @Controller('v1/mypage/bookings')
 @UseGuards(RequireAuthGuard)
 export class BookingsController {
-  constructor(private readonly bookings: BookingsService, private readonly manage: BookingManageService) {}
+  constructor(private readonly bookings: BookingsService, private readonly manage: BookingManageService, private readonly payment: BookingPaymentService) {}
 
   @Get()
   list(@Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.bookings.list(member(req)); }
@@ -40,4 +41,14 @@ export class BookingsController {
   @Post(':id/change')
   @UseGuards(SameOriginGuard)
   change(@Param('id') id: string, @Body() body: { date?: unknown; time?: unknown; treatment?: unknown }, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.manage.change(member(req), idParam(id), body ?? {}); }
+
+  @Get(':id/payment')
+  paymentInfo(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.payment.info(member(req), idParam(id)); }
+
+  @Post(':id/payment/preview')
+  @UseGuards(SameOriginGuard)
+  paymentPreview(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.payment.preview(member(req), idParam(id)); }
+
+  @Get(':id/payment/success')
+  paymentSuccess(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.payment.success(member(req), idParam(id)); }
 }

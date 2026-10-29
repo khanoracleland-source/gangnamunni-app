@@ -1,0 +1,86 @@
+/* booking_payment.php / booking_payment_success.php (same colours and sizes; the Toss sheets are not ported) */
+.page { max-width: 640px; min-height: 100vh; margin: 0 auto; background: #fff; color: #111; padding-bottom: 90px; box-sizing: border-box; }
+.pageDark { background: #fff; }
+.header { height: 72px; display: flex; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 10; background: #fff; }
+.back { position: absolute; left: 22px; top: 50%; width: 28px; height: 28px; transform: translateY(-50%); border: 0; background: transparent; padding: 0; cursor: pointer; }
+.back::before { content: ""; position: absolute; left: 8px; top: 5px; width: 16px; height: 16px; border-left: 2px solid #111; border-bottom: 2px solid #111; transform: rotate(45deg); }
+.title { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -.04em; }
+.content { padding-bottom: 22px; }
+.empty { padding: 60px 20px; text-align: center; color: #777; line-height: 1.7; }
+.retry { color: #AC1830; text-decoration: underline; border: 0; background: none; cursor: pointer; font: inherit; }
+.section { padding: 28px 28px 26px; background: #fff; }
+.section + .section { border-top: 10px solid #f3f3f3; }
+.sectionTitle { margin: 0 0 26px; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
+.summary { display: grid; grid-template-columns: 108px 1fr; gap: 22px; align-items: start; margin-bottom: 28px; }
+.logo { width: 108px; height: 108px; background: #AC1830; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.logo span { font-size: 18px; letter-spacing: .24em; margin-left: .24em; }
+.hospital { font-size: 20px; line-height: 1.25; font-weight: 600; margin: 2px 0 8px; letter-spacing: -.04em; }
+.address { font-size: 15px; line-height: 1.45; font-weight: 600; margin: 0 0 12px; color: #222; }
+.bar { color: #aaa; padding: 0 10px; }
+.treatment { font-size: 22px; line-height: 1.3; font-weight: 600; margin: 0 0 8px; letter-spacing: -.04em; word-break: break-word; }
+.vat { color: #a9a9a9; font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.old { text-decoration: line-through; margin-left: 6px; }
+.price { color: #AC1830; font-size: 22px; font-weight: 600; letter-spacing: -.04em; }
+.price small { color: #111; font-size: 15px; font-weight: 600; margin-left: 2px; }
+.line { border: 0; border-top: 1px solid #ddd; margin: 0; }
+.infoRow { display: grid; grid-template-columns: 116px 1fr; gap: 16px; align-items: center; min-height: 66px; border-bottom: 1px solid #e1e1e1; }
+.label { color: #b0b0b0; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
+.value { color: #111; font-size: 18px; font-weight: 600; letter-spacing: -.04em; word-break: break-word; }
+.redNote { color: #AC1830; font-size: 15px; font-weight: 600; margin-top: 8px; }
+.checkRow { display: flex; align-items: center; gap: 10px; min-height: 58px; font-size: 18px; font-weight: 600; cursor: pointer; }
+.checkbox { width: 14px; height: 14px; accent-color: #AC1830; }
+.visitorFields { padding-top: 18px; }
+.field { margin-bottom: 28px; }
+.field label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.field input { width: 100%; height: 44px; border: 1px solid #d9d9d9; padding: 0 16px; font-size: 15px; outline: none; box-sizing: border-box; font-family: inherit; }
+.field input:focus { border-color: #AC1830; }
+.visitorConfirm { display: block; min-width: 190px; height: 48px; border: 0; background: #AC1830; color: #fff; font-size: 18px; font-weight: 600; margin: 8px auto 30px; cursor: pointer; font-family: inherit; }
+.visitorConfirm:disabled { opacity: .6; }
+.scheduleRow { border-top: 1px solid #e1e1e1; border-bottom: 0; min-height: 84px; }
+.pointLabel { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.pointBox { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 42px; border: 1px solid #d8d8d8; padding: 0 12px; }
+.pointInput { flex: 1; border: 0; outline: none; text-align: right; font-size: 18px; font-weight: 600; min-width: 0; background: transparent; font-family: inherit; }
+.pointUnit { font-size: 18px; font-weight: 600; }
+.pointMax { border: 0; background: transparent; color: #AC1830; font-size: 18px; font-weight: 600; padding: 0; white-space: nowrap; font-family: inherit; }
+.pointMax:disabled { color: #bbb; }
+.pointHelp { margin-top: 12px; text-align: right; font-size: 13px; font-weight: 600; }
+.pointNote { margin-top: 14px; color: #777; font-size: 13px; line-height: 1.55; font-weight: 600; }
+.methodNotice { margin: 0 0 20px; padding: 14px 16px; background: #fff7e6; color: #805400; font-size: 14px; line-height: 1.65; }
+.methodNotice p { margin: 0; }
+.methodNotice p + p { margin-top: 6px; }
+.methodGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.method { height: 76px; border: 1px solid #d8d8d8; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; letter-spacing: -.04em; font-family: inherit; }
+.method:disabled { color: #999; background: #fafafa; cursor: not-allowed; }
+.amountRow { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; font-size: 15px; font-weight: 600; }
+.right { text-align: right; white-space: nowrap; }
+.badge { display: inline-block; padding: 1px 6px; margin-left: 6px; background: #f3f3f3; color: #777; font-size: 12px; }
+.totalRow { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0 6px; margin-top: 6px; border-top: 1px solid #e1e1e1; font-size: 16px; font-weight: 700; }
+.totalRow small { font-size: 13px; color: #777; }
+.rulesBody { font-size: 13px; font-weight: 600; line-height: 1.7; color: #444; }
+.rulesBody ul { margin: 0; padding-left: 18px; }
+.agree { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.agreeErr { margin: 8px 0 0; color: #AC1830; font-size: 13px; }
+.legal { margin-top: 14px; color: #888; font-size: 13px; line-height: 1.6; font-weight: 600; }
+.alert { margin: 16px 28px 0; padding: 14px 16px; font-size: 15px; line-height: 1.6; font-weight: 600; }
+.alertErr { background: #FFEBEE; color: #C62828; }
+.alertWarn { background: #fff7e6; color: #805400; }
+.alertDone { background: #E8F5E9; color: #2E7D32; }
+.result { margin: 12px 28px 0; padding: 12px 16px; background: #F4F2F3; font-size: 15px; font-weight: 600; }
+.statusLink { display: block; width: 190px; height: 48px; line-height: 48px; margin: 18px auto 0; border: 1px solid #AC1830; color: #AC1830; text-align: center; font-size: 17px; font-weight: 600; text-decoration: none; }
+.sticky { position: sticky; bottom: 0; padding: 14px 28px calc(14px + env(safe-area-inset-bottom, 0px)); background: #fff; border-top: 1px solid #e1e1e1; }
+.stickyTotal { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; font-size: 16px; font-weight: 700; }
+.stickyTotal small { font-size: 13px; color: #777; }
+.new { color: #AC1830; margin-left: 8px; }
+.payBtn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; border: 0; background: #AC1830; color: #fff; font-size: 17px; font-weight: 600; text-decoration: none; font-family: inherit; cursor: pointer; box-sizing: border-box; }
+.payBtn:disabled { background: #ccc; cursor: not-allowed; }
+.previewBtn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; margin-top: 10px; border: 1px solid #AC1830; background: #fff; color: #AC1830; font-size: 17px; font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; box-sizing: border-box; }
+.previewPri { margin-top: 0; background: #AC1830; color: #fff; }
+.previewBtn:disabled { opacity: .55; cursor: wait; }
+.checkoutNote { margin: 10px 0 0; text-align: center; color: #777; font-size: 12px; }
+.doneHero { padding: 30px 28px 10px; text-align: center; }
+.doneIcon { display: inline-flex; width: 56px; height: 56px; border-radius: 50%; background: #AC1830; color: #fff; font-size: 30px; font-weight: 700; align-items: center; justify-content: center; }
+.doneIconOk { background: #2E7D32; }
+.doneTitle { margin: 16px 0 8px; font-size: 22px; font-weight: 700; letter-spacing: -.04em; }
+.doneDesc { margin: 0; color: #555; font-size: 15px; line-height: 1.6; white-space: pre-line; }
+.doneActions { padding: 10px 28px 0; }

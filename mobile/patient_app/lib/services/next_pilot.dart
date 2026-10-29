@@ -81,6 +81,8 @@ class NextPilot {
     if (_bookingChangePaths.contains(uri.path)) return _rewriteBookingChange(uri);
     if (_cancelRequestPaths.contains(uri.path)) return _rewriteCancelRequest(uri);
     if (_cancelCompletePaths.contains(uri.path)) return _rewriteCancelComplete(uri);
+    if (_paymentPaths.contains(uri.path)) return _rewritePayment(uri);
+    if (_paymentSuccessPaths.contains(uri.path)) return _rewritePaymentSuccess(uri);
     if (_reviewWritePaths.contains(uri.path)) return _rewriteReviewWrite(uri);
     if (_progressListPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/progress', const {}, const {});
     if (_progressDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'mypage/progress');
@@ -248,6 +250,25 @@ class NextPilot {
     final id = _bookingIdOf(uri);
     if (id == null) return null;
     return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/mypage/bookings/$id/cancel/done');
+  }
+  static final Set<String> _paymentPaths = {'/booking_payment.php', _site.resolve('booking_payment.php').path};
+  static final Set<String> _paymentSuccessPaths = {'/booking_payment_success.php', _site.resolve('booking_payment_success.php').path};
+
+  /// booking_payment.php?booking_id=N[&pay_error=CODE][&app=] -> /next/mypage/bookings/N/payment[?pay_error=]
+  /// (`php=1` and anything else keep the PHP page: the live Toss checkout still runs there).
+  static Uri? _rewritePayment(Uri uri) {
+    final q = uri.queryParameters;
+    final id = int.tryParse(q['booking_id'] ?? '');
+    if (id == null || id <= 0 || q.keys.any((k) => !const {'booking_id', 'pay_error', 'app'}.contains(k))) return null;
+    final err = q['pay_error'] ?? '';
+    return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/mypage/bookings/$id/payment', queryParameters: err.isEmpty ? null : {'pay_error': err});
+  }
+
+  /// booking_payment_success.php?booking_id=N[&app=] -> /next/mypage/bookings/N/payment/success
+  static Uri? _rewritePaymentSuccess(Uri uri) {
+    final id = _bookingIdOf(uri);
+    if (id == null) return null;
+    return Uri(scheme: _site.scheme, host: _site.host, port: _site.hasPort ? _site.port : null, path: '$basePath/mypage/bookings/$id/payment/success');
   }
   static final Set<String> _communityWritePaths = {'/community_write.php', _site.resolve('community_write.php').path};
   static final Set<String> _communityDetailPaths = {'/detail_community.php', _site.resolve('detail_community.php').path};

@@ -87,7 +87,6 @@ void main() {
     expect(to(php('booking_request_detail.php?booking_id=4')), '/next/mypage/bookings/4');
     expect(to(php('booking_cancel_detail.php?booking_id=4')), '/next/mypage/bookings/4');
     expect(to(php('booking_detail.php?booking_id=4&new=1')), isNull);
-    expect(to(php('booking_payment.php?booking_id=4')), isNull);
   });
 
   test('notifications', () {
@@ -136,6 +135,14 @@ void main() {
     expect(to(php('booking_change.php?booking_id=7&x=1')), isNull);
     expect(to(php('booking_cancel_request.php?booking_id=7')), '/next/mypage/bookings');
     expect(to(legacy('booking_cancel_complete.php?booking_id=7&app=1')), '/next/mypage/bookings/7/cancel/done');
+  });
+
+  test('booking payment (preview flow; Toss checkout stays PHP via php=1)', () {
+    expect(to(php('booking_payment.php?booking_id=7')), '/next/mypage/bookings/7/payment');
+    expect(to(php('booking_payment.php?booking_id=7&pay_error=USER_CANCEL')), '/next/mypage/bookings/7/payment?pay_error=USER_CANCEL');
+    expect(to(php('booking_payment.php?booking_id=7&php=1')), isNull);
+    expect(to(php('booking_payment.php')), isNull);
+    expect(to(legacy('booking_payment_success.php?booking_id=7&app=1')), '/next/mypage/bookings/7/payment/success');
   });
 
   test('legal pages', () {

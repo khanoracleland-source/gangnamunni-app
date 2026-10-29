@@ -4,7 +4,7 @@ import {
   bookingTab, cancelSteps, cardDate, dateTimeLabel, dday, detailDate, isPgProvider, paymentState, paymentTierPoint, requestSteps, reviewState,
 } from './bookings.logic';
 
-export interface BookingMember { id: string; phone: string }
+export interface BookingMember { id: string; phone: string; name?: string }
 
 const n = (v: unknown) => Number(v ?? 0) || 0;
 const s = (v: unknown) => (v == null ? '' : String(v));

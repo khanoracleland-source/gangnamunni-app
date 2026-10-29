@@ -221,6 +221,17 @@ export interface BookingCancelInfo {
 }
 export interface BookingChangeInfo { id: number; hospitalId: number; date: string; time: string; treatment: string; optionName: string; phone: string; editsLeft: number; treatmentText: string }
 
+/** 예약 결제 (booking_payment.php — PG 없이 동작하는 부분) */
+export interface BookingPaymentInfo {
+  booking: { id: number; status: string; statusText: string; hospitalName: string; hospitalArea: string; hospitalAddress: string; treatment: string; bookerName: string; phone: string; dateText: string; logo: string };
+  ledgerReady: boolean; orderError: string; /** booking_payment.php $display_amount: the order's gross, or the booking price before an order exists */
+  gross: number;
+  order: { status: string; provider: string; amount: number; gross: number; pointsUsed: number; isTest: boolean } | null;
+  isConfirmed: boolean; isPaid: boolean; preview: boolean; liveAvailable: boolean; previewAvailable: boolean;
+  points: { v2: boolean; expected: number; useReady: boolean; max: number; balance: number };
+}
+export interface BookingPaymentSuccess { title: string; description: string; paidFinal: boolean; preview: boolean; isPg: boolean; hospitalName: string; treatment: string; dateText: string; booker: string; bookingNo: string }
+
 /** GET /v1/legal/register-terms — bbs/register.php?view=terms */
 export interface RegisterTermsData { terms: string; privacy: string }
 
@@ -412,6 +423,9 @@ export const api = {
   faq: (ctx?: ServerCtx) => get<FaqData>("/v1/faq", undefined, ctx),
   registerTerms: (ctx?: ServerCtx) => get<RegisterTermsData>("/v1/legal/register-terms", undefined, ctx),
   pointsPolicy: (ctx?: ServerCtx) => get<{ visible: boolean }>("/v1/legal/points-policy", undefined, ctx),
+  bookingPayment: (id: number) => get<BookingPaymentInfo>(`/v1/mypage/bookings/${id}/payment`),
+  bookingPaymentPreview: (id: number) => send<{ success: boolean; redirect: string }>("POST", `/v1/mypage/bookings/${id}/payment/preview`, {}, 30000),
+  bookingPaymentSuccess: (id: number) => get<BookingPaymentSuccess>(`/v1/mypage/bookings/${id}/payment/success`),
   bookingCancelInfo: (id: number) => get<BookingCancelInfo>(`/v1/mypage/bookings/${id}/cancel-info`),
   bookingCancel: (id: number, reason: string) => send<{ success: boolean; message: string; refund_status: string }>("POST", `/v1/mypage/bookings/${id}/cancel`, { reason }, 30000),
   bookingChangeInfo: (id: number) => get<BookingChangeInfo>(`/v1/mypage/bookings/${id}/change-info`),
@@ -462,6 +476,8 @@ export const api = {
 export const qk = {
   bookingContext: (id: number) => ["booking-context", id] as const,
   bookingCancelInfo: (id: number) => ["booking-cancel-info", id] as const,
+  bookingPayment: (id: number) => ["booking-payment", id] as const,
+  bookingPaymentSuccess: (id: number) => ["booking-payment-success", id] as const,
   bookingChangeInfo: (id: number) => ["booking-change-info", id] as const,
   hospitals: (p: HospitalListParams) => ["hospitals", normalize(p)] as const,
   hospital: (id: number) => ["hospital", id] as const,

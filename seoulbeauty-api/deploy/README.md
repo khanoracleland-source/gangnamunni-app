@@ -146,3 +146,9 @@ GRANT UPDATE (status, cancel_reason, cancelled_at, cancelled_by, updated_at, ref
 GRANT SELECT, UPDATE (is_completed, updated_at, opd_date) ON hms_saas.appointments TO 'sb_api_ro'@'127.0.0.1';
 GRANT SELECT, UPDATE (is_completed, updated_at, opd_date) ON hms_saas.appointments TO 'sb_api_ro'@'localhost';
 -- (only once sql/points_v2.sql exists) GRANT UPDATE (status) ON hms_saas.gangnamunni_point_payment_holds ...; GRANT UPDATE (amount, points_used) ON hms_saas.gangnamunni_platform_payments ...
+-- 예약 결제 (GET /v1/mypage/bookings/:id/payment, POST /:id/payment/preview): the pending order and the "결제 없이 계속하기" record
+GRANT INSERT (payment_type, funds_recipient, booking_id, hospital_id, hospital_name, patient_mb_id, patient_name, patient_phone, treatment_name, amount, currency, merchant_uid, status) ON hms_saas.gangnamunni_platform_payments TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT (payment_type, funds_recipient, booking_id, hospital_id, hospital_name, patient_mb_id, patient_name, patient_phone, treatment_name, amount, currency, merchant_uid, status) ON hms_saas.gangnamunni_platform_payments TO 'sb_api_ro'@'localhost';
+GRANT INSERT (booking_id), UPDATE (booking_id) ON hms_saas.gangnamunni_booking_payment_previews TO 'sb_api_ro'@'127.0.0.1';  -- UPDATE: ON DUPLICATE KEY UPDATE needs it
+GRANT INSERT (booking_id), UPDATE (booking_id) ON hms_saas.gangnamunni_booking_payment_previews TO 'sb_api_ro'@'localhost';  -- UPDATE: ON DUPLICATE KEY UPDATE needs it
+-- .env (same meaning as hairwang_full/data/dbconfig.php): PG_PAYMENTS_ENABLED=0  BOOKING_PAYMENT_METHODS=  BOOKING_PAYMENT_PREVIEW_ENABLED=1  (TOSS_CLIENT_KEY/TOSS_SECRET_KEY only once the PG contract exists; the Toss checkout itself still runs in PHP)
