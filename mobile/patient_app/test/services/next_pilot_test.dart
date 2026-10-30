@@ -109,7 +109,7 @@ void main() {
   });
 
   test('pages that stay on PHP are untouched', () {
-    for (final p in ['auth/login.php?url=%2Fnext%2Fmypage', 'bbs/logout.php?url=%2Findex.php', 'my_points.php', 'reviews.php', 'treatments.php', 'price_compare.php']) {
+    for (final p in ['auth/login.php?url=%2Fnext%2Fmypage', 'bbs/logout.php?url=%2Findex.php', 'reviews.php', 'treatments.php', 'price_compare.php']) {
       expect(to(php(p)), isNull, reason: p);
     }
     expect(NextPilot.isNextPage(Uri.parse('$host/next/community/3')), isTrue);
@@ -158,5 +158,11 @@ void main() {
     expect(to(php('my_points_policy_detail.php?type=progress')), '/next/points-policy/progress');
     expect(to(php('my_points_policy_detail.php?type=bogus')), isNull);
     expect(to(php('my_points_policy_detail.php')), isNull);
+    expect(to(php('my_points.php')), '/next/mypage/points');
+    expect(to(legacy('my_points.php?app=1')), '/next/mypage/points');
+    expect(to(php('my_points.php?x=1')), isNull);
+    expect(to(php('my_points_policy.php')), '/next/points-policy');
+    expect(to(php('my_points_policy.php?tab=expire')), '/next/points-policy?tab=expire');
+    expect(to(php('my_points_policy.php?tab=bogus')), isNull);
   });
 }

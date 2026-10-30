@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { PointsPolicy } from "@/content/legal";
 import SupportHeader from "./SupportHeader";
 import styles from "./Legal.module.css";
@@ -18,8 +19,7 @@ export default function PointsPolicyDetail({ policy }: { policy: PointsPolicy })
         </section>
       ))}
       <p className={styles.notice}>적립 금액과 기준은 사전 안내 없이 변경될 수 있습니다.</p>
-      {/* my_points_policy.php stays in PHP until the points pages move (G) */}
-      <a className={styles.linkRow} href="/my_points_policy.php"><span>포인트 정책 전체 보기</span><span aria-hidden="true">›</span></a>
+      <Link className={styles.linkRow} href="/points-policy"><span>포인트 정책 전체 보기</span><span aria-hidden="true">›</span></Link>
     </div>
   );
 }

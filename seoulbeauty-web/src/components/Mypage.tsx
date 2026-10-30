@@ -80,7 +80,7 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
           <div className={styles.section}>
             <div className={styles.sectionTitle}>병원 이용</div>
             {row("/mypage/bookings", "icon-mypage-booking", "내 예약 / 결제 내역", data.bookingCount > 0 ? `예약 ${data.bookingCount.toLocaleString("ko-KR")}건` : undefined, true)}
-            {data.points.visible && row("my_points.php", "icon-mypage-point", "포인트", `${data.points.balance.toLocaleString("ko-KR")}P`)}
+            {data.points.visible && row("/mypage/points", "icon-mypage-point", "포인트", `${data.points.balance.toLocaleString("ko-KR")}P`, true)}
             {row("/mypage/wishlist", "icon-mypage-wishlist", "병원 찜", undefined, true)}
             {row("/mypage/reviews", "icon-mypage-review", "내가 작성한 후기", undefined, true)}
             {row("/mypage/consultations", data.consultCount > 0 ? "icon-mypage-consult-active" : "icon-mypage-consult", "상담 내역", data.consultCount > 0 ? `${data.consultCount.toLocaleString("ko-KR")}건` : undefined, true)}

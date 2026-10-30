@@ -77,6 +77,8 @@ class NextPilot {
     if (_guidelinesPaths.contains(uri.path)) return _rewriteMine(uri, 'community-guidelines', const {}, const {});
     if (_registerTermsPaths.contains(uri.path)) return _rewriteRegisterTerms(uri);
     if (_pointsPolicyPaths.contains(uri.path)) return _rewritePointsPolicy(uri);
+    if (_myPointsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/points', const {}, const {});
+    if (_pointsPolicyListPaths.contains(uri.path)) return _rewriteMine(uri, 'points-policy', const {'tab'}, const {'tab': {'earn', 'revoke', 'expire', 'use', 'refund'}});
     if (_bookingPaths.contains(uri.path)) return _rewriteBooking(uri);
     if (_bookingChangePaths.contains(uri.path)) return _rewriteBookingChange(uri);
     if (_cancelRequestPaths.contains(uri.path)) return _rewriteCancelRequest(uri);
@@ -186,6 +188,8 @@ class NextPilot {
   static final Set<String> _privacyPaths = {'/privacy_policy.php', _site.resolve('privacy_policy.php').path};
   static final Set<String> _guidelinesPaths = {'/community_guidelines.php', _site.resolve('community_guidelines.php').path};
   static final Set<String> _registerTermsPaths = {'/bbs/register.php'};
+  static final Set<String> _myPointsPaths = {'/my_points.php', _site.resolve('my_points.php').path};
+  static final Set<String> _pointsPolicyListPaths = {'/my_points_policy.php', _site.resolve('my_points_policy.php').path};
   static final Set<String> _pointsPolicyPaths = {'/my_points_policy_detail.php', _site.resolve('my_points_policy_detail.php').path};
 
   /// Earn types the Next.js points policy page knows (includes/points_policy_content.php).

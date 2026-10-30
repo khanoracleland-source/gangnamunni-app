@@ -393,6 +393,9 @@ export const SETTING_KEYS = ["noti_general", "noti_booking", "noti_event", "noti
 export type SettingKey = (typeof SETTING_KEYS)[number];
 export type NotificationSettings = Record<SettingKey, number>;
 
+export interface PointLog { id: number; kind: "earn" | "use"; type: string; label: string; reason: string; meta: string; amount: number; balance: number | null }
+export type MyPointsData = { visible: false } | { visible: true; balance: number; expiry: { date: string; amount: number } | null; monthEarn: number; monthUse: number; logs: PointLog[]; hasMore: boolean };
+
 export const api = {
   home: (ctx?: ServerCtx) => get<HomeData>("/v1/home", undefined, ctx),
   wishlist: (id: number) => get<WishlistState>(`/v1/wishlist/hospitals/${id}`),
@@ -423,6 +426,8 @@ export const api = {
   faq: (ctx?: ServerCtx) => get<FaqData>("/v1/faq", undefined, ctx),
   registerTerms: (ctx?: ServerCtx) => get<RegisterTermsData>("/v1/legal/register-terms", undefined, ctx),
   pointsPolicy: (ctx?: ServerCtx) => get<{ visible: boolean }>("/v1/legal/points-policy", undefined, ctx),
+  pointsPolicyInfo: (ctx?: ServerCtx) => get<{ visible: boolean; expireDays: number }>("/v1/points/policy", undefined, ctx),
+  myPoints: (ctx?: ServerCtx) => get<MyPointsData>("/v1/mypage/points", undefined, ctx),
   bookingPayment: (id: number) => get<BookingPaymentInfo>(`/v1/mypage/bookings/${id}/payment`),
   bookingPaymentPreview: (id: number) => send<{ success: boolean; redirect: string }>("POST", `/v1/mypage/bookings/${id}/payment/preview`, {}, 30000),
   bookingPaymentSuccess: (id: number) => get<BookingPaymentSuccess>(`/v1/mypage/bookings/${id}/payment/success`),
@@ -491,6 +496,7 @@ export const qk = {
   myConsultations: ["mypage", "consultations"] as const,
   myReviews: ["mypage", "reviews"] as const,
   myProgress: ["mypage", "progress"] as const,
+  myPoints: ["mypage", "points"] as const,
   progress: (id: number) => ["mypage", "progress", id] as const,
   faq: ["faq"] as const,
   registerTerms: ["legal", "register-terms"] as const,

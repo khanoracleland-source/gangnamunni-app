@@ -1,5 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DB, DbConn, DbPool } from '../db/db.module';
+import { fifoExpiring, logItem, PointLog } from './points.logic';
+import { pointsVisible } from '../legal/legal.logic';
 
 const n = (v: unknown) => Number(v ?? 0) || 0;
 const POINTS_SCHEMA_VERSION = 3; // includes/points_ledger.php POINTS_SCHEMA_VERSION
@@ -42,6 +44,66 @@ export class PointsService {
   }
 
   async v2PolicyOn(): Promise<boolean> { return PointsService.v2On(await this.allSettings(), 'v2_policy_enabled'); }
+
+  /** points_balance_safe(): the last ledger row's balance snapshot (0 on any failure). */
+  async balance(memberNo: number): Promise<number> {
+    try {
+      const [r] = (await this.db.query('SELECT balance FROM gangnamunni_points WHERE member_id = ? ORDER BY id DESC LIMIT 1', [memberNo])) as any;
+      return n((r as any[])[0]?.balance);
+    } catch (err) { this.log.warn(`balance unavailable: ${(err as Error).message}`); return 0; }
+  }
+
+  /** my_points_policy.php: the 소멸 tab's "N일" (v2 policy on: v2_expire_days/90, else expire_days/365). */
+  async policy(): Promise<{ visible: boolean; expireDays: number }> {
+    if (!pointsVisible()) return { visible: false, expireDays: 0 };
+    const s = await this.allSettings();
+    const v2 = PointsService.v2On(s, 'v2_policy_enabled');
+    return { visible: true, expireDays: v2 ? PointsService.int(s, 'v2_expire_days', 90) : PointsService.int(s, 'expire_days', 365) };
+  }
+
+  /** my_points.php: balance, this month's totals, the nearest expiry and the last 50 rows. Hidden (visible:false) while the menu is paused. */
+  async mine(memberNo: number): Promise<{ visible: false } | { visible: true; balance: number; expiry: { date: string; amount: number } | null; monthEarn: number; monthUse: number; logs: PointLog[]; hasMore: boolean }> {
+    if (!pointsVisible()) return { visible: false };
+    const balance = await this.balance(memberNo);
+    let logs: PointLog[] = [];
+    try {
+      const [rows] = (await this.db.query('SELECT * FROM gangnamunni_points WHERE member_id = ? ORDER BY created_at DESC, id DESC LIMIT 50', [memberNo])) as any;
+      logs = (rows as any[]).map(logItem);
+    } catch (err) { this.log.warn(`ledger unavailable: ${(err as Error).message}`); }
+    let monthEarn = 0, monthUse = 0;
+    let expiry: { date: string; amount: number } | null = null;
+    try {
+      const [sr] = (await this.db.query(
+        `SELECT COALESCE(SUM(CASE WHEN type IN ('earn','refund','admin_add','admin') THEN amount ELSE 0 END),0) AS e,
+                COALESCE(SUM(CASE WHEN type IN ('use','expire','admin_sub','earn_cancel') THEN amount ELSE 0 END),0) AS u
+         FROM gangnamunni_points WHERE member_id = ? AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')`, [memberNo])) as any;
+      monthEarn = n((sr as any[])[0]?.e); monthUse = n((sr as any[])[0]?.u);
+      const s = await this.allSettings();
+      if (n(s.v2_schema_version) >= 1 && n(s.lots_ready) === 1) {
+        // points_next_expiry(): lots still holding points
+        const [lr] = (await this.db.query(
+          `SELECT expires_at, SUM(remaining) AS amt FROM gangnamunni_point_lots
+           WHERE member_id = ? AND remaining > 0 AND expires_at IS NOT NULL AND expires_at >= CURDATE()
+           GROUP BY expires_at ORDER BY expires_at LIMIT 1`, [memberNo])) as any;
+        const l = (lr as any[])[0];
+        if (l && n(l.amt) > 0 && l.expires_at) expiry = { date: String(l.expires_at).slice(0, 10), amount: n(l.amt) };
+      } else if (balance > 0) {
+        const [nr] = (await this.db.query(
+          `SELECT MIN(expires_at) AS d FROM gangnamunni_points
+           WHERE member_id = ? AND type IN ('earn','refund','admin_add','admin') AND expires_at IS NOT NULL AND expires_at >= CURDATE()`, [memberNo])) as any;
+        const d = (nr as any[])[0]?.d ? String((nr as any[])[0].d).slice(0, 10) : '';
+        if (d) {
+          const [ar] = (await this.db.query(
+            `SELECT COALESCE(SUM(CASE WHEN type IN ('earn','refund','admin_add','admin') AND expires_at IS NOT NULL AND expires_at <= ? THEN amount ELSE 0 END),0) AS c,
+                    COALESCE(SUM(CASE WHEN type IN ('use','expire','admin_sub','earn_cancel') THEN amount ELSE 0 END),0) AS u
+             FROM gangnamunni_points WHERE member_id = ?`, [d, memberNo])) as any;
+          const amount = fifoExpiring(balance, n((ar as any[])[0]?.c), n((ar as any[])[0]?.u));
+          if (amount > 0) expiry = { date: d, amount };
+        }
+      }
+    } catch (err) { this.log.warn(`points summary unavailable: ${(err as Error).message}`); }
+    return { visible: true, balance, expiry, monthEarn, monthUse, logs, hasMore: logs.length >= 50 };
+  }
 
   /** points_v2_review_revoke_all(): one revoke per reference type; each failure is logged on its own. */
   async revokeReviewEarnings(reviewId: number, reason = '후기 삭제 회수'): Promise<void> {
