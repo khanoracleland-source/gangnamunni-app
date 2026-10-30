@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, type BookingChangeInfo, type BookingContext, type BookingOption, type BookingPackage, type BookingRefusal, type BookingRequest, type NoshowInfo } from "@/lib/api";
 import { bookableDays, dday, formatDateTime, koTopic, parseDay, priceRange, timeSlots, won, WEEKDAYS } from "@/lib/booking";
 import { phpUrl, usePhpBase } from "@/lib/php";
@@ -45,6 +45,7 @@ interface Picked { name: string; range: string; min_age: number; options: Bookin
 type Stage = null | "pre" | "med" | "consent" | "confirm" | "success";
 
 function BookingForm({ ctx, p, back, change }: { ctx: BookingContext; p: BookingParams; back: string; change?: BookingChangeInfo }) {
+  const qc = useQueryClient();
   const router = useRouter();
   const php = usePhpBase();
   const today = ctx.now.slice(0, 10);
@@ -148,6 +149,7 @@ function BookingForm({ ctx, p, back, change }: { ctx: BookingContext; p: Booking
     setBusy(true); setMessage("");
     try {
       await api.bookingChange(change.id, { date, time, ...(namesText && namesText !== origNames ? { treatment: namesText } : {}) });
+      void qc.invalidateQueries({ queryKey: ["mypage"] });
       router.replace(`/mypage/bookings/${change.id}?changed=1`);
       return;
     } catch (e) {
@@ -171,6 +173,7 @@ function BookingForm({ ctx, p, back, change }: { ctx: BookingContext; p: Booking
     setBusy(true); setConfirmErr("");
     try {
       await api.bookingCreate(request());
+      void qc.invalidateQueries({ queryKey: ["mypage"] });
       setStage("success");
     } catch (e) {
       if (refused(e)) { setStage(null); flags.current.dup = false; }

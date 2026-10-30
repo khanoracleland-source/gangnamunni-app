@@ -2,6 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import DetailSkeleton from "./DetailSkeleton";
 import { api, ApiError, assetUrl, qk, type CommunityPost } from "@/lib/api";
 import { useLoginUrl, useMe, useRequireLogin } from "@/lib/me";
 import { commentAge, num, shortDate } from "@/lib/community";
@@ -11,13 +12,17 @@ import styles from "./CommunityDetail.module.css";
 const ICON = (name: string) => assetUrl(`assets/icons/${name}.png?v=1`) ?? "";
 
 /** detail_community.php: post, nested comments (one reply level), post + comment likes, comment form. */
+const VIEWED = new Set<number>();
+
 export default function CommunityDetail({ id, initial }: { id: number; initial?: CommunityPost }) {
   const router = useRouter();
   const qc = useQueryClient();
   const me = useMe();
   const loginUrl = useLoginUrl();
   const requireLogin = useRequireLogin();
-  const { data: post, isError, refetch } = useQuery({ queryKey: qk.communityPost(id), queryFn: () => api.communityPost(id), initialData: initial, staleTime: 15_000 });
+  // detail_community.php counts one view per page load: the first fetch of this page load asks for it, refetches do not
+  const { data: post, error, isError, refetch } = useQuery({ queryKey: qk.communityPost(id), queryFn: () => { const view = !VIEWED.has(id); VIEWED.add(id); return api.communityPost(id, { view }); }, initialData: initial, retry: (n: number, e: unknown) => !(e instanceof ApiError && (e.status === 404 || e.status === 400)) && n < 1, });
+  const missing = error instanceof ApiError && (error.status === 404 || error.status === 400);
 
   const [expanded, setExpanded] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
@@ -97,9 +102,10 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
   });
 
   if (!post) {
+    if (!isError) return <DetailSkeleton />;
     return (
       <div className={styles.empty}>
-        {isError ? <>불러오지 못했습니다. <button className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}
+        {missing ? "게시글을 찾을 수 없습니다." : <>불러오지 못했습니다. <button className={styles.retry} onClick={() => refetch()}>다시 시도</button></>}
       </div>
     );
   }

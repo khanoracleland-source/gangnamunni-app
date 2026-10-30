@@ -9,7 +9,7 @@ import styles from "./MyPages.module.css";
 /** my_wishlist.php (hospitals): the member's starred hospitals; the star removes one. */
 export default function MyWishlist({ initial, anon }: { initial?: { items: MyWishlistItem[] }; anon?: boolean }) {
   const qc = useQueryClient();
-  const { data, error, refetch } = useQuery({ queryKey: qk.myWishlist, queryFn: () => api.myWishlist(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const { data, error, refetch } = useQuery({ queryKey: qk.myWishlist, queryFn: () => api.myWishlist(), initialData: initial, retry: false, enabled: !anon });
   const remove = useMutation({
     mutationFn: (hospitalId: number) => api.toggleWishlist(hospitalId),
     onSuccess: (r, hospitalId) => {

@@ -26,7 +26,7 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
     queryKey: key, queryFn: ({ pageParam }) => api.myNotifications(type, pageParam), initialPageParam: 1,
     getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
     initialData: initial && initialType === type ? { pages: [initial], pageParams: [1] } : undefined,
-    staleTime: 0, retry: false, enabled: !anon,
+    retry: false, enabled: !anon,
   });
   const loggedOut = anon || (q.error instanceof ApiError && q.error.status === 401);
   const [toast, setToast] = useState("");

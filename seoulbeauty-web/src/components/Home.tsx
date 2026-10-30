@@ -7,12 +7,13 @@ import { phpUrl, usePhpBase } from "@/lib/php";
 import { observeImpressions, trackClick } from "@/lib/adTracking";
 import Carousel from "./Carousel";
 import SiteHeader from "./SiteHeader";
+import ListSkeleton from "./ListSkeleton";
 import CategoryTable from "./CategoryTable";
 import styles from "./Home.module.css";
 
 export default function Home({ initial }: { initial?: HomeData }) {
   const php = usePhpBase();
-  const { data, isError, refetch } = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: initial, staleTime: 60_000 });
+  const { data, isError, refetch } = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: initial });
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!rootRef.current || !data) return;
@@ -21,9 +22,9 @@ export default function Home({ initial }: { initial?: HomeData }) {
 
   if (!data) {
     return (
-      <div className={styles.empty}>
-        {isError ? <>불러오지 못했습니다. <button className={styles.link} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}
-      </div>
+      isError ? (
+        <div className={styles.empty}>불러오지 못했습니다. <button className={styles.link} onClick={() => refetch()}>다시 시도</button></div>
+      ) : <ListSkeleton rows={4} />
     );
   }
   const { ads, promos, events, categories, settings } = data;

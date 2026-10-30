@@ -35,7 +35,7 @@ export default function BookingCancel({ id, reason }: { id: number; reason: stri
     const full = custom.trim() ? `${choice}${choice ? ": " : ""}${custom.trim()}` : choice;
     try {
       await api.bookingCancel(id, full);
-      void qc.invalidateQueries({ queryKey: qk.myBookings });
+      void qc.invalidateQueries({ queryKey: ["mypage"] });
       router.replace(`/mypage/bookings/${id}/cancel/done`);
     } catch (e) {
       setErr(e instanceof ApiError && e.status !== 500 && !/^\d{3} /.test(e.message) ? e.message : "취소 처리 중 오류가 발생했습니다. 다시 시도해주세요.");

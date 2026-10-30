@@ -12,7 +12,7 @@ const CHIP = { danger: styles.chipDanger, muted: styles.chipMuted, dark: styles.
 
 /** my_consultation_detail.php: status, timeline, hospital message and (after a failed contact) the re-request with a callback slot. */
 export default function ConsultationDetail({ id, initial, anon }: { id: number; initial?: Detail; anon?: boolean }) {
-  const { data, error, refetch } = useQuery({ queryKey: qk.consultation(id), queryFn: () => api.consultation(id), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const { data, error, refetch } = useQuery({ queryKey: qk.consultation(id), queryFn: () => api.consultation(id), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const missing = error instanceof ApiError && error.status === 404;
   return (

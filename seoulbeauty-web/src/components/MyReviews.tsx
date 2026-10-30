@@ -24,7 +24,7 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
   const tab = useSearchParams().get("tab") === "done" ? "done" : "writable";
-  const { data, error, refetch } = useQuery({ queryKey: qk.myReviews, queryFn: () => api.myReviews(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const { data, error, refetch } = useQuery({ queryKey: qk.myReviews, queryFn: () => api.myReviews(), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const remove = async () => {
     if (confirm === null || busy) return;

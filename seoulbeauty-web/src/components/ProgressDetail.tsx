@@ -16,7 +16,7 @@ const photoSrc = (p: string) => `${browserApiBase()}${p}`;
 export default function ProgressDetail({ id, initial, anon }: { id: number; initial?: Data; anon?: boolean }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data, error, refetch } = useQuery({ queryKey: qk.progress(id), queryFn: () => api.progressDetail(id), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const { data, error, refetch } = useQuery({ queryKey: qk.progress(id), queryFn: () => api.progressDetail(id), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const [notice, setNotice] = useState("");
   const [err, setErr] = useState("");

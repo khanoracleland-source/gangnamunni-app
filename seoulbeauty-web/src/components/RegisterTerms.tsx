@@ -6,7 +6,7 @@ import styles from "./Legal.module.css";
 
 /** bbs/register.php?view=terms: the two texts the admin maintains (회원가입약관, 개인정보 수집 및 이용정책). */
 export default function RegisterTerms({ initial }: { initial?: RegisterTermsData }) {
-  const { data, isError, refetch } = useQuery({ queryKey: qk.registerTerms, queryFn: () => api.registerTerms(), initialData: initial, staleTime: 60_000 });
+  const { data, isError, refetch } = useQuery({ queryKey: qk.registerTerms, queryFn: () => api.registerTerms(), initialData: initial });
   return (
     <div className={styles.wrap}>
       <SupportHeader title="회원가입 약관 및 개인정보 정책" fallback="/mypage/settings" />

@@ -69,7 +69,7 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
   const regionKey = target === "community" ? COMMUNITY_REGION_KEY : REGION_KEY;
   const regions = useSavedRegions(regionKey);
   // Region groups + popular keywords come with the home payload (cached 60 s; shared with the home page).
-  const homeQ = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: home, staleTime: 60_000, enabled: !!home || pickerOpen || searchOpen });
+  const homeQ = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: home, enabled: !!home || pickerOpen || searchOpen });
 
   const showToast = (msg: string) => {
     setToast(msg);

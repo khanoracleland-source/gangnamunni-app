@@ -9,6 +9,8 @@ const BASE_PATH = process.env.NEXT_BASE_PATH ?? "/next";
 
 const nextConfig: NextConfig = {
   basePath: BASE_PATH,
+  // new id per build: the persisted query cache of an older build is dropped (see lib/persist.ts)
+  env: { NEXT_PUBLIC_BUILD_ID: Date.now().toString(36) },
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,

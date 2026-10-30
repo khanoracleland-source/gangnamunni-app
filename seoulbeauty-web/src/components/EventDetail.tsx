@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import DetailSkeleton from "./DetailSkeleton";
 import { api, ApiError, assetUrl, qk, type EventDetail as Detail } from "@/lib/api";
 import { useMe, useRequireLogin } from "@/lib/me";
 import styles from "./EventDetail.module.css";
@@ -24,7 +25,8 @@ export default function EventDetail({ id, initial }: { id: number; initial?: Det
   const qc = useQueryClient();
   const me = useMe();
   const requireLogin = useRequireLogin();
-  const { data: ev, isError, refetch } = useQuery({ queryKey: qk.event(id), queryFn: () => api.event(id), initialData: initial, staleTime: 15_000 });
+  const { data: ev, error, isError, refetch } = useQuery({ queryKey: qk.event(id), queryFn: () => api.event(id), initialData: initial, retry: (n: number, e: unknown) => !(e instanceof ApiError && (e.status === 404 || e.status === 400)) && n < 1, });
+  const missing = error instanceof ApiError && (error.status === 404 || error.status === 400);
 
   const [shot, setShot] = useState(0);
   const [name, setName] = useState<string | null>(null);
@@ -49,9 +51,10 @@ export default function EventDetail({ id, initial }: { id: number; initial?: Det
   });
 
   if (!ev) {
+    if (!isError) return <DetailSkeleton />;
     return (
       <div className={styles.empty}>
-        {isError ? <>불러오지 못했습니다. <button className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}
+        {missing ? "이벤트를 찾을 수 없습니다." : <>불러오지 못했습니다. <button className={styles.retry} onClick={() => refetch()}>다시 시도</button></>}
       </div>
     );
   }

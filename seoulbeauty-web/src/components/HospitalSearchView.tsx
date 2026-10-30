@@ -16,7 +16,7 @@ const label = (v: number | null, u: string | null) => (v && v > 0 && u ? ` ${Str
 
 export default function HospitalSearchView({ hid, q, tcat, sort, initial }: { hid: number; q: string; tcat: number; sort: string; initial?: SearchView }) {
   const php = usePhpBase();
-  const { data, isError, refetch } = useQuery({ queryKey: qk.searchView(hid), queryFn: () => api.searchView(hid), initialData: initial, staleTime: 60_000 });
+  const { data, isError, refetch } = useQuery({ queryKey: qk.searchView(hid), queryFn: () => api.searchView(hid), initialData: initial });
   if (!data) {
     return <div className={styles.empty}>{isError ? <>불러오지 못했습니다. <button className={styles.link} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>;
   }

@@ -50,7 +50,7 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
   // my_bookings.php?action=cancel&booking_id=N (push / PHP links): open the reason sheet for that booking right away
   const askedCancel = sp.get("action") === "cancel" ? Number(sp.get("booking_id")) : 0;
   const tab: Tab = raw === "completed" || raw === "cancelled" ? raw : "active";
-  const { data, error, refetch } = useQuery({ queryKey: qk.myBookings, queryFn: () => api.myBookings(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const { data, error, refetch } = useQuery({ queryKey: qk.myBookings, queryFn: () => api.myBookings(), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const router = useRouter();
   const [changing, setChanging] = useState<{ id: number; left: number } | null>(null);
@@ -61,8 +61,25 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
   return (
     <div className={styles.wrap}>
       <MyHeader title="내 예약/결제 내역" />
-      {loggedOut ? <LoginPrompt text="로그인하면 예약 내역을 자동으로 조회합니다." /> : !data ? (
-        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+      {loggedOut ? <LoginPrompt text="로그인하면 예약 내역을 자동으로 조회합니다." /> : !data && error ? (
+        <div className={styles.empty}>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></div>
+      ) : !data ? (
+        <>
+          <div className={styles.bkTabs} role="tablist">
+            {TABS.map((t) => (
+              <Link key={t.key} href={t.href} replace role="tab" aria-selected={tab === t.key} className={`${styles.bkTab} ${tab === t.key ? styles.bkTabOn : ""}`}>{t.label}</Link>
+            ))}
+          </div>
+          <div className={styles.bkList} aria-busy="true" aria-label="불러오는 중">
+            {[0, 1].map((i) => (
+              <article key={i} className={styles.bkCard}>
+                <div className="skeleton" style={{ height: 18, width: "30%", marginBottom: 12 }} />
+                <div className="skeleton" style={{ height: 14, width: "55%", marginBottom: 12 }} />
+                <div className="skeleton" style={{ height: 64, width: "100%" }} />
+              </article>
+            ))}
+          </div>
+        </>
       ) : total === 0 ? (
         <div className={styles.bkEmpty}>예약 내역이 없습니다.<br /><Link className={styles.retry} href="/hospitals">병원 찾아보기</Link></div>
       ) : (

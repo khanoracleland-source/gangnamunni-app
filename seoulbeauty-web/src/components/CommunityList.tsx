@@ -38,7 +38,6 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
     queryKey: key,
     queryFn: () => api.community({ ...params, tab }),
     initialData: initial,
-    staleTime: 15_000,
   });
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState("");

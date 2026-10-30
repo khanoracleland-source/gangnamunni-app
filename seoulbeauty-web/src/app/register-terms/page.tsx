@@ -1,13 +1,10 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { api } from "@/lib/api";
-import RegisterTerms from "@/components/RegisterTerms";
+import { RegisterTermsRoute } from "@/components/Routes";
 
 export const metadata: Metadata = { title: "회원가입 약관 및 개인정보 정책" };
 
-async function Body() {
-  const initial = await api.registerTerms().catch(() => undefined);
-  return <RegisterTerms initial={initial} />;
+/** Static shell: the URL is read in the browser and the data loads from the query cache / API (Nest JSON). */
+export default function Page() {
+  return <Suspense fallback={null}><RegisterTermsRoute /></Suspense>;
 }
-
-export default function Page() { return <Suspense fallback={null}><Body /></Suspense>; }

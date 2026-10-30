@@ -24,7 +24,7 @@ export function Card({ p }: { p: ProgressCard }) {
 export default function ProgressList({ initial, anon }: { initial?: Data; anon?: boolean }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data, error, refetch } = useQuery({ queryKey: qk.myProgress, queryFn: () => api.myProgress(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const { data, error, refetch } = useQuery({ queryKey: qk.myProgress, queryFn: () => api.myProgress(), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const [bookingId, setBookingId] = useState(0);
   const [kind, setKind] = useState<"procedure" | "surgery">("procedure");

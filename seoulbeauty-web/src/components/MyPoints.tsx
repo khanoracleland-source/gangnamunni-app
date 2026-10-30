@@ -15,7 +15,7 @@ const P = (v: number) => `${v.toLocaleString("ko-KR")}P`;
 /** my_points.php: balance, nearest expiry, this month's totals and the last 50 ledger rows with the 전체/적립/차감 filter. */
 export default function MyPoints({ initial, anon }: { initial?: MyPointsData; anon?: boolean }) {
   const router = useRouter();
-  const q = useQuery({ queryKey: qk.myPoints, queryFn: () => api.myPoints(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const q = useQuery({ queryKey: qk.myPoints, queryFn: () => api.myPoints(), initialData: initial, retry: false, enabled: !anon });
   const [filter, setFilter] = useState<Filter>("all");
   const loggedOut = anon || (q.error instanceof ApiError && q.error.status === 401);
   const d = q.data;

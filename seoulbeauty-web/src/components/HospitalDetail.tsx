@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, assetUrl, formatWon, PLACEHOLDER, qk, type DetailTab, type HospitalDetail as Detail } from "@/lib/api";
+import DetailSkeleton from "./DetailSkeleton";
+import { api, ApiError, assetUrl, formatWon, PLACEHOLDER, qk, type DetailTab, type HospitalDetail as Detail } from "@/lib/api";
 import ReviewList from "./ReviewList";
 import WishlistButton from "./WishlistButton";
 import ConsultSheet from "./ConsultSheet";
@@ -19,16 +20,19 @@ export default function HospitalDetail({ id, initial, initialTab = "home" }: { i
   const qc = useQueryClient();
   const [tab, setTab] = useState<DetailTab>(initialTab);
   const [consultOpen, setConsultOpen] = useState(false);
-  const { data: h, isError, refetch } = useQuery({
+  const { data: h, error, isError, refetch } = useQuery({
     queryKey: qk.hospital(id),
     queryFn: () => api.hospital(id),
     initialData: initial,
+    retry: (n: number, e: unknown) => !(e instanceof ApiError && (e.status === 404 || e.status === 400)) && n < 1,
   });
+  const missing = error instanceof ApiError && (error.status === 404 || error.status === 400);
 
   if (!h) {
+    if (!isError) return <DetailSkeleton />;
     return (
       <div className={styles.empty}>
-        {isError ? <>불러오지 못했습니다. <button className={styles.link} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}
+        {missing ? "병원을 찾을 수 없습니다." : <>불러오지 못했습니다. <button className={styles.link} onClick={() => refetch()}>다시 시도</button></>}
       </div>
     );
   }

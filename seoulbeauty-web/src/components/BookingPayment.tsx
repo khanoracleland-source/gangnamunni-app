@@ -50,7 +50,7 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
     setAgreeErr(false); setBusy(true); setResult("");
     try {
       const r = await api.bookingPaymentPreview(id);
-      void qc.invalidateQueries({ queryKey: qk.myBookings });
+      void qc.invalidateQueries({ queryKey: ["mypage"] });
       router.replace(r.redirect);
       return;
     } catch (e) { setResult(e instanceof ApiError && !/^\d{3} /.test(e.message) ? e.message : "임시 결제 완료 처리에 실패했습니다. 잠시 후 다시 시도해주세요."); }

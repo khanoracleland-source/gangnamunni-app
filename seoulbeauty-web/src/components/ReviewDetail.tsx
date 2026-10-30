@@ -14,7 +14,7 @@ const num = (n: number) => n.toLocaleString("ko-KR");
 export default function ReviewDetail({ id, initial }: { id: number; initial?: Detail }) {
   const qc = useQueryClient();
   const requireLogin = useRequireLogin();
-  const { data, error, refetch } = useQuery({ queryKey: qk.reviewDetail(id), queryFn: () => api.reviewDetail(id), initialData: initial, staleTime: 15_000, retry: false });
+  const { data, error, refetch } = useQuery({ queryKey: qk.reviewDetail(id), queryFn: () => api.reviewDetail(id), initialData: initial, retry: false });
   const [zoom, setZoom] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const like = useMutation({

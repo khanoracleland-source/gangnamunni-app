@@ -16,7 +16,7 @@ const Row = ({ label, children, total }: { label: string; children: React.ReactN
 
 /** booking_request_detail.php (active / completed) and booking_cancel_detail.php (cancelled): read-only. */
 export default function BookingDetail({ id, initial, anon }: { id: number; initial?: Detail; anon?: boolean }) {
-  const { data, error, refetch } = useQuery({ queryKey: qk.bookingDetail(id), queryFn: () => api.bookingDetail(id), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const { data, error, refetch } = useQuery({ queryKey: qk.bookingDetail(id), queryFn: () => api.bookingDetail(id), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const missing = error instanceof ApiError && error.status === 404;
   // booking_request_detail.php?changed=1 (05-43): the "변경 요청 접수" sheet once, then the parameter is dropped from the URL

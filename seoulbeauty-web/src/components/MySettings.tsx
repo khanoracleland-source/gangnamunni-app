@@ -18,7 +18,7 @@ type Data = { settings: NotificationSettings };
 export default function MySettings({ initial, anon }: { initial?: Data; anon?: boolean }) {
   const php = usePhpBase();
   const qc = useQueryClient();
-  const { data, error, refetch } = useQuery({ queryKey: qk.notificationSettings, queryFn: () => api.notificationSettings(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const { data, error, refetch } = useQuery({ queryKey: qk.notificationSettings, queryFn: () => api.notificationSettings(), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const [busy, setBusy] = useState<SettingKey | null>(null);
   const [toast, setToast] = useState("");

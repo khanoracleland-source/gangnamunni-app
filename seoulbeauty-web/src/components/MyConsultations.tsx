@@ -10,7 +10,7 @@ const CHIP = { danger: styles.chipDanger, muted: styles.chipMuted, dark: styles.
 
 /** my_consultations.php: the member's consultation requests (latest 100). */
 export default function MyConsultations({ initial, anon }: { initial?: { items: MyConsultation[]; anyPhone: string | null }; anon?: boolean }) {
-  const { data, error, refetch } = useQuery({ queryKey: qk.myConsultations, queryFn: () => api.myConsultations(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
+  const { data, error, refetch } = useQuery({ queryKey: qk.myConsultations, queryFn: () => api.myConsultations(), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   return (
     <div className={styles.wrap}>
