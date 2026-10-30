@@ -61,7 +61,7 @@ export default function PasswordLost() {
             </form>
           </>
         )}
-        <div className={styles.foot}><a href={login}>로그인</a><span>|</span><a href={phpUrl(php, "auth/register.php")}>회원가입</a></div>
+        <div className={styles.foot}><a href={login}>로그인</a><span>|</span><a href="/next/register">회원가입</a></div>
       </div>
     </div>
   );

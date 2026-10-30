@@ -167,3 +167,19 @@ GRANT DELETE ON hms_saas.personal_access_tokens TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 ```
 `.env`: `SMTP_PASSWORD=<admin@seoulbeauty.app parol>` (kerak; yo'q bo'lsa email ketmaydi va parol O'ZGARMAYDI). Ixtiyoriy: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM_NAME`. Yangi npm paketlar (nodemailer, bcryptjs): deploy'da `npm ci` kerak.
+
+### D2 회원가입 (register → Nest, 2026-10-30)
+Nest endi a'zoni o'zi yaratadi (`POST /v1/auth/register/code`, `POST /v1/auth/register`); Gnuboard sessiyasini PHP ko'prigi `gangnamunni/api/session_login.php` yaratadi (faqat loopback + HMAC).
+
+1. Column-level GRANT (ikkala host uchun, `sb_api_ro`):
+```sql
+GRANT INSERT (mb_id, mb_password, mb_name, mb_nick, mb_nick_date, mb_email, mb_level, mb_datetime, mb_today_login, mb_ip, mb_login_ip, mb_email_certify, mb_open_date, mb_1, mb_recommend, mb_mailling, mb_sms, mb_hp, mb_birth, mb_2) ON hms_saas.g5_member TO 'sb_api_ro'@'localhost';
+GRANT INSERT (mb_id, mb_password, mb_name, mb_nick, mb_nick_date, mb_email, mb_level, mb_datetime, mb_today_login, mb_ip, mb_login_ip, mb_email_certify, mb_open_date, mb_1, mb_recommend, mb_mailling, mb_sms, mb_hp, mb_birth, mb_2) ON hms_saas.g5_member TO 'sb_api_ro'@'127.0.0.1';
+FLUSH PRIVILEGES;
+```
+2. Maxfiy kalit (kamida 32 belgi) — bir xil qiymat ikkala `.env` ga: `seoulbeauty-api/.env` va `hairwang_full/gangnamunni/.env`:
+```
+SESSION_BRIDGE_SECRET=<openssl rand -hex 32>
+```
+3. `seoulbeauty-api/.env`: `PHP_SESSION_URL` loopback bo'lishi shart (masalan `http://127.0.0.1/api/session_me.php`, `PHP_SESSION_HOST=hms.seoulbeauty.app`) — ko'prik shu URLdan `session_login.php` ni oladi; PHP tomoni loopbackdan boshqa chaqiruvni rad etadi.
+4. OTP kodlari Nest xotirasida saqlanadi (restartda yo'qoladi — foydalanuvchi qayta yuboradi).

@@ -161,6 +161,9 @@ void main() {
     expect(to(php('auth/password_lost.php')), '/next/password-lost');
     expect(to(legacy('auth/password_lost.php?app=1')), '/next/password-lost');
     expect(to(php('auth/password_lost.php?x=1')), isNull);
+    expect(to(php('auth/register.php')), '/next/register');
+    expect(to(legacy('auth/register.php?app=1')), '/next/register');
+    expect(to(php('auth/register.php?mode=register')), isNull);
     expect(to(php('my_points.php')), '/next/mypage/points');
     expect(to(legacy('my_points.php?app=1')), '/next/mypage/points');
     expect(to(php('my_points.php?x=1')), isNull);
