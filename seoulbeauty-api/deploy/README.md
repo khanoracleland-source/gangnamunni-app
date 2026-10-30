@@ -204,3 +204,23 @@ Existing linked members sign in through Nest; an unlinked social profile (a new 
 3. `.env`: `SOCIAL_NEST_PROVIDERS=kakao,google` turns it on per provider (empty = everything stays on PHP, instant rollback).
    Optional: `SOCIAL_CALLBACK_BASE` (default `https://hms.seoulbeauty.app/next/api/v1/auth/social`), `SOCIAL_PHP_BASE` (default `https://hms.seoulbeauty.app`).
 4. `pm2 restart seoulbeauty-api`, rebuild web. `GET /next/api/v1/auth/login-options` then lists `nest: ["kakao","google"]`.
+
+## D4b — Social sign-up (new member from a Kakao / Google profile) on Nest
+
+Needs D4a. With `SOCIAL_NEST_REGISTER=1` a social profile that is not linked to a member yet is registered by Nest; with the
+variable empty the PHP flow (`/auth/login.php?provider=…` → `plugin/social/register_member*.php`) does it exactly as before (rollback switch).
+
+1. Grants: nothing new beyond D2 (INSERT on the g5_member columns) and D4a (`g5_member_social_profiles` INSERT/UPDATE/DELETE).
+2. Pull, `cd seoulbeauty-api && npm run build`, `cd ../seoulbeauty-web && npm ci && npm run build`, add `SOCIAL_NEST_REGISTER=1` to
+   `seoulbeauty-api/.env`, `systemctl restart seoulbeauty-api seoulbeauty-web`. The PHP file `gangnamunni/api/session_login.php` changed
+   too (register mode for `<provider>_<hash>` ids with a `social` field): it is part of the same pull.
+3. Behaviour (same rules as `plugin/social/register_member.php` + `register_member_update.php`):
+   - Kakao: no form, the member is created at the first successful sign-in. A Kakao-VERIFIED e-mail that already belongs to a member
+     (not blocked, no Kakao link yet) links Kakao to that member instead and signs in.
+   - Google: `/next/register/social` (terms + name + e-mail), the profile travels in the signed `sb_social_pending` cookie (15 min).
+   - mb_id = `<provider>_<adler32(md5(identifier))>` (+1, +2 … if taken), nick from the display name, `mb_email_certify = now`,
+     level `cf_register_level`, random password, a profile row in `g5_member_social_profiles`; the PHP bridge (register mode) adds the
+     sign-up bonus, the HMS sync and the session. Admin notice mail only when `cf_email_mb_super_admin` is on.
+   - Refusals: `social_error=exists` (the provider id was linked/registered before), `email_exists`, `failed`.
+   - NOT ported: the member icon download from the provider photo, the shop sign-up coupon (`de_member_reg_coupon_*`).
+4. Rollback: empty `SOCIAL_NEST_REGISTER`, restart `seoulbeauty-api`.

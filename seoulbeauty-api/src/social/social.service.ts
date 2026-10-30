@@ -2,8 +2,13 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DB, DbConn, DbPool } from '../db/db.module';
 import { SessionBridgeService } from '../session-bridge/session-bridge.service';
 import { RateWindow } from '../password-lost/password-lost.logic';
+import { HttpException } from '@nestjs/common';
+import { NAME_RE } from '../register/register.logic';
+import { prohibitedMail } from '../register/register.logic';
+import { PENDING_COOKIE, profileEmail, readPending, signPending, validEmail } from './social-register.logic';
+import { SocialRegisterService } from './social-register.service';
 import { kstYmd, safeAfterUrl } from '../login/login.logic';
-import { googleProfile, isProvider, kakaoMemberUpdates, kakaoProfile, objectSha, PHP_NAME, Provider, readState, signState, SocialProfile } from './social.logic';
+import { googleProfile, isProvider, kakaoProfile, PHP_NAME, Provider, readState, signState, SocialProfile } from './social.logic';
 
 const s = (v: unknown) => (v == null ? '' : String(v));
 export const STATE_COOKIE = 'sb_social_state';
@@ -21,7 +26,8 @@ export type CallbackResult =
 export class SocialService {
   private readonly log = new Logger(SocialService.name);
   private readonly byIp = new RateWindow(30, 600_000);
-  constructor(@Inject(DB) private readonly db: DbPool, private readonly bridge: SessionBridgeService) {}
+  private readonly regIp = new RateWindow(10, 600_000);
+  constructor(@Inject(DB) private readonly db: DbPool, private readonly bridge: SessionBridgeService, private readonly reg: SocialRegisterService) {}
 
   private secret(): string { return process.env.SESSION_BRIDGE_SECRET || ''; }
   private phpBase(): string { return (process.env.SOCIAL_PHP_BASE || 'https://hms.seoulbeauty.app').replace(/\/+$/, ''); }
@@ -107,42 +113,106 @@ export class SocialService {
       'SELECT mp.mb_id, m.mb_intercept_date, m.mb_leave_date, m.mb_email_certify FROM g5_member_social_profiles mp JOIN g5_member m ON m.mb_id = mp.mb_id WHERE mp.provider = ? AND mp.identifier = ? AND mp.mb_id <> \'\' ORDER BY mp.mb_id DESC LIMIT 1',
       [provider, profile.identifier])) as any;
     const hit = (rows as any[])[0];
-    // not linked yet: the PHP flow registers the member (it repeats the OAuth step, which is still registered at the provider)
-    if (!hit) return { kind: 'php', provider, url: st.u, cookies: clear };
+    const ctx = { ip, cookie, userAgent, host };
+    if (hit) return this.signIn(provider, hit, profile, st.u, cfg, ctx);
+    // not linked yet: a new member. Nest registers it (SOCIAL_NEST_REGISTER=1), otherwise the PHP flow does (it repeats the OAuth step)
+    if (process.env.SOCIAL_NEST_REGISTER !== '1') return { kind: 'php', provider, url: st.u, cookies: clear };
+    return this.unlinked(provider, profile, st.u, cfg, ctx);
+  }
+
+
+  /** Block / leave dates, e-mail certification, then the session through the PHP bridge. */
+  private async signIn(provider: Provider, m: any, profile: SocialProfile, url: string, cfg: Record<string, any>, ctx: { ip: string; cookie: string; userAgent: string; host: string }): Promise<CallbackResult> {
+    const clear = [`${STATE_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`];
+    const fail = (e: string): CallbackResult => ({ kind: 'redirect', to: this.loginPage(e), cookies: clear });
     const today = kstYmd();
-    if ((s(hit.mb_intercept_date) !== '' && s(hit.mb_intercept_date) <= today) || (s(hit.mb_leave_date) !== '' && s(hit.mb_leave_date) <= today)) {
-      this.log.log(`[auth][social_blocked] provider=${provider}; ip=${ip}`);
+    if ((s(m.mb_intercept_date) !== '' && s(m.mb_intercept_date) <= today) || (s(m.mb_leave_date) !== '' && s(m.mb_leave_date) <= today)) {
+      this.log.log(`[auth][social_blocked] provider=${provider}; ip=${ctx.ip}`);
       return fail('blocked');
     }
     // same rule as the e-mail login and PHP login_check.php: with e-mail certification on, an unverified member cannot sign in
-    if (Number(cfg.cf_use_email_certify) > 0 && !/[1-9]/.test(s(hit.mb_email_certify))) return fail('unverified');
+    if (Number(cfg.cf_use_email_certify) > 0 && !/[1-9]/.test(s(m.mb_email_certify))) return fail('unverified');
     if (!this.bridge.configured()) return fail('unavailable');
-    const isApp = /(?:^|;\s*)sb_patient_app=1(?:;|$)/.test(cookie);
-    const minted = await this.bridge.mint(s(hit.mb_id), 'login', isApp, cookie, userAgent, PHP_NAME[provider]);
+    const isApp = /(?:^|;\s*)sb_patient_app=1(?:;|$)/.test(ctx.cookie);
+    const minted = await this.bridge.mint(s(m.mb_id), 'login', isApp, ctx.cookie, ctx.userAgent, PHP_NAME[provider]);
     if (!minted.ok) { this.log.error(`[${provider}] bridge failed: ${minted.error}`); return fail('failed'); }
-    await this.saveProfile(s(hit.mb_id), provider, profile).catch((e) => this.log.error(`[${provider}] profile save failed: ${(e as Error).message}`));
-    this.log.log(`[auth][social_login_success] provider=${provider}; ip=${ip}`);
-    const to = safeAfterUrl(st.u, host, '') || '/next'; // no ?url= : the Next home page (the Flutter app and PHP pages always pass one)
+    await this.reg.saveProfile(s(m.mb_id), provider, profile).catch((e) => this.log.error(`[${provider}] profile save failed: ${(e as Error).message}`));
+    this.log.log(`[auth][social_login_success] provider=${provider}; ip=${ctx.ip}`);
+    const to = safeAfterUrl(url, ctx.host, '') || '/next'; // no ?url= : the Next home page (the Flutter app and PHP pages always pass one)
     return { kind: 'redirect', to, cookies: [...clear, ...minted.setCookies] };
   }
 
-  /** social_user_profile_replace() + (Kakao) social_sync_kakao_member_profile(). Best effort: the member is already signed in. */
-  private async saveProfile(mbId: string, provider: Provider, p: SocialProfile): Promise<void> {
-    if (!this.db.getConnection) return;
-    const conn: DbConn = await this.db.getConnection();
-    try {
-      await conn.query('DELETE FROM g5_member_social_profiles WHERE provider = ? AND identifier = ? AND mb_id <> ?', [provider, p.identifier, mbId]);
-      const [ex] = (await conn.query('SELECT mp_no FROM g5_member_social_profiles WHERE mb_id = ? AND provider = ? AND identifier = ? LIMIT 1', [mbId, provider, p.identifier])) as any;
-      const row = (ex as any[])[0];
-      const vals = [objectSha(p), p.profileURL.slice(0, 255), p.photoURL.slice(0, 255), p.displayName.slice(0, 150)];
-      if (row) await conn.query('UPDATE g5_member_social_profiles SET object_sha = ?, profileurl = ?, photourl = ?, displayname = ?, mp_latest_day = NOW() WHERE mp_no = ?', [...vals, row.mp_no]);
-      else await conn.query('INSERT INTO g5_member_social_profiles (mb_id, provider, identifier, object_sha, profileurl, photourl, displayname, mp_register_day, mp_latest_day) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())', [mbId, provider, p.identifier, ...vals]);
-      if (provider === 'kakao') {
-        const u = kakaoMemberUpdates(p, new Date().getFullYear());
-        const cols = Object.keys(u);
-        if (cols.length) await conn.query(`UPDATE g5_member SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE mb_id = ?`, [...cols.map((c) => u[c]), mbId]);
+  /** A social profile that is not linked to a member: Kakao registers at once (consent screen = consent), Google asks for the terms first. */
+  private async unlinked(provider: Provider, profile: SocialProfile, url: string, cfg: Record<string, any>, ctx: { ip: string; cookie: string; userAgent: string; host: string }): Promise<CallbackResult> {
+    const clear = [`${STATE_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`];
+    const fail = (e: string): CallbackResult => ({ kind: 'redirect', to: this.loginPage(e), cookies: clear });
+    if (!this.bridge.configured()) return fail('unavailable'); // an account that cannot be signed in must not be created
+    if (!(await this.reg.joinCheck(provider, profile.identifier))) return fail('exists');
+
+    if (provider === 'kakao') {
+      const m = await this.reg.linkableByVerifiedEmail(profile);
+      if (m) {
+        await this.reg.saveProfile(m.mb_id, provider, profile).catch((e) => this.log.error(`[kakao] link failed: ${(e as Error).message}`));
+        return this.signIn(provider, m, profile, url, cfg, ctx);
       }
-    } finally { conn.release(); }
+      const email = profileEmail(profile, provider);
+      const name = (profile.username || profile.displayName || '').replace(/[\x00-\x1F\x7F<>]/g, '').trim().slice(0, 50) || 'Kakao';
+      const r = await this.reg.createMember(provider, profile, { name, email, ip: ctx.ip }, cfg);
+      if (!r.ok) { this.log.warn(`[kakao] sign-up refused: ${r.error}`); return fail(r.error === 'email_exists' ? 'email_exists' : 'failed'); }
+      return this.afterSignUp(provider, r.mbId, profile, ctx, clear);
+    }
+
+    // Google (and later Apple without a name): carry the profile to the sign-up form in a signed cookie
+    const value = signPending(this.secret(), { p: provider, i: profile.identifier, n: profile.username || profile.displayName, e: profileEmail(profile, provider), ev: profile.emailVerified !== '', ph: profile.photoURL.slice(0, 200), u: url });
+    return { kind: 'redirect', to: '/next/register/social', cookies: [...clear, `${PENDING_COOKIE}=${value}; Max-Age=900; Path=/; HttpOnly; Secure; SameSite=Lax`] };
+  }
+
+  /** After the row exists: link the profile, then the session + sign-up bonus + HMS sync through the bridge (register mode). */
+  private async afterSignUp(provider: Provider, mbId: string, profile: SocialProfile, ctx: { ip: string; cookie: string; userAgent: string }, clear: string[]): Promise<CallbackResult> {
+    await this.reg.saveProfile(mbId, provider, profile).catch((e) => this.log.error(`[${provider}] profile save failed for ${mbId}: ${(e as Error).message}`));
+    const minted = await this.bridge.mint(mbId, 'register', false, ctx.cookie, ctx.userAgent, PHP_NAME[provider]);
+    this.log.log(`[auth][social_register_success] provider=${provider}; ip=${ctx.ip}${minted.ok ? '' : '; session=failed'}`);
+    if (!minted.ok) return { kind: 'redirect', to: this.loginPage('failed'), cookies: clear };
+    return { kind: 'redirect', to: '/index.php', cookies: [...clear, ...minted.setCookies] }; // the PHP home shows the welcome-point notice
+  }
+
+  /** GET …/social/pending: what the sign-up form shows (never the profile identifier). */
+  pending(pendingCookie: string): { pending: boolean; provider?: string; name?: string; email?: string } {
+    const d = readPending(this.secret(), pendingCookie, Date.now());
+    return d ? { pending: true, provider: d.p, name: d.n, email: d.e.endsWith('@social.local') ? '' : d.e } : { pending: false };
+  }
+
+  /** POST …/social/register: the Google sign-up form. */
+  async registerFromPending(b: { name?: unknown; email?: unknown; agreeTerms?: unknown; agreePrivacy?: unknown }, pendingCookie: string, ip: string, cookie: string, userAgent: string): Promise<{ loggedIn: boolean; cookies: string[] }> {
+    const bad = (message: string, status = 400): never => { throw new HttpException({ success: false, message }, status); };
+    const clearPending = `${PENDING_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`;
+    if (!this.regIp.hit(ip).allowed) bad('잠시 후 다시 시도해주세요.', 429);
+    const d = readPending(this.secret(), pendingCookie, Date.now());
+    if (!d) bad('로그인 시간이 만료되었습니다. 다시 시도해주세요.', 410);
+    const yes = (v: unknown) => v === true || s(v) === '1';
+    if (!yes(b.agreeTerms) || !yes(b.agreePrivacy)) bad('회원가입 약관과 개인정보 수집·이용에 동의해주세요.');
+    const name = s(b.name).replace(/[\x00-\x1F\x7F<>]/g, '').trim();
+    const email = s(b.email).trim().toLowerCase();
+    if (!NAME_RE.test(name)) bad('이름을 2~50자의 올바른 형식으로 입력해주세요.');
+    if (!validEmail(email)) bad('올바른 이메일 주소를 입력해주세요.');
+    const cfg = await this.reg.config();
+    const policy = prohibitedMail(email, s(cfg.cf_prohibit_email));
+    if (policy) bad(policy);
+    if (!this.bridge.configured()) bad('지금은 회원가입을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.', 503);
+    const provider = d!.p;
+    if (!(await this.reg.joinCheck(provider, d!.i))) bad('이미 연결 또는 가입된 소셜 계정입니다. 로그인 후 계정 연결을 이용해주세요.', 409);
+    const profile: SocialProfile = { identifier: d!.i, displayName: d!.n, photoURL: d!.ph, profileURL: '', email: d!.e, emailVerified: d!.ev ? d!.e : '', username: d!.n, phone: '', birthYear: null, birthMonth: null, birthDay: null, age: null };
+    const r = await this.reg.createMember(provider, profile, { name, email, ip }, cfg);
+    if (!r.ok) {
+      if (r.error === 'email_exists') bad('이미 가입된 이메일입니다. 다른 이메일을 입력하거나 이메일로 로그인해주세요.', 409);
+      if (r.error === 'prohibited_email' || r.error === 'invalid_email') bad(r.message || '올바른 이메일 주소를 입력해주세요.');
+      bad('가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', r.error === 'busy' ? 503 : 500);
+    }
+    const created = r as { ok: true; mbId: string };
+    await this.reg.saveProfile(created.mbId, provider, profile).catch((e) => this.log.error(`[${provider}] profile save failed for ${created.mbId}: ${(e as Error).message}`));
+    const minted = await this.bridge.mint(created.mbId, 'register', false, cookie, userAgent, PHP_NAME[provider]);
+    this.log.log(`[auth][social_register_success] provider=${provider}; ip=${ip}${minted.ok ? '' : '; session=failed'}`);
+    return { loggedIn: minted.ok, cookies: [clearPending, ...minted.setCookies] };
   }
 
   /** Provider of a pending sign-in, read from the signed state cookie (for the provider-less Kakao callback). */

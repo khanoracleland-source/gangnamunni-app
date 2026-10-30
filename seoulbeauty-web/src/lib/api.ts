@@ -432,6 +432,8 @@ export const api = {
   registerCode: (email: string) => send<{ success: boolean; message: string }>("POST", "/v1/auth/register/code", { email }, 30000),
   register: (b: { email: string; code: string; password: string; password2: string; name: string; birthDate: string; phone: string; agreeTerms: boolean; agreePrivacy: boolean; agreeMarketing: boolean }) =>
     send<{ success: boolean; loggedIn: boolean }>("POST", "/v1/auth/register", b, 60000),
+  socialPending: () => get<{ pending: boolean; provider?: string; name?: string; email?: string }>("/v1/auth/social/pending"),
+  socialRegister: (b: { name: string; email: string; agreeTerms: boolean; agreePrivacy: boolean }) => send<{ success: boolean; loggedIn: boolean }>("POST", "/v1/auth/social/register", b, 60000),
   passwordLost: (email: string) => send<{ success: boolean; requestId: string }>("POST", "/v1/auth/password-lost", { email }, 30000),
   myPoints: (ctx?: ServerCtx) => get<MyPointsData>("/v1/mypage/points", undefined, ctx),
   bookingPayment: (id: number) => get<BookingPaymentInfo>(`/v1/mypage/bookings/${id}/payment`),

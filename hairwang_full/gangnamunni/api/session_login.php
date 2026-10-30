@@ -8,7 +8,7 @@
  *
  * Guards: loopback caller only + HMAC-SHA256(secret, "mb_id|mode|remember|ts[|social]") with a 60 s window.
  * The secret is SESSION_BRIDGE_SECRET (gangnamunni/.env or environment); empty secret = endpoint disabled.
- * Body (JSON): {mb_id, mode: "register"|"login", remember: 0|1, ts, sig, social?: "Kakao"|"Google"|"Apple" (login only)}
+ * Body (JSON): {mb_id, mode: "register"|"login", remember: 0|1, ts, sig, social?: "Kakao"|"Google"|"Apple"}
  */
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: private, no-store');
@@ -44,7 +44,6 @@ $sig = (string)($in['sig'] ?? '');
 // social sign-in (D4): the provider name goes into the session (ss_social_provider); only Kakao|Google|Apple are accepted
 $social = (string)($in['social'] ?? '');
 if ($social !== '' && !in_array($social, ['Kakao', 'Google', 'Apple'], true)) sl_fail(400, 'args');
-if ($social !== '' && ($in['mode'] ?? '') !== 'login') sl_fail(400, 'args');
 if (!preg_match('/^[0-9a-zA-Z_]{3,20}$/', $mb_id) || !in_array($mode, ['register', 'login'], true)) sl_fail(400, 'args');
 if (abs(time() - $ts) > 60) sl_fail(403, 'expired');
 $expect = hash_hmac('sha256', $mb_id . '|' . $mode . '|' . $remember . '|' . $ts . ($social !== '' ? '|' . $social : ''), $secret);
@@ -68,7 +67,8 @@ $today_ymd = date('Ymd');
 if (empty($member['mb_id'])
     || (!empty($member['mb_leave_date']) && $member['mb_leave_date'] <= $today_ymd)
     || (!empty($member['mb_intercept_date']) && $member['mb_intercept_date'] <= $today_ymd)) sl_fail(404, 'member');
-if ($mode === 'register' && substr($mb_id, 0, 3) !== 'sb_') sl_fail(400, 'mode');
+// register: e-mail sign-ups are sb_*; a social sign-up (D4b) is <provider>_<hash> and must say which provider
+if ($mode === 'register' && substr($mb_id, 0, 3) !== 'sb_' && !($social !== '' && strpos($mb_id, strtolower($social) . '_') === 0)) sl_fail(400, 'mode');
 // A register session may only be minted for an account created in the last 2 minutes.
 if ($mode === 'register' && strtotime((string)($member['mb_datetime'] ?? '')) < time() - 120) sl_fail(403, 'not_new');
 
@@ -98,6 +98,7 @@ if ($mode === 'login') {
     if ($social !== '') set_session('ss_social_provider', $social);
     if (function_exists('run_event')) { $after = ''; run_event('member_login_check', $member, $after, $social !== ''); }
 } else {
+    if ($social !== '') set_session('ss_social_provider', $social);
     // sign-up bonus (ledger decides whether it is enabled) + HMS sync hook, exactly as auth/register.php
     $welcome = 0;
     try {
