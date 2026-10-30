@@ -427,6 +427,8 @@ export const api = {
   registerTerms: (ctx?: ServerCtx) => get<RegisterTermsData>("/v1/legal/register-terms", undefined, ctx),
   pointsPolicy: (ctx?: ServerCtx) => get<{ visible: boolean }>("/v1/legal/points-policy", undefined, ctx),
   pointsPolicyInfo: (ctx?: ServerCtx) => get<{ visible: boolean; expireDays: number }>("/v1/points/policy", undefined, ctx),
+  loginOptions: () => get<{ kakao: boolean; google: boolean; apple: boolean }>("/v1/auth/login-options"),
+  login: (b: { email: string; password: string; remember: boolean; url: string }) => send<{ success: boolean; redirect: string | null }>("POST", "/v1/auth/login", b, 30000),
   registerCode: (email: string) => send<{ success: boolean; message: string }>("POST", "/v1/auth/register/code", { email }, 30000),
   register: (b: { email: string; code: string; password: string; password2: string; name: string; birthDate: string; phone: string; agreeTerms: boolean; agreePrivacy: boolean; agreeMarketing: boolean }) =>
     send<{ success: boolean; loggedIn: boolean }>("POST", "/v1/auth/register", b, 60000),

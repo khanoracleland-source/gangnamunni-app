@@ -183,3 +183,6 @@ SESSION_BRIDGE_SECRET=<openssl rand -hex 32>
 ```
 3. `seoulbeauty-api/.env`: `PHP_SESSION_URL` loopback bo'lishi shart (masalan `http://127.0.0.1/api/session_me.php`, `PHP_SESSION_HOST=hms.seoulbeauty.app`) — ko'prik shu URLdan `session_login.php` ni oladi; PHP tomoni loopbackdan boshqa chaqiruvni rad etadi.
 4. OTP kodlari Nest xotirasida saqlanadi (restartda yo'qoladi — foydalanuvchi qayta yuboradi).
+
+### D3 email login (login → Nest, 2026-10-30)
+`POST /v1/auth/login` (+ `GET /v1/auth/login-options`). Yangi GRANT kerak emas (faqat SELECT). Sessiya D2 dagi `session_login.php` ko'prigi orqali (`mode=login`); `SESSION_BRIDGE_SECRET` va loopback `PHP_SESSION_URL` shart. Hisoblagichlar Nest xotirasida (restartda nol; `app_login.php` fayl hisoblagichlari alohida). PBKDF2 bo'lmagan hash'li akkauntlar (91 bcrypt + 1 md5) PHP loginda ham kira olmaydi: Nest ularga oddiy 401 qaytaradi.

@@ -25,3 +25,7 @@
 .check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: #333; }
 .check input { margin-top: 3px; width: 18px; height: 18px; accent-color: #AC1830; flex: none; }
 .check a { color: #AC1830; }
+.kakao { background: #FEE500; color: #191919; }
+.google { background: #fff; color: #222; border: 1px solid #cfcfcf; }
+.apple { background: #000; color: #fff; }
+.emailBtn { background: #fff; color: #AC1830; border: 1px solid #AC1830; }

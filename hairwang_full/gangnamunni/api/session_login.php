@@ -59,7 +59,11 @@ ob_end_clean();
 header('Content-Type: application/json; charset=UTF-8');
 
 $member = get_member($mb_id);
-if (empty($member['mb_id']) || !empty($member['mb_leave_date']) || !empty($member['mb_intercept_date'])) sl_fail(404, 'member');
+// same rule as auth/login.php: a block / leave date only counts once it has been reached
+$today_ymd = date('Ymd');
+if (empty($member['mb_id'])
+    || (!empty($member['mb_leave_date']) && $member['mb_leave_date'] <= $today_ymd)
+    || (!empty($member['mb_intercept_date']) && $member['mb_intercept_date'] <= $today_ymd)) sl_fail(404, 'member');
 if ($mode === 'register' && substr($mb_id, 0, 3) !== 'sb_') sl_fail(400, 'mode');
 // A register session may only be minted for an account created in the last 2 minutes.
 if ($mode === 'register' && strtotime((string)($member['mb_datetime'] ?? '')) < time() - 120) sl_fail(403, 'not_new');

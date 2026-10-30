@@ -1,0 +1,73 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { ApiError, api, assetUrl } from "@/lib/api";
+import { useMe } from "@/lib/me";
+import { phpUrl, usePhpBase } from "@/lib/php";
+import styles from "./AuthPages.module.css";
+
+/** auth/login.php: social buttons (still PHP flows) + e-mail sign-in. The session is created by PHP through the Nest bridge. */
+export default function Login() {
+  const php = usePhpBase();
+  const me = useMe();
+  const params = useSearchParams();
+  const url = params.get("url") ?? "";
+  const notice = params.get("pw_changed") === "1" ? "비밀번호가 변경되었습니다. 보안을 위해 모든 기기에서 로그아웃되었습니다. 새 비밀번호로 다시 로그인해주세요." : "";
+  const opts = useQuery({ queryKey: ["login-options"], queryFn: () => api.loginOptions(), staleTime: 60_000 });
+  const [open, setOpen] = useState(!!params.get("pw_changed"));
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const sending = useRef(false);
+  const home = phpUrl(php, "index.php");
+
+  useEffect(() => { if (me.data?.loggedIn && !sending.current) window.location.replace(url && url.startsWith("/") && !url.startsWith("//") ? url : "/next"); }, [me.data, url]);
+
+  const social = (p: string) => phpUrl(php, `auth/login.php?provider=${p}${url ? `&url=${encodeURIComponent(url)}` : ""}`);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (sending.current) return;
+    sending.current = true; setBusy(true); setError("");
+    try {
+      const r = await api.login({ email: email.trim(), password, remember, url });
+      window.location.assign(r.redirect || home); // full load: every page must see the new PHP session cookie
+      return;
+    } catch (err) {
+      setError((err instanceof ApiError ? (err.body?.message as string | undefined) : undefined) || "로그인 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    }
+    sending.current = false; setBusy(false);
+  };
+
+  return (
+    <div className={styles.wrap}>
+      <div className={styles.head}><a className={styles.back} href={home} aria-label="홈으로" style={{ display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>←</a></div>
+      <div className={styles.hero}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={assetUrl("data/logos/pc") ?? ""} alt="서울미녀" />
+      </div>
+      <div className={styles.actions}>
+        {notice && <div className={styles.ok} role="status">{notice}</div>}
+        {opts.data?.kakao && <a href={social("kakao")} className={`${styles.btn} ${styles.kakao}`}>카카오톡으로 시작하기</a>}
+        {opts.data?.google && <a href={social("google")} className={`${styles.btn} ${styles.google}`}>Google로 시작하기</a>}
+        {opts.data?.apple && <a href={social("apple")} className={`${styles.btn} ${styles.apple}`}>Apple로 시작하기</a>}
+        <button type="button" className={`${styles.btn} ${styles.emailBtn}`} aria-expanded={open} onClick={() => setOpen((v) => !v)}>이메일로 시작하기</button>
+        {open && (
+          <form onSubmit={submit} style={{ display: "contents" }}>
+            {error && <div className={styles.err} role="alert">{error}</div>}
+            <div className={styles.field}><input type="email" placeholder="이메일" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+            <div className={styles.field}><input type="password" placeholder="비밀번호" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+            <label className={styles.check}><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> <span>자동 로그인</span></label>
+            <button type="submit" className={styles.btn} disabled={busy || !email || !password}>{busy ? "로그인 중…" : "로그인"}</button>
+          </form>
+        )}
+        <div className={styles.foot}>
+          <a href="/next/password-lost">비밀번호 찾기</a><span>|</span><a href="/next/register">회원가입</a><span>|</span><a href="/next/qna">문의하기</a>
+        </div>
+      </div>
+    </div>
+  );
+}

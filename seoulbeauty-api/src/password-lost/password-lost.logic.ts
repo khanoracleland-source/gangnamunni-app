@@ -45,6 +45,19 @@ export function resetMail(brand: string, name: string, tempPassword: string): { 
 export class RateWindow {
   private readonly hits = new Map<string, number[]>();
   constructor(private readonly limit: number, private readonly windowMs: number) {}
+  /** Looks without recording (login: only wrong passwords count). */
+  peek(key: string, now = Date.now()): { allowed: boolean; retry: number } {
+    const h = (this.hits.get(key) ?? []).filter((t) => t > now - this.windowMs);
+    const retry = h.length >= this.limit ? Math.max(1, Math.ceil((this.windowMs - (now - h[0])) / 1000)) : 0;
+    return { allowed: retry === 0, retry };
+  }
+  /** Records one hit unconditionally. */
+  add(key: string, now = Date.now()): void {
+    const h = (this.hits.get(key) ?? []).filter((t) => t > now - this.windowMs);
+    h.push(now);
+    this.hits.set(key, h);
+    if (this.hits.size > 20_000) this.hits.clear();
+  }
   hit(key: string, now = Date.now()): { allowed: boolean; retry: number } {
     const h = (this.hits.get(key) ?? []).filter((t) => t > now - this.windowMs);
     const retry = h.length >= this.limit ? Math.max(1, Math.ceil((this.windowMs - (now - h[0])) / 1000)) : 0;
