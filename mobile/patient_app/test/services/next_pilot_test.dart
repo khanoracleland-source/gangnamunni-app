@@ -109,7 +109,7 @@ void main() {
   });
 
   test('pages that stay on PHP are untouched', () {
-    for (final p in ['auth/login.php?url=%2Fnext%2Fmypage', 'bbs/logout.php?url=%2Findex.php', 'reviews.php', 'treatments.php', 'price_compare.php']) {
+    for (final p in ['bbs/logout.php?url=%2Findex.php', 'reviews.php', 'treatments.php', 'price_compare.php']) {
       expect(to(php(p)), isNull, reason: p);
     }
     expect(NextPilot.isNextPage(Uri.parse('$host/next/community/3')), isTrue);
@@ -164,8 +164,17 @@ void main() {
     expect(to(php('auth/login.php')), '/next/login');
     expect(to(legacy('auth/login.php?app=1')), '/next/login');
     expect(to(php('auth/login.php?pw_changed=1')), '/next/login?pw_changed=1');
-    expect(to(php('auth/login.php?provider=kakao')), isNull);
-    expect(to(php('auth/login.php?url=%2Fx')), isNull);
+    expect(to(php('auth/login.php?provider=kakao')), '/next/api/v1/auth/social/kakao/start');
+    expect(to(php('auth/login.php?provider=google&url=%2Fnext%2Fmypage&app=1')), '/next/api/v1/auth/social/google/start?url=%2Fnext%2Fmypage');
+    expect(to(php('auth/login.php?provider=apple')), isNull);
+    expect(to(php('auth/login.php?provider=kakao&php=1')), isNull);
+    expect(to(php('auth/login.php?provider=kakao&x=1')), isNull);
+    expect(to(php('auth/login.php?provider=kakao&url=https%3A%2F%2Fevil.test')), isNull);
+    expect(to(php('auth/login.php?url=%2Fx')), '/next/login?url=%2Fx');
+    expect(to(php('auth/login.php?url=%2Fnext%2Fmypage')), '/next/login?url=%2Fnext%2Fmypage'); // the PHP login gate now goes to the Next login too
+    expect(to(php('auth/login.php?url=%2F%2Fevil.test')), isNull);
+    expect(to(php('auth/login.php?url=https%3A%2F%2Fevil.test')), isNull);
+    expect(to(php('auth/login.php?x=1')), isNull);
     expect(to(php('auth/register.php')), '/next/register');
     expect(to(legacy('auth/register.php?app=1')), '/next/register');
     expect(to(php('auth/register.php?mode=register')), isNull);

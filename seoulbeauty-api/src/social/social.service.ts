@@ -60,11 +60,14 @@ export class SocialService {
 
   /** GET …/:provider/start → { to: IdP authorize URL, cookie } or an error redirect. */
   async start(provider: string, urlParam: unknown, host: string): Promise<{ to: string; cookies: string[] }> {
-    if (!isProvider(provider) || !this.enabledProviders().includes(provider) || this.secret().length < 32) return { to: this.loginPage('unavailable'), cookies: [] };
+    if (!isProvider(provider)) return { to: this.loginPage('unavailable'), cookies: [] };
+    const url = safeAfterUrl(urlParam, host, '');
+    // a provider that is not switched to Nest (the Flutter app sends every kakao/google link here) goes to the PHP flow; php=1 stops the app from sending it back
+    if (!this.enabledProviders().includes(provider)) return { to: `${this.phpFlow(provider, url)}&php=1`, cookies: [] };
+    if (this.secret().length < 32) return { to: this.loginPage('unavailable'), cookies: [] };
     const cfg = await this.config();
     const k = this.keys(cfg, provider);
     if (!k) return { to: this.loginPage('unavailable'), cookies: [] };
-    const url = safeAfterUrl(urlParam, host, '');
     const st = signState(this.secret(), provider, url);
     const q = new URLSearchParams({ client_id: k.id, redirect_uri: this.callbackUrl(provider), response_type: 'code', state: st.state });
     let base: string;

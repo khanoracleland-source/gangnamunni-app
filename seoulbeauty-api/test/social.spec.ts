@@ -113,6 +113,14 @@ describe('social controller', () => {
     const r = await request(app.getHttpServer()).get('/v1/auth/social/apple/start').expect(302);
     expect(r.headers.location).toBe('/next/login?social_error=unavailable');
   });
+  it('start sends a provider that is not on Nest to the PHP flow (php=1)', async () => {
+    const saved = process.env.SOCIAL_NEST_PROVIDERS;
+    process.env.SOCIAL_NEST_PROVIDERS = 'google';
+    const r = await request(app.getHttpServer()).get('/v1/auth/social/kakao/start?url=/next/x').expect(302);
+    expect(r.headers.location).toBe('https://h.test/auth/login.php?provider=kakao&url=%2Fnext%2Fx&php=1');
+    expect(r.headers['set-cookie']).toBeUndefined();
+    process.env.SOCIAL_NEST_PROVIDERS = saved;
+  });
   it('callback rejects a bad or missing state', async () => {
     const st = stateFor('kakao');
     let r = await request(app.getHttpServer()).get(`/v1/auth/social/kakao/callback?code=c&state=wrong`).set('Cookie', `sb_social_state=${st.value}`).expect(302);

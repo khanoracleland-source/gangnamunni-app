@@ -78,7 +78,7 @@ class NextPilot {
     if (_registerTermsPaths.contains(uri.path)) return _rewriteRegisterTerms(uri);
     if (_pointsPolicyPaths.contains(uri.path)) return _rewritePointsPolicy(uri);
     if (_passwordLostPaths.contains(uri.path)) return _rewriteMine(uri, 'password-lost', const {}, const {});
-    if (_loginPaths.contains(uri.path)) return _rewriteMine(uri, 'login', const {'pw_changed'}, const {'pw_changed': {'1'}});
+    if (_loginPaths.contains(uri.path)) return _rewriteLogin(uri);
     if (_registerPaths.contains(uri.path)) return _rewriteMine(uri, 'register', const {}, const {});
     if (_myPointsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/points', const {}, const {});
     if (_pointsPolicyListPaths.contains(uri.path)) return _rewriteMine(uri, 'points-policy', const {'tab'}, const {'tab': {'earn', 'revoke', 'expire', 'use', 'refund'}});
@@ -323,6 +323,38 @@ class NextPilot {
       host: _site.host,
       port: _site.hasPort ? _site.port : null,
       path: '$basePath/$path',
+      queryParameters: kept.isEmpty ? null : kept,
+    );
+  }
+
+  /// auth/login.php[?pw_changed=1][&url=/local/path][&app=] -> /next/login[?pw_changed=&url=];
+  /// auth/login.php?provider=kakao|google[&url=][&app=] -> the Nest social start (`php=1` keeps the PHP flow; apple stays PHP).
+  static Uri? _rewriteLogin(Uri uri) {
+    final q = uri.queryParameters;
+    if (q['php'] == '1') return null;
+    final url = q['url'];
+    if (url != null && (url.isEmpty || !url.startsWith('/') || url.startsWith('//') || url.contains('\\') || url.length > 500)) return null;
+    final provider = q['provider'];
+    if (provider != null) {
+      if (provider != 'kakao' && provider != 'google') return null;
+      if (q.keys.any((k) => k != 'app' && k != 'provider' && k != 'url')) return null;
+      return Uri(
+        scheme: _site.scheme,
+        host: _site.host,
+        port: _site.hasPort ? _site.port : null,
+        path: '$basePath/api/v1/auth/social/$provider/start',
+        queryParameters: url == null ? null : {'url': url},
+      );
+    }
+    if (q.keys.any((k) => k != 'app' && k != 'pw_changed' && k != 'url')) return null;
+    final pw = q['pw_changed'] ?? '';
+    if (pw.isNotEmpty && pw != '1') return null;
+    final kept = <String, String>{if (pw.isNotEmpty) 'pw_changed': pw, if (url != null) 'url': url};
+    return Uri(
+      scheme: _site.scheme,
+      host: _site.host,
+      port: _site.hasPort ? _site.port : null,
+      path: '$basePath/login',
       queryParameters: kept.isEmpty ? null : kept,
     );
   }
