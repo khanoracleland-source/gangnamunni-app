@@ -427,6 +427,7 @@ export const api = {
   registerTerms: (ctx?: ServerCtx) => get<RegisterTermsData>("/v1/legal/register-terms", undefined, ctx),
   pointsPolicy: (ctx?: ServerCtx) => get<{ visible: boolean }>("/v1/legal/points-policy", undefined, ctx),
   pointsPolicyInfo: (ctx?: ServerCtx) => get<{ visible: boolean; expireDays: number }>("/v1/points/policy", undefined, ctx),
+  passwordLost: (email: string) => send<{ success: boolean; requestId: string }>("POST", "/v1/auth/password-lost", { email }, 30000),
   myPoints: (ctx?: ServerCtx) => get<MyPointsData>("/v1/mypage/points", undefined, ctx),
   bookingPayment: (id: number) => get<BookingPaymentInfo>(`/v1/mypage/bookings/${id}/payment`),
   bookingPaymentPreview: (id: number) => send<{ success: boolean; redirect: string }>("POST", `/v1/mypage/bookings/${id}/payment/preview`, {}, 30000),

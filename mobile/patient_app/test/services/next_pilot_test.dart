@@ -158,6 +158,9 @@ void main() {
     expect(to(php('my_points_policy_detail.php?type=progress')), '/next/points-policy/progress');
     expect(to(php('my_points_policy_detail.php?type=bogus')), isNull);
     expect(to(php('my_points_policy_detail.php')), isNull);
+    expect(to(php('auth/password_lost.php')), '/next/password-lost');
+    expect(to(legacy('auth/password_lost.php?app=1')), '/next/password-lost');
+    expect(to(php('auth/password_lost.php?x=1')), isNull);
     expect(to(php('my_points.php')), '/next/mypage/points');
     expect(to(legacy('my_points.php?app=1')), '/next/mypage/points');
     expect(to(php('my_points.php?x=1')), isNull);

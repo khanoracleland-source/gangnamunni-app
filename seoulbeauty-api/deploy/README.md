@@ -152,3 +152,18 @@ GRANT INSERT (payment_type, funds_recipient, booking_id, hospital_id, hospital_n
 GRANT INSERT (booking_id), UPDATE (booking_id) ON hms_saas.gangnamunni_booking_payment_previews TO 'sb_api_ro'@'127.0.0.1';  -- UPDATE: ON DUPLICATE KEY UPDATE needs it
 GRANT INSERT (booking_id), UPDATE (booking_id) ON hms_saas.gangnamunni_booking_payment_previews TO 'sb_api_ro'@'localhost';  -- UPDATE: ON DUPLICATE KEY UPDATE needs it
 -- .env (same meaning as hairwang_full/data/dbconfig.php): PG_PAYMENTS_ENABLED=0  BOOKING_PAYMENT_METHODS=  BOOKING_PAYMENT_PREVIEW_ENABLED=1  (TOSS_CLIENT_KEY/TOSS_SECRET_KEY only once the PG contract exists; the Toss checkout itself still runs in PHP)
+
+### D1 비밀번호 찾기 (password_lost → Nest, 2026-10-30)
+Nest endi o'zi parolni almashtiradi va tokenlarni bekor qiladi (PHP `password_lost.php` + `revoke_all_auth_credentials`). Column-level GRANT:
+```
+GRANT UPDATE (mb_password, mb_lost_certify, mb_cred_epoch) ON hms_saas.g5_member TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (mb_password, mb_lost_certify, mb_cred_epoch) ON hms_saas.g5_member TO 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.sso_tokens TO 'sb_api_ro'@'127.0.0.1';
+GRANT DELETE ON hms_saas.sso_tokens TO 'sb_api_ro'@'localhost';
+GRANT UPDATE (password, updated_at) ON hms_saas.users TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (password, updated_at) ON hms_saas.users TO 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.personal_access_tokens TO 'sb_api_ro'@'127.0.0.1';
+GRANT DELETE ON hms_saas.personal_access_tokens TO 'sb_api_ro'@'localhost';
+FLUSH PRIVILEGES;
+```
+`.env`: `SMTP_PASSWORD=<admin@seoulbeauty.app parol>` (kerak; yo'q bo'lsa email ketmaydi va parol O'ZGARMAYDI). Ixtiyoriy: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM_NAME`. Yangi npm paketlar (nodemailer, bcryptjs): deploy'da `npm ci` kerak.
