@@ -1,11 +1,13 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, api, assetUrl } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import styles from "./AuthPages.module.css";
+
+const subscribeNoop = () => () => {};
 
 /** auth/login.php: social buttons (still PHP flows) + e-mail sign-in. The session is created by PHP through the Nest bridge. */
 export default function Login() {
@@ -26,6 +28,8 @@ export default function Login() {
     failed: "소셜 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.",
   };
   const socialError = SOCIAL_ERR[params.get("social_error") ?? ""] ?? "";
+  // Apple sign-in is iOS-only for now: hidden on Android (and until the user agent is known, so it never flashes there)
+  const showApple = useSyncExternalStore(subscribeNoop, () => !/Android/i.test(navigator.userAgent), () => false);
   const opts = useQuery({ queryKey: ["login-options"], queryFn: () => api.loginOptions(), staleTime: 60_000 });
   const [open, setOpen] = useState(!!params.get("pw_changed"));
   const [email, setEmail] = useState("");
@@ -68,7 +72,7 @@ export default function Login() {
         {notice && <div className={styles.ok} role="status">{notice}</div>}
         {opts.data?.kakao && <a href={social("kakao")} className={`${styles.btn} ${styles.kakao}`}>카카오톡으로 시작하기</a>}
         {opts.data?.google && <a href={social("google")} className={`${styles.btn} ${styles.google}`}>Google로 시작하기</a>}
-        {opts.data?.apple && <a href={social("apple")} className={`${styles.btn} ${styles.apple}`}>Apple로 시작하기</a>}
+        {showApple && opts.data?.apple && <a href={social("apple")} className={`${styles.btn} ${styles.apple}`}>Apple로 시작하기</a>}
         <button type="button" className={`${styles.btn} ${styles.emailBtn}`} aria-expanded={open} onClick={() => setOpen((v) => !v)}>이메일로 시작하기</button>
         {open && (
           <form onSubmit={submit} style={{ display: "contents" }}>

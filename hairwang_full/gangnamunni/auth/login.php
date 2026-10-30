@@ -17,6 +17,12 @@ if (isset($_GET['provider']) || isset($_REQUEST['provider'])) {
 
     $supported_social_providers = ['Kakao', 'Google', 'Apple'];
 
+    // Apple sign-in is not offered on Android (iOS only for now): a direct link goes back to the login page
+    if ($social_provider === 'Apple' && preg_match('/Android/i', (string)($_SERVER['HTTP_USER_AGENT'] ?? ''))) {
+        header('Location: ' . rtrim(defined('SITE_BASE_PATH') ? SITE_BASE_PATH : '', '/') . '/auth/login.php');
+        exit;
+    }
+
     if (in_array($social_provider, $supported_social_providers, true) && function_exists('social_check_login_before')) {
         $_GET['provider'] = $_REQUEST['provider'] = $social_provider;
         if (array_key_exists('redirect_to_idp', $social_query)) {
@@ -362,7 +368,8 @@ $apple_enabled = !empty($config['cf_social_login_use'])
     && !empty($config['cf_apple_team_id'])
     && !empty($config['cf_apple_key_id'])
     && !empty($config['cf_apple_bundle_id'])
-    && !empty($config['cf_apple_key_file']);
+    && !empty($config['cf_apple_key_file'])
+    && !preg_match('/Android/i', (string)($_SERVER['HTTP_USER_AGENT'] ?? '')); // iOS only for now
 $kakao_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php?provider=kakao&url=' . urlencode($after_url);
 $google_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php?provider=google&url=' . urlencode($after_url);
 $apple_url = rtrim(SITE_BASE_PATH, '/') . '/auth/login.php?provider=apple&url=' . urlencode($after_url);
