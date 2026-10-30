@@ -99,7 +99,10 @@ describe('POST /v1/auth/login', () => {
   });
   it('login options follow the Gnuboard social settings', async () => {
     const r = await request(app.getHttpServer()).get('/v1/auth/login-options').expect(200);
-    expect(r.body).toEqual({ kakao: true, google: false, apple: true });
+    expect(r.body).toEqual({ nest: [], kakao: true, google: false, apple: true });
+    process.env.SOCIAL_NEST_PROVIDERS = 'kakao, apple,google';
+    expect((await request(app.getHttpServer()).get('/v1/auth/login-options')).body.nest).toEqual(['kakao', 'google']);
+    delete process.env.SOCIAL_NEST_PROVIDERS;
     expect(r.headers['cache-control']).toContain('s-maxage=30');
   });
   it('a hash that is not Gnuboard PBKDF2 (bcrypt, md5) is just a wrong password', async () => {

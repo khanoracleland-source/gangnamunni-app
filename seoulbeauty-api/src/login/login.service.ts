@@ -23,13 +23,15 @@ export class LoginService {
   constructor(@Inject(DB) private readonly db: DbPool, private readonly bridge: SessionBridgeService) {}
 
   /** Which social buttons the login screen shows (same conditions as auth/login.php). */
-  async options(): Promise<{ kakao: boolean; google: boolean; apple: boolean }> {
+  async options(): Promise<{ kakao: boolean; google: boolean; apple: boolean; nest: string[] }> {
     const [r] = (await this.db.query('SELECT cf_social_login_use, cf_social_servicelist, cf_kakao_rest_key, cf_google_clientid, cf_google_secret, cf_apple_team_id, cf_apple_key_id, cf_apple_bundle_id, cf_apple_key_file FROM g5_config LIMIT 1')) as any;
     const c = (r as any[])[0] ?? {};
     const on = Number(c.cf_social_login_use) > 0;
     const list = s(c.cf_social_servicelist).split(',').map((x) => x.trim().toLowerCase());
     const has = (...k: string[]) => k.every((x) => s(c[x]) !== '');
+    const nest = (process.env.SOCIAL_NEST_PROVIDERS || '').split(',').map((x) => x.trim().toLowerCase()).filter((x) => x === 'kakao' || x === 'google');
     return {
+      nest,
       kakao: on && list.includes('kakao') && has('cf_kakao_rest_key'),
       google: on && list.includes('google') && has('cf_google_clientid', 'cf_google_secret'),
       apple: on && list.includes('apple') && has('cf_apple_team_id', 'cf_apple_key_id', 'cf_apple_bundle_id', 'cf_apple_key_file'),

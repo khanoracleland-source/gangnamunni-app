@@ -186,3 +186,21 @@ SESSION_BRIDGE_SECRET=<openssl rand -hex 32>
 
 ### D3 email login (login → Nest, 2026-10-30)
 `POST /v1/auth/login` (+ `GET /v1/auth/login-options`). Yangi GRANT kerak emas (faqat SELECT). Sessiya D2 dagi `session_login.php` ko'prigi orqali (`mode=login`); `SESSION_BRIDGE_SECRET` va loopback `PHP_SESSION_URL` shart. Hisoblagichlar Nest xotirasida (restartda nol; `app_login.php` fayl hisoblagichlari alohida). PBKDF2 bo'lmagan hash'li akkauntlar (91 bcrypt + 1 md5) PHP loginda ham kira olmaydi: Nest ularga oddiy 401 qaytaradi.
+
+## D4a — Social login (Kakao / Google) on Nest
+
+Existing linked members sign in through Nest; an unlinked social profile (a new member) is still sent to the PHP flow
+(`/auth/login.php?provider=…`). The Gnuboard session is minted by PHP through the session bridge (`social` = provider name).
+
+1. Grants (both `localhost` and `127.0.0.1`):
+   ```sql
+   GRANT INSERT, UPDATE, DELETE ON hms_saas.g5_member_social_profiles TO 'sb_api_ro'@'localhost', 'sb_api_ro'@'127.0.0.1';
+   GRANT UPDATE (mb_name, mb_hp, mb_birth, mb_2) ON hms_saas.g5_member TO 'sb_api_ro'@'localhost', 'sb_api_ro'@'127.0.0.1';
+   ```
+   (the column grants for g5_member may already exist from D2.)
+2. Provider consoles — ADD (do not remove the old `/plugin/social/?hauth.done=…` URIs):
+   - Kakao Developers → Kakao Login → Redirect URI: `https://hms.seoulbeauty.app/next/api/v1/auth/social/callback` (no "kakao" in it: the Kakao console rejects such a URI)
+   - Google Cloud → OAuth client → Authorized redirect URI: `https://hms.seoulbeauty.app/next/api/v1/auth/social/google/callback`
+3. `.env`: `SOCIAL_NEST_PROVIDERS=kakao,google` turns it on per provider (empty = everything stays on PHP, instant rollback).
+   Optional: `SOCIAL_CALLBACK_BASE` (default `https://hms.seoulbeauty.app/next/api/v1/auth/social`), `SOCIAL_PHP_BASE` (default `https://hms.seoulbeauty.app`).
+4. `pm2 restart seoulbeauty-api`, rebuild web. `GET /next/api/v1/auth/login-options` then lists `nest: ["kakao","google"]`.

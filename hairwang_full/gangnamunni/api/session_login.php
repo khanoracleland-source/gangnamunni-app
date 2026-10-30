@@ -6,9 +6,9 @@
  * endpoint server-side (loopback), forwarding the browser's Cookie header, and relays the Set-Cookie
  * headers of the answer to the browser.
  *
- * Guards: loopback caller only + HMAC-SHA256(secret, "mb_id|mode|remember|ts") with a 60 s window.
+ * Guards: loopback caller only + HMAC-SHA256(secret, "mb_id|mode|remember|ts[|social]") with a 60 s window.
  * The secret is SESSION_BRIDGE_SECRET (gangnamunni/.env or environment); empty secret = endpoint disabled.
- * Body (JSON): {mb_id, mode: "register"|"login", remember: 0|1, ts, sig}
+ * Body (JSON): {mb_id, mode: "register"|"login", remember: 0|1, ts, sig, social?: "Kakao"|"Google"|"Apple" (login only)}
  */
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: private, no-store');
@@ -41,9 +41,13 @@ $mode = (string)($in['mode'] ?? '');
 $remember = !empty($in['remember']) ? 1 : 0;
 $ts = (int)($in['ts'] ?? 0);
 $sig = (string)($in['sig'] ?? '');
+// social sign-in (D4): the provider name goes into the session (ss_social_provider); only Kakao|Google|Apple are accepted
+$social = (string)($in['social'] ?? '');
+if ($social !== '' && !in_array($social, ['Kakao', 'Google', 'Apple'], true)) sl_fail(400, 'args');
+if ($social !== '' && ($in['mode'] ?? '') !== 'login') sl_fail(400, 'args');
 if (!preg_match('/^[0-9a-zA-Z_]{3,20}$/', $mb_id) || !in_array($mode, ['register', 'login'], true)) sl_fail(400, 'args');
 if (abs(time() - $ts) > 60) sl_fail(403, 'expired');
-$expect = hash_hmac('sha256', $mb_id . '|' . $mode . '|' . $remember . '|' . $ts, $secret);
+$expect = hash_hmac('sha256', $mb_id . '|' . $mode . '|' . $remember . '|' . $ts . ($social !== '' ? '|' . $social : ''), $secret);
 if (!hash_equals($expect, $sig)) sl_fail(403, 'signature');
 
 // init.php may echo <script> tags meant for HTML pages: capture and discard (same as session_me.php)
@@ -91,7 +95,8 @@ if ($mode === 'login') {
         set_cookie('ck_mb_id', '', 0);
         set_cookie('ck_auto', '', 0);
     }
-    if (function_exists('run_event')) { $after = ''; run_event('member_login_check', $member, $after, false); }
+    if ($social !== '') set_session('ss_social_provider', $social);
+    if (function_exists('run_event')) { $after = ''; run_event('member_login_check', $member, $after, $social !== ''); }
 } else {
     // sign-up bonus (ledger decides whether it is enabled) + HMS sync hook, exactly as auth/register.php
     $welcome = 0;

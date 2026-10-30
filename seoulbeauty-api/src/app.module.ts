@@ -19,6 +19,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { ProgressModule } from './progress/progress.module';
 import { LegalModule } from './legal/legal.module';
 import { BookingModule } from './booking/booking.module';
+import { SocialModule } from './social/social.module';
 import { LoginModule } from './login/login.module';
 import { RegisterModule } from './register/register.module';
 import { PasswordLostModule } from './password-lost/password-lost.module';
@@ -46,7 +47,7 @@ import { HealthController } from './health/health.controller';
     ProgressModule,
     LegalModule,
     BookingModule,
-    PasswordLostModule, RegisterModule, LoginModule,
+    PasswordLostModule, RegisterModule, LoginModule, SocialModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

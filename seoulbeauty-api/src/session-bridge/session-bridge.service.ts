@@ -20,18 +20,18 @@ export class SessionBridgeService {
   /** false when SESSION_BRIDGE_SECRET is missing: callers must not create accounts they cannot sign in. */
   configured(): boolean { return (process.env.SESSION_BRIDGE_SECRET || '').length >= 32; }
 
-  async mint(mbId: string, mode: 'register' | 'login', remember: boolean, cookie: string, userAgent = ''): Promise<BridgeResult> {
+  async mint(mbId: string, mode: 'register' | 'login', remember: boolean, cookie: string, userAgent = '', social: '' | 'Kakao' | 'Google' | 'Apple' = ''): Promise<BridgeResult> {
     const secret = process.env.SESSION_BRIDGE_SECRET || '';
     if (secret.length < 32) return { ok: false, setCookies: [], error: 'SESSION_BRIDGE_SECRET not set' };
     const ts = Math.floor(Date.now() / 1000);
     const rem = remember ? 1 : 0;
-    const sig = createHmac('sha256', secret).update(`${mbId}|${mode}|${rem}|${ts}`).digest('hex');
+    const sig = createHmac('sha256', secret).update(`${mbId}|${mode}|${rem}|${ts}${social ? `|${social}` : ''}`).digest('hex');
     const headers: Record<string, string> = { 'Content-Type': 'application/json', Cookie: cookie || '', 'User-Agent': userAgent || 'seoulbeauty-api' };
     if (process.env.PHP_SESSION_HOST) headers.Host = process.env.PHP_SESSION_HOST;
     try {
       const res = await fetch(this.url(), {
         method: 'POST', headers, redirect: 'manual', signal: AbortSignal.timeout(15_000),
-        body: JSON.stringify({ mb_id: mbId, mode, remember: rem, ts, sig }),
+        body: JSON.stringify({ mb_id: mbId, mode, remember: rem, ts, sig, ...(social ? { social } : {}) }),
       });
       const setCookies = typeof (res.headers as any).getSetCookie === 'function' ? (res.headers as any).getSetCookie() as string[] : [];
       const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };

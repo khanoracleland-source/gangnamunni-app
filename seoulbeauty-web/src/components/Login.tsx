@@ -14,6 +14,16 @@ export default function Login() {
   const params = useSearchParams();
   const url = params.get("url") ?? "";
   const notice = params.get("pw_changed") === "1" ? "비밀번호가 변경되었습니다. 보안을 위해 모든 기기에서 로그아웃되었습니다. 새 비밀번호로 다시 로그인해주세요." : "";
+  const SOCIAL_ERR: Record<string, string> = {
+    unavailable: "현재 이 소셜 로그인은 사용할 수 없습니다. 이메일로 로그인해주세요.",
+    too_many: "시도가 너무 많습니다. 잠시 후 다시 시도해주세요.",
+    state: "로그인 시간이 만료되었습니다. 다시 시도해주세요.",
+    denied: "소셜 로그인이 취소되었습니다.",
+    unverified: "이메일 인증이 완료되지 않은 계정입니다. 인증 메일을 확인해주세요.",
+    blocked: "이용이 제한된 계정입니다. 고객센터에 문의해주세요.",
+    failed: "소셜 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.",
+  };
+  const socialError = SOCIAL_ERR[params.get("social_error") ?? ""] ?? "";
   const opts = useQuery({ queryKey: ["login-options"], queryFn: () => api.loginOptions(), staleTime: 60_000 });
   const [open, setOpen] = useState(!!params.get("pw_changed"));
   const [email, setEmail] = useState("");
@@ -26,7 +36,9 @@ export default function Login() {
 
   useEffect(() => { if (me.data?.loggedIn && !sending.current) window.location.replace(url && url.startsWith("/") && !url.startsWith("//") ? url : "/next"); }, [me.data, url]);
 
-  const social = (p: string) => phpUrl(php, `auth/login.php?provider=${p}${url ? `&url=${encodeURIComponent(url)}` : ""}`);
+  const social = (p: string) => opts.data?.nest?.includes(p)
+    ? `/next/api/v1/auth/social/${p}/start${url ? `?url=${encodeURIComponent(url)}` : ""}`
+    : phpUrl(php, `auth/login.php?provider=${p}${url ? `&url=${encodeURIComponent(url)}` : ""}`);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +62,7 @@ export default function Login() {
         <img src={assetUrl("data/logos/pc") ?? ""} alt="서울미녀" />
       </div>
       <div className={styles.actions}>
+        {socialError && <div className={styles.err} role="alert">{socialError}</div>}
         {notice && <div className={styles.ok} role="status">{notice}</div>}
         {opts.data?.kakao && <a href={social("kakao")} className={`${styles.btn} ${styles.kakao}`}>카카오톡으로 시작하기</a>}
         {opts.data?.google && <a href={social("google")} className={`${styles.btn} ${styles.google}`}>Google로 시작하기</a>}
