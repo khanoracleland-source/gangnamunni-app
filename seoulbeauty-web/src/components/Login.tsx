@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, api, assetUrl } from "@/lib/api";
 import { useMe } from "@/lib/me";
@@ -38,7 +38,10 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const sending = useRef(false);
-  const home = phpUrl(php, "index.php");
+  const router = useRouter();
+  const home = "/next"; // the Next.js home (full load after sign-in so every page sees the new PHP session cookie)
+  /** ← : back to the page the visitor came from; with no history (opened directly) go to the Next home. */
+  const goBack = () => { if (window.history.length > 1) router.back(); else router.push("/"); };
 
   useEffect(() => { if (me.data?.loggedIn && !sending.current) window.location.replace(url && url.startsWith("/") && !url.startsWith("//") ? url : "/next"); }, [me.data, url]);
 
@@ -62,7 +65,7 @@ export default function Login() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.head}><a className={styles.back} href={home} aria-label="홈으로" style={{ display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>←</a></div>
+      <div className={styles.head}><button type="button" className={styles.back} onClick={goBack} aria-label="뒤로 가기" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>←</button></div>
       <div className={styles.hero}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={assetUrl("data/logos/pc") ?? ""} alt="서울미녀" />

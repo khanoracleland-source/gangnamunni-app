@@ -2,7 +2,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { api, ApiError } from "./api";
-import { phpUrl, usePhpBase } from "./php";
 
 export interface SessionUser { id: string; no: number; name: string; nickname: string; level: number; phone: string }
 export interface Session { loggedIn: boolean; user: SessionUser | null; unreadNotifications?: number }
@@ -14,17 +13,20 @@ export function useMe() {
   return useQuery({ queryKey: meKey, queryFn: () => api.me(), staleTime: 20_000, gcTime: 5 * 60_000, refetchOnWindowFocus: true }); // focus refetch keeps the bell's unread dot current
 }
 
-/** PHP login page with a return URL back to the current Next.js page. */
+/**
+ * Sign-in page (the Next.js /login, backed by the Nest auth API) with a return URL back to the current page.
+ * Returns a full path (basePath included) for `<a href>` / window.location; the page itself does a full load after sign-in
+ * so every screen sees the new PHP session cookie.
+ */
 export function useLoginUrl(): (returnTo?: string) => string {
-  const php = usePhpBase();
   return (returnTo) => {
-    const back = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : "/next/hospitals");
-    return phpUrl(php, `auth/login.php?url=${encodeURIComponent(back)}`);
+    const back = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : "/next");
+    return `/next/login?url=${encodeURIComponent(back)}`;
   };
 }
 
 /**
- * Wrap a login-required action: anonymous users go to the PHP login page (and come back here);
+ * Wrap a login-required action: anonymous users go to the sign-in page (and come back here);
  * if the API answers 401 anyway (session expired meanwhile), same redirect.
  */
 export function useRequireLogin() {

@@ -9,7 +9,7 @@ export default function LoginPrompt({ text = "로그인 후 마이페이지를 �
     <div className={styles.login}>
       <p className={styles.loginTitle}>로그인이 필요합니다</p>
       <p className={styles.loginText}>{text}</p>
-      <a href={loginUrl()} className={styles.loginBtn}>로그인</a>
+      <a href={loginUrl()} className={styles.loginBtn}>로그인 / 회원가입</a>
     </div>
   );
 }
