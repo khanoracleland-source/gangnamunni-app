@@ -3,6 +3,8 @@ import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api, qk, type Hospital, type HospitalDetail, type HospitalPage, type MyWishlistItem, type SearchView, type WishlistState } from "@/lib/api";
 import { useRequireLogin } from "@/lib/me";
+import wishIcon from "@/assets/icons/wish.png";
+import wishOnIcon from "@/assets/icons/wish-on.png";
 import styles from "./WishlistButton.module.css";
 
 /**
@@ -57,7 +59,8 @@ export default function WishlistButton({ hospitalId, size = "sm", initialCount, 
       disabled={m.isPending}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); void requireLogin(() => m.mutateAsync()); }}
     >
-      <span aria-hidden>{on ? "★" : "☆"}</span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={(on ? wishOnIcon : wishIcon).src} alt="" aria-hidden width={size === "lg" ? 24 : 22} height={size === "lg" ? 24 : 22} />
       {size === "lg" && count != null && <span className={styles.count}>{count}</span>}
     </button>
   );

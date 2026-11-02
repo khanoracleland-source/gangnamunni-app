@@ -5,6 +5,8 @@ import { api, assetUrl, formatWon, PLACEHOLDER, qk, type Hospital } from "@/lib/
 import { usePhpBase } from "@/lib/php";
 import { trackSlotClick } from "@/lib/adTracking";
 import WishlistButton from "./WishlistButton";
+import starIcon from "@/assets/icons/star.png";
+import trophyIcon from "@/assets/icons/trophy.png";
 import styles from "./HospitalCard.module.css";
 
 /** extract_addr_district(): "서울 강남구 …" -> "강남" (2nd token first). */
@@ -53,8 +55,10 @@ export default function HospitalCard({ h, keyword, slotToken }: { h: Hospital; k
       <img src={img} alt="" className={styles.thumb} loading="lazy" decoding="async"
         onError={(e) => { if (e.currentTarget.src !== PLACEHOLDER) e.currentTarget.src = PLACEHOLDER; }} />
       <div className={styles.info}>
-        <div className={styles.name}>{h.name}</div>
-        <div className={styles.wish}><WishlistButton hospitalId={h.id} initial={{ wishlisted: h.wishlisted, count: h.wishlistCount }} /></div>
+        <div className={styles.nameRow}>
+          <div className={styles.name}>{h.name}</div>
+          <div className={styles.wish}><WishlistButton hospitalId={h.id} initial={{ wishlisted: h.wishlisted, count: h.wishlistCount }} /></div>
+        </div>
         {h.address && <div className={styles.addr}>{district && <><span className={styles.district}>{district}</span><span className={styles.sep}> | </span></>}{h.address}</div>}
         {(treatLine || (t && t.priceMin > 0)) && (
           <div className={styles.tagPrice}>
@@ -72,8 +76,9 @@ export default function HospitalCard({ h, keyword, slotToken }: { h: Hospital; k
         )}
         {!t && (
           <div className={styles.meta}>
-            {h.showRating && h.rating != null && h.rating > 0 && <span className={styles.rating}>★ {h.rating.toFixed(1)}</span>}
-            {h.reviewCount > 0 && <span>후기 {h.reviewCount}</span>}
+            {h.showRating && h.rating != null && h.rating > 0 && <span className={styles.rating}>{/* eslint-disable-line @next/next/no-img-element */}<img src={starIcon.src} alt="" width={14} height={14} /><b>{h.rating.toFixed(1)}</b></span>}
+            {h.reviewCount > 0 && <span className={styles.reviews}>후기 {h.reviewCount.toLocaleString("ko-KR")}</span>}
+            {h.badges.some((b) => b.includes("우수")) && <span className={styles.best}>{/* eslint-disable-line @next/next/no-img-element */}<img src={trophyIcon.src} alt="" width={14} height={14} />고객평가우수병원</span>}
             {listPrice && <span className={styles.price}>{listPrice}~</span>}
           </div>
         )}

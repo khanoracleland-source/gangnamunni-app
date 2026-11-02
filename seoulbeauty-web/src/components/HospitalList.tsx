@@ -7,7 +7,19 @@ import { api, assetUrl, normalize, qk, type HospitalListParams, type HospitalPag
 import { phpUrl, usePhpBase } from "@/lib/php";
 import { fetchSlotTokens, observeImpressions, observeSlotImpressions, trackClick } from "@/lib/adTracking";
 import HospitalCard, { addrDistrict } from "./HospitalCard";
+import priceOn from "@/assets/icons/sort-price.png";
+import priceOff from "@/assets/icons/sort-price-off.png";
+import ratingOn from "@/assets/icons/sort-rating.png";
+import ratingOff from "@/assets/icons/sort-rating-off.png";
+import popularOn from "@/assets/icons/sort-popular.png";
+import popularOff from "@/assets/icons/sort-popular-off.png";
+import reviewOn from "@/assets/icons/sort-review.png";
+import reviewOff from "@/assets/icons/sort-review-off.png";
 import styles from "./HospitalList.module.css";
+
+const SORT_ICON: Partial<Record<HospitalSort, { on: { src: string }; off: { src: string } }>> = {
+  price: { on: priceOn, off: priceOff }, rating: { on: ratingOn, off: ratingOff }, popular: { on: popularOn, off: popularOff }, review: { on: reviewOn, off: reviewOff },
+};
 
 const SORT_LABEL: Record<HospitalSort, string> = { manual: "추천", price: "낮은가격", rating: "평점", popular: "인기", review: "후기" };
 const EMPTY_SUGG = ["텐써마", "울쎄라", "슈링크", "인모드"]; // hospital_list_content.php $_sugg
@@ -74,7 +86,7 @@ export default function HospitalList({ params, initial }: { params: HospitalList
     return `/hospitals${u.toString() ? `?${u}` : ""}`;
   };
   // hospitals.php: 낮은가격 only when a treatment is effective; 추천(manual) is the default otherwise.
-  const sorts: HospitalSort[] = eff ? ["price", "rating", "popular", "review"] : ["manual", "rating", "popular", "review"];
+  const sorts: HospitalSort[] = eff ? ["price", "rating", "popular", "review"] : ["rating", "popular", "review"]; // design 03-04: no 추천 chip before a treatment is chosen
   const dosageOptions = data?.dosageOptions ?? [];
   const items = data?.items ?? [];
   const infeed = data?.infeed ?? null;
@@ -110,6 +122,7 @@ export default function HospitalList({ params, initial }: { params: HospitalList
         {sorts.map((s) => (
           <Link key={s} href={link({ sort: s })} replace scroll={false} role="tab" aria-selected={sortApplied === s}
             className={`${styles.chip} ${sortApplied === s ? styles.chipActive : ""}`}>
+            {SORT_ICON[s] && (/* eslint-disable-line @next/next/no-img-element */ <img src={(sortApplied === s ? SORT_ICON[s]!.on : SORT_ICON[s]!.off).src} alt="" width={16} height={16} />)}
             {SORT_LABEL[s]}
           </Link>
         ))}
