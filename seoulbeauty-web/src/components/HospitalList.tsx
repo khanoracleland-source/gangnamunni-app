@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, assetUrl, normalize, qk, type HospitalListParams, type HospitalPage, type HospitalSort, type InfeedAd } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import { fetchSlotTokens, observeImpressions, observeSlotImpressions, trackClick } from "@/lib/adTracking";
@@ -58,7 +58,16 @@ export default function HospitalList({ params, initial }: { params: HospitalList
   const p = normalize(params);
   const php = usePhpBase();
   const router = useRouter();
-  const { data, isFetching, isError, refetch } = useQuery({ queryKey: qk.hospitals(p), queryFn: () => api.hospitals(p), initialData: initial });
+  const qc = useQueryClient();
+  // Changing the sort / dosage keeps the current list on screen until the new one arrives (no empty flash);
+  // a different keyword / category / treatment / region starts clean.
+  const { data, isFetching, isError, refetch } = useQuery({
+    queryKey: qk.hospitals(p), queryFn: () => api.hospitals(p), initialData: initial,
+    placeholderData: (prev, prevQuery) => {
+      const o = prevQuery?.queryKey[1] as ReturnType<typeof normalize> | undefined;
+      return o && o.q === p.q && o.category === p.category && o.treatment === p.treatment && o.region === p.region ? keepPreviousData(prev) : undefined;
+    },
+  });
   const gridRef = useRef<HTMLDivElement>(null);
   const [slotTokens, setSlotTokens] = useState<Record<string, string>>({});
 
@@ -77,7 +86,7 @@ export default function HospitalList({ params, initial }: { params: HospitalList
     return () => { a(); b(); };
   }, [data, slotTokens, php]);
 
-  const sortApplied: HospitalSort = data?.sort ?? (p.sort || "manual");
+  const sortApplied: HospitalSort = (p.sort as HospitalSort) || data?.sort || "manual"; // the clicked chip lights up at once
   const eff = data?.effectiveTreatment ?? null;
   const keyword = eff ? eff.name : p.treatment;
   const link = (patch: Record<string, string>) => {
@@ -87,6 +96,18 @@ export default function HospitalList({ params, initial }: { params: HospitalList
   };
   // hospitals.php: 낮은가격 only when a treatment is effective; 추천(manual) is the default otherwise.
   const sorts: HospitalSort[] = eff ? ["price", "rating", "popular", "review"] : ["rating", "popular", "review"]; // design 03-04: no 추천 chip before a treatment is chosen
+  // The sort is done by the API (the page holds only the first 20 of `total`, so sorting them here would be wrong):
+  // fetch the other sorts quietly after the list paints, then a chip click is served from the cache.
+  const prefetchKey = data && !isFetching ? sorts.join(",") + "|" + JSON.stringify(p) : "";
+  useEffect(() => {
+    if (!prefetchKey) return;
+    for (const s of sorts) {
+      if (s === sortApplied) continue;
+      const np = { ...p, sort: s };
+      void qc.prefetchQuery({ queryKey: qk.hospitals(np), queryFn: () => api.hospitals(np), staleTime: 60_000 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefetchKey]);
   const dosageOptions = data?.dosageOptions ?? [];
   const items = data?.items ?? [];
   const infeed = data?.infeed ?? null;
@@ -104,7 +125,7 @@ export default function HospitalList({ params, initial }: { params: HospitalList
       rows.push(<InfeedCard key={`ad-${infeed.ads[adIdx].id}`} ad={infeed.ads[adIdx]} php={php} />);
       adIdx++;
     }
-    rows.push(<HospitalCard key={h.id} h={h} keyword={p.q || keyword} slotToken={h.adSlot ? slotTokens[String(h.adSlot.bookingId)] : undefined} />);
+    rows.push(<HospitalCard key={h.id} h={h} keyword={p.q || keyword} slotToken={h.adSlot ? slotTokens[String(h.adSlot.bookingId)] : undefined} boxed={!!p.q} />);
   });
 
   return (
@@ -121,7 +142,7 @@ export default function HospitalList({ params, initial }: { params: HospitalList
       {!noneFlag && <div className={styles.chips} role="tablist" aria-label="정렬">
         {sorts.map((s) => (
           <Link key={s} href={link({ sort: s })} replace scroll={false} role="tab" aria-selected={sortApplied === s}
-            className={`${styles.chip} ${sortApplied === s ? styles.chipActive : ""}`}>
+            className={`${styles.chip} ${p.q ? styles.chipPill : ""} ${sortApplied === s ? styles.chipActive : ""}`}>
             {SORT_ICON[s] && (/* eslint-disable-line @next/next/no-img-element */ <img src={(sortApplied === s ? SORT_ICON[s]!.on : SORT_ICON[s]!.off).src} alt="" width={16} height={16} />)}
             {SORT_LABEL[s]}
           </Link>
@@ -162,7 +183,7 @@ export default function HospitalList({ params, initial }: { params: HospitalList
           <div className={styles.srSuggChips}>{EMPTY_SUGG.map((w) => <Link key={w} href={`/hospitals?q=${encodeURIComponent(w)}`} className={styles.srSuggChip}>{w}</Link>)}</div>
         </div>
       )}
-      {items.length > 0 && <div ref={gridRef} className={styles.grid}>{rows}</div>}
+      {items.length > 0 && <div ref={gridRef} className={`${styles.grid} ${p.q ? styles.gridBoxed : ""}`}>{rows}</div>}
     </section>
   );
 }

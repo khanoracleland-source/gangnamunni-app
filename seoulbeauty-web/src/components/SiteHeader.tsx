@@ -12,6 +12,7 @@ import shareIcon from "@/assets/icons/share.png";
 import bellIcon from "@/assets/icons/bell.png";
 import bellDotIcon from "@/assets/icons/bell-dot.png";
 import pinIcon from "@/assets/icons/pin-white.png";
+import resetIcon from "@/assets/icons/reset.png";
 import styles from "./SiteHeader.module.css";
 
 /**
@@ -147,16 +148,24 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
               )}
               {/* header.php: the field is readonly and opens the search overlay (search_overlay.php). */}
               <input className={styles.search} type="text" readOnly placeholder="시술, 병원 이름을 검색해보세요" value={q} onClick={() => setSearchOpen(true)} onFocus={() => setSearchOpen(true)} aria-label="검색" />
-              <button type="button" className={`${styles.regionBtn} ${regions.length ? styles.hasRegion : ""}`} onClick={() => setPickerOpen(true)}>{PIN}{regionLabel}</button>
+              <button type="button" className={styles.regionBtn} onClick={() => setPickerOpen(true)}>{PIN}{regionLabel}</button>
             </div>
             <RegionPicker open={pickerOpen && groups.length > 0} groups={groups} selected={regions} onClose={() => setPickerOpen(false)} onApply={chooseRegions} />
           </div>
           {regions.length > 0 && (
             <div className={styles.regionBar}>
-              <button type="button" className={styles.resetBar} onClick={() => chooseRegions([])}>↺ 초기화</button>
-              <div className={styles.regionTags}>
-                {regions.map((r) => <span key={r} className={styles.regionTag}>{r}<span role="button" aria-label={`${r} 제거`} onClick={() => chooseRegions(regions.filter((x) => x !== r))}>×</span></span>)}
-              </div>
+              <span className={styles.regionLabel}>지역</span>
+              {regions.map((r) => (
+                <span key={r} className={styles.regionTag}>{r}
+                  <button type="button" aria-label={`${r} 제거`} onClick={() => chooseRegions(regions.filter((x) => x !== r))}>
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  </button>
+                </span>
+              ))}
+              <button type="button" className={styles.resetBar} onClick={() => chooseRegions([])}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={resetIcon.src} alt="" width={14} height={14} />초기화
+              </button>
             </div>
           )}
           <SearchOverlay open={searchOpen} initial={q} regionLabel={regionLabel} popular={popular} onClose={() => setSearchOpen(false)}

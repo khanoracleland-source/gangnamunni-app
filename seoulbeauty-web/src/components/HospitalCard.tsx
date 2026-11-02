@@ -20,7 +20,7 @@ export function addrDistrict(addr: string | null): string {
 /** hospital_dosage_label(): 2.00 -> "2", 0.50 -> "0.5" */
 const dosageText = (v: number | null, u: string | null) => (v && v > 0 && u ? `${String(Number(v.toFixed(2)))}${u}` : "");
 
-export default function HospitalCard({ h, keyword, slotToken }: { h: Hospital; keyword?: string; slotToken?: string }) {
+export default function HospitalCard({ h, keyword, slotToken, boxed }: { h: Hospital; keyword?: string; slotToken?: string; boxed?: boolean }) {
   const qc = useQueryClient();
   const php = usePhpBase();
   const img = assetUrl(h.thumbnailUrl) || PLACEHOLDER;
@@ -44,7 +44,7 @@ export default function HospitalCard({ h, keyword, slotToken }: { h: Hospital; k
   return (
     <Link
       href={`/hospitals/${h.id}`}
-      className={styles.card}
+      className={`${styles.card} ${boxed ? styles.boxed : ""}`}
       onTouchStart={prefetch}
       onMouseEnter={prefetch}
       onFocus={prefetch}
