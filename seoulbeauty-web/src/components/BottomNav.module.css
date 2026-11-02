@@ -1,9 +1,11 @@
+/* design: tab bar 83 (= 49 + 34 iOS home indicator), top line #ECE9EA, icon 24 + label 11, active = primary */
 .nav {
   position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 640px; bottom: 0; z-index: 50;
   height: calc(var(--nav-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   display: grid; grid-template-columns: repeat(4, 1fr);
-  background: var(--bg); border-top: 1px solid var(--line);
+  background: var(--bg); border-top: 1px solid #ECE9EA;
 }
-.item { display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); }
-.active { color: var(--fg); font-weight: 600; }
+.item { min-width: 0; white-space: nowrap; display: flex; flex-direction: column; align-items: center; gap: 3px; padding-top: 8px; font-size: 11px; line-height: 1.3; color: #9A9395; }
+.item img { width: 24px; height: 24px; display: block; flex-shrink: 0; object-fit: contain; }
+.active { color: var(--accent); }

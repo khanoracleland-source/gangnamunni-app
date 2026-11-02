@@ -8,6 +8,10 @@ import { phpUrl, usePhpBase } from "@/lib/php";
 import { useLoginUrl, useMe } from "@/lib/me";
 import RegionPicker from "./RegionPicker";
 import SearchOverlay, { addRecentSearch } from "./SearchOverlay";
+import shareIcon from "@/assets/icons/share.png";
+import bellIcon from "@/assets/icons/bell.png";
+import bellDotIcon from "@/assets/icons/bell-dot.png";
+import pinIcon from "@/assets/icons/pin-white.png";
 import styles from "./SiteHeader.module.css";
 
 /**
@@ -33,7 +37,8 @@ export function useSavedRegions(key: string = REGION_KEY): string[] {
   return parseRegions(useSyncExternalStore(subscribeRegions, () => readRegionsRaw(key), () => "[]"));
 }
 
-const PIN = <svg className={styles.pin} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z" /><circle cx="12" cy="9.7" r="2.6" /></svg>;
+// eslint-disable-next-line @next/next/no-img-element
+const PIN = <img className={styles.pin} src={pinIcon.src} alt="" width={20} height={20} />;
 
 /** global_nav.php share button: copies "이거 완전 괜찮은 앱이야!\n서울미녀\n<url>" and shows a toast. */
 async function copyShareText(): Promise<boolean> {
@@ -116,12 +121,15 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
           </Link>
           <div className={styles.topRight}>
             <button type="button" className={styles.iconBtn} aria-label="공유하기" title="공유하기" onClick={async () => showToast((await copyShareText()) ? "링크가 복사되었습니다." : "링크 복사에 실패했습니다.")}>
-              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" /><path fillRule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z" /></svg>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={shareIcon.src} alt="" width={22} height={22} />
             </button>
-            <Link href="/mypage/notifications" className={styles.iconBtn} aria-label="알림" title="알림">
-              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z" /></svg>
-              {(me.data?.unreadNotifications ?? 0) > 0 && <span className={styles.dot} aria-hidden="true" />}
-            </Link>
+            {me.data?.loggedIn && (
+              <Link href="/mypage/notifications" className={`${styles.iconBtn} ${styles.bell}`} aria-label="알림" title="알림">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={((me.data?.unreadNotifications ?? 0) > 0 ? bellDotIcon : bellIcon).src} alt="" width={24} height={24} />
+              </Link>
+            )}
             {me.data && !me.data.loggedIn && <a href={loginUrl()} className={styles.loginBtn}>로그인 / 회원가입</a>}
           </div>
         </header>

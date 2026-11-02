@@ -28,6 +28,7 @@ export default function Home({ initial }: { initial?: HomeData }) {
     );
   }
   const { ads, promos, events, categories, settings } = data;
+  const bannerMonth = Number(new Intl.DateTimeFormat("en-US", { month: "numeric", timeZone: "Asia/Seoul" }).format(new Date()));
   const showAds = settings.adShowIndex && ads.length > 0;
   const adSlides = (list: HomeAd[]) => list.map((ad) => {
     const img = assetUrl(ad.imageUrl);
@@ -48,9 +49,22 @@ export default function Home({ initial }: { initial?: HomeData }) {
     <div ref={rootRef} className={styles.home}>
       <SiteHeader home={data} />
 
-      {showAds && settings.adAfterSearch && <section className={styles.section}><Carousel auto={settings.adAutoScroll} label="광고">{adSlides(ads)}</Carousel></section>}
+      {/* design 03-01/02: 125px banner under the search row. Ads fill it (AD tag + "n / N"); with no ad it shows the default 고객평가 우수병원 banner. */}
+      {showAds && settings.adAfterSearch ? (
+        <section className={`${styles.banner} ${styles.bannerAd}`}>
+          <Carousel auto={settings.adAutoScroll} label="광고" counter>{adSlides(ads)}</Carousel>
+          <span className={styles.adTag}>AD</span>
+        </section>
+      ) : (
+        <section className={styles.banner} aria-label="고객평가 우수병원">
+          <div className={styles.bannerText}>
+            <div className={styles.bannerTitle}>고객들이 선택한<br />{bannerMonth}월 고객평가 우수병원</div>
+            <div className={styles.bannerSub}>상담부터 시술 결과까지, 오직 고객 후기로만</div>
+          </div>
+        </section>
+      )}
 
-      <section className={styles.section}>
+      <section className={styles.table}>
         <CategoryTable categories={categories} mode={settings.tableMode} />
       </section>
 
@@ -115,8 +129,8 @@ export default function Home({ initial }: { initial?: HomeData }) {
         <p>사업자등록번호: 308-81-44202</p>
         <p>통신판매업신고: 2018-서울강남-01913호</p>
         <p>고객센터 E-mail: <a href="mailto:info@seoulbeauty.app">info@seoulbeauty.app</a></p>
-        <nav className={styles.companyLinks} aria-label="회사 정책 및 고객센터">
-          <a className={styles.linkStrong} href={phpUrl(php, "qna.php")}>고객센터 문의하기</a>
+        <a className={styles.linkUnder} href={phpUrl(php, "qna.php")}>고객센터 문의하기</a>
+        <nav className={styles.companyLinks} aria-label="회사 정책">
           <Link href="/terms">이용약관</Link>
           <Link href="/terms">위치기반서비스 이용약관</Link>
           <Link className={styles.linkStrong} href="/privacy">개인정보처리방침</Link>
