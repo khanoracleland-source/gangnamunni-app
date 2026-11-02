@@ -27,8 +27,8 @@
 .num { font-size: calc(18px * var(--fs-scale)); }
 .unit { font-size: calc(12px * var(--fs-scale)); font-weight: 400; color: #1A1718; }
 .per { font-size: calc(12px * var(--fs-scale)); color: #6B6466; }
-/* design 03-09 (search result with a treatment): each hospital is a bordered rounded card; price in ink, not red */
-.boxed { margin: 12px 20px 0; padding: 16px; border: 1px solid #ECE9EA; border-radius: 16px; background: #fff; }
+/* design 03-09 (search result with a treatment): same divided rows as the list, price in ink (not red) */
+.boxed { margin: 0; padding: 16px 20px; border: 0; border-bottom: 1px solid #ECE9EA; border-radius: 0; background: transparent; }
 .boxed .thumb { width: 76px; height: 76px; flex: 0 0 76px; border-color: #DCD6D8; border-radius: 12px; }
 .boxed .info { gap: 3px; }
 .boxed .tagPrice { margin-top: 2px; }

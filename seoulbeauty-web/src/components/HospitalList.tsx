@@ -94,6 +94,15 @@ export default function HospitalList({ params, initial }: { params: HospitalList
     for (const [k, v] of Object.entries({ ...p, ...patch })) if (v) u.set(k, v);
     return `/hospitals${u.toString() ? `?${u}` : ""}`;
   };
+  // Filter chips change only the query string: swap it in place (history.replaceState — Next syncs useSearchParams)
+  // instead of a router navigation, which re-requests the route and flashes the page.
+  const swap = (patch: Record<string, string>) => (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    const u = new URLSearchParams();
+    for (const [k, v] of Object.entries({ ...p, ...patch })) if (v) u.set(k, v);
+    window.history.replaceState(null, "", u.toString() ? `?${u}` : window.location.pathname);
+  };
   // hospitals.php: 낮은가격 only when a treatment is effective; 추천(manual) is the default otherwise.
   const sorts: HospitalSort[] = eff ? ["price", "rating", "popular", "review"] : ["rating", "popular", "review"]; // design 03-04: no 추천 chip before a treatment is chosen
   // The sort is done by the API (the page holds only the first 20 of `total`, so sorting them here would be wrong):
@@ -133,15 +142,15 @@ export default function HospitalList({ params, initial }: { params: HospitalList
       {!noneFlag && dosageOptions.length > 1 && (
         <div className={styles.dosage} role="group" aria-label="용량 선택">
           <span className={styles.dosageT}>용량</span>
-          <Link href={link({ dosage: "" })} replace scroll={false} className={`${styles.srChip} ${!p.dosage ? styles.srChipActive : ""}`}>전체</Link>
+          <Link href={link({ dosage: "" })} replace scroll={false} onClick={swap({ dosage: "" })} className={`${styles.srChip} ${!p.dosage ? styles.srChipActive : ""}`}>전체</Link>
           {dosageOptions.map((d) => (
-            <Link key={d} href={link({ dosage: d })} replace scroll={false} className={`${styles.srChip} ${p.dosage === d ? styles.srChipActive : ""}`}>{d}</Link>
+            <Link key={d} href={link({ dosage: d })} replace scroll={false} onClick={swap({ dosage: d })} className={`${styles.srChip} ${p.dosage === d ? styles.srChipActive : ""}`}>{d}</Link>
           ))}
         </div>
       )}
       {!noneFlag && <div className={styles.chips} role="tablist" aria-label="정렬">
         {sorts.map((s) => (
-          <Link key={s} href={link({ sort: s })} replace scroll={false} role="tab" aria-selected={sortApplied === s}
+          <Link key={s} href={link({ sort: s })} replace scroll={false} onClick={swap({ sort: s })} role="tab" aria-selected={sortApplied === s}
             className={`${styles.chip} ${p.q ? styles.chipPill : ""} ${sortApplied === s ? styles.chipActive : ""}`}>
             {SORT_ICON[s] && (/* eslint-disable-line @next/next/no-img-element */ <img src={(sortApplied === s ? SORT_ICON[s]!.on : SORT_ICON[s]!.off).src} alt="" width={16} height={16} />)}
             {SORT_LABEL[s]}
