@@ -4,7 +4,7 @@
   --muted: #6B6466;
   --line: #ECE9EA;
   --accent: #ac1830;
-  --nav-h: max(56px, calc(84px - env(safe-area-inset-bottom))); /* nav total = --nav-h + safe-area = max(56 + safe, 84) */
+  --nav-h: max(70px, calc(104px - env(safe-area-inset-bottom))); /* reserved space under the page = --nav-h + safe-area = 104: floating tab bar 68 + 22 from the bottom + 14 gap (design spacer) */
   --fs-scale: 1;
 }
 @media (max-width: 339px) { :root { --fs-scale: .92; } }

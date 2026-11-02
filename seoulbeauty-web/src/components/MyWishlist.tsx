@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, PLACEHOLDER, qk, type MyWishlistItem } from "@/lib/api";
+import { syncWishlist } from "./WishlistButton";
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
 import styles from "./MyPages.module.css";
@@ -14,9 +15,8 @@ export default function MyWishlist({ initial, anon }: { initial?: { items: MyWis
     mutationFn: (hospitalId: number) => api.toggleWishlist(hospitalId),
     onSuccess: (r, hospitalId) => {
       // toggle: removed when it comes back unwishlisted; if it was re-added by mistake, reload the list instead
-      if (!r.wishlisted) qc.setQueryData<{ items: MyWishlistItem[] }>(qk.myWishlist, (p) => p && { items: p.items.filter((i) => i.hospitalId !== hospitalId) });
-      else void qc.invalidateQueries({ queryKey: qk.myWishlist });
-      void qc.invalidateQueries({ queryKey: qk.wishlist(hospitalId) });
+      syncWishlist(qc, hospitalId, { wishlisted: r.wishlisted, count: r.count });
+      if (r.wishlisted) void qc.invalidateQueries({ queryKey: qk.myWishlist });
     },
   });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
