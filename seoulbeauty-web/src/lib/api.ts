@@ -379,8 +379,8 @@ export interface CommunityPost {
 /** GET /v1/search/suggest (port of search_suggest.php); hrefs are PHP-style `hospitals.php?...`, mapped to Next routes in SearchOverlay. */
 export interface SearchSuggest {
   treatments: { name: string; href: string; hint?: string }[];
-  hospitals: { id: number; name: string; district: string; address: string; href: string }[];
-  offered: { treatment: string; items: { id: number; name: string; district: string; address: string; price: number; href: string }[] };
+  hospitals: { id: number; name: string; district: string; address: string; href: string; thumbnailUrl: string | null }[];
+  offered: { treatment: string; items: { id: number; name: string; district: string; address: string; price: number; href: string; thumbnailUrl: string | null }[] };
 }
 
 export type NotiIcon = "calendar" | "payment" | "clock" | "gift" | "review" | "bell";

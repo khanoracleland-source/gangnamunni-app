@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { api, type SearchSuggest } from "@/lib/api";
+import { api, assetUrl, type SearchSuggest } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import styles from "./SearchOverlay.module.css";
 
@@ -26,6 +26,13 @@ export function addRecentSearch(w: string) {
 const PIN = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.1 7-11.8A7 7 0 0 0 5 9.7c0 5.7 7 11.8 7 11.8z" /><circle cx="12" cy="9.7" r="2.6" /></svg>;
 const X = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
 const ICO_T = <svg className={styles.ico} viewBox="0 0 24 24" fill="none" stroke="#AC1830" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>;
+/** Hospital thumbnail like the hospital list; the building icon is the fallback when it has no image. */
+function Thumb({ src }: { src: string | null }) {
+  const url = src ? assetUrl(src) : null;
+  // eslint-disable-next-line @next/next/no-img-element
+  if (url) return <span className={styles.logoBox}><img src={url} alt="" loading="lazy" className={styles.thumbImg} /></span>;
+  return ICO_H;
+}
 const ICO_H = <span className={styles.logoBox}><svg className={styles.ico} viewBox="0 0 24 24" fill="none" stroke="#6B6466" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 21V7l8-4 8 4v14M9 21v-5h6v5M9 10h.01M15 10h.01" /></svg></span>;
 
 /** Next routes go through <Link> (basePath + client navigation); PHP pages through a plain anchor. */
@@ -145,11 +152,11 @@ function Body({ initial, regionLabel, popular, onClose, onSubmit, onRegion }: { 
                 ))}
                 {d.hospitals.length > 0 && <div className={styles.sgT}>병원</div>}
                 {d.hospitals.map((h) => (
-                  <SmartLink key={h.id} className={`${styles.row} ${styles.hp}`} to={mapHref(php, h.href)} onClick={() => { addRecentSearch(h.name); onClose(); }}>{ICO_H}<span className={styles.grow}><span className={styles.block}><Highlight text={h.name} q={q.trim()} /></span><span className={styles.sub}>{(h.district ? `${h.district} · ` : "") + h.address}</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9395" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 16px" }}><path d="M9 5l7 7-7 7" /></svg></SmartLink>
+                  <SmartLink key={h.id} className={`${styles.row} ${styles.hp}`} to={mapHref(php, h.href)} onClick={() => { addRecentSearch(h.name); onClose(); }}><Thumb src={h.thumbnailUrl} /><span className={styles.grow}><span className={styles.block}><Highlight text={h.name} q={q.trim()} /></span><span className={styles.sub}>{(h.district ? `${h.district} · ` : "") + h.address}</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9395" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 16px" }}><path d="M9 5l7 7-7 7" /></svg></SmartLink>
                 ))}
                 {d.offered?.items?.length > 0 && <div className={styles.sgT}>{d.offered.treatment} 시술 병원</div>}
                 {d.offered?.items?.map((x) => (
-                  <SmartLink key={x.id} className={`${styles.row} ${styles.hp}`} to={mapHref(php, x.href)} onClick={() => { addRecentSearch(d.offered.treatment); onClose(); }}>{ICO_H}<span className={styles.grow}><span className={styles.block}>{x.name}</span><span className={styles.sub}>{(x.district ? `${x.district} · ` : "") + x.address}</span></span><span className={styles.price}>{Number(x.price).toLocaleString()}<small>원~</small></span></SmartLink>
+                  <SmartLink key={x.id} className={`${styles.row} ${styles.hp}`} to={mapHref(php, x.href)} onClick={() => { addRecentSearch(d.offered.treatment); onClose(); }}><Thumb src={x.thumbnailUrl} /><span className={styles.grow}><span className={styles.block}>{x.name}</span><span className={styles.sub}>{(x.district ? `${x.district} · ` : "") + x.address}</span></span><span className={styles.price}>{Number(x.price).toLocaleString()}<small>원~</small></span></SmartLink>
                 ))}
                 <div className={styles.note}>시술을 고르면 병원별 가격이, 병원을 고르면 그 병원의 시술이 보여요</div>
               </>

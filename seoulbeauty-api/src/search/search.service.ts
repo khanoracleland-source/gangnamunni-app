@@ -91,12 +91,35 @@ export class SearchService {
     return options.find((o) => o.label === r) ?? null;
   }
 
+  /** Hospital thumbnail as in the hospital list: first active main image, else logo, else the hospital's own image columns. */
+  private async thumbs(rows: { id: number; main?: string | null; profile?: string | null }[]): Promise<Map<number, string | null>> {
+    const out = new Map<number, string | null>();
+    const ids = [...new Set(rows.map((r) => r.id))].filter((n) => n > 0);
+    if (!ids.length) return out;
+    const [imgs] = (await this.db.query(
+      `SELECT hospital_id, image_url, image_type FROM hospital_images
+       WHERE hospital_id IN (${ids.map(() => '?').join(',')}) AND is_active = 1 AND image_type IN ('main','logo')
+       ORDER BY hospital_id ASC, sort_order ASC, id ASC`,
+      ids,
+    )) as any;
+    const main = new Map<number, string>();
+    const logo = new Map<number, string>();
+    for (const i of imgs as any[]) {
+      const hid = Number(i.hospital_id);
+      if (!i.image_url) continue;
+      if (i.image_type === 'main' && !main.has(hid)) main.set(hid, String(i.image_url));
+      if (i.image_type === 'logo' && !logo.has(hid)) logo.set(hid, String(i.image_url));
+    }
+    for (const r of rows) out.set(r.id, main.get(r.id) || r.main || logo.get(r.id) || r.profile || null);
+    return out;
+  }
+
   /** search_suggest.php: treatments (≤4 + dosage shortcut), hospitals offering the first treatment (≤5, cheapest first), hospitals by name (≤3). */
   async suggest(q: string) {
     const out = {
       treatments: [] as { name: string; href: string; hint?: string }[],
-      hospitals: [] as { id: number; name: string; district: string; address: string; href: string }[],
-      offered: { treatment: '', items: [] as { id: number; name: string; district: string; address: string; price: number; href: string }[] },
+      hospitals: [] as { id: number; name: string; district: string; address: string; href: string; thumbnailUrl: string | null }[],
+      offered: { treatment: '', items: [] as { id: number; name: string; district: string; address: string; price: number; href: string; thumbnailUrl: string | null }[] },
     };
     const term = q.trim();
     if (!term || [...term].length > 40) return out;
@@ -135,7 +158,7 @@ export class SearchService {
     out.offered.treatment = firstName;
     if (firstTid > 0) {
       const [os] = (await this.db.query(
-        `SELECT h.id, h.name, h.address, MIN(p.price) AS price
+        `SELECT h.id, h.name, h.address, MAX(h.main_image_url) AS main_image_url, MAX(h.profile_image_url) AS profile_image_url, MIN(p.price) AS price
          FROM gangnamunni_hospital_treatments ht
          INNER JOIN gangnamunni_hospital_treatment_prices p ON p.hospital_treatment_id = ht.id AND p.price > 0
          INNER JOIN gangnamunni_hospitals h ON h.id = ht.hospital_id
@@ -143,8 +166,9 @@ export class SearchService {
          GROUP BY h.id, h.name, h.address ORDER BY price ASC LIMIT 5`,
         [firstTid],
       )) as any;
+      const th = await this.thumbs((os as any[]).map((o) => ({ id: Number(o.id), main: o.main_image_url, profile: o.profile_image_url })));
       for (const o of os as any[]) {
-        out.offered.items.push({
+        out.offered.items.push({ thumbnailUrl: th.get(Number(o.id)) ?? null,
           id: Number(o.id), name: String(o.name), district: addrDistrict(String(o.address ?? '')), address: String(o.address ?? ''),
           price: Number(o.price), href: `hospitals.php?q=${encodeURIComponent(firstName)}&hid=${Number(o.id)}`,
         });
@@ -152,12 +176,13 @@ export class SearchService {
     }
 
     const [hs] = (await this.db.query(
-      `SELECT h.id, h.name, h.address FROM gangnamunni_hospitals h WHERE ${VISIBLE} AND h.name LIKE ?
+      `SELECT h.id, h.name, h.address, h.main_image_url, h.profile_image_url FROM gangnamunni_hospitals h WHERE ${VISIBLE} AND h.name LIKE ?
        ORDER BY (h.name LIKE ?) DESC, CHAR_LENGTH(h.name) ASC LIMIT 3`,
       [like, prefix],
     )) as any;
+    const th2 = await this.thumbs((hs as any[]).map((r) => ({ id: Number(r.id), main: r.main_image_url, profile: r.profile_image_url })));
     for (const r of hs as any[]) {
-      out.hospitals.push({
+      out.hospitals.push({ thumbnailUrl: th2.get(Number(r.id)) ?? null,
         id: Number(r.id), name: String(r.name), district: addrDistrict(String(r.address ?? '')), address: String(r.address ?? ''),
         href: `hospitals.php?q=${encodeURIComponent(r.name)}&hid=${Number(r.id)}`,
       });

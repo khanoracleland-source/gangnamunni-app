@@ -69,7 +69,7 @@ describe('search + treatment list (mock DB)', () => {
       { name: '주름 보톡스', href: 'hospitals.php?q=%EC%A3%BC%EB%A6%84%20%EB%B3%B4%ED%86%A1%EC%8A%A4' },
       { name: '주름 보톡스 50U', href: 'hospitals.php?q=%EC%A3%BC%EB%A6%84%20%EB%B3%B4%ED%86%A1%EC%8A%A4&dosage=50U', hint: '용량 자동 선택' },
     ]);
-    expect(r.body.offered).toEqual({ treatment: '주름 보톡스', items: [{ id: 3, name: 'A', district: '강남', address: '서울 강남구 x', price: 80000, href: 'hospitals.php?q=%EC%A3%BC%EB%A6%84%20%EB%B3%B4%ED%86%A1%EC%8A%A4&hid=3' }] });
+    expect(r.body.offered).toEqual({ treatment: '주름 보톡스', items: [{ id: 3, name: 'A', district: '강남', address: '서울 강남구 x', price: 80000, href: 'hospitals.php?q=%EC%A3%BC%EB%A6%84%20%EB%B3%B4%ED%86%A1%EC%8A%A4&hid=3', thumbnailUrl: null }] });
     expect(r.body.hospitals[0]).toMatchObject({ id: 8, district: '서초' });
     await request(app.getHttpServer()).get('/v1/search/suggest').expect(200).expect({ treatments: [], hospitals: [], offered: { treatment: '', items: [] } });
   });
