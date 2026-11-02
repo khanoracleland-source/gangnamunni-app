@@ -110,7 +110,7 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
                 <li key={k} className={styles.item}
                   onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button")) go(it); }}>
                   <div className={styles.content}>
-                    <span className={styles.tag}>{it.category}</span>
+                    <span className={it.kind === "review" ? styles.tag : styles.cat}>{it.category}</span>
                     <Link href={href} className={styles.ptitle}>{it.title}</Link>
                     <div className={`${styles.preview} ${expanded ? styles.expanded : ""}`}>{expanded && it.fullText ? it.fullText : it.preview}</div>
                     <div className={styles.readRow}>
@@ -121,7 +121,7 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
                       <span className={styles.time} suppressHydrationWarning>{timeDisplay(it.createdAt, it.updatedAt)}</span>
                     </div>
                     {it.photos.length > 0 && (
-                      <div className={styles.thumbs}>
+                      <div className={`${styles.thumbs} ${it.photos.length === 1 ? styles.thumbsOne : ""}`}>
                         {it.photos.slice(0, 2).map((src, i) => (
                           <div className={styles.thumb} key={i}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}

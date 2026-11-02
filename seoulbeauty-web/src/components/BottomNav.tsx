@@ -22,8 +22,11 @@ const items = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const activeIdx = items.findIndex((it) => (it.next === "/" ? pathname === "/" : pathname.startsWith(it.next)));
   return (
     <nav className={styles.nav} aria-label="하단 메뉴">
+      {/* sliding pill: the nav stays mounted across pages, so changing the index animates it left/right */}
+      <span className={styles.pill} aria-hidden style={{ transform: `translateX(calc(${Math.max(activeIdx, 0)} * (100% + 3px)))`, opacity: activeIdx < 0 ? 0 : 1 }} />
       {items.map((it) => {
         const active = it.next === "/" ? pathname === "/" : pathname.startsWith(it.next);
         return (
