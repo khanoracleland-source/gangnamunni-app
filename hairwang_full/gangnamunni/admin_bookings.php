@@ -56,7 +56,7 @@ function admin_booking_log_notification_result($context, array $result) {
 function admin_booking_status_action_options($current_status, array $labels, $has_doctor = false, $payment_status = '', $remaining_refund = 0) {
     $flow_actions = [
         'pending' => [['checking', '병원 확인 중']],
-        'hospital_checking' => $has_doctor ? [['confirm', '예약확정'], ['cancel', '예약취소']] : [['cancel', '예약취소']],
+        'hospital_checking' => [['confirm', '예약확정'], ['cancel', '예약취소']], // 담당의사 미배정이어도 확정 가능(자동 배정)
         'confirmed' => [['complete', '시술완료']],
     ];
     // 고객이 취소한 결제 예약: 승인하면 남은 결제 금액 전액을 Toss 로 환불한다.
@@ -303,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $new_status = $status_map[$action];
         $current_scope = $_act_hin !== null ? " AND hospital_id IN ({$_act_hin})" : '';
         $current_result = mysqli_query($connect,
-            "SELECT status, doctor_id, doctor_name FROM gangnamunni_bookings WHERE id={$id}{$current_scope} LIMIT 1");
+            "SELECT status, hospital_id, doctor_id, doctor_name FROM gangnamunni_bookings WHERE id={$id}{$current_scope} LIMIT 1");
         $current_row = $current_result ? mysqli_fetch_assoc($current_result) : null;
         $current_status = (string)($current_row['status'] ?? '');
         $current_has_doctor = !empty($current_row['doctor_id']) || trim((string)($current_row['doctor_name'] ?? '')) !== '';
@@ -323,13 +323,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $msg_type = 'danger';
             goto skip_action;
         }
+        // 담당의사 미배정 상태에서 예약확정 → 해당 병원의 활성 의사 중 한 명을 자동 배정한다.
+        $auto_doctor = null;
         if ($new_status === 'confirmed' && !$current_has_doctor) {
-            $msg = '담당의사를 먼저 배정한 후 예약확정으로 변경할 수 있습니다.';
-            $msg_type = 'danger';
-            goto skip_action;
+            $auto_hid = (int)($current_row['hospital_id'] ?? 0);
+            $auto_r = $auto_hid > 0 ? mysqli_query($connect, "SELECT id, name FROM gangnamunni_doctors WHERE hospital_id={$auto_hid} AND status='active' ORDER BY name ASC, id ASC LIMIT 1") : false;
+            $auto_doctor = $auto_r ? mysqli_fetch_assoc($auto_r) : null;
+            if (!$auto_doctor) {
+                $msg = '배정 가능한 활성 담당의사가 없어 예약확정을 할 수 없습니다. 의사를 먼저 등록해주세요.';
+                $msg_type = 'danger';
+                goto skip_action;
+            }
         }
 
         $sql = "UPDATE gangnamunni_bookings SET status='" . mysqli_real_escape_string($connect, $new_status) . "'";
+        if ($auto_doctor) {
+            $sql .= ", doctor_id=" . (int)$auto_doctor['id'] . ", doctor_name='" . mysqli_real_escape_string($connect, $auto_doctor['name']) . "'";
+        }
         if ($action === 'cancel') {
             $reason = mysqli_real_escape_string($connect, $_POST['cancel_reason'] ?? '');
             $sql .= ", cancel_reason='" . $reason . "', cancelled_at=NOW()";
@@ -380,6 +390,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $msg = '예약 상태 변경에 실패했습니다. 다시 시도해주세요.';
             $msg_type = 'danger';
             goto skip_action;
+        }
+
+        if ($auto_doctor && $booking_row) {
+            try {
+                $notify_result = notify_booking_member($connect, $booking_row, 'doctor_assigned', ['doctor_name' => $auto_doctor['name']]);
+                admin_booking_log_notification_result('doctor_assigned:' . $id, $notify_result);
+            } catch (Throwable $e) {
+                error_log('[admin_bookings] auto doctor assignment notification failed: ' . $e->getMessage());
+            }
         }
 
         if (!empty($booking_row['mb_id'])) {
@@ -465,6 +484,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             : '예약 상태가 변경되었습니다.';
         $msg_type = $hms_sync_warning ? 'warning' : 'success';
         $admin_bookings_ajax_payload = ['booking_id' => $id, 'status' => $new_status];
+        if ($auto_doctor) {
+            $admin_bookings_ajax_payload['doctor_id'] = (int)$auto_doctor['id'];
+            $admin_bookings_ajax_payload['doctor_name'] = $auto_doctor['name'];
+        }
     }
 
     if ($id > 0 && $action === 'assign_doctor') {
@@ -1280,7 +1303,7 @@ const BOOKING_STATUS_BADGES = {
 };
 function getBookingStatusFlowActions(status, hasDoctor) {
     if (status === 'pending') return [['checking', '병원 확인 중']];
-    if (status === 'hospital_checking') return hasDoctor ? [['confirm', '예약확정'], ['cancel', '예약취소']] : [['cancel', '예약취소']];
+    if (status === 'hospital_checking') return [['confirm', '예약확정'], ['cancel', '예약취소']]; // 담당의사 미배정이면 서버가 자동 배정
     if (status === 'confirmed') return [['complete', '시술완료']];
     return [];
 }
@@ -1412,6 +1435,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 updateBookingStatusUI(data.booking_id, data.status);
+                if (data.doctor_name) updateBookingDoctorUI(data.booking_id, data.doctor_id, data.doctor_name);
                 showAdminBookingMessage(data.message || '예약 상태가 변경되었습니다.', data.type || 'success');
             }).catch(error => {
                 alert(error.message || '예약 상태 변경에 실패했습니다.');
