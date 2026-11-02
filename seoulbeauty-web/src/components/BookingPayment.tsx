@@ -34,7 +34,7 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
   const { data, error, refetch, isFetching } = useQuery({ queryKey: qk.bookingPayment(id), queryFn: () => api.bookingPayment(id), staleTime: 0, gcTime: 0, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
   const [agree, setAgree] = useState(false);
   const [agreeErr, setAgreeErr] = useState(false);
-  const [visitorOther, setVisitorOther] = useState(true);
+  const [visitorOther, setVisitorOther] = useState(false);
   const [visitorName, setVisitorName] = useState("");
   const [visitorPhone, setVisitorPhone] = useState("");
   const [visitorDone, setVisitorDone] = useState("");

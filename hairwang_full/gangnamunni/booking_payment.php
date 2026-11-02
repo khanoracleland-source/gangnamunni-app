@@ -533,11 +533,11 @@ html body .bp-page .bp-method img { height: 21px; }
                 </div>
 
                 <label class="bp-check-row">
-                    <input type="checkbox" class="bp-checkbox" id="visitorToggle" checked>
+                    <input type="checkbox" class="bp-checkbox" id="visitorToggle">
                     <span>다른 사람이 방문해요</span>
                 </label>
 
-                <div class="bp-visitor-fields active" id="visitorFields">
+                <div class="bp-visitor-fields" id="visitorFields">
                     <div class="bp-field">
                         <label for="visitorName">방문자 성함이 어떻게 되시나요?</label>
                         <input type="text" id="visitorName" placeholder="방문자 이름을 입력해주세요" autocomplete="name">
