@@ -23,7 +23,7 @@
 
 .pin { width: 20px; height: 20px; display: block; flex-shrink: 0; object-fit: contain; }
 /* design 03-09: "지역" label, removable region chips (28px pills), 초기화 on the right */
-.regionBar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 20px 10px; }
+.regionBar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 20px 0; }
 .regionLabel { font-size: calc(12px * var(--fs-scale)); font-weight: 700; color: #4A4446; margin-right: 4px; flex-shrink: 0; }
 .regionTag { height: 28px; padding: 0 8px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #DCD6D8; border-radius: 15px; font-size: calc(13px * var(--fs-scale)); color: #1A1718; white-space: nowrap; }
 .regionTag button { display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; background: none; color: #9A9395; }
