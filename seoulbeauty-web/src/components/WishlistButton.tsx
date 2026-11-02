@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, qk, type WishlistState } from "@/lib/api";
 import { useRequireLogin } from "@/lib/me";
@@ -9,7 +10,8 @@ import styles from "./WishlistButton.module.css";
 export default function WishlistButton({ hospitalId, size = "sm", initialCount, initial }: { hospitalId: number; size?: "sm" | "lg"; initialCount?: number; initial?: WishlistState }) {
   const qc = useQueryClient();
   const requireLogin = useRequireLogin();
-  const { data } = useQuery({ queryKey: qk.wishlist(hospitalId), queryFn: () => api.wishlist(hospitalId), staleTime: 30_000, initialData: initial });
+  // A list row already carries the mark: no request per card (a 20-card list used to fire 20). Only the detail page (no `initial`) asks.
+  const { data } = useQuery({ queryKey: qk.wishlist(hospitalId), queryFn: () => api.wishlist(hospitalId), initialData: initial, enabled: initial === undefined });
   const m = useMutation({
     mutationFn: () => api.toggleWishlist(hospitalId),
     onMutate: async () => {
@@ -21,6 +23,15 @@ export default function WishlistButton({ hospitalId, size = "sm", initialCount, 
     onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(qk.wishlist(hospitalId), ctx.prev); },
     onSuccess: (r) => qc.setQueryData(qk.wishlist(hospitalId), { wishlisted: r.wishlisted, count: r.count }),
   });
+  // the list was refreshed (opened again, changed elsewhere): its row is the newer truth, unless a tap is in flight
+  // isPending is read through a ref, NOT a dependency: otherwise the effect re-runs when the tap finishes and overwrites the fresh result with the stale row value
+  const pending = useRef(false);
+  useEffect(() => { pending.current = m.isPending; }, [m.isPending]);
+  const seedW = initial?.wishlisted, seedC = initial?.count;
+  useEffect(() => {
+    if (seedW === undefined || seedC === undefined || pending.current) return;
+    qc.setQueryData<WishlistState>(qk.wishlist(hospitalId), { wishlisted: seedW, count: seedC });
+  }, [seedW, seedC, hospitalId, qc]);
   const on = data?.wishlisted ?? false;
   const count = data?.count ?? initialCount;
   return (

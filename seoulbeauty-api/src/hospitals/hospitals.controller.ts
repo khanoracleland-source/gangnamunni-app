@@ -16,7 +16,7 @@ export class HospitalsController {
   ) {}
 
   private cache(res: Response) {
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30');
   }
 
   @Get()
@@ -35,7 +35,7 @@ export class HospitalsController {
       .slice(0, 10);
     const memberNo = req.session.loggedIn ? req.session.user?.no : undefined;
     // Anonymous responses are public and cacheable; a member's response carries `wishlisted`.
-    res.setHeader('Cache-Control', memberNo ? 'private, no-store' : 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', memberNo ? 'private, no-store' : 'public, max-age=0, s-maxage=30');
     res.setHeader('Vary', 'Cookie');
     return this.hospitals.list({
       memberNo,
@@ -87,7 +87,7 @@ export class HospitalsController {
 
   @Get(':id/reviews')
   async reviewList(@Param('id') id: string, @Query() qs: Record<string, unknown>, @Res({ passthrough: true }) res: Response) {
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30');
     return this.reviews.listForHospital(idParam(id), intParam(qs.limit, 20, 1, 50, 'limit'), intParam(qs.offset, 0, 0, 1000, 'offset'));
   }
 }

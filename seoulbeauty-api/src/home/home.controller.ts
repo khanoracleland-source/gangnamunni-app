@@ -9,7 +9,7 @@ export class HomeController {
   /** Everything index.php needs, in one round trip. Public, briefly cacheable. */
   @Get()
   async get(@Res({ passthrough: true }) res: Response) {
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30');
     return this.home.load();
   }
 }

@@ -17,7 +17,7 @@ export class EventsController {
   /** events.php?category=&filter=raffle. Public, briefly cacheable. */
   @Get()
   async list(@Query('category') category: unknown, @Query('filter') filter: unknown, @Res({ passthrough: true }) res: Response) {
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=120');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30');
     return this.events.list(str(category, 100), filter === 'raffle');
   }
 

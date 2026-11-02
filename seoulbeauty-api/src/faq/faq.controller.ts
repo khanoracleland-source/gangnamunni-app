@@ -9,7 +9,7 @@ export class FaqController {
   /** Public and the same for everybody: briefly cacheable. */
   @Get()
   list(@Res({ passthrough: true }) res: Response) {
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60');
     return this.faq.list();
   }
 }

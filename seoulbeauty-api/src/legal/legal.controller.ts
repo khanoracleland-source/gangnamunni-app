@@ -11,7 +11,7 @@ export class LegalController {
   /** Public and the same for everybody: briefly cacheable. */
   @Get('register-terms')
   registerTerms(@Res({ passthrough: true }) res: Response) {
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60');
     return this.legal.registerTerms();
   }
 
