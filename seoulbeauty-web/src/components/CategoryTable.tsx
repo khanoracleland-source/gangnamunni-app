@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { HomeCategory } from "@/lib/api";
 import styles from "./CategoryTable.module.css";
@@ -9,8 +9,19 @@ import styles from "./CategoryTable.module.css";
  *  - excel (default): left column = categories (tap to switch), right = that category's treatments
  *  - row / hybrid: one horizontally scrolling row of chips per category
  */
-export default function CategoryTable({ categories, mode }: { categories: HomeCategory[]; mode: "excel" | "row" | "hybrid" }) {
+export default function CategoryTable({ categories: all, mode }: { categories: HomeCategory[]; mode: "excel" | "row" | "hybrid" }) {
   const [active, setActive] = useState(0);
+  // Hide categories with no treatments; when a name is listed twice keep the entry that has treatments (design: no duplicate "리프팅").
+  const categories = useMemo(() => {
+    const byName = new Map<string, HomeCategory>();
+    for (const c of all) {
+      if (!c.treatments.length) continue;
+      const prev = byName.get(c.name);
+      if (!prev) byName.set(c.name, c);
+      else if (c.treatments.length > prev.treatments.length) byName.set(c.name, c);
+    }
+    return all.filter((c) => byName.get(c.name) === c);
+  }, [all]);
   if (!categories.length) return null;
   const chip = (t: string) => <Link key={t} href={`/hospitals?treatment=${encodeURIComponent(t)}`} className={styles.chip}>{t}</Link>;
 
@@ -34,7 +45,8 @@ export default function CategoryTable({ categories, mode }: { categories: HomeCa
           <button key={c.id} role="tab" aria-selected={i === active} className={`${styles.navItem} ${i === active ? styles.navOn : ""}`} onClick={() => setActive(i)}>{c.name}</button>
         ))}
       </div>
-      <div className={styles.grid} role="tabpanel">
+      {/* right column starts on the row of the selected category (design 03-01) */}
+      <div className={styles.grid} role="tabpanel" style={{ marginTop: `calc(var(--row) * ${Math.min(active, categories.length - 1)})` }}>
         {cur.treatments.length ? cur.treatments.map((t) => (
           <Link key={t} href={`/hospitals?treatment=${encodeURIComponent(t)}`} className={styles.cell}>{t}</Link>
         )) : <div className={styles.none}>등록된 시술이 없습니다</div>}

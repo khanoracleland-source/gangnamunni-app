@@ -39,7 +39,7 @@ export default function Home({ initial }: { initial?: HomeData }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={img} alt={ad.title} className={styles.adImg} />
         ) : (
-          <div className={styles.adText}><span className={styles.adBadge}>AD</span><div className={styles.adTitle}>{ad.title}</div>{ad.subtitle && <div className={styles.adSub}>{ad.subtitle}</div>}</div>
+          <div className={styles.adText}><div className={styles.adTitle}>{ad.title}</div>{ad.subtitle && <div className={styles.adSub}>{ad.subtitle}</div>}</div>
         )}
       </a>
     );
@@ -49,11 +49,10 @@ export default function Home({ initial }: { initial?: HomeData }) {
     <div ref={rootRef} className={styles.home}>
       <SiteHeader home={data} />
 
-      {/* design 03-01/02: 125px banner under the search row. Ads fill it (AD tag + "n / N"); with no ad it shows the default 고객평가 우수병원 banner. */}
+      {/* design 03-01/02: 125px banner under the search row. Ads fill it; with no ad it shows the default 고객평가 우수병원 banner. */}
       {showAds && settings.adAfterSearch ? (
         <section className={`${styles.banner} ${styles.bannerAd}`}>
-          <Carousel auto={settings.adAutoScroll} label="광고" counter>{adSlides(ads)}</Carousel>
-          <span className={styles.adTag}>AD</span>
+          <Carousel auto={settings.adAutoScroll} label="광고">{adSlides(ads)}</Carousel>
         </section>
       ) : (
         <section className={styles.banner} aria-label="고객평가 우수병원">
@@ -135,10 +134,6 @@ export default function Home({ initial }: { initial?: HomeData }) {
           <Link href="/terms">위치기반서비스 이용약관</Link>
           <Link className={styles.linkStrong} href="/privacy">개인정보처리방침</Link>
         </nav>
-        <div className={styles.notice}>
-          <p>셀럽몰 주식회사는 통신판매의 당사자가 아니므로,</p>
-          <p>의료기관이 등록한 시/수술 정보 및 거래 등에 대해 책임을 지지 않습니다.</p>
-        </div>
         <p className={styles.copyright}>©CELEBMALL Co., Ltd. All rights reserved.</p>
       </footer>
       <Link href="/hospitals" prefetch className="srOnly">병원 목록</Link>

@@ -88,3 +88,5 @@
   .doc :global(.row) { grid-template-columns: 1fr 1fr; }
   .doc :global(.do-dont) { grid-template-columns: 1fr 1fr; }
 }
+.disclaimer { margin: 28px 0 0; padding: 16px 0 0; border-top: 1px solid #ECE9EA; color: #6B6466; font-size: 13px; line-height: 1.7; }
+.disclaimer p { margin: 0; }

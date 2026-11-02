@@ -1,4 +1,4 @@
-/* design: tab bar 83 (= 49 + 34 iOS home indicator), top line #ECE9EA, icon 24 + label 11, active = primary */
+/* design: tab bar 83 total (iOS 49 + 34 home indicator). Height = --nav-h + safe-area = max(56 + safe, 84): 84 on desktop / in-app WebView, 56 + safe on iPhone Safari. Icon 24 + label 11, active = primary, top line #ECE9EA */
 .nav {
   position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 640px; bottom: 0; z-index: 50;
   height: calc(var(--nav-h) + env(safe-area-inset-bottom));
@@ -6,6 +6,6 @@
   display: grid; grid-template-columns: repeat(4, 1fr);
   background: var(--bg); border-top: 1px solid #ECE9EA;
 }
-.item { min-width: 0; white-space: nowrap; display: flex; flex-direction: column; align-items: center; gap: 3px; padding-top: 8px; font-size: 11px; line-height: 1.3; color: #9A9395; }
+.item { min-width: 0; white-space: nowrap; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0; box-sizing: border-box; font-size: calc(11px * var(--fs-scale)); line-height: 1.3; color: #9A9395; }
 .item img { width: 24px; height: 24px; display: block; flex-shrink: 0; object-fit: contain; }
 .active { color: var(--accent); }

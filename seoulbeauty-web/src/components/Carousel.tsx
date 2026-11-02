@@ -5,10 +5,10 @@ import styles from "./Carousel.module.css";
 /**
  * One slide per view, looping. Swipe/drag with the pointer (vertical scrolling still works), auto-advance
  * every `intervalMs` (pauses while hovering, touching, off-screen or in a background tab; the timer restarts
- * after every manual change). No dots; `counter` adds the design's "1 / N" pill.
+ * after every manual change). No dots, no counter.
  * Loop = a clone of slide 0 after the last slide: after sliding onto it we jump back to 0 without animation.
  */
-export default function Carousel({ children, auto, intervalMs = 5000, label, counter = false }: { children: React.ReactNode[]; auto: boolean; intervalMs?: number; label: string; counter?: boolean }) {
+export default function Carousel({ children, auto, intervalMs = 5000, label }: { children: React.ReactNode[]; auto: boolean; intervalMs?: number; label: string }) {
   const slides = Children.toArray(children);
   const n = slides.length;
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -134,7 +134,6 @@ export default function Carousel({ children, auto, intervalMs = 5000, label, cou
           {isValidElement(slides[0]) ? cloneElement(slides[0] as ReactElement<Record<string, unknown>>, { "data-ad-id": undefined, tabIndex: -1 }) : slides[0]}
         </div>
       </div>
-      {counter && <span className={styles.counter} aria-hidden>{idx + 1} / {n}</span>}
     </div>
   );
 }

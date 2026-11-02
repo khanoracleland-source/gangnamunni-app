@@ -36,6 +36,11 @@ export default function Terms() {
       </div>
       <div className={styles.body}>
         <LegalDoc html={`<div class="header"><h1>${lang === "ko" ? "이용약관" : "Terms of Service"}</h1><p>${lang === "ko" ? "Terms of Service" : "이용약관"}</p></div>${lang === "ko" ? TERMS_KO : TERMS_EN}`} />
+        {/* moved here from the home footer: shown at the very end of the document */}
+        <div className={styles.disclaimer}>
+          <p>셀럽몰 주식회사는 통신판매의 당사자가 아니므로,</p>
+          <p>의료기관이 등록한 시/수술 정보 및 거래 등에 대해 책임을 지지 않습니다.</p>
+        </div>
       </div>
       {done && <div className={styles.agreed} role="status">동의가 저장되었습니다.</div>}
       {canAgree && (

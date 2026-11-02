@@ -11,7 +11,7 @@ export const meKey = ["me"] as const;
 
 /** Login state of the current cookie session (PHP is the authority, via the API). */
 export function useMe() {
-  return useQuery({ queryKey: meKey, queryFn: () => api.me(), staleTime: 20_000, gcTime: 5 * 60_000 });
+  return useQuery({ queryKey: meKey, queryFn: () => api.me(), staleTime: 20_000, gcTime: 5 * 60_000, refetchOnWindowFocus: true }); // focus refetch keeps the bell's unread dot current
 }
 
 /** PHP login page with a return URL back to the current Next.js page. */

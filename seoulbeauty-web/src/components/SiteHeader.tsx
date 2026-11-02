@@ -125,7 +125,7 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
               <img src={shareIcon.src} alt="" width={22} height={22} />
             </button>
             {me.data?.loggedIn && (
-              <Link href="/mypage/notifications" className={`${styles.iconBtn} ${styles.bell}`} aria-label="알림" title="알림">
+              <Link href="/mypage/notifications" className={`${styles.iconBtn} ${styles.bell}`} aria-label={(me.data?.unreadNotifications ?? 0) > 0 ? "알림 (읽지 않은 알림 있음)" : "알림"} title="알림">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={((me.data?.unreadNotifications ?? 0) > 0 ? bellDotIcon : bellIcon).src} alt="" width={24} height={24} />
               </Link>

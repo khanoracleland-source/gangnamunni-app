@@ -74,7 +74,6 @@ function AdBanner({ ads, auto }: { ads: PageAd[]; auto: boolean }) {
                 <img src={img} alt={ad.title} className={styles.adImg} />
               ) : (
                 <div className={styles.adText} style={{ background: GRADIENTS[i % GRADIENTS.length] }}>
-                  <div className={styles.adBadge}>AD</div>
                   <div className={styles.adTitle}>{ad.title}</div>
                   {ad.subtitle && <div className={styles.adSub}>{ad.subtitle}</div>}
                   <div className={styles.adCta}>자세히 보기 →</div>
