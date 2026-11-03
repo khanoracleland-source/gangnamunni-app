@@ -49,7 +49,7 @@ function create_user_notifications_batch($connect, $member_ids, $type, $title, $
  * 안읽은 알림 수
  */
 function get_user_unread_count($connect, $member_id) {
-    $stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0");
+    $stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0 AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
     mysqli_stmt_bind_param($stmt, 's', $member_id);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt)->fetch_assoc();
@@ -63,10 +63,10 @@ function get_user_unread_count($connect, $member_id) {
 function get_user_notifications($connect, $member_id, $page = 1, $limit = 20, $type = 'all') {
     $offset = ($page - 1) * $limit;
     if ($type !== 'all') {
-        $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_user_notifications WHERE member_id = ? AND type = ? ORDER BY created_at DESC LIMIT ? OFFSET ?");
+        $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_user_notifications WHERE member_id = ? AND type = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) ORDER BY created_at DESC LIMIT ? OFFSET ?");
         mysqli_stmt_bind_param($stmt, 'ssii', $member_id, $type, $limit, $offset);
     } else {
-        $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_user_notifications WHERE member_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?");
+        $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_user_notifications WHERE member_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) ORDER BY created_at DESC LIMIT ? OFFSET ?");
         mysqli_stmt_bind_param($stmt, 'sii', $member_id, $limit, $offset);
     }
     mysqli_stmt_execute($stmt);
@@ -84,10 +84,10 @@ function get_user_notifications($connect, $member_id, $page = 1, $limit = 20, $t
  */
 function get_user_notification_count($connect, $member_id, $type = 'all') {
     if ($type !== 'all') {
-        $stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND type = ?");
+        $stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND type = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
         mysqli_stmt_bind_param($stmt, 'ss', $member_id, $type);
     } else {
-        $stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ?");
+        $stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
         mysqli_stmt_bind_param($stmt, 's', $member_id);
     }
     mysqli_stmt_execute($stmt);

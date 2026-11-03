@@ -53,7 +53,7 @@ function notification_page_items($connect, $member_id, $page = 1, $limit = 20, $
     $params[] = $offset;
     $types .= 'ii';
 
-    $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_user_notifications WHERE member_id = ?{$where} ORDER BY created_at DESC LIMIT ? OFFSET ?");
+    $stmt = mysqli_prepare($connect, "SELECT * FROM gangnamunni_user_notifications WHERE member_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY){$where} ORDER BY created_at DESC LIMIT ? OFFSET ?");
     if (!$stmt) return [];
     notification_bind_params($stmt, $types, $params);
     mysqli_stmt_execute($stmt);
@@ -70,7 +70,7 @@ function notification_page_count($connect, $member_id, $filter = 'all') {
     $params = [$member_id];
     $types = 's';
     $where = notification_filter_where($filter, $params, $types);
-    $stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ?{$where}");
+    $stmt = mysqli_prepare($connect, "SELECT COUNT(*) as cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY){$where}");
     if (!$stmt) return 0;
     notification_bind_params($stmt, $types, $params);
     mysqli_stmt_execute($stmt);

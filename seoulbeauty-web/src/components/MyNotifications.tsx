@@ -71,42 +71,50 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
   };
 
   return (
-    <div className={styles.wrap}>
-      <MyHeader title="알림" />
+    <div className={`${styles.wrap} ${styles.ntWrap}`}>
+      <MyHeader title="알림" backToCaller right={!loggedOut && (
+        <button type="button" className={styles.ntReadAll} onClick={readAll} disabled={busy || unread === 0}>모두 읽음</button>
+      )} />
       {loggedOut ? <LoginPrompt text="로그인하면 알림을 확인할 수 있습니다." /> : (
         <>
-          <div className={styles.ntBar}>
-            <div className={styles.bkTabs} role="tablist" aria-label="알림 필터" style={{ flex: 1, borderBottom: 0 }}>
-              {TABS.map((t) => (
-                <Link key={t.key} href={t.key === "all" ? "/mypage/notifications" : `/mypage/notifications?type=${t.key}`} replace role="tab" aria-selected={type === t.key} className={`${styles.bkTab} ${type === t.key ? styles.bkTabOn : ""}`} style={{ fontSize: 14 }}>{t.label}</Link>
-              ))}
-            </div>
-            <button type="button" className={styles.ntReadAll} onClick={readAll} disabled={busy || unread === 0}>모두 읽음{unread > 0 && <span className={styles.bkCount} style={{ marginLeft: 4 }}>{unread > 99 ? "99+" : unread}</span>}</button>
+          <div className={styles.ntChips} role="tablist" aria-label="알림 필터">
+            {TABS.map((t) => (
+              <Link key={t.key} href={t.key === "all" ? "/mypage/notifications" : `/mypage/notifications?type=${t.key}`} replace role="tab" aria-selected={type === t.key} className={`${styles.ntChip} ${type === t.key ? styles.ntChipOn : ""}`}>{t.label}</Link>
+            ))}
           </div>
           {!q.data ? (
             <div className={styles.empty}>{q.error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => q.refetch()}>다시 시도</button></> : <Loading />}</div>
           ) : items.length === 0 ? (
-            <div className={styles.bkEmpty}>새로운 알림이 없어요<br />예약 · 결제 진행 상황을<br />이곳에서 알려드릴게요</div>
+            <div className={styles.ntEmpty}>
+              <div className={styles.ntEmptyIco}>
+                <svg width="34" height="34" viewBox="0 0 1000 1000" fill="none" stroke="#AC1830" strokeWidth="40" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M207 530 V370 A293 293 0 0 1 793 370 V530 Q870 630 870 760 V780 H130 V760 Q130 630 207 530 Z" /><path d="M382 780 A118 118 0 0 0 618 780" /></svg>
+              </div>
+              <div className={styles.ntEmptyTitle}>새로운 알림이 없어요</div>
+              <div className={styles.ntEmptySub}>예약 · 결제 진행 상황을<br />이곳에서 알려드릴게요</div>
+            </div>
           ) : (
             <div className={styles.ntList}>
               {items.map((n) => (
-                <article key={n.id} className={`${styles.ntItem} ${n.isRead ? "" : styles.ntUnread}`}>
+                <article key={n.id} className={styles.ntCard}>
                   <div
                     className={`${styles.ntOpen} ${n.openUrl ? styles.ntClickable : ""}`}
                     {...(n.openUrl ? { role: "button", tabIndex: 0, "aria-label": "알림 보기", onClick: () => open(n), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(n); } } } : {})}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className={styles.ntIcon} src={assetUrl(`assets/icons/notifications/${ICON_FILE[n.icon]}.svg`) ?? ""} alt="" loading="lazy" />
+                    <span className={styles.ntIcoWrap}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={assetUrl(`assets/icons/notifications/${ICON_FILE[n.icon]}.svg`) ?? ""} alt="" width={20} height={20} loading="lazy" />
+                    </span>
                     <div className={styles.ntBody}>
-                      <div className={styles.ntTitleRow}><span className={styles.ntTitle}>{n.title}</span>{!n.isRead && <span className={styles.ntDot} aria-label="읽지 않음" />}<span className={styles.ntTime}>{n.time}</span></div>
-                      {n.message && <div className={styles.ntMsg}>{n.message}</div>}
+                      <div className={styles.ntMeta}><span>{n.message ? n.title : ""}</span>{!n.isRead && <span className={styles.ntDot} aria-label="읽지 않음" />}<span className={styles.ntTime}>{n.time}</span></div>
+                      <div className={styles.ntText}>{n.message || n.title}</div>
                     </div>
                   </div>
                   <button type="button" className={styles.ntDel} onClick={() => remove(n)} aria-label="알림 삭제">×</button>
                 </article>
               ))}
               {q.hasNextPage && <button type="button" className={styles.ntMore} onClick={() => q.fetchNextPage()} disabled={q.isFetchingNextPage}>{q.isFetchingNextPage ? "불러오는 중..." : "더 보기"}</button>}
-            </div>
+              {!q.hasNextPage && <div className={styles.ntFoot}>최근 30일 동안의 알림만 보여드려요</div>}
+                          </div>
           )}
         </>
       )}

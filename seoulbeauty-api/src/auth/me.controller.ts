@@ -2,6 +2,7 @@ import { Controller, Get, Inject, Req, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { DB, Db } from '../db/db.module';
 import { AuthGuard, AuthedRequest } from './auth.guard';
+import { NOTI_WINDOW_SQL } from '../notifications/notifications.logic';
 
 @Controller('v1/me')
 export class MeController {
@@ -20,7 +21,7 @@ export class MeController {
     if (session.loggedIn && session.user) {
       try {
         const [rows] = (await this.db.query(
-          `SELECT COUNT(*) AS cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0`,
+          `SELECT COUNT(*) AS cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0 AND ${NOTI_WINDOW_SQL}`,
           [session.user.id],
         )) as any;
         unreadNotifications = Number(rows?.[0]?.cnt ?? 0);

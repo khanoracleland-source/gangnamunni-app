@@ -2,6 +2,9 @@ import { bookingTimePassed, kstNow } from '../bookings/bookings.logic';
 
 export type NotiFilter = 'all' | 'booking' | 'review' | 'benefit';
 export const NOTI_LIMIT = 20;
+/** Only the last 30 days are shown (list, counts and the bell dot); older rows stay in the table. */
+export const NOTI_WINDOW_DAYS = 30;
+export const NOTI_WINDOW_SQL = `created_at >= DATE_SUB(NOW(), INTERVAL ${NOTI_WINDOW_DAYS} DAY)`;
 
 const GROUPS: Record<NotiFilter, string[]> = {
   all: [],

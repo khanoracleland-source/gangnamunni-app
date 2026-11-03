@@ -32,7 +32,7 @@ $nav_unread_notifications = 0;
 if ($is_logged_in && isset($connect) && $connect) {
     $table_check = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_user_notifications'");
     if ($table_check && mysqli_num_rows($table_check) > 0) {
-        $stmt = @mysqli_prepare($connect, "SELECT COUNT(*) AS cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0");
+        $stmt = @mysqli_prepare($connect, "SELECT COUNT(*) AS cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0 AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
         if ($stmt) {
             $member_id = (string)$member['mb_id'];
             mysqli_stmt_bind_param($stmt, 's', $member_id);

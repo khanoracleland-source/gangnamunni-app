@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DB, Db } from '../db/db.module';
 import { kstNow } from '../bookings/bookings.logic';
-import { displayIcon, extractBookingId, filterTypes, NOTI_LIMIT, NotiFilter, openUrl, timeLabel } from './notifications.logic';
+import { displayIcon, extractBookingId, filterTypes, NOTI_LIMIT, NOTI_WINDOW_SQL, NotiFilter, openUrl, timeLabel } from './notifications.logic';
 
 const n = (v: unknown) => Number(v ?? 0) || 0;
 const s = (v: unknown) => (v == null ? '' : String(v));
@@ -11,7 +11,7 @@ export class NotificationsService {
   private readonly log = new Logger(NotificationsService.name);
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /** my_notifications.php: one page (20) of the member's notifications + unread total. A missing table reads as empty. */
+  /** my_notifications.php: one page (20) of the member's notifications from the last 30 days + unread total. A missing table reads as empty. */
   async list(memberId: string, filter: NotiFilter, page: number) {
     try {
       const types = filterTypes(filter);
@@ -19,9 +19,9 @@ export class NotificationsService {
       const args = [memberId, ...types];
       const [rows] = (await this.db.query(
         `SELECT id, type, title, message, link, icon, is_read, created_at FROM gangnamunni_user_notifications
-         WHERE member_id = ?${where} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`, [...args, NOTI_LIMIT, (page - 1) * NOTI_LIMIT])) as any;
-      const [[cnt]] = (await this.db.query(`SELECT COUNT(*) AS cnt FROM gangnamunni_user_notifications WHERE member_id = ?${where}`, args)) as any;
-      const [[unread]] = (await this.db.query('SELECT COUNT(*) AS cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0', [memberId])) as any;
+         WHERE member_id = ? AND ${NOTI_WINDOW_SQL}${where} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`, [...args, NOTI_LIMIT, (page - 1) * NOTI_LIMIT])) as any;
+      const [[cnt]] = (await this.db.query(`SELECT COUNT(*) AS cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND ${NOTI_WINDOW_SQL}${where}`, args)) as any;
+      const [[unread]] = (await this.db.query(`SELECT COUNT(*) AS cnt FROM gangnamunni_user_notifications WHERE member_id = ? AND is_read = 0 AND ${NOTI_WINDOW_SQL}`, [memberId])) as any;
       const list = rows as any[];
       const ids = [...new Set(list.filter((r) => s(r.type) === 'booking').map((r) => extractBookingId(r.link)).filter((v) => v > 0))];
       const bookings = new Map<number, any>();

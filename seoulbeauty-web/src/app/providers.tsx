@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { api, qk } from "@/lib/api";
 import { announceLogoutFromUrl, notifyPageChanged } from "@/lib/bridge";
 import { useMe } from "@/lib/me";
+import { countSpaNav } from "@/lib/nav";
 import { CACHE_BUSTER, CACHE_MAX_AGE, createIdbPersister, restorePersonal, shouldPersist } from "@/lib/persist";
 
 /**
@@ -89,6 +90,7 @@ function PageChangeNotifier() {
       first.current = false; // initial load: Flutter already saw onPageFinished
       return;
     }
+    countSpaNav();
     notifyPageChanged();
   }, [pathname]);
   return null;
