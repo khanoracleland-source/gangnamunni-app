@@ -18,16 +18,6 @@
 .links i { width: 1px; height: 12px; background: #DCD6D8; }
 .notice { margin-top: auto; padding: 32px 20px 40px; font-size: calc(12px * var(--fs-scale, 1)); line-height: 1.6; color: #4A4446; }
 .more { padding: 0; border: 0; background: none; font: inherit; color: #6B6466; text-decoration: underline; cursor: pointer; }
+.sheetBody { padding: 8px clamp(20px, 6vw, 28px) 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .sheetBody p { margin: 0 0 10px; font-size: calc(15px * var(--fs-scale, 1)); line-height: 1.75; color: #1A1718; }
 .pill { padding: 6px 10px; border-radius: 15px; background: #EFECED; font-size: calc(12px * var(--fs-scale, 1)); color: #1A1718; text-decoration: none; }
-@keyframes dimIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .dim, .sheet { animation: none; } }
-.dim { position: fixed; inset: 0; z-index: 100; background: rgba(26,23,24,.45); display: flex; align-items: flex-end; justify-content: center; overscroll-behavior: contain; animation: dimIn .2s ease-out; }
-.sheet { position: relative; box-sizing: border-box; width: 100%; max-width: 520px; max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain; background: #fff; border-radius: 16px 16px 0 0; padding-bottom: calc(28px + env(safe-area-inset-bottom)); animation: sheetUp .28s cubic-bezier(.2,.8,.2,1); will-change: transform; }
-/* tall touch target around the 40x4 grip; drag it down to dismiss */
-.gripZone { height: 36px; display: flex; justify-content: center; align-items: center; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
-.gripZone:active { cursor: grabbing; }
-.grip { width: 40px; height: 4px; border-radius: 2px; background: #1A1718; }
-.sheetBody { padding: 8px clamp(20px, 6vw, 28px) 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; word-break: keep-all; text-wrap: pretty; }
-@media (min-width: 600px) { .dim { align-items: center; } .sheet { border-radius: 16px; padding-bottom: 28px; max-height: 80dvh; } .gripZone { display: none; } .sheetBody { padding-top: 32px; } }

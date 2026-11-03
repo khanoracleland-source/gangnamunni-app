@@ -5,7 +5,7 @@ import * as bcrypt from 'bcryptjs';
 import { DB } from '../src/db/db.module';
 import { MailService, reservedMailDomain } from '../src/mail/mail.service';
 import { PasswordLostModule } from '../src/password-lost/password-lost.module';
-import { createHash, RateWindow, resetMail, temporaryPassword, validateHash } from '../src/password-lost/password-lost.logic';
+import { createHash, RateWindow, resetMail, resetMarker, resetLimitsOff, resetMarkerValid, temporaryPassword, validateHash } from '../src/password-lost/password-lost.logic';
 
 describe('password-lost logic', () => {
   it('matches Gnuboard create_hash (vector computed independently with python hashlib.pbkdf2_hmac)', () => {
@@ -86,7 +86,8 @@ describe('POST /v1/auth/password-lost', () => {
     const up = calls.find((c) => /^UPDATE g5_member SET mb_password/.test(c.sql))!;
     const plain = /<strong[^>]*>([^<]+)<\/strong>/.exec(mails[0].html)![1];
     expect(validateHash(plain, up.args[0])).toBe(true);       // the mailed password is the one stored
-    expect(up.args[1]).toBe(7);
+    expect(up.args[2]).toBe(7);
+    expect(up.args[1]).toMatch(/^pwreset:\d+$/);                 // an open reset request is marked (verify only works with it)
     expect(seq(/START TRANSACTION/)).toBeLessThan(seq(/^UPDATE g5_member SET mb_password/));
     expect(seq(/COMMIT/)).toBeGreaterThan(seq(/^UPDATE g5_member SET mb_password/));
     expect(seq(/mb_cred_epoch \+ 1/)).toBeGreaterThan(seq(/COMMIT/));
@@ -114,7 +115,8 @@ describe('POST /v1/auth/password-lost', () => {
   });
   it('unknown / duplicate / left / super admin: same answer, nothing happens', async () => {
     const cases: any[][] = [[], [{ mb_no: 1, mb_id: 'a', mb_email: 'x@y.com', mb_leave_date: '' }, { mb_no: 2, mb_id: 'b', mb_email: 'x@y.com', mb_leave_date: '' }],
-      [{ mb_no: 3, mb_id: 'c', mb_email: 'x@y.com', mb_leave_date: '20260101' }], [{ mb_no: 4, mb_id: 'admin', mb_name: 'A', mb_email: 'x@y.com', mb_leave_date: '' }]];
+      [{ mb_no: 3, mb_id: 'c', mb_email: 'x@y.com', mb_leave_date: '20260101' }],
+      [{ mb_no: 5, mb_id: 'd', mb_email: 'x@y.com', mb_leave_date: '', mb_intercept_date: '20200101' }], [{ mb_no: 4, mb_id: 'admin', mb_name: 'A', mb_email: 'x@y.com', mb_leave_date: '' }]];
     let n = 10;
     for (const m of cases) {
       members = m; calls = [];
@@ -132,5 +134,103 @@ describe('POST /v1/auth/password-lost', () => {
     await post('c@naver.com', '7.7.7.7').expect(201);
     await post('d@naver.com', '7.7.7.7').expect(429);
     await post('d@naver.com', '7.7.7.8').expect(201);
+  });
+});
+
+describe('POST /v1/auth/password-reset (verify + confirm)', () => {
+  let app: INestApplication;
+  let calls: { sql: string; args: any[] }[] = [];
+  let member: any;
+  let em = '';
+  let n = 0;
+  const TEMP = 'Tmp#pass12Ab';
+  const respond = (sql: string, args: any[]): any => {
+    calls.push({ sql, args });
+    if (/FROM g5_member WHERE LOWER/.test(sql)) return [member && args[0] === member.mb_email ? [member] : []];
+    if (/FROM g5_config/.test(sql)) return [[{ cf_admin: 'admin' }]];
+    if (/FROM g5_member WHERE mb_id = \?/.test(sql)) return [member ? [member] : []];
+    if (/^UPDATE g5_member SET mb_password/.test(sql)) { member = { ...member, mb_password: args[0] }; return [{ affectedRows: 1 }]; }
+    if (/FROM member_sync/.test(sql)) return [[]];
+    return [{ affectedRows: 1 }];
+  };
+  const verify = (email: any, temp: any, ip: string) => request(app.getHttpServer()).post('/v1/auth/password-reset/verify').set('X-Requested-With', 'XMLHttpRequest').set('X-Forwarded-For', ip).send({ email, temporaryPassword: temp });
+  const confirm = (ticket: any, password: any, ip: string) => request(app.getHttpServer()).post('/v1/auth/password-reset/confirm').set('X-Requested-With', 'XMLHttpRequest').set('X-Forwarded-For', ip).send({ ticket, password });
+  beforeAll(async () => {
+    process.env.SESSION_BRIDGE_SECRET = 'x'.repeat(40);
+    const conn = { query: async (sql: string, args: any[] = []) => respond(sql, args), release: () => undefined };
+    @Global() @Module({ providers: [{ provide: DB, useValue: { query: async (sql: string, args: any[] = []) => respond(sql, args), getConnection: async () => conn } }], exports: [DB] }) class FakeDb {}
+    const mod = await Test.createTestingModule({ imports: [FakeDb, PasswordLostModule] }).overrideProvider(MailService).useValue({ send: async () => ({ success: true }) }).compile();
+    app = mod.createNestApplication();
+    (app.getHttpAdapter().getInstance() as any).set('trust proxy', 1);
+    await app.init();
+  });
+  afterAll(async () => { await app.close(); });
+  beforeEach(() => { calls = []; em = `kim${++n}@naver.com`; member = { mb_no: 7, mb_id: 'kim', mb_email: em, mb_leave_date: '', mb_intercept_date: '', mb_email_certify: '2026-01-01', mb_lost_certify: resetMarker(), mb_password: createHash(TEMP) }; });
+
+  it('wrong password and unknown e-mail: the same answer', async () => {
+    const a = await verify(em, 'nope', '11.0.0.1').expect(401);
+    const b = await verify('who@naver.com', TEMP, '11.0.0.2').expect(401);
+    member = null;
+    const c = await verify(em, TEMP, '11.0.0.3').expect(401);
+    expect(a.body).toEqual(b.body); expect(b.body).toEqual(c.body);
+  });
+  it('temporary password → ticket → new password saved, then the ticket is dead', async () => {
+    const v = await verify(em.toUpperCase(), TEMP, '11.0.1.1').expect(201);
+    expect(v.headers['cache-control']).toContain('no-store');
+    const ticket = v.body.ticket as string;
+    expect(typeof ticket).toBe('string');
+    await confirm(ticket, 'short1!', '11.0.1.2').expect(400);               // rule: 9~20, letter + digit + special
+    await confirm(ticket, TEMP, '11.0.1.2').expect(400);                    // not the temporary one again
+    await confirm('garbage', 'Newpass#123', '11.0.1.2').expect(401);
+    await confirm(ticket, 'Newpass#123', '11.0.1.3').expect(201);
+    const up = calls.find((c) => /^UPDATE g5_member SET mb_password/.test(c.sql))!;
+    expect(validateHash('Newpass#123', up.args[0])).toBe(true);
+    expect(calls.some((c) => /mb_cred_epoch \+ 1/.test(c.sql))).toBe(true);
+    await confirm(ticket, 'Another#456', '11.0.1.4').expect(401);           // hash changed: single use
+  });
+  it('verify is limited: 5 tries per address+ip', async () => {
+    for (let i = 0; i < 5; i++) await verify(em, `bad${i}`, '11.0.2.1').expect(401);
+    await verify(em, TEMP, '11.0.2.1').expect(429);
+  });
+  it('only with an open (marked, unexpired) reset request; blocked / left accounts refused', async () => {
+    member = { ...member, mb_lost_certify: '' };
+    await verify(em, TEMP, '11.0.3.1').expect(401);            // right password, but nobody asked for a reset
+    member = { ...member, mb_lost_certify: `pwreset:${Date.now() - 1000}` };
+    await verify(em, TEMP, '11.0.3.2').expect(401);            // expired
+    member = { ...member, mb_lost_certify: resetMarker(), mb_intercept_date: '20200101' };
+    await verify(em, TEMP, '11.0.3.3').expect(401);            // blocked
+    member = { ...member, mb_intercept_date: '', mb_leave_date: '20200101' };
+    await verify(em, TEMP, '11.0.3.4').expect(401);            // left
+    member = { ...member, mb_leave_date: '' };
+    await verify(em, TEMP, '11.0.3.5').expect(201);
+  });
+  it('confirm refuses a ticket when the request was closed or the account got blocked meanwhile', async () => {
+    const t = (await verify(em, TEMP, '11.0.4.1').expect(201)).body.ticket;
+    member = { ...member, mb_intercept_date: '20200101' };
+    await confirm(t, 'Newpass#123', '11.0.4.2').expect(401);
+    member = { ...member, mb_intercept_date: '', mb_lost_certify: '' };
+    await confirm(t, 'Newpass#123', '11.0.4.3').expect(401);
+  });
+  it('limit per e-mail across different ips (10/h)', async () => {
+    for (let i = 0; i < 10; i++) await verify(em, `bad${i}`, `11.0.5.${i}`).expect(401);
+    await verify(em, TEMP, '11.0.5.99').expect(429);
+  });
+  it('marker helpers', () => {
+    expect(resetMarkerValid(resetMarker())).toBe(true);
+    expect(resetMarkerValid(resetMarker(Date.now() - 31 * 60_000))).toBe(false);
+    expect(resetMarkerValid('')).toBe(false); expect(resetMarkerValid('abc')).toBe(false);
+  });
+});
+
+describe('PASSWORD_LOST_RATE_LIMIT flag', () => {
+  const f = (env: Record<string, string>) => resetLimitsOff({ PASSWORD_LOST_RATE_LIMIT: 'off', ...env } as any);
+  it('works only with NODE_ENV explicitly development or test', () => {
+    expect(f({ NODE_ENV: 'development' })).toBe(true);
+    expect(f({ NODE_ENV: 'test' })).toBe(true);
+    expect(f({ NODE_ENV: 'production' })).toBe(false);
+    expect(f({ NODE_ENV: 'staging' })).toBe(false);
+    expect(f({})).toBe(false);                                   // NODE_ENV not set (pm2, hand-started node)
+    expect(resetLimitsOff({ NODE_ENV: 'development' } as any)).toBe(false);
+    expect(resetLimitsOff({ PASSWORD_LOST_RATE_LIMIT: 'on', NODE_ENV: 'development' } as any)).toBe(false);
   });
 });

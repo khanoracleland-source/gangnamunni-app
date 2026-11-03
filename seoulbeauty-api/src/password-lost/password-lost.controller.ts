@@ -14,4 +14,18 @@ export class PasswordLostController {
     res.setHeader('Cache-Control', 'private, no-store');
     return this.svc.request(body?.email, req.ip || 'unknown');
   }
+
+  @Post('password-reset/verify')
+  @UseGuards(SameOriginGuard)
+  verify(@Body() body: { email?: unknown; temporaryPassword?: unknown }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return this.svc.verifyTemporary(body?.email, body?.temporaryPassword, req.ip || 'unknown');
+  }
+
+  @Post('password-reset/confirm')
+  @UseGuards(SameOriginGuard)
+  confirm(@Body() body: { ticket?: unknown; password?: unknown }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return this.svc.setNewPassword(body?.ticket, body?.password, req.ip || 'unknown');
+  }
 }

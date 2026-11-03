@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -7,6 +7,7 @@ import { api, assetUrl } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import styles from "./Login.module.css";
+import BottomSheet from "./BottomSheet";
 import kakaoIcon from "@/assets/icons/login-kakao.png";
 import googleIcon from "@/assets/icons/login-google.png";
 import appleIcon from "@/assets/icons/login-apple.png";
@@ -40,51 +41,9 @@ export default function Login() {
   const showApple = useSyncExternalStore(subscribeNoop, () => !/Android/i.test(navigator.userAgent), () => false);
   const opts = useQuery({ queryKey: ["login-options"], queryFn: () => api.loginOptions(), staleTime: 60_000 });
   const [sheet, setSheet] = useState(false);
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const dimRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ y: number; t: number; dy: number; id: number } | null>(null);
-
-  /** slide the sheet down, then unmount */
-  const closeSheet = () => {
-    const el = sheetRef.current, dim = dimRef.current;
-    if (!el) { setSheet(false); return; }
-    el.style.transition = "transform .24s cubic-bezier(.4,0,1,1)";
-    el.style.transform = "translateY(100%)";
-    if (dim) { dim.style.transition = "opacity .24s"; dim.style.opacity = "0"; }
-    window.setTimeout(() => setSheet(false), 230);
-  };
-  const dragStart = (e: React.PointerEvent) => {
-    drag.current = { y: e.clientY, t: e.timeStamp, dy: 0, id: e.pointerId };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    if (sheetRef.current) { sheetRef.current.style.transition = "none"; sheetRef.current.style.animation = "none"; }
-  };
-  const dragMove = (e: React.PointerEvent) => {
-    const d = drag.current; if (!d || d.id !== e.pointerId) return;
-    d.dy = Math.max(0, e.clientY - d.y);
-    if (sheetRef.current) sheetRef.current.style.transform = `translateY(${d.dy}px)`;
-    if (dimRef.current) dimRef.current.style.opacity = String(Math.max(0.2, 1 - d.dy / 400));
-  };
-  const dragEnd = (e: React.PointerEvent) => {
-    const d = drag.current; if (!d || d.id !== e.pointerId) return;
-    drag.current = null;
-    const h = sheetRef.current?.offsetHeight ?? 300;
-    const v = d.dy / Math.max(1, e.timeStamp - d.t); // px/ms
-    if (d.dy > h * 0.3 || (v > 0.5 && d.dy > 24)) { closeSheet(); return; }
-    if (sheetRef.current) { sheetRef.current.style.transition = "transform .22s cubic-bezier(.2,.8,.2,1)"; sheetRef.current.style.transform = "translateY(0)"; }
-    if (dimRef.current) { dimRef.current.style.transition = "opacity .22s"; dimRef.current.style.opacity = "1"; }
-  };
   const router = useRouter();
   /** ← : back to the page the visitor came from; with no history (opened directly) go to the Next home. */
   const goBack = () => { if (window.history.length > 1) router.back(); else router.push("/"); };
-
-  useEffect(() => {
-    if (!sheet) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeSheet(); };
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
-  }, [sheet]);
 
   useEffect(() => { if (me.data?.loggedIn) window.location.replace(url && url.startsWith("/") && !url.startsWith("//") ? url : "/next"); }, [me.data, url]);
 
@@ -123,20 +82,13 @@ export default function Login() {
           </>
         )}
       </div>
-      {sheet && (
-        <div ref={dimRef} className={styles.dim} onClick={closeSheet}>
-          <div ref={sheetRef} className={styles.sheet} role="dialog" aria-modal="true" aria-label="reCAPTCHA 안내" onClick={(e) => e.stopPropagation()}>
-            <div className={styles.gripZone} onPointerDown={dragStart} onPointerMove={dragMove} onPointerUp={dragEnd} onPointerCancel={dragEnd} aria-hidden="true">
-              <div className={styles.grip} />
-            </div>
-            <div className={styles.sheetBody}>
-              <p>이 페이지는 Google reCAPTCHA의 보호를 받아 사용자가 로봇이 아님을 확인합니다.<br />Google reCAPTCHA가 수집하는 정보에는 Google 개인정보처리방침과 서비스 약관이 적용되며, 해당 정보는 reCAPTCHA 서비스 제공, 관리 및 개선과 일반적인 보안 유지에 사용됩니다(Google의 개인 맞춤 광고에 사용 안함).</p>
-              <a className={styles.pill} href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
-              <a className={styles.pill} href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">서비스 약관</a>
-            </div>
-          </div>
+      <BottomSheet open={sheet} onClose={() => setSheet(false)} label="reCAPTCHA 안내">
+        <div className={styles.sheetBody}>
+          <p>이 페이지는 Google reCAPTCHA의 보호를 받아 사용자가 로봇이 아님을 확인합니다.<br />Google reCAPTCHA가 수집하는 정보에는 Google 개인정보처리방침과 서비스 약관이 적용되며, 해당 정보는 reCAPTCHA 서비스 제공, 관리 및 개선과 일반적인 보안 유지에 사용됩니다(Google의 개인 맞춤 광고에 사용 안함).</p>
+          <a className={styles.pill} href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
+          <a className={styles.pill} href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">서비스 약관</a>
         </div>
-      )}
+      </BottomSheet>
     </div>
   );
 }

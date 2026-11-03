@@ -166,7 +166,9 @@ GRANT DELETE ON hms_saas.personal_access_tokens TO 'sb_api_ro'@'127.0.0.1';
 GRANT DELETE ON hms_saas.personal_access_tokens TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 ```
-`.env`: `SMTP_PASSWORD=<admin@seoulbeauty.app parol>` (kerak; yo'q bo'lsa email ketmaydi va parol O'ZGARMAYDI). Ixtiyoriy: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM_NAME`. Yangi npm paketlar (nodemailer, bcryptjs): deploy'da `npm ci` kerak.
+`.env`: `SMTP_PASSWORD=<admin@seoulbeauty.app parol>` (kerak; yo'q bo'lsa email ketmaydi va parol O'ZGARMAYDI). Ixtiyoriy: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM_NAME`, `PUBLIC_SITE_URL` (xatdagi "비밀번호 재설정하기" havolasi uchun veb-ilova manzili, `/next` bilan; default `https://hms.seoulbeauty.app/next`). Yangi npm paketlar (nodemailer, bcryptjs): deploy'da `npm ci` kerak.
+
+**Test bayrog'i `PASSWORD_LOST_RATE_LIMIT=off` (XAVFLI, faqat sinov):** 비밀번호 찾기 xat limitlari va vaqtinchalik parol tekshiruvi (`verify`) limitlarini o'chiradi. Bayroq faqat `NODE_ENV=development` yoki `test` bo'lgandagina ishlaydi; `production`, boshqa qiymat yoki `NODE_ENV` umuman yo'q bo'lsa (pm2, qo'lda `node dist/main.js`) **e'tiborsiz qoldiriladi**. Ishga tushishda log'da bir marta `ACTIVE` yoki `IGNORED` yoziladi. Sababi: bayroqsiz bu endpoint istalgan emailga cheksiz xat yuborib parolini almashtira oladi. Sinovdan keyin `.env` dan olib tashlang.
 
 ### D2 회원가입 (register → Nest, 2026-10-30)
 Nest endi a'zoni o'zi yaratadi (`POST /v1/auth/register/code`, `POST /v1/auth/register`); Gnuboard sessiyasini PHP ko'prigi `gangnamunni/api/session_login.php` yaratadi (faqat loopback + HMAC).
@@ -203,7 +205,7 @@ Existing linked members sign in through Nest; an unlinked social profile (a new 
    - Google Cloud → OAuth client → Authorized redirect URI: `https://hms.seoulbeauty.app/next/api/v1/auth/social/google/callback`
 3. `.env`: `SOCIAL_NEST_PROVIDERS=kakao,google` turns it on per provider (empty = everything stays on PHP, instant rollback).
    Optional: `SOCIAL_CALLBACK_BASE` (default `https://hms.seoulbeauty.app/next/api/v1/auth/social`), `SOCIAL_PHP_BASE` (default `https://hms.seoulbeauty.app`).
-4. `pm2 restart seoulbeauty-api`, rebuild web. `GET /next/api/v1/auth/login-options` then lists `nest: ["kakao","google"]`.
+4. `systemctl restart seoulbeauty-api` (the service is a systemd unit, which also sets `NODE_ENV=production`; do not start it with pm2 / bare `node`), rebuild web. `GET /next/api/v1/auth/login-options` then lists `nest: ["kakao","google"]`.
 
 ## D4b — Social sign-up (new member from a Kakao / Google profile) on Nest
 

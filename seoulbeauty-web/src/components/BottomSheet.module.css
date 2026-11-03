@@ -1,0 +1,12 @@
+.dim { position: fixed; inset: 0; z-index: 100; background: rgba(26,23,24,.45); display: flex; align-items: flex-end; justify-content: center; overscroll-behavior: contain; animation: dimIn .2s ease-out; }
+.sheet { position: relative; box-sizing: border-box; width: 100%; max-width: 520px; max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain; background: #fff; color: #1A1718; border-radius: 16px 16px 0 0; padding-bottom: calc(28px + env(safe-area-inset-bottom)); animation: sheetUp .28s cubic-bezier(.2,.8,.2,1); will-change: transform; word-break: keep-all; text-wrap: pretty; }
+/* tall touch target around the 40x4 grip */
+.gripZone { height: 36px; display: flex; justify-content: center; align-items: center; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.gripZone:active { cursor: grabbing; }
+.grip { width: 40px; height: 4px; border-radius: 2px; background: #1A1718; }
+/* decision sheet: same top spacing as the grip zone, nothing to drag */
+.noGrip { height: 24px; }
+@keyframes dimIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@media (min-width: 600px) { .dim { align-items: center; } .sheet { border-radius: 16px; padding-bottom: 28px; max-height: 80dvh; } .gripZone { display: none; } }
+@media (prefers-reduced-motion: reduce) { .dim, .sheet { animation: none; } }
