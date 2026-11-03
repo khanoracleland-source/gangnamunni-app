@@ -5,6 +5,7 @@ import '../../services/native_auth_service.dart';
 import '../../services/hospital_list_navigation.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:kivicare_patient/configs.dart';
 import 'package:kivicare_patient/services/webview_bridge.dart';
@@ -393,6 +394,19 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     super.dispose();
   }
 
+  Widget _buildWebView() {
+    final platform = _controller.platform;
+    if (platform is AndroidWebViewController) {
+      return WebViewWidget.fromPlatformCreationParams(
+        params: AndroidWebViewWidgetCreationParams(
+          controller: platform,
+          displayWithHybridComposition: true,
+        ),
+      );
+    }
+    return WebViewWidget(controller: _controller);
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -407,7 +421,10 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              WebViewWidget(controller: _controller),
+              // Android: hybrid composition. The default (texture) display mode
+              // can leave the WebView painted black on some Samsung devices
+              // (Galaxy Wide6, One UI 6) even though the page has loaded.
+              _buildWebView(),
               // 플로팅 새로고침 버튼 (상단 중앙) - 설정에 따라 표시
               if (!HIDE_WEBVIEW_REFRESH_BUTTON)
                 Positioned(
