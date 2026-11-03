@@ -58,12 +58,12 @@ function mapHref(php: string, href: string): { href: string; next: boolean } {
   return { href: phpUrl(php, href), next: false };
 }
 
-export default function SearchOverlay(props: { open: boolean; initial: string; regionLabel: string; popular: string[]; onClose: () => void; onSubmit: (q: string) => void; onRegion: (q: string) => void }) {
+export default function SearchOverlay(props: { open: boolean; initial: string; regionLabel: string; popular: string[]; onClose: () => void; onSubmit: (q: string) => void; onRegion: (q: string) => void; onHospital?: (q: string, id: number) => void }) {
   if (!props.open) return null;
   return <Body key={props.initial} {...props} />;
 }
 
-function Body({ initial, regionLabel, popular, onClose, onSubmit, onRegion }: { initial: string; regionLabel: string; popular: string[]; onClose: () => void; onSubmit: (q: string) => void; onRegion: (q: string) => void }) {
+function Body({ initial, regionLabel, popular, onClose, onSubmit, onRegion, onHospital }: { initial: string; regionLabel: string; popular: string[]; onClose: () => void; onSubmit: (q: string) => void; onRegion: (q: string) => void; onHospital?: (q: string, id: number) => void }) {
   const php = usePhpBase();
   const [q, setQ] = useState(initial);
   const [sugg, setSugg] = useState<{ q: string; data: SearchSuggest } | null>(null);
@@ -91,7 +91,30 @@ function Body({ initial, regionLabel, popular, onClose, onSubmit, onRegion }: { 
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [q]);
 
-  const submit = (w: string) => { w = w.trim(); if (!w) { onClose(); return; } addRecentSearch(w); onSubmit(w); };
+  // A search that is just one hospital's name opens that hospital's view (03-12: hospitals?q=이름&hid=ID) instead of the list.
+  // The autocomplete answer already on screen is reused (no second request); otherwise one request, dropped if the
+  // overlay was closed or another search started meanwhile.
+  const alive = useRef(true);
+  const seq = useRef(0);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const decide = (w: string, r: SearchSuggest) => {
+    const norm = (x: string) => x.replace(/\s+/g, "").toLowerCase();
+    const exact = r.hospitals.find((h) => norm(h.name) === norm(w));
+    const only = r.treatments.length === 0 && r.hospitals.length === 1 ? r.hospitals[0] : undefined;
+    const pick = exact ?? only;
+    if (pick && onHospital) onHospital(w, pick.id); else onSubmit(w);
+  };
+  const submit = (w: string) => {
+    w = w.trim();
+    if (!w) { onClose(); return; }
+    addRecentSearch(w);
+    if (!onHospital) { onSubmit(w); return; }
+    if (sugg && sugg.q === w) { decide(w, sugg.data); return; }
+    const id = ++seq.current;
+    api.suggest(w)
+      .then((r: SearchSuggest) => { if (alive.current && id === seq.current) decide(w, r); })
+      .catch(() => { if (alive.current && id === seq.current) onSubmit(w); });
+  };
   const today = new Date();
   const dateLabel = `${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")} 기준`;
   const d = sugg && sugg.q === q.trim() ? sugg.data : null;

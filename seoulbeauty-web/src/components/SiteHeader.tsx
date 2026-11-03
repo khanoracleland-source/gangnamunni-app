@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -66,7 +66,11 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
   const php = usePhpBase();
   const me = useMe();
   const loginUrl = useLoginUrl();
-  const [searchOpen, setSearchOpen] = useState(false);
+  // The overlay is open only while the URL is the one it was opened on, so it closes by itself once the next screen's URL is in.
+  const urlKey = `${pathname}?${sp.toString()}`;
+  const [openedAt, setOpenedAt] = useState<string | null>(null);
+  const searchOpen = openedAt === urlKey;
+  const setSearchOpen = (v: boolean) => setOpenedAt(v ? urlKey : null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [q, setQ] = useState(initialQ);
   const [toast, setToast] = useState("");
@@ -94,8 +98,21 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
     if (keyword !== oldKeyword) { u.delete("dosage"); u.delete("hid"); u.delete("tcat"); }
     u.delete("page");
     if (keyword) addRecentSearch(keyword);
-    router.push(`${listPath}${u.toString() ? `?${u}` : ""}`);
+    nav(`${listPath}${u.toString() ? `?${u}` : ""}`);
   };
+  // Same URL as now (e.g. the same word searched again): it won't change, so close the overlay here instead.
+  const nav = (href: string) => {
+    const i = href.indexOf("?");
+    const key = i < 0 ? `${href}?` : `${href.slice(0, i)}?${new URLSearchParams(href.slice(i + 1))}`;
+    if (key === urlKey) setSearchOpen(false);
+    router.push(href);
+  };
+  // Show the searched word in the field only where the list itself is the current page. From the home / other pages the
+  // header stays mounted in the history cache, so a word written here would still be there after going back.
+  const keepQ = (w: string) => { if (pathname === (target === "community" ? "/community" : "/hospitals")) setQ(w); };
+  // Closing it first would flash the page underneath (the home page when searching from there), so it stays open while the
+  // next screen loads. A header left behind in the history cache must not come back with the overlay open.
+  useEffect(() => () => setOpenedAt(null), []);
   const chooseRegions = (r: string[]) => {
     writeRegions(r, regionKey);
     setPickerOpen(false);
@@ -169,7 +186,8 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
             </div>
           )}
           <SearchOverlay open={searchOpen} initial={q} regionLabel={regionLabel} popular={popular} onClose={() => setSearchOpen(false)}
-            onSubmit={(w) => { setQ(w); setSearchOpen(false); apply(w, regions); }}
+            onSubmit={(w) => { keepQ(w); apply(w, regions); }}
+            onHospital={target === "hospitals" ? (w, id) => { keepQ(w); nav(`/hospitals?q=${encodeURIComponent(w)}&hid=${id}`); } : undefined}
             onRegion={(w) => { setQ(w); setSearchOpen(false); setPickerOpen(true); }} />
         </>
       )}

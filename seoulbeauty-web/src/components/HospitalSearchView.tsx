@@ -4,7 +4,19 @@ import { useQuery } from "@tanstack/react-query";
 import { api, assetUrl, PLACEHOLDER, qk, type SearchView } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import { addrDistrict } from "./HospitalCard";
+import starIcon from "@/assets/icons/star.png";
+import trophyIcon from "@/assets/icons/trophy.png";
+import priceOn from "@/assets/icons/sort-price.png";
+import priceOff from "@/assets/icons/sort-price-off.png";
+import ratingOn from "@/assets/icons/sort-rating.png";
+import ratingOff from "@/assets/icons/sort-rating-off.png";
+import popularOn from "@/assets/icons/sort-popular.png";
+import popularOff from "@/assets/icons/sort-popular-off.png";
+import reviewOn from "@/assets/icons/sort-review.png";
+import reviewOff from "@/assets/icons/sort-review-off.png";
 import styles from "./HospitalSearchView.module.css";
+
+const SORT_ICON = { price: [priceOn, priceOff], rating: [ratingOn, ratingOff], popular: [popularOn, popularOff], review: [reviewOn, reviewOff] } as const;
 
 /**
  * includes/hospital_search_view.php (03-12/03-13): hospitals.php?q=이름&hid=ID[&tcat=][&sort=]
@@ -29,7 +41,15 @@ export default function HospitalSearchView({ hid, q, tcat, sort, initial }: { hi
     u.set("sort", patch.sort ?? s);
     return `/hospitals?${u}`;
   };
-  const rows = tcat ? data.treatments.filter((t) => t.categoryId === tcat) : data.treatments;
+  // chips only change the query string: swap it in place (no route request / flash)
+  const swap = (patch: { tcat?: number; sort?: string }) => (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    window.history.replaceState(null, "", base(patch).replace("/hospitals", ""));
+  };
+  const filtered = tcat ? data.treatments.filter((t) => t.categoryId === tcat) : data.treatments;
+  // the whole treatment list of one hospital is here, so 낮은가격 sorts locally; the other sorts keep the API order
+  const rows = s === "price" ? [...filtered].sort((a, b) => (a.price > 0 ? a.price : Infinity) - (b.price > 0 ? b.price : Infinity)) : filtered;
   const img = assetUrl(h.thumbnailUrl) || PLACEHOLDER;
   const district = addrDistrict(h.address);
   const ret = encodeURIComponent(`/next/hospitals?q=${encodeURIComponent(q)}&hid=${hid}`);
@@ -37,23 +57,31 @@ export default function HospitalSearchView({ hid, q, tcat, sort, initial }: { hi
     <section>
       <Link href={`/hospitals/${hid}`} className={styles.card}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={img} alt="" onError={(e) => { if (e.currentTarget.src !== PLACEHOLDER) e.currentTarget.src = PLACEHOLDER; }} />
+        <img src={img} alt="" className={styles.thumb} onError={(e) => { if (e.currentTarget.src !== PLACEHOLDER) e.currentTarget.src = PLACEHOLDER; }} />
         <div className={styles.cardBody}>
           <div className={styles.nm}>{h.name}</div>
           <div className={styles.ad}>{district && <>{district}<i>|</i></>}{h.address}</div>
-          {h.showRating && h.rating != null && h.rating > 0 && <div className={styles.rt}><b>{h.rating.toFixed(1)}</b></div>}
+          <div className={styles.rt}>
+            {h.showRating && h.rating != null && h.rating > 0 && <span>{/* eslint-disable-line @next/next/no-img-element */}<img src={starIcon.src} alt="" width={13} height={13} /><b>{h.rating.toFixed(1)}</b></span>}
+            {h.badges.some((b) => b.includes("우수")) && <span className={styles.best}>{/* eslint-disable-line @next/next/no-img-element */}<img src={trophyIcon.src} alt="" width={13} height={13} />고객평가우수병원</span>}
+          </div>
         </div>
         <span className={styles.go}>병원 보기<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4A4446" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg></span>
       </Link>
       <div className={styles.t}>이 병원의 시술 <span>{data.total}</span></div>
       <div className={styles.cats}>
-        <Link href={base({ tcat: 0 })} replace className={`${styles.chip} ${!tcat ? styles.on : ""}`}>전체{!tcat ? ` ${data.total}` : ""}</Link>
+        <Link href={base({ tcat: 0 })} replace onClick={swap({ tcat: 0 })} className={`${styles.chip} ${!tcat ? styles.on : ""}`}>전체{!tcat ? ` ${data.total}` : ""}</Link>
         {data.categories.map((c) => (
-          <Link key={c.id} href={base({ tcat: c.id })} replace className={`${styles.chip} ${tcat === c.id ? styles.on : ""}`}>{c.name}{tcat === c.id ? ` ${c.count}` : ""}</Link>
+          <Link key={c.id} href={base({ tcat: c.id })} replace onClick={swap({ tcat: c.id })} className={`${styles.chip} ${tcat === c.id ? styles.on : ""}`}>{c.name}{tcat === c.id ? ` ${c.count}` : ""}</Link>
         ))}
       </div>
       <div className={styles.sorts}>
-        {SORTS.map(([k, v]) => <Link key={k} href={base({ sort: k })} replace className={`${styles.sort} ${s === k ? styles.sortOn : ""}`}>{v}</Link>)}
+        {SORTS.map(([k, v]) => (
+          <Link key={k} href={base({ sort: k })} replace onClick={swap({ sort: k })} className={`${styles.sort} ${s === k ? styles.sortOn : ""}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={SORT_ICON[k][s === k ? 0 : 1].src} alt="" width={16} height={16} />{v}
+          </Link>
+        ))}
       </div>
       {rows.length === 0 ? (
         <div className={styles.none}><div className={styles.noneT}>등록된 시술이 없어요</div></div>
@@ -65,7 +93,7 @@ export default function HospitalSearchView({ hid, q, tcat, sort, initial }: { hi
               <div className={styles.n}>{r.name}{label(r.dosageValue, r.dosageUnit)}</div>
               {r.price > 0 && <div className={styles.p}><b>{r.price.toLocaleString("ko-KR")}<small>원</small></b>{per && <em>{per}</em>}</div>}
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A9395" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 16px" }}><path d="M9 5l7 7-7 7" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1718" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 16px" }}><path d="M9 5l7 7-7 7" /></svg>
           </a>
         );
       })}
