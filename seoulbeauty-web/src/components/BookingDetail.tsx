@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
@@ -30,7 +31,7 @@ export default function BookingDetail({ id, initial, anon }: { id: number; initi
       {loggedOut ? <LoginPrompt text="로그인 후 예약 상세를 확인하실 수 있습니다." /> : missing ? (
         <div className={support.empty}>예약을 찾을 수 없어요</div>
       ) : !data ? (
-        <div className={support.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={support.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={support.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={support.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : data.kind === "cancelled" ? <Cancelled d={data} /> : <Request d={data} />}
       {changed && data && data.kind === "request" && data.isActive && (
         <div className={styles.bkDim} role="dialog" aria-modal="true" aria-labelledby="bdChgTitle" onClick={() => setChanged(false)}>

@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,7 +52,7 @@ export default function ProgressList({ initial, anon }: { initial?: Data; anon?:
     <div className={styles.wrap}>
       <MyHeader title="경과 후기" />
       {loggedOut ? <LoginPrompt /> : !data ? (
-        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={my.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={my.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : !data.enabled ? (
         <div className={styles.empty}><p>경과 후기는 준비 중입니다.</p></div>
       ) : (

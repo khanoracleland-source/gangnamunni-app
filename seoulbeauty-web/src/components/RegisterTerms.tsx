@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, type RegisterTermsData } from "@/lib/api";
 import SupportHeader from "./SupportHeader";
@@ -11,7 +12,7 @@ export default function RegisterTerms({ initial }: { initial?: RegisterTermsData
     <div className={styles.wrap}>
       <SupportHeader title="회원가입 약관 및 개인정보 정책" fallback="/mypage/settings" />
       {!data ? (
-        <div className={styles.state}>{isError ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={styles.state}>{isError ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : (
         <>
           <h2 className={styles.h2}>회원가입약관</h2>

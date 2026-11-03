@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -56,7 +57,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
             <Link className={`${styles.stItem} ${styles.stLink}`} href="/register-terms"><span>이용약관 및 개인정보처리 방침</span></Link>
           </section>
           {!data ? (
-            <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+            <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
           ) : (
             <>
               {group("알림 설정", NOTI)}

@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, qk } from "@/lib/api";
@@ -15,7 +16,7 @@ export default function BookingPaymentSuccess({ id }: { id: number }) {
       <header className={styles.header}><Link className={styles.back} href="/mypage/bookings" aria-label="뒤로" /><h1 className={styles.title}>예약 확정</h1></header>
       <main className={styles.content}>
         {loggedOut ? <LoginPrompt text="로그인하면 결제 결과를 확인할 수 있습니다." /> : missing ? <div className={`${styles.alert} ${styles.alertErr}`}>예약을 찾을 수 없거나 접근 권한이 없습니다.</div>
-          : !data ? <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div> : (
+          : !data ? <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div> : (
           <>
             <section className={styles.doneHero}>
               <span className={`${styles.doneIcon} ${data.paidFinal ? styles.doneIconOk : ""}`} aria-hidden="true">{data.paidFinal ? "✓" : "!"}</span>

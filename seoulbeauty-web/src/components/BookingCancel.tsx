@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -47,7 +48,7 @@ export default function BookingCancel({ id, reason }: { id: number; reason: stri
   return (
     <div className={styles.wrap}>
       {loggedOut ? <LoginPrompt text="로그인하면 예약을 취소할 수 있습니다." /> : gone ? <div className={styles.empty}>이미 처리된 예약입니다.</div>
-        : !data ? <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div> : (
+        : !data ? <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div> : (
         <>
           <section className={styles.cxSheet}>
             <div className={styles.handle} />

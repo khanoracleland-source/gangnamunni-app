@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -35,7 +36,7 @@ export default function Booking(p: BookingParams) {
       {loggedOut ? <LoginPrompt text="로그인하면 예약할 수 있습니다." />
         : info.error instanceof ApiError && (info.error.status === 404 || info.error.status === 409) ? <div className={styles.empty}>변경할 수 없는 예약입니다. <Link className={styles.retry} href="/mypage/bookings">내 예약으로</Link></div>
         : error instanceof ApiError && error.status === 404 ? <div className={styles.empty}>병원 정보를 찾을 수 없습니다.</div>
-        : !data || (changeId > 0 && !info.data) ? <div className={styles.empty}>{err ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => { void info.refetch(); void refetch(); }}>다시 시도</button></> : "불러오는 중…"}</div>
+        : !data || (changeId > 0 && !info.data) ? <div className={styles.empty}>{err ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => { void info.refetch(); void refetch(); }}>다시 시도</button></> : <Loading />}</div>
         : <BookingForm ctx={data} p={params} back={back} change={changeId ? info.data : undefined} />}
     </div>
   );

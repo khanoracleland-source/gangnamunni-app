@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, qk, type MyProfile } from "@/lib/api";
 import LoginPrompt from "./LoginPrompt";
@@ -15,7 +16,7 @@ export default function AccountGate({ title, initial, anon, children }: {
     <div className={styles.wrap}>
       <SupportHeader title={title} fallback="/mypage/profile" />
       {loggedOut ? <LoginPrompt text="로그인하면 이용할 수 있습니다." /> : !data ? (
-        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : children(data)}
     </div>
   );

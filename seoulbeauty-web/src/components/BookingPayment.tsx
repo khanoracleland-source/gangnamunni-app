@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -71,7 +72,7 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
       </header>
       <main className={styles.content}>
         {loggedOut ? <LoginPrompt text="로그인하면 결제를 진행할 수 있습니다." /> : missing ? <><div className={`${styles.alert} ${styles.alertErr}`}>예약을 찾을 수 없거나 접근 권한이 없습니다.</div>{toMy}</>
-          : !data ? <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div> : (
+          : !data ? <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div> : (
           <>
             <section className={styles.section}>
               <h2 className={styles.sectionTitle}>예약 정보를 확인해보세요</h2>

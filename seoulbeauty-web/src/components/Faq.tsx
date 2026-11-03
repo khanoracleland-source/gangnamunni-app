@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, type FaqData } from "@/lib/api";
@@ -17,7 +18,7 @@ export default function Faq({ initial, cat }: { initial?: FaqData; cat: string }
     <div className={styles.wrap}>
       <SupportHeader title="자주 묻는 질문" />
       {!data ? (
-        <div className={styles.empty}>{isError ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={styles.empty}>{isError ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : (
         <>
           <div className={styles.tabs} role="tablist">

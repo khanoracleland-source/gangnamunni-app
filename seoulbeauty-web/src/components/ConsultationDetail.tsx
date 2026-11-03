@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -21,7 +22,7 @@ export default function ConsultationDetail({ id, initial, anon }: { id: number; 
       {loggedOut ? <LoginPrompt text="로그인 후 상담 내역을 확인하실 수 있습니다." /> : missing ? (
         <div className={styles.empty}>상담 내역을 찾을 수 없어요</div>
       ) : !data ? (
-        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : <Body d={data} />}
     </div>
   );

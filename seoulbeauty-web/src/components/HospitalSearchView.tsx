@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, assetUrl, PLACEHOLDER, qk, type SearchView } from "@/lib/api";
@@ -30,7 +31,7 @@ export default function HospitalSearchView({ hid, q, tcat, sort, initial }: { hi
   const php = usePhpBase();
   const { data, isError, refetch } = useQuery({ queryKey: qk.searchView(hid), queryFn: () => api.searchView(hid), initialData: initial });
   if (!data) {
-    return <div className={styles.empty}>{isError ? <>불러오지 못했습니다. <button className={styles.link} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>;
+    return <div className={styles.empty}>{isError ? <>불러오지 못했습니다. <button className={styles.link} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>;
   }
   const h = data.hospital;
   const s = (["price", "rating", "popular", "review"] as const).includes(sort as "price") ? sort : "price";

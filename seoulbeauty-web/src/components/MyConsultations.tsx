@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, qk, type MyConsultation } from "@/lib/api";
@@ -16,7 +17,7 @@ export default function MyConsultations({ initial, anon }: { initial?: { items: 
     <div className={styles.wrap}>
       <MyHeader title="상담 내역" />
       {loggedOut ? <LoginPrompt /> : !data ? (
-        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : (
         <div className={styles.cwrap}>
           {data.items.length === 0 ? (

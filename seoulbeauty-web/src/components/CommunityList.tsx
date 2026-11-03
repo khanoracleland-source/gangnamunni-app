@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -92,7 +93,7 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
 
       {!data ? (
         <div className={styles.empty}>
-          {isError ? <>불러오지 못했습니다. <button className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}
+          {isError ? <>불러오지 못했습니다. <button className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}
         </div>
       ) : data.items.length === 0 ? (
         <div className={styles.empty}>

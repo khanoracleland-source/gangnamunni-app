@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -130,7 +131,7 @@ export default function ProfileEdit({ initial, anon }: { initial?: MyProfile; an
   const { data, error, refetch } = useQuery({ queryKey: qk.myProfile, queryFn: () => api.myProfile(), initialData: initial, staleTime: 0, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   if (loggedOut) return <div className={styles.wrap}><LoginPrompt text="로그인하면 내 정보를 수정할 수 있습니다." /></div>;
-  if (!data) return <div className={styles.wrap}><div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div></div>;
+  if (!data) return <div className={styles.wrap}><div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div></div>;
   // The form keeps its own state from the first load; a refetch (e.g. after saving) does not overwrite what is being typed.
   return <Form data={data} />;
 }

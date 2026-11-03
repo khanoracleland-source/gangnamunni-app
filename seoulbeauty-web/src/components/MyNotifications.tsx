@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -83,7 +84,7 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
             <button type="button" className={styles.ntReadAll} onClick={readAll} disabled={busy || unread === 0}>모두 읽음{unread > 0 && <span className={styles.bkCount} style={{ marginLeft: 4 }}>{unread > 99 ? "99+" : unread}</span>}</button>
           </div>
           {!q.data ? (
-            <div className={styles.empty}>{q.error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => q.refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+            <div className={styles.empty}>{q.error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => q.refetch()}>다시 시도</button></> : <Loading />}</div>
           ) : items.length === 0 ? (
             <div className={styles.bkEmpty}>새로운 알림이 없어요<br />예약 · 결제 진행 상황을<br />이곳에서 알려드릴게요</div>
           ) : (

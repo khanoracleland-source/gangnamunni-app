@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,7 +27,7 @@ export default function MyPoints({ initial, anon }: { initial?: MyPointsData; an
     <div className={styles.wrap}>
       <SupportHeader title="포인트" fallback="/mypage" />
       {loggedOut ? <LoginPrompt text="로그인하면 포인트를 확인할 수 있습니다." /> : !d || !d.visible ? (
-        <div className={styles.state}>{q.error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => q.refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={styles.state}>{q.error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => q.refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : (() => {
         const items = d.logs.filter((l) => filter === "all" || l.kind === filter);
         return (

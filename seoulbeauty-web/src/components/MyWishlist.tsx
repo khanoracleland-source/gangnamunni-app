@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, PLACEHOLDER, qk, type MyWishlistItem } from "@/lib/api";
@@ -24,7 +25,7 @@ export default function MyWishlist({ initial, anon }: { initial?: { items: MyWis
     <div className={styles.wrap}>
       <MyHeader title="찜한 병원을 확인해보세요" />
       {loggedOut ? <LoginPrompt /> : !data ? (
-        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : data.items.length === 0 ? (
         <div className={styles.empty}>찜한 병원이 없습니다<br />관심있는 병원을 찜해보세요<br /><Link href="/hospitals" className={styles.retry}>병원 둘러보기</Link></div>
       ) : (

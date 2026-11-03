@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,7 +36,7 @@ export default function ReviewDetail({ id, initial }: { id: number; initial?: De
       {missing ? (
         <div className={styles.empty}>후기를 찾을 수 없습니다.</div>
       ) : !data ? (
-        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+        <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : (
         <>
           <div className={styles.rcard}>

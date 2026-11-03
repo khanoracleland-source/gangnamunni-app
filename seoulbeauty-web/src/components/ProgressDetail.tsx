@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,7 +36,7 @@ export default function ProgressDetail({ id, initial, anon }: { id: number; init
     return (
       <div className={styles.wrap}><Head title="경과 후기" />
         <div className={styles.empty}>{error instanceof ApiError && error.status === 404 ? <>경과 후기를 찾을 수 없습니다. <button type="button" className={my.retry} onClick={() => router.replace("/mypage/progress")}>목록으로</button></>
-          : error ? <>불러오지 못했습니다. <button type="button" className={my.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+          : error ? <>불러오지 못했습니다. <button type="button" className={my.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       </div>
     );
   }

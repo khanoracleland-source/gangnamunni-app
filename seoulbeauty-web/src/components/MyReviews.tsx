@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -57,7 +58,7 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
             {data?.progressEnabled && <Link href="/mypage/progress" className={styles.tab}>경과 후기</Link>}
           </div>
           {!data ? (
-            <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : "불러오는 중…"}</div>
+            <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
           ) : tab === "writable" ? (
             data.writable.length === 0 ? <div className={styles.empty}>작성 가능한 후기가 없습니다<br />시술 완료 후 후기를 작성할 수 있어요</div> : (
               <div className={styles.rlist}>

@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,7 +34,7 @@ export default function ReviewWrite({ bookingId, hospitalId, editId }: { booking
       </div>
     );
   }
-  if (!form.data) return <div className={styles.empty}>불러오는 중…</div>;
+  if (!form.data) return <Loading />;
   return <Editor data={form.data} />;
 }
 

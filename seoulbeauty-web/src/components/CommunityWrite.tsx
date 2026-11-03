@@ -1,4 +1,5 @@
 "use client";
+import Loading from "./Loading";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,7 +22,7 @@ export default function CommunityWrite({ id }: { id: number | null }) {
     const e = form.error;
     return <div className={styles.empty}>{e instanceof ApiError && (e.status === 403 || e.status === 404) ? e.message : "불러오지 못했습니다."} <button type="button" onClick={() => router.push("/community")}>목록으로</button></div>;
   }
-  if (!form.data) return <div className={styles.empty}>불러오는 중…</div>;
+  if (!form.data) return <Loading />;
   return <Editor id={id} data={form.data} />;
 }
 
