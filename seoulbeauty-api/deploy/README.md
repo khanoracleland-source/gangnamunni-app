@@ -170,6 +170,8 @@ FLUSH PRIVILEGES;
 
 **Test bayrog'i `PASSWORD_LOST_RATE_LIMIT=off` (XAVFLI, faqat sinov):** 비밀번호 찾기 xat limitlari va vaqtinchalik parol tekshiruvi (`verify`) limitlarini o'chiradi. Bayroq faqat `NODE_ENV=development` yoki `test` bo'lgandagina ishlaydi; `production`, boshqa qiymat yoki `NODE_ENV` umuman yo'q bo'lsa (pm2, qo'lda `node dist/main.js`) **e'tiborsiz qoldiriladi**. Ishga tushishda log'da bir marta `ACTIVE` yoki `IGNORED` yoziladi. Sababi: bayroqsiz bu endpoint istalgan emailga cheksiz xat yuborib parolini almashtira oladi. Sinovdan keyin `.env` dan olib tashlang.
 
+**Jonli serverda sinash: `PASSWORD_LOST_TEST_EMAILS` + `PASSWORD_LOST_TEST_IPS` + `PASSWORD_LOST_TEST_UNTIL`:** 비밀번호 찾기 va `verify` limitlari faqat uchala shart birga bajarilsa o'tkazib yuboriladi: so'rov ro'yxatdagi IP'dan (sizning ochiq IP'ingiz), ro'yxatdagi email bilan (ko'pi bilan 3 tadan) va `PASSWORD_LOST_TEST_UNTIL` (ISO vaqt, hozirdan ko'pi bilan 24 soat keyin; undan uzoq yoki bo'sh bo'lsa qoida ishlamaydi) muddati tugamagan bo'lsa. Emailni bilgan begona odam, boshqa IP'dan, limitni aylana olmaydi. Har bir o'tkazib yuborish audit log'ga `reset_limits_skipped` bo'lib yoziladi, ishga tushishda ogohlantirish chiqadi. Sinovdan keyin uchala qatorni olib tashlang.
+
 ### D2 회원가입 (register → Nest, 2026-10-30)
 Nest endi a'zoni o'zi yaratadi (`POST /v1/auth/register/code`, `POST /v1/auth/register`); Gnuboard sessiyasini PHP ko'prigi `gangnamunni/api/session_login.php` yaratadi (faqat loopback + HMAC).
 

@@ -4,7 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { DB, DbConn, DbPool } from '../db/db.module';
 import { MailService } from '../mail/mail.service';
 import { isEmail } from '../account/account-security.logic';
-import { createHash, hashFingerprint, resetLimitsOff, RateWindow, readResetTicket, resetMail, resetMarker, resetMarkerValid, signResetTicket, temporaryPassword } from './password-lost.logic';
+import { createHash, hashFingerprint, resetLimitsSkipped, RateWindow, readResetTicket, resetMail, resetMarker, resetMarkerValid, signResetTicket, temporaryPassword } from './password-lost.logic';
 import { kstYmd, passwordMatches } from '../login/login.logic';
 import { PASSWORD_RE } from '../register/register.logic';
 
@@ -37,7 +37,9 @@ export class PasswordLostService {
   async request(emailRaw: unknown, ip: string): Promise<{ success: true; requestId: string }> {
     const email = s(emailRaw).trim().toLowerCase();
     if (!isEmail(email)) throw new HttpException({ success: false, message: '올바른 이메일 주소를 입력해주세요.' }, 400);
-    if (!resetLimitsOff()) {
+    const skip = resetLimitsSkipped(email, ip);
+    if (skip) this.audit('reset_limits_skipped', email, ip, `request; ${skip}`);
+    else {
       if (!this.cooldown.hit(`${email}|${ip}`).allowed) this.tooMany();
       if (!this.byIp.hit(ip).allowed || !this.byEmailIp.hit(`${email}|${ip}`).allowed) this.tooMany();
     }
@@ -131,7 +133,9 @@ export class PasswordLostService {
     const wrong = (why: string) => { this.audit('reset_verify_failed', email, ip, why); return new HttpException({ success: false, message: '이메일 또는 임시 비밀번호가 맞지 않아요. 다시 확인해주세요' }, 401); };
     if (!isEmail(email) || !temp || temp.length > 128) throw wrong('input');
     const secret = this.secret();
-    if (!resetLimitsOff() && (!this.verifyByIp.hit(ip).allowed || !this.verifyByEmailIp.hit(`${email}|${ip}`).allowed || !this.verifyByEmail.hit(email).allowed)) { this.audit('reset_verify_rate_limited', email, ip); this.tooMany(); }
+    const skipV = resetLimitsSkipped(email, ip);
+    if (skipV) this.audit('reset_limits_skipped', email, ip, `verify; ${skipV}`);
+    if (!skipV && (!this.verifyByIp.hit(ip).allowed || !this.verifyByEmailIp.hit(`${email}|${ip}`).allowed || !this.verifyByEmail.hit(email).allowed)) { this.audit('reset_verify_rate_limited', email, ip); this.tooMany(); }
     const [rows] = (await this.db.query('SELECT mb_id, mb_password, mb_leave_date, mb_intercept_date, mb_email_certify, mb_lost_certify FROM g5_member WHERE LOWER(mb_email) = ?', [email])) as any;
     const list = rows as any[];
     const [cfg] = (await this.db.query('SELECT cf_admin, cf_use_email_certify FROM g5_config LIMIT 1')) as any;

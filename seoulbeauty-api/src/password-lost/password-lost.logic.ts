@@ -113,3 +113,28 @@ export function readResetTicket(secret: string, ticket: string, now = Date.now()
 export const resetLimitsFlagSet = (env: NodeJS.ProcessEnv = process.env): boolean => env.PASSWORD_LOST_RATE_LIMIT === 'off';
 export const resetLimitsOff = (env: NodeJS.ProcessEnv = process.env): boolean =>
   resetLimitsFlagSet(env) && (env.NODE_ENV === 'development' || env.NODE_ENV === 'test');
+
+/**
+ * TESTING on the live server. The reset-mail and verify limits are skipped only when ALL of these hold:
+ *   PASSWORD_LOST_TEST_EMAILS = your test address(es) (max 3)  AND  PASSWORD_LOST_TEST_IPS = your own public IP(s) (max 3)
+ *   AND PASSWORD_LOST_TEST_UNTIL = an ISO time / epoch ms that is in the future but at most 24 h away (a forgotten rule expires by itself,
+ *   and a far-future date is simply ignored). Knowing the address is not enough: the request must also come from the listed IP.
+ */
+export const TEST_RULE_MAX_MS = 24 * 3600_000;
+const list = (v: unknown): string[] => String(v || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean).slice(0, 3);
+const normIp = (ip: string): string => String(ip).trim().toLowerCase().replace(/^::ffff:/, '');
+export const testEmails = (env: NodeJS.ProcessEnv = process.env): string[] => list(env.PASSWORD_LOST_TEST_EMAILS);
+export function testRuleUntil(env: NodeJS.ProcessEnv = process.env, now = Date.now()): number | null {
+  const raw = String(env.PASSWORD_LOST_TEST_UNTIL || '').trim();
+  const t = /^\d{10,}$/.test(raw) ? Number(raw) : Date.parse(raw);
+  return Number.isFinite(t) && t > now && t <= now + TEST_RULE_MAX_MS ? t : null;
+}
+export function testRuleActive(env: NodeJS.ProcessEnv = process.env, now = Date.now()): boolean {
+  return testRuleUntil(env, now) !== null && testEmails(env).length > 0 && list(env.PASSWORD_LOST_TEST_IPS).length > 0;
+}
+export function resetLimitsSkipped(email: string, ip: string, env: NodeJS.ProcessEnv = process.env, now = Date.now()): 'flag' | 'test-rule' | null {
+  if (resetLimitsOff(env)) return 'flag';
+  if (!testRuleActive(env, now)) return null;
+  const ips = list(env.PASSWORD_LOST_TEST_IPS).map(normIp);
+  return testEmails(env).includes(String(email).trim().toLowerCase()) && ips.includes(normIp(ip)) ? 'test-rule' : null;
+}

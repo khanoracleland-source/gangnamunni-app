@@ -23,7 +23,7 @@ export default function PasswordLost() {
   useEffect(() => { if (me.data?.loggedIn) router.replace("/"); }, [me.data, router]);
 
   const valid = EMAIL_RE.test(email.trim());
-  const ready = valid && !busy;
+  const ready = valid && !busy && !error; // after an error the button waits until the e-mail is edited (no tap-tap-tap on a rate limit)
   const goBack = () => { if (window.history.length > 1) router.back(); else router.push("/login/email"); };
 
   const submit = async (e: React.FormEvent) => {

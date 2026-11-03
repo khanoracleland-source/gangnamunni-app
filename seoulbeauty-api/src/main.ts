@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { resetLimitsFlagSet, resetLimitsOff } from './password-lost/password-lost.logic';
+import { resetLimitsFlagSet, resetLimitsOff, testEmails, testRuleActive, testRuleUntil } from './password-lost/password-lost.logic';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,6 +18,12 @@ async function bootstrap() {
     new Logger('Bootstrap').warn(resetLimitsOff()
       ? 'PASSWORD_LOST_RATE_LIMIT=off is ACTIVE: password-reset limits are disabled (testing only, remove it from .env)'
       : `PASSWORD_LOST_RATE_LIMIT=off is set but IGNORED (works only with NODE_ENV=development|test, now ${process.env.NODE_ENV || 'unset'})`);
+  }
+  if (testEmails().length) {
+    const until = testRuleUntil();
+    new Logger('Bootstrap').warn(testRuleActive()
+      ? `PASSWORD_LOST_TEST_*: reset limits skipped for ${testEmails().length} test address(es) from the listed IP(s) until ${new Date(until as number).toISOString()} (testing only)`
+      : 'PASSWORD_LOST_TEST_* is set but INACTIVE (needs PASSWORD_LOST_TEST_IPS and a PASSWORD_LOST_TEST_UNTIL within the next 24 h)');
   }
   await app.listen(Number(process.env.PORT || 3100), process.env.HOST || '127.0.0.1');
 }

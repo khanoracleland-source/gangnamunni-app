@@ -5,7 +5,7 @@ import * as bcrypt from 'bcryptjs';
 import { DB } from '../src/db/db.module';
 import { MailService, reservedMailDomain } from '../src/mail/mail.service';
 import { PasswordLostModule } from '../src/password-lost/password-lost.module';
-import { createHash, RateWindow, resetMail, resetMarker, resetLimitsOff, resetMarkerValid, temporaryPassword, validateHash } from '../src/password-lost/password-lost.logic';
+import { createHash, RateWindow, resetMail, resetMarker, resetLimitsOff, resetLimitsSkipped, resetMarkerValid, temporaryPassword, validateHash } from '../src/password-lost/password-lost.logic';
 
 describe('password-lost logic', () => {
   it('matches Gnuboard create_hash (vector computed independently with python hashlib.pbkdf2_hmac)', () => {
@@ -232,5 +232,23 @@ describe('PASSWORD_LOST_RATE_LIMIT flag', () => {
     expect(f({})).toBe(false);                                   // NODE_ENV not set (pm2, hand-started node)
     expect(resetLimitsOff({ NODE_ENV: 'development' } as any)).toBe(false);
     expect(resetLimitsOff({ PASSWORD_LOST_RATE_LIMIT: 'on', NODE_ENV: 'development' } as any)).toBe(false);
+  });
+});
+
+describe('PASSWORD_LOST_TEST_* rule', () => {
+  const now = Date.parse('2026-11-03T06:00:00Z');
+  const base = { PASSWORD_LOST_TEST_EMAILS: ' Me@Gmail.com ', PASSWORD_LOST_TEST_IPS: '1.2.3.4', PASSWORD_LOST_TEST_UNTIL: '2026-11-03T12:00:00Z', NODE_ENV: 'production' } as any;
+  it('needs the listed email AND the listed ip, before the expiry', () => {
+    expect(resetLimitsSkipped('me@gmail.com', '1.2.3.4', base, now)).toBe('test-rule');
+    expect(resetLimitsSkipped('ME@gmail.com', '::ffff:1.2.3.4', base, now)).toBe('test-rule');
+    expect(resetLimitsSkipped('me@gmail.com', '9.9.9.9', base, now)).toBeNull();     // knows the address, wrong ip
+    expect(resetLimitsSkipped('victim@naver.com', '1.2.3.4', base, now)).toBeNull();  // right ip, other address
+  });
+  it('expires, and a missing/far-future end date or missing ip makes it inert', () => {
+    expect(resetLimitsSkipped('me@gmail.com', '1.2.3.4', base, Date.parse('2026-11-03T12:00:01Z'))).toBeNull();
+    expect(resetLimitsSkipped('me@gmail.com', '1.2.3.4', { ...base, PASSWORD_LOST_TEST_UNTIL: '2030-01-01T00:00:00Z' }, now)).toBeNull(); // > 24 h ahead
+    expect(resetLimitsSkipped('me@gmail.com', '1.2.3.4', { ...base, PASSWORD_LOST_TEST_UNTIL: '' }, now)).toBeNull();
+    expect(resetLimitsSkipped('me@gmail.com', '1.2.3.4', { ...base, PASSWORD_LOST_TEST_IPS: '' }, now)).toBeNull();
+    expect(resetLimitsSkipped('me@gmail.com', '1.2.3.4', { PASSWORD_LOST_TEST_EMAILS: 'me@gmail.com' } as any, now)).toBeNull();
   });
 });
