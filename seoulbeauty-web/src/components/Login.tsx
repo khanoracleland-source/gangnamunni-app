@@ -5,7 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiError, api, assetUrl } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { phpUrl, usePhpBase } from "@/lib/php";
-import styles from "./AuthPages.module.css";
+import styles from "./Login.module.css";
+import kakaoIcon from "@/assets/icons/login-kakao.png";
+import googleIcon from "@/assets/icons/login-google.png";
+import appleIcon from "@/assets/icons/login-apple.png";
+import mailIcon from "@/assets/icons/login-mail.png";
 
 const subscribeNoop = () => () => {};
 
@@ -63,32 +67,42 @@ export default function Login() {
     sending.current = false; setBusy(false);
   };
 
+  const ico = (src: string, size = 20) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" className={styles.ico} style={{ width: size, height: size }} />
+  );
+
   return (
     <div className={styles.wrap}>
-      <div className={styles.head}><button type="button" className={styles.back} onClick={goBack} aria-label="뒤로 가기" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>←</button></div>
+      <button type="button" className={styles.back} onClick={goBack} aria-label="뒤로 가기">←</button>
       <div className={styles.hero}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={assetUrl("data/logos/pc") ?? ""} alt="서울미녀" />
+        <div className={styles.brand}>SEOUL BEAUTY</div>
       </div>
       <div className={styles.actions}>
         {socialError && <div className={styles.err} role="alert">{socialError}</div>}
         {notice && <div className={styles.ok} role="status">{notice}</div>}
-        {opts.data?.kakao && <a href={social("kakao")} className={`${styles.btn} ${styles.kakao}`}>카카오톡으로 시작하기</a>}
-        {opts.data?.google && <a href={social("google")} className={`${styles.btn} ${styles.google}`}>Google로 시작하기</a>}
-        {showApple && opts.data?.apple && <a href={social("apple")} className={`${styles.btn} ${styles.apple}`}>Apple로 시작하기</a>}
-        <button type="button" className={`${styles.btn} ${styles.emailBtn}`} aria-expanded={open} onClick={() => setOpen((v) => !v)}>이메일로 시작하기</button>
+        {opts.data?.kakao && <a href={social("kakao")} className={`${styles.btn} ${styles.kakao}`}>{ico(kakaoIcon.src, 22)}<span>카카오톡으로 시작하기</span></a>}
+        {opts.data?.google && <a href={social("google")} className={`${styles.btn} ${styles.google}`}>{ico(googleIcon.src)}<span>구글로 시작하기</span></a>}
+        {showApple && opts.data?.apple && <a href={social("apple")} className={`${styles.btn} ${styles.apple}`}>{ico(appleIcon.src)}<span>Apple로 시작하기</span></a>}
+        <button type="button" className={`${styles.btn} ${styles.email}`} aria-expanded={open} onClick={() => setOpen((v) => !v)}>{ico(mailIcon.src)}<span>이메일로 시작하기</span></button>
         {open && (
           <form onSubmit={submit} style={{ display: "contents" }}>
             {error && <div className={styles.err} role="alert">{error}</div>}
             <div className={styles.field}><input type="email" placeholder="이메일" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
             <div className={styles.field}><input type="password" placeholder="비밀번호" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
             <label className={styles.check}><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> <span>자동 로그인</span></label>
-            <button type="submit" className={styles.btn} disabled={busy || !email || !password}>{busy ? "로그인 중…" : "로그인"}</button>
+            <button type="submit" className={`${styles.btn} ${styles.submit}`} disabled={busy || !email || !password}>{busy ? "로그인 중…" : "로그인"}</button>
           </form>
         )}
-        <div className={styles.foot}>
-          <a href="/next/password-lost">비밀번호 찾기</a><span>|</span><a href="/next/register">회원가입</a><span>|</span><a href="/next/qna">문의하기</a>
-        </div>
+      </div>
+      <div className={styles.links}>
+        <a href="/next/password-lost">계정 찾기</a><i /><a href="/next/qna">문의하기</a><i /><a href="/next/register">회원가입</a>
+      </div>
+      <div className={styles.notice}>
+        이 페이지는 Google reCAPTCHA의 보호를 받아 사용자가 로봇이 아님을 확인합니다.<br />
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">자세히 보기</a>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "@fontsource-variable/noto-sans-kr"; // design font: Noto Sans KR (self-hosted, korean + latin slices load on demand)
+import "@fontsource/marcellus"; // Latin display font for the "SEOUL BEAUTY" wordmark (login)
 import "./globals.css";
 import Providers from "./providers";
 import BottomNav from "@/components/BottomNav";
