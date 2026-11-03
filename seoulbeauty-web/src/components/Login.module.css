@@ -11,11 +11,6 @@
 .google { background: #fff; border-color: #CFC8CB; color: #1A1718; }
 .apple { background: #000; border-color: #000; color: #fff; }
 .email { background: #230306; border-color: #230306; color: #fff; }
-.field input { box-sizing: border-box; width: 100%; height: 52px; padding: 0 14px; border: 1px solid #CFC8CB; font-size: 16px; font-family: inherit; border-radius: 12px; }
-.field input:focus { outline: none; border-color: #AC1830; }
-.submit { background: #AC1830; border-color: #AC1830; color: #fff; }
-.check { display: flex; gap: 8px; align-items: center; font-size: calc(14px * var(--fs-scale, 1)); color: #4A4446; }
-.check input { width: 18px; height: 18px; accent-color: #AC1830; }
 .err { padding: 12px 14px; background: #FDECEE; color: #AC1830; font-size: calc(14px * var(--fs-scale, 1)); }
 .ok { padding: 14px; background: #EAF6EE; color: #16603A; font-size: calc(14px * var(--fs-scale, 1)); line-height: 1.7; }
 .links { padding-top: 40px; display: flex; justify-content: center; align-items: center; gap: 16px; font-size: calc(15px * var(--fs-scale, 1)); }

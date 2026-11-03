@@ -7,6 +7,7 @@ import { cookieValue, kstYmd, passwordMatches, safeAfterUrl } from './login.logi
 
 const s = (v: unknown) => (v == null ? '' : String(v));
 const fail = (message: string, status: number, extra: Record<string, unknown> = {}): never => { throw new HttpException({ success: false, message, ...extra }, status); };
+const LIMIT_IP_EMAIL = 5;
 const WRONG = '이메일 또는 비밀번호가 올바르지 않습니다.';
 
 /**
@@ -18,7 +19,7 @@ const WRONG = '이메일 또는 비밀번호가 올바르지 않습니다.';
 export class LoginService {
   private readonly log = new Logger(LoginService.name);
   private readonly byIp = new RateWindow(10, 900_000);
-  private readonly byIpEmail = new RateWindow(5, 900_000);
+  private readonly byIpEmail = new RateWindow(LIMIT_IP_EMAIL, 900_000);
   private readonly byEmail = new RateWindow(20, 3_600_000);
   constructor(@Inject(DB) private readonly db: DbPool, private readonly bridge: SessionBridgeService) {}
 
@@ -40,6 +41,10 @@ export class LoginService {
 
   private audit(event: string, email: string, ip: string, details = ''): void {
     this.log.log(`[auth][${event}] account=${email ? sha('sha256').update(email).digest('hex').slice(0, 16) : '-'}; ip=${ip}${details ? `; ${details}` : ''}`);
+  }
+  /** design 02-04 "(n/5)": failures for this ip + e-mail inside the window (it locks at the limit). Same body for every refusal. */
+  private refuse(email: string, ip: string): never {
+    return fail(WRONG, 401, { attempts: this.byIpEmail.size(`${ip}|${email}`), limit: LIMIT_IP_EMAIL });
   }
   private count(email: string, ip: string): void { this.byIp.add(ip); this.byIpEmail.add(`${ip}|${email}`); this.byEmail.add(email); }
 
@@ -63,7 +68,7 @@ export class LoginService {
     if (!mb || !passwordMatches(password, hash)) {
       this.count(email, ip);
       this.audit('password_failed', email, ip);
-      fail(WRONG, 401);
+      this.refuse(email, ip);
     }
     const today = kstYmd();
     const [cfgRows] = (await this.db.query('SELECT cf_use_email_certify FROM g5_config LIMIT 1')) as any;
@@ -72,9 +77,9 @@ export class LoginService {
     const left = s(mb.mb_leave_date) !== '' && s(mb.mb_leave_date) <= today;
     const unverified = useCertify && !/[1-9]/.test(s(mb.mb_email_certify));
     if (blocked || left || unverified) {
-      this.byEmail.add(email);
+      this.count(email, ip);
       this.audit(blocked ? 'account_blocked' : left ? 'account_deleted' : 'email_unverified', email, ip);
-      fail(WRONG, 401);
+      this.refuse(email, ip);
     }
 
     const isApp = cookieValue(cookie, 'sb_patient_app') === '1';

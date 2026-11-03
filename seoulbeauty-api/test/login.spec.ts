@@ -82,6 +82,8 @@ describe('POST /v1/auth/login', () => {
     member = null;
     const b = await post({ email: 'zzz@b.com', password: 'nope' }, '5.0.0.2').expect(401);
     expect(a.body).toEqual(b.body); expect(a.body.message).toBe('이메일 또는 비밀번호가 올바르지 않습니다.');
+    expect(a.body).toMatchObject({ attempts: 1, limit: 5 });
+    expect((await post({ email: 'a@b.com', password: 'nope' }, '5.0.0.1').expect(401)).body.attempts).toBe(2);
     expect(bridge).toHaveLength(0);
   });
   it('blocked, left, unverified: same answer', async () => {
@@ -90,7 +92,8 @@ describe('POST /v1/auth/login', () => {
     for (const patch of [{ mb_intercept_date: today }, { mb_leave_date: '20200101' }, { mb_email_certify: '0000-00-00 00:00:00' }]) {
       certify = 'mb_email_certify' in patch ? 1 : 0;
       member = { ...member, ...patch };
-      expect((await post({ email: `x${n}@b.com`, password: 'Abcdef12!' }, `6.0.0.${n++}`).expect(401)).body.message).toBe('이메일 또는 비밀번호가 올바르지 않습니다.');
+      const refused = (await post({ email: `x${n}@b.com`, password: 'Abcdef12!' }, `6.0.0.${n++}`).expect(401)).body;
+      expect(refused).toEqual({ success: false, message: '이메일 또는 비밀번호가 올바르지 않습니다.', attempts: 1, limit: 5 });
       member = { mb_id: 'sb_abc', mb_password: hash, mb_intercept_date: '', mb_leave_date: '', mb_email_certify: '2026-10-30 12:00:00' };
     }
     member = { ...member, mb_intercept_date: '29991231' };

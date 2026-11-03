@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ApiError, api, assetUrl } from "@/lib/api";
+import Link from "next/link";
+import { api, assetUrl } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import styles from "./Login.module.css";
@@ -38,12 +39,6 @@ export default function Login() {
   // Apple sign-in is iOS-only for now: hidden on Android (and until the user agent is known, so it never flashes there)
   const showApple = useSyncExternalStore(subscribeNoop, () => !/Android/i.test(navigator.userAgent), () => false);
   const opts = useQuery({ queryKey: ["login-options"], queryFn: () => api.loginOptions(), staleTime: 60_000 });
-  const [open, setOpen] = useState(!!params.get("pw_changed"));
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [sheet, setSheet] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const dimRef = useRef<HTMLDivElement>(null);
@@ -78,9 +73,7 @@ export default function Login() {
     if (sheetRef.current) { sheetRef.current.style.transition = "transform .22s cubic-bezier(.2,.8,.2,1)"; sheetRef.current.style.transform = "translateY(0)"; }
     if (dimRef.current) { dimRef.current.style.transition = "opacity .22s"; dimRef.current.style.opacity = "1"; }
   };
-  const sending = useRef(false);
   const router = useRouter();
-  const home = "/next"; // the Next.js home (full load after sign-in so every page sees the new PHP session cookie)
   /** ← : back to the page the visitor came from; with no history (opened directly) go to the Next home. */
   const goBack = () => { if (window.history.length > 1) router.back(); else router.push("/"); };
 
@@ -93,25 +86,11 @@ export default function Login() {
     return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
   }, [sheet]);
 
-  useEffect(() => { if (me.data?.loggedIn && !sending.current) window.location.replace(url && url.startsWith("/") && !url.startsWith("//") ? url : "/next"); }, [me.data, url]);
+  useEffect(() => { if (me.data?.loggedIn) window.location.replace(url && url.startsWith("/") && !url.startsWith("//") ? url : "/next"); }, [me.data, url]);
 
   const social = (p: string) => opts.data?.nest?.includes(p)
     ? `/next/api/v1/auth/social/${p}/start${url ? `?url=${encodeURIComponent(url)}` : ""}`
     : phpUrl(php, `auth/login.php?provider=${p}${url ? `&url=${encodeURIComponent(url)}` : ""}`);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (sending.current) return;
-    sending.current = true; setBusy(true); setError("");
-    try {
-      const r = await api.login({ email: email.trim(), password, remember, url });
-      window.location.assign(r.redirect || home); // full load: every page must see the new PHP session cookie
-      return;
-    } catch (err) {
-      setError((err instanceof ApiError ? (err.body?.message as string | undefined) : undefined) || "로그인 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-    }
-    sending.current = false; setBusy(false);
-  };
 
   const ico = (src: string, size = 20) => (
     // eslint-disable-next-line @next/next/no-img-element
@@ -131,16 +110,7 @@ export default function Login() {
         {opts.data?.kakao && <a href={social("kakao")} className={`${styles.btn} ${styles.kakao}`}>{ico(kakaoIcon.src, 22)}<span>카카오톡으로 시작하기</span></a>}
         {opts.data?.google && <a href={social("google")} className={`${styles.btn} ${styles.google}`}>{ico(googleIcon.src)}<span>구글로 시작하기</span></a>}
         {showApple && opts.data?.apple && <a href={social("apple")} className={`${styles.btn} ${styles.apple}`}>{ico(appleIcon.src)}<span>Apple로 시작하기</span></a>}
-        <button type="button" className={`${styles.btn} ${styles.email}`} aria-expanded={open} onClick={() => setOpen((v) => !v)}>{ico(mailIcon.src)}<span>이메일로 시작하기</span></button>
-        {open && (
-          <form onSubmit={submit} style={{ display: "contents" }}>
-            {error && <div className={styles.err} role="alert">{error}</div>}
-            <div className={styles.field}><input type="email" placeholder="이메일" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-            <div className={styles.field}><input type="password" placeholder="비밀번호" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-            <label className={styles.check}><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> <span>자동 로그인</span></label>
-            <button type="submit" className={`${styles.btn} ${styles.submit}`} disabled={busy || !email || !password}>{busy ? "로그인 중…" : "로그인"}</button>
-          </form>
-        )}
+        <Link href={`/login/email${url ? `?url=${encodeURIComponent(url)}` : ""}`} className={`${styles.btn} ${styles.email}`}>{ico(mailIcon.src)}<span>이메일로 시작하기</span></Link>
       </div>
       <div className={styles.links}>
         <a href="/next/password-lost">계정 찾기</a><i /><a href="/next/qna">문의하기</a><i /><a href="/next/register">회원가입</a>

@@ -51,6 +51,10 @@ export class RateWindow {
     const retry = h.length >= this.limit ? Math.max(1, Math.ceil((this.windowMs - (now - h[0])) / 1000)) : 0;
     return { allowed: retry === 0, retry };
   }
+  /** Hits currently inside the window (no recording). */
+  size(key: string, now = Date.now()): number {
+    return (this.hits.get(key) ?? []).filter((t) => t > now - this.windowMs).length;
+  }
   /** Records one hit unconditionally. */
   add(key: string, now = Date.now()): void {
     const h = (this.hits.get(key) ?? []).filter((t) => t > now - this.windowMs);
