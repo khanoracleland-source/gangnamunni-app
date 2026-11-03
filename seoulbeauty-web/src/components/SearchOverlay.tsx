@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { api, assetUrl, type SearchSuggest } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
+import RegionPicker from "./RegionPicker";
 import styles from "./SearchOverlay.module.css";
 
 /** includes/search_overlay.php: 최근 검색어 (localStorage) + 인기 검색어 + search_suggest.php 자동완성. */
@@ -59,14 +60,15 @@ function mapHref(php: string, href: string): { href: string; next: boolean } {
   return { href: phpUrl(php, href), next: false };
 }
 
-export default function SearchOverlay(props: { open: boolean; initial: string; regionLabel: string; popular: string[]; onClose: () => void; onSubmit: (q: string) => void; onRegion: (q: string) => void; onHospital?: (q: string, id: number) => void }) {
+export default function SearchOverlay(props: { open: boolean; initial: string; regionLabel: string; regionGroups: string[][]; regions: string[]; popular: string[]; onClose: () => void; onSubmit: (q: string) => void; onApplyRegions: (q: string, r: string[]) => void; onHospital?: (q: string, id: number) => void }) {
   if (!props.open) return null;
   return <Body key={props.initial} {...props} />;
 }
 
-function Body({ initial, regionLabel, popular, onClose, onSubmit, onRegion, onHospital }: { initial: string; regionLabel: string; popular: string[]; onClose: () => void; onSubmit: (q: string) => void; onRegion: (q: string) => void; onHospital?: (q: string, id: number) => void }) {
+function Body({ initial, regionLabel, regionGroups, regions, popular, onClose, onSubmit, onApplyRegions, onHospital }: { initial: string; regionLabel: string; regionGroups: string[][]; regions: string[]; popular: string[]; onClose: () => void; onSubmit: (q: string) => void; onApplyRegions: (q: string, r: string[]) => void; onHospital?: (q: string, id: number) => void }) {
   const php = usePhpBase();
   const [q, setQ] = useState(initial);
+  const [pickerOpen, setPickerOpen] = useState(false); // 05-02 panel opens here, over the search screen (the overlay stays open)
   const [sugg, setSugg] = useState<{ q: string; data: SearchSuggest } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recent = parseRecent(useSyncExternalStore(subscribeRecent, readRecentRaw, () => "[]"));
@@ -124,13 +126,16 @@ function Body({ initial, regionLabel, popular, onClose, onSubmit, onRegion, onHo
   return (
     <div className={styles.overlay} role="dialog" aria-label="검색">
       <div className={styles.inner}>
+        <div className={styles.barWrap}>
         <div className={styles.bar}>
           <button type="button" className={styles.back} aria-label="뒤로 가기" onClick={onClose}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg></button>
           <div className={styles.field}>
             <input ref={inputRef} type="search" className={styles.input} enterKeyHint="search" autoComplete="off" placeholder="시술, 병원 이름을 검색해보세요" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(q); } }} aria-label="검색어" />
             {typing && <button type="button" className={styles.clr} aria-label="지우기" onClick={() => { setQ(""); inputRef.current?.focus(); }}>{X}</button>}
-            <button type="button" className={styles.region} onClick={() => onRegion(q)}>{PIN}<span>{regionLabel}</span></button>
+            <button type="button" className={styles.region} onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen}>{PIN}<span>{regionLabel}</span></button>
           </div>
+        </div>
+        <RegionPicker open={pickerOpen} groups={regionGroups} selected={regions} onClose={() => setPickerOpen(false)} onApply={(r) => { setPickerOpen(false); onApplyRegions(q.trim(), r); }} />
         </div>
 
         {!typing && (

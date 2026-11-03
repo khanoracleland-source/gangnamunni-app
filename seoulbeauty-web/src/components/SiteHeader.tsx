@@ -70,7 +70,7 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
   const urlKey = `${pathname}?${sp.toString()}`;
   const [openedAt, setOpenedAt] = useState<string | null>(null);
   const searchOpen = openedAt === urlKey;
-  const setSearchOpen = (v: boolean) => setOpenedAt(v ? urlKey : null);
+  const setSearchOpen = (v: boolean) => { setOpenedAt(v ? urlKey : null); if (v) setPickerOpen(false); }; // one panel at a time: the search screen has its own region panel
   const [pickerOpen, setPickerOpen] = useState(false);
   const [q, setQ] = useState(initialQ);
   const [toast, setToast] = useState("");
@@ -79,7 +79,8 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
   const regionKey = target === "community" ? COMMUNITY_REGION_KEY : REGION_KEY;
   const regions = useSavedRegions(regionKey);
   // Region groups + popular keywords come with the home payload (cached 60 s; shared with the home page).
-  const homeQ = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: home, enabled: !!home || pickerOpen || searchOpen });
+  // Loaded as soon as the header mounts (shared with the home page / WarmUp cache, no refetch for 5 min): the panel then opens with its data at once.
+  const homeQ = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: home, staleTime: 5 * 60_000, refetchOnMount: false });
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -165,9 +166,10 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
               )}
               {/* header.php: the field is readonly and opens the search overlay (search_overlay.php). */}
               <input className={styles.search} type="text" readOnly placeholder="시술, 병원 이름을 검색해보세요" value={q} onClick={() => setSearchOpen(true)} onFocus={() => setSearchOpen(true)} aria-label="검색" />
-              <button type="button" className={styles.regionBtn} onClick={() => setPickerOpen(true)}>{PIN}{regionLabel}</button>
+              <button type="button" className={styles.regionBtn} onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen}>{PIN}{regionLabel}</button>
             </div>
-            <RegionPicker open={pickerOpen && groups.length > 0} groups={groups} selected={regions} onClose={() => setPickerOpen(false)} onApply={chooseRegions} />
+            {/* unmounted (no exit animation) while the search screen is open: it has its own region panel */}
+            {!searchOpen && <RegionPicker open={pickerOpen} groups={groups} selected={regions} onClose={() => setPickerOpen(false)} onApply={chooseRegions} />}
           </div>
           {regions.length > 0 && (
             <div className={styles.regionBar}>
@@ -185,10 +187,10 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
               </button>
             </div>
           )}
-          <SearchOverlay open={searchOpen} initial={q} regionLabel={regionLabel} popular={popular} onClose={() => setSearchOpen(false)}
+          <SearchOverlay open={searchOpen} initial={q} regionLabel={regionLabel} regionGroups={groups} regions={regions} popular={popular} onClose={() => setSearchOpen(false)}
             onSubmit={(w) => { keepQ(w); apply(w, regions); }}
-            onHospital={target === "hospitals" ? (w, id) => { keepQ(w); nav(`/hospitals?q=${encodeURIComponent(w)}&hid=${id}`); } : undefined}
-            onRegion={(w) => { setQ(w); setSearchOpen(false); setPickerOpen(true); }} />
+            onApplyRegions={(w, r) => { writeRegions(r, regionKey); keepQ(w); apply(w, r); }}
+            onHospital={target === "hospitals" ? (w, id) => { keepQ(w); nav(`/hospitals?q=${encodeURIComponent(w)}&hid=${id}`); } : undefined} />
         </>
       )}
     </>

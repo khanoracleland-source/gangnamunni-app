@@ -1,13 +1,24 @@
-.backdrop { position: fixed; inset: 0; z-index: 599; background: rgba(0,0,0,.35); }
-.panel { position: absolute; left: 16px; right: 16px; top: 100%; z-index: 600; padding: 6px 12px 0; background: var(--bg); border: 1px solid #c9c9c9; border-radius: 0 0 10px 10px; }
-.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 8px; margin-bottom: 6px; }
-@media (min-width: 480px) { .grid { grid-template-columns: repeat(6, 1fr); } }
-.grid label { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; color: var(--fg); white-space: nowrap; }
-.grid label.on { color: var(--accent); font-weight: 600; }
-.cb { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
-.actions { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 0 8px; }
-.reset { flex-shrink: 0; font-size: 14px; background: none; border: 0; padding: 0; color: var(--fg); }
-.tags { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
-.tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--accent); color: var(--fg); border-radius: 3px; font-size: 12px; font-weight: 500; }
-.tag span { cursor: pointer; }
-.apply { flex-shrink: 0; padding: 8px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 500; height: 40px; width: 120px; border: 0; }
+/* design 05-02: the panel hangs from the search row (full width, 20px bottom corners); the page below it is dimmed */
+.backdrop { position: fixed; left: 0; right: 0; bottom: 0; z-index: 100001; background: rgba(26, 23, 24, .45); animation: rpFade .4s ease-out both; }
+.panel { position: fixed; left: 0; right: 0; max-width: 640px; margin: 0 auto; z-index: 100002; max-height: calc(100dvh - 120px); overflow-y: auto; background: #fff; border-top: 1px solid #ECE9EA; border-radius: 0 0 20px 20px; animation: rpDown .4s cubic-bezier(.22, 1, .36, 1) both; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 6px; padding: 14px 20px 16px; }
+@media (min-width: 560px) { .grid { grid-template-columns: repeat(6, 1fr); } }
+.item { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 3px 0; font-size: calc(15px * var(--fs-scale, 1)); color: #1A1718; white-space: nowrap; text-align: left; }
+.ph { display: block; height: 22px; margin: 3px 0; border-radius: 6px; }
+.itemOn { color: #4A4446; }
+.mark { flex: none; display: block; }
+.bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px 16px 20px; border-top: 1px solid #ECE9EA; background: #fff; }
+.reset { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: calc(13px * var(--fs-scale, 1)); color: #4A4446; }
+.reset img { width: 16px; height: 16px; display: block; object-fit: contain; }
+.chips { flex: 1 1 auto; min-width: 0; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; box-sizing: border-box; height: 36px; padding: 0 8px 0 10px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #DCD6D8; border-radius: 18px; font-size: calc(13px * var(--fs-scale, 1)); color: #1A1718; white-space: nowrap; }
+.chip svg { color: #9A9395; }
+.apply { flex: none; height: 44px; padding: 0 18px; margin-left: auto; display: flex; align-items: center; border-radius: 12px; background: #AC1830; color: #fff; font-size: calc(15px * var(--fs-scale, 1)); font-weight: 700; white-space: nowrap; }
+@keyframes rpDown { from { clip-path: inset(0 0 100% 0 round 0 0 20px 20px); } to { clip-path: inset(0 0 0 0 round 0 0 20px 20px); } }
+@keyframes rpUp { from { clip-path: inset(0 0 0 0 round 0 0 20px 20px); } to { clip-path: inset(0 0 100% 0 round 0 0 20px 20px); } }
+@keyframes rpFadeOut { from { opacity: 1; } to { opacity: 0; } }
+.panel.out { animation: rpUp .4s cubic-bezier(.65, 0, .35, 1) both; pointer-events: none; }
+.backdrop.out { animation: rpFadeOut .4s ease both; pointer-events: none; }
+@keyframes rpFade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .panel, .backdrop { animation: none; } }

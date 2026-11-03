@@ -1,5 +1,6 @@
 .overlay { position: fixed; inset: 0; z-index: 100000; background: #fff; overflow-y: auto; color: #1A1718; letter-spacing: -0.01em; }
 .inner { max-width: 640px; margin: 0 auto; }
+.barWrap { position: relative; --rp-gap: 5px; } /* the panel hangs from the field's underline (bar 52px, field 42px centred) */
 .bar { height: 52px; padding: 0 16px 0 8px; display: flex; align-items: center; gap: 4px; margin-top: calc(12px + var(--sat)); }
 .back { width: 40px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #1A1718; padding: 0; }
 .field { flex: 1; min-width: 0; height: 42px; box-sizing: border-box; border-bottom: 1.5px solid #1A1718; display: flex; align-items: center; gap: 8px; }
