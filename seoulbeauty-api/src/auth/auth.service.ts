@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
+import { phpFetch } from '../common/php-fetch';
 
 export interface SessionUser {
   id: string;
@@ -32,7 +33,7 @@ export class AuthService {
   /** Used by /health: can we reach the PHP session authority at all? */
   async ping(): Promise<boolean> {
     try {
-      const res = await fetch(this.url, { headers: this.headers(''), redirect: 'manual', signal: AbortSignal.timeout(3000) });
+      const res = await phpFetch(this.url, { headers: this.headers(''), signal: AbortSignal.timeout(3000) });
       if (!res.ok) return false;
       const j = (await res.json()) as Partial<Session>;
       return typeof j?.loggedIn === 'boolean';
@@ -64,7 +65,7 @@ export class AuthService {
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 4000);
-      const res = await fetch(this.url, { headers: this.headers(cookie), redirect: 'manual', signal: ctrl.signal });
+      const res = await phpFetch(this.url, { headers: this.headers(cookie), signal: ctrl.signal });
       clearTimeout(t);
       if (!res.ok) throw new Error(`php session ${res.status}`);
       const j = (await res.json()) as Session;

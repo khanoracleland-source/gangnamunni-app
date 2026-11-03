@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import { DB, Db } from '../db/db.module';
 import { fullReason, isEmail, parsePhpJson, PW_MAX, PW_MIN, REASONS } from './account-security.logic';
+import { phpFetch } from '../common/php-fetch';
 
 const s = (v: unknown) => (typeof v === 'string' ? v : '');
 interface PhpReply { status: number; json: Record<string, any> | null }
@@ -34,7 +35,7 @@ export class AccountSecurityService {
     if (this.host) headers.host = this.host;
     if (init.type) headers['content-type'] = init.type;
     try {
-      const res = await fetch(url, { method: init.method, headers, body: init.body, redirect: 'manual', signal: AbortSignal.timeout(15_000) });
+      const res = await phpFetch(url, { method: init.method, headers, body: init.body, signal: AbortSignal.timeout(15_000) });
       return { status: res.status, json: parsePhpJson(await res.text()) };
     } catch (e) {
       this.log.error(`php call failed (${new URL(url).pathname}): ${(e as Error).message}`);

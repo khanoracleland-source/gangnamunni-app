@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHmac } from 'crypto';
+import { phpFetch } from '../common/php-fetch';
 
 export interface BridgeResult { ok: boolean; setCookies: string[]; error?: string }
 
@@ -29,8 +30,8 @@ export class SessionBridgeService {
     const headers: Record<string, string> = { 'Content-Type': 'application/json', Cookie: cookie || '', 'User-Agent': userAgent || 'seoulbeauty-api' };
     if (process.env.PHP_SESSION_HOST) headers.Host = process.env.PHP_SESSION_HOST;
     try {
-      const res = await fetch(this.url(), {
-        method: 'POST', headers, redirect: 'manual', signal: AbortSignal.timeout(15_000),
+      const res = await phpFetch(this.url(), {
+        method: 'POST', headers, signal: AbortSignal.timeout(15_000),
         body: JSON.stringify({ mb_id: mbId, mode, remember: rem, ts, sig, ...(social ? { social } : {}) }),
       });
       const setCookies = typeof (res.headers as any).getSetCookie === 'function' ? (res.headers as any).getSetCookie() as string[] : [];

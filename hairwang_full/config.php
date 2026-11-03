@@ -69,8 +69,14 @@ define('G5_COOKIE_DOMAIN',  '');
 localhost/IP 접속에서는 도메인 쿠키가 거부되므로 빈 값으로 둔다.
 */
 $g5_session_cookie_host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+// NestJS(seoulbeauty-api)는 같은 서버에서 http://127.0.0.1/api/session_me.php, session_login.php 를 호출한다.
+// 그 요청에 Host 헤더가 빠지면(Node fetch 는 Host 를 버린다) HTTP_HOST 가 127.0.0.1 이 되어 세션 쿠키 이름이
+// G5…PHPSESSID(host-only)로 바뀌고, 브라우저의 SBSESSID 세션과 갈라진다(2026-11-03: Next 화면만 로그아웃 상태).
+// 루프백에서 온 루프백 호스트 요청은 공개 사이트와 같은 쿠키(SBSESSID, .seoulbeauty.app)를 쓰게 한다.
+$g5_loopback_caller = in_array($_SERVER['REMOTE_ADDR'] ?? '', array('127.0.0.1', '::1'), true)
+    && in_array($g5_session_cookie_host, array('127.0.0.1', 'localhost', '[::1]', '::1'), true);
 define('G5_SESSION_COOKIE_DOMAIN',
-    ($g5_session_cookie_host === 'seoulbeauty.app' || substr($g5_session_cookie_host, -16) === '.seoulbeauty.app')
+    ($g5_session_cookie_host === 'seoulbeauty.app' || substr($g5_session_cookie_host, -16) === '.seoulbeauty.app' || $g5_loopback_caller)
         ? '.seoulbeauty.app'
         : '');
 
