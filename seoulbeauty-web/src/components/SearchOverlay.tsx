@@ -9,6 +9,7 @@ import styles from "./SearchOverlay.module.css";
 
 const RECENT_KEY = "sb_recent_searches"; // same key as PHP, so both sides share the list
 const RECENT_MAX = 10;
+const EMPTY_SUGG = ["텐써마", "울쎄라", "슈링크", "인모드"]; // 03-14 "이런 시술은 어떠세요?" (same list as the hospital list empty state)
 const listeners = new Set<() => void>();
 function readRecentRaw(): string { try { return localStorage.getItem(RECENT_KEY) || "[]"; } catch { return "[]"; } }
 function subscribeRecent(cb: () => void) { listeners.add(cb); return () => { listeners.delete(cb); }; }
@@ -159,12 +160,12 @@ function Body({ initial, regionLabel, popular, onClose, onSubmit, onRegion, onHo
               <>
                 <div className={styles.noneBox}>
                   <div className={styles.noneIco}><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#AC1830" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg></div>
-                  <div className={styles.noneT}>&lsquo;{q.trim()}&rsquo; 검색 결과가 없어요</div>
+                  <div className={styles.noneT}>{`'${q.trim()}' 검색 결과가 없어요`}</div>
                   <div className={styles.noneS}>철자를 확인하거나 다른 단어로 검색해보세요</div>
                 </div>
                 <div className={styles.sugg}>
                   <div className={styles.suggT}>이런 시술은 어떠세요?</div>
-                  <div className={styles.suggC}>{popular.slice(0, 4).map((w) => <button key={w} type="button" onClick={() => submit(w)}>{w}</button>)}</div>
+                  <div className={styles.suggC}>{EMPTY_SUGG.map((w) => <button key={w} type="button" onClick={() => submit(w)}>{w}</button>)}</div>
                 </div>
               </>
             ) : (

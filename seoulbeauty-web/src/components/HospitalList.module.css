@@ -32,12 +32,15 @@
 .sep { color: #CFC8CB; }
 /* empty states (03-11 / 03-14) */
 .srEmpty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 70px 32px 30px; }
-.srEmptyIco { width: 72px; height: 72px; border-radius: 50%; background: #FBEFF1; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
-.srEmptyIcoGrey { background: #F2EFF0; } /* 03-11: neutral disc; 03-14 keeps the pink one */
+.srEmptyIco { width: 72px; height: 72px; border-radius: 50%; background: #F2EFF0; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
 .srEmptyTitle { font-size: calc(18px * var(--fs-scale)); font-weight: 700; color: #1A1718; }
 .srEmptySub { font-size: calc(14px * var(--fs-scale)); line-height: 1.6; color: #6B6466; margin-top: 8px; }
 .srEmptyBtn { margin-top: 22px; width: 180px; height: 44px; box-sizing: border-box; border: 1px solid #DCD6D8; border-radius: 12px; background: #fff; color: #1A1718; font-size: calc(15px * var(--fs-scale)); font-weight: 500; }
-.srSugg { padding: 0 20px 30px; }
-.srSuggT { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #1A1718; }
-.srSuggChips { display: flex; flex-wrap: wrap; gap: 8px; }
-.srSuggChip { height: 32px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 16px; font-size: 14px; color: #1A1718; text-decoration: none; }
+.srSugg { padding: 0 20px 30px; text-align: center; }
+.srSuggT { font-size: calc(15px * var(--fs-scale)); font-weight: 700; margin-bottom: 12px; color: #1A1718; }
+.srSuggChips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.srSuggChip { height: 36px; padding: 0 12px; box-sizing: border-box; display: inline-flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 18px; font-size: calc(15px * var(--fs-scale)); color: #1A1718; text-decoration: none; }
+/* 03-14 (nothing found at all): roomier top, 17 / 15 text */
+.srNone { padding-top: 90px; }
+.srNone .srEmptyTitle { font-size: calc(17px * var(--fs-scale)); }
+.srNone .srEmptySub { font-size: calc(15px * var(--fs-scale)); }

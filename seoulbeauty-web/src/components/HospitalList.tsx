@@ -170,8 +170,8 @@ export default function HospitalList({ params, initial }: { params: HospitalList
         </div>
       )}
       {data && items.length === 0 && (
-        <div className={styles.srEmpty}>
-          <div className={`${styles.srEmptyIco} ${hasCond ? styles.srEmptyIcoGrey : ""}`}><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#AC1830" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg></div>
+        <div className={`${styles.srEmpty} ${hasCond ? "" : styles.srNone}`}>
+          <div className={styles.srEmptyIco}><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#AC1830" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg></div>
           {hasCond ? (
             <>
               <div className={styles.srEmptyTitle}>조건에 맞는 병원이 없어요</div>

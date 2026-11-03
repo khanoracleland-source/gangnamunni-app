@@ -41,10 +41,10 @@
 .price small { font-size: calc(11px * var(--fs-scale)); font-weight: 400; color: #1A1718; }
 .note { padding: 14px 20px; font-size: calc(12px * var(--fs-scale)); line-height: 1.6; color: #9A9395; }
 .noneBox { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 90px 32px 30px; }
-.noneIco { width: 72px; height: 72px; border-radius: 36px; background: #FBEFF1; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
-.noneT { font-size: calc(18px * var(--fs-scale)); font-weight: 700; }
-.noneS { font-size: calc(14px * var(--fs-scale)); line-height: 1.6; color: #6B6466; margin-top: 8px; }
-.sugg { padding: 0 20px; }
+.noneIco { width: 72px; height: 72px; border-radius: 36px; background: #F2EFF0; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+.noneT { font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
+.noneS { font-size: calc(15px * var(--fs-scale)); line-height: 1.6; color: #6B6466; margin-top: 8px; }
+.sugg { padding: 0 20px; text-align: center; }
 .suggT { font-size: calc(15px * var(--fs-scale)); font-weight: 700; margin-bottom: 12px; }
-.suggC { display: flex; flex-wrap: wrap; gap: 8px; }
-.suggC button { height: 32px; padding: 0 12px; border: 1px solid #DCD6D8; border-radius: 16px; font-size: calc(14px * var(--fs-scale)); background: #fff; color: #1A1718; }
+.suggC { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.suggC button { height: 36px; padding: 0 12px; box-sizing: border-box; border: 1px solid #DCD6D8; border-radius: 18px; font-size: calc(15px * var(--fs-scale)); background: #fff; color: #1A1718; }
