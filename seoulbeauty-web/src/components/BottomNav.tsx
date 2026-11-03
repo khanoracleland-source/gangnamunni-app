@@ -20,8 +20,12 @@ const items = [
   { next: "/mypage", label: "마이페이지", on: myOn, off: myOff },
 ] as const;
 
+/** Design part 02 (login / sign-up / password) has no tab bar. */
+const NO_NAV = ["/login", "/register", "/register-terms", "/password-lost"];
+
 export default function BottomNav() {
   const pathname = usePathname();
+  if (NO_NAV.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;
   const activeIdx = items.findIndex((it) => (it.next === "/" ? pathname === "/" : pathname.startsWith(it.next)));
   return (
     <nav className={styles.nav} aria-label="하단 메뉴">
