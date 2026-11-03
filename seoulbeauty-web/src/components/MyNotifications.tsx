@@ -1,6 +1,6 @@
 "use client";
 import Loading from "./Loading";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
@@ -27,6 +27,8 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
     queryKey: key, queryFn: ({ pageParam }) => api.myNotifications(type, pageParam), initialPageParam: 1,
     getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
     initialData: initial && initialType === type ? { pages: [initial], pageParams: [1] } : undefined,
+    // cache first: a filter that was opened (or prefetched) shows at once and is asked again only when 60 s old
+    staleTime: 60_000, refetchOnMount: true, refetchOnWindowFocus: true,
     retry: false, enabled: !anon,
   });
   const loggedOut = anon || (q.error instanceof ApiError && q.error.status === 401);
@@ -38,6 +40,30 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
   const pages = q.data?.pages ?? [];
   const items = pages.flatMap((p) => p.items);
   const unread = pages[0]?.unread ?? 0;
+
+  // After the visible list is in, quietly load the other filters' first page: a chip tap is then served from the cache.
+  const loaded = !!q.data && !q.isFetching;
+  useEffect(() => {
+    if (!loaded || anon || loggedOut) return;
+    for (const t of TABS) {
+      if (t.key === type) continue;
+      void qc.prefetchInfiniteQuery({
+        queryKey: qk.myNotifications(t.key), initialPageParam: 1, staleTime: 60_000,
+        queryFn: ({ pageParam }) => api.myNotifications(t.key, pageParam as number),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, type]);
+
+  // The black pill slides under the active chip (measured), instead of jumping.
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+  const measure = useCallback(() => {
+    const el = chipsRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (el) setPill((o) => (o && o.left === el.offsetLeft && o.width === el.offsetWidth ? o : { left: el.offsetLeft, width: el.offsetWidth }));
+  }, []);
+  useLayoutEffect(() => { measure(); }, [measure, type, loggedOut]);
+  useEffect(() => { window.addEventListener("resize", measure); return () => window.removeEventListener("resize", measure); }, [measure]);
 
   /** Every filter's cached list shows the same rows: update them all, then refresh the header dot. */
   const patchAll = (fn: (p: MyNotificationsPage) => MyNotificationsPage) => {
@@ -77,9 +103,15 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
       )} />
       {loggedOut ? <LoginPrompt text="로그인하면 알림을 확인할 수 있습니다." /> : (
         <>
-          <div className={styles.ntChips} role="tablist" aria-label="알림 필터">
+          <div className={styles.ntChips} role="tablist" aria-label="알림 필터" ref={chipsRef} data-ready={pill ? "1" : undefined}>
+            {pill && <span className={styles.ntPill} style={{ transform: `translateX(${pill.left}px)`, width: pill.width }} aria-hidden="true" />}
             {TABS.map((t) => (
-              <Link key={t.key} href={t.key === "all" ? "/mypage/notifications" : `/mypage/notifications?type=${t.key}`} replace role="tab" aria-selected={type === t.key} className={`${styles.ntChip} ${type === t.key ? styles.ntChipOn : ""}`}>{t.label}</Link>
+              <Link key={t.key} href={t.key === "all" ? "/mypage/notifications" : `/mypage/notifications?type=${t.key}`} replace scroll={false}
+                onClick={(e) => { // only the query string changes: swap it in place (no route request to the server), the cached list shows at once
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                  e.preventDefault();
+                  window.history.replaceState(null, "", t.key === "all" ? window.location.pathname : `?type=${t.key}`);
+                }} role="tab" aria-selected={type === t.key} className={`${styles.ntChip} ${type === t.key ? styles.ntChipOn : ""}`}>{t.label}</Link>
             ))}
           </div>
           {!q.data ? (

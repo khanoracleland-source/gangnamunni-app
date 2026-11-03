@@ -76,7 +76,10 @@ function WarmUp() {
   useEffect(() => {
     if (loggedIn !== true || memberDone.current || saveData()) return;
     memberDone.current = true;
-    idle(() => { void qc.prefetchQuery({ queryKey: qk.mypage, queryFn: () => api.mypage(), staleTime: 30_000 }); });
+    idle(() => {
+      void qc.prefetchQuery({ queryKey: qk.mypage, queryFn: () => api.mypage(), staleTime: 30_000 });
+      void qc.prefetchInfiniteQuery({ queryKey: qk.myNotifications("all"), initialPageParam: 1, staleTime: 30_000, queryFn: ({ pageParam }) => api.myNotifications("all", pageParam as number) });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
   return null;

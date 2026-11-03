@@ -145,10 +145,13 @@
 .ntWrap { padding-bottom: 0; display: flex; flex-direction: column; min-height: calc(100dvh - var(--nav-h) - var(--sab)); background: #fff; }
 .ntReadAll { font-size: calc(13px * var(--fs-scale, 1)); color: #6B6466; white-space: nowrap; }
 .ntReadAll:disabled { color: #B5AFB1; cursor: default; }
-.ntChips { flex: none; padding: 6px 20px 12px; display: flex; gap: 8px; border-bottom: 1px solid #ECE9EA; overflow-x: auto; scrollbar-width: none; }
+.ntChips { position: relative; flex: none; padding: 6px 20px 12px; display: flex; gap: 8px; border-bottom: 1px solid #ECE9EA; overflow-x: auto; scrollbar-width: none; }
 .ntChips::-webkit-scrollbar { display: none; }
-.ntChip { flex: none; box-sizing: border-box; height: 36px; padding: 0 14px; display: flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 18px; font-size: calc(15px * var(--fs-scale, 1)); color: #1A1718; white-space: nowrap; }
-.ntChipOn { height: 32px; border-color: #1A1718; background: #1A1718; color: #fff; border-radius: 16px; }
+.ntChip { position: relative; z-index: 1; flex: none; box-sizing: border-box; height: 36px; padding: 0 14px; display: flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 18px; font-size: calc(15px * var(--fs-scale, 1)); color: #1A1718; white-space: nowrap; transition: color .22s ease, border-color .22s ease, background-color .22s ease; }
+.ntChipOn { border-color: #1A1718; background: #1A1718; color: #fff; }
+.ntChips[data-ready] .ntChipOn { background: transparent; border-color: transparent; } /* once measured, the sliding pill is the black */
+.ntPill { position: absolute; z-index: 0; top: 6px; left: 0; height: 36px; border-radius: 18px; background: #1A1718; transition: transform .28s cubic-bezier(.3, .8, .3, 1), width .28s cubic-bezier(.3, .8, .3, 1); will-change: transform; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .ntPill, .ntChip { transition: none; } }
 .ntList { flex: 1 1 auto; padding-bottom: 8px; }
 .ntCard { position: relative; margin: 12px 20px 0; border: 1px solid #ECE9EA; border-radius: 16px; background: #fff; }
 .ntOpen { display: flex; gap: 12px; padding: 16px; }
