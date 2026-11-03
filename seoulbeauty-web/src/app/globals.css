@@ -7,9 +7,9 @@
   --nav-h: max(70px, calc(104px - var(--sab))); /* reserved space under the page = --nav-h + safe-area = 104: floating tab bar 68 + 22 from the bottom + 14 gap (design spacer) */
   --fs-scale: 1;
   /* Device insets (notch / home indicator). Inside the app the native SafeArea has already applied them, but Android WebView still
-     reports them: html[data-app] (set in layout.tsx from the sb_patient_app cookie) zeroes them so nothing is counted twice. */
-  --sat: env(safe-area-inset-top);
-  --sab: env(safe-area-inset-bottom);
+     reports them: html[data-app] (set in layout.tsx when the Flutter bridge exists) zeroes them so nothing is counted twice. */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
 }
 html[data-app] { --sat: 0px; --sab: 0px; }
 @media (max-width: 339px) { :root { --fs-scale: .92; } }

@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Inside the Flutter app the WebView already sits below the status bar (native SafeArea) yet Android still reports env(safe-area-inset-*):
             mark the document so the web layer does not add the inset a second time (see --sat in globals.css). */}
-        <script dangerouslySetInnerHTML={{ __html: 'try{if(document.cookie.indexOf("sb_patient_app=1")>-1||window.FlutterBridge)document.documentElement.setAttribute("data-app","1")}catch(e){}' }} />
+        <script dangerouslySetInnerHTML={{ __html: 'try{var m=function(){if(window.FlutterBridge)document.documentElement.setAttribute("data-app","1")};m();document.addEventListener("DOMContentLoaded",m);window.addEventListener("load",m)}catch(e){}' }} />
       </head>
       <body>
         <Providers>
