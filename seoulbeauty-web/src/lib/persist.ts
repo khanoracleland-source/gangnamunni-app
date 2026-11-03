@@ -13,7 +13,7 @@ export const CACHE_MAX_AGE = 24 * 60 * 60_000;
  * `me` confirms that the signed-in member is the one who wrote it (restorePersonal, called by CacheGuard), so another member on the
  * same device never sees it. Not persisted at all: "me" and the payment/cancel screens (short-lived, tied to one action).
  */
-const PUBLIC = new Set(["home", "reviews", "treatments", "doctors", "faq", "events", "legal"]);
+const PUBLIC = new Set(["home", "reviews", "treatments", "doctors", "faq", "events", "legal", "login-options"]);
 const PERSONAL = new Set(["mypage", "hospitals", "hospital", "searchView", "community", "communityPost", "event", "reviewDetail"]);
 const PERSISTED = new Set([...PUBLIC, ...PERSONAL]);
 

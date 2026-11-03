@@ -66,6 +66,8 @@ export default function Login() {
       <div className={styles.actions}>
         {socialError && <div className={styles.err} role="alert">{socialError}</div>}
         {notice && <div className={styles.ok} role="status">{notice}</div>}
+        {/* the options arrive a moment after the page: hold the social buttons' places so the e-mail button does not appear alone and then jump down */}
+        {opts.isPending && Array.from({ length: showApple ? 3 : 2 }, (_, i) => <div key={i} className={`${styles.ph} skeleton`} aria-hidden="true" />)}
         {opts.data?.kakao && <a href={social("kakao")} className={`${styles.btn} ${styles.kakao}`}>{ico(kakaoIcon.src, 22)}<span>카카오톡으로 시작하기</span></a>}
         {opts.data?.google && <a href={social("google")} className={`${styles.btn} ${styles.google}`}>{ico(googleIcon.src)}<span>구글로 시작하기</span></a>}
         {showApple && opts.data?.apple && <a href={social("apple")} className={`${styles.btn} ${styles.apple}`}>{ico(appleIcon.src)}<span>Apple로 시작하기</span></a>}

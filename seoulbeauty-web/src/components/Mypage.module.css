@@ -1,11 +1,11 @@
 /* design 03-06 마이페이지: grey canvas (#F4F2F3) with white cards (margin 0 20, gap 8); fonts scale via --fs-scale */
 .my { box-sizing: border-box; max-width: 640px; margin: 0 auto; color: #1A1718; background: #F4F2F3;
-  min-height: 100dvh; margin-bottom: calc(-1 * (var(--nav-h) + env(safe-area-inset-bottom))); }
+  min-height: 100dvh; margin-bottom: calc(-1 * (var(--nav-h) + var(--sab))); }
 .head { height: 52px; padding: 0 20px; display: flex; align-items: center; background: #fff; }
 .headTitle { flex: 1; font-size: calc(23px * var(--fs-scale)); font-weight: 700; }
 .headSide { width: 32px; height: 32px; margin-right: -4px; display: flex; align-items: center; justify-content: center; }
 .headSide img { width: 24px; height: 24px; object-fit: contain; display: block; }
-.canvas { background: #F4F2F3; display: flex; flex-direction: column; gap: 8px; padding: 6px 0 calc(var(--nav-h) + env(safe-area-inset-bottom)); min-height: calc(100dvh - 52px); box-sizing: border-box; }
+.canvas { background: #F4F2F3; display: flex; flex-direction: column; gap: 8px; padding: 6px 0 calc(var(--nav-h) + var(--sab)); min-height: calc(100dvh - 52px); box-sizing: border-box; }
 .card { margin: 0 20px; background: #fff; padding: 6px 0; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; } /* cards share the spare height, so the last one ends just above the tab bar */
 .cardFlat { padding: 0; }
 .profile { flex: 1 1 48px; min-height: 48px; max-height: 72px; display: flex; align-items: center; gap: 12px; padding: 0 16px; color: #1A1718; text-decoration: none; }

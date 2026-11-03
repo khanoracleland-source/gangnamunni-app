@@ -171,14 +171,14 @@
 .pfRow { display: flex; align-items: center; justify-content: space-between; font-size: 16px; }
 .pfChange { font-size: 13px; color: #AC1830; border: 1px solid #AC1830; border-radius: 14px; padding: 4px 12px; text-decoration: none; }
 .pfErr { margin-top: 4px; font-size: 13px; color: #d93025; }
-.pfBar { position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); padding: 10px 16px; background: #fff; border-top: 1px solid #eee; max-width: 640px; margin: 0 auto; z-index: 40; }
+.pfBar { position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + var(--sab)); padding: 10px 16px; background: #fff; border-top: 1px solid #eee; max-width: 640px; margin: 0 auto; z-index: 40; }
 .pfSave { display: block; width: 100%; height: 48px; border-radius: 8px; background: #AC1830; color: #fff; font-size: 16px; font-weight: 700; }
 .pfSave:disabled { opacity: .6; }
 .pfDiscard { display: block; width: 100%; height: 44px; margin-top: 8px; font-size: 15px; color: #666; }
 .pfDanger { display: block; width: 100%; height: 48px; margin-top: 8px; border-radius: 8px; background: #d93025; color: #fff; font-size: 16px; font-weight: 700; }
 .pfDanger:disabled, .pfDiscard:disabled { opacity: .6; }
 .pfModal { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 70; }
-.pfModalBox { width: 100%; max-width: 640px; box-sizing: border-box; background: #fff; border-radius: 16px 16px 0 0; padding: 24px 16px calc(20px + env(safe-area-inset-bottom)); }
+.pfModalBox { width: 100%; max-width: 640px; box-sizing: border-box; background: #fff; border-radius: 16px 16px 0 0; padding: 24px 16px calc(20px + var(--sab)); }
 .pfModalBox h2 { margin: 0 0 8px; font-size: 18px; text-align: center; }
 .pfModalBox p { margin: 0 0 20px; font-size: 14px; color: #777; text-align: center; }
 .pfModalBox h2 + button { margin-top: 20px; }

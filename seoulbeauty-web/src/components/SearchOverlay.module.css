@@ -1,6 +1,6 @@
 .overlay { position: fixed; inset: 0; z-index: 100000; background: #fff; overflow-y: auto; color: #1A1718; letter-spacing: -0.01em; }
 .inner { max-width: 640px; margin: 0 auto; }
-.bar { height: 52px; padding: 0 16px 0 8px; display: flex; align-items: center; gap: 4px; margin-top: calc(12px + env(safe-area-inset-top)); }
+.bar { height: 52px; padding: 0 16px 0 8px; display: flex; align-items: center; gap: 4px; margin-top: calc(12px + var(--sat)); }
 .back { width: 40px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #1A1718; padding: 0; }
 .field { flex: 1; min-width: 0; height: 42px; box-sizing: border-box; border-bottom: 1.5px solid #1A1718; display: flex; align-items: center; gap: 8px; }
 .input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: calc(15px * var(--fs-scale)); color: #1A1718; padding: 0; -webkit-appearance: none; }
@@ -20,7 +20,7 @@
 .chipX svg { width: 12px; height: 12px; display: block; }
 .empty { padding: 0 20px 22px; font-size: calc(13px * var(--fs-scale)); color: #9A9395; }
 .gap { height: 8px; background: #F4F2F3; }
-.rank { padding: 0 20px calc(40px + env(safe-area-inset-bottom)); }
+.rank { padding: 0 20px calc(40px + var(--sab)); }
 .rank button { width: 100%; height: 44px; display: flex; align-items: center; gap: 14px; border: 0; border-bottom: 1px solid #ECE9EA; background: none; text-align: left; font-size: calc(15px * var(--fs-scale)); color: #1A1718; padding: 0; }
 .n { width: 18px; font-weight: 700; color: #6B6466; }
 .top .n { color: #AC1830; }

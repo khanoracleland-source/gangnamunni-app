@@ -1,6 +1,6 @@
 /* Functional skeleton: the final design will replace these values. */
 .overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.45); display: flex; align-items: flex-end; justify-content: center; }
-.sheet { box-sizing: border-box; width: 100%; max-width: 640px; max-height: 85vh; overflow-y: auto; background: #fff; border-radius: 16px 16px 0 0; padding: 12px 20px calc(16px + env(safe-area-inset-bottom)); }
+.sheet { box-sizing: border-box; width: 100%; max-width: 640px; max-height: 85vh; overflow-y: auto; background: #fff; border-radius: 16px 16px 0 0; padding: 12px 20px calc(16px + var(--sab)); }
 .item { display: block; width: 100%; padding: 14px 0; font-size: 16px; text-align: center; border-bottom: 1px solid #ECE9EA; color: #1A1718; }
 .item:disabled { opacity: 0.5; }
 .danger { color: #AC1830; }

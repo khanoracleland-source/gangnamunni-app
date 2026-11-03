@@ -4,7 +4,7 @@
 .tabs { display: flex; gap: 8px; padding: 8px 16px 4px; }
 .tab { padding: 8px 16px; border: 1px solid #DCD6D8; border-radius: 8px; background: #fff; color: #1A1718; font-size: 14px; font-weight: 600; cursor: pointer; }
 .tabOn { background: #AC1830; border-color: #AC1830; color: #fff; }
-.agree { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 640px; bottom: 0; z-index: 60; box-sizing: border-box; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #DCD6D8; text-align: center; }
+.agree { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 640px; bottom: 0; z-index: 60; box-sizing: border-box; padding: 14px 16px calc(14px + var(--sab)); background: #fff; border-top: 1px solid #DCD6D8; text-align: center; }
 .agree label { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; font-size: 13px; }
 .agreeBtn { width: 100%; padding: 12px; border: 0; border-radius: 8px; background: #AC1830; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
 .agreeBtn:disabled { opacity: .5; cursor: not-allowed; }

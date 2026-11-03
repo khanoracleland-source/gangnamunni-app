@@ -1,10 +1,11 @@
 /* 02-01 시작하기 */
-.wrap { position: relative; box-sizing: border-box; max-width: 480px; margin: 0 auto; min-height: 100dvh; margin-bottom: calc(-1 * (var(--nav-h) + env(safe-area-inset-bottom))); display: flex; flex-direction: column; background: #fff; color: #1A1718; letter-spacing: -0.01em; padding-top: env(safe-area-inset-top); }
-.back { position: absolute; top: calc(env(safe-area-inset-top) + 8px); left: 8px; width: 40px; height: 40px; border: 0; background: none; font-size: 22px; color: #1A1718; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.wrap { position: relative; box-sizing: border-box; max-width: 480px; margin: 0 auto; min-height: 100dvh; margin-bottom: calc(-1 * (var(--nav-h) + var(--sab))); display: flex; flex-direction: column; background: #fff; color: #1A1718; letter-spacing: -0.01em; padding-top: var(--sat); }
+.back { position: absolute; top: calc(var(--sat) + 8px); left: 8px; width: 40px; height: 40px; border: 0; background: none; font-size: 22px; color: #1A1718; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .hero { padding-top: clamp(64px, 14vh, 118px); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .hero img { width: min(196px, 52vw); height: auto; display: block; }
 .actions { padding: clamp(40px, 8vh, 72px) 20px 0; display: flex; flex-direction: column; gap: 8px; }
 .btn { box-sizing: border-box; height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid transparent; border-radius: 12px; font-size: calc(17px * var(--fs-scale, 1)); font-weight: 700; font-family: inherit; text-decoration: none; cursor: pointer; width: 100%; background: none; }
+.ph { height: 52px; border-radius: 12px; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .ico { width: 22px; height: 22px; object-fit: contain; flex: none; }
 .kakao { background: #FEE500; border-color: #FEE500; color: #1A1718; }

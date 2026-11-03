@@ -4,9 +4,14 @@
   --muted: #6B6466;
   --line: #ECE9EA;
   --accent: #ac1830;
-  --nav-h: max(70px, calc(104px - env(safe-area-inset-bottom))); /* reserved space under the page = --nav-h + safe-area = 104: floating tab bar 68 + 22 from the bottom + 14 gap (design spacer) */
+  --nav-h: max(70px, calc(104px - var(--sab))); /* reserved space under the page = --nav-h + safe-area = 104: floating tab bar 68 + 22 from the bottom + 14 gap (design spacer) */
   --fs-scale: 1;
+  /* Device insets (notch / home indicator). Inside the app the native SafeArea has already applied them, but Android WebView still
+     reports them: html[data-app] (set in layout.tsx from the sb_patient_app cookie) zeroes them so nothing is counted twice. */
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
 }
+html[data-app] { --sat: 0px; --sab: 0px; }
 @media (max-width: 339px) { :root { --fs-scale: .92; } }
 @media (min-width: 340px) and (max-width: 374px) { :root { --fs-scale: .96; } }
 @media (min-width: 768px) { :root { --fs-scale: 1.06; } }
@@ -25,7 +30,7 @@ a { color: inherit; text-decoration: none; }
 input, textarea, select { font-family: inherit; letter-spacing: inherit; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 img { display: block; max-width: 100%; }
-.page { max-width: 640px; margin: 0 auto; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+.page { max-width: 640px; margin: 0 auto; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + var(--sab)); }
 .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e6e6e6 37%, #f0f0f0 63%); background-size: 400% 100%; border-radius: 4px; opacity: 0; animation: sk 1.2s ease infinite, skShow .2s ease .12s forwards; } /* shown only if loading lasts > ~120ms: no flash on fast/cached screens */
 @keyframes skShow { to { opacity: 1; } }
 @keyframes sk { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
