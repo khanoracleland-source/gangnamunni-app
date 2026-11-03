@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type MypageSummary } from "@/lib/api";
+import { useMe } from "@/lib/me";
 import { phpUrl, usePhpBase } from "@/lib/php";
 import { observeImpressions, trackClick } from "@/lib/adTracking";
 import Carousel from "./Carousel";
@@ -18,14 +19,18 @@ const seoulMonth = () => Number(new Intl.DateTimeFormat("en-US", { month: "numer
 /** mypage.php: profile, counters, the mypage ad carousel and the menu. Heavier sub-pages (bookings, points, notifications, events) stay in PHP. */
 export default function Mypage({ initial, anon }: { initial?: MypageSummary; anon?: boolean }) {
   const php = usePhpBase();
-  const { data, error, refetch } = useQuery({ queryKey: qk.mypage, queryFn: () => api.mypage(), initialData: initial, retry: false, enabled: !anon });
+  // /me only decides which layout to show; /v1/mypage runs in parallel (no waterfall) and a failing /me never blocks it.
+  const me = useMe();
+  const meKnownOut = !!me.data && !me.data.loggedIn;
+  const { data, error, refetch } = useQuery({ queryKey: qk.mypage, queryFn: () => api.mypage(), initialData: initial, retry: false, enabled: !anon && !meKnownOut });
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!rootRef.current || !data) return;
     return observeImpressions(php, rootRef.current);
   }, [data, php]);
 
-  const loggedOut = anon || (error instanceof ApiError && error.status === 401);
+  const loggedOut = anon || meKnownOut || (error instanceof ApiError && error.status === 401);
+  const resolving = !loggedOut && !data && !error && me.isPending; // nothing known yet (a /me error is not 'pending': the summary/error path takes over)
   const row = (href: string, icon: string | null, text: string, badge?: string, next = false) => {
     const inner = (
       <>
@@ -53,13 +58,13 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
     <div className={styles.my} ref={rootRef}>
       <div className={styles.head}>
         <span className={styles.headTitle}>마이페이지</span>
-        {!loggedOut && <Link href="/mypage/settings" className={styles.headSide} aria-label="설정">
+        {!loggedOut && !resolving && <Link href="/mypage/settings" className={styles.headSide} aria-label="설정">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={ICON("icon-mypage-settings")} alt="" width={24} height={24} /></Link>}
       </div>
 
       <div className={styles.canvas}>
-      {loggedOut ? (
+      {resolving ? null : loggedOut ? (
         <>
           <LoginPrompt />
           {support}
