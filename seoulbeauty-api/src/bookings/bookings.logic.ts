@@ -2,8 +2,8 @@
 
 export const DAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
 /** provider column values (mirror booking_payment_test_providers() / booking_payment_pg_providers() in PHP). No PG is connected: register its values here. */
-export const TEST_PROVIDERS: string[] = ['mock_booking_payment'];
-export const PG_PROVIDERS: string[] = [];
+export const TEST_PROVIDERS: string[] = ['mock_booking_payment', 'inicis_test'];
+export const PG_PROVIDERS: string[] = ['inicis', 'inicis_test'];
 
 export const isTestProvider = (p: unknown) => TEST_PROVIDERS.includes(String(p ?? ''));
 export const isPgProvider = (p: unknown) => PG_PROVIDERS.includes(String(p ?? ''));

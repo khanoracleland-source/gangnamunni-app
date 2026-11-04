@@ -230,6 +230,8 @@ export interface BookingPaymentInfo {
   isConfirmed: boolean; isPaid: boolean; preview: boolean; liveAvailable: boolean; previewAvailable: boolean;
   points: { v2: boolean; expected: number; useReady: boolean; max: number; balance: number };
 }
+/** POST …/payment/inicis/prepare — the signed INIPayPro parameters (the hash key never leaves the server). */
+export interface InicisPrepare { sdkUrl: string; mode: "test" | "live"; params: Record<string, string>; closePath: string }
 export interface BookingPaymentSuccess { title: string; description: string; paidFinal: boolean; preview: boolean; isPg: boolean; hospitalName: string; treatment: string; dateText: string; booker: string; bookingNo: string }
 
 /** GET /v1/legal/register-terms — bbs/register.php?view=terms */
@@ -440,6 +442,7 @@ export const api = {
   myPoints: (ctx?: ServerCtx) => get<MyPointsData>("/v1/mypage/points", undefined, ctx),
   bookingPayment: (id: number) => get<BookingPaymentInfo>(`/v1/mypage/bookings/${id}/payment`),
   bookingPaymentPreview: (id: number) => send<{ success: boolean; redirect: string }>("POST", `/v1/mypage/bookings/${id}/payment/preview`, {}, 30000),
+  bookingPaymentInicisPrepare: (id: number, device: "WEB" | "MOBILE") => send<InicisPrepare>("POST", `/v1/mypage/bookings/${id}/payment/inicis/prepare`, { device }, 30000),
   bookingPaymentSuccess: (id: number) => get<BookingPaymentSuccess>(`/v1/mypage/bookings/${id}/payment/success`),
   bookingCancelInfo: (id: number) => get<BookingCancelInfo>(`/v1/mypage/bookings/${id}/cancel-info`),
   bookingCancel: (id: number, reason: string) => send<{ success: boolean; message: string; refund_status: string }>("POST", `/v1/mypage/bookings/${id}/cancel`, { reason }, 30000),

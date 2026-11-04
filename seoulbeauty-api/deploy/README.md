@@ -228,3 +228,32 @@ variable empty the PHP flow (`/auth/login.php?provider=…` → `plugin/social/r
    - Refusals: `social_error=exists` (the provider id was linked/registered before), `email_exists`, `failed`.
    - NOT ported: the member icon download from the provider photo, the shop sign-up coupon (`de_member_reg_coupon_*`).
 4. Rollback: empty `SOCIAL_NEST_REGISTER`, restart `seoulbeauty-api`.
+
+### Inicis card payment (INIPayPro, Nest, 2026-11-04)
+Flow: Next `결제하기` -> `POST /v1/mypage/bookings/:id/payment/inicis/prepare` (signed SDK parameters, nothing written) -> `INIPayPro.requestPayment`
+-> Inicis makes the customer's browser POST the authentication result to `POST /v1/payments/inicis/return` (public: cross-site, no session)
+-> Nest checks it against the ledger, approves with Inicis (`payAppl.ini`), and moves the order to `paid` exactly like PHP `booking_payment_confirm()`
+(same `payment:<sha256>` GET_LOCK, `gangnamunni_payment_events`, `gangnamunni_payment_status_history`, `gangnamunni_payment_attempts`) -> 303 to `/next/mypage/bookings/:id/payment/success`.
+If the ledger write fails after Inicis approved, or the approval outcome is unknown, Nest calls `payNetCancel.ini` (망취소) and logs `[inicis][FINALIZE_FAILED]` / `[inicis][NET_CANCEL_FAILED]`.
+Checkout stays OFF (the page shows "온라인 결제 준비 중" and `결제 없이 계속하기`) until ALL of these are set: `PG_PAYMENTS_ENABLED=1`, `INICIS_MID`, `INICIS_HASHKEY`, `DB_PAY_USER`, `DB_PAY_PASSWORD`.
+
+1. A dedicated MariaDB account. `sb_api_ro` deliberately cannot mark an order paid; this one can, and only that:
+```
+CREATE USER 'sb_pay'@'127.0.0.1' IDENTIFIED BY '<long random>';   -- and the same for 'localhost'
+GRANT SELECT ON hms_saas.gangnamunni_platform_payments TO 'sb_pay'@'127.0.0.1';
+GRANT UPDATE (provider, provider_transaction_id, verified_amount, verified_at, verification_source, status, paid_at) ON hms_saas.gangnamunni_platform_payments TO 'sb_pay'@'127.0.0.1';
+GRANT SELECT (id, status) ON hms_saas.gangnamunni_bookings TO 'sb_pay'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_payment_events TO 'sb_pay'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_payment_status_history TO 'sb_pay'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE (outcome, reason) ON hms_saas.gangnamunni_payment_attempts TO 'sb_pay'@'127.0.0.1';
+```
+   Check right after granting: as `sb_pay`, `SELECT id FROM gangnamunni_platform_payments WHERE id = 0 FOR UPDATE;` must work (a locking read needs UPDATE on some column).
+2. `.env` (see `.env.example`): `INICIS_MID`, `INICIS_HASHKEY` (모바일 금액위변조 Hash Key), `INICIS_MODE=test|live`, `INICIS_PUBLIC_BASE`, `INICIS_APP_SCHEME`, `DB_PAY_USER`, `DB_PAY_PASSWORD`, `PG_PAYMENTS_ENABLED=1`.
+   Start with the test MID `INIpayTest` (mode `test`: rows are `provider=inicis_test`; PHP settlement cron and admin revenue pages exclude them via `booking_payment_test_providers()` (`inicis_test` is listed there — deploy that PHP change BEFORE enabling test mode on production); Inicis cancels them at midnight; KB / KakaoBank cards cannot be tested).
+   `INICIS_MODE=live` refuses a test MID, and `test` refuses a real MID.
+   Test mode charges real cards, so checkout is limited to `INICIS_TEST_MEMBERS` (comma separated mb_id): everyone else keeps seeing "온라인 결제 준비 중" + `결제 없이 계속하기`. Live mode uses its own list `INICIS_LIVE_MEMBERS` (empty = nobody, `*` = everyone).
+3. Network: outbound 443 to `stgpaypro.inicis.com` (183.109.71.64), `fcpaypro.inicis.com` (118.129.210.23), `kspaypro.inicis.com` (183.109.71.35), TLS 1.2+. Register the site domain/IP in the Inicis merchant admin.
+4. `systemctl restart seoulbeauty-api`, rebuild + restart `seoulbeauty-web` (`npm ci && npm run build && chown -R root:sbapi .next && chmod -R g+rwX .next && systemctl restart seoulbeauty-web`).
+5. Not ported yet: cancellation / refund through Inicis (INIAPI), virtual account (P_NOTI_URL), points used at checkout (an order with `points_used > 0` is refused with `POINTS_NOT_SUPPORTED`), reconcile of orders that stay `pending` after an approval.
+6. Rollback: set `PG_PAYMENTS_ENABLED=0` and restart `seoulbeauty-api`: checkout is hidden at once, the preview flow remains.
+

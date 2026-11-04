@@ -49,7 +49,7 @@ if (!function_exists('booking_payment_pg_providers')) {
 /** 매출·정산에서 제외할 값(샌드박스/모의 결제). PG 샌드박스 값을 등록하면 함께 여기에 넣는다. */
 if (!function_exists('booking_payment_test_providers')) {
     function booking_payment_test_providers(): array {
-        return ['mock_booking_payment'];
+        return ['mock_booking_payment', 'inicis_test'];
     }
 }
 function booking_payment_is_test(?string $provider): bool {

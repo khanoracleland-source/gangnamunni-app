@@ -4,6 +4,8 @@ import { DB, DbConn, DbPool } from '../db/db.module';
 import { PointsService } from '../points/points.service';
 import { isPgProvider, isTestProvider, kstNow, paymentTierPoint } from './bookings.logic';
 import { BookingMember } from './bookings.service';
+import { inicisAllowedFor, inicisConfig } from './inicis/inicis.config';
+import { payDbConfigured } from './inicis/pay-db';
 
 const s = (v: unknown) => (v == null ? '' : String(v));
 const n = (v: unknown) => Number(v ?? 0) || 0;
@@ -19,8 +21,16 @@ export class BookingPaymentService {
   private readonly log = new Logger(BookingPaymentService.name);
   constructor(@Inject(DB) private readonly db: DbPool, private readonly points: PointsService) {}
 
-  /** booking_payment_checkout_ready(): needs a connected PG gateway. None is connected, so live checkout is never available. */
-  static liveAvailable(): boolean { return false; }
+  /**
+   * booking_payment_checkout_ready(): Inicis configured (MID + hash key), the payment DB account present and PG_PAYMENTS_ENABLED=1.
+   * With `memberId` the member must also be allow-listed (inicisAllowedFor): INICIS_TEST_MEMBERS in test mode, INICIS_LIVE_MEMBERS in live
+   * mode (empty = nobody, `*` = everyone). Without `memberId` only the configuration is checked.
+   */
+  static liveAvailable(env: NodeJS.ProcessEnv = process.env, memberId?: string): boolean {
+    const cfg = inicisConfig(env);
+    if (env.PG_PAYMENTS_ENABLED !== '1' || !cfg || !payDbConfigured(env)) return false;
+    return memberId === undefined || inicisAllowedFor(cfg, memberId, env); // per-mode member allow-list
+  }
   static previewEnabled(): boolean { return (process.env.BOOKING_PAYMENT_PREVIEW_ENABLED ?? '1') === '1'; }
 
   private static phone(v: unknown): string {
@@ -39,7 +49,7 @@ export class BookingPaymentService {
     return `${day} (${dow}) ${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${tm[2]}`;
   }
 
-  private async own(m: BookingMember, id: number) {
+  async own(m: BookingMember, id: number) {
     const [rows] = (await this.db.query(
       'SELECT b.*, h.name AS h_name, h.profile_image_url, h.address AS hospital_address FROM gangnamunni_bookings b LEFT JOIN gangnamunni_hospitals h ON h.id = b.hospital_id WHERE b.id = ? LIMIT 1', [id])) as any;
     const b = (rows as any[])[0];
@@ -50,7 +60,7 @@ export class BookingPaymentService {
   private async hasTable(name: string): Promise<boolean> {
     try { const [rows] = (await this.db.query('SHOW TABLES LIKE ?', [name])) as any; return (rows as any[]).length > 0; } catch { return false; }
   }
-  private async order(id: number) {
+  async order(id: number) {
     const [rows] = (await this.db.query("SELECT * FROM gangnamunni_platform_payments WHERE payment_type = 'booking' AND booking_id = ? LIMIT 1", [id])) as any;
     return (rows as any[])[0] ?? null;
   }
@@ -59,7 +69,7 @@ export class BookingPaymentService {
   }
 
   /** platform_payment_create_booking(): one pending order per booking, priced from the booking row (FOR UPDATE). */
-  private async createOrder(id: number) {
+  async createOrder(id: number) {
     if (!this.db.getConnection) throw new Error('pool connection needed');
     const conn: DbConn = await this.db.getConnection();
     try {
@@ -113,7 +123,7 @@ export class BookingPaymentService {
       ledgerReady, orderError, gross: Math.max(0, gross),
       order: order ? { status: orderStatus, provider: s(order.provider), amount, gross, pointsUsed: pointsApplied, isTest: isTestProvider(order.provider) } : null,
       isConfirmed: status === 'confirmed', isPaid, preview: await this.hasPreview(id),
-      liveAvailable: BookingPaymentService.liveAvailable(), previewAvailable: BookingPaymentService.previewEnabled(),
+      liveAvailable: BookingPaymentService.liveAvailable(process.env, m.id), previewAvailable: BookingPaymentService.previewEnabled(),
       points: { v2: expectedPoints !== null, expected: expectedPoints ?? 0, useReady: false, max: 0, balance: 0 },
     };
   }

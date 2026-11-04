@@ -6,6 +6,7 @@ import { SameOriginGuard } from '../common/same-origin.guard';
 import { BookingMember, BookingsService } from './bookings.service';
 import { BookingManageService } from './booking-manage.service';
 import { BookingPaymentService } from './booking-payment.service';
+import { InicisPaymentService } from './inicis/inicis-payment.service';
 
 function member(req: AuthedRequest): BookingMember {
   const u = req.session!.user!;
@@ -16,7 +17,7 @@ function member(req: AuthedRequest): BookingMember {
 @Controller('v1/mypage/bookings')
 @UseGuards(RequireAuthGuard)
 export class BookingsController {
-  constructor(private readonly bookings: BookingsService, private readonly manage: BookingManageService, private readonly payment: BookingPaymentService) {}
+  constructor(private readonly bookings: BookingsService, private readonly manage: BookingManageService, private readonly payment: BookingPaymentService, private readonly inicis: InicisPaymentService) {}
 
   @Get()
   list(@Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.bookings.list(member(req)); }
@@ -48,6 +49,10 @@ export class BookingsController {
   @Post(':id/payment/preview')
   @UseGuards(SameOriginGuard)
   paymentPreview(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.payment.preview(member(req), idParam(id)); }
+
+  @Post(':id/payment/inicis/prepare')
+  @UseGuards(SameOriginGuard)
+  paymentInicisPrepare(@Param('id') id: string, @Body() body: { device?: unknown }, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.inicis.prepare(member(req), idParam(id), body?.device); }
 
   @Get(':id/payment/success')
   paymentSuccess(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.payment.success(member(req), idParam(id)); }

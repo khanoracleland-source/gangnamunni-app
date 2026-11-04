@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import LoginPrompt from "./LoginPrompt";
 import styles from "./BookingPayment.module.css";
 
@@ -16,15 +15,39 @@ const PAY_NOTICES: Record<string, string> = {
   BOOKING_NOT_CONFIRMED: "예약 상태가 변경되어 결제를 진행하지 않았습니다. 청구된 금액은 없습니다.",
   ORDER_STATE: "이 주문은 지금 결제할 수 없습니다. 청구된 금액은 없습니다.",
   UNRESOLVED: "결제 결과를 확인하고 있습니다. 다시 결제하지 말고 잠시 후 ‘이미 결제했다면 상태 확인’을 눌러주세요.",
+  AUTH_FAILED: "결제 인증이 취소되었거나 완료되지 않았습니다. 청구된 금액은 없습니다. 다시 시도해주세요.",
+  REJECTED: "카드 승인이 거절되었습니다. 청구된 금액은 없으니 다른 카드로 다시 시도해주세요.",
+  RESULT_MISMATCH: "결제 결과가 주문과 일치하지 않아 승인을 취소했습니다. 청구된 금액이 있다면 자동으로 취소됩니다. 계속되면 병원이나 고객센터로 문의해주세요.",
+  FINALIZE_FAILED: "결제를 처리하는 중 문제가 생겨 승인을 취소했습니다. 청구된 금액이 있다면 자동으로 취소됩니다. 잠시 후 다시 시도해주세요.",
+  FINALIZE_FAILED_UNCANCELLED: "결제를 처리하는 중 문제가 생겼습니다. 다시 결제하지 말고 병원이나 고객센터로 문의해주세요.",
+  POINTS_NOT_SUPPORTED: "포인트를 사용한 주문은 이 화면에서 결제할 수 없습니다.",
+  AUTH_INVALID: "결제 인증 정보가 올바르지 않아 결제를 진행하지 않았습니다. 청구된 금액은 없습니다.",
+  MID_MISMATCH: "결제 인증 정보가 올바르지 않아 결제를 진행하지 않았습니다. 청구된 금액은 없습니다.",
+  BUSY: "다른 결제가 처리 중입니다. 잠시 후 ‘이미 결제했다면 상태 확인’을 눌러주세요.",
+  UNAVAILABLE: "지금은 온라인 결제를 이용할 수 없습니다. 청구된 금액은 없습니다.",
 };
+const INICIS_SDK = "https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js";
+declare global { interface Window { INIPayPro?: { requestPayment: (o: Record<string, string>) => void } } }
+/** The INIPayPro SDK, loaded only from Inicis' own host. */
+const loadInicisSdk = (url: string) => new Promise<void>((resolve, reject) => {
+  if (url !== INICIS_SDK) { reject(new Error("sdk")); return; }
+  if (window.INIPayPro) { resolve(); return; }
+  const el = document.createElement("script");
+  el.src = url; el.charset = "UTF-8"; el.async = true;
+  el.onload = () => (window.INIPayPro ? resolve() : reject(new Error("sdk")));
+  el.onerror = () => reject(new Error("sdk"));
+  document.head.appendChild(el);
+});
 const METHODS: [string, string][] = [["bank", "계좌이체"], ["card", "신용/체크카드"], ["naverpay", "네이버페이"], ["kakaopay", "카카오페이"], ["tosspay", "토스페이"]];
+/** Live checkout (Inicis) starts with cards only. */
+const LIVE_METHODS = METHODS.filter(([k]) => k === "card");
 
 /**
- * booking_payment.php. No PG is connected: what works here is the order, the summary and "결제 없이 계속하기".
+ * booking_payment.php. Card checkout goes through KG Inicis (INIPayPro) when the server reports liveAvailable; otherwise the order,
+ * the summary and "결제 없이 계속하기" are what works.
  */
 export default function BookingPayment({ id, payError }: { id: number; payError: string }) {
   const router = useRouter();
-  const php = usePhpBase();
   const qc = useQueryClient();
   const { data, error, refetch, isFetching } = useQuery({ queryKey: qk.bookingPayment(id), queryFn: () => api.bookingPayment(id), staleTime: 0, gcTime: 0, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
   const [agree, setAgree] = useState(false);
@@ -49,6 +72,21 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
       router.replace(r.redirect);
       return;
     } catch (e) { setResult(e instanceof ApiError && !/^\d{3} /.test(e.message) ? e.message : "임시 결제 완료 처리에 실패했습니다. 잠시 후 다시 시도해주세요."); }
+    setBusy(false);
+  };
+  /** Inicis opens its payment layer (PC) or navigates to it (mobile); the result returns to the server and then to /payment/success. */
+  const payCard = async () => {
+    if (!data || busy) return;
+    if (!agree) { setAgreeErr(true); return; }
+    setAgreeErr(false); setBusy(true); setResult("");
+    try {
+      const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      const p = await api.bookingPaymentInicisPrepare(id, mobile ? "MOBILE" : "WEB");
+      await loadInicisSdk(p.sdkUrl);
+      window.INIPayPro!.requestPayment(p.params);
+      window.setTimeout(() => setBusy(false), 4000); // the layer is up; closing it returns here
+      return;
+    } catch (e) { setResult(e instanceof ApiError && !/^\d{3} /.test(e.message) ? e.message : "결제창을 열지 못했습니다. 잠시 후 다시 시도해주세요."); }
     setBusy(false);
   };
   const check = async () => {
@@ -118,7 +156,7 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
                       </div>
                     )}
                     <div className={styles.methodGrid}>
-                      {METHODS.map(([k, label]) => <button type="button" key={k} className={styles.method} disabled>{label}</button>)}
+                      {(data.liveAvailable ? LIVE_METHODS : METHODS).map(([k, label]) => <button type="button" key={k} className={styles.method} disabled={!data.liveAvailable}>{label}</button>)}
                     </div>
                   </section>
                   <section className={styles.section}>
@@ -151,7 +189,7 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
                   <div className={styles.sticky}>
                     <div className={styles.stickyTotal}><div className={styles.left}>총 결제 금액 <small>(VAT포함)</small></div><div className={styles.right}><span className={styles.old}>{won(data.order.gross)}원</span><span className={styles.new}>{won(data.order.amount)}원</span></div></div>
                     {(data.liveAvailable || !data.previewAvailable) && (data.liveAvailable
-                      ? <a className={styles.payBtn} href={phpUrl(php, `booking_payment.php?booking_id=${id}&php=1`)}>결제하기</a>
+                      ? <button type="button" className={styles.payBtn} disabled={busy} onClick={payCard}>{busy ? "결제창 여는 중…" : "카드로 결제하기"}</button>
                       : <button type="button" className={styles.payBtn} disabled>온라인 결제 준비 중</button>)}
                     {data.previewAvailable && (
                       <>
