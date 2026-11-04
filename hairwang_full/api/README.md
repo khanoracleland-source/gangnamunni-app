@@ -1,6 +1,6 @@
-# SNS PG 연동 API
+# SNS 로그인 API
 
-외부 사이트에서 SNS 로그인 및 PG 결제 기능을 사용할 수 있는 API 시스템입니다.
+외부 사이트에서 SNS 로그인 기능을 사용할 수 있는 API 시스템입니다.
 
 ## 기능
 
@@ -12,19 +12,11 @@
 - JWT 토큰 기반 인증
 - 커스텀 필드 지원
 
-### 2. PG 결제 API
-- 상품 조회 (목록, 상세, 재고 확인)
-- 장바구니 관리 (추가, 수정, 삭제)
-- 주문 생성
-- 결제 처리 (이니시스, LG U+, KCP, 카카오페이, 나이스페이)
-- 웹훅 기능
-
-### 3. 관리자 페이지
+### 2. 관리자 페이지
 - API 키 발급/관리
 - IP 화이트리스트 관리
 - API 로그 조회
 - SNS 로그인 로그 조회
-- PG 주문 관리
 
 ## 설치
 
@@ -100,16 +92,6 @@ provider=naver&token=ACCESS_TOKEN&auto_register=true
 - `POST /api/sns/token.php` - 토큰 발급/갱신/검증
 - `POST /api/sns/callback.php` - 콜백 처리
 
-#### PG 결제 API
-- `GET /api/pg/item.php` - 상품 조회
-- `GET /api/pg/cart.php` - 장바구니 조회
-- `POST /api/pg/cart.php` - 장바구니 추가
-- `PUT /api/pg/cart.php` - 장바구니 수정
-- `DELETE /api/pg/cart.php` - 장바구니 삭제
-- `POST /api/pg/order.php` - 주문 생성
-- `POST /api/pg/payment.php` - 결제 요청
-- `POST /api/pg/webhook.php` - 웹훅 처리
-
 ## 보안
 
 ### API 키 인증
@@ -142,17 +124,12 @@ API 키별로 IP 화이트리스트를 설정하여 특정 IP에서만 접근을
 ### 로그 조회
 - API 요청 로그
 - SNS 로그인 로그
-- PG 주문 로그
 
 ## 확장
 
 ### 새로운 SNS 제공자 추가
 
 api/sns/login.php에 새로운 제공자 처리 함수를 추가합니다.
-
-### 새로운 PG 사 추가
-
-api/pg/payment.php에 새로운 PG 사 처리 함수를 추가합니다.
 
 ### 커스텀 필드 추가
 
@@ -174,7 +151,7 @@ api/pg/payment.php에 새로운 PG 사 처리 함수를 추가합니다.
 
 ## 지원
 
-문제가 있거나 도움이 필요한 경우, 개발 내역 파일(sns_pg연동_개발_내역.md)을 참조하십시오.
+문제가 있거나 도움이 필요한 경우, 프로젝트 담당자에게 문의하십시오.
 
 ---
 

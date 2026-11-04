@@ -329,23 +329,6 @@ class ApiAuth {
     }
 }
 
-function pg_api_callback_url_is_allowed($url) {
-    if ($url === '') {
-        return true;
-    }
-
-    $parts = parse_url($url);
-    if (!$parts || strtolower($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])) {
-        return false;
-    }
-
-    $allowed = defined('G5_PG_CALLBACK_HOSTS')
-        ? array_filter(array_map('trim', explode(',', strtolower(G5_PG_CALLBACK_HOSTS))))
-        : array();
-
-    return in_array(strtolower($parts['host']), $allowed, true);
-}
-
 // API 응답 클래스
 function api_apply_cors_headers() {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';

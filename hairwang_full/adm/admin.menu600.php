@@ -22,10 +22,5 @@ $menu['menu600'] = array(
     array('600220', 'SNS 오류 로그', G5_ADMIN_URL.'/api_admin/sns/errorlog.php', 'api_sns_error'),
     array('600230', 'SNS 통계', G5_ADMIN_URL.'/api_admin/sns/statistics.php', 'api_sns_stats'),
     array('600240', 'SNS 테스트', G5_ADMIN_URL.'/api_admin/sns_test.php', 'api_sns_test'),
-    array('', 'PG 결제 API', '', 'api_pg'),
-    array('600310', 'PG 주문 목록', G5_ADMIN_URL.'/api_admin/pg/orderlist.php', 'api_pg_order'),
-    array('600320', 'PG 결제 로그', G5_ADMIN_URL.'/api_admin/pg/paymentlog.php', 'api_pg_log'),
-    array('600330', 'PG 통계', G5_ADMIN_URL.'/api_admin/pg/statistics.php', 'api_pg_stats'),
-    array('600340', 'PG 테스트', G5_ADMIN_URL.'/api_admin/pg_test.php', 'api_pg_test'),
     array('600350', '필드 값 조회', G5_ADMIN_URL.'/api_admin/fieldvaluelist.php', 'api_field_value'),
 );

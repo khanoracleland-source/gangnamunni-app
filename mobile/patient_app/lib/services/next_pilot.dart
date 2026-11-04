@@ -109,6 +109,29 @@ class NextPilot {
     );
   }
 
+  /// The booking page on the website (/next/booking?id=N). The website needs the hospital id
+  /// (the website's hospital id, not a native clinic id): without it the page is an error page.
+  /// Native booking screens hand over to it: the booking is created and paid on the website.
+  static Uri bookingUri({required int hospitalId, int? treatmentId}) => _sitePath(
+        '$basePath/booking',
+        {
+          'id': '$hospitalId',
+          if (treatmentId != null && treatmentId > 0) 'treatment_id': '$treatmentId',
+        },
+      );
+
+  /// Where a booking entry without a known hospital goes: the hospital list, where the user
+  /// picks a hospital and starts the booking from its detail page.
+  static Uri get hospitalsUri => _sitePath('$basePath/hospitals');
+
+  static Uri _sitePath(String path, [Map<String, String>? query]) => Uri(
+        scheme: _site.scheme,
+        host: _site.host,
+        port: _site.hasPort ? _site.port : null,
+        path: path,
+        queryParameters: query,
+      );
+
   /// detail.php?id=N[&tab=][&from=my_wishlist][&app=] -> /next/hospitals/N[?tab=].
   /// Any other parameter (treatment context, page, ...) keeps the PHP page.
   static Uri? _rewriteDetail(Uri uri) {

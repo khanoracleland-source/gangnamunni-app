@@ -1,6 +1,6 @@
 <?php
 /**
- * SNS 로그인 & PG 연동 테스트 페이지
+ * SNS 로그인 테스트 페이지
  * 작성일: 2026-01-19
  * 버전: 1.0
  */
@@ -13,7 +13,7 @@ $base_url = 'https://paikpc.aidoum.com/hairwang_dev_sns_shop_2026_01_18';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SNS 로그인 & PG 연동 테스트 페이지</title>
+    <title>SNS 로그인 테스트 페이지</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Malgun Gothic', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; }
@@ -50,7 +50,7 @@ $base_url = 'https://paikpc.aidoum.com/hairwang_dev_sns_shop_2026_01_18';
 </head>
 <body>
     <div class="container">
-        <h1>🚀 SNS 로그인 & PG 연동 테스트 페이지</h1>
+        <h1>🚀 SNS 로그인 테스트 페이지</h1>
 
         <div class="section">
             <h2>📊 통계</h2>
@@ -62,10 +62,6 @@ $base_url = 'https://paikpc.aidoum.com/hairwang_dev_sns_shop_2026_01_18';
                 <div class="stat-card">
                     <div class="count">4</div>
                     <div class="label">SNS 로그인 메뉴</div>
-                </div>
-                <div class="stat-card">
-                    <div class="count">4</div>
-                    <div class="label">PG 결제 메뉴</div>
                 </div>
                 <div class="stat-card">
                     <div class="count">2</div>
@@ -127,31 +123,6 @@ $base_url = 'https://paikpc.aidoum.com/hairwang_dev_sns_shop_2026_01_18';
                 }
                 ?>
             </div>
-
-            <h3>PG 결제 API 관리</h3>
-            <div class="url-list">
-                <?php
-                $pg_urls = array(
-                    array('label' => 'PG 주문 목록', 'path' => '/adm/api_admin/pg/orderlist.php', 'badge' => 'admin'),
-                    array('label' => 'PG 결제 로그', 'path' => '/adm/api_admin/pg/paymentlog.php', 'badge' => 'admin'),
-                    array('label' => 'PG 통계', 'path' => '/adm/api_admin/pg/statistics.php', 'badge' => 'admin'),
-                    array('label' => 'PG 테스트', 'path' => '/adm/api_admin/pg_test.php', 'badge' => 'test'),
-                );
-
-                foreach ($pg_urls as $url) {
-                    $full_url = $base_url . $url['path'];
-                    ?>
-                    <div class="url-item">
-                        <div class="url-info">
-                            <div class="url-label"><?php echo htmlspecialchars($url['label']); ?> <span class="badge badge-<?php echo $url['badge']; ?>"><?php echo $url['badge'] == 'test' ? '테스트' : '관리자'; ?></span></div>
-                            <div class="url-path"><?php echo htmlspecialchars($full_url); ?></div>
-                        </div>
-                        <a href="<?php echo htmlspecialchars($full_url); ?>" target="_blank" class="btn btn-warning">열기</a>
-                    </div>
-                    <?php
-                }
-                ?>
-            </div>
         </div>
 
         <div class="section">
@@ -160,7 +131,6 @@ $base_url = 'https://paikpc.aidoum.com/hairwang_dev_sns_shop_2026_01_18';
                 <?php
                 $test_urls = array(
                     array('label' => 'SNS 로그인 테스트', 'path' => '/api/sns/test_login.php', 'description' => '외부 사이트용 SNS 로그인 테스트 페이지'),
-                    array('label' => 'PG 결제 테스트', 'path' => '/api/pg/test_payment.php', 'description' => '외부 사이트용 PG 결제 테스트 페이지'),
                 );
 
                 foreach ($test_urls as $url) {
@@ -201,32 +171,6 @@ $base_url = 'https://paikpc.aidoum.com/hairwang_dev_sns_shop_2026_01_18';
                             <div class="url-path"><?php echo htmlspecialchars($full_url); ?></div>
                         </div>
                         <a href="<?php echo htmlspecialchars($full_url); ?>" target="_blank" class="btn btn-info">열기</a>
-                    </div>
-                    <?php
-                }
-                ?>
-            </div>
-
-            <h3>PG 결제 API</h3>
-            <div class="url-list">
-                <?php
-                $pg_api_urls = array(
-                    array('label' => '상품', 'path' => '/api/pg/item.php', 'method' => 'GET/POST'),
-                    array('label' => '장바구니', 'path' => '/api/pg/cart.php', 'method' => 'POST'),
-                    array('label' => '주문', 'path' => '/api/pg/order.php', 'method' => 'POST'),
-                    array('label' => '결제', 'path' => '/api/pg/payment.php', 'method' => 'POST'),
-                    array('label' => '웹훅', 'path' => '/api/pg/webhook.php', 'method' => 'POST'),
-                );
-
-                foreach ($pg_api_urls as $url) {
-                    $full_url = $base_url . $url['path'];
-                    ?>
-                    <div class="url-item">
-                        <div class="url-info">
-                            <div class="url-label"><?php echo htmlspecialchars($url['label']); ?> <span class="badge badge-api">API</span></div>
-                            <div class="url-path"><?php echo htmlspecialchars($full_url); ?></div>
-                        </div>
-                        <a href="<?php echo htmlspecialchars($full_url); ?>" target="_blank" class="btn btn-warning">열기</a>
                     </div>
                     <?php
                 }

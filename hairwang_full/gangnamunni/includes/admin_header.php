@@ -827,17 +827,6 @@ if (isset($connect) && $connect) {
         <?php endif; endforeach; ?>
     </ul>
 
-    <!-- PG Test Report — 사이드바 스크롤 영역 최하단 (한글 주석) -->
-    <div style="padding:8px 12px 4px;">
-        <a href="/hairwang/app/pg_test_report_20260308.html" target="_blank"
-           style="display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:8px; font-size:12.5px; font-weight:700; color:#fff; text-decoration:none; background:linear-gradient(135deg,#059669,#10b981); transition:all 0.2s; box-shadow:0 2px 6px rgba(5,150,105,0.25);"
-           onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
-            <i class="bi bi-credit-card-2-front" style="font-size:15px;"></i>
-            PG Test Report
-            <i class="bi bi-box-arrow-up-right" style="font-size:10px; margin-left:auto; opacity:0.7;"></i>
-        </a>
-    </div>
-
     <!-- 하단 여백 -->
     <div style="height:16px;"></div>
 

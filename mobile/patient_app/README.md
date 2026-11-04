@@ -36,7 +36,6 @@ flutter run
 ## 📚 주요 문서
 
 - [BUILD_GUIDE.md](BUILD_GUIDE.md) - 빌드 및 배포 가이드
-- [lib/modules/payment/inicis/README.md](lib/modules/payment/inicis/README.md) - INICIS 결제 가이드
 - [최종 개발 완료 보고서](../../../../../최종_개발_완료_보고서.md)
 
 ---
@@ -48,12 +47,10 @@ flutter run
 - ✅ 패키지명: com.seoulbeauty.app
 - ✅ 한국어 번역 (2,053개)
 - ✅ 한국 시장 대응 (포맷터, 주소 검색)
-- ✅ INICIS 결제 모듈 (Flutter)
 
 ## ⏳ 남은 작업 (38%)
 
 - [ ] Firebase 설정
-- [ ] Laravel INICIS API
 - [ ] QA & 테스트
 - [ ] Google Play 배포
 

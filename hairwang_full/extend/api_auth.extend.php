@@ -19,18 +19,9 @@ if (!defined('G5_WEBHOOK_SECRET')) {
     define('G5_WEBHOOK_SECRET', 'default_webhook_secret_change_me_please');
 }
 
-// Payment API is fail-closed until a real PG adapter is installed.
+// Booking payment is fail-closed until a real payment gateway is connected.
 if (!defined('G5_PG_PAYMENTS_ENABLED')) {
     define('G5_PG_PAYMENTS_ENABLED', false);
-}
-
-// Comma-separated callback hosts. Empty means callbacks are disabled.
-if (!defined('G5_PG_CALLBACK_HOSTS')) {
-    define('G5_PG_CALLBACK_HOSTS', '');
-}
-
-if (!defined('G5_PG_WEBHOOK_TOLERANCE')) {
-    define('G5_PG_WEBHOOK_TOLERANCE', 300);
 }
 
 if (!defined('G5_API_ALLOWED_ORIGINS')) {

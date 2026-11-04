@@ -8,7 +8,6 @@ import 'package:nb_utils/nb_utils.dart';
 
 import '../../../components/app_scaffold.dart';
 import '../../../utils/common_base.dart';
-import '../../api/auth_apis.dart';
 import '../../components/cached_image_widget.dart';
 import '../../components/chat_gpt_loder.dart';
 import '../../components/common_file_placeholders.dart';
@@ -22,8 +21,6 @@ import '../../utils/constants.dart';
 import '../../utils/empty_error_state_widget.dart';
 import '../../utils/price_widget.dart';
 import '../../utils/view_all_label_component.dart';
-import '../payment/payment_controller.dart';
-import '../payment/payment_screen.dart';
 import 'appointment_detail_controller.dart';
 import 'appointments_controller.dart';
 import 'components/service_info_card_widget.dart';
@@ -401,19 +398,6 @@ class AppointmentDetail extends StatelessWidget {
                   ),
                 ),
                 paymentDetails(context),
-                Obx(
-                  () => SizedBox(
-                    //// ADD THIS CONTAINER WITH WIDTH
-                    width: Get.width,
-                    child: payNowBtn(context).visible(
-                      (appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.pending) ||
-                                  appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.failed) ||
-                                  appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.ADVANCE_PAID)) &&
-                              appointmentDetailCont.appointmentDetail.value.status.toLowerCase().contains(StatusConst.checkIn.toLowerCase()) ||
-                          appointmentDetailCont.isAdvancePaymentFailed,
-                    ),
-                  ),
-                ),
                 if (appointmentDetailCont.appointmentDetail.value.status.contains(StatusConst.pending)) ...[
                   24.height,
                   Obx(
@@ -461,64 +445,6 @@ class AppointmentDetail extends StatelessWidget {
           },
         ),
       ),
-    );
-  }
-
-  Widget payNowBtn(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          locale.value.noteInCaseYouFailToMakeTheAdvancePaymentYouWi,
-          style: secondaryTextStyle(color: appColorSecondary, size: 11, fontStyle: FontStyle.italic),
-        ).paddingSymmetric(horizontal: 16).paddingTop(16).visible(appointmentDetailCont.isAdvancePaymentFailed),
-        32.height,
-        AppButton(
-          width: Get.width,
-          text: locale.value.payNow,
-          textStyle: appButtonTextStyleWhite,
-          color: completedStatusColor,
-          onTap: () async {
-            paymentController = PaymentController(
-              isFromBookingDetail: true,
-              bid: appointmentDetailCont.appointmentDetail.value.id,
-              amount: appointmentDetailCont.payNowAmount,
-            );
-            paymentController.isAdvancePaymentFailed = appointmentDetailCont.isAdvancePaymentFailed;
-            paymentController.isRemainingPayment = appointmentDetailCont.appointmentDetail.value.paymentStatus.toLowerCase().contains(PaymentStatus.ADVANCE_PAID.toLowerCase());
-            paymentController.paymentOption(PaymentMethods.PAYMENT_METHOD_STRIPE);
-            AuthServiceApis.getUserWallet();
-            Get.to(() => const PaymentScreen())?.then((value) {
-              if (value == true) {
-                appointmentDetailCont.init();
-
-                ///Refresh Appointment List
-                try {
-                  final AppointmentsController appointmentsCont = Get.find();
-                  appointmentsCont.page(1);
-                  appointmentsCont.getAppointmentList();
-                } catch (e) {
-                  log('onItemSelected Err: $e');
-                }
-              }
-            });
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                locale.value.payNow,
-                style: appButtonTextStyleWhite,
-              ),
-              PriceWidget(
-                price: appointmentDetailCont.payNowAmount,
-                color: white,
-                size: 18,
-              ),
-            ],
-          ),
-        ).paddingSymmetric(horizontal: 16),
-      ],
     );
   }
 

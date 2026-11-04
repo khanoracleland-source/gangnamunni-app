@@ -9,7 +9,6 @@ import '../../utils/empty_error_state_widget.dart';
 
 import 'components/choose_category_components.dart';
 import 'components/greetings_component.dart';
-import 'components/quick_book_component.dart';
 import 'components/perfect_clinic_list.dart';
 import '../service/components/popular_service_component.dart';
 import 'components/slider_component.dart';
@@ -54,7 +53,8 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   ChooseCategoryComponents(),
                   const SliderComponent(),
-                  if (appConfigs.value.isQuickBookingEnabled.getBoolInt()) QuickBookComponent(),
+                  // Quick book ended in a native summary dialog whose payment step was removed;
+                  // booking now happens on the website (see BookingFormScreen).
                   UpcomingAppointmentComponents(),
                   // FeaturedServiceComponent(),
                   PopularServiceComponent(),

@@ -29,7 +29,7 @@ import '../screens/webview/startup_webview_screen.dart';
 ///   /appointment/{id}  -> AppointmentDetail (예약 상세)
 ///   /clinic/{id}       -> ClinicDetailScreen (클리닉 상세)
 ///   /doctor/{id}       -> DoctorDetailScreen (의사 상세)
-///   /booking           -> BookingFormScreen (예약 폼)
+///   /booking[?id=N]    -> BookingFormScreen (웹 예약 페이지, id 없으면 병원 목록)
 ///   /service/{id}      -> ServiceDetailScreen (서비스 상세)
 ///   /profile           -> DashboardScreen 프로필 탭
 ///   /settings          -> DashboardScreen 설정 탭 (비로그인 시)
@@ -220,7 +220,7 @@ class DeepLinkService {
         break;
 
       case 'booking':
-        _navigateToBookingForm();
+        _navigateToBookingForm(queryParameters);
         break;
 
       case 'service':
@@ -330,9 +330,14 @@ class DeepLinkService {
   }
 
   /// 예약 폼 화면으로 이동
-  void _navigateToBookingForm() {
-    debugPrint('[DeepLinkService] -> BookingFormScreen');
-    Get.to(() => BookingFormScreen());
+  ///
+  /// `wellness://booking?id=N[&treatment_id=M]` opens the website's booking page for hospital N
+  /// (the website's hospital id); without a valid id the hospital list opens instead.
+  void _navigateToBookingForm([Map<String, String> query = const {}]) {
+    final hospitalId = int.tryParse(query['id'] ?? query['hospital_id'] ?? '');
+    final treatmentId = int.tryParse(query['treatment_id'] ?? '');
+    debugPrint('[DeepLinkService] -> BookingFormScreen (hospital=$hospitalId)');
+    Get.to(() => BookingFormScreen(hospitalId: hospitalId, treatmentId: treatmentId));
   }
 
   /// 서비스 상세 화면으로 이동

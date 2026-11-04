@@ -1,4 +1,4 @@
-# SNS PG 연동 API 테스트 가이드
+# SNS 로그인 API 테스트 가이드
 
 ## 1. 데이터베이스 설치 테스트
 
@@ -18,7 +18,6 @@ SHOW TABLES LIKE 'g5_api%';
 - API 로그
 - g5_api_logs
 - g5_sns_api_logs
-- g5_pg_api_orders
 - g5_api_fields
 - g5_api_field_values
 
@@ -96,64 +95,6 @@ curl -X POST http://your-domain.com/api/sns/token.php \
     "token_type": "Bearer",
     "expires_in": 3600,
     "mb_id": "naver_123456"
-  }
-}
-```
-
-## 5. PG 결제 API 테스트
-
-### 5.1 상품 목록 조회 테스트
-```bash
-curl -X GET "http://your-domain.com/api/pg/item.php?action=list&page=1&limit=20" \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "X-API-Secret: YOUR_API_SECRET"
-```
-
-예상 결과:
-```json
-{
-  "success": true,
-  "data": {
-    "action": "list",
-    "items": [...],
-    "pagination": {...}
-  }
-}
-```
-
-### 5.2 상품 상세 조회 테스트
-```bash
-curl -X GET "http://your-domain.com/api/pg/item.php?action=detail&item_id=1" \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "X-API-Secret: YOUR_API_SECRET"
-```
-
-### 5.3 장바구니 추가 테스트
-```bash
-curl -X POST http://your-domain.com/api/pg/cart.php \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "X-API-Secret: YOUR_API_SECRET" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "item_id=1&quantity=1&cart_id=test_cart_123"
-```
-
-### 5.4 주문 생성 테스트
-```bash
-curl -X POST http://your-domain.com/api/pg/order.php \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "X-API-Secret: YOUR_API_SECRET" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "external_order_id=test_order_123&cart_id=test_cart_123&receiver_name=홍길동&receiver_phone=01012345678&receiver_zipcode=12345&receiver_address1=서울시&payment_method=kakaopay&callback_url=http://your-domain.com/api/pg/webhook.php"
-```
-
-예상 결과:
-```json
-{
-  "success": true,
-  "data": {
-    "order_id": "20260119-1234567890-1234",
-    "external_order_id": "test_order_123",
-    "status": "pending"
   }
 }
 ```
@@ -266,9 +207,6 @@ curl -X POST http://your-domain.com/api/sns/login.php \
 2. SNS 로그인 로그 테스트: http://your-domain.com/adm/api_admin/sns/loginlog.php
 3. SNS 오류 로그 테스트: http://your-domain.com/adm/api_admin/sns/errorlog.php
 4. SNS 통계 테스트: http://your-domain.com/adm/api_admin/sns/statistics.php
-5. PG 주문 로그 테스트: http://your-domain.com/adm/api_admin/pg/orderlist.php
-6. PG 결제 로그 테스트: http://your-domain.com/adm/api_admin/pg/paymentlog.php
-7. PG 통계 테스트: http://your-domain.com/adm/api_admin/pg/statistics.php
 
 ### 8.4 필드 관리 테스트
 1. 필드 정의 생성 테스트: http://your-domain.com/adm/api_admin/fieldlist.php
@@ -285,15 +223,6 @@ curl -X POST http://your-domain.com/api/sns/login.php \
 4. 신규 회원: 자동 가입 처리
 5. JWT 토큰 발급
 6. 로그 기록 확인
-
-### 9.2 PG 결제 전체 흐름 테스트
-1. 상품 목록 조회
-2. 상품 상세 조회
-3. 장바구니에 상품 추가
-4. 주문 생성
-5. 결제 요청
-6. 웹훅 알림
-7. 주문 상태 확인
 
 ## 10. 보안 테스트
 
@@ -321,12 +250,12 @@ curl -X POST http://your-domain.com/api/sns/login.php \
 
 ### 11.1 부하 테스트 (Apache Bench)
 ```bash
-ab -n 1000 -c 10 -H "X-API-Key: YOUR_API_KEY" -H "X-API-Secret: YOUR_API_SECRET" http://your-domain.com/api/pg/item.php?action=list
+ab -n 1000 -c 10 -H "X-API-Key: YOUR_API_KEY" -H "X-API-Secret: YOUR_API_SECRET" http://your-domain.com/api/sns/token.php
 ```
 
 ### 11.2 응답 시간 측정
 ```bash
-time curl -X GET http://your-domain.com/api/pg/item.php?action=list \
+time curl -X GET http://your-domain.com/api/sns/token.php \
   -H "X-API-Key: YOUR_API_KEY" \
   -H "X-API-Secret: YOUR_API_SECRET"
 ```
@@ -349,13 +278,6 @@ time curl -X GET http://your-domain.com/api/pg/item.php?action=list \
 - [ ] 구글 로그인 작동
 - [ ] 토큰 발급 작동
 - [ ] 콜백 처리 작동
-
-### PG 결제 API
-- [ ] 상품 조회 작동
-- [ ] 장바구니 작동
-- [ ] 주문 생성 작동
-- [ ] 결제 요청 작동
-- [ ] 웹훅 작동
 
 ### 관리자 페이지
 - [ ] API 키 관리 작동

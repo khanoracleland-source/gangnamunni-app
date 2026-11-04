@@ -86,9 +86,8 @@ Beauty Hospital Platform (HMS + Gangnamunni + Gnuboard)
 - [ ] OAuth callback URL configuration for new domain
 
 ### 4.2 Payment (Code Ready)
-- [x] 5 PG providers: INIpay, LG U+, KCP, KakaoPay, NicePay
 - [x] Order/cart/payment workflow
-- [ ] PG merchant keys configuration
+- [ ] Payment gateway not connected yet (to be integrated from scratch)
 - [ ] Test transaction verification
 
 ### 4.3 Push Notifications (Code Ready)
@@ -183,7 +182,7 @@ git add -A && git commit -m "description" && git push
 | Mobile | Flutter (planned) |
 | Server | Rocky Linux 9.7 + Apache 2.4 |
 | Auth | Laravel Sanctum + Gnuboard Session |
-| Payment | PG 연동 준비 중 |
+| Payment | 게이트웨이 미연결 (신규 연동 예정) |
 | Push | Firebase FCM HTTP v1 |
 | Maps | Kakao Maps API |
 | CDN | Cloudflare |

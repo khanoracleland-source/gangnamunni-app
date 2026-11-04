@@ -258,7 +258,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
           <li>관리자 75+ 메뉴 (RBAC 9역할, 다크모드, 마법사 15종, 엑셀 9종)</li>
           <li>광고 시스템 + CPV 과금 + 지갑 + 쿠폰/포인트 + 회원등급</li>
           <li>채팅, 알림(FCM), 메일 시스템, AI 자동화(멀티 프로바이더), SSO 통합로그인</li>
-          <li>HMS(Laravel) 연동 + 5분 크론 동기화, 결제(이니시스 테스트 MID)</li>
+          <li>HMS(Laravel) 연동 + 5분 크론 동기화, 결제(게이트웨이 미연결)</li>
           <li>자동 매뉴얼 15종(247p), QA 자동화(Playwright), Figma 검수 시스템</li>
           <li>커뮤니티 좋아요 — 2026-06-12 버그 수정 배포 완료 (likes 테이블 컬럼 통일)</li>
         </ul>
@@ -269,13 +269,13 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
             <tr><td>📱 모바일 반응형 (폰트 스케일 + 카테고리표)</td><td>완료 (6/16)</td><td>전 페이지 글자 폰 화면폭 비례 축소(--fs-scale, 43페이지) + 메인 카테고리표(--cat-scale). 관리: 사이트설정→모바일스케일. PC 무영향. 상세는 좌측 [반응형 디자인] 메뉴</td></tr>
             <tr><td>카카오 간편 로그인 / 카카오톡 공유</td><td><span class="badge b-spec">사양 대기</span></td><td>카카오 JS 키 + 사업자 등록 필요 (발주사 발급)</td></tr>
             <tr><td>카카오/네이버 지도 API</td><td><span class="badge b-spec">사양 대기</span></td><td>API 키 발급 + 카카오 vs 네이버 선택 필요</td></tr>
-            <tr><td>파트너 지갑 충전 결제</td><td><span class="badge b-done">완료 (6/12)</span></td><td>영카트 주문 연동 충전 구현 — 현재 PG 테스트 모드. 실 PG 계약 시 결제창만 연결</td></tr>
+            <tr><td>파트너 지갑 충전 결제</td><td><span class="badge b-done">완료 (6/12)</span></td><td>영카트 주문 연동 충전 구현 — 현재 PG 미연결(Mock 게이트웨이). 계약 후 신규 연동</td></tr>
             <tr><td>병원 입점 신청 공개 폼</td><td><span class="badge b-done">동작 중</span></td><td>hospital_apply_public.php 운영 중 (서류 업로드 + 승인 대기열 + 메일/알림)</td></tr>
             <tr><td>커뮤니티 데모 글 폴백</td><td><span class="badge b-done">제거 완료 (6/12)</span></td><td>미존재 글 → 목록 리다이렉트 / 빈 목록 → 빈 상태 UI</td></tr>
             <tr><td>예약 알림 발송(푸시+이메일)</td><td><span class="badge b-gray">Phase 4 계획분</span></td><td>마일스톤 Phase 2~5 (75건) 향후 개발 목록 참고</td></tr>
           </tbody>
         </table>
-        <div class="warn">⚠️ 실결제(PG)는 <strong>이니시스 테스트 MID(INIpayTest)</strong>만 설정되어 있습니다. 실 PG 계약(이니시스/KCP/토스 등)은 발주사 명의로 진행해야 합니다.</div>
+        <div class="warn">⚠️ <strong>PG 미연결</strong> — 현재 결제 게이트웨이가 연결되어 있지 않습니다. 실 PG 계약은 발주사 명의로 진행하며, 계약 후 신규 연동합니다.</div>
       </div>
     </section>
 
@@ -303,7 +303,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
           <tbody>
             <tr><td>서울미녀 서비스</td><td><strong>순수 PHP 8.2</strong> (프레임워크 없음)</td><td><code>hairwang_full/gangnamunni/</code></td><td>사용자/관리자 웹 전체</td></tr>
             <tr><td>HMS 병원관리</td><td><strong>Laravel 10</strong> (InfyHMS)</td><td><code>hms-saas/</code> 루트</td><td>병원/환자/예약 백오피스 + REST API</td></tr>
-            <tr><td>게시판/쇼핑</td><td><strong>Gnuboard5 + 영카트</strong></td><td><code>hairwang_full/</code></td><td>회원(g5_member) · PG 결제 모듈</td></tr>
+            <tr><td>게시판/쇼핑</td><td><strong>Gnuboard5 + 영카트</strong></td><td><code>hairwang_full/</code></td><td>회원(g5_member)</td></tr>
           </tbody>
         </table>
         <h3>서버 / 도메인</h3>
@@ -358,7 +358,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
           <tr><td style="padding-left:24px"><code>└ gangnamunni/</code></td><td>3.1G</td><td><b>★★ 실제 환자/관리자 페이지</b> (PHP 260+). 이번 인계 핵심. <code>/hairwang/gangnamunni/</code></td></tr>
           <tr><td style="padding-left:24px"><code>└ data/</code></td><td>217M</td><td>Gnuboard 업로드(이미지 등) — 사용자 콘텐츠, 백업 필수</td></tr>
           <tr><td style="padding-left:24px"><code>└ adm/ bbs/ lib/ plugin/</code></td><td>~96M</td><td>Gnuboard5 코어 — 프레임워크, 수정 주의</td></tr>
-          <tr><td style="padding-left:24px"><code>└ shop/</code></td><td>3.1M</td><td>영카트(결제/상품) — PG 연동</td></tr>
+          <tr><td style="padding-left:24px"><code>└ shop/</code></td><td>3.1M</td><td>영카트(상품)</td></tr>
           <tr><td style="padding-left:24px"><code>└ *_backup_* save_database/</code></td><td>~450M</td><td>백업본 — 인계 시 제외 가능</td></tr>
           <tr><td><code>resources/</code></td><td>38M</td><td>Blade 뷰·JS/SCSS 원본 (빌드 전 소스)</td></tr>
           <tr><td><code>public/</code></td><td>58M</td><td>웹 공개 루트 — index.php·빌드된 assets (외부 접근 가능 유일 폴더)</td></tr>
@@ -563,7 +563,7 @@ ul.compact { margin:6px 0; padding-left:22px; } ul.compact li { margin:4px 0; fo
             <tr><td>AI / 자동화</td><td>AI 자동화 설정(11그룹) · 자동 테스트 v1/v2 · E2E 테스트</td></tr>
             <tr><td>사이트 설정</td><td>통합 설정 · 테마/고급 테마 · 네비게이션 · 에디터 · 점검 모드</td></tr>
             <tr><td>관리자/알림</td><td>관리자 관리(RBAC) · 등급별 기능 · 알림 센터 · 알림 보내기</td></tr>
-            <tr><td>CPV 과금 + 결제</td><td>CPV 단가/지갑/대시보드/정산 · 결제 관리(4탭: 주문/상품/매출/PG설정)</td></tr>
+            <tr><td>CPV 과금 + 결제</td><td>CPV 단가/지갑/대시보드/정산 · 결제 관리(주문/상품/매출)</td></tr>
             <tr><td>QA & 리포트</td><td>QA 마스터/통합 대시보드 · 각종 검증 리포트 · 자동 매뉴얼 15종</td></tr>
           </tbody>
         </table>

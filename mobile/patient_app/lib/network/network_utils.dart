@@ -27,8 +27,6 @@ Map<String, String> buildHeaderTokens({
 }) {
   if (extraKeys == null) {
     extraKeys = {};
-    extraKeys.putIfAbsent('isFlutterWave', () => false);
-    extraKeys.putIfAbsent('isAirtelMoney', () => false);
   }
   final Map<String, String> header = {
     HttpHeaders.cacheControlHeader: 'no-cache',
@@ -43,21 +41,7 @@ Map<String, String> buildHeaderTokens({
   header.putIfAbsent(
       HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
 
-  if (isLoggedIn.value &&
-      extraKeys.containsKey('isFlutterWave') &&
-      extraKeys['isFlutterWave']) {
-    header.putIfAbsent(HttpHeaders.authorizationHeader,
-        () => "Bearer ${extraKeys!['flutterWaveSecretKey']}");
-  } else if (isLoggedIn.value &&
-      extraKeys.containsKey('isAirtelMoney') &&
-      extraKeys['isAirtelMoney']) {
-    header.putIfAbsent(
-        HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
-    header.putIfAbsent(HttpHeaders.authorizationHeader,
-        () => 'Bearer ${extraKeys!['access_token']}');
-    header.putIfAbsent('X-Country', () => '${extraKeys!['X-Country']}');
-    header.putIfAbsent('X-Currency', () => '${extraKeys!['X-Currency']}');
-  } else if (isLoggedIn.value) {
+  if (isLoggedIn.value) {
     header.putIfAbsent(HttpHeaders.authorizationHeader,
         () => 'Bearer ${loginUserData.value.apiToken}');
   }
@@ -166,8 +150,7 @@ Future<void> reGenerateToken() async {
 
 Future handleResponse(Response response,
     {HttpResponseType httpResponseType = HttpResponseType.JSON,
-    bool? avoidTokenError,
-    bool? isFlutterWave}) async {
+    bool? avoidTokenError}) async {
   if (!await isNetworkAvailable()) {
     throw errorInternetNotAvailable;
   }
@@ -177,13 +160,7 @@ Future handleResponse(Response response,
       final Map body = jsonDecode(response.body.trim());
 
       if (body.containsKey('status')) {
-        if (isFlutterWave.validate()) {
-          if (body['status'] == 'success') {
-            return body;
-          } else {
-            throw body['message'] ?? errorSomethingWentWrong;
-          }
-        } else {
+        {
           if (body['status'] == true) {
             return body;
           } else {
@@ -371,16 +348,6 @@ Future<List<MultipartFile>> getMultipartImages2(
   return multiPartRequest;
 }
 
-String parseStripeError(String response) {
-  try {
-    final body = jsonDecode(response);
-    return parseHtmlString(body['error']['message']);
-  } on Exception catch (e) {
-    log(e);
-    throw errorSomethingWentWrong;
-  }
-}
-
 void apiPrint({
   String url = "",
   String endPoint = "",
@@ -446,51 +413,6 @@ String formatJson(String jsonStr) {
   }
 }
 
-Map<String, String> buildHeaderForStripe(String stripeKeyPayment) {
-  final Map<String, String> header = defaultHeaders();
-
-  header.putIfAbsent(
-      HttpHeaders.contentTypeHeader, () => 'application/x-www-form-urlencoded');
-  header.putIfAbsent(
-      HttpHeaders.authorizationHeader, () => 'Bearer $stripeKeyPayment');
-
-  return header;
-}
-
-Map<String, String> buildHeaderForSadad({String? sadadToken}) {
-  final Map<String, String> header = defaultHeaders();
-
-  header.putIfAbsent(HttpHeaders.contentTypeHeader, () => 'application/json');
-  if (sadadToken != null) {
-    header.putIfAbsent(HttpHeaders.authorizationHeader, () => sadadToken);
-  }
-
-  return header;
-}
-
-Map<String, String> buildHeaderForFlutterWave(String flutterWaveSecretKey) {
-  final Map<String, String> header = defaultHeaders();
-
-  header.putIfAbsent(
-      HttpHeaders.authorizationHeader, () => "Bearer $flutterWaveSecretKey");
-
-  return header;
-}
-
-Map<String, String> buildHeaderForAirtelMoney(
-    String accessToken, String xCountry, String xCurrency) {
-  final Map<String, String> header = defaultHeaders();
-
-  header.putIfAbsent(
-      HttpHeaders.contentTypeHeader, () => 'application/json; charset=utf-8');
-  header.putIfAbsent(
-      HttpHeaders.authorizationHeader, () => 'Bearer $accessToken');
-  header.putIfAbsent('X-Country', () => xCountry);
-  header.putIfAbsent('X-Currency', () => xCurrency);
-
-  return header;
-}
-
 Map<String, String> defaultHeaders() {
   final Map<String, String> header = {};
 
@@ -501,16 +423,3 @@ Map<String, String> defaultHeaders() {
   return header;
 }
 
-Future<Map<String, dynamic>> handleSadadResponse(Response res) async {
-  if (res.body.isJson()) {
-    final body = jsonDecode(res.body);
-
-    if (res.statusCode.isSuccessful()) {
-      return body;
-    } else {
-      throw parseHtmlString(body['error']['message']);
-    }
-  } else {
-    throw errorSomethingWentWrong;
-  }
-}

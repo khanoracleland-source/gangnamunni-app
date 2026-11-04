@@ -169,9 +169,8 @@ include_once G5_ADMIN_PATH . '/admin.head.php';
                     <th scope="row"><label for="type">API 타입</label></th>
                     <td>
                         <select name="type" id="type" class="frm_input">
-                            <option value="all">전체 (SNS + PG)</option>
+                            <option value="all">전체 (SNS)</option>
                             <option value="sns">SNS 로그인</option>
-                            <option value="pg">PG 결제</option>
                         </select>
                     </td>
                 </tr>

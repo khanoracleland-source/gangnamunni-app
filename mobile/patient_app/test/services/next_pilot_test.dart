@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kivicare_patient/screens/slots/booking_form_screen.dart';
 import 'package:kivicare_patient/services/next_pilot.dart';
 
 /// Every PHP page with a Next.js counterpart, and the parameters that keep the PHP page.
@@ -184,5 +185,18 @@ void main() {
     expect(to(php('my_points_policy.php')), '/next/points-policy');
     expect(to(php('my_points_policy.php?tab=expire')), '/next/points-policy?tab=expire');
     expect(to(php('my_points_policy.php?tab=bogus')), isNull);
+  });
+
+  test('native booking entry hands over with a website hospital id, never an error page', () {
+    expect(NextPilot.bookingUri(hospitalId: 8216).path, '/next/booking');
+    expect(NextPilot.bookingUri(hospitalId: 8216).queryParameters, {'id': '8216'});
+    expect(NextPilot.bookingUri(hospitalId: 8216, treatmentId: 2).queryParameters,
+        {'id': '8216', 'treatment_id': '2'});
+    expect(NextPilot.hospitalsUri.path, '/next/hospitals');
+    // Native screens know only HMS clinic ids, so they open the hospital list.
+    expect(const BookingFormScreen().targetUri, NextPilot.hospitalsUri);
+    expect(const BookingFormScreen(hospitalId: 0).targetUri, NextPilot.hospitalsUri);
+    expect(const BookingFormScreen(hospitalId: 8216, treatmentId: 2).targetUri.queryParameters,
+        {'id': '8216', 'treatment_id': '2'});
   });
 }

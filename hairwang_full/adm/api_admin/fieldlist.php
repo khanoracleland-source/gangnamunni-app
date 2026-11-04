@@ -224,7 +224,6 @@ include_once G5_ADMIN_PATH . '/admin.head.php';
                     <td>
                         <select name="category" id="category" class="frm_input">
                             <option value="sns">SNS 로그인</option>
-                            <option value="pg">PG 결제</option>
                             <option value="common">공통</option>
                         </select>
                     </td>
@@ -272,7 +271,6 @@ include_once G5_ADMIN_PATH . '/admin.head.php';
     <select name="category" id="category">
         <option value="">전체</option>
         <option value="sns" <?php echo $category === 'sns' ? 'selected' : ''; ?>>SNS 로그인</option>
-        <option value="pg" <?php echo $category === 'pg' ? 'selected' : ''; ?>>PG 결제</option>
         <option value="common" <?php echo $category === 'common' ? 'selected' : ''; ?>>공통</option>
     </select>
     

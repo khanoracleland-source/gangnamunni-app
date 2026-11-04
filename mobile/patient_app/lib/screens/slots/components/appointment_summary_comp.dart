@@ -6,13 +6,10 @@ import 'package:kivicare_patient/generated/assets.dart';
 import 'package:get/get.dart';
 import 'package:kivicare_patient/utils/colors.dart';
 
-import '../../../api/auth_apis.dart';
 import '../../../main.dart';
 import '../../../utils/common_base.dart';
 import '../../../utils/constants.dart';
 import '../../booking/model/booking_req.dart';
-import '../../payment/payment_controller.dart';
-import '../../payment/payment_screen.dart';
 
 class AppointmentSummaryWidget extends StatelessWidget {
   final BookingReq bookingData;
@@ -142,28 +139,6 @@ class AppointmentSummaryWidget extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-              16.height,
-              AppButton(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                width: Get.width,
-                text: locale.value.proceed,
-                color: appColorSecondary,
-                textStyle: appButtonTextStyleWhite,
-                shapeBorder: RoundedRectangleBorder(borderRadius: radius(defaultAppButtonRadius / 2)),
-                onTap: () {
-                  Get.back(result: true);
-                  paymentController = PaymentController();
-                  paymentController.bookingData = bookingData;
-                  if (isQuickBook) {
-                    paymentController.paymentOption(PaymentMethods.PAYMENT_METHOD_CASH);
-                  }
-                  if (bookingData.isEnableAdvancePayment) {
-                    paymentController.paymentOption(PaymentMethods.PAYMENT_METHOD_STRIPE);
-                  }
-                  if (!isQuickBook) AuthServiceApis.getUserWallet();
-                  Get.to(() => PaymentScreen(isQuickBook: isQuickBook));
-                },
               ),
             ],
           ),

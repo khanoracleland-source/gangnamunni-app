@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/testing.dart';
 import 'package:http/http.dart' as http;
+import 'package:kivicare_patient/services/next_pilot.dart';
 import 'package:kivicare_patient/services/native_auth_service.dart';
 import 'package:kivicare_patient/services/hospital_list_navigation.dart';
 import 'dart:async';
@@ -163,6 +164,9 @@ void main() {
       'https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php?treatment=%ED%8B%B0%ED%83%80%EB%8A%84&sort=price&region=강남';
   const detailUrl =
       'https://hms.seoulbeauty.app/hairwang/gangnamunni/detail.php?id=8216&treatment_id=2&treatment=%ED%8B%B0%ED%83%80%EB%8A%84';
+  // NextPilot is on by default, so the list the header arrow returns to is
+  // loaded as its /next/hospitals equivalent (query/filters preserved).
+  final nextListUrl = NextPilot.rewrite(Uri.parse(listUrl))!;
   void visit(String next) {
     platform.currentPage = next;
     platform.pageStarted!(next);
@@ -188,7 +192,7 @@ void main() {
     expect(platform.scripts, contains(HospitalListNavigation.headerBackScript));
     await headerBack(tester);
     expect(platform.events, isNot(contains('goBack')));
-    expect(platform.loadedUrls.last, Uri.parse(listUrl));
+    expect(platform.loadedUrls.last, nextListUrl);
   });
   testWidgets('booking back to detail then header back returns to list', (tester) async {
     await pumpReady(tester, const StartupWebViewScreen(url: url));
@@ -198,7 +202,7 @@ void main() {
     visit(detailUrl);
     platform.hasBackHistory = true;
     await headerBack(tester);
-    expect(platform.loadedUrls.last, Uri.parse(listUrl));
+    expect(platform.loadedUrls.last, nextListUrl);
     expect(platform.events, isNot(contains('goBack')));
   });
   for (final tabs in [false, true]) {
@@ -211,7 +215,7 @@ void main() {
       if (tabs) visit('$detailUrl&tab=reviews');
       platform.hasBackHistory = tabs;
       await headerBack(tester);
-      expect(platform.loadedUrls.last, Uri.parse(listUrl));
+      expect(platform.loadedUrls.last, nextListUrl);
       expect(platform.events, isNot(contains('goBack')));
     });
   }

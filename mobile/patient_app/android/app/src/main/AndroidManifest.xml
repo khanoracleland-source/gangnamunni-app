@@ -11,8 +11,6 @@
     <queries>
         <package
             android:name="com.kakao.talk"/>
-        <package
-            android:name="com.phonepe.app"/>
         <!-- 결제 중 호출되는 카드사·간편결제·은행·인증 앱 (PaymentAppLauncher.packages 와 동일) -->
         <package
             android:name="viva.republica.toss"/>

@@ -1,6 +1,5 @@
 // ignore_for_file: constant_identifier_names
 
-import 'package:flutter/foundation.dart';
 
 // ═══════════════════════════════════════════════════
 // Seoul Beauty App Configuration
@@ -63,38 +62,3 @@ const HIDE_WEBVIEW_BOTTOM_NAV = false;
 /// WebView 상단 새로고침 버튼 숨김 여부
 const HIDE_WEBVIEW_REFRESH_BUTTON = true;
 //endregion
-
-//region Payment Gateway
-//region INICIS (Korean Payment Gateway)
-// INICIS 가맹점 설정 - https://www.inicis.com 에서 발급
-const INICIS_MID =
-    'INIpayTest'; // INICIS Merchant ID (가맹점 ID) - 테스트용, 실제 가맹점 ID로 교체 필요
-const INICIS_SIGNKEY =
-    'SU5JTElURV9UUklQTEVERVNfS0VZSVMxLTAtMg=='; // INICIS Sign Key - 테스트용, 실제 사인키로 교체 필요
-const INICIS_CURRENCY_CODE = 'KRW';
-//endregion
-//region STRIPE
-const STRIPE_URL = 'https://api.stripe.com/v1/payment_intents';
-const STRIPE_merchantIdentifier = "merchant.flutter.stripe.test";
-const STRIPE_CURRENCY_CODE = 'INR';
-//endregion
-
-/// PAYSTACK
-const String payStackCurrency = "NGN";
-
-/// PAYPAl
-const String payPalSupportedCurrency = 'USD';
-
-/// Airtel Money Payments
-///It Supports ["UGX", "NGN", "TZS", "KES", "RWF", "ZMW", "CFA", "XOF", "XAF", "CDF", "USD", "XAF", "SCR", "MGA", "MWK"]
-const airtel_currency_code = "MWK";
-const airtel_country_code = "MW";
-const AIRTEL_BASE = kDebugMode
-    ? 'https://openapiuat.airtel.africa/'
-    : "https://openapi.airtel.africa";
-
-/// SADAD PAYMENT DETAIL
-const SADAD_API_URL = 'https://api-s.sadad.qa';
-const SADAD_PAY_URL = "https://d.sadad.qa";
-
-//end region

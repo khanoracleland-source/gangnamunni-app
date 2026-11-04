@@ -102,32 +102,6 @@ if (!isset($g5['sns_api_log_table'])) {
     $g5['sns_api_log_table'] = $table_prefix.'sns_api_logs';
 }
 
-if (!isset($g5['pg_api_orders_table'])) {
-    $table_prefix = defined('G5_TABLE_PREFIX') ? G5_TABLE_PREFIX : 'g5_';
-    sql_query("
-        CREATE TABLE IF NOT EXISTS `{$table_prefix}pg_api_orders` (
-          `po_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-          `ak_id` int(11) NOT NULL,
-          `po_external_order_id` varchar(100) NOT NULL,
-          `po_g5_order_id` bigint(20),
-          `po_item_name` varchar(255),
-          `po_amount` int(11) NOT NULL,
-          `po_status` enum('pending','paid','cancelled','failed','refunded') NOT NULL DEFAULT 'pending',
-          `po_pg_code` varchar(50),
-          `po_pg_tid` varchar(100),
-          `po_pg_response` text,
-          `po_callback_url` varchar(255),
-          `po_custom_fields` text,
-          `po_created_at` datetime NOT NULL,
-          `po_updated_at` datetime NOT NULL,
-          PRIMARY KEY (`po_id`),
-          UNIQUE KEY `po_external_order_id` (`po_external_order_id`),
-          KEY `ak_id` (`ak_id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    ", true);
-    $g5['pg_api_orders_table'] = $table_prefix.'pg_api_orders';
-}
-
 if (!isset($g5['api_fields_table'])) {
     $table_prefix = defined('G5_TABLE_PREFIX') ? G5_TABLE_PREFIX : 'g5_';
     sql_query("
@@ -181,7 +155,6 @@ $amenu = array(
     array('600200', 'IP 화이트리스트', G5_API_ADMIN_URL.'/iplist.php'),
     array('600300', 'API 로그', G5_API_ADMIN_URL.'/loglist.php'),
     array('600400', 'SNS 로그', G5_API_ADMIN_URL.'/sns/loglist.php'),
-    array('600500', 'PG 주문 관리', G5_API_ADMIN_URL.'/pg/orderlist.php'),
     array('600600', '커스텀 필드', G5_API_ADMIN_URL.'/fieldlist.php')
 );
 

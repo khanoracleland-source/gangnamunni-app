@@ -73,7 +73,6 @@ include_once G5_ADMIN_PATH . '/admin.head.php';
                     <td>
                         <select name="category" id="category" class="frm_input">
                             <option value="sns" <?php echo $field['af_category'] === 'sns' ? 'selected' : ''; ?>>SNS 로그인</option>
-                            <option value="pg" <?php echo $field['af_category'] === 'pg' ? 'selected' : ''; ?>>PG 결제</option>
                             <option value="common" <?php echo $field['af_category'] === 'common' ? 'selected' : ''; ?>>공통</option>
                         </select>
                     </td>

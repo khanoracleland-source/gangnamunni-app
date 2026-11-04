@@ -83,7 +83,9 @@ void main() {
         data: Clinic(id: 1, name: 'Late', clinicSession: ClinicSession())));
     await request;
     await tester.pump(const Duration(milliseconds: 1));
-    expect(controller.clinicData.value.name, 'Original');
+    // onClose clears the clinic data; the late response must not repopulate it.
+    expect(controller.clinicData.value.name, isNot('Late'));
+    expect(controller.clinicData.value.name, isEmpty);
     expect(controller.childRequests, 0);
   });
 }

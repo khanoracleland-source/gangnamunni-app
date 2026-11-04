@@ -33,16 +33,6 @@ Rx<Currency> appCurrency = Currency().obs;
 Rx<ConfigurationResponse> appConfigs = ConfigurationResponse(
   patientAppUrl: PatientAppUrl(),
   clinicadminAppUrl: ClinicadminAppUrl(),
-  razorPay: RazorPay(),
-  stripePay: StripePay(),
-  paystackPay: PaystackPay(),
-  paypalPay: PaypalPay(),
-  flutterwavePay: FlutterwavePay(),
-  airtelMoney: AirtelMoney(),
-  midtransPay: MidtransPay(),
-  cinetPay: CinetPay(),
-  phonepe: Phonepe(),
-  sadadPay: SadadPay(),
   currency: Currency(),
 ).obs;
 

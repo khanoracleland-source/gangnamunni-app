@@ -2,16 +2,6 @@ import '../../../utils/constants.dart';
 import '../../home/model/dashboard_res_model.dart';
 
 class ConfigurationResponse {
-  RazorPay razorPay;
-  StripePay stripePay;
-  PaystackPay paystackPay;
-  PaypalPay paypalPay;
-  FlutterwavePay flutterwavePay;
-  AirtelMoney airtelMoney;
-  Phonepe phonepe;
-  MidtransPay midtransPay;
-  CinetPay cinetPay;
-  SadadPay sadadPay;
   PatientAppUrl patientAppUrl;
   ClinicadminAppUrl clinicadminAppUrl;
   bool isForceUpdateforAndroid;
@@ -55,16 +45,6 @@ class ConfigurationResponse {
   int isQuickBookingEnabled;
 
   ConfigurationResponse({
-    required this.razorPay,
-    required this.stripePay,
-    required this.paystackPay,
-    required this.paypalPay,
-    required this.flutterwavePay,
-    required this.airtelMoney,
-    required this.phonepe,
-    required this.midtransPay,
-    required this.cinetPay,
-    required this.sadadPay,
     required this.patientAppUrl,
     required this.clinicadminAppUrl,
     this.isForceUpdateforAndroid = false,
@@ -102,16 +82,6 @@ class ConfigurationResponse {
 
   factory ConfigurationResponse.fromJson(Map<String, dynamic> json) {
     return ConfigurationResponse(
-      razorPay: json['razor_pay'] is Map ? RazorPay.fromJson(json['razor_pay']) : RazorPay(),
-      stripePay: json['stripe_pay'] is Map ? StripePay.fromJson(json['stripe_pay']) : StripePay(),
-      paystackPay: json['paystack_pay'] is Map ? PaystackPay.fromJson(json['paystack_pay']) : PaystackPay(),
-      paypalPay: json['paypal_pay'] is Map ? PaypalPay.fromJson(json['paypal_pay']) : PaypalPay(),
-      flutterwavePay: json['flutterwave_pay'] is Map ? FlutterwavePay.fromJson(json['flutterwave_pay']) : FlutterwavePay(),
-      airtelMoney: json['airtel_pay'] is Map ? AirtelMoney.fromJson(json['airtel_pay']) : AirtelMoney(),
-      phonepe: json['phonepay_pay'] is Map ? Phonepe.fromJson(json['phonepay_pay']) : Phonepe(),
-      midtransPay: json['midtrans_pay'] is Map ? MidtransPay.fromJson(json['midtrans_pay']) : MidtransPay(),
-      cinetPay: json['cinet_pay'] is Map ? CinetPay.fromJson(json['cinet_pay']) : CinetPay(),
-      sadadPay: json['sadad_pay'] is Map ? SadadPay.fromJson(json['sadad_pay']) : SadadPay(),
       patientAppUrl: json['patient_app_url'] is Map ? PatientAppUrl.fromJson(json['patient_app_url']) : PatientAppUrl(),
       clinicadminAppUrl: json['clinicadmin_app_url'] is Map ? ClinicadminAppUrl.fromJson(json['clinicadmin_app_url']) : ClinicadminAppUrl(),
       isForceUpdateforAndroid: json['isForceUpdateforAndroid'] is bool ? json['isForceUpdateforAndroid'] : json['isForceUpdateforAndroid'] == 1,
@@ -150,13 +120,6 @@ class ConfigurationResponse {
 
   Map<String, dynamic> toJson() {
     return {
-      'razor_pay': razorPay.toJson(),
-      'stripe_pay': stripePay.toJson(),
-      'paystack_pay': paystackPay.toJson(),
-      'paypal_pay': paypalPay.toJson(),
-      'flutterwave_pay': flutterwavePay.toJson(),
-      'airtel_pay': airtelMoney.toJson(),
-      'phonepay_pay': phonepe.toJson(),
       'patient_app_url': patientAppUrl.toJson(),
       'clinicadmin_app_url': clinicadminAppUrl.toJson(),
       'isForceUpdateforAndroid': isForceUpdateforAndroid,
@@ -237,249 +200,6 @@ class ClinicadminAppUrl {
     return {
       'clinicadmin_app_play_store': clinicadminAppPlayStore,
       'clinicadmin_app_app_store': clinicadminAppAppStore,
-    };
-  }
-}
-
-class RazorPay {
-  String razorpaySecretkey;
-  String razorpayPublickey;
-
-  RazorPay({
-    this.razorpaySecretkey = "",
-    this.razorpayPublickey = "",
-  });
-
-  factory RazorPay.fromJson(Map<String, dynamic> json) {
-    return RazorPay(
-      razorpaySecretkey: json['razorpay_secretkey'] is String ? json['razorpay_secretkey'] : "",
-      razorpayPublickey: json['razorpay_publickey'] is String ? json['razorpay_publickey'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'razorpay_secretkey': razorpaySecretkey,
-      'razorpay_publickey': razorpayPublickey,
-    };
-  }
-}
-
-class StripePay {
-  String stripeSecretkey;
-  String stripePublickey;
-
-  StripePay({
-    this.stripeSecretkey = "",
-    this.stripePublickey = "",
-  });
-
-  factory StripePay.fromJson(Map<String, dynamic> json) {
-    return StripePay(
-      stripeSecretkey: json['stripe_secretkey'] is String ? json['stripe_secretkey'] : "",
-      stripePublickey: json['stripe_publickey'] is String ? json['stripe_publickey'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'stripe_secretkey': stripeSecretkey,
-      'stripe_publickey': stripePublickey,
-    };
-  }
-}
-
-class PaystackPay {
-  String paystackSecretkey;
-  String paystackPublickey;
-
-  PaystackPay({
-    this.paystackSecretkey = "",
-    this.paystackPublickey = "",
-  });
-
-  factory PaystackPay.fromJson(Map<String, dynamic> json) {
-    return PaystackPay(
-      paystackSecretkey: json['paystack_secretkey'] is String ? json['paystack_secretkey'] : "",
-      paystackPublickey: json['paystack_publickey'] is String ? json['paystack_publickey'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'paystack_secretkey': paystackSecretkey,
-      'paystack_publickey': paystackPublickey,
-    };
-  }
-}
-
-class PaypalPay {
-  String paypalSecretkey;
-  String paypalClientid;
-
-  PaypalPay({
-    this.paypalSecretkey = "",
-    this.paypalClientid = "",
-  });
-
-  factory PaypalPay.fromJson(Map<String, dynamic> json) {
-    return PaypalPay(
-      paypalSecretkey: json['paypal_secretkey'] is String ? json['paypal_secretkey'] : "",
-      paypalClientid: json['paypal_clientid'] is String ? json['paypal_clientid'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'paypal_secretkey': paypalSecretkey,
-      'paypal_clientid': paypalClientid,
-    };
-  }
-}
-
-class FlutterwavePay {
-  String flutterwaveSecretkey;
-  String flutterwavePublickey;
-
-  FlutterwavePay({
-    this.flutterwaveSecretkey = "",
-    this.flutterwavePublickey = "",
-  });
-
-  factory FlutterwavePay.fromJson(Map<String, dynamic> json) {
-    return FlutterwavePay(
-      flutterwaveSecretkey: json['flutterwave_secretkey'] is String ? json['flutterwave_secretkey'] : "",
-      flutterwavePublickey: json['flutterwave_publickey'] is String ? json['flutterwave_publickey'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'flutterwave_secretkey': flutterwaveSecretkey,
-      'flutterwave_publickey': flutterwavePublickey,
-    };
-  }
-}
-
-class AirtelMoney {
-  String airtelSecretkey;
-  String airtelClientid;
-
-  AirtelMoney({
-    this.airtelSecretkey = "",
-    this.airtelClientid = "",
-  });
-
-  factory AirtelMoney.fromJson(Map<String, dynamic> json) {
-    return AirtelMoney(
-      airtelSecretkey: json['airtel_secretkey'] is String ? json['airtel_secretkey'] : "",
-      airtelClientid: json['airtel_clientid'] is String ? json['airtel_clientid'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'airtel_secretkey': airtelSecretkey,
-      'airtel_clientid': airtelClientid,
-    };
-  }
-}
-
-class Phonepe {
-  String phonepeAppId;
-  String phonepeMerchantId;
-  String phonepeSaltKey;
-  String phonepeSaltIndex;
-
-  Phonepe({
-    this.phonepeAppId = "",
-    this.phonepeMerchantId = "",
-    this.phonepeSaltKey = "",
-    this.phonepeSaltIndex = "",
-  });
-
-  factory Phonepe.fromJson(Map<String, dynamic> json) {
-    return Phonepe(
-      phonepeAppId: json['phonepay_app_id'] is String ? json['phonepay_app_id'] : "",
-      phonepeMerchantId: json['phonepay_merchant_id'] is String ? json['phonepay_merchant_id'] : "",
-      phonepeSaltKey: json['phonepay_salt_key'] is String ? json['phonepay_salt_key'] : "",
-      phonepeSaltIndex: json['phonepay_salt_index'] is String ? json['phonepay_salt_index'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'phonepay_app_id': phonepeAppId,
-      'phonepay_merchant_id': phonepeMerchantId,
-      'phonepay_salt_key': phonepeSaltKey,
-      'phonepay_salt_index': phonepeSaltIndex,
-    };
-  }
-}
-
-class MidtransPay {
-  String midtransClientKey;
-
-  MidtransPay({
-    this.midtransClientKey = "",
-  });
-
-  factory MidtransPay.fromJson(Map<String, dynamic> json) {
-    return MidtransPay(
-      midtransClientKey: json['midtrans_clientid'] is String ? json['midtrans_clientid'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'midtrans_clientid': midtransClientKey,
-    };
-  }
-}
-
-class CinetPay {
-  String cinetPayAPIKey;
-
-  String siteId;
-
-  CinetPay({this.cinetPayAPIKey = "", this.siteId = ''});
-
-  factory CinetPay.fromJson(Map<String, dynamic> json) {
-    return CinetPay(
-      siteId: json['cinet_siteid'] is String ? json['cinet_siteid'] : "",
-      cinetPayAPIKey: json['cinet_apikey'] is String ? json['cinet_apikey'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'cinet_apikey': cinetPayAPIKey,
-      'cinet_siteid': siteId,
-    };
-  }
-}
-
-class SadadPay {
-  String sadadId;
-  String sadadSecretKey;
-
-  String sadadDomain;
-
-  SadadPay({this.sadadId = "", this.sadadSecretKey = '', this.sadadDomain = ''});
-
-  factory SadadPay.fromJson(Map<String, dynamic> json) {
-    return SadadPay(
-      sadadId: json['sadad_id'] is String ? json['sadad_id'] : "",
-      sadadSecretKey: json['sadad_key'] is String ? json['sadad_key'] : "",
-      sadadDomain: json['sadad_domain'] is String ? json['sadad_domain'] : "",
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'sadad_id': sadadId,
-      'sadad_key': sadadSecretKey,
-      'sadad_domain': sadadDomain,
     };
   }
 }

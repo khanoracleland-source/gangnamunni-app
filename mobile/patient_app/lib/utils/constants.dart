@@ -252,24 +252,6 @@ class TaxType {
 }
 //endregion
 
-//region Payment Methods
-class PaymentMethods {
-  static const PAYMENT_METHOD_WALLET = 'wallet';
-  static const PAYMENT_METHOD_CASH = 'cash';
-  static const PAYMENT_METHOD_STRIPE = 'stripe';
-  static const PAYMENT_METHOD_RAZORPAY = 'razorpay';
-  static const PAYMENT_METHOD_PAYPAL = 'paypal';
-  static const PAYMENT_METHOD_PAYSTACK = 'paystack';
-  static const PAYMENT_METHOD_FLUTTER_WAVE = 'flutterwave';
-  static const PAYMENT_METHOD_AIRTEL = 'airtel';
-  static const PAYMENT_METHOD_PHONEPE = 'phonepe';
-  static const PAYMENT_METHOD_MIDTRANS = 'midtrans';
-  static const PAYMENT_METHOD_SADAD = 'sadad';
-  static const PAYMENT_METHOD_CINETPAY = 'cinetpay';
-  static const PAYMENT_METHOD_INICIS = 'inicis';
-}
-//endregion
-
 //region FilterStatusConst
 class ServiceFilterStatusConst {
   static const all = 'all';
