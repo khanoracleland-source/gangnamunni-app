@@ -90,8 +90,10 @@ describe('HTTP API (mock DB)', () => {
     expect(calls.some((c) => c.sql.includes('FROM hospital_reviews'))).toBe(false);
   });
 
-  it('rejects offset > 1000', async () => {
-    await request(app.getHttpServer()).get('/v1/hospitals?offset=1001').expect(400);
+  it('rejects offset > 5000 and limit > 300', async () => {
+    await request(app.getHttpServer()).get('/v1/hospitals?offset=5001').expect(400);
+    await request(app.getHttpServer()).get('/v1/hospitals?limit=301').expect(400);
+    await request(app.getHttpServer()).get('/v1/hospitals?limit=300&offset=5000').expect(200);
   });
 
   it('hides rating when show_rating = 0', async () => {

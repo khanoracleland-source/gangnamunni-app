@@ -45,8 +45,9 @@ export class HospitalsController {
       dosage: str(qs.dosage, 30),
       regions,
       sort,
-      limit: intParam(qs.limit, 20, 1, 100, 'limit'),
-      offset: intParam(qs.offset, 0, 0, 1000, 'offset'),
+      both: qs.both === '1',
+      limit: intParam(qs.limit, 20, 1, 300, 'limit'),
+      offset: intParam(qs.offset, 0, 0, 5000, 'offset'),
     });
   }
 

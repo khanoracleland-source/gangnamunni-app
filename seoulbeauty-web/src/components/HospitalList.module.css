@@ -44,3 +44,14 @@
 .srNone { padding-top: 90px; }
 .srNone .srEmptyTitle { font-size: calc(17px * var(--fs-scale)); }
 .srNone .srEmptySub { font-size: calc(15px * var(--fs-scale)); }
+
+/* design 05-01: treatment picked from the home list */
+.selRow { display: flex; align-items: center; gap: 8px; padding: 12px 20px 0; }
+.selT { flex: 0 0 auto; font-size: calc(12px * var(--fs-scale)); font-weight: 700; color: #4A4446; }
+.selChip { height: 36px; padding: 0 10px 0 12px; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #DCD6D8; border-radius: 18px; background: #F2EFF0; color: #4A4446; font-size: calc(13px * var(--fs-scale)); font-weight: 700; white-space: nowrap; text-decoration: none; min-width: 0; }
+.treat .dosage { padding: 10px 20px 0; }
+.treat .srChip { height: 36px; padding: 0 10px; border-radius: 18px; box-sizing: border-box; }
+.treat .chips { padding: 14px 20px; }
+.treat .chip { height: 36px; box-sizing: border-box; border-radius: 18px; font-size: calc(15px * var(--fs-scale)); color: #857E80; }
+.treat .chipActive { border-color: #1A1718; color: #1A1718; }
+.treat .grid { padding-bottom: 8px; }

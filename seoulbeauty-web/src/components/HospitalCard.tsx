@@ -20,7 +20,7 @@ export function addrDistrict(addr: string | null): string {
 /** hospital_dosage_label(): 2.00 -> "2", 0.50 -> "0.5" */
 const dosageText = (v: number | null, u: string | null) => (v && v > 0 && u ? `${String(Number(v.toFixed(2)))}${u}` : "");
 
-export default function HospitalCard({ h, keyword, slotToken, boxed }: { h: Hospital; keyword?: string; slotToken?: string; boxed?: boolean }) {
+export default function HospitalCard({ h, keyword, slotToken, boxed, rounded }: { h: Hospital; keyword?: string; slotToken?: string; boxed?: boolean; rounded?: boolean }) {
   const qc = useQueryClient();
   const php = usePhpBase();
   const img = assetUrl(h.thumbnailUrl) || PLACEHOLDER;
@@ -44,7 +44,7 @@ export default function HospitalCard({ h, keyword, slotToken, boxed }: { h: Hosp
   return (
     <Link
       href={`/hospitals/${h.id}`}
-      className={`${styles.card} ${boxed ? styles.boxed : ""}`}
+      className={`${styles.card} ${boxed ? styles.boxed : ""} ${rounded ? styles.rounded : ""}`}
       onTouchStart={prefetch}
       onMouseEnter={prefetch}
       onFocus={prefetch}
@@ -68,7 +68,7 @@ export default function HospitalCard({ h, keyword, slotToken, boxed }: { h: Hosp
                 {!isSearchRow && t.priceMax > 0 && <div className={styles.vat}>VAT 포함&nbsp;&nbsp;{t.priceMax.toLocaleString("ko-KR")}원</div>}
                 <div className={styles.priceRow}>
                   <span className={styles.sale}><span className={styles.num}>{t.priceMin.toLocaleString("ko-KR")}</span><span className={styles.unit}>원</span></span>
-                  {isSearchRow && perUnit && <span className={styles.per}>{perUnit}</span>}
+                  {isSearchRow && !rounded && perUnit && <span className={styles.per}>{perUnit}</span>}
                 </div>
               </>
             )}

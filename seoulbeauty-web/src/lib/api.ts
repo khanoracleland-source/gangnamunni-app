@@ -29,6 +29,8 @@ export interface Hospital {
   wishlisted: boolean;
   /** price line for the effective treatment of the current search (null otherwise) */
   treatment: TreatmentLine | null;
+  /** with `both=1` on sort=price: the line a non-price sort shows (representative option) */
+  treatmentAlt?: TreatmentLine | null;
   /** paid keyword slot pinned by the API (tracking token comes from PHP api/ad_slot_tokens.php) */
   adSlot: { bookingId: number; rank: number } | null;
 }
@@ -122,6 +124,8 @@ export interface HospitalListParams {
   sort?: HospitalSort | "";
   limit?: number;
   offset?: number;
+  /** `1` = also return `treatmentAlt` on every row (client-side re-sorting) */
+  both?: "1";
 }
 
 export class ApiError extends Error {

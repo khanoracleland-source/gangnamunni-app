@@ -32,6 +32,8 @@ export interface HospitalDto {
   wishlisted: boolean;
   /** price line for the effective treatment (hospital_list_data.php $hospital_treatment_descs); null outside treatment searches */
   treatment: TreatmentLine | null;
+  /** only with `both=1` on a price sort: the line a non-price sort would show (representative option) — lets the web re-sort locally without changing the card price */
+  treatmentAlt: TreatmentLine | null;
   /** paid keyword slot (gangnamunni_ad_slot_bookings) — pinned to the top like PHP; tracking is done by the web side */
   adSlot: { bookingId: number; rank: number } | null;
 }
@@ -42,7 +44,7 @@ export interface TreatmentLine {
 
 export interface InfeedAd { id: number; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string; hospitalId: number | null }
 
-export type ListInput = Omit<HospitalListParams, 'treatmentId' | 'resolvedFromKeyword' | 'dosage' | 'sort'> & { sort: HospitalSort | ''; dosage: string };
+export type ListInput = Omit<HospitalListParams, 'treatmentId' | 'resolvedFromKeyword' | 'dosage' | 'sort'> & { sort: HospitalSort | ''; dosage: string; both?: boolean };
 
 const num = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : Number(v));
 
@@ -86,6 +88,7 @@ export function toHospitalDto(r: Record<string, any>): HospitalDto {
     thumbnailUrl: r.__main_img || r.main_image_url || r.__logo_img || r.profile_image_url || null,
     wishlisted: !!Number(r.wishlisted ?? 0),
     treatment: r.__treatment ?? null,
+    treatmentAlt: r.__treatment_alt ?? null,
     adSlot: r.__ad_slot ?? null,
   };
 }
@@ -180,7 +183,10 @@ export class HospitalsService {
       rows = await this.pinAdSlots(rows, treatmentId, dosage, p.memberNo);
     }
     await this.attachImages(rows);
-    if (effectiveName && rows.length) await this.attachTreatmentLine(rows, effectiveName, sort, dosage);
+    if (effectiveName && rows.length) {
+      await this.attachTreatmentLine(rows, effectiveName, sort, dosage);
+      if (p.both && sort === 'price') await this.attachTreatmentLine(rows, effectiveName, 'rating', dosage, '__treatment_alt');
+    }
 
     const infeed = await this.infeedAds();
     return {
@@ -246,7 +252,7 @@ export class HospitalsService {
   }
 
   /** $hospital_treatment_descs: the effective treatment's display price per hospital (representative option, or cheapest for price sort). */
-  private async attachTreatmentLine(rows: Record<string, any>[], treatmentName: string, sort: HospitalSort, dosage: { value: number; unit: string } | null) {
+  private async attachTreatmentLine(rows: Record<string, any>[], treatmentName: string, sort: HospitalSort, dosage: { value: number; unit: string } | null, field: '__treatment' | '__treatment_alt' = '__treatment') {
     const cols = await this.getPriceCols();
     const order = sort === 'price' || !cols.representative ? 'p.price ASC, p.sort_order ASC, p.id ASC' : 'p.is_representative DESC, p.price ASC, p.sort_order ASC, p.id ASC';
     const dcond = dosage ? ' AND ABS(p.dosage_value - ?) < 0.0001 AND p.dosage_unit = ?' : '';
@@ -278,7 +284,7 @@ export class HospitalsService {
         dosageValue: dv != null && Number(dv) > 0 ? Number(dv) : null, dosageUnit: du ? String(du) : null,
       });
     }
-    for (const r of rows) r.__treatment = map.get(Number(r.id)) ?? null;
+    for (const r of rows) r[field] = map.get(Number(r.id)) ?? null;
   }
 
   /** hospital_list_content.php in-feed ads (approved infeed ads whose advertiser has an active slot booking). */
