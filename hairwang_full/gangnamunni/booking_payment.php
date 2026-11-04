@@ -178,16 +178,11 @@ $channels = booking_payment_methods();
 $live_available = booking_payment_checkout_ready();
 // 카드사·할부 시트(05-29~33)는 결제창 연동 전까지 ?cardsheet=1 미리보기에서만 노출한다.
 $cardsheet_preview = (($_GET['cardsheet'] ?? '') === '1');
-// Toss 성공/실패 URL 에서 돌아왔을 때의 안내. 코드만 받고 문구는 서버가 정한다.
+// 결제창에서 돌아왔을 때의 안내. 코드만 받고 문구는 서버가 정한다.
 $pay_notice = '';
 $pay_error = preg_replace('/[^A-Z_]/', '', (string)($_GET['pay_error'] ?? ''));
 if ($pay_error !== '') {
     $pay_notices = [
-        'PAY_PROCESS_CANCELED' => '결제를 취소했습니다. 청구된 금액은 없습니다.',
-        'USER_CANCEL' => '결제를 취소했습니다. 청구된 금액은 없습니다.',
-        'PAY_PROCESS_ABORTED' => '결제가 중단되었습니다. 청구된 금액은 없으니 다시 시도해주세요.',
-        'REJECT_CARD_COMPANY' => '카드사에서 결제를 거절했습니다. 다른 카드나 결제 수단을 이용해주세요.',
-        'NOT_FOUND_PAYMENT_SESSION' => '결제 시간이 초과되었습니다. 청구된 금액은 없으니 다시 결제해주세요.',
         'AMOUNT_MISMATCH' => '결제 금액이 변경되어 결제를 진행하지 않았습니다. 청구된 금액은 없으니 금액을 확인한 뒤 다시 결제해주세요.',
         'POINT_HOLD_EXPIRED' => '포인트 적용 시간이 지나 결제를 진행하지 않았습니다. 청구된 금액은 없으니 다시 결제해주세요.',
         'BOOKING_NOT_CONFIRMED' => '예약 상태가 변경되어 결제를 진행하지 않았습니다. 청구된 금액은 없습니다.',
@@ -199,9 +194,6 @@ if ($pay_error !== '') {
 $preview_available = booking_payment_preview_enabled();
 // 05-36 결제 실패 시트: 청구가 없었음이 확실한 실패 코드만 사용한다(UNRESOLVED/취소는 기존 안내 유지).
 $fail_reasons = [
-    'REJECT_CARD_COMPANY' => '카드사 승인 거절',
-    'PAY_PROCESS_ABORTED' => '결제 중단',
-    'NOT_FOUND_PAYMENT_SESSION' => '결제 시간 초과',
     'AMOUNT_MISMATCH' => '결제 금액 변경',
     'POINT_HOLD_EXPIRED' => '포인트 적용 시간 초과',
 ];
@@ -675,7 +667,6 @@ html body .bp-page .bp-method img { height: 21px; }
     </main>
 </div>
 
-<?php if ($live_available): ?><script src="https://js.tosspayments.com/v2/standard"></script><?php endif; ?>
 <script>
 (function() {
     var baseAmount = <?php echo (int)$display_amount; ?>;
@@ -948,20 +939,10 @@ html body .bp-page .bp-method img { height: 21px; }
     if (payBtn) payBtn.addEventListener('click', function() {
         if (busy || !agreed()) return;
         setBusy(true);
-        // 서버가 금액·주문번호를 정하고, Toss 결제창은 successUrl/failUrl 로 돌아온다.
-        // 실제 승인은 booking_payment_toss_success.php 에서 서버가 한다.
-        post('booking_payment_request.php', {provider:selectedProvider, point_use:String(currentPointUse()), in_app: window.FlutterBridge ? '1' : ''}).then(function(d) {
-            if (typeof window.TossPayments !== 'function') throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.');
-            var payment = window.TossPayments(d.payment.clientKey).payment({customerKey: window.TossPayments.ANONYMOUS});
-            return payment.requestPayment(d.payment.request);
-        }).catch(function(error) {
-            if (error && error.code === 'USER_CANCEL') {
-                showResult('결제를 취소했습니다. 다시 결제하려면 결제하기를 눌러주세요.', 'warn');
-                setBusy(false);
-                return;
-            }
-            failed(error);
-        });
+        // 서버가 금액·주문번호를 정한다. 연결된 PG가 없어 결제창은 열리지 않는다(booking_payment_request.php 가 503).
+        post('booking_payment_request.php', {provider:selectedProvider, point_use:String(currentPointUse()), in_app: window.FlutterBridge ? '1' : ''}).then(function() {
+            throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.');
+        }).catch(failed);
     });
     if (previewBtn) previewBtn.addEventListener('click', function() {
         if (busy || !agreed()) return;

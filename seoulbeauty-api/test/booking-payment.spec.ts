@@ -5,8 +5,10 @@ import { DB } from '../src/db/db.module';
 import { AuthModule } from '../src/auth/auth.module';
 import { BookingsModule } from '../src/bookings/bookings.module';
 import { BookingPaymentService } from '../src/bookings/booking-payment.service';
+import { PG_LIVE, PG_SANDBOX, registerFixturePg } from './pg-fixture';
+registerFixturePg();
 
-describe('booking payment API (preview only; Toss stays in PHP)', () => {
+describe('booking payment API (preview only; no PG connected)', () => {
   let app: INestApplication;
   let calls: { sql: string; args: any[] }[];
   let st: any;
@@ -43,13 +45,11 @@ describe('booking payment API (preview only; Toss stays in PHP)', () => {
   const api = () => request(app.getHttpServer());
   const authed = (r: request.Test) => r.set('Cookie', 'sid=kim').set('X-Requested-With', 'XMLHttpRequest');
 
-  it('settings: live needs the switch, methods and both Toss keys', () => {
+  it('settings: live checkout is never available without a connected PG; preview follows its switch', () => {
     expect(BookingPaymentService.liveAvailable()).toBe(false);
-    process.env.PG_PAYMENTS_ENABLED = '1'; process.env.BOOKING_PAYMENT_METHODS = 'card, bogus'; process.env.TOSS_CLIENT_KEY = 'c'; process.env.TOSS_SECRET_KEY = 's';
-    expect(BookingPaymentService.liveAvailable()).toBe(true);
-    process.env.BOOKING_PAYMENT_METHODS = 'bogus';
+    process.env.PG_PAYMENTS_ENABLED = '1'; process.env.BOOKING_PAYMENT_METHODS = 'card, bogus';
     expect(BookingPaymentService.liveAvailable()).toBe(false);
-    delete process.env.BOOKING_PAYMENT_METHODS; delete process.env.TOSS_CLIENT_KEY; delete process.env.TOSS_SECRET_KEY;
+    delete process.env.BOOKING_PAYMENT_METHODS;
     expect(BookingPaymentService.previewEnabled()).toBe(true);
     process.env.BOOKING_PAYMENT_PREVIEW_ENABLED = '0';
     expect(BookingPaymentService.previewEnabled()).toBe(false);
@@ -77,11 +77,11 @@ describe('booking payment API (preview only; Toss stays in PHP)', () => {
     await api().get('/v1/mypage/bookings/7/payment').expect(401);
   });
   it('info: paid order and gross/points, preview flag, expected points when v2 is on', async () => {
-    st.order = { id: 1, status: 'paid', provider: 'toss_test', amount: 45000, gross_amount: 50000, points_used: 5000, merchant_uid: 'm' };
+    st.order = { id: 1, status: 'paid', provider: PG_SANDBOX, amount: 45000, gross_amount: 50000, points_used: 5000, merchant_uid: 'm' };
     st.previews = [7];
     st.settings = { enabled: '1', v2_schema_version: '1', v2_policy_enabled: '1', schema_version: '3' };
     const r = await api().get('/v1/mypage/bookings/7/payment').set('Cookie', 'sid=kim').expect(200);
-    expect(r.body.order).toEqual({ status: 'paid', provider: 'toss_test', amount: 45000, gross: 50000, pointsUsed: 5000, isTest: true });
+    expect(r.body.order).toEqual({ status: 'paid', provider: PG_SANDBOX, amount: 45000, gross: 50000, pointsUsed: 5000, isTest: true });
     expect(r.body).toMatchObject({ isPaid: true, preview: true, points: { v2: true, expected: 5000 } });
   });
   it('info: an order create failure is reported, not thrown', async () => {
@@ -117,11 +117,11 @@ describe('booking payment API (preview only; Toss stays in PHP)', () => {
     expect((await get()).body).toMatchObject({ title: '결제 확인 중', paidFinal: false, preview: false, hospitalName: 'A의원', dateText: '99.01.05 (월) 오후 2:00', booker: '김민 / 01012345678', bookingNo: '7' });
     st.previews = [7];
     expect((await get()).body.title).toBe('결제 없이 계속했어요');
-    st.order = { id: 1, status: 'paid', provider: 'toss', amount: 1 };
+    st.order = { id: 1, status: 'paid', provider: PG_LIVE, amount: 1 };
     expect((await get()).body).toMatchObject({ title: '예약이 확정되었어요!', paidFinal: true, isPg: true });
-    st.order.provider = 'toss_test';
+    st.order.provider = PG_SANDBOX;
     expect((await get()).body.title).toBe('테스트 결제 완료');
-    st.order = { id: 1, status: 'refunded', provider: 'toss', amount: 1 };
+    st.order = { id: 1, status: 'refunded', provider: PG_LIVE, amount: 1 };
     expect((await get()).body.title).toBe('환불 완료');
     st.booking.treatment = 'x'.repeat(30);
     expect((await get()).body.treatment).toBe('x'.repeat(24) + '...');

@@ -265,7 +265,7 @@ class NextPilot {
   static final Set<String> _paymentSuccessPaths = {'/booking_payment_success.php', _site.resolve('booking_payment_success.php').path};
 
   /// booking_payment.php?booking_id=N[&pay_error=CODE][&app=] -> /next/mypage/bookings/N/payment[?pay_error=]
-  /// (`php=1` and anything else keep the PHP page: the live Toss checkout still runs there).
+  /// (`php=1` and anything else keep the PHP page).
   static Uri? _rewritePayment(Uri uri) {
     final q = uri.queryParameters;
     final id = int.tryParse(q['booking_id'] ?? '');

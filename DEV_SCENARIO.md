@@ -183,7 +183,7 @@ git add -A && git commit -m "description" && git push
 | Mobile | Flutter (planned) |
 | Server | Rocky Linux 9.7 + Apache 2.4 |
 | Auth | Laravel Sanctum + Gnuboard Session |
-| Payment | PortOne (INIpay, KakaoPay, etc.) |
+| Payment | PG 연동 준비 중 |
 | Push | Firebase FCM HTTP v1 |
 | Maps | Kakao Maps API |
 | CDN | Cloudflare |

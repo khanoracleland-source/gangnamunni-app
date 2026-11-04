@@ -1,8 +1,9 @@
 /** Pure helpers for my_bookings.php, booking_request_detail.php and booking_cancel_detail.php. */
 
 export const DAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
-const TEST_PROVIDERS = ['mock_booking_payment', 'toss_test', 'portone_test'];
-const PG_PROVIDERS = ['toss', 'toss_test'];
+/** provider column values (mirror booking_payment_test_providers() / booking_payment_pg_providers() in PHP). No PG is connected: register its values here. */
+export const TEST_PROVIDERS: string[] = ['mock_booking_payment'];
+export const PG_PROVIDERS: string[] = [];
 
 export const isTestProvider = (p: unknown) => TEST_PROVIDERS.includes(String(p ?? ''));
 export const isPgProvider = (p: unknown) => PG_PROVIDERS.includes(String(p ?? ''));

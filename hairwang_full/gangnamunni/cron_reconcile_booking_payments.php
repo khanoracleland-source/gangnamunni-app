@@ -14,8 +14,8 @@ $db->set_charset('utf8mb4');
 $db->query("SET time_zone='+09:00'");
 // Cursor supports scanning ALL orders, rather than starving older orders behind a LIMIT.
 $after = max(0, (int)($argv[1] ?? 0));
-// pending 은 승인 시도(gangnamunni_payment_attempts)가 있는 건만 조회한다: 결제창을 열지도 않은 주문까지 Toss API 를 부르지 않기 위함.
-// paid/partially_refunded 는 Toss 콘솔 환불 등을 반영해야 하므로 계속 전부 대조한다.
+// pending 은 승인 시도(gangnamunni_payment_attempts)가 있는 건만 조회한다: 결제창을 열지도 않은 주문까지 PG API 를 부르지 않기 위함.
+// paid/partially_refunded 는 PG 콘솔 환불 등을 반영해야 하므로 계속 전부 대조한다.
 $rows = $db->query("SELECT p.id,p.merchant_uid,p.provider_transaction_id FROM gangnamunni_platform_payments p
     WHERE p.id>$after AND p.payment_type='booking' AND (p.provider IS NULL OR p.provider IN (" . booking_payment_sql_list(booking_payment_pg_providers()) . "))
       AND (p.status IN ('paid','partially_refunded')

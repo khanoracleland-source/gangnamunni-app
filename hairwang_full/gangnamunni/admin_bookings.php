@@ -59,7 +59,7 @@ function admin_booking_status_action_options($current_status, array $labels, $ha
         'hospital_checking' => [['confirm', '예약확정'], ['cancel', '예약취소']], // 담당의사 미배정이어도 확정 가능(자동 배정)
         'confirmed' => [['complete', '시술완료']],
     ];
-    // 고객이 취소한 결제 예약: 승인하면 남은 결제 금액 전액을 Toss 로 환불한다.
+    // 고객이 취소한 결제 예약: 승인하면 남은 결제 금액 전액을 PG 로 환불한다.
     if ($current_status === 'cancelled' && in_array($payment_status, ['paid', 'partially_refunded'], true) && (int)$remaining_refund > 0) {
         $flow_actions['cancelled'] = [['refund', '환불 승인 (' . number_format((int)$remaining_refund) . '원)']];
     }
@@ -241,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($id > 0 && in_array($action, $allowed)) {
         if ($action === 'refund') {
             // 환불 승인: 고객이 취소한 결제 예약에 대해 병원/최고 관리자가 승인하면 남은 결제 금액 전액을
-            // Toss 에 실제로 취소 요청한다(booking_payment_refund: 잠금·멱등키·PG 재조회).
+            // PG 에 실제로 취소 요청한다(booking_payment_refund: 잠금·멱등키·PG 재조회).
             // 원장 반영 시 booking_payment_apply_remote 가 예약 refund_status/status 와 고객 알림을 맞춘다.
             require_once __DIR__ . '/includes/booking_payment_service.php';
             $current_scope = $_act_hin !== null ? " AND b.hospital_id IN ({$_act_hin})" : '';
@@ -286,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $admin_bookings_ajax_payload = ['booking_id' => $id, 'status' => 'refunded', 'reload' => true];
             } catch (BookingPaymentRejectedException $e) {
                 error_log('[admin_bookings] refund rejected by PG: booking_id=' . $id . ' code=' . $e->getMessage());
-                $msg = 'Toss 가 환불을 거절했습니다 (' . preg_replace('/[^A-Z_]/', '', $e->getMessage()) . '). 페이지를 새로고침한 뒤 확인해주세요.';
+                $msg = 'PG 가 환불을 거절했습니다 (' . preg_replace('/[^A-Z_]/', '', $e->getMessage()) . '). 페이지를 새로고침한 뒤 확인해주세요.';
                 $msg_type = 'danger';
             } catch (BookingPaymentGatewayUnavailableException $e) {
                 $msg = '결제 연동이 설정되지 않아 환불할 수 없습니다.';

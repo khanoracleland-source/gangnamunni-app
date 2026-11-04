@@ -277,7 +277,7 @@ if (!defined('POINTS_CHECKOUT_LOADED')) {
      * @param \mysqli    $connect
      * @param int|string $booking_id
      * @param string     $reason
-     * @param bool $keepIfInProgress true 면 Toss 가 IN_PROGRESS(카드 인증 중·승인 전)일 때 홀드를 풀지 않는다.
+     * @param bool $keepIfInProgress true 면 PG 결제가 진행 중(카드 인증 중·승인 전)일 때 홀드를 풀지 않는다.
      *   방치 홀드 cron 용: 결제창이 열려 있는 동안 풀면 승인 단계에서 POINT_HOLD_EXPIRED 로 거부된다.
      *   예약 취소는 false(기본): 취소되면 승인이 어차피 거부되므로 바로 복구한다.
      */

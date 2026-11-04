@@ -562,7 +562,7 @@ class WebViewBridge {
           return NavigationDecision.prevent;
         }
 
-        // 결제(토스페이먼츠) 중 카드사·간편결제·은행 앱 호출은 외부 앱으로 연다.
+        // 결제 중 카드사·간편결제·은행 앱 호출은 외부 앱으로 연다.
         // 허용 목록에 있는 결제 앱만 해당하며, 그 외 스킴은 아래에서 계속 차단한다.
         // 카카오 로그인 intent(kakaokompassauth/kakaolink)는 기존 처리를 그대로 쓴다.
         final bool kakaoLoginIntent = scheme == 'intent' &&

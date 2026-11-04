@@ -7,16 +7,16 @@ echo 'Real checkout: '.(booking_payment_checkout_ready() ? 'READY' : 'NOT READY'
 echo 'Payment-free preview: '.(booking_payment_preview_enabled() ? 'ON' : 'OFF')."\n";
 $gateway = booking_payment_gateway();
 echo 'Payment gateway: '.($gateway ? $gateway->provider() : 'NOT CONNECTED')."\n";
-foreach (['TOSS_CLIENT_KEY','TOSS_SECRET_KEY','BOOKING_PAYMENT_BASE_URL'] as $key) {
+foreach (['BOOKING_PAYMENT_BASE_URL'] as $key) {
     echo $key.': '.(trim(booking_payment_setting($key)) === '' ? 'MISSING' : 'SET')."\n";
 }
 if ($gateway) {
     // Read-only probe: an order id that never exists must come back as "not started".
     try {
         $probe = $gateway->payment('BK_preflight_probe_' . date('YmdHis'));
-        echo 'Toss API: '.(($probe['raw_status'] ?? '') === 'NOT_FOUND' ? 'OK (auth + network)' : 'UNEXPECTED RESPONSE')."\n";
+        echo 'PG API: '.(($probe['raw_status'] ?? '') === 'NOT_FOUND' ? 'OK (auth + network)' : 'UNEXPECTED RESPONSE')."\n";
     } catch (Throwable $e) {
-        echo 'Toss API: FAILED ('.$e->getMessage().")\n";
+        echo 'PG API: FAILED ('.$e->getMessage().")\n";
     }
 }
 echo 'Configured methods: '.(implode(', ',array_keys(booking_payment_methods())) ?: 'NONE')."\n";

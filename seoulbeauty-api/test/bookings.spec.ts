@@ -5,6 +5,8 @@ import { DB } from '../src/db/db.module';
 import { AuthModule } from '../src/auth/auth.module';
 import { BookingsModule } from '../src/bookings/bookings.module';
 import { bookingTab, bookingTimePassed, cancelSteps, cardDate, dateTimeLabel, dday, detailDate, paymentState, paymentTierPoint, requestSteps, reviewState } from '../src/bookings/bookings.logic';
+import { PG_LIVE, PG_SANDBOX, registerFixturePg } from './pg-fixture';
+registerFixturePg();
 
 const NOW = '2026-10-28 14:00:00';
 
@@ -33,10 +35,10 @@ describe('bookings logic', () => {
   it('payment state and steps', () => {
     expect(paymentState('pending', { status: 'pending', amount: 100 })).toBe('');
     expect(paymentState('confirmed', undefined)).toBe('');
-    expect(paymentState('confirmed', { status: 'pending', amount: 100, provider: 'toss' })).toBe('payable');
-    expect(paymentState('confirmed', { status: 'pending', amount: 0, provider: 'toss' })).toBe('');
-    expect(paymentState('confirmed', { status: 'paid', amount: 100, provider: 'toss_test' })).toBe('test_paid');
-    expect(paymentState('confirmed', { status: 'paid', amount: 100, provider: 'toss' })).toBe('paid');
+    expect(paymentState('confirmed', { status: 'pending', amount: 100, provider: PG_LIVE })).toBe('payable');
+    expect(paymentState('confirmed', { status: 'pending', amount: 0, provider: PG_LIVE })).toBe('');
+    expect(paymentState('confirmed', { status: 'paid', amount: 100, provider: PG_SANDBOX })).toBe('test_paid');
+    expect(paymentState('confirmed', { status: 'paid', amount: 100, provider: PG_LIVE })).toBe('paid');
     expect(paymentState('confirmed', { status: 'preview', amount: 100 })).toBe('preview');
     expect(requestSteps('pending', '')).toEqual({ steps: ['예약 요청 접수', '병원 확인 중', '결제 대기', '예약 확정'], active: 1, chip: '예약 요청 접수' });
     expect(requestSteps('hospital_checking', '').chip).toBe('병원 확인 중');
@@ -48,9 +50,9 @@ describe('bookings logic', () => {
   });
   it('cancel steps', () => {
     expect(cancelSteps(undefined)).toMatchObject({ noCharge: true, refundComplete: true, active: 4, chip: '예약 취소 완료' });
-    expect(cancelSteps({ status: 'paid', provider: 'toss' })).toMatchObject({ noCharge: false, refundComplete: false, active: 1, chip: '취소 접수' });
-    expect(cancelSteps({ status: 'refunded', provider: 'toss' })).toMatchObject({ refundComplete: true, chip: '취소·환불 완료' });
-    expect(cancelSteps({ status: 'paid', provider: 'toss_test' }).noCharge).toBe(true);
+    expect(cancelSteps({ status: 'paid', provider: PG_LIVE })).toMatchObject({ noCharge: false, refundComplete: false, active: 1, chip: '취소 접수' });
+    expect(cancelSteps({ status: 'refunded', provider: PG_LIVE })).toMatchObject({ refundComplete: true, chip: '취소·환불 완료' });
+    expect(cancelSteps({ status: 'paid', provider: PG_SANDBOX }).noCharge).toBe(true);
   });
   it('review state and tier points', () => {
     expect(reviewState(null).state).toBe('none');
@@ -92,7 +94,7 @@ describe('bookings API (mock DB)', () => {
         return [r ? [r] : []];
       }
       if (q.includes('SELECT booking_id, status, amount, provider FROM gangnamunni_platform_payments')) return [[
-        { booking_id: 2, status: 'pending', amount: 120000, provider: 'toss' }, { booking_id: 3, status: 'paid', amount: 120000, provider: 'toss' }, { booking_id: 7, status: 'paid', amount: 120000, provider: 'toss' }]];
+        { booking_id: 2, status: 'pending', amount: 120000, provider: PG_LIVE }, { booking_id: 3, status: 'paid', amount: 120000, provider: PG_LIVE }, { booking_id: 7, status: 'paid', amount: 120000, provider: PG_LIVE }]];
       if (q.includes('gangnamunni_booking_payment_previews')) return [[{ booking_id: 2 }]];
       if (q.includes('FROM hospital_reviews WHERE booking_id IN')) return [[{ booking_id: 4, id: 77, review_status: 'published', is_active: 1 }]];
       if (q.includes('FROM g5_push_tokens')) return [[{ c: 0 }]];
@@ -100,7 +102,7 @@ describe('bookings API (mock DB)', () => {
       if (q.includes("setting_key = 'payment_deadline_hours'")) return [[{ setting_value: '48' }]];
       if (q.includes('SELECT status, provider, amount, refunded_amount')) {
         const id = (v as number[])[0];
-        if (id === 7) return [[{ status: 'partially_refunded', provider: 'toss', amount: 120000, refunded_amount: 0 }]];
+        if (id === 7) return [[{ status: 'partially_refunded', provider: PG_LIVE, amount: 120000, refunded_amount: 0 }]];
         return [[]];
       }
       if (q.includes('SELECT amount, points_used, gross_amount')) return [[{ amount: 100000, points_used: 20000, gross_amount: 0 }]];

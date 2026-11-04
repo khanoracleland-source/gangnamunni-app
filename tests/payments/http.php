@@ -44,12 +44,10 @@ try {
 if (!str_starts_with((string)getenv('PAYMENT_HTTP_DATABASE'),'codex_payment_http_')) { http_response_code(500); exit; }
 putenv('G5_PG_PAYMENTS_ENABLED=0'); putenv('BOOKING_PAYMENT_METHODS='); putenv('BOOKING_PAYMENT_PREVIEW_ENABLED=1');
 if (($_SERVER['HTTP_X_FIXTURE_PREVIEW'] ?? '') === 'disabled') putenv('BOOKING_PAYMENT_PREVIEW_ENABLED=0');
-putenv('TOSS_CLIENT_KEY='); putenv('TOSS_SECRET_KEY=');
-if (($_SERVER['HTTP_X_FIXTURE_TOSS'] ?? '') === 'on') {
-    // Toss docs' public test keys; no request leaves the fixture (checkout payload only).
+if (($_SERVER['HTTP_X_FIXTURE_LIVE'] ?? '') === 'on') {
+    // Every server switch on, but no PG client exists: checkout must still stay unavailable.
     putenv('G5_PG_PAYMENTS_ENABLED=1'); putenv('BOOKING_PAYMENT_METHODS=card,bank,tosspay');
     putenv('BOOKING_PAYMENT_BASE_URL=https://fixture.invalid');
-    putenv('TOSS_CLIENT_KEY=test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq'); putenv('TOSS_SECRET_KEY=test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R');
 }
 $dbname=getenv('PAYMENT_HTTP_DATABASE');
 foreach (['HOST','USER','PASSWORD','PORT'] as $key) define('G5_MYSQL_'.$key,getenv('G5_MYSQL_'.$key));
@@ -117,37 +115,18 @@ ROUTER;
     check_http($code===200 && str_contains($body,'결제 없이 계속했어요'),'preview success is explicitly unpaid');
     [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'card']);
     check_http($code===503 && $data['code']==='PAYMENT_UNAVAILABLE','unconfigured checkout fails without pretending payment');
-    $toss=['X-Fixture-Toss: on'];
-    $orderRow=$db->query("SELECT merchant_uid,amount FROM gangnamunni_platform_payments WHERE booking_id=1")->fetch_assoc();
-    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'card'],'owner',$toss);
-    $req=$data['payment']['request'] ?? [];
-    check_http($code===200 && ($data['payment']['clientKey'] ?? '')==='test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq'
-        && $req['method']==='CARD' && $req['card']['flowMode']==='DEFAULT'
-        && $req['amount']===['currency'=>'KRW','value'=>(int)$orderRow['amount']] && $req['orderId']===$orderRow['merchant_uid']
-        && $req['successUrl']==='https://fixture.invalid/booking_payment_toss_success.php'
-        && $req['failUrl']==='https://fixture.invalid/booking_payment_toss_fail.php','Toss card checkout uses ledger amount and order id');
-    check_http(!str_contains($body,'test_sk_'),'secret key never reaches the browser');
-    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'tosspay'],'owner',$toss);
-    check_http($code===200 && $data['payment']['request']['card']===['flowMode'=>'DIRECT','easyPay'=>'TOSSPAY'],'easy pay opens the provider directly');
-    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'bank'],'owner',$toss);
-    check_http($code===200 && $data['payment']['request']['method']==='TRANSFER' && !str_contains($body,'appScheme'),'bank transfer maps to TRANSFER without appScheme');
-    check_http(!str_contains(json_encode($req),'appScheme'),'browser checkout sends no appScheme');
-    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'card','in_app'=>'1'],'owner',$toss);
-    $inApp=$data['payment']['request'] ?? [];
-    check_http($code===200 && ($inApp['card']['appScheme'] ?? '')==='wellness://payment' && !isset($inApp['appScheme']) && $inApp['card']['flowMode']==='DEFAULT','in-app card checkout sets card.appScheme (SDK CardPaymentRequest)');
-    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'tosspay','in_app'=>'1'],'owner',$toss);
-    check_http($code===200 && $data['payment']['request']['card']===['flowMode'=>'DIRECT','easyPay'=>'TOSSPAY','appScheme'=>'wellness://payment'],'in-app easy pay keeps DIRECT easyPay and card.appScheme');
-    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'naverpay'],'owner',$toss);
-    check_http($code===503 && $data['code']==='PAYMENT_UNAVAILABLE','method not enabled in settings is refused');
-    [$code,$body]=$request('booking_payment.php?booking_id=1','GET',[],'owner',$toss);
-    check_http($code===200 && str_contains($body,'https://js.tosspayments.com/v2/standard') && preg_match('/id="payBtn"(?![^>]*disabled)/',$body)===1,'connected checkout loads Toss SDK and enables payment');
-    [$code,$body]=$request('booking_payment.php?booking_id=1&pay_error=REJECT_CARD_COMPANY%3Cscript%3E','GET',[],'owner',$toss);
-    check_http($code===200 && str_contains($body,'카드사에서 결제를 거절했습니다') && !str_contains($body,'<script>REJECT'),'PG error code shown as fixed text only');
+    $live=['X-Fixture-Live: on'];
+    [$code,$body,$data]=$request('booking_payment_request.php','POST',['booking_id'=>1,'csrf_token'=>'fixture-csrf','provider'=>'card'],'owner',$live);
+    check_http($code===503 && $data['code']==='PAYMENT_UNAVAILABLE' && !isset($data['payment']),'checkout stays unavailable without a connected PG even when every switch is on');
+    [$code,$body]=$request('booking_payment.php?booking_id=1','GET',[],'owner',$live);
+    check_http($code===200 && preg_match('/id="payBtn"(?![^>]*disabled)/',$body)!==1,'no enabled payment button without a connected PG');
+    [$code,$body]=$request('booking_payment.php?booking_id=1&pay_error=AMOUNT_MISMATCH%3Cscript%3E','GET',[],'owner',$live);
+    check_http($code===200 && str_contains($body,'결제 금액이 변경되어') && !str_contains($body,'<script>AMOUNT'),'PG error code shown as fixed text only');
     [$code,$body]=$request('booking_payment.php?booking_id=999');
     check_http($code===404 && !str_contains($body,'Warning:'),'unknown booking renders clean 404');
     [$code,$body]=$request('booking_payment.php?booking_id=1');
     check_http($code===200 && str_contains($body,'id="previewPayBtn"') && !str_contains($body,'id="payBtn"') && str_contains($body,'id="paymentMethodNotice"'),'unconfigured checkout explains unavailable methods and offers preview');
-    $db->query("UPDATE gangnamunni_platform_payments SET status='refunded',provider='toss_test',provider_transaction_id='tx_fixture',verified_amount=amount,verified_at=NOW(),verification_source='server_query',paid_at=NOW(),refunded_amount=amount,refunded_at=NOW()");
+    $db->query("UPDATE gangnamunni_platform_payments SET status='refunded',provider='mock_booking_payment',provider_transaction_id='tx_fixture',verified_amount=amount,verified_at=NOW(),verification_source='server_query',paid_at=NOW(),refunded_amount=amount,refunded_at=NOW()");
     [$code,$body]=$request('booking_payment.php?booking_id=1');
     check_http($code===200 && str_contains($body,'환불이 완료된 결제입니다.') && !str_contains($body,'id="payBtn"') && !str_contains($body,'id="previewPayBtn"'),'refunded checkout offers neither recharging nor bypass');
     [$code,$body]=$request('booking_payment_success.php?booking_id=1');

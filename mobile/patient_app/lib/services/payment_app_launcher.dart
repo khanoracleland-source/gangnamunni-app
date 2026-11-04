@@ -3,8 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// 결제 중 카드사·간편결제·은행·본인인증 앱 호출을 외부 앱으로 넘긴다.
 ///
-/// 토스페이먼츠 웹뷰 연동 가이드(https://docs.tosspayments.com/guides/v2/webview)를 따른다.
-/// - Android: `intent:` URL 을 앱 스킴 URL 로 변환해 실행하고(가이드의 ConvertUrl 과 같은 변환),
+/// - Android: `intent:` URL 을 앱 스킴 URL 로 변환해 실행하고,
 ///   앱이 없으면 intent 의 package 로 Play 스토어를 연다.
 /// - iOS: 앱 스킴 URL 을 UIApplication.open 으로 연다(url_launcher externalApplication).
 ///   canOpenURL 을 쓰지 않으므로 LSApplicationQueriesSchemes 등록이 필요 없다(iOS 27 의 25개 제한 대응).

@@ -137,9 +137,9 @@ void main() {
     expect(to(legacy('booking_cancel_complete.php?booking_id=7&app=1')), '/next/mypage/bookings/7/cancel/done');
   });
 
-  test('booking payment (preview flow; Toss checkout stays PHP via php=1)', () {
+  test('booking payment (preview flow; php=1 keeps the PHP page)', () {
     expect(to(php('booking_payment.php?booking_id=7')), '/next/mypage/bookings/7/payment');
-    expect(to(php('booking_payment.php?booking_id=7&pay_error=USER_CANCEL')), '/next/mypage/bookings/7/payment?pay_error=USER_CANCEL');
+    expect(to(php('booking_payment.php?booking_id=7&pay_error=UNRESOLVED')), '/next/mypage/bookings/7/payment?pay_error=UNRESOLVED');
     expect(to(php('booking_payment.php?booking_id=7&php=1')), isNull);
     expect(to(php('booking_payment.php')), isNull);
     expect(to(legacy('booking_payment_success.php?booking_id=7&app=1')), '/next/mypage/bookings/7/payment/success');

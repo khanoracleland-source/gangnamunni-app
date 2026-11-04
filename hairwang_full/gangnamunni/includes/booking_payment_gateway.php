@@ -2,9 +2,8 @@
 /**
  * PG(결제대행사) 연결 지점.
  *
- * PortOne 연동은 2026-10-08 제거되었고 Toss Payments(includes/toss_client.php)가
- * 이 인터페이스를 구현한다. 원장·상태 전이·잠금·환불 멱등성(booking_payment_service.php)은
- * PG와 무관하다. 서버 설정 TOSS_CLIENT_KEY / TOSS_SECRET_KEY 가 짝으로 있을 때만 연결된다.
+ * 연결된 PG가 없다. PG 클라이언트는 이 인터페이스를 구현하고 booking_payment_gateway() 에서
+ * 반환한다. 원장·상태 전이·잠금·환불 멱등성(booking_payment_service.php)은 PG와 무관하다.
  *
  * PG가 연결되지 않은 동안:
  *  - booking_payment_checkout_ready() 는 false → 결제 화면은 "온라인 결제 준비 중",
@@ -44,24 +43,9 @@ interface BookingPaymentGateway {
     public function cancel(string $merchantUid, string $transactionId, int $amount, int $remaining, string $reason, string $requestId): array;
 }
 
-/** 현재 연결된 PG. 키가 없거나 짝이 맞지 않으면 null(결제 비활성). */
+/** 현재 연결된 PG. 연결된 PG가 없으면 null(결제 비활성). */
 function booking_payment_gateway(): ?BookingPaymentGateway {
-    require_once __DIR__ . '/booking_payment_config.php';
-    require_once __DIR__ . '/toss_client.php';
-    $client = trim(booking_payment_setting('TOSS_CLIENT_KEY'));
-    $secret = trim(booking_payment_setting('TOSS_SECRET_KEY'));
-    if ($client === '' && $secret === '') return null;
-    if (!BookingTossClient::keysPair($client, $secret)) {
-        static $warned = false;
-        if (!$warned) { error_log('[booking_payment_gateway] TOSS_CLIENT_KEY/TOSS_SECRET_KEY are not a valid test/live API 개별 연동 pair.'); $warned = true; }
-        return null;
-    }
-    return new BookingTossClient($secret);
-}
-
-/** 브라우저 SDK 에 넘길 클라이언트 키(공개 값). PG 미연결이면 ''. */
-function booking_payment_client_key(): string {
-    return booking_payment_gateway() ? trim(booking_payment_setting('TOSS_CLIENT_KEY')) : '';
+    return null;
 }
 
 function booking_payment_require_gateway(): BookingPaymentGateway {

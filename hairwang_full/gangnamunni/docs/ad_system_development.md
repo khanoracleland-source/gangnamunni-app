@@ -9,7 +9,7 @@
 ### 시스템 아키텍처
 
 ```
-[병원(광고주)] → [광고 등록] → [결제(PortOne)] → [광고 활성화]
+[병원(광고주)] → [광고 등록] → [결제] → [광고 활성화]
                                                       ↓
 [사용자 홈페이지] → 광고 노출 → [impressions 기록]
                   → 광고 클릭 → [clicks 기록]
@@ -176,7 +176,7 @@
 |--------|------|--------|
 | gangnamunni_ads | 광고 배너 | 3개 |
 | gangnamunni_promos | 프로모션 배너 | - |
-| gangnamunni_ad_payments | 광고 결제 (PortOne) | 0건 |
+| gangnamunni_ad_payments | 광고 결제 | 0건 |
 | gangnamunni_ad_impressions | 광고 노출 기록 | 실시간 |
 | gangnamunni_ad_clicks | 광고 클릭 기록 | 실시간 |
 | gangnamunni_advertisers | 광고주(병원) | - |
@@ -191,12 +191,11 @@
 | ai_ad_editor.php | AI 광고 에디터 (기존) |
 | api_ad_tracking.php | 노출/클릭 트래킹 API (신규) |
 | payment/ad_payment.php | 폐기된 패키지 결제 엔드포인트 (HTTP 410) |
-| payment/portone_config.php | PortOne 설정 (기존, 테스트 키) |
 | includes/admin_header.php | 사이드바 메뉴 (수정) |
 
 ## 향후 계획
 
-- [ ] PortOne 실제 가맹점 키 설정 (현재 테스트 모드)
+- [ ] PG 연동 후 실제 가맹점 키 설정
 - [ ] 광고주와 광고 연결 UI (admin_ads.php에서 advertiser_id 선택)
 - [ ] 광고 기간 만료 자동 비활성화 (cron job)
 - [ ] 결제 완료 시 광고 자동 활성화 (payment_callback.php)

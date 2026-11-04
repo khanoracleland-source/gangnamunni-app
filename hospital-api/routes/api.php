@@ -1065,7 +1065,7 @@ Route::prefix('community')->group(function () {
     Route::delete('/posts/{postId}/comments/{commentId}', [App\Http\Controllers\CommunityController::class, 'destroyComment'])->middleware('auth:sanctum');
 });
 
-// Retired duplicate PortOne ledger. Booking payments now use the canonical
+// Retired duplicate payment ledger. Booking payments now use the canonical
 // gangnamunni payment service; do not expose the legacy unauthenticated controller.
 Route::prefix('payments')->group(function () {
     Route::any('/{legacyPath?}', function () {

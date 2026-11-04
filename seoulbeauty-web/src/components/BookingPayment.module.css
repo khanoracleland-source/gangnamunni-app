@@ -1,4 +1,4 @@
-/* booking_payment.php / booking_payment_success.php (same colours and sizes; the Toss sheets are not ported) */
+/* booking_payment.php / booking_payment_success.php (same colours and sizes) */
 .page { max-width: 640px; min-height: 100vh; margin: 0 auto; background: #fff; color: #111; padding-bottom: 90px; box-sizing: border-box; }
 .pageDark { background: #fff; }
 .header { height: 72px; display: flex; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 10; background: #fff; }

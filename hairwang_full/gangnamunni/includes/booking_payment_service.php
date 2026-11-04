@@ -53,7 +53,7 @@ function booking_payment_refund_audit(mysqli $db, array $order, int $amount, str
 
 /**
  * PG 응답(정규화된 형태)을 원장과 대조한다. 회귀 테스트에서도 쓰는 순수 함수.
- * 실결제/샌드박스 구분은 PG 클라이언트가 provider() 로 정한다(예: toss / toss_test).
+ * 실결제/샌드박스 구분은 PG 클라이언트가 provider() 로 정한다(booking_payment_pg_providers() 안의 값).
  */
 function booking_payment_validate(array $order, array $remote, string $provider): string {
     if (!booking_payment_is_pg($provider)) throw new RuntimeException('Unknown payment gateway provider.');
@@ -145,7 +145,7 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
         $result = booking_payment_by_merchant($db, $order['merchant_uid']);
         // 포인트 결제(#포인트제도 v2): 결제 완료 → 홀드 확정, 전액 취소 → 사용 포인트 복구(같은 트랜잭션)
         points_checkout_after_sync($db, $result);
-        // 전액 환불이 원장에 반영되면 예약도 같은 트랜잭션에서 환불완료로 맞춘다(관리자 환불·Toss 콘솔 환불·웹훅 공통).
+        // 전액 환불이 원장에 반영되면 예약도 같은 트랜잭션에서 환불완료로 맞춘다(관리자 환불·PG 콘솔 환불·웹훅 공통).
         // 예약 status 는 취소 상태일 때만 'refunded' 로 바꾸고, refund_status 는 항상 맞춘다.
         if (($result['status'] ?? '') === 'refunded' && (int)($result['booking_id'] ?? 0) > 0) {
             $bookingId = (int)$result['booking_id'];
@@ -272,7 +272,7 @@ function booking_payment_confirm(mysqli $db, string $merchant, string $paymentKe
     $provider = $gateway->provider();
     return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $paymentKey, $amount, $gateway, $provider) {
         $order = booking_payment_by_merchant($db, $merchant);
-        // Toss 가이드: 승인 전에 성공 URL 의 paymentKey·orderId·amount 를 서버에 저장한다.
+        // 승인 전에 결제창 반환값(paymentKey·orderId·amount)을 서버에 저장한다.
         booking_payment_attempt_save($db, $order, $provider, $paymentKey, $amount, 'received', null);
         $result = function (string $outcome, string $reason, array $order) use ($db, $provider, $paymentKey, $amount): array {
             booking_payment_attempt_save($db, $order, $provider, $paymentKey, $amount, $outcome, $reason);

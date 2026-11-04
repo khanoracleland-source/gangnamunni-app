@@ -11,11 +11,6 @@ import styles from "./BookingPayment.module.css";
 
 const won = (n: number) => Math.max(0, n).toLocaleString("ko-KR");
 const PAY_NOTICES: Record<string, string> = {
-  PAY_PROCESS_CANCELED: "결제를 취소했습니다. 청구된 금액은 없습니다.",
-  USER_CANCEL: "결제를 취소했습니다. 청구된 금액은 없습니다.",
-  PAY_PROCESS_ABORTED: "결제가 중단되었습니다. 청구된 금액은 없으니 다시 시도해주세요.",
-  REJECT_CARD_COMPANY: "카드사에서 결제를 거절했습니다. 다른 카드나 결제 수단을 이용해주세요.",
-  NOT_FOUND_PAYMENT_SESSION: "결제 시간이 초과되었습니다. 청구된 금액은 없으니 다시 결제해주세요.",
   AMOUNT_MISMATCH: "결제 금액이 변경되어 결제를 진행하지 않았습니다. 청구된 금액은 없으니 금액을 확인한 뒤 다시 결제해주세요.",
   POINT_HOLD_EXPIRED: "포인트 적용 시간이 지나 결제를 진행하지 않았습니다. 청구된 금액은 없으니 다시 결제해주세요.",
   BOOKING_NOT_CONFIRMED: "예약 상태가 변경되어 결제를 진행하지 않았습니다. 청구된 금액은 없습니다.",
@@ -25,8 +20,7 @@ const PAY_NOTICES: Record<string, string> = {
 const METHODS: [string, string][] = [["bank", "계좌이체"], ["card", "신용/체크카드"], ["naverpay", "네이버페이"], ["kakaopay", "카카오페이"], ["tosspay", "토스페이"]];
 
 /**
- * booking_payment.php. The live PG checkout (Toss) is not ported: while PG is on, "결제하기" opens the PHP page;
- * what works here is the order, the summary and "결제 없이 계속하기".
+ * booking_payment.php. No PG is connected: what works here is the order, the summary and "결제 없이 계속하기".
  */
 export default function BookingPayment({ id, payError }: { id: number; payError: string }) {
   const router = useRouter();

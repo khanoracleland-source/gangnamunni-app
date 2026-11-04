@@ -5,6 +5,8 @@ import { DB } from '../src/db/db.module';
 import { AuthModule } from '../src/auth/auth.module';
 import { BookingsModule } from '../src/bookings/bookings.module';
 import { cancelDeadline, noshowCancelPreview } from '../src/booking/booking.logic';
+import { PG_LIVE, PG_SANDBOX, registerFixturePg } from './pg-fixture';
+registerFixturePg();
 
 describe('cancel logic', () => {
   it('deadline is 17:00 the day before', () => {
@@ -70,7 +72,7 @@ describe('booking cancel / change API', () => {
     await api().get('/v1/mypage/bookings/8/cancel-info').set('Cookie', 'sid=kim').expect(404);
   });
   it('cancel-info: paid PG order shows the amount; after the deadline the window is closed', async () => {
-    st.order = { id: 1, provider: 'toss', status: 'paid', amount: 100000, refunded_amount: 20000, merchant_uid: 'm1' };
+    st.order = { id: 1, provider: PG_LIVE, status: 'paid', amount: 100000, refunded_amount: 20000, merchant_uid: 'm1' };
     expect((await api().get('/v1/mypage/bookings/7/cancel-info').set('Cookie', 'sid=kim').expect(200)).body).toMatchObject({ amount: 80000, refund: 80000, windowClosed: false, paymentStatus: 'paid' });
     st.booking.booking_date = '2020-01-05';
     expect((await api().get('/v1/mypage/bookings/7/cancel-info').set('Cookie', 'sid=kim').expect(200)).body.windowClosed).toBe(true);
@@ -97,7 +99,7 @@ describe('booking cancel / change API', () => {
   });
   it('cancel: HMS appointment closed inside the transaction, paid order -> refund pending', async () => {
     st.booking.hms_appointment_id = 55;
-    st.order = { id: 1, provider: 'toss', status: 'paid', amount: 1, refunded_amount: 0, merchant_uid: 'm1' };
+    st.order = { id: 1, provider: PG_LIVE, status: 'paid', amount: 1, refunded_amount: 0, merchant_uid: 'm1' };
     const r = await authed(api().post('/v1/mypage/bookings/7/cancel')).send({ reason: '기타' }).expect(201);
     expect(r.body.refund_status).toBe('not_refunded');
     expect(sqls(/GET_LOCK/)[0].args[0]).toMatch(/^payment:[0-9a-f]{48}$/);
@@ -105,7 +107,7 @@ describe('booking cancel / change API', () => {
     expect(sqls(/UPDATE appointments SET is_completed = 2/)[0].args).toEqual([55]);
   });
   it('cancel: lock busy -> 409, window closed -> 422, already cancelled -> 422, not mine -> 403', async () => {
-    st.order = { id: 1, provider: 'toss', status: 'paid', amount: 1, refunded_amount: 0, merchant_uid: 'm1' };
+    st.order = { id: 1, provider: PG_LIVE, status: 'paid', amount: 1, refunded_amount: 0, merchant_uid: 'm1' };
     st.lockOk = 0;
     await authed(api().post('/v1/mypage/bookings/7/cancel')).send({ reason: 'x' }).expect(409);
     st.lockOk = 1; st.booking.booking_date = '2020-01-01';
@@ -125,7 +127,7 @@ describe('booking cancel / change API', () => {
   });
   it('cancel: pending order with an empty point hold is released', async () => {
     st.settings = { v2_schema_version: '1' };
-    st.order = { id: 9, provider: 'toss', status: 'pending', amount: 1, refunded_amount: 0, merchant_uid: 'm9' };
+    st.order = { id: 9, provider: PG_LIVE, status: 'pending', amount: 1, refunded_amount: 0, merchant_uid: 'm9' };
     st.hold = { id: 3, status: 'held', points: 0, use_point_id: null };
     await authed(api().post('/v1/mypage/bookings/7/cancel')).send({ reason: 'x' }).expect(201);
     expect(sqls(/SET status = 'released'/)[0].args).toEqual([3]);
@@ -149,7 +151,7 @@ describe('booking cancel / change API', () => {
     await post({ date: '2099-01-06', time: '10:00' }).expect(503);
     st.cols.edit_count = true; st.booking.edit_count = 3;
     expect((await post({ date: '2099-01-06', time: '10:00' }).expect(422)).body.message).toContain('3회');
-    st.booking.edit_count = 0; st.order = { id: 1, provider: 'toss', status: 'paid', merchant_uid: 'm1' };
+    st.booking.edit_count = 0; st.order = { id: 1, provider: PG_LIVE, status: 'paid', merchant_uid: 'm1' };
     expect((await post({ date: '2099-01-06', time: '10:00' }).expect(422)).body.message).toContain('이미 결제된 예약');
   });
   it('change: date/time only, memo appended, edits left', async () => {

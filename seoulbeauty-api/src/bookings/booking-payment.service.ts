@@ -19,11 +19,8 @@ export class BookingPaymentService {
   private readonly log = new Logger(BookingPaymentService.name);
   constructor(@Inject(DB) private readonly db: DbPool, private readonly points: PointsService) {}
 
-  /** booking_payment_live_enabled() && methods && gateway: all server settings (env here). Toss itself still lives in PHP. */
-  static liveAvailable(): boolean {
-    const methods = (process.env.BOOKING_PAYMENT_METHODS || '').split(',').map((m) => m.trim().toLowerCase()).filter((m) => ['card', 'bank', 'naverpay', 'kakaopay', 'tosspay'].includes(m));
-    return process.env.PG_PAYMENTS_ENABLED === '1' && methods.length > 0 && !!process.env.TOSS_CLIENT_KEY && !!process.env.TOSS_SECRET_KEY;
-  }
+  /** booking_payment_checkout_ready(): needs a connected PG gateway. None is connected, so live checkout is never available. */
+  static liveAvailable(): boolean { return false; }
   static previewEnabled(): boolean { return (process.env.BOOKING_PAYMENT_PREVIEW_ENABLED ?? '1') === '1'; }
 
   private static phone(v: unknown): string {

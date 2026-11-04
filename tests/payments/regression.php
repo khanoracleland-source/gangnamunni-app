@@ -1,6 +1,7 @@
 <?php
 /** Run in the local gangnamunni container. Uses and deletes ONLY a random test DB. */
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+require_once __DIR__ . '/pg_fixture.php';
 require_once __DIR__ . '/../../hairwang_full/gangnamunni/includes/booking_payment_service.php';
 $count = 0;
 function expect($condition, string $label): void {
@@ -34,98 +35,31 @@ final class FakeGateway implements BookingPaymentGateway {
     }
 }
 
-expect(booking_payment_gateway() === null, 'no PG is connected without Toss keys');
-// Toss keys: only a same-environment API 개별 연동 pair connects the gateway.
-putenv('TOSS_CLIENT_KEY=test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq'); putenv('TOSS_SECRET_KEY=test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R');
-expect(booking_payment_gateway() instanceof BookingTossClient && booking_payment_gateway()->provider() === 'toss_test', 'test key pair connects Toss as sandbox');
-expect(booking_payment_client_key() === 'test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq', 'client key exposed only when gateway is connected');
-putenv('TOSS_SECRET_KEY=live_sk_fixture123');
-expect(booking_payment_gateway() === null, 'test client key with live secret key is refused');
-putenv('TOSS_CLIENT_KEY=test_gck_docs_fixture'); putenv('TOSS_SECRET_KEY=test_gsk_docs_fixture');
-expect(booking_payment_gateway() === null, 'payment widget keys are refused for API 개별 연동');
-putenv('TOSS_CLIENT_KEY=live_ck_fixture123'); putenv('TOSS_SECRET_KEY=live_sk_fixture123');
-expect(booking_payment_gateway()->provider() === 'toss', 'live key pair is a live provider');
-putenv('TOSS_CLIENT_KEY='); putenv('TOSS_SECRET_KEY=');
-expect(booking_payment_gateway() === null && booking_payment_client_key() === '', 'removing keys disconnects the gateway');
-
-// Toss client against a scripted transport.
-$tossOrder = ['merchant_uid'=>'BK_fixture','amount'=>100000,'provider'=>null,'provider_transaction_id'=>null];
-$tossPayment = function (array $over = []) {
-    return array_replace(['paymentKey'=>'tgen_fixture','orderId'=>'BK_fixture','status'=>'DONE','totalAmount'=>100000,
-        'balanceAmount'=>100000,'currency'=>'KRW','method'=>'카드','approvedAt'=>'2026-10-01T10:00:00+09:00'], $over);
-};
-$calls = [];
-$toss = function (int $status, $body) use (&$calls) {
-    return new BookingTossClient('test_sk_fixture', function ($m, $p, $b, $h) use ($status, $body, &$calls) {
-        $calls[] = [$m, $p, $b, $h];
-        return [$status, is_string($body) ? $body : json_encode($body)];
-    });
-};
-$n = $toss(200, $tossPayment())->payment('BK_fixture');
-expect($n['status']==='paid' && $n['amount']===100000 && $n['cancelled_amount']===0 && $n['transaction_id']==='tgen_fixture'
-    && $n['paid_at']===strtotime('2026-10-01T10:00:00+09:00'), 'DONE normalizes to paid with amount, key and approval time');
-[$m, $p, $b, $h] = end($calls);
-expect($m==='GET' && $p==='/v1/payments/orders/BK_fixture', 'payment is looked up by our order id');
-expect(in_array('Authorization: Basic ' . base64_encode('test_sk_fixture:'), $h, true), 'Basic auth uses base64(secret + colon)');
-$n = $toss(200, $tossPayment(['status'=>'PARTIAL_CANCELED','balanceAmount'=>70000]))->payment('BK_fixture');
-expect($n['status']==='paid' && $n['cancelled_amount']===30000, 'partial cancel keeps paid with refunded total');
-$n = $toss(200, $tossPayment(['status'=>'CANCELED','balanceAmount'=>0]))->payment('BK_fixture');
-expect($n['status']==='cancelled' && $n['cancelled_amount']===100000, 'full cancel normalizes to cancelled');
-foreach (['READY'=>'ready','IN_PROGRESS'=>'ready','WAITING_FOR_DEPOSIT'=>'ready','ABORTED'=>'failed','EXPIRED'=>'failed'] as $raw=>$state) {
-    expect($toss(200, $tossPayment(['status'=>$raw]))->payment('BK_fixture')['status']===$state, 'Toss ' . $raw . ' maps to ' . $state);
-}
-rejects(fn()=>$toss(200, $tossPayment(['status'=>'WHO_KNOWS']))->payment('BK_fixture'), 'unknown Toss status rejected');
-$n = $toss(404, ['code'=>'NOT_FOUND_PAYMENT','message'=>'x'])->payment('BK_fixture');
-expect($n['status']==='ready' && $n['raw_status']==='NOT_FOUND' && $n['amount']===null, 'never-started order is ready, not an error');
-expect(booking_payment_validate($tossOrder, $n, 'toss_test')==='toss_test', 'never-started order passes validation');
-rejects(fn()=>$toss(200, '<html>bad gateway</html>')->payment('BK_fixture'), 'malformed Toss response rejected');
-rejects(fn()=>$toss(503, '{}')->payment('BK_fixture'), 'HTTP failure rejected');
-$toss(200, $tossPayment())->payment('BK_../evil');
-expect(end($calls)[1]==='/v1/payments/orders/BK_..%2Fevil', 'order id is URL-encoded into the path');
-$toss(200, $tossPayment())->confirm('BK_fixture', 'tgen_fixture', 100000);
-[$m, $p, $b, $h] = end($calls);
-expect($m==='POST' && $p==='/v1/payments/confirm' && $b===['paymentKey'=>'tgen_fixture','orderId'=>'BK_fixture','amount'=>100000], 'confirm sends paymentKey, orderId, amount');
-expect((bool)preg_grep('/^Idempotency-Key: confirm_BK_fixture_[a-f0-9]{64}$/', $h), 'confirm is idempotent per paymentKey');
-$toss(200, $tossPayment(['status'=>'PARTIAL_CANCELED','balanceAmount'=>90000]))->cancel('BK_fixture','tgen_fixture',10000,100000,'fixture',str_repeat('a',64));
-[$m, $p, $b, $h] = end($calls);
-expect($p==='/v1/payments/tgen_fixture/cancel' && $b===['cancelReason'=>'fixture','cancelAmount'=>10000]
-    && in_array('Idempotency-Key: refund_' . str_repeat('a',64), $h, true), 'refund cancels by paymentKey with request id as idempotency key');
-rejects(fn()=>$toss(200, $tossPayment())->cancel('BK_fixture','tgen_fixture',2,1,'x',str_repeat('a',64)), 'over-refund rejected before Toss call');
-foreach (['REJECT_CARD_COMPANY'=>true,'INVALID_REQUEST'=>true,'NOT_CANCELABLE_AMOUNT'=>true,'UNAUTHORIZED_KEY'=>true,
-          'ALREADY_PROCESSED_PAYMENT'=>false,'PROVIDER_ERROR'=>false,'ALREADY_CANCELED_PAYMENT'=>false,'FORBIDDEN_CONSECUTIVE_REQUEST'=>false] as $code=>$definitive) {
-    try { $toss(in_array($code,['UNAUTHORIZED_KEY'],true)?401:($code==='NOT_CANCELABLE_AMOUNT'||$code==='FORBIDDEN_CONSECUTIVE_REQUEST'||$code==='REJECT_CARD_COMPANY'?403:400), ['code'=>$code,'message'=>'x'])
-            ->confirm('BK_fixture','tgen_fixture',100000); $thrown = null; }
-    catch (Throwable $e) { $thrown = $e; }
-    expect($thrown instanceof BookingPaymentRejectedException === $definitive && $thrown !== null,
-        ($definitive ? 'definitive' : 'unresolved') . ' Toss error classified: ' . $code);
-}
-try { $toss(500, ['code'=>'FAILED_INTERNAL_SYSTEM_PROCESSING'])->confirm('BK_fixture','tgen_fixture',100000); $thrown=null; } catch (Throwable $e) { $thrown=$e; }
-expect($thrown !== null && !($thrown instanceof BookingPaymentRejectedException), 'Toss 5xx leaves the outcome unresolved');
-expect(booking_payment_validate($tossOrder, ['payment_id'=>'BK_fixture','status'=>'ready','amount'=>90000,'currency'=>'KRW','cancelled_amount'=>0], 'toss_test')==='toss_test',
-    'unconfirmed attempt with an older amount is not an error');
+expect(booking_payment_gateway() === null, 'no PG is connected');
 $order = ['merchant_uid'=>'BK_fixture', 'amount'=>100000, 'provider'=>null, 'provider_transaction_id'=>null];
 $remote = ['payment_id'=>'BK_fixture','transaction_id'=>'tx_fixture','amount'=>100000,'currency'=>'KRW',
     'status'=>'paid','cancelled_amount'=>0,'paid_at'=>time()-86400];
-expect(booking_payment_validate($order, $remote, 'toss_test') === 'toss_test', 'gateway provider recorded as given');
-rejects(fn()=>booking_payment_validate($order, $remote, 'portone'), 'unknown/removed provider rejected');
+expect(booking_payment_validate($order, $remote, 'test_pg_sandbox') === 'test_pg_sandbox', 'gateway provider recorded as given');
+expect(booking_payment_validate($order, ['payment_id'=>'BK_fixture','status'=>'ready','amount'=>90000,'currency'=>'KRW','cancelled_amount'=>0], 'test_pg_sandbox')==='test_pg_sandbox',
+    'unconfirmed attempt with an older amount is not an error');
+rejects(fn()=>booking_payment_validate($order, $remote, 'unknown_pg'), 'unknown provider rejected');
 rejects(fn()=>booking_payment_validate($order, $remote, 'mock_booking_payment'), 'mock cannot pose as a PG');
 foreach (['payment_id'=>'BK_other','amount'=>1,'currency'=>'USD','cancelled_amount'=>100001] as $key=>$value) {
-    rejects(fn()=>booking_payment_validate($order, array_replace($remote, [$key=>$value]), 'toss_test'), 'reject mismatched ' . $key);
+    rejects(fn()=>booking_payment_validate($order, array_replace($remote, [$key=>$value]), 'test_pg_sandbox'), 'reject mismatched ' . $key);
 }
-rejects(fn()=>booking_payment_validate($order, array_diff_key($remote,['transaction_id'=>1]), 'toss_test'), 'settled payment without transaction id rejected');
-rejects(fn()=>booking_payment_validate($order, array_replace($remote,['paid_at'=>0]), 'toss_test'), 'missing provider payment time rejected');
+rejects(fn()=>booking_payment_validate($order, array_diff_key($remote,['transaction_id'=>1]), 'test_pg_sandbox'), 'settled payment without transaction id rejected');
+rejects(fn()=>booking_payment_validate($order, array_replace($remote,['paid_at'=>0]), 'test_pg_sandbox'), 'missing provider payment time rejected');
 expect(booking_payment_validate($order, ['payment_id'=>'BK_fixture','amount'=>100000,'currency'=>'KRW',
-    'status'=>'ready','cancelled_amount'=>0], 'toss_test') === 'toss_test', 'unsettled state validates without transaction data');
-$verified = array_replace($order, ['provider'=>'toss_test','provider_transaction_id'=>'tx_fixture']);
-rejects(fn()=>booking_payment_validate($verified, $remote, 'toss'), 'sandbox payment cannot be re-claimed by a live gateway');
-rejects(fn()=>booking_payment_validate($verified, array_replace($remote,['transaction_id'=>'tx_other']), 'toss_test'), 'verified transaction cannot change');
+    'status'=>'ready','cancelled_amount'=>0], 'test_pg_sandbox') === 'test_pg_sandbox', 'unsettled state validates without transaction data');
+$verified = array_replace($order, ['provider'=>'test_pg_sandbox','provider_transaction_id'=>'tx_fixture']);
+rejects(fn()=>booking_payment_validate($verified, $remote, 'test_pg'), 'sandbox payment cannot be re-claimed by a live gateway');
+rejects(fn()=>booking_payment_validate($verified, array_replace($remote,['transaction_id'=>'tx_other']), 'test_pg_sandbox'), 'verified transaction cannot change');
 
 foreach (['refunded','cancelled','failed'] as $state) {
-    expect(booking_payment_display_state(['status'=>$state,'provider'=>'toss_test','amount'=>100000],true)===$state, 'terminal state overrides preview: '.$state);
+    expect(booking_payment_display_state(['status'=>$state,'provider'=>'test_pg_sandbox','amount'=>100000],true)===$state, 'terminal state overrides preview: '.$state);
 }
-expect(booking_payment_display_state(['status'=>'paid','provider'=>'toss_test','amount'=>100000])==='test_paid', 'sandbox is labelled as test payment, not unpaid preview');
-expect(booking_payment_display_state(['status'=>'paid','provider'=>'portone_test','amount'=>100000])==='test_paid', 'legacy PortOne sandbox rows stay labelled as test');
-expect(booking_payment_is_live_pg('toss') && !booking_payment_is_live_pg('toss_test') && !booking_payment_is_live_pg('portone'), 'only live PG rows count as real payments');
+expect(booking_payment_display_state(['status'=>'paid','provider'=>'test_pg_sandbox','amount'=>100000])==='test_paid', 'sandbox is labelled as test payment, not unpaid preview');
+expect(booking_payment_is_live_pg('test_pg') && !booking_payment_is_live_pg('test_pg_sandbox') && !booking_payment_is_live_pg('unknown_pg'), 'only live PG rows count as real payments');
 
 putenv('BOOKING_PAYMENT_METHODS= kakaopay,card ,bogus,CARD');
 expect(array_keys(booking_payment_methods()) === ['card','kakaopay'], 'methods parsed, filtered and ordered');
@@ -169,17 +103,17 @@ try {
         $state['status'] = $state['cancelled'] >= 100000 ? 'cancelled' : 'paid';
         return ['status'=>'DONE'];
     };
-    $client = new FakeGateway('toss_test', fn()=>$normalized(), $cancel);
+    $client = new FakeGateway('test_pg_sandbox', fn()=>$normalized(), $cancel);
     expect(booking_payment_sync($db,$merchant)['status'] === 'pending', 'without a PG, sync returns the ledger unchanged');
     rejects(fn()=>booking_payment_refund($db,$merchant,1000,'no pg',str_repeat('9',64),1), 'without a PG, refund refuses to run');
-    $wrongId = new FakeGateway('toss_test', function() use ($normalized) {
+    $wrongId = new FakeGateway('test_pg_sandbox', function() use ($normalized) {
         $payment = $normalized(); $payment['payment_id'] = 'BK_someone_else'; return $payment;
     });
     rejects(fn()=>booking_payment_sync($db,$merchant,'webhook',$wrongId), 'provider response must match the requested payment');
     $paid = booking_payment_sync($db,$merchant,'webhook',$client);
     expect($paid['status'] === 'paid', 'provider-confirmed payment transitions to paid');
     expect($paid['paid_at'] === gmdate('Y-m-d H:i:s', $state['paidAt'] + 9*3600), 'provider payment date preserved for settlement');
-    rejects(fn()=>booking_payment_sync($db,$merchant,'webhook',new FakeGateway('toss', fn()=>$normalized())), 'verified sandbox payment is not re-tagged by a live gateway');
+    rejects(fn()=>booking_payment_sync($db,$merchant,'webhook',new FakeGateway('test_pg', fn()=>$normalized())), 'verified sandbox payment is not re-tagged by a live gateway');
     booking_payment_sync($db,$merchant,'webhook',$client);
     expect((int)$db->query('SELECT COUNT(*) AS n FROM gangnamunni_payment_events')->fetch_assoc()['n'] === 1, 'duplicate callback creates no second event');
     $r1 = str_repeat('a',64);
@@ -215,7 +149,7 @@ try {
     expect(booking_payment_order($db,2)['status'] === 'pending', 'rejected transaction leaves order unchanged');
     $state['transactionId']='tx_second';
     booking_payment_sync($db,$second['merchant_uid'],'webhook',$client);
-    $timeoutClient = new FakeGateway('toss_test', fn()=>$normalized(), function(...$args) use ($cancel) {
+    $timeoutClient = new FakeGateway('test_pg_sandbox', fn()=>$normalized(), function(...$args) use ($cancel) {
         $cancel(...$args);
         throw new RuntimeException('Simulated network timeout AFTER refund.');
     });
@@ -240,7 +174,7 @@ try {
     $state['id']=$fourth['merchant_uid']; $state['transactionId']='tx_fifth';
     $state['status']='paid'; $state['cancelled']=0;
     booking_payment_sync($db,$fourth['merchant_uid'],'webhook',$client);
-    $rejectClient = new FakeGateway('toss_test', fn()=>$normalized(), function() {
+    $rejectClient = new FakeGateway('test_pg_sandbox', fn()=>$normalized(), function() {
         throw new BookingPaymentRejectedException('fixture rejection');
     });
     rejects(fn()=>booking_payment_refund($db,$fourth['merchant_uid'],1000,'declined',str_repeat('e',64),1,$rejectClient), 'explicit provider rejection is reported');
@@ -249,52 +183,52 @@ try {
     $retry = booking_payment_refund($db,$fourth['merchant_uid'],1000,'corrected request',str_repeat('f',64),1,$client);
     expect((int)$retry['refunded_amount']===1000, 'new refund can follow a definite rejection');
 
-    // Two-phase confirm (Toss success URL).
+    // Two-phase confirm (PG return URL).
     $db->query("INSERT INTO gangnamunni_bookings VALUES (6,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
     $sixth = platform_payment_create_booking($db,6)['merchant_uid'];
     $confirmCalls = 0; $confirmMode = 'ok';
-    $tossState = ['status'=>'ready'];
-    $confirmGateway = new FakeGateway('toss_test', function($m) use (&$tossState) {
-        if ($tossState['status'] === 'ready') return ['payment_id'=>$m,'transaction_id'=>'tgen_six','status'=>'ready','raw_status'=>'IN_PROGRESS','amount'=>100000,'cancelled_amount'=>0,'currency'=>'KRW','paid_at'=>null];
-        if ($tossState['status'] === 'error') throw new RuntimeException('Toss down');
-        return ['payment_id'=>$m,'transaction_id'=>'tgen_six','status'=>'paid','raw_status'=>'DONE','amount'=>100000,'cancelled_amount'=>0,'currency'=>'KRW','paid_at'=>time()-60];
-    }, null, function($m,$key,$amount) use (&$confirmCalls,&$confirmMode,&$tossState) {
+    $pgState = ['status'=>'ready'];
+    $confirmGateway = new FakeGateway('test_pg_sandbox', function($m) use (&$pgState) {
+        if ($pgState['status'] === 'ready') return ['payment_id'=>$m,'transaction_id'=>'pgk_six','status'=>'ready','raw_status'=>'IN_PROGRESS','amount'=>100000,'cancelled_amount'=>0,'currency'=>'KRW','paid_at'=>null];
+        if ($pgState['status'] === 'error') throw new RuntimeException('PG down');
+        return ['payment_id'=>$m,'transaction_id'=>'pgk_six','status'=>'paid','raw_status'=>'DONE','amount'=>100000,'cancelled_amount'=>0,'currency'=>'KRW','paid_at'=>time()-60];
+    }, null, function($m,$key,$amount) use (&$confirmCalls,&$confirmMode,&$pgState) {
         $confirmCalls++;
         if ($confirmMode === 'reject') throw new BookingPaymentRejectedException('REJECT_CARD_COMPANY');
-        if ($confirmMode === 'timeout') { $tossState['status'] = 'paid'; throw new RuntimeException('timeout after approval'); }
-        if ($confirmMode === 'dead') { $tossState['status'] = 'error'; throw new RuntimeException('Toss down'); }
-        $tossState['status'] = 'paid';
+        if ($confirmMode === 'timeout') { $pgState['status'] = 'paid'; throw new RuntimeException('timeout after approval'); }
+        if ($confirmMode === 'dead') { $pgState['status'] = 'error'; throw new RuntimeException('PG down'); }
+        $pgState['status'] = 'paid';
         return ['payment_id'=>$m,'transaction_id'=>$key,'status'=>'paid','raw_status'=>'DONE','amount'=>$amount,'cancelled_amount'=>0,'currency'=>'KRW','paid_at'=>time()-60];
     });
-    $r = booking_payment_confirm($db,$sixth,'tgen_six',90000,$confirmGateway);
+    $r = booking_payment_confirm($db,$sixth,'pgk_six',90000,$confirmGateway);
     expect($r['outcome']==='refused' && $r['reason']==='AMOUNT_MISMATCH' && $confirmCalls===0, 'amount mismatch is never sent to the PG');
     $db->query("UPDATE gangnamunni_bookings SET status='cancelled' WHERE id=6");
-    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    $r = booking_payment_confirm($db,$sixth,'pgk_six',100000,$confirmGateway);
     expect($r['outcome']==='refused' && $r['reason']==='BOOKING_NOT_CONFIRMED' && $confirmCalls===0, 'cancelled booking is never charged');
     $db->query("UPDATE gangnamunni_bookings SET status='confirmed' WHERE id=6");
     $db->query("ALTER TABLE gangnamunni_platform_payments ADD COLUMN points_used INT NOT NULL DEFAULT 0");   // point v2 migration column
     $db->query("UPDATE gangnamunni_platform_payments SET points_used=1000 WHERE merchant_uid='" . $db->real_escape_string($sixth) . "'");
-    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    $r = booking_payment_confirm($db,$sixth,'pgk_six',100000,$confirmGateway);
     expect($r['outcome']==='refused' && $r['reason']==='POINT_HOLD_EXPIRED' && $confirmCalls===0, 'expired point hold blocks the charge');
     $db->query("UPDATE gangnamunni_platform_payments SET points_used=0 WHERE merchant_uid='" . $db->real_escape_string($sixth) . "'");
     $confirmMode = 'reject';
-    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    $r = booking_payment_confirm($db,$sixth,'pgk_six',100000,$confirmGateway);
     expect($r['outcome']==='rejected' && $r['reason']==='REJECT_CARD_COMPANY' && booking_payment_order($db,6)['status']==='pending', 'card rejection leaves the order payable');
     $confirmMode = 'dead';
-    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    $r = booking_payment_confirm($db,$sixth,'pgk_six',100000,$confirmGateway);
     expect($r['outcome']==='pending' && booking_payment_order($db,6)['status']==='pending', 'unreachable PG reports pending, never failed or paid');
-    $confirmMode = 'timeout'; $tossState['status'] = 'ready';
-    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    $confirmMode = 'timeout'; $pgState['status'] = 'ready';
+    $r = booking_payment_confirm($db,$sixth,'pgk_six',100000,$confirmGateway);
     expect($r['outcome']==='paid' && booking_payment_order($db,6)['status']==='paid', 'approval that timed out is recovered by re-query');
     $callsBefore = $confirmCalls;
-    $r = booking_payment_confirm($db,$sixth,'tgen_six',100000,$confirmGateway);
+    $r = booking_payment_confirm($db,$sixth,'pgk_six',100000,$confirmGateway);
     expect($r['outcome']==='paid' && $r['reason']==='ALREADY_CONFIRMED' && $confirmCalls===$callsBefore, 'success page refresh does not confirm twice');
-    $r = booking_payment_confirm($db,$sixth,'tgen_other',100000,$confirmGateway);
+    $r = booking_payment_confirm($db,$sixth,'pgk_other',100000,$confirmGateway);
     expect($r['outcome']==='refused' && $confirmCalls===$callsBefore, 'a second paymentKey cannot be confirmed on a paid order');
     $attempts = [];
     $rows = $db->query("SELECT pg_payment_key,outcome,reason FROM gangnamunni_payment_attempts WHERE merchant_uid='" . $db->real_escape_string($sixth) . "' ORDER BY id");
     while ($row = $rows->fetch_assoc()) $attempts[$row['pg_payment_key']] = $row['outcome'] . ':' . $row['reason'];
-    expect($attempts === ['tgen_six'=>'paid:ALREADY_CONFIRMED','tgen_other'=>'refused:ORDER_STATE'], 'every success-URL return is stored with its outcome (Toss guide)');
+    expect($attempts === ['pgk_six'=>'paid:ALREADY_CONFIRMED','pgk_other'=>'refused:ORDER_STATE'], 'every success-URL return is stored with its outcome (PG return)');
 
     // Settlement runs against this throwaway database, never the application DB.
     $schema = file_get_contents(__DIR__ . '/../../hairwang_full/gangnamunni/sql/monthly_hospital_settlements.sql');
@@ -303,17 +237,23 @@ try {
         (hospital_id,period_start,period_end,scheduled_payout_date,payout_idempotency_key,refunds,status)
         VALUES (1,DATE_FORMAT(DATE_SUB(CURDATE(),INTERVAL 2 MONTH),'%Y-%m-01'),LAST_DAY(DATE_SUB(CURDATE(),INTERVAL 2 MONTH)),LAST_DAY(DATE_SUB(CURDATE(),INTERVAL 2 MONTH)),REPEAT('e',64),40000,'scheduled')");
     // A real historical payment; the second sandbox payment stays excluded.
-    $db->query("UPDATE gangnamunni_platform_payments SET provider='toss', status='paid',refunded_amount=0,paid_at=DATE_SUB(CURDATE(),INTERVAL 1 MONTH) WHERE booking_id=1");
+    $db->query("UPDATE gangnamunni_platform_payments SET provider='test_pg', status='paid',refunded_amount=0,paid_at=DATE_SUB(CURDATE(),INTERVAL 1 MONTH) WHERE booking_id=1");
+    // Every other payment falls in the SAME settled month, so only the provider filter can keep the sandbox/mock rows out
+    // (otherwise the test would pass merely because their dates miss the period, and fail on the 1st of a month).
+    $db->query("UPDATE gangnamunni_platform_payments SET paid_at=DATE_SUB(CURDATE(),INTERVAL 1 MONTH) WHERE booking_id<>1 AND paid_at IS NOT NULL");
+    expect((int)$db->query("SELECT COUNT(*) AS n FROM gangnamunni_platform_payments WHERE booking_id<>1 AND status IN ('paid','partially_refunded') AND provider IN ('test_pg_sandbox','mock_booking_payment')
+        AND paid_at>=DATE_FORMAT(DATE_SUB(CURDATE(),INTERVAL 1 MONTH),'%Y-%m-01') AND paid_at<DATE_FORMAT(CURDATE(),'%Y-%m-01')")->fetch_assoc()['n'] >= 1,
+        'fixture: a sandbox/mock payment lies inside the settled month');
     $entry = tempnam(sys_get_temp_dir(),'payment-settlement-');
     $cron = realpath(__DIR__ . '/../../hairwang_full/gangnamunni/cron_monthly_hospital_settlements.php');
-    file_put_contents($entry, '<?php foreach (["HOST","USER","PASSWORD","PORT"] as $k) define("G5_MYSQL_".$k,getenv("G5_MYSQL_".$k)); define("G5_MYSQL_DB",getenv("PAYMENT_TEST_DATABASE")); require ' . var_export($cron,true) . ';');
+    file_put_contents($entry, '<?php foreach (["HOST","USER","PASSWORD","PORT"] as $k) define("G5_MYSQL_".$k,getenv("G5_MYSQL_".$k)); define("G5_MYSQL_DB",getenv("PAYMENT_TEST_DATABASE")); require ' . var_export(__DIR__ . '/pg_fixture.php',true) . '; require ' . var_export($cron,true) . ';');
     putenv('PAYMENT_TEST_DATABASE='.$name);
     try {
         $command = escapeshellarg(PHP_BINARY).' '.escapeshellarg($entry);
         exec($command, $cronOutput, $exitCode);
         expect($exitCode === 0, 'monthly settlement executes on MySQL 8');
         $batch = $db->query("SELECT * FROM gangnamunni_hospital_settlements WHERE period_end=LAST_DAY(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))")->fetch_assoc();
-        expect((int)$batch['treatment_gross']===100000 && (int)$batch['carry_forward_amount']===-40000 && (int)$batch['payout_amount']===60000, 'negative prior balance carried and sandbox excluded');
+        expect((int)$batch['treatment_gross']===100000 && (int)$batch['carry_forward_amount']===-40000 && (int)$batch['payout_amount']===60000, 'negative prior balance carried and sandbox/mock excluded by provider');
         exec($command, $cronOutput, $exitCode);
         expect((int)$db->query('SELECT COUNT(*) AS n FROM gangnamunni_hospital_settlement_items')->fetch_assoc()['n']===1, 'monthly job rerun is idempotent');
         $db->query("UPDATE gangnamunni_hospital_settlements SET status='processing',approved_by=1,approved_at=NOW() WHERE id=".(int)$batch['id']);

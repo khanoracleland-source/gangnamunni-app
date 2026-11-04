@@ -13,7 +13,7 @@
             android:name="com.kakao.talk"/>
         <package
             android:name="com.phonepe.app"/>
-        <!-- 토스페이먼츠 웹뷰 가이드: 결제 중 호출되는 카드사·간편결제·은행·인증 앱 (PaymentAppLauncher.packages 와 동일) -->
+        <!-- 결제 중 호출되는 카드사·간편결제·은행·인증 앱 (PaymentAppLauncher.packages 와 동일) -->
         <package
             android:name="viva.republica.toss"/>
         <package
@@ -168,7 +168,7 @@
                 <data android:scheme="wellness" android:host="profile" />
                 <data android:scheme="wellness" android:host="settings" />
                 <data android:scheme="wellness" android:host="webview" />
-                <!-- 토스페이먼츠 appScheme: 페이북/ISP 앱에서 결제 후 앱으로 복귀 -->
+                <!-- 결제 앱(페이북/ISP 등)에서 결제 후 앱으로 복귀 -->
                 <data android:scheme="wellness" android:host="payment" />
             </intent-filter>
 

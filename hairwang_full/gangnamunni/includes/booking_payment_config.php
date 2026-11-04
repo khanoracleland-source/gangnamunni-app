@@ -38,17 +38,19 @@ function booking_payment_methods(): array {
 
 /**
  * provider 컬럼 값 목록 — 이 목록만 바꾸면 원장/정산/관리 화면이 함께 따라온다.
- * PG 연동이 기록하는 값(실결제+샌드박스).
+ * PG 연동이 기록하는 값(실결제+샌드박스). 연결된 PG가 없으므로 비어 있다.
+ * 새 PG를 붙일 때 여기에 값을 등록한다(테스트는 로드 전에 자체 함수를 정의해 대체한다).
  */
-function booking_payment_pg_providers(): array {
-    return ['toss', 'toss_test'];
+if (!function_exists('booking_payment_pg_providers')) {
+    function booking_payment_pg_providers(): array {
+        return [];
+    }
 }
-/**
- * 매출·정산에서 제외할 값. 'portone_test' 는 제거된 PortOne 샌드박스 시절의
- * 기존 행이 혹시 남아 있어도 정산에 들어가지 않도록 유지한다.
- */
-function booking_payment_test_providers(): array {
-    return ['mock_booking_payment', 'toss_test', 'portone_test'];
+/** 매출·정산에서 제외할 값(샌드박스/모의 결제). PG 샌드박스 값을 등록하면 함께 여기에 넣는다. */
+if (!function_exists('booking_payment_test_providers')) {
+    function booking_payment_test_providers(): array {
+        return ['mock_booking_payment'];
+    }
 }
 function booking_payment_is_test(?string $provider): bool {
     return in_array($provider, booking_payment_test_providers(), true);

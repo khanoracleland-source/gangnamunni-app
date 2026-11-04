@@ -12,7 +12,7 @@ function member(req: AuthedRequest): BookingMember {
   return { id: u.id, phone: u.phone || '', name: u.name || '' };
 }
 
-/** 내 예약 (list, detail, cancel, change, payment without PG). The live Toss checkout stays in PHP. Everything is the member's own: never cached. */
+/** 내 예약 (list, detail, cancel, change, payment without PG). No PG is connected. Everything is the member's own: never cached. */
 @Controller('v1/mypage/bookings')
 @UseGuards(RequireAuthGuard)
 export class BookingsController {

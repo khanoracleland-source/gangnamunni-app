@@ -126,51 +126,15 @@ if (points_v2_schema_ready($connect) && ($point_use > 0 || (int)($order['points_
     }
 }
 
-// Toss 결제창 파라미터. 금액은 방금 읽은 원장 값만 쓴다(포인트 적용 반영).
+// 결제창 파라미터. 금액은 방금 읽은 원장 값만 쓴다(포인트 적용 반영).
 require_once __DIR__ . '/includes/booking_payment_service.php';
 try {
     $order = booking_payment_by_merchant($connect, (string)$order['merchant_uid']);
     if (($order['status'] ?? '') !== 'pending' || (int)$order['amount'] <= 0) {
         bp_fail('결제할 수 없는 주문 상태입니다.', 'INVALID_ORDER_STATE', 409);
     }
-    $base = booking_payment_base_url();
-    $cut = static function ($value, int $max): string {
-        $value = trim((string)$value);
-        return function_exists('mb_substr') ? mb_substr($value, 0, $max, 'UTF-8') : substr($value, 0, $max);
-    };
-    $request = [
-        'amount' => ['currency' => 'KRW', 'value' => (int)$order['amount']],
-        'orderId' => (string)$order['merchant_uid'],
-        'orderName' => $cut('예약 #' . $booking_id . ' ' . ($order['treatment_name'] ?? ''), 100),
-        // 쿼리 없이 둔다. Toss 가 paymentKey·orderId·amount(성공) / code·message·orderId(실패)를 붙인다.
-        'successUrl' => $base . '/booking_payment_toss_success.php',
-        'failUrl' => $base . '/booking_payment_toss_fail.php',
-    ];
-    $name = $cut($order['patient_name'] ?? '', 100);
-    if ($name !== '') $request['customerName'] = $name;
-    $email = trim((string)($member['mb_email'] ?? ''));
-    if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) $request['customerEmail'] = $email;
-    $phone = preg_replace('/[^0-9]/', '', (string)($order['patient_phone'] ?? ''));
-    if (strlen($phone) >= 8 && strlen($phone) <= 15) $request['customerMobilePhone'] = $phone;
-    // 간편결제는 카드 결제창을 DIRECT 모드로 열고 해당 간편결제사를 지정한다.
-    $easyPay = ['naverpay' => 'NAVERPAY', 'kakaopay' => 'KAKAOPAY', 'tosspay' => 'TOSSPAY'];
-    if ($provider === 'bank') {
-        $request['method'] = 'TRANSFER';
-        $request['transfer'] = ['cashReceipt' => ['type' => '소득공제'], 'useEscrow' => false];
-    } else {
-        $request['method'] = 'CARD';
-        $request['card'] = isset($easyPay[$provider])
-            ? ['flowMode' => 'DIRECT', 'easyPay' => $easyPay[$provider]]
-            : ['flowMode' => 'DEFAULT', 'useEscrow' => false, 'useCardPoint' => false, 'useAppCardOnly' => false];
-        // 환자 앱 웹뷰: 페이북/ISP 앱에서 결제 후 우리 앱으로 돌아오게 한다.
-        // SDK 타입(@tosspayments/tosspayments-sdk CardPaymentRequest)상 card.appScheme 이다.
-        // 앱은 wellness://payment 를 받으면 아무 화면도 바꾸지 않고 웹뷰를 그대로 둔다.
-        if (($_POST['in_app'] ?? '') === '1') $request['card']['appScheme'] = 'wellness://payment';
-    }
-    echo json_encode(['success' => true, 'payment' => [
-        'clientKey' => booking_payment_client_key(),
-        'request' => $request,
-    ]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    // 연결된 PG가 없다: 여기서 PG별 결제창 파라미터를 만들어 돌려준다.
+    throw new BookingPaymentGatewayUnavailableException('No payment gateway is configured.');
 } catch (Throwable $e) {
     error_log('[booking_payment_request] ' . $e->getMessage());
     bp_fail('현재 이 결제 수단을 이용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'PAYMENT_UNAVAILABLE', 503);

@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DB, Db } from '../db/db.module';
 import {
-  bookingTab, cancelSteps, cardDate, dateTimeLabel, dday, detailDate, isPgProvider, paymentState, paymentTierPoint, requestSteps, reviewState,
+  bookingTab, cancelSteps, cardDate, dateTimeLabel, dday, detailDate, isPgProvider, isTestProvider, paymentState, paymentTierPoint, requestSteps, reviewState,
 } from './bookings.logic';
 
 export interface BookingMember { id: string; phone: string; name?: string }
@@ -132,7 +132,7 @@ export class BookingsService {
     if (status === 'cancelled' || status === 'no_show') {
       const by = s(b.cancelled_by);
       const refundComplete = payRow
-        ? (['pending', 'failed', 'refunded', 'cancelled'].includes(s(payRow.status)) || ['mock_booking_payment', 'toss_test', 'portone_test'].includes(s(payRow.provider)))
+        ? (['pending', 'failed', 'refunded', 'cancelled'].includes(s(payRow.status)) || isTestProvider(s(payRow.provider)))
         : true;
       const paidView = !!payRow && isPgProvider(payRow.provider) && ['paid', 'partially_refunded', 'refunded'].includes(s(payRow.status));
       const refunded = n(payRow?.refunded_amount);

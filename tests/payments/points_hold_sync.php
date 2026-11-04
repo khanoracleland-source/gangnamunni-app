@@ -19,6 +19,7 @@
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 
 $root = __DIR__ . '/../../hairwang_full/gangnamunni';
+require_once __DIR__ . '/pg_fixture.php';
 require_once $root . '/includes/booking_payment_service.php';
 require_once $root . '/includes/points_checkout.php';
 
@@ -36,7 +37,7 @@ function rejects(callable $work, string $label): void {
 final class PointsFakeGateway implements BookingPaymentGateway {
     private $payment;
     public function __construct(callable $payment) { $this->payment = $payment; }
-    public function provider(): string { return 'toss_test'; }
+    public function provider(): string { return 'test_pg_sandbox'; }
     public function payment(string $merchantUid): array { return ($this->payment)($merchantUid); }
     public function confirm(string $m, string $k, int $a): array { throw new RuntimeException('not used'); }
     public function cancel(string $m, string $t, int $a, int $r, string $re, string $rq): array { throw new RuntimeException('not used'); }
