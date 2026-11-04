@@ -5,8 +5,14 @@ if (PHP_SAPI !== 'cli') {
 }
 require_once __DIR__ . '/includes/booking_payment_db_config.php';
 require_once __DIR__ . '/includes/booking_payment_service.php';
-if (!booking_payment_gateway()) {
+$gateway = booking_payment_gateway();
+if (!$gateway) {
     echo "No payment gateway configured; nothing to reconcile.\n";
+    exit(0);
+}
+// 이니시스: 주문번호로 조회하는 API 가 없어 원장이 진실의 원천이다. 대조할 외부 상태가 없으므로 건너뛴다.
+if (method_exists($gateway, 'queriesProvider') && !$gateway->queriesProvider()) {
+    echo "Gateway " . $gateway->provider() . " is ledger-backed (no provider query); nothing to reconcile.\n";
     exit(0);
 }
 $db = new mysqli(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);

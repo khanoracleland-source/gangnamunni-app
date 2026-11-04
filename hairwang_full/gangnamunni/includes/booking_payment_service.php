@@ -207,6 +207,9 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
         $before = (int)$order['refunded_amount'];
         $remote = $gateway->payment($merchant);
         $order = booking_payment_apply_remote($db, $order, $remote, 'server_query', $provider);
+        // 제공자를 조회할 수 없는 PG(이니시스: 원장이 진실)는 결과 미확정 요청을 같은 요청 ID 로 다시 보낸다.
+        $ledgerBacked = method_exists($gateway, 'queriesProvider') && !$gateway->queriesProvider();
+        $retrying = false;
         if ($previous) {
             if ($previous['status'] === 'failed') throw new RuntimeException('This refund request was rejected. Use a new request after review.');
             if ($previous['status'] === 'succeeded') return $order;
@@ -216,14 +219,19 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
                 $done->execute();
                 return $order;
             }
-            throw new RuntimeException('Refund outcome is pending. Reconcile before requesting another refund.');
-        }
-        $pending = $db->prepare("SELECT request_id FROM gangnamunni_payment_refund_requests WHERE payment_id=? AND status='pending' LIMIT 1");
-        $pending->bind_param('i', $order['id']);
-        $pending->execute();
-        if ($pending->get_result()->num_rows) throw new RuntimeException('An earlier refund requires reconciliation.');
-        if ((int)$order['refunded_amount'] !== $before) {
-            throw new RuntimeException('Refund state refreshed. Review the remaining amount before making a new request.');
+            if (!$ledgerBacked) throw new RuntimeException('Refund outcome is pending. Reconcile before requesting another refund.');
+            // 같은 금액·같은 결제 건(위에서 확인). 제공자가 이미 취소했다면 거절 코드로 답하며, 그 경우 관리자가
+            // 콘솔에서 확인한 뒤 booking_payment_refund_confirm_manual() 로 원장에 반영한다.
+            $retrying = true;
+            $before = (int)$previous['refunded_before'];
+        } else {
+            $pending = $db->prepare("SELECT request_id FROM gangnamunni_payment_refund_requests WHERE payment_id=? AND status='pending' LIMIT 1");
+            $pending->bind_param('i', $order['id']);
+            $pending->execute();
+            if ($pending->get_result()->num_rows) throw new RuntimeException('An earlier refund requires reconciliation.');
+            if ((int)$order['refunded_amount'] !== $before) {
+                throw new RuntimeException('Refund state refreshed. Review the remaining amount before making a new request.');
+            }
         }
         $orderAmount = (int)$order['amount'];
         $refundedAmount = (int)$order['refunded_amount'];
@@ -237,9 +245,11 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
         if ($amount <= 0 || $amount > $remaining) {
             throw new RuntimeException('Refund amount must be 1-' . $remaining);
         }
-        $save = $db->prepare("INSERT INTO gangnamunni_payment_refund_requests (request_id,payment_id,amount,refunded_before,actor_id,reason) VALUES (?,?,?,?,?,?)");
-        $save->bind_param('siiiis', $requestId, $order['id'], $amount, $before, $actorId, $reason);
-        $save->execute();
+        if (!$retrying) {
+            $save = $db->prepare("INSERT INTO gangnamunni_payment_refund_requests (request_id,payment_id,amount,refunded_before,actor_id,reason) VALUES (?,?,?,?,?,?)");
+            $save->bind_param('siiiis', $requestId, $order['id'], $amount, $before, $actorId, $reason);
+            $save->execute();
+        }
         try {
             $gateway->cancel($merchant, (string)$order['provider_transaction_id'], $amount, $remaining, $reason, $requestId);
         } catch (BookingPaymentRejectedException $e) {
@@ -254,6 +264,45 @@ function booking_payment_refund(mysqli $db, string $merchant, int $amount, strin
         $done->bind_param('s', $requestId);
         $done->execute();
         booking_payment_refund_audit($db, $result, $amount, $actorId > 0 ? 'admin' : 'system', $actorId, $actorId > 0 ? 'Admin (' . $actorId . ')' : 'System');
+        return $result;
+    });
+}
+
+/**
+ * 결과 미확정(pending)·거절(failed)로 남은 환불 요청을, 관리자가 PG 콘솔에서 취소를 직접 확인한 뒤 원장에 반영한다.
+ * 제공자를 조회할 수 없는 PG(이니시스)에서 유일한 정리 경로다. PG 에 아무 요청도 보내지 않는다.
+ * 콘솔에서 취소가 보이지 않으면 절대 호출하지 않는다(돈이 돌아가지 않았는데 환불로 기록된다).
+ */
+function booking_payment_refund_confirm_manual(mysqli $db, string $merchant, string $requestId, int $actorId, string $note): array {
+    if (!preg_match('/^[a-f0-9]{64}$/D', $requestId) || $actorId <= 0 || trim($note) === '' || strlen($note) > 500) throw new InvalidArgumentException('Invalid manual confirmation.');
+    return booking_payment_lock($db, $merchant, function () use ($db, $merchant, $requestId, $actorId, $note) {
+        $order = booking_payment_by_merchant($db, $merchant);
+        if (!booking_payment_is_pg($order['provider']) || empty($order['provider_transaction_id'])) throw new RuntimeException('Only verified PG payments can be confirmed.');
+        $stmt = $db->prepare("SELECT * FROM gangnamunni_payment_refund_requests WHERE request_id=?");
+        $stmt->bind_param('s', $requestId);
+        $stmt->execute();
+        $request = $stmt->get_result()->fetch_assoc();
+        if (!$request || (int)$request['payment_id'] !== (int)$order['id']) throw new RuntimeException('Unknown refund request for this payment.');
+        if ($request['status'] === 'succeeded') return $order;
+        $amount = (int)$request['amount'];
+        $remaining = (int)$order['amount'] - (int)$order['refunded_amount'];
+        if (!in_array($order['status'], ['paid', 'partially_refunded'], true) || $amount <= 0 || $amount > $remaining) {
+            throw new RuntimeException('Ledger no longer matches the refund request.');
+        }
+        if (empty($order['paid_at'])) throw new RuntimeException('Paid time missing on the ledger row.');
+        $remote = ['payment_id' => $merchant, 'transaction_id' => (string)$order['provider_transaction_id'],
+            'status' => ((int)$order['refunded_amount'] + $amount >= (int)$order['amount']) ? 'cancelled' : 'paid',
+            'raw_status' => 'MANUAL_CONSOLE:' . $requestId, 'amount' => (int)$order['amount'],
+            'cancelled_amount' => (int)$order['refunded_amount'] + $amount, 'currency' => 'KRW',
+            'paid_at' => (new DateTime((string)$order['paid_at'], new DateTimeZone('Asia/Seoul')))->getTimestamp()];
+        // 이미 승인된 결제이므로 verification_source(ENUM webhook|server_query)는 바뀌지 않는다; 수동 확인 흔적은 raw_status(이벤트 해시)·환불 감사 로그에 남는다.
+        $result = booking_payment_apply_remote($db, $order, $remote, 'server_query', (string)$order['provider']);
+        if ((int)$result['refunded_amount'] < (int)$order['refunded_amount'] + $amount) throw new RuntimeException('Manual refund confirmation was not recorded.');
+        $done = $db->prepare("UPDATE gangnamunni_payment_refund_requests SET status='succeeded',completed_at=NOW() WHERE request_id=?");
+        $done->bind_param('s', $requestId);
+        $done->execute();
+        booking_payment_refund_audit($db, $result, $amount, 'admin', $actorId, 'Admin (' . $actorId . ') console-confirmed: ' . mb_substr($note, 0, 120, 'UTF-8'));
+        error_log('[booking_payment_refund_confirm_manual] ' . $merchant . ' request=' . $requestId . ' admin=' . $actorId . ' amount=' . $amount);
         return $result;
     });
 }

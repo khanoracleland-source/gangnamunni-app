@@ -106,11 +106,44 @@ contract, available payment methods, refund rules and settlement arrangements.
 No live credentials, external account settings or production deployment are
 changed by this code change.
 
+### KG Inicis (2026-11): who does what
+
+Card checkout runs in the Nest API (`seoulbeauty-api/src/bookings/inicis`, Android / `/next`); PHP
+does not approve payments (`InicisGateway::confirm()` is unavailable, `G5_PG_PAYMENTS_ENABLED` stays
+off). Refunds run here, through `includes/booking_payment_inicis.php` (INIAPI v1 `Refund`, card,
+full amount only — partial refunds are rejected with `PARTIAL_NOT_SUPPORTED`).
+
+Setup: copy `payment/payment_config.example.php` to `hairwang_full/data/payment_config.php` and
+fill `INICIS_MID`, `INICIS_INIAPI_KEY` (Store Info > PG API Integration Details > INIAPI Key; not
+the mobile hash key), `INICIS_MODE` (same as the Nest `.env`) and `INICIS_CLIENT_IP` (the server's
+public IP, registered with Inicis for INIAPI). `php payment/check.php` prints `Payment gateway: inicis` and
+`PG API: OK` when the file loads (the probe is a ledger read, not a network call).
+Unit checks without DB or network: `php tests/payments/inicis_gateway.php`. Refund paths through the real
+ledger (pending retry, rejection, console confirmation, full-only) with a random test DB:
+`php tests/payments/inicis_refund_flow.php` (same MySQL env vars as `regression.php`).
+
+Inicis has no order-id lookup API, so `InicisGateway::payment()` normalizes **our ledger** and the
+ledger is the source of truth. Consequences:
+- Cancel only from our admin screens (`admin_bookings.php` 환불 승인, `admin_booking_payments.php`).
+  A cancel made in the Inicis merchant console is **not** reflected in the ledger.
+- `cron_reconcile_booking_payments.php` exits early (`queriesProvider() === false`): nothing to reconcile.
+- A refund whose HTTP outcome is unknown stays `pending`. Because the gateway cannot observe the
+  provider, `booking_payment_refund()` re-sends the refund with the **same** request ID when retried
+  (`admin_booking_payments.php` → "다시 보내기"); the "다시 시도" in `admin_bookings.php` creates a new ID and
+  is refused while a request is pending. If Inicis already cancelled the TID, the retry comes back as a
+  rejection (`failed`) unless its result code is listed in `InicisGateway::ALREADY_CANCELLED_CODES`
+  (fill it in from the first real occurrence). The operator then checks the Inicis console and, only
+  if the cancel is visible there, presses "콘솔 취소 확인 반영" (`booking_payment_refund_confirm_manual()`):
+  the ledger records the refund (`refund_verified` event, audit row `console-confirmed`), the request becomes
+  `succeeded`, the booking/points/notification follow. No request is sent to Inicis by that action.
+- `INICIS_CLIENT_IP` is mandatory (it is part of `hashData` and must be the public IP registered with
+  Inicis; `SERVER_ADDR` is wrong behind a proxy or container).
+
 ### Refunds and operations
 
 The platform super administrator can use `admin_booking_payments.php`, linked
 from booking revenue, to re-query and refund a payment. Partial refunds preserve
-remaining balance. Each refund has a persisted request ID (passed to the PG as an
+remaining balance (the Inicis gateway accepts full refunds only). Each refund has a persisted request ID (passed to the PG as an
 idempotency key) and is checked against a fresh remaining balance under the lock. Repeating the same request does not cancel twice.
 Ambiguous timeout results remain pending until a fresh query/webhook confirms
 what happened. A well-formed, successful HTTP response containing an explicit

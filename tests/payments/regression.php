@@ -80,8 +80,10 @@ try {
     $schema .= file_get_contents(__DIR__ . '/../../hairwang_full/gangnamunni/sql/booking_payment_previews.sql');
     $schema .= file_get_contents(__DIR__ . '/../../hairwang_full/gangnamunni/sql/payment_attempts.sql');
     foreach (explode(';', $schema) as $sql) if (trim($sql) !== '') $db->query($sql);
-    $db->query("CREATE TABLE gangnamunni_bookings (id BIGINT PRIMARY KEY, hospital_id BIGINT, hospital_name VARCHAR(255),mb_id VARCHAR(100),name VARCHAR(100),phone VARCHAR(30),treatment VARCHAR(255),price INT,status VARCHAR(30))");
-    $db->query("INSERT INTO gangnamunni_bookings VALUES (1,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed'),(2,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
+    // refund_status / updated_at: booking_payment_apply_remote() syncs the booking on a full refund (sql/bookings_schema.sql adds them in production).
+    $db->query("CREATE TABLE gangnamunni_bookings (id BIGINT PRIMARY KEY, hospital_id BIGINT, hospital_name VARCHAR(255),mb_id VARCHAR(100),name VARCHAR(100),phone VARCHAR(30),treatment VARCHAR(255),price INT,status VARCHAR(30),
+        refund_status VARCHAR(20) NOT NULL DEFAULT 'not_applicable', updated_at DATETIME NULL)");
+    $db->query("INSERT INTO gangnamunni_bookings (id,hospital_id,hospital_name,mb_id,name,phone,treatment,price,status) VALUES (1,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed'),(2,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
     $created = platform_payment_create_booking($db,1);
     $again = platform_payment_create_booking($db,1);
     expect($created['merchant_uid'] === $again['merchant_uid'], 'one financial order per booking');
@@ -159,7 +161,7 @@ try {
     $recovered = booking_payment_refund($db,$second['merchant_uid'],20000,'timeout test',$timeoutId,1,$client);
     expect((int)$recovered['refunded_amount'] === 20000 && $cancelCalls === $callsBefore, 'timeout retry recovers without another refund');
 
-    $db->query("INSERT INTO gangnamunni_bookings VALUES (4,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
+    $db->query("INSERT INTO gangnamunni_bookings (id,hospital_id,hospital_name,mb_id,name,phone,treatment,price,status) VALUES (4,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
     $fourth = platform_payment_create_booking($db,4);
     $state['id']=$fourth['merchant_uid']; $state['transactionId']='tx_fourth';
     $state['status']='cancelled'; $state['cancelled']=100000;
@@ -169,7 +171,7 @@ try {
     $db->query('DROP TRIGGER fail_refund_fixture');
     $cancelledFirst = booking_payment_sync($db,$fourth['merchant_uid'],'webhook',$client);
     expect($cancelledFirst['status']==='refunded' && (int)$cancelledFirst['refunded_amount']===100000, 'first fully cancelled observation records payment and refund together');
-    $db->query("INSERT INTO gangnamunni_bookings VALUES (5,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
+    $db->query("INSERT INTO gangnamunni_bookings (id,hospital_id,hospital_name,mb_id,name,phone,treatment,price,status) VALUES (5,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
     $fourth = platform_payment_create_booking($db,5);
     $state['id']=$fourth['merchant_uid']; $state['transactionId']='tx_fifth';
     $state['status']='paid'; $state['cancelled']=0;
@@ -184,7 +186,7 @@ try {
     expect((int)$retry['refunded_amount']===1000, 'new refund can follow a definite rejection');
 
     // Two-phase confirm (PG return URL).
-    $db->query("INSERT INTO gangnamunni_bookings VALUES (6,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
+    $db->query("INSERT INTO gangnamunni_bookings (id,hospital_id,hospital_name,mb_id,name,phone,treatment,price,status) VALUES (6,1,'Fixture Hospital','fixture','Fixture','01000000000','Fixture treatment',100000,'confirmed')");
     $sixth = platform_payment_create_booking($db,6)['merchant_uid'];
     $confirmCalls = 0; $confirmMode = 'ok';
     $pgState = ['status'=>'ready'];
@@ -266,7 +268,7 @@ try {
         $db->query("CREATE TABLE gangnamunni_hospitals (id BIGINT PRIMARY KEY,name VARCHAR(255),profile_image_url VARCHAR(255),address VARCHAR(255))");
         $db->query("INSERT INTO gangnamunni_hospitals VALUES (1,'테스트 클리닉','','서울 강남구')");
         $db->query("ALTER TABLE gangnamunni_bookings ADD booking_date DATE, ADD booking_time TIME");
-        $db->query("INSERT INTO gangnamunni_bookings VALUES (3,1,'테스트 클리닉','','테스트 고객','01000000000','피부 관리',100000,'confirmed','2026-10-01','10:00:00')");
+        $db->query("INSERT INTO gangnamunni_bookings (id,hospital_id,hospital_name,mb_id,name,phone,treatment,price,status,booking_date,booking_time) VALUES (3,1,'테스트 클리닉','','테스트 고객','01000000000','피부 관리',100000,'confirmed','2026-10-01','10:00:00')");
         platform_payment_create_booking($db,3);
         $connect = $db; $is_member = false; $member = [];
         $_SESSION = ['user_phone'=>'01000000000','csrf_token'=>'fixture-only']; $_GET = ['booking_id'=>3];

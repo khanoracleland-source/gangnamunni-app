@@ -1,4 +1,11 @@
 <?php
+// PG 비밀값(MID·INIAPI Key 등)은 저장소 밖 data/payment_config.php 의 define() 으로 둔다. 예: payment/payment_config.example.php
+if (!defined('BOOKING_PAYMENT_SECRETS_CHECKED')) {
+    define('BOOKING_PAYMENT_SECRETS_CHECKED', true);
+    $booking_payment_secrets = dirname(__DIR__, 2) . '/data/payment_config.php';
+    if (is_file($booking_payment_secrets)) require_once $booking_payment_secrets;
+    unset($booking_payment_secrets);
+}
 require_once __DIR__ . '/booking_payment_gateway.php';
 /** Server-owned payment switches. Never accept these switches from a request. */
 function booking_payment_setting(string $key, string $default = ''): string {
@@ -38,12 +45,12 @@ function booking_payment_methods(): array {
 
 /**
  * provider 컬럼 값 목록 — 이 목록만 바꾸면 원장/정산/관리 화면이 함께 따라온다.
- * PG 연동이 기록하는 값(실결제+샌드박스). 연결된 PG가 없으므로 비어 있다.
- * 새 PG를 붙일 때 여기에 값을 등록한다(테스트는 로드 전에 자체 함수를 정의해 대체한다).
+ * PG 연동이 기록하는 값(실결제+샌드박스): KG이니시스 'inicis'(실 MID), 'inicis_test'(테스트 MID INIpayTest).
+ * Nest API(seoulbeauty-api bookings.logic.ts PG_PROVIDERS)와 같은 값이어야 한다. 테스트는 로드 전에 자체 함수를 정의해 대체한다.
  */
 if (!function_exists('booking_payment_pg_providers')) {
     function booking_payment_pg_providers(): array {
-        return [];
+        return ['inicis', 'inicis_test'];
     }
 }
 /** 매출·정산에서 제외할 값(샌드박스/모의 결제). PG 샌드박스 값을 등록하면 함께 여기에 넣는다. */

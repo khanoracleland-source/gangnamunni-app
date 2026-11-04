@@ -53,14 +53,14 @@ function admin_booking_log_notification_result($context, array $result) {
     );
 }
 
-function admin_booking_status_action_options($current_status, array $labels, $has_doctor = false, $payment_status = '', $remaining_refund = 0) {
+function admin_booking_status_action_options($current_status, array $labels, $has_doctor = false, $payment_status = '', $remaining_refund = 0, $can_refund = false) {
     $flow_actions = [
         'pending' => [['checking', '병원 확인 중']],
         'hospital_checking' => [['confirm', '예약확정'], ['cancel', '예약취소']], // 담당의사 미배정이어도 확정 가능(자동 배정)
         'confirmed' => [['complete', '시술완료']],
     ];
     // 고객이 취소한 결제 예약: 승인하면 남은 결제 금액 전액을 PG 로 환불한다.
-    if ($current_status === 'cancelled' && in_array($payment_status, ['paid', 'partially_refunded'], true) && (int)$remaining_refund > 0) {
+    if ($can_refund && $current_status === 'cancelled' && in_array($payment_status, ['paid', 'partially_refunded'], true) && (int)$remaining_refund > 0) {
         $flow_actions['cancelled'] = [['refund', '환불 승인 (' . number_format((int)$remaining_refund) . '원)']];
     }
     $current_label = $labels[$current_status] ?? $current_status;
@@ -240,9 +240,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
     if ($id > 0 && in_array($action, $allowed)) {
         if ($action === 'refund') {
-            // 환불 승인: 고객이 취소한 결제 예약에 대해 병원/최고 관리자가 승인하면 남은 결제 금액 전액을
-            // PG 에 실제로 취소 요청한다(booking_payment_refund: 잠금·멱등키·PG 재조회).
+            // 환불 승인: 고객이 취소한 결제 예약에 대해 최고관리자가 승인하면 남은 결제 금액 전액을
+            // PG(이니시스 INIAPI)에 실제로 취소 요청한다(booking_payment_refund: 잠금·멱등키·전액만).
             // 원장 반영 시 booking_payment_apply_remote 가 예약 refund_status/status 와 고객 알림을 맞춘다.
+            // 플랫폼 자금이 움직이는 작업이므로 병원 관리자에게는 열지 않는다(admin_booking_payments.php 와 같은 기준).
+            if (!is_super_admin()) {
+                $msg = '환불 승인은 최고관리자만 할 수 있습니다.';
+                $msg_type = 'danger';
+                goto skip_action;
+            }
             require_once __DIR__ . '/includes/booking_payment_service.php';
             $current_scope = $_act_hin !== null ? " AND b.hospital_id IN ({$_act_hin})" : '';
             $current_result = mysqli_query($connect,
@@ -286,16 +292,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $admin_bookings_ajax_payload = ['booking_id' => $id, 'status' => 'refunded', 'reload' => true];
             } catch (BookingPaymentRejectedException $e) {
                 error_log('[admin_bookings] refund rejected by PG: booking_id=' . $id . ' code=' . $e->getMessage());
-                $msg = 'PG 가 환불을 거절했습니다 (' . preg_replace('/[^A-Z_]/', '', $e->getMessage()) . '). 페이지를 새로고침한 뒤 확인해주세요.';
+                $code = preg_replace('/[^A-Z0-9_]/', '', $e->getMessage());   // 이니시스 코드는 숫자(INICIS_01)
+                $msg = $code === 'PARTIAL_NOT_SUPPORTED'
+                    ? '부분 환불은 지원하지 않습니다. 남은 금액 전액만 환불할 수 있습니다.'
+                    : 'PG 가 환불을 거절했습니다 (' . $code . '). 이니시스 가맹점관리자에서 이미 취소된 건이면 예약 결제 관리(admin_booking_payments.php)의 "콘솔 취소 확인 반영"으로 원장에 기록하세요.';
                 $msg_type = 'danger';
+                $admin_bookings_ajax_payload = ['reload' => true];   // 새 요청 ID 로 다시 그린다
             } catch (BookingPaymentGatewayUnavailableException $e) {
                 $msg = '결제 연동이 설정되지 않아 환불할 수 없습니다.';
                 $msg_type = 'danger';
             } catch (Throwable $e) {
                 // 결과 미확정(통신 오류·처리 중): 다시 누르지 말고 상태 조회로 확인한다. 중복 환불은 요청 ID 로 차단된다.
                 error_log('[admin_bookings] refund unresolved: booking_id=' . $id . ' ' . $e->getMessage());
-                $msg = '환불 결과를 확인하고 있습니다. 잠시 후 새로고침해 상태를 확인해주세요.';
+                $msg = '환불 결과를 확인하지 못했습니다(통신 오류 등). 이 화면에서는 더 진행할 수 없습니다. 예약 결제 관리(admin_booking_payments.php)에서 "다시 보내기" 또는 이니시스 콘솔 확인 후 "콘솔 취소 확인 반영"으로 처리하세요.';
                 $msg_type = 'danger';
+                // 페이지를 다시 그려 새 요청 ID 를 발급한다: 미확정 요청이 남아 있으므로 이 화면의 재시도는 서버가 차단한다.
+                $admin_bookings_ajax_payload = ['reload' => true];
             }
             goto skip_action;
         }
@@ -730,6 +742,8 @@ if ($_doc_hids) {
     }
 }
 
+// 환불 승인 옵션은 최고관리자에게만 보인다(서버 핸들러도 같은 검사를 한다).
+$is_super_refund = is_super_admin();
 $stats = ['total' => 0, 'pending' => 0, 'hospital_checking' => 0, 'confirmed' => 0, 'cancelled' => 0, 'refunded' => 0, 'completed' => 0, 'today' => 0];
 $stats_conditions = [];
 if ($hosp_in !== null) $stats_conditions[] = "hospital_id IN (" . $hosp_in . ")";
@@ -983,9 +997,10 @@ require_once __DIR__ . '/includes/admin_header.php';
                                                 <input type="hidden" name="id" value="<?php echo (int)$hospital_booking['id']; ?>">
                                                 <input type="hidden" name="open_hospital_id" value="<?php echo $hospital_id; ?>">
                                                 <?php $group_remaining_refund = max(0, (int)($hospital_booking['payment_amount'] ?? 0) - (int)($hospital_booking['payment_refunded_amount'] ?? 0)); ?>
-                                                <?php $group_can_refund = false; ?>
+                                                <?php $group_can_refund = $is_super_refund && $group_status === 'cancelled' && booking_payment_is_pg((string)($hospital_booking['payment_provider'] ?? '')) && in_array((string)($hospital_booking['payment_status'] ?? ''), ['paid', 'partially_refunded'], true) && $group_remaining_refund > 0; ?>
+                                                <?php if ($group_can_refund): ?><input type="hidden" name="refund_request_id" value="<?php echo bin2hex(random_bytes(32)); ?>"><?php endif; ?>
                                                 <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($group_status, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($group_status, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$group_can_refund ? 'disabled' : 'required'; ?>>
-                                                    <?php admin_booking_status_action_options($group_status, $group_labels, !empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== '', (string)($hospital_booking['payment_status'] ?? ''), $group_remaining_refund); ?>
+                                                    <?php admin_booking_status_action_options($group_status, $group_labels, !empty($hospital_booking['doctor_id']) || trim((string)($hospital_booking['doctor_name'] ?? '')) !== '', (string)($hospital_booking['payment_status'] ?? ''), $group_remaining_refund, $group_can_refund); ?>
                                                 </select>
                                                 <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경" <?php echo in_array($group_status, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$group_can_refund ? 'disabled' : ''; ?>><i class="bi bi-arrow-repeat"></i></button>
                                             </form>
@@ -1079,9 +1094,10 @@ require_once __DIR__ . '/includes/admin_header.php';
                                 <input type="hidden" name="admin_csrf" value="<?php echo htmlspecialchars($admin_bookings_csrf, ENT_QUOTES); ?>">
                                 <input type="hidden" name="id" value="<?php echo $b['id']; ?>">
                                 <?php $remaining_refund = max(0, (int)($b['payment_amount'] ?? 0) - (int)($b['payment_refunded_amount'] ?? 0)); ?>
-                                <?php $can_refund = false; ?>
+                                <?php $can_refund = $is_super_refund && $st === 'cancelled' && booking_payment_is_pg((string)($b['payment_provider'] ?? '')) && in_array((string)($b['payment_status'] ?? ''), ['paid', 'partially_refunded'], true) && $remaining_refund > 0; ?>
+                                <?php if ($can_refund): ?><input type="hidden" name="refund_request_id" value="<?php echo bin2hex(random_bytes(32)); ?>"><?php endif; ?>
                                 <select name="action" class="form-select form-select-sm" aria-label="예약 상태 변경" data-current-status="<?php echo htmlspecialchars($st, ENT_QUOTES); ?>" data-has-doctor="<?php echo (!empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== '') ? '1' : '0'; ?>" <?php echo in_array($st, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$can_refund ? 'disabled' : 'required'; ?>>
-                                    <?php admin_booking_status_action_options($st, $label_map, !empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== '', (string)($b['payment_status'] ?? ''), $remaining_refund); ?>
+                                    <?php admin_booking_status_action_options($st, $label_map, !empty($b['doctor_id']) || trim((string)($b['doctor_name'] ?? '')) !== '', (string)($b['payment_status'] ?? ''), $remaining_refund, $can_refund); ?>
                                 </select>
                                 <button type="submit" class="btn btn-outline-primary btn-sm" title="예약 상태 변경" <?php echo in_array($st, ['cancelled', 'completed', 'refunded', 'no_show'], true) && !$can_refund ? 'disabled' : ''; ?>>
                                     <i class="bi bi-arrow-repeat"></i>
@@ -1425,11 +1441,19 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
             const select = form.querySelector('select[name="action"]');
             if (!select || !select.value) { select && select.reportValidity(); return; }
-            if (!confirm('예약 상태를 변경하시겠습니까?')) return;
+            const chosen = select.options[select.selectedIndex];
+            const question = select.value === 'refund'
+                ? (chosen ? chosen.textContent.trim() : '환불') + ' — 남은 결제 금액 전액을 PG(이니시스)에 취소 요청합니다. 되돌릴 수 없습니다. 진행하시겠습니까?'
+                : '예약 상태를 변경하시겠습니까?';
+            if (!confirm(question)) return;
             const button = form.querySelector('button[type="submit"]');
             if (button) button.disabled = true;
             postAdminBookingForm(form).then(data => {
-                if (!data.success) throw new Error(data.message || '예약 상태 변경에 실패했습니다.');
+                if (!data.success) {
+                    const failure = new Error(data.message || '예약 상태 변경에 실패했습니다.');
+                    failure.reload = !!data.reload;   // 환불 거절/미확정: 새 요청 ID 를 위해 다시 그린다
+                    throw failure;
+                }
                 if (data.reload) {
                     window.location.reload();
                     return;
@@ -1439,6 +1463,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showAdminBookingMessage(data.message || '예약 상태가 변경되었습니다.', data.type || 'success');
             }).catch(error => {
                 alert(error.message || '예약 상태 변경에 실패했습니다.');
+                if (error.reload) window.location.reload();
             }).finally(() => {
                 if (button) button.disabled = false;
             });
