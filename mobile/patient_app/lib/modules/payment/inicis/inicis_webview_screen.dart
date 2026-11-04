@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'package:kivicare_patient/services/webview_text_zoom.dart';
 
 class InicisWebViewScreen extends StatefulWidget {
   final String paymentUrl;
@@ -26,6 +27,7 @@ class _InicisWebViewScreenState extends State<InicisWebViewScreen> {
   void initState() {
     super.initState();
     _initializeWebView();
+    WebViewTextZoom.lock(_controller);
   }
 
   void _initializeWebView() {

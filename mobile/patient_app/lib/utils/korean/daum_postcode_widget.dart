@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'package:kivicare_patient/services/webview_text_zoom.dart';
 
 /// Daum Postcode API를 사용한 한국 주소 검색 위젯
 /// 카카오(Daum) 우편번호 서비스 사용
@@ -24,6 +25,7 @@ class _DaumPostcodeWidgetState extends State<DaumPostcodeWidget> {
   void initState() {
     super.initState();
     _initializeWebView();
+    WebViewTextZoom.lock(_controller);
   }
 
   void _initializeWebView() {
