@@ -79,14 +79,17 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
     if (!data || busy) return;
     if (!agree) { setAgreeErr(true); return; }
     setAgreeErr(false); setBusy(true); setResult("");
+    let stage = "prepare";
     try {
       const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
       const p = await api.bookingPaymentInicisPrepare(id, mobile ? "MOBILE" : "WEB");
+      stage = "sdk";
       await loadInicisSdk(p.sdkUrl);
+      stage = "requestPayment";
       window.INIPayPro!.requestPayment(p.params);
       window.setTimeout(() => setBusy(false), 4000); // the layer is up; closing it returns here
       return;
-    } catch (e) { setResult(e instanceof ApiError && !/^\d{3} /.test(e.message) ? e.message : "결제창을 열지 못했습니다. 잠시 후 다시 시도해주세요."); }
+    } catch (e) { console.error("[inicis]", stage, e); setResult(e instanceof ApiError && !/^\d{3} /.test(e.message) ? e.message : "결제창을 열지 못했습니다. 잠시 후 다시 시도해주세요."); }
     setBusy(false);
   };
   const check = async () => {
