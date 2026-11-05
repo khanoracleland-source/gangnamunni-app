@@ -120,20 +120,23 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
         {loggedOut ? <LoginPrompt text="로그인하면 결제를 진행할 수 있습니다." /> : missing ? <><div className={`${styles.alert} ${styles.alertErr}`}>예약을 찾을 수 없거나 접근 권한이 없습니다.</div>{toMy}</>
           : !data ? <div className={styles.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div> : (
           <>
+            {/* design 05-26 */}
             <section className={styles.section}>
               <h2 className={styles.sectionTitle}>예약 정보를 확인해보세요</h2>
               <div className={styles.summary}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <div className={styles.logo}>{data.booking.logo ? <img src={data.booking.logo} alt={data.booking.hospitalName} /> : <span>toxnfill</span>}</div>
-                <div>
+                <div className={styles.logo}>
+                  {data.booking.logo && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={data.booking.logo} alt={data.booking.hospitalName} />
+                  )}
+                </div>
+                <div className={styles.sumInfo}>
                   <div className={styles.hospital}>{data.booking.hospitalName || "병원명"}</div>
                   <div className={styles.address}>{data.booking.hospitalArea && <><span>{data.booking.hospitalArea}</span><span className={styles.bar}>|</span></>}<span>{data.booking.hospitalAddress || "주소 정보 없음"}</span></div>
                   <div className={styles.treatment}>{data.booking.treatment}</div>
-                  <div className={styles.vat}>VAT 포함 <span className={styles.old}>{won(data.gross)}원</span></div>
                   <div className={styles.price}>{won(data.gross)}<small>원</small></div>
                 </div>
               </div>
-              <hr className={styles.line} />
               <div className={styles.infoRow}><div className={styles.label}>예약자</div><div className={styles.value}>{[data.booking.bookerName, data.booking.phone].filter(Boolean).join(" / ")}</div></div>
               <label className={styles.checkRow}><input type="checkbox" className={styles.checkbox} checked={visitorOther} onChange={(e) => { setVisitorOther(e.target.checked); setVisitorDone(""); }} /><span>다른 사람이 방문해요</span></label>
               {visitorOther && !visitorDone && (
@@ -144,7 +147,7 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
                 </div>
               )}
               {visitorOther && visitorDone && <div className={styles.infoRow}><div className={styles.label}>방문자</div><div className={styles.value}>{visitorDone}</div></div>}
-              <div className={`${styles.infoRow} ${styles.scheduleRow}`}><div className={styles.label}>예약 일정</div><div><div className={styles.value}>{data.booking.dateText}</div><div className={styles.redNote}>병원에서 확인 후 일정이 확정돼요</div></div></div>
+              <div className={styles.scheduleCard}><div className={styles.label}>예약 일정</div><div><div className={styles.value}>{data.booking.dateText}</div><div className={styles.redNote}>병원에서 확인 후 일정이 확정돼요</div></div></div>
             </section>
 
             {data.isPaid ? <><div className={`${styles.alert} ${styles.alertDone}`}>{data.order?.isTest ? "테스트 결제가 완료되었습니다. 실제 결제가 아닙니다." : "결제가 완료된 예약입니다."}</div>{toMy}</>
@@ -175,33 +178,36 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
                   </section>
                   <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>결제 금액을 확인해보세요</h2>
-                    <div className={styles.amountRow}><span>시술 금액</span><span className={styles.right}>{won(data.order.gross)}원</span></div>
-                    <div className={styles.amountRow}><span>할인 <span className={styles.badge}>0%</span></span><span className={styles.right}>-0원</span></div>
-                    <div className={styles.amountRow}><span>포인트 사용 금액</span><span className={styles.right}>-{won(data.order.pointsUsed)}원</span></div>
-                    <div className={styles.totalRow}><span className={styles.left}>총 결제 금액 <small>(VAT포함)</small></span><span className={styles.right}>{won(data.order.amount)}원</span></div>
-                    {data.points.v2 && <div className={styles.amountRow}><span>예상 적립 포인트</span><span className={styles.right}>{won(data.points.expected)} P</span></div>}
+                    <div className={styles.amountList}>
+                      <div className={styles.amountRow}><span>시술 금액</span><b className={styles.right}>{won(data.order.gross)}원</b></div>
+                      <div className={`${styles.amountRow} ${styles.amountSub}`}><span>· 할인 <span className={styles.badge}>0%</span></span><span className={styles.right}>-0원</span></div>
+                      <div className={`${styles.amountRow} ${styles.amountSub}`}><span>· 포인트 사용 금액</span><span className={styles.right}>-{won(data.order.pointsUsed)}원</span></div>
+                      <div className={styles.totalRow}><span className={styles.left}>총 결제 금액 <small>(VAT포함)</small></span><b className={styles.right}>{won(data.order.amount)}원</b></div>
+                      {data.points.v2 && <div className={styles.amountRow}><span>예상 적립 포인트</span><b className={styles.right}>{won(data.points.expected)} P</b></div>}
+                    </div>
                   </section>
-                  <section className={`${styles.section} ${styles.rules}`}>
+                  <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>취소 및 환불 규정을 확인해주세요</h2>
-                    <div className={styles.rulesBody}>
-                      <ul>
+                    <div className={styles.rulesBox}>
+                      <ul className={styles.rulesBody}>
                         <li>예약 취소와 결제 환불은 별도로 처리됩니다.</li>
                         <li>예약 변경·취소는 예약 내역에서 요청할 수 있습니다.</li>
                         <li>이미 결제한 예약의 환불은 운영자가 결제 내역과 병원의 환불 조건을 확인한 후 처리합니다.</li>
                         <li>실제 환불이 확인되면 결제 내역에 환불 금액과 상태가 반영됩니다.</li>
                         <li>결제 없이 계속한 예약은 실제 청구가 없어 환불 대상 금액이 없습니다.</li>
                       </ul>
+                      <label className={styles.agree}><input type="checkbox" className={styles.checkbox} checked={agree} onChange={(e) => { setAgree(e.target.checked); if (e.target.checked) setAgreeErr(false); }} /> 위 내용을 모두 확인했어요</label>
+                      {agreeErr && <p className={styles.agreeErr} role="alert">취소 및 환불 규정을 확인하고 동의해주세요.</p>}
                     </div>
-                    <label className={styles.agree}><input type="checkbox" className={styles.checkbox} checked={agree} onChange={(e) => { setAgree(e.target.checked); if (e.target.checked) setAgreeErr(false); }} /> 위 내용을 모두 확인했어요</label>
-                    {agreeErr && <p className={styles.agreeErr} role="alert">취소 및 환불 규정을 확인하고 동의해주세요.</p>}
-                    <div className={styles.legal}>서비스 이용에 관한 개인정보 수집 동의<br />개인정보 및 민감정보 수집 이용, 개인정보 제3자 제공 동의<br /><br />서울미녀는 고객 편의를 위해 예약·앱에서 결제 기능을 제공합니다. 이 기능에 대해 의료기관으로부터 대가를 받지 않습니다.<br />거래의 당사자는 고객과 병원이며, 서울미녀는 이를 중개하지 않습니다. 위 내용을 확인하였으며, 결제에 동의합니다.</div>
+                    <div className={styles.legal}>서비스 이용에 관한 개인정보 수집 동의<br />개인정보 및 민감정보 수집 이용, 개인정보 제3자 제공 동의</div>
+                    <div className={styles.legal}>서울미녀는 고객 편의를 위해 예약·앱에서 결제 기능을 제공하며, 이 기능에 대해 의료기관으로부터 대가를 받지 않습니다. 거래의 당사자는 고객과 병원이며, 서울미녀는 이를 중개하지 않습니다. 위 내용을 확인하였으며, 결제에 동의합니다.</div>
                   </section>
                   {data.preview && <div className={`${styles.alert} ${styles.alertWarn}`}>결제 없이 계속한 예약입니다. 실제 결제 내역은 없습니다.</div>}
                   {notice && <div className={`${styles.alert} ${styles.alertWarn}`} role="alert">{notice}</div>}
                   {result && <div className={styles.result} role="status">{result}</div>}
-                  <button type="button" className={styles.visitorConfirm} onClick={check} disabled={isFetching}>이미 결제했다면 상태 확인</button>
+                  <div className={styles.grandTotal}><span className={styles.grandLabel}>총 결제 금액 <small>(VAT포함)</small></span><span className={styles.grandAmount}>{won(data.order.amount)}원</span></div>
+                  <button type="button" className={styles.checkBtn} onClick={check} disabled={isFetching}>이미 결제했다면 상태 확인</button>
                   <div className={styles.sticky}>
-                    <div className={styles.stickyTotal}><div className={styles.left}>총 결제 금액 <small>(VAT포함)</small></div><div className={styles.right}><span className={styles.old}>{won(data.order.gross)}원</span><span className={styles.new}>{won(data.order.amount)}원</span></div></div>
                     {(data.liveAvailable || !data.previewAvailable) && (data.liveAvailable
                       ? <button type="button" className={styles.payBtn} disabled={busy} onClick={payCard}>{busy ? "결제창 여는 중…" : "카드로 결제하기"}</button>
                       : <button type="button" className={styles.payBtn} disabled>온라인 결제 준비 중</button>)}

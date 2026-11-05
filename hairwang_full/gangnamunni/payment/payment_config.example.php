@@ -28,8 +28,8 @@ define('INICIS_HASHKEY', '');
  *   INICIS_APP_SCHEME        iOS 카드 앱이 돌아올 앱 URL 스킴 (기본 wellness -> wellness://payment)
  *   INICIS_ALERT_WEBHOOK     https 웹훅(Slack 호환). 망취소 실패·승인 결과 불명 등 돈이 걸린 이벤트를 알린다. 로그에는 항상 남는다.
  */
-// define('G5_PG_PAYMENTS_ENABLED', '1');
-// define('BOOKING_PAYMENT_METHODS', 'card');
+// 주의: G5_PG_PAYMENTS_ENABLED 와 BOOKING_PAYMENT_METHODS 는 여기서 바꾸지 않는다. data/dbconfig.php 에서 바꾼다.
+// dbconfig.php 가 이 두 값을 먼저 define('0', '') 하고, define() 은 먼저 정의된 값이 우선하므로 여기에 적어도 적용되지 않는다 (카드 결제가 조용히 꺼진 채로 남는다).
 // define('BOOKING_PAYMENT_BASE_URL', 'https://seoulbeauty.app/gangnamunni');
 // define('INICIS_LIVE_MEMBERS', 'member_id_here');
 // define('INICIS_TEST_MEMBERS', '');

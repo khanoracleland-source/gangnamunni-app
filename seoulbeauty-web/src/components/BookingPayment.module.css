@@ -1,86 +1,114 @@
-/* booking_payment.php / booking_payment_success.php (same colours and sizes) */
-.page { max-width: 640px; min-height: 100vh; margin: 0 auto; background: #fff; color: #111; padding-bottom: 90px; box-sizing: border-box; }
+/* design 05-26 결제하기 (also the frame of 예약 확정 = BookingPaymentSuccess): white page, 52px header, 20px side inset,
+   grey (#F7F5F6) radius-16 cards, 44px inputs / radius 12, 52px accent button. Fonts scale via --fs-scale. */
+.page { max-width: 640px; min-height: 100dvh; margin: 0 auto; background: #fff; color: #1A1718; box-sizing: border-box; word-break: keep-all; letter-spacing: -0.01em; }
 .pageDark { background: #fff; }
-.header { height: 72px; display: flex; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 10; background: #fff; }
-.back { position: absolute; left: 22px; top: 50%; width: 28px; height: 28px; transform: translateY(-50%); border: 0; background: transparent; padding: 0; cursor: pointer; }
-.back::before { content: ""; position: absolute; left: 8px; top: 5px; width: 16px; height: 16px; border-left: 2px solid #111; border-bottom: 2px solid #111; transform: rotate(45deg); }
-.title { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -.04em; }
-.content { padding-bottom: 22px; }
-.empty { padding: 60px 20px; text-align: center; color: #777; line-height: 1.7; }
+.header { height: 52px; display: flex; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 10; background: #fff; padding: 0 8px; }
+.back { position: absolute; left: 8px; top: 4px; width: 44px; height: 44px; border: 0; background: transparent; padding: 0; cursor: pointer; display: block; }
+.back::before { content: ""; position: absolute; left: 17px; top: 16px; width: 11px; height: 11px; border-left: 1.8px solid #1A1718; border-bottom: 1.8px solid #1A1718; transform: rotate(45deg); }
+.title { margin: 0; font-size: calc(17px * var(--fs-scale)); font-weight: 500; }
+.content { padding-bottom: 0; }
+.empty { padding: 60px 20px; text-align: center; color: #6B6466; line-height: 1.7; font-size: calc(15px * var(--fs-scale)); }
 .retry { color: #AC1830; text-decoration: underline; border: 0; background: none; cursor: pointer; font: inherit; }
-.section { padding: 28px 28px 26px; background: #fff; }
-.section + .section { border-top: 10px solid #f3f3f3; }
-.sectionTitle { margin: 0 0 26px; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
-.summary { display: grid; grid-template-columns: 108px 1fr; gap: 22px; align-items: start; margin-bottom: 28px; }
-.logo { width: 108px; height: 108px; background: #AC1830; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+
+.section { padding: 0 20px; }
+.sectionTitle { margin: 0; padding: 22px 0 12px; font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
+.content > .section:first-child .sectionTitle { padding-top: 14px; padding-bottom: 0; }
+
+/* hospital / treatment card */
+.summary { display: flex; gap: 14px; margin-top: 12px; padding: 16px; border-radius: 16px; background: #F7F5F6; }
+.logo { width: 84px; height: 84px; flex: 0 0 84px; border-radius: 12px; background: #E4E0E1; overflow: hidden; }
 .logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.logo span { font-size: 18px; letter-spacing: .24em; margin-left: .24em; }
-.hospital { font-size: 20px; line-height: 1.25; font-weight: 600; margin: 2px 0 8px; letter-spacing: -.04em; }
-.address { font-size: 15px; line-height: 1.45; font-weight: 600; margin: 0 0 12px; color: #222; }
-.bar { color: #aaa; padding: 0 10px; }
-.treatment { font-size: 22px; line-height: 1.3; font-weight: 600; margin: 0 0 8px; letter-spacing: -.04em; word-break: break-word; }
-.vat { color: #a9a9a9; font-size: 15px; font-weight: 600; margin-bottom: 2px; }
-.old { text-decoration: line-through; margin-left: 6px; }
-.price { color: #AC1830; font-size: 22px; font-weight: 600; letter-spacing: -.04em; }
-.price small { color: #111; font-size: 15px; font-weight: 600; margin-left: 2px; }
-.line { border: 0; border-top: 1px solid #ddd; margin: 0; }
-.infoRow { display: grid; grid-template-columns: 116px 1fr; gap: 16px; align-items: center; min-height: 66px; border-bottom: 1px solid #e1e1e1; }
-.label { color: #b0b0b0; font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
-.value { color: #111; font-size: 18px; font-weight: 600; letter-spacing: -.04em; word-break: break-word; }
-.redNote { color: #AC1830; font-size: 15px; font-weight: 600; margin-top: 8px; }
-.checkRow { display: flex; align-items: center; gap: 10px; min-height: 58px; font-size: 18px; font-weight: 600; cursor: pointer; }
-.checkbox { width: 14px; height: 14px; accent-color: #AC1830; }
-.visitorFields { padding-top: 18px; }
-.field { margin-bottom: 28px; }
-.field label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 10px; }
-.field input { width: 100%; height: 44px; border: 1px solid #d9d9d9; padding: 0 16px; font-size: 15px; outline: none; box-sizing: border-box; font-family: inherit; }
+.sumInfo { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hospital { font-size: calc(17px * var(--fs-scale)); font-weight: 500; overflow-wrap: anywhere; }
+.address { font-size: calc(12px * var(--fs-scale)); color: #4A4446; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { color: #CFC8CB; padding: 0 5px; }
+.treatment { margin-top: 2px; font-size: calc(17px * var(--fs-scale)); font-weight: 500; overflow-wrap: anywhere; }
+.price { font-size: calc(17px * var(--fs-scale)); font-weight: 700; white-space: nowrap; }
+.price small { font-size: calc(12px * var(--fs-scale)); font-weight: 400; margin-left: 1px; }
+
+/* booker / visitor / schedule */
+.infoRow { display: flex; gap: 16px; padding: 16px 0; border-bottom: 1px solid #ECE9EA; }
+.label { width: 64px; flex: 0 0 64px; font-size: calc(15px * var(--fs-scale)); color: #6B6466; }
+.value { font-size: calc(15px * var(--fs-scale)); font-weight: 500; word-break: break-word; }
+.checkRow { display: flex; align-items: center; gap: 8px; padding: 16px 0; border-bottom: 1px solid #ECE9EA; font-size: calc(15px * var(--fs-scale)); font-weight: 500; cursor: pointer; }
+.checkbox { width: 16px; height: 16px; margin: 0; flex: 0 0 16px; accent-color: #AC1830; }
+.visitorFields { border-bottom: 1px solid #ECE9EA; padding-bottom: 18px; }
+.field { padding-top: 16px; }
+.field label { display: block; padding-bottom: 8px; font-size: calc(13px * var(--fs-scale)); font-weight: 500; }
+.field input { width: 100%; height: 44px; box-sizing: border-box; border: 1px solid #DCD6D8; border-radius: 12px; padding: 0 12px; font-size: calc(15px * var(--fs-scale)); color: #1A1718; outline: none; background: #fff; }
+.field input::placeholder { color: #857E80; }
 .field input:focus { border-color: #AC1830; }
-.visitorConfirm { display: block; min-width: 190px; height: 48px; border: 0; background: #AC1830; color: #fff; font-size: 18px; font-weight: 600; margin: 8px auto 30px; cursor: pointer; font-family: inherit; }
+.visitorConfirm { display: flex; align-items: center; justify-content: center; width: 100%; height: 46px; margin-top: 18px; border: 0; border-radius: 12px; background: #AC1830; color: #fff; font-size: calc(15px * var(--fs-scale)); font-weight: 500; cursor: pointer; }
 .visitorConfirm:disabled { opacity: .6; }
-.scheduleRow { border-top: 1px solid #e1e1e1; border-bottom: 0; min-height: 84px; }
-.pointLabel { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
-.pointBox { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 42px; border: 1px solid #d8d8d8; padding: 0 12px; }
-.pointInput { flex: 1; border: 0; outline: none; text-align: right; font-size: 18px; font-weight: 600; min-width: 0; background: transparent; font-family: inherit; }
-.pointUnit { font-size: 18px; font-weight: 600; }
-.pointMax { border: 0; background: transparent; color: #AC1830; font-size: 18px; font-weight: 600; padding: 0; white-space: nowrap; font-family: inherit; }
-.pointMax:disabled { color: #bbb; }
-.pointHelp { margin-top: 12px; text-align: right; font-size: 13px; font-weight: 600; }
-.pointNote { margin-top: 14px; color: #777; font-size: 13px; line-height: 1.55; font-weight: 600; }
-.methodNotice { margin: 0 0 20px; padding: 14px 16px; background: #fff7e6; color: #805400; font-size: 14px; line-height: 1.65; }
+.scheduleCard { display: flex; gap: 16px; margin-top: 12px; padding: 16px; border-radius: 16px; background: #F7F5F6; }
+.redNote { margin-top: 4px; font-size: calc(12px * var(--fs-scale)); color: #4A4446; }
+
+/* points */
+.pointLabel { padding-bottom: 8px; font-size: calc(13px * var(--fs-scale)); font-weight: 700; }
+.pointBox { display: flex; align-items: center; justify-content: flex-end; gap: 10px; height: 44px; box-sizing: border-box; border: 1px solid #DCD6D8; border-radius: 12px; padding: 0 12px; font-size: calc(15px * var(--fs-scale)); }
+.pointInput { flex: 1; min-width: 0; border: 0; outline: none; text-align: right; font-size: calc(15px * var(--fs-scale)); background: transparent; color: #1A1718; }
+.pointUnit { font-size: calc(15px * var(--fs-scale)); }
+.pointMax { border: 0; background: transparent; padding: 0; color: #4A4446; font-size: calc(15px * var(--fs-scale)); font-weight: 500; white-space: nowrap; }
+.pointMax:disabled { color: #9A9395; }
+.pointHelp { padding-top: 6px; text-align: right; font-size: calc(12px * var(--fs-scale)); color: #4A4446; }
+.pointNote { padding-top: 10px; font-size: calc(12px * var(--fs-scale)); line-height: 1.6; color: #4A4446; }
+
+/* payment methods */
+.methodNotice { margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: #F7F5F6; color: #4A4446; font-size: calc(12px * var(--fs-scale)); line-height: 1.6; }
 .methodNotice p { margin: 0; }
-.methodNotice p + p { margin-top: 6px; }
-.methodGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.method { height: 76px; border: 1px solid #d8d8d8; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; letter-spacing: -.04em; font-family: inherit; }
-.method:disabled { color: #999; background: #fafafa; cursor: not-allowed; }
-.amountRow { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; font-size: 15px; font-weight: 600; }
+.methodNotice p + p { margin-top: 4px; }
+.methodGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.method { height: 50px; box-sizing: border-box; border: 1px solid #DCD6D8; border-radius: 12px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: calc(15px * var(--fs-scale)); font-weight: 500; }
+.method:disabled { color: #9A9395; background: #F4F2F3; cursor: not-allowed; }
+
+/* amounts */
+.amountList { display: flex; flex-direction: column; gap: 9px; font-size: calc(13px * var(--fs-scale)); }
+.amountRow { display: flex; justify-content: space-between; gap: 12px; }
+.amountRow b { font-weight: 500; }
+.amountSub { color: #4A4446; }
 .right { text-align: right; white-space: nowrap; }
-.badge { display: inline-block; padding: 1px 6px; margin-left: 6px; background: #f3f3f3; color: #777; font-size: 12px; }
-.totalRow { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0 6px; margin-top: 6px; border-top: 1px solid #e1e1e1; font-size: 16px; font-weight: 700; }
-.totalRow small { font-size: 13px; color: #777; }
-.rulesBody { font-size: 13px; font-weight: 600; line-height: 1.7; color: #444; }
-.rulesBody ul { margin: 0; padding-left: 18px; }
-.agree { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 15px; font-weight: 600; cursor: pointer; }
-.agreeErr { margin: 8px 0 0; color: #AC1830; font-size: 13px; }
-.legal { margin-top: 14px; color: #888; font-size: 13px; line-height: 1.6; font-weight: 600; }
-.alert { margin: 16px 28px 0; padding: 14px 16px; font-size: 15px; line-height: 1.6; font-weight: 600; }
+.badge { display: inline-block; padding: 0 6px; margin-left: 4px; border-radius: 4px; background: #F4F2F3; color: #6B6466; font-size: calc(11px * var(--fs-scale)); }
+.totalRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid #ECE9EA; }
+.totalRow .left { font-size: calc(15px * var(--fs-scale)); font-weight: 700; }
+.totalRow small { font-size: calc(12px * var(--fs-scale)); font-weight: 400; color: #6B6466; }
+.totalRow b { font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
+
+/* refund rules */
+.rulesBox { padding: 16px; border-radius: 16px; background: #F7F5F6; }
+.rulesBody { margin: 0; padding-left: 16px; font-size: calc(13px * var(--fs-scale)); line-height: 1.7; color: #4A4446; }
+.agree { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: calc(13px * var(--fs-scale)); font-weight: 500; cursor: pointer; }
+.agreeErr { margin: 8px 0 0; color: #AC1830; font-size: calc(12px * var(--fs-scale)); }
+.legal { padding-top: 12px; font-size: calc(12px * var(--fs-scale)); line-height: 1.6; color: #6B6466; }
+.legal + .legal { padding-top: 10px; }
+
+/* notices */
+.alert { margin: 16px 20px 0; padding: 12px 14px; border-radius: 12px; font-size: calc(13px * var(--fs-scale)); line-height: 1.6; font-weight: 500; }
 .alertErr { background: #FFEBEE; color: #C62828; }
-.alertWarn { background: #fff7e6; color: #805400; }
+.alertWarn { background: #F7F5F6; color: #4A4446; }
 .alertDone { background: #E8F5E9; color: #2E7D32; }
-.result { margin: 12px 28px 0; padding: 12px 16px; background: #F4F2F3; font-size: 15px; font-weight: 600; }
-.statusLink { display: block; width: 190px; height: 48px; line-height: 48px; margin: 18px auto 0; border: 1px solid #AC1830; color: #AC1830; text-align: center; font-size: 17px; font-weight: 600; text-decoration: none; }
-.sticky { position: sticky; bottom: 0; padding: 14px 28px calc(14px + var(--sab)); background: #fff; border-top: 1px solid #e1e1e1; }
-.stickyTotal { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; font-size: 16px; font-weight: 700; }
-.stickyTotal small { font-size: 13px; color: #777; }
-.new { color: #AC1830; margin-left: 8px; }
-.payBtn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; border: 0; background: #AC1830; color: #fff; font-size: 17px; font-weight: 600; text-decoration: none; font-family: inherit; cursor: pointer; box-sizing: border-box; }
-.payBtn:disabled { background: #ccc; cursor: not-allowed; }
-.previewBtn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; margin-top: 10px; border: 1px solid #AC1830; background: #fff; color: #AC1830; font-size: 17px; font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; box-sizing: border-box; }
-.previewPri { margin-top: 0; background: #AC1830; color: #fff; }
+.result { margin: 12px 20px 0; padding: 12px 14px; border-radius: 12px; background: #F4F2F3; font-size: calc(13px * var(--fs-scale)); font-weight: 500; }
+.statusLink { display: flex; align-items: center; justify-content: center; width: calc(100% - 40px); height: 46px; margin: 18px 20px 0; border: 1px solid #AC1830; border-radius: 12px; color: #AC1830; font-size: calc(15px * var(--fs-scale)); font-weight: 500; text-decoration: none; }
+
+/* total + sticky button */
+.grandTotal { display: flex; align-items: baseline; gap: 8px; margin: 18px 20px 0; padding-top: 16px; border-top: 1px solid #ECE9EA; }
+.grandLabel { flex: 1; font-size: calc(13px * var(--fs-scale)); font-weight: 700; }
+.grandLabel small { font-size: calc(12px * var(--fs-scale)); font-weight: 400; color: #6B6466; }
+.grandAmount { font-size: calc(22px * var(--fs-scale)); font-weight: 700; white-space: nowrap; }
+.checkBtn { display: block; margin: 12px auto 0; padding: 6px 8px; border: 0; background: none; color: #6B6466; font-size: calc(12px * var(--fs-scale)); text-decoration: underline; cursor: pointer; }
+.checkBtn:disabled { opacity: .5; }
+.sticky { position: sticky; bottom: 0; padding: 14px 20px max(34px, calc(14px + var(--sab))); background: #fff; }
+.payBtn, .previewBtn { display: flex; align-items: center; justify-content: center; width: 100%; height: 52px; box-sizing: border-box; border-radius: 12px; font-size: calc(17px * var(--fs-scale)); font-weight: 500; text-decoration: none; cursor: pointer; }
+.payBtn { border: 1px solid #AC1830; background: #AC1830; color: #fff; }
+.payBtn:disabled { border-color: #DCD6D8; background: #DCD6D8; color: #fff; cursor: not-allowed; }
+.previewBtn { margin-top: 10px; border: 0; background: #F2EFF0; color: #1A1718; }
+.previewPri { margin-top: 0; border: 1px solid #AC1830; background: #AC1830; color: #fff; }
 .previewBtn:disabled { opacity: .55; cursor: wait; }
-.checkoutNote { margin: 10px 0 0; text-align: center; color: #777; font-size: 12px; }
-.doneHero { padding: 30px 28px 10px; text-align: center; }
-.doneIcon { display: inline-flex; width: 56px; height: 56px; border-radius: 50%; background: #AC1830; color: #fff; font-size: 30px; font-weight: 700; align-items: center; justify-content: center; }
+.checkoutNote { margin: 10px 0 0; text-align: center; color: #6B6466; font-size: calc(12px * var(--fs-scale)); }
+
+/* 예약 확정 (BookingPaymentSuccess) */
+.doneHero { padding: 30px 20px 10px; text-align: center; }
+.doneIcon { display: inline-flex; width: 48px; height: 48px; border-radius: 12px; background: #AC1830; color: #fff; font-size: 26px; font-weight: 700; align-items: center; justify-content: center; }
 .doneIconOk { background: #2E7D32; }
-.doneTitle { margin: 16px 0 8px; font-size: 22px; font-weight: 700; letter-spacing: -.04em; }
-.doneDesc { margin: 0; color: #555; font-size: 15px; line-height: 1.6; white-space: pre-line; }
-.doneActions { padding: 10px 28px 0; }
+.doneTitle { margin: 16px 0 8px; font-size: calc(22px * var(--fs-scale)); font-weight: 700; line-height: 1.35; }
+.doneDesc { margin: 0; color: #4A4446; font-size: calc(15px * var(--fs-scale)); line-height: 1.6; white-space: pre-line; }
+.doneActions { padding: 10px 20px 34px; }
