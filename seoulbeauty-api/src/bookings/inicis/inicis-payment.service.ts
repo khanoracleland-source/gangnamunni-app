@@ -47,6 +47,9 @@ export const paymentLockKey = (merchant: string) => `payment:${createHash('sha25
  * authentication result to POST /v1/payments/inicis/return, which approves it server-side and moves the ledger order
  * to `paid` exactly as booking_payment_confirm() does in PHP (same lock, events, status history, attempts).
  */
+/** 결제 수단 -> INIPayPro P_PAY_TYPE (카드 결제창 / 계좌이체 결제창). */
+const PAY_TYPES: Record<string, string> = { card: 'CARD', bank: 'BANK' };
+
 @Injectable()
 export class InicisPaymentService {
   private readonly log = new Logger(InicisPaymentService.name);
@@ -73,8 +76,10 @@ export class InicisPaymentService {
     try { return new URL(cfg?.publicBase ?? '').pathname.replace(/\/+$/, '') || ''; } catch { return '/next'; }
   }
 
-  /** POST …/payment/inicis/prepare: the signed parameters for INIPayPro.requestPayment(). Nothing is written. */
-  async prepare(m: BookingMember, id: number, device: unknown) {
+  /** POST …/payment/inicis/prepare (method: card | bank): the signed parameters for INIPayPro.requestPayment(). Nothing is written. */
+  async prepare(m: BookingMember, id: number, device: unknown, method: unknown = 'card') {
+    const payType = PAY_TYPES[s(method).toLowerCase() || 'card'];
+    if (!payType) throw new PaymentRefused('지원하지 않는 결제 수단입니다.', 'METHOD_NOT_SUPPORTED', 400);
     const cfg = inicisConfig();
     if (!cfg || !BookingPaymentService.liveAvailable(process.env, m.id)) throw new PaymentRefused('결제 서비스를 이용할 수 없습니다.', 'PAYMENT_UNAVAILABLE', 503);
     const b = await this.payments.own(m, id);
@@ -99,7 +104,7 @@ export class InicisPaymentService {
       sdkUrl: SDK_URL,
       mode: cfg.mode,
       params: {
-        P_MID: cfg.mid, P_OID: oid, P_PAY_TYPE: 'CARD', P_DEVICE_TYPE: mobile ? 'MOBILE' : 'WEB', P_IDCCODE: 'Y',
+        P_MID: cfg.mid, P_OID: oid, P_PAY_TYPE: payType, P_DEVICE_TYPE: mobile ? 'MOBILE' : 'WEB', P_IDCCODE: 'Y',
         P_AMT: String(amount), P_GOODS: clipBytes(s(b.treatment).trim() || '예약 결제', 40) || '예약 결제',
         P_UNAME: clipBytes((s(b.name) || m.name || '고객').trim(), 30) || '고객',
         P_NEXT_URL: `${cfg.publicBase}/api/v1/payments/inicis/return`,

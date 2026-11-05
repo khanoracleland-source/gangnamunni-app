@@ -84,8 +84,11 @@ final class InicisGateway implements BookingPaymentGateway {
      * @param array $order    gangnamunni_platform_payments 행 (merchant_uid, amount, booking_id)
      * @param array $booking  gangnamunni_bookings 행 (treatment, name)
      * @param string $baseUrl BOOKING_PAYMENT_BASE_URL (공개 https gangnamunni URL)
+     * @param string $method  'card'(신용/체크카드) | 'bank'(계좌이체)
      */
-    public function checkoutParams(array $order, array $booking, bool $mobile, string $baseUrl, string $appScheme = 'wellness', ?string $timestampMs = null): array {
+    public function checkoutParams(array $order, array $booking, bool $mobile, string $baseUrl, string $appScheme = 'wellness', ?string $timestampMs = null, string $method = 'card'): array {
+        $payType = ['card' => 'CARD', 'bank' => 'BANK'][$method] ?? null;   // 카드 결제창 / 계좌이체 결제창
+        if ($payType === null) throw new InvalidArgumentException('Unsupported payment method.');
         if (!$this->canCheckout()) throw new BookingPaymentGatewayUnavailableException('Inicis hash key is not configured.');
         $oid = (string)($order['merchant_uid'] ?? '');
         $amount = (int)($order['amount'] ?? 0);
@@ -102,7 +105,7 @@ final class InicisGateway implements BookingPaymentGateway {
         // iOS 카드 앱은 앱 URL 스킴으로 돌아온다(P_RESERVED.app_scheme). 웹은 빈 객체.
         $reserved = $mobile ? ['app_scheme' => $appScheme . '://payment'] : new stdClass();
         return [
-            'P_MID' => $this->mid, 'P_OID' => $oid, 'P_PAY_TYPE' => 'CARD', 'P_DEVICE_TYPE' => $mobile ? 'MOBILE' : 'WEB', 'P_IDCCODE' => 'Y',
+            'P_MID' => $this->mid, 'P_OID' => $oid, 'P_PAY_TYPE' => $payType, 'P_DEVICE_TYPE' => $mobile ? 'MOBILE' : 'WEB', 'P_IDCCODE' => 'Y',
             'P_AMT' => (string)$amount, 'P_GOODS' => $goods !== '' ? $goods : '예약 결제', 'P_UNAME' => $name !== '' ? $name : '고객',
             'P_NEXT_URL' => $baseUrl . '/booking_payment_inicis_return.php',
             'P_CLOSE_URL' => $baseUrl . '/booking_payment.php?booking_id=' . $bookingId,

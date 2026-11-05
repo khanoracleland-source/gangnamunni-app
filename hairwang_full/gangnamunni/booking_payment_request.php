@@ -142,7 +142,7 @@ try {
         bp_fail('포인트를 사용한 결제는 아직 지원되지 않습니다. 포인트를 0원으로 변경한 뒤 결제해주세요.', 'POINT_PAYMENT_NOT_SUPPORTED', 409);
     }
     $gateway = booking_payment_require_gateway();
-    if (!($gateway instanceof InicisGateway) || $provider !== 'card') {
+    if (!($gateway instanceof InicisGateway) || !in_array($provider, ['card', 'bank'], true)) {
         throw new BookingPaymentGatewayUnavailableException('This payment method has no checkout.');
     }
     // KG이니시스 INIPayPro: 서명된 파라미터만 돌려준다(HashKey 는 나가지 않는다). 아무것도 기록하지 않는다.
@@ -151,7 +151,7 @@ try {
         bp_fail('결제 시도 횟수가 많아 잠시 후 다시 시도해주세요.', 'TOO_MANY_ATTEMPTS', 429);
     }
     $mobile = (string)($_POST['in_app'] ?? '') === '1' || (string)($_POST['touch_mac'] ?? '') === '1' || preg_match('/Android|iPhone|iPad|iPod|Mobile/i', (string)($_SERVER['HTTP_USER_AGENT'] ?? '')) === 1;
-    $params = $gateway->checkoutParams($order, $booking, $mobile, booking_payment_base_url(), trim(booking_payment_setting('INICIS_APP_SCHEME', 'wellness')));
+    $params = $gateway->checkoutParams($order, $booking, $mobile, booking_payment_base_url(), trim(booking_payment_setting('INICIS_APP_SCHEME', 'wellness')), null, $provider);
     echo json_encode(['success' => true, 'provider' => 'inicis', 'mode' => $gateway->mode(), 'sdk_url' => InicisGateway::SDK_URL, 'params' => $params],
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;

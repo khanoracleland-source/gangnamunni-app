@@ -59,6 +59,7 @@
 .methodNotice p + p { margin-top: 4px; }
 .methodGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .method { height: 50px; box-sizing: border-box; border: 1px solid #DCD6D8; border-radius: 12px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: calc(15px * var(--fs-scale)); font-weight: 500; }
+.methodOn { border-color: var(--accent, #ac1830); color: #111; font-weight: 600; }
 .method:disabled { color: #9A9395; background: #F4F2F3; cursor: not-allowed; }
 
 /* amounts */
@@ -97,13 +98,11 @@
 .checkBtn { display: block; margin: 12px auto 0; padding: 6px 8px; border: 0; background: none; color: #6B6466; font-size: calc(12px * var(--fs-scale)); text-decoration: underline; cursor: pointer; }
 .checkBtn:disabled { opacity: .5; }
 .sticky { position: sticky; bottom: 0; padding: 14px 20px max(34px, calc(14px + var(--sab))); background: #fff; }
-.payBtn, .previewBtn { display: flex; align-items: center; justify-content: center; width: 100%; height: 52px; box-sizing: border-box; border-radius: 12px; font-size: calc(17px * var(--fs-scale)); font-weight: 500; text-decoration: none; cursor: pointer; }
+.payBtn { display: flex; align-items: center; justify-content: center; width: 100%; height: 52px; box-sizing: border-box; border-radius: 12px; font-size: calc(17px * var(--fs-scale)); font-weight: 500; text-decoration: none; cursor: pointer; }
 .payBtn { border: 1px solid #AC1830; background: #AC1830; color: #fff; }
 .payBtn:disabled { border-color: #DCD6D8; background: #DCD6D8; color: #fff; cursor: not-allowed; }
-.previewBtn { margin-top: 10px; border: 0; background: #F2EFF0; color: #1A1718; }
+.previewBtn { display: flex; align-items: center; justify-content: center; width: 100%; height: 52px; box-sizing: border-box; margin-top: 10px; border: 0; border-radius: 12px; background: #F2EFF0; color: #1A1718; font-size: calc(17px * var(--fs-scale)); font-weight: 500; text-decoration: none; cursor: pointer; }
 .previewPri { margin-top: 0; border: 1px solid #AC1830; background: #AC1830; color: #fff; }
-.previewBtn:disabled { opacity: .55; cursor: wait; }
-.checkoutNote { margin: 10px 0 0; text-align: center; color: #6B6466; font-size: calc(12px * var(--fs-scale)); }
 
 /* 예약 확정 (BookingPaymentSuccess) */
 .doneHero { padding: 30px 20px 10px; text-align: center; }

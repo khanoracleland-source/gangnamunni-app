@@ -2,8 +2,8 @@
 import Loading from "./Loading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, qk } from "@/lib/api";
 import LoginPrompt from "./LoginPrompt";
 import styles from "./BookingPayment.module.css";
@@ -16,7 +16,7 @@ const PAY_NOTICES: Record<string, string> = {
   ORDER_STATE: "이 주문은 지금 결제할 수 없습니다. 청구된 금액은 없습니다.",
   UNRESOLVED: "결제 결과를 확인하고 있습니다. 다시 결제하지 말고 잠시 후 ‘이미 결제했다면 상태 확인’을 눌러주세요.",
   AUTH_FAILED: "결제 인증이 취소되었거나 완료되지 않았습니다. 청구된 금액은 없습니다. 다시 시도해주세요.",
-  REJECTED: "카드 승인이 거절되었습니다. 청구된 금액은 없으니 다른 카드로 다시 시도해주세요.",
+  REJECTED: "결제 승인이 거절되었습니다. 청구된 금액은 없으니 다른 결제 수단으로 다시 시도해주세요.",
   RESULT_MISMATCH: "결제 결과가 주문과 일치하지 않아 승인을 취소했습니다. 청구된 금액이 있다면 자동으로 취소됩니다. 계속되면 병원이나 고객센터로 문의해주세요.",
   FINALIZE_FAILED: "결제를 처리하는 중 문제가 생겨 승인을 취소했습니다. 청구된 금액이 있다면 자동으로 취소됩니다. 잠시 후 다시 시도해주세요.",
   FINALIZE_FAILED_UNCANCELLED: "결제를 처리하는 중 문제가 생겼습니다. 다시 결제하지 말고 병원이나 고객센터로 문의해주세요.",
@@ -36,26 +36,42 @@ const isMobileDevice = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.u
 const INICIS_SDK = "https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js";
 declare global { interface Window { INIPayPro?: { requestPayment: (o: Record<string, string>) => void } } }
 /** The INIPayPro SDK, loaded only from Inicis' own host. */
-const loadInicisSdk = (url: string) => new Promise<void>((resolve, reject) => {
-  if (url !== INICIS_SDK) { reject(new Error("sdk")); return; }
-  if (window.INIPayPro) { resolve(); return; }
-  const el = document.createElement("script");
-  el.src = url; el.charset = "UTF-8"; el.async = true;
-  el.onload = () => (window.INIPayPro ? resolve() : reject(new Error("sdk")));
-  el.onerror = () => reject(new Error("sdk"));
-  document.head.appendChild(el);
-});
+let sdkLoading: Promise<void> | null = null;
+const loadInicisSdk = (url: string): Promise<void> => {
+  if (url !== INICIS_SDK) return Promise.reject(new Error("sdk"));
+  if (window.INIPayPro) return Promise.resolve();
+  // One load in flight at a time: the preload effect and the pay button share it, so the script is never executed twice.
+  if (sdkLoading) return sdkLoading;
+  sdkLoading = new Promise<void>((resolve, reject) => {
+    const el = document.createElement("script");
+    const fail = () => { el.remove(); sdkLoading = null; reject(new Error("sdk")); };
+    el.src = url; el.charset = "UTF-8"; el.async = true;
+    // The SDK defines window.INIPayPro a moment after the script's load event, so wait for it (up to 5 s) instead of failing the first tap.
+    el.onload = () => {
+      const t0 = Date.now();
+      const wait = () => {
+        if (window.INIPayPro) resolve();
+        else if (Date.now() - t0 > 5000) fail();
+        else window.setTimeout(wait, 50);
+      };
+      wait();
+    };
+    el.onerror = fail;
+    document.head.appendChild(el);
+  });
+  return sdkLoading;
+};
 const METHODS: [string, string][] = [["bank", "계좌이체"], ["card", "신용/체크카드"], ["naverpay", "네이버페이"], ["kakaopay", "카카오페이"], ["tosspay", "토스페이"]];
-/** Live checkout (Inicis) starts with cards only. */
-const LIVE_METHODS = METHODS.filter(([k]) => k === "card");
+/** Methods Inicis checkout supports (계좌이체 and 카드). */
+const LIVE_METHODS = METHODS.filter(([k]) => k === "bank" || k === "card");
+const PAY_BTN: Record<string, string> = { bank: "계좌이체로 결제하기", card: "카드로 결제하기" };
 
 /**
- * booking_payment.php. Card checkout goes through KG Inicis (INIPayPro) when the server reports liveAvailable; otherwise the order,
- * the summary and "결제 없이 계속하기" are what works.
+ * booking_payment.php. Card and 계좌이체 checkout go through KG Inicis (INIPayPro) when the server reports liveAvailable; otherwise
+ * the payment buttons stay disabled.
  */
 export default function BookingPayment({ id, payError }: { id: number; payError: string }) {
   const router = useRouter();
-  const qc = useQueryClient();
   const { data, error, refetch, isFetching } = useQuery({ queryKey: qk.bookingPayment(id), queryFn: () => api.bookingPayment(id), staleTime: 0, gcTime: 0, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
   const [agree, setAgree] = useState(false);
   const [agreeErr, setAgreeErr] = useState(false);
@@ -64,43 +80,45 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
   const [visitorPhone, setVisitorPhone] = useState("");
   const [visitorDone, setVisitorDone] = useState("");
   const [busy, setBusy] = useState(false);
+  const [method, setMethod] = useState<"card" | "bank">("card");
+  // Load the Inicis SDK as soon as live checkout is possible, so the first tap does not have to wait for it.
+  const live = !!data?.liveAvailable;
+  useEffect(() => { if (live) loadInicisSdk(INICIS_SDK).catch(() => {}); }, [live]);
   const [result, setResult] = useState("");
   const loggedOut = error instanceof ApiError && error.status === 401;
   const missing = error instanceof ApiError && error.status === 404;
   const notice = payError ? PAY_NOTICES[payError] ?? PAY_NOTICE_FALLBACK : "";
 
-  const preview = async () => {
-    if (!data || busy) return;
-    if (!agree) { setAgreeErr(true); return; }
-    setAgreeErr(false); setBusy(true); setResult("");
-    try {
-      const r = await api.bookingPaymentPreview(id);
-      void qc.invalidateQueries({ queryKey: ["mypage"] });
-      router.replace(r.redirect);
-      return;
-    } catch (e) { setResult(e instanceof ApiError && !/^\d{3} /.test(e.message) ? e.message : "임시 결제 완료 처리에 실패했습니다. 잠시 후 다시 시도해주세요."); }
-    setBusy(false);
-  };
   /** Inicis opens its payment layer (PC) or navigates to it (mobile); the result returns to the server and then to /payment/success. */
   const payCard = async () => {
     if (!data || busy) return;
     if (!agree) { setAgreeErr(true); return; }
     setAgreeErr(false); setBusy(true); setResult("");
     let stage = "prepare";
-    try {
-      const mobile = isMobileDevice();
-      const p = await api.bookingPaymentInicisPrepare(id, mobile ? "MOBILE" : "WEB");
-      stage = "sdk";
-      await loadInicisSdk(p.sdkUrl);
-      stage = "requestPayment";
-      window.INIPayPro!.requestPayment(p.params);
-      // The layer is up (PC) or the browser is leaving (mobile): keep the button locked so a second tap cannot open a second layer.
-      // Coming back through the back/forward cache (pageshow) or, failing that, 20 s later unlocks it.
-      const unlock = () => { window.removeEventListener("pageshow", unlock); setBusy(false); };
-      window.addEventListener("pageshow", unlock, { once: true });
-      window.setTimeout(unlock, 20000);
-      return;
-    } catch (e) { console.error("[inicis]", stage, e); setResult(e instanceof ApiError && !/^\d{3} /.test(e.message) ? e.message : "결제창을 열지 못했습니다. 잠시 후 다시 시도해주세요."); }
+    // prepare and the SDK load are retried once (nothing is written before approval). requestPayment is never retried: it may already have opened a layer.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        stage = "prepare";
+        const mobile = isMobileDevice();
+        const p = await api.bookingPaymentInicisPrepare(id, mobile ? "MOBILE" : "WEB", method);
+        stage = "sdk";
+        await loadInicisSdk(p.sdkUrl);
+        stage = "requestPayment";
+        window.INIPayPro!.requestPayment(p.params);
+        // The layer is up (PC) or the browser is leaving (mobile): keep the button locked so a second tap cannot open a second layer.
+        // Coming back through the back/forward cache (pageshow) or, failing that, 20 s later unlocks it.
+        const unlock = () => { window.removeEventListener("pageshow", unlock); setBusy(false); };
+        window.addEventListener("pageshow", unlock, { once: true });
+        window.setTimeout(unlock, 20000);
+        return;
+      } catch (e) {
+        console.error("[inicis]", stage, attempt, e instanceof ApiError ? e.status : "", e);
+        if (e instanceof ApiError && !/^\d{3} /.test(e.message)) { setResult(e.message); break; }
+        if (attempt === 0 && stage !== "requestPayment") { await new Promise((r) => window.setTimeout(r, 600)); continue; }
+        setResult("결제창을 열지 못했습니다. 잠시 후 다시 시도해주세요.");
+        break;
+      }
+    }
     setBusy(false);
   };
   const check = async () => {
@@ -168,12 +186,11 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
                     {!data.liveAvailable && (
                       <div className={styles.methodNotice}>
                         <p>실제 결제는 준비 중입니다. 현재 결제 수단을 선택할 수 없습니다.</p>
-                        {data.previewAvailable && <p>결제 수단을 선택하지 않아도 아래 ‘결제 없이 계속하기’로 진행할 수 있어요.</p>}
                         <p>결제 관련 문의는 병원으로 연락해주세요.</p>
                       </div>
                     )}
                     <div className={styles.methodGrid}>
-                      {(data.liveAvailable ? LIVE_METHODS : METHODS).map(([k, label]) => <button type="button" key={k} className={styles.method} disabled={!data.liveAvailable}>{label}</button>)}
+                      {(data.liveAvailable ? LIVE_METHODS : METHODS).map(([k, label]) => <button type="button" key={k} className={`${styles.method} ${data.liveAvailable && method === k ? styles.methodOn : ""}`} aria-pressed={data.liveAvailable && method === k} disabled={!data.liveAvailable || busy} onClick={() => setMethod(k as "card" | "bank")}>{label}</button>)}
                     </div>
                   </section>
                   <section className={styles.section}>
@@ -194,7 +211,6 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
                         <li>예약 변경·취소는 예약 내역에서 요청할 수 있습니다.</li>
                         <li>이미 결제한 예약의 환불은 운영자가 결제 내역과 병원의 환불 조건을 확인한 후 처리합니다.</li>
                         <li>실제 환불이 확인되면 결제 내역에 환불 금액과 상태가 반영됩니다.</li>
-                        <li>결제 없이 계속한 예약은 실제 청구가 없어 환불 대상 금액이 없습니다.</li>
                       </ul>
                       <label className={styles.agree}><input type="checkbox" className={styles.checkbox} checked={agree} onChange={(e) => { setAgree(e.target.checked); if (e.target.checked) setAgreeErr(false); }} /> 위 내용을 모두 확인했어요</label>
                       {agreeErr && <p className={styles.agreeErr} role="alert">취소 및 환불 규정을 확인하고 동의해주세요.</p>}
@@ -202,21 +218,14 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
                     <div className={styles.legal}>서비스 이용에 관한 개인정보 수집 동의<br />개인정보 및 민감정보 수집 이용, 개인정보 제3자 제공 동의</div>
                     <div className={styles.legal}>서울미녀는 고객 편의를 위해 예약·앱에서 결제 기능을 제공하며, 이 기능에 대해 의료기관으로부터 대가를 받지 않습니다. 거래의 당사자는 고객과 병원이며, 서울미녀는 이를 중개하지 않습니다. 위 내용을 확인하였으며, 결제에 동의합니다.</div>
                   </section>
-                  {data.preview && <div className={`${styles.alert} ${styles.alertWarn}`}>결제 없이 계속한 예약입니다. 실제 결제 내역은 없습니다.</div>}
                   {notice && <div className={`${styles.alert} ${styles.alertWarn}`} role="alert">{notice}</div>}
                   {result && <div className={styles.result} role="status">{result}</div>}
                   <div className={styles.grandTotal}><span className={styles.grandLabel}>총 결제 금액 <small>(VAT포함)</small></span><span className={styles.grandAmount}>{won(data.order.amount)}원</span></div>
                   <button type="button" className={styles.checkBtn} onClick={check} disabled={isFetching}>이미 결제했다면 상태 확인</button>
                   <div className={styles.sticky}>
-                    {(data.liveAvailable || !data.previewAvailable) && (data.liveAvailable
-                      ? <button type="button" className={styles.payBtn} disabled={busy} onClick={payCard}>{busy ? "결제창 여는 중…" : "카드로 결제하기"}</button>
-                      : <button type="button" className={styles.payBtn} disabled>온라인 결제 준비 중</button>)}
-                    {data.previewAvailable && (
-                      <>
-                        <button type="button" className={`${styles.previewBtn} ${data.liveAvailable ? "" : styles.previewPri}`} disabled={busy} onClick={preview}>{busy ? "처리 중…" : "결제 없이 계속하기"}</button>
-                        <p className={styles.checkoutNote}>실제 청구 없이 진행하며, 결제·정산 내역에 포함되지 않습니다.</p>
-                      </>
-                    )}
+                    {data.liveAvailable
+                      ? <button type="button" className={styles.payBtn} disabled={busy} onClick={payCard}>{busy ? "결제창 여는 중…" : PAY_BTN[method]}</button>
+                      : <button type="button" className={styles.payBtn} disabled>온라인 결제 준비 중</button>}
                   </div>
                 </>
               )}

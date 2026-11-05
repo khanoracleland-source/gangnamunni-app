@@ -236,7 +236,7 @@ export interface BookingPaymentInfo {
   ledgerReady: boolean; orderError: string; /** booking_payment.php $display_amount: the order's gross, or the booking price before an order exists */
   gross: number;
   order: { status: string; provider: string; amount: number; gross: number; pointsUsed: number; isTest: boolean } | null;
-  isConfirmed: boolean; isPaid: boolean; preview: boolean; liveAvailable: boolean; previewAvailable: boolean;
+  isConfirmed: boolean; isPaid: boolean; liveAvailable: boolean;
   points: { v2: boolean; expected: number; useReady: boolean; max: number; balance: number };
 }
 /** POST …/payment/inicis/prepare — the signed INIPayPro parameters (the hash key never leaves the server). */
@@ -450,8 +450,7 @@ export const api = {
   passwordResetConfirm: (ticket: string, password: string) => send<{ success: boolean }>("POST", "/v1/auth/password-reset/confirm", { ticket, password }, 30000),
   myPoints: (ctx?: ServerCtx) => get<MyPointsData>("/v1/mypage/points", undefined, ctx),
   bookingPayment: (id: number) => get<BookingPaymentInfo>(`/v1/mypage/bookings/${id}/payment`),
-  bookingPaymentPreview: (id: number) => send<{ success: boolean; redirect: string }>("POST", `/v1/mypage/bookings/${id}/payment/preview`, {}, 30000),
-  bookingPaymentInicisPrepare: (id: number, device: "WEB" | "MOBILE") => send<InicisPrepare>("POST", `/v1/mypage/bookings/${id}/payment/inicis/prepare`, { device }, 30000),
+  bookingPaymentInicisPrepare: (id: number, device: "WEB" | "MOBILE", method: "card" | "bank" = "card") => send<InicisPrepare>("POST", `/v1/mypage/bookings/${id}/payment/inicis/prepare`, { device, method }, 30000),
   bookingPaymentSuccess: (id: number) => get<BookingPaymentSuccess>(`/v1/mypage/bookings/${id}/payment/success`),
   bookingCancelInfo: (id: number) => get<BookingCancelInfo>(`/v1/mypage/bookings/${id}/cancel-info`),
   bookingCancel: (id: number, reason: string) => send<{ success: boolean; message: string; refund_status: string }>("POST", `/v1/mypage/bookings/${id}/cancel`, { reason }, 30000),

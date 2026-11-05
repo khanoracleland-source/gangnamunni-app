@@ -167,6 +167,14 @@ describe('Inicis card payment API', () => {
       expect(JSON.stringify(r.body)).not.toContain(KEY); // the hash key never leaves the server
       expect(wrote()).toBe(false);
     });
+    it('bank transfer opens the 계좌이체 window (P_PAY_TYPE BANK); unknown methods are refused', async () => {
+      const r = await prepare({ method: 'bank' }).expect(201);
+      expect(r.body.params.P_PAY_TYPE).toBe('BANK');
+      expect(r.body.params.P_AMT).toBe('50000');
+      await prepare({ method: 'card' }).expect(201).expect((x) => expect(x.body.params.P_PAY_TYPE).toBe('CARD'));
+      await prepare({ method: 'naverpay' }).expect(400).expect((x) => expect(x.body.code).toBe('METHOD_NOT_SUPPORTED'));
+      expect(wrote()).toBe(false);
+    });
     it('mobile passes the app scheme for the card apps to return to', async () => {
       const r = await prepare({ device: 'MOBILE' }).expect(201);
       expect(r.body.params.P_DEVICE_TYPE).toBe('MOBILE');
