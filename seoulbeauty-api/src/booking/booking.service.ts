@@ -75,7 +75,7 @@ export class BookingService {
   /** Up to ten photos for the top slider; the hospital's main image when it has no gallery. */
   private async images(hospitalId: number, fallback: string): Promise<string[]> {
     try {
-      const [rows] = (await this.db.query('SELECT image_url FROM gangnamunni_hospital_images WHERE hospital_id = ? ORDER BY display_order ASC LIMIT 10', [hospitalId])) as any;
+      const [rows] = (await this.db.query("SELECT image_url FROM hospital_images WHERE hospital_id = ? AND is_active = 1 AND image_type <> 'logo' ORDER BY sort_order ASC, id ASC LIMIT 10", [hospitalId])) as any;
       const list = (rows as any[]).map((r) => s(r.image_url)).filter(Boolean);
       return list.length ? list : fallback ? [fallback] : [];
     } catch (e) { this.log.error(`images: ${(e as Error).message}`); return fallback ? [fallback] : []; }

@@ -119,7 +119,7 @@ describe('booking API', () => {
     if (/FROM gangnamunni_settings/.test(sql)) return [st.settings[args[0]] !== undefined ? [{ setting_value: st.settings[args[0]] }] : []];
     if (/FROM g5_member/.test(sql)) return [st.member && args[0] === st.member.mb_id ? [st.member] : []];
     if (/FROM gangnamunni_hospitals WHERE id/.test(sql)) return [args[0] === 7 ? [st.hospital] : []];
-    if (/FROM gangnamunni_hospital_images/.test(sql)) return [st.images];
+    if (/FROM hospital_images WHERE hospital_id = \? AND is_active = 1 AND image_type <> 'logo' ORDER BY sort_order/.test(sql)) return [st.images];
     if (/FROM gangnamunni_hospital_treatment_prices WHERE hospital_treatment_id IN/.test(sql)) return [st.options];
     if (/GROUP_CONCAT\(DISTINCT tm.name/.test(sql)) return [[]];
     if (/FROM gangnamunni_treatment_packages p\s+WHERE p.id/.test(sql)) return [st.pkg && args[0] === st.pkg.id ? [st.pkg] : []];

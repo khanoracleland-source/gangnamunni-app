@@ -153,7 +153,7 @@ $booking_lunch_end_min = preg_match('/^(\d{1,2}):(\d{2})$/', $booking_lunch_end,
 
 // 병원 이미지 로드 (최대 10개)
 $images = [];
-$images_query = "SELECT image_url FROM gangnamunni_hospital_images WHERE hospital_id = {$hospital_id} ORDER BY display_order ASC LIMIT 10";
+$images_query = "SELECT image_url FROM hospital_images WHERE hospital_id = {$hospital_id} AND is_active = 1 AND image_type <> 'logo' ORDER BY sort_order ASC, id ASC LIMIT 10";
 $images_result = mysqli_query($connect, $images_query);
 if ($images_result) {
     while ($img = mysqli_fetch_assoc($images_result)) {
