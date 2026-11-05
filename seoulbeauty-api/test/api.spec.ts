@@ -25,7 +25,10 @@ describe('HTTP API (mock DB)', () => {
       if (sql.includes('information_schema')) return [[{ 1: 1 }]];
       if (sql.includes('FROM gangnamunni_hospitals h WHERE h.id = ?')) return [values![0] === 3 ? [{ 1: 1 }] : []];
       if (sql.includes('COUNT(*) AS total')) return [[{ total: 1 }]];
-      if (sql.includes('FROM gangnamunni_hospitals h') && sql.includes('h.id = ?')) return [values![0] === 3 ? [hospitalRow] : []];
+      if (sql.includes('FROM gangnamunni_hospitals h') && sql.includes('h.id = ?')) {
+        if (sql.includes('AS kakao_channel_url')) expect(sql).toContain("COALESCE(NULLIF(TRIM(h.kakao_channel_url),''), NULLIF(TRIM(h.kakao_url),''))"); // detail.php fallback order
+        return [values![0] === 3 ? [{ ...hospitalRow, kakao_channel_url: 'https://pf.kakao.com/_abc' }] : []];
+      }
       if (sql.includes('FROM gangnamunni_hospitals h')) return [[hospitalRow]];
       if (sql.includes('FROM hospital_features')) return [[{ feature_icon: '🅿', feature_label: '주차' }]];
       if (sql.includes('FROM gangnamunni_settings') && sql.includes('map_provider')) return [[{ setting_key: 'map_provider', setting_value: 'kakao' }, { setting_key: 'kakao_map_api_keys', setting_value: '["k1"]' }, { setting_key: 'google_maps_api_key', setting_value: 'g1' }]];
@@ -77,6 +80,7 @@ describe('HTTP API (mock DB)', () => {
     expect(d.body.features).toEqual([{ icon: '🅿', label: '주차' }]);
     expect(d.body.images).toEqual(['uploads/h3/in1.jpg']); // main image and logo (matched by path) excluded
     expect(d.body.map).toEqual({ provider: 'kakao', key: 'k1' }); // includes/kakao_map.php settings: rotated Kakao JS key
+    expect(d.body.kakaoChannelUrl).toBe('https://pf.kakao.com/_abc');
     await request(app.getHttpServer()).get('/v1/hospitals/99').expect(404);
   });
 

@@ -64,6 +64,8 @@ export interface HospitalDetail extends Hospital {
   /** includes/kakao_map.php: provider resolved from gangnamunni_settings; key is a domain-restricted browser key (null for osm).
    *  Optional: an older API (or its cached 30 s answer) does not send it — the page then falls back to OpenStreetMap. */
   map?: { provider: "kakao" | "google" | "osm"; key: string | null };
+  /** detail.php 카카오톡 채널 (http(s) link or null); optional for older API answers. */
+  kakaoChannelUrl?: string | null;
 }
 
 export interface TreatmentOption {

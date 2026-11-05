@@ -98,6 +98,7 @@ export class HospitalsService {
   private flags: SchemaFlags = { hasDisplayOrder: false, hasWishlist: false, hasShowRating: false };
   private flagsLoaded = false;
   private priceCols: { regular: boolean; representative: boolean } | null = null;
+  private kakaoCols: { channel: boolean; legacy: boolean } | null = null;
 
   constructor(@Inject(DB) private readonly db: Db, private readonly search: SearchService) {}
 
@@ -108,6 +109,15 @@ export class HospitalsService {
     const [p] = (await this.db.query("SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'is_representative'")) as any;
     this.priceCols = { regular: r.length > 0, representative: p.length > 0 };
     return this.priceCols;
+  }
+
+  /** detail.php: kakao_channel_url, falling back to the older kakao_url; either column may be missing. Probed once. */
+  private async getKakaoCols() {
+    if (this.kakaoCols) return this.kakaoCols;
+    const [c] = (await this.db.query("SHOW COLUMNS FROM gangnamunni_hospitals LIKE 'kakao_channel_url'")) as any;
+    const [l] = (await this.db.query("SHOW COLUMNS FROM gangnamunni_hospitals LIKE 'kakao_url'")) as any;
+    this.kakaoCols = { channel: c.length > 0, legacy: l.length > 0 };
+    return this.kakaoCols;
   }
 
   /**
@@ -317,7 +327,10 @@ export class HospitalsService {
   }
 
   async detail(id: number) {
-    const flags = await this.getFlags();
+    const [flags, kakao] = await Promise.all([this.getFlags(), this.getKakaoCols()]);
+    // first non-empty of kakao_channel_url, kakao_url (detail.php:2739); '' when neither column exists
+    const kakaoParts = [kakao.channel ? "NULLIF(TRIM(h.kakao_channel_url),'')" : null, kakao.legacy ? "NULLIF(TRIM(h.kakao_url),'')" : null].filter(Boolean) as string[];
+    const kakaoExpr = kakaoParts.length ? `COALESCE(${kakaoParts.join(', ')})` : "''";
     const [rows] = (await this.db.query(
       `SELECT h.id, h.name, h.description, h.introduction, h.address, h.phone, h.profile_image_url,
               h.main_image_url, h.rating, h.review_count, h.latitude, h.longitude, h.categories, h.badges,
@@ -328,7 +341,8 @@ export class HospitalsService {
                 flags.hasWishlist
                   ? "(SELECT COUNT(*) FROM gangnamunni_wishlist gw WHERE gw.target_type='hospital' AND gw.target_id=h.id)"
                   : '0'
-              } AS wishlist_count
+              } AS wishlist_count,
+              ${kakaoExpr} AS kakao_channel_url
        FROM gangnamunni_hospitals h
        WHERE h.id = ? AND h.is_active = 1 AND COALESCE(h.is_demo,0) = 0
          AND (h.status = 'approved' OR h.status IS NULL) LIMIT 1`,
@@ -336,6 +350,7 @@ export class HospitalsService {
     )) as any;
     if (!rows[0]) throw new NotFoundException('hospital not found');
     await this.attachImages(rows);
-    return toHospitalDto(rows[0]);
+    const url = String(rows[0].kakao_channel_url ?? '').trim();
+    return { ...toHospitalDto(rows[0]), kakaoChannelUrl: /^https?:\/\//i.test(url) ? url : null };
   }
 }
