@@ -69,6 +69,15 @@ export class HospitalsController {
     return { items: await this.content.treatments(hid) };
   }
 
+  /** detail.php?treatment_id= (design 05-08): the hospital's approved detail images for that treatment. */
+  @Get(':id/treatments/:tid/images')
+  async treatmentImages(@Param('id') id: string, @Param('tid') tid: string, @Res({ passthrough: true }) res: Response) {
+    this.cache(res);
+    const hid = idParam(id);
+    await this.hospitals.detail(hid); // visibility gate
+    return { items: await this.content.treatmentImages(hid, idParam(tid)) };
+  }
+
   /** hospitals.php?hid= view: the hospital's treatments with cheapest prices + category chips. */
   @Get(':id/search-view')
   async searchView(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {

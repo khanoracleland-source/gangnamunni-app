@@ -495,6 +495,8 @@ export const api = {
   suggest: (q: string) => get<SearchSuggest>("/v1/search/suggest", { q }),
   hospital: (id: number) => get<HospitalDetail>(`/v1/hospitals/${id}`),
   treatments: (id: number) => get<{ items: HospitalTreatment[] }>(`/v1/hospitals/${id}/treatments`),
+  /** detail.php?treatment_id= (05-08): the hospital's approved detail images for one treatment */
+  treatmentImages: (id: number, treatmentId: number) => get<{ items: { imageUrl: string; caption: string | null; isDefault?: boolean }[] }>(`/v1/hospitals/${id}/treatments/${treatmentId}/images`),
   doctors: (id: number) => get<{ items: Doctor[] }>(`/v1/hospitals/${id}/doctors`),
   reviews: (id: number, limit = 20, offset = 0) => get<Page<Review>>(`/v1/hospitals/${id}/reviews`, { limit, offset }),
 };
@@ -511,6 +513,7 @@ export const qk = {
   searchView: (id: number) => ["searchView", id] as const,
   reviews: (id: number) => ["reviews", id] as const,
   treatments: (id: number) => ["treatments", id] as const,
+  treatmentImages: (id: number, treatmentId: number) => ["treatments", id, "images", treatmentId] as const,
   doctors: (id: number) => ["doctors", id] as const,
   wishlist: (id: number) => ["wishlist", id] as const,
   mypage: ["mypage"] as const,

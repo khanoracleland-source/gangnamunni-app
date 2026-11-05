@@ -31,6 +31,8 @@ describe('HTTP API (mock DB)', () => {
       }
       if (sql.includes('FROM gangnamunni_hospitals h')) return [[hospitalRow]];
       if (sql.includes('FROM hospital_features')) return [[{ feature_icon: '🅿', feature_label: '주차' }]];
+      if (sql.includes('FROM gangnamunni_hospital_treatment_images')) { expect(sql).toContain("approval_status = 'approved'"); return [values![1] === 20 ? [{ image_url: 'uploads/t20/1.jpg', caption: null }, { image_url: '', caption: 'x' }] : []]; }
+      if (sql.includes('SELECT default_image_url FROM gangnamunni_treatment_master')) return [values![0] === 30 ? [{ default_image_url: 'uploads/master/30.jpg' }] : []];
       if (sql.includes('FROM gangnamunni_settings') && sql.includes('map_provider')) return [[{ setting_key: 'map_provider', setting_value: 'kakao' }, { setting_key: 'kakao_map_api_keys', setting_value: '["k1"]' }, { setting_key: 'google_maps_api_key', setting_value: 'g1' }]];
       if (sql.includes('FROM gangnamunni_hospital_treatments ht')) return [[
         { hospital_treatment_id: 1, is_promoted: 1, treatment_id: 20, name: '주름 보톡스', description: null, id: 11, option_name: '', body_part: '', dosage_value: 50, dosage_unit: 'U', regular_price: 100000, price: 80000 },
@@ -82,6 +84,16 @@ describe('HTTP API (mock DB)', () => {
     expect(d.body.map).toEqual({ provider: 'kakao', key: 'k1' }); // includes/kakao_map.php settings: rotated Kakao JS key
     expect(d.body.kakaoChannelUrl).toBe('https://pf.kakao.com/_abc');
     await request(app.getHttpServer()).get('/v1/hospitals/99').expect(404);
+  });
+
+  it('treatment detail images (05-08): approved only, empty urls dropped, visibility gate', async () => {
+    const r = await request(app.getHttpServer()).get('/v1/hospitals/3/treatments/20/images').expect(200);
+    expect(r.body.items).toEqual([{ imageUrl: 'uploads/t20/1.jpg', caption: null, isDefault: false }]);
+    // no approved image → the treatment master's default image (hti_images_for fallback); none at all → []
+    expect((await request(app.getHttpServer()).get('/v1/hospitals/3/treatments/30/images').expect(200)).body.items).toEqual([{ imageUrl: 'uploads/master/30.jpg', caption: null, isDefault: true }]);
+    expect((await request(app.getHttpServer()).get('/v1/hospitals/3/treatments/31/images').expect(200)).body.items).toEqual([]);
+    await request(app.getHttpServer()).get('/v1/hospitals/99/treatments/20/images').expect(404);
+    await request(app.getHttpServer()).get('/v1/hospitals/3/treatments/abc/images').expect(400);
   });
 
   it('reviews only published+active', async () => {

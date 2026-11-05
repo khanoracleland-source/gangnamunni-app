@@ -37,7 +37,7 @@ const useRouteId = (): number => {
 
 export const HospitalDetailRoute = () => {
   const sp = useSearchParams();
-  return <HospitalDetail id={useRouteId()} initialTab={toDetailTab(sp.get("tab") ?? undefined)} />;
+  return <HospitalDetail id={useRouteId()} initialTab={toDetailTab(sp.get("tab") ?? undefined)} treatmentId={posInt(sp.get("treatment_id"))} />;
 };
 
 export const DoctorDetailRoute = () => {

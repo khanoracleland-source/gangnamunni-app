@@ -295,6 +295,34 @@ export class HospitalContentService {
   }
   private mapCache: { value: MapConfig; until: number } | null = null;
 
+  /**
+   * detail.php?treatment_id= block (design 05-08) — includes/hospital_treatment_images.php hti_images_for():
+   * the hospital's approved detail images for one treatment; none → the treatment's default image from
+   * gangnamunni_treatment_master.default_image_url (is_active = 1), flagged isDefault. The images table may not exist yet.
+   */
+  async treatmentImages(hospitalId: number, treatmentId: number): Promise<{ imageUrl: string; caption: string | null; isDefault: boolean }[]> {
+    let out: { imageUrl: string; caption: string | null; isDefault: boolean }[] = [];
+    try {
+      const [rows] = (await this.db.query(
+        `SELECT image_url, caption FROM gangnamunni_hospital_treatment_images
+         WHERE hospital_id = ? AND treatment_id = ? AND approval_status = 'approved' ORDER BY sort_order ASC, id ASC LIMIT 30`,
+        [hospitalId, treatmentId],
+      )) as any;
+      out = (rows as any[]).map((r) => ({ imageUrl: String(r.image_url ?? '').trim(), caption: r.caption ? String(r.caption) : null, isDefault: false })).filter((r) => r.imageUrl);
+    } catch (e) {
+      this.log.warn(`treatment images unavailable: ${(e as Error).message}`);
+    }
+    if (out.length) return out;
+    try {
+      const [rows] = (await this.db.query(`SELECT default_image_url FROM gangnamunni_treatment_master WHERE id = ? AND is_active = 1 LIMIT 1`, [treatmentId])) as any;
+      const url = String((rows as any[])[0]?.default_image_url ?? '').trim();
+      return url ? [{ imageUrl: url, caption: null, isDefault: true }] : [];
+    } catch (e) {
+      this.log.warn(`treatment default image unavailable: ${(e as Error).message}`);
+      return [];
+    }
+  }
+
   async features(hospitalId: number): Promise<{ icon: string; label: string }[]> {
     const [rows] = (await this.db.query(
       `SELECT feature_icon, feature_label FROM hospital_features WHERE hospital_id = ? AND is_active = 1 ORDER BY sort_order ASC LIMIT 20`,

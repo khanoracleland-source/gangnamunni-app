@@ -233,7 +233,7 @@ export default function HospitalList({ params, initial }: { params: HospitalList
       rows.push(<InfeedCard key={`ad-${infeed.ads[adIdx].id}`} ad={infeed.ads[adIdx]} php={php} rounded={roundedCards} />);
       adIdx++;
     }
-    rows.push(<HospitalCard key={h.id} h={h} keyword={p.q || keyword} slotToken={h.adSlot ? slotTokens[String(h.adSlot.bookingId)] : undefined} boxed={!!p.q} rounded={roundedCards} />);
+    rows.push(<HospitalCard key={h.id} h={h} keyword={p.q || keyword} slotToken={h.adSlot ? slotTokens[String(h.adSlot.bookingId)] : undefined} boxed={!!p.q} rounded={roundedCards} treatmentId={eff?.id} />);
   });
 
   return (

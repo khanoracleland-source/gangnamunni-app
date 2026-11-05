@@ -1,0 +1,26 @@
+/* design 05-08 시술 상세 block on the 홈 tab */
+.wrap { }
+.h2 { margin: 0; padding: 20px 20px 4px; font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
+.note { margin: 0; padding: 0 20px 12px; font-size: calc(12px * var(--fs-scale)); color: #4A4446; line-height: 1.5; }
+.card { display: block; margin: 0 20px 10px; padding: 14px 14px 12px; border: 1px solid #ECE9EA; border-radius: 16px; color: #1A1718; text-decoration: none; background: #fff; }
+.name { font-size: calc(15px * var(--fs-scale)); font-weight: 500; line-height: 1.4; }
+.priceRow { display: flex; justify-content: flex-end; align-items: baseline; gap: 8px; margin-top: 4px; }
+.regular { font-size: calc(12px * var(--fs-scale)); color: #6B6466; }
+.price { font-size: calc(22px * var(--fs-scale)); font-weight: 700; color: #1A1718; }
+.won { font-size: calc(12px * var(--fs-scale)); color: #1A1718; margin-left: -6px; }
+.empty { margin: 0 20px 10px; font-size: calc(13px * var(--fs-scale)); color: #6B6466; }
+.gap { height: 12px; }
+.h2b { margin: 0; padding: 24px 20px 4px; font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
+.desc { margin: 0; padding: 0 20px; font-size: calc(13px * var(--fs-scale)); color: #4A4446; line-height: 1.6; white-space: pre-line; }
+.h2c { margin: 0; padding: 24px 20px 12px; font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
+.detail { margin: 0 20px; border-radius: 16px; overflow: hidden; background: #F7F5F6; }
+.detailImg { display: block; width: 100%; height: auto; }
+.detailClip { max-height: 260px; object-fit: cover; object-position: top; }
+.placeholder { margin: 0 20px; height: 260px; border-radius: 16px; background: #F7F5F6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; }
+.phTitle { font-size: calc(15px * var(--fs-scale)); font-weight: 700; color: #4A4446; }
+.phText { font-size: calc(12px * var(--fs-scale)); color: #6B6466; line-height: 1.5; }
+.moreWrap { padding: 16px 20px 10px; }
+.moreBtn { width: 100%; height: 46px; border: 1px solid #BDB6B8; border-radius: 12px; background: #fff; font-size: calc(15px * var(--fs-scale)); font-weight: 500; color: #1A1718; }
+.skWrap { padding: 20px 20px 0; display: flex; flex-direction: column; gap: 10px; }
+.sk { height: 84px; border-radius: 16px; }
+@media (max-width: 360px) { .h2, .note, .h2b, .desc, .h2c, .moreWrap, .skWrap { padding-left: 16px; padding-right: 16px; } .card, .empty, .detail, .placeholder { margin-left: 16px; margin-right: 16px; } }

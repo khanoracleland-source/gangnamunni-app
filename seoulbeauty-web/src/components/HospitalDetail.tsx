@@ -11,6 +11,7 @@ import ConsultSheet from "./ConsultSheet";
 import TreatmentList from "./TreatmentList";
 import DoctorList, { DoctorMiniList } from "./DoctorList";
 import HospitalMap from "./HospitalMap";
+import TreatmentEvent from "./TreatmentEvent";
 import styles from "./HospitalDetail.module.css";
 import starIcon from "@/assets/icons/star.png";
 import trophyIcon from "@/assets/icons/trophy.png";
@@ -86,7 +87,8 @@ function HeroSlider({ images }: { images: string[] }) {
   );
 }
 
-export default function HospitalDetail({ id, initial, initialTab = "home" }: { id: number; initial?: Detail; initialTab?: DetailTab }) {
+/** `treatmentId` = detail.php?treatment_id= : the 홈 tab opens with that treatment's 이벤트 block (design 05-08). */
+export default function HospitalDetail({ id, initial, initialTab = "home", treatmentId = 0 }: { id: number; initial?: Detail; initialTab?: DetailTab; treatmentId?: number }) {
   const router = useRouter();
   const qc = useQueryClient();
   const [tab, setTab] = useState<DetailTab>(initialTab);
@@ -149,7 +151,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home" }: { i
     if (t === "doctors") qc.prefetchQuery({ queryKey: qk.doctors(id), queryFn: () => api.doctors(id) });
     try {
       const u = new URL(window.location.href);
-      if (t === "home") u.searchParams.delete("tab"); else u.searchParams.set("tab", t);
+      if (t === "home") u.searchParams.delete("tab"); else u.searchParams.set("tab", t);   // treatment_id stays in the URL
       window.history.replaceState(window.history.state, "", u);
     } catch { /* ignore */ }
   };
@@ -217,6 +219,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home" }: { i
 
       {tab === "home" && (
         <>
+          {treatmentId > 0 && <TreatmentEvent hospitalId={id} treatmentId={treatmentId} />}
           {/* design 05-04: 시술 병원 summary, address + 주소복사, 병원소개, 의료진 소개 */}
           <h2 className={styles.secTitleLg}>시술 병원</h2>
           <div className={styles.hospCard}>
