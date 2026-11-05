@@ -21,7 +21,7 @@ const items = [
 ] as const;
 
 /** Design part 02 (login / sign-up / password) has no tab bar. */
-const NO_NAV = ["/login", "/register", "/register-terms", "/password-lost", "/password-reset"];
+const NO_NAV = ["/booking", "/login", "/register", "/register-terms", "/password-lost", "/password-reset"];
 
 export default function BottomNav() {
   const pathname = usePathname();
