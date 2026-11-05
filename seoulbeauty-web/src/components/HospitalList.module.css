@@ -11,6 +11,8 @@
 .clear { font-size: 12px; color: var(--muted); text-decoration: underline; }
 .grid { padding: 0; }
 .gridBoxed { padding-bottom: 0; }
+/* rounded cards carry margin-top only; give the last one room above the bottom nav */
+.gridRounded { padding-bottom: 12px; }
 .empty { text-align: center; padding: 80px 20px; color: #999; }
 .retry { color: var(--accent); text-decoration: underline; margin-left: 6px; }
 /* hospitals.php dosage chips (figma_sync_index.css .sr-dosage / .sr-chip) */
@@ -25,6 +27,11 @@
 .adThumb { width: 100px; height: 100px; flex: 0 0 100px; object-fit: cover; border: 1px solid #ECE9EA; box-sizing: border-box; background: #fff; }
 .adThumbEmpty { background: #D9D9D9; border-color: #D9D9D9; }
 .adBadge { position: absolute; top: 20px; left: 24px; background: #000; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
+/* same shape as HospitalCard .rounded so an ad sits inside the rounded list without breaking the rhythm */
+.adRounded { margin: 12px 20px 0; padding: 16px; border: 1px solid #ECE9EA; border-radius: 16px; background: #fff; }
+.adRounded .adThumb { width: 76px; height: 76px; flex: 0 0 76px; border-color: #DCD6D8; border-radius: 12px; }
+.adRounded .adBadge { top: 20px; left: 20px; }   /* 4px inside the rounded thumb (padding 16 + 4), as the divided row does (20/24 over 16/20) */
+.adRounded .adTitle { font-size: calc(17px * var(--fs-scale)); }
 .adInfo { flex: 1; min-width: 0; }
 .adTitle { font-size: 16px; font-weight: 500; line-height: 1.35; margin-bottom: 6px; }
 .adAddr { font-size: 13px; color: #4A4446; }
@@ -54,4 +61,4 @@
 .treat .chips { padding: 14px 20px; }
 .treat .chip { height: 36px; box-sizing: border-box; border-radius: 18px; font-size: calc(15px * var(--fs-scale)); color: #857E80; }
 .treat .chipActive { border-color: #1A1718; color: #1A1718; }
-.treat .grid { padding-bottom: 8px; }
+.treat .grid { padding-bottom: 12px; }

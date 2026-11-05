@@ -25,17 +25,17 @@
 .eventPrice { font-size: calc(13px * var(--fs-scale)); margin-top: 2px; display: flex; gap: 6px; align-items: baseline; }
 .orig { color: var(--muted); font-size: calc(11px * var(--fs-scale)); }
 .disc { font-weight: 700; color: var(--accent); }
-/* design 03-01: banner 125 / #F1F0F0 under the search row; category table full width */
-.banner { position: relative; min-height: 125px; height: clamp(125px, 32vw, 160px); margin-top: 12px; background: #F1F0F0; overflow: hidden; }
+/* design 03-01: banner 125 / #F1F0F0 under the search row; banner and category table share the search row's side inset (20px, 16px at ≤360px) */
+.banner { position: relative; min-height: 125px; height: clamp(125px, 32vw, 160px); margin: 12px 20px 0; background: #F1F0F0; overflow: hidden; }
 .bannerText { padding: 22px 16px 0 clamp(20px, 7.6vw, 40px); }
 .bannerTitle { font-size: clamp(15px, 4.1vw, 19px); font-weight: 700; line-height: 1.4; }
 .bannerSub { font-size: calc(11px * var(--fs-scale)); margin-top: 6px; }
 .bannerAd .ad, .bannerAd .adImg { height: clamp(125px, 32vw, 160px); }
 .bannerAd .adImg { width: 100%; object-fit: cover; border: 0; }
 .bannerAd .adText { height: clamp(125px, 32vw, 160px); border: 0; background: #F1F0F0; }
-.table { padding: 0; }
+.table { padding: 0 20px; }
 /* design footer: #F1F0F0, 10px / 1.75, #6B6466 */
-.company { margin: 8px 0 0; padding: 20px 20px 24px; background: #F1F0F0; color: #6B6466; font-size: calc(10px * var(--fs-scale)); line-height: 1.75; }
+.company { margin: 8px 20px 0; padding: 20px 16px 24px; background: #F1F0F0; color: #6B6466; font-size: calc(10px * var(--fs-scale)); line-height: 1.75; }   /* same side inset as the banner / table */
 .company p { margin: 0; }
 .company a { color: inherit; text-decoration: none; }
 .companyLogo { margin-bottom: 10px; }
@@ -46,4 +46,9 @@
 .copyright { margin: 0; color: #9A9395; }
 .empty { text-align: center; padding: 80px 20px; color: #9A9395; }
 .link { color: var(--accent); text-decoration: underline; }
-@media (max-width: 360px) { .company { padding-left: 16px; padding-right: 16px; } }
+@media (max-width: 360px) {
+  .company { margin-left: 16px; margin-right: 16px; padding-left: 12px; padding-right: 12px; }
+  /* keep the banner and the category table on the search row's edge (SiteHeader .searchRow drops to 16px here) */
+  .banner { margin-left: 16px; margin-right: 16px; }
+  .table { padding-left: 16px; padding-right: 16px; }
+}

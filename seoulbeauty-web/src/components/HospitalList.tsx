@@ -83,7 +83,7 @@ function josa(w: string): string {
   return "이(가)";
 }
 
-function InfeedCard({ ad, php }: { ad: InfeedAd; php: string }) {
+function InfeedCard({ ad, php, rounded }: { ad: InfeedAd; php: string; rounded?: boolean }) {
   const img = assetUrl(ad.imageUrl);
   const href = ad.hospitalId ? `/hospitals/${ad.hospitalId}` : ad.linkUrl.startsWith("http") || ad.linkUrl.startsWith("/") || ad.linkUrl === "#" ? ad.linkUrl : phpUrl(php, ad.linkUrl);
   const district = addrDistrict(ad.subtitle);
@@ -101,9 +101,10 @@ function InfeedCard({ ad, php }: { ad: InfeedAd; php: string }) {
     </>
   );
   const onClick = () => trackClick(php, ad.id, href);
+  const cls = `${styles.adCard} ${rounded ? styles.adRounded : ""}`;
   return ad.hospitalId
-    ? <Link href={href} className={styles.adCard} data-ad-id={ad.id} onClick={onClick}>{body}</Link>
-    : <a href={href} className={styles.adCard} data-ad-id={ad.id} onClick={onClick}>{body}</a>;
+    ? <Link href={href} className={cls} data-ad-id={ad.id} onClick={onClick}>{body}</Link>
+    : <a href={href} className={cls} data-ad-id={ad.id} onClick={onClick}>{body}</a>;
 }
 
 export default function HospitalList({ params, initial }: { params: HospitalListParams; initial?: HospitalPage }) {
@@ -217,6 +218,8 @@ export default function HospitalList({ params, initial }: { params: HospitalList
   const cond = [...(regions.length ? [regions.join(", ")] : []), ...(p.dosage ? [p.dosage + (p.dosage === "4cc" ? " 이상" : "")] : [])];
   // design 05-01: a treatment picked from the home 시술 list (no keyword): "선택한 시술" row, dosage / sort pills, rounded price cards
   const treatMode = (!!eff || treatPending) && !p.q;
+  // Rounded (bordered) cards for every browse list, including the plain /hospitals list; only a keyword search keeps the divided rows (03-09).
+  const roundedCards = !p.q;
   const treatName = eff?.name ?? p.treatment;
   const hasCond = cond.length > 0 && !!eff && !!p.q; // 03-11: treatment exists, only region/dosage don't match
   // 03-14 (sr-none-flag): nothing found at all -> no dosage/sort/filter chips, just the empty state + suggestions
@@ -227,10 +230,10 @@ export default function HospitalList({ params, initial }: { params: HospitalList
   let adIdx = 0;
   items.forEach((h, i) => {
     if (i > 0 && infeed && infeed.interval > 0 && i % infeed.interval === 0 && infeed.ads[adIdx]) {
-      rows.push(<InfeedCard key={`ad-${infeed.ads[adIdx].id}`} ad={infeed.ads[adIdx]} php={php} />);
+      rows.push(<InfeedCard key={`ad-${infeed.ads[adIdx].id}`} ad={infeed.ads[adIdx]} php={php} rounded={roundedCards} />);
       adIdx++;
     }
-    rows.push(<HospitalCard key={h.id} h={h} keyword={p.q || keyword} slotToken={h.adSlot ? slotTokens[String(h.adSlot.bookingId)] : undefined} boxed={!!p.q} rounded={treatMode} />);
+    rows.push(<HospitalCard key={h.id} h={h} keyword={p.q || keyword} slotToken={h.adSlot ? slotTokens[String(h.adSlot.bookingId)] : undefined} boxed={!!p.q} rounded={roundedCards} />);
   });
 
   return (
@@ -297,7 +300,7 @@ export default function HospitalList({ params, initial }: { params: HospitalList
           <div className={styles.srSuggChips}>{EMPTY_SUGG.map((w) => <Link key={w} href={`/hospitals?q=${encodeURIComponent(w)}`} className={styles.srSuggChip}>{w}</Link>)}</div>
         </div>
       )}
-      {items.length > 0 && <div ref={gridRef} className={`${styles.grid} ${p.q ? styles.gridBoxed : ""}`}>{rows}</div>}
+      {items.length > 0 && <div ref={gridRef} className={`${styles.grid} ${p.q ? styles.gridBoxed : styles.gridRounded}`}>{rows}</div>}
       {hasMore && <div ref={sentinelRef} style={{ height: 48 }} aria-hidden="true" />}
     </section>
   );

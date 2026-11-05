@@ -34,7 +34,7 @@
 .boxed .tagPrice { margin-top: 2px; }
 .boxed .sale { color: #1A1718; }
 .boxed .per { color: #6B6466; }
-/* design 05-01 (treatment picked): rounded card, 76 thumb, 17px treatment + price lines */
+/* design 05-01 (treatment picked) and the plain browse list: rounded card, 76 thumb, 17px treatment + price lines */
 .rounded { margin: 12px 20px 0; padding: 16px; border: 1px solid #ECE9EA; border-radius: 16px; background: #fff; }
 .rounded .thumb { width: 76px; height: 76px; flex: 0 0 76px; border-color: #DCD6D8; border-radius: 12px; }
 .rounded .info { gap: 3px; }
@@ -44,3 +44,4 @@
 .rounded .sale { color: #1A1718; }
 .rounded .num { font-size: calc(17px * var(--fs-scale)); }
 .rounded .priceRow { line-height: 1.25; }
+.rounded .tags { margin-top: 4px; }
