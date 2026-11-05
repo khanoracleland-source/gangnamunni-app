@@ -9,6 +9,7 @@ import BookingCancel from "./BookingCancel";
 import BookingPayment from "./BookingPayment";
 import BookingPaymentSuccess from "./BookingPaymentSuccess";
 import CommunityDetail from "./CommunityDetail";
+import DoctorDetail from "./DoctorDetail";
 import CommunityList from "./CommunityList";
 import CommunityWrite from "./CommunityWrite";
 import EventDetail from "./EventDetail";
@@ -37,6 +38,13 @@ const useRouteId = (): number => {
 export const HospitalDetailRoute = () => {
   const sp = useSearchParams();
   return <HospitalDetail id={useRouteId()} initialTab={toDetailTab(sp.get("tab") ?? undefined)} />;
+};
+
+export const DoctorDetailRoute = () => {
+  const params = useParams<{ id: string; did: string }>();
+  const id = posInt(params.id), did = posInt(params.did);
+  if (!id || !did) notFound();
+  return <DoctorDetail hospitalId={id} doctorId={did} />;
 };
 
 export const BookingRoute = () => {

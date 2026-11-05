@@ -61,6 +61,9 @@ export interface SearchView {
 export interface HospitalDetail extends Hospital {
   images: string[];
   features: { icon: string; label: string }[];
+  /** includes/kakao_map.php: provider resolved from gangnamunni_settings; key is a domain-restricted browser key (null for osm).
+   *  Optional: an older API (or its cached 30 s answer) does not send it — the page then falls back to OpenStreetMap. */
+  map?: { provider: "kakao" | "google" | "osm"; key: string | null };
 }
 
 export interface TreatmentOption {

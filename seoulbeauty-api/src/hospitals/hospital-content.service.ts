@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DB, Db } from '../db/db.module';
 
 /** Mirrors detail.php (시술목록 / 의료진 / 갤러리 / 특징). Optional columns are probed once, like the PHP does per request. */
@@ -94,8 +94,11 @@ export function toOption(r: Record<string, any>, treatmentName: string): Treatme
   };
 }
 
+export interface MapConfig { provider: 'kakao' | 'google' | 'osm'; key: string | null }
+
 @Injectable()
 export class HospitalContentService {
+  private readonly log = new Logger(HospitalContentService.name);
   private flags: Flags | null = null;
 
   constructor(@Inject(DB) private readonly db: Db) {}
@@ -253,6 +256,44 @@ export class HospitalContentService {
     });
     return { total: treatments.length, categories: [...cats.values()], treatments };
   }
+
+  /**
+   * Map provider for the detail page — includes/kakao_map.php: gangnamunni_settings map_provider (default kakao),
+   * kakao_map_api_keys (JSON array, one picked at random to spread quota) or kakao_map_api_key, google_maps_api_key;
+   * a provider without a key falls back kakao → google → osm. Cached for 5 minutes (settings rarely change).
+   * The key is a browser (JavaScript) key, restricted by domain in the Kakao console, so sending it to the page is intended.
+   */
+  async mapConfig(): Promise<MapConfig> {
+    const now = Date.now();
+    if (this.mapCache && this.mapCache.until > now) return this.mapCache.value;
+    let value: MapConfig = { provider: 'osm', key: null };
+    try {
+      const [rows] = (await this.db.query(
+        `SELECT setting_key, setting_value FROM gangnamunni_settings
+         WHERE setting_key IN ('map_provider','kakao_map_api_keys','kakao_map_api_key','google_maps_api_key')`,
+      )) as any;
+      const s = new Map<string, string>((rows as any[]).map((r) => [String(r.setting_key), String(r.setting_value ?? '')]));
+      let kakao = '';
+      try {
+        const list = JSON.parse(s.get('kakao_map_api_keys') || '[]');
+        const keys = Array.isArray(list) ? list.map((k) => String(k ?? '').trim()).filter(Boolean) : [];
+        if (keys.length) kakao = keys[Math.floor(Math.random() * keys.length)];
+      } catch { /* not JSON */ }
+      if (!kakao) kakao = (s.get('kakao_map_api_key') ?? '').trim();
+      const google = (s.get('google_maps_api_key') ?? '').trim();
+      let provider = (s.get('map_provider') ?? 'kakao').trim();
+      if (provider === 'kakao' && !kakao) provider = google ? 'google' : 'osm';
+      else if (provider === 'google' && !google) provider = kakao ? 'kakao' : 'osm';
+      else if (provider !== 'kakao' && provider !== 'google') provider = 'osm';
+      value = provider === 'kakao' ? { provider, key: kakao } : provider === 'google' ? { provider, key: google } : { provider: 'osm', key: null };
+    } catch (e) {
+      this.log.warn(`map settings unavailable: ${(e as Error).message}`);
+    }
+    // a random Kakao key is picked per refresh, not per request, which is fine for quota spreading
+    this.mapCache = { value, until: now + 5 * 60_000 };
+    return value;
+  }
+  private mapCache: { value: MapConfig; until: number } | null = null;
 
   async features(hospitalId: number): Promise<{ icon: string; label: string }[]> {
     const [rows] = (await this.db.query(

@@ -1,31 +1,61 @@
-.root { padding-bottom: 64px; }
-.top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
-.back { width: 40px; height: 40px; font-size: 28px; line-height: 1; }
-.title { flex: 1; min-width: 0; font-size: 17px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hero { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #d9d9d9; }
-.body { padding: 14px 20px; }
-.meta { display: flex; gap: 12px; font-size: 14px; color: var(--muted); flex-wrap: wrap; margin-bottom: 8px; }
-.price { color: var(--accent); font-weight: 700; }
-.row { margin: 4px 0; font-size: 14px; }
-.link { color: inherit; text-decoration: underline; }
-.features { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
-.feature { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); min-width: 56px; }
-.featureIcon { font-size: 22px; }
-.tabs { position: sticky; top: 48px; z-index: 9; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--bg); border-bottom: 1px solid var(--line); }
-.tab { padding: 12px 0; font-size: 15px; color: var(--muted); border-bottom: 2px solid transparent; }
-.tabActive { color: var(--fg); font-weight: 700; border-bottom-color: var(--fg); }
-.tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 10px; }
-.tag { font-size: 11px; color: var(--accent); border: 1px solid var(--accent); padding: 1px 6px; border-radius: 3px; }
-.h2 { font-size: 16px; font-weight: 600; margin: 20px 0 8px; }
-.intro { white-space: pre-line; font-size: 14px; line-height: 1.6; margin: 0; }
-.gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-.gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 4px; background: #eee; }
-.hours { margin: 0; font-size: 14px; }
+/* design 04-01 병원 상세 (frame shared by all tabs) */
+.root { padding-bottom: 96px; }
+.top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; height: 52px; padding: 0 8px; background: var(--bg); }
+.back { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #1A1718; flex: 0 0 44px; }
+.topBtn { width: 44px; height: 44px; flex: 0 0 44px; display: flex; align-items: center; justify-content: center; }
+.topBtn img { display: block; }
+.title { flex: 1; min-width: 0; text-align: center; font-size: calc(17px * var(--fs-scale)); font-weight: 500; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabs { position: sticky; top: 52px; z-index: 9; display: flex; background: var(--bg); border-bottom: 1px solid #DCD6D8; }
+.tab { flex: 1 1 0; height: 46px; font-size: calc(15px * var(--fs-scale)); color: #1A1718; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabActive { font-weight: 700; border-bottom-color: #1A1718; }
+/* image strip (design 118 tall at 393): drawn a little taller (≈153 at 393, capped at 210 in the 640 column) object-fit: cover like detail.php .gallery-image; radius 12, thin progress line */
+.slider { position: relative; margin: 16px 20px 0; border-radius: 12px; overflow: hidden; background: #DAD7D8; }
+.slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.slides::-webkit-scrollbar { display: none; }
+.slide { flex: 0 0 100%; width: 100%; height: clamp(140px, 39vw, 210px); object-fit: cover; scroll-snap-align: start; display: block; background: #DAD7D8; }
+.progress { position: absolute; left: 30%; right: 30%; bottom: 12px; height: 2px; background: rgba(255,255,255,.6); border-radius: 1px; }
+.progressBar { position: absolute; top: 0; height: 2px; background: #fff; border-radius: 1px; transition: left .2s; }
+.nameRow { display: flex; align-items: center; gap: 14px; padding: 14px 20px 0; }
+.name { flex: 1; min-width: 0; font-size: calc(15px * var(--fs-scale)); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ratingRow { display: flex; align-items: center; gap: 14px; margin: 0 20px; padding: 6px 0 14px; border-bottom: 1px solid #ECE9EA; font-size: calc(12px * var(--fs-scale)); }
+.rating { display: inline-flex; align-items: center; gap: 4px; }
+.rating img, .best img { display: block; object-fit: contain; }
+.rating b { font-weight: 700; }
+.ratingOf { color: #6B6466; }
+.best { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
+.hoursBlock { margin: 0 20px; border-bottom: 1px solid #ECE9EA; }
+.hoursRow { width: 100%; display: flex; align-items: center; gap: 6px; padding: 14px 0; font-size: calc(13px * var(--fs-scale)); color: #1A1718; text-align: left; }
+.openState { color: #4A4446; font-weight: 500; }
+.hoursText { flex: 1; min-width: 0; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chevUp { transform: rotate(180deg); }
+.hours { margin: 0; padding: 0 0 12px 23px; font-size: calc(13px * var(--fs-scale)); }
 .hours div { display: flex; gap: 12px; padding: 2px 0; }
 .hours dt { width: 36px; color: var(--muted); }
 .hours dd { margin: 0; }
 .todayRow { font-weight: 600; }
+/* design 05-04 홈 탭 */
+.secTitleLg { margin: 0; padding: 34px 20px 12px; font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
+.secTitle { margin: 0; padding: 22px 20px 4px; font-size: calc(15px * var(--fs-scale)); font-weight: 700; }
+.hospCard { display: flex; gap: 12px; margin: 0 20px; padding: 0 0 14px; border-bottom: 1px solid #ECE9EA; }
+.hospThumb { width: 62px; height: 62px; flex: 0 0 62px; border: 1px solid #ECE9EA; border-radius: 12px; object-fit: cover; display: block; background: #fff; }
+.hospInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.hospName { font-size: calc(17px * var(--fs-scale)); font-weight: 700; line-height: 1.3; }
+.hospAddr { font-size: calc(12px * var(--fs-scale)); color: #4A4446; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sep { color: #CFC8CB; }
+.hospMeta { display: flex; align-items: center; gap: 12px; font-size: calc(12px * var(--fs-scale)); }
+.addrRow { display: flex; align-items: center; gap: 6px; margin: 0 20px; padding: 14px 0 0; font-size: calc(13px * var(--fs-scale)); }
+.addrText { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pill { flex: 0 0 auto; height: 32px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid #BDB6B8; border-radius: 16px; font-size: calc(13px * var(--fs-scale)); color: #1A1718; text-decoration: none; background: #fff; }
+.intro { margin: 0 20px; padding: 0 0 26px; border-bottom: 1px solid #ECE9EA; white-space: pre-line; font-size: calc(13px * var(--fs-scale)); line-height: 1.6; color: #4A4446; }
+.link { color: inherit; text-decoration: underline; }
 .empty { text-align: center; padding: 80px 20px; color: #999; }
-.cta { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 640px; bottom: calc(var(--nav-h) + var(--sab)); display: flex; gap: 8px; padding: 10px 16px; background: var(--bg); border-top: 1px solid var(--line); z-index: 40; }
-.ctaPrimary { flex: 1; text-align: center; padding: 12px; border: 1px solid var(--accent); color: var(--accent); font-weight: 700; font-size: 15px; }
-.ctaSecondary { flex: 0 0 auto; padding: 12px 18px; border: 1px solid var(--line); font-size: 15px; }
+/* design 04-01 CTA: 52px pills, 상담신청 accent / 예약하기 grey; fixed above the bottom nav */
+.cta { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 640px; bottom: calc(var(--nav-h) + var(--sab)); display: flex; gap: 10px; padding: 12px 20px; background: var(--bg); z-index: 40; }
+.ctaPrimary { flex: 1 1 0; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--accent); color: #fff; font-size: calc(17px * var(--fs-scale)); font-weight: 500; }
+.ctaSecondary { flex: 1 1 0; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #F2EFF0; color: #1A1718; font-size: calc(17px * var(--fs-scale)); font-weight: 500; text-decoration: none; }
+@media (max-width: 360px) {
+  .slider, .ratingRow, .hoursBlock { margin-left: 16px; margin-right: 16px; }
+  .nameRow, .cta, .secTitleLg, .secTitle { padding-left: 16px; padding-right: 16px; }
+  .hospCard, .addrRow, .intro { margin-left: 16px; margin-right: 16px; }
+}
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + var(--sab) + 88px); background: rgba(26,23,24,.88); color: #fff; font-size: calc(13px * var(--fs-scale)); padding: 10px 16px; border-radius: 20px; z-index: 50; white-space: nowrap; }

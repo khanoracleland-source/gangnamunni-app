@@ -56,8 +56,8 @@ export class HospitalsController {
     this.cache(res);
     const hid = idParam(id);
     const h = await this.hospitals.detail(hid); // 404 for hidden/demo/unapproved
-    const [images, features] = await Promise.all([this.content.images(hid, h.mainImageUrl, h.profileImageUrl), this.content.features(hid)]);
-    return { ...h, images, features };
+    const [images, features, map] = await Promise.all([this.content.images(hid, h.mainImageUrl, h.profileImageUrl), this.content.features(hid), this.content.mapConfig()]);
+    return { ...h, images, features, map };
   }
 
   /** 시술목록: active treatments with sale prices, grouped per treatment. */

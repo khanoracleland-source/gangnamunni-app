@@ -1,13 +1,16 @@
-.list { list-style: none; margin: 0; padding: 0; }
-.item { display: flex; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); }
-.photo { width: 72px; height: 72px; flex: 0 0 72px; border-radius: 50%; object-fit: cover; background: #eee; }
-.photoEmpty { display: flex; align-items: center; justify-content: center; font-size: 28px; }
-.info { flex: 1; min-width: 0; }
-.name { font-size: 16px; font-weight: 600; display: flex; gap: 8px; align-items: baseline; }
-.spec { font-size: 13px; color: var(--accent); font-weight: 500; }
-.sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
-.desc { font-size: 14px; white-space: pre-line; margin: 6px 0 0; }
-.tags { display: flex; gap: 5px; flex-wrap: nowrap; overflow: hidden; margin-top: 8px; }
-.tagChip { font-size: 11px; background: #f2f2f2; border-radius: 4px; padding: 3px 8px; white-space: nowrap; flex: 0 0 auto; }
-.muted { color: #999; font-size: 14px; padding: 12px 0; }
-.sk { height: 80px; }
+/* design 04-01 의료진 소개 */
+.h2 { margin: 0; padding: 20px 20px 12px; font-size: calc(15px * var(--fs-scale)); font-weight: 700; }
+.list { list-style: none; margin: 0; padding: 0 20px; }
+.card { display: flex; align-items: center; gap: 18px; padding: 16px; margin: 0 0 10px; border: 1px solid #ECE9EA; border-radius: 16px; background: #fff; color: inherit; text-decoration: none; }
+.cardMini { gap: 20px; padding: 14px 16px; }
+.photo { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 50%; object-fit: cover; background: #ECE9EA; display: block; }
+.photoEmpty { display: flex; align-items: center; justify-content: center; }
+.info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.name { font-size: calc(15px * var(--fs-scale)); font-weight: 500; line-height: 1.3; }
+.spec { display: flex; align-items: center; gap: 5px; font-size: calc(12px * var(--fs-scale)); color: #4A4446; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { padding: 3px 7px; background: #F1EFEF; border-radius: 6px; font-size: calc(12px * var(--fs-scale)); font-weight: 500; color: #1A1718; white-space: nowrap; }
+.muted { color: #6B6466; font-size: calc(14px * var(--fs-scale)); padding: 8px 20px 20px; margin: 0; }
+.skWrap { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
+.sk { height: 98px; border-radius: 16px; }
+@media (max-width: 360px) { .h2 { padding-left: 16px; padding-right: 16px; } .list, .skWrap, .muted { padding-left: 16px; padding-right: 16px; } }

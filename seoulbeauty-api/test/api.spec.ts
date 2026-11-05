@@ -28,6 +28,7 @@ describe('HTTP API (mock DB)', () => {
       if (sql.includes('FROM gangnamunni_hospitals h') && sql.includes('h.id = ?')) return [values![0] === 3 ? [hospitalRow] : []];
       if (sql.includes('FROM gangnamunni_hospitals h')) return [[hospitalRow]];
       if (sql.includes('FROM hospital_features')) return [[{ feature_icon: '🅿', feature_label: '주차' }]];
+      if (sql.includes('FROM gangnamunni_settings') && sql.includes('map_provider')) return [[{ setting_key: 'map_provider', setting_value: 'kakao' }, { setting_key: 'kakao_map_api_keys', setting_value: '["k1"]' }, { setting_key: 'google_maps_api_key', setting_value: 'g1' }]];
       if (sql.includes('FROM gangnamunni_hospital_treatments ht')) return [[
         { hospital_treatment_id: 1, is_promoted: 1, treatment_id: 20, name: '주름 보톡스', description: null, id: 11, option_name: '', body_part: '', dosage_value: 50, dosage_unit: 'U', regular_price: 100000, price: 80000 },
         { hospital_treatment_id: 1, is_promoted: 1, treatment_id: 20, name: '주름 보톡스', description: null, id: 12, option_name: '', body_part: '', dosage_value: 100, dosage_unit: 'U', regular_price: 0, price: 150000 },
@@ -75,6 +76,7 @@ describe('HTTP API (mock DB)', () => {
     const d = await request(app.getHttpServer()).get('/v1/hospitals/3').expect(200);
     expect(d.body.features).toEqual([{ icon: '🅿', label: '주차' }]);
     expect(d.body.images).toEqual(['uploads/h3/in1.jpg']); // main image and logo (matched by path) excluded
+    expect(d.body.map).toEqual({ provider: 'kakao', key: 'k1' }); // includes/kakao_map.php settings: rotated Kakao JS key
     await request(app.getHttpServer()).get('/v1/hospitals/99').expect(404);
   });
 
