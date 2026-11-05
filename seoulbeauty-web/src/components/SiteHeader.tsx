@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, type HomeData } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import { useLoginUrl, useMe } from "@/lib/me";
 import RegionPicker from "./RegionPicker";
 import SearchOverlay, { addRecentSearch } from "./SearchOverlay";
 import shareIcon from "@/assets/icons/share.png";
+import logoWordmark from "@/assets/icons/logo-wordmark.png";
 import bellIcon from "@/assets/icons/bell.png";
 import bellDotIcon from "@/assets/icons/bell-dot.png";
 import pinIcon from "@/assets/icons/pin-white.png";
@@ -63,7 +63,6 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
-  const php = usePhpBase();
   const me = useMe();
   const loginUrl = useLoginUrl();
   // The overlay is open only while the URL is the one it was opened on, so it closes by itself once the next screen's URL is in.
@@ -135,7 +134,7 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
           <Link href="/" className={styles.logo} aria-label="서울미녀 홈">
             {logoBroken ? <span>서울미녀</span> : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={phpUrl(php, "assets/images/logo_129.jpg")} alt="서울미녀" onError={() => setLogoBroken(true)} />
+              <img src={logoWordmark.src} alt="서울미녀" onError={() => setLogoBroken(true)} />
             )}
           </Link>
           <div className={styles.topRight}>

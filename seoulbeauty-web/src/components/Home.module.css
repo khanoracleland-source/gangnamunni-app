@@ -30,9 +30,12 @@
 .bannerText { padding: 22px 16px 0 clamp(20px, 7.6vw, 40px); }
 .bannerTitle { font-size: clamp(15px, 4.1vw, 19px); font-weight: 700; line-height: 1.4; }
 .bannerSub { font-size: calc(11px * var(--fs-scale)); margin-top: 6px; }
-.bannerAd .ad, .bannerAd .adImg { height: clamp(125px, 32vw, 160px); }
-.bannerAd .adImg { width: 100%; object-fit: cover; border: 0; }
-.bannerAd .adText { height: clamp(125px, 32vw, 160px); border: 0; background: #F1F0F0; }
+/* ad picture: shown whole, never cropped. The box has a fixed ratio (--ar, set from the first picture and remembered), so nothing below it moves when the image loads;
+   a picture with another ratio is letterboxed on the banner's own grey. */
+.bannerAd { height: auto; min-height: 0; }
+.bannerAd .ad { display: block; }
+.bannerAd .adImg { display: block; width: 100%; height: auto; aspect-ratio: var(--ar, 2.8); object-fit: contain; border: 0; }
+.bannerAd .adText { aspect-ratio: var(--ar, 2.8); height: auto; border: 0; background: #F1F0F0; }
 .table { padding: 0 20px; }
 /* design footer: #F1F0F0, 10px / 1.75, #6B6466 */
 .company { margin: 8px 20px 0; padding: 20px 16px 24px; background: #F1F0F0; color: #6B6466; font-size: calc(10px * var(--fs-scale)); line-height: 1.75; }   /* same side inset as the banner / table */

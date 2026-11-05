@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, assetUrl, formatWon, qk, type HomeAd, type HomeData } from "@/lib/api";
@@ -11,10 +11,25 @@ import ListSkeleton from "./ListSkeleton";
 import CategoryTable from "./CategoryTable";
 import styles from "./Home.module.css";
 
+/** Top banner box: its width/height ratio is reserved before any picture arrives, so the page below never jumps when the image loads.
+ *  The ratio of the first ad picture is remembered on this device (the first ever visit may adjust once). */
+const AD_RATIO_KEY = "sb:adBannerRatio";
+const AD_RATIO_DEFAULT = 2.8; // design 03-01: 125px tall at ≈350 wide
+const readRatio = () => {
+  try { const v = Number(window.localStorage.getItem(AD_RATIO_KEY)); return v >= 1.2 && v <= 6 ? v : AD_RATIO_DEFAULT; } catch { return AD_RATIO_DEFAULT; }
+};
+
 export default function Home({ initial }: { initial?: HomeData }) {
   const php = usePhpBase();
   const { data, isError, refetch } = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: initial });
   const rootRef = useRef<HTMLDivElement>(null);
+  const [adRatio, setAdRatio] = useState(readRatio);
+  const learnRatio = (img: HTMLImageElement) => {
+    const r = img.naturalWidth / img.naturalHeight;
+    if (!(r >= 1.2 && r <= 6) || Math.abs(r - adRatio) / adRatio < 0.01) return;
+    setAdRatio(r);
+    try { window.localStorage.setItem(AD_RATIO_KEY, String(r)); } catch { /* ignore */ }
+  };
   useEffect(() => {
     if (!rootRef.current || !data) return;
     return observeImpressions(php, rootRef.current);
@@ -30,14 +45,14 @@ export default function Home({ initial }: { initial?: HomeData }) {
   const { ads, promos, events, categories, settings } = data;
   const bannerMonth = Number(new Intl.DateTimeFormat("en-US", { month: "numeric", timeZone: "Asia/Seoul" }).format(new Date()));
   const showAds = settings.adShowIndex && ads.length > 0;
-  const adSlides = (list: HomeAd[]) => list.map((ad) => {
+  const adSlides = (list: HomeAd[], onFirstLoad?: (img: HTMLImageElement) => void) => list.map((ad, i) => {
     const img = assetUrl(ad.imageUrl);
     const href = ad.linkUrl.startsWith("http") || ad.linkUrl.startsWith("/") || ad.linkUrl === "#" ? ad.linkUrl : phpUrl(php, ad.linkUrl);
     return (
       <a key={ad.id} href={href} className={styles.ad} data-ad-id={ad.id} onClick={() => trackClick(php, ad.id, href)}>
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt={ad.title} className={styles.adImg} />
+          <img src={img} alt={ad.title} className={styles.adImg} onLoad={i === 0 && onFirstLoad ? (e) => onFirstLoad(e.currentTarget) : undefined} />
         ) : (
           <div className={styles.adText}><div className={styles.adTitle}>{ad.title}</div>{ad.subtitle && <div className={styles.adSub}>{ad.subtitle}</div>}</div>
         )}
@@ -51,8 +66,8 @@ export default function Home({ initial }: { initial?: HomeData }) {
 
       {/* design 03-01/02: 125px banner under the search row. Ads fill it; with no ad it shows the default 고객평가 우수병원 banner. */}
       {showAds && settings.adAfterSearch ? (
-        <section className={`${styles.banner} ${styles.bannerAd}`}>
-          <Carousel auto={settings.adAutoScroll} label="광고">{adSlides(ads)}</Carousel>
+        <section className={`${styles.banner} ${styles.bannerAd}`} style={{ "--ar": adRatio } as React.CSSProperties}>
+          <Carousel auto={settings.adAutoScroll} label="광고">{adSlides(ads, learnRatio)}</Carousel>
         </section>
       ) : (
         <section className={styles.banner} aria-label="고객평가 우수병원">
