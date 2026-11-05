@@ -60,7 +60,7 @@ function booking_payment_gateway(): ?BookingPaymentGateway {
         $ip = trim(booking_payment_setting('INICIS_CLIENT_IP'));
         if ($ip === '') throw new InvalidArgumentException('INICIS_CLIENT_IP (public server IP registered with Inicis) is required.');
         $gateway = new InicisGateway($mid, $key, trim(booking_payment_setting('INICIS_MODE', 'live')), $ip,
-            booking_payment_inicis_ledger_reader(booking_payment_ledger_db()));
+            booking_payment_inicis_ledger_reader(booking_payment_ledger_db()), null, 15, trim(booking_payment_setting('INICIS_HASHKEY')));
     } catch (Throwable $e) {
         error_log('[booking_payment_gateway] Inicis not connected: ' . $e->getMessage());
         $gateway = null;

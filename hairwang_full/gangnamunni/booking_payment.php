@@ -175,7 +175,7 @@ if (file_exists(__DIR__ . '/includes/points_checkout.php')) {
 }
 $preview = booking_payment_previews($connect, [$booking_id]);
 $channels = booking_payment_methods();
-$live_available = booking_payment_checkout_ready();
+$live_available = booking_payment_checkout_ready($logged_mb_id);
 // 카드사·할부 시트(05-29~33)는 결제창 연동 전까지 ?cardsheet=1 미리보기에서만 노출한다.
 $cardsheet_preview = (($_GET['cardsheet'] ?? '') === '1');
 // 결제창에서 돌아왔을 때의 안내. 코드만 받고 문구는 서버가 정한다.
@@ -188,8 +188,22 @@ if ($pay_error !== '') {
         'BOOKING_NOT_CONFIRMED' => '예약 상태가 변경되어 결제를 진행하지 않았습니다. 청구된 금액은 없습니다.',
         'ORDER_STATE' => '이 주문은 지금 결제할 수 없습니다. 청구된 금액은 없습니다.',
         'UNRESOLVED' => '결제 결과를 확인하고 있습니다. 다시 결제하지 말고 잠시 후 ‘이미 결제했다면 상태 확인’을 눌러주세요.',
+        'AUTH_FAILED' => '결제 인증이 취소되었거나 완료되지 않았습니다. 청구된 금액은 없습니다. 다시 시도해주세요.',
+        'REJECTED' => '카드 승인이 거절되었습니다. 청구된 금액은 없으니 다른 카드로 다시 시도해주세요.',
+        'RESULT_MISMATCH' => '결제 결과가 주문과 일치하지 않아 승인을 취소했습니다. 청구된 금액이 있다면 자동으로 취소됩니다. 계속되면 병원이나 고객센터로 문의해주세요.',
+        'FINALIZE_FAILED' => '결제를 처리하는 중 문제가 생겨 승인을 취소했습니다. 청구된 금액이 있다면 자동으로 취소됩니다. 잠시 후 다시 시도해주세요.',
+        'FINALIZE_FAILED_UNCANCELLED' => '결제를 처리하는 중 문제가 생겼습니다. 다시 결제하지 말고 병원이나 고객센터로 문의해주세요.',
+        'POINTS_NOT_SUPPORTED' => '포인트를 사용한 주문은 이 화면에서 결제할 수 없습니다.',
+        'AUTH_INVALID' => '결제 인증 정보가 올바르지 않아 결제를 진행하지 않았습니다. 청구된 금액은 없습니다.',
+        'MID_MISMATCH' => '결제 인증 정보가 올바르지 않아 결제를 진행하지 않았습니다. 청구된 금액은 없습니다.',
+        'BUSY' => '다른 결제가 처리 중입니다. 잠시 후 ‘이미 결제했다면 상태 확인’을 눌러주세요.',
+        'UNAVAILABLE' => '지금은 온라인 결제를 이용할 수 없습니다. 청구된 금액은 없습니다.',
+        'UNKNOWN_ORDER' => '결제 주문을 찾을 수 없어 결제를 진행하지 않았습니다. 청구된 금액이 있다면 고객센터로 문의해주세요.',
+        'ERROR' => '결제를 처리하는 중 오류가 발생했습니다. 다시 결제하지 말고 ‘이미 결제했다면 상태 확인’을 눌러주세요. 계속되면 병원이나 고객센터로 문의해주세요.',
+        'TOO_MANY_ATTEMPTS' => '결제 시도 횟수가 많아 결제를 진행하지 않았습니다. 청구된 금액은 없습니다. 1시간쯤 뒤에 다시 시도하거나 병원에 문의해주세요.',
     ];
-    $pay_notice = $pay_notices[$pay_error] ?? '결제가 승인되지 않았습니다. 청구된 금액은 없으니 다시 시도하거나 다른 결제 수단을 이용해주세요.';
+    // 알 수 없는 코드는 ‘청구되지 않았다’고 약속하지 않는다(실제로 청구됐을 수 있다).
+    $pay_notice = $pay_notices[$pay_error] ?? '결제가 완료되지 않았습니다. 이미 결제했다면 ‘이미 결제했다면 상태 확인’을 눌러 확인해주세요. 결제 내역이 없으면 다시 시도해주세요.';
 }
 $preview_available = booking_payment_preview_enabled();
 // 05-36 결제 실패 시트: 청구가 없었음이 확실한 실패 코드만 사용한다(UNRESOLVED/취소는 기존 안내 유지).
@@ -933,15 +947,35 @@ html body .bp-page .bp-method img { height: 21px; }
             document.getElementById('termsError').hidden = true;
         }
     });
+    var INICIS_SDK = 'https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js';
+    // 이니시스 자체 호스트에서만 SDK 를 불러온다(서버가 준 주소라도 이 값과 다르면 거부).
+    function loadInicisSdk(url) {
+        return new Promise(function(resolve, reject) {
+            var fail = function() { reject(new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.')); };
+            if (url !== INICIS_SDK) { fail(); return; }
+            if (window.INIPayPro) { resolve(); return; }
+            var el = document.createElement('script');
+            el.src = url; el.charset = 'UTF-8'; el.async = true;
+            el.onload = function() { window.INIPayPro ? resolve() : fail(); };
+            el.onerror = fail;
+            document.head.appendChild(el);
+        });
+    }
     function verify() {
         return post('booking_payment_verify.php', {}).then(function(d) { location.href = d.redirect_url; });
     }
     if (payBtn) payBtn.addEventListener('click', function() {
         if (busy || !agreed()) return;
         setBusy(true);
-        // 서버가 금액·주문번호를 정한다. 연결된 PG가 없어 결제창은 열리지 않는다(booking_payment_request.php 가 503).
-        post('booking_payment_request.php', {provider:selectedProvider, point_use:String(currentPointUse()), in_app: window.FlutterBridge ? '1' : ''}).then(function() {
-            throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.');
+        // 서버가 금액·주문번호를 정하고 서명된 결제창 파라미터를 돌려준다(KG이니시스 INIPayPro). 결과는 서버(P_NEXT_URL)가 받아 승인한다.
+        post('booking_payment_request.php', {provider:selectedProvider, point_use:String(currentPointUse()), in_app: window.FlutterBridge ? '1' : '', touch_mac: (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ? '1' : ''}).then(function(d) {
+            return loadInicisSdk(d.sdk_url).then(function() {
+                window.INIPayPro.requestPayment(d.params);
+                // 결제창이 떠 있는 동안(웹) 또는 카드 앱으로 나가 있는 동안(모바일) 버튼을 잠근다. 돌아오면(pageshow) 또는 20초 뒤 푼다.
+                var unlock = function() { window.removeEventListener('pageshow', unlock); setBusy(false); };
+                window.addEventListener('pageshow', unlock);
+                window.setTimeout(unlock, 20000);
+            });
         }).catch(failed);
     });
     if (previewBtn) previewBtn.addEventListener('click', function() {

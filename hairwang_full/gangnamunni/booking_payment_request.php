@@ -53,7 +53,7 @@ if ($point_use > 0 && !points_checkout_ready($connect)) {
 
 // 예약 소유권 확인
 $stmt = mysqli_prepare($connect,
-    "SELECT id, status FROM gangnamunni_bookings
+    "SELECT id, status, treatment, name FROM gangnamunni_bookings
      WHERE id = ?
        AND (
             (? <> '' AND mb_id = ?)
@@ -93,8 +93,13 @@ if ($order['status'] !== 'pending') {
 
 require_once __DIR__ . '/includes/booking_payment_config.php';
 // 결제가 불가능하면 포인트 홀드 등 어떤 상태도 바꾸기 전에 멈춘다.
-if (!booking_payment_checkout_ready() || !isset(booking_payment_methods()[$provider])) {
+if (!booking_payment_checkout_ready($logged_mb_id) || !isset(booking_payment_methods()[$provider])) {
     bp_fail('현재 이 결제 수단을 이용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'PAYMENT_UNAVAILABLE', 503);
+}
+
+// 이니시스 카드 결제는 아직 포인트 사용 결제를 지원하지 않는다(Nest 와 동일). 포인트를 되돌리는 요청(point_use=0)은 아래에서 그대로 처리한다.
+if ($point_use > 0 && booking_payment_gateway() instanceof InicisGateway) {
+    bp_fail('포인트를 사용한 결제는 아직 지원되지 않습니다. 포인트를 0원으로 변경한 뒤 결제해주세요.', 'POINT_PAYMENT_NOT_SUPPORTED', 409);
 }
 
 // 포인트 적용/변경/해제 — 결제 잠금 안에서, PG 에 결제가 진행 중이지 않을 때만 금액을 바꾼다.
@@ -133,8 +138,23 @@ try {
     if (($order['status'] ?? '') !== 'pending' || (int)$order['amount'] <= 0) {
         bp_fail('결제할 수 없는 주문 상태입니다.', 'INVALID_ORDER_STATE', 409);
     }
-    // 연결된 PG가 없다: 여기서 PG별 결제창 파라미터를 만들어 돌려준다.
-    throw new BookingPaymentGatewayUnavailableException('No payment gateway is configured.');
+    if ((int)($order['points_used'] ?? 0) > 0) {
+        bp_fail('포인트를 사용한 결제는 아직 지원되지 않습니다. 포인트를 0원으로 변경한 뒤 결제해주세요.', 'POINT_PAYMENT_NOT_SUPPORTED', 409);
+    }
+    $gateway = booking_payment_require_gateway();
+    if (!($gateway instanceof InicisGateway) || $provider !== 'card') {
+        throw new BookingPaymentGatewayUnavailableException('This payment method has no checkout.');
+    }
+    // KG이니시스 INIPayPro: 서명된 파라미터만 돌려준다(HashKey 는 나가지 않는다). 아무것도 기록하지 않는다.
+    require_once __DIR__ . '/includes/booking_payment_inicis_flow.php';
+    if (booking_payment_inicis_recent_attempts(booking_payment_ledger_db(), (int)$order['id']) >= BOOKING_PAYMENT_INICIS_MAX_ATTEMPTS_PER_HOUR) {
+        bp_fail('결제 시도 횟수가 많아 잠시 후 다시 시도해주세요.', 'TOO_MANY_ATTEMPTS', 429);
+    }
+    $mobile = (string)($_POST['in_app'] ?? '') === '1' || (string)($_POST['touch_mac'] ?? '') === '1' || preg_match('/Android|iPhone|iPad|iPod|Mobile/i', (string)($_SERVER['HTTP_USER_AGENT'] ?? '')) === 1;
+    $params = $gateway->checkoutParams($order, $booking, $mobile, booking_payment_base_url(), trim(booking_payment_setting('INICIS_APP_SCHEME', 'wellness')));
+    echo json_encode(['success' => true, 'provider' => 'inicis', 'mode' => $gateway->mode(), 'sdk_url' => InicisGateway::SDK_URL, 'params' => $params],
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 } catch (Throwable $e) {
     error_log('[booking_payment_request] ' . $e->getMessage());
     bp_fail('현재 이 결제 수단을 이용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'PAYMENT_UNAVAILABLE', 503);

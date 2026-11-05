@@ -199,7 +199,12 @@ export class InicisPaymentService {
     if (s((bs as any[])[0]?.status) !== 'confirmed') return refuse('BOOKING_NOT_CONFIRMED');
 
     const cancel = async (reason: string) => {
-      try { await netCancel(cfg, { idc, authTid, amt: amount, oid, reason }, this.fetcher); return true; }
+      try {
+        const r = await netCancel(cfg, { idc, authTid, amt: amount, oid, reason }, this.fetcher);
+        if (r?.P_STATUS === '00') return true;
+        this.alert('NET_CANCEL_UNCONFIRMED', `${oid} auth=${authTid}: net cancel answered P_STATUS=${r?.P_STATUS ?? '?'}: check the Inicis admin and refund by hand`);
+        return false;
+      }
       catch (e) { this.alert('NET_CANCEL_FAILED', `${oid} auth=${authTid}: ${(e as Error).message}: check the Inicis admin and refund by hand`); return false; }
     };
     let res: Record<string, string>;

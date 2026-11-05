@@ -78,9 +78,30 @@ function booking_payment_sql_list(array $providers): string {
     return "'" . implode("','", $providers) . "'";
 }
 
-function booking_payment_checkout_ready(): bool {
+/**
+ * 누가 결제할 수 있는가. 테스트/실거래 모두 실제 카드가 결제되므로 mb_id 허용 목록을 쓴다:
+ *   test -> INICIS_TEST_MEMBERS, live -> INICIS_LIVE_MEMBERS (쉼표 구분). 빈 목록 = 아무도 아님. live 에서만 '*' = 모두.
+ */
+function booking_payment_inicis_member_allowed(string $mode, string $memberId, ?callable $setting = null): bool {
+    if ($memberId === '') return false;   // 비회원은 절대 불가
+    $key = $mode === 'live' ? 'INICIS_LIVE_MEMBERS' : 'INICIS_TEST_MEMBERS';
+    $list = $setting ? (string)$setting($key) : booking_payment_setting($key);
+    $ids = array_values(array_filter(array_map('trim', explode(',', $list)), 'strlen'));
+    return ($mode === 'live' && in_array('*', $ids, true)) || in_array($memberId, $ids, true);
+}
+
+/**
+ * 카드 결제창을 열 수 있는가. $memberId 를 주면(결제 화면·요청) 이니시스는 허용 목록(INICIS_TEST_MEMBERS / INICIS_LIVE_MEMBERS)도 확인한다.
+ * 비회원은 '' 로 넘기면 거부된다. null 이면 허용 목록은 보지 않는다(점검 스크립트용).
+ */
+function booking_payment_checkout_ready(?string $memberId = null): bool {
     if (!booking_payment_live_enabled() || !booking_payment_methods()) return false;
-    if (!booking_payment_gateway()) return false;
+    $gateway = booking_payment_gateway();
+    if (!$gateway) return false;
+    if ($gateway instanceof InicisGateway) {
+        if (!$gateway->canCheckout()) return false;   // INICIS_HASHKEY(모바일 금액위변조 Hash Key) 필요
+        if ($memberId !== null && !booking_payment_inicis_member_allowed($gateway->mode(), $memberId)) return false;
+    }
     try { booking_payment_base_url(); } catch (Throwable $e) { return false; }
     return true;
 }

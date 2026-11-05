@@ -340,6 +340,18 @@ describe('Inicis card payment API', () => {
       expect(st.order.status).toBe('pending');
       expect(st.attempts.at(-1)).toMatchObject({ outcome: 'pending', reason: 'FINALIZE_FAILED_UNCANCELLED' });
     });
+    it('a net cancel answered with a status other than 00 is NOT treated as done (alert + uncancelled notice)', async () => {
+      process.env.INICIS_ALERT_WEBHOOK = 'https://hooks.example.test/x';
+      try {
+        st.failUpdate = true;
+        inicisReply = async (url) => (url.endsWith('payNetCancel.ini') ? reply({ P_STATUS: '01' })() : reply(approveOk())());
+        const r = await ret(authResult()).expect(303);
+        expect(r.headers.location).toBe('/next/mypage/bookings/7/payment?pay_error=FINALIZE_FAILED_UNCANCELLED');
+        const text = (global.fetch as jest.Mock).mock.calls.filter((c) => c[0] === 'https://hooks.example.test/x').map((c) => JSON.parse(c[1].body).text as string).join('\n');
+        expect(text).toContain('[inicis][ALERT][NET_CANCEL_UNCONFIRMED]'); expect(text).toContain('[inicis][ALERT][FINALIZE_FAILED_UNCANCELLED]');
+        expect(st.attempts.at(-1)).toMatchObject({ outcome: 'pending', reason: 'FINALIZE_FAILED_UNCANCELLED' });
+      } finally { delete process.env.INICIS_ALERT_WEBHOOK; }
+    });
     it('money-at-risk events go to INICIS_ALERT_WEBHOOK (https only), with order and TID but no key', async () => {
       process.env.INICIS_ALERT_WEBHOOK = 'https://hooks.example.test/x';
       try {
