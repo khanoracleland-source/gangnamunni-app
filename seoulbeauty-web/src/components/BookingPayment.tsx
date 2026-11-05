@@ -25,7 +25,14 @@ const PAY_NOTICES: Record<string, string> = {
   MID_MISMATCH: "결제 인증 정보가 올바르지 않아 결제를 진행하지 않았습니다. 청구된 금액은 없습니다.",
   BUSY: "다른 결제가 처리 중입니다. 잠시 후 ‘이미 결제했다면 상태 확인’을 눌러주세요.",
   UNAVAILABLE: "지금은 온라인 결제를 이용할 수 없습니다. 청구된 금액은 없습니다.",
+  TOO_MANY_ATTEMPTS: "결제 시도 횟수가 많아 결제를 진행하지 않았습니다. 청구된 금액은 없습니다. 1시간쯤 뒤에 다시 시도하거나 병원에 문의해주세요.",
+  UNKNOWN_ORDER: "결제 주문을 찾을 수 없어 결제를 진행하지 않았습니다. 청구된 금액이 있다면 고객센터로 문의해주세요.",
+  ERROR: "결제를 처리하는 중 오류가 발생했습니다. 다시 결제하지 말고 ‘이미 결제했다면 상태 확인’을 눌러주세요. 계속되면 병원이나 고객센터로 문의해주세요.",
 };
+/** An unknown code must not promise "no charge": the customer may have been charged. */
+const PAY_NOTICE_FALLBACK = "결제가 완료되지 않았습니다. 이미 결제했다면 ‘이미 결제했다면 상태 확인’을 눌러 확인해주세요. 결제 내역이 없으면 다시 시도해주세요.";
+/** Phones and tablets, including iPadOS which reports a desktop (Macintosh) user agent. */
+const isMobileDevice = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const INICIS_SDK = "https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js";
 declare global { interface Window { INIPayPro?: { requestPayment: (o: Record<string, string>) => void } } }
 /** The INIPayPro SDK, loaded only from Inicis' own host. */
@@ -60,7 +67,7 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
   const [result, setResult] = useState("");
   const loggedOut = error instanceof ApiError && error.status === 401;
   const missing = error instanceof ApiError && error.status === 404;
-  const notice = payError ? PAY_NOTICES[payError] ?? "결제가 승인되지 않았습니다. 청구된 금액은 없으니 다시 시도하거나 다른 결제 수단을 이용해주세요." : "";
+  const notice = payError ? PAY_NOTICES[payError] ?? PAY_NOTICE_FALLBACK : "";
 
   const preview = async () => {
     if (!data || busy) return;
@@ -81,13 +88,17 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
     setAgreeErr(false); setBusy(true); setResult("");
     let stage = "prepare";
     try {
-      const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      const mobile = isMobileDevice();
       const p = await api.bookingPaymentInicisPrepare(id, mobile ? "MOBILE" : "WEB");
       stage = "sdk";
       await loadInicisSdk(p.sdkUrl);
       stage = "requestPayment";
       window.INIPayPro!.requestPayment(p.params);
-      window.setTimeout(() => setBusy(false), 4000); // the layer is up; closing it returns here
+      // The layer is up (PC) or the browser is leaving (mobile): keep the button locked so a second tap cannot open a second layer.
+      // Coming back through the back/forward cache (pageshow) or, failing that, 20 s later unlocks it.
+      const unlock = () => { window.removeEventListener("pageshow", unlock); setBusy(false); };
+      window.addEventListener("pageshow", unlock, { once: true });
+      window.setTimeout(unlock, 20000);
       return;
     } catch (e) { console.error("[inicis]", stage, e); setResult(e instanceof ApiError && !/^\d{3} /.test(e.message) ? e.message : "결제창을 열지 못했습니다. 잠시 후 다시 시도해주세요."); }
     setBusy(false);

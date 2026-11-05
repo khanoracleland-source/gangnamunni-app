@@ -5,8 +5,6 @@ export class InicisUnknownOutcome extends Error {}
 
 export type InicisFetch = (url: string, init: { method: string; headers: Record<string, string>; body: string; signal: AbortSignal; redirect: 'error' }) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
 
-const TIMEOUT_MS = 10_000;
-
 /** The approval and net-cancel hosts are `{fc|ks|stg}paypro.inicis.com`: the code is checked, never interpolated unchecked. */
 export function inicisHost(idc: string): string {
   if (!isIdc(idc)) throw new Error('Unknown Inicis IDC code.');
@@ -26,14 +24,14 @@ export function parseInicisBody(text: string): Record<string, string> {
 
 const form = (o: Record<string, string>) => Object.entries(o).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
 
-async function post(path: string, idc: IdcCode, fields: Record<string, string>, f: InicisFetch): Promise<Record<string, string>> {
+async function post(path: string, idc: IdcCode, fields: Record<string, string>, f: InicisFetch, timeoutMs: number): Promise<Record<string, string>> {
   let text: string;
   try {
     const res = await f(`https://${inicisHost(idc)}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8' },
       body: form(fields),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
       redirect: 'error',
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -48,7 +46,7 @@ async function post(path: string, idc: IdcCode, fields: Record<string, string>, 
 
 /** payAppl.ini: the actual approval (승인) after a successful authentication (P_STATUS=00). */
 export function approve(cfg: InicisConfig, a: { idc: IdcCode; authTid: string; amt: number }, f: InicisFetch = fetch as unknown as InicisFetch) {
-  return post('/payment/v1/rest/payAppl.ini', a.idc, { P_MID: cfg.mid, P_AUTH_TID: a.authTid, P_AMT: String(a.amt), P_CHARSET: 'UTF-8' }, f);
+  return post('/payment/v1/rest/payAppl.ini', a.idc, { P_MID: cfg.mid, P_AUTH_TID: a.authTid, P_AMT: String(a.amt), P_CHARSET: 'UTF-8' }, f, cfg.timeoutMs);
 }
 
 /**
@@ -61,5 +59,5 @@ export function netCancel(cfg: InicisConfig, a: { idc: IdcCode; authTid: string;
   return post('/payment/v1/rest/payNetCancel.ini', a.idc, {
     P_MID: cfg.mid, P_AUTH_TID: a.authTid, P_AMT: String(a.amt), P_OID: a.oid, P_CANCEL_MSG: a.reason.slice(0, 100),
     P_TIMESTAMP: ts, P_CHKFAKE: chkFake(a.amt, a.oid, ts, cfg.hashkey), P_CHARSET: 'UTF-8',
-  }, f);
+  }, f, cfg.timeoutMs);
 }

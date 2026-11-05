@@ -16,6 +16,22 @@ const MID = 'INIpayTest';
 const KEY = 'unit-test-hash-key';
 const OID = 'BK_20261104120000_7_abcdef012345';
 
+describe('Inicis config knobs', () => {
+  const e = (o: Record<string, string>) => ({ INICIS_MID: MID, INICIS_HASHKEY: KEY, ...o }) as any;
+  it('timeout: default 10 s, clamped to 3..30 s', () => {
+    expect(inicisConfig(e({}))!.timeoutMs).toBe(10_000);
+    expect(inicisConfig(e({ INICIS_TIMEOUT_MS: '20000' }))!.timeoutMs).toBe(20_000);
+    expect(inicisConfig(e({ INICIS_TIMEOUT_MS: '50' }))!.timeoutMs).toBe(3_000);
+    expect(inicisConfig(e({ INICIS_TIMEOUT_MS: '999999' }))!.timeoutMs).toBe(30_000);
+    expect(inicisConfig(e({ INICIS_TIMEOUT_MS: 'abc' }))!.timeoutMs).toBe(10_000);
+  });
+  it('INICIS_EXTRA_TEST_MIDS adds a test MID: test mode accepts it, live mode refuses it', () => {
+    expect(inicisConfig(e({ INICIS_MID: 'NEWtestMid', INICIS_EXTRA_TEST_MIDS: 'x, NEWtestMid' }))!.mode).toBe('test');
+    expect(inicisConfig(e({ INICIS_MID: 'NEWtestMid' }))).toBeNull();
+    expect(inicisConfig(e({ INICIS_MID: 'NEWtestMid', INICIS_EXTRA_TEST_MIDS: 'NEWtestMid', INICIS_MODE: 'live' }))).toBeNull();
+  });
+});
+
 describe('Inicis config and helpers', () => {
   it('P_CHKFAKE is base64(sha512(amt+oid+timestamp+hashkey)) of the raw digest (the PHP sample: base64_encode(hash(sha512, .., true)))', () => {
     const hex = createHash('sha512').update('1000' + 'INIpayTest2026' + '1700000000000' + 'k').digest('hex');
@@ -56,7 +72,7 @@ describe('Inicis card payment API', () => {
   const base = () => ({
     booking: { id: 7, hospital_id: 3, mb_id: 'kim', phone: '010-1234-5678', status: 'confirmed', booking_date: '2099-01-05', booking_time: '14:00:00', treatment: '보톡스 · 50U', hospital_name: 'A병원', name: '김민', price: 50000, h_name: 'A병원', profile_image_url: '', hospital_address: '서울 강남구 1' },
     order: { id: 31, booking_id: 7, patient_mb_id: 'kim', merchant_uid: OID, status: 'pending', amount: 50000, points_used: 0, provider: null, provider_transaction_id: null } as any,
-    sql: [] as { sql: string; args: any[] }[], attempts: [] as any[], events: [] as any[], history: [] as any[], failUpdate: false, locked: true,
+    sql: [] as { sql: string; args: any[] }[], attempts: [] as any[], events: [] as any[], history: [] as any[], failUpdate: false, locked: true, poolDown: false, attemptCount: undefined as number | undefined,
   });
   const respond = (sql: string, args: any[]): any => {
     st.sql.push({ sql, args });
@@ -67,7 +83,8 @@ describe('Inicis card payment API', () => {
     if (/payment_type = 'booking' AND booking_id = \?/.test(sql)) return [st.order ? [st.order] : []];
     if (/WHERE merchant_uid = \? AND payment_type = 'booking'/.test(sql)) return [st.order && args[0] === st.order.merchant_uid ? [st.order] : []];
     if (/SELECT id, amount, status FROM gangnamunni_platform_payments WHERE id = \? FOR UPDATE/.test(sql)) return [[{ id: st.order.id, amount: st.order.amount, status: st.order.status }]];
-    if (/INSERT INTO gangnamunni_payment_attempts/.test(sql)) { st.attempts.push({ key: args[3], outcome: args[5], reason: args[6] }); return [{ affectedRows: 1 }]; }
+    if (/COUNT\(\*\) AS c FROM gangnamunni_payment_attempts/.test(sql)) return [[{ c: st.attemptCount ?? st.attempts.length }]];
+    if (/INSERT INTO gangnamunni_payment_attempts/.test(sql)) { const row = st.attempts.find((x: any) => x.key === args[3]); if (row) Object.assign(row, { outcome: args[5], reason: args[6] }); else st.attempts.push({ key: args[3], outcome: args[5], reason: args[6] }); return [{ affectedRows: 1 }]; } // UNIQUE (provider, pg_payment_key): one auth TID = one row
     if (/INSERT INTO gangnamunni_payment_events/.test(sql)) { st.events.push(args); return [{ affectedRows: 1 }]; }
     if (/INSERT INTO gangnamunni_payment_status_history/.test(sql)) { st.history.push(args); return [{ affectedRows: 1 }]; }
     if (/UPDATE gangnamunni_platform_payments SET provider/.test(sql)) {
@@ -78,7 +95,7 @@ describe('Inicis card payment API', () => {
     return [{ affectedRows: 1 }];
   };
   const conn = () => ({ query: async (sql: string, args: any[] = []) => respond(sql, args), release: () => undefined });
-  const fakeDb = () => ({ query: async (sql: string, args: any[] = []) => respond(sql, args), getConnection: async () => conn() });
+  const fakeDb = () => ({ query: async (sql: string, args: any[] = []) => respond(sql, args), getConnection: async () => { if (st?.poolDown) throw new Error('queue limit reached'); return conn(); } });
   const approveOk = (over: Record<string, string> = {}) => ({ P_STATUS: '00', P_RMESG1: '정상', P_MID: MID, P_OID: OID, P_AMT: '50000', P_APPL_TID: 'INIpayTestTID123', P_APPL_DT: '20260105', P_APPL_TM: '120501', P_TYPE: 'CARD', ...over });
   const reply = (o: Record<string, string>) => async () => ({ ok: true, status: 200, text: async () => Object.entries(o).map(([k, v]) => `${k}=${v}`).join('&') });
 
@@ -179,7 +196,7 @@ describe('Inicis card payment API', () => {
       expect(st.history).toHaveLength(1);
       const order = st.sql.map((q: any) => q.sql.replace(/\s+/g, ' ').slice(0, 24));
       expect(order.filter((x: string) => /START TRANSACTION|COMMIT|ROLLBACK/.test(x))).toEqual(['START TRANSACTION', 'COMMIT']);
-      expect(st.attempts.map((a: any) => a.outcome)).toEqual(['received', 'paid']);
+      expect(st.attempts.map((a: any) => a.outcome)).toEqual(['paid']);
       expect(st.sql.some((q: any) => /RELEASE_LOCK/.test(q.sql))).toBe(true);
       expect(st.sql.find((q: any) => /GET_LOCK/.test(q.sql)).args[0]).toBe(`payment:${createHash('sha256').update(OID).digest('hex').slice(0, 48)}`); // PHP's lock name
     });
@@ -197,18 +214,49 @@ describe('Inicis card payment API', () => {
       expect(inicisCalls).toHaveLength(0);
       expect(st.events).toHaveLength(1);
     });
-    it('failed or cancelled authentication never reaches approval', async () => {
-      const r = await ret(authResult({ P_STATUS: '01', P_AUTH_TID: '' })).expect(303);
+    it('failed authentication with an auth tid never reaches approval and is recorded', async () => {
+      const r = await ret(authResult({ P_STATUS: '01' })).expect(303);
       expect(r.headers.location).toBe('/next/mypage/bookings/7/payment?pay_error=AUTH_FAILED');
       expect(inicisCalls).toHaveLength(0); expect(wrote()).toBe(false);
       expect(st.attempts.at(-1)).toMatchObject({ outcome: 'rejected', reason: 'AUTH_01' });
+    });
+    it('a cancelled layer / junk post without an auth tid leaves NO evidence row (public endpoint cannot grow the table)', async () => {
+      const r = await ret(authResult({ P_STATUS: '01', P_AUTH_TID: '' })).expect(303);
+      expect(r.headers.location).toBe('/next/mypage/bookings/7/payment?pay_error=AUTH_FAILED');
+      expect(inicisCalls).toHaveLength(0); expect(wrote()).toBe(false); expect(st.attempts).toHaveLength(0);
+      const r2 = await ret(authResult({ P_AUTH_TID: '' })).expect(303);
+      expect(r2.headers.location).toBe('/next/mypage/bookings/7/payment?pay_error=AUTH_INVALID');
+      expect(st.attempts).toHaveLength(0);
+    });
+    it('one card authentication is ONE evidence row, from received to its result', async () => {
+      await ret(authResult()).expect(303);
+      expect(st.attempts).toEqual([{ key: 'INIpayTestAUTH1', outcome: 'paid', reason: 'CONFIRMED' }]);
+    });
+    it('30 authentications within the hour: no more, never approved, and the notice says nothing was charged (not BUSY)', async () => {
+      st.attemptCount = 30;
+      const r = await ret(authResult({ P_AUTH_TID: 'INIpayTestAUTHflood' })).expect(303);
+      expect(r.headers.location).toBe('/next/mypage/bookings/7/payment?pay_error=TOO_MANY_ATTEMPTS');
+      expect(inicisCalls).toHaveLength(0); expect(st.attempts).toHaveLength(0); expect(wrote()).toBe(false);
+      expect(st.sql.some((q: any) => /INTERVAL 1 HOUR/.test(q.sql))).toBe(true); // a sliding window: it is not a permanent block
+      st.attemptCount = 29;
+      expect((await ret(authResult({ P_AUTH_TID: 'INIpayTestAUTHok' })).expect(303)).headers.location).toContain('/payment/success');
+    });
+    it('prepare refuses with 429 once the order has 30 authentications in the hour (before the customer authenticates a card)', async () => {
+      st.attemptCount = 30;
+      const r = await prepare({ device: 'WEB' });
+      expect(r.status).toBe(429); expect(r.body.code).toBe('TOO_MANY_ATTEMPTS');
+    });
+    it('payment pool exhausted: answers BUSY (303), not a 500', async () => {
+      st.poolDown = true;
+      const r = await ret(authResult()).expect(303);
+      expect(r.headers.location).toBe('/next/mypage/bookings/7/payment?pay_error=BUSY');
+      expect(inicisCalls).toHaveLength(0);
     });
     it.each([
       ['amount differs from the ledger', { P_AMT: '1000' }, 'AMOUNT_MISMATCH'],
       ['amount is not a number', { P_AMT: '5e4' }, 'AMOUNT_MISMATCH'],
       ['another merchant id', { P_MID: 'OTHERMID' }, 'MID_MISMATCH'],
       ['an IDC code that is not fc / ks / stg', { P_IDCNAME: 'evil.example.com/x?' }, 'AUTH_INVALID'],
-      ['no auth tid', { P_AUTH_TID: '' }, 'AUTH_INVALID'],
     ])('refuses before approval: %s', async (_n, over, code) => {
       const r = await ret(authResult(over as any)).expect(303);
       expect(r.headers.location).toBe(`/next/mypage/bookings/7/payment?pay_error=${code}`);
@@ -229,18 +277,18 @@ describe('Inicis card payment API', () => {
         expect(st.sql.some((q: any) => /platform_payments/.test(q.sql))).toBe(false);
       }
       const r = await ret(authResult({ P_OID: 'BK_20261104120000_8_abcdef012345' })).expect(303);
-      expect(r.headers.location).toBe('/next/mypage/bookings?pay_error=UNKNOWN_ORDER');
+      expect(r.headers.location).toBe('/next/mypage/bookings/8/payment?pay_error=UNKNOWN_ORDER');
       expect(inicisCalls).toHaveLength(0);
     });
     it('not configured: nothing is called and nothing is written', async () => {
       delete process.env.INICIS_HASHKEY;
       const r = await ret(authResult()).expect(303);
-      expect(r.headers.location).toBe('/next/mypage/bookings?pay_error=UNAVAILABLE');
+      expect(r.headers.location).toBe('/next/mypage/bookings/7/payment?pay_error=UNAVAILABLE');
       expect(inicisCalls).toHaveLength(0); expect(st.sql).toHaveLength(0);
     });
     it('a busy payment lock redirects without approving', async () => {
       st.locked = false;
-      expect((await ret(authResult()).expect(303)).headers.location).toBe('/next/mypage/bookings?pay_error=BUSY');
+      expect((await ret(authResult()).expect(303)).headers.location).toBe('/next/mypage/bookings/7/payment?pay_error=BUSY');
       expect(inicisCalls).toHaveLength(0);
     });
     it('Inicis refuses the approval: the order stays pending', async () => {
@@ -291,6 +339,23 @@ describe('Inicis card payment API', () => {
       expect(r.headers.location).toBe('/next/mypage/bookings/7/payment?pay_error=FINALIZE_FAILED_UNCANCELLED');
       expect(st.order.status).toBe('pending');
       expect(st.attempts.at(-1)).toMatchObject({ outcome: 'pending', reason: 'FINALIZE_FAILED_UNCANCELLED' });
+    });
+    it('money-at-risk events go to INICIS_ALERT_WEBHOOK (https only), with order and TID but no key', async () => {
+      process.env.INICIS_ALERT_WEBHOOK = 'https://hooks.example.test/x';
+      try {
+        st.failUpdate = true;
+        inicisReply = async (url) => { if (url.endsWith('payNetCancel.ini')) throw new Error('down'); return reply(approveOk())(); };
+        await ret(authResult()).expect(303);
+        const hooks = (global.fetch as jest.Mock).mock.calls.filter((c) => c[0] === 'https://hooks.example.test/x');
+        const text = hooks.map((c) => JSON.parse(c[1].body).text as string).join('\n');
+        expect(text).toContain('[inicis][ALERT][NET_CANCEL_FAILED]'); expect(text).toContain('[inicis][ALERT][FINALIZE_FAILED_UNCANCELLED]');
+        expect(text).toContain(OID); expect(text).toContain('INIpayTestTID123'); expect(text).not.toContain(KEY);
+        (global.fetch as jest.Mock).mockClear();
+        process.env.INICIS_ALERT_WEBHOOK = 'http://plain.example.test/x';
+        st = { ...base(), failUpdate: true };
+        await ret(authResult()).expect(303);
+        expect((global.fetch as jest.Mock).mock.calls.some((c) => String(c[0]).includes('plain.example.test'))).toBe(false);
+      } finally { delete process.env.INICIS_ALERT_WEBHOOK; }
     });
     it('uses the approval host from P_IDCNAME only for fc / ks / stg', async () => {
       await ret(authResult({ P_IDCNAME: 'ks' })).expect(303);

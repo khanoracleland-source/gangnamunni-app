@@ -1,4 +1,5 @@
 import { Body, Controller, Header, Post, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { InicisPaymentService } from './inicis-payment.service';
 
@@ -11,6 +12,8 @@ import { InicisPaymentService } from './inicis-payment.service';
 export class InicisReturnController {
   constructor(private readonly inicis: InicisPaymentService) {}
 
+  /** Stricter than the global limit: this public endpoint writes evidence rows and calls Inicis. A real customer posts once per payment. */
+  @Throttle({ default: { limit: Number(process.env.INICIS_RETURN_RATE_PER_MIN || 20), ttl: 60_000 } })
   @Post('return')
   @Header('Cache-Control', 'no-store')
   async ret(@Body() body: Record<string, unknown>, @Res() res: Response) {

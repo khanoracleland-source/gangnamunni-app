@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { DbConn, DbPool } from '../../db/db.module';
 import { BookingMember } from '../bookings.service';
 import { kstNow } from '../bookings.logic';
@@ -14,7 +14,24 @@ const s = (v: unknown) => (v == null ? '' : String(v));
 const n = (v: unknown) => Number(v ?? 0) || 0;
 /** BK_<14 digits>_<booking id>_<12 hex>: what createOrder() issues. Anything else is never looked up. */
 const MERCHANT_RE = /^BK_\d{14}_\d{1,9}_[0-9a-f]{12}$/;
+/**
+ * Authentication attempts one order may collect per hour. gangnamunni_payment_attempts has UNIQUE (provider, pg_payment_key), so one auth TID is
+ * one row (updated in place from `received` to its result): 30 rows = 30 distinct card authentications within the hour. The window slides, so the
+ * limit never locks a booking for good.
+ */
+const MAX_ATTEMPTS_PER_HOUR = 30;
+const RECENT_ATTEMPTS_SQL = 'SELECT COUNT(*) AS c FROM gangnamunni_payment_attempts WHERE payment_id = ? AND created_at > NOW() - INTERVAL 1 HOUR';
 const SDK_URL = 'https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js';
+
+/**
+ * Where an error notice is shown. The list page does not read pay_error, the payment page does, and P_OID carries the booking id
+ * (BK_<ts>_<booking id>_<hex>), so errors raised before the ledger is read still land where the customer sees them. The id is only
+ * used to pick the page (which needs the customer's own login); nothing is looked up with it.
+ */
+export function noticeUrl(prefix: string, oid: string, code: string): string {
+  const bid = MERCHANT_RE.test(oid) ? Number(oid.split('_')[2]) : 0;
+  return bid > 0 ? `${prefix}/mypage/bookings/${bid}/payment?pay_error=${code}` : `${prefix}/mypage/bookings?pay_error=${code}`;
+}
 
 function clipBytes(v: string, max: number): string {
   let out = '';
@@ -40,6 +57,18 @@ export class InicisPaymentService {
     @Inject(INICIS_FETCH) private readonly fetcher: InicisFetch,
   ) {}
 
+  /**
+   * Money-at-risk events: always an `[inicis][ALERT]` log line; and a JSON POST `{text}` (Slack-compatible) to INICIS_ALERT_WEBHOOK when
+   * that https URL is set. Never blocks or throws; carries order/TID only, no keys or card data.
+   */
+  private alert(code: string, detail: string): void {
+    const text = `[inicis][ALERT][${code}] ${detail}`;
+    this.log.error(text);
+    const url = (process.env.INICIS_ALERT_WEBHOOK ?? '').trim();
+    if (!/^https:\/\//.test(url)) return;
+    void fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }), signal: AbortSignal.timeout(3000), redirect: 'error' }).catch(() => undefined);
+  }
+
   private base(cfg: InicisConfig | null): string {
     try { return new URL(cfg?.publicBase ?? '').pathname.replace(/\/+$/, '') || ''; } catch { return '/next'; }
   }
@@ -55,6 +84,11 @@ export class InicisPaymentService {
     if (!order) { await this.payments.createOrder(id); order = await this.payments.order(id); }
     if (!order || s(order.status) !== 'pending') throw new PaymentRefused('결제할 수 없는 주문 상태입니다.', 'INVALID_ORDER_STATE', 409);
     if (n(order.points_used) > 0) throw new PaymentRefused('포인트를 사용한 결제는 아직 지원되지 않습니다.', 'POINTS_NOT_SUPPORTED', 409);
+    // Same limit as the return: refuse before the customer authenticates a card that would then not be approved.
+    if (this.pay?.query) {
+      const [cnt] = (await this.pay.query(RECENT_ATTEMPTS_SQL, [n(order.id)])) as any;
+      if (n((cnt as any[])[0]?.c) >= MAX_ATTEMPTS_PER_HOUR) throw new PaymentRefused('결제 시도 횟수가 많아 잠시 후 다시 시도해주세요.', 'TOO_MANY_ATTEMPTS', 429);
+    }
     const amount = n(order.amount);
     const oid = s(order.merchant_uid);
     if (!(amount > 0) || !MERCHANT_RE.test(oid) || Buffer.byteLength(oid) > 40) throw new PaymentRefused('결제 주문 정보가 올바르지 않습니다.', 'INVALID_ORDER', 409);
@@ -105,13 +139,15 @@ export class InicisPaymentService {
     const prefix = this.base(cfg);
     const str = (k: string) => (typeof body?.[k] === 'string' ? (body[k] as string).slice(0, 500) : '');
     const oid = str('P_OID');
-    const list = (code: string) => `${prefix}/mypage/bookings?pay_error=${code}`;
+    const list = (code: string) => noticeUrl(prefix, oid, code);
     if (!cfg || !this.pay?.getConnection || !MERCHANT_RE.test(oid)) return list('UNAVAILABLE');
     const provider = inicisProvider(cfg);
-    const conn = await this.pay.getConnection();
     const lockKey = paymentLockKey(oid);
     let locked = false;
+    let conn: DbConn | null = null;
     try {
+      try { conn = await this.pay.getConnection(); }
+      catch (e) { this.log.error(`payment pool unavailable (${oid}): ${(e as Error).message}`); return list('BUSY'); } // pool queue full: ask the customer to check the status shortly
       const [lk] = (await conn.query('SELECT GET_LOCK(?, 5) AS acquired', [lockKey])) as any;
       locked = n((lk as any[])[0]?.acquired) === 1;
       if (!locked) return list('BUSY');
@@ -120,25 +156,32 @@ export class InicisPaymentService {
       this.log.error(`return failed (${oid}): ${(e as Error).message}`);
       return list('ERROR');
     } finally {
-      if (locked) await conn.query('SELECT RELEASE_LOCK(?)', [lockKey]).catch(() => undefined);
-      conn.release();
+      if (conn) {
+        if (locked) await conn.query('SELECT RELEASE_LOCK(?)', [lockKey]).catch(() => undefined);
+        conn.release();
+      }
     }
   }
 
   private async confirm(conn: DbConn, cfg: InicisConfig, provider: string, oid: string, str: (k: string) => string, prefix: string): Promise<string> {
     const [os] = (await conn.query("SELECT * FROM gangnamunni_platform_payments WHERE merchant_uid = ? AND payment_type = 'booking' LIMIT 1", [oid])) as any;
     const order = (os as any[])[0];
-    if (!order) return `${prefix}/mypage/bookings?pay_error=UNKNOWN_ORDER`;
+    if (!order) return noticeUrl(prefix, oid, 'UNKNOWN_ORDER');
     const bookingId = n(order.booking_id);
     const payPage = (code: string) => `${prefix}/mypage/bookings/${bookingId}/payment?pay_error=${code}`;
     const success = `${prefix}/mypage/bookings/${bookingId}/payment/success`;
     const authTid = str('P_AUTH_TID');
     const status = str('P_STATUS');
-    const key = authTid || `noauth:${randomBytes(8).toString('hex')}`;
+    const key = authTid; // non-empty from the check below on
     const amtRaw = str('P_AMT');
     const amount = n(order.amount);
 
     if (['paid', 'partially_refunded'].includes(s(order.status))) return success; // reload / double submit
+    // This endpoint is public: a post without an auth TID (cancelled layer, junk) leaves no evidence row, and the rows one order
+    // can collect are capped, so nobody can grow gangnamunni_payment_attempts by posting a valid P_OID repeatedly.
+    if (!authTid || authTid.length > 191) return payPage(status === '00' ? 'AUTH_INVALID' : 'AUTH_FAILED');
+    const [cnt] = (await conn.query(RECENT_ATTEMPTS_SQL, [n(order.id)])) as any;
+    if (n((cnt as any[])[0]?.c) >= MAX_ATTEMPTS_PER_HOUR) { this.log.warn(`attempt limit reached (${oid})`); return payPage('TOO_MANY_ATTEMPTS'); } // approval is never called: nothing is charged
     await this.attempt(conn, order, provider, key, /^\d+$/.test(amtRaw) ? Number(amtRaw) : 0, 'received', null);
     if (status !== '00') {
       await this.attempt(conn, order, provider, key, amount, 'rejected', `AUTH_${status || 'NONE'}`);
@@ -150,21 +193,21 @@ export class InicisPaymentService {
     if (s(order.status) !== 'pending') return refuse('ORDER_STATE');
     if (!/^\d+$/.test(amtRaw) || Number(amtRaw) !== amount || amount <= 0) return refuse('AMOUNT_MISMATCH');
     if (str('P_MID') !== cfg.mid) return refuse('MID_MISMATCH');
-    if (!isIdc(idc) || !authTid) return refuse('AUTH_INVALID');
+    if (!isIdc(idc)) return refuse('AUTH_INVALID');
     if (n(order.points_used) > 0) return refuse('POINTS_NOT_SUPPORTED');
     const [bs] = (await conn.query('SELECT status FROM gangnamunni_bookings WHERE id = ? LIMIT 1', [bookingId])) as any;
     if (s((bs as any[])[0]?.status) !== 'confirmed') return refuse('BOOKING_NOT_CONFIRMED');
 
     const cancel = async (reason: string) => {
       try { await netCancel(cfg, { idc, authTid, amt: amount, oid, reason }, this.fetcher); return true; }
-      catch (e) { this.log.error(`[inicis][NET_CANCEL_FAILED] ${oid} auth=${authTid}: ${(e as Error).message}: check the Inicis admin and refund by hand`); return false; }
+      catch (e) { this.alert('NET_CANCEL_FAILED', `${oid} auth=${authTid}: ${(e as Error).message}: check the Inicis admin and refund by hand`); return false; }
     };
     let res: Record<string, string>;
     try { res = await approve(cfg, { idc, authTid, amt: amount }, this.fetcher); }
     catch (e) {
       // Unknown outcome (timeout / network): Inicis may have approved, so net-cancel it.
-      this.log.error(`approval unresolved (${oid}): ${(e as InicisUnknownOutcome).message}`);
-      await cancel('approval result unknown');
+      const cancelled = await cancel('approval result unknown');
+      this.alert(cancelled ? 'UNRESOLVED_CANCELLED' : 'UNRESOLVED_NOT_CANCELLED', `${oid} auth=${authTid}: ${(e as InicisUnknownOutcome).message}${cancelled ? ': net cancel sent, verify in the Inicis admin' : ': card MAY be charged, check the Inicis admin'}`);
       await this.attempt(conn, order, provider, key, amount, 'pending', 'UNRESOLVED');
       return payPage('UNRESOLVED');
     }
@@ -174,16 +217,16 @@ export class InicisPaymentService {
     }
     const tid = s(res.P_APPL_TID);
     if (res.P_OID !== oid || res.P_AMT !== String(amount) || res.P_MID !== cfg.mid || !tid || tid.length > 191) {
-      this.log.error(`approval result mismatch (${oid}): oid=${res.P_OID} amt=${res.P_AMT}`);
-      await cancel('approval result mismatch');
+      const cancelled = await cancel('approval result mismatch');
+      this.alert('RESULT_MISMATCH', `${oid} tid=${tid}: oid=${res.P_OID} amt=${res.P_AMT} net cancel ${cancelled ? 'sent' : 'FAILED'}`);
       await this.attempt(conn, order, provider, key, amount, 'refused', 'RESULT_MISMATCH');
       return payPage('RESULT_MISMATCH');
     }
     try {
       await this.finalize(conn, order, provider, tid, amount, this.paidAt(s(res.P_APPL_DT), s(res.P_APPL_TM)), res);
     } catch (e) {
-      this.log.error(`[inicis][FINALIZE_FAILED] ${oid} tid=${tid}: ${(e as Error).message}`);
       const cancelled = await cancel('ledger update failed');
+      this.alert(cancelled ? 'FINALIZE_FAILED' : 'FINALIZE_FAILED_UNCANCELLED', `${oid} tid=${tid}: ${(e as Error).message}: ${cancelled ? 'net cancel sent' : 'CARD CHARGED, ledger not updated: refund by hand'}`);
       await this.attempt(conn, order, provider, key, amount, 'pending', cancelled ? 'FINALIZE_FAILED' : 'FINALIZE_FAILED_UNCANCELLED');
       // Not cancelled = the card is charged but the ledger has no record: tell the user NOT to pay again.
       return payPage(cancelled ? 'FINALIZE_FAILED' : 'FINALIZE_FAILED_UNCANCELLED');

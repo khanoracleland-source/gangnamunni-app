@@ -16,7 +16,7 @@ export function createPayPool(env: NodeJS.ProcessEnv = process.env): (DbPool & {
   const pool = mysql.createPool({
     host: env.DB_HOST || '127.0.0.1', port: Number(env.DB_PORT || 3306),
     user: env.DB_PAY_USER, password: env.DB_PAY_PASSWORD, database: env.DB_NAME || 'gangnamunni',
-    charset: 'utf8mb4', connectionLimit: Number(env.DB_PAY_POOL || 3), waitForConnections: true, queueLimit: 20,
+    charset: 'utf8mb4', connectionLimit: Number(env.DB_PAY_POOL || 8), waitForConnections: true, queueLimit: 20,
     connectTimeout: 5000, multipleStatements: false, decimalNumbers: true, dateStrings: true, timezone: '+09:00',
   });
   (pool.pool as any).on('connection', (c: any) => c.query("SET time_zone = '+09:00'"));

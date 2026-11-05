@@ -254,6 +254,17 @@ GRANT SELECT, INSERT, UPDATE (outcome, reason) ON hms_saas.gangnamunni_payment_a
    Test mode charges real cards, so checkout is limited to `INICIS_TEST_MEMBERS` (comma separated mb_id): everyone else keeps seeing "온라인 결제 준비 중" + `결제 없이 계속하기`. Live mode uses its own list `INICIS_LIVE_MEMBERS` (empty = nobody, `*` = everyone).
 3. Network: outbound 443 to `stgpaypro.inicis.com` (183.109.71.64), `fcpaypro.inicis.com` (118.129.210.23), `kspaypro.inicis.com` (183.109.71.35), TLS 1.2+. Register the site domain/IP in the Inicis merchant admin.
 4. `systemctl restart seoulbeauty-api`, rebuild + restart `seoulbeauty-web` (`npm ci && npm run build && chown -R root:sbapi .next && chmod -R g+rwX .next && systemctl restart seoulbeauty-web`).
-5. Not ported yet: cancellation / refund through Inicis (INIAPI), virtual account (P_NOTI_URL), points used at checkout (an order with `points_used > 0` is refused with `POINTS_NOT_SUPPORTED`), reconcile of orders that stay `pending` after an approval.
-6. Rollback: set `PG_PAYMENTS_ENABLED=0` and restart `seoulbeauty-api`: checkout is hidden at once, the preview flow remains.
+5. Hardening (2026-11-05): `[inicis][ALERT][...]` log lines (+ optional `INICIS_ALERT_WEBHOOK`), `INICIS_TIMEOUT_MS`, `DB_PAY_POOL` default 8, a per-IP limit on `/return`
+   (`INICIS_RETURN_RATE_PER_MIN`), at most 30 card authentications per order per hour (`TOO_MANY_ATTEMPTS`; one auth TID = one row, the window slides), no evidence row for a post without an auth TID. Find orders that need a person:
+   ```sql
+   -- card may be charged but the ledger says pending / approval outcome unknown (look each TID up in the Inicis admin)
+   SELECT a.id, a.created_at, a.merchant_uid, a.pg_payment_key AS auth_tid, a.amount, a.reason, p.status AS order_status
+     FROM gangnamunni_payment_attempts a JOIN gangnamunni_platform_payments p ON p.id = a.payment_id
+    WHERE a.outcome = 'pending' AND p.status = 'pending' ORDER BY a.id DESC;
+   ```
+   `reason=FINALIZE_FAILED_UNCANCELLED` = card charged and NOT cancelled: refund in the Inicis admin by hand. `UNRESOLVED` = the approval answer never arrived and a net cancel was sent:
+   confirm in the Inicis admin that nothing was charged (if it was, either book it by hand or refund it).
+   `/return` is limited per IP (`req.ip`): `TRUST_PROXY` must match the proxy hops on the server (the example says 2), or every customer shares the proxy's IP and its limit. Korean mobile carriers share one IP among many users (CGNAT); raise `INICIS_RETURN_RATE_PER_MIN` if real customers hit it.
+6. Not ported yet: cancellation / refund through Inicis (INIAPI), virtual account (P_NOTI_URL), points used at checkout (an order with `points_used > 0` is refused with `POINTS_NOT_SUPPORTED`), reconcile of orders that stay `pending` after an approval.
+7. Rollback: set `PG_PAYMENTS_ENABLED=0` and restart `seoulbeauty-api`: checkout is hidden at once, the preview flow remains.
 

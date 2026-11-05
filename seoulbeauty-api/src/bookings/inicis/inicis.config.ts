@@ -12,6 +12,8 @@ export interface InicisConfig {
   publicBase: string;
   /** Native app URL scheme the card apps return to on iOS. */
   appScheme: string;
+  /** Timeout of one call to Inicis (approval / net cancel), ms. INICIS_TIMEOUT_MS, clamped to 3 000..30 000, default 10 000. */
+  timeoutMs: number;
 }
 
 /** P_IDCNAME values the manual lists. Anything else is refused (it becomes part of the approval host). */
@@ -21,6 +23,8 @@ export const isIdc = (v: unknown): v is IdcCode => typeof v === 'string' && (IDC
 
 /** Inicis' public test MIDs: they approve for real but are cancelled at midnight, so they can never be the live mode. */
 const TEST_MID = /^(INIpayTest|INIBillTst|iniescrow0)$/;
+/** INICIS_EXTRA_TEST_MIDS (comma separated) lets a new public test MID be added without a deploy of code. */
+const isTestMid = (mid: string, env: NodeJS.ProcessEnv) => TEST_MID.test(mid) || (env.INICIS_EXTRA_TEST_MIDS ?? '').split(',').map((v) => v.trim()).filter(Boolean).includes(mid);
 
 /** null = Inicis is not configured (checkout stays unavailable). INICIS_MODE=live needs a non-test MID. */
 export function inicisConfig(env: NodeJS.ProcessEnv = process.env): InicisConfig | null {
@@ -28,11 +32,12 @@ export function inicisConfig(env: NodeJS.ProcessEnv = process.env): InicisConfig
   const hashkey = (env.INICIS_HASHKEY ?? '').trim();
   if (!mid || !hashkey) return null;
   const mode: InicisMode = (env.INICIS_MODE ?? 'test').trim() === 'live' ? 'live' : 'test';
-  if (mode === 'live' && TEST_MID.test(mid)) return null;
-  if (mode === 'test' && !TEST_MID.test(mid)) return null; // a real MID in test mode would charge real money but be booked as a test row
+  if (mode === 'live' && isTestMid(mid, env)) return null;
+  if (mode === 'test' && !isTestMid(mid, env)) return null; // a real MID in test mode would charge real money but be booked as a test row
   const publicBase = (env.INICIS_PUBLIC_BASE ?? 'https://hms.seoulbeauty.app/next').trim().replace(/\/+$/, '');
   if (!/^https:\/\//.test(publicBase)) return null; // Android blocks an http P_NEXT_URL, and card data must not cross plain http
-  return { mid, hashkey, mode, publicBase, appScheme: (env.INICIS_APP_SCHEME ?? 'wellness').trim() };
+  const timeoutMs = Math.min(30_000, Math.max(3_000, Number(env.INICIS_TIMEOUT_MS) || 10_000));
+  return { mid, hashkey, mode, publicBase, appScheme: (env.INICIS_APP_SCHEME ?? 'wellness').trim(), timeoutMs };
 }
 
 /** Ledger provider value (gangnamunni_platform_payments.provider): test rows are excluded from settlement. */
