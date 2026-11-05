@@ -92,6 +92,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
   const router = useRouter();
   const qc = useQueryClient();
   const [tab, setTab] = useState<DetailTab>(initialTab);
+  const [seen, setSeen] = useState<DetailTab[]>([initialTab]);
   const [consultOpen, setConsultOpen] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
   const [toast, setToast] = useState("");
@@ -109,6 +110,14 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
     initialData: initial,
     retry: (n: number, e: unknown) => !(e instanceof ApiError && (e.status === 404 || e.status === 400)) && n < 1,
   });
+  // every tab's data is fetched as soon as the page is open, so a tab opens with its content already there (no skeleton flash)
+  const ready = !!h;
+  useEffect(() => {
+    if (!ready) return;
+    void qc.prefetchQuery({ queryKey: qk.doctors(id), queryFn: () => api.doctors(id) });
+    void qc.prefetchQuery({ queryKey: qk.treatments(id), queryFn: () => api.treatments(id) });
+    void qc.prefetchQuery({ queryKey: qk.reviews(id), queryFn: () => api.reviews(id) });
+  }, [ready, id, qc]);
   const missing = error instanceof ApiError && (error.status === 404 || error.status === 400);
 
   if (!h) {
@@ -147,6 +156,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
   };
   const selectTab = (t: DetailTab) => {
     setTab(t);
+    setSeen((s) => (s.includes(t) ? s : [...s, t]));
     if (t === "treatments") qc.prefetchQuery({ queryKey: qk.treatments(id), queryFn: () => api.treatments(id) });
     if (t === "doctors") qc.prefetchQuery({ queryKey: qk.doctors(id), queryFn: () => api.doctors(id) });
     try {
@@ -171,6 +181,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
       </header>
 
       <nav className={styles.tabs} role="tablist">
+        <span className={styles.tabBar} style={{ transform: `translateX(${Object.keys(TAB_LABEL).indexOf(tab) * 100}%)` }} aria-hidden="true" />
         {(Object.keys(TAB_LABEL) as DetailTab[]).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={`${styles.tab} ${tab === t ? styles.tabActive : ""}`} onClick={() => selectTab(t)}>
             {TAB_LABEL[t]}
@@ -217,8 +228,8 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
         </div>
       )}
 
-      {tab === "home" && (
-        <>
+      {seen.includes("home") && (
+        <div hidden={tab !== "home"}>
           {treatmentId > 0 && <TreatmentEvent hospitalId={id} treatmentId={treatmentId} />}
           {/* design 05-04: 시술 병원 summary, address + 주소복사, 병원소개, 의료진 소개 */}
           <h2 className={styles.secTitleLg}>시술 병원</h2>
@@ -262,16 +273,16 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
             </>
           )}
           <DoctorMiniList hospitalId={id} />
-        </>
+        </div>
       )}
-      {tab === "doctors" && <DoctorList hospitalId={id} />}
-      {tab === "treatments" && <TreatmentList hospitalId={id} hospital={h} />}
-      {tab === "reviews" && <ReviewList hospitalId={id} />}
+      {seen.includes("doctors") && <div hidden={tab !== "doctors"}><DoctorList hospitalId={id} /></div>}
+      {seen.includes("treatments") && <div hidden={tab !== "treatments"}><TreatmentList hospitalId={id} hospital={h} /></div>}
+      {seen.includes("reviews") && <div hidden={tab !== "reviews"}><ReviewList hospitalId={id} /></div>}
 
       {/* design 04-01: 상담신청 (accent) · 예약하기 (grey). Booking still lives in PHP (same origin keeps the app's session). */}
       <div className={styles.cta}>
         <button type="button" className={styles.ctaPrimary} onClick={() => setConsultOpen(true)}>상담신청</button>
-        <Link href={`/booking?id=${id}`} className={styles.ctaSecondary}>예약하기</Link>
+        <Link href={`/booking?id=${id}&from=hospital`} className={styles.ctaSecondary}>예약하기</Link>
       </div>
       {toast && <div className={styles.toast} role="status">{toast}</div>}
       <ConsultSheet hospital={h} open={consultOpen} onClose={() => setConsultOpen(false)} />

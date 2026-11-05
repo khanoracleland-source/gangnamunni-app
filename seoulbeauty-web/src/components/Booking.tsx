@@ -15,10 +15,32 @@ export interface BookingParams {
   id: number; treatmentId: number; optionId: number; treatmentName: string; rebook: boolean; via: string; sourceId: number;
   /** booking_change.php: the booking being rescheduled (its hospital and treatment come from the API). */
   change?: number;
+  /** Opened from the hospital page: back returns there with its tab as it was (history), not to a fresh page. */
+  fromHospital?: boolean;
 }
 
 const CloseIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
 const BackIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>;
+
+/**
+ * Leaving the booking page for where it was opened from. Opened from the hospital page (`from=hospital`, or the referrer is that hospital's page,
+ * e.g. the app's native/PHP entry): pop the history, so the hospital page comes back with its tab, scroll and the list's sort behind it.
+ * Any other entry: `replace` the destination in, so the booking page never stays in the history for a later 뒤로 to land on.
+ */
+function useLeave(p: BookingParams, back: string) {
+  const router = useRouter();
+  return () => {
+    let fromHospital = !!p.fromHospital;
+    if (!fromHospital && p.id > 0) {
+      try {
+        const r = new URL(document.referrer);
+        fromHospital = new RegExp(`/hospitals/${p.id}/?$`).test(r.pathname) || (/\/detail\.php$/.test(r.pathname) && r.searchParams.get("id") === String(p.id));
+      } catch { /* no referrer */ }
+    }
+    if (fromHospital && !p.change && window.history.length > 1) router.back();
+    else router.replace(back);
+  };
+}
 
 /** 예약 선택 (design 05-09 → 05-10 → 05-11; refusals 05-12 and the other sheets): choose treatments, a day and a time, answer the clinic's questions, confirm. */
 export default function Booking(p: BookingParams) {
@@ -28,6 +50,7 @@ export default function Booking(p: BookingParams) {
   const { data, error, refetch } = useQuery({ queryKey: qk.bookingContext(hospitalId), queryFn: () => api.bookingContext(hospitalId), enabled: hospitalId > 0, staleTime: 0, gcTime: 0, retry: false, refetchOnReconnect: false, refetchOnWindowFocus: false }); // a refetch (reconnect, app back to foreground) must not reset what the member chose
   const title = changeId ? "예약 변경" : p.rebook && p.via !== "again" ? "다시 예약" : "예약 선택";
   const back = changeId ? "/mypage/bookings" : p.rebook && p.sourceId > 0 ? `/mypage/bookings/${p.sourceId}` : `/hospitals/${p.id}`;
+  const leave = useLeave(p, back);
   const err = info.error ?? error;
   const loggedOut = err instanceof ApiError && err.status === 401;
   const params: BookingParams = changeId && info.data ? { ...p, id: info.data.hospitalId, treatmentName: info.data.treatment, rebook: true } : p;
@@ -39,12 +62,12 @@ export default function Booking(p: BookingParams) {
   if (body) {
     return (
       <div className={styles.root}>
-        <PageHead title={title} back={back} />
+        <PageHead title={title} back={back} onBack={leave} />
         {body}
       </div>
     );
   }
-  return <BookingForm ctx={data!} p={params} title={title} back={back} change={changeId ? info.data : undefined} />;
+  return <BookingForm ctx={data!} p={params} title={title} back={back} leave={leave} change={changeId ? info.data : undefined} />;
 }
 
 /** 52px header shared by the three steps: back (44) · centred title 17/500 · 44px spacer. */
@@ -75,7 +98,7 @@ function weekGrid(days: string[], today: string): string[][] {
   return weeks;
 }
 
-function BookingForm({ ctx, p, title, back, change }: { ctx: BookingContext; p: BookingParams; title: string; back: string; change?: BookingChangeInfo }) {
+function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingContext; p: BookingParams; title: string; back: string; leave: () => void; change?: BookingChangeInfo }) {
   const qc = useQueryClient();
   const router = useRouter();
   const php = usePhpBase();
@@ -278,7 +301,7 @@ function BookingForm({ ctx, p, title, back, change }: { ctx: BookingContext; p: 
           <button type="button" className={styles.primary} disabled={busy} onClick={finish}>{busy ? "접수 중..." : "확인했어요"}</button>
         </div>
         {/* 05-11: over the confirm page until 확인했어요 / 내 예약 현황 */}
-        {stage === "success" && <SuccessSheet onDone={() => router.replace(back)} onList={() => router.replace("/mypage/bookings")} />}
+        {stage === "success" && <SuccessSheet onDone={leave} onList={() => router.replace("/mypage/bookings")} />}
       </div>
     );
   }
@@ -303,7 +326,7 @@ function BookingForm({ ctx, p, title, back, change }: { ctx: BookingContext; p: 
   // ---- 05-09 예약 선택 (also behind the "med" / "consent" / "success" sheets) ----
   return (
     <div className={styles.root}>
-      <PageHead title={title} back={back} />
+      <PageHead title={title} back={back} onBack={leave} />
       <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div className={styles.headRow}>
           <span className={styles.headTitle}>예약을 진행해볼까요?</span>
@@ -428,7 +451,7 @@ function BookingForm({ ctx, p, title, back, change }: { ctx: BookingContext; p: 
             setSplitHint(`"${removed.join('", "')}" 시술은 다른 날짜로 따로 예약해주세요. 이번 예약은 "${kept.join(", ")}" 으로 진행돼요.`);
           }} />
       )}
-      {noshowOpen && <NoshowSheet info={noshowOpen} onOk={() => { setNoshowOpen(null); router.replace(back); }} />}
+      {noshowOpen && <NoshowSheet info={noshowOpen} onOk={() => { setNoshowOpen(null); leave(); }} />}
     </div>
   );
 }

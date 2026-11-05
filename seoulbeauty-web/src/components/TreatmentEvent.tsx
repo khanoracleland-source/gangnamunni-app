@@ -25,7 +25,7 @@ export default function TreatmentEvent({ hospitalId, treatmentId }: { hospitalId
       <h2 id="ev-h" className={styles.h2}>어떤 이벤트를 예약하시겠어요?</h2>
       <p className={styles.note}>시술에 대한 정보는 참고 사항이며, 병원 방문 시 개인의 상태에 따라 달라질 수 있어요</p>
       {t.options.map((o) => (
-        <Link key={o.id} href={`/booking?id=${hospitalId}&treatment_id=${t.treatmentId}&option_id=${o.id}&treatment=${encodeURIComponent(t.name)}`} className={styles.card}>
+        <Link key={o.id} href={`/booking?id=${hospitalId}&treatment_id=${t.treatmentId}&option_id=${o.id}&treatment=${encodeURIComponent(t.name)}&from=hospital`} className={styles.card}>
           <div className={styles.name}>{o.displayName || t.name}</div>
           <div className={styles.priceRow}>
             {o.regularPrice > o.price && <span className={styles.regular}><s>{o.regularPrice.toLocaleString("ko-KR")}</s></span>}

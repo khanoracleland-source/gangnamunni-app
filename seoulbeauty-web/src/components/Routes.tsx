@@ -54,7 +54,7 @@ export const BookingRoute = () => {
   const id = posInt(sp.get("id"));
   if (!id) return <div style={{ padding: 60, textAlign: "center", color: "#777" }}>병원 정보를 찾을 수 없습니다.</div>;
   return <Booking id={id} treatmentId={posInt(sp.get("treatment_id"))} optionId={posInt(sp.get("option_id"))} treatmentName={(sp.get("treatment") ?? "").trim().slice(0, 100)}
-    rebook={sp.get("rebook") === "1"} via={sp.get("via") ?? ""} sourceId={posInt(sp.get("source_booking_id"))} />;
+    rebook={sp.get("rebook") === "1"} via={sp.get("via") ?? ""} sourceId={posInt(sp.get("source_booking_id"))} fromHospital={sp.get("from") === "hospital"} />;
 };
 
 export const EventsRoute = () => {

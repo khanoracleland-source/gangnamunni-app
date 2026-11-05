@@ -6,8 +6,11 @@
 .topBtn img { display: block; }
 .title { flex: 1; min-width: 0; text-align: center; font-size: calc(17px * var(--fs-scale)); font-weight: 500; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tabs { position: sticky; top: 52px; z-index: 9; display: flex; background: var(--bg); border-bottom: 1px solid #DCD6D8; }
-.tab { flex: 1 1 0; height: 46px; font-size: calc(15px * var(--fs-scale)); color: #1A1718; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-.tabActive { font-weight: 700; border-bottom-color: #1A1718; }
+.tab { flex: 1 1 0; height: 46px; font-size: calc(15px * var(--fs-scale)); color: #1A1718; }
+.tabActive { font-weight: 700; }
+/* one underline that slides under the chosen tab (4 equal tabs = 25% each) */
+.tabBar { position: absolute; left: 0; bottom: -1px; width: 25%; height: 2px; background: #1A1718; transition: transform .3s cubic-bezier(.4, 0, .2, 1); will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .tabBar { transition: none; } }
 /* image strip (design 118 tall at 393): drawn a little taller (≈153 at 393, capped at 210 in the 640 column) object-fit: cover like detail.php .gallery-image; radius 12, thin progress line */
 .slider { position: relative; margin: 16px 20px 0; border-radius: 12px; overflow: hidden; background: #DAD7D8; }
 .slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }

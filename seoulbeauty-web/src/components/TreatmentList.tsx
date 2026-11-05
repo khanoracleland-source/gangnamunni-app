@@ -28,7 +28,7 @@ export default function TreatmentList({ hospitalId, hospital }: { hospitalId: nu
         <ul className={styles.list}>
           {rows.map(({ t, o }) => (
             <li key={o.id}>
-              <Link href={`/booking?id=${hospitalId}&treatment_id=${t.treatmentId}&option_id=${o.id}&treatment=${encodeURIComponent(t.name)}`} className={styles.card}>
+              <Link href={`/booking?id=${hospitalId}&treatment_id=${t.treatmentId}&option_id=${o.id}&treatment=${encodeURIComponent(t.name)}&from=hospital`} className={styles.card}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={thumb} alt="" className={styles.thumb} loading="lazy" decoding="async"
                   onError={(e) => { if (e.currentTarget.src !== PLACEHOLDER) e.currentTarget.src = PLACEHOLDER; }} />
