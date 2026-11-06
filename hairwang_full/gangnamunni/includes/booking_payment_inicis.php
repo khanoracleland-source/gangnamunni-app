@@ -109,7 +109,7 @@ final class InicisGateway implements BookingPaymentGateway {
             'P_AMT' => (string)$amount, 'P_GOODS' => $goods !== '' ? $goods : '예약 결제', 'P_UNAME' => $name !== '' ? $name : '고객',
             'P_NEXT_URL' => $baseUrl . '/booking_payment_inicis_return.php',
             'P_CLOSE_URL' => $baseUrl . '/booking_payment.php?booking_id=' . $bookingId,
-            'P_CHARSET' => 'UTF-8', 'P_NOTI' => (string)$bookingId, 'P_TIMESTAMP' => $ts,
+            'P_CHARSET' => 'UTF-8', 'P_NOTI' => (string)$order['merchant_uid'], 'P_TIMESTAMP' => $ts,
             'P_CHKFAKE' => self::chkFake((string)$amount, $oid, $ts, $this->hashKey),
             'P_RESERVED' => json_encode($reserved, JSON_UNESCAPED_SLASHES),
         ];
@@ -196,10 +196,13 @@ final class InicisGateway implements BookingPaymentGateway {
         try {
             $res = ($this->transport)($this->refundUrl(), $form, $this->timeout);
         } catch (Throwable $e) {
+            error_log('[inicis_refund] ' . $merchantUid . ' tid=' . $transactionId . ' outcome unknown (transport): ' . $e->getMessage());
             throw new RuntimeException('Inicis refund outcome unknown: ' . $e->getMessage(), 0, $e);
         }
         $body = json_decode((string)($res['body'] ?? ''), true);
         if ((int)($res['status'] ?? 0) !== 200 || !is_array($body) || !isset($body['resultCode'])) {
+            error_log('[inicis_refund] ' . $merchantUid . ' tid=' . $transactionId . ' outcome unknown: HTTP ' . (int)($res['status'] ?? 0)
+                . ' body=' . preg_replace('/[^\p{L}\p{N} _.:,{}"\-]/u', '', mb_substr((string)($res['body'] ?? ''), 0, 120)));
             throw new RuntimeException('Inicis refund outcome unknown: HTTP ' . (int)($res['status'] ?? 0));
         }
         $code = (string)$body['resultCode'];
@@ -229,7 +232,8 @@ final class InicisGateway implements BookingPaymentGateway {
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => http_build_query($form, '', '&', PHP_QUERY_RFC3986),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded;charset=utf-8', 'Accept: application/json'],
+            // Accept 는 */* 로 둔다(curl 기본값). 'Accept: application/json' 이면 이니시스 INIAPI(Tomcat)가 HTTP 406 으로 거절한다.
+            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded;charset=utf-8', 'Accept: */*'],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_TIMEOUT => $timeout,

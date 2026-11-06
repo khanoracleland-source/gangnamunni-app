@@ -949,17 +949,26 @@ html body .bp-page .bp-method img { height: 21px; }
     });
     var INICIS_SDK = 'https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js';
     // 이니시스 자체 호스트에서만 SDK 를 불러온다(서버가 준 주소라도 이 값과 다르면 거부).
-    function loadInicisSdk(url) {
+    // INIPayPro_v2.js 는 전역 jQuery($)를 요구한다("jquery 로드 필요"). 이 페이지엔 jQuery 가 없으므로 먼저 불러온다(SRI 고정).
+    var JQUERY_URL = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js';
+    var JQUERY_SRI = 'sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs';
+    function loadScript(src, integrity) {
         return new Promise(function(resolve, reject) {
-            var fail = function() { reject(new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.')); };
-            if (url !== INICIS_SDK) { fail(); return; }
-            if (window.INIPayPro) { resolve(); return; }
             var el = document.createElement('script');
-            el.src = url; el.charset = 'UTF-8'; el.async = true;
-            el.onload = function() { window.INIPayPro ? resolve() : fail(); };
-            el.onerror = fail;
+            el.src = src; el.charset = 'UTF-8'; el.async = true;
+            if (integrity) { el.integrity = integrity; el.crossOrigin = 'anonymous'; }
+            el.onload = resolve;
+            el.onerror = function() { reject(new Error('load')); };
             document.head.appendChild(el);
         });
+    }
+    function loadInicisSdk(url) {
+        var fail = function() { throw new Error('결제창을 불러오지 못했습니다. 새로고침해주세요.'); };
+        if (url !== INICIS_SDK) return Promise.resolve().then(fail);
+        if (window.INIPayPro) return Promise.resolve();
+        var jq = window.jQuery ? Promise.resolve() : loadScript(JQUERY_URL, JQUERY_SRI);
+        return jq.then(function() { if (!window.jQuery) fail(); return loadScript(url); })
+            .then(function() { if (!window.INIPayPro) fail(); }, fail);
     }
     function verify() {
         return post('booking_payment_verify.php', {}).then(function(d) { location.href = d.redirect_url; });

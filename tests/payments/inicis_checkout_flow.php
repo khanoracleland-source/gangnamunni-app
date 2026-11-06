@@ -50,6 +50,7 @@ $p = $gw->checkoutParams($order, $booking, false, $BASE . '/', 'wellness', '1762
 expect($p['P_MID'] === $MID && $p['P_OID'] === $OID && $p['P_AMT'] === '1000' && $p['P_DEVICE_TYPE'] === 'WEB', 'web params: MID, OID, amount, WEB');
 expect($p['P_NEXT_URL'] === $BASE . '/booking_payment_inicis_return.php' && $p['P_CLOSE_URL'] === $BASE . '/booking_payment.php?booking_id=141', 'P_NEXT_URL / P_CLOSE_URL from the https base');
 expect($p['P_CHKFAKE'] === InicisGateway::chkFake('1000', $OID, '1762322400000', $HASH) && $p['P_TIMESTAMP'] === '1762322400000', 'P_CHKFAKE signs amount+oid+timestamp');
+expect($p['P_NOTI'] === $OID, 'P_NOTI carries the order id (the mobile result returns it)');
 expect($p['P_RESERVED'] === '{}', 'web: empty P_RESERVED object');
 expect(strpos(json_encode($p), $HASH) === false, 'hash key never appears in the params');
 $pm = $gw->checkoutParams($order, $booking, true, $BASE, 'wellness', '1762322400000');
@@ -180,6 +181,10 @@ foreach (['', 'x', "BK_1' OR 1=1", 'BK_20261105140000_141_ABCDEF012345', $OID . 
     $setup(); $to = $run($auth(['P_OID' => $badOid]));
     expect($to === $BASE . '/my_bookings.php?pay_error=UNAVAILABLE' && $calls === [] && $st['attempts'] === [], 'malformed order id never looked up: "' . $badOid . '"');
 }
+$setup(); $to = $run($auth(['P_OID' => '', 'P_NOTI' => $OID]));
+expect($to === $success && $paths() === ['payAppl.ini'], 'mobile result without P_OID: the order id comes back in P_NOTI');
+$setup(); $to = $run($auth(['P_OID' => '', 'P_NOTI' => '141']));
+expect($to === $BASE . '/my_bookings.php?pay_error=UNAVAILABLE' && $calls === [], 'no valid order id in P_OID or P_NOTI: nothing is looked up');
 $setup(); $st['lockBusy'] = true; expect($run($auth()) === $pay('BUSY') && $calls === [], 'busy lock: BUSY, no approval');
 $setup(); $st['throwOnOrder'] = true; expect($run($auth()) === $pay('ERROR') && $calls === [], 'unexpected exception: ERROR, no approval');
 $setup(); $to = $run($auth(['P_RMESG1' => '<script>alert(1)</script>']));

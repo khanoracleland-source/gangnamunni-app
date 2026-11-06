@@ -93,8 +93,17 @@ function booking_payment_inicis_paid_at(string $dt, string $tm, int $now): int {
 function booking_payment_inicis_return(InicisGateway $gateway, array $post, string $baseUrl, array $io): string {
     $baseUrl = rtrim($baseUrl, '/');
     $str = function (string $key) use ($post): string { $v = $post[$key] ?? ''; return is_string($v) ? substr($v, 0, 500) : ''; };
+    // 모바일 인증 결과에는 P_OID 가 없을 수 있다. 결제창 요청 때 P_NOTI 에 주문번호를 실어 보냈으므로 그것을 쓴다(원장이 최종 검증한다).
+    $pattern = '/^BK_\d{14}_(\d{1,9})_[0-9a-f]{12}$/D';
     $oid = $str('P_OID');
-    $bid = preg_match('/^BK_\d{14}_(\d{1,9})_[0-9a-f]{12}$/D', $oid, $m) ? (int)$m[1] : 0;
+    if (!preg_match($pattern, $oid)) $oid = $str('P_NOTI');
+    $bid = preg_match($pattern, $oid, $m) ? (int)$m[1] : 0;
+    if ($bid <= 0) {
+        // 어떤 값이 왔는지 남긴다(키 이름과 상태 문구만. 카드·인증 번호는 남기지 않는다).
+        $keys = implode(',', array_slice(array_map(function ($k) { return preg_replace('/[^A-Za-z0-9_]/', '', (string)$k); }, array_keys($post)), 0, 30));
+        $msg = preg_replace('/[^\p{L}\p{N} _.:,\-]/u', '', mb_substr($str('P_RMESG1'), 0, 80));
+        error_log('[inicis_return] no valid order id; keys=' . $keys . ' P_STATUS=' . preg_replace('/[^0-9A-Za-z]/', '', $str('P_STATUS')) . ' msg=' . $msg);
+    }
     // 안내는 결제 화면이 보여준다(pay_error). 주문번호에 예약 번호가 들어 있어 원장을 읽기 전의 오류도 그 화면으로 보낸다.
     $notice = function (string $code, int $bookingId) use ($baseUrl): string {
         return $bookingId > 0 ? $baseUrl . '/booking_payment.php?booking_id=' . $bookingId . '&pay_error=' . $code
