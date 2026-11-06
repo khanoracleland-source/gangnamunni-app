@@ -40,14 +40,41 @@ export class BookingsService {
     return map;
   }
 
+  /**
+   * The image /hospitals shows for the hospital (same priority as the list: hospital_images main > main_image_url > hospital_images logo >
+   * profile_image_url). A failed lookup falls back to the profile image.
+   */
+  private async hospitalThumbs(rows: any[]): Promise<Map<number, string>> {
+    const out = new Map<number, string>();
+    const ids = [...new Set(rows.map((b) => n(b.hospital_id)).filter((x) => x > 0))];
+    if (!ids.length) return out;
+    const imgs = await this.safe('hospital thumbs', async () => ((await this.db.query(
+      `SELECT hospital_id, image_url, image_type FROM hospital_images WHERE hospital_id IN (${ids.map(() => '?').join(',')}) AND is_active = 1 AND image_type IN ('main','logo')
+       ORDER BY hospital_id ASC, sort_order ASC, id ASC`, ids)) as any)[0] as any[], [] as any[]);
+    const main = new Map<number, string>(), logo = new Map<number, string>();
+    for (const i of imgs ?? []) {
+      const hid = n(i.hospital_id), url = s(i.image_url);
+      if (!url) continue;
+      if (i.image_type === 'main' && !main.has(hid)) main.set(hid, url);
+      if (i.image_type === 'logo' && !logo.has(hid)) logo.set(hid, url);
+    }
+    for (const b of rows) {
+      const hid = n(b.hospital_id);
+      const url = main.get(hid) || s(b.hospital_main_image) || logo.get(hid) || s(b.hospital_image);
+      if (url) out.set(hid, url);
+    }
+    return out;
+  }
+
   /** my_bookings.php (latest 50) split into the three tabs. */
   async list(m: BookingMember) {
     const phone = digits(m.phone);
     const [rows] = (await this.db.query(
-      `SELECT b.*, h.profile_image_url AS hospital_image FROM gangnamunni_bookings b LEFT JOIN gangnamunni_hospitals h ON b.hospital_id = h.id
+      `SELECT b.*, h.profile_image_url AS hospital_image, h.main_image_url AS hospital_main_image FROM gangnamunni_bookings b LEFT JOIN gangnamunni_hospitals h ON b.hospital_id = h.id
        WHERE b.mb_id = ? OR ((b.mb_id IS NULL OR b.mb_id = '') AND ? <> '' AND REPLACE(REPLACE(b.phone, '-', ''), ' ', '') = ?)
        ORDER BY b.created_at DESC LIMIT 50`, [m.id, phone, phone])) as any;
     const bookings = rows as any[];
+    const thumbs = await this.hospitalThumbs(bookings);
     const ids = bookings.map((b) => n(b.id));
     const pay = await this.payments(ids);
     const completedIds = bookings.filter((b) => s(b.status) === 'completed').map((b) => n(b.id));
@@ -58,7 +85,7 @@ export class BookingsService {
       for (const r of rr) reviews.set(n(r.booking_id), r);
     }
     const base = (b: any) => ({
-      id: n(b.id), hospitalId: n(b.hospital_id), hospitalName: s(b.hospital_name) || '-', imageUrl: b.hospital_image ? s(b.hospital_image) : null,
+      id: n(b.id), hospitalId: n(b.hospital_id), hospitalName: s(b.hospital_name) || '-', imageUrl: thumbs.get(n(b.hospital_id)) ?? null,
       treatment: s(b.treatment), price: n(b.price), dateText: cardDate(b.booking_date, b.booking_time),
     });
     const upcoming: any[] = [], completed: any[] = [], cancelled: any[] = [];

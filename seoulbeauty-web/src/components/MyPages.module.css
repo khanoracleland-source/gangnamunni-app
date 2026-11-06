@@ -78,35 +78,41 @@
 .notice { margin: 4px 16px 0; padding: 12px 14px; font-size: 15px; line-height: 1.6; color: #4A4446; background: #fff; }
 
 /* 내 예약 (my_bookings / booking detail) — functional skeleton */
-.bkTabs { display: flex; background: #fff; border-bottom: 1px solid #eee; }
-.bkTab { flex: 1; height: 46px; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 16px; color: #888; border-bottom: 2px solid transparent; text-decoration: none; }
-.bkTabOn { color: #AC1830; border-bottom-color: #AC1830; font-weight: 700; }
-.bkCount { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #AC1830; color: #fff; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
-.bkList { background: #F4F2F3; min-height: calc(100vh - 110px); padding: 10px 0 30px; display: flex; flex-direction: column; gap: 10px; }
-.bkCard { margin: 0 16px; padding: 16px; background: #fff; color: inherit; }
-.bkTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.bkChip { height: 28px; padding: 0 9px; display: inline-flex; align-items: center; background: #2A1416; color: #fff; font-size: 15px; font-weight: 700; }
+.bkTabs { margin: 0 20px; display: flex; background: #fff; border-bottom: 1px solid #DCD6D8; }
+.bkTab { flex: 1 1 0; height: 46px; margin-bottom: -1px; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: calc(15px * var(--fs-scale, 1)); color: #1A1718; font-weight: 400; border-bottom: 2px solid transparent; text-decoration: none; }
+.bkTabOn { font-weight: 700; border-bottom-color: #1A1718; }
+.bkList { background: #fff; min-height: calc(100vh - 110px); padding: 12px 0 30px; display: flex; flex-direction: column; gap: 12px; }
+.bkCard { margin: 0 20px; padding: 20px; background: #fff; color: inherit; border: 1px solid #ECE9EA; border-radius: 16px; }
+.bkTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; }
+.bkChip { height: 24px; padding: 0 9px; display: inline-flex; align-items: center; border-radius: 6px; background: #FBEFF1; color: #AC1830; font-size: calc(13px * var(--fs-scale, 1)); font-weight: 700; white-space: nowrap; }
 .bkChipDone { background: #EFECED; color: #4A4446; }
-.bkChipCancel { background: #AC1830; }
-.bkLink { font-size: 15px; color: #6B6466; text-decoration: underline; }
-.bkDate { margin-top: 10px; font-size: 18px; font-weight: 700; }
-.bkSum { display: flex; gap: 12px; margin-top: 12px; }
-.bkThumb { width: 72px; height: 72px; flex: 0 0 72px; background: #D9D9D9; color: #fff; font-size: 11px; font-weight: 700; text-align: center; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.bkLink { height: 32px; padding: 0 12px; box-sizing: border-box; display: inline-flex; align-items: center; flex-shrink: 0; white-space: nowrap; border: 1px solid #DCD6D8; border-radius: 16px; font-size: calc(13px * var(--fs-scale, 1)); color: #1A1718; text-decoration: none; }
+.bkDate { margin-top: 12px; font-size: calc(18px * var(--fs-scale, 1)); font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+.bkSum { display: flex; gap: 14px; margin-top: 14px; }
+.bkThumb { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 12px; background: #D9D9D9; color: #fff; font-size: 10px; font-weight: 700; text-align: center; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .bkThumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.bkCopy { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
-.bkTreat { font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
-.bkHosp { font-size: 15px; color: #4A4446; }
-.bkPrice { font-size: 15px; color: #1A1718; }
-.bkProg { display: flex; gap: 4px; margin-top: 14px; }
-.bkStep { flex: 1; padding-top: 6px; border-top: 3px solid #DCD6D8; font-size: 12px; color: #9A9395; text-align: center; }
-.bkStepDone { border-top-color: #AC1830; color: #4A4446; }
-.bkStepOn { border-top-color: #AC1830; color: #AC1830; font-weight: 700; }
-.bkActions { display: flex; gap: 8px; margin-top: 14px; }
-.bkBtn { flex: 1; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid #AC1830; color: #AC1830; background: #fff; border-radius: 4px; font-size: 16px; text-decoration: none; font-family: inherit; cursor: pointer; box-sizing: border-box; }
+.bkCopy { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.bkTreat { font-size: calc(13px * var(--fs-scale, 1)); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bkHosp { font-size: calc(12px * var(--fs-scale, 1)); color: #6B6466; }
+.bkPrice { margin-top: 4px; font-size: calc(17px * var(--fs-scale, 1)); font-weight: 800; color: #1A1718; white-space: nowrap; }
+.bkProgBox { margin-top: 16px; padding: 14px 12px 12px; background: #F7F5F6; border-radius: 12px; }
+.bkProgHead { display: flex; align-items: center; padding: 0 2px; }
+.bkProgTitle { font-size: calc(15px * var(--fs-scale, 1)); font-weight: 700; color: #1A1718; }
+.bkProgLeft { margin-left: auto; font-size: calc(12px * var(--fs-scale, 1)); color: #6B6466; }
+.bkProg { display: flex; gap: 4px; margin-top: 12px; }
+.bkStep { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; font-size: calc(11px * var(--fs-scale, 1)); letter-spacing: -0.04em; line-height: 1.3; text-align: center; word-break: keep-all; color: #6B6466; font-weight: 400; }
+.bkStep::before { content: ""; align-self: stretch; height: 4px; margin-bottom: 7px; border-radius: 2px; background: #E4E0E1; }
+.bkStepDone::before { background: #AC1830; }
+.bkStepOn { color: #AC1830; font-weight: 700; }
+.bkStepOn::before { background: #AC1830; }
+.bkActions { display: flex; gap: 10px; margin-top: 16px; }
+.bkBtn { flex: 1 1 0; height: 44px; display: flex; align-items: center; justify-content: center; border: 0; color: #1A1718; background: #F2EFF0; border-radius: 12px; font-size: calc(17px * var(--fs-scale, 1)); font-weight: 500; text-decoration: none; font-family: inherit; cursor: pointer; box-sizing: border-box; }
 .bkBtnPri { background: #AC1830; color: #fff; }
 .bkBtnOff { opacity: .45; pointer-events: none; }
-.bkHint { margin: 0 16px; padding: 12px 14px; display: flex; gap: 10px; align-items: center; background: #fff; color: inherit; text-decoration: none; font-size: 15px; }
-.bkHint small { display: block; margin-top: 2px; color: #6B6466; font-size: 13px; }
+.bkHint { margin: 0 20px; padding: 9px 14px; display: flex; gap: 10px; align-items: flex-start; background: #F7F5F6; border-radius: 14px; font-size: calc(12px * var(--fs-scale, 1)); line-height: 1.6; letter-spacing: -0.03em; }
+.bkHintLink { flex: 1; min-width: 0; display: flex; gap: 10px; color: inherit; text-decoration: none; }
+.bkHintLink img { width: 20px; height: 20px; margin-top: 1px; flex-shrink: 0; object-fit: contain; display: block; }
+.bkHintX { width: 18px; height: 18px; padding: 0; margin-top: 1px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #4A4446; cursor: pointer; }
 .bkEmpty { padding: 70px 20px; text-align: center; color: #777; line-height: 1.7; }
 .bkDim { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; }
 .bkSheet { width: 100%; max-width: 640px; box-sizing: border-box; padding: 28px 20px 24px; background: #fff; border-radius: 16px 16px 0 0; text-align: center; }
@@ -141,6 +147,7 @@
 .hd { height: 52px; flex: none; padding: 0 8px; display: flex; align-items: center; background: #fff; }
 .hdBack { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #1A1718; }
 .hdTitle { flex: 1 1 auto; text-align: center; font-size: calc(17px * var(--fs-scale, 1)); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hdRight:empty { width: 44px; padding: 0; }
 .hdRight { width: 64px; height: 44px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; }
 .ntWrap { padding-bottom: 0; display: flex; flex-direction: column; min-height: calc(100dvh - var(--nav-h) - var(--sab)); background: #fff; }
 .ntReadAll { font-size: calc(13px * var(--fs-scale, 1)); color: #6B6466; white-space: nowrap; }

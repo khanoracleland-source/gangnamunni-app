@@ -72,6 +72,7 @@ describe('bookings API (mock DB)', () => {
   let pointsOn = false;
   const future = '2999-01-01';
   const B = (o: Record<string, unknown>): Record<string, any> => ({ hospital_id: 5, hospital_name: '가나병원', hospital_image: 'uploads/h5.jpg', treatment: '필러', price: 120000, booking_time: '14:00:00', mb_id: 'kim', phone: '010-1234-5678', name: '김', edit_count: 1, created_at: '2026-10-01 10:00:00', ...o });
+  let hospitalImages: Record<string, unknown>[] = [];
   const rows = [
     B({ id: 1, status: 'pending', booking_date: future }),
     B({ id: 2, status: 'confirmed', booking_date: future }),
@@ -98,6 +99,7 @@ describe('bookings API (mock DB)', () => {
       if (q.includes('gangnamunni_booking_payment_previews')) return [[{ booking_id: 2 }]];
       if (q.includes('FROM hospital_reviews WHERE booking_id IN')) return [[{ booking_id: 4, id: 77, review_status: 'published', is_active: 1 }]];
       if (q.includes('FROM g5_push_tokens')) return [[{ c: 0 }]];
+      if (q.includes('FROM hospital_images')) return [hospitalImages];
       if (q.includes('FROM gangnamunni_notification_settings')) return [[{ noti_booking: 1, noti_push: 1 }]];
       if (q.includes("setting_key = 'payment_deadline_hours'")) return [[{ setting_value: '48' }]];
       if (q.includes('SELECT status, provider, amount, refunded_amount')) {
@@ -143,6 +145,23 @@ describe('bookings API (mock DB)', () => {
     expect(r.upcoming.map((x: any) => x.id)).toEqual([1, 2, 3]);
     expect(r.completed.map((x: any) => x.id)).toEqual([4, 5, 6]);
     expect(r.cancelled.map((x: any) => x.id)).toEqual([7, 8, 9]);
+  });
+
+  it('list: the card image is the one /hospitals shows (hospital_images main, then main_image_url, logo, profile)', async () => {
+    hospitalImages = [{ hospital_id: 5, image_url: 'uploads/h5/logo.png', image_type: 'logo' }, { hospital_id: 5, image_url: 'uploads/h5/main.jpg', image_type: 'main' }];
+    try {
+      const r = (await get('/v1/mypage/bookings').expect(200)).body;
+      expect(r.upcoming[0].imageUrl).toBe('uploads/h5/main.jpg');
+      hospitalImages = [{ hospital_id: 5, image_url: 'uploads/h5/logo.png', image_type: 'logo' }];
+      expect((await get('/v1/mypage/bookings').expect(200)).body.upcoming[0].imageUrl).toBe('uploads/h5/logo.png');
+      // main_image_url beats the logo row
+      for (const r of rows) r.hospital_main_image = 'uploads/h5/hospital-main.jpg'; // a hospital's rows all carry its column
+      expect((await get('/v1/mypage/bookings').expect(200)).body.upcoming[0].imageUrl).toBe('uploads/h5/hospital-main.jpg');
+      // no images at all: the profile image
+      hospitalImages = [];
+      for (const r of rows) r.hospital_main_image = null;
+      expect((await get('/v1/mypage/bookings').expect(200)).body.upcoming[0].imageUrl).toBe('uploads/h5.jpg');
+    } finally { hospitalImages = []; for (const r of rows) delete r.hospital_main_image; }
   });
 
   it('list: upcoming actions, steps and chip', async () => {

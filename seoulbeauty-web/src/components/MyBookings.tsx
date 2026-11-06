@@ -1,14 +1,21 @@
 "use client";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type BookingBase, type MyBookingsData } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
+import bellIcon from "@/assets/icons/bell.png";
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
 import styles from "./MyPages.module.css";
 
+const PUSH_HINT_KEY = "sb_bookings_push_hint_off";
+const HINT_EVENT = "sb-push-hint";
+const subscribeHint = (cb: () => void) => { window.addEventListener(HINT_EVENT, cb); window.addEventListener("storage", cb); return () => { window.removeEventListener(HINT_EVENT, cb); window.removeEventListener("storage", cb); }; };
+const readHint = () => { try { return window.localStorage.getItem(PUSH_HINT_KEY) === "1"; } catch { return false; } };
+const dismissHint = () => { try { window.localStorage.setItem(PUSH_HINT_KEY, "1"); } catch { /* ignore */ } window.dispatchEvent(new Event(HINT_EVENT)); };
 type Tab = "active" | "completed" | "cancelled";
 const TABS: { key: Tab; label: string; href: string }[] = [
   { key: "active", label: "시술예정", href: "/mypage/bookings" },
@@ -33,11 +40,18 @@ function Summary({ b }: { b: BookingBase }) {
 }
 
 function Progress({ steps, active, title }: { steps: string[]; active: number; title: string }) {
+  const left = steps.length - active;
   return (
-    <div className={styles.bkProg} aria-label={title}>
-      {steps.map((label, i) => (
-        <div key={i} className={`${styles.bkStep} ${i + 1 === active ? styles.bkStepOn : i + 1 < active ? styles.bkStepDone : ""}`}>{label}</div>
-      ))}
+    <div className={styles.bkProgBox} aria-label={title}>
+      <div className={styles.bkProgHead}>
+        <span className={styles.bkProgTitle}>{steps[active - 1] ?? ""}</span>
+        <span className={styles.bkProgLeft}>{left > 0 ? `${left}단계 남음` : "완료"}</span>
+      </div>
+      <div className={styles.bkProg}>
+        {steps.map((label, i) => (
+          <div key={i} className={`${styles.bkStep} ${i + 1 === active ? styles.bkStepOn : i + 1 < active ? styles.bkStepDone : ""}`}>{label}</div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -56,11 +70,12 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
   const [changing, setChanging] = useState<{ id: number; left: number } | null>(null);
   const [cancelling, setCancelling] = useState<number | null>(Number.isInteger(askedCancel) && askedCancel > 0 ? askedCancel : null);
   const rebook = (b: BookingBase) => `/booking?id=${b.hospitalId}&rebook=1&source_booking_id=${b.id}&treatment=${encodeURIComponent(b.treatment)}`;
+  const hintOff = useSyncExternalStore(subscribeHint, readHint, () => false);
   const total = data ? data.upcoming.length + data.completed.length + data.cancelled.length : 0;
 
   return (
     <div className={styles.wrap}>
-      <MyHeader title="내 예약/결제 내역" />
+      <MyHeader title="내 예약 / 결제 내역" right={null} />
       {loggedOut ? <LoginPrompt text="로그인하면 예약 내역을 자동으로 조회합니다." /> : !data && error ? (
         <div className={styles.empty}>불러오지 못했습니다. <button type="button" className={styles.retry} onClick={() => refetch()}>다시 시도</button></div>
       ) : !data ? (
@@ -87,11 +102,22 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
           <div className={styles.bkTabs} role="tablist">
             {TABS.map((t) => (
               <Link key={t.key} href={t.href} replace role="tab" aria-selected={tab === t.key} className={`${styles.bkTab} ${tab === t.key ? styles.bkTabOn : ""}`}>
-                {t.label}{t.key === "active" && data.upcoming.length > 0 && <span className={styles.bkCount}>{data.upcoming.length}</span>}
+                {t.label}{t.key === "active" && data.upcoming.length > 0 && <span>{data.upcoming.length}</span>}
               </Link>
             ))}
           </div>
           <div className={styles.bkList}>
+            {data.showPushHint && !hintOff && (tab === "active" ? data.upcoming.length > 0 : tab === "completed" && data.completed.length > 0) && (
+              <div className={styles.bkHint}>
+                <a className={styles.bkHintLink} href={phpUrl(php, "notification_settings.php")}>
+                  <Image src={bellIcon} alt="" width={20} height={20} />
+                  <span>기기 알림을 켜면 예약현황을 푸시로도 알려드려요<br />(마이페이지 &gt; 설정 &gt; 알림 설정에서 예약 알림·푸시 알림을 켜주세요)</span>
+                </a>
+                <button type="button" className={styles.bkHintX} aria-label="닫기" onClick={dismissHint}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </div>
+            )}
             {tab === "active" && (data.upcoming.length === 0 ? <div className={styles.bkEmpty}>진행중인 예약이 없습니다.</div> : data.upcoming.map((b) => (
               <article key={b.id} className={styles.bkCard}>
                 <div className={styles.bkTop}>
@@ -130,7 +156,7 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
             {tab === "cancelled" && (data.cancelled.length === 0 ? <div className={styles.bkEmpty}>해당 항목이 없습니다.</div> : data.cancelled.map((b) => (
               <article key={b.id} className={styles.bkCard}>
                 <div className={styles.bkTop}>
-                  <span className={`${styles.bkChip} ${b.refundComplete ? styles.bkChipDone : styles.bkChipCancel}`}>{b.chip}</span>
+                  <span className={`${styles.bkChip} ${b.refundComplete ? styles.bkChipDone : ""}`}>{b.chip}</span>
                   <Link className={styles.bkLink} href={`/mypage/bookings/${b.id}`}>예약상세</Link>
                 </div>
                 <div className={styles.bkDate}>{b.dateText}</div>
@@ -139,12 +165,6 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
                 <div className={styles.bkActions}><a className={`${styles.bkBtn} ${styles.bkBtnPri}`} href={rebook(b)}>다시예약</a></div>
               </article>
             )))}
-            {data.showPushHint && (tab === "active" ? data.upcoming.length > 0 : tab === "completed" && data.completed.length > 0) && (
-              <a className={styles.bkHint} href={phpUrl(php, "notification_settings.php")}>
-                <span aria-hidden="true">🔔</span>
-                <span>기기 알림을 켜면 예약현황을 푸시로도 알려드려요<small>마이페이지 &gt; 설정 &gt; 알림 설정에서 예약 알림·푸시 알림을 켜주세요</small></span>
-              </a>
-            )}
           </div>
           {changing && <ChangeConfirmSheet left={changing.left} onClose={() => setChanging(null)} onGo={() => router.push(`/booking?change=${changing.id}`)} />}
           {cancelling && <CancelReasonSheet onClose={() => setCancelling(null)} onGo={(reason) => router.push(`/mypage/bookings/${cancelling}/cancel?reason=${encodeURIComponent(reason)}`)} />}
