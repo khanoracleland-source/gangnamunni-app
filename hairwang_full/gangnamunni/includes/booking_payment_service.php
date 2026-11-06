@@ -114,6 +114,7 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
     if ($status === 'cancelled' && $cancelled === 0) throw new RuntimeException('Cancellation total is missing.');
     $hash = hash('sha256', json_encode($remote, JSON_THROW_ON_ERROR));
     $notifyRefundedBookingId = 0;
+    $notifyPaidBookingId = 0; $notifyPaidAmount = 0;
     $db->begin_transaction();
     try {
         $existingEvent = $db->prepare("SELECT id FROM gangnamunni_payment_events WHERE payment_id=? AND payload_sha256=? LIMIT 1");
@@ -127,6 +128,8 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
             platform_payment_mark_verified($db, $order['merchant_uid'], $provider, $remote['transaction_id'],
                 'paid:' . $remote['transaction_id'], (int)$remote['amount'], $hash, $source, (int)$remote['paid_at'], false);
             $order = booking_payment_by_merchant($db, $order['merchant_uid']);
+            // pending -> paid in this call: 설정 > 예약 · 결제 알림 "결제가 완료되었어요" (Nest sends its own for the Inicis web flow)
+            if (($order['status'] ?? '') === 'paid' && (int)($order['booking_id'] ?? 0) > 0) { $notifyPaidBookingId = (int)$order['booking_id']; $notifyPaidAmount = (int)$order['amount']; }
         }
         if ($cancelled < (int)$order['refunded_amount']) throw new RuntimeException('Provider refund total regressed.');
         if ($cancelled > (int)$order['refunded_amount']) {
@@ -162,7 +165,16 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
         $db->rollback();
         throw $e;
     }
-    // 알림은 커밋 후 한 번만(실패해도 환불 처리에는 영향 없음).
+    // 알림은 커밋 후 한 번만(실패해도 결제·환불 처리에는 영향 없음).
+    if ($notifyPaidBookingId > 0) {
+        try {
+            require_once __DIR__ . '/booking_notifications.php';
+            $booking = booking_notification_fetch_booking_by_id($db, $notifyPaidBookingId);
+            if ($booking) notify_booking_member($db, $booking, 'paid', ['amount' => $notifyPaidAmount]);
+        } catch (Throwable $e) {
+            error_log('[booking_payment_apply_remote] paid notification failed: ' . $e->getMessage());
+        }
+    }
     if ($notifyRefundedBookingId > 0) {
         try {
             require_once __DIR__ . '/booking_notifications.php';

@@ -28,6 +28,7 @@ function platform_payment_create_booking(mysqli $db, int $booking_id): array {
         mysqli_stmt_close($existing);
         if ($row) {
             mysqli_commit($db);
+            $row['created'] = false; // an order already existed (e.g. a re-confirm after a change)
             return $row;
         }
 
@@ -47,7 +48,7 @@ function platform_payment_create_booking(mysqli $db, int $booking_id): array {
         $id = mysqli_insert_id($db);
         mysqli_stmt_close($stmt);
         mysqli_commit($db);
-        return ['id' => $id, 'merchant_uid' => $merchant_uid, 'status' => 'pending'];
+        return ['id' => $id, 'merchant_uid' => $merchant_uid, 'status' => 'pending', 'created' => true];
     } catch (Throwable $error) {
         mysqli_rollback($db);
         throw $error;

@@ -151,11 +151,14 @@ try {
         }
         $was_confirmed = ($cur_row['status'] === 'confirmed');
         $status_sql = "status=IF(status='confirmed','hospital_checking',status), ";
+        // a new date re-arms 설정 > 방문 전 알림 (the day-before reminder is sent again for the new date; column from sql/notification_visit_reminder_20261106.sql)
+        $visit_col = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_bookings LIKE 'visit_reminder_sent_at'");
+        $visit_reset_sql = ($visit_col && mysqli_num_rows($visit_col) > 0) ? ', visit_reminder_sent_at=NULL' : '';
         if ($treatment_changed) {
-            $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET {$status_sql}booking_date=?, booking_time=?, treatment=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW() WHERE id=? AND status IN ('pending','hospital_checking','confirmed')");
+            $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET {$status_sql}booking_date=?, booking_time=?, treatment=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW(){$visit_reset_sql} WHERE id=? AND status IN ('pending','hospital_checking','confirmed')");
             mysqli_stmt_bind_param($stmt2, 'ssssi', $new_date, $new_time, $new_treatment, $memo_addition, $booking_id);
         } else {
-            $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET {$status_sql}booking_date=?, booking_time=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW() WHERE id=? AND status IN ('pending','hospital_checking','confirmed')");
+            $stmt2 = mysqli_prepare($connect, "UPDATE gangnamunni_bookings SET {$status_sql}booking_date=?, booking_time=?, edit_count=edit_count+1, memo=CONCAT(IFNULL(memo,''), '\n[', NOW(), '] ', ?), updated_at=NOW(){$visit_reset_sql} WHERE id=? AND status IN ('pending','hospital_checking','confirmed')");
             mysqli_stmt_bind_param($stmt2, 'sssi', $new_date, $new_time, $memo_addition, $booking_id);
         }
         $ok = mysqli_stmt_execute($stmt2) && mysqli_stmt_affected_rows($stmt2) === 1;

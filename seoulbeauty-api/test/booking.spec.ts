@@ -6,6 +6,7 @@ import { AuthModule } from '../src/auth/auth.module';
 import { BookingModule } from '../src/booking/booking.module';
 import { BookingService, fmtDose } from '../src/booking/booking.service';
 import { AdminNotifyService } from '../src/admin-notify/admin-notify.service';
+import { MemberNotifyService } from '../src/member-notify/member-notify.service';
 import { findActiveSame, memberAge, noshowAvailableFrom, noshowStatus, parseHours, revisitStatus, scheduleError } from '../src/booking/booking.logic';
 
 const NOW = '2026-10-29 12:00:00'; // Thursday
@@ -98,6 +99,7 @@ describe('booking API', () => {
   let calls: { sql: string; args: any[] }[];
   let st: any;
   let notified: any[];
+  const memberNotified: any[][] = [];
   const realFetch = global.fetch; let hmsCalls: any[]; let hmsReply: any;
   const baseState = () => ({
     settings: {} as Record<string, string>,
@@ -148,13 +150,14 @@ describe('booking API', () => {
     @Global() @Module({ providers: [{ provide: DB, useValue: { query: async (sql: string, args: any[] = []) => respond(sql, args) } }], exports: [DB] }) class FakeDb {}
     const mod = await Test.createTestingModule({ imports: [FakeDb, AuthModule, BookingModule] })
       .overrideProvider(AdminNotifyService).useValue({ bookingCreated: async (...a: any[]) => { notified.push(a); } })
+      .overrideProvider(MemberNotifyService).useValue({ bookingLater: (...a: any[]) => { memberNotified.push(a); } })
       .compile();
     app = mod.createNestApplication();
     await app.init();
   });
   afterAll(async () => { global.fetch = realFetch; delete process.env.HMS_API_URL; delete process.env.HMS_API_KEY; await app.close(); });
   beforeEach(() => {
-    calls = []; st = baseState(); notified = []; hmsCalls = []; hmsReply = { success: true, data: { id: 9001 } };
+    calls = []; st = baseState(); notified = []; memberNotified.length = 0; hmsCalls = []; hmsReply = { success: true, data: { id: 9001 } };
     BookingService.attempts.clear();
     delete process.env.HMS_API_URL; delete process.env.HMS_API_KEY;
     // 보톡스 has two priced options: choosing one is required (option_count 2)
@@ -207,6 +210,7 @@ describe('booking API', () => {
     expect(JSON.parse(ins.args[6])).toEqual([{ name: '보톡스', qty: 1, option_id: 101, option_name: '50U', dosage: '50U' }]);
     expect(ins.args.slice(7)).toEqual([1, '2026-12-01', '10:00', '', 50000]);
     expect(notified).toEqual([[555, 'Seoul <Clinic>', '김민', '2026-12-01', '10:00']]);
+    expect(memberNotified).toEqual([[555, 'received']]); // 설정 > 예약 · 결제 알림: 예약 접수
     expect(hmsCalls).toHaveLength(0);
   });
   it('create: two treatments add up', async () => {

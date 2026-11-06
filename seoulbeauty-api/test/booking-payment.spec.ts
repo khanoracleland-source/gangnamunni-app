@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { MemberNotifyService } from '../src/member-notify/member-notify.service';
 import { Global, INestApplication, Module } from '@nestjs/common';
 import request from 'supertest';
 import { DB } from '../src/db/db.module';
@@ -36,7 +37,7 @@ describe('booking payment API (preview only; no PG connected)', () => {
     }) as any;
     const conn = { query: async (sql: string, args: any[] = []) => respond(sql, args), release: () => undefined };
     @Global() @Module({ providers: [{ provide: DB, useValue: { query: async (sql: string, args: any[] = []) => respond(sql, args), getConnection: async () => conn } }], exports: [DB] }) class FakeDb {}
-    const mod = await Test.createTestingModule({ imports: [FakeDb, AuthModule, BookingsModule] }).compile();
+    const mod = await Test.createTestingModule({ imports: [FakeDb, AuthModule, BookingsModule] }).overrideProvider(MemberNotifyService).useValue({ bookingLater: () => undefined }).compile();
     app = mod.createNestApplication();
     await app.init();
   });

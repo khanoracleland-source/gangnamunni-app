@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=.env dist/main.js",
     "start:dev": "node --env-file-if-exists=.env -r ts-node/register src/main.ts",
-    "test": "jest"
+    "test": "jest",
+    "visit-reminder": "node --env-file-if-exists=.env dist/visit-reminder.cli.js"
   },
   "engines": {
     "node": ">=22.9"

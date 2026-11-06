@@ -41,6 +41,7 @@ describe('account logic', () => {
     expect(photoKind(Buffer.from('<?php echo 1;'))).toBeNull();
     expect(isSettingField('mkt_sms')).toBe(true);
     expect(isSettingField('noti_chat')).toBe(false);
+    expect(isSettingField('noti_push')).toBe(false); // the old master push switch is not editable from the web page
     expect(isSettingField('id; DROP')).toBe(false);
   });
 });
@@ -48,7 +49,7 @@ describe('account logic', () => {
 describe('account API', () => {
   let app: INestApplication;
   let calls: { sql: string; args: any[] }[];
-  let member: any; let nickTaken: boolean; let recentBirth: number; let failBirthLog: boolean;
+  let member: any; let nickTaken: boolean; let recentBirth: number; let failBirthLog: boolean; let columnMissing = false;
   const dir = mkdtempSync(join(tmpdir(), 'prof-'));
   const realFetch = global.fetch;
   const respond = (sql: string, args: any[]): any => {
@@ -56,7 +57,8 @@ describe('account API', () => {
     if (/FROM g5_member WHERE mb_id = \?/.test(sql)) return [[member]];
     if (/mb_nick = \? AND mb_id != \?/.test(sql)) return [nickTaken ? [{ mb_id: 'other' }] : []];
     if (/gangnamunni_member_birth_log WHERE/.test(sql)) { if (failBirthLog) throw new Error('no table'); return [[{ c: recentBirth }]]; }
-    if (/FROM gangnamunni_notification_settings/.test(sql)) return [[{ noti_general: 0, noti_booking: 1, noti_event: 1, noti_promo: 1, noti_push: 1, noti_message: 1, mkt_push: 1, mkt_sms: 0, mkt_email: 0, mkt_night_push: 0 }]];
+    if (/FROM gangnamunni_notification_settings/.test(sql)) return [[{ noti_booking: 1, noti_visit: 0, noti_community: 1, noti_review: 1, mkt_push: 1, mkt_sms: 0, mkt_email: 0, mkt_night_push: 0 }]];
+    if (/UPDATE gangnamunni_notification_settings SET noti_review/.test(sql) && columnMissing) { const err: any = new Error("Unknown column 'noti_review'"); err.code = 'ER_BAD_FIELD_ERROR'; throw err; }
     return [{ affectedRows: 1 }];
   };
   beforeAll(async () => {
@@ -151,11 +153,17 @@ describe('account API', () => {
   });
   it('settings: read with stored values, write one whitelisted field', async () => {
     const g = await request(app.getHttpServer()).get('/v1/mypage/notification-settings').set('Cookie', 'sid=kim').expect(200);
-    expect(g.body.settings).toMatchObject({ noti_general: 0, mkt_push: 1, mkt_sms: 0 });
+    expect(g.body.settings).toMatchObject({ noti_visit: 0, mkt_push: 1, mkt_sms: 0 });
+    expect(calls.find((c) => /FROM gangnamunni_notification_settings/.test(c.sql))!.sql).toMatch(/^SELECT \* FROM/); // a column not migrated yet must not fail the page
     calls = [];
     await request(app.getHttpServer()).post('/v1/mypage/notification-settings').set(H).send({ field: 'mkt_sms', value: '1' }).expect(201);
     expect(calls.map((c) => c.sql)).toEqual(['INSERT IGNORE INTO gangnamunni_notification_settings (member_id) VALUES (?)', 'UPDATE gangnamunni_notification_settings SET mkt_sms = ? WHERE member_id = ?']);
     expect(calls[1].args).toEqual([1, 'kim']);
+    // a column the SQL migration has not added yet: a clear 503, not a generic 500 (the page itself still loads, see the SELECT * above)
+    columnMissing = true;
+    const r = await request(app.getHttpServer()).post('/v1/mypage/notification-settings').set(H).send({ field: 'noti_review', value: 0 }).expect(503);
+    expect(r.body.message).toContain('DB 업데이트');
+    columnMissing = false;
     calls = [];
     await request(app.getHttpServer()).post('/v1/mypage/notification-settings').set(H).send({ field: 'mb_password', value: 1 }).expect(422);
     expect(calls.length).toBe(0);

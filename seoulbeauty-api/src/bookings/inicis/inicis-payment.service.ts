@@ -4,6 +4,7 @@ import { DbConn, DbPool } from '../../db/db.module';
 import { BookingMember } from '../bookings.service';
 import { kstNow } from '../bookings.logic';
 import { BookingPaymentService, PaymentRefused } from '../booking-payment.service';
+import { MemberNotifyService } from '../../member-notify/member-notify.service';
 import { approve, InicisFetch, InicisUnknownOutcome, netCancel } from './inicis.client';
 import { chkFake, InicisConfig, inicisAllowedFor, inicisConfig, inicisProvider, isIdc } from './inicis.config';
 import { PAY_DB } from './pay-db';
@@ -58,6 +59,7 @@ export class InicisPaymentService {
     private readonly payments: BookingPaymentService,
     /** The global fetch in production; a fake Inicis in tests. */
     @Inject(INICIS_FETCH) private readonly fetcher: InicisFetch,
+    private readonly member: MemberNotifyService,
   ) {}
 
   /**
@@ -242,6 +244,7 @@ export class InicisPaymentService {
       return payPage(cancelled ? 'FINALIZE_FAILED' : 'FINALIZE_FAILED_UNCANCELLED');
     }
     await this.attempt(conn, order, provider, key, amount, 'paid', 'CONFIRMED');
+    this.member.bookingLater(bookingId, 'paid', { amount }); // 설정 > 예약 · 결제 알림: "결제가 완료되었어요"
     return success;
   }
 

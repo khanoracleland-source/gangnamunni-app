@@ -120,13 +120,14 @@ export class BookingsService {
     };
   }
 
-  /** Hint to turn on push notifications: shown unless a token exists and both booking + push notifications are on. */
+  /** Hint to turn on push notifications: shown unless a device token exists and 예약 · 결제 알림 (noti_booking) is on. */
   private async pushHint(mbId: string): Promise<boolean> {
     const tokens = await this.safe('push tokens', async () => n((((await this.db.query('SELECT COUNT(*) AS c FROM g5_push_tokens WHERE mb_id = ? AND pt_use = 1', [mbId])) as any)[0] as any[])[0]?.c), 0);
-    let booking = 1, push = 1;
-    const pref = await this.safe('notification settings', async () => (((await this.db.query('SELECT noti_booking, noti_push FROM gangnamunni_notification_settings WHERE member_id = ? LIMIT 1', [mbId])) as any)[0] as any[])[0], undefined as any);
-    if (pref) { booking = n(pref.noti_booking); push = n(pref.noti_push); }
-    return !(tokens > 0 && booking === 1 && push === 1);
+    const booking = await this.safe('notification settings', async () => {
+      const row = (((await this.db.query('SELECT noti_booking FROM gangnamunni_notification_settings WHERE member_id = ? LIMIT 1', [mbId])) as any)[0] as any[])[0];
+      return row ? n(row.noti_booking) : 1;
+    }, 1);
+    return !(tokens > 0 && booking === 1);
   }
 
   private async deadlineHours(): Promise<number> {

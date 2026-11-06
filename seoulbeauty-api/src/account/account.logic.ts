@@ -1,11 +1,11 @@
 export const PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 export const BIRTH_CHANGE_DAYS = 30;
 
-/** The ten toggles of notification_settings.php, in page order. */
-export const SETTING_FIELDS = ['noti_general', 'noti_booking', 'noti_event', 'noti_promo', 'noti_push', 'noti_message', 'mkt_push', 'mkt_sms', 'mkt_email', 'mkt_night_push'] as const;
+/** The eight toggles of the 설정 page (design 07-01), in page order. Other columns of the table (noti_general, noti_event, ...) are not editable here. */
+export const SETTING_FIELDS = ['noti_booking', 'noti_visit', 'noti_community', 'noti_review', 'mkt_push', 'mkt_sms', 'mkt_email', 'mkt_night_push'] as const;
 export type SettingField = (typeof SETTING_FIELDS)[number];
 export const SETTING_DEFAULTS: Record<SettingField, number> = {
-  noti_general: 1, noti_booking: 1, noti_event: 1, noti_promo: 1, noti_push: 1, noti_message: 1, mkt_push: 0, mkt_sms: 0, mkt_email: 0, mkt_night_push: 0,
+  noti_booking: 1, noti_visit: 1, noti_community: 1, noti_review: 1, mkt_push: 0, mkt_sms: 0, mkt_email: 0, mkt_night_push: 0,
 };
 export function isSettingField(v: unknown): v is SettingField { return typeof v === 'string' && (SETTING_FIELDS as readonly string[]).includes(v); }
 

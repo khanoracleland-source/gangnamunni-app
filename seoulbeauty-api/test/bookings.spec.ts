@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { MemberNotifyService } from '../src/member-notify/member-notify.service';
 import { Global, INestApplication, Module } from '@nestjs/common';
 import request from 'supertest';
 import { DB } from '../src/db/db.module';
@@ -70,6 +71,8 @@ describe('bookings API (mock DB)', () => {
   const realFetch = global.fetch;
   let seenAffected = 1;
   let pointsOn = false;
+  let pushTokens = 0;
+  let notiBooking = 1;
   const future = '2999-01-01';
   const B = (o: Record<string, unknown>): Record<string, any> => ({ hospital_id: 5, hospital_name: '가나병원', hospital_image: 'uploads/h5.jpg', treatment: '필러', price: 120000, booking_time: '14:00:00', mb_id: 'kim', phone: '010-1234-5678', name: '김', edit_count: 1, created_at: '2026-10-01 10:00:00', ...o });
   let hospitalImages: Record<string, unknown>[] = [];
@@ -98,9 +101,9 @@ describe('bookings API (mock DB)', () => {
         { booking_id: 2, status: 'pending', amount: 120000, provider: PG_LIVE }, { booking_id: 3, status: 'paid', amount: 120000, provider: PG_LIVE }, { booking_id: 7, status: 'paid', amount: 120000, provider: PG_LIVE }]];
       if (q.includes('gangnamunni_booking_payment_previews')) return [[{ booking_id: 2 }]];
       if (q.includes('FROM hospital_reviews WHERE booking_id IN')) return [[{ booking_id: 4, id: 77, review_status: 'published', is_active: 1 }]];
-      if (q.includes('FROM g5_push_tokens')) return [[{ c: 0 }]];
+      if (q.includes('FROM g5_push_tokens')) return [[{ c: pushTokens }]];
       if (q.includes('FROM hospital_images')) return [hospitalImages];
-      if (q.includes('FROM gangnamunni_notification_settings')) return [[{ noti_booking: 1, noti_push: 1 }]];
+      if (q.includes('FROM gangnamunni_notification_settings')) return [[{ noti_booking: notiBooking }]];
       if (q.includes("setting_key = 'payment_deadline_hours'")) return [[{ setting_value: '48' }]];
       if (q.includes('SELECT status, provider, amount, refunded_amount')) {
         const id = (v as number[])[0];
@@ -124,12 +127,12 @@ describe('bookings API (mock DB)', () => {
       return new Response(JSON.stringify(who ? { loggedIn: true, user: { name: '이름', level: 2, ...who } } : { loggedIn: false, user: null }), { status: 200 });
     }) as any;
     @Global() @Module({ providers: [{ provide: DB, useValue: db }], exports: [DB] }) class TestDbModule {}
-    const mod = await Test.createTestingModule({ imports: [TestDbModule, AuthModule, BookingsModule] }).compile();
+    const mod = await Test.createTestingModule({ imports: [TestDbModule, AuthModule, BookingsModule] }).overrideProvider(MemberNotifyService).useValue({ bookingLater: () => undefined }).compile();
     app = mod.createNestApplication();
     await app.init();
   });
   afterAll(async () => { global.fetch = realFetch; await app.close(); });
-  beforeEach(() => { sql.length = 0; seenAffected = 1; pointsOn = false; });
+  beforeEach(() => { sql.length = 0; seenAffected = 1; pointsOn = false; pushTokens = 0; notiBooking = 1; });
   const get = (p: string, auth = true) => { const r = request(app.getHttpServer()).get(p); return auth ? r.set('Cookie', 'sid=kim') : r; };
 
   it('needs a login and is never cached', async () => {
@@ -187,6 +190,14 @@ describe('bookings API (mock DB)', () => {
     const r = (await get('/v1/mypage/bookings').expect(200)).body;
     expect(r.expiredNotice).toEqual({ bookingId: 7, hospitalId: 5, treatment: '필러', deadlineHours: 48 });
     expect(r.showPushHint).toBe(true); // no token
+  });
+
+  it('push hint follows 예약 · 결제 알림 (noti_booking) and a device token, nothing else', async () => {
+    pushTokens = 1;
+    expect((await get('/v1/mypage/bookings').expect(200)).body.showPushHint).toBe(false);
+    notiBooking = 0;
+    expect((await get('/v1/mypage/bookings').expect(200)).body.showPushHint).toBe(true);
+    expect(sql.some((x) => /FROM gangnamunni_notification_settings/.test(x.q) && /noti_push/.test(x.q))).toBe(false);
   });
 
   it('expire-seen: needs the XHR header, updates only own system cancels', async () => {

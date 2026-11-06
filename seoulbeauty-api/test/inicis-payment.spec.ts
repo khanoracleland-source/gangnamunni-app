@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Test } from '@nestjs/testing';
+import { MemberNotifyService } from '../src/member-notify/member-notify.service';
 import { Global, INestApplication, Module } from '@nestjs/common';
 import request from 'supertest';
 import { DB } from '../src/db/db.module';
@@ -64,6 +65,7 @@ describe('Inicis config and helpers', () => {
 
 describe('Inicis card payment API', () => {
   let app: INestApplication;
+  let memberNotified: any[][] = [];
   let st: any;
   let inicisCalls: { url: string; body: string }[];
   let inicisReply: (url: string) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
@@ -105,16 +107,18 @@ describe('Inicis card payment API', () => {
       return new Response(JSON.stringify(who ? { loggedIn: true, user: { id: 'kim', no: 42, name: '김민', nickname: 'n', level: 2, phone: '' } } : { loggedIn: false, user: null }), { status: 200 });
     }) as any;
     @Global() @Module({ providers: [{ provide: DB, useFactory: () => fakeDb() }], exports: [DB] }) class FakeDb {}
+    memberNotified = [];
     const mod = await Test.createTestingModule({ imports: [FakeDb, AuthModule, BookingsModule] })
       .overrideProvider(PAY_DB).useFactory({ factory: () => fakeDb() })
       .overrideProvider(INICIS_FETCH).useValue(async (url: string, init: any) => { inicisCalls.push({ url, body: init.body }); return inicisReply(url); })
+      .overrideProvider(MemberNotifyService).useValue({ bookingLater: (...a: any[]) => { memberNotified.push(a); } })
       .compile();
     app = mod.createNestApplication();
     await app.init();
   });
   afterAll(async () => { global.fetch = realFetch; await app.close(); });
   beforeEach(() => {
-    st = base(); inicisCalls = []; inicisReply = reply(approveOk());
+    st = base(); inicisCalls = []; memberNotified = []; inicisReply = reply(approveOk());
     Object.assign(process.env, { INICIS_TEST_MEMBERS: 'kim, tester2', INICIS_MID: MID, INICIS_HASHKEY: KEY, PG_PAYMENTS_ENABLED: '1', DB_PAY_USER: 'u', DB_PAY_PASSWORD: 'p' });
     delete process.env.INICIS_MODE; delete process.env.INICIS_PUBLIC_BASE;
   });
@@ -197,6 +201,7 @@ describe('Inicis card payment API', () => {
       expect(r.headers.location).toBe('/next/mypage/bookings/7/payment/success');
       expect(r.headers['cache-control']).toMatch(/no-store/);
       expect(inicisCalls).toHaveLength(1);
+      expect(memberNotified).toEqual([[7, 'paid', { amount: expect.any(Number) }]]); // 설정 > 예약 · 결제 알림: 결제 완료
       expect(inicisCalls[0].url).toBe('https://fcpaypro.inicis.com/payment/v1/rest/payAppl.ini');
       expect(inicisCalls[0].body).toBe(`P_MID=${MID}&P_AUTH_TID=INIpayTestAUTH1&P_AMT=50000&P_CHARSET=UTF-8`);
       expect(st.order).toMatchObject({ status: 'paid', provider: 'inicis_test', provider_transaction_id: 'INIpayTestTID123', verified_amount: 50000, paid_at: '2026-01-05 12:05:01' });

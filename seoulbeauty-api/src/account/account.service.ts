@@ -138,11 +138,12 @@ export class AccountService {
     return (await this.avatar(mbId)) ?? '';
   }
 
-  /** notification_settings.php: stored values over the defaults. A missing table reads as the defaults. */
+  /** notification_settings.php: stored values over the defaults. A missing table or column reads as the defaults. */
   async settings(mbId: string) {
     const out: Record<string, number> = { ...SETTING_DEFAULTS };
     try {
-      const [rows] = (await this.db.query(`SELECT ${SETTING_FIELDS.join(', ')} FROM gangnamunni_notification_settings WHERE member_id = ? LIMIT 1`, [mbId])) as any;
+      // `*` on purpose: a column the SQL migration has not added yet must not fail the whole page
+      const [rows] = (await this.db.query('SELECT * FROM gangnamunni_notification_settings WHERE member_id = ? LIMIT 1', [mbId])) as any;
       const r = (rows as any[])[0];
       if (r) for (const f of SETTING_FIELDS) if (r[f] != null) out[f] = n(r[f]) ? 1 : 0;
     } catch (e) { this.log.error(`settings: ${(e as Error).message}`); }
@@ -157,6 +158,11 @@ export class AccountService {
       await this.db.query('INSERT IGNORE INTO gangnamunni_notification_settings (member_id) VALUES (?)', [mbId]);
       await this.db.query(`UPDATE gangnamunni_notification_settings SET ${field} = ? WHERE member_id = ?`, [v, mbId]);
     } catch (e) {
+      // ER_BAD_FIELD_ERROR: the column is not there yet — sql/notification_visit_reminder_20261106.sql has not been run on this DB
+      if ((e as { code?: string }).code === 'ER_BAD_FIELD_ERROR') {
+        this.log.error(`setting ${field}: column missing; run hairwang_full/gangnamunni/sql/notification_visit_reminder_20261106.sql`);
+        throw new HttpException({ success: false, message: '설정 저장에 실패했습니다. (DB 업데이트가 필요합니다)' }, 503);
+      }
       this.log.error(`setting ${field}: ${(e as Error).message}`);
       throw new InternalServerErrorException({ success: false, message: '설정 저장에 실패했습니다.' });
     }

@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { MemberNotifyService } from '../src/member-notify/member-notify.service';
 import { Global, INestApplication, Module } from '@nestjs/common';
 import request from 'supertest';
 import { DB } from '../src/db/db.module';
@@ -25,11 +26,12 @@ describe('cancel logic', () => {
 describe('booking cancel / change API', () => {
   let app: INestApplication;
   let calls: { sql: string; args: any[] }[];
+  let memberNotified: any[][] = [];
   let st: any;
   const realFetch = global.fetch;
   const base = () => ({
     booking: { id: 7, mb_id: 'kim', phone: '010-1234-5678', status: 'pending', booking_date: '2099-01-05', booking_time: '10:00:00', treatment: '보톡스 · 50U', hospital_name: 'A의원', name: '김민', doctor_name: '', hms_appointment_id: null, edit_count: 0 },
-    order: null as any, settings: {} as Record<string, string>, lockOk: 1, affected: 1, hold: null as any, cols: { cancelled_by: true, edit_count: true },
+    order: null as any, settings: {} as Record<string, string>, lockOk: 1, affected: 1, hold: null as any, cols: { cancelled_by: true, edit_count: true } as Record<string, boolean>,
   });
   const respond = (sql: string, args: any[]): any => {
     calls.push({ sql, args });
@@ -54,12 +56,12 @@ describe('booking cancel / change API', () => {
     }) as any;
     const conn = { query: async (sql: string, args: any[] = []) => respond(sql, args), release: () => undefined };
     @Global() @Module({ providers: [{ provide: DB, useValue: { query: async (sql: string, args: any[] = []) => respond(sql, args), getConnection: async () => conn } }], exports: [DB] }) class FakeDb {}
-    const mod = await Test.createTestingModule({ imports: [FakeDb, AuthModule, BookingsModule] }).compile();
+    const mod = await Test.createTestingModule({ imports: [FakeDb, AuthModule, BookingsModule] }).overrideProvider(MemberNotifyService).useValue({ bookingLater: (...a: any[]) => { memberNotified.push(a); } }).compile();
     app = mod.createNestApplication();
     await app.init();
   });
   afterAll(async () => { global.fetch = realFetch; await app.close(); });
-  beforeEach(() => { calls = []; st = base(); });
+  beforeEach(() => { memberNotified = []; calls = []; st = base(); });
   const api = () => request(app.getHttpServer());
   const authed = (r: request.Test) => r.set('Cookie', 'sid=kim').set('X-Requested-With', 'XMLHttpRequest');
   const sqls = (re: RegExp) => calls.filter((c) => re.test(c.sql));
@@ -93,6 +95,7 @@ describe('booking cancel / change API', () => {
     expect(up.sql).toContain("cancelled_by = 'member'");
     expect(up.args).toEqual(['일정 변경: 급한 일', 7]);
     expect(sqls(/GET_LOCK/)).toHaveLength(0);
+    expect(memberNotified).toEqual([[7, 'cancelled_by_member']]); // 설정 > 예약 · 결제 알림
     expect(sqls(/COMMIT/)).toHaveLength(1);
     expect(sqls(/SET refund_status/)[0].args).toEqual(['not_applicable', 7]);
     expect(sqls(/UPDATE appointments/)).toHaveLength(0);
@@ -159,7 +162,15 @@ describe('booking cancel / change API', () => {
     expect(r.body).toEqual({ success: true, message: '예약이 변경되었습니다. (변경 가능 2회 남음)', new_date: '2099-01-06', new_time: '11:00', edits_left: 2 });
     const up = sqls(/SET status = IF/)[0];
     expect(up.sql).not.toContain('treatment = ?');
+    expect(up.sql).not.toContain('visit_reminder_sent_at'); // column not added yet
     expect(up.args).toEqual(['2099-01-06', '11:00', '변경: 2099-01-05 10:00:00 → 2099-01-06 11:00', 7]);
+    expect(memberNotified).toEqual([[7, 'changed', { recheck: false }]]); // 설정 > 예약 · 결제 알림
+  });
+  it('change re-arms 설정 > 방문 전 알림 once the column exists; a 확정 booking tells the member the hospital re-checks', async () => {
+    st.cols.visit_reminder_sent_at = true; st.booking.status = 'confirmed';
+    await authed(api().post('/v1/mypage/bookings/7/change')).send({ date: '2099-01-06', time: '11:00', treatment: '보톡스 · 50U' }).expect(201);
+    expect(sqls(/SET status = IF/)[0].sql).toContain(', visit_reminder_sent_at = NULL WHERE');
+    expect(memberNotified).toEqual([[7, 'changed', { recheck: true }]]);
   });
   it('change: treatment change and HMS date; confirmed -> hospital_checking', async () => {
     st.booking.status = 'confirmed'; st.booking.hms_appointment_id = 55;

@@ -4,6 +4,7 @@ import { DB, DbConn, DbPool } from '../db/db.module';
 import { BookingService, dateStr } from '../booking/booking.service';
 import { cancelDeadline, noshowCancelPreview } from '../booking/booking.logic';
 import { PointsService } from '../points/points.service';
+import { MemberNotifyService } from '../member-notify/member-notify.service';
 import { detailDate, isPgProvider, kstNow } from './bookings.logic';
 import { BookingMember } from './bookings.service';
 
@@ -23,7 +24,7 @@ export class ManageRefused extends HttpException {
 @Injectable()
 export class BookingManageService {
   private readonly log = new Logger(BookingManageService.name);
-  constructor(@Inject(DB) private readonly db: DbPool, private readonly booking: BookingService, private readonly points: PointsService) {}
+  constructor(@Inject(DB) private readonly db: DbPool, private readonly booking: BookingService, private readonly points: PointsService, private readonly member: MemberNotifyService) {}
 
   private async hasCol(table: string, col: string): Promise<boolean> {
     try { const [rows] = (await this.db.query(`SHOW COLUMNS FROM ${table} LIKE ?`, [col])) as any; return (rows as any[]).length > 0; } catch { return false; }
@@ -154,6 +155,7 @@ export class BookingManageService {
     if (s(b.mb_id)) {
       try { await this.points.revokeEarn('booking', id, '예약 취소 회수'); } catch (e) { this.log.error(`point clawback (booking #${id}): ${(e as Error).message}`); }
     }
+    this.member.bookingLater(id, 'cancelled_by_member'); // 설정 > 예약 · 결제 알림
     return { success: true, message: message || '예약이 취소되었습니다.', refund_status: refundStatus };
   }
 
@@ -191,6 +193,8 @@ export class BookingManageService {
     const order = await this.order(id);
     let wasConfirmed = false;
 
+    // a new date re-arms 설정 > 방문 전 알림: the day-before reminder goes out again for the new date
+    const visitReset = (await this.hasCol('gangnamunni_bookings', 'visit_reminder_sent_at')) ? ', visit_reminder_sent_at = NULL' : '';
     await this.withLock(order, async (conn) => {
       const [cur] = (await conn.query('SELECT status FROM gangnamunni_bookings WHERE id = ?', [id])) as any;
       const st = s((cur as any[])[0]?.status);
@@ -200,7 +204,7 @@ export class BookingManageService {
       wasConfirmed = st === 'confirmed';
       const [res] = (await conn.query(
         `UPDATE gangnamunni_bookings SET status = IF(status = 'confirmed', 'hospital_checking', status), booking_date = ?, booking_time = ?${treatmentChanged ? ', treatment = ?' : ''},
-           edit_count = edit_count + 1, memo = CONCAT(IFNULL(memo, ''), '\\n[', NOW(), '] ', ?), updated_at = NOW() WHERE id = ? AND status IN ('pending','hospital_checking','confirmed')`,
+           edit_count = edit_count + 1, memo = CONCAT(IFNULL(memo, ''), '\\n[', NOW(), '] ', ?), updated_at = NOW()${visitReset} WHERE id = ? AND status IN ('pending','hospital_checking','confirmed')`,
         treatmentChanged ? [date, time, newTreatment, memo, id] : [date, time, memo, id])) as any;
       if (n((res as any).affectedRows) !== 1) throw new ManageRefused('수정 처리 중 오류가 발생했습니다.', 500);
     });
@@ -209,6 +213,8 @@ export class BookingManageService {
     const hmsId = n(b.hms_appointment_id);
     if (hmsId) await this.db.query('UPDATE appointments SET opd_date = ? WHERE id = ?', [`${date} ${time}:00`, hmsId]).catch((e) => this.log.error(`HMS opd_date (booking #${id}): ${(e as Error).message}`));
     const editsLeft = Math.max(0, MAX_EDITS - (editCount + 1));
+    // 설정 > 예약 · 결제 알림: the change is applied at once; a 확정 booking goes back to 병원 확인, so only then is the hospital's answer awaited
+    this.member.bookingLater(id, 'changed', { recheck: wasConfirmed });
     return { success: true, message: `예약이 변경되었습니다. (변경 가능 ${editsLeft}회 남음)`, new_date: date, new_time: time, edits_left: editsLeft };
   }
 }

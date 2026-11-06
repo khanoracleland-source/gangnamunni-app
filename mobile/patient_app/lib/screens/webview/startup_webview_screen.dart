@@ -104,6 +104,10 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
         state == AppLifecycleState.detached) {
       WebViewCookiePersistence.flush();
     }
+    if (state == AppLifecycleState.resumed) {
+      // Back from the OS settings (설정 > "설정 열기"): the settings page re-reads the notification permission.
+      _bridge?.notifyNotificationStatus();
+    }
   }
 
   Future<void> _initializeWebView() async {

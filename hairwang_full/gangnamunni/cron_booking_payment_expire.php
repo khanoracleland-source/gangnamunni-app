@@ -13,6 +13,10 @@
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__ . '/includes/booking_payment_db_config.php';
 require_once __DIR__ . '/includes/booking_payment_service.php';
+require_once __DIR__ . '/includes/booking_notifications.php';
+
+// CLI run: no request, so the links in the message use the public site
+if (!defined('SITE_FULL_URL')) define('SITE_FULL_URL', rtrim(getenv('SITE_FULL_URL') ?: 'https://seoulbeauty.app/', '/') . '/');
 
 $dry = in_array('--dry-run', $argv ?? [], true);
 $connect = new mysqli(G5_MYSQL_HOST, G5_MYSQL_USER, G5_MYSQL_PASSWORD, G5_MYSQL_DB, defined('G5_MYSQL_PORT') ? G5_MYSQL_PORT : 3306);
@@ -72,6 +76,11 @@ while ($rows && ($r = $rows->fetch_assoc())) {
             $done++;
             try { points_checkout_release_for_booking($connect, $id, '결제 기한 만료 포인트 복구'); }
             catch (Throwable $e) { fwrite(STDERR, "booking {$id}: point release failed\n"); }
+            // 설정 > 예약 · 결제 알림: "결제 기한이 지나 예약이 취소되었어요" (switch off = not sent)
+            try {
+                $nb = booking_notification_fetch_booking_by_id($connect, $id);
+                if ($nb) notify_booking_member($connect, $nb, 'payment_expired');
+            } catch (Throwable $e) { fwrite(STDERR, "booking {$id}: expiry notification failed: " . $e->getMessage() . "\n"); }
             echo "cancelled booking {$id}\n";
         }
     } catch (Throwable $e) {

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type BookingBase, type MyBookingsData } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import bellIcon from "@/assets/icons/bell.png";
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
@@ -58,7 +57,6 @@ function Progress({ steps, active, title }: { steps: string[]; active: number; t
 
 /** my_bookings.php: 시술예정 / 시술완료 / 예약취소. Paying, changing and cancelling stay in PHP (links). */
 export default function MyBookings({ initial, anon }: { initial?: MyBookingsData; anon?: boolean }) {
-  const php = usePhpBase();
   const sp = useSearchParams();
   const raw = sp.get("tab");
   // my_bookings.php?action=cancel&booking_id=N (push / PHP links): open the reason sheet for that booking right away
@@ -109,10 +107,10 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
           <div className={styles.bkList}>
             {data.showPushHint && !hintOff && (tab === "active" ? data.upcoming.length > 0 : tab === "completed" && data.completed.length > 0) && (
               <div className={styles.bkHint}>
-                <a className={styles.bkHintLink} href={phpUrl(php, "notification_settings.php")}>
+                <Link className={styles.bkHintLink} href="/mypage/settings">
                   <Image src={bellIcon} alt="" width={20} height={20} />
-                  <span>기기 알림을 켜면 예약현황을 푸시로도 알려드려요<br />(마이페이지 &gt; 설정 &gt; 알림 설정에서 예약 알림·푸시 알림을 켜주세요)</span>
-                </a>
+                  <span>기기 알림을 켜면 예약현황을 푸시로도 알려드려요<br />(마이페이지 &gt; 설정 &gt; 알림설정에서 예약 · 결제 알림을 켜주세요)</span>
+                </Link>
                 <button type="button" className={styles.bkHintX} aria-label="닫기" onClick={dismissHint}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
                 </button>

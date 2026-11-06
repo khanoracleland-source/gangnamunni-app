@@ -656,17 +656,18 @@ if (($_GET['from'] ?? '') === 'notifications') {
             mysqli_stmt_close($_pt);
             $_has_token = ((int)$_cnt > 0);
         }
-        $_prefs = ['noti_booking'=>1,'noti_push'=>1];
-        $_ps = @mysqli_prepare($connect, "SELECT noti_booking, noti_push FROM gangnamunni_notification_settings WHERE member_id = ? LIMIT 1");
+        // same rule as seoulbeauty-api BookingsService.pushHint(): a device token and 설정 > 예약 · 결제 알림 (noti_booking) on
+        $_prefs = ['noti_booking'=>1];
+        $_ps = @mysqli_prepare($connect, "SELECT noti_booking FROM gangnamunni_notification_settings WHERE member_id = ? LIMIT 1");
         if ($_ps) {
             mysqli_stmt_bind_param($_ps, 's', $logged_mb_id);
             if (mysqli_stmt_execute($_ps)) {
                 $_pr = mysqli_fetch_assoc(mysqli_stmt_get_result($_ps));
-                if ($_pr) $_prefs = ['noti_booking'=>(int)$_pr['noti_booking'], 'noti_push'=>(int)$_pr['noti_push']];
+                if ($_pr) $_prefs = ['noti_booking'=>(int)$_pr['noti_booking']];
             }
             mysqli_stmt_close($_ps);
         }
-        if ($_has_token && (int)$_prefs['noti_booking'] === 1 && (int)$_prefs['noti_push'] === 1) $show_push_hint = false;
+        if ($_has_token && (int)$_prefs['noti_booking'] === 1) $show_push_hint = false;
     }
     ?>
     <!-- 진행중 -->

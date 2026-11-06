@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatf
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart' show openAppSettings;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -36,6 +37,14 @@ import 'package:nb_utils/nb_utils.dart' show toast;
 ///
 /// FlutterBridge.postMessage(JSON.stringify({
 ///   action: 'goBack'         // 뒤로 가기
+/// }));
+///
+/// FlutterBridge.postMessage(JSON.stringify({
+///   action: 'getNotificationStatus'   // OS 알림 권한 → window.onFlutterEvent('notificationStatus', {enabled})
+/// }));
+///
+/// FlutterBridge.postMessage(JSON.stringify({
+///   action: 'openNotificationSettings' // 알림 권한 요청 또는 앱의 OS 설정 화면 열기
 /// }));
 ///
 /// FlutterBridge.postMessage(JSON.stringify({
@@ -196,6 +205,18 @@ class WebViewBridge {
 
       case 'logout':
         await _handleNativeLogout();
+        break;
+
+      case 'getNotificationStatus':
+        // 설정 페이지(/next/mypage/settings)의 "기기 알림이 꺼져 있어요" 배너: OS 알림 권한 상태를 돌려준다.
+        await _handleGetNotificationStatus();
+        break;
+
+      case 'openNotificationSettings':
+        // "설정 열기": 이 앱의 OS 설정 화면(알림 권한)을 연다.
+        if (await _isFromTrustedOrigin()) {
+          await _handleOpenNotificationSettings();
+        }
         break;
 
       case 'authBootstrap':
@@ -457,6 +478,47 @@ class WebViewBridge {
       _log('FCM 토큰 전달 완료');
     } catch (e) {
       _log('FCM 토큰 전달 실패: $e');
+    }
+  }
+
+  /// 앱이 다시 전면에 올 때(startup_webview_screen) 호출: 현재 페이지가 듣고 있으면 권한 상태를 다시 알린다.
+  Future<void> notifyNotificationStatus() => _handleGetNotificationStatus();
+
+  /// OS 알림 권한 상태를 웹에 알린다: window.onFlutterEvent('notificationStatus', {enabled, status}).
+  /// enabled = authorized 또는 provisional. 조회에 실패하면 enabled=true 로 알려 배너를 띄우지 않는다.
+  Future<void> _handleGetNotificationStatus() async {
+    bool enabled = true;
+    String status = 'unknown';
+    try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      status = settings.authorizationStatus.name;
+      enabled = settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (e) {
+      _log('알림 권한 조회 실패: $e');
+    }
+    await sendToWebView('notificationStatus', {'enabled': enabled, 'status': status});
+  }
+
+  /// 권한이 아직 결정되지 않았으면(notDetermined) 시스템 요청 창을, 이미 거부됐으면 앱의 OS 설정 화면을 연다.
+  Future<void> _handleOpenNotificationSettings() async {
+    try {
+      final current = await FirebaseMessaging.instance.getNotificationSettings();
+      if (current.authorizationStatus == AuthorizationStatus.notDetermined) {
+        final asked = await FirebaseMessaging.instance.requestPermission();
+        if (asked.authorizationStatus == AuthorizationStatus.authorized ||
+            asked.authorizationStatus == AuthorizationStatus.provisional) {
+          await sendToWebView('notificationStatus', {'enabled': true, 'status': asked.authorizationStatus.name});
+          return;
+        }
+      }
+    } catch (e) {
+      _log('알림 권한 요청 실패: $e');
+    }
+    try {
+      await openAppSettings();
+    } catch (e) {
+      _log('앱 설정 열기 실패: $e');
     }
   }
 

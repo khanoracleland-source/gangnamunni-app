@@ -1,4 +1,5 @@
 import { Module, OnApplicationShutdown, Inject } from '@nestjs/common';
+import { MemberNotifyModule } from '../member-notify/member-notify.module';
 import { BookingModule } from '../booking/booking.module';
 import { PointsModule } from '../points/points.module';
 import { BookingManageService } from './booking-manage.service';
@@ -10,7 +11,7 @@ import { InicisReturnController } from './inicis/inicis-return.controller';
 import { createPayPool, PAY_DB } from './inicis/pay-db';
 
 @Module({
-  imports: [BookingModule, PointsModule],
+  imports: [BookingModule, PointsModule, MemberNotifyModule],
   controllers: [BookingsController, InicisReturnController],
   providers: [BookingsService, BookingManageService, BookingPaymentService, InicisPaymentService, { provide: PAY_DB, useFactory: () => createPayPool() }, { provide: INICIS_FETCH, useFactory: () => fetch }],
 })

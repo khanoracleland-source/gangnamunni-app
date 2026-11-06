@@ -66,10 +66,15 @@ export class FcmClient {
   }
 
   async send(sess: { project: string; access: string }, token: string, platform: unknown, title: string, body: string, link: string | null, adminId: number): Promise<FcmResult> {
+    return this.sendMessage(sess, buildFcmMessage(token, platform, title, body, link, adminId));
+  }
+
+  /** One HTTP v1 send of a prepared message body (admin or member). */
+  async sendMessage(sess: { project: string; access: string }, message: { message: Record<string, unknown> }): Promise<FcmResult> {
     try {
       const r = await fetch(`https://fcm.googleapis.com/v1/projects/${sess.project}/messages:send`, {
         method: 'POST', headers: { Authorization: `Bearer ${sess.access}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildFcmMessage(token, platform, title, body, link, adminId)), signal: AbortSignal.timeout(10_000),
+        body: JSON.stringify(message), signal: AbortSignal.timeout(10_000),
       });
       if (r.status === 200) return { ok: true };
       const j = await r.json().catch(() => null);

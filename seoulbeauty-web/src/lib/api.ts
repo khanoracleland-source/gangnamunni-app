@@ -400,7 +400,7 @@ export interface MyNotification { id: number; type: string; title: string; messa
 export interface MyNotificationsPage { items: MyNotification[]; total: number; page: number; hasMore: boolean; unread: number }
 
 export interface MyProfile { nick: string; name: string; hp: string; birth: string; email: string; photoUrl: string | null; birthChangeDays: number; /** social-login member: no service password */ social?: boolean }
-export const SETTING_KEYS = ["noti_general", "noti_booking", "noti_event", "noti_promo", "noti_push", "noti_message", "mkt_push", "mkt_sms", "mkt_email", "mkt_night_push"] as const;
+export const SETTING_KEYS = ["noti_booking", "noti_visit", "noti_community", "noti_review", "mkt_push", "mkt_sms", "mkt_email", "mkt_night_push"] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 export type NotificationSettings = Record<SettingKey, number>;
 

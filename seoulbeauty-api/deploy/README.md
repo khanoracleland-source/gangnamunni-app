@@ -62,9 +62,12 @@ CREATE TABLE IF NOT EXISTS hms_saas.gangnamunni_member_birth_log (
   PRIMARY KEY (id), KEY idx_mb_created (mb_id, created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 GRANT INSERT ON hms_saas.gangnamunni_member_birth_log TO 'sb_api_ro'@'127.0.0.1';
 GRANT INSERT ON hms_saas.gangnamunni_member_birth_log TO 'sb_api_ro'@'localhost';
--- 알림 설정 (POST /v1/mypage/notification-settings): one toggle per request
-GRANT INSERT (member_id), UPDATE (noti_general, noti_booking, noti_event, noti_promo, noti_push, noti_message, mkt_push, mkt_sms, mkt_email, mkt_night_push) ON hms_saas.gangnamunni_notification_settings TO 'sb_api_ro'@'127.0.0.1';
-GRANT INSERT (member_id), UPDATE (noti_general, noti_booking, noti_event, noti_promo, noti_push, noti_message, mkt_push, mkt_sms, mkt_email, mkt_night_push) ON hms_saas.gangnamunni_notification_settings TO 'sb_api_ro'@'localhost';
+-- 알림 설정 (POST /v1/mypage/notification-settings): one toggle per request. RUN `hairwang_full/gangnamunni/sql/notification_visit_reminder_20261106.sql` BEFORE deploying the API (the SELECT names noti_visit / noti_community; the same file adds gangnamunni_bookings.visit_reminder_sent_at).
+-- 방문 전 알림 (설정 > noti_visit): the API itself reminds confirmed bookings the day before (from 10:00 KST, every VISIT_REMINDER_INTERVAL_MIN=15 min; VISIT_REMINDER_ENABLED=0 on any second instance). No PHP cron. By hand: `npm run visit-reminder -- --dry-run`.
+GRANT UPDATE (visit_reminder_sent_at) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (visit_reminder_sent_at) ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'localhost';
+GRANT INSERT (member_id), UPDATE (noti_booking, noti_visit, noti_community, noti_review, mkt_push, mkt_sms, mkt_email, mkt_night_push) ON hms_saas.gangnamunni_notification_settings TO 'sb_api_ro'@'127.0.0.1';
+GRANT INSERT (member_id), UPDATE (noti_booking, noti_visit, noti_community, noti_review, mkt_push, mkt_sms, mkt_email, mkt_night_push) ON hms_saas.gangnamunni_notification_settings TO 'sb_api_ro'@'localhost';
 -- 후기 작성/수정 (POST /v1/mypage/reviews)
 GRANT INSERT, UPDATE (hospital_id, title, content, rating, treatments, doctor_id, doctor_name, review_status, is_active, updated_at) ON hms_saas.hospital_reviews TO 'sb_api_ro'@'127.0.0.1';
 GRANT INSERT, UPDATE (hospital_id, title, content, rating, treatments, doctor_id, doctor_name, review_status, is_active, updated_at) ON hms_saas.hospital_reviews TO 'sb_api_ro'@'localhost';
@@ -77,6 +80,10 @@ GRANT INSERT ON hms_saas.gangnamunni_notification_sends TO 'sb_api_ro'@'127.0.0.
 GRANT INSERT ON hms_saas.gangnamunni_notification_sends TO 'sb_api_ro'@'localhost';
 GRANT UPDATE (is_active) ON hms_saas.gangnamunni_admin_fcm_tokens TO 'sb_api_ro'@'127.0.0.1';
 GRANT UPDATE (is_active) ON hms_saas.gangnamunni_admin_fcm_tokens TO 'sb_api_ro'@'localhost';
+-- 예약 · 결제 알림 to the member (예약 접수 / 결제 완료 / 본인 취소 / 변경 요청 from the API; the other events stay in PHP): dead member device tokens switched off
+-- (user_notifications + notification_sends INSERT are granted above). Links use PHP_PUBLIC_SITE_URL (.env; default https://seoulbeauty.app/).
+GRANT UPDATE (pt_use) ON hms_saas.g5_push_tokens TO 'sb_api_ro'@'127.0.0.1';
+GRANT UPDATE (pt_use) ON hms_saas.g5_push_tokens TO 'sb_api_ro'@'localhost';
 -- 후기 삭제 (DELETE /v1/mypage/reviews/:id): soft delete + 포인트 회수 (earn_cancel row, lots consumed) — only when v2 policy is on
 GRANT INSERT ON hms_saas.gangnamunni_points TO 'sb_api_ro'@'127.0.0.1';
 GRANT INSERT ON hms_saas.gangnamunni_points TO 'sb_api_ro'@'localhost';

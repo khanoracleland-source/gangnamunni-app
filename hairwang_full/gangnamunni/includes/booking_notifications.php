@@ -66,7 +66,7 @@ function booking_notification_detail_link(array $booking, $event) {
     $id = (int)($booking['id'] ?? 0);
     if ($id <= 0) return $base . 'my_bookings.php';
 
-    if (in_array($event, ['hospital_checking', 'doctor_assigned', 'confirmed'], true)) {
+    if (in_array($event, ['received', 'hospital_checking', 'doctor_assigned', 'confirmed', 'visit_reminder', 'changed'], true)) {
         return $base . 'my_bookings.php';
     }
 
@@ -79,8 +79,12 @@ function booking_notification_detail_link(array $booking, $event) {
         return $base . 'booking_request_detail.php?booking_id=' . $id;
     }
 
-    if (in_array($event, ['cancelled', 'refunded'], true)) {
+    if (in_array($event, ['cancelled', 'refunded', 'payment_expired', 'cancelled_by_member'], true)) {
         return $base . 'booking_cancel_detail.php?booking_id=' . $id;
+    }
+
+    if ($event === 'payment_requested') {
+        return $base . 'booking_payment.php?booking_id=' . $id;
     }
 
     return $base . 'booking_request_detail.php?booking_id=' . $id;
@@ -130,8 +134,13 @@ function booking_notification_find_member_id($connect, array $booking) {
     return trim((string)($row['mb_id'] ?? ''));
 }
 
+/**
+ * 설정 > 예약 · 결제 알림 (noti_booking) is the one switch for booking messages (접수 · 병원 확인 · 결제 요청 · 확정 · 취소 ...);
+ * 설정 > 방문 전 알림 (noti_visit) is the one for the day-before visit reminder. Off = neither the in-app message nor the push is sent.
+ * The general push switch (noti_push) is not consulted here.
+ */
 function booking_notification_preferences($connect, $memberId) {
-    $defaults = ['noti_booking' => 1, 'noti_push' => 1];
+    $defaults = ['noti_booking' => 1, 'noti_visit' => 1];
     if ($memberId === '') return $defaults;
 
     $tableCheck = @mysqli_query($connect, "SHOW TABLES LIKE 'gangnamunni_notification_settings'");
@@ -139,7 +148,8 @@ function booking_notification_preferences($connect, $memberId) {
 
     $stmt = mysqli_prepare(
         $connect,
-        "SELECT noti_booking, noti_push FROM gangnamunni_notification_settings WHERE member_id = ? LIMIT 1"
+        // * on purpose: noti_visit may not exist yet (before sql/notification_visit_reminder_20261106.sql); a missing key reads as on
+        "SELECT * FROM gangnamunni_notification_settings WHERE member_id = ? LIMIT 1"
     );
     if (!$stmt) return $defaults;
 
@@ -150,10 +160,7 @@ function booking_notification_preferences($connect, $memberId) {
 
     if (!$row) return $defaults;
 
-    return [
-        'noti_booking' => (int)($row['noti_booking'] ?? 1),
-        'noti_push' => (int)($row['noti_push'] ?? 1),
-    ];
+    return ['noti_booking' => (int)($row['noti_booking'] ?? 1), 'noti_visit' => (int)($row['noti_visit'] ?? 1)];
 }
 
 function booking_notification_payload(array $booking, $event, array $context = []) {
@@ -168,8 +175,15 @@ function booking_notification_payload(array $booking, $event, array $context = [
     if ($defaultBody === '') $defaultBody = trim((string)($booking['treatment'] ?? '예약 내역을 확인해주세요.'));
 
     $doctorName = trim((string)($context['doctor_name'] ?? $booking['doctor_name'] ?? ''));
+    $treatmentName = trim((string)($booking['treatment'] ?? ''));
 
+    $deadlineHours = (int)($context['deadline_hours'] ?? 0);
+    if ($deadlineHours <= 0) $deadlineHours = 24;
+    $paidAmount = (int)($context['amount'] ?? 0);
+
+    // Same titles/bodies as seoulbeauty-api/src/member-notify/member-notify.logic.ts (Nest raises received / paid / cancelled_by_member / changed itself)
     $map = [
+        'received' => ['예약이 접수되었어요', $defaultBody . "\n병원 확인 후 알려드릴게요"],
         'hospital_checking' => ['예약 요청을 확인 중입니다', $defaultBody],
         'confirmed' => ['예약이 확정되었습니다', $defaultBody],
         'completed' => ['시술이 완료되었습니다', '방문해주셔서 감사합니다. 예약 내역에서 후기를 남길 수 있습니다.'],
@@ -178,6 +192,15 @@ function booking_notification_payload(array $booking, $event, array $context = [
         'refunded' => ['취소·환불 처리가 완료되었어요!', "취소·환불처리가 완료되었어요\n예약 취소에서 상세 정보를 확인하세요"],
         'doctor_assigned' => ['담당의사가 배정되었습니다', trim(($doctorName !== '' ? $doctorName . ' · ' : '') . $defaultBody)],
         'doctor_unassigned' => ['담당의사 배정이 해제되었습니다', $defaultBody],
+        // 설정 > 예약 · 결제 알림: 결제 요청 (admin_bookings.php, right after the payment order is created on 확정)
+        'payment_requested' => ['결제를 진행해주세요', $defaultBody . "\n{$deadlineHours}시간 안에 결제하지 않으면 예약이 자동으로 취소돼요"],
+        'paid' => ['결제가 완료되었어요', $defaultBody . ($paidAmount > 0 ? "\n" . number_format($paidAmount) . '원 결제 완료' : '')],
+        // cron_booking_payment_expire.php
+        'payment_expired' => ['결제 기한이 지나 예약이 취소되었어요', $defaultBody . "\n다시 예약해주세요"],
+        'cancelled_by_member' => ['예약이 취소되었어요', $defaultBody],
+        'changed' => ['예약이 변경되었어요', $defaultBody . (!empty($context['recheck']) ? "\n병원 확인 후 다시 알려드릴게요" : '')],
+        // 설정 > 방문 전 알림: the day before the visit (sent by seoulbeauty-api VisitReminderService; kept here for parity)
+        'visit_reminder' => ['내일 방문 일정이 있어요', trim($defaultBody . ($treatmentName !== '' ? "\n" . $treatmentName : ''))],
     ];
 
     $payload = $map[$event] ?? ['예약 상태가 변경되었습니다', $defaultBody];
@@ -270,8 +293,9 @@ function notify_booking_member($connect, array $booking, $event, array $context 
     }
 
     $preferences = booking_notification_preferences($connect, $memberId);
-    if ((int)$preferences['noti_booking'] !== 1) {
-        $result['reason'] = 'booking_notifications_disabled';
+    $switch = $event === 'visit_reminder' ? 'noti_visit' : 'noti_booking';
+    if ((int)$preferences[$switch] !== 1) {
+        $result['reason'] = $switch === 'noti_visit' ? 'visit_notifications_disabled' : 'booking_notifications_disabled';
         return $result;
     }
 
@@ -285,27 +309,22 @@ function notify_booking_member($connect, array $booking, $event, array $context 
         $payload['link']
     );
 
-    if ((int)$preferences['noti_push'] === 1) {
-        $pushResult = send_push_to_members(
-            $connect,
-            [$memberId],
-            $payload['title'],
-            $payload['body'],
-            $payload['link'],
-            null,
-            [
-                'type' => 'booking_notification',
-                'booking_event' => $event,
-                'booking_id' => (int)($booking['id'] ?? 0),
-            ]
-        );
-        $result['push_sent'] = (int)($pushResult['sent'] ?? 0);
-        $result['push_failed'] = (int)($pushResult['failed'] ?? 0);
-        $result['push_error'] = (string)($pushResult['error'] ?? '');
-    } else {
-        $result['push_skipped'] = true;
-        $result['reason'] = 'push_disabled';
-    }
+    $pushResult = send_push_to_members(
+        $connect,
+        [$memberId],
+        $payload['title'],
+        $payload['body'],
+        $payload['link'],
+        null,
+        [
+            'type' => 'booking_notification',
+            'booking_event' => $event,
+            'booking_id' => (int)($booking['id'] ?? 0),
+        ]
+    );
+    $result['push_sent'] = (int)($pushResult['sent'] ?? 0);
+    $result['push_failed'] = (int)($pushResult['failed'] ?? 0);
+    $result['push_error'] = (string)($pushResult['error'] ?? '');
 
     booking_notification_log_send(
         $connect,

@@ -83,6 +83,8 @@ function member_notification_ensure_tables($connect) {
         id INT AUTO_INCREMENT PRIMARY KEY,
         member_id VARCHAR(100) NOT NULL UNIQUE,
         noti_booking TINYINT(1) NOT NULL DEFAULT 1,
+        noti_visit TINYINT(1) NOT NULL DEFAULT 1,
+        noti_community TINYINT(1) NOT NULL DEFAULT 1,
         noti_chat TINYINT(1) NOT NULL DEFAULT 1,
         noti_event TINYINT(1) NOT NULL DEFAULT 1,
         noti_promo TINYINT(1) NOT NULL DEFAULT 1,
@@ -99,6 +101,9 @@ function member_notification_ensure_tables($connect) {
 
     @mysqli_query($connect, "ALTER TABLE gangnamunni_notification_settings
         ADD COLUMN IF NOT EXISTS noti_booking TINYINT(1) NOT NULL DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS noti_visit TINYINT(1) NOT NULL DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS noti_community TINYINT(1) NOT NULL DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS noti_review TINYINT(1) NOT NULL DEFAULT 1,
         ADD COLUMN IF NOT EXISTS noti_event TINYINT(1) NOT NULL DEFAULT 1,
         ADD COLUMN IF NOT EXISTS noti_promo TINYINT(1) NOT NULL DEFAULT 1,
         ADD COLUMN IF NOT EXISTS noti_push TINYINT(1) NOT NULL DEFAULT 1,
@@ -299,7 +304,9 @@ function member_notification_filter_recipients($connect, array $memberIds, $type
         }
 
         $marketingAllowed = $type !== 'promotion' || (int)($pref['mkt_push'] ?? 0) === 1;
-        if ($typeAllowed && $marketingAllowed && (int)($pref['noti_push'] ?? 1) === 1) {
+        // noti_push (the old master push switch) is no longer on the 설정 page, so it is not consulted: a member who turned
+        // it off years ago could never turn it back on. The type switch and, for promotions, mkt_push decide alone.
+        if ($typeAllowed && $marketingAllowed) {
             $push[] = $memberId;
         } else {
             $skippedPush++;

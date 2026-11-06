@@ -1,5 +1,6 @@
 import { HttpException, Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { AdminNotifyService } from '../admin-notify/admin-notify.service';
+import { MemberNotifyService } from '../member-notify/member-notify.service';
 import { DB, Db } from '../db/db.module';
 import { kstNow } from '../bookings/bookings.logic';
 import {
@@ -33,7 +34,7 @@ export class BookingService {
   /** per member (or IP) attempts, so a script cannot flood the clinics with requests. */
   static attempts = new Map<string, number[]>();
   private cols = new Map<string, boolean>();
-  constructor(@Inject(DB) private readonly db: Db, private readonly notify: AdminNotifyService) {}
+  constructor(@Inject(DB) private readonly db: Db, private readonly notify: AdminNotifyService, private readonly memberNotify: MemberNotifyService) {}
 
   private async setting(key: string, def: string): Promise<string> {
     try {
@@ -304,6 +305,8 @@ export class BookingService {
 
     await this.saveAnswers(bookingId, hospitalId, input.pre_answers);
     await this.notify.bookingCreated(bookingId, s(h.name), name, date, time);
+    // 설정 > 예약 · 결제 알림: "예약이 접수되었어요" to the member (after the response; FCM must not keep them waiting)
+    this.memberNotify.bookingLater(bookingId, 'received');
     const hmsId = await this.syncHms(bookingId, h, name, phone, date, time, treatment, memo);
     return { success: true, booking_id: bookingId, hms_appointment_id: hmsId, detail_url: `/mypage/bookings/${bookingId}?new=1` };
   }

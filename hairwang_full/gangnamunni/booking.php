@@ -762,6 +762,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'admin_bookings.php?booking_id=' . (int)$booking_id,
                 ['booking_id' => $booking_id, 'hospital_id' => $hospital_id]
             );
+            // 설정 > 예약 · 결제 알림: "예약이 접수되었어요" to the member (the Next.js flow does the same in seoulbeauty-api)
+            try {
+                require_once __DIR__ . '/includes/booking_notifications.php';
+                $received_booking = booking_notification_fetch_booking_by_id($connect, (int)$booking_id);
+                if ($received_booking) notify_booking_member($connect, $received_booking, 'received');
+            } catch (Throwable $e) {
+                error_log('[booking] received notification failed: ' . $e->getMessage());
+            }
 
             // 2단계: HMS API로 실시간 예약 전송 (HMS 연동 병원만)
             // hms_hospital_id가 있는 병원 = HMS에 등록된 병원

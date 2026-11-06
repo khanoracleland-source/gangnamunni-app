@@ -443,7 +443,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($new_status === 'confirmed' && file_exists(__DIR__ . '/includes/payment_core.php')) {
             try {
                 require_once __DIR__ . '/includes/payment_core.php';
-                platform_payment_create_booking($connect, $id);
+                $payment_order = platform_payment_create_booking($connect, $id);
+                // the member is asked to pay ("결제를 진행해주세요", sent after the 확정 message below) whenever the order is still
+                // unpaid: a new order, or the existing pending one after 확정 → 변경 → 재확정. A paid order asks nothing.
+                $payment_requested_now = ($payment_order['status'] ?? '') === 'pending';
             } catch (\Throwable $e) {
                 error_log('[admin_bookings] booking payment order not created (booking already committed): ' . $e->getMessage());
             }
@@ -483,6 +486,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             try {
                 $notify_result = notify_booking_member($connect, $booking_row, $new_status);
                 admin_booking_log_notification_result($new_status . ':' . $id, $notify_result);
+                // 설정 > 예약 · 결제 알림: 결제 요청 (right after 확정, with the payment deadline from 사이트 설정)
+                if ($new_status === 'confirmed' && !empty($payment_requested_now)) {
+                    require_once __DIR__ . '/includes/settings_helper.php';
+                    $deadline_hours = (int)getSettingValue($connect, 'payment_deadline_hours', '24');
+                    if ($deadline_hours < 1 || $deadline_hours > 168) $deadline_hours = 24;
+                    $pay_result = notify_booking_member($connect, $booking_row, 'payment_requested', ['deadline_hours' => $deadline_hours]);
+                    admin_booking_log_notification_result('payment_requested:' . $id, $pay_result);
+                }
             } catch (Throwable $e) {
                 error_log(
                     '[admin_bookings] booking notification failed (booking already committed): '
