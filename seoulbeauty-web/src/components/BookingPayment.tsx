@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, qk } from "@/lib/api";
 import LoginPrompt from "./LoginPrompt";
+import CardPickSheet from "./CardPickSheet";
+import { INICIS_CARDS, quotaLabel } from "@/lib/inicisCards";
 import styles from "./BookingPayment.module.css";
 
 const won = (n: number) => Math.max(0, n).toLocaleString("ko-KR");
@@ -81,6 +83,10 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
   const [visitorDone, setVisitorDone] = useState("");
   const [busy, setBusy] = useState(false);
   const [method, setMethod] = useState<"card" | "bank">("card");
+  // Card company + installment chosen in the card sheet (design 05-29..31); empty card = Inicis shows its own card list.
+  const [card, setCard] = useState("");
+  const [quota, setQuota] = useState("00");
+  const [cardSheet, setCardSheet] = useState(false);
   // Load the Inicis SDK as soon as live checkout is possible, so the first tap does not have to wait for it.
   const live = !!data?.liveAvailable;
   useEffect(() => { if (live) loadInicisSdk(INICIS_SDK).catch(() => {}); }, [live]);
@@ -100,7 +106,7 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
       try {
         stage = "prepare";
         const mobile = isMobileDevice();
-        const p = await api.bookingPaymentInicisPrepare(id, mobile ? "MOBILE" : "WEB", method);
+        const p = await api.bookingPaymentInicisPrepare(id, mobile ? "MOBILE" : "WEB", method, method === "card" && card ? { card, quota } : undefined);
         stage = "sdk";
         await loadInicisSdk(p.sdkUrl);
         stage = "requestPayment";
@@ -190,8 +196,14 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
                       </div>
                     )}
                     <div className={styles.methodGrid}>
-                      {(data.liveAvailable ? LIVE_METHODS : METHODS).map(([k, label]) => <button type="button" key={k} className={`${styles.method} ${data.liveAvailable && method === k ? styles.methodOn : ""}`} aria-pressed={data.liveAvailable && method === k} disabled={!data.liveAvailable || busy} onClick={() => setMethod(k as "card" | "bank")}>{label}</button>)}
+                      {(data.liveAvailable ? LIVE_METHODS : METHODS).map(([k, label]) => <button type="button" key={k} className={`${styles.method} ${data.liveAvailable && method === k ? styles.methodOn : ""}`} aria-pressed={data.liveAvailable && method === k} disabled={!data.liveAvailable || busy} onClick={() => { setMethod(k as "card" | "bank"); if (k === "card" && data.liveAvailable) setCardSheet(true); }}>{label}</button>)}
                     </div>
+                    {data.liveAvailable && method === "card" && card && (
+                      <button type="button" className={styles.cardPick} onClick={() => setCardSheet(true)}>
+                        <span>{INICIS_CARDS.find((x) => x.code === card)?.name}카드 · {quotaLabel(quota)}</span><span className={styles.cardPickEdit}>변경</span>
+                      </button>
+                    )}
+                    <CardPickSheet open={cardSheet} amount={data.order?.amount ?? data.gross} card={card} quota={quota} onClose={() => setCardSheet(false)} onPick={(c, q) => { setCard(c); setQuota(q); }} />
                   </section>
                   <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>결제 금액을 확인해보세요</h2>

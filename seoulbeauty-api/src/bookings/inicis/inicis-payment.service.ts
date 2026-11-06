@@ -49,6 +49,21 @@ export const paymentLockKey = (merchant: string) => `payment:${createHash('sha25
  */
 /** 결제 수단 -> INIPayPro P_PAY_TYPE (카드 결제창 / 계좌이체 결제창). */
 const PAY_TYPES: Record<string, string> = { card: 'CARD', bank: 'BANK' };
+/**
+ * 카드사 다이렉트 호출(P_RESERVED d_card)에 허용하는 "결제요청 시 카드코드" (manual.inicis.com/pay/code.html). 승인응답 코드와 다르다.
+ * seoulbeauty-web `lib/inicisCards.ts` 의 목록(디자인 05-30)과 같은 코드만 허용한다.
+ */
+export const DIRECT_CARD_CODES = new Set(['14', '04', '12', '03', '01', '06', '11', '41', '02', '56', '55', '43', '54', '71', '48', '32', '33', '35', '52', '95']);
+/** 카드 할부는 결제금액 5만원 이상부터 (일시불 제외). 개월 수: 2~12. d_quota 는 두 자리("00" = 일시불). */
+const INSTALLMENT_MIN_AMOUNT = 50000;
+function directQuota(raw: unknown, amount: number): string | null {
+  const q = s(raw).trim();
+  if (q === '' || q === '0' || q === '00') return '00';
+  if (!/^\d{1,2}$/.test(q)) return null;
+  const months = Number(q);
+  if (months < 2 || months > 12 || amount < INSTALLMENT_MIN_AMOUNT) return null;
+  return String(months).padStart(2, '0');
+}
 
 @Injectable()
 export class InicisPaymentService {
@@ -77,9 +92,12 @@ export class InicisPaymentService {
   }
 
   /** POST …/payment/inicis/prepare (method: card | bank): the signed parameters for INIPayPro.requestPayment(). Nothing is written. */
-  async prepare(m: BookingMember, id: number, device: unknown, method: unknown = 'card') {
-    const payType = PAY_TYPES[s(method).toLowerCase() || 'card'];
+  async prepare(m: BookingMember, id: number, device: unknown, opts: { method?: unknown; card?: unknown; quota?: unknown } = {}) {
+    const payType = PAY_TYPES[s(opts.method).toLowerCase() || 'card'];
     if (!payType) throw new PaymentRefused('지원하지 않는 결제 수단입니다.', 'METHOD_NOT_SUPPORTED', 400);
+    const card = s(opts.card).trim();
+    if (card && (payType !== 'CARD' || !DIRECT_CARD_CODES.has(card))) throw new PaymentRefused('지원하지 않는 카드사입니다.', 'CARD_NOT_SUPPORTED', 400);
+    if (!card && s(opts.quota).trim() && s(opts.quota).trim() !== '0' && s(opts.quota).trim() !== '00') throw new PaymentRefused('카드사를 먼저 선택해주세요.', 'CARD_NOT_SUPPORTED', 400);
     const cfg = inicisConfig();
     if (!cfg || !BookingPaymentService.liveAvailable(process.env, m.id)) throw new PaymentRefused('결제 서비스를 이용할 수 없습니다.', 'PAYMENT_UNAVAILABLE', 503);
     const b = await this.payments.own(m, id);
@@ -97,6 +115,8 @@ export class InicisPaymentService {
     const amount = n(order.amount);
     const oid = s(order.merchant_uid);
     if (!(amount > 0) || !MERCHANT_RE.test(oid) || Buffer.byteLength(oid) > 40) throw new PaymentRefused('결제 주문 정보가 올바르지 않습니다.', 'INVALID_ORDER', 409);
+    const quota = card ? directQuota(opts.quota, amount) : null;
+    if (card && quota == null) throw new PaymentRefused('선택할 수 없는 할부 개월입니다. 5만원 이상 결제만 할부가 가능합니다.', 'QUOTA_NOT_SUPPORTED', 400);
     const mobile = device === 'MOBILE';
     const timestamp = String(Date.now());
     const prefix = this.base(cfg);
@@ -111,7 +131,8 @@ export class InicisPaymentService {
         P_CLOSE_URL: `${cfg.publicBase}/mypage/bookings/${id}/payment`,
         P_CHARSET: 'UTF-8', P_NOTI: String(id), P_TIMESTAMP: timestamp, P_CHKFAKE: chkFake(amount, oid, timestamp, cfg.hashkey),
         // iOS card apps come back through the app's URL scheme (manual: P_RESERVED app_scheme).
-        P_RESERVED: JSON.stringify(mobile ? { app_scheme: `${cfg.appScheme}://payment` } : {}),
+        // Direct card call (d_card + d_quota): the window opens on the card the customer picked on our page.
+        P_RESERVED: JSON.stringify({ ...(mobile ? { app_scheme: `${cfg.appScheme}://payment` } : {}), ...(card ? { d_card: card, d_quota: quota } : {}) }),
       },
       closePath: `${prefix}/mypage/bookings/${id}/payment`,
     };

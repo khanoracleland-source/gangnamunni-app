@@ -175,6 +175,29 @@ describe('Inicis card payment API', () => {
       await prepare({ method: 'naverpay' }).expect(400).expect((x) => expect(x.body.code).toBe('METHOD_NOT_SUPPORTED'));
       expect(wrote()).toBe(false);
     });
+    it('direct card call: d_card + d_quota go into P_RESERVED; bad cards, bad months and card without card-pay are refused', async () => {
+      const r = await prepare({ method: 'card', card: '14', quota: 3 }).expect(201);
+      expect(JSON.parse(r.body.params.P_RESERVED)).toEqual({ d_card: '14', d_quota: '03' });
+      expect(JSON.parse((await prepare({ card: '14' }).expect(201)).body.params.P_RESERVED)).toEqual({ d_card: '14', d_quota: '00' });
+      const m = await prepare({ device: 'MOBILE', card: '06', quota: '12' }).expect(201);
+      expect(JSON.parse(m.body.params.P_RESERVED)).toEqual({ app_scheme: 'wellness://payment', d_card: '06', d_quota: '12' });
+      expect(JSON.parse((await prepare({}).expect(201)).body.params.P_RESERVED)).toEqual({});
+      await prepare({ card: '99' }).expect(400).expect((x) => expect(x.body.code).toBe('CARD_NOT_SUPPORTED'));
+      await prepare({ card: '21' }).expect(400).expect((x) => expect(x.body.code).toBe('CARD_NOT_SUPPORTED')); // global VISA is not on our list
+      await prepare({ method: 'bank', card: '14' }).expect(400).expect((x) => expect(x.body.code).toBe('CARD_NOT_SUPPORTED'));
+      await prepare({ quota: 3 }).expect(400).expect((x) => expect(x.body.code).toBe('CARD_NOT_SUPPORTED')); // months without a card
+      await prepare({ card: '14', quota: 1 }).expect(400).expect((x) => expect(x.body.code).toBe('QUOTA_NOT_SUPPORTED'));
+      await prepare({ card: '14', quota: 13 }).expect(400).expect((x) => expect(x.body.code).toBe('QUOTA_NOT_SUPPORTED'));
+      await prepare({ card: '14', quota: 'x' }).expect(400).expect((x) => expect(x.body.code).toBe('QUOTA_NOT_SUPPORTED'));
+      expect(wrote()).toBe(false);
+    });
+    it('installments need an amount of 50,000 won or more (일시불 always works)', async () => {
+      st.order.amount = 49000;
+      try {
+        await prepare({ card: '14', quota: 3 }).expect(400).expect((x) => expect(x.body.code).toBe('QUOTA_NOT_SUPPORTED'));
+        await prepare({ card: '14', quota: 0 }).expect(201);
+      } finally { st.order.amount = 50000; }
+    });
     it('mobile passes the app scheme for the card apps to return to', async () => {
       const r = await prepare({ device: 'MOBILE' }).expect(201);
       expect(r.body.params.P_DEVICE_TYPE).toBe('MOBILE');
