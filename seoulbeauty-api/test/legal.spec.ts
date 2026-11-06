@@ -4,14 +4,13 @@ import request from 'supertest';
 import { DB } from '../src/db/db.module';
 import { AuthModule } from '../src/auth/auth.module';
 import { LegalModule } from '../src/legal/legal.module';
-import { AGREEMENT_TYPES, plain } from '../src/legal/legal.logic';
+import { plain } from '../src/legal/legal.logic';
 
 describe('legal logic', () => {
   it('plain text normalises line breaks and null', () => {
     expect(plain('a\r\nb\rc')).toBe('a\nb\nc');
     expect(plain(null)).toBe('');
   });
-  it('three documents', () => { expect([...AGREEMENT_TYPES]).toEqual(['terms_of_service', 'privacy_policy', 'community_guidelines']); });
 });
 
 describe('legal API', () => {
@@ -51,18 +50,5 @@ describe('legal API', () => {
     expect((await request(app.getHttpServer()).get('/v1/legal/points-policy').expect(200)).body).toEqual({ visible: false });
     process.env.MYPAGE_POINTS_VISIBLE = 'true';
     expect((await request(app.getHttpServer()).get('/v1/legal/points-policy').expect(200)).body).toEqual({ visible: true });
-  });
-  it('agree: 401 for visitors, 403 without the header, nothing written', async () => {
-    await request(app.getHttpServer()).post('/v1/legal/agree').set('X-Requested-With', 'XMLHttpRequest').expect(401);
-    await request(app.getHttpServer()).post('/v1/legal/agree').set('Cookie', 'sid=kim').expect(403);
-    expect(calls.length).toBe(0);
-  });
-  it('agree: one INSERT IGNORE per document with the member id and version', async () => {
-    const r = await request(app.getHttpServer()).post('/v1/legal/agree').set({ Cookie: 'sid=kim', 'X-Requested-With': 'XMLHttpRequest', 'User-Agent': 'jest-ua' }).expect(201);
-    expect(r.body).toEqual({ success: true });
-    expect(r.headers['cache-control']).toContain('no-store');
-    const ins = calls.filter((c) => /^INSERT IGNORE INTO gangnamunni_user_agreements/.test(c.sql));
-    expect(ins.map((c) => c.args[1])).toEqual(['terms_of_service', 'privacy_policy', 'community_guidelines']);
-    expect(ins.every((c) => c.args[0] === 'kim' && c.args[2] === '1.0' && c.args[4] === 'jest-ua')).toBe(true);
   });
 });

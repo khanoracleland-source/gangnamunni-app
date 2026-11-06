@@ -460,7 +460,6 @@ export const api = {
   bookingContext: (id: number, ctx?: ServerCtx) => get<BookingContext>(`/v1/booking/context/${id}`, undefined, ctx),
   bookingPrecheck: (b: BookingRequest) => send<{ success: boolean; precheck: boolean }>("POST", "/v1/booking/precheck", b, 30000),
   bookingCreate: (b: BookingRequest) => send<{ success: boolean; booking_id: number; hms_appointment_id: number | null; detail_url: string }>("POST", "/v1/booking", b, 60000),
-  agreeTerms: () => post<{ success: boolean }>("/v1/legal/agree", {}),
   changePassword: (b: { current_pw: string; new_pw: string; new_pw_confirm: string }) => send<{ success: boolean; message: string }>("POST", "/v1/account/password", b, 30000),
   sendEmailCode: (new_email: string) => send<{ success: boolean; email: string; expiresIn: number }>("POST", "/v1/account/email/send", { new_email }, 30000),
   verifyEmailCode: (code: string) => send<{ success: boolean; email: string }>("POST", "/v1/account/email/verify", { code }, 30000),

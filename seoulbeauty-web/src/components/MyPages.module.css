@@ -205,18 +205,6 @@
 .pfModalBox p { margin: 0 0 20px; font-size: 14px; color: #777; text-align: center; }
 .pfModalBox h2 + button { margin-top: 20px; }
 
-/* 알림 설정 (notification_settings) */
-.stSection { background: #fff; margin: 0 0 10px; padding: 4px 16px 4px; }
-.stLabel { font-size: 13px; color: #999; padding: 14px 0 6px; }
-.stItem { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 52px; font-size: 16px; border-bottom: 1px solid #f4f2f3; background: transparent; color: inherit; text-align: left; }
-.stItem:last-child { border-bottom: 0; }
-.stLink { text-decoration: none; }
-.stSwitch { appearance: none; -webkit-appearance: none; position: relative; width: 46px; height: 26px; border-radius: 13px; background: #ccc; transition: background .15s; flex: 0 0 46px; cursor: pointer; }
-.stSwitch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; }
-.stSwitch:checked { background: #AC1830; }
-.stSwitch:checked::after { transform: translateX(20px); }
-.stSwitch:disabled { opacity: .6; }
-
 /* 계정: 이메일 / 비밀번호 / 회원 탈퇴 */
 .acNote { margin: 12px 16px 0; font-size: 13px; line-height: 1.6; color: #777; }
 .acOk { margin: 12px 16px 0; padding: 10px 12px; border-radius: 8px; background: #EAF6EE; color: #16603A; font-size: 14px; }

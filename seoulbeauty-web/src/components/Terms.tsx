@@ -1,55 +1,46 @@
 "use client";
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { api, ApiError } from "@/lib/api";
-import { meKey, useMe } from "@/lib/me";
-import { TERMS_EN, TERMS_KO } from "@/content/legal";
+import { useEffect, useRef, useState } from "react";
+import { TERMS_EFFECTIVE, TERMS_EN, TERMS_KO } from "@/content/legal";
 import LegalDoc from "./LegalDoc";
-import SupportHeader from "./SupportHeader";
+import MyHeader from "./MyHeader";
 import styles from "./Legal.module.css";
 
-/** terms_of_service.php: 한국어 / English tabs; a signed-in member can record the consent to all three documents. */
+/** 서비스 이용약관 as in design 07-06: header, the 시행일 row (its ▾ opens the 한국어 / English choice) and the plain text. Nothing else on the page. */
 export default function Terms() {
   const [lang, setLang] = useState<"ko" | "en">("ko");
-  const [checked, setChecked] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState("");
-  const me = useMe();
-  const qc = useQueryClient();
-  const canAgree = !!me.data?.loggedIn && !done;
-  const agree = async () => {
-    if (busy || !checked) return;
-    setBusy(true); setErr("");
-    try { await api.agreeTerms(); setDone(true); }
-    catch (e) {
-      if (e instanceof ApiError && e.status === 401) { qc.setQueryData(meKey, { loggedIn: false, user: null, unreadNotifications: 0 }); setErr("로그인이 필요합니다."); }
-      else setErr("저장하지 못했어요. 잠시 후 다시 시도해주세요.");
-    } finally { setBusy(false); }
-  };
+  const [pick, setPick] = useState(false);
+  const verRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  // the language list closes on a tap outside, on scroll and on Esc (focus returns to the row)
+  useEffect(() => {
+    if (!pick) return;
+    const outside = (e: PointerEvent) => { if (!verRef.current?.contains(e.target as Node)) setPick(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setPick(false); toggleRef.current?.focus(); } };
+    const close = () => setPick(false);
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", esc);
+    window.addEventListener("scroll", close, { passive: true });
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", esc); window.removeEventListener("scroll", close); };
+  }, [pick]);
   return (
-    <div className={styles.wrap}>
-      <SupportHeader title="이용약관" fallback="/mypage/settings" />
-      <div className={styles.tabs} role="tablist">
-        <button type="button" role="tab" aria-selected={lang === "ko"} className={`${styles.tab} ${lang === "ko" ? styles.tabOn : ""}`} onClick={() => setLang("ko")}>한국어</button>
-        <button type="button" role="tab" aria-selected={lang === "en"} className={`${styles.tab} ${lang === "en" ? styles.tabOn : ""}`} onClick={() => setLang("en")}>English</button>
+    <div className={`${styles.wrap} ${styles.wrapFlat}`}>
+      <div className={styles.top}><MyHeader title={lang === "ko" ? "서비스 이용약관" : "Terms of Service"} backToCaller right={null} /></div>
+      <div className={styles.verWrap} ref={verRef}>
+        <button type="button" ref={toggleRef} className={styles.ver} aria-expanded={pick} aria-controls="terms-lang" onClick={() => setPick((v) => !v)}>
+          <span>{lang === "ko" ? `시행일 ${TERMS_EFFECTIVE} (현재)` : `Effective ${TERMS_EFFECTIVE} (current)`}</span>
+          <svg className={pick ? styles.verUp : ""} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        </button>
+        {pick && (
+          <div id="terms-lang" className={styles.verList} role="group" aria-label="언어 / Language">
+            {([["ko", "한국어"], ["en", "English"]] as const).map(([l, label]) => (
+              <button key={l} type="button" lang={l} aria-pressed={lang === l} className={lang === l ? styles.verOn : ""} onClick={() => { setLang(l); setPick(false); toggleRef.current?.focus(); }}>{label}</button>
+            ))}
+          </div>
+        )}
       </div>
-      <div className={styles.body}>
-        <LegalDoc html={`<div class="header"><h1>${lang === "ko" ? "이용약관" : "Terms of Service"}</h1><p>${lang === "ko" ? "Terms of Service" : "이용약관"}</p></div>${lang === "ko" ? TERMS_KO : TERMS_EN}`} />
-        {/* moved here from the home footer: shown at the very end of the document */}
-        <div className={styles.disclaimer}>
-          <p>셀럽몰 주식회사는 통신판매의 당사자가 아니므로,</p>
-          <p>의료기관이 등록한 시/수술 정보 및 거래 등에 대해 책임을 지지 않습니다.</p>
-        </div>
+      <div className={styles.bodyPlain}>
+        <LegalDoc plain html={lang === "ko" ? TERMS_KO : TERMS_EN} />
       </div>
-      {done && <div className={styles.agreed} role="status">동의가 저장되었습니다.</div>}
-      {canAgree && (
-        <div className={styles.agree}>
-          {err && <p className={styles.agreeErr} role="alert">{err}</p>}
-          <label><input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />이용약관, 개인정보처리방침, 커뮤니티 가이드라인에 모두 동의합니다</label>
-          <button type="button" className={styles.agreeBtn} disabled={!checked || busy} onClick={agree}>{busy ? "저장 중…" : "동의하기"}</button>
-        </div>
-      )}
     </div>
   );
 }

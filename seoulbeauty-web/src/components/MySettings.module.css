@@ -1,0 +1,30 @@
+/* 07-01 설정: grey page, white rounded cards (a 12px label, 46px rows, dark switches) */
+/* no tab bar here (07-01): the grey page fills the screen and cancels the layout's reserved tab-bar space below it */
+.page { box-sizing: border-box; max-width: 640px; margin: 0 auto calc(-1 * (var(--nav-h) + var(--sab))); min-height: 100dvh; background: #F4F2F3; color: #1A1718; padding-bottom: var(--sab); }
+/* back arrow + 설정 stay on screen while the cards scroll */
+.top { position: sticky; top: 0; z-index: 30; background: #fff; }
+.body { display: flex; flex-direction: column; gap: 10px; padding: 10px 0 16px; }
+.card { margin: 0 16px; padding: 8px 16px 2px; background: #fff; border-radius: 16px; overflow: hidden; }
+.label { font-size: 12px; color: #6B6466; padding: 4px 0 2px; }
+.row { box-sizing: border-box; width: 100%; min-height: 46px; display: flex; align-items: center; gap: 12px; border-top: 1px solid #ECE9EA; font-size: 15px; color: #1A1718; text-align: left; text-decoration: none; background: transparent; }
+.label + .row { border-top: 0; }
+.row > span:first-child { flex: 1 1 auto; }
+.red { color: #AC1830; }
+.hint { margin: -4px 16px 0; padding: 0 16px; font-size: 12px; line-height: 1.6; color: #6B6466; }
+.switch { appearance: none; -webkit-appearance: none; position: relative; flex: 0 0 46px; width: 46px; height: 26px; border-radius: 13px; background: #E3DFE0; transition: background .15s; cursor: pointer; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.switch:checked { background: #1A1718; }
+.switch:checked::after { transform: translateX(20px); }
+.switch:disabled { opacity: .6; }
+.switch:focus-visible { outline: 2px solid #AC1830; outline-offset: 2px; }
+.empty { padding: 70px 20px; text-align: center; color: #777; line-height: 1.7; }
+.retry { color: #AC1830; text-decoration: underline; }
+/* 07-03 / 07-04: the consent note floats above the tab bar */
+.note { position: fixed; left: 20px; right: 20px; bottom: calc(40px + var(--sab, 0px)); max-width: 600px; margin: 0 auto; box-sizing: border-box; min-height: 56px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #DCD6D8; border-radius: 16px; background: #fff; box-shadow: 0 4px 12px rgba(26, 23, 24, .1); font-size: 15px; font-weight: 500; line-height: 1.5; z-index: 60; }
+.noteX { flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: #4A4446; }
+/* 07-07 logout sheet */
+.sheet { padding: 26px 0 8px; display: flex; flex-direction: column; gap: 18px; }
+.sheetTitle { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.5; text-align: center; }
+.sheetBtns { display: flex; gap: 10px; }
+.sheetBtn { flex: 1 1 0; height: 52px; border-radius: 12px; font-size: 17px; font-weight: 500; background: #F2EFF0; color: #1A1718; }
+.sheetBtnPri { background: #AC1830; color: #fff; }

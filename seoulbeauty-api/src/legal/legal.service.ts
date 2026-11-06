@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DB, Db } from '../db/db.module';
-import { AGREEMENT_TYPES, AGREEMENT_VERSION, plain, pointsVisible } from './legal.logic';
+import { plain, pointsVisible } from './legal.logic';
 
 @Injectable()
 export class LegalService {
@@ -17,16 +17,6 @@ export class LegalService {
       this.log.error(`register terms: ${(e as Error).message}`);
       return { terms: '', privacy: '' };
     }
-  }
-
-  /** terms_of_service.php POST agree: one consent row per document (INSERT IGNORE: a repeat is not an error). */
-  async agree(mbId: string, ip: string, userAgent: string) {
-    for (const type of AGREEMENT_TYPES) {
-      await this.db.query(
-        'INSERT IGNORE INTO gangnamunni_user_agreements (user_id, agreement_type, agreement_version, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)',
-        [mbId, type, AGREEMENT_VERSION, ip.slice(0, 45), userAgent.slice(0, 255)]);
-    }
-    return { success: true };
   }
 
   pointsPolicy() { return { visible: pointsVisible() }; }

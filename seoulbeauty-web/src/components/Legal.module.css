@@ -1,15 +1,9 @@
 /* Legal documents (terms, privacy, guidelines): content is first-party static HTML ported from the PHP pages. */
 .wrap { box-sizing: border-box; max-width: 640px; margin: 0 auto; min-height: 100vh; padding-bottom: 110px; background: #fff; color: #1A1718; }
+/* pages without the tab bar (07-06): no reserved space under the text */
+.wrapFlat { padding-bottom: 0; margin-bottom: calc(-1 * (var(--nav-h) + var(--sab))); }
 .body { padding: 4px 16px 0; }
 .tabs { display: flex; gap: 8px; padding: 8px 16px 4px; }
-.tab { padding: 8px 16px; border: 1px solid #DCD6D8; border-radius: 8px; background: #fff; color: #1A1718; font-size: 14px; font-weight: 600; cursor: pointer; }
-.tabOn { background: #AC1830; border-color: #AC1830; color: #fff; }
-.agree { position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 640px; bottom: 0; z-index: 60; box-sizing: border-box; padding: 14px 16px calc(14px + var(--sab)); background: #fff; border-top: 1px solid #DCD6D8; text-align: center; }
-.agree label { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; font-size: 13px; }
-.agreeBtn { width: 100%; padding: 12px; border: 0; border-radius: 8px; background: #AC1830; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
-.agreeBtn:disabled { opacity: .5; cursor: not-allowed; }
-.agreeErr { margin: 0 0 8px; color: #AC1830; font-size: 13px; }
-.agreed { margin: 12px 16px 0; padding: 10px 12px; background: #EAF6EE; color: #16603A; font-size: 14px; border-radius: 8px; }
 .langBtn { margin-left: auto; padding: 6px 10px; border: 1px solid #DCD6D8; border-radius: 6px; background: #fff; font-size: 13px; cursor: pointer; }
 .pHeader { padding: 22px 16px; margin: 0 0 8px; color: #fff; text-align: center; background: linear-gradient(135deg, #AC1830 0%, #5A0F1C 100%); }
 .pHeader h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; }
@@ -88,5 +82,20 @@
   .doc :global(.row) { grid-template-columns: 1fr 1fr; }
   .doc :global(.do-dont) { grid-template-columns: 1fr 1fr; }
 }
-.disclaimer { margin: 28px 0 0; padding: 16px 0 0; border-top: 1px solid #ECE9EA; color: #6B6466; font-size: 13px; line-height: 1.7; }
-.disclaimer p { margin: 0; }
+/* 07-06 서비스 이용약관 */
+.top { position: sticky; top: 0; z-index: 10; background: #fff; }
+.verWrap { position: relative; margin: 6px 20px 0; z-index: 9; }
+.ver { width: 100%; height: 44px; box-sizing: border-box; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #DCD6D8; border-radius: 12px; background: #fff; font-size: 15px; text-align: left; }
+.ver > span { flex: 1 1 auto; }
+.ver svg { flex: none; color: #1A1718; transition: transform .15s; }
+.ver .verUp { transform: rotate(180deg); }
+.verList { position: absolute; left: 0; right: 0; top: 48px; padding: 4px 0; background: #fff; border: 1px solid #DCD6D8; border-radius: 12px; box-shadow: 0 4px 12px rgba(26, 23, 24, .1); }
+.verList button { display: block; width: 100%; padding: 12px; text-align: left; font-size: 15px; }
+.verList .verOn { font-weight: 700; color: #AC1830; }
+.bodyPlain { padding: 20px 20px 0; }
+.docPlain { font-size: 13px; line-height: 1.75; color: #4A4446; }
+.docPlain :global(.header), .docPlain :global(.effective) { display: none; }
+.docPlain :global(.section) { margin-bottom: 20px; }
+.docPlain :global(h2) { display: block; margin: 0 0 2px; padding: 0; border: 0; font-size: 13px; font-weight: 700; color: #1A1718; }
+.docPlain :global(h3) { margin: 10px 0 2px; font-size: 13px; font-weight: 700; color: #1A1718; }
+.docPlain :global(strong) { color: #1A1718; }
