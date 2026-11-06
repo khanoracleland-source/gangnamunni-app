@@ -14,13 +14,6 @@ export class LoginController {
     return this.svc.options();
   }
 
-  @Post('email-check')
-  @UseGuards(SameOriginGuard)
-  async emailCheck(@Body() body: { email?: unknown }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    res.setHeader('Cache-Control', 'private, no-store');
-    return { success: true, ...(await this.svc.emailExists(body?.email, req.ip || 'unknown')) };
-  }
-
   @Post('login')
   @UseGuards(SameOriginGuard)
   async login(@Body() body: { email?: unknown; password?: unknown; remember?: unknown; url?: unknown }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
