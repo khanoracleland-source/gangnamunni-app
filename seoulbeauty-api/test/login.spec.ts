@@ -58,6 +58,22 @@ describe('POST /v1/auth/login', () => {
   it('needs the same-origin header', async () => {
     await request(app.getHttpServer()).post('/v1/auth/login').send({ email: 'a@b.com', password: 'x' }).expect(403);
   });
+  it('email-check: same-origin only, tells whether a (not left) member has the e-mail, validates the format, 20 per ip', async () => {
+    const check = (body: any, ip = '9.9.9.9') => request(app.getHttpServer()).post('/v1/auth/email-check').set('X-Requested-With', 'XMLHttpRequest').set('X-Forwarded-For', ip).send(body);
+    await request(app.getHttpServer()).post('/v1/auth/email-check').send({ email: 'a@b.com' }).expect(403);
+    expect((await check({ email: ' A@B.com ' }).expect(201)).body).toEqual({ success: true, exists: true });
+    expect(calls.find((c) => /FROM g5_member/.test(c.sql))!.args).toEqual(['a@b.com']);
+    member = null;
+    expect((await check({ email: 'none@b.com' }).expect(201)).body).toEqual({ success: true, exists: false });
+    member = { mb_id: 'x', mb_leave_date: '20200101' };
+    expect((await check({ email: 'left@b.com' }).expect(201)).body.exists).toBe(false);
+    member = { mb_id: 'x', mb_intercept_date: '20200101' };
+    expect((await check({ email: 'blocked@b.com' }).expect(201)).body.exists).toBe(false);
+    for (const bad of ['', 'abc', 'a@b', 'a b@c.com', undefined]) await check({ email: bad }).expect(400);
+    member = { mb_id: 'x', mb_leave_date: '' };
+    for (let i = 0; i < 20; i++) await check({ email: 'a@b.com' }, '8.8.8.8').expect(201);
+    await check({ email: 'a@b.com' }, '8.8.8.8').expect(429);
+  });
   it('empty fields', async () => {
     expect((await post({ email: '', password: 'x' }, '2.0.0.1').expect(400)).body.message).toBe('이메일과 비밀번호를 입력해주세요.');
     expect(calls).toHaveLength(0);

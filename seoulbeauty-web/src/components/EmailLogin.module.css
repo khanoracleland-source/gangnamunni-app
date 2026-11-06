@@ -7,7 +7,7 @@
 .field { display: block; padding: 0 20px; }
 .label { display: block; margin-bottom: 8px; font-size: calc(15px * var(--fs-scale, 1)); }
 .box { box-sizing: border-box; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #DCD6D8; border-radius: 12px; }
-.box:focus-within { border-color: #AC1830; }
+.box:focus-within, .boxBad { border-color: #AC1830; }
 .box input { flex: 1 1 auto; min-width: 0; height: 100%; border: 0; outline: 0; padding: 0; background: none; font: inherit; font-size: 16px; color: #1A1718; } /* 16px: no iOS zoom on focus */
 .box input::placeholder { color: #9A9395; }
 .eye { flex: none; border: 0; background: none; padding: 8px 0 8px 8px; font: inherit; font-size: calc(13px * var(--fs-scale, 1)); color: #4A4446; cursor: pointer; }

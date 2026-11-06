@@ -21,6 +21,8 @@ export class LoginService {
   private readonly byIp = new RateWindow(10, 900_000);
   private readonly byIpEmail = new RateWindow(LIMIT_IP_EMAIL, 900_000);
   private readonly byEmail = new RateWindow(20, 3_600_000);
+  /** E-mail existence checks (login step 1): 20 per ip per 15 min, so the endpoint cannot be used to list the member base. */
+  private readonly checkByIp = new RateWindow(20, 900_000);
   constructor(@Inject(DB) private readonly db: DbPool, private readonly bridge: SessionBridgeService) {}
 
   /** Which social buttons the login screen shows (same conditions as auth/login.php). */
@@ -47,6 +49,30 @@ export class LoginService {
     return fail(WRONG, 401, { attempts: this.byIpEmail.size(`${ip}|${email}`), limit: LIMIT_IP_EMAIL });
   }
   private count(email: string, ip: string): void { this.byIp.add(ip); this.byIpEmail.add(`${ip}|${email}`); this.byEmail.add(email); }
+
+  /** Login step 1 (확인): is there a member with this e-mail? A left (deleted) account counts as no. Same-origin only, rate limited per ip. */
+  async emailExists(raw: unknown, ip: string): Promise<{ exists: boolean }> {
+    const email = s(raw).trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) fail('이메일 형식이 올바르지 않아요. 다시 확인해주세요', 400);
+    const rate = this.checkByIp.peek(ip);
+    if (!rate.allowed) { this.audit('email_check_limited', email, ip, `retry=${rate.retry}`); fail(`요청이 너무 많습니다. ${rate.retry}초 후 다시 시도해주세요.`, 429); }
+    this.checkByIp.add(ip);
+    const [rows] = (await this.db.query('SELECT mb_intercept_date, mb_leave_date, mb_email_certify FROM g5_member WHERE LOWER(mb_email) = LOWER(?) LIMIT 1', [email])) as any;
+    const mb = (rows as any[])[0];
+    // same eligibility as login(): a blocked / left / unverified account cannot sign in, so it must not lead to the password step
+    let exists = false;
+    if (mb) {
+      const today = kstYmd();
+      const [cfgRows] = (await this.db.query('SELECT cf_use_email_certify FROM g5_config LIMIT 1')) as any;
+      const useCertify = Number((cfgRows as any[])[0]?.cf_use_email_certify) > 0;
+      const blocked = s(mb.mb_intercept_date) !== '' && s(mb.mb_intercept_date) <= today;
+      const left = s(mb.mb_leave_date) !== '' && s(mb.mb_leave_date) <= today;
+      const unverified = useCertify && !/[1-9]/.test(s(mb.mb_email_certify));
+      exists = !(blocked || left || unverified);
+    }
+    this.audit(exists ? 'email_check_found' : 'email_check_missing', email, ip);
+    return { exists };
+  }
 
   async login(b: { email?: unknown; password?: unknown; remember?: unknown; url?: unknown }, ip: string, cookie: string, host: string, userAgent: string): Promise<{ redirect: string | null; cookies: string[] }> {
     const email = s(b.email).trim().toLowerCase();
