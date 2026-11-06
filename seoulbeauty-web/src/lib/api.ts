@@ -450,7 +450,7 @@ export const api = {
   passwordResetConfirm: (ticket: string, password: string) => send<{ success: boolean }>("POST", "/v1/auth/password-reset/confirm", { ticket, password }, 30000),
   myPoints: (ctx?: ServerCtx) => get<MyPointsData>("/v1/mypage/points", undefined, ctx),
   bookingPayment: (id: number) => get<BookingPaymentInfo>(`/v1/mypage/bookings/${id}/payment`),
-  bookingPaymentInicisPrepare: (id: number, device: "WEB" | "MOBILE", method: "card" | "bank" = "card", direct?: { card: string; quota: string }) => send<InicisPrepare>("POST", `/v1/mypage/bookings/${id}/payment/inicis/prepare`, { device, method, card: direct?.card, quota: direct?.quota }, 30000),
+  bookingPaymentInicisPrepare: (id: number, device: "WEB" | "MOBILE", method: "card" | "bank" = "card") => send<InicisPrepare>("POST", `/v1/mypage/bookings/${id}/payment/inicis/prepare`, { device, method }, 30000),
   bookingPaymentSuccess: (id: number) => get<BookingPaymentSuccess>(`/v1/mypage/bookings/${id}/payment/success`),
   bookingCancelInfo: (id: number) => get<BookingCancelInfo>(`/v1/mypage/bookings/${id}/cancel-info`),
   bookingCancel: (id: number, reason: string) => send<{ success: boolean; message: string; refund_status: string }>("POST", `/v1/mypage/bookings/${id}/cancel`, { reason }, 30000),
