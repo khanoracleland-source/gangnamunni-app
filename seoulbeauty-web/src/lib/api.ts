@@ -538,7 +538,6 @@ export const qk = {
 };
 
 export type DetailTab = "home" | "treatments" | "reviews" | "doctors";
-export const DETAIL_TABS: DetailTab[] = ["home", "treatments", "reviews", "doctors"];
 /** detail.php?tab= values -> ours (PHP's "events" tab is the treatment list). */
 export function toDetailTab(v: string | undefined): DetailTab {
   if (v === "events" || v === "treatments") return "treatments";
