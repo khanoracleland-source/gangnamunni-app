@@ -88,6 +88,7 @@ describe('account security API', () => {
       expect(call.method).toBe('POST');
       expect(call.headers.cookie).toBe(H.Cookie);
       expect(call.headers['x-requested-with']).toBe('XMLHttpRequest');
+      expect(call.headers['x-forwarded-proto']).toBe('https'); // gangnamunni/.htaccess would 301 a plain-HTTP (loopback) request
       expect(JSON.parse(call.body!)).toEqual({ action: 'password', ...ok });
       const before = sessionCalls;
       await post('/v1/account/password', ok); // still logged in as far as the mock goes; the cached entry was dropped, so PHP is asked again

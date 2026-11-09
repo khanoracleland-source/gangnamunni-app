@@ -4,7 +4,7 @@ import { fullReason, isEmail, parsePhpJson, PW_MAX, PW_MIN, REASONS } from './ac
 import { phpFetch } from '../common/php-fetch';
 
 const s = (v: unknown) => (typeof v === 'string' ? v : '');
-interface PhpReply { status: number; json: Record<string, any> | null }
+interface PhpReply { status: number; json: Record<string, any> | null; /** start of the raw body, for the log when PHP did not answer with JSON */ raw?: string }
 
 /**
  * Password, e-mail and 회원 탈퇴 stay PHP code (Gnuboard hashing, credential revocation, PHP-session cert code, SMTP, Kakao unlink,
@@ -31,12 +31,15 @@ export class AccountSecurityService {
   }
 
   private async php(url: string, cookie: string, init: { method: 'GET' | 'POST'; body?: string; type?: string; headers?: Record<string, string> }): Promise<PhpReply> {
-    const headers: Record<string, string> = { accept: 'application/json', 'user-agent': 'seoulbeauty-api', 'x-requested-with': 'XMLHttpRequest', cookie, ...init.headers };
+    /* x-forwarded-proto: gangnamunni/.htaccess sends every non-HTTPS request (loopback + Host header counts) to https://…/app/… with a 301,
+       and a POST does not survive that. The pages under /api/ have their own RewriteEngine and never noticed. */
+    const headers: Record<string, string> = { accept: 'application/json', 'user-agent': 'seoulbeauty-api', 'x-requested-with': 'XMLHttpRequest', 'x-forwarded-proto': 'https', cookie, ...init.headers };
     if (this.host) headers.host = this.host;
     if (init.type) headers['content-type'] = init.type;
     try {
       const res = await phpFetch(url, { method: init.method, headers, body: init.body, signal: AbortSignal.timeout(15_000) });
-      return { status: res.status, json: parsePhpJson(await res.text()) };
+      const text = await res.text();
+      return { status: res.status, json: parsePhpJson(text), raw: text.slice(0, 300) };
     } catch (e) {
       this.log.error(`php call failed (${new URL(url).pathname}): ${(e as Error).message}`);
       throw new HttpException({ success: false, message: '요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.' }, 502);
@@ -48,6 +51,7 @@ export class AccountSecurityService {
     const message = typeof r.json?.message === 'string' && r.json.message ? r.json.message : fallback;
     const status = r.status >= 400 && r.status < 500 ? r.status : 502;
     const field = typeof r.json?.field === 'string' ? r.json.field : undefined;
+    if (status >= 500) this.log.warn(`php answered ${r.status}: ${(r.raw ?? '').replace(/\s+/g, ' ')}`);
     throw new HttpException({ success: false, message, ...(field ? { field } : {}) }, status);
   }
 

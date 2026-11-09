@@ -27,7 +27,7 @@ function Form({ profile }: { profile: MyProfile }) {
       // The 07-09 done page (its 처음으로 goes to the start page). The ?app_logout=1 marker keeps the app from restoring the removed session.
       window.location.replace("/next/mypage/withdraw/done?app_logout=1");
     } catch (e) {
-      setErr(e instanceof ApiError && e.status !== 401 ? { field: e.field ?? "form", message: e.message } : { field: "form", message: "탈퇴 처리에 실패했습니다. 잠시 후 다시 시도해주세요." });
+      setErr(e instanceof ApiError && e.status !== 401 && typeof e.body?.message === "string" ? { field: e.field ?? "form", message: e.message } : { field: "form", message: "탈퇴 처리에 실패했습니다. 잠시 후 다시 시도해주세요." });
       setBusy(false);
     }
   };

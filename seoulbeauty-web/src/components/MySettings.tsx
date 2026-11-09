@@ -85,7 +85,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
     } catch (e) {
       setLeaving(false);
       leaveRef.current?.close();
-      say(e instanceof ApiError && e.status !== 401 && e.message ? e.message : "탈퇴 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      say(e instanceof ApiError && e.status !== 401 && typeof e.body?.message === "string" && e.body.message ? e.body.message : "탈퇴 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   };
   const group = (title: string, items: [SettingKey, string, string?][]) => data && (
