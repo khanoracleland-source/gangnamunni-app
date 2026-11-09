@@ -11,7 +11,7 @@ const LIMIT_IP_EMAIL = 5;
 const WRONG = '이메일 또는 비밀번호가 올바르지 않습니다.';
 
 /**
- * gangnamunni/auth/login.php (mode=email). Wrong passwords are counted per ip (10/15 min), ip+e-mail (5/15 min) and e-mail (20/h);
+ * gangnamunni/auth/login.php (mode=email). Wrong passwords are counted per ip (10/15 min), ip+e-mail (5/5 min) and e-mail (20/h);
  * every refusal says the same thing. The password is checked here, the Gnuboard session (and the remember cookies, and the HMS/SSO
  * login hooks) is minted by PHP through the bridge. Counters live in memory (a restart clears them; app_login.php keeps its own).
  */
@@ -19,7 +19,8 @@ const WRONG = '이메일 또는 비밀번호가 올바르지 않습니다.';
 export class LoginService {
   private readonly log = new Logger(LoginService.name);
   private readonly byIp = new RateWindow(10, 900_000);
-  private readonly byIpEmail = new RateWindow(LIMIT_IP_EMAIL, 900_000);
+  /** design 02-04 "(n/5)": each wrong password for this ip + e-mail counts for 5 minutes (sliding), then drops out again. */
+  private readonly byIpEmail = new RateWindow(LIMIT_IP_EMAIL, 300_000);
   private readonly byEmail = new RateWindow(20, 3_600_000);
   constructor(@Inject(DB) private readonly db: DbPool, private readonly bridge: SessionBridgeService) {}
 
