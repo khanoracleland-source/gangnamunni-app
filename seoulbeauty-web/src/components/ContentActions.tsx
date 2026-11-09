@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, type ContentType } from "@/lib/api";
 import { useRequireLogin } from "@/lib/me";
+import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import styles from "./ContentActions.module.css";
 
 const REASONS: [string, string][] = [
@@ -14,7 +15,7 @@ const DOTS = <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ci
 
 type Step = "closed" | "menu" | "report" | "block" | "delete";
 
-/** ⋯ button + action sheet: own post → edit/delete; anyone else's post/comment/review → report/block. Functional skeleton, design comes later. */
+/** ⋯ button + action sheet (the shared BottomSheet, portal above the tab bar): own post → edit/delete; anyone else's post/comment/review → report/block. */
 export default function ContentActions({ type, id, isMine, authorName, className, onDone }: {
   type: ContentType; id: number; isMine: boolean; authorName: string; className?: string;
   /** Called after a successful action. `leave` = the content is gone for this viewer (deleted/blocked). */
@@ -28,6 +29,7 @@ export default function ContentActions({ type, id, isMine, authorName, className
   const [detail, setDetail] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const sheetRef = useRef<BottomSheetHandle>(null);
 
   const close = () => { setStep("closed"); setPicked([]); setDetail(""); setMsg(""); };
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["community"] }); void qc.invalidateQueries({ queryKey: ["communityPost"] }); };
@@ -38,7 +40,7 @@ export default function ContentActions({ type, id, isMine, authorName, className
       const r = await requireLogin(fn);
       if (r === undefined) return; // redirected to login
       refresh();
-      close();
+      sheetRef.current?.close();
       onDone?.(done);
     } catch (e) {
       setMsg(e instanceof ApiError && e.status !== 401 ? e.message : fallback);
@@ -51,9 +53,11 @@ export default function ContentActions({ type, id, isMine, authorName, className
   return (
     <>
       <button type="button" className={className} aria-label={`${label} 메뉴`} onClick={(e) => { e.stopPropagation(); setStep("menu"); }}>{DOTS}</button>
-      {step !== "closed" && (
-        <div className={styles.overlay} role="dialog" aria-modal="true" onClick={(e) => { e.stopPropagation(); close(); }}>
-          <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
+      {/* the sheet is a portal, but React still bubbles its clicks (dim tap included) to the parent card's onClick: stop them here */}
+      <div style={{ display: "contents" }} onClick={(e) => e.stopPropagation()}>
+      <BottomSheet ref={sheetRef} open={step !== "closed"} onClose={close} label={`${label} 메뉴`} dismissible={!busy}>
+        <div className={styles.body} onClick={(e) => e.stopPropagation()}>
+          <div>
             {step === "menu" && (isMine && type === "community" ? (
               <>
                 <button type="button" className={styles.item} onClick={() => router.push(`/community/write?id=${id}`)}>수정</button>
@@ -98,10 +102,11 @@ export default function ContentActions({ type, id, isMine, authorName, className
               </>
             )}
             {msg && <div className={styles.error} role="alert">{msg}</div>}
-            <button type="button" className={styles.item} onClick={close}>취소</button>
+            <button type="button" className={`${styles.item} ${styles.last}`} onClick={() => sheetRef.current?.close()}>취소</button>
           </div>
         </div>
-      )}
+      </BottomSheet>
+      </div>
     </>
   );
 }

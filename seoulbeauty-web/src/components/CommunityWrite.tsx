@@ -75,19 +75,49 @@ function Editor({ id, data }: { id: number | null; data: CommunityForm }) {
     }
   };
 
+  const total = kept.length + picks.length;
+  const plus = (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#CFC8CB" strokeWidth="1.5" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" /><path d="M12 7.5v9M7.5 12h9" />
+    </svg>
+  );
+
   return (
     <form className={styles.wrap} onSubmit={onSubmit}>
       <div className={styles.head}>
-        <button type="button" className={styles.back} onClick={() => router.back()} aria-label="뒤로 가기">←</button>
-        <div className={styles.title}>{id ? "게시글 수정" : "글쓰기"}</div>
+        <button type="button" className={styles.back} onClick={() => router.back()} aria-label="뒤로 가기">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <div className={styles.title}>{id ? "게시글 수정" : "나만의 뷰티 경험을 공유해보세요"}</div>
       </div>
-      <select className={styles.field} value={category} onChange={(e) => setCategory(e.target.value)} required aria-label="카테고리">
-        <option value="" disabled>카테고리 선택</option>
-        {data.categories.map((c) => <option key={c} value={c}>{c}</option>)}
-      </select>
-      <input className={styles.field} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} required placeholder="제목을 입력하세요." aria-label="제목" />
-      <textarea className={`${styles.field} ${styles.area}`} value={content} onChange={(e) => setContent(e.target.value)} minLength={10} required placeholder="내용을 10자 이상 입력하세요." aria-label="내용" />
+
+      <div className={styles.h}>관심 있는 카테고리를 선택해주세요</div>
+      <div className={styles.cats} role="radiogroup" aria-label="카테고리">
+        {data.categories.map((c) => (
+          <label key={c} className={styles.cat}>
+            <input type="radio" name="category" value={c} checked={category === c} onChange={() => setCategory(c)} required />
+            <span className={styles.box} aria-hidden="true" />
+            {c}
+          </label>
+        ))}
+      </div>
+      <hr className={styles.line} />
+
+      <label className={styles.h} htmlFor="cw-title">제목을 입력해주세요*</label>
+      <input id="cw-title" className={styles.field} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} required placeholder="어떤 이야기를 나누고 싶으신가요?" />
+
+      <label className={`${styles.h} ${styles.hGap}`} htmlFor="cw-content">내용*</label>
+      <textarea id="cw-content" className={`${styles.field} ${styles.area}`} value={content} onChange={(e) => setContent(e.target.value)} minLength={10} required placeholder="시술 후기, 질문, 꿀팁 등 자유롭게 작성해보세요" />
+      <div className={styles.count}>{Array.from(content.trim()).length}자 / 최소 10자</div>
+
+      <div className={`${styles.h} ${styles.hGap}`}>사진 (최대 {data.maxPhotos}장, 각 5MB 이하)</div>
       <div className={styles.photos}>
+        {/* Button + ref, not a label: Android WebView opens the chooser twice for label-wrapped inputs. */}
+        <button type="button" className={styles.tile} disabled={slots - picks.length <= 0} onClick={() => fileRef.current?.click()}>
+          {plus}<span>사진 추가</span>
+        </button>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden onChange={onPick} />
+        <div className={styles.tile} aria-live="polite">{plus}<span>{total} / {data.maxPhotos}</span></div>
         {kept.map((u) => (
           <div key={u} className={styles.thumb}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -102,17 +132,11 @@ function Editor({ id, data }: { id: number | null; data: CommunityForm }) {
             <button type="button" aria-label="사진 삭제" onClick={() => { URL.revokeObjectURL(p.url); setPicks((cur) => cur.filter((x) => x !== p)); }}>×</button>
           </div>
         ))}
-        {slots - picks.length > 0 && (
-          <>
-            {/* Button + ref, not a label: Android WebView opens the chooser twice for label-wrapped inputs. */}
-            <button type="button" className={styles.add} onClick={() => fileRef.current?.click()}>＋ 사진</button>
-            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden onChange={onPick} />
-          </>
-        )}
       </div>
-      <div className={styles.hint}>사진 최대 {data.maxPhotos}장, 장당 5MB. 등록 후 관리자 검토를 거쳐 공개됩니다.</div>
+      <div className={styles.hint}>운영정책을 위반한 게시물은 삭제될 수 있습니다</div>
       {error && <div className={styles.error} role="alert">{error}</div>}
-      <button type="submit" className={styles.submit} disabled={busy}>{busy ? "저장 중…" : id ? "수정하기" : "등록하기"}</button>
+      <div className={styles.spacer} />
+      <button type="submit" className={styles.submit} disabled={busy}>{busy ? "저장 중…" : id ? "수정하기" : "작성했어요"}</button>
     </form>
   );
 }

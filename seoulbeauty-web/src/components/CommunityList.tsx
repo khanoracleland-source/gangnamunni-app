@@ -111,13 +111,24 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
                 <li key={k} className={styles.item}
                   onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button")) go(it); }}>
                   <div className={styles.content}>
+                    <div className={styles.author}>
+                      <div className={styles.avatar}>
+                        {it.authorAvatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={assetUrl(it.authorAvatar) ?? ""} alt="" />
+                        ) : null}
+                      </div>
+                      <span className={styles.aname}>{it.authorName}</span>
+                      <ContentActions type={it.kind === "review" ? "review" : "community"} id={it.id} isMine={it.isMine} authorName={it.authorName} className={styles.more}
+                        onDone={(w) => say(w === "deleted" ? "게시글이 삭제되었습니다." : w === "blocked" ? "사용자를 차단했습니다." : "신고가 접수되었습니다.")} />
+                    </div>
                     <span className={it.kind === "review" ? styles.tag : styles.cat}>{it.category}</span>
                     <Link href={href} className={styles.ptitle}>{it.title}</Link>
                     <div className={`${styles.preview} ${expanded ? styles.expanded : ""}`}>{expanded && it.fullText ? it.fullText : it.preview}</div>
                     <div className={styles.readRow}>
                       {it.fullText ? (
                         <button type="button" className={styles.readmore} aria-expanded={expanded}
-                          onClick={() => setOpen((o) => ({ ...o, [k]: !o[k] }))}>{expanded ? "접기" : "...더보기"}</button>
+                          onClick={() => setOpen((o) => ({ ...o, [k]: !o[k] }))}>{expanded ? "접기" : "…더보기"}</button>
                       ) : <span />}
                       <span className={styles.time} suppressHydrationWarning>{timeDisplay(it.createdAt, it.updatedAt)}</span>
                     </div>
@@ -131,29 +142,18 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
                         ))}
                       </div>
                     )}
-                    <div className={styles.author}>
-                      <div className={styles.avatar}>
-                        {it.authorAvatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={assetUrl(it.authorAvatar) ?? ""} alt="" />
-                        ) : null}
-                      </div>
-                      <span className={styles.aname}>{it.authorName}</span>
-                      <div className={styles.stats}>
-                        <span className={`${styles.stat} ${styles.like} ${it.liked ? styles.liked : ""}`}
-                          role="button" aria-pressed={it.liked} aria-label="좋아요"
-                          onClick={(e) => { e.stopPropagation(); toggleLike(it); }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={ICON(it.liked ? "icon-community-heart-on" : "icon-community-heart")} alt="" />
-                          <span>{num(it.likeCount)}</span>
-                        </span>
+                    <div className={styles.stats}>
+                      <span className={`${styles.stat} ${styles.like} ${it.liked ? styles.liked : ""}`}
+                        role="button" aria-pressed={it.liked} aria-label="좋아요"
+                        onClick={(e) => { e.stopPropagation(); toggleLike(it); }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <span className={styles.stat}><img src={ICON("icon-community-comment")} alt="" />{num(it.commentCount)}</span>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <span className={styles.stat}><img src={ICON("icon-community-view")} alt="" />{num(it.viewCount)}</span>
-                        <ContentActions type={it.kind === "review" ? "review" : "community"} id={it.id} isMine={it.isMine} authorName={it.authorName} className={styles.more}
-                          onDone={(w) => say(w === "deleted" ? "게시글이 삭제되었습니다." : w === "blocked" ? "사용자를 차단했습니다." : "신고가 접수되었습니다.")} />
-                      </div>
+                        <img src={ICON(it.liked ? "icon-community-heart-on" : "icon-community-heart")} alt="" />
+                        <span>좋아요 {num(it.likeCount)}</span>
+                      </span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <span className={styles.stat}><img src={ICON("icon-community-comment")} alt="" />댓글 {num(it.commentCount)}</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <span className={styles.stat}><img src={ICON("icon-community-view")} alt="" />조회 {num(it.viewCount)}</span>
                     </div>
                   </div>
                 </li>

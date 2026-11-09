@@ -137,51 +137,53 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
   return (
     <>
       <div className={styles.head}>
-        <button type="button" className={styles.back} onClick={back} aria-label="뒤로 가기">←</button>
+        <button type="button" className={styles.back} onClick={back} aria-label="뒤로 가기"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg></button>
         <div className={styles.headTitle}>커뮤니티 댓글</div>
       </div>
       <div className={styles.wrap}>
-        <span className={styles.badge}>{post.category}</span>
-        <h1 className={styles.ptitle}>{post.title}</h1>
-        <div ref={bodyRef} id="postContent" className={`${styles.body} ${expanded ? styles.bodyOpen : ""}`}>{post.content}</div>
-        <div className={styles.readRow}>
-          {overflowing || expanded ? (
-            <button type="button" aria-expanded={expanded} aria-controls="postContent" onClick={() => setExpanded((v) => !v)}>{expanded ? "접기" : "...더보기"}</button>
-          ) : <span />}
-          <time>{shortDate(post.createdAt)}</time>
-        </div>
-        {post.photos.length > 0 && (
-          <div className={styles.photos}>
-            {post.photos.map((src, i) => (
-              <a key={i} href={assetUrl(src) ?? "#"} target="_blank" rel="noopener noreferrer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={assetUrl(src) ?? ""} alt="게시글 첨부 사진" loading="lazy" />
-              </a>
-            ))}
+        <article className={styles.card}>
+          <div className={styles.meta}>
+            <span className={styles.avatar} aria-hidden="true">
+              {post.authorAvatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={assetUrl(post.authorAvatar) ?? ""} alt="" />
+              ) : null}
+            </span>
+            <span className={styles.author}>{post.authorName}</span>
+            <ContentActions type="community" id={post.id} isMine={post.isAuthor} authorName={post.authorName} className={styles.more} onDone={afterAction} />
           </div>
-        )}
-        <div className={styles.meta}>
-          <span className={styles.avatar} aria-hidden="true">
-            {post.authorAvatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={assetUrl(post.authorAvatar) ?? ""} alt="" />
-            ) : null}
-          </span>
-          <span className={styles.author}>{post.authorName}</span>
+          <span className={styles.badge}>{post.category}</span>
+          <h1 className={styles.ptitle}>{post.title}</h1>
+          <div ref={bodyRef} id="postContent" className={`${styles.body} ${expanded ? styles.bodyOpen : ""}`}>{post.content}</div>
+          <div className={styles.readRow}>
+            {overflowing || expanded ? (
+              <button type="button" aria-expanded={expanded} aria-controls="postContent" onClick={() => setExpanded((v) => !v)}>{expanded ? "접기" : "…더보기"}</button>
+            ) : <span />}
+            <time>{shortDate(post.createdAt)}</time>
+          </div>
+          {post.photos.length > 0 && (
+            <div className={styles.photos}>
+              {post.photos.map((src, i) => (
+                <a key={i} href={assetUrl(src) ?? "#"} target="_blank" rel="noopener noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={assetUrl(src) ?? ""} alt="게시글 첨부 사진" loading="lazy" />
+                </a>
+              ))}
+            </div>
+          )}
           <div className={styles.stats}>
             <button type="button" className={styles.stat} aria-label="좋아요" aria-pressed={post.liked} onClick={onLikePost}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ICON(post.liked ? "icon-community-heart-on" : "icon-community-heart")} alt="" />{num(post.likeCount)}
+              <img src={ICON(post.liked ? "icon-community-heart-on" : "icon-community-heart")} alt="" />좋아요 {num(post.likeCount)}
             </button>
             <a href="#comments" className={styles.stat} aria-label="댓글">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ICON("icon-community-comment")} alt="" />{num(post.comments.length)}
+              <img src={ICON("icon-community-comment")} alt="" />댓글 {num(post.comments.length)}
             </a>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <span className={styles.stat} aria-label="조회수"><img src={ICON("icon-community-view")} alt="" />{num(post.viewCount)}</span>
-            <ContentActions type="community" id={post.id} isMine={post.isAuthor} authorName={post.authorName} className={styles.more} onDone={afterAction} />
+            <span className={styles.stat} aria-label="조회수"><img src={ICON("icon-community-view")} alt="" />조회 {num(post.viewCount)}</span>
           </div>
-        </div>
+        </article>
 
         <section id="comments">
           <div className={styles.ctitle}>댓글 {post.commentCount}</div>
@@ -194,6 +196,7 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
                 <span className={styles.cauthor}>{c.authorName}</span>
                 <span className={styles.cage} suppressHydrationWarning>{commentAge(c.createdAt)}</span>
                 <time className={styles.cdate}>{shortDate(c.createdAt)}</time>
+                <ContentActions type="comment" id={c.id} isMine={c.isMine} authorName={c.authorName} className={styles.cmore} onDone={(w) => (w === "blocked" ? afterAction(w) : say("신고가 접수되었습니다."))} />
               </div>
               <div className={styles.ctext}>{c.content}</div>
               <div className={styles.tools}>
@@ -201,7 +204,6 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={ICON(c.liked ? "icon-community-heart-on" : "icon-community-heart")} alt="" />{c.likeCount > 0 ? num(c.likeCount) : ""}
                 </button>
-                <ContentActions type="comment" id={c.id} isMine={c.isMine} authorName={c.authorName} className={styles.cbtn} onDone={(w) => (w === "blocked" ? afterAction(w) : say("신고가 접수되었습니다."))} />
                 {!c.parentId && (
                   <button type="button" className={styles.cbtn} onClick={() => reply(c.id, c.authorName)}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}

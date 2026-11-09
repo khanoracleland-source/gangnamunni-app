@@ -21,7 +21,7 @@ const items = [
 ] as const;
 
 /** Design part 02 (login / sign-up / password), 07-01 설정 / 07-06 이용약관 and 07-09 탈퇴 완료 have no tab bar. */
-const NO_NAV = ["/booking", "/login", "/register", "/register-terms", "/password-lost", "/password-reset", "/mypage/settings", "/mypage/withdraw/done", "/terms"];
+const NO_NAV = ["/booking", "/login", "/register", "/register-terms", "/password-lost", "/password-reset", "/mypage/settings", "/mypage/withdraw/done", "/terms", "/community/write"];
 
 export default function BottomNav() {
   const pathname = usePathname();

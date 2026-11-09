@@ -1,29 +1,32 @@
 /* detail_community.php (Figma 06-03 version: later overrides of the PHP stylesheet are the effective values) */
-.head { position: relative; height: 52px; display: flex; align-items: center; justify-content: center; padding: 0 20px; }
+.head { position: sticky; top: 0; z-index: 50; background: var(--bg, #fff); height: 52px; display: flex; align-items: center; justify-content: center; padding: 0 20px; }
 .back { position: absolute; left: 8px; width: 36px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 23px; color: inherit; }
-.headTitle { font-size: 20px; font-weight: 500; color: #1A1718; }
-.wrap { box-sizing: border-box; width: 100%; max-width: 640px; margin: 0 auto; padding: 6px 20px 170px; color: #1A1718; }
-.badge { display: inline-block; padding: 2px 6px; background: #FBEFF1; color: #AC1830; font-size: 14px; margin-bottom: 8px; }
-.ptitle { font-size: 18px; font-weight: 700; line-height: 1.4; margin: 0 0 6px; overflow-wrap: anywhere; }
+.headTitle { font-size: 18px; font-weight: 500; color: #1A1718; }
+.wrap { box-sizing: border-box; width: 100%; max-width: 640px; margin: 0 auto; padding: 12px 20px calc(var(--nav-h) + var(--sab) + 120px); color: #1A1718; }
+.card { padding: 16px; border: 1px solid #ECE9EA; border-radius: 16px; background: #fff; display: flex; flex-direction: column; gap: 10px; }
+.badge { align-self: flex-start; padding: 4px 10px; border-radius: 6px; background: #F2EFF0; color: #4A4446; font-size: 14px; }
+.ptitle { font-size: 18px; font-weight: 700; line-height: 1.4; margin: 0; overflow-wrap: anywhere; }
 .body { font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bodyOpen { display: block; }
-.readRow { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; font-size: 13px; color: #9A9395; }
+.readRow { display: flex; align-items: center; justify-content: space-between; margin: 0; font-size: 14px; color: #6B6366; }
 .readRow button { color: inherit; font-size: inherit; }
 .readRow time { margin-left: auto; }
-.photos { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin-bottom: 8px; }
-.photos a { display: block; height: 118px; background: #DAD7D8; overflow: hidden; }
-.photos a:only-child { width: 50%; grid-column: 1 / -1; }
-.photos img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.meta { display: flex; align-items: center; gap: 6px; padding: 4px 0 12px; border-bottom: 1px solid #ECE9EA; min-width: 0; }
-.avatar { width: 26px; height: 26px; border-radius: 50%; background: #DCD8D9; flex: 0 0 26px; overflow: hidden; }
+.photos { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.photos a { display: block; height: 156px; background: #DAD7D8; overflow: hidden; border-radius: 12px; }
+.photos img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.photos a:only-child { grid-column: 1 / -1; }
+.meta { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: #DCD8D9; flex: 0 0 36px; overflow: hidden; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.author { font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stats { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 14px; flex-shrink: 0; }
+.author { flex: 1 1 auto; font-size: 16px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats { display: flex; align-items: center; gap: 16px; padding-top: 12px; border-top: 1px solid #ECE9EA; font-size: 14px; }
 .stat { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: inherit; }
 .stat img { display: block; width: 21px; height: 21px; object-fit: contain; flex-shrink: 0; }
-.more { width: 21px; height: 21px; display: inline-flex; align-items: center; justify-content: center; }
+.more { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; margin-left: auto; }
+.cmore { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; margin-left: 4px; }
+.cmore svg { width: 16px; height: 16px; display: block; }
 .more svg { width: 19px; height: 19px; }
-.ctitle { font-size: 17px; font-weight: 700; padding: 12px 0 4px; }
+.ctitle { font-size: 17px; font-weight: 700; padding: 24px 0 4px; }
 .comment { padding: 10px 0; scroll-margin-top: 16px; }
 .reply { margin-left: 32px; }
 .crow { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -39,10 +42,10 @@
 .form { position: fixed; left: 50%; transform: translateX(-50%); bottom: var(--comment-bottom, calc(var(--nav-h) + var(--sab))); box-sizing: border-box; width: 100%; max-width: 640px; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 20px; background: var(--bg); border-top: 1px solid #ECE9EA; z-index: 40; }
 .target { flex: 0 0 100%; display: flex; justify-content: space-between; align-items: center; color: #AC1830; font-size: 14px; }
 .target button { padding: 6px; color: inherit; }
-.input { box-sizing: border-box; flex: 1; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid #CFC8CB; border-radius: 4px; font-size: 16px; color: inherit; background: var(--bg); }
+.input { box-sizing: border-box; flex: 1; min-width: 0; height: 56px; padding: 0 16px; border: 1px solid #CFC8CB; border-radius: 12px; font-size: 16px; color: inherit; background: var(--bg); }
 .input::placeholder { color: #9A9395; }
 .input:focus { outline: none; }
-.submit { width: 56px; height: 40px; border-radius: 4px; background: #AC1830; color: #fff; font-size: 17px; font-weight: 700; }
+.submit { width: 76px; height: 56px; border-radius: 12px; background: #1A1718; color: #fff; font-size: 17px; font-weight: 700; }
 .submit:disabled { opacity: .6; }
 .loginBar { justify-content: center; }
 .loginBar a { color: #AC1830; font-weight: 600; }
